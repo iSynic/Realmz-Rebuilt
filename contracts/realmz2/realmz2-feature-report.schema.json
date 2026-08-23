@@ -21,7 +21,7 @@
   ],
   "properties": {
     "kind": { "const": "realmz2.feature-report" },
-    "formatVersion": { "const": 1 },
+    "formatVersion": { "const": 2 },
     "schemaHash": { "$ref": "#/$defs/sha256" },
     "package": {
       "type": "object",
@@ -129,10 +129,70 @@
               "signatureHash": { "$ref": "#/$defs/sha256" },
               "count": { "$ref": "#/$defs/count" },
               "origins": { "type": "array", "items": { "enum": ["application", "scenario"] }, "uniqueItems": true },
-              "behavior": { "type": "object" }
+              "behavior": { "$ref": "#/$defs/spellBehavior" }
             }
           }
         }
+      }
+    },
+    "spellBehavior": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rangeMin",
+        "rangeMax",
+        "queueIcon",
+        "toHitBonus",
+        "saveBonus",
+        "fixedTargetCount",
+        "canRotate",
+        "saveAdjust",
+        "cannot",
+        "resistanceAdjust",
+        "cost",
+        "damageMin",
+        "damageMax",
+        "powerDamageMin",
+        "powerDamageMax",
+        "durationMin",
+        "durationMax",
+        "powerDurationMin",
+        "powerDurationMax",
+        "targetType",
+        "size",
+        "special",
+        "damageType",
+        "spellClass",
+        "inCombat",
+        "inCamp"
+      ],
+      "properties": {
+        "rangeMin": { "type": ["integer", "null"] },
+        "rangeMax": { "type": ["integer", "null"] },
+        "queueIcon": { "type": ["integer", "null"] },
+        "toHitBonus": { "type": ["integer", "null"] },
+        "saveBonus": { "type": ["integer", "null"] },
+        "fixedTargetCount": { "type": ["integer", "null"] },
+        "canRotate": { "type": ["boolean", "null"] },
+        "saveAdjust": { "type": ["integer", "null"] },
+        "cannot": { "type": ["integer", "null"] },
+        "resistanceAdjust": { "type": ["integer", "null"] },
+        "cost": { "type": ["integer", "null"] },
+        "damageMin": { "type": ["integer", "null"] },
+        "damageMax": { "type": ["integer", "null"] },
+        "powerDamageMin": { "type": ["integer", "null"] },
+        "powerDamageMax": { "type": ["integer", "null"] },
+        "durationMin": { "type": ["integer", "null"] },
+        "durationMax": { "type": ["integer", "null"] },
+        "powerDurationMin": { "type": ["integer", "null"] },
+        "powerDurationMax": { "type": ["integer", "null"] },
+        "targetType": { "type": ["integer", "null"] },
+        "size": { "type": ["integer", "null"] },
+        "special": { "type": ["integer", "null"] },
+        "damageType": { "type": ["integer", "null"] },
+        "spellClass": { "type": ["integer", "null"] },
+        "inCombat": { "type": ["boolean", "null"] },
+        "inCamp": { "type": ["boolean", "null"] }
       }
     }
   }

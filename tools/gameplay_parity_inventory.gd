@@ -3,9 +3,9 @@ extends SceneTree
 const APPLICATION_PACKAGE_PATH := "res://src/infrastructure/characters/realmz-classic-character-library.realmz2"
 const APPLICATION_PACKAGE_ID := "realmz-classic-character-library"
 const APPLICATION_PACKAGE_HASH := "d134c8f552d4e5893dcf82ea25bd21504c45a1e0cffb84bf4061a1b83ec00b49"
-const FEATURE_REPORT_FORMAT_VERSION := 1
-const FEATURE_REPORT_PROVIDENCE_COMMIT := "353a579d41dc95969a69dc6b6b6f27d6e09ff551"
-const FEATURE_REPORT_SCHEMA_HASH := "ecef0ad8e62e54e4e1790c669dbcf17b78b44a3d777e0994be06dc2fd3fa76a0"
+const FEATURE_REPORT_FORMAT_VERSION := 2
+const FEATURE_REPORT_PROVIDENCE_COMMIT := "8ae731e851544575d6687059b9c84a2535f89d5f"
+const FEATURE_REPORT_SCHEMA_HASH := "be4fa175ebfc8ed756a0db2b0c6073108bd9f635e8c23321d1258cfcf4e73ee4"
 const INVENTORY_PATH := "res://tests/fixtures/oracle/classic-gameplay-parity-inventory.json"
 const REPORT_PATH := "res://docs/classic-gameplay-parity-status.md"
 const SpellCapabilities = preload("res://src/core/rules/classic_spell_capability_catalog.gd")

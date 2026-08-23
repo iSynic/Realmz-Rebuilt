@@ -220,6 +220,7 @@ static func behavior_signature(spell: SpellDefinition) -> Dictionary:
 		"fixedTargetCount": spell.fixed_target_count,
 		"inCamp": spell.in_camp,
 		"inCombat": spell.in_combat,
+		"queueIcon": spell.queue_icon,
 		"range": {"maximum": spell.range_max, "minimum": spell.range_min},
 		"resistanceAdjust": spell.resistance_adjust,
 		"saveAdjust": spell.save_adjust,

@@ -30,9 +30,9 @@ The 252 player records are the stock player-spell parity target. The 105 applica
 
 ## Providence feature reports
 
-- Report format: `realmz2.feature-report` version 1
-- Authoritative Providence commit: `353a579d41dc95969a69dc6b6b6f27d6e09ff551`
-- Mirrored schema SHA-256: `ecef0ad8e62e54e4e1790c669dbcf17b78b44a3d777e0994be06dc2fd3fa76a0`
+- Report format: `realmz2.feature-report` version 2
+- Authoritative Providence commit: `8ae731e851544575d6687059b9c84a2535f89d5f`
+- Mirrored schema SHA-256: `be4fa175ebfc8ed756a0db2b0c6073108bd9f635e8c23321d1258cfcf4e73ee4`
 - Local analyzer and coverage ranking: `tools/analyze_gameplay_feature_reports.ps1`
 
 The sidecar binds its exact package hash and reports normalized feature signatures without scenario names, text, coordinates, record identities, or machine-local paths. Commercial reports remain local and untracked. Coverage ranking is recomputed against already certified reports after each scenario rather than establishing a fixed campaign order.

@@ -75,7 +75,7 @@ function Assert-FeatureReport {
     $featureSchemaHash = (Get-Content -Raw -LiteralPath $featureSchemaHashPath).Trim().ToLowerInvariant()
     $packageSchemaHash = (Get-Content -Raw -LiteralPath $packageSchemaHashPath).Trim().ToLowerInvariant()
     Assert-Condition ($Report.kind -ceq "realmz2.feature-report") "$Context has an unsupported kind."
-    Assert-Condition ($Report.formatVersion -eq 1) "$Context has an unsupported feature-report format version."
+    Assert-Condition ($Report.formatVersion -eq 2) "$Context has an unsupported feature-report format version."
     Assert-Condition ($Report.schemaHash -ceq $featureSchemaHash) "$Context does not match the mirrored feature-report schema."
     Assert-Condition ($Report.package.format -ceq "realmz2" -and $Report.package.formatVersion -eq 2 -and $Report.package.schemaVersion -eq 3) "$Context targets an unsupported package contract."
     Assert-Condition ($Report.package.schemaHash -ceq $packageSchemaHash) "$Context does not match the mirrored package schema."
@@ -337,12 +337,12 @@ function New-SyntheticReport {
         canRotate=$false; cannot=$false; cost=1; damageMax=0; damageMin=0; damageType=0
         durationMax=0; durationMin=0; fixedTargetCount=1; inCamp=$true; inCombat=$true
         powerDamageMax=0; powerDamageMin=0; powerDurationMax=0; powerDurationMin=0
-        rangeMax=1; rangeMin=0; resistanceAdjust=0; saveAdjust=0; saveBonus=0; size=0
+        queueIcon=0; rangeMax=1; rangeMin=0; resistanceAdjust=0; saveAdjust=0; saveBonus=0; size=0
         special=0; spellClass=1; targetType=1; toHitBonus=0
     }
     $spellSignatures = @($SpellHashes | ForEach-Object { [pscustomobject]@{ signatureHash=$_; count=1; origins=@("application"); behavior=$behavior } })
     return [pscustomobject]@{
-        kind="realmz2.feature-report"; formatVersion=1; schemaHash=$featureSchemaHash
+        kind="realmz2.feature-report"; formatVersion=2; schemaHash=$featureSchemaHash
         package=[pscustomobject]@{ format="realmz2"; formatVersion=2; schemaVersion=3; schemaHash=$packageSchemaHash; packageHash=("f" * 64); campaignIdentityHash=$CampaignHash }
         opcodes=[pscustomobject]@{ occurrences=$opcodeVariants.Count; identityCount=([int]($opcodeVariants.Count -gt 0)); variantCount=$opcodeVariants.Count; identities=@($(if ($opcodeVariants.Count -gt 0) { [pscustomobject]@{opcode=1;count=$opcodeVariants.Count;variantCount=$opcodeVariants.Count} })); variants=$opcodeVariants }
         spells=[pscustomobject]@{ definitions=$spellSignatures.Count; applicationDefinitions=$spellSignatures.Count; scenarioDefinitions=0; behaviorSignatureCount=$spellSignatures.Count; behaviorSignatures=$spellSignatures }
