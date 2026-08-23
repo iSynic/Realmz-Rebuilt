@@ -167,7 +167,10 @@ func _battle_setup_failure(state: GameState, instance_checkpoint: int, rng: Real
 func _advance_turn(state: GameState, rng: RealmzRng, events: Array[DomainEvent]) -> void:
 	if state == null or state.combat == null:
 		return
-	if state.combat.advance_turn():
+	var round_advanced := state.combat.advance_turn()
+	for field: RefCounted in state.combat.decay_persistent_fields_for_phase(state.combat.turn_index):
+		events.append(DomainEvent.new(&"combat_persistent_field_expired", {"slot": field.slot, "spellId": field.spell_id, "center": [field.center.x, field.center.y], "shape": field.shape, "queueIcon": field.queue_icon, "source": "classic"}))
+	if round_advanced:
 		_process_bleeding_round(state, rng, events)
 
 

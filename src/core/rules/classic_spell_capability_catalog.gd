@@ -105,6 +105,10 @@ static func is_combat_summon_spell(spell: SpellDefinition) -> bool:
 	return _combat_summon_spell(spell)
 
 
+static func is_combat_persistent_field_spell(spell: SpellDefinition) -> bool:
+	return _combat_persistent_field_spell(spell)
+
+
 static func unsupported_reason(spell: SpellDefinition, context_name: StringName) -> String:
 	if spell == null:
 		return "The spell definition is unavailable."
@@ -126,7 +130,9 @@ static func unsupported_reason(spell: SpellDefinition, context_name: StringName)
 static func _combat_character_disposition(spell: SpellDefinition) -> StringName:
 	if spell == null or not spell.in_combat or application_role(spell) == ROLE_RESERVED_STANDARD:
 		return DISPOSITION_NOT_APPLICABLE
-	if spell.queue_icon != 0 or spell.target_type not in [0, 1, 3, 4, 6, 9, 10, 12]:
+	if spell.queue_icon != 0:
+		return DISPOSITION_EXECUTABLE if _combat_persistent_field_spell(spell) else DISPOSITION_PENDING
+	if spell.target_type not in [0, 1, 3, 4, 6, 9, 10, 12]:
 		return DISPOSITION_PENDING
 	return DISPOSITION_EXECUTABLE if _ordinary_combat_spell(spell) or _combat_healing_spell(spell) or _combat_condition_cure_spell(spell) or _combat_summon_spell(spell) else DISPOSITION_PENDING
 
@@ -134,7 +140,9 @@ static func _combat_character_disposition(spell: SpellDefinition) -> StringName:
 static func _combat_scroll_disposition(spell: SpellDefinition) -> StringName:
 	if spell == null or not spell.in_combat or application_role(spell) == ROLE_RESERVED_STANDARD:
 		return DISPOSITION_NOT_APPLICABLE
-	if spell.queue_icon != 0 or spell.target_type not in [0, 1, 2, 3, 4, 5, 6, 9, 10, 12]:
+	if spell.queue_icon != 0:
+		return DISPOSITION_EXECUTABLE if _combat_persistent_field_spell(spell) else DISPOSITION_PENDING
+	if spell.target_type not in [0, 1, 2, 3, 4, 5, 6, 9, 10, 12]:
 		return DISPOSITION_PENDING
 	return DISPOSITION_EXECUTABLE if _ordinary_combat_spell(spell) or _combat_healing_spell(spell) or _combat_condition_cure_spell(spell) or _combat_summon_spell(spell) else DISPOSITION_PENDING
 
@@ -142,7 +150,9 @@ static func _combat_scroll_disposition(spell: SpellDefinition) -> StringName:
 static func _combat_item_disposition(spell: SpellDefinition) -> StringName:
 	if spell == null or not spell.in_combat or application_role(spell) == ROLE_RESERVED_STANDARD:
 		return DISPOSITION_NOT_APPLICABLE
-	if spell.queue_icon != 0 or spell.target_type not in [1, 2, 3, 4, 5, 6, 9, 10, 12]:
+	if spell.queue_icon != 0:
+		return DISPOSITION_EXECUTABLE if _combat_persistent_field_spell(spell) else DISPOSITION_PENDING
+	if spell.target_type not in [1, 2, 3, 4, 5, 6, 9, 10, 12]:
 		return DISPOSITION_PENDING
 	return DISPOSITION_EXECUTABLE if _ordinary_combat_spell(spell) or _combat_healing_spell(spell) else DISPOSITION_PENDING
 
@@ -176,6 +186,17 @@ static func _ordinary_combat_spell(spell: SpellDefinition) -> bool:
 
 static func _combat_summon_spell(spell: SpellDefinition) -> bool:
 	return spell != null and absi(spell.special) == 58 and spell.target_type == 0 and spell.queue_icon == 0
+
+
+static func _combat_persistent_field_spell(spell: SpellDefinition) -> bool:
+	if spell == null or not spell.in_combat or spell.queue_icon == 0 or spell.queue_icon < -128 or spell.queue_icon > 127 or not spell.can_rotate or spell.target_type not in [3, 4] or spell.size < 1:
+		return false
+	var special := absi(spell.special)
+	if special not in [0, 2]:
+		return false
+	var has_immediate_effect := spell.damage_min != 0 or spell.damage_max != 0 or spell.power_damage_min != 0 or spell.power_damage_max != 0 or special == 2
+	var maximum_duration := maxi(spell.duration_min, spell.duration_max) + 7 * maxi(spell.power_duration_min, spell.power_duration_max)
+	return has_immediate_effect and maximum_duration > 0 and absi(spell.damage_type) <= 7
 
 
 static func _combat_healing_spell(spell: SpellDefinition) -> bool:

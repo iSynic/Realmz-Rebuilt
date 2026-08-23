@@ -119,6 +119,8 @@ func _resolve_character_spell_monster_target(caster_level: int, target: MonsterS
 		var save_roll := rng.draw(100, &"magic.damage-save")
 		# savevs consumes its roll first, then forces failure when cannot > 1.
 		saved = spell.cannot <= 1 and save_roll <= (target.save_value(damage_type - 1) if target.has_runtime_saves() else target_definition.save_value(damage_type - 1))
+		if saved and rolled_damage == 0:
+			return SpellResolution.new(true, false, true, spell_cost, 0, duration)
 		if saved:
 			damage /= 2
 		if damage > 0 and target.conditions.is_active(ConditionRules.FIRE_PROTECTION + damage_type - 1):
@@ -128,8 +130,11 @@ func _resolve_character_spell_monster_target(caster_level: int, target: MonsterS
 		damage = int(float(damage) * (1.0 + float(absi(save_modifier)) / 100.0))
 	if rolled_damage != 0 and damage == 0:
 		damage = 1
+	var applied_condition := _apply_combat_condition(target.conditions, spell, duration, true)
 	target.current_health -= damage
-	return SpellResolution.new(true, false, saved, spell_cost, damage, duration, target.current_health <= 0)
+	var result := SpellResolution.new(true, false, saved, spell_cost, damage, duration, target.current_health <= 0)
+	result.applied_condition = applied_condition
+	return result
 
 
 func _resolve_character_spell_character_target(caster: CharacterState, target: CharacterState, spell: SpellDefinition, power_level: int, cast_level: int, damage: int, duration: int, rng: RealmzRng) -> SpellResolution:
@@ -147,14 +152,19 @@ func _resolve_character_spell_character_target(caster: CharacterState, target: C
 	if damage_type > 0 and damage_type <= 6:
 		var save_roll := rng.draw(100, &"magic.damage-save")
 		saved = spell.cannot <= 1 and save_roll <= target.save_value(damage_type - 1)
+		if saved and rolled_damage == 0:
+			return SpellResolution.new(true, false, true, 0, 0, duration)
 		if saved:
 			damage /= 2
 		if damage > 0 and target.conditions.is_active(ConditionRules.FIRE_PROTECTION + damage_type - 1):
 			damage /= 2
 	if rolled_damage != 0 and damage == 0:
 		damage = 1
+	var applied_condition := _apply_combat_condition(target.conditions, spell, duration, false)
 	target.current_health -= damage
-	return SpellResolution.new(true, false, saved, 0, damage, duration, target.current_health <= 0)
+	var result := SpellResolution.new(true, false, saved, 0, damage, duration, target.current_health <= 0)
+	result.applied_condition = applied_condition
+	return result
 
 
 func resolve_character_projectile(caster: CharacterState, caste: CasteDefinition, projectile_item: ItemDefinition, target: MonsterState, spell: SpellDefinition, power_level: int, rng: RealmzRng) -> ProjectileResolution:
@@ -379,6 +389,19 @@ static func _clear_condition(conditions: ConditionSet, condition_index: int, spe
 	var result := SpellResolution.new(true, false, false, spell_cost, 0, duration)
 	result.cleared_condition = condition_index
 	return result
+
+
+static func _apply_combat_condition(conditions: ConditionSet, spell: SpellDefinition, duration: int, monster_target: bool) -> int:
+	var special := absi(spell.special) if spell != null else 0
+	if special < 1 or special >= 41 or special == 28 or duration <= 0:
+		return -1
+	var condition_index := special - 1
+	var current := conditions.value(condition_index)
+	var updated := current + duration
+	if current < 0 or monster_target and absi(updated) >= 125 or not monster_target and updated >= 100:
+		return -1
+	conditions.set_value(condition_index, updated)
+	return condition_index
 
 
 static func _selection_reflects(selection: SpellTargetSelection, rng: RealmzRng, tag: StringName) -> bool:

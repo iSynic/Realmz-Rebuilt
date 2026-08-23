@@ -263,8 +263,8 @@ func _cast_character_area_spell(state: GameState, content: RealmzContent, caster
 	return _magic._cast_character_area_spell(state, content, caster, spell, power_level, cast_level, rng, center, rotation)
 
 
-func _commit_character_multi_spell(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition, power_level: int, cast_level: int, group: GroupSpellResolution, rng: RealmzRng, center: Vector2i = Vector2i(-100_000, -100_000), shape: int = 0, event_source: String = "classic", item_instance_id: String = "", count_spell_cast: bool = true) -> CombatFlowResult:
-	return _magic._commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, group, rng, center, shape, event_source, item_instance_id, count_spell_cast)
+func _commit_character_multi_spell(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition, power_level: int, cast_level: int, group: GroupSpellResolution, rng: RealmzRng, center: Vector2i = Vector2i(-100_000, -100_000), shape: int = 0, event_source: String = "classic", item_instance_id: String = "", count_spell_cast: bool = true, persistent_field: RefCounted = null) -> CombatFlowResult:
+	return _magic._commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, group, rng, center, shape, event_source, item_instance_id, count_spell_cast, persistent_field)
 
 
 func _append_spell_sound(events: Array[DomainEvent], authored_sound_id: int, source: String) -> void:
