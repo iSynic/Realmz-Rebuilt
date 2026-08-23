@@ -88,6 +88,8 @@ func _monster_spell_power_plan(state: GameState, content: RealmzContent, monster
 		return _monster_area_spell_power_plan(state, content, monster, definition, spell, slot, power, actors_by_cell, area_placement_cache)
 	if spell.target_type == 6:
 		return _monster_ray_spell_power_plan(state, content, monster, spell, slot, power)
+	if spell.target_type == 10:
+		return _monster_hostile_group_spell_power_plan(state, content, monster, spell, slot, power)
 	var cure_index := MagicRules.condition_cure_index(spell) if MagicRules.is_condition_cure_spell(spell) else -1
 	var friendly := spell.cannot == 4 or cure_index >= 0
 	var candidates: Array[String] = []
@@ -116,6 +118,19 @@ func _monster_spell_power_plan(state: GameState, content: RealmzContent, monster
 	for target_id: String in selected:
 		score += _monster_target_score(state, target_id, spell, power, healing, cure_index)
 	return {"spellId": spell.id, "spellSlot": slot, "power": power, "targetIds": selected, "score": score - spell.cost * power * 3}
+
+
+func _monster_hostile_group_spell_power_plan(state: GameState, content: RealmzContent, monster: MonsterState, spell: SpellDefinition, slot: int, power: int) -> Dictionary:
+	var target_ids := _opposed_actor_ids_for_monster(state, monster)
+	var effective_target_count := 0
+	for target_id: String in target_ids:
+		if not _target_hard_immune(state, content, target_id, spell):
+			effective_target_count += 1
+	if effective_target_count == 0:
+		return {}
+	var expected := expected_spell_effect(spell, power)
+	var score := 340 + effective_target_count * expected * 5 - spell.cost * power * 3
+	return {"spellId": spell.id, "spellSlot": slot, "power": power, "targetIds": target_ids, "score": score}
 
 
 func _monster_area_spell_power_plan(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, spell: SpellDefinition, slot: int, power: int, actors_by_cell: Dictionary, area_placement_cache: Dictionary) -> Dictionary:

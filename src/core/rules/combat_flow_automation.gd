@@ -337,6 +337,8 @@ func _process_monster_cast(state: GameState, content: RealmzContent, monster: Mo
 				events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "cast", "spellId": spell.id, "reason": "persistent-field-queue-limit"}))
 				return MONSTER_ATTACK_COMPLETED if did_cast else MONSTER_ATTACK_FALLBACK
 			resolutions = _rules.magic.resolve_monster_group_spell(monster, definition, selected_targets, spell, cost_power, cast_level, rng, true)
+		elif spell.target_type == 10:
+			resolutions = _rules.magic.resolve_monster_group_spell(monster, definition, selected_targets, spell, cost_power, cast_level, rng)
 		elif spell.target_type == 0:
 			resolutions = _rules.magic.resolve_monster_repeated_spell(monster, definition, selected_targets, spell, cost_power, cast_level, rng)
 		elif spell.target_type == 6:
