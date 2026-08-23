@@ -145,12 +145,12 @@ func _capture_gallery() -> void:
 		for spell_data: Dictionary in [
 			{"id": 1101, "name": "Discover Magic", "cost": 2, "target": 5, "description": "Reveals magical influences affecting the caster."},
 			{"id": 1107, "name": "Magic Darts", "cost": 4, "target": 1, "description": "A compact bolt of magical force for one target."},
-			{"id": 1306, "name": "Brimstones", "cost": 2, "target": 10, "description": "Burning stones strike a fixed battlefield area."},
+			{"id": 1309, "name": "Plane of Force", "cost": 4, "target": 3, "size": 10, "queueIcon": 15, "canRotate": true, "description": "A persistent force wall follows the selected Classic orientation."},
 			{"id": 1304, "name": "Circle of Renewal", "cost": 5, "target": 9, "description": "Restores friendly combatants within the spell's reach."},
 			{"id": 1602, "name": "Energy Storm", "cost": 10, "target": 10, "description": "A violent magical storm strikes every enemy."},
 		]:
 			var spell_definition := SpellDefinition.new("classic.spell.%d" % int(spell_data.id), int(spell_data.id), String(spell_data.name), String(spell_data.description))
-			spell_definition.cost = int(spell_data.cost); spell_definition.range_min = 1; spell_definition.range_max = 2; spell_definition.duration_min = 1; spell_definition.duration_max = 3; spell_definition.damage_min = 2; spell_definition.damage_max = 6; spell_definition.power_damage_min = 1; spell_definition.power_damage_max = 2; spell_definition.target_type = int(spell_data.target); spell_definition.damage_type = 1
+			spell_definition.cost = int(spell_data.cost); spell_definition.range_min = 1; spell_definition.range_max = 2; spell_definition.duration_min = 1; spell_definition.duration_max = 3; spell_definition.damage_min = 2; spell_definition.damage_max = 6; spell_definition.power_damage_min = 1; spell_definition.power_damage_max = 2; spell_definition.target_type = int(spell_data.target); spell_definition.size = int(spell_data.get("size", 0)); spell_definition.queue_icon = int(spell_data.get("queueIcon", 0)); spell_definition.can_rotate = bool(spell_data.get("canRotate", false)); spell_definition.damage_type = 1
 			var spell_view := SpellView.new(spell_definition)
 			spell_view.power_levels = [1, 2, 3, 4, 5, 6, 7]; spell_view.scroll_power_levels = [1, 2, 3]; spell_view.field_cast = ActionAvailabilityView.new(&"cast_spell", true); spell_view.make_scroll = ActionAvailabilityView.new(&"make_scroll", true)
 			gallery_spells.append(spell_view)
@@ -580,7 +580,7 @@ func _combat_view(game_view: Variant) -> CombatView:
 	monster.icon_id = 9001
 	battlefield.place_monster(monster.id, Vector2i(47, 45), 0)
 	var combat := CombatState.new("classic.battle.gallery", [monster], 0, battlefield)
-	combat.set_turn_order([hero.id, monster.id])
+	combat.set_turn_order([hero.id, monster.id]); combat.queue_persistent_field("classic.spell.1309", hero.id, Vector2i(49, 45), 0, 10, 15, 1, 3, 2)
 	var result := CombatView.new(combat, [hero], _application.get("_active_content"))
 	result.attack_units_remaining = 2
 	result.movement_remaining = 8

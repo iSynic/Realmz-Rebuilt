@@ -481,9 +481,9 @@ func _apply_layout() -> void:
 	_stage_frame.size = stage_rect.size
 	_activity_indicator.position = stage_rect.position + Vector2(10.0, 10.0)
 	_activity_indicator.size = Vector2(40.0, 40.0)
-	_party_roster.position = origin + Vector2(stage_width, _profile.menu_height)
-	var roster_height := party_roster_height(viewport_size.y, _profile.menu_height, stage_height, _party_roster.combat_spellbook_active())
-	_party_roster.size = Vector2(_profile.party_width, roster_height)
+	var roster_width := combat_spellbook_roster_width(viewport_size.x, _profile.party_width, _profile.ui_scale, _party_roster.combat_spellbook_active())
+	_party_roster.position = origin + Vector2(viewport_size.x - roster_width, _profile.menu_height)
+	_party_roster.size = Vector2(roster_width, party_roster_height(viewport_size.y, _profile.menu_height, stage_height, _party_roster.combat_spellbook_active()))
 	_party_roster.z_index = party_roster_z_index(_party_roster.combat_spellbook_active())
 	_bottom_row.vertical = false
 	_facts.columns = 3 if _profile.id == UiLayoutProfile.COMPACT else 6
@@ -512,7 +512,7 @@ func _apply_layout() -> void:
 	_router.set_layout_profile(_profile, viewport_size, origin)
 	_build_menus()
 	_rebuild_command_deck()
-	layout_changed.emit(stage_rect, _profile)
+	layout_changed.emit(Rect2(stage_rect.position, Vector2(combat_spellbook_stage_width(stage_rect.size.x, viewport_size.x, roster_width), stage_rect.size.y)), _profile)
 
 
 static func party_roster_height(viewport_height: float, menu_height: float, stage_height: float, combat_spellbook_active: bool) -> float:
@@ -521,6 +521,14 @@ static func party_roster_height(viewport_height: float, menu_height: float, stag
 
 static func party_roster_z_index(combat_spellbook_active: bool) -> int:
 	return 81 if combat_spellbook_active else 14
+
+
+static func combat_spellbook_roster_width(viewport_width: float, party_width: float, ui_scale: float, combat_spellbook_active: bool) -> float:
+	return maxf(party_width, minf(352.0 * ui_scale, viewport_width - 320.0 * ui_scale)) if combat_spellbook_active else party_width
+
+
+static func combat_spellbook_stage_width(stage_width: float, viewport_width: float, roster_width: float) -> float:
+	return minf(stage_width, viewport_width - roster_width)
 
 
 func _apply_exploration_mode() -> void:
