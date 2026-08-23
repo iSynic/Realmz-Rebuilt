@@ -827,14 +827,14 @@ func _test_fixture_gallery_coverage() -> void:
 
 func _test_lifecycle_interaction() -> void:
 	var request := ApplicationLifecycleScript.end_adventure_request(false)
-	assert_equal([request.body.to_data()["prompt"], request.kind, request.body.to_data()["inCombat"], request.body.to_data()["options"].size(), InteractionPresenter.uses_full_stage_region(request)], ["Return to the main menu?", InteractionRequest.SESSION_LIFECYCLE, false, 3, false], "Main Menu exposes explicit save, discard, and cancel operations in a compact modal")
+	assert_equal([request.body.to_data()["prompt"], request.kind, request.body.to_data()["inCombat"], request.body.to_data()["options"].size(), InteractionPresenter.uses_full_stage_region(request), InteractionPresenter.preferred_modal_size(request, Vector2(1280, 692))], ["Return to the main menu?", InteractionRequest.SESSION_LIFECYCLE, false, 3, false, Vector2(560, 220)], "Main Menu exposes save, discard, and cancel together in a modal tall enough to avoid scrolling")
 	assert_not_null(InteractionRequest.from_data(request.to_data()), "the typed lifecycle request retains the established interaction wire shape")
 	var component := LifecycleInteractionScript.new()
 	var submitted: Array[Dictionary] = []
 	component.response_body_submitted.connect(func(body: InteractionResponse.Body) -> void: submitted.append(body.to_data()))
 	component.build(request)
 	var buttons := _buttons_in(component)
-	assert_equal(buttons.map(func(button: Button) -> String: return button.text), ["Save and return", "Return without saving", "Cancel"], "the dedicated presenter does not reinterpret lifecycle choices as scenario options")
+	assert_equal(buttons.map(func(button: Button) -> String: return button.text), ["Save and return", "Return without saving", "Cancel"], "the dedicated presenter does not reinterpret lifecycle choices as scenario options"); assert_true(component.get_combined_minimum_size().y <= 170.0, "the complete Main Menu choice component fits inside its non-scrolling modal allocation")
 	assert_true(component.handle_back(), "Escape invokes the declared lifecycle Cancel action")
 	assert_equal(submitted, [{"action": "cancel"}], "Cancel emits one typed host response")
 	assert_equal(ApplicationLifecycleScript.response_action(request, InteractionPresenter.response_for(request, InteractionResponse.LifecycleBody.new(&"cancel"))), &"cancel", "the host accepts only an action declared by its request")

@@ -552,8 +552,9 @@ static func preferred_modal_size(request: InteractionRequest, available_size: Ve
 	if request != null:
 		match request.kind:
 			InteractionRequest.SESSION_LIFECYCLE:
-				preferred = Vector2(460.0, 122.0)
-				minimum = Vector2(340.0, 110.0)
+				var lifecycle := request.body as InteractionRequest.LifecycleRequestBody
+				preferred = Vector2(560.0, 220.0) if lifecycle != null and lifecycle.operation != &"quit-application" else Vector2(460.0, 122.0)
+				minimum = Vector2(420.0, 190.0) if lifecycle != null and lifecycle.operation != &"quit-application" else Vector2(340.0, 110.0)
 			InteractionRequest.WORD_AND_ACTION:
 				preferred.y = 380.0
 			InteractionRequest.LEVEL_UP:
