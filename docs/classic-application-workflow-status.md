@@ -6,7 +6,7 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| classic | 69 | 0 | 15 | 50 | 4 |
+| classic | 69 | 0 | 15 | 48 | 6 |
 | host | 8 | 1 | 1 | 6 | 0 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
@@ -21,7 +21,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.combat.resolve-outcome` | implementation | aogm-major-partial | - | GAP-COMBAT-006 |
+| `classic.combat.resolve-outcome` | implementation | aogm-major-partial | - |  |
 | `classic.rewards.treasure-distribution` | certification | aogm-certification | aogm-ordinary |  |
 | `classic.rewards.experience-level-up` | certification | aogm-certification | aogm-ordinary |  |
 | `classic.rewards.post-battle-allies` | certification | aogm-certification | aogm-ordinary |  |
@@ -32,8 +32,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | --- | ---: | ---: | ---: |
 | classic | missing | 0 | 0 | 0 |
 | classic | partial | 15 | 15 | 0 |
-| classic | functional | 50 | 50 | 0 |
-| classic | certified | 4 | 4 | 0 |
+| classic | functional | 50 | 48 | -2 |
+| classic | certified | 4 | 6 | +2 |
 | host | missing | 1 | 1 | 0 |
 | host | partial | 1 | 1 | 0 |
 | host | functional | 6 | 6 | 0 |
@@ -51,7 +51,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Spellcasting | 3 | 0 | 2 | 1 | 0 |
 | Services and economy | 5 | 0 | 1 | 4 | 0 |
 | Combat | 14 | 0 | 2 | 9 | 3 |
-| Rewards and progression | 5 | 0 | 0 | 4 | 1 |
+| Rewards and progression | 5 | 0 | 0 | 2 | 3 |
 | Maps and journal | 3 | 0 | 2 | 1 | 0 |
 | Save and system | 5 | 0 | 3 | 2 | 0 |
 
@@ -98,8 +98,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | ---: |
 | absent | 0 |
 | fixture-shell | 1 |
-| functional | 64 |
-| accepted | 4 |
+| functional | 61 |
+| accepted | 7 |
 
 ### Host
 
@@ -143,12 +143,11 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 
 ## Release blockers and major gaps
 
-Blockers: **1**. Major gaps: **13**.
+Blockers: **1**. Major gaps: **12**.
 
 - **blocker** `host.release.platform-certification` - There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
 - **major** `classic.character.allies-bestiary` - Current held-over allies now have a functional read-only workspace, but the Bestiary cannot be reconstructed from the package because menu visibility and normalized descriptions are not preserved per monster. Next: Correct Providence schema v3 and Rebuilt decoding to preserve every menu-visible monster, its description, and not-on-menu flag, then add the Bestiary route without inventing discovery state.
 - **major** `classic.character.view-sheet` - Castle's lifetime combat record and prestige cannot yet be calculated accurately. Next: Add source-backed lifetime counters and update every owning combat and magic mutation path before enabling the visible Lifetime Record tab.
-- **major** `classic.combat.resolve-outcome` - Ordinary victory and reward return work, but the terminal combat workflow is not yet accepted. Next: Obtain ordinary-play acceptance of the corrected command deck, then exercise ordinary defeat or retreat and a reward that produces a level-up.
 - **major** `classic.combat.resolve-outcome` - Battle reward mode 10 remains unresolved end to end. Next: Implement the mode-10 restore-and-restart continuation when a certified scenario exposes it or during post-corpus synthetic saturation, without changing schema v2 unless controlled evidence disproves positional preservation.
 - **major** `classic.combat.undo` - Movement-only Undo, result invalidation, condition gates, occupied-cell safety, presentation, and save restoration are implemented; repeated Undo and initiative-edge re-entry remain runtime-unobserved. Next: Run the synthetic Castle fixtures for repeated Undo and first/last-slot or round-boundary re-entry before expanding the bounded implementation.
 - **major** `classic.inventory.use-item` - Ordinary AOGM play proves fixed-power party-state items and saveable field scroll consumption. Combat items and scrolls now include source-backed fixed or random power plus actor, ordered repeated actor, group, ray, and rotatable persistent-area targets; door/XAP items and broader specials remain explicit. Next: Characterize door/XAP items and broader specials only when parity or a reachable campaign requires them.
@@ -175,7 +174,7 @@ Blockers: **1**. Major gaps: **13**.
 
 ### aogm
 
-- `classic.combat.resolve-outcome` - Ordinary victory and reward return work, but the terminal combat workflow is not yet accepted.
+- None.
 
 ### other-campaign
 
