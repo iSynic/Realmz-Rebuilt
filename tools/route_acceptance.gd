@@ -62,6 +62,19 @@ func _initialize() -> void:
 
 
 func _prepare_party() -> void:
+	if _session._state.party.characters().is_empty():
+		var races := _content.race_definitions()
+		var castes := _content.caste_definitions()
+		if races.is_empty() or castes.is_empty():
+			_fail("route package has no application character definitions")
+			return
+		for index: int in 6:
+			var character := CharacterState.new("route.hero.%d" % (index + 1), "Route Hero %d" % (index + 1), 1_000_000, 1_000_000)
+			character.race_id = races[0].id
+			character.caste_id = castes[0].id
+			if not _session._state.party.add_character(character):
+				_fail("route harness could not create its deterministic party")
+				return
 	for character: CharacterState in _session._state.party.characters():
 		character.maximum_health = 1_000_000
 		character.current_health = 1_000_000
@@ -205,6 +218,24 @@ func _default_response(request: InteractionRequest, step_id: String) -> Interact
 			if ally_body == null:
 				return null
 			return InteractionResponse.from_data(request.request_id, request.kind, {"selectedIds": ally_body.selected_ids.duplicate()})
+		&"treasure_distribution":
+			var treasure_body := request.body as InteractionRequest.TreasureRequestBody
+			if treasure_body == null:
+				return null
+			if treasure_body.mode == &"completion-confirmation":
+				return InteractionResponse.from_data(request.request_id, request.kind, {"action": "confirm-completion"})
+			if treasure_body.mode == &"fumbled-item-recovery" and treasure_body.item != null:
+				return InteractionResponse.from_data(request.request_id, request.kind, {"action": "discard", "instanceId": treasure_body.item.instance_id})
+			return InteractionResponse.from_data(request.request_id, request.kind, {"action": "done"})
+		&"level_up":
+			var level_body := request.body as InteractionRequest.LevelUpRequestBody
+			if level_body == null:
+				return null
+			return InteractionResponse.from_data(request.request_id, request.kind, {
+				"action": "continue" if level_body.mode == &"result" else "confirm-spells",
+				"characterId": level_body.character_id,
+				"spellIds": [],
+			})
 	_fail("%s yielded unsupported interaction %s" % [step_id, request.kind])
 	return null
 
