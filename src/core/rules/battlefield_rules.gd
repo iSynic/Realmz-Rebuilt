@@ -94,6 +94,31 @@ func has_line_of_sight_to_coordinate(battlefield: BattlefieldState, terrain_set:
 	return true
 
 
+func ray_actor_ids(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, from_actor_id: String, destination: Vector2i, stop_at_los_blocker: bool = true) -> Array[String]:
+	var result: Array[String] = []
+	if battlefield == null or terrain_set == null or not battlefield.has_actor(from_actor_id) or not BattlefieldState.contains(destination):
+		return result
+	var encountered: Dictionary = {from_actor_id: true}
+	var origin := battlefield.actor_position(from_actor_id)
+	var part := Vector2(origin * 32)
+	var step := Vector2(destination - origin) * 32.0 / 128.0
+	for _sample: int in 128:
+		var coordinate := Vector2i(floori((part.x + 16.0) / 32.0), floori((part.y + 16.0) / 32.0))
+		if not BattlefieldState.contains(coordinate):
+			break
+		var actor_id := battlefield.actor_at(coordinate)
+		if not actor_id.is_empty():
+			if not encountered.has(actor_id):
+				encountered[actor_id] = true
+				result.append(actor_id)
+		elif stop_at_los_blocker:
+			var terrain := terrain_set.tile_by_id(battlefield.terrain_at(coordinate))
+			if terrain == null or terrain.blocks_los:
+				break
+		part += step
+	return result
+
+
 func probe_monster_step_toward(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, actor_id: String, target: Vector2i, movement_available: int, rng: RealmzRng) -> BattlefieldStepResult:
 	if battlefield == null or terrain_set == null or rng == null or not battlefield.has_actor(actor_id):
 		return BattlefieldStepResult.blocked(&"invalid_actor")

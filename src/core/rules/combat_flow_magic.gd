@@ -238,6 +238,12 @@ func cast_spell(state: GameState, content: RealmzContent, caster_id: String, tar
 		if repeated == null or not repeated.cast:
 			return CombatFlowResult.failed(&"spell_cast_failed", "The repeated-target spell could not be cast with the available spell points.")
 		return _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, repeated, rng)
+	if spell.target_type == 6:
+		var ray_selections := _ray_spell_selections(state, content, caster.id, target_id, spell)
+		var ray := _rules.magic.resolve_character_ray_spell(caster, ray_selections, spell, power_level, cast_level, rng)
+		if ray == null or not ray.cast:
+			return CombatFlowResult.failed(&"spell_cast_failed", "The ray spell could not be cast with the available spell points.")
+		return _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, ray, rng)
 	var selection := _spell_target_selection(state, content, target_id)
 	if selection == null:
 		return CombatFlowResult.failed(&"spell_target_unavailable", "The selected combatant is unavailable.")
@@ -245,6 +251,20 @@ func cast_spell(state: GameState, content: RealmzContent, caster_id: String, tar
 	if targeted == null or not targeted.cast:
 		return CombatFlowResult.failed(&"spell_cast_failed", "The spell could not be cast with the available spell points.")
 	return _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, targeted, rng)
+
+
+func _ray_spell_selections(state: GameState, content: RealmzContent, caster_id: String, target_id: String, spell: SpellDefinition) -> Array[SpellTargetSelection]:
+	var result: Array[SpellTargetSelection] = []
+	var map := content.world.map_by_id(state.combat.battlefield.map_id)
+	var terrain_set := content.world.battle_terrain_set_by_id(map.battle_terrain_set_id) if map != null else null
+	if terrain_set == null or not state.combat.battlefield.has_actor(target_id):
+		return result
+	var stop_at_blocker := spell.range_min + spell.range_max > 0
+	for actor_id: String in _rules.battlefield.ray_actor_ids(state.combat.battlefield, terrain_set, caster_id, state.combat.battlefield.actor_position(target_id), stop_at_blocker):
+		var selection := _spell_target_selection(state, content, actor_id)
+		if selection != null:
+			result.append(selection)
+	return result
 
 
 func probe_character_scroll_cast(state: GameState, content: RealmzContent, caster_id: String, scroll_slot: int, target_id: String = "", target_coordinate: Vector2i = INVALID_COORDINATE, rotation: int = 0, target_ids: Array[String] = [], target_coordinates: Array[Vector2i] = []) -> CombatSpellCastProbe:
