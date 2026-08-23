@@ -13,18 +13,18 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Current parity-convergence batch
 
-**AOGM terminal combat and reward certification** (`aogm-terminal-reward-certification`)
+**AOGM shared spell capability completion** (`aogm-shared-spell-capabilities`)
 
-The closed item-and-scroll batch leaves AOGM's terminal combat and reward sequence as the only generated AOGM-priority gap. This four-workflow batch accepts the corrected battle command and terminal-return surface, exercises ordinary defeat or retreat and an actual level-up, and certifies treasure completion, level continuation, and post-battle ally handling without opening the unexposed mode-10 branch.
+The closed terminal-reward batch leaves no generated AOGM workflow gap, while the application spell denominator still contains large explicit capability deficits across character, scroll, item, and monster contexts. This four-workflow batch identifies and implements the next AOGM-reachable unsupported mechanical signatures through the shared deterministic resolver, then certifies ordinary Fast Spell configuration and activation without deepening unexposed spell families.
 
 Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.combat.resolve-outcome` | implementation | aogm-major-partial | - |  |
-| `classic.rewards.treasure-distribution` | certification | aogm-certification | aogm-ordinary |  |
-| `classic.rewards.experience-level-up` | certification | aogm-certification | aogm-ordinary |  |
-| `classic.rewards.post-battle-allies` | certification | aogm-certification | aogm-ordinary |  |
+| `classic.spellcasting.combat-cast` | implementation | aogm-major-partial | - | GAP-SPELL-003 |
+| `classic.spellcasting.field-camp-cast` | implementation | aogm-major-partial | - | GAP-SPELL-002 |
+| `classic.inventory.use-item` | implementation | aogm-major-partial | - | GAP-INV-003 |
+| `classic.exploration.fast-spell` | certification | aogm-certification | aogm-ordinary |  |
 
 ### Batch count delta
 
@@ -32,8 +32,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | --- | ---: | ---: | ---: |
 | classic | missing | 0 | 0 | 0 |
 | classic | partial | 15 | 15 | 0 |
-| classic | functional | 50 | 48 | -2 |
-| classic | certified | 4 | 6 | +2 |
+| classic | functional | 48 | 48 | 0 |
+| classic | certified | 6 | 6 | 0 |
 | host | missing | 1 | 1 | 0 |
 | host | partial | 1 | 1 | 0 |
 | host | functional | 6 | 6 | 0 |
