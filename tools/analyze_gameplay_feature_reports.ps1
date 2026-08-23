@@ -198,6 +198,7 @@ function Get-ApplicationBehaviorSignatureId {
         fixedTargetCount = $Behavior.fixedTargetCount
         inCamp = $Behavior.inCamp
         inCombat = $Behavior.inCombat
+        queueIcon = $Behavior.queueIcon
         range = [ordered]@{ maximum = $Behavior.rangeMax; minimum = $Behavior.rangeMin }
         resistanceAdjust = $Behavior.resistanceAdjust
         saveAdjust = $Behavior.saveAdjust
@@ -388,6 +389,9 @@ if ($SelfTest) {
 
     $capabilityReport = New-SyntheticReport ("f" * 64) @(("a" * 64)) @(("b" * 64))
     $capabilitySignatureId = Get-ApplicationBehaviorSignatureId $capabilityReport.spells.behaviorSignatures[0].behavior
+    $alternateQueueBehavior = $capabilityReport.spells.behaviorSignatures[0].behavior.PSObject.Copy()
+    $alternateQueueBehavior.queueIcon = 1
+    Assert-Condition ((Get-ApplicationBehaviorSignatureId $alternateQueueBehavior) -cne $capabilitySignatureId) "Queue-icon spell mechanics must affect application capability signatures."
     $capabilityInventory = [pscustomobject]@{
         spellSummary = [pscustomobject]@{ totalDefinitions=1; behaviorSignatures=1 }
         spellSignatures = @([pscustomobject]@{ signatureId=$capabilitySignatureId })
