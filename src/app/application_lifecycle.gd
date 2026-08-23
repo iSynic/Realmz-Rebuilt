@@ -12,12 +12,12 @@ const CANCEL: StringName = &"cancel"
 static func end_adventure_request(in_combat: bool) -> InteractionRequest:
 	var options: Array[Dictionary] = []
 	if not in_combat:
-		options.append({"action": String(SAVE_AND_END), "label": "Save and end adventure"})
-	options.append({"action": String(END_WITHOUT_SAVING), "label": "End adventure without saving"})
+		options.append({"action": String(SAVE_AND_END), "label": "Save and return"})
+	options.append({"action": String(END_WITHOUT_SAVING), "label": "Return without saving"})
 	options.append({"action": String(CANCEL), "label": "Cancel"})
 	return InteractionRequest.from_payload(END_ADVENTURE_REQUEST_ID, InteractionRequest.SESSION_LIFECYCLE, {
 		"operation": "end-adventure",
-		"prompt": "End the active adventure?",
+		"prompt": "Return to the main menu?",
 		"inCombat": in_combat,
 		"options": options,
 	})

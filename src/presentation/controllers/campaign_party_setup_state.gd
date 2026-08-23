@@ -7,6 +7,7 @@ const PartySetupPartyListScript := preload("res://src/presentation/party_setup_p
 const ClassicUiTheme := preload("res://src/presentation/classic_ui_theme.tres")
 
 signal intent_submitted(intent: PlayerIntent)
+signal load_saved_adventure_requested
 signal standalone_character_creation_requested
 signal standalone_character_creation_cancelled
 

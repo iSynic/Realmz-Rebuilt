@@ -448,6 +448,12 @@ func show_campaign_selection() -> void:
 	_build_menus()
 
 
+func show_splash() -> void:
+	_router.show_splash()
+	_set_play_regions_visible(false)
+	_build_menus()
+
+
 func _apply_layout() -> void:
 	if not is_node_ready():
 		return
@@ -540,7 +546,7 @@ func _build_menus() -> void:
 		{"label": "Campaigns…", "system": &"campaigns", "disabled_reason": _campaign_library_reason()},
 		{"label": "Quick Save", "system": &"save", "disabled_reason": _save_reason()},
 		{"label": "Quick Load", "system": &"load", "disabled_reason": _load_reason()},
-		{"label": "End Adventure…", "system": &"end_adventure", "disabled_reason": _end_adventure_reason()},
+		{"label": "Main Menu…", "system": &"end_adventure", "disabled_reason": _end_adventure_reason()},
 		{"label": "Quit", "system": &"quit"},
 	])
 	_fill_menu($MenuStrip/MenuRow/AdventureMenu, [
@@ -596,7 +602,7 @@ func _build_menus() -> void:
 		{"label": "Maps / Notes", "route": &"journal"},
 		{"label": "Game — Quick Save", "system": &"save", "disabled_reason": _save_reason()},
 		{"label": "Game — Quick Load", "system": &"load", "disabled_reason": _load_reason()},
-		{"label": "Game — End Adventure", "system": &"end_adventure", "disabled_reason": _end_adventure_reason()},
+		{"label": "Game — Main Menu", "system": &"end_adventure", "disabled_reason": _end_adventure_reason()},
 		{"label": "Game — Campaigns", "system": &"campaigns", "disabled_reason": _campaign_library_reason()},
 		{"label": "Preferences", "route": &"system"},
 		{"label": "Music — %s" % ("Stop" if _presentation_settings.music_enabled else "Play"), "system": &"music_toggle"},
@@ -1001,13 +1007,7 @@ func _load_reason() -> String:
 func _campaign_library_reason() -> String:
 	if _current_view == null or not _current_view.session_started:
 		return ""
-	if _current_view.party_setup_available:
-		return "End party setup before choosing another campaign."
-	if _current_view.pending_interaction != null:
-		return "Resolve the current interaction first."
-	if _current_view.combat_view != null and _current_view.combat_view.outcome == &"active":
-		return "Finish the current battle first."
-	return ""
+	return "Return to the Main Menu before choosing another campaign."
 
 
 func _allies_reason() -> String:

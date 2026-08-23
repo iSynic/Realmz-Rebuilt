@@ -184,7 +184,7 @@ func _capture_gallery() -> void:
 	_router.open_screen(&"spells")
 	await _settle()
 	await _capture("wide-spells-1280x720")
-	var fast_tab := _button_named(_router, "Fast Spells")
+	var fast_tab := _button_named(_router, "Fast Spells (1–0)")
 	if fast_tab != null:
 		fast_tab.pressed.emit(); await _settle(); await _capture("wide-fast-spells-1280x720")
 	var scroll_tab := _button_named(_router, "Scrolls")

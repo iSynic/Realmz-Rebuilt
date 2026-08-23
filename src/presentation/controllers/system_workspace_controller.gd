@@ -92,7 +92,7 @@ func _build_save_tab(parent: VBoxContainer, view: GameView) -> void:
 	rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(rows)
 	if _save_previews.is_empty():
-		_add_card(rows, "No saves for this campaign", "Quick Save creates the first validated slot.", "")
+		_add_card(rows, "No saves for this campaign", "Return to party setup and begin a new adventure." if view.party_setup_available else "Quick Save creates the first validated slot.", "")
 	else:
 		var group := ButtonGroup.new()
 		for preview: SaveSlotPreview in _save_previews:
@@ -120,7 +120,7 @@ func _build_save_footer(parent: VBoxContainer, view: GameView) -> void:
 		save_and_quit.name = "SaveAndQuitSelected"
 		save_and_quit.tooltip_text = "Save to the selected slot, then quit Realmz Rebuilt."
 		save_and_quit.pressed.connect(_save_selected_and_quit)
-	else:
+	elif not view.party_setup_available:
 		_add_action(footer, "Quick Save", &"save", "quick")
 	_load_selected = _add_action(footer, "Load Selected", &"", null)
 	_load_selected.name = "LoadSelectedSave"
@@ -129,10 +129,9 @@ func _build_save_footer(parent: VBoxContainer, view: GameView) -> void:
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	footer.add_child(spacer)
-	_add_action(footer, "Campaign Library", &"campaigns", null)
-	var end_adventure := _add_action(footer, "End Adventure", &"end_adventure", null)
+	var end_adventure := _add_action(footer, "Main Menu", &"end_adventure", null)
 	end_adventure.disabled = view.pending_interaction != null and view.pending_interaction.kind != InteractionRequest.COMBAT
-	end_adventure.tooltip_text = "Resolve the current interaction first." if end_adventure.disabled else "Close this campaign session without quitting Realmz Rebuilt."
+	end_adventure.tooltip_text = "Resolve the current interaction first." if end_adventure.disabled else "Close this campaign session and return to the Realmz Rebuilt main menu."
 
 
 func _select_save(preview: SaveSlotPreview) -> void:

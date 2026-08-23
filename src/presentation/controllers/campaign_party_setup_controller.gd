@@ -20,6 +20,10 @@ var standalone_character_creation_cancelled: Signal:
 	get: return _state.standalone_character_creation_cancelled
 var campaign_selection_requested: Signal:
 	get: return _campaign_library.campaign_selection_requested
+var load_adventure_requested: Signal:
+	get: return _campaign_library.load_adventure_requested
+var load_saved_adventure_requested: Signal:
+	get: return _state.load_saved_adventure_requested
 var vault_requested: Signal:
 	get: return _campaign_library.vault_requested
 var quit_requested: Signal:
@@ -257,6 +261,13 @@ func _build_setup_actions(character_column: VBoxContainer, party_column: VBoxCon
 	character_footer.add_child(create_character_button)
 	character_column.add_child(character_footer)
 	var party_footer := HBoxContainer.new()
+	var load_adventure := Button.new()
+	load_adventure.name = "LoadSavedAdventure"
+	load_adventure.text = "Load saved adventure"
+	load_adventure.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	load_adventure.custom_minimum_size.y = 34.0
+	load_adventure.pressed.connect(func() -> void: _state.load_saved_adventure_requested.emit())
+	party_footer.add_child(load_adventure)
 	begin_button = Button.new()
 	begin_button.name = "BeginAdventure"
 	begin_button.text = "Begin adventure"

@@ -104,7 +104,7 @@ func _add_section_tabs(parent: VBoxContainer) -> void:
 		picker.theme_type_variation = &"ClassicTheldrowOptionButton"
 		picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		for section_id: StringName in SECTIONS:
-			picker.add_item({&"known": "Known Spells", &"fast": "Fast Slots", &"scrolls": "Scroll Case"}[section_id])
+			picker.add_item({&"known": "Known Spells", &"fast": "Fast Spells (1–0)", &"scrolls": "Scroll Case"}[section_id])
 			picker.set_item_metadata(picker.item_count - 1, section_id)
 			if section_id == _section_id:
 				picker.select(picker.item_count - 1)
@@ -116,7 +116,7 @@ func _add_section_tabs(parent: VBoxContainer) -> void:
 	row.add_theme_constant_override("separation", 5)
 	for section_id: StringName in SECTIONS:
 		var button := Button.new()
-		button.text = {&"known": "Known Spells", &"fast": "Fast Slots", &"scrolls": "Scroll Case"}[section_id]
+		button.text = {&"known": "Known Spells", &"fast": "Fast Spells (1–0)", &"scrolls": "Scroll Case"}[section_id]
 		button.tooltip_text = {&"known": "Browse every spell this character knows.", &"fast": "Assign the ten Classic number-key quick-cast bindings.", &"scrolls": "Use one of the five Classic scroll slots."}[section_id]
 		button.toggle_mode = true
 		button.button_pressed = section_id == _section_id

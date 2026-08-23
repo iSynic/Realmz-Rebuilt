@@ -1,7 +1,7 @@
 class_name ClassicIntroAnimation
 extends VideoStreamPlayer
 
-const INTRO_STREAM := preload("res://src/presentation/assets/ui/intro/rebuilt-intro.ogv")
+const INTRO_STREAM_PATH := "res://src/presentation/assets/ui/intro/rebuilt-intro.ogv"
 
 var audio_enabled: bool = false
 var _master_volume: float = 1.0
@@ -11,16 +11,26 @@ func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	expand = true
-	stream = INTRO_STREAM
-	autoplay = true
+	autoplay = false
 	loop = true
 	tooltip_text = "Click to turn intro audio on"
 	_apply_audio_volume()
 
 
 func _ready() -> void:
-	if not is_playing():
+	activate()
+
+
+func activate() -> void:
+	if stream == null:
+		stream = ResourceLoader.load(INTRO_STREAM_PATH, "VideoStream", ResourceLoader.CACHE_MODE_IGNORE) as VideoStream
+	if is_inside_tree() and stream != null and not is_playing():
 		play()
+
+
+func deactivate() -> void:
+	stop()
+	stream = null
 
 
 func set_master_volume(value: float) -> void:

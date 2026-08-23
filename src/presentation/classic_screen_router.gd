@@ -43,6 +43,8 @@ var _presented_campaign_id: String = ""
 var _vault_return_to_setup: bool = false
 var _vault_return_to_campaign: bool = false
 var _vault_return_to_splash: bool = false
+var _load_after_campaign_selection: bool = false
+var _system_return_to_setup: bool = false
 var _workspace_host: Control
 var _overlay_host: Control
 var _workspace_presenter := CLASSIC_WORKSPACE_PRESENTER.new()
@@ -57,7 +59,9 @@ func _init() -> void:
 	setup_controller.intent_submitted.connect(func(intent: PlayerIntent) -> void: intent_submitted.emit(intent))
 	setup_controller.standalone_character_creation_requested.connect(func() -> void: standalone_character_creation_requested.emit())
 	setup_controller.standalone_character_creation_cancelled.connect(func() -> void: standalone_character_creation_cancelled.emit())
-	setup_controller.campaign_selection_requested.connect(show_campaign_selection)
+	setup_controller.campaign_selection_requested.connect(func() -> void: show_campaign_selection())
+	setup_controller.load_adventure_requested.connect(func() -> void: show_campaign_selection(true))
+	setup_controller.load_saved_adventure_requested.connect(_show_load_workspace)
 	setup_controller.vault_requested.connect(_show_vault_from_splash)
 	setup_controller.quit_requested.connect(func() -> void: system_action_requested.emit(&"quit", null))
 	_workspace_presenter.intent_submitted.connect(func(intent: PlayerIntent) -> void: intent_submitted.emit(intent))
@@ -123,20 +127,22 @@ func present(view: GameView) -> void:
 	_presented_campaign_id = view.campaign_id
 	setup_controller.present(view)
 	if view.party_setup_available:
-		if setup_controller.splash_overlay != null:
-			setup_controller.splash_overlay.visible = false
-		setup_controller.campaign_overlay.visible = true
-		setup_controller.setup_overlay.visible = true
+		if _load_after_campaign_selection:
+			_load_after_campaign_selection = false
+			_show_load_workspace()
+			return
+		if _system_return_to_setup and _screen_id == &"system":
+			setup_controller.hide_overlays()
+			_render_screen()
+			return
+		setup_controller.show_party_setup()
 		_body_frame.visible = false
 		call_deferred("_apply_modal_layouts")
 		call_deferred("_focus_first", setup_controller.setup_overlay)
 		return
 	if completed_party_setup:
 		_finish_party_setup_navigation()
-	setup_controller.setup_overlay.visible = false
-	if setup_controller.splash_overlay != null:
-		setup_controller.splash_overlay.visible = false
-	setup_controller.campaign_overlay.visible = false
+	setup_controller.hide_overlays()
 	_render_screen()
 
 
@@ -147,6 +153,8 @@ static func _party_setup_completed(previous_view: GameView, next_view: GameView)
 func _finish_party_setup_navigation() -> void:
 	_vault_return_to_setup = false
 	_vault_return_to_campaign = false
+	_load_after_campaign_selection = false
+	_system_return_to_setup = false
 	_workspace_presenter.clear_vault_inspection()
 	setup_controller.finish_party_setup_navigation()
 	_route_history.clear()
@@ -276,14 +284,18 @@ func show_splash() -> void:
 	_vault_return_to_campaign = false
 	_vault_return_to_setup = false
 	_vault_return_to_splash = false
+	_load_after_campaign_selection = false
+	_system_return_to_setup = false
 	setup_controller.show_splash()
 	_body_frame.visible = false
 
 
-func show_campaign_selection() -> void:
+func show_campaign_selection(load_after_selection: bool = false) -> void:
 	_vault_return_to_campaign = false
 	_vault_return_to_setup = false
 	_vault_return_to_splash = false
+	_load_after_campaign_selection = load_after_selection
+	_system_return_to_setup = false
 	setup_controller.show_campaign_selection()
 	_body_frame.visible = false
 	call_deferred("_prepare_campaign_selection")
@@ -318,6 +330,15 @@ func open_screen(screen_id: StringName, play_opening_sound: bool = true) -> void
 
 func handle_back() -> bool:
 	if setup_controller.handle_back():
+		return true
+	if _system_return_to_setup and _view != null and _view.party_setup_available:
+		_system_return_to_setup = false
+		route_exiting.emit(_screen_id)
+		_screen_id = &"exploration"
+		_route_history.clear()
+		setup_controller.show_party_setup()
+		_body_frame.visible = false
+		screen_changed.emit(_screen_id)
 		return true
 	if _screen_id == &"vault" and _workspace_presenter.handle_vault_back():
 		return true
@@ -361,6 +382,15 @@ func handle_back() -> bool:
 		_render_screen(true)
 		return true
 	return false
+
+
+func _show_load_workspace() -> void:
+	if _view == null or not _view.session_started or not _view.party_setup_available:
+		return
+	_load_after_campaign_selection = false
+	_system_return_to_setup = true
+	_route_history.clear()
+	open_screen(&"system")
 
 
 func current_screen() -> StringName:

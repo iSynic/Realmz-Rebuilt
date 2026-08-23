@@ -9,6 +9,7 @@ signal start_requested(package_path: String, seed: int)
 signal cancel_package_requested
 signal refresh_requested
 signal campaign_selection_requested
+signal load_adventure_requested
 signal vault_requested
 signal quit_requested
 
@@ -130,6 +131,12 @@ func build_splash_overlay() -> void:
 	scenarios.custom_minimum_size.y = 42.0
 	scenarios.pressed.connect(func() -> void: campaign_selection_requested.emit())
 	column.add_child(scenarios)
+	var load_adventure := Button.new()
+	load_adventure.name = "LoadAdventure"
+	load_adventure.text = "Load saved adventure"
+	load_adventure.custom_minimum_size.y = 42.0
+	load_adventure.pressed.connect(func() -> void: load_adventure_requested.emit())
+	column.add_child(load_adventure)
 	var characters := Button.new()
 	characters.name = "CharacterFiles"
 	characters.text = "Character files"
@@ -268,6 +275,7 @@ func show_campaign() -> void:
 		campaign_overlay.visible = true
 	if splash_overlay != null:
 		splash_overlay.visible = false
+	_set_intro_active(false)
 	apply_modal_layouts()
 	if campaign_scroll != null:
 		campaign_scroll.scroll_vertical = 0
@@ -277,6 +285,7 @@ func show_splash() -> void:
 	if splash_overlay == null:
 		return
 	splash_overlay.visible = true
+	_set_intro_active(true)
 	if campaign_overlay != null:
 		campaign_overlay.visible = false
 	apply_modal_layouts()
@@ -288,6 +297,17 @@ func hide_overlays() -> void:
 		splash_overlay.visible = false
 	if campaign_overlay != null:
 		campaign_overlay.visible = false
+	_set_intro_active(false)
+
+
+func _set_intro_active(active: bool) -> void:
+	var intro := splash_animation as ClassicIntroAnimation
+	if intro == null:
+		return
+	if active:
+		intro.activate()
+	else:
+		intro.deactivate()
 
 
 func full_stage_overlay_visible() -> bool:

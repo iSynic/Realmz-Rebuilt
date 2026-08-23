@@ -206,7 +206,7 @@ func _on_quit_requested() -> void:
 func _on_end_adventure_requested() -> void:
 	_held_movement.stop()
 	if not session_controller.view().session_started:
-		_shell_presenter.show_campaign_selection()
+		_shell_presenter.show_splash()
 		return
 	var pending := session_controller.view().active_interaction_request()
 	if pending != null and pending.kind != InteractionRequest.COMBAT:
@@ -218,7 +218,7 @@ func _on_end_adventure_requested() -> void:
 	var in_combat := combat_view != null and combat_view.outcome == &"active"
 	_host_interaction = ApplicationLifecycleScript.end_adventure_request(in_combat)
 	presentation_coordinator.present_host_interaction(_host_interaction)
-	_shell_presenter.set_status("Choose how to end the active adventure.")
+	_shell_presenter.set_status("Choose how to return to the main menu.")
 
 
 func start_package(package_path: String, initial_seed: int) -> SessionStep:
@@ -634,10 +634,6 @@ func _respond_host_interaction(response: InteractionResponse) -> void:
 	if result_state == &"save-failed":
 		presentation_coordinator.present_host_interaction(_host_interaction)
 		return
-	if result_state != &"quit-requested":
-		_shell_presenter.set_status("Quit failed • the application remains open.", true)
-		presentation_coordinator.present_host_interaction(_host_interaction)
-		return
 	if result_state == &"close-failed":
 		var failed_step: SessionStep = result.get("step")
 		var error_message := failed_step.error_message if failed_step != null else "The session close operation is unavailable."
@@ -708,13 +704,14 @@ func _complete_closed_session() -> void:
 	_session_close_waits_for_playback = false
 	_queued_combat_auto_changes.clear()
 	_host_interaction = null
+	presentation_coordinator.dismiss_host_interaction()
 	_active_content = null
 	presentation_coordinator.set_package_media(_character_library_media)
 	_refresh_save_previews()
 	_refresh_vault_views()
 	_refresh_campaigns()
-	_shell_presenter.show_campaign_selection()
-	_status_label.text = "Adventure ended • choose a campaign"
+	_shell_presenter.show_splash()
+	_status_label.text = "Adventure ended • main menu"
 	_shell_presenter.set_status(_status_label.text)
 
 
