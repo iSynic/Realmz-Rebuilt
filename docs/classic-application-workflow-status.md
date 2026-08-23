@@ -13,26 +13,26 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Current parity-convergence batch
 
-**AOGM ray spell resolution** (`aogm-ray-spell-resolution`)
+**AOGM rotatable area spells** (`aogm-rotatable-area-spells`)
 
-The application inventory exposes eleven stock player spells with Classic target type 6, and the pinned Castle cast path proves that one selected endpoint resolves every distinct actor encountered along its 128-sample ray until blocking terrain. This four-workflow batch implements that deterministic multi-actor ray for learned spells, scrolls, charged items, Party Auto, and monster AI while keeping ally-safe automatic selection deliberate. Fast Spell and persistent Auto remain the ordinary-play certification surfaces. Persistent fields, rotated areas, and unrelated special effects remain separate transactions.
+The application report exposes eight stock player spells sharing Classic target type 3, authored size 10, and four source-selected adjacent Data AD orientations. The pinned Castle target flow proves that orientation adds zero through three to the authored mask, Return cycles the manual orientation, and monster AI rolls one of four orientations. This four-workflow batch carries the orientation through learned spells, fixed-power scrolls and charged items, battlefield preview/input, Party Auto, and monster AI while preserving ally-safe automatic selection. Persistent fields and unrelated special effects remain separate transactions; persistent character Auto is the bounded ordinary-play certification surface.
 
 Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
 | `classic.spellcasting.combat-cast` | implementation | aogm-major-partial | - | GAP-SPELL-003 |
-| `classic.exploration.fast-spell` | certification | aogm-certification | aogm-ordinary |  |
 | `classic.inventory.use-item` | implementation | aogm-major-partial | - | GAP-INV-003 |
 | `classic.combat.auto-turn` | certification | aogm-certification | aogm-ordinary |  |
+| `classic.combat.auto-character` | certification | aogm-certification | aogm-ordinary |  |
 
 ### Batch count delta
 
 | Scope | State | Baseline | Current | Delta |
 | --- | --- | ---: | ---: | ---: |
 | classic | missing | 0 | 0 | 0 |
-| classic | partial | 16 | 15 | -1 |
-| classic | functional | 52 | 53 | +1 |
+| classic | partial | 15 | 15 | 0 |
+| classic | functional | 53 | 53 | 0 |
 | classic | certified | 1 | 1 | 0 |
 | host | missing | 1 | 1 | 0 |
 | host | partial | 1 | 1 | 0 |
@@ -151,11 +151,11 @@ Blockers: **1**. Major gaps: **13**.
 - **major** `classic.combat.resolve-outcome` - Ordinary victory and reward return work, but the terminal combat workflow is not yet accepted. Next: Obtain ordinary-play acceptance of the corrected command deck, then exercise ordinary defeat or retreat and a reward that produces a level-up.
 - **major** `classic.combat.resolve-outcome` - Battle reward mode 10 remains unresolved end to end. Next: Implement the mode-10 restore-and-restart continuation when a certified scenario exposes it or during post-corpus synthetic saturation, without changing schema v2 unless controlled evidence disproves positional preservation.
 - **major** `classic.combat.undo` - Movement-only Undo, result invalidation, condition gates, occupied-cell safety, presentation, and save restoration are implemented; repeated Undo and initiative-edge re-entry remain runtime-unobserved. Next: Run the synthetic Castle fixtures for repeated Undo and first/last-slot or round-boundary re-entry before expanding the bounded implementation.
-- **major** `classic.inventory.use-item` - Ordinary AOGM play proves a fixed-power party-state Torch and a saveable field scroll target/consumption path. The application capability catalog now gives item combat an explicit executable or pending disposition for every application spell; discard, case transfer, door/XAP items, random-power combat, and broader specials remain explicit. Next: Characterize discard, case-transfer, door/XAP, random-power combat, battlefield-area/repeated targeting, and broader special behavior only when parity or a reachable campaign requires each branch.
+- **major** `classic.inventory.use-item` - Ordinary AOGM play proves fixed-power party-state items and saveable field scroll consumption. Fixed-power combat items and scrolls now include source-backed actor, group, and ray targets; discard, case transfer, door/XAP items, random-power combat, rotatable areas, repeated targets, and broader specials remain explicit. Next: Implement fixed-power rotatable area items and scrolls with the same orientation contract as learned spells; characterize the remaining branches only when parity or a reachable campaign requires them.
 - **major** `classic.maps.location-notes` - Historical notes are readable in source order but do not yet recreate Castle's temporary map recentering and saved darkness view. Next: Add a mutation-free note browser derived from authoritative topology and the saved darkness value, then verify land and dungeon records through MCP.
 - **major** `classic.maps.view-acquired` - Exact dungeon player-map composition is not yet proven against Castle. Next: Capture one synthetic Castle dungeon player map and compare wall, door, secret, and party-marker pixels before declaring exact presentation parity.
 - **major** `classic.scenario.complex-interaction` - The dedicated thief menu and timed Pick Lock flow are source-shaped; trap spell resolution and controlled Castle/UI acceptance remain incomplete. Next: Route the trap spell through the source-backed application spell effect, then run a controlled Castle comparison and ordinary campaign UI acceptance.
-- **major** `classic.spellcasting.combat-cast` - Manual, fixed-power scroll, and Party Auto combat casting now share source-backed condition-cure and Creature/Minor/Major Summon resolution. Every application spell has one mechanical-family and per-source disposition; persistent fields, rotated areas, and other special-effect families remain explicit pending capabilities. Next: Implement the next AOGM-reachable persistent-field, rotated-area, or special-effect signature as its own deterministic transaction, then certify the resulting picker and cast path in fresh ordinary play.
+- **major** `classic.spellcasting.combat-cast` - Manual, fixed-power scroll, charged-item, Party Auto, and monster casting now share source-backed condition-cure, summoning, and multi-actor ray resolution. Every application spell has one mechanical-family and per-source disposition; persistent fields, rotated areas, and other special-effect families remain explicit pending capabilities. Next: Implement the eight stock rotatable target-type-3 area spells as one deterministic orientation transaction, then certify their picker and cast path in fresh ordinary play.
 - **major** `classic.spellcasting.field-camp-cast` - Ordinary AOGM camp play proves power-selected scribing, five-slot persistence, saveable party targeting, no-SP scroll use, and exact-slot consumption. Field-character casting now has a catalog disposition for every application spell and keeps each pending family visible with an exact reason; invalid-field discard, case transfer, allied targets, and map effects remain explicit. Next: Implement discard, case-transfer, allied-target, and map-effect branches only from bounded differential evidence when parity or a reachable campaign requires them.
 - **major** `classic.system.music-playlists` - Indoor automatic selection and scenario Custom 1–3 music remain unresolved. Next: Add an explicit Providence base-scale field and normalized scenario music resources, then certify Indoor and Custom 1–3 through ordinary packages without inferring either from landlook.
 - **major** `host.settings.accessibility` - Control customization and complete multi-scale layout acceptance remain unfinished. Next: Finish keyboard/mouse control help and run layout acceptance at every locked resolution and text scale.
@@ -196,11 +196,11 @@ Blockers: **1**. Major gaps: **13**.
 - `classic.character.view-sheet` - Castle's lifetime combat record and prestige cannot yet be calculated accurately.
 - `classic.combat.resolve-outcome` - Battle reward mode 10 remains unresolved end to end.
 - `classic.combat.undo` - Movement-only Undo, result invalidation, condition gates, occupied-cell safety, presentation, and save restoration are implemented; repeated Undo and initiative-edge re-entry remain runtime-unobserved.
-- `classic.inventory.use-item` - Ordinary AOGM play proves a fixed-power party-state Torch and a saveable field scroll target/consumption path. The application capability catalog now gives item combat an explicit executable or pending disposition for every application spell; discard, case transfer, door/XAP items, random-power combat, and broader specials remain explicit.
+- `classic.inventory.use-item` - Ordinary AOGM play proves fixed-power party-state items and saveable field scroll consumption. Fixed-power combat items and scrolls now include source-backed actor, group, and ray targets; discard, case transfer, door/XAP items, random-power combat, rotatable areas, repeated targets, and broader specials remain explicit.
 - `classic.maps.location-notes` - Historical notes are readable in source order but do not yet recreate Castle's temporary map recentering and saved darkness view.
 - `classic.maps.view-acquired` - Exact dungeon player-map composition is not yet proven against Castle.
 - `classic.scenario.complex-interaction` - The dedicated thief menu and timed Pick Lock flow are source-shaped; trap spell resolution and controlled Castle/UI acceptance remain incomplete.
-- `classic.spellcasting.combat-cast` - Manual, fixed-power scroll, and Party Auto combat casting now share source-backed condition-cure and Creature/Minor/Major Summon resolution. Every application spell has one mechanical-family and per-source disposition; persistent fields, rotated areas, and other special-effect families remain explicit pending capabilities.
+- `classic.spellcasting.combat-cast` - Manual, fixed-power scroll, charged-item, Party Auto, and monster casting now share source-backed condition-cure, summoning, and multi-actor ray resolution. Every application spell has one mechanical-family and per-source disposition; persistent fields, rotated areas, and other special-effect families remain explicit pending capabilities.
 - `classic.spellcasting.field-camp-cast` - Ordinary AOGM camp play proves power-selected scribing, five-slot persistence, saveable party targeting, no-SP scroll use, and exact-slot consumption. Field-character casting now has a catalog disposition for every application spell and keeps each pending family visible with an exact reason; invalid-field discard, case transfer, allied targets, and map effects remain explicit.
 - `classic.character.view-sheet` - Several nonzero Classic ability slots lack verified display names.
 - `classic.maps.authored-journal` - Castle's PRFN default and the authored-journal rendering boundary remain outside the verified subset.
