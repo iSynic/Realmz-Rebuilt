@@ -96,7 +96,13 @@ func use_spell_item(state: GameState, content: RealmzContent, caster_id: String,
 	state.combat.invalidate_undo()
 	var cast_level := spell.classic_tier()
 	var result: CombatFlowResult
-	if spell.target_type in [9, 10, 12]:
+	if spell.target_type == 6:
+		var ray_selections := _ray_spell_selections(state, content, caster.id, target_id, spell)
+		var ray := _rules.magic.resolve_character_ray_spell(caster, ray_selections, spell, power_level, cast_level, rng, false)
+		if ray == null or not ray.cast:
+			return CombatFlowResult.failed(&"item_spell_failed", "The item ray spell could not be resolved.")
+		result = _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, ray, rng, INVALID_COORDINATE, 0, "classic-item", instance_id, false)
+	elif spell.target_type in [9, 10, 12]:
 		var character_targets: Array[CharacterState] = []
 		var monster_targets: Array[MonsterState] = []
 		var monster_definitions: Array[MonsterDefinition] = []
@@ -405,6 +411,12 @@ func use_combat_scroll(state: GameState, content: RealmzContent, caster_id: Stri
 		if repeated == null or not repeated.cast:
 			return _rollback_combat_scroll(state, rng, state_checkpoint, rng_checkpoint, &"scroll_spell_failed", "The repeated scroll could not be resolved.")
 		result = _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, repeated, rng, INVALID_COORDINATE, 0, "classic-scroll", "", false)
+	elif not _flow()._is_summon_spell(spell) and spell.target_type == 6:
+		var ray_selections := _ray_spell_selections(state, content, caster.id, target_id, spell)
+		var ray := _rules.magic.resolve_character_ray_spell(caster, ray_selections, spell, power_level, cast_level, rng, false)
+		if ray == null or not ray.cast:
+			return _rollback_combat_scroll(state, rng, state_checkpoint, rng_checkpoint, &"scroll_spell_failed", "The ray scroll could not be resolved.")
+		result = _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, ray, rng, INVALID_COORDINATE, 0, "classic-scroll", "", false)
 	elif not _flow()._is_summon_spell(spell):
 		var effective_target_id := caster_id if spell.target_type == 5 else target_id
 		var selection := _spell_target_selection(state, content, effective_target_id)
