@@ -18,6 +18,7 @@ func run() -> void:
 	var content: RealmzContent = loaded.content
 	_test_scenario_wire_contracts()
 	_test_public_interaction_matrix(content)
+	_test_public_classic_choice_control_flow(content)
 	_test_public_classic_encounter_iterations(content)
 	_test_public_thief_encounter(content)
 	_test_public_session_resume(content)
@@ -122,6 +123,14 @@ func _test_public_interaction_matrix(content: RealmzContent) -> void:
 	assert_equal(acknowledged.state, ScenarioRuntimeOperationResult.State.COMPLETED, "acknowledgement releases the message operation")
 	var negative := api.execute_classic(ClassicActionDefinition.new(0, 1, 1, -1, false, []), "text.negative")
 	assert_equal([negative.state, negative.events[0].payload.get("classicClick")], [ScenarioRuntimeOperationResult.State.COMPLETED, false], "negative message publishes without inventing a click boundary")
+
+
+func _test_public_classic_choice_control_flow(content: RealmzContent) -> void:
+	for choice_case: Dictionary in [{"id": "backout", "mode": 0, "event": &"classic_choice_backout_requested"}, {"id": "stop", "mode": 4, "event": &"classic_choice_timeline_stopped"}]:
+		var program := ScenarioProgramDefinition.new("choice.%s" % choice_case.id, &"trigger", choice_case.id, [ClassicActionDefinition.new(0, 3, 3, 0, false, [0, int(choice_case.mode), 0, 0, 0]), ClassicActionDefinition.new(1, 24, 24, 0, false, [])]); var vm := ScenarioVm.new(); vm.configure(ScenarioDefinition.new([program], [])); assert_equal(vm.start_program(program.id, ScenarioExecutionContext.trigger(&"action", "ap.%s" % choice_case.id)).state, ScenarioVmResult.State.COMPLETED, "%s Choice fixture starts" % choice_case.id)
+		var api := _runtime_api(content, ScenarioActionState.new()); var waiting := vm.run(api); assert_equal([waiting.state, waiting.interaction.kind], [ScenarioVmResult.State.WAITING, InteractionRequest.YES_NO], "%s Choice yields the typed response boundary" % choice_case.id); var selected := vm.resume(InteractionResponse.yes_no(waiting.interaction, true), api)
+		assert_equal(selected.state, ScenarioVmResult.State.COMPLETED, "%s Choice selection ends the issuing timeline" % choice_case.id); assert_true(_event_has(selected.events, choice_case.event), "%s Choice publishes its explicit session operation" % choice_case.id); assert_false(_event_has(selected.events, &"action_point_kept") or _event_has(selected.events, &"encounter_option_elimination_requested"), "%s Choice cannot execute the following slot or invent an encounter mutation" % choice_case.id)
+		var continued_vm := ScenarioVm.new(); continued_vm.configure(ScenarioDefinition.new([program], [])); continued_vm.start_program(program.id, ScenarioExecutionContext.trigger(&"action", "ap.%s" % choice_case.id)); var continued_wait := continued_vm.run(api); var continued := continued_vm.resume(InteractionResponse.yes_no(continued_wait.interaction, false), api); assert_true(_event_has(continued.events, &"action_point_kept"), "%s Choice leaves the unselected branch on the following authored slot" % choice_case.id)
 
 
 func _test_public_classic_encounter_iterations(content: RealmzContent) -> void:

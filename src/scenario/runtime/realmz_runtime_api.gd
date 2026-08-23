@@ -414,11 +414,11 @@ func _resume_classic_choice(continuation: ScenarioRuntimeContinuation, response:
 		return ScenarioRuntimeOperationResult.completed(false)
 	match int(values[1]):
 		0:
-			return ScenarioRuntimeOperationResult.completed(true, [], ScenarioVmDirective.finish())
+			return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"classic_choice_backout_requested")], ScenarioVmDirective.finish())
 		1:
 			return _branch_xap(int(values[2]), choice_continuation.gosub)
 		4:
-			return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"encounter_option_elimination_requested")])
+			return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"classic_choice_timeline_stopped")], ScenarioVmDirective.finish())
 	return ScenarioRuntimeOperationResult.failed(&"unsupported_choice_target", "Classic choice branch mode %d is not available." % int(values[1]))
 
 

@@ -245,6 +245,8 @@ func _continue_post_move(events: Array[DomainEvent]) -> SessionCoordinatorResult
 		if completed_trigger == null:
 			_context.session_continuation.clear()
 			return _context.failed(&"invalid_session_continuation", "Completed trigger continuation is unavailable.", events)
+		if _context.events_have(events, &"classic_choice_backout_requested"):
+			return _complete_classic_choice_backout(map, coordinate, active_trigger_id, events)
 		_context.scenario()._finalize_completed_trigger(completed_trigger, events)
 		if _context.scenario()._apply_trigger_destination(completed_trigger, events, exploration.action_point_destination_depth == 0):
 			var destination_map = _context.content.world.map_by_id(_context.state.party.map_id)
@@ -301,6 +303,23 @@ func _continue_post_move(events: Array[DomainEvent]) -> SessionCoordinatorResult
 	var random_step = _continue_random_regions(map, events)
 	if random_step != null:
 		return random_step
+	_context.session_continuation.clear()
+	return _context.completed(events)
+
+
+func _complete_classic_choice_backout(map: MapDefinition, coordinate: Vector2i, trigger_id: String, events: Array[DomainEvent]) -> SessionCoordinatorResult:
+	if _context.state.party.map_id != map.id or _context.state.party.coordinate != coordinate:
+		_context.session_continuation.clear()
+		return _context.failed(&"invalid_choice_backout", "Classic Choice backout lost its action-point location.", events)
+	if map.level_type == &"land":
+		var direction := _context.state.last_move_direction
+		var destination := coordinate - direction
+		if direction == Vector2i.ZERO or map.topology.cell_at(destination) == null:
+			_context.session_continuation.clear()
+			return _context.failed(&"invalid_choice_backout", "Classic Choice cannot reverse the preceding overland step.", events)
+		_context.state.party.coordinate = destination
+		events.append(DomainEvent.new(&"party_moved", {"fromMapId": map.id, "fromX": coordinate.x, "fromY": coordinate.y, "mapId": map.id, "x": destination.x, "y": destination.y, "source": "classic-choice-backout", "triggerId": trigger_id}))
+	events.append(DomainEvent.new(&"classic_choice_backout_completed", {"triggerId": trigger_id, "mapId": map.id, "fromX": coordinate.x, "fromY": coordinate.y, "x": _context.state.party.coordinate.x, "y": _context.state.party.coordinate.y}))
 	_context.session_continuation.clear()
 	return _context.completed(events)
 

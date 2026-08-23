@@ -131,54 +131,33 @@ func run() -> void:
 	assert_equal(restored.snapshot().game_state.world.terrain_for("land:0", replacement_cell), "classic.terrain.2", "restored session retains world overlays")
 	assert_true(restored.snapshot().game_state.world.trigger_is_disabled(north_trigger_id), "save/reload preserves default one-shot Action Point state")
 
-	var keep_source := content.trigger_by_id("ap.fixture.destination-source"); var keep_program := ScenarioProgramDefinition.new(keep_source.program_id, &"trigger", keep_source.id, [ClassicActionDefinition.new(0, 24, 24, 0, false, [])])
-	var keep_trigger := TriggerDefinition.new(keep_source.id, keep_program.id, keep_source.map_id, keep_source.coordinate, keep_source.active, keep_source.chance_percent, keep_source.post_action_location, keep_source.classic_record_index); var keep_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, "land:1", Vector2i(0, 1), content.world, ScenarioDefinition.new([keep_program], []), [], [keep_trigger], [], content.race_definitions(), content.caste_definitions())
-	var keep_session := GameSession.new(); keep_session.start(keep_content, 1); _begin_fixture_adventure(keep_session, keep_content)
-	var kept := keep_session.submit_intent(PlayerIntent.move(Vector2i.UP))
+	var keep_source := content.trigger_by_id("ap.fixture.destination-source"); var keep_program := ScenarioProgramDefinition.new(keep_source.program_id, &"trigger", keep_source.id, [ClassicActionDefinition.new(0, 24, 24, 0, false, [])]); var keep_trigger := TriggerDefinition.new(keep_source.id, keep_program.id, keep_source.map_id, keep_source.coordinate, keep_source.active, keep_source.chance_percent, keep_source.post_action_location, keep_source.classic_record_index); var keep_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, "land:1", Vector2i(0, 1), content.world, ScenarioDefinition.new([keep_program], []), [], [keep_trigger], [], content.race_definitions(), content.caste_definitions())
+	var keep_session := GameSession.new(); keep_session.start(keep_content, 1); _begin_fixture_adventure(keep_session, keep_content); var kept := keep_session.submit_intent(PlayerIntent.move(Vector2i.UP))
 	assert_true(_has_event(kept, &"action_point_kept"), "Classic opcode 24 marks the issuing placed Action Point as Keep Codes"); assert_false(keep_session.snapshot().game_state.world.trigger_is_disabled(keep_trigger.id), "Keep Codes is the explicit exception to default one-shot Action Points")
 	var self_program := ScenarioProgramDefinition.new(keep_source.program_id, &"trigger", keep_source.id, [ClassicActionDefinition.new(0, 3, 3, 0, false, [1, 0, 0, 0, 0]), ClassicActionDefinition.new(1, 45, 45, 0, false, [-1, 1, 0, 0, 0])]); var self_trigger := TriggerDefinition.new(keep_source.id, self_program.id, keep_source.map_id, keep_source.coordinate, true, 100, TriggerDestinationDefinition.new(keep_source.map_id, keep_source.coordinate), keep_source.classic_record_index)
-	var self_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, "land:1", Vector2i(0, 1), content.world, ScenarioDefinition.new([self_program], []), [], [self_trigger], [], content.race_definitions(), content.caste_definitions()); var self_session := GameSession.new(); self_session.start(self_content, 1); _begin_fixture_adventure(self_session, self_content)
-	var self_wait := self_session.submit_intent(PlayerIntent.move(Vector2i.UP)); var self_completed := self_session.respond(InteractionResponse.from_data(self_wait.interaction.request_id, &"yes_no", {"accepted": true}))
+	var self_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, "land:1", Vector2i(0, 1), content.world, ScenarioDefinition.new([self_program], []), [], [self_trigger], [], content.race_definitions(), content.caste_definitions()); var self_session := GameSession.new(); self_session.start(self_content, 1); _begin_fixture_adventure(self_session, self_content); var self_wait := self_session.submit_intent(PlayerIntent.move(Vector2i.UP)); var self_completed := self_session.respond(InteractionResponse.from_data(self_wait.interaction.request_id, &"yes_no", {"accepted": true}))
 	assert_equal([self_completed.state, self_session.view().party_coordinate], [SessionStep.State.COMPLETED, Vector2i(1, 0)], "an AP header pointing to its own source cell cannot undo its resumed program teleport")
 	assert_true(_has_event(self_completed, &"party_teleported") and not _has_event(self_completed, &"trigger_fired"), "the VM teleport completes once without re-firing the source AP")
+	_test_classic_choice_backout(content)
 
-	var ordered_ap_content := _duplicate_placed_ap_content(100, content)
-	var ordered_ap_session := GameSession.new()
-	ordered_ap_session.start(ordered_ap_content, 1)
-	_begin_fixture_adventure(ordered_ap_session, ordered_ap_content)
+	var ordered_ap_content := _duplicate_placed_ap_content(100, content); var ordered_ap_session := GameSession.new(); ordered_ap_session.start(ordered_ap_content, 1); _begin_fixture_adventure(ordered_ap_session, ordered_ap_content)
 	var ordered_ap_step := ordered_ap_session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
-	assert_equal(_event_count(ordered_ap_step, &"trigger_fired"), 1, "one coordinate selects only one placed Action Point")
-	assert_equal(_event(ordered_ap_step, &"trigger_fired").payload["triggerId"], "ap.first-native", "the lowest Classic record index wins even when cell references are reversed")
-	assert_false(ordered_ap_session.snapshot().game_state.world.trigger_is_disabled("ap.later-native"), "a later same-cell Action Point is not executed or consumed")
+	assert_equal(_event_count(ordered_ap_step, &"trigger_fired"), 1, "one coordinate selects only one placed Action Point"); assert_equal(_event(ordered_ap_step, &"trigger_fired").payload["triggerId"], "ap.first-native", "the lowest Classic record index wins even when cell references are reversed"); assert_false(ordered_ap_session.snapshot().game_state.world.trigger_is_disabled("ap.later-native"), "a later same-cell Action Point is not executed or consumed")
 
-	var chance_ap_content := _duplicate_placed_ap_content(1, content)
-	var chance_ap_session := GameSession.new()
-	chance_ap_session.start(chance_ap_content, 1)
-	_begin_fixture_adventure(chance_ap_session, chance_ap_content)
+	var chance_ap_content := _duplicate_placed_ap_content(1, content); var chance_ap_session := GameSession.new(); chance_ap_session.start(chance_ap_content, 1); _begin_fixture_adventure(chance_ap_session, chance_ap_content)
 	var chance_ap_step := chance_ap_session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
-	assert_false(_has_event(chance_ap_step, &"trigger_fired"), "a failed selected AP chance does not fall through to a later same-cell record")
-	assert_equal(chance_ap_session.rng_trace().size(), 1, "a positive sub-100 selected AP consumes one chance draw")
-	assert_equal(chance_ap_session.rng_trace()[0]["tag"], "trigger.ap.first-native", "the chance draw belongs to the first native AP")
+	assert_false(_has_event(chance_ap_step, &"trigger_fired"), "a failed selected AP chance does not fall through to a later same-cell record"); assert_equal(chance_ap_session.rng_trace().size(), 1, "a positive sub-100 selected AP consumes one chance draw"); assert_equal(chance_ap_session.rng_trace()[0]["tag"], "trigger.ap.first-native", "the chance draw belongs to the first native AP")
 
-	var zero_ap_content := _duplicate_placed_ap_content(0, content)
-	var zero_ap_session := GameSession.new()
-	zero_ap_session.start(zero_ap_content, 1)
-	_begin_fixture_adventure(zero_ap_session, zero_ap_content)
+	var zero_ap_content := _duplicate_placed_ap_content(0, content); var zero_ap_session := GameSession.new(); zero_ap_session.start(zero_ap_content, 1); _begin_fixture_adventure(zero_ap_session, zero_ap_content)
 	var zero_ap_step := zero_ap_session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
-	assert_false(_has_event(zero_ap_step, &"trigger_fired"), "Classic percent zero disables the selected AP without falling through")
-	assert_equal(zero_ap_session.rng_trace().size(), 0, "a disabled selected AP consumes no random draw")
+	assert_false(_has_event(zero_ap_step, &"trigger_fired"), "Classic percent zero disables the selected AP without falling through"); assert_equal(zero_ap_session.rng_trace().size(), 0, "a disabled selected AP consumes no random draw")
 
-	var disabled_ap_content := _duplicate_placed_ap_content(100, content)
-	var disabled_ap_source := GameSession.new()
-	disabled_ap_source.start(disabled_ap_content, 1)
-	_begin_fixture_adventure(disabled_ap_source, disabled_ap_content)
-	var disabled_ap_save := disabled_ap_source.snapshot()
-	disabled_ap_save.game_state.world.disable_trigger("ap.first-native")
+	var disabled_ap_content := _duplicate_placed_ap_content(100, content); var disabled_ap_source := GameSession.new(); disabled_ap_source.start(disabled_ap_content, 1); _begin_fixture_adventure(disabled_ap_source, disabled_ap_content)
+	var disabled_ap_save := disabled_ap_source.snapshot(); disabled_ap_save.game_state.world.disable_trigger("ap.first-native")
 	var disabled_ap_session := GameSession.new()
 	assert_equal(disabled_ap_session.restore(disabled_ap_content, disabled_ap_save).state, SessionStep.State.COMPLETED, "a disabled first-record fixture restores transactionally")
 	var disabled_ap_step := disabled_ap_session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
-	assert_false(_has_event(disabled_ap_step, &"trigger_fired"), "a world-disabled selected AP does not fall through to a later same-cell record")
-	assert_false(disabled_ap_session.snapshot().game_state.world.trigger_is_disabled("ap.later-native"), "the unselected later AP remains untouched")
+	assert_false(_has_event(disabled_ap_step, &"trigger_fired"), "a world-disabled selected AP does not fall through to a later same-cell record"); assert_false(disabled_ap_session.snapshot().game_state.world.trigger_is_disabled("ap.later-native"), "the unselected later AP remains untouched")
 
 	var dungeon_envelope := session.snapshot()
 	dungeon_envelope.game_state.party.map_id = "dungeon:0"
@@ -376,6 +355,16 @@ func _test_location_notes(content: RealmzContent) -> void:
 	capacity_envelope.game_state.world._location_notes[duplicate_ordinal.id()] = duplicate_ordinal
 	var corrupt_capacity := GameSession.new()
 	assert_equal(corrupt_capacity.restore(content, capacity_envelope).error_code, &"invalid_game_state", "restore rejects duplicate source ordinals transactionally")
+
+
+func _test_classic_choice_backout(source_content: RealmzContent) -> void:
+	var content := _classic_choice_backout_content(source_content); var session := GameSession.new(); assert_equal(session.start(content, 1).state, SessionStep.State.COMPLETED, "Classic Choice backout session starts"); _begin_fixture_adventure(session, content)
+	var waiting := session.submit_intent(PlayerIntent.move(Vector2i.RIGHT)); assert_equal([waiting.state, waiting.interaction.kind, session.view().party_coordinate], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.YES_NO, Vector2i(1, 0)], "entering the Choice AP commits its step before asking")
+	var saved := save_round_trip(session.snapshot()); var restored := GameSession.new(); assert_equal(restored.restore(content, saved).state, SessionStep.State.COMPLETED, "pending Classic Choice restores with its post-move owner"); var minutes_before_backout := restored.snapshot().game_state.clock.total_minutes(); var rng_before_backout := restored.rng_trace().size()
+	var backed_out := restored.respond(InteractionResponse.yes_no(restored.view().pending_interaction, true)); assert_equal([backed_out.state, restored.view().party_coordinate], [SessionStep.State.COMPLETED, Vector2i.ZERO], "selected Choice mode zero reverses the just-entered overland step"); assert_true(_has_event(backed_out, &"classic_choice_backout_completed") and _event(backed_out, &"party_moved").payload.get("source") == "classic-choice-backout", "the public session identifies the source-backed backout movement"); assert_false(_has_event(backed_out, &"trigger_disabled") or _has_event(backed_out, &"random_encounter_checked"), "backout preserves the issuing AP and skips destination-cell random checks")
+	assert_equal([restored.snapshot().game_state.clock.total_minutes(), restored.rng_trace().size()], [minutes_before_backout, rng_before_backout], "backout consumes neither additional time nor RNG"); assert_false(restored.snapshot().game_state.world.trigger_is_disabled("ap.choice-backout"), "backout leaves the Choice AP available for another entry")
+	var repeated := restored.submit_intent(PlayerIntent.move(Vector2i.RIGHT)); assert_equal([repeated.state, repeated.interaction.kind], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.YES_NO], "re-entering the preserved AP asks the same authored Choice")
+	var continued := restored.respond(InteractionResponse.yes_no(repeated.interaction, false)); assert_equal([continued.state, restored.view().party_coordinate], [SessionStep.State.COMPLETED, Vector2i(2, 0)], "the unselected Choice branch continues and applies the AP header destination"); assert_true(_has_event(continued, &"action_point_kept") and _event(continued, &"party_moved").payload.get("source") == "action-point-destination", "the following authored slot executes before ordinary destination handling"); assert_false(restored.snapshot().game_state.world.trigger_is_disabled("ap.choice-backout"), "the following Keep Codes instruction remains authoritative")
 
 
 func _test_contextual_encounter_command(source_content: RealmzContent) -> void:
@@ -587,6 +576,13 @@ func _duplicate_placed_ap_content(first_chance: int, source_content: RealmzConte
 		ScenarioProgramDefinition.new(later.program_id, &"trigger", later.id, []),
 	]
 	return RealmzContent.new("ap-order", "0".repeat(64), "ap-order-content", "realmz-classic-1", map.id, Vector2i.ZERO, WorldDefinition.new(maps), ScenarioDefinition.new(programs, []), [], triggers, [], source_content.race_definitions(), source_content.caste_definitions())
+
+
+func _classic_choice_backout_content(source_content: RealmzContent) -> RealmzContent:
+	var empty_ids: Array[String] = []; var empty_features: Array[MapFeature] = []; var open_edges := {&"north": MapEdge.new(&"open", true, false), &"east": MapEdge.new(&"open", true, false), &"south": MapEdge.new(&"open", true, false), &"west": MapEdge.new(&"open", true, false)}
+	var cells: Array[MapCell] = [MapCell.new("choice-backout:cell:0,0", Vector2i.ZERO, "classic.terrain.1", true, 1, false, true, false, false, false, false, false, 0, 1, "fixture.tileset", empty_ids, empty_ids, open_edges, empty_features), MapCell.new("choice-backout:cell:1,0", Vector2i(1, 0), "classic.terrain.1", true, 1, false, true, false, false, false, false, false, 0, 1, "fixture.tileset", ["ap.choice-backout"], empty_ids, open_edges, empty_features), MapCell.new("choice-backout:cell:2,0", Vector2i(2, 0), "classic.terrain.1", true, 1, false, true, false, false, false, false, false, 0, 1, "fixture.tileset", empty_ids, empty_ids, open_edges, empty_features)]
+	var map := MapDefinition.new("choice-backout", "Choice Backout", &"land", 0, MapTopology.new(3, 1, cells)); var program := ScenarioProgramDefinition.new("program.choice-backout", &"trigger", "ap.choice-backout", [ClassicActionDefinition.new(0, 3, 3, 0, false, [0, 0, 0, 0, 0]), ClassicActionDefinition.new(1, 24, 24, 0, false, [])]); var destination := TriggerDestinationDefinition.new(map.id, Vector2i(2, 0)); var trigger := TriggerDefinition.new("ap.choice-backout", program.id, map.id, Vector2i(1, 0), true, 100, destination, 0)
+	return RealmzContent.new("choice-backout", "0".repeat(64), "choice-backout-content", "realmz-classic-1", map.id, Vector2i.ZERO, WorldDefinition.new([map]), ScenarioDefinition.new([program], []), [], [trigger], [], source_content.race_definitions(), source_content.caste_definitions())
 
 
 func _open_movement_content(source_content: RealmzContent) -> RealmzContent:
