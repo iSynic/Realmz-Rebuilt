@@ -37,9 +37,9 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 			if options.is_empty():
 				return ScenarioRuntimeOperationResult.failed(&"encounter_has_no_options", "Simple Encounter %d has no remaining responses." % encounter.id)
 			var request := InteractionRequest.from_payload(request_id, &"encounter_choice", {"encounterKind": "simple", "encounterId": encounter.id, "prompt": prompt.text, "options": options, "canBackOut": encounter.can_back_out})
-			return ScenarioRuntimeOperationResult.waiting(request, ScenarioRuntimeContinuation.encounter(ScenarioRuntimeContinuation.CLASSIC_SIMPLE_ENCOUNTER, encounter.id, action.gosub, option_indexes))
+			return ScenarioRuntimeOperationResult.waiting(request, ScenarioRuntimeContinuation.encounter(ScenarioRuntimeContinuation.CLASSIC_SIMPLE_ENCOUNTER, encounter.id, action.gosub, option_indexes, _encounter_attempt(context, &"simple", encounter.id)))
 		5:
-			return _request_complex_encounter(action, request_id)
+			return _request_complex_encounter(action, request_id, context)
 		34:
 			return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"encounter_loop_finished", {"source": "classic"})], ScenarioVmDirective.finish())
 		35:
@@ -52,14 +52,20 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 	return super.execute(action, request_id, context)
 
 
-func _request_complex_encounter(action: ClassicActionDefinition, request_id: String) -> ScenarioRuntimeOperationResult:
+func _request_complex_encounter(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	var encounter := _content.complex_encounter_by_id(action.operand_id)
 	if encounter == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_encounter", "Classic opcode 5 references unavailable Complex Encounter %d." % action.operand_id)
 	var request := complex_encounter_request(encounter, request_id)
 	if request == null:
 		return ScenarioRuntimeOperationResult.failed(&"encounter_has_no_options", "Complex Encounter %d has no available responses." % encounter.id)
-	return ScenarioRuntimeOperationResult.waiting(request, ScenarioRuntimeContinuation.encounter(ScenarioRuntimeContinuation.CLASSIC_COMPLEX_ENCOUNTER, encounter.id, action.gosub))
+	return ScenarioRuntimeOperationResult.waiting(request, ScenarioRuntimeContinuation.encounter(ScenarioRuntimeContinuation.CLASSIC_COMPLEX_ENCOUNTER, encounter.id, action.gosub, [], _encounter_attempt(context, &"complex", encounter.id)))
+
+
+static func _encounter_attempt(context: ScenarioExecutionContext, kind: StringName, encounter_id: int) -> int:
+	if context != null and context.encounter_kind == kind and context.encounter_id == encounter_id:
+		return maxi(0, context.encounter_attempt)
+	return 0
 
 
 func complex_encounter_request(encounter: ComplexEncounterDefinition, request_id: String) -> InteractionRequest:

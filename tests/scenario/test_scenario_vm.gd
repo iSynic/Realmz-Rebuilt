@@ -18,6 +18,7 @@ func run() -> void:
 	var content: RealmzContent = loaded.content
 	_test_scenario_wire_contracts()
 	_test_public_interaction_matrix(content)
+	_test_public_classic_encounter_iterations(content)
 	_test_public_thief_encounter(content)
 	_test_public_session_resume(content)
 	_test_public_vm_combat_auto(content)
@@ -34,6 +35,10 @@ func _test_scenario_wire_contracts() -> void:
 	var restored := ScenarioVmDirective.from_data(JSON.parse_string(JSON.stringify(branch.to_data())))
 	assert_not_null(restored, "VM directive round-trips through its typed wire contract")
 	assert_equal([restored.kind, restored.program_id, restored.gosub, restored.context.to_data()], [ScenarioVmDirective.BRANCH_PROGRAM, "xap:7", true, {"triggerId": "ap.fixture"}], "VM directive preserves branch and trigger state")
+	var encounter_context := ScenarioExecutionContext.encounter(&"complex", 2, "", -1, &"choice", 0).set_encounter_attempt(3)
+	var encounter_branch := ScenarioVmDirective.branch_encounter_result("complex:2:result:0", false, encounter_context, true)
+	var restored_encounter_branch := ScenarioVmDirective.from_data(JSON.parse_string(JSON.stringify(encounter_branch.to_data())))
+	assert_equal([restored_encounter_branch.kind, restored_encounter_branch.repeat_encounter, restored_encounter_branch.context.value("encounterAttempt")], [ScenarioVmDirective.BRANCH_ENCOUNTER_RESULT, true, 3], "encounter-result directive preserves its repeat boundary and attempt")
 	for malformed: Dictionary in [
 		{"kind": "finish", "extra": true},
 		{"kind": "branch-xap", "targetId": "7", "gosub": false},
@@ -119,6 +124,89 @@ func _test_public_interaction_matrix(content: RealmzContent) -> void:
 	assert_equal([negative.state, negative.events[0].payload.get("classicClick")], [ScenarioRuntimeOperationResult.State.COMPLETED, false], "negative message publishes without inventing a click boundary")
 
 
+func _test_public_classic_encounter_iterations(content: RealmzContent) -> void:
+	var simple_responses: Array[SimpleEncounterResponse] = [
+		SimpleEncounterResponse.new("first", "First", "simple:0:result:0"),
+		SimpleEncounterResponse.new("second", "Second", "simple:0:result:1"),
+		SimpleEncounterResponse.new("third", "Third", "simple:0:result:2"),
+	]
+	var simple := SimpleEncounterDefinition.new(0, 1, simple_responses, true, 3, 0)
+	var complex_texts: Array[String] = ["Wait", "", "", "", "", "", "", "", ""]
+	var complex := ComplexEncounterDefinition.new(0, 1, 4, 0, [0, 0, 0, 0, 0, 0, 0, 0], [], [], [], [], true, false, 2, 0, 0, 0, complex_texts)
+	var programs: Array[ScenarioProgramDefinition] = [
+		ScenarioProgramDefinition.new("root.simple-loop", &"trigger", "simple-loop", [ClassicActionDefinition.new(0, 4, 4, 0, false, [])]),
+		ScenarioProgramDefinition.new("simple:0:result:0", &"simple-encounter-result", "0", [ClassicActionDefinition.new(0, 35, 35, 1, false, [])]),
+		ScenarioProgramDefinition.new("simple:0:result:1", &"simple-encounter-result", "1", [ClassicActionDefinition.new(0, 35, 35, 2, false, [])]),
+		ScenarioProgramDefinition.new("simple:0:result:2", &"simple-encounter-result", "2", []),
+		ScenarioProgramDefinition.new("root.complex-loop", &"trigger", "complex-loop", [ClassicActionDefinition.new(0, 5, 5, 0, false, [])]),
+		ScenarioProgramDefinition.new("complex:0:result:0", &"complex-encounter-result", "0", []),
+		ScenarioProgramDefinition.new("complex:0:result:1", &"complex-encounter-result", "1", []),
+		ScenarioProgramDefinition.new("complex:0:result:2", &"complex-encounter-result", "2", [ClassicActionDefinition.new(0, 1, 1, 2, false, [])]),
+		ScenarioProgramDefinition.new("complex:0:result:3", &"complex-encounter-result", "3", []),
+	]
+	var definition := ScenarioDefinition.new(programs, [])
+	var iteration_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, content.start_map_id, content.start_coordinate, content.world, definition, [MessageDefinition.new(1, "Choose."), MessageDefinition.new(2, "Time has expired.")], [], [simple], [], [], [], [], [], [], [], [], [complex])
+
+	var simple_state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("loop.hero", "Loop Hero", 10, 10)]), RealmzClock.new())
+	var simple_rng := RealmzRng.for_oracle(17)
+	var simple_vm := ScenarioVm.new()
+	simple_vm.configure(definition)
+	simple_vm.start_program("root.simple-loop", ScenarioExecutionContext.trigger(&"action", "ap.simple-loop"))
+	var simple_api := RealmzRuntimeApi.new(iteration_content, simple_state, simple_rng, ScenarioActionState.new())
+	var first_choice := simple_vm.run(simple_api)
+	var second_choice := simple_vm.resume(InteractionResponse.from_data(first_choice.interaction.request_id, InteractionRequest.ENCOUNTER_CHOICE, {"index": 0}), simple_api)
+	assert_equal([second_choice.state, second_choice.interaction.kind, second_choice.interaction.body.to_data().get("options", []).size(), simple_state.encounter_attempts(&"simple", 0)], [ScenarioVmResult.State.WAITING, InteractionRequest.ENCOUNTER_CHOICE, 2, 1], "Simple Encounter repeats after its result and removes the source-selected option")
+	var simple_save := save_round_trip(SessionSnapshot.new(iteration_content.campaign_id, iteration_content.package_hash, iteration_content.rules_version, 1, simple_state, simple_rng.snapshot(), simple_vm.snapshot(), ScenarioActionState.new()))
+	assert_not_null(simple_save, "repeating Simple Encounter crosses the save envelope")
+	if simple_save != null:
+		assert_true(SessionRestoreValidator.validate(iteration_content, simple_save).ok, "repeating Simple Encounter passes transactional restore validation")
+		var restored_simple_state := GameState.from_data(simple_save.game_state.to_data())
+		var restored_simple_rng := RealmzRng.for_oracle(1)
+		assert_true(restored_simple_rng.restore(simple_save.rng_state), "repeating Simple Encounter restores its gameplay RNG")
+		var restored_simple_vm := ScenarioVm.new()
+		restored_simple_vm.configure(definition)
+		assert_true(restored_simple_vm.restore(simple_save.scenario_vm), "repeating Simple Encounter restores its typed VM frame")
+		var restored_simple_api := RealmzRuntimeApi.new(iteration_content, restored_simple_state, restored_simple_rng, simple_save.scenario_action_state)
+		var third_choice := restored_simple_vm.resume(InteractionResponse.from_data(restored_simple_vm.pending_request().request_id, InteractionRequest.ENCOUNTER_CHOICE, {"index": 0}), restored_simple_api)
+		assert_equal([third_choice.state, third_choice.interaction.body.to_data().get("options", []).size()], [ScenarioVmResult.State.WAITING, 1], "restored Simple Encounter continues with its second source option removed")
+		var simple_done := restored_simple_vm.resume(InteractionResponse.from_data(third_choice.interaction.request_id, InteractionRequest.ENCOUNTER_CHOICE, {"index": 0}), restored_simple_api)
+		assert_equal([simple_done.state, restored_simple_state.encounter_attempts(&"simple", 0)], [ScenarioVmResult.State.COMPLETED, 3], "Simple Encounter exits after the authored maximum number of selections")
+
+	var complex_state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("timeout.hero", "Timeout Hero", 10, 10)]), RealmzClock.new())
+	var complex_rng := RealmzRng.for_oracle(23)
+	var complex_vm := ScenarioVm.new()
+	complex_vm.configure(definition)
+	complex_vm.start_program("root.complex-loop", ScenarioExecutionContext.trigger(&"action", "ap.complex-loop"))
+	var complex_api := RealmzRuntimeApi.new(iteration_content, complex_state, complex_rng, ScenarioActionState.new())
+	var complex_choice := complex_vm.run(complex_api)
+	var repeated_complex := complex_vm.resume(InteractionResponse.from_data(complex_choice.interaction.request_id, InteractionRequest.WORD_AND_ACTION, {"action": "choice", "slot": 0}), complex_api)
+	assert_equal([repeated_complex.state, repeated_complex.interaction.kind, complex_state.encounter_attempts(&"complex", 0)], [ScenarioVmResult.State.WAITING, InteractionRequest.WORD_AND_ACTION, 1], "Complex Encounter repeats after a nonfinal fallback result")
+	var complex_save := save_round_trip(SessionSnapshot.new(iteration_content.campaign_id, iteration_content.package_hash, iteration_content.rules_version, 1, complex_state, complex_rng.snapshot(), complex_vm.snapshot(), ScenarioActionState.new()))
+	assert_not_null(complex_save, "repeating Complex Encounter crosses the save envelope")
+	if complex_save != null:
+		assert_true(SessionRestoreValidator.validate(iteration_content, complex_save).ok, "repeating Complex Encounter passes transactional restore validation")
+		var restored_complex_state := GameState.from_data(complex_save.game_state.to_data())
+		var restored_complex_rng := RealmzRng.for_oracle(1)
+		assert_true(restored_complex_rng.restore(complex_save.rng_state), "repeating Complex Encounter restores its gameplay RNG")
+		var restored_complex_vm := ScenarioVm.new()
+		restored_complex_vm.configure(definition)
+		assert_true(restored_complex_vm.restore(complex_save.scenario_vm), "repeating Complex Encounter restores its typed VM frame")
+		var restored_complex_api := RealmzRuntimeApi.new(iteration_content, restored_complex_state, restored_complex_rng, complex_save.scenario_action_state)
+		var timeout := restored_complex_vm.resume(InteractionResponse.from_data(restored_complex_vm.pending_request().request_id, InteractionRequest.WORD_AND_ACTION, {"action": "choice", "slot": 0}), restored_complex_api)
+		assert_equal([timeout.state, timeout.interaction.kind, timeout.interaction.body.to_data().get("messageId"), restored_complex_state.encounter_attempts(&"complex", 0)], [ScenarioVmResult.State.WAITING, InteractionRequest.ACKNOWLEDGE, 2, 2], "final Complex fallback routes to Castle's authored timeout result")
+		assert_equal(restored_complex_vm.resume(InteractionResponse.acknowledge(timeout.interaction), restored_complex_api).state, ScenarioVmResult.State.COMPLETED, "Complex timeout result exits the encounter loop")
+
+	var cancelled_state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("cancel.hero", "Cancel Hero", 10, 10)]), RealmzClock.new())
+	var cancelled_vm := ScenarioVm.new()
+	cancelled_vm.configure(definition)
+	cancelled_vm.start_program("root.complex-loop", ScenarioExecutionContext.trigger(&"action", "ap.complex-cancel"))
+	var cancelled_api := RealmzRuntimeApi.new(iteration_content, cancelled_state, RealmzRng.for_oracle(29), ScenarioActionState.new())
+	var cancel_first := cancelled_vm.run(cancelled_api)
+	var cancel_repeat := cancelled_vm.resume(InteractionResponse.from_data(cancel_first.interaction.request_id, InteractionRequest.WORD_AND_ACTION, {"action": "choice", "slot": 0}), cancelled_api)
+	var cancelled := cancelled_vm.resume(InteractionResponse.from_data(cancel_repeat.interaction.request_id, InteractionRequest.WORD_AND_ACTION, {"action": "back"}), cancelled_api)
+	assert_equal([cancelled.state, cancelled_state.encounter_attempts(&"complex", 0)], [ScenarioVmResult.State.COMPLETED, 1], "backing out exits a repeating Complex Encounter without consuming another attempt")
+
+
 func _test_public_thief_encounter(content: RealmzContent) -> void:
 	var character := CharacterState.new("thief.hero", "Locksmith", 12, 12)
 	character.set_ability_value(7, 90)
@@ -188,6 +276,47 @@ func _test_public_thief_encounter(content: RealmzContent) -> void:
 	var scout_thief := scout_vm.resume(InteractionResponse.from_data(scout_complex.interaction.request_id, InteractionRequest.WORD_AND_ACTION, {"action": "thief"}), scout_api)
 	scout_vm.resume(InteractionResponse.from_data(scout_thief.interaction.request_id, InteractionRequest.THIEF_ENCOUNTER, {"action": "attempt", "characterId": scout.id, "actionIndex": 0}), scout_api)
 	assert_equal(scout_state.party.character_by_id(scout.id).experience, 0, "successful non-lock thief actions do not inherit Pick Lock experience")
+
+	var source_complex := content.complex_encounter_by_id(0)
+	var source_thief := content.thief_encounter_by_id(source_complex.thief_success) if source_complex != null else null
+	assert_true(source_complex != null and source_thief != null, "Thief loop fixture provides its source definitions")
+	if source_complex == null or source_thief == null:
+		return
+	var loop_texts := source_complex.action_labels()
+	loop_texts.append(source_complex.expected_word())
+	var loop_complex := ComplexEncounterDefinition.new(source_complex.id, source_complex.prompt_message_id, source_complex.action_result, source_complex.word_result, source_complex.groups(), source_complex.spell_ids(), source_complex.spell_results(), source_complex.item_ids(), source_complex.item_results(), source_complex.can_back_out, source_complex.thief, 2, source_complex.caste_success, source_complex.thief_success, source_complex.thief_fail, loop_texts)
+	var loop_programs: Array[ScenarioProgramDefinition] = [ScenarioProgramDefinition.new("root.thief-loop", &"trigger", "thief-loop", [ClassicActionDefinition.new(0, 5, 5, loop_complex.id, false, [])])]
+	for outcome_index: int in 4:
+		loop_programs.append(ScenarioProgramDefinition.new("complex:%d:result:%d" % [loop_complex.id, outcome_index], &"complex-encounter-result", str(outcome_index), []))
+	var loop_definition := ScenarioDefinition.new(loop_programs, [])
+	var loop_messages: Array[MessageDefinition] = [content.message_by_id(absi(loop_complex.prompt_message_id))]
+	var loop_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, content.start_map_id, content.start_coordinate, content.world, loop_definition, loop_messages, [], [], [], [], [], [], [], [], [], [], [loop_complex], [source_thief])
+	var loop_character := CharacterState.new("thief.loop", "Loop Thief", 12, 12)
+	loop_character.set_ability_value(5, 100)
+	loop_character.set_ability_value(6, 100)
+	var loop_state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [loop_character]), RealmzClock.new())
+	var loop_rng := RealmzRng.for_oracle(31)
+	var loop_vm := ScenarioVm.new()
+	loop_vm.configure(loop_definition)
+	loop_vm.start_program("root.thief-loop", ScenarioExecutionContext.trigger(&"action", "ap.thief-loop"))
+	var loop_api := RealmzRuntimeApi.new(loop_content, loop_state, loop_rng, ScenarioActionState.new())
+	var loop_complex_choice := loop_vm.run(loop_api)
+	var loop_thief_choice := loop_vm.resume(InteractionResponse.from_data(loop_complex_choice.interaction.request_id, InteractionRequest.WORD_AND_ACTION, {"action": "thief"}), loop_api)
+	var repeated_after_thief := loop_vm.resume(InteractionResponse.from_data(loop_thief_choice.interaction.request_id, InteractionRequest.THIEF_ENCOUNTER, {"action": "attempt", "characterId": loop_character.id, "actionIndex": 0}), loop_api)
+	assert_equal([repeated_after_thief.state, repeated_after_thief.interaction.kind, loop_state.encounter_attempts(&"complex", loop_complex.id)], [ScenarioVmResult.State.WAITING, InteractionRequest.WORD_AND_ACTION, 1], "Thief result returns to its source Complex Encounter while selections remain")
+	var loop_save := save_round_trip(SessionSnapshot.new(loop_content.campaign_id, loop_content.package_hash, loop_content.rules_version, 1, loop_state, loop_rng.snapshot(), loop_vm.snapshot(), ScenarioActionState.new()))
+	assert_true(loop_save != null and SessionRestoreValidator.validate(loop_content, loop_save).ok, "repeating Thief result passes the complete save validator")
+	if loop_save != null:
+		var restored_loop_state := GameState.from_data(loop_save.game_state.to_data())
+		var restored_loop_rng := RealmzRng.for_oracle(1)
+		restored_loop_rng.restore(loop_save.rng_state)
+		var restored_loop_vm := ScenarioVm.new()
+		restored_loop_vm.configure(loop_definition)
+		assert_true(restored_loop_vm.restore(loop_save.scenario_vm), "repeating Thief result restores its VM attempt")
+		var restored_loop_api := RealmzRuntimeApi.new(loop_content, restored_loop_state, restored_loop_rng, loop_save.scenario_action_state)
+		var restored_thief_choice := restored_loop_vm.resume(InteractionResponse.from_data(restored_loop_vm.pending_request().request_id, InteractionRequest.WORD_AND_ACTION, {"action": "thief"}), restored_loop_api)
+		var finished_thief := restored_loop_vm.resume(InteractionResponse.from_data(restored_thief_choice.interaction.request_id, InteractionRequest.THIEF_ENCOUNTER, {"action": "attempt", "characterId": loop_character.id, "actionIndex": 1}), restored_loop_api)
+		assert_equal([finished_thief.state, restored_loop_state.encounter_attempts(&"complex", loop_complex.id)], [ScenarioVmResult.State.COMPLETED, 2], "restored Thief result exits after the final Complex selection")
 
 
 func _test_public_session_resume(content: RealmzContent) -> void:

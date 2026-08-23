@@ -4,12 +4,14 @@ extends RefCounted
 const FINISH: StringName = &"finish"
 const BRANCH_XAP: StringName = &"branch-xap"
 const BRANCH_PROGRAM: StringName = &"branch-program"
+const BRANCH_ENCOUNTER_RESULT: StringName = &"branch-encounter-result"
 
 var kind: StringName
 var target_id: int = -1
 var gosub: bool
 var program_id: String
 var context: ScenarioExecutionContext = ScenarioExecutionContext.empty()
+var repeat_encounter: bool
 
 
 func _init(directive_kind: StringName) -> void:
@@ -35,6 +37,15 @@ static func branch_program(program: String, use_gosub: bool, frame_context: Scen
 	return directive
 
 
+static func branch_encounter_result(program: String, use_gosub: bool, frame_context: ScenarioExecutionContext, repeat: bool) -> ScenarioVmDirective:
+	var directive := ScenarioVmDirective.new(BRANCH_ENCOUNTER_RESULT)
+	directive.program_id = program
+	directive.gosub = use_gosub
+	directive.context = ScenarioExecutionContext.empty() if frame_context == null else frame_context.copy()
+	directive.repeat_encounter = repeat
+	return directive
+
+
 func copy() -> ScenarioVmDirective:
 	return from_data(to_data())
 
@@ -47,6 +58,8 @@ func to_data() -> Dictionary:
 			return {"kind": String(kind), "targetId": target_id, "gosub": gosub}
 		BRANCH_PROGRAM:
 			return {"kind": String(kind), "programId": program_id, "gosub": gosub, "context": context.to_data()}
+		BRANCH_ENCOUNTER_RESULT:
+			return {"kind": String(kind), "programId": program_id, "gosub": gosub, "context": context.to_data(), "repeatEncounter": repeat_encounter}
 	return {}
 
 
@@ -65,4 +78,9 @@ static func from_data(value: Variant) -> ScenarioVmDirective:
 				return null
 			var restored_context := ScenarioExecutionContext.from_data(value["context"])
 			return null if restored_context == null else branch_program(value["programId"], value["gosub"], restored_context)
+		BRANCH_ENCOUNTER_RESULT:
+			if value.size() != 5 or not value.get("programId") is String or value["programId"].is_empty() or not value.get("gosub") is bool or not value.get("context") is Dictionary or not value.get("repeatEncounter") is bool:
+				return null
+			var restored_context := ScenarioExecutionContext.from_data(value["context"])
+			return null if restored_context == null else branch_encounter_result(value["programId"], value["gosub"], restored_context, value["repeatEncounter"])
 	return null

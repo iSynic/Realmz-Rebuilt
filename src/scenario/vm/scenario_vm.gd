@@ -360,6 +360,24 @@ func _apply_classic_directive(directive: ScenarioVmDirective, inherited_context:
 				_frames[_frames.size() - 1] = target_frame
 			_append_trace({"event": "classic-branch", "programId": program_id, "gosub": target_frame.counts_as_classic_call})
 			return ScenarioVmResult.completed()
+		ScenarioVmDirective.BRANCH_ENCOUNTER_RESULT:
+			var program_id: String = directive.program_id
+			if _definition.program_by_id(program_id) == null:
+				return ScenarioVmResult.failed(&"unknown_scenario_program", "Classic encounter result references unavailable program '%s'." % program_id)
+			if not directive.repeat_encounter:
+				return _apply_classic_directive(ScenarioVmDirective.branch_program(program_id, directive.gosub, directive.context), inherited_context)
+			if _frames.is_empty() or _frames.back().kind != ScenarioFrame.PROGRAM or _frames.back().cursor < 1:
+				return ScenarioVmResult.failed(&"invalid_encounter_loop", "Classic encounter repetition has no issuing program frame.")
+			var source_frame: ScenarioFrame = _frames.back()
+			var base_context := source_frame.context() if inherited_context == null else inherited_context.copy()
+			var loop_context := base_context.merged(directive.context)
+			source_frame.cursor -= 1
+			source_frame.set_context(loop_context)
+			var result_frame := ScenarioFrame.new(ScenarioFrame.PROGRAM, program_id)
+			result_frame.set_context(loop_context)
+			_frames.append(result_frame)
+			_append_trace({"event": "classic-encounter-repeat", "programId": program_id, "attempt": loop_context.encounter_attempt})
+			return ScenarioVmResult.completed()
 		_:
 			return ScenarioVmResult.failed(&"unknown_vm_directive", "Realmz Runtime API returned an unknown VM directive.")
 

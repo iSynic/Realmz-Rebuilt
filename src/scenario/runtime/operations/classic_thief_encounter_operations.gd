@@ -20,11 +20,11 @@ func _init(content: RealmzContent, game_state: GameState, rng: RealmzRng, rules:
 	_encounters = encounter_operations
 
 
-func begin(encounter: ComplexEncounterDefinition, gosub: bool, request_id: String) -> ScenarioRuntimeOperationResult:
+func begin(encounter: ComplexEncounterDefinition, gosub: bool, request_id: String, encounter_attempt: int = 0) -> ScenarioRuntimeOperationResult:
 	var request := _thief_request(encounter, request_id, true)
 	if request == null:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_thief_encounter", "The Thief Encounter has no available living character or prompt.")
-	return ScenarioRuntimeOperationResult.waiting(request, ScenarioRuntimeContinuation.thief_encounter(encounter.id, gosub), [DomainEvent.new(&"thief_encounter_opened", {"encounterId": encounter.id})])
+	return ScenarioRuntimeOperationResult.waiting(request, ScenarioRuntimeContinuation.thief_encounter(encounter.id, gosub, encounter_attempt), [DomainEvent.new(&"thief_encounter_opened", {"encounterId": encounter.id})])
 
 
 func resume_thief(continuation: ScenarioRuntimeContinuation, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
@@ -37,8 +37,8 @@ func resume_thief(continuation: ScenarioRuntimeContinuation, response: Interacti
 		var complex_request := _encounters.complex_encounter_request(encounter, request_id)
 		if complex_request == null:
 			return ScenarioRuntimeOperationResult.failed(&"encounter_has_no_options", "Complex Encounter has no available responses after leaving its Thief actions.")
-		return ScenarioRuntimeOperationResult.waiting(complex_request, ScenarioRuntimeContinuation.encounter(ScenarioRuntimeContinuation.CLASSIC_COMPLEX_ENCOUNTER, encounter.id, owner.gosub))
-	return _attempt(encounter, owner.gosub, selection, request_id)
+		return ScenarioRuntimeOperationResult.waiting(complex_request, ScenarioRuntimeContinuation.encounter(ScenarioRuntimeContinuation.CLASSIC_COMPLEX_ENCOUNTER, encounter.id, owner.gosub, [], owner.encounter_attempt))
+	return _attempt(encounter, owner.gosub, selection, request_id, owner.encounter_attempt)
 
 
 func resume_pick_lock(continuation: ScenarioRuntimeContinuation, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
@@ -60,7 +60,7 @@ func resume_pick_lock(continuation: ScenarioRuntimeContinuation, response: Inter
 	if succeeded and owner.action_index == 2:
 		flags[9] = false
 	_state.set_thief_encounter_type_flags(thief, flags)
-	return _present_action_result(encounter, thief, owner.gosub, character, owner.action_index, succeeded, not succeeded and flags[9], request_id, [event])
+	return _present_action_result(encounter, thief, owner.gosub, character, owner.action_index, succeeded, not succeeded and flags[9], request_id, [event], owner.encounter_attempt)
 
 
 func resume_resolution(continuation: ScenarioRuntimeContinuation, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
@@ -72,15 +72,15 @@ func resume_resolution(continuation: ScenarioRuntimeContinuation, response: Inte
 	if response.kind != InteractionRequest.ACKNOWLEDGE or acknowledgement == null or acknowledgement.take_note or owner == null or encounter == null or thief == null or character == null:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Thief Encounter result acknowledgement does not match its source action.")
 	if owner.phase == &"trap-message":
-		return _apply_trap(encounter, thief, owner.gosub, character, request_id)
+		return _apply_trap(encounter, thief, owner.gosub, character, request_id, owner.encounter_attempt)
 	if owner.phase != &"action-message":
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Thief Encounter result has an unknown stage.")
 	if owner.trap_pending:
-		return _wait_for_trap_message(encounter, owner.gosub, character, owner.action_index, owner.succeeded, request_id)
-	return _finish_action(encounter, thief, owner.gosub, character, owner.action_index, owner.succeeded, request_id, [])
+		return _wait_for_trap_message(encounter, owner.gosub, character, owner.action_index, owner.succeeded, request_id, [], owner.encounter_attempt)
+	return _finish_action(encounter, thief, owner.gosub, character, owner.action_index, owner.succeeded, request_id, [], owner.encounter_attempt)
 
 
-func _attempt(encounter: ComplexEncounterDefinition, gosub: bool, selection: InteractionResponse.ThiefEncounterBody, request_id: String) -> ScenarioRuntimeOperationResult:
+func _attempt(encounter: ComplexEncounterDefinition, gosub: bool, selection: InteractionResponse.ThiefEncounterBody, request_id: String, encounter_attempt: int) -> ScenarioRuntimeOperationResult:
 	var thief := _thief_definition(encounter)
 	var character := _state.party.character_by_id(selection.character_id)
 	var action_index := selection.action_index
@@ -93,20 +93,20 @@ func _attempt(encounter: ComplexEncounterDefinition, gosub: bool, selection: Int
 		if action_index == 4:
 			flags[4] = true
 		_state.set_thief_encounter_type_flags(thief, flags)
-		return _wait_for_trap_message(encounter, gosub, character, action_index, false, request_id)
+		return _wait_for_trap_message(encounter, gosub, character, action_index, false, request_id, [], encounter_attempt)
 	_state.set_thief_encounter_type_flags(thief, flags)
 	if action_index in LOCK_ACTIONS:
-		return _start_pick_lock(encounter, thief, gosub, character, action_index, request_id)
+		return _start_pick_lock(encounter, thief, gosub, character, action_index, request_id, encounter_attempt)
 	var chance := character.ability_value(ClassicPickLockRulesScript.ability_index(action_index)) + thief.modifiers()[action_index]
 	var succeeded := _rng.draw(100, &"classic.thief-encounter") <= chance
 	if succeeded and action_index == 1 and trap_armed:
 		flags[2] = true
 	_state.set_thief_encounter_type_flags(thief, flags)
 	var event := _action_event(encounter, thief, character, action_index, chance, succeeded)
-	return _present_action_result(encounter, thief, gosub, character, action_index, succeeded, not succeeded and trap_armed and action_index != 1, request_id, [event])
+	return _present_action_result(encounter, thief, gosub, character, action_index, succeeded, not succeeded and trap_armed and action_index != 1, request_id, [event], encounter_attempt)
 
 
-func _start_pick_lock(encounter: ComplexEncounterDefinition, thief: ThiefEncounterDefinition, gosub: bool, character: CharacterState, action_index: int, request_id: String) -> ScenarioRuntimeOperationResult:
+func _start_pick_lock(encounter: ComplexEncounterDefinition, thief: ThiefEncounterDefinition, gosub: bool, character: CharacterState, action_index: int, request_id: String, encounter_attempt: int) -> ScenarioRuntimeOperationResult:
 	var chance := ClassicPickLockRulesScript.chance(character.ability_value(ClassicPickLockRulesScript.ability_index(action_index)), thief.modifiers()[action_index])
 	var frames := ClassicPickLockRulesScript.preview(_rng.snapshot(), thief.tumblers, chance)
 	if frames.is_empty():
@@ -121,10 +121,10 @@ func _start_pick_lock(encounter: ComplexEncounterDefinition, thief: ThiefEncount
 	})
 	if request == null:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_pick_lock_state", "Pick Lock generated an invalid typed interaction.")
-	return ScenarioRuntimeOperationResult.waiting(request, ScenarioRuntimeContinuation.pick_lock(encounter.id, gosub, action_index, character.id), [DomainEvent.new(&"pick_lock_started", {"encounterId": encounter.id, "characterId": character.id, "actionIndex": action_index, "chancePercent": chance, "tumblers": ClassicPickLockRulesScript.tumbler_count(thief.tumblers)})])
+	return ScenarioRuntimeOperationResult.waiting(request, ScenarioRuntimeContinuation.pick_lock(encounter.id, gosub, action_index, character.id, encounter_attempt), [DomainEvent.new(&"pick_lock_started", {"encounterId": encounter.id, "characterId": character.id, "actionIndex": action_index, "chancePercent": chance, "tumblers": ClassicPickLockRulesScript.tumbler_count(thief.tumblers)})])
 
 
-func _finish_action(encounter: ComplexEncounterDefinition, thief: ThiefEncounterDefinition, gosub: bool, character: CharacterState, action_index: int, succeeded: bool, request_id: String, events: Array[DomainEvent]) -> ScenarioRuntimeOperationResult:
+func _finish_action(encounter: ComplexEncounterDefinition, thief: ThiefEncounterDefinition, gosub: bool, character: CharacterState, action_index: int, succeeded: bool, request_id: String, events: Array[DomainEvent], encounter_attempt: int) -> ScenarioRuntimeOperationResult:
 	var codes := thief.success_codes() if succeeded else thief.failure_codes()
 	var outcome := codes[action_index]
 	if succeeded and action_index in LOCK_ACTIONS and outcome != 0 and outcome != 4:
@@ -132,16 +132,19 @@ func _finish_action(encounter: ComplexEncounterDefinition, thief: ThiefEncounter
 		character.experience += gained
 		events.append(DomainEvent.new(&"experience_awarded", {"characterId": character.id, "amount": gained, "source": "thief-encounter"}))
 	if outcome == 0:
-		return _wait_for_thief(encounter, gosub, request_id, events)
+		return _wait_for_thief(encounter, gosub, request_id, events, encounter_attempt)
+	var attempt := encounter_attempt + 1
+	if outcome == 4 and encounter.max_times > 1 and attempt >= encounter.max_times:
+		outcome = 3
 	if outcome < 1 or outcome > 4:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_encounter_outcome", "Thief Encounter produced invalid result %d." % outcome)
 	_state.record_encounter_attempt(&"complex", encounter.id)
-	var context := ScenarioExecutionContext.encounter(&"complex", encounter.id, "", -1, &"thief").set_thief_action(action_index, character.id)
+	var context := ScenarioExecutionContext.encounter(&"complex", encounter.id, "", -1, &"thief").set_thief_action(action_index, character.id).set_encounter_attempt(attempt)
 	var program_id := encounter.result_program_id(outcome)
-	return ScenarioRuntimeOperationResult.completed(outcome, events, ScenarioVmDirective.branch_program(program_id, gosub, context))
+	return ScenarioRuntimeOperationResult.completed(outcome, events, ScenarioVmDirective.branch_encounter_result(program_id, gosub, context, attempt < encounter.max_times))
 
 
-func _present_action_result(encounter: ComplexEncounterDefinition, thief: ThiefEncounterDefinition, gosub: bool, character: CharacterState, action_index: int, succeeded: bool, trap_pending: bool, request_id: String, events: Array[DomainEvent]) -> ScenarioRuntimeOperationResult:
+func _present_action_result(encounter: ComplexEncounterDefinition, thief: ThiefEncounterDefinition, gosub: bool, character: CharacterState, action_index: int, succeeded: bool, trap_pending: bool, request_id: String, events: Array[DomainEvent], encounter_attempt: int) -> ScenarioRuntimeOperationResult:
 	var text_ids := thief.success_text() if succeeded else thief.failure_text()
 	var sound_ids := thief.success_sounds() if succeeded else thief.failure_sounds()
 	var signed_message_id := text_ids[action_index]
@@ -155,21 +158,21 @@ func _present_action_result(encounter: ComplexEncounterDefinition, thief: ThiefE
 		events.append(DomainEvent.new(&"sound_requested", {"soundId": sound_ids[action_index], "waitForCompletion": false, "source": "classic-thief"}))
 	if signed_message_id <= 0:
 		if trap_pending:
-			return _wait_for_trap_message(encounter, gosub, character, action_index, succeeded, request_id, events)
-		return _finish_action(encounter, thief, gosub, character, action_index, succeeded, request_id, events)
+			return _wait_for_trap_message(encounter, gosub, character, action_index, succeeded, request_id, events, encounter_attempt)
+		return _finish_action(encounter, thief, gosub, character, action_index, succeeded, request_id, events, encounter_attempt)
 	var request := InteractionRequest.from_payload(request_id, InteractionRequest.ACKNOWLEDGE, {"prompt": message.text if message != null else "", "messageId": message_id, "presentation": "classic-textbox", "soundId": sound_ids[action_index]})
-	return ScenarioRuntimeOperationResult.waiting(request, ScenarioRuntimeContinuation.thief_resolution(encounter.id, gosub, action_index, character.id, &"action-message", succeeded, trap_pending), events) if request != null else ScenarioRuntimeOperationResult.failed(&"invalid_thief_encounter", "Thief Encounter result could not create its textbox stage.")
+	return ScenarioRuntimeOperationResult.waiting(request, ScenarioRuntimeContinuation.thief_resolution(encounter.id, gosub, action_index, character.id, &"action-message", succeeded, trap_pending, encounter_attempt), events) if request != null else ScenarioRuntimeOperationResult.failed(&"invalid_thief_encounter", "Thief Encounter result could not create its textbox stage.")
 
 
-func _wait_for_trap_message(encounter: ComplexEncounterDefinition, gosub: bool, character: CharacterState, action_index: int, succeeded: bool, request_id: String, events: Array[DomainEvent] = []) -> ScenarioRuntimeOperationResult:
+func _wait_for_trap_message(encounter: ComplexEncounterDefinition, gosub: bool, character: CharacterState, action_index: int, succeeded: bool, request_id: String, events: Array[DomainEvent] = [], encounter_attempt: int = 0) -> ScenarioRuntimeOperationResult:
 	# Castle uses application STR# class 3, item 55 here, not scenario Data SD2.
 	# Rebuilt preserves that identity while using concise modern host wording.
 	var request := InteractionRequest.from_payload(request_id, InteractionRequest.ACKNOWLEDGE, {"prompt": "A trap is sprung.", "presentation": "classic-textbox"})
 	events.append(DomainEvent.new(&"thief_trap_warning", {"resourceStringClass": 3, "resourceStringId": 55}))
-	return ScenarioRuntimeOperationResult.waiting(request, ScenarioRuntimeContinuation.thief_resolution(encounter.id, gosub, action_index, character.id, &"trap-message", succeeded, true), events) if request != null else ScenarioRuntimeOperationResult.failed(&"invalid_thief_encounter", "Thief Encounter trap could not create its textbox stage.")
+	return ScenarioRuntimeOperationResult.waiting(request, ScenarioRuntimeContinuation.thief_resolution(encounter.id, gosub, action_index, character.id, &"trap-message", succeeded, true, encounter_attempt), events) if request != null else ScenarioRuntimeOperationResult.failed(&"invalid_thief_encounter", "Thief Encounter trap could not create its textbox stage.")
 
 
-func _apply_trap(encounter: ComplexEncounterDefinition, thief: ThiefEncounterDefinition, gosub: bool, selected: CharacterState, request_id: String) -> ScenarioRuntimeOperationResult:
+func _apply_trap(encounter: ComplexEncounterDefinition, thief: ThiefEncounterDefinition, gosub: bool, selected: CharacterState, request_id: String, encounter_attempt: int) -> ScenarioRuntimeOperationResult:
 	var flags := _state.thief_encounter_type_flags(thief)
 	flags[9] = false
 	flags[1] = false
@@ -186,14 +189,14 @@ func _apply_trap(encounter: ComplexEncounterDefinition, thief: ThiefEncounterDef
 	var trap_sound := prompts[1] if prompts.size() > 1 else 0
 	var spell_power := prompts[2] if prompts.size() > 2 else 0
 	var events: Array[DomainEvent] = [DomainEvent.new(&"thief_trap_sprung", {"encounterId": encounter.id, "thiefEncounterId": thief.id, "characterId": selected.id, "targetIds": targets.map(func(value: CharacterState) -> String: return value.id), "damageByCharacter": damage_by_character, "spellId": thief.spell_id, "spellPower": spell_power, "soundId": trap_sound})]
-	return _wait_for_thief(encounter, gosub, request_id, events)
+	return _wait_for_thief(encounter, gosub, request_id, events, encounter_attempt)
 
 
-func _wait_for_thief(encounter: ComplexEncounterDefinition, gosub: bool, request_id: String, events: Array[DomainEvent]) -> ScenarioRuntimeOperationResult:
+func _wait_for_thief(encounter: ComplexEncounterDefinition, gosub: bool, request_id: String, events: Array[DomainEvent], encounter_attempt: int) -> ScenarioRuntimeOperationResult:
 	var request := _thief_request(encounter, request_id, false)
 	if request == null:
 		return ScenarioRuntimeOperationResult.failed(&"party_defeated", "No living party character remains for the Thief Encounter.")
-	return ScenarioRuntimeOperationResult.waiting(request, ScenarioRuntimeContinuation.thief_encounter(encounter.id, gosub), events)
+	return ScenarioRuntimeOperationResult.waiting(request, ScenarioRuntimeContinuation.thief_encounter(encounter.id, gosub, encounter_attempt), events)
 
 
 func _thief_request(encounter: ComplexEncounterDefinition, request_id: String, play_opening_sound: bool) -> InteractionRequest:

@@ -11,6 +11,7 @@ const _FIELDS: Array[String] = [
 	"classicMonsterId",
 	"combatantId",
 	"encounterId",
+	"encounterAttempt",
 	"encounterKind",
 	"mapId",
 	"optionIndex",
@@ -42,6 +43,7 @@ var classic_monster_id: int = 0
 var traitor: bool = false
 var encounter_kind: StringName = &""
 var encounter_id: int = -1
+var encounter_attempt: int = -1
 var response_id: String = ""
 var option_index: int = -1
 var response_kind: StringName = &""
@@ -92,6 +94,11 @@ static func encounter(kind: StringName, encounter_identity: int, selected_respon
 	result.response_kind = selected_response_kind
 	result.option_slot = selected_option_slot
 	return result
+
+
+func set_encounter_attempt(value: int) -> ScenarioExecutionContext:
+	encounter_attempt = value
+	return self
 
 
 func set_thief_action(selected_action_index: int, selected_character_id: String) -> ScenarioExecutionContext:
@@ -166,6 +173,7 @@ func merged(overlay: ScenarioExecutionContext) -> ScenarioExecutionContext:
 		result._has_traitor = true
 	if not overlay.encounter_kind.is_empty(): result.encounter_kind = overlay.encounter_kind
 	if overlay.encounter_id >= 0: result.encounter_id = overlay.encounter_id
+	if overlay.encounter_attempt >= 0: result.encounter_attempt = overlay.encounter_attempt
 	if not overlay.response_id.is_empty(): result.response_id = overlay.response_id
 	if overlay.option_index >= 0: result.option_index = overlay.option_index
 	if not overlay.response_kind.is_empty(): result.response_kind = overlay.response_kind
@@ -195,6 +203,7 @@ func value(name: String) -> Variant:
 		"traitor": return traitor if _has_traitor else null
 		"encounterKind": return String(encounter_kind)
 		"encounterId": return encounter_id if encounter_id >= 0 else null
+		"encounterAttempt": return encounter_attempt if encounter_attempt >= 0 else null
 		"responseId": return response_id
 		"optionIndex": return option_index if option_index >= 0 else null
 		"responseKind": return String(response_kind)
@@ -229,6 +238,7 @@ func to_data() -> Dictionary:
 	if _has_traitor: result["traitor"] = traitor
 	if not encounter_kind.is_empty(): result["encounterKind"] = String(encounter_kind)
 	if encounter_id >= 0: result["encounterId"] = encounter_id
+	if encounter_attempt >= 0: result["encounterAttempt"] = encounter_attempt
 	if not response_id.is_empty(): result["responseId"] = response_id
 	if option_index >= 0: result["optionIndex"] = option_index
 	if not response_kind.is_empty(): result["responseKind"] = String(response_kind)
@@ -274,6 +284,7 @@ static func from_data(value: Variant) -> ScenarioExecutionContext:
 		result._has_traitor = true
 	if not _read_string_name(value, "encounterKind", result, "encounter_kind"): return null
 	if not _read_nonnegative_int(value, "encounterId", result, "encounter_id"): return null
+	if not _read_nonnegative_int(value, "encounterAttempt", result, "encounter_attempt"): return null
 	if not _read_string(value, "responseId", result, "response_id"): return null
 	if not _read_nonnegative_int(value, "optionIndex", result, "option_index"): return null
 	if not _read_string_name(value, "responseKind", result, "response_kind"): return null

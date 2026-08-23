@@ -66,6 +66,7 @@ class ChoiceBody:
 	var values: Array[int]
 	var gosub: bool
 	var encounter_id: int = -1
+	var encounter_attempt: int = 0
 	var option_indexes: Array[int]
 
 	func to_data() -> Dictionary:
@@ -73,6 +74,8 @@ class ChoiceBody:
 			return {"optionCount": option_count}
 		if encounter_id >= 0:
 			var data := {"encounterId": encounter_id, "gosub": gosub}
+			if encounter_attempt > 0:
+				data["encounterAttempt"] = encounter_attempt
 			if not option_indexes.is_empty():
 				data["optionIndexes"] = option_indexes.duplicate()
 			return data
@@ -96,6 +99,7 @@ class CharacterBody:
 class ThiefBody:
 	extends Body
 	var encounter_id: int
+	var encounter_attempt: int = 0
 	var gosub: bool
 	var action_index: int = -1
 	var character_id: String
@@ -105,6 +109,8 @@ class ThiefBody:
 
 	func to_data() -> Dictionary:
 		var data := {"encounterId": encounter_id, "gosub": gosub}
+		if encounter_attempt > 0:
+			data["encounterAttempt"] = encounter_attempt
 		if action_index >= 0:
 			data["actionIndex"] = action_index
 			data["characterId"] = character_id
@@ -228,10 +234,11 @@ static func classic_choice(values: Array[int], gosub: bool) -> ScenarioRuntimeCo
 	return ScenarioRuntimeContinuation.new(CLASSIC_CHOICE, typed)
 
 
-static func encounter(continuation_kind: StringName, encounter_id: int, gosub: bool, option_indexes: Array[int] = []) -> ScenarioRuntimeContinuation:
+static func encounter(continuation_kind: StringName, encounter_id: int, gosub: bool, option_indexes: Array[int] = [], encounter_attempt: int = 0) -> ScenarioRuntimeContinuation:
 	assert(continuation_kind in [CLASSIC_SIMPLE_ENCOUNTER, CLASSIC_COMPLEX_ENCOUNTER])
 	var typed := ChoiceBody.new()
 	typed.encounter_id = encounter_id
+	typed.encounter_attempt = encounter_attempt
 	typed.gosub = gosub
 	typed.option_indexes.assign(option_indexes)
 	return ScenarioRuntimeContinuation.new(continuation_kind, typed)
@@ -245,25 +252,28 @@ static func character_selection(count: int, allow_dead: bool, invert: bool) -> S
 	return ScenarioRuntimeContinuation.new(CLASSIC_CHARACTER_SELECTION, typed)
 
 
-static func thief_encounter(encounter_id: int, gosub: bool) -> ScenarioRuntimeContinuation:
+static func thief_encounter(encounter_id: int, gosub: bool, encounter_attempt: int = 0) -> ScenarioRuntimeContinuation:
 	var typed := ThiefBody.new()
 	typed.encounter_id = encounter_id
+	typed.encounter_attempt = encounter_attempt
 	typed.gosub = gosub
 	return ScenarioRuntimeContinuation.new(CLASSIC_THIEF_ENCOUNTER, typed)
 
 
-static func pick_lock(encounter_id: int, gosub: bool, action_index: int, character_id: String) -> ScenarioRuntimeContinuation:
+static func pick_lock(encounter_id: int, gosub: bool, action_index: int, character_id: String, encounter_attempt: int = 0) -> ScenarioRuntimeContinuation:
 	var typed := ThiefBody.new()
 	typed.encounter_id = encounter_id
+	typed.encounter_attempt = encounter_attempt
 	typed.gosub = gosub
 	typed.action_index = action_index
 	typed.character_id = character_id
 	return ScenarioRuntimeContinuation.new(CLASSIC_PICK_LOCK, typed)
 
 
-static func thief_resolution(encounter_id: int, gosub: bool, action_index: int, character_id: String, phase: StringName, succeeded: bool, trap_pending: bool) -> ScenarioRuntimeContinuation:
+static func thief_resolution(encounter_id: int, gosub: bool, action_index: int, character_id: String, phase: StringName, succeeded: bool, trap_pending: bool, encounter_attempt: int = 0) -> ScenarioRuntimeContinuation:
 	var typed := ThiefBody.new()
 	typed.encounter_id = encounter_id
+	typed.encounter_attempt = encounter_attempt
 	typed.gosub = gosub
 	typed.action_index = action_index
 	typed.character_id = character_id
@@ -433,36 +443,39 @@ static func from_data(value: Variant) -> ScenarioRuntimeContinuation:
 
 static func _decode_encounter(continuation_kind: StringName, data: Dictionary) -> ScenarioRuntimeContinuation:
 	var encounter_id := _integer(data.get("encounterId"))
+	var encounter_attempt := _integer(data.get("encounterAttempt", 0))
 	# Classic encounter tables are zero-based; encounter 0 is ordinary authored
 	# content, not a missing identity.
-	if encounter_id < 0 or not data.get("gosub") is bool:
+	if encounter_id < 0 or encounter_attempt < 0 or not data.get("gosub") is bool:
 		return null
 	if continuation_kind == CLASSIC_COMPLEX_ENCOUNTER:
-		return encounter(continuation_kind, encounter_id, data["gosub"]) if data.size() == 2 else null
+		return encounter(continuation_kind, encounter_id, data["gosub"], [], encounter_attempt) if data.size() == (3 if data.has("encounterAttempt") else 2) else null
 	var indexes := _integers(data.get("optionIndexes"))
-	if data.size() != 3 or indexes.is_empty() or indexes.size() > 10:
+	if data.size() != (4 if data.has("encounterAttempt") else 3) or indexes.is_empty() or indexes.size() > 10:
 		return null
 	for index: int in indexes:
 		if index < 0:
 			return null
-	return encounter(continuation_kind, encounter_id, data["gosub"], indexes)
+	return encounter(continuation_kind, encounter_id, data["gosub"], indexes, encounter_attempt)
 
 
 static func _decode_thief(continuation_kind: StringName, data: Dictionary) -> ScenarioRuntimeContinuation:
 	var encounter_id := _integer(data.get("encounterId"))
-	if encounter_id < 0 or not data.get("gosub") is bool:
+	var encounter_attempt := _integer(data.get("encounterAttempt", 0))
+	var attempt_field_count := 1 if data.has("encounterAttempt") else 0
+	if encounter_id < 0 or encounter_attempt < 0 or not data.get("gosub") is bool:
 		return null
 	if continuation_kind == CLASSIC_THIEF_ENCOUNTER:
-		return thief_encounter(encounter_id, data["gosub"]) if data.size() == 2 else null
+		return thief_encounter(encounter_id, data["gosub"], encounter_attempt) if data.size() == 2 + attempt_field_count else null
 	var action_index := _integer(data.get("actionIndex"))
 	if action_index < 0 or action_index > 7 or not data.get("characterId") is String or data["characterId"].is_empty():
 		return null
 	if continuation_kind == CLASSIC_PICK_LOCK:
-		return pick_lock(encounter_id, data["gosub"], action_index, data["characterId"]) if data.size() == 4 and action_index in [2, 4, 6, 7] else null
+		return pick_lock(encounter_id, data["gosub"], action_index, data["characterId"], encounter_attempt) if data.size() == 4 + attempt_field_count and action_index in [2, 4, 6, 7] else null
 	var phase := StringName(data.get("phase", ""))
-	if data.size() != 7 or phase not in [&"action-message", &"trap-message"] or not data.get("succeeded") is bool or not data.get("trapPending") is bool:
+	if data.size() != 7 + attempt_field_count or phase not in [&"action-message", &"trap-message"] or not data.get("succeeded") is bool or not data.get("trapPending") is bool:
 		return null
-	return thief_resolution(encounter_id, data["gosub"], action_index, data["characterId"], phase, data["succeeded"], data["trapPending"])
+	return thief_resolution(encounter_id, data["gosub"], action_index, data["characterId"], phase, data["succeeded"], data["trapPending"], encounter_attempt)
 
 
 static func _decode_age(continuation_kind: StringName, data: Dictionary) -> ScenarioRuntimeContinuation:

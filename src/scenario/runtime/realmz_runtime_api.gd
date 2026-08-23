@@ -306,8 +306,10 @@ func _resume_simple_encounter(continuation: ScenarioRuntimeContinuation, respons
 	if selected == null:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Simple Encounter response index is outside the authored choices.")
 	_game_state.record_encounter_attempt(&"simple", encounter.id)
-	var context := ScenarioExecutionContext.encounter(&"simple", encounter.id, selected.id, selected_index)
-	return ScenarioRuntimeOperationResult.completed(selected.id, [DomainEvent.new(&"encounter_response_selected", {"encounterKind": "simple", "encounterId": encounter.id, "responseId": selected.id, "optionIndex": selected_index})], ScenarioVmDirective.branch_program(selected.result_program_id, choice_continuation.gosub, context))
+	var attempt := choice_continuation.encounter_attempt + 1
+	var context := ScenarioExecutionContext.encounter(&"simple", encounter.id, selected.id, selected_index).set_encounter_attempt(attempt)
+	var repeat := attempt < encounter.max_times
+	return ScenarioRuntimeOperationResult.completed(selected.id, [DomainEvent.new(&"encounter_response_selected", {"encounterKind": "simple", "encounterId": encounter.id, "responseId": selected.id, "optionIndex": selected_index, "attempt": attempt, "willRepeat": repeat})], ScenarioVmDirective.branch_encounter_result(selected.result_program_id, choice_continuation.gosub, context, repeat))
 
 
 func _resume_complex_encounter(continuation: ScenarioRuntimeContinuation, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
@@ -320,7 +322,8 @@ func _resume_complex_encounter(continuation: ScenarioRuntimeContinuation, respon
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Complex Encounter response requires an action.")
 	var action := String(selection.action)
 	var outcome := 0
-	var context := ScenarioExecutionContext.encounter(&"complex", encounter.id, "", -1, StringName(action))
+	var attempt := choice_continuation.encounter_attempt + 1
+	var context := ScenarioExecutionContext.encounter(&"complex", encounter.id, "", -1, StringName(action)).set_encounter_attempt(attempt)
 	var events: Array[DomainEvent] = []
 	match action:
 		"back":
@@ -352,21 +355,24 @@ func _resume_complex_encounter(continuation: ScenarioRuntimeContinuation, respon
 				return ScenarioRuntimeOperationResult.failed(&"item_not_owned", "The party does not possess the selected Complex Encounter item.")
 			outcome = _complex_catalog_outcome(encounter.item_ids(), encounter.item_results(), item_id)
 		"thief":
-			return _thief_operations.begin(encounter, choice_continuation.gosub, request_id)
+			return _thief_operations.begin(encounter, choice_continuation.gosub, request_id, choice_continuation.encounter_attempt)
 		_:
 			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Complex Encounter action '%s' is unavailable." % action)
+	if outcome == 4 and encounter.max_times > 1 and attempt >= encounter.max_times:
+		outcome = 3
 	if outcome < 1 or outcome > 4:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_encounter_outcome", "Complex Encounter produced invalid result %d." % outcome)
 	_game_state.record_encounter_attempt(&"complex", encounter.id)
-	events.append(DomainEvent.new(&"encounter_response_selected", {"encounterKind": "complex", "encounterId": encounter.id, "responseKind": action, "outcome": outcome}))
-	return _complex_outcome(encounter, outcome, choice_continuation.gosub, context, events)
+	var repeat := attempt < encounter.max_times
+	events.append(DomainEvent.new(&"encounter_response_selected", {"encounterKind": "complex", "encounterId": encounter.id, "responseKind": action, "outcome": outcome, "attempt": attempt, "willRepeat": repeat}))
+	return _complex_outcome(encounter, outcome, choice_continuation.gosub, context, events, repeat)
 
 
-func _complex_outcome(encounter: ComplexEncounterDefinition, outcome: int, gosub: bool, context: ScenarioExecutionContext, events: Array[DomainEvent] = []) -> ScenarioRuntimeOperationResult:
+func _complex_outcome(encounter: ComplexEncounterDefinition, outcome: int, gosub: bool, context: ScenarioExecutionContext, events: Array[DomainEvent] = [], repeat: bool = false) -> ScenarioRuntimeOperationResult:
 	var program_id := encounter.result_program_id(outcome)
 	if program_id.is_empty():
 		return ScenarioRuntimeOperationResult.failed(&"invalid_encounter_outcome", "Complex Encounter result is outside 1 through 4.")
-	return ScenarioRuntimeOperationResult.completed(outcome, events, ScenarioVmDirective.branch_program(program_id, gosub, context))
+	return ScenarioRuntimeOperationResult.completed(outcome, events, ScenarioVmDirective.branch_encounter_result(program_id, gosub, context, repeat))
 
 
 func _complex_word_outcome(encounter: ComplexEncounterDefinition, entered_word: String) -> int:
