@@ -115,7 +115,7 @@ func _resolve_character_spell_monster_target(caster_level: int, target: MonsterS
 		return _clear_condition(target.conditions, cured_condition, spell_cost, duration)
 	var saved := false
 	var damage_type := absi(spell.damage_type)
-	if damage_type > 0 and damage_type <= 6:
+	if damage_type > 0 and damage_type < 8:
 		var save_roll := rng.draw(100, &"magic.damage-save")
 		# savevs consumes its roll first, then forces failure when cannot > 1.
 		saved = spell.cannot <= 1 and save_roll <= (target.save_value(damage_type - 1) if target.has_runtime_saves() else target_definition.save_value(damage_type - 1))
@@ -125,7 +125,7 @@ func _resolve_character_spell_monster_target(caster_level: int, target: MonsterS
 			damage /= 2
 		if damage > 0 and target.conditions.is_active(ConditionRules.FIRE_PROTECTION + damage_type - 1):
 			damage /= 2
-	var save_modifier := (target.save_value(damage_type - 1) if target.has_runtime_saves() else target_definition.save_value(damage_type - 1)) if damage_type > 0 and damage_type <= 6 else 0
+	var save_modifier := (target.save_value(damage_type - 1) if target.has_runtime_saves() else target_definition.save_value(damage_type - 1)) if damage_type > 0 and damage_type < 8 else 0
 	if save_modifier < 0:
 		damage = int(float(damage) * (1.0 + float(absi(save_modifier)) / 100.0))
 	if rolled_damage != 0 and damage == 0:
@@ -149,7 +149,7 @@ func _resolve_character_spell_character_target(caster: CharacterState, target: C
 		return _clear_condition(target.conditions, cured_condition, 0, duration)
 	var saved := false
 	var damage_type := absi(spell.damage_type)
-	if damage_type > 0 and damage_type <= 6:
+	if damage_type > 0 and damage_type < 8:
 		var save_roll := rng.draw(100, &"magic.damage-save")
 		saved = spell.cannot <= 1 and save_roll <= target.save_value(damage_type - 1)
 		if saved and rolled_damage == 0:
@@ -338,7 +338,7 @@ func _resolve_monster_spell_character_target(caster_level: int, target: Characte
 		return _clear_condition(target.conditions, cured_condition, spell_cost, duration)
 	var saved := false
 	var damage_type := absi(spell.damage_type)
-	if damage_type > 0 and damage_type <= 6:
+	if damage_type > 0 and damage_type < 8:
 		var save_roll := rng.draw(100, save_tag)
 		saved = spell.cannot <= 1 and save_roll <= target.save_value(damage_type - 1)
 		if saved:
@@ -366,14 +366,14 @@ func _resolve_monster_spell_monster_target(caster_level: int, target: MonsterSta
 		return _clear_condition(target.conditions, cured_condition, spell_cost, duration)
 	var saved := false
 	var damage_type := absi(spell.damage_type)
-	if damage_type > 0 and damage_type <= 6:
+	if damage_type > 0 and damage_type < 8:
 		var save_roll := rng.draw(100, save_tag)
 		saved = spell.cannot <= 1 and save_roll <= (target.save_value(damage_type - 1) if target.has_runtime_saves() else target_definition.save_value(damage_type - 1))
 		if saved:
 			damage /= 2
 		if damage > 0 and target.conditions.is_active(ConditionRules.FIRE_PROTECTION + damage_type - 1):
 			damage /= 2
-	var save_modifier := (target.save_value(damage_type - 1) if target.has_runtime_saves() else target_definition.save_value(damage_type - 1)) if damage_type > 0 and damage_type <= 6 else 0
+	var save_modifier := (target.save_value(damage_type - 1) if target.has_runtime_saves() else target_definition.save_value(damage_type - 1)) if damage_type > 0 and damage_type < 8 else 0
 	if save_modifier < 0:
 		damage = int(float(damage) * (1.0 + float(absi(save_modifier)) / 100.0))
 	if rolled_damage != 0 and damage == 0:

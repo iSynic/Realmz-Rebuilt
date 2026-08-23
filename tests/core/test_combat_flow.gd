@@ -3,10 +3,19 @@ var _cached_battle_world: WorldDefinition
 
 
 func run() -> void:
-	_test_public_tactical_reaction_matrix(); _test_public_magic_matrix()
+	_test_public_tactical_reaction_matrix(); _test_public_magic_matrix(); _test_war_immediate_spell_matrix()
 	_test_public_repeated_combat_item()
 	_test_public_monster_turn_matrix(); _test_public_continuation_fumble_terminal_matrix()
 	_test_public_command_automation_matrix()
+
+
+func _test_war_immediate_spell_matrix() -> void:
+	var rules := RealmzRules.new(); var damage_type_seven := _combat_spell("spell.war-damage-type-seven", 1, 6); damage_type_seven.damage_type = 7; var target_definition := _monster_definition("monster.war-damage-type-seven", []); var caster := _character("character.war-damage-type-seven"); caster.set_known_spells([damage_type_seven.id]); caster.maximum_spell_attacks = 1; caster.spell_points = 20
+	var target := MonsterState.new("monster.war-damage-type-seven.instance", target_definition.id, target_definition.name, 20, 20, 1); var state := _state(caster, target, "battle.war-damage-type-seven"); var content := _content([target_definition], [], [], [], [damage_type_seven]); var cast := rules.combat_flow.cast_spell(state, content, caster.id, target.id, damage_type_seven.id, 1, _zeros(16))
+	assert_equal([cast.ok, target.current_health, caster.spell_points], [true, 14, 18], "War non-elemental damage type seven uses the ordinary public combat cast and payment path")
+	assert_true(cast.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved" and event.payload.get("damage") == 6), "damage type seven publishes its resolved amount through the ordinary combat event")
+	var monster_spell := _combat_spell("spell.war-monster-damage-type-seven", 1, 5); monster_spell.damage_type = 7; var caster_definition := _monster_spell_definition("monster.war-damage-type-seven-caster", monster_spell.id, 100); var monster_caster := MonsterState.new("monster.war-damage-type-seven-caster.instance", caster_definition.id, caster_definition.name, 20, 20, 4, 1, 0, 0, 20); var party_target := _character("character.war-damage-type-seven-target"); var monster_state := _state(party_target, monster_caster, "battle.war-monster-damage-type-seven"); var monster_result := rules.combat_flow.submit_action(monster_state, _content([caster_definition], [], [], [], [monster_spell]), party_target.id, &"finish", "", _zeros(64))
+	assert_true(monster_result.ok and monster_result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved" and event.payload.get("source") == "classic-monster" and event.payload.get("damage") == 5), "monster AI recognizes and resolves the same War damage type seven capability")
 
 
 func _test_public_tactical_reaction_matrix() -> void:
@@ -352,17 +361,8 @@ func _monster_spell_definition(definition_id: String, spell_id: String, cast_per
 
 func _combat_spell(spell_id: String, target_type: int, damage: int) -> SpellDefinition:
 	var result := SpellDefinition.new(spell_id, 1306, "Combat Test Spell")
-	result.in_combat = true
-	result.target_type = target_type
-	result.spell_class = 1
-	result.damage_type = 1
-	result.cannot = 3
-	result.cost = 2
-	result.range_min = 15
-	result.duration_min = 1
-	result.duration_max = 1
-	result.damage_min = damage
-	result.damage_max = damage
+	result.in_combat = true; result.target_type = target_type; result.spell_class = 1; result.damage_type = 1; result.cannot = 3; result.cost = 2; result.range_min = 15
+	result.duration_min = 1; result.duration_max = 1; result.damage_min = damage; result.damage_max = damage
 	return result
 
 
