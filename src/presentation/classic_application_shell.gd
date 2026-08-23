@@ -131,6 +131,7 @@ func _ready() -> void:
 	_router.system_action_requested.connect(_on_system_action_requested)
 	_router.presentation_setting_changed.connect(_on_presentation_setting_changed)
 	_party_roster.character_selected.connect(_on_character_selected)
+	_party_roster.character_activated.connect(_on_character_activated)
 	_party_roster.combat_auto_changed.connect(_on_combat_auto_changed)
 	_party_roster.character_selection_completed.connect(func(character_ids: Array[String]) -> void: character_selection_completed.emit(character_ids))
 	_party_roster.combat_spell_cast_requested.connect(func(option: InteractionRequestValue.CastOption) -> void: combat_spell_cast_requested.emit(option))
@@ -176,8 +177,8 @@ func present(game_view: GameView) -> void:
 	_light_label.text = "Light %d" % game_view.party_summary.light_remaining if game_view.party_summary != null else "Light —"
 	_apply_exploration_mode()
 	_package_status.text = game_view.campaign_summary.title if game_view.campaign_summary != null else game_view.campaign_id
-	if _selected_character_id.is_empty() and not game_view.party_members.is_empty():
-		_selected_character_id = game_view.party_members[0].id
+	if not game_view.party_members.any(func(character: CharacterView) -> bool: return character.id == _selected_character_id):
+		_on_character_selected(game_view.party_members[0].id if not game_view.party_members.is_empty() else "")
 	var ordinary_exploration_update: bool = previous_view != null and game_view.domain_revisions.is_ordinary_exploration_update_from(previous_view.domain_revisions)
 	if not ordinary_exploration_update:
 		# Party setup owns its six-slot assembly pane and covers the persistent
@@ -902,6 +903,11 @@ func _on_presentation_setting_changed(setting_id: StringName, value: Variant) ->
 
 func _on_character_selected(character_id: String) -> void:
 	_selected_character_id = character_id
+	_router.select_character(character_id)
+
+
+func _on_character_activated(character_id: String) -> void:
+	_on_character_selected(character_id)
 	if _router.current_screen() == &"inventory" and _router.select_inventory_character(character_id):
 		return
 	_router.open_screen(&"character")

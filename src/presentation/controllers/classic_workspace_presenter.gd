@@ -176,6 +176,10 @@ func select_inventory_character(character_id: String) -> bool:
 	return _inventory_controller.select_roster_character(character_id, _view)
 
 
+func select_character(character_id: String) -> bool:
+	return _character_controller.select_character(character_id, _view)
+
+
 func sync_route_audio(screen_id: StringName) -> void:
 	var service_interaction_open := _view != null and _view.pending_interaction != null and _view.pending_interaction.kind in [InteractionRequest.SHOP, InteractionRequest.TEMPLE, InteractionRequest.BANK]
 	var should_be_open := screen_id == &"services" and _view != null and _view.session_started and not service_interaction_open

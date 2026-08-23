@@ -44,6 +44,16 @@ func reset() -> void:
 	_vault_media = null
 
 
+func select_character(character_id: String, view: GameView) -> bool:
+	if view == null:
+		return false
+	for character: CharacterView in view.party_members:
+		if character.id == character_id:
+			_selected_character_id = character_id
+			return true
+	return false
+
+
 func set_vault_revisions(revisions: Array[CharacterVaultRevisionView]) -> void:
 	_vault_revisions = revisions.duplicate()
 

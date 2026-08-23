@@ -394,6 +394,14 @@ func select_inventory_character(character_id: String) -> bool:
 	return true
 
 
+func select_character(character_id: String) -> bool:
+	if not _workspace_presenter.select_character(character_id):
+		return false
+	if _screen_id == &"character":
+		_render_screen()
+	return true
+
+
 func _build_body() -> void:
 	_mount_workspace(_screen_id)
 

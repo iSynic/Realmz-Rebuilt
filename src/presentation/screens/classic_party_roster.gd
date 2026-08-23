@@ -5,6 +5,7 @@ const ClassicSpellLevelScript := preload("res://src/presentation/classic_spell_l
 const SpellTargetBadge := preload("res://src/presentation/classic_spell_target_badge.gd")
 
 signal character_selected(character_id: String)
+signal character_activated(character_id: String)
 signal combat_auto_changed(character_id: String, enabled: bool)
 signal character_selection_completed(character_ids: Array[String])
 signal combat_spell_cast_requested(option: InteractionRequestValue.CastOption)
@@ -488,14 +489,21 @@ func _add_character(character: CharacterView, combat_active: bool, auto_characte
 	row_container.custom_minimum_size.y = 54.0
 	row_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row_container.add_theme_constant_override("separation", 3)
+	if not character_selection_active():
+		var marker := ColorRect.new()
+		marker.name = "CurrentCharacterMarker"
+		marker.custom_minimum_size.x = 6.0
+		marker.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		marker.color = Color("e0bc53") if character.id == _selected_character_id else Color.TRANSPARENT
+		marker.set_meta("character_id", character.id)
+		row_container.add_child(marker)
 	var row := Button.new()
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.set_meta("character_id", character.id)
 	row.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	row.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	row.add_theme_constant_override("icon_max_width", 42)
-	row.toggle_mode = not character_selection_active()
-	row.button_pressed = not character_selection_active() and character.id == _selected_character_id
+	row.toggle_mode = false
 	row.tooltip_text = "Level %d • %s / %s • Movement %d/%d" % [character.level, character.race_name, character.caste_name, character.movement, character.maximum_movement]
 	var selection_eligible := _selection_eligible_ids.has(character.id)
 	if character_selection_active() and not selection_eligible:
@@ -514,6 +522,9 @@ func _add_character(character: CharacterView, combat_active: bool, auto_characte
 	]
 	if not condition_text.is_empty():
 		row.tooltip_text += " • %s" % condition_text
+	row.set_meta("base_tooltip", row.tooltip_text)
+	if not character_selection_active():
+		row.tooltip_text += " • Current character; click to open its record." if character.id == _selected_character_id else " • Click to make this the current character."
 	var portrait := _portrait_texture(character.portrait_id)
 	if portrait != null:
 		row.icon = portrait
@@ -521,8 +532,13 @@ func _add_character(character: CharacterView, combat_active: bool, auto_characte
 		if character_selection_active():
 			_toggle_character_selection(character.id)
 			return
+		var already_selected := character.id == _selected_character_id
 		_selected_character_id = character.id
-		character_selected.emit(character.id)
+		_update_current_character_markers()
+		if already_selected:
+			character_activated.emit(character.id)
+		else:
+			character_selected.emit(character.id)
 	)
 	row_container.add_child(row)
 	if character_selection_active():
@@ -555,6 +571,14 @@ func _add_character(character: CharacterView, combat_active: bool, auto_characte
 		)
 		row_container.add_child(auto_toggle)
 	_party_list.add_child(row_container)
+
+
+func _update_current_character_markers() -> void:
+	for marker: Node in _party_list.find_children("CurrentCharacterMarker", "ColorRect", true, false):
+		(marker as ColorRect).color = Color("e0bc53") if String(marker.get_meta("character_id")) == _selected_character_id else Color.TRANSPARENT
+	for row: Node in _party_list.find_children("*", "Button", true, false):
+		if row.has_meta("character_id"):
+			(row as Button).tooltip_text = String(row.get_meta("base_tooltip")) + (" • Current character; click to open its record." if String(row.get_meta("character_id")) == _selected_character_id else " • Click to make this the current character.")
 
 
 static func _combat_auto_tooltip(enabled: bool, available: bool) -> String:
