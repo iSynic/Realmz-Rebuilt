@@ -13,17 +13,17 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Current parity-convergence batch
 
-**AOGM progression and exchange workspaces** (`aogm-progression-exchange-workspaces`)
+**War immediate spell mechanics** (`war-immediate-spell-mechanics`)
 
-Fresh ordinary AOGM play exposed one progression guard defect and two adjacent Castle-shaped exchange workspace gaps. Learn Spells permits an impossible over-budget temporary selection before authoritative rejection; Trade hides the destination inventory behind a recipient form; and Shop separates stock from the active character's carried inventory and omits the source category controls. This three-workflow certification batch keeps the existing typed mutations authoritative while making every unaffordable spell and every item transfer legible before submission. The ordinary-play targets are one level spell choice below budget, one bidirectional item trade, and one filtered buy/sell lifecycle.
+A fresh Providence War feature report and package capability probe exposed three immediate source-defined spell families that the runtime preserved but rejected: ordinary damage type seven, special 49 death magic, and special 59 spell-point restoration. They share the combat cast, automatic-action, and terminal-resolution boundaries, so this batch closes them through one deterministic resolver path while retaining exact save/protection ordering. The ordinary-play targets are one representative War cast from each family, including a restored-energy target and any death-triggered terminal outcome.
 
 Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.rewards.experience-level-up` | certification | aogm-major-partial | aogm-ordinary |  |
-| `classic.inventory.trade-item` | certification | aogm-major-partial | aogm-ordinary |  |
-| `classic.services.shop` | implementation | aogm-major-partial | - |  |
+| `classic.spellcasting.combat-cast` | implementation | war-prerequisite | - |  |
+| `classic.combat.auto-turn` | certification | war-prerequisite | other-ordinary |  |
+| `classic.combat.resolve-outcome` | implementation | war-prerequisite | - |  |
 
 ### Batch count delta
 
