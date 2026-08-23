@@ -12,6 +12,8 @@ var _media: ClassicMediaCatalog
 var _spell_buttons: Dictionary = {}
 var _selected_spell_ids: Array[String] = []
 var _selection_summary: Label
+var _selection_warning: Label
+var _confirm_button: Button
 var _spell_record_title: Label
 var _spell_record_cost: Label
 var _spell_record_state: Label
@@ -150,6 +152,9 @@ func _build_spell_selection(body: InteractionRequest.LevelUpRequestBody) -> void
 	var action_content := _pane(columns, "LevelSpellAllowance", "Spell Record", 0.9)
 	_selection_summary = _label("", CYAN, 16)
 	action_content.add_child(_selection_summary)
+	_selection_warning = _label("", MUTED, 13)
+	_selection_warning.name = "LevelSpellBudgetNotice"
+	action_content.add_child(_selection_warning)
 	var record := PanelContainer.new()
 	record.name = "LevelSelectedSpellRecord"
 	record.theme_type_variation = &"ClassicInset"
@@ -168,14 +173,14 @@ func _build_spell_selection(body: InteractionRequest.LevelUpRequestBody) -> void
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	action_content.add_child(spacer)
-	var confirm := Button.new()
-	confirm.name = "LevelSpellConfirm"
-	confirm.text = "Confirm spell selection"
-	confirm.theme_type_variation = &"ClassicTheldrowButton"
-	confirm.custom_minimum_size.y = 44.0
-	confirm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	confirm.pressed.connect(_submit_spells.bind(body))
-	action_content.add_child(confirm)
+	_confirm_button = Button.new()
+	_confirm_button.name = "LevelSpellConfirm"
+	_confirm_button.text = "Confirm spell selection"
+	_confirm_button.theme_type_variation = &"ClassicTheldrowButton"
+	_confirm_button.custom_minimum_size.y = 44.0
+	_confirm_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_confirm_button.pressed.connect(_submit_spells.bind(body))
+	action_content.add_child(_confirm_button)
 	if not body.spells.is_empty():
 		var initial_spell := _first_spell_at_level(body, _selected_level)
 		_refresh_spell_record(initial_spell)
@@ -213,8 +218,13 @@ func _rebuild_spell_list(body: InteractionRequest.LevelUpRequestBody) -> void:
 	_spell_buttons.clear()
 	var spells := _spells_at_level(body, _selected_level)
 	_spell_list_heading.text = "Level %d — Available Spells" % _selected_level
+	var spent := _selected_spell_points(body)
+	var remaining := maxi(body.point_total - spent, 0)
 	for spell: InteractionRequestValue.SpellChoice in spells:
-		var button := SpellSelectionChrome.spell_button("LevelSpell_%s" % spell.id, "%s  •  %d point%s" % [spell.name, spell.cost, "" if spell.cost == 1 else "s"], _selected_spell_ids.has(spell.id), true, spell.name, _toggle_spell.bind(body, spell.id), _spell_icon(body.character_id, spell.id))
+		var selected := _selected_spell_ids.has(spell.id)
+		var affordable := selected or spell.cost <= remaining
+		var tooltip := spell.name if affordable else "%s costs %d points; only %d remain." % [spell.name, spell.cost, remaining]
+		var button := SpellSelectionChrome.spell_button("LevelSpell_%s" % spell.id, "%s  •  %d point%s" % [spell.name, spell.cost, "" if spell.cost == 1 else "s"], selected, affordable, tooltip, _toggle_spell.bind(body, spell.id), _spell_icon(body.character_id, spell.id))
 		button.theme_type_variation = &"ClassicTheldrowButton"
 		button.set_meta(&"spell_id", spell.id)
 		_spell_buttons[spell.id] = button
@@ -257,6 +267,11 @@ func _toggle_spell(body: InteractionRequest.LevelUpRequestBody, spell_id: String
 	if button == null:
 		return
 	if button.button_pressed and not _selected_spell_ids.has(spell_id):
+		var spell := _spell_choice(body, spell_id)
+		if spell == null or _selected_spell_points(body) + spell.cost > body.point_total:
+			button.button_pressed = false
+			_refresh_spell_selection(body)
+			return
 		_selected_spell_ids.append(spell_id)
 	elif not button.button_pressed:
 		_selected_spell_ids.erase(spell_id)
@@ -270,11 +285,38 @@ func _toggle_spell(body: InteractionRequest.LevelUpRequestBody, spell_id: String
 func _refresh_spell_selection(body: InteractionRequest.LevelUpRequestBody) -> void:
 	if _selection_summary == null:
 		return
+	var points := _selected_spell_points(body)
+	var remaining := body.point_total - points
+	_selection_summary.text = "Selected %d / %d points" % [points, body.point_total]
+	if _selection_warning != null:
+		_selection_warning.text = "Selection exceeds the allowance by %d points. Remove a selected spell to continue." % -remaining if remaining < 0 else "%d point%s may be banked for later." % [remaining, "" if remaining == 1 else "s"]
+		_selection_warning.add_theme_color_override("font_color", Color("e58b72") if remaining < 0 else MUTED)
+	if _confirm_button != null:
+		_confirm_button.disabled = remaining < 0
+		_confirm_button.tooltip_text = "Remove selected spells until the total is within the allowance." if remaining < 0 else "Confirm this selection; unspent points will be banked."
+	for spell: InteractionRequestValue.SpellChoice in body.spells:
+		var button := _spell_buttons.get(spell.id) as Button
+		if button == null:
+			continue
+		var selected := _selected_spell_ids.has(spell.id)
+		button.button_pressed = selected
+		button.disabled = not selected and spell.cost > maxi(remaining, 0)
+		button.tooltip_text = spell.name if not button.disabled else "%s costs %d points; only %d remain." % [spell.name, spell.cost, maxi(remaining, 0)]
+
+
+func _selected_spell_points(body: InteractionRequest.LevelUpRequestBody) -> int:
 	var points := 0
 	for spell: InteractionRequestValue.SpellChoice in body.spells:
 		if _selected_spell_ids.has(spell.id):
 			points += spell.cost
-	_selection_summary.text = "Selected %d / %d points" % [points, body.point_total]
+	return points
+
+
+func _spell_choice(body: InteractionRequest.LevelUpRequestBody, spell_id: String) -> InteractionRequestValue.SpellChoice:
+	for spell: InteractionRequestValue.SpellChoice in body.spells:
+		if spell.id == spell_id:
+			return spell
+	return null
 
 
 func _refresh_spell_record(spell: InteractionRequestValue.SpellChoice) -> void:
@@ -286,6 +328,9 @@ func _refresh_spell_record(spell: InteractionRequestValue.SpellChoice) -> void:
 
 
 func _submit_spells(body: InteractionRequest.LevelUpRequestBody) -> void:
+	if _selected_spell_points(body) > body.point_total:
+		_refresh_spell_selection(body)
+		return
 	var selected_ids: Array[String] = []
 	for spell: InteractionRequestValue.SpellChoice in body.spells:
 		if _selected_spell_ids.has(spell.id):

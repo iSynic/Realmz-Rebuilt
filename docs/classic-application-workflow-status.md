@@ -21,7 +21,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.rewards.experience-level-up` | certification | aogm-major-partial | aogm-ordinary | GAP-REWARD-002 |
+| `classic.rewards.experience-level-up` | certification | aogm-major-partial | aogm-ordinary |  |
 | `classic.inventory.trade-item` | certification | aogm-major-partial | aogm-ordinary | GAP-INV-004 |
 | `classic.services.shop` | implementation | aogm-major-partial | - | GAP-SVC-009 |
 
@@ -142,7 +142,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 
 ## Release blockers and major gaps
 
-Blockers: **1**. Major gaps: **15**.
+Blockers: **1**. Major gaps: **14**.
 
 - **blocker** `host.release.platform-certification` - There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
 - **major** `classic.character.allies-bestiary` - Current held-over allies now have a functional read-only workspace, but the Bestiary cannot be reconstructed from the package because menu visibility and normalized descriptions are not preserved per monster. Next: Correct Providence schema v3 and Rebuilt decoding to preserve every menu-visible monster, its description, and not-on-menu flag, then add the Bestiary route without inventing discovery state.
@@ -153,7 +153,6 @@ Blockers: **1**. Major gaps: **15**.
 - **major** `classic.inventory.use-item` - Ordinary AOGM play proves fixed-power party-state items and saveable field scroll consumption. Combat items and scrolls include source-backed fixed or random power plus actor, ordered repeated actor, group, ray, rotatable persistent-area, and zero-cost elemental projectile targets; door/XAP items and broader specials remain explicit. Next: Characterize door/XAP items and broader specials only when parity or a reachable campaign requires them.
 - **major** `classic.maps.location-notes` - Historical notes are readable in source order but do not yet recreate Castle's temporary map recentering and saved darkness view. Next: Add a mutation-free note browser derived from authoritative topology and the saved darkness value, then verify land and dungeon records through MCP.
 - **major** `classic.maps.view-acquired` - Exact dungeon player-map composition is not yet proven against Castle. Next: Capture one synthetic Castle dungeon player map and compare wall, door, secret, and party-marker pixels before declaring exact presentation parity.
-- **major** `classic.rewards.experience-level-up` - Learn Spells allows temporary selections beyond the detached Classic point budget and only rejects them after Confirm. Next: Keep selected spells removable, disable every unselected spell whose cost exceeds the remaining budget, disable Confirm with an explicit over-budget warning if an invalid state is restored, and allow confirmation with unspent points.
 - **major** `classic.scenario.complex-interaction` - The dedicated thief menu and timed Pick Lock flow are source-shaped; trap spell resolution and controlled Castle/UI acceptance remain incomplete. Next: Route the trap spell through the source-backed application spell effect, then run a controlled Castle comparison and ordinary campaign UI acceptance.
 - **major** `classic.services.shop` - Shop does not present the shop stock and active character inventory as paired item ledgers and omits Castle's stock-category filter strip. Next: Use one shared two-ledger exchange composition with stock filters, active-character portrait switching, detached price/load facts, and existing typed buy, sell, identify, and leave responses.
 - **major** `classic.spellcasting.combat-cast` - Manual, fixed-power scroll, charged-item, Party Auto, and monster casting share source-backed condition-cure, single-target friendly condition-effect, summoning, multi-actor ray, rotated-area, persistent-field, hostile-group, Flame Missile, and zero-cost breath resolution. Every application spell has one mechanical-family and per-source disposition; only the remaining special-effect families stay explicit pending capabilities. Next: Implement the next AOGM-reachable unresolved special-effect family while keeping every unavailable family explicit.
@@ -177,7 +176,6 @@ Blockers: **1**. Major gaps: **15**.
 ### aogm
 
 - `classic.inventory.trade-item` - Trade replaces the selected-item record with a recipient form instead of showing both characters' carried-item tables and one explicit transfer boundary.
-- `classic.rewards.experience-level-up` - Learn Spells allows temporary selections beyond the detached Classic point budget and only rejects them after Confirm.
 - `classic.services.shop` - Shop does not present the shop stock and active character inventory as paired item ledgers and omits Castle's stock-category filter strip.
 
 ### other-campaign
