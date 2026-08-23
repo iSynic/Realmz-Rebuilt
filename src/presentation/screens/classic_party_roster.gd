@@ -12,6 +12,9 @@ signal combat_spell_cast_requested(option: InteractionRequestValue.CastOption)
 signal combat_spellbook_back_requested
 
 const MUTED := Color("9da8aa")
+const SPELLBOOK_POWER_HEIGHT := 22.0
+const SPELLBOOK_POWER_LABEL_WIDTH := 60.0
+const SPELLBOOK_POWER_BUTTON_WIDTH := 20.0
 
 @onready var _party_list: VBoxContainer = %PartyList
 @onready var _heading: Label = %Heading
@@ -262,7 +265,7 @@ func _refresh_spellbook_power_choices() -> void:
 		child.queue_free()
 	var power_art := TextureRect.new()
 	power_art.texture = ClassicUiAssetCatalog.texture(&"spells.label.power")
-	power_art.custom_minimum_size = Vector2(80.0, 24.0)
+	power_art.custom_minimum_size = Vector2(SPELLBOOK_POWER_LABEL_WIDTH, SPELLBOOK_POWER_HEIGHT)
 	power_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	power_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	power_art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -276,8 +279,13 @@ func _refresh_spellbook_power_choices() -> void:
 		representatives.append(option)
 	for option: InteractionRequestValue.CastOption in representatives:
 		var button := Button.new()
+		button.name = "CombatSpellPower%d" % option.power
 		button.text = str(option.power)
 		button.tooltip_text = "Power %d • %d SP" % [option.power, option.cost]
+		button.accessibility_name = "Power %d" % option.power
+		button.custom_minimum_size = Vector2(SPELLBOOK_POWER_BUTTON_WIDTH, SPELLBOOK_POWER_HEIGHT)
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.add_theme_font_size_override("font_size", 12)
 		button.toggle_mode = true
 		button.set_meta("cast_option", option)
 		button.pressed.connect(func() -> void: _select_spellbook_power(option))
