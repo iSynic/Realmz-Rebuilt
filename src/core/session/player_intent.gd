@@ -91,17 +91,19 @@ class SpellPayload:
 	var caster_id: String
 	var target_id: String
 	var target_ids: Array[String]
+	var target_coordinates: Array[Vector2i]
 	var power: int
 	var coordinate: Vector2i
 	var rotation: int
 	var scroll_slot: int
 
-	func _init(operation_value: StringName, spell: String, caster: String, target: String = "", targets: Array[String] = [], power_value: int = 1, target_coordinate: Vector2i = Vector2i(-100_000, -100_000), area_rotation: int = 0, slot: int = -1) -> void:
+	func _init(operation_value: StringName, spell: String, caster: String, target: String = "", targets: Array[String] = [], power_value: int = 1, target_coordinate: Vector2i = Vector2i(-100_000, -100_000), area_rotation: int = 0, slot: int = -1, coordinates: Array[Vector2i] = []) -> void:
 		operation = operation_value
 		spell_id = spell
 		caster_id = caster
 		target_id = target
 		target_ids = targets.duplicate()
+		target_coordinates = coordinates.duplicate()
 		power = power_value
 		coordinate = target_coordinate
 		rotation = area_rotation
@@ -370,12 +372,20 @@ static func use_scroll_on_target(caster_id: String, slot_index: int, target_comb
 	return PlayerIntent.new(Kind.CAST_SPELL, SpellPayload.new(&"use-scroll", "", caster_id, target_combatant_id, target_combatant_ids, 1, coordinate, area_rotation, slot_index))
 
 
+static func use_scroll_at_coordinates(caster_id: String, slot_index: int, coordinates: Array[Vector2i]) -> PlayerIntent:
+	return PlayerIntent.new(Kind.CAST_SPELL, SpellPayload.new(&"use-scroll", "", caster_id, "", [], 1, Vector2i(-100_000, -100_000), 0, slot_index, coordinates))
+
+
 static func cast_spell_at(spell_id: String, caster_id: String, coordinate: Vector2i, power: int = 1, area_rotation: int = 0) -> PlayerIntent:
 	return PlayerIntent.new(Kind.CAST_SPELL, SpellPayload.new(&"cast", spell_id, caster_id, "", [], power, coordinate, area_rotation))
 
 
 static func cast_spell_at_targets(spell_id: String, caster_id: String, target_combatant_ids: Array[String], power: int = 1) -> PlayerIntent:
 	return PlayerIntent.new(Kind.CAST_SPELL, SpellPayload.new(&"cast", spell_id, caster_id, "", target_combatant_ids, power))
+
+
+static func cast_spell_at_coordinates(spell_id: String, caster_id: String, coordinates: Array[Vector2i], power: int = 1) -> PlayerIntent:
+	return PlayerIntent.new(Kind.CAST_SPELL, SpellPayload.new(&"cast", spell_id, caster_id, "", [], power, Vector2i(-100_000, -100_000), 0, -1, coordinates))
 
 
 static func set_fast_spell(caster_id: String, slot_index: int, spell_id: String = "", power: int = 0) -> PlayerIntent:

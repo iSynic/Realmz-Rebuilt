@@ -314,6 +314,7 @@ class CombatBody:
 	var has_target_coordinate: bool
 	var rotation: int
 	var target_ids: Array[String]
+	var target_coordinates: Array[Vector2i]
 	var item_instance_id: String
 	var scroll_slot: int
 
@@ -341,6 +342,7 @@ class CombatBody:
 		result.has_target_coordinate = has_target_coordinate
 		result.rotation = rotation
 		result.target_ids = target_ids.duplicate()
+		result.target_coordinates = target_coordinates.duplicate()
 		result.item_instance_id = item_instance_id
 		result.scroll_slot = scroll_slot
 		return result
@@ -361,6 +363,8 @@ class CombatBody:
 			data["rotation"] = rotation
 		if not target_ids.is_empty():
 			data["targetIds"] = target_ids.duplicate()
+		if not target_coordinates.is_empty():
+			data["targetCoordinates"] = target_coordinates.map(func(coordinate: Vector2i) -> Array[int]: return [coordinate.x, coordinate.y])
 		if not item_instance_id.is_empty():
 			data["itemInstanceId"] = item_instance_id
 		if scroll_slot >= 0:
@@ -540,7 +544,7 @@ static func _body_from_data(response_kind: StringName, data: Dictionary) -> Body
 				spell_ids.append(value)
 			return LevelUpBody.new(StringName(data.get("action", "")), String(data.get("characterId", "")), spell_ids)
 		InteractionRequest.COMBAT:
-			if not _fields_are_exact(data, ["actorId", "action", "targetId", "enabled", "destination", "autoSwitchToMelee", "spellId", "power", "targetCoordinate", "rotation", "targetIds", "itemInstanceId", "scrollSlot"], ["actorId", "action", "targetId"]):
+			if not _fields_are_exact(data, ["actorId", "action", "targetId", "enabled", "destination", "autoSwitchToMelee", "spellId", "power", "targetCoordinate", "targetCoordinates", "rotation", "targetIds", "itemInstanceId", "scrollSlot"], ["actorId", "action", "targetId"]):
 				return null
 			if not data["actorId"] is String or not _is_string_value(data["action"]) or not data["targetId"] is String:
 				return null
@@ -551,7 +555,9 @@ static func _body_from_data(response_kind: StringName, data: Dictionary) -> Body
 				return null
 			if data.has("destination") and not _coordinate_is_valid(data["destination"]) or data.has("targetCoordinate") and not _coordinate_is_valid(data["targetCoordinate"]):
 				return null
-			if data.has("targetIds") and not data["targetIds"] is Array:
+			if data.has("targetIds") and not data["targetIds"] is Array or data.has("targetCoordinates") and not data["targetCoordinates"] is Array:
+				return null
+			if data.has("targetCoordinate") and data.has("targetCoordinates") or data.has("targetIds") and data.has("targetCoordinates"):
 				return null
 			combat.enabled = data.get("enabled", false)
 			if data.get("destination") is Array and data["destination"].size() == 2:
@@ -568,6 +574,10 @@ static func _body_from_data(response_kind: StringName, data: Dictionary) -> Body
 				if not value is String:
 					return null
 				combat.target_ids.append(value)
+			for value: Variant in data.get("targetCoordinates", []):
+				if not _coordinate_is_valid(value):
+					return null
+				combat.target_coordinates.append(Vector2i(int(value[0]), int(value[1])))
 			combat.item_instance_id = String(data.get("itemInstanceId", ""))
 			combat.scroll_slot = int(data.get("scrollSlot", -1))
 			return combat

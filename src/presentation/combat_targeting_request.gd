@@ -17,4 +17,4 @@ func _init(target_mode: StringName, body: InteractionResponse.CombatBody) -> voi
 
 
 func is_valid() -> bool:
-	return mode in [&"combatant", &"sequence", &"area"] and response_body != null and response_body.is_valid()
+	return mode in [&"combatant", &"sequence", &"area", &"coordinate_sequence"] and response_body != null and response_body.is_valid()

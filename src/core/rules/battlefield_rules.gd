@@ -52,6 +52,16 @@ func coordinate_target_is_valid(battlefield: BattlefieldState, terrain_set: Batt
 	return distance >= 0 and distance <= maximum_range and (not require_line_of_sight or has_line_of_sight_to_coordinate(battlefield, terrain_set, actor_id, destination))
 
 
+func monster_footprint_is_open(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, anchor: Vector2i, size: int, additionally_occupied: Dictionary = {}) -> bool:
+	if battlefield == null or terrain_set == null or size < 0 or size > 3:
+		return false
+	var occupied_cells := additionally_occupied.duplicate()
+	for actor_id: String in battlefield.actor_ids():
+		for coordinate: Vector2i in battlefield.actor_footprint(actor_id):
+			occupied_cells[coordinate] = true
+	return _route_footprint_is_passable(battlefield, terrain_set, size, BattlefieldState.footprint_cells(anchor, size), occupied_cells, true)
+
+
 func has_line_of_sight(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, from_actor_id: String, to_actor_id: String) -> bool:
 	if battlefield == null or terrain_set == null or not battlefield.has_actor(from_actor_id) or not battlefield.has_actor(to_actor_id):
 		return false

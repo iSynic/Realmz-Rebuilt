@@ -13,6 +13,7 @@ var magic_resistance: int
 var spell_points: int
 var maximum_spell_points: int
 var traitor: bool
+var summoned: bool = false
 var icon_id: int = 0
 var surrender_percent: int = 0
 var weapon_id: String = ""
@@ -86,6 +87,7 @@ func to_data() -> Dictionary:
 		"spellPoints": spell_points,
 		"maximumSpellPoints": maximum_spell_points,
 		"traitor": traitor,
+		"summoned": summoned,
 		"iconId": icon_id,
 		"surrenderPercent": surrender_percent,
 		"weaponId": weapon_id,
@@ -104,7 +106,7 @@ static func from_data(data: Variant) -> MonsterState:
 	for field: String in ["id", "definitionId", "name", "hitDice", "currentHealth", "maximumHealth", "agility", "armor", "magicResistance", "spellPoints", "maximumSpellPoints", "traitor", "weaponId", "conditions"]:
 		if not data.has(field):
 			return null
-	if not data["id"] is String or data["id"].is_empty() or not data["definitionId"] is String or data["definitionId"].is_empty() or not data["name"] is String or not data["traitor"] is bool or not data["weaponId"] is String:
+	if not data["id"] is String or data["id"].is_empty() or not data["definitionId"] is String or data["definitionId"].is_empty() or not data["name"] is String or not data["traitor"] is bool or not data["weaponId"] is String or data.has("summoned") and not data["summoned"] is bool:
 		return null
 	var values: Dictionary = {}
 	for field: String in ["hitDice", "currentHealth", "maximumHealth", "agility", "armor", "magicResistance", "spellPoints", "maximumSpellPoints"]:
@@ -119,6 +121,7 @@ static func from_data(data: Variant) -> MonsterState:
 		return null
 	var result := MonsterState.new(data["id"], data["definitionId"], data["name"], values["currentHealth"], values["maximumHealth"], values["hitDice"], values["agility"], values["armor"], values["magicResistance"], values["maximumSpellPoints"], data["traitor"])
 	result.spell_points = values["spellPoints"]
+	result.summoned = bool(data.get("summoned", false))
 	result.icon_id = _integer(data.get("iconId", 0))
 	if result.icon_id == -100_000:
 		return null

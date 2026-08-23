@@ -344,7 +344,7 @@ func _handle_targeting_input(event: InputEvent) -> void:
 	var coordinate := _coordinate_at_local_position((event as InputEventMouseButton).position)
 	if coordinate.x < 0:
 		return
-	if _targeting.mode == &"area":
+	if _targeting.mode in [&"area", &"coordinate_sequence"]:
 		_targeting.select_coordinate(coordinate)
 	else:
 		var combatant_id := combatant_at(_view.combat_view, _view.party_members, coordinate)
@@ -485,6 +485,18 @@ func _draw_targeting_preview(combat: CombatView, camera: Vector2i, visible_cells
 			var coordinate := center + offset
 			if coordinate_is_visible(coordinate, camera, visible_cells):
 				draw_rect(cell_rect(coordinate, camera, draw_origin).grow(-2.0), outline, false, 2.0)
+		return
+	if _targeting.mode == &"coordinate_sequence":
+		for index: int in _targeting.selected_coordinates.size():
+			var coordinate := _targeting.selected_coordinates[index]
+			if not coordinate_is_visible(coordinate, camera, visible_cells):
+				continue
+			var rect := cell_rect(coordinate, camera, draw_origin)
+			draw_rect(rect.grow(-2.0), Color(1.0, 0.86, 0.28, 0.98), false, 3.0)
+			draw_string(_ui_font(), rect.position + Vector2(4.0, 18.0), str(index + 1), HORIZONTAL_ALIGNMENT_LEFT, 24.0, 15, Color(1.0, 0.94, 0.72))
+		var hovered := _targeting.hovered_coordinate
+		if hovered.x >= 0 and not _targeting.selected_coordinates.has(hovered) and coordinate_is_visible(hovered, camera, visible_cells):
+			draw_rect(cell_rect(hovered, camera, draw_origin).grow(-2.0), Color(0.86, 0.80, 0.62, 0.78), false, 2.0)
 		return
 	for candidate_id: String in _targeting.candidate_ids:
 		var rect := _combatant_rect(combat, candidate_id, camera, visible_cells, draw_origin)

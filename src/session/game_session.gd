@@ -435,7 +435,7 @@ func _cast_spell(intent: PlayerIntent) -> SessionStep:
 		return _use_scroll(payload)
 	if _state.combat == null or _state.combat.completed:
 		return _cast_field_spell(payload)
-	var result := _rules.combat_flow.cast_spell(_state, _content, payload.caster_id, payload.target_id, payload.spell_id, payload.power, _rng, payload.coordinate, payload.rotation, payload.target_ids)
+	var result := _rules.combat_flow.cast_spell(_state, _content, payload.caster_id, payload.target_id, payload.spell_id, payload.power, _rng, payload.coordinate, payload.rotation, payload.target_ids, payload.target_coordinates)
 	if not result.ok:
 		return SessionStep.failed(_view_revision, result.error_code, result.error_message)
 	if not CharacterAgingResult.update_payloads(result.events).is_empty():
@@ -449,7 +449,7 @@ func _cast_spell(intent: PlayerIntent) -> SessionStep:
 
 func _use_scroll(payload: PlayerIntent.SpellPayload) -> SessionStep:
 	if _state.combat != null and not _state.combat.completed:
-		var combat_result := _rules.combat_flow.use_combat_scroll(_state, _content, payload.caster_id, payload.scroll_slot, payload.target_id, _rng, payload.coordinate, payload.rotation, payload.target_ids)
+		var combat_result := _rules.combat_flow.use_combat_scroll(_state, _content, payload.caster_id, payload.scroll_slot, payload.target_id, _rng, payload.coordinate, payload.rotation, payload.target_ids, payload.target_coordinates)
 		if not combat_result.ok:
 			return SessionStep.failed(_view_revision, combat_result.error_code, combat_result.error_message)
 		if not _event_payload(combat_result.events, &"monster_death_macro_requested").is_empty():

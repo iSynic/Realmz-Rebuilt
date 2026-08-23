@@ -239,8 +239,9 @@ class CastOption:
 			data["itemName"] = item_name
 			data["charges"] = charges
 		if source_kind == &"scroll": data["scrollSlot"] = scroll_slot
-		if target_mode == &"sequence":
+		if target_mode in [&"sequence", &"coordinate_sequence"]:
 			data["maximumTargets"] = maximum_targets
+		if target_mode == &"sequence":
 			data["targetCandidates"] = target_candidates.map(func(value: CombatTarget) -> Dictionary: return value.to_data())
 		if target_mode == &"area":
 			data["areaShape"] = area_shape
@@ -643,9 +644,11 @@ static func cast_option(data: Variant, source_kind: StringName) -> CastOption:
 	elif source_kind == &"scroll":
 		if not _whole(data.get("scrollSlot")): return null
 		result.scroll_slot = int(data["scrollSlot"])
-	if result.target_mode == &"sequence":
-		if not _whole(data.get("maximumTargets")) or not data.get("targetCandidates") is Array: return null
+	if result.target_mode in [&"sequence", &"coordinate_sequence"]:
+		if not _whole(data.get("maximumTargets")): return null
 		result.maximum_targets = int(data["maximumTargets"])
+	if result.target_mode == &"sequence":
+		if not data.get("targetCandidates") is Array: return null
 		for candidate: Variant in data["targetCandidates"]:
 			var parsed := combat_target(candidate); if parsed == null: return null
 			result.target_candidates.append(parsed)

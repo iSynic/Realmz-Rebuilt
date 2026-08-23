@@ -201,7 +201,7 @@ func _resume_battle(continuation: ScenarioRuntimeContinuation, response: Interac
 		if body.spell_id.is_empty():
 			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Combat spell casting requires a spellId string and integer power.")
 		var target_coordinate := body.target_coordinate if body.has_target_coordinate else CombatFlow.INVALID_COORDINATE
-		result = _rules.combat_flow.cast_spell(_game_state, _content, body.actor_id, body.target_id, body.spell_id, body.power, _rng, target_coordinate, body.rotation, body.target_ids)
+		result = _rules.combat_flow.cast_spell(_game_state, _content, body.actor_id, body.target_id, body.spell_id, body.power, _rng, target_coordinate, body.rotation, body.target_ids, body.target_coordinates)
 	elif body.action == &"use_item":
 		if body.item_instance_id.is_empty():
 			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Combat item use requires an itemInstanceId string.")
@@ -210,7 +210,7 @@ func _resume_battle(continuation: ScenarioRuntimeContinuation, response: Interac
 		if body.scroll_slot < 0:
 			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Combat scroll use requires an integer scrollSlot.")
 		var scroll_target_coordinate := body.target_coordinate if body.has_target_coordinate else CombatFlow.INVALID_COORDINATE
-		result = _rules.combat_flow.use_combat_scroll(_game_state, _content, body.actor_id, body.scroll_slot, body.target_id, _rng, scroll_target_coordinate, body.rotation, body.target_ids)
+		result = _rules.combat_flow.use_combat_scroll(_game_state, _content, body.actor_id, body.scroll_slot, body.target_id, _rng, scroll_target_coordinate, body.rotation, body.target_ids, body.target_coordinates)
 	else:
 		result = _rules.combat_flow.submit_action(_game_state, _content, body.actor_id, body.action, body.target_id, _rng)
 	if not result.ok:
@@ -575,8 +575,9 @@ func _combat_request(request_id: String) -> InteractionRequest:
 	var spell_casts: Array[Dictionary] = []
 	for option: CombatSpellOptionView in _rules.combat_flow.character_spell_options(_game_state, _content, combat_view.active_actor_id):
 		var spell_cast := {"spellId": option.spell_id, "spellName": option.spell_name, "power": option.power, "cost": option.cost, "targetId": option.target_id, "targetName": option.target_name, "targetCurrentHealth": option.target_current_health, "targetMaximumHealth": option.target_maximum_health, "targetMode": String(option.target_mode)}
-		if option.target_mode == &"sequence":
+		if option.target_mode in [&"sequence", &"coordinate_sequence"]:
 			spell_cast["maximumTargets"] = option.maximum_targets
+		if option.target_mode == &"sequence":
 			var candidates: Array[Dictionary] = []
 			for candidate: CombatSpellTargetView in option.target_candidates:
 				candidates.append({"id": candidate.id, "kind": String(candidate.kind), "name": candidate.name, "currentHealth": candidate.current_health, "maximumHealth": candidate.maximum_health})
@@ -613,8 +614,9 @@ func _combat_request(request_id: String) -> InteractionRequest:
 	var scroll_casts: Array[Dictionary] = []
 	for option: Variant in _rules.combat_flow.character_scroll_options(_game_state, _content, combat_view.active_actor_id):
 		var scroll_cast := {"scrollSlot": option.scroll_slot, "spellId": option.spell_id, "spellName": option.spell_name, "power": option.power, "targetId": option.target_id, "targetName": option.target_name, "targetCurrentHealth": option.target_current_health, "targetMaximumHealth": option.target_maximum_health, "targetMode": String(option.target_mode)}
-		if option.target_mode == &"sequence":
+		if option.target_mode in [&"sequence", &"coordinate_sequence"]:
 			scroll_cast["maximumTargets"] = option.maximum_targets
+		if option.target_mode == &"sequence":
 			var candidates: Array[Dictionary] = []
 			for candidate: CombatSpellTargetView in option.target_candidates:
 				candidates.append({"id": candidate.id, "kind": String(candidate.kind), "name": candidate.name, "currentHealth": candidate.current_health, "maximumHealth": candidate.maximum_health})

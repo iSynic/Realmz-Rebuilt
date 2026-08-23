@@ -81,6 +81,8 @@ func _test_scenario_wire_contracts() -> void:
 		var unknown := wire.duplicate(true)
 		unknown["unexpected"] = true
 		assert_equal(contract.decode.call(unknown), null, "%s rejects unknown fields" % contract.name)
+	var combat_body := InteractionResponse.CombatBody.new(&"cast_spell", "character.1"); combat_body.spell_id = "classic.spell.58"; combat_body.target_coordinates.assign([Vector2i(44, 46), Vector2i(43, 46)]); var combat_wire: Dictionary = combat_body.to_data(); var combat_response := InteractionResponse.from_data("combat.sequence", InteractionRequest.COMBAT, combat_wire)
+	assert_equal((combat_response.body as InteractionResponse.CombatBody).target_coordinates, [Vector2i(44, 46), Vector2i(43, 46)], "typed combat responses preserve ordered summon-space coordinates"); var ambiguous_combat: Dictionary = combat_wire.duplicate(true); ambiguous_combat["targetIds"] = ["monster.0"]; assert_equal(InteractionResponse.from_data("combat.ambiguous", InteractionRequest.COMBAT, ambiguous_combat).body, null, "typed combat responses reject mixed actor and coordinate target sequences")
 	var snapshot := ScenarioVmSnapshot.new().to_data()
 	snapshot["unexpected"] = true
 	assert_equal(ScenarioVmSnapshot.from_data(snapshot), null, "VM snapshots reject unknown fields")

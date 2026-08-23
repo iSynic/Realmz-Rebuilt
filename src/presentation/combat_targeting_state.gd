@@ -9,6 +9,7 @@ var legal_coordinates: Array[Vector2i] = []
 var maximum_targets: int = 1
 var validation_deferred: bool = false
 var selected_ids: Array[String] = []
+var selected_coordinates: Array[Vector2i] = []
 var selected_coordinate := Vector2i(-1, -1)
 var hovered_coordinate := Vector2i(-1, -1)
 var status_text: String = "Choose a target on the battlefield."
@@ -22,7 +23,7 @@ func _init(request: CombatTargetingRequest) -> void:
 	legal_coordinates = request.legal_coordinates.duplicate()
 	maximum_targets = request.maximum_targets
 	validation_deferred = request.validation_deferred
-	if mode == &"area" and request.default_target_coordinate.x >= 0:
+	if mode in [&"area", &"coordinate_sequence"] and request.default_target_coordinate.x >= 0:
 		hovered_coordinate = request.default_target_coordinate
 
 
@@ -47,6 +48,20 @@ func select_combatant(combatant_id: String) -> bool:
 
 
 func select_coordinate(coordinate: Vector2i) -> bool:
+	if mode == &"coordinate_sequence":
+		if coordinate.x < 0 or coordinate.y < 0:
+			status_text = "That battlefield space is unavailable."
+			return false
+		if selected_coordinates.has(coordinate):
+			selected_coordinates.erase(coordinate)
+			status_text = "Summon space removed from the ordered selection."
+			return true
+		if selected_coordinates.size() >= maximum_targets:
+			status_text = "The selected summon has reached its space limit."
+			return false
+		selected_coordinates.append(coordinate)
+		status_text = "%d of %d summon spaces selected in cast order." % [selected_coordinates.size(), maximum_targets]
+		return true
 	if mode != &"area":
 		return false
 	selected_coordinate = coordinate
@@ -68,6 +83,11 @@ func target_with_keyboard() -> bool:
 		selected_ids.assign([candidate_ids[(current_index + 1) % candidate_ids.size()]])
 		status_text = "Target selected. Press Space to commit the action."
 		return true
+	if mode == &"coordinate_sequence":
+		var summon_coordinate := hovered_coordinate
+		if summon_coordinate.x < 0 or summon_coordinate.y < 0:
+			return false
+		return select_coordinate(summon_coordinate)
 	if mode != &"area":
 		return false
 	var coordinate := hovered_coordinate
@@ -84,6 +104,8 @@ func can_confirm() -> bool:
 			return not selected_ids.is_empty()
 		&"area":
 			return selected_coordinate.x >= 0 and selected_coordinate.y >= 0 if validation_deferred else legal_coordinates.has(selected_coordinate)
+		&"coordinate_sequence":
+			return not selected_coordinates.is_empty()
 	return false
 
 
@@ -102,4 +124,7 @@ func committed_body() -> InteractionResponse.CombatBody:
 			result.target_coordinate = selected_coordinate
 			result.has_target_coordinate = true
 			result.rotation = 0
+		&"coordinate_sequence":
+			result.target_id = ""
+			result.target_coordinates = selected_coordinates.duplicate()
 	return result

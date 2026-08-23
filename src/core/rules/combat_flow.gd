@@ -8,6 +8,7 @@ const LifecycleType = preload("res://src/core/rules/combat_flow_lifecycle.gd")
 const ActionsType = preload("res://src/core/rules/combat_flow_actions.gd")
 const ReactionsType = preload("res://src/core/rules/combat_flow_reactions.gd")
 const MagicType = preload("res://src/core/rules/combat_flow_magic.gd")
+const SummoningType = preload("res://src/core/rules/combat_flow_summoning.gd")
 const AutomationType = preload("res://src/core/rules/combat_flow_automation.gd")
 
 const MONSTER_ATTACK_COMPLETED := 0
@@ -25,6 +26,7 @@ var _lifecycle: RefCounted
 var _actions: RefCounted
 var _reactions: RefCounted
 var _magic: RefCounted
+var _summoning: RefCounted
 var _automation: RefCounted
 
 
@@ -34,6 +36,7 @@ func _init(rules: RealmzRules) -> void:
 	_actions = ActionsType.new(self, _rules)
 	_reactions = ReactionsType.new(self, _rules)
 	_magic = MagicType.new(self, _rules)
+	_summoning = SummoningType.new(self, _rules)
 	_automation = AutomationType.new(self, _rules)
 
 
@@ -232,16 +235,16 @@ func _item_used_event(caster_id: String, instance_id: String, item: ItemDefiniti
 	return _magic._item_used_event(caster_id, instance_id, item, spell, power_level, caster)
 
 
-func cast_spell(state: GameState, content: RealmzContent, caster_id: String, target_id: String, spell_id: String, power_level: int, rng: RealmzRng, target_coordinate: Vector2i = Vector2i(-100_000, -100_000), rotation: int = 0, target_ids: Array[String] = []) -> CombatFlowResult:
-	return _magic.cast_spell(state, content, caster_id, target_id, spell_id, power_level, rng, target_coordinate, rotation, target_ids)
+func cast_spell(state: GameState, content: RealmzContent, caster_id: String, target_id: String, spell_id: String, power_level: int, rng: RealmzRng, target_coordinate: Vector2i = Vector2i(-100_000, -100_000), rotation: int = 0, target_ids: Array[String] = [], target_coordinates: Array[Vector2i] = []) -> CombatFlowResult:
+	return _magic.cast_spell(state, content, caster_id, target_id, spell_id, power_level, rng, target_coordinate, rotation, target_ids, target_coordinates)
 
 
-func probe_character_scroll_cast(state: GameState, content: RealmzContent, caster_id: String, scroll_slot: int, target_id: String = "", target_coordinate: Vector2i = INVALID_COORDINATE, rotation: int = 0, target_ids: Array[String] = []) -> CombatSpellCastProbe:
-	return _magic.probe_character_scroll_cast(state, content, caster_id, scroll_slot, target_id, target_coordinate, rotation, target_ids)
+func probe_character_scroll_cast(state: GameState, content: RealmzContent, caster_id: String, scroll_slot: int, target_id: String = "", target_coordinate: Vector2i = INVALID_COORDINATE, rotation: int = 0, target_ids: Array[String] = [], target_coordinates: Array[Vector2i] = []) -> CombatSpellCastProbe:
+	return _magic.probe_character_scroll_cast(state, content, caster_id, scroll_slot, target_id, target_coordinate, rotation, target_ids, target_coordinates)
 
 
-func use_combat_scroll(state: GameState, content: RealmzContent, caster_id: String, scroll_slot: int, target_id: String, rng: RealmzRng, target_coordinate: Vector2i = INVALID_COORDINATE, rotation: int = 0, target_ids: Array[String] = []) -> CombatFlowResult:
-	return _magic.use_combat_scroll(state, content, caster_id, scroll_slot, target_id, rng, target_coordinate, rotation, target_ids)
+func use_combat_scroll(state: GameState, content: RealmzContent, caster_id: String, scroll_slot: int, target_id: String, rng: RealmzRng, target_coordinate: Vector2i = INVALID_COORDINATE, rotation: int = 0, target_ids: Array[String] = [], target_coordinates: Array[Vector2i] = []) -> CombatFlowResult:
+	return _magic.use_combat_scroll(state, content, caster_id, scroll_slot, target_id, rng, target_coordinate, rotation, target_ids, target_coordinates)
 
 
 func _combat_spell_group_targets(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition, selected_ids: Dictionary = {}, area_target: bool = false) -> Dictionary:
@@ -280,8 +283,8 @@ func _append_spell_presentation(payload: Dictionary, spell: SpellDefinition, seq
 	_magic._append_spell_presentation(payload, spell, sequence_index, sequence_count, target_defeated)
 
 
-func probe_character_spell_cast(state: GameState, content: RealmzContent, caster_id: String, target_id: String, spell_id: String, power_level: int, target_coordinate: Vector2i = INVALID_COORDINATE, rotation: int = 0, target_ids: Array[String] = []) -> CombatSpellCastProbe:
-	return _magic.probe_character_spell_cast(state, content, caster_id, target_id, spell_id, power_level, target_coordinate, rotation, target_ids)
+func probe_character_spell_cast(state: GameState, content: RealmzContent, caster_id: String, target_id: String, spell_id: String, power_level: int, target_coordinate: Vector2i = INVALID_COORDINATE, rotation: int = 0, target_ids: Array[String] = [], target_coordinates: Array[Vector2i] = []) -> CombatSpellCastProbe:
+	return _magic.probe_character_spell_cast(state, content, caster_id, target_id, spell_id, power_level, target_coordinate, rotation, target_ids, target_coordinates)
 
 
 func probe_character_spell_choice(state: GameState, content: RealmzContent, caster_id: String, spell_id: String, power_level: int) -> CombatSpellCastProbe:
@@ -306,6 +309,26 @@ func _has_equipped_scroll_case(character: CharacterState, content: RealmzContent
 
 func _legal_area_spell_target_coordinates(state: GameState, content: RealmzContent, caster_id: String, spell: SpellDefinition, power_level: int, shape: int) -> Array[Vector2i]:
 	return _magic._legal_area_spell_target_coordinates(state, content, caster_id, spell, power_level, shape)
+
+
+func _is_summon_spell(spell: SpellDefinition) -> bool:
+	return SummoningType.is_summon_spell(spell)
+
+
+func _probe_summon_choice(state: GameState, content: RealmzContent, caster_id: String, spell: SpellDefinition, power_level: int) -> CombatSpellCastProbe:
+	return _summoning.probe_choice(state, content, caster_id, spell, power_level)
+
+
+func _probe_summon_coordinates(state: GameState, content: RealmzContent, caster_id: String, spell: SpellDefinition, power_level: int, target_coordinates: Array[Vector2i]) -> CombatSpellCastProbe:
+	return _summoning.probe_coordinates(state, content, caster_id, spell, power_level, target_coordinates)
+
+
+func _cast_character_summon(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition, power_level: int, rng: RealmzRng, target_coordinates: Array[Vector2i], event_source: String = "classic", spend_spell_points: bool = true, count_spell_cast: bool = true) -> CombatFlowResult:
+	return _summoning.cast_character_summon(state, content, caster, spell, power_level, rng, target_coordinates, event_source, spend_spell_points, count_spell_cast)
+
+
+func _automatic_summon_coordinate(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition, power_level: int) -> Vector2i:
+	return _summoning.automatic_coordinate(state, content, caster, spell, power_level)
 
 
 func _character_actor_spell_candidates(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition, power_level: int) -> Array[CombatSpellTargetView]:

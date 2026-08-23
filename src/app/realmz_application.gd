@@ -560,6 +560,8 @@ static func direct_combat_intent(body: InteractionResponse.CombatBody) -> Player
 		&"cast_spell":
 			if body.spell_id.is_empty():
 				return null
+			if not body.target_coordinates.is_empty():
+				return PlayerIntent.cast_spell_at_coordinates(body.spell_id, body.actor_id, body.target_coordinates, body.power)
 			if body.has_target_coordinate:
 				return PlayerIntent.cast_spell_at(body.spell_id, body.actor_id, body.target_coordinate, body.power, body.rotation)
 			if not body.target_ids.is_empty():
@@ -572,6 +574,8 @@ static func direct_combat_intent(body: InteractionResponse.CombatBody) -> Player
 		&"use_scroll":
 			if body.scroll_slot < 0:
 				return null
+			if not body.target_coordinates.is_empty():
+				return PlayerIntent.use_scroll_at_coordinates(body.actor_id, body.scroll_slot, body.target_coordinates)
 			return PlayerIntent.use_scroll_on_target(body.actor_id, body.scroll_slot, body.target_id, body.target_ids, body.target_coordinate if body.has_target_coordinate else CombatFlow.INVALID_COORDINATE, body.rotation)
 	return PlayerIntent.combat_action(body.action, body.actor_id, body.target_id)
 
