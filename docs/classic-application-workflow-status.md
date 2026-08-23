@@ -157,7 +157,7 @@ Blockers: **1**. Major gaps: **13**.
 - **major** `classic.scenario.complex-interaction` - The dedicated thief menu and timed Pick Lock flow are source-shaped; trap spell resolution and controlled Castle/UI acceptance remain incomplete. Next: Route the trap spell through the source-backed application spell effect, then run a controlled Castle comparison and ordinary campaign UI acceptance.
 - **major** `classic.spellcasting.combat-cast` - Manual, fixed-power scroll, charged-item, Party Auto, and monster casting now share source-backed condition-cure, summoning, and multi-actor ray resolution. Every application spell has one mechanical-family and per-source disposition; persistent fields, rotated areas, and other special-effect families remain explicit pending capabilities. Next: Implement the eight stock rotatable target-type-3 area spells as one deterministic orientation transaction, then certify their picker and cast path in fresh ordinary play.
 - **major** `classic.spellcasting.field-camp-cast` - Ordinary AOGM camp play proves power-selected scribing, five-slot persistence, saveable party targeting, no-SP scroll use, and exact-slot consumption. Field-character casting now has a catalog disposition for every application spell and keeps each pending family visible with an exact reason; invalid-field discard, case transfer, allied targets, and map effects remain explicit. Next: Implement discard, case-transfer, allied-target, and map-effect branches only from bounded differential evidence when parity or a reachable campaign requires them.
-- **major** `classic.system.music-playlists` - Indoor automatic selection and scenario Custom 1Ã¢â‚¬â€œ3 music remain unresolved. Next: Add an explicit Providence base-scale field and normalized scenario music resources, then certify Indoor and Custom 1Ã¢â‚¬â€œ3 through ordinary packages without inferring either from landlook.
+- **major** `classic.system.music-playlists` - Indoor automatic selection and scenario Custom 1â€“3 music remain unresolved. Next: Add an explicit Providence base-scale field and normalized scenario music resources, then certify Indoor and Custom 1â€“3 through ordinary packages without inferring either from landlook.
 - **major** `host.settings.accessibility` - Control customization and complete multi-scale layout acceptance remain unfinished. Next: Finish keyboard/mouse control help and run layout acceptance at every locked resolution and text scale.
 
 ## Oracle-required unknowns
@@ -179,7 +179,7 @@ Blockers: **1**. Major gaps: **13**.
 
 ### other-campaign
 
-- `classic.system.music-playlists` - Indoor automatic selection and scenario Custom 1Ã¢â‚¬â€œ3 music remain unresolved.
+- `classic.system.music-playlists` - Indoor automatic selection and scenario Custom 1â€“3 music remain unresolved.
 - `classic.character.age-update` - Age updates have no ordinary-campaign observation because the trigger is rare.
 - `classic.exploration.travel` - Dungeon and boat variants lack ordinary campaign certification.
 - `classic.maps.authored-journal` - Authored journal discovery and browsing have synthetic proof only.
