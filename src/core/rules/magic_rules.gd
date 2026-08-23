@@ -31,6 +31,12 @@ func resolve_character_targeted_spell(caster: CharacterState, selection: SpellTa
 	return result
 
 
+func roll_persistent_field_duration(spell: SpellDefinition, power_level: int, rng: RealmzRng, tag: StringName) -> int:
+	if spell == null or rng == null or spell.queue_icon == 0 or power_level < 1:
+		return 0
+	return _scaled_roll(spell.duration_min, spell.duration_max, spell.power_duration_min, spell.power_duration_max, power_level, rng, tag)
+
+
 func resolve_character_group_spell(caster: CharacterState, character_targets: Array[CharacterState], monster_targets: Array[MonsterState], monster_definitions: Array[MonsterDefinition], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, allow_empty: bool = false, spend_spell_points: bool = true) -> GroupSpellResolution:
 	if caster == null or spell == null or rng == null or power_level < 1 or monster_targets.size() != monster_definitions.size() or not allow_empty and character_targets.is_empty() and monster_targets.is_empty():
 		return null

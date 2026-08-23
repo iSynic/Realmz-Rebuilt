@@ -2,7 +2,9 @@ class_name CombatState
 extends RefCounted
 
 const CombatUndoStateType := preload("res://src/core/state/combat_undo_state.gd")
+const PersistentCombatFieldType := preload("res://src/core/state/persistent_combat_field.gd")
 const MAX_SPELL_DEATH_MACROS := 100
+const MAX_PERSISTENT_FIELDS := 60
 
 const MAX_FUMBLED_ITEMS: int = 20
 
@@ -31,6 +33,7 @@ var _turned_undead_actor_ids: Dictionary = {}
 var _spell_death_macro_queue: Array[String] = []
 var _spell_macro_actor_id: String = ""
 var _spell_macro_advances_turn: bool = false
+var _persistent_fields: Array[PersistentCombatFieldType] = []
 
 
 func _init(source_battle_id: String, initial_monsters: Array[MonsterState] = [], battle_macro_id: int = 0, initial_battlefield: BattlefieldState = null) -> void:
@@ -316,6 +319,42 @@ func clear_spell_death_macro_sequence() -> void:
 	_spell_macro_advances_turn = false
 
 
+func persistent_fields() -> Array[PersistentCombatFieldType]:
+	var result := _persistent_fields.duplicate()
+	result.sort_custom(func(left: PersistentCombatFieldType, right: PersistentCombatFieldType) -> bool: return left.slot < right.slot)
+	return result
+
+
+func can_queue_persistent_field() -> bool:
+	return _persistent_fields.size() < MAX_PERSISTENT_FIELDS
+
+
+func queue_persistent_field(spell_id: String, caster_id: String, center: Vector2i, rotation: int, shape: int, queue_icon: int, power_level: int, cast_level: int, duration: int) -> PersistentCombatFieldType:
+	if not can_queue_persistent_field() or spell_id.is_empty() or caster_id.is_empty() or not BattlefieldState.contains(center) or rotation < 0 or rotation > 3 or shape < 1 or shape > 127 or queue_icon == 0 or queue_icon < -128 or queue_icon > 127 or power_level < 1 or power_level > 7 or cast_level < 0 or cast_level > 7 or duration < 1 or duration > 32_767 or _turn_order.is_empty() or turn_index < 0 or turn_index >= _turn_order.size():
+		return null
+	var used_slots: Dictionary = {}
+	for field: PersistentCombatFieldType in _persistent_fields:
+		used_slots[field.slot] = true
+	var slot := 0
+	while used_slots.has(slot):
+		slot += 1
+	var result := PersistentCombatFieldType.new(slot, spell_id, caster_id, center, rotation, shape, queue_icon, power_level, cast_level, duration, turn_index)
+	_persistent_fields.append(result)
+	return result
+
+
+func decay_persistent_fields_for_phase(phase_turn_index: int) -> Array[PersistentCombatFieldType]:
+	var expired: Array[PersistentCombatFieldType] = []
+	for index: int in range(_persistent_fields.size() - 1, -1, -1):
+		var field: PersistentCombatFieldType = _persistent_fields[index]
+		if field.phase_turn_index != phase_turn_index:
+			continue
+		field.remaining_duration -= 1
+		if field.remaining_duration <= 0:
+			expired.push_front(_persistent_fields.pop_at(index))
+	return expired
+
+
 func mark_character_retreated(actor_id: String) -> bool:
 	if actor_id.is_empty() or not _turn_order.has(actor_id) or monster_by_id(actor_id) != null:
 		return false
@@ -359,7 +398,7 @@ func to_data() -> Dictionary:
 	weapon_mode_ids.sort()
 	for actor_id: Variant in weapon_mode_ids:
 		weapon_modes[String(actor_id)] = _character_weapon_modes[actor_id]
-	return {"battleId": battle_id, "macroId": macro_id, "round": round_number, "turnIndex": turn_index, "completed": completed, "outcome": String(outcome), "rewardsStarted": rewards_started, "rewardsCompleted": rewards_completed, "turnOrder": _turn_order.duplicate(), "monsters": monster_data, "pendingMonsterAttack": pending_data, "pendingReaction": reaction_data, "activeTurn": active_turn_data, "undoState": undo_data, "fumbledItems": fumbled_data, "characterWeaponModes": weapon_modes, "guardingActorIds": guarding_actor_ids(), "retreatedCharacterIds": retreated_character_ids(), "attackedActorIds": attacked_actor_ids(), "bleedingCharacterIds": bleeding_character_ids(), "turnUndeadActorIds": turn_undead_actor_ids(), "spellDeathMacroQueue": _spell_death_macro_queue.duplicate(), "spellMacroActorId": _spell_macro_actor_id, "spellMacroAdvancesTurn": _spell_macro_advances_turn, "battlefield": null if battlefield == null else battlefield.to_data()}
+	return {"battleId": battle_id, "macroId": macro_id, "round": round_number, "turnIndex": turn_index, "completed": completed, "outcome": String(outcome), "rewardsStarted": rewards_started, "rewardsCompleted": rewards_completed, "turnOrder": _turn_order.duplicate(), "monsters": monster_data, "pendingMonsterAttack": pending_data, "pendingReaction": reaction_data, "activeTurn": active_turn_data, "undoState": undo_data, "fumbledItems": fumbled_data, "characterWeaponModes": weapon_modes, "guardingActorIds": guarding_actor_ids(), "retreatedCharacterIds": retreated_character_ids(), "attackedActorIds": attacked_actor_ids(), "bleedingCharacterIds": bleeding_character_ids(), "turnUndeadActorIds": turn_undead_actor_ids(), "spellDeathMacroQueue": _spell_death_macro_queue.duplicate(), "spellMacroActorId": _spell_macro_actor_id, "spellMacroAdvancesTurn": _spell_macro_advances_turn, "persistentFields": _persistent_fields.map(func(field: PersistentCombatFieldType) -> Dictionary: return field.to_data()), "battlefield": null if battlefield == null else battlefield.to_data()}
 
 
 static func from_data(data: Variant) -> CombatState:
@@ -401,7 +440,7 @@ static func from_data(data: Variant) -> CombatState:
 	if result.rewards_completed and not result.rewards_started:
 		return null
 	result._turn_order = order
-	if not _restore_actor_sets(result, data, order) or not _restore_spell_macro_state(result, data) or not _restore_inventory_and_modes(result, data, order) or not _restore_pending_state(result, data) or not _loaded_state_is_consistent(result):
+	if not _restore_actor_sets(result, data, order) or not _restore_spell_macro_state(result, data) or not _restore_persistent_fields(result, data, order) or not _restore_inventory_and_modes(result, data, order) or not _restore_pending_state(result, data) or not _loaded_state_is_consistent(result):
 		return null
 	return result
 
@@ -437,6 +476,20 @@ static func _restore_spell_macro_state(result: CombatState, data: Dictionary) ->
 		result._spell_death_macro_queue.append(combatant_id)
 	result._spell_macro_actor_id = actor
 	result._spell_macro_advances_turn = advances
+	return true
+
+
+static func _restore_persistent_fields(result: CombatState, data: Dictionary, order: Array[String]) -> bool:
+	var field_data: Variant = data.get("persistentFields", [])
+	if not field_data is Array or field_data.size() > MAX_PERSISTENT_FIELDS:
+		return false
+	var slots: Dictionary = {}
+	for entry: Variant in field_data:
+		var field := PersistentCombatFieldType.from_data(entry)
+		if field == null or slots.has(field.slot) or field.phase_turn_index >= order.size():
+			return false
+		slots[field.slot] = true
+		result._persistent_fields.append(field)
 	return true
 
 
