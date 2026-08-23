@@ -32,6 +32,7 @@ var icon_id: int
 var icon_resource_type: String = "cicn"
 var animation_resource_type: String = "cicn"
 var animation_resource_ids: Array[int] = []
+var combat_cast: ActionAvailabilityView = ActionAvailabilityView.new(&"cast_spell", false, "Combat casting requires an active battle.")
 var field_cast: ActionAvailabilityView = ActionAvailabilityView.new(&"cast_spell", false, "Field casting is unavailable.")
 var power_levels: Array[int] = []
 var make_scroll: ActionAvailabilityView = ActionAvailabilityView.new(&"cast_spell", false, "Scroll scribing is unavailable.")

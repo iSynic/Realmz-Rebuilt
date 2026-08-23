@@ -233,7 +233,7 @@ func _refresh_spellbook_list() -> void:
 		var spell_name := spell.name if spell != null else representative.spell_name
 		var tooltip := spell.description if spell != null and not spell.description.is_empty() else spell_name
 		if not legal:
-			tooltip = "%s\nKnown combat spell, but no rules-legal power or tactical target is available this activation." % tooltip
+			tooltip = "%s\n%s" % [tooltip, _spellbook_unavailable_reason(spell)]
 		var button := ClassicSpellSelectionChrome.spell_button(
 			"CombatSpell%s" % spell_id.replace(".", "_"),
 			"%s%s" % [spell_name, "  •  Unavailable" if not legal else ""],
@@ -283,10 +283,12 @@ func _refresh_spellbook_power_choices() -> void:
 		button.pressed.connect(func() -> void: _select_spellbook_power(option))
 		_spellbook_power_row.add_child(button)
 	if representatives.is_empty():
-		_present_spellbook_unavailable(_spellbook_spell_view(_spellbook_spell_id), "No rules-legal power or tactical target is available this activation.")
+		var unavailable_spell := _spellbook_spell_view(_spellbook_spell_id)
+		var unavailable_reason := _spellbook_unavailable_reason(unavailable_spell)
+		_present_spellbook_unavailable(unavailable_spell, unavailable_reason)
 		_spellbook_cast.disabled = true
 		_spellbook_cast.set_meta("cast_option", null)
-		_spellbook_cast.tooltip_text = "This known spell cannot be cast in the current activation."
+		_spellbook_cast.tooltip_text = unavailable_reason
 		return
 	_select_spellbook_power(representatives[0])
 
@@ -376,6 +378,12 @@ func _present_spellbook_unavailable(spell: SpellView, message: String) -> void:
 			description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			_spellbook_detail_column.add_child(description)
 	_spellbook_detail_column.add_child(_spellbook_label(message, MUTED, 15))
+
+
+func _spellbook_unavailable_reason(spell: SpellView) -> String:
+	if spell != null and not spell.combat_cast.reason.is_empty():
+		return spell.combat_cast.reason
+	return "No rules-legal power or tactical target is available this activation."
 
 
 func _spellbook_actor_view() -> CharacterView:

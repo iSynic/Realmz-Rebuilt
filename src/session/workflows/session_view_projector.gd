@@ -417,13 +417,26 @@ static func _populate_spell_actions(context: SessionWorkflowContext, result: Gam
 		for spell_view: SpellView in member_view.spells:
 			var spell := content.spell_by_id(spell_view.id)
 			if not blocked_reason.is_empty():
+				spell_view.combat_cast = ActionAvailabilityView.new(&"cast_spell", false, blocked_reason)
 				spell_view.field_cast = ActionAvailabilityView.new(&"cast_spell", false, blocked_reason)
 				spell_view.make_scroll = ActionAvailabilityView.new(&"cast_spell", false, blocked_reason)
 				continue
 			if battle_active:
+				var combat_reason := ""
+				var combat_enabled := false
+				for power: int in range(1, 8):
+					var combat_probe := rules.combat_flow.probe_character_spell_choice(state, content, character.id, spell_view.id, power)
+					if combat_probe.allowed:
+						combat_enabled = true
+					elif combat_reason.is_empty():
+						combat_reason = combat_probe.reason_text
+					if spell != null and spell.cost < 0:
+						break
+				spell_view.combat_cast = ActionAvailabilityView.new(&"cast_spell", combat_enabled, combat_reason)
 				spell_view.field_cast = ActionAvailabilityView.new(&"cast_spell", false, "Use the tactical spell action during battle.")
 				spell_view.make_scroll = ActionAvailabilityView.new(&"cast_spell", false, "Scroll scribing is unavailable during battle.")
 				continue
+			spell_view.combat_cast = ActionAvailabilityView.new(&"cast_spell", false, "Combat casting requires an active battle.")
 			var first_reason := ""
 			for power: int in range(1, 8):
 				var probe := _field_spell_probe(context, character, spell, power)
