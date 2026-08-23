@@ -423,15 +423,15 @@ func _test_shop_component() -> void:
 		"partyGold": 19,
 		"inflationPercent": 125,
 		"identifyPrice": 20,
-		"characters": [{"id": "character.one", "name": "Hero", "inventory": [
+		"characters": [{"id": "character.one", "name": "Hero", "portraitId": "portrait.fixture", "inventory": [
 			{"instanceId": "item.unknown", "itemId": "classic.item.40", "name": "Runed wand", "sellPrice": 0, "identified": false, "equipped": false, "charges": 2, "canSell": true, "sellReason": "", "canIdentify": false, "identifyReason": "Identification costs 20 gold.", "iconResourceType": "cicn", "iconId": 35},
 			{"instanceId": "item.equipped", "itemId": "classic.item.1", "name": "Sword", "sellPrice": 25, "identified": true, "equipped": true, "charges": -1, "canSell": false, "sellReason": "Unequip this item before selling it.", "canIdentify": false, "identifyReason": "This item is already identified.", "iconResourceType": "cicn", "iconId": 20},
 		]}],
-		"stock": [{"stockKey": "buyback:classic.item.5", "index": -1, "itemId": "classic.item.5", "name": "Dagger", "buyPrice": 40, "quantity": 1, "canBuy": false, "buyReason": "The party cannot afford this item.", "iconResourceType": "cicn", "iconId": 5}],
+		"stock": [{"stockKey": "base:0", "index": 0, "itemId": "classic.item.5", "name": "Dagger", "buyPrice": 40, "quantity": 1, "canBuy": false, "buyReason": "The party cannot afford this item.", "category": "weapons", "iconResourceType": "cicn", "iconId": 5}, {"stockKey": "base:200", "index": 200, "itemId": "classic.item.6", "name": "Leather Armor", "buyPrice": 10, "quantity": 1, "canBuy": true, "buyReason": "", "category": "armor", "iconResourceType": "cicn", "iconId": 5}],
 	})
-	var component := ShopInteraction.new(); component.configure(ClassicMediaCatalog.new(null, ApplicationMediaCatalog.new()), false)
+	var component := ShopInteraction.new(); var responses: Array[InteractionResponse.ShopBody] = []; component.response_body_submitted.connect(func(body: InteractionResponse.Body) -> void: responses.append(body as InteractionResponse.ShopBody)); component.configure(ClassicMediaCatalog.new(null, ApplicationMediaCatalog.new()), false)
 	component.build(request)
-	assert_true(component.find_child("ShopHeader", true, false) != null and component.find_child("ShopStockColumn", true, false) != null and component.find_child("SelectedInventoryColumn", true, false) != null and component.find_child("ItemInspectorRail", true, false) != null and component.find_child("ShopFooter", true, false) != null, "shop keeps stock, pack, selected record, and transaction actions in stable regions"); assert_true(component.find_child("StockIcon_buyback_classic_item_5", true, false).find_child("ContentImage", true, false) != null and component.find_child("InventoryIcon_item_unknown", true, false).find_child("ContentImage", true, false) != null, "shop stock and carried items resolve their exact typed CICNs through the shared application catalog")
+	assert_true(component.find_child("ShopHeader", true, false) != null and component.find_child("ShopExchangeLedgers", true, false) != null and component.find_child("ShopExchangeDivider", true, false) != null and component.find_child("ItemInspectorRail", true, false) != null and component.find_child("ShopperPortraitSelector", true, false) != null and component.find_child("ShopFooter", true, false) != null, "shop keeps two white exchange ledgers, portrait shopper selection, selected record, and transaction actions in stable regions"); assert_true(component.find_child("StockIcon_base_0", true, false).find_child("ContentImage", true, false) != null and component.find_child("InventoryIcon_item_unknown", true, false).find_child("ContentImage", true, false) != null and ["weapons", "armor", "limb_armor", "magic", "supplies"].all(func(id: String) -> bool: return component.find_child("ShopFilter_%s" % id, true, false) != null), "shop stock, carried items, and all five source-band filters retain their exact request or application art identities")
 	var buy_button := component.find_child("ShopBuy", true, false) as Button
 	assert_true(buy_button.disabled and buy_button.tooltip_text.contains("afford"), "unaffordable stock exposes its core-owned reason")
 	var unknown_item := component.find_child("Inventory_item_unknown", true, false) as Button
@@ -445,7 +445,7 @@ func _test_shop_component() -> void:
 	assert_not_null(equipped_item, "equipped items remain visible in the pack")
 	equipped_item.pressed.emit()
 	assert_true(sell_button.disabled and sell_button.tooltip_text.contains("Unequip"), "ordinary sale cannot bypass the equipment workflow")
-	component.free()
+	var armor_filter := component.find_child("ShopFilter_armor", true, false) as ClassicBitmapButton; armor_filter.command_requested.emit(&"shop.category.armor"); var shop_ledger := component.find_child("ShopStockColumn", true, false); var pack_ledger := component.find_child("SelectedInventoryColumn", true, false); pack_ledger.call("_drop_data", Vector2.ZERO, {"kind": &"shop-stock-item", "sourceId": "shop", "stockKey": "base:200"}); shop_ledger.call("_drop_data", Vector2.ZERO, {"kind": &"shop-inventory-item", "sourceId": "character.one", "instanceId": "item.unknown"}); assert_equal([responses[0].action, responses[0].character_id, responses[0].stock_key, responses[1].action, responses[1].instance_id], [&"buy", "character.one", "base:200", &"sell", "item.unknown"], "dragging either direction submits the same exact typed Buy and Sell responses as the fixed footer actions"); component.free()
 
 
 func _test_temple_component() -> void:

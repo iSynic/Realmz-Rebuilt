@@ -456,10 +456,10 @@ func _test_public_limits_and_errors(content: RealmzContent) -> void:
 
 
 func _test_public_application_transitions(content: RealmzContent) -> void:
-	var party := PartyState.new(content.start_map_id, content.start_coordinate, [])
+	var shopper := CharacterState.new("shopper", "Shopper", 10, 10); shopper.portrait_id = "portrait.fixture"; var party := PartyState.new(content.start_map_id, content.start_coordinate, [shopper])
 	var state := GameState.new(party, RealmzClock.new())
 	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
-	var map := content.world.player_map_by_classic_id(1)
+	var map := content.world.player_map_by_classic_id(1); var shop_result := api.execute_classic(ClassicActionDefinition.new(0, 6, 6, 0, false, []), "shop.open"); var shop_data := shop_result.interaction.body.to_data(); assert_equal([shop_result.state, shop_data["stock"][0]["category"], shop_data["characters"][0]["portraitId"]], [ScenarioRuntimeOperationResult.State.WAITING, "weapons", shopper.portrait_id], "public Shop projection preserves Castle's first 200-slot category band and exact shopper portrait identity")
 	assert_not_null(map, "fixture exposes a source-backed player map")
 	if map == null:
 		return

@@ -88,7 +88,9 @@ class ServiceCharacter:
 	var transfers: Array[Transfer] = []
 
 	func to_shop_data() -> Dictionary:
-		return {"id": id, "name": name, "inventory": inventory.map(func(value: InventoryItem) -> Dictionary: return value.to_data())}
+		var data := {"id": id, "name": name, "inventory": inventory.map(func(value: InventoryItem) -> Dictionary: return value.to_data())}
+		if not portrait_id.is_empty(): data["portraitId"] = portrait_id
+		return data
 
 	func to_temple_data() -> Dictionary:
 		return {"id": id, "name": name, "currentHealth": current_health, "maximumHealth": maximum_health, "personalGold": personal_gold, "availableGold": available_gold, "load": load, "maximumLoad": maximum_load, "portraitId": portrait_id, "conditions": conditions.map(func(value: Condition) -> Dictionary: return value.to_data())}
@@ -107,11 +109,13 @@ class ShopStock:
 	var buy_price: int
 	var can_buy: bool
 	var buy_reason: String
+	var category: StringName
 	var icon_resource_type: String = "cicn"
 	var icon_id: int
 
 	func to_data() -> Dictionary:
 		var data := {"stockKey": stock_key, "index": index, "itemId": item_id, "name": name, "quantity": quantity, "buyPrice": buy_price, "canBuy": can_buy, "buyReason": buy_reason}
+		if not category.is_empty(): data["category"] = String(category)
 		if icon_id > 0:
 			data["iconResourceType"] = icon_resource_type
 			data["iconId"] = icon_id
@@ -554,12 +558,13 @@ static func inventory_item(data: Variant) -> InventoryItem:
 
 static func shop_stock(data: Variant) -> ShopStock:
 	var required := ["stockKey", "index", "itemId", "name", "quantity", "buyPrice", "canBuy", "buyReason"]
-	var fields := required + ["iconResourceType", "iconId"]
-	if not data is Dictionary or not _exact(data, fields, required) or not _strings(data, ["stockKey", "itemId", "name", "buyReason"]) or not _ints(data, ["index", "quantity", "buyPrice"]) or not data["canBuy"] is bool: return null
+	var fields := required + ["category", "iconResourceType", "iconId"]
+	if not data is Dictionary or not _exact(data, fields, required) or not _strings(data, ["stockKey", "itemId", "name", "buyReason"]) or not _optional_string(data, "category") or not _ints(data, ["index", "quantity", "buyPrice"]) or not data["canBuy"] is bool: return null
 	if not _optional_resource_key(data): return null
 	var result := ShopStock.new()
 	result.stock_key = data["stockKey"]; result.index = int(data["index"]); result.item_id = data["itemId"]; result.name = data["name"]
 	result.quantity = int(data["quantity"]); result.buy_price = int(data["buyPrice"]); result.can_buy = data["canBuy"]; result.buy_reason = data["buyReason"]
+	result.category = StringName(data.get("category", ""))
 	result.icon_resource_type = String(data.get("iconResourceType", "cicn")); result.icon_id = int(data.get("iconId", 0))
 	return result
 
@@ -574,7 +579,8 @@ static func service_character(data: Variant, mode: StringName) -> ServiceCharact
 	var result := ServiceCharacter.new()
 	match mode:
 		&"shop":
-			if not _exact(data, ["id", "name", "inventory"], ["id", "name", "inventory"]) or not _strings(data, ["id", "name"]) or not data["inventory"] is Array: return null
+			if not _exact(data, ["id", "name", "portraitId", "inventory"], ["id", "name", "inventory"]) or not _strings(data, ["id", "name"]) or not _optional_string(data, "portraitId") or not data["inventory"] is Array: return null
+			result.portrait_id = String(data.get("portraitId", ""))
 			for entry: Variant in data["inventory"]:
 				var parsed := inventory_item(entry); if parsed == null: return null
 				result.inventory.append(parsed)

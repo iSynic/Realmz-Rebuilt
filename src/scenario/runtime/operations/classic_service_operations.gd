@@ -138,7 +138,7 @@ func shop_request(shop: ShopDefinition, request_id: String, accept_ranges: Array
 				"iconResourceType": "cicn",
 				"iconId": definition.visible_icon_id(instance.identified),
 			})
-		characters.append({"id": character.id, "name": character.name, "inventory": inventory})
+		characters.append({"id": character.id, "name": character.name, "portraitId": character.portrait_id, "inventory": inventory})
 	return InteractionRequest.from_payload(request_id, &"shop_action", {
 		"shopId": shop.id,
 		"inflationPercent": _game_state.shop_inflation(shop),
@@ -580,9 +580,22 @@ func _shop_stock_view(item: ItemDefinition, stock_key: String, stock_index: int,
 		"buyPrice": price,
 		"canBuy": quantity > 0 and _rules.economy.available(_game_state.party, WealthState.Kind.GOLD) >= price,
 		"buyReason": "Out of stock." if quantity < 1 else "The party cannot afford this item." if _rules.economy.available(_game_state.party, WealthState.Kind.GOLD) < price else "",
+		"category": String(_shop_category(stock_index)),
 		"iconResourceType": "cicn",
 		"iconId": item.visible_icon_id(true),
 	}
+
+
+static func _shop_category(stock_index: int) -> StringName:
+	if stock_index < 0:
+		return &""
+	match stock_index / 200:
+		0: return &"weapons"
+		1: return &"armor"
+		2: return &"limb_armor"
+		3: return &"magic"
+		4: return &"supplies"
+	return &""
 
 
 static func shop_accepts_item(item: ItemDefinition, accept_ranges: Array[int]) -> bool:
