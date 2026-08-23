@@ -13,16 +13,16 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Current parity-convergence batch
 
-**AOGM spell capability convergence** (`aogm-spell-capability-convergence`)
+**AOGM ray spell resolution** (`aogm-ray-spell-resolution`)
 
-Ordinary AOGM characters can learn application-owned spells from every tier, while missing mechanics previously collapsed into source-specific predicates or generic picker failures. This four-workflow batch assigns every application spell one mechanical family and per-source disposition, routes character, scroll, item, monster, field, and Party Auto probes through that shared authority, and carries exact combat blockers into the detached spellbook. Persistent fields, rotated areas, and unresolved special effects remain separate deterministic transactions.
+The application inventory exposes eleven stock player spells with Classic target type 6, and the pinned Castle cast path proves that one selected endpoint resolves every distinct actor encountered along its 128-sample ray until blocking terrain. This four-workflow batch implements that deterministic multi-actor ray for learned spells, scrolls, charged items, Party Auto, and monster AI while keeping ally-safe automatic selection deliberate. Fast Spell and persistent Auto remain the ordinary-play certification surfaces. Persistent fields, rotated areas, and unrelated special effects remain separate transactions.
 
 Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
 | `classic.spellcasting.combat-cast` | implementation | aogm-major-partial | - | GAP-SPELL-003 |
-| `classic.spellcasting.field-camp-cast` | implementation | aogm-major-partial | - | GAP-SPELL-002 |
+| `classic.exploration.fast-spell` | certification | aogm-certification | aogm-ordinary |  |
 | `classic.inventory.use-item` | implementation | aogm-major-partial | - | GAP-INV-003 |
 | `classic.combat.auto-turn` | certification | aogm-certification | aogm-ordinary |  |
 
