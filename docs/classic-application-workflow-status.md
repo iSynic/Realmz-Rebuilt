@@ -22,7 +22,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
 | `classic.rewards.experience-level-up` | certification | aogm-major-partial | aogm-ordinary |  |
-| `classic.inventory.trade-item` | certification | aogm-major-partial | aogm-ordinary | GAP-INV-004 |
+| `classic.inventory.trade-item` | certification | aogm-major-partial | aogm-ordinary |  |
 | `classic.services.shop` | implementation | aogm-major-partial | - | GAP-SVC-009 |
 
 ### Batch count delta
@@ -142,14 +142,13 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 
 ## Release blockers and major gaps
 
-Blockers: **1**. Major gaps: **14**.
+Blockers: **1**. Major gaps: **13**.
 
 - **blocker** `host.release.platform-certification` - There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
 - **major** `classic.character.allies-bestiary` - Current held-over allies now have a functional read-only workspace, but the Bestiary cannot be reconstructed from the package because menu visibility and normalized descriptions are not preserved per monster. Next: Correct Providence schema v3 and Rebuilt decoding to preserve every menu-visible monster, its description, and not-on-menu flag, then add the Bestiary route without inventing discovery state.
 - **major** `classic.character.view-sheet` - Castle's lifetime combat record and prestige cannot yet be calculated accurately. Next: Add source-backed lifetime counters and update every owning combat and magic mutation path before enabling the visible Lifetime Record tab.
 - **major** `classic.combat.resolve-outcome` - Battle reward mode 10 remains unresolved end to end. Next: Implement the mode-10 restore-and-restart continuation when a certified scenario exposes it or during post-corpus synthetic saturation, without changing schema v2 unless controlled evidence disproves positional preservation.
 - **major** `classic.combat.undo` - Movement-only Undo, result invalidation, condition gates, occupied-cell safety, presentation, and save restoration are implemented; repeated Undo and initiative-edge re-entry remain runtime-unobserved. Next: Run the synthetic Castle fixtures for repeated Undo and first/last-slot or round-boundary re-entry before expanding the bounded implementation.
-- **major** `classic.inventory.trade-item` - Trade replaces the selected-item record with a recipient form instead of showing both characters' carried-item tables and one explicit transfer boundary. Next: Render source and destination white item ledgers side by side with a divider, character switching, pointer transfer in either direction, and a click-confirm alternative that submits the existing exact-instance Trade intent.
 - **major** `classic.inventory.use-item` - Ordinary AOGM play proves fixed-power party-state items and saveable field scroll consumption. Combat items and scrolls include source-backed fixed or random power plus actor, ordered repeated actor, group, ray, rotatable persistent-area, and zero-cost elemental projectile targets; door/XAP items and broader specials remain explicit. Next: Characterize door/XAP items and broader specials only when parity or a reachable campaign requires them.
 - **major** `classic.maps.location-notes` - Historical notes are readable in source order but do not yet recreate Castle's temporary map recentering and saved darkness view. Next: Add a mutation-free note browser derived from authoritative topology and the saved darkness value, then verify land and dungeon records through MCP.
 - **major** `classic.maps.view-acquired` - Exact dungeon player-map composition is not yet proven against Castle. Next: Capture one synthetic Castle dungeon player map and compare wall, door, secret, and party-marker pixels before declaring exact presentation parity.
@@ -175,7 +174,6 @@ Blockers: **1**. Major gaps: **14**.
 
 ### aogm
 
-- `classic.inventory.trade-item` - Trade replaces the selected-item record with a recipient form instead of showing both characters' carried-item tables and one explicit transfer boundary.
 - `classic.services.shop` - Shop does not present the shop stock and active character inventory as paired item ledgers and omits Castle's stock-category filter strip.
 
 ### other-campaign

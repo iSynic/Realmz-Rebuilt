@@ -13,6 +13,8 @@ const LEDGER_MUTED := Color("50575b")
 const LEDGER_BLUE := Color("2457bd")
 const LEDGER_RED := Color("ad2721")
 const CONTENT_ICON_SCRIPT := preload("res://src/presentation/classic_content_icon.gd")
+const EXCHANGE_ITEM_BUTTON_SCRIPT := preload("res://src/presentation/interaction_components/classic_exchange_item_button.gd")
+const EXCHANGE_LEDGER_SCRIPT := preload("res://src/presentation/interaction_components/classic_exchange_ledger.gd")
 
 var _selected_character_id: String = ""
 var _selected_item_instance_id: String = ""
@@ -63,6 +65,14 @@ func present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog, 
 	if selected_item == null and not visible_items.is_empty():
 		selected_item = visible_items[0]
 		_selected_item_instance_id = selected_item.instance_id
+	if _trade_mode:
+		var target := _character_by_id(view, _selected_trade_target_id)
+		if selected_item == null or target == null:
+			_cancel_trade()
+			return
+		parent.add_child(_build_trade_workspace(view, selected_character, target, selected_item, media))
+		parent.add_child(_build_item_record(selected_character, selected_item, media))
+		return
 	var main_split := HBoxContainer.new()
 	main_split.name = "CastleInventoryMainSplit"
 	main_split.add_theme_constant_override("separation", 8)
@@ -365,13 +375,11 @@ func _render_item_actions(parent: VBoxContainer, view: GameView, item: ItemView,
 		_add_item_intent_action(actions, &"inventory.action.equipped", "Equip", item.actions.equip, PlayerIntent.item_action(PlayerIntent.Kind.EQUIP_ITEM, item.instance_id, character.id), item, character)
 	_add_item_intent_action(actions, &"inventory.action.use", "Use", item.actions.use, PlayerIntent.use_item(item.instance_id, character.id), item, character)
 	_add_item_intent_action(actions, &"inventory.action.identify", "Identify", item.actions.identify, PlayerIntent.identify_carried_items(item.actions.identify_spell_id, item.actions.identify_caster_id, character.id), item, character)
-	_add_trade_action(actions, item.actions.trade)
+	_add_trade_action(actions, item)
 	_add_item_intent_action(actions, &"inventory.action.join", "Join", item.actions.join, PlayerIntent.item_action(PlayerIntent.Kind.JOIN_ITEM, item.instance_id, character.id), item, character)
 	_add_item_intent_action(actions, &"inventory.action.split", "Split", item.actions.split, PlayerIntent.item_action(PlayerIntent.Kind.SPLIT_ITEM, item.instance_id, character.id), item, character)
 	_add_item_intent_action(actions, &"inventory.action.drop", "Drop", item.actions.drop, PlayerIntent.item_action(PlayerIntent.Kind.DROP_ITEM, item.instance_id, character.id), item, character)
 	parent.add_child(actions)
-	if _trade_mode:
-		_render_trade_targets(parent, view, item, character, media)
 	if not _trade_status.is_empty():
 		_add_label(parent, _trade_status, WARNING, 13)
 
@@ -444,64 +452,182 @@ func _clear_pending_action() -> void:
 	_pending_item_intent = null
 
 
-func _render_trade_targets(parent: VBoxContainer, view: GameView, item: ItemView, source: CharacterView, media: ClassicMediaCatalog) -> void:
+func _build_trade_workspace(view: GameView, source: CharacterView, target: CharacterView, selected_item: ItemView, media: ClassicMediaCatalog) -> PanelContainer:
 	var panel := PanelContainer.new()
-	panel.name = "InventoryTradeRecipients"
+	panel.name = "InventoryTradeWorkspace"
 	panel.theme_type_variation = &"ClassicInset"
+	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 4)
+	column.add_theme_constant_override("separation", 6)
 	panel.add_child(column)
-	_add_section_heading(column, "Transfer %s" % item.name, "%s · Load %d/%d" % [source.name, source.carried_load, source.maximum_load])
-	var recipients := VBoxContainer.new()
-	recipients.name = "InventoryTradeRecipientList"
-	recipients.add_theme_constant_override("separation", 3)
-	column.add_child(recipients)
-	for target: ItemTransferTargetView in item.actions.trade_targets:
-		if target.character_id == source.id:
-			continue
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 6)
-		var target_character := _character_by_id(view, target.character_id)
-		if target_character != null:
-			row.add_child(_portrait_icon(target_character.portrait_id, media))
-		var button := Button.new()
-		button.text = target.character_name
-		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		button.toggle_mode = true
-		button.button_pressed = target.character_id == _selected_trade_target_id
-		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		button.disabled = not target.enabled
-		button.tooltip_text = target.reason if button.disabled else "Select this recipient."
-		if not button.disabled:
-			button.pressed.connect(_select_trade_target.bind(target.character_id, item.name, target.character_name))
-		row.add_child(button)
-		var load := _label("Load unavailable", MUTED, 12)
-		if target.has_load_facts:
-			load.text = "%d → %d / %d" % [target.current_load, target.resulting_load, target.maximum_load]
-		load.custom_minimum_size.x = 118.0
-		load.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		load.tooltip_text = target.reason if not target.enabled else "Current load → load after transfer / capacity"
-		row.add_child(load)
-		recipients.add_child(row)
-		if not target.enabled and not target.reason.is_empty():
-			_add_label(recipients, target.reason, WARNING, 12)
+	_add_section_heading(column, "Trade", "Drag between packs or select an item and choose Transfer")
+	var ledgers := HBoxContainer.new()
+	ledgers.name = "InventoryTradeLedgers"
+	ledgers.add_theme_constant_override("separation", 8)
+	ledgers.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	ledgers.add_child(_build_trade_ledger(view, source, target.id, selected_item, media))
+	var divider := VSeparator.new()
+	divider.name = "InventoryTradeDivider"
+	ledgers.add_child(divider)
+	ledgers.add_child(_build_trade_ledger(view, target, source.id, selected_item, media))
+	column.add_child(ledgers)
+	column.add_child(_build_trade_partner_selector(view, source, selected_item, media))
 	var actions := HBoxContainer.new()
 	actions.name = "InventoryTradeActions"
 	actions.add_theme_constant_override("separation", 6)
+	var availability := _trade_target(selected_item, target.id)
 	var transfer := Button.new()
-	transfer.text = "Transfer"
+	transfer.text = "Transfer to %s" % target.name
 	transfer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	transfer.disabled = _selected_trade_target_id.is_empty()
-	transfer.tooltip_text = "Choose a recipient." if transfer.disabled else "Transfer this exact item instance."
+	transfer.disabled = availability == null or not availability.enabled
+	transfer.tooltip_text = "This item cannot be transferred to the selected adventurer." if availability == null else availability.reason if not availability.enabled else "Transfer this exact item instance."
 	if not transfer.disabled:
-		transfer.pressed.connect(_confirm_trade.bind(item.instance_id, source.id))
+		transfer.pressed.connect(_submit_trade.bind(selected_item.instance_id, source.id, target.id))
 	actions.add_child(transfer)
 	var cancel := Button.new()
 	cancel.text = "Cancel"
 	cancel.pressed.connect(_cancel_trade)
 	actions.add_child(cancel)
 	column.add_child(actions)
-	parent.add_child(panel)
+	if not _trade_status.is_empty():
+		_add_label(column, _trade_status, WARNING, 12)
+	return panel
+
+
+func _build_trade_ledger(view: GameView, character: CharacterView, other_id: String, selected_item: ItemView, media: ClassicMediaCatalog) -> PanelContainer:
+	var ledger := EXCHANGE_LEDGER_SCRIPT.new()
+	ledger.name = "InventoryTradeLedger_%s" % character.id
+	ledger.theme_type_variation = &"ClassicItemLedger"
+	ledger.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ledger.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	ledger.size_flags_stretch_ratio = 1.0
+	ledger.configure_drop(&"inventory-trade-item", character.id)
+	ledger.item_dropped.connect(func(payload: Dictionary, target_id: String) -> void: _drop_trade_item(view, payload, target_id))
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 3)
+	ledger.add_child(column)
+	var heading := HBoxContainer.new()
+	var title := _label("%s's items" % character.name, LEDGER_INK, 17)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	heading.add_child(title)
+	heading.add_child(_label("Load %d/%d" % [character.carried_load, character.maximum_load], LEDGER_MUTED, 12))
+	column.add_child(heading)
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	column.add_child(scroll)
+	var rows := VBoxContainer.new()
+	rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	rows.add_theme_constant_override("separation", 0)
+	scroll.add_child(rows)
+	for item: ItemView in character.items:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 4)
+		row.add_child(_content_icon(item.icon_resource_type, item.icon_id, media, 34.0, item.name))
+		var button := EXCHANGE_ITEM_BUTTON_SCRIPT.new()
+		button.name = "InventoryTradeItem_%s" % item.instance_id
+		button.theme_type_variation = &"ClassicItemLedgerButton"
+		button.text = "%s\n%s" % [item.name, _trade_line(item)]
+		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.toggle_mode = true
+		button.button_pressed = character.id == _selected_character_id and item.instance_id == selected_item.instance_id
+		button.pressed.connect(_select_trade_item.bind(view, character.id, item.instance_id, other_id))
+		button.configure_drag({"kind": &"inventory-trade-item", "sourceId": character.id, "instanceId": item.instance_id})
+		row.add_child(button)
+		rows.add_child(row)
+	if character.items.is_empty():
+		_add_label(rows, "No carried items.", LEDGER_MUTED, 12)
+	return ledger
+
+
+func _build_trade_partner_selector(view: GameView, source: CharacterView, item: ItemView, media: ClassicMediaCatalog) -> PanelContainer:
+	var panel := PanelContainer.new()
+	panel.name = "InventoryTradePartnerSelector"
+	panel.theme_type_variation = &"ClassicInset"
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 4)
+	panel.add_child(row)
+	for target: ItemTransferTargetView in item.actions.trade_targets:
+		var character := _character_by_id(view, target.character_id)
+		if character == null or character.id == source.id:
+			continue
+		var button := Button.new()
+		button.name = "InventoryTradePartner_%s" % character.id
+		button.icon = _appearance_texture(character.portrait_id, media)
+		button.expand_icon = true
+		button.toggle_mode = true
+		button.button_pressed = character.id == _selected_trade_target_id
+		button.custom_minimum_size = Vector2(58.0, 46.0)
+		button.disabled = not target.enabled
+		button.tooltip_text = target.reason if button.disabled else "%s • Load %d → %d / %d" % [character.name, target.current_load, target.resulting_load, target.maximum_load]
+		if not button.disabled:
+			button.pressed.connect(_select_trade_target.bind(character.id, item.name, character.name))
+		row.add_child(button)
+	return panel
+
+
+func _select_trade_item(view: GameView, character_id: String, instance_id: String, preferred_target_id: String) -> void:
+	var character := _character_by_id(view, character_id)
+	if character == null:
+		return
+	var item := _item_by_id(character, instance_id)
+	if item == null:
+		return
+	_selected_character_id = character_id
+	_selected_item_instance_id = instance_id
+	_selected_trade_target_id = _first_enabled_trade_target(item, preferred_target_id)
+	_trade_status = "Choose a destination for %s." % item.name if _selected_trade_target_id.is_empty() else "Ready to transfer %s." % item.name
+	refresh_requested.emit()
+
+
+func _drop_trade_item(view: GameView, payload: Dictionary, target_id: String) -> void:
+	var source_id := String(payload.get("sourceId", ""))
+	var instance_id := String(payload.get("instanceId", ""))
+	var source := _character_by_id(view, source_id)
+	var item := _item_by_id(source, instance_id)
+	var availability := _trade_target(item, target_id)
+	if availability == null or not availability.enabled:
+		_trade_status = "This item cannot be transferred there." if availability == null else availability.reason
+		refresh_requested.emit()
+		return
+	_submit_trade(instance_id, source_id, target_id)
+
+
+static func _trade_line(item: ItemView) -> String:
+	var parts: Array[String] = ["Equipped" if item.equipped else "Carried", "Weight %d" % item.weight]
+	if item.charges > 0:
+		parts.append("%d charges" % item.charges)
+	return " • ".join(parts)
+
+
+static func _item_by_id(character: CharacterView, instance_id: String) -> ItemView:
+	if character == null:
+		return null
+	for item: ItemView in character.items:
+		if item.instance_id == instance_id:
+			return item
+	return null
+
+
+static func _trade_target(item: ItemView, target_id: String) -> ItemTransferTargetView:
+	if item == null or item.actions == null:
+		return null
+	for target: ItemTransferTargetView in item.actions.trade_targets:
+		if target.character_id == target_id:
+			return target
+	return null
+
+
+static func _first_enabled_trade_target(item: ItemView, preferred_id: String = "") -> String:
+	var preferred := _trade_target(item, preferred_id)
+	if preferred != null and preferred.enabled:
+		return preferred.character_id
+	if item != null and item.actions != null:
+		for target: ItemTransferTargetView in item.actions.trade_targets:
+			if target.enabled:
+				return target.character_id
+	return ""
 
 
 func _select_trade_target(character_id: String, item_name: String, character_name: String) -> void:
@@ -556,9 +682,9 @@ func _select_item(instance_id: String) -> void:
 	refresh_requested.emit()
 
 
-func _begin_trade() -> void:
+func _begin_trade(item: ItemView) -> void:
 	_trade_mode = true
-	_selected_trade_target_id = ""
+	_selected_trade_target_id = _first_enabled_trade_target(item)
 	_trade_status = ""
 	_clear_pending_action()
 	refresh_requested.emit()
@@ -571,12 +697,13 @@ func _cancel_trade() -> void:
 	refresh_requested.emit()
 
 
-func _add_trade_action(parent: Container, availability: ActionAvailabilityView) -> void:
+func _add_trade_action(parent: Container, item: ItemView) -> void:
+	var availability := item.actions.trade if item != null and item.actions != null else null
 	var button := _bitmap_button(&"inventory.action.trade", "Trade")
 	button.disabled = availability == null or not availability.enabled
-	button.tooltip_text = "Unavailable" if availability == null else availability.reason if not availability.enabled else "Choose a recipient from the Party roster"
+	button.tooltip_text = "Unavailable" if availability == null else availability.reason if not availability.enabled else "Open the two-pack Trade workspace"
 	if not button.disabled:
-		button.command_requested.connect(func(_command_id: StringName) -> void: _begin_trade())
+		button.command_requested.connect(func(_command_id: StringName) -> void: _begin_trade(item))
 	parent.add_child(button)
 
 
