@@ -169,6 +169,7 @@ func _resolve_character_spell_character_target(caster: CharacterState, target: C
 	if rolled_damage != 0 and damage == 0:
 		damage = 1
 	var applied_condition := _apply_combat_condition(target.conditions, spell, duration, false)
+	_apply_combat_movement_effect(target, spell)
 	target.current_health -= damage
 	var result := SpellResolution.new(true, false, saved, 0, damage, duration, target.current_health <= 0)
 	result.applied_condition = applied_condition
@@ -362,6 +363,7 @@ func _resolve_monster_spell_character_target(caster_level: int, target: Characte
 	if rolled_damage != 0 and damage == 0:
 		damage = 1
 	var applied_condition := _apply_combat_condition(target.conditions, spell, duration, false)
+	_apply_combat_movement_effect(target, spell)
 	target.current_health -= damage
 	var result := SpellResolution.new(true, false, saved, spell_cost, damage, duration, target.current_health <= 0)
 	result.applied_condition = applied_condition
@@ -468,6 +470,14 @@ static func _apply_combat_condition(conditions: ConditionSet, spell: SpellDefini
 		return -1
 	conditions.set_value(condition_index, updated)
 	return condition_index
+
+
+static func _apply_combat_movement_effect(target: CharacterState, spell: SpellDefinition) -> void:
+	match absi(spell.special) if spell != null else 0:
+		2:
+			target.movement = 0
+		3, 7:
+			target.movement /= 2
 
 
 static func _selection_reflects(selection: SpellTargetSelection, rng: RealmzRng, tag: StringName) -> bool:

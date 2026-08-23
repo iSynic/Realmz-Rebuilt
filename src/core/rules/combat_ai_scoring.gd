@@ -220,7 +220,9 @@ func _monster_target_score(state: GameState, target_id: String, spell: SpellDefi
 	if cure_index >= 0:
 		return _condition_cure_score(state, target_id, cure_index)
 	if effect_index >= 0:
-		return 520 + _maximum_condition_duration(spell, power) * 8
+		if spell.cannot == 4:
+			return 520 + _maximum_condition_duration(spell, power) * 8
+		return 420 + expected * 5 + _lethal_bonus(state, target_id, expected) + _maximum_condition_duration(spell, power) * 4
 	if healing:
 		var missing := _target_missing_health(state, target_id)
 		var health_percent := 100 * _target_health(state, target_id) / maxi(1, _target_maximum_health(state, target_id))
@@ -362,7 +364,9 @@ func _best_condition_cure(state: GameState, content: RealmzContent, actor: Chara
 func _best_condition_effect(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, power: int) -> Dictionary:
 	var condition_index := ClassicSpellCapabilityCatalog.combat_condition_effect_index(spell)
 	var best: Dictionary = {}
-	for target_id: String in _friendly_actor_ids(state, actor):
+	var friendly := spell.cannot == 4
+	var candidate_ids := _friendly_actor_ids(state, actor) if friendly else _opposed_actor_ids(state, actor)
+	for target_id: String in candidate_ids:
 		var character := state.party.character_by_id(target_id)
 		var monster := state.combat.monster_by_id(target_id)
 		var conditions := character.conditions if character != null else monster.conditions if monster != null else null
@@ -370,7 +374,11 @@ func _best_condition_effect(state: GameState, content: RealmzContent, actor: Cha
 			continue
 		if not _flow().probe_character_spell_cast(state, content, actor.id, target_id, spell.id, power).allowed:
 			continue
-		var score := 520 + _maximum_condition_duration(spell, power) * 8 - absi(spell.cost * power) * 3
+		var score := 520 + _maximum_condition_duration(spell, power) * 8
+		if not friendly:
+			var expected := expected_spell_effect(spell, power)
+			score = 420 + expected * 5 + _lethal_bonus(state, target_id, expected) + _maximum_condition_duration(spell, power) * 4
+		score -= absi(spell.cost * power) * 3
 		best = _prefer(best, {"action": &"cast_spell", "spellId": spell.id, "power": power, "targetId": target_id, "score": score})
 	return best
 

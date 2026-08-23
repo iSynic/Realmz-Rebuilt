@@ -452,7 +452,15 @@ func _prepare_character_turn(combat: CombatState, character: CharacterState) -> 
 		return
 	combat.begin_active_turn()
 	combat.begin_character_undo(character.id)
-	character.movement = character.maximum_movement
+	var movement := character.maximum_movement
+	var tangled := character.conditions.value(ConditionRules.TANGLED)
+	if tangled > 0:
+		movement -= tangled
+	if character.conditions.is_active(ConditionRules.SLOW):
+		movement /= 2
+	if character.conditions.is_active(ConditionRules.HELPLESS):
+		movement = 0
+	character.movement = maxi(0, movement)
 	var carried_half_attack := 1 if character.attacks_remaining > 0 else 0
 	var haste_half_attacks := 4 if character.conditions.is_active(ConditionRules.SPEEDY) else 0
 	character.attacks_remaining = _rules.arithmetic.signed_16(carried_half_attack + character.normal_attacks + character.attack_bonus + haste_half_attacks)

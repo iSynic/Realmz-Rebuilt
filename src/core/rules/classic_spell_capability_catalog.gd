@@ -248,11 +248,12 @@ static func _combat_condition_cure_spell(spell: SpellDefinition) -> bool:
 
 
 static func _combat_condition_effect_spell(spell: SpellDefinition) -> bool:
-	if spell == null or not spell.in_combat or spell.queue_icon != 0 or spell.size != 0 or spell.target_type != 1 or spell.cannot != 4 or absi(spell.spell_class) != 8 or absi(spell.damage_type) != 8:
+	if spell == null or not spell.in_combat or spell.queue_icon != 0:
 		return false
 	var special := absi(spell.special)
 	var maximum_duration := maxi(spell.duration_min, spell.duration_max) + 7 * maxi(spell.power_duration_min, spell.power_duration_max)
-	return special >= 1 and special < 41 and special != 28 and spell.damage_min == 0 and spell.damage_max == 0 and spell.power_damage_min == 0 and spell.power_damage_max == 0 and maximum_duration > 0
+	var has_damage := spell.damage_min != 0 or spell.damage_max != 0 or spell.power_damage_min != 0 or spell.power_damage_max != 0
+	return special >= 1 and special < 41 and special != 28 and (has_damage or maximum_duration > 0)
 
 
 static func _condition_cure_index(spell: SpellDefinition) -> int:
