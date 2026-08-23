@@ -688,8 +688,8 @@ func probe_character_spell_cast(state: GameState, content: RealmzContent, caster
 	var summon_spell: bool = _flow()._is_summon_spell(spell)
 	var group_target := spell.target_type in [9, 10, 12]
 	var area_target := spell.target_type in [3, 4]
-	if area_target and rotation != 0:
-		return CombatSpellCastProbe.blocked(&"invalid_area_rotation", "This non-rotating Classic area spell requires rotation zero.")
+	if area_target and _invalid_area_rotation(spell, rotation):
+		return CombatSpellCastProbe.blocked(&"invalid_area_rotation", "This Classic area spell does not support the selected orientation.")
 	if summon_spell:
 		return _flow()._probe_summon_coordinates(state, content, caster_id, spell, power_level, target_coordinates)
 	if repeated_target:
@@ -752,7 +752,7 @@ func character_spell_options(state: GameState, content: RealmzContent, caster_id
 			if spell.target_type in [3, 4]:
 				var shape := _rules.spell_areas.shape_for(spell, power_level)
 				var offsets := _rules.spell_areas.pattern(shape)
-				result.append(CombatSpellOptionView.new(spell, power_level, null, "Choose battlefield point", &"area", shape, state.combat.battlefield.actor_position(caster_id), offsets))
+				result.append(CombatSpellOptionView.new(spell, power_level, null, "Choose battlefield point", &"area", shape, state.combat.battlefield.actor_position(caster_id), offsets, 1, [], [], _rules.spell_areas.rotation_patterns(spell, power_level)))
 				continue
 			result.append(CombatSpellOptionView.new(spell, power_level, null, "Choose combatant"))
 	return result
@@ -829,6 +829,10 @@ static func _has_equipped_scroll_case(character: CharacterState, content: Realmz
 		if instance.equipped and definition != null and absi(definition.item_type) == 13:
 			return true
 	return false
+
+
+func _invalid_area_rotation(spell: SpellDefinition, rotation: int) -> bool:
+	return rotation < 0 or rotation > (3 if spell != null and spell.can_rotate else 0)
 
 
 func _legal_area_spell_target_coordinates(state: GameState, content: RealmzContent, caster_id: String, spell: SpellDefinition, power_level: int, shape: int) -> Array[Vector2i]:

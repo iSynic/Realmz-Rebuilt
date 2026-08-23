@@ -97,8 +97,18 @@ func pattern(shape: int) -> Array[Vector2i]:
 func shape_for(spell: SpellDefinition, power_level: int, rotation: int = 0) -> int:
 	if spell == null or rotation < 0 or rotation > 3:
 		return 0
+	if not spell.can_rotate and rotation != 0:
+		return 0
 	var base := power_level if spell.target_type == 4 else spell.size if spell.target_type == 3 else 0
 	return base + rotation
+
+
+func rotation_patterns(spell: SpellDefinition, power_level: int) -> Array:
+	var result: Array = []
+	var count := 4 if spell != null and spell.can_rotate else 1
+	for rotation: int in count:
+		result.append(pattern(shape_for(spell, power_level, rotation)))
+	return result
 
 
 func pattern_fits(center: Vector2i, shape: int) -> bool:

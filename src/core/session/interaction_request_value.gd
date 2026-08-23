@@ -223,6 +223,7 @@ class CastOption:
 	var area_shape: int
 	var default_target_coordinate: Vector2i
 	var area_offsets: Array[Vector2i] = []
+	var area_rotation_offsets: Array = []
 	var legal_target_coordinates: Array[Vector2i] = []
 	var item_instance_id: String
 	var item_id: String
@@ -247,6 +248,7 @@ class CastOption:
 			data["areaShape"] = area_shape
 			data["defaultTargetCoordinate"] = [default_target_coordinate.x, default_target_coordinate.y]
 			data["areaOffsets"] = area_offsets.map(func(value: Vector2i) -> Array[int]: return [value.x, value.y])
+			data["areaRotationOffsets"] = area_rotation_offsets.map(func(offsets: Array) -> Array: return offsets.map(func(value: Vector2i) -> Array[int]: return [value.x, value.y]))
 			data["legalTargetCoordinates"] = legal_target_coordinates.map(func(value: Vector2i) -> Array[int]: return [value.x, value.y])
 		return data
 
@@ -627,7 +629,7 @@ static func fast_spell(data: Variant) -> FastSpell:
 
 static func cast_option(data: Variant, source_kind: StringName) -> CastOption:
 	if not data is Dictionary: return null
-	var common := ["spellId", "spellName", "power", "targetId", "targetName", "targetCurrentHealth", "targetMaximumHealth", "targetMode", "maximumTargets", "targetCandidates", "areaShape", "defaultTargetCoordinate", "areaOffsets", "legalTargetCoordinates"]
+	var common := ["spellId", "spellName", "power", "targetId", "targetName", "targetCurrentHealth", "targetMaximumHealth", "targetMode", "maximumTargets", "targetCandidates", "areaShape", "defaultTargetCoordinate", "areaOffsets", "areaRotationOffsets", "legalTargetCoordinates"]
 	var allowed := common.duplicate()
 	if source_kind == &"spell": allowed.append("cost")
 	if source_kind == &"item": allowed.append_array(["itemInstanceId", "itemId", "itemName", "charges"])
@@ -658,6 +660,15 @@ static func cast_option(data: Variant, source_kind: StringName) -> CastOption:
 		for coordinate: Variant in data["areaOffsets"]:
 			if not _coordinate(coordinate): return null
 			result.area_offsets.append(_vector(coordinate))
+		if data.has("areaRotationOffsets"):
+			if not data["areaRotationOffsets"] is Array: return null
+			for rotation_offsets: Variant in data["areaRotationOffsets"]:
+				if not rotation_offsets is Array: return null
+				var parsed_offsets: Array[Vector2i] = []
+				for coordinate: Variant in rotation_offsets:
+					if not _coordinate(coordinate): return null
+					parsed_offsets.append(_vector(coordinate))
+				result.area_rotation_offsets.append(parsed_offsets)
 		for coordinate: Variant in data["legalTargetCoordinates"]:
 			if not _coordinate(coordinate): return null
 			result.legal_target_coordinates.append(_vector(coordinate))
