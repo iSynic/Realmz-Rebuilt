@@ -169,7 +169,8 @@ static func _weighted_choice(candidates: Array[Dictionary], rng: RealmzRng, sema
 
 static func _choice_key(choice: Dictionary) -> String:
 	var target_ids: Array = choice.get("targetIds", [])
-	return "%s|%s|%s|%s|%s" % [String(choice.get("action", "")), String(choice.get("spellId", "")), String(choice.get("targetId", "")), ",".join(target_ids), str(choice.get("coordinate", Vector2i(-1, -1)))]
+	var target_coordinates: Array = choice.get("targetCoordinates", [])
+	return "%s|%s|%s|%s|%s|%s" % [String(choice.get("action", "")), String(choice.get("spellId", "")), String(choice.get("targetId", "")), ",".join(target_ids), str(choice.get("coordinate", Vector2i(-1, -1))), str(target_coordinates)]
 
 
 func _best_party_spell(state: GameState, content: RealmzContent, actor: CharacterState) -> Dictionary:
@@ -180,13 +181,39 @@ func _best_party_spell(state: GameState, content: RealmzContent, actor: Characte
 		var spell := content.spell_by_id(option.spell_id)
 		if spell == null:
 			continue
-		if MagicRules.is_condition_cure_spell(spell):
+		if _flow()._is_summon_spell(spell):
+			best = _prefer(best, _best_summon(state, content, actor, spell, option.power))
+		elif MagicRules.is_condition_cure_spell(spell):
 			best = _prefer(best, _best_condition_cure(state, content, actor, spell, option.power))
 		elif _flow()._is_source_backed_combat_healing_spell(spell):
 			best = _prefer(best, _best_heal(state, content, actor, spell, option.power))
 		elif spell.target_type in [0, 1, 3, 4, 10]:
 			best = _prefer(best, _best_damage_spell(state, content, actor, spell, option, actors_by_cell, area_placement_cache))
 	return best
+
+
+func _best_summon(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, power: int) -> Dictionary:
+	var coordinate: Vector2i = _flow()._automatic_summon_coordinate(state, content, actor, spell, power)
+	if coordinate == INVALID_COORDINATE:
+		return {}
+	var friendly_count := 0
+	var hostile_count := 0
+	var allied_summon_count := 0
+	for character: CharacterState in state.party.characters():
+		if character.current_health > 0 and state.combat.battlefield.has_actor(character.id):
+			if character.traitor == actor.traitor: friendly_count += 1
+			else: hostile_count += 1
+	for monster: MonsterState in state.combat.monsters():
+		if monster.current_health <= 0 or not state.combat.battlefield.has_actor(monster.id):
+			continue
+		if monster.traitor == actor.traitor:
+			friendly_count += 1
+			if monster.summoned: allied_summon_count += 1
+		else:
+			hostile_count += 1
+	if hostile_count <= 0 or friendly_count > hostile_count or allied_summon_count >= maxi(1, hostile_count - friendly_count + 1):
+		return {}
+	return {"action": &"cast_spell", "spellId": spell.id, "power": power, "targetCoordinates": [coordinate], "score": 400 + (hostile_count - friendly_count) * 120 + hostile_count * 20 - absi(spell.cost * power) * 3}
 
 
 func _best_condition_cure(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, power: int) -> Dictionary:

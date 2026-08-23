@@ -92,7 +92,9 @@ func _execute_auto_choice(state: GameState, content: RealmzContent, actor: Chara
 	if action == &"cast_spell":
 		var target_ids: Array[String] = []
 		target_ids.assign(choice.get("targetIds", []))
-		return _flow().cast_spell(state, content, actor.id, String(choice.get("targetId", "")), String(choice["spellId"]), int(choice["power"]), rng, choice.get("coordinate", INVALID_COORDINATE), 0, target_ids)
+		var target_coordinates: Array[Vector2i] = []
+		target_coordinates.assign(choice.get("targetCoordinates", []))
+		return _flow().cast_spell(state, content, actor.id, String(choice.get("targetId", "")), String(choice["spellId"]), int(choice["power"]), rng, choice.get("coordinate", INVALID_COORDINATE), 0, target_ids, target_coordinates)
 	if action == &"move":
 		return _auto_move_toward_target(state, content, actor, rng)
 	return _flow().submit_action(state, content, actor.id, action, String(choice.get("targetId", "")), rng)
