@@ -41,6 +41,7 @@ func assemble(manifest: Dictionary, content: Dictionary, world: Dictionary, scen
 	var complex_encounters: Array[ComplexEncounterDefinition] = complex_encounters_value
 	var thief_encounters: Array[ThiefEncounterDefinition] = thief_encounters_value
 	var timed_encounters: Array[TimedEncounterDefinition] = timed_encounters_value
+	_normalize_missing_encounter_prompts(messages, message_ids, simple_encounters, complex_encounters)
 	var races_value: Variant = _content_decoder._construct_races(content.get("races"))
 	var castes_value: Variant = _content_decoder._construct_castes(content.get("castes"))
 	var items_value: Variant = _content_decoder._construct_items(content.get("items"))
@@ -146,3 +147,13 @@ func assemble(manifest: Dictionary, content: Dictionary, world: Dictionary, scen
 				_reject("Trigger '%s' references an unavailable post-action location." % trigger.id)
 				return null
 	return RealmzContent.new(manifest["campaignId"], manifest["packageHash"], manifest["contentId"], manifest["engine"]["rulesVersion"], start["mapId"], start_coordinate, world_definition, scenario_definition, messages, triggers, simple_encounters, races, castes, items, spells, monsters, battles, treasures, shops, complex_encounters, thief_encounters, timed_encounters, option_labels, campaign_definition, appearance_options, monster_sets_value)
+
+
+func _normalize_missing_encounter_prompts(messages: Array[MessageDefinition], message_ids: Dictionary, simple_encounters: Array[SimpleEncounterDefinition], complex_encounters: Array[ComplexEncounterDefinition]) -> void:
+	# Castle preloads an empty STR# value before its unchecked direct Data SD2 prompt read.
+	for encounter: Variant in simple_encounters + complex_encounters:
+		var prompt_id := absi(encounter.prompt_message_id)
+		if message_ids.has(prompt_id):
+			continue
+		messages.append(MessageDefinition.new(prompt_id, ""))
+		message_ids[prompt_id] = true

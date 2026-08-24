@@ -1,6 +1,9 @@
 class_name PackageCrossReferenceValidator
 extends PackageDecoderBase
 
+const CLASSIC_UNMATCHABLE_RACE_ID := "classic.race.-32768"
+const CLASSIC_UNMATCHABLE_CASTE_ID := "classic.caste.-32768"
+
 func _validate_rule_references(races: Array[RaceDefinition], castes: Array[CasteDefinition], items: Array[ItemDefinition], spells: Array[SpellDefinition], monsters: Array[MonsterDefinition], battles: Array[BattleDefinition], treasures: Array[TreasureDefinition], shops: Array[ShopDefinition], message_ids: Dictionary) -> bool:
 	var race_ids := _definition_ids(races)
 	var caste_ids := _definition_ids(castes)
@@ -9,9 +12,9 @@ func _validate_rule_references(races: Array[RaceDefinition], castes: Array[Caste
 	for item: ItemDefinition in items:
 		if not item.cursed_item_id.is_empty() and not item_ids.has(item.cursed_item_id):
 			return _reject("Item '%s' references unavailable cursed item '%s'." % [item.id, item.cursed_item_id])
-		if not item.specific_race_id.is_empty() and not race_ids.has(item.specific_race_id):
+		if not item.specific_race_id.is_empty() and item.specific_race_id != CLASSIC_UNMATCHABLE_RACE_ID and not race_ids.has(item.specific_race_id):
 			return _reject("Item '%s' references unavailable race '%s'." % [item.id, item.specific_race_id])
-		if not item.specific_caste_id.is_empty() and not caste_ids.has(item.specific_caste_id):
+		if not item.specific_caste_id.is_empty() and item.specific_caste_id != CLASSIC_UNMATCHABLE_CASTE_ID and not caste_ids.has(item.specific_caste_id):
 			return _reject("Item '%s' references unavailable caste '%s'." % [item.id, item.specific_caste_id])
 	for caste: CasteDefinition in castes:
 		for item_id: String in caste.start_items():

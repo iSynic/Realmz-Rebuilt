@@ -10,8 +10,7 @@ const SCHEMA_REJECTION_PATH: String = "user://realmz2-tests/realmz2-schema-v2.re
 
 
 func run() -> void:
-	var repository := PackageRepository.new()
-	var character_library := repository.load_bundled_package(CLASSIC_CHARACTER_LIBRARY_PATH, CLASSIC_CHARACTER_LIBRARY_ID, CLASSIC_CHARACTER_LIBRARY_HASH)
+	var repository := PackageRepository.new(); var character_library := repository.load_bundled_package(CLASSIC_CHARACTER_LIBRARY_PATH, CLASSIC_CHARACTER_LIBRARY_ID, CLASSIC_CHARACTER_LIBRARY_HASH)
 	assert_true(character_library.is_ok(), "the pinned Providence-built Classic character library loads as trusted application content: %s" % character_library.error_message)
 	if character_library.is_ok():
 		assert_equal([character_library.content.race_definitions().size(), character_library.content.caste_definitions().size()], [30, 30], "the application character library contains the complete stock Race and Caste tables")
@@ -19,15 +18,16 @@ func run() -> void:
 		assert_equal([character_library.content.appearance_definitions(CharacterAppearanceDefinition.PORTRAIT).size(), character_library.content.appearance_definitions(CharacterAppearanceDefinition.COMBAT_ICON).size()], [120, 120], "the stock creator receives all built-in portraits and tactical icons")
 		assert_true(repository.load_bundled_package(CLASSIC_CHARACTER_LIBRARY_PATH, CLASSIC_CHARACTER_LIBRARY_ID, CLASSIC_CHARACTER_LIBRARY_HASH) == character_library, "the immutable built-in library reuses one typed in-memory result")
 		assert_equal(repository.retained_package_count(), 1, "the package repository retains one trusted bundled graph")
-	var wrong_library_identity := repository.load_bundled_package(CLASSIC_CHARACTER_LIBRARY_PATH, CLASSIC_CHARACTER_LIBRARY_ID, "0".repeat(64))
-	assert_false(wrong_library_identity.is_ok(), "a bundled library whose pinned package identity drifts is rejected")
-	var loaded := repository.load_package(FIXTURE_PATH)
-	assert_true(loaded.is_ok(), "the Providence-authored fixture passes package validation: %s" % loaded.error_message)
+	var wrong_library_identity := repository.load_bundled_package(CLASSIC_CHARACTER_LIBRARY_PATH, CLASSIC_CHARACTER_LIBRARY_ID, "0".repeat(64)); assert_false(wrong_library_identity.is_ok(), "a bundled library whose pinned package identity drifts is rejected")
+	var loaded := repository.load_package(FIXTURE_PATH); assert_true(loaded.is_ok(), "the Providence-authored fixture passes package validation: %s" % loaded.error_message)
 	if not loaded.is_ok():
 		return
-	var repeated_external_load := repository.load_package(FIXTURE_PATH)
-	assert_true(repeated_external_load.is_ok(), "an unchanged external package can be validated repeatedly")
-	assert_true(repeated_external_load != loaded, "external package validation never inherits trusted cache status")
+	var fixture_archive := ZIPReader.new()
+	assert_equal(fixture_archive.open(FIXTURE_PATH), OK, "the public package proof can open the validated synthetic archive")
+	if fixture_archive.file_exists("manifest.json"):
+		var manifest: Dictionary = JSON.parse_string(fixture_archive.read_file("manifest.json").get_string_from_utf8()); var malformed_content: Dictionary = JSON.parse_string(fixture_archive.read_file("content.json").get_string_from_utf8()); var world: Dictionary = JSON.parse_string(fixture_archive.read_file("world.json").get_string_from_utf8()); var scenario: Dictionary = JSON.parse_string(fixture_archive.read_file("scenario.json").get_string_from_utf8()); var malformed_encounter: Dictionary = malformed_content["complexEncounters"][0]; malformed_encounter["promptMessageId"] = 628; var sentinel_item: Dictionary = malformed_content["items"][0]; sentinel_item["specificCasteId"] = "classic.caste.-32768"; var normalized := PackageDomainAssembler.new().assemble(manifest, malformed_content, world, scenario, loaded.media.assets()); assert_equal([loaded.content.message_by_id(628), normalized.message_by_id(628).text if normalized != null else "assembly-failed", normalized.item_definitions()[0].specific_caste_id if normalized != null else "assembly-failed"], [null, "", "classic.caste.-32768"], "a missing direct encounter prompt materializes Castle's immutable empty-string fallback while the exact unmatchable item-use sentinel survives strict package validation")
+	fixture_archive.close()
+	var repeated_external_load := repository.load_package(FIXTURE_PATH); assert_true(repeated_external_load.is_ok(), "an unchanged external package can be validated repeatedly"); assert_true(repeated_external_load != loaded, "external package validation never inherits trusted cache status")
 	assert_equal(loaded.content.campaign_id, "realmz2-synthetic-fixture", "manifest campaign identity becomes typed content")
 	assert_equal(loaded.content.package_hash, "c174db82eebf673c8840f0c8f212c0efd1d1831973a2f23a23432f2074cc6e08", "package identity is retained")
 	assert_equal(loaded.content.campaign_definition().title, "Realmz2 Synthetic Fixture", "campaign title metadata becomes a typed display contract")
