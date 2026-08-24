@@ -27,6 +27,7 @@ signal reduced_motion_changed(enabled: bool)
 signal auto_switch_to_melee_changed(enabled: bool)
 signal exploration_speed_changed(percent: int)
 signal exploration_minimap_changed(enabled: bool)
+signal classic_exploration_visibility_changed(enabled: bool)
 signal autojournal_changed(enabled: bool)
 signal layout_changed(workspace_rect: Rect2, profile: UiLayoutProfile)
 signal route_changed(route_id: StringName)
@@ -75,10 +76,13 @@ const JOURNAL_STATUS_TEXTURE := preload("res://src/presentation/assets/ui/status
 @onready var _clock_label: Label = %Clock
 @onready var _gold_label: Label = %Gold
 @onready var _world_command_panel: PanelContainer = %WorldCommandPanel
+@onready var _world_command_column: VBoxContainer = $BottomRegion/BottomRow/WorldCommandPanel/WorldCommandColumn
 @onready var _world_command_grid: GridContainer = %WorldCommandGrid
 @onready var _world_command_heading: Label = %WorldCommandHeading
 @onready var _narrative_well: PanelContainer = %NarrativeWell
 @onready var _command_panel: PanelContainer = %CommandPanel
+@onready var _command_column: VBoxContainer = $BottomRegion/BottomRow/CommandPanel/CommandColumn
+@onready var _command_scroll: ScrollContainer = $BottomRegion/BottomRow/CommandPanel/CommandColumn/CommandScroll
 @onready var _command_grid: GridContainer = %CommandGrid
 @onready var _command_heading: Label = $BottomRegion/BottomRow/CommandPanel/CommandColumn/CommandHeading
 @onready var _router: ClassicScreenRouter = %ScreenRouter
@@ -494,16 +498,23 @@ func _apply_layout() -> void:
 	_world_command_panel.visible = _profile.id != UiLayoutProfile.COMPACT
 	_apply_exploration_mode()
 	_command_heading.text = "Party" if _world_command_panel.visible else "Commands"
-	_world_command_panel.custom_minimum_size.x = minf(240.0, viewport_size.x * 0.2) if _world_command_panel.visible else 0.0
+	_world_command_panel.custom_minimum_size.x = minf(240.0 * _profile.ui_scale, viewport_size.x * 0.2) if _world_command_panel.visible else 0.0
 	_world_command_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL if _world_command_panel.visible else Control.SIZE_SHRINK_BEGIN
 	_world_command_panel.size_flags_stretch_ratio = 0.85
 	_command_panel.visible = _router.current_screen() != &"spells"
-	_command_panel.custom_minimum_size.x = maxf(300.0, command_width) if _world_command_panel.visible else command_width
+	_command_panel.custom_minimum_size.x = maxf(300.0 * _profile.ui_scale, command_width) if _world_command_panel.visible else command_width
 	_command_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL if _world_command_panel.visible else Control.SIZE_SHRINK_END
 	_command_panel.size_flags_stretch_ratio = 1.15
 	_command_panel.custom_minimum_size.y = 0.0
-	_narrative_well.custom_minimum_size.x = minf(620.0, maxf(360.0, footer_width - _world_command_panel.custom_minimum_size.x - 12.0)) if _world_command_panel.visible else maxf(360.0, footer_width - (command_width if _command_panel.visible else 0.0) - 12.0)
+	_narrative_well.custom_minimum_size.x = minf(620.0 * _profile.ui_scale, maxf(360.0, footer_width - _world_command_panel.custom_minimum_size.x - _command_panel.custom_minimum_size.x - 12.0)) if _world_command_panel.visible else maxf(360.0, footer_width - (command_width if _command_panel.visible else 0.0) - 12.0)
 	_narrative_well.size_flags_horizontal = Control.SIZE_SHRINK_CENTER if _world_command_panel.visible else Control.SIZE_EXPAND_FILL
+	_world_command_column.alignment = BoxContainer.ALIGNMENT_CENTER
+	_command_column.alignment = BoxContainer.ALIGNMENT_CENTER
+	_world_command_grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_world_command_grid.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_command_scroll.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_command_grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_command_grid.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_world_command_grid.columns = 4
 	_command_grid.columns = 4 if _world_command_panel.visible else maxi(2, floori(command_width / (108.0 if _profile.bitmap_scale == 2 else 58.0)))
 	# Orientation and child minima must settle before shrinking the outer panel;
@@ -920,6 +931,7 @@ func _on_presentation_setting_changed(setting_id: StringName, value: Variant) ->
 		&"auto_switch_to_melee": auto_switch_to_melee_changed.emit(bool(value))
 		&"exploration_speed_percent": exploration_speed_changed.emit(int(value))
 		&"show_exploration_minimap": exploration_minimap_changed.emit(bool(value))
+		&"classic_exploration_visibility": classic_exploration_visibility_changed.emit(bool(value))
 		&"autojournal_enabled": autojournal_changed.emit(bool(value))
 
 

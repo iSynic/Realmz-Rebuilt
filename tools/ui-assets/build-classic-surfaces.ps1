@@ -15,12 +15,16 @@ $committedManifestPath = Join-Path $outputRoot "spritecook-assets.json"
 $stagingRoot = Join-Path ([IO.Path]::GetTempPath()) ("realmz2-ui-surfaces-" + [Guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Path $stagingRoot | Out-Null
 $decorativeAssets = @()
+$imagegenAssets = @()
 $statusAssets = @()
 $commandAssets = @()
 if (Test-Path -LiteralPath $committedManifestPath) {
     $committedManifest = Get-Content -Raw -LiteralPath $committedManifestPath | ConvertFrom-Json
     if ($null -ne $committedManifest.decorative_assets) {
         $decorativeAssets = @($committedManifest.decorative_assets)
+    }
+    if ($null -ne $committedManifest.imagegen_assets) {
+        $imagegenAssets = @($committedManifest.imagegen_assets)
     }
     if ($null -ne $committedManifest.status_assets) {
         $statusAssets = @($committedManifest.status_assets)
@@ -202,9 +206,10 @@ try {
         finally { $bitmap.Dispose() }
     }
     $manifest = [ordered]@{
-        schema_version = 7
+        schema_version = 8
         selected_asset = $selectedAsset
         decorative_assets = $decorativeAssets
+        imagegen_assets = $imagegenAssets
         status_assets = $statusAssets
         command_assets = $commandAssets
         derivation = [ordered]@{

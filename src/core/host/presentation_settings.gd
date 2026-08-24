@@ -1,7 +1,7 @@
 class_name PresentationSettings
 extends RefCounted
 
-const SCHEMA_VERSION: int = 8
+const SCHEMA_VERSION: int = 9
 const MUSIC_SLOT_COUNT: int = 20
 const MUSIC_OFF: int = 0
 const MUSIC_PLAY: int = 1
@@ -30,6 +30,7 @@ var ui_scale_mode: String = UI_SCALE_AUTO
 var window_mode: String = WINDOWED
 var exploration_speed_percent: int = 100
 var show_exploration_minimap: bool = false
+var classic_exploration_visibility: bool = true
 var autojournal_enabled: bool = true
 var typography_mode: String = TYPOGRAPHY_CLASSIC
 
@@ -52,6 +53,7 @@ func to_data() -> Dictionary:
 		"windowMode": window_mode,
 		"explorationSpeedPercent": exploration_speed_percent,
 		"showExplorationMinimap": show_exploration_minimap,
+		"classicExplorationVisibility": classic_exploration_visibility,
 		"autojournalEnabled": autojournal_enabled,
 		"typographyMode": typography_mode,
 	}
@@ -66,7 +68,7 @@ static func from_data(data: Variant) -> PresentationSettings:
 	var schema_version := int(schema_value)
 	if float(schema_version) != float(schema_value):
 		return null
-	if data.get("kind") != "realmz2.presentation-settings" or schema_version not in [1, 2, 3, 4, 5, 6, 7, SCHEMA_VERSION]:
+	if data.get("kind") != "realmz2.presentation-settings" or schema_version not in [1, 2, 3, 4, 5, 6, 7, 8, SCHEMA_VERSION]:
 		return null
 	if not data.get("masterVolume") is float or not data.get("topologyDebug") is bool or not data.get("textScale") is float or not data.get("reducedMotion") is bool:
 		return null
@@ -93,7 +95,7 @@ static func from_data(data: Variant) -> PresentationSettings:
 	if schema_version >= 7:
 		if not data.get("typographyMode") is String or data["typographyMode"] not in [TYPOGRAPHY_CLASSIC, TYPOGRAPHY_READABLE]:
 			return null
-	if schema_version == SCHEMA_VERSION:
+	if schema_version >= 8:
 		if not data.get("soundVolume") is float or not data.get("musicVolume") is float or not data.get("musicEnabled") is bool or not data.get("musicPlaylistModes") is Array:
 			return null
 		if float(data["soundVolume"]) < 0.0 or float(data["soundVolume"]) > 1.0 or float(data["musicVolume"]) < 0.0 or float(data["musicVolume"]) > 1.0:
@@ -104,6 +106,8 @@ static func from_data(data: Variant) -> PresentationSettings:
 		for mode: Variant in modes:
 			if (not mode is int and not mode is float) or float(int(mode)) != float(mode) or int(mode) not in [MUSIC_OFF, MUSIC_PLAY, MUSIC_CONTINUE]:
 				return null
+	if schema_version >= 9 and not data.get("classicExplorationVisibility") is bool:
+		return null
 	var volume: float = data["masterVolume"]
 	var scale: float = data["textScale"]
 	if volume < 0.0 or volume > 1.0 or scale < 0.8 or scale > 1.5:
@@ -123,6 +127,7 @@ static func from_data(data: Variant) -> PresentationSettings:
 	settings.window_mode = String(data.get("windowMode", WINDOWED))
 	settings.exploration_speed_percent = int(data.get("explorationSpeedPercent", 100))
 	settings.show_exploration_minimap = bool(data.get("showExplorationMinimap", false))
+	settings.classic_exploration_visibility = bool(data.get("classicExplorationVisibility", true))
 	settings.autojournal_enabled = bool(data.get("autojournalEnabled", true))
 	settings.typography_mode = String(data.get("typographyMode", TYPOGRAPHY_CLASSIC))
 	return settings

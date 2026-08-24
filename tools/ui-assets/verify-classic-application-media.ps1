@@ -137,7 +137,7 @@ if (-not (Test-Path -LiteralPath $chromeManifestPath -PathType Leaf)) {
     throw "SpriteCook chrome manifest is missing"
 }
 $chromeManifest = Get-Content -Raw -LiteralPath $chromeManifestPath | ConvertFrom-Json
-if ($chromeManifest.schema_version -ne 7 -or [string]::IsNullOrWhiteSpace($chromeManifest.selected_asset.asset_id)) {
+if ($chromeManifest.schema_version -ne 8 -or [string]::IsNullOrWhiteSpace($chromeManifest.selected_asset.asset_id)) {
     throw "SpriteCook chrome manifest contract is unsupported"
 }
 $chromeFiles = @($chromeManifest.files)
@@ -146,6 +146,12 @@ foreach ($decorativeAsset in @($chromeManifest.decorative_assets)) {
         throw "SpriteCook decorative asset provenance is incomplete"
     }
     $chromeFiles += $decorativeAsset.file
+}
+foreach ($imagegenAsset in @($chromeManifest.imagegen_assets)) {
+    if ([string]::IsNullOrWhiteSpace($imagegenAsset.asset_id) -or $imagegenAsset.provider -ne "openai-imagegen" -or [string]::IsNullOrWhiteSpace($imagegenAsset.generation_job_id) -or [string]::IsNullOrWhiteSpace($imagegenAsset.source_sha256) -or [string]::IsNullOrWhiteSpace($imagegenAsset.derivation)) {
+        throw "ImageGen decorative asset provenance is incomplete"
+    }
+    $chromeFiles += $imagegenAsset.file
 }
 foreach ($statusAsset in @($chromeManifest.status_assets)) {
     if ([string]::IsNullOrWhiteSpace($statusAsset.asset_id) -or [string]::IsNullOrWhiteSpace($statusAsset.generation_job_id) -or [string]::IsNullOrWhiteSpace($statusAsset.source_sha256) -or [string]::IsNullOrWhiteSpace($statusAsset.derivation)) {

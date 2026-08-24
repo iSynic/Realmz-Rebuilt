@@ -1,5 +1,5 @@
 {
-  "schema_version": 7,
+  "schema_version": 8,
   "selected_asset": {
     "asset_id": "3f355030-0f8c-4d4e-b079-26ba8d3dbc32",
     "label": "Realmz 2 Classic-wide charcoal slate",
@@ -44,6 +44,26 @@
         "width": 512,
         "height": 512,
         "sha256": "fb5802230437d813a1cd7ca7a6cba147de60aaf408a1925af69e57680f68d802"
+      }
+    }
+  ],
+  "imagegen_assets": [
+    {
+      "asset_id": "exec-825b668b-b971-489b-9a8b-8fe7aa9aca14",
+      "label": "Realmz Rebuilt seamless exploration surround",
+      "provider": "openai-imagegen",
+      "mode": "stylized-concept",
+      "source_sha256": "b66be0cebf8121b60fd7bb5b22abdda565c6873054c854c7d9858489d32ddf02",
+      "source_sha256_prefix": "b66be0cebf81",
+      "source_width": 1254,
+      "source_height": 1254,
+      "generation_job_id": "exec-825b668b-b971-489b-9a8b-8fe7aa9aca14",
+      "derivation": "system-drawing-high-quality-bicubic-512x512-plus-64px-cosine-opposite-edge-feather",
+      "file": {
+        "path": "res://src/presentation/assets/ui/classic-exploration-surround-tile.png",
+        "width": 512,
+        "height": 512,
+        "sha256": "ab076b93bd4a0143c7bb2294baa19c5ff0a630151be27854b6b4f1a5abe073fa"
       }
     }
   ],

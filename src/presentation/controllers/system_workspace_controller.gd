@@ -226,6 +226,7 @@ func _build_display_tab(parent: VBoxContainer, settings: PresentationSettings) -
 	window_mode.item_selected.connect(func(index: int) -> void: setting_changed.emit(&"window_mode", String(window_mode.get_item_metadata(index))))
 	_add_setting_row(content, "Window mode", window_mode)
 	_add_setting_toggle(content, "Use topology-derived 3D dungeons", settings.dungeon_3d, &"dungeon_3d")
+	_add_setting_toggle(content, "Classic exploration distance with visited outer tiles", settings.classic_exploration_visibility, &"classic_exploration_visibility")
 
 
 func _build_audio_tab(parent: VBoxContainer, settings: PresentationSettings) -> void:
@@ -377,6 +378,7 @@ func _add_card(parent: Container, title: String, subtitle: String, detail: Strin
 
 func _add_setting_toggle(parent: Container, label: String, enabled: bool, setting_id: StringName) -> void:
 	var toggle := CheckButton.new()
+	toggle.name = String(setting_id).to_pascal_case()
 	toggle.text = label
 	toggle.button_pressed = enabled
 	toggle.toggled.connect(func(value: bool) -> void: setting_changed.emit(setting_id, value))

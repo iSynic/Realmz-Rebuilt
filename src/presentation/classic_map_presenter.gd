@@ -5,20 +5,21 @@ signal movement_hold_started(direction: Vector2i)
 signal movement_hold_updated(direction: Vector2i)
 signal movement_hold_stopped
 const DETACHED_VIEW_DIAMETER: int = 25
+const CLASSIC_VIEW_CELLS: Vector2i = Vector2i(15, 13)
 const PARTY_MARKER_LEFT_ASSET_ID: StringName = &"map.party.left"
 const PARTY_MARKER_RIGHT_ASSET_ID: StringName = &"map.party.right"
 const PARTY_MARKER_CAMP_ASSET_ID: StringName = &"map.party.camp"
 const PARTY_MARKER_ASSET_ID: StringName = PARTY_MARKER_RIGHT_ASSET_ID
 const BOAT_MARKER_LEFT_ASSET_IDS: Dictionary = {0: &"map.party.boat.left.0", 3: &"map.party.boat.left.3", 5: &"map.party.boat.left.5", 6: &"map.party.boat.left.6", 7: &"map.party.boat.left.7"}
 const BOAT_MARKER_RIGHT_ASSET_IDS: Dictionary = {0: &"map.party.boat.right.0", 3: &"map.party.boat.right.3", 5: &"map.party.boat.right.5", 6: &"map.party.boat.right.6", 7: &"map.party.boat.right.7"}
-const GUTTER_TEXTURE: Texture2D = preload("res://src/presentation/assets/ui/classic-charcoal-slate-tile.png")
-const GUTTER_RAIL_TEXTURE: Texture2D = preload("res://src/presentation/assets/ui/classic-exploration-rail.png")
+const SURROUND_TEXTURE: Texture2D = preload("res://src/presentation/assets/ui/classic-exploration-surround-tile.png")
 
 @export var cell_size: float = 32.0
 @export var map_origin: Vector2 = Vector2.ZERO
 @export var minimap_size: float = 94.0
 @export var show_debug_facts: bool = false
 @export var show_travel_preview: bool = false
+@export var classic_exploration_visibility: bool = true
 
 var _view: GameView
 var _media: ClassicMediaCatalog
@@ -95,6 +96,11 @@ func set_travel_preview_visible(enabled: bool) -> void:
 	queue_redraw()
 
 
+func set_classic_exploration_visibility(enabled: bool) -> void:
+	classic_exploration_visibility = enabled
+	queue_redraw()
+
+
 func set_media_catalog(media: ClassicMediaCatalog) -> void:
 	_media = media
 	_atlas_assets.clear()
@@ -128,12 +134,17 @@ func _draw() -> void:
 	_draw_exploration_stage(map_rect)
 	var camera := camera_top_left(map_view.party_coordinate, Vector2i(map_view.width, map_view.height), viewport_cells)
 	var camera_end := camera + viewport_cells
+	var classic_rect := classic_visible_rect(map_view.party_coordinate, Vector2i(map_view.width, map_view.height))
 	var dungeon_discovery := dungeon_discovery_coordinates(map_view.visited_coordinates()) if map_view.level_type == &"dungeon" else {}
 	for cell: MapCellView in map_view.cells():
 		if cell.coordinate.x < camera.x or cell.coordinate.y < camera.y or cell.coordinate.x >= camera_end.x or cell.coordinate.y >= camera_end.y:
 			continue
 		var rect := Rect2(draw_origin + Vector2(cell.coordinate - camera) * cell_size, Vector2.ONE * cell_size)
-		_draw_cell(cell, rect, map_view.level_type, map_view.dark, not cell.has_feature(&"unmapped") or dungeon_discovery.has(cell.coordinate))
+		var outside_classic_view := classic_exploration_visibility and not classic_rect.has_point(cell.coordinate)
+		if outside_classic_view and not cell.visited:
+			_draw_unvisited_cell(rect)
+			continue
+		_draw_cell(cell, rect, map_view.level_type, map_view.dark, not cell.has_feature(&"unmapped") or dungeon_discovery.has(cell.coordinate), outside_classic_view)
 		if show_debug_facts:
 			draw_rect(rect, Color(0.22, 0.25, 0.30), false, 1.0)
 			_draw_edges(cell, rect)
@@ -153,28 +164,10 @@ func _draw() -> void:
 		_minimap_rect = Rect2()
 
 
-func _draw_exploration_stage(map_rect: Rect2) -> void:
-	var gutter := Color(0.035, 0.04, 0.045, 0.72)
-	if map_rect.position.x > 8.0:
-		_draw_stage_gutter(Rect2(0.0, map_rect.position.y, map_rect.position.x - 4.0, map_rect.size.y), gutter)
-	if map_rect.end.x < size.x - 8.0:
-		_draw_stage_gutter(Rect2(map_rect.end.x + 4.0, map_rect.position.y, size.x - map_rect.end.x - 4.0, map_rect.size.y), gutter)
-	draw_rect(map_rect.grow(4.0), Color(0.08, 0.09, 0.095, 1.0), false, 4.0)
-	draw_rect(map_rect.grow(1.0), Color(0.48, 0.49, 0.46, 0.9), false, 1.0)
-
-
-func _draw_stage_gutter(rect: Rect2, fallback_color: Color) -> void:
-	draw_rect(rect, fallback_color, true)
-	if GUTTER_TEXTURE != null:
-		draw_texture_rect(GUTTER_TEXTURE, rect, true, Color(0.55, 0.57, 0.56, 0.9))
-	draw_rect(rect, Color(0.34, 0.35, 0.34, 0.72), false, 1.0)
-	if GUTTER_RAIL_TEXTURE == null:
-		return
-	var source_size := GUTTER_RAIL_TEXTURE.get_size()
-	var scale_factor: float = minf(1.0, minf(rect.size.x / source_size.x, rect.size.y / source_size.y))
-	var rail_size := source_size * scale_factor
-	var rail_rect := Rect2(rect.get_center() - rail_size * 0.5, rail_size)
-	draw_texture_rect(GUTTER_RAIL_TEXTURE, rail_rect, false, Color(0.72, 0.74, 0.73, 0.88))
+func _draw_exploration_stage(_map_rect: Rect2) -> void:
+	draw_rect(Rect2(Vector2.ZERO, size), Color(0.018, 0.022, 0.026), true)
+	if SURROUND_TEXTURE != null:
+		draw_texture_rect(SURROUND_TEXTURE, Rect2(Vector2.ZERO, size), true, Color(0.34, 0.35, 0.36, 0.72))
 
 
 func _draw_party_marker(party_rect: Rect2) -> void:
@@ -226,6 +219,13 @@ static func camera_top_left(party_coordinate: Vector2i, map_size: Vector2i, view
 	)
 
 
+static func classic_visible_rect(party_coordinate: Vector2i, map_size: Vector2i) -> Rect2i:
+	var view_size := Vector2i(mini(CLASSIC_VIEW_CELLS.x, map_size.x), mini(CLASSIC_VIEW_CELLS.y, map_size.y))
+	var maximum := Vector2i(maxi(map_size.x - view_size.x, 0), maxi(map_size.y - view_size.y, 0))
+	var origin := Vector2i(clampi(party_coordinate.x - 8, 0, maximum.x), clampi(party_coordinate.y - 6, 0, maximum.y))
+	return Rect2i(origin, view_size)
+
+
 static func viewport_cells_for(control_size: Vector2, header_height: float, native_cell_size: float) -> Vector2i:
 	return Vector2i(
 		mini(DETACHED_VIEW_DIAMETER, maxi(1, floori(control_size.x / native_cell_size))),
@@ -242,11 +242,15 @@ static func map_draw_origin_for(control_size: Vector2, minimum_origin: Vector2, 
 	)
 
 
-func _draw_cell(cell: MapCellView, rect: Rect2, level_type: StringName, dark: bool, discovered: bool) -> void:
+func _draw_unvisited_cell(_rect: Rect2) -> void:
+	pass
+
+
+func _draw_cell(cell: MapCellView, rect: Rect2, level_type: StringName, dark: bool, discovered: bool, recalled: bool = false) -> void:
 	if level_type == &"dungeon" and not discovered:
 		draw_rect(rect, Color(0.025, 0.03, 0.04), true)
 		return
-	if not cell.visible:
+	if not cell.visible and not recalled:
 		draw_rect(rect, _cell_color(cell, level_type, dark), true)
 		return
 	var atlas_asset: MediaAsset = _atlas_assets.get(cell.tileset_id) as MediaAsset
@@ -255,6 +259,8 @@ func _draw_cell(cell: MapCellView, rect: Rect2, level_type: StringName, dark: bo
 		_draw_dungeon_atlas_cell(cell, rect, atlas_asset, atlas_texture)
 		if dark:
 			draw_rect(rect, Color(0.0, 0.0, 0.0, 0.45), true)
+		elif recalled:
+			draw_rect(rect, Color(0.02, 0.025, 0.03, 0.28), true)
 		return
 	var region := Rect2i() if atlas_asset == null else atlas_asset.region_for(cell.render_tile)
 	if atlas_texture == null or not region.has_area():
@@ -266,6 +272,8 @@ func _draw_cell(cell: MapCellView, rect: Rect2, level_type: StringName, dark: bo
 		draw_texture_rect(overlay_texture, rect, false)
 	if dark:
 		draw_rect(rect, Color(0.0, 0.0, 0.0, 0.45), true)
+	elif recalled:
+		draw_rect(rect, Color(0.02, 0.025, 0.03, 0.28), true)
 
 
 static func dungeon_discovery_coordinates(visited: Array[Vector2i]) -> Dictionary:
