@@ -221,7 +221,7 @@ static func _combat_death_spell(spell: SpellDefinition) -> bool:
 
 
 static func _combat_spell_point_restore_spell(spell: SpellDefinition) -> bool:
-	return spell != null and spell.in_combat and spell.queue_icon == 0 and spell.size == 0 and spell.target_type in [1, 5] and spell.cannot == 4 and absi(spell.spell_class) == 8 and absi(spell.damage_type) == 8 and absi(spell.special) == 59 and maxi(spell.damage_max, spell.power_damage_max) > 0
+	return spell != null and spell.in_combat and spell.queue_icon == 0 and spell.size == 0 and spell.target_type in [1, 5] and absi(spell.special) == 59 and maxi(spell.damage_max, spell.power_damage_max) > 0
 
 
 static func _combat_charm_spell(spell: SpellDefinition) -> bool:
