@@ -6,6 +6,8 @@ var _observed_battles: Array[int] = []
 var _content: RealmzContent
 var _session: GameSession
 
+const MAX_NEARBY_TRAVERSAL_STEPS := 8
+
 
 func _initialize() -> void:
 	var arguments := OS.get_cmdline_user_args()
@@ -115,6 +117,10 @@ func _run_step(step_definition: Dictionary) -> void:
 		_run_program_step(step_id, step_definition, trigger, failure_count)
 		return
 	_validate_step_position(step_id, step_definition.get("position", {}), trigger)
+	var nearby_path := _nearby_topology_path(trigger)
+	if not nearby_path.is_empty():
+		_run_topology_step(step_id, step_definition, trigger, nearby_path, failure_count)
+		return
 	_session._state.party.map_id = trigger.map_id
 	_session._state.party.coordinate = trigger.coordinate
 	_session._state.world.mark_visited(trigger.map_id, trigger.coordinate)
@@ -138,7 +144,45 @@ func _run_step(step_definition: Dictionary) -> void:
 	if result.state == SessionStep.State.FAILED:
 		_fail("%s failed with %s: %s" % [step_id, result.error_code, result.error_message])
 	_validate_step_events(step_id, step_definition, events)
-	_stage(step_id, failure_count)
+	_stage(step_id, failure_count, {"entryMode": "checkpoint"})
+
+
+func _nearby_topology_path(trigger: TriggerDefinition) -> Array[Vector2i]:
+	if _session._state.party_in_boat or _session._state.party.map_id != trigger.map_id or _session._state.party.coordinate == trigger.coordinate:
+		return []
+	var map := _content.world.map_by_id(trigger.map_id)
+	if map == null:
+		return []
+	var path := map.topology.find_path(_session._state.party.coordinate, trigger.coordinate, _session._state.world, map.level_type)
+	if path.is_empty() or path.size() > MAX_NEARBY_TRAVERSAL_STEPS:
+		return []
+	return path
+
+
+func _run_topology_step(step_id: String, step_definition: Dictionary, trigger: TriggerDefinition, path: Array[Vector2i], failure_count: int) -> void:
+	var events: Array[DomainEvent] = []
+	for path_index: int in path.size():
+		var origin := _session._state.party.coordinate
+		var destination := path[path_index]
+		var result := _session.submit_intent(PlayerIntent.move(destination - origin))
+		result = _drain_interactions(result, events, step_id)
+		if result.state == SessionStep.State.FAILED:
+			_fail("%s topology traversal failed with %s: %s" % [step_id, result.error_code, result.error_message])
+			break
+		if path_index + 1 < path.size() and (_session._state.party.map_id != trigger.map_id or _session._state.party.coordinate != destination):
+			_fail("%s topology traversal left its expected path before the target trigger" % step_id)
+			break
+	if not _contains_trigger_event(events, trigger.id):
+		_fail("%s topology traversal did not fire trigger %s" % [step_id, trigger.id])
+	_validate_step_events(step_id, step_definition, events)
+	_stage(step_id, failure_count, {"entryMode": "topology-traversal", "movementSteps": path.size()})
+
+
+func _contains_trigger_event(events: Array[DomainEvent], trigger_id: String) -> bool:
+	for event: DomainEvent in events:
+		if event.kind == &"trigger_fired" and event.payload.get("triggerId") == trigger_id:
+			return true
+	return false
 
 
 func _run_program_step(step_id: String, step_definition: Dictionary, trigger: TriggerDefinition, failure_count: int) -> void:
@@ -176,7 +220,7 @@ func _run_program_step(step_id: String, step_definition: Dictionary, trigger: Tr
 	if result.state == SessionStep.State.FAILED:
 		_fail("%s failed with %s: %s" % [step_id, result.error_code, result.error_message])
 	_validate_step_events(step_id, step_definition, observed_events)
-	_stage(step_id, failure_count)
+	_stage(step_id, failure_count, {"entryMode": "program-checkpoint"})
 
 
 func _drain_interactions(step: SessionStep, events: Array[DomainEvent], step_id: String) -> SessionStep:
@@ -370,8 +414,11 @@ func _set_quest_ids() -> Array[int]:
 	return result
 
 
-func _stage(stage_id: String, failure_count: int) -> void:
-	_stages.append({"id": stage_id, "status": "passed" if _failures.size() == failure_count else "failed"})
+func _stage(stage_id: String, failure_count: int, evidence: Dictionary = {}) -> void:
+	var stage := {"id": stage_id, "status": "passed" if _failures.size() == failure_count else "failed"}
+	for key: Variant in evidence:
+		stage[key] = evidence[key]
+	_stages.append(stage)
 
 
 func _fail(message: String) -> void:
