@@ -13,7 +13,7 @@ func _init(content: RealmzContent, game_state: GameState, rng: RealmzRng) -> voi
 
 
 func opcode_ids() -> Array[int]:
-	return [-23, 12, 13, 20, 23, 29, 37, 45, 47, 61, 63, 66, 76, 101, 103, 104, 106]
+	return [-23, 12, 13, 20, 23, 29, 37, 45, 47, 61, 63, 66, 68, 76, 95, 101, 103, 104, 106]
 
 
 func execute(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
@@ -44,8 +44,12 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 		66:
 			_game_state.camping_allowed = action.operand_id == 0
 			return ScenarioRuntimeOperationResult.completed(_game_state.camping_allowed, [DomainEvent.new(&"camping_availability_changed", {"allowed": _game_state.camping_allowed, "source": "classic"})])
+		68:
+			return _alter_party_fatigue(action)
 		76:
 			return _adjust_quest_value(action)
+		95:
+			return _change_dungeon_heading(action)
 		101:
 			return _back_up_party()
 		103:
@@ -56,6 +60,32 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 		106:
 			return _set_map_darkness(action)
 	return super.execute(action, request_id, context)
+
+
+func _alter_party_fatigue(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
+	if action.extra_code.size() < 5:
+		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 68 requires a five-value Extra Code row.")
+	var previous := _game_state.party.fatigue
+	match action.extra_code[0]:
+		1:
+			_game_state.party.fatigue = 135
+		2:
+			_game_state.party.fatigue = 4
+		3:
+			# Castle reads the third Extra Code slot and performs integer division before multiplication.
+			var multiplier := int(float(action.extra_code[2]) / 100.0)
+			_game_state.party.fatigue = clampi(previous * multiplier, 4, 135)
+		_:
+			return ScenarioRuntimeOperationResult.failed(&"invalid_fatigue_mode", "Classic opcode 68 requires fatigue mode 1, 2, or 3.")
+	var current := _game_state.party.fatigue
+	return ScenarioRuntimeOperationResult.completed(current, [DomainEvent.new(&"fatigue_changed", {"previous": previous, "current": current, "reason": "classic-opcode-68", "source": "classic"})])
+
+
+func _change_dungeon_heading(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
+	var previous := _game_state.dungeon_heading
+	var randomized := action.operand_id < 1 or action.operand_id > 4
+	_game_state.dungeon_heading = _rng.draw_classic(4, &"classic.opcode95.heading") if randomized else action.operand_id
+	return ScenarioRuntimeOperationResult.completed(_game_state.dungeon_heading, [DomainEvent.new(&"dungeon_heading_changed", {"previous": previous, "current": _game_state.dungeon_heading, "randomized": randomized, "source": "classic"})])
 
 
 func _acquire_player_map(action: ClassicActionDefinition, request_id: String) -> ScenarioRuntimeOperationResult:

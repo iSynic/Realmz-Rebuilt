@@ -13,7 +13,7 @@ func _init(content: RealmzContent, game_state: GameState, rng: RealmzRng) -> voi
 
 
 func opcode_ids() -> Array[int]:
-	return [7, 8, 24, 25, 42, 46, 64, 77, 86, 98, 99]
+	return [7, 8, 24, 25, 42, 46, 64, 77, 84, 86, 98, 99]
 
 
 func execute(action: ClassicActionDefinition, _request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
@@ -40,7 +40,7 @@ func execute(action: ClassicActionDefinition, _request_id: String, context: Scen
 			return _branch_on_quest_value(action)
 		86:
 			return _branch_on_misc(action)
-		98, 99:
+		84, 98, 99:
 			return ScenarioRuntimeOperationResult.completed(null, [DomainEvent.new(&"classic_control_marker", {"opcode": action.opcode, "operandId": action.operand_id})])
 	return super.execute(action, _request_id, context)
 

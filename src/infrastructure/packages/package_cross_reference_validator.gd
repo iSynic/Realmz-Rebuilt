@@ -123,9 +123,10 @@ func _validate_random_region_references(maps: Array[MapDefinition], scenario: Sc
 					return _reject("Random rectangle '%s' references unavailable XAP %d." % [region.id, doors[index]])
 			if region.battle_minimum == 0:
 				continue
-			if region.battle_minimum < 1 or region.battle_maximum < region.battle_minimum:
+			if region.battle_minimum < 1:
 				return _reject("Random rectangle '%s' has an invalid battle range." % region.id)
-			for battle_id: int in range(region.battle_minimum, region.battle_maximum + 1):
+			var selected_bounds := RealmzRng.classic_between_bounds(region.battle_minimum, region.battle_maximum)
+			for battle_id: int in range(selected_bounds.x, selected_bounds.y + 1):
 				if not battle_ids.has(battle_id):
 					return _reject("Random rectangle '%s' references unavailable battle %d." % [region.id, battle_id])
 	return true

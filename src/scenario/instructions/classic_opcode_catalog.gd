@@ -43,9 +43,9 @@ const OWNER_BY_OPCODE: Dictionary = {
 	55: &"character", 57: &"world-time", 58: &"control-flow", 59: &"world-time",
 	67: &"inventory-economy", 68: &"world-time", 70: &"world-time", 71: &"presentation",
 	72: &"control-flow", 74: &"character", 75: &"character", 78: &"world-time",
-	79: &"classic-reserved", 80: &"classic-reserved", 81: &"character", 84: &"classic-reserved",
+	79: &"classic-reserved", 80: &"classic-reserved", 81: &"character", 84: &"control-flow",
 	85: &"control-flow", 92: &"world-time", 93: &"presentation", 94: &"presentation",
-	95: &"presentation", 96: &"presentation", 97: &"presentation", 100: &"combat-rewards",
+	95: &"world-time", 96: &"presentation", 97: &"presentation", 100: &"combat-rewards",
 	109: &"classic-reserved", 110: &"classic-reserved", 113: &"classic-reserved", 114: &"classic-reserved",
 	115: &"classic-reserved", 116: &"classic-reserved", 117: &"classic-reserved", 118: &"classic-reserved",
 	125: &"combat-rewards",
@@ -58,16 +58,16 @@ const EXECUTABLE_OPCODES: Array[int] = [
 	1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
 	20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 35, 36, 37, 38, 39,
 	34, 40, 42, 43, 45, 46, 47, 48, 49, 51, 52, 54, 56, 88, 89, 98, 99, 104, 107,
-	50, 60, 61, 62, 63, 64, 65, 66, 69, 73, 76, 77, 82, 83, 86, 87, 90, 91, 96, 97, 101, 102, 103, 105, 106, 108, 111, 112, 119, 120, 121, 122, 123, 124, 126, 127,
+	50, 60, 61, 62, 63, 64, 65, 66, 68, 69, 73, 76, 77, 82, 83, 84, 86, 87, 90, 91, 95, 96, 97, 101, 102, 103, 105, 106, 108, 111, 112, 119, 120, 121, 122, 123, 124, 126, 127,
 ]
 
 const CLASSIC_RESERVED_OPCODES: Array[int] = [
-	0, 79, 80, 84, 109, 110, 113, 114, 115, 116, 117, 118,
+	0, 79, 80, 109, 110, 113, 114, 115, 116, 117, 118,
 ]
 
 const PENDING_OPCODES: Array[int] = [
-	41, 44, 53, 55, 57, 58, 59, 67, 68, 70, 71, 72, 74, 75, 78, 81, 85,
-	92, 93, 94, 95, 100, 125,
+	41, 44, 53, 55, 57, 58, 59, 67, 70, 71, 72, 74, 75, 78, 81, 85,
+	92, 93, 94, 100, 125,
 ]
 
 

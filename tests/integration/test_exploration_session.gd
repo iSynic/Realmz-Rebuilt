@@ -175,7 +175,7 @@ func run() -> void:
 	assert_equal(restored_dungeon.restore(content, dungeon_session.snapshot()).state, SessionStep.State.COMPLETED, "door-state save restores transactionally")
 	assert_true(restored_dungeon.snapshot().game_state.world.door_is_open(door_id) and restored_dungeon.view().map_view.dungeon_heading == 4, "restored session retains the opened door and Classic dungeon heading")
 
-	var surprise_session := GameSession.new()
+	var surprise_region := content.world.map_by_id("land:0").random_region_by_id("land:0:randlevel:rect:1"); surprise_region.battle_maximum = -1; var surprise_session := GameSession.new()
 	surprise_session.start(content, 1)
 	_begin_fixture_adventure(surprise_session, content, 6)
 	surprise_session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
@@ -190,8 +190,8 @@ func run() -> void:
 	var restored_surprise := GameSession.new()
 	assert_equal(restored_surprise.restore(content, SaveEnvelope.from_data(save_data(surprise_snapshot))).state, SessionStep.State.COMPLETED, "random surprise save restores transactionally")
 	var accepted := restored_surprise.respond(InteractionResponse.from_data(surprise_wait.interaction.request_id, &"yes_no", {"accepted": true}))
-	assert_true(_has_event(accepted, &"random_encounter_triggered"), "accepting the surprise choice starts the selected random battle")
-	assert_equal(_event(accepted, &"battle_started").payload["surprise"], 1, "accepted random surprise gives the party source-backed initiative"); assert_true(_sound_ids(accepted).has(10049), "battle entry requests Castle sound 10049 before tactical actions")
+	assert_true(_has_event(accepted, &"random_encounter_triggered") and _event(accepted, &"random_encounter_triggered").payload["classicId"] == 1, "accepting the surprise choice starts battle one through Castle's inverted-range selection")
+	assert_equal(_event(accepted, &"battle_started").payload["surprise"], 1, "accepted random surprise gives the party source-backed initiative"); assert_true(_sound_ids(accepted).has(10049), "battle entry requests Castle sound 10049 before tactical actions"); surprise_region.battle_maximum = 1
 	var direct_combat_request := restored_surprise.view().combat_action_request
 	assert_not_null(direct_combat_request, "a direct random battle projects the complete typed combat command surface")
 	if direct_combat_request != null:

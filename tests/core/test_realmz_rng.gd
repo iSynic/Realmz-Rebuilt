@@ -21,10 +21,10 @@ func run() -> void:
 	assert_equal(scripted.draw(100, "scripted.zero"), 1, "Castle Rand returns at least one")
 	assert_equal(scripted.draw(100, "scripted.high-positive"), 100, "Castle scaling reaches the requested range")
 
-	var signed := ScriptedRng.new([32_767, 32_767])
+	var signed := ScriptedRng.new([32_767, 32_767, 32_767])
 	assert_equal(signed.draw_classic(0, "scripted.zero-range"), 1, "Castle Rand zero still consumes a draw and returns one")
 	assert_equal(signed.draw_classic(-100, "scripted.negative-range"), -98, "Castle Rand preserves signed range multiplication and C truncation")
-	assert_equal(signed.snapshot().draw_count, 2, "signed Classic ranges remain part of the serializable draw sequence")
+	assert_equal([signed.draw_between_classic(147, 145, "scripted.inverted-range"), RealmzRng.classic_between_bounds(147, 145), signed.snapshot().draw_count], [147, Vector2i(147, 147), 3], "Castle's inverted 147-through-145 random-battle range consumes one signed draw and can select only battle 147")
 
 	var transactional := ScriptedRng.new([0, 32_767])
 	transactional.draw(10, "transaction.before")

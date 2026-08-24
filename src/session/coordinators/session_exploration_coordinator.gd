@@ -459,11 +459,7 @@ func _begin_boat_choice(result: ExplorationTimeWorkflow.MovementTransitionResult
 
 func _start_random_battle(region: RandomEncounterRegion, surprise: int, events: Array[DomainEvent]) -> SessionCoordinatorResult:
 	var effective := _context.state.world.random_region(region)
-	if effective.battle_maximum < effective.battle_minimum:
-		_context.session_interaction = null
-		_context.session_continuation.clear()
-		return _context.failed(&"invalid_random_battle_range", "Random rectangle '%s' has an inverted battle range." % region.id, events)
-	var battle_id := _context.rng.draw_between(effective.battle_minimum, effective.battle_maximum, StringName("random-region.%s.battle" % region.id))
+	var battle_id := _context.rng.draw_between_classic(effective.battle_minimum, effective.battle_maximum, StringName("random-region.%s.battle" % region.id))
 	var battle := _context.content.battle_by_classic_id(absi(battle_id))
 	if battle == null:
 		_context.session_interaction = null

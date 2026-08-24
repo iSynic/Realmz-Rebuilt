@@ -58,12 +58,35 @@ func draw_between(low: int, high: int, semantic_tag: StringName) -> int:
 		push_error("RealmzRng inclusive range is invalid.")
 		return low
 	var result := draw(high - low + 1, semantic_tag) - 1 + low
+	_annotate_between_trace(low, high, result)
+	return result
+
+
+func draw_between_classic(low: int, high: int, semantic_tag: StringName) -> int:
+	var result := draw_classic(classic_range_width(low, high), semantic_tag) - 1 + low
+	_annotate_between_trace(low, high, result)
+	return result
+
+
+static func classic_range_width(low: int, high: int) -> int:
+	return ((high - low + 1 + 32_768) & 0xffff) - 32_768
+
+
+static func classic_between_bounds(low: int, high: int) -> Vector2i:
+	var range_width := classic_range_width(low, high)
+	if range_width > 0:
+		return Vector2i(low, low + range_width - 1)
+	if range_width == 0:
+		return Vector2i(low, low)
+	return Vector2i(low + range_width + 1, low)
+
+
+func _annotate_between_trace(low: int, high: int, result: int) -> void:
 	var latest := _latest_trace_entry()
 	if not latest.is_empty():
 		latest["low"] = low
 		latest["high"] = high
 		latest["result"] = result
-	return result
 
 
 func snapshot() -> RealmzRngState:

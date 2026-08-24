@@ -23,6 +23,7 @@ The recovered QuickDraw routine returns the signed low word of the updated seed 
 - Every trace entry records draw index, semantic tag, range, raw value, and result.
 - `ScriptedRng` accepts signed raw values for branch-equivalent source/oracle fixtures.
 - `draw_classic` preserves Castle's signed-short range formula for source paths where zero or negative effective values are legal; the ordinary `draw` API continues to reject invalid positive-die ranges.
+- `draw_between_classic` additionally preserves the signed-short conversion of `high - low + 1` before applying Castle's inclusive offset. This admits source-authored inverted endpoints without sorting them and exposes their exact selectable bounds to package validation.
 - No core code may call Godot randomness or derive a seed from wall-clock time.
 
 Evidence labels: the Castle function and Macintosh references are `source-control-flow`; the seed/scaling vectors are `runtime-unit`. A separate `castle-runtime` fixture is still required before claiming an original Mac executable sequence observation.
