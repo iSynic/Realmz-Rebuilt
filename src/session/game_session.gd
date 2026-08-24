@@ -262,7 +262,11 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 
 
 func apply_debug_command(command: SessionDebugCommand) -> SessionStep:
-	if not _started or command == null or not _state.party_setup_completed or _pending_interaction() != null or _scenario_vm.is_active():
+	if not _started or command == null or not _state.party_setup_completed:
+		return SessionStep.failed(_view_revision, &"debug_command_unavailable", "Debug commands require a committed active adventure boundary.")
+	var pending := _pending_interaction()
+	var active_combat_restore := command.kind == SessionDebugCommand.Kind.RESTORE_PARTY and _state.combat != null and not _state.combat.completed and (pending == null or pending.kind == InteractionRequest.COMBAT)
+	if not active_combat_restore and (pending != null or _scenario_vm.is_active()):
 		return SessionStep.failed(_view_revision, &"debug_command_unavailable", "Debug commands require a committed active adventure boundary.")
 	match command.kind:
 		SessionDebugCommand.Kind.WARP:

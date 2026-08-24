@@ -21,7 +21,7 @@ var _status: Label
 
 func _ready() -> void:
 	name = "DebugToolsDialog"
-	anchors_preset = Control.PRESET_CENTER
+	set_anchors_preset(Control.PRESET_CENTER)
 	offset_left = -260.0
 	offset_top = -270.0
 	offset_right = 260.0
@@ -106,7 +106,7 @@ func present(view: GameView, maps: Array[Dictionary], noclip: bool) -> void:
 	_noclip.set_pressed_no_signal(noclip)
 	_warp.disabled = not exploration or maps.is_empty()
 	_noclip.disabled = not exploration
-	_restore.disabled = view == null or not view.session_started or view.party_setup_available or view.pending_interaction != null
+	_restore.disabled = not (exploration or active_battle)
 	_trigger_encounter.disabled = not exploration
 	_trigger_battle.disabled = not exploration
 	_win_battle.disabled = not active_battle
