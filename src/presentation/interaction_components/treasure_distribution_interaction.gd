@@ -211,14 +211,27 @@ func _add_loot_item(parent: GridContainer, item: InteractionRequestValue.RewardI
 	cell.focus_mode = Control.FOCUS_ALL
 	cell.custom_minimum_size = Vector2(50.0, 60.0)
 	cell.tooltip_text = item.name
-	cell.icon = _item_texture(item)
-	cell.expand_icon = true
-	cell.add_theme_color_override("icon_normal_color", Color.WHITE)
-	cell.add_theme_color_override("icon_hover_color", Color.WHITE)
-	cell.add_theme_color_override("icon_focus_color", Color.WHITE)
-	cell.add_theme_color_override("icon_pressed_color", Color.WHITE)
 	cell.set_meta("reward_item", item)
 	parent.add_child(cell)
+	if item.magical:
+		var magic_glow := TextureRect.new()
+		magic_glow.name = "TreasureMagicGlow_%s" % _node_fragment(item.instance_id)
+		magic_glow.texture = ClassicUiAssetCatalog.texture(&"loot.item.glow")
+		magic_glow.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		magic_glow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		magic_glow.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		magic_glow.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		magic_glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cell.add_child(magic_glow)
+	var item_icon := TextureRect.new()
+	item_icon.name = "TreasureLootIcon_%s" % _node_fragment(item.instance_id)
+	item_icon.texture = _item_texture(item)
+	item_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	item_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	item_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	item_icon.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	item_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cell.add_child(item_icon)
 	var ring := TextureRect.new()
 	ring.name = "TreasureHoverCircle_%s" % _node_fragment(item.instance_id)
 	ring.texture = ClassicUiAssetCatalog.texture(&"loot.selection")
