@@ -15,14 +15,14 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 **War completion certification** (`war-completion-certification`)
 
-The current Providence War package has exact application-signature coverage, executable dispositions for every used opcode, zero compiler loss, and a deterministic eight-stage completion route through four battles and the ending. Ordinary play has now proved installation, selection, campaign entry, and compatible AOGM vault reuse. The remaining scenario-certification work is representative dungeon and boat travel plus acceptance of a War message/picture/sound sequence; the five-workflow batch retains the completed prerequisites alongside those two open evidence targets.
+The current Providence War package has exact application-signature coverage, executable dispositions for every used opcode, zero compiler loss, and a deterministic eight-stage completion route through four battles and the ending. Ordinary play has proved installation, selection, campaign entry, compatible AOGM vault reuse, representative dungeon travel, and boat travel. Acceptance of one War message/picture/sound sequence is the remaining evidence target in this five-workflow certification batch.
 
 Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
 | `classic.startup.select-scenario` | certification | war-prerequisite | other-ordinary |  |
-| `classic.exploration.travel` | certification | war-prerequisite | other-ordinary | GAP-EXP-001 |
+| `classic.exploration.travel` | certification | war-prerequisite | other-ordinary |  |
 | `classic.scenario.present-message-media` | certification | war-prerequisite | other-ordinary | GAP-SCEN-001 |
 | `host.package.discover-install` | certification | war-prerequisite | other-ordinary |  |
 | `host.vault.import-publish` | certification | war-prerequisite | other-ordinary |  |
@@ -139,7 +139,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | synthetic | 69 | 7 |
 | route-harness | 40 | 2 |
 | aogm-ordinary | 44 | 3 |
-| other-ordinary | 2 | 1 |
+| other-ordinary | 3 | 1 |
 | cross-platform | 0 | 0 |
 
 ## Release blockers and major gaps
@@ -181,7 +181,6 @@ Blockers: **1**. Major gaps: **12**.
 
 - `classic.system.music-playlists` - Indoor automatic selection and scenario Custom 1â€“3 music remain unresolved.
 - `classic.character.age-update` - Age updates have no ordinary-campaign observation because the trigger is rare.
-- `classic.exploration.travel` - Dungeon and boat variants lack ordinary campaign certification.
 - `classic.maps.authored-journal` - Authored journal discovery and browsing have synthetic proof only.
 - `classic.maps.location-notes` - Location-note creation, editing, removal, and restoration have synthetic proof only.
 - `classic.scenario.present-message-media` - Only AOGM's opening media sequence has ordinary-play evidence.
