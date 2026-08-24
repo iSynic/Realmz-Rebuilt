@@ -301,6 +301,10 @@ func _queue_persistent_field(combat: CombatState, caster_id: String, spell: Spel
 	return _fields.queue_persistent_field(combat, caster_id, spell, power_level, cast_level, rng, center, rotation, shape)
 
 
+func _queue_single_actor_field(state: GameState, caster_id: String, target_id: String, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng) -> RefCounted:
+	return _fields.queue_single_actor_field(state, caster_id, target_id, spell, power_level, cast_level, rng)
+
+
 func _repeated_field_callback(state: GameState, spell: SpellDefinition, caster_id: String, selected_target_ids: Array[String], power_level: int, cast_level: int, rng: RealmzRng, created_fields: Array[RefCounted]) -> Callable:
 	return _fields.repeated_field_callback(state, spell, caster_id, selected_target_ids, power_level, cast_level, rng, created_fields)
 

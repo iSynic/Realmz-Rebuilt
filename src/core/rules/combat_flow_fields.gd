@@ -32,6 +32,13 @@ func queue_persistent_field(combat: CombatState, caster_id: String, spell: Spell
 	return combat.queue_persistent_field(spell.id, caster_id, center, rotation if spell.can_rotate else 0, shape, spell.queue_icon, power_level, cast_level, duration)
 
 
+func queue_single_actor_field(state: GameState, caster_id: String, target_id: String, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng) -> RefCounted:
+	if state == null or state.combat == null or not ClassicSpellCapabilityCatalog.is_combat_single_actor_field_spell(spell) or not state.combat.can_queue_persistent_field():
+		return null
+	var duration := _rules.magic.roll_persistent_field_duration(spell, power_level, rng, StringName("combat.actor-field.%s.duration" % spell.id))
+	return state.combat.queue_persistent_field(spell.id, caster_id, _classic_target_selector(state, target_id), 0, 1, spell.queue_icon, power_level, cast_level, duration)
+
+
 func repeated_field_callback(state: GameState, spell: SpellDefinition, caster_id: String, selected_target_ids: Array[String], power_level: int, cast_level: int, rng: RealmzRng, created_fields: Array[RefCounted]) -> Callable:
 	if state == null or state.combat == null or not ClassicSpellCapabilityCatalog.is_combat_repeated_field_spell(spell) or selected_target_ids.is_empty():
 		return Callable()

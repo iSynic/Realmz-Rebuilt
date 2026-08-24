@@ -303,7 +303,7 @@ func _best_party_spell(state: GameState, content: RealmzContent, actor: Characte
 			best = _prefer(best, _best_charm(state, content, actor, spell, option.power))
 		elif MagicRules.is_condition_cure_spell(spell):
 			best = _prefer(best, _best_condition_cure(state, content, actor, spell, option.power))
-		elif ClassicSpellCapabilityCatalog.is_combat_condition_effect_spell(spell) or ClassicSpellCapabilityCatalog.is_combat_repeated_field_spell(spell) or spell.target_type == 5 and ClassicSpellCapabilityCatalog.combat_persistent_field_condition_index(spell) >= 0:
+		elif ClassicSpellCapabilityCatalog.combat_condition_effect_index(spell) >= 0 or spell.target_type == 5 and ClassicSpellCapabilityCatalog.combat_persistent_field_condition_index(spell) >= 0:
 			best = _prefer(best, _best_condition_effect(state, content, actor, spell, option.power))
 		elif _flow()._is_source_backed_combat_healing_spell(spell):
 			best = _prefer(best, _best_heal(state, content, actor, spell, option.power))
