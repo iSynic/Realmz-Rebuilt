@@ -357,8 +357,8 @@ func _automatic_summon_coordinate(state: GameState, content: RealmzContent, cast
 	return _summoning.automatic_coordinate(state, content, caster, spell, power_level)
 
 
-func _cast_character_phase(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, destination: Vector2i) -> CombatFlowResult:
-	return _phase.cast_character_phase(state, content, caster, spell, power_level, cast_level, rng, destination)
+func _cast_character_phase(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, destination: Vector2i, spend_spell_points: bool = true, event_source: String = "classic", count_spell_cast: bool = true) -> CombatFlowResult:
+	return _phase.cast_character_phase(state, content, caster, spell, power_level, cast_level, rng, destination, spend_spell_points, event_source, count_spell_cast)
 
 
 func _phase_checkpoint_available(combat: CombatState, caster_id: String) -> bool:
