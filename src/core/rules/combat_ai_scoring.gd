@@ -76,6 +76,8 @@ func best_monster_spell_plan(state: GameState, content: RealmzContent, monster: 
 		var spell := content.spell_by_id(definition.spell_id_at(slot))
 		if spell == null or not _flow()._monster_spell_unavailable_reason(spell).is_empty():
 			continue
+		if ClassicSpellCapabilityCatalog.is_combat_persistent_field_spell(spell) and not state.combat.can_queue_persistent_field():
+			continue
 		var maximum_power := 7 if spell.cost == 0 else mini(7, monster.spell_points / spell.cost)
 		for power: int in range(1, maximum_power + 1):
 			var plan := _monster_spell_power_plan(state, content, monster, definition, spell, slot, power, actors_by_cell, area_placement_cache)
@@ -92,8 +94,10 @@ func _monster_spell_power_plan(state: GameState, content: RealmzContent, monster
 		return _monster_hostile_group_spell_power_plan(state, content, monster, spell, slot, power)
 	var cure_index := MagicRules.condition_cure_index(spell) if MagicRules.is_condition_cure_spell(spell) else -1
 	var effect_index := ClassicSpellCapabilityCatalog.combat_condition_effect_index(spell)
+	if effect_index < 0:
+		effect_index = ClassicSpellCapabilityCatalog.combat_persistent_field_condition_index(spell)
 	var spell_point_restore := ClassicSpellCapabilityCatalog.is_combat_spell_point_restore_spell(spell)
-	var friendly := spell.cannot == 4 or cure_index >= 0 or spell_point_restore
+	var friendly := spell.target_type == 5 or spell.cannot == 4 or cure_index >= 0 or spell_point_restore
 	var candidates: Array[String] = []
 	for character: CharacterState in state.party.characters():
 		if character.current_health > 0 and (character.traitor == monster.traitor) == friendly and (spell.target_type != 5 or character.id == monster.id) and (not spell_point_restore or _target_missing_spell_points(state, character.id) > 0) and (cure_index < 0 or character.conditions.is_active(cure_index)) and (effect_index < 0 or character.conditions.value(effect_index) == 0) and (cure_index >= 0 or character.id == monster.id or not _target_reflects(state, character.id)) and (friendly or not _target_hard_immune(state, content, character.id, spell)) and state.combat.battlefield.has_actor(character.id) and _flow()._spell_actor_target_is_valid(state, content, monster.id, character.id, spell, power):
@@ -222,7 +226,7 @@ func _monster_target_score(state: GameState, target_id: String, spell: SpellDefi
 	if cure_index >= 0:
 		return _condition_cure_score(state, target_id, cure_index)
 	if effect_index >= 0:
-		if spell.cannot == 4:
+		if spell.target_type == 5 or spell.cannot == 4:
 			return 520 + _maximum_condition_duration(spell, power) * 8
 		return 420 + expected * 5 + _lethal_bonus(state, target_id, expected) + _maximum_condition_duration(spell, power) * 4
 	if healing:
@@ -296,7 +300,7 @@ func _best_party_spell(state: GameState, content: RealmzContent, actor: Characte
 			best = _prefer(best, _best_charm(state, content, actor, spell, option.power))
 		elif MagicRules.is_condition_cure_spell(spell):
 			best = _prefer(best, _best_condition_cure(state, content, actor, spell, option.power))
-		elif ClassicSpellCapabilityCatalog.is_combat_condition_effect_spell(spell):
+		elif ClassicSpellCapabilityCatalog.is_combat_condition_effect_spell(spell) or spell.target_type == 5 and ClassicSpellCapabilityCatalog.combat_persistent_field_condition_index(spell) >= 0:
 			best = _prefer(best, _best_condition_effect(state, content, actor, spell, option.power))
 		elif _flow()._is_source_backed_combat_healing_spell(spell):
 			best = _prefer(best, _best_heal(state, content, actor, spell, option.power))
@@ -377,9 +381,13 @@ func _best_condition_cure(state: GameState, content: RealmzContent, actor: Chara
 
 func _best_condition_effect(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, power: int) -> Dictionary:
 	var condition_index := ClassicSpellCapabilityCatalog.combat_condition_effect_index(spell)
+	if condition_index < 0:
+		condition_index = ClassicSpellCapabilityCatalog.combat_persistent_field_condition_index(spell)
 	var best: Dictionary = {}
-	var friendly := spell.cannot == 4
-	var candidate_ids := _friendly_actor_ids(state, actor) if friendly else _opposed_actor_ids(state, actor)
+	var friendly := spell.target_type == 5 or spell.cannot == 4
+	var candidate_ids: Array[String] = [actor.id]
+	if spell.target_type != 5:
+		candidate_ids = _friendly_actor_ids(state, actor) if friendly else _opposed_actor_ids(state, actor)
 	for target_id: String in candidate_ids:
 		var character := state.party.character_by_id(target_id)
 		var monster := state.combat.monster_by_id(target_id)

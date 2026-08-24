@@ -282,12 +282,13 @@ static func _combat_phase_spell(spell: SpellDefinition) -> bool:
 
 
 static func _combat_persistent_field_spell(spell: SpellDefinition) -> bool:
-	if spell == null or not spell.in_combat or spell.queue_icon == 0 or spell.queue_icon < -128 or spell.queue_icon > 127 or spell.target_type not in [3, 4] or spell.target_type == 3 and spell.size < 1:
+	if spell == null or not spell.in_combat or spell.queue_icon == 0 or spell.queue_icon < -128 or spell.queue_icon > 127 or spell.target_type not in [3, 4, 5] or spell.target_type == 3 and spell.size < 1:
 		return false
 	var special := absi(spell.special)
 	var has_damage := spell.damage_min != 0 or spell.damage_max != 0 or spell.power_damage_min != 0 or spell.power_damage_max != 0
 	var maximum_duration := maxi(spell.duration_min, spell.duration_max) + 7 * maxi(spell.power_duration_min, spell.power_duration_max)
-	return maximum_duration > 0 and absi(spell.damage_type) <= 7 and (special == 0 and has_damage or _combat_condition_special(spell))
+	var supported_effect := special == 0 and has_damage and absi(spell.damage_type) >= 1 and absi(spell.damage_type) <= 7 or _combat_condition_special(spell)
+	return maximum_duration > 0 and supported_effect
 
 
 static func _combat_healing_spell(spell: SpellDefinition) -> bool:

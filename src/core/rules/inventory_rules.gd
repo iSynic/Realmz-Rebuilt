@@ -4,6 +4,16 @@ extends RefCounted
 const MAX_ITEMS: int = 30
 
 
+func has_equipped_scroll_case(character: CharacterState, content: RealmzContent) -> bool:
+	if character == null or content == null:
+		return false
+	for instance: ItemInstance in character.inventory():
+		var definition := content.item_by_id(instance.definition_id)
+		if instance.equipped and definition != null and absi(definition.item_type) == 13:
+			return true
+	return false
+
+
 func can_equip(character: CharacterState, item: ItemDefinition) -> bool:
 	if character == null or item == null:
 		return false

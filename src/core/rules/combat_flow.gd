@@ -321,10 +321,6 @@ func character_scroll_unavailable_reason(state: GameState, content: RealmzConten
 	return _magic.character_scroll_unavailable_reason(state, content, caster_id)
 
 
-func _has_equipped_scroll_case(character: CharacterState, content: RealmzContent) -> bool:
-	return _magic._has_equipped_scroll_case(character, content)
-
-
 func _legal_area_spell_target_coordinates(state: GameState, content: RealmzContent, caster_id: String, spell: SpellDefinition, power_level: int, shape: int) -> Array[Vector2i]:
 	return _magic._legal_area_spell_target_coordinates(state, content, caster_id, spell, power_level, shape)
 

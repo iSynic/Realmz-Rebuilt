@@ -308,6 +308,9 @@ func _process_monster_cast(state: GameState, content: RealmzContent, monster: Mo
 			area_shape = _rules.spell_areas.shape_for(spell, cost_power, area_rotation)
 			selected_targets = _monster_area_spell_selections(state, content, area_center, area_shape)
 		else:
+			if spell.target_type == 5:
+				area_center = state.combat.battlefield.actor_position(monster.id)
+				area_shape = 1
 			var planned_target_ids: Array[String] = []
 			for target_id: String in plan["targetIds"]:
 				planned_target_ids.append(target_id)
@@ -331,11 +334,12 @@ func _process_monster_cast(state: GameState, content: RealmzContent, monster: Mo
 		active_turn.movement_remaining = 0
 		var resolutions: GroupSpellResolution
 		var persistent_field: RefCounted = null
-		if spell.target_type in [3, 4]:
+		if ClassicSpellCapabilityCatalog.is_combat_persistent_field_spell(spell):
 			persistent_field = _flow()._queue_persistent_field(state.combat, monster.id, spell, cost_power, cast_level, rng, area_center, area_rotation, area_shape)
-			if ClassicSpellCapabilityCatalog.is_combat_persistent_field_spell(spell) and persistent_field == null:
+			if persistent_field == null:
 				events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "cast", "spellId": spell.id, "reason": "persistent-field-queue-limit"}))
 				return MONSTER_ATTACK_COMPLETED if did_cast else MONSTER_ATTACK_FALLBACK
+		if spell.target_type in [3, 4]:
 			resolutions = _rules.magic.resolve_monster_group_spell(monster, definition, selected_targets, spell, cost_power, cast_level, rng, true)
 		elif spell.target_type == 10:
 			resolutions = _rules.magic.resolve_monster_group_spell(monster, definition, selected_targets, spell, cost_power, cast_level, rng)
