@@ -82,6 +82,9 @@ func _prepare_party() -> void:
 		character.maximum_load = 1_000_000_000
 		character.carried_load = 0
 		character.agility = 32_767
+		character.magic_resistance = 32_767
+		for save_index: int in 8:
+			character.set_save_value_raw(save_index, 32_767)
 	_session._state.party_setup_completed = true
 
 

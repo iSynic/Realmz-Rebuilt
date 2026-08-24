@@ -245,6 +245,8 @@ func _process_monster_turns(state: GameState, content: RealmzContent, rng: Realm
 					return
 				if _monster_can_retry_cast(state, monster, definition, active_turn):
 					attack_result = _process_monster_cast(state, content, monster, definition, active_turn, rng, events)
+					if attack_result != MONSTER_ATTACK_COMPLETED:
+						return
 		elif active_turn.action == &"missile":
 			attack_result = _process_monster_projectile(state, content, monster, definition, active_turn, rng, events)
 			if attack_result == MONSTER_ATTACK_FALLBACK:
