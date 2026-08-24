@@ -104,51 +104,68 @@ func resume(response: InteractionResponse, runtime_api: RealmzRuntimeApi) -> Sce
 	var reward_retry_checkpoint := snapshot() if _is_reward_continuation(_pending_continuation) else null
 	var continuation := _pending_continuation.copy() if _pending_continuation != null else null
 	var request_id := _pending_request.request_id
-	_pending_request = null
-	_pending_continuation = null
 	if continuation == null:
+		_pending_request = null
+		_pending_continuation = null
 		return _fail(&"invalid_vm_continuation", "The pending Scenario VM continuation is unavailable.", events)
 	_append_trace({"event": "resume", "requestId": request_id, "kind": String(continuation.kind)})
+	var operation: ScenarioRuntimeOperationResult
 	match continuation.kind:
 		ScenarioVmPendingContinuation.SAFE_OPERATION:
-			var operation := runtime_api.resume_safe(continuation.runtime, response, _next_request_id())
-			if operation.state == ScenarioRuntimeOperationResult.State.FAILED:
-				if reward_retry_checkpoint != null and restore(reward_retry_checkpoint):
-					return ScenarioVmResult.failed(operation.error_code, operation.error_message)
-				return _fail(operation.error_code, operation.error_message, events)
-			events.append_array(operation.events)
-			if operation.state == ScenarioRuntimeOperationResult.State.WAITING:
-				_pending_request = operation.interaction
-				_pending_continuation = ScenarioVmPendingContinuation.safe(operation.continuation, continuation.frame_index, continuation.result_target)
-				_append_trace({"event": "yield", "requestId": operation.interaction.request_id, "kind": String(operation.interaction.kind)})
-				return ScenarioVmResult.waiting(operation.interaction, events)
-			if operation.state == ScenarioRuntimeOperationResult.State.SUSPENDED:
-				return _suspend_operation(ScenarioVmHandoff.SAFE_OPERATION, operation, continuation.frame_index, continuation.result_target)
-			var frame_index: int = continuation.frame_index
-			if frame_index < 0 or frame_index >= _frames.size() or _frames[frame_index].kind != ScenarioFrame.ACTION:
-				return _fail(&"invalid_vm_continuation", "Scenario Action continuation frame is unavailable.", events)
-			var result_target: String = continuation.result_target
-			if not result_target.is_empty():
-				_frames[frame_index].set_local(result_target, operation.value)
+			operation = runtime_api.resume_safe(continuation.runtime, response, _next_request_id())
 		ScenarioVmPendingContinuation.CLASSIC_OPERATION:
-			var operation := runtime_api.resume_classic(continuation.runtime, response, _next_request_id())
-			if operation.state == ScenarioRuntimeOperationResult.State.FAILED:
-				if reward_retry_checkpoint != null and restore(reward_retry_checkpoint):
-					return ScenarioVmResult.failed(operation.error_code, operation.error_message)
-				return _fail(operation.error_code, operation.error_message, events)
-			events.append_array(operation.events)
-			if operation.state == ScenarioRuntimeOperationResult.State.WAITING:
-				_pending_request = operation.interaction
-				_pending_continuation = ScenarioVmPendingContinuation.classic(operation.continuation)
-				_append_trace({"event": "yield", "requestId": operation.interaction.request_id, "kind": String(operation.interaction.kind)})
-				return ScenarioVmResult.waiting(operation.interaction, events)
-			if operation.state == ScenarioRuntimeOperationResult.State.SUSPENDED:
-				return _suspend_operation(ScenarioVmHandoff.CLASSIC_OPERATION, operation)
-			var directive_result := _apply_classic_directive(operation.directive)
-			if directive_result.state == ScenarioVmResult.State.FAILED:
-				return _fail(directive_result.error_code, directive_result.error_message, events)
+			operation = runtime_api.resume_classic(continuation.runtime, response, _next_request_id())
 		_:
+			_pending_request = null
+			_pending_continuation = null
 			return _fail(&"unknown_interaction_continuation", "Scenario VM continuation kind is unavailable.", events)
+	if operation.state == ScenarioRuntimeOperationResult.State.FAILED:
+		if reward_retry_checkpoint != null and restore(reward_retry_checkpoint):
+			return ScenarioVmResult.failed(operation.error_code, operation.error_message)
+		_pending_request = null
+		_pending_continuation = null
+		return _fail(operation.error_code, operation.error_message, events)
+	_pending_request = null
+	_pending_continuation = null
+	return _complete_pending_operation(continuation, operation, runtime_api)
+
+
+func complete_debug_victory(runtime_api: RealmzRuntimeApi, events: Array[DomainEvent]) -> ScenarioVmResult:
+	if _pending_request == null or _pending_request.kind != InteractionRequest.COMBAT or _pending_continuation == null or _pending_continuation.runtime == null:
+		return ScenarioVmResult.failed(&"invalid_vm_continuation", "Debug victory requires the Scenario VM's active combat request.")
+	var continuation := _pending_continuation.copy()
+	var expected_runtime_kind := ScenarioRuntimeContinuation.SAFE_COMBAT if continuation.kind == ScenarioVmPendingContinuation.SAFE_OPERATION else ScenarioRuntimeContinuation.CLASSIC_COMBAT if continuation.kind == ScenarioVmPendingContinuation.CLASSIC_OPERATION else &""
+	if continuation.runtime.kind != expected_runtime_kind:
+		return ScenarioVmResult.failed(&"invalid_vm_continuation", "Debug victory cannot bypass a nested combat continuation.")
+	var operation := runtime_api.complete_debug_victory(continuation.runtime, _next_request_id(), events)
+	if operation.state == ScenarioRuntimeOperationResult.State.FAILED:
+		return ScenarioVmResult.failed(operation.error_code, operation.error_message)
+	_append_trace({"event": "debug-victory", "requestId": _pending_request.request_id, "kind": String(continuation.kind)})
+	_pending_request = null
+	_pending_continuation = null
+	return _complete_pending_operation(continuation, operation, runtime_api)
+
+
+func _complete_pending_operation(continuation: ScenarioVmPendingContinuation, operation: ScenarioRuntimeOperationResult, runtime_api: RealmzRuntimeApi) -> ScenarioVmResult:
+	var events: Array[DomainEvent] = []
+	events.append_array(operation.events)
+	if operation.state == ScenarioRuntimeOperationResult.State.WAITING:
+		_pending_request = operation.interaction
+		_pending_continuation = ScenarioVmPendingContinuation.safe(operation.continuation, continuation.frame_index, continuation.result_target) if continuation.kind == ScenarioVmPendingContinuation.SAFE_OPERATION else ScenarioVmPendingContinuation.classic(operation.continuation)
+		_append_trace({"event": "yield", "requestId": operation.interaction.request_id, "kind": String(operation.interaction.kind)})
+		return ScenarioVmResult.waiting(operation.interaction, events)
+	if operation.state == ScenarioRuntimeOperationResult.State.SUSPENDED:
+		return _suspend_operation(ScenarioVmHandoff.SAFE_OPERATION, operation, continuation.frame_index, continuation.result_target) if continuation.kind == ScenarioVmPendingContinuation.SAFE_OPERATION else _suspend_operation(ScenarioVmHandoff.CLASSIC_OPERATION, operation)
+	if continuation.kind == ScenarioVmPendingContinuation.SAFE_OPERATION:
+		var frame_index: int = continuation.frame_index
+		if frame_index < 0 or frame_index >= _frames.size() or _frames[frame_index].kind != ScenarioFrame.ACTION:
+			return _fail(&"invalid_vm_continuation", "Scenario Action continuation frame is unavailable.", events)
+		if not continuation.result_target.is_empty():
+			_frames[frame_index].set_local(continuation.result_target, operation.value)
+	else:
+		var directive_result := _apply_classic_directive(operation.directive)
+		if directive_result.state == ScenarioVmResult.State.FAILED:
+			return _fail(directive_result.error_code, directive_result.error_message, events)
 	var resumed := run(runtime_api)
 	events.append_array(resumed.events)
 	if resumed.state == ScenarioVmResult.State.WAITING:

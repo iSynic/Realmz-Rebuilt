@@ -195,6 +195,10 @@ func active_combat_request(request_id: String) -> InteractionRequest:
 	return _battle_reward_operations.active_combat_request(request_id)
 
 
+func complete_debug_victory(continuation: ScenarioRuntimeContinuation, request_id: String, events: Array[DomainEvent]) -> ScenarioRuntimeOperationResult:
+	return _battle_reward_operations.complete_debug_victory(continuation, request_id, events)
+
+
 func resume_classic(continuation: ScenarioRuntimeContinuation, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
 	if continuation == null or response == null or not response.is_supported_kind():
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "The response payload does not match its interaction kind.")

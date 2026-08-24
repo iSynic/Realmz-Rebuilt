@@ -148,6 +148,15 @@ func _ensure_appearance_textures() -> void:
 			var asset := media.asset_by_id(option.id)
 			if asset != null:
 				assets.append(asset)
+	for revision: CharacterVaultRevisionView in vault_revisions:
+		var portrait_id := revision.character.portrait_id if revision.character != null else revision.portrait_id
+		var portrait := media.asset_by_id(portrait_id)
+		if portrait != null:
+			assets.append(portrait)
+		if revision.character != null:
+			var combat_icon := media.asset_by_id(revision.character.combat_icon_id)
+			if combat_icon != null:
+				assets.append(combat_icon)
 	assets.append_array(media.assets_of_kind("portrait"))
 	assets.append_array(media.assets_of_kind("combat-icon"))
 	for asset: MediaAsset in assets:

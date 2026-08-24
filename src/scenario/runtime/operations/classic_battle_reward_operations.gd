@@ -64,5 +64,9 @@ func active_combat_request(request_id: String) -> InteractionRequest:
 	return _battle.active_combat_request(request_id)
 
 
+func complete_debug_victory(continuation: ScenarioRuntimeContinuation, request_id: String, events: Array[DomainEvent]) -> ScenarioRuntimeOperationResult:
+	return _battle.complete_debug_victory(continuation, request_id, events)
+
+
 func grant_item(character_id: String, item_id: String, identified: bool) -> ScenarioRuntimeOperationResult:
 	return _rewards.grant_item(character_id, item_id, identified)

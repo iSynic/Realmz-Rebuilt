@@ -29,7 +29,7 @@ func handle_input(event: InputEvent) -> bool:
 	if _dialog == null or not event.is_action_pressed(&"realmz_debug_tools"):
 		return false
 	if _dialog.visible:
-		_dialog.hide()
+		_dialog.close_dialog()
 	else:
 		_dialog.present(_controller.view(), _map_records(), _noclip, _recent_auto_actions)
 	return true
@@ -53,7 +53,7 @@ func _submit(command: SessionDebugCommand) -> SessionStep:
 	if _dialog != null:
 		_dialog.show_result(message, failed)
 		if not failed and command.kind in [SessionDebugCommand.Kind.START_ENCOUNTER, SessionDebugCommand.Kind.START_BATTLE, SessionDebugCommand.Kind.WIN_BATTLE]:
-			_dialog.hide()
+			_dialog.close_dialog()
 	return step
 
 

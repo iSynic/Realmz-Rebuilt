@@ -265,8 +265,8 @@ func apply_debug_command(command: SessionDebugCommand) -> SessionStep:
 	if not _started or command == null or not _state.party_setup_completed:
 		return SessionStep.failed(_view_revision, &"debug_command_unavailable", "Debug commands require a committed active adventure boundary.")
 	var pending := _pending_interaction()
-	var active_combat_restore := command.kind == SessionDebugCommand.Kind.RESTORE_PARTY and _state.combat != null and not _state.combat.completed and (pending == null or pending.kind == InteractionRequest.COMBAT)
-	if not active_combat_restore and (pending != null or _scenario_vm.is_active()):
+	var active_combat_command := command.kind in [SessionDebugCommand.Kind.RESTORE_PARTY, SessionDebugCommand.Kind.WIN_BATTLE] and _state.combat != null and not _state.combat.completed and (pending == null or pending.kind == InteractionRequest.COMBAT)
+	if not active_combat_command and (pending != null or _scenario_vm.is_active()):
 		return SessionStep.failed(_view_revision, &"debug_command_unavailable", "Debug commands require a committed active adventure boundary.")
 	match command.kind:
 		SessionDebugCommand.Kind.WARP:
@@ -298,6 +298,9 @@ func _debug_start_battle(classic_id: int) -> SessionStep:
 func _debug_win_battle() -> SessionStep:
 	if _state.combat == null or _state.combat.completed:
 		return SessionStep.failed(_view_revision, &"debug_battle_unavailable", "There is no active battle to win.")
+	var state_checkpoint := _state.to_data()
+	var rng_checkpoint := _rng.checkpoint()
+	var vm_checkpoint := _scenario_vm.snapshot() if _scenario_vm.is_active() else null
 	var events: Array[DomainEvent] = [DomainEvent.new(&"debug_battle_victory_requested", {"battleId": _state.combat.battle_id})]
 	for monster: MonsterState in _state.combat.monsters():
 		if monster.traitor:
@@ -309,6 +312,13 @@ func _debug_win_battle() -> SessionStep:
 			_state.combat.battlefield.remove_character(character.id)
 	if not _rules.combat_flow.finish_debug_victory(_state, _content, events):
 		return SessionStep.failed(_view_revision, &"debug_victory_failed", "The active battle could not resolve as a victory.")
+	if vm_checkpoint != null:
+		var result := _scenario_vm.complete_debug_victory(_runtime_api, events)
+		if result.state == ScenarioVmResult.State.FAILED:
+			if not _state.restore_from_data(state_checkpoint) or not _rng.rollback(rng_checkpoint) or not _scenario_vm.restore(vm_checkpoint):
+				return SessionStep.failed(_view_revision, &"debug_victory_rollback_failed", "Debug victory failed and could not restore its combat continuation.")
+			return SessionStep.failed(_view_revision, result.error_code, result.error_message)
+		return _finish_resumed_vm_result(result, result.events)
 	return _finish_direct_battle(events)
 
 
@@ -352,6 +362,10 @@ func respond(response: InteractionResponse) -> SessionStep:
 	events.append_array(result.events)
 	if _session_continuation.kind == &"application-hook" and _events_have(result.events, &"party_revived"):
 		_session_continuation.application().party_revived = true
+	return _finish_resumed_vm_result(result, events)
+
+
+func _finish_resumed_vm_result(result: ScenarioVmResult, events: Array[DomainEvent]) -> SessionStep:
 	if result.state == ScenarioVmResult.State.SUSPENDED:
 		return _begin_scenario_handoff(result, events)
 	if result.state == ScenarioVmResult.State.WAITING:

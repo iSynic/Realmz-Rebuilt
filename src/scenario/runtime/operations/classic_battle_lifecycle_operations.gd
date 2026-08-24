@@ -47,6 +47,15 @@ func resume_battle(continuation: ScenarioRuntimeContinuation, response: Interact
 			return _resume_fumble_recovery(continuation, response, request_id)
 	return ScenarioRuntimeOperationResult.failed(&"unknown_interaction_continuation", "Battle continuation is unavailable.")
 
+
+func complete_debug_victory(continuation: ScenarioRuntimeContinuation, request_id: String, events: Array[DomainEvent]) -> ScenarioRuntimeOperationResult:
+	if continuation == null or continuation.kind not in [ScenarioRuntimeContinuation.CLASSIC_COMBAT, ScenarioRuntimeContinuation.SAFE_COMBAT]:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "Debug victory requires the active combat command continuation.")
+	var combat_continuation := continuation.body as ScenarioRuntimeContinuation.CombatBody
+	if combat_continuation == null or combat_continuation.caller == null or _game_state.combat == null or not _game_state.combat.completed or _game_state.combat.battle_id != combat_continuation.battle_id:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "The completed debug battle does not match its issuing continuation.")
+	return _finish_battle_with_allies(continuation.kind, combat_continuation.caller, request_id, events)
+
 func _start_classic_battle(action: ClassicActionDefinition, request_id: String) -> ScenarioRuntimeOperationResult:
 	var battle_id := action.operand_id
 	var prelude: Array[DomainEvent] = []

@@ -97,7 +97,7 @@ func _ready() -> void:
 	_auto_log = MenuButton.new()
 	_auto_log.name = "RecentAutoActions"
 	root.add_child(_auto_log)
-	root.add_child(_button("Close", hide))
+	root.add_child(_button("Close", close_dialog))
 	visible = false
 
 
@@ -143,9 +143,15 @@ func set_auto_actions(actions: Array[String]) -> void:
 		popup.set_item_disabled(index, true)
 
 
+func close_dialog() -> void:
+	hide()
+	if is_inside_tree():
+		release_focus()
+
+
 func _unhandled_key_input(event: InputEvent) -> void:
 	if visible and event.is_action_pressed(&"realmz_back"):
-		hide()
+		close_dialog()
 		get_viewport().set_input_as_handled()
 
 
