@@ -143,6 +143,9 @@ func _can_project_ordinary_movement(context: SessionWorkflowContext, pending_int
 					return false
 				moved_count += 1
 			&"time_advanced": pass
+			&"sound_requested":
+				if String(event.payload.get("source", "")) != "classic-map-movement" or bool(event.payload.get("waitForCompletion", true)) or event.payload.has("stopExisting"):
+					return false
 			&"fatigue_changed":
 				if String(event.payload.get("source", "")) != "classic" or String(event.payload.get("reason", "")) != "hour-boundary" or int(event.payload.get("current", -1)) != context.state.party.fatigue:
 					return false

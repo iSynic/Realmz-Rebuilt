@@ -35,6 +35,15 @@ func build(request: InteractionRequest) -> void:
 			if body == null: return
 			var take_note_on_continue := body.journal_eligible and not body.journal_recorded and _autojournal_enabled
 			_acknowledgement_body = InteractionResponse.AcknowledgeBody.new(take_note_on_continue)
+			if body.prompt.strip_edges().is_empty():
+				var grid := _choice_grid(1, true)
+				var continue_button := Button.new()
+				continue_button.name = "AcknowledgeContinue"
+				continue_button.text = "Continue"
+				continue_button.custom_minimum_size = Vector2(140.0, 38.0)
+				continue_button.theme_type_variation = &"ClassicChoiceButton"
+				continue_button.pressed.connect(submit_acknowledgement)
+				grid.add_child(continue_button)
 			if body.journal_eligible and not body.journal_recorded and not take_note_on_continue:
 				_manual_journal_available = true
 

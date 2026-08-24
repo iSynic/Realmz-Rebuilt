@@ -3,8 +3,8 @@ extends Node
 
 signal movement_requested(direction: Vector2i)
 
-const BASE_INTERVAL_SECONDS: float = 0.2
-const INITIAL_REPEAT_DELAY_SECONDS: float = 0.3
+const BASE_INTERVAL_SECONDS: float = 0.1
+const INITIAL_REPEAT_DELAY_SECONDS: float = 0.18
 
 var _speed_percent: int = 100
 var _source: StringName = &""

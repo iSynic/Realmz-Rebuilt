@@ -820,6 +820,8 @@ static func _prompt_for(request: InteractionRequest, classic_text_context: Strin
 	var explicit_prompt := request.body.prompt_text().strip_edges()
 	if not explicit_prompt.is_empty():
 		return explicit_prompt
+	if request.kind == InteractionRequest.ACKNOWLEDGE:
+		return ""
 	if request.kind == InteractionRequest.YES_NO:
 		var authored_context := classic_text_context.strip_edges()
 		if not authored_context.is_empty():

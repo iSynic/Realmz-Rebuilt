@@ -598,7 +598,7 @@ func _open_movement_content(source_content: RealmzContent) -> RealmzContent:
 	for y: int in 3:
 		for x: int in 3:
 			var coordinate := Vector2i(x, y)
-			cells.append(MapCell.new("open:cell:%d,%d" % [x, y], coordinate, "classic.terrain.1", true, 1, false, true, false, false, false, false, false, 0, 1, "fixture.tileset", empty_ids, empty_ids, open_edges, empty_features))
+			cells.append(MapCell.new("open:cell:%d,%d" % [x, y], coordinate, "classic.terrain.1", true, 1, false, true, false, false, false, false, false, 151, 1, "fixture.tileset", empty_ids, empty_ids, open_edges, empty_features))
 	var map := MapDefinition.new("open", "Open movement", &"land", 0, MapTopology.new(3, 3, cells))
 	var maps: Array[MapDefinition] = [map]
 	return RealmzContent.new("open-movement", "0".repeat(64), "open-movement-content", "realmz-classic-1", map.id, Vector2i(1, 1), WorldDefinition.new(maps), ScenarioDefinition.new([], []), [], [], [], source_content.race_definitions(), source_content.caste_definitions())
