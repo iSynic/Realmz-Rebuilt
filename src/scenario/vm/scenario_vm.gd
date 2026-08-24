@@ -5,6 +5,7 @@ const CLASSIC_CALL_LIMIT: int = 20
 const ACTION_CALL_LIMIT: int = 32
 const EXECUTION_STEP_LIMIT: int = 65536
 const TRACE_LIMIT: int = 4096
+const DEBUG_PROGRAM_ID := "__debug_instruction__"
 
 var _definition: ScenarioDefinition
 var _frames: Array[ScenarioFrame] = []
@@ -16,6 +17,7 @@ var _step_count: int = 0
 var _execution_step_limit: int = EXECUTION_STEP_LIMIT
 var _halted: bool = true
 var _last_outcome: Variant
+var _debug_program: ScenarioProgramDefinition
 
 
 func configure(definition: ScenarioDefinition, execution_step_limit: int = EXECUTION_STEP_LIMIT) -> void:
@@ -34,6 +36,7 @@ func reset() -> void:
 	_step_count = 0
 	_halted = true
 	_last_outcome = null
+	_debug_program = null
 
 
 func start_program(program_id: String, context: ScenarioExecutionContext = null) -> ScenarioVmResult:
@@ -50,6 +53,20 @@ func start_program(program_id: String, context: ScenarioExecutionContext = null)
 	_step_count = 0
 	_last_outcome = null
 	_append_trace({"event": "start", "programId": program_id})
+	return ScenarioVmResult.completed()
+
+
+func start_debug_instruction(instruction: ClassicActionDefinition, context: ScenarioExecutionContext = null) -> ScenarioVmResult:
+	if instruction == null or _definition == null or _pending_request != null or not _frames.is_empty():
+		return ScenarioVmResult.failed(&"debug_instruction_unavailable", "The debug scenario instruction cannot start at this boundary.")
+	_debug_program = ScenarioProgramDefinition.new(DEBUG_PROGRAM_ID, &"debug", DEBUG_PROGRAM_ID, [instruction])
+	var frame := ScenarioFrame.new(ScenarioFrame.PROGRAM, DEBUG_PROGRAM_ID)
+	frame.set_context(ScenarioExecutionContext.empty() if context == null else context)
+	_frames.append(frame)
+	_halted = false
+	_step_count = 0
+	_last_outcome = null
+	_append_trace({"event": "debug-start", "opcode": instruction.opcode, "id": instruction.operand_id})
 	return ScenarioVmResult.completed()
 
 
@@ -253,7 +270,7 @@ static func handoff_is_valid(handoff: ScenarioVmHandoff, saved: ScenarioVmSnapsh
 
 
 func _execute_program_frame(frame: ScenarioFrame, runtime_api: RealmzRuntimeApi) -> ScenarioVmResult:
-	if frame.cursor == 0 and frame.context_value("_programResolved") != true:
+	if frame.definition_id != DEBUG_PROGRAM_ID and frame.cursor == 0 and frame.context_value("_programResolved") != true:
 		var original_program_id := frame.definition_id
 		var resolved_program_id := runtime_api.resolve_program_id(original_program_id)
 		if _definition.program_by_id(resolved_program_id) == null:
@@ -264,7 +281,7 @@ func _execute_program_frame(frame: ScenarioFrame, runtime_api: RealmzRuntimeApi)
 		frame.definition_id = resolved_program_id
 		if resolved_program_id != original_program_id:
 			_append_trace({"event": "program-override", "sourceProgramId": original_program_id, "targetProgramId": resolved_program_id})
-	var program := _definition.program_by_id(frame.definition_id)
+	var program := _debug_program if frame.definition_id == DEBUG_PROGRAM_ID else _definition.program_by_id(frame.definition_id)
 	if program == null:
 		return ScenarioVmResult.failed(&"unknown_scenario_program", "Scenario program '%s' disappeared during execution." % frame.definition_id)
 	if frame.cursor >= program.instruction_count():

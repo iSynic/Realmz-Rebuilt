@@ -33,6 +33,7 @@ Own the Godot composition root and translate host input/output into the pure ses
 - The application applies window mode and presentation scales, and translates the shell's centered bounded application rectangle to the map, battlefield, dungeon, and interaction presenters, but those settings and coordinates never enter the session or save aggregate.
 - The application injects Auto Switch to Melee only into a manual typed combat-move response. The core owns eligibility, source ordering, mutation, and any pending one-move continuation; no application preference object crosses into `GameState`.
 - Direct-session battles expose a detached combat request while remaining intent-driven. The composition root translates that request's typed response body into the corresponding combat intent; scenario-owned combat continues through `GameSession.respond`. Both paths preserve the same presentation component and core legality contract.
+- Debug builds alone bind F12 to `DebugToolsHost`. The host exposes the presentation-only floating tool surface, retains unsaved no-clip state, and translates every mutation into a typed public `SessionDebugCommand`; release UI, saves, and ordinary gameplay intents never carry these controls or flags.
 
 ## Work Guidance
 

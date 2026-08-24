@@ -7,12 +7,10 @@ func run() -> void:
 	assert_equal(before_start.state, SessionStep.State.FAILED, "an unstarted session rejects intents")
 	assert_equal(before_start.error_code, &"session_not_started", "the rejection is explicit")
 
-	var invalid_start := session.start(null, 42)
-	assert_equal(invalid_start.state, SessionStep.State.FAILED, "start requires validated typed content")
+	var invalid_start := session.start(null, 42); assert_equal(invalid_start.state, SessionStep.State.FAILED, "start requires validated typed content")
 	assert_equal(invalid_start.error_code, &"invalid_content", "invalid content never partially starts a session")
 
-	var snapshot := session.snapshot()
-	assert_equal(snapshot, null, "an unstarted session has no save boundary")
+	var snapshot := session.snapshot(); assert_equal(snapshot, null, "an unstarted session has no save boundary")
 
 	var character := CharacterState.new("fast.spell.character", "Quickcaster", 12, 12)
 	assert_equal(character.fast_spells().size(), 10, "every character owns Castle's ten Fast Spell slots")
@@ -23,6 +21,8 @@ func run() -> void:
 	var corrupt := character.to_data()
 	corrupt["fastSpells"][0] = {"spellId": "", "power": 2}
 	assert_equal(CharacterState.from_data(corrupt), null, "malformed empty Fast Spell bindings fail strict character restoration")
+	var debug_package := PackageRepository.new().load_package("res://tests/fixtures/packages/realmz2-synthetic-fixture.realmz2"); var debug_content := debug_package.content; var debug_race := debug_content.race_definitions()[0]; var debug_caste := debug_race.eligible_caste_ids[0]; var debug_session := GameSession.new(); debug_session.start(debug_content, 17); debug_session.submit_intent(PlayerIntent.create_party([CharacterCreationSpec.new("Debugger", debug_race.id, debug_caste, 1)])); var rng_before_debug := debug_session.snapshot().rng_state.to_data(); assert_equal(debug_session.apply_debug_command(SessionDebugCommand.warp("dungeon:0", Vector2i.ZERO)).state, SessionStep.State.COMPLETED, "a public debug warp commits only to a validated topology cell"); assert_equal([debug_session.view().party_map_id, debug_session.view().party_coordinate, debug_session.snapshot().rng_state.to_data()], ["dungeon:0", Vector2i.ZERO, rng_before_debug], "debug warp changes no gameplay RNG and exposes the committed destination through the detached view"); assert_equal(debug_session.apply_debug_command(SessionDebugCommand.restore_party()).state, SessionStep.State.COMPLETED, "party restoration is a public committed debug command")
+	var encounter_session := GameSession.new(); encounter_session.start(debug_content, 19); encounter_session.submit_intent(PlayerIntent.create_party([CharacterCreationSpec.new("Encounter Debugger", debug_race.id, debug_caste, 1)])); var encounter_step := encounter_session.apply_debug_command(SessionDebugCommand.start_encounter(&"simple", 0)); assert_equal([encounter_step.state, encounter_step.interaction.kind, encounter_session.snapshot()], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.ENCOUNTER_CHOICE, null], "a debug encounter uses the ordinary typed interaction but cannot enter a save"); var battle_session := GameSession.new(); battle_session.start(debug_content, 23); battle_session.submit_intent(PlayerIntent.create_party([CharacterCreationSpec.new("Battle Debugger", debug_race.id, debug_caste, 1)])); assert_equal(battle_session.apply_debug_command(SessionDebugCommand.start_battle(0)).state, SessionStep.State.COMPLETED, "a debug battle uses ordinary deterministic battle construction"); var victory := battle_session.apply_debug_command(SessionDebugCommand.win_battle()); assert_true(victory.state != SessionStep.State.FAILED and victory.events.any(func(event: DomainEvent) -> bool: return event.kind == &"battle_completed" and event.payload.get("outcome") == "victory"), "debug victory enters the ordinary terminal battle and reward flow")
 
 	var malformed_requests: Array = [
 		[InteractionRequest.ACKNOWLEDGE, {"prompt": "Read this.", "journalEligible": true}],

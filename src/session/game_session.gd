@@ -21,6 +21,7 @@ var _coordinator_context: SessionCoordinatorContext
 var _exploration_coordinator: RefCounted
 var _scenario_coordinator: RefCounted
 var _response_coordinator: RefCounted
+var _debug_operation_active: bool = false
 
 
 func _ensure_coordinators() -> void:
@@ -260,6 +261,74 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 			return SessionStep.failed(_view_revision, &"intent_not_implemented", "This Realmz intent is not implemented in the current slice.")
 
 
+func apply_debug_command(command: SessionDebugCommand) -> SessionStep:
+	if not _started or command == null or not _state.party_setup_completed or _pending_interaction() != null or _scenario_vm.is_active():
+		return SessionStep.failed(_view_revision, &"debug_command_unavailable", "Debug commands require a committed active adventure boundary.")
+	match command.kind:
+		SessionDebugCommand.Kind.WARP:
+			return _commit_workflow_result(SessionDebugWorkflow.warp(_workflow_context(), command.map_id, command.coordinate))
+		SessionDebugCommand.Kind.RESTORE_PARTY:
+			return _commit_workflow_result(SessionDebugWorkflow.restore_party(_workflow_context()))
+		SessionDebugCommand.Kind.START_BATTLE:
+			return _debug_start_battle(command.classic_id)
+		SessionDebugCommand.Kind.WIN_BATTLE:
+			return _debug_win_battle()
+		SessionDebugCommand.Kind.START_ENCOUNTER:
+			return _debug_start_encounter(command.encounter_kind, command.classic_id)
+	return SessionStep.failed(_view_revision, &"debug_command_unknown", "The debug command is unknown.")
+
+
+func _debug_start_battle(classic_id: int) -> SessionStep:
+	if _state.combat != null:
+		return SessionStep.failed(_view_revision, &"debug_battle_active", "A battle is already active.")
+	var battle := _content.battle_by_classic_id(classic_id)
+	if battle == null:
+		return SessionStep.failed(_view_revision, &"debug_battle_unknown", "Battle %d is unavailable." % classic_id)
+	var result := _rules.combat_flow.start_battle(_state, _content, battle, _rng)
+	if not result.ok:
+		return SessionStep.failed(_view_revision, result.error_code, result.error_message)
+	result.events.append(DomainEvent.new(&"debug_battle_started", {"battleId": battle.id, "classicId": classic_id}))
+	return _finish_completed(result.events)
+
+
+func _debug_win_battle() -> SessionStep:
+	if _state.combat == null or _state.combat.completed:
+		return SessionStep.failed(_view_revision, &"debug_battle_unavailable", "There is no active battle to win.")
+	var events: Array[DomainEvent] = [DomainEvent.new(&"debug_battle_victory_requested", {"battleId": _state.combat.battle_id})]
+	for monster: MonsterState in _state.combat.monsters():
+		if monster.traitor:
+			monster.current_health = 0
+			_state.combat.battlefield.remove_monster(monster.id)
+	for character: CharacterState in _state.party.characters():
+		if character.traitor:
+			character.current_health = 0
+			_state.combat.battlefield.remove_character(character.id)
+	if not _rules.combat_flow.finish_debug_victory(_state, _content, events):
+		return SessionStep.failed(_view_revision, &"debug_victory_failed", "The active battle could not resolve as a victory.")
+	return _finish_direct_battle(events)
+
+
+func _debug_start_encounter(kind: StringName, classic_id: int) -> SessionStep:
+	if _state.combat != null or kind not in [&"simple", &"complex"]:
+		return SessionStep.failed(_view_revision, &"debug_encounter_unavailable", "A Simple or Complex Encounter requires exploration.")
+	var available := _content.simple_encounter_by_id(classic_id) != null if kind == &"simple" else _content.complex_encounter_by_id(classic_id) != null
+	if not available:
+		return SessionStep.failed(_view_revision, &"debug_encounter_unknown", "%s Encounter %d is unavailable." % [String(kind).capitalize(), classic_id])
+	var opcode := 4 if kind == &"simple" else 5
+	var started := _scenario_vm.start_debug_instruction(ClassicActionDefinition.new(0, opcode, opcode, classic_id, false, []), ScenarioExecutionContext.trigger(&"debug", "", _state.party.map_id, _state.party.coordinate, true))
+	if started.state == ScenarioVmResult.State.FAILED:
+		return SessionStep.failed(_view_revision, started.error_code, started.error_message)
+	_debug_operation_active = true
+	var result := _scenario_vm.run(_runtime_api)
+	var events: Array[DomainEvent] = []
+	events.assign(result.events)
+	if result.state == ScenarioVmResult.State.WAITING:
+		events.append(DomainEvent.new(&"debug_encounter_started", {"kind": String(kind), "classicId": classic_id}))
+		return _finish_waiting(result.interaction, events)
+	_debug_operation_active = false
+	return _finish_failed(result.error_code, result.error_message, events) if result.state == ScenarioVmResult.State.FAILED else _finish_completed(events)
+
+
 func respond(response: InteractionResponse) -> SessionStep:
 	if not _started:
 		return SessionStep.failed(_view_revision, &"session_not_started", "Start or restore the session first.")
@@ -273,6 +342,8 @@ func respond(response: InteractionResponse) -> SessionStep:
 	if _session_interaction != null:
 		return _respond_session_interaction(response)
 	var result := _scenario_vm.resume(response, _runtime_api)
+	if _debug_operation_active and result.state != ScenarioVmResult.State.WAITING:
+		_debug_operation_active = false
 	var events: Array[DomainEvent] = []
 	events.append_array(result.events)
 	if _session_continuation.kind == &"application-hook" and _events_have(result.events, &"party_revived"):
@@ -312,7 +383,7 @@ func _set_continuation(continuation: SessionContinuation) -> void:
 
 
 func snapshot() -> SessionSnapshot:
-	if not _started or (_scenario_vm.is_active() and _scenario_vm.pending_request() == null):
+	if not _started or _debug_operation_active or (_scenario_vm.is_active() and _scenario_vm.pending_request() == null):
 		return null
 	var state := GameState.from_data(_state.to_data())
 	var vm_state := ScenarioVmSnapshot.from_data(_scenario_vm.snapshot().to_data())

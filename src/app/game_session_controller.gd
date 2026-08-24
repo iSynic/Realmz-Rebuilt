@@ -53,6 +53,13 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 	return step
 
 
+func apply_debug_command(command: SessionDebugCommand) -> SessionStep:
+	var step := _session.apply_debug_command(command)
+	_current_view = _session.view(step.events)
+	step_committed.emit(step)
+	return step
+
+
 func respond(response: InteractionResponse) -> SessionStep:
 	var step: SessionStep = _session.respond(response)
 	_current_view = _session.view(step.events)

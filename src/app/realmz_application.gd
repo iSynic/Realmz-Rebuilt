@@ -11,6 +11,7 @@ const SettingsRepositoryScript := preload("res://src/infrastructure/settings/set
 const DungeonMap3DPresenterScript := preload("res://src/presentation/dungeon_map_3d_presenter.gd")
 const ApplicationLifecycleScript := preload("res://src/app/application_lifecycle.gd")
 const HeldMovementControllerScript := preload("res://src/presentation/held_movement_controller.gd")
+const DebugToolsHostScript := preload("res://src/app/debug_tools_host.gd")
 const CLASSIC_CHARACTER_LIBRARY_PATH := "res://src/infrastructure/characters/realmz-classic-character-library.realmz2"
 const CLASSIC_CHARACTER_LIBRARY_ID := "realmz-classic-character-library"
 const CLASSIC_CHARACTER_LIBRARY_HASH := "d134c8f552d4e5893dcf82ea25bd21504c45a1e0cffb84bf4061a1b83ec00b49"
@@ -43,6 +44,7 @@ var _session_close_waits_for_playback: bool = false
 var _held_movement: HeldMovementControllerScript
 var _queued_combat_auto_changes: Dictionary = {}
 var _save_and_quit_pending: bool = false
+var _debug_tools: DebugToolsHost
 
 
 func _ready() -> void:
@@ -62,6 +64,10 @@ func _ready() -> void:
 	add_child(presentation_coordinator)
 	add_child(_dungeon_presenter)
 	add_child(_held_movement)
+	_debug_tools = DebugToolsHostScript.new()
+	add_child(_debug_tools)
+	_debug_tools.bind(session_controller, self, func() -> RealmzContent: return _active_content)
+	_debug_tools.status_changed.connect(func(message: String, failed: bool) -> void: _shell_presenter.set_status(message, failed))
 	_held_movement.set_speed_percent(_presentation_settings.exploration_speed_percent)
 	_held_movement.movement_requested.connect(_on_held_movement_requested)
 	presentation_coordinator.bind(session_controller, _map_presenter, _battlefield_presenter, _dungeon_presenter, _interaction_presenter, _shell_presenter, _audio_presenter)
@@ -284,6 +290,9 @@ func _complete_package_install(prepared: PreparedPackage, initial_seed: int) -> 
 
 
 func _input(event: InputEvent) -> void:
+	if _debug_tools != null and _debug_tools.handle_input(event):
+		get_viewport().set_input_as_handled()
+		return
 	var released_direction := UiInputActions.released_movement_direction(event)
 	if released_direction != Vector2i.ZERO and _held_movement != null and _held_movement.active_direction() == released_direction:
 		_held_movement.stop(&"keyboard")
@@ -489,6 +498,10 @@ func _submit_intent(intent: PlayerIntent) -> SessionStep:
 		var creator_step: SessionStep = _character_creation_host.submit(intent)
 		_present_standalone_character_step(creator_step)
 		return creator_step
+	var debug_step := _debug_tools.noclip_step(intent) if _debug_tools != null else null
+	if debug_step != null:
+		_present_step_status(debug_step)
+		return debug_step
 	var queued_auto := combat_auto_change_to_queue(intent, presentation_coordinator != null and presentation_coordinator.is_combat_playback_active())
 	if not queued_auto.is_empty():
 		_queued_combat_auto_changes[String(queued_auto["characterId"])] = bool(queued_auto["enabled"])

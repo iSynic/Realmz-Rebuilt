@@ -35,6 +35,7 @@ Own the pure transaction coordinator that joins core Realmz state and rules to t
 - Detached views are cached by committed session revision. The projector may reuse immutable domain projections only for a strictly recognized ordinary movement/time event sequence; every unknown, interaction-changing, map-changing, or combat event invalidates the conservative fast path. Domain revisions let presenters update only affected visible regions without changing simulation state or save shape.
 - The projector constructs Race/Caste setup records from immutable typed definitions, including source-backed rule facts and empty authored descriptions as empty values. Presentation never reaches back into package content to calculate these records.
 - Direct-session combat remains intent-driven rather than fabricating a scenario continuation. `GameSession.view()` attaches the same runtime-projected typed combat command contract used by scenario battles whenever combat is active and no mandatory interaction owns the surface.
+- `GameSession.apply_debug_command` is the typed developer-command boundary used only by the debug host. It validates a committed session boundary and routes topology warp, party restoration, encounter launch, battle launch, and forced victory through their ordinary rule, VM, transaction, and reward owners. A debug encounter's ephemeral VM program is intentionally unsaveable; `snapshot()` returns null until that interaction closes.
 
 ## Parent Contract
 
