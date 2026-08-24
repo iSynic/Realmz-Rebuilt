@@ -129,6 +129,10 @@ static func is_combat_persistent_field_spell(spell: SpellDefinition) -> bool:
 	return _combat_persistent_field_spell(spell)
 
 
+static func combat_persistent_field_condition_index(spell: SpellDefinition) -> int:
+	return absi(spell.special) - 1 if _combat_persistent_field_spell(spell) and _combat_condition_special(spell) else -1
+
+
 static func combat_spell_uses_persistent_field_queue(spell: SpellDefinition) -> bool:
 	return spell != null and spell.queue_icon != 0 and spell.target_type != 6 and spell.target_type <= 8
 
@@ -233,14 +237,12 @@ static func _combat_charm_spell(spell: SpellDefinition) -> bool:
 
 
 static func _combat_persistent_field_spell(spell: SpellDefinition) -> bool:
-	if spell == null or not spell.in_combat or spell.queue_icon == 0 or spell.queue_icon < -128 or spell.queue_icon > 127 or not spell.can_rotate or spell.target_type not in [3, 4] or spell.size < 1:
+	if spell == null or not spell.in_combat or spell.queue_icon == 0 or spell.queue_icon < -128 or spell.queue_icon > 127 or spell.target_type not in [3, 4] or spell.target_type == 3 and spell.size < 1:
 		return false
 	var special := absi(spell.special)
-	if special not in [0, 2]:
-		return false
-	var has_immediate_effect := spell.damage_min != 0 or spell.damage_max != 0 or spell.power_damage_min != 0 or spell.power_damage_max != 0 or special == 2
+	var has_damage := spell.damage_min != 0 or spell.damage_max != 0 or spell.power_damage_min != 0 or spell.power_damage_max != 0
 	var maximum_duration := maxi(spell.duration_min, spell.duration_max) + 7 * maxi(spell.power_duration_min, spell.power_duration_max)
-	return has_immediate_effect and maximum_duration > 0 and absi(spell.damage_type) <= 7
+	return maximum_duration > 0 and absi(spell.damage_type) <= 7 and (special == 0 and has_damage or _combat_condition_special(spell))
 
 
 static func _combat_healing_spell(spell: SpellDefinition) -> bool:
@@ -262,10 +264,14 @@ static func _combat_condition_cure_spell(spell: SpellDefinition) -> bool:
 static func _combat_condition_effect_spell(spell: SpellDefinition) -> bool:
 	if spell == null or not spell.in_combat or combat_spell_uses_persistent_field_queue(spell):
 		return false
-	var special := absi(spell.special)
 	var maximum_duration := maxi(spell.duration_min, spell.duration_max) + 7 * maxi(spell.power_duration_min, spell.power_duration_max)
 	var has_damage := spell.damage_min != 0 or spell.damage_max != 0 or spell.power_damage_min != 0 or spell.power_damage_max != 0
-	return special >= 1 and special < 41 and special != 28 and (has_damage or maximum_duration > 0)
+	return _combat_condition_special(spell) and (has_damage or maximum_duration > 0)
+
+
+static func _combat_condition_special(spell: SpellDefinition) -> bool:
+	var special := absi(spell.special) if spell != null else 0
+	return special >= 1 and special < 41 and special != 28
 
 
 static func _condition_cure_index(spell: SpellDefinition) -> int:

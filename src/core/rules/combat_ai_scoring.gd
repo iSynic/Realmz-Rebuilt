@@ -139,8 +139,10 @@ func _monster_area_spell_power_plan(state: GameState, content: RealmzContent, mo
 	if ClassicSpellCapabilityCatalog.is_combat_persistent_field_spell(spell) and not state.combat.can_queue_persistent_field():
 		return {}
 	var expected := expected_spell_effect(spell, power)
-	if expected <= 0 and absi(spell.special) != 2:
+	var condition_index := ClassicSpellCapabilityCatalog.combat_persistent_field_condition_index(spell)
+	if expected <= 0 and condition_index < 0:
 		return {}
+	expected = maxi(expected, _maximum_condition_duration(spell, power)) if condition_index >= 0 else expected
 	var maximum_range := absi(spell.range_min + spell.range_max * power) + (1 if definition.size != 0 else 0) + (1 if definition.size == 3 else 0)
 	var rotations: Array = _rules.spell_areas.rotation_patterns(spell, power)
 	var best: Dictionary = {}
@@ -162,7 +164,7 @@ func _monster_area_spell_power_plan(state: GameState, content: RealmzContent, mo
 						harms_friend = true
 					elif _target_reflects(state, target_id):
 						harms_friend = true
-					elif not _target_hard_immune(state, content, target_id, spell):
+					elif not _target_hard_immune(state, content, target_id, spell) and (condition_index < 0 or _target_condition_value(state, target_id, condition_index) == 0):
 						hostile_ids[target_id] = true
 				if not harms_friend and not hostile_ids.is_empty():
 					placements.append({"center": center, "hostileCount": hostile_ids.size()})
@@ -436,10 +438,12 @@ func _best_spell_point_restore(state: GameState, content: RealmzContent, actor: 
 
 func _best_damage_spell(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, option: CombatSpellOptionView, actors_by_cell: Dictionary, area_placement_cache: Dictionary) -> Dictionary:
 	var expected := expected_spell_effect(spell, option.power)
-	if expected <= 0:
+	var condition_index := ClassicSpellCapabilityCatalog.combat_persistent_field_condition_index(spell)
+	if expected <= 0 and condition_index < 0:
 		return {}
+	expected = maxi(expected, _maximum_condition_duration(spell, option.power)) if condition_index >= 0 else expected
 	if spell.target_type in [3, 4]:
-		return _best_area(state, content, actor, spell, option, expected, actors_by_cell, area_placement_cache)
+		return _best_area(state, content, actor, spell, option, expected, actors_by_cell, area_placement_cache, condition_index)
 	if spell.target_type == 6:
 		return _best_party_ray(state, content, actor, spell, option.power, expected)
 	var targets := _hostile_spell_targets(state, content, actor, spell, option.power)
@@ -477,7 +481,7 @@ func _best_party_ray(state: GameState, content: RealmzContent, actor: CharacterS
 	return best
 
 
-func _best_area(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, option: CombatSpellOptionView, expected: int, actors_by_cell: Dictionary, area_placement_cache: Dictionary) -> Dictionary:
+func _best_area(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, option: CombatSpellOptionView, expected: int, actors_by_cell: Dictionary, area_placement_cache: Dictionary, condition_index: int = -1) -> Dictionary:
 	var maximum_range := absi(spell.range_min + spell.range_max * option.power)
 	var best: Dictionary = {}
 	var rotations: Array = option.area_rotation_offsets if not option.area_rotation_offsets.is_empty() else [option.area_offsets]
@@ -499,7 +503,7 @@ func _best_area(state: GameState, content: RealmzContent, actor: CharacterState,
 						harms_friend = true
 					elif _target_reflects(state, target_id):
 						harms_friend = true
-					elif not _target_hard_immune(state, content, target_id, spell):
+					elif not _target_hard_immune(state, content, target_id, spell) and (condition_index < 0 or _target_condition_value(state, target_id, condition_index) == 0):
 						hostile_ids[target_id] = true
 				if not harms_friend and not hostile_ids.is_empty():
 					placements.append({"center": center, "hostileCount": hostile_ids.size()})
@@ -668,6 +672,12 @@ static func _target_missing_spell_points(state: GameState, target_id: String) ->
 		return maxi(0, character.maximum_spell_points - character.spell_points)
 	var monster := state.combat.monster_by_id(target_id)
 	return maxi(0, monster.maximum_spell_points - monster.spell_points) if monster != null else 0
+
+
+static func _target_condition_value(state: GameState, target_id: String, condition_index: int) -> int:
+	var character := state.party.character_by_id(target_id)
+	var monster := state.combat.monster_by_id(target_id) if character == null else null
+	return character.conditions.value(condition_index) if character != null else monster.conditions.value(condition_index) if monster != null else 0
 
 
 static func _target_hard_immune(state: GameState, content: RealmzContent, target_id: String, spell: SpellDefinition) -> bool:
