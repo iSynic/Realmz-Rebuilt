@@ -136,7 +136,7 @@ func _monster_hostile_group_spell_power_plan(state: GameState, content: RealmzCo
 
 
 func _monster_area_spell_power_plan(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, spell: SpellDefinition, slot: int, power: int, actors_by_cell: Dictionary, area_placement_cache: Dictionary) -> Dictionary:
-	if spell.queue_icon != 0 and not state.combat.can_queue_persistent_field():
+	if ClassicSpellCapabilityCatalog.is_combat_persistent_field_spell(spell) and not state.combat.can_queue_persistent_field():
 		return {}
 	var expected := expected_spell_effect(spell, power)
 	if expected <= 0 and absi(spell.special) != 2:

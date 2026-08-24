@@ -129,6 +129,10 @@ static func is_combat_persistent_field_spell(spell: SpellDefinition) -> bool:
 	return _combat_persistent_field_spell(spell)
 
 
+static func combat_spell_uses_persistent_field_queue(spell: SpellDefinition) -> bool:
+	return spell != null and spell.queue_icon != 0 and spell.target_type != 6 and spell.target_type <= 8
+
+
 static func unsupported_reason(spell: SpellDefinition, context_name: StringName) -> String:
 	if spell == null:
 		return "The spell definition is unavailable."
@@ -138,7 +142,7 @@ static func unsupported_reason(spell: SpellDefinition, context_name: StringName)
 		return "This spell is not available in the Classic field/camp context."
 	if context_name != &"field-character" and not spell.in_combat:
 		return "This spell is not available in Classic combat."
-	if spell.queue_icon != 0:
+	if combat_spell_uses_persistent_field_queue(spell):
 		return "This persistent battlefield-field spell is waiting for its collision and expiry lifecycle."
 	if spell.can_rotate and spell.target_type in [3, 4] and context_name not in [&"combat-character", &"combat-scroll", &"combat-item"]:
 		return "This casting source is waiting for the Classic rotatable-area orientation contract."
@@ -150,7 +154,7 @@ static func unsupported_reason(spell: SpellDefinition, context_name: StringName)
 static func _combat_character_disposition(spell: SpellDefinition) -> StringName:
 	if spell == null or not spell.in_combat or application_role(spell) == ROLE_RESERVED_STANDARD:
 		return DISPOSITION_NOT_APPLICABLE
-	if spell.queue_icon != 0:
+	if combat_spell_uses_persistent_field_queue(spell):
 		return DISPOSITION_EXECUTABLE if _combat_persistent_field_spell(spell) else DISPOSITION_PENDING
 	if spell.target_type not in [0, 1, 3, 4, 5, 6, 9, 10, 12]:
 		return DISPOSITION_PENDING
@@ -160,7 +164,7 @@ static func _combat_character_disposition(spell: SpellDefinition) -> StringName:
 static func _combat_scroll_disposition(spell: SpellDefinition) -> StringName:
 	if spell == null or not spell.in_combat or application_role(spell) == ROLE_RESERVED_STANDARD:
 		return DISPOSITION_NOT_APPLICABLE
-	if spell.queue_icon != 0:
+	if combat_spell_uses_persistent_field_queue(spell):
 		return DISPOSITION_EXECUTABLE if _combat_persistent_field_spell(spell) else DISPOSITION_PENDING
 	if spell.target_type not in [0, 1, 2, 3, 4, 5, 6, 9, 10, 12]:
 		return DISPOSITION_PENDING
@@ -170,7 +174,7 @@ static func _combat_scroll_disposition(spell: SpellDefinition) -> StringName:
 static func _combat_item_disposition(spell: SpellDefinition) -> StringName:
 	if spell == null or not spell.in_combat or application_role(spell) == ROLE_RESERVED_STANDARD:
 		return DISPOSITION_NOT_APPLICABLE
-	if spell.queue_icon != 0:
+	if combat_spell_uses_persistent_field_queue(spell):
 		return DISPOSITION_EXECUTABLE if _combat_persistent_field_spell(spell) else DISPOSITION_PENDING
 	if spell.target_type not in [0, 1, 2, 3, 4, 5, 6, 9, 10, 12]:
 		return DISPOSITION_PENDING
@@ -180,7 +184,7 @@ static func _combat_item_disposition(spell: SpellDefinition) -> StringName:
 static func _combat_monster_disposition(spell: SpellDefinition) -> StringName:
 	if spell == null or not spell.in_combat or application_role(spell) == ROLE_RESERVED_STANDARD:
 		return DISPOSITION_NOT_APPLICABLE
-	if spell.queue_icon != 0:
+	if combat_spell_uses_persistent_field_queue(spell):
 		return DISPOSITION_EXECUTABLE if spell.cost > 0 and _combat_persistent_field_spell(spell) else DISPOSITION_PENDING
 	if spell.target_type not in [0, 1, 3, 4, 5, 6, 10] or spell.target_type == 0 and spell.size != 0 or spell.cost < 0:
 		return DISPOSITION_PENDING
@@ -256,7 +260,7 @@ static func _combat_condition_cure_spell(spell: SpellDefinition) -> bool:
 
 
 static func _combat_condition_effect_spell(spell: SpellDefinition) -> bool:
-	if spell == null or not spell.in_combat or spell.queue_icon != 0:
+	if spell == null or not spell.in_combat or combat_spell_uses_persistent_field_queue(spell):
 		return false
 	var special := absi(spell.special)
 	var maximum_duration := maxi(spell.duration_min, spell.duration_max) + 7 * maxi(spell.power_duration_min, spell.power_duration_max)

@@ -333,7 +333,7 @@ func _process_monster_cast(state: GameState, content: RealmzContent, monster: Mo
 		var persistent_field: RefCounted = null
 		if spell.target_type in [3, 4]:
 			persistent_field = _flow()._queue_persistent_field(state.combat, monster.id, spell, cost_power, cast_level, rng, area_center, area_rotation, area_shape)
-			if spell.queue_icon != 0 and persistent_field == null:
+			if ClassicSpellCapabilityCatalog.is_combat_persistent_field_spell(spell) and persistent_field == null:
 				events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "cast", "spellId": spell.id, "reason": "persistent-field-queue-limit"}))
 				return MONSTER_ATTACK_COMPLETED if did_cast else MONSTER_ATTACK_FALLBACK
 			resolutions = _rules.magic.resolve_monster_group_spell(monster, definition, selected_targets, spell, cost_power, cast_level, rng, true)
