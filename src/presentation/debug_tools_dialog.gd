@@ -17,6 +17,7 @@ var _trigger_battle: Button
 var _win_battle: Button
 var _noclip: CheckButton
 var _status: Label
+var _auto_log: MenuButton
 
 
 func _ready() -> void:
@@ -37,9 +38,15 @@ func _ready() -> void:
 	style.content_margin_top = 14.0
 	style.content_margin_bottom = 14.0
 	add_theme_stylebox_override("panel", style)
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	add_child(scroll)
 	var root := VBoxContainer.new()
-	root.add_theme_constant_override("separation", 9)
-	add_child(root)
+	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	root.add_theme_constant_override("separation", 6)
+	scroll.add_child(root)
 	var title := Label.new()
 	title.text = "DEBUG TOOLS · F12"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -87,11 +94,14 @@ func _ready() -> void:
 	root.add_child(battle_row)
 	_win_battle = _button("Win current battle", func() -> void: command_requested.emit(SessionDebugCommand.win_battle()))
 	root.add_child(_win_battle)
+	_auto_log = MenuButton.new()
+	_auto_log.name = "RecentAutoActions"
+	root.add_child(_auto_log)
 	root.add_child(_button("Close", hide))
 	visible = false
 
 
-func present(view: GameView, maps: Array[Dictionary], noclip: bool) -> void:
+func present(view: GameView, maps: Array[Dictionary], noclip: bool, auto_actions: Array[String] = []) -> void:
 	var selected_map := "" if view == null else view.party_map_id
 	_map_select.clear()
 	for record: Dictionary in maps:
@@ -110,6 +120,7 @@ func present(view: GameView, maps: Array[Dictionary], noclip: bool) -> void:
 	_trigger_encounter.disabled = not exploration
 	_trigger_battle.disabled = not exploration
 	_win_battle.disabled = not active_battle
+	set_auto_actions(auto_actions)
 	_status.text = "Exploration tools ready." if exploration else "Battle tools ready." if active_battle else "Commands are unavailable at this boundary."
 	show()
 	grab_focus()
@@ -117,6 +128,19 @@ func present(view: GameView, maps: Array[Dictionary], noclip: bool) -> void:
 
 func show_result(message: String, failed: bool) -> void:
 	_status.text = ("Rejected · " if failed else "Committed · ") + message
+
+
+func set_auto_actions(actions: Array[String]) -> void:
+	_auto_log.text = "Recent Auto actions · %d" % actions.size()
+	var popup := _auto_log.get_popup()
+	popup.clear()
+	if actions.is_empty():
+		popup.add_item("No Auto actions recorded yet.")
+	else:
+		for index: int in range(actions.size() - 1, -1, -1):
+			popup.add_item(actions[index])
+	for index: int in popup.item_count:
+		popup.set_item_disabled(index, true)
 
 
 func _unhandled_key_input(event: InputEvent) -> void:

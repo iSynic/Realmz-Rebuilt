@@ -1001,7 +1001,7 @@ func _test_combat_playback_controller() -> void:
 	while reduced.is_active(): reduced.advance(1.0, false)
 	assert_false(reduced.is_active(), "reduced motion settles without a simulation mutation")
 	var toggle_events: Array[DomainEvent] = [DomainEvent.new(&"sound_requested", {"soundId": 139, "source": "classic-combat-auto-toggle"}), DomainEvent.new(&"combat_auto_changed", {"characterId": "hero", "enabled": false})]
-	assert_false(CombatPlaybackController.new().begin(previous, toggle_events, final, false), "an Auto toggle sound does not open another playback mask")
+	assert_false(CombatPlaybackController.new().begin(previous, toggle_events, final, false), "an Auto toggle sound does not open another playback mask"); var debug_events: Array[DomainEvent] = [DomainEvent.new(&"combat_auto_started", {"actorId": "hero"}), DomainEvent.new(&"combatant_moved", {"actorId": "hero", "to": [46, 45]}), DomainEvent.new(&"combat_attack_resolved", {"actorId": "hero", "targetId": "monster", "hit": true, "damage": 8}), DomainEvent.new(&"combat_spell_cast", {"actorId": "hero", "targetId": "monster", "spellId": "spell.test"})]; assert_equal(DebugToolsHost.auto_action_lines(debug_events, final, null), ["Hero moved to 46,45.", "Hero attacked Goblin for 8 damage.", "Hero cast spell.test on Goblin."], "the debug Auto history translates committed movement, attack, and spell events without inspecting simulation state")
 func _combat_playback_view(monster_health: int, hero_position: Vector2i, monster_position: Vector2i, outcome: StringName) -> GameView:
 	var tiles: Array[int] = []; tiles.resize(BattlefieldState.CELL_COUNT); tiles.fill(232)
 	var battlefield := BattlefieldState.new("land:0", tiles)
