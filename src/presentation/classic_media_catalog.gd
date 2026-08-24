@@ -2,13 +2,15 @@ class_name ClassicMediaCatalog
 extends MediaSource
 
 var package_media: MediaSource
+var character_media: MediaSource
 var application_media: ApplicationMediaCatalog
 var _image_textures: Dictionary = {}
 
 
-func _init(package_catalog: MediaSource, application_catalog: ApplicationMediaCatalog) -> void:
+func _init(package_catalog: MediaSource, application_catalog: ApplicationMediaCatalog, character_catalog: MediaSource = null) -> void:
 	package_media = package_catalog
 	application_media = application_catalog
+	character_media = character_catalog
 
 
 func assets() -> Array[MediaAsset]:
@@ -18,6 +20,11 @@ func assets() -> Array[MediaAsset]:
 		for asset: MediaAsset in package_media.assets():
 			result.append(asset)
 			if not asset.resource_type.is_empty():
+				occupied_resource_keys[_resource_key(asset.resource_type, asset.resource_id)] = true
+	if character_media != null:
+		for asset: MediaAsset in character_media.assets():
+			if not occupied_resource_keys.has(_resource_key(asset.resource_type, asset.resource_id)):
+				result.append(asset)
 				occupied_resource_keys[_resource_key(asset.resource_type, asset.resource_id)] = true
 	if application_media != null:
 		for asset: MediaAsset in application_media.assets():
@@ -39,6 +46,9 @@ func asset_by_id(asset_id: String) -> MediaAsset:
 	var package_asset := package_media.asset_by_id(asset_id) if package_media != null else null
 	if package_asset != null:
 		return package_asset
+	var character_asset := character_media.asset_by_id(asset_id) if character_media != null else null
+	if character_asset != null:
+		return character_asset
 	return application_media.asset_by_id(asset_id) if application_media != null else null
 
 
@@ -49,6 +59,8 @@ func asset_by_resource(resource_type: String, resource_id: int) -> MediaAsset:
 			return null
 		if package_status == &"resolved":
 			return package_media.asset_by_resource(resource_type, resource_id)
+	if character_media != null and character_media.resource_status(resource_type, resource_id) == &"resolved":
+		return character_media.asset_by_resource(resource_type, resource_id)
 	return application_media.asset_by_resource(resource_type, resource_id) if application_media != null else null
 
 
@@ -101,6 +113,8 @@ func resolution_diagnostic(resource_type: String, resource_id: int, presentation
 func read_bytes(asset: MediaAsset) -> PackedByteArray:
 	if package_media != null and package_media.owns_asset(asset):
 		return package_media.read_bytes(asset)
+	if character_media != null and character_media.owns_asset(asset):
+		return character_media.read_bytes(asset)
 	if application_media != null and application_media.owns_asset(asset):
 		return application_media.read_bytes(asset)
 	return PackedByteArray()
@@ -112,6 +126,10 @@ func read_bytes_batch(requested_assets: Array[MediaAsset]) -> Dictionary:
 	for asset: MediaAsset in requested_assets:
 		if package_media != null and package_media.owns_asset(asset):
 			package_assets.append(asset)
+		elif character_media != null and character_media.owns_asset(asset):
+			var bytes := character_media.read_bytes(asset)
+			if not bytes.is_empty():
+				result[asset.id] = bytes
 		elif application_media != null and application_media.owns_asset(asset):
 			var bytes := application_media.read_bytes(asset)
 			if not bytes.is_empty():

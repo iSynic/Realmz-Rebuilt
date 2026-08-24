@@ -328,8 +328,8 @@ func _test_player_map_workspace() -> void:
 	assert_true(loaded.is_ok(), "the player-map presentation fixture loads through the independent package boundary")
 	if not loaded.is_ok():
 		return
-	var media := ClassicMediaCatalog.new(loaded.media, ApplicationMediaCatalog.new())
-	var definition := loaded.content.world.player_map_by_classic_id(1)
+	var media := ClassicMediaCatalog.new(loaded.media, ApplicationMediaCatalog.new()); var definition := loaded.content.world.player_map_by_classic_id(1)
+	var character_library := PackageRepository.new().load_bundled_package("res://src/infrastructure/characters/realmz-classic-character-library.realmz2", "realmz-classic-character-library", "d134c8f552d4e5893dcf82ea25bd21504c45a1e0cffb84bf4061a1b83ec00b49"); var local_marker := MediaAsset.new("realmz-player-map-cicn-267", "Map marker", "player-map-marker", "image/png", "cicn", 267, 1, "0".repeat(64), "missing.png", 1, 1, 0, 0, 0, 0, 0, 0, 0, -1, -1); var composed_media := ClassicMediaCatalog.new(PackageMediaCatalog.new("", "", [local_marker]), ApplicationMediaCatalog.new(), character_library.media); assert_equal([composed_media.asset_by_id("realmz-portrait-267").id, composed_media.asset_by_resource("cicn", 267).id], ["realmz-portrait-267", "realmz-player-map-cicn-267"], "stable application portrait IDs remain available while exact scenario resource overrides retain precedence")
 	var session := GameSession.new()
 	assert_equal(session.start(loaded.content, 1).state, SessionStep.State.COMPLETED, "the player-map view fixture starts from validated content")
 	var map_snapshot := session.snapshot()

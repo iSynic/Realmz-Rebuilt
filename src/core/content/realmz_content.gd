@@ -28,6 +28,8 @@ var _treasures: Dictionary = {}
 var _shops: Dictionary = {}
 var _appearance_options: Dictionary = {}
 var _appearance_by_resource: Dictionary = {}
+var _application_appearance_options: Dictionary = {}
+var _application_appearance_by_resource: Dictionary = {}
 
 
 func _init(campaign: String, package_identity: String, content_identity: String, rules: String, start_map: String, start_position: Vector2i, world_definition: WorldDefinition, scenario_definition: ScenarioDefinition, messages: Array[MessageDefinition], triggers: Array[TriggerDefinition], simple_encounters: Array[SimpleEncounterDefinition] = [], races: Array[RaceDefinition] = [], castes: Array[CasteDefinition] = [], items: Array[ItemDefinition] = [], spells: Array[SpellDefinition] = [], monsters: Array[MonsterDefinition] = [], battles: Array[BattleDefinition] = [], treasures: Array[TreasureDefinition] = [], shops: Array[ShopDefinition] = [], complex_encounters: Array[ComplexEncounterDefinition] = [], thief_encounters: Array[ThiefEncounterDefinition] = [], authored_timed_encounters: Array[TimedEncounterDefinition] = [], authored_option_labels: Array[OptionLabelDefinition] = [], campaign_definition: CampaignDefinition = null, appearance_options: Array[CharacterAppearanceDefinition] = [], monster_sets: Dictionary = {}) -> void:
@@ -144,21 +146,41 @@ func caste_by_id(definition_id: String) -> CasteDefinition:
 
 
 func appearance_by_id(definition_id: String) -> CharacterAppearanceDefinition:
-	return _appearance_options.get(definition_id) as CharacterAppearanceDefinition
+	var local := _appearance_options.get(definition_id) as CharacterAppearanceDefinition
+	return local if local != null else _application_appearance_options.get(definition_id) as CharacterAppearanceDefinition
 
 
 func appearance_by_resource(kind: StringName, classic_resource_id: int) -> CharacterAppearanceDefinition:
-	return _appearance_by_resource.get(_appearance_resource_key(kind, classic_resource_id)) as CharacterAppearanceDefinition
+	var key := _appearance_resource_key(kind, classic_resource_id)
+	var local := _appearance_by_resource.get(key) as CharacterAppearanceDefinition
+	return local if local != null else _application_appearance_by_resource.get(key) as CharacterAppearanceDefinition
 
 
 func appearance_definitions(kind: StringName) -> Array[CharacterAppearanceDefinition]:
 	var result: Array[CharacterAppearanceDefinition] = []
+	var occupied_resources: Dictionary = {}
 	for value: Variant in _appearance_options.values():
 		var option := value as CharacterAppearanceDefinition
 		if option.kind == kind:
 			result.append(option)
+			occupied_resources[option.classic_resource_id] = true
+	for value: Variant in _application_appearance_options.values():
+		var option := value as CharacterAppearanceDefinition
+		if option.kind == kind and not occupied_resources.has(option.classic_resource_id):
+			result.append(option)
 	result.sort_custom(func(left: CharacterAppearanceDefinition, right: CharacterAppearanceDefinition) -> bool: return left.classic_resource_id < right.classic_resource_id)
 	return result
+
+
+func set_application_appearance_catalog(application_content: RealmzContent) -> void:
+	_application_appearance_options.clear()
+	_application_appearance_by_resource.clear()
+	if application_content == null or application_content == self:
+		return
+	for kind: StringName in [CharacterAppearanceDefinition.PORTRAIT, CharacterAppearanceDefinition.COMBAT_ICON]:
+		for option: CharacterAppearanceDefinition in application_content.appearance_definitions(kind):
+			_application_appearance_options[option.id] = option
+			_application_appearance_by_resource[_appearance_resource_key(option.kind, option.classic_resource_id)] = option
 
 
 func has_character_appearance_catalog() -> bool:

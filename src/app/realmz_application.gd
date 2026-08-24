@@ -262,6 +262,7 @@ func _complete_package_install(prepared: PreparedPackage, initial_seed: int) -> 
 		_status_label.text = "Package rejected • %s" % prepared.error_message
 		_shell_presenter.set_status(_status_label.text, true)
 		return SessionStep.failed(0, prepared.error_code, prepared.error_message)
+	prepared.content.set_application_appearance_catalog(_character_library_content)
 	var step := session_controller.start(prepared.content, initial_seed)
 	if step.state == SessionStep.State.FAILED:
 		_status_label.text = "Session start failed • %s" % step.error_message
@@ -863,6 +864,7 @@ func _load_classic_character_library() -> void:
 		return
 	_character_library_content = prepared.content
 	_character_library_media = prepared.media
+	presentation_coordinator.set_application_character_media(_character_library_media)
 	presentation_coordinator.set_package_media(_character_library_media)
 	_classic_shell.set_standalone_character_creation_available(true)
 

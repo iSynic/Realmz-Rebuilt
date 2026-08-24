@@ -13,6 +13,8 @@ var _interaction_presenter: InteractionPresenter
 var _shell_presenter: ClassicApplicationShell
 var _audio_presenter: ClassicAudioPresenter
 var _media: ClassicMediaCatalog
+var _package_media: MediaSource
+var _character_media: MediaSource
 var _application_media := ApplicationMediaCatalog.new()
 var _stock_music := ClassicMusicCatalog.new()
 var _active_route: StringName = &"exploration"
@@ -128,11 +130,17 @@ func _on_presentation_sound_requested(sound_id: int, wait_for_completion: bool, 
 
 
 func set_package_media(media: MediaSource) -> void:
-	_media = ClassicMediaCatalog.new(media, _application_media)
+	_package_media = media
+	_media = ClassicMediaCatalog.new(media, _application_media, _character_media)
 	_map_presenter.set_media_catalog(_media)
 	_battlefield_presenter.set_media_catalog(_media)
 	_shell_presenter.set_package_media(_media)
 	refresh_music()
+
+
+func set_application_character_media(media: MediaSource) -> void:
+	_character_media = media
+	set_package_media(_package_media)
 
 
 func package_media() -> ClassicMediaCatalog:

@@ -13,8 +13,7 @@ func run() -> void:
 	var record := CharacterVaultRecord.new(character.id, "realmz-classic-1", "realmz2-synthetic-fixture", "0000000000000000000000000000000000000000000000000000000000000000", character, "synthetic-v1")
 	record.publication_metadata = {"label": "Fixture vault character"}
 	assert_true(repository.publish_revision(record), "vault publication uses a temporary typed write and readback")
-	assert_equal(record.revision_hash.length(), 64, "published character revisions receive a stable SHA-256 identity")
-	var loaded := repository.load_revision(record.character_id, record.revision_hash)
+	assert_equal(record.revision_hash.length(), 64, "published character revisions receive a stable SHA-256 identity"); var loaded := repository.load_revision(record.character_id, record.revision_hash)
 	assert_not_null(loaded, "published character revisions can be loaded by stable identity")
 	if loaded != null:
 		assert_equal(loaded.state.name, "Vault Fixture", "vault state round-trips through the detached character record")
@@ -40,6 +39,7 @@ func run() -> void:
 		record.state.portrait_id = "realmz-portrait-257"
 		record.state.combat_icon_id = "realmz-combat-icon-9000"
 		assert_true(repository.campaign_eligibility(record, package.content).eligible, "matching package portrait and combat-icon identities remain vault-eligible")
+		var local_appearances: Array[CharacterAppearanceDefinition] = package.content.appearance_definitions(CharacterAppearanceDefinition.PORTRAIT).filter(func(option: CharacterAppearanceDefinition) -> bool: return option.classic_resource_id != 257); local_appearances.append_array(package.content.appearance_definitions(CharacterAppearanceDefinition.COMBAT_ICON)); local_appearances.append(CharacterAppearanceDefinition.new("realmz-player-map-cicn-257", "Map marker", &"player-map-marker", 257)); var scenario_content := RealmzContent.new("scenario", "0".repeat(64), "scenario", package.content.rules_version, "", Vector2i.ZERO, WorldDefinition.new([]), ScenarioDefinition.new([], []), [], [], [], package.content.race_definitions(), package.content.caste_definitions(), [], [], [], [], [], [], [], [], [], [], package.content.campaign_definition(), local_appearances); assert_false(repository.campaign_eligibility(record, scenario_content).eligible, "a scenario-local role collision does not masquerade as the stock portrait identity"); scenario_content.set_application_appearance_catalog(package.content); assert_true(repository.campaign_eligibility(record, scenario_content).eligible, "the application appearance catalog restores a stable stock portrait identity across scenarios")
 	var first_revision_hash := record.revision_hash
 	character.name = "Vault Fixture Revision Two"
 	character.portrait_id = "realmz-portrait-257"
