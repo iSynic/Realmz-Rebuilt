@@ -15,17 +15,17 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 **War completion certification** (`war-completion-certification`)
 
-The current Providence War package now has exact application-signature coverage, executable dispositions for every used opcode, zero compiler loss, and a deterministic eight-stage completion route through four battles and the ending. The remaining scenario-certification work is ordinary application evidence: install and select War through the campaign library, reuse an eligible AOGM vault revision, exercise representative dungeon and boat travel, and accept a War message/picture/sound sequence. These five functional workflows own those gaps and keep optional-route selection tied to observable War coverage rather than deeper unrelated archaeology.
+The current Providence War package has exact application-signature coverage, executable dispositions for every used opcode, zero compiler loss, and a deterministic eight-stage completion route through four battles and the ending. Ordinary play has now proved installation, selection, campaign entry, and compatible AOGM vault reuse. The remaining scenario-certification work is representative dungeon and boat travel plus acceptance of a War message/picture/sound sequence; the five-workflow batch retains the completed prerequisites alongside those two open evidence targets.
 
 Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.startup.select-scenario` | certification | war-prerequisite | other-ordinary | GAP-START-001 |
+| `classic.startup.select-scenario` | certification | war-prerequisite | other-ordinary |  |
 | `classic.exploration.travel` | certification | war-prerequisite | other-ordinary | GAP-EXP-001 |
 | `classic.scenario.present-message-media` | certification | war-prerequisite | other-ordinary | GAP-SCEN-001 |
-| `host.package.discover-install` | certification | war-prerequisite | other-ordinary | GAP-HOST-001 |
-| `host.vault.import-publish` | certification | war-prerequisite | other-ordinary | GAP-HOST-003 |
+| `host.package.discover-install` | certification | war-prerequisite | other-ordinary |  |
+| `host.vault.import-publish` | certification | war-prerequisite | other-ordinary |  |
 
 ### Batch count delta
 
@@ -139,7 +139,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | synthetic | 69 | 7 |
 | route-harness | 40 | 2 |
 | aogm-ordinary | 44 | 3 |
-| other-ordinary | 0 | 0 |
+| other-ordinary | 2 | 1 |
 | cross-platform | 0 | 0 |
 
 ## Release blockers and major gaps
@@ -186,9 +186,6 @@ Blockers: **1**. Major gaps: **12**.
 - `classic.maps.location-notes` - Location-note creation, editing, removal, and restoration have synthetic proof only.
 - `classic.scenario.present-message-media` - Only AOGM's opening media sequence has ordinary-play evidence.
 - `classic.services.bank` - The complete bank-backed Swap lifecycle has no ordinary campaign certification.
-- `classic.startup.select-scenario` - Only AOGM has ordinary campaign-selection evidence in 2.0.
-- `host.package.discover-install` - Only AOGM package installation has ordinary evidence.
-- `host.vault.import-publish` - Cross-campaign reuse is tested but has no ordinary AOGM-to-War evidence.
 
 ### parity
 
