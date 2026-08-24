@@ -125,6 +125,10 @@ static func is_combat_charm_spell(spell: SpellDefinition) -> bool:
 	return _combat_charm_spell(spell)
 
 
+static func is_combat_phase_spell(spell: SpellDefinition) -> bool:
+	return _combat_phase_spell(spell)
+
+
 static func is_combat_persistent_field_spell(spell: SpellDefinition) -> bool:
 	return _combat_persistent_field_spell(spell)
 
@@ -160,9 +164,9 @@ static func _combat_character_disposition(spell: SpellDefinition) -> StringName:
 		return DISPOSITION_NOT_APPLICABLE
 	if combat_spell_uses_persistent_field_queue(spell):
 		return DISPOSITION_EXECUTABLE if _combat_persistent_field_spell(spell) else DISPOSITION_PENDING
-	if spell.target_type not in [0, 1, 3, 4, 5, 6, 9, 10, 12]:
+	if spell.target_type not in [0, 1, 3, 4, 5, 6, 8, 9, 10, 12]:
 		return DISPOSITION_PENDING
-	return DISPOSITION_EXECUTABLE if _ordinary_combat_spell(spell) or _combat_healing_spell(spell) or _combat_condition_cure_spell(spell) or _combat_condition_effect_spell(spell) or _combat_death_spell(spell) or _combat_spell_point_restore_spell(spell) or _combat_charm_spell(spell) or _combat_summon_spell(spell) else DISPOSITION_PENDING
+	return DISPOSITION_EXECUTABLE if _ordinary_combat_spell(spell) or _combat_healing_spell(spell) or _combat_condition_cure_spell(spell) or _combat_condition_effect_spell(spell) or _combat_death_spell(spell) or _combat_spell_point_restore_spell(spell) or _combat_charm_spell(spell) or _combat_phase_spell(spell) or _combat_summon_spell(spell) else DISPOSITION_PENDING
 
 
 static func _combat_scroll_disposition(spell: SpellDefinition) -> StringName:
@@ -234,6 +238,10 @@ static func _combat_spell_point_restore_spell(spell: SpellDefinition) -> bool:
 
 static func _combat_charm_spell(spell: SpellDefinition) -> bool:
 	return spell != null and spell.in_combat and spell.queue_icon == 0 and absi(spell.special) in [51, 52]
+
+
+static func _combat_phase_spell(spell: SpellDefinition) -> bool:
+	return spell != null and spell.in_combat and spell.queue_icon == 0 and spell.target_type == 8 and absi(spell.special) == 56
 
 
 static func _combat_persistent_field_spell(spell: SpellDefinition) -> bool:

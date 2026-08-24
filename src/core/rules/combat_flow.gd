@@ -10,6 +10,7 @@ const ReactionsType = preload("res://src/core/rules/combat_flow_reactions.gd")
 const MagicType = preload("res://src/core/rules/combat_flow_magic.gd")
 const FieldsType = preload("res://src/core/rules/combat_flow_fields.gd")
 const SummoningType = preload("res://src/core/rules/combat_flow_summoning.gd")
+const PhaseType = preload("res://src/core/rules/combat_flow_phase.gd")
 const AutomationType = preload("res://src/core/rules/combat_flow_automation.gd")
 
 const MONSTER_ATTACK_COMPLETED := 0
@@ -29,6 +30,7 @@ var _reactions: RefCounted
 var _magic: RefCounted
 var _fields: RefCounted
 var _summoning: RefCounted
+var _phase: RefCounted
 var _automation: RefCounted
 
 
@@ -40,6 +42,7 @@ func _init(rules: RealmzRules) -> void:
 	_magic = MagicType.new(self, _rules)
 	_fields = FieldsType.new(self, _rules)
 	_summoning = SummoningType.new(self, _rules)
+	_phase = PhaseType.new(self, _rules)
 	_automation = AutomationType.new(self, _rules)
 
 
@@ -344,6 +347,18 @@ func _cast_character_summon(state: GameState, content: RealmzContent, caster: Ch
 
 func _automatic_summon_coordinate(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition, power_level: int) -> Vector2i:
 	return _summoning.automatic_coordinate(state, content, caster, spell, power_level)
+
+
+func _cast_character_phase(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, destination: Vector2i) -> CombatFlowResult:
+	return _phase.cast_character_phase(state, content, caster, spell, power_level, cast_level, rng, destination)
+
+
+func _phase_checkpoint_available(combat: CombatState, caster_id: String) -> bool:
+	return _phase.checkpoint_available(combat, caster_id)
+
+
+func _probe_phase_destination(state: GameState, content: RealmzContent, caster_id: String, spell: SpellDefinition, power_level: int, destination: Vector2i) -> CombatSpellCastProbe:
+	return _phase.probe_destination(state, content, caster_id, spell, power_level, destination)
 
 
 func _character_actor_spell_candidates(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition, power_level: int) -> Array[CombatSpellTargetView]:

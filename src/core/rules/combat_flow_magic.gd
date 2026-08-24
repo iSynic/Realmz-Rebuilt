@@ -331,6 +331,8 @@ func cast_spell(state: GameState, content: RealmzContent, caster_id: String, tar
 	var cast_level := spell.classic_tier()
 	if _flow()._is_summon_spell(spell):
 		return _flow()._cast_character_summon(state, content, caster, spell, power_level, rng, target_coordinates)
+	if ClassicSpellCapabilityCatalog.is_combat_phase_spell(spell):
+		return _flow()._cast_character_phase(state, content, caster, spell, power_level, cast_level, rng, target_coordinate)
 	if spell.target_type in [3, 4]:
 		if target_coordinate == INVALID_COORDINATE:
 			return CombatFlowResult.failed(&"area_target_required", "A fixed or power area spell requires a battlefield coordinate.")
@@ -829,12 +831,15 @@ func probe_character_spell_cast(state: GameState, content: RealmzContent, caster
 	var spell := content.spell_by_id(spell_id)
 	var repeated_target := spell.target_type == 0
 	var summon_spell: bool = _flow()._is_summon_spell(spell)
+	var phase_spell := ClassicSpellCapabilityCatalog.is_combat_phase_spell(spell)
 	var group_target := spell.target_type in [9, 10, 12]
 	var area_target := spell.target_type in [3, 4]
 	if area_target and _invalid_area_rotation(spell, rotation):
 		return CombatSpellCastProbe.blocked(&"invalid_area_rotation", "This Classic area spell does not support the selected orientation.")
 	if summon_spell:
 		return _flow()._probe_summon_coordinates(state, content, caster_id, spell, power_level, target_coordinates)
+	if phase_spell:
+		return _flow()._probe_phase_destination(state, content, caster_id, spell, power_level, target_coordinate)
 	if repeated_target:
 		if target_ids.size() > power_level:
 			return CombatSpellCastProbe.blocked(&"too_many_spell_targets", "A repeated-target spell may select at most one distinct actor per power level.")
@@ -889,6 +894,9 @@ func character_spell_options(state: GameState, content: RealmzContent, caster_id
 					result.append(CombatSpellOptionView.new(spell, power_level, null, "Choose up to %d open spaces" % power_level, &"coordinate_sequence", 0, state.combat.battlefield.actor_position(caster_id), [], power_level))
 				else:
 					result.append(CombatSpellOptionView.new(spell, power_level, null, "Choose up to %d actors" % power_level, &"sequence", 0, INVALID_COORDINATE, [], power_level))
+				continue
+			if ClassicSpellCapabilityCatalog.is_combat_phase_spell(spell):
+				result.append(CombatSpellOptionView.new(spell, power_level, null, "Choose battlefield destination", &"area", 0, state.combat.battlefield.actor_position(caster_id), [Vector2i.ZERO]))
 				continue
 			if spell.target_type in [9, 10, 12]:
 				result.append(CombatSpellOptionView.new(spell, power_level, null, _group_spell_target_label(spell.target_type), &"automatic"))
