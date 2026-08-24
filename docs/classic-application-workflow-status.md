@@ -13,17 +13,19 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Current parity-convergence batch
 
-**War immediate spell mechanics** (`war-immediate-spell-mechanics`)
+**War completion certification** (`war-completion-certification`)
 
-A fresh Providence War feature report and package capability probe exposed three immediate source-defined spell families that the runtime preserved but rejected: ordinary damage type seven, special 49 death magic, and special 59 spell-point restoration. They share the combat cast, automatic-action, and terminal-resolution boundaries, so this batch closes them through one deterministic resolver path while retaining exact save/protection ordering. The ordinary-play targets are one representative War cast from each family, including a restored-energy target and any death-triggered terminal outcome.
+The current Providence War package now has exact application-signature coverage, executable dispositions for every used opcode, zero compiler loss, and a deterministic eight-stage completion route through four battles and the ending. The remaining scenario-certification work is ordinary application evidence: install and select War through the campaign library, reuse an eligible AOGM vault revision, exercise representative dungeon and boat travel, and accept a War message/picture/sound sequence. These five functional workflows own those gaps and keep optional-route selection tied to observable War coverage rather than deeper unrelated archaeology.
 
 Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.spellcasting.combat-cast` | implementation | war-prerequisite | - |  |
-| `classic.combat.auto-turn` | certification | war-prerequisite | other-ordinary |  |
-| `classic.combat.resolve-outcome` | implementation | war-prerequisite | - |  |
+| `classic.startup.select-scenario` | certification | war-prerequisite | other-ordinary | GAP-START-001 |
+| `classic.exploration.travel` | certification | war-prerequisite | other-ordinary | GAP-EXP-001 |
+| `classic.scenario.present-message-media` | certification | war-prerequisite | other-ordinary | GAP-SCEN-001 |
+| `host.package.discover-install` | certification | war-prerequisite | other-ordinary | GAP-HOST-001 |
+| `host.vault.import-publish` | certification | war-prerequisite | other-ordinary | GAP-HOST-003 |
 
 ### Batch count delta
 
@@ -31,8 +33,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | --- | ---: | ---: | ---: |
 | classic | missing | 0 | 0 | 0 |
 | classic | partial | 15 | 15 | 0 |
-| classic | functional | 48 | 49 | +1 |
-| classic | certified | 6 | 5 | -1 |
+| classic | functional | 49 | 49 | 0 |
+| classic | certified | 5 | 5 | 0 |
 | host | missing | 1 | 1 | 0 |
 | host | partial | 1 | 1 | 0 |
 | host | functional | 6 | 6 | 0 |
