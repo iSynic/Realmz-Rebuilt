@@ -90,7 +90,7 @@ static func _has_event(events: Array[DomainEvent], kind: StringName) -> bool:
 
 
 func _present_committed_step(step: SessionStep, game_view: GameView, include_audio: bool) -> void:
-	_present_view(game_view, false)
+	_present_view(game_view, false, false)
 	_shell_presenter.present_step(step)
 	_shell_presenter.present_media_events(step.events, _media)
 	if include_audio:
@@ -100,6 +100,7 @@ func _present_committed_step(step: SessionStep, game_view: GameView, include_aud
 		if event.kind == &"message_shown" and event.payload.has("classicClick") and not bool(event.payload.get("classicClick", false)):
 			passive_classic_text = String(event.payload.get("text", ""))
 	_present_interaction(game_view)
+	refresh_music()
 	if game_view.pending_interaction == null and not passive_classic_text.is_empty():
 		_interaction_presenter.present_passive_classic_text(passive_classic_text)
 
@@ -225,7 +226,7 @@ func _present_current_view(include_interaction: bool = true) -> void:
 	_present_view(game_view, include_interaction)
 
 
-func _present_view(game_view: GameView, include_interaction: bool = true) -> void:
+func _present_view(game_view: GameView, include_interaction: bool = true, refresh_music_context: bool = true) -> void:
 	var previous := _presented_view
 	if previous == null or previous.domain_revisions.exploration != game_view.domain_revisions.exploration:
 		_map_presenter.present(game_view)
@@ -235,9 +236,10 @@ func _present_view(game_view: GameView, include_interaction: bool = true) -> voi
 	_shell_presenter.present(game_view)
 	_update_spatial_visibility(game_view)
 	_presented_view = game_view
-	refresh_music()
 	if include_interaction:
 		_present_interaction(game_view)
+	if refresh_music_context:
+		refresh_music()
 
 
 func _update_spatial_visibility(game_view: GameView) -> void:
