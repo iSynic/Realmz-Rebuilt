@@ -164,7 +164,7 @@ func _inventory_errors(inventory: Dictionary) -> Array[String]:
 		family_total += count
 	if family_total != spell_summary["totalDefinitions"]:
 		errors.append("application spell capability-family counts are inconsistent")
-	for context_name: String in ["combatCharacter", "combatItem", "combatMonster", "combatScroll", "fieldCharacter"]:
+	for context_name: String in ["combatCharacter", "combatItem", "combatMonster", "combatScroll", "characterProjectile", "fieldCharacter", "monsterProjectile"]:
 		var context_total := 0
 		for disposition: String in ["executable", "unsupported-pending", "not-applicable"]:
 			context_total += int(spell_summary["runtimeContexts"].get("%s:%s" % [context_name, disposition], 0))
@@ -231,6 +231,8 @@ An executable disposition proves an owned handler boundary, not complete branch,
 - Scroll combat: %d executable, %d pending
 - Item combat: %d executable, %d pending
 - Monster combat: %d executable, %d pending
+- Character projectiles: %d executable, %d pending
+- Monster projectiles: %d executable, %d pending
 - Character field/camp: %d executable, %d pending
 
 The 252 player records are the stock player-spell parity target. The 105 application effect records cover application-owned monster, item, projectile, and special effects and require their own legal-context proof. The 63 reserved records are denominator entries, not missing player spells. Scenario-corpus custom spells are collected only in local untracked sidecars until their normalized signatures can be committed without commercial content.
@@ -255,6 +257,8 @@ Every entry tracks discovery, compiler preservation, semantic public-runtime tes
 		_context_count(spell_summary, "combatScroll", "executable"), _context_count(spell_summary, "combatScroll", "unsupported-pending"),
 		_context_count(spell_summary, "combatItem", "executable"), _context_count(spell_summary, "combatItem", "unsupported-pending"),
 		_context_count(spell_summary, "combatMonster", "executable"), _context_count(spell_summary, "combatMonster", "unsupported-pending"),
+		_context_count(spell_summary, "characterProjectile", "executable"), _context_count(spell_summary, "characterProjectile", "unsupported-pending"),
+		_context_count(spell_summary, "monsterProjectile", "executable"), _context_count(spell_summary, "monsterProjectile", "unsupported-pending"),
 		_context_count(spell_summary, "fieldCharacter", "executable"), _context_count(spell_summary, "fieldCharacter", "unsupported-pending"),
 		FEATURE_REPORT_FORMAT_VERSION, FEATURE_REPORT_PROVIDENCE_COMMIT, FEATURE_REPORT_SCHEMA_HASH,
 	]

@@ -11,6 +11,7 @@ const FAMILY_HEALING: StringName = &"healing"
 const FAMILY_CONDITION_CURE: StringName = &"condition-cure"
 const FAMILY_SUMMONING: StringName = &"summoning"
 const FAMILY_BATTLEFIELD_FIELD: StringName = &"battlefield-field"
+const FAMILY_PROJECTILE: StringName = &"projectile"
 const FAMILY_SPECIAL_EFFECT: StringName = &"special-effect"
 const DISPOSITION_EXECUTABLE: StringName = &"executable"
 const DISPOSITION_PENDING: StringName = &"unsupported-pending"
@@ -47,6 +48,8 @@ static func mechanical_family(spell: SpellDefinition) -> StringName:
 		return FAMILY_RESERVED
 	if spell.queue_icon != 0:
 		return FAMILY_BATTLEFIELD_FIELD
+	if _physical_projectile_profile(spell):
+		return FAMILY_PROJECTILE
 	var special := absi(spell.special)
 	if special == 58 and spell.target_type == 0:
 		return FAMILY_SUMMONING
@@ -65,7 +68,9 @@ static func runtime_contexts(spell: SpellDefinition) -> Dictionary:
 		"combatItem": String(_combat_item_disposition(spell)),
 		"combatMonster": String(_combat_monster_disposition(spell)),
 		"combatScroll": String(_combat_scroll_disposition(spell)),
+		"characterProjectile": String(_character_projectile_disposition(spell)),
 		"fieldCharacter": String(_field_character_disposition(spell)),
+		"monsterProjectile": String(_monster_projectile_disposition(spell)),
 	}
 
 
@@ -87,6 +92,18 @@ static func combat_monster_disposition(spell: SpellDefinition) -> StringName:
 
 static func field_character_disposition(spell: SpellDefinition) -> StringName:
 	return _field_character_disposition(spell)
+
+
+static func character_projectile_disposition(spell: SpellDefinition) -> StringName:
+	return _character_projectile_disposition(spell)
+
+
+static func monster_projectile_disposition(spell: SpellDefinition) -> StringName:
+	return _monster_projectile_disposition(spell)
+
+
+static func is_physical_projectile_profile(spell: SpellDefinition) -> bool:
+	return _physical_projectile_profile(spell)
 
 
 static func is_ordinary_combat_spell(spell: SpellDefinition) -> bool:
@@ -162,6 +179,8 @@ static func unsupported_reason(spell: SpellDefinition, context_name: StringName)
 static func _combat_character_disposition(spell: SpellDefinition) -> StringName:
 	if spell == null or not spell.in_combat or application_role(spell) == ROLE_RESERVED_STANDARD:
 		return DISPOSITION_NOT_APPLICABLE
+	if _physical_projectile_profile(spell):
+		return DISPOSITION_NOT_APPLICABLE
 	if combat_spell_uses_persistent_field_queue(spell):
 		return DISPOSITION_EXECUTABLE if _combat_persistent_field_spell(spell) else DISPOSITION_PENDING
 	if spell.target_type not in [0, 1, 3, 4, 5, 6, 8, 9, 10, 12]:
@@ -171,6 +190,8 @@ static func _combat_character_disposition(spell: SpellDefinition) -> StringName:
 
 static func _combat_scroll_disposition(spell: SpellDefinition) -> StringName:
 	if spell == null or not spell.in_combat or application_role(spell) == ROLE_RESERVED_STANDARD:
+		return DISPOSITION_NOT_APPLICABLE
+	if _physical_projectile_profile(spell):
 		return DISPOSITION_NOT_APPLICABLE
 	if combat_spell_uses_persistent_field_queue(spell):
 		return DISPOSITION_EXECUTABLE if _combat_persistent_field_spell(spell) else DISPOSITION_PENDING
@@ -182,6 +203,8 @@ static func _combat_scroll_disposition(spell: SpellDefinition) -> StringName:
 static func _combat_item_disposition(spell: SpellDefinition) -> StringName:
 	if spell == null or not spell.in_combat or application_role(spell) == ROLE_RESERVED_STANDARD:
 		return DISPOSITION_NOT_APPLICABLE
+	if _physical_projectile_profile(spell):
+		return DISPOSITION_NOT_APPLICABLE
 	if combat_spell_uses_persistent_field_queue(spell):
 		return DISPOSITION_EXECUTABLE if _combat_persistent_field_spell(spell) else DISPOSITION_PENDING
 	if spell.target_type not in [0, 1, 2, 3, 4, 5, 6, 9, 10, 12]:
@@ -191,6 +214,8 @@ static func _combat_item_disposition(spell: SpellDefinition) -> StringName:
 
 static func _combat_monster_disposition(spell: SpellDefinition) -> StringName:
 	if spell == null or not spell.in_combat or application_role(spell) == ROLE_RESERVED_STANDARD:
+		return DISPOSITION_NOT_APPLICABLE
+	if _physical_projectile_profile(spell):
 		return DISPOSITION_NOT_APPLICABLE
 	if combat_spell_uses_persistent_field_queue(spell):
 		return DISPOSITION_EXECUTABLE if spell.cost > 0 and _combat_persistent_field_spell(spell) else DISPOSITION_PENDING
@@ -212,6 +237,18 @@ static func _field_character_disposition(spell: SpellDefinition) -> StringName:
 	if special == 0 and absi(spell.damage_type) >= 1 and absi(spell.damage_type) < 8 and (spell.damage_min != 0 or spell.damage_max != 0 or spell.power_damage_min != 0 or spell.power_damage_max != 0):
 		return DISPOSITION_EXECUTABLE
 	return DISPOSITION_PENDING
+
+
+static func _character_projectile_disposition(spell: SpellDefinition) -> StringName:
+	return DISPOSITION_EXECUTABLE if _physical_projectile_profile(spell) else DISPOSITION_NOT_APPLICABLE
+
+
+static func _monster_projectile_disposition(spell: SpellDefinition) -> StringName:
+	return DISPOSITION_EXECUTABLE if _physical_projectile_profile(spell) else DISPOSITION_NOT_APPLICABLE
+
+
+static func _physical_projectile_profile(spell: SpellDefinition) -> bool:
+	return spell != null and spell.in_combat and spell.target_type == 1 and absi(spell.spell_class) == 9 and absi(spell.damage_type) == 9 and spell.special == 0
 
 
 static func _ordinary_combat_spell(spell: SpellDefinition) -> bool:

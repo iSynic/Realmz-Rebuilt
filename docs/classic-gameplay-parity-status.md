@@ -19,11 +19,13 @@ An executable disposition proves an owned handler boundary, not complete branch,
 - Reserved standard slots: 63
 - Total definitions: 420
 - Unique mechanical behavior signatures: 315
-- Mechanical families: battlefield-field=40, condition-cure=8, healing=12, ordinary=115, reserved=63, special-effect=170, summoning=12
-- Character combat: 217 executable, 82 pending
-- Scroll combat: 211 executable, 88 pending
-- Item combat: 199 executable, 100 pending
-- Monster combat: 188 executable, 111 pending
+- Mechanical families: battlefield-field=40, condition-cure=8, healing=12, ordinary=80, projectile=35, reserved=63, special-effect=170, summoning=12
+- Character combat: 217 executable, 47 pending
+- Scroll combat: 211 executable, 53 pending
+- Item combat: 199 executable, 65 pending
+- Monster combat: 188 executable, 76 pending
+- Character projectiles: 35 executable, 0 pending
+- Monster projectiles: 35 executable, 0 pending
 - Character field/camp: 129 executable, 15 pending
 
 The 252 player records are the stock player-spell parity target. The 105 application effect records cover application-owned monster, item, projectile, and special effects and require their own legal-context proof. The 63 reserved records are denominator entries, not missing player spells. Scenario-corpus custom spells are collected only in local untracked sidecars until their normalized signatures can be committed without commercial content.
