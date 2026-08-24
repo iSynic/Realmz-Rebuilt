@@ -40,8 +40,9 @@ static func build(projection: DungeonGeometryProjection, atlas: Texture2D) -> Ar
 			var vertical_door := cell.feature_orientation(&"door") == &"vertical"
 			_add_doorway(surface, cell_door_center(offset, vertical_door), vertical_door, false, color, false)
 		for direction: StringName in DungeonGeometryProjection.DIRECTIONS:
+			var direction_vector := DungeonGeometryProjection.direction_vector(direction)
 			var edge := projection.edge_at(cell.coordinate, direction)
-			var neighbor := projection.cell_at(cell.coordinate + DungeonGeometryProjection.direction_vector(direction))
+			var neighbor := projection.cell_at(cell.coordinate + direction_vector)
 			var entry_edge := projection.edge_at(neighbor.coordinate, direction) if neighbor != null else null
 			var movement_allowed := boundary_allows_movement(projection, cell.coordinate, direction)
 			var edge_key := DungeonGeometryProjection.canonical_edge_key(cell.coordinate, direction)
@@ -49,10 +50,10 @@ static func build(projection: DungeonGeometryProjection, atlas: Texture2D) -> Ar
 			if boundary_edge != null and boundary_edge.kind == &"archway":
 				if not built_doorways.has(edge_key):
 					built_doorways[edge_key] = true
-					_add_doorway(surface, center + _edge_offset(direction), direction in [&"east", &"west"], true, color, true)
+					_add_doorway(surface, center + _edge_offset(direction), direction in [&"east", &"west"], true, boundary_color(offset, direction_vector), true)
 				continue
 			if not movement_allowed:
-				_add_wall_boundary(surface, center, DungeonGeometryProjection.direction_vector(direction), color)
+				_add_wall_boundary(surface, center, direction_vector, boundary_color(offset, direction_vector))
 	var pillar_corners: Dictionary = {}
 	for cell: DungeonGeometryProjection.CellProjection in projection.cells():
 		if not cell.passable or not cell.features.has(&"column"):
@@ -83,6 +84,12 @@ static func cell_door_center(offset: Vector2i, vertical: bool) -> Vector3:
 	elif not vertical and offset.y != 0:
 		center.z -= float(signi(offset.y)) * 0.5
 	return center
+
+
+static func boundary_color(offset: Vector2i, direction: Vector2i) -> Color:
+	var midpoint := Vector2(offset) + Vector2(direction) * 0.5
+	var distance := ceili(maxf(absf(midpoint.x), absf(midpoint.y)))
+	return _distance_color(Vector2i(distance, 0))
 
 
 static func _create_material(atlas: Texture2D) -> ShaderMaterial:
