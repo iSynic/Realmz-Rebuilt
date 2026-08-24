@@ -123,7 +123,15 @@ static func is_combat_condition_effect_spell(spell: SpellDefinition) -> bool:
 
 
 static func combat_condition_effect_index(spell: SpellDefinition) -> int:
-	return absi(spell.special) - 1 if _combat_condition_effect_spell(spell) else -1
+	return _combat_condition_index(spell) if _combat_condition_effect_spell(spell) or _combat_repeated_field_spell(spell) else -1
+
+
+static func is_combat_helpless_spell(spell: SpellDefinition) -> bool:
+	return _combat_helpless_spell(spell)
+
+
+static func is_combat_repeated_field_spell(spell: SpellDefinition) -> bool:
+	return _combat_repeated_field_spell(spell)
 
 
 static func is_combat_summon_spell(spell: SpellDefinition) -> bool:
@@ -151,7 +159,7 @@ static func is_combat_persistent_field_spell(spell: SpellDefinition) -> bool:
 
 
 static func combat_persistent_field_condition_index(spell: SpellDefinition) -> int:
-	return absi(spell.special) - 1 if _combat_persistent_field_spell(spell) and _combat_condition_special(spell) else -1
+	return _combat_condition_index(spell) if _combat_persistent_field_spell(spell) else -1
 
 
 static func combat_spell_uses_persistent_field_queue(spell: SpellDefinition) -> bool:
@@ -181,6 +189,8 @@ static func _combat_character_disposition(spell: SpellDefinition) -> StringName:
 		return DISPOSITION_NOT_APPLICABLE
 	if _physical_projectile_profile(spell):
 		return DISPOSITION_NOT_APPLICABLE
+	if _combat_repeated_field_spell(spell):
+		return DISPOSITION_EXECUTABLE
 	if combat_spell_uses_persistent_field_queue(spell):
 		return DISPOSITION_EXECUTABLE if _combat_persistent_field_spell(spell) else DISPOSITION_PENDING
 	if spell.target_type not in [0, 1, 3, 4, 5, 6, 8, 9, 10, 12]:
@@ -193,6 +203,8 @@ static func _combat_scroll_disposition(spell: SpellDefinition) -> StringName:
 		return DISPOSITION_NOT_APPLICABLE
 	if _physical_projectile_profile(spell):
 		return DISPOSITION_NOT_APPLICABLE
+	if _combat_repeated_field_spell(spell):
+		return DISPOSITION_EXECUTABLE
 	if combat_spell_uses_persistent_field_queue(spell):
 		return DISPOSITION_EXECUTABLE if _combat_persistent_field_spell(spell) else DISPOSITION_PENDING
 	if spell.target_type not in [0, 1, 2, 3, 4, 5, 6, 9, 10, 12]:
@@ -205,6 +217,8 @@ static func _combat_item_disposition(spell: SpellDefinition) -> StringName:
 		return DISPOSITION_NOT_APPLICABLE
 	if _physical_projectile_profile(spell):
 		return DISPOSITION_NOT_APPLICABLE
+	if _combat_repeated_field_spell(spell):
+		return DISPOSITION_EXECUTABLE
 	if combat_spell_uses_persistent_field_queue(spell):
 		return DISPOSITION_EXECUTABLE if _combat_persistent_field_spell(spell) else DISPOSITION_PENDING
 	if spell.target_type not in [0, 1, 2, 3, 4, 5, 6, 9, 10, 12]:
@@ -217,6 +231,8 @@ static func _combat_monster_disposition(spell: SpellDefinition) -> StringName:
 		return DISPOSITION_NOT_APPLICABLE
 	if _physical_projectile_profile(spell):
 		return DISPOSITION_NOT_APPLICABLE
+	if _combat_repeated_field_spell(spell):
+		return DISPOSITION_EXECUTABLE if spell.cost > 0 else DISPOSITION_PENDING
 	if combat_spell_uses_persistent_field_queue(spell):
 		return DISPOSITION_EXECUTABLE if spell.cost > 0 and _combat_persistent_field_spell(spell) else DISPOSITION_PENDING
 	if spell.target_type not in [0, 1, 3, 4, 5, 6, 10] or spell.target_type == 0 and spell.size != 0 or spell.cost < 0:
@@ -287,8 +303,19 @@ static func _combat_persistent_field_spell(spell: SpellDefinition) -> bool:
 	var special := absi(spell.special)
 	var has_damage := spell.damage_min != 0 or spell.damage_max != 0 or spell.power_damage_min != 0 or spell.power_damage_max != 0
 	var maximum_duration := maxi(spell.duration_min, spell.duration_max) + 7 * maxi(spell.power_duration_min, spell.power_duration_max)
-	var supported_effect := special == 0 and has_damage and absi(spell.damage_type) >= 1 and absi(spell.damage_type) <= 7 or _combat_condition_special(spell)
+	var supported_condition := _combat_helpless_spell(spell) if special in [53, 54] else _combat_condition_index(spell) >= 0
+	var supported_effect := special == 0 and has_damage and absi(spell.damage_type) >= 1 and absi(spell.damage_type) <= 7 or supported_condition
 	return maximum_duration > 0 and supported_effect
+
+
+static func _combat_helpless_spell(spell: SpellDefinition) -> bool:
+	if spell == null or not spell.in_combat or absi(spell.special) not in [53, 54] or spell.target_type not in [0, 4, 10] or spell.target_type == 0 and spell.size != 0:
+		return false
+	return maxi(spell.duration_min, spell.duration_max) + 7 * maxi(spell.power_duration_min, spell.power_duration_max) > 0
+
+
+static func _combat_repeated_field_spell(spell: SpellDefinition) -> bool:
+	return _combat_helpless_spell(spell) and spell.target_type == 0 and spell.queue_icon != 0 and spell.queue_icon >= -128 and spell.queue_icon <= 127
 
 
 static func _combat_healing_spell(spell: SpellDefinition) -> bool:
@@ -312,12 +339,15 @@ static func _combat_condition_effect_spell(spell: SpellDefinition) -> bool:
 		return false
 	var maximum_duration := maxi(spell.duration_min, spell.duration_max) + 7 * maxi(spell.power_duration_min, spell.power_duration_max)
 	var has_damage := spell.damage_min != 0 or spell.damage_max != 0 or spell.power_damage_min != 0 or spell.power_damage_max != 0
-	return _combat_condition_special(spell) and (has_damage or maximum_duration > 0)
+	var supported_condition := _combat_helpless_spell(spell) if absi(spell.special) in [53, 54] else _combat_condition_index(spell) >= 0
+	return supported_condition and (has_damage or maximum_duration > 0)
 
 
-static func _combat_condition_special(spell: SpellDefinition) -> bool:
+static func _combat_condition_index(spell: SpellDefinition) -> int:
 	var special := absi(spell.special) if spell != null else 0
-	return special >= 1 and special < 41 and special != 28
+	if special in [53, 54]:
+		return ConditionRules.HELPLESS
+	return special - 1 if special >= 1 and special < 41 and special != 28 else -1
 
 
 static func _condition_cure_index(spell: SpellDefinition) -> int:

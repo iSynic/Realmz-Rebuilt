@@ -277,8 +277,8 @@ func _cast_character_area_spell(state: GameState, content: RealmzContent, caster
 	return _magic._cast_character_area_spell(state, content, caster, spell, power_level, cast_level, rng, center, rotation)
 
 
-func _commit_character_multi_spell(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition, power_level: int, cast_level: int, group: GroupSpellResolution, rng: RealmzRng, center: Vector2i = Vector2i(-100_000, -100_000), shape: int = 0, event_source: String = "classic", item_instance_id: String = "", count_spell_cast: bool = true, persistent_field: RefCounted = null) -> CombatFlowResult:
-	return _magic._commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, group, rng, center, shape, event_source, item_instance_id, count_spell_cast, persistent_field)
+func _commit_character_multi_spell(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition, power_level: int, cast_level: int, group: GroupSpellResolution, rng: RealmzRng, center: Vector2i = Vector2i(-100_000, -100_000), shape: int = 0, event_source: String = "classic", item_instance_id: String = "", count_spell_cast: bool = true, persistent_fields: Array = []) -> CombatFlowResult:
+	return _magic._commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, group, rng, center, shape, event_source, item_instance_id, count_spell_cast, persistent_fields)
 
 
 func _append_spell_sound(events: Array[DomainEvent], authored_sound_id: int, source: String) -> void:
@@ -298,7 +298,15 @@ func _append_spell_presentation(payload: Dictionary, spell: SpellDefinition, seq
 
 
 func _queue_persistent_field(combat: CombatState, caster_id: String, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, center: Vector2i, rotation: int, shape: int) -> RefCounted:
-	return _magic._queue_persistent_field(combat, caster_id, spell, power_level, cast_level, rng, center, rotation, shape)
+	return _fields.queue_persistent_field(combat, caster_id, spell, power_level, cast_level, rng, center, rotation, shape)
+
+
+func _repeated_field_callback(state: GameState, spell: SpellDefinition, caster_id: String, selected_target_ids: Array[String], power_level: int, cast_level: int, rng: RealmzRng, created_fields: Array[RefCounted]) -> Callable:
+	return _fields.repeated_field_callback(state, spell, caster_id, selected_target_ids, power_level, cast_level, rng, created_fields)
+
+
+func _append_persistent_field_events(events: Array[DomainEvent], fields: Array, source: String) -> void:
+	_fields.append_created_events(events, fields, source)
 
 
 func probe_character_spell_cast(state: GameState, content: RealmzContent, caster_id: String, target_id: String, spell_id: String, power_level: int, target_coordinate: Vector2i = INVALID_COORDINATE, rotation: int = 0, target_ids: Array[String] = [], target_coordinates: Array[Vector2i] = []) -> CombatSpellCastProbe:

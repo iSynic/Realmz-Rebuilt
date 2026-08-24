@@ -8,6 +8,7 @@ const COLLISION_COMPLETED := 0
 const COLLISION_DEFEATED := 1
 const COLLISION_DEATH_MACRO := 2
 const COLLISION_INVALID := 3
+const CLEARED_TARGET_QUEUE_SHAPE := 127
 
 var _flow_ref: WeakRef
 var _rules: ContextType
@@ -20,6 +21,48 @@ func _init(flow: RefCounted, rules: ContextType) -> void:
 
 func _flow() -> RefCounted:
 	return _flow_ref.get_ref() if _flow_ref != null else null
+
+
+func queue_persistent_field(combat: CombatState, caster_id: String, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, center: Vector2i, rotation: int, shape: int) -> RefCounted:
+	if combat == null or caster_id.is_empty() or not ClassicSpellCapabilityCatalog.is_combat_persistent_field_spell(spell) or not combat.can_queue_persistent_field():
+		return null
+	var duration := _rules.magic.roll_persistent_field_duration(spell, power_level, rng, StringName("combat.field.%s.duration" % spell.id))
+	if duration <= 0:
+		return null
+	return combat.queue_persistent_field(spell.id, caster_id, center, rotation if spell.can_rotate else 0, shape, spell.queue_icon, power_level, cast_level, duration)
+
+
+func repeated_field_callback(state: GameState, spell: SpellDefinition, caster_id: String, selected_target_ids: Array[String], power_level: int, cast_level: int, rng: RealmzRng, created_fields: Array[RefCounted]) -> Callable:
+	if state == null or state.combat == null or not ClassicSpellCapabilityCatalog.is_combat_repeated_field_spell(spell) or selected_target_ids.is_empty():
+		return Callable()
+	var first_center := _classic_target_selector(state, selected_target_ids[0])
+	return func(index: int) -> void:
+		if not state.combat.can_queue_persistent_field():
+			return
+		var duration := _rules.magic.roll_persistent_field_duration(spell, power_level, rng, StringName("combat.repeated-field.%s.%d.duration" % [spell.id, index]))
+		var center := first_center if index == 0 else Vector2i.ZERO
+		var shape := 1 if index == 0 else CLEARED_TARGET_QUEUE_SHAPE
+		var field := state.combat.queue_persistent_field(spell.id, caster_id, center, 0, shape, spell.queue_icon, power_level, cast_level, duration)
+		if field != null:
+			created_fields.append(field)
+
+
+static func append_created_events(events: Array[DomainEvent], fields: Array, source: String) -> void:
+	for field: Variant in fields:
+		if field != null:
+			events.append(DomainEvent.new(&"combat_persistent_field_created", {"slot": field.slot, "spellId": field.spell_id, "casterId": field.caster_id, "center": [field.center.x, field.center.y], "rotation": field.rotation, "shape": field.shape, "queueIcon": field.queue_icon, "power": field.power_level, "classicTier": field.cast_level, "duration": field.remaining_duration, "phaseTurnIndex": field.phase_turn_index, "source": source}))
+
+
+static func _classic_target_selector(state: GameState, target_id: String) -> Vector2i:
+	var characters := state.party.characters()
+	for index: int in characters.size():
+		if characters[index].id == target_id:
+			return Vector2i(index, 1)
+	var monsters := state.combat.monsters()
+	for index: int in monsters.size():
+		if monsters[index].id == target_id:
+			return Vector2i(index + 10, 2)
+	return Vector2i.ZERO
 
 
 func resolve_actor_collisions(state: GameState, content: RealmzContent, actor_id: String, rng: RealmzRng, events: Array[DomainEvent], retain_turn_collisions: bool = true, begin_death_macros: bool = true) -> int:

@@ -128,13 +128,16 @@ func _monster_spell_power_plan(state: GameState, content: RealmzContent, monster
 
 func _monster_hostile_group_spell_power_plan(state: GameState, content: RealmzContent, monster: MonsterState, spell: SpellDefinition, slot: int, power: int) -> Dictionary:
 	var target_ids := _opposed_actor_ids_for_monster(state, monster)
+	var condition_index := ClassicSpellCapabilityCatalog.combat_condition_effect_index(spell)
 	var effective_target_count := 0
 	for target_id: String in target_ids:
-		if not _target_hard_immune(state, content, target_id, spell):
+		if not _target_hard_immune(state, content, target_id, spell) and (condition_index < 0 or _target_condition_value(state, target_id, condition_index) == 0):
 			effective_target_count += 1
 	if effective_target_count == 0:
 		return {}
 	var expected := expected_spell_effect(spell, power)
+	if condition_index >= 0:
+		expected = maxi(1, _maximum_condition_duration(spell, power))
 	var score := 340 + effective_target_count * expected * 5 - spell.cost * power * 3
 	return {"spellId": spell.id, "spellSlot": slot, "power": power, "targetIds": target_ids, "score": score}
 
@@ -300,7 +303,7 @@ func _best_party_spell(state: GameState, content: RealmzContent, actor: Characte
 			best = _prefer(best, _best_charm(state, content, actor, spell, option.power))
 		elif MagicRules.is_condition_cure_spell(spell):
 			best = _prefer(best, _best_condition_cure(state, content, actor, spell, option.power))
-		elif ClassicSpellCapabilityCatalog.is_combat_condition_effect_spell(spell) or spell.target_type == 5 and ClassicSpellCapabilityCatalog.combat_persistent_field_condition_index(spell) >= 0:
+		elif ClassicSpellCapabilityCatalog.is_combat_condition_effect_spell(spell) or ClassicSpellCapabilityCatalog.is_combat_repeated_field_spell(spell) or spell.target_type == 5 and ClassicSpellCapabilityCatalog.combat_persistent_field_condition_index(spell) >= 0:
 			best = _prefer(best, _best_condition_effect(state, content, actor, spell, option.power))
 		elif _flow()._is_source_backed_combat_healing_spell(spell):
 			best = _prefer(best, _best_heal(state, content, actor, spell, option.power))
@@ -383,26 +386,39 @@ func _best_condition_effect(state: GameState, content: RealmzContent, actor: Cha
 	var condition_index := ClassicSpellCapabilityCatalog.combat_condition_effect_index(spell)
 	if condition_index < 0:
 		condition_index = ClassicSpellCapabilityCatalog.combat_persistent_field_condition_index(spell)
-	var best: Dictionary = {}
 	var friendly := spell.target_type == 5 or spell.cannot == 4
 	var candidate_ids: Array[String] = [actor.id]
 	if spell.target_type != 5:
 		candidate_ids = _friendly_actor_ids(state, actor) if friendly else _opposed_actor_ids(state, actor)
+	var candidates: Array[String] = []
 	for target_id: String in candidate_ids:
 		var character := state.party.character_by_id(target_id)
 		var monster := state.combat.monster_by_id(target_id)
 		var conditions := character.conditions if character != null else monster.conditions if monster != null else null
 		if conditions == null or conditions.value(condition_index) != 0 or target_id != actor.id and _target_reflects(state, target_id):
 			continue
-		if not _flow().probe_character_spell_cast(state, content, actor.id, target_id, spell.id, power).allowed:
-			continue
-		var score := 520 + _maximum_condition_duration(spell, power) * 8
-		if not friendly:
-			var expected := expected_spell_effect(spell, power)
-			score = 420 + expected * 5 + _lethal_bonus(state, target_id, expected) + _maximum_condition_duration(spell, power) * 4
-		score -= absi(spell.cost * power) * 3
-		best = _prefer(best, {"action": &"cast_spell", "spellId": spell.id, "power": power, "targetId": target_id, "score": score})
-	return best
+		candidates.append(target_id)
+	if candidates.is_empty():
+		return {}
+	var selected: Array[String] = []
+	for target_id: String in candidates:
+		if spell.target_type == 0 and selected.size() >= power:
+			break
+		selected.append(target_id)
+	var probe_target := "" if spell.target_type in [9, 10, 12] else selected[0]
+	var probe_targets: Array[String] = []
+	if spell.target_type == 0:
+		probe_targets.assign(selected)
+	if not _flow().probe_character_spell_cast(state, content, actor.id, probe_target, spell.id, power, INVALID_COORDINATE, 0, probe_targets).allowed:
+		return {}
+	var duration_score := _maximum_condition_duration(spell, power)
+	var score := (520 if friendly else 420) + selected.size() * duration_score * (8 if friendly else 4) - absi(spell.cost * power) * 3
+	var result := {"action": &"cast_spell", "spellId": spell.id, "power": power, "score": score}
+	if spell.target_type == 0:
+		result["targetIds"] = selected
+	elif spell.target_type not in [9, 10, 12]:
+		result["targetId"] = selected[0]
+	return result
 
 
 static func _condition_cure_score(state: GameState, target_id: String, condition_index: int) -> int:

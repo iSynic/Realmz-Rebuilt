@@ -155,7 +155,7 @@ func use_spell_item(state: GameState, content: RealmzContent, caster_id: String,
 	var result: CombatFlowResult
 	if spell.target_type in [3, 4]:
 		var shape := _rules.spell_areas.shape_for(spell, power_level, rotation)
-		var persistent_field := _queue_persistent_field(state.combat, caster.id, spell, power_level, cast_level, rng, target_coordinate, rotation, shape)
+		var persistent_field: RefCounted = _flow()._queue_persistent_field(state.combat, caster.id, spell, power_level, cast_level, rng, target_coordinate, rotation, shape)
 		var selected_ids: Dictionary = {}
 		for offset: Vector2i in _rules.spell_areas.pattern(shape):
 			var actor_id := state.combat.battlefield.actor_at(target_coordinate + offset)
@@ -167,7 +167,7 @@ func use_spell_item(state: GameState, content: RealmzContent, caster_id: String,
 		var area := _rules.magic.resolve_character_group_spell(caster, area_targets.get("characters", []), area_targets.get("monsters", []), area_targets.get("definitions", []), spell, power_level, cast_level, rng, true, false)
 		if area == null or not area.cast:
 			return CombatFlowSpellRollbackType.item(state, rng, state_checkpoint, rng_checkpoint, &"item_spell_failed", "The area item spell could not be resolved.")
-		result = _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, area, rng, target_coordinate, shape, "classic-item", instance_id, false, persistent_field)
+		result = _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, area, rng, target_coordinate, shape, "classic-item", instance_id, false, [persistent_field])
 	elif spell.target_type == 0:
 		var selections: Array[SpellTargetSelection] = []
 		for selected_id: String in target_ids:
@@ -175,10 +175,11 @@ func use_spell_item(state: GameState, content: RealmzContent, caster_id: String,
 			if repeated_selection == null:
 				return CombatFlowSpellRollbackType.item(state, rng, state_checkpoint, rng_checkpoint, &"item_target_unavailable", "A repeated-item target became unavailable.")
 			selections.append(repeated_selection)
-		var repeated := _rules.magic.resolve_character_repeated_spell(caster, selections, spell, power_level, cast_level, rng, false)
+		var repeated_fields: Array[RefCounted] = []
+		var repeated := _rules.magic.resolve_character_repeated_spell(caster, selections, spell, power_level, cast_level, rng, false, _flow()._repeated_field_callback(state, spell, caster.id, target_ids, power_level, cast_level, rng, repeated_fields))
 		if repeated == null or not repeated.cast:
 			return CombatFlowSpellRollbackType.item(state, rng, state_checkpoint, rng_checkpoint, &"item_spell_failed", "The repeated item spell could not be resolved.")
-		result = _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, repeated, rng, INVALID_COORDINATE, 0, "classic-item", instance_id, false)
+		result = _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, repeated, rng, INVALID_COORDINATE, 0, "classic-item", instance_id, false, repeated_fields)
 	elif spell.target_type == 6:
 		var ray_selections := _ray_spell_selections(state, content, caster.id, target_id, spell)
 		var ray := _rules.magic.resolve_character_ray_spell(caster, ray_selections, spell, power_level, cast_level, rng, false)
@@ -208,13 +209,13 @@ func use_spell_item(state: GameState, content: RealmzContent, caster_id: String,
 		var effective_target_id := caster_id if spell.target_type == 5 else target_id
 		var selection := _spell_target_selection(state, content, effective_target_id)
 		var field_center := state.combat.battlefield.actor_position(caster.id) if spell.target_type == 5 else INVALID_COORDINATE
-		var persistent_field: RefCounted = _queue_persistent_field(state.combat, caster.id, spell, power_level, cast_level, rng, field_center, 0, 1) if spell.target_type == 5 else null
+		var persistent_field: RefCounted = _flow()._queue_persistent_field(state.combat, caster.id, spell, power_level, cast_level, rng, field_center, 0, 1) if spell.target_type == 5 else null
 		if ClassicSpellCapabilityCatalog.is_combat_persistent_field_spell(spell) and persistent_field == null:
 			return CombatFlowSpellRollbackType.item(state, rng, state_checkpoint, rng_checkpoint, &"persistent_field_queue_failed", "The self-centered item field could not be queued.")
 		var targeted := _rules.magic.resolve_character_targeted_spell(caster, selection, spell, power_level, cast_level, rng, false)
 		if targeted == null or not targeted.cast:
 			return CombatFlowSpellRollbackType.item(state, rng, state_checkpoint, rng_checkpoint, &"item_spell_failed", "The item spell could not be resolved.")
-		result = _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, targeted, rng, field_center, 1 if persistent_field != null else 0, "classic-item", instance_id, false, persistent_field)
+		result = _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, targeted, rng, field_center, 1 if persistent_field != null else 0, "classic-item", instance_id, false, [persistent_field] if persistent_field != null else [])
 	if not result.ok:
 		return CombatFlowSpellRollbackType.item(state, rng, state_checkpoint, rng_checkpoint, result.error_code, result.error_message)
 	state.combat.clear_staged_random_item_power()
@@ -362,10 +363,11 @@ func cast_spell(state: GameState, content: RealmzContent, caster_id: String, tar
 			if repeated_selection == null:
 				return CombatFlowResult.failed(&"spell_target_unavailable", "A selected repeated-spell target is unavailable.")
 			selections.append(repeated_selection)
-		var repeated := _rules.magic.resolve_character_repeated_spell(caster, selections, spell, power_level, cast_level, rng)
+		var repeated_fields: Array[RefCounted] = []
+		var repeated := _rules.magic.resolve_character_repeated_spell(caster, selections, spell, power_level, cast_level, rng, true, _flow()._repeated_field_callback(state, spell, caster.id, target_ids, power_level, cast_level, rng, repeated_fields))
 		if repeated == null or not repeated.cast:
 			return CombatFlowResult.failed(&"spell_cast_failed", "The repeated-target spell could not be cast with the available spell points.")
-		return _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, repeated, rng)
+		return _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, repeated, rng, INVALID_COORDINATE, 0, "classic", "", true, repeated_fields)
 	if spell.target_type == 6:
 		var ray_selections := _ray_spell_selections(state, content, caster.id, target_id, spell)
 		var ray := _rules.magic.resolve_character_ray_spell(caster, ray_selections, spell, power_level, cast_level, rng)
@@ -376,13 +378,13 @@ func cast_spell(state: GameState, content: RealmzContent, caster_id: String, tar
 	if selection == null:
 		return CombatFlowResult.failed(&"spell_target_unavailable", "The selected combatant is unavailable.")
 	var field_center := combat.battlefield.actor_position(caster.id) if spell.target_type == 5 else INVALID_COORDINATE
-	var persistent_field: RefCounted = _queue_persistent_field(combat, caster.id, spell, power_level, cast_level, rng, field_center, 0, 1) if spell.target_type == 5 else null
+	var persistent_field: RefCounted = _flow()._queue_persistent_field(combat, caster.id, spell, power_level, cast_level, rng, field_center, 0, 1) if spell.target_type == 5 else null
 	if ClassicSpellCapabilityCatalog.is_combat_persistent_field_spell(spell) and persistent_field == null:
 		return CombatFlowSpellRollbackType.character_targeted(state, rng, targeted_state_checkpoint, targeted_rng_checkpoint, &"persistent_field_queue_failed", "The self-centered spell field could not be queued.")
 	var targeted := _rules.magic.resolve_character_targeted_spell(caster, selection, spell, power_level, cast_level, rng)
 	if targeted == null or not targeted.cast:
 		return CombatFlowSpellRollbackType.character_targeted(state, rng, targeted_state_checkpoint, targeted_rng_checkpoint, &"spell_cast_failed", "The spell could not be cast with the available spell points.") if persistent_field != null else CombatFlowResult.failed(&"spell_cast_failed", "The spell could not be cast with the available spell points.")
-	return _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, targeted, rng, field_center, 1 if persistent_field != null else 0, "classic", "", true, persistent_field)
+	return _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, targeted, rng, field_center, 1 if persistent_field != null else 0, "classic", "", true, [persistent_field] if persistent_field != null else [])
 
 
 func _ray_spell_selections(state: GameState, content: RealmzContent, caster_id: String, target_id: String, spell: SpellDefinition) -> Array[SpellTargetSelection]:
@@ -507,7 +509,7 @@ func use_combat_scroll(state: GameState, content: RealmzContent, caster_id: Stri
 		state.combat.invalidate_undo()
 	if not _flow()._is_summon_spell(spell) and spell.target_type in [3, 4]:
 		var shape := _rules.spell_areas.shape_for(spell, power_level, rotation)
-		var persistent_field := _queue_persistent_field(state.combat, caster.id, spell, power_level, cast_level, rng, target_coordinate, rotation, shape)
+		var persistent_field: RefCounted = _flow()._queue_persistent_field(state.combat, caster.id, spell, power_level, cast_level, rng, target_coordinate, rotation, shape)
 		var selected_ids: Dictionary = {}
 		for offset: Vector2i in _rules.spell_areas.pattern(shape):
 			var actor_id := state.combat.battlefield.actor_at(target_coordinate + offset)
@@ -522,7 +524,7 @@ func use_combat_scroll(state: GameState, content: RealmzContent, caster_id: Stri
 		var area := _rules.magic.resolve_character_group_spell(caster, area_characters, area_monsters, area_definitions, spell, power_level, cast_level, rng, true, false)
 		if area == null or not area.cast:
 			return CombatFlowSpellRollbackType.scroll(state, rng, state_checkpoint, rng_checkpoint, &"scroll_spell_failed", "The area scroll could not be resolved.")
-		result = _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, area, rng, target_coordinate, shape, "classic-scroll", "", false, persistent_field)
+		result = _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, area, rng, target_coordinate, shape, "classic-scroll", "", false, [persistent_field])
 	elif not _flow()._is_summon_spell(spell) and spell.target_type in [9, 10, 12]:
 		var group_targets := _combat_spell_group_targets(state, content, caster, spell)
 		if not bool(group_targets.get("ok", false)):
@@ -541,10 +543,11 @@ func use_combat_scroll(state: GameState, content: RealmzContent, caster_id: Stri
 			if selection == null:
 				return CombatFlowSpellRollbackType.scroll(state, rng, state_checkpoint, rng_checkpoint, &"scroll_target_unavailable", "A repeated-scroll target became unavailable.")
 			selections.append(selection)
-		var repeated := _rules.magic.resolve_character_repeated_spell(caster, selections, spell, power_level, cast_level, rng, false)
+		var repeated_fields: Array[RefCounted] = []
+		var repeated := _rules.magic.resolve_character_repeated_spell(caster, selections, spell, power_level, cast_level, rng, false, _flow()._repeated_field_callback(state, spell, caster.id, target_ids, power_level, cast_level, rng, repeated_fields))
 		if repeated == null or not repeated.cast:
 			return CombatFlowSpellRollbackType.scroll(state, rng, state_checkpoint, rng_checkpoint, &"scroll_spell_failed", "The repeated scroll could not be resolved.")
-		result = _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, repeated, rng, INVALID_COORDINATE, 0, "classic-scroll", "", false)
+		result = _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, repeated, rng, INVALID_COORDINATE, 0, "classic-scroll", "", false, repeated_fields)
 	elif not _flow()._is_summon_spell(spell) and spell.target_type == 6:
 		var ray_selections := _ray_spell_selections(state, content, caster.id, target_id, spell)
 		var ray := _rules.magic.resolve_character_ray_spell(caster, ray_selections, spell, power_level, cast_level, rng, false)
@@ -555,13 +558,13 @@ func use_combat_scroll(state: GameState, content: RealmzContent, caster_id: Stri
 		var effective_target_id := caster_id if spell.target_type == 5 else target_id
 		var selection := _spell_target_selection(state, content, effective_target_id)
 		var field_center := state.combat.battlefield.actor_position(caster.id) if spell.target_type == 5 else INVALID_COORDINATE
-		var persistent_field: RefCounted = _queue_persistent_field(state.combat, caster.id, spell, power_level, cast_level, rng, field_center, 0, 1) if spell.target_type == 5 else null
+		var persistent_field: RefCounted = _flow()._queue_persistent_field(state.combat, caster.id, spell, power_level, cast_level, rng, field_center, 0, 1) if spell.target_type == 5 else null
 		if ClassicSpellCapabilityCatalog.is_combat_persistent_field_spell(spell) and persistent_field == null:
 			return CombatFlowSpellRollbackType.scroll(state, rng, state_checkpoint, rng_checkpoint, &"persistent_field_queue_failed", "The self-centered scroll field could not be queued.")
 		var targeted := _rules.magic.resolve_character_targeted_spell(caster, selection, spell, power_level, cast_level, rng, false)
 		if targeted == null or not targeted.cast:
 			return CombatFlowSpellRollbackType.scroll(state, rng, state_checkpoint, rng_checkpoint, &"scroll_spell_failed", "The targeted scroll could not be resolved.")
-		result = _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, targeted, rng, field_center, 1 if persistent_field != null else 0, "classic-scroll", "", false, persistent_field)
+		result = _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, targeted, rng, field_center, 1 if persistent_field != null else 0, "classic-scroll", "", false, [persistent_field] if persistent_field != null else [])
 	if not result.ok:
 		return CombatFlowSpellRollbackType.scroll(state, rng, state_checkpoint, rng_checkpoint, result.error_code, result.error_message)
 	var committed_caster := state.party.character_by_id(caster_id)
@@ -635,7 +638,7 @@ func _cast_character_group_spell(state: GameState, content: RealmzContent, caste
 func _cast_character_area_spell(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, center: Vector2i, rotation: int) -> CombatFlowResult:
 	var combat := state.combat
 	var shape := _rules.spell_areas.shape_for(spell, power_level, rotation)
-	var persistent_field := _queue_persistent_field(combat, caster.id, spell, power_level, cast_level, rng, center, rotation, shape)
+	var persistent_field: RefCounted = _flow()._queue_persistent_field(combat, caster.id, spell, power_level, cast_level, rng, center, rotation, shape)
 	var selected_ids: Dictionary = {}
 	for offset: Vector2i in _rules.spell_areas.pattern(shape):
 		var actor_id := combat.battlefield.actor_at(center + offset)
@@ -667,18 +670,17 @@ func _cast_character_area_spell(state: GameState, content: RealmzContent, caster
 	var area := _rules.magic.resolve_character_group_spell(caster, character_targets, monster_targets, monster_definitions, spell, power_level, cast_level, rng, true)
 	if area == null or not area.cast:
 		return CombatFlowResult.failed(&"spell_cast_failed", "The area spell could not be cast with the available spell points.")
-	return _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, area, rng, center, shape, "classic", "", true, persistent_field)
+	return _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, area, rng, center, shape, "classic", "", true, [persistent_field])
 
 
-func _commit_character_multi_spell(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition, power_level: int, cast_level: int, group: GroupSpellResolution, rng: RealmzRng, center: Vector2i = Vector2i(-100_000, -100_000), shape: int = 0, event_source: String = "classic", item_instance_id: String = "", count_spell_cast: bool = true, persistent_field: RefCounted = null) -> CombatFlowResult:
+func _commit_character_multi_spell(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition, power_level: int, cast_level: int, group: GroupSpellResolution, rng: RealmzRng, center: Vector2i = Vector2i(-100_000, -100_000), shape: int = 0, event_source: String = "classic", item_instance_id: String = "", count_spell_cast: bool = true, persistent_fields: Array = []) -> CombatFlowResult:
 	var combat := state.combat
 	if count_spell_cast:
 		combat.active_turn.spell_cast_count += 1
 	caster.attacks_remaining = _rules.arithmetic.signed_16(caster.attacks_remaining - 2)
 	caster.movement = maxi(0, caster.movement - 12)
 	var events: Array[DomainEvent] = []
-	if persistent_field != null:
-		events.append(DomainEvent.new(&"combat_persistent_field_created", {"slot": persistent_field.slot, "spellId": persistent_field.spell_id, "casterId": persistent_field.caster_id, "center": [persistent_field.center.x, persistent_field.center.y], "rotation": persistent_field.rotation, "shape": persistent_field.shape, "queueIcon": persistent_field.queue_icon, "power": persistent_field.power_level, "classicTier": persistent_field.cast_level, "duration": persistent_field.remaining_duration, "phaseTurnIndex": persistent_field.phase_turn_index, "source": event_source}))
+	_flow()._append_persistent_field_events(events, persistent_fields, event_source)
 	_append_spell_sound(events, spell.sound_start, "classic-combat-spell-start")
 	_append_spell_cast_event(events, caster.id, spell, group, center, shape, event_source)
 	for index: int in group.resolutions.size():
@@ -728,15 +730,6 @@ func _commit_character_multi_spell(state: GameState, content: RealmzContent, cas
 		return CombatFlowResult.succeeded(events, true)
 	_flow()._process_monster_turns(state, content, rng, events)
 	return CombatFlowResult.succeeded(events, state.combat.completed)
-
-
-func _queue_persistent_field(combat: CombatState, caster_id: String, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, center: Vector2i, rotation: int, shape: int) -> RefCounted:
-	if combat == null or caster_id.is_empty() or not ClassicSpellCapabilityCatalog.is_combat_persistent_field_spell(spell) or not combat.can_queue_persistent_field():
-		return null
-	var duration := _rules.magic.roll_persistent_field_duration(spell, power_level, rng, StringName("combat.field.%s.duration" % spell.id))
-	if duration <= 0:
-		return null
-	return combat.queue_persistent_field(spell.id, caster_id, center, rotation if spell.can_rotate else 0, shape, spell.queue_icon, power_level, cast_level, duration)
 
 
 static func _append_spell_sound(events: Array[DomainEvent], authored_sound_id: int, source: String) -> void:

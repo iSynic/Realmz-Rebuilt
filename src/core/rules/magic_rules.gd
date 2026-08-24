@@ -65,10 +65,10 @@ func resolve_character_group_spell(caster: CharacterState, character_targets: Ar
 	return result
 
 
-func resolve_character_repeated_spell(caster: CharacterState, selections: Array[SpellTargetSelection], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, spend_spell_points: bool = true) -> RepeatedSpellResolution:
+func resolve_character_repeated_spell(caster: CharacterState, selections: Array[SpellTargetSelection], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, spend_spell_points: bool = true, before_selection: Callable = Callable()) -> RepeatedSpellResolution:
 	if caster == null or spell == null or rng == null or power_level < 1 or selections.is_empty() or selections.size() > power_level:
 		return null
-	return _resolve_character_selection_sequence(caster, selections, spell, power_level, cast_level, rng, spend_spell_points, true, &"magic.repeated")
+	return _resolve_character_selection_sequence(caster, selections, spell, power_level, cast_level, rng, spend_spell_points, true, &"magic.repeated", before_selection)
 
 
 func resolve_character_ray_spell(caster: CharacterState, selections: Array[SpellTargetSelection], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, spend_spell_points: bool = true) -> RepeatedSpellResolution:
@@ -77,7 +77,7 @@ func resolve_character_ray_spell(caster: CharacterState, selections: Array[Spell
 	return _resolve_character_selection_sequence(caster, selections, spell, power_level, cast_level, rng, spend_spell_points, false, &"magic.ray")
 
 
-func _resolve_character_selection_sequence(caster: CharacterState, selections: Array[SpellTargetSelection], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, spend_spell_points: bool, allow_reflection: bool, rng_tag: StringName) -> RepeatedSpellResolution:
+func _resolve_character_selection_sequence(caster: CharacterState, selections: Array[SpellTargetSelection], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, spend_spell_points: bool, allow_reflection: bool, rng_tag: StringName, before_selection: Callable = Callable()) -> RepeatedSpellResolution:
 	for selection: SpellTargetSelection in selections:
 		if selection == null or (selection.character == null and (selection.monster == null or selection.monster_definition == null)):
 			return null
@@ -90,6 +90,8 @@ func _resolve_character_selection_sequence(caster: CharacterState, selections: A
 		spell_cost = 0
 	var result := RepeatedSpellResolution.new(true, spell_cost, selections.size())
 	for index: int in selections.size():
+		if before_selection.is_valid():
+			before_selection.call(index)
 		var selection := selections[index]
 		if allow_reflection and not is_condition_cure_spell(spell):
 			selection = _reflect_to_character_caster(caster, selection, rng, StringName("%s.reflect.%d" % [rng_tag, index]))
@@ -296,10 +298,10 @@ func resolve_monster_group_spell(caster: MonsterState, caster_definition: Monste
 	return result
 
 
-func resolve_monster_repeated_spell(caster: MonsterState, caster_definition: MonsterDefinition, selections: Array[SpellTargetSelection], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng) -> RepeatedSpellResolution:
+func resolve_monster_repeated_spell(caster: MonsterState, caster_definition: MonsterDefinition, selections: Array[SpellTargetSelection], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, before_selection: Callable = Callable()) -> RepeatedSpellResolution:
 	if caster == null or caster_definition == null or spell == null or rng == null or power_level < 1 or selections.is_empty() or selections.size() > power_level:
 		return null
-	return _resolve_monster_selection_sequence(caster, caster_definition, selections, spell, power_level, cast_level, rng, true, &"magic.monster-repeated")
+	return _resolve_monster_selection_sequence(caster, caster_definition, selections, spell, power_level, cast_level, rng, true, &"magic.monster-repeated", before_selection)
 
 
 func resolve_monster_ray_spell(caster: MonsterState, caster_definition: MonsterDefinition, selections: Array[SpellTargetSelection], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng) -> RepeatedSpellResolution:
@@ -308,7 +310,7 @@ func resolve_monster_ray_spell(caster: MonsterState, caster_definition: MonsterD
 	return _resolve_monster_selection_sequence(caster, caster_definition, selections, spell, power_level, cast_level, rng, false, &"magic.monster-ray")
 
 
-func _resolve_monster_selection_sequence(caster: MonsterState, caster_definition: MonsterDefinition, selections: Array[SpellTargetSelection], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, allow_reflection: bool, rng_tag: StringName) -> RepeatedSpellResolution:
+func _resolve_monster_selection_sequence(caster: MonsterState, caster_definition: MonsterDefinition, selections: Array[SpellTargetSelection], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, allow_reflection: bool, rng_tag: StringName, before_selection: Callable = Callable()) -> RepeatedSpellResolution:
 	for selection: SpellTargetSelection in selections:
 		if not _selection_is_valid(selection):
 			return null
@@ -318,6 +320,8 @@ func _resolve_monster_selection_sequence(caster: MonsterState, caster_definition
 	caster.spell_points -= spell_cost
 	var result := RepeatedSpellResolution.new(true, spell_cost, selections.size())
 	for index: int in selections.size():
+		if before_selection.is_valid():
+			before_selection.call(index)
 		var selection := selections[index]
 		if allow_reflection and not is_condition_cure_spell(spell):
 			selection = _reflect_to_monster_caster(caster, caster_definition, selection, rng, StringName("%s.reflect.%d" % [rng_tag, index]))
@@ -479,6 +483,9 @@ static func _clear_condition(conditions: ConditionSet, condition_index: int, spe
 
 static func _apply_combat_condition(conditions: ConditionSet, spell: SpellDefinition, duration: int, monster_target: bool) -> int:
 	var special := absi(spell.special) if spell != null else 0
+	if special in [53, 54] and duration > 0:
+		conditions.add(ConditionRules.HELPLESS, duration)
+		return ConditionRules.HELPLESS
 	if special < 1 or special >= 41 or special == 28 or duration <= 0:
 		return -1
 	var condition_index := special - 1
@@ -496,6 +503,9 @@ static func _apply_combat_movement_effect(target: CharacterState, spell: SpellDe
 			target.movement = 0
 		3, 7:
 			target.movement /= 2
+		53, 54:
+			target.movement = 0
+			target.attacks_remaining = 0
 
 
 static func _record_allegiance_change(result: SpellResolution, before: bool, after: bool) -> void:

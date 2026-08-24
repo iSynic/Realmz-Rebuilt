@@ -299,6 +299,7 @@ func _process_monster_cast(state: GameState, content: RealmzContent, monster: Mo
 		var range_power := int(plan["power"])
 		var cost_power := range_power
 		var selected_targets: Array[SpellTargetSelection] = []
+		var planned_target_ids: Array[String] = []
 		var area_center := INVALID_COORDINATE
 		var area_rotation := 0
 		var area_shape := 0
@@ -311,7 +312,6 @@ func _process_monster_cast(state: GameState, content: RealmzContent, monster: Mo
 			if spell.target_type == 5:
 				area_center = state.combat.battlefield.actor_position(monster.id)
 				area_shape = 1
-			var planned_target_ids: Array[String] = []
 			for target_id: String in plan["targetIds"]:
 				planned_target_ids.append(target_id)
 			if spell.target_type == 6:
@@ -334,6 +334,7 @@ func _process_monster_cast(state: GameState, content: RealmzContent, monster: Mo
 		active_turn.movement_remaining = 0
 		var resolutions: GroupSpellResolution
 		var persistent_field: RefCounted = null
+		var repeated_fields: Array[RefCounted] = []
 		if ClassicSpellCapabilityCatalog.is_combat_persistent_field_spell(spell):
 			persistent_field = _flow()._queue_persistent_field(state.combat, monster.id, spell, cost_power, cast_level, rng, area_center, area_rotation, area_shape)
 			if persistent_field == null:
@@ -344,7 +345,7 @@ func _process_monster_cast(state: GameState, content: RealmzContent, monster: Mo
 		elif spell.target_type == 10:
 			resolutions = _rules.magic.resolve_monster_group_spell(monster, definition, selected_targets, spell, cost_power, cast_level, rng)
 		elif spell.target_type == 0:
-			resolutions = _rules.magic.resolve_monster_repeated_spell(monster, definition, selected_targets, spell, cost_power, cast_level, rng)
+			resolutions = _rules.magic.resolve_monster_repeated_spell(monster, definition, selected_targets, spell, cost_power, cast_level, rng, _flow()._repeated_field_callback(state, spell, monster.id, planned_target_ids, cost_power, cast_level, rng, repeated_fields))
 		elif spell.target_type == 6:
 			resolutions = _rules.magic.resolve_monster_ray_spell(monster, definition, selected_targets, spell, cost_power, cast_level, rng)
 		else:
@@ -356,7 +357,8 @@ func _process_monster_cast(state: GameState, content: RealmzContent, monster: Mo
 		active_turn.spell_cast_count += 1
 		did_cast = true
 		if persistent_field != null:
-			events.append(DomainEvent.new(&"combat_persistent_field_created", {"slot": persistent_field.slot, "spellId": persistent_field.spell_id, "casterId": persistent_field.caster_id, "center": [persistent_field.center.x, persistent_field.center.y], "rotation": persistent_field.rotation, "shape": persistent_field.shape, "queueIcon": persistent_field.queue_icon, "power": persistent_field.power_level, "classicTier": persistent_field.cast_level, "duration": persistent_field.remaining_duration, "phaseTurnIndex": persistent_field.phase_turn_index, "source": "classic-monster"}))
+			repeated_fields.append(persistent_field)
+		_flow()._append_persistent_field_events(events, repeated_fields, "classic-monster")
 		_flow()._append_spell_sound(events, spell.sound_start, "classic-monster-spell-start")
 		_flow()._append_spell_cast_event(events, monster.id, spell, resolutions, area_center, area_shape, "classic-monster")
 		for index: int in resolutions.resolutions.size():

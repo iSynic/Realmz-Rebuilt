@@ -458,12 +458,13 @@ func _prepare_character_turn(combat: CombatState, character: CharacterState) -> 
 		movement -= tangled
 	if character.conditions.is_active(ConditionRules.SLOW):
 		movement /= 2
-	if character.conditions.is_active(ConditionRules.HELPLESS):
+	var helpless := character.conditions.is_active(ConditionRules.HELPLESS)
+	if helpless:
 		movement = 0
 	character.movement = maxi(0, movement)
 	var carried_half_attack := 1 if character.attacks_remaining > 0 else 0
 	var haste_half_attacks := 4 if character.conditions.is_active(ConditionRules.SPEEDY) else 0
-	character.attacks_remaining = _rules.arithmetic.signed_16(carried_half_attack + character.normal_attacks + character.attack_bonus + haste_half_attacks)
+	character.attacks_remaining = 0 if helpless else _rules.arithmetic.signed_16(carried_half_attack + character.normal_attacks + character.attack_bonus + haste_half_attacks)
 
 
 func _consume_character_attack(character: CharacterState) -> void:
