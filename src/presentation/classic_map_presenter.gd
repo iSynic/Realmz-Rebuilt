@@ -126,11 +126,12 @@ func _draw() -> void:
 	_draw_exploration_stage(map_rect)
 	var camera := camera_top_left(map_view.party_coordinate, Vector2i(map_view.width, map_view.height), viewport_cells)
 	var camera_end := camera + viewport_cells
+	var dungeon_discovery := dungeon_discovery_coordinates(map_view.visited_coordinates()) if map_view.level_type == &"dungeon" else {}
 	for cell: MapCellView in map_view.cells():
 		if cell.coordinate.x < camera.x or cell.coordinate.y < camera.y or cell.coordinate.x >= camera_end.x or cell.coordinate.y >= camera_end.y:
 			continue
 		var rect := Rect2(draw_origin + Vector2(cell.coordinate - camera) * cell_size, Vector2.ONE * cell_size)
-		_draw_cell(cell, rect, map_view.level_type, map_view.dark)
+		_draw_cell(cell, rect, map_view.level_type, map_view.dark, not cell.has_feature(&"unmapped") or dungeon_discovery.has(cell.coordinate))
 		if show_debug_facts:
 			draw_rect(rect, Color(0.22, 0.25, 0.30), false, 1.0)
 			_draw_edges(cell, rect)
@@ -239,7 +240,10 @@ static func map_draw_origin_for(control_size: Vector2, minimum_origin: Vector2, 
 	)
 
 
-func _draw_cell(cell: MapCellView, rect: Rect2, level_type: StringName, dark: bool) -> void:
+func _draw_cell(cell: MapCellView, rect: Rect2, level_type: StringName, dark: bool, discovered: bool) -> void:
+	if level_type == &"dungeon" and not discovered:
+		draw_rect(rect, Color(0.025, 0.03, 0.04), true)
+		return
 	if not cell.visible:
 		draw_rect(rect, _cell_color(cell, level_type, dark), true)
 		return
@@ -260,6 +264,15 @@ func _draw_cell(cell: MapCellView, rect: Rect2, level_type: StringName, dark: bo
 		draw_texture_rect(overlay_texture, rect, false)
 	if dark:
 		draw_rect(rect, Color(0.0, 0.0, 0.0, 0.45), true)
+
+
+static func dungeon_discovery_coordinates(visited: Array[Vector2i]) -> Dictionary:
+	var result: Dictionary = {}
+	for coordinate: Vector2i in visited:
+		for y: int in range(coordinate.y - 1, coordinate.y + 2):
+			for x: int in range(coordinate.x - 1, coordinate.x + 2):
+				result[Vector2i(x, y)] = true
+	return result
 
 
 func _draw_dungeon_atlas_cell(cell: MapCellView, rect: Rect2, atlas_asset: MediaAsset, atlas_texture: Texture2D) -> void:

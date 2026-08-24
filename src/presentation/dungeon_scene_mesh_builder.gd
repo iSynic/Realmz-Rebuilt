@@ -6,9 +6,10 @@ const WALL_UV := Rect2(1024.0, 0.0, 512.0, 512.0)
 const DOOR_UV := Rect2(64.0, 0.0, 128.0, 144.0)
 const STAIR_UV := Rect2(192.0, 0.0, 128.0, 128.0)
 const ARCH_UV := Rect2(320.0, 0.0, 64.0, 64.0)
-const FLOOR_UV := Rect2(1536.0, 0.0, 512.0, 512.0)
-const CEILING_UV := Rect2(1536.0, 0.0, 512.0, 512.0)
-const PILLAR_UV := Rect2(20.0, 20.0, 1.0, 1.0)
+const FLOOR_TEXTURE_ORIGIN := Vector2(1536.0, 0.0)
+const FLOOR_SOURCE_TILE_SIZE := 128.0
+const FLOOR_SOURCE_COLUMNS := 4
+const PILLAR_UV := Rect2(1664.0, 0.0, 128.0, 512.0)
 const ROOM_HEIGHT := 1.5
 const WALL_TEXTURE := preload("res://src/presentation/assets/classic-dungeon/wall-sand-bricks.jpg")
 const FLOOR_TEXTURE := preload("res://src/presentation/assets/classic-dungeon/floor-sand.jpg")
@@ -32,20 +33,22 @@ static func build(projection: DungeonGeometryProjection, atlas: Texture2D) -> Ar
 		var center := Vector3(float(offset.x), 0.0, float(offset.y))
 		var color := _distance_color(offset)
 		if cell.features.has(&"stairs"):
-			_add_recessed_stair(surface, center, color)
+			_add_recessed_stair(surface, center, cell.coordinate, color)
 		else:
-			_add_floor_and_ceiling(surface, center, color)
+			_add_floor_and_ceiling(surface, center, cell.coordinate, color)
+		if cell.features.has(&"door") and offset != Vector2i.ZERO:
+			_add_doorway(surface, center, cell.feature_orientation(&"door") == &"vertical", false, color, false)
 		for direction: StringName in DungeonGeometryProjection.DIRECTIONS:
 			var edge := projection.edge_at(cell.coordinate, direction)
 			var neighbor := projection.cell_at(cell.coordinate + DungeonGeometryProjection.direction_vector(direction))
 			var entry_edge := projection.edge_at(neighbor.coordinate, direction) if neighbor != null else null
 			var movement_allowed := boundary_allows_movement(projection, cell.coordinate, direction)
 			var edge_key := DungeonGeometryProjection.canonical_edge_key(cell.coordinate, direction)
-			var boundary_edge := entry_edge if entry_edge != null and entry_edge.kind in [&"door", &"archway"] else edge
-			if boundary_edge != null and boundary_edge.kind in [&"door", &"archway"]:
+			var boundary_edge := entry_edge if entry_edge != null and entry_edge.kind == &"archway" else edge
+			if boundary_edge != null and boundary_edge.kind == &"archway":
 				if not built_doorways.has(edge_key):
 					built_doorways[edge_key] = true
-					_add_doorway(surface, center + _edge_offset(direction), direction in [&"east", &"west"], boundary_edge.kind == &"archway" or movement_allowed, color, boundary_edge.kind == &"archway")
+					_add_doorway(surface, center + _edge_offset(direction), direction in [&"east", &"west"], true, color, true)
 				continue
 			if not movement_allowed:
 				_add_wall_boundary(surface, center, DungeonGeometryProjection.direction_vector(direction), color)
@@ -93,7 +96,7 @@ void fragment() {
 	vec3 mac_color = floor(sampled * 15.0 + 0.5) / 15.0;
 	ALBEDO = mac_color;
 	ROUGHNESS = 1.0;
-	EMISSION = mac_color * 0.22;
+	EMISSION = mac_color * 0.07;
 }
 """
 	var material := ShaderMaterial.new()
@@ -112,9 +115,10 @@ static func _material_for_atlas(atlas: Texture2D) -> ShaderMaterial:
 	return _shared_material
 
 
-static func _add_floor_and_ceiling(surface: SurfaceTool, center: Vector3, color: Color) -> void:
-	_add_inward_quad(surface, center + Vector3(-0.5, 0.0, -0.5), center + Vector3(-0.5, 0.0, 0.5), center + Vector3(0.5, 0.0, 0.5), center + Vector3(0.5, 0.0, -0.5), FLOOR_UV, color)
-	_add_inward_quad(surface, center + Vector3(-0.5, ROOM_HEIGHT, 0.5), center + Vector3(-0.5, ROOM_HEIGHT, -0.5), center + Vector3(0.5, ROOM_HEIGHT, -0.5), center + Vector3(0.5, ROOM_HEIGHT, 0.5), CEILING_UV, color)
+static func _add_floor_and_ceiling(surface: SurfaceTool, center: Vector3, coordinate: Vector2i, color: Color) -> void:
+	var uv := floor_tile_uv(coordinate)
+	_add_inward_quad(surface, center + Vector3(-0.5, 0.0, -0.5), center + Vector3(-0.5, 0.0, 0.5), center + Vector3(0.5, 0.0, 0.5), center + Vector3(0.5, 0.0, -0.5), uv, color)
+	_add_inward_quad(surface, center + Vector3(-0.5, ROOM_HEIGHT, 0.5), center + Vector3(-0.5, ROOM_HEIGHT, -0.5), center + Vector3(0.5, ROOM_HEIGHT, -0.5), center + Vector3(0.5, ROOM_HEIGHT, 0.5), uv, color)
 
 
 static func _add_wall_boundary(surface: SurfaceTool, center: Vector3, direction: Vector2i, color: Color) -> void:
@@ -159,9 +163,9 @@ static func _add_door(surface: SurfaceTool, center: Vector3, east_west: bool, co
 		_add_two_sided_quad(surface, center + Vector3(-0.36, 0.0, 0.0), center + Vector3(0.36, 0.0, 0.0), center + Vector3(0.36, 1.23, 0.0), center + Vector3(-0.36, 1.23, 0.0), DOOR_UV, color)
 
 
-static func _add_recessed_stair(surface: SurfaceTool, center: Vector3, color: Color) -> void:
+static func _add_recessed_stair(surface: SurfaceTool, center: Vector3, coordinate: Vector2i, color: Color) -> void:
 	_add_inward_quad(surface, center + Vector3(-0.5, -0.28, -0.5), center + Vector3(-0.5, -0.28, 0.5), center + Vector3(0.5, -0.28, 0.5), center + Vector3(0.5, -0.28, -0.5), STAIR_UV, color)
-	_add_inward_quad(surface, center + Vector3(-0.5, ROOM_HEIGHT, 0.5), center + Vector3(-0.5, ROOM_HEIGHT, -0.5), center + Vector3(0.5, ROOM_HEIGHT, -0.5), center + Vector3(0.5, ROOM_HEIGHT, 0.5), CEILING_UV, color)
+	_add_inward_quad(surface, center + Vector3(-0.5, ROOM_HEIGHT, 0.5), center + Vector3(-0.5, ROOM_HEIGHT, -0.5), center + Vector3(0.5, ROOM_HEIGHT, -0.5), center + Vector3(0.5, ROOM_HEIGHT, 0.5), floor_tile_uv(coordinate), color)
 	for direction: Vector2 in [Vector2.UP, Vector2.RIGHT, Vector2.DOWN, Vector2.LEFT]:
 		var tangent := Vector3(1.0, 0.0, 0.0) if direction.x == 0.0 else Vector3(0.0, 0.0, 1.0)
 		var wall_center := center + Vector3(direction.x, 0.0, direction.y) * 0.5
@@ -220,12 +224,18 @@ static func _distance_color(offset: Vector2i) -> Color:
 	var distance := maxi(absi(offset.x), absi(offset.y))
 	var fade := 1.0
 	match distance:
-		2: fade = 0.92
-		3: fade = 0.78
-		4: fade = 0.64
-		5: fade = 0.52
-		_: fade = 1.0 if distance < 2 else 0.42
+		1: fade = 0.92
+		2: fade = 0.78
+		3: fade = 0.62
+		4: fade = 0.47
+		5: fade = 0.37
+		_: fade = 1.0 if distance == 0 else 0.30
 	return Color(fade, fade, fade, 1.0)
+
+
+static func floor_tile_uv(coordinate: Vector2i) -> Rect2:
+	var source_cell := Vector2(posmod(coordinate.x, FLOOR_SOURCE_COLUMNS), posmod(coordinate.y, FLOOR_SOURCE_COLUMNS))
+	return Rect2(FLOOR_TEXTURE_ORIGIN + source_cell * FLOOR_SOURCE_TILE_SIZE, Vector2.ONE * FLOOR_SOURCE_TILE_SIZE)
 
 
 static func _edge_offset(direction: StringName) -> Vector3:

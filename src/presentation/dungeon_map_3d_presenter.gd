@@ -12,7 +12,7 @@ const CURSOR_FORWARD := preload("res://src/presentation/assets/classic-dungeon/c
 const CURSOR_REVERSE := preload("res://src/presentation/assets/classic-dungeon/cursor-reverse.png")
 const CURSOR_LEFT := preload("res://src/presentation/assets/classic-dungeon/cursor-left.png")
 const CURSOR_RIGHT := preload("res://src/presentation/assets/classic-dungeon/cursor-right.png")
-const INTERNAL_SIZE := Vector2i(320, 180)
+const INTERNAL_SIZE := Vector2i(400, 225)
 const MOVE_TWEEN_SECONDS := 0.14
 const TURN_TWEEN_SECONDS := 0.11
 
@@ -55,7 +55,7 @@ func _ready() -> void:
 	_light = OmniLight3D.new()
 	_light.name = "DungeonLight"
 	_light.light_color = Color8(255, 221, 187)
-	_light.light_energy = 1.18
+	_light.light_energy = 0.94
 	_light.omni_range = 5.5
 	_light.position = Vector3(0.0, 0.86, 0.0)
 	_light.shadow_enabled = false
@@ -65,11 +65,11 @@ func _ready() -> void:
 	environment.background_mode = Environment.BG_COLOR
 	environment.background_color = Color.BLACK
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	environment.ambient_light_color = Color8(190, 175, 156)
-	environment.ambient_light_energy = 0.62
+	environment.ambient_light_color = Color8(174, 157, 137)
+	environment.ambient_light_energy = 0.34
 	environment.fog_enabled = true
 	environment.fog_light_color = Color.BLACK
-	environment.fog_density = 0.038
+	environment.fog_density = 0.072
 	environment_node.environment = environment
 	world.add_child(environment_node)
 	_display = TextureRect.new()
@@ -171,7 +171,7 @@ func _rebuild_geometry() -> void:
 		return
 	_geometry.mesh = null if _projection == null else MeshBuilder.build(_projection, ATLAS)
 	if _projection != null:
-		_light.light_energy = 0.82 if _projection.dark else 1.18
+		_light.light_energy = 0.66 if _projection.dark else 0.94
 
 
 func _animate_authoritative_change() -> void:

@@ -16,6 +16,7 @@ class CellProjection:
 	var passable: bool
 	var blocks_los: bool
 	var features: Array[StringName]
+	var feature_orientations: Dictionary = {}
 
 
 	func _init(source: MapCellView) -> void:
@@ -24,6 +25,12 @@ class CellProjection:
 		passable = source.passable
 		blocks_los = source.blocks_los
 		features = source.features()
+		for feature: StringName in features:
+			feature_orientations[feature] = source.feature_orientation(feature)
+
+
+	func feature_orientation(feature: StringName) -> StringName:
+		return StringName(feature_orientations.get(feature, ""))
 
 
 class EdgeProjection:
