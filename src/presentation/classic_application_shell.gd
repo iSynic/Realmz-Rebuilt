@@ -290,6 +290,8 @@ static func automatic_workflow_route(current_route: StringName, game_view: GameV
 
 
 func set_package_media(media: ClassicMediaCatalog) -> void:
+	if _media == media:
+		return
 	_media = media
 	_party_roster.set_media_catalog(media)
 	_router.set_media_catalog(media)

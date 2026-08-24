@@ -47,6 +47,7 @@ var _load_after_campaign_selection: bool = false
 var _system_return_to_setup: bool = false
 var _workspace_host: Control
 var _overlay_host: Control
+var _media: ClassicMediaCatalog
 var _workspace_presenter := CLASSIC_WORKSPACE_PRESENTER.new()
 var setup_controller := CampaignPartySetupController.new()
 var _initialized: bool = false
@@ -211,6 +212,9 @@ func set_save_and_quit_mode(enabled: bool) -> void:
 
 
 func set_media_catalog(media: ClassicMediaCatalog) -> void:
+	if _media == media:
+		return
+	_media = media
 	_workspace_presenter.set_media_catalog(media)
 	setup_controller.set_media_catalog(media)
 	if _view != null and _view.session_started:
