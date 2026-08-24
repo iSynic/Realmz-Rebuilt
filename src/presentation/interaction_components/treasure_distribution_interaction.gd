@@ -223,15 +223,19 @@ func _add_loot_item(parent: GridContainer, item: InteractionRequestValue.RewardI
 		magic_glow.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		magic_glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		cell.add_child(magic_glow)
+	var icon_center := CenterContainer.new()
+	icon_center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	icon_center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cell.add_child(icon_center)
 	var item_icon := TextureRect.new()
 	item_icon.name = "TreasureLootIcon_%s" % _node_fragment(item.instance_id)
 	item_icon.texture = _item_texture(item)
 	item_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	item_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	item_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	item_icon.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	item_icon.custom_minimum_size = Vector2(32.0, 32.0)
 	item_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	cell.add_child(item_icon)
+	icon_center.add_child(item_icon)
 	var ring := TextureRect.new()
 	ring.name = "TreasureHoverCircle_%s" % _node_fragment(item.instance_id)
 	ring.texture = ClassicUiAssetCatalog.texture(&"loot.selection")
