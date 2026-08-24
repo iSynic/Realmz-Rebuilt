@@ -12,7 +12,7 @@ $repoRoot = Split-Path -Parent (Split-Path -Parent $toolRoot)
 $catalogPath = Join-Path $toolRoot "catalog.json"
 $catalog = Get-Content -Raw -LiteralPath $catalogPath | ConvertFrom-Json
 $sourceRoot = (Resolve-Path -LiteralPath $SourceRepository).Path
-$classicEntries = @($catalog.assets | Where-Object { $_.source_kind -in @("classic-cicn", "classic-pict") })
+$classicEntries = @($catalog.assets | Where-Object { $_.source_kind -in @("classic-cicn", "classic-pict", "classic-crsr") })
 $classicPictEntries = @($classicEntries | Where-Object { $_.source_kind -eq "classic-pict" })
 $uiDonorEntries = @($catalog.assets | Where-Object { $_.source_kind -eq "licensed-ui-donor" })
 $castleRoot = ""
@@ -21,6 +21,7 @@ $destinationRoot = Join-Path $repoRoot "src/presentation/assets/classic-controls
 $manifestPath = Join-Path $repoRoot "src/presentation/assets/classic-ui-assets.json"
 $cicnExporterPath = Join-Path $toolRoot "export-classic-cicn.ps1"
 $pictExporterPath = Join-Path $toolRoot "export-classic-pict.ps1"
+$crsrExporterPath = Join-Path $toolRoot "export-classic-crsr.ps1"
 
 $resolvedCommit = (& git -C $sourceRoot rev-parse "$($catalog.source_commit)^{commit}").Trim()
 if ($LASTEXITCODE -ne 0 -or $resolvedCommit -ne $catalog.source_commit) {
@@ -68,7 +69,7 @@ $sidecarRoot = Join-Path $stagingRoot "sidecars"
 New-Item -ItemType Directory -Path $extractRoot, $castleExtractRoot, $uiDonorExtractRoot, $outputRoot, $sidecarRoot | Out-Null
 
 try {
-    $sourcePaths = @($catalog.assets | Where-Object { $_.source_kind -notin @("classic-cicn", "classic-pict", "licensed-ui-donor") } | ForEach-Object { $_.source_path } | Sort-Object -Unique)
+    $sourcePaths = @($catalog.assets | Where-Object { $_.source_kind -notin @("classic-cicn", "classic-pict", "classic-crsr", "licensed-ui-donor") } | ForEach-Object { $_.source_path } | Sort-Object -Unique)
     & git -C $sourceRoot archive --format=zip --output=$archivePath $catalog.source_commit -- @sourcePaths
     if ($LASTEXITCODE -ne 0) {
         throw "git archive failed"
@@ -99,8 +100,9 @@ try {
     foreach ($entry in $catalog.assets) {
         $isClassicCicn = $entry.source_kind -eq "classic-cicn"
         $isClassicPict = $entry.source_kind -eq "classic-pict"
+        $isClassicCrsr = $entry.source_kind -eq "classic-crsr"
         $isLicensedUiDonor = $entry.source_kind -eq "licensed-ui-donor"
-        $entryExtractRoot = if ($isClassicCicn -or $isClassicPict) {
+        $entryExtractRoot = if ($isClassicCicn -or $isClassicPict -or $isClassicCrsr) {
             $castleExtractRoot
         }
         elseif ($isLicensedUiDonor) {
@@ -126,6 +128,9 @@ try {
         }
         elseif ($isClassicPict) {
             & $pictExporterPath -ResourceForkPath $sourcePath -ResourceId $entry.resource_id -PictDecoderPath $PictDecoderPath -OutputPath $targetPath
+        }
+        elseif ($isClassicCrsr) {
+            & $crsrExporterPath -ResourceForkPath $sourcePath -ResourceId $entry.resource_id -ExpectedHotspotX $entry.hotspot_x -ExpectedHotspotY $entry.hotspot_y -OutputPath $targetPath
         }
         else {
             [IO.File]::WriteAllBytes($targetPath, [IO.File]::ReadAllBytes($sourcePath))
@@ -174,7 +179,10 @@ try {
                 source_pixels_modified = $false
             }
         }
-        if ($isClassicCicn -or $isClassicPict) {
+        if ($isClassicCrsr) {
+            $record["cursor_hotspot"] = @($entry.hotspot_x, $entry.hotspot_y)
+        }
+        if ($isClassicCicn -or $isClassicPict -or $isClassicCrsr) {
             $record["source_file_sha256"] = $entry.source_file_sha256
             $record["source_resource_type"] = $entry.resource_type
             $record["source_resource_id"] = $entry.resource_id

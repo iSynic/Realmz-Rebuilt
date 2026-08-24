@@ -576,6 +576,303 @@
       "source_resource_id": 186
     },
     {
+      "id": "map.cursor.northwest",
+      "path": "res://src/presentation/assets/classic-controls/map/cursor-northwest.png",
+      "source_repository": "Realmz Castle Realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
+      "native_width": 16,
+      "native_height": 16,
+      "sha256": "72bc6209cd2ad205000505566e7c36d42ec28235e71181a62091bc16863c2711",
+      "classification": "classic-resource-extract",
+      "classic_evidence": {
+        "status": "source-control-flow",
+        "path": "src/realmz_orig/updatearrow.c:5-33",
+        "note": "Castle updatearrow selects exact color cursor 138 when the land pointer is northwest of the party cell.",
+        "repository": "Realmz Castle Realmz",
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3"
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      },
+      "cursor_hotspot": [
+        2,
+        2
+      ],
+      "source_file_sha256": "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c",
+      "source_resource_type": "crsr",
+      "source_resource_id": 138
+    },
+    {
+      "id": "map.cursor.north",
+      "path": "res://src/presentation/assets/classic-controls/map/cursor-north.png",
+      "source_repository": "Realmz Castle Realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
+      "native_width": 16,
+      "native_height": 16,
+      "sha256": "4ada48006408eb902be297b60737db97698b4922ca63eb9b4265d52fe05589b0",
+      "classification": "classic-resource-extract",
+      "classic_evidence": {
+        "status": "source-control-flow",
+        "path": "src/realmz_orig/updatearrow.c:5-33",
+        "note": "Castle updatearrow and the 2D dungeon cursor wedges select exact color cursor 139 for north.",
+        "repository": "Realmz Castle Realmz",
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3"
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      },
+      "cursor_hotspot": [
+        7,
+        1
+      ],
+      "source_file_sha256": "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c",
+      "source_resource_type": "crsr",
+      "source_resource_id": 139
+    },
+    {
+      "id": "map.cursor.northeast",
+      "path": "res://src/presentation/assets/classic-controls/map/cursor-northeast.png",
+      "source_repository": "Realmz Castle Realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
+      "native_width": 16,
+      "native_height": 16,
+      "sha256": "5d0105bf93c7fdcf1a9849194af2fef7d0b066d687942eb8fb1100d8f9cb3b95",
+      "classification": "classic-resource-extract",
+      "classic_evidence": {
+        "status": "source-control-flow",
+        "path": "src/realmz_orig/updatearrow.c:5-33",
+        "note": "Castle updatearrow selects exact color cursor 140 when the land pointer is northeast of the party cell.",
+        "repository": "Realmz Castle Realmz",
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3"
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      },
+      "cursor_hotspot": [
+        13,
+        2
+      ],
+      "source_file_sha256": "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c",
+      "source_resource_type": "crsr",
+      "source_resource_id": 140
+    },
+    {
+      "id": "map.cursor.west",
+      "path": "res://src/presentation/assets/classic-controls/map/cursor-west.png",
+      "source_repository": "Realmz Castle Realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
+      "native_width": 16,
+      "native_height": 16,
+      "sha256": "31aa5a24d3613d495f40eb13df2d8c6a1b3e935d4cb09691ee3b61ff546f717d",
+      "classification": "classic-resource-extract",
+      "classic_evidence": {
+        "status": "source-control-flow",
+        "path": "src/realmz_orig/updatearrow.c:5-33",
+        "note": "Castle updatearrow and the 2D dungeon cursor wedges select exact color cursor 141 for west.",
+        "repository": "Realmz Castle Realmz",
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3"
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      },
+      "cursor_hotspot": [
+        1,
+        8
+      ],
+      "source_file_sha256": "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c",
+      "source_resource_type": "crsr",
+      "source_resource_id": 141
+    },
+    {
+      "id": "map.cursor.center",
+      "path": "res://src/presentation/assets/classic-controls/map/cursor-center.png",
+      "source_repository": "Realmz Castle Realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
+      "native_width": 16,
+      "native_height": 16,
+      "sha256": "1f12f6442b44080355f77f447100640c1064c52873761c3eeaab7a2cd7cc7893",
+      "classification": "classic-resource-extract",
+      "classic_evidence": {
+        "status": "source-control-flow",
+        "path": "src/realmz_orig/updatearrow.c:5-33",
+        "note": "Castle updatearrow selects exact color cursor 142 while the land pointer remains inside the party cell and no movement will occur.",
+        "repository": "Realmz Castle Realmz",
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3"
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      },
+      "cursor_hotspot": [
+        8,
+        8
+      ],
+      "source_file_sha256": "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c",
+      "source_resource_type": "crsr",
+      "source_resource_id": 142
+    },
+    {
+      "id": "map.cursor.east",
+      "path": "res://src/presentation/assets/classic-controls/map/cursor-east.png",
+      "source_repository": "Realmz Castle Realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
+      "native_width": 16,
+      "native_height": 16,
+      "sha256": "f01bada65d2314ab00b936879eb8f62d78e35a0947338e4b46d444a6c2486d69",
+      "classification": "classic-resource-extract",
+      "classic_evidence": {
+        "status": "source-control-flow",
+        "path": "src/realmz_orig/updatearrow.c:5-33",
+        "note": "Castle updatearrow and the 2D dungeon cursor wedges select exact color cursor 143 for east.",
+        "repository": "Realmz Castle Realmz",
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3"
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      },
+      "cursor_hotspot": [
+        14,
+        7
+      ],
+      "source_file_sha256": "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c",
+      "source_resource_type": "crsr",
+      "source_resource_id": 143
+    },
+    {
+      "id": "map.cursor.southwest",
+      "path": "res://src/presentation/assets/classic-controls/map/cursor-southwest.png",
+      "source_repository": "Realmz Castle Realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
+      "native_width": 16,
+      "native_height": 16,
+      "sha256": "13063910800dfbe0aa5710ac51dac44f8e6ed5aed1740452e2aa68ea9432e6be",
+      "classification": "classic-resource-extract",
+      "classic_evidence": {
+        "status": "source-control-flow",
+        "path": "src/realmz_orig/updatearrow.c:5-33",
+        "note": "Castle updatearrow selects exact color cursor 144 when the land pointer is southwest of the party cell.",
+        "repository": "Realmz Castle Realmz",
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3"
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      },
+      "cursor_hotspot": [
+        2,
+        13
+      ],
+      "source_file_sha256": "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c",
+      "source_resource_type": "crsr",
+      "source_resource_id": 144
+    },
+    {
+      "id": "map.cursor.south",
+      "path": "res://src/presentation/assets/classic-controls/map/cursor-south.png",
+      "source_repository": "Realmz Castle Realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
+      "native_width": 16,
+      "native_height": 16,
+      "sha256": "f4f6f667d1182a4a6329171face7aa62a7b2398aa454f581c05e1bb07e10bc85",
+      "classification": "classic-resource-extract",
+      "classic_evidence": {
+        "status": "source-control-flow",
+        "path": "src/realmz_orig/updatearrow.c:5-33",
+        "note": "Castle updatearrow and the 2D dungeon cursor wedges select exact color cursor 145 for south.",
+        "repository": "Realmz Castle Realmz",
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3"
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      },
+      "cursor_hotspot": [
+        7,
+        14
+      ],
+      "source_file_sha256": "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c",
+      "source_resource_type": "crsr",
+      "source_resource_id": 145
+    },
+    {
+      "id": "map.cursor.southeast",
+      "path": "res://src/presentation/assets/classic-controls/map/cursor-southeast.png",
+      "source_repository": "Realmz Castle Realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
+      "native_width": 16,
+      "native_height": 16,
+      "sha256": "515488faad8bafa8680e1a79d24a42b65beb36abc0e231138d6cabd7518ab45a",
+      "classification": "classic-resource-extract",
+      "classic_evidence": {
+        "status": "source-control-flow",
+        "path": "src/realmz_orig/updatearrow.c:5-33",
+        "note": "Castle updatearrow selects exact color cursor 146 when the land pointer is southeast of the party cell.",
+        "repository": "Realmz Castle Realmz",
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3"
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      },
+      "cursor_hotspot": [
+        13,
+        13
+      ],
+      "source_file_sha256": "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c",
+      "source_resource_type": "crsr",
+      "source_resource_id": 146
+    },
+    {
       "id": "inventory.category.armor",
       "path": "res://src/presentation/assets/classic-controls/inventory/category-armor.png",
       "source_repository": "Realmz Remake",

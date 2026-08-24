@@ -23,6 +23,14 @@ static func native_size(asset_id: StringName) -> Vector2i:
 	return Vector2i(int(record.get("native_width", 0)), int(record.get("native_height", 0)))
 
 
+static func cursor_hotspot(asset_id: StringName) -> Vector2:
+	var record := ClassicUiAssetCatalog.definition(asset_id)
+	var hotspot: Variant = record.get("cursor_hotspot", [])
+	if hotspot is Array and (hotspot as Array).size() == 2:
+		return Vector2(float(hotspot[0]), float(hotspot[1]))
+	return Vector2.ZERO
+
+
 static func all_definitions() -> Array[Dictionary]:
 	_ensure_loaded()
 	var result: Array[Dictionary] = []

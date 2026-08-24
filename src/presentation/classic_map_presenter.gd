@@ -29,17 +29,23 @@ var _held_direction: Vector2i = Vector2i.ZERO
 var _party_marker_textures: Dictionary = {}
 var _party_marker_asset_id: StringName = PARTY_MARKER_RIGHT_ASSET_ID
 var _party_facing_asset_id: StringName = PARTY_MARKER_RIGHT_ASSET_ID
+var _movement_cursor_asset_id: StringName
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	mouse_exited.connect(_clear_movement_cursor)
+	visibility_changed.connect(_on_visibility_changed)
 	_party_marker_textures[PARTY_MARKER_LEFT_ASSET_ID] = ClassicUiAssetCatalog.texture(PARTY_MARKER_LEFT_ASSET_ID)
 	_party_marker_textures[PARTY_MARKER_RIGHT_ASSET_ID] = ClassicUiAssetCatalog.texture(PARTY_MARKER_RIGHT_ASSET_ID)
 	_party_marker_textures[PARTY_MARKER_CAMP_ASSET_ID] = ClassicUiAssetCatalog.texture(PARTY_MARKER_CAMP_ASSET_ID)
 
 
 func _gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseMotion:
+		_update_movement_cursor((event as InputEventMouseMotion).position)
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		_update_movement_cursor((event as InputEventMouseButton).position)
 		if event.pressed:
 			_held_direction = _movement_direction_at(event.position)
 			if _held_direction != Vector2i.ZERO:
@@ -68,6 +74,7 @@ func present(game_view: GameView) -> void:
 		_party_facing_asset_id = party_marker_asset_id_for_direction(game_view.map_view.last_move_direction, _party_facing_asset_id)
 		_party_marker_asset_id = PARTY_MARKER_CAMP_ASSET_ID if game_view.party_summary != null and game_view.party_summary.camping else _party_facing_asset_id
 	if not visible:
+		_clear_movement_cursor()
 		_held_direction = Vector2i.ZERO
 		movement_hold_stopped.emit()
 	queue_redraw()
@@ -182,6 +189,20 @@ static func facing_label(direction: Vector2i) -> String:
 	var horizontal := "W" if direction.x < 0 else "E" if direction.x > 0 else ""
 	var vertical := "N" if direction.y < 0 else "S" if direction.y > 0 else ""
 	return "%s%s" % [vertical, horizontal] if not vertical.is_empty() or not horizontal.is_empty() else "—"
+
+
+static func movement_cursor_asset_id(direction: Vector2i) -> StringName:
+	var normalized := Vector2i(signi(direction.x), signi(direction.y))
+	match normalized:
+		Vector2i(-1, -1): return &"map.cursor.northwest"
+		Vector2i(0, -1): return &"map.cursor.north"
+		Vector2i(1, -1): return &"map.cursor.northeast"
+		Vector2i(-1, 0): return &"map.cursor.west"
+		Vector2i(1, 0): return &"map.cursor.east"
+		Vector2i(-1, 1): return &"map.cursor.southwest"
+		Vector2i(0, 1): return &"map.cursor.south"
+		Vector2i(1, 1): return &"map.cursor.southeast"
+		_: return &"map.cursor.center"
 
 
 static func camera_top_left(party_coordinate: Vector2i, map_size: Vector2i, viewport_cells: Vector2i) -> Vector2i:
@@ -327,6 +348,37 @@ func _movement_direction_at(position: Vector2) -> Vector2i:
 	if absf(offset.x) > absf(offset.y):
 		return Vector2i.RIGHT if offset.x > 0.0 else Vector2i.LEFT
 	return Vector2i.DOWN if offset.y > 0.0 else Vector2i.UP
+
+
+func _update_movement_cursor(position: Vector2) -> void:
+	if not is_visible_in_tree() or _view == null or _view.map_view == null:
+		_clear_movement_cursor()
+		return
+	var asset_id := movement_cursor_asset_id(_movement_direction_at(position))
+	if asset_id == _movement_cursor_asset_id:
+		return
+	var texture := ClassicUiAssetCatalog.texture(asset_id)
+	if texture == null:
+		_clear_movement_cursor()
+		return
+	Input.set_custom_mouse_cursor(texture, Input.CURSOR_ARROW, ClassicUiAssetCatalog.cursor_hotspot(asset_id))
+	_movement_cursor_asset_id = asset_id
+
+
+func _clear_movement_cursor() -> void:
+	if _movement_cursor_asset_id.is_empty():
+		return
+	Input.set_custom_mouse_cursor(null, Input.CURSOR_ARROW)
+	_movement_cursor_asset_id = &""
+
+
+func _on_visibility_changed() -> void:
+	if not is_visible_in_tree():
+		_clear_movement_cursor()
+
+
+func _exit_tree() -> void:
+	_clear_movement_cursor()
 
 
 static func land_direction_at(position: Vector2, party_rect: Rect2) -> Vector2i:
