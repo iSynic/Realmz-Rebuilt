@@ -654,6 +654,7 @@ func _test_movement_input() -> void:
 	var held := HeldMovementControllerScript.new()
 	var pulses: Array[Vector2i] = []
 	held.movement_requested.connect(func(direction: Vector2i) -> void:
+		if pulses.is_empty(): OS.delay_msec(350)
 		pulses.append(direction)
 		held.advance(1.0)
 	)
@@ -667,8 +668,7 @@ func _test_movement_input() -> void:
 	held.advance(1.0); assert_equal(pulses.size(), 4, "a slow frame emits one step rather than a queued burst")
 	assert_false(held.request_in_progress(), "a synchronous movement callback settles before the next interval begins")
 	held.set_speed_percent(25)
-	assert_equal(held.interval_seconds(), 0.8, "the slowest movement setting uses the documented 800 millisecond interval")
-	held.set_speed_percent(100)
+	assert_equal(held.interval_seconds(), 0.8, "the slowest movement setting uses the documented 800 millisecond interval"); held.set_speed_percent(100)
 	assert_equal(held.interval_seconds(), 0.2, "the default movement setting sustains five scheduled steps per second")
 	held.stop(&"keyboard")
 	held.advance(1.0)
