@@ -23,7 +23,6 @@ var _viewport: SubViewport
 var _display: TextureRect
 var _geometry: MeshInstance3D
 var _camera: Camera3D
-var _light: OmniLight3D
 var _active_tween: Tween
 var _keyboard_direction: Vector2i = Vector2i.ZERO
 
@@ -52,21 +51,10 @@ func _ready() -> void:
 	_camera.far = 12.0
 	_camera.position = Vector3(0.0, 0.72, 0.0)
 	world.add_child(_camera)
-	_light = OmniLight3D.new()
-	_light.name = "DungeonLight"
-	_light.light_color = Color8(255, 221, 187)
-	_light.light_energy = 0.94
-	_light.omni_range = 5.5
-	_light.position = Vector3(0.0, 0.86, 0.0)
-	_light.shadow_enabled = false
-	world.add_child(_light)
 	var environment_node := WorldEnvironment.new()
 	var environment := Environment.new()
 	environment.background_mode = Environment.BG_COLOR
 	environment.background_color = Color.BLACK
-	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	environment.ambient_light_color = Color8(174, 157, 137)
-	environment.ambient_light_energy = 0.34
 	environment.fog_enabled = true
 	environment.fog_light_color = Color.BLACK
 	environment.fog_density = 0.072
@@ -170,8 +158,6 @@ func _rebuild_geometry() -> void:
 	if _geometry == null:
 		return
 	_geometry.mesh = null if _projection == null else MeshBuilder.build(_projection, ATLAS)
-	if _projection != null:
-		_light.light_energy = 0.66 if _projection.dark else 0.94
 
 
 func _animate_authoritative_change() -> void:

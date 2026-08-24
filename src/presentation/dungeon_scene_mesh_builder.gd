@@ -5,12 +5,16 @@ const ATLAS_SIZE := Vector2(512.0, 512.0)
 const WALL_UV := Rect2(1024.0, 0.0, 512.0, 512.0)
 const DOOR_UV := Rect2(64.0, 0.0, 128.0, 144.0)
 const STAIR_UV := Rect2(192.0, 0.0, 128.0, 128.0)
-const ARCH_UV := Rect2(320.0, 0.0, 64.0, 64.0)
+const ARCH_JAMB_UV := Rect2(1024.0, 0.0, 256.0, 512.0)
+const ARCH_LINTEL_UV := Rect2(1024.0, 0.0, 512.0, 128.0)
 const FLOOR_TEXTURE_ORIGIN := Vector2(1536.0, 0.0)
 const FLOOR_SOURCE_TILE_SIZE := 128.0
 const FLOOR_SOURCE_COLUMNS := 4
 const PILLAR_UV := Rect2(1664.0, 0.0, 128.0, 512.0)
 const ROOM_HEIGHT := 1.5
+const ARCHWAY_OPENING_WIDTH := 0.64
+const ARCHWAY_HEADER_HEIGHT := 0.24
+const ARCHWAY_FRAME_DEPTH := 0.12
 const WALL_TEXTURE := preload("res://src/presentation/assets/classic-dungeon/wall-sand-bricks.jpg")
 const FLOOR_TEXTURE := preload("res://src/presentation/assets/classic-dungeon/floor-sand.jpg")
 
@@ -24,7 +28,9 @@ static func build(projection: DungeonGeometryProjection, atlas: Texture2D) -> Ar
 	var surface := SurfaceTool.new()
 	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
 	surface.set_smooth_group(-1)
-	surface.set_material(_material_for_atlas(atlas))
+	var material := _material_for_atlas(atlas)
+	material.set_shader_parameter("scene_brightness", 0.70 if projection.dark else 1.0)
+	surface.set_material(material)
 	var built_doorways: Dictionary = {}
 	for cell: DungeonGeometryProjection.CellProjection in projection.cells():
 		if not cell.passable:
@@ -100,16 +106,23 @@ render_mode cull_back, depth_draw_opaque, unshaded;
 uniform sampler2D atlas : source_color, filter_nearest, repeat_disable;
 uniform sampler2D wall_texture : source_color, filter_nearest, repeat_disable;
 uniform sampler2D floor_texture : source_color, filter_nearest, repeat_disable;
+uniform float scene_brightness = 1.0;
 void fragment() {
 	vec3 sampled;
+	bool sand_surface = false;
 	if (UV.x >= 3.0) {
 		sampled = texture(floor_texture, vec2(UV.x - 3.0, UV.y)).rgb;
+		sand_surface = true;
 	} else if (UV.x >= 2.0) {
 		sampled = texture(wall_texture, vec2(UV.x - 2.0, UV.y)).rgb;
+		sand_surface = true;
 	} else {
 		sampled = texture(atlas, UV).rgb;
 	}
-	sampled *= COLOR.rgb;
+	if (sand_surface) {
+		sampled *= vec3(0.94, 1.08, 0.92);
+	}
+	sampled *= COLOR.rgb * scene_brightness;
 	vec3 mac_color = floor(sampled * 15.0 + 0.5) / 15.0;
 	ALBEDO = mac_color;
 	ROUGHNESS = 1.0;
@@ -155,6 +168,9 @@ static func _add_corner_pillar(surface: SurfaceTool, corner_position: Vector3, c
 
 
 static func _add_doorway(surface: SurfaceTool, center: Vector3, east_west: bool, door_open: bool, color: Color, archway: bool) -> void:
+	if archway:
+		_add_archway(surface, center, east_west, color)
+		return
 	var wing_size := Vector3(0.14, ROOM_HEIGHT, 0.16)
 	var wing_a := center + Vector3(-0.43, ROOM_HEIGHT * 0.5, 0.0)
 	var wing_b := center + Vector3(0.43, ROOM_HEIGHT * 0.5, 0.0)
@@ -164,12 +180,28 @@ static func _add_doorway(surface: SurfaceTool, center: Vector3, east_west: bool,
 		wing_a = center + Vector3(0.0, ROOM_HEIGHT * 0.5, -0.43)
 		wing_b = center + Vector3(0.0, ROOM_HEIGHT * 0.5, 0.43)
 		header_size = Vector3(0.16, ROOM_HEIGHT - 1.23, 0.72)
-	var frame_uv := ARCH_UV if archway else WALL_UV
-	_add_box(surface, wing_a, wing_size, frame_uv, color)
-	_add_box(surface, wing_b, wing_size, frame_uv, color)
-	_add_box(surface, center + Vector3(0.0, (ROOM_HEIGHT + 1.23) * 0.5, 0.0), header_size, frame_uv, color)
+	_add_box(surface, wing_a, wing_size, WALL_UV, color)
+	_add_box(surface, wing_b, wing_size, WALL_UV, color)
+	_add_box(surface, center + Vector3(0.0, (ROOM_HEIGHT + 1.23) * 0.5, 0.0), header_size, WALL_UV, color)
 	if not door_open:
 		_add_door(surface, center, east_west, color)
+
+
+static func _add_archway(surface: SurfaceTool, center: Vector3, east_west: bool, color: Color) -> void:
+	var jamb_width := (1.0 - ARCHWAY_OPENING_WIDTH) * 0.5
+	var jamb_offset := (ARCHWAY_OPENING_WIDTH + jamb_width) * 0.5
+	var jamb_size := Vector3(jamb_width, ROOM_HEIGHT, ARCHWAY_FRAME_DEPTH)
+	var jamb_a := center + Vector3(-jamb_offset, ROOM_HEIGHT * 0.5, 0.0)
+	var jamb_b := center + Vector3(jamb_offset, ROOM_HEIGHT * 0.5, 0.0)
+	var lintel_size := Vector3(ARCHWAY_OPENING_WIDTH + jamb_width, ARCHWAY_HEADER_HEIGHT, ARCHWAY_FRAME_DEPTH)
+	if east_west:
+		jamb_size = Vector3(ARCHWAY_FRAME_DEPTH, ROOM_HEIGHT, jamb_width)
+		jamb_a = center + Vector3(0.0, ROOM_HEIGHT * 0.5, -jamb_offset)
+		jamb_b = center + Vector3(0.0, ROOM_HEIGHT * 0.5, jamb_offset)
+		lintel_size = Vector3(ARCHWAY_FRAME_DEPTH, ARCHWAY_HEADER_HEIGHT, ARCHWAY_OPENING_WIDTH + jamb_width)
+	_add_box(surface, jamb_a, jamb_size, ARCH_JAMB_UV, color)
+	_add_box(surface, jamb_b, jamb_size, ARCH_JAMB_UV, color)
+	_add_box(surface, center + Vector3(0.0, ROOM_HEIGHT - ARCHWAY_HEADER_HEIGHT * 0.5, 0.0), lintel_size, ARCH_LINTEL_UV, color)
 
 
 static func _add_door(surface: SurfaceTool, center: Vector3, east_west: bool, color: Color) -> void:
