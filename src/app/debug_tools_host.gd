@@ -35,6 +35,10 @@ func handle_input(event: InputEvent) -> bool:
 	return true
 
 
+func is_open() -> bool:
+	return _dialog != null and _dialog.visible
+
+
 func noclip_step(intent: PlayerIntent) -> SessionStep:
 	if not _noclip or intent == null or intent.kind != PlayerIntent.Kind.MOVE:
 		return null
