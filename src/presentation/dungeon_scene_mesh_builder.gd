@@ -120,11 +120,11 @@ void fragment() {
 		sampled = texture(atlas, UV).rgb;
 	}
 	if (sand_surface) {
-		sampled *= vec3(0.94, 1.08, 0.92);
+		sampled *= vec3(0.94, 1.06, 0.92);
 	}
-	sampled *= COLOR.rgb * scene_brightness;
 	vec3 mac_color = floor(sampled * 15.0 + 0.5) / 15.0;
-	ALBEDO = mac_color;
+	float shade = floor(COLOR.r * scene_brightness * 15.0 + 0.5) / 15.0;
+	ALBEDO = mac_color * shade;
 	ROUGHNESS = 1.0;
 }
 """
