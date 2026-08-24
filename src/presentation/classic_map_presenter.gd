@@ -83,6 +83,8 @@ func present(game_view: GameView) -> void:
 		_clear_movement_cursor()
 		_held_direction = Vector2i.ZERO
 		movement_hold_stopped.emit()
+	elif _held_direction != Vector2i.ZERO:
+		call_deferred("_restore_held_movement_cursor")
 	queue_redraw()
 
 
@@ -378,14 +380,22 @@ func _update_movement_cursor(position: Vector2) -> void:
 		_clear_movement_cursor()
 		return
 	var asset_id := movement_cursor_asset_id(_movement_direction_at(position))
-	if asset_id == _movement_cursor_asset_id:
-		return
 	var texture := ClassicUiAssetCatalog.texture(asset_id)
 	if texture == null:
 		_clear_movement_cursor()
 		return
 	Input.set_custom_mouse_cursor(texture, Input.CURSOR_ARROW, ClassicUiAssetCatalog.cursor_hotspot(asset_id))
 	_movement_cursor_asset_id = asset_id
+
+
+func _restore_held_movement_cursor() -> void:
+	if not is_visible_in_tree() or _held_direction == Vector2i.ZERO:
+		return
+	var asset_id := movement_cursor_asset_id(_held_direction)
+	var texture := ClassicUiAssetCatalog.texture(asset_id)
+	if texture != null:
+		Input.set_custom_mouse_cursor(texture, Input.CURSOR_ARROW, ClassicUiAssetCatalog.cursor_hotspot(asset_id))
+		_movement_cursor_asset_id = asset_id
 
 
 func _clear_movement_cursor() -> void:

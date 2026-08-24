@@ -191,6 +191,8 @@ func _key(preview: SaveSlotPreview) -> String:
 func _build_display_tab(parent: VBoxContainer, settings: PresentationSettings) -> void:
 	var content := _settings_panel(parent, "Display", "Fit keeps the Classic application centered at wide resolutions. Interface density and text size remain independent; exact bitmap art stays at native 1× or 2× pixels.")
 	var ui_scale := OptionButton.new()
+	ui_scale.name = "InterfaceScalePicker"
+	ui_scale.theme_type_variation = &"ClassicTheldrowOptionButton"
 	for entry: Dictionary in [{"label": "Fit to window", "id": PresentationSettings.UI_SCALE_AUTO}, {"label": "Interface density: 100%", "id": PresentationSettings.UI_SCALE_100}, {"label": "Interface density: 125%", "id": PresentationSettings.UI_SCALE_125}, {"label": "Interface density: 150%", "id": PresentationSettings.UI_SCALE_150}]:
 		ui_scale.add_item(entry["label"])
 		ui_scale.set_item_metadata(ui_scale.item_count - 1, entry["id"])
@@ -203,6 +205,8 @@ func _build_display_tab(parent: VBoxContainer, settings: PresentationSettings) -
 	text_scale.value_changed.connect(func(value: float) -> void: setting_changed.emit(&"text_scale", value))
 	_add_setting_row(content, "Text size  •  %d%%" % int(round(settings.text_scale * 100.0)), text_scale)
 	var typography := OptionButton.new()
+	typography.name = "TypographyPicker"
+	typography.theme_type_variation = &"ClassicTheldrowOptionButton"
 	for entry: Dictionary in [
 		{"label": "Classic Realmz fonts", "id": PresentationSettings.TYPOGRAPHY_CLASSIC},
 		{"label": "Readable modern fonts", "id": PresentationSettings.TYPOGRAPHY_READABLE},
@@ -214,6 +218,8 @@ func _build_display_tab(parent: VBoxContainer, settings: PresentationSettings) -
 	typography.item_selected.connect(func(index: int) -> void: setting_changed.emit(&"typography_mode", String(typography.get_item_metadata(index))))
 	_add_setting_row(content, "Typography", typography)
 	var window_mode := OptionButton.new()
+	window_mode.name = "WindowModePicker"
+	window_mode.theme_type_variation = &"ClassicTheldrowOptionButton"
 	window_mode.add_item("Windowed"); window_mode.set_item_metadata(0, PresentationSettings.WINDOWED)
 	window_mode.add_item("Borderless fullscreen"); window_mode.set_item_metadata(1, PresentationSettings.BORDERLESS_FULLSCREEN)
 	window_mode.select(1 if settings.window_mode == PresentationSettings.BORDERLESS_FULLSCREEN else 0)

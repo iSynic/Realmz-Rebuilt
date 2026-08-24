@@ -11,8 +11,10 @@ var _selected_player_map_id: String = ""
 var _selected_journal_message_id: int = 0
 var _selected_campaign_id: String = ""
 var _selected_tab: int = 0
+var _journal_query: String = ""
 var _text_scale: float = 1.0
 var _journal_detail: VBoxContainer
+var _rebuilding: bool = false
 
 
 func set_text_scale(text_scale: float) -> void:
@@ -20,8 +22,10 @@ func set_text_scale(text_scale: float) -> void:
 
 
 func present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog) -> void:
+	_rebuilding = true
 	_clear(parent)
 	if view == null:
+		_rebuilding = false
 		return
 	if _selected_campaign_id != view.campaign_id:
 		_selected_campaign_id = view.campaign_id
@@ -33,12 +37,16 @@ func present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog) 
 	tabs.name = "MapsNotesTabs"
 	tabs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	tabs.tab_changed.connect(func(index: int) -> void: _selected_tab = index)
 	parent.add_child(tabs)
 	_build_places_tab(_tab(tabs, "Places"), view)
 	_build_maps_tab(_tab(tabs, "Maps"), view, media)
 	_build_journal_tab(_tab(tabs, "Journal"), view)
 	tabs.current_tab = mini(_selected_tab, tabs.get_tab_count() - 1)
+	tabs.tab_changed.connect(func(index: int) -> void:
+		if not _rebuilding and tabs.get_parent() != null:
+			_selected_tab = index
+	)
+	_rebuilding = false
 
 
 func _add_header(parent: VBoxContainer, view: GameView) -> void:
@@ -99,28 +107,58 @@ func _build_maps_tab(parent: VBoxContainer, view: GameView, media: ClassicMediaC
 		button.disabled = not player_map.acquired
 		button.tooltip_text = "Map not acquired." if button.disabled else player_map.name
 		button.button_pressed = selected != null and player_map.id == selected.id
+		button.set_meta("player_map_id", player_map.id)
 		button.custom_minimum_size.y = 38.0
 		if not button.disabled:
 			button.pressed.connect(_select_player_map.bind(route_body, view, media, player_map.id))
 		chooser.add_child(button)
-	if selected == null:
-		_add_empty_state(display, "No acquired maps", "Maps remain unavailable until the session records their acquisition.")
-	else:
-		var presenter := PlayerMapPresenter.new()
-		presenter.name = "AcquiredPlayerMap"
-		presenter.present(selected, media)
-		display.add_child(presenter)
+	var display_body := VBoxContainer.new()
+	display_body.name = "PlayerMapDisplayBody"
+	display_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	display_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	display.add_child(display_body)
+	_render_selected_player_map(display_body, selected, media)
 
 
 func _select_player_map(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog, player_map_id: String) -> void:
 	_selected_player_map_id = player_map_id
-	present(parent, view, media)
+	_selected_tab = 1
+	var chooser := parent.find_child("AcquiredMapChooser", true, false)
+	if chooser != null:
+		for child: Node in chooser.find_children("*", "Button", true, false):
+			(child as Button).button_pressed = String(child.get_meta("player_map_id", "")) == player_map_id
+	var display_body := parent.find_child("PlayerMapDisplayBody", true, false) as VBoxContainer
+	var selected: PlayerMapView
+	for player_map: PlayerMapView in view.acquired_player_maps:
+		if player_map.id == player_map_id:
+			selected = player_map
+			break
+	if display_body != null:
+		_clear(display_body)
+		_render_selected_player_map(display_body, selected, media)
+
+
+func _render_selected_player_map(parent: VBoxContainer, selected: PlayerMapView, media: ClassicMediaCatalog) -> void:
+	if selected == null:
+		_add_empty_state(parent, "No acquired maps", "Maps remain unavailable until the session records their acquisition.")
+		return
+	var presenter := PlayerMapPresenter.new()
+	presenter.name = "AcquiredPlayerMap"
+	presenter.present(selected, media)
+	parent.add_child(presenter)
 
 
 func _build_journal_tab(parent: VBoxContainer, view: GameView) -> void:
 	var columns := _columns(parent, "JournalWorkspace")
 	var browser := _pane(columns, "JournalEntryBrowser", "Journal Entries", 0.85)
 	var detail := _pane(columns, "JournalEntryDetail", "Selected Entry", 1.35)
+	var search := LineEdit.new()
+	search.name = "JournalSearch"
+	search.theme_type_variation = &"ClassicTheldrowLineEdit"
+	search.placeholder_text = "Search journal…"
+	search.clear_button_enabled = true
+	search.text = _journal_query
+	browser.add_child(search)
 	_journal_detail = VBoxContainer.new()
 	_journal_detail.name = "JournalEntryDetailBody"
 	_journal_detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -143,6 +181,7 @@ func _build_journal_tab(parent: VBoxContainer, view: GameView) -> void:
 	for entry: JournalEntryView in view.journal_entries:
 		var panel := PanelContainer.new()
 		panel.theme_type_variation = &"ClassicInset"
+		panel.set_meta("journal_search_text", ("%d %s" % [entry.message_id, entry.text]).to_lower())
 		rows.add_child(panel)
 		var record := VBoxContainer.new()
 		panel.add_child(record)
@@ -161,12 +200,22 @@ func _build_journal_tab(parent: VBoxContainer, view: GameView) -> void:
 		preview.max_lines_visible = 2
 		preview.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		record.add_child(preview)
+	search.text_changed.connect(_filter_journal_rows.bind(rows))
+	_filter_journal_rows(_journal_query, rows)
 	_refresh_journal_detail(view)
 
 
 func _select_journal_entry(view: GameView, message_id: int) -> void:
 	_selected_journal_message_id = message_id
 	_refresh_journal_detail(view)
+
+
+func _filter_journal_rows(query: String, rows: VBoxContainer) -> void:
+	_journal_query = query.strip_edges()
+	var needle := _journal_query.to_lower()
+	for child: Node in rows.get_children():
+		if child is Control and child.has_meta("journal_search_text"):
+			(child as Control).visible = needle.is_empty() or String(child.get_meta("journal_search_text")).contains(needle)
 
 
 func _refresh_journal_detail(view: GameView) -> void:

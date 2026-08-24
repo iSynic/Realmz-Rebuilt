@@ -266,7 +266,7 @@ func _test_save_preview_workspace() -> void:
 	assert_true(labels.any(func(text: String) -> bool: return text.contains("Day 2") and text.contains("land:4 12,9")), "valid save previews expose detached time and location facts")
 	assert_true(labels.any(func(text: String) -> bool: return text.contains("Mira, Borin")), "valid save previews expose detached party identity")
 	var load_selected := body.find_child("LoadSelectedSave", true, false) as Button; var current_row := body.find_child("SavePreview_quick_primary", true, false) as Button; var backup_row := body.find_child("SavePreview_quick_backup", true, false) as Button; var corrupt_row := body.find_child("SavePreview_broken_primary", true, false) as Button
-	assert_true(load_selected != null and current_row != null and backup_row != null and corrupt_row != null and body.find_child("DisplaySettingsPanel", true, false) != null and body.find_child("AudioSettingsPanel", true, false) != null and body.find_child("AccessibilitySettingsPanel", true, false) != null and body.find_child("ControlsSettingsPanel", true, false) != null and body.find_child("DiagnosticsSettingsPanel", true, false) != null and _buttons_in(body).any(func(button: Button) -> bool: return button.text == "Main Menu"), "system route separates save records and preference domains and keeps a visible Main Menu exit")
+	assert_true(load_selected != null and current_row != null and backup_row != null and corrupt_row != null and body.find_child("DisplaySettingsPanel", true, false) != null and body.find_child("AudioSettingsPanel", true, false) != null and body.find_child("AccessibilitySettingsPanel", true, false) != null and body.find_child("ControlsSettingsPanel", true, false) != null and body.find_child("DiagnosticsSettingsPanel", true, false) != null and [body.find_child("InterfaceScalePicker", true, false), body.find_child("TypographyPicker", true, false), body.find_child("WindowModePicker", true, false)].all(func(picker: Node) -> bool: return picker is OptionButton and (picker as OptionButton).theme_type_variation == &"ClassicTheldrowOptionButton") and _buttons_in(body).any(func(button: Button) -> bool: return button.text == "Main Menu"), "system route separates save records and preference domains, gives Display pickers the Rebuilt font role, and keeps a visible Main Menu exit")
 	current_row.pressed.emit(); load_selected.pressed.emit(); backup_row.pressed.emit(); load_selected.pressed.emit()
 	corrupt_row.pressed.emit()
 	assert_true(load_selected.disabled and load_selected.tooltip_text.contains("corrupt"), "a corrupt selected record remains visible with its exact disabled reason")
@@ -318,7 +318,7 @@ func _test_location_note_workspace() -> void:
 	assert_true(save.disabled, "the note editor prevents an oversized UTF-8 payload before submission")
 	var labels := _labels_in(body)
 	assert_true(labels.any(func(text: String) -> bool: return text.contains("A safe campsite.")), "saved location notes remain readable while only the current record is editable")
-	assert_true(labels.any(func(text: String) -> bool: return text.contains("Journal entry 4")), "the Journal route labels authored records by their stable source message identity")
+	var journal_search := body.find_child("JournalSearch", true, false) as LineEdit; journal_search.text = "mountain"; journal_search.text_changed.emit(journal_search.text); assert_true(journal_search.theme_type_variation == &"ClassicTheldrowLineEdit" and labels.any(func(text: String) -> bool: return text.contains("Journal entry 4")) and (body.find_child("JournalEntryRows", true, false) as VBoxContainer).get_children().filter(func(child: Node) -> bool: return child is Control and (child as Control).visible).size() == 1, "the Journal route labels authored records by their stable source message identity and filters its detached entries through a Rebuilt-font search field")
 	assert_true(labels.any(func(text: String) -> bool: return text.contains("A long authored entry")), "long authored journal text remains present in the scrollable workspace")
 	body.free()
 
@@ -338,7 +338,7 @@ func _test_player_map_workspace() -> void:
 	var view := session.view()
 	assert_equal([view.acquired_player_maps.size(), view.acquired_player_maps[0].id, view.acquired_player_maps[0].cells.size()], [1, definition.id, 100], "the detached player-map view derives its 320-pixel crop from authoritative topology")
 	assert_equal(view.player_map_menu_entries.size(), 4, "the detached menu retains every package player-map slot, not only acquired definitions")
-	var body := VBoxContainer.new()
+	var body := VBoxContainer.new(); (Engine.get_main_loop() as SceneTree).root.add_child(body)
 	var controller := MapsJournalWorkspaceController.new()
 	controller.present(body, view, media)
 	assert_not_null(body.find_child("AcquiredMapChooser", true, false), "the Journal route exposes a presentation-owned acquired-map chooser")
@@ -367,7 +367,7 @@ func _test_player_map_workspace() -> void:
 	var views_by_mode: Dictionary = {}
 	for player_map_view: PlayerMapView in complete_view.acquired_player_maps:
 		views_by_mode[player_map_view.mode] = player_map_view
-	assert_equal(views_by_mode.keys().size(), 4, "the fixture exercises land crop, dungeon crop, picture, and scrolling-text read models")
+	assert_equal(views_by_mode.keys().size(), 4, "the fixture exercises land crop, dungeon crop, picture, and scrolling-text read models"); controller.present(body, complete_view, media); var map_tabs := body.find_child("MapsNotesTabs", true, false) as TabContainer; var selected_tab_before := map_tabs.current_tab; var map_tabs_id := map_tabs.get_instance_id(); var complete_map_buttons := body.find_child("AcquiredMapChooser", true, false).find_children("*", "Button", true, false); (complete_map_buttons[1] as Button).pressed.emit(); map_tabs = body.find_child("MapsNotesTabs", true, false) as TabContainer; assert_true(map_tabs.get_instance_id() == map_tabs_id and map_tabs.current_tab == selected_tab_before and (complete_map_buttons[1] as Button).button_pressed, "choosing another acquired map updates its selected presenter in place and preserves the active Maps tab")
 	var picture_view := views_by_mode[PlayerMapDefinition.PICTURE] as PlayerMapView
 	assert_equal(picture_view.picture_rect, Rect2i(36, 24, 240, 160), "picture-backed maps preserve their authored destination rectangle")
 	assert_true(picture_view.party_marker_visible, "picture-backed maps retain source playable-map identity for Castle's party marker")
