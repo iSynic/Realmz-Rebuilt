@@ -5,6 +5,7 @@ var package_media: MediaSource
 var character_media: MediaSource
 var application_media: ApplicationMediaCatalog
 var _image_textures: Dictionary = {}
+var _audio_streams: Dictionary = {}
 
 
 func _init(package_catalog: MediaSource, application_catalog: ApplicationMediaCatalog, character_catalog: MediaSource = null) -> void:
@@ -165,7 +166,11 @@ func audio_stream_by_resource(resource_type: String, resource_id: int) -> AudioS
 		return null
 	if application_media != null and application_media.owns_asset(asset):
 		return application_media.audio_stream(asset)
-	return _decode_stream(asset, package_media.read_bytes(asset)) if package_media != null else null
+	if _audio_streams.has(asset.id):
+		return _audio_streams[asset.id] as AudioStream
+	var stream := _decode_stream(asset, read_bytes(asset))
+	_audio_streams[asset.id] = stream
+	return stream
 
 
 static func _decode_stream(asset: MediaAsset, bytes: PackedByteArray) -> AudioStream:
