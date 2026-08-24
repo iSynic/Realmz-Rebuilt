@@ -37,7 +37,8 @@ static func build(projection: DungeonGeometryProjection, atlas: Texture2D) -> Ar
 		else:
 			_add_floor_and_ceiling(surface, center, cell.coordinate, color)
 		if cell.features.has(&"door") and offset != Vector2i.ZERO:
-			_add_doorway(surface, center, cell.feature_orientation(&"door") == &"vertical", false, color, false)
+			var vertical_door := cell.feature_orientation(&"door") == &"vertical"
+			_add_doorway(surface, cell_door_center(offset, vertical_door), vertical_door, false, color, false)
 		for direction: StringName in DungeonGeometryProjection.DIRECTIONS:
 			var edge := projection.edge_at(cell.coordinate, direction)
 			var neighbor := projection.cell_at(cell.coordinate + DungeonGeometryProjection.direction_vector(direction))
@@ -73,6 +74,15 @@ static func boundary_allows_movement(projection: DungeonGeometryProjection, sour
 	var target := projection.cell_at(source + DungeonGeometryProjection.direction_vector(direction))
 	var entry_edge := projection.edge_at(target.coordinate, direction) if target != null else null
 	return target != null and target.passable and entry_edge != null and entry_edge.passable
+
+
+static func cell_door_center(offset: Vector2i, vertical: bool) -> Vector3:
+	var center := Vector3(float(offset.x), 0.0, float(offset.y))
+	if vertical and offset.x != 0:
+		center.x -= float(signi(offset.x)) * 0.5
+	elif not vertical and offset.y != 0:
+		center.z -= float(signi(offset.y)) * 0.5
+	return center
 
 
 static func _create_material(atlas: Texture2D) -> ShaderMaterial:
