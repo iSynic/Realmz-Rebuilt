@@ -52,19 +52,13 @@ func build(request: InteractionRequest) -> void:
 	if not _characters.is_empty():
 		_selected_character_id = _characters[0].id
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
-	custom_minimum_size = Vector2(0.0, 500.0)
+	custom_minimum_size = Vector2(0.0, 500.0) if _compact else Vector2.ZERO
 	add_theme_constant_override("separation", 6)
 	_build_header()
 	_build_workspace()
 	_build_footer()
-	var visible_stock := _visible_stock()
-	if not visible_stock.is_empty():
-		_select_stock(visible_stock[0].stock_key)
-	elif not _characters.is_empty() and not _characters[0].inventory.is_empty():
-		_select_item(_characters[0].id, _characters[0].inventory[0].instance_id)
-	else:
-		_refresh_inventory()
-		_refresh_inspector()
+	_refresh_inventory()
+	_refresh_inspector()
 
 
 func _build_header() -> void:
@@ -94,9 +88,7 @@ func _build_workspace() -> void:
 	else:
 		columns.name = "ShopExchangeLedgers"
 		_build_stock_pane(columns)
-		var divider := VSeparator.new()
-		divider.name = "ShopExchangeDivider"
-		columns.add_child(divider)
+		_build_control_spine(columns)
 		_build_pack_pane(columns)
 		_build_inspector_pane(self, false)
 
@@ -118,22 +110,23 @@ func _build_compact_browser(parent: HBoxContainer) -> void:
 	stock.name = "Stock"
 	stock.add_theme_constant_override("separation", 4)
 	tabs.add_child(stock)
-	_build_stock_content(stock)
+	_build_stock_content(stock, true)
 	var pack := VBoxContainer.new()
 	pack.name = "Pack"
 	pack.add_theme_constant_override("separation", 4)
 	tabs.add_child(pack)
-	_build_pack_content(pack)
+	_build_pack_content(pack, true)
 
 
 func _build_stock_pane(parent: HBoxContainer) -> void:
 	var content := _exchange_pane(parent, "ShopStockColumn", "Shop Stock", &"shop-inventory-item", "shop")
 	content.get_parent().connect("item_dropped", _drop_on_shop)
-	_build_stock_content(content)
+	_build_stock_content(content, false)
 
 
-func _build_stock_content(content: VBoxContainer) -> void:
-	_build_category_filters(content)
+func _build_stock_content(content: VBoxContainer, include_controls: bool) -> void:
+	if include_controls:
+		_build_category_filters(content)
 	var scroll := _scroll("ShopStockScroll")
 	content.add_child(scroll)
 	_stock_rows = VBoxContainer.new()
@@ -154,7 +147,6 @@ func _refresh_stock() -> void:
 	if visible.is_empty():
 		_stock_rows.add_child(_label("No stock is available in this category.", MUTED))
 		return
-	var first_button: BaseButton
 	for entry: InteractionRequestValue.ShopStock in visible:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 5)
@@ -169,6 +161,8 @@ func _refresh_stock() -> void:
 		button.clip_text = true
 		button.custom_minimum_size.y = 46.0
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.theme_type_variation = &"ClassicItemLedgerButton"
+		button.focus_mode = Control.FOCUS_NONE
 		button.toggle_mode = true
 		button.button_group = _stock_group
 		button.button_pressed = _selected_stock != null and _selected_stock.stock_key == entry.stock_key
@@ -176,20 +170,17 @@ func _refresh_stock() -> void:
 		button.configure_drag({"kind": &"shop-stock-item", "sourceId": "shop", "stockKey": entry.stock_key})
 		row.add_child(button)
 		_stock_rows.add_child(row)
-		if first_button == null:
-			first_button = button
-	if first_button != null and _selected_stock == null:
-		first_button.set_pressed_no_signal(true)
 
 
 func _build_pack_pane(parent: HBoxContainer) -> void:
 	var content := _exchange_pane(parent, "SelectedInventoryColumn", "Adventurer Pack", &"shop-stock-item", _selected_character_id)
 	content.get_parent().connect("item_dropped", _drop_on_character)
-	_build_pack_content(content)
+	_build_pack_content(content, false)
 
 
-func _build_pack_content(content: VBoxContainer) -> void:
-	content.add_child(_build_shopper_selector())
+func _build_pack_content(content: VBoxContainer, include_controls: bool) -> void:
+	if include_controls:
+		content.add_child(_build_shopper_selector())
 	var scroll := _scroll("InventoryScroll")
 	content.add_child(scroll)
 	_inventory_rows = VBoxContainer.new()
@@ -203,7 +194,7 @@ func _build_pack_content(content: VBoxContainer) -> void:
 func _build_inspector_pane(parent: Container, compact: bool) -> void:
 	var content := _pane(parent, "ItemInspectorRail", "Selected Item", 1.05)
 	if not compact:
-		(content.get_parent() as PanelContainer).custom_minimum_size.y = 104.0
+		(content.get_parent() as PanelContainer).custom_minimum_size.y = 60.0
 		(content.get_parent() as PanelContainer).size_flags_vertical = Control.SIZE_FILL
 	_inspector_facts = VBoxContainer.new()
 	_inspector_facts.name = "InspectorFacts"
@@ -238,7 +229,8 @@ func _select_character(character_id: String) -> void:
 	_selected_stock = null
 	_selected_item = null
 	for id: Variant in _shopper_buttons:
-		(_shopper_buttons[id] as BaseButton).set_pressed_no_signal(String(id) == character_id)
+		var button := _shopper_buttons[id] as BaseButton
+		button.set_pressed_no_signal(String(button.get_meta(&"character_id", "")) == character_id)
 	_refresh_inventory()
 	_refresh_inspector()
 
@@ -255,8 +247,7 @@ func _select_stock(stock_key: String) -> void:
 
 func _select_category(category: StringName) -> void:
 	_selected_category = category
-	var visible := _visible_stock()
-	_selected_stock = visible[0] if not visible.is_empty() else null
+	_selected_stock = null
 	_selected_item = null
 	for id: Variant in _category_buttons:
 		(_category_buttons[id] as BaseButton).set_pressed_no_signal(StringName(id) == category)
@@ -303,6 +294,8 @@ func _refresh_inventory() -> void:
 		button.clip_text = true
 		button.custom_minimum_size.y = 46.0
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.theme_type_variation = &"ClassicItemLedgerButton"
+		button.focus_mode = Control.FOCUS_NONE
 		button.toggle_mode = true
 		button.button_group = _inventory_group
 		button.pressed.connect(_select_item.bind(character.id, item.instance_id))
@@ -414,6 +407,7 @@ func _build_category_filters(parent: VBoxContainer) -> void:
 		var button := ClassicBitmapButton.new()
 		button.name = "ShopFilter_%s" % category_id
 		button.configure(definition, 1)
+		button.custom_minimum_size.y = 58.0
 		button.button_group = _category_group
 		button.button_pressed = category_id == _selected_category
 		button.command_requested.connect(func(_command_id: StringName) -> void: _select_category(category_id))
@@ -421,28 +415,89 @@ func _build_category_filters(parent: VBoxContainer) -> void:
 		row.add_child(button)
 
 
-func _build_shopper_selector() -> PanelContainer:
+func _build_control_spine(parent: HBoxContainer) -> void:
+	var panel := PanelContainer.new()
+	panel.name = "ShopExchangeDivider"
+	panel.theme_type_variation = &"ClassicInset"
+	panel.custom_minimum_size.x = 170.0
+	parent.add_child(panel)
+	var spine := VBoxContainer.new()
+	spine.name = "ShopControlSpine"
+	spine.add_theme_constant_override("separation", 4)
+	panel.add_child(spine)
+	var filters := VBoxContainer.new()
+	filters.name = "ShopCategoryFilters"
+	filters.add_theme_constant_override("separation", 2)
+	spine.add_child(filters)
+	for filter: Dictionary in STOCK_FILTERS:
+		var category_id := StringName(filter["id"])
+		var definition := ClassicUiAssetCatalog.definition(filter["asset"]).duplicate(true)
+		definition["id"] = StringName("shop.category.%s" % category_id)
+		definition["label"] = filter["label"]
+		definition["tooltip"] = "Show %s" % filter.get("tooltip", filter["label"])
+		definition["group"] = &"shop-category"
+		definition["toggle_mode"] = true
+		if filter.has("region"):
+			definition["art_region"] = filter["region"]
+		else:
+			definition["art_clear_regions"] = [[0, 34, 50, 16]]
+		var button := ClassicBitmapButton.new()
+		button.name = "ShopFilter_%s" % category_id
+		button.configure(definition, 1)
+		button.button_group = _category_group
+		button.button_pressed = category_id == _selected_category
+		button.command_requested.connect(func(_command_id: StringName) -> void: _select_category(category_id))
+		_category_buttons[category_id] = button
+		filters.add_child(button)
+	var spacer := Control.new()
+	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	spine.add_child(spacer)
+	spine.add_child(_build_shopper_selector(true))
+
+
+func _build_shopper_selector(duplicate_columns: bool = false) -> PanelContainer:
 	var panel := PanelContainer.new()
 	panel.name = "ShopperPortraitSelector"
 	panel.theme_type_variation = &"ClassicInset"
+	if duplicate_columns:
+		var pair := HBoxContainer.new()
+		pair.name = "ShopPortraitMatrix"
+		pair.add_theme_constant_override("separation", 4)
+		panel.add_child(pair)
+		for side: String in ["Buyer", "Seller"]:
+			var group := GridContainer.new()
+			group.name = "Shop%sPortraits" % side
+			group.columns = 2
+			group.add_theme_constant_override("h_separation", 2)
+			group.add_theme_constant_override("v_separation", 2)
+			pair.add_child(group)
+			for character: InteractionRequestValue.ServiceCharacter in _characters:
+				group.add_child(_shopper_portrait(character, side))
+		return panel
 	var row := GridContainer.new()
-	row.columns = mini(3, _characters.size()) if _compact else maxi(1, _characters.size())
+	row.name = "ShopPortraitMatrix"
+	row.columns = mini(3, _characters.size())
 	row.add_theme_constant_override("h_separation", 3)
 	panel.add_child(row)
 	for character: InteractionRequestValue.ServiceCharacter in _characters:
-		var button := Button.new()
-		button.name = "Shopper_%s" % character.id
-		button.icon = _portrait_texture(character.portrait_id)
-		button.expand_icon = true
-		button.toggle_mode = true
-		button.button_pressed = character.id == _selected_character_id
-		button.custom_minimum_size = Vector2(52.0, 44.0)
-		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		button.tooltip_text = "Shop as %s using party funds" % character.name
-		button.pressed.connect(_select_character.bind(character.id))
-		_shopper_buttons[character.id] = button
-		row.add_child(button)
+		row.add_child(_shopper_portrait(character, "Shopper"))
 	return panel
+
+
+func _shopper_portrait(character: InteractionRequestValue.ServiceCharacter, side: String) -> Button:
+	var button := Button.new()
+	button.name = "Shop%s_%s" % [side, character.id]
+	button.icon = _portrait_texture(character.portrait_id)
+	button.expand_icon = true
+	button.toggle_mode = true
+	button.button_pressed = character.id == _selected_character_id
+	button.custom_minimum_size = Vector2(34.0, 30.0) if side != "Shopper" else Vector2(52.0, 42.0)
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.tooltip_text = "%s: %s using party funds" % [side, character.name]
+	button.set_meta(&"character_id", character.id)
+	button.pressed.connect(_select_character.bind(character.id))
+	_shopper_buttons[button.name] = button
+	return button
 
 
 func _visible_stock() -> Array[InteractionRequestValue.ShopStock]:

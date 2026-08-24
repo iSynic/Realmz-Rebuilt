@@ -122,3 +122,7 @@ func body_control() -> VBoxContainer:
 
 func context_action_control() -> Container:
 	return find_child("WorkspaceContextActions", true, false) as Container
+
+
+func route_action_control() -> Button:
+	return _back_action if _back_action != null else find_child("RouteBackAction", true, false) as Button

@@ -140,6 +140,7 @@ func _capture_gallery() -> void:
 		member_state.caste_id = gallery_view.party_members[0].caste_id
 		member_state.armor = member_index
 		gallery_view.party_members.append(CHARACTER_VIEW_SCRIPT.new(member_state, _application.get("_active_content")))
+	if gallery_view.party_members.size() == 6 and gallery_view.party_members[0].items.size() > 1: var left_trade_item: ItemView = gallery_view.party_members[0].items[0]; var right_trade_item: ItemView = gallery_view.party_members[0].items.pop_back(); gallery_view.party_members[1].items.append(right_trade_item); left_trade_item.actions.trade = ActionAvailabilityView.new(&"trade_item", true); left_trade_item.actions.trade_targets = [ItemTransferTargetView.new(gallery_view.party_members[1].id, gallery_view.party_members[1].name, true, "", 0, left_trade_item.weight, 1000)]; right_trade_item.actions.trade = ActionAvailabilityView.new(&"trade_item", true); right_trade_item.actions.trade_targets = [ItemTransferTargetView.new(gallery_view.party_members[0].id, gallery_view.party_members[0].name, true, "", 0, right_trade_item.weight, 1000)]
 	if gallery_view.party_members.size() > 4:
 		var gallery_spells: Array[SpellView] = []
 		for spell_data: Dictionary in [
@@ -171,12 +172,12 @@ func _capture_gallery() -> void:
 		var cancel_operation := _button_named(_router, "Cancel")
 		if cancel_operation != null:
 			cancel_operation.pressed.emit(); await _settle()
-	var trade_button := _button_named(_router, "Trade")
-	if trade_button != null and not trade_button.disabled:
-		trade_button.pressed.emit(); await _settle(); await _capture("wide-inventory-trade-1280x720")
+	var trade_button := _base_button_with_tooltip(_router, "Open the two-pack Trade workspace")
+	if trade_button is ClassicBitmapButton and not trade_button.disabled:
+		(trade_button as ClassicBitmapButton).command_requested.emit(&"inventory.action.trade"); await _settle(); await _capture("wide-inventory-trade-1280x720")
 	await _resize(Vector2i(800, 600))
 	await _capture("classic-inventory-trade-800x600")
-	var cancel_trade := _button_named(_router, "Cancel")
+	var cancel_trade := _button_named(_router, "Items")
 	if cancel_trade != null:
 		cancel_trade.pressed.emit(); await _settle()
 	await _capture("classic-dense-inventory-800x600")

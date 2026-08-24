@@ -488,7 +488,8 @@ func _render_screen(notify_route_change: bool = false) -> void:
 		setup_controller.ensure_appearance_textures()
 	var vault_back_label := "Back to party setup" if _vault_return_to_setup else "Back to campaigns" if _vault_return_to_campaign else "Back"
 	var context_actions := _workspace_view.context_action_control() if _workspace_view != null and _screen_id == &"spells" else null
-	_workspace_presenter.present(_screen_id, _body, setup_controller.appearance_textures(), vault_back_label, context_actions)
+	var navigation_action := _workspace_view.route_action_control() if _workspace_view != null and _screen_id == &"inventory" else null
+	_workspace_presenter.present(_screen_id, _body, setup_controller.appearance_textures(), vault_back_label, context_actions, navigation_action)
 	if _workspace_view != null:
 		_workspace_view.apply_route_chrome()
 	if _screen_id in [&"exploration", &"combat"]:

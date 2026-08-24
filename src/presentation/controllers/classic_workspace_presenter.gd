@@ -86,6 +86,16 @@ func _init() -> void:
 		if owner != null:
 			owner.refresh_requested.emit()
 	)
+	_inventory_controller.route_requested.connect(func(screen_id: StringName) -> void:
+		var owner := owner_ref.get_ref() as ClassicWorkspacePresenter
+		if owner != null:
+			owner.route_requested.emit(screen_id)
+	)
+	_inventory_controller.back_requested.connect(func() -> void:
+		var owner := owner_ref.get_ref() as ClassicWorkspacePresenter
+		if owner != null:
+			owner.back_requested.emit()
+	)
 	_services_controller.intent_submitted.connect(func(intent: PlayerIntent) -> void:
 		var owner := owner_ref.get_ref() as ClassicWorkspacePresenter
 		if owner != null:
@@ -193,7 +203,7 @@ func sync_route_audio(screen_id: StringName) -> void:
 		sound_requested.emit(SWAP_DONE_SOUND_ID, false, false)
 
 
-func present(screen_id: StringName, body: Container, appearance_textures: Dictionary, vault_back_label: String, context_actions: Container = null) -> void:
+func present(screen_id: StringName, body: Container, appearance_textures: Dictionary, vault_back_label: String, context_actions: Container = null, navigation_action: BaseButton = null) -> void:
 	_clear(body)
 	if context_actions != null:
 		_clear(context_actions)
@@ -211,6 +221,8 @@ func present(screen_id: StringName, body: Container, appearance_textures: Dictio
 			_character_controller.present_vault(body, _view, appearance_textures, _settings.text_scale, vault_back_label, _media)
 		&"inventory":
 			_inventory_controller.present(body, _view, _media, _settings.text_scale)
+			if navigation_action != null:
+				navigation_action.visible = not _inventory_controller.trade_mode_open()
 		&"spells":
 			_spells_controller.present(body, _view, _media, _settings.text_scale, context_actions)
 		&"services":
