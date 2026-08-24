@@ -130,7 +130,7 @@ func _show_mode(mode: StringName) -> void:
 func _show_choices() -> void:
 	var grid := GridContainer.new()
 	grid.name = "EncounterChoiceGrid"
-	grid.columns = 2 if _choice_actions.size() > 1 else 1
+	grid.columns = 1
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	grid.add_theme_constant_override("h_separation", 6)
 	grid.add_theme_constant_override("v_separation", 5)

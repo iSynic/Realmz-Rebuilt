@@ -17,7 +17,7 @@ func build(request: InteractionRequest) -> void:
 		&"encounter_choice", &"scenario_choice":
 			var body := request.body as InteractionRequest.ChoiceRequestBody
 			if body == null: return
-			var grid := _choice_grid(2 if body.options.size() > 1 else 1, true)
+			var grid := _choice_grid(1, true)
 			for index: int in body.options.size():
 				var option := body.options[index]
 				var label := option.label if not option.label.is_empty() else "Option %d" % (index + 1)

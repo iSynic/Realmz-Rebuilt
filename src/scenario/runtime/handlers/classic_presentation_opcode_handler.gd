@@ -72,16 +72,14 @@ func _show_message(action: ClassicActionDefinition, request_id: String) -> Scena
 
 
 func _show_random_message(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
-	var message_ids: Array[int] = []
-	for value: int in action.extra_code:
-		if value != 0 and _content.message_by_id(value) != null:
-			message_ids.append(value)
-	if message_ids.is_empty() and _content.message_by_id(action.operand_id) != null:
-		message_ids.append(action.operand_id)
-	if message_ids.is_empty():
-		return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic opcode 19 has no available message.")
-	var selected_id := message_ids[_rng.draw_between(0, message_ids.size() - 1, &"classic.random-message")]
+	var low_id := action.extra_code[0] if action.extra_code.size() > 0 else action.operand_id
+	var high_id := action.extra_code[1] if action.extra_code.size() > 1 else low_id
+	if high_id < low_id:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_message_range", "Classic opcode 19 has an inverted message range.")
+	var selected_id := _rng.draw_between(low_id, high_id, &"classic.random-message")
 	var message := _content.message_by_id(selected_id)
+	if message == null:
+		return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic opcode 19 has no available message.")
 	return ScenarioRuntimeOperationResult.completed(selected_id, [DomainEvent.new(&"message_shown", {
 		"messageId": selected_id,
 		"text": message.text,

@@ -106,8 +106,8 @@ func _test_public_interaction_matrix(content: RealmzContent) -> void:
 	assert_equal(wrong.error_code, &"invalid_interaction_response", "text continuation rejects an unrelated response shape")
 	var acknowledged := api.resume_classic(text.continuation, InteractionResponse.acknowledge(text.interaction), "text.resume")
 	assert_equal(acknowledged.state, ScenarioRuntimeOperationResult.State.COMPLETED, "acknowledgement releases the message operation")
-	var negative := api.execute_classic(ClassicActionDefinition.new(0, 1, 1, -1, false, []), "text.negative")
-	assert_equal([negative.state, negative.events[0].payload.get("classicClick")], [ScenarioRuntimeOperationResult.State.COMPLETED, false], "negative message publishes without inventing a click boundary")
+	var negative := api.execute_classic(ClassicActionDefinition.new(0, 1, 1, -1, false, []), "text.negative"); assert_equal([negative.state, negative.events[0].payload.get("classicClick")], [ScenarioRuntimeOperationResult.State.COMPLETED, false], "negative message publishes without inventing a click boundary")
+	var random_text := api.execute_classic(ClassicActionDefinition.new(0, 19, 19, 0, false, [1, 3, 0, 0, 0]), "text.random"); assert_equal(random_text.events[0].payload.get("messageId"), 2, "opcode 19 treats Extra Code as Castle's inclusive low/high message range")
 
 
 func _test_public_classic_choice_control_flow(content: RealmzContent) -> void:
