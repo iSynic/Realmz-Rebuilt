@@ -61,7 +61,7 @@ func resolve_character_group_spell(caster: CharacterState, character_targets: Ar
 	for index: int in monster_targets.size():
 		var target := monster_targets[index]
 		var definition := monster_definitions[index]
-		result.append_target(target.id, &"monster", _resolve_character_spell_monster_target(caster.level, target, definition, spell, power_level, cast_level, damage, duration, 0, rng))
+		result.append_target(target.id, &"monster", _resolve_character_spell_monster_target(caster, target, definition, spell, power_level, cast_level, damage, duration, 0, rng))
 	return result
 
 
@@ -103,9 +103,9 @@ func _resolve_character_selection_sequence(caster: CharacterState, selections: A
 	return result
 
 
-func _resolve_character_spell_monster_target(caster_level: int, target: MonsterState, target_definition: MonsterDefinition, spell: SpellDefinition, power_level: int, cast_level: int, damage: int, duration: int, spell_cost: int, rng: RealmzRng) -> SpellResolution:
+func _resolve_character_spell_monster_target(caster: CharacterState, target: MonsterState, target_definition: MonsterDefinition, spell: SpellDefinition, power_level: int, cast_level: int, damage: int, duration: int, spell_cost: int, rng: RealmzRng) -> SpellResolution:
 	var rolled_damage := damage
-	var resisted := _monster_resists(caster_level, target, target_definition, spell, power_level, cast_level, rng)
+	var resisted := _monster_resists(caster.level, target, target_definition, spell, power_level, cast_level, rng)
 	if resisted:
 		return SpellResolution.new(true, true, false, spell_cost, 0, duration)
 	if absi(spell.special) == 57:
@@ -132,12 +132,17 @@ func _resolve_character_spell_monster_target(caster_level: int, target: MonsterS
 		damage = 10 + target.current_health
 	if absi(spell.special) == 59:
 		return _restore_monster_spell_points(target, damage, duration, spell_cost, saved)
+	var traitor_before := target.traitor
+	if ClassicSpellCapabilityCatalog.is_combat_charm_spell(spell):
+		target.traitor = caster.traitor
+		target.target_id = ""
 	if rolled_damage != 0 and damage == 0:
 		damage = 1
 	var applied_condition := _apply_combat_condition(target.conditions, spell, duration, true)
 	target.current_health -= damage
 	var result := SpellResolution.new(true, false, saved, spell_cost, damage, duration, target.current_health <= 0)
 	result.applied_condition = applied_condition
+	_record_allegiance_change(result, traitor_before, target.traitor)
 	return result
 
 
@@ -166,6 +171,9 @@ func _resolve_character_spell_character_target(caster: CharacterState, target: C
 		damage = 10 + target.current_health
 	if absi(spell.special) == 59:
 		return _restore_character_spell_points(target, damage, duration, 0, saved)
+	var traitor_before := target.traitor
+	if ClassicSpellCapabilityCatalog.is_combat_charm_spell(spell):
+		target.traitor = caster.traitor
 	if rolled_damage != 0 and damage == 0:
 		damage = 1
 	var applied_condition := _apply_combat_condition(target.conditions, spell, duration, false)
@@ -173,6 +181,7 @@ func _resolve_character_spell_character_target(caster: CharacterState, target: C
 	target.current_health -= damage
 	var result := SpellResolution.new(true, false, saved, 0, damage, duration, target.current_health <= 0)
 	result.applied_condition = applied_condition
+	_record_allegiance_change(result, traitor_before, target.traitor)
 	return result
 
 
@@ -326,18 +335,18 @@ func _resolve_monster_selection_sequence(caster: MonsterState, caster_definition
 func _resolve_character_selection(caster: CharacterState, selection: SpellTargetSelection, spell: SpellDefinition, power_level: int, cast_level: int, damage: int, duration: int, spell_cost: int, rng: RealmzRng) -> SpellResolution:
 	if selection.kind == &"character":
 		return _resolve_character_spell_character_target(caster, selection.character, spell, power_level, cast_level, damage, duration, rng)
-	return _resolve_character_spell_monster_target(caster.level, selection.monster, selection.monster_definition, spell, power_level, cast_level, damage, duration, spell_cost, rng)
+	return _resolve_character_spell_monster_target(caster, selection.monster, selection.monster_definition, spell, power_level, cast_level, damage, duration, spell_cost, rng)
 
 
 func _resolve_monster_selection(caster: MonsterState, selection: SpellTargetSelection, spell: SpellDefinition, power_level: int, cast_level: int, damage: int, duration: int, spell_cost: int, rng: RealmzRng, save_tag: StringName) -> SpellResolution:
 	if selection.kind == &"character":
-		return _resolve_monster_spell_character_target(caster.hit_dice, selection.character, spell, power_level, cast_level, damage, duration, spell_cost, rng, save_tag)
-	return _resolve_monster_spell_monster_target(caster.hit_dice, selection.monster, selection.monster_definition, spell, power_level, cast_level, damage, duration, spell_cost, rng, save_tag)
+		return _resolve_monster_spell_character_target(caster, selection.character, spell, power_level, cast_level, damage, duration, spell_cost, rng, save_tag)
+	return _resolve_monster_spell_monster_target(caster, selection.monster, selection.monster_definition, spell, power_level, cast_level, damage, duration, spell_cost, rng, save_tag)
 
 
-func _resolve_monster_spell_character_target(caster_level: int, target: CharacterState, spell: SpellDefinition, power_level: int, cast_level: int, damage: int, duration: int, spell_cost: int, rng: RealmzRng, save_tag: StringName) -> SpellResolution:
+func _resolve_monster_spell_character_target(caster: MonsterState, target: CharacterState, spell: SpellDefinition, power_level: int, cast_level: int, damage: int, duration: int, spell_cost: int, rng: RealmzRng, save_tag: StringName) -> SpellResolution:
 	var rolled_damage := damage
-	var resisted := character_resists(caster_level, target, spell, power_level, cast_level, rng)
+	var resisted := character_resists(caster.hit_dice, target, spell, power_level, cast_level, rng)
 	if resisted:
 		return SpellResolution.new(true, true, false, spell_cost, 0, duration)
 	if absi(spell.special) == 57:
@@ -360,6 +369,9 @@ func _resolve_monster_spell_character_target(caster_level: int, target: Characte
 		damage = 10 + target.current_health
 	if absi(spell.special) == 59:
 		return _restore_character_spell_points(target, damage, duration, spell_cost, saved)
+	var traitor_before := target.traitor
+	if ClassicSpellCapabilityCatalog.is_combat_charm_spell(spell):
+		target.traitor = caster.traitor
 	if rolled_damage != 0 and damage == 0:
 		damage = 1
 	var applied_condition := _apply_combat_condition(target.conditions, spell, duration, false)
@@ -367,12 +379,13 @@ func _resolve_monster_spell_character_target(caster_level: int, target: Characte
 	target.current_health -= damage
 	var result := SpellResolution.new(true, false, saved, spell_cost, damage, duration, target.current_health <= 0)
 	result.applied_condition = applied_condition
+	_record_allegiance_change(result, traitor_before, target.traitor)
 	return result
 
 
-func _resolve_monster_spell_monster_target(caster_level: int, target: MonsterState, target_definition: MonsterDefinition, spell: SpellDefinition, power_level: int, cast_level: int, damage: int, duration: int, spell_cost: int, rng: RealmzRng, save_tag: StringName) -> SpellResolution:
+func _resolve_monster_spell_monster_target(caster: MonsterState, target: MonsterState, target_definition: MonsterDefinition, spell: SpellDefinition, power_level: int, cast_level: int, damage: int, duration: int, spell_cost: int, rng: RealmzRng, save_tag: StringName) -> SpellResolution:
 	var rolled_damage := damage
-	var resisted := _monster_resists(caster_level, target, target_definition, spell, power_level, cast_level, rng)
+	var resisted := _monster_resists(caster.hit_dice, target, target_definition, spell, power_level, cast_level, rng)
 	if resisted:
 		return SpellResolution.new(true, true, false, spell_cost, 0, duration)
 	if absi(spell.special) == 57:
@@ -398,12 +411,17 @@ func _resolve_monster_spell_monster_target(caster_level: int, target: MonsterSta
 		damage = 10 + target.current_health
 	if absi(spell.special) == 59:
 		return _restore_monster_spell_points(target, damage, duration, spell_cost, saved)
+	var traitor_before := target.traitor
+	if ClassicSpellCapabilityCatalog.is_combat_charm_spell(spell):
+		target.traitor = caster.traitor
+		target.target_id = ""
 	if rolled_damage != 0 and damage == 0:
 		damage = 1
 	var applied_condition := _apply_combat_condition(target.conditions, spell, duration, true)
 	target.current_health -= damage
 	var result := SpellResolution.new(true, false, saved, spell_cost, damage, duration, target.current_health <= 0)
 	result.applied_condition = applied_condition
+	_record_allegiance_change(result, traitor_before, target.traitor)
 	return result
 
 
@@ -478,6 +496,12 @@ static func _apply_combat_movement_effect(target: CharacterState, spell: SpellDe
 			target.movement = 0
 		3, 7:
 			target.movement /= 2
+
+
+static func _record_allegiance_change(result: SpellResolution, before: bool, after: bool) -> void:
+	result.target_traitor_before = before
+	result.target_traitor_after = after
+	result.allegiance_changed = before != after
 
 
 static func _selection_reflects(selection: SpellTargetSelection, rng: RealmzRng, tag: StringName) -> bool:

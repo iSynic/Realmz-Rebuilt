@@ -372,6 +372,9 @@ func _process_monster_cast(state: GameState, content: RealmzContent, monster: Mo
 				payload["clearedCondition"] = resolution.cleared_condition
 			if resolution.applied_condition >= 0:
 				payload["appliedCondition"] = resolution.applied_condition
+			if resolution.allegiance_changed:
+				payload["traitorBefore"] = resolution.target_traitor_before
+				payload["traitorAfter"] = resolution.target_traitor_after
 			if area_shape > 0:
 				payload["areaCenter"] = [area_center.x, area_center.y]
 				payload["areaShape"] = area_shape
@@ -440,7 +443,8 @@ static func _monster_spell_unavailable_reason(spell: SpellDefinition) -> String:
 	var condition_cure := ClassicSpellCapabilityCatalog.is_combat_condition_cure_spell(spell)
 	var condition_effect := ClassicSpellCapabilityCatalog.is_combat_condition_effect_spell(spell)
 	var spell_point_restore := ClassicSpellCapabilityCatalog.is_combat_spell_point_restore_spell(spell)
-	if spell.cannot == 4 and not healing_spell and not condition_cure and not condition_effect and not spell_point_restore:
+	var charm_spell := ClassicSpellCapabilityCatalog.is_combat_charm_spell(spell)
+	if spell.cannot == 4 and not healing_spell and not condition_cure and not condition_effect and not spell_point_restore and not charm_spell:
 		return "monster-spell-friendly-target-unresolved"
 	return ""
 

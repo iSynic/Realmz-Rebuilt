@@ -695,6 +695,9 @@ func _commit_character_multi_spell(state: GameState, content: RealmzContent, cas
 			payload["clearedCondition"] = resolution.cleared_condition
 		if resolution.applied_condition >= 0:
 			payload["appliedCondition"] = resolution.applied_condition
+		if resolution.allegiance_changed:
+			payload["traitorBefore"] = resolution.target_traitor_before
+			payload["traitorAfter"] = resolution.target_traitor_after
 		_append_spell_presentation(payload, spell, index, group.resolutions.size(), resolution.target_defeated)
 		if not item_instance_id.is_empty():
 			payload["itemInstanceId"] = item_instance_id

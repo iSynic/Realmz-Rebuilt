@@ -290,6 +290,8 @@ func _best_party_spell(state: GameState, content: RealmzContent, actor: Characte
 			continue
 		if _flow()._is_summon_spell(spell):
 			best = _prefer(best, _best_summon(state, content, actor, spell, option.power))
+		elif ClassicSpellCapabilityCatalog.is_combat_charm_spell(spell):
+			best = _prefer(best, _best_charm(state, content, actor, spell, option.power))
 		elif MagicRules.is_condition_cure_spell(spell):
 			best = _prefer(best, _best_condition_cure(state, content, actor, spell, option.power))
 		elif ClassicSpellCapabilityCatalog.is_combat_condition_effect_spell(spell):
@@ -300,6 +302,16 @@ func _best_party_spell(state: GameState, content: RealmzContent, actor: Characte
 			best = _prefer(best, _best_spell_point_restore(state, content, actor, spell, option.power))
 		elif spell.target_type in [0, 1, 3, 4, 6, 9, 10, 12]:
 			best = _prefer(best, _best_damage_spell(state, content, actor, spell, option, actors_by_cell, area_placement_cache))
+	return best
+
+
+func _best_charm(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, power: int) -> Dictionary:
+	var best: Dictionary = {}
+	for target_id: String in _opposed_actor_ids(state, actor):
+		if _target_reflects(state, target_id) or _target_hard_immune(state, content, target_id, spell) or not _flow().probe_character_spell_cast(state, content, actor.id, target_id, spell.id, power).allowed:
+			continue
+		var score := 780 + _target_health(state, target_id) * 4 - absi(spell.cost * power) * 3
+		best = _prefer(best, {"action": &"cast_spell", "spellId": spell.id, "power": power, "targetId": target_id, "score": score})
 	return best
 
 
