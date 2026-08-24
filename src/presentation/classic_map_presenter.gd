@@ -9,6 +9,8 @@ const PARTY_MARKER_LEFT_ASSET_ID: StringName = &"map.party.left"
 const PARTY_MARKER_RIGHT_ASSET_ID: StringName = &"map.party.right"
 const PARTY_MARKER_CAMP_ASSET_ID: StringName = &"map.party.camp"
 const PARTY_MARKER_ASSET_ID: StringName = PARTY_MARKER_RIGHT_ASSET_ID
+const BOAT_MARKER_LEFT_ASSET_IDS: Dictionary = {0: &"map.party.boat.left.0", 3: &"map.party.boat.left.3", 5: &"map.party.boat.left.5", 6: &"map.party.boat.left.6", 7: &"map.party.boat.left.7"}
+const BOAT_MARKER_RIGHT_ASSET_IDS: Dictionary = {0: &"map.party.boat.right.0", 3: &"map.party.boat.right.3", 5: &"map.party.boat.right.5", 6: &"map.party.boat.right.6", 7: &"map.party.boat.right.7"}
 const GUTTER_TEXTURE: Texture2D = preload("res://src/presentation/assets/ui/classic-charcoal-slate-tile.png")
 const GUTTER_RAIL_TEXTURE: Texture2D = preload("res://src/presentation/assets/ui/classic-exploration-rail.png")
 
@@ -39,6 +41,8 @@ func _ready() -> void:
 	_party_marker_textures[PARTY_MARKER_LEFT_ASSET_ID] = ClassicUiAssetCatalog.texture(PARTY_MARKER_LEFT_ASSET_ID)
 	_party_marker_textures[PARTY_MARKER_RIGHT_ASSET_ID] = ClassicUiAssetCatalog.texture(PARTY_MARKER_RIGHT_ASSET_ID)
 	_party_marker_textures[PARTY_MARKER_CAMP_ASSET_ID] = ClassicUiAssetCatalog.texture(PARTY_MARKER_CAMP_ASSET_ID)
+	for asset_id: StringName in BOAT_MARKER_LEFT_ASSET_IDS.values() + BOAT_MARKER_RIGHT_ASSET_IDS.values():
+		_party_marker_textures[asset_id] = ClassicUiAssetCatalog.texture(asset_id)
 
 
 func _gui_input(event: InputEvent) -> void:
@@ -72,7 +76,9 @@ func present(game_view: GameView) -> void:
 	visible = game_view != null and game_view.session_started and game_view.map_view != null
 	if visible:
 		_party_facing_asset_id = party_marker_asset_id_for_direction(game_view.map_view.last_move_direction, _party_facing_asset_id)
-		_party_marker_asset_id = PARTY_MARKER_CAMP_ASSET_ID if game_view.party_summary != null and game_view.party_summary.camping else _party_facing_asset_id
+		var summary := game_view.party_summary
+		var boat_asset_id := boat_marker_asset_id(game_view.map_view.landlook, _party_facing_asset_id == PARTY_MARKER_RIGHT_ASSET_ID)
+		_party_marker_asset_id = boat_asset_id if summary != null and summary.in_boat and not boat_asset_id.is_empty() else PARTY_MARKER_CAMP_ASSET_ID if summary != null and summary.camping else _party_facing_asset_id
 	if not visible:
 		_clear_movement_cursor()
 		_held_direction = Vector2i.ZERO
@@ -183,6 +189,10 @@ static func party_marker_asset_id_for_direction(direction: Vector2i, current_ass
 	if direction.x > 0:
 		return PARTY_MARKER_RIGHT_ASSET_ID
 	return current_asset_id
+
+
+static func boat_marker_asset_id(landlook: int, facing_right: bool) -> StringName:
+	return StringName((BOAT_MARKER_RIGHT_ASSET_IDS if facing_right else BOAT_MARKER_LEFT_ASSET_IDS).get(landlook, ""))
 
 
 static func facing_label(direction: Vector2i) -> String:

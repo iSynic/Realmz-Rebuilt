@@ -576,6 +576,296 @@
       "source_resource_id": 186
     },
     {
+      "id": "map.party.boat.right.0",
+      "path": "res://src/presentation/assets/classic-controls/map/party-boat-right-0.png",
+      "source_repository": "Realmz Castle Realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
+      "native_width": 32,
+      "native_height": 32,
+      "sha256": "18366956cb3ca878e0c010721400e843ff723abf4515f345aa25030ebedfe878",
+      "classification": "classic-resource-extract",
+      "classic_evidence": {
+        "status": "source-control-flow",
+        "path": "src/realmz_orig/centerpict.c:198-238",
+        "note": "Castle centerpict replaces the party marker while aboard with CICN 13300 plus lastpix when boatright is false; this is the right-facing landlook 0 image.",
+        "repository": "Realmz Castle Realmz",
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3"
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      },
+      "source_file_sha256": "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c",
+      "source_resource_type": "cicn",
+      "source_resource_id": 13300
+    },
+    {
+      "id": "map.party.boat.right.3",
+      "path": "res://src/presentation/assets/classic-controls/map/party-boat-right-3.png",
+      "source_repository": "Realmz Castle Realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
+      "native_width": 32,
+      "native_height": 32,
+      "sha256": "d9ece2a9d9a5ba979f50be1d1883db860900b8d56d1b39f7b5b96d0e373d365d",
+      "classification": "classic-resource-extract",
+      "classic_evidence": {
+        "status": "source-control-flow",
+        "path": "src/realmz_orig/centerpict.c:198-238",
+        "note": "Castle centerpict replaces the party marker while aboard with CICN 13300 plus lastpix when boatright is false; this is the right-facing landlook 3 image.",
+        "repository": "Realmz Castle Realmz",
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3"
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      },
+      "source_file_sha256": "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c",
+      "source_resource_type": "cicn",
+      "source_resource_id": 13303
+    },
+    {
+      "id": "map.party.boat.right.5",
+      "path": "res://src/presentation/assets/classic-controls/map/party-boat-right-5.png",
+      "source_repository": "Realmz Castle Realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
+      "native_width": 32,
+      "native_height": 32,
+      "sha256": "bdda6f4795c50f2ea6737a2010c9b4cf91c61011aef09b8024e25d8ef8510dfc",
+      "classification": "classic-resource-extract",
+      "classic_evidence": {
+        "status": "source-control-flow",
+        "path": "src/realmz_orig/centerpict.c:198-238",
+        "note": "Castle centerpict replaces the party marker while aboard with CICN 13300 plus lastpix when boatright is false; this is the right-facing landlook 5 image.",
+        "repository": "Realmz Castle Realmz",
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3"
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      },
+      "source_file_sha256": "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c",
+      "source_resource_type": "cicn",
+      "source_resource_id": 13305
+    },
+    {
+      "id": "map.party.boat.right.6",
+      "path": "res://src/presentation/assets/classic-controls/map/party-boat-right-6.png",
+      "source_repository": "Realmz Castle Realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
+      "native_width": 32,
+      "native_height": 32,
+      "sha256": "05cd8d4729ac423a5bf0f323d17396492ed5aeabccc34c2c09e6c2e30ad264d4",
+      "classification": "classic-resource-extract",
+      "classic_evidence": {
+        "status": "source-control-flow",
+        "path": "src/realmz_orig/centerpict.c:198-238",
+        "note": "Castle centerpict replaces the party marker while aboard with CICN 13300 plus lastpix when boatright is false; this is the right-facing landlook 6 image.",
+        "repository": "Realmz Castle Realmz",
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3"
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      },
+      "source_file_sha256": "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c",
+      "source_resource_type": "cicn",
+      "source_resource_id": 13306
+    },
+    {
+      "id": "map.party.boat.right.7",
+      "path": "res://src/presentation/assets/classic-controls/map/party-boat-right-7.png",
+      "source_repository": "Realmz Castle Realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
+      "native_width": 32,
+      "native_height": 32,
+      "sha256": "64e0be64f4e5066ae8b932596a40c60f539b65c9db2195582491eb6e8a3ea4dd",
+      "classification": "classic-resource-extract",
+      "classic_evidence": {
+        "status": "source-control-flow",
+        "path": "src/realmz_orig/centerpict.c:198-238",
+        "note": "Castle centerpict replaces the party marker while aboard with CICN 13300 plus lastpix when boatright is false; this is the right-facing landlook 7 image.",
+        "repository": "Realmz Castle Realmz",
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3"
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      },
+      "source_file_sha256": "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c",
+      "source_resource_type": "cicn",
+      "source_resource_id": 13307
+    },
+    {
+      "id": "map.party.boat.left.0",
+      "path": "res://src/presentation/assets/classic-controls/map/party-boat-left-0.png",
+      "source_repository": "Realmz Castle Realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
+      "native_width": 32,
+      "native_height": 32,
+      "sha256": "4bd0211b504d2a8bf5900fe6749bf8b6e4b516720a0448116fd07ff298e801f8",
+      "classification": "classic-resource-extract",
+      "classic_evidence": {
+        "status": "source-control-flow",
+        "path": "src/realmz_orig/centerpict.c:198-238",
+        "note": "Castle centerpict replaces the party marker while aboard with CICN 13400 plus lastpix when boatright is true; this is the left-facing landlook 0 image.",
+        "repository": "Realmz Castle Realmz",
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3"
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      },
+      "source_file_sha256": "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c",
+      "source_resource_type": "cicn",
+      "source_resource_id": 13400
+    },
+    {
+      "id": "map.party.boat.left.3",
+      "path": "res://src/presentation/assets/classic-controls/map/party-boat-left-3.png",
+      "source_repository": "Realmz Castle Realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
+      "native_width": 32,
+      "native_height": 32,
+      "sha256": "651cf81b2322d54ee8a9cfd44a6e2e4500651f56df7ea70fe019ed376c89cb3f",
+      "classification": "classic-resource-extract",
+      "classic_evidence": {
+        "status": "source-control-flow",
+        "path": "src/realmz_orig/centerpict.c:198-238",
+        "note": "Castle centerpict replaces the party marker while aboard with CICN 13400 plus lastpix when boatright is true; this is the left-facing landlook 3 image.",
+        "repository": "Realmz Castle Realmz",
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3"
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      },
+      "source_file_sha256": "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c",
+      "source_resource_type": "cicn",
+      "source_resource_id": 13403
+    },
+    {
+      "id": "map.party.boat.left.5",
+      "path": "res://src/presentation/assets/classic-controls/map/party-boat-left-5.png",
+      "source_repository": "Realmz Castle Realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
+      "native_width": 32,
+      "native_height": 32,
+      "sha256": "1efd03a8c522cb45138f86221dc25e8bfe893714becc58257a052fc97400bfe2",
+      "classification": "classic-resource-extract",
+      "classic_evidence": {
+        "status": "source-control-flow",
+        "path": "src/realmz_orig/centerpict.c:198-238",
+        "note": "Castle centerpict replaces the party marker while aboard with CICN 13400 plus lastpix when boatright is true; this is the left-facing landlook 5 image.",
+        "repository": "Realmz Castle Realmz",
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3"
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      },
+      "source_file_sha256": "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c",
+      "source_resource_type": "cicn",
+      "source_resource_id": 13405
+    },
+    {
+      "id": "map.party.boat.left.6",
+      "path": "res://src/presentation/assets/classic-controls/map/party-boat-left-6.png",
+      "source_repository": "Realmz Castle Realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
+      "native_width": 32,
+      "native_height": 32,
+      "sha256": "262913c1565a8ab3eec4a231cd0c11ede3143feeff5c06ad7d61c1c180546685",
+      "classification": "classic-resource-extract",
+      "classic_evidence": {
+        "status": "source-control-flow",
+        "path": "src/realmz_orig/centerpict.c:198-238",
+        "note": "Castle centerpict replaces the party marker while aboard with CICN 13400 plus lastpix when boatright is true; this is the left-facing landlook 6 image.",
+        "repository": "Realmz Castle Realmz",
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3"
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      },
+      "source_file_sha256": "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c",
+      "source_resource_type": "cicn",
+      "source_resource_id": 13406
+    },
+    {
+      "id": "map.party.boat.left.7",
+      "path": "res://src/presentation/assets/classic-controls/map/party-boat-left-7.png",
+      "source_repository": "Realmz Castle Realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
+      "native_width": 32,
+      "native_height": 32,
+      "sha256": "158795bb86a245ea7f0d4292f39d3778fb8c8dc7de705ec2c8300a1790569b54",
+      "classification": "classic-resource-extract",
+      "classic_evidence": {
+        "status": "source-control-flow",
+        "path": "src/realmz_orig/centerpict.c:198-238",
+        "note": "Castle centerpict replaces the party marker while aboard with CICN 13400 plus lastpix when boatright is true; this is the left-facing landlook 7 image.",
+        "repository": "Realmz Castle Realmz",
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3"
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      },
+      "source_file_sha256": "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c",
+      "source_resource_type": "cicn",
+      "source_resource_id": 13407
+    },
+    {
       "id": "map.cursor.northwest",
       "path": "res://src/presentation/assets/classic-controls/map/cursor-northwest.png",
       "source_repository": "Realmz Castle Realmz",

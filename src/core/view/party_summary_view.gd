@@ -10,4 +10,5 @@ var light_remaining: int = 0
 var has_classic_torch: bool = false
 var camping: bool = false
 var searching: bool = false
+var in_boat: bool = false
 var acquired_map_ids: Array[String] = []

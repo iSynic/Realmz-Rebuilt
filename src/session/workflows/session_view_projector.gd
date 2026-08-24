@@ -87,6 +87,7 @@ func _project_complete(context: SessionWorkflowContext, pending_interaction: Int
 	result.party_summary.has_classic_torch = not InventoryMagicServicesWorkflow.classic_torch_item(context).is_empty()
 	result.party_summary.camping = state.party_camping
 	result.party_summary.searching = state.party.conditions.is_active(ConditionRules.PARTY_SEARCHING)
+	result.party_summary.in_boat = state.party_in_boat
 	result.party_summary.acquired_map_ids = state.world.acquired_map_ids()
 	if state.combat != null and _can_reuse_static_map_projections(state):
 		_reuse_static_map_projections(result, _cached_view)
