@@ -160,8 +160,14 @@ foreach ($statusAsset in @($chromeManifest.status_assets)) {
     $chromeFiles += $statusAsset.file
 }
 foreach ($commandAsset in @($chromeManifest.command_assets)) {
-    if ([string]::IsNullOrWhiteSpace($commandAsset.asset_id) -or [string]::IsNullOrWhiteSpace($commandAsset.generation_job_id) -or [string]::IsNullOrWhiteSpace($commandAsset.source_sha256) -or [string]::IsNullOrWhiteSpace($commandAsset.derivation)) {
-        throw "SpriteCook command asset provenance is incomplete"
+    $hasBaseProvenance = -not [string]::IsNullOrWhiteSpace($commandAsset.asset_id) -and -not [string]::IsNullOrWhiteSpace($commandAsset.source_sha256) -and -not [string]::IsNullOrWhiteSpace($commandAsset.derivation)
+    $hasProviderProvenance = if ($commandAsset.provider -eq "project-owner") {
+        $commandAsset.license -eq "Project-Owner-Supplied"
+    } else {
+        -not [string]::IsNullOrWhiteSpace($commandAsset.generation_job_id)
+    }
+    if (-not $hasBaseProvenance -or -not $hasProviderProvenance) {
+        throw "Command asset provenance is incomplete"
     }
     $chromeFiles += $commandAsset.file
 }

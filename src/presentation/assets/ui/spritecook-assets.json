@@ -107,21 +107,21 @@
   ],
   "command_assets": [
     {
-      "asset_id": "97f8af87-5396-45a1-a911-ba252dab7865",
+      "asset_id": "project-owner-heal-bf5682d9efcb",
       "label": "Realmz Rebuilt Heal command glyph",
-      "source_sha256": "b8a5c1d96c7e93191c2dafe03ca3485f8c2c389f6c11475894223d6f1d14312f",
-      "source_sha256_prefix": "b8a5c1d96c7e",
-      "source_width": 24,
-      "source_height": 24,
-      "generation_job_id": "2abbc8fa-8d5f-4c46-be03-b18050c2977f",
-      "model": "gemini-3.1-flash-image",
+      "provider": "project-owner",
+      "license": "Project-Owner-Supplied",
+      "source_sha256": "bf5682d9efcb33a5251543bf7fb9bd92efa912abfdbd12dd715b1d05565a3112",
+      "source_sha256_prefix": "bf5682d9efcb",
+      "source_width": 73,
+      "source_height": 75,
       "mode": "ui",
-      "derivation": "direct SpriteCook pixel output without post-processing",
+      "derivation": "direct project-owner-supplied PNG; presentation crops transparent alpha bounds 13,18,47,40 without resampling",
       "file": {
         "path": "res://src/presentation/assets/ui/commands/heal.png",
-        "width": 24,
-        "height": 24,
-        "sha256": "b8a5c1d96c7e93191c2dafe03ca3485f8c2c389f6c11475894223d6f1d14312f"
+        "width": 73,
+        "height": 75,
+        "sha256": "bf5682d9efcb33a5251543bf7fb9bd92efa912abfdbd12dd715b1d05565a3112"
       }
     }
   ],
