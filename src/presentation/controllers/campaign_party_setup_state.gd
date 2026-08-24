@@ -136,12 +136,23 @@ func attach(host: Control) -> void:
 	_campaign_library.attach(host)
 
 func _ensure_appearance_textures() -> void:
-	if media == null or not _appearance_textures.is_empty():
+	if media == null:
 		return
 	var assets: Array[MediaAsset] = []
+	if view != null:
+		for option: CharacterAppearanceOptionView in view.portrait_options:
+			var asset := media.asset_by_id(option.id)
+			if asset != null:
+				assets.append(asset)
+		for option: CharacterAppearanceOptionView in view.combat_icon_options:
+			var asset := media.asset_by_id(option.id)
+			if asset != null:
+				assets.append(asset)
 	assets.append_array(media.assets_of_kind("portrait"))
 	assets.append_array(media.assets_of_kind("combat-icon"))
 	for asset: MediaAsset in assets:
+		if _appearance_textures.has(asset.id):
+			continue
 		var texture := media.image_texture(asset)
 		if texture != null:
 			_appearance_textures[asset.id] = texture
