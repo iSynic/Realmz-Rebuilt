@@ -42,7 +42,13 @@ func _initialize() -> void:
 			_fail("route contains a non-object step")
 			continue
 		_run_step(entry)
-	_validate_completion(route.get("completionAnchor", {}))
+	for entry: Variant in route.get("travelProofs", []):
+		if not entry is Dictionary:
+			_fail("route contains a non-object travel proof")
+			continue
+		_run_travel_proof(entry)
+	if route.has("completionAnchor"):
+		_validate_completion(route["completionAnchor"])
 	var report := {
 		"schemaVersion": 1,
 		"routeId": String(route.get("routeId", "")),
@@ -93,8 +99,12 @@ func _prepare_party() -> void:
 func _validate_route_header(route: Dictionary) -> void:
 	if route.get("campaignId") != _content.campaign_id:
 		_fail("route campaign does not match the loaded package")
-	if not route.get("steps") is Array or route["steps"].is_empty():
-		_fail("route has no executable steps")
+	var has_steps: bool = route.get("steps") is Array and not route["steps"].is_empty()
+	var has_travel_proofs: bool = route.get("travelProofs") is Array and not route["travelProofs"].is_empty()
+	if not has_steps and not has_travel_proofs:
+		_fail("route has no executable steps or travel proofs")
+	if has_steps and not route.has("completionAnchor"):
+		_fail("route with scenario steps has no completion anchor")
 	var start: Variant = route.get("start", {})
 	if not start is Dictionary:
 		_fail("route start is missing")
@@ -145,6 +155,75 @@ func _run_step(step_definition: Dictionary) -> void:
 		_fail("%s failed with %s: %s" % [step_id, result.error_code, result.error_message])
 	_validate_step_events(step_id, step_definition, events)
 	_stage(step_id, failure_count, {"entryMode": "checkpoint"})
+
+
+func _run_travel_proof(proof: Dictionary) -> void:
+	var failure_count := _failures.size()
+	var proof_id := String(proof.get("id", "unnamed-travel-proof"))
+	var start: Variant = proof.get("start", {})
+	if not start is Dictionary or not proof.get("moves") is Array:
+		_fail("%s has no typed start or movement list" % proof_id)
+		_stage(proof_id, failure_count, {"entryMode": "travel-checkpoint"})
+		return
+	var map := _content.world.map_by_type_and_index(StringName(start.get("levelType", "")), int(start.get("levelIndex", -1)))
+	var coordinate := Vector2i(int(start.get("x", -1)), int(start.get("y", -1)))
+	if map == null or map.topology.cell_at(coordinate) == null:
+		_fail("%s starts outside authoritative topology" % proof_id)
+		_stage(proof_id, failure_count, {"entryMode": "travel-checkpoint"})
+		return
+	_session._state.party.map_id = map.id
+	_session._state.party.coordinate = coordinate
+	_session._state.world.mark_visited(map.id, coordinate)
+	var events: Array[DomainEvent] = []
+	var movement_steps := 0
+	for move: Variant in proof["moves"]:
+		if not move is Array or move.size() != 2 or not _is_integer(move[0]) or not _is_integer(move[1]):
+			_fail("%s contains a malformed movement vector" % proof_id)
+			break
+		var direction := Vector2i(int(move[0]), int(move[1]))
+		var result := _session.submit_intent(PlayerIntent.move(direction))
+		result = _drain_interactions(result, events, proof_id)
+		movement_steps += 1
+		if result.state == SessionStep.State.FAILED:
+			_fail("%s movement failed with %s: %s" % [proof_id, result.error_code, result.error_message])
+			break
+	_validate_travel_expectations(proof_id, proof.get("expect", {}), events)
+	_stage(proof_id, failure_count, {"entryMode": "travel-checkpoint", "movementSteps": movement_steps})
+
+
+func _validate_travel_expectations(proof_id: String, expected: Variant, events: Array[DomainEvent]) -> void:
+	if not expected is Dictionary:
+		_fail("%s has no typed travel expectations" % proof_id)
+		return
+	var event_kinds: Variant = expected.get("eventKinds", [])
+	if not event_kinds is Array:
+		_fail("%s has a malformed expected-event list" % proof_id)
+		return
+	for kind: Variant in event_kinds:
+		if not kind is String or not _contains_event(events, StringName(kind)):
+			_fail("%s did not publish expected event %s" % [proof_id, kind])
+	if expected.has("partyInBoat"):
+		if not expected["partyInBoat"] is bool:
+			_fail("%s has a malformed expected boat state" % proof_id)
+		elif expected["partyInBoat"] != _session._state.party_in_boat:
+			_fail("%s ended with the wrong boat state" % proof_id)
+	var end: Variant = expected.get("position", {})
+	if end is Dictionary and not end.is_empty():
+		var map := _content.world.map_by_type_and_index(StringName(end.get("levelType", "")), int(end.get("levelIndex", -1)))
+		var coordinate := Vector2i(int(end.get("x", -1)), int(end.get("y", -1)))
+		if map == null or _session._state.party.map_id != map.id or _session._state.party.coordinate != coordinate:
+			_fail("%s ended at an unexpected position" % proof_id)
+
+
+func _contains_event(events: Array[DomainEvent], kind: StringName) -> bool:
+	for event: DomainEvent in events:
+		if event.kind == kind:
+			return true
+	return false
+
+
+func _is_integer(value: Variant) -> bool:
+	return value is int or value is float and value == floorf(value)
 
 
 func _nearby_topology_path(trigger: TriggerDefinition) -> Array[Vector2i]:
