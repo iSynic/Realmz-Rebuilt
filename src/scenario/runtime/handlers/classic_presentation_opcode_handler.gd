@@ -13,7 +13,7 @@ func _init(content: RealmzContent, game_state: GameState, rng: RealmzRng) -> voi
 
 
 func opcode_ids() -> Array[int]:
-	return [1, 9, 19, 26, 27, 28, 62]
+	return [1, 9, 19, 26, 27, 28, 62, 96, 97]
 
 
 func execute(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
@@ -49,6 +49,9 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 				"text": scrolling_message.text,
 				"source": "classic",
 			})])
+		96, 97:
+			_game_state.dungeon_multiview = action.opcode == 97
+			return ScenarioRuntimeOperationResult.completed(_game_state.dungeon_multiview, [DomainEvent.new(&"dungeon_view_policy_changed", {"multiview": _game_state.dungeon_multiview, "source": "classic"})])
 	return super.execute(action, request_id, context)
 
 

@@ -84,6 +84,7 @@ func _ready() -> void:
 	_map_presenter.movement_hold_started.connect(func(direction: Vector2i) -> void: _held_movement.start(&"mouse", direction))
 	_map_presenter.movement_hold_updated.connect(func(direction: Vector2i) -> void: _held_movement.update(&"mouse", direction))
 	_map_presenter.movement_hold_stopped.connect(func() -> void: _held_movement.stop(&"mouse"))
+	_dungeon_presenter.turn_requested.connect(func(delta: int) -> void: _submit_intent(PlayerIntent.dungeon_turn(delta))); _dungeon_presenter.movement_requested.connect(func(direction: Vector2i) -> void: _submit_movement(direction)); _dungeon_presenter.movement_hold_started.connect(func(direction: Vector2i) -> void: _held_movement.start(&"keyboard", direction)); _dungeon_presenter.movement_hold_stopped.connect(func() -> void: _held_movement.stop(&"keyboard"))
 	_battlefield_presenter.combat_body_submitted.connect(_on_battlefield_action_requested)
 	_battlefield_presenter.combatant_inspected.connect(_on_battlefield_combatant_inspected)
 	_battlefield_presenter.targeting_changed.connect(_interaction_presenter.update_combat_targeting)
@@ -294,8 +295,8 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 	var released_direction := UiInputActions.released_movement_direction(event)
-	if released_direction != Vector2i.ZERO and _held_movement != null and _held_movement.active_direction() == released_direction:
-		_held_movement.stop(&"keyboard")
+	if released_direction != Vector2i.ZERO and _held_movement != null:
+		if not (_dungeon_presenter.is_active() and _dungeon_presenter.handle_keyboard_release(released_direction)) and _held_movement.active_direction() == released_direction: _held_movement.stop(&"keyboard")
 	var key_event := event as InputEventKey
 	if presentation_coordinator != null and presentation_coordinator.is_combat_playback_active():
 		if key_event != null and key_event.pressed and not key_event.echo and key_event.keycode == KEY_ESCAPE and _abort_full_party_auto(true):
@@ -369,6 +370,7 @@ func _input(event: InputEvent) -> void:
 		return
 	if not accepts_exploration_input():
 		return
+	if key_event != null and key_event.pressed and not key_event.echo and key_event.keycode == KEY_SPACE and presentation_coordinator.toggle_dungeon_view(): get_viewport().set_input_as_handled(); return
 	var fast_spell_slot := UiInputActions.fast_spell_slot(event)
 	if fast_spell_slot >= 0:
 		_handle_field_fast_spell(fast_spell_slot, UiInputActions.fast_spell_use_requested(event))
@@ -393,7 +395,8 @@ func _input(event: InputEvent) -> void:
 	var direction := UiInputActions.movement_direction(event)
 	if direction != Vector2i.ZERO:
 		if not event is InputEventKey or not (event as InputEventKey).echo:
-			_held_movement.start(&"keyboard", direction)
+			if _dungeon_presenter.is_active(): _dungeon_presenter.handle_keyboard_press(direction)
+			else: _held_movement.start(&"keyboard", direction)
 		get_viewport().set_input_as_handled()
 
 
@@ -433,8 +436,7 @@ func _handle_field_fast_spell(slot_index: int, use_spell: bool) -> void:
 
 
 func _on_held_movement_requested(direction: Vector2i) -> void:
-	if not _submit_movement(direction):
-		_held_movement.stop()
+	if not _submit_movement(direction): _held_movement.stop()
 
 
 func _on_battlefield_action_requested(body: InteractionResponse.CombatBody) -> void:
@@ -1022,9 +1024,7 @@ func _on_topology_debug_changed(enabled: bool) -> void:
 
 func _on_dungeon_3d_changed(enabled: bool) -> void:
 	presentation_coordinator.set_dungeon_3d_enabled(enabled)
-	if _presentation_settings != null:
-		_presentation_settings.dungeon_3d = enabled
-		settings_repository.save_settings(_presentation_settings)
+	if _presentation_settings != null: _presentation_settings.dungeon_3d = enabled; settings_repository.save_settings(_presentation_settings)
 
 
 func _on_master_volume_changed(value: float) -> void:

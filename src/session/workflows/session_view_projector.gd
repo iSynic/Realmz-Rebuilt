@@ -767,7 +767,7 @@ static func _build_map_view(context: SessionWorkflowContext, reusable_cells: Dic
 		var direction_name := MapTopology.direction_name(direction)
 		var probe := _probe_movement(context, direction)
 		movement_options[direction_name] = {"allowed": probe.allowed, "reason": String(probe.reason)}
-	return MapView.new(map.id, map.name, map.level_type, map.topology.width, map.topology.height, state.party.coordinate, cells, state.world.map_is_dark(map), state.world.visited_coordinates(map.id), movement_options, state.last_move_direction, map.landlook)
+	return MapView.new(map.id, map.name, map.level_type, map.topology.width, map.topology.height, state.party.coordinate, cells, state.world.map_is_dark(map), state.world.visited_coordinates(map.id), movement_options, state.last_move_direction, map.landlook, state.dungeon_heading, state.dungeon_multiview, state.party.conditions.is_active(ConditionRules.PARTY_WIZARDS_EYE))
 
 
 static func _build_player_map_view(context: SessionWorkflowContext, definition: PlayerMapDefinition) -> PlayerMapView:
@@ -804,7 +804,7 @@ static func _build_cell_view(context: SessionWorkflowContext, map: MapDefinition
 		edge_passability[direction] = edge.passable
 	var hidden_secret := false
 	for feature: MapFeature in cell.features():
-		if feature.kind == &"secret" and not context.state.world.secret_is_discovered(feature.id, feature.initial_state == &"revealed"):
+		if feature.kind == &"secret" and feature.orientation.is_empty() and not context.state.world.secret_is_discovered(feature.id, feature.initial_state == &"revealed"):
 			hidden_secret = true
 			continue
 		if not feature_kinds.has(feature.kind):

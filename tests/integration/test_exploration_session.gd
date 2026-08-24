@@ -163,7 +163,7 @@ func run() -> void:
 	dungeon_envelope.game_state.party.map_id = "dungeon:0"
 	dungeon_envelope.game_state.party.coordinate = Vector2i(2, 0)
 	var dungeon_session := GameSession.new()
-	assert_equal(dungeon_session.restore(content, dungeon_envelope).state, SessionStep.State.COMPLETED, "validated restore can establish the synthetic dungeon slice")
+	assert_equal(dungeon_session.restore(content, dungeon_envelope).state, SessionStep.State.COMPLETED, "validated restore can establish the synthetic dungeon slice"); var turn_rng := dungeon_session.snapshot().rng_state.to_data(); var turn_minutes := dungeon_session.snapshot().game_state.clock.total_minutes(); var turned_dungeon := dungeon_session.submit_intent(PlayerIntent.dungeon_turn(-1)); assert_equal([turned_dungeon.state, dungeon_session.view().map_view.dungeon_heading, dungeon_session.view().party_coordinate, dungeon_session.snapshot().game_state.clock.total_minutes(), dungeon_session.snapshot().rng_state.to_data()], [SessionStep.State.COMPLETED, 4, Vector2i(2, 0), turn_minutes, turn_rng], "a source-shaped left turn commits and projects the persisted west heading without moving, advancing time, or drawing RNG")
 	var rejected_diagonal := dungeon_session.submit_intent(PlayerIntent.move(Vector2i(-1, -1)))
 	assert_equal(rejected_diagonal.error_code, &"invalid_direction", "dungeon movement remains cardinal even when land supports diagonals")
 	assert_equal(dungeon_session.view().party_coordinate, Vector2i(2, 0), "a rejected dungeon diagonal cannot mutate location")
@@ -173,7 +173,7 @@ func run() -> void:
 	assert_true(dungeon_session.snapshot().game_state.world.door_is_open(door_id), "session snapshot owns the opened door")
 	var restored_dungeon := GameSession.new()
 	assert_equal(restored_dungeon.restore(content, dungeon_session.snapshot()).state, SessionStep.State.COMPLETED, "door-state save restores transactionally")
-	assert_true(restored_dungeon.snapshot().game_state.world.door_is_open(door_id), "restored session retains the opened door")
+	assert_true(restored_dungeon.snapshot().game_state.world.door_is_open(door_id) and restored_dungeon.view().map_view.dungeon_heading == 4, "restored session retains the opened door and Classic dungeon heading")
 
 	var surprise_session := GameSession.new()
 	surprise_session.start(content, 1)

@@ -688,7 +688,7 @@ func _test_conditions_time_and_persistence() -> void:
 	character.conditions.set_value(ConditionRules.ABSORBING_ENERGY, 1)
 	var party := PartyState.new("map.test", Vector2i(1, 1), _characters([character]))
 	party.conditions.set_value(0, 1)
-	var state := GameState.new(party, RealmzClock.new())
+	var state := GameState.new(party, RealmzClock.new()); state.dungeon_heading = 3; state.dungeon_multiview = false
 	var events := rules.conditions.tick_party(party)
 	assert_equal(character.current_health, 4, "regeneration occurs before disease and poison damage")
 	assert_equal(character.spell_points, 4, "energy drain occurs before energy absorption")

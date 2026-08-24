@@ -188,6 +188,8 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 	match intent.kind:
 		PlayerIntent.Kind.MOVE:
 			return _move((intent.payload as PlayerIntent.MovePayload).direction)
+		PlayerIntent.Kind.DUNGEON_TURN:
+			return _turn_dungeon((intent.payload as PlayerIntent.DungeonTurnPayload).delta)
 		PlayerIntent.Kind.SEARCH:
 			return _search()
 		PlayerIntent.Kind.TOGGLE_SEARCH:
@@ -672,6 +674,10 @@ func _search() -> SessionStep:
 
 func _toggle_search() -> SessionStep:
 	return _commit_workflow_result(ExplorationTimeWorkflow.toggle_search(_workflow_context()))
+
+
+func _turn_dungeon(delta: int) -> SessionStep:
+	return _commit_workflow_result(ExplorationTimeWorkflow.turn_dungeon(_workflow_context(), delta))
 
 
 func _use_torch() -> SessionStep:

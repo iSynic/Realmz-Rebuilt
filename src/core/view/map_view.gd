@@ -9,6 +9,9 @@ var width: int
 var height: int
 var party_coordinate: Vector2i
 var last_move_direction: Vector2i
+var dungeon_heading: int
+var dungeon_multiview: bool
+var wizard_eye_active: bool
 var dark: bool
 var _cells: Array[MapCellView]
 var _cells_by_coordinate: Dictionary = {}
@@ -16,7 +19,7 @@ var _visited_coordinates: Array[Vector2i] = []
 var _movement_options: Dictionary = {}
 
 
-func _init(view_map_id: String, view_map_name: String, view_level_type: StringName, map_width: int, map_height: int, party_position: Vector2i, cell_views: Array[MapCellView], is_dark: bool = false, visited_cells: Array[Vector2i] = [], movement_options: Dictionary = {}, party_last_move_direction: Vector2i = Vector2i.ZERO, view_landlook: int = -1) -> void:
+func _init(view_map_id: String, view_map_name: String, view_level_type: StringName, map_width: int, map_height: int, party_position: Vector2i, cell_views: Array[MapCellView], is_dark: bool = false, visited_cells: Array[Vector2i] = [], movement_options: Dictionary = {}, party_last_move_direction: Vector2i = Vector2i.ZERO, view_landlook: int = -1, party_dungeon_heading: int = 1, allows_dungeon_multiview: bool = true, has_wizard_eye: bool = false) -> void:
 	map_id = view_map_id
 	map_name = view_map_name
 	level_type = view_level_type
@@ -25,6 +28,9 @@ func _init(view_map_id: String, view_map_name: String, view_level_type: StringNa
 	height = map_height
 	party_coordinate = party_position
 	last_move_direction = party_last_move_direction
+	dungeon_heading = party_dungeon_heading
+	dungeon_multiview = allows_dungeon_multiview
+	wizard_eye_active = has_wizard_eye
 	dark = is_dark
 	_cells = cell_views.duplicate()
 	_visited_coordinates = visited_cells.duplicate()

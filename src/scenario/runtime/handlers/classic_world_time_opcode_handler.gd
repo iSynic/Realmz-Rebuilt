@@ -74,7 +74,7 @@ func _acquire_player_map(action: ClassicActionDefinition, request_id: String) ->
 
 
 func _move_between_maps(action: ClassicActionDefinition, dungeon_move: bool, activate_destination: bool = false) -> ScenarioRuntimeOperationResult:
-	if action.extra_code.size() < 4:
+	if action.extra_code.size() < 5:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic map movement requires a five-value Extra Code row.")
 	var current_map := _content.world.map_by_id(_game_state.party.map_id)
 	if current_map == null:
@@ -85,14 +85,20 @@ func _move_between_maps(action: ClassicActionDefinition, dungeon_move: bool, act
 	var target_map := _content.world.map_by_type_and_index(target_type, map_index)
 	if target_map == null or target_map.topology.cell_at(coordinate) == null:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_teleport", "Classic map movement references an unavailable destination.")
+	var authored_heading := action.extra_code[4] if dungeon_move and target_type == &"dungeon" else 0
+	if dungeon_move and target_type == &"dungeon" and (absi(authored_heading) < 1 or absi(authored_heading) > 4):
+		return ScenarioRuntimeOperationResult.failed(&"invalid_dungeon_heading", "Classic dungeon movement requires a heading from 1 through 4.")
 	var source_map_id := _game_state.party.map_id
 	var source_coordinate := _game_state.party.coordinate
 	_game_state.party.map_id = target_map.id
 	_game_state.party.coordinate = coordinate
 	_game_state.world.mark_visited(target_map.id, coordinate)
-	var sound_id := action.extra_code[4] if dungeon_move else action.extra_code[3]
+	if dungeon_move and target_type == &"dungeon":
+		_game_state.dungeon_heading = absi(authored_heading)
+		_game_state.dungeon_multiview = authored_heading >= 0
+	var sound_id := 0 if dungeon_move else action.extra_code[3]
 	var message_id := 0 if dungeon_move else action.extra_code[4]
-	var events: Array[DomainEvent] = [DomainEvent.new(&"party_teleported", {"sourceMapId": source_map_id, "sourceX": source_coordinate.x, "sourceY": source_coordinate.y, "mapId": target_map.id, "x": coordinate.x, "y": coordinate.y, "soundId": sound_id, "messageId": message_id, "source": "classic"})]
+	var events: Array[DomainEvent] = [DomainEvent.new(&"party_teleported", {"sourceMapId": source_map_id, "sourceX": source_coordinate.x, "sourceY": source_coordinate.y, "mapId": target_map.id, "x": coordinate.x, "y": coordinate.y, "soundId": sound_id, "messageId": message_id, "dungeonHeading": _game_state.dungeon_heading, "dungeonMultiview": _game_state.dungeon_multiview, "source": "classic"})]
 	if sound_id != 0:
 		events.append(DomainEvent.new(&"sound_requested", {"soundId": sound_id, "source": "classic-teleport"}))
 	if message_id != 0:

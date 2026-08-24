@@ -3,6 +3,7 @@ extends RefCounted
 
 enum Kind {
 	MOVE,
+	DUNGEON_TURN,
 	SEARCH,
 	TOGGLE_SEARCH,
 	USE_TORCH,
@@ -54,6 +55,14 @@ class MovePayload:
 
 	func _init(value: Vector2i) -> void:
 		direction = value
+
+
+class DungeonTurnPayload:
+	extends Payload
+	var delta: int
+
+	func _init(value: int) -> void:
+		delta = value
 
 
 class ItemUsePayload:
@@ -279,6 +288,8 @@ func is_valid() -> bool:
 			return payload is EmptyPayload
 		Kind.MOVE:
 			return payload is MovePayload
+		Kind.DUNGEON_TURN:
+			return payload is DungeonTurnPayload and (payload as DungeonTurnPayload).delta in [-1, 1]
 		Kind.USE_ITEM:
 			return payload is ItemUsePayload
 		Kind.USE_ITEM_ON_TARGET:
@@ -318,6 +329,10 @@ func is_valid() -> bool:
 
 static func move(move_direction: Vector2i) -> PlayerIntent:
 	return PlayerIntent.new(Kind.MOVE, MovePayload.new(move_direction))
+
+
+static func dungeon_turn(delta: int) -> PlayerIntent:
+	return PlayerIntent.new(Kind.DUNGEON_TURN, DungeonTurnPayload.new(delta))
 
 
 static func toggle_search() -> PlayerIntent:

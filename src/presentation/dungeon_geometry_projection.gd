@@ -2,6 +2,10 @@ class_name DungeonGeometryProjection
 extends RefCounted
 
 const DIRECTIONS: Array[StringName] = [&"north", &"east", &"south", &"west"]
+const HEADING_NORTH := 1
+const HEADING_EAST := 2
+const HEADING_SOUTH := 3
+const HEADING_WEST := 4
 
 
 class CellProjection:
@@ -43,6 +47,9 @@ class EdgeProjection:
 var map_id: String
 var map_name: String
 var party_coordinate: Vector2i
+var heading: int = HEADING_NORTH
+var facing_direction: Vector2i = Vector2i.UP
+var dark: bool = false
 var _cells: Array[CellProjection] = []
 var _edges: Array[EdgeProjection] = []
 var _cells_by_coordinate: Dictionary = {}
@@ -56,6 +63,9 @@ static func from_map_view(map_view: MapView) -> DungeonGeometryProjection:
 	projection.map_id = map_view.map_id
 	projection.map_name = map_view.map_name
 	projection.party_coordinate = map_view.party_coordinate
+	projection.heading = normalize_heading(map_view.dungeon_heading)
+	projection.facing_direction = heading_vector(projection.heading)
+	projection.dark = map_view.dark
 	for cell: MapCellView in map_view.cells():
 		if not cell.visible:
 			continue
@@ -67,6 +77,39 @@ static func from_map_view(map_view: MapView) -> DungeonGeometryProjection:
 			projection._edges.append(edge)
 			projection._edges_by_direction[_directed_edge_key(cell.coordinate, direction)] = edge
 	return projection
+
+
+static func cardinal_facing(direction: Vector2i) -> Vector2i:
+	if direction == Vector2i.ZERO:
+		return Vector2i.UP
+	if absi(direction.x) > absi(direction.y):
+		return Vector2i(signi(direction.x), 0)
+	return Vector2i(0, signi(direction.y))
+
+
+static func normalize_heading(value: int) -> int:
+	return value if value >= HEADING_NORTH and value <= HEADING_WEST else HEADING_NORTH
+
+
+static func rotated_heading(value: int, delta: int) -> int:
+	return posmod(normalize_heading(value) - 1 + delta, 4) + 1
+
+
+static func heading_vector(value: int) -> Vector2i:
+	match normalize_heading(value):
+		HEADING_EAST: return Vector2i.RIGHT
+		HEADING_SOUTH: return Vector2i.DOWN
+		HEADING_WEST: return Vector2i.LEFT
+	return Vector2i.UP
+
+
+static func direction_vector(direction: StringName) -> Vector2i:
+	match direction:
+		&"north": return Vector2i.UP
+		&"east": return Vector2i.RIGHT
+		&"south": return Vector2i.DOWN
+		&"west": return Vector2i.LEFT
+	return Vector2i.ZERO
 
 
 func cells() -> Array[CellProjection]:

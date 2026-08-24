@@ -24,6 +24,7 @@ var _presented_view: GameView
 var _deferred_step: SessionStep
 var _deferred_view: GameView
 var _reduced_motion: bool = false
+var _dungeon_3d_enabled: bool = true
 
 
 func bind(session_controller: GameSessionController, map_presenter: ClassicMapPresenter, battlefield_presenter: ClassicBattlefieldPresenter, dungeon_presenter: DungeonMap3DPresenter, interaction_presenter: InteractionPresenter, shell_presenter: ClassicApplicationShell, audio_presenter: ClassicAudioPresenter) -> void:
@@ -172,8 +173,22 @@ func set_play_stage_visible(visible: bool) -> void:
 
 
 func set_dungeon_3d_enabled(enabled: bool) -> void:
-	_dungeon_presenter.set_enabled(enabled)
+	_dungeon_3d_enabled = enabled
+	_sync_dungeon_view(_session_controller.view() if _session_controller != null else null)
 	_present_current_view()
+
+
+func toggle_dungeon_view() -> bool:
+	var game_view := _session_controller.view() if _session_controller != null else null
+	if game_view == null or game_view.map_view == null or game_view.map_view.level_type != &"dungeon":
+		return false
+	if not dungeon_view_toggle_available(game_view.map_view):
+		_shell_presenter.set_status("This dungeon is locked to the 3D view. Wizard's Eye permits the overhead view.")
+		return true
+	_dungeon_3d_enabled = not _dungeon_presenter.is_active()
+	_sync_dungeon_view(game_view)
+	_update_spatial_visibility(game_view)
+	return true
 
 
 func set_reduced_motion(enabled: bool) -> void:
@@ -234,6 +249,7 @@ func _present_view(game_view: GameView, include_interaction: bool = true, refres
 	if previous == null or previous.domain_revisions.combat != game_view.domain_revisions.combat:
 		_battlefield_presenter.present(game_view)
 	_shell_presenter.present(game_view)
+	_sync_dungeon_view(game_view)
 	_update_spatial_visibility(game_view)
 	_presented_view = game_view
 	if include_interaction:
@@ -248,6 +264,16 @@ func _update_spatial_visibility(game_view: GameView) -> void:
 	_map_presenter.visible = exploration_visible and not _dungeon_presenter.is_active()
 	_dungeon_presenter.visible = exploration_visible and _dungeon_presenter.is_active()
 	_battlefield_presenter.visible = battle_visible
+
+
+func _sync_dungeon_view(game_view: GameView) -> void:
+	var map_view := game_view.map_view if game_view != null else null
+	var forced_3d := map_view != null and map_view.level_type == &"dungeon" and not dungeon_view_toggle_available(map_view)
+	_dungeon_presenter.set_enabled(_dungeon_3d_enabled or forced_3d)
+
+
+static func dungeon_view_toggle_available(map_view: MapView) -> bool:
+	return map_view != null and map_view.level_type == &"dungeon" and (map_view.dungeon_multiview or map_view.wizard_eye_active)
 
 
 static func should_show_exploration_stage(active_route: StringName, game_view: GameView, play_stage_visible: bool) -> bool:

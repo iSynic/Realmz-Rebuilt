@@ -219,6 +219,18 @@ static func toggle_search(context: SessionWorkflowContext) -> SessionWorkflowRes
 	])
 
 
+static func turn_dungeon(context: SessionWorkflowContext, delta: int) -> SessionWorkflowResult:
+	var map := context.content.world.map_by_id(context.state.party.map_id)
+	if map == null or map.level_type != &"dungeon":
+		return SessionWorkflowResult.failed(&"dungeon_turn_unavailable", "First-person turning is available only on a dungeon map.")
+	if context.state.combat != null and not context.state.combat.completed:
+		return SessionWorkflowResult.failed(&"dungeon_turn_during_battle", "The party cannot turn the exploration view during battle.")
+	if delta not in [-1, 1]:
+		return SessionWorkflowResult.failed(&"invalid_dungeon_turn", "Dungeon turning requires one quarter-turn.")
+	context.state.dungeon_heading = posmod(context.state.dungeon_heading - 1 + delta, 4) + 1
+	return SessionWorkflowResult.completed([DomainEvent.new(&"dungeon_heading_changed", {"heading": context.state.dungeon_heading, "delta": delta, "source": "classic"})])
+
+
 static func depart_camp_for_movement(context: SessionWorkflowContext, direction: Vector2i, preceding_events: Array[DomainEvent] = []) -> MovementTransitionResult:
 	var movement := context.content.world.probe_movement(context.state.party.map_id, context.state.party.coordinate, direction, context.state.world, context.state.party_in_boat)
 	if not movement.allowed and movement.reason == &"invalid_direction":

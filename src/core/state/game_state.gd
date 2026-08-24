@@ -18,6 +18,8 @@ var character_spellcasting_blocked: bool = false
 var monster_spellcasting_blocked: bool = false
 var spell_charging: bool = false
 var last_move_direction: Vector2i = Vector2i.ZERO
+var dungeon_heading: int = 1
+var dungeon_multiview: bool = true
 var active_shop_id: String = ""
 var _shop_accept_ranges: Array[int] = []
 var temple_available: bool = false
@@ -330,6 +332,8 @@ func restore_from_data(data: Dictionary) -> bool:
 	monster_spellcasting_blocked = loaded.monster_spellcasting_blocked
 	spell_charging = loaded.spell_charging
 	last_move_direction = loaded.last_move_direction
+	dungeon_heading = loaded.dungeon_heading
+	dungeon_multiview = loaded.dungeon_multiview
 	active_shop_id = loaded.active_shop_id
 	_shop_accept_ranges = loaded._shop_accept_ranges
 	temple_available = loaded.temple_available
@@ -396,6 +400,8 @@ func to_data() -> Dictionary:
 		"spellCharging": spell_charging,
 		"lastMoveX": last_move_direction.x,
 		"lastMoveY": last_move_direction.y,
+		"dungeonHeading": dungeon_heading,
+		"dungeonMultiview": dungeon_multiview,
 		"activeShopId": active_shop_id,
 		"shopAcceptRanges": _shop_accept_ranges.duplicate(),
 		"templeAvailable": temple_available,
@@ -558,6 +564,12 @@ static func _restore_location_settings(state: GameState, data: Dictionary) -> bo
 		var direction := Vector2i(_signed_integer(data.get("lastMoveX")), _signed_integer(data.get("lastMoveY")))
 		if direction != Vector2i.ZERO and not MapTopology.is_cardinal_direction(direction) and not MapTopology.is_diagonal_direction(direction): return false
 		state.last_move_direction = direction
+	if data.has("dungeonHeading"):
+		state.dungeon_heading = _signed_integer(data["dungeonHeading"])
+		if state.dungeon_heading < 1 or state.dungeon_heading > 4: return false
+	if data.has("dungeonMultiview"):
+		if not data["dungeonMultiview"] is bool: return false
+		state.dungeon_multiview = data["dungeonMultiview"]
 	if data.has("activeShopId") or data.has("shopAcceptRanges"):
 		if not data.get("activeShopId") is String or not data.get("shopAcceptRanges") is Array: return false
 		var ranges: Array[int] = []

@@ -107,7 +107,7 @@ func _test_public_interaction_matrix(content: RealmzContent) -> void:
 	var acknowledged := api.resume_classic(text.continuation, InteractionResponse.acknowledge(text.interaction), "text.resume")
 	assert_equal(acknowledged.state, ScenarioRuntimeOperationResult.State.COMPLETED, "acknowledgement releases the message operation")
 	var negative := api.execute_classic(ClassicActionDefinition.new(0, 1, 1, -1, false, []), "text.negative"); assert_equal([negative.state, negative.events[0].payload.get("classicClick")], [ScenarioRuntimeOperationResult.State.COMPLETED, false], "negative message publishes without inventing a click boundary")
-	var random_text := api.execute_classic(ClassicActionDefinition.new(0, 19, 19, 0, false, [1, 3, 0, 0, 0]), "text.random"); assert_equal(random_text.events[0].payload.get("messageId"), 2, "opcode 19 treats Extra Code as Castle's inclusive low/high message range")
+	var random_text := api.execute_classic(ClassicActionDefinition.new(0, 19, 19, 0, false, [1, 3, 0, 0, 0]), "text.random"); assert_equal(random_text.events[0].payload.get("messageId"), 2, "opcode 19 treats Extra Code as Castle's inclusive low/high message range"); var locked_view := api.execute_classic(ClassicActionDefinition.new(0, 96, 96, 0, false, []), "view.lock"); var full_view := api.execute_classic(ClassicActionDefinition.new(0, 97, 97, 0, false, []), "view.full"); assert_equal([locked_view.value, locked_view.events[0].payload.get("multiview"), full_view.value, full_view.events[0].payload.get("multiview")], [false, false, true, true], "opcodes 96 and 97 persist Castle's locked-3D and full-map dungeon policy")
 
 
 func _test_public_classic_choice_control_flow(content: RealmzContent) -> void:
@@ -471,8 +471,7 @@ func _test_public_application_transitions(content: RealmzContent) -> void:
 	assert_equal(forged.error_code, &"invalid_interaction_response", "player-map acknowledgement rejects forged fields")
 	var resumed := api.resume_classic(shown.continuation, InteractionResponse.acknowledge(shown.interaction), "map.resume")
 	assert_equal(resumed.state, ScenarioRuntimeOperationResult.State.COMPLETED, "player-map acknowledgement resumes its issuing operation")
-	var unavailable := api.execute_classic(ClassicActionDefinition.new(0, 29, 29, 19, false, []), "map.unknown")
-	assert_equal(unavailable.error_code, &"unknown_player_map", "unknown player-map identities fail explicitly")
+	var unavailable := api.execute_classic(ClassicActionDefinition.new(0, 29, 29, 19, false, []), "map.unknown"); assert_equal(unavailable.error_code, &"unknown_player_map", "unknown player-map identities fail explicitly"); var entered_dungeon := api.execute_classic(ClassicActionDefinition.new(0, 37, 37, 0, false, [0, 0, 0, 0, -2]), "dungeon.enter"); assert_equal([entered_dungeon.state, state.party.map_id, state.dungeon_heading, state.dungeon_multiview, entered_dungeon.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested")], [ScenarioRuntimeOperationResult.State.COMPLETED, "dungeon:0", 2, false, false], "opcode 37 treats signed Extra Code 4 as Castle heading and locked-view policy rather than a sound identity")
 
 
 func _test_public_character_checks(content: RealmzContent) -> void:
