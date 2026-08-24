@@ -96,7 +96,7 @@ static func _create_material(atlas: Texture2D) -> ShaderMaterial:
 	var shader := Shader.new()
 	shader.code = """
 shader_type spatial;
-render_mode cull_back, depth_draw_opaque, diffuse_lambert, specular_disabled;
+render_mode cull_back, depth_draw_opaque, unshaded;
 uniform sampler2D atlas : source_color, filter_nearest, repeat_disable;
 uniform sampler2D wall_texture : source_color, filter_nearest, repeat_disable;
 uniform sampler2D floor_texture : source_color, filter_nearest, repeat_disable;
@@ -113,7 +113,6 @@ void fragment() {
 	vec3 mac_color = floor(sampled * 15.0 + 0.5) / 15.0;
 	ALBEDO = mac_color;
 	ROUGHNESS = 1.0;
-	EMISSION = mac_color * 0.07;
 }
 """
 	var material := ShaderMaterial.new()
