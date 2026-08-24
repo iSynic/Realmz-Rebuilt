@@ -17,6 +17,7 @@ var _confirm_button: Button
 var _spell_record_title: Label
 var _spell_record_cost: Label
 var _spell_record_state: Label
+var _spell_record_description: Label
 var _spell_list: VBoxContainer
 var _spell_list_heading: Label
 var _selected_level: int = 1
@@ -159,8 +160,10 @@ func _build_spell_selection(body: InteractionRequest.LevelUpRequestBody) -> void
 	record.name = "LevelSelectedSpellRecord"
 	record.theme_type_variation = &"ClassicInset"
 	record.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	record.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	action_content.add_child(record)
 	var record_content := VBoxContainer.new()
+	record_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	record_content.add_theme_constant_override("separation", 4)
 	record.add_child(record_content)
 	_spell_record_title = _label("", GOLD, 18)
@@ -170,9 +173,10 @@ func _build_spell_selection(body: InteractionRequest.LevelUpRequestBody) -> void
 	record_content.add_child(_spell_record_cost)
 	_spell_record_state = _label("", MUTED, 14)
 	record_content.add_child(_spell_record_state)
-	var spacer := Control.new()
-	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	action_content.add_child(spacer)
+	_spell_record_description = _label("", Color("eee9db"), 14)
+	_spell_record_description.name = "LevelSpellDescription"
+	_spell_record_description.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	record_content.add_child(_spell_record_description)
 	_confirm_button = Button.new()
 	_confirm_button.name = "LevelSpellConfirm"
 	_confirm_button.text = "Confirm spell selection"
@@ -325,6 +329,8 @@ func _refresh_spell_record(spell: InteractionRequestValue.SpellChoice) -> void:
 	_spell_record_title.text = spell.name
 	_spell_record_cost.text = "%d selection point%s" % [spell.cost, "" if spell.cost == 1 else "s"]
 	_spell_record_state.text = "Selected" if _selected_spell_ids.has(spell.id) else "Available"
+	_spell_record_description.text = spell.description.strip_edges()
+	_spell_record_description.visible = not _spell_record_description.text.is_empty()
 
 
 func _submit_spells(body: InteractionRequest.LevelUpRequestBody) -> void:

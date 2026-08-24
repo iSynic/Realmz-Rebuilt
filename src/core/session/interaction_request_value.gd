@@ -387,12 +387,13 @@ class SpellChoice:
 	extends RefCounted
 	var id: String
 	var name: String
+	var description: String
 	var classic_id: int
 	var cost: int
 	var selected: bool
 
 	func to_data() -> Dictionary:
-		return {"id": id, "name": name, "classicId": classic_id, "cost": cost, "selected": selected}
+		return {"id": id, "name": name, "description": description, "classicId": classic_id, "cost": cost, "selected": selected}
 
 
 class EncounterAction:
@@ -733,9 +734,9 @@ static func level_gains(data: Variant) -> LevelGains:
 
 
 static func spell_choice(data: Variant) -> SpellChoice:
-	var fields := ["id", "name", "classicId", "cost", "selected"]
-	if not data is Dictionary or not _exact(data, fields, fields) or not _strings(data, ["id", "name"]) or not _ints(data, ["classicId", "cost"]) or not data["selected"] is bool: return null
-	var result := SpellChoice.new(); result.id = data["id"]; result.name = data["name"]; result.classic_id = int(data["classicId"]); result.cost = int(data["cost"]); result.selected = data["selected"]; return result
+	var fields := ["id", "name", "description", "classicId", "cost", "selected"]
+	if not data is Dictionary or not _exact(data, fields, ["id", "name", "classicId", "cost", "selected"]) or not _strings(data, ["id", "name"]) or not _optional_string(data, "description") or not _ints(data, ["classicId", "cost"]) or not data["selected"] is bool: return null
+	var result := SpellChoice.new(); result.id = data["id"]; result.name = data["name"]; result.description = String(data.get("description", "")); result.classic_id = int(data["classicId"]); result.cost = int(data["cost"]); result.selected = data["selected"]; return result
 
 
 static func encounter_action(data: Variant) -> EncounterAction:

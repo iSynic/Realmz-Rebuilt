@@ -628,7 +628,7 @@ func _reward_spell_request(reward: ClassicRewardState, request_id: String) -> In
 		return null
 	var spells: Array[Dictionary] = []
 	for spell: SpellDefinition in _reward_spell_candidates(character, caste):
-		spells.append({"id": spell.id, "name": spell.name, "classicId": spell.classic_id, "cost": _rules.characters.spell_selection_cost(spell), "selected": character.known_spells().has(spell.id)})
+		spells.append({"id": spell.id, "name": spell.name, "description": spell.description, "classicId": spell.classic_id, "cost": _rules.characters.spell_selection_cost(spell), "selected": character.known_spells().has(spell.id)})
 	return InteractionRequest.from_payload(request_id, InteractionRequest.LEVEL_UP, {"mode": "spell-selection", "prompt": "Choose the spells this character knows.", "characterId": character.id, "characterName": character.name, "pointTotal": _rules.characters.spell_selection_total(character, caste), "spells": spells})
 
 
