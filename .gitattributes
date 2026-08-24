@@ -3,6 +3,7 @@
 *.jpg binary
 *.jpeg binary
 *.ogg binary
+*.mp3 binary
 *.wav binary
 *.realmz2 binary
 *.r2save binary
