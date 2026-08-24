@@ -60,7 +60,9 @@ func _ready() -> void:
 	_map_select = OptionButton.new()
 	root.add_child(_labelled("Map", _map_select))
 	_x = _integer_input(0, 255)
+	_x.name = "WarpX"
 	_y = _integer_input(0, 255)
+	_y.name = "WarpY"
 	var coordinates := HBoxContainer.new()
 	coordinates.add_child(_labelled("X", _x))
 	coordinates.add_child(_labelled("Y", _y))
@@ -123,7 +125,8 @@ func present(view: GameView, maps: Array[Dictionary], noclip: bool, auto_actions
 	set_auto_actions(auto_actions)
 	_status.text = "Exploration tools ready." if exploration else "Battle tools ready." if active_battle else "Commands are unavailable at this boundary."
 	show()
-	grab_focus()
+	_x.get_line_edit().grab_focus()
+	_x.get_line_edit().select_all()
 
 
 func show_result(message: String, failed: bool) -> void:
@@ -179,6 +182,13 @@ static func _integer_input(minimum: int, maximum: int) -> SpinBox:
 	input.max_value = maximum
 	input.step = 1
 	input.allow_greater = false
+	input.allow_lesser = false
+	input.editable = true
+	input.update_on_text_changed = true
+	var line_edit := input.get_line_edit()
+	line_edit.editable = true
+	line_edit.select_all_on_focus = true
+	line_edit.mouse_filter = Control.MOUSE_FILTER_STOP
 	return input
 
 
