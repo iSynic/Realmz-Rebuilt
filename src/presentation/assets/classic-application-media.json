@@ -12412,6 +12412,30 @@
       }
     },
     {
+      "id": "realmz-application-cicn-6195",
+      "label": "Realmz color icon 6195",
+      "kind": "icon",
+      "mime_type": "image/png",
+      "resource_type": "cicn",
+      "resource_id": 6195,
+      "path": "res://src/presentation/assets/classic-media/item-icons/cicn-6195.png",
+      "bytes": 390,
+      "sha256": "db8723b93167ad56c0671f979a19bb9bc5c74fdde4b226d0d8ab3622eb86de68",
+      "width": 32,
+      "height": 32,
+      "source_repository": "Realmz Castle Realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
+      "source_file_sha256": "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c",
+      "source_resource_sha256": "547cb64a683dea5bce6f6d4d74b3fe2d9e98da69722605c912ee75392767e351",
+      "classification": "classic-application-resource",
+      "classic_evidence": {
+        "status": "source-control-flow",
+        "path": "src/realmz_orig/loaditem.c; src/realmz_orig/items.c; src/realmz_orig/booty.c; src/realmz_orig/updatebooty.c",
+        "note": "Castle loads the shared Data ID item records, uses each record's authored icon field, and resolves that exact cicn through the application resource chain in item, shop, and treasure presentation. The list is the unique nonzero icon set referenced by the pinned shared Data ID library; scenario resources with the same exact cicn key remain later overrides."
+      }
+    },
+    {
       "id": "realmz-application-cicn-6197",
       "label": "Realmz color icon 6197",
       "kind": "icon",
