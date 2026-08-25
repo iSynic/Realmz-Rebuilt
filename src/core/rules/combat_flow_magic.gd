@@ -697,6 +697,7 @@ func _commit_character_multi_spell(state: GameState, content: RealmzContent, cas
 		if resolution.damage > 0 or (resolution.damage < 0 and target_kind == &"monster"):
 			combat.mark_attacked(resolved_target_id)
 		_append_spell_projectile_event(events, caster.id, resolved_target_id, spell, event_source)
+		if resolution.special_result == &"turned": events.append(DomainEvent.new(&"sound_requested", {"soundId": 630, "waitForCompletion": false, "source": "classic-combat-destroy-turn-undead"}))
 		_append_spell_sound(events, spell.sound_end, "classic-combat-spell-result")
 		var payload := {"actorId": caster.id, "targetId": resolved_target_id, "selectedTargetId": selected_target_id, "targetKind": String(target_kind), "spellId": spell.id, "targetType": spell.target_type, "power": power_level, "classicTier": cast_level, "reflected": reflected, "resisted": resolution.resisted, "saved": resolution.saved, "damage": resolution.damage, "healing": maxi(0, -resolution.damage), "duration": resolution.duration, "defeated": resolution.target_defeated, "source": event_source, "clearedConditionCount": resolution.cleared_condition_count}
 		if resolution.spell_point_delta != 0 or ClassicSpellCapabilityCatalog.is_combat_spell_point_restore_spell(spell) or ClassicSpellCapabilityCatalog.is_combat_spell_point_drain_spell(spell):
@@ -705,9 +706,8 @@ func _commit_character_multi_spell(state: GameState, content: RealmzContent, cas
 		if not resolution.unequipped_item_ids.is_empty(): payload["unequippedItemIds"] = resolution.unequipped_item_ids.duplicate()
 		if resolution.applied_condition >= 0: payload["appliedCondition"] = resolution.applied_condition
 		if not resolution.transformed_definition_after.is_empty(): payload["transformedDefinitionBefore"] = resolution.transformed_definition_before; payload["transformedDefinitionAfter"] = resolution.transformed_definition_after
-		if resolution.allegiance_changed:
-			payload["traitorBefore"] = resolution.target_traitor_before
-			payload["traitorAfter"] = resolution.target_traitor_after
+		if not resolution.special_result.is_empty(): payload["specialResult"] = String(resolution.special_result); payload["specialRoll"] = resolution.special_roll; payload["specialThreshold"] = resolution.special_threshold
+		if resolution.allegiance_changed: payload["traitorBefore"] = resolution.target_traitor_before; payload["traitorAfter"] = resolution.target_traitor_after
 		_append_spell_presentation(payload, spell, index, group.resolutions.size(), resolution.target_defeated)
 		if not item_instance_id.is_empty():
 			payload["itemInstanceId"] = item_instance_id

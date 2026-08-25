@@ -3,7 +3,7 @@ var _cached_battle_world: WorldDefinition
 
 
 func run() -> void:
-	_test_public_tactical_reaction_matrix(); _test_public_magic_matrix(); _test_public_remove_curse_matrix(); _test_public_destroy_magic_matrix(); _test_public_magic_detection_matrix(); _test_public_polymorph_matrix(); _test_public_spell_point_drain_matrix(); _test_public_direct_damage_matrix(); _test_war_immediate_spell_matrix(); _test_public_special_condition_matrix(); _test_war_helpless_spell_matrix(); _test_war_queued_actor_field_matrix(); _test_war_self_centered_field_matrix(); _test_war_phase_spell(); _test_war_physical_projectile_profile(); _test_public_repeated_combat_item(); _test_public_monster_turn_matrix(); _test_public_continuation_fumble_terminal_matrix(); _test_public_command_automation_matrix()
+	_test_public_tactical_reaction_matrix(); _test_public_magic_matrix(); _test_public_remove_curse_matrix(); _test_public_destroy_magic_matrix(); _test_public_magic_detection_matrix(); _test_public_polymorph_matrix(); _test_public_destroy_turn_undead_matrix(); _test_public_spell_point_drain_matrix(); _test_public_direct_damage_matrix(); _test_war_immediate_spell_matrix(); _test_public_special_condition_matrix(); _test_war_helpless_spell_matrix(); _test_war_queued_actor_field_matrix(); _test_war_self_centered_field_matrix(); _test_war_phase_spell(); _test_war_physical_projectile_profile(); _test_public_repeated_combat_item(); _test_public_monster_turn_matrix(); _test_public_continuation_fumble_terminal_matrix(); _test_public_command_automation_matrix()
 
 
 func _test_war_immediate_spell_matrix() -> void:
@@ -218,23 +218,14 @@ func _test_public_monster_turn_matrix() -> void:
 
 
 func _test_public_continuation_fumble_terminal_matrix() -> void:
-	var rules := RealmzRules.new()
-	var spell := _combat_spell("spell.queued-death", 1, 4)
-	var definition := _monster_definition("monster.queued-death", [])
-	definition.death_macro = 321
-	var monster := MonsterState.new("monster.queued-death.instance", definition.id, definition.name, 4, 4, 1)
-	var character := _character("character.queued-death")
-	character.set_known_spells([spell.id])
-	character.maximum_spell_attacks = 2
-	character.spell_points = 10
-	var state := _state(character, monster, "battle.queued-death")
-	var content := _content([definition], [], [], [], [spell])
-	var lethal := rules.combat_flow.cast_spell(state, content, character.id, monster.id, spell.id, 1, ScriptedRng.new([0, 0, 32_767, 32_767]))
-	assert_true(lethal.ok, "a lethal public spell commits before its death macro is resumed")
-	assert_equal(state.combat.spell_death_macro_queue(), [monster.id], "the public spell boundary owns the exact death-macro queue head")
-	assert_true(lethal.events.any(func(event: DomainEvent) -> bool: return event.kind == &"monster_death_macro_requested" and event.payload.get("combatantId") == monster.id), "the queue head is the only dispatched macro")
-	var restored := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
-	assert_not_null(restored, "the death-macro queue and active-caster cursor survive save restoration")
+	var rules := RealmzRules.new(); var spell := _combat_spell("spell.queued-death", 1, 4)
+	var definition := _monster_definition("monster.queued-death", []); definition.death_macro = 321
+	var monster := MonsterState.new("monster.queued-death.instance", definition.id, definition.name, 4, 4, 1); var character := _character("character.queued-death")
+	character.set_known_spells([spell.id]); character.maximum_spell_attacks = 2; character.spell_points = 10
+	var state := _state(character, monster, "battle.queued-death"); var content := _content([definition], [], [], [], [spell])
+	var lethal := rules.combat_flow.cast_spell(state, content, character.id, monster.id, spell.id, 1, ScriptedRng.new([0, 0, 32_767, 32_767])); assert_true(lethal.ok, "a lethal public spell commits before its death macro is resumed")
+	assert_equal(state.combat.spell_death_macro_queue(), [monster.id], "the public spell boundary owns the exact death-macro queue head"); assert_true(lethal.events.any(func(event: DomainEvent) -> bool: return event.kind == &"monster_death_macro_requested" and event.payload.get("combatantId") == monster.id), "the queue head is the only dispatched macro")
+	var restored := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data()))); assert_not_null(restored, "the death-macro queue and active-caster cursor survive save restoration")
 	if restored != null:
 		restored.combat.monster_by_id(monster.id).current_health = 1
 		var resumed := rules.combat_flow.continue_after_monster_death_macro(restored, content, _zeros(16), monster.id)
@@ -387,6 +378,15 @@ func _test_public_polymorph_matrix() -> void:
 	var monster_definition := _monster_spell_definition("monster.transmute-caster", transmute.id, 100); var monster_caster := MonsterState.new("monster.transmute-caster.instance", monster_definition.id, monster_definition.name, 20, 20, 4, 1, 0, 0, 200); var party_target := _character("character.transmute-monster-ai"); var monster_state := _state(party_target, monster_caster, "battle.transmute-monster-ai"); monster_state.combat.battlefield.move_actor(monster_caster.id, Vector2i(50, 45)); var monster_target := MonsterState.new("monster.transmute-monster-target", original.id, original.name, 20, 20, 2, 1, 0, 0, 0, false); monster_state.combat.add_monster(monster_target); monster_state.combat.battlefield.place_monster(monster_target.id, Vector2i(47, 45), 0); monster_state.combat.set_turn_order([party_target.id, monster_caster.id, monster_target.id]); var monster_content_definitions: Array[MonsterDefinition] = definitions.duplicate(); monster_content_definitions.append(monster_definition); var monster_cast := rules.combat_flow.submit_action(monster_state, _content(monster_content_definitions, [], [], [], [transmute]), party_target.id, &"finish", "", _polymorph_rng(5)); assert_true(monster_cast.ok and monster_target.definition_id == "classic.monster.2" and monster_cast.events.any(func(candidate: DomainEvent) -> bool: return candidate.kind == &"combat_spell_resolved" and candidate.payload.get("source") == "classic-monster" and candidate.payload.get("targetId") == monster_target.id), "monster AI ignores character no-op targets, selects an opposed monster, and resolves special 46 deterministically")
 
 
+func _test_public_destroy_turn_undead_matrix() -> void:
+	var rules := RealmzRules.new(); var spell := _destroy_turn_undead_spell(); var definition := _turnable_undead_definition(); var content := _content([definition], [], [], [], [spell]); assert_equal([ClassicSpellCapabilityCatalog.combat_character_disposition(spell), ClassicSpellCapabilityCatalog.combat_scroll_disposition(spell), ClassicSpellCapabilityCatalog.combat_item_disposition(spell), ClassicSpellCapabilityCatalog.combat_monster_disposition(spell)], [ClassicSpellCapabilityCatalog.DISPOSITION_EXECUTABLE, ClassicSpellCapabilityCatalog.DISPOSITION_EXECUTABLE, ClassicSpellCapabilityCatalog.DISPOSITION_EXECUTABLE, ClassicSpellCapabilityCatalog.DISPOSITION_NOT_APPLICABLE], "Destroy / Turn Undead is executable only for Castle's character-owned combat sources")
+	var caster := _character("character.destroy-turn"); caster.level = 10; caster.spell_points = 100; caster.maximum_spell_attacks = 2; caster.set_known_spells([spell.id]); var destroyed := MonsterState.new("monster.undead-destroyed", definition.id, definition.name, 20, 20, 1); var turned := MonsterState.new("monster.undead-turned", definition.id, definition.name, 20, 20, 1); var state := _state(caster, destroyed, "battle.destroy-turn"); state.combat.add_monster(turned); state.combat.battlefield.place_monster(turned.id, Vector2i(48, 45), 0); state.combat.set_turn_order([caster.id, destroyed.id, turned.id]); var values := _ints(24); values[4] = 26_214; values[7] = 32_767; var cast := rules.combat_flow.cast_spell(state, content, caster.id, "", spell.id, 1, ScriptedRng.new(values)); var results := cast.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved"); var restored := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data()))); assert_equal([cast.ok, caster.spell_points, destroyed.current_health, state.combat.battlefield.has_actor(destroyed.id), turned.traitor, turned.target_id, results.map(func(event: DomainEvent) -> Variant: return event.payload.get("specialResult")), results.map(func(event: DomainEvent) -> Variant: return event.payload.get("specialThreshold")), restored.combat.monster_by_id(turned.id).traitor], [true, 70, 0, false, false, "", ["destroyed", "turned"], [70, 70], false], "the learned group spell preserves Castle's defense, threshold, destroy/turn, payment, topology, and save-state results")
+	assert_true(cast.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 630), "the turned branch requests Castle's distinct application-owned sound 630")
+	var race := RaceDefinition.new("race.test", 1, "Test Race", [], [], [], [], [], [], []); race.item_category_mask_low = 1; var caste := CasteDefinition.new("caste.test", 1, "Test Caste", [], [], [], [], Vector2i.ONE, Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO); caste.caste_class = 1; caste.item_category_mask_low = 1; var wand := ItemDefinition.new("item.destroy-turn", 930, "Destroy Undead Wand"); wand.item_type = 21; wand.initial_charges = 2; wand.item_category_mask_low = 1; wand.special_1 = 1; wand.special_2 = spell.classic_id; var item_caster := _character("character.destroy-turn-item"); item_caster.level = 10; item_caster.set_inventory([ItemInstance.new("instance.destroy-turn", wand.id, 2, false, true)]); var item_target := MonsterState.new("monster.destroy-turn-item", definition.id, definition.name, 20, 20, 1); var item_state := _state(item_caster, item_target, "battle.destroy-turn-item"); var item_cast := rules.combat_flow.use_spell_item(item_state, _content([definition], [wand], [race], [caste], [spell]), item_caster.id, "", "instance.destroy-turn", _destroy_turn_rng()); assert_equal([item_cast.ok, item_target.traitor, item_caster.inventory()[0].charges, item_caster.spell_points], [true, false, 1, 0], "a charged item turns the hostile undead group without spending spell points")
+	var scroll_case := ItemDefinition.new("item.destroy-turn-case", 931, "Destroy Undead Case"); scroll_case.item_type = 13; var scroll_caster := _character("character.destroy-turn-scroll"); scroll_caster.level = 10; scroll_caster.set_inventory([ItemInstance.new("instance.destroy-turn-case", scroll_case.id, 0, true, true)]); scroll_caster.write_scroll(0, spell.id, 1); var scroll_target := MonsterState.new("monster.destroy-turn-scroll", definition.id, definition.name, 20, 20, 1); var scroll_state := _state(scroll_caster, scroll_target, "battle.destroy-turn-scroll"); var scroll_cast := rules.combat_flow.use_combat_scroll(scroll_state, _content([definition], [scroll_case], [], [], [spell]), scroll_caster.id, 0, "", _destroy_turn_rng()); assert_equal([scroll_cast.ok, scroll_target.traitor, scroll_caster.scroll_at(0).is_empty(), scroll_caster.spell_points], [true, false, true, 0], "a fixed-power scroll turns the hostile undead group and consumes only the scroll")
+	var auto_caster := _character("character.destroy-turn-auto"); auto_caster.level = 10; auto_caster.spell_points = 100; auto_caster.maximum_spell_attacks = 1; auto_caster.set_known_spells([spell.id]); var auto_target := MonsterState.new("monster.destroy-turn-auto", definition.id, definition.name, 20, 20, 1); var auto_state := _state(auto_caster, auto_target, "battle.destroy-turn-auto"); var auto_cast := rules.combat_flow.submit_action(auto_state, content, auto_caster.id, &"auto", "", _destroy_turn_rng(5)); assert_true(auto_cast.ok and auto_cast.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved" and event.payload.get("spellId") == spell.id), "Party Auto values an eligible hostile undead group and commits the same spell resolver")
+
+
 func _character(character_id: String) -> CharacterState:
 	var result := CharacterState.new(character_id, "Combat Test Hero", 30, 30); result.race_id = "race.test"; result.caste_id = "caste.test"; result.luck = 1; result.hand_to_hand = 1; result.normal_attacks = 4 if character_id in ["character.persistent-wall", "character.wall-scroll", "character.wall-item", "character.binding-wall", "character.war-brainwash"] else 2; result.maximum_movement = 12; result.movement = 12; return result
 
@@ -409,6 +409,15 @@ func _polymorph_definitions() -> Array[MonsterDefinition]: var original := Monst
 
 
 func _polymorph_rng(candidate_index: int) -> ScriptedRng: var values := _ints(96); values[candidate_index] = 200; return ScriptedRng.new(values)
+
+
+func _destroy_turn_undead_spell() -> SpellDefinition: var result := SpellDefinition.new("spell.destroy-turn-undead", 3504, "Destroy / Turn Undead"); result.in_combat = true; result.target_type = 10; result.cannot = 2; result.cost = 30; result.spell_class = 7; result.damage_type = 7; result.special = 90; return result
+
+
+func _turnable_undead_definition() -> MonsterDefinition: var flags := _ints(8); flags[1] = 1; var result := MonsterDefinition.new("monster.turnable-undead", 940, "Turnable Undead", 1, 0, 1, 0, 0, flags, _ints(8), _ints(6), _ints(3), [], [], []); result.can_summon = 1; return result
+
+
+func _destroy_turn_rng(result_index: int = 4) -> ScriptedRng: var values := _ints(24); values[result_index] = 32_767; return ScriptedRng.new(values)
 
 
 func _condition_cure_spell(spell_id: String, classic_id: int, special: int) -> SpellDefinition:

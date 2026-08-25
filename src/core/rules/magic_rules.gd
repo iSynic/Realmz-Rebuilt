@@ -140,6 +140,8 @@ func _resolve_character_spell_monster_target(caster: CharacterState, target: Mon
 		damage = int(float(damage) * (1.0 + float(absi(save_modifier)) / 100.0))
 	if ClassicSpellCapabilityCatalog.is_combat_polymorph_spell(spell):
 		return _polymorph_monster(target, target_definition, spell_cost, duration, polymorph_context, rng)
+	if ClassicSpellCapabilityCatalog.is_combat_destroy_turn_undead_spell(spell):
+		return _destroy_or_turn_undead(caster, target, target_definition, spell_cost, duration, power_level, rng)
 	if absi(spell.special) == 28:
 		damage = duration
 	if absi(spell.special) in [27, 49]:
@@ -481,6 +483,28 @@ func _polymorph_monster(target: MonsterState, target_definition: MonsterDefiniti
 	if not before.is_empty():
 		result.transformed_definition_before = before
 		result.transformed_definition_after = target.definition_id
+	return result
+
+
+static func _destroy_or_turn_undead(caster: CharacterState, target: MonsterState, definition: MonsterDefinition, spell_cost: int, duration: int, power_level: int, rng: RealmzRng) -> SpellResolution:
+	var result := SpellResolution.new(true, false, false, spell_cost, 0, duration)
+	if not target.traitor or target.current_health <= 0 or definition.can_summon == -1 or not (definition.type_flag(1) or definition.type_flag(2)):
+		return result
+	result.special_threshold = maxi(25, 100 - (5 * power_level + 3 * caster.level) + 5 * target.hit_dice)
+	result.special_roll = rng.draw(100, &"magic.destroy-turn-undead")
+	var margin := result.special_roll - result.special_threshold
+	if margin <= 0:
+		result.special_result = &"resisted"
+	elif margin < 30:
+		result.special_result = &"destroyed"
+		target.current_health = 0
+		result.target_defeated = true
+	else:
+		result.special_result = &"turned"
+		var traitor_before := target.traitor
+		target.traitor = caster.traitor
+		target.target_id = ""
+		_record_allegiance_change(result, traitor_before, target.traitor)
 	return result
 
 

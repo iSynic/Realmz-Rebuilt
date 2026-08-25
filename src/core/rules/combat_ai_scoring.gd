@@ -402,6 +402,8 @@ func _best_party_spell(state: GameState, content: RealmzContent, actor: Characte
 			best = _prefer(best, _best_charm(state, content, actor, spell, option.power))
 		elif ClassicSpellCapabilityCatalog.is_combat_polymorph_spell(spell):
 			best = _prefer(best, _best_polymorph(state, content, actor, spell, option, actors_by_cell, area_placement_cache, area_center_cache))
+		elif ClassicSpellCapabilityCatalog.is_combat_destroy_turn_undead_spell(spell):
+			best = _prefer(best, _best_destroy_turn_undead(state, content, actor, spell, option.power))
 		elif ClassicSpellCapabilityCatalog.is_combat_destroy_magic_spell(spell):
 			best = _prefer(best, _best_destroy_magic(state, content, actor, spell, option.power))
 		elif ClassicSpellCapabilityCatalog.is_combat_magic_detection_spell(spell):
@@ -442,6 +444,17 @@ func _best_polymorph(state: GameState, content: RealmzContent, actor: CharacterS
 			continue
 		best = _prefer(best, {"action": &"cast_spell", "spellId": spell.id, "power": option.power, "targetId": target.id, "score": 440 + target.hit_dice * 20 + target.current_health - option.cost * 3})
 	return best
+
+
+func _best_destroy_turn_undead(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, power: int) -> Dictionary:
+	var eligible := 0
+	for target: MonsterState in state.combat.monsters():
+		var definition := content.monster_by_id(target.definition_id)
+		if target.current_health > 0 and target.traitor and state.combat.battlefield.has_actor(target.id) and definition != null and definition.can_summon != -1 and (definition.type_flag(1) or definition.type_flag(2)):
+			eligible += 1
+	if eligible == 0 or not _flow().probe_character_spell_cast(state, content, actor.id, "", spell.id, power).allowed:
+		return {}
+	return {"action": &"cast_spell", "spellId": spell.id, "power": power, "score": 520 + eligible * 180 - absi(spell.cost * power) * 3}
 
 
 func _best_destroy_magic(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, power: int) -> Dictionary:
