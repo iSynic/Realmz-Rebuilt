@@ -298,7 +298,7 @@ static func _combat_summon_spell(spell: SpellDefinition) -> bool:
 
 
 static func _combat_death_spell(spell: SpellDefinition) -> bool:
-	return spell != null and spell.in_combat and spell.queue_icon == 0 and absi(spell.special) == 49
+	return spell != null and spell.in_combat and spell.queue_icon == 0 and absi(spell.special) in [27, 49]
 
 
 static func _combat_spell_point_restore_spell(spell: SpellDefinition) -> bool:

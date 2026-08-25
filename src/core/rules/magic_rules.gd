@@ -132,8 +132,8 @@ func _resolve_character_spell_monster_target(caster: CharacterState, target: Mon
 	var save_modifier := (target.save_value(damage_type - 1) if target.has_runtime_saves() else target_definition.save_value(damage_type - 1)) if damage_type > 0 and damage_type < 8 else 0
 	if save_modifier < 0:
 		damage = int(float(damage) * (1.0 + float(absi(save_modifier)) / 100.0))
-	if absi(spell.special) == 49:
-		damage = 10 + target.current_health
+	if absi(spell.special) in [27, 49]:
+		damage = _combat_death_damage(target.conditions, absi(spell.special), target.current_health)
 	if absi(spell.special) == 59:
 		return _restore_monster_spell_points(target, damage, duration, spell_cost, saved)
 	if absi(spell.special) == 60:
@@ -175,8 +175,8 @@ func _resolve_character_spell_character_target(caster: CharacterState, target: C
 			damage /= 2
 		if damage > 0 and target.conditions.is_active(ConditionRules.FIRE_PROTECTION + damage_type - 1):
 			damage /= 2
-	if absi(spell.special) == 49:
-		damage = 10 + target.current_health
+	if absi(spell.special) in [27, 49]:
+		damage = _combat_death_damage(target.conditions, absi(spell.special), target.current_health)
 	if absi(spell.special) == 59:
 		return _restore_character_spell_points(target, damage, duration, 0, saved)
 	if absi(spell.special) == 60:
@@ -379,8 +379,8 @@ func _resolve_monster_spell_character_target(caster: MonsterState, target: Chara
 			damage /= 2
 		if damage > 0 and target.conditions.is_active(ConditionRules.FIRE_PROTECTION + damage_type - 1):
 			damage /= 2
-	if absi(spell.special) == 49:
-		damage = 10 + target.current_health
+	if absi(spell.special) in [27, 49]:
+		damage = _combat_death_damage(target.conditions, absi(spell.special), target.current_health)
 	if absi(spell.special) == 59:
 		return _restore_character_spell_points(target, damage, duration, spell_cost, saved)
 	if absi(spell.special) == 60:
@@ -425,8 +425,8 @@ func _resolve_monster_spell_monster_target(caster: MonsterState, target: Monster
 	var save_modifier := (target.save_value(damage_type - 1) if target.has_runtime_saves() else target_definition.save_value(damage_type - 1)) if damage_type > 0 and damage_type < 8 else 0
 	if save_modifier < 0:
 		damage = int(float(damage) * (1.0 + float(absi(save_modifier)) / 100.0))
-	if absi(spell.special) == 49:
-		damage = 10 + target.current_health
+	if absi(spell.special) in [27, 49]:
+		damage = _combat_death_damage(target.conditions, absi(spell.special), target.current_health)
 	if absi(spell.special) == 59:
 		return _restore_monster_spell_points(target, damage, duration, spell_cost, saved)
 	if absi(spell.special) == 60:
@@ -493,6 +493,12 @@ static func _drain_monster_spell_points(target: MonsterState, amount: int, durat
 	var result := SpellResolution.new(true, false, saved, spell_cost, 0, duration)
 	result.spell_point_delta = target.spell_points - before
 	return result
+
+
+static func _combat_death_damage(conditions: ConditionSet, special: int, current_health: int) -> int:
+	if special == 27:
+		conditions.set_value(ConditionRules.TURNED_TO_STONE, -1)
+	return 10 + current_health
 
 
 static func condition_cure_index(spell: SpellDefinition) -> int:
