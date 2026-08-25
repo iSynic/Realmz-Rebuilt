@@ -82,7 +82,6 @@ const JOURNAL_STATUS_TEXTURE := preload("res://src/presentation/assets/ui/status
 @onready var _narrative_well: PanelContainer = %NarrativeWell
 @onready var _command_panel: PanelContainer = %CommandPanel
 @onready var _command_column: VBoxContainer = $BottomRegion/BottomRow/CommandPanel/CommandColumn
-@onready var _command_scroll: ScrollContainer = $BottomRegion/BottomRow/CommandPanel/CommandColumn/CommandDeckCenter/CommandDeckFrame/CommandScroll
 @onready var _command_grid: GridContainer = %CommandGrid
 @onready var _command_heading: Label = $BottomRegion/BottomRow/CommandPanel/CommandColumn/CommandHeading
 @onready var _router: ClassicScreenRouter = %ScreenRouter
@@ -514,10 +513,6 @@ func _apply_layout() -> void:
 	_command_column.alignment = BoxContainer.ALIGNMENT_CENTER
 	_world_command_grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_world_command_grid.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	# The scroll owns the Party deck's available height while its grid remains
-	# centered inside it. Shrinking the scroll itself can collapse it to zero
-	# during a clear-and-rebuild container pass.
-	_command_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_command_grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_command_grid.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_world_command_grid.columns = 4

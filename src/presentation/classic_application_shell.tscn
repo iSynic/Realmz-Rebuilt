@@ -264,7 +264,7 @@ size_flags_vertical = 3
 [node name="WorldCommandDeckFrame" type="PanelContainer" parent="BottomRegion/BottomRow/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_type_variation = &"ClassicInset"
+theme_type_variation = &"ClassicFooterCommandWell"
 
 [node name="WorldCommandGrid" type="GridContainer" parent="BottomRegion/BottomRow/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame"]
 unique_name_in_owner = true
@@ -383,16 +383,9 @@ size_flags_vertical = 3
 [node name="CommandDeckFrame" type="PanelContainer" parent="BottomRegion/BottomRow/CommandPanel/CommandColumn/CommandDeckCenter"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_type_variation = &"ClassicInset"
+theme_type_variation = &"ClassicFooterCommandWell"
 
-[node name="CommandScroll" type="ScrollContainer" parent="BottomRegion/BottomRow/CommandPanel/CommandColumn/CommandDeckCenter/CommandDeckFrame"]
-layout_mode = 2
-size_flags_vertical = 3
-horizontal_scroll_mode = 0
-vertical_scroll_mode = 1
-follow_focus = true
-
-[node name="CommandGrid" type="GridContainer" parent="BottomRegion/BottomRow/CommandPanel/CommandColumn/CommandDeckCenter/CommandDeckFrame/CommandScroll"]
+[node name="CommandGrid" type="GridContainer" parent="BottomRegion/BottomRow/CommandPanel/CommandColumn/CommandDeckCenter/CommandDeckFrame"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 4
