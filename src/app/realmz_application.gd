@@ -1121,7 +1121,7 @@ func _on_shell_layout_changed(workspace_rect: Rect2, _profile: UiLayoutProfile) 
 
 
 func _sync_interaction_narrative_region(content_rect: Rect2, combat_rect: Rect2) -> void:
-	var narrative_rect := _shell_presenter.narrative_region()
+	await get_tree().process_frame; var narrative_rect := _shell_presenter.narrative_region()
 	if narrative_rect.has_area():
 		_interaction_presenter.set_classic_regions(content_rect, narrative_rect, combat_rect)
 
