@@ -65,10 +65,10 @@ func resolve_character_group_spell(caster: CharacterState, character_targets: Ar
 	return result
 
 
-func resolve_character_repeated_spell(caster: CharacterState, selections: Array[SpellTargetSelection], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, spend_spell_points: bool = true, before_selection: Callable = Callable()) -> RepeatedSpellResolution:
+func resolve_character_repeated_spell(caster: CharacterState, selections: Array[SpellTargetSelection], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, spend_spell_points: bool = true, before_selection: Callable = Callable(), item_definitions: Array[ItemDefinition] = []) -> RepeatedSpellResolution:
 	if caster == null or spell == null or rng == null or power_level < 1 or selections.is_empty() or selections.size() > power_level:
 		return null
-	return _resolve_character_selection_sequence(caster, selections, spell, power_level, cast_level, rng, spend_spell_points, true, &"magic.repeated", before_selection)
+	return _resolve_character_selection_sequence(caster, selections, spell, power_level, cast_level, rng, spend_spell_points, true, &"magic.repeated", before_selection, item_definitions)
 
 
 func resolve_character_ray_spell(caster: CharacterState, selections: Array[SpellTargetSelection], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, spend_spell_points: bool = true) -> RepeatedSpellResolution:
@@ -77,7 +77,7 @@ func resolve_character_ray_spell(caster: CharacterState, selections: Array[Spell
 	return _resolve_character_selection_sequence(caster, selections, spell, power_level, cast_level, rng, spend_spell_points, false, &"magic.ray")
 
 
-func _resolve_character_selection_sequence(caster: CharacterState, selections: Array[SpellTargetSelection], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, spend_spell_points: bool, allow_reflection: bool, rng_tag: StringName, before_selection: Callable = Callable()) -> RepeatedSpellResolution:
+func _resolve_character_selection_sequence(caster: CharacterState, selections: Array[SpellTargetSelection], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, spend_spell_points: bool, allow_reflection: bool, rng_tag: StringName, before_selection: Callable = Callable(), item_definitions: Array[ItemDefinition] = []) -> RepeatedSpellResolution:
 	for selection: SpellTargetSelection in selections:
 		if selection == null or (selection.character == null and (selection.monster == null or selection.monster_definition == null)):
 			return null
@@ -100,7 +100,7 @@ func _resolve_character_selection_sequence(caster: CharacterState, selections: A
 		if not selection.reflected and selection.kind == &"monster" and selection.monster.magic_resistance > 100:
 			result.exclude_target(selection.original_target_id)
 			continue
-		var resolution := _resolve_character_selection(caster, selection, spell, power_level, cast_level, damage, duration, 0, rng)
+		var resolution := _resolve_character_selection(caster, selection, spell, power_level, cast_level, damage, duration, 0, rng, item_definitions)
 		result.append_target(selection.id, selection.kind, resolution, selection.original_target_id, selection.reflected)
 	return result
 
@@ -156,7 +156,7 @@ func _resolve_character_spell_monster_target(caster: CharacterState, target: Mon
 	return result
 
 
-func _resolve_character_spell_character_target(caster: CharacterState, target: CharacterState, spell: SpellDefinition, power_level: int, cast_level: int, damage: int, duration: int, rng: RealmzRng) -> SpellResolution:
+func _resolve_character_spell_character_target(caster: CharacterState, target: CharacterState, spell: SpellDefinition, power_level: int, cast_level: int, damage: int, duration: int, rng: RealmzRng, item_definitions: Array[ItemDefinition] = []) -> SpellResolution:
 	var rolled_damage := damage
 	var resisted := character_resists(caster.level, target, spell, power_level, cast_level, rng)
 	if resisted:
@@ -168,6 +168,8 @@ func _resolve_character_spell_character_target(caster: CharacterState, target: C
 		return _clear_condition(target.conditions, cured_condition, 0, duration)
 	if ClassicSpellCapabilityCatalog.is_combat_destroy_magic_spell(spell):
 		return _destroy_magic_character(target, 0, duration)
+	if ClassicSpellCapabilityCatalog.is_combat_remove_curse_spell(spell):
+		return _remove_curse_character(target, 0, duration, item_definitions)
 	var saved := false
 	var damage_type := absi(spell.damage_type)
 	if damage_type > 0 and damage_type < 8:
@@ -352,9 +354,9 @@ func _resolve_monster_selection_sequence(caster: MonsterState, caster_definition
 	return result
 
 
-func _resolve_character_selection(caster: CharacterState, selection: SpellTargetSelection, spell: SpellDefinition, power_level: int, cast_level: int, damage: int, duration: int, spell_cost: int, rng: RealmzRng) -> SpellResolution:
+func _resolve_character_selection(caster: CharacterState, selection: SpellTargetSelection, spell: SpellDefinition, power_level: int, cast_level: int, damage: int, duration: int, spell_cost: int, rng: RealmzRng, item_definitions: Array[ItemDefinition] = []) -> SpellResolution:
 	if selection.kind == &"character":
-		return _resolve_character_spell_character_target(caster, selection.character, spell, power_level, cast_level, damage, duration, rng)
+		return _resolve_character_spell_character_target(caster, selection.character, spell, power_level, cast_level, damage, duration, rng, item_definitions)
 	return _resolve_character_spell_monster_target(caster, selection.monster, selection.monster_definition, spell, power_level, cast_level, damage, duration, spell_cost, rng)
 
 
@@ -545,6 +547,20 @@ static func _destroy_magic_character(target: CharacterState, spell_cost: int, du
 	return result
 
 
+static func _remove_curse_character(target: CharacterState, spell_cost: int, duration: int, item_definitions: Array[ItemDefinition]) -> SpellResolution:
+	target.conditions.set_value(ConditionRules.CURSED, 0)
+	var definitions: Dictionary = {}
+	for definition: ItemDefinition in item_definitions:
+		definitions[definition.id] = definition
+	var result := SpellResolution.new(true, false, false, spell_cost, 0, duration)
+	for instance: ItemInstance in target.inventory():
+		var definition: ItemDefinition = definitions.get(instance.definition_id)
+		if instance.equipped and definition != null and not definition.cursed_item_id.is_empty():
+			instance.equipped = false
+			result.unequipped_item_ids.append(instance.id)
+	return result
+
+
 static func _destroy_magic_monster(target: MonsterState, spell_cost: int, duration: int) -> SpellResolution:
 	var result := SpellResolution.new(true, false, false, spell_cost, 0, duration)
 	result.cleared_condition_count = target.conditions.clear_positive()
@@ -647,6 +663,8 @@ func resolve_scenario_spell(target: CharacterState, spell: SpellDefinition, powe
 
 func _resolve_noncombat_character_effect(target: CharacterState, spell: SpellDefinition, power_level: int, extra_save_adjust: int, force_affect: bool, rng: RealmzRng, caste: CasteDefinition, race: RaceDefinition, duration: int, damage: int, tag_prefix: String, item_definitions: Array[ItemDefinition] = []) -> SpellResolution:
 	var special := absi(spell.special)
+	if special == 62:
+		return _remove_curse_character(target, 0, duration, item_definitions)
 	var damage_type := absi(spell.damage_type)
 	var saved := false
 	if damage_type > 0 and damage_type < 8 and not force_affect and spell.cannot < 2:
@@ -698,8 +716,6 @@ func _resolve_noncombat_character_effect(target: CharacterState, spell: SpellDef
 			damage = 0
 		61:
 			target.conditions.clear_positive()
-		62:
-			target.conditions.set_value(ConditionRules.CURSED, 0)
 		64:
 			if not target.conditions.is_active(ConditionRules.TURNED_TO_STONE) and (target.current_health < -9 or target.conditions.is_active(ConditionRules.ANIMATED)):
 				target.conditions.set_value(ConditionRules.ANIMATED, 0)
@@ -726,15 +742,6 @@ func _resolve_noncombat_character_effect(target: CharacterState, spell: SpellDef
 	var result := SpellResolution.new(true, false, saved, 0, damage, duration, target.current_health <= -10)
 	result.cleared_condition = condition_cure_index(spell) if special > 99 else -1
 	result.aging = aging
-	if special == 62:
-		var definitions: Dictionary = {}
-		for definition: ItemDefinition in item_definitions:
-			definitions[definition.id] = definition
-		for instance: ItemInstance in target.inventory():
-			var definition: ItemDefinition = definitions.get(instance.definition_id)
-			if instance.equipped and definition != null and not definition.cursed_item_id.is_empty():
-				instance.equipped = false
-				result.unequipped_item_ids.append(instance.id)
 	return result
 
 

@@ -178,7 +178,7 @@ func use_spell_item(state: GameState, content: RealmzContent, caster_id: String,
 				return CombatFlowSpellRollbackType.item(state, rng, state_checkpoint, rng_checkpoint, &"item_target_unavailable", "A repeated-item target became unavailable.")
 			selections.append(repeated_selection)
 		var repeated_fields: Array[RefCounted] = []
-		var repeated := _rules.magic.resolve_character_repeated_spell(caster, selections, spell, power_level, cast_level, rng, false, _flow()._repeated_field_callback(state, spell, caster.id, target_ids, power_level, cast_level, rng, repeated_fields))
+		var repeated := _rules.magic.resolve_character_repeated_spell(caster, selections, spell, power_level, cast_level, rng, false, _flow()._repeated_field_callback(state, spell, caster.id, target_ids, power_level, cast_level, rng, repeated_fields), content.item_definitions())
 		if repeated == null or not repeated.cast:
 			return CombatFlowSpellRollbackType.item(state, rng, state_checkpoint, rng_checkpoint, &"item_spell_failed", "The repeated item spell could not be resolved.")
 		result = _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, repeated, rng, INVALID_COORDINATE, 0, "classic-item", instance_id, false, repeated_fields)
@@ -368,7 +368,7 @@ func cast_spell(state: GameState, content: RealmzContent, caster_id: String, tar
 				return CombatFlowResult.failed(&"spell_target_unavailable", "A selected repeated-spell target is unavailable.")
 			selections.append(repeated_selection)
 		var repeated_fields: Array[RefCounted] = []
-		var repeated := _rules.magic.resolve_character_repeated_spell(caster, selections, spell, power_level, cast_level, rng, true, _flow()._repeated_field_callback(state, spell, caster.id, target_ids, power_level, cast_level, rng, repeated_fields))
+		var repeated := _rules.magic.resolve_character_repeated_spell(caster, selections, spell, power_level, cast_level, rng, true, _flow()._repeated_field_callback(state, spell, caster.id, target_ids, power_level, cast_level, rng, repeated_fields), content.item_definitions())
 		if repeated == null or not repeated.cast:
 			return CombatFlowResult.failed(&"spell_cast_failed", "The repeated-target spell could not be cast with the available spell points.")
 		return _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, repeated, rng, INVALID_COORDINATE, 0, "classic", "", true, repeated_fields)
@@ -549,7 +549,7 @@ func use_combat_scroll(state: GameState, content: RealmzContent, caster_id: Stri
 				return CombatFlowSpellRollbackType.scroll(state, rng, state_checkpoint, rng_checkpoint, &"scroll_target_unavailable", "A repeated-scroll target became unavailable.")
 			selections.append(selection)
 		var repeated_fields: Array[RefCounted] = []
-		var repeated := _rules.magic.resolve_character_repeated_spell(caster, selections, spell, power_level, cast_level, rng, false, _flow()._repeated_field_callback(state, spell, caster.id, target_ids, power_level, cast_level, rng, repeated_fields))
+		var repeated := _rules.magic.resolve_character_repeated_spell(caster, selections, spell, power_level, cast_level, rng, false, _flow()._repeated_field_callback(state, spell, caster.id, target_ids, power_level, cast_level, rng, repeated_fields), content.item_definitions())
 		if repeated == null or not repeated.cast:
 			return CombatFlowSpellRollbackType.scroll(state, rng, state_checkpoint, rng_checkpoint, &"scroll_spell_failed", "The repeated scroll could not be resolved.")
 		result = _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, repeated, rng, INVALID_COORDINATE, 0, "classic-scroll", "", false, repeated_fields)
@@ -701,8 +701,8 @@ func _commit_character_multi_spell(state: GameState, content: RealmzContent, cas
 		var payload := {"actorId": caster.id, "targetId": resolved_target_id, "selectedTargetId": selected_target_id, "targetKind": String(target_kind), "spellId": spell.id, "targetType": spell.target_type, "power": power_level, "classicTier": cast_level, "reflected": reflected, "resisted": resolution.resisted, "saved": resolution.saved, "damage": resolution.damage, "healing": maxi(0, -resolution.damage), "duration": resolution.duration, "defeated": resolution.target_defeated, "source": event_source, "clearedConditionCount": resolution.cleared_condition_count}
 		if resolution.spell_point_delta != 0 or ClassicSpellCapabilityCatalog.is_combat_spell_point_restore_spell(spell) or ClassicSpellCapabilityCatalog.is_combat_spell_point_drain_spell(spell):
 			payload["spellPointDelta"] = resolution.spell_point_delta
-		if resolution.cleared_condition >= 0:
-			payload["clearedCondition"] = resolution.cleared_condition
+		if resolution.cleared_condition >= 0: payload["clearedCondition"] = resolution.cleared_condition
+		if not resolution.unequipped_item_ids.is_empty(): payload["unequippedItemIds"] = resolution.unequipped_item_ids.duplicate()
 		if resolution.applied_condition >= 0:
 			payload["appliedCondition"] = resolution.applied_condition
 		if resolution.allegiance_changed:
@@ -1031,10 +1031,10 @@ static func _spell_target_view(state: GameState, content: RealmzContent, target_
 
 
 func _spell_actor_target_is_valid(state: GameState, content: RealmzContent, caster_id: String, target_id: String, spell: SpellDefinition, power_level: int) -> bool:
+	if ClassicSpellCapabilityCatalog.is_combat_remove_curse_spell(spell) and state.party.character_by_id(target_id) == null: return false
 	var maximum_range := absi(spell.range_min + spell.range_max * power_level)
 	if caster_id == target_id:
-		var map := content.world.map_by_id(state.combat.battlefield.map_id)
-		var terrain_set := content.world.battle_terrain_set_by_id(map.battle_terrain_set_id) if map != null else null
+		var map := content.world.map_by_id(state.combat.battlefield.map_id); var terrain_set := content.world.battle_terrain_set_by_id(map.battle_terrain_set_id) if map != null else null
 		return terrain_set != null and _rules.battlefield.coordinate_target_is_valid(state.combat.battlefield, terrain_set, caster_id, state.combat.battlefield.actor_position(caster_id), maximum_range, spell.range_min + spell.range_max > 0)
 	return _flow().projectile_target_is_valid(state.combat, content, caster_id, target_id, maximum_range, spell.range_min + spell.range_max > 0)
 
