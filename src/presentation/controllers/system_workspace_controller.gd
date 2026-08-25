@@ -111,27 +111,59 @@ func _build_save_tab(parent: VBoxContainer, view: GameView) -> void:
 
 
 func _build_save_footer(parent: VBoxContainer, view: GameView) -> void:
-	var footer := HBoxContainer.new()
+	var footer := VBoxContainer.new()
 	footer.name = "SaveWorkspaceFooter"
 	footer.add_theme_constant_override("separation", 5)
 	parent.add_child(footer)
+	var actions := HBoxContainer.new()
+	actions.name = "SaveWorkspaceActions"
+	actions.add_theme_constant_override("separation", 5)
+	footer.add_child(actions)
 	if _save_and_quit_mode:
-		var save_and_quit := _add_action(footer, "Save and Quit", &"", null)
+		var save_and_quit := _add_action(actions, "Save and Quit", &"", null)
 		save_and_quit.name = "SaveAndQuitSelected"
 		save_and_quit.tooltip_text = "Save to the selected slot, then quit Realmz Rebuilt."
 		save_and_quit.pressed.connect(_save_selected_and_quit)
 	elif not view.party_setup_available:
-		_add_action(footer, "Quick Save", &"save", "quick")
-	_load_selected = _add_action(footer, "Load Selected", &"", null)
+		_add_action(actions, "Quick Save", &"save", "quick")
+		var save_selected := _add_action(actions, "Save Selected", &"", null)
+		save_selected.name = "SaveSelectedSlot"
+		save_selected.pressed.connect(_save_selected_preview)
+	_load_selected = _add_action(actions, "Load Selected", &"", null)
 	_load_selected.name = "LoadSelectedSave"
 	_load_selected.pressed.connect(_load_selected_preview)
-	_add_action(footer, "Refresh", &"refresh_saves", null)
+	_add_action(actions, "Refresh", &"refresh_saves", null)
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	footer.add_child(spacer)
-	var end_adventure := _add_action(footer, "Main Menu", &"end_adventure", null)
+	actions.add_child(spacer)
+	var end_adventure := _add_action(actions, "Main Menu", &"end_adventure", null)
 	end_adventure.disabled = view.pending_interaction != null and view.pending_interaction.kind != InteractionRequest.COMBAT
 	end_adventure.tooltip_text = "Resolve the current interaction first." if end_adventure.disabled else "Close this campaign session and return to the Realmz Rebuilt main menu."
+	if not _save_and_quit_mode and not view.party_setup_available:
+		_build_new_save_row(footer)
+
+
+func _build_new_save_row(parent: VBoxContainer) -> void:
+	var row := HBoxContainer.new()
+	row.name = "NewSaveSlotRow"
+	row.add_theme_constant_override("separation", 5)
+	parent.add_child(row)
+	var slot_name := LineEdit.new()
+	slot_name.name = "NewSaveSlotName"
+	slot_name.theme_type_variation = &"ClassicTheldrowLineEdit"
+	slot_name.placeholder_text = "New slot name (letters, numbers, - or _)"
+	slot_name.max_length = 128
+	slot_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(slot_name)
+	var save_new := _add_action(row, "Save New Slot", &"", null)
+	save_new.name = "SaveNewSlot"
+	save_new.disabled = true
+	var refresh := func(value: String) -> void:
+		save_new.disabled = not slot_id_is_portable(value)
+		save_new.tooltip_text = "Use only letters, numbers, hyphens, or underscores." if save_new.disabled else "Create or replace this named save slot."
+	slot_name.text_changed.connect(refresh)
+	save_new.pressed.connect(func() -> void: action_requested.emit(&"save", slot_name.text))
+	refresh.call(slot_name.text)
 
 
 func _select_save(preview: SaveSlotPreview) -> void:
@@ -172,6 +204,12 @@ func _load_selected_preview() -> void:
 	action_requested.emit(action, preview.slot_id)
 
 
+func _save_selected_preview() -> void:
+	var preview := _selected_preview()
+	if preview != null:
+		action_requested.emit(&"save", preview.slot_id)
+
+
 func _save_selected_and_quit() -> void:
 	var preview := _selected_preview()
 	action_requested.emit(&"save_and_quit", preview.slot_id if preview != null else "quick")
@@ -186,6 +224,16 @@ func _selected_preview() -> SaveSlotPreview:
 
 func _key(preview: SaveSlotPreview) -> String:
 	return "%s:%s" % [preview.slot_id, String(preview.source)] if preview != null else ""
+
+
+static func slot_id_is_portable(value: String) -> bool:
+	if value.is_empty() or value.length() > 128:
+		return false
+	for index: int in value.length():
+		var code := value.unicode_at(index)
+		if not ((code >= 48 and code <= 57) or (code >= 65 and code <= 90) or (code >= 97 and code <= 122) or code in [45, 95]):
+			return false
+	return true
 
 
 func _build_display_tab(parent: VBoxContainer, settings: PresentationSettings) -> void:
@@ -286,7 +334,7 @@ func _build_diagnostics_tab(parent: VBoxContainer, settings: PresentationSetting
 func _settings_panel(parent: VBoxContainer, title: String, description: String) -> VBoxContainer:
 	var panel := PanelContainer.new()
 	panel.name = "%sSettingsPanel" % title.replace(" ", "")
-	panel.theme_type_variation = &"ClassicTextWell"
+	panel.theme_type_variation = &"ClassicInset"
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	parent.add_child(panel)
@@ -304,10 +352,14 @@ func _settings_panel(parent: VBoxContainer, title: String, description: String) 
 
 
 func _add_setting_row(parent: Container, label: String, control: Control) -> void:
+	var card := PanelContainer.new()
+	card.theme_type_variation = &"ClassicInset"
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	parent.add_child(card)
 	var row := BoxContainer.new()
 	row.vertical = _layout_profile == UiLayoutProfile.COMPACT
 	row.add_theme_constant_override("separation", 10)
-	parent.add_child(row)
+	card.add_child(row)
 	var caption := _label(label, Color("e0e2e5"), 15)
 	caption.custom_minimum_size.x = 0.0 if row.vertical else 230.0
 	row.add_child(caption)
@@ -328,7 +380,7 @@ func _tab(tabs: TabContainer, tab_name: String) -> VBoxContainer:
 func _pane(parent: HBoxContainer, pane_name: String, title: String, ratio: float) -> VBoxContainer:
 	var panel := PanelContainer.new()
 	panel.name = pane_name
-	panel.theme_type_variation = &"ClassicTextWell"
+	panel.theme_type_variation = &"ClassicInset"
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	panel.size_flags_stretch_ratio = ratio
@@ -377,12 +429,16 @@ func _add_card(parent: Container, title: String, subtitle: String, detail: Strin
 
 
 func _add_setting_toggle(parent: Container, label: String, enabled: bool, setting_id: StringName) -> void:
+	var card := PanelContainer.new()
+	card.theme_type_variation = &"ClassicInset"
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	parent.add_child(card)
 	var toggle := CheckButton.new()
 	toggle.name = String(setting_id).to_pascal_case()
 	toggle.text = label
 	toggle.button_pressed = enabled
 	toggle.toggled.connect(func(value: bool) -> void: setting_changed.emit(setting_id, value))
-	parent.add_child(toggle)
+	card.add_child(toggle)
 
 
 func _label(text: String, color: Color, size: int) -> Label:
