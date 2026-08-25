@@ -22,6 +22,7 @@ var conditions: ConditionSet
 var _saves: Array[int] = []
 var _saves_initialized: bool = false
 var _loot_item_ids: Array[String] = []
+var _loot_magic_detected: Array[bool] = []
 
 
 func _init(instance_id: String, source_definition_id: String, display_name: String, health: int, max_health: int, hd: int = 1, dexterity: int = 1, armor_rating: int = 0, magic_resist: int = 0, spell_energy: int = 0, is_traitor: bool = true) -> void:
@@ -70,7 +71,45 @@ func set_loot_item_ids(values: Array[String]) -> bool:
 	if values.size() > 6:
 		return false
 	_loot_item_ids = values.duplicate()
+	_loot_magic_detected.resize(values.size())
+	_loot_magic_detected.fill(false)
 	return true
+
+
+func loot_magic_detected() -> Array[bool]:
+	return _loot_magic_detected.duplicate()
+
+
+func set_loot_magic_detected(values: Array[bool]) -> bool:
+	if values.size() != _loot_item_ids.size():
+		return false
+	for index: int in values.size():
+		if values[index] and _loot_item_ids[index].is_empty():
+			return false
+	_loot_magic_detected = values.duplicate()
+	return true
+
+
+func mark_loot_magic_detected() -> int:
+	var marked := 0
+	for index: int in _loot_item_ids.size():
+		if _loot_item_ids[index].is_empty() or _loot_magic_detected[index]:
+			continue
+		_loot_magic_detected[index] = true
+		marked += 1
+	return marked
+
+
+func has_undetected_loot() -> bool:
+	return undetected_loot_count() > 0
+
+
+func undetected_loot_count() -> int:
+	var result := 0
+	for index: int in _loot_item_ids.size():
+		if not _loot_item_ids[index].is_empty() and not _loot_magic_detected[index]:
+			result += 1
+	return result
 
 
 func to_data() -> Dictionary:
@@ -93,6 +132,7 @@ func to_data() -> Dictionary:
 		"weaponId": weapon_id,
 		"targetId": target_id,
 		"lootItemIds": _loot_item_ids.duplicate(),
+		"lootMagicDetected": _loot_magic_detected.duplicate(),
 		"conditions": conditions.to_data(),
 	}
 	if _saves_initialized:
@@ -138,6 +178,20 @@ static func from_data(data: Variant) -> MonsterState:
 			return null
 		loot_ids.append(loot_id)
 	if not result.set_loot_item_ids(loot_ids):
+		return null
+	var loot_detection_data: Variant = data.get("lootMagicDetected", [])
+	if not loot_detection_data is Array or data.has("lootMagicDetected") and loot_detection_data.size() != loot_ids.size():
+		return null
+	var loot_detection: Array[bool] = []
+	if data.has("lootMagicDetected"):
+		for detected: Variant in loot_detection_data:
+			if not detected is bool:
+				return null
+			loot_detection.append(detected)
+	else:
+		loot_detection.resize(loot_ids.size())
+		loot_detection.fill(false)
+	if not result.set_loot_magic_detected(loot_detection):
 		return null
 	if data.has("targetId"):
 		if not data["targetId"] is String:

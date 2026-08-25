@@ -16,6 +16,7 @@ var spell_point_delta: int = 0
 var allegiance_changed: bool = false
 var target_traitor_before: bool = false
 var target_traitor_after: bool = false
+var detected_magic_item_count: int = 0
 var unequipped_item_ids: Array[String] = []
 
 

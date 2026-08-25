@@ -117,6 +117,8 @@ func _resolve_character_spell_monster_target(caster: CharacterState, target: Mon
 		return _clear_condition(target.conditions, cured_condition, spell_cost, duration)
 	if ClassicSpellCapabilityCatalog.is_combat_destroy_magic_spell(spell):
 		return _destroy_magic_monster(target, spell_cost, duration)
+	if ClassicSpellCapabilityCatalog.is_combat_magic_detection_spell(spell):
+		return _detect_monster_magic(target, spell_cost, duration)
 	var saved := false
 	var damage_type := absi(spell.damage_type)
 	if damage_type > 0 and damage_type < 8:
@@ -421,6 +423,8 @@ func _resolve_monster_spell_monster_target(caster: MonsterState, target: Monster
 		return _clear_condition(target.conditions, cured_condition, spell_cost, duration)
 	if ClassicSpellCapabilityCatalog.is_combat_destroy_magic_spell(spell):
 		return _destroy_magic_monster(target, spell_cost, duration)
+	if ClassicSpellCapabilityCatalog.is_combat_magic_detection_spell(spell):
+		return _detect_monster_magic(target, spell_cost, duration)
 	var saved := false
 	var damage_type := absi(spell.damage_type)
 	if damage_type > 0 and damage_type < 8:
@@ -544,6 +548,12 @@ static func _destroy_magic_character(target: CharacterState, spell_cost: int, du
 static func _destroy_magic_monster(target: MonsterState, spell_cost: int, duration: int) -> SpellResolution:
 	var result := SpellResolution.new(true, false, false, spell_cost, 0, duration)
 	result.cleared_condition_count = target.conditions.clear_positive()
+	return result
+
+
+static func _detect_monster_magic(target: MonsterState, spell_cost: int, duration: int) -> SpellResolution:
+	var result := SpellResolution.new(true, false, false, spell_cost, 0, duration)
+	result.detected_magic_item_count = target.mark_loot_magic_detected()
 	return result
 
 

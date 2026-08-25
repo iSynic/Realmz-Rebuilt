@@ -25,6 +25,7 @@ var pending_level_result: Dictionary = {}
 var battle_stage: StringName = NO_BATTLE_STAGE
 var bonus_treasure_classic_id: int = 0
 var _items: Array[ItemInstance] = []
+var _magic_detected_item_ids: Array[String] = []
 var _experience_awards: Dictionary = {}
 var _level_character_ids: Array[String] = []
 var _spell_character_ids: Array[String] = []
@@ -50,6 +51,7 @@ func set_items(values: Array[ItemInstance]) -> bool:
 			return false
 		ids[item.id] = true
 	_items = values.duplicate()
+	_magic_detected_item_ids = _magic_detected_item_ids.filter(func(instance_id: String) -> bool: return ids.has(instance_id))
 	return true
 
 
@@ -60,8 +62,30 @@ func first_item() -> ItemInstance:
 func remove_item(instance_id: String) -> ItemInstance:
 	for index: int in _items.size():
 		if _items[index].id == instance_id:
+			_magic_detected_item_ids.erase(instance_id)
 			return _items.pop_at(index)
 	return null
+
+
+func magic_detected_item_ids() -> Array[String]:
+	return _magic_detected_item_ids.duplicate()
+
+
+func set_magic_detected_item_ids(values: Array[String]) -> bool:
+	if not _valid_unique_ids(values):
+		return values.is_empty()
+	var item_ids: Dictionary = {}
+	for item: ItemInstance in _items:
+		item_ids[item.id] = true
+	for instance_id: String in values:
+		if not item_ids.has(instance_id):
+			return false
+	_magic_detected_item_ids = values.duplicate()
+	return true
+
+
+func is_magic_detected(instance_id: String) -> bool:
+	return _magic_detected_item_ids.has(instance_id)
 
 
 func experience_awards() -> Dictionary:
@@ -123,6 +147,7 @@ func to_data() -> Dictionary:
 		"completionPending": completion_pending,
 		"phase": String(phase),
 		"items": item_data,
+		"magicDetectedItemIds": _magic_detected_item_ids.duplicate(),
 		"experienceAwards": awards,
 		"levelCharacterIds": _level_character_ids.duplicate(),
 		"levelIndex": level_index,
@@ -140,14 +165,17 @@ static func from_data(data: Variant) -> ClassicRewardState:
 	var base_fields: Array[String] = ["origin", "sourceId", "experiencePool", "experienceShare", "initialWealth", "magicDetected", "identified", "completionPending", "phase", "items", "experienceAwards", "levelCharacterIds", "levelIndex", "spellCharacterIds", "spellIndex", "pendingLevelResult"]
 	var required := base_fields.duplicate()
 	var has_battle_sequence: bool = data.has("battleStage") or data.has("bonusTreasureClassicId")
+	var has_item_detection: bool = data.has("magicDetectedItemIds")
 	if has_battle_sequence:
 		required.append_array(["battleStage", "bonusTreasureClassicId"])
+	if has_item_detection:
+		required.append("magicDetectedItemIds")
 	if data.size() != required.size():
 		return null
 	for field: String in required:
 		if not data.has(field):
 			return null
-	if not data["origin"] is String or data["origin"].is_empty() or not data["sourceId"] is String or not data["magicDetected"] is bool or not data["identified"] is bool or not data["completionPending"] is bool or not data["phase"] is String or StringName(data["phase"]) not in [ITEM_PHASE, LEVEL_PHASE, SPELL_PHASE] or not data["items"] is Array or not data["experienceAwards"] is Dictionary or not data["levelCharacterIds"] is Array or not data["spellCharacterIds"] is Array or not data["pendingLevelResult"] is Dictionary or (has_battle_sequence and not data["battleStage"] is String):
+	if not data["origin"] is String or data["origin"].is_empty() or not data["sourceId"] is String or not data["magicDetected"] is bool or not data["identified"] is bool or not data["completionPending"] is bool or not data["phase"] is String or StringName(data["phase"]) not in [ITEM_PHASE, LEVEL_PHASE, SPELL_PHASE] or not data["items"] is Array or not data["experienceAwards"] is Dictionary or not data["levelCharacterIds"] is Array or not data["spellCharacterIds"] is Array or not data["pendingLevelResult"] is Dictionary or (has_battle_sequence and not data["battleStage"] is String) or (has_item_detection and not data["magicDetectedItemIds"] is Array):
 		return null
 	var loaded_experience_pool := _integer(data["experiencePool"])
 	var loaded_experience_share := _integer(data["experienceShare"])
@@ -185,6 +213,14 @@ static func from_data(data: Variant) -> ClassicRewardState:
 			return null
 		awards[character_id] = amount
 	if not result.set_items(loaded_items) or not result.set_experience_awards(awards):
+		return null
+	var detected_item_ids: Array[String] = []
+	if has_item_detection:
+		for value: Variant in data["magicDetectedItemIds"]:
+			if not value is String:
+				return null
+			detected_item_ids.append(value)
+	if not result.set_magic_detected_item_ids(detected_item_ids):
 		return null
 	var level_ids: Array[String] = []
 	for value: Variant in data["levelCharacterIds"]:

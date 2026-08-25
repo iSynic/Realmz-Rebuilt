@@ -140,7 +140,7 @@ func _test_experience_level_and_spell_restore(content: RealmzContent) -> void:
 
 
 func _test_terminal_battle_rewards_once(content: RealmzContent) -> void:
-	var battle: BattleDefinition = content.battle_by_id("classic.battle.0"); var character := _character(content, "reward.victor", "Victor", 5_000, -10_000_000); var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [character]), RealmzClock.new()); var rng := RealmzRng.new(31); var rules := RealmzRules.new()
+	var battle: BattleDefinition = content.battle_by_id("classic.battle.0"); var character := _character(content, "reward.victor", "Victor", 5_000, -10_000_000); var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [character]), RealmzClock.new()); var rng := RealmzRng.new(31); var rules := RealmzRules.new(); var magical_loot: ItemDefinition = content.item_definitions().filter(func(item: ItemDefinition) -> bool: return item.magical)[0]
 	var setup := rules.combat_flow.start_battle(state, content, battle, rng)
 	assert_true(setup.ok, "terminal reward fixture starts a source-backed battle")
 	if not setup.ok:
@@ -148,6 +148,7 @@ func _test_terminal_battle_rewards_once(content: RealmzContent) -> void:
 	var defeated_hostiles := 0
 	for monster: MonsterState in state.combat.monsters():
 		if monster.traitor:
+			if defeated_hostiles == 0: monster.set_loot_item_ids([magical_loot.id]); monster.mark_loot_magic_detected()
 			monster.current_health = 0
 			defeated_hostiles += 1
 	state.combat.active_turn = null
@@ -159,6 +160,8 @@ func _test_terminal_battle_rewards_once(content: RealmzContent) -> void:
 	var api := RealmzRuntimeApi.new(content, state, rng, ScenarioActionState.new(), rules)
 	var reward := api.begin_completed_battle_reward("battle.reward")
 	assert_true(reward.state in [ScenarioRuntimeOperationResult.State.WAITING, ScenarioRuntimeOperationResult.State.COMPLETED], "victory transitions into the typed reward pipeline")
+	assert_equal(reward.interaction.body.to_data()["items"].filter(func(row: Dictionary) -> bool: return row["definitionId"] == magical_loot.id and row["magical"]).size(), 1, "battle Discover Magic carries only the detected magical loot item into the Treasure presentation")
+	var detected_continuation := ScenarioRuntimeContinuation.from_data(JSON.parse_string(JSON.stringify(reward.continuation.to_data()))); var detected_body := detected_continuation.body as ScenarioRuntimeContinuation.RewardBody; assert_equal(detected_body.state.magic_detected_item_ids().size(), 1, "per-item battle magic detection survives the terminal reward continuation boundary")
 	var guard := 2_000
 	while reward.state == ScenarioRuntimeOperationResult.State.WAITING and guard > 0:
 		var response := _reward_response(reward.interaction)

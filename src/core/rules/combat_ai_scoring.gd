@@ -93,6 +93,8 @@ func _monster_spell_power_plan(state: GameState, content: RealmzContent, monster
 		return _monster_summon_spell_power_plan(state, content, monster, spell, slot, power)
 	if ClassicSpellCapabilityCatalog.is_combat_destroy_magic_spell(spell):
 		return _monster_destroy_magic_plan(state, content, monster, spell, slot, power)
+	if ClassicSpellCapabilityCatalog.is_combat_magic_detection_spell(spell):
+		return _monster_magic_detection_plan(state, content, monster, definition, spell, slot, power, actors_by_cell)
 	if spell.target_type in [3, 4]:
 		return _monster_area_spell_power_plan(state, content, monster, definition, spell, slot, power, actors_by_cell, area_placement_cache, area_center_cache)
 	if spell.target_type == 6:
@@ -171,6 +173,31 @@ func _monster_destroy_magic_plan(state: GameState, content: RealmzContent, monst
 	for target_id: String in selected:
 		score += _destroy_magic_target_score(state, monster.traitor, target_id)
 	return {"spellId": spell.id, "spellSlot": slot, "power": power, "targetIds": selected, "score": score - spell.cost * power * 3}
+
+
+func _monster_magic_detection_plan(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, spell: SpellDefinition, slot: int, power: int, actors_by_cell: Dictionary) -> Dictionary:
+	if spell.target_type == 1:
+		var best: Dictionary = {}
+		for candidate: MonsterState in state.combat.monsters():
+			if candidate.traitor == monster.traitor or candidate.current_health <= 0 or not candidate.has_undetected_loot() or _target_reflects(state, candidate.id) or _target_hard_immune(state, content, candidate.id, spell) or not _flow()._spell_actor_target_is_valid(state, content, monster.id, candidate.id, spell, power):
+				continue
+			best = _prefer(best, {"spellId": spell.id, "spellSlot": slot, "power": power, "targetIds": [candidate.id], "score": 360 + candidate.undetected_loot_count() * 80 - spell.cost * power * 3})
+		return best
+	var maximum_range := absi(spell.range_min + spell.range_max * power) + (1 if definition.size != 0 else 0) + (1 if definition.size == 3 else 0)
+	var best: Dictionary = {}
+	for rotation: int in _rules.spell_areas.rotation_patterns(spell, power).size():
+		var shape := _rules.spell_areas.shape_for(spell, power, rotation)
+		var offsets: Array[Vector2i] = []
+		offsets.assign(_rules.spell_areas.rotation_patterns(spell, power)[rotation])
+		for center: Vector2i in _monster_area_candidate_centers(state, content, monster, shape, offsets, maximum_range, spell.range_min + spell.range_max > 0):
+			var detected := 0
+			for offset: Vector2i in offsets:
+				var target := state.combat.monster_by_id(String(actors_by_cell.get(center + offset, "")))
+				if target != null and target.traitor != monster.traitor and target.has_undetected_loot() and not _target_reflects(state, target.id) and not _target_hard_immune(state, content, target.id, spell):
+					detected += target.undetected_loot_count()
+			if detected > 0:
+				best = _prefer(best, {"spellId": spell.id, "spellSlot": slot, "power": power, "targetIds": [], "coordinate": center, "rotation": rotation, "score": 370 + detected * 80 - spell.cost * power * 3})
+	return best
 
 
 func _monster_hostile_group_spell_power_plan(state: GameState, content: RealmzContent, monster: MonsterState, spell: SpellDefinition, slot: int, power: int) -> Dictionary:
@@ -358,6 +385,8 @@ func _best_party_spell(state: GameState, content: RealmzContent, actor: Characte
 			best = _prefer(best, _best_charm(state, content, actor, spell, option.power))
 		elif ClassicSpellCapabilityCatalog.is_combat_destroy_magic_spell(spell):
 			best = _prefer(best, _best_destroy_magic(state, content, actor, spell, option.power))
+		elif ClassicSpellCapabilityCatalog.is_combat_magic_detection_spell(spell):
+			best = _prefer(best, _best_magic_detection(state, content, actor, spell, option, actors_by_cell))
 		elif MagicRules.is_condition_cure_spell(spell):
 			best = _prefer(best, _best_condition_cure(state, content, actor, spell, option.power))
 		elif ClassicSpellCapabilityCatalog.combat_condition_effect_index(spell) >= 0 and spell.target_type in [3, 4]:
@@ -398,6 +427,32 @@ func _best_destroy_magic(state: GameState, content: RealmzContent, actor: Charac
 	for target_id: String in selected:
 		score += _destroy_magic_target_score(state, actor.traitor, target_id)
 	return {"action": &"cast_spell", "spellId": spell.id, "power": power, "targetIds": selected, "score": score - absi(spell.cost * power) * 3}
+
+
+func _best_magic_detection(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, option: CombatSpellOptionView, actors_by_cell: Dictionary) -> Dictionary:
+	if spell.target_type == 1:
+		var best: Dictionary = {}
+		for target: MonsterState in state.combat.monsters():
+			if target.traitor == actor.traitor or target.current_health <= 0 or not target.has_undetected_loot() or _target_reflects(state, target.id) or _target_hard_immune(state, content, target.id, spell) or not _flow().probe_character_spell_cast(state, content, actor.id, target.id, spell.id, option.power).allowed:
+				continue
+			best = _prefer(best, {"action": &"cast_spell", "spellId": spell.id, "power": option.power, "targetId": target.id, "score": 360 + target.undetected_loot_count() * 80 - option.cost * 3})
+		return best
+	var maximum_range := absi(spell.range_min + spell.range_max * option.power)
+	var rotations: Array = option.area_rotation_offsets if not option.area_rotation_offsets.is_empty() else [option.area_offsets]
+	var best: Dictionary = {}
+	for rotation: int in rotations.size():
+		var offsets: Array[Vector2i] = []
+		offsets.assign(rotations[rotation])
+		var shape := _rules.spell_areas.shape_for(spell, option.power, rotation)
+		for center: Vector2i in _area_candidate_centers(state, content, actor, shape, offsets, maximum_range, spell.range_min + spell.range_max > 0):
+			var detected := 0
+			for offset: Vector2i in offsets:
+				var target := state.combat.monster_by_id(String(actors_by_cell.get(center + offset, "")))
+				if target != null and target.traitor != actor.traitor and target.has_undetected_loot() and not _target_reflects(state, target.id) and not _target_hard_immune(state, content, target.id, spell):
+					detected += target.undetected_loot_count()
+			if detected > 0 and _flow().probe_character_spell_cast(state, content, actor.id, "", spell.id, option.power, center, rotation).allowed:
+				best = _prefer(best, {"action": &"cast_spell", "spellId": spell.id, "power": option.power, "coordinate": center, "rotation": rotation, "score": 370 + detected * 80 - option.cost * 3})
+	return best
 
 
 func _best_summon(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, power: int, coordinate_cache: Dictionary) -> Dictionary:

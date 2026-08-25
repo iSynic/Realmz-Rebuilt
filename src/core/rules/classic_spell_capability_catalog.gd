@@ -158,6 +158,10 @@ static func is_combat_destroy_magic_spell(spell: SpellDefinition) -> bool:
 	return _combat_destroy_magic_spell(spell)
 
 
+static func is_combat_magic_detection_spell(spell: SpellDefinition) -> bool:
+	return _combat_magic_detection_spell(spell)
+
+
 static func is_combat_charm_spell(spell: SpellDefinition) -> bool:
 	return _combat_charm_spell(spell)
 
@@ -313,6 +317,10 @@ static func _combat_destroy_magic_spell(spell: SpellDefinition) -> bool:
 	return spell != null and spell.in_combat and spell.queue_icon == 0 and spell.size == 0 and spell.target_type == 0 and spell.cannot in [3, 4] and spell.cost > 0 and absi(spell.spell_class) == 8 and absi(spell.damage_type) == 8 and absi(spell.special) == 61 and spell.damage_min == 0 and spell.damage_max == 0 and spell.power_damage_min == 0 and spell.power_damage_max == 0 and spell.duration_min == 0 and spell.duration_max == 0 and spell.power_duration_min == 0 and spell.power_duration_max == 0
 
 
+static func _combat_magic_detection_spell(spell: SpellDefinition) -> bool:
+	return spell != null and spell.in_combat and spell.queue_icon != 0 and spell.queue_icon >= -128 and spell.queue_icon <= 127 and spell.size == 0 and spell.target_type in [1, 4] and spell.cannot == 3 and spell.cost >= 0 and absi(spell.spell_class) == 8 and absi(spell.damage_type) == 8 and absi(spell.special) == 63 and spell.damage_min == 0 and spell.damage_max == 0 and spell.power_damage_min == 0 and spell.power_damage_max == 0 and maxi(spell.duration_min, spell.duration_max) + 7 * maxi(spell.power_duration_min, spell.power_duration_max) > 0
+
+
 static func _combat_charm_spell(spell: SpellDefinition) -> bool:
 	return spell != null and spell.in_combat and spell.queue_icon == 0 and absi(spell.special) in [51, 52]
 
@@ -328,7 +336,7 @@ static func _combat_persistent_field_spell(spell: SpellDefinition) -> bool:
 	var has_damage := spell.damage_min != 0 or spell.damage_max != 0 or spell.power_damage_min != 0 or spell.power_damage_max != 0
 	var maximum_duration := maxi(spell.duration_min, spell.duration_max) + 7 * maxi(spell.power_duration_min, spell.power_duration_max)
 	var supported_condition := _combat_helpless_spell(spell) if special in [53, 54] else _combat_condition_index(spell) >= 0
-	var supported_effect := special == 0 and has_damage and absi(spell.damage_type) >= 1 and absi(spell.damage_type) <= 8 or supported_condition
+	var supported_effect := special == 0 and has_damage and absi(spell.damage_type) >= 1 and absi(spell.damage_type) <= 8 or supported_condition or _combat_magic_detection_spell(spell)
 	return maximum_duration > 0 and supported_effect
 
 
@@ -353,7 +361,7 @@ static func _combat_actor_field_spell(spell: SpellDefinition) -> bool:
 	var maximum_duration := maxi(spell.duration_min, spell.duration_max) + 7 * maxi(spell.power_duration_min, spell.power_duration_max)
 	var has_damage := spell.damage_min != 0 or spell.damage_max != 0 or spell.power_damage_min != 0 or spell.power_damage_max != 0
 	var supported_condition := _combat_helpless_spell(spell) if special in [53, 54] else _combat_condition_index(spell) >= 0
-	return maximum_duration > 0 and (special == 0 and has_damage and absi(spell.damage_type) >= 1 and absi(spell.damage_type) <= 7 or supported_condition)
+	return maximum_duration > 0 and (special == 0 and has_damage and absi(spell.damage_type) >= 1 and absi(spell.damage_type) <= 7 or supported_condition or _combat_magic_detection_spell(spell))
 
 
 static func _combat_healing_spell(spell: SpellDefinition) -> bool:

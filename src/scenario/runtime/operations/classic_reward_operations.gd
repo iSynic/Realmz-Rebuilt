@@ -122,8 +122,11 @@ func begin_completed_battle_reward(request_id: String, caller: ScenarioBattleCal
 			if not monster.traitor or monster.current_health >= 1:
 				continue
 			var loot := monster.loot_item_ids()
+			var loot_magic_detected := monster.loot_magic_detected()
 			if loot.is_empty():
 				loot = definition.item_ids()
+				loot_magic_detected.resize(loot.size())
+				loot_magic_detected.fill(false)
 				if not loot.is_empty() and definition.random_weapon_table > 0:
 					loot[0] = monster.weapon_id
 			if not experience_only:
@@ -135,13 +138,14 @@ func begin_completed_battle_reward(request_id: String, caller: ScenarioBattleCal
 					pending_item_count += 1
 					if pending_item_count > ClassicRewardState.MAX_PENDING_ITEMS:
 						return ScenarioRuntimeOperationResult.failed(&"invalid_reward", "The battle reward exceeds the supported Classic reward bounds.")
-			defeated_monsters.append({"monster": monster, "definition": definition, "loot": loot})
+			defeated_monsters.append({"monster": monster, "definition": definition, "loot": loot, "lootMagicDetected": loot_magic_detected})
 	# Validate the whole source-owned reward before consuming RNG or claiming its
 	# one-shot battle continuation. A malformed package therefore remains retryable.
 	var state_checkpoint := _game_state.to_data()
 	var rng_checkpoint := _rng.checkpoint()
 	combat.rewards_started = true
 	var item_ids: Array[String] = []
+	var item_magic_detected: Array[bool] = []
 	var wealth := WealthState.new()
 	var experience := 0
 	var events: Array[DomainEvent] = []
@@ -160,17 +164,23 @@ func begin_completed_battle_reward(request_id: String, caller: ScenarioBattleCal
 					wealth.add(kind, amount)
 			experience += _monster_reward_experience(monster, definition)
 			if not experience_only:
-				for item_id: String in row["loot"]:
+				var loot: Array[String] = row["loot"]
+				var loot_magic_detected: Array[bool] = row["lootMagicDetected"]
+				for index: int in loot.size():
+					var item_id: String = loot[index]
 					if not item_id.is_empty():
 						item_ids.append(item_id)
+						item_magic_detected.append(loot_magic_detected[index])
 		for row: Dictionary in reward_monsters:
 			var monster: MonsterState = row["monster"]
 			if row["parchmentEligible"] and _rng.draw_classic(100, StringName("battle.reward.%s.parchment" % monster.id)) < 10:
 				item_ids.append(_content.item_by_classic_id(806).id)
+				item_magic_detected.append(false)
 			if row["rationsEligible"] and _rng.draw_classic(100, StringName("battle.reward.%s.rations" % monster.id)) < 10:
 				item_ids.append(_content.item_by_classic_id(877).id)
+				item_magic_detected.append(false)
 		events.append(DomainEvent.new(&"battle_reward_constructed", {"battleId": combat.battle_id, "experience": experience, "experienceOnly": experience_only, "wealth": wealth.to_data(), "itemCount": recovered_fumbles.size() + item_ids.size()}))
-	var operation := _begin_reward(&"battle", combat.battle_id, experience, wealth, item_ids, request_id, ClassicRewardState.ORDINARY_BATTLE_STAGE, absi(bonus_treasure_id), recovered_fumbles)
+	var operation := _begin_reward(&"battle", combat.battle_id, experience, wealth, item_ids, request_id, ClassicRewardState.ORDINARY_BATTLE_STAGE, absi(bonus_treasure_id), recovered_fumbles, item_magic_detected)
 	if operation.state == ScenarioRuntimeOperationResult.State.FAILED:
 		return _rollback_failed_reward(operation, state_checkpoint, rng_checkpoint)
 	combat.clear_fumbled_items()
@@ -193,8 +203,8 @@ func _rollback_failed_reward(operation: ScenarioRuntimeOperationResult, state_ch
 	return operation
 
 
-func _begin_reward(origin: StringName, source_id: String, total_experience: int, wealth: WealthState, item_ids: Array[String], request_id: String, battle_stage: StringName = ClassicRewardState.NO_BATTLE_STAGE, bonus_treasure_classic_id: int = 0, leading_items: Array[ItemInstance] = []) -> ScenarioRuntimeOperationResult:
-	if wealth == null or item_ids.size() + leading_items.size() > ClassicRewardState.MAX_PENDING_ITEMS:
+func _begin_reward(origin: StringName, source_id: String, total_experience: int, wealth: WealthState, item_ids: Array[String], request_id: String, battle_stage: StringName = ClassicRewardState.NO_BATTLE_STAGE, bonus_treasure_classic_id: int = 0, leading_items: Array[ItemInstance] = [], item_magic_detected: Array[bool] = []) -> ScenarioRuntimeOperationResult:
+	if wealth == null or item_ids.size() + leading_items.size() > ClassicRewardState.MAX_PENDING_ITEMS or not item_magic_detected.is_empty() and item_magic_detected.size() != item_ids.size():
 		return ScenarioRuntimeOperationResult.failed(&"invalid_reward", "The reward exceeds the supported Classic reward bounds.")
 	var experience_multiplier := _game_state.experience_multiplier
 	if experience_multiplier < 0.0:
@@ -210,27 +220,35 @@ func _begin_reward(origin: StringName, source_id: String, total_experience: int,
 		PartySetupRules.scale_money(wealth.jewelry, _game_state.difficulty),
 	)
 	var reward_definitions: Array[ItemDefinition] = []
+	var reward_detection: Array[bool] = []
 	var unique_owned: Dictionary = {}
 	for character: CharacterState in _game_state.party.characters():
 		for carried: ItemInstance in character.inventory():
 			unique_owned[carried.definition_id] = true
-	for item_id: String in item_ids:
+	for index: int in item_ids.size():
+		var item_id: String = item_ids[index]
 		var definition := _content.item_by_id(item_id)
 		if definition == null:
 			return ScenarioRuntimeOperationResult.failed(&"unknown_item", "Reward '%s' references unavailable item '%s'." % [source_id, item_id])
 		if definition.cost < 0 and unique_owned.has(definition.id):
 			continue
 		reward_definitions.append(definition)
+		reward_detection.append(not item_magic_detected.is_empty() and item_magic_detected[index] and definition.magical)
 		if definition.cost < 0:
 			unique_owned[definition.id] = true
 	var reward := ClassicRewardState.new(origin, source_id, scaled_experience, scaled_wealth)
 	reward.battle_stage = battle_stage
 	reward.bonus_treasure_classic_id = bonus_treasure_classic_id
 	var items: Array[ItemInstance] = leading_items.duplicate()
-	for definition: ItemDefinition in reward_definitions:
+	var detected_instance_ids: Array[String] = []
+	for index: int in reward_definitions.size():
+		var definition: ItemDefinition = reward_definitions[index]
 		var identified := absi(definition.item_type) == 24
-		items.append(ItemInstance.new(_game_state.next_instance_id("reward.item"), definition.id, definition.initial_charges, false, identified))
-	if not reward.set_items(items):
+		var item := ItemInstance.new(_game_state.next_instance_id("reward.item"), definition.id, definition.initial_charges, false, identified)
+		items.append(item)
+		if reward_detection[index]:
+			detected_instance_ids.append(item.id)
+	if not reward.set_items(items) or not reward.set_magic_detected_item_ids(detected_instance_ids):
 		return ScenarioRuntimeOperationResult.failed(&"invalid_reward", "The reward contains invalid item instances.")
 	var awards: Dictionary = {}
 	var recipients := _reward_experience_recipients(origin)
@@ -353,7 +371,7 @@ func _reward_item_payload(reward: ClassicRewardState, item: ItemInstance) -> Dic
 		"name": definition.name if item.identified else definition.unidentified_name,
 		"charges": item.charges,
 		"identified": item.identified,
-		"magical": reward.magic_detected and definition.magical,
+		"magical": (reward.magic_detected or reward.is_magic_detected(item.id)) and definition.magical,
 		"iconResourceType": "cicn",
 		"iconId": definition.visible_icon_id(item.identified),
 		"description": definition.description if item.identified else "Specials are unknown.",
