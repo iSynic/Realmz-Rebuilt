@@ -91,6 +91,8 @@ func _prepare_party() -> void:
 		character.carried_load = 0
 		character.agility = 32_767
 		character.magic_resistance = 32_767
+		for ability_index: int in range(5, 13):
+			character.set_ability_value(ability_index, 32_767)
 		for save_index: int in 8:
 			character.set_save_value_raw(save_index, 32_767)
 	_session._state.party_setup_completed = true
@@ -119,17 +121,19 @@ func _run_step(step_definition: Dictionary) -> void:
 	var step_id := String(step_definition.get("id", "unnamed-step"))
 	var trigger_id := String(step_definition.get("triggerId", ""))
 	var trigger := _content.trigger_by_id(trigger_id)
+	var scripted_responses: Array = step_definition.get("responses", [])
+	var response_cursor := {"index": 0}
 	if trigger == null:
 		_fail("%s references unavailable trigger %s" % [step_id, trigger_id])
 		_stage(step_id, failure_count)
 		return
 	if trigger.map_id.is_empty() or _content.world.map_by_id(trigger.map_id) == null:
-		_run_program_step(step_id, step_definition, trigger, failure_count)
+		_run_program_step(step_id, step_definition, trigger, failure_count, scripted_responses, response_cursor)
 		return
 	_validate_step_position(step_id, step_definition.get("position", {}), trigger)
 	var nearby_path := _nearby_topology_path(trigger)
 	if not nearby_path.is_empty():
-		_run_topology_step(step_id, step_definition, trigger, nearby_path, failure_count)
+		_run_topology_step(step_id, step_definition, trigger, nearby_path, failure_count, scripted_responses, response_cursor)
 		return
 	_session._state.party.map_id = trigger.map_id
 	_session._state.party.coordinate = trigger.coordinate
@@ -150,9 +154,10 @@ func _run_step(step_definition: Dictionary) -> void:
 		return
 	var events: Array[DomainEvent] = []
 	var result := _session._continue_post_move([])
-	result = _drain_interactions(result, events, step_id)
+	result = _drain_interactions(result, events, step_id, scripted_responses, response_cursor)
 	if result.state == SessionStep.State.FAILED:
 		_fail("%s failed with %s: %s" % [step_id, result.error_code, result.error_message])
+	_validate_scripted_responses(step_id, scripted_responses, response_cursor)
 	_validate_step_events(step_id, step_definition, events)
 	_stage(step_id, failure_count, {"entryMode": "checkpoint"})
 
@@ -238,13 +243,13 @@ func _nearby_topology_path(trigger: TriggerDefinition) -> Array[Vector2i]:
 	return path
 
 
-func _run_topology_step(step_id: String, step_definition: Dictionary, trigger: TriggerDefinition, path: Array[Vector2i], failure_count: int) -> void:
+func _run_topology_step(step_id: String, step_definition: Dictionary, trigger: TriggerDefinition, path: Array[Vector2i], failure_count: int, scripted_responses: Array, response_cursor: Dictionary) -> void:
 	var events: Array[DomainEvent] = []
 	for path_index: int in path.size():
 		var origin := _session._state.party.coordinate
 		var destination := path[path_index]
 		var result := _session.submit_intent(PlayerIntent.move(destination - origin))
-		result = _drain_interactions(result, events, step_id)
+		result = _drain_interactions(result, events, step_id, scripted_responses, response_cursor)
 		if result.state == SessionStep.State.FAILED:
 			_fail("%s topology traversal failed with %s: %s" % [step_id, result.error_code, result.error_message])
 			break
@@ -253,6 +258,7 @@ func _run_topology_step(step_id: String, step_definition: Dictionary, trigger: T
 			break
 	if not _contains_trigger_event(events, trigger.id):
 		_fail("%s topology traversal did not fire trigger %s" % [step_id, trigger.id])
+	_validate_scripted_responses(step_id, scripted_responses, response_cursor)
 	_validate_step_events(step_id, step_definition, events)
 	_stage(step_id, failure_count, {"entryMode": "topology-traversal", "movementSteps": path.size()})
 
@@ -264,7 +270,7 @@ func _contains_trigger_event(events: Array[DomainEvent], trigger_id: String) -> 
 	return false
 
 
-func _run_program_step(step_id: String, step_definition: Dictionary, trigger: TriggerDefinition, failure_count: int) -> void:
+func _run_program_step(step_id: String, step_definition: Dictionary, trigger: TriggerDefinition, failure_count: int, scripted_responses: Array, response_cursor: Dictionary) -> void:
 	var position: Variant = step_definition.get("position", {})
 	if not position is Dictionary:
 		_fail("%s has no source position" % step_id)
@@ -295,26 +301,87 @@ func _run_program_step(step_id: String, step_definition: Dictionary, trigger: Tr
 		else:
 			result = SessionStep.completed(0, events)
 	var observed_events: Array[DomainEvent] = []
-	result = _drain_interactions(result, observed_events, step_id)
+	result = _drain_interactions(result, observed_events, step_id, scripted_responses, response_cursor)
 	if result.state == SessionStep.State.FAILED:
 		_fail("%s failed with %s: %s" % [step_id, result.error_code, result.error_message])
+	_validate_scripted_responses(step_id, scripted_responses, response_cursor)
 	_validate_step_events(step_id, step_definition, observed_events)
 	_stage(step_id, failure_count, {"entryMode": "program-checkpoint"})
 
 
-func _drain_interactions(step: SessionStep, events: Array[DomainEvent], step_id: String) -> SessionStep:
+func _drain_interactions(step: SessionStep, events: Array[DomainEvent], step_id: String, scripted_responses: Array = [], response_cursor: Dictionary = {}) -> SessionStep:
 	var guard := 2_048
 	var current := step
 	while guard > 0:
 		events.append_array(current.events)
 		if current.state != SessionStep.State.WAITING_FOR_INTERACTION:
 			return current
-		var response := _default_response(current.interaction, step_id)
+		var answered_kind := current.interaction.kind
+		var response := _scripted_response(current.interaction, scripted_responses, response_cursor)
+		var used_scripted_response := response != null
+		if response == null:
+			response = _default_response(current.interaction, step_id)
 		if response == null:
 			return SessionStep.failed(current.view_revision, &"unsupported_route_interaction", "Route harness cannot answer %s." % current.interaction.kind)
 		current = _session.respond(response)
+		if current.state == SessionStep.State.FAILED:
+			current.error_message += " after %s route response%s" % [answered_kind, " (scripted)" if used_scripted_response else ""]
 		guard -= 1
 	return SessionStep.failed(current.view_revision, &"route_step_limit", "Route step exceeded 2,048 typed interaction responses.")
+
+
+func _scripted_response(request: InteractionRequest, responses: Array, cursor: Dictionary) -> InteractionResponse:
+	var index := int(cursor.get("index", 0))
+	if request == null or index >= responses.size() or not responses[index] is Dictionary:
+		return null
+	var definition: Dictionary = responses[index]
+	if StringName(definition.get("kind", "")) != request.kind or not definition.get("data", {}) is Dictionary:
+		return null
+	var data: Dictionary = _normalize_route_response_data(definition["data"])
+	if request.kind == InteractionRequest.PICK_LOCK and data.get("frameIndex") == "first-success":
+		var body := request.body as InteractionRequest.PickLockRequestBody
+		if body == null:
+			return null
+		data["frameIndex"] = _first_successful_pick_lock_frame(body)
+	cursor["index"] = index + 1
+	var response := InteractionResponse.from_data(request.request_id, request.kind, data)
+	if response == null:
+		printerr("ROUTE_SCRIPT_REJECTED %s %s" % [request.kind, CanonicalJson.encode(data)])
+	return response
+
+
+func _validate_scripted_responses(step_id: String, responses: Array, cursor: Dictionary) -> void:
+	var consumed := int(cursor.get("index", 0))
+	if consumed != responses.size():
+		_fail("%s consumed %d of %d scripted responses" % [step_id, consumed, responses.size()])
+
+
+func _normalize_route_response_data(value: Variant) -> Variant:
+	if value is float and value == floorf(value):
+		return int(value)
+	if value is Array:
+		var values: Array = []
+		for entry: Variant in value:
+			values.append(_normalize_route_response_data(entry))
+		return values
+	if value is Dictionary:
+		var result: Dictionary = {}
+		for key: Variant in value:
+			result[key] = _normalize_route_response_data(value[key])
+		return result
+	return value
+
+
+func _first_successful_pick_lock_frame(body: InteractionRequest.PickLockRequestBody) -> int:
+	for frame_index: int in body.frames.size():
+		var succeeded := true
+		for position: int in body.frames[frame_index]:
+			if position < body.yellow_threshold:
+				succeeded = false
+				break
+		if succeeded:
+			return frame_index
+	return body.frames.size() - 1
 
 
 func _default_response(request: InteractionRequest, step_id: String) -> InteractionResponse:
