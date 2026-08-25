@@ -15,7 +15,7 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 **Lachis certification** (`lachis-certification`)
 
-War is certified after ordinary play accepted installation, selection, vault reuse, travel, and the placed Land 3 message/picture/sound sequence. The current local Lachis package is the sole remaining legal candidate and therefore next in recomputed coverage order. Its corrected Providence v2 report yields 2,887 coverage points and 245 high-risk-boundary points, including three new interaction signatures, 240 opcode variants, two battle shapes, 69 monster signatures, four reward signatures, four map signatures, and four shop signatures. The analyzer finds exact application-spell agreement, no non-executable opcode, and zero compiler loss; deterministic ending, encounter, thief, shop, and reward routes pass. Ordinary play must now accept installation and one representative AP, battle, and treasure sequence, while the Lachis shop route is used to close or finally dispose the remaining native empty-stock-slot provenance gap.
+War is certified after ordinary play accepted installation, selection, vault reuse, travel, and the placed Land 3 message/picture/sound sequence. The current local Lachis package is the sole remaining legal candidate and therefore next in recomputed coverage order. Its corrected Providence v2 report yields 2,887 coverage points and 245 high-risk-boundary points, including three new interaction signatures, 240 opcode variants, two battle shapes, 69 monster signatures, four reward signatures, four map signatures, and four shop signatures. The analyzer finds exact application-spell agreement, no non-executable opcode, and zero compiler loss; deterministic ending, encounter, thief, shop, and reward routes pass. Ordinary play must now accept installation and one representative AP, authored response, battle, and treasure sequence before Lachis certification closes.
 
 Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
 
@@ -23,7 +23,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | --- | --- | --- | --- |
 | `classic.startup.select-scenario` | certification | broader-parity | other-ordinary |  |
 | `classic.scenario.trigger-action-point` | certification | broader-parity | other-ordinary |  |
-| `classic.services.shop` | implementation | broader-parity | - | GAP-SVC-008 |
+| `classic.scenario.choose-response` | certification | broader-parity | other-ordinary |  |
 | `classic.combat.enter-battle` | certification | broader-parity | other-ordinary |  |
 | `classic.rewards.treasure-distribution` | certification | broader-parity | other-ordinary |  |
 
