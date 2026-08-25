@@ -81,7 +81,7 @@ func best_monster_spell_plan(state: GameState, content: RealmzContent, monster: 
 			continue
 		if ClassicSpellCapabilityCatalog.is_combat_persistent_field_spell(spell) and not state.combat.can_queue_persistent_field():
 			continue
-		var maximum_power := 7 if spell.cost == 0 else mini(7, monster.spell_points / spell.cost)
+		var maximum_power := 1 if ClassicSpellCapabilityCatalog.is_combat_application_elemental_attack(spell) else 7 if spell.cost == 0 else mini(7, monster.spell_points / spell.cost)
 		for power: int in range(1, maximum_power + 1):
 			var plan := _monster_spell_power_plan(state, content, monster, definition, spell, slot, power, actors_by_cell, area_placement_cache, area_center_cache)
 			best = _prefer(best, plan)

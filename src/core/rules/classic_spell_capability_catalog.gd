@@ -106,6 +106,10 @@ static func is_physical_projectile_profile(spell: SpellDefinition) -> bool:
 	return _physical_projectile_profile(spell)
 
 
+static func is_combat_application_elemental_attack(spell: SpellDefinition) -> bool:
+	return _combat_application_elemental_attack(spell)
+
+
 static func is_ordinary_combat_spell(spell: SpellDefinition) -> bool:
 	return _ordinary_combat_spell(spell)
 
@@ -205,6 +209,8 @@ static func _combat_character_disposition(spell: SpellDefinition) -> StringName:
 		return DISPOSITION_NOT_APPLICABLE
 	if _physical_projectile_profile(spell):
 		return DISPOSITION_NOT_APPLICABLE
+	if _combat_application_elemental_attack(spell):
+		return DISPOSITION_NOT_APPLICABLE
 	if _combat_actor_field_spell(spell):
 		return DISPOSITION_EXECUTABLE
 	if combat_spell_uses_persistent_field_queue(spell):
@@ -218,6 +224,8 @@ static func _combat_scroll_disposition(spell: SpellDefinition) -> StringName:
 	if spell == null or not spell.in_combat or application_role(spell) == ROLE_RESERVED_STANDARD:
 		return DISPOSITION_NOT_APPLICABLE
 	if _physical_projectile_profile(spell):
+		return DISPOSITION_NOT_APPLICABLE
+	if _combat_application_elemental_attack(spell):
 		return DISPOSITION_NOT_APPLICABLE
 	if _combat_actor_field_spell(spell):
 		return DISPOSITION_EXECUTABLE
@@ -239,7 +247,7 @@ static func _combat_item_disposition(spell: SpellDefinition) -> StringName:
 		return DISPOSITION_EXECUTABLE if _combat_persistent_field_spell(spell) else DISPOSITION_PENDING
 	if spell.target_type not in [0, 1, 2, 3, 4, 5, 6, 8, 9, 10, 12]:
 		return DISPOSITION_PENDING
-	return DISPOSITION_EXECUTABLE if _ordinary_combat_spell(spell) or _zero_cost_elemental_projectile_item_spell(spell) or _combat_healing_spell(spell) or _combat_condition_effect_spell(spell) or _combat_death_spell(spell) or _combat_spell_point_restore_spell(spell) or _combat_spell_point_drain_spell(spell) or _combat_destroy_magic_spell(spell) or _combat_charm_spell(spell) or _combat_phase_spell(spell) or _combat_summon_spell(spell) else DISPOSITION_PENDING
+	return DISPOSITION_EXECUTABLE if _ordinary_combat_spell(spell) or _combat_application_elemental_attack(spell) or _combat_healing_spell(spell) or _combat_condition_effect_spell(spell) or _combat_death_spell(spell) or _combat_spell_point_restore_spell(spell) or _combat_spell_point_drain_spell(spell) or _combat_destroy_magic_spell(spell) or _combat_charm_spell(spell) or _combat_phase_spell(spell) or _combat_summon_spell(spell) else DISPOSITION_PENDING
 
 
 static func _combat_monster_disposition(spell: SpellDefinition) -> StringName:
@@ -247,6 +255,8 @@ static func _combat_monster_disposition(spell: SpellDefinition) -> StringName:
 		return DISPOSITION_NOT_APPLICABLE
 	if _physical_projectile_profile(spell):
 		return DISPOSITION_NOT_APPLICABLE
+	if _combat_application_elemental_attack(spell):
+		return DISPOSITION_EXECUTABLE
 	if _combat_phase_spell(spell):
 		return DISPOSITION_NOT_APPLICABLE
 	if _combat_summon_spell(spell):
@@ -293,8 +303,8 @@ static func _ordinary_combat_spell(spell: SpellDefinition) -> bool:
 	return spell.special == 0 and absi(spell.damage_type) >= 1 and absi(spell.damage_type) <= 8 and (not projectile_spell or source_defined_projectile_spell) and (spell.damage_min != 0 or spell.damage_max != 0 or spell.power_damage_min != 0 or spell.power_damage_max != 0)
 
 
-static func _zero_cost_elemental_projectile_item_spell(spell: SpellDefinition) -> bool:
-	return spell.special == 0 and spell.cost == 0 and absi(spell.spell_class) == 9 and absi(spell.damage_type) >= 1 and absi(spell.damage_type) < 8 and (spell.damage_min != 0 or spell.damage_max != 0 or spell.power_damage_min != 0 or spell.power_damage_max != 0)
+static func _combat_application_elemental_attack(spell: SpellDefinition) -> bool:
+	return spell != null and application_role(spell) == ROLE_APPLICATION_EFFECT and spell.in_combat and spell.queue_icon == 0 and spell.target_type in [1, 6] and spell.special == 0 and spell.cost == 0 and absi(spell.spell_class) == 9 and absi(spell.damage_type) >= 1 and absi(spell.damage_type) < 8 and (spell.damage_min != 0 or spell.damage_max != 0 or spell.power_damage_min != 0 or spell.power_damage_max != 0)
 
 
 static func _combat_summon_spell(spell: SpellDefinition) -> bool:
