@@ -326,6 +326,8 @@ static func _field_character_disposition(spell: SpellDefinition) -> StringName:
 		return DISPOSITION_EXECUTABLE if special == 50 or special >= 1 and special < ConditionSet.PARTY_COUNT else DISPOSITION_PENDING
 	if special == 68:
 		return DISPOSITION_EXECUTABLE
+	if _field_encounter_utility_spell(spell):
+		return DISPOSITION_EXECUTABLE
 	if _inert_self_duration_effect(spell):
 		return DISPOSITION_EXECUTABLE
 	if special > 0 and special < 41 or special in [48, 57, 59, 60, 61, 62, 63, 64, 66, 91, 92] or special > 99:
@@ -333,6 +335,10 @@ static func _field_character_disposition(spell: SpellDefinition) -> StringName:
 	if special == 0 and absi(spell.damage_type) >= 1 and absi(spell.damage_type) < 8 and (spell.damage_min != 0 or spell.damage_max != 0 or spell.power_damage_min != 0 or spell.power_damage_max != 0):
 		return DISPOSITION_EXECUTABLE
 	return DISPOSITION_PENDING
+
+
+static func _field_encounter_utility_spell(spell: SpellDefinition) -> bool:
+	return spell.in_camp and not spell.in_combat and spell.cost < 0 and spell.target_type in [0, 11] and spell.special == 0 and spell.damage_min == 0 and spell.damage_max == 0 and spell.power_damage_min == 0 and spell.power_damage_max == 0
 
 
 static func _character_projectile_disposition(spell: SpellDefinition) -> StringName:
