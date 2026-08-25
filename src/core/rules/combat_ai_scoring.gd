@@ -103,8 +103,8 @@ func _monster_spell_power_plan(state: GameState, content: RealmzContent, monster
 		return _monster_area_spell_power_plan(state, content, monster, definition, spell, slot, power, actors_by_cell, area_placement_cache, area_center_cache)
 	if spell.target_type == 6:
 		return _monster_ray_spell_power_plan(state, content, monster, spell, slot, power)
-	if spell.target_type == 10:
-		return _monster_hostile_group_spell_power_plan(state, content, monster, spell, slot, power)
+	if spell.target_type in [9, 10]:
+		return _monster_group_spell_power_plan(state, content, monster, spell, slot, power, spell.target_type == 9)
 	var cure_index := MagicRules.condition_cure_index(spell) if MagicRules.is_condition_cure_spell(spell) else -1
 	var effect_index := ClassicSpellCapabilityCatalog.combat_condition_effect_index(spell)
 	if effect_index < 0:
@@ -213,8 +213,8 @@ func _monster_polymorph_plan(state: GameState, content: RealmzContent, monster: 
 	return best
 
 
-func _monster_hostile_group_spell_power_plan(state: GameState, content: RealmzContent, monster: MonsterState, spell: SpellDefinition, slot: int, power: int) -> Dictionary:
-	var target_ids := _opposed_actor_ids_for_monster(state, monster)
+func _monster_group_spell_power_plan(state: GameState, content: RealmzContent, monster: MonsterState, spell: SpellDefinition, slot: int, power: int, friendly: bool) -> Dictionary:
+	var target_ids := _friendly_actor_ids_for_monster(state, monster) if friendly else _opposed_actor_ids_for_monster(state, monster)
 	var condition_index := ClassicSpellCapabilityCatalog.combat_condition_effect_index(spell)
 	var effective_target_count := 0
 	for target_id: String in target_ids:
@@ -813,7 +813,7 @@ func _auto_group_target_is_safe(spell: SpellDefinition) -> bool:
 	if spell.target_type == 12:
 		return false
 	var condition_effect := ClassicSpellCapabilityCatalog.combat_condition_effect_index(spell) >= 0 or ClassicSpellCapabilityCatalog.combat_persistent_field_condition_index(spell) >= 0
-	var friendly_effect: bool = MagicRules.is_condition_cure_spell(spell) or _flow()._is_source_backed_combat_healing_spell(spell) or ClassicSpellCapabilityCatalog.is_combat_spell_point_restore_spell(spell) or condition_effect and spell.cannot == 4
+	var friendly_effect: bool = MagicRules.is_condition_cure_spell(spell) or _flow()._is_source_backed_combat_healing_spell(spell) or ClassicSpellCapabilityCatalog.is_combat_spell_point_restore_spell(spell) or condition_effect and (spell.cannot == 4 or spell.target_type == 9)
 	return spell.target_type == 9 if friendly_effect else spell.target_type == 10
 
 
@@ -881,6 +881,15 @@ func _opposed_actor_ids_for_monster(state: GameState, monster: MonsterState) -> 
 	for candidate: MonsterState in state.combat.monsters():
 		if candidate.id != monster.id and candidate.current_health > 0 and candidate.traitor != monster.traitor and state.combat.battlefield.has_actor(candidate.id):
 			result.append(candidate.id)
+	return result
+
+
+func _friendly_actor_ids_for_monster(state: GameState, monster: MonsterState) -> Array[String]:
+	var result: Array[String] = []
+	for character: CharacterState in state.party.characters():
+		if character.current_health > 0 and character.traitor == monster.traitor and state.combat.battlefield.has_actor(character.id): result.append(character.id)
+	for candidate: MonsterState in state.combat.monsters():
+		if candidate.current_health > 0 and candidate.traitor == monster.traitor and state.combat.battlefield.has_actor(candidate.id): result.append(candidate.id)
 	return result
 
 
