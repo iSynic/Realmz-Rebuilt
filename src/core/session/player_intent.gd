@@ -81,14 +81,16 @@ class ItemTargetPayload:
 	var actor_id: String
 	var target_id: String
 	var target_ids: Array[String]
+	var target_coordinates: Array[Vector2i]
 	var coordinate: Vector2i
 	var rotation: int
 
-	func _init(item: String, actor: String, target: String, targets: Array[String], target_coordinate: Vector2i, area_rotation: int) -> void:
+	func _init(item: String, actor: String, target: String, targets: Array[String], target_coordinate: Vector2i, area_rotation: int, coordinates: Array[Vector2i] = []) -> void:
 		item_id = item
 		actor_id = actor
 		target_id = target
 		target_ids = targets.duplicate()
+		target_coordinates = coordinates.duplicate()
 		coordinate = target_coordinate
 		rotation = area_rotation
 
@@ -351,8 +353,8 @@ static func use_item(item_id: String, user_id: String = "") -> PlayerIntent:
 	return PlayerIntent.new(Kind.USE_ITEM, ItemUsePayload.new(item_id, user_id))
 
 
-static func use_item_on_target(item_id: String, user_id: String, target_combatant_id: String = "", target_combatant_ids: Array[String] = [], coordinate: Vector2i = Vector2i(-100_000, -100_000), area_rotation: int = 0) -> PlayerIntent:
-	return PlayerIntent.new(Kind.USE_ITEM_ON_TARGET, ItemTargetPayload.new(item_id, user_id, target_combatant_id, target_combatant_ids, coordinate, area_rotation))
+static func use_item_on_target(item_id: String, user_id: String, target_combatant_id: String = "", target_combatant_ids: Array[String] = [], coordinate: Vector2i = Vector2i(-100_000, -100_000), area_rotation: int = 0, target_coordinates: Array[Vector2i] = []) -> PlayerIntent:
+	return PlayerIntent.new(Kind.USE_ITEM_ON_TARGET, ItemTargetPayload.new(item_id, user_id, target_combatant_id, target_combatant_ids, coordinate, area_rotation, target_coordinates))
 
 
 static func camp() -> PlayerIntent:

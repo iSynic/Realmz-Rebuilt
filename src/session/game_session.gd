@@ -457,6 +457,7 @@ func _use_item(intent: PlayerIntent) -> SessionStep:
 	var item_id := ""
 	var target_id := ""
 	var target_ids: Array[String] = []
+	var target_coordinates: Array[Vector2i] = []
 	var target_coordinate := CombatFlow.INVALID_COORDINATE
 	var rotation := 0
 	if intent.payload is PlayerIntent.ItemUsePayload:
@@ -469,6 +470,7 @@ func _use_item(intent: PlayerIntent) -> SessionStep:
 		item_id = target_payload.item_id
 		target_id = target_payload.target_id
 		target_ids = target_payload.target_ids.duplicate()
+		target_coordinates = target_payload.target_coordinates.duplicate()
 		target_coordinate = target_payload.coordinate
 		rotation = target_payload.rotation
 	var character := _state.party.character_by_id(actor_id)
@@ -479,7 +481,7 @@ func _use_item(intent: PlayerIntent) -> SessionStep:
 	if character == null or instance == null or item == null:
 		return SessionStep.failed(_view_revision, &"unknown_item_instance", "The selected character does not carry that item instance.")
 	if _state.combat != null and not _state.combat.completed:
-		var combat_result := _rules.combat_flow.use_spell_item(_state, _content, character.id, target_id, instance.id, _rng, target_coordinate, rotation, target_ids)
+		var combat_result := _rules.combat_flow.use_spell_item(_state, _content, character.id, target_id, instance.id, _rng, target_coordinate, rotation, target_ids, target_coordinates)
 		if not combat_result.ok:
 			return SessionStep.failed(_view_revision, combat_result.error_code, combat_result.error_message)
 		if not CharacterAgingResult.update_payloads(combat_result.events).is_empty():

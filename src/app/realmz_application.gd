@@ -582,7 +582,7 @@ static func direct_combat_intent(body: InteractionResponse.CombatBody) -> Player
 		&"use_item":
 			if body.item_instance_id.is_empty():
 				return null
-			return PlayerIntent.use_item_on_target(body.item_instance_id, body.actor_id, body.target_id, body.target_ids, body.target_coordinate if body.has_target_coordinate else CombatFlow.INVALID_COORDINATE, body.rotation)
+			return PlayerIntent.use_item_on_target(body.item_instance_id, body.actor_id, body.target_id, body.target_ids, body.target_coordinate if body.has_target_coordinate else CombatFlow.INVALID_COORDINATE, body.rotation, body.target_coordinates)
 		&"use_scroll":
 			if body.scroll_slot < 0:
 				return null
