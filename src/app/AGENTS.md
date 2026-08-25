@@ -6,7 +6,7 @@ Own the Godot composition root and translate host input/output into the pure ses
 
 ## Ownership
 
-- `RealmzApplication` constructs the dependency graph explicitly.
+- `StartupFrontDoor` owns immediate process entry and background construction of `RealmzApplication`; `RealmzApplication` constructs the gameplay dependency graph explicitly.
 - `GameSessionController` owns the replaceable `GameSession` instance and publishes committed steps.
 - `GameSessionController` materializes one detached `GameView` per committed revision and shares it with host input checks and presenters; host code must not rebuild the same revision repeatedly.
 - Detached campaign, vault, and host view models live under `src/app/view`; `CharacterVaultRevisionView` is app-owned while remaining `class_name`-compatible. Prepared package views expose the core `MediaSource` abstraction and never leak an infrastructure package catalog into presentation.
@@ -15,6 +15,7 @@ Own the Godot composition root and translate host input/output into the pure ses
 ## Local Contracts
 
 - No gameplay autoloads, service locators, `GameGlobal`, `NodeAccess`, or string-based dispatch.
+- The startup front door renders the actual splash before requesting the gameplay scene on the next frame. Its single ResourceLoader worker is joined before consumption or process exit. It retains at most one early scenario, load, Character Files, or quit route; the hidden application receives no input and suppresses its duplicate intro decoder until the front door transfers ownership through public shell routes.
 - The controller may call only the public `GameSession` operations.
 - Interaction UI responses enter through `GameSession.respond`; presenters never resume the VM or mutate state themselves.
 - After a successful interaction response, the composition root may compare detached before/after journal counts and request one transient journal indicator only when the committed view gained an entry. A successful host save similarly requests one transient save indicator. These presentation signals do not enter session state, and the host must not imply an autosave when no autosave operation exists.

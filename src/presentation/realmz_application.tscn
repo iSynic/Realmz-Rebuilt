@@ -8,6 +8,7 @@
 [ext_resource type="Texture2D" path="res://src/presentation/assets/ui/classic-charcoal-slate-tile.png" id="6_stone"]
 [ext_resource type="Theme" path="res://src/presentation/classic_ui_theme.tres" id="7_theme"]
 [ext_resource type="Script" path="res://src/presentation/classic_battlefield_presenter.gd" id="8_p3gde"]
+[ext_resource type="Script" path="res://src/app/startup_route_bridge.gd" id="9_startup"]
 
 [sub_resource type="StyleBoxFlat" id="InteractionStyle"]
 bg_color = Color(0.055, 0.063, 0.078, 0.985)
@@ -95,3 +96,6 @@ clip_contents = true
 anchors_preset = 0
 mouse_filter = 2
 script = ExtResource("8_p3gde")
+
+[node name="StartupRouteBridge" type="Node" parent="."]
+script = ExtResource("9_startup")

@@ -447,8 +447,14 @@ func finish_standalone_character_creation() -> void:
 	_router.finish_standalone_character_creation()
 
 
-func show_campaign_selection() -> void:
-	_router.show_campaign_selection()
+func show_campaign_selection(load_after_selection: bool = false) -> void:
+	_router.show_campaign_selection(load_after_selection)
+	_set_play_regions_visible(false)
+	_build_menus()
+
+
+func show_vault_from_splash() -> void:
+	_router.show_vault_from_splash()
 	_set_play_regions_visible(false)
 	_build_menus()
 

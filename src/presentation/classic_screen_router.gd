@@ -51,6 +51,7 @@ var _media: ClassicMediaCatalog
 var _workspace_presenter := CLASSIC_WORKSPACE_PRESENTER.new()
 var setup_controller := CampaignPartySetupController.new()
 var _initialized: bool = false
+var _startup_splash_enabled: bool = true
 
 
 func _init() -> void:
@@ -63,7 +64,7 @@ func _init() -> void:
 	setup_controller.campaign_selection_requested.connect(func() -> void: show_campaign_selection())
 	setup_controller.load_adventure_requested.connect(func() -> void: show_campaign_selection(true))
 	setup_controller.load_saved_adventure_requested.connect(_show_load_workspace)
-	setup_controller.vault_requested.connect(_show_vault_from_splash)
+	setup_controller.vault_requested.connect(show_vault_from_splash)
 	setup_controller.quit_requested.connect(func() -> void: system_action_requested.emit(&"quit", null))
 	_workspace_presenter.intent_submitted.connect(func(intent: PlayerIntent) -> void: intent_submitted.emit(intent))
 	_workspace_presenter.system_action_requested.connect(func(action_id: StringName, value: Variant) -> void: system_action_requested.emit(action_id, value))
@@ -94,7 +95,15 @@ func initialize() -> void:
 	setup_controller.build_splash_overlay()
 	setup_controller.build_campaign_overlay()
 	setup_controller.build_setup_overlay()
-	show_splash()
+	if _startup_splash_enabled:
+		show_splash()
+	else:
+		setup_controller.hide_overlays()
+		_body_frame.visible = false
+
+
+func set_startup_splash_enabled(enabled: bool) -> void:
+	_startup_splash_enabled = enabled
 
 
 func _ensure_hosts() -> void:
@@ -527,7 +536,7 @@ func _show_vault_from_campaign() -> void:
 	_render_screen()
 
 
-func _show_vault_from_splash() -> void:
+func show_vault_from_splash() -> void:
 	_vault_return_to_splash = true
 	_vault_return_to_campaign = false
 	_vault_return_to_setup = false
