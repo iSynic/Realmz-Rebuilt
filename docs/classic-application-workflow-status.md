@@ -6,26 +6,26 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| classic | 69 | 0 | 15 | 46 | 8 |
+| classic | 69 | 0 | 15 | 43 | 11 |
 | host | 8 | 1 | 1 | 4 | 2 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
 
 ## Current parity-convergence batch
 
-**Lachis certification** (`lachis-certification`)
+**Stock gameplay saturation I** (`stock-gameplay-saturation-1`)
 
-War is certified after ordinary play accepted installation, selection, vault reuse, travel, and the placed Land 3 message/picture/sound sequence. The current local Lachis package is the sole remaining legal candidate and therefore next in recomputed coverage order. Its corrected Providence v2 report yields 2,887 coverage points and 245 high-risk-boundary points, including three new interaction signatures, 240 opcode variants, two battle shapes, 69 monster signatures, four reward signatures, four map signatures, and four shop signatures. The analyzer finds exact application-spell agreement, no non-executable opcode, and zero compiler loss; deterministic ending, encounter, thief, shop, and reward routes pass. Ordinary play must now accept installation and one representative AP, authored response, battle, and treasure sequence before Lachis certification closes.
+Lachis ordinary play accepts scenario selection, a representative placed action point, authored response, battle, and treasure sequence. Its deterministic routes and corrected Providence v2 report already prove the ending, optional encounters, thief and timed Pick Lock branches, shops, rewards, executable used opcodes, exact application-spell agreement, and zero compiler loss. Lachis was the sole remaining legal candidate, so the legal scenario corpus is exhausted. The program now enters synthetic saturation. This batch targets the four partial gameplay workflows that own every remaining stock spell source or trap-spell branch and retains the shared spell power/target picker as its coherent ordinary-play certification target. It prioritizes measurable pending denominator reduction over presentation polish and limits archaeology to exact source ambiguity for the selected mechanical family.
 
 Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.startup.select-scenario` | certification | broader-parity | other-ordinary |  |
-| `classic.scenario.trigger-action-point` | certification | broader-parity | other-ordinary |  |
-| `classic.scenario.choose-response` | certification | broader-parity | other-ordinary |  |
-| `classic.combat.enter-battle` | certification | broader-parity | other-ordinary |  |
-| `classic.rewards.treasure-distribution` | certification | broader-parity | other-ordinary |  |
+| `classic.spellcasting.combat-cast` | implementation | broader-parity | - | GAP-SPELL-003 |
+| `classic.inventory.use-item` | implementation | broader-parity | - | GAP-INV-003 |
+| `classic.spellcasting.field-camp-cast` | implementation | broader-parity | - | GAP-SPELL-002 |
+| `classic.scenario.complex-interaction` | implementation | broader-parity | - | GAP-SCEN-002 |
+| `classic.spellcasting.choose-power-target` | certification | broader-parity | other-ordinary |  |
 
 ### Batch count delta
 
@@ -33,8 +33,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | --- | ---: | ---: | ---: |
 | classic | missing | 0 | 0 | 0 |
 | classic | partial | 15 | 15 | 0 |
-| classic | functional | 46 | 46 | 0 |
-| classic | certified | 8 | 8 | 0 |
+| classic | functional | 43 | 43 | 0 |
+| classic | certified | 11 | 11 | 0 |
 | host | missing | 1 | 1 | 0 |
 | host | partial | 1 | 1 | 0 |
 | host | functional | 4 | 4 | 0 |
@@ -46,12 +46,12 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | ---: | ---: | ---: | ---: | ---: |
 | Startup and party | 8 | 0 | 0 | 7 | 1 |
 | Exploration | 6 | 0 | 0 | 4 | 2 |
-| Scenario interaction | 6 | 0 | 1 | 4 | 1 |
+| Scenario interaction | 6 | 0 | 1 | 2 | 3 |
 | Character management | 5 | 0 | 2 | 3 | 0 |
 | Inventory and equipment | 9 | 0 | 2 | 7 | 0 |
 | Spellcasting | 3 | 0 | 2 | 1 | 0 |
 | Services and economy | 5 | 0 | 1 | 4 | 0 |
-| Combat | 14 | 0 | 2 | 9 | 3 |
+| Combat | 14 | 0 | 2 | 8 | 4 |
 | Rewards and progression | 5 | 0 | 0 | 4 | 1 |
 | Maps and journal | 3 | 0 | 2 | 1 | 0 |
 | Save and system | 5 | 0 | 3 | 2 | 0 |
@@ -99,8 +99,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | ---: |
 | absent | 0 |
 | fixture-shell | 1 |
-| functional | 59 |
-| accepted | 9 |
+| functional | 56 |
+| accepted | 12 |
 
 ### Host
 
@@ -139,7 +139,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | synthetic | 69 | 7 |
 | route-harness | 40 | 2 |
 | aogm-ordinary | 44 | 3 |
-| other-ordinary | 8 | 3 |
+| other-ordinary | 12 | 3 |
 | cross-platform | 0 | 0 |
 
 ## Release blockers and major gaps
