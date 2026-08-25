@@ -240,10 +240,10 @@ theme_override_constants/separation = 6
 [node name="WorldCommandPanel" type="PanelContainer" parent="BottomRegion/BottomRow"]
 unique_name_in_owner = true
 layout_mode = 2
-custom_minimum_size = Vector2(240, 0)
+custom_minimum_size = Vector2(300, 0)
 size_flags_horizontal = 3
-size_flags_stretch_ratio = 0.85
-theme_type_variation = &"ClassicInset"
+size_flags_stretch_ratio = 1.0
+theme_type_variation = &"ClassicSharedStone"
 
 [node name="WorldCommandColumn" type="VBoxContainer" parent="BottomRegion/BottomRow/WorldCommandPanel"]
 layout_mode = 2
@@ -256,7 +256,17 @@ theme_type_variation = &"ClassicHeading"
 text = "Adventure"
 horizontal_alignment = 1
 
-[node name="WorldCommandGrid" type="GridContainer" parent="BottomRegion/BottomRow/WorldCommandPanel/WorldCommandColumn"]
+[node name="WorldCommandDeckCenter" type="CenterContainer" parent="BottomRegion/BottomRow/WorldCommandPanel/WorldCommandColumn"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="WorldCommandDeckFrame" type="PanelContainer" parent="BottomRegion/BottomRow/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"ClassicInset"
+
+[node name="WorldCommandGrid" type="GridContainer" parent="BottomRegion/BottomRow/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 4
@@ -268,7 +278,8 @@ theme_override_constants/v_separation = 3
 [node name="NarrativeWell" type="PanelContainer" parent="BottomRegion/BottomRow"]
 unique_name_in_owner = true
 layout_mode = 2
-size_flags_horizontal = 4
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.45
 custom_minimum_size = Vector2(620, 0)
 theme_type_variation = &"ClassicTextWell"
 
@@ -351,8 +362,8 @@ unique_name_in_owner = true
 layout_mode = 2
 custom_minimum_size = Vector2(300, 0)
 size_flags_horizontal = 3
-size_flags_stretch_ratio = 1.15
-theme_type_variation = &"ClassicInset"
+size_flags_stretch_ratio = 1.0
+theme_type_variation = &"ClassicSharedStone"
 
 [node name="CommandColumn" type="VBoxContainer" parent="BottomRegion/BottomRow/CommandPanel"]
 layout_mode = 2
@@ -364,14 +375,24 @@ theme_type_variation = &"ClassicHeading"
 text = "Party"
 horizontal_alignment = 1
 
-[node name="CommandScroll" type="ScrollContainer" parent="BottomRegion/BottomRow/CommandPanel/CommandColumn"]
+[node name="CommandDeckCenter" type="CenterContainer" parent="BottomRegion/BottomRow/CommandPanel/CommandColumn"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="CommandDeckFrame" type="PanelContainer" parent="BottomRegion/BottomRow/CommandPanel/CommandColumn/CommandDeckCenter"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"ClassicInset"
+
+[node name="CommandScroll" type="ScrollContainer" parent="BottomRegion/BottomRow/CommandPanel/CommandColumn/CommandDeckCenter/CommandDeckFrame"]
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 vertical_scroll_mode = 1
 follow_focus = true
 
-[node name="CommandGrid" type="GridContainer" parent="BottomRegion/BottomRow/CommandPanel/CommandColumn/CommandScroll"]
+[node name="CommandGrid" type="GridContainer" parent="BottomRegion/BottomRow/CommandPanel/CommandColumn/CommandDeckCenter/CommandDeckFrame/CommandScroll"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 4

@@ -82,7 +82,7 @@ const JOURNAL_STATUS_TEXTURE := preload("res://src/presentation/assets/ui/status
 @onready var _narrative_well: PanelContainer = %NarrativeWell
 @onready var _command_panel: PanelContainer = %CommandPanel
 @onready var _command_column: VBoxContainer = $BottomRegion/BottomRow/CommandPanel/CommandColumn
-@onready var _command_scroll: ScrollContainer = $BottomRegion/BottomRow/CommandPanel/CommandColumn/CommandScroll
+@onready var _command_scroll: ScrollContainer = $BottomRegion/BottomRow/CommandPanel/CommandColumn/CommandDeckCenter/CommandDeckFrame/CommandScroll
 @onready var _command_grid: GridContainer = %CommandGrid
 @onready var _command_heading: Label = $BottomRegion/BottomRow/CommandPanel/CommandColumn/CommandHeading
 @onready var _router: ClassicScreenRouter = %ScreenRouter
@@ -498,16 +498,18 @@ func _apply_layout() -> void:
 	_world_command_panel.visible = _profile.id != UiLayoutProfile.COMPACT
 	_apply_exploration_mode()
 	_command_heading.text = "Party" if _world_command_panel.visible else "Commands"
-	_world_command_panel.custom_minimum_size.x = minf(240.0 * _profile.ui_scale, viewport_size.x * 0.2) if _world_command_panel.visible else 0.0
+	var side_command_width := maxf(300.0 * _profile.ui_scale, command_width)
+	_world_command_panel.custom_minimum_size.x = side_command_width if _world_command_panel.visible else 0.0
 	_world_command_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL if _world_command_panel.visible else Control.SIZE_SHRINK_BEGIN
-	_world_command_panel.size_flags_stretch_ratio = 0.85
+	_world_command_panel.size_flags_stretch_ratio = 1.0
 	_command_panel.visible = _router.current_screen() != &"spells"
-	_command_panel.custom_minimum_size.x = maxf(300.0 * _profile.ui_scale, command_width) if _world_command_panel.visible else command_width
+	_command_panel.custom_minimum_size.x = side_command_width if _world_command_panel.visible else command_width
 	_command_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL if _world_command_panel.visible else Control.SIZE_SHRINK_END
-	_command_panel.size_flags_stretch_ratio = 1.15
+	_command_panel.size_flags_stretch_ratio = 1.0
 	_command_panel.custom_minimum_size.y = 0.0
 	_narrative_well.custom_minimum_size.x = minf(620.0 * _profile.ui_scale, maxf(360.0, footer_width - _world_command_panel.custom_minimum_size.x - _command_panel.custom_minimum_size.x - 12.0)) if _world_command_panel.visible else maxf(360.0, footer_width - (command_width if _command_panel.visible else 0.0) - 12.0)
-	_narrative_well.size_flags_horizontal = Control.SIZE_SHRINK_CENTER if _world_command_panel.visible else Control.SIZE_EXPAND_FILL
+	_narrative_well.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_narrative_well.size_flags_stretch_ratio = 1.45 if _world_command_panel.visible else 1.0
 	_world_command_column.alignment = BoxContainer.ALIGNMENT_CENTER
 	_command_column.alignment = BoxContainer.ALIGNMENT_CENTER
 	_world_command_grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -558,8 +560,8 @@ func _apply_exploration_mode() -> void:
 		return
 	var camping := _current_view != null and _current_view.party_summary != null and _current_view.party_summary.camping
 	_world_command_heading.text = "Camp" if camping else "Adventure"
-	_world_command_panel.theme_type_variation = &"ClassicInset"
-	_command_panel.theme_type_variation = &"ClassicInset"
+	_world_command_panel.theme_type_variation = &"ClassicSharedStone"
+	_command_panel.theme_type_variation = &"ClassicSharedStone"
 
 
 func _build_menus() -> void:
