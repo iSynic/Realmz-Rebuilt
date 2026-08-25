@@ -1,4 +1,4 @@
-[gd_resource type="Theme" load_steps=38 format=3]
+[gd_resource type="Theme" load_steps=39 format=3]
 
 [ext_resource type="Texture2D" path="res://src/presentation/assets/ui/classic-raised-frame.png" id="1_raised"]
 [ext_resource type="Texture2D" path="res://src/presentation/assets/ui/classic-inset-frame.png" id="2_inset"]
@@ -294,6 +294,13 @@ content_margin_top = 8.0
 content_margin_right = 10.0
 content_margin_bottom = 8.0
 
+[sub_resource type="StyleBoxFlat" id="TextboxOverlaySurface"]
+bg_color = Color(0.012, 0.016, 0.018, 1)
+content_margin_left = 10.0
+content_margin_top = 8.0
+content_margin_right = 10.0
+content_margin_bottom = 8.0
+
 [sub_resource type="StyleBoxFlat" id="ItemLedgerPanel"]
 bg_color = Color(0.965, 0.957, 0.918, 1)
 border_width_left = 1
@@ -424,6 +431,8 @@ ClassicOpenRight/base_type = &"PanelContainer"
 ClassicOpenRight/styles/panel = SubResource("OpenRightPanel")
 ClassicSharedStone/base_type = &"PanelContainer"
 ClassicSharedStone/styles/panel = SubResource("SharedStoneSurface")
+ClassicTextboxOverlay/base_type = &"PanelContainer"
+ClassicTextboxOverlay/styles/panel = SubResource("TextboxOverlaySurface")
 ClassicItemLedger/base_type = &"PanelContainer"
 ClassicItemLedger/styles/panel = SubResource("ItemLedgerPanel")
 ClassicItemLedgerRow/base_type = &"PanelContainer"
