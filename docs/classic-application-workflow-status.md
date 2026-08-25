@@ -6,26 +6,26 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| classic | 69 | 0 | 15 | 49 | 5 |
-| host | 8 | 1 | 1 | 6 | 0 |
+| classic | 69 | 0 | 15 | 46 | 8 |
+| host | 8 | 1 | 1 | 4 | 2 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
 
 ## Current parity-convergence batch
 
-**War completion certification** (`war-completion-certification`)
+**Lachis certification** (`lachis-certification`)
 
-The current Providence War package has exact application-signature coverage, executable dispositions for every used opcode, zero compiler loss, and a deterministic eight-stage completion route through four battles and the ending. Ordinary play has proved installation, selection, campaign entry, compatible AOGM vault reuse, representative dungeon travel, and boat travel. Acceptance of one War message/picture/sound sequence is the remaining evidence target in this five-workflow certification batch.
+War is certified after ordinary play accepted installation, selection, vault reuse, travel, and the placed Land 3 message/picture/sound sequence. The current local Lachis package is the sole remaining legal candidate and therefore next in recomputed coverage order. Its corrected Providence v2 report yields 2,887 coverage points and 245 high-risk-boundary points, including three new interaction signatures, 240 opcode variants, two battle shapes, 69 monster signatures, four reward signatures, four map signatures, and four shop signatures. The analyzer finds exact application-spell agreement, no non-executable opcode, and zero compiler loss; deterministic ending, encounter, thief, shop, and reward routes pass. Ordinary play must now accept installation and one representative AP, battle, and treasure sequence, while the Lachis shop route is used to close or finally dispose the remaining native empty-stock-slot provenance gap.
 
 Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.startup.select-scenario` | certification | war-prerequisite | other-ordinary |  |
-| `classic.exploration.travel` | certification | war-prerequisite | other-ordinary |  |
-| `classic.scenario.present-message-media` | certification | war-prerequisite | other-ordinary | GAP-SCEN-001 |
-| `host.package.discover-install` | certification | war-prerequisite | other-ordinary |  |
-| `host.vault.import-publish` | certification | war-prerequisite | other-ordinary |  |
+| `classic.startup.select-scenario` | certification | broader-parity | other-ordinary |  |
+| `classic.scenario.trigger-action-point` | certification | broader-parity | other-ordinary |  |
+| `classic.services.shop` | implementation | broader-parity | - | GAP-SVC-008 |
+| `classic.combat.enter-battle` | certification | broader-parity | other-ordinary |  |
+| `classic.rewards.treasure-distribution` | certification | broader-parity | other-ordinary |  |
 
 ### Batch count delta
 
@@ -33,20 +33,20 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | --- | ---: | ---: | ---: |
 | classic | missing | 0 | 0 | 0 |
 | classic | partial | 15 | 15 | 0 |
-| classic | functional | 49 | 49 | 0 |
-| classic | certified | 5 | 5 | 0 |
+| classic | functional | 46 | 46 | 0 |
+| classic | certified | 8 | 8 | 0 |
 | host | missing | 1 | 1 | 0 |
 | host | partial | 1 | 1 | 0 |
-| host | functional | 6 | 6 | 0 |
-| host | certified | 0 | 0 | 0 |
+| host | functional | 4 | 4 | 0 |
+| host | certified | 2 | 2 | 0 |
 
 ## Classic domain heatmap
 
 | Domain | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Startup and party | 8 | 0 | 0 | 8 | 0 |
-| Exploration | 6 | 0 | 0 | 5 | 1 |
-| Scenario interaction | 6 | 0 | 1 | 5 | 0 |
+| Startup and party | 8 | 0 | 0 | 7 | 1 |
+| Exploration | 6 | 0 | 0 | 4 | 2 |
+| Scenario interaction | 6 | 0 | 1 | 4 | 1 |
 | Character management | 5 | 0 | 2 | 3 | 0 |
 | Inventory and equipment | 9 | 0 | 2 | 7 | 0 |
 | Spellcasting | 3 | 0 | 2 | 1 | 0 |
@@ -99,8 +99,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | ---: |
 | absent | 0 |
 | fixture-shell | 1 |
-| functional | 62 |
-| accepted | 6 |
+| functional | 59 |
+| accepted | 9 |
 
 ### Host
 
@@ -129,8 +129,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | ---: |
 | absent | 1 |
 | fixture-shell | 0 |
-| functional | 7 |
-| accepted | 0 |
+| functional | 5 |
+| accepted | 2 |
 
 ### Live evidence labels
 
@@ -139,7 +139,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | synthetic | 69 | 7 |
 | route-harness | 40 | 2 |
 | aogm-ordinary | 44 | 3 |
-| other-ordinary | 3 | 1 |
+| other-ordinary | 8 | 3 |
 | cross-platform | 0 | 0 |
 
 ## Release blockers and major gaps
@@ -183,7 +183,6 @@ Blockers: **1**. Major gaps: **12**.
 - `classic.character.age-update` - Age updates have no ordinary-campaign observation because the trigger is rare.
 - `classic.maps.authored-journal` - Authored journal discovery and browsing have synthetic proof only.
 - `classic.maps.location-notes` - Location-note creation, editing, removal, and restoration have synthetic proof only.
-- `classic.scenario.present-message-media` - Only AOGM's opening media sequence has ordinary-play evidence.
 - `classic.services.bank` - The complete bank-backed Swap lifecycle has no ordinary campaign certification.
 
 ### parity
