@@ -365,7 +365,7 @@ func _process_monster_cast(state: GameState, content: RealmzContent, monster: Mo
 			if actor_field != null: repeated_fields.append(actor_field)
 		if spell.target_type in [3, 4]:
 			resolutions = _rules.magic.resolve_monster_group_spell(monster, definition, selected_targets, spell, cost_power, cast_level, rng, true, true, PolymorphContextType.new(content, state.monster_set, state.difficulty, state.clock.day()))
-		elif spell.target_type in [9, 10]:
+		elif spell.target_type in [9, 10, 12]:
 			resolutions = _rules.magic.resolve_monster_group_spell(monster, definition, selected_targets, spell, cost_power, cast_level, rng, false, true, PolymorphContextType.new(content, state.monster_set, state.difficulty, state.clock.day()))
 		elif spell.target_type == 0:
 			resolutions = _rules.magic.resolve_monster_repeated_spell(monster, definition, selected_targets, spell, cost_power, cast_level, rng, _flow()._repeated_field_callback(state, spell, monster.id, planned_target_ids, cost_power, cast_level, rng, repeated_fields))

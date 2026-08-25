@@ -77,7 +77,7 @@ func best_monster_spell_plan(state: GameState, content: RealmzContent, monster: 
 		var spell := content.spell_by_id(definition.spell_id_at(slot))
 		if spell == null or not _flow()._monster_spell_unavailable_reason(spell).is_empty():
 			continue
-		if not _auto_group_target_is_safe(spell):
+		if spell.target_type != 12 and not _auto_group_target_is_safe(spell):
 			continue
 		if ClassicSpellCapabilityCatalog.is_combat_persistent_field_spell(spell) and not state.combat.can_queue_persistent_field():
 			continue
@@ -103,7 +103,7 @@ func _monster_spell_power_plan(state: GameState, content: RealmzContent, monster
 		return _monster_area_spell_power_plan(state, content, monster, definition, spell, slot, power, actors_by_cell, area_placement_cache, area_center_cache)
 	if spell.target_type == 6:
 		return _monster_ray_spell_power_plan(state, content, monster, spell, slot, power)
-	if spell.target_type in [9, 10]:
+	if spell.target_type in [9, 10, 12]:
 		return _monster_group_spell_power_plan(state, content, monster, spell, slot, power, spell.target_type == 9)
 	var cure_index := MagicRules.condition_cure_index(spell) if MagicRules.is_condition_cure_spell(spell) else -1
 	var effect_index := ClassicSpellCapabilityCatalog.combat_condition_effect_index(spell)
@@ -214,18 +214,20 @@ func _monster_polymorph_plan(state: GameState, content: RealmzContent, monster: 
 
 
 func _monster_group_spell_power_plan(state: GameState, content: RealmzContent, monster: MonsterState, spell: SpellDefinition, slot: int, power: int, friendly: bool) -> Dictionary:
-	var target_ids := _friendly_actor_ids_for_monster(state, monster) if friendly else _opposed_actor_ids_for_monster(state, monster)
+	var target_ids := _everybody_actor_ids(state) if spell.target_type == 12 else _friendly_actor_ids_for_monster(state, monster) if friendly else _opposed_actor_ids_for_monster(state, monster)
 	var condition_index := ClassicSpellCapabilityCatalog.combat_condition_effect_index(spell)
 	var effective_target_count := 0
+	var effective_target_balance := 0
 	for target_id: String in target_ids:
 		if not _target_hard_immune(state, content, target_id, spell) and (condition_index < 0 or _target_condition_value(state, target_id, condition_index) == 0):
 			effective_target_count += 1
-	if effective_target_count == 0:
+			effective_target_balance += -1 if _actor_is_friendly_to_monster(state, monster, target_id) else 1
+	if effective_target_count == 0 or spell.target_type == 12 and effective_target_balance <= 0:
 		return {}
 	var expected := expected_spell_effect(spell, power)
 	if condition_index >= 0:
 		expected = maxi(1, _maximum_condition_duration(spell, power))
-	var score := 340 + effective_target_count * expected * 5 - spell.cost * power * 3
+	var score := 340 + (effective_target_balance if spell.target_type == 12 else effective_target_count) * expected * 5 - spell.cost * power * 3
 	return {"spellId": spell.id, "spellSlot": slot, "power": power, "targetIds": target_ids, "score": score}
 
 
@@ -890,6 +892,15 @@ func _friendly_actor_ids_for_monster(state: GameState, monster: MonsterState) ->
 		if character.current_health > 0 and character.traitor == monster.traitor and state.combat.battlefield.has_actor(character.id): result.append(character.id)
 	for candidate: MonsterState in state.combat.monsters():
 		if candidate.current_health > 0 and candidate.traitor == monster.traitor and state.combat.battlefield.has_actor(candidate.id): result.append(candidate.id)
+	return result
+
+
+func _everybody_actor_ids(state: GameState) -> Array[String]:
+	var result: Array[String] = []
+	for character: CharacterState in state.party.characters():
+		if character.current_health > 0 and state.combat.battlefield.has_actor(character.id): result.append(character.id)
+	for monster: MonsterState in state.combat.monsters():
+		if monster.current_health > 0 and state.combat.battlefield.has_actor(monster.id): result.append(monster.id)
 	return result
 
 
