@@ -2,6 +2,8 @@ class_name ScenarioVmDirective
 extends RefCounted
 
 const FINISH: StringName = &"finish"
+const FINISH_TIMELINE: StringName = &"finish-timeline"
+const RESUME_AFTER_ENCOUNTER: StringName = &"resume-after-encounter"
 const BRANCH_XAP: StringName = &"branch-xap"
 const BRANCH_PROGRAM: StringName = &"branch-program"
 const BRANCH_ENCOUNTER_RESULT: StringName = &"branch-encounter-result"
@@ -20,6 +22,14 @@ func _init(directive_kind: StringName) -> void:
 
 static func finish() -> ScenarioVmDirective:
 	return ScenarioVmDirective.new(FINISH)
+
+
+static func finish_timeline() -> ScenarioVmDirective:
+	return ScenarioVmDirective.new(FINISH_TIMELINE)
+
+
+static func resume_after_encounter() -> ScenarioVmDirective:
+	return ScenarioVmDirective.new(RESUME_AFTER_ENCOUNTER)
 
 
 static func branch_xap(target: int, use_gosub: bool) -> ScenarioVmDirective:
@@ -52,7 +62,7 @@ func copy() -> ScenarioVmDirective:
 
 func to_data() -> Dictionary:
 	match kind:
-		FINISH:
+		FINISH, FINISH_TIMELINE, RESUME_AFTER_ENCOUNTER:
 			return {"kind": String(kind)}
 		BRANCH_XAP:
 			return {"kind": String(kind), "targetId": target_id, "gosub": gosub}
@@ -69,6 +79,10 @@ static func from_data(value: Variant) -> ScenarioVmDirective:
 	match StringName(value["kind"]):
 		FINISH:
 			return finish() if value.size() == 1 else null
+		FINISH_TIMELINE:
+			return finish_timeline() if value.size() == 1 else null
+		RESUME_AFTER_ENCOUNTER:
+			return resume_after_encounter() if value.size() == 1 else null
 		BRANCH_XAP:
 			if value.size() != 3 or not value.get("targetId") is int or not value.get("gosub") is bool:
 				return null

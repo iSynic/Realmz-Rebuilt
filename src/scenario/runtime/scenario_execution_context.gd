@@ -101,6 +101,20 @@ func set_encounter_attempt(value: int) -> ScenarioExecutionContext:
 	return self
 
 
+func without_encounter() -> ScenarioExecutionContext:
+	var result := copy()
+	result.encounter_kind = &""
+	result.encounter_id = -1
+	result.encounter_attempt = -1
+	result.response_id = ""
+	result.option_index = -1
+	result.response_kind = &""
+	result.option_slot = -1
+	result.action_index = -1
+	result.character_id = ""
+	return result
+
+
 func set_thief_action(selected_action_index: int, selected_character_id: String) -> ScenarioExecutionContext:
 	action_index = selected_action_index
 	character_id = selected_character_id

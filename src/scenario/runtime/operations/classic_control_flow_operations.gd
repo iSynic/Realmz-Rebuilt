@@ -23,7 +23,7 @@ func execute(action: ClassicActionDefinition, _request_id: String, context: Scen
 		8:
 			return branch_to_trigger_program(action, context)
 		24:
-			return ScenarioRuntimeOperationResult.completed(null, [DomainEvent.new(&"action_point_kept", {"triggerId": context.trigger_id, "source": "classic"})], ScenarioVmDirective.finish())
+			return ScenarioRuntimeOperationResult.completed(null, [DomainEvent.new(&"action_point_kept", {"triggerId": context.trigger_id, "source": "classic"})], ScenarioVmDirective.finish_timeline())
 		25:
 			var trigger_id := context.trigger_id
 			if trigger_id.is_empty():

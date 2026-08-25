@@ -41,7 +41,7 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 		5:
 			return _request_complex_encounter(action, request_id, context)
 		34:
-			return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"encounter_loop_finished", {"source": "classic"})], ScenarioVmDirective.finish())
+			return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"encounter_loop_finished", {"source": "classic"})], ScenarioVmDirective.resume_after_encounter())
 		35:
 			var encounter_id := context.encounter_id
 			if context.encounter_kind != &"simple" or not _game_state.eliminate_simple_option(encounter_id, action.operand_id - 1):

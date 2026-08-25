@@ -362,6 +362,14 @@ func _apply_classic_directive(directive: ScenarioVmDirective, inherited_context:
 		ScenarioVmDirective.FINISH:
 			_return_from_frame(null)
 			return ScenarioVmResult.completed()
+		ScenarioVmDirective.FINISH_TIMELINE:
+			_frames.clear()
+			_halted = true
+			_last_outcome = null
+			_append_trace({"event": "classic-finish-timeline"})
+			return ScenarioVmResult.completed()
+		ScenarioVmDirective.RESUME_AFTER_ENCOUNTER:
+			return _resume_after_classic_encounter()
 		ScenarioVmDirective.BRANCH_XAP:
 			var program_id := "xap:%d" % directive.target_id
 			if _definition.program_by_id(program_id) == null:
@@ -414,6 +422,30 @@ func _apply_classic_directive(directive: ScenarioVmDirective, inherited_context:
 			return ScenarioVmResult.completed()
 		_:
 			return ScenarioVmResult.failed(&"unknown_vm_directive", "Realmz Runtime API returned an unknown VM directive.")
+
+
+func _resume_after_classic_encounter() -> ScenarioVmResult:
+	if _frames.size() < 2:
+		return ScenarioVmResult.failed(&"invalid_encounter_loop", "Classic encounter exit has no issuing program frame.")
+	var encounter_context: ScenarioExecutionContext = _frames.back().context()
+	for frame_index: int in range(_frames.size() - 2, -1, -1):
+		var source_frame: ScenarioFrame = _frames[frame_index]
+		if source_frame.kind != ScenarioFrame.PROGRAM:
+			continue
+		var program := _definition.program_by_id(source_frame.definition_id)
+		var instruction: Variant = program.instruction_at(source_frame.cursor) if program != null else null
+		if not instruction is ClassicActionDefinition or not _is_issuing_encounter(instruction, encounter_context):
+			continue
+		_frames.resize(frame_index + 1)
+		source_frame.cursor += 1
+		source_frame.set_context(source_frame.context().without_encounter())
+		_append_trace({"event": "classic-encounter-exit", "programId": source_frame.definition_id, "encounterKind": String(encounter_context.encounter_kind), "encounterId": encounter_context.encounter_id})
+		return ScenarioVmResult.completed()
+	return ScenarioVmResult.failed(&"invalid_encounter_loop", "Classic encounter exit cannot find its issuing encounter instruction.")
+
+
+static func _is_issuing_encounter(instruction: ClassicActionDefinition, context: ScenarioExecutionContext) -> bool:
+	return context != null and ((context.encounter_kind == &"simple" and instruction.opcode == 4) or (context.encounter_kind == &"complex" and instruction.opcode == 5)) and instruction.operand_id == context.encounter_id
 
 
 func _execute_action_frame(frame: ScenarioFrame, runtime_api: RealmzRuntimeApi) -> ScenarioVmResult:
