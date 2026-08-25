@@ -69,6 +69,29 @@ func resolve_character_group_spell(caster: CharacterState, character_targets: Ar
 	return result
 
 
+func resolve_character_area_projectile_item(caster: CharacterState, caste: CasteDefinition, projectile_item: ItemDefinition, character_targets: Array[CharacterState], monster_targets: Array[MonsterState], monster_definitions: Array[MonsterDefinition], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng) -> GroupSpellResolution:
+	if caster == null or projectile_item == null or spell == null or rng == null or power_level < 1 or monster_targets.size() != monster_definitions.size() or not ClassicSpellCapabilityCatalog.is_application_area_projectile_item_profile(spell):
+		return null
+	for target: CharacterState in character_targets:
+		if target == null:
+			return null
+	for index: int in monster_targets.size():
+		if monster_targets[index] == null or monster_definitions[index] == null:
+			return null
+	var duration := _scaled_roll(spell.duration_min, spell.duration_max, spell.power_duration_min, spell.power_duration_max, power_level, rng, &"combat.item-projectile.duration")
+	var damage := _scaled_roll(spell.damage_min, spell.damage_max, spell.power_damage_min, spell.power_damage_max, power_level, rng, &"combat.item-projectile.damage") + projectile_item.damage_bonus
+	if caste != null and caste.gets_missile_bonus:
+		damage += rng.draw_between(1, maxi(1, caster.level / 2), &"combat.item-projectile.caste-bonus")
+	var extra_to_hit_bonus := 5 * projectile_item.damage_bonus
+	var result := GroupSpellResolution.new(true, 0, duration, damage)
+	for target: CharacterState in character_targets:
+		result.append_target(target.id, &"character", _resolve_character_spell_character_target(caster, target, spell, power_level, cast_level, damage, duration, rng, [], extra_to_hit_bonus))
+	for index: int in monster_targets.size():
+		var target := monster_targets[index]
+		result.append_target(target.id, &"monster", _resolve_character_spell_monster_target(caster, target, monster_definitions[index], spell, power_level, cast_level, damage, duration, 0, rng, null, extra_to_hit_bonus, true))
+	return result
+
+
 func resolve_character_repeated_spell(caster: CharacterState, selections: Array[SpellTargetSelection], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, spend_spell_points: bool = true, before_selection: Callable = Callable(), item_definitions: Array[ItemDefinition] = []) -> RepeatedSpellResolution:
 	if caster == null or spell == null or rng == null or power_level < 1 or selections.is_empty() or selections.size() > power_level:
 		return null
@@ -109,9 +132,9 @@ func _resolve_character_selection_sequence(caster: CharacterState, selections: A
 	return result
 
 
-func _resolve_character_spell_monster_target(caster: CharacterState, target: MonsterState, target_definition: MonsterDefinition, spell: SpellDefinition, power_level: int, cast_level: int, damage: int, duration: int, spell_cost: int, rng: RealmzRng, polymorph_context: PolymorphContextType = null) -> SpellResolution:
+func _resolve_character_spell_monster_target(caster: CharacterState, target: MonsterState, target_definition: MonsterDefinition, spell: SpellDefinition, power_level: int, cast_level: int, damage: int, duration: int, spell_cost: int, rng: RealmzRng, polymorph_context: PolymorphContextType = null, extra_to_hit_bonus: int = 0, use_projectile_defense: bool = false) -> SpellResolution:
 	var rolled_damage := damage
-	var resisted := _monster_resists(caster.level, target, target_definition, spell, power_level, cast_level, rng)
+	var resisted := _monster_resists(caster.level, target, target_definition, spell, power_level, cast_level, rng, extra_to_hit_bonus, caster.missile, use_projectile_defense)
 	if resisted:
 		return SpellResolution.new(true, true, false, spell_cost, 0, duration)
 	if absi(spell.special) == 57:
@@ -164,9 +187,9 @@ func _resolve_character_spell_monster_target(caster: CharacterState, target: Mon
 	return result
 
 
-func _resolve_character_spell_character_target(caster: CharacterState, target: CharacterState, spell: SpellDefinition, power_level: int, cast_level: int, damage: int, duration: int, rng: RealmzRng, item_definitions: Array[ItemDefinition] = []) -> SpellResolution:
+func _resolve_character_spell_character_target(caster: CharacterState, target: CharacterState, spell: SpellDefinition, power_level: int, cast_level: int, damage: int, duration: int, rng: RealmzRng, item_definitions: Array[ItemDefinition] = [], extra_to_hit_bonus: int = 0) -> SpellResolution:
 	var rolled_damage := damage
-	var resisted := character_resists(caster.level, target, spell, power_level, cast_level, rng)
+	var resisted := character_resists(caster.level, target, spell, power_level, cast_level, rng, extra_to_hit_bonus)
 	if resisted:
 		return SpellResolution.new(true, true, false, 0, 0, duration)
 	if absi(spell.special) == 57:
@@ -260,7 +283,7 @@ func resolve_monster_projectile(caster: MonsterState, projectile_item: ItemDefin
 	return ProjectileResolution.new(true, 1, 0, damage, damage, duration, target.current_health <= 0)
 
 
-func character_resists(caster_level: int, target: CharacterState, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng) -> bool:
+func character_resists(caster_level: int, target: CharacterState, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, extra_to_hit_bonus: int = 0) -> bool:
 	if spell.spell_class == 0:
 		if rng.draw(100, &"magic.charm-save") <= target.save_value(0) + power_level * spell.save_adjust:
 			return true
@@ -278,7 +301,7 @@ func character_resists(caster_level: int, target: CharacterState, spell: SpellDe
 	if absi(spell.spell_class) == 9:
 		if target.conditions.is_active(ConditionRules.SHIELD_FROM_PROJECTILES):
 			return true
-		return rng.draw(100, &"magic.missile-dodge") <= target.dodge - spell.to_hit_bonus
+		return rng.draw(100, &"magic.missile-dodge") <= target.dodge - spell.to_hit_bonus - extra_to_hit_bonus
 	return rng.draw(100, &"magic.resistance") <= target.magic_resistance + power_level * spell.resistance_adjust
 
 
@@ -785,7 +808,7 @@ func _resolve_noncombat_character_effect(target: CharacterState, spell: SpellDef
 	return result
 
 
-func _monster_resists(caster_level: int, target: MonsterState, definition: MonsterDefinition, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng) -> bool:
+func _monster_resists(caster_level: int, target: MonsterState, definition: MonsterDefinition, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, extra_to_hit_bonus: int = 0, caster_missile: int = 0, use_projectile_defense: bool = false) -> bool:
 	if spell.spell_class == 0:
 		var charm_chance := 35 + 4 * target.hit_dice
 		charm_chance += 5 if definition.type_flag(0) else 0
@@ -805,6 +828,10 @@ func _monster_resists(caster_level: int, target: MonsterState, definition: Monst
 			return true
 	if (spell.spell_class == 0 or spell.spell_class == 5) and target.conditions.is_active(ConditionRules.ANIMATED):
 		return true
+	if use_projectile_defense and absi(spell.spell_class) == 9:
+		if target.conditions.is_active(ConditionRules.SHIELD_FROM_PROJECTILES):
+			return true
+		return rng.draw(100, &"magic.monster-missile-dodge") <= 10 + 5 * target.agility - caster_missile - spell.to_hit_bonus - extra_to_hit_bonus
 	return rng.draw(100, &"magic.monster-resistance") <= target.magic_resistance + power_level * spell.resistance_adjust
 
 

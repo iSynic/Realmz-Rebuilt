@@ -1,0 +1,39 @@
+{
+  "formatVersion": 1,
+  "evidenceClass": "source-control-flow",
+  "castleSourceCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "applicationDataCorrectionCommit": "ef95fcff40d81f14ac668d5e13466da4a51de6f4",
+  "applicationDataSha256": "f47776aadc0f4ebf42320e0aaedd39dd7b5a2c76c125a44e99ea461d962860e7",
+  "records": [
+    {
+      "classicSpellId": 4603,
+      "itemClassicId": 175,
+      "itemName": "Dumbfounder +3",
+      "itemPower": 1,
+      "itemDamageBonus": 3,
+      "targetType": 3,
+      "areaShape": 2,
+      "spellClass": 9,
+      "damageType": -9
+    },
+    {
+      "classicSpellId": 4712,
+      "itemClassicId": 742,
+      "itemName": "Holy Hand Grenade",
+      "itemPower": 7,
+      "itemDamageBonus": 0,
+      "targetType": 3,
+      "areaShape": 4,
+      "spellClass": 9,
+      "damageType": 9
+    }
+  ],
+  "sourceObservations": [
+    "items.c lines 608-686 loads item.sp2, retains the loaded item, fixes power from abs(item.sp1), and enters combat spell targeting.",
+    "combatinfo-combatchoice.c lines 320-339 routes an item-linked class-nine or damage-nine record through missile legality.",
+    "resolvespell.c lines 36-54 rolls one shared damage value, adds item.damage and five times that bonus to to-hit, then adds one caste missile bonus roll.",
+    "resist.c lines 61-99 gives class-nine effects projectile-shield and missile-dodge defenses instead of ordinary magic resistance.",
+    "resolvespell.c lines 270-330 reuses the shared adjusted damage for every actor selected by the authored area mask."
+  ],
+  "runtimeContract": "Only the charged-item combat context is applicable. Learned, scroll, and monster spell-list contexts do not own a loaded projectile item and therefore cannot reproduce the authored damage and to-hit inputs."
+}

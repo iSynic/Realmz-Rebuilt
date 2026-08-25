@@ -166,7 +166,7 @@ func use_spell_item(state: GameState, content: RealmzContent, caster_id: String,
 		var area_targets := _combat_spell_group_targets(state, content, caster, spell, selected_ids, true)
 		if not bool(area_targets.get("ok", false)):
 			return CombatFlowSpellRollbackType.item(state, rng, state_checkpoint, rng_checkpoint, &"item_target_unavailable", String(area_targets.get("error", "An item target is unavailable.")))
-		var area := _rules.magic.resolve_character_group_spell(caster, area_targets.get("characters", []), area_targets.get("monsters", []), area_targets.get("definitions", []), spell, power_level, cast_level, rng, true, false, PolymorphContextType.new(content, state.monster_set, state.difficulty, state.clock.day()))
+		var area := _rules.magic.resolve_character_area_projectile_item(caster, content.caste_by_id(caster.caste_id), item, area_targets.get("characters", []), area_targets.get("monsters", []), area_targets.get("definitions", []), spell, power_level, cast_level, rng) if ClassicSpellCapabilityCatalog.is_application_area_projectile_item_profile(spell) else _rules.magic.resolve_character_group_spell(caster, area_targets.get("characters", []), area_targets.get("monsters", []), area_targets.get("definitions", []), spell, power_level, cast_level, rng, true, false, PolymorphContextType.new(content, state.monster_set, state.difficulty, state.clock.day()))
 		if area == null or not area.cast:
 			return CombatFlowSpellRollbackType.item(state, rng, state_checkpoint, rng_checkpoint, &"item_spell_failed", "The area item spell could not be resolved.")
 		result = _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, area, rng, target_coordinate, shape, "classic-item", instance_id, false, [persistent_field])
