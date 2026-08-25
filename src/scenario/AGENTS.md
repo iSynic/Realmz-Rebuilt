@@ -25,6 +25,7 @@ Own the serializable Scenario VM, Classic instructions, Safe Scenario Actions, c
 - Runtime instruction forms are preserved `ClassicAction` records and typed `CallScenarioAction` records. Safe bytecode is compiler output, never Providence editor state.
 - The session owns the active VM, action state, runtime API, and post-move continuation. VM snapshots include Classic and Safe frames, origin, trace, and any pending typed interaction.
 - VM frames and program transfers carry a closed `ScenarioExecutionContext`; raw context dictionaries never enter live execution. The context codec preserves only declared trigger, application, encounter, combat, and program-transfer provenance and rejects unknown saved fields.
+- A Classic interaction-resumed program branch inherits the issuing frame's trigger and map provenance, while its target frame resolves its own program override and caller context. Encounter or Safe Action classification may not leak from the suspended source frame.
 - A saved Classic program replacement is resolved once when a frame starts. Redirecting the active AP changes that frame explicitly; neither behavior rewrites immutable package programs.
 - Classic XAP transfers inherit the issuing frame's AP origin/context. Loading macro code cannot erase the trigger identity required by source-backed operations such as opcode 25.
 - Battle opcodes resolve the Classic battle ID from Extra Code slot zero when a row is present; the action operand is only the direct-ID form when no Extra Code row exists.

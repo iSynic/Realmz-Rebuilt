@@ -240,7 +240,7 @@ func _test_public_thief_encounter(content: RealmzContent) -> void:
 	var loop_complex := ComplexEncounterDefinition.new(source_complex.id, source_complex.prompt_message_id, source_complex.action_result, source_complex.word_result, source_complex.groups(), source_complex.spell_ids(), source_complex.spell_results(), source_complex.item_ids(), source_complex.item_results(), source_complex.can_back_out, source_complex.thief, 2, source_complex.caste_success, source_complex.thief_success, source_complex.thief_fail, loop_texts)
 	var loop_programs: Array[ScenarioProgramDefinition] = [ScenarioProgramDefinition.new("root.thief-loop", &"trigger", "thief-loop", [ClassicActionDefinition.new(0, 5, 5, loop_complex.id, false, [])])]
 	for outcome_index: int in 4:
-		loop_programs.append(ScenarioProgramDefinition.new("complex:%d:result:%d" % [loop_complex.id, outcome_index], &"complex-encounter-result", str(outcome_index), []))
+		loop_programs.append(ScenarioProgramDefinition.new("complex:%d:result:%d" % [loop_complex.id, outcome_index], &"complex-encounter-result", str(outcome_index), [ClassicActionDefinition.new(0, 25, 25, 0, false, [])]))
 	var loop_definition := ScenarioDefinition.new(loop_programs, [])
 	var loop_messages: Array[MessageDefinition] = [content.message_by_id(absi(loop_complex.prompt_message_id))]
 	var loop_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, content.start_map_id, content.start_coordinate, content.world, loop_definition, loop_messages, [], [], [], [], [], [], [], [], [], [], [loop_complex], [source_thief])
@@ -250,7 +250,7 @@ func _test_public_thief_encounter(content: RealmzContent) -> void:
 	var loop_complex_choice := loop_vm.run(loop_api)
 	var loop_thief_choice := loop_vm.resume(InteractionResponse.from_data(loop_complex_choice.interaction.request_id, InteractionRequest.WORD_AND_ACTION, {"action": "thief"}), loop_api)
 	var repeated_after_thief := loop_vm.resume(InteractionResponse.from_data(loop_thief_choice.interaction.request_id, InteractionRequest.THIEF_ENCOUNTER, {"action": "attempt", "characterId": loop_character.id, "actionIndex": 0}), loop_api)
-	assert_equal([repeated_after_thief.state, repeated_after_thief.interaction.kind, loop_state.encounter_attempts(&"complex", loop_complex.id)], [ScenarioVmResult.State.WAITING, InteractionRequest.WORD_AND_ACTION, 1], "Thief result returns to its source Complex Encounter while selections remain")
+	assert_equal([repeated_after_thief.state, repeated_after_thief.interaction.kind, loop_state.encounter_attempts(&"complex", loop_complex.id), loop_state.world.trigger_is_disabled("ap.thief-loop")], [ScenarioVmResult.State.WAITING, InteractionRequest.WORD_AND_ACTION, 1, true], "Thief result retains its issuing AP context while returning to the source Complex Encounter")
 	var loop_save := save_round_trip(SessionSnapshot.new(loop_content.campaign_id, loop_content.package_hash, loop_content.rules_version, 1, loop_state, loop_rng.snapshot(), loop_vm.snapshot(), ScenarioActionState.new()))
 	assert_true(loop_save != null and SessionRestoreValidator.validate(loop_content, loop_save).ok, "repeating Thief result passes the complete save validator")
 	if loop_save != null:

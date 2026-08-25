@@ -163,7 +163,8 @@ func _complete_pending_operation(continuation: ScenarioVmPendingContinuation, op
 		if not continuation.result_target.is_empty():
 			_frames[frame_index].set_local(continuation.result_target, operation.value)
 	else:
-		var directive_result := _apply_classic_directive(operation.directive)
+		var inherited_context: ScenarioExecutionContext = _frames.back().context().for_new_program_frame() if not _frames.is_empty() else null
+		var directive_result := _apply_classic_directive(operation.directive, inherited_context)
 		if directive_result.state == ScenarioVmResult.State.FAILED:
 			return _fail(directive_result.error_code, directive_result.error_message, events)
 	var resumed := run(runtime_api)

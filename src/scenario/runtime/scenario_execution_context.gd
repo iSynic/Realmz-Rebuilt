@@ -115,6 +115,15 @@ func without_encounter() -> ScenarioExecutionContext:
 	return result
 
 
+func for_new_program_frame() -> ScenarioExecutionContext:
+	var result := copy()
+	result.calling_context = &""
+	result.program_resolved = false
+	result.original_program_id = ""
+	result.origin_program_id = ""
+	return result
+
+
 func set_thief_action(selected_action_index: int, selected_character_id: String) -> ScenarioExecutionContext:
 	action_index = selected_action_index
 	character_id = selected_character_id
