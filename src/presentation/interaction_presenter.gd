@@ -45,6 +45,10 @@ var _modal_shield: ColorRect
 var _nested_modal: Control
 var _combat_spellbook_open: bool = false
 var _fast_spell_dock: Control
+var _classic_flash_queue: Array[Dictionary] = []
+var _classic_flash_layer: Control
+var _classic_flash_panel: PanelContainer
+var _classic_flash_shield: ColorRect
 
 
 func _notification(what: int) -> void:
@@ -62,6 +66,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	var key_event := event as InputEventKey
 	if key_event == null or not key_event.pressed or key_event.echo or key_event.keycode not in [KEY_ENTER, KEY_KP_ENTER, KEY_SPACE]:
 		return
+	if _dismiss_classic_flash():
+		get_viewport().set_input_as_handled()
+		return
 	if _submit_classic_acknowledgement():
 		get_viewport().set_input_as_handled()
 
@@ -74,6 +81,7 @@ func _exit_tree() -> void:
 	_close_side_workspace()
 	_close_modal_shield()
 	_close_fast_spell_dock()
+	_close_classic_flash()
 
 
 func present(request: InteractionRequest, classic_text_context: String = "", game_view: GameView = null, media: ClassicMediaCatalog = null) -> void:
@@ -209,6 +217,7 @@ func set_classic_regions(stage_rect: Rect2, textbox_rect: Rect2, combat_rect: Re
 	)
 	_apply_classic_region()
 	_apply_fast_spell_dock_layout()
+	_apply_classic_flash_layout()
 
 
 func dismiss_passive_text() -> bool:
@@ -233,6 +242,95 @@ func present_passive_classic_text(text: String) -> void:
 	if visible:
 		_claim_modal_layer()
 	_apply_classic_region()
+
+
+func queue_classic_flash_messages(messages: Array[Dictionary]) -> void:
+	for message: Dictionary in messages:
+		var text := String(message.get("text", "")).strip_edges()
+		if not text.is_empty():
+			_classic_flash_queue.append({"text": text, "soundId": int(message.get("soundId", 0))})
+	_show_next_classic_flash()
+
+
+func _show_next_classic_flash() -> void:
+	if _classic_flash_panel != null or _classic_flash_queue.is_empty() or get_parent() == null:
+		return
+	var message: Dictionary = _classic_flash_queue.pop_front()
+	_classic_flash_layer = Control.new()
+	_classic_flash_layer.name = "ClassicFlashLayer"
+	_classic_flash_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_classic_flash_layer.z_index = z_index + 20
+	get_parent().add_child(_classic_flash_layer)
+	_classic_flash_shield = ColorRect.new()
+	_classic_flash_shield.name = "ClassicFlashShield"
+	_classic_flash_shield.color = Color(0.01, 0.015, 0.02, 0.42)
+	_classic_flash_shield.mouse_filter = Control.MOUSE_FILTER_STOP
+	_classic_flash_layer.add_child(_classic_flash_shield)
+	_classic_flash_panel = PanelContainer.new()
+	_classic_flash_panel.name = "ClassicFlashMessage"
+	_classic_flash_panel.theme_type_variation = &"ClassicInset"
+	_classic_flash_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_classic_flash_panel.z_index = 1
+	_classic_flash_layer.add_child(_classic_flash_panel)
+	var content := VBoxContainer.new()
+	content.add_theme_constant_override("separation", 8)
+	_classic_flash_panel.add_child(content)
+	var label := Label.new()
+	label.name = "ClassicFlashText"
+	label.text = String(message["text"])
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.add_theme_color_override("font_color", Color("f0d05b"))
+	content.add_child(label)
+	var acknowledge := Button.new()
+	acknowledge.name = "ClassicFlashContinue"
+	acknowledge.text = "Continue"
+	acknowledge.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	acknowledge.pressed.connect(_dismiss_classic_flash)
+	content.add_child(acknowledge)
+	_classic_flash_panel.gui_input.connect(func(event: InputEvent) -> void:
+		var click := event as InputEventMouseButton
+		if click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT:
+			_dismiss_classic_flash()
+	)
+	_apply_classic_flash_layout()
+	var sound_id := int(message.get("soundId", 0))
+	if sound_id > 0:
+		presentation_sound_requested.emit(sound_id)
+
+
+func _dismiss_classic_flash() -> bool:
+	if _classic_flash_panel == null:
+		return false
+	_close_classic_flash(false)
+	_show_next_classic_flash()
+	return true
+
+
+func _close_classic_flash(clear_queue: bool = true) -> void:
+	if _classic_flash_layer != null:
+		var parent := _classic_flash_layer.get_parent()
+		if parent != null:
+			parent.remove_child(_classic_flash_layer)
+		_classic_flash_layer.queue_free()
+	_classic_flash_layer = null
+	_classic_flash_panel = null
+	_classic_flash_shield = null
+	if clear_queue:
+		_classic_flash_queue.clear()
+
+
+func _apply_classic_flash_layout() -> void:
+	if _classic_flash_layer == null or _classic_flash_panel == null or _classic_flash_shield == null:
+		return
+	_classic_flash_layer.position = Vector2.ZERO
+	_classic_flash_layer.size = (get_parent() as Control).size if get_parent() is Control else _application_rect.end
+	_classic_flash_shield.position = _application_rect.position
+	_classic_flash_shield.size = _application_rect.size
+	var desired := Vector2(minf(520.0, _application_rect.size.x - 40.0), 118.0)
+	var preferred_y := _textbox_rect.position.y - desired.y - 12.0
+	_classic_flash_panel.position = Vector2(_application_rect.position.x + (_application_rect.size.x - desired.x) * 0.5, clampf(preferred_y, _application_rect.position.y + 20.0, _application_rect.end.y - desired.y - 20.0))
+	_classic_flash_panel.size = desired
 
 
 func has_blocking_request() -> bool:

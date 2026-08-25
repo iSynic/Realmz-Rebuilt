@@ -97,13 +97,18 @@ func _present_committed_step(step: SessionStep, game_view: GameView, include_aud
 	if include_audio:
 		_audio_presenter.present_events(step.events, _media)
 	var passive_classic_text := ""
+	var classic_flash_messages: Array[Dictionary] = []
 	for event: DomainEvent in step.events:
 		if event.kind == &"message_shown" and event.payload.has("classicClick") and not bool(event.payload.get("classicClick", false)):
 			passive_classic_text = String(event.payload.get("text", ""))
+		if event.kind == &"player_map_acquired" and event.payload.has("notificationText"):
+			classic_flash_messages.append({"text": String(event.payload.get("notificationText", "")), "soundId": int(event.payload.get("notificationSoundId", 0))})
 	_present_interaction(game_view)
 	refresh_music()
 	if game_view.pending_interaction == null and not passive_classic_text.is_empty():
 		_interaction_presenter.present_passive_classic_text(passive_classic_text)
+	if not classic_flash_messages.is_empty():
+		_interaction_presenter.queue_classic_flash_messages(classic_flash_messages)
 
 
 func _on_combat_playback_frame_changed(frame: CombatPlaybackFrame) -> void:

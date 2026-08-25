@@ -464,7 +464,7 @@ func _test_public_application_transitions(content: RealmzContent) -> void:
 	if map == null:
 		return
 	var acquired := api.execute_classic(ClassicActionDefinition.new(0, 29, 29, 1, false, []), "map.acquire")
-	assert_equal([acquired.state, state.world.has_map(map.id)], [ScenarioRuntimeOperationResult.State.COMPLETED, true], "opcode 29 acquires a stable player-map identity")
+	assert_equal([acquired.state, state.world.has_map(map.id), acquired.events[0].payload.get("notificationText"), acquired.events[0].payload.get("notificationSoundId")], [ScenarioRuntimeOperationResult.State.COMPLETED, true, "You gain a map, to view the map use Maps/Notes in the Menu.", 30005], "positive opcode 29 acquires a stable player-map identity and preserves Castle's click notification contract")
 	var shown := api.execute_classic(ClassicActionDefinition.new(0, 29, 29, -1, false, []), "map.show")
 	assert_equal([shown.state, shown.interaction.kind, shown.interaction.body.to_data().get("playerMapId")], [ScenarioRuntimeOperationResult.State.WAITING, &"acknowledge", map.id], "negative opcode 29 stages the player-map presentation")
 	var forged := api.resume_classic(shown.continuation, InteractionResponse.from_data(shown.interaction.request_id, &"acknowledge", {"accepted": true}), "map.forged")

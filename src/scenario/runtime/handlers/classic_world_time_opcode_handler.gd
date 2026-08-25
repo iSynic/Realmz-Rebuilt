@@ -1,6 +1,9 @@
 class_name ClassicWorldTimeOpcodeHandler
 extends ClassicOpcodeHandler
 
+const PLAYER_MAP_ACQUIRED_TEXT := "You gain a map, to view the map use Maps/Notes in the Menu."
+const PLAYER_MAP_ACQUIRED_SOUND_ID := 30005
+
 var _content: RealmzContent
 var _game_state: GameState
 var _rng: RealmzRng
@@ -95,9 +98,11 @@ func _acquire_player_map(action: ClassicActionDefinition, request_id: String) ->
 		return ScenarioRuntimeOperationResult.failed(&"unknown_player_map", "Classic opcode 29 references unavailable player-map record %d." % classic_id)
 	var already_acquired: bool = _game_state.world.has_map(definition.id)
 	_game_state.world.acquire_map(definition.id)
-	var events: Array[DomainEvent] = [DomainEvent.new(&"player_map_acquired", {"playerMapId": definition.id, "classicId": definition.classic_id, "name": definition.name, "alreadyAcquired": already_acquired, "source": "classic"})]
+	var event_payload := {"playerMapId": definition.id, "classicId": definition.classic_id, "name": definition.name, "alreadyAcquired": already_acquired, "source": "classic"}
 	if action.operand_id >= 0:
-		events.append(DomainEvent.new(&"message_shown", {"text": "You gain a map, to view the map use Maps/Notes in the Menu.", "source": "classic-player-map"}))
+		event_payload.merge({"notificationText": PLAYER_MAP_ACQUIRED_TEXT, "notificationSoundId": PLAYER_MAP_ACQUIRED_SOUND_ID})
+	var events: Array[DomainEvent] = [DomainEvent.new(&"player_map_acquired", event_payload)]
+	if action.operand_id >= 0:
 		return ScenarioRuntimeOperationResult.completed(definition.id, events)
 	var request := InteractionRequest.from_payload(request_id, &"acknowledge", {"prompt": definition.name, "presentation": "player-map", "playerMapId": definition.id})
 	return ScenarioRuntimeOperationResult.waiting(request, ScenarioRuntimeContinuation.player_map(definition.id), events)
