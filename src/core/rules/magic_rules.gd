@@ -132,6 +132,8 @@ func _resolve_character_spell_monster_target(caster: CharacterState, target: Mon
 	var save_modifier := (target.save_value(damage_type - 1) if target.has_runtime_saves() else target_definition.save_value(damage_type - 1)) if damage_type > 0 and damage_type < 8 else 0
 	if save_modifier < 0:
 		damage = int(float(damage) * (1.0 + float(absi(save_modifier)) / 100.0))
+	if absi(spell.special) == 28:
+		damage = duration
 	if absi(spell.special) in [27, 49]:
 		damage = _combat_death_damage(target.conditions, absi(spell.special), target.current_health)
 	if absi(spell.special) == 59:
@@ -175,6 +177,8 @@ func _resolve_character_spell_character_target(caster: CharacterState, target: C
 			damage /= 2
 		if damage > 0 and target.conditions.is_active(ConditionRules.FIRE_PROTECTION + damage_type - 1):
 			damage /= 2
+	if absi(spell.special) == 28:
+		damage = duration
 	if absi(spell.special) in [27, 49]:
 		damage = _combat_death_damage(target.conditions, absi(spell.special), target.current_health)
 	if absi(spell.special) == 59:
@@ -189,6 +193,8 @@ func _resolve_character_spell_character_target(caster: CharacterState, target: C
 	var applied_condition := _apply_combat_condition(target.conditions, spell, duration, false)
 	_apply_combat_movement_effect(target, spell)
 	target.current_health -= damage
+	if absi(spell.special) == 28 and damage < 0:
+		target.current_health = mini(target.maximum_health, target.current_health)
 	var result := SpellResolution.new(true, false, saved, 0, damage, duration, target.current_health <= 0)
 	result.applied_condition = applied_condition
 	_record_allegiance_change(result, traitor_before, target.traitor)
@@ -379,6 +385,8 @@ func _resolve_monster_spell_character_target(caster: MonsterState, target: Chara
 			damage /= 2
 		if damage > 0 and target.conditions.is_active(ConditionRules.FIRE_PROTECTION + damage_type - 1):
 			damage /= 2
+	if absi(spell.special) == 28:
+		damage = duration
 	if absi(spell.special) in [27, 49]:
 		damage = _combat_death_damage(target.conditions, absi(spell.special), target.current_health)
 	if absi(spell.special) == 59:
@@ -393,6 +401,8 @@ func _resolve_monster_spell_character_target(caster: MonsterState, target: Chara
 	var applied_condition := _apply_combat_condition(target.conditions, spell, duration, false)
 	_apply_combat_movement_effect(target, spell)
 	target.current_health -= damage
+	if absi(spell.special) == 28 and damage < 0:
+		target.current_health = mini(target.maximum_health, target.current_health)
 	var result := SpellResolution.new(true, false, saved, spell_cost, damage, duration, target.current_health <= 0)
 	result.applied_condition = applied_condition
 	_record_allegiance_change(result, traitor_before, target.traitor)
@@ -425,6 +435,8 @@ func _resolve_monster_spell_monster_target(caster: MonsterState, target: Monster
 	var save_modifier := (target.save_value(damage_type - 1) if target.has_runtime_saves() else target_definition.save_value(damage_type - 1)) if damage_type > 0 and damage_type < 8 else 0
 	if save_modifier < 0:
 		damage = int(float(damage) * (1.0 + float(absi(save_modifier)) / 100.0))
+	if absi(spell.special) == 28:
+		damage = duration
 	if absi(spell.special) in [27, 49]:
 		damage = _combat_death_damage(target.conditions, absi(spell.special), target.current_health)
 	if absi(spell.special) == 59:
@@ -540,7 +552,7 @@ static func _apply_combat_condition(conditions: ConditionSet, spell: SpellDefini
 	if special in [53, 54] and duration > 0:
 		conditions.add(ConditionRules.HELPLESS, duration)
 		return ConditionRules.HELPLESS
-	if special < 1 or special >= 41 or special == 28 or duration <= 0:
+	if special < 1 or special >= 41 or duration <= 0 and special != 28:
 		return -1
 	var condition_index := special - 1
 	var current := conditions.value(condition_index)

@@ -360,6 +360,8 @@ func _best_party_spell(state: GameState, content: RealmzContent, actor: Characte
 			best = _prefer(best, _best_destroy_magic(state, content, actor, spell, option.power))
 		elif MagicRules.is_condition_cure_spell(spell):
 			best = _prefer(best, _best_condition_cure(state, content, actor, spell, option.power))
+		elif ClassicSpellCapabilityCatalog.combat_condition_effect_index(spell) >= 0 and spell.target_type in [3, 4]:
+			best = _prefer(best, _best_damage_spell(state, content, actor, spell, option, actors_by_cell, area_placement_cache, area_center_cache, ray_actor_cache))
 		elif ClassicSpellCapabilityCatalog.combat_condition_effect_index(spell) >= 0 or spell.target_type == 5 and ClassicSpellCapabilityCatalog.combat_persistent_field_condition_index(spell) >= 0:
 			best = _prefer(best, _best_condition_effect(state, content, actor, spell, option.power))
 		elif _flow()._is_source_backed_combat_healing_spell(spell):
@@ -579,6 +581,9 @@ func _best_party_spell_point_drain_ray(state: GameState, content: RealmzContent,
 func _best_damage_spell(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, option: CombatSpellOptionView, actors_by_cell: Dictionary, area_placement_cache: Dictionary, area_center_cache: Dictionary, ray_actor_cache: Dictionary) -> Dictionary:
 	var expected := expected_spell_effect(spell, option.power)
 	var condition_index := ClassicSpellCapabilityCatalog.combat_persistent_field_condition_index(spell)
+	if absi(spell.special) == 28:
+		condition_index = ClassicSpellCapabilityCatalog.combat_condition_effect_index(spell)
+		expected = absi(_maximum_condition_duration(spell, option.power))
 	if expected <= 0 and condition_index < 0:
 		return {}
 	expected = maxi(expected, _maximum_condition_duration(spell, option.power)) if condition_index >= 0 else expected
@@ -780,6 +785,8 @@ func _opposed_actor_ids_for_monster(state: GameState, monster: MonsterState) -> 
 static func expected_spell_effect(spell: SpellDefinition, power: int) -> int:
 	if ClassicSpellCapabilityCatalog.is_combat_death_spell(spell):
 		return 128
+	if absi(spell.special) == 28:
+		return absi(_maximum_condition_duration(spell, power))
 	return int((spell.damage_min + spell.damage_max) / 2.0 + (spell.power_damage_min + spell.power_damage_max) * power / 2.0)
 
 
