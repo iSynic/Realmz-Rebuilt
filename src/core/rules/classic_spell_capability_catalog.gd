@@ -341,9 +341,9 @@ static func _combat_actor_field_spell(spell: SpellDefinition) -> bool:
 
 
 static func _combat_healing_spell(spell: SpellDefinition) -> bool:
-	if spell == null or absi(spell.special) != 57 or not spell.in_combat or spell.queue_icon != 0 or spell.target_type != 1 or spell.cannot != 4 or spell.cost <= 0:
+	if spell == null or absi(spell.special) != 57 or not spell.in_combat or spell.queue_icon != 0 or spell.target_type not in [1, 5]:
 		return false
-	if absi(spell.spell_class) != 8 or absi(spell.damage_type) != 8:
+	if spell.target_type == 1 and (spell.cannot != 4 or spell.cost <= 0 or absi(spell.spell_class) != 8) or spell.target_type == 5 and (spell.cannot != 3 or spell.cost != 0 or absi(spell.spell_class) != 7) or absi(spell.damage_type) != 8:
 		return false
 	if spell.duration_min != 0 or spell.duration_max != 0 or spell.power_duration_min != 0 or spell.power_duration_max != 0:
 		return false
