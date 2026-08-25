@@ -6,6 +6,7 @@ const CombatRetreatProbeType = preload("res://src/core/rules/combat_retreat_prob
 const CombatCommandProbeType = preload("res://src/core/rules/combat_command_probe.gd")
 const CombatScrollOptionViewType = preload("res://src/core/view/combat_scroll_option_view.gd")
 const CombatAiScoringType = preload("res://src/core/rules/combat_ai_scoring.gd")
+const PolymorphContextType = preload("res://src/core/rules/monster_polymorph_context.gd")
 
 const MONSTER_ATTACK_COMPLETED := 0
 const MONSTER_ATTACK_WAITING := 1
@@ -363,15 +364,15 @@ func _process_monster_cast(state: GameState, content: RealmzContent, monster: Mo
 			var actor_field: RefCounted = _flow()._queue_single_actor_field(state, monster.id, planned_target_ids[0], spell, cost_power, cast_level, rng)
 			if actor_field != null: repeated_fields.append(actor_field)
 		if spell.target_type in [3, 4]:
-			resolutions = _rules.magic.resolve_monster_group_spell(monster, definition, selected_targets, spell, cost_power, cast_level, rng, true)
+			resolutions = _rules.magic.resolve_monster_group_spell(monster, definition, selected_targets, spell, cost_power, cast_level, rng, true, true, PolymorphContextType.new(content, state.monster_set, state.difficulty, state.clock.day()))
 		elif spell.target_type == 10:
-			resolutions = _rules.magic.resolve_monster_group_spell(monster, definition, selected_targets, spell, cost_power, cast_level, rng)
+			resolutions = _rules.magic.resolve_monster_group_spell(monster, definition, selected_targets, spell, cost_power, cast_level, rng, false, true, PolymorphContextType.new(content, state.monster_set, state.difficulty, state.clock.day()))
 		elif spell.target_type == 0:
 			resolutions = _rules.magic.resolve_monster_repeated_spell(monster, definition, selected_targets, spell, cost_power, cast_level, rng, _flow()._repeated_field_callback(state, spell, monster.id, planned_target_ids, cost_power, cast_level, rng, repeated_fields))
 		elif spell.target_type == 6:
 			resolutions = _rules.magic.resolve_monster_ray_spell(monster, definition, selected_targets, spell, cost_power, cast_level, rng)
 		else:
-			resolutions = _rules.magic.resolve_monster_targeted_spell(monster, definition, selected_targets[0], spell, cost_power, cast_level, rng)
+			resolutions = _rules.magic.resolve_monster_targeted_spell(monster, definition, selected_targets[0], spell, cost_power, cast_level, rng, PolymorphContextType.new(content, state.monster_set, state.difficulty, state.clock.day()))
 		if resolutions == null or not resolutions.cast:
 			if did_cast:
 				break
@@ -403,6 +404,7 @@ func _process_monster_cast(state: GameState, content: RealmzContent, monster: Mo
 			if resolution.allegiance_changed:
 				payload["traitorBefore"] = resolution.target_traitor_before
 				payload["traitorAfter"] = resolution.target_traitor_after
+			if not resolution.transformed_definition_after.is_empty(): payload["transformedDefinitionBefore"] = resolution.transformed_definition_before; payload["transformedDefinitionAfter"] = resolution.transformed_definition_after
 			if area_shape > 0:
 				payload["areaCenter"] = [area_center.x, area_center.y]
 				payload["areaShape"] = area_shape

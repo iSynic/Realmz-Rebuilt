@@ -18,6 +18,8 @@ var target_traitor_before: bool = false
 var target_traitor_after: bool = false
 var detected_magic_item_count: int = 0
 var unequipped_item_ids: Array[String] = []
+var transformed_definition_before: String = ""
+var transformed_definition_after: String = ""
 
 
 func _init(was_cast: bool, was_resisted: bool, did_save: bool, spell_cost: int, dealt_damage: int, effect_duration: int, defeated: bool = false) -> void:

@@ -1,16 +1,20 @@
 class_name MagicRules
 extends RefCounted
 
+const PolymorphContextType = preload("res://src/core/rules/monster_polymorph_context.gd")
+
 var _characters: CharacterRules
 var _arithmetic: RealmzArithmetic
+var _monsters: MonsterRules
 
 
-func _init(character_rules: CharacterRules = null, realmz_arithmetic: RealmzArithmetic = null) -> void:
+func _init(character_rules: CharacterRules = null, realmz_arithmetic: RealmzArithmetic = null, monster_rules: MonsterRules = null) -> void:
 	_characters = character_rules if character_rules != null else CharacterRules.new()
 	_arithmetic = realmz_arithmetic if realmz_arithmetic != null else RealmzArithmetic.new()
+	_monsters = monster_rules if monster_rules != null else MonsterRules.new()
 
 
-func resolve_character_targeted_spell(caster: CharacterState, selection: SpellTargetSelection, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, spend_spell_points: bool = true) -> GroupSpellResolution:
+func resolve_character_targeted_spell(caster: CharacterState, selection: SpellTargetSelection, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, spend_spell_points: bool = true, polymorph_context: PolymorphContextType = null) -> GroupSpellResolution:
 	if caster == null or not _selection_is_valid(selection) or spell == null or rng == null or power_level < 1:
 		return null
 	var spell_cost := absi(spell.cost * power_level)
@@ -26,7 +30,7 @@ func resolve_character_targeted_spell(caster: CharacterState, selection: SpellTa
 	var result := GroupSpellResolution.new(true, spell_cost, duration, damage)
 	if not effective.reflected and effective.kind == &"monster" and effective.monster.magic_resistance > 100:
 		return result
-	var resolution := _resolve_character_selection(caster, effective, spell, power_level, cast_level, damage, duration, spell_cost, rng)
+	var resolution := _resolve_character_selection(caster, effective, spell, power_level, cast_level, damage, duration, spell_cost, rng, [], polymorph_context)
 	result.append_target(effective.id, effective.kind, resolution, effective.original_target_id, effective.reflected)
 	return result
 
@@ -37,7 +41,7 @@ func roll_persistent_field_duration(spell: SpellDefinition, power_level: int, rn
 	return _scaled_roll(spell.duration_min, spell.duration_max, spell.power_duration_min, spell.power_duration_max, power_level, rng, tag)
 
 
-func resolve_character_group_spell(caster: CharacterState, character_targets: Array[CharacterState], monster_targets: Array[MonsterState], monster_definitions: Array[MonsterDefinition], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, allow_empty: bool = false, spend_spell_points: bool = true) -> GroupSpellResolution:
+func resolve_character_group_spell(caster: CharacterState, character_targets: Array[CharacterState], monster_targets: Array[MonsterState], monster_definitions: Array[MonsterDefinition], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, allow_empty: bool = false, spend_spell_points: bool = true, polymorph_context: PolymorphContextType = null) -> GroupSpellResolution:
 	if caster == null or spell == null or rng == null or power_level < 1 or monster_targets.size() != monster_definitions.size() or not allow_empty and character_targets.is_empty() and monster_targets.is_empty():
 		return null
 	for target: CharacterState in character_targets:
@@ -61,7 +65,7 @@ func resolve_character_group_spell(caster: CharacterState, character_targets: Ar
 	for index: int in monster_targets.size():
 		var target := monster_targets[index]
 		var definition := monster_definitions[index]
-		result.append_target(target.id, &"monster", _resolve_character_spell_monster_target(caster, target, definition, spell, power_level, cast_level, damage, duration, 0, rng))
+		result.append_target(target.id, &"monster", _resolve_character_spell_monster_target(caster, target, definition, spell, power_level, cast_level, damage, duration, 0, rng, polymorph_context))
 	return result
 
 
@@ -105,7 +109,7 @@ func _resolve_character_selection_sequence(caster: CharacterState, selections: A
 	return result
 
 
-func _resolve_character_spell_monster_target(caster: CharacterState, target: MonsterState, target_definition: MonsterDefinition, spell: SpellDefinition, power_level: int, cast_level: int, damage: int, duration: int, spell_cost: int, rng: RealmzRng) -> SpellResolution:
+func _resolve_character_spell_monster_target(caster: CharacterState, target: MonsterState, target_definition: MonsterDefinition, spell: SpellDefinition, power_level: int, cast_level: int, damage: int, duration: int, spell_cost: int, rng: RealmzRng, polymorph_context: PolymorphContextType = null) -> SpellResolution:
 	var rolled_damage := damage
 	var resisted := _monster_resists(caster.level, target, target_definition, spell, power_level, cast_level, rng)
 	if resisted:
@@ -134,6 +138,8 @@ func _resolve_character_spell_monster_target(caster: CharacterState, target: Mon
 	var save_modifier := (target.save_value(damage_type - 1) if target.has_runtime_saves() else target_definition.save_value(damage_type - 1)) if damage_type > 0 and damage_type < 8 else 0
 	if save_modifier < 0:
 		damage = int(float(damage) * (1.0 + float(absi(save_modifier)) / 100.0))
+	if ClassicSpellCapabilityCatalog.is_combat_polymorph_spell(spell):
+		return _polymorph_monster(target, target_definition, spell_cost, duration, polymorph_context, rng)
 	if absi(spell.special) == 28:
 		damage = duration
 	if absi(spell.special) in [27, 49]:
@@ -274,7 +280,7 @@ func character_resists(caster_level: int, target: CharacterState, spell: SpellDe
 	return rng.draw(100, &"magic.resistance") <= target.magic_resistance + power_level * spell.resistance_adjust
 
 
-func resolve_monster_targeted_spell(caster: MonsterState, caster_definition: MonsterDefinition, selection: SpellTargetSelection, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng) -> GroupSpellResolution:
+func resolve_monster_targeted_spell(caster: MonsterState, caster_definition: MonsterDefinition, selection: SpellTargetSelection, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, polymorph_context: PolymorphContextType = null) -> GroupSpellResolution:
 	if caster == null or caster_definition == null or not _selection_is_valid(selection) or spell == null or rng == null or power_level < 1:
 		return null
 	var spell_cost := spell.cost * power_level
@@ -287,12 +293,12 @@ func resolve_monster_targeted_spell(caster: MonsterState, caster_definition: Mon
 	var result := GroupSpellResolution.new(true, spell_cost, duration, damage)
 	if not effective.reflected and effective.kind == &"monster" and effective.monster.magic_resistance > 100:
 		return result
-	var resolution := _resolve_monster_selection(caster, effective, spell, power_level, cast_level, damage, duration, spell_cost, rng, &"magic.monster-spell.damage-save")
+	var resolution := _resolve_monster_selection(caster, effective, spell, power_level, cast_level, damage, duration, spell_cost, rng, &"magic.monster-spell.damage-save", polymorph_context)
 	result.append_target(effective.id, effective.kind, resolution, effective.original_target_id, effective.reflected)
 	return result
 
 
-func resolve_monster_group_spell(caster: MonsterState, caster_definition: MonsterDefinition, selections: Array[SpellTargetSelection], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, allow_empty: bool = false, spend_spell_points: bool = true) -> GroupSpellResolution:
+func resolve_monster_group_spell(caster: MonsterState, caster_definition: MonsterDefinition, selections: Array[SpellTargetSelection], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, allow_empty: bool = false, spend_spell_points: bool = true, polymorph_context: PolymorphContextType = null) -> GroupSpellResolution:
 	if caster == null or caster_definition == null or spell == null or rng == null or power_level < 1 or not allow_empty and selections.is_empty():
 		return null
 	for selection: SpellTargetSelection in selections:
@@ -311,7 +317,7 @@ func resolve_monster_group_spell(caster: MonsterState, caster_definition: Monste
 	for selection: SpellTargetSelection in selections:
 		if selection.kind == &"monster" and selection.monster.magic_resistance > 100:
 			continue
-		var resolution := _resolve_monster_selection(caster, selection, spell, power_level, cast_level, damage, duration, 0, rng, &"magic.monster-group.damage-save")
+		var resolution := _resolve_monster_selection(caster, selection, spell, power_level, cast_level, damage, duration, 0, rng, &"magic.monster-group.damage-save", polymorph_context)
 		result.append_target(selection.id, selection.kind, resolution, selection.original_target_id, false)
 	return result
 
@@ -354,16 +360,16 @@ func _resolve_monster_selection_sequence(caster: MonsterState, caster_definition
 	return result
 
 
-func _resolve_character_selection(caster: CharacterState, selection: SpellTargetSelection, spell: SpellDefinition, power_level: int, cast_level: int, damage: int, duration: int, spell_cost: int, rng: RealmzRng, item_definitions: Array[ItemDefinition] = []) -> SpellResolution:
+func _resolve_character_selection(caster: CharacterState, selection: SpellTargetSelection, spell: SpellDefinition, power_level: int, cast_level: int, damage: int, duration: int, spell_cost: int, rng: RealmzRng, item_definitions: Array[ItemDefinition] = [], polymorph_context: PolymorphContextType = null) -> SpellResolution:
 	if selection.kind == &"character":
 		return _resolve_character_spell_character_target(caster, selection.character, spell, power_level, cast_level, damage, duration, rng, item_definitions)
-	return _resolve_character_spell_monster_target(caster, selection.monster, selection.monster_definition, spell, power_level, cast_level, damage, duration, spell_cost, rng)
+	return _resolve_character_spell_monster_target(caster, selection.monster, selection.monster_definition, spell, power_level, cast_level, damage, duration, spell_cost, rng, polymorph_context)
 
 
-func _resolve_monster_selection(caster: MonsterState, selection: SpellTargetSelection, spell: SpellDefinition, power_level: int, cast_level: int, damage: int, duration: int, spell_cost: int, rng: RealmzRng, save_tag: StringName) -> SpellResolution:
+func _resolve_monster_selection(caster: MonsterState, selection: SpellTargetSelection, spell: SpellDefinition, power_level: int, cast_level: int, damage: int, duration: int, spell_cost: int, rng: RealmzRng, save_tag: StringName, polymorph_context: PolymorphContextType = null) -> SpellResolution:
 	if selection.kind == &"character":
 		return _resolve_monster_spell_character_target(caster, selection.character, spell, power_level, cast_level, damage, duration, spell_cost, rng, save_tag)
-	return _resolve_monster_spell_monster_target(caster, selection.monster, selection.monster_definition, spell, power_level, cast_level, damage, duration, spell_cost, rng, save_tag)
+	return _resolve_monster_spell_monster_target(caster, selection.monster, selection.monster_definition, spell, power_level, cast_level, damage, duration, spell_cost, rng, save_tag, polymorph_context)
 
 
 func _resolve_monster_spell_character_target(caster: MonsterState, target: CharacterState, spell: SpellDefinition, power_level: int, cast_level: int, damage: int, duration: int, spell_cost: int, rng: RealmzRng, save_tag: StringName) -> SpellResolution:
@@ -413,7 +419,7 @@ func _resolve_monster_spell_character_target(caster: MonsterState, target: Chara
 	return result
 
 
-func _resolve_monster_spell_monster_target(caster: MonsterState, target: MonsterState, target_definition: MonsterDefinition, spell: SpellDefinition, power_level: int, cast_level: int, damage: int, duration: int, spell_cost: int, rng: RealmzRng, save_tag: StringName) -> SpellResolution:
+func _resolve_monster_spell_monster_target(caster: MonsterState, target: MonsterState, target_definition: MonsterDefinition, spell: SpellDefinition, power_level: int, cast_level: int, damage: int, duration: int, spell_cost: int, rng: RealmzRng, save_tag: StringName, polymorph_context: PolymorphContextType = null) -> SpellResolution:
 	var rolled_damage := damage
 	var resisted := _monster_resists(caster.hit_dice, target, target_definition, spell, power_level, cast_level, rng)
 	if resisted:
@@ -441,6 +447,8 @@ func _resolve_monster_spell_monster_target(caster: MonsterState, target: Monster
 	var save_modifier := (target.save_value(damage_type - 1) if target.has_runtime_saves() else target_definition.save_value(damage_type - 1)) if damage_type > 0 and damage_type < 8 else 0
 	if save_modifier < 0:
 		damage = int(float(damage) * (1.0 + float(absi(save_modifier)) / 100.0))
+	if ClassicSpellCapabilityCatalog.is_combat_polymorph_spell(spell):
+		return _polymorph_monster(target, target_definition, spell_cost, duration, polymorph_context, rng)
 	if absi(spell.special) == 28:
 		damage = duration
 	if absi(spell.special) in [27, 49]:
@@ -465,6 +473,15 @@ func _resolve_monster_spell_monster_target(caster: MonsterState, target: Monster
 
 static func _selection_is_valid(selection: SpellTargetSelection) -> bool:
 	return selection != null and ((selection.kind == &"character" and selection.character != null) or (selection.kind == &"monster" and selection.monster != null and selection.monster_definition != null))
+
+
+func _polymorph_monster(target: MonsterState, target_definition: MonsterDefinition, spell_cost: int, duration: int, context: PolymorphContextType, rng: RealmzRng) -> SpellResolution:
+	var before := _monsters.polymorph_monster(target, target_definition, context, rng)
+	var result := SpellResolution.new(true, false, false, spell_cost, 0, duration)
+	if not before.is_empty():
+		result.transformed_definition_before = before
+		result.transformed_definition_after = target.definition_id
+	return result
 
 
 static func _heal_character(target: CharacterState, amount: int, duration: int, spell_cost: int) -> SpellResolution:

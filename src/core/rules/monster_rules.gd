@@ -1,6 +1,8 @@
 class_name MonsterRules
 extends RefCounted
 
+const PolymorphContextType = preload("res://src/core/rules/monster_polymorph_context.gd")
+
 const RANDOM_WEAPON_TABLES: Array = [
 	[[0, 50, 10], [51, 60, 20], [61, 70, 71], [71, 95, 75], [96, 100, 24]],
 	[[0, 35, 65], [36, 70, 37], [71, 85, 125], [85, 94, 137], [95, 100, 138]],
@@ -88,6 +90,60 @@ func build_battle_monster(definition: MonsterDefinition, instance_id: String, in
 	result.weapon_id = _battle_random_weapon(definition.random_weapon_table, instance_id, rng) if definition.random_weapon_table > 0 else definition.weapon_id
 	_set_runtime_loot(result, definition)
 	return result
+
+
+func polymorph_monster(target: MonsterState, target_definition: MonsterDefinition, context: PolymorphContextType, rng: RealmzRng) -> String:
+	if target == null or target_definition == null or context == null or rng == null or not context.has_eligible_definition(target_definition.size):
+		return ""
+	var definition: MonsterDefinition = null
+	while definition == null:
+		var candidate: MonsterDefinition = context.definition_for_classic_roll(rng.draw(200, &"magic.polymorph.candidate"))
+		if candidate != null and candidate.size == target_definition.size and candidate.hit_dice > 0 and candidate.can_summon == 1:
+			definition = candidate
+	var old_definition_id := target.definition_id
+	var old_traitor := target.traitor
+	var old_summoned := target.summoned
+	var old_conditions := target.conditions.values()
+	var agility := definition.agility + rng.draw(3, &"magic.polymorph.agility-before-stamina") - 2
+	var stamina := definition.stamina_bonus
+	for die: int in definition.hit_dice:
+		stamina += rng.draw(8, StringName("magic.polymorph.stamina.%d" % die))
+	var armor := definition.armor + rng.draw(3, &"magic.polymorph.armor") - 2
+	agility = maxi(1, agility + rng.draw(3, &"magic.polymorph.agility") - 2)
+	var magic_resistance: int = definition.magic_resistance + 3 * context.difficulty
+	armor -= 2 * context.difficulty
+	agility += context.difficulty
+	var multiplier := 1.0 + float(context.difficulty) * 0.33
+	var spell_points := int(float(definition.spell_points) * multiplier)
+	stamina = maxi(1, int(float(stamina) * multiplier))
+	var denominator: int = 180 - 30 * context.difficulty
+	if denominator > 0:
+		stamina += int(float(context.realmz_day) / float(denominator))
+	target.definition_id = definition.id
+	target.name = definition.name
+	target.hit_dice = definition.hit_dice
+	target.current_health = stamina
+	target.maximum_health = stamina
+	target.agility = agility
+	target.armor = armor
+	target.magic_resistance = magic_resistance
+	target.spell_points = spell_points
+	target.maximum_spell_points = definition.spell_points
+	target.traitor = old_traitor
+	target.summoned = old_summoned
+	target.icon_id = definition.icon_id
+	target.surrender_percent = definition.surrender_percent
+	target.weapon_id = ""
+	target.target_id = ""
+	for index: int in 8:
+		target.set_save_value(index, definition.save_value(index) + (7 * context.difficulty if index < 6 else 0))
+	target.conditions = ConditionSet.new()
+	_apply_starting_conditions(target, definition)
+	for index: int in mini(old_conditions.size(), target.conditions.size()):
+		if int(old_conditions[index]) > -1:
+			target.conditions.set_value(index, int(old_conditions[index]))
+	target.set_loot_item_ids(definition.item_ids())
+	return old_definition_id
 
 
 static func _set_runtime_loot(monster: MonsterState, definition: MonsterDefinition) -> void:

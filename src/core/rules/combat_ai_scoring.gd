@@ -97,6 +97,8 @@ func _monster_spell_power_plan(state: GameState, content: RealmzContent, monster
 		return _monster_destroy_magic_plan(state, content, monster, spell, slot, power)
 	if ClassicSpellCapabilityCatalog.is_combat_magic_detection_spell(spell):
 		return _monster_magic_detection_plan(state, content, monster, definition, spell, slot, power, actors_by_cell)
+	if ClassicSpellCapabilityCatalog.is_combat_polymorph_spell(spell) and spell.target_type == 1:
+		return _monster_polymorph_plan(state, content, monster, spell, slot, power)
 	if spell.target_type in [3, 4]:
 		return _monster_area_spell_power_plan(state, content, monster, definition, spell, slot, power, actors_by_cell, area_placement_cache, area_center_cache)
 	if spell.target_type == 6:
@@ -202,6 +204,15 @@ func _monster_magic_detection_plan(state: GameState, content: RealmzContent, mon
 	return best
 
 
+func _monster_polymorph_plan(state: GameState, content: RealmzContent, monster: MonsterState, spell: SpellDefinition, slot: int, power: int) -> Dictionary:
+	var best: Dictionary = {}
+	for target: MonsterState in state.combat.monsters():
+		if target.current_health <= 0 or target.traitor == monster.traitor or not state.combat.battlefield.has_actor(target.id) or _target_reflects(state, target.id) or _target_hard_immune(state, content, target.id, spell) or not _flow()._spell_actor_target_is_valid(state, content, monster.id, target.id, spell, power):
+			continue
+		best = _prefer(best, {"spellId": spell.id, "spellSlot": slot, "power": power, "targetIds": [target.id], "score": 440 + target.hit_dice * 20 + target.current_health - spell.cost * power * 3})
+	return best
+
+
 func _monster_hostile_group_spell_power_plan(state: GameState, content: RealmzContent, monster: MonsterState, spell: SpellDefinition, slot: int, power: int) -> Dictionary:
 	var target_ids := _opposed_actor_ids_for_monster(state, monster)
 	var condition_index := ClassicSpellCapabilityCatalog.combat_condition_effect_index(spell)
@@ -223,6 +234,8 @@ func _monster_area_spell_power_plan(state: GameState, content: RealmzContent, mo
 		return {}
 	var expected := expected_spell_effect(spell, power)
 	var condition_index := ClassicSpellCapabilityCatalog.combat_persistent_field_condition_index(spell)
+	var monster_targets_only := ClassicSpellCapabilityCatalog.is_combat_polymorph_spell(spell)
+	if monster_targets_only: expected = 10
 	if expected <= 0 and condition_index < 0:
 		return {}
 	expected = maxi(expected, _maximum_condition_duration(spell, power)) if condition_index >= 0 else expected
@@ -233,7 +246,7 @@ func _monster_area_spell_power_plan(state: GameState, content: RealmzContent, mo
 		var offsets: Array[Vector2i] = []
 		offsets.assign(rotations[rotation])
 		var shape := _rules.spell_areas.shape_for(spell, power, rotation)
-		var cache_key := "%d:%d:%d:%d:%d" % [shape, maximum_range, 1 if spell.range_min + spell.range_max > 0 else 0, spell.spell_class, condition_index]
+		var cache_key := "%d:%d:%d:%d:%d:%d" % [shape, maximum_range, 1 if spell.range_min + spell.range_max > 0 else 0, spell.spell_class, condition_index, 1 if monster_targets_only else 0]
 		if not area_placement_cache.has(cache_key):
 			var placements: Array[Dictionary] = []
 			var center_key := "%d:%d:%d" % [shape, maximum_range, 1 if spell.range_min + spell.range_max > 0 else 0]
@@ -245,6 +258,8 @@ func _monster_area_spell_power_plan(state: GameState, content: RealmzContent, mo
 				for offset: Vector2i in offsets:
 					var target_id := String(actors_by_cell.get(center + offset, ""))
 					if target_id.is_empty():
+						continue
+					if monster_targets_only and state.combat.monster_by_id(target_id) == null:
 						continue
 					if _actor_is_friendly_to_monster(state, monster, target_id):
 						harms_friend = true
@@ -385,6 +400,8 @@ func _best_party_spell(state: GameState, content: RealmzContent, actor: Characte
 			best = _prefer(best, _best_summon(state, content, actor, spell, option.power, summon_coordinate_cache))
 		elif ClassicSpellCapabilityCatalog.is_combat_charm_spell(spell):
 			best = _prefer(best, _best_charm(state, content, actor, spell, option.power))
+		elif ClassicSpellCapabilityCatalog.is_combat_polymorph_spell(spell):
+			best = _prefer(best, _best_polymorph(state, content, actor, spell, option, actors_by_cell, area_placement_cache, area_center_cache))
 		elif ClassicSpellCapabilityCatalog.is_combat_destroy_magic_spell(spell):
 			best = _prefer(best, _best_destroy_magic(state, content, actor, spell, option.power))
 		elif ClassicSpellCapabilityCatalog.is_combat_magic_detection_spell(spell):
@@ -413,6 +430,17 @@ func _best_charm(state: GameState, content: RealmzContent, actor: CharacterState
 			continue
 		var score := 780 + _target_health(state, target_id) * 4 - absi(spell.cost * power) * 3
 		best = _prefer(best, {"action": &"cast_spell", "spellId": spell.id, "power": power, "targetId": target_id, "score": score})
+	return best
+
+
+func _best_polymorph(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, option: CombatSpellOptionView, actors_by_cell: Dictionary, area_placement_cache: Dictionary, area_center_cache: Dictionary) -> Dictionary:
+	if spell.target_type == 4:
+		return _best_area(state, content, actor, spell, option, 10, actors_by_cell, area_placement_cache, area_center_cache, -1, true)
+	var best: Dictionary = {}
+	for target: MonsterState in state.combat.monsters():
+		if target.current_health <= 0 or target.traitor == actor.traitor or not state.combat.battlefield.has_actor(target.id) or _target_reflects(state, target.id) or _target_hard_immune(state, content, target.id, spell) or not _flow()._spell_actor_target_is_valid(state, content, actor.id, target.id, spell, option.power):
+			continue
+		best = _prefer(best, {"action": &"cast_spell", "spellId": spell.id, "power": option.power, "targetId": target.id, "score": 440 + target.hit_dice * 20 + target.current_health - option.cost * 3})
 	return best
 
 
@@ -686,7 +714,7 @@ func _best_party_ray(state: GameState, content: RealmzContent, actor: CharacterS
 	return best
 
 
-func _best_area(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, option: CombatSpellOptionView, expected: int, actors_by_cell: Dictionary, area_placement_cache: Dictionary, area_center_cache: Dictionary, condition_index: int = -1) -> Dictionary:
+func _best_area(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, option: CombatSpellOptionView, expected: int, actors_by_cell: Dictionary, area_placement_cache: Dictionary, area_center_cache: Dictionary, condition_index: int = -1, monster_targets_only: bool = false) -> Dictionary:
 	var maximum_range := absi(spell.range_min + spell.range_max * option.power)
 	var best: Dictionary = {}
 	var rotations: Array = option.area_rotation_offsets if not option.area_rotation_offsets.is_empty() else [option.area_offsets]
@@ -694,7 +722,7 @@ func _best_area(state: GameState, content: RealmzContent, actor: CharacterState,
 		var offsets: Array[Vector2i] = []
 		offsets.assign(rotations[rotation])
 		var shape := _rules.spell_areas.shape_for(spell, option.power, rotation)
-		var cache_key := "%d:%d:%d:%d:%d" % [shape, maximum_range, 1 if spell.range_min + spell.range_max > 0 else 0, spell.spell_class, condition_index]
+		var cache_key := "%d:%d:%d:%d:%d:%d" % [shape, maximum_range, 1 if spell.range_min + spell.range_max > 0 else 0, spell.spell_class, condition_index, 1 if monster_targets_only else 0]
 		if not area_placement_cache.has(cache_key):
 			var placements: Array[Dictionary] = []
 			var center_key := "%d:%d:%d" % [shape, maximum_range, 1 if spell.range_min + spell.range_max > 0 else 0]
@@ -706,6 +734,8 @@ func _best_area(state: GameState, content: RealmzContent, actor: CharacterState,
 				for offset: Vector2i in offsets:
 					var target_id := String(actors_by_cell.get(center + offset, ""))
 					if target_id.is_empty():
+						continue
+					if monster_targets_only and state.combat.monster_by_id(target_id) == null:
 						continue
 					if _actor_is_friendly(state, actor, target_id):
 						harms_friend = true
