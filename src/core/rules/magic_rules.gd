@@ -619,9 +619,9 @@ static func _apply_combat_condition(conditions: ConditionSet, spell: SpellDefini
 	if special in [53, 54] and duration > 0:
 		conditions.add(ConditionRules.HELPLESS, duration)
 		return ConditionRules.HELPLESS
-	if special < 1 or special >= 41 or duration == 0 and special != 28:
+	var condition_index := ClassicSpellCapabilityCatalog.resolved_combat_condition_index(spell)
+	if condition_index < 0 or duration == 0 and special != 28:
 		return -1
-	var condition_index := special - 1
 	var current := conditions.value(condition_index)
 	var updated := current + duration
 	if current < 0 or monster_target and absi(updated) >= 125 or not monster_target and updated >= 100:
@@ -631,14 +631,13 @@ static func _apply_combat_condition(conditions: ConditionSet, spell: SpellDefini
 
 
 static func _apply_combat_movement_effect(target: CharacterState, spell: SpellDefinition) -> void:
-	match absi(spell.special) if spell != null else 0:
-		2:
+	match ClassicSpellCapabilityCatalog.resolved_combat_condition_index(spell):
+		ConditionRules.HELPLESS:
 			target.movement = 0
-		3, 7:
+		ConditionRules.TANGLED, ConditionRules.SLOW:
 			target.movement /= 2
-		53, 54:
-			target.movement = 0
-			target.attacks_remaining = 0
+	if spell != null and absi(spell.special) in [53, 54]:
+		target.attacks_remaining = 0
 
 
 static func _record_allegiance_change(result: SpellResolution, before: bool, after: bool) -> void:

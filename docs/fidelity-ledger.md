@@ -242,6 +242,16 @@ Classic-visible behavior is the default ruleset. This ledger records deliberate 
 - Tests: the bounded Undo test covers the occupied-cell reason, mutation-free rejection, ordinary movement restoration, save/resume, source sound order, condition gates, and result invalidation.
 - Legacy quirk: none. Authored scenarios cannot rely on one combatant replacing another in volatile battle state.
 
+## FD-COMBAT-015 — Tangle Weed resolves its named condition
+
+- Affected rule: stock application spell 2412, Tangle Weed, resolving unsigned special 253 in combat.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/structs.h`, `struct spell`, lines 259–267, and `src/realmz_orig/resolvespell.c`, `resolvespell`, lines 13–19 and 345–364. The spell record declares `special` as unsigned, converts it through `abs`, and treats every value above 99 as a condition-clear index at `special - 101`. The fixed application `Data S` at Castle commit `ef95fcff40d81f14ac668d5e13466da4a51de6f4`, SHA-256 `f47776aadc0f4ebf42320e0aaedd39dd7b5a2c76c125a44e99ea461d962860e7`, preserves Tangle Weed's target type 3, size 14, queue icon 4, power duration 1–2, and special 253.
+- Observable oracle behavior, determined from complete source flow: special 253 addresses condition slot 152 outside both character and monster forty-slot condition arrays instead of applying any valid condition. The source-observation fixture is `tests/fixtures/oracle/tangle-weed-special-correction.json`, SHA-256 `017d6448ce51071ccb19e03e572525b9e40f31fd66dd8d63110853b7f711ede6`. This is `source-control-flow` evidence, not a Castle-runtime claim.
+- Player-facing problem: the named stock spell can corrupt adjacent battle state or crash rather than applying Tangle, and a deterministic runtime cannot expose the unsafe write as authored gameplay.
+- Chosen 2.0 behavior: retain special 253 in package content and mechanical signatures, but normalize that otherwise impossible condition reference to special 3 at the combat-condition boundary. Learned spells, fixed-power scrolls, charged items, Party Auto, and monster AI then share the ordinary target-type-three area, queue, defense, duration, movement, and save contracts.
+- Tests: `_test_public_tangle_weed_correction_matrix` loads the bundled application record, proves all four combat-source dispositions, resolves the exact Tangle condition and persistent field through every source, and restores the result and queue from public save data.
+- Legacy quirk: none. An out-of-bounds condition write is not a portable authored dependency; any different intended effect would require contradictory application data or controlled runtime evidence.
+
 Source-conformant implementations and ownership changes are not deviations. Phase 4's packed spell identities, spell power-roll ordering, equipment escrow, program replacement, and fumble mutations preserve observed Castle behavior while moving ownership into typed session state.
 
 Each entry must include:

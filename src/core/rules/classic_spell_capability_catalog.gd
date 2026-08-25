@@ -134,6 +134,10 @@ static func combat_condition_effect_index(spell: SpellDefinition) -> int:
 	return _combat_condition_index(spell) if _combat_condition_effect_spell(spell) or _combat_actor_field_spell(spell) else -1
 
 
+static func resolved_combat_condition_index(spell: SpellDefinition) -> int:
+	return _combat_condition_index(spell)
+
+
 static func is_combat_helpless_spell(spell: SpellDefinition) -> bool:
 	return _combat_helpless_spell(spell)
 
@@ -443,6 +447,8 @@ static func _combat_condition_effect_spell(spell: SpellDefinition) -> bool:
 
 static func _combat_condition_index(spell: SpellDefinition) -> int:
 	var special := absi(spell.special) if spell != null else 0
+	if special == 253:
+		special = 3
 	if special in [53, 54]:
 		return ConditionRules.HELPLESS
 	return special - 1 if special >= 1 and special < 41 else -1
