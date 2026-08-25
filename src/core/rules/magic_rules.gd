@@ -619,7 +619,7 @@ static func _apply_combat_condition(conditions: ConditionSet, spell: SpellDefini
 	if special in [53, 54] and duration > 0:
 		conditions.add(ConditionRules.HELPLESS, duration)
 		return ConditionRules.HELPLESS
-	if special < 1 or special >= 41 or duration <= 0 and special != 28:
+	if special < 1 or special >= 41 or duration == 0 and special != 28:
 		return -1
 	var condition_index := special - 1
 	var current := conditions.value(condition_index)

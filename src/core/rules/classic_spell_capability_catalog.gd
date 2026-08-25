@@ -436,9 +436,9 @@ static func _combat_condition_effect_spell(spell: SpellDefinition) -> bool:
 	if absi(spell.special) == 28:
 		return spell.duration_min != 0 or spell.duration_max != 0 or spell.power_duration_min != 0 or spell.power_duration_max != 0
 	var maximum_duration := maxi(spell.duration_min, spell.duration_max) + 7 * maxi(spell.power_duration_min, spell.power_duration_max)
-	var has_damage := spell.damage_min != 0 or spell.damage_max != 0 or spell.power_damage_min != 0 or spell.power_damage_max != 0
+	var has_damage := spell.damage_min != 0 or spell.damage_max != 0 or spell.power_damage_min != 0 or spell.power_damage_max != 0; var has_duration := spell.duration_min != 0 or spell.duration_max != 0 or spell.power_duration_min != 0 or spell.power_duration_max != 0
 	var supported_condition := _combat_helpless_spell(spell) if absi(spell.special) in [53, 54] else _combat_condition_index(spell) >= 0
-	return supported_condition and (has_damage or maximum_duration > 0)
+	return supported_condition and (has_damage or has_duration)
 
 
 static func _combat_condition_index(spell: SpellDefinition) -> int:
