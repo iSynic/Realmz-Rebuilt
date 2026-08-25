@@ -99,6 +99,8 @@ func present_music_context(playlist_id: int, settings: PresentationSettings, med
 		stream = stock_music.stream(playlist_id)
 		title = stock_music.title(playlist_id)
 	if stream == null:
+		if current_music_playlist_id != playlist_id:
+			stop_music()
 		return
 	_music_player.stop()
 	_music_player.stream = stream
