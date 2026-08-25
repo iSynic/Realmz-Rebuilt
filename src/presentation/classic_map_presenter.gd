@@ -136,12 +136,13 @@ func _draw() -> void:
 	var camera_end := camera + viewport_cells
 	var classic_rect := classic_visible_rect(map_view.party_coordinate, Vector2i(map_view.width, map_view.height))
 	var dungeon_discovery := dungeon_discovery_coordinates(map_view.visited_coordinates()) if map_view.level_type == &"dungeon" else {}
+	var revealed_coordinates := dungeon_discovery if map_view.level_type == &"dungeon" else land_discovery_coordinates(map_view.visited_coordinates(), Vector2i(map_view.width, map_view.height))
 	for cell: MapCellView in map_view.cells():
 		if cell.coordinate.x < camera.x or cell.coordinate.y < camera.y or cell.coordinate.x >= camera_end.x or cell.coordinate.y >= camera_end.y:
 			continue
 		var rect := Rect2(draw_origin + Vector2(cell.coordinate - camera) * cell_size, Vector2.ONE * cell_size)
 		var outside_classic_view := classic_exploration_visibility and not classic_rect.has_point(cell.coordinate)
-		if outside_classic_view and not cell.visited:
+		if outside_classic_view and not revealed_coordinates.has(cell.coordinate):
 			_draw_unvisited_cell(rect)
 			continue
 		_draw_cell(cell, rect, map_view.level_type, map_view.dark, not cell.has_feature(&"unmapped") or dungeon_discovery.has(cell.coordinate), outside_classic_view)
@@ -224,6 +225,16 @@ static func classic_visible_rect(party_coordinate: Vector2i, map_size: Vector2i)
 	var maximum := Vector2i(maxi(map_size.x - view_size.x, 0), maxi(map_size.y - view_size.y, 0))
 	var origin := Vector2i(clampi(party_coordinate.x - 8, 0, maximum.x), clampi(party_coordinate.y - 6, 0, maximum.y))
 	return Rect2i(origin, view_size)
+
+
+static func land_discovery_coordinates(visited: Array[Vector2i], map_size: Vector2i) -> Dictionary:
+	var result: Dictionary = {}
+	for coordinate: Vector2i in visited:
+		var visible_rect := classic_visible_rect(coordinate, map_size)
+		for y: int in range(visible_rect.position.y, visible_rect.end.y):
+			for x: int in range(visible_rect.position.x, visible_rect.end.x):
+				result[Vector2i(x, y)] = true
+	return result
 
 
 static func viewport_cells_for(control_size: Vector2, header_height: float, native_cell_size: float) -> Vector2i:
