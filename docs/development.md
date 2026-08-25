@@ -25,9 +25,9 @@ A post-hardening AOGM performance investigation found two costs outside the orig
 
 Use the lowest tier that covers the changed boundary:
 
-- **Tier 1 — focused behavior:** run only the affected named test cases, or a genuinely narrow suite when its cases require shared arguments. Do not run the aggregate gate, source intelligence/codemap, MCP, or unrelated routes. Every meaningful change still receives a DOX review; update a contract only when its durable behavior or ownership changed.
+- **Tier 1 — focused behavior:** run only the affected named test cases, or a genuinely narrow suite when its cases require shared arguments. Do not run the aggregate gate, MCP, or unrelated routes. Every meaningful change still receives a DOX review; update a contract only when its durable behavior or ownership changed.
 - **Tier 2 — focused workflow:** run the affected suites, the architecture check when product source changed, the differential and application-workflow inventory validators, scope/local-path checks, `git diff --check`, and the applicable DOX review. Regenerate `docs/classic-application-workflow-status.md` only when its authoritative inventory changed. Do not run the aggregate gate or MCP by default.
-- **Tier 3 — batch closeout:** once per batch, run the full `tools/verify.ps1` gate, source-intelligence validation/regeneration, clean-reference evidence validation, relevant Providence full checks, and one coherent MCP walkthrough.
+- **Tier 3 — batch closeout:** once per batch, run the full `tools/verify.ps1` gate, clean-reference evidence validation, relevant Providence full checks, and one coherent MCP walkthrough.
 
 Move directly to Tier 3 for package or schema changes; save, migration, or continuation changes; RNG or VM changes; topology changes; terminal combat or reward sequencing; and composition-root ownership changes. CI remains comprehensive regardless of the local tier.
 
@@ -98,10 +98,6 @@ A scenario is certified only when its current Providence package has determinist
 
 After every available scenario is certified, synthetic fixtures close signatures and workflows that the corpus never uses. Saturation requires every opcode to be executable, source-reserved, or explicitly malformed and rejected; every stock and discovered custom spell signature to have a legal-context disposition; and every gameplay-semantic workflow to be complete. Pure visual refinements may remain in the visual audit only when they do not block or alter play.
 
-## Source intelligence
-
-The repository also maintains an offline source-intelligence snapshot under docs/codemap/. It embeds exact local source and documentation text, source spans, DOX ownership, tests, flows, retrieval chunks, and conservative resolved/unknown relationships. Open docs/codemap/codemap.html directly for the browser encyclopedia, or consume intelligence.json and chunks.jsonl from an agent. Use ./tools/source-intelligence/validate.ps1 for the read-only artifact check. The aggregate gate regenerates it automatically; local verification leaves regenerated files for review and CI fails if the committed snapshot is stale.
-
 ## Local gate
 
 ```powershell
@@ -114,7 +110,7 @@ Regenerate the deterministic application-completeness report with `./tools/verif
 
 For Tier 1, use `./tools/run_tests.ps1 -Suite <path-fragment> -Case <test-name-fragment>`. Pass arrays such as `-Suite @("<suite-a>", "<suite-b>") -Case @("<case-a>", "<case-b>")` to select a union in one Godot process. Named cases require an owning suite filter so unrelated suites are never instantiated. Every supplied filter must match, case execution is reported and timed individually, and suites with shared fixture arguments prepare them once through the test-case contract. Focused processes have a 120-second default budget and are terminated as a process tree on timeout. Do not rerun an unchanged timed-out command: narrow its case filters or investigate the named slow case first. For Tier 2, use `./tools/verify_workflow.ps1 -Suite @("<fragment-a>") -Case @("<case-a>", "<case-b>")`; it uses the same streaming/budgeted runner, then performs the conditional architecture check, differential/inventory checks, scope checks, and whitespace check. Clean-reference roots are a Tier 3 input. Release and Tier 3 closeout evidence uses the complete suite directly and is not constrained by the focused timeout.
 
-The Tier 2 helper is not a substitute for the batch closeout gate. Do not add unrelated suites, invoke MCP, or regenerate source-intelligence artifacts merely to make a focused workflow appear comprehensive.
+The Tier 2 helper is not a substitute for the batch closeout gate. Do not add unrelated suites or invoke MCP merely to make a focused workflow appear comprehensive.
 
 ## UI verification
 

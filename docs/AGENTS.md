@@ -27,7 +27,7 @@ Own current architecture, ADRs, package/save contracts, fidelity decisions, orac
 
 - Keep prose practical and concrete about data flow, ownership, invariants, and verification.
 - Add an ADR when changing a non-local architectural boundary.
-- Keep generated workflow status and source-intelligence artifacts derived from their inventory/generator; do not hand-edit them as part of a documentation pass.
+- Keep generated workflow-status artifacts derived from their authoritative inventory; do not hand-edit them as part of a documentation pass.
 
 ## Verification
 
@@ -42,6 +42,5 @@ Own current architecture, ADRs, package/save contracts, fidelity decisions, orac
 - `classic-application-workflow-status.md` is generated from the authoritative workflow inventory and owns the current batch, count deltas, Classic and host completeness totals, domain heatmap, blockers, oracle unknowns, and prioritized queues. Never edit it independently of the inventory and generator.
 - `classic-gameplay-parity-status.md` is generated from the complete opcode registry and pinned application spell catalog. It summarizes the committed parity denominator and evidence boundaries; never edit it independently of `tools/gameplay_parity_inventory.gd`.
 - `scenario-vm-evidence.md` owns Classic control-flow, nested macro, and host-boundary evidence.
-- `codemap/AGENTS.md` owns the generated source-intelligence encyclopedia, embedded source snapshot, machine graph, retrieval chunks, and evidence boundaries.
 - `ui-strategy.md` owns the canonical visual language, responsive profiles, route/screen matrix, scaling, input, accessibility, media, and fidelity boundaries.
 - `ui-visual-audit.md` owns the complete player-visible screen/state inventory, Castle/Remake design leads, target composition decisions, media opportunities, and phased visual-remediation queue.

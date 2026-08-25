@@ -14,3 +14,8 @@ user-data/
 
 # Local oracle/reference worktrees are never repository content.
 .references/
+
+# Local source-intelligence workspaces and generated browsers are not product source.
+.ua/
+.understand/
+docs/codemap/

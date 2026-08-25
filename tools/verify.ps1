@@ -15,16 +15,6 @@ if ([string]::IsNullOrWhiteSpace($GodotPath)) {
     $GodotPath = $candidate
 }
 
-$intelligenceGenerator = Join-Path $PSScriptRoot "source-intelligence\generate.ps1"
-& $intelligenceGenerator
-if ($LASTEXITCODE -ne 0) { throw "Source intelligence generation failed." }
-if ($env:CI -eq "true") {
-    $codemapStatus = @(git -C $repoRoot status --porcelain --untracked-files=all -- docs/codemap)
-    if ($codemapStatus.Count -gt 0) {
-        throw "Committed source-intelligence artifacts are stale. Regenerate and commit docs/codemap/."
-    }
-}
-
 function Invoke-GodotGate {
     param(
         [string]$Label,
