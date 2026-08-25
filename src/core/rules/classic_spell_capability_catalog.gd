@@ -48,7 +48,7 @@ static func mechanical_family(spell: SpellDefinition) -> StringName:
 		return FAMILY_RESERVED
 	if spell.queue_icon != 0:
 		return FAMILY_BATTLEFIELD_FIELD
-	if _physical_projectile_profile(spell) or _application_area_projectile_item_profile(spell):
+	if _physical_projectile_profile(spell) or _application_area_projectile_item_profile(spell) or _application_transport_projectile_item_profile(spell):
 		return FAMILY_PROJECTILE
 	var special := absi(spell.special)
 	if special == 58 and spell.target_type == 0:
@@ -108,6 +108,10 @@ static func is_physical_projectile_profile(spell: SpellDefinition) -> bool:
 
 static func is_application_area_projectile_item_profile(spell: SpellDefinition) -> bool:
 	return _application_area_projectile_item_profile(spell)
+
+
+static func is_application_transport_projectile_item_profile(spell: SpellDefinition) -> bool:
+	return _application_transport_projectile_item_profile(spell)
 
 
 static func is_combat_application_elemental_attack(spell: SpellDefinition) -> bool:
@@ -235,6 +239,8 @@ static func _combat_character_disposition(spell: SpellDefinition) -> StringName:
 		return DISPOSITION_NOT_APPLICABLE
 	if _application_area_projectile_item_profile(spell):
 		return DISPOSITION_NOT_APPLICABLE
+	if _application_transport_projectile_item_profile(spell):
+		return DISPOSITION_NOT_APPLICABLE
 	if _combat_application_elemental_attack(spell):
 		return DISPOSITION_NOT_APPLICABLE
 	if _combat_actor_field_spell(spell):
@@ -252,6 +258,8 @@ static func _combat_scroll_disposition(spell: SpellDefinition) -> StringName:
 	if _physical_projectile_profile(spell):
 		return DISPOSITION_NOT_APPLICABLE
 	if _application_area_projectile_item_profile(spell):
+		return DISPOSITION_NOT_APPLICABLE
+	if _application_transport_projectile_item_profile(spell):
 		return DISPOSITION_NOT_APPLICABLE
 	if _combat_application_elemental_attack(spell):
 		return DISPOSITION_NOT_APPLICABLE
@@ -271,6 +279,8 @@ static func _combat_item_disposition(spell: SpellDefinition) -> StringName:
 		return DISPOSITION_NOT_APPLICABLE
 	if _application_area_projectile_item_profile(spell):
 		return DISPOSITION_EXECUTABLE
+	if _application_transport_projectile_item_profile(spell):
+		return DISPOSITION_EXECUTABLE
 	if _combat_actor_field_spell(spell):
 		return DISPOSITION_EXECUTABLE
 	if combat_spell_uses_persistent_field_queue(spell):
@@ -286,6 +296,8 @@ static func _combat_monster_disposition(spell: SpellDefinition) -> StringName:
 	if _physical_projectile_profile(spell):
 		return DISPOSITION_NOT_APPLICABLE
 	if _application_area_projectile_item_profile(spell):
+		return DISPOSITION_NOT_APPLICABLE
+	if _application_transport_projectile_item_profile(spell):
 		return DISPOSITION_NOT_APPLICABLE
 	if _combat_application_elemental_attack(spell):
 		return DISPOSITION_EXECUTABLE
@@ -337,6 +349,10 @@ static func _physical_projectile_profile(spell: SpellDefinition) -> bool:
 
 static func _application_area_projectile_item_profile(spell: SpellDefinition) -> bool:
 	return spell != null and application_role(spell) == ROLE_APPLICATION_EFFECT and spell.in_combat and spell.target_type == 3 and spell.size > 0 and spell.queue_icon == 0 and spell.cost == 0 and absi(spell.spell_class) == 9 and absi(spell.damage_type) == 9 and spell.special == 0 and (spell.damage_min != 0 or spell.damage_max != 0 or spell.power_damage_min != 0 or spell.power_damage_max != 0)
+
+
+static func _application_transport_projectile_item_profile(spell: SpellDefinition) -> bool:
+	return spell != null and application_role(spell) == ROLE_APPLICATION_EFFECT and spell.in_combat and spell.target_type == -1 and spell.size == 1 and spell.queue_icon == 0 and spell.cost == 0 and absi(spell.spell_class) == 9 and absi(spell.damage_type) == 9 and absi(spell.special) == 56 and spell.damage_min == 0 and spell.damage_max == 0 and spell.power_damage_min == 0 and spell.power_damage_max == 0 and spell.duration_min == 0 and spell.duration_max == 0 and spell.power_duration_min == 0 and spell.power_duration_max == 0
 
 
 static func _ordinary_combat_spell(spell: SpellDefinition) -> bool:

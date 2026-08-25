@@ -68,7 +68,7 @@ func probe_character_item_spell(state: GameState, content: RealmzContent, caster
 		if not target_id.is_empty() or not target_ids.is_empty() or not target_coordinates.is_empty() or target_coordinate != INVALID_COORDINATE or rotation != 0:
 			return CombatSpellCastProbe.blocked(&"random_item_power_not_staged", "Roll this item's power before choosing its combat target.")
 		return CombatSpellCastProbe.permitted()
-	if ClassicSpellCapabilityCatalog.is_combat_phase_spell(spell): return CombatSpellCastProbe.permitted() if target_coordinate == INVALID_COORDINATE else _flow()._probe_phase_destination(state, content, caster_id, spell, power_level, target_coordinate)
+	if ClassicSpellCapabilityCatalog.is_combat_phase_spell(spell) or ClassicSpellCapabilityCatalog.is_application_transport_projectile_item_profile(spell): return CombatSpellCastProbe.permitted() if target_coordinate == INVALID_COORDINATE else _flow()._probe_phase_destination(state, content, caster_id, spell, power_level, target_coordinate)
 	if spell.target_type == 0:
 		if summon_spell: return _flow()._probe_summon_choice(state, content, caster_id, spell, power_level) if target_coordinates.is_empty() else _flow()._probe_summon_coordinates(state, content, caster_id, spell, power_level, target_coordinates)
 		if spell.size != 0:
@@ -147,14 +147,14 @@ func use_spell_item(state: GameState, content: RealmzContent, caster_id: String,
 		return CombatFlowResult.failed(&"item_area_target_required", "Choose a battlefield center for this area item.")
 	if summon_spell and target_coordinates.is_empty(): return CombatFlowResult.failed(&"summon_target_required", "Choose at least one open battlefield space for this summon item.")
 	if not summon_spell and spell.target_type == 0 and target_ids.is_empty(): return CombatFlowResult.failed(&"item_target_required", "Choose at least one actor for this repeated item spell.")
-	if ClassicSpellCapabilityCatalog.is_combat_phase_spell(spell) and target_coordinate == INVALID_COORDINATE: return CombatFlowResult.failed(&"item_area_target_required", "Choose a battlefield destination for Phase.")
+	if (ClassicSpellCapabilityCatalog.is_combat_phase_spell(spell) or ClassicSpellCapabilityCatalog.is_application_transport_projectile_item_profile(spell)) and target_coordinate == INVALID_COORDINATE: return CombatFlowResult.failed(&"item_area_target_required", "Choose a battlefield destination for Phase.")
 	var state_checkpoint := state.to_data(); var rng_checkpoint := rng.checkpoint()
 	if not _rules.inventory.use_charge(caster, instance.id, item):
 		return CombatFlowResult.failed(&"item_charge_commit_failed", "The validated item charge could not be committed.")
 	var cast_level := spell.classic_tier(); var result: CombatFlowResult
-	if not ClassicSpellCapabilityCatalog.is_combat_phase_spell(spell) and not summon_spell: _flow()._prepare_character_turn(state.combat, caster); state.combat.invalidate_undo()
+	if not ClassicSpellCapabilityCatalog.is_combat_phase_spell(spell) and not ClassicSpellCapabilityCatalog.is_application_transport_projectile_item_profile(spell) and not summon_spell: _flow()._prepare_character_turn(state.combat, caster); state.combat.invalidate_undo()
 	if summon_spell: result = _flow()._cast_character_summon(state, content, caster, spell, power_level, rng, target_coordinates, "classic-item", false, false)
-	elif ClassicSpellCapabilityCatalog.is_combat_phase_spell(spell): result = _flow()._cast_character_phase(state, content, caster, spell, power_level, cast_level, rng, target_coordinate, false, "classic-item", false)
+	elif ClassicSpellCapabilityCatalog.is_combat_phase_spell(spell) or ClassicSpellCapabilityCatalog.is_application_transport_projectile_item_profile(spell): result = _flow()._cast_character_phase(state, content, caster, spell, power_level, cast_level, rng, target_coordinate, false, "classic-item", false)
 	elif spell.target_type in [3, 4]:
 		var shape := _rules.spell_areas.shape_for(spell, power_level, rotation)
 		var persistent_field: RefCounted = _flow()._queue_persistent_field(state.combat, caster.id, spell, power_level, cast_level, rng, target_coordinate, rotation, shape)
@@ -260,7 +260,7 @@ func _character_item_spell_options_for_power(state: GameState, content: RealmzCo
 	if spell.target_type == 0:
 		if probe_character_item_spell(state, content, caster.id, "", instance.id).allowed: result.append(CombatItemOptionView.new(instance, item, spell, power_level, null, "Choose up to %d open spaces" % power_level, &"coordinate_sequence", 0, state.combat.battlefield.actor_position(caster.id), [], [], [], power_level) if _flow()._is_summon_spell(spell) else CombatItemOptionView.new(instance, item, spell, power_level, null, "Choose up to %d actors" % power_level, &"sequence", 0, INVALID_COORDINATE, [], [], [], power_level, _character_actor_spell_candidates(state, content, caster, spell, power_level)))
 		return result
-	if ClassicSpellCapabilityCatalog.is_combat_phase_spell(spell):
+	if ClassicSpellCapabilityCatalog.is_combat_phase_spell(spell) or ClassicSpellCapabilityCatalog.is_application_transport_projectile_item_profile(spell):
 		if probe_character_item_spell(state, content, caster.id, "", instance.id).allowed: result.append(CombatItemOptionView.new(instance, item, spell, power_level, null, "Choose battlefield destination", &"area", 0, state.combat.battlefield.actor_position(caster.id), [Vector2i.ZERO]))
 		return result
 	if spell.target_type in [3, 4]:
