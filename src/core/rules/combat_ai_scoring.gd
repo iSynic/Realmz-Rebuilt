@@ -104,13 +104,14 @@ func _monster_spell_power_plan(state: GameState, content: RealmzContent, monster
 	if effect_index < 0:
 		effect_index = ClassicSpellCapabilityCatalog.combat_persistent_field_condition_index(spell)
 	var spell_point_restore := ClassicSpellCapabilityCatalog.is_combat_spell_point_restore_spell(spell)
+	var spell_point_drain := ClassicSpellCapabilityCatalog.is_combat_spell_point_drain_spell(spell)
 	var friendly := spell.target_type == 5 or spell.cannot == 4 or cure_index >= 0 or spell_point_restore
 	var candidates: Array[String] = []
 	for character: CharacterState in state.party.characters():
-		if character.current_health > 0 and (character.traitor == monster.traitor) == friendly and (spell.target_type != 5 or character.id == monster.id) and (not spell_point_restore or _target_missing_spell_points(state, character.id) > 0) and (cure_index < 0 or character.conditions.is_active(cure_index)) and (effect_index < 0 or character.conditions.value(effect_index) == 0) and (cure_index >= 0 or character.id == monster.id or not _target_reflects(state, character.id)) and (friendly or not _target_hard_immune(state, content, character.id, spell)) and state.combat.battlefield.has_actor(character.id) and _flow()._spell_actor_target_is_valid(state, content, monster.id, character.id, spell, power):
+		if character.current_health > 0 and (character.traitor == monster.traitor) == friendly and (spell.target_type != 5 or character.id == monster.id) and (not spell_point_restore or _target_missing_spell_points(state, character.id) > 0) and (not spell_point_drain or _target_spell_points(state, character.id) > 0) and (cure_index < 0 or character.conditions.is_active(cure_index)) and (effect_index < 0 or character.conditions.value(effect_index) == 0) and (cure_index >= 0 or character.id == monster.id or not _target_reflects(state, character.id)) and (friendly or not _target_hard_immune(state, content, character.id, spell)) and state.combat.battlefield.has_actor(character.id) and _flow()._spell_actor_target_is_valid(state, content, monster.id, character.id, spell, power):
 			candidates.append(character.id)
 	for candidate: MonsterState in state.combat.monsters():
-		if candidate.current_health > 0 and (candidate.traitor == monster.traitor) == friendly and (spell.target_type != 5 or candidate.id == monster.id) and (not spell_point_restore or _target_missing_spell_points(state, candidate.id) > 0) and (cure_index < 0 or candidate.conditions.is_active(cure_index)) and (effect_index < 0 or candidate.conditions.value(effect_index) == 0) and (cure_index >= 0 or candidate.id == monster.id or not _target_reflects(state, candidate.id)) and (friendly or not _target_hard_immune(state, content, candidate.id, spell)) and state.combat.battlefield.has_actor(candidate.id) and content.monster_by_id(candidate.definition_id) != null and _flow()._spell_actor_target_is_valid(state, content, monster.id, candidate.id, spell, power):
+		if candidate.current_health > 0 and (candidate.traitor == monster.traitor) == friendly and (spell.target_type != 5 or candidate.id == monster.id) and (not spell_point_restore or _target_missing_spell_points(state, candidate.id) > 0) and (not spell_point_drain or _target_spell_points(state, candidate.id) > 0) and (cure_index < 0 or candidate.conditions.is_active(cure_index)) and (effect_index < 0 or candidate.conditions.value(effect_index) == 0) and (cure_index >= 0 or candidate.id == monster.id or not _target_reflects(state, candidate.id)) and (friendly or not _target_hard_immune(state, content, candidate.id, spell)) and state.combat.battlefield.has_actor(candidate.id) and content.monster_by_id(candidate.definition_id) != null and _flow()._spell_actor_target_is_valid(state, content, monster.id, candidate.id, spell, power):
 			candidates.append(candidate.id)
 	if candidates.is_empty():
 		return {}
@@ -123,7 +124,7 @@ func _monster_spell_power_plan(state: GameState, content: RealmzContent, monster
 	for target_id: String in candidates:
 		if selected.size() >= (power if spell.target_type == 0 else 1):
 			break
-		if cure_index >= 0 or spell_point_restore or not healing or _target_missing_health(state, target_id) > 0:
+		if cure_index >= 0 or spell_point_restore or spell_point_drain or not healing or _target_missing_health(state, target_id) > 0:
 			selected.append(target_id)
 	if selected.is_empty():
 		return {}
@@ -261,9 +262,12 @@ func _monster_ray_spell_power_plan(state: GameState, content: RealmzContent, mon
 		var ray_ids: Array[String] = _flow().ray_spell_actor_ids(state, content, monster.id, endpoint_id, spell)
 		if ray_ids.is_empty() or ray_ids.any(func(target_id: String) -> bool: return _actor_is_friendly_to_monster(state, monster, target_id) or _target_hard_immune(state, content, target_id, spell)):
 			continue
-		var score := 340 + ray_ids.size() * expected * 6 - spell.cost * power * 3
+		var drain := ClassicSpellCapabilityCatalog.is_combat_spell_point_drain_spell(spell)
+		var score := 340 - spell.cost * power * 3
 		for target_id: String in ray_ids:
-			score += _lethal_bonus(state, target_id, expected)
+			score += mini(_target_spell_points(state, target_id), expected) * 6 if drain else expected * 6 + _lethal_bonus(state, target_id, expected)
+		if drain and ray_ids.all(func(target_id: String) -> bool: return _target_spell_points(state, target_id) <= 0):
+			continue
 		best = _prefer(best, {"spellId": spell.id, "spellSlot": slot, "power": power, "targetIds": [endpoint_id], "score": score})
 	return best
 
@@ -272,6 +276,8 @@ func _monster_target_score(state: GameState, target_id: String, spell: SpellDefi
 	var expected := expected_spell_effect(spell, power)
 	if ClassicSpellCapabilityCatalog.is_combat_spell_point_restore_spell(spell):
 		return 620 + mini(_target_missing_spell_points(state, target_id), expected) * 5 + _target_missing_spell_points(state, target_id)
+	if ClassicSpellCapabilityCatalog.is_combat_spell_point_drain_spell(spell):
+		return 540 + mini(_target_spell_points(state, target_id), expected) * 6 + _target_spell_points(state, target_id)
 	if cure_index >= 0:
 		return _condition_cure_score(state, target_id, cure_index)
 	if effect_index >= 0:
@@ -360,6 +366,8 @@ func _best_party_spell(state: GameState, content: RealmzContent, actor: Characte
 			best = _prefer(best, _best_heal(state, content, actor, spell, option.power))
 		elif ClassicSpellCapabilityCatalog.is_combat_spell_point_restore_spell(spell):
 			best = _prefer(best, _best_spell_point_restore(state, content, actor, spell, option.power))
+		elif ClassicSpellCapabilityCatalog.is_combat_spell_point_drain_spell(spell):
+			best = _prefer(best, _best_spell_point_drain(state, content, actor, spell, option.power, ray_actor_cache))
 		elif spell.target_type in [0, 1, 3, 4, 6, 9, 10, 12]:
 			best = _prefer(best, _best_damage_spell(state, content, actor, spell, option, actors_by_cell, area_placement_cache, area_center_cache, ray_actor_cache))
 	return best
@@ -527,6 +535,44 @@ func _best_spell_point_restore(state: GameState, content: RealmzContent, actor: 
 			continue
 		var score := 620 + mini(_target_missing_spell_points(state, target_id), expected_spell_effect(spell, power)) * 5 + _target_missing_spell_points(state, target_id) - absi(spell.cost * power) * 3
 		best = _prefer(best, {"action": &"cast_spell", "spellId": spell.id, "power": power, "targetId": target_id, "score": score})
+	return best
+
+
+func _best_spell_point_drain(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, power: int, ray_actor_cache: Dictionary) -> Dictionary:
+	var expected := expected_spell_effect(spell, power)
+	if expected <= 0:
+		return {}
+	if spell.target_type == 6:
+		return _best_party_spell_point_drain_ray(state, content, actor, spell, power, expected, ray_actor_cache)
+	var candidates: Array[String] = []
+	for target_id: String in _opposed_actor_ids(state, actor):
+		if _target_spell_points(state, target_id) > 0 and not _target_reflects(state, target_id) and not _target_hard_immune(state, content, target_id, spell) and _flow()._spell_actor_target_is_valid(state, content, actor.id, target_id, spell, power):
+			candidates.append(target_id)
+	candidates.sort_custom(func(left: String, right: String) -> bool: return _target_spell_points(state, left) > _target_spell_points(state, right) or (_target_spell_points(state, left) == _target_spell_points(state, right) and left < right))
+	if candidates.is_empty():
+		return {}
+	var selected: Array[String] = candidates.slice(0, mini(power if spell.target_type == 0 else 1, candidates.size()))
+	var score := 540 - absi(spell.cost * power) * 3
+	for target_id: String in selected:
+		score += mini(_target_spell_points(state, target_id), expected) * 6 + _target_spell_points(state, target_id)
+	return {"action": &"cast_spell", "spellId": spell.id, "power": power, "targetIds": selected, "targetId": selected[0], "score": score}
+
+
+func _best_party_spell_point_drain_ray(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, power: int, expected: int, ray_actor_cache: Dictionary) -> Dictionary:
+	var best: Dictionary = {}
+	for endpoint_id: String in _opposed_actor_ids(state, actor):
+		if not _flow()._spell_actor_target_is_valid(state, content, actor.id, endpoint_id, spell, power):
+			continue
+		var cache_key := "%s:%d" % [endpoint_id, 1 if spell.range_min + spell.range_max > 0 else 0]
+		if not ray_actor_cache.has(cache_key):
+			ray_actor_cache[cache_key] = _flow().ray_spell_actor_ids(state, content, actor.id, endpoint_id, spell)
+		var ray_ids: Array[String] = ray_actor_cache[cache_key]
+		if ray_ids.is_empty() or ray_ids.any(func(target_id: String) -> bool: return _actor_is_friendly(state, actor, target_id) or _target_hard_immune(state, content, target_id, spell)) or ray_ids.all(func(target_id: String) -> bool: return _target_spell_points(state, target_id) <= 0):
+			continue
+		var score := 540 - absi(spell.cost * power) * 3
+		for target_id: String in ray_ids:
+			score += mini(_target_spell_points(state, target_id), expected) * 6 + _target_spell_points(state, target_id)
+		best = _prefer(best, {"action": &"cast_spell", "spellId": spell.id, "power": power, "targetId": endpoint_id, "score": score})
 	return best
 
 
@@ -779,6 +825,14 @@ static func _target_missing_spell_points(state: GameState, target_id: String) ->
 		return maxi(0, character.maximum_spell_points - character.spell_points)
 	var monster := state.combat.monster_by_id(target_id)
 	return maxi(0, monster.maximum_spell_points - monster.spell_points) if monster != null else 0
+
+
+static func _target_spell_points(state: GameState, target_id: String) -> int:
+	var character := state.party.character_by_id(target_id)
+	if character != null:
+		return maxi(0, character.spell_points)
+	var monster := state.combat.monster_by_id(target_id)
+	return maxi(0, monster.spell_points) if monster != null else 0
 
 
 static func _target_condition_value(state: GameState, target_id: String, condition_index: int) -> int:

@@ -136,6 +136,8 @@ func _resolve_character_spell_monster_target(caster: CharacterState, target: Mon
 		damage = 10 + target.current_health
 	if absi(spell.special) == 59:
 		return _restore_monster_spell_points(target, damage, duration, spell_cost, saved)
+	if absi(spell.special) == 60:
+		return _drain_monster_spell_points(target, damage, duration, spell_cost, saved)
 	var traitor_before := target.traitor
 	if ClassicSpellCapabilityCatalog.is_combat_charm_spell(spell):
 		target.traitor = caster.traitor
@@ -177,6 +179,8 @@ func _resolve_character_spell_character_target(caster: CharacterState, target: C
 		damage = 10 + target.current_health
 	if absi(spell.special) == 59:
 		return _restore_character_spell_points(target, damage, duration, 0, saved)
+	if absi(spell.special) == 60:
+		return _drain_character_spell_points(target, damage, duration, 0, saved)
 	var traitor_before := target.traitor
 	if ClassicSpellCapabilityCatalog.is_combat_charm_spell(spell):
 		target.traitor = caster.traitor
@@ -379,6 +383,8 @@ func _resolve_monster_spell_character_target(caster: MonsterState, target: Chara
 		damage = 10 + target.current_health
 	if absi(spell.special) == 59:
 		return _restore_character_spell_points(target, damage, duration, spell_cost, saved)
+	if absi(spell.special) == 60:
+		return _drain_character_spell_points(target, damage, duration, spell_cost, saved)
 	var traitor_before := target.traitor
 	if ClassicSpellCapabilityCatalog.is_combat_charm_spell(spell):
 		target.traitor = caster.traitor
@@ -423,6 +429,8 @@ func _resolve_monster_spell_monster_target(caster: MonsterState, target: Monster
 		damage = 10 + target.current_health
 	if absi(spell.special) == 59:
 		return _restore_monster_spell_points(target, damage, duration, spell_cost, saved)
+	if absi(spell.special) == 60:
+		return _drain_monster_spell_points(target, damage, duration, spell_cost, saved)
 	var traitor_before := target.traitor
 	if ClassicSpellCapabilityCatalog.is_combat_charm_spell(spell):
 		target.traitor = caster.traitor
@@ -466,6 +474,22 @@ static func _restore_character_spell_points(target: CharacterState, amount: int,
 static func _restore_monster_spell_points(target: MonsterState, amount: int, duration: int, spell_cost: int, saved: bool) -> SpellResolution:
 	var before := target.spell_points
 	target.spell_points = mini(target.maximum_spell_points, target.spell_points + maxi(0, amount))
+	var result := SpellResolution.new(true, false, saved, spell_cost, 0, duration)
+	result.spell_point_delta = target.spell_points - before
+	return result
+
+
+static func _drain_character_spell_points(target: CharacterState, amount: int, duration: int, spell_cost: int, saved: bool) -> SpellResolution:
+	var before := target.spell_points
+	target.spell_points = maxi(0, target.spell_points - maxi(0, amount))
+	var result := SpellResolution.new(true, false, saved, spell_cost, 0, duration)
+	result.spell_point_delta = target.spell_points - before
+	return result
+
+
+static func _drain_monster_spell_points(target: MonsterState, amount: int, duration: int, spell_cost: int, saved: bool) -> SpellResolution:
+	var before := target.spell_points
+	target.spell_points = maxi(0, target.spell_points - maxi(0, amount))
 	var result := SpellResolution.new(true, false, saved, spell_cost, 0, duration)
 	result.spell_point_delta = target.spell_points - before
 	return result
