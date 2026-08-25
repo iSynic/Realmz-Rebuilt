@@ -192,7 +192,7 @@ func run() -> void:
 		assert_true(reopened.is_ok(), "a fresh application process opens the app-owned installed package from its validation receipt")
 		assert_true(installed_phases.has(&"checking-install"), "installed startup checks the durable receipt and immutable file identity")
 		assert_true(installed_phases.has(&"checking-install-integrity"), "installed startup verifies the whole archive SHA-256 before trusting decoded content")
-		assert_false(installed_phases.has(&"validating-integrity"), "installed startup does not repeat Providence payload validation")
+		assert_false(installed_phases.has(&"validating-integrity"), "installed startup does not repeat Providence payload validation"); var document_cache_path := installed.installed_path + ".documents.cache"; assert_true(FileAccess.file_exists(document_cache_path), "the first trusted reopen writes a compressed parsed-document cache beside the immutable archive"); var cached_phases: Array[StringName] = []; var cache_reopened := PackageRepository.new().install_package(installed.installed_path, install_root, func(phase: StringName, _completed: int, _total: int) -> void: if not cached_phases.has(phase): cached_phases.append(phase)); assert_true(cache_reopened.is_ok() and cached_phases.has(&"restoring-runtime-image") and not cached_phases.has(&"checking-install-integrity") and not cached_phases.has(&"reading-documents"), "a later process restores its verified primitive-only runtime image without rehashing the archive or reparsing JSON"); var damaged := FileAccess.open(document_cache_path, FileAccess.WRITE); damaged.store_buffer(var_to_bytes({"kind": "invalid"})); damaged.close(); var fallback_phases: Array[StringName] = []; var fallback_reopened := PackageRepository.new().install_package(installed.installed_path, install_root, func(phase: StringName, _completed: int, _total: int) -> void: if not fallback_phases.has(phase): fallback_phases.append(phase)); assert_true(fallback_reopened.is_ok() and fallback_phases.has(&"checking-install-integrity") and fallback_phases.has(&"reading-documents"), "an invalid sidecar rehashes and reparses the verified immutable archive instead of becoming a package failure")
 		var duplicate_path := installed.installed_path.get_base_dir().path_join("zz-duplicate.realmz2")
 		if FileAccess.file_exists(duplicate_path):
 			DirAccess.remove_absolute(ProjectSettings.globalize_path(duplicate_path))
@@ -218,7 +218,7 @@ func run() -> void:
 				listed_path = candidate.path
 		assert_equal(listed_campaigns, 1, "campaign discovery collapses immutable revisions to one current campaign entry")
 		assert_equal(listed_path, duplicate_path, "campaign discovery selects the most recently installed valid revision")
-		var altered_bytes := FileAccess.get_file_as_bytes(installed.installed_path)
+		var altered_bytes := FileAccess.get_file_as_bytes(installed.installed_path); DirAccess.remove_absolute(ProjectSettings.globalize_path(document_cache_path))
 		assert_true(not altered_bytes.is_empty(), "the receipt test can read its isolated installed fixture")
 		if not altered_bytes.is_empty():
 			altered_bytes[altered_bytes.size() - 1] = altered_bytes[altered_bytes.size() - 1] ^ 1

@@ -47,7 +47,7 @@ Own deterministic automated proofs, synthetic fixtures, oracle provenance, route
 - `godot --headless --path . --script res://tests/test_runner.gd` runs the complete typed suite.
 - `tools/run_tests.ps1 -Suite <fragment> -Case <fragment>` runs Tier 1 focused cases in one bounded Godot process and rejects unmatched filters, teardown leaks, and retained-resource warnings.
 - `tools/verify_workflow.ps1` is the Tier 2 workflow gate. `tools/verify.ps1` is the Tier 3/CI authority.
-- Package tests verify strict schema-v3 decoding, deterministic package identity, Castle's empty fallback for a missing direct encounter-prompt record, preservation of its exact unmatchable `-32768` item-use restriction, receipt trust, bounded cache lifetime, and explicit rejection of obsolete schemas.
+- Package tests verify strict schema-v3 decoding, deterministic package identity, Castle's empty fallback for a missing direct encounter-prompt record, preservation of its exact unmatchable `-32768` item-use restriction, receipt trust, bounded graph-cache lifetime, exact-bound parsed-document cache reuse/fallback, joined built-in loading, and explicit rejection of obsolete schemas.
 - Save tests verify strict save-v4 variants, transactional restore, backup recovery, package mismatch, and explicit rejection of save v1-v3.
 - Presentation acceptance checks the canonical 1280x720 composition and optional 800x600 Classic composition. Text/interface-scale checks run against those two compositions; intermediate or larger sizes may receive smoke coverage but are not independent visual-acceptance targets. Pending interactions block both route and map input.
 

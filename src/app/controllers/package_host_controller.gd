@@ -3,14 +3,17 @@ extends RefCounted
 
 const PackageRepositoryScript := preload("res://src/infrastructure/packages/package_repository.gd")
 const PackageInstallTaskScript := preload("res://src/infrastructure/packages/package_install_task.gd")
+const BundledPackageLoadTaskScript := preload("res://src/infrastructure/packages/bundled_package_load_task.gd")
 
 var _repository: PackageRepository
 var _task: PackageInstallTask
+var _bundled_task: RefCounted
 
 
 func _init(repository: PackageRepository = null) -> void:
 	_repository = repository if repository != null else PackageRepositoryScript.new()
 	_task = PackageInstallTaskScript.new(_repository)
+	_bundled_task = BundledPackageLoadTaskScript.new()
 
 
 func start_install(package_path: String) -> bool:
@@ -50,6 +53,23 @@ func load_bundled(package_path: String, expected_campaign_id: String, expected_p
 	return PreparedPackage.new(package_path, loaded.content, loaded.media)
 
 
+func start_bundled_load(package_path: String, expected_campaign_id: String, expected_package_hash: String) -> bool:
+	return _bundled_task.start(package_path, expected_campaign_id, expected_package_hash)
+
+
+func bundled_load_is_running() -> bool:
+	return _bundled_task.is_running()
+
+
+func take_bundled_package(package_path: String) -> PreparedPackage:
+	var loaded: PackageLoadResult = _bundled_task.take_result()
+	if loaded == null:
+		return null
+	if not loaded.is_ok():
+		return PreparedPackage.new("", null, null, loaded.error_code, loaded.error_message)
+	return PreparedPackage.new(package_path, loaded.content, loaded.media)
+
+
 func promote(prepared: PreparedPackage) -> void:
 	if prepared != null and prepared.is_ok() and not prepared.installed_path.is_empty():
 		_repository.promote_installed_package(prepared.installed_path)
@@ -57,6 +77,7 @@ func promote(prepared: PreparedPackage) -> void:
 
 func close() -> void:
 	_task.shutdown()
+	_bundled_task.shutdown()
 	_repository.close()
 
 

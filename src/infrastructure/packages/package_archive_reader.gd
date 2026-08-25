@@ -30,6 +30,18 @@ func read_document(archive: ZIPReader, path: String) -> Variant:
 	return parsed
 
 
+func read_documents(archive: ZIPReader, paths: Array[String], progress_callback: Callable = Callable()) -> Variant:
+	last_error = ""
+	var documents: Dictionary = {}
+	for index: int in paths.size():
+		var parsed: Variant = read_document(archive, paths[index])
+		if parsed == null:
+			return null
+		documents[paths[index]] = parsed
+		_report_progress(progress_callback, &"reading-documents", index + 1, paths.size())
+	return documents
+
+
 func validate_files(manifest: Dictionary, archive: ZIPReader, progress_callback: Callable = Callable(), cancel_callback: Callable = Callable()) -> bool:
 	last_error = ""
 	var file_paths: Array[String] = []

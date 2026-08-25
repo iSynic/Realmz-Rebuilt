@@ -124,8 +124,10 @@ static func _message_for(operation_phase: StringName, completed_units: int, tota
 	match operation_phase:
 		&"opening": return "Opening campaign package…"
 		&"checking-install": return "Opening installed campaign…"
+		&"restoring-runtime-image": return "Restoring verified campaign data…"
 		&"validating-source": return "Checking external package before installation…"
 		&"validating-integrity": return "Checking external package files %d of %d…" % [completed_units, total_units]
+		&"reading-documents": return "Reading compiled Realmz content %d of %d…" % [completed_units, total_units]
 		&"constructing-content": return "Loading compiled Realmz content…"
 		&"copying-package": return "Installing immutable package…"
 		&"validating-install": return "Checking installed copy…"

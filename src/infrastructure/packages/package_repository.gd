@@ -1,6 +1,7 @@
 class_name PackageRepository
 extends RefCounted
 
+const PackageDocumentCacheScript := preload("res://src/infrastructure/packages/package_document_cache.gd")
 const EXPECTED_SCHEMA_HASH: String = "6ef382e35335ba91fc72a94c4600633f68255ad30651a4da195e134887e05bdb"
 const DECODER_VERSION: int = 5
 const REQUIRED_DOCUMENTS: Array[String] = ["assets/index.json", "content.json", "scenario.json", "world.json"]
@@ -21,6 +22,7 @@ var _last_error: String = ""
 var _package_cache := PackageGraphCache.new()
 var _receipt_store := PackageInstallReceiptStore.new(EXPECTED_SCHEMA_HASH, DECODER_VERSION)
 var _archive_reader := PackageArchiveReader.new()
+var _document_cache := PackageDocumentCacheScript.new(EXPECTED_SCHEMA_HASH, DECODER_VERSION)
 var _manifest_discovery := PackageManifestDiscovery.new(EXPECTED_SCHEMA_HASH, SUPPORTED_CAPABILITIES, DEFERRED_PACKAGE_CAPABILITIES, _archive_reader)
 var _media_validator := PackageMediaValidatorResolver.new()
 var _domain_assembler := PackageDomainAssembler.new()
@@ -28,9 +30,14 @@ var _domain_assembler := PackageDomainAssembler.new()
 
 func promote_installed_package(path: String) -> void:
 	var receipt := _receipt_store.read(path)
-	if receipt.is_empty() or not _receipt_store.validate_archive_sha256(receipt, _archive_reader.sha256_file(path)):
+	if receipt.is_empty():
 		return
-	_package_cache.promote(_receipt_store.cache_key(path, receipt))
+	var cache_key := _receipt_store.cache_key(path, receipt)
+	if _package_cache.get_result(cache_key) != null:
+		_package_cache.promote(cache_key)
+		return
+	if _receipt_store.validate_archive_sha256(receipt, _archive_reader.sha256_file(path)):
+		_package_cache.promote(cache_key)
 
 
 func retained_package_count() -> int:
@@ -181,23 +188,28 @@ func _load_installed_package(path: String, install_root: String, progress_callba
 	var receipt := _receipt_store.read(path)
 	if receipt.is_empty():
 		return PackageLoadResult.failed(&"package_install_receipt_invalid", _receipt_store.last_error if not _receipt_store.last_error.is_empty() else "Installed package receipt is invalid.")
-	_report_progress(progress_callback, &"checking-install-integrity", 0, 1)
-	var archive_sha256 := _archive_reader.sha256_file(path)
-	if not _receipt_store.validate_archive_sha256(receipt, archive_sha256):
-		return PackageLoadResult.failed(&"package_install_receipt_invalid", _receipt_store.last_error)
-	_report_progress(progress_callback, &"checking-install-integrity", 1, 1)
-	if _cancel_requested(cancel_callback):
-		return PackageLoadResult.failed(&"package_cancelled", "Package operation cancelled.")
 	var cache_key := _receipt_store.cache_key(path, receipt)
 	var cached := _package_cache.get_result(cache_key)
 	if cached != null:
 		_report_progress(progress_callback, &"complete", 1, 1)
 		return cached
+	var archive_sha256: String = receipt["archiveSha256"]
+	var cached_documents: Dictionary = _document_cache.read(path, archive_sha256)
+	if cached_documents.is_empty():
+		_report_progress(progress_callback, &"checking-install-integrity", 0, 1)
+		archive_sha256 = _archive_reader.sha256_file(path)
+		if not _receipt_store.validate_archive_sha256(receipt, archive_sha256):
+			return PackageLoadResult.failed(&"package_install_receipt_invalid", _receipt_store.last_error)
+		_report_progress(progress_callback, &"checking-install-integrity", 1, 1)
+	else:
+		_report_progress(progress_callback, &"restoring-runtime-image", 0, 1)
+	if _cancel_requested(cancel_callback):
+		return PackageLoadResult.failed(&"package_cancelled", "Package operation cancelled.")
 	var archive := ZIPReader.new()
 	var open_error := archive.open(path)
 	if open_error != OK:
 		return PackageLoadResult.failed(&"package_open_failed", "Could not open installed package '%s' (error %d)." % [path, open_error])
-	var result := _load_open_archive(archive, path, progress_callback, cancel_callback, receipt)
+	var result := _load_open_archive(archive, path, progress_callback, cancel_callback, receipt, cached_documents)
 	archive.close()
 	if result.is_ok():
 		_package_cache.retain_candidate(cache_key, result)
@@ -223,7 +235,7 @@ func _receipt_matches_manifest(receipt: Dictionary, manifest: Dictionary) -> boo
 	return true
 
 
-func _load_open_archive(archive: ZIPReader, source_path: String, progress_callback: Callable = Callable(), cancel_callback: Callable = Callable(), trusted_receipt: Dictionary = {}) -> PackageLoadResult:
+func _load_open_archive(archive: ZIPReader, source_path: String, progress_callback: Callable = Callable(), cancel_callback: Callable = Callable(), trusted_receipt: Dictionary = {}, cached_documents: Dictionary = {}) -> PackageLoadResult:
 	var archive_entries_value: Variant = _archive_reader.entries(archive)
 	var archive_entries: Array[String] = []
 	if archive_entries_value != null:
@@ -241,18 +253,19 @@ func _load_open_archive(archive: ZIPReader, source_path: String, progress_callba
 		if not _manifest_discovery.last_error.is_empty():
 			_last_error = _manifest_discovery.last_error
 		return _validation_failure()
-	_report_progress(progress_callback, &"constructing-content", 0, 1)
-	var content_value: Variant = _archive_reader.read_document(archive, "content.json")
-	var world_value: Variant = _archive_reader.read_document(archive, "world.json")
-	var scenario_value: Variant = _archive_reader.read_document(archive, "scenario.json")
-	var asset_value: Variant = _archive_reader.read_document(archive, "assets/index.json")
-	if content_value == null or world_value == null or scenario_value == null or asset_value == null:
+	var document_paths: Array[String] = ["content.json", "world.json", "scenario.json", "assets/index.json"]
+	var documents_value: Variant = cached_documents
+	if cached_documents.is_empty():
+		_report_progress(progress_callback, &"reading-documents", 0, document_paths.size())
+		documents_value = _archive_reader.read_documents(archive, document_paths, progress_callback)
+	if documents_value == null:
 		_last_error = _archive_reader.last_error
 		return _validation_failure()
-	var content_document: Dictionary = content_value
-	var world_document: Dictionary = world_value
-	var scenario_document: Dictionary = scenario_value
-	var asset_document: Dictionary = asset_value
+	var documents: Dictionary = documents_value
+	var content_document: Dictionary = documents["content.json"]
+	var world_document: Dictionary = documents["world.json"]
+	var scenario_document: Dictionary = documents["scenario.json"]
+	var asset_document: Dictionary = documents["assets/index.json"]
 	if not _validate_document_header(content_document, "realmz2.content") or not _validate_document_header(world_document, "realmz2.world") or not _validate_document_header(scenario_document, "realmz2.scenario") or not _validate_document_header(asset_document, "realmz2.assets"):
 		return _validation_failure()
 	if trusted_receipt.is_empty():
@@ -267,10 +280,13 @@ func _load_open_archive(archive: ZIPReader, source_path: String, progress_callba
 			_last_error = _media_validator.error_message()
 			return _validation_failure()
 	var runtime_assets := _media_validator.construct_assets(asset_document)
+	_report_progress(progress_callback, &"constructing-content", 0, 1)
 	var runtime_content := _domain_assembler.assemble(manifest, content_document, world_document, scenario_document, runtime_assets, not trusted_receipt.is_empty())
 	if runtime_content == null:
 		_last_error = _domain_assembler.error_message()
 		return _validation_failure()
+	if cached_documents.is_empty() and trusted_receipt.has("archiveSha256"):
+		_document_cache.write(source_path, trusted_receipt["archiveSha256"], documents)
 	return PackageLoadResult.succeeded(runtime_content, PackageMediaCatalog.new(source_path, manifest["packageHash"], runtime_assets))
 
 

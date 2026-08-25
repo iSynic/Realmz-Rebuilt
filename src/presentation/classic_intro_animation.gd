@@ -28,7 +28,8 @@ func activate() -> void:
 	_ensure_soundtrack_player()
 	if stream == null:
 		stream = ResourceLoader.load(INTRO_STREAM_PATH, "VideoStream", ResourceLoader.CACHE_MODE_IGNORE) as VideoStream
-	_load_soundtrack()
+	if audio_enabled:
+		_load_soundtrack()
 	if is_inside_tree() and stream != null and not is_playing():
 		play()
 	if is_inside_tree() and audio_enabled and _soundtrack.stream != null and not _soundtrack.playing:

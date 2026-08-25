@@ -4,7 +4,7 @@ const FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-fi
 const TAMPERED_FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-tampered.realmz2"
 const TEST_ROOT: String = "user://test-package-task"
 const PackageInstallTaskScript := preload("res://src/infrastructure/packages/package_install_task.gd")
-const PackageOperationStatusScript := preload("res://src/infrastructure/packages/package_operation_status.gd")
+const PackageOperationStatusScript := preload("res://src/infrastructure/packages/package_operation_status.gd"); const BundledPackageLoadTaskScript := preload("res://src/infrastructure/packages/bundled_package_load_task.gd")
 
 const TERMINAL_WAIT_MILLISECONDS: int = 20_000
 const POLL_DELAY_MILLISECONDS: int = 2
@@ -29,7 +29,7 @@ func run() -> void:
 	_test_successful_task(campaign_id, package_hash)
 	_test_tampered_task(campaign_id, package_hash)
 	_test_cancel_before_start(campaign_id, package_hash)
-	_test_shutdown_joins_worker()
+	_test_shutdown_joins_worker(); _test_bundled_load_task()
 	_cleanup_test_root()
 
 
@@ -45,17 +45,14 @@ func _test_successful_task(campaign_id: String, package_hash: String) -> void:
 		task.shutdown()
 		_cleanup_test_root()
 		return
-	assert_equal(terminal.state, PackageOperationStatusScript.SUCCEEDED, "the package task reaches terminal success")
-	assert_true(observed_phases.has(&"complete"), "the worker publishes a meaningful terminal progress phase")
+	assert_equal(terminal.state, PackageOperationStatusScript.SUCCEEDED, "the package task reaches terminal success"); assert_true(observed_phases.has(&"complete"), "the worker publishes a meaningful terminal progress phase")
 	assert_equal([terminal.completed, terminal.total, terminal.progress_ratio()], [1, 1, 1.0], "successful progress is complete and bounded")
 
 	var result: RefCounted = task.take_result()
 	assert_not_null(result, "a successful package result is handed off to the caller")
 	if result != null:
-		assert_true(result.is_ok(), "the handed-off package result is typed success")
-		assert_equal(result.package.content.campaign_id, campaign_id, "the result retains the validated campaign identity")
-		assert_true(FileAccess.file_exists(result.installed_path), "the successful result points to the immutable installed package")
-		assert_contains(result.installed_path, package_hash, "the successful result path carries the package hash")
+		assert_true(result.is_ok(), "the handed-off package result is typed success"); assert_equal(result.package.content.campaign_id, campaign_id, "the result retains the validated campaign identity")
+		assert_true(FileAccess.file_exists(result.installed_path), "the successful result points to the immutable installed package"); assert_contains(result.installed_path, package_hash, "the successful result path carries the package hash")
 	assert_true(task.take_result() == null, "a package result is consumed exactly once")
 	var idle: RefCounted = task.snapshot()
 	assert_equal([idle.state, idle.phase, idle.completed, idle.total], [PackageOperationStatusScript.IDLE, &"", 0, 0], "taking the result resets the task to idle")
@@ -77,11 +74,9 @@ func _test_tampered_task(campaign_id: String, package_hash: String) -> void:
 	var result: RefCounted = task.take_result()
 	assert_not_null(result, "a typed failure result is handed off for a tampered package")
 	if result != null:
-		assert_false(result.is_ok(), "a tampered package cannot produce a successful install")
-		assert_equal(result.error_code, &"package_validation_failed", "the worker preserves the repository validation error code")
+		assert_false(result.is_ok(), "a tampered package cannot produce a successful install"); assert_equal(result.error_code, &"package_validation_failed", "the worker preserves the repository validation error code")
 		assert_contains(result.error_message, "failed size or SHA-256", "the worker preserves the repository validation error message")
-		assert_true(result.installed_path.is_empty(), "a failed package result has no installed path")
-		assert_true(result.package == null, "a failed package result has no validated package payload")
+		assert_true(result.installed_path.is_empty(), "a failed package result has no installed path"); assert_true(result.package == null, "a failed package result has no validated package payload")
 	assert_false(FileAccess.file_exists(_installed_path(campaign_id, package_hash)), "a tampered package leaves no immutable installation")
 	task.shutdown()
 	_cleanup_test_root()
@@ -92,8 +87,7 @@ func _test_cancel_before_start(campaign_id: String, package_hash: String) -> voi
 	var task: RefCounted = PackageInstallTaskScript.new()
 	task.cancel()
 	var before_start: RefCounted = task.snapshot()
-	assert_equal([before_start.state, before_start.phase], [PackageOperationStatusScript.IDLE, &""], "cancellation before start is a deterministic no-op")
-	assert_false(FileAccess.file_exists(_installed_path(campaign_id, package_hash)), "cancellation before start leaves no immutable installation")
+	assert_equal([before_start.state, before_start.phase], [PackageOperationStatusScript.IDLE, &""], "cancellation before start is a deterministic no-op"); assert_false(FileAccess.file_exists(_installed_path(campaign_id, package_hash)), "cancellation before start leaves no immutable installation")
 	task.shutdown()
 	_cleanup_test_root()
 
@@ -106,10 +100,21 @@ func _test_shutdown_joins_worker() -> void:
 	var after_shutdown: RefCounted = task.snapshot()
 	assert_true(after_shutdown.state == PackageOperationStatusScript.FAILED or after_shutdown.state == PackageOperationStatusScript.CANCELLED, "shutdown joins the started worker at a terminal state")
 	var result: RefCounted = task.take_result()
-	assert_not_null(result, "a joined worker retains one result for explicit consumption")
-	assert_true(task.take_result() == null, "shutdown does not duplicate the worker result")
+	assert_not_null(result, "a joined worker retains one result for explicit consumption"); assert_true(task.take_result() == null, "shutdown does not duplicate the worker result")
 	task.shutdown()
 	_cleanup_test_root()
+
+
+func _test_bundled_load_task() -> void:
+	var task: RefCounted = BundledPackageLoadTaskScript.new()
+	assert_true(task.start("res://src/infrastructure/characters/realmz-classic-character-library.realmz2", "realmz-classic-character-library", "d134c8f552d4e5893dcf82ea25bd21504c45a1e0cffb84bf4061a1b83ec00b49"), "the built-in library starts outside the first-frame boundary")
+	var deadline := Time.get_ticks_msec() + TERMINAL_WAIT_MILLISECONDS
+	while task.is_running() and Time.get_ticks_msec() < deadline:
+		OS.delay_msec(POLL_DELAY_MILLISECONDS)
+	var result: PackageLoadResult = task.take_result()
+	assert_true(result != null and result.is_ok() and result.content.race_definitions().size() == 30, "the asynchronous built-in load returns the complete trusted Classic library")
+	assert_true(task.take_result() == null, "the built-in result is consumed exactly once")
+	task.shutdown()
 
 
 func _wait_for_terminal(task: RefCounted, observed_phases: Array[StringName] = []) -> RefCounted:

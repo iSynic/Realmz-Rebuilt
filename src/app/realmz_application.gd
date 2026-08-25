@@ -39,6 +39,7 @@ var _pending_package_seed: int = 1
 var _last_package_operation_key: String = ""
 var _character_library_content: RealmzContent
 var _character_library_media: MediaSource
+var _character_library_load_complete: bool = false; var _pending_prepared_package: PreparedPackage
 var _character_creation_host: CharacterCreationHostController
 var _session_close_waits_for_playback: bool = false
 var _held_movement: HeldMovementControllerScript
@@ -48,24 +49,15 @@ var _debug_tools: DebugToolsHost
 
 
 func _ready() -> void:
-	get_tree().set_auto_accept_quit(false)
-	UiInputActions.ensure_defaults()
-	_package_host = PackageHostControllerScript.new()
-	_save_host = SaveHostControllerScript.new()
-	_vault_host = CharacterVaultControllerScript.new()
-	_character_creation_host = CharacterCreationHostControllerScript.new()
-	settings_repository = SettingsRepositoryScript.new()
-	_presentation_settings = settings_repository.load_settings()
-	session_controller = GameSessionControllerScript.new()
-	presentation_coordinator = PresentationCoordinatorScript.new()
-	_dungeon_presenter = DungeonMap3DPresenterScript.new()
-	_held_movement = HeldMovementControllerScript.new()
-	add_child(session_controller)
-	add_child(presentation_coordinator)
-	add_child(_dungeon_presenter)
-	add_child(_held_movement)
-	_debug_tools = DebugToolsHostScript.new()
-	add_child(_debug_tools)
+	get_tree().set_auto_accept_quit(false); UiInputActions.ensure_defaults()
+	_package_host = PackageHostControllerScript.new(); _save_host = SaveHostControllerScript.new()
+	_vault_host = CharacterVaultControllerScript.new(); _character_creation_host = CharacterCreationHostControllerScript.new()
+	settings_repository = SettingsRepositoryScript.new(); _presentation_settings = settings_repository.load_settings()
+	session_controller = GameSessionControllerScript.new(); presentation_coordinator = PresentationCoordinatorScript.new()
+	_dungeon_presenter = DungeonMap3DPresenterScript.new(); _held_movement = HeldMovementControllerScript.new()
+	add_child(session_controller); add_child(presentation_coordinator)
+	add_child(_dungeon_presenter); add_child(_held_movement)
+	_debug_tools = DebugToolsHostScript.new(); add_child(_debug_tools)
 	_debug_tools.bind(session_controller, self, func() -> RealmzContent: return _active_content)
 	_debug_tools.status_changed.connect(func(message: String, failed: bool) -> void: _shell_presenter.set_status(message, failed))
 	_held_movement.set_speed_percent(_presentation_settings.exploration_speed_percent)
@@ -137,7 +129,7 @@ func _ready() -> void:
 	_audio_presenter.set_music_volume(_presentation_settings.music_volume)
 	_on_topology_debug_changed(_presentation_settings.topology_debug)
 	_on_dungeon_3d_changed(_presentation_settings.dungeon_3d)
-	_load_classic_character_library()
+	_classic_shell.set_standalone_character_creation_available(false, "Loading the built-in Classic definitions…"); call_deferred("_begin_classic_character_library_load")
 	_status_label.text = "Pure session boundary online"
 	_refresh_campaigns()
 	_refresh_vault_views()
@@ -145,7 +137,7 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
-	if _held_movement != null and _held_movement.is_active():
+	_poll_classic_character_library_load(); if _held_movement != null and _held_movement.is_active():
 		if not accepts_exploration_input():
 			_held_movement.stop()
 		elif _held_movement.active_source() == &"mouse" and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
@@ -166,6 +158,8 @@ func _process(_delta: float) -> void:
 	if operation.state == PackageOperationView.CANCELLED:
 		_shell_presenter.set_status("Campaign preparation cancelled.")
 		return
+	if not _character_library_load_complete:
+		_pending_prepared_package = prepared; _shell_presenter.set_status("Campaign ready • finishing the built-in Classic definitions…"); return
 	_complete_package_install(prepared, _pending_package_seed)
 
 
@@ -872,17 +866,25 @@ func _refresh_vault_views() -> void:
 	_classic_shell.set_vault_revisions(_vault_host.revisions(_active_content, _character_library_content))
 
 
-func _load_classic_character_library() -> void:
-	var prepared := _package_host.load_bundled(CLASSIC_CHARACTER_LIBRARY_PATH, CLASSIC_CHARACTER_LIBRARY_ID, CLASSIC_CHARACTER_LIBRARY_HASH)
-	if not prepared.is_ok():
-		_classic_shell.set_standalone_character_creation_available(false, prepared.error_message)
-		_shell_presenter.set_status("Character Files creation unavailable • %s" % prepared.error_message, true)
+func _begin_classic_character_library_load() -> void:
+	if not _package_host.start_bundled_load(CLASSIC_CHARACTER_LIBRARY_PATH, CLASSIC_CHARACTER_LIBRARY_ID, CLASSIC_CHARACTER_LIBRARY_HASH):
+		_character_library_load_complete = true; _classic_shell.set_standalone_character_creation_available(false, "The built-in Classic definitions could not start loading.")
+
+
+func _poll_classic_character_library_load() -> void:
+	if _character_library_load_complete or _package_host == null or _package_host.bundled_load_is_running():
 		return
-	_character_library_content = prepared.content
-	_character_library_media = prepared.media
-	presentation_coordinator.set_application_character_media(_character_library_media)
-	presentation_coordinator.set_package_media(_character_library_media)
-	_classic_shell.set_standalone_character_creation_available(true)
+	var prepared := _package_host.take_bundled_package(CLASSIC_CHARACTER_LIBRARY_PATH)
+	if prepared == null: return
+	_character_library_load_complete = true
+	if not prepared.is_ok():
+		_classic_shell.set_standalone_character_creation_available(false, prepared.error_message); _shell_presenter.set_status("Character Files creation unavailable • %s" % prepared.error_message, true)
+	else:
+		_character_library_content = prepared.content; _character_library_media = prepared.media
+		presentation_coordinator.set_application_character_media(_character_library_media); presentation_coordinator.set_package_media(_character_library_media)
+		_classic_shell.set_standalone_character_creation_available(true); _refresh_vault_views()
+	if _pending_prepared_package != null:
+		var pending := _pending_prepared_package; _pending_prepared_package = null; _complete_package_install(pending, _pending_package_seed)
 
 
 func _begin_standalone_character_creation() -> void:

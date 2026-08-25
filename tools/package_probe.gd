@@ -20,17 +20,31 @@ func _initialize() -> void:
 		install_root = arguments[2]
 	var repository := PACKAGE_REPOSITORY_SCRIPT.new()
 	var started_at := Time.get_ticks_msec()
+	var timing := {"active": &"" as StringName, "startedAt": started_at, "phaseMs": {}}
+	var record_progress := func(phase: StringName, _completed: int, _total: int) -> void:
+		var now := Time.get_ticks_msec()
+		var active: StringName = timing["active"]
+		if phase != active:
+			if not active.is_empty():
+				var phase_ms: Dictionary = timing["phaseMs"]
+				phase_ms[String(active)] = int(phase_ms.get(String(active), 0)) + now - int(timing["startedAt"])
+			timing["active"] = phase
+			timing["startedAt"] = now
 	var package_result: PackageLoadResult
 	if install_root.is_empty():
-		package_result = repository.load_package(package_path)
+		package_result = repository.load_package(package_path, record_progress)
 	else:
-		var install_result := repository.install_package(package_path, install_root)
+		var install_result := repository.install_package(package_path, install_root, record_progress)
 		if not install_result.is_ok():
 			printerr("PACKAGE_REJECTED %s: %s" % [install_result.error_code, install_result.error_message])
 			call_deferred("_quit_cleanly", 1)
 			return
 		package_path = install_result.installed_path
 		package_result = install_result.package
+	var active_phase: StringName = timing["active"]
+	var phase_ms: Dictionary = timing["phaseMs"]
+	if not active_phase.is_empty():
+		phase_ms[String(active_phase)] = int(phase_ms.get(String(active_phase), 0)) + Time.get_ticks_msec() - int(timing["startedAt"])
 	var package_load_ms := Time.get_ticks_msec() - started_at
 	if not package_result.is_ok():
 		printerr("PACKAGE_REJECTED %s: %s" % [package_result.error_code, package_result.error_message])
@@ -74,6 +88,7 @@ func _initialize() -> void:
 		"pendingInteraction": step.interaction != null,
 		"mediaAssets": media.assets().size(),
 		"packageLoadMs": package_load_ms,
+		"phaseMs": phase_ms,
 		"postMoveViewMs": post_move_view_ms,
 		"sessionStartMs": session_start_ms,
 		"tenRepeatViewsMs": ten_repeat_views_ms,
