@@ -680,7 +680,7 @@ static func preferred_modal_size(request: InteractionRequest, available_size: Ve
 				preferred.y = 380.0
 			InteractionRequest.LEVEL_UP:
 				var body := request.body as InteractionRequest.LevelUpRequestBody
-				preferred = Vector2(1080.0, available_size.y - 20.0) if body != null and body.mode == &"spell-selection" else Vector2(760.0, 430.0)
+				preferred = Vector2(1080.0, minf(760.0, available_size.y - 20.0)) if body != null and body.mode == &"spell-selection" else Vector2(760.0, 430.0)
 			InteractionRequest.ALLY_SELECTION:
 				preferred = Vector2(820.0, 500.0)
 	var desired := Vector2(minf(preferred.x, available_size.x - 20.0), minf(preferred.y, available_size.y - 20.0))
