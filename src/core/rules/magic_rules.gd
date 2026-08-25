@@ -115,6 +115,8 @@ func _resolve_character_spell_monster_target(caster: CharacterState, target: Mon
 	var cured_condition := condition_cure_index(spell)
 	if cured_condition >= 0:
 		return _clear_condition(target.conditions, cured_condition, spell_cost, duration)
+	if ClassicSpellCapabilityCatalog.is_combat_destroy_magic_spell(spell):
+		return _destroy_magic_monster(target, spell_cost, duration)
 	var saved := false
 	var damage_type := absi(spell.damage_type)
 	if damage_type > 0 and damage_type < 8:
@@ -158,6 +160,8 @@ func _resolve_character_spell_character_target(caster: CharacterState, target: C
 	var cured_condition := condition_cure_index(spell)
 	if cured_condition >= 0:
 		return _clear_condition(target.conditions, cured_condition, 0, duration)
+	if ClassicSpellCapabilityCatalog.is_combat_destroy_magic_spell(spell):
+		return _destroy_magic_character(target, 0, duration)
 	var saved := false
 	var damage_type := absi(spell.damage_type)
 	if damage_type > 0 and damage_type < 8:
@@ -358,6 +362,8 @@ func _resolve_monster_spell_character_target(caster: MonsterState, target: Chara
 	var cured_condition := condition_cure_index(spell)
 	if cured_condition >= 0:
 		return _clear_condition(target.conditions, cured_condition, spell_cost, duration)
+	if ClassicSpellCapabilityCatalog.is_combat_destroy_magic_spell(spell):
+		return _destroy_magic_character(target, spell_cost, duration)
 	var saved := false
 	var damage_type := absi(spell.damage_type)
 	if damage_type > 0 and damage_type < 8:
@@ -397,6 +403,8 @@ func _resolve_monster_spell_monster_target(caster: MonsterState, target: Monster
 	var cured_condition := condition_cure_index(spell)
 	if cured_condition >= 0:
 		return _clear_condition(target.conditions, cured_condition, spell_cost, duration)
+	if ClassicSpellCapabilityCatalog.is_combat_destroy_magic_spell(spell):
+		return _destroy_magic_monster(target, spell_cost, duration)
 	var saved := false
 	var damage_type := absi(spell.damage_type)
 	if damage_type > 0 and damage_type < 8:
@@ -478,6 +486,22 @@ static func _clear_condition(conditions: ConditionSet, condition_index: int, spe
 	conditions.set_value(condition_index, 0)
 	var result := SpellResolution.new(true, false, false, spell_cost, 0, duration)
 	result.cleared_condition = condition_index
+	return result
+
+
+static func _destroy_magic_character(target: CharacterState, spell_cost: int, duration: int) -> SpellResolution:
+	var traitor_before := target.traitor
+	var result := SpellResolution.new(true, false, false, spell_cost, 0, duration)
+	result.cleared_condition_count = target.conditions.clear_positive()
+	# Castle stores charmed character allegiance outside the condition array; special 61 resets only character slots, not summoned or NPC monster slots.
+	target.traitor = false
+	_record_allegiance_change(result, traitor_before, target.traitor)
+	return result
+
+
+static func _destroy_magic_monster(target: MonsterState, spell_cost: int, duration: int) -> SpellResolution:
+	var result := SpellResolution.new(true, false, false, spell_cost, 0, duration)
+	result.cleared_condition_count = target.conditions.clear_positive()
 	return result
 
 
@@ -621,9 +645,7 @@ func _resolve_noncombat_character_effect(target: CharacterState, spell: SpellDef
 			target.spell_points = maxi(0, target.spell_points - damage)
 			damage = 0
 		61:
-			for index: int in target.conditions.size():
-				if target.conditions.value(index) > 0:
-					target.conditions.set_value(index, 0)
+			target.conditions.clear_positive()
 		62:
 			target.conditions.set_value(ConditionRules.CURSED, 0)
 		64:

@@ -3,7 +3,7 @@ var _cached_battle_world: WorldDefinition
 
 
 func run() -> void:
-	_test_public_tactical_reaction_matrix(); _test_public_magic_matrix(); _test_war_immediate_spell_matrix(); _test_war_helpless_spell_matrix(); _test_war_queued_actor_field_matrix(); _test_war_self_centered_field_matrix(); _test_war_phase_spell(); _test_war_physical_projectile_profile(); _test_public_repeated_combat_item(); _test_public_monster_turn_matrix(); _test_public_continuation_fumble_terminal_matrix(); _test_public_command_automation_matrix()
+	_test_public_tactical_reaction_matrix(); _test_public_magic_matrix(); _test_public_destroy_magic_matrix(); _test_war_immediate_spell_matrix(); _test_war_helpless_spell_matrix(); _test_war_queued_actor_field_matrix(); _test_war_self_centered_field_matrix(); _test_war_phase_spell(); _test_war_physical_projectile_profile(); _test_public_repeated_combat_item(); _test_public_monster_turn_matrix(); _test_public_continuation_fumble_terminal_matrix(); _test_public_command_automation_matrix()
 
 
 func _test_war_immediate_spell_matrix() -> void:
@@ -159,6 +159,14 @@ func _test_public_magic_matrix() -> void:
 		var request_id := "request.group"
 		var host_result := host_api.resume_classic(_classic_battle_continuation(host_state.combat.battle_id), InteractionResponse.from_data(request_id, InteractionRequest.COMBAT, {"actorId": group_caster.id, "action": "cast_spell", "targetId": "", "spellId": group.id, "power": 1}), request_id)
 		assert_equal(host_result.state, ScenarioRuntimeOperationResult.State.WAITING, "RealmzRuntimeApi returns a typed combat response to the same battle request")
+
+
+func _test_public_destroy_magic_matrix() -> void:
+	var rules := RealmzRules.new(); var destroy := SpellDefinition.new("classic.spell.1304", 1304, "Destroy Magic"); destroy.in_combat = true; destroy.target_type = 0; destroy.spell_class = 8; destroy.damage_type = 8; destroy.cannot = 4; destroy.cost = 15; destroy.range_min = -10; destroy.special = 61; var definition := _monster_definition("monster.destroy-magic", []); var content := _content([definition], [], [], [], [destroy]); assert_equal([ClassicSpellCapabilityCatalog.combat_character_disposition(destroy), ClassicSpellCapabilityCatalog.combat_scroll_disposition(destroy), ClassicSpellCapabilityCatalog.combat_item_disposition(destroy), ClassicSpellCapabilityCatalog.combat_monster_disposition(destroy)], [ClassicSpellCapabilityCatalog.DISPOSITION_EXECUTABLE, ClassicSpellCapabilityCatalog.DISPOSITION_EXECUTABLE, ClassicSpellCapabilityCatalog.DISPOSITION_EXECUTABLE, ClassicSpellCapabilityCatalog.DISPOSITION_EXECUTABLE], "the stock Destroy Magic signature is executable through every combat casting source")
+	var caster := _character("character.destroy-magic"); caster.set_known_spells([destroy.id]); caster.maximum_spell_attacks = 2; caster.spell_points = 40; var restored_ally := _character("character.destroy-magic-restored"); restored_ally.traitor = true; restored_ally.conditions.set_value(ConditionRules.POISONED, 3); restored_ally.conditions.set_value(ConditionRules.STRONG, 2); restored_ally.conditions.set_value(ConditionRules.MAGIC_AURA, -1); var target := MonsterState.new("monster.destroy-magic.instance", definition.id, definition.name, 20, 20, 1); target.conditions.set_value(ConditionRules.POISONED, 4); target.conditions.set_value(ConditionRules.FIRE_PROTECTION, 6); var state := _state(caster, target, "battle.destroy-magic"); state.party.add_character(restored_ally); state.combat.battlefield.place_character(restored_ally.id, Vector2i(45, 46)); state.combat.set_turn_order([caster.id, restored_ally.id, target.id]); var cast := rules.combat_flow.cast_spell(state, content, caster.id, "", destroy.id, 2, _zeros(24), CombatFlow.INVALID_COORDINATE, 0, [restored_ally.id, target.id]); var saved := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data()))); assert_equal([cast.ok, caster.spell_points, restored_ally.traitor, restored_ally.conditions.value(ConditionRules.POISONED), restored_ally.conditions.value(ConditionRules.STRONG), restored_ally.conditions.value(ConditionRules.MAGIC_AURA), target.conditions.value(ConditionRules.POISONED), target.conditions.value(ConditionRules.FIRE_PROTECTION), saved.party.character_by_id(restored_ally.id).traitor], [true, 10, false, 0, 0, -1, 0, 0, false], "Destroy Magic pays once, clears every positive duration, preserves permanent negative markers, restores only a player character's separate allegiance flag, and survives save restoration")
+	var scroll_case := ItemDefinition.new("item.destroy-magic-case", 805, "Scroll Case"); scroll_case.item_type = 13; var scroll_caster := _character("character.destroy-magic-scroll"); scroll_caster.spell_points = 7; scroll_caster.set_inventory([ItemInstance.new("instance.destroy-magic-case", scroll_case.id, 0, true, true)]); scroll_caster.write_scroll(0, destroy.id, 1); var scroll_target := _character("character.destroy-magic-scroll-target"); scroll_target.conditions.set_value(ConditionRules.CURSED, 3); var scroll_state := _state(scroll_caster, MonsterState.new("monster.destroy-magic-scroll", definition.id, definition.name, 20, 20, 1), "battle.destroy-magic-scroll"); scroll_state.party.add_character(scroll_target); scroll_state.combat.battlefield.place_character(scroll_target.id, Vector2i(45, 46)); scroll_state.combat.set_turn_order([scroll_caster.id, scroll_target.id, scroll_state.combat.monsters()[0].id]); var scroll_result := rules.combat_flow.use_combat_scroll(scroll_state, _content([definition], [scroll_case], [], [], [destroy]), scroll_caster.id, 0, "", _zeros(16), CombatFlow.INVALID_COORDINATE, 0, [scroll_target.id]); var item := ItemDefinition.new("item.destroy-magic", 806, "Destroy Magic Wand"); item.item_type = 21; item.initial_charges = 2; item.item_category_mask_low = 1; item.special_1 = 1; item.special_2 = destroy.classic_id; var race := RaceDefinition.new("race.test", 1, "Test Race", [], [], [], [], [], [], []); race.item_category_mask_low = 1; var caste := CasteDefinition.new("caste.test", 1, "Test Caste", [], [], [], [], Vector2i.ONE, Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO); caste.caste_class = 1; caste.item_category_mask_low = 1; var item_caster := _character("character.destroy-magic-item"); item_caster.set_inventory([ItemInstance.new("instance.destroy-magic", item.id, 2, false, true)]); var item_target := MonsterState.new("monster.destroy-magic-item", definition.id, definition.name, 20, 20, 1); item_target.conditions.set_value(ConditionRules.SHIELD_FROM_HITS, 3); item_target.traitor = false; var item_state := _state(item_caster, item_target, "battle.destroy-magic-item"); var item_result := rules.combat_flow.use_spell_item(item_state, _content([definition], [item], [race], [caste], [destroy]), item_caster.id, "", "instance.destroy-magic", _zeros(16), CombatFlow.INVALID_COORDINATE, 0, [item_target.id]); assert_equal([scroll_result.ok, scroll_target.conditions.value(ConditionRules.CURSED), scroll_caster.spell_points, scroll_caster.scroll_at(0).is_empty(), item_result.ok, item_target.conditions.value(ConditionRules.SHIELD_FROM_HITS), item_target.traitor, item_caster.inventory()[0].charges, item_caster.spell_points], [true, 0, 7, true, true, 0, false, 1, 0], "scroll and charged-item Destroy Magic share the resolver while consuming only their source-owned resource and never changing monster allegiance")
+	var auto_caster := _character("character.destroy-magic-auto"); auto_caster.set_known_spells([destroy.id]); auto_caster.maximum_spell_attacks = 1; auto_caster.spell_points = 30; var auto_ally := _character("character.destroy-magic-auto-ally"); auto_ally.traitor = true; auto_ally.conditions.set_value(ConditionRules.POISONED, 3); var auto_state := _state(auto_caster, MonsterState.new("monster.destroy-magic-auto", definition.id, definition.name, 20, 20, 1), "battle.destroy-magic-auto"); auto_state.party.add_character(auto_ally); auto_state.combat.battlefield.place_character(auto_ally.id, Vector2i(45, 46)); auto_state.combat.battlefield.move_actor(auto_state.combat.monsters()[0].id, Vector2i(55, 45)); auto_state.combat.set_turn_order([auto_caster.id, auto_ally.id, auto_state.combat.monsters()[0].id]); var auto_result := rules.combat_flow.submit_action(auto_state, content, auto_caster.id, &"auto", "", _zeros(96)); var monster_definition := _monster_spell_definition("monster.destroy-magic-caster", destroy.id, 100); var monster_caster := MonsterState.new("monster.destroy-magic-caster.instance", monster_definition.id, monster_definition.name, 20, 20, 4, 1, 0, 0, 30); var monster_target := _character("character.destroy-magic-monster-target"); monster_target.conditions.set_value(ConditionRules.SHIELD_FROM_HITS, 3); var monster_state := _state(monster_target, monster_caster, "battle.destroy-magic-monster"); monster_state.combat.battlefield.move_actor(monster_caster.id, Vector2i(50, 45)); var monster_result := rules.combat_flow.submit_action(monster_state, _content([monster_definition], [], [], [], [destroy]), monster_target.id, &"finish", "", _zeros(96))
+	assert_equal([auto_result.ok, auto_ally.traitor, auto_ally.conditions.value(ConditionRules.POISONED), auto_caster.spell_points, auto_result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved" and event.payload.get("targetId") == auto_ally.id and event.payload.get("clearedConditionCount") == 1), monster_result.ok, monster_target.conditions.value(ConditionRules.SHIELD_FROM_HITS), monster_caster.spell_points, monster_result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved" and event.payload.get("source") == "classic-monster")], [true, false, 0, 15, true, true, 0, 15, true], "Party Auto safely restores a charmed character while monster AI strips a hostile benefit through the same deterministic special-61 capability")
 
 
 func _test_public_monster_turn_matrix() -> void:
@@ -369,8 +377,7 @@ func _test_public_repeated_combat_item() -> void:
 
 
 func _character(character_id: String) -> CharacterState:
-	var result := CharacterState.new(character_id, "Combat Test Hero", 30, 30); result.race_id = "race.test"; result.caste_id = "caste.test"; result.luck = 1; result.hand_to_hand = 1
-	result.normal_attacks = 4 if character_id in ["character.persistent-wall", "character.wall-scroll", "character.wall-item", "character.binding-wall", "character.war-brainwash"] else 2; result.maximum_movement = 12; result.movement = 12; return result
+	var result := CharacterState.new(character_id, "Combat Test Hero", 30, 30); result.race_id = "race.test"; result.caste_id = "caste.test"; result.luck = 1; result.hand_to_hand = 1; result.normal_attacks = 4 if character_id in ["character.persistent-wall", "character.wall-scroll", "character.wall-item", "character.binding-wall", "character.war-brainwash"] else 2; result.maximum_movement = 12; result.movement = 12; return result
 
 
 func _monster_definition(definition_id: String, attacks: Array[MonsterAttackDefinition]) -> MonsterDefinition:
@@ -398,8 +405,7 @@ func _classic_battle_continuation(battle_id: String) -> ScenarioRuntimeContinuat
 
 
 func _state(character: CharacterState, monster: MonsterState, battle_id: String) -> GameState:
-	var result := GameState.new(PartyState.new("map.test", Vector2i.ZERO, [character]), RealmzClock.new()); var battlefield := _blank_battlefield(); battlefield.place_character(character.id, Vector2i(45, 45)); battlefield.place_monster(monster.id, Vector2i(46, 45), 0)
-	result.combat = CombatState.new(battle_id, [monster], 0, battlefield); result.combat.set_turn_order([character.id, monster.id]); return result
+	var result := GameState.new(PartyState.new("map.test", Vector2i.ZERO, [character]), RealmzClock.new()); var battlefield := _blank_battlefield(); battlefield.place_character(character.id, Vector2i(45, 45)); battlefield.place_monster(monster.id, Vector2i(46, 45), 0); result.combat = CombatState.new(battle_id, [monster], 0, battlefield); result.combat.set_turn_order([character.id, monster.id]); return result
 
 
 func _content(monsters: Array[MonsterDefinition], items: Array[ItemDefinition] = [], races: Array[RaceDefinition] = [], castes: Array[CasteDefinition] = [], spells: Array[SpellDefinition] = []) -> RealmzContent:
@@ -408,16 +414,13 @@ func _content(monsters: Array[MonsterDefinition], items: Array[ItemDefinition] =
 
 func _blank_battlefield() -> BattlefieldState:
 	var tiles: Array[int] = []
-	tiles.resize(BattlefieldState.CELL_COUNT)
-	tiles.fill(1)
+	tiles.resize(BattlefieldState.CELL_COUNT); tiles.fill(1)
 	return BattlefieldState.new("map.test", tiles)
 
 
 func _battle_world() -> WorldDefinition:
-	if _cached_battle_world != null:
-		return _cached_battle_world
-	var cells: Array[MapCell] = []
-	var empty_ids: Array[String] = []
+	if _cached_battle_world != null: return _cached_battle_world
+	var cells: Array[MapCell] = []; var empty_ids: Array[String] = []
 	var empty_features: Array[MapFeature] = []
 	for y: int in 90:
 		for x: int in 90:
@@ -434,8 +437,7 @@ func _battle_world() -> WorldDefinition:
 
 func _ints(count: int) -> Array[int]:
 	var result: Array[int] = []
-	result.resize(count)
-	result.fill(0)
+	result.resize(count); result.fill(0)
 	return result
 
 

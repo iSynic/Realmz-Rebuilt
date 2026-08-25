@@ -35,6 +35,16 @@ func add(index: int, amount: int) -> bool:
 	return set_value(index, value(index) + amount)
 
 
+func clear_positive() -> int:
+	var cleared := 0
+	for index: int in _values.size():
+		if _values[index] <= 0:
+			continue
+		_values[index] = 0
+		cleared += 1
+	return cleared
+
+
 func decay_positive() -> Array[int]:
 	var expired: Array[int] = []
 	for index: int in _values.size():

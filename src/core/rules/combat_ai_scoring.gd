@@ -91,6 +91,8 @@ func best_monster_spell_plan(state: GameState, content: RealmzContent, monster: 
 func _monster_spell_power_plan(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, spell: SpellDefinition, slot: int, power: int, actors_by_cell: Dictionary, area_placement_cache: Dictionary, area_center_cache: Dictionary) -> Dictionary:
 	if _flow()._is_summon_spell(spell):
 		return _monster_summon_spell_power_plan(state, content, monster, spell, slot, power)
+	if ClassicSpellCapabilityCatalog.is_combat_destroy_magic_spell(spell):
+		return _monster_destroy_magic_plan(state, content, monster, spell, slot, power)
 	if spell.target_type in [3, 4]:
 		return _monster_area_spell_power_plan(state, content, monster, definition, spell, slot, power, actors_by_cell, area_placement_cache, area_center_cache)
 	if spell.target_type == 6:
@@ -153,6 +155,21 @@ func _monster_summon_spell_power_plan(state: GameState, content: RealmzContent, 
 	if hostile_count <= 0 or friendly_count > hostile_count or allied_summon_count >= maxi(1, hostile_count - friendly_count + 1):
 		return {}
 	return {"spellId": spell.id, "spellSlot": slot, "power": power, "targetIds": [], "targetCoordinates": [coordinate], "score": 400 + (hostile_count - friendly_count) * 120 + hostile_count * 20 - spell.cost * power * 3}
+
+
+func _monster_destroy_magic_plan(state: GameState, content: RealmzContent, monster: MonsterState, spell: SpellDefinition, slot: int, power: int) -> Dictionary:
+	var candidates := _destroy_magic_candidates(state, content, monster.id, monster.traitor, spell, power)
+	if candidates.is_empty():
+		return {}
+	var selected: Array[String] = []
+	for target_id: String in candidates:
+		if selected.size() >= power:
+			break
+		selected.append(target_id)
+	var score := 0
+	for target_id: String in selected:
+		score += _destroy_magic_target_score(state, monster.traitor, target_id)
+	return {"spellId": spell.id, "spellSlot": slot, "power": power, "targetIds": selected, "score": score - spell.cost * power * 3}
 
 
 func _monster_hostile_group_spell_power_plan(state: GameState, content: RealmzContent, monster: MonsterState, spell: SpellDefinition, slot: int, power: int) -> Dictionary:
@@ -333,6 +350,8 @@ func _best_party_spell(state: GameState, content: RealmzContent, actor: Characte
 			best = _prefer(best, _best_summon(state, content, actor, spell, option.power, summon_coordinate_cache))
 		elif ClassicSpellCapabilityCatalog.is_combat_charm_spell(spell):
 			best = _prefer(best, _best_charm(state, content, actor, spell, option.power))
+		elif ClassicSpellCapabilityCatalog.is_combat_destroy_magic_spell(spell):
+			best = _prefer(best, _best_destroy_magic(state, content, actor, spell, option.power))
 		elif MagicRules.is_condition_cure_spell(spell):
 			best = _prefer(best, _best_condition_cure(state, content, actor, spell, option.power))
 		elif ClassicSpellCapabilityCatalog.combat_condition_effect_index(spell) >= 0 or spell.target_type == 5 and ClassicSpellCapabilityCatalog.combat_persistent_field_condition_index(spell) >= 0:
@@ -354,6 +373,21 @@ func _best_charm(state: GameState, content: RealmzContent, actor: CharacterState
 		var score := 780 + _target_health(state, target_id) * 4 - absi(spell.cost * power) * 3
 		best = _prefer(best, {"action": &"cast_spell", "spellId": spell.id, "power": power, "targetId": target_id, "score": score})
 	return best
+
+
+func _best_destroy_magic(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, power: int) -> Dictionary:
+	var candidates := _destroy_magic_candidates(state, content, actor.id, actor.traitor, spell, power)
+	if candidates.is_empty():
+		return {}
+	var selected: Array[String] = []
+	for target_id: String in candidates:
+		if selected.size() >= power:
+			break
+		selected.append(target_id)
+	var score := 0
+	for target_id: String in selected:
+		score += _destroy_magic_target_score(state, actor.traitor, target_id)
+	return {"action": &"cast_spell", "spellId": spell.id, "power": power, "targetIds": selected, "score": score - absi(spell.cost * power) * 3}
 
 
 func _best_summon(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, power: int, coordinate_cache: Dictionary) -> Dictionary:
@@ -751,6 +785,49 @@ static func _target_condition_value(state: GameState, target_id: String, conditi
 	var character := state.party.character_by_id(target_id)
 	var monster := state.combat.monster_by_id(target_id) if character == null else null
 	return character.conditions.value(condition_index) if character != null else monster.conditions.value(condition_index) if monster != null else 0
+
+
+func _destroy_magic_candidates(state: GameState, content: RealmzContent, caster_id: String, caster_traitor: bool, spell: SpellDefinition, power: int) -> Array[String]:
+	var candidates: Array[String] = []
+	for target_id: String in _all_actor_ids(state):
+		if (target_id != caster_id and _target_reflects(state, target_id)) or _destroy_magic_target_score(state, caster_traitor, target_id) <= 0 or not _flow()._spell_actor_target_is_valid(state, content, caster_id, target_id, spell, power):
+			continue
+		candidates.append(target_id)
+	candidates.sort_custom(func(left: String, right: String) -> bool: return _destroy_magic_target_score(state, caster_traitor, left) > _destroy_magic_target_score(state, caster_traitor, right) or (_destroy_magic_target_score(state, caster_traitor, left) == _destroy_magic_target_score(state, caster_traitor, right) and left < right))
+	return candidates
+
+
+static func _destroy_magic_target_score(state: GameState, caster_traitor: bool, target_id: String) -> int:
+	var character := state.party.character_by_id(target_id)
+	var monster := state.combat.monster_by_id(target_id) if character == null else null
+	var conditions: ConditionSet = character.conditions if character != null else monster.conditions if monster != null else null
+	if conditions == null:
+		return 0
+	var target_traitor_before := character.traitor if character != null else monster.traitor
+	var target_traitor_after := false if character != null else target_traitor_before
+	var allied_before := target_traitor_before == caster_traitor
+	var allied_after := target_traitor_after == caster_traitor
+	var score := 0
+	var harmful := [ConditionRules.RUNS_AWAY, ConditionRules.HELPLESS, ConditionRules.TANGLED, ConditionRules.CURSED, ConditionRules.STUPID, ConditionRules.SLOW, ConditionRules.POISONED, ConditionRules.TURNED_TO_STONE, ConditionRules.BLIND, ConditionRules.DISEASED, ConditionRules.CONFUSED, ConditionRules.ENERGY_DRAIN, ConditionRules.HINDERED_ATTACKS, ConditionRules.HINDERED_DEFENSE, ConditionRules.SILENCED]
+	for index: int in conditions.size():
+		if conditions.value(index) <= 0:
+			continue
+		var harmful_effect := index in harmful
+		score += (300 if harmful_effect else -180) if allied_after else (-240 if harmful_effect else 240)
+	if character != null and character.traitor:
+		score += 1_200 if allied_after and not allied_before else -1_400 if allied_before and not allied_after else 0
+	return score
+
+
+static func _all_actor_ids(state: GameState) -> Array[String]:
+	var result: Array[String] = []
+	for character: CharacterState in state.party.characters():
+		if character.current_health > 0 and state.combat.battlefield.has_actor(character.id):
+			result.append(character.id)
+	for monster: MonsterState in state.combat.monsters():
+		if monster.current_health > 0 and state.combat.battlefield.has_actor(monster.id):
+			result.append(monster.id)
+	return result
 
 
 static func _target_hard_immune(state: GameState, content: RealmzContent, target_id: String, spell: SpellDefinition) -> bool:

@@ -10,6 +10,7 @@ var duration: int
 var target_defeated: bool
 var aging: CharacterAgingResult
 var cleared_condition: int = -1
+var cleared_condition_count: int = 0
 var applied_condition: int = -1
 var spell_point_delta: int = 0
 var allegiance_changed: bool = false

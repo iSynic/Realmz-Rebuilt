@@ -20,10 +20,10 @@ An executable disposition proves an owned handler boundary, not complete branch,
 - Total definitions: 420
 - Unique mechanical behavior signatures: 315
 - Mechanical families: battlefield-field=40, condition-cure=8, healing=12, ordinary=80, projectile=35, reserved=63, special-effect=170, summoning=12
-- Character combat: 224 executable, 40 pending
-- Scroll combat: 224 executable, 40 pending
-- Item combat: 224 executable, 40 pending
-- Monster combat: 207 executable, 51 pending
+- Character combat: 227 executable, 37 pending
+- Scroll combat: 227 executable, 37 pending
+- Item combat: 227 executable, 37 pending
+- Monster combat: 210 executable, 48 pending
 - Character projectiles: 35 executable, 0 pending
 - Monster projectiles: 35 executable, 0 pending
 - Character field/camp: 129 executable, 15 pending
