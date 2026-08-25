@@ -305,7 +305,24 @@ func _process_monster_cast(state: GameState, content: RealmzContent, monster: Mo
 		var area_center := INVALID_COORDINATE
 		var area_rotation := 0
 		var area_shape := 0
-		if spell.target_type in [3, 4]:
+		var summon_spell: bool = _flow()._is_summon_spell(spell)
+		if summon_spell:
+			var target_coordinates: Array[Vector2i] = []
+			target_coordinates.assign(plan.get("targetCoordinates", []))
+			if target_coordinates.is_empty():
+				break
+			state.combat.set_guarding(monster.id, false)
+			active_turn.movement_remaining = 0
+			var casts_before := active_turn.spell_cast_count
+			var summon_result: CombatFlowResult = _flow()._cast_monster_summon(state, content, monster, spell, cost_power, rng, target_coordinates)
+			if not summon_result.ok:
+				return MONSTER_ATTACK_COMPLETED if did_cast else MONSTER_ATTACK_FALLBACK
+			events.append_array(summon_result.events)
+			if active_turn.spell_cast_count == casts_before:
+				return MONSTER_ATTACK_COMPLETED if did_cast else MONSTER_ATTACK_FALLBACK
+			did_cast = true
+			continue
+		elif spell.target_type in [3, 4]:
 			area_center = plan.get("coordinate", INVALID_COORDINATE)
 			area_rotation = int(plan.get("rotation", 0))
 			area_shape = _rules.spell_areas.shape_for(spell, cost_power, area_rotation)

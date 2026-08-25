@@ -353,8 +353,16 @@ func _cast_character_summon(state: GameState, content: RealmzContent, caster: Ch
 	return _summoning.cast_character_summon(state, content, caster, spell, power_level, rng, target_coordinates, event_source, spend_spell_points, count_spell_cast)
 
 
+func _cast_monster_summon(state: GameState, content: RealmzContent, caster: MonsterState, spell: SpellDefinition, power_level: int, rng: RealmzRng, target_coordinates: Array[Vector2i]) -> CombatFlowResult:
+	return _summoning.cast_monster_summon(state, content, caster, spell, power_level, rng, target_coordinates)
+
+
 func _automatic_summon_coordinate(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition, power_level: int) -> Vector2i:
 	return _summoning.automatic_coordinate(state, content, caster, spell, power_level)
+
+
+func _automatic_monster_summon_coordinate(state: GameState, content: RealmzContent, caster: MonsterState, spell: SpellDefinition, power_level: int) -> Vector2i:
+	return _summoning.automatic_monster_coordinate(state, content, caster, spell, power_level)
 
 
 func _cast_character_phase(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, destination: Vector2i, spend_spell_points: bool = true, event_source: String = "classic", count_spell_cast: bool = true) -> CombatFlowResult:

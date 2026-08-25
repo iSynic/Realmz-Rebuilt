@@ -341,7 +341,7 @@ Next rolling priority: implement the target-type 0 repeated-selection continuati
 - Remake confirmed the creature-per-power workflow and distinct 1108/3208 Magic Darts identities. Providence commit `fa0297426677552080608e1b89bad4334d323465` replaces the misleading `Multi Open Space` label with `Multiple Actors / Open Spaces`; schema v2 already preserves target type and size, so packages do not change.
 - The aggregate gate passes 2,360 assertions across 13 suites. Thirty-seven differential cases validate against the pinned Castle and Remake references plus the current Providence compiler.
 
-Flagged boundaries: Castle prepays player cost and refunds only 66 percent on Abort; the 2.0 host continues to charge only on committed Cast. Nonzero-size open-space/summoning placement, active tactical pointer highlighting, and special/queued-field effects remain explicit.
+Flagged boundaries: Castle prepays player cost and refunds only 66 percent on Abort; the 2.0 host continues to charge only on committed Cast. Special-58 open-space summoning is now executable for learned, fixed-power scroll, Party Auto, and monster sources; charged-item summoning, active tactical pointer highlighting, and remaining special/queued-field effects stay explicit.
 
 ## Current rolling fidelity pass — Ordinary spell reflection and opposed-monster targets
 
@@ -352,7 +352,7 @@ Flagged boundaries: Castle prepays player cost and refunds only 66 percent on Ab
 - Providence requires no new package change for reflection: schema v2 already preserves target type, ordinary spell fields, and all forty signed monster conditions at the current compiler checkpoint. The knowledge-graph format-enrichment lock targets Realmz commit `4089d550ab606172bac850ac055677c36c6ff547`, not the pinned Castle oracle, so this pass uses direct source/control-flow evidence rather than applying graph conclusions across revisions.
 - The focused typed suite passes 2,388 assertions across 13 suites before aggregate closeout. Thirty-nine differential cases now distinguish ordinary reflection from area/group/field behavior.
 
-Flagged boundaries: friendly monster targeting under `cannot == 4`, nonzero-size open-space/summoning placement, rotatable masks, queued fields, item/fast/random-power casting, class-nine nonphysical effects, monster group anomalies, and target type 11 remain separate.
+Flagged boundaries: friendly monster targeting under `cannot == 4`, charged-item summoning, rotatable masks, queued fields, remaining item/fast/random-power casting, class-nine nonphysical effects, monster group anomalies, and target type 11 remain separate.
 
 ## Current rolling fidelity pass — Native race/caste identity and ordinary startup
 

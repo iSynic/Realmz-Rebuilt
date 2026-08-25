@@ -126,28 +126,81 @@ func cast_character_summon(state: GameState, content: RealmzContent, caster: Cha
 	return CombatFlowResult.succeeded(events, state.combat.completed)
 
 
+func cast_monster_summon(state: GameState, content: RealmzContent, caster: MonsterState, spell: SpellDefinition, power_level: int, rng: RealmzRng, target_coordinates: Array[Vector2i]) -> CombatFlowResult:
+	if state == null or content == null or caster == null or spell == null or rng == null:
+		return CombatFlowResult.failed(&"summon_unavailable", "The monster summon transaction is incomplete.")
+	var probe := probe_coordinates(state, content, caster.id, spell, power_level, target_coordinates)
+	if not probe.allowed:
+		return CombatFlowResult.failed(probe.reason, probe.reason_text)
+	var state_checkpoint := state.to_data()
+	var rng_checkpoint := rng.checkpoint()
+	var definition := _select_classic_summon_definition(state, content, spell, rng)
+	if definition == null:
+		return CombatFlowResult.succeeded([DomainEvent.new(&"combat_summon_denied", {"actorId": caster.id, "spellId": spell.id, "power": power_level, "reason": "no-eligible-classic-monster", "source": "classic-monster"})])
+	var battlefield := state.combat.battlefield
+	var map := content.world.map_by_id(battlefield.map_id)
+	var terrain_set := content.world.battle_terrain_set_by_id(map.battle_terrain_set_id) if map != null else null
+	var planned_cells: Dictionary = {}
+	for coordinate: Vector2i in target_coordinates:
+		if not _rules.battlefield.monster_footprint_is_open(battlefield, terrain_set, coordinate, definition.size, planned_cells):
+			return _rollback_failed_summon(state, rng, state_checkpoint, rng_checkpoint, &"summon_footprint_unavailable", "The selected space cannot hold the source-selected monster summon footprint.")
+		for cell: Vector2i in BattlefieldState.footprint_cells(coordinate, definition.size):
+			planned_cells[cell] = true
+	var cost := spell.cost * power_level
+	if cost < 0 or caster.spell_points < cost:
+		return _rollback_failed_summon(state, rng, state_checkpoint, rng_checkpoint, &"insufficient_spell_points", "The monster no longer has enough spell points for this summon.")
+	caster.spell_points -= cost
+	state.combat.active_turn.spell_cast_count += 1
+	var events: Array[DomainEvent] = []
+	_flow()._append_spell_sound(events, spell.sound_start, "classic-monster-spell-start")
+	var summoned_ids: Array[String] = []
+	for index: int in target_coordinates.size():
+		var instance_id := state.next_instance_id("monster.summoned")
+		var summoned := _rules.monsters.build_monster(definition, instance_id, 1 if caster.traitor else 0, state.difficulty, state.clock.day(), rng)
+		if summoned == null:
+			return _rollback_failed_summon(state, rng, state_checkpoint, rng_checkpoint, &"summon_construction_failed", "The selected Classic monster could not be constructed.")
+		summoned.summoned = true
+		if not state.combat.add_monster(summoned) or not battlefield.place_monster(summoned.id, target_coordinates[index], definition.size):
+			return _rollback_failed_summon(state, rng, state_checkpoint, rng_checkpoint, &"summon_placement_failed", "The selected Classic monster could not enter the battlefield.")
+		state.combat.append_turn_actor(summoned.id)
+		summoned_ids.append(summoned.id)
+		_flow()._append_spell_projectile_event(events, caster.id, summoned.id, spell, "classic-monster")
+		_flow()._append_spell_sound(events, spell.sound_end, "classic-monster-spell-result")
+		events.append(DomainEvent.new(&"combat_summoned", {"actorId": caster.id, "monsterId": summoned.id, "monsterDefinitionId": definition.id, "classicMonsterId": definition.classic_id, "coordinate": [target_coordinates[index].x, target_coordinates[index].y], "size": definition.size, "spellId": spell.id, "power": power_level, "castSequenceIndex": index, "castSequenceCount": target_coordinates.size(), "source": "classic-monster"}))
+	events.insert(1, DomainEvent.new(&"combat_spell_cast", {"actorId": caster.id, "targetId": summoned_ids[0] if not summoned_ids.is_empty() else "", "targetIds": summoned_ids, "targetCoordinates": target_coordinates.map(func(coordinate: Vector2i) -> Array[int]: return [coordinate.x, coordinate.y]), "spellId": spell.id, "classicEffectResourceId": 11_992 + spell.look_start * 8, "source": "classic-monster"}))
+	return CombatFlowResult.succeeded(events)
+
+
 func automatic_coordinate(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition, power_level: int) -> Vector2i:
-	if not probe_choice(state, content, caster.id, spell, power_level).allowed:
+	return _automatic_coordinate(state, content, caster.id, caster.traitor, spell, power_level)
+
+
+func automatic_monster_coordinate(state: GameState, content: RealmzContent, caster: MonsterState, spell: SpellDefinition, power_level: int) -> Vector2i:
+	return _automatic_coordinate(state, content, caster.id, caster.traitor, spell, power_level)
+
+
+func _automatic_coordinate(state: GameState, content: RealmzContent, caster_id: String, caster_traitor: bool, spell: SpellDefinition, power_level: int) -> Vector2i:
+	if not probe_choice(state, content, caster_id, spell, power_level).allowed:
 		return INVALID_COORDINATE
 	var map := content.world.map_by_id(state.combat.battlefield.map_id)
 	var terrain_set := content.world.battle_terrain_set_by_id(map.battle_terrain_set_id) if map != null else null
 	var maximum_range := absi(spell.range_min + spell.range_max * power_level)
 	var require_line_of_sight := spell.range_min + spell.range_max > 0
 	var candidates: Array[Vector2i] = []
-	var bounds := _candidate_bounds(state.combat.battlefield, caster.id, maximum_range)
+	var bounds := _candidate_bounds(state.combat.battlefield, caster_id, maximum_range)
 	for y: int in range(bounds.position.y, bounds.end.y):
 		for x: int in range(bounds.position.x, bounds.end.x):
 			var coordinate := Vector2i(x, y)
-			if _rules.battlefield.coordinate_target_is_valid(state.combat.battlefield, terrain_set, caster.id, coordinate, maximum_range, require_line_of_sight) and _rules.battlefield.monster_footprint_is_open(state.combat.battlefield, terrain_set, coordinate, 3):
+			if _rules.battlefield.coordinate_target_is_valid(state.combat.battlefield, terrain_set, caster_id, coordinate, maximum_range, require_line_of_sight) and _rules.battlefield.monster_footprint_is_open(state.combat.battlefield, terrain_set, coordinate, 3):
 				candidates.append(coordinate)
 	if candidates.is_empty():
 		return INVALID_COORDINATE
 	var hostile_positions: Array[Vector2i] = []
 	for monster: MonsterState in state.combat.monsters():
-		if monster.current_health > 0 and monster.traitor != caster.traitor and state.combat.battlefield.has_actor(monster.id):
+		if monster.current_health > 0 and monster.traitor != caster_traitor and state.combat.battlefield.has_actor(monster.id):
 			hostile_positions.append(state.combat.battlefield.actor_position(monster.id))
 	for character: CharacterState in state.party.characters():
-		if character.current_health > 0 and character.traitor != caster.traitor and state.combat.battlefield.has_actor(character.id):
+		if character.current_health > 0 and character.traitor != caster_traitor and state.combat.battlefield.has_actor(character.id):
 			hostile_positions.append(state.combat.battlefield.actor_position(character.id))
 	candidates.sort_custom(func(left: Vector2i, right: Vector2i) -> bool:
 		var left_distance := _nearest_distance(left, hostile_positions)

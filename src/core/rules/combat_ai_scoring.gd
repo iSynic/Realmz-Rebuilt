@@ -89,6 +89,8 @@ func best_monster_spell_plan(state: GameState, content: RealmzContent, monster: 
 
 
 func _monster_spell_power_plan(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, spell: SpellDefinition, slot: int, power: int, actors_by_cell: Dictionary, area_placement_cache: Dictionary, area_center_cache: Dictionary) -> Dictionary:
+	if _flow()._is_summon_spell(spell):
+		return _monster_summon_spell_power_plan(state, content, monster, spell, slot, power)
 	if spell.target_type in [3, 4]:
 		return _monster_area_spell_power_plan(state, content, monster, definition, spell, slot, power, actors_by_cell, area_placement_cache, area_center_cache)
 	if spell.target_type == 6:
@@ -127,6 +129,30 @@ func _monster_spell_power_plan(state: GameState, content: RealmzContent, monster
 	for target_id: String in selected:
 		score += _monster_target_score(state, target_id, spell, power, healing, cure_index, effect_index)
 	return {"spellId": spell.id, "spellSlot": slot, "power": power, "targetIds": selected, "score": score - spell.cost * power * 3}
+
+
+func _monster_summon_spell_power_plan(state: GameState, content: RealmzContent, monster: MonsterState, spell: SpellDefinition, slot: int, power: int) -> Dictionary:
+	var coordinate: Vector2i = _flow()._automatic_monster_summon_coordinate(state, content, monster, spell, power)
+	if coordinate == INVALID_COORDINATE:
+		return {}
+	var friendly_count := 0
+	var hostile_count := 0
+	var allied_summon_count := 0
+	for character: CharacterState in state.party.characters():
+		if character.current_health > 0 and state.combat.battlefield.has_actor(character.id):
+			if character.traitor == monster.traitor: friendly_count += 1
+			else: hostile_count += 1
+	for candidate: MonsterState in state.combat.monsters():
+		if candidate.current_health <= 0 or not state.combat.battlefield.has_actor(candidate.id):
+			continue
+		if candidate.traitor == monster.traitor:
+			friendly_count += 1
+			if candidate.summoned: allied_summon_count += 1
+		else:
+			hostile_count += 1
+	if hostile_count <= 0 or friendly_count > hostile_count or allied_summon_count >= maxi(1, hostile_count - friendly_count + 1):
+		return {}
+	return {"spellId": spell.id, "spellSlot": slot, "power": power, "targetIds": [], "targetCoordinates": [coordinate], "score": 400 + (hostile_count - friendly_count) * 120 + hostile_count * 20 - spell.cost * power * 3}
 
 
 func _monster_hostile_group_spell_power_plan(state: GameState, content: RealmzContent, monster: MonsterState, spell: SpellDefinition, slot: int, power: int) -> Dictionary:

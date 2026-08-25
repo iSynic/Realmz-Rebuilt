@@ -237,6 +237,8 @@ static func _combat_monster_disposition(spell: SpellDefinition) -> StringName:
 		return DISPOSITION_NOT_APPLICABLE
 	if _combat_phase_spell(spell):
 		return DISPOSITION_NOT_APPLICABLE
+	if _combat_summon_spell(spell):
+		return DISPOSITION_EXECUTABLE if spell.cost >= 0 else DISPOSITION_PENDING
 	if _combat_actor_field_spell(spell):
 		return DISPOSITION_EXECUTABLE if spell.cost > 0 else DISPOSITION_PENDING
 	if combat_spell_uses_persistent_field_queue(spell):

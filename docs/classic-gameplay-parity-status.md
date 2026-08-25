@@ -23,7 +23,7 @@ An executable disposition proves an owned handler boundary, not complete branch,
 - Character combat: 220 executable, 44 pending
 - Scroll combat: 220 executable, 44 pending
 - Item combat: 208 executable, 56 pending
-- Monster combat: 191 executable, 67 pending
+- Monster combat: 203 executable, 55 pending
 - Character projectiles: 35 executable, 0 pending
 - Monster projectiles: 35 executable, 0 pending
 - Character field/camp: 129 executable, 15 pending
