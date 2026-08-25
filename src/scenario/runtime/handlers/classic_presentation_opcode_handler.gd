@@ -44,7 +44,11 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 			var scrolling_message := _content.message_by_id(absi(action.operand_id))
 			if scrolling_message == null:
 				return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic opcode 62 references unavailable scrolling text %d." % action.operand_id)
-			return ScenarioRuntimeOperationResult.completed(scrolling_message.id, [DomainEvent.new(&"scrolling_text_requested", {
+			return ScenarioRuntimeOperationResult.waiting(InteractionRequest.from_payload(request_id, InteractionRequest.ACKNOWLEDGE, {
+				"prompt": scrolling_message.text,
+				"messageId": scrolling_message.id,
+				"presentation": "classic-scrolling-text",
+			}), ScenarioRuntimeContinuation.empty(ScenarioRuntimeContinuation.CLASSIC_ACKNOWLEDGE), [DomainEvent.new(&"scrolling_text_requested", {
 				"messageId": scrolling_message.id,
 				"text": scrolling_message.text,
 				"source": "classic",

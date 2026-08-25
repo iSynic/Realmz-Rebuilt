@@ -6,6 +6,7 @@ const ThiefEncounterInteractionScript := preload("res://src/presentation/interac
 
 const LifecycleInteractionScript := preload("res://src/presentation/interaction_components/lifecycle_interaction.gd")
 const FastSpellDockScript := preload("res://src/presentation/interaction_components/fast_spell_dock.gd")
+const ScrollingTextInteractionScript := preload("res://src/presentation/interaction_components/scrolling_text_interaction.gd")
 
 signal response_submitted(response: InteractionResponse)
 signal combat_targeting_requested(request: CombatTargetingRequest)
@@ -129,7 +130,7 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 		_set_heading("")
 		_prompt.text = ""
 		_prompt.visible = false
-	if _is_player_map_request(request):
+	if _is_player_map_request(request) or _is_scrolling_text_request(request):
 		_prompt.text = ""
 		_prompt.visible = false
 	if request.kind == &"combat_action":
@@ -443,6 +444,8 @@ func _component_for(request: InteractionRequest, game_view: GameView, media: Cla
 		var player_map := PlayerMapInteraction.new()
 		player_map.configure(game_view, media)
 		return player_map
+	if _is_scrolling_text_request(request):
+		return ScrollingTextInteractionScript.new()
 	match request.kind:
 		&"acknowledge", &"yes_no", &"encounter_choice", &"scenario_choice":
 			var text_choice := TextChoiceInteraction.new()
@@ -832,11 +835,11 @@ func _apply_content_layout() -> void:
 		_prompt_column.custom_minimum_size.x = 0.0
 		_prompt_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_options.custom_minimum_size.x = 0.0
-	_options.custom_minimum_size.y = maxf(0.0, size.y - 16.0) if uses_application_modal_region(_request) else 0.0
+	_options.custom_minimum_size.y = maxf(0.0, size.y - 16.0) if uses_application_modal_region(_request) or _is_scrolling_text_request(_request) else 0.0
 
 
 static func uses_textbox_region(request: InteractionRequest, passive_text: bool = false) -> bool:
-	return passive_text or request != null and not _is_player_map_request(request) and request.kind in [&"acknowledge", &"yes_no", &"encounter_choice", &"scenario_choice", &"character_selection", &"combat_action"]
+	return passive_text or request != null and not _is_player_map_request(request) and not _is_scrolling_text_request(request) and request.kind in [&"acknowledge", &"yes_no", &"encounter_choice", &"scenario_choice", &"character_selection", &"combat_action"]
 
 
 static func uses_floating_choice_modal(request: InteractionRequest) -> bool:
@@ -844,7 +847,7 @@ static func uses_floating_choice_modal(request: InteractionRequest) -> bool:
 
 
 static func uses_full_stage_region(request: InteractionRequest) -> bool:
-	return uses_application_workspace(request)
+	return uses_application_workspace(request) or _is_scrolling_text_request(request)
 
 
 static func uses_application_workspace(request: InteractionRequest) -> bool:
@@ -921,6 +924,13 @@ static func _is_player_map_request(request: InteractionRequest) -> bool:
 		return false
 	var body := request.body as InteractionRequest.AcknowledgeBody
 	return body != null and body.presentation == &"player-map"
+
+
+static func _is_scrolling_text_request(request: InteractionRequest) -> bool:
+	if request == null or request.kind != InteractionRequest.ACKNOWLEDGE:
+		return false
+	var body := request.body as InteractionRequest.AcknowledgeBody
+	return body != null and body.presentation == &"classic-scrolling-text"
 
 
 static func _heading_for_kind(kind: StringName) -> String:
