@@ -49,6 +49,7 @@ var _classic_flash_queue: Array[Dictionary] = []
 var _classic_flash_layer: Control
 var _classic_flash_panel: PanelContainer
 var _classic_flash_shield: ColorRect
+var _classic_flash_label: Label
 
 
 func _notification(what: int) -> void:
@@ -255,7 +256,6 @@ func queue_classic_flash_messages(messages: Array[Dictionary]) -> void:
 func _show_next_classic_flash() -> void:
 	if _classic_flash_panel != null or _classic_flash_queue.is_empty() or get_parent() == null:
 		return
-	var message: Dictionary = _classic_flash_queue.pop_front()
 	_classic_flash_layer = Control.new()
 	_classic_flash_layer.name = "ClassicFlashLayer"
 	_classic_flash_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -281,11 +281,11 @@ func _show_next_classic_flash() -> void:
 	_classic_flash_panel.add_child(content)
 	var label := Label.new()
 	label.name = "ClassicFlashText"
-	label.text = String(message["text"])
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.add_theme_color_override("font_color", Color("f0d05b"))
 	content.add_child(label)
+	_classic_flash_label = label
 	var acknowledge := Button.new()
 	acknowledge.name = "ClassicFlashContinue"
 	acknowledge.text = "Continue"
@@ -298,6 +298,14 @@ func _show_next_classic_flash() -> void:
 			_dismiss_classic_flash()
 	)
 	_apply_classic_flash_layout()
+	_present_next_classic_flash()
+
+
+func _present_next_classic_flash() -> void:
+	if _classic_flash_panel == null or _classic_flash_label == null or _classic_flash_queue.is_empty():
+		return
+	var message: Dictionary = _classic_flash_queue.pop_front()
+	_classic_flash_label.text = String(message["text"])
 	var sound_id := int(message.get("soundId", 0))
 	if sound_id > 0:
 		presentation_sound_requested.emit(sound_id)
@@ -306,8 +314,10 @@ func _show_next_classic_flash() -> void:
 func _dismiss_classic_flash() -> bool:
 	if _classic_flash_panel == null:
 		return false
-	_close_classic_flash(false)
-	_show_next_classic_flash()
+	if _classic_flash_queue.is_empty():
+		_close_classic_flash(false)
+	else:
+		_present_next_classic_flash()
 	return true
 
 
@@ -320,6 +330,7 @@ func _close_classic_flash(clear_queue: bool = true) -> void:
 	_classic_flash_layer = null
 	_classic_flash_panel = null
 	_classic_flash_shield = null
+	_classic_flash_label = null
 	if clear_queue:
 		_classic_flash_queue.clear()
 

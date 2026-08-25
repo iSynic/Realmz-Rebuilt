@@ -512,7 +512,10 @@ func _apply_layout() -> void:
 	_command_column.alignment = BoxContainer.ALIGNMENT_CENTER
 	_world_command_grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_world_command_grid.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_command_scroll.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	# The scroll owns the Party deck's available height while its grid remains
+	# centered inside it. Shrinking the scroll itself can collapse it to zero
+	# during a clear-and-rebuild container pass.
+	_command_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_command_grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_command_grid.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_world_command_grid.columns = 4
