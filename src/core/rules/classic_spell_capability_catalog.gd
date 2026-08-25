@@ -231,7 +231,7 @@ static func _combat_character_disposition(spell: SpellDefinition) -> StringName:
 		return DISPOSITION_EXECUTABLE
 	if combat_spell_uses_persistent_field_queue(spell):
 		return DISPOSITION_EXECUTABLE if _combat_persistent_field_spell(spell) else DISPOSITION_PENDING
-	if spell.target_type not in [0, 1, 3, 4, 5, 6, 8, 9, 10, 12]:
+	if spell.target_type not in [0, 1, 3, 4, 5, 6, 7, 8, 9, 10, 12]:
 		return DISPOSITION_PENDING
 	return DISPOSITION_EXECUTABLE if _ordinary_combat_spell(spell) or _inert_self_duration_effect(spell) or _combat_healing_spell(spell) or _combat_condition_cure_spell(spell) or _combat_condition_effect_spell(spell) or _combat_death_spell(spell) or _combat_spell_point_restore_spell(spell) or _combat_spell_point_drain_spell(spell) or _combat_destroy_magic_spell(spell) or _combat_remove_curse_spell(spell) or _combat_charm_spell(spell) or _combat_polymorph_spell(spell) or _combat_destroy_turn_undead_spell(spell) or _combat_phase_spell(spell) or _combat_summon_spell(spell) else DISPOSITION_PENDING
 
@@ -247,7 +247,7 @@ static func _combat_scroll_disposition(spell: SpellDefinition) -> StringName:
 		return DISPOSITION_EXECUTABLE
 	if combat_spell_uses_persistent_field_queue(spell):
 		return DISPOSITION_EXECUTABLE if _combat_persistent_field_spell(spell) else DISPOSITION_PENDING
-	if spell.target_type not in [0, 1, 2, 3, 4, 5, 6, 8, 9, 10, 12]:
+	if spell.target_type not in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12]:
 		return DISPOSITION_PENDING
 	return DISPOSITION_EXECUTABLE if _ordinary_combat_spell(spell) or _inert_self_duration_effect(spell) or _combat_healing_spell(spell) or _combat_condition_cure_spell(spell) or _combat_condition_effect_spell(spell) or _combat_death_spell(spell) or _combat_spell_point_restore_spell(spell) or _combat_spell_point_drain_spell(spell) or _combat_destroy_magic_spell(spell) or _combat_remove_curse_spell(spell) or _combat_charm_spell(spell) or _combat_polymorph_spell(spell) or _combat_destroy_turn_undead_spell(spell) or _combat_phase_spell(spell) or _combat_summon_spell(spell) else DISPOSITION_PENDING
 
@@ -261,7 +261,7 @@ static func _combat_item_disposition(spell: SpellDefinition) -> StringName:
 		return DISPOSITION_EXECUTABLE
 	if combat_spell_uses_persistent_field_queue(spell):
 		return DISPOSITION_EXECUTABLE if _combat_persistent_field_spell(spell) else DISPOSITION_PENDING
-	if spell.target_type not in [0, 1, 2, 3, 4, 5, 6, 8, 9, 10, 12]:
+	if spell.target_type not in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12]:
 		return DISPOSITION_PENDING
 	return DISPOSITION_EXECUTABLE if _ordinary_combat_spell(spell) or _inert_self_duration_effect(spell) or _combat_application_elemental_attack(spell) or _combat_healing_spell(spell) or _combat_condition_cure_spell(spell) or _combat_condition_effect_spell(spell) or _combat_death_spell(spell) or _combat_spell_point_restore_spell(spell) or _combat_spell_point_drain_spell(spell) or _combat_destroy_magic_spell(spell) or _combat_remove_curse_spell(spell) or _combat_charm_spell(spell) or _combat_polymorph_spell(spell) or _combat_destroy_turn_undead_spell(spell) or _combat_phase_spell(spell) or _combat_summon_spell(spell) else DISPOSITION_PENDING
 
@@ -275,7 +275,7 @@ static func _combat_monster_disposition(spell: SpellDefinition) -> StringName:
 		return DISPOSITION_EXECUTABLE
 	if _combat_remove_curse_spell(spell):
 		return DISPOSITION_NOT_APPLICABLE
-	if _combat_phase_spell(spell):
+	if _combat_phase_spell(spell) or spell.target_type == 7:
 		return DISPOSITION_NOT_APPLICABLE
 	if _combat_destroy_turn_undead_spell(spell):
 		return DISPOSITION_NOT_APPLICABLE
