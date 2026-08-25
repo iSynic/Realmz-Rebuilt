@@ -31,7 +31,7 @@ func run() -> void:
 	var active_target := session._state.party.character_by_id(target.id)
 	active_caster.spell_points = 50
 	active_caster.maximum_spell_points = 50
-	active_caster.set_known_spells(["classic.spell.field-bolt", "classic.spell.field-fixed", "classic.spell.field-light", "classic.spell.field-rest", "classic.spell.heal-poison", "classic.spell.remove-item"])
+	active_caster.set_known_spells(["classic.spell.field-bolt", "classic.spell.field-fixed", "classic.spell.field-light", "classic.spell.field-rest", "classic.spell.heal-poison", "classic.spell.remove-item", "classic.spell.4308"])
 	active_target.current_health = 20
 	active_target.maximum_health = 20
 	active_target.magic_resistance = 120
@@ -108,6 +108,7 @@ func run() -> void:
 	var rested := restored.submit_intent(PlayerIntent.cast_spell("classic.spell.field-rest", active_caster.id, "", 1))
 	assert_equal(rested.state, SessionStep.State.COMPLETED, "Classic fatigue magic commits as a party-state field spell")
 	assert_equal(restored._state.party.fatigue, 4, "Castle's updatefat clamp makes special 68 produce fatigue four")
+	var heroism_caster := restored._state.party.character_by_id(active_caster.id); var heroism_before := [heroism_caster.current_health, heroism_caster.spell_points, heroism_caster.conditions.to_data()]; restored._rng = ScriptedRng.new([0, 0]); var heroism_result := restored.submit_intent(PlayerIntent.cast_spell("classic.spell.4308", heroism_caster.id, "", 1)); assert_equal([ClassicSpellCapabilityCatalog.field_character_disposition(content.spell_by_id("classic.spell.4308")), heroism_result.state, heroism_caster.current_health, heroism_caster.spell_points, heroism_caster.conditions.to_data()], [ClassicSpellCapabilityCatalog.DISPOSITION_EXECUTABLE, SessionStep.State.COMPLETED, heroism_before[0], heroism_before[1], heroism_before[2]], "field Heroism spends its zero cost and leaves the self target unchanged through the public intent boundary"); assert_equal(restored.rng_trace().map(func(entry: Dictionary) -> String: return String(entry.get("tag", ""))), ["field-spell.4308.duration", "field-spell.4308.damage"], "field Heroism preserves Castle's duration-before-damage draw order")
 
 
 func _field_content(source: RealmzContent) -> RealmzContent:
@@ -147,9 +148,10 @@ func _field_content(source: RealmzContent) -> RealmzContent:
 	rest.in_camp = true
 	var cure := SpellDefinition.new("classic.spell.heal-poison", 2206, "Heal Poison"); cure.cost = 20; cure.special = 110; cure.spell_class = 8; cure.damage_type = 8; cure.target_type = 0; cure.range_min = 1; cure.in_camp = true; cure.in_combat = true
 	var remove_item := SpellDefinition.new("classic.spell.remove-item", 1410, "Remove Item"); remove_item.cost = 6; remove_item.special = 62; remove_item.spell_class = 7; remove_item.damage_type = 7; remove_item.cannot = 4; remove_item.target_type = 0; remove_item.range_min = 1; remove_item.in_camp = true; remove_item.in_combat = true
+	var heroism := SpellDefinition.new("classic.spell.4308", 4308, "Heroism"); heroism.in_camp = true; heroism.in_combat = true; heroism.target_type = 5; heroism.spell_class = 8; heroism.damage_type = 8; heroism.cannot = 3; heroism.duration_min = 5; heroism.duration_max = 12
 	var races: Array[RaceDefinition] = [race]; var castes: Array[CasteDefinition] = [caste]
 	var cursed := ItemDefinition.new("classic.item.cursed-blade", 880, "Cursed Blade"); cursed.cursed_item_id = cursed.id; var ordinary := ItemDefinition.new("classic.item.ordinary-shield", 881, "Ordinary Shield"); var items: Array[ItemDefinition] = [cursed, ordinary]
-	var spells: Array[SpellDefinition] = [bolt, fixed, light, rest, cure, remove_item]
+	var spells: Array[SpellDefinition] = [bolt, fixed, light, rest, cure, remove_item, heroism]
 	return RealmzContent.new("field-spell-workflow", source.package_hash, "field-spell-content", source.rules_version, source.start_map_id, source.start_coordinate, source.world, ScenarioDefinition.new([], []), [], [], [], races, castes, items, spells)
 
 

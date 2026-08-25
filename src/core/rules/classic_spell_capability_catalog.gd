@@ -114,6 +114,10 @@ static func is_ordinary_combat_spell(spell: SpellDefinition) -> bool:
 	return _ordinary_combat_spell(spell)
 
 
+static func is_inert_self_duration_effect(spell: SpellDefinition) -> bool:
+	return _inert_self_duration_effect(spell)
+
+
 static func is_combat_healing_spell(spell: SpellDefinition) -> bool:
 	return _combat_healing_spell(spell)
 
@@ -217,7 +221,7 @@ static func _combat_character_disposition(spell: SpellDefinition) -> StringName:
 		return DISPOSITION_EXECUTABLE if _combat_persistent_field_spell(spell) else DISPOSITION_PENDING
 	if spell.target_type not in [0, 1, 3, 4, 5, 6, 8, 9, 10, 12]:
 		return DISPOSITION_PENDING
-	return DISPOSITION_EXECUTABLE if _ordinary_combat_spell(spell) or _combat_healing_spell(spell) or _combat_condition_cure_spell(spell) or _combat_condition_effect_spell(spell) or _combat_death_spell(spell) or _combat_spell_point_restore_spell(spell) or _combat_spell_point_drain_spell(spell) or _combat_destroy_magic_spell(spell) or _combat_charm_spell(spell) or _combat_phase_spell(spell) or _combat_summon_spell(spell) else DISPOSITION_PENDING
+	return DISPOSITION_EXECUTABLE if _ordinary_combat_spell(spell) or _inert_self_duration_effect(spell) or _combat_healing_spell(spell) or _combat_condition_cure_spell(spell) or _combat_condition_effect_spell(spell) or _combat_death_spell(spell) or _combat_spell_point_restore_spell(spell) or _combat_spell_point_drain_spell(spell) or _combat_destroy_magic_spell(spell) or _combat_charm_spell(spell) or _combat_phase_spell(spell) or _combat_summon_spell(spell) else DISPOSITION_PENDING
 
 
 static func _combat_scroll_disposition(spell: SpellDefinition) -> StringName:
@@ -233,7 +237,7 @@ static func _combat_scroll_disposition(spell: SpellDefinition) -> StringName:
 		return DISPOSITION_EXECUTABLE if _combat_persistent_field_spell(spell) else DISPOSITION_PENDING
 	if spell.target_type not in [0, 1, 2, 3, 4, 5, 6, 8, 9, 10, 12]:
 		return DISPOSITION_PENDING
-	return DISPOSITION_EXECUTABLE if _ordinary_combat_spell(spell) or _combat_healing_spell(spell) or _combat_condition_cure_spell(spell) or _combat_condition_effect_spell(spell) or _combat_death_spell(spell) or _combat_spell_point_restore_spell(spell) or _combat_spell_point_drain_spell(spell) or _combat_destroy_magic_spell(spell) or _combat_charm_spell(spell) or _combat_phase_spell(spell) or _combat_summon_spell(spell) else DISPOSITION_PENDING
+	return DISPOSITION_EXECUTABLE if _ordinary_combat_spell(spell) or _inert_self_duration_effect(spell) or _combat_healing_spell(spell) or _combat_condition_cure_spell(spell) or _combat_condition_effect_spell(spell) or _combat_death_spell(spell) or _combat_spell_point_restore_spell(spell) or _combat_spell_point_drain_spell(spell) or _combat_destroy_magic_spell(spell) or _combat_charm_spell(spell) or _combat_phase_spell(spell) or _combat_summon_spell(spell) else DISPOSITION_PENDING
 
 
 static func _combat_item_disposition(spell: SpellDefinition) -> StringName:
@@ -247,7 +251,7 @@ static func _combat_item_disposition(spell: SpellDefinition) -> StringName:
 		return DISPOSITION_EXECUTABLE if _combat_persistent_field_spell(spell) else DISPOSITION_PENDING
 	if spell.target_type not in [0, 1, 2, 3, 4, 5, 6, 8, 9, 10, 12]:
 		return DISPOSITION_PENDING
-	return DISPOSITION_EXECUTABLE if _ordinary_combat_spell(spell) or _combat_application_elemental_attack(spell) or _combat_healing_spell(spell) or _combat_condition_cure_spell(spell) or _combat_condition_effect_spell(spell) or _combat_death_spell(spell) or _combat_spell_point_restore_spell(spell) or _combat_spell_point_drain_spell(spell) or _combat_destroy_magic_spell(spell) or _combat_charm_spell(spell) or _combat_phase_spell(spell) or _combat_summon_spell(spell) else DISPOSITION_PENDING
+	return DISPOSITION_EXECUTABLE if _ordinary_combat_spell(spell) or _inert_self_duration_effect(spell) or _combat_application_elemental_attack(spell) or _combat_healing_spell(spell) or _combat_condition_cure_spell(spell) or _combat_condition_effect_spell(spell) or _combat_death_spell(spell) or _combat_spell_point_restore_spell(spell) or _combat_spell_point_drain_spell(spell) or _combat_destroy_magic_spell(spell) or _combat_charm_spell(spell) or _combat_phase_spell(spell) or _combat_summon_spell(spell) else DISPOSITION_PENDING
 
 
 static func _combat_monster_disposition(spell: SpellDefinition) -> StringName:
@@ -267,7 +271,7 @@ static func _combat_monster_disposition(spell: SpellDefinition) -> StringName:
 		return DISPOSITION_EXECUTABLE if spell.cost >= 0 and _combat_persistent_field_spell(spell) else DISPOSITION_PENDING
 	if spell.target_type not in [0, 1, 3, 4, 5, 6, 10] or spell.target_type == 0 and spell.size != 0 or spell.cost < 0:
 		return DISPOSITION_PENDING
-	return DISPOSITION_EXECUTABLE if _ordinary_combat_spell(spell) or _combat_healing_spell(spell) or _combat_condition_cure_spell(spell) or _combat_condition_effect_spell(spell) or _combat_death_spell(spell) or _combat_spell_point_restore_spell(spell) or _combat_spell_point_drain_spell(spell) or _combat_destroy_magic_spell(spell) or _combat_charm_spell(spell) else DISPOSITION_PENDING
+	return DISPOSITION_EXECUTABLE if _ordinary_combat_spell(spell) or _inert_self_duration_effect(spell) or _combat_healing_spell(spell) or _combat_condition_cure_spell(spell) or _combat_condition_effect_spell(spell) or _combat_death_spell(spell) or _combat_spell_point_restore_spell(spell) or _combat_spell_point_drain_spell(spell) or _combat_destroy_magic_spell(spell) or _combat_charm_spell(spell) else DISPOSITION_PENDING
 
 
 static func _field_character_disposition(spell: SpellDefinition) -> StringName:
@@ -277,6 +281,8 @@ static func _field_character_disposition(spell: SpellDefinition) -> StringName:
 	if spell.target_type == 7:
 		return DISPOSITION_EXECUTABLE if special == 50 or special >= 1 and special < ConditionSet.PARTY_COUNT else DISPOSITION_PENDING
 	if special == 68:
+		return DISPOSITION_EXECUTABLE
+	if _inert_self_duration_effect(spell):
 		return DISPOSITION_EXECUTABLE
 	if special > 0 and special < 41 or special in [48, 57, 59, 60, 61, 62, 64, 66, 91, 92] or special > 99:
 		return DISPOSITION_EXECUTABLE
@@ -301,6 +307,10 @@ static func _ordinary_combat_spell(spell: SpellDefinition) -> bool:
 	var projectile_spell := absi(spell.spell_class) == 9
 	var source_defined_projectile_spell := projectile_spell and spell.cost > 0 and absi(spell.damage_type) != 9
 	return spell.special == 0 and absi(spell.damage_type) >= 1 and absi(spell.damage_type) <= 8 and (not projectile_spell or source_defined_projectile_spell) and (spell.damage_min != 0 or spell.damage_max != 0 or spell.power_damage_min != 0 or spell.power_damage_max != 0)
+
+
+static func _inert_self_duration_effect(spell: SpellDefinition) -> bool:
+	return spell != null and application_role(spell) == ROLE_APPLICATION_EFFECT and spell.queue_icon == 0 and spell.size == 0 and spell.target_type == 5 and spell.cannot == 3 and spell.cost == 0 and absi(spell.spell_class) == 8 and absi(spell.damage_type) == 8 and spell.special == 0 and spell.damage_min == 0 and spell.damage_max == 0 and spell.power_damage_min == 0 and spell.power_damage_max == 0 and spell.duration_min > 0 and spell.duration_max >= spell.duration_min and spell.power_duration_min == 0 and spell.power_duration_max == 0 and spell.range_min == 0 and spell.range_max == 0 and spell.save_adjust == 0 and spell.save_bonus == 0 and spell.resistance_adjust == 0 and spell.to_hit_bonus == 0 and not spell.can_rotate and spell.fixed_target_count == 0
 
 
 static func _combat_application_elemental_attack(spell: SpellDefinition) -> bool:

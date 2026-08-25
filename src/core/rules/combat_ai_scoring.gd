@@ -89,6 +89,8 @@ func best_monster_spell_plan(state: GameState, content: RealmzContent, monster: 
 
 
 func _monster_spell_power_plan(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, spell: SpellDefinition, slot: int, power: int, actors_by_cell: Dictionary, area_placement_cache: Dictionary, area_center_cache: Dictionary) -> Dictionary:
+	if ClassicSpellCapabilityCatalog.is_inert_self_duration_effect(spell):
+		return {}
 	if _flow()._is_summon_spell(spell):
 		return _monster_summon_spell_power_plan(state, content, monster, spell, slot, power)
 	if ClassicSpellCapabilityCatalog.is_combat_destroy_magic_spell(spell):
