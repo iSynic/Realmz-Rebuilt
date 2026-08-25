@@ -250,7 +250,7 @@ static func _combat_monster_disposition(spell: SpellDefinition) -> StringName:
 	if _combat_actor_field_spell(spell):
 		return DISPOSITION_EXECUTABLE if spell.cost > 0 else DISPOSITION_PENDING
 	if combat_spell_uses_persistent_field_queue(spell):
-		return DISPOSITION_EXECUTABLE if spell.cost > 0 and _combat_persistent_field_spell(spell) else DISPOSITION_PENDING
+		return DISPOSITION_EXECUTABLE if spell.cost >= 0 and _combat_persistent_field_spell(spell) else DISPOSITION_PENDING
 	if spell.target_type not in [0, 1, 3, 4, 5, 6, 10] or spell.target_type == 0 and spell.size != 0 or spell.cost < 0:
 		return DISPOSITION_PENDING
 	return DISPOSITION_EXECUTABLE if _ordinary_combat_spell(spell) or _combat_healing_spell(spell) or _combat_condition_cure_spell(spell) or _combat_condition_effect_spell(spell) or _combat_death_spell(spell) or _combat_spell_point_restore_spell(spell) or _combat_spell_point_drain_spell(spell) or _combat_destroy_magic_spell(spell) or _combat_charm_spell(spell) else DISPOSITION_PENDING
@@ -286,7 +286,7 @@ static func _physical_projectile_profile(spell: SpellDefinition) -> bool:
 static func _ordinary_combat_spell(spell: SpellDefinition) -> bool:
 	var projectile_spell := absi(spell.spell_class) == 9
 	var source_defined_projectile_spell := projectile_spell and spell.cost > 0 and absi(spell.damage_type) != 9
-	return spell.special == 0 and absi(spell.damage_type) >= 1 and absi(spell.damage_type) < 8 and (not projectile_spell or source_defined_projectile_spell) and (spell.damage_min != 0 or spell.damage_max != 0 or spell.power_damage_min != 0 or spell.power_damage_max != 0)
+	return spell.special == 0 and absi(spell.damage_type) >= 1 and absi(spell.damage_type) <= 8 and (not projectile_spell or source_defined_projectile_spell) and (spell.damage_min != 0 or spell.damage_max != 0 or spell.power_damage_min != 0 or spell.power_damage_max != 0)
 
 
 static func _zero_cost_elemental_projectile_item_spell(spell: SpellDefinition) -> bool:
@@ -328,7 +328,7 @@ static func _combat_persistent_field_spell(spell: SpellDefinition) -> bool:
 	var has_damage := spell.damage_min != 0 or spell.damage_max != 0 or spell.power_damage_min != 0 or spell.power_damage_max != 0
 	var maximum_duration := maxi(spell.duration_min, spell.duration_max) + 7 * maxi(spell.power_duration_min, spell.power_duration_max)
 	var supported_condition := _combat_helpless_spell(spell) if special in [53, 54] else _combat_condition_index(spell) >= 0
-	var supported_effect := special == 0 and has_damage and absi(spell.damage_type) >= 1 and absi(spell.damage_type) <= 7 or supported_condition
+	var supported_effect := special == 0 and has_damage and absi(spell.damage_type) >= 1 and absi(spell.damage_type) <= 8 or supported_condition
 	return maximum_duration > 0 and supported_effect
 
 
