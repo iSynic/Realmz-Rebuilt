@@ -19,11 +19,11 @@ An executable disposition proves an owned handler boundary, not complete branch,
 - Reserved standard slots: 63
 - Total definitions: 420
 - Unique mechanical behavior signatures: 315
-- Mechanical families: battlefield-field=40, condition-cure=8, healing=12, ordinary=80, projectile=35, reserved=63, special-effect=170, summoning=12
-- Character combat: 250 executable, 8 pending
-- Scroll combat: 250 executable, 8 pending
-- Item combat: 256 executable, 8 pending
-- Monster combat: 238 executable, 17 pending
+- Mechanical families: battlefield-field=40, condition-cure=8, healing=12, ordinary=79, projectile=35, reserved=63, special-effect=171, summoning=12
+- Character combat: 251 executable, 7 pending
+- Scroll combat: 251 executable, 7 pending
+- Item combat: 257 executable, 7 pending
+- Monster combat: 239 executable, 16 pending
 - Character projectiles: 35 executable, 0 pending
 - Monster projectiles: 35 executable, 0 pending
 - Character field/camp: 130 executable, 14 pending
