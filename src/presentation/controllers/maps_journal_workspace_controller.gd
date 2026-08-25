@@ -8,6 +8,14 @@ signal intent_submitted(intent: PlayerIntent)
 const GOLD := Color("d5b45d")
 const CYAN := Color("8fcfd1")
 const MUTED := Color("9aa0a8")
+const COOL_SURFACE := Color("202729")
+const COOL_BORDER := Color("596266")
+const BOOK_LEATHER := Color("4b2822")
+const BOOK_PAPER := Color("d3bd86")
+const BOOK_PAPER_SELECTED := Color("c3aa70")
+const BOOK_INK := Color("30261c")
+const BOOK_MUTED_INK := Color("67553a")
+const BOOK_RED := Color("963c31")
 
 var _selected_player_map_id: String = ""
 var _selected_journal_message_id: int = 0
@@ -66,6 +74,7 @@ func _add_header(parent: VBoxContainer, view: GameView) -> void:
 func _build_places_tab(parent: VBoxContainer, view: GameView) -> void:
 	var columns := _columns(parent, "LocationNotesWorkspace")
 	var saved := _pane(columns, "SavedLocationNotes", "Saved Places", 0.8)
+	_style_pane(saved, COOL_SURFACE, COOL_BORDER, 2)
 	var scroll := _scroll("SavedLocationNoteScroll")
 	saved.add_child(scroll)
 	var rows := VBoxContainer.new()
@@ -79,13 +88,16 @@ func _build_places_tab(parent: VBoxContainer, view: GameView) -> void:
 		for note: LocationNoteView in view.location_notes:
 			_add_card(rows, note.map_name, "%s  •  %d,%d%s" % [String(note.level_type).capitalize(), note.coordinate.x, note.coordinate.y, "  •  current" if note.current else ""], note.text)
 	var current := _pane(columns, "CurrentLocationNotePane", "Current Location", 1.25)
+	_style_pane(current, Color("222829"), COOL_BORDER, 2)
 	_render_location_note_editor(current, view)
 
 
 func _build_maps_tab(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog) -> void:
 	var columns := _columns(parent, "AcquiredMapsWorkspace")
-	var browser := _pane(columns, "PlayerMapBrowser", "Acquired Maps", 0.68)
-	var display := _pane(columns, "PlayerMapDisplay", "Selected Map", 1.8)
+	var browser := _pane(columns, "PlayerMapBrowser", "Acquired Maps", 0.5)
+	var display := _pane(columns, "PlayerMapDisplay", "Selected Map", 2.15)
+	_style_pane(browser, COOL_SURFACE, COOL_BORDER, 2)
+	_style_pane(display, Color("131719"), COOL_BORDER, 2)
 	if view.player_map_menu_entries.is_empty():
 		_add_empty_state(browser, "No player-map records", "This campaign supplies no Maps/Notes entries.")
 		_add_empty_state(display, "No selected map", "There is no authored map record to display.")
@@ -190,28 +202,46 @@ func _map_zoom_button(node_name: String, text: String, delta: float) -> Button:
 
 
 func _change_player_map_zoom(presenter: PlayerMapPresenter, label: Label, delta: float) -> void:
-	_player_map_zoom = 1.0 if is_zero_approx(delta) else clampf(_player_map_zoom + delta, 1.0, 4.0)
+	_player_map_zoom = 1.0 if is_zero_approx(delta) else clampf(_player_map_zoom + delta, 1.0, 6.0)
 	presenter.set_map_zoom(_player_map_zoom)
 	label.text = "%d%%" % roundi(_player_map_zoom * 100.0)
 
 
 func _build_journal_tab(parent: VBoxContainer, view: GameView) -> void:
 	var columns := _columns(parent, "JournalWorkspace")
-	var browser := _pane(columns, "JournalEntryBrowser", "Journal Entries", 0.85)
-	var detail := _pane(columns, "JournalEntryDetail", "Selected Entry", 1.35)
+	columns.add_theme_constant_override("separation", 4)
+	var browser := _pane(columns, "JournalEntryBrowser", "Journal Entries", 1.0)
+	var detail := _pane(columns, "JournalEntryDetail", "Selected Entry", 1.0)
+	_style_pane(browser, BOOK_PAPER, BOOK_LEATHER, 2)
+	_style_pane(detail, BOOK_PAPER, BOOK_LEATHER, 2)
+	_style_pane_heading(browser, BOOK_RED)
+	_style_pane_heading(detail, BOOK_RED)
+	var spine := ColorRect.new()
+	spine.name = "JournalBookSpine"
+	spine.custom_minimum_size.x = 12.0
+	spine.color = BOOK_LEATHER
+	spine.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	columns.add_child(spine)
+	columns.move_child(spine, 1)
 	var search := LineEdit.new()
 	search.name = "JournalSearch"
 	search.theme_type_variation = &"ClassicTheldrowLineEdit"
 	search.placeholder_text = "Search journal…"
 	search.clear_button_enabled = true
 	search.text = _journal_query
+	search.add_theme_color_override("font_color", BOOK_INK)
+	search.add_theme_color_override("font_placeholder_color", BOOK_MUTED_INK)
+	search.add_theme_stylebox_override("normal", _flat_style(Color("dfcca0"), Color("89734c"), 1))
+	search.add_theme_stylebox_override("focus", _flat_style(Color("e5d4aa"), BOOK_RED, 2))
 	browser.add_child(search)
 	_journal_detail = VBoxContainer.new()
 	_journal_detail.name = "JournalEntryDetailBody"
 	_journal_detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_journal_detail.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_journal_detail.add_theme_constant_override("separation", 5)
-	detail.add_child(_journal_detail)
+	var detail_scroll := _scroll("JournalEntryDetailScroll")
+	detail.add_child(detail_scroll)
+	detail_scroll.add_child(_journal_detail)
 	if view.journal_entries.is_empty():
 		_add_empty_state(browser, "The journal is empty", "No journal records were supplied by the current session.")
 		_add_empty_state(_journal_detail, "No selected entry", "Authored journal text will appear here.")
@@ -227,7 +257,8 @@ func _build_journal_tab(parent: VBoxContainer, view: GameView) -> void:
 	scroll.add_child(rows)
 	for entry: JournalEntryView in view.journal_entries:
 		var panel := PanelContainer.new()
-		panel.theme_type_variation = &"ClassicInset"
+		var selected := entry.message_id == _selected_journal_message_id
+		panel.add_theme_stylebox_override("panel", _flat_style(BOOK_PAPER_SELECTED if selected else Color("d8c38e"), BOOK_RED if selected else Color("9a8358"), 2 if selected else 1))
 		panel.set_meta("journal_search_text", ("%d %s" % [entry.message_id, entry.text]).to_lower())
 		rows.add_child(panel)
 		var record := VBoxContainer.new()
@@ -236,13 +267,14 @@ func _build_journal_tab(parent: VBoxContainer, view: GameView) -> void:
 		open.text = "Journal entry %d" % entry.message_id
 		open.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		open.toggle_mode = true
-		open.button_pressed = entry.message_id == _selected_journal_message_id
+		open.button_pressed = selected
+		_style_journal_button(open, selected)
 		open.pressed.connect(_select_journal_entry.bind(view, entry.message_id))
 		record.add_child(open)
 		var preview_text := entry.text.strip_edges()
 		if preview_text.length() > 140:
 			preview_text = preview_text.left(137).strip_edges() + "…"
-		var preview := _label(preview_text, MUTED, 13)
+		var preview := _label(preview_text, BOOK_MUTED_INK, 13)
 		preview.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		preview.max_lines_visible = 2
 		preview.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -271,9 +303,9 @@ func _refresh_journal_detail(view: GameView) -> void:
 	_clear(_journal_detail)
 	for entry: JournalEntryView in view.journal_entries:
 		if entry.message_id == _selected_journal_message_id:
-			_journal_detail.add_child(_label("Journal entry %d" % entry.message_id, GOLD, 18))
+			_journal_detail.add_child(_label("Journal entry %d" % entry.message_id, BOOK_RED, 20))
 			_journal_detail.add_child(HSeparator.new())
-			var text := _label(entry.text, Color("e0e2e5"), 15)
+			var text := _label(entry.text, BOOK_INK, 17)
 			text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			text.size_flags_vertical = Control.SIZE_EXPAND_FILL
 			_journal_detail.add_child(text)
@@ -293,8 +325,10 @@ func _render_location_note_editor(parent: VBoxContainer, view: GameView) -> void
 	editor.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	editor.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	editor.placeholder_text = "Write a location note…"
-	editor.add_theme_color_override("background_color", Color("d0bd8d"))
-	editor.add_theme_color_override("font_color", Color("29251d"))
+	editor.add_theme_color_override("font_color", BOOK_INK)
+	editor.add_theme_color_override("font_placeholder_color", BOOK_MUTED_INK)
+	editor.add_theme_stylebox_override("normal", _flat_style(Color("d4c18f"), Color("8b754d"), 2))
+	editor.add_theme_stylebox_override("focus", _flat_style(Color("dccb9d"), GOLD, 2))
 	editor.text = current.text
 	parent.add_child(editor)
 	var count_label := Label.new()
@@ -364,6 +398,48 @@ func _pane(parent: HBoxContainer, node_name: String, title: String, ratio: float
 	heading.theme_type_variation = &"ClassicHeading"
 	content.add_child(heading)
 	return content
+
+
+func _style_pane(content: VBoxContainer, background: Color, border: Color, border_width: int) -> void:
+	var panel := content.get_parent() as PanelContainer
+	if panel != null:
+		panel.theme_type_variation = &""
+		panel.add_theme_stylebox_override("panel", _flat_style(background, border, border_width))
+
+
+func _style_pane_heading(content: VBoxContainer, color: Color) -> void:
+	if content.get_child_count() > 0 and content.get_child(0) is Label:
+		(content.get_child(0) as Label).add_theme_color_override("font_color", color)
+
+
+func _style_journal_button(button: Button, selected: bool) -> void:
+	button.add_theme_color_override("font_color", BOOK_INK)
+	button.add_theme_color_override("font_hover_color", BOOK_RED)
+	button.add_theme_color_override("font_pressed_color", BOOK_RED)
+	button.add_theme_stylebox_override("normal", _flat_style(Color(0, 0, 0, 0), Color(0, 0, 0, 0), 0))
+	button.add_theme_stylebox_override("hover", _flat_style(Color("e0ca96"), Color("9a8358"), 1))
+	button.add_theme_stylebox_override("pressed", _flat_style(BOOK_PAPER_SELECTED, BOOK_RED, 1))
+	if selected:
+		button.add_theme_color_override("font_color", BOOK_RED)
+
+
+func _flat_style(background: Color, border: Color, border_width: int) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = background
+	style.border_color = border
+	style.border_width_left = border_width
+	style.border_width_top = border_width
+	style.border_width_right = border_width
+	style.border_width_bottom = border_width
+	style.corner_radius_top_left = 2
+	style.corner_radius_top_right = 2
+	style.corner_radius_bottom_left = 2
+	style.corner_radius_bottom_right = 2
+	style.content_margin_left = 8.0
+	style.content_margin_top = 6.0
+	style.content_margin_right = 8.0
+	style.content_margin_bottom = 6.0
+	return style
 
 
 func _scroll(node_name: String) -> ScrollContainer:

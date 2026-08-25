@@ -555,7 +555,8 @@ func _apply_exploration_mode() -> void:
 		return
 	var camping := _current_view != null and _current_view.party_summary != null and _current_view.party_summary.camping
 	_world_command_heading.text = "Camp" if camping else "Adventure"
-	_world_command_panel.theme_type_variation = &"ClassicInset" if camping else &""
+	_world_command_panel.theme_type_variation = &"ClassicInset"
+	_command_panel.theme_type_variation = &"ClassicInset"
 
 
 func _build_menus() -> void:
@@ -686,7 +687,11 @@ func _rebuild_command_deck() -> void:
 			grid.remove_child(child)
 			child.queue_free()
 	_simulation_buttons.clear()
-	var context := &"encounter" if _current_view != null and _current_view.pending_interaction != null else _router.current_screen()
+	# The typed interaction presenter owns encounter actions. Keep the route's
+	# ordinary footer deck visible (and disabled where necessary) underneath a
+	# blocking interaction instead of replacing Party commands with a second,
+	# empty encounter command surface.
+	var context := _router.current_screen()
 	for definition: Dictionary in ClassicCommandCatalog.for_context(context):
 		definition = _presentation_command_definition(definition)
 		var button: BaseButton

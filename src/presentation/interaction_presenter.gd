@@ -261,19 +261,23 @@ func _show_next_classic_flash() -> void:
 	_classic_flash_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_classic_flash_layer.z_index = z_index + 20
 	get_parent().add_child(_classic_flash_layer)
+	_classic_flash_layer.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
 	_classic_flash_shield = ColorRect.new()
 	_classic_flash_shield.name = "ClassicFlashShield"
 	_classic_flash_shield.color = Color(0.01, 0.015, 0.02, 0.42)
 	_classic_flash_shield.mouse_filter = Control.MOUSE_FILTER_STOP
 	_classic_flash_layer.add_child(_classic_flash_shield)
+	_classic_flash_shield.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
 	_classic_flash_panel = PanelContainer.new()
 	_classic_flash_panel.name = "ClassicFlashMessage"
 	_classic_flash_panel.theme_type_variation = &"ClassicInset"
 	_classic_flash_panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	_classic_flash_panel.z_index = 1
 	_classic_flash_layer.add_child(_classic_flash_panel)
+	_classic_flash_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
 	var content := VBoxContainer.new()
 	content.add_theme_constant_override("separation", 8)
+	content.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_classic_flash_panel.add_child(content)
 	var label := Label.new()
 	label.name = "ClassicFlashText"
@@ -323,12 +327,16 @@ func _close_classic_flash(clear_queue: bool = true) -> void:
 func _apply_classic_flash_layout() -> void:
 	if _classic_flash_layer == null or _classic_flash_panel == null or _classic_flash_shield == null:
 		return
+	_classic_flash_layer.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
 	_classic_flash_layer.position = Vector2.ZERO
 	_classic_flash_layer.size = (get_parent() as Control).size if get_parent() is Control else _application_rect.end
+	_classic_flash_shield.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
 	_classic_flash_shield.position = _application_rect.position
 	_classic_flash_shield.size = _application_rect.size
 	var desired := Vector2(minf(520.0, _application_rect.size.x - 40.0), 118.0)
 	var preferred_y := _textbox_rect.position.y - desired.y - 12.0
+	_classic_flash_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	_classic_flash_panel.custom_minimum_size = desired
 	_classic_flash_panel.position = Vector2(_application_rect.position.x + (_application_rect.size.x - desired.x) * 0.5, clampf(preferred_y, _application_rect.position.y + 20.0, _application_rect.end.y - desired.y - 20.0))
 	_classic_flash_panel.size = desired
 
