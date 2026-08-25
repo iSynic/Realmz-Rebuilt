@@ -10,8 +10,7 @@ signal targeting_cancelled
 
 const NATIVE_CELL_SIZE: float = 32.0
 const HEADER_HEIGHT: float = 38.0
-const MAX_VISIBLE_COLUMNS: int = 25
-const MAX_VISIBLE_ROWS: int = 14
+const SURROUND_TEXTURE: Texture2D = preload("res://src/presentation/assets/ui/classic-exploration-surround-tile.png")
 
 var _view: GameView
 var _media: ClassicMediaCatalog
@@ -112,6 +111,7 @@ func has_battle_artwork() -> bool:
 func _draw() -> void:
 	if _view == null or _view.combat_view == null or _view.combat_view.battlefield == null:
 		return
+	_draw_battle_stage()
 	var combat := _view.combat_view
 	var battlefield := combat.battlefield
 	var focus_id := camera_focus_id_for(_playback_frame, _camera_focus_id, combat.active_actor_id)
@@ -145,6 +145,12 @@ func _draw() -> void:
 	_draw_tactical_legend()
 	if not has_battle_artwork():
 		draw_string(_ui_font(), Vector2(draw_origin.x + 8.0, draw_origin.y + 20.0), "Battle artwork unavailable", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 13, Color(1.0, 0.78, 0.42))
+
+
+func _draw_battle_stage() -> void:
+	draw_rect(Rect2(Vector2.ZERO, size), Color(0.018, 0.022, 0.026), true)
+	if SURROUND_TEXTURE != null:
+		draw_texture_rect(SURROUND_TEXTURE, Rect2(Vector2.ZERO, size), true, Color(0.34, 0.35, 0.36, 0.72))
 
 
 func _draw_header(combat: CombatView) -> void:
@@ -777,8 +783,8 @@ static func _array_coordinate(value: Variant) -> Vector2i:
 
 static func viewport_cells_for(control_size: Vector2) -> Vector2i:
 	return Vector2i(
-		mini(MAX_VISIBLE_COLUMNS, maxi(1, floori(control_size.x / NATIVE_CELL_SIZE))),
-		mini(MAX_VISIBLE_ROWS, maxi(1, floori((control_size.y - HEADER_HEIGHT) / NATIVE_CELL_SIZE)))
+		mini(BattlefieldState.SIZE, maxi(1, floori(control_size.x / NATIVE_CELL_SIZE))),
+		mini(BattlefieldState.SIZE, maxi(1, floori((control_size.y - HEADER_HEIGHT) / NATIVE_CELL_SIZE)))
 	)
 
 

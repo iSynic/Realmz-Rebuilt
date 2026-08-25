@@ -1,8 +1,11 @@
 class_name PlayerMapPresenter
 extends VBoxContainer
 
+var _canvas: PlayerMapCanvas
+
 
 func present(view: PlayerMapView, media: ClassicMediaCatalog) -> void:
+	_canvas = null
 	for child: Node in get_children():
 		remove_child(child)
 		child.queue_free()
@@ -26,6 +29,7 @@ func present(view: PlayerMapView, media: ClassicMediaCatalog) -> void:
 		var canvas := PlayerMapCanvas.new()
 		canvas.name = "PlayerMapCanvas"
 		canvas.present(view, media)
+		_canvas = canvas
 		add_child(canvas)
 		if not view.note.is_empty():
 			var note := Label.new()
@@ -33,3 +37,12 @@ func present(view: PlayerMapView, media: ClassicMediaCatalog) -> void:
 			note.text = view.note
 			note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			add_child(note)
+
+
+func set_map_zoom(zoom: float) -> void:
+	if _canvas != null:
+		_canvas.set_zoom(zoom)
+
+
+func map_zoom() -> float:
+	return _canvas.zoom() if _canvas != null else 1.0

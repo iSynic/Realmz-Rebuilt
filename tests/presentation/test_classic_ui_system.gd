@@ -345,7 +345,7 @@ func _test_player_map_workspace() -> void:
 	var map_buttons: Array[Node] = body.find_child("AcquiredMapChooser", true, false).find_children("*", "Button", true, false)
 	assert_equal(map_buttons.size(), 4, "Maps/Notes retains acquired and unavailable package menu slots")
 	assert_true(map_buttons.any(func(button: Node) -> bool: return (button as Button).disabled and (button as Button).text == "Dungeon map unavailable"), "unacquired slots use their separate Classic unavailable name and cannot open")
-	assert_not_null(body.find_child("PlayerMapCanvas", true, false), "the selected crop renders through the dedicated player-map canvas")
+	assert_true(body.find_child("PlayerMapCanvas", true, false) != null and body.find_child("PlayerMapCartographicStage", true, false) != null and body.find_child("PlayerMapZoomIn", true, false) != null, "the selected crop renders through a zoomable dedicated canvas centered on its cartographic stage")
 	var note := body.find_child("PlayerMapNote", true, false) as Label
 	assert_not_null(note, "non-scrolling maps retain their authored note")
 	if note != null:
@@ -373,7 +373,7 @@ func _test_player_map_workspace() -> void:
 	assert_true(picture_view.party_marker_visible, "picture-backed maps retain source playable-map identity for Castle's party marker")
 	var picture_canvas := PlayerMapCanvas.new()
 	picture_canvas.present(picture_view, media)
-	assert_equal(picture_canvas.custom_minimum_size, Vector2(320, 320), "picture-backed maps use the public fixed Classic canvas contract")
+	picture_canvas.set_zoom(2.0); assert_equal([picture_canvas.custom_minimum_size, picture_canvas.zoom()], [Vector2(640, 640), 2.0], "picture-backed maps preserve the public 320-pixel Classic canvas while allowing integer-clean inspection zoom")
 	var dungeon_view := views_by_mode[PlayerMapDefinition.DUNGEON_CROP] as PlayerMapView
 	assert_equal([dungeon_view.map_id, dungeon_view.cells.size()], ["dungeon:0", 100], "dungeon crop facts derive from the same authoritative topology as exploration")
 	var scrolling_view := views_by_mode[PlayerMapDefinition.SCROLLING_TEXT] as PlayerMapView
@@ -962,7 +962,7 @@ func _test_exploration_map_camera_preserves_viewport_geometry() -> void:
 
 func _test_battlefield_presenter() -> void:
 	var presenter := ClassicBattlefieldPresenter.new(); var control_size := Vector2(912.0, 486.0); var visible_cells := ClassicBattlefieldPresenter.viewport_cells_for(control_size)
-	assert_equal(visible_cells, Vector2i(25, 14), "canonical battlefield uses a native-pixel widescreen camera window")
+	assert_equal(visible_cells, Vector2i(28, 14), "battlefield uses every complete native cell available in the responsive camera window")
 	var tracked_camera := Vector2i(30, 34); var draw_origin := ClassicBattlefieldPresenter.battlefield_draw_origin(control_size, visible_cells); var rendered_coordinate := Vector2i(40, 39); var rendered_point := ClassicBattlefieldPresenter.cell_rect(rendered_coordinate, tracked_camera, draw_origin).get_center()
 	assert_true(ClassicBattlefieldPresenter.coordinate_for_point(rendered_point, tracked_camera, visible_cells, control_size) == rendered_coordinate and ClassicBattlefieldPresenter.click_direction_for_point(ClassicBattlefieldPresenter.cell_rect(rendered_coordinate, tracked_camera, draw_origin), rendered_point + Vector2(90.0, -65.0)) == Vector2i(1, -1) and ClassicBattlefieldPresenter.tracked_camera_top_left(tracked_camera, Vector2i(tracked_camera.x + visible_cells.x - 1, 39), visible_cells) == ClassicBattlefieldPresenter.camera_top_left(Vector2i(tracked_camera.x + visible_cells.x - 1, 39), visible_cells), "battlefield input uses the rendered camera and eight centered sectors while edge focus recenters the view")
 	assert_equal(ClassicBattlefieldPresenter.footprint_rect([], Vector2i.ZERO, Vector2.ZERO), Rect2(), "terminal playback tolerates a combatant whose committed battlefield footprint has already been removed")

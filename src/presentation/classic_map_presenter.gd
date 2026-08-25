@@ -4,7 +4,6 @@ extends Control
 signal movement_hold_started(direction: Vector2i)
 signal movement_hold_updated(direction: Vector2i)
 signal movement_hold_stopped
-const DETACHED_VIEW_DIAMETER: int = 25
 const CLASSIC_VIEW_CELLS: Vector2i = Vector2i(15, 13)
 const PARTY_MARKER_LEFT_ASSET_ID: StringName = &"map.party.left"
 const PARTY_MARKER_RIGHT_ASSET_ID: StringName = &"map.party.right"
@@ -128,7 +127,8 @@ func _draw() -> void:
 		return
 	var map_view := _view.map_view
 	var font := get_theme_font(&"font", &"Label")
-	var viewport_cells := viewport_cells_for(size, map_origin.y, cell_size)
+	var requested_cells := viewport_cells_for(size, map_origin.y, cell_size)
+	var viewport_cells := Vector2i(mini(requested_cells.x, map_view.width), mini(requested_cells.y, map_view.height))
 	var draw_origin := map_draw_origin_for(size, map_origin, cell_size, viewport_cells)
 	var map_rect := Rect2(draw_origin, Vector2(viewport_cells) * cell_size)
 	_draw_exploration_stage(map_rect)
@@ -239,8 +239,8 @@ static func land_discovery_coordinates(visited: Array[Vector2i], map_size: Vecto
 
 static func viewport_cells_for(control_size: Vector2, header_height: float, native_cell_size: float) -> Vector2i:
 	return Vector2i(
-		mini(DETACHED_VIEW_DIAMETER, maxi(1, floori(control_size.x / native_cell_size))),
-		mini(DETACHED_VIEW_DIAMETER, maxi(1, floori((control_size.y - header_height) / native_cell_size)))
+		maxi(1, floori(control_size.x / native_cell_size)),
+		maxi(1, floori((control_size.y - header_height) / native_cell_size))
 	)
 
 

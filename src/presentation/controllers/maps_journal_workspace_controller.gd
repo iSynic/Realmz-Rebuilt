@@ -1,6 +1,8 @@
 class_name MapsJournalWorkspaceController
 extends RefCounted
 
+const PlayerMapCartographicStageType := preload("res://src/presentation/screens/player_map_cartographic_stage.gd")
+
 signal intent_submitted(intent: PlayerIntent)
 
 const GOLD := Color("d5b45d")
@@ -12,6 +14,7 @@ var _selected_journal_message_id: int = 0
 var _selected_campaign_id: String = ""
 var _selected_tab: int = 0
 var _journal_query: String = ""
+var _player_map_zoom: float = 1.0
 var _text_scale: float = 1.0
 var _journal_detail: VBoxContainer
 var _rebuilding: bool = false
@@ -82,7 +85,7 @@ func _build_places_tab(parent: VBoxContainer, view: GameView) -> void:
 func _build_maps_tab(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog) -> void:
 	var columns := _columns(parent, "AcquiredMapsWorkspace")
 	var browser := _pane(columns, "PlayerMapBrowser", "Acquired Maps", 0.68)
-	var display := _pane(columns, "PlayerMapDisplay", "Selected Map", 1.5)
+	var display := _pane(columns, "PlayerMapDisplay", "Selected Map", 1.8)
 	if view.player_map_menu_entries.is_empty():
 		_add_empty_state(browser, "No player-map records", "This campaign supplies no Maps/Notes entries.")
 		_add_empty_state(display, "No selected map", "There is no authored map record to display.")
@@ -142,10 +145,54 @@ func _render_selected_player_map(parent: VBoxContainer, selected: PlayerMapView,
 	if selected == null:
 		_add_empty_state(parent, "No acquired maps", "Maps remain unavailable until the session records their acquisition.")
 		return
+	var toolbar := HBoxContainer.new()
+	toolbar.name = "PlayerMapZoomToolbar"
+	toolbar.alignment = BoxContainer.ALIGNMENT_CENTER
+	parent.add_child(toolbar)
+	var zoom_out := _map_zoom_button("PlayerMapZoomOut", "−", -0.5)
+	toolbar.add_child(zoom_out)
+	var zoom_label := _label("%d%%" % roundi(_player_map_zoom * 100.0), CYAN, 14)
+	zoom_label.name = "PlayerMapZoomLabel"
+	toolbar.add_child(zoom_label)
+	var fit := _map_zoom_button("PlayerMapZoomFit", "Fit", 0.0)
+	toolbar.add_child(fit)
+	var zoom_in := _map_zoom_button("PlayerMapZoomIn", "+", 0.5)
+	toolbar.add_child(zoom_in)
+	var scroll := ScrollContainer.new()
+	scroll.name = "PlayerMapScroll"
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	parent.add_child(scroll)
+	var stage := PlayerMapCartographicStageType.new()
+	stage.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stage.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.add_child(stage)
+	var center := CenterContainer.new()
+	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	center.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	stage.add_child(center)
 	var presenter := PlayerMapPresenter.new()
 	presenter.name = "AcquiredPlayerMap"
 	presenter.present(selected, media)
-	parent.add_child(presenter)
+	presenter.set_map_zoom(_player_map_zoom)
+	center.add_child(presenter)
+	for button: Button in [zoom_out, fit, zoom_in]:
+		button.pressed.connect(_change_player_map_zoom.bind(presenter, zoom_label, float(button.get_meta("zoom_delta"))))
+
+
+func _map_zoom_button(node_name: String, text: String, delta: float) -> Button:
+	var button := Button.new()
+	button.name = node_name
+	button.text = text
+	button.custom_minimum_size = Vector2(58, 30)
+	button.set_meta("zoom_delta", delta)
+	return button
+
+
+func _change_player_map_zoom(presenter: PlayerMapPresenter, label: Label, delta: float) -> void:
+	_player_map_zoom = 1.0 if is_zero_approx(delta) else clampf(_player_map_zoom + delta, 1.0, 4.0)
+	presenter.set_map_zoom(_player_map_zoom)
+	label.text = "%d%%" % roundi(_player_map_zoom * 100.0)
 
 
 func _build_journal_tab(parent: VBoxContainer, view: GameView) -> void:
@@ -246,6 +293,8 @@ func _render_location_note_editor(parent: VBoxContainer, view: GameView) -> void
 	editor.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	editor.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	editor.placeholder_text = "Write a location note…"
+	editor.add_theme_color_override("background_color", Color("d0bd8d"))
+	editor.add_theme_color_override("font_color", Color("29251d"))
 	editor.text = current.text
 	parent.add_child(editor)
 	var count_label := Label.new()
@@ -301,7 +350,7 @@ func _columns(parent: VBoxContainer, node_name: String) -> HBoxContainer:
 func _pane(parent: HBoxContainer, node_name: String, title: String, ratio: float) -> VBoxContainer:
 	var panel := PanelContainer.new()
 	panel.name = node_name
-	panel.theme_type_variation = &"ClassicTextWell"
+	panel.theme_type_variation = &"ClassicInset"
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	panel.size_flags_stretch_ratio = ratio

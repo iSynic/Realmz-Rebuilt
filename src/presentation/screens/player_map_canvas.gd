@@ -6,6 +6,7 @@ const MAP_SIZE: int = 320
 var _view: PlayerMapView
 var _media: ClassicMediaCatalog
 var _textures: Dictionary = {}
+var _zoom: float = 1.0
 
 
 func _init() -> void:
@@ -20,9 +21,21 @@ func present(view: PlayerMapView, media: ClassicMediaCatalog) -> void:
 	queue_redraw()
 
 
+func set_zoom(zoom: float) -> void:
+	_zoom = clampf(zoom, 1.0, 4.0)
+	custom_minimum_size = Vector2.ONE * float(MAP_SIZE) * _zoom
+	queue_redraw()
+
+
+func zoom() -> float:
+	return _zoom
+
+
 func _draw() -> void:
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * _zoom)
 	draw_rect(Rect2(Vector2.ZERO, Vector2(MAP_SIZE, MAP_SIZE)), Color.BLACK, true)
 	if _view == null or _media == null:
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		return
 	if _view.mode == PlayerMapDefinition.PICTURE:
 		_draw_picture()
@@ -31,6 +44,7 @@ func _draw() -> void:
 	else:
 		return
 	_draw_party_marker()
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
 func _draw_picture() -> void:
