@@ -151,6 +151,9 @@ func run() -> void:
 	var zero_ap_content := _duplicate_placed_ap_content(0, content); var zero_ap_session := GameSession.new(); zero_ap_session.start(zero_ap_content, 1); _begin_fixture_adventure(zero_ap_session, zero_ap_content)
 	var zero_ap_step := zero_ap_session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
 	assert_false(_has_event(zero_ap_step, &"trigger_fired"), "Classic percent zero disables the selected AP without falling through"); assert_equal(zero_ap_session.rng_trace().size(), 0, "a disabled selected AP consumes no random draw")
+	var inactive_ap_content := _inactive_placed_ap_content(content); var inactive_ap_session := GameSession.new(); inactive_ap_session.start(inactive_ap_content, 1); _begin_fixture_adventure(inactive_ap_session, inactive_ap_content)
+	var enabled_ap_step := inactive_ap_session.submit_intent(PlayerIntent.move(Vector2i.RIGHT)); assert_true(_has_event(enabled_ap_step, &"trigger_chances_changed"), "opcode 13 can enable an initially inactive placed AP")
+	var inactive_ap_step := inactive_ap_session.submit_intent(PlayerIntent.move(Vector2i.RIGHT)); assert_equal(_event(inactive_ap_step, &"trigger_fired").payload["triggerId"], "ap.inactive-placed", "a positive runtime chance override activates the addressed AP")
 
 	var disabled_ap_content := _duplicate_placed_ap_content(100, content); var disabled_ap_source := GameSession.new(); disabled_ap_source.start(disabled_ap_content, 1); _begin_fixture_adventure(disabled_ap_source, disabled_ap_content)
 	var disabled_ap_save := disabled_ap_source.snapshot(); disabled_ap_save.game_state.world.disable_trigger("ap.first-native")
@@ -558,24 +561,23 @@ func _sound_ids(step: SessionStep) -> Array[int]:
 
 
 func _duplicate_placed_ap_content(first_chance: int, source_content: RealmzContent) -> RealmzContent:
-	var empty_features: Array[MapFeature] = []
-	var empty_ids: Array[String] = []
-	var origin_triggers: Array[String] = []
-	var target_triggers: Array[String] = ["ap.later-native", "ap.first-native"]
-	var cells: Array[MapCell] = [
-		MapCell.new("ap-order:cell:0,0", Vector2i.ZERO, "classic.terrain.1", true, 1, false, true, false, false, false, false, false, 0, 1, "fixture.tileset", origin_triggers, empty_ids, {}, empty_features),
-		MapCell.new("ap-order:cell:1,0", Vector2i(1, 0), "classic.terrain.1", true, 1, false, true, false, false, false, false, false, 0, 1, "fixture.tileset", target_triggers, empty_ids, {}, empty_features),
-	]
-	var map := MapDefinition.new("ap-order", "Placed AP Order", &"land", 0, MapTopology.new(2, 1, cells))
-	var maps: Array[MapDefinition] = [map]
-	var first := TriggerDefinition.new("ap.first-native", "program.first-native", map.id, Vector2i(1, 0), true, first_chance, null, 2)
-	var later := TriggerDefinition.new("ap.later-native", "program.later-native", map.id, Vector2i(1, 0), true, 100, null, 9)
-	var triggers: Array[TriggerDefinition] = [later, first]
+	var empty_features: Array[MapFeature] = []; var empty_ids: Array[String] = []; var origin_triggers: Array[String] = []; var target_triggers: Array[String] = ["ap.later-native", "ap.first-native"]
+	var cells: Array[MapCell] = [MapCell.new("ap-order:cell:0,0", Vector2i.ZERO, "classic.terrain.1", true, 1, false, true, false, false, false, false, false, 0, 1, "fixture.tileset", origin_triggers, empty_ids, {}, empty_features), MapCell.new("ap-order:cell:1,0", Vector2i(1, 0), "classic.terrain.1", true, 1, false, true, false, false, false, false, false, 0, 1, "fixture.tileset", target_triggers, empty_ids, {}, empty_features)]
+	var map := MapDefinition.new("ap-order", "Placed AP Order", &"land", 0, MapTopology.new(2, 1, cells)); var maps: Array[MapDefinition] = [map]
+	var first := TriggerDefinition.new("ap.first-native", "program.first-native", map.id, Vector2i(1, 0), true, first_chance, null, 2); var later := TriggerDefinition.new("ap.later-native", "program.later-native", map.id, Vector2i(1, 0), true, 100, null, 9); var triggers: Array[TriggerDefinition] = [later, first]
 	var programs: Array[ScenarioProgramDefinition] = [
 		ScenarioProgramDefinition.new(first.program_id, &"trigger", first.id, []),
 		ScenarioProgramDefinition.new(later.program_id, &"trigger", later.id, []),
 	]
 	return RealmzContent.new("ap-order", "0".repeat(64), "ap-order-content", "realmz-classic-1", map.id, Vector2i.ZERO, WorldDefinition.new(maps), ScenarioDefinition.new(programs, []), [], triggers, [], source_content.race_definitions(), source_content.caste_definitions())
+
+
+func _inactive_placed_ap_content(source_content: RealmzContent) -> RealmzContent:
+	var empty_ids: Array[String] = []; var empty_features: Array[MapFeature] = []
+	var cells: Array[MapCell] = [MapCell.new("inactive-ap:cell:0,0", Vector2i.ZERO, "classic.terrain.1", true, 1, false, true, false, false, false, false, false, 0, 1, "fixture.tileset", empty_ids, empty_ids, {}, empty_features), MapCell.new("inactive-ap:cell:1,0", Vector2i(1, 0), "classic.terrain.1", true, 1, false, true, false, false, false, false, false, 0, 1, "fixture.tileset", ["ap.enable-inactive"], empty_ids, {}, empty_features), MapCell.new("inactive-ap:cell:2,0", Vector2i(2, 0), "classic.terrain.1", true, 1, false, true, false, false, false, false, false, 0, 1, "fixture.tileset", ["ap.inactive-placed"], empty_ids, {}, empty_features)]
+	var map := MapDefinition.new("inactive-ap", "Inactive AP", &"land", 0, MapTopology.new(3, 1, cells)); var enable := TriggerDefinition.new("ap.enable-inactive", "program.enable-inactive", map.id, Vector2i(1, 0), true, 100, null, 1); var inactive := TriggerDefinition.new("ap.inactive-placed", "program.inactive-placed", map.id, Vector2i(2, 0), false, 0, null, 57)
+	var programs: Array[ScenarioProgramDefinition] = [ScenarioProgramDefinition.new(enable.program_id, &"trigger", enable.id, [ClassicActionDefinition.new(0, 13, 13, 0, false, [0, 57, 100, 1, 0])]), ScenarioProgramDefinition.new(inactive.program_id, &"trigger", inactive.id, [])]
+	return RealmzContent.new("inactive-ap", "0".repeat(64), "inactive-ap-content", "realmz-classic-1", map.id, Vector2i.ZERO, WorldDefinition.new([map]), ScenarioDefinition.new(programs, []), [], [enable, inactive], [], source_content.race_definitions(), source_content.caste_definitions())
 
 
 func _classic_choice_backout_content(source_content: RealmzContent) -> RealmzContent:

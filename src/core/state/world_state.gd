@@ -77,6 +77,10 @@ func trigger_chance(trigger_id: String, authored_percent: int) -> int:
 	return int(_trigger_chances.get(trigger_id, authored_percent))
 
 
+func trigger_chance_is_overridden(trigger_id: String) -> bool:
+	return _trigger_chances.has(trigger_id)
+
+
 func acquire_map(map_id: String) -> void:
 	if not map_id.is_empty():
 		_acquired_maps[map_id] = true

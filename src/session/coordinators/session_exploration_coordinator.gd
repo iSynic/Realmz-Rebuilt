@@ -259,11 +259,11 @@ func _continue_post_move(events: Array[DomainEvent]) -> SessionCoordinatorResult
 		var trigger_index = exploration.trigger_index
 		var trigger_id: String = String(trigger_ids[trigger_index])
 		var trigger = _context.content.trigger_by_id(trigger_id)
-		if trigger == null or not trigger.active or _context.state.world.trigger_is_disabled(trigger_id):
+		if trigger == null or _context.state.world.trigger_is_disabled(trigger_id):
 			exploration.trigger_index = trigger_ids.size()
 			break
 		var trigger_chance = _context.state.world.trigger_chance(trigger.id, trigger.chance_percent)
-		if trigger_chance < 1:
+		if (not trigger.active and not _context.state.world.trigger_chance_is_overridden(trigger_id)) or trigger_chance < 1:
 			exploration.trigger_index = trigger_ids.size()
 			break
 		if trigger_chance < 100:
