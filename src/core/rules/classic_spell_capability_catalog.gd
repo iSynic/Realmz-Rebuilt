@@ -322,10 +322,10 @@ static func _field_character_disposition(spell: SpellDefinition) -> StringName:
 	if spell == null or not spell.in_camp or application_role(spell) == ROLE_RESERVED_STANDARD:
 		return DISPOSITION_NOT_APPLICABLE
 	var special := absi(spell.special)
-	if spell.target_type == 7:
-		return DISPOSITION_EXECUTABLE if special == 50 or special >= 1 and special < ConditionSet.PARTY_COUNT else DISPOSITION_PENDING
 	if special == 68:
 		return DISPOSITION_EXECUTABLE
+	if spell.target_type == 7:
+		return DISPOSITION_EXECUTABLE if special == 0 or special == 50 or special >= 1 and special < ConditionSet.PARTY_COUNT else DISPOSITION_PENDING
 	if _field_encounter_utility_spell(spell):
 		return DISPOSITION_EXECUTABLE
 	if _inert_self_duration_effect(spell):

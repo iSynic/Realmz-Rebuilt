@@ -1,0 +1,12 @@
+{
+  "scope": "application-owned party-state field items",
+  "castleSourceObservation": {
+    "resolutionOrder": "resolvespell.c handles special 68 before the target-type-7 party-condition branch; special 68 clamps fatigue through updatefat while target type 7 stores duration in partycondition[special]",
+    "itemLaunch": "items.c loads the item's spell record and fixed absolute special-one power before resolvespell"
+  },
+  "applicationItems": [
+    {"classicItemId": 609, "name": "Vaporous Form", "power": 7, "spellId": 4310, "result": "party condition 0 becomes duration 1"},
+    {"classicItemId": 723, "name": "Refresh Potion", "power": 1, "spellId": 4713, "result": "party fatigue becomes 4"}
+  ],
+  "runtimeContract": "Both package-owned charged items use the ordinary public field-item transaction, spend one charge and no spell points, preserve duration-before-damage RNG, and save their exact party-state mutation."
+}
