@@ -29,6 +29,7 @@ var install_dialog: FileDialog
 var install_button: Button
 var refresh_button: Button
 var package_install_row: BoxContainer
+var startup_action_buttons: Array[Button] = []
 
 var campaigns: Array[CampaignPackageView] = []
 var package_operation_status: RefCounted = PackageOperationViewScript.new()
@@ -39,6 +40,8 @@ var campaign_layout_rect := Rect2(12.0, 36.0, 228.0, 556.0)
 var setup_layout_rect := Rect2(12.0, 36.0, 936.0, 556.0)
 
 var _host: Control
+var _startup_actions_ready: bool = true
+var _startup_action_tooltips: Dictionary = {}
 
 
 func attach(host: Control) -> void:
@@ -130,12 +133,14 @@ func build_splash_overlay() -> void:
 	scenarios.text = "Choose a scenario"
 	scenarios.custom_minimum_size.y = 42.0
 	scenarios.pressed.connect(func() -> void: campaign_selection_requested.emit())
+	_register_startup_action(scenarios)
 	column.add_child(scenarios)
 	var load_adventure := Button.new()
 	load_adventure.name = "LoadAdventure"
 	load_adventure.text = "Load saved adventure"
 	load_adventure.custom_minimum_size.y = 42.0
 	load_adventure.pressed.connect(func() -> void: load_adventure_requested.emit())
+	_register_startup_action(load_adventure)
 	column.add_child(load_adventure)
 	var characters := Button.new()
 	characters.name = "CharacterFiles"
@@ -143,6 +148,7 @@ func build_splash_overlay() -> void:
 	characters.tooltip_text = "Review reusable Character Files. Stock Realmz characters can be created without selecting a scenario; scenario-specific races and classes require that scenario."
 	characters.custom_minimum_size.y = 42.0
 	characters.pressed.connect(func() -> void: vault_requested.emit())
+	_register_startup_action(characters)
 	column.add_child(characters)
 	var quit := Button.new()
 	quit.name = "Quit"
@@ -238,6 +244,15 @@ func set_presentation_settings(next_settings: PresentationSettings) -> void:
 	if next_settings != null:
 		settings = next_settings
 		_apply_intro_volume()
+
+
+func set_startup_actions_ready(ready: bool) -> void:
+	_startup_actions_ready = ready
+	for button: Button in startup_action_buttons:
+		button.disabled = not ready
+		button.tooltip_text = str(_startup_action_tooltips.get(button.name, "")) if ready else "Finishing startup…"
+	if ready and splash_overlay != null and splash_overlay.visible:
+		_focus_first(splash_overlay)
 
 
 func apply_layout(profile: UiLayoutProfile, campaign_rect: Rect2, setup_rect: Rect2) -> void:
@@ -528,6 +543,14 @@ func _splash_label(text: String, color: Color = Color.WHITE, size: int = 15) -> 
 	var label := _label(text, color, size)
 	label.theme_type_variation = &"ClassicHeading"
 	return label
+
+
+func _register_startup_action(button: Button) -> void:
+	startup_action_buttons.append(button)
+	_startup_action_tooltips[button.name] = button.tooltip_text
+	button.disabled = not _startup_actions_ready
+	if not _startup_actions_ready:
+		button.tooltip_text = "Finishing startup…"
 
 
 func _apply_intro_frame_layout(compact: bool) -> void:

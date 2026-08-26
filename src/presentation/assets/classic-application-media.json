@@ -212,8 +212,8 @@
       "classification": "classic-application-resource",
       "classic_evidence": {
         "status": "source-control-flow",
-        "path": "src/realmz_orig/main.c:720-749; src/realmz_orig/misc.c:1875-1907",
-        "note": "Castle opens The Family Jewels as an application resource fork before scenario selection. sound() resolves exact snd resource IDs through the open resource chain."
+        "path": "src/realmz_orig/main.c:897-1009",
+        "note": "Castle plays exact application sound 20 after the timed launch logo as its main application window becomes available."
       }
     },
     {
@@ -1427,8 +1427,8 @@
       "classification": "classic-application-resource",
       "classic_evidence": {
         "status": "source-control-flow",
-        "path": "src/realmz_orig/main.c:720-749; src/realmz_orig/misc.c:1875-1907",
-        "note": "Castle opens The Family Jewels as an application resource fork before scenario selection. sound() resolves exact snd resource IDs through the open resource chain."
+        "path": "src/realmz_orig/showlogo.c:16-60",
+        "note": "Castle plays exact application sound 624 on both transitions around its timed launch logo."
       }
     },
     {

@@ -280,6 +280,15 @@ try {
             }
             if ($set.resource_type -eq "snd ") {
                 $decoded = Convert-SndToWav $entry.Bytes $entry.Id
+                $evidencePath = $set.evidence_path
+                $evidenceNote = $set.evidence_note
+                if ($entry.Id -eq 624) {
+                    $evidencePath = "src/realmz_orig/showlogo.c:16-60"
+                    $evidenceNote = "Castle plays exact application sound 624 on both transitions around its timed launch logo."
+                } elseif ($entry.Id -eq 20) {
+                    $evidencePath = "src/realmz_orig/main.c:897-1009"
+                    $evidenceNote = "Castle plays exact application sound 20 after the timed launch logo as its main application window becomes available."
+                }
                 $relativePath = "$($set.target_directory)/snd-$($entry.Id).wav"
                 $targetPath = Join-Path $outputRoot ($relativePath -replace "/", [IO.Path]::DirectorySeparatorChar)
                 New-Item -ItemType Directory -Path (Split-Path -Parent $targetPath) -Force | Out-Null
@@ -307,8 +316,8 @@ try {
                     classification = $set.classification
                     classic_evidence = [ordered]@{
                         status = "source-control-flow"
-                        path = $set.evidence_path
-                        note = $set.evidence_note
+                        path = $evidencePath
+                        note = $evidenceNote
                     }
                 }
                 continue

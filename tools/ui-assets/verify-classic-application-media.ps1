@@ -119,9 +119,21 @@ foreach ($requiredFont in @("font.classic.black_chancery.regular", "font.classic
 $introManifestPath = Join-Path $repoRoot "src/presentation/assets/ui/intro/intro-video.json"
 if (-not (Test-Path -LiteralPath $introManifestPath -PathType Leaf)) { throw "Realmz Rebuilt intro video manifest is missing" }
 $introManifest = Get-Content -Raw -LiteralPath $introManifestPath | ConvertFrom-Json
-if ($introManifest.schema_version -ne 3 -or $introManifest.source_sha256 -ne "2b30c6bca4a8d6ba6ee524c28630c4706944f327b5d8d304ce0253050fb53f40" -or $introManifest.license -ne "Project-Owner-Supplied" -or $introManifest.path -ne "res://src/presentation/assets/ui/intro/rebuilt-intro.ogv" -or $introManifest.bytes -ne 1097782 -or $introManifest.width -ne 832 -or $introManifest.height -ne 480 -or $introManifest.frames_per_second -ne 24 -or $introManifest.duration_ms -ne 5167 -or $introManifest.video_codec -ne "theora" -or $introManifest.audio_codec -ne "vorbis" -or $introManifest.audio_sample_rate -ne 48000 -or $introManifest.audio_channels -ne 2 -or -not $introManifest.loop -or $introManifest.playback_audio -ne $false) {
+if ($introManifest.schema_version -ne 4 -or $introManifest.source_sha256 -ne "2b30c6bca4a8d6ba6ee524c28630c4706944f327b5d8d304ce0253050fb53f40" -or $introManifest.license -ne "Project-Owner-Supplied" -or $introManifest.path -ne "res://src/presentation/assets/ui/intro/rebuilt-intro.ogv" -or $introManifest.bytes -ne 1097782 -or $introManifest.width -ne 832 -or $introManifest.height -ne 480 -or $introManifest.frames_per_second -ne 24 -or $introManifest.duration_ms -ne 5167 -or $introManifest.video_codec -ne "theora" -or $introManifest.audio_codec -ne "vorbis" -or $introManifest.audio_sample_rate -ne 48000 -or $introManifest.audio_channels -ne 2 -or -not $introManifest.loop -or $introManifest.playback_audio -ne $false) {
     throw "Realmz Rebuilt intro video provenance or media contract is invalid"
 }
+$launchSplash = $introManifest.launch_splash
+if ($null -eq $launchSplash -or $launchSplash.source_role -ne "Realmz Rebuilt launch splash supplied by the project owner" -or $launchSplash.source_name -ne "Rebuilt Splash.jpg" -or $launchSplash.source_sha256 -ne "de81e79e6cf5e92bac396f5c4aa90b6be21c3b16b33cb450879b08a9e655497a" -or $launchSplash.license -ne "Project-Owner-Supplied" -or $launchSplash.path -ne "res://src/presentation/assets/ui/intro/rebuilt-launch-splash.jpg" -or $launchSplash.bytes -ne 219118 -or $launchSplash.width -ne 1024 -or $launchSplash.height -ne 1024 -or $launchSplash.format -ne "jpeg" -or $launchSplash.minimum_duration_ms -ne 3000 -or $launchSplash.scaling -ne "keep-aspect-centered") {
+    throw "Realmz Rebuilt launch splash provenance or presentation contract is invalid"
+}
+$launchSplashPath = Join-Path $repoRoot ($launchSplash.path.Substring("res://".Length) -replace "/", [IO.Path]::DirectorySeparatorChar)
+if (-not (Test-Path -LiteralPath $launchSplashPath -PathType Leaf) -or (Get-Item -LiteralPath $launchSplashPath).Length -ne $launchSplash.bytes -or (Get-FileHash -Algorithm SHA256 -LiteralPath $launchSplashPath).Hash.ToLowerInvariant() -ne $launchSplash.source_sha256) {
+    throw "Realmz Rebuilt launch splash bytes do not match the project-owner-supplied asset"
+}
+$launchBitmap = [Drawing.Bitmap]::new([string]$launchSplashPath)
+try {
+    if ($launchBitmap.Width -ne $launchSplash.width -or $launchBitmap.Height -ne $launchSplash.height) { throw "Realmz Rebuilt launch splash dimensions do not match" }
+} finally { $launchBitmap.Dispose() }
 $introVideoPath = Join-Path $repoRoot ($introManifest.path.Substring("res://".Length) -replace "/", [IO.Path]::DirectorySeparatorChar)
 if (-not (Test-Path -LiteralPath $introVideoPath -PathType Leaf)) { throw "Realmz Rebuilt intro video is missing" }
 if ((Get-Item -LiteralPath $introVideoPath).Length -ne $introManifest.bytes) { throw "Realmz Rebuilt intro video byte length does not match" }
@@ -199,5 +211,5 @@ foreach ($file in $chromeFiles) {
     }
     finally { $bitmap.Dispose() }
 }
-Write-Host "Classic application media verified: $($manifest.assets.Count) assets; fonts verified: $($fontManifest.assets.Count) assets; intro media verified: $($introManifest.width)x$($introManifest.height) video + $($introSoundtrack.duration_ms)ms soundtrack; generated chrome verified: $($chromeFiles.Count) files."
+Write-Host "Classic application media verified: $($manifest.assets.Count) assets; fonts verified: $($fontManifest.assets.Count) assets; intro media verified: $($launchSplash.width)x$($launchSplash.height) launch + $($introManifest.width)x$($introManifest.height) video + $($introSoundtrack.duration_ms)ms soundtrack; generated chrome verified: $($chromeFiles.Count) files."
 exit 0

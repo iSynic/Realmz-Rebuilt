@@ -1,5 +1,18 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
+  "launch_splash": {
+    "source_role": "Realmz Rebuilt launch splash supplied by the project owner",
+    "source_name": "Rebuilt Splash.jpg",
+    "source_sha256": "de81e79e6cf5e92bac396f5c4aa90b6be21c3b16b33cb450879b08a9e655497a",
+    "license": "Project-Owner-Supplied",
+    "path": "res://src/presentation/assets/ui/intro/rebuilt-launch-splash.jpg",
+    "bytes": 219118,
+    "width": 1024,
+    "height": 1024,
+    "format": "jpeg",
+    "minimum_duration_ms": 3000,
+    "scaling": "keep-aspect-centered"
+  },
   "source_role": "Realmz Rebuilt intro video supplied by the project owner",
   "source_sha256": "2b30c6bca4a8d6ba6ee524c28630c4706944f327b5d8d304ce0253050fb53f40",
   "license": "Project-Owner-Supplied",
