@@ -6,7 +6,7 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| classic | 69 | 0 | 7 | 50 | 12 |
+| classic | 69 | 0 | 6 | 50 | 13 |
 | host | 8 | 1 | 1 | 4 | 2 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
@@ -22,7 +22,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
 | `classic.spellcasting.field-camp-cast` | certification | broader-parity | aogm-ordinary |  |
-| `classic.spellcasting.combat-cast` | archaeology | broader-parity | - | GAP-SPELL-003 |
+| `classic.spellcasting.combat-cast` | certification | broader-parity | aogm-ordinary |  |
 | `classic.system.preferences` | implementation | broader-parity | - |  |
 | `host.settings.accessibility` | implementation | classic-missing | - | GAP-HOST-004 |
 
@@ -31,9 +31,9 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Scope | State | Baseline | Current | Delta |
 | --- | --- | ---: | ---: | ---: |
 | classic | missing | 0 | 0 | 0 |
-| classic | partial | 8 | 7 | -1 |
+| classic | partial | 8 | 6 | -2 |
 | classic | functional | 50 | 50 | 0 |
-| classic | certified | 11 | 12 | +1 |
+| classic | certified | 11 | 13 | +2 |
 | host | missing | 1 | 1 | 0 |
 | host | partial | 1 | 1 | 0 |
 | host | functional | 4 | 4 | 0 |
@@ -48,7 +48,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Scenario interaction | 6 | 0 | 0 | 3 | 3 |
 | Character management | 5 | 0 | 0 | 5 | 0 |
 | Inventory and equipment | 9 | 0 | 1 | 8 | 0 |
-| Spellcasting | 3 | 0 | 1 | 1 | 1 |
+| Spellcasting | 3 | 0 | 0 | 1 | 2 |
 | Services and economy | 5 | 0 | 1 | 4 | 0 |
 | Combat | 14 | 0 | 1 | 9 | 4 |
 | Rewards and progression | 5 | 0 | 0 | 4 | 1 |
@@ -84,8 +84,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | ---: |
 | not-applicable | 3 |
 | absent | 0 |
-| partial | 1 |
-| complete | 65 |
+| partial | 0 |
+| complete | 66 |
 
 | persistence | Count |
 | --- | ---: |
@@ -98,8 +98,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | ---: |
 | absent | 0 |
 | fixture-shell | 0 |
-| functional | 56 |
-| accepted | 13 |
+| functional | 55 |
+| accepted | 14 |
 
 ### Host
 
@@ -143,10 +143,9 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 
 ## Release blockers and major gaps
 
-Blockers: **1**. Major gaps: **2**.
+Blockers: **1**. Major gaps: **1**.
 
 - **blocker** `host.release.platform-certification` - There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
-- **major** `classic.spellcasting.combat-cast` - Manual, fixed-power scroll, charged-item, Party Auto, and monster casting share source-backed condition-cure, single-target friendly and self healing, single-target friendly condition-effect, multi-actor ray, rotated-area, persistent-field, hostile-group, Flame Missile, zero-cost breath, and summoning resolution. Every application spell has one mechanical-family and per-source disposition; only the remaining special-effect families stay explicit pending capabilities. Next: Continue the remaining unresolved special-effect families while keeping every unavailable family explicit.
 - **major** `host.settings.accessibility` - Control customization and complete multi-scale layout acceptance remain unfinished. Next: Finish keyboard/mouse control help and run layout acceptance at every locked resolution and text scale.
 
 ## Oracle-required unknowns
@@ -169,7 +168,6 @@ Blockers: **1**. Major gaps: **2**.
 
 ### parity
 
-- `classic.spellcasting.combat-cast` - Manual, fixed-power scroll, charged-item, Party Auto, and monster casting share source-backed condition-cure, single-target friendly and self healing, single-target friendly condition-effect, multi-actor ray, rotated-area, persistent-field, hostile-group, Flame Missile, zero-cost breath, and summoning resolution. Every application spell has one mechanical-family and per-source disposition; only the remaining special-effect families stay explicit pending capabilities.
 - `classic.character.view-sheet` - Several nonzero Classic ability slots lack verified display names.
 - `classic.maps.authored-journal` - Castle's PRFN default and the authored-journal rendering boundary remain outside the verified subset.
 - `classic.maps.view-acquired` - Classic scrolling TEXT encoding and style resources remain only partially represented.
