@@ -15,8 +15,8 @@ const ROOM_HEIGHT := 1.5
 const ARCHWAY_OPENING_WIDTH := 0.64
 const ARCHWAY_HEADER_HEIGHT := 0.24
 const ARCHWAY_FRAME_DEPTH := 0.12
-const WALL_TEXTURE := preload("res://src/presentation/assets/classic-dungeon/wall-sand-bricks.jpg")
-const FLOOR_TEXTURE := preload("res://src/presentation/assets/classic-dungeon/floor-sand.jpg")
+const WALL_TEXTURE_PATH := "res://src/presentation/assets/classic-dungeon/wall-sand-bricks.jpg"
+const FLOOR_TEXTURE_PATH := "res://src/presentation/assets/classic-dungeon/floor-sand.jpg"
 
 static var _shared_material: ShaderMaterial
 static var _shared_atlas_id := 0
@@ -131,8 +131,8 @@ void fragment() {
 	var material := ShaderMaterial.new()
 	material.shader = shader
 	material.set_shader_parameter("atlas", atlas)
-	material.set_shader_parameter("wall_texture", WALL_TEXTURE)
-	material.set_shader_parameter("floor_texture", FLOOR_TEXTURE)
+	material.set_shader_parameter("wall_texture", load(WALL_TEXTURE_PATH) as Texture2D)
+	material.set_shader_parameter("floor_texture", load(FLOOR_TEXTURE_PATH) as Texture2D)
 	return material
 
 

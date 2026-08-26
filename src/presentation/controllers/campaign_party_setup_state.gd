@@ -4,7 +4,6 @@ extends RefCounted
 const CampaignLibraryControllerScript := preload("res://src/presentation/controllers/campaign_library_controller.gd")
 const PartySetupCharacterRowScript := preload("res://src/presentation/party_setup_character_row.gd")
 const PartySetupPartyListScript := preload("res://src/presentation/party_setup_party_list.gd")
-const ClassicUiTheme := preload("res://src/presentation/classic_ui_theme.tres")
 
 signal intent_submitted(intent: PlayerIntent)
 signal load_saved_adventure_requested

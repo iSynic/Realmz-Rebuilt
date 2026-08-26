@@ -53,8 +53,8 @@ const HELD_COMMAND_START_SOUND_IDS: Dictionary = {
 const TORCH_BUTTON_SCRIPT := preload("res://src/presentation/classic_torch_command_button.gd")
 const SEARCH_BUTTON_SCRIPT := preload("res://src/presentation/classic_search_command_button.gd")
 const MUSIC_PLAYLIST_DIALOG_SCRIPT := preload("res://src/presentation/music_playlist_dialog.gd")
-const SAVE_STATUS_TEXTURE := preload("res://src/presentation/assets/ui/status/save-status.png")
-const JOURNAL_STATUS_TEXTURE := preload("res://src/presentation/assets/ui/status/journal-status.png")
+const SAVE_STATUS_TEXTURE_PATH := "res://src/presentation/assets/ui/status/save-status.png"
+const JOURNAL_STATUS_TEXTURE_PATH := "res://src/presentation/assets/ui/status/journal-status.png"
 
 @onready var _menu_strip: PanelContainer = %MenuStrip
 @onready var _menu_row: HBoxContainer = %MenuRow
@@ -107,6 +107,8 @@ var _music_playlist_id: int = 0
 var _music_title: String = ""
 var _music_playing: bool = false
 var _activity_tween: Tween
+var _save_status_texture: Texture2D = load(SAVE_STATUS_TEXTURE_PATH) as Texture2D
+var _journal_status_texture: Texture2D = load(JOURNAL_STATUS_TEXTURE_PATH) as Texture2D
 
 
 func _ready() -> void:
@@ -232,10 +234,10 @@ func set_save_and_quit_mode(enabled: bool) -> void:
 func show_activity_indicator(kind: StringName) -> void:
 	match kind:
 		&"save":
-			_activity_icon.texture = SAVE_STATUS_TEXTURE
+			_activity_icon.texture = _save_status_texture
 			_activity_indicator.tooltip_text = "Adventure saved"
 		&"journal":
-			_activity_icon.texture = JOURNAL_STATUS_TEXTURE
+			_activity_icon.texture = _journal_status_texture
 			_activity_indicator.tooltip_text = "Added to Journal"
 		_:
 			return

@@ -1,9 +1,9 @@
 [gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://src/app/startup_front_door.gd" id="1_front_door"]
-[ext_resource type="Texture2D" path="res://src/presentation/assets/ui/classic-charcoal-slate-tile.png" id="2_stone"]
-[ext_resource type="Theme" path="res://src/presentation/classic_ui_theme.tres" id="3_theme"]
 [ext_resource type="Texture2D" path="res://src/presentation/assets/ui/intro/rebuilt-launch-splash.jpg" id="4_splash"]
+[ext_resource type="AudioStream" path="res://src/presentation/assets/classic-media/sounds/snd-624.wav" id="5_transition"]
+[ext_resource type="AudioStream" path="res://src/presentation/assets/classic-media/sounds/snd-20.wav" id="6_music"]
 
 [node name="StartupFrontDoor" type="Control"]
 layout_mode = 3
@@ -13,7 +13,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_front_door")
-theme = ExtResource("3_theme")
 
 [node name="Background" type="ColorRect" parent="."]
 layout_mode = 1
@@ -26,6 +25,7 @@ mouse_filter = 2
 color = Color(0.035, 0.043, 0.055, 1)
 
 [node name="StoneTexture" type="TextureRect" parent="."]
+unique_name_in_owner = true
 modulate = Color(0.78, 0.8, 0.8, 0.72)
 layout_mode = 1
 anchors_preset = 15
@@ -35,7 +35,6 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 texture_repeat = 2
-texture = ExtResource("2_stone")
 expand_mode = 1
 stretch_mode = 1
 
@@ -63,10 +62,22 @@ texture = ExtResource("4_splash")
 expand_mode = 1
 stretch_mode = 5
 
+[node name="StartupSplashBackground" type="ColorRect" parent="."]
+unique_name_in_owner = true
+z_index = 39
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+color = Color(0, 0, 0, 1)
+
 [node name="StartupFailure" type="VBoxContainer" parent="."]
 unique_name_in_owner = true
 visible = false
-z_index = 31
+z_index = 41
 layout_mode = 1
 anchors_preset = 7
 anchor_left = 0.5
@@ -98,13 +109,15 @@ unique_name_in_owner = true
 wait_time = 3.0
 one_shot = true
 
-[node name="LaunchMusicDelay" type="Timer" parent="."]
+[node name="SplashExitDelay" type="Timer" parent="."]
 unique_name_in_owner = true
 wait_time = 1.513
 one_shot = true
 
 [node name="StartupLaunchTransition" type="AudioStreamPlayer" parent="."]
 unique_name_in_owner = true
+stream = ExtResource("5_transition")
 
 [node name="StartupLaunchMusic" type="AudioStreamPlayer" parent="."]
 unique_name_in_owner = true
+stream = ExtResource("6_music")

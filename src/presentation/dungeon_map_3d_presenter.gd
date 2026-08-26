@@ -7,11 +7,11 @@ signal movement_hold_started(direction: Vector2i)
 signal movement_hold_stopped
 
 const MeshBuilder := preload("res://src/presentation/dungeon_scene_mesh_builder.gd")
-const ATLAS := preload("res://src/presentation/assets/classic-dungeon/classic-dungeon-atlas.png")
-const CURSOR_FORWARD := preload("res://src/presentation/assets/classic-dungeon/cursor-forward.png")
-const CURSOR_REVERSE := preload("res://src/presentation/assets/classic-dungeon/cursor-reverse.png")
-const CURSOR_LEFT := preload("res://src/presentation/assets/classic-dungeon/cursor-left.png")
-const CURSOR_RIGHT := preload("res://src/presentation/assets/classic-dungeon/cursor-right.png")
+const ATLAS_PATH := "res://src/presentation/assets/classic-dungeon/classic-dungeon-atlas.png"
+const CURSOR_FORWARD_PATH := "res://src/presentation/assets/classic-dungeon/cursor-forward.png"
+const CURSOR_REVERSE_PATH := "res://src/presentation/assets/classic-dungeon/cursor-reverse.png"
+const CURSOR_LEFT_PATH := "res://src/presentation/assets/classic-dungeon/cursor-left.png"
+const CURSOR_RIGHT_PATH := "res://src/presentation/assets/classic-dungeon/cursor-right.png"
 const INTERNAL_SIZE := Vector2i(400, 225)
 const MOVE_TWEEN_SECONDS := 0.14
 const TURN_TWEEN_SECONDS := 0.11
@@ -25,6 +25,11 @@ var _geometry: MeshInstance3D
 var _camera: Camera3D
 var _active_tween: Tween
 var _keyboard_direction: Vector2i = Vector2i.ZERO
+var _atlas: Texture2D = load(ATLAS_PATH) as Texture2D
+var _cursor_forward: Texture2D = load(CURSOR_FORWARD_PATH) as Texture2D
+var _cursor_reverse: Texture2D = load(CURSOR_REVERSE_PATH) as Texture2D
+var _cursor_left: Texture2D = load(CURSOR_LEFT_PATH) as Texture2D
+var _cursor_right: Texture2D = load(CURSOR_RIGHT_PATH) as Texture2D
 
 
 func _ready() -> void:
@@ -157,7 +162,7 @@ func _update_visibility() -> void:
 func _rebuild_geometry() -> void:
 	if _geometry == null:
 		return
-	_geometry.mesh = null if _projection == null else MeshBuilder.build(_projection, ATLAS)
+	_geometry.mesh = null if _projection == null else MeshBuilder.build(_projection, _atlas)
 
 
 func _animate_authoritative_change() -> void:
@@ -214,10 +219,10 @@ func _action_at_position(local_position: Vector2) -> StringName:
 
 func _set_navigation_cursor(action: StringName) -> void:
 	match action:
-		&"forward": Input.set_custom_mouse_cursor(CURSOR_FORWARD, Input.CURSOR_ARROW, Vector2(8.0, 0.0))
-		&"reverse": Input.set_custom_mouse_cursor(CURSOR_REVERSE, Input.CURSOR_ARROW, Vector2(8.0, 15.0))
-		&"turn_left": Input.set_custom_mouse_cursor(CURSOR_LEFT, Input.CURSOR_ARROW, Vector2(0.0, 8.0))
-		&"turn_right": Input.set_custom_mouse_cursor(CURSOR_RIGHT, Input.CURSOR_ARROW, Vector2(15.0, 8.0))
+		&"forward": Input.set_custom_mouse_cursor(_cursor_forward, Input.CURSOR_ARROW, Vector2(8.0, 0.0))
+		&"reverse": Input.set_custom_mouse_cursor(_cursor_reverse, Input.CURSOR_ARROW, Vector2(8.0, 15.0))
+		&"turn_left": Input.set_custom_mouse_cursor(_cursor_left, Input.CURSOR_ARROW, Vector2(0.0, 8.0))
+		&"turn_right": Input.set_custom_mouse_cursor(_cursor_right, Input.CURSOR_ARROW, Vector2(15.0, 8.0))
 		_: _clear_navigation_cursor()
 
 

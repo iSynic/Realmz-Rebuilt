@@ -3,7 +3,7 @@ extends RefCounted
 
 const PackageOperationViewScript := preload("res://src/app/package_operation_view.gd")
 const ClassicIntroAnimationScript := preload("res://src/presentation/classic_intro_animation.gd")
-const INTRO_FRAME_TEXTURE := preload("res://src/presentation/assets/ui/classic-intro-frame.png")
+const INTRO_FRAME_TEXTURE_PATH := "res://src/presentation/assets/ui/classic-intro-frame.png"
 
 signal start_requested(package_path: String, seed: int)
 signal cancel_package_requested
@@ -42,6 +42,7 @@ var setup_layout_rect := Rect2(12.0, 36.0, 936.0, 556.0)
 var _host: Control
 var _startup_actions_ready: bool = true
 var _startup_action_tooltips: Dictionary = {}
+var _intro_frame_texture: Texture2D = load(INTRO_FRAME_TEXTURE_PATH) as Texture2D
 
 
 func attach(host: Control) -> void:
@@ -95,7 +96,7 @@ func build_splash_overlay() -> void:
 	splash_animation_host.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	splash_animation_host.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	splash_animation_host.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-	splash_animation_host.texture = INTRO_FRAME_TEXTURE
+	splash_animation_host.texture = _intro_frame_texture
 	splash_animation_host.patch_margin_left = 90
 	splash_animation_host.patch_margin_top = 90
 	splash_animation_host.patch_margin_right = 90

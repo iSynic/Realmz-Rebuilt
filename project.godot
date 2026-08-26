@@ -16,6 +16,8 @@ run/main_scene="res://src/presentation/startup_front_door.tscn"
 config/use_custom_user_dir=true
 config/custom_user_dir_name="RealmzRemake2"
 config/features=PackedStringArray("4.7", "GL Compatibility")
+boot_splash/bg_color=Color(0, 0, 0, 1)
+boot_splash/show_image=false
 
 [display]
 

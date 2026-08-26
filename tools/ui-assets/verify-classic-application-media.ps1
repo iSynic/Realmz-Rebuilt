@@ -41,6 +41,12 @@ foreach ($asset in $manifest.assets) {
     if ($sha256 -ne $asset.sha256) {
         throw "Application media hash does not match: $($asset.id)"
     }
+	if ($asset.resource_type -eq "snd ") {
+		$importPath = "$path.import"
+		if (-not (Test-Path -LiteralPath $importPath -PathType Leaf) -or (Get-Content -Raw -LiteralPath $importPath) -notmatch '(?m)^compress/mode=0$') {
+			throw "Classic application sound must use lossless PCM import: $($asset.id)"
+		}
+	}
 	if ($asset.mime_type -eq "image/png" -and ($asset.width -lt 1 -or $asset.height -lt 1)) {
 		throw "Application image media has invalid dimensions: $($asset.id)"
 	}
@@ -129,6 +135,10 @@ if ($null -eq $launchSplash -or $launchSplash.source_role -ne "Realmz Rebuilt la
 $launchSplashPath = Join-Path $repoRoot ($launchSplash.path.Substring("res://".Length) -replace "/", [IO.Path]::DirectorySeparatorChar)
 if (-not (Test-Path -LiteralPath $launchSplashPath -PathType Leaf) -or (Get-Item -LiteralPath $launchSplashPath).Length -ne $launchSplash.bytes -or (Get-FileHash -Algorithm SHA256 -LiteralPath $launchSplashPath).Hash.ToLowerInvariant() -ne $launchSplash.source_sha256) {
     throw "Realmz Rebuilt launch splash bytes do not match the project-owner-supplied asset"
+}
+$projectSettings = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "project.godot")
+if ($projectSettings -notmatch 'boot_splash/bg_color=Color\(0, 0, 0, 1\)' -or $projectSettings -notmatch 'boot_splash/show_image=false' -or $projectSettings -match 'boot_splash/image=') {
+    throw "Godot boot must remain black until the ready runtime reveals the Rebuilt card and its first cue together"
 }
 $launchBitmap = [Drawing.Bitmap]::new([string]$launchSplashPath)
 try {

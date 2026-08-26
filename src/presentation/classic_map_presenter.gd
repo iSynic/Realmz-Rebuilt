@@ -11,7 +11,7 @@ const PARTY_MARKER_CAMP_ASSET_ID: StringName = &"map.party.camp"
 const PARTY_MARKER_ASSET_ID: StringName = PARTY_MARKER_RIGHT_ASSET_ID
 const BOAT_MARKER_LEFT_ASSET_IDS: Dictionary = {0: &"map.party.boat.left.0", 3: &"map.party.boat.left.3", 5: &"map.party.boat.left.5", 6: &"map.party.boat.left.6", 7: &"map.party.boat.left.7"}
 const BOAT_MARKER_RIGHT_ASSET_IDS: Dictionary = {0: &"map.party.boat.right.0", 3: &"map.party.boat.right.3", 5: &"map.party.boat.right.5", 6: &"map.party.boat.right.6", 7: &"map.party.boat.right.7"}
-const SURROUND_TEXTURE: Texture2D = preload("res://src/presentation/assets/ui/classic-exploration-surround-tile.png")
+const SURROUND_TEXTURE_PATH := "res://src/presentation/assets/ui/classic-exploration-surround-tile.png"
 
 @export var cell_size: float = 32.0
 @export var map_origin: Vector2 = Vector2.ZERO
@@ -32,6 +32,7 @@ var _party_marker_textures: Dictionary = {}
 var _party_marker_asset_id: StringName = PARTY_MARKER_RIGHT_ASSET_ID
 var _party_facing_asset_id: StringName = PARTY_MARKER_RIGHT_ASSET_ID
 var _movement_cursor_asset_id: StringName
+var _surround_texture: Texture2D = load(SURROUND_TEXTURE_PATH) as Texture2D
 
 
 func _ready() -> void:
@@ -167,8 +168,8 @@ func _draw() -> void:
 
 func _draw_exploration_stage(_map_rect: Rect2) -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), Color(0.018, 0.022, 0.026), true)
-	if SURROUND_TEXTURE != null:
-		draw_texture_rect(SURROUND_TEXTURE, Rect2(Vector2.ZERO, size), true, Color(0.34, 0.35, 0.36, 0.72))
+	if _surround_texture != null:
+		draw_texture_rect(_surround_texture, Rect2(Vector2.ZERO, size), true, Color(0.34, 0.35, 0.36, 0.72))
 
 
 func _draw_party_marker(party_rect: Rect2) -> void:

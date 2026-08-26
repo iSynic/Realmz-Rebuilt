@@ -10,7 +10,7 @@ signal targeting_cancelled
 
 const NATIVE_CELL_SIZE: float = 32.0
 const HEADER_HEIGHT: float = 38.0
-const SURROUND_TEXTURE: Texture2D = preload("res://src/presentation/assets/ui/classic-exploration-surround-tile.png")
+const SURROUND_TEXTURE_PATH := "res://src/presentation/assets/ui/classic-exploration-surround-tile.png"
 
 var _view: GameView
 var _media: ClassicMediaCatalog
@@ -31,6 +31,7 @@ var _reveal_friends: bool = false
 var _playback_frame: CombatPlaybackFrame
 var last_playback_media_diagnostic: Dictionary = {}
 var _targeting: CombatTargetingState
+var _surround_texture: Texture2D = load(SURROUND_TEXTURE_PATH) as Texture2D
 
 
 func _ready() -> void:
@@ -149,8 +150,8 @@ func _draw() -> void:
 
 func _draw_battle_stage() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), Color(0.018, 0.022, 0.026), true)
-	if SURROUND_TEXTURE != null:
-		draw_texture_rect(SURROUND_TEXTURE, Rect2(Vector2.ZERO, size), true, Color(0.34, 0.35, 0.36, 0.72))
+	if _surround_texture != null:
+		draw_texture_rect(_surround_texture, Rect2(Vector2.ZERO, size), true, Color(0.34, 0.35, 0.36, 0.72))
 
 
 func _draw_header(combat: CombatView) -> void:

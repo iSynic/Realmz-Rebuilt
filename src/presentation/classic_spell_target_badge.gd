@@ -1,7 +1,9 @@
 class_name ClassicSpellTargetBadge
 extends PanelContainer
 
-const TARGET_TEXT_SHADER := preload("res://src/presentation/assets/shaders/classic_spell_target_text.gdshader")
+const TARGET_TEXT_SHADER_PATH := "res://src/presentation/assets/shaders/classic_spell_target_text.gdshader"
+
+var _target_text_shader: Shader = load(TARGET_TEXT_SHADER_PATH) as Shader
 
 
 func present(target_type: int, target_size: int, semantic_label: String, minimum_size: Vector2 = Vector2(48.0, 48.0)) -> bool:
@@ -23,7 +25,7 @@ func present(target_type: int, target_size: int, semantic_label: String, minimum
 	target_text.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	target_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var cutout := ShaderMaterial.new()
-	cutout.shader = TARGET_TEXT_SHADER
+	cutout.shader = _target_text_shader
 	target_text.material = cutout
 	add_child(target_text)
 	return true

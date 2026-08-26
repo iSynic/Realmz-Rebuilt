@@ -1,6 +1,8 @@
 class_name PartySetupInspectionController
 extends RefCounted
 
+const CLASSIC_UI_THEME_PATH := "res://src/presentation/classic_ui_theme.tres"
+
 var _state: RefCounted
 
 
@@ -10,7 +12,8 @@ func _init(state: RefCounted) -> void:
 func _build_setup_character_inspection() -> void:
 	_state.setup_inspection_overlay = PanelContainer.new()
 	_state.setup_inspection_overlay.name = "PartySetupCharacterInspection"
-	var inspection_surface := _state.ClassicUiTheme.get_stylebox("panel", "ClassicInset").duplicate() as StyleBoxTexture
+	var classic_ui_theme := load(CLASSIC_UI_THEME_PATH) as Theme
+	var inspection_surface := classic_ui_theme.get_stylebox("panel", "ClassicInset").duplicate() as StyleBoxTexture
 	_state.setup_inspection_overlay.add_theme_stylebox_override("panel", inspection_surface)
 	_state.setup_inspection_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 	_state.setup_inspection_overlay.clip_contents = true
