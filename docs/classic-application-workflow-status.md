@@ -6,35 +6,34 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| classic | 69 | 0 | 8 | 50 | 11 |
+| classic | 69 | 0 | 7 | 50 | 12 |
 | host | 8 | 1 | 1 | 4 | 2 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
 
 ## Current parity-convergence batch
 
-**Application-owned semantic data** (`application-semantic-data`)
+**Saturation and host closure** (`saturation-and-host-closure`)
 
-Scenario and combat blockers are closed. The next shared importability gain comes from consuming the application-owned semantics preserved by the final schema cut: Bestiary records first, then lifetime records, music routing, location-note recentering, and exact acquired-map presentation. Existing AOGM, War, and Lachis acceptance remains valid unless one of these presentation owners directly invalidates it.
+The compiler and opcode denominators are saturated, application semantic data is consumed, and acquired dungeon maps are source-backed. The final ordinary-play batch closes the two remaining major spell workflow dispositions before host control/layout acceptance and native release certification. Existing AOGM, War, and Lachis acceptance remains valid unless one of these owners directly invalidates it.
 
 Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.character.allies-bestiary` | certification | broader-parity | other-ordinary |  |
-| `classic.character.view-sheet` | certification | broader-parity | other-ordinary |  |
-| `classic.system.music-playlists` | certification | broader-parity | other-ordinary |  |
-| `classic.maps.location-notes` | certification | broader-parity | aogm-ordinary | GAP-MAP-002 |
-| `classic.maps.view-acquired` | archaeology | broader-parity | - | GAP-MAP-009, GAP-MAP-010, GAP-MAP-011 |
+| `classic.spellcasting.field-camp-cast` | certification | broader-parity | aogm-ordinary |  |
+| `classic.spellcasting.combat-cast` | archaeology | broader-parity | - | GAP-SPELL-003 |
+| `classic.system.preferences` | implementation | broader-parity | - |  |
+| `host.settings.accessibility` | implementation | classic-missing | - | GAP-HOST-004 |
 
 ### Batch count delta
 
 | Scope | State | Baseline | Current | Delta |
 | --- | --- | ---: | ---: | ---: |
 | classic | missing | 0 | 0 | 0 |
-| classic | partial | 12 | 8 | -4 |
-| classic | functional | 46 | 50 | +4 |
-| classic | certified | 11 | 11 | 0 |
+| classic | partial | 8 | 7 | -1 |
+| classic | functional | 50 | 50 | 0 |
+| classic | certified | 11 | 12 | +1 |
 | host | missing | 1 | 1 | 0 |
 | host | partial | 1 | 1 | 0 |
 | host | functional | 4 | 4 | 0 |
@@ -49,7 +48,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Scenario interaction | 6 | 0 | 0 | 3 | 3 |
 | Character management | 5 | 0 | 0 | 5 | 0 |
 | Inventory and equipment | 9 | 0 | 1 | 8 | 0 |
-| Spellcasting | 3 | 0 | 2 | 1 | 0 |
+| Spellcasting | 3 | 0 | 1 | 1 | 1 |
 | Services and economy | 5 | 0 | 1 | 4 | 0 |
 | Combat | 14 | 0 | 1 | 9 | 4 |
 | Rewards and progression | 5 | 0 | 0 | 4 | 1 |
@@ -85,8 +84,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | ---: |
 | not-applicable | 3 |
 | absent | 0 |
-| partial | 2 |
-| complete | 64 |
+| partial | 1 |
+| complete | 65 |
 
 | persistence | Count |
 | --- | ---: |
@@ -99,8 +98,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | ---: |
 | absent | 0 |
 | fixture-shell | 0 |
-| functional | 57 |
-| accepted | 12 |
+| functional | 56 |
+| accepted | 13 |
 
 ### Host
 
@@ -144,11 +143,10 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 
 ## Release blockers and major gaps
 
-Blockers: **1**. Major gaps: **3**.
+Blockers: **1**. Major gaps: **2**.
 
 - **blocker** `host.release.platform-certification` - There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
 - **major** `classic.spellcasting.combat-cast` - Manual, fixed-power scroll, charged-item, Party Auto, and monster casting share source-backed condition-cure, single-target friendly and self healing, single-target friendly condition-effect, multi-actor ray, rotated-area, persistent-field, hostile-group, Flame Missile, zero-cost breath, and summoning resolution. Every application spell has one mechanical-family and per-source disposition; only the remaining special-effect families stay explicit pending capabilities. Next: Continue the remaining unresolved special-effect families while keeping every unavailable family explicit.
-- **major** `classic.spellcasting.field-camp-cast` - Ordinary AOGM camp play proves power-selected scribing, five-slot persistence, saveable party targeting, no-SP scroll use, and exact-slot consumption. Field-character casting has a catalog disposition for every application spell and now executes source-backed Remove Item curse clearing and forced cursed-item unequip; allied targets and map effects remain explicit. Next: Implement allied-target and map-effect branches only from bounded differential evidence when parity or a reachable campaign requires them.
 - **major** `host.settings.accessibility` - Control customization and complete multi-scale layout acceptance remain unfinished. Next: Finish keyboard/mouse control help and run layout acceptance at every locked resolution and text scale.
 
 ## Oracle-required unknowns
@@ -172,7 +170,6 @@ Blockers: **1**. Major gaps: **3**.
 ### parity
 
 - `classic.spellcasting.combat-cast` - Manual, fixed-power scroll, charged-item, Party Auto, and monster casting share source-backed condition-cure, single-target friendly and self healing, single-target friendly condition-effect, multi-actor ray, rotated-area, persistent-field, hostile-group, Flame Missile, zero-cost breath, and summoning resolution. Every application spell has one mechanical-family and per-source disposition; only the remaining special-effect families stay explicit pending capabilities.
-- `classic.spellcasting.field-camp-cast` - Ordinary AOGM camp play proves power-selected scribing, five-slot persistence, saveable party targeting, no-SP scroll use, and exact-slot consumption. Field-character casting has a catalog disposition for every application spell and now executes source-backed Remove Item curse clearing and forced cursed-item unequip; allied targets and map effects remain explicit.
 - `classic.character.view-sheet` - Several nonzero Classic ability slots lack verified display names.
 - `classic.maps.authored-journal` - Castle's PRFN default and the authored-journal rendering boundary remain outside the verified subset.
 - `classic.maps.view-acquired` - Classic scrolling TEXT encoding and style resources remain only partially represented.

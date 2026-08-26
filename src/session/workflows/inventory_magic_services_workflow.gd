@@ -252,8 +252,6 @@ static func field_spell_item_probe(context: SessionWorkflowContext, character: C
 		return InventoryActionProbe.block(ClassicSpellCapabilityCatalog.unsupported_reason(spell, &"field-item"))
 	if spell.target_type < 0 or spell.target_type > 12:
 		return InventoryActionProbe.block("This item's Classic field target type is invalid.")
-	if spell.target_type in [3, 9] and not context.state.party.allies().is_empty():
-		return InventoryActionProbe.block("This item also targets allied creatures; that Classic field branch is not implemented yet.")
 	return InventoryActionProbe.permit()
 
 
@@ -283,7 +281,7 @@ static func field_item_target_ids(context: SessionWorkflowContext, character: Ch
 	if spell.target_type == 5:
 		return [character.id]
 	if spell.target_type > 2:
-		return _party_character_ids(context.state.party)
+		return _field_group_ids(context.state.party, spell)
 	var values: Array[String] = requested_targets.duplicate()
 	if values.is_empty() and not requested_target.is_empty():
 		values.append(requested_target)
@@ -296,7 +294,7 @@ static func field_item_target_count(context: SessionWorkflowContext, spell: Spel
 	if spell.target_type == 5:
 		return 1
 	if spell.target_type > 2:
-		return context.state.party.characters().size()
+		return _field_group_ids(context.state.party, spell).size()
 	return mini(power, context.state.party.characters().size()) if spell.target_type == 0 else 1
 
 
@@ -358,24 +356,18 @@ static func commit_field_spell_item(context: SessionWorkflowContext, character_i
 	var probe := field_spell_item_probe(context, character, instance, item, spell)
 	if not probe.allowed:
 		return SessionWorkflowResult.failed(item_use_error_code(instance, item, spell), probe.reason)
-	var selected_value: Variant = _selected_party_targets(context.state.party, requested_target_ids)
+	var selected_value: Variant = _selected_field_targets(context.state.party, requested_target_ids, spell.target_type in [3, 9])
 	if selected_value == null:
 		return SessionWorkflowResult.failed(&"invalid_item_use_target", "The item target selection contains an unavailable or duplicate character.")
 	if (selected_value as Dictionary).size() != field_item_target_count(context, spell, power):
 		return SessionWorkflowResult.failed(&"invalid_item_use_target", "The item target selection has the wrong number of characters.")
 	var selected: Dictionary = selected_value
 	var targets := _ordered_party_targets(context.state.party, selected)
-	if targets.size() != selected.size():
-		return SessionWorkflowResult.failed(&"invalid_item_use_target", "The item target selection is unavailable.")
+	var allies := _ordered_party_allies(context.state.party, selected)
 	if not context.rules.inventory.use_charge(character, instance.id, item):
 		return SessionWorkflowResult.failed(&"item_charge_commit_failed", "The validated item charge could not be committed.")
-	var castes: Array[CasteDefinition] = []
-	var races: Array[RaceDefinition] = []
-	for target: CharacterState in targets:
-		castes.append(context.content.caste_by_id(target.caste_id))
-		races.append(context.content.race_by_id(target.race_id))
 	var allow_empty := spell.target_type == 7 or absi(spell.special) == 68
-	var resolution := context.rules.magic.resolve_field_spell(character, targets, spell, power, context.rng, castes, races, false, allow_empty, context.content.item_definitions())
+	var resolution := _resolve_field_targets(context, character, targets, allies, spell, power, false, allow_empty)
 	if resolution == null or not resolution.cast:
 		return SessionWorkflowResult.failed(&"item_spell_failed", "The item spell could not be resolved.")
 	var charges_remaining := -1
@@ -473,8 +465,6 @@ static func scroll_use_probe(context: SessionWorkflowContext, character: Charact
 		return InventoryActionProbe.block("This scroll cannot be used outside battle; Classic offers to discard it.")
 	if spell.target_type < 0 or spell.target_type > 12:
 		return InventoryActionProbe.block("This scroll has an invalid Classic field target type.")
-	if spell.target_type in [3, 7, 9] and not context.state.party.allies().is_empty():
-		return InventoryActionProbe.block("This scroll also targets allied creatures; that Classic field branch is not implemented yet.")
 	if not field_spell_effect_supported(spell):
 		return InventoryActionProbe.block(ClassicSpellCapabilityCatalog.unsupported_reason(spell, &"field-scroll"))
 	return InventoryActionProbe.permit()
@@ -567,20 +557,16 @@ static func commit_field_scroll(context: SessionWorkflowContext, character_id: S
 	var probe := scroll_use_probe(context, character, slot_index, spell)
 	if not probe.allowed:
 		return SessionWorkflowResult.failed(&"scroll_unavailable", probe.reason)
-	var selected_value: Variant = _selected_party_targets(context.state.party, requested_target_ids)
+	var selected_value: Variant = _selected_field_targets(context.state.party, requested_target_ids, spell.target_type in [3, 9])
 	if selected_value == null:
 		return SessionWorkflowResult.failed(&"invalid_scroll_target", "The scroll target selection contains an unavailable or duplicate character.")
 	if (selected_value as Dictionary).size() != field_spell_target_count(context, spell, power):
 		return SessionWorkflowResult.failed(&"invalid_scroll_target", "The scroll target selection has the wrong number of characters.")
 	var selected: Dictionary = selected_value
 	var targets := _ordered_party_targets(context.state.party, selected)
-	var castes: Array[CasteDefinition] = []
-	var races: Array[RaceDefinition] = []
-	for target: CharacterState in targets:
-		castes.append(context.content.caste_by_id(target.caste_id))
-		races.append(context.content.race_by_id(target.race_id))
+	var allies := _ordered_party_allies(context.state.party, selected)
 	var allow_empty := spell.target_type == 7 or absi(spell.special) == 68
-	var resolution := context.rules.magic.resolve_field_spell(character, targets, spell, power, context.rng, castes, races, false, allow_empty, context.content.item_definitions())
+	var resolution := _resolve_field_targets(context, character, targets, allies, spell, power, false, allow_empty)
 	if resolution == null or not resolution.cast:
 		return SessionWorkflowResult.failed(&"scroll_spell_failed", "The scroll spell could not be resolved.")
 	if not character.clear_scroll(slot_index):
@@ -608,8 +594,6 @@ static func field_spell_probe(context: SessionWorkflowContext, character: Charac
 		return InventoryActionProbe.block("The character does not have enough spell points.")
 	if spell.target_type < 0 or spell.target_type > 12:
 		return InventoryActionProbe.block("This spell has an invalid Classic field target type.")
-	if spell.target_type in [3, 7, 9] and not context.state.party.allies().is_empty():
-		return InventoryActionProbe.block("This spell also targets allied creatures; that Classic field branch is not implemented yet.")
 	if not field_spell_effect_supported(spell):
 		return InventoryActionProbe.block(ClassicSpellCapabilityCatalog.unsupported_reason(spell, &"field-character"))
 	return InventoryActionProbe.permit()
@@ -625,7 +609,7 @@ static func field_spell_target_ids(context: SessionWorkflowContext, character: C
 	if spell.target_type > 2:
 		if spell.target_type == 7 or absi(spell.special) == 68:
 			return []
-		return _party_character_ids(context.state.party)
+		return _field_group_ids(context.state.party, spell)
 	var values: Array[String] = requested_targets.duplicate()
 	if values.is_empty() and not requested_target.is_empty():
 		values.append(requested_target)
@@ -638,7 +622,7 @@ static func field_spell_target_count(context: SessionWorkflowContext, spell: Spe
 	if spell.target_type == 5:
 		return 1
 	if spell.target_type > 2:
-		return context.state.party.characters().size()
+		return _field_group_ids(context.state.party, spell).size()
 	return mini(power, context.state.party.characters().size()) if spell.target_type == 0 else 1
 
 
@@ -682,20 +666,16 @@ static func commit_field_spell(context: SessionWorkflowContext, character_id: St
 	var probe := field_spell_probe(context, character, spell, power)
 	if not probe.allowed:
 		return SessionWorkflowResult.failed(&"field_spell_unavailable", probe.reason)
-	var selected_value: Variant = _selected_party_targets(context.state.party, requested_target_ids)
+	var selected_value: Variant = _selected_field_targets(context.state.party, requested_target_ids, spell.target_type in [3, 9])
 	if selected_value == null:
 		return SessionWorkflowResult.failed(&"invalid_field_spell_target", "The spell target selection contains an unavailable or duplicate character.")
 	if (selected_value as Dictionary).size() != field_spell_target_count(context, spell, power):
 		return SessionWorkflowResult.failed(&"invalid_field_spell_target", "The spell target selection has the wrong number of characters.")
 	var selected: Dictionary = selected_value
 	var targets := _ordered_party_targets(context.state.party, selected)
-	var castes: Array[CasteDefinition] = []
-	var races: Array[RaceDefinition] = []
-	for target: CharacterState in targets:
-		castes.append(context.content.caste_by_id(target.caste_id))
-		races.append(context.content.race_by_id(target.race_id))
+	var allies := _ordered_party_allies(context.state.party, selected)
 	var allow_empty := spell.target_type == 7 or absi(spell.special) == 68
-	var resolution := context.rules.magic.resolve_field_spell(character, targets, spell, power, context.rng, castes, races, true, allow_empty, context.content.item_definitions())
+	var resolution := _resolve_field_targets(context, character, targets, allies, spell, power, true, allow_empty)
 	if resolution == null or not resolution.cast:
 		return SessionWorkflowResult.failed(&"field_spell_failed", "The field spell could not be resolved.")
 	var events: Array[DomainEvent] = [DomainEvent.new(&"field_spell_cast", {"characterId": character.id, "spellId": spell.id, "power": power, "cost": resolution.cost, "source": "classic"})]
@@ -747,7 +727,7 @@ static func _append_field_spell_events(context: SessionWorkflowContext, events: 
 		events.append(DomainEvent.new(&"party_condition_changed", {"condition": condition_index, "value": context.state.party.conditions.value(condition_index), "spellId": spell.id, "source": String(state_source)}))
 	for index: int in resolution.resolutions.size():
 		var target_resolution := resolution.resolutions[index]
-		var payload := {"characterId": character.id, "targetId": resolution.target_ids[index], "spellId": spell.id, "power": power, "saved": target_resolution.saved, "damage": target_resolution.damage, "healing": maxi(0, -target_resolution.damage), "duration": target_resolution.duration, "source": "classic"}
+		var payload := {"characterId": character.id, "targetId": resolution.target_ids[index], "targetKind": String(resolution.target_kinds[index]), "spellId": spell.id, "power": power, "saved": target_resolution.saved, "damage": target_resolution.damage, "healing": maxi(0, -target_resolution.damage), "duration": target_resolution.duration, "source": "classic"}
 		if target_resolution.cleared_condition >= 0:
 			payload["clearedCondition"] = target_resolution.cleared_condition
 		if not target_resolution.unequipped_item_ids.is_empty():
@@ -790,10 +770,14 @@ static func _first_empty_scroll_slot(character: CharacterState) -> int:
 	return -1
 
 
-static func _selected_party_targets(party: PartyState, target_ids: Array[String]) -> Variant:
+static func _selected_field_targets(party: PartyState, target_ids: Array[String], include_allies: bool) -> Variant:
 	var selected: Dictionary = {}
+	var ally_ids: Dictionary = {}
+	if include_allies:
+		for ally: MonsterState in party.allies():
+			ally_ids[ally.id] = true
 	for target_id: String in target_ids:
-		if target_id.is_empty() or selected.has(target_id) or party.character_by_id(target_id) == null:
+		if target_id.is_empty() or selected.has(target_id) or party.character_by_id(target_id) == null and not ally_ids.has(target_id):
 			return null
 		selected[target_id] = true
 	return selected
@@ -807,11 +791,42 @@ static func _ordered_party_targets(party: PartyState, selected: Dictionary) -> A
 	return targets
 
 
+static func _ordered_party_allies(party: PartyState, selected: Dictionary) -> Array[MonsterState]:
+	var targets: Array[MonsterState] = []
+	for ally: MonsterState in party.allies():
+		if selected.has(ally.id):
+			targets.append(ally)
+	return targets
+
+
 static func _party_character_ids(party: PartyState) -> Array[String]:
 	var ids: Array[String] = []
 	for member: CharacterState in party.characters():
 		ids.append(member.id)
 	return ids
+
+
+static func _field_group_ids(party: PartyState, spell: SpellDefinition) -> Array[String]:
+	var ids := _party_character_ids(party)
+	if spell.target_type in [3, 9]:
+		for ally: MonsterState in party.allies():
+			ids.append(ally.id)
+	return ids
+
+
+static func _resolve_field_targets(context: SessionWorkflowContext, caster: CharacterState, targets: Array[CharacterState], allies: Array[MonsterState], spell: SpellDefinition, power: int, spend_spell_points: bool, allow_empty: bool) -> GroupSpellResolution:
+	var castes: Array[CasteDefinition] = []
+	var races: Array[RaceDefinition] = []
+	for target: CharacterState in targets:
+		castes.append(context.content.caste_by_id(target.caste_id))
+		races.append(context.content.race_by_id(target.race_id))
+	var definitions: Array[MonsterDefinition] = []
+	for ally: MonsterState in allies:
+		var definition := context.content.monster_by_id(ally.definition_id)
+		if definition == null:
+			return null
+		definitions.append(definition)
+	return context.rules.magic.resolve_field_spell(caster, targets, spell, power, context.rng, castes, races, spend_spell_points, allow_empty, context.content.item_definitions(), allies, definitions)
 
 
 static func _eligible_party_candidates(party: Array[CharacterState]) -> Array[InteractionRequestValue.SelectionCandidate]:

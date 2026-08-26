@@ -640,8 +640,6 @@ static func _scroll_use_probe(context: SessionWorkflowContext, character: Charac
 		return InventoryActionProbe.block("This scroll cannot be used outside battle; Classic offers to discard it.")
 	if spell.target_type < 0 or spell.target_type > 12:
 		return InventoryActionProbe.block("This scroll has an invalid Classic field target type.")
-	if spell.target_type in [3, 7, 9] and not context.state.party.allies().is_empty():
-		return InventoryActionProbe.block("This scroll also targets allied creatures; that Classic field branch is not implemented yet.")
 	if not _field_spell_effect_supported(spell):
 		return InventoryActionProbe.block("This scroll's Classic field effect is not implemented yet.")
 	return InventoryActionProbe.permit()
@@ -678,8 +676,6 @@ static func _field_spell_probe(context: SessionWorkflowContext, character: Chara
 		return InventoryActionProbe.block("The character does not have enough spell points.")
 	if spell.target_type < 0 or spell.target_type > 12:
 		return InventoryActionProbe.block("This spell has an invalid Classic field target type.")
-	if spell.target_type in [3, 7, 9] and not context.state.party.allies().is_empty():
-		return InventoryActionProbe.block("This spell also targets allied creatures; that Classic field branch is not implemented yet.")
 	if not _field_spell_effect_supported(spell):
 		return InventoryActionProbe.block("This spell's Classic field effect is not implemented yet.")
 	return InventoryActionProbe.permit()

@@ -132,9 +132,9 @@ func _resolve_character_selection_sequence(caster: CharacterState, selections: A
 	return result
 
 
-func _resolve_character_spell_monster_target(caster: CharacterState, target: MonsterState, target_definition: MonsterDefinition, spell: SpellDefinition, power_level: int, cast_level: int, damage: int, duration: int, spell_cost: int, rng: RealmzRng, polymorph_context: PolymorphContextType = null, extra_to_hit_bonus: int = 0, use_projectile_defense: bool = false) -> SpellResolution:
+func _resolve_character_spell_monster_target(caster: CharacterState, target: MonsterState, target_definition: MonsterDefinition, spell: SpellDefinition, power_level: int, cast_level: int, damage: int, duration: int, spell_cost: int, rng: RealmzRng, polymorph_context: PolymorphContextType = null, extra_to_hit_bonus: int = 0, use_projectile_defense: bool = false, ignore_magic_resistance: bool = false) -> SpellResolution:
 	var rolled_damage := damage
-	var resisted := _monster_resists(caster.level, target, target_definition, spell, power_level, cast_level, rng, extra_to_hit_bonus, caster.missile, use_projectile_defense)
+	var resisted := false if ignore_magic_resistance else _monster_resists(caster.level, target, target_definition, spell, power_level, cast_level, rng, extra_to_hit_bonus, caster.missile, use_projectile_defense)
 	if resisted:
 		return SpellResolution.new(true, true, false, spell_cost, 0, duration)
 	if absi(spell.special) == 57:
@@ -687,13 +687,16 @@ static func _reflect_to_monster_caster(caster: MonsterState, caster_definition: 
 	return SpellTargetSelection.for_monster(caster, caster_definition, selection.original_target_id, true)
 
 
-func resolve_field_spell(caster: CharacterState, targets: Array[CharacterState], spell: SpellDefinition, power_level: int, rng: RealmzRng, castes: Array[CasteDefinition] = [], races: Array[RaceDefinition] = [], spend_spell_points: bool = true, allow_empty: bool = false, item_definitions: Array[ItemDefinition] = []) -> GroupSpellResolution:
-	if caster == null or spell == null or rng == null or power_level < 1 or not allow_empty and targets.is_empty():
+func resolve_field_spell(caster: CharacterState, targets: Array[CharacterState], spell: SpellDefinition, power_level: int, rng: RealmzRng, castes: Array[CasteDefinition] = [], races: Array[RaceDefinition] = [], spend_spell_points: bool = true, allow_empty: bool = false, item_definitions: Array[ItemDefinition] = [], ally_targets: Array[MonsterState] = [], ally_definitions: Array[MonsterDefinition] = []) -> GroupSpellResolution:
+	if caster == null or spell == null or rng == null or power_level < 1 or ally_targets.size() != ally_definitions.size() or not allow_empty and targets.is_empty() and ally_targets.is_empty():
 		return null
 	if not castes.is_empty() and castes.size() != targets.size() or not races.is_empty() and races.size() != targets.size():
 		return null
 	for target: CharacterState in targets:
 		if target == null:
+			return null
+	for index: int in ally_targets.size():
+		if ally_targets[index] == null or ally_definitions[index] == null:
 			return null
 	var spell_cost := absi(spell.cost * power_level)
 	if spend_spell_points and caster.spell_points < spell_cost:
@@ -712,6 +715,9 @@ func resolve_field_spell(caster: CharacterState, targets: Array[CharacterState],
 		var race: RaceDefinition = null if races.is_empty() else races[index]
 		var resolution := _resolve_noncombat_character_effect(target, spell, power_level, 0, false, rng, caste, race, duration, damage, "%s.%s" % [tag_prefix, target.id], item_definitions)
 		result.append_target(target.id, &"character", resolution)
+	for index: int in ally_targets.size():
+		var ally_resolution := _resolve_character_spell_monster_target(caster, ally_targets[index], ally_definitions[index], spell, power_level, 0, damage, duration, 0, rng, null, 0, false, true)
+		result.append_target(ally_targets[index].id, &"monster", ally_resolution)
 	return result
 
 
