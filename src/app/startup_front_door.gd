@@ -5,6 +5,8 @@ signal application_loaded(elapsed_ms: float)
 
 const APPLICATION_SCENE_PATH := "res://src/presentation/realmz_application.tscn"
 const CampaignLibraryControllerScript := preload("res://src/presentation/controllers/campaign_library_controller.gd")
+const SettingsRepositoryScript := preload("res://src/infrastructure/settings/settings_repository.gd")
+const ClassicTypographyScript := preload("res://src/presentation/classic_typography.gd")
 const UiLayoutProfileScript := preload("res://src/presentation/ui_layout_profile.gd")
 const PresentationSettingsScript := preload("res://src/core/host/presentation_settings.gd")
 
@@ -26,8 +28,11 @@ var _load_thread := Thread.new()
 
 
 func _ready() -> void:
+	var presentation_settings: PresentationSettings = SettingsRepositoryScript.new().load_settings()
+	theme = ClassicTypographyScript.themed_copy(theme, presentation_settings)
 	_menu_controller = CampaignLibraryControllerScript.new()
 	_menu_controller.attach(_overlay_host)
+	_menu_controller.set_presentation_settings(presentation_settings)
 	_menu_controller.build_splash_overlay()
 	_menu_controller.campaign_selection_requested.connect(func() -> void: _request_action(ACTION_SCENARIO))
 	_menu_controller.load_adventure_requested.connect(func() -> void: _request_action(ACTION_LOAD))

@@ -174,7 +174,7 @@ func _test_primary_workspace_lifecycle() -> void:
 
 
 func _test_startup_shell() -> void:
-	var router := ClassicScreenRouter.new()
+	var front_door := load("res://src/presentation/startup_front_door.tscn").instantiate() as StartupFrontDoor; (Engine.get_main_loop() as SceneTree).root.add_child(front_door); await (Engine.get_main_loop() as SceneTree).process_frame; var classic_startup := SettingsRepository.new().load_settings().typography_mode == PresentationSettings.TYPOGRAPHY_CLASSIC; var expected_heading := load(ClassicTypography.BLACK_CHANCERY_PATH if classic_startup else ClassicTypography.READABLE_BOLD_PATH) as Font; var expected_body := load(ClassicTypography.THELDROW_PATH if classic_startup else ClassicTypography.READABLE_UI_PATH) as Font; assert_equal([(front_door.find_child("SplashTitle", true, false) as Label).get_theme_font(&"font").get_font_name(), (front_door.find_child("ChooseScenario", true, false) as Button).get_theme_font(&"font").get_font_name(), (front_door.find_child("LoadingStatus", true, false) as Label).get_theme_font(&"font").get_font_name()], [expected_heading.get_font_name(), expected_heading.get_font_name() if classic_startup else expected_body.get_font_name(), expected_body.get_font_name()], "the process front door applies the saved shared typography roles before constructing the main menu"); front_door.free(); var router := ClassicScreenRouter.new()
 	(Engine.get_main_loop() as SceneTree).root.add_child(router)
 	router.initialize()
 	router.show_splash()
