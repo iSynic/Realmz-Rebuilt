@@ -15,11 +15,13 @@ func _init(content: RealmzContent, game_state: GameState, rules: RealmzRules, rn
 
 
 func opcode_ids() -> Array[int]:
-	return [119, 120, 121, 122, 123, 124, 126, 127]
+	return [100, 119, 120, 121, 122, 123, 124, 126, 127]
 
 
 func execute(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	match action.opcode:
+		100:
+			return _finish_battle()
 		119:
 			return _revive_after_combat_macro(context)
 		120:
@@ -37,6 +39,13 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 		127:
 			return _continue_if_monster_present(action)
 	return super.execute(action, request_id, context)
+
+
+func _finish_battle() -> ScenarioRuntimeOperationResult:
+	var result := _rules.combat_flow.finish_classic_macro_victory(_game_state, _content)
+	if not result.ok:
+		return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message)
+	return ScenarioRuntimeOperationResult.completed(true, result.events, ScenarioVmDirective.finish_timeline())
 
 
 func cause_fumble(action: ClassicActionDefinition, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:

@@ -551,6 +551,21 @@ func _finish_if_resolved(state: GameState, content: RealmzContent, events: Array
 	return true
 
 
+func finish_classic_macro_victory(state: GameState, content: RealmzContent) -> CombatFlowResult:
+	if state == null or content == null or state.combat == null or state.combat.completed:
+		return CombatFlowResult.failed(&"no_active_battle", "Classic opcode 100 requires an active battle macro.")
+	var defeated: Array[String] = []
+	for monster: MonsterState in state.combat.monsters():
+		if monster.current_health > 0 and monster.traitor:
+			monster.current_health = 0
+			state.combat.battlefield.remove_monster(monster.id)
+			defeated.append(monster.id)
+	state.combat.classic_post_battle_sentinel = 8
+	var events: Array[DomainEvent] = [DomainEvent.new(&"classic_battle_forced_victory", {"battleId": state.combat.battle_id, "monsterIds": defeated, "rewardMode": 5, "postBattleSentinel": 8})]
+	_complete_battle(state, content, &"victory", events)
+	return CombatFlowResult.succeeded(events, true)
+
+
 func _complete_battle(state: GameState, _content: RealmzContent, outcome: StringName, events: Array[DomainEvent]) -> void:
 	var combat := state.combat
 	combat.completed = true

@@ -1,0 +1,7 @@
+{
+  "opcode": 100,
+  "castleSource": "src/realmz_orig/newland.c case 100 and src/realmz_orig/combat.c combat",
+  "runtimeContract": "During an active battle macro, mark every remaining hostile monster defeated, complete the battle as victory, force battle reward mode 5, terminate the macro timeline, and carry Castle's slot-eight sentinel so the issuing action timeline does not continue after rewards.",
+  "sourceOrder": "Set the post-battle sentinel to 8, set the killed-enemy count to the enemy count, set reward mode to 5, then jump directly to battle completion without death-macro execution.",
+  "determinism": "The operation consumes no RNG. Ordinary experience-only reward construction retains its separately source-proven RNG order and save-owned continuation."
+}

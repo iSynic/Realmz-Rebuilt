@@ -16,6 +16,7 @@ var completed: bool = false
 var outcome: StringName = &"active"
 var rewards_started: bool = false
 var rewards_completed: bool = false
+var classic_post_battle_sentinel: int = 0
 var battlefield: BattlefieldState
 var pending_monster_attack: PendingMonsterAttack
 var pending_reaction: CombatReactionState
@@ -446,7 +447,7 @@ func to_data() -> Dictionary:
 	weapon_mode_ids.sort()
 	for actor_id: Variant in weapon_mode_ids:
 		weapon_modes[String(actor_id)] = _character_weapon_modes[actor_id]
-	return {"battleId": battle_id, "macroId": macro_id, "round": round_number, "turnIndex": turn_index, "completed": completed, "outcome": String(outcome), "rewardsStarted": rewards_started, "rewardsCompleted": rewards_completed, "turnOrder": _turn_order.duplicate(), "monsters": monster_data, "pendingMonsterAttack": pending_data, "pendingReaction": reaction_data, "activeTurn": active_turn_data, "undoState": undo_data, "fumbledItems": fumbled_data, "characterWeaponModes": weapon_modes, "guardingActorIds": guarding_actor_ids(), "retreatedCharacterIds": retreated_character_ids(), "attackedActorIds": attacked_actor_ids(), "bleedingCharacterIds": bleeding_character_ids(), "turnUndeadActorIds": turn_undead_actor_ids(), "spellDeathMacroQueue": _spell_death_macro_queue.duplicate(), "spellMacroActorId": _spell_macro_actor_id, "spellMacroAdvancesTurn": _spell_macro_advances_turn, "persistentFields": _persistent_fields.map(func(field: PersistentCombatFieldType) -> Dictionary: return field.to_data()), "persistentFieldCollisionSlots": persistent_field_collision_slots(), "battlefield": null if battlefield == null else battlefield.to_data()}
+	return {"battleId": battle_id, "macroId": macro_id, "round": round_number, "turnIndex": turn_index, "completed": completed, "outcome": String(outcome), "rewardsStarted": rewards_started, "rewardsCompleted": rewards_completed, "classicPostBattleSentinel": classic_post_battle_sentinel, "turnOrder": _turn_order.duplicate(), "monsters": monster_data, "pendingMonsterAttack": pending_data, "pendingReaction": reaction_data, "activeTurn": active_turn_data, "undoState": undo_data, "fumbledItems": fumbled_data, "characterWeaponModes": weapon_modes, "guardingActorIds": guarding_actor_ids(), "retreatedCharacterIds": retreated_character_ids(), "attackedActorIds": attacked_actor_ids(), "bleedingCharacterIds": bleeding_character_ids(), "turnUndeadActorIds": turn_undead_actor_ids(), "spellDeathMacroQueue": _spell_death_macro_queue.duplicate(), "spellMacroActorId": _spell_macro_actor_id, "spellMacroAdvancesTurn": _spell_macro_advances_turn, "persistentFields": _persistent_fields.map(func(field: PersistentCombatFieldType) -> Dictionary: return field.to_data()), "persistentFieldCollisionSlots": persistent_field_collision_slots(), "battlefield": null if battlefield == null else battlefield.to_data()}
 
 
 static func from_data(data: Variant) -> CombatState:
@@ -485,6 +486,9 @@ static func from_data(data: Variant) -> CombatState:
 		return null
 	result.rewards_started = data.get("rewardsStarted", false)
 	result.rewards_completed = data.get("rewardsCompleted", false)
+	result.classic_post_battle_sentinel = _integer(data.get("classicPostBattleSentinel", 0))
+	if result.classic_post_battle_sentinel not in [0, 8]:
+		return null
 	if result.rewards_completed and not result.rewards_started:
 		return null
 	result._turn_order = order

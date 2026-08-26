@@ -84,7 +84,7 @@ func begin_completed_battle_reward(request_id: String, caller: ScenarioBattleCal
 	var bonus_treasure_id := caller.mode if combat.outcome == &"victory" and caller != null and caller.kind == ScenarioBattleCaller.CLASSIC and caller.opcode == 48 else 0
 	if bonus_treasure_id != 0 and _content.treasure_by_classic_id(absi(bonus_treasure_id)) == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_treasure", "Classic opcode 48 references unavailable bonus treasure %d." % bonus_treasure_id)
-	var experience_only := combat.outcome == &"victory" and caller != null and caller.kind == ScenarioBattleCaller.CLASSIC and caller.opcode == 2 and caller.mode == 5
+	var experience_only := combat.outcome == &"victory" and (combat.classic_post_battle_sentinel == 8 or caller != null and caller.kind == ScenarioBattleCaller.CLASSIC and caller.opcode == 2 and caller.mode == 5)
 	var defeated_monsters: Array[Dictionary] = []
 	var reward_monsters: Array[Dictionary] = []
 	var recovered_fumbles: Array[ItemInstance] = []
@@ -713,7 +713,9 @@ func _complete_reward(reward: ClassicRewardState, request_id: String, events: Ar
 		# The completed battle remains session-owned through every ally, fumble,
 		# treasure, level, and spell boundary. Release it only after the terminal
 		# reward transaction has committed so both direct and VM callers return once.
+		var directive := ScenarioVmDirective.finish_timeline() if combat.classic_post_battle_sentinel == 8 else null
 		_game_state.combat = null
+		return ScenarioRuntimeOperationResult.completed(reward.source_id, completed_events, directive)
 	return ScenarioRuntimeOperationResult.completed(reward.source_id, completed_events)
 
 

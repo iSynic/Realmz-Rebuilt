@@ -629,6 +629,10 @@ func finish_debug_victory(state: GameState, content: RealmzContent, events: Arra
 	return _lifecycle._finish_if_resolved(state, content, events)
 
 
+func finish_classic_macro_victory(state: GameState, content: RealmzContent) -> CombatFlowResult:
+	return _lifecycle.finish_classic_macro_victory(state, content)
+
+
 func _complete_battle(state: GameState, _content: RealmzContent, outcome: StringName, events: Array[DomainEvent]) -> void:
 	_lifecycle._complete_battle(state, _content, outcome, events)
 
