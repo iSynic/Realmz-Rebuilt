@@ -3,7 +3,7 @@ extends RefCounted
 
 const ATLAS_SIZE := Vector2(512.0, 512.0)
 const WALL_UV := Rect2(1024.0, 0.0, 512.0, 512.0)
-const DOOR_UV := Rect2(64.0, 0.0, 128.0, 144.0)
+const DOOR_UV := Rect2(86.0, 0.0, 84.0, 144.0)
 const STAIR_UV := Rect2(192.0, 0.0, 128.0, 128.0)
 const ARCH_JAMB_UV := Rect2(1024.0, 0.0, 256.0, 512.0)
 const ARCH_LINTEL_UV := Rect2(1024.0, 0.0, 512.0, 128.0)
