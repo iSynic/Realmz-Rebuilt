@@ -1,6 +1,7 @@
 param(
     [Parameter(Mandatory = $true)]
-    [string]$CastleRepository
+    [string]$CastleRepository,
+    [string]$PictDecoderPath = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -165,6 +166,7 @@ $toolRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = Split-Path -Parent (Split-Path -Parent $toolRoot)
 $catalogPath = Join-Path $toolRoot "application-media-catalog.json"
 $cicnExporterPath = Join-Path $toolRoot "export-classic-cicn.ps1"
+$pictExporterPath = Join-Path $toolRoot "export-classic-pict.ps1"
 $catalog = Get-Content -Raw -LiteralPath $catalogPath | ConvertFrom-Json
 $castleRoot = (Resolve-Path -LiteralPath $CastleRepository).Path
 $resolvedCommit = (& git -C $castleRoot rev-parse "$($catalog.source_commit)^{commit}").Trim()
@@ -213,6 +215,69 @@ try {
         }
         $entries = @($availableEntries | Where-Object { $_.Id -in $expectedIds })
         foreach ($entry in $entries | Sort-Object Id) {
+            if ($set.resource_type -eq "PICT") {
+                if ([string]::IsNullOrWhiteSpace($PictDecoderPath)) {
+                    throw "PictDecoderPath is required for cataloged Classic PICT assets"
+                }
+                $landlook = $entry.Id - 300
+                $landlookMetadata = @{
+                    0 = @("Plains", 156)
+                    3 = @("Subterranean", 155)
+                    4 = @("Castle", 111)
+                    5 = @("Desert", 191)
+                    9 = @("Swamp", 155)
+                    10 = @("Snow", 155)
+                }[$landlook]
+                if ($null -eq $landlookMetadata) {
+                    throw "Unsupported stock landlook PICT: $($entry.Id)"
+                }
+                $relativePath = "$($set.target_directory)/landlook-$landlook.png"
+                $targetPath = Join-Path $outputRoot ($relativePath -replace "/", [IO.Path]::DirectorySeparatorChar)
+                & $pictExporterPath -ResourceForkPath $sourcePath -ResourceId $entry.Id -PictDecoderPath $PictDecoderPath -OutputPath $targetPath
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Classic PICT export failed for resource $($entry.Id)"
+                }
+                $pngBytes = [IO.File]::ReadAllBytes($targetPath)
+                if ($pngBytes.Length -lt 24) {
+                    throw "Decoded landlook PNG is truncated: $($entry.Id)"
+                }
+                $width = [int](Get-U32 $pngBytes 16)
+                $height = [int](Get-U32 $pngBytes 20)
+                if ($width -ne 640 -or $height -ne 320) {
+                    throw "Decoded landlook PICT $($entry.Id) is ${width}x${height}; expected 640x320"
+                }
+                $records += [ordered]@{
+                    id = "landlook-$landlook"
+                    label = $landlookMetadata[0]
+                    kind = "tileset"
+                    mime_type = "image/png"
+                    resource_type = $set.resource_type
+                    resource_id = $entry.Id
+                    path = "res://src/presentation/assets/classic-media/$relativePath"
+                    bytes = $pngBytes.Length
+                    sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $targetPath).Hash.ToLowerInvariant()
+                    width = $width
+                    height = $height
+                    tile_width = 32
+                    tile_height = 32
+                    columns = 20
+                    rows = 10
+                    landlook = $landlook
+                    base_tile = $landlookMetadata[1]
+                    source_repository = $catalog.source_repository
+                    source_commit = $catalog.source_commit
+                    source_path = $set.source_path
+                    source_file_sha256 = $set.source_file_sha256
+                    source_resource_sha256 = (Get-FileHash -InputStream ([IO.MemoryStream]::new($entry.Bytes)) -Algorithm SHA256).Hash.ToLowerInvariant()
+                    classification = $set.classification
+                    classic_evidence = [ordered]@{
+                        status = "source-control-flow"
+                        path = $set.evidence_path
+                        note = $set.evidence_note
+                    }
+                }
+                continue
+            }
             if ($set.resource_type -eq "snd ") {
                 $decoded = Convert-SndToWav $entry.Bytes $entry.Id
                 $relativePath = "$($set.target_directory)/snd-$($entry.Id).wav"

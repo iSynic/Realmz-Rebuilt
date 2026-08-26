@@ -409,12 +409,11 @@ func _test_map_view_projection_edges(content: RealmzContent) -> void:
 	_begin_fixture_adventure(session, content)
 	assert_equal(session.view().map_view.cells().size(), 625, "the detached projection keeps its full dimensions at the north-west map edge")
 	assert_not_null(session.view().map_view.cell_at(Vector2i.ZERO), "the north-west projection begins at the map edge")
-	assert_not_null(session.view().map_view.cell_at(Vector2i(24, 24)), "the north-west projection shifts inward instead of shrinking around the party")
+	assert_not_null(session.view().map_view.cell_at(Vector2i(24, 24)), "the north-west projection shifts inward instead of shrinking around the party"); var winter_snapshot := session.snapshot(); winter_snapshot.game_state.world.set_map_landlook("land:0", 10); var winter_session := GameSession.new(); assert_equal(winter_session.restore(content, winter_snapshot).state, SessionStep.State.COMPLETED, "a save-owned seasonal landlook restores through the public session boundary"); assert_equal([winter_session.view().map_view.landlook, winter_session.view().map_view.cell_at(Vector2i.ZERO).tileset_id, winter_session.view().map_view.cell_at(Vector2i.ZERO).render_tile], [10, "landlook-10", content.world.map_by_id("land:0").topology.cell_at(Vector2i.ZERO).render_tile], "seasonal projection changes every land cell to the effective Snow atlas without changing its authored tile number")
 	_restore_fixture_position(session, content, "land:0", Vector2i(88, 1))
 	assert_equal(session.view().map_view.cells().size(), 625, "the detached projection keeps its full dimensions at the east map edge")
 	assert_not_null(session.view().map_view.cell_at(Vector2i(65, 0)), "the east-edge projection shifts west to retain the complete viewport")
-	assert_not_null(session.view().map_view.cell_at(Vector2i(89, 24)), "the east-edge projection still reaches the authoritative map boundary")
-	assert_true(session.view().map_view.cell_at(Vector2i(64, 0)) == null, "the shifted east-edge projection remains bounded to twenty-five columns")
+	assert_not_null(session.view().map_view.cell_at(Vector2i(89, 24)), "the east-edge projection still reaches the authoritative map boundary"); assert_true(session.view().map_view.cell_at(Vector2i(64, 0)) == null, "the shifted east-edge projection remains bounded to twenty-five columns")
 
 
 func _test_field_heal(content: RealmzContent) -> void:

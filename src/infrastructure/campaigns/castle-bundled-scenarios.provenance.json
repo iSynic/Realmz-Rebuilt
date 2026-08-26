@@ -3,6 +3,7 @@
   "source": {
     "repository": "Realmz Castle",
     "revision": "ef95fcff40d81f14ac668d5e13466da4a51de6f4",
+    "defaultForScenariosWithoutOverride": true,
     "dataSsha256": "f47776aadc0f4ebf42320e0aaedd39dd7b5a2c76c125a44e99ea461d962860e7",
     "license": "CC-BY-NC-SA-4.0",
     "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/"
@@ -33,9 +34,14 @@
       "name": "City of Bywater",
       "campaignId": "scenario-city-of-bywater",
       "file": "scenario-city-of-bywater.realmz2",
-      "packageHash": "2411fb0bdbfdddbe419d133a5440c9ea6f50740193066c16a8207b36dba9e939",
-      "archiveSha256": "401cb2e840aab42c62808b82a550874377464e0adc5d7dd2dc5f68576744b78a",
-      "bytes": 23674523
+      "sourceOverride": {
+        "kind": "project-owner-designated-snapshot",
+        "catalog": "city-of-bywater.source.json",
+        "snapshotSha256": "ab4b6fc19a1a42bb61353629feb71187e76e760f94c46392958311a5e1361d2e"
+      },
+      "packageHash": "f54a1b2e7a2965eaf083fd190c0c3317cf30279d85340130e6404a87bcb62d7c",
+      "archiveSha256": "57a1f898aadcd2e8edbaca3106a12eef9debc4cd5c43737b7804d60dcd848c02",
+      "bytes": 23644539
     },
     {
       "name": "Destroy the Necronomicon",

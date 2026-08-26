@@ -2,9 +2,10 @@ $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $campaignRoot = Join-Path $repoRoot "src\infrastructure\campaigns"
 $catalogPath = Join-Path $campaignRoot "castle-bundled-scenarios.provenance.json"
+$citySourcePath = Join-Path $campaignRoot "city-of-bywater.source.json"
 $catalog = Get-Content -Raw -LiteralPath $catalogPath | ConvertFrom-Json
 
-if ($catalog.formatVersion -ne 1 -or $catalog.source.license -ne "CC-BY-NC-SA-4.0") {
+if ($catalog.formatVersion -ne 1 -or $catalog.source.license -ne "CC-BY-NC-SA-4.0" -or $catalog.source.defaultForScenariosWithoutOverride -ne $true) {
     throw "Bundled scenario provenance header is invalid."
 }
 if (@($catalog.scenarios).Count -ne 13) {
@@ -28,6 +29,47 @@ $expectedCampaignIds = @(
 $catalogCampaignIds = @($catalog.scenarios | ForEach-Object { $_.campaignId } | Sort-Object)
 if (($catalogCampaignIds -join "|") -ne (($expectedCampaignIds | Sort-Object) -join "|")) {
     throw "Bundled scenario catalog does not name the exact Castle-distributed campaign set."
+}
+
+$city = @($catalog.scenarios | Where-Object { $_.campaignId -eq "scenario-city-of-bywater" })
+if ($city.Count -ne 1 -or $city[0].sourceOverride.kind -ne "project-owner-designated-snapshot" -or $city[0].sourceOverride.catalog -ne "city-of-bywater.source.json") {
+    throw "City of Bywater must name its project-owner-designated source catalog."
+}
+$unexpectedOverrides = @($catalog.scenarios | Where-Object { $_.campaignId -ne "scenario-city-of-bywater" -and $null -ne $_.sourceOverride })
+if ($unexpectedOverrides.Count -ne 0) {
+    throw "Only City of Bywater may override the default pinned Castle source."
+}
+
+$citySource = Get-Content -Raw -LiteralPath $citySourcePath | ConvertFrom-Json
+$cityFiles = @($citySource.files)
+if ($citySource.formatVersion -ne 1 -or $citySource.campaignId -ne "scenario-city-of-bywater" -or $citySource.authority -ne "project-owner-designated" -or $citySource.upstreamStatus -ne "pending-castle-adoption") {
+    throw "City of Bywater source provenance header is invalid."
+}
+if ($citySource.snapshot.algorithm -ne "sha256-utf8-file-null-bytes-null-sha256-lines-v1" -or $cityFiles.Count -ne [int]$citySource.snapshot.fileCount) {
+    throw "City of Bywater source snapshot shape is invalid."
+}
+$sourceNames = @($cityFiles | ForEach-Object { $_.file })
+if (($sourceNames | Sort-Object -Unique).Count -ne $sourceNames.Count) {
+    throw "City of Bywater source snapshot contains duplicate file identities."
+}
+$sourceBytes = [long]0
+$sourceLines = [System.Text.StringBuilder]::new()
+foreach ($sourceFile in $cityFiles) {
+    if ($sourceFile.file -notmatch '^[^/\\:]+$' -or $sourceFile.bytes -lt 0 -or $sourceFile.sha256 -notmatch '^[0-9a-f]{64}$') {
+        throw "City of Bywater source snapshot contains an invalid file identity."
+    }
+    $sourceBytes += [long]$sourceFile.bytes
+    [void]$sourceLines.Append($sourceFile.file).Append([char]0).Append([long]$sourceFile.bytes).Append([char]0).Append($sourceFile.sha256).Append("`n")
+}
+$sourceHashAlgorithm = [System.Security.Cryptography.SHA256]::Create()
+try {
+    $sourceHashBytes = $sourceHashAlgorithm.ComputeHash([System.Text.UTF8Encoding]::new($false).GetBytes($sourceLines.ToString()))
+} finally {
+    $sourceHashAlgorithm.Dispose()
+}
+$sourceHash = [Convert]::ToHexString($sourceHashBytes).ToLowerInvariant()
+if ($sourceBytes -ne [long]$citySource.snapshot.bytes -or $sourceHash -ne $citySource.snapshot.sha256 -or $sourceHash -ne $city[0].sourceOverride.snapshotSha256) {
+    throw "City of Bywater source snapshot identity does not match its provenance catalogs."
 }
 
 $expectedFiles = @($catalog.scenarios | ForEach-Object { $_.file } | Sort-Object)
@@ -65,4 +107,4 @@ foreach ($scenario in $catalog.scenarios) {
     }
 }
 
-Write-Host "Verified 13 Castle-distributed bundled scenarios."
+Write-Host "Verified the 13-scenario bundle and designated City of Bywater source snapshot."

@@ -5,8 +5,18 @@
   "copyright": "Realmz copyright 1994 by Tim Phillips",
   "license": "CC-BY-NC-SA-4.0",
   "license_url": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
-  "modification": "Classic snd, item cicn, and selected combat cicn resources decoded from their Macintosh resource-fork representation into WAV and PNG files for Godot presentation.",
+  "modification": "Classic land PICT, snd, item cicn, and selected combat cicn resources decoded from their Macintosh resource-fork representation into PNG and WAV files for Godot presentation.",
   "resource_sets": [
+    {
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
+      "source_file_sha256": "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c",
+      "resource_type": "PICT",
+      "resource_ids": [300, 303, 304, 305, 309, 310],
+      "target_directory": "land-tilesets",
+      "classification": "classic-application-resource",
+      "evidence_path": "src/realmz_orig/main.c:720-749; src/realmz_orig/newland.c:3453-3464",
+      "evidence_note": "Castle opens The Family Jewels as the application resource fork and opcode 57 changes a land level to an exact stock landlook. Scenario PICT resources with the same exact key remain later overrides."
+    },
     {
       "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
       "source_file_sha256": "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c",

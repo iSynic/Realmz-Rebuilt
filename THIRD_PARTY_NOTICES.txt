@@ -3,12 +3,14 @@ Realmz Rebuilt third-party notices
 Castle-distributed Realmz scenarios
 
 Realmz copyright 1994 by Tim Phillips.
-Source: the 13 scenario directories distributed by Realmz Castle Realmz at
-commit ef95fcff40d81f14ac668d5e13466da4a51de6f4: Assault on Giant Mountain,
-Castle in the Clouds, City of Bywater, Destroy the Necronomicon, Grilochs
-Revenge, Half Truth, Mithril Vault, Prelude to Pestilence, Trouble in the Sword
-Lands, Twin Sands of Time, War in the Sword Lands, White Dragon, and Wrath of
-the Mind Lords.
+Source: twelve scenario directories distributed by Realmz Castle Realmz at
+commit ef95fcff40d81f14ac668d5e13466da4a51de6f4, plus the project-owner-designated
+City of Bywater production snapshot pending its byte-for-byte adoption by
+Castle. The bundled set remains Assault on Giant Mountain, Castle in the
+Clouds, City of Bywater, Destroy the Necronomicon, Grilochs Revenge, Half
+Truth, Mithril Vault, Prelude to Pestilence, Trouble in the Sword Lands, Twin
+Sands of Time, War in the Sword Lands, White Dragon, and Wrath of the Mind
+Lords.
 License: Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
 SPDX identifier: CC-BY-NC-SA-4.0
 https://creativecommons.org/licenses/by-nc-sa/4.0/
@@ -17,7 +19,9 @@ Modifications: Realmz Providence commit
 5cdf7b3d84f4ecfae9114fb8be4911fb2fc7b8ea compiles the native scenario data
 and resources into deterministic schema-v3 Realmz 2 packages. Exact source,
 compiler, package, and archive identities are recorded in
-src/infrastructure/campaigns/castle-bundled-scenarios.provenance.json.
+src/infrastructure/campaigns/castle-bundled-scenarios.provenance.json. The exact
+designated City of Bywater source-file identities are recorded in
+src/infrastructure/campaigns/city-of-bywater.source.json.
 
 Integrated Classic Realmz media
 Realmz copyright 1994 by Tim Phillips.
@@ -27,9 +31,11 @@ License: Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
 SPDX identifier: CC-BY-NC-SA-4.0
 https://creativecommons.org/licenses/by-nc-sa/4.0/
 
-Modifications: Macintosh snd resources were decoded to mono WAV files for Godot
-playback. Source sample rates below 8000 Hz were deterministically resampled to
-8000 Hz because the Godot WAV importer does not accept those original rates.
+Modifications: Macintosh PICT resources 300, 303, 304, 305, 309, and 310 were
+decoded to exact 640x320 PNG stock landlook atlases. Macintosh snd resources
+were decoded to mono WAV files for Godot playback. Source sample rates below
+8000 Hz were deterministically resampled to 8000 Hz because the Godot WAV
+importer does not accept those original rates.
 
 Per-resource source and output hashes are recorded in
 src/presentation/assets/classic-application-media.json.

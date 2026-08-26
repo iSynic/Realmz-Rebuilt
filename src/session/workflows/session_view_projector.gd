@@ -825,7 +825,9 @@ static func _build_cell_view(context: SessionWorkflowContext, map: MapDefinition
 			feature_kinds.append(feature.kind)
 			feature_orientations[feature.kind] = feature.orientation
 	var can_enter := cell.passable and not hidden_secret
-	return MapCellView.new(cell.coordinate, context.state.world.terrain_for(map.id, cell), cell.render_tile, cell.tileset_id, can_enter, cell.blocks_los, is_visible, context.state.world.was_visited(map.id, cell.coordinate), not hidden_secret and not cell.trigger_ids().is_empty(), not context.state.world.random_region_ids_at(map, cell.coordinate).is_empty(), feature_kinds, feature_orientations, edge_kinds, edge_passability, cell.overlay_asset_id)
+	var effective_landlook := context.state.world.map_landlook(map)
+	var tileset_id := "landlook-%d" % effective_landlook if map.level_type == &"land" and effective_landlook >= 0 else cell.tileset_id
+	return MapCellView.new(cell.coordinate, context.state.world.terrain_for(map.id, cell), cell.render_tile, tileset_id, can_enter, cell.blocks_los, is_visible, context.state.world.was_visited(map.id, cell.coordinate), not hidden_secret and not cell.trigger_ids().is_empty(), not context.state.world.random_region_ids_at(map, cell.coordinate).is_empty(), feature_kinds, feature_orientations, edge_kinds, edge_passability, cell.overlay_asset_id)
 
 
 static func _probe_movement(context: SessionWorkflowContext, direction: Vector2i) -> WorldMovementResult:
