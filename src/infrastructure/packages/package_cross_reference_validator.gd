@@ -186,6 +186,9 @@ func _validate_player_map_opcode_references(scenario: ScenarioDefinition, world:
 			if not instruction is ClassicActionDefinition:
 				continue
 			match instruction.opcode:
+				44:
+					if program.owner_kind != &"complex-encounter-result" or instruction.operand_id < 1 or instruction.operand_id > 4:
+						return _reject("Scenario program '%s' opcode 44 requires result 1 through 4 in a Complex Encounter result." % program.id)
 				29:
 					if world.player_map_by_classic_id(absi(instruction.operand_id)) == null:
 						return _reject("Scenario program '%s' references unavailable player-map record %d." % [program.id, absi(instruction.operand_id)])

@@ -413,6 +413,10 @@ func continue_after_monster_death_macro(state: GameState, content: RealmzContent
 	return _lifecycle.continue_after_monster_death_macro(state, content, rng, completed_combatant_id)
 
 
+func finalize_scenario_monster_destruction(state: GameState, content: RealmzContent) -> CombatFlowResult:
+	return _lifecycle.finalize_scenario_monster_destruction(state, content)
+
+
 func continue_after_age_update(state: GameState, content: RealmzContent, rng: RealmzRng) -> CombatFlowResult:
 	return _lifecycle.continue_after_age_update(state, content, rng)
 

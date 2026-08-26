@@ -44,6 +44,7 @@ func _init(content: RealmzContent, game_state: GameState, rng: RealmzRng, action
 	_battle_reward_operations = ClassicBattleRewardOperations.new(_content, _game_state, _rng, _rules)
 	_battle_reward_operations.bind_runtime_api(self)
 	_combat_operations = ClassicCombatOperations.new(_content, _game_state, _rules, _rng)
+	_combat_operations.bind_runtime_api(self)
 	_control_flow_operations = ClassicControlFlowOperations.new(_content, _game_state, _rng)
 	_inventory_operations = ClassicInventoryOperations.new(_content, _game_state, _rules)
 	_service_operations = ClassicServiceOperations.new(_content, _game_state, _rng, _rules)
@@ -249,6 +250,8 @@ func resume_classic(continuation: ScenarioRuntimeContinuation, response: Interac
 			return ScenarioRuntimeOperationResult.completed(true)
 		ScenarioRuntimeContinuation.CLASSIC_COMBAT, ScenarioRuntimeContinuation.CLASSIC_COMBAT_RETREAT, ScenarioRuntimeContinuation.CLASSIC_COMBAT_AGE, ScenarioRuntimeContinuation.CLASSIC_COMBAT_MACRO, ScenarioRuntimeContinuation.CLASSIC_COMBAT_DEATH_MACRO, ScenarioRuntimeContinuation.CLASSIC_COMBAT_ALLY, ScenarioRuntimeContinuation.CLASSIC_COMBAT_FUMBLE, ScenarioRuntimeContinuation.CLASSIC_REWARD:
 			return _battle_reward_operations.resume(continuation, response, request_id)
+		ScenarioRuntimeContinuation.CLASSIC_OPCODE_DEATH_MACRO:
+			return _combat_operations.resume_opcode_death_macro(continuation, response)
 		ScenarioRuntimeContinuation.CLASSIC_CHARACTER_SELECTION:
 			return _resume_character_selection(continuation, response)
 		ScenarioRuntimeContinuation.CLASSIC_CHARACTER_ABILITY:
@@ -380,6 +383,9 @@ func _complex_outcome(encounter: ComplexEncounterDefinition, outcome: int, gosub
 	var program_id := encounter.result_program_id(outcome)
 	if program_id.is_empty():
 		return ScenarioRuntimeOperationResult.failed(&"invalid_encounter_outcome", "Complex Encounter result is outside 1 through 4.")
+	if _game_state.complex_result_is_eliminated(encounter.id, outcome - 1):
+		events.append(DomainEvent.new(&"action_point_kept", {"triggerId": context.trigger_id, "source": "classic-opcode-44"}))
+		return ScenarioRuntimeOperationResult.completed(outcome, events, ScenarioVmDirective.finish_timeline())
 	return ScenarioRuntimeOperationResult.completed(outcome, events, ScenarioVmDirective.branch_encounter_result(program_id, gosub, context, repeat))
 
 

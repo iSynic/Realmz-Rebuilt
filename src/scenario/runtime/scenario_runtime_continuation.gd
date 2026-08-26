@@ -31,6 +31,7 @@ const CLASSIC_COMBAT_MACRO: StringName = &"classic-combat-macro"
 const SAFE_COMBAT_MACRO: StringName = &"safe-combat-macro"
 const CLASSIC_COMBAT_DEATH_MACRO: StringName = &"classic-combat-death-macro"
 const SAFE_COMBAT_DEATH_MACRO: StringName = &"safe-combat-death-macro"
+const CLASSIC_OPCODE_DEATH_MACRO: StringName = &"classic-opcode-death-macro"
 const CLASSIC_COMBAT_ALLY: StringName = &"classic-combat-ally-selection"
 const SAFE_COMBAT_ALLY: StringName = &"safe-combat-ally-selection"
 const CLASSIC_COMBAT_FUMBLE: StringName = &"classic-combat-fumble-recovery"
@@ -185,6 +186,18 @@ class CombatBody:
 				data["combatantId"] = combatant_id
 				data["resetTraitorOnComplete"] = reset_traitor_on_complete
 		return data
+
+
+class OpcodeDeathBody:
+	extends Body
+	var battle_id: String
+	var combatant_id: String
+	var program_id: String
+	var remaining_combatant_ids: Array[String]
+	var macro_vm: ScenarioVmSnapshot
+
+	func to_data() -> Dictionary:
+		return {"battleId": battle_id, "combatantId": combatant_id, "programId": program_id, "remainingCombatantIds": remaining_combatant_ids.duplicate(), "macroVm": macro_vm.to_data()}
 
 
 class RewardBody:
@@ -368,6 +381,16 @@ static func combat_macro(continuation_kind: StringName, source_kind: StringName,
 	return ScenarioRuntimeContinuation.new(continuation_kind, typed)
 
 
+static func opcode_death_macro(battle_id: String, combatant_id: String, program_id: String, remaining_combatant_ids: Array[String], macro_vm: ScenarioVmSnapshot) -> ScenarioRuntimeContinuation:
+	var typed := OpcodeDeathBody.new()
+	typed.battle_id = battle_id
+	typed.combatant_id = combatant_id
+	typed.program_id = program_id
+	typed.remaining_combatant_ids.assign(remaining_combatant_ids)
+	typed.macro_vm = macro_vm
+	return ScenarioRuntimeContinuation.new(CLASSIC_OPCODE_DEATH_MACRO, typed)
+
+
 static func combat_terminal(continuation_kind: StringName, source_kind: StringName, battle_id: String, caller: ScenarioBattleCaller) -> ScenarioRuntimeContinuation:
 	assert(continuation_kind in [CLASSIC_COMBAT_ALLY, SAFE_COMBAT_ALLY, CLASSIC_COMBAT_FUMBLE, SAFE_COMBAT_FUMBLE])
 	var typed := CombatBody.new()
@@ -435,6 +458,8 @@ static func from_data(value: Variant) -> ScenarioRuntimeContinuation:
 			return temple(continuation_kind, cost_percent, data["bankAvailable"], data["selectedCharacterId"])
 		CLASSIC_COMBAT, SAFE_COMBAT, CLASSIC_COMBAT_RETREAT, SAFE_COMBAT_RETREAT, CLASSIC_COMBAT_AGE, SAFE_COMBAT_AGE, CLASSIC_COMBAT_MACRO, SAFE_COMBAT_MACRO, CLASSIC_COMBAT_DEATH_MACRO, SAFE_COMBAT_DEATH_MACRO, CLASSIC_COMBAT_ALLY, SAFE_COMBAT_ALLY, CLASSIC_COMBAT_FUMBLE, SAFE_COMBAT_FUMBLE:
 			return _decode_combat(continuation_kind, data)
+		CLASSIC_OPCODE_DEATH_MACRO:
+			return _decode_opcode_death_macro(data)
 		CLASSIC_REWARD:
 			var reward_state := ClassicRewardState.from_data(data.get("state"))
 			return reward(reward_state) if data.size() == 1 and reward_state != null else null
@@ -545,6 +570,16 @@ static func _decode_combat(continuation_kind: StringName, data: Dictionary) -> S
 	return combat_macro(continuation_kind, expected_source, data["battleId"], caller, data["programId"], macro_vm, data["combatantId"], data["resetTraitorOnComplete"])
 
 
+static func _decode_opcode_death_macro(data: Dictionary) -> ScenarioRuntimeContinuation:
+	if data.size() != 5 or not data.get("battleId") is String or data["battleId"].is_empty() or not data.get("combatantId") is String or data["combatantId"].is_empty() or not data.get("programId") is String or data["programId"].is_empty():
+		return null
+	var remaining := _strings(data.get("remainingCombatantIds"))
+	if remaining.size() != data["remainingCombatantIds"].size() or remaining.size() > 100:
+		return null
+	var macro_vm := ScenarioVmSnapshot.from_data(data.get("macroVm"))
+	return opcode_death_macro(data["battleId"], data["combatantId"], data["programId"], remaining, macro_vm) if macro_vm != null else null
+
+
 static func _integers(value: Variant) -> Array[int]:
 	var result: Array[int] = []
 	if not value is Array:
@@ -554,6 +589,17 @@ static func _integers(value: Variant) -> Array[int]:
 		if normalized == -100000:
 			return []
 		result.append(normalized)
+	return result
+
+
+static func _strings(value: Variant) -> Array[String]:
+	var result: Array[String] = []
+	if not value is Array:
+		return result
+	for entry: Variant in value:
+		if not entry is String or entry.is_empty() or result.has(entry):
+			return []
+		result.append(entry)
 	return result
 
 

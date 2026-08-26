@@ -5,6 +5,7 @@ var _content: RealmzContent
 var _game_state: GameState
 var _rules: RealmzRules
 var _rng: RealmzRng
+var _runtime_api_ref: WeakRef
 
 
 func _init(content: RealmzContent, game_state: GameState, rules: RealmzRules, rng: RealmzRng) -> void:
@@ -14,8 +15,16 @@ func _init(content: RealmzContent, game_state: GameState, rules: RealmzRules, rn
 	_rng = rng
 
 
+func bind_runtime_api(runtime_api: RealmzRuntimeApi) -> void:
+	_runtime_api_ref = weakref(runtime_api)
+
+
+func _runtime_api() -> RealmzRuntimeApi:
+	return _runtime_api_ref.get_ref() as RealmzRuntimeApi if _runtime_api_ref != null else null
+
+
 func opcode_ids() -> Array[int]:
-	return [100, 119, 120, 121, 122, 123, 124, 126, 127]
+	return [100, 119, 120, 121, 122, 123, 124, 125, 126, 127]
 
 
 func execute(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
@@ -34,11 +43,107 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 			return _cause_monsters_to_route(action, context)
 		124:
 			return _spawn_classic_monsters(action)
+		125:
+			return _destroy_related_monsters(action)
 		126:
 			return _branch_battle_round_macro(action)
 		127:
 			return _continue_if_monster_present(action)
 	return super.execute(action, request_id, context)
+
+
+func resume_opcode_death_macro(continuation: ScenarioRuntimeContinuation, response: InteractionResponse) -> ScenarioRuntimeOperationResult:
+	var body := continuation.body as ScenarioRuntimeContinuation.OpcodeDeathBody
+	var runtime_api := _runtime_api()
+	if body == null or runtime_api == null or _game_state.combat == null or _game_state.combat.completed or _game_state.combat.battle_id != body.battle_id:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_death_macro_continuation", "Classic opcode 125 lost its saved battle or death-macro state.")
+	var vm := ScenarioVm.new()
+	vm.configure(_content.scenario)
+	if not vm.restore(body.macro_vm):
+		return ScenarioRuntimeOperationResult.failed(&"invalid_death_macro_continuation", "Classic opcode 125 cannot restore its pending death macro.")
+	var result := vm.resume(response, runtime_api)
+	if result.state == ScenarioVmResult.State.FAILED:
+		return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message)
+	if result.state == ScenarioVmResult.State.SUSPENDED:
+		return ScenarioRuntimeOperationResult.failed(&"nested_host_handoff", "A monster death macro cannot suspend a second battle into the application host.")
+	if result.state == ScenarioVmResult.State.WAITING:
+		return ScenarioRuntimeOperationResult.waiting(result.interaction, ScenarioRuntimeContinuation.opcode_death_macro(body.battle_id, body.combatant_id, body.program_id, body.remaining_combatant_ids, vm.snapshot()), result.events)
+	var events: Array[DomainEvent] = []
+	events.assign(result.events)
+	_complete_opcode_death_macro(body.combatant_id, body.program_id, events)
+	return _run_opcode_death_macros(body.remaining_combatant_ids, events)
+
+
+func _destroy_related_monsters(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
+	if action.extra_code.size() < 5:
+		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 125 requires a five-value Extra Code row.")
+	if _game_state.combat == null or _game_state.combat.completed:
+		return ScenarioRuntimeOperationResult.completed(0, [DomainEvent.new(&"combat_related_monsters_destroyed", {"count": 0, "reason": "no-active-battle", "source": "classic"})])
+	var limit := 100 if action.extra_code[1] == 0 else maxi(0, action.extra_code[1])
+	var include_loyal := action.extra_code[4] != 0
+	var destroyed: Array[String] = []
+	var death_macros: Array[String] = []
+	for monster: MonsterState in _game_state.combat.monsters():
+		if destroyed.size() >= limit:
+			break
+		var definition := _content.monster_by_id(monster.definition_id)
+		if monster.current_health <= 0 or definition == null or definition.classic_name_id != action.extra_code[0] or not monster.traitor and not include_loyal:
+			continue
+		monster.current_health = 0
+		destroyed.append(monster.id)
+		if definition.death_macro > 0:
+			death_macros.append(monster.id)
+		elif _game_state.combat.battlefield != null:
+			_game_state.combat.battlefield.remove_monster(monster.id)
+	var events: Array[DomainEvent] = [DomainEvent.new(&"combat_related_monsters_destroyed", {"count": destroyed.size(), "monsterIds": destroyed, "classicNameId": action.extra_code[0], "limit": limit, "includeLoyal": include_loyal, "source": "classic"})]
+	return _run_opcode_death_macros(death_macros, events)
+
+
+func _run_opcode_death_macros(combatant_ids: Array[String], preceding_events: Array[DomainEvent]) -> ScenarioRuntimeOperationResult:
+	if combatant_ids.is_empty():
+		var finalized := _rules.combat_flow.finalize_scenario_monster_destruction(_game_state, _content)
+		if not finalized.ok:
+			return ScenarioRuntimeOperationResult.failed(finalized.error_code, finalized.error_message)
+		return ScenarioRuntimeOperationResult.completed(true, preceding_events + finalized.events)
+	var runtime_api := _runtime_api()
+	if runtime_api == null or _game_state.combat == null:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_death_macro_request", "Classic opcode 125 cannot execute monster death macros without an active runtime.")
+	var remaining := combatant_ids.duplicate()
+	var combatant_id: String = remaining.pop_front()
+	var monster := _game_state.combat.monster_by_id(combatant_id)
+	var definition := _content.monster_by_id(monster.definition_id) if monster != null else null
+	if monster == null or definition == null or definition.death_macro <= 0:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_death_macro_request", "Classic opcode 125 references unavailable monster death-macro content.")
+	var program_id := "xap:%d" % definition.death_macro
+	var vm := ScenarioVm.new()
+	vm.configure(_content.scenario)
+	var death_context := ScenarioExecutionContext.calling(&"monster-death-macro").set_battle(_game_state.combat.battle_id)
+	death_context.set_combatant(monster.id, definition.classic_id, monster.traitor, true)
+	var started := vm.start_program(program_id, death_context)
+	if started.state == ScenarioVmResult.State.FAILED:
+		return ScenarioRuntimeOperationResult.failed(started.error_code, started.error_message)
+	var result := vm.run(runtime_api)
+	var events: Array[DomainEvent] = []
+	events.assign(preceding_events)
+	events.append(DomainEvent.new(&"monster_death_macro_started", {"battleId": _game_state.combat.battle_id, "combatantId": monster.id, "programId": program_id}))
+	events.append_array(result.events)
+	if result.state == ScenarioVmResult.State.FAILED:
+		return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message)
+	if result.state == ScenarioVmResult.State.SUSPENDED:
+		return ScenarioRuntimeOperationResult.failed(&"nested_host_handoff", "A monster death macro cannot suspend a second battle into the application host.")
+	if result.state == ScenarioVmResult.State.WAITING:
+		return ScenarioRuntimeOperationResult.waiting(result.interaction, ScenarioRuntimeContinuation.opcode_death_macro(_game_state.combat.battle_id, monster.id, program_id, remaining, vm.snapshot()), events)
+	_complete_opcode_death_macro(monster.id, program_id, events)
+	return _run_opcode_death_macros(remaining, events)
+
+
+func _complete_opcode_death_macro(combatant_id: String, program_id: String, events: Array[DomainEvent]) -> void:
+	var monster := _game_state.combat.monster_by_id(combatant_id)
+	if monster != null:
+		monster.traitor = false
+		if monster.current_health <= 0 and _game_state.combat.battlefield != null:
+			_game_state.combat.battlefield.remove_monster(monster.id)
+	events.append(DomainEvent.new(&"monster_death_macro_completed", {"battleId": _game_state.combat.battle_id, "combatantId": combatant_id, "programId": program_id, "revived": monster != null and monster.current_health > 0}))
 
 
 func _finish_battle() -> ScenarioRuntimeOperationResult:

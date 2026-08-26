@@ -11,7 +11,7 @@ func _init(content: RealmzContent, game_state: GameState) -> void:
 
 
 func opcode_ids() -> Array[int]:
-	return [3, 4, 5, 34, 35, 41, 54]
+	return [3, 4, 5, 34, 35, 41, 44, 54]
 
 
 func execute(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
@@ -31,9 +31,18 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 			return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"encounter_option_eliminated", {"encounterId": encounter_id, "optionIndex": action.operand_id - 1})])
 		41:
 			return _eliminate_simple_option(action)
+		44:
+			return _eliminate_complex_result(action, context)
 		54:
 			return _mutate_timed_encounter(action)
 	return super.execute(action, request_id, context)
+
+
+func _eliminate_complex_result(action: ClassicActionDefinition, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
+	var result_index := action.operand_id - 1
+	if context.encounter_kind != &"complex" or context.encounter_id < 0 or not _game_state.eliminate_complex_result(context.encounter_id, result_index):
+		return ScenarioRuntimeOperationResult.failed(&"invalid_encounter_context", "Classic opcode 44 requires result 1 through 4 in a Complex Encounter context.")
+	return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"complex_encounter_result_eliminated", {"encounterId": context.encounter_id, "resultIndex": result_index, "source": "classic"})])
 
 
 func request_encounter(kind: StringName, encounter_id: int, gosub: bool, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:

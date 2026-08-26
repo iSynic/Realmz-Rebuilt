@@ -274,6 +274,16 @@ func continue_after_monster_death_macro(state: GameState, content: RealmzContent
 	return CombatFlowResult.succeeded(events, state.combat.completed)
 
 
+func finalize_scenario_monster_destruction(state: GameState, content: RealmzContent) -> CombatFlowResult:
+	if state == null or content == null or state.combat == null:
+		return CombatFlowResult.failed(&"no_active_battle", "Classic monster destruction requires an active battle.")
+	var events: Array[DomainEvent] = []
+	_flow()._remove_all_defeated_positions(state)
+	if not state.combat.completed:
+		_finish_if_resolved(state, content, events)
+	return CombatFlowResult.succeeded(events, state.combat.completed)
+
+
 func continue_after_age_update(state: GameState, content: RealmzContent, rng: RealmzRng) -> CombatFlowResult:
 	if state == null or content == null or rng == null or state.combat == null or state.combat.pending_monster_attack == null:
 		return CombatFlowResult.failed(&"invalid_age_update_continuation", "Monster age-update continuation requires an active battle.")

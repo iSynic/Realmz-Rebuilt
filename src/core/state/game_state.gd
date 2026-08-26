@@ -42,6 +42,7 @@ var _selected_character_ids: Array[String] = []
 var _timed_encounter_overrides: Dictionary = {}
 var _instance_counter: int = 0
 var _eliminated_simple_options: Dictionary = {}
+var _eliminated_complex_results: Dictionary = {}
 var _shop_overrides: Dictionary = {}
 var _shop_inflation_overrides: Dictionary = {}
 var _shop_buyback_overrides: Dictionary = {}
@@ -182,6 +183,17 @@ func eliminate_simple_option(encounter_id: int, option_index: int) -> bool:
 
 func simple_option_is_eliminated(encounter_id: int, option_index: int) -> bool:
 	return _eliminated_simple_options.has("%d:%d" % [encounter_id, option_index])
+
+
+func eliminate_complex_result(encounter_id: int, result_index: int) -> bool:
+	if encounter_id < 0 or result_index < 0 or result_index > 3:
+		return false
+	_eliminated_complex_results["%d:%d" % [encounter_id, result_index]] = true
+	return true
+
+
+func complex_result_is_eliminated(encounter_id: int, result_index: int) -> bool:
+	return _eliminated_complex_results.has("%d:%d" % [encounter_id, result_index])
 
 
 func encounter_attempts(kind: StringName, encounter_id: int) -> int:
@@ -374,6 +386,7 @@ func restore_from_data(data: Dictionary) -> bool:
 	_timed_encounter_overrides = loaded._timed_encounter_overrides
 	_instance_counter = loaded._instance_counter
 	_eliminated_simple_options = loaded._eliminated_simple_options
+	_eliminated_complex_results = loaded._eliminated_complex_results
 	_shop_overrides = loaded._shop_overrides
 	_shop_inflation_overrides = loaded._shop_inflation_overrides
 	_shop_buyback_overrides = loaded._shop_buyback_overrides
@@ -444,6 +457,7 @@ func to_data() -> Dictionary:
 		"timedEncounterOverrides": timed,
 		"instanceCounter": _instance_counter,
 		"eliminatedSimpleOptions": _sorted_string_keys(_eliminated_simple_options),
+		"eliminatedComplexResults": _sorted_string_keys(_eliminated_complex_results),
 		"shopOverrides": _sorted_dictionary(_shop_overrides),
 		"shopInflationOverrides": _sorted_dictionary(_shop_inflation_overrides),
 		"shopBuybackOverrides": _sorted_nested_dictionary(_shop_buyback_overrides),
@@ -652,6 +666,13 @@ static func _restore_override_collections(state: GameState, data: Dictionary) ->
 	for key: Variant in data["eliminatedSimpleOptions"]:
 		if not key is String or key.is_empty(): return false
 		state._eliminated_simple_options[key] = true
+	if data.has("eliminatedComplexResults"):
+		if not data["eliminatedComplexResults"] is Array: return false
+		for key: Variant in data["eliminatedComplexResults"]:
+			if not key is String or key.is_empty(): return false
+			var parts := String(key).split(":")
+			if parts.size() != 2 or not parts[0].is_valid_int() or not parts[1].is_valid_int() or parts[0].to_int() < 0 or parts[1].to_int() < 0 or parts[1].to_int() > 3: return false
+			state._eliminated_complex_results[key] = true
 	for key: Variant in data["shopOverrides"]:
 		var quantity := _integer(data["shopOverrides"][key])
 		if not key is String or key.is_empty() or quantity < 0 or quantity > 32_767: return false

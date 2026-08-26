@@ -250,7 +250,7 @@ The sidecar binds its exact package hash and reports normalized feature signatur
 
 Every entry tracks discovery, compiler preservation, semantic public-runtime testing, deterministic route proof, and ordinary-play certification independently. Package decoding and handler registration never count as semantic spell or opcode parity.
 """ % [
-		opcode_summary["total"], opcode_summary["executable"], opcode_summary["classicReserved"], opcode_summary["pending"], ", ".join(pending),
+		opcode_summary["total"], opcode_summary["executable"], opcode_summary["classicReserved"], opcode_summary["pending"], "None" if pending.is_empty() else ", ".join(pending),
 		spell_summary["stockPlayer"], spell_summary["applicationEffects"], spell_summary["reservedStandardSlots"], spell_summary["totalDefinitions"], spell_summary["behaviorSignatures"],
 		_format_counts(spell_summary["mechanicalFamilies"]),
 		_context_count(spell_summary, "combatCharacter", "executable"), _context_count(spell_summary, "combatCharacter", "unsupported-pending"),
