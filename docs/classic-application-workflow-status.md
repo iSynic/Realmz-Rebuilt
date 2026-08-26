@@ -7,7 +7,7 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | classic | 69 | 0 | 6 | 50 | 13 |
-| host | 8 | 1 | 1 | 4 | 2 |
+| host | 8 | 1 | 0 | 5 | 2 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
 
@@ -15,7 +15,7 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 **Saturation and host closure** (`saturation-and-host-closure`)
 
-The compiler and opcode denominators are saturated, application semantic data is consumed, and acquired dungeon maps are source-backed. The final ordinary-play batch closes the two remaining major spell workflow dispositions before host control/layout acceptance and native release certification. Existing AOGM, War, and Lachis acceptance remains valid unless one of these owners directly invalidates it.
+The compiler, opcode, application semantic-data, spell, and host settings denominators are saturated. The remaining in-repository work closes Classic preference dispositions before final workflow saturation and native release certification. Existing AOGM, War, and Lachis acceptance remains valid unless one of these owners directly invalidates it.
 
 Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
 
@@ -24,7 +24,6 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | `classic.spellcasting.field-camp-cast` | certification | broader-parity | aogm-ordinary |  |
 | `classic.spellcasting.combat-cast` | certification | broader-parity | aogm-ordinary |  |
 | `classic.system.preferences` | implementation | broader-parity | - |  |
-| `host.settings.accessibility` | implementation | classic-missing | - | GAP-HOST-004 |
 
 ### Batch count delta
 
@@ -35,8 +34,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | classic | functional | 50 | 50 | 0 |
 | classic | certified | 11 | 13 | +2 |
 | host | missing | 1 | 1 | 0 |
-| host | partial | 1 | 1 | 0 |
-| host | functional | 4 | 4 | 0 |
+| host | partial | 1 | 0 | -1 |
+| host | functional | 4 | 5 | +1 |
 | host | certified | 2 | 2 | 0 |
 
 ## Classic domain heatmap
@@ -143,10 +142,9 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 
 ## Release blockers and major gaps
 
-Blockers: **1**. Major gaps: **1**.
+Blockers: **1**. Major gaps: **0**.
 
 - **blocker** `host.release.platform-certification` - There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
-- **major** `host.settings.accessibility` - Control customization and complete multi-scale layout acceptance remain unfinished. Next: Finish keyboard/mouse control help and run layout acceptance at every locked resolution and text scale.
 
 ## Oracle-required unknowns
 
@@ -178,7 +176,6 @@ Blockers: **1**. Major gaps: **1**.
 ### polish
 
 - `host.release.platform-certification` - There is no cross-platform release certification and no accepted release candidate.
-- `host.settings.accessibility` - Control customization and complete multi-scale layout acceptance remain unfinished.
 - `classic.exploration.travel` - Ordinary AOGM dungeon presentation shows two solid green rectangular cells that do not visually match the surrounding Classic dungeon composition.
 - `classic.maps.location-notes` - Castle's two dialog exit labels are not available in the pinned source, although both native exits are now proven to commit the current record.
 - `classic.maps.view-acquired` - Ordinary AOGM acquisition, interaction-boundary restore, reward completion, persistence, and Maps/Notes browsing are proven, but the acquired-map presentation has not been user-accepted.

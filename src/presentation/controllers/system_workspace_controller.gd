@@ -10,6 +10,13 @@ signal setting_changed(setting_id: StringName, value: Variant)
 const GOLD := Color("d5b45d")
 const CYAN := Color("8fcfd1")
 const MUTED := Color("9aa0a8")
+const CONTROL_HELP: Array[Dictionary] = [
+	{"title": "Explore", "keys": "Arrows, WASD, or numpad", "detail": "Move one step; hold a direction or the map stage to keep traveling."},
+	{"title": "Field commands", "keys": "F Search  •  C Camp  •  R Rest  •  H Heal", "detail": "The visible command deck provides the same actions and their current availability."},
+	{"title": "Fast Spells", "keys": "1–0 select  •  Ctrl/Cmd + 1–0 cast", "detail": "In battle, hold Alt for the Fast Spell dock; Alt + 1–0 casts an assigned slot."},
+	{"title": "Battle", "keys": "Shift costs  •  T target  •  Space confirm/skip", "detail": "Movement also uses arrows, WASD, or numpad; mouse targeting remains available."},
+	{"title": "Workspaces", "keys": "Alt + 1–9  •  Escape Back/Cancel", "detail": "Every reversible workspace also keeps its visible Back, Done, or Cancel action."},
+]
 
 var _save_previews: Array[SaveSlotPreview] = []
 var _selected_save_key: String = ""
@@ -310,7 +317,7 @@ func _build_accessibility_tab(parent: VBoxContainer, settings: PresentationSetti
 
 
 func _build_controls_tab(parent: VBoxContainer, settings: PresentationSettings) -> void:
-	var content := _settings_panel(parent, "Controls", "Exploration cadence and convenience controls.")
+	var content := _settings_panel(parent, "Controls", "Keyboard and mouse controls remain fixed so prompts, shortcuts, and visible commands always agree.")
 	var movement_row := HBoxContainer.new()
 	var movement_speed := HSlider.new()
 	movement_speed.min_value = 25.0; movement_speed.max_value = 400.0; movement_speed.step = 25.0; movement_speed.value = settings.exploration_speed_percent
@@ -322,7 +329,8 @@ func _build_controls_tab(parent: VBoxContainer, settings: PresentationSettings) 
 	_add_setting_toggle(content, "Auto Switch To Melee Weapon", settings.auto_switch_to_melee, &"auto_switch_to_melee")
 	_add_setting_toggle(content, "Show travel preview on the exploration map", settings.show_exploration_minimap, &"show_exploration_minimap")
 	_add_setting_toggle(content, "Add eligible scenario text to Notes automatically", settings.autojournal_enabled, &"autojournal_enabled")
-	content.add_child(_label("Move: arrows, WASD, or numpad  •  Hold Shift in battle to reveal adjacent movement costs  •  Space skips presentation playback", MUTED, 14))
+	for entry: Dictionary in CONTROL_HELP:
+		_add_control_help(content, entry)
 
 
 func _build_diagnostics_tab(parent: VBoxContainer, settings: PresentationSettings) -> void:
@@ -332,12 +340,17 @@ func _build_diagnostics_tab(parent: VBoxContainer, settings: PresentationSetting
 
 
 func _settings_panel(parent: VBoxContainer, title: String, description: String) -> VBoxContainer:
+	var scroll := ScrollContainer.new()
+	scroll.name = "%sSettingsScroll" % title.replace(" ", "")
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	parent.add_child(scroll)
 	var panel := PanelContainer.new()
 	panel.name = "%sSettingsPanel" % title.replace(" ", "")
 	panel.theme_type_variation = &"ClassicInset"
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	parent.add_child(panel)
+	scroll.add_child(panel)
 	var content := VBoxContainer.new()
 	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -349,6 +362,25 @@ func _settings_panel(parent: VBoxContainer, title: String, description: String) 
 	content.add_child(_label(description, MUTED, 14))
 	content.add_child(HSeparator.new())
 	return content
+
+
+func _add_control_help(parent: Container, entry: Dictionary) -> void:
+	var card := PanelContainer.new()
+	card.name = "ControlHelp%s" % String(entry["title"]).replace(" ", "")
+	card.theme_type_variation = &"ClassicInset"
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	parent.add_child(card)
+	var row := BoxContainer.new()
+	row.vertical = _layout_profile == UiLayoutProfile.COMPACT
+	row.add_theme_constant_override("separation", 8)
+	card.add_child(row)
+	var identity := _label("%s  •  %s" % [entry["title"], entry["keys"]], GOLD, 14)
+	identity.custom_minimum_size.x = 0.0 if row.vertical else 330.0
+	row.add_child(identity)
+	var detail := _label(String(entry["detail"]), MUTED, 13)
+	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(detail)
 
 
 func _add_setting_row(parent: Container, label: String, control: Control) -> void:
