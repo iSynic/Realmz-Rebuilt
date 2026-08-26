@@ -392,6 +392,7 @@ func _apply_classic_directive(directive: ScenarioVmDirective, inherited_context:
 				return ScenarioVmResult.failed(&"unknown_scenario_program", "Classic branch references unavailable program '%s'." % program_id)
 			var target_frame := ScenarioFrame.new(ScenarioFrame.PROGRAM, program_id)
 			target_frame.counts_as_classic_call = directive.gosub
+			target_frame.cursor = directive.entry_cursor
 			var base_context := ScenarioExecutionContext.empty() if inherited_context == null else inherited_context
 			var merged_context: ScenarioExecutionContext = base_context.merged(directive.context)
 			target_frame.set_context(merged_context)

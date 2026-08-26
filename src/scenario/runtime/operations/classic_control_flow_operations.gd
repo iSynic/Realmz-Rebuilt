@@ -13,10 +13,10 @@ func _init(content: RealmzContent, game_state: GameState, rng: RealmzRng) -> voi
 
 
 func opcode_ids() -> Array[int]:
-	return [7, 8, 24, 25, 42, 46, 64, 77, 84, 86, 98, 99]
+	return [7, 8, 24, 25, 42, 46, 58, 64, 77, 84, 86, 98, 99]
 
 
-func execute(action: ClassicActionDefinition, _request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
+func execute(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	match action.opcode:
 		7:
 			return replace_scenario_program(action, context)
@@ -33,7 +33,9 @@ func execute(action: ClassicActionDefinition, _request_id: String, context: Scen
 		42:
 			return _percent_branch(action, context)
 		46:
-			return _branch_on_quest(action)
+			return _branch_on_quest(action, context)
+		58:
+			return _branch_on_difficulty(action, context)
 		64:
 			return _branch_on_game_time(action)
 		77:
@@ -42,7 +44,7 @@ func execute(action: ClassicActionDefinition, _request_id: String, context: Scen
 			return _branch_on_misc(action)
 		84, 98, 99:
 			return ScenarioRuntimeOperationResult.completed(null, [DomainEvent.new(&"classic_control_marker", {"opcode": action.opcode, "operandId": action.operand_id})])
-	return super.execute(action, _request_id, context)
+	return super.execute(action, request_id, context)
 
 
 func _percent_branch(action: ClassicActionDefinition, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
@@ -59,7 +61,7 @@ func _percent_branch(action: ClassicActionDefinition, context: ScenarioExecution
 				_game_state.world.disable_trigger(trigger_id)
 			return ScenarioRuntimeOperationResult.completed(true, [event], ScenarioVmDirective.finish())
 		1:
-			var branch := _branch_from_values(action.extra_code, false)
+			var branch := _branch_from_values(action.extra_code, false, context)
 			branch.events.append(event)
 			return branch
 		2:
@@ -67,13 +69,34 @@ func _percent_branch(action: ClassicActionDefinition, context: ScenarioExecution
 	return ScenarioRuntimeOperationResult.completed(true, [event])
 
 
-func _branch_on_quest(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
+func _branch_on_difficulty(action: ClassicActionDefinition, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
+	if action.extra_code.size() < 5:
+		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 58 requires a five-value Extra Code row.")
+	var matched := _game_state.difficulty >= action.extra_code[0]
+	var event := DomainEvent.new(&"difficulty_branch_checked", {"difficulty": _game_state.difficulty, "minimum": action.extra_code[0], "matched": matched, "behavior": action.extra_code[1]})
+	if not matched:
+		return ScenarioRuntimeOperationResult.completed(false, [event])
+	match action.extra_code[1]:
+		-2:
+			if not context.trigger_id.is_empty():
+				_game_state.world.disable_trigger(context.trigger_id)
+			return ScenarioRuntimeOperationResult.completed(true, [event], ScenarioVmDirective.finish_timeline())
+		1:
+			var branch := _branch_from_values(action.extra_code, action.gosub, context)
+			branch.events.append(event)
+			return branch
+		2:
+			return ScenarioRuntimeOperationResult.completed(true, [event, DomainEvent.new(&"action_point_kept", {"triggerId": context.trigger_id, "source": "classic-opcode-58"})], ScenarioVmDirective.finish_timeline())
+	return ScenarioRuntimeOperationResult.completed(true, [event])
+
+
+func _branch_on_quest(action: ClassicActionDefinition, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	if action.extra_code.size() < 5:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 46 requires a five-value Extra Code row.")
 	var is_set := _game_state.quest_is_set(action.extra_code[0])
 	var condition := action.extra_code[1]
 	var should_branch := condition == 2 or condition == 1 and is_set or condition == 0 and not is_set
-	return _branch_from_values(action.extra_code, action.gosub) if should_branch else ScenarioRuntimeOperationResult.completed(false)
+	return _branch_from_values(action.extra_code, action.gosub, context) if should_branch else ScenarioRuntimeOperationResult.completed(false)
 
 
 func _branch_on_game_time(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
@@ -172,10 +195,12 @@ func _branch_on_misc(action: ClassicActionDefinition) -> ScenarioRuntimeOperatio
 	return branch
 
 
-func _branch_from_values(values: Array[int], gosub: bool) -> ScenarioRuntimeOperationResult:
+func _branch_from_values(values: Array[int], gosub: bool, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	match values[2]:
 		0:
 			return _branch_xap(values[3], gosub)
+		1, 2:
+			return _branch_encounter_result(values[2], values[3], values[4], gosub, context)
 		3:
 			return ScenarioRuntimeOperationResult.completed(true, [], ScenarioVmDirective.finish())
 	return ScenarioRuntimeOperationResult.failed(&"unsupported_branch_mode", "Classic branch mode %d is not available in this execution context." % values[2])
@@ -183,6 +208,16 @@ func _branch_from_values(values: Array[int], gosub: bool) -> ScenarioRuntimeOper
 
 func _branch_target_mode(mode: int, target_id: int, gosub: bool) -> ScenarioRuntimeOperationResult:
 	return _branch_xap(target_id, gosub) if mode == 0 else ScenarioRuntimeOperationResult.failed(&"unsupported_branch_target", "Classic branch target mode %d is not available in this execution context." % mode)
+
+
+func _branch_encounter_result(mode: int, result_index: int, entry_cursor: int, gosub: bool, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
+	var kind := &"simple" if mode == 1 else &"complex"
+	if context == null or context.encounter_kind != kind or context.encounter_id < 0:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_encounter_context", "Classic branch mode %d requires an active %s Encounter result." % [mode, String(kind).capitalize()])
+	if result_index < 0 or result_index > 3 or entry_cursor < 0 or entry_cursor > 7:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_encounter_branch", "Classic encounter-result branches require result 0 through 3 and code cursor 0 through 7.")
+	var program_id := "%s:%d:result:%d" % [String(kind), context.encounter_id, result_index]
+	return ScenarioRuntimeOperationResult.completed(true, [], ScenarioVmDirective.branch_program_at(program_id, gosub, context, entry_cursor))
 
 
 func _branch_xap(target_id: int, gosub: bool) -> ScenarioRuntimeOperationResult:

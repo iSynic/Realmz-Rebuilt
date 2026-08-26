@@ -1,0 +1,8 @@
+{
+  "opcode": 58,
+  "castleSource": "src/realmz_orig/newland.c case 58 and forcebranch",
+  "divinitySource": "public/divinity-manual/index.html, Code 58 Branch on Difficulty Level",
+  "runtimeContract": "Compare the signed saved difficulty directly with Extra Code 0, then branch to an XAP or transfer within the active Simple or Complex Encounter result at the authored zero-based code cursor.",
+  "controlFlow": "Behavior 1 branches, behavior 2 exits and keeps the placed Action Point, behavior -2 exits and erases it, and a signed opcode carries GOSUB to the selected target.",
+  "determinism": "The operation consumes no RNG and reads only the compiled Extra Code row, closed encounter context, and serialized difficulty."
+}

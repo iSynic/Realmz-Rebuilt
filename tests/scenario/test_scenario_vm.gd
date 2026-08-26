@@ -19,6 +19,7 @@ func run() -> void:
 	_test_scenario_wire_contracts()
 	_test_public_interaction_matrix(content)
 	_test_public_classic_choice_control_flow(content)
+	_test_public_classic_difficulty_branch(content)
 	_test_public_classic_encounter_iterations(content)
 	_test_public_thief_encounter(content)
 	_test_public_session_resume(content)
@@ -33,11 +34,11 @@ func run() -> void:
 
 
 func _test_scenario_wire_contracts() -> void:
-	var branch := ScenarioVmDirective.branch_program("xap:7", true, ScenarioExecutionContext.trigger(&"", "ap.fixture")); var restored := ScenarioVmDirective.from_data(JSON.parse_string(JSON.stringify(branch.to_data())))
-	assert_not_null(restored, "VM directive round-trips through its typed wire contract"); assert_equal([restored.kind, restored.program_id, restored.gosub, restored.context.to_data()], [ScenarioVmDirective.BRANCH_PROGRAM, "xap:7", true, {"triggerId": "ap.fixture"}], "VM directive preserves branch and trigger state")
+	var branch := ScenarioVmDirective.branch_program_at("xap:7", true, ScenarioExecutionContext.trigger(&"", "ap.fixture"), 3); var restored := ScenarioVmDirective.from_data(JSON.parse_string(JSON.stringify(branch.to_data())))
+	assert_not_null(restored, "VM directive round-trips through its typed wire contract"); assert_equal([restored.kind, restored.program_id, restored.gosub, restored.entry_cursor, restored.context.to_data()], [ScenarioVmDirective.BRANCH_PROGRAM, "xap:7", true, 3, {"triggerId": "ap.fixture"}], "VM directive preserves branch cursor and trigger state")
 	var encounter_context := ScenarioExecutionContext.encounter(&"complex", 2, "", -1, &"choice", 0).set_encounter_attempt(3); var encounter_branch := ScenarioVmDirective.branch_encounter_result("complex:2:result:0", false, encounter_context, true); var restored_encounter_branch := ScenarioVmDirective.from_data(JSON.parse_string(JSON.stringify(encounter_branch.to_data()))); assert_equal([restored_encounter_branch.kind, restored_encounter_branch.repeat_encounter, restored_encounter_branch.context.value("encounterAttempt"), ScenarioVmDirective.from_data(ScenarioVmDirective.finish_timeline().to_data()).kind, ScenarioVmDirective.from_data(ScenarioVmDirective.resume_after_encounter().to_data()).kind], [ScenarioVmDirective.BRANCH_ENCOUNTER_RESULT, true, 3, ScenarioVmDirective.FINISH_TIMELINE, ScenarioVmDirective.RESUME_AFTER_ENCOUNTER], "VM directives preserve encounter repetition and both source-backed encounter exits")
 	for malformed: Dictionary in [
-		{"kind": "finish", "extra": true}, {"kind": "branch-xap", "targetId": "7", "gosub": false}, {"kind": "branch-program", "programId": "", "gosub": false, "context": {}},
+		{"kind": "finish", "extra": true}, {"kind": "branch-xap", "targetId": "7", "gosub": false}, {"kind": "branch-program", "programId": "", "gosub": false, "context": {}}, {"kind": "branch-program", "programId": "xap:7", "gosub": false, "context": {}, "unexpected": true},
 	]:
 		assert_equal(ScenarioVmDirective.from_data(malformed), null, "VM directive rejects malformed or unknown fields")
 	var context := ScenarioExecutionContext.encounter(&"complex", 0, "response.0", 0, &"thief", 0)
@@ -70,17 +71,11 @@ func _test_scenario_wire_contracts() -> void:
 
 
 func _test_public_interaction_matrix(content: RealmzContent) -> void:
-	var action_state := ScenarioActionState.new()
-	var api := _runtime_api(content, action_state)
-	var vm := ScenarioVm.new()
-	vm.configure(content.scenario)
+	var action_state := ScenarioActionState.new(); var api := _runtime_api(content, action_state); var vm := ScenarioVm.new(); vm.configure(content.scenario)
 	assert_equal(vm.start_program("trigger:ap.fixture.encounter", ScenarioExecutionContext.calling(&"action")).state, ScenarioVmResult.State.COMPLETED, "Classic trigger starts through the public VM")
-	var waiting := vm.run(api)
-	assert_equal([waiting.state, waiting.interaction.kind], [ScenarioVmResult.State.WAITING, &"encounter_choice"], "Simple Encounter yields a typed choice")
-	var saved := ScenarioVmSnapshot.from_data(vm.snapshot().to_data())
+	var waiting := vm.run(api); assert_equal([waiting.state, waiting.interaction.kind], [ScenarioVmResult.State.WAITING, &"encounter_choice"], "Simple Encounter yields a typed choice"); var saved := ScenarioVmSnapshot.from_data(vm.snapshot().to_data())
 	assert_not_null(saved, "choice boundary serializes through the public VM snapshot")
-	var restored := ScenarioVm.new()
-	restored.configure(content.scenario)
+	var restored := ScenarioVm.new(); restored.configure(content.scenario)
 	assert_true(restored.restore(saved), "choice boundary restores into the same program")
 	var result_text := restored.resume(InteractionResponse.from_data(saved.pending_request.request_id, &"encounter_choice", {"index": 0}), api)
 	assert_equal([result_text.state, result_text.interaction.kind], [ScenarioVmResult.State.WAITING, &"acknowledge"], "choice response reaches the staged Classic textbox")
@@ -114,6 +109,13 @@ func _test_public_classic_choice_control_flow(content: RealmzContent) -> void:
 		var api := _runtime_api(content, ScenarioActionState.new()); var waiting := vm.run(api); assert_equal([waiting.state, waiting.interaction.kind], [ScenarioVmResult.State.WAITING, InteractionRequest.YES_NO], "%s Choice yields the typed response boundary" % choice_case.id); var selected := vm.resume(InteractionResponse.yes_no(waiting.interaction, true), api)
 		assert_equal(selected.state, ScenarioVmResult.State.COMPLETED, "%s Choice selection ends the issuing timeline" % choice_case.id); assert_true(_event_has(selected.events, choice_case.event), "%s Choice publishes its explicit session operation" % choice_case.id); assert_false(_event_has(selected.events, &"action_point_kept") or _event_has(selected.events, &"encounter_option_elimination_requested"), "%s Choice cannot execute the following slot or invent an encounter mutation" % choice_case.id)
 		var continued_vm := ScenarioVm.new(); continued_vm.configure(ScenarioDefinition.new([program], [])); continued_vm.start_program(program.id, ScenarioExecutionContext.trigger(&"action", "ap.%s" % choice_case.id)); var continued_wait := continued_vm.run(api); var continued := continued_vm.resume(InteractionResponse.yes_no(continued_wait.interaction, false), api); assert_true(_event_has(continued.events, &"action_point_kept"), "%s Choice leaves the unselected branch on the following authored slot" % choice_case.id)
+
+
+func _test_public_classic_difficulty_branch(content: RealmzContent) -> void:
+	var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("difficulty.hero", "Hero", 10, 10)]), RealmzClock.new()); state.difficulty = 1; var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(58), ScenarioActionState.new()); var direct := api.execute_classic(ClassicActionDefinition.new(0, 58, 58, 0, false, [1, 1, 0, 321, 7]), "difficulty.xap", ScenarioExecutionContext.trigger(&"action", "ap.fixture")); var missed := api.execute_classic(ClassicActionDefinition.new(0, 58, 58, 0, false, [2, 1, 0, 321, 0]), "difficulty.miss"); assert_equal([direct.directive.kind, direct.directive.target_id, missed.value, (missed.events[0] as DomainEvent).payload.get("matched")], [ScenarioVmDirective.BRANCH_XAP, 321, false, false], "opcode 58 compares Castle's signed difficulty directly and branches to the selected XAP only on a match")
+	var simple_source := ScenarioProgramDefinition.new("simple:2:result:0", &"simple-encounter-result", "0", [ClassicActionDefinition.new(0, -58, 58, 0, true, [1, 1, 1, 2, 1]), ClassicActionDefinition.new(1, 24, 24, 0, false, [])]); var simple_target := ScenarioProgramDefinition.new("simple:2:result:2", &"simple-encounter-result", "2", [ClassicActionDefinition.new(0, 1, 1, -1, false, []), ClassicActionDefinition.new(1, 1, 1, 2, false, []), ClassicActionDefinition.new(2, 111, 111, 0, false, [])]); var simple_vm := ScenarioVm.new(); simple_vm.configure(ScenarioDefinition.new([simple_source, simple_target], [])); simple_vm.start_program(simple_source.id, ScenarioExecutionContext.encounter(&"simple", 2, "response", 0)); var waiting := simple_vm.run(api); var saved := ScenarioVmSnapshot.from_data(simple_vm.snapshot().to_data()); var restored := ScenarioVm.new(); restored.configure(ScenarioDefinition.new([simple_source, simple_target], [])); assert_true(saved != null and restored.restore(saved), "opcode 58 saves its exact within-encounter target cursor and GOSUB frame"); var returned := restored.resume(InteractionResponse.acknowledge(waiting.interaction), api); assert_true(waiting.state == ScenarioVmResult.State.WAITING and waiting.interaction.body.to_data().get("messageId") == 2 and returned.state == ScenarioVmResult.State.COMPLETED and _event_has(returned.events, &"action_point_kept"), "opcode 58 skips earlier result code, resumes after the saved target, and returns to the signed caller")
+	var complex_source := ScenarioProgramDefinition.new("complex:0:result:0", &"complex-encounter-result", "0", [ClassicActionDefinition.new(0, 58, 58, 0, false, [1, 1, 2, 3, 1]), ClassicActionDefinition.new(1, 84, 84, 700, false, [])]); var complex_target := ScenarioProgramDefinition.new("complex:0:result:3", &"complex-encounter-result", "3", [ClassicActionDefinition.new(0, 84, 84, 701, false, []), ClassicActionDefinition.new(1, 24, 24, 0, false, [])]); var complex_vm := ScenarioVm.new(); complex_vm.configure(ScenarioDefinition.new([complex_source, complex_target], [])); complex_vm.start_program(complex_source.id, ScenarioExecutionContext.encounter(&"complex", 0, "", -1, &"choice", 0)); var complex_result := complex_vm.run(api); assert_true(complex_result.state == ScenarioVmResult.State.COMPLETED and _event_has(complex_result.events, &"action_point_kept") and not complex_result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"classic_control_marker"), "opcode 58 replaces a Complex result at its authored cursor without running skipped target or abandoned source code")
+	var kept := api.execute_classic(ClassicActionDefinition.new(0, 58, 58, 0, false, [1, 2, 0, 0, 0]), "difficulty.keep", ScenarioExecutionContext.trigger(&"action", "ap.keep")); var erased := api.execute_classic(ClassicActionDefinition.new(0, 58, 58, 0, false, [1, -2, 0, 0, 0]), "difficulty.erase", ScenarioExecutionContext.trigger(&"action", "ap.erase")); assert_true(kept.directive.kind == ScenarioVmDirective.FINISH_TIMELINE and _event_has(kept.events, &"action_point_kept") and erased.directive.kind == ScenarioVmDirective.FINISH_TIMELINE and state.world.trigger_is_disabled("ap.erase"), "opcode 58 preserves Castle's matched keep and erase exits without consuming RNG")
 
 
 func _test_public_classic_encounter_iterations(content: RealmzContent) -> void:
