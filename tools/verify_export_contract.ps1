@@ -10,6 +10,7 @@ $featureSchemaHashPath = Join-Path $repoRoot "contracts\realmz2\realmz2-feature-
 $fixtureRoot = Join-Path $repoRoot "tests\fixtures\packages"
 $fixtureManifestPath = Join-Path $fixtureRoot "fixture-provenance.json"
 $noticePath = Join-Path $repoRoot "THIRD_PARTY_NOTICES.txt"
+$ciPath = Join-Path $repoRoot ".github\workflows\ci.yml"
 
 if (-not (Test-Path -LiteralPath $presetPath)) {
     throw "export_presets.cfg is required."
@@ -60,6 +61,23 @@ if ($macOptions -notmatch '(?m)^binary_format/architecture="universal"$' -or $ma
 $projectSettings = Get-Content -Raw -LiteralPath $projectPath
 if ($projectSettings -notmatch '(?m)^textures/vram_compression/import_etc2_astc=true$') {
     throw "The project must import ETC2/ASTC textures for universal macOS export."
+}
+if ($projectSettings -notmatch '(?m)^config/version="\d+(?:\.\d+)*"$') {
+    throw "The cross-platform release version must use the numeric format required by macOS export."
+}
+if ($projectSettings -match '(?m)^\s*[^;\r\n]*addons/godot_mcp/.*_service\.gd') {
+    throw "Release project settings must not retain development-only MCP runtime autoloads."
+}
+
+if (-not (Test-Path -LiteralPath $ciPath -PathType Leaf)) {
+    throw "The native release CI matrix is missing."
+}
+$ci = Get-Content -Raw -LiteralPath $ciPath
+foreach ($artifactPath in @("dist/windows", "dist/linux", "dist/macos")) {
+    if (-not $ci.Contains("artifactPath: $artifactPath")) { throw "Release CI does not upload the complete $artifactPath directory." }
+}
+foreach ($requiredStep in @("verify_release_artifact.ps1", "Launch exported Windows runtime", "Launch exported Linux runtime", "Launch exported macOS runtime", 'path: ${{ matrix.artifactPath }}')) {
+    if (-not $ci.Contains($requiredStep)) { throw "Release CI is missing required artifact/native-smoke contract: $requiredStep" }
 }
 
 Write-Host "Windows, Linux, and macOS release export contracts verified."

@@ -11,17 +11,11 @@ config_version=5
 [application]
 
 config/name="Realmz Rebuilt"
-config/version="0.1.0-dev"
+config/version="0.1.0"
 run/main_scene="res://src/presentation/startup_front_door.tscn"
 config/use_custom_user_dir=true
 config/custom_user_dir_name="RealmzRemake2"
 config/features=PackedStringArray("4.7", "GL Compatibility")
-
-[autoload]
-
-MCPScreenshot="*res://addons/godot_mcp/mcp_screenshot_service.gd"
-MCPInputService="*res://addons/godot_mcp/mcp_input_service.gd"
-MCPGameInspector="*res://addons/godot_mcp/mcp_game_inspector_service.gd"
 
 [display]
 

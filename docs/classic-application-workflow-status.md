@@ -7,20 +7,21 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | classic | 69 | 0 | 0 | 55 | 14 |
-| host | 8 | 1 | 0 | 5 | 2 |
+| host | 8 | 0 | 1 | 5 | 2 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
 
 ## Current parity-convergence batch
 
-**Final Classic workflow closure** (`final-classic-workflow-closure`)
+**Release saturation closure** (`release-saturation-closure`)
 
-Compiler, opcode, spell, application semantic-data, preferences, host settings, equipment, Shop, authored Journal, and Quit behavior are saturated. Every Classic workflow is functional or certified; the remaining targets seek ordinary-play certification without reopening completed behavior. Existing AOGM, War, and Lachis acceptance remains valid unless a later owner directly invalidates it.
+Compiler, opcode, spell, application semantic-data, preferences, host settings, equipment, Shop, authored Journal, and Quit behavior are saturated. Every Classic workflow is functional or certified. The sole implementation target is the cross-platform release blocker; the three certification targets preserve ordinary-play acceptance opportunities without reopening completed behavior. Existing AOGM, War, and Lachis acceptance remains valid unless a later owner directly invalidates it.
 
 Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
+| `host.release.platform-certification` | implementation | rare-or-unreachable | - | GAP-HOST-006 |
 | `classic.spellcasting.field-camp-cast` | certification | broader-parity | aogm-ordinary |  |
 | `classic.maps.authored-journal` | certification | broader-parity | other-ordinary |  |
 | `classic.system.quit` | certification | broader-parity | other-ordinary |  |
@@ -30,11 +31,11 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Scope | State | Baseline | Current | Delta |
 | --- | --- | ---: | ---: | ---: |
 | classic | missing | 0 | 0 | 0 |
-| classic | partial | 6 | 0 | -6 |
-| classic | functional | 50 | 55 | +5 |
-| classic | certified | 13 | 14 | +1 |
-| host | missing | 1 | 1 | 0 |
-| host | partial | 0 | 0 | 0 |
+| classic | partial | 0 | 0 | 0 |
+| classic | functional | 55 | 55 | 0 |
+| classic | certified | 14 | 14 | 0 |
+| host | missing | 1 | 0 | -1 |
+| host | partial | 0 | 1 | +1 |
 | host | functional | 5 | 5 | 0 |
 | host | certified | 2 | 2 | 0 |
 
@@ -125,16 +126,16 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 
 | presentation | Count |
 | --- | ---: |
-| absent | 1 |
+| absent | 0 |
 | fixture-shell | 0 |
-| functional | 5 |
+| functional | 6 |
 | accepted | 2 |
 
 ### Live evidence labels
 
 | Label | Classic | Host |
 | --- | ---: | ---: |
-| synthetic | 69 | 7 |
+| synthetic | 69 | 8 |
 | route-harness | 40 | 2 |
 | aogm-ordinary | 44 | 3 |
 | other-ordinary | 12 | 3 |
@@ -144,7 +145,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 
 Blockers: **1**. Major gaps: **0**.
 
-- **blocker** `host.release.platform-certification` - There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
+- **blocker** `host.release.platform-certification` - Windows and Linux have native release evidence, but macOS remains unexecuted on an Apple runner. Next: Run the current commit's macOS verify/export job on an actual Apple runner, launch the exported application, and retain its release manifest and clean native log.
 
 ## Oracle-required unknowns
 
@@ -169,7 +170,7 @@ Blockers: **1**. Major gaps: **0**.
 
 ### polish
 
-- `host.release.platform-certification` - There is no cross-platform release certification and no accepted release candidate.
+- `host.release.platform-certification` - Windows and Linux have native release evidence, but macOS remains unexecuted on an Apple runner.
 - `classic.exploration.travel` - Ordinary AOGM dungeon presentation shows two solid green rectangular cells that do not visually match the surrounding Classic dungeon composition.
 - `classic.maps.location-notes` - Castle's two dialog exit labels are not available in the pinned source, although both native exits are now proven to commit the current record.
 - `classic.maps.view-acquired` - Ordinary AOGM acquisition, interaction-boundary restore, reward completion, persistence, and Maps/Notes browsing are proven, but the acquired-map presentation has not been user-accepted.
