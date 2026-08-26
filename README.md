@@ -18,6 +18,6 @@ Use Godot 4.7.1 stable. Run the local verification lane from PowerShell:
 
 Godot MCP Pro 1.16.0 is vendored under `addons/godot_mcp`; its Node server remains an external local tool. See [docs/development.md](docs/development.md).
 
-No commercial scenario payloads, extracted assets, user saves, or generated oracle installations belong in this repository.
+The exact 13 scenarios distributed with Castle Realmz are bundled under CC BY-NC-SA 4.0 with pinned source/compiler provenance. No other commercial or user-owned scenario payloads, extracted assets, user saves, or generated oracle installations belong in this repository. The synthetic package remains test-only and is excluded from release exports.
 
-Realmz Rebuilt includes provenance-checked integrated Classic media under the terms recorded in [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt). Scenario-owned media remains in immutable `.realmz2` packages and may override the matching exact Classic resource key.
+Realmz Rebuilt includes provenance-checked integrated Classic media and Castle-distributed scenarios under the terms recorded in [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt). Scenario-owned media remains in immutable `.realmz2` packages and may override the matching exact Classic resource key.

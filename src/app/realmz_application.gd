@@ -1018,7 +1018,7 @@ func _refresh_save_previews() -> void:
 func _refresh_campaigns() -> void:
 	if _package_host != null and _package_host.operation_view().is_running():
 		return
-	_shell_presenter.set_campaigns(_package_host.discover_campaigns(["user://packages"]))
+	_shell_presenter.set_campaigns(_package_host.discover_available_campaigns())
 
 
 func _on_topology_debug_changed(enabled: bool) -> void:

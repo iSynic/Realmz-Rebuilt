@@ -4,6 +4,8 @@ extends RefCounted
 const PackageRepositoryScript := preload("res://src/infrastructure/packages/package_repository.gd")
 const PackageInstallTaskScript := preload("res://src/infrastructure/packages/package_install_task.gd")
 const BundledPackageLoadTaskScript := preload("res://src/infrastructure/packages/bundled_package_load_task.gd")
+const BUNDLED_CAMPAIGN_ROOT: String = "res://src/infrastructure/campaigns"
+const USER_CAMPAIGN_ROOT: String = "user://packages"
 
 var _repository: PackageRepository
 var _task: PackageInstallTask
@@ -43,6 +45,31 @@ func discover_campaigns(search_roots: Array[String]) -> Array[CampaignPackageVie
 	var result: Array[CampaignPackageView] = []
 	for record: PackageDiscoveryResult in _repository.discover_campaigns(search_roots):
 		result.append(CampaignPackageView.from_discovery(record))
+	return result
+
+
+func discover_available_campaigns(bundled_root: String = BUNDLED_CAMPAIGN_ROOT, user_root: String = USER_CAMPAIGN_ROOT) -> Array[CampaignPackageView]:
+	var selected_by_campaign: Dictionary = {}
+	var rejected: Array[PackageDiscoveryResult] = []
+	for record: PackageDiscoveryResult in _repository.discover_campaigns([bundled_root]):
+		if record.ready:
+			selected_by_campaign[record.campaign_id] = record
+		else:
+			rejected.append(record)
+	for record: PackageDiscoveryResult in _repository.discover_campaigns([user_root]):
+		if record.ready:
+			selected_by_campaign[record.campaign_id] = record
+		else:
+			rejected.append(record)
+	var campaign_ids: Array[String] = []
+	campaign_ids.assign(selected_by_campaign.keys())
+	campaign_ids.sort()
+	var result: Array[CampaignPackageView] = []
+	for campaign_id: String in campaign_ids:
+		result.append(CampaignPackageView.from_discovery(selected_by_campaign[campaign_id]))
+	for record: PackageDiscoveryResult in rejected:
+		if record.campaign_id.is_empty() or not selected_by_campaign.has(record.campaign_id):
+			result.append(CampaignPackageView.from_discovery(record))
 	return result
 
 

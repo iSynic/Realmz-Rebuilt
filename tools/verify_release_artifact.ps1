@@ -10,6 +10,9 @@ param(
 
 $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+$catalogPath = Join-Path $repoRoot "src\infrastructure\campaigns\castle-bundled-scenarios.provenance.json"
+$catalog = Get-Content -Raw -LiteralPath $catalogPath | ConvertFrom-Json
+& (Join-Path $PSScriptRoot "verify_bundled_scenarios.ps1")
 $outputPath = (Resolve-Path -LiteralPath $Output).Path
 $logPath = (Resolve-Path -LiteralPath $ExportLog).Path
 $artifactDirectory = Split-Path -Parent $outputPath
@@ -22,7 +25,10 @@ if ($logText -match $forbidden) {
     throw "Release export contains an excluded development resource: $($Matches[0])"
 }
 $packagePaths = @([regex]::Matches($logText, 'Storing File:\s+(res://[^\r\n]+\.realmz2)') | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
-if (($packagePaths -join '|') -ne 'res://src/infrastructure/characters/realmz-classic-character-library.realmz2') {
+$expectedPackagePaths = @('res://src/infrastructure/characters/realmz-classic-character-library.realmz2')
+$expectedPackagePaths += @($catalog.scenarios | ForEach-Object { "res://src/infrastructure/campaigns/$($_.file)" })
+$expectedPackagePaths = @($expectedPackagePaths | Sort-Object)
+if (($packagePaths -join '|') -ne ($expectedPackagePaths -join '|')) {
     throw "Release export contains an unexpected Realmz package set: $($packagePaths -join ', ')"
 }
 
@@ -57,19 +63,27 @@ if ($Preset -eq "macOS") {
 }
 if ($artifact.Length -le 0 -or $pckBytes -le 0) { throw "$Preset release contains an empty artifact or PCK." }
 
-$fixturePath = Join-Path $repoRoot "tests\fixtures\packages\realmz2-synthetic-fixture.realmz2"
 $manifest = [ordered]@{
     formatVersion = 1
     commit = (& git -C $repoRoot rev-parse HEAD).Trim()
     preset = $Preset
     artifact = [ordered]@{ file = $artifact.Name; bytes = $artifact.Length; sha256 = $artifactHash }
     pck = [ordered]@{ file = $pckName; bytes = $pckBytes; sha256 = $pckHash }
-    certificationPackage = [ordered]@{
-        file = "realmz2-synthetic-fixture.realmz2"
-        sha256 = (Get-FileHash -LiteralPath $fixturePath -Algorithm SHA256).Hash.ToLowerInvariant()
-        commercialPayload = $false
+    bundledScenarioCatalog = [ordered]@{
+        sourceRevision = $catalog.source.revision
+        compilerRevision = $catalog.compiler.revision
+        license = $catalog.source.license
+        scenarios = @($catalog.scenarios | ForEach-Object {
+            [ordered]@{
+                campaignId = $_.campaignId
+                file = $_.file
+                packageHash = $_.packageHash
+                archiveSha256 = $_.archiveSha256
+                bytes = [long]$_.bytes
+            }
+        })
     }
 }
 $manifestPath = Join-Path $artifactDirectory "release-manifest.json"
-[System.IO.File]::WriteAllText($manifestPath, (($manifest | ConvertTo-Json -Depth 5) + "`n"), [System.Text.UTF8Encoding]::new($false))
+[System.IO.File]::WriteAllText($manifestPath, (($manifest | ConvertTo-Json -Depth 7) + "`n"), [System.Text.UTF8Encoding]::new($false))
 Write-Host "$Preset release artifact verified: artifact=$artifactHash pck=$pckHash manifest=$manifestPath"

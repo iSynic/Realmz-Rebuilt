@@ -52,6 +52,9 @@ if ($LASTEXITCODE -ne 0) { throw "Hotspot and test-budget verification failed." 
 & "$PSScriptRoot\verify_export_contract.ps1"
 if ($LASTEXITCODE -ne 0) { throw "Release export contract verification failed." }
 
+& "$PSScriptRoot\verify_bundled_scenarios.ps1"
+if ($LASTEXITCODE -ne 0) { throw "Bundled scenario verification failed." }
+
 & "$PSScriptRoot\verify_differential_evidence.ps1"
 if ($LASTEXITCODE -ne 0) { throw "Differential evidence verification failed." }
 

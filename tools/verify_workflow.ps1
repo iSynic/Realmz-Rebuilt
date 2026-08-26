@@ -90,9 +90,10 @@ foreach ($path in $changedPaths) {
         throw "Save artifact must not enter a workflow commit: $path"
     }
     $isAllowedRealmz2 = $path.StartsWith("tests/fixtures/packages/") -or
-        $path -eq "src/infrastructure/characters/realmz-classic-character-library.realmz2"
+        $path -eq "src/infrastructure/characters/realmz-classic-character-library.realmz2" -or
+        $path.StartsWith("src/infrastructure/campaigns/")
     if ($extension -eq ".realmz2" -and -not $isAllowedRealmz2) {
-        throw "Campaign package outside the synthetic fixture boundary must not enter a workflow commit: $path"
+        throw "Package outside the synthetic, application-library, or Castle-distributed bundle boundary must not enter a workflow commit: $path"
     }
     $fullPath = Join-Path $repoRoot $path
     $trackedMatches = @(git -C $repoRoot ls-files -- $path)
