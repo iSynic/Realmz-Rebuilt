@@ -6,7 +6,7 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| classic | 69 | 0 | 4 | 51 | 14 |
+| classic | 69 | 0 | 3 | 52 | 14 |
 | host | 8 | 1 | 0 | 5 | 2 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
@@ -15,14 +15,13 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 **Final Classic workflow closure** (`final-classic-workflow-closure`)
 
-Compiler, opcode, spell, application semantic-data, preferences, and host settings are saturated. The next bounded batch resolves the remaining source-ambiguous equipment and journal records plus minor Shop and Quit gaps, while retaining an accepted ordinary spell target. Existing AOGM, War, and Lachis acceptance remains valid unless one of these owners directly invalidates it.
+Compiler, opcode, spell, application semantic-data, preferences, host settings, and ordinary equipment are saturated. The next bounded batch resolves the source-ambiguous journal record plus minor Shop and Quit gaps, while retaining an accepted ordinary spell target. Existing AOGM, War, and Lachis acceptance remains valid unless one of these owners directly invalidates it.
 
 Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
 | `classic.spellcasting.field-camp-cast` | certification | broader-parity | aogm-ordinary |  |
-| `classic.inventory.manage-equipment` | archaeology | broader-parity | - |  |
 | `classic.services.shop` | implementation | broader-parity | - | GAP-SVC-008 |
 | `classic.maps.authored-journal` | archaeology | broader-parity | - | GAP-MAP-003, GAP-MAP-007 |
 | `classic.system.quit` | implementation | broader-parity | - | GAP-SYS-002 |
@@ -32,8 +31,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Scope | State | Baseline | Current | Delta |
 | --- | --- | ---: | ---: | ---: |
 | classic | missing | 0 | 0 | 0 |
-| classic | partial | 6 | 4 | -2 |
-| classic | functional | 50 | 51 | +1 |
+| classic | partial | 6 | 3 | -3 |
+| classic | functional | 50 | 52 | +2 |
 | classic | certified | 13 | 14 | +1 |
 | host | missing | 1 | 1 | 0 |
 | host | partial | 0 | 0 | 0 |
@@ -48,7 +47,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Exploration | 6 | 0 | 0 | 4 | 2 |
 | Scenario interaction | 6 | 0 | 0 | 3 | 3 |
 | Character management | 5 | 0 | 0 | 5 | 0 |
-| Inventory and equipment | 9 | 0 | 1 | 8 | 0 |
+| Inventory and equipment | 9 | 0 | 0 | 9 | 0 |
 | Spellcasting | 3 | 0 | 0 | 1 | 2 |
 | Services and economy | 5 | 0 | 1 | 4 | 0 |
 | Combat | 14 | 0 | 0 | 9 | 5 |
@@ -63,8 +62,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Castle oracle | Count |
 | --- | ---: |
 | not-required | 9 |
-| required | 2 |
-| completed | 58 |
+| required | 1 |
+| completed | 59 |
 
 | Remake | Count |
 | --- | ---: |
@@ -150,7 +149,6 @@ Blockers: **1**. Major gaps: **0**.
 
 ## Oracle-required unknowns
 
-- `classic.inventory.manage-equipment` - Equip and unequip carried items
 - `classic.maps.authored-journal` - Read the authored journal
 
 ## Prioritized remaining-work queues
