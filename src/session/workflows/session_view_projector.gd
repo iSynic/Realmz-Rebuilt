@@ -824,6 +824,8 @@ static func _build_cell_view(context: SessionWorkflowContext, map: MapDefinition
 		if not feature_kinds.has(feature.kind):
 			feature_kinds.append(feature.kind)
 			feature_orientations[feature.kind] = feature.orientation
+	if cell.is_path and context.state.world.was_visited(map.id, cell.coordinate):
+		feature_kinds.append(&"discovered_path")
 	var can_enter := cell.passable and not hidden_secret
 	var effective_landlook := context.state.world.map_landlook(map)
 	var tileset_id := "landlook-%d" % effective_landlook if map.level_type == &"land" and effective_landlook >= 0 else cell.tileset_id

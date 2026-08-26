@@ -39,7 +39,7 @@ func run() -> void:
 	var open_step := open_session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
 	var open_view := open_session.view(open_step.events)
 	assert_equal(open_view.domain_revisions.party, before_open_view.domain_revisions.party, "ordinary movement reuses the unchanged party projection"); assert_equal(open_view.domain_revisions.exploration, open_view.revision, "ordinary movement advances the exploration projection revision")
-	assert_true(open_session.view() == open_view, "repeated reads of one session revision reuse the complete detached view")
+	assert_true(open_session.view() == open_view and open_view.map_view.cell_at(Vector2i(2, 1)).has_feature(&"discovered_path"), "repeated reads reuse the detached view and a walked Classic path exposes its saved red-cross marker")
 	assert_equal(before_open_view.party_coordinate, Vector2i(1, 1), "a later projection cannot mutate the previous detached view")
 	var full_projection_session := GameSession.new(); full_projection_session.restore(open_content, save_round_trip(open_session.snapshot()))
 	var full_open_view := full_projection_session.view()
@@ -108,7 +108,7 @@ func run() -> void:
 	var search := session.submit_intent(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
 	assert_equal(_event(search, &"search_completed").payload["roll"], 15, "search follows the centralized RNG after the blocked-attempt random-region draw")
 	assert_true(_has_event(search, &"secret_discovered"), "search commits secret discovery")
-	assert_true(session.view().map_view.can_move(Vector2i.LEFT), "movement cues update from the same discovered-secret overlay as simulation")
+	assert_true(session.view().map_view.can_move(Vector2i.LEFT) and session.view().map_view.cell_at(Vector2i(0, 1)).has_feature(&"secret"), "movement and the Classic S marker update from the same discovered-secret overlay as simulation")
 	var secret_entry := session.submit_intent(PlayerIntent.move(Vector2i.LEFT))
 	assert_equal(session.view().party_coordinate, Vector2i(0, 1), "discovered secret permits movement")
 	assert_true(_has_event(secret_entry, &"message_shown"), "secret AP uses the ordinary action sequence")
@@ -599,7 +599,7 @@ func _open_movement_content(source_content: RealmzContent) -> RealmzContent:
 	for y: int in 3:
 		for x: int in 3:
 			var coordinate := Vector2i(x, y)
-			cells.append(MapCell.new("open:cell:%d,%d" % [x, y], coordinate, "classic.terrain.1", true, 1, false, true, false, false, false, false, false, 151, 1, "fixture.tileset", empty_ids, empty_ids, open_edges, empty_features))
+			cells.append(MapCell.new("open:cell:%d,%d" % [x, y], coordinate, "classic.terrain.1", true, 1, false, true, false, false, true, false, false, 151, 1, "fixture.tileset", empty_ids, empty_ids, open_edges, empty_features))
 	var map := MapDefinition.new("open", "Open movement", &"land", 0, MapTopology.new(3, 3, cells))
 	var maps: Array[MapDefinition] = [map]
 	return RealmzContent.new("open-movement", "0".repeat(64), "open-movement-content", "realmz-classic-1", map.id, Vector2i(1, 1), WorldDefinition.new(maps), ScenarioDefinition.new([], []), [], [], [], source_content.race_definitions(), source_content.caste_definitions())

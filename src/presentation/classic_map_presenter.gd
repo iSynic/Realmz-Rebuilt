@@ -5,6 +5,9 @@ signal movement_hold_started(direction: Vector2i)
 signal movement_hold_updated(direction: Vector2i)
 signal movement_hold_stopped
 const CLASSIC_VIEW_CELLS: Vector2i = Vector2i(15, 13)
+const CLASSIC_BATTLE_ATLAS_ID := "classic-battle-tiles-302"
+const SECRET_LAND_MARKER_TILE_ID := 251
+const PATH_LAND_MARKER_TILE_ID := 253
 const PARTY_MARKER_LEFT_ASSET_ID: StringName = &"map.party.left"
 const PARTY_MARKER_RIGHT_ASSET_ID: StringName = &"map.party.right"
 const PARTY_MARKER_CAMP_ASSET_ID: StringName = &"map.party.camp"
@@ -25,6 +28,7 @@ var _media: ClassicMediaCatalog
 var _atlas_assets: Dictionary = {}
 var _atlas_textures: Dictionary = {}
 var _overlay_textures: Dictionary = {}
+var _land_marker_textures: Dictionary = {}
 var _party_rect: Rect2
 var _minimap_rect: Rect2
 var _held_direction: Vector2i = Vector2i.ZERO
@@ -106,20 +110,27 @@ func set_media_catalog(media: ClassicMediaCatalog) -> void:
 	_atlas_assets.clear()
 	_atlas_textures.clear()
 	_overlay_textures.clear()
+	_land_marker_textures.clear()
 	if _media == null:
 		queue_redraw()
 		return
 	for asset: MediaAsset in _media.assets():
-		if not asset.is_tileset() and not asset.is_picture():
+		if not asset.is_tileset() and not asset.is_battle_tileset() and not asset.is_picture():
 			continue
 		var texture := _load_image_texture(asset)
 		if texture == null:
 			continue
-		if asset.is_tileset():
+		if asset.is_tileset() or asset.is_battle_tileset():
 			_atlas_assets[asset.id] = asset
 			_atlas_textures[asset.id] = texture
 		else:
 			_overlay_textures[asset.id] = texture
+	var marker_atlas := _atlas_assets.get(CLASSIC_BATTLE_ATLAS_ID) as MediaAsset
+	var marker_texture := _atlas_textures.get(CLASSIC_BATTLE_ATLAS_ID) as Texture2D
+	for tile_id: int in [SECRET_LAND_MARKER_TILE_ID, PATH_LAND_MARKER_TILE_ID]:
+		var transparent_marker := _transparent_atlas_tile(marker_atlas, marker_texture, tile_id)
+		if transparent_marker != null:
+			_land_marker_textures[tile_id] = transparent_marker
 	queue_redraw()
 
 
@@ -132,7 +143,8 @@ func _draw() -> void:
 	var viewport_cells := Vector2i(mini(requested_cells.x, map_view.width), mini(requested_cells.y, map_view.height))
 	var draw_origin := map_draw_origin_for(size, map_origin, cell_size, viewport_cells)
 	var map_rect := Rect2(draw_origin, Vector2(viewport_cells) * cell_size)
-	_draw_exploration_stage(map_rect)
+	var los_blackout := requires_los_blackout(map_view.cells())
+	_draw_exploration_stage(map_rect, los_blackout)
 	var camera := camera_top_left(map_view.party_coordinate, Vector2i(map_view.width, map_view.height), viewport_cells)
 	var camera_end := camera + viewport_cells
 	var classic_rect := classic_visible_rect(map_view.party_coordinate, Vector2i(map_view.width, map_view.height))
@@ -142,11 +154,15 @@ func _draw() -> void:
 		if cell.coordinate.x < camera.x or cell.coordinate.y < camera.y or cell.coordinate.x >= camera_end.x or cell.coordinate.y >= camera_end.y:
 			continue
 		var rect := Rect2(draw_origin + Vector2(cell.coordinate - camera) * cell_size, Vector2.ONE * cell_size)
+		if los_blackout and not cell.visible:
+			continue
 		var outside_classic_view := classic_exploration_visibility and not classic_rect.has_point(cell.coordinate)
 		if outside_classic_view and not revealed_coordinates.has(cell.coordinate):
 			_draw_unvisited_cell(rect)
 			continue
 		_draw_cell(cell, rect, map_view.level_type, map_view.dark, not cell.has_feature(&"unmapped") or dungeon_discovery.has(cell.coordinate), outside_classic_view, map_view.darkness_level)
+		if map_view.level_type == &"land":
+			_draw_land_markers(cell, rect)
 		if show_debug_facts:
 			draw_rect(rect, Color(0.22, 0.25, 0.30), false, 1.0)
 			_draw_edges(cell, rect)
@@ -166,10 +182,49 @@ func _draw() -> void:
 		_minimap_rect = Rect2()
 
 
-func _draw_exploration_stage(_map_rect: Rect2) -> void:
+func _draw_exploration_stage(map_rect: Rect2, los_blackout: bool) -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), Color(0.018, 0.022, 0.026), true)
 	if _surround_texture != null:
 		draw_texture_rect(_surround_texture, Rect2(Vector2.ZERO, size), true, Color(0.34, 0.35, 0.36, 0.72))
+	if los_blackout:
+		draw_rect(map_rect, Color.BLACK, true)
+
+
+static func requires_los_blackout(cells: Array[MapCellView]) -> bool:
+	return cells.any(func(cell: MapCellView) -> bool: return not cell.visible)
+
+
+static func land_marker_tile_ids(cell: MapCellView) -> Array[int]:
+	var result: Array[int] = []
+	if cell != null and cell.has_feature(&"secret"):
+		result.append(SECRET_LAND_MARKER_TILE_ID)
+	if cell != null and cell.has_feature(&"discovered_path"):
+		result.append(PATH_LAND_MARKER_TILE_ID)
+	return result
+
+
+func _draw_land_markers(cell: MapCellView, rect: Rect2) -> void:
+	for tile_id: int in land_marker_tile_ids(cell):
+		var texture := _land_marker_textures.get(tile_id) as Texture2D
+		if texture != null:
+			draw_texture_rect(texture, rect, false)
+
+
+static func _transparent_atlas_tile(atlas: MediaAsset, texture: Texture2D, tile_id: int) -> ImageTexture:
+	if atlas == null or texture == null:
+		return null
+	var region := atlas.region_for(tile_id)
+	var source := texture.get_image()
+	if source == null or not region.has_area() or not Rect2i(Vector2i.ZERO, source.get_size()).encloses(region):
+		return null
+	var marker := source.get_region(region)
+	marker.convert(Image.FORMAT_RGBA8)
+	for y: int in marker.get_height():
+		for x: int in marker.get_width():
+			var pixel := marker.get_pixel(x, y)
+			if pixel.r > 0.95 and pixel.g > 0.95 and pixel.b > 0.95:
+				marker.set_pixel(x, y, Color(pixel.r, pixel.g, pixel.b, 0.0))
+	return ImageTexture.create_from_image(marker)
 
 
 func _draw_party_marker(party_rect: Rect2) -> void:
