@@ -15,7 +15,7 @@ func _init(content: RealmzContent, game_state: GameState, rng: RealmzRng, rules:
 
 
 func opcode_ids() -> Array[int]:
-	return [-14, 14, 15, 16, 17, 18, 30, 31, 40, 43, 50, 52, 53, 55, 69, 74, 82, 83, 87, 88, 89, 90, 102, 105, 108]
+	return [-14, 14, 15, 16, 17, 18, 30, 31, 40, 43, 50, 52, 53, 55, 69, 74, 81, 82, 83, 87, 88, 89, 90, 102, 105, 108]
 
 
 func execute(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
@@ -46,6 +46,8 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 			return _set_spellcasting_flags(action)
 		74:
 			return _alter_selected_spell_points(action)
+		81:
+			return _branch_on_character_condition(action)
 		82, 83:
 			_game_state.priest_turning_allowed = action.opcode == 83
 			var turning_message := "You regain your ability to turn undead and nether spawn." if _game_state.priest_turning_allowed else "You may not use your ability to turn undead or nether spawn."
@@ -379,6 +381,33 @@ func _set_spellcasting_flags(action: ClassicActionDefinition) -> ScenarioRuntime
 	_game_state.monster_spellcasting_blocked = action.extra_code[1] != 0
 	_game_state.spell_charging = action.extra_code[2] != 0
 	return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"spellcasting_flags_changed", {"characterCastingBlocked": _game_state.character_spellcasting_blocked, "monsterCastingBlocked": _game_state.monster_spellcasting_blocked, "charging": _game_state.spell_charging, "source": "classic"})])
+
+
+func _branch_on_character_condition(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
+	if action.extra_code.size() < 5:
+		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 81 requires a five-value Extra Code row.")
+	var condition_index := action.extra_code[0]
+	var candidate_mode := action.extra_code[1]
+	if condition_index < 0 or condition_index >= ConditionSet.CHARACTER_COUNT:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_character_condition", "Classic opcode 81 references an invalid character condition.")
+	var candidates: Array[CharacterState] = []
+	if candidate_mode == 0:
+		candidates = _game_state.party.characters()
+	elif candidate_mode == -1:
+		candidates = _game_state.selected_characters()
+	else:
+		var party := _game_state.party.characters()
+		if candidate_mode < 0 or candidate_mode >= party.size():
+			return ScenarioRuntimeOperationResult.failed(&"invalid_party_position", "Classic opcode 81 references an unavailable source-indexed party position.")
+		candidates.append(party[candidate_mode])
+	var matched := true
+	for character: CharacterState in candidates:
+		if not character.conditions.is_active(condition_index):
+			matched = false
+			break
+	var branch := _branch_xap(action.extra_code[3] if matched else action.extra_code[4], action.gosub)
+	branch.events.append(DomainEvent.new(&"character_condition_tested", {"condition": condition_index, "candidateMode": candidate_mode, "characterIds": candidates.map(func(character: CharacterState) -> String: return character.id), "matched": matched, "source": "classic"}))
+	return branch
 
 
 func _branch_on_ally(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
