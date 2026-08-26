@@ -1,7 +1,7 @@
 class_name PresentationSettings
 extends RefCounted
 
-const SCHEMA_VERSION: int = 9
+const SCHEMA_VERSION: int = 10
 const MUSIC_SLOT_COUNT: int = 20
 const MUSIC_OFF: int = 0
 const MUSIC_PLAY: int = 1
@@ -24,6 +24,7 @@ var music_playlist_modes: Array[int] = _default_music_modes()
 var topology_debug: bool = false
 var text_scale: float = 1.0
 var reduced_motion: bool = false
+var reduced_sound: bool = false
 var auto_switch_to_melee: bool = true
 var dungeon_3d: bool = false
 var ui_scale_mode: String = UI_SCALE_AUTO
@@ -47,6 +48,7 @@ func to_data() -> Dictionary:
 		"topologyDebug": topology_debug,
 		"textScale": text_scale,
 		"reducedMotion": reduced_motion,
+		"reducedSound": reduced_sound,
 		"autoSwitchToMelee": auto_switch_to_melee,
 		"dungeon3d": dungeon_3d,
 		"uiScaleMode": ui_scale_mode,
@@ -68,7 +70,7 @@ static func from_data(data: Variant) -> PresentationSettings:
 	var schema_version := int(schema_value)
 	if float(schema_version) != float(schema_value):
 		return null
-	if data.get("kind") != "realmz2.presentation-settings" or schema_version not in [1, 2, 3, 4, 5, 6, 7, 8, SCHEMA_VERSION]:
+	if data.get("kind") != "realmz2.presentation-settings" or schema_version not in [1, 2, 3, 4, 5, 6, 7, 8, 9, SCHEMA_VERSION]:
 		return null
 	if not data.get("masterVolume") is float or not data.get("topologyDebug") is bool or not data.get("textScale") is float or not data.get("reducedMotion") is bool:
 		return null
@@ -108,6 +110,8 @@ static func from_data(data: Variant) -> PresentationSettings:
 				return null
 	if schema_version >= 9 and not data.get("classicExplorationVisibility") is bool:
 		return null
+	if schema_version >= 10 and not data.get("reducedSound") is bool:
+		return null
 	var volume: float = data["masterVolume"]
 	var scale: float = data["textScale"]
 	if volume < 0.0 or volume > 1.0 or scale < 0.8 or scale > 1.5:
@@ -121,6 +125,7 @@ static func from_data(data: Variant) -> PresentationSettings:
 	settings.topology_debug = data["topologyDebug"]
 	settings.text_scale = scale
 	settings.reduced_motion = data["reducedMotion"]
+	settings.reduced_sound = bool(data.get("reducedSound", false))
 	settings.auto_switch_to_melee = bool(data.get("autoSwitchToMelee", true))
 	settings.dungeon_3d = bool(data.get("dungeon3d", false))
 	settings.ui_scale_mode = String(data.get("uiScaleMode", UI_SCALE_AUTO))

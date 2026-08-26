@@ -252,6 +252,16 @@ Classic-visible behavior is the default ruleset. This ledger records deliberate 
 - Tests: `_test_public_tangle_weed_correction_matrix` loads the bundled application record, proves all four combat-source dispositions, resolves the exact Tangle condition and persistent field through every source, and restores the result and queue from public save data.
 - Legacy quirk: none. An out-of-bounds condition write is not a portable authored dependency; any different intended effect would require contradictory application data or controlled runtime evidence.
 
+## FD-SYSTEM-001 — Immutable definition names with source-classified Reduced Sound
+
+- Affected rule: Classic Preferences Reduced Sound and the adjacent Edit Spell Names and Edit Race/Caste Names commands.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/pref.c`, `preference`; `src/realmz_orig/editspellnames.c`, `editspellnames`, `editracecaste`, and `SetIndString`; plus the `reducesound` guards in Items, Cast Spell, and Swap.
+- Observable source behavior: Reduced Sound is application preference state. It gates modal/opening ambience while button 141 and Swap transfer sounds remain outside the guard. The name editors rewrite application STR# resources directly and refuse to operate when the scenario names resource is active. The source-observation fixture is `tests/fixtures/oracle/classic-preferences-source-observation.json`, SHA-256 `8a9f70a96a458ff58ad65fc8ae98cd9629d19e6360f188f2d86c26e797398ff0`. This is `source-control-flow` evidence, not a Castle-runtime claim.
+- Player-facing problem: globally filtering a sound ID can mute an ungated action that reuses it, while mutating compiled names would make immutable package facts depend on machine-local preference history and could diverge stable application/scenario identity across installations.
+- Chosen 2.0 behavior: persist Reduced Sound in host settings and suppress only explicitly eligible presentation events before channel or media side effects. Keep compiled stock and scenario definition strings immutable; no preference rewrites package data or overlays those names.
+- Tests: the public System workspace/settings proof covers schema-10 round-trip and migration plus eligible Items, Spells, and Swap openings, retained action sound 141, and restored default audio. The differential case is `system.classic-preferences`.
+- Legacy quirk: application resource-file mutation is intentionally not supported. It is visual-only and cannot alter importability, navigation, targeting, rules, RNG, time, or gameplay saves.
+
 Source-conformant implementations and ownership changes are not deviations. Phase 4's packed spell identities, spell power-roll ordering, equipment escrow, program replacement, and fumble mutations preserve observed Castle behavior while moving ownership into typed session state.
 
 Each entry must include:

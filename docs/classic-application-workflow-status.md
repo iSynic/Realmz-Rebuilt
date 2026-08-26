@@ -6,36 +6,38 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| classic | 69 | 0 | 6 | 50 | 13 |
+| classic | 69 | 0 | 5 | 51 | 13 |
 | host | 8 | 1 | 0 | 5 | 2 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
 
 ## Current parity-convergence batch
 
-**Saturation and host closure** (`saturation-and-host-closure`)
+**Final Classic workflow closure** (`final-classic-workflow-closure`)
 
-The compiler, opcode, application semantic-data, spell, and host settings denominators are saturated. The remaining in-repository work closes Classic preference dispositions before final workflow saturation and native release certification. Existing AOGM, War, and Lachis acceptance remains valid unless one of these owners directly invalidates it.
+Compiler, opcode, spell, application semantic-data, preferences, and host settings are saturated. The next bounded batch resolves the remaining source-ambiguous equipment and journal records plus minor Shop and Quit gaps, while retaining an accepted ordinary spell target. Existing AOGM, War, and Lachis acceptance remains valid unless one of these owners directly invalidates it.
 
 Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
 | `classic.spellcasting.field-camp-cast` | certification | broader-parity | aogm-ordinary |  |
-| `classic.spellcasting.combat-cast` | certification | broader-parity | aogm-ordinary |  |
-| `classic.system.preferences` | implementation | broader-parity | - |  |
+| `classic.inventory.manage-equipment` | archaeology | broader-parity | - |  |
+| `classic.services.shop` | implementation | broader-parity | - | GAP-SVC-008 |
+| `classic.maps.authored-journal` | archaeology | broader-parity | - | GAP-MAP-003, GAP-MAP-007 |
+| `classic.system.quit` | implementation | broader-parity | - | GAP-SYS-002 |
 
 ### Batch count delta
 
 | Scope | State | Baseline | Current | Delta |
 | --- | --- | ---: | ---: | ---: |
 | classic | missing | 0 | 0 | 0 |
-| classic | partial | 8 | 6 | -2 |
-| classic | functional | 50 | 50 | 0 |
-| classic | certified | 11 | 13 | +2 |
+| classic | partial | 6 | 5 | -1 |
+| classic | functional | 50 | 51 | +1 |
+| classic | certified | 13 | 13 | 0 |
 | host | missing | 1 | 1 | 0 |
-| host | partial | 1 | 0 | -1 |
-| host | functional | 4 | 5 | +1 |
+| host | partial | 0 | 0 | 0 |
+| host | functional | 5 | 5 | 0 |
 | host | certified | 2 | 2 | 0 |
 
 ## Classic domain heatmap
@@ -52,7 +54,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Combat | 14 | 0 | 1 | 9 | 4 |
 | Rewards and progression | 5 | 0 | 0 | 4 | 1 |
 | Maps and journal | 3 | 0 | 1 | 2 | 0 |
-| Save and system | 5 | 0 | 2 | 3 | 0 |
+| Save and system | 5 | 0 | 1 | 4 | 0 |
 
 ## Completion axes
 
@@ -61,8 +63,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Castle oracle | Count |
 | --- | ---: |
 | not-required | 9 |
-| required | 3 |
-| completed | 57 |
+| required | 2 |
+| completed | 58 |
 
 | Remake | Count |
 | --- | ---: |
@@ -150,7 +152,6 @@ Blockers: **1**. Major gaps: **0**.
 
 - `classic.inventory.manage-equipment` - Equip and unequip carried items
 - `classic.maps.authored-journal` - Read the authored journal
-- `classic.system.preferences` - Change Classic application preferences
 
 ## Prioritized remaining-work queues
 
@@ -171,7 +172,6 @@ Blockers: **1**. Major gaps: **0**.
 - `classic.maps.view-acquired` - Classic scrolling TEXT encoding and style resources remain only partially represented.
 - `classic.maps.view-acquired` - Malformed crop starts and authored picture rectangles lack boundary observations.
 - `classic.services.shop` - Normalized shop stock omits native empty-slot provenance.
-- `classic.system.preferences` - Classic's editable stock spell/race/caste names are not represented and may conflict with immutable package content.
 
 ### polish
 
@@ -180,7 +180,6 @@ Blockers: **1**. Major gaps: **0**.
 - `classic.maps.location-notes` - Castle's two dialog exit labels are not available in the pinned source, although both native exits are now proven to commit the current record.
 - `classic.maps.view-acquired` - Ordinary AOGM acquisition, interaction-boundary restore, reward completion, persistence, and Maps/Notes browsing are proven, but the acquired-map presentation has not been user-accepted.
 - `classic.startup.end-adventure` - Save-before-close ordering is characterized through the host transaction and repositories separately, but has no full composition-root failure-injection test.
-- `classic.system.preferences` - Classic's reduced-sound preference is not represented.
 - `classic.system.quit` - Typed Quit choices and host transaction ordering are characterized, but the real window-close notification and save-repository failure path lack composition-root proof.
 
 ## Coverage caveats

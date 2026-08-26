@@ -104,7 +104,7 @@ func _ready() -> void:
 	_shell_presenter.typography_mode_changed.connect(_on_typography_mode_changed)
 	_shell_presenter.ui_scale_mode_changed.connect(_on_ui_scale_mode_changed)
 	_shell_presenter.window_mode_changed.connect(_on_window_mode_changed)
-	_shell_presenter.reduced_motion_changed.connect(_on_reduced_motion_changed)
+	_shell_presenter.reduced_motion_changed.connect(_on_reduced_motion_changed); _shell_presenter.reduced_sound_changed.connect(_on_reduced_sound_changed)
 	_shell_presenter.auto_switch_to_melee_changed.connect(_on_auto_switch_to_melee_changed)
 	_shell_presenter.exploration_speed_changed.connect(_on_exploration_speed_changed)
 	_shell_presenter.exploration_minimap_changed.connect(_on_exploration_minimap_changed); _shell_presenter.classic_exploration_visibility_changed.connect(_on_classic_exploration_visibility_changed)
@@ -125,7 +125,7 @@ func _ready() -> void:
 	_map_presenter.set_travel_preview_visible(_presentation_settings.show_exploration_minimap); _map_presenter.set_classic_exploration_visibility(_presentation_settings.classic_exploration_visibility)
 	_apply_window_mode(_presentation_settings.window_mode)
 	_audio_presenter.set_master_volume(_presentation_settings.master_volume)
-	_audio_presenter.set_sound_volume(_presentation_settings.sound_volume)
+	_audio_presenter.set_sound_volume(_presentation_settings.sound_volume); _audio_presenter.set_reduced_sound(_presentation_settings.reduced_sound)
 	_audio_presenter.set_music_volume(_presentation_settings.music_volume)
 	_on_topology_debug_changed(_presentation_settings.topology_debug)
 	_on_dungeon_3d_changed(_presentation_settings.dungeon_3d)
@@ -1137,10 +1137,10 @@ static func classic_combat_rect(viewport_size: Vector2, bottom_height: float) ->
 	return Rect2(0.0, maxf(0.0, viewport_size.y - bottom_height), viewport_size.x, minf(bottom_height, viewport_size.y))
 
 
-func _on_reduced_motion_changed(enabled: bool) -> void:
-	_presentation_settings.reduced_motion = enabled
-	presentation_coordinator.set_reduced_motion(enabled)
-	settings_repository.save_settings(_presentation_settings)
+func _on_reduced_motion_changed(enabled: bool) -> void: _presentation_settings.reduced_motion = enabled; presentation_coordinator.set_reduced_motion(enabled); settings_repository.save_settings(_presentation_settings)
+
+
+func _on_reduced_sound_changed(enabled: bool) -> void: _presentation_settings.reduced_sound = enabled; _audio_presenter.set_reduced_sound(enabled); settings_repository.save_settings(_presentation_settings)
 
 
 func _on_auto_switch_to_melee_changed(enabled: bool) -> void:

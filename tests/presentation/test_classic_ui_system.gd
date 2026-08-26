@@ -553,10 +553,10 @@ func _test_money_workspace_audio() -> void:
 	view.campaign_summary = CampaignSummaryView.new()
 	router.present(view)
 	var sounds: Array[Dictionary] = []
-	router.presentation_sound_requested.connect(func(sound_id: int, wait_for_completion: bool, stop_existing: bool) -> void: sounds.append({"soundId": sound_id, "waitForCompletion": wait_for_completion, "stopExisting": stop_existing}))
+	router.presentation_sound_requested.connect(func(sound_id: int, wait_for_completion: bool, stop_existing: bool, reduced_sound_eligible: bool) -> void: sounds.append({"soundId": sound_id, "waitForCompletion": wait_for_completion, "stopExisting": stop_existing, "reducedSoundEligible": reduced_sound_eligible}))
 	router.open_screen(&"inventory"); router.open_screen(&"inventory"); router.open_screen(&"exploration"); router.open_screen(&"spells"); router.open_screen(&"exploration"); router.open_screen(&"inventory", false); router.open_screen(&"exploration", false)
 	router.open_screen(&"services"); router.open_screen(&"services"); router.open_screen(&"exploration")
-	assert_equal(sounds, [{"soundId": 20001, "waitForCompletion": false, "stopExisting": false}, {"soundId": 20002, "waitForCompletion": false, "stopExisting": false}, {"soundId": 141, "waitForCompletion": false, "stopExisting": false}, {"soundId": 3003, "waitForCompletion": false, "stopExisting": true}, {"soundId": 141, "waitForCompletion": false, "stopExisting": false}], "explicit Items and Spells openings request their Castle cues once, automatic routing is quiet, and ordinary Swap retains its source sequence")
+	assert_equal(sounds, [{"soundId": 20001, "waitForCompletion": false, "stopExisting": false, "reducedSoundEligible": true}, {"soundId": 20002, "waitForCompletion": false, "stopExisting": false, "reducedSoundEligible": true}, {"soundId": 141, "waitForCompletion": false, "stopExisting": false, "reducedSoundEligible": false}, {"soundId": 3003, "waitForCompletion": false, "stopExisting": true, "reducedSoundEligible": true}, {"soundId": 141, "waitForCompletion": false, "stopExisting": false, "reducedSoundEligible": false}], "explicit Items, Spells, and Swap opening ambience is Reduced Sound eligible while action/Done sound 141 remains audible")
 	view.pending_interaction = _fixture_request("shop.audio", InteractionRequest.SHOP)
 	router.present(view)
 	router.open_screen(&"services")
@@ -564,12 +564,12 @@ func _test_money_workspace_audio() -> void:
 	var audio := ClassicAudioPresenter.new()
 	var observed: Array[int] = []
 	audio.sound_observed.connect(func(sound_id: int) -> void: observed.append(sound_id))
-	audio._processing_sounds = true
-	audio._pending_sounds.append({"stream": null, "waitForCompletion": true})
-	audio.present_sound(3003, null, false, true)
-	assert_equal([audio.last_sound_id, observed], [3003, [3003]], "presentation-owned workspace audio uses the same explicit audio presenter path as session events")
-	assert_false(audio._processing_sounds, "quiet-and-open cancels an in-flight wait state instead of deadlocking the sound queue")
-	assert_true(audio._pending_sounds.is_empty(), "quiet-and-open discards pre-modal queued sounds")
+	audio.set_reduced_sound(true)
+	audio.present_sound(3003, null, false, true, true)
+	assert_equal([audio.last_sound_id, observed], [0, []], "Reduced Sound suppresses eligible modal ambience before it stops channels or reaches the media path")
+	audio.present_sound(141, null, false, false, false)
+	assert_equal([audio.last_sound_id, observed], [141, [141]], "Reduced Sound retains action and Done cues that Castle does not gate")
+	audio.set_reduced_sound(false); audio.present_sound(3003, null, false, true, true); assert_equal([audio.last_sound_id, observed], [3003, [141, 3003]], "disabling Reduced Sound restores the same explicit workspace audio path")
 	audio.free()
 	router.free()
 
@@ -602,12 +602,12 @@ func _test_layout_profiles() -> void:
 func _test_settings_schema_and_migration() -> void:
 	var settings := PresentationSettings.new(); settings.ui_scale_mode = PresentationSettings.UI_SCALE_125; settings.window_mode = PresentationSettings.BORDERLESS_FULLSCREEN
 	settings.text_scale = 1.5; settings.auto_switch_to_melee = false; settings.exploration_speed_percent = 250
-	settings.show_exploration_minimap = true; settings.classic_exploration_visibility = false; settings.autojournal_enabled = false; settings.typography_mode = PresentationSettings.TYPOGRAPHY_READABLE
-	var restored := PresentationSettings.from_data(settings.to_data()); assert_not_null(restored, "schema-nine presentation settings round-trip")
+	settings.show_exploration_minimap = true; settings.classic_exploration_visibility = false; settings.autojournal_enabled = false; settings.typography_mode = PresentationSettings.TYPOGRAPHY_READABLE; settings.reduced_sound = true
+	var restored := PresentationSettings.from_data(settings.to_data()); assert_not_null(restored, "schema-ten presentation settings round-trip")
 	assert_equal(restored.ui_scale_mode, PresentationSettings.UI_SCALE_125, "interface density persists separately"); assert_equal(restored.window_mode, PresentationSettings.BORDERLESS_FULLSCREEN, "window mode persists")
 	assert_equal(restored.text_scale, 1.5, "text scale remains independent"); assert_false(restored.auto_switch_to_melee, "Auto Weapon Switch persists as an application preference rather than battle state")
 	assert_equal(restored.exploration_speed_percent, 250, "exploration speed persists independently of simulation state")
-	assert_equal([restored.show_exploration_minimap, restored.classic_exploration_visibility, restored.autojournal_enabled, restored.typography_mode], [true, false, false, PresentationSettings.TYPOGRAPHY_READABLE], "travel preview, Classic-distance fog, Auto Note, and typography persist as presentation preferences")
+	assert_equal([restored.show_exploration_minimap, restored.classic_exploration_visibility, restored.autojournal_enabled, restored.typography_mode, restored.reduced_sound], [true, false, false, PresentationSettings.TYPOGRAPHY_READABLE, true], "travel preview, Classic-distance fog, Auto Note, typography, and Reduced Sound persist as presentation preferences")
 	var version_two := PresentationSettings.from_data({"kind": "realmz2.presentation-settings", "schemaVersion": 2, "masterVolume": 0.5, "topologyDebug": false, "textScale": 1.0, "reducedMotion": false, "dungeon3d": true}); assert_not_null(version_two, "schema-two settings migrate")
 	assert_equal(version_two.ui_scale_mode, PresentationSettings.UI_SCALE_AUTO, "migrated settings default to automatic interface density"); assert_equal(version_two.window_mode, PresentationSettings.WINDOWED, "migrated settings retain windowed behavior")
 	assert_true(version_two.auto_switch_to_melee, "legacy settings inherit Castle's bundled default-on Auto Weapon Switch preference")
@@ -617,7 +617,7 @@ func _test_settings_schema_and_migration() -> void:
 	assert_equal(version_four.exploration_speed_percent, 100, "older settings inherit the stable exploration cadence")
 	var version_five := PresentationSettings.from_data({"kind": "realmz2.presentation-settings", "schemaVersion": 5, "masterVolume": 0.5, "topologyDebug": false, "textScale": 1.0, "reducedMotion": false, "dungeon3d": false, "uiScaleMode": PresentationSettings.UI_SCALE_100, "windowMode": PresentationSettings.WINDOWED, "autoSwitchToMelee": true, "explorationSpeedPercent": 200}); assert_equal([version_five.show_exploration_minimap, version_five.autojournal_enabled], [false, true], "schema-five settings migrate to a hidden modern travel aid and the requested Auto Note default")
 	var version_six := PresentationSettings.from_data({"kind": "realmz2.presentation-settings", "schemaVersion": 6, "masterVolume": 0.5, "topologyDebug": false, "textScale": 1.0, "reducedMotion": false, "dungeon3d": false, "uiScaleMode": PresentationSettings.UI_SCALE_100, "windowMode": PresentationSettings.WINDOWED, "autoSwitchToMelee": true, "explorationSpeedPercent": 200, "showExplorationMinimap": false, "autojournalEnabled": true}); assert_equal(version_six.typography_mode, PresentationSettings.TYPOGRAPHY_CLASSIC, "existing settings migrate to the Classic typography default")
-	var version_seven := PresentationSettings.from_data({"kind": "realmz2.presentation-settings", "schemaVersion": 7, "masterVolume": 0.5, "topologyDebug": false, "textScale": 1.0, "reducedMotion": false, "dungeon3d": false, "uiScaleMode": PresentationSettings.UI_SCALE_100, "windowMode": PresentationSettings.WINDOWED, "autoSwitchToMelee": true, "explorationSpeedPercent": 200, "showExplorationMinimap": false, "autojournalEnabled": true, "typographyMode": PresentationSettings.TYPOGRAPHY_CLASSIC}); assert_equal([version_seven.sound_volume, version_seven.music_volume, version_seven.music_enabled, version_seven.classic_exploration_visibility], [1.0, 0.8, true, true], "schema-seven settings migrate to independent audio and default-on Classic exploration visibility")
+	var version_seven := PresentationSettings.from_data({"kind": "realmz2.presentation-settings", "schemaVersion": 7, "masterVolume": 0.5, "topologyDebug": false, "textScale": 1.0, "reducedMotion": false, "dungeon3d": false, "uiScaleMode": PresentationSettings.UI_SCALE_100, "windowMode": PresentationSettings.WINDOWED, "autoSwitchToMelee": true, "explorationSpeedPercent": 200, "showExplorationMinimap": false, "autojournalEnabled": true, "typographyMode": PresentationSettings.TYPOGRAPHY_CLASSIC}); assert_equal([version_seven.sound_volume, version_seven.music_volume, version_seven.music_enabled, version_seven.classic_exploration_visibility, version_seven.reduced_sound], [1.0, 0.8, true, true, false], "schema-seven settings migrate to independent audio, Classic exploration visibility, and full modal sound")
 	var malformed_current := settings.to_data()
 	malformed_current.erase("autojournalEnabled")
 	assert_equal(PresentationSettings.from_data(malformed_current), null, "current settings reject an incomplete preference record")

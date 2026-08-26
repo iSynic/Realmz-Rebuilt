@@ -11,6 +11,7 @@ var last_sound_id: int = 0
 var master_volume: float = 1.0
 var sound_volume: float = 1.0
 var music_volume: float = 0.8
+var reduced_sound: bool = false
 var current_music_playlist_id: int = 0
 var current_music_title: String = ""
 var last_media_diagnostic: Dictionary = {}
@@ -39,6 +40,8 @@ func present_events(events: Array[DomainEvent], media: ClassicMediaCatalog) -> v
 	for event: DomainEvent in events:
 		if event.kind != &"sound_requested":
 			continue
+		if reduced_sound and bool(event.payload.get("reducedSoundEligible", false)):
+			continue
 		if bool(event.payload.get("stopExisting", false)):
 			_stop_all()
 		last_sound_id = int(event.payload.get("soundId", 0))
@@ -57,8 +60,8 @@ func present_events(events: Array[DomainEvent], media: ClassicMediaCatalog) -> v
 	_drain_sound_queue()
 
 
-func present_sound(sound_id: int, media: ClassicMediaCatalog, wait_for_completion: bool = false, stop_existing: bool = false) -> void:
-	present_events([DomainEvent.new(&"sound_requested", {"soundId": sound_id, "waitForCompletion": wait_for_completion, "stopExisting": stop_existing, "source": "classic-presentation-workspace"})], media)
+func present_sound(sound_id: int, media: ClassicMediaCatalog, wait_for_completion: bool = false, stop_existing: bool = false, reduced_sound_eligible: bool = false) -> void:
+	present_events([DomainEvent.new(&"sound_requested", {"soundId": sound_id, "waitForCompletion": wait_for_completion, "stopExisting": stop_existing, "reducedSoundEligible": reduced_sound_eligible, "source": "classic-presentation-workspace"})], media)
 
 
 func set_master_volume(value: float) -> void:
@@ -69,6 +72,10 @@ func set_master_volume(value: float) -> void:
 func set_sound_volume(value: float) -> void:
 	sound_volume = clampf(value, 0.0, 1.0)
 	_apply_volume()
+
+
+func set_reduced_sound(enabled: bool) -> void:
+	reduced_sound = enabled
 
 
 func set_music_volume(value: float) -> void:

@@ -12,7 +12,7 @@ signal system_action_requested(action_id: StringName, value: Variant)
 signal presentation_setting_changed(setting_id: StringName, value: Variant)
 signal vault_archive_requested(character_id: String)
 signal vault_restore_requested(character_id: String, revision_hash: String)
-signal presentation_sound_requested(sound_id: int, wait_for_completion: bool, stop_existing: bool)
+signal presentation_sound_requested(sound_id: int, wait_for_completion: bool, stop_existing: bool, reduced_sound_eligible: bool)
 signal standalone_character_creation_requested
 signal standalone_character_creation_cancelled
 
@@ -74,7 +74,7 @@ func _init() -> void:
 	_workspace_presenter.route_requested.connect(func(screen_id: StringName) -> void: open_screen(screen_id))
 	_workspace_presenter.refresh_requested.connect(func() -> void: _render_screen())
 	_workspace_presenter.back_requested.connect(func() -> void: handle_back())
-	_workspace_presenter.sound_requested.connect(func(sound_id: int, wait_for_completion: bool, stop_existing: bool) -> void: presentation_sound_requested.emit(sound_id, wait_for_completion, stop_existing))
+	_workspace_presenter.sound_requested.connect(func(sound_id: int, wait_for_completion: bool, stop_existing: bool, reduced_sound_eligible: bool) -> void: presentation_sound_requested.emit(sound_id, wait_for_completion, stop_existing, reduced_sound_eligible))
 
 
 func _ready() -> void:
@@ -337,7 +337,7 @@ func open_screen(screen_id: StringName, play_opening_sound: bool = true) -> void
 	setup_controller.hide_overlays()
 	_workspace_presenter.sync_route_audio(screen_id)
 	if changed and play_opening_sound and WORKSPACE_OPEN_SOUND_IDS.has(screen_id):
-		presentation_sound_requested.emit(int(WORKSPACE_OPEN_SOUND_IDS[screen_id]), false, false)
+		presentation_sound_requested.emit(int(WORKSPACE_OPEN_SOUND_IDS[screen_id]), false, false, true)
 	_render_screen(true)
 
 

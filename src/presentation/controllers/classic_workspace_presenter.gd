@@ -11,7 +11,7 @@ signal vault_restore_requested(character_id: String, revision_hash: String)
 signal route_requested(screen_id: StringName)
 signal refresh_requested
 signal back_requested
-signal sound_requested(sound_id: int, wait_for_completion: bool, stop_existing: bool)
+signal sound_requested(sound_id: int, wait_for_completion: bool, stop_existing: bool, reduced_sound_eligible: bool)
 
 const MUTED := Color("9aa0a8")
 const SWAP_OPEN_SOUND_ID: int = 3003
@@ -129,7 +129,7 @@ func _init() -> void:
 	_spells_controller.sound_requested.connect(func(sound_id: int, wait_for_completion: bool, stop_existing: bool) -> void:
 		var owner := owner_ref.get_ref() as ClassicWorkspacePresenter
 		if owner != null:
-			owner.sound_requested.emit(sound_id, wait_for_completion, stop_existing)
+			owner.sound_requested.emit(sound_id, wait_for_completion, stop_existing, false)
 	)
 	_spells_controller.refresh_requested.connect(func() -> void:
 		var owner := owner_ref.get_ref() as ClassicWorkspacePresenter
@@ -197,10 +197,10 @@ func sync_route_audio(screen_id: StringName) -> void:
 		return
 	_ordinary_money_workspace_open = should_be_open
 	if should_be_open:
-		sound_requested.emit(SWAP_DONE_SOUND_ID, false, false)
-		sound_requested.emit(SWAP_OPEN_SOUND_ID, false, true)
+		sound_requested.emit(SWAP_DONE_SOUND_ID, false, false, false)
+		sound_requested.emit(SWAP_OPEN_SOUND_ID, false, true, true)
 	else:
-		sound_requested.emit(SWAP_DONE_SOUND_ID, false, false)
+		sound_requested.emit(SWAP_DONE_SOUND_ID, false, false, false)
 
 
 func present(screen_id: StringName, body: Container, appearance_textures: Dictionary, vault_back_label: String, context_actions: Container = null, navigation_action: BaseButton = null) -> void:

@@ -1,0 +1,83 @@
+{
+  "formatVersion": 1,
+  "caseId": "system.classic-preferences",
+  "evidence": "source-control-flow",
+  "castleCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "sources": [
+    {
+      "path": "src/realmz_orig/pref.c",
+      "symbol": "void preference(void)",
+      "observation": "Preference item 18 round-trips reducesound through the application preference record. Closing always plays button sound 141, so Reduced Sound does not mute ordinary action feedback."
+    },
+    {
+      "path": "src/realmz_orig/editspellnames.c",
+      "symbol": "void editspellnames(void)",
+      "observation": "The spell-name editor rewrites application STR# resources through SetIndString; it is unavailable when the scenario-owned names resource is active."
+    },
+    {
+      "path": "src/realmz_orig/editspellnames.c",
+      "symbol": "void editracecaste(void)",
+      "observation": "The Race/Caste editor rewrites application STR# 129 or 131 directly. These are application resource mutations, not gameplay-save state or scenario-authored definitions."
+    },
+    {
+      "path": "src/realmz_orig/items.c",
+      "symbol": "if (!reducesound)",
+      "observation": "Reduced Sound gates the Items opening ambience 20001 and item-detail ambience 30005 while item actions keep their independently requested sounds."
+    },
+    {
+      "path": "src/realmz_orig/castspell.c",
+      "symbol": "if (!reducesound)",
+      "observation": "Reduced Sound gates Cast Spell opening ambience 20002."
+    },
+    {
+      "path": "src/realmz_orig/swap.c",
+      "symbol": "if (!reducesound)",
+      "observation": "Reduced Sound gates Swap opening ambience 3003 after channels are quieted; transfer sounds 10051 and 663 and Done sound 141 remain outside the gate."
+    }
+  ],
+  "soundClassification": {
+    "eligibleImplementedEquivalents": [
+      {
+        "soundId": 20001,
+        "context": "ordinary Items workspace opening"
+      },
+      {
+        "soundId": 20002,
+        "context": "ordinary field Spells workspace opening"
+      },
+      {
+        "soundId": 3003,
+        "context": "ordinary or pooled-departure Swap opening"
+      }
+    ],
+    "sourceGatedWithoutDistinctModernAmbience": [
+      133,
+      615,
+      647,
+      3000,
+      30005,
+      10004,
+      10105,
+      20003,
+      26260
+    ],
+    "alwaysAudibleExamples": [
+      141,
+      663,
+      10051
+    ]
+  },
+  "decision": {
+    "id": "FD-SYSTEM-001",
+    "observation": "Realmz Rebuilt persists Reduced Sound and suppresses only explicitly eligible presentation events. It never globally filters a numeric sound ID because the same resource can occur in an ungated action context. Custom name editing is intentionally omitted: compiled stock/scenario definition strings remain immutable package facts and stable display identities, so a host preference cannot rewrite them.",
+    "consequence": "The correction preserves deterministic gameplay and package identity while retaining Castle's player-visible modal-sound choice. Custom names remain a visual-only omission that cannot block import, navigation, targeting, or gameplay."
+  },
+  "expectedTrace": [
+    "load Reduced Sound from host presentation settings with a false migration default",
+    "mark each implemented Castle-gated opening event explicitly",
+    "suppress an eligible event before stopping channels or resolving media",
+    "retain ungated action, transfer, completion, and scenario-authored sounds",
+    "persist the host preference outside the gameplay save",
+    "keep package definitions and their display strings immutable"
+  ]
+}

@@ -132,8 +132,8 @@ func _on_combat_playback_finished() -> void:
 		playback_step_settled.emit(step)
 
 
-func _on_presentation_sound_requested(sound_id: int, wait_for_completion: bool, stop_existing: bool) -> void:
-	_audio_presenter.present_sound(sound_id, _media, wait_for_completion, stop_existing)
+func _on_presentation_sound_requested(sound_id: int, wait_for_completion: bool, stop_existing: bool, reduced_sound_eligible: bool) -> void:
+	_audio_presenter.present_sound(sound_id, _media, wait_for_completion, stop_existing, reduced_sound_eligible)
 
 
 func set_package_media(media: MediaSource) -> void:

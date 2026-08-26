@@ -302,6 +302,7 @@ func _build_audio_tab(parent: VBoxContainer, settings: PresentationSettings) -> 
 	music.value_changed.connect(func(value: float) -> void: setting_changed.emit(&"music_volume", value))
 	_add_setting_row(content, "Music  •  %d%%" % int(round(settings.music_volume * 100.0)), music)
 	_add_setting_toggle(content, "Music enabled", settings.music_enabled, &"music_enabled")
+	_add_setting_toggle(content, "Reduce Classic modal sounds", settings.reduced_sound, &"reduced_sound")
 	var playlist := Button.new()
 	playlist.name = "OpenMusicPlaylist"
 	playlist.text = "Open Music Playlist…"

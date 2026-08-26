@@ -24,6 +24,7 @@ signal typography_mode_changed(value: String)
 signal ui_scale_mode_changed(value: String)
 signal window_mode_changed(value: String)
 signal reduced_motion_changed(enabled: bool)
+signal reduced_sound_changed(enabled: bool)
 signal auto_switch_to_melee_changed(enabled: bool)
 signal exploration_speed_changed(percent: int)
 signal exploration_minimap_changed(enabled: bool)
@@ -34,7 +35,7 @@ signal route_changed(route_id: StringName)
 signal play_stage_visibility_changed(visible: bool)
 signal vault_archive_requested(character_id: String)
 signal vault_restore_requested(character_id: String, revision_hash: String)
-signal presentation_sound_requested(sound_id: int, wait_for_completion: bool, stop_existing: bool)
+signal presentation_sound_requested(sound_id: int, wait_for_completion: bool, stop_existing: bool, reduced_sound_eligible: bool)
 signal standalone_character_creation_requested
 signal standalone_character_creation_cancelled
 signal character_selection_completed(character_ids: Array[String])
@@ -127,7 +128,7 @@ func _ready() -> void:
 	_router.intent_submitted.connect(func(intent: PlayerIntent) -> void: intent_submitted.emit(intent))
 	_router.vault_archive_requested.connect(func(character_id: String) -> void: vault_archive_requested.emit(character_id))
 	_router.vault_restore_requested.connect(func(character_id: String, revision_hash: String) -> void: vault_restore_requested.emit(character_id, revision_hash))
-	_router.presentation_sound_requested.connect(func(sound_id: int, wait_for_completion: bool, stop_existing: bool) -> void: presentation_sound_requested.emit(sound_id, wait_for_completion, stop_existing))
+	_router.presentation_sound_requested.connect(func(sound_id: int, wait_for_completion: bool, stop_existing: bool, reduced_sound_eligible: bool) -> void: presentation_sound_requested.emit(sound_id, wait_for_completion, stop_existing, reduced_sound_eligible))
 	_router.standalone_character_creation_requested.connect(func() -> void: standalone_character_creation_requested.emit())
 	_router.standalone_character_creation_cancelled.connect(func() -> void: standalone_character_creation_cancelled.emit())
 	_router.screen_changed.connect(_on_screen_changed)
@@ -799,7 +800,7 @@ static func command_route(command_id: StringName) -> StringName:
 func _activate_command(command_id: StringName, held_repeat: bool = false) -> void:
 	var start_sound_id := held_command_start_sound_id(command_id, held_repeat)
 	if start_sound_id > 0:
-		presentation_sound_requested.emit(start_sound_id, false, false)
+		presentation_sound_requested.emit(start_sound_id, false, false, false)
 	match command_id:
 		&"search_mode": intent_submitted.emit(PlayerIntent.toggle_search())
 		&"area_search": intent_submitted.emit(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
@@ -951,6 +952,7 @@ func _on_presentation_setting_changed(setting_id: StringName, value: Variant) ->
 		&"ui_scale_mode": ui_scale_mode_changed.emit(String(value))
 		&"window_mode": window_mode_changed.emit(String(value))
 		&"reduced_motion": reduced_motion_changed.emit(bool(value))
+		&"reduced_sound": reduced_sound_changed.emit(bool(value))
 		&"auto_switch_to_melee": auto_switch_to_melee_changed.emit(bool(value))
 		&"exploration_speed_percent": exploration_speed_changed.emit(int(value))
 		&"show_exploration_minimap": exploration_minimap_changed.emit(bool(value))

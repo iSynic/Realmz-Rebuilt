@@ -124,7 +124,7 @@ func _respond_pooled_wealth_departure(response: InteractionResponse) -> SessionC
 			_context.session_interaction = _pooled_wealth_departure_distribution_request("pooled-wealth-departure:%d" % _context.next_revision())
 			var opened_events: Array[DomainEvent] = [
 				DomainEvent.new(&"pooled_wealth_distribution_opened", {"wealth": _context.state.party.pooled_wealth.to_data()}),
-				DomainEvent.new(&"sound_requested", {"soundId": 3003, "waitForCompletion": false, "stopExisting": true, "source": "classic-pooled-wealth-departure"}),
+				DomainEvent.new(&"sound_requested", {"soundId": 3003, "waitForCompletion": false, "stopExisting": true, "reducedSoundEligible": true, "source": "classic-pooled-wealth-departure"}),
 			]
 			return _context.waiting(_context.session_interaction, opened_events)
 		var discarded = _context.state.party.pooled_wealth.to_data()

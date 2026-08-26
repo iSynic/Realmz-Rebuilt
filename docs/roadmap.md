@@ -586,7 +586,7 @@ Next batch priority: finish the coherent service-workflow closeout through one o
 - The shared Services route suppresses ordinary Swap audio when it was opened to host a typed Shop, Temple, or Bank interaction. Those workflows retain their own source-backed entry and exit events.
 - Focused Tier 2 verification covers the route state machine and the existing audio presenter path. This closes `GAP-SVC-006`; contextual money-changing rates remain separate.
 
-Flagged preference boundary: Castle persists `reducesound` and uses it to suppress modal ambience such as sound 3003 while retaining button, transfer, and Done sounds. Realmz 2.0's default-audio sequence is source-shaped, but the preference itself is now tracked as `GAP-SYS-003` until modal sounds are comprehensively classified.
+Classic Preferences now persists Reduced Sound outside gameplay saves. Items 20001, Spells 20002, and Swap 3003 opening ambience are explicitly eligible; button 141, transfers 10051/663, completion cues, and scenario-authored sounds remain audible. Suppression occurs before channel/media side effects and never uses a global resource-ID blacklist. `FD-SYSTEM-001` separately rejects Castle's spell/Race/Caste name editors because they rewrite application resource files; compiled package strings remain immutable display facts.
 
 ### No-bank pooled-wealth departure
 
