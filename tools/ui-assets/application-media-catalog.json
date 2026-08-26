@@ -5,7 +5,7 @@
   "copyright": "Realmz copyright 1994 by Tim Phillips",
   "license": "CC-BY-NC-SA-4.0",
   "license_url": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
-  "modification": "Classic land PICT, snd, item cicn, and selected combat cicn resources decoded from their Macintosh resource-fork representation into PNG and WAV files for Godot presentation.",
+  "modification": "Classic land PICT, item cicn, and selected combat cicn resources decoded from their Macintosh resource-fork representation into PNG files; snd resources rendered into 48 kHz 16-bit mono WAV files with Castle's linear interpolation for Godot presentation, with Godot duplicating the identical Castle channels during playback.",
   "resource_sets": [
     {
       "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",

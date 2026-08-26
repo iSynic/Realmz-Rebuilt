@@ -1,7 +1,8 @@
 param(
     [Parameter(Mandatory = $true)]
     [string]$CastleRepository,
-    [string]$PictDecoderPath = ""
+    [string]$PictDecoderPath = "",
+    [switch]$SoundOnly
 )
 
 $ErrorActionPreference = "Stop"
@@ -59,32 +60,78 @@ function Get-ResourceEntries([byte[]]$ForkBytes, [string]$ResourceType) {
     return $entries
 }
 
-function Add-LittleEndian([Collections.Generic.List[byte]]$Output, [uint32]$Value, [int]$Width) {
-    for ($index = 0; $index -lt $Width; $index++) {
-        $Output.Add([byte](($Value -shr (8 * $index)) -band 0xff))
+if (-not ("CastleSoundRenderer" -as [type])) {
+    Add-Type -TypeDefinition @'
+using System;
+using System.Text;
+
+public static class CastleSoundRenderer {
+    public const int OutputSampleRate = 48000;
+
+    public static byte[] Render(byte[] sourceSamples, uint sourceRate) {
+        if (sourceSamples == null || sourceSamples.Length == 0 || sourceRate == 0) {
+            throw new ArgumentException("Classic sampled sound requires samples and a positive rate");
+        }
+
+        double expansionFactor = (double)OutputSampleRate / sourceRate;
+        int frameCount = checked((int)(
+            Math.Ceiling((sourceSamples.LongLength + 1) * expansionFactor) -
+            Math.Ceiling(2 * expansionFactor)));
+        byte[] output = new byte[checked(44 + frameCount * 2)];
+        WriteAscii(output, 0, "RIFF");
+        WriteU32(output, 4, (uint)(output.Length - 8));
+        WriteAscii(output, 8, "WAVEfmt ");
+        WriteU32(output, 16, 16);
+        WriteU16(output, 20, 1);
+        WriteU16(output, 22, 1);
+        WriteU32(output, 24, OutputSampleRate);
+        WriteU32(output, 28, OutputSampleRate * 2);
+        WriteU16(output, 32, 2);
+        WriteU16(output, 34, 16);
+        WriteAscii(output, 36, "data");
+        WriteU32(output, 40, (uint)(frameCount * 2));
+
+        int outputOffset = 44;
+        float previous = (sourceSamples[0] - 0x80) / (float)0x80;
+        for (int sourceIndex = 1; sourceIndex < sourceSamples.Length; sourceIndex++) {
+            float current = (sourceSamples[sourceIndex] - 0x80) / (float)0x80;
+            long inputSampleIndex = sourceIndex + 1L;
+            int framesToWrite = checked((int)(
+                Math.Ceiling((inputSampleIndex + 1) * expansionFactor) -
+                Math.Ceiling(inputSampleIndex * expansionFactor)));
+            for (int frame = 0; frame < framesToWrite; frame++) {
+                float progress = (float)frame / framesToWrite;
+                float interpolated = previous * (1.0f - progress) + current * progress;
+                long scaled = (long)(interpolated * 0x7FFF);
+                short sample = (short)Math.Max(short.MinValue, Math.Min(short.MaxValue, scaled));
+                WriteU16(output, outputOffset, unchecked((ushort)sample));
+                outputOffset += 2;
+            }
+            previous = current;
+        }
+        if (outputOffset != output.Length) {
+            throw new InvalidOperationException("Castle sound rendering length drifted");
+        }
+        return output;
+    }
+
+    private static void WriteAscii(byte[] output, int offset, string value) {
+        Encoding.ASCII.GetBytes(value, 0, value.Length, output, offset);
+    }
+
+    private static void WriteU16(byte[] output, int offset, ushort value) {
+        output[offset] = (byte)value;
+        output[offset + 1] = (byte)(value >> 8);
+    }
+
+    private static void WriteU32(byte[] output, int offset, uint value) {
+        output[offset] = (byte)value;
+        output[offset + 1] = (byte)(value >> 8);
+        output[offset + 2] = (byte)(value >> 16);
+        output[offset + 3] = (byte)(value >> 24);
     }
 }
-
-function New-Wav([byte[]]$Samples, [uint32]$SampleRate) {
-    $output = [Collections.Generic.List[byte]]::new()
-    $paddedLength = $Samples.Length + ($Samples.Length -band 1)
-    $output.AddRange([Text.Encoding]::ASCII.GetBytes("RIFF"))
-    Add-LittleEndian $output ([uint32](36 + $paddedLength)) 4
-    $output.AddRange([Text.Encoding]::ASCII.GetBytes("WAVEfmt "))
-    Add-LittleEndian $output 16 4
-    Add-LittleEndian $output 1 2
-    Add-LittleEndian $output 1 2
-    Add-LittleEndian $output $SampleRate 4
-    Add-LittleEndian $output $SampleRate 4
-    Add-LittleEndian $output 1 2
-    Add-LittleEndian $output 8 2
-    $output.AddRange([Text.Encoding]::ASCII.GetBytes("data"))
-    Add-LittleEndian $output ([uint32]$Samples.Length) 4
-    $output.AddRange($Samples)
-    if (($Samples.Length -band 1) -ne 0) {
-        $output.Add(0)
-    }
-    return ,$output.ToArray()
+'@
 }
 
 function Convert-SndToWav([byte[]]$Snd, [int]$ResourceId) {
@@ -143,19 +190,9 @@ function Convert-SndToWav([byte[]]$Snd, [int]$ResourceId) {
     }
     $sourceSamples = [byte[]]::new($sampleLength)
     [Array]::Copy($Snd, $sampleStart, $sourceSamples, 0, $sampleLength)
-    $playbackRate = $sourceRate
-    $playbackSamples = $sourceSamples
-    if ($sourceRate -lt 8000) {
-        $playbackRate = 8000
-        $outputLength = [Math]::Max(1, [int](($sourceSamples.Length * 8000L) / $sourceRate))
-        $playbackSamples = [byte[]]::new($outputLength)
-        for ($index = 0; $index -lt $outputLength; $index++) {
-            $sourceIndex = [Math]::Min($sourceSamples.Length - 1, [int](($index * [long]$sourceRate) / 8000L))
-            $playbackSamples[$index] = if ($sourceSamples.Length -gt 0) { $sourceSamples[$sourceIndex] } else { 128 }
-        }
-    }
+    $playbackRate = [CastleSoundRenderer]::OutputSampleRate
     return [pscustomobject]@{
-        Bytes = New-Wav $playbackSamples $playbackRate
+        Bytes = [CastleSoundRenderer]::Render($sourceSamples, $sourceRate)
         SourceRate = $sourceRate
         PlaybackRate = $playbackRate
         Samples = $sourceSamples.Length
@@ -181,10 +218,12 @@ $outputRoot = Join-Path $stagingRoot "output"
 $sidecarRoot = Join-Path $stagingRoot "sidecars"
 $destinationRoot = Join-Path $repoRoot "src/presentation/assets/classic-media"
 $manifestPath = Join-Path $repoRoot "src/presentation/assets/classic-application-media.json"
+$existingManifest = if ($SoundOnly) { Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json } else { $null }
+$activeResourceSets = @($catalog.resource_sets | Where-Object { -not $SoundOnly -or $_.resource_type -eq "snd " })
 New-Item -ItemType Directory -Path $extractRoot, $outputRoot, $sidecarRoot | Out-Null
 
 try {
-    $sourcePaths = @($catalog.resource_sets | ForEach-Object { $_.source_path } | Sort-Object -Unique)
+    $sourcePaths = @($activeResourceSets | ForEach-Object { $_.source_path } | Sort-Object -Unique)
     & git -C $castleRoot archive --format=zip --output=$archivePath $catalog.source_commit -- @sourcePaths
     if ($LASTEXITCODE -ne 0) {
         throw "Castle git archive failed"
@@ -192,7 +231,7 @@ try {
     Expand-Archive -LiteralPath $archivePath -DestinationPath $extractRoot
 
     $records = @()
-    foreach ($set in $catalog.resource_sets) {
+    foreach ($set in $activeResourceSets) {
         $sourcePath = Join-Path $extractRoot ($set.source_path -replace "/", [IO.Path]::DirectorySeparatorChar)
         $sourceSha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $sourcePath).Hash.ToLowerInvariant()
         if ($sourceSha256 -ne $set.source_file_sha256) {
@@ -365,6 +404,26 @@ try {
         }
     }
 
+    if ($SoundOnly) {
+        $generatedSounds = @{}
+        foreach ($record in $records) {
+            $generatedSounds[$record.id] = $record
+        }
+        $records = @($existingManifest.assets | ForEach-Object {
+            if ($_.resource_type -eq "snd ") {
+                if (-not $generatedSounds.ContainsKey($_.id)) {
+                    throw "Existing sound is absent from regenerated media: $($_.id)"
+                }
+                $generatedSounds[$_.id]
+            } else {
+                $_
+            }
+        })
+        if (@($generatedSounds.Keys).Count -ne @($existingManifest.assets | Where-Object resource_type -eq "snd ").Count) {
+            throw "Regenerated sound count does not match the committed manifest"
+        }
+    }
+
     $manifest = [ordered]@{
         schema_version = 1
         source_repository = $catalog.source_repository
@@ -383,7 +442,7 @@ try {
 
     New-Item -ItemType Directory -Path $destinationRoot -Force | Out-Null
     $resolvedDestinationRoot = [IO.Path]::GetFullPath($destinationRoot).TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
-    $ownedDirectories = @($catalog.resource_sets | ForEach-Object { $_.target_directory } | Sort-Object -Unique)
+    $ownedDirectories = @($activeResourceSets | ForEach-Object { $_.target_directory } | Sort-Object -Unique)
     foreach ($ownedDirectory in $ownedDirectories) {
         $destinationDirectory = [IO.Path]::GetFullPath((Join-Path $destinationRoot $ownedDirectory))
         if (-not $destinationDirectory.StartsWith($resolvedDestinationRoot, [StringComparison]::OrdinalIgnoreCase)) {

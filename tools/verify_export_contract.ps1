@@ -48,7 +48,7 @@ if (-not (Test-Path -LiteralPath $noticePath -PathType Leaf)) {
     throw "The release must carry THIRD_PARTY_NOTICES.txt."
 }
 $notice = Get-Content -Raw -LiteralPath $noticePath
-foreach ($requiredNotice in @("Realmz copyright 1994 by Tim Phillips", "CC-BY-NC-SA", "491816ad60037394f92c428e99c004494d3c28b3", "decoded to mono WAV")) {
+foreach ($requiredNotice in @("Realmz copyright 1994 by Tim Phillips", "CC-BY-NC-SA", "491816ad60037394f92c428e99c004494d3c28b3", "linearly rendered to 48000 Hz", "Castle's playback algorithm")) {
     if (-not $notice.Contains($requiredNotice)) {
         throw "THIRD_PARTY_NOTICES.txt is missing required integrated-media provenance: $requiredNotice"
     }

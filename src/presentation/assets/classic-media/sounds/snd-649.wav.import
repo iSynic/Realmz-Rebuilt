@@ -13,7 +13,7 @@ dest_files=["res://.godot/imported/snd-649.wav-d32c7cc39a824e5e9c714b6a1d4b63ea.
 [params]
 
 force/8_bit=false
-force/mono=false
+force/mono=true
 force/max_rate=false
 force/max_rate_hz=44100
 edit/trim=false

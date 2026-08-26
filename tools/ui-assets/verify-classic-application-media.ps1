@@ -43,8 +43,12 @@ foreach ($asset in $manifest.assets) {
     }
 	if ($asset.resource_type -eq "snd ") {
 		$importPath = "$path.import"
-		if (-not (Test-Path -LiteralPath $importPath -PathType Leaf) -or (Get-Content -Raw -LiteralPath $importPath) -notmatch '(?m)^compress/mode=0$') {
+		$importSettings = if (Test-Path -LiteralPath $importPath -PathType Leaf) { Get-Content -Raw -LiteralPath $importPath } else { "" }
+		if ($importSettings -notmatch '(?m)^compress/mode=0$' -or $importSettings -notmatch '(?m)^force/mono=true$') {
 			throw "Classic application sound must use lossless PCM import: $($asset.id)"
+		}
+		if ($asset.sample_rate -ne 48000 -or $asset.channels -ne 1) {
+			throw "Classic application sound must retain Castle's 48 kHz mono waveform: $($asset.id)"
 		}
 	}
 	if ($asset.mime_type -eq "image/png" -and ($asset.width -lt 1 -or $asset.height -lt 1)) {
