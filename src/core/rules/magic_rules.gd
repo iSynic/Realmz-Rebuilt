@@ -724,6 +724,24 @@ func resolve_scenario_spell(target: CharacterState, spell: SpellDefinition, powe
 	return _resolve_noncombat_character_effect(target, spell, power_level, extra_save_adjust, force_affect, rng, caste, race, duration, damage, tag_prefix)
 
 
+func resolve_scenario_group_spell(targets: Array[CharacterState], spell: SpellDefinition, power_level: int, extra_save_adjust: int, force_affect: bool, rng: RealmzRng, castes: Array[CasteDefinition] = [], races: Array[RaceDefinition] = []) -> GroupSpellResolution:
+	if spell == null or rng == null or power_level < 0 or targets.is_empty() or not castes.is_empty() and castes.size() != targets.size() or not races.is_empty() and races.size() != targets.size():
+		return null
+	for target: CharacterState in targets:
+		if target == null:
+			return null
+	var tag_prefix := "scenario-group-spell.%d" % spell.classic_id
+	var duration := _scaled_roll(spell.duration_min, spell.duration_max, spell.power_duration_min, spell.power_duration_max, power_level, rng, StringName("%s.duration" % tag_prefix))
+	var damage := _scaled_roll(spell.damage_min, spell.damage_max, spell.power_damage_min, spell.power_damage_max, power_level, rng, StringName("%s.damage" % tag_prefix))
+	var result := GroupSpellResolution.new(true, 0, duration, damage)
+	for index: int in targets.size():
+		var target := targets[index]
+		var caste: CasteDefinition = null if castes.is_empty() else castes[index]
+		var race: RaceDefinition = null if races.is_empty() else races[index]
+		result.append_target(target.id, &"character", _resolve_noncombat_character_effect(target, spell, power_level, extra_save_adjust, force_affect, rng, caste, race, duration, damage, "%s.%s" % [tag_prefix, target.id]))
+	return result
+
+
 func _resolve_noncombat_character_effect(target: CharacterState, spell: SpellDefinition, power_level: int, extra_save_adjust: int, force_affect: bool, rng: RealmzRng, caste: CasteDefinition, race: RaceDefinition, duration: int, damage: int, tag_prefix: String, item_definitions: Array[ItemDefinition] = []) -> SpellResolution:
 	var special := absi(spell.special)
 	if special == 62:

@@ -58,7 +58,7 @@ func _validate_monster_record_references(monsters: Array[MonsterDefinition], ite
 				return _reject("Monster '%s' random weapon table %d can produce unavailable weapon '%s'." % [monster.id, monster.random_weapon_table, random_weapon_id])
 	return true
 
-func _validate_scenario_references(scenario: ScenarioDefinition, message_ids: Dictionary, encounters: Array[SimpleEncounterDefinition], complex_encounters: Array[ComplexEncounterDefinition], thief_encounters: Array[ThiefEncounterDefinition], items: Array[ItemDefinition]) -> bool:
+func _validate_scenario_references(scenario: ScenarioDefinition, message_ids: Dictionary, encounters: Array[SimpleEncounterDefinition], complex_encounters: Array[ComplexEncounterDefinition], thief_encounters: Array[ThiefEncounterDefinition], items: Array[ItemDefinition], spells: Array[SpellDefinition]) -> bool:
 	var encounter_ids: Dictionary = {}
 	for encounter: SimpleEncounterDefinition in encounters:
 		encounter_ids[encounter.id] = true
@@ -69,8 +69,13 @@ func _validate_scenario_references(scenario: ScenarioDefinition, message_ids: Di
 				return _reject("Simple Encounter %d response '%s' references unavailable result program '%s'." % [encounter.id, response.id, response.result_program_id])
 	var complex_ids: Dictionary = {}
 	var thief_ids: Dictionary = {}
+	var classic_spell_ids: Dictionary = {}
+	for spell: SpellDefinition in spells:
+		classic_spell_ids[spell.classic_id] = true
 	for thief_encounter: ThiefEncounterDefinition in thief_encounters:
 		thief_ids[thief_encounter.id] = true
+		if thief_encounter.spell_id != 0 and not classic_spell_ids.has(thief_encounter.spell_id):
+			return _reject("Thief Encounter %d references unavailable Classic spell %d." % [thief_encounter.id, thief_encounter.spell_id])
 	for encounter: ComplexEncounterDefinition in complex_encounters:
 		complex_ids[encounter.id] = true
 		if not message_ids.has(absi(encounter.prompt_message_id)):

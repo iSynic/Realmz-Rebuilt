@@ -189,6 +189,19 @@ func _apply_trap(encounter: ComplexEncounterDefinition, thief: ThiefEncounterDef
 	var trap_sound := prompts[1] if prompts.size() > 1 else 0
 	var spell_power := prompts[2] if prompts.size() > 2 else 0
 	var events: Array[DomainEvent] = [DomainEvent.new(&"thief_trap_sprung", {"encounterId": encounter.id, "thiefEncounterId": thief.id, "characterId": selected.id, "targetIds": targets.map(func(value: CharacterState) -> String: return value.id), "damageByCharacter": damage_by_character, "spellId": thief.spell_id, "spellPower": spell_power, "soundId": trap_sound})]
+	if thief.spell_id != 0:
+		var spell := _content.spell_by_classic_id(thief.spell_id)
+		var castes: Array[CasteDefinition] = []
+		var races: Array[RaceDefinition] = []
+		for target: CharacterState in targets:
+			castes.append(_content.caste_by_id(target.caste_id))
+			races.append(_content.race_by_id(target.race_id))
+		var spell_result := _rules.magic.resolve_scenario_group_spell(targets, spell, spell_power, 0, false, _rng, castes, races)
+		if spell_result == null:
+			return ScenarioRuntimeOperationResult.failed(&"invalid_thief_trap_spell", "Thief Encounter references an unavailable or invalid trap spell.")
+		for index: int in spell_result.resolutions.size():
+			var resolution := spell_result.resolutions[index]
+			events.append(DomainEvent.new(&"thief_trap_spell_resolved", {"encounterId": encounter.id, "thiefEncounterId": thief.id, "spellId": spell.id, "classicSpellId": spell.classic_id, "spellPower": spell_power, "characterId": spell_result.target_ids[index], "saved": resolution.saved, "damage": resolution.damage, "duration": resolution.duration, "defeated": resolution.target_defeated, "source": "classic-thief"}))
 	return _wait_for_thief(encounter, gosub, request_id, events, encounter_attempt)
 
 
