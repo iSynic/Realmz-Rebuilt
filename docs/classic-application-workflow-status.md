@@ -13,19 +13,18 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Current parity-convergence batch
 
-**Stock gameplay saturation I** (`stock-gameplay-saturation-1`)
+**Final compiler preservation** (`final-compiler-preservation`)
 
-Lachis ordinary play accepts scenario selection, a representative placed action point, authored response, battle, and treasure sequence. Its deterministic routes and corrected Providence v2 report already prove the ending, optional encounters, thief and timed Pick Lock branches, shops, rewards, executable used opcodes, exact application-spell agreement, and zero compiler loss. Lachis was the sole remaining legal candidate, so the legal scenario corpus is exhausted. The program now enters synthetic saturation. This batch targets the four partial gameplay workflows that own every remaining stock spell source or trap-spell branch and retains the shared spell power/target picker as its coherent ordinary-play certification target. It prioritizes measurable pending denominator reduction over presentation polish and limits archaeology to exact source ambiguity for the selected mechanical family.
+The legally available scenario corpus is certified and the stock spell denominator has zero pending signatures. Importability now depends on eliminating the remaining known Providence-to-Rebuilt compiler losses before implementing the fourteen behavior-bearing pending opcodes. This batch preserves the exact monster, bestiary, land-scale, custom-music, tile-forest, and opcode-92 operand semantics needed by the remaining runtime work. Existing AOGM, War, and Lachis scenario selection remains the ordinary-play regression target; accepted manual evidence is not repeated unless this package cut invalidates it.
 
 Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.spellcasting.combat-cast` | implementation | broader-parity | - | GAP-SPELL-003 |
-| `classic.inventory.use-item` | implementation | broader-parity | - | GAP-INV-003 |
-| `classic.spellcasting.field-camp-cast` | implementation | broader-parity | - | GAP-SPELL-002 |
-| `classic.scenario.complex-interaction` | implementation | broader-parity | - | GAP-SCEN-002 |
-| `classic.spellcasting.choose-power-target` | certification | broader-parity | other-ordinary |  |
+| `classic.character.allies-bestiary` | implementation | broader-parity | - | GAP-CHAR-005 |
+| `classic.system.music-playlists` | implementation | broader-parity | - | GAP-SYS-004 |
+| `classic.scenario.trigger-action-point` | archaeology | broader-parity | - |  |
+| `classic.startup.select-scenario` | certification | broader-parity | other-ordinary |  |
 
 ### Batch count delta
 
