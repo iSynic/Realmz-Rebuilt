@@ -777,7 +777,8 @@ static func _build_player_map_view(context: SessionWorkflowContext, definition: 
 	var cells: Array[MapCellView] = []
 	var source_map: MapDefinition = context.content.world.map_by_id(definition.map_id) if not definition.map_id.is_empty() else null
 	if definition.mode in [PlayerMapDefinition.LAND_CROP, PlayerMapDefinition.DUNGEON_CROP] and source_map != null:
-		var tile_count := ceili(320.0 / float(definition.icon_size))
+		var cell_size := 16 if definition.mode == PlayerMapDefinition.DUNGEON_CROP else definition.icon_size
+		var tile_count := ceili(320.0 / float(cell_size))
 		for y: int in range(definition.start.y, definition.start.y + tile_count):
 			for x: int in range(definition.start.x, definition.start.x + tile_count):
 				var cell := source_map.topology.cell_at(Vector2i(x, y))

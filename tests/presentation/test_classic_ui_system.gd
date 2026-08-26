@@ -374,8 +374,8 @@ func _test_player_map_workspace() -> void:
 	var picture_canvas := PlayerMapCanvas.new()
 	picture_canvas.present(picture_view, media)
 	picture_canvas.set_zoom(2.0); assert_equal([picture_canvas.custom_minimum_size, picture_canvas.zoom()], [Vector2(640, 640), 2.0], "picture-backed maps preserve the public 320-pixel Classic canvas while allowing integer-clean inspection zoom")
-	var dungeon_view := views_by_mode[PlayerMapDefinition.DUNGEON_CROP] as PlayerMapView
-	assert_equal([dungeon_view.map_id, dungeon_view.cells.size()], ["dungeon:0", 100], "dungeon crop facts derive from the same authoritative topology as exploration")
+	var dungeon_view := views_by_mode[PlayerMapDefinition.DUNGEON_CROP] as PlayerMapView; var dungeon_cells: Dictionary = {}; for cell: MapCellView in dungeon_view.cells: dungeon_cells[cell.coordinate] = cell
+	assert_equal([dungeon_view.map_id, dungeon_view.cells.size(), dungeon_view.cell_size, dungeon_view.icon_size], ["dungeon:0", 400, 16, 32], "Castle dungeon maps derive a fixed 20-by-20 16-pixel topology crop while retaining the authored marker scale"); assert_equal([ClassicMapPresenter.dungeon_tile_ids(dungeon_cells[Vector2i.ZERO]), ClassicMapPresenter.dungeon_tile_ids(dungeon_cells[Vector2i(1, 0)]), ClassicMapPresenter.dungeon_tile_ids(dungeon_cells[Vector2i(0, 1)]), ClassicMapPresenter.dungeon_tile_ids(dungeon_cells[Vector2i(1, 2)])], [[16, 1], [16, 1, 2], [16, 1, 10], [16, 8]], "the public renderer composes PICT 302 layers in Castle bit order, including directional movement and unmapped visibility")
 	var scrolling_view := views_by_mode[PlayerMapDefinition.SCROLLING_TEXT] as PlayerMapView
 	var scrolling_presenter := PlayerMapPresenter.new()
 	scrolling_presenter.present(scrolling_view, media)

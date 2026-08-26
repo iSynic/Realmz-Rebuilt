@@ -10,6 +10,7 @@ var mode: StringName
 var map_id: String
 var start: Vector2i
 var icon_size: int
+var cell_size: int
 var picture_asset_id: String
 var scrolling_text_asset_id: String
 var party_marker_asset_id: String
@@ -31,6 +32,7 @@ func _init(definition: PlayerMapDefinition, crop_cells: Array[MapCellView] = [],
 	map_id = definition.map_id
 	start = definition.start
 	icon_size = definition.icon_size
+	cell_size = 16 if definition.mode == PlayerMapDefinition.DUNGEON_CROP else definition.icon_size
 	picture_asset_id = definition.picture_asset_id
 	scrolling_text_asset_id = definition.scrolling_text_asset_id
 	party_marker_asset_id = definition.party_marker_asset_id

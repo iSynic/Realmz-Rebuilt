@@ -58,7 +58,7 @@ func _draw_picture() -> void:
 
 
 func _draw_crop() -> void:
-	var cell_size := float(_view.icon_size)
+	var cell_size := float(_view.cell_size)
 	for cell: MapCellView in _view.cells:
 		var destination := Rect2(Vector2(cell.coordinate - _view.start) * cell_size, Vector2.ONE * cell_size)
 		_draw_cell(cell, destination)
@@ -66,8 +66,8 @@ func _draw_crop() -> void:
 		var texture := _texture_for(marker.icon_asset_id)
 		if texture == null:
 			continue
-		var marker_size := 32.0 if marker.classic_icon_id in [137, 139] else cell_size
-		var center := Vector2(marker.coordinate) * cell_size + Vector2.ONE * cell_size * 0.5
+		var marker_size := 32.0 if marker.classic_icon_id in [137, 139] else float(_view.icon_size)
+		var center := Vector2(marker.coordinate) * float(_view.icon_size) + Vector2.ONE * float(_view.icon_size) * 0.5
 		draw_texture_rect(texture, Rect2(center - Vector2.ONE * marker_size * 0.5, Vector2.ONE * marker_size), false)
 
 
@@ -75,15 +75,8 @@ func _draw_cell(cell: MapCellView, destination: Rect2) -> void:
 	var atlas := _media.asset_by_id(cell.tileset_id)
 	var texture := _texture_for(cell.tileset_id)
 	if _view.mode == PlayerMapDefinition.DUNGEON_CROP and atlas != null and texture != null and atlas.id == "dungeon-top-down-302":
-		_draw_atlas_region(destination, atlas, texture, 16)
-		if cell.terrain_id == "classic.dungeon.wall":
-			_draw_atlas_region(destination, atlas, texture, 1)
-		if cell.has_feature(&"door"):
-			_draw_atlas_region(destination, atlas, texture, 3 if cell.feature_orientation(&"door") == &"vertical" else 2)
-		var feature_tiles: Dictionary = {&"stairs": 4, &"column": 5, &"note": 6, &"secret": 7}
-		for feature_kind: StringName in feature_tiles:
-			if cell.has_feature(feature_kind):
-				_draw_atlas_region(destination, atlas, texture, int(feature_tiles[feature_kind]))
+		for tile_id: int in ClassicMapPresenter.dungeon_tile_ids(cell):
+			_draw_atlas_region(destination, atlas, texture, tile_id)
 	else:
 		var region := Rect2i() if atlas == null else atlas.region_for(cell.render_tile)
 		if texture != null and region.has_area():

@@ -303,20 +303,27 @@ static func darkness_overlay_alpha(saved_darkness_level: int) -> float:
 
 
 func _draw_dungeon_atlas_cell(cell: MapCellView, rect: Rect2, atlas_asset: MediaAsset, atlas_texture: Texture2D) -> void:
-	_draw_atlas_region(rect, atlas_asset, atlas_texture, 16)
+	for tile_id: int in dungeon_tile_ids(cell):
+		_draw_atlas_region(rect, atlas_asset, atlas_texture, tile_id)
+
+
+static func dungeon_tile_ids(cell: MapCellView) -> Array[int]:
+	var result: Array[int] = [16]
 	if cell.terrain_id == "classic.dungeon.wall":
-		_draw_atlas_region(rect, atlas_asset, atlas_texture, 1)
+		result.append(1)
 	if cell.has_feature(&"door"):
-		_draw_atlas_region(rect, atlas_asset, atlas_texture, 3 if cell.feature_orientation(&"door") == &"vertical" else 2)
-	var feature_tiles: Dictionary = {
-		&"stairs": 4,
-		&"column": 5,
-		&"note": 6,
-		&"secret": 7,
-	}
-	for feature_kind: StringName in feature_tiles:
+		result.append(3 if cell.feature_orientation(&"door") == &"vertical" else 2)
+	for feature_kind: StringName in [&"stairs", &"column", &"note"]:
 		if cell.has_feature(feature_kind):
-			_draw_atlas_region(rect, atlas_asset, atlas_texture, int(feature_tiles[feature_kind]))
+			result.append({&"stairs": 4, &"column": 5, &"note": 6}[feature_kind])
+	if cell.has_feature(&"secret"):
+		result.append({&"north": 9, &"east": 10, &"south": 11, &"west": 12}.get(cell.feature_orientation(&"secret"), 7))
+	if cell.has_feature(&"unmapped"):
+		result.append(8)
+	result.sort()
+	result.erase(16)
+	result.push_front(16)
+	return result
 
 
 func _draw_atlas_region(rect: Rect2, atlas_asset: MediaAsset, atlas_texture: Texture2D, tile_id: int) -> void:
