@@ -15,14 +15,13 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 **Scenario and combat blockers** (`scenario-combat-blockers`)
 
-Compiler preservation, spell saturation, the complete authored opcode denominator, Thief trap spells, and every active authored item-use family are closed. The remaining major scenario/combat backlog is battle reward mode 10 and bounded Undo edge behavior, alongside the retained ordinary-play certification targets. Existing AOGM, War, and Lachis acceptance remains valid unless one of these shared owners directly changes accepted evidence.
+Compiler preservation, spell saturation, the complete authored opcode denominator, Thief trap spells, every active authored item-use family, and battle reward mode 10 are closed. The remaining scenario/combat backlog is bounded Undo edge behavior alongside the retained ordinary-play certification targets. Existing AOGM, War, and Lachis acceptance remains valid unless one of these shared owners directly changes accepted evidence.
 
 Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
 | `classic.scenario.complex-interaction` | certification | broader-parity | other-ordinary |  |
-| `classic.combat.resolve-outcome` | implementation | broader-parity | - | GAP-COMBAT-007 |
 | `classic.combat.undo` | archaeology | broader-parity | - | GAP-COMBAT-014 |
 | `classic.startup.select-scenario` | certification | broader-parity | other-ordinary |  |
 
@@ -84,8 +83,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | ---: |
 | not-applicable | 3 |
 | absent | 0 |
-| partial | 6 |
-| complete | 60 |
+| partial | 5 |
+| complete | 61 |
 
 | persistence | Count |
 | --- | ---: |
@@ -143,12 +142,11 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 
 ## Release blockers and major gaps
 
-Blockers: **1**. Major gaps: **10**.
+Blockers: **1**. Major gaps: **9**.
 
 - **blocker** `host.release.platform-certification` - There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
 - **major** `classic.character.allies-bestiary` - Current held-over allies now have a functional read-only workspace, but the Bestiary cannot be reconstructed from the package because menu visibility and normalized descriptions are not preserved per monster. Next: Correct Providence schema v3 and Rebuilt decoding to preserve every menu-visible monster, its description, and not-on-menu flag, then add the Bestiary route without inventing discovery state.
 - **major** `classic.character.view-sheet` - Castle's lifetime combat record and prestige cannot yet be calculated accurately. Next: Add source-backed lifetime counters and update every owning combat and magic mutation path before enabling the visible Lifetime Record tab.
-- **major** `classic.combat.resolve-outcome` - Battle reward mode 10 remains unresolved end to end. Next: Implement the mode-10 restore-and-restart continuation when a certified scenario exposes it or during post-corpus synthetic saturation, without changing schema v2 unless controlled evidence disproves positional preservation.
 - **major** `classic.combat.undo` - Movement-only Undo, result invalidation, condition gates, occupied-cell safety, presentation, and save restoration are implemented; repeated Undo and initiative-edge re-entry remain runtime-unobserved. Next: Run the synthetic Castle fixtures for repeated Undo and first/last-slot or round-boundary re-entry before expanding the bounded implementation.
 - **major** `classic.maps.location-notes` - Historical notes are readable in source order but do not yet recreate Castle's temporary map recentering and saved darkness view. Next: Add a mutation-free note browser derived from authoritative topology and the saved darkness value, then verify land and dungeon records through MCP.
 - **major** `classic.maps.view-acquired` - Exact dungeon player-map composition is not yet proven against Castle. Next: Capture one synthetic Castle dungeon player map and compare wall, door, secret, and party-marker pixels before declaring exact presentation parity.
@@ -184,7 +182,6 @@ Blockers: **1**. Major gaps: **10**.
 
 - `classic.character.allies-bestiary` - Current held-over allies now have a functional read-only workspace, but the Bestiary cannot be reconstructed from the package because menu visibility and normalized descriptions are not preserved per monster.
 - `classic.character.view-sheet` - Castle's lifetime combat record and prestige cannot yet be calculated accurately.
-- `classic.combat.resolve-outcome` - Battle reward mode 10 remains unresolved end to end.
 - `classic.combat.undo` - Movement-only Undo, result invalidation, condition gates, occupied-cell safety, presentation, and save restoration are implemented; repeated Undo and initiative-edge re-entry remain runtime-unobserved.
 - `classic.maps.location-notes` - Historical notes are readable in source order but do not yet recreate Castle's temporary map recentering and saved darkness view.
 - `classic.maps.view-acquired` - Exact dungeon player-map composition is not yet proven against Castle.

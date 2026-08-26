@@ -81,6 +81,8 @@ func begin_completed_battle_reward(request_id: String, caller: ScenarioBattleCal
 		return ScenarioRuntimeOperationResult.completed(String(combat.outcome))
 	if combat.rewards_started:
 		return ScenarioRuntimeOperationResult.failed(&"battle_reward_already_started", "The completed battle already has an active reward continuation.")
+	if caller != null and caller.kind == ScenarioBattleCaller.CLASSIC and caller.opcode == 2 and caller.mode == 10:
+		return _complete_mode_ten_battle(combat)
 	var bonus_treasure_id := caller.mode if combat.outcome == &"victory" and caller != null and caller.kind == ScenarioBattleCaller.CLASSIC and caller.opcode == 48 else 0
 	if bonus_treasure_id != 0 and _content.treasure_by_classic_id(absi(bonus_treasure_id)) == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_treasure", "Classic opcode 48 references unavailable bonus treasure %d." % bonus_treasure_id)
@@ -186,6 +188,37 @@ func begin_completed_battle_reward(request_id: String, caller: ScenarioBattleCal
 	combat.clear_fumbled_items()
 	operation.events = events + operation.events
 	return operation
+
+
+func _complete_mode_ten_battle(combat: CombatState) -> ScenarioRuntimeOperationResult:
+	if combat.outcome not in [&"victory", &"defeat"]:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "Classic battle mode 10 requires victory or total defeat.")
+	combat.rewards_started = true
+	combat.rewards_completed = true
+	var battle_id := combat.battle_id
+	var events: Array[DomainEvent] = []
+	var directive: ScenarioVmDirective
+	if combat.outcome == &"defeat":
+		for character: CharacterState in _game_state.party.characters():
+			character.current_health = 1
+			character.conditions.set_value(ConditionRules.ANIMATED, 0)
+		events.append(DomainEvent.new(&"party_defeat_revived", {"battleId": battle_id, "source": "classic-mode-10"}))
+		events.append(DomainEvent.new(&"classic_battle_restart_requested", {"battleId": battle_id, "callerOpcode": 2}))
+		directive = ScenarioVmDirective.restart_current_program()
+	elif combat.outcome == &"victory":
+		_game_state.party.pooled_wealth = WealthState.new()
+		var restored := _game_state.party.restore_equipment()
+		if restored:
+			for character: CharacterState in _game_state.party.characters():
+				character.carried_load = _rules.inventory.calculated_load(character, _content.item_definitions())
+		events.append(DomainEvent.new(&"equipment_restored", {"changed": restored, "source": "classic-mode-10"}))
+		events.append(DomainEvent.new(&"reward_completed", {"origin": "battle", "sourceId": battle_id, "experienceByCharacter": {}}))
+		var battle := _content.battle_by_id(battle_id)
+		if battle != null:
+			_append_battle_after_message(battle, events)
+		events.append(DomainEvent.new(&"battle_returned", {"battleId": battle_id, "outcome": "victory"}))
+	_game_state.combat = null
+	return ScenarioRuntimeOperationResult.completed(battle_id, events, directive)
 
 
 func _rollback_failed_reward(operation: ScenarioRuntimeOperationResult, state_checkpoint: Dictionary, rng_checkpoint: Dictionary) -> ScenarioRuntimeOperationResult:

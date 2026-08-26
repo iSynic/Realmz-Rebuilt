@@ -98,6 +98,8 @@ static func party_defeat_handoff_is_valid(content: RealmzContent, state: GameSta
 	if caller.kind != ScenarioBattleCaller.CLASSIC:
 		return false
 	var opcode := caller.opcode
+	if opcode == 2 and caller.mode == 10:
+		return false
 	var target := caller.branch_target
 	if opcode == 107 or opcode == 56 and target >= 0:
 		return content.scenario.program_by_id("xap:%d" % target) != null
@@ -108,8 +110,6 @@ func complete_party_defeat_handoff(handoff: ScenarioRuntimeHandoff) -> ScenarioR
 	if not party_defeat_handoff_is_valid(_content, _game_state, handoff):
 		return ScenarioRuntimeOperationResult.failed(&"invalid_party_defeat_handoff", "The suspended total-party defeat no longer matches its battle caller.")
 	var caller := handoff.caller
-	if caller.kind == ScenarioBattleCaller.CLASSIC and caller.opcode == 2 and caller.mode == 10:
-		return ScenarioRuntimeOperationResult.failed(&"classic_mode_10_defeat_unresolved", "Classic battle mode 10 revives and restarts its caller without running Party Death; that source-specific restart is not yet available.")
 	if caller.kind == ScenarioBattleCaller.CLASSIC and caller.opcode == 56 and caller.branch_target == -1:
 		return ScenarioRuntimeOperationResult.failed(&"classic_battle_loss_return_unresolved", "Classic opcode 56 uses a distinct experience-loss and party-backup return that is not yet available.")
 	var combat := _game_state.combat
@@ -292,9 +292,11 @@ func _finish_battle_with_allies(source_kind: StringName, caller: ScenarioBattleC
 	var combat := _game_state.combat
 	if combat == null or not combat.completed:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "Post-battle ally selection requires a completed battle.")
+	if caller.kind == ScenarioBattleCaller.CLASSIC and caller.opcode == 2 and caller.mode == 10:
+		var mode_ten: ScenarioRuntimeOperationResult = _rewards.begin_completed_battle_reward(request_id, caller)
+		mode_ten.events = events + mode_ten.events
+		return mode_ten
 	if combat.outcome == &"defeat":
-		if caller.kind == ScenarioBattleCaller.CLASSIC and caller.opcode == 2 and caller.mode == 10:
-			return ScenarioRuntimeOperationResult.failed(&"classic_mode_10_defeat_unresolved", "Classic battle mode 10 bypasses Party Death and restarts its encounter; that caller-specific path is unresolved.")
 		return ScenarioRuntimeOperationResult.suspended(ScenarioRuntimeHandoff.party_defeat(combat.battle_id, source_kind, caller), events)
 	var payload := _rules.combat_flow.ally_selection_payload(_game_state, _content)
 	if not payload.is_empty():

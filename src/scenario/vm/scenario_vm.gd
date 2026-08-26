@@ -381,6 +381,12 @@ func _apply_classic_directive(directive: ScenarioVmDirective, inherited_context:
 			return ScenarioVmResult.completed()
 		ScenarioVmDirective.RESUME_AFTER_ENCOUNTER:
 			return _resume_after_classic_encounter()
+		ScenarioVmDirective.RESTART_CURRENT_PROGRAM:
+			if _frames.is_empty() or _frames.back().kind != ScenarioFrame.PROGRAM:
+				return ScenarioVmResult.failed(&"invalid_program_restart", "Classic battle restart has no issuing program frame.")
+			_frames.back().cursor = 0
+			_append_trace({"event": "classic-program-restart", "programId": _frames.back().definition_id})
+			return ScenarioVmResult.completed()
 		ScenarioVmDirective.BRANCH_XAP:
 			var program_id := "xap:%d" % directive.target_id
 			if _definition.program_by_id(program_id) == null:
