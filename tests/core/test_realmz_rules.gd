@@ -504,7 +504,7 @@ func _test_monster_resource_drains() -> void:
 	assert_equal([spell_result.special_code, spell_result.special_save_index, spell_result.special_saved, spell_result.special_resource], [8, 6, false, &"spell_points"], "Classic spell drain uses save slot six and identifies spell energy")
 	assert_equal([spell_result.special_amount, spell_result.special_target_before, spell_result.special_target_after], [12, 20, 8], "spell drain takes three points per attacker hit die, capped by the target balance")
 	assert_equal([spell_result.special_actor_before, spell_result.special_actor_after, spell_attacker.maximum_spell_points], [2, 14, 2], "Castle lets drained spell points raise the attacker above its normal maximum")
-	assert_equal([spell_target.spell_points, spell_target.current_health], [8, 19], "spell drain and ordinary physical damage commit in the same attack")
+	assert_equal([spell_target.spell_points, spell_target.current_health, spell_target.lifetime_record.damage_taken, spell_target.lifetime_record.hits_taken], [8, 19, 1, 1], "spell drain and ordinary physical damage commit once through the lifetime record owner")
 	assert_equal(spell_rng.trace().map(func(entry: Dictionary) -> String: return entry["tag"]), ["combat.monster-attack.defender-luck", "combat.monster-attack.hit", "combat.monster-attack.damage", "combat.monster-attack.special-potency", "combat.monster-attack.special-save"], "spell drain preserves Castle's defender-luck and shared potency-before-save order")
 	var restored_attacker := MonsterState.from_data(spell_attacker.to_data())
 	assert_not_null(restored_attacker, "a spell drainer above its normal maximum survives central combat-state serialization")
@@ -929,9 +929,9 @@ func _test_combat_magic_and_monsters() -> void:
 	elemental_target.conditions.set_value(ConditionRules.FIRE_PROTECTION, 1)
 	second_instance.equipped = false
 	zero_blade.heat = 8
-	var elemental_attack := rules.combat.resolve_character_attack(armed, rules.inventory.combat_equipment(armed, _items([zero_blade])), elemental_target, elemental_definition, ScriptedRng.new([0, 0, 32_767, 0, 0, 0, 0]))
+	var record_damage_before := armed.lifetime_record.damage_given; var record_hits_before := armed.lifetime_record.hits_given; var elemental_attack := rules.combat.resolve_character_attack(armed, rules.inventory.combat_equipment(armed, _items([zero_blade])), elemental_target, elemental_definition, ScriptedRng.new([0, 0, 32_767, 0, 0, 0, 0]))
 	assert_equal(elemental_attack.weapon_effects[0].get("amount"), 2, "FD-COMBAT-002 applies the monster defender's fire save after protection")
-	assert_equal(elemental_attack.damage, 3, "corrected elemental mitigation changes committed health loss as well as the detached detail")
+	assert_equal([elemental_attack.damage, armed.lifetime_record.damage_given - record_damage_before, armed.lifetime_record.hits_given - record_hits_before], [3, 3, 1], "corrected elemental mitigation commits the same damage and hit once to the source-owned lifetime record")
 
 	var quick := CharacterState.new("character.quick", "Quick", 10, 10)
 	quick.agility = 15

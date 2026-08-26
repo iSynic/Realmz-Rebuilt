@@ -49,6 +49,7 @@ func resolve_character_attack(attacker: CharacterState, equipment: CharacterComb
 	if equipment.melee_weapon != null and equipment.melee_weapon.special_1 == 120:
 		hit = true
 	if not hit:
+		attacker.lifetime_record.add_damage_given(0, false, false)
 		return _with_fumble_observation(AttackResolution.new(false, false, chance, roll, 0), fumble)
 	var reflected := defender.conditions.is_active(ConditionRules.REFLECTING_ATTACKS) and rng.draw(100, &"combat.attack.reflect") < 34
 	var physical_damage := type_damage + equipment.effective_damage_bonus + attacker.conditions.value(ConditionRules.ATTACK_BONUS)
@@ -80,10 +81,12 @@ func resolve_character_attack(attacker: CharacterState, equipment: CharacterComb
 		_apply_weapon_condition_character(attacker, condition_roll, resolution)
 		attacker.current_health -= total_damage
 		resolution.killed = attacker.current_health <= 0
+		attacker.lifetime_record.add_damage_taken(total_damage, true)
 		return resolution
 	_apply_weapon_condition_monster(defender, condition_roll, resolution)
 	defender.current_health -= total_damage
 	resolution.killed = defender.current_health <= 0
+	attacker.lifetime_record.add_damage_given(total_damage, true, resolution.killed)
 	return resolution
 
 
@@ -138,6 +141,7 @@ func resolve_character_attack_character(attacker: CharacterState, attacker_equip
 	_apply_weapon_condition_character(target, condition_roll, resolution)
 	target.current_health -= total_damage
 	resolution.killed = target.current_health <= 0
+	target.lifetime_record.add_damage_taken_without_hit(total_damage)
 	return resolution
 
 
@@ -381,6 +385,7 @@ func resolve_monster_attack(attacker: MonsterState, attacker_definition: Monster
 	if _monster_fumbled(attack_context.attacker_weapon, fumble_roll):
 		return _fumbled_attack(chance, roll, fumble_roll)
 	if not hit:
+		defender.lifetime_record.add_damage_taken(0, false)
 		return _with_monster_fumble_roll(AttackResolution.new(false, false, chance, roll, 0), fumble_roll)
 	var attacks := attacker_definition.attacks()
 	var attack := _monster_attack_row(attacks, attack_index)
@@ -443,6 +448,7 @@ func resolve_monster_attack(attacker: MonsterState, attacker_definition: Monster
 	if not resolution.damage_deferred and not resolution.physical_damage_skipped:
 		defender.current_health -= damage + elemental_damage + resolution.special_damage_amount
 		resolution.killed = defender.current_health <= 0
+	defender.lifetime_record.add_damage_taken(resolution.total_damage(), true)
 	return resolution
 
 

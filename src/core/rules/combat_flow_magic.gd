@@ -681,7 +681,7 @@ func _cast_character_area_spell(state: GameState, content: RealmzContent, caster
 func _commit_character_multi_spell(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition, power_level: int, cast_level: int, group: GroupSpellResolution, rng: RealmzRng, center: Vector2i = Vector2i(-100_000, -100_000), shape: int = 0, event_source: String = "classic", item_instance_id: String = "", count_spell_cast: bool = true, persistent_fields: Array = []) -> CombatFlowResult:
 	var combat := state.combat
 	if count_spell_cast:
-		combat.active_turn.spell_cast_count += 1
+		combat.active_turn.spell_cast_count += 1; caster.lifetime_record.record_spell_cast()
 	caster.attacks_remaining = _rules.arithmetic.signed_16(caster.attacks_remaining - 2); caster.movement = maxi(0, caster.movement - 12)
 	var events: Array[DomainEvent] = []
 	_flow()._append_persistent_field_events(events, persistent_fields, event_source)
@@ -694,8 +694,8 @@ func _commit_character_multi_spell(state: GameState, content: RealmzContent, cas
 		var selected_target_id := group.selected_target_ids[index]
 		var target_kind := group.target_kinds[index]
 		var reflected := group.reflected_targets[index]
-		if resolution.damage > 0 or (resolution.damage < 0 and target_kind == &"monster"):
-			combat.mark_attacked(resolved_target_id)
+		if target_kind == &"monster": var missile_spell := absi(spell.spell_class) == 9; caster.lifetime_record.add_spell_damage(resolution.damage, missile_spell and not resolution.resisted, missile_spell and resolution.resisted, resolution.target_defeated)
+		if resolution.damage > 0 or (resolution.damage < 0 and target_kind == &"monster"): combat.mark_attacked(resolved_target_id)
 		_append_spell_projectile_event(events, caster.id, resolved_target_id, spell, event_source)
 		if resolution.special_result == &"turned": events.append(DomainEvent.new(&"sound_requested", {"soundId": 630, "waitForCompletion": false, "source": "classic-combat-destroy-turn-undead"}))
 		_append_spell_sound(events, spell.sound_end, "classic-combat-spell-result")
@@ -718,7 +718,7 @@ func _commit_character_multi_spell(state: GameState, content: RealmzContent, cas
 		if not resolution.target_defeated:
 			continue
 		if target_kind == &"character":
-			_flow()._remove_defeated_position(combat, resolved_target_id, true)
+			_flow()._mark_character_bleeding(state, state.party.character_by_id(resolved_target_id), true); _flow()._remove_defeated_position(combat, resolved_target_id, true)
 		else:
 			var defeated_monster := combat.monster_by_id(resolved_target_id)
 			var defeated_definition := content.monster_by_id(defeated_monster.definition_id) if defeated_monster != null else null

@@ -6,7 +6,7 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| classic | 69 | 0 | 11 | 47 | 11 |
+| classic | 69 | 0 | 10 | 48 | 11 |
 | host | 8 | 1 | 1 | 4 | 2 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
@@ -22,7 +22,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
 | `classic.character.allies-bestiary` | certification | broader-parity | other-ordinary |  |
-| `classic.character.view-sheet` | implementation | broader-parity | - | GAP-CHAR-001, GAP-CHAR-006 |
+| `classic.character.view-sheet` | certification | broader-parity | other-ordinary |  |
 | `classic.system.music-playlists` | implementation | broader-parity | - | GAP-SYS-004 |
 | `classic.maps.location-notes` | implementation | broader-parity | - | GAP-MAP-002, GAP-MAP-006, GAP-MAP-005 |
 | `classic.maps.view-acquired` | archaeology | broader-parity | - | GAP-MAP-008, GAP-MAP-009, GAP-MAP-010, GAP-MAP-011 |
@@ -32,8 +32,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Scope | State | Baseline | Current | Delta |
 | --- | --- | ---: | ---: | ---: |
 | classic | missing | 0 | 0 | 0 |
-| classic | partial | 12 | 11 | -1 |
-| classic | functional | 46 | 47 | +1 |
+| classic | partial | 12 | 10 | -2 |
+| classic | functional | 46 | 48 | +2 |
 | classic | certified | 11 | 11 | 0 |
 | host | missing | 1 | 1 | 0 |
 | host | partial | 1 | 1 | 0 |
@@ -47,7 +47,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Startup and party | 8 | 0 | 0 | 7 | 1 |
 | Exploration | 6 | 0 | 0 | 4 | 2 |
 | Scenario interaction | 6 | 0 | 0 | 3 | 3 |
-| Character management | 5 | 0 | 1 | 4 | 0 |
+| Character management | 5 | 0 | 0 | 5 | 0 |
 | Inventory and equipment | 9 | 0 | 1 | 8 | 0 |
 | Spellcasting | 3 | 0 | 2 | 1 | 0 |
 | Services and economy | 5 | 0 | 1 | 4 | 0 |
@@ -85,15 +85,15 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | ---: |
 | not-applicable | 3 |
 | absent | 0 |
-| partial | 3 |
-| complete | 63 |
+| partial | 2 |
+| complete | 64 |
 
 | persistence | Count |
 | --- | ---: |
-| not-applicable | 6 |
+| not-applicable | 5 |
 | absent | 0 |
 | partial | 1 |
-| verified | 62 |
+| verified | 63 |
 
 | presentation | Count |
 | --- | ---: |
@@ -144,10 +144,9 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 
 ## Release blockers and major gaps
 
-Blockers: **1**. Major gaps: **7**.
+Blockers: **1**. Major gaps: **6**.
 
 - **blocker** `host.release.platform-certification` - There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
-- **major** `classic.character.view-sheet` - Castle's lifetime combat record and prestige cannot yet be calculated accurately. Next: Add source-backed lifetime counters and update every owning combat and magic mutation path before enabling the visible Lifetime Record tab.
 - **major** `classic.maps.location-notes` - Historical notes are readable in source order but do not yet recreate Castle's temporary map recentering and saved darkness view. Next: Add a mutation-free note browser derived from authoritative topology and the saved darkness value, then verify land and dungeon records through MCP.
 - **major** `classic.maps.view-acquired` - Exact dungeon player-map composition is not yet proven against Castle. Next: Capture one synthetic Castle dungeon player map and compare wall, door, secret, and party-marker pixels before declaring exact presentation parity.
 - **major** `classic.spellcasting.combat-cast` - Manual, fixed-power scroll, charged-item, Party Auto, and monster casting share source-backed condition-cure, single-target friendly and self healing, single-target friendly condition-effect, multi-actor ray, rotated-area, persistent-field, hostile-group, Flame Missile, zero-cost breath, and summoning resolution. Every application spell has one mechanical-family and per-source disposition; only the remaining special-effect families stay explicit pending capabilities. Next: Continue the remaining unresolved special-effect families while keeping every unavailable family explicit.
@@ -179,7 +178,6 @@ Blockers: **1**. Major gaps: **7**.
 
 ### parity
 
-- `classic.character.view-sheet` - Castle's lifetime combat record and prestige cannot yet be calculated accurately.
 - `classic.maps.location-notes` - Historical notes are readable in source order but do not yet recreate Castle's temporary map recentering and saved darkness view.
 - `classic.maps.view-acquired` - Exact dungeon player-map composition is not yet proven against Castle.
 - `classic.spellcasting.combat-cast` - Manual, fixed-power scroll, charged-item, Party Auto, and monster casting share source-backed condition-cure, single-target friendly and self healing, single-target friendly condition-effect, multi-actor ray, rotated-area, persistent-field, hostile-group, Flame Missile, zero-cost breath, and summoning resolution. Every application spell has one mechanical-family and per-source disposition; only the remaining special-effect families stay explicit pending capabilities.

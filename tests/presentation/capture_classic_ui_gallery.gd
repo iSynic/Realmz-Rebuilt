@@ -356,9 +356,9 @@ func _capture_gallery() -> void:
 	if record_button != null:
 		record_button.pressed.emit()
 		await _settle()
-		await _capture("canonical-character-record-unavailable-1280x720")
+		await _capture("canonical-character-lifetime-record-1280x720")
 	await _resize(Vector2i(800, 600))
-	await _capture("classic-character-record-unavailable-800x600")
+	await _capture("classic-character-lifetime-record-800x600")
 	await _resize(Vector2i(1280, 720))
 	var background_button := _button_named(_router, "Race, Class & Aging")
 	if background_button != null:

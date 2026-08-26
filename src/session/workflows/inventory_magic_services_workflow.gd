@@ -699,6 +699,7 @@ static func commit_field_spell(context: SessionWorkflowContext, character_id: St
 	if resolution == null or not resolution.cast:
 		return SessionWorkflowResult.failed(&"field_spell_failed", "The field spell could not be resolved.")
 	var events: Array[DomainEvent] = [DomainEvent.new(&"field_spell_cast", {"characterId": character.id, "spellId": spell.id, "power": power, "cost": resolution.cost, "source": "classic"})]
+	character.lifetime_record.record_spell_cast()
 	_append_field_spell_events(context, events, character, spell, power, resolution, &"classic-field-spell", &"classic", &"field_spell_resolved")
 	return SessionWorkflowResult.completed(events)
 

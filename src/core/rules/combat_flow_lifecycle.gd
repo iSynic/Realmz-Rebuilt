@@ -206,6 +206,7 @@ func _process_bleeding_round(state: GameState, rng: RealmzRng, events: Array[Dom
 			continue
 		character.current_health = _rules.arithmetic.signed_16(character.current_health - 1)
 		if character.current_health < -9:
+			character.lifetime_record.record_death(true)
 			combat.set_character_bleeding(character.id, false)
 			state.set_combat_auto(character.id, false)
 			_flow()._remove_defeated_position(combat, character.id, true)

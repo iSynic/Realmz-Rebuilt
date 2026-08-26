@@ -503,17 +503,21 @@ func _build_background_region(parent: Container, kind: String, node_name: String
 
 func _build_record(character: CharacterView) -> void:
 	var panel := PanelContainer.new()
-	panel.name = "LifetimeRecordUnavailable"
+	panel.name = "LifetimeRecord"
 	panel.theme_type_variation = &"ClassicInset"
 	panel.custom_minimum_size.y = 180.0
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 10)
 	panel.add_child(column)
-	_add_heading(column, "Lifetime record unavailable", "No inferred totals")
-	var reason := character.record_unavailable_reason if not character.record_available else "A typed lifetime combat-history projection is not available."
-	_add_label(column, reason, BAD, 15)
-	_add_label(column, "Prestige depends on lifetime combat and magic history. Rebuilt does not show zero or derive permanent totals from transient battle events.", MUTED, 13)
+	_add_heading(column, "Lifetime Record", "Prestige %d" % character.prestige)
+	var grid := GridContainer.new()
+	grid.columns = 2 if _layout_profile == UiLayoutProfile.COMPACT else 4
+	var record := character.lifetime_record
+	for metric: Dictionary in [{"name": "Damage given", "value": record.damage_given}, {"name": "Damage taken", "value": record.damage_taken}, {"name": "Hits given", "value": record.hits_given}, {"name": "Hits taken", "value": record.hits_taken}, {"name": "Enemy misses", "value": record.enemy_misses}, {"name": "Attacks missed", "value": record.attacks_missed}, {"name": "Kills", "value": record.kills}, {"name": "Deaths", "value": record.deaths}, {"name": "Knockouts", "value": record.knockouts}, {"name": "Spells cast", "value": record.spells_cast}, {"name": "Destroyed", "value": record.destroyed}, {"name": "Turned", "value": record.turns}]:
+		_add_card(grid, metric["name"], str(metric["value"]), "Lifetime Classic counter")
+	column.add_child(grid)
+	_add_label(column, "Prestige penalty %d" % character.prestige_penalty, BAD if character.prestige_penalty > 0 else MUTED, 13)
 	_content.add_child(panel)
 
 

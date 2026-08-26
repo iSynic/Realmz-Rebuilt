@@ -1,6 +1,8 @@
 class_name CharacterState
 extends RefCounted
 
+const CharacterLifetimeRecordType := preload("res://src/core/state/character_lifetime_record.gd")
+
 var id: String
 var name: String
 var current_health: int
@@ -40,6 +42,7 @@ var maximum_spell_points: int = 0
 var carried_load: int = 0
 var maximum_load: int = 0
 var prestige_penalty: int = 0
+var lifetime_record: CharacterLifetimeRecordType
 var traitor: bool = false
 var conditions: ConditionSet
 var money: WealthState
@@ -59,6 +62,7 @@ func _init(character_id: String, character_name: String, health: int, max_health
 	maximum_health = max_health
 	conditions = ConditionSet.new()
 	money = WealthState.new()
+	lifetime_record = CharacterLifetimeRecordType.new()
 	_saves.resize(8)
 	_saves.fill(50)
 	_specials.resize(12)
@@ -207,6 +211,7 @@ func to_data() -> Dictionary:
 		"normalAttacks": normal_attacks, "attackBonus": attack_bonus, "attacksRemaining": attacks_remaining, "maximumSpellAttacks": maximum_spell_attacks, "spellcasterType": spellcaster_type,
 		"spellPoints": spell_points, "maximumSpellPoints": maximum_spell_points, "load": carried_load, "maximumLoad": maximum_load,
 		"prestigePenalty": prestige_penalty,
+		"lifetimeRecord": lifetime_record.to_data(),
 		"traitor": traitor,
 		"conditions": conditions.to_data(), "money": money.to_data(), "saves": _saves.duplicate(), "specials": _specials.duplicate(), "abilities": _abilities.duplicate(),
 		"inventory": item_data, "knownSpells": _known_spells.duplicate(), "scrollCase": scroll_data, "fastSpells": fast_spell_data,
@@ -287,6 +292,9 @@ static func _restore_numeric_fields(result: CharacterState, data: Dictionary) ->
 	result.carried_load = numeric_values["load"]
 	result.maximum_load = numeric_values["maximumLoad"]
 	result.prestige_penalty = numeric_values["prestigePenalty"]
+	result.lifetime_record = CharacterLifetimeRecordType.from_data(data.get("lifetimeRecord", {}), CharacterLifetimeRecordType.new())
+	if result.lifetime_record == null:
+		return false
 	if data.has("traitor") and not data["traitor"] is bool:
 		return false
 	result.traitor = bool(data.get("traitor", false))

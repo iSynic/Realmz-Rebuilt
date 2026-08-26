@@ -607,6 +607,7 @@ func _process_monster_projectile(state: GameState, content: RealmzContent, monst
 	if resolution == null:
 		events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "missile", "reason": "projectile-resolution-failed", "source": "classic"}))
 		return MONSTER_ATTACK_COMPLETED
+	target.lifetime_record.add_projectile_damage_taken(resolution.total_damage, resolution.hit_count, resolution.miss_count)
 	if resolution.total_damage > 0:
 		combat.mark_attacked(target.id)
 	events.append(DomainEvent.new(&"combat_projectile_resolved", {

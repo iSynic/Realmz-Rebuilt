@@ -302,6 +302,7 @@ func _turn_undead(state: GameState, content: RealmzContent, actor: CharacterStat
 		var experience_award := 0
 		if margin > 0 and margin < 30:
 			result_kind = "destroyed"
+			actor.lifetime_record.record_turn_undead(true)
 			experience_award = 25 * target.hit_dice
 			target.current_health = 0
 			events.append(DomainEvent.new(&"sound_requested", {"soundId": 132, "waitForCompletion": false, "source": "classic-combat-turn-undead"}))
@@ -309,6 +310,7 @@ func _turn_undead(state: GameState, content: RealmzContent, actor: CharacterStat
 				_flow()._remove_defeated_position(combat, target.id, true)
 		elif margin >= 30:
 			result_kind = "turned"
+			actor.lifetime_record.record_turn_undead(false)
 			experience_award = 50 * target.hit_dice
 			target.traitor = actor.traitor
 			target.target_id = ""
@@ -350,7 +352,10 @@ static func _mark_character_bleeding(state: GameState, character: CharacterState
 	# battle, even when the body remains recoverable above -10 health.
 	state.set_combat_auto(character.id, false)
 	if character.current_health > -10:
+		character.lifetime_record.record_knockout()
 		state.combat.set_character_bleeding(character.id, true)
+	else:
+		character.lifetime_record.record_death()
 
 
 func cause_active_fumble(state: GameState, content: RealmzContent, actor_id: String) -> CombatFlowResult:
@@ -403,6 +408,7 @@ func _fire_character_projectile(state: GameState, content: RealmzContent, actor:
 	var resolution := _rules.magic.resolve_character_projectile(actor, caste, profile.item, target, profile.spell, profile.power_level, rng)
 	if resolution == null:
 		return CombatFlowResult.failed(&"unsupported_projectile_spell", "The selected projectile cannot be resolved by the source-backed missile rules.")
+	actor.lifetime_record.add_projectile_damage_given(resolution.total_damage, resolution.hit_count, resolution.miss_count, resolution.target_defeated)
 	if resolution.total_damage > 0:
 		combat.mark_attacked(target.id)
 	combat.active_turn.physical_action_committed = true

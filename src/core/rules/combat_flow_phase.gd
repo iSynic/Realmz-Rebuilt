@@ -57,6 +57,7 @@ func _resolve_character_phase(state: GameState, content: RealmzContent, caster: 
 		return CombatFlowResult.failed(&"spell_cast_failed", "Phase could not be cast with the available spell points.")
 	if count_spell_cast:
 		combat.active_turn.spell_cast_count += 1
+		caster.lifetime_record.record_spell_cast()
 	caster.attacks_remaining = _rules.arithmetic.signed_16(caster.attacks_remaining - 2)
 	caster.movement = maxi(0, caster.movement - 12)
 	combat.invalidate_undo()

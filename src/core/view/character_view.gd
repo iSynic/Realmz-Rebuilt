@@ -1,6 +1,8 @@
 class_name CharacterView
 extends RefCounted
 
+const CharacterLifetimeRecordType := preload("res://src/core/state/character_lifetime_record.gd")
+
 const CONDITION_NAMES: Array[String] = [
 	"In Retreat", "Is Helpless", "Entangled", "Cursed", "Magic Aura", "Stupid", "Moving Slowly", "Shielded from Hits", "Missile Shield", "Poisoned",
 	"Regenerating", "Fire Protection", "Cold Protection", "Electrical Protection", "Chemical Protection", "Psi Protection", "Protection from First Level", "Protection from Second Level", "Protection from Third Level", "Protection from Fourth Level",
@@ -79,8 +81,10 @@ var abilities: Array[CharacterMetricView] = []
 var race_traits: Array[CharacterMetricView] = []
 var caste_traits: Array[CharacterMetricView] = []
 var age_bands: Array[CharacterAgeBandView] = []
-var record_available: bool = false
-var record_unavailable_reason: String = "Lifetime combat history is not yet tracked, so Castle prestige cannot be calculated accurately."
+var record_available: bool = true
+var prestige: int
+var prestige_penalty: int
+var lifetime_record: CharacterLifetimeRecordType
 var items: Array[ItemView] = []
 var spells: Array[SpellView] = []
 var scrolls: Array[SpellScrollView] = []
@@ -144,6 +148,9 @@ func _init(character: CharacterState, content: RealmzContent = null) -> void:
 	gold = character.money.gold
 	gems = character.money.gems
 	jewelry = character.money.jewelry
+	lifetime_record = CharacterLifetimeRecordType.from_data(character.lifetime_record.to_data(), CharacterLifetimeRecordType.new())
+	prestige_penalty = character.prestige_penalty
+	prestige = lifetime_record.prestige(prestige_penalty)
 	condition_values = character.conditions.values()
 	_refresh_display_bonuses(0)
 	for index: int in condition_values.size():
