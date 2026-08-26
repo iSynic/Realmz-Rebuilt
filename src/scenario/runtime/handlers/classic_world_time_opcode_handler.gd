@@ -16,7 +16,7 @@ func _init(content: RealmzContent, game_state: GameState, rng: RealmzRng) -> voi
 
 
 func opcode_ids() -> Array[int]:
-	return [-23, 12, 13, 20, 23, 29, 37, 45, 47, 61, 63, 66, 68, 76, 95, 101, 103, 104, 106]
+	return [-23, 12, 13, 20, 23, 29, 37, 45, 47, 57, 61, 63, 66, 68, 70, 76, 92, 95, 101, 103, 104, 106]
 
 
 func execute(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
@@ -40,6 +40,8 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 			if not _game_state.set_quest_value(quest_id, 0 if action.operand_id < 0 else 1):
 				return ScenarioRuntimeOperationResult.failed(&"invalid_quest", "Classic opcode 47 references quest %d outside 0 through 99." % quest_id)
 			return ScenarioRuntimeOperationResult.completed(_game_state.quest_value(quest_id), [DomainEvent.new(&"quest_changed", {"questId": quest_id, "value": _game_state.quest_value(quest_id)})])
+		57:
+			return _change_land_look(action)
 		61:
 			return _shift_party(action)
 		63:
@@ -49,8 +51,12 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 			return ScenarioRuntimeOperationResult.completed(_game_state.camping_allowed, [DomainEvent.new(&"camping_availability_changed", {"allowed": _game_state.camping_allowed, "source": "classic"})])
 		68:
 			return _alter_party_fatigue(action)
+		70:
+			return _save_or_restore_party_position(action)
 		76:
 			return _adjust_quest_value(action)
+		92:
+			return _alter_random_region_geometry(action)
 		95:
 			return _change_dungeon_heading(action)
 		101:
@@ -63,6 +69,69 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 		106:
 			return _set_map_darkness(action)
 	return super.execute(action, request_id, context)
+
+
+func _change_land_look(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
+	if action.extra_code.size() < 5 or action.extra_code[1] not in [0, 1]:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_land_look", "Classic opcode 57 requires a landlook, darkness flag, and land-level identity.")
+	var map := _content.world.map_by_type_and_index(&"land", action.extra_code[2])
+	if map == null or _content.world.battle_terrain_set_by_landlook(action.extra_code[0]) == null:
+		return ScenarioRuntimeOperationResult.failed(&"unknown_land_look", "Classic opcode 57 references an unavailable land level or landlook.")
+	var previous_landlook := _game_state.world.map_landlook(map)
+	var previous_dark := _game_state.world.map_is_dark(map)
+	_game_state.world.set_map_landlook(map.id, action.extra_code[0])
+	_game_state.world.set_map_darkness(map.id, action.extra_code[1] != 0)
+	return ScenarioRuntimeOperationResult.completed(map.id, [DomainEvent.new(&"map_appearance_changed", {"mapId": map.id, "previousLandlook": previous_landlook, "landlook": action.extra_code[0], "previousDark": previous_dark, "dark": action.extra_code[1] != 0, "offscreen": map.id != _game_state.party.map_id, "source": "classic-opcode-57"}), DomainEvent.new(&"world_projection_invalidated", {"mapId": map.id, "reason": "map-appearance"})])
+
+
+func _save_or_restore_party_position(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
+	if action.extra_code.size() < 5:
+		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 70 requires a five-value Extra Code row.")
+	match action.extra_code[0]:
+		1:
+			var current_map := _content.world.map_by_id(_game_state.party.map_id)
+			if not _game_state.save_party_position(current_map):
+				return ScenarioRuntimeOperationResult.failed(&"invalid_party_position", "Classic opcode 70 cannot save the current party position.")
+			return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"party_position_saved", {"mapId": _game_state.saved_party_map_id, "x": _game_state.saved_party_coordinate.x, "y": _game_state.saved_party_coordinate.y, "levelType": String(_game_state.saved_party_level_type), "source": "classic-opcode-70"})])
+		2:
+			if not _game_state.has_saved_party_position():
+				return ScenarioRuntimeOperationResult.failed(&"missing_party_position", "Classic opcode 70 has no saved party position to restore.")
+			var target_map := _content.world.map_by_id(_game_state.saved_party_map_id)
+			if target_map == null or target_map.level_type != _game_state.saved_party_level_type or target_map.topology.cell_at(_game_state.saved_party_coordinate) == null:
+				return ScenarioRuntimeOperationResult.failed(&"invalid_party_position", "Classic opcode 70's saved party position is unavailable.")
+			var source_map_id := _game_state.party.map_id
+			var source_coordinate := _game_state.party.coordinate
+			_game_state.party.map_id = target_map.id
+			_game_state.party.coordinate = _game_state.saved_party_coordinate
+			_game_state.world.mark_visited(target_map.id, _game_state.saved_party_coordinate)
+			return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"party_position_restored", {"fromMapId": source_map_id, "fromX": source_coordinate.x, "fromY": source_coordinate.y, "mapId": target_map.id, "x": _game_state.saved_party_coordinate.x, "y": _game_state.saved_party_coordinate.y, "levelType": String(target_map.level_type), "suppressActionPointDestination": true, "source": "classic-opcode-70"}), DomainEvent.new(&"world_projection_invalidated", {"mapId": target_map.id, "reason": "party-position-restore"})])
+	return ScenarioRuntimeOperationResult.failed(&"invalid_party_position_mode", "Classic opcode 70 requires save or restore mode.")
+
+
+func _alter_random_region_geometry(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
+	if action.extra_code.size() != 10 or action.extra_code[4] not in [-1, 0, 1, 2]:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_random_region_geometry", "Classic opcode 92 requires two five-value Extra Code rows and a valid geometry mode.")
+	var map_type := &"dungeon" if action.extra_code[2] != 0 else &"land"
+	var map := _content.world.map_by_type_and_index(map_type, action.extra_code[0])
+	var region := null if map == null else map.random_region_by_index(action.extra_code[1])
+	if region == null:
+		return ScenarioRuntimeOperationResult.failed(&"unknown_random_region", "Classic opcode 92 references an unavailable random rectangle.")
+	var previous := _game_state.world.random_region(region)
+	var edges := previous.bounds_edges()
+	if not previous.bounds_overridden:
+		edges = [region.bounds.position.x, region.bounds.end.x - 1, region.bounds.position.y, region.bounds.end.y - 1]
+	var geometry := action.extra_code.slice(5, 10)
+	match action.extra_code[4]:
+		0: edges = [geometry[0], geometry[1], geometry[2], geometry[3]]
+		1: edges = [edges[0] + geometry[0], edges[1] + geometry[0], edges[2] + geometry[1], edges[3] + geometry[1]]
+		2: edges = [edges[0] + geometry[0], edges[1] + geometry[1], edges[2] + geometry[2], edges[3] + geometry[3]]
+	var updated := RandomRegionState.new(region.id, RealmzArithmetic.new().signed_16(previous.chance_ten_thousand + action.extra_code[3]), previous.battle_minimum, previous.battle_maximum, previous.random_door_percents(), region.bounds, previous.bounds_overridden)
+	if action.extra_code[4] != -1 and not updated.set_bounds_edges(edges):
+		return ScenarioRuntimeOperationResult.failed(&"invalid_random_region_geometry", "Classic opcode 92 could not preserve its rectangle geometry.")
+	elif previous.bounds_overridden:
+		updated.set_bounds_edges(edges)
+	_game_state.world.set_random_region(updated)
+	return ScenarioRuntimeOperationResult.completed(region.id, [DomainEvent.new(&"random_region_geometry_changed", {"mapId": map.id, "regionId": region.id, "chanceTenThousand": updated.chance_ten_thousand, "bounds": updated.bounds_edges(), "geometryMode": action.extra_code[4], "offscreen": map.id != _game_state.party.map_id, "source": "classic-opcode-92"}), DomainEvent.new(&"world_projection_invalidated", {"mapId": map.id, "reason": "random-region"})])
 
 
 func _alter_party_fatigue(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
@@ -159,7 +228,9 @@ func _mutate_random_region(action: ClassicActionDefinition, dungeon: bool) -> Sc
 	var previous := _game_state.world.random_region(region)
 	var battle_min := previous.battle_minimum if action.extra_code[3] < 0 else action.extra_code[3]
 	var battle_max := previous.battle_maximum if action.extra_code[4] < 0 else action.extra_code[4]
-	var updated := RandomRegionState.new(region.id, action.extra_code[2], battle_min, battle_max, previous.random_door_percents())
+	var updated := RandomRegionState.new(region.id, action.extra_code[2], battle_min, battle_max, previous.random_door_percents(), region.bounds, previous.bounds_overridden)
+	if previous.bounds_overridden:
+		updated.set_bounds_edges(previous.bounds_edges())
 	_game_state.world.set_random_region(updated)
 	return ScenarioRuntimeOperationResult.completed(updated.id, [DomainEvent.new(&"random_region_changed", {"regionId": updated.id, "chanceTenThousand": updated.chance_ten_thousand, "battleMinimum": updated.battle_minimum, "battleMaximum": updated.battle_maximum})])
 

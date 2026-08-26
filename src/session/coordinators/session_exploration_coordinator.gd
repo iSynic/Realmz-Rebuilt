@@ -21,7 +21,7 @@ func begin_contextual_encounter() -> SessionCoordinatorResult:
 	var selected_program_id := ""
 	var selected_region_id := ""
 	var events: Array[DomainEvent] = []
-	var region_ids: Array[String] = [] if cell == null else cell.random_rect_ids()
+	var region_ids: Array[String] = [] if cell == null else _context.state.world.random_region_ids_at(map, encounter_coordinate)
 	for offset: int in region_ids.size():
 		var region_id: String = region_ids[region_ids.size() - 1 - offset]
 		var region := map.random_region_by_id(region_id)
@@ -248,7 +248,7 @@ func _continue_post_move(events: Array[DomainEvent]) -> SessionCoordinatorResult
 		if _context.events_have(events, &"classic_choice_backout_requested"):
 			return _complete_classic_choice_backout(map, coordinate, active_trigger_id, events)
 		_context.scenario()._finalize_completed_trigger(completed_trigger, events)
-		if _context.scenario()._apply_trigger_destination(completed_trigger, events, exploration.action_point_destination_depth == 0):
+		if _context.scenario()._apply_trigger_destination(completed_trigger, events, exploration.action_point_destination_depth == 0 and not _context.events_have(events, &"party_position_restored")):
 			var destination_map = _context.content.world.map_by_id(_context.state.party.map_id)
 			_set_post_move_continuation(destination_map, _context.state.party.coordinate, 1)
 			return _continue_post_move(events)
@@ -294,7 +294,7 @@ func _continue_post_move(events: Array[DomainEvent]) -> SessionCoordinatorResult
 				return _context.failed(&"invalid_teleport", "Destination trigger recheck references an unavailable map.", events)
 			_set_post_move_continuation(requested_map, _context.state.party.coordinate, 1)
 			return _continue_post_move(events)
-		if _context.scenario()._apply_trigger_destination(trigger, events, exploration.action_point_destination_depth == 0):
+		if _context.scenario()._apply_trigger_destination(trigger, events, exploration.action_point_destination_depth == 0 and not _context.events_have(events, &"party_position_restored")):
 			var destination_map = _context.content.world.map_by_id(_context.state.party.map_id)
 			_set_post_move_continuation(destination_map, _context.state.party.coordinate, 1)
 			return _continue_post_move(events)

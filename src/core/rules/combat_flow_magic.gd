@@ -98,7 +98,7 @@ func probe_character_item_spell(state: GameState, content: RealmzContent, caster
 		if not _rules.spell_areas.pattern_fits(target_coordinate, shape):
 			return CombatSpellCastProbe.blocked(&"item_area_outside_battlefield", "The complete Classic area mask must remain inside the validated battlefield.")
 		var map := content.world.map_by_id(combat.battlefield.map_id)
-		var terrain_set := content.world.battle_terrain_set_by_id(map.battle_terrain_set_id) if map != null else null
+		var terrain_set := content.world.battle_terrain_set_for_map(map, state.world) if map != null else null
 		var maximum_range := absi(spell.range_min + spell.range_max * power_level)
 		if terrain_set == null or not _rules.battlefield.coordinate_target_is_valid(combat.battlefield, terrain_set, caster.id, target_coordinate, maximum_range, spell.range_min + spell.range_max > 0):
 			return CombatSpellCastProbe.blocked(&"item_target_unavailable", "The area center is outside the item's Classic spell range or line of sight.")
@@ -403,7 +403,7 @@ func _ray_spell_selections(state: GameState, content: RealmzContent, caster_id: 
 func ray_spell_actor_ids(state: GameState, content: RealmzContent, caster_id: String, target_id: String, spell: SpellDefinition) -> Array[String]:
 	var result: Array[String] = []
 	var map := content.world.map_by_id(state.combat.battlefield.map_id)
-	var terrain_set := content.world.battle_terrain_set_by_id(map.battle_terrain_set_id) if map != null else null
+	var terrain_set := content.world.battle_terrain_set_for_map(map, state.world) if map != null else null
 	if terrain_set == null or not state.combat.battlefield.has_actor(target_id):
 		return result
 	var stop_at_blocker := spell.range_min + spell.range_max > 0
@@ -474,7 +474,7 @@ func probe_character_scroll_cast(state: GameState, content: RealmzContent, caste
 			if not _rules.spell_areas.pattern_fits(target_coordinate, shape):
 				return CombatSpellCastProbe.blocked(&"scroll_area_outside_battlefield", "The complete Classic area mask must remain inside the validated battlefield.")
 			var map := content.world.map_by_id(combat.battlefield.map_id)
-			var terrain_set := content.world.battle_terrain_set_by_id(map.battle_terrain_set_id) if map != null else null
+			var terrain_set := content.world.battle_terrain_set_for_map(map, state.world) if map != null else null
 			var maximum_range := absi(spell.range_min + spell.range_max * scroll.power)
 			if terrain_set == null or not _rules.battlefield.coordinate_target_is_valid(combat.battlefield, terrain_set, caster.id, target_coordinate, maximum_range, spell.range_min + spell.range_max > 0):
 				return CombatSpellCastProbe.blocked(&"scroll_target_unavailable", "The area center is outside the Classic spell range or line of sight.")
@@ -863,7 +863,7 @@ func probe_character_spell_cast(state: GameState, content: RealmzContent, caster
 		if not _rules.spell_areas.pattern_fits(target_coordinate, shape):
 			return CombatSpellCastProbe.blocked(&"spell_area_outside_battlefield", "The complete Classic area mask must remain inside the validated battlefield.")
 		var map := content.world.map_by_id(combat.battlefield.map_id)
-		var terrain_set := content.world.battle_terrain_set_by_id(map.battle_terrain_set_id) if map != null else null
+		var terrain_set := content.world.battle_terrain_set_for_map(map, state.world) if map != null else null
 		var maximum_range := absi(spell.range_min + spell.range_max * power_level)
 		if terrain_set == null or not _rules.battlefield.coordinate_target_is_valid(combat.battlefield, terrain_set, caster.id, target_coordinate, maximum_range, spell.range_min + spell.range_max > 0):
 			return CombatSpellCastProbe.blocked(&"spell_target_unavailable", "The area center is outside the Classic spell range or line of sight.")
@@ -989,7 +989,7 @@ func _legal_area_spell_target_coordinates(state: GameState, content: RealmzConte
 	if state == null or state.combat == null or state.combat.battlefield == null or content == null or spell == null:
 		return result
 	var map := content.world.map_by_id(state.combat.battlefield.map_id)
-	var terrain_set := content.world.battle_terrain_set_by_id(map.battle_terrain_set_id) if map != null else null
+	var terrain_set := content.world.battle_terrain_set_for_map(map, state.world) if map != null else null
 	if terrain_set == null:
 		return result
 	var origin := state.combat.battlefield.actor_position(caster_id)
@@ -1034,7 +1034,7 @@ func _spell_actor_target_is_valid(state: GameState, content: RealmzContent, cast
 	if ClassicSpellCapabilityCatalog.is_combat_remove_curse_spell(spell) and state.party.character_by_id(target_id) == null: return false
 	var maximum_range := absi(spell.range_min + spell.range_max * power_level)
 	if caster_id == target_id:
-		var map := content.world.map_by_id(state.combat.battlefield.map_id); var terrain_set := content.world.battle_terrain_set_by_id(map.battle_terrain_set_id) if map != null else null
+		var map := content.world.map_by_id(state.combat.battlefield.map_id); var terrain_set := content.world.battle_terrain_set_for_map(map, state.world) if map != null else null
 		return terrain_set != null and _rules.battlefield.coordinate_target_is_valid(state.combat.battlefield, terrain_set, caster_id, state.combat.battlefield.actor_position(caster_id), maximum_range, spell.range_min + spell.range_max > 0)
 	return _flow().projectile_target_is_valid(state.combat, content, caster_id, target_id, maximum_range, spell.range_min + spell.range_max > 0)
 

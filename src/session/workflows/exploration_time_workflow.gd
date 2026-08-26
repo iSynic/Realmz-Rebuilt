@@ -350,8 +350,9 @@ static func post_time_continuation(context: SessionWorkflowContext, map: MapDefi
 	exploration.midnight_recovery_pending = timed_day > 0
 	exploration.timed_check_coordinate = timed_coordinate
 	exploration.check_random = check_random
-	exploration.random_region_ids.assign([] if cell == null else cell.random_rect_ids())
-	exploration.random_region_index = -1 if cell == null else cell.random_rect_ids().size() - 1
+	var region_ids: Array[String] = [] if cell == null else context.state.world.random_region_ids_at(map, context.state.party.coordinate)
+	exploration.random_region_ids.assign(region_ids)
+	exploration.random_region_index = region_ids.size() - 1
 	exploration.active_random_program_id = ""
 	exploration.active_random_region_id = ""
 	exploration.random_battle_stage = &""
@@ -368,8 +369,9 @@ static func post_move_continuation(context: SessionWorkflowContext, map: MapDefi
 	exploration.trigger_ids.assign(selected_placed_trigger_ids(context.content, cell))
 	exploration.trigger_index = 0
 	exploration.active_trigger_id = ""
-	exploration.random_region_ids.assign(cell.random_rect_ids())
-	exploration.random_region_index = cell.random_rect_ids().size() - 1
+	var region_ids := context.state.world.random_region_ids_at(map, coordinate)
+	exploration.random_region_ids.assign(region_ids)
+	exploration.random_region_index = region_ids.size() - 1
 	exploration.active_random_program_id = ""
 	exploration.active_random_region_id = ""
 	exploration.random_battle_stage = &""
@@ -388,8 +390,9 @@ static func rebase_post_time_location(context: SessionWorkflowContext, continuat
 	exploration.map_id = map.id
 	exploration.coordinate = context.state.party.coordinate
 	exploration.timed_check_coordinate = context.state.party.coordinate
-	exploration.random_region_ids.assign(cell.random_rect_ids())
-	exploration.random_region_index = cell.random_rect_ids().size() - 1
+	var region_ids := context.state.world.random_region_ids_at(map, context.state.party.coordinate)
+	exploration.random_region_ids.assign(region_ids)
+	exploration.random_region_index = region_ids.size() - 1
 	return true
 
 
@@ -414,7 +417,7 @@ static func timed_encounter_requirements_met(context: SessionWorkflowContext, en
 	var coordinate := exploration.timed_check_coordinate
 	if encounter.required_random_rectangle > -1:
 		var region := map.random_region_by_index(encounter.required_random_rectangle)
-		if region == null or not region.bounds.has_point(coordinate):
+		if region == null or not context.state.world.random_region(region).contains(region.bounds, coordinate):
 			return false
 	if encounter.required_x > -1 and coordinate.x != encounter.required_x:
 		return false

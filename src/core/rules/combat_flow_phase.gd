@@ -40,7 +40,7 @@ func probe_destination(state: GameState, content: RealmzContent, caster_id: Stri
 	if not checkpoint_available(combat, caster_id) and combat.active_turn != null:
 		return CombatSpellCastProbe.blocked(&"phase_checkpoint_unavailable", "Phase is available only while this activation can still be undone.")
 	var map := content.world.map_by_id(combat.battlefield.map_id)
-	var terrain_set := content.world.battle_terrain_set_by_id(map.battle_terrain_set_id) if map != null else null
+	var terrain_set := content.world.battle_terrain_set_for_map(map, state.world) if map != null else null
 	var maximum_range := absi(spell.range_min + spell.range_max * power_level)
 	if terrain_set == null or not _rules.battlefield.coordinate_target_is_valid(combat.battlefield, terrain_set, caster_id, destination, maximum_range, spell.range_min + spell.range_max > 0):
 		return CombatSpellCastProbe.blocked(&"spell_target_unavailable", "The Phase destination is outside the Classic spell range or line of sight.")
@@ -62,7 +62,7 @@ func _resolve_character_phase(state: GameState, content: RealmzContent, caster: 
 	combat.invalidate_undo()
 	var origin := combat.battlefield.actor_position(caster.id)
 	var collision_actor_id := combat.battlefield.actor_at(destination, caster.id)
-	var phased_into_solid := _destination_is_solid(content, combat, destination)
+	var phased_into_solid := _destination_is_solid(state, content, combat, destination)
 	var defeated := not collision_actor_id.is_empty() or phased_into_solid
 	var events: Array[DomainEvent] = [
 		DomainEvent.new(&"sound_requested", {"soundId": 699, "waitForCompletion": false, "source": "classic-combat-phase-start"}),
@@ -94,8 +94,8 @@ func _resolve_character_phase(state: GameState, content: RealmzContent, caster: 
 	return CombatFlowResult.succeeded(events, state.combat.completed)
 
 
-static func _destination_is_solid(content: RealmzContent, combat: CombatState, destination: Vector2i) -> bool:
+static func _destination_is_solid(state: GameState, content: RealmzContent, combat: CombatState, destination: Vector2i) -> bool:
 	var map := content.world.map_by_id(combat.battlefield.map_id) if content != null and combat != null and combat.battlefield != null else null
-	var terrain_set := content.world.battle_terrain_set_by_id(map.battle_terrain_set_id) if map != null else null
+	var terrain_set := content.world.battle_terrain_set_for_map(map, state.world) if map != null and state != null else null
 	var terrain := terrain_set.tile_by_id(combat.battlefield.terrain_at(destination)) if terrain_set != null else null
 	return terrain == null or terrain.solid != 0

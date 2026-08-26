@@ -4,6 +4,7 @@ extends RefCounted
 var _maps_by_id: Dictionary = {}
 var _transitions_by_source: Dictionary = {}
 var _battle_terrain_sets: Dictionary = {}
+var _battle_terrain_sets_by_landlook: Dictionary = {}
 var _player_maps_by_id: Dictionary = {}
 var _player_maps_by_classic_id: Dictionary = {}
 
@@ -15,6 +16,8 @@ func _init(world_maps: Array[MapDefinition], transitions: Array[MapTransition] =
 		_transitions_by_source[_transition_key(transition.source_map_id, transition.source_edge)] = transition
 	for terrain_set: BattleTerrainSetDefinition in battle_terrain_sets:
 		_battle_terrain_sets[terrain_set.id] = terrain_set
+		if terrain_set.landlook >= 0:
+			_battle_terrain_sets_by_landlook[terrain_set.landlook] = terrain_set
 	for player_map: PlayerMapDefinition in player_map_definitions:
 		_player_maps_by_id[player_map.id] = player_map
 		_player_maps_by_classic_id[player_map.classic_id] = player_map
@@ -42,6 +45,19 @@ func map_by_type_and_index(level_type: StringName, level_index: int) -> MapDefin
 
 func battle_terrain_set_by_id(definition_id: String) -> BattleTerrainSetDefinition:
 	return _battle_terrain_sets.get(definition_id) as BattleTerrainSetDefinition
+
+
+func battle_terrain_set_by_landlook(landlook: int) -> BattleTerrainSetDefinition:
+	return _battle_terrain_sets_by_landlook.get(landlook) as BattleTerrainSetDefinition
+
+
+func battle_terrain_set_for_map(map: MapDefinition, world_state: WorldState) -> BattleTerrainSetDefinition:
+	if map == null:
+		return null
+	if map.level_type == &"land":
+		var landlook := map.landlook if world_state == null else world_state.map_landlook(map)
+		return _battle_terrain_sets_by_landlook.get(landlook) as BattleTerrainSetDefinition
+	return battle_terrain_set_by_id(map.battle_terrain_set_id)
 
 
 func player_map_by_id(definition_id: String) -> PlayerMapDefinition:

@@ -52,9 +52,10 @@ func _init(combat: CombatState, characters: Array[CharacterState] = [], content:
 		var terrain_set: BattleTerrainSetDefinition
 		if content != null:
 			var source_map := content.world.map_by_id(combat.battlefield.map_id)
-			if source_map != null and source_map.level_type == &"land" and source_map.landlook >= 0:
-				upper_tileset_id = "landlook-%d" % source_map.landlook
-			terrain_set = content.world.battle_terrain_set_by_id(source_map.battle_terrain_set_id) if source_map != null else null
+			var landlook := -1 if source_map == null else source_map.landlook if game_state == null else game_state.world.map_landlook(source_map)
+			if source_map != null and source_map.level_type == &"land" and landlook >= 0:
+				upper_tileset_id = "landlook-%d" % landlook
+			terrain_set = content.world.battle_terrain_set_for_map(source_map, null if game_state == null else game_state.world)
 		battlefield = BattlefieldView.new(combat.battlefield, upper_tileset_id)
 		var area_rules := SpellAreaRules.new()
 		for field: PersistentCombatField in combat.persistent_fields():
@@ -143,7 +144,7 @@ func _init(combat: CombatState, characters: Array[CharacterState] = [], content:
 			weapon_switch_unavailable_reason = equipment.error_message
 		if combat.battlefield != null and battlefield_rules != null:
 			var map := content.world.map_by_id(combat.battlefield.map_id)
-			var terrain_set := content.world.battle_terrain_set_by_id(map.battle_terrain_set_id) if map != null else null
+			var terrain_set := content.world.battle_terrain_set_for_map(map, game_state.world) if map != null and game_state != null else null
 			if terrain_set != null:
 				var contact_attack_available := false
 				var movement_allowance := active_character.maximum_movement if combat.active_turn == null else active_character.movement

@@ -285,7 +285,7 @@ func _monster_area_candidate_centers(state: GameState, content: RealmzContent, m
 			for offset: Vector2i in offsets:
 				unique[target_cell - offset] = true
 	var map := content.world.map_by_id(state.combat.battlefield.map_id)
-	var terrain_set := content.world.battle_terrain_set_by_id(map.battle_terrain_set_id) if map != null else null
+	var terrain_set := content.world.battle_terrain_set_for_map(map, state.world) if map != null else null
 	if terrain_set == null:
 		return []
 	var result: Array[Vector2i] = []
@@ -776,7 +776,7 @@ func _area_candidate_centers(state: GameState, content: RealmzContent, actor: Ch
 			for offset: Vector2i in offsets:
 				unique[target_cell - offset] = true
 	var map := content.world.map_by_id(state.combat.battlefield.map_id)
-	var terrain_set := content.world.battle_terrain_set_by_id(map.battle_terrain_set_id) if map != null else null
+	var terrain_set := content.world.battle_terrain_set_for_map(map, state.world) if map != null else null
 	if terrain_set == null:
 		return []
 	var result: Array[Vector2i] = []

@@ -705,7 +705,7 @@ func _combat_terrain_set() -> BattleTerrainSetDefinition:
 	if _game_state.combat == null or _game_state.combat.battlefield == null:
 		return null
 	var map := _content.world.map_by_id(_game_state.combat.battlefield.map_id)
-	return _content.world.battle_terrain_set_by_id(map.battle_terrain_set_id) if map != null else null
+	return _content.world.battle_terrain_set_for_map(map, _game_state.world) if map != null else null
 
 
 static func _combat_destination(value: Variant) -> Vector2i:

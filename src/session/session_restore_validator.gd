@@ -52,6 +52,10 @@ static func validate(content: RealmzContent, snapshot: SessionSnapshot) -> Sessi
 		return SessionRestoreResult.failed(&"invalid_game_state", "The saved acquired maps reference unavailable package content.")
 	if not _boat_overlays_are_valid(content, replacement_state):
 		return SessionRestoreResult.failed(&"invalid_game_state", "The saved boat overlays reference unavailable land cells.")
+	if replacement_state.has_saved_party_position():
+		var bookmark_map := content.world.map_by_id(replacement_state.saved_party_map_id)
+		if bookmark_map == null or bookmark_map.level_type != replacement_state.saved_party_level_type or bookmark_map.topology.cell_at(replacement_state.saved_party_coordinate) == null:
+			return SessionRestoreResult.failed(&"invalid_game_state", "The saved party-position bookmark references an unavailable map or cell.")
 	if not LifecyclePartyWorkflow.character_draft_is_valid(content, replacement_state, replacement_rules):
 		return SessionRestoreResult.failed(&"invalid_character_draft", "The saved character-creation draft is invalid for this campaign.")
 	var replacement_vm := ScenarioVm.new()
@@ -493,7 +497,7 @@ static func _valid_post_move_continuation(content: RealmzContent, state: GameSta
 		return false
 	var map := content.world.map_by_id(exploration.map_id)
 	var cell: MapCell = null if map == null else map.topology.cell_at(exploration.coordinate)
-	if cell == null or state.party.map_id != map.id or state.party.coordinate != exploration.coordinate or exploration.trigger_ids != ExplorationTimeWorkflow.selected_placed_trigger_ids(content, cell) or exploration.random_region_ids != cell.random_rect_ids():
+	if cell == null or state.party.map_id != map.id or state.party.coordinate != exploration.coordinate or exploration.trigger_ids != ExplorationTimeWorkflow.selected_placed_trigger_ids(content, cell) or exploration.random_region_ids != state.world.random_region_ids_at(map, exploration.coordinate):
 		return false
 	if exploration.random_region_index < -1 or exploration.random_region_index >= exploration.random_region_ids.size():
 		return false
@@ -525,7 +529,7 @@ static func _valid_post_time_continuation(content: RealmzContent, state: GameSta
 		return false
 	var map := content.world.map_by_id(exploration.map_id)
 	var cell: MapCell = null if map == null else map.topology.cell_at(exploration.coordinate)
-	if cell == null or state.party.map_id != map.id or state.party.coordinate != exploration.coordinate or exploration.random_region_ids != cell.random_rect_ids() or exploration.random_region_index < -1 or exploration.random_region_index >= exploration.random_region_ids.size() or exploration.direction.x < -1 or exploration.direction.x > 1 or exploration.direction.y < -1 or exploration.direction.y > 1:
+	if cell == null or state.party.map_id != map.id or state.party.coordinate != exploration.coordinate or exploration.random_region_ids != state.world.random_region_ids_at(map, exploration.coordinate) or exploration.random_region_index < -1 or exploration.random_region_index >= exploration.random_region_ids.size() or exploration.direction.x < -1 or exploration.direction.x > 1 or exploration.direction.y < -1 or exploration.direction.y > 1:
 		return false
 	if exploration.resume_kind in [&"completed", &"post-move", &"area-search-second", &"heal"] and exploration.direction != Vector2i.ZERO or exploration.resume_kind == &"move" and exploration.direction == Vector2i.ZERO:
 		return false
@@ -713,5 +717,5 @@ static func _valid_ready_post_move_continuation(content: RealmzContent, state: G
 	var cell: MapCell = null if map == null else map.topology.cell_at(exploration.coordinate)
 	return cell != null and state.party.map_id == map.id and state.party.coordinate == exploration.coordinate \
 		and exploration.trigger_ids == ExplorationTimeWorkflow.selected_placed_trigger_ids(content, cell) \
-		and exploration.random_region_ids == cell.random_rect_ids() \
+		and exploration.random_region_ids == state.world.random_region_ids_at(map, exploration.coordinate) \
 		and exploration.random_region_index == exploration.random_region_ids.size() - 1

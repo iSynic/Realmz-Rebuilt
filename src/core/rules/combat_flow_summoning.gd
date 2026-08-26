@@ -31,7 +31,7 @@ func probe_choice(state: GameState, content: RealmzContent, caster_id: String, s
 	if state.combat.monsters().size() >= MAX_MONSTERS:
 		return CombatSpellCastProbe.blocked(&"summon_capacity_reached", "The Classic battlefield already contains its maximum 100 monster instances.")
 	var map := content.world.map_by_id(state.combat.battlefield.map_id)
-	var terrain_set := content.world.battle_terrain_set_by_id(map.battle_terrain_set_id) if map != null else null
+	var terrain_set := content.world.battle_terrain_set_for_map(map, state.world) if map != null else null
 	if terrain_set == null or not state.combat.battlefield.has_actor(caster_id):
 		return CombatSpellCastProbe.blocked(&"summon_battlefield_unavailable", "The summon battlefield has no validated terrain or caster position.")
 	var maximum_range := absi(spell.range_min + spell.range_max * power_level)
@@ -55,7 +55,7 @@ func probe_coordinates(state: GameState, content: RealmzContent, caster_id: Stri
 		return CombatSpellCastProbe.blocked(&"too_many_summon_targets", "A summon spell may choose at most one space per power level without exceeding 100 monster instances.")
 	var seen: Dictionary = {}
 	var map := content.world.map_by_id(state.combat.battlefield.map_id)
-	var terrain_set := content.world.battle_terrain_set_by_id(map.battle_terrain_set_id) if map != null else null
+	var terrain_set := content.world.battle_terrain_set_for_map(map, state.world) if map != null else null
 	var maximum_range := absi(spell.range_min + spell.range_max * power_level)
 	var require_line_of_sight := spell.range_min + spell.range_max > 0
 	for coordinate: Vector2i in target_coordinates:
@@ -82,7 +82,7 @@ func cast_character_summon(state: GameState, content: RealmzContent, caster: Cha
 		return CombatFlowResult.succeeded([DomainEvent.new(&"combat_summon_denied", {"actorId": caster.id, "spellId": spell.id, "power": power_level, "reason": "no-eligible-classic-monster", "source": event_source})])
 	var battlefield := state.combat.battlefield
 	var map := content.world.map_by_id(battlefield.map_id)
-	var terrain_set := content.world.battle_terrain_set_by_id(map.battle_terrain_set_id) if map != null else null
+	var terrain_set := content.world.battle_terrain_set_for_map(map, state.world) if map != null else null
 	var planned_cells: Dictionary = {}
 	for coordinate: Vector2i in target_coordinates:
 		if not _rules.battlefield.monster_footprint_is_open(battlefield, terrain_set, coordinate, definition.size, planned_cells):
@@ -139,7 +139,7 @@ func cast_monster_summon(state: GameState, content: RealmzContent, caster: Monst
 		return CombatFlowResult.succeeded([DomainEvent.new(&"combat_summon_denied", {"actorId": caster.id, "spellId": spell.id, "power": power_level, "reason": "no-eligible-classic-monster", "source": "classic-monster"})])
 	var battlefield := state.combat.battlefield
 	var map := content.world.map_by_id(battlefield.map_id)
-	var terrain_set := content.world.battle_terrain_set_by_id(map.battle_terrain_set_id) if map != null else null
+	var terrain_set := content.world.battle_terrain_set_for_map(map, state.world) if map != null else null
 	var planned_cells: Dictionary = {}
 	for coordinate: Vector2i in target_coordinates:
 		if not _rules.battlefield.monster_footprint_is_open(battlefield, terrain_set, coordinate, definition.size, planned_cells):
@@ -183,7 +183,7 @@ func _automatic_coordinate(state: GameState, content: RealmzContent, caster_id: 
 	if not probe_choice(state, content, caster_id, spell, power_level).allowed:
 		return INVALID_COORDINATE
 	var map := content.world.map_by_id(state.combat.battlefield.map_id)
-	var terrain_set := content.world.battle_terrain_set_by_id(map.battle_terrain_set_id) if map != null else null
+	var terrain_set := content.world.battle_terrain_set_for_map(map, state.world) if map != null else null
 	var maximum_range := absi(spell.range_min + spell.range_max * power_level)
 	var require_line_of_sight := spell.range_min + spell.range_max > 0
 	var candidates: Array[Vector2i] = []

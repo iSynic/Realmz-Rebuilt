@@ -48,7 +48,7 @@ func start_battle(state: GameState, content: RealmzContent, battle: BattleDefini
 	var map := content.world.map_by_id(state.party.map_id)
 	if map == null or map.topology.width != 90 or map.topology.height != 90:
 		return CombatFlowResult.failed(&"invalid_battle_map", "Battle '%s' requires the party's validated 90 by 90 Classic map." % battle.id)
-	var terrain_set := content.world.battle_terrain_set_by_id(map.battle_terrain_set_id)
+	var terrain_set := content.world.battle_terrain_set_for_map(map, state.world)
 	if terrain_set == null:
 		return CombatFlowResult.failed(&"missing_battle_terrain", "Map '%s' has no validated Classic battle-terrain catalog." % map.id)
 	var initial_weapon_modes: Dictionary = {}

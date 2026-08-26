@@ -108,8 +108,9 @@ func _construct_program_instruction(instruction: Variant) -> Variant:
 		return null
 	var extra_code: Array[int] = []
 	if instruction["extraCode"] != null:
-		if not instruction["extraCode"] is Array or instruction["extraCode"].size() != 5:
-			_reject("Classic E-code must contain five integers.")
+		var expected_extra_count := 10 if normalized == 92 else 5
+		if not instruction["extraCode"] is Array or instruction["extraCode"].size() != expected_extra_count:
+			_reject("Classic opcode %d E-code must contain %d integers." % [normalized, expected_extra_count])
 			return null
 		for extra: Variant in instruction["extraCode"]:
 			if not _is_integer(extra):

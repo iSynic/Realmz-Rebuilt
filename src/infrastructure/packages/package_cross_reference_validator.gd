@@ -111,6 +111,10 @@ func _validate_scenario_references(scenario: ScenarioDefinition, message_ids: Di
 				72:
 					if not _validate_branch_destination(scenario, encounter_ids, complex_ids, program.id, 72, instruction.extra_code[3], instruction.extra_code[4]):
 						return false
+				78:
+					for target_id: int in [instruction.extra_code[3], instruction.extra_code[4]]:
+						if not _validate_branch_destination(scenario, encounter_ids, complex_ids, program.id, 78, instruction.extra_code[2], target_id):
+							return false
 				75:
 					if not _validate_branch_destination(scenario, encounter_ids, complex_ids, program.id, 75, instruction.extra_code[3], instruction.extra_code[4]):
 						return false
@@ -179,9 +183,20 @@ func _validate_player_map_opcode_references(scenario: ScenarioDefinition, world:
 		var program := scenario.program_by_id(program_id)
 		for index: int in range(program.instruction_count()):
 			var instruction: Variant = program.instruction_at(index)
-			if instruction is ClassicActionDefinition and instruction.opcode == 29 and world.player_map_by_classic_id(absi(instruction.operand_id)) == null:
-				_reject("Scenario program '%s' references unavailable player-map record %d." % [program.id, absi(instruction.operand_id)])
-				return false
+			if not instruction is ClassicActionDefinition:
+				continue
+			match instruction.opcode:
+				29:
+					if world.player_map_by_classic_id(absi(instruction.operand_id)) == null:
+						return _reject("Scenario program '%s' references unavailable player-map record %d." % [program.id, absi(instruction.operand_id)])
+				57:
+					if world.map_by_type_and_index(&"land", instruction.extra_code[2]) == null or world.battle_terrain_set_by_landlook(instruction.extra_code[0]) == null:
+						return _reject("Scenario program '%s' opcode 57 references an unavailable land level or landlook." % program.id)
+				92:
+					var map_type := &"dungeon" if instruction.extra_code[2] != 0 else &"land"
+					var map := world.map_by_type_and_index(map_type, instruction.extra_code[0])
+					if map == null or map.random_region_by_index(instruction.extra_code[1]) == null:
+						return _reject("Scenario program '%s' opcode 92 references an unavailable random rectangle." % program.id)
 	return true
 
 func _program_context(owner_kind: StringName) -> StringName:

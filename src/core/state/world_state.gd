@@ -11,6 +11,7 @@ var _trigger_chances: Dictionary = {}
 var _acquired_maps: Dictionary = {}
 var _random_regions: Dictionary = {}
 var _map_darkness: Dictionary = {}
+var _map_landlooks: Dictionary = {}
 var _location_notes: Dictionary = {}
 
 
@@ -153,7 +154,19 @@ func set_random_region(region: RandomRegionState) -> void:
 func random_region(region: RandomEncounterRegion) -> RandomRegionState:
 	if _random_regions.has(region.id):
 		return _random_regions[region.id] as RandomRegionState
-	return RandomRegionState.new(region.id, region.chance_ten_thousand, region.battle_minimum, region.battle_maximum, region.random_door_percents())
+	return RandomRegionState.new(region.id, region.chance_ten_thousand, region.battle_minimum, region.battle_maximum, region.random_door_percents(), region.bounds)
+
+
+func random_region_ids_at(map: MapDefinition, coordinate: Vector2i) -> Array[String]:
+	if map == null or map.topology.cell_at(coordinate) == null:
+		return []
+	var authored_ids := map.topology.cell_at(coordinate).random_rect_ids()
+	var result: Array[String] = []
+	for region: RandomEncounterRegion in map.random_regions():
+		var effective := random_region(region)
+		if effective.contains(region.bounds, coordinate) if effective.bounds_overridden else authored_ids.has(region.id):
+			result.append(region.id)
+	return result
 
 
 func set_map_darkness(map_id: String, dark: bool) -> void:
@@ -163,6 +176,15 @@ func set_map_darkness(map_id: String, dark: bool) -> void:
 
 func map_is_dark(map: MapDefinition) -> bool:
 	return false if map == null else bool(_map_darkness.get(map.id, map.dark))
+
+
+func set_map_landlook(map_id: String, landlook: int) -> void:
+	if not map_id.is_empty():
+		_map_landlooks[map_id] = landlook
+
+
+func map_landlook(map: MapDefinition) -> int:
+	return -1 if map == null else int(_map_landlooks.get(map.id, map.landlook))
 
 
 func mark_visited(map_id: String, coordinate: Vector2i) -> void:
@@ -208,6 +230,7 @@ func to_data() -> Dictionary:
 		"acquiredMaps": _sorted_keys(_acquired_maps),
 		"randomRegions": random_regions,
 		"mapDarkness": _sorted_dictionary(_map_darkness),
+		"mapLandlooks": _sorted_dictionary(_map_landlooks),
 		"locationNotes": location_notes_data,
 	}
 
@@ -263,6 +286,14 @@ static func from_data(data: Variant) -> WorldState:
 			if not key is String or key.is_empty() or not data["mapDarkness"][key] is bool:
 				return null
 			state._map_darkness[key] = data["mapDarkness"][key]
+	if data.has("mapLandlooks"):
+		if not data["mapLandlooks"] is Dictionary:
+			return null
+		for key: Variant in data["mapLandlooks"]:
+			var landlook := _signed_integer(data["mapLandlooks"][key])
+			if not key is String or key.is_empty() or landlook < -128 or landlook > 127:
+				return null
+			state._map_landlooks[key] = landlook
 	if data.has("locationNotes"):
 		if not data["locationNotes"] is Array:
 			return null
@@ -306,6 +337,14 @@ static func _cell_key(map_id: String, coordinate: Vector2i) -> String:
 
 
 static func _integer(value: Variant) -> int:
+	if value is int:
+		return value
+	if value is float and is_equal_approx(value, round(value)):
+		return int(value)
+	return -100_000
+
+
+static func _signed_integer(value: Variant) -> int:
 	if value is int:
 		return value
 	if value is float and is_equal_approx(value, round(value)):

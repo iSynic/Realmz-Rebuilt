@@ -13,7 +13,7 @@ func _init(content: RealmzContent, game_state: GameState, rng: RealmzRng) -> voi
 
 
 func opcode_ids() -> Array[int]:
-	return [7, 8, 24, 25, 42, 46, 58, 59, 64, 72, 77, 84, 85, 86, 98, 99]
+	return [7, 8, 24, 25, 42, 46, 58, 59, 64, 72, 77, 78, 84, 85, 86, 98, 99]
 
 
 func execute(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
@@ -44,6 +44,8 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 			return _branch_on_quest_range(action)
 		77:
 			return _branch_on_quest_value(action)
+		78:
+			return _branch_on_faced_tile_semantic(action)
 		85:
 			return _branch_to_random_destination(action)
 		86:
@@ -217,6 +219,39 @@ func _branch_on_quest_value(action: ClassicActionDefinition) -> ScenarioRuntimeO
 	if target_id == 0:
 		return ScenarioRuntimeOperationResult.completed(matched, [event])
 	var branch := _branch_target_mode(action.extra_code[2], target_id, action.gosub)
+	branch.events.append(event)
+	return branch
+
+
+func _branch_on_faced_tile_semantic(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
+	if action.extra_code.size() < 5 or action.extra_code[0] < 1 or action.extra_code[0] > 7 or action.extra_code[2] not in [0, 1, 2]:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_faced_tile_test", "Classic opcode 78 requires a faced-tile test and destination mode.")
+	var map := _content.world.map_by_id(_game_state.party.map_id)
+	if map == null:
+		return ScenarioRuntimeOperationResult.failed(&"unknown_map", "Classic opcode 78 requires the party's current map.")
+	var direction := _game_state.last_move_direction
+	if map.level_type == &"dungeon":
+		direction = _dungeon_heading_vector(_game_state.dungeon_heading)
+	elif direction == Vector2i.ZERO:
+		direction = Vector2i.UP
+	var faced_coordinate := _game_state.party.coordinate + direction
+	var cell := map.topology.effective_cell_at(faced_coordinate, _game_state.world)
+	if cell == null:
+		return ScenarioRuntimeOperationResult.failed(&"missing_faced_tile", "Classic opcode 78 faces outside the current map.")
+	var matched := false
+	match action.extra_code[0]:
+		1: matched = cell.is_shore
+		2: matched = cell.boat_requirement != 0
+		3: matched = cell.is_path
+		4: matched = cell.blocks_los
+		5: matched = cell.fly_float_required
+		6: matched = cell.is_forest
+		7: matched = cell.render_tile == action.extra_code[1]
+	var target_id := action.extra_code[4] if matched else action.extra_code[3]
+	var event := DomainEvent.new(&"faced_tile_semantic_checked", {"testKind": action.extra_code[0], "expectedTile": action.extra_code[1], "matched": matched, "targetMode": action.extra_code[2], "targetId": target_id, "x": faced_coordinate.x, "y": faced_coordinate.y, "source": "classic-opcode-78"})
+	if target_id == 0:
+		return ScenarioRuntimeOperationResult.completed(matched, [event])
+	var branch := _branch_to_destination(action.extra_code[2], target_id, action.gosub)
 	branch.events.append(event)
 	return branch
 

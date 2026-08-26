@@ -767,7 +767,7 @@ static func _build_map_view(context: SessionWorkflowContext, reusable_cells: Dic
 		var direction_name := MapTopology.direction_name(direction)
 		var probe := _probe_movement(context, direction)
 		movement_options[direction_name] = {"allowed": probe.allowed, "reason": String(probe.reason)}
-	return MapView.new(map.id, map.name, map.level_type, map.topology.width, map.topology.height, state.party.coordinate, cells, state.world.map_is_dark(map), state.world.visited_coordinates(map.id), movement_options, state.last_move_direction, map.landlook, state.dungeon_heading, state.dungeon_multiview, state.party.conditions.is_active(ConditionRules.PARTY_WIZARDS_EYE), map.base_scale, state.xy_display_hidden, state.compass_enabled)
+	return MapView.new(map.id, map.name, map.level_type, map.topology.width, map.topology.height, state.party.coordinate, cells, state.world.map_is_dark(map), state.world.visited_coordinates(map.id), movement_options, state.last_move_direction, state.world.map_landlook(map), state.dungeon_heading, state.dungeon_multiview, state.party.conditions.is_active(ConditionRules.PARTY_WIZARDS_EYE), map.base_scale, state.xy_display_hidden, state.compass_enabled)
 
 
 static func _build_player_map_view(context: SessionWorkflowContext, definition: PlayerMapDefinition) -> PlayerMapView:
@@ -811,7 +811,7 @@ static func _build_cell_view(context: SessionWorkflowContext, map: MapDefinition
 			feature_kinds.append(feature.kind)
 			feature_orientations[feature.kind] = feature.orientation
 	var can_enter := cell.passable and not hidden_secret
-	return MapCellView.new(cell.coordinate, context.state.world.terrain_for(map.id, cell), cell.render_tile, cell.tileset_id, can_enter, cell.blocks_los, is_visible, context.state.world.was_visited(map.id, cell.coordinate), not hidden_secret and not cell.trigger_ids().is_empty(), not cell.random_rect_ids().is_empty(), feature_kinds, feature_orientations, edge_kinds, edge_passability, cell.overlay_asset_id)
+	return MapCellView.new(cell.coordinate, context.state.world.terrain_for(map.id, cell), cell.render_tile, cell.tileset_id, can_enter, cell.blocks_los, is_visible, context.state.world.was_visited(map.id, cell.coordinate), not hidden_secret and not cell.trigger_ids().is_empty(), not context.state.world.random_region_ids_at(map, cell.coordinate).is_empty(), feature_kinds, feature_orientations, edge_kinds, edge_passability, cell.overlay_asset_id)
 
 
 static func _probe_movement(context: SessionWorkflowContext, direction: Vector2i) -> WorldMovementResult:

@@ -22,6 +22,9 @@ var dungeon_heading: int = 1
 var dungeon_multiview: bool = true
 var xy_display_hidden: bool = false
 var compass_enabled: bool = true
+var saved_party_map_id: String = ""
+var saved_party_coordinate: Vector2i = Vector2i(-1, -1)
+var saved_party_level_type: StringName = &""
 var active_shop_id: String = ""
 var _shop_accept_ranges: Array[int] = []
 var temple_available: bool = false
@@ -53,6 +56,19 @@ func _init(party_state: PartyState, realmz_clock: RealmzClock, world_state: Worl
 	party = party_state
 	clock = realmz_clock
 	world = world_state if world_state != null else WorldState.new()
+
+
+func save_party_position(map: MapDefinition) -> bool:
+	if map == null or map.id != party.map_id or map.topology.cell_at(party.coordinate) == null:
+		return false
+	saved_party_map_id = map.id
+	saved_party_coordinate = party.coordinate
+	saved_party_level_type = map.level_type
+	return true
+
+
+func has_saved_party_position() -> bool:
+	return not saved_party_map_id.is_empty() and saved_party_coordinate.x >= 0 and saved_party_coordinate.y >= 0 and saved_party_level_type in [&"land", &"dungeon"]
 
 
 func mark_searched(map_id: String, coordinate: Vector2i) -> void:
@@ -338,6 +354,9 @@ func restore_from_data(data: Dictionary) -> bool:
 	dungeon_multiview = loaded.dungeon_multiview
 	xy_display_hidden = loaded.xy_display_hidden
 	compass_enabled = loaded.compass_enabled
+	saved_party_map_id = loaded.saved_party_map_id
+	saved_party_coordinate = loaded.saved_party_coordinate
+	saved_party_level_type = loaded.saved_party_level_type
 	active_shop_id = loaded.active_shop_id
 	_shop_accept_ranges = loaded._shop_accept_ranges
 	temple_available = loaded.temple_available
@@ -408,6 +427,7 @@ func to_data() -> Dictionary:
 		"dungeonMultiview": dungeon_multiview,
 		"xyDisplayHidden": xy_display_hidden,
 		"compassEnabled": compass_enabled,
+		"partyPositionBookmark": null if not has_saved_party_position() else {"mapId": saved_party_map_id, "x": saved_party_coordinate.x, "y": saved_party_coordinate.y, "levelType": String(saved_party_level_type)},
 		"activeShopId": active_shop_id,
 		"shopAcceptRanges": _shop_accept_ranges.duplicate(),
 		"templeAvailable": temple_available,
@@ -580,6 +600,16 @@ static func _restore_location_settings(state: GameState, data: Dictionary) -> bo
 		if data.has(field) and not data[field] is bool: return false
 	state.xy_display_hidden = bool(data.get("xyDisplayHidden", false))
 	state.compass_enabled = bool(data.get("compassEnabled", true))
+	if data.has("partyPositionBookmark") and data["partyPositionBookmark"] != null:
+		var bookmark: Variant = data["partyPositionBookmark"]
+		if not bookmark is Dictionary or bookmark.size() != 4 or not bookmark.get("mapId") is String or bookmark["mapId"].is_empty() or bookmark.get("levelType") not in ["land", "dungeon"]:
+			return false
+		var bookmark_x := _signed_integer(bookmark.get("x")); var bookmark_y := _signed_integer(bookmark.get("y"))
+		if bookmark_x < 0 or bookmark_y < 0:
+			return false
+		state.saved_party_map_id = bookmark["mapId"]
+		state.saved_party_coordinate = Vector2i(bookmark_x, bookmark_y)
+		state.saved_party_level_type = StringName(bookmark["levelType"])
 	if data.has("activeShopId") or data.has("shopAcceptRanges"):
 		if not data.get("activeShopId") is String or not data.get("shopAcceptRanges") is Array: return false
 		var ranges: Array[int] = []
