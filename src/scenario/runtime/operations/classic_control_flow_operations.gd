@@ -13,7 +13,7 @@ func _init(content: RealmzContent, game_state: GameState, rng: RealmzRng) -> voi
 
 
 func opcode_ids() -> Array[int]:
-	return [7, 8, 24, 25, 42, 46, 58, 59, 64, 77, 84, 86, 98, 99]
+	return [7, 8, 24, 25, 42, 46, 58, 59, 64, 72, 77, 84, 85, 86, 98, 99]
 
 
 func execute(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
@@ -40,8 +40,12 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 			return _branch_on_faced_tile_source_defect(action, context)
 		64:
 			return _branch_on_game_time(action)
+		72:
+			return _branch_on_quest_range(action)
 		77:
 			return _branch_on_quest_value(action)
+		85:
+			return _branch_to_random_destination(action)
 		86:
 			return _branch_on_misc(action)
 		84, 98, 99:
@@ -159,6 +163,48 @@ func _branch_on_game_time(action: ClassicActionDefinition) -> ScenarioRuntimeOpe
 	return branch
 
 
+func _branch_on_quest_range(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
+	if action.extra_code.size() < 5:
+		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 72 requires a five-value Extra Code row.")
+	var first := action.extra_code[0]
+	var last := action.extra_code[1]
+	if first < 0 or first >= 100 or last < 0 or last >= 100:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_quest_range", "Classic opcode 72 references quests outside 0 through 99.")
+	var all_set := true
+	for quest_id: int in range(first, last + 1):
+		if not _game_state.quest_is_set(quest_id):
+			all_set = false
+	var event := DomainEvent.new(&"quest_range_branch_checked", {"firstQuestId": first, "lastQuestId": last, "allSet": all_set, "targetMode": action.extra_code[3], "targetId": action.extra_code[4], "source": "classic"})
+	if not all_set:
+		return ScenarioRuntimeOperationResult.completed(false, [event])
+	var branch := _branch_to_destination(action.extra_code[3], action.extra_code[4], action.gosub)
+	branch.events.append(event)
+	return branch
+
+
+func _branch_to_random_destination(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
+	if action.extra_code.size() < 5:
+		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 85 requires a five-value Extra Code row.")
+	var mode := action.extra_code[0]
+	var low_id := action.extra_code[1]
+	var high_id := action.extra_code[2]
+	if mode not in [0, 1, 2] or low_id < 0 or high_id < low_id:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_random_branch", "Classic opcode 85 requires a destination mode and an inclusive nonnegative range.")
+	var events: Array[DomainEvent] = []
+	if action.extra_code[3] != 0:
+		events.append(DomainEvent.new(&"sound_requested", {"soundId": absi(action.extra_code[3]), "waitForCompletion": action.extra_code[3] < 0, "source": "classic-opcode-85"}))
+	if action.extra_code[4] != 0:
+		var message := _content.message_by_id(absi(action.extra_code[4]))
+		if message == null:
+			return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic opcode 85 references unavailable message %d." % action.extra_code[4])
+		events.append(DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-opcode-85"}))
+	var target_id := _rng.draw_between(low_id, high_id, &"classic.opcode85.destination")
+	var branch := _branch_to_destination(mode, target_id, action.gosub)
+	branch.events.append_array(events)
+	branch.events.append(DomainEvent.new(&"random_destination_selected", {"mode": mode, "lowId": low_id, "highId": high_id, "targetId": target_id, "source": "classic-opcode-85"}))
+	return branch
+
+
 func _branch_on_quest_value(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
 	if action.extra_code.size() < 5:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 77 requires a five-value Extra Code row.")
@@ -254,6 +300,14 @@ func _branch_from_values(values: Array[int], gosub: bool, context: ScenarioExecu
 
 func _branch_target_mode(mode: int, target_id: int, gosub: bool) -> ScenarioRuntimeOperationResult:
 	return _branch_xap(target_id, gosub) if mode == 0 else ScenarioRuntimeOperationResult.failed(&"unsupported_branch_target", "Classic branch target mode %d is not available in this execution context." % mode)
+
+
+func _branch_to_destination(mode: int, target_id: int, gosub: bool) -> ScenarioRuntimeOperationResult:
+	match mode:
+		0: return _branch_xap(target_id, gosub)
+		1: return ScenarioRuntimeOperationResult.completed(true, [], ScenarioVmDirective.enter_encounter(&"simple", target_id, gosub))
+		2: return ScenarioRuntimeOperationResult.completed(true, [], ScenarioVmDirective.enter_encounter(&"complex", target_id, gosub))
+	return ScenarioRuntimeOperationResult.failed(&"unsupported_branch_target", "Classic branch target mode %d is unavailable." % mode)
 
 
 func _branch_encounter_result(mode: int, result_index: int, entry_cursor: int, gosub: bool, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:

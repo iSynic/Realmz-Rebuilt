@@ -154,6 +154,10 @@ func simple_encounter_by_id(encounter_id: int) -> SimpleEncounterDefinition:
 	return _content.simple_encounter_by_id(encounter_id)
 
 
+func request_classic_encounter(kind: StringName, encounter_id: int, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
+	return _encounter_operations.request_encounter(kind, encounter_id, false, request_id, context)
+
+
 func write_action_state(state_scope: String, owner_id: String, name: String, value: Variant) -> bool:
 	return _action_state.write(state_scope, owner_id, name, value)
 

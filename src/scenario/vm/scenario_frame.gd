@@ -3,6 +3,7 @@ extends RefCounted
 
 const PROGRAM: StringName = &"program"
 const ACTION: StringName = &"action"
+const ENCOUNTER: StringName = &"encounter"
 
 var kind: StringName
 var definition_id: String
@@ -99,7 +100,7 @@ static func from_data(data: Variant) -> ScenarioFrame:
 		if not data.has(field):
 			return null
 	var saved_cursor := _integer(data["cursor"])
-	if data["kind"] not in ["program", "action"] or not data["definitionId"] is String or data["definitionId"].is_empty() or saved_cursor < 0 or not data["returnTarget"] is String or not data["countsAsClassicCall"] is bool:
+	if data["kind"] not in ["program", "action", "encounter"] or not data["definitionId"] is String or data["definitionId"].is_empty() or saved_cursor < 0 or not data["returnTarget"] is String or not data["countsAsClassicCall"] is bool:
 		return null
 	if not data["parameters"] is Dictionary or not data["locals"] is Dictionary or not data["context"] is Dictionary or not data["iterators"] is Array:
 		return null

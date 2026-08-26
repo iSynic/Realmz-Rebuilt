@@ -5,10 +5,10 @@ Generated from `ClassicOpcodeCatalog` and the pinned application package. Do not
 ## Opcode denominator
 
 - Total identities: 130 (`0-127`, `-14`, and `-23`)
-- Executable: 109
+- Executable: 113
 - Source-reserved: 11
-- Behavior-bearing pending: 10
-- Pending identities: 44, 57, 67, 70, 72, 75, 78, 85, 92, 125
+- Behavior-bearing pending: 6
+- Pending identities: 44, 57, 70, 78, 92, 125
 
 An executable disposition proves an owned handler boundary, not complete branch, route, or ordinary-play certification. Pending identities remain rejected by package readiness; none are silent no-ops.
 

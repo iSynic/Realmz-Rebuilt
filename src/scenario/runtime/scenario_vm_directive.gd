@@ -6,6 +6,7 @@ const FINISH_TIMELINE: StringName = &"finish-timeline"
 const RESUME_AFTER_ENCOUNTER: StringName = &"resume-after-encounter"
 const BRANCH_XAP: StringName = &"branch-xap"
 const BRANCH_PROGRAM: StringName = &"branch-program"
+const ENTER_ENCOUNTER: StringName = &"enter-encounter"
 const BRANCH_ENCOUNTER_RESULT: StringName = &"branch-encounter-result"
 
 var kind: StringName
@@ -15,6 +16,7 @@ var program_id: String
 var entry_cursor: int = 0
 var context: ScenarioExecutionContext = ScenarioExecutionContext.empty()
 var repeat_encounter: bool
+var encounter_kind: StringName
 
 
 func _init(directive_kind: StringName) -> void:
@@ -53,6 +55,14 @@ static func branch_program_at(program: String, use_gosub: bool, frame_context: S
 	return directive
 
 
+static func enter_encounter(kind_value: StringName, encounter_id: int, use_gosub: bool) -> ScenarioVmDirective:
+	var directive := ScenarioVmDirective.new(ENTER_ENCOUNTER)
+	directive.encounter_kind = kind_value
+	directive.target_id = encounter_id
+	directive.gosub = use_gosub
+	return directive
+
+
 static func branch_encounter_result(program: String, use_gosub: bool, frame_context: ScenarioExecutionContext, repeat: bool) -> ScenarioVmDirective:
 	var directive := ScenarioVmDirective.new(BRANCH_ENCOUNTER_RESULT)
 	directive.program_id = program
@@ -77,6 +87,8 @@ func to_data() -> Dictionary:
 			if entry_cursor != 0:
 				data["entryCursor"] = entry_cursor
 			return data
+		ENTER_ENCOUNTER:
+			return {"kind": String(kind), "encounterKind": String(encounter_kind), "encounterId": target_id, "gosub": gosub}
 		BRANCH_ENCOUNTER_RESULT:
 			return {"kind": String(kind), "programId": program_id, "gosub": gosub, "context": context.to_data(), "repeatEncounter": repeat_encounter}
 	return {}
@@ -102,6 +114,12 @@ static func from_data(value: Variant) -> ScenarioVmDirective:
 				return null
 			var restored_context := ScenarioExecutionContext.from_data(value["context"])
 			return null if restored_context == null else branch_program_at(value["programId"], value["gosub"], restored_context, int(cursor_value))
+		ENTER_ENCOUNTER:
+			var encounter_kind_value: Variant = value.get("encounterKind")
+			var encounter_id_value: Variant = value.get("encounterId")
+			if value.size() != 4 or not encounter_kind_value is String or encounter_kind_value not in ["simple", "complex"] or not _whole_number(encounter_id_value) or encounter_id_value < 0 or not value.get("gosub") is bool:
+				return null
+			return enter_encounter(StringName(encounter_kind_value), int(encounter_id_value), value["gosub"])
 		BRANCH_ENCOUNTER_RESULT:
 			if value.size() != 5 or not value.get("programId") is String or value["programId"].is_empty() or not value.get("gosub") is bool or not value.get("context") is Dictionary or not value.get("repeatEncounter") is bool:
 				return null

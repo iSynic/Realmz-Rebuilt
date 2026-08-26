@@ -58,7 +58,7 @@ func _validate_monster_record_references(monsters: Array[MonsterDefinition], ite
 				return _reject("Monster '%s' random weapon table %d can produce unavailable weapon '%s'." % [monster.id, monster.random_weapon_table, random_weapon_id])
 	return true
 
-func _validate_scenario_references(scenario: ScenarioDefinition, message_ids: Dictionary, encounters: Array[SimpleEncounterDefinition], complex_encounters: Array[ComplexEncounterDefinition], thief_encounters: Array[ThiefEncounterDefinition]) -> bool:
+func _validate_scenario_references(scenario: ScenarioDefinition, message_ids: Dictionary, encounters: Array[SimpleEncounterDefinition], complex_encounters: Array[ComplexEncounterDefinition], thief_encounters: Array[ThiefEncounterDefinition], items: Array[ItemDefinition]) -> bool:
 	var encounter_ids: Dictionary = {}
 	for encounter: SimpleEncounterDefinition in encounters:
 		encounter_ids[encounter.id] = true
@@ -80,6 +80,9 @@ func _validate_scenario_references(scenario: ScenarioDefinition, message_ids: Di
 				return _reject("Complex Encounter %d references unavailable result program %d." % [encounter.id, outcome])
 		if encounter.thief and not thief_ids.has(encounter.thief_success):
 			return _reject("Complex Encounter %d references unavailable Thief Encounter %d." % [encounter.id, encounter.thief_success])
+	var classic_item_ids: Dictionary = {}
+	for item: ItemDefinition in items:
+		classic_item_ids[item.classic_id] = true
 	for program_id: String in scenario.program_ids():
 		var program := scenario.program_by_id(program_id)
 		for index: int in range(program.instruction_count()):
@@ -99,7 +102,47 @@ func _validate_scenario_references(scenario: ScenarioDefinition, message_ids: Di
 				39:
 					if scenario.program_by_id("xap:%d" % instruction.operand_id) == null:
 						return _reject("Scenario program '%s' references unavailable XAP %d." % [program.id, instruction.operand_id])
+				67:
+					if not classic_item_ids.has(instruction.extra_code[0]):
+						return _reject("Scenario program '%s' opcode 67 references unavailable Classic item %d." % [program.id, instruction.extra_code[0]])
+					for target_id: int in [instruction.extra_code[3], instruction.extra_code[4]]:
+						if not _validate_branch_destination(scenario, encounter_ids, complex_ids, program.id, 67, instruction.extra_code[1], target_id):
+							return false
+				72:
+					if not _validate_branch_destination(scenario, encounter_ids, complex_ids, program.id, 72, instruction.extra_code[3], instruction.extra_code[4]):
+						return false
+				75:
+					if not _validate_branch_destination(scenario, encounter_ids, complex_ids, program.id, 75, instruction.extra_code[3], instruction.extra_code[4]):
+						return false
+				85:
+					var mode: int = instruction.extra_code[0]
+					var low_id: int = instruction.extra_code[1]
+					var high_id: int = instruction.extra_code[2]
+					if mode not in [0, 1, 2] or low_id < 0 or high_id < low_id or high_id > 32_767:
+						return _reject("Scenario program '%s' opcode 85 has an invalid Classic destination range." % program.id)
+					if instruction.extra_code[4] != 0 and not message_ids.has(absi(instruction.extra_code[4])):
+						return _reject("Scenario program '%s' opcode 85 references unavailable message %d." % [program.id, instruction.extra_code[4]])
+					for target_id: int in range(low_id, high_id + 1):
+						if not _validate_branch_destination(scenario, encounter_ids, complex_ids, program.id, 85, mode, target_id):
+							return false
 	return true
+
+
+func _validate_branch_destination(scenario: ScenarioDefinition, encounter_ids: Dictionary, complex_ids: Dictionary, program_id: String, opcode: int, mode: int, target_id: int) -> bool:
+	match mode:
+		0:
+			if target_id == 0 or scenario.program_by_id("xap:%d" % target_id) != null:
+				return true
+			return _reject("Scenario program '%s' opcode %d references unavailable XAP %d." % [program_id, opcode, target_id])
+		1:
+			if encounter_ids.has(target_id):
+				return true
+			return _reject("Scenario program '%s' opcode %d references unavailable Simple Encounter %d." % [program_id, opcode, target_id])
+		2:
+			if complex_ids.has(target_id):
+				return true
+			return _reject("Scenario program '%s' opcode %d references unavailable Complex Encounter %d." % [program_id, opcode, target_id])
+	return _reject("Scenario program '%s' opcode %d has invalid destination mode %d." % [program_id, opcode, mode])
 
 
 func _validate_timed_encounter_references(scenario: ScenarioDefinition, encounters: Array[TimedEncounterDefinition]) -> bool:

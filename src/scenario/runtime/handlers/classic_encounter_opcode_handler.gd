@@ -19,27 +19,9 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 		3:
 			return _request_classic_choice(action, request_id)
 		4:
-			var encounter := _content.simple_encounter_by_id(action.operand_id)
-			if encounter == null:
-				return ScenarioRuntimeOperationResult.failed(&"unknown_encounter", "Classic opcode 4 references unavailable Simple Encounter %d." % action.operand_id)
-			var prompt := _content.message_by_id(absi(encounter.prompt_message_id))
-			if prompt == null:
-				return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Simple Encounter %d references unavailable prompt message %d." % [encounter.id, encounter.prompt_message_id])
-			var options: Array[Dictionary] = []
-			var option_indexes: Array[int] = []
-			var responses := encounter.responses()
-			for option_index: int in responses.size():
-				if _game_state.simple_option_is_eliminated(encounter.id, option_index):
-					continue
-				var response: SimpleEncounterResponse = responses[option_index]
-				options.append({"id": response.id, "label": response.label})
-				option_indexes.append(option_index)
-			if options.is_empty():
-				return ScenarioRuntimeOperationResult.failed(&"encounter_has_no_options", "Simple Encounter %d has no remaining responses." % encounter.id)
-			var request := InteractionRequest.from_payload(request_id, &"encounter_choice", {"encounterKind": "simple", "encounterId": encounter.id, "prompt": prompt.text, "options": options, "canBackOut": encounter.can_back_out})
-			return ScenarioRuntimeOperationResult.waiting(request, ScenarioRuntimeContinuation.encounter(ScenarioRuntimeContinuation.CLASSIC_SIMPLE_ENCOUNTER, encounter.id, action.gosub, option_indexes, _encounter_attempt(context, &"simple", encounter.id)))
+			return request_encounter(&"simple", action.operand_id, action.gosub, request_id, context)
 		5:
-			return _request_complex_encounter(action, request_id, context)
+			return _request_complex_encounter(action.operand_id, action.gosub, request_id, context)
 		34:
 			return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"encounter_loop_finished", {"source": "classic"})], ScenarioVmDirective.resume_after_encounter())
 		35:
@@ -54,14 +36,40 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 	return super.execute(action, request_id, context)
 
 
-func _request_complex_encounter(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
-	var encounter := _content.complex_encounter_by_id(action.operand_id)
+func request_encounter(kind: StringName, encounter_id: int, gosub: bool, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
+	if kind == &"complex":
+		return _request_complex_encounter(encounter_id, gosub, request_id, context)
+	if kind != &"simple":
+		return ScenarioRuntimeOperationResult.failed(&"unknown_encounter_kind", "Classic encounter kind '%s' is unavailable." % kind)
+	var encounter := _content.simple_encounter_by_id(encounter_id)
 	if encounter == null:
-		return ScenarioRuntimeOperationResult.failed(&"unknown_encounter", "Classic opcode 5 references unavailable Complex Encounter %d." % action.operand_id)
+		return ScenarioRuntimeOperationResult.failed(&"unknown_encounter", "Classic branch references unavailable Simple Encounter %d." % encounter_id)
+	var prompt := _content.message_by_id(absi(encounter.prompt_message_id))
+	if prompt == null:
+		return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Simple Encounter %d references unavailable prompt message %d." % [encounter.id, encounter.prompt_message_id])
+	var options: Array[Dictionary] = []
+	var option_indexes: Array[int] = []
+	var responses := encounter.responses()
+	for option_index: int in responses.size():
+		if _game_state.simple_option_is_eliminated(encounter.id, option_index):
+			continue
+		var response: SimpleEncounterResponse = responses[option_index]
+		options.append({"id": response.id, "label": response.label})
+		option_indexes.append(option_index)
+	if options.is_empty():
+		return ScenarioRuntimeOperationResult.failed(&"encounter_has_no_options", "Simple Encounter %d has no remaining responses." % encounter.id)
+	var request := InteractionRequest.from_payload(request_id, &"encounter_choice", {"encounterKind": "simple", "encounterId": encounter.id, "prompt": prompt.text, "options": options, "canBackOut": encounter.can_back_out})
+	return ScenarioRuntimeOperationResult.waiting(request, ScenarioRuntimeContinuation.encounter(ScenarioRuntimeContinuation.CLASSIC_SIMPLE_ENCOUNTER, encounter.id, gosub, option_indexes, _encounter_attempt(context, &"simple", encounter.id)))
+
+
+func _request_complex_encounter(encounter_id: int, gosub: bool, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
+	var encounter := _content.complex_encounter_by_id(encounter_id)
+	if encounter == null:
+		return ScenarioRuntimeOperationResult.failed(&"unknown_encounter", "Classic branch references unavailable Complex Encounter %d." % encounter_id)
 	var request := complex_encounter_request(encounter, request_id)
 	if request == null:
 		return ScenarioRuntimeOperationResult.failed(&"encounter_has_no_options", "Complex Encounter %d has no available responses." % encounter.id)
-	return ScenarioRuntimeOperationResult.waiting(request, ScenarioRuntimeContinuation.encounter(ScenarioRuntimeContinuation.CLASSIC_COMPLEX_ENCOUNTER, encounter.id, action.gosub, [], _encounter_attempt(context, &"complex", encounter.id)))
+	return ScenarioRuntimeOperationResult.waiting(request, ScenarioRuntimeContinuation.encounter(ScenarioRuntimeContinuation.CLASSIC_COMPLEX_ENCOUNTER, encounter.id, gosub, [], _encounter_attempt(context, &"complex", encounter.id)))
 
 
 static func _encounter_attempt(context: ScenarioExecutionContext, kind: StringName, encounter_id: int) -> int:

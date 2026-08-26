@@ -15,7 +15,7 @@ func _init(content: RealmzContent, game_state: GameState, rng: RealmzRng, rules:
 
 
 func opcode_ids() -> Array[int]:
-	return [-14, 14, 15, 16, 17, 18, 30, 31, 40, 43, 50, 52, 53, 55, 69, 74, 81, 82, 83, 87, 88, 89, 90, 102, 105, 108]
+	return [-14, 14, 15, 16, 17, 18, 30, 31, 40, 43, 50, 52, 53, 55, 69, 74, 75, 81, 82, 83, 87, 88, 89, 90, 102, 105, 108]
 
 
 func execute(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
@@ -46,6 +46,8 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 			return _set_spellcasting_flags(action)
 		74:
 			return _alter_selected_spell_points(action)
+		75:
+			return _branch_on_spell_points(action, context)
 		81:
 			return _branch_on_character_condition(action)
 		82, 83:
@@ -97,6 +99,29 @@ func _alter_selected_spell_points(action: ClassicActionDefinition) -> ScenarioRu
 	if message != null:
 		events.append(DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-opcode-74"}))
 	return ScenarioRuntimeOperationResult.completed(changes, events)
+
+
+func _branch_on_spell_points(action: ClassicActionDefinition, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
+	if action.extra_code.size() < 5:
+		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 75 requires a five-value Extra Code row.")
+	var candidates: Array[CharacterState] = []
+	match action.extra_code[0]:
+		1: candidates = _game_state.selected_characters()
+		2:
+			for character: CharacterState in _game_state.party.characters():
+				if character.current_health > 0 and not character.conditions.is_active(ConditionRules.ANIMATED):
+					candidates.append(character)
+		_:
+			return ScenarioRuntimeOperationResult.failed(&"invalid_spell_point_branch", "Classic opcode 75 selector must be picked or all eligible living characters.")
+	var matched := candidates.any(func(character: CharacterState) -> bool: return character.spell_points >= action.extra_code[1])
+	var event := DomainEvent.new(&"spell_point_branch_checked", {"selector": action.extra_code[0], "minimumSpellPoints": action.extra_code[1], "matched": matched, "characterIds": candidates.map(func(character: CharacterState) -> String: return character.id), "source": "classic"})
+	if not matched:
+		if action.extra_code[2] == 1:
+			return ScenarioRuntimeOperationResult.completed(false, [event, DomainEvent.new(&"action_point_kept", {"triggerId": context.trigger_id, "source": "classic-opcode-75"})], ScenarioVmDirective.finish_timeline())
+		return ScenarioRuntimeOperationResult.completed(false, [event])
+	var branch := _branch_to_destination(action.extra_code[3], action.extra_code[4], action.gosub)
+	branch.events.append(event)
+	return branch
 
 
 func _take_experience(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
@@ -532,6 +557,14 @@ func _branch_target_mode(mode: int, target_id: int, gosub: bool) -> ScenarioRunt
 	if mode == 0:
 		return _branch_xap(target_id, gosub)
 	return ScenarioRuntimeOperationResult.failed(&"unsupported_branch_target", "Classic branch target mode %d is not available in this execution context." % mode)
+
+
+func _branch_to_destination(mode: int, target_id: int, gosub: bool) -> ScenarioRuntimeOperationResult:
+	match mode:
+		0: return _branch_xap(target_id, gosub)
+		1: return ScenarioRuntimeOperationResult.completed(true, [], ScenarioVmDirective.enter_encounter(&"simple", target_id, gosub))
+		2: return ScenarioRuntimeOperationResult.completed(true, [], ScenarioVmDirective.enter_encounter(&"complex", target_id, gosub))
+	return ScenarioRuntimeOperationResult.failed(&"unsupported_branch_target", "Classic branch target mode %d is unavailable." % mode)
 
 
 func _branch_xap(target_id: int, gosub: bool) -> ScenarioRuntimeOperationResult:

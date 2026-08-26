@@ -13,7 +13,7 @@ func _init(content: RealmzContent, game_state: GameState, rules: RealmzRules) ->
 
 
 func opcode_ids() -> Array[int]:
-	return [21, 22, 33, 36, 38, 49, 51, 60, 91]
+	return [21, 22, 33, 36, 38, 49, 51, 60, 67, 91]
 
 
 func execute(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
@@ -34,6 +34,8 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 			return _mutate_shop(action)
 		60:
 			return _clear_character_money(action)
+		67:
+			return _branch_on_item_charges(action)
 		91:
 			return _drop_equipment()
 	return super.execute(action, request_id, context)
@@ -77,6 +79,24 @@ func _branch_on_item_result(action: ClassicActionDefinition) -> ScenarioRuntimeO
 	if test_mode not in [0, 1, 2]:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_item_branch", "Classic item result branch has an invalid test mode.")
 	return ScenarioRuntimeOperationResult.completed(false)
+
+
+func _branch_on_item_charges(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
+	if action.extra_code.size() < 5:
+		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 67 requires a five-value Extra Code row.")
+	var definition := _content.item_by_classic_id(action.extra_code[0])
+	var total_charges := 0
+	if definition != null:
+		for character: CharacterState in _game_state.party.characters():
+			for instance: ItemInstance in character.inventory():
+				if instance.definition_id == definition.id:
+					total_charges += instance.charges
+	var matched := total_charges >= action.extra_code[2]
+	var target_id := action.extra_code[3] if matched else action.extra_code[4]
+	var event := DomainEvent.new(&"item_charge_branch_checked", {"classicItemId": action.extra_code[0], "totalCharges": total_charges, "minimumCharges": action.extra_code[2], "matched": matched, "targetMode": action.extra_code[1], "targetId": target_id, "source": "classic"})
+	var branch := _branch_to_destination(action.extra_code[1], target_id, action.gosub)
+	branch.events.append(event)
+	return branch
 
 
 func _mutate_items(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
@@ -146,6 +166,14 @@ func _branch_target_mode(mode: int, target_id: int, gosub: bool) -> ScenarioRunt
 	if mode == 0:
 		return _branch_xap(target_id, gosub)
 	return ScenarioRuntimeOperationResult.failed(&"unsupported_branch_target", "Classic branch target mode %d is not available in this execution context." % mode)
+
+
+func _branch_to_destination(mode: int, target_id: int, gosub: bool) -> ScenarioRuntimeOperationResult:
+	match mode:
+		0: return _branch_xap(target_id, gosub)
+		1: return ScenarioRuntimeOperationResult.completed(true, [], ScenarioVmDirective.enter_encounter(&"simple", target_id, gosub))
+		2: return ScenarioRuntimeOperationResult.completed(true, [], ScenarioVmDirective.enter_encounter(&"complex", target_id, gosub))
+	return ScenarioRuntimeOperationResult.failed(&"unsupported_branch_target", "Classic branch target mode %d is unavailable." % mode)
 
 
 func _branch_xap(target_id: int, gosub: bool) -> ScenarioRuntimeOperationResult:
