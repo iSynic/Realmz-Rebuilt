@@ -15,7 +15,7 @@ func _init(content: RealmzContent, game_state: GameState, rng: RealmzRng, rules:
 
 
 func opcode_ids() -> Array[int]:
-	return [-14, 14, 15, 16, 17, 18, 30, 31, 40, 43, 50, 52, 69, 82, 83, 87, 88, 89, 90, 102, 105, 108]
+	return [-14, 14, 15, 16, 17, 18, 30, 31, 40, 43, 50, 52, 69, 74, 82, 83, 87, 88, 89, 90, 102, 105, 108]
 
 
 func execute(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
@@ -40,6 +40,8 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 			return _select_characters_by_misc(action)
 		69:
 			return _set_spellcasting_flags(action)
+		74:
+			return _alter_selected_spell_points(action)
 		82, 83:
 			_game_state.priest_turning_allowed = action.opcode == 83
 			var turning_message := "You regain your ability to turn undead and nether spawn." if _game_state.priest_turning_allowed else "You may not use your ability to turn undead or nether spawn."
@@ -64,6 +66,31 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 		108:
 			return _alter_selected_characters(action)
 	return super.execute(action, request_id, context)
+
+
+func _alter_selected_spell_points(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
+	if action.extra_code.size() < 5 or action.extra_code[0] == 0 or action.extra_code[2] < action.extra_code[1]:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_spell_point_effect", "Classic opcode 74 requires a nonzero roll count and valid five-value Extra Code range.")
+	var message := _content.message_by_id(action.extra_code[4]) if action.extra_code[4] != 0 else null
+	if action.extra_code[4] != 0 and message == null:
+		return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic opcode 74 references unavailable message %d." % action.extra_code[4])
+	var changes: Array[Dictionary] = []
+	for character: CharacterState in _game_state.selected_characters():
+		if character.maximum_spell_points == 0:
+			continue
+		var rolled := 0
+		for _roll: int in absi(action.extra_code[0]):
+			rolled = _rng.draw_between(action.extra_code[1], action.extra_code[2], &"classic.opcode74.spell-points")
+		var amount := -rolled if action.extra_code[0] < 0 else rolled
+		var previous := character.spell_points
+		character.spell_points = clampi(character.spell_points + amount, 0, character.maximum_spell_points)
+		changes.append({"characterId": character.id, "previous": previous, "current": character.spell_points, "amount": character.spell_points - previous})
+	var events: Array[DomainEvent] = [DomainEvent.new(&"spell_points_changed", {"changes": changes, "source": "classic-opcode-74"})]
+	if action.extra_code[3] != 0:
+		events.append(DomainEvent.new(&"sound_requested", {"soundId": absi(action.extra_code[1]), "waitForCompletion": action.extra_code[1] < 0, "source": "classic-opcode-74"}))
+	if message != null:
+		events.append(DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-opcode-74"}))
+	return ScenarioRuntimeOperationResult.completed(changes, events)
 
 
 func _take_experience(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
