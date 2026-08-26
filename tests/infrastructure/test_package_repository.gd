@@ -4,7 +4,7 @@ const FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-fi
 const TAMPERED_FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-tampered.realmz2"
 const CLASSIC_CHARACTER_LIBRARY_PATH: String = "res://src/infrastructure/characters/realmz-classic-character-library.realmz2"
 const CLASSIC_CHARACTER_LIBRARY_ID: String = "realmz-classic-character-library"
-const CLASSIC_CHARACTER_LIBRARY_HASH: String = "4b207f7d1882178d1d5b16c985adc1388cba176e155267cd9120dfab80753e4f"
+const CLASSIC_CHARACTER_LIBRARY_HASH: String = "6e3f23c9a452f70b25040c729e17533de5ddf0c420ff35484fc52f6e0dd25e68"
 const INSTALL_TEST_ROOT: String = "user://realmz2-tests/package-install-schema-v3"
 const SCHEMA_REJECTION_PATH: String = "user://realmz2-tests/realmz2-schema-v2.realmz2"
 
@@ -29,7 +29,7 @@ func run() -> void:
 		var world_opcode_scenario: Dictionary = scenario.duplicate(true); world_opcode_scenario["programs"].append({"id": "xap:9877", "ownerKind": "extra-action-point", "ownerId": "9877", "instructions": [{"kind": "classicAction", "slot": 0, "rawOpcode": 92, "opcode": 92, "id": 0, "gosub": false, "extraCode": [0, 1, 0, -500, -1, 0, 0, 0, 0, 0]}]}); var world_opcode_content := PackageDomainAssembler.new().assemble(manifest, malformed_content, world, world_opcode_scenario, loaded.media.assets()); assert_true(world_opcode_content != null and world_opcode_content.scenario.program_by_id("xap:9877").instruction_at(0).extra_code.size() == 10, "strict package assembly preserves opcode 92's consecutive second Extra Code row")
 	fixture_archive.close(); var repeated_external_load := repository.load_package(FIXTURE_PATH); assert_true(repeated_external_load.is_ok(), "an unchanged external package can be validated repeatedly"); assert_true(repeated_external_load != loaded, "external package validation never inherits trusted cache status")
 	assert_equal(loaded.content.campaign_id, "realmz2-synthetic-fixture", "manifest campaign identity becomes typed content")
-	assert_equal(loaded.content.package_hash, "22212d4f53fcc02393b21895435fc4ea0e422827376adebf06cf6bc8cf294f35", "package identity is retained")
+	assert_equal(loaded.content.package_hash, "eb2a9249c532106aa5bfabcec7976b03ae94a7d8f9a237b44bfb27eda6a9fbfd", "package identity is retained")
 	assert_equal(loaded.content.campaign_definition().title, "Realmz2 Synthetic Fixture", "campaign title metadata becomes a typed display contract")
 	assert_equal(loaded.content.campaign_definition().version, "", "campaign version metadata preserves an authored empty value")
 	assert_equal(loaded.content.campaign_definition().restrictions.maximum_party_size, 6, "campaign party-size restrictions are typed")
@@ -133,7 +133,7 @@ func run() -> void:
 	assert_not_null(loaded.media.asset_by_resource("cicn", 692), "the alternate Castle facing resolves through the authored base cicn plus 308")
 	assert_equal(loaded.content.monster_by_id("classic.monster.1").starting_conditions()[ConditionRules.REFLECTING_SPELLS], -1, "all forty authored monster starting conditions cross the validating package boundary")
 	assert_equal(loaded.content.battle_by_id("classic.battle.0").monster_slots()[0].monster_id, "classic.monster.1", "battle placements reference stable monster IDs")
-	assert_equal(loaded.content.shop_by_id("classic.shop.0").quantity(0), 2, "shop stock compiles to stable item references and quantities")
+	assert_equal([loaded.content.shop_by_id("classic.shop.0").quantity(0), loaded.content.shop_by_id("classic.shop.0").stock_slot(0)], [2, 817], "shop stock compiles to stable item references, quantities, and sparse native slots")
 	assert_equal(loaded.content.treasure_by_id("classic.treasure.0").item_ids()[0], "classic.item.901", "treasures use the same item identity as inventory")
 	assert_equal(loaded.content.spell_by_id("classic.spell.5101").damage_max, 4, "custom spells use packed Realmz class/level/slot identity")
 	assert_not_null(loaded.content.spell_by_id("classic.spell.1101"), "Providence compiles standard Data S spells into normalized runtime definitions")

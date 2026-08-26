@@ -46,6 +46,7 @@ var _eliminated_complex_results: Dictionary = {}
 var _shop_overrides: Dictionary = {}
 var _shop_inflation_overrides: Dictionary = {}
 var _shop_buyback_overrides: Dictionary = {}
+var _shop_buyback_slots: Dictionary = {}
 var _encounter_attempts: Dictionary = {}
 var _thief_encounter_type_flags: Dictionary = {}
 var _scenario_program_overrides: Dictionary = {}
@@ -252,18 +253,26 @@ func shop_buyback_quantity(shop_id: String, item_id: String) -> int:
 	return int(shop_items.get(item_id, 0)) if shop_items is Dictionary else 0
 
 
-func set_shop_buyback_quantity(shop_id: String, item_id: String, quantity: int) -> bool:
+func set_shop_buyback_quantity(shop_id: String, item_id: String, quantity: int, slot: int = -1) -> bool:
 	if shop_id.is_empty() or item_id.is_empty() or quantity < 0 or quantity > 32_767:
 		return false
 	var shop_items: Dictionary = (_shop_buyback_overrides.get(shop_id, {}) as Dictionary).duplicate()
+	var shop_slots: Dictionary = (_shop_buyback_slots.get(shop_id, {}) as Dictionary).duplicate()
 	if quantity == 0:
 		shop_items.erase(item_id)
+		shop_slots.erase(item_id)
 	else:
+		var retained_slot := slot if slot >= 0 else int(shop_slots.get(item_id, -1))
+		if retained_slot < 0 or retained_slot > 999:
+			return false
 		shop_items[item_id] = quantity
+		shop_slots[item_id] = retained_slot
 	if shop_items.is_empty():
 		_shop_buyback_overrides.erase(shop_id)
+		_shop_buyback_slots.erase(shop_id)
 	else:
 		_shop_buyback_overrides[shop_id] = shop_items
+		_shop_buyback_slots[shop_id] = shop_slots
 	return true
 
 
@@ -272,8 +281,17 @@ func shop_buyback_items(shop_id: String) -> Dictionary:
 	return items.duplicate() if items is Dictionary else {}
 
 
+func shop_buyback_slot(shop_id: String, item_id: String) -> int:
+	var slots: Variant = _shop_buyback_slots.get(shop_id, {})
+	return int(slots.get(item_id, -1)) if slots is Dictionary else -1
+
+
 func shop_buyback_overrides() -> Dictionary:
 	return _sorted_nested_dictionary(_shop_buyback_overrides)
+
+
+func shop_buyback_slot_overrides() -> Dictionary:
+	return _sorted_nested_dictionary(_shop_buyback_slots)
 
 
 func shop_inflation(shop: ShopDefinition) -> int:
@@ -390,6 +408,7 @@ func restore_from_data(data: Dictionary) -> bool:
 	_shop_overrides = loaded._shop_overrides
 	_shop_inflation_overrides = loaded._shop_inflation_overrides
 	_shop_buyback_overrides = loaded._shop_buyback_overrides
+	_shop_buyback_slots = loaded._shop_buyback_slots
 	_encounter_attempts = loaded._encounter_attempts
 	_thief_encounter_type_flags = loaded._thief_encounter_type_flags
 	_scenario_program_overrides = loaded._scenario_program_overrides
@@ -461,6 +480,7 @@ func to_data() -> Dictionary:
 		"shopOverrides": _sorted_dictionary(_shop_overrides),
 		"shopInflationOverrides": _sorted_dictionary(_shop_inflation_overrides),
 		"shopBuybackOverrides": _sorted_nested_dictionary(_shop_buyback_overrides),
+		"shopBuybackSlots": _sorted_nested_dictionary(_shop_buyback_slots),
 		"encounterAttempts": _sorted_dictionary(_encounter_attempts),
 		"thiefEncounterTypeFlags": _sorted_dictionary(_thief_encounter_type_flags),
 		"scenarioProgramOverrides": _sorted_dictionary(_scenario_program_overrides),
@@ -682,13 +702,17 @@ static func _restore_override_collections(state: GameState, data: Dictionary) ->
 		if not key is String or key.is_empty() or inflation < 0 or inflation > 32_767: return false
 		state._shop_inflation_overrides[key] = inflation
 	if data.has("shopBuybackOverrides"):
-		if not data["shopBuybackOverrides"] is Dictionary: return false
+		if not data["shopBuybackOverrides"] is Dictionary or not data.get("shopBuybackSlots") is Dictionary: return false
 		for shop_id: Variant in data["shopBuybackOverrides"]:
 			var items: Variant = data["shopBuybackOverrides"][shop_id]
-			if not shop_id is String or shop_id.is_empty() or not items is Dictionary: return false
+			var slots: Variant = data["shopBuybackSlots"].get(shop_id)
+			if not shop_id is String or shop_id.is_empty() or not items is Dictionary or not slots is Dictionary or items.size() != slots.size(): return false
 			for item_id: Variant in items:
 				var quantity := _integer(items[item_id])
-				if not item_id is String or item_id.is_empty() or quantity < 1 or quantity > 32_767 or not state.set_shop_buyback_quantity(shop_id, item_id, quantity): return false
+				var slot := _integer(slots.get(item_id))
+				if not item_id is String or item_id.is_empty() or not slots.has(item_id) or quantity < 1 or quantity > 32_767 or slot < 0 or slot > 999 or not state.set_shop_buyback_quantity(shop_id, item_id, quantity, slot): return false
+		if data["shopBuybackOverrides"].size() != data["shopBuybackSlots"].size(): return false
+	elif data.has("shopBuybackSlots") and (not data["shopBuybackSlots"] is Dictionary or not data["shopBuybackSlots"].is_empty()): return false
 	return true
 
 

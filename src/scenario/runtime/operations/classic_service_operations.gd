@@ -89,21 +89,21 @@ func shop_request(shop: ShopDefinition, request_id: String, accept_ranges: Array
 	var item_ids := shop.item_ids()
 	for index: int in item_ids.size():
 		var item := _content.item_by_id(item_ids[index])
-		if item != null:
-			stock.append(_shop_stock_view(item, "base:%d" % index, index, _game_state.shop_quantity(shop, index), shop))
+		var quantity := _game_state.shop_quantity(shop, index)
+		if item != null and quantity > 0:
+			var slot := shop.stock_slot(index)
+			stock.append(_shop_stock_view(item, "base:%d" % slot, slot, quantity, shop))
 	var buyback_items := _game_state.shop_buyback_items(shop.id)
 	var buyback_ids: Array = buyback_items.keys()
 	buyback_ids.sort_custom(func(left: Variant, right: Variant) -> bool:
-		var left_item := _content.item_by_id(String(left))
-		var right_item := _content.item_by_id(String(right))
-		return left_item != null and right_item != null and left_item.classic_id < right_item.classic_id
+		return _game_state.shop_buyback_slot(shop.id, String(left)) < _game_state.shop_buyback_slot(shop.id, String(right))
 	)
 	for item_id: Variant in buyback_ids:
-		if item_ids.has(String(item_id)):
-			continue
 		var item := _content.item_by_id(String(item_id))
 		if item != null:
-			stock.append(_shop_stock_view(item, "buyback:%s" % item.id, -1, int(buyback_items[item_id]), shop))
+			var slot := _game_state.shop_buyback_slot(shop.id, item.id)
+			stock.append(_shop_stock_view(item, "buyback:%s" % item.id, slot, int(buyback_items[item_id]), shop))
+	stock.sort_custom(func(left: Dictionary, right: Dictionary) -> bool: return int(left["index"]) < int(right["index"]))
 	var party_gold := _rules.economy.available(_game_state.party, WealthState.Kind.GOLD)
 	for character: CharacterState in _game_state.party.characters():
 		var inventory: Array[Dictionary] = []
@@ -153,10 +153,10 @@ func shop_request(shop: ShopDefinition, request_id: String, accept_ranges: Array
 
 func resolve_shop_stock(shop: ShopDefinition, stock_key: String) -> ShopStockResolution:
 	if stock_key.begins_with("base:"):
-		var index_text := stock_key.trim_prefix("base:")
-		if not index_text.is_valid_int():
+		var slot_text := stock_key.trim_prefix("base:")
+		if not slot_text.is_valid_int():
 			return null
-		var index := index_text.to_int()
+		var index := shop.stock_index_at_slot(slot_text.to_int())
 		var item_ids := shop.item_ids()
 		if index < 0 or index >= item_ids.size():
 			return null
@@ -268,7 +268,7 @@ func _resume_shop(continuation: ScenarioRuntimeContinuation, response: Interacti
 				var stock_index := stock_entry.index
 				_game_state.set_shop_quantity(shop, stock_index, _game_state.shop_quantity(shop, stock_index) - 1)
 			else:
-				_game_state.set_shop_buyback_quantity(shop.id, item.id, stock_entry.quantity - 1)
+				_game_state.set_shop_buyback_quantity(shop.id, item.id, stock_entry.quantity - 1, _game_state.shop_buyback_slot(shop.id, item.id))
 			events.append(DomainEvent.new(&"shop_item_bought", {"shopId": shop.id, "itemId": item.id, "instanceId": instance.id, "characterId": character.id, "price": price}))
 		"sell":
 			if body.character_id.is_empty() or body.instance_id.is_empty():
@@ -296,11 +296,13 @@ func _resume_shop(continuation: ScenarioRuntimeContinuation, response: Interacti
 			if _rules.inventory.remove_item(character, instance.id, item) == null:
 				return ScenarioRuntimeOperationResult.failed(&"shop_sale_failed", "The selected item could not be removed.")
 			_game_state.party.pooled_wealth.gold += price
-			var base_index := shop.item_ids().find(item.id)
+			var base_index := _matching_base_stock_index(shop, item.id)
 			if base_index >= 0:
 				_game_state.set_shop_quantity(shop, base_index, _game_state.shop_quantity(shop, base_index) + 1)
 			else:
-				_game_state.set_shop_buyback_quantity(shop.id, item.id, _game_state.shop_buyback_quantity(shop.id, item.id) + 1)
+				var buyback_quantity := _game_state.shop_buyback_quantity(shop.id, item.id)
+				var slot := _game_state.shop_buyback_slot(shop.id, item.id) if buyback_quantity > 0 else _first_empty_shop_slot(shop, item.classic_id)
+				if slot >= 0: _game_state.set_shop_buyback_quantity(shop.id, item.id, buyback_quantity + 1, slot)
 			events.append(DomainEvent.new(&"shop_item_sold", {"shopId": shop.id, "itemId": item.id, "instanceId": instance.id, "characterId": character.id, "price": price}))
 		"identify":
 			if body.character_id.is_empty() or body.instance_id.is_empty():
@@ -584,6 +586,27 @@ func _shop_stock_view(item: ItemDefinition, stock_key: String, stock_index: int,
 		"iconResourceType": "cicn",
 		"iconId": item.visible_icon_id(true),
 	}
+
+
+func _matching_base_stock_index(shop: ShopDefinition, item_id: String) -> int:
+	var item_ids := shop.item_ids()
+	for index: int in item_ids.size():
+		if item_ids[index] == item_id and _game_state.shop_quantity(shop, index) > 0:
+			return index
+	return -1
+
+
+func _first_empty_shop_slot(shop: ShopDefinition, classic_item_id: int) -> int:
+	var start := (classic_item_id / 200) * 200
+	if start < 0 or start > 800:
+		return -1
+	var occupied: Dictionary = {}
+	for index: int in shop.item_ids().size():
+		if _game_state.shop_quantity(shop, index) > 0: occupied[shop.stock_slot(index)] = true
+	for item_id: Variant in _game_state.shop_buyback_items(shop.id): occupied[_game_state.shop_buyback_slot(shop.id, String(item_id))] = true
+	for slot: int in range(start, start + 200):
+		if not occupied.has(slot): return slot
+	return -1
 
 
 static func _shop_category(stock_index: int) -> StringName:

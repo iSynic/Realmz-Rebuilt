@@ -14,7 +14,7 @@ const HeldMovementControllerScript := preload("res://src/presentation/held_movem
 const DebugToolsHostScript := preload("res://src/app/debug_tools_host.gd")
 const CLASSIC_CHARACTER_LIBRARY_PATH := "res://src/infrastructure/characters/realmz-classic-character-library.realmz2"
 const CLASSIC_CHARACTER_LIBRARY_ID := "realmz-classic-character-library"
-const CLASSIC_CHARACTER_LIBRARY_HASH := "4b207f7d1882178d1d5b16c985adc1388cba176e155267cd9120dfab80753e4f"
+const CLASSIC_CHARACTER_LIBRARY_HASH := "6e3f23c9a452f70b25040c729e17533de5ddf0c420ff35484fc52f6e0dd25e68"
 
 @onready var _status_label: Label = $ClassicShell/BottomRegion/BottomRow/NarrativeWell/NarrativeColumn/Facts/Status
 @onready var _smoke_button: Button = $ClassicShell/SmokeAction

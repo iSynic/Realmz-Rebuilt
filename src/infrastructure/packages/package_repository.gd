@@ -2,7 +2,7 @@ class_name PackageRepository
 extends RefCounted
 
 const PackageDocumentCacheScript := preload("res://src/infrastructure/packages/package_document_cache.gd")
-const EXPECTED_SCHEMA_HASH: String = "40461fabc6c7024d25cbb158343cdcce3f0f53fa41a6d76b0771c19094209bdc"
+const EXPECTED_SCHEMA_HASH: String = "12376856235a11f507b993835acad87b546f87b9ad519533967ed2701ddb89cd"
 const DECODER_VERSION: int = 5
 const REQUIRED_DOCUMENTS: Array[String] = ["assets/index.json", "content.json", "scenario.json", "world.json"]
 const SUPPORTED_CAPABILITIES: Array[String] = [

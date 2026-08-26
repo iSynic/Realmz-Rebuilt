@@ -193,11 +193,18 @@ static func _shop_state_is_valid(content: RealmzContent, state: GameState) -> bo
 	if not state.active_shop_id.is_empty() and content.shop_by_id(state.active_shop_id) == null:
 		return false
 	for shop_id: Variant in state.shop_buyback_overrides():
-		if content.shop_by_id(String(shop_id)) == null:
+		var shop := content.shop_by_id(String(shop_id))
+		if shop == null:
 			return false
+		var occupied_slots: Dictionary = {}
+		for index: int in shop.item_ids().size():
+			if state.shop_quantity(shop, index) > 0: occupied_slots[shop.stock_slot(index)] = true
 		for item_id: Variant in state.shop_buyback_overrides()[shop_id]:
-			if content.item_by_id(String(item_id)) == null:
+			var item := content.item_by_id(String(item_id))
+			var slot := state.shop_buyback_slot(String(shop_id), String(item_id))
+			if item == null or slot < 0 or slot > 999 or slot / 200 != item.classic_id / 200 or occupied_slots.has(slot):
 				return false
+			occupied_slots[slot] = true
 	return true
 
 

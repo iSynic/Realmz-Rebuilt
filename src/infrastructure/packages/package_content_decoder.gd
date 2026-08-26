@@ -500,14 +500,16 @@ func _construct_shops(value: Variant) -> Variant:
 			return null
 		var item_ids: Array[String] = []
 		var quantities: Array[int] = []
+		var slots: Array[int] = []
 		for stock_value: Variant in record["stock"]:
-			if not stock_value is Dictionary or not _exact_fields(stock_value, ["itemId", "quantity"]) or not stock_value["itemId"] is String or stock_value["itemId"].is_empty() or not _is_integer(stock_value["quantity"]) or _integer(stock_value["quantity"]) < 0:
+			if not stock_value is Dictionary or not _exact_fields(stock_value, ["slot", "itemId", "quantity"]) or not _is_integer(stock_value["slot"]) or _integer(stock_value["slot"]) < 0 or _integer(stock_value["slot"]) > 999 or slots.has(_integer(stock_value["slot"])) or not stock_value["itemId"] is String or stock_value["itemId"].is_empty() or not _is_integer(stock_value["quantity"]) or _integer(stock_value["quantity"]) < 0:
 				_reject("Shop stock record is malformed.")
 				return null
+			slots.append(_integer(stock_value["slot"]))
 			item_ids.append(stock_value["itemId"])
 			quantities.append(_integer(stock_value["quantity"]))
 		var integers: Dictionary = integers_value
-		result.append(ShopDefinition.new(record["id"], integers["classicId"], item_ids, quantities, integers["inflationPercent"]))
+		result.append(ShopDefinition.new(record["id"], integers["classicId"], item_ids, quantities, integers["inflationPercent"], slots))
 	return result
 
 func _construct_simple_encounters(value: Variant) -> Variant:
