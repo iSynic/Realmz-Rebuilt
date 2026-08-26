@@ -6,7 +6,7 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| classic | 69 | 0 | 1 | 54 | 14 |
+| classic | 69 | 0 | 0 | 55 | 14 |
 | host | 8 | 1 | 0 | 5 | 2 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
@@ -15,7 +15,7 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 **Final Classic workflow closure** (`final-classic-workflow-closure`)
 
-Compiler, opcode, spell, application semantic-data, preferences, host settings, equipment, Shop, and the source-backed authored Journal are saturated. The remaining implementation target closes Quit persistence/failure handling; Journal and the accepted ordinary spell route remain certification targets without reopening completed behavior. Existing AOGM, War, and Lachis acceptance remains valid unless this owner directly invalidates it.
+Compiler, opcode, spell, application semantic-data, preferences, host settings, equipment, Shop, authored Journal, and Quit behavior are saturated. Every Classic workflow is functional or certified; the remaining targets seek ordinary-play certification without reopening completed behavior. Existing AOGM, War, and Lachis acceptance remains valid unless a later owner directly invalidates it.
 
 Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
 
@@ -23,15 +23,15 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | --- | --- | --- | --- |
 | `classic.spellcasting.field-camp-cast` | certification | broader-parity | aogm-ordinary |  |
 | `classic.maps.authored-journal` | certification | broader-parity | other-ordinary |  |
-| `classic.system.quit` | implementation | broader-parity | - | GAP-SYS-002 |
+| `classic.system.quit` | certification | broader-parity | other-ordinary |  |
 
 ### Batch count delta
 
 | Scope | State | Baseline | Current | Delta |
 | --- | --- | ---: | ---: | ---: |
 | classic | missing | 0 | 0 | 0 |
-| classic | partial | 6 | 1 | -5 |
-| classic | functional | 50 | 54 | +4 |
+| classic | partial | 6 | 0 | -6 |
+| classic | functional | 50 | 55 | +5 |
 | classic | certified | 13 | 14 | +1 |
 | host | missing | 1 | 1 | 0 |
 | host | partial | 0 | 0 | 0 |
@@ -52,7 +52,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Combat | 14 | 0 | 0 | 9 | 5 |
 | Rewards and progression | 5 | 0 | 0 | 4 | 1 |
 | Maps and journal | 3 | 0 | 0 | 3 | 0 |
-| Save and system | 5 | 0 | 1 | 4 | 0 |
+| Save and system | 5 | 0 | 0 | 5 | 0 |
 
 ## Completion axes
 
@@ -90,8 +90,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | ---: |
 | not-applicable | 5 |
 | absent | 0 |
-| partial | 1 |
-| verified | 63 |
+| partial | 0 |
+| verified | 64 |
 
 | presentation | Count |
 | --- | ---: |
@@ -174,7 +174,6 @@ Blockers: **1**. Major gaps: **0**.
 - `classic.maps.location-notes` - Castle's two dialog exit labels are not available in the pinned source, although both native exits are now proven to commit the current record.
 - `classic.maps.view-acquired` - Ordinary AOGM acquisition, interaction-boundary restore, reward completion, persistence, and Maps/Notes browsing are proven, but the acquired-map presentation has not been user-accepted.
 - `classic.startup.end-adventure` - Save-before-close ordering is characterized through the host transaction and repositories separately, but has no full composition-root failure-injection test.
-- `classic.system.quit` - Typed Quit choices and host transaction ordering are characterized, but the real window-close notification and save-repository failure path lack composition-root proof.
 
 ## Coverage caveats
 

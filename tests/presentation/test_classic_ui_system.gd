@@ -8,6 +8,9 @@ const HeldMovementControllerScript := preload("res://src/presentation/held_movem
 const FastSpellDockScript := preload("res://src/presentation/interaction_components/fast_spell_dock.gd"); const ScrollingTextInteractionScript := preload("res://src/presentation/interaction_components/scrolling_text_interaction.gd")
 const FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-fixture.realmz2"
 
+class RejectingSaveRepository extends SaveRepository:
+	func save(_campaign_id: String, _slot_id: String, _snapshot: SessionSnapshot) -> bool: last_error = "Injected repository failure."; return false
+
 
 func _fixture_request(id: String, kind: StringName, overrides: Dictionary = {}) -> InteractionRequest:
 	var payload := ClassicUiFixtureGallery.payload_for(kind)
@@ -834,27 +837,18 @@ func _test_lifecycle_interaction() -> void:
 	component.build(request)
 	var buttons := _buttons_in(component)
 	assert_equal(buttons.map(func(button: Button) -> String: return button.text), ["Save and return", "Return without saving", "Cancel"], "the dedicated presenter does not reinterpret lifecycle choices as scenario options"); assert_true(component.get_combined_minimum_size().y <= 170.0, "the complete Main Menu choice component fits inside its non-scrolling modal allocation")
-	assert_true(component.handle_back(), "Escape invokes the declared lifecycle Cancel action")
-	assert_equal(submitted, [{"action": "cancel"}], "Cancel emits one typed host response")
-	assert_equal(ApplicationLifecycleScript.response_action(request, InteractionPresenter.response_for(request, InteractionResponse.LifecycleBody.new(&"cancel"))), &"cancel", "the host accepts only an action declared by its request")
-	assert_equal(ApplicationLifecycleScript.response_action(request, InteractionResponse.from_data(request.request_id, request.kind, {"action": "invented"})), &"", "undeclared lifecycle actions fail explicitly")
-	assert_false(ApplicationLifecycleScript.allows_close(&"save-and-end", false), "a rejected save cannot close the active session")
-	assert_true(ApplicationLifecycleScript.allows_close(&"save-and-end", true), "a validated save permits the requested close")
-	assert_true(ApplicationLifecycleScript.allows_close(&"end-without-saving"), "explicit discard permits close without a repository write")
-	assert_false(ApplicationLifecycleScript.allows_close(&"cancel"), "Cancel never closes the active session")
+	assert_true(component.handle_back(), "Escape invokes the declared lifecycle Cancel action"); assert_equal(submitted, [{"action": "cancel"}], "Cancel emits one typed host response")
+	assert_equal(ApplicationLifecycleScript.response_action(request, InteractionPresenter.response_for(request, InteractionResponse.LifecycleBody.new(&"cancel"))), &"cancel", "the host accepts only an action declared by its request"); assert_equal(ApplicationLifecycleScript.response_action(request, InteractionResponse.from_data(request.request_id, request.kind, {"action": "invented"})), &"", "undeclared lifecycle actions fail explicitly")
+	assert_false(ApplicationLifecycleScript.allows_close(&"save-and-end", false), "a rejected save cannot close the active session"); assert_true(ApplicationLifecycleScript.allows_close(&"save-and-end", true), "a validated save permits the requested close")
+	assert_true(ApplicationLifecycleScript.allows_close(&"end-without-saving"), "explicit discard permits close without a repository write"); assert_false(ApplicationLifecycleScript.allows_close(&"cancel"), "Cancel never closes the active session")
 	var operation_order: Array[String] = []
 	var failed_save := ApplicationLifecycleScript.execute_end_adventure(&"save-and-end", func() -> bool: operation_order.append("save"); return false, func() -> SessionStep: operation_order.append("close"); return SessionStep.completed(1))
 	assert_equal([failed_save["state"], operation_order], [&"save-failed", ["save"]], "save failure suppresses close instead of tearing down the active session")
-	operation_order.clear()
-	var discarded := ApplicationLifecycleScript.execute_end_adventure(&"end-without-saving", func() -> bool: operation_order.append("save"); return true, func() -> SessionStep: operation_order.append("close"); return SessionStep.completed(2))
-	assert_equal([discarded["state"], operation_order], [&"closed", ["close"]], "explicit discard closes once without touching the save repository")
-	operation_order.clear()
-	var hook_request := InteractionRequest.acknowledge("fixture.end-hook", "The End Adventure hook runs.")
-	var pending := ApplicationLifecycleScript.execute_end_adventure(&"end-without-saving", func() -> bool: operation_order.append("save"); return true, func() -> SessionStep: operation_order.append("close"); return SessionStep.waiting(3, hook_request))
-	assert_equal([pending["state"], pending["step"].interaction.request_id, operation_order], [&"pending", hook_request.request_id, ["close"]], "the host releases its confirmation while the session owns a saveable End Adventure hook interaction")
-	operation_order.clear()
-	var cancelled := ApplicationLifecycleScript.execute_end_adventure(&"cancel", func() -> bool: operation_order.append("save"); return true, func() -> SessionStep: operation_order.append("close"); return SessionStep.completed(3))
-	assert_equal([cancelled["state"], operation_order], [&"cancelled", []], "Cancel invokes neither persistence nor session teardown")
+	operation_order.clear(); var discarded := ApplicationLifecycleScript.execute_end_adventure(&"end-without-saving", func() -> bool: operation_order.append("save"); return true, func() -> SessionStep: operation_order.append("close"); return SessionStep.completed(2))
+	assert_equal([discarded["state"], operation_order], [&"closed", ["close"]], "explicit discard closes once without touching the save repository"); operation_order.clear()
+	var hook_request := InteractionRequest.acknowledge("fixture.end-hook", "The End Adventure hook runs."); var pending := ApplicationLifecycleScript.execute_end_adventure(&"end-without-saving", func() -> bool: operation_order.append("save"); return true, func() -> SessionStep: operation_order.append("close"); return SessionStep.waiting(3, hook_request))
+	assert_equal([pending["state"], pending["step"].interaction.request_id, operation_order], [&"pending", hook_request.request_id, ["close"]], "the host releases its confirmation while the session owns a saveable End Adventure hook interaction"); operation_order.clear()
+	var cancelled := ApplicationLifecycleScript.execute_end_adventure(&"cancel", func() -> bool: operation_order.append("save"); return true, func() -> SessionStep: operation_order.append("close"); return SessionStep.completed(3)); assert_equal([cancelled["state"], operation_order], [&"cancelled", []], "Cancel invokes neither persistence nor session teardown")
 	component.free()
 	var combat_request := ApplicationLifecycleScript.end_adventure_request(true)
 	assert_equal(combat_request.body.to_data()["options"].size(), 2, "battle End Adventure never offers an invalid combat save")
@@ -879,6 +873,16 @@ func _test_lifecycle_interaction() -> void:
 	assert_false(combat_quit.body.to_data()["options"].any(func(option: Dictionary) -> bool: return StringName(option["action"]) == &"save-and-quit"), "battle Quit cannot save before termination")
 	var idle_quit := ApplicationLifecycleScript.quit_application_request(false, false); assert_equal(idle_quit.body.to_data()["options"].size(), 2, "Quit without an active session offers only quit and cancel"); assert_equal([RealmzApplication.interaction_response_owner(true, true), RealmzApplication.interaction_response_owner(false, true), RealmzApplication.interaction_response_owner(false, false)], [&"host", &"standalone-creator", &"session"], "a host Quit confirmation owns its response before standalone character creation or campaign-session interactions")
 	quit_component.free()
+
+
+func _test_application_quit_composition() -> void:
+	var quit_calls: Array[String] = []; var app := load("res://src/presentation/realmz_application.tscn").instantiate() as RealmzApplication; app.configure_lifecycle_host(SaveHostController.new(RejectingSaveRepository.new()), func() -> void: quit_calls.append("quit")); (Engine.get_main_loop() as SceneTree).root.add_child(app)
+	await (Engine.get_main_loop() as SceneTree).process_frame
+	var started := app.start_package(FIXTURE_PATH, 271); var shell := app.get_node("ClassicShell") as ClassicApplicationShell; var status := app.get_node("ClassicShell/BottomRegion/BottomRow/NarrativeWell/NarrativeColumn/Facts/Status") as Label; assert_true(started.state != SessionStep.State.FAILED, "the composition-root Quit proof starts the public synthetic package through the real application")
+	shell.quit_requested.emit(); var menu_actions := _direct_buttons_in(app.find_child("LifecycleActions", true, false)); assert_equal(menu_actions.map(func(button: Button) -> String: return button.text), ["Save and Quit", "Quit", "Cancel"], "the real System-menu signal reaches the typed field Quit transaction"); (menu_actions[0] as Button).pressed.emit(); shell.save_and_quit_requested.emit("quick")
+	assert_true(quit_calls.is_empty() and status.text.begins_with("Save failed"), "an injected repository failure keeps the real application open after Save and Quit")
+	app.notification(app.NOTIFICATION_WM_CLOSE_REQUEST); var close_actions := _direct_buttons_in(app.find_child("LifecycleActions", true, false)); assert_equal(close_actions.map(func(button: Button) -> String: return button.text), ["Save and Quit", "Quit", "Cancel"], "the window-close notification reaches the same typed field Quit transaction"); (close_actions[1] as Button).pressed.emit(); assert_equal(quit_calls, ["quit"], "window-close no-save acceptance invokes the configured host termination exactly once"); (app.get_node("InteractionPanel") as InteractionPresenter).present(null); await (Engine.get_main_loop() as SceneTree).process_frame; app.queue_free(); await (Engine.get_main_loop() as SceneTree).process_frame
+
 
 func _test_classic_choice_context() -> void:
 	var journal_request := InteractionRequest.from_payload("journal-text", InteractionRequest.ACKNOWLEDGE, {"prompt": "A source message", "journalEligible": true, "journalRecorded": false})

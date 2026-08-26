@@ -39,7 +39,7 @@ Own deterministic automated proofs, synthetic fixtures, oracle provenance, route
 ## Work Guidance
 
 - Split large suites by public workflow ownership, not by individual bugs or implementation helpers.
-- Every suite supports named focused cases through the shared test-case contract.
+- Every suite supports named focused cases through the shared test-case contract. The runner awaits selected cases and the scene-backed application composition proof so real readiness and teardown can settle without turning ordinary synchronous suites into separate probes.
 - Use fixture builders for repeated setup, but keep expected player-visible outcomes explicit at the owning public boundary.
 - Keep presentation tests centered on primary-workspace exclusivity, modal input ownership, responsive reachability, detached information safety, and required Classic stage/roster/command structure.
 - Keep local AOGM, War, and commercial-campaign routes outside version control; record only permitted evidence labels and durable conclusions.
@@ -47,7 +47,7 @@ Own deterministic automated proofs, synthetic fixtures, oracle provenance, route
 ## Verification
 
 - `godot --headless --path . --script res://tests/test_runner.gd` runs the complete typed suite.
-- `tools/run_tests.ps1 -Suite <fragment> -Case <fragment>` runs Tier 1 focused cases in one bounded Godot process and rejects unmatched filters, teardown leaks, and retained-resource warnings.
+- `tools/run_tests.ps1 -Suite <fragment> -Case <fragment>` runs Tier 1 focused cases in one bounded Godot process, awaits selected scene-backed cases, and rejects unmatched filters, teardown leaks, and retained-resource warnings.
 - `tools/verify_workflow.ps1` is the Tier 2 workflow gate. `tools/verify.ps1` is the Tier 3/CI authority.
 - Package tests verify strict schema-v3 decoding, deterministic package identity, Castle's empty fallback for a missing direct encounter-prompt record, preservation of its exact unmatchable `-32768` item-use restriction, receipt trust, bounded graph-cache lifetime, exact-bound parsed-document cache reuse/fallback, joined built-in loading, and explicit rejection of obsolete schemas.
 - Save tests verify strict save-v4 variants, transactional restore, backup recovery, package mismatch, and explicit rejection of save v1-v3.

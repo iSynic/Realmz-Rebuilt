@@ -44,13 +44,16 @@ var _character_creation_host: CharacterCreationHostController
 var _session_close_waits_for_playback: bool = false
 var _held_movement: HeldMovementControllerScript
 var _queued_combat_auto_changes: Dictionary = {}
-var _save_and_quit_pending: bool = false
+var _save_and_quit_pending: bool = false; var _quit_operation: Callable
 var _debug_tools: DebugToolsHost
+
+
+func configure_lifecycle_host(save_host: SaveHostController, quit_operation: Callable = Callable()) -> void: assert(not is_node_ready(), "Lifecycle host dependencies must be configured before the application enters the scene tree"); _save_host = save_host; _quit_operation = quit_operation
 
 
 func _ready() -> void:
 	get_tree().set_auto_accept_quit(false); UiInputActions.ensure_defaults()
-	_package_host = PackageHostControllerScript.new(); _save_host = SaveHostControllerScript.new()
+	_package_host = PackageHostControllerScript.new(); if _save_host == null: _save_host = SaveHostControllerScript.new()
 	_vault_host = CharacterVaultControllerScript.new(); _character_creation_host = CharacterCreationHostControllerScript.new()
 	settings_repository = SettingsRepositoryScript.new(); _presentation_settings = settings_repository.load_settings()
 	session_controller = GameSessionControllerScript.new(); presentation_coordinator = PresentationCoordinatorScript.new()
@@ -728,7 +731,8 @@ func _on_shell_route_changed(route_id: StringName) -> void:
 func _quit_application() -> void:
 	if _package_host != null:
 		_package_host.close()
-	get_tree().quit()
+	if _quit_operation.is_valid(): _quit_operation.call()
+	else: get_tree().quit()
 
 
 func _complete_closed_session() -> void:
