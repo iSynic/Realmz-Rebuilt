@@ -13,7 +13,7 @@ func _init(content: RealmzContent, game_state: GameState, rng: RealmzRng) -> voi
 
 
 func opcode_ids() -> Array[int]:
-	return [1, 9, 19, 26, 27, 28, 62, 96, 97]
+	return [1, 9, 19, 26, 27, 28, 62, 71, 93, 94, 96, 97]
 
 
 func execute(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
@@ -53,10 +53,25 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 				"text": scrolling_message.text,
 				"source": "classic",
 			})])
+		71:
+			_game_state.xy_display_hidden = action.operand_id != 0
+			return ScenarioRuntimeOperationResult.completed(_game_state.xy_display_hidden, [DomainEvent.new(&"coordinate_display_changed", {"hidden": _game_state.xy_display_hidden, "source": "classic"}), DomainEvent.new(&"map_redraw_requested", {"source": "classic-opcode-71"})])
+		93, 94:
+			return _set_compass_enabled(action.opcode == 93)
 		96, 97:
 			_game_state.dungeon_multiview = action.opcode == 97
 			return ScenarioRuntimeOperationResult.completed(_game_state.dungeon_multiview, [DomainEvent.new(&"dungeon_view_policy_changed", {"multiview": _game_state.dungeon_multiview, "source": "classic"})])
 	return super.execute(action, request_id, context)
+
+
+func _set_compass_enabled(enabled: bool) -> ScenarioRuntimeOperationResult:
+	var events: Array[DomainEvent] = []
+	if _game_state.compass_enabled == enabled:
+		events.append(DomainEvent.new(&"message_shown", {"messageId": 98 if enabled else 99, "text": "The compass is already enabled." if enabled else "The compass is already disabled.", "source": "classic-warning"}))
+	_game_state.compass_enabled = enabled
+	events.append(DomainEvent.new(&"compass_visibility_changed", {"enabled": enabled, "source": "classic"}))
+	events.append(DomainEvent.new(&"map_redraw_requested", {"source": "classic-compass"}))
+	return ScenarioRuntimeOperationResult.completed(enabled, events)
 
 
 func _show_message(action: ClassicActionDefinition, request_id: String) -> ScenarioRuntimeOperationResult:

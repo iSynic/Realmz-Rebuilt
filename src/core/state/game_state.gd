@@ -20,6 +20,8 @@ var spell_charging: bool = false
 var last_move_direction: Vector2i = Vector2i.ZERO
 var dungeon_heading: int = 1
 var dungeon_multiview: bool = true
+var xy_display_hidden: bool = false
+var compass_enabled: bool = true
 var active_shop_id: String = ""
 var _shop_accept_ranges: Array[int] = []
 var temple_available: bool = false
@@ -334,6 +336,8 @@ func restore_from_data(data: Dictionary) -> bool:
 	last_move_direction = loaded.last_move_direction
 	dungeon_heading = loaded.dungeon_heading
 	dungeon_multiview = loaded.dungeon_multiview
+	xy_display_hidden = loaded.xy_display_hidden
+	compass_enabled = loaded.compass_enabled
 	active_shop_id = loaded.active_shop_id
 	_shop_accept_ranges = loaded._shop_accept_ranges
 	temple_available = loaded.temple_available
@@ -402,6 +406,8 @@ func to_data() -> Dictionary:
 		"lastMoveY": last_move_direction.y,
 		"dungeonHeading": dungeon_heading,
 		"dungeonMultiview": dungeon_multiview,
+		"xyDisplayHidden": xy_display_hidden,
+		"compassEnabled": compass_enabled,
 		"activeShopId": active_shop_id,
 		"shopAcceptRanges": _shop_accept_ranges.duplicate(),
 		"templeAvailable": temple_available,
@@ -570,6 +576,10 @@ static func _restore_location_settings(state: GameState, data: Dictionary) -> bo
 	if data.has("dungeonMultiview"):
 		if not data["dungeonMultiview"] is bool: return false
 		state.dungeon_multiview = data["dungeonMultiview"]
+	for field: String in ["xyDisplayHidden", "compassEnabled"]:
+		if data.has(field) and not data[field] is bool: return false
+	state.xy_display_hidden = bool(data.get("xyDisplayHidden", false))
+	state.compass_enabled = bool(data.get("compassEnabled", true))
 	if data.has("activeShopId") or data.has("shopAcceptRanges"):
 		if not data.get("activeShopId") is String or not data.get("shopAcceptRanges") is Array: return false
 		var ranges: Array[int] = []

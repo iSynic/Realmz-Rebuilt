@@ -13,7 +13,7 @@ func _init(content: RealmzContent, game_state: GameState, rng: RealmzRng) -> voi
 
 
 func opcode_ids() -> Array[int]:
-	return [7, 8, 24, 25, 42, 46, 58, 64, 77, 84, 86, 98, 99]
+	return [7, 8, 24, 25, 42, 46, 58, 59, 64, 77, 84, 86, 98, 99]
 
 
 func execute(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
@@ -36,6 +36,8 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 			return _branch_on_quest(action, context)
 		58:
 			return _branch_on_difficulty(action, context)
+		59:
+			return _branch_on_faced_tile_source_defect(action, context)
 		64:
 			return _branch_on_game_time(action)
 		77:
@@ -88,6 +90,50 @@ func _branch_on_difficulty(action: ClassicActionDefinition, context: ScenarioExe
 		2:
 			return ScenarioRuntimeOperationResult.completed(true, [event, DomainEvent.new(&"action_point_kept", {"triggerId": context.trigger_id, "source": "classic-opcode-58"})], ScenarioVmDirective.finish_timeline())
 	return ScenarioRuntimeOperationResult.completed(true, [event])
+
+
+func _branch_on_faced_tile_source_defect(action: ClassicActionDefinition, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
+	if action.extra_code.size() < 5:
+		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 59 requires a five-value Extra Code row.")
+	var map := _content.world.map_by_id(_game_state.party.map_id)
+	if map == null:
+		return ScenarioRuntimeOperationResult.failed(&"unknown_map", "Classic opcode 59 requires the party's current map.")
+	var direction := _game_state.last_move_direction
+	if map.level_type == &"dungeon":
+		direction = _dungeon_heading_vector(_game_state.dungeon_heading)
+	elif direction == Vector2i.ZERO:
+		direction = Vector2i.UP
+	var faced_coordinate := _game_state.party.coordinate + direction
+	var cell := map.topology.effective_cell_at(faced_coordinate, _game_state.world)
+	if cell == null:
+		return ScenarioRuntimeOperationResult.failed(&"missing_faced_tile", "Classic opcode 59 faces outside the current map.")
+	var normalized_tile := cell.render_tile
+	for marker_band: int in 3:
+		if normalized_tile >= 1000:
+			normalized_tile -= 1000
+	var event := DomainEvent.new(&"faced_tile_branch_checked", {"expectedTile": action.extra_code[0], "normalizedTile": normalized_tile, "x": faced_coordinate.x, "y": faced_coordinate.y, "behavior": action.extra_code[1], "sourceDefect": "comparison-omitted", "source": "classic-opcode-59"})
+	# newland.c normalizes the faced tile through three marker bands but never
+	# compares it. Preserve that source defect: the authored behavior is unconditional.
+	match action.extra_code[1]:
+		-2:
+			if not context.trigger_id.is_empty():
+				_game_state.world.disable_trigger(context.trigger_id)
+			return ScenarioRuntimeOperationResult.completed(true, [event], ScenarioVmDirective.finish_timeline())
+		1:
+			var branch := _branch_from_values(action.extra_code, action.gosub, context)
+			branch.events.append(event)
+			return branch
+		2:
+			return ScenarioRuntimeOperationResult.completed(true, [event, DomainEvent.new(&"action_point_kept", {"triggerId": context.trigger_id, "source": "classic-opcode-59"})], ScenarioVmDirective.finish_timeline())
+	return ScenarioRuntimeOperationResult.completed(true, [event])
+
+
+static func _dungeon_heading_vector(heading: int) -> Vector2i:
+	match heading:
+		2: return Vector2i.RIGHT
+		3: return Vector2i.DOWN
+		4: return Vector2i.LEFT
+	return Vector2i.UP
 
 
 func _branch_on_quest(action: ClassicActionDefinition, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:

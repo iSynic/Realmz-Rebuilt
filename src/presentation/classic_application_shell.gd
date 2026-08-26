@@ -173,7 +173,7 @@ func present(game_view: GameView) -> void:
 		_latest_classic_text = ""
 	_clock_label.text = "Day %d • %02d:%02d" % [game_view.realmz_day, game_view.realmz_hour, game_view.realmz_minute]
 	_gold_label.text = "Gold %d" % game_view.pooled_gold
-	_coordinates_label.text = "%s • %d,%d" % [game_view.party_map_id, game_view.party_coordinate.x, game_view.party_coordinate.y]
+	_coordinates_label.text = location_fact_text(game_view)
 	_fatigue_label.text = "Fatigue %d" % game_view.party_fatigue
 	_fatigue_bar.value = game_view.party_fatigue
 	_fatigue_bar.tooltip_text = "Fatigue %d / 135" % game_view.party_fatigue
@@ -203,6 +203,16 @@ func present(game_view: GameView) -> void:
 		# availability facts. Recreating every bitmap button once per square was
 		# pure presentation churn and made held movement visibly stall.
 		_update_command_availability()
+
+
+static func location_fact_text(game_view: GameView) -> String:
+	if game_view == null or not game_view.session_started:
+		return "Map —"
+	var coordinates := "?,?" if game_view.map_view != null and game_view.map_view.coordinates_hidden else "%d,%d" % [game_view.party_coordinate.x, game_view.party_coordinate.y]
+	var compass := ""
+	if game_view.map_view != null and game_view.map_view.level_type == &"dungeon" and game_view.map_view.compass_enabled:
+		compass = " • Compass %s" % ["N", "E", "S", "W"][clampi(game_view.map_view.dungeon_heading, 1, 4) - 1]
+	return "%s • %s%s" % [game_view.party_map_id, coordinates, compass]
 
 
 func set_save_previews(previews: Array[SaveSlotPreview]) -> void:
