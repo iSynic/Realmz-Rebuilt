@@ -473,8 +473,7 @@ func _test_public_application_transitions(content: RealmzContent) -> void:
 
 
 func _test_public_character_checks(content: RealmzContent) -> void:
-	var first := CharacterState.new("ability.first", "First", 10, 10)
-	var second := CharacterState.new("ability.second", "Second", 10, 10)
+	var first := CharacterState.new("ability.first", "First", 10, 10); var second := CharacterState.new("ability.second", "Second", 10, 10)
 	first.set_ability_value(5, 40); second.set_ability_value(5, 5)
 	var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [first, second]), RealmzClock.new())
 	var rng := ScriptedRng.new([0, 13_107, 26_214, 1_311, 16_057, 30_802])
@@ -495,6 +494,7 @@ func _test_public_character_checks(content: RealmzContent) -> void:
 	var filtered := filter_api.execute_classic(ClassicActionDefinition.new(0, 30, 30, 0, false, [0, 0, 2, 1, 0]), "ability.filter")
 	assert_equal(filtered.value, [first.id, second.id, third.id], "opcode 30 evaluates the iterated characters through the public API")
 	state.set_selected_character_ids([first.id, second.id]); first.maximum_spell_points = 10; first.spell_points = 9; second.maximum_spell_points = 8; second.spell_points = 2; var spell_point_rng := ScriptedRng.new([0, 32_767, 16_384, 0, 0, 0]); var spell_point_api := RealmzRuntimeApi.new(content, state, spell_point_rng, ScenarioActionState.new()); var granted := spell_point_api.execute_classic(ClassicActionDefinition.new(0, 74, 74, 0, false, [2, 2, 4, 1, 0]), "spell-points.give"); var taken := spell_point_api.execute_classic(ClassicActionDefinition.new(0, 74, 74, 0, false, [-1, 1, 1, 0, 0]), "spell-points.take"); assert_equal([granted.state, first.spell_points, second.spell_points, taken.state, spell_point_rng.snapshot().draw_count, granted.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 2)], [ScenarioRuntimeOperationResult.State.COMPLETED, 9, 3, ScenarioRuntimeOperationResult.State.COMPLETED, 6, true], "opcode 74 rerolls per selected caster, applies only the final roll, clamps both bounds, preserves Castle's lower-bound sound identity, and consumes source-ordered RNG")
+	var castes := content.caste_definitions(); var fighter := castes.filter(func(caste: CasteDefinition) -> bool: return caste.classic_id == 1)[0] as CasteDefinition; var mage := castes.filter(func(caste: CasteDefinition) -> bool: return caste.classic_id == 6)[0] as CasteDefinition; first.caste_id = fighter.id; second.caste_id = mage.id; third.caste_id = mage.id; third.current_health = 0; var magical := api.execute_classic(ClassicActionDefinition.new(0, 53, 53, 0, false, [0, 2, 1, 0, 0]), "caste.magical"); var first_slot_check := api.execute_classic(ClassicActionDefinition.new(0, 55, 55, 0, true, [2, 1, 0, 12, 13]), "picked.first-slot"); state.set_selected_character_ids([first.id]); var cleared := api.execute_classic(ClassicActionDefinition.new(0, 53, 53, 0, false, [1, 0, 2, 0, 0]), "caste.preselected"); assert_equal([magical.value, first_slot_check.directive.target_id, first_slot_check.directive.gosub, cleared.value, state.selected_character_ids()], [[second.id], 13, true, [], []], "opcodes 53 and 55 preserve living caste groups, Castle's cleared mode-two source set and first-slot selector defect, while the documented failure branch remains usable")
 
 
 func _test_public_action_state(content: RealmzContent) -> void:

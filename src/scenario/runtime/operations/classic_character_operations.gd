@@ -15,7 +15,7 @@ func _init(content: RealmzContent, game_state: GameState, rng: RealmzRng, rules:
 
 
 func opcode_ids() -> Array[int]:
-	return [-14, 14, 15, 16, 17, 18, 30, 31, 40, 43, 50, 52, 69, 74, 82, 83, 87, 88, 89, 90, 102, 105, 108]
+	return [-14, 14, 15, 16, 17, 18, 30, 31, 40, 43, 50, 52, 53, 55, 69, 74, 82, 83, 87, 88, 89, 90, 102, 105, 108]
 
 
 func execute(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
@@ -38,6 +38,10 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 			return _select_characters_by_identity(action)
 		52:
 			return _select_characters_by_misc(action)
+		53:
+			return _select_characters_by_caste(action)
+		55:
+			return _branch_on_picked_characters(action)
 		69:
 			return _set_spellcasting_flags(action)
 		74:
@@ -306,6 +310,64 @@ func _select_characters_by_misc(action: ClassicActionDefinition) -> ScenarioRunt
 			selected.append(character.id)
 	_game_state.set_selected_character_ids(selected)
 	return ScenarioRuntimeOperationResult.completed(selected, [DomainEvent.new(&"characters_selected_by_rule", {"selector": selector, "value": value, "characterIds": selected})])
+
+
+func _select_characters_by_caste(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
+	if action.extra_code.size() < 3:
+		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 53 requires a five-value Extra Code row.")
+	var exact_caste := action.extra_code[0]
+	var caste_group := action.extra_code[1]
+	var source_mode := action.extra_code[2]
+	if caste_group < 0 or caste_group > 3 or source_mode < 0 or source_mode > 2:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_caste_selection", "Classic opcode 53 has an invalid caste group or source mode.")
+	var selected: Array[String] = []
+	if source_mode != 2:
+		for character: CharacterState in _game_state.party.characters():
+			if source_mode == 1 and character.current_health <= 0:
+				continue
+			var caste := _content.caste_by_id(character.caste_id)
+			if caste == null:
+				continue
+			var matches := caste.classic_id == exact_caste
+			if caste_group == 1:
+				matches = matches or caste.classic_id in [1, 3, 4]
+			elif caste_group == 2:
+				matches = matches or caste.classic_id in [3, 6, 7, 8]
+			elif caste_group == 3:
+				matches = matches or caste.classic_id in [2, 5]
+			if matches:
+				selected.append(character.id)
+	_game_state.set_selected_character_ids(selected)
+	return ScenarioRuntimeOperationResult.completed(selected, [DomainEvent.new(&"characters_selected_by_caste", {"exactCaste": exact_caste, "casteGroup": caste_group, "sourceMode": source_mode, "characterIds": selected, "source": "classic"})])
+
+
+func _branch_on_picked_characters(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
+	if action.extra_code.size() < 5:
+		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 55 requires a five-value Extra Code row.")
+	var selector := action.extra_code[0]
+	var failure_behavior := action.extra_code[1]
+	if failure_behavior < 0 or failure_behavior > 2:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_picked_branch", "Classic opcode 55 has an invalid failure behavior.")
+	var selected_ids := _game_state.selected_character_ids()
+	var matched := not selected_ids.is_empty() if selector == 0 else selected_ids.size() == absi(selector)
+	if selector >= 1 and selector <= 6:
+		var party := _game_state.party.characters()
+		matched = not party.is_empty() and selected_ids.has(party[0].id)
+	var event := DomainEvent.new(&"picked_characters_tested", {"selector": selector, "matched": matched, "characterIds": selected_ids, "failureBehavior": failure_behavior, "source": "classic"})
+	if matched:
+		var success := _branch_xap(action.extra_code[3], action.gosub)
+		success.events.append(event)
+		return success
+	if failure_behavior == 1:
+		var failure := _branch_xap(action.extra_code[4], action.gosub)
+		failure.events.append(event)
+		return failure
+	if failure_behavior == 2:
+		var message := _content.message_by_id(action.extra_code[4])
+		if message == null:
+			return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic opcode 55 references unavailable message %d." % action.extra_code[4])
+		return ScenarioRuntimeOperationResult.completed(false, [event, DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-picked-branch"})], ScenarioVmDirective.finish())
+	return ScenarioRuntimeOperationResult.completed(false, [event], ScenarioVmDirective.finish())
 
 
 func _set_spellcasting_flags(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
