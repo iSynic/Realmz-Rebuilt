@@ -2,6 +2,7 @@ class_name MapsJournalWorkspaceController
 extends RefCounted
 
 const PlayerMapCartographicStageType := preload("res://src/presentation/screens/player_map_cartographic_stage.gd")
+const ClassicMapPresenterType := preload("res://src/presentation/classic_map_presenter.gd")
 
 signal intent_submitted(intent: PlayerIntent)
 
@@ -18,6 +19,7 @@ const BOOK_MUTED_INK := Color("67553a")
 const BOOK_RED := Color("963c31")
 
 var _selected_player_map_id: String = ""
+var _selected_location_note_id: String = ""
 var _selected_journal_message_id: int = 0
 var _selected_campaign_id: String = ""
 var _selected_tab: int = 0
@@ -41,6 +43,7 @@ func present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog) 
 	if _selected_campaign_id != view.campaign_id:
 		_selected_campaign_id = view.campaign_id
 		_selected_player_map_id = ""
+		_selected_location_note_id = ""
 		_selected_journal_message_id = 0
 		_selected_tab = 0
 	_add_header(parent, view)
@@ -49,7 +52,7 @@ func present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog) 
 	tabs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	parent.add_child(tabs)
-	_build_places_tab(_tab(tabs, "Places"), view)
+	_build_places_tab(_tab(tabs, "Places"), view, media)
 	_build_maps_tab(_tab(tabs, "Maps"), view, media)
 	_build_journal_tab(_tab(tabs, "Journal"), view)
 	tabs.current_tab = mini(_selected_tab, tabs.get_tab_count() - 1)
@@ -71,7 +74,7 @@ func _add_header(parent: VBoxContainer, view: GameView) -> void:
 	row.add_child(facts)
 
 
-func _build_places_tab(parent: VBoxContainer, view: GameView) -> void:
+func _build_places_tab(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog) -> void:
 	var columns := _columns(parent, "LocationNotesWorkspace")
 	var saved := _pane(columns, "SavedLocationNotes", "Saved Places", 0.8)
 	_style_pane(saved, COOL_SURFACE, COOL_BORDER, 2)
@@ -85,11 +88,67 @@ func _build_places_tab(parent: VBoxContainer, view: GameView) -> void:
 	if view.location_notes.is_empty():
 		_add_empty_state(rows, "No saved places", "Write a note at the current location to create the first record.")
 	else:
+		var selected := _location_note(view, _selected_location_note_id)
+		if selected == null:
+			selected = view.location_notes.filter(func(note: LocationNoteView) -> bool: return note.current).front() if view.location_notes.any(func(note: LocationNoteView) -> bool: return note.current) else view.location_notes[0]
+			_selected_location_note_id = selected.id
 		for note: LocationNoteView in view.location_notes:
-			_add_card(rows, note.map_name, "%s  •  %d,%d%s" % [String(note.level_type).capitalize(), note.coordinate.x, note.coordinate.y, "  •  current" if note.current else ""], note.text)
-	var current := _pane(columns, "CurrentLocationNotePane", "Current Location", 1.25)
+			var open := Button.new()
+			open.name = "LocationNote_%d" % note.record_ordinal
+			open.text = "%s  •  %d,%d%s\n%s" % [note.map_name, note.coordinate.x, note.coordinate.y, "  •  current" if note.current else "", note.text]
+			open.alignment = HORIZONTAL_ALIGNMENT_LEFT
+			open.toggle_mode = true
+			open.button_pressed = note.id == _selected_location_note_id
+			open.set_meta("location_note_id", note.id)
+			open.pressed.connect(_select_location_note.bind(parent, view, media, note.id))
+			rows.add_child(open)
+	var current := _pane(columns, "CurrentLocationNotePane", "Selected Place & Current Note", 1.25)
 	_style_pane(current, Color("222829"), COOL_BORDER, 2)
+	var preview := VBoxContainer.new()
+	preview.name = "LocationNotePreviewBody"
+	preview.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	current.add_child(preview)
+	_render_location_note_preview(preview, _location_note(view, _selected_location_note_id), media)
+	current.add_child(HSeparator.new())
 	_render_location_note_editor(current, view)
+
+
+func _select_location_note(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog, note_id: String) -> void:
+	_selected_location_note_id = note_id
+	var rows := parent.find_child("SavedLocationNoteRows", true, false)
+	if rows != null:
+		for child: Node in rows.find_children("LocationNote_*", "Button", true, false):
+			(child as Button).button_pressed = String(child.get_meta("location_note_id", "")) == note_id
+	var preview := parent.find_child("LocationNotePreviewBody", true, false) as VBoxContainer
+	if preview != null:
+		_clear(preview)
+		_render_location_note_preview(preview, _location_note(view, note_id), media)
+
+
+func _render_location_note_preview(parent: VBoxContainer, note: LocationNoteView, media: ClassicMediaCatalog) -> void:
+	if note == null or note.preview_map == null:
+		_add_empty_state(parent, "No selected place", "Choose a saved note to recenter its detached map view.")
+		return
+	_add_label(parent, "%s  •  %s  •  %d,%d" % [note.map_name, String(note.level_type).capitalize(), note.coordinate.x, note.coordinate.y], CYAN, 14)
+	_add_label(parent, "Saved darkness mask %d of 6" % clampi(note.darkness_value, 0, 6) if note.darkness_value > 0 else "No saved darkness mask", MUTED, 12)
+	var presenter := ClassicMapPresenterType.new()
+	presenter.name = "HistoricalLocationMap"
+	presenter.custom_minimum_size = Vector2(0, 260)
+	presenter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	presenter.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	presenter.cell_size = 20.0
+	parent.add_child(presenter)
+	presenter.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	presenter.set_classic_exploration_visibility(false)
+	presenter.set_media_catalog(media)
+	presenter.present(GameView.new(0, true, null, note.map_id, note.coordinate, 0, 0, 0, note.preview_map))
+
+
+static func _location_note(view: GameView, note_id: String) -> LocationNoteView:
+	for note: LocationNoteView in view.location_notes:
+		if note.id == note_id:
+			return note
+	return null
 
 
 func _build_maps_tab(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog) -> void:

@@ -2,6 +2,7 @@ class_name SessionViewProjector
 extends RefCounted
 
 const MAP_VIEW_RADIUS: int = 12
+const LOCATION_NOTE_VIEW_SIZE: Vector2i = Vector2i(15, 13)
 const ViewDomainRevisionsScript := preload("res://src/core/session/view_domain_revisions.gd")
 
 var _cached_map_revision: int = -1
@@ -241,7 +242,7 @@ static func _populate_movement_map_views(context: SessionWorkflowContext, result
 	for note: LocationNoteState in state.world.location_notes_for_kind(current_map.level_type):
 		var note_map := content.world.map_by_id(note.map_id)
 		if note_map != null:
-			result.location_notes.append(LocationNoteView.new(note.map_id, note_map.name, note_map.level_type, note_map.level_index, note.coordinate, note.text, note.darkness_value, note.record_ordinal, note.map_id == state.party.map_id and note.coordinate == state.party.coordinate))
+			result.location_notes.append(LocationNoteView.new(note.map_id, note_map.name, note_map.level_type, note_map.level_index, note.coordinate, note.text, note.darkness_value, note.record_ordinal, note.map_id == state.party.map_id and note.coordinate == state.party.coordinate, _build_location_note_map_view(context, note_map, note)))
 
 
 static func _populate_ordinary_movement_map_views(context: SessionWorkflowContext, result: GameView, previous: GameView) -> void:
@@ -262,7 +263,7 @@ static func _populate_ordinary_movement_map_views(context: SessionWorkflowContex
 	var current_note := state.world.location_note_at(current_map.id, state.party.coordinate)
 	result.current_location_note = LocationNoteView.new(current_map.id, current_map.name, current_map.level_type, current_map.level_index, state.party.coordinate, current_note.text if current_note != null else "", current_note.darkness_value if current_note != null else _current_location_note_darkness(context, current_map), current_note.record_ordinal if current_note != null else -1, true)
 	for previous_note: LocationNoteView in previous.location_notes:
-		result.location_notes.append(LocationNoteView.new(previous_note.map_id, previous_note.map_name, previous_note.level_type, previous_note.level_index, previous_note.coordinate, previous_note.text, previous_note.darkness_value, previous_note.record_ordinal, previous_note.map_id == state.party.map_id and previous_note.coordinate == state.party.coordinate))
+		result.location_notes.append(LocationNoteView.new(previous_note.map_id, previous_note.map_name, previous_note.level_type, previous_note.level_index, previous_note.coordinate, previous_note.text, previous_note.darkness_value, previous_note.record_ordinal, previous_note.map_id == state.party.map_id and previous_note.coordinate == state.party.coordinate, previous_note.preview_map))
 
 
 static func _populate_services(context: SessionWorkflowContext, result: GameView) -> void:
@@ -784,6 +785,20 @@ static func _build_player_map_view(context: SessionWorkflowContext, definition: 
 					cells.append(_build_cell_view(context, source_map, cell, true))
 	var show_party := _player_map_shows_party(definition, source_map, context.state.party.map_id, context.state.party.coordinate)
 	return PlayerMapView.new(definition, cells, show_party, context.state.party.coordinate, true)
+
+
+static func _build_location_note_map_view(context: SessionWorkflowContext, map: MapDefinition, note: LocationNoteState) -> MapView:
+	var view_size := Vector2i(mini(LOCATION_NOTE_VIEW_SIZE.x, map.topology.width), mini(LOCATION_NOTE_VIEW_SIZE.y, map.topology.height))
+	var maximum := Vector2i(map.topology.width, map.topology.height) - view_size
+	var origin := Vector2i(clampi(note.coordinate.x - 8, 0, maximum.x), clampi(note.coordinate.y - 6, 0, maximum.y))
+	var cells: Array[MapCellView] = []
+	for y: int in range(origin.y, origin.y + view_size.y):
+		for x: int in range(origin.x, origin.x + view_size.x):
+			var cell := map.topology.cell_at(Vector2i(x, y))
+			if cell != null:
+				cells.append(_build_cell_view(context, map, cell, true))
+	var visited: Array[Vector2i] = [note.coordinate]
+	return MapView.new(map.id, map.name, map.level_type, map.topology.width, map.topology.height, note.coordinate, cells, note.darkness_value > 0, visited, {}, Vector2i.ZERO, context.state.world.map_landlook(map), 1, true, false, map.base_scale, false, true, clampi(note.darkness_value, 0, 6))
 
 
 static func _player_map_shows_party(definition: PlayerMapDefinition, source_map: MapDefinition, party_map_id: String, party_coordinate: Vector2i) -> bool:

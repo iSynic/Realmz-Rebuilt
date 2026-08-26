@@ -145,7 +145,7 @@ func _draw() -> void:
 		if outside_classic_view and not revealed_coordinates.has(cell.coordinate):
 			_draw_unvisited_cell(rect)
 			continue
-		_draw_cell(cell, rect, map_view.level_type, map_view.dark, not cell.has_feature(&"unmapped") or dungeon_discovery.has(cell.coordinate), outside_classic_view)
+		_draw_cell(cell, rect, map_view.level_type, map_view.dark, not cell.has_feature(&"unmapped") or dungeon_discovery.has(cell.coordinate), outside_classic_view, map_view.darkness_level)
 		if show_debug_facts:
 			draw_rect(rect, Color(0.22, 0.25, 0.30), false, 1.0)
 			_draw_edges(cell, rect)
@@ -257,7 +257,7 @@ func _draw_unvisited_cell(_rect: Rect2) -> void:
 	pass
 
 
-func _draw_cell(cell: MapCellView, rect: Rect2, level_type: StringName, dark: bool, discovered: bool, recalled: bool = false) -> void:
+func _draw_cell(cell: MapCellView, rect: Rect2, level_type: StringName, dark: bool, discovered: bool, recalled: bool = false, saved_darkness_level: int = -1) -> void:
 	if level_type == &"dungeon" and not discovered:
 		draw_rect(rect, Color(0.025, 0.03, 0.04), true)
 		return
@@ -269,7 +269,7 @@ func _draw_cell(cell: MapCellView, rect: Rect2, level_type: StringName, dark: bo
 	if level_type == &"dungeon" and atlas_asset != null and atlas_texture != null and atlas_asset.id == "dungeon-top-down-302":
 		_draw_dungeon_atlas_cell(cell, rect, atlas_asset, atlas_texture)
 		if dark:
-			draw_rect(rect, Color(0.0, 0.0, 0.0, 0.45), true)
+			draw_rect(rect, Color(0.0, 0.0, 0.0, darkness_overlay_alpha(saved_darkness_level)), true)
 		elif recalled:
 			draw_rect(rect, Color(0.02, 0.025, 0.03, 0.28), true)
 		return
@@ -282,7 +282,7 @@ func _draw_cell(cell: MapCellView, rect: Rect2, level_type: StringName, dark: bo
 	if overlay_texture != null:
 		draw_texture_rect(overlay_texture, rect, false)
 	if dark:
-		draw_rect(rect, Color(0.0, 0.0, 0.0, 0.45), true)
+		draw_rect(rect, Color(0.0, 0.0, 0.0, darkness_overlay_alpha(saved_darkness_level)), true)
 	elif recalled:
 		draw_rect(rect, Color(0.02, 0.025, 0.03, 0.28), true)
 
@@ -294,6 +294,12 @@ static func dungeon_discovery_coordinates(visited: Array[Vector2i]) -> Dictionar
 			for x: int in range(coordinate.x - 1, coordinate.x + 2):
 				result[Vector2i(x, y)] = true
 	return result
+
+
+static func darkness_overlay_alpha(saved_darkness_level: int) -> float:
+	if saved_darkness_level < 0:
+		return 0.45
+	return lerpf(0.72, 0.12, float(clampi(saved_darkness_level, 0, 6)) / 6.0)
 
 
 func _draw_dungeon_atlas_cell(cell: MapCellView, rect: Rect2, atlas_asset: MediaAsset, atlas_texture: Texture2D) -> void:

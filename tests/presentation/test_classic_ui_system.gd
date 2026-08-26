@@ -281,8 +281,8 @@ func _test_location_note_workspace() -> void:
 	view.current_location_note = LocationNoteView.new("land:0", "Giant Mountain", &"land", 0, Vector2i(49, 15), "Watch the ridge.", 0, 0, true)
 	view.location_notes = [
 		view.current_location_note,
-		LocationNoteView.new("land:0", "Giant Mountain", &"land", 0, Vector2i(12, 8), "A safe campsite.", 0, 1),
-	]
+		LocationNoteView.new("land:0", "Giant Mountain", &"land", 0, Vector2i(12, 8), "A safe campsite.", 3, 1),
+	]; view.location_notes[1].preview_map = MapView.new("land:0", "Giant Mountain", &"land", 20, 20, Vector2i(12, 8), [], true, [Vector2i(12, 8)], {}, Vector2i.ZERO, 0, 1, true, false, 0, false, true, 3)
 	view.journal_entries = [
 		JournalEntryView.new(4, "The road bends toward the mountain."),
 		JournalEntryView.new(19, "A long authored entry remains readable. " + "Detail ".repeat(40)),
@@ -297,8 +297,8 @@ func _test_location_note_workspace() -> void:
 	controller.present(body, view, null)
 	var editor := body.find_child("CurrentLocationNoteText", true, false) as TextEdit
 	var save := body.find_child("SaveLocationNote", true, false) as Button
-	var cancel := body.find_child("CancelLocationNoteEdit", true, false) as Button
-	assert_true(editor != null and body.find_child("MapsNotesTabs", true, false) != null and body.find_child("SavedLocationNotes", true, false) != null and body.find_child("JournalEntryDetail", true, false) != null, "Maps/Notes separates saved places, maps, and authored journal detail while retaining the location editor")
+	var cancel := body.find_child("CancelLocationNoteEdit", true, false) as Button; (body.find_child("LocationNote_1", true, false) as Button).pressed.emit()
+	assert_true(editor != null and body.find_child("MapsNotesTabs", true, false) != null and body.find_child("SavedLocationNotes", true, false) != null and body.find_child("JournalEntryDetail", true, false) != null and body.find_child("HistoricalLocationMap", true, false) != null and (body.find_child("LocationNote_1", true, false) as Button).button_pressed and is_equal_approx(ClassicMapPresenter.darkness_overlay_alpha(3), 0.42), "Maps/Notes selects a saved place, renders its detached recentered map with the saved darkness intensity, and retains the current-note editor and authored journal detail")
 	assert_equal(editor.text, "Watch the ridge.", "the editor begins from detached committed note text")
 	assert_true(save.disabled, "an unchanged note cannot emit a redundant mutation")
 	editor.text = "Watch the ridge after sundown."
@@ -317,7 +317,7 @@ func _test_location_note_workspace() -> void:
 	editor.text_changed.emit()
 	assert_true(save.disabled, "the note editor prevents an oversized UTF-8 payload before submission")
 	var labels := _labels_in(body)
-	assert_true(labels.any(func(text: String) -> bool: return text.contains("A safe campsite.")), "saved location notes remain readable while only the current record is editable")
+	assert_true((body.find_child("LocationNote_1", true, false) as Button).text.contains("A safe campsite."), "saved location notes remain readable while only the current record is editable")
 	var journal_search := body.find_child("JournalSearch", true, false) as LineEdit; journal_search.text = "mountain"; journal_search.text_changed.emit(journal_search.text); assert_true(journal_search.theme_type_variation == &"ClassicTheldrowLineEdit" and labels.any(func(text: String) -> bool: return text.contains("Journal entry 4")) and (body.find_child("JournalEntryRows", true, false) as VBoxContainer).get_children().filter(func(child: Node) -> bool: return child is Control and (child as Control).visible).size() == 1, "the Journal route labels authored records by their stable source message identity and filters its detached entries through a Rebuilt-font search field")
 	assert_true(labels.any(func(text: String) -> bool: return text.contains("A long authored entry")), "long authored journal text remains present in the scrollable workspace")
 	body.free()

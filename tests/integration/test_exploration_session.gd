@@ -311,7 +311,7 @@ func _test_location_notes(content: RealmzContent) -> void:
 	assert_equal(session.restore(content, dark_envelope).state, SessionStep.State.COMPLETED, "the fixture can establish a source-shaped dark land-note boundary")
 	var darkness_refresh := session.submit_intent(PlayerIntent.set_location_note("The road narrows beside the old stones."))
 	assert_equal(darkness_refresh.state, SessionStep.State.COMPLETED, "saving unchanged text may refresh Castle's saved darkness metadata")
-	assert_equal(session.view().current_location_note.darkness_value, 3, "a dark land note retains Castle's torch-derived darkness value")
+	assert_equal([session.view().current_location_note.darkness_value, session.view().location_notes[0].preview_map.party_coordinate, session.view().location_notes[0].preview_map.dark, session.view().location_notes[0].preview_map.darkness_level, session.view().location_notes[0].preview_map.cells().size() <= 195], [3, original_coordinate, true, 3, true], "a dark land note retains Castle's torch-derived level in a bounded detached preview recentered on the saved coordinate")
 	var too_long := session.submit_intent(PlayerIntent.set_location_note("é".repeat(128)))
 	assert_equal(too_long.error_code, &"location_note_too_long", "the core enforces Castle's 255-byte note field at the typed boundary")
 	assert_equal(session.view().current_location_note.text, "The road narrows beside the old stones.", "an oversized note cannot replace committed text")

@@ -16,13 +16,14 @@ var coordinates_hidden: bool
 var compass_enabled: bool
 var wizard_eye_active: bool
 var dark: bool
+var darkness_level: int
 var _cells: Array[MapCellView]
 var _cells_by_coordinate: Dictionary = {}
 var _visited_coordinates: Array[Vector2i] = []
 var _movement_options: Dictionary = {}
 
 
-func _init(view_map_id: String, view_map_name: String, view_level_type: StringName, map_width: int, map_height: int, party_position: Vector2i, cell_views: Array[MapCellView], is_dark: bool = false, visited_cells: Array[Vector2i] = [], movement_options: Dictionary = {}, party_last_move_direction: Vector2i = Vector2i.ZERO, view_landlook: int = -1, party_dungeon_heading: int = 1, allows_dungeon_multiview: bool = true, has_wizard_eye: bool = false, view_base_scale: int = -1, hides_coordinates: bool = false, shows_compass: bool = true) -> void:
+func _init(view_map_id: String, view_map_name: String, view_level_type: StringName, map_width: int, map_height: int, party_position: Vector2i, cell_views: Array[MapCellView], is_dark: bool = false, visited_cells: Array[Vector2i] = [], movement_options: Dictionary = {}, party_last_move_direction: Vector2i = Vector2i.ZERO, view_landlook: int = -1, party_dungeon_heading: int = 1, allows_dungeon_multiview: bool = true, has_wizard_eye: bool = false, view_base_scale: int = -1, hides_coordinates: bool = false, shows_compass: bool = true, saved_darkness_level: int = -1) -> void:
 	map_id = view_map_id
 	map_name = view_map_name
 	level_type = view_level_type
@@ -38,6 +39,7 @@ func _init(view_map_id: String, view_map_name: String, view_level_type: StringNa
 	compass_enabled = shows_compass
 	wizard_eye_active = has_wizard_eye
 	dark = is_dark
+	darkness_level = saved_darkness_level
 	_cells = cell_views.duplicate()
 	_visited_coordinates = visited_cells.duplicate()
 	_movement_options = movement_options.duplicate(true)

@@ -6,7 +6,7 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| classic | 69 | 0 | 9 | 49 | 11 |
+| classic | 69 | 0 | 8 | 50 | 11 |
 | host | 8 | 1 | 1 | 4 | 2 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
@@ -24,7 +24,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | `classic.character.allies-bestiary` | certification | broader-parity | other-ordinary |  |
 | `classic.character.view-sheet` | certification | broader-parity | other-ordinary |  |
 | `classic.system.music-playlists` | certification | broader-parity | other-ordinary |  |
-| `classic.maps.location-notes` | implementation | broader-parity | - | GAP-MAP-002, GAP-MAP-006, GAP-MAP-005 |
+| `classic.maps.location-notes` | certification | broader-parity | aogm-ordinary | GAP-MAP-002 |
 | `classic.maps.view-acquired` | archaeology | broader-parity | - | GAP-MAP-008, GAP-MAP-009, GAP-MAP-010, GAP-MAP-011 |
 
 ### Batch count delta
@@ -32,8 +32,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Scope | State | Baseline | Current | Delta |
 | --- | --- | ---: | ---: | ---: |
 | classic | missing | 0 | 0 | 0 |
-| classic | partial | 12 | 9 | -3 |
-| classic | functional | 46 | 49 | +3 |
+| classic | partial | 12 | 8 | -4 |
+| classic | functional | 46 | 50 | +4 |
 | classic | certified | 11 | 11 | 0 |
 | host | missing | 1 | 1 | 0 |
 | host | partial | 1 | 1 | 0 |
@@ -53,7 +53,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Services and economy | 5 | 0 | 1 | 4 | 0 |
 | Combat | 14 | 0 | 1 | 9 | 4 |
 | Rewards and progression | 5 | 0 | 0 | 4 | 1 |
-| Maps and journal | 3 | 0 | 2 | 1 | 0 |
+| Maps and journal | 3 | 0 | 1 | 2 | 0 |
 | Save and system | 5 | 0 | 2 | 3 | 0 |
 
 ## Completion axes
@@ -63,8 +63,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Castle oracle | Count |
 | --- | ---: |
 | not-required | 9 |
-| required | 4 |
-| completed | 56 |
+| required | 3 |
+| completed | 57 |
 
 | Remake | Count |
 | --- | ---: |
@@ -144,10 +144,9 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 
 ## Release blockers and major gaps
 
-Blockers: **1**. Major gaps: **5**.
+Blockers: **1**. Major gaps: **4**.
 
 - **blocker** `host.release.platform-certification` - There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
-- **major** `classic.maps.location-notes` - Historical notes are readable in source order but do not yet recreate Castle's temporary map recentering and saved darkness view. Next: Add a mutation-free note browser derived from authoritative topology and the saved darkness value, then verify land and dungeon records through MCP.
 - **major** `classic.maps.view-acquired` - Exact dungeon player-map composition is not yet proven against Castle. Next: Capture one synthetic Castle dungeon player map and compare wall, door, secret, and party-marker pixels before declaring exact presentation parity.
 - **major** `classic.spellcasting.combat-cast` - Manual, fixed-power scroll, charged-item, Party Auto, and monster casting share source-backed condition-cure, single-target friendly and self healing, single-target friendly condition-effect, multi-actor ray, rotated-area, persistent-field, hostile-group, Flame Missile, zero-cost breath, and summoning resolution. Every application spell has one mechanical-family and per-source disposition; only the remaining special-effect families stay explicit pending capabilities. Next: Continue the remaining unresolved special-effect families while keeping every unavailable family explicit.
 - **major** `classic.spellcasting.field-camp-cast` - Ordinary AOGM camp play proves power-selected scribing, five-slot persistence, saveable party targeting, no-SP scroll use, and exact-slot consumption. Field-character casting has a catalog disposition for every application spell and now executes source-backed Remove Item curse clearing and forced cursed-item unequip; allied targets and map effects remain explicit. Next: Implement allied-target and map-effect branches only from bounded differential evidence when parity or a reachable campaign requires them.
@@ -157,7 +156,6 @@ Blockers: **1**. Major gaps: **5**.
 
 - `classic.inventory.manage-equipment` - Equip and unequip carried items
 - `classic.maps.authored-journal` - Read the authored journal
-- `classic.maps.location-notes` - Read and edit location notes
 - `classic.system.preferences` - Change Classic application preferences
 
 ## Prioritized remaining-work queues
@@ -170,18 +168,15 @@ Blockers: **1**. Major gaps: **5**.
 
 - `classic.character.age-update` - Age updates have no ordinary-campaign observation because the trigger is rare.
 - `classic.maps.authored-journal` - Authored journal discovery and browsing have synthetic proof only.
-- `classic.maps.location-notes` - Location-note creation, editing, removal, and restoration have synthetic proof only.
 - `classic.services.bank` - The complete bank-backed Swap lifecycle has no ordinary campaign certification.
 
 ### parity
 
-- `classic.maps.location-notes` - Historical notes are readable in source order but do not yet recreate Castle's temporary map recentering and saved darkness view.
 - `classic.maps.view-acquired` - Exact dungeon player-map composition is not yet proven against Castle.
 - `classic.spellcasting.combat-cast` - Manual, fixed-power scroll, charged-item, Party Auto, and monster casting share source-backed condition-cure, single-target friendly and self healing, single-target friendly condition-effect, multi-actor ray, rotated-area, persistent-field, hostile-group, Flame Missile, zero-cost breath, and summoning resolution. Every application spell has one mechanical-family and per-source disposition; only the remaining special-effect families stay explicit pending capabilities.
 - `classic.spellcasting.field-camp-cast` - Ordinary AOGM camp play proves power-selected scribing, five-slot persistence, saveable party targeting, no-SP scroll use, and exact-slot consumption. Field-character casting has a catalog disposition for every application spell and now executes source-backed Remove Item curse clearing and forced cursed-item unequip; allied targets and map effects remain explicit.
 - `classic.character.view-sheet` - Several nonzero Classic ability slots lack verified display names.
 - `classic.maps.authored-journal` - Castle's PRFN default and the authored-journal rendering boundary remain outside the verified subset.
-- `classic.maps.location-notes` - Castle's two dialog exit labels and exact cancellation semantics are not established by source alone.
 - `classic.maps.view-acquired` - Classic scrolling TEXT encoding and style resources remain only partially represented.
 - `classic.maps.view-acquired` - Malformed crop starts and authored picture rectangles lack boundary observations.
 - `classic.services.shop` - Normalized shop stock omits native empty-slot provenance.
@@ -192,6 +187,7 @@ Blockers: **1**. Major gaps: **5**.
 - `host.release.platform-certification` - There is no cross-platform release certification and no accepted release candidate.
 - `host.settings.accessibility` - Control customization and complete multi-scale layout acceptance remain unfinished.
 - `classic.exploration.travel` - Ordinary AOGM dungeon presentation shows two solid green rectangular cells that do not visually match the surrounding Classic dungeon composition.
+- `classic.maps.location-notes` - Castle's two dialog exit labels are not available in the pinned source, although both native exits are now proven to commit the current record.
 - `classic.maps.view-acquired` - Ordinary AOGM acquisition, interaction-boundary restore, reward completion, persistence, and Maps/Notes browsing are proven, but the acquired-map presentation has not been user-accepted.
 - `classic.startup.end-adventure` - Save-before-close ordering is characterized through the host transaction and repositories separately, but has no full composition-root failure-injection test.
 - `classic.system.preferences` - Classic's reduced-sound preference is not represented.
