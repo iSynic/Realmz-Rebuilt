@@ -120,7 +120,6 @@ func submit_action(state: GameState, content: RealmzContent, actor_id: String, a
 			actor.attacks_remaining = _rules.arithmetic.signed_16(actor.attacks_remaining - actor.normal_attacks - actor.attack_bonus)
 			combat.restart_active_turn_after_undo()
 			_prepare_character_turn(combat, actor)
-			combat.invalidate_undo()
 			events.append(DomainEvent.new(&"sound_requested", {"soundId": 664, "waitForCompletion": false, "source": "classic-combat-undo"}))
 			if not actor.conditions.is_active(ConditionRules.ANIMATED):
 				events.append(DomainEvent.new(&"sound_requested", {"soundId": 138, "waitForCompletion": false, "source": "classic-combat-activation"}))
