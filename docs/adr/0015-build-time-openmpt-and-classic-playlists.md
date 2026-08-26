@@ -16,11 +16,11 @@ Realmz Rebuilt uses OpenMPT at build time, not at runtime. A provenance-locked g
 
 Presentation owns playlist context, playback, and preference persistence. The audio presenter has separate effects and music channels beneath the existing master volume. A context mode of Play switches to and loops the selected title, Continue retains the current title, and Off stops music. The complete twenty-slot modal remains reachable from the Music menu and Preferences at both supported UI profiles. These settings never enter simulation, campaign packages, RNG, time, or adventure saves.
 
-The stock application bank contains eleven unique modules. Playlist contexts 12–14 retain separate Desert, Swamp, and Snow preferences while resolving the Outdoor module, matching the later Castle context names and the absence of separate terrain modules in the application bank. Custom 1–3 remain scenario-owned exact music resources and resolve before stock media when Providence supplies them. Slots 18–20 remain visible and reserved. Indoor automatic selection stays unavailable until Providence exports Castle's separate land-level base-scale fact; Rebuilt does not infer it from landlook or authored map appearance.
+The stock application bank contains eleven unique modules. Playlist contexts 12–14 retain separate Desert, Swamp, and Snow preferences while resolving the Outdoor module, matching the later Castle context names and the absence of separate terrain modules in the application bank. Custom 1–3 remain scenario-owned exact music resources and resolve before stock media when Providence supplies them. Slots 18–20 remain visible and reserved. Providence schema v3 preserves Castle's separate land-level base-scale fact and explicit scenario music slots, so positive base scale selects Indoor independently of landlook and Custom 1–3 resolve only their declared package assets.
 
 ## Consequences
 
 - Windows, Linux, and macOS exports use Godot's ordinary Ogg playback without a native plugin matrix.
 - A stock music update is a deterministic asset-generation change with exact source and output review.
 - Player playlist choices are application preferences and survive adventure save replacement.
-- Scenario Custom music and the Indoor base-scale discriminator remain explicit compiler-contract work rather than guessed runtime compatibility.
+- Scenario Custom music and the Indoor base-scale discriminator cross the compiler/runtime boundary explicitly rather than relying on guessed runtime compatibility.
