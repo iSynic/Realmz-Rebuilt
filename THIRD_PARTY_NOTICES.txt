@@ -14,7 +14,7 @@ SPDX identifier: CC-BY-NC-SA-4.0
 https://creativecommons.org/licenses/by-nc-sa/4.0/
 
 Modifications: Realmz Providence commit
-10a3ef056b685df133fb3569a51365a6762f073d compiles the native scenario data
+5cdf7b3d84f4ecfae9114fb8be4911fb2fc7b8ea compiles the native scenario data
 and resources into deterministic schema-v3 Realmz 2 packages. Exact source,
 compiler, package, and archive identities are recorded in
 src/infrastructure/campaigns/castle-bundled-scenarios.provenance.json.
