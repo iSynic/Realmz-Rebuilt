@@ -6,7 +6,7 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| classic | 69 | 0 | 5 | 51 | 13 |
+| classic | 69 | 0 | 4 | 51 | 14 |
 | host | 8 | 1 | 0 | 5 | 2 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
@@ -32,9 +32,9 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Scope | State | Baseline | Current | Delta |
 | --- | --- | ---: | ---: | ---: |
 | classic | missing | 0 | 0 | 0 |
-| classic | partial | 6 | 5 | -1 |
+| classic | partial | 6 | 4 | -2 |
 | classic | functional | 50 | 51 | +1 |
-| classic | certified | 13 | 13 | 0 |
+| classic | certified | 13 | 14 | +1 |
 | host | missing | 1 | 1 | 0 |
 | host | partial | 0 | 0 | 0 |
 | host | functional | 5 | 5 | 0 |
@@ -51,7 +51,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Inventory and equipment | 9 | 0 | 1 | 8 | 0 |
 | Spellcasting | 3 | 0 | 0 | 1 | 2 |
 | Services and economy | 5 | 0 | 1 | 4 | 0 |
-| Combat | 14 | 0 | 1 | 9 | 4 |
+| Combat | 14 | 0 | 0 | 9 | 5 |
 | Rewards and progression | 5 | 0 | 0 | 4 | 1 |
 | Maps and journal | 3 | 0 | 1 | 2 | 0 |
 | Save and system | 5 | 0 | 1 | 4 | 0 |
@@ -78,8 +78,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | ---: |
 | not-required | 19 |
 | missing | 0 |
-| partial | 1 |
-| complete | 49 |
+| partial | 0 |
+| complete | 50 |
 
 | simulation | Count |
 | --- | ---: |
