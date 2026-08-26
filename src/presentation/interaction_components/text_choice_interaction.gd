@@ -1,7 +1,7 @@
 class_name TextChoiceInteraction
 extends InteractionComponent
 
-var _autojournal_enabled: bool = true
+var _autojournal_enabled: bool = false
 var _manual_journal_available: bool = false
 var _acknowledgement_body: InteractionResponse.AcknowledgeBody
 

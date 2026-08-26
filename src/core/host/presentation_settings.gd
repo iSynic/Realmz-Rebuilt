@@ -32,7 +32,7 @@ var window_mode: String = WINDOWED
 var exploration_speed_percent: int = 100
 var show_exploration_minimap: bool = false
 var classic_exploration_visibility: bool = true
-var autojournal_enabled: bool = true
+var autojournal_enabled: bool = false
 var typography_mode: String = TYPOGRAPHY_CLASSIC
 
 
@@ -133,7 +133,7 @@ static func from_data(data: Variant) -> PresentationSettings:
 	settings.exploration_speed_percent = int(data.get("explorationSpeedPercent", 100))
 	settings.show_exploration_minimap = bool(data.get("showExplorationMinimap", false))
 	settings.classic_exploration_visibility = bool(data.get("classicExplorationVisibility", true))
-	settings.autojournal_enabled = bool(data.get("autojournalEnabled", true))
+	settings.autojournal_enabled = bool(data.get("autojournalEnabled", false))
 	settings.typography_mode = String(data.get("typographyMode", TYPOGRAPHY_CLASSIC))
 	return settings
 

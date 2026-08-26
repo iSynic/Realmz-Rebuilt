@@ -39,7 +39,7 @@ var _side_workspace_rect := Rect2(928.0, 28.0, 352.0, 502.0)
 var _passive_text: bool = false
 var _playback_masked: bool = false
 var _playback_status_label: Label
-var _autojournal_enabled: bool = true
+var _autojournal_enabled: bool = false
 var _treasure_recipient_id: String = ""
 var _side_workspace_panel: PanelContainer
 var _modal_shield: ColorRect
