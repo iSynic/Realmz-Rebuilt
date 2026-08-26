@@ -9,11 +9,12 @@ var topology: MapTopology
 var dark: bool
 var uses_los: bool
 var landlook: int
+var base_scale: int
 var battle_terrain_set_id: String
 var _random_regions: Dictionary = {}
 
 
-func _init(map_id: String, map_name: String, type: StringName, index: int, map_topology: MapTopology, is_dark: bool = false, line_of_sight_enabled: bool = false, landlook_id: int = -1, map_random_regions: Array[RandomEncounterRegion] = [], terrain_set_id: String = "") -> void:
+func _init(map_id: String, map_name: String, type: StringName, index: int, map_topology: MapTopology, is_dark: bool = false, line_of_sight_enabled: bool = false, landlook_id: int = -1, map_random_regions: Array[RandomEncounterRegion] = [], terrain_set_id: String = "", map_base_scale: int = -1) -> void:
 	id = map_id
 	name = map_name
 	level_type = type
@@ -22,6 +23,7 @@ func _init(map_id: String, map_name: String, type: StringName, index: int, map_t
 	dark = is_dark
 	uses_los = line_of_sight_enabled
 	landlook = landlook_id
+	base_scale = map_base_scale
 	battle_terrain_set_id = terrain_set_id
 	for region: RandomEncounterRegion in map_random_regions:
 		_random_regions[region.id] = region

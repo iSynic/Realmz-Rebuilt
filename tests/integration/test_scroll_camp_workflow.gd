@@ -348,7 +348,7 @@ func _scroll_content(source: RealmzContent) -> RealmzContent:
 	var caste := CasteDefinition.new("classic.caste.scroll", 1, "Sorcerer", empty_ints, empty_ints, empty_ints, empty_ints, Vector2i(8, 8), Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO)
 	var scroll_case := ItemDefinition.new("classic.item.scroll-case", 800, "Scroll Case"); scroll_case.item_type = 13; scroll_case.weight = 2
 	var parchment := ItemDefinition.new("classic.item.parchment", 806, "Parchment"); parchment.weight = 0; parchment.initial_charges = 3; parchment.weight_per_charge = 1; parchment.drop_on_empty = true
-	var rations := ItemDefinition.new("classic.item.iron-rations", 877, "Iron Rations"); rations.weight = 1; rations.initial_charges = 4; rations.weight_per_charge = 1; rations.drop_on_empty = true
+	var rations := ItemDefinition.new("classic.item.iron-rations", 877, "Iron Rations"); rations.icon_id = 20; rations.weight = 1; rations.initial_charges = 4; rations.weight_per_charge = 1; rations.drop_on_empty = true
 	var healing := SpellDefinition.new("classic.spell.scroll-heal", 1101, "Mending"); healing.cost = 2; healing.damage_min = 3; healing.damage_max = 3; healing.special = 57; healing.cannot = 4; healing.target_type = 1; healing.sound_start = 49; healing.in_camp = true
 	var fixed := SpellDefinition.new("classic.spell.scroll-fixed", 1102, "Fixed Ward"); fixed.cost = -5; fixed.duration_min = 2; fixed.duration_max = 2; fixed.special = 8; fixed.target_type = 1; fixed.in_combat = true
 	var races: Array[RaceDefinition] = [race]

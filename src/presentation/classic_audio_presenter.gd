@@ -90,10 +90,10 @@ func present_music_context(playlist_id: int, settings: PresentationSettings, med
 		return
 	var stream: AudioStream
 	var title := ""
-	if media != null:
-		var package_asset := media.asset_by_resource("music", playlist_id)
+	if media != null and playlist_id >= 15 and playlist_id <= 17:
+		var package_asset := media.scenario_music_asset(playlist_id - 14)
 		if package_asset != null:
-			stream = media.audio_stream_by_resource("music", playlist_id)
+			stream = media.audio_stream(package_asset)
 			title = package_asset.label
 	if stream == null and stock_music != null:
 		stream = stock_music.stream(playlist_id)

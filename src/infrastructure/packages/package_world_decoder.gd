@@ -163,10 +163,14 @@ func _construct_maps(value: Variant, trigger_ids: Dictionary, battle_terrain_set
 				if not _validate_compact_cell(record["cells"][cell_index], record["id"], cell_index, trigger_ids, region_ids, StringName(level_type)):
 					return null
 		var metadata: Variant = record.get("metadata")
-		if not metadata is Dictionary or not _exact_fields(metadata, ["dark", "usesLos", "landlook", "battleTerrainSetId"]) or not metadata.get("dark") is bool or not metadata.get("usesLos") is bool or metadata.get("landlook") != null and not _is_integer(metadata.get("landlook")):
+		if not metadata is Dictionary or not _exact_fields(metadata, ["dark", "usesLos", "landlook", "baseScale", "battleTerrainSetId"]) or not metadata.get("dark") is bool or not metadata.get("usesLos") is bool or metadata.get("landlook") != null and not _is_integer(metadata.get("landlook")) or metadata.get("baseScale") != null and not _is_integer(metadata.get("baseScale")):
 			_reject("Map '%s' metadata is malformed." % record["id"])
 			return null
 		var landlook := -1 if metadata["landlook"] == null else _integer(metadata["landlook"])
+		var base_scale := -1 if metadata["baseScale"] == null else _integer(metadata["baseScale"])
+		if level_type == "dungeon" and metadata["baseScale"] != null:
+			_reject("Dungeon map '%s' contains land-only base-scale metadata." % record["id"])
+			return null
 		if metadata["battleTerrainSetId"] != null and (not metadata["battleTerrainSetId"] is String or metadata["battleTerrainSetId"].is_empty()):
 			_reject("Map '%s' battle terrain set identity is malformed." % record["id"])
 			return null
@@ -186,7 +190,7 @@ func _construct_maps(value: Variant, trigger_ids: Dictionary, battle_terrain_set
 			return null
 		var boat_profiles: Array = boat_profiles_value
 		var topology := MapTopology.from_compact_rows(record["id"], width, height, record["cells"], boat_profiles[0] as LandTileProfile, boat_profiles[1] as LandTileProfile)
-		maps.append(MapDefinition.new(record["id"], record["name"], StringName(level_type), level_index, topology, metadata["dark"], metadata["usesLos"], landlook, regions, terrain_set_id))
+		maps.append(MapDefinition.new(record["id"], record["name"], StringName(level_type), level_index, topology, metadata["dark"], metadata["usesLos"], landlook, regions, terrain_set_id, base_scale))
 	return maps
 
 
@@ -216,7 +220,7 @@ func _construct_land_tile_profile(value: Variant, map_id: String, role: String) 
 	var render_tile := _integer(row[4])
 	var boat_requirement := _integer(row[5])
 	var blocked_attempts := _integer(row[6])
-	if not row[0] is String or row[0].is_empty() or movement_cost < 0 or flags < 0 or flags > 255 or row[3] != null and not _is_integer(row[3]) or render_tile < 1 or boat_requirement < 0 or boat_requirement > 2 or blocked_attempts < 0:
+	if not row[0] is String or row[0].is_empty() or movement_cost < 0 or flags < 0 or flags > 511 or row[3] != null and not _is_integer(row[3]) or render_tile < 1 or boat_requirement < 0 or boat_requirement > 2 or blocked_attempts < 0:
 		_reject("Land map '%s' has invalid %s boat replacement facts." % [map_id, role])
 		return null
 	if not bool(flags & 4) or bool(flags & 8) != (boat_requirement == 2) or bool(flags & 64) != (boat_requirement != 0):
@@ -228,7 +232,7 @@ func _validate_compact_cell(value: Variant, map_id: String, cell_index: int, tri
 	if not value is Array or value.size() != 13:
 		return _reject("Map '%s' compact topology row %d is malformed." % [map_id, cell_index])
 	var row: Array = value
-	if not row[0] is String or row[0].is_empty() or not _is_integer(row[1]) or _integer(row[1]) < 0 or not _is_integer(row[2]) or _integer(row[2]) < 0 or _integer(row[2]) > 255:
+	if not row[0] is String or row[0].is_empty() or not _is_integer(row[1]) or _integer(row[1]) < 0 or not _is_integer(row[2]) or _integer(row[2]) < 0 or _integer(row[2]) > 511:
 		return _reject("Map '%s' compact topology row %d has malformed terrain facts." % [map_id, cell_index])
 	if row[3] != null and not _is_integer(row[3]):
 		return _reject("Map '%s' compact topology row %d has malformed movement sound." % [map_id, cell_index])

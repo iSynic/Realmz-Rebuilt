@@ -351,8 +351,8 @@ func _construct_monsters(value: Variant) -> Variant:
 	if not value is Array:
 		_reject("Content monsters must be an array.")
 		return null
-	var fields: Array[String] = ["id", "classicId", "name", "hitDice", "staminaBonus", "agility", "movementMaximum", "armor", "magicResistance", "requiredWeapon", "magicToHit", "traitor", "size", "typeFlags", "attackCount", "magicAttackCount", "attacks", "damageBonus", "castPercent", "runPercent", "surrenderPercent", "missilePercent", "canSummon", "saves", "spellImmunities", "conditions", "money", "spellIds", "itemIds", "weaponId", "randomWeaponTable", "iconId", "spellPoints", "experience", "deathMacro"]
-	var integer_fields: Array[String] = ["classicId", "hitDice", "staminaBonus", "agility", "movementMaximum", "armor", "magicResistance", "requiredWeapon", "magicToHit", "size", "attackCount", "magicAttackCount", "damageBonus", "castPercent", "runPercent", "surrenderPercent", "missilePercent", "canSummon", "randomWeaponTable", "iconId", "spellPoints", "experience", "deathMacro"]
+	var fields: Array[String] = ["id", "classicId", "classicNameId", "name", "description", "notOnMenu", "hitDice", "staminaBonus", "agility", "movementMaximum", "armor", "magicResistance", "requiredWeapon", "magicToHit", "traitor", "size", "typeFlags", "attackCount", "magicAttackCount", "attacks", "damageBonus", "castPercent", "runPercent", "surrenderPercent", "missilePercent", "canSummon", "saves", "spellImmunities", "conditions", "money", "spellIds", "itemIds", "weaponId", "randomWeaponTable", "iconId", "spellPoints", "experience", "deathMacro"]
+	var integer_fields: Array[String] = ["classicId", "classicNameId", "hitDice", "staminaBonus", "agility", "movementMaximum", "armor", "magicResistance", "requiredWeapon", "magicToHit", "size", "attackCount", "magicAttackCount", "damageBonus", "castPercent", "runPercent", "surrenderPercent", "missilePercent", "canSummon", "randomWeaponTable", "iconId", "spellPoints", "experience", "deathMacro"]
 	var result: Array[MonsterDefinition] = []
 	var ids: Dictionary = {}
 	for value_record: Variant in value:
@@ -361,7 +361,7 @@ func _construct_monsters(value: Variant) -> Variant:
 			return null
 		var record: Dictionary = value_record
 		var integers_value: Variant = _validated_integer_fields(record, integer_fields, "Monster definition")
-		if not _exact_fields(record, fields) or integers_value == null or not _definition_identity(record, ids, "Monster") or not record["traitor"] is bool or not record["weaponId"] is String or not record["attacks"] is Array or _integer(record["requiredWeapon"]) < -128 or _integer(record["requiredWeapon"]) > 127 or _integer(record["magicToHit"]) < 0 or _integer(record["magicToHit"]) > 127 or _integer(record["randomWeaponTable"]) < 0 or _integer(record["randomWeaponTable"]) > 10:
+		if not _exact_fields(record, fields) or integers_value == null or not _definition_identity(record, ids, "Monster") or not record["description"] is String or not record["notOnMenu"] is bool or not record["traitor"] is bool or not record["weaponId"] is String or not record["attacks"] is Array or _integer(record["classicNameId"]) < 0 or _integer(record["classicNameId"]) > 255 or _integer(record["requiredWeapon"]) < -128 or _integer(record["requiredWeapon"]) > 127 or _integer(record["magicToHit"]) < 0 or _integer(record["magicToHit"]) > 127 or _integer(record["randomWeaponTable"]) < 0 or _integer(record["randomWeaponTable"]) > 10:
 			_reject("Monster definition is malformed or duplicated.")
 			return null
 		var type_value: Variant = _integer_array(record["typeFlags"], 8, "Monster type flags")
@@ -387,7 +387,7 @@ func _construct_monsters(value: Variant) -> Variant:
 		if integers["attackCount"] < 0 or integers["attackCount"] > 5 or integers["attackCount"] > attacks.size():
 			_reject("Monster attack count exceeds its fixed Classic attack rows.")
 			return null
-		var monster := MonsterDefinition.new(record["id"], integers["classicId"], record["name"], integers["hitDice"], integers["staminaBonus"], integers["agility"], integers["armor"], integers["magicResistance"], type_value, saves_value, immunity_value, money_value, spell_ids_value, item_ids_value, attacks, conditions_value)
+		var monster := MonsterDefinition.new(record["id"], integers["classicId"], record["name"], integers["hitDice"], integers["staminaBonus"], integers["agility"], integers["armor"], integers["magicResistance"], type_value, saves_value, immunity_value, money_value, spell_ids_value, item_ids_value, attacks, conditions_value, integers["classicNameId"], record["description"], record["notOnMenu"])
 		monster.movement_max = integers["movementMaximum"]
 		monster.required_weapon = integers["requiredWeapon"]
 		monster.magic_to_hit = integers["magicToHit"]

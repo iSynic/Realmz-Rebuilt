@@ -174,9 +174,9 @@
     },
     "monsterDefinition": {
       "type": "object",
-      "required": ["id", "classicId", "name", "hitDice", "staminaBonus", "agility", "movementMaximum", "armor", "magicResistance", "requiredWeapon", "magicToHit", "traitor", "size", "typeFlags", "attackCount", "magicAttackCount", "attacks", "damageBonus", "castPercent", "runPercent", "surrenderPercent", "missilePercent", "canSummon", "saves", "spellImmunities", "conditions", "money", "spellIds", "itemIds", "weaponId", "randomWeaponTable", "iconId", "spellPoints", "experience", "deathMacro"],
+      "required": ["id", "classicId", "classicNameId", "name", "description", "notOnMenu", "hitDice", "staminaBonus", "agility", "movementMaximum", "armor", "magicResistance", "requiredWeapon", "magicToHit", "traitor", "size", "typeFlags", "attackCount", "magicAttackCount", "attacks", "damageBonus", "castPercent", "runPercent", "surrenderPercent", "missilePercent", "canSummon", "saves", "spellImmunities", "conditions", "money", "spellIds", "itemIds", "weaponId", "randomWeaponTable", "iconId", "spellPoints", "experience", "deathMacro"],
       "properties": {
-        "id": { "$ref": "#/$defs/identifier" }, "classicId": { "type": "integer", "minimum": 0 }, "name": { "type": "string", "minLength": 1 },
+        "id": { "$ref": "#/$defs/identifier" }, "classicId": { "type": "integer", "minimum": 0 }, "classicNameId": { "type": "integer", "minimum": 0, "maximum": 255 }, "name": { "type": "string", "minLength": 1 }, "description": { "type": "string" }, "notOnMenu": { "type": "boolean" },
         "hitDice": { "type": "integer", "minimum": 0 }, "staminaBonus": { "type": "integer" }, "agility": { "type": "integer" }, "movementMaximum": { "type": "integer" }, "armor": { "type": "integer" }, "magicResistance": { "type": "integer" }, "requiredWeapon": { "type": "integer", "minimum": -128, "maximum": 127 }, "magicToHit": { "type": "integer", "minimum": 0, "maximum": 127 }, "traitor": { "type": "boolean" }, "size": { "type": "integer" },
         "typeFlags": { "$ref": "#/$defs/integerArray" }, "attackCount": { "type": "integer" }, "magicAttackCount": { "type": "integer" }, "attacks": { "type": "array", "items": { "$ref": "#/$defs/monsterAttackDefinition" } }, "damageBonus": { "type": "integer" }, "castPercent": { "type": "integer" }, "runPercent": { "type": "integer" }, "surrenderPercent": { "type": "integer" }, "missilePercent": { "type": "integer" }, "canSummon": { "type": "integer" },
         "saves": { "$ref": "#/$defs/integerArray" }, "spellImmunities": { "$ref": "#/$defs/integerArray" }, "conditions": { "$ref": "#/$defs/classicMonsterConditions" }, "money": { "$ref": "#/$defs/integerArray" }, "spellIds": { "$ref": "#/$defs/stringArray" }, "itemIds": { "$ref": "#/$defs/classicMonsterItemSlots" }, "weaponId": { "type": "string" }, "randomWeaponTable": { "type": "integer", "minimum": 0, "maximum": 10 }, "iconId": { "type": "integer" }, "spellPoints": { "type": "integer" }, "experience": { "type": "integer" }, "deathMacro": { "type": "integer" }
@@ -608,7 +608,7 @@
       "prefixItems": [
         { "$ref": "#/$defs/identifier" },
         { "type": "integer", "minimum": 0 },
-        { "type": "integer", "minimum": 0, "maximum": 255 },
+        { "type": "integer", "minimum": 0, "maximum": 511 },
         { "type": ["integer", "null"] },
         { "type": "array", "items": { "$ref": "#/$defs/identifier" }, "uniqueItems": true },
         { "type": "array", "items": { "$ref": "#/$defs/identifier" }, "uniqueItems": true },
@@ -630,7 +630,7 @@
       "prefixItems": [
         { "$ref": "#/$defs/identifier" },
         { "type": "integer", "minimum": 0 },
-        { "type": "integer", "minimum": 0, "maximum": 255 },
+        { "type": "integer", "minimum": 0, "maximum": 511 },
         { "type": ["integer", "null"] },
         { "type": "integer", "minimum": 1 },
         { "type": "integer", "minimum": 0, "maximum": 2 },
@@ -650,11 +650,12 @@
         "height": { "type": "integer", "minimum": 1 },
         "metadata": {
           "type": "object",
-          "required": ["dark", "usesLos", "landlook", "battleTerrainSetId"],
+          "required": ["dark", "usesLos", "landlook", "baseScale", "battleTerrainSetId"],
           "properties": {
             "dark": { "type": "boolean" },
             "usesLos": { "type": "boolean" },
             "landlook": { "type": ["integer", "null"] },
+            "baseScale": { "type": ["integer", "null"] },
             "battleTerrainSetId": {
               "anyOf": [
                 { "$ref": "#/$defs/identifier" },
@@ -1000,7 +1001,7 @@
     },
     "asset": {
       "type": "object",
-      "required": ["id", "label", "kind", "bytes", "sha256", "path", "tileWidth", "tileHeight", "columns", "rows", "landlook", "baseTile"],
+      "required": ["id", "label", "kind", "scenarioMusicSlot", "bytes", "sha256", "path", "tileWidth", "tileHeight", "columns", "rows", "landlook", "baseTile"],
       "properties": {
         "id": { "$ref": "#/$defs/identifier" },
         "label": { "type": "string" },
@@ -1008,6 +1009,7 @@
         "mimeType": { "type": ["string", "null"] },
         "resourceType": { "type": ["string", "null"] },
         "resourceId": { "type": ["integer", "null"] },
+        "scenarioMusicSlot": { "type": ["integer", "null"], "minimum": 1, "maximum": 3 },
         "bytes": { "type": "integer", "minimum": 0 },
         "sha256": { "$ref": "#/$defs/sha256" },
         "path": { "type": "string", "pattern": "^assets/media/[0-9a-f]{64}(\\.[a-z0-9]+)?$" },

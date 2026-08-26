@@ -4,7 +4,7 @@ const FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-fi
 const TAMPERED_FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-tampered.realmz2"
 const CLASSIC_CHARACTER_LIBRARY_PATH: String = "res://src/infrastructure/characters/realmz-classic-character-library.realmz2"
 const CLASSIC_CHARACTER_LIBRARY_ID: String = "realmz-classic-character-library"
-const CLASSIC_CHARACTER_LIBRARY_HASH: String = "e1abb1ec6203b96207af0bbd421d660cc705945bd14355645e09b73bdb8d3afb"
+const CLASSIC_CHARACTER_LIBRARY_HASH: String = "4b207f7d1882178d1d5b16c985adc1388cba176e155267cd9120dfab80753e4f"
 const INSTALL_TEST_ROOT: String = "user://realmz2-tests/package-install-schema-v3"
 const SCHEMA_REJECTION_PATH: String = "user://realmz2-tests/realmz2-schema-v2.realmz2"
 
@@ -29,22 +29,22 @@ func run() -> void:
 	fixture_archive.close()
 	var repeated_external_load := repository.load_package(FIXTURE_PATH); assert_true(repeated_external_load.is_ok(), "an unchanged external package can be validated repeatedly"); assert_true(repeated_external_load != loaded, "external package validation never inherits trusted cache status")
 	assert_equal(loaded.content.campaign_id, "realmz2-synthetic-fixture", "manifest campaign identity becomes typed content")
-	assert_equal(loaded.content.package_hash, "c174db82eebf673c8840f0c8f212c0efd1d1831973a2f23a23432f2074cc6e08", "package identity is retained")
+	assert_equal(loaded.content.package_hash, "22212d4f53fcc02393b21895435fc4ea0e422827376adebf06cf6bc8cf294f35", "package identity is retained")
 	assert_equal(loaded.content.campaign_definition().title, "Realmz2 Synthetic Fixture", "campaign title metadata becomes a typed display contract")
 	assert_equal(loaded.content.campaign_definition().version, "", "campaign version metadata preserves an authored empty value")
 	assert_equal(loaded.content.campaign_definition().restrictions.maximum_party_size, 6, "campaign party-size restrictions are typed")
 	assert_equal([loaded.content.campaign_definition().recommended_party_levels, loaded.content.campaign_definition().maximum_party_levels, loaded.content.campaign_definition().guidance_authored], [6, 12, true], "Data SC aggregate party guidance remains distinct from per-character restrictions")
-	assert_equal(loaded.content.available_monster_sets(), [0, -1, 1], "packaged Classic monster sets retain the player-facing Normal, Mega, Monster order")
+	assert_equal(loaded.content.available_monster_sets(), [0, -1, 1], "packaged Classic monster sets retain the player-facing Normal, Mega, Monster order"); var menu_monster := loaded.content.monster_by_id_for_set("classic.monster.1", 0); assert_equal([menu_monster.classic_name_id, menu_monster.description, menu_monster.not_on_menu], [42, "A deterministic synthetic bestiary entry.", false], "the package preserves independent Classic monster name identity and complete bestiary metadata")
 	assert_equal(loaded.content.monster_by_id_for_set("classic.monster.1", 1).id, "classic.monster-set.1.1", "Monster Monsters resolves to a stable alternate definition identity")
 	assert_equal(loaded.content.monster_by_id_for_set("classic.monster.1", -1).hit_dice, 12, "Mega Monsters preserves its alternate combat record")
 	assert_true(loaded.content.campaign_definition().contact.has("email"), "campaign contact metadata is validated as a fixed shape")
 	var map := loaded.content.world.map_by_id("land:0")
 	assert_not_null(map, "the authoritative start map is constructed")
-	assert_equal(map.battle_terrain_set_id, "classic.battle-terrain.landlook.0", "land maps retain their effective Classic battle terrain identity")
+	assert_equal([map.battle_terrain_set_id, map.base_scale, map.topology.cell_at(Vector2i.ZERO).is_forest], ["classic.battle-terrain.landlook.0", 1, true], "land maps retain their battle terrain, base scale, and forest semantics")
 	var player_map := loaded.content.world.player_map_by_classic_id(1)
 	assert_not_null(player_map, "Data MD2 player-map records become immutable typed content")
 	assert_equal([player_map.id, player_map.mode, player_map.map_id, player_map.icon_size], ["classic.player-map.1", PlayerMapDefinition.LAND_CROP, "land:0", 32], "player-map identity, mode, topology source, and divisor preserve the compiler contract")
-	assert_equal([player_map.party_marker_asset_id, loaded.media.asset_by_id(player_map.party_marker_asset_id).resource_type, loaded.media.asset_by_id(player_map.party_marker_asset_id).resource_id], ["realmz-player-map-cicn-138", "cicn", 138], "the current-party marker resolves through exact Classic type-plus-ID media")
+	assert_equal([player_map.party_marker_asset_id, loaded.media.asset_by_id(player_map.party_marker_asset_id).resource_type, loaded.media.asset_by_id(player_map.party_marker_asset_id).resource_id], ["realmz-player-map-cicn-138", "cicn", 138], "the current-party marker resolves through exact Classic type-plus-ID media"); var custom_music := loaded.media.assets_of_kind("music")[0]; assert_equal([custom_music.scenario_music_slot, custom_music.label], [1, "Fixture Custom 1"], "scenario-owned music retains its independent Custom playlist slot")
 	assert_equal(player_map.markers().map(func(marker: PlayerMapMarkerDefinition) -> int: return marker.classic_icon_id), [137, 139, 140], "authored player-map markers retain their source order and exact CICN identities")
 	for marker: PlayerMapMarkerDefinition in player_map.markers():
 		assert_equal(loaded.media.asset_by_id(marker.icon_asset_id).resource_id, marker.classic_icon_id, "each player-map marker resolves to the matching Classic resource ID")
@@ -141,7 +141,7 @@ func run() -> void:
 	assert_equal(loaded.content.spell_by_id("classic.spell.2302").name, "Destroy Magic", "standard spell labels preserve their packed Classic identity")
 	assert_equal(loaded.content.spell_by_id("classic.spell.3106").description, "Limited Phase:  Will allow the caster to teleport during combat.  The caster's turn will be over after phasing.", "stock spell descriptions resolve from Rebuilt's pinned Family Jewels application catalog rather than campaign-owned text")
 	assert_not_null(loaded.media, "validated package media receives a typed catalog")
-	assert_equal(loaded.media.assets().size(), 254, "the synthetic fixture carries authored map/scenario media, player-map media and markers, the battle atlas, both monster facings, both 120-entry character-appearance catalogs, and only its explicit scenario sound")
+	assert_equal(loaded.media.assets().size(), 255, "the synthetic fixture carries authored map/scenario media, player-map media and markers, the battle atlas, both monster facings, both 120-entry character-appearance catalogs, and its explicit scenario sound and Custom music")
 	assert_equal([loaded.media.assets_of_kind("portrait").size(), loaded.media.assets_of_kind("combat-icon").size()], [120, 120], "the media catalog groups appearance roles without resource-ID-only lookup")
 	var first_portrait_bytes := loaded.media.read_bytes_batch([loaded.media.assets_of_kind("portrait")[0]])
 	assert_false((first_portrait_bytes.get("realmz-portrait-257", PackedByteArray()) as PackedByteArray).is_empty(), "batch media reads validate creator thumbnails through one archive boundary")

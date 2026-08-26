@@ -3,7 +3,10 @@ extends RefCounted
 
 var id: String
 var classic_id: int
+var classic_name_id: int
 var name: String
+var description: String
+var not_on_menu: bool
 var hit_dice: int
 var stamina_bonus: int
 var agility: int
@@ -38,10 +41,13 @@ var _items: Array[String]
 var _attacks: Array[MonsterAttackDefinition]
 
 
-func _init(definition_id: String, native_id: int, display_name: String, hd: int, bonus: int, dexterity: int, armor_rating: int, magic_resist: int, type_flags: Array[int], saves: Array[int], immunities: Array[int], authored_money: Array[int], authored_spells: Array[String], authored_items: Array[String], authored_attacks: Array[MonsterAttackDefinition], authored_conditions: Array[int] = []) -> void:
+func _init(definition_id: String, native_id: int, display_name: String, hd: int, bonus: int, dexterity: int, armor_rating: int, magic_resist: int, type_flags: Array[int], saves: Array[int], immunities: Array[int], authored_money: Array[int], authored_spells: Array[String], authored_items: Array[String], authored_attacks: Array[MonsterAttackDefinition], authored_conditions: Array[int] = [], native_name_id: int = 0, authored_description: String = "", hidden_from_menu: bool = false) -> void:
 	id = definition_id
 	classic_id = native_id
+	classic_name_id = native_name_id
 	name = display_name
+	description = authored_description
+	not_on_menu = hidden_from_menu
 	hit_dice = hd
 	stamina_bonus = bonus
 	agility = dexterity

@@ -21,8 +21,9 @@ func validate_assets(document: Dictionary, files: Dictionary) -> bool:
 	var resources: Dictionary = {}
 	var portrait_resource_ids: Dictionary = {}
 	var combat_icon_resource_ids: Dictionary = {}
+	var scenario_music_slots: Dictionary = {}
 	for asset: Variant in document["assets"]:
-		if not asset is Dictionary or not _exact_fields(asset, ["id", "label", "kind", "mimeType", "resourceType", "resourceId", "bytes", "sha256", "path", "width", "height", "durationMs", "sampleRate", "channels", "tileWidth", "tileHeight", "columns", "rows", "landlook", "baseTile"]):
+		if not asset is Dictionary or not _exact_fields(asset, ["id", "label", "kind", "mimeType", "resourceType", "resourceId", "scenarioMusicSlot", "bytes", "sha256", "path", "width", "height", "durationMs", "sampleRate", "channels", "tileWidth", "tileHeight", "columns", "rows", "landlook", "baseTile"]):
 			return _reject("Asset index contains a malformed record.")
 		if not asset["id"] is String or asset["id"].is_empty() or ids.has(asset["id"]) or not asset["label"] is String or not asset["kind"] is String:
 			return _reject("Asset identities, labels, and kinds must be typed and unique.")
@@ -33,6 +34,10 @@ func validate_assets(document: Dictionary, files: Dictionary) -> bool:
 			return _reject("Asset resource type must be a string or null.")
 		if asset["resourceId"] != null and not _is_integer(asset["resourceId"]):
 			return _reject("Asset resource ID must be an integer or null.")
+		if asset["scenarioMusicSlot"] != null:
+			if not _is_integer(asset["scenarioMusicSlot"]) or _integer(asset["scenarioMusicSlot"]) < 1 or _integer(asset["scenarioMusicSlot"]) > 3 or asset["kind"] != "music" or not String(asset["mimeType"]).begins_with("audio/") or scenario_music_slots.has(_integer(asset["scenarioMusicSlot"])):
+				return _reject("Scenario music slots must be unique audio assets numbered one through three.")
+			scenario_music_slots[_integer(asset["scenarioMusicSlot"])] = true
 		for optional_integer: String in ["width", "height", "durationMs", "sampleRate", "channels", "tileWidth", "tileHeight", "columns", "rows", "landlook", "baseTile"]:
 			if asset[optional_integer] != null and (not _is_integer(asset[optional_integer]) or _integer(asset[optional_integer]) < 0):
 				return _reject("Asset %s must be a non-negative integer or null." % optional_integer)
@@ -125,6 +130,7 @@ func construct_assets(document: Dictionary) -> Array[MediaAsset]:
 			0 if record["rows"] == null else _integer(record["rows"]),
 			-1 if record["landlook"] == null else _integer(record["landlook"]),
 			-1 if record["baseTile"] == null else _integer(record["baseTile"]),
+			0 if record["scenarioMusicSlot"] == null else _integer(record["scenarioMusicSlot"]),
 		))
 	return assets
 

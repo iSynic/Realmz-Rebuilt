@@ -107,7 +107,7 @@ func _test_shutdown_joins_worker() -> void:
 
 func _test_bundled_load_task() -> void:
 	var task: RefCounted = BundledPackageLoadTaskScript.new()
-	assert_true(task.start("res://src/infrastructure/characters/realmz-classic-character-library.realmz2", "realmz-classic-character-library", "e1abb1ec6203b96207af0bbd421d660cc705945bd14355645e09b73bdb8d3afb"), "the built-in library starts outside the first-frame boundary")
+	assert_true(task.start("res://src/infrastructure/characters/realmz-classic-character-library.realmz2", "realmz-classic-character-library", "4b207f7d1882178d1d5b16c985adc1388cba176e155267cd9120dfab80753e4f"), "the built-in library starts outside the first-frame boundary")
 	var deadline := Time.get_ticks_msec() + TERMINAL_WAIT_MILLISECONDS
 	while task.is_running() and Time.get_ticks_msec() < deadline:
 		OS.delay_msec(POLL_DELAY_MILLISECONDS)

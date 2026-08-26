@@ -305,7 +305,7 @@ func _test_public_vm_combat_auto(content: RealmzContent) -> void:
 	content.scenario = ScenarioDefinition.new([program], [], ScenarioApplicationHooks.new(program.id, "", "", "", ""))
 	var sixth_id := "fixture.vm-auto.6"
 	var inactive_session := _vm_combat_auto_session(content, 1)
-	var active_session := _vm_combat_auto_session(content, 12)
+	var active_session := _vm_combat_auto_session(content, 8)
 	assert_true(inactive_session != null and active_session != null, "public VM combat fixture provides inactive and active sixth-member turns")
 	if inactive_session == null or active_session == null:
 		content.scenario = original_scenario

@@ -3,7 +3,7 @@ extends RealmzTestCase
 const CharacterCreationSessionScript := preload("res://src/session/character_creation_session.gd")
 const CLASSIC_CHARACTER_LIBRARY_PATH: String = "res://src/infrastructure/characters/realmz-classic-character-library.realmz2"
 const CLASSIC_CHARACTER_LIBRARY_ID: String = "realmz-classic-character-library"
-const CLASSIC_CHARACTER_LIBRARY_HASH: String = "e1abb1ec6203b96207af0bbd421d660cc705945bd14355645e09b73bdb8d3afb"
+const CLASSIC_CHARACTER_LIBRARY_HASH: String = "4b207f7d1882178d1d5b16c985adc1388cba176e155267cd9120dfab80753e4f"
 
 
 func run() -> void:

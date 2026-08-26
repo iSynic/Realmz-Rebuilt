@@ -5,6 +5,7 @@ var map_id: String
 var map_name: String
 var level_type: StringName
 var landlook: int
+var base_scale: int
 var width: int
 var height: int
 var party_coordinate: Vector2i
@@ -19,11 +20,12 @@ var _visited_coordinates: Array[Vector2i] = []
 var _movement_options: Dictionary = {}
 
 
-func _init(view_map_id: String, view_map_name: String, view_level_type: StringName, map_width: int, map_height: int, party_position: Vector2i, cell_views: Array[MapCellView], is_dark: bool = false, visited_cells: Array[Vector2i] = [], movement_options: Dictionary = {}, party_last_move_direction: Vector2i = Vector2i.ZERO, view_landlook: int = -1, party_dungeon_heading: int = 1, allows_dungeon_multiview: bool = true, has_wizard_eye: bool = false) -> void:
+func _init(view_map_id: String, view_map_name: String, view_level_type: StringName, map_width: int, map_height: int, party_position: Vector2i, cell_views: Array[MapCellView], is_dark: bool = false, visited_cells: Array[Vector2i] = [], movement_options: Dictionary = {}, party_last_move_direction: Vector2i = Vector2i.ZERO, view_landlook: int = -1, party_dungeon_heading: int = 1, allows_dungeon_multiview: bool = true, has_wizard_eye: bool = false, view_base_scale: int = -1) -> void:
 	map_id = view_map_id
 	map_name = view_map_name
 	level_type = view_level_type
 	landlook = view_landlook
+	base_scale = view_base_scale
 	width = map_width
 	height = map_height
 	party_coordinate = party_position

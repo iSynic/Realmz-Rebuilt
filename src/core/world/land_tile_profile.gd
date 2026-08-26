@@ -10,6 +10,7 @@ var is_shore: bool
 var is_path: bool
 var boat_requirement: int
 var fly_float_required: bool
+var is_forest: bool
 var movement_sound_id: int
 var render_tile: int
 var blocked_attempt_timeclicks: int
@@ -25,6 +26,7 @@ func _init(terrain: String, cost: int, semantic_flags: int, sound_id: int, tile:
 	is_path = bool(semantic_flags & 32)
 	boat_requirement = classic_boat_requirement
 	fly_float_required = bool(semantic_flags & 128)
+	is_forest = bool(semantic_flags & 256)
 	movement_sound_id = sound_id
 	render_tile = tile
 	blocked_attempt_timeclicks = blocked_timeclicks
@@ -57,4 +59,5 @@ func apply_to(cell: MapCell) -> MapCell:
 		"",
 		boat_requirement,
 		blocked_attempt_timeclicks,
+		is_forest,
 	)

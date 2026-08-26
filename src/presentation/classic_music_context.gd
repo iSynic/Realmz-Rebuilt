@@ -29,6 +29,8 @@ static func playlist_for(route_id: StringName, view: GameView) -> int:
 		return 0
 	if view.map_view.level_type == &"dungeon":
 		return 2
+	if view.map_view.base_scale > 0:
+		return 3
 	match view.map_view.landlook:
 		3: return 4
 		5: return 12

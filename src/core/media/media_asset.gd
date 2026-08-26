@@ -21,9 +21,10 @@ var columns: int
 var rows: int
 var landlook: int
 var base_tile: int
+var scenario_music_slot: int
 
 
-func _init(asset_id: String, asset_label: String, asset_kind: String, asset_mime_type: String, asset_resource_type: String, asset_resource_id: int, asset_byte_count: int, asset_sha256: String, asset_path: String, asset_width: int, asset_height: int, asset_duration_ms: int, asset_sample_rate: int, asset_channels: int, asset_tile_width: int, asset_tile_height: int, asset_columns: int, asset_rows: int, asset_landlook: int, asset_base_tile: int) -> void:
+func _init(asset_id: String, asset_label: String, asset_kind: String, asset_mime_type: String, asset_resource_type: String, asset_resource_id: int, asset_byte_count: int, asset_sha256: String, asset_path: String, asset_width: int, asset_height: int, asset_duration_ms: int, asset_sample_rate: int, asset_channels: int, asset_tile_width: int, asset_tile_height: int, asset_columns: int, asset_rows: int, asset_landlook: int, asset_base_tile: int, custom_music_slot: int = 0) -> void:
 	id = asset_id
 	label = asset_label
 	kind = asset_kind
@@ -44,6 +45,7 @@ func _init(asset_id: String, asset_label: String, asset_kind: String, asset_mime
 	rows = asset_rows
 	landlook = asset_landlook
 	base_tile = asset_base_tile
+	scenario_music_slot = custom_music_slot
 
 
 func is_picture() -> bool:

@@ -75,6 +75,15 @@ func battle_tileset() -> MediaAsset:
 	return asset if asset != null and asset.is_battle_tileset() else null
 
 
+func scenario_music_asset(slot: int) -> MediaAsset:
+	if package_media == null or slot < 1 or slot > 3:
+		return null
+	for asset: MediaAsset in package_media.assets_of_kind("music"):
+		if asset.scenario_music_slot == slot:
+			return asset
+	return null
+
+
 func resolution_diagnostic(resource_type: String, resource_id: int, presentation_role: String, decode_result: String = "not-attempted") -> Dictionary:
 	if package_media != null and package_media.resource_status(resource_type, resource_id) != &"missing":
 		var package_diagnostic: Dictionary = package_media.resolution_diagnostic(resource_type, resource_id, presentation_role, decode_result)
@@ -162,6 +171,10 @@ func image_texture(asset: MediaAsset) -> Texture2D:
 
 func audio_stream_by_resource(resource_type: String, resource_id: int) -> AudioStream:
 	var asset := asset_by_resource(resource_type, resource_id)
+	return audio_stream(asset)
+
+
+func audio_stream(asset: MediaAsset) -> AudioStream:
 	if asset == null:
 		return null
 	if application_media != null and application_media.owns_asset(asset):

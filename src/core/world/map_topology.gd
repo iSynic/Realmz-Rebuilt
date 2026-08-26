@@ -212,7 +212,8 @@ func _decode_compact_cell(index: int, coordinate: Vector2i) -> MapCell:
 		features,
 		"" if row[10] == null else String(row[10]),
 		int(row[11]),
-		int(row[12])
+		int(row[12]),
+		bool(flags & 256)
 	)
 
 
