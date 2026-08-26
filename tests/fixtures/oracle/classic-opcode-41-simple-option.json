@@ -1,0 +1,6 @@
+{
+  "opcode": 41,
+  "castleSource": "src/realmz_orig/newland.c case 41",
+  "runtimeContract": "Load the authored Simple Encounter, clear the one-based response slot in Extra Code field one, and persist that removal so later presentations omit the exact option.",
+  "determinism": "The mutation consumes no RNG and is stored in the existing save-owned eliminated-option set."
+}

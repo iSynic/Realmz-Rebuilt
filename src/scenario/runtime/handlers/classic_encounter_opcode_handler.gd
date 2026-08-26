@@ -11,7 +11,7 @@ func _init(content: RealmzContent, game_state: GameState) -> void:
 
 
 func opcode_ids() -> Array[int]:
-	return [3, 4, 5, 34, 35, 54]
+	return [3, 4, 5, 34, 35, 41, 54]
 
 
 func execute(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
@@ -47,6 +47,8 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 			if context.encounter_kind != &"simple" or not _game_state.eliminate_simple_option(encounter_id, action.operand_id - 1):
 				return ScenarioRuntimeOperationResult.failed(&"invalid_encounter_context", "Classic opcode 35 requires a Simple Encounter response context.")
 			return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"encounter_option_eliminated", {"encounterId": encounter_id, "optionIndex": action.operand_id - 1})])
+		41:
+			return _eliminate_simple_option(action)
 		54:
 			return _mutate_timed_encounter(action)
 	return super.execute(action, request_id, context)
@@ -164,3 +166,14 @@ func _mutate_timed_encounter(action: ClassicActionDefinition) -> ScenarioRuntime
 		current["day"] = int(current.get("day", 0)) + action.extra_code[4]
 	_game_state.set_timed_encounter_override(encounter_id, current)
 	return ScenarioRuntimeOperationResult.completed(current, [DomainEvent.new(&"timed_encounter_changed", {"encounterId": encounter_id, "state": current})])
+
+
+func _eliminate_simple_option(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
+	if action.extra_code.size() < 2:
+		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 41 requires a five-value Extra Code row.")
+	var encounter := _content.simple_encounter_by_id(action.extra_code[0])
+	var option_index := action.extra_code[1] - 1
+	if encounter == null or encounter.response_at(option_index) == null:
+		return ScenarioRuntimeOperationResult.failed(&"unknown_encounter_option", "Classic opcode 41 references an unavailable Simple Encounter option.")
+	_game_state.eliminate_simple_option(encounter.id, option_index)
+	return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"encounter_option_eliminated", {"encounterId": encounter.id, "optionIndex": option_index, "source": "classic-opcode-41"})])
