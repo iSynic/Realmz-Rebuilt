@@ -613,6 +613,7 @@ func _build_menus() -> void:
 	])
 	_fill_menu($MenuStrip/MenuRow/AlliesMenu, [
 		{"label": "Current Allies", "route": &"allies", "disabled_reason": _allies_reason()},
+		{"label": "Bestiary", "route": &"bestiary"},
 	])
 	_fill_menu($MenuStrip/MenuRow/MapsMenu, [
 		{"label": "Maps and Notes", "route": &"journal"},
@@ -643,6 +644,7 @@ func _build_menus() -> void:
 		{"label": "Character — Spells", "route": &"spells"},
 		{"label": "Character — Vault", "route": &"vault"},
 		{"label": "Allies — Current Allies", "route": &"allies", "disabled_reason": _allies_reason()},
+		{"label": "Allies — Bestiary", "route": &"bestiary"},
 		{"label": "Maps / Notes", "route": &"journal"},
 		{"label": "Game — Quick Save", "system": &"save", "disabled_reason": _save_reason()},
 		{"label": "Game — Quick Load", "system": &"load", "disabled_reason": _load_reason()},

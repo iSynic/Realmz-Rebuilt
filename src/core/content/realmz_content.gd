@@ -22,6 +22,7 @@ var _castes: Dictionary = {}
 var _items: Dictionary = {}
 var _spells: Dictionary = {}
 var _monsters: Dictionary = {}
+var _base_monsters: Dictionary = {}
 var _monster_sets: Dictionary = {}
 var _battles: Dictionary = {}
 var _treasures: Dictionary = {}
@@ -67,6 +68,7 @@ func _init(campaign: String, package_identity: String, content_identity: String,
 		_spells[spell.id] = spell
 	for monster: MonsterDefinition in monsters:
 		_monsters[monster.id] = monster
+		_base_monsters[monster.id] = monster
 	for set_id: Variant in monster_sets:
 		var records: Dictionary = {}
 		for monster: MonsterDefinition in monster_sets[set_id]:
@@ -234,6 +236,17 @@ func available_monster_sets() -> Array[int]:
 			extension_sets.append(set_id)
 	extension_sets.sort()
 	result.append_array(extension_sets)
+	return result
+
+
+func bestiary_definitions_for_set(set_id: int) -> Array[MonsterDefinition]:
+	var result: Array[MonsterDefinition] = []
+	for value: Variant in _base_monsters.values():
+		var base := value as MonsterDefinition
+		var definition := monster_by_id_for_set(base.id, set_id)
+		if definition != null and definition.hit_dice > 0 and definition.hit_dice != 255 and not definition.not_on_menu:
+			result.append(definition)
+	result.sort_custom(func(left: MonsterDefinition, right: MonsterDefinition) -> bool: return left.classic_id < right.classic_id)
 	return result
 
 

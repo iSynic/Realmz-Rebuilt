@@ -7,7 +7,7 @@ Own the pure Realmz model, fixed Classic rules, topology, game clock, randomness
 ## Ownership
 
 - Direct Realmz definitions and mutable playthrough state, including characters, equipment, wealth, conditions, encounters, battles, shops, treasures, spells, monsters, races, castes, and immutable compiled scenario programs.
-- Detached party views include current held-over ally instances separately from hostile combatants. Presentation may inspect these facts but cannot mutate ally ownership or infer a Bestiary catalog from current party state.
+- Detached party views include current held-over ally instances separately from hostile combatants. The active monster set's menu-visible immutable definitions project into a separate ordered Bestiary catalog with their authored descriptions; presentation may inspect either view but cannot mutate ally ownership or infer the catalog from current party state.
 - Typed intents/events/interactions/views and the core state carried by session snapshots.
 - Pure host-facing value contracts shared across adapters and presentation, including immutable media descriptors/read ports and presentation settings. These records never enter `GameSession` or alter Classic rules.
 - `RealmzRules`, `RealmzClock`, `RealmzRng`, topology queries, and world overlays.

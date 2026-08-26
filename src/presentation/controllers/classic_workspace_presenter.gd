@@ -217,6 +217,8 @@ func present(screen_id: StringName, body: Container, appearance_textures: Dictio
 			_character_controller.present(body, _view, appearance_textures, _settings, _media)
 		&"allies":
 			_creature_library_controller.present_allies(body, _view, _media, _settings.text_scale)
+		&"bestiary":
+			_creature_library_controller.present_bestiary(body, _view, _media, _settings.text_scale)
 		&"vault":
 			_character_controller.present_vault(body, _view, appearance_textures, _settings.text_scale, vault_back_label, _media)
 		&"inventory":

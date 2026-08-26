@@ -8,13 +8,9 @@ func run() -> void:
 
 
 func _test_allies_workspace() -> void:
-	var body := VBoxContainer.new()
-	var view := GameView.new(7, true, null)
-	var monster := MonsterState.new("ally.fixture", "classic.monster.4", "Allied Knight", 8, 10, 4, 9, 3, 15, 6, false)
+	var body := VBoxContainer.new(); var view := GameView.new(7, true, null); var monster := MonsterState.new("ally.fixture", "classic.monster.4", "Allied Knight", 8, 10, 4, 9, 3, 15, 6, false)
 	monster.icon_id = 384
-	var definition := MonsterDefinition.new("classic.monster.4", 4, "Allied Knight", 4, 0, 9, 3, 15, [0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0], [], [], [], [])
-	definition.movement_max = 8
-	view.party_allies = [MonsterView.new(monster, definition)]
+	var definition := MonsterDefinition.new("classic.monster.4", 4, "Allied Knight", 4, 0, 9, 3, 15, [0, 0, 0, 0, 0, 0, 0, 0], [0, -2, 0, 0, 0, 0], [1, 0, 0, 0, 0, 0], [0, 0, 0], [], [], [MonsterAttackDefinition.new(1, 6, 40, 0)], [], 42, "A disciplined guardian recorded in the active monster set.", false); definition.movement_max = 8; definition.icon_id = 384; view.party_allies = [MonsterView.new(monster, definition)]; view.bestiary_entries = [MonsterCatalogEntryView.new(definition)]
 	var controller := Controller.new()
 	controller.present_allies(body, view, null, 1.0)
 	var labels := _labels_in(body)
@@ -31,6 +27,10 @@ func _test_allies_workspace() -> void:
 	controller.set_layout_profile(UiLayoutProfile.COMPACT)
 	controller.present_allies(body, view, null, 1.0)
 	assert_true((body.find_child("AlliesColumns", true, false) as BoxContainer).vertical, "the optional 800x600 profile stacks list and detail instead of squeezing their fact columns")
+	for child: Node in body.get_children(): body.remove_child(child); child.queue_free()
+	controller.set_layout_profile(UiLayoutProfile.WIDE); controller.present_bestiary(body, view, null, 1.0); labels = _labels_in(body)
+	assert_true(labels.has("Allied Knight") and labels.has("Classic monster 4  •  name 42") and labels.has("A disciplined guardian recorded in the active monster set."), "Bestiary consumes the preserved description and independent Classic name identity from its detached catalog")
+	assert_true(body.find_child("BestiaryListPane", true, false) != null and body.find_child("BestiaryDetailPane", true, false) != null and body.find_child("BestiaryIcon", true, false) != null and labels.has("1–6 damage") and labels.has("Charm"), "Bestiary exposes the source combat facts and exact CICN stage behind stable list/detail panes")
 	for child: Node in body.get_children():
 		body.remove_child(child)
 		child.queue_free()
