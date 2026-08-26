@@ -16,6 +16,7 @@ func run() -> void:
 		return
 	var content := _inventory_content(loaded.content)
 	_test_field_spell_item_use(content)
+	_test_door_item_xap(content)
 	_test_inventory_identification(content)
 	_test_split_join(content)
 	var session := GameSession.new()
@@ -251,6 +252,17 @@ func _test_field_spell_item_use(content: RealmzContent) -> void:
 	assert_equal(empty.error_code, &"item_has_no_charges", "a depleted item fails before effect or randomness")
 
 
+func _test_door_item_xap(content: RealmzContent) -> void:
+	var session := GameSession.new(); assert_equal(session.start(content, 79).state, SessionStep.State.COMPLETED, "door-item session starts")
+	var user := _character("inventory.door-user", "Ena", content); assert_equal(session.submit_intent(PlayerIntent.import_vault_character(user.id, "9".repeat(64), user, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "door-item user enters party setup"); assert_equal(session.submit_intent(PlayerIntent.begin_adventure()).state, SessionStep.State.COMPLETED, "door-item fixture begins")
+	var carried := session._state.party.character_by_id(user.id); var door := content.item_by_id("classic.item.inventory-door"); var instance := RealmzRules.new().inventory.add_item(carried, door, "inventory.instance.door", true); assert_true(session.view().party_members[0].items[0].actions.use.enabled, "type-23 item exposes its authored field XAP")
+	var waiting := session.submit_intent(PlayerIntent.use_item(instance.id, carried.id)); assert_equal([waiting.state, waiting.interaction.kind, instance.charges, session._session_continuation.kind], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.ACKNOWLEDGE, 1, &"item-xap"], "field door item spends one charge and waits inside its typed XAP owner")
+	var restored := GameSession.new(); assert_equal(restored.restore(content, save_round_trip(session.snapshot())).state, SessionStep.State.COMPLETED, "pending door-item XAP restores transactionally"); var completed := restored.respond(InteractionResponse.acknowledge(restored.view().pending_interaction)); assert_true(completed.state == SessionStep.State.COMPLETED and completed.events.any(func(event: DomainEvent) -> bool: return event.kind == &"item_xap_completed"), "restored field door XAP completes exactly once")
+	carried = restored._state.party.character_by_id(user.id); instance = carried.inventory()[0]; door.special_1 = -23; var tiles: Array[int] = []; tiles.resize(BattlefieldState.CELL_COUNT); tiles.fill(0); var field := BattlefieldState.new(content.start_map_id, tiles); field.place_character(carried.id, Vector2i(45, 45)); restored._state.combat = CombatState.new("inventory.door-battle", [], 0, field); restored._state.combat.set_turn_order([carried.id])
+	var option := restored._rules.combat_flow.character_item_spell_options(restored._state, content, carried.id)[0]; assert_equal([option.item_instance_id, option.spell_id, option.target_mode], [instance.id, "", &"automatic"], "negative Special 1 door item is an automatic combat item action without a fabricated spell")
+	waiting = restored.submit_intent(PlayerIntent.use_item(instance.id, carried.id)); assert_equal([waiting.state, waiting.interaction.kind, carried.inventory().size(), restored._state.combat.battle_id], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.ACKNOWLEDGE, 0, "inventory.door-battle"], "combat door item drops on its final charge while retaining the active battle"); completed = restored.respond(InteractionResponse.acknowledge(waiting.interaction)); assert_equal([completed.state, restored._state.combat.battle_id, restored._session_continuation.is_empty()], [SessionStep.State.COMPLETED, "inventory.door-battle", true], "combat door XAP returns to the same battle without a second dispatch")
+
+
 func _test_equipment_probes(content: RealmzContent) -> void:
 	var rules := RealmzRules.new()
 	var character := _character("inventory.probes", "Probe", content)
@@ -314,19 +326,8 @@ func _inventory_content(source: RealmzContent) -> RealmzContent:
 	var category_mask := (1 << 5) | (1 << 12)
 	var race := RaceDefinition.new("classic.race.inventory", 1, "Human", empty_ints, empty_ints, empty_ints, empty_ints, empty_ints, empty_ranges, age_changes, 0, false, 10, 0, 0, 0, 1, 1, false, 0, category_mask, 0)
 	var caste := CasteDefinition.new("classic.caste.inventory", 1, "Fighter", empty_ints, empty_ints, empty_ints, empty_ints, Vector2i(8, 8), Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO, [], [], [], 1, 1, 0, 1, 0, 0, 0, 1, 0, true, false, 0, category_mask, 0)
-	var sword := ItemDefinition.new("classic.item.inventory-sword", 10, "Longsword", "Sword", "A balanced one-handed sword.")
-	sword.item_type = 2
-	sword.hands = 1
-	sword.weight = 12
-	sword.initial_charges = 2
-	sword.item_category_mask_low = 1 << 5
-	sword.damage_bonus = 2
-	var cursed := ItemDefinition.new("classic.item.inventory-curse", 11, "Cursed Longsword", "Sword", "A blade that refuses to leave its bearer.")
-	cursed.item_type = 2
-	cursed.hands = 1
-	cursed.weight = 10
-	cursed.item_category_mask_low = 1 << 5
-	cursed.cursed_item_id = cursed.id
+	var sword := ItemDefinition.new("classic.item.inventory-sword", 10, "Longsword", "Sword", "A balanced one-handed sword."); sword.item_type = 2; sword.hands = 1; sword.weight = 12; sword.initial_charges = 2; sword.item_category_mask_low = 1 << 5; sword.damage_bonus = 2
+	var cursed := ItemDefinition.new("classic.item.inventory-curse", 11, "Cursed Longsword", "Sword", "A blade that refuses to leave its bearer."); cursed.item_type = 2; cursed.hands = 1; cursed.weight = 10; cursed.item_category_mask_low = 1 << 5; cursed.cursed_item_id = cursed.id
 	var healing_spell := SpellDefinition.new("classic.spell.inventory-heal", 1101, "Mending")
 	healing_spell.damage_min = 3
 	healing_spell.damage_max = 3
@@ -382,11 +383,12 @@ func _inventory_content(source: RealmzContent) -> RealmzContent:
 	stack.initial_charges = 5
 	stack.weight_per_charge = 1
 	stack.item_category_mask_low = 1 << 5
-	var races: Array[RaceDefinition] = [race]
-	var castes: Array[CasteDefinition] = [caste]
-	var items: Array[ItemDefinition] = [sword, cursed, healing_wand, self_tonic, torch, stack]
+	var door := ItemDefinition.new("classic.item.inventory-door", 662, "Crown of Safe Return"); door.item_type = 23; door.initial_charges = 2; door.drop_on_empty = true; door.item_category_mask_low = 1 << 5; door.special_5 = 69
+	var door_program := ScenarioProgramDefinition.new("xap:69", &"extra-action-point", "69", [ClassicActionDefinition.new(0, 62, 62, 901, false, [])])
+	var races: Array[RaceDefinition] = [race]; var castes: Array[CasteDefinition] = [caste]
+	var items: Array[ItemDefinition] = [sword, cursed, healing_wand, self_tonic, torch, stack, door]
 	var spells: Array[SpellDefinition] = [healing_spell, self_spell, light_spell, identify_spell]
-	return RealmzContent.new("inventory-workflow", source.package_hash, "inventory-workflow-content", source.rules_version, source.start_map_id, source.start_coordinate, source.world, ScenarioDefinition.new([], []), [], [], [], races, castes, items, spells)
+	return RealmzContent.new("inventory-workflow", source.package_hash, "inventory-workflow-content", source.rules_version, source.start_map_id, source.start_coordinate, source.world, ScenarioDefinition.new([door_program], []), [MessageDefinition.new(901, "The crown answers.")], [], [], races, castes, items, spells)
 
 
 func _character(character_id: String, display_name: String, content: RealmzContent) -> CharacterState:

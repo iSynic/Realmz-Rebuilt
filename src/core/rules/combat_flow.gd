@@ -230,10 +230,26 @@ func use_spell_item(state: GameState, content: RealmzContent, caster_id: String,
 
 
 func character_item_spell_options(state: GameState, content: RealmzContent, caster_id: String) -> Array[CombatItemOptionView]:
-	return _magic.character_item_spell_options(state, content, caster_id)
+	var result: Array[CombatItemOptionView] = _magic.character_item_spell_options(state, content, caster_id)
+	if state == null or content == null or state.combat == null or state.combat.completed or state.combat.active_actor_id() != caster_id:
+		return result
+	var caster := state.party.character_by_id(caster_id)
+	if caster == null:
+		return result
+	var staged_instance_id := state.combat.staged_random_item_instance_id()
+	for instance: ItemInstance in caster.inventory():
+		var item := content.item_by_id(instance.definition_id)
+		if item == null or item.special_1 != -23 or not staged_instance_id.is_empty() and staged_instance_id != instance.id:
+			continue
+		var probe := _rules.inventory.classic_door_item_probe(caster, instance, item, content.race_by_id(caster.race_id), content.caste_by_id(caster.caste_id), true, content.scenario.program_by_id("xap:%d" % item.special_5) != null)
+		if probe.allowed:
+			result.append(CombatItemOptionView.new(instance, item, null, 0, null, "Scenario action", &"automatic"))
+	return result
 
 
 func character_item_spell_unavailable_reason(state: GameState, content: RealmzContent, caster_id: String) -> String:
+	if not character_item_spell_options(state, content, caster_id).is_empty():
+		return ""
 	return _magic.character_item_spell_unavailable_reason(state, content, caster_id)
 
 

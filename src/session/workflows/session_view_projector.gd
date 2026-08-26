@@ -531,7 +531,7 @@ static func _populate_inventory_item_actions(context: SessionWorkflowContext, re
 			var drop_probe := rules.inventory.classic_drop_probe(character, instance)
 			var split_probe := rules.inventory.classic_split_probe(character, instance, definition)
 			var join_probe := rules.inventory.classic_join_probe(character, instance, definition)
-			var use_probe := InventoryMagicServicesWorkflow.field_spell_item_probe(context, character, instance, definition, content.spell_by_classic_id(definition.special_2) if definition != null else null)
+			var use_probe := InventoryMagicServicesWorkflow.field_item_use_probe(context, character, instance, definition)
 			actions.equip = ActionAvailabilityView.new(&"equip_item", equip_probe.allowed, equip_probe.reason)
 			actions.unequip = ActionAvailabilityView.new(&"unequip_item", unequip_probe.allowed, unequip_probe.reason)
 			actions.drop = ActionAvailabilityView.new(&"drop_item", drop_probe.allowed, drop_probe.reason)

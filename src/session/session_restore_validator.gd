@@ -315,6 +315,8 @@ static func _valid_session_continuation(content: RealmzContent, state: GameState
 			return false
 		&"drop-item-confirmation", &"item-use-target-selection", &"field-spell-target-selection", &"scroll-target-selection", &"scroll-discard-confirmation":
 			return _valid_targeting_continuation(content, state, continuation, vm_interaction, session_interaction)
+		&"item-xap":
+			return _valid_item_xap_continuation(content, state, continuation, vm_interaction, session_interaction)
 		&"character-spell-confirmation":
 			var application := continuation.application()
 			if application == null or vm_interaction != null or session_interaction == null or state.party_setup_completed or state.character_draft == null or state.character_draft.generated_character == null:
@@ -399,6 +401,16 @@ static func _valid_session_continuation(content: RealmzContent, state: GameState
 		&"post-move":
 			return _valid_post_move_continuation(content, state, continuation, vm_interaction, session_interaction)
 	return false
+
+
+static func _valid_item_xap_continuation(content: RealmzContent, state: GameState, continuation: SessionContinuation, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
+	var item_body := continuation.item_xap_body()
+	if item_body == null or vm_interaction == null or session_interaction != null or state.party.character_by_id(item_body.character_id) == null:
+		return false
+	var item := content.item_by_id(item_body.item_id)
+	if item == null or item_body.program_id != "xap:%d" % item.special_5 or content.scenario.program_by_id(item_body.program_id) == null or absi(item.item_type) != 23 and item.special_1 != -23:
+		return false
+	return item_body.source_battle_id.is_empty() or state.combat != null and state.combat.battle_id == item_body.source_battle_id
 
 
 static func _valid_boat_continuation(content: RealmzContent, state: GameState, continuation: SessionContinuation, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
@@ -511,7 +523,7 @@ static func _valid_post_move_continuation(content: RealmzContent, state: GameSta
 
 
 static func suspended_scenario_owner_is_valid(content: RealmzContent, state: GameState, owner: SessionContinuation, saved: ScenarioVmSnapshot) -> bool:
-	if owner == null or owner.kind not in [&"post-clock", &"post-move"] or saved == null or saved.halted or saved.frames.is_empty() or saved.pending_request != null or saved.pending_continuation != null:
+	if owner == null or owner.kind not in [&"post-clock", &"post-move", &"item-xap"] or saved == null or saved.halted or saved.frames.is_empty() or saved.pending_request != null or saved.pending_continuation != null:
 		return false
 	var test_vm := ScenarioVm.new()
 	test_vm.configure(content.scenario)

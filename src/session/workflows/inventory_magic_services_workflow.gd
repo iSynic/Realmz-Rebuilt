@@ -257,6 +257,26 @@ static func field_spell_item_probe(context: SessionWorkflowContext, character: C
 	return InventoryActionProbe.permit()
 
 
+static func is_classic_door_item(item: ItemDefinition) -> bool:
+	return item != null and (absi(item.item_type) == 23 or item.special_1 == -23)
+
+
+static func door_item_probe(context: SessionWorkflowContext, character: CharacterState, instance: ItemInstance, item: ItemDefinition, in_combat: bool) -> InventoryActionProbe:
+	var program_available := item != null and context.content.scenario.program_by_id("xap:%d" % item.special_5) != null
+	var probe := context.rules.inventory.classic_door_item_probe(character, instance, item, context.content.race_by_id(character.race_id) if character != null else null, context.content.caste_by_id(character.caste_id) if character != null else null, in_combat, program_available)
+	if not probe.allowed:
+		return probe
+	if in_combat and (context.state.combat == null or context.state.combat.completed or context.state.combat.active_actor_id() != character.id):
+		return InventoryActionProbe.block("Only the active character may use a door item in combat.")
+	return InventoryActionProbe.permit()
+
+
+static func field_item_use_probe(context: SessionWorkflowContext, character: CharacterState, instance: ItemInstance, item: ItemDefinition) -> InventoryActionProbe:
+	if is_classic_door_item(item):
+		return door_item_probe(context, character, instance, item, false)
+	return field_spell_item_probe(context, character, instance, item, context.content.spell_by_classic_id(item.special_2) if item != null else null)
+
+
 static func field_item_target_ids(context: SessionWorkflowContext, character: CharacterState, spell: SpellDefinition, requested_targets: Array[String], requested_target: String) -> Array[String]:
 	if spell.target_type == 7 or absi(spell.special) == 68:
 		return []

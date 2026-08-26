@@ -76,6 +76,25 @@ func classic_spell_item_probe(character: CharacterState, instance: ItemInstance,
 	return InventoryActionProbe.permit()
 
 
+func classic_door_item_probe(character: CharacterState, instance: ItemInstance, item: ItemDefinition, race: RaceDefinition, caste: CasteDefinition, in_combat: bool, program_available: bool) -> InventoryActionProbe:
+	if instance == null or item == null or instance.definition_id != item.id:
+		return InventoryActionProbe.block("The carried item is unavailable.")
+	var use_probe := classic_use_probe(character, item, race, caste)
+	if not use_probe.allowed:
+		return use_probe
+	if absi(item.item_type) != 23 and item.special_1 != -23:
+		return InventoryActionProbe.block("This item has no Classic door action.")
+	if in_combat and item.special_1 != -23:
+		return InventoryActionProbe.block("This Classic door item cannot be used in combat.")
+	if instance.charges == 0:
+		return InventoryActionProbe.block("This item has no charges remaining.")
+	if instance.charges < 0 and item.initial_charges >= 0:
+		return InventoryActionProbe.block("The item's charge state does not match its immutable definition.")
+	if not program_available:
+		return InventoryActionProbe.block("The item's Classic scenario action is unavailable.")
+	return InventoryActionProbe.permit()
+
+
 func classic_equip_probe(character: CharacterState, instance: ItemInstance, item: ItemDefinition, race: RaceDefinition, caste: CasteDefinition, party: Array[CharacterState], definitions: Array[ItemDefinition]) -> InventoryActionProbe:
 	if character == null or instance == null or item == null or instance.definition_id != item.id:
 		return InventoryActionProbe.block("The carried item is unavailable.")

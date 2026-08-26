@@ -6,7 +6,7 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| classic | 69 | 0 | 14 | 44 | 11 |
+| classic | 69 | 0 | 13 | 45 | 11 |
 | host | 8 | 1 | 1 | 4 | 2 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
@@ -15,14 +15,13 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 **Scenario and combat blockers** (`scenario-combat-blockers`)
 
-Compiler preservation, spell saturation, and the complete authored opcode denominator are closed. The active parity backlog is now the four major scenario/combat workflows with direct import or terminal-play impact: Thief trap spells, authored item-special routes, battle reward mode 10, and bounded Undo edge behavior. Existing AOGM, War, and Lachis acceptance remains valid unless one of these shared owners directly changes accepted evidence.
+Compiler preservation, spell saturation, the complete authored opcode denominator, Thief trap spells, and every active authored item-use family are closed. The remaining major scenario/combat backlog is battle reward mode 10 and bounded Undo edge behavior, alongside the retained ordinary-play certification targets. Existing AOGM, War, and Lachis acceptance remains valid unless one of these shared owners directly changes accepted evidence.
 
 Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
 | `classic.scenario.complex-interaction` | certification | broader-parity | other-ordinary |  |
-| `classic.inventory.use-item` | implementation | broader-parity | - | GAP-INV-003 |
 | `classic.combat.resolve-outcome` | implementation | broader-parity | - | GAP-COMBAT-007 |
 | `classic.combat.undo` | archaeology | broader-parity | - | GAP-COMBAT-014 |
 | `classic.startup.select-scenario` | certification | broader-parity | other-ordinary |  |
@@ -32,8 +31,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Scope | State | Baseline | Current | Delta |
 | --- | --- | ---: | ---: | ---: |
 | classic | missing | 0 | 0 | 0 |
-| classic | partial | 15 | 14 | -1 |
-| classic | functional | 43 | 44 | +1 |
+| classic | partial | 15 | 13 | -2 |
+| classic | functional | 43 | 45 | +2 |
 | classic | certified | 11 | 11 | 0 |
 | host | missing | 1 | 1 | 0 |
 | host | partial | 1 | 1 | 0 |
@@ -48,7 +47,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Exploration | 6 | 0 | 0 | 4 | 2 |
 | Scenario interaction | 6 | 0 | 0 | 3 | 3 |
 | Character management | 5 | 0 | 2 | 3 | 0 |
-| Inventory and equipment | 9 | 0 | 2 | 7 | 0 |
+| Inventory and equipment | 9 | 0 | 1 | 8 | 0 |
 | Spellcasting | 3 | 0 | 2 | 1 | 0 |
 | Services and economy | 5 | 0 | 1 | 4 | 0 |
 | Combat | 14 | 0 | 2 | 8 | 4 |
@@ -63,8 +62,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Castle oracle | Count |
 | --- | ---: |
 | not-required | 9 |
-| required | 7 |
-| completed | 53 |
+| required | 6 |
+| completed | 54 |
 
 | Remake | Count |
 | --- | ---: |
@@ -85,8 +84,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | ---: |
 | not-applicable | 3 |
 | absent | 0 |
-| partial | 7 |
-| complete | 59 |
+| partial | 6 |
+| complete | 60 |
 
 | persistence | Count |
 | --- | ---: |
@@ -144,14 +143,13 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 
 ## Release blockers and major gaps
 
-Blockers: **1**. Major gaps: **11**.
+Blockers: **1**. Major gaps: **10**.
 
 - **blocker** `host.release.platform-certification` - There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
 - **major** `classic.character.allies-bestiary` - Current held-over allies now have a functional read-only workspace, but the Bestiary cannot be reconstructed from the package because menu visibility and normalized descriptions are not preserved per monster. Next: Correct Providence schema v3 and Rebuilt decoding to preserve every menu-visible monster, its description, and not-on-menu flag, then add the Bestiary route without inventing discovery state.
 - **major** `classic.character.view-sheet` - Castle's lifetime combat record and prestige cannot yet be calculated accurately. Next: Add source-backed lifetime counters and update every owning combat and magic mutation path before enabling the visible Lifetime Record tab.
 - **major** `classic.combat.resolve-outcome` - Battle reward mode 10 remains unresolved end to end. Next: Implement the mode-10 restore-and-restart continuation when a certified scenario exposes it or during post-corpus synthetic saturation, without changing schema v2 unless controlled evidence disproves positional preservation.
 - **major** `classic.combat.undo` - Movement-only Undo, result invalidation, condition gates, occupied-cell safety, presentation, and save restoration are implemented; repeated Undo and initiative-edge re-entry remain runtime-unobserved. Next: Run the synthetic Castle fixtures for repeated Undo and first/last-slot or round-boundary re-entry before expanding the bounded implementation.
-- **major** `classic.inventory.use-item` - Ordinary AOGM play proves fixed-power party-state items and saveable field scroll consumption. Combat items and scrolls include source-backed fixed or random power plus actor, ordered repeated actor, group, ray, rotatable persistent-area, and zero-cost elemental projectile targets; door/XAP items and broader specials remain explicit. Next: Characterize door/XAP items and broader specials only when parity or a reachable campaign requires them.
 - **major** `classic.maps.location-notes` - Historical notes are readable in source order but do not yet recreate Castle's temporary map recentering and saved darkness view. Next: Add a mutation-free note browser derived from authoritative topology and the saved darkness value, then verify land and dungeon records through MCP.
 - **major** `classic.maps.view-acquired` - Exact dungeon player-map composition is not yet proven against Castle. Next: Capture one synthetic Castle dungeon player map and compare wall, door, secret, and party-marker pixels before declaring exact presentation parity.
 - **major** `classic.spellcasting.combat-cast` - Manual, fixed-power scroll, charged-item, Party Auto, and monster casting share source-backed condition-cure, single-target friendly and self healing, single-target friendly condition-effect, multi-actor ray, rotated-area, persistent-field, hostile-group, Flame Missile, zero-cost breath, and summoning resolution. Every application spell has one mechanical-family and per-source disposition; only the remaining special-effect families stay explicit pending capabilities. Next: Continue the remaining unresolved special-effect families while keeping every unavailable family explicit.
@@ -163,7 +161,6 @@ Blockers: **1**. Major gaps: **11**.
 
 - `classic.combat.undo` - Undo the active combat activation
 - `classic.inventory.manage-equipment` - Equip and unequip carried items
-- `classic.inventory.use-item` - Use an item
 - `classic.maps.authored-journal` - Read the authored journal
 - `classic.maps.location-notes` - Read and edit location notes
 - `classic.system.music-playlists` - Configure and hear context music
@@ -189,7 +186,6 @@ Blockers: **1**. Major gaps: **11**.
 - `classic.character.view-sheet` - Castle's lifetime combat record and prestige cannot yet be calculated accurately.
 - `classic.combat.resolve-outcome` - Battle reward mode 10 remains unresolved end to end.
 - `classic.combat.undo` - Movement-only Undo, result invalidation, condition gates, occupied-cell safety, presentation, and save restoration are implemented; repeated Undo and initiative-edge re-entry remain runtime-unobserved.
-- `classic.inventory.use-item` - Ordinary AOGM play proves fixed-power party-state items and saveable field scroll consumption. Combat items and scrolls include source-backed fixed or random power plus actor, ordered repeated actor, group, ray, rotatable persistent-area, and zero-cost elemental projectile targets; door/XAP items and broader specials remain explicit.
 - `classic.maps.location-notes` - Historical notes are readable in source order but do not yet recreate Castle's temporary map recentering and saved darkness view.
 - `classic.maps.view-acquired` - Exact dungeon player-map composition is not yet proven against Castle.
 - `classic.spellcasting.combat-cast` - Manual, fixed-power scroll, charged-item, Party Auto, and monster casting share source-backed condition-cure, single-target friendly and self healing, single-target friendly condition-effect, multi-actor ray, rotated-area, persistent-field, hostile-group, Flame Missile, zero-cost breath, and summoning resolution. Every application spell has one mechanical-family and per-source disposition; only the remaining special-effect families stay explicit pending capabilities.

@@ -28,8 +28,8 @@ func _init(instance: ItemInstance, item: ItemDefinition, spell: SpellDefinition,
 	item_definition_id = item.id
 	item_name = item.name if instance.identified else item.unidentified_name
 	charges = instance.charges
-	spell_id = spell.id
-	spell_name = spell.name
+	spell_id = spell.id if spell != null else ""
+	spell_name = spell.name if spell != null else "Scenario action"
 	power = power_level
 	target_id = target.id if target != null else ""
 	target_name = target.name if target != null else automatic_target_label

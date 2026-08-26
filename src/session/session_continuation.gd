@@ -92,6 +92,18 @@ class TargetingBody:
 		return data
 
 
+class ItemBody:
+	extends Body
+	var character_id: String
+	var instance_id: String
+	var item_id: String
+	var program_id: String
+	var source_battle_id: String
+
+	func _payload_data(kind: StringName) -> Dictionary:
+		return {"kind": String(kind), "characterId": character_id, "instanceId": instance_id, "itemId": item_id, "programId": program_id, "sourceBattleId": source_battle_id}
+
+
 class ServiceBody:
 	extends Body
 	var service_id: String
@@ -202,6 +214,10 @@ static func targeting_selection(continuation_kind: StringName, targeting_body: T
 	return SessionContinuation.new(continuation_kind, targeting_body)
 
 
+static func item_xap(item_body: ItemBody) -> SessionContinuation:
+	return SessionContinuation.new(&"item-xap", item_body)
+
+
 static func service_interaction(service_id: String, runtime_continuation: ScenarioRuntimeContinuation) -> SessionContinuation:
 	var service_body := ServiceBody.new()
 	service_body.service_id = service_id
@@ -251,6 +267,10 @@ func application() -> ApplicationBody:
 
 func targeting() -> TargetingBody:
 	return body as TargetingBody
+
+
+func item_xap_body() -> ItemBody:
+	return body as ItemBody
 
 
 func service() -> ServiceBody:
@@ -314,6 +334,8 @@ static func _from_wire_payload(continuation_kind: StringName, data: Dictionary) 
 			return character_vault_publication(data["characterId"]) if _has_exact_fields(data, ["characterId"]) and data.get("characterId") is String and not data["characterId"].is_empty() else null
 		&"item-use-target-selection", &"field-spell-target-selection", &"scroll-target-selection", &"scroll-discard-confirmation", &"drop-item-confirmation":
 			return _decode_targeting(continuation_kind, data)
+		&"item-xap":
+			return _decode_item_xap(data)
 		&"service-interaction":
 			if not _has_exact_fields(data, ["serviceId", "runtimeContinuation"]) or not data.get("serviceId") is String or data["serviceId"].is_empty():
 				return null
@@ -340,6 +362,19 @@ static func _from_wire_payload(continuation_kind: StringName, data: Dictionary) 
 				return null
 			return combat_reward(data["battleId"], reward_runtime)
 	return null
+
+
+static func _decode_item_xap(data: Dictionary) -> SessionContinuation:
+	var fields: Array[String] = ["characterId", "instanceId", "itemId", "programId", "sourceBattleId"]
+	if not _has_exact_fields(data, fields) or not _nonempty_strings(data, ["characterId", "instanceId", "itemId", "programId"]) or not data.get("sourceBattleId") is String:
+		return null
+	var body := ItemBody.new()
+	body.character_id = data["characterId"]
+	body.instance_id = data["instanceId"]
+	body.item_id = data["itemId"]
+	body.program_id = data["programId"]
+	body.source_battle_id = data["sourceBattleId"]
+	return item_xap(body)
 
 
 static func _decode_boat(data: Dictionary) -> SessionContinuation:

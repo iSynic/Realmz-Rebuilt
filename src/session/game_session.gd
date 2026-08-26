@@ -382,6 +382,9 @@ func _finish_resumed_vm_result(result: ScenarioVmResult, events: Array[DomainEve
 	if not _session_continuation.is_empty():
 		if _session_continuation.kind == &"combat-death-macro":
 			return _continue_session_death_macro(events)
+		if _session_continuation.kind == &"item-xap":
+			_ensure_coordinators()
+			return _commit_coordinator_result(_scenario_coordinator._continue_item_xap(events))
 		return _continue_exploration_continuation(events)
 	return _finish_completed(events)
 
@@ -480,6 +483,9 @@ func _use_item(intent: PlayerIntent) -> SessionStep:
 	var item: ItemDefinition = null if instance == null else _content.item_by_id(instance.definition_id)
 	if character == null or instance == null or item == null:
 		return SessionStep.failed(_view_revision, &"unknown_item_instance", "The selected character does not carry that item instance.")
+	if InventoryMagicServicesWorkflow.is_classic_door_item(item):
+		_ensure_coordinators()
+		return _commit_coordinator_result(_scenario_coordinator._start_item_xap(character, instance, item))
 	if _state.combat != null and not _state.combat.completed:
 		var combat_result := _rules.combat_flow.use_spell_item(_state, _content, character.id, target_id, instance.id, _rng, target_coordinate, rotation, target_ids, target_coordinates)
 		if not combat_result.ok:

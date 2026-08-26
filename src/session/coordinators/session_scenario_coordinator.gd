@@ -85,7 +85,7 @@ func _begin_scenario_handoff(result: ScenarioVmResult, events: Array[DomainEvent
 	if result == null or result.state != ScenarioVmResult.State.SUSPENDED or result.handoff == null or result.handoff.runtime == null:
 		_context.session_continuation.clear()
 		return _context.failed(&"invalid_vm_handoff", "The Scenario VM did not provide a typed application handoff.", events)
-	if _context.session_continuation.kind not in [&"post-clock", &"post-move"]:
+	if _context.session_continuation.kind not in [&"post-clock", &"post-move", &"item-xap"]:
 		_context.session_continuation.clear()
 		return _context.failed(&"unsupported_vm_handoff_owner", "Total-party defeat cannot suspend this scenario caller.", events)
 	var saved = _context.scenario_vm.snapshot()
@@ -123,7 +123,78 @@ func _resume_scenario_party_defeat(saved: ScenarioVmSnapshot, suspended_owner: S
 		return _context.failed(resumed.error_code, resumed.error_message, events)
 	if _context.session_continuation.is_empty():
 		return _context.completed(events)
+	if _context.session_continuation.kind == &"item-xap":
+		return _continue_item_xap(events)
 	return _context.exploration()._continue_exploration_continuation(events)
+
+
+func _start_item_xap(character: CharacterState, instance: ItemInstance, item: ItemDefinition) -> SessionCoordinatorResult:
+	var in_combat := _context.state.combat != null and not _context.state.combat.completed
+	var probe := InventoryMagicServicesWorkflow.door_item_probe(_context.workflow_context(), character, instance, item, in_combat)
+	if not probe.allowed:
+		return _context.failed(&"item_cannot_be_used", probe.reason)
+	var state_checkpoint := _context.state.to_data()
+	var rng_checkpoint := _context.rng.checkpoint()
+	var vm_checkpoint := _context.scenario_vm.snapshot()
+	var action_checkpoint := _context.scenario_action_state.to_data()
+	var body := SessionContinuation.ItemBody.new()
+	body.character_id = character.id
+	body.instance_id = instance.id
+	body.item_id = item.id
+	body.program_id = "xap:%d" % item.special_5
+	body.source_battle_id = _context.state.combat.battle_id if in_combat else ""
+	_context.set_continuation(SessionContinuation.item_xap(body))
+	if not _context.rules.inventory.use_charge(character, instance.id, item):
+		_context.session_continuation.clear()
+		return _context.failed(&"item_charge_commit_failed", "The validated door-item charge could not be committed.")
+	var execution_context := ScenarioExecutionContext.calling(&"item")
+	if in_combat:
+		execution_context.set_battle(body.source_battle_id)
+	var started := _context.scenario_vm.start_program(body.program_id, execution_context)
+	if started.state == ScenarioVmResult.State.FAILED:
+		_rollback_item_xap(state_checkpoint, rng_checkpoint, vm_checkpoint, action_checkpoint)
+		return _context.failed(started.error_code, started.error_message)
+	var charges_remaining := -1
+	var dropped := true
+	for carried: ItemInstance in character.inventory():
+		if carried.id == instance.id:
+			charges_remaining = carried.charges
+			dropped = false
+			break
+	var result := _context.scenario_vm.run(_context.runtime_api)
+	var events: Array[DomainEvent] = [
+		DomainEvent.new(&"item_used", {"characterId": character.id, "instanceId": instance.id, "itemId": item.id, "programId": body.program_id, "chargesRemaining": charges_remaining, "droppedOnEmpty": dropped, "source": "classic-door-item"}),
+		DomainEvent.new(&"item_xap_started", {"characterId": character.id, "itemId": item.id, "programId": body.program_id, "sourceBattleId": body.source_battle_id}),
+	]
+	events.append_array(result.events)
+	if result.state == ScenarioVmResult.State.SUSPENDED:
+		return _begin_scenario_handoff(result, events)
+	if result.state == ScenarioVmResult.State.FAILED:
+		if not _rollback_item_xap(state_checkpoint, rng_checkpoint, vm_checkpoint, action_checkpoint):
+			return _context.failed(&"item_xap_rollback_failed", "The failed door-item action could not restore its session checkpoint.", events)
+		return _context.failed(result.error_code, result.error_message, events)
+	if result.state == ScenarioVmResult.State.WAITING:
+		return _context.waiting(result.interaction, events)
+	return _continue_item_xap(events)
+
+
+func _continue_item_xap(events: Array[DomainEvent]) -> SessionCoordinatorResult:
+	var body := _context.session_continuation.item_xap_body()
+	if body == null:
+		return _context.failed(&"invalid_session_continuation", "The door-item scenario continuation is unavailable.", events)
+	events.append(DomainEvent.new(&"item_xap_completed", {"characterId": body.character_id, "itemId": body.item_id, "programId": body.program_id, "sourceBattleId": body.source_battle_id}))
+	_context.session_continuation.clear()
+	return _context.completed(events)
+
+
+func _rollback_item_xap(state_checkpoint: Dictionary, rng_checkpoint: Dictionary, vm_checkpoint: ScenarioVmSnapshot, action_checkpoint: Dictionary) -> bool:
+	var restored_action := ScenarioActionState.from_data(action_checkpoint)
+	if restored_action == null or not _context.state.restore_from_data(state_checkpoint) or not _context.rng.rollback(rng_checkpoint) or not _context.scenario_vm.restore(vm_checkpoint):
+		return false
+	_context.scenario_action_state = restored_action
+	_context.runtime_api = RealmzRuntimeApi.new(_context.content, _context.state, _context.rng, restored_action, _context.rules)
+	_context.session_continuation.clear()
+	return true
 
 
 func _apply_trigger_destination(trigger: TriggerDefinition, events: Array[DomainEvent], allow_destination: bool) -> bool:
