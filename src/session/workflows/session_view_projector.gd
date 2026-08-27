@@ -835,7 +835,7 @@ static func _build_cell_view(context: SessionWorkflowContext, map: MapDefinition
 	if map.level_type == &"land" and context.state.world.has_terrain_override(map.id, cell.coordinate):
 		var raw_tile := context.state.world.classic_tile_for(map.id, cell)
 		overlay_asset_id = WorldState.classic_special_land_overlay(raw_tile)
-		if raw_tile < 0:
+		if not overlay_asset_id.is_empty():
 			var terrain_set := context.content.world.battle_terrain_set_for_map(map, context.state.world)
 			render_tile = cell.render_tile if terrain_set == null else terrain_set.base_tile
 		else:

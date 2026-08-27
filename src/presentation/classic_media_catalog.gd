@@ -50,9 +50,9 @@ func asset_by_id(asset_id: String) -> MediaAsset:
 	var character_asset := character_media.asset_by_id(asset_id) if character_media != null else null
 	if character_asset != null:
 		return character_asset
-	var special_land_resource_id := _special_land_resource_id(asset_id)
-	if special_land_resource_id < 0:
-		return asset_by_resource("cicn", special_land_resource_id)
+	var land_overlay_resource_id := _land_overlay_resource_id(asset_id)
+	if land_overlay_resource_id != 0:
+		return asset_by_resource("cicn", land_overlay_resource_id)
 	var application_asset := application_media.asset_by_id(asset_id) if application_media != null else null
 	if application_asset != null:
 		return application_asset
@@ -76,14 +76,17 @@ func tileset_by_id(tileset_id: String) -> MediaAsset:
 	return asset if asset != null and asset.is_tileset() else null
 
 
-static func _special_land_resource_id(asset_id: String) -> int:
-	const PREFIX := "realmz-special-land-neg-"
-	if not asset_id.begins_with(PREFIX):
+static func _land_overlay_resource_id(asset_id: String) -> int:
+	const NEGATIVE_PREFIX := "realmz-special-land-neg-"
+	const POSITIVE_PREFIX := "realmz-land-cicn-"
+	var sign := -1 if asset_id.begins_with(NEGATIVE_PREFIX) else 1
+	var prefix := NEGATIVE_PREFIX if sign < 0 else POSITIVE_PREFIX
+	if not asset_id.begins_with(prefix):
 		return 0
-	var magnitude := asset_id.trim_prefix(PREFIX)
+	var magnitude := asset_id.trim_prefix(prefix)
 	if magnitude.is_empty() or not magnitude.is_valid_int() or int(magnitude) <= 0:
 		return 0
-	return -int(magnitude)
+	return sign * int(magnitude)
 
 
 func battle_tileset() -> MediaAsset:

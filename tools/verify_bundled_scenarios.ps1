@@ -96,23 +96,40 @@ foreach ($scenario in $catalog.scenarios) {
         $reader = [System.IO.StreamReader]::new($entry.Open())
         try { $manifest = $reader.ReadToEnd() | ConvertFrom-Json }
         finally { $reader.Dispose() }
+        $worldEntry = $archive.GetEntry("world.json")
+        if ($null -eq $worldEntry) { throw "$($scenario.file) has no world.json." }
+        $worldReader = [System.IO.StreamReader]::new($worldEntry.Open())
+        try { $world = $worldReader.ReadToEnd() | ConvertFrom-Json }
+        finally { $worldReader.Dispose() }
+        foreach ($map in @($world.maps | Where-Object { $_.levelType -eq "land" })) {
+            foreach ($cell in $map.cells) {
+                if ([string]$cell[0] -match '^classic\.terrain\.(-?\d+)$' -and [Math]::Abs([int]$Matches[1]) -gt 200 -and ([int]$cell[8] -gt 200 -or [string]::IsNullOrWhiteSpace([string]$cell[10]))) {
+                    throw "$($scenario.file) map $($map.id) retains an unseparated icon-backed land cell."
+                }
+            }
+        }
         if ($scenario.campaignId -eq "scenario-city-of-bywater") {
-            $worldEntry = $archive.GetEntry("world.json")
             $scenarioEntry = $archive.GetEntry("scenario.json")
-            if ($null -eq $worldEntry -or $null -eq $scenarioEntry) { throw "City of Bywater has no compiled world or scenario document." }
-            $worldReader = [System.IO.StreamReader]::new($worldEntry.Open())
-            try { $world = $worldReader.ReadToEnd() | ConvertFrom-Json }
-            finally { $worldReader.Dispose() }
+            $contentEntry = $archive.GetEntry("content.json")
+            if ($null -eq $scenarioEntry -or $null -eq $contentEntry) { throw "City of Bywater has no compiled content or scenario document." }
             $scenarioReader = [System.IO.StreamReader]::new($scenarioEntry.Open())
             try { $scenarioDocument = $scenarioReader.ReadToEnd() | ConvertFrom-Json }
             finally { $scenarioReader.Dispose() }
+            $contentReader = [System.IO.StreamReader]::new($contentEntry.Open())
+            try { $contentDocument = $contentReader.ReadToEnd() | ConvertFrom-Json }
+            finally { $contentReader.Dispose() }
             $ranthogTrigger = @($world.triggers | Where-Object { $_.id -eq "Data DD:0:39" })
             $ranthogReward = @($scenarioDocument.programs | Where-Object { $_.id -eq "xap:50" })
+            $cryptDoorEncounter = @($contentDocument.complexEncounters | Where-Object { $_.id -eq 4 })
+            $cryptDoorPrompt = @($contentDocument.messages | Where-Object { $_.id -eq 218 })
             if ($ranthogTrigger.Count -ne 1 -or $ranthogTrigger[0].active -ne $false -or $ranthogTrigger[0].chancePercent -ne -100 -or $ranthogTrigger[0].mapId -ne "land:0" -or $ranthogTrigger[0].coordinate.x -ne 39 -or $ranthogTrigger[0].coordinate.y -ne 56) {
                 throw "City of Bywater must preserve dormant placed Action Point Data DD:0:39 at land:0 39,56."
             }
             if ($ranthogReward.Count -ne 1 -or (@($ranthogReward[0].instructions | ForEach-Object { $_.opcode }) -join ",") -ne "1,3,1,29,13,12,12") {
                 throw "City of Bywater XAP 50 must retain the Ranthog reward, dormant-AP enable, and tree-tile mutation sequence."
+            }
+            if ($cryptDoorEncounter.Count -ne 1 -or $cryptDoorEncounter[0].promptMessageId -ne 218 -or (@($cryptDoorEncounter[0].texts[0], $cryptDoorEncounter[0].texts[1]) -join "|") -ne "Bang on the door.|Try and force the door." -or $cryptDoorPrompt.Count -ne 1) {
+                throw "City of Bywater Complex Encounter 4 must retain prompt 218 and both authored door actions."
             }
         }
     } finally {

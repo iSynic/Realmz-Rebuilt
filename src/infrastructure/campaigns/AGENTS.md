@@ -24,7 +24,7 @@ Own the Castle-distributed scenario packages that ship with Realmz Rebuilt.
 
 ## Verification
 
-- `tools/verify_bundled_scenarios.ps1` checks the exact archive set, file bytes, SHA-256 values, manifest identities, Providence compiler revision, City of Bywater source-snapshot identity, and its dormant Ranthog Action Point preservation.
+- `tools/verify_bundled_scenarios.ps1` checks the exact archive set, file bytes, SHA-256 values, manifest identities, Providence compiler revision, every icon-backed land cell's base-plus-overlay separation, City of Bywater source-snapshot identity, its dormant Ranthog Action Point preservation, and its crypt-door Encounter prompt/actions.
 
 ## Child DOX Index
 

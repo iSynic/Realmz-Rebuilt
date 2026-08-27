@@ -46,7 +46,10 @@ static func normalized_classic_land_tile(raw_tile: int) -> int:
 
 
 static func classic_special_land_overlay(raw_tile: int) -> String:
-	if raw_tile >= 0 or raw_tile < -3999:
+	if raw_tile >= 0:
+		var positive_resource_id := normalized_classic_land_tile(raw_tile)
+		return "realmz-land-cicn-%d" % positive_resource_id if positive_resource_id > 200 else ""
+	if raw_tile < -3999:
 		return ""
 	var resource_id := raw_tile
 	for index: int in 3:

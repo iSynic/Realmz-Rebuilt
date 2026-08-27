@@ -2,10 +2,15 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$CastleRepository,
     [string]$PictDecoderPath = "",
-    [switch]$SoundOnly
+    [switch]$SoundOnly,
+    [switch]$CicnOnly
 )
 
 $ErrorActionPreference = "Stop"
+
+if ($SoundOnly -and $CicnOnly) {
+    throw "SoundOnly and CicnOnly are mutually exclusive"
+}
 
 function Get-U16([byte[]]$Bytes, [int]$Offset) {
     return ([int]$Bytes[$Offset] -shl 8) -bor [int]$Bytes[$Offset + 1]
@@ -218,8 +223,12 @@ $outputRoot = Join-Path $stagingRoot "output"
 $sidecarRoot = Join-Path $stagingRoot "sidecars"
 $destinationRoot = Join-Path $repoRoot "src/presentation/assets/classic-media"
 $manifestPath = Join-Path $repoRoot "src/presentation/assets/classic-application-media.json"
-$existingManifest = if ($SoundOnly) { Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json } else { $null }
-$activeResourceSets = @($catalog.resource_sets | Where-Object { -not $SoundOnly -or $_.resource_type -eq "snd " })
+$existingManifest = if ($SoundOnly -or $CicnOnly) { Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json } else { $null }
+$activeResourceSets = @($catalog.resource_sets | Where-Object {
+    if ($SoundOnly) { return $_.resource_type -eq "snd " }
+    if ($CicnOnly) { return $_.resource_type -eq "cicn" }
+    return $true
+})
 New-Item -ItemType Directory -Path $extractRoot, $outputRoot, $sidecarRoot | Out-Null
 
 try {
@@ -422,6 +431,25 @@ try {
         if (@($generatedSounds.Keys).Count -ne @($existingManifest.assets | Where-Object resource_type -eq "snd ").Count) {
             throw "Regenerated sound count does not match the committed manifest"
         }
+    }
+    elseif ($CicnOnly) {
+        $generatedCicns = @{}
+        foreach ($record in $records) {
+            $generatedCicns[$record.id] = $record
+        }
+        $existingCicnIds = @{}
+        $mergedRecords = @($existingManifest.assets | ForEach-Object {
+            if ($_.resource_type -ne "cicn") {
+                return $_
+            }
+            if (-not $generatedCicns.ContainsKey($_.id)) {
+                throw "Existing cicn is absent from regenerated media: $($_.id)"
+            }
+            $existingCicnIds[$_.id] = $true
+            return $generatedCicns[$_.id]
+        })
+        $newRecords = @($records | Where-Object { -not $existingCicnIds.ContainsKey($_.id) })
+        $records = @($mergedRecords) + @($newRecords)
     }
 
     $manifest = [ordered]@{

@@ -125,8 +125,11 @@ func set_media_catalog(media: ClassicMediaCatalog) -> void:
 			_atlas_textures[asset.id] = texture
 		else:
 			_overlay_textures[asset.id] = texture
-			if asset.resource_type.strip_edges().to_lower() == "cicn" and asset.resource_id < 0:
-				_overlay_textures["realmz-special-land-neg-%d" % absi(asset.resource_id)] = texture
+			if asset.resource_type.strip_edges().to_lower() == "cicn":
+				if asset.resource_id < 0:
+					_overlay_textures["realmz-special-land-neg-%d" % absi(asset.resource_id)] = texture
+				elif asset.resource_id > 200:
+					_overlay_textures["realmz-land-cicn-%d" % asset.resource_id] = texture
 	var marker_atlas := _atlas_assets.get(CLASSIC_BATTLE_ATLAS_ID) as MediaAsset
 	var marker_texture := _atlas_textures.get(CLASSIC_BATTLE_ATLAS_ID) as Texture2D
 	for tile_id: int in [SECRET_LAND_MARKER_TILE_ID, PATH_LAND_MARKER_TILE_ID]:
