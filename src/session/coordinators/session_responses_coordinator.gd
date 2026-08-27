@@ -47,6 +47,8 @@ func _respond_session_interaction(response: InteractionResponse) -> SessionCoord
 			return _respond_session_battle_reward(response)
 		&"combat-retreat-confirmation":
 			return _respond_session_retreat(response)
+		&"combat-friendly-collision":
+			return _respond_session_friendly_collision(response)
 	var surprise_body = response.body as InteractionResponse.YesNoBody
 	if response.kind != &"yes_no" or surprise_body == null:
 		return _context.failed(&"invalid_interaction_response", "The random encounter response must be a yes/no choice.")
@@ -363,6 +365,20 @@ func _respond_session_retreat(response: InteractionResponse) -> SessionCoordinat
 	if not body.accepted:
 		return _context.completed(_single_event(DomainEvent.new(&"combat_retreat_declined", {"actorId": continuation.actor_id, "mode": String(continuation.mode), "source": "classic"})))
 	var result = _context.rules.combat_flow.retreat_character(_context.state, _context.content, continuation.actor_id, continuation.mode, continuation.destination, _context.rng)
+	return _finish_combat_result(result)
+
+
+func _respond_session_friendly_collision(response: InteractionResponse) -> SessionCoordinatorResult:
+	var body = response.body as InteractionResponse.YesNoBody
+	if response.kind != InteractionRequest.YES_NO or body == null:
+		return _context.failed(&"invalid_interaction_response", "The Classic friendly-collision choice requires a yes/no response.")
+	var continuation = _context.session_continuation.combat()
+	if continuation == null or _context.state.combat == null or _context.state.combat.completed or _context.state.combat.battle_id != continuation.battle_id or _context.state.combat.active_actor_id() != continuation.actor_id or _context.rules.combat_flow.friendly_collision_target_id(_context.state, continuation.actor_id, continuation.destination).is_empty():
+		return _context.failed(&"invalid_session_continuation", "The adjacent ally awaiting a collision choice is unavailable.")
+	_context.session_interaction = null
+	_context.session_continuation.clear()
+	var action := &"swap" if body.accepted else &"attack"
+	var result = _context.rules.combat_flow.move_character(_context.state, _context.content, continuation.actor_id, continuation.destination, _context.rng, false, action)
 	return _finish_combat_result(result)
 
 

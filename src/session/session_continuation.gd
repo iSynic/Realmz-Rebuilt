@@ -142,7 +142,7 @@ class CombatBody:
 	var reset_traitor_on_complete: bool = true
 
 	func _payload_data(kind: StringName) -> Dictionary:
-		if kind == &"combat-retreat-confirmation":
+		if kind in [&"combat-retreat-confirmation", &"combat-friendly-collision"]:
 			return {"kind": String(kind), "battleId": battle_id, "actorId": actor_id, "mode": String(mode), "destination": [destination.x, destination.y]}
 		if kind == &"combat-death-macro":
 			return {"kind": String(kind), "battleId": battle_id, "combatantId": combatant_id, "programId": program_id, "resetTraitorOnComplete": reset_traitor_on_complete}
@@ -237,7 +237,7 @@ static func age_updates(age_body: AgeBody) -> SessionContinuation:
 
 
 static func combat_state(continuation_kind: StringName, combat_body: CombatBody) -> SessionContinuation:
-	assert(continuation_kind in [&"combat-retreat-confirmation", &"combat-death-macro", &"combat-ally-selection", &"combat-fumble-recovery"])
+	assert(continuation_kind in [&"combat-retreat-confirmation", &"combat-friendly-collision", &"combat-death-macro", &"combat-ally-selection", &"combat-fumble-recovery"])
 	return SessionContinuation.new(continuation_kind, combat_body)
 
 
@@ -351,7 +351,7 @@ static func _from_wire_payload(continuation_kind: StringName, data: Dictionary) 
 			return pooled_wealth_departure(StringName(data["stage"]), Vector2i(direction_x, direction_y))
 		&"age-updates":
 			return _decode_age(data)
-		&"combat-retreat-confirmation", &"combat-death-macro", &"combat-ally-selection", &"combat-fumble-recovery":
+		&"combat-retreat-confirmation", &"combat-friendly-collision", &"combat-death-macro", &"combat-ally-selection", &"combat-fumble-recovery":
 			return _decode_combat(continuation_kind, data)
 		&"combat-reward":
 			if not _has_exact_fields(data, ["battleId", "runtimeContinuation"]) or not data.get("battleId") is String or data["battleId"].is_empty():
@@ -516,15 +516,17 @@ static func _decode_combat(continuation_kind: StringName, data: Dictionary) -> S
 	var body := CombatBody.new()
 	body.battle_id = data["battleId"]
 	match continuation_kind:
-		&"combat-retreat-confirmation":
-			if not _has_exact_fields(data, ["battleId", "actorId", "mode", "destination"]) or not data.get("actorId") is String or data["actorId"].is_empty() or data.get("mode") not in ["explicit", "edge"] or not data.get("destination") is Array or data["destination"].size() != 2:
+		&"combat-retreat-confirmation", &"combat-friendly-collision":
+			var valid_modes: Array[String] = []
+			valid_modes.assign(["explicit", "edge"] if continuation_kind == &"combat-retreat-confirmation" else ["friendly"])
+			if not _has_exact_fields(data, ["battleId", "actorId", "mode", "destination"]) or not data.get("actorId") is String or data["actorId"].is_empty() or data.get("mode") not in valid_modes or not data.get("destination") is Array or data["destination"].size() != 2:
 				return null
 			var x_value: Variant = _signed_integer_or_null(data["destination"][0])
 			var y_value: Variant = _signed_integer_or_null(data["destination"][1])
 			if x_value == null or y_value == null:
 				return null
 			var destination := Vector2i(int(x_value), int(y_value))
-			if data["mode"] == "explicit" and destination != Vector2i(-100_000, -100_000) or data["mode"] == "edge" and destination == Vector2i(-100_000, -100_000):
+			if (data["mode"] == "explicit" and destination != Vector2i(-100_000, -100_000)) or (data["mode"] in ["edge", "friendly"] and destination == Vector2i(-100_000, -100_000)):
 				return null
 			body.actor_id = data["actorId"]
 			body.mode = StringName(data["mode"])

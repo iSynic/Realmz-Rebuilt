@@ -147,7 +147,7 @@ func retreat_character(state: GameState, content: RealmzContent, actor_id: Strin
 	return CombatFlowResult.succeeded(events, state.combat.completed)
 
 
-func move_character(state: GameState, content: RealmzContent, actor_id: String, destination: Vector2i, rng: RealmzRng, auto_switch_to_melee: bool = false) -> CombatFlowResult:
+func move_character(state: GameState, content: RealmzContent, actor_id: String, destination: Vector2i, rng: RealmzRng, auto_switch_to_melee: bool = false, friendly_collision_action: StringName = &"") -> CombatFlowResult:
 	var combat := state.combat
 	if combat == null or combat.completed or rng == null:
 		return CombatFlowResult.failed(&"no_active_battle", "No Realmz battle is accepting tactical movement.")
@@ -166,21 +166,34 @@ func move_character(state: GameState, content: RealmzContent, actor_id: String, 
 	var available_movement := actor.maximum_movement if combat.active_turn == null else actor.movement
 	var probe := _rules.battlefield.probe_step(combat.battlefield, terrain_set, actor_id, direction, available_movement)
 	var contact_target_id = _flow()._hostile_contact_target_id(state, actor.id, probe.occupant_id) if probe.reason == &"occupied" else ""
+	var friendly_target_id := friendly_collision_target_id(state, actor.id, destination) if probe.reason == &"occupied" else ""
 	var automatic_actor = _flow().is_processing_auto() or actor.traitor or actor.conditions.is_active(ConditionRules.ANIMATED)
+	if not friendly_target_id.is_empty() and friendly_collision_action.is_empty():
+		if automatic_actor:
+			friendly_collision_action = &"swap"
+		else:
+			return CombatFlowResult.failed(&"combat_friendly_collision_choice_required", "Choose whether to swap positions with or attack the adjacent ally.")
+	if not friendly_collision_action.is_empty() and (friendly_collision_action not in [&"swap", &"attack"] or friendly_target_id.is_empty()):
+		return CombatFlowResult.failed(&"invalid_friendly_collision", "The selected Classic friendly-collision action is no longer available.")
+	if friendly_collision_action == &"attack" and combat.character_weapon_mode(actor.id) != &"melee":
+		return CombatFlowResult.failed(&"melee_weapon_mode_required", "Switch to the melee weapon before attacking an adjacent ally.")
 	var should_auto_switch := false
 	if not contact_target_id.is_empty() and combat.character_weapon_mode(actor.id) != &"melee":
 		if not auto_switch_to_melee or automatic_actor or not _classic_projectile_uses_point_blank_auto_switch(actor, content):
 			return CombatFlowResult.failed(&"melee_weapon_mode_required", "Switch to the melee weapon before attacking an occupied hostile footprint.")
 		should_auto_switch = true
-	if not probe.allowed and contact_target_id.is_empty():
+	if not probe.allowed and contact_target_id.is_empty() and friendly_target_id.is_empty():
 		return CombatFlowResult.failed(probe.reason, _flow()._movement_failure_message(probe))
-	if not contact_target_id.is_empty():
+	if not contact_target_id.is_empty() or friendly_collision_action == &"attack":
 		var equipment := _rules.inventory.combat_equipment(actor, content.item_definitions())
 		if not equipment.valid:
 			return CombatFlowResult.failed(equipment.error_code, equipment.error_message)
 	_flow()._prepare_character_turn(combat, actor)
-	combat.pending_reaction = CombatReactionState.new(CombatReactionState.CHARACTER_MOVE, actor.id, origin, destination, 3 if not contact_target_id.is_empty() else probe.movement_cost)
+	var movement_cost := 5 if friendly_collision_action == &"swap" else 3 if not contact_target_id.is_empty() or friendly_collision_action == &"attack" else probe.movement_cost
+	combat.pending_reaction = CombatReactionState.new(CombatReactionState.CHARACTER_MOVE, actor.id, origin, destination, movement_cost)
 	combat.pending_reaction.auto_switch_to_melee = should_auto_switch
+	combat.pending_reaction.friendly_collision_action = friendly_collision_action
+	combat.pending_reaction.friendly_collision_target_id = friendly_target_id
 	var origin_hostiles = _flow()._hostile_adjacent_ids(state, actor.id)
 	combat.pending_reaction.set_origin_hostiles(origin_hostiles)
 	combat.pending_reaction.set_phase(CombatReactionState.GUARD_BEFORE, _guarding_actor_ids(state, origin_hostiles))
@@ -193,6 +206,26 @@ func move_character(state: GameState, content: RealmzContent, actor_id: String, 
 			return CombatFlowResult.succeeded(events, true)
 		_flow()._process_monster_turns(state, content, rng, events)
 	return CombatFlowResult.succeeded(events, state.combat.completed)
+
+
+func friendly_collision_target_id(state: GameState, actor_id: String, destination: Vector2i) -> String:
+	var combat := state.combat if state != null else null
+	var actor := state.party.character_by_id(actor_id) if state != null else null
+	if combat == null or combat.completed or combat.battlefield == null or actor == null or actor.current_health <= 0 or actor.traitor or combat.active_actor_id() != actor_id:
+		return ""
+	var origin := combat.battlefield.actor_position(actor_id)
+	var direction := destination - origin
+	var movement := actor.maximum_movement if combat.active_turn == null else actor.movement
+	if direction == Vector2i.ZERO or absi(direction.x) > 1 or absi(direction.y) > 1 or movement <= 4:
+		return ""
+	var target_id := combat.battlefield.actor_at(destination, actor_id)
+	if target_id.is_empty() or combat.battlefield.actor_size(target_id) != 0:
+		return ""
+	var target_character := state.party.character_by_id(target_id)
+	if target_character != null:
+		return target_id if target_character.current_health > 0 and target_character.traitor == actor.traitor else ""
+	var target_monster := combat.monster_by_id(target_id)
+	return target_id if target_monster != null and target_monster.current_health > 0 and target_monster.traitor == actor.traitor else ""
 
 
 func _classic_projectile_uses_point_blank_auto_switch(actor: CharacterState, content: RealmzContent) -> bool:
@@ -227,6 +260,21 @@ func _continue_pending_reaction(state: GameState, content: RealmzContent, rng: R
 		match reaction.phase:
 			CombatReactionState.GUARD_BEFORE:
 				if reaction.kind == CombatReactionState.CHARACTER_MOVE:
+					if reaction.friendly_collision_action == &"attack":
+						var target_monster := combat.monster_by_id(reaction.friendly_collision_target_id)
+						var previous_traitor := false
+						if target_monster != null:
+							previous_traitor = target_monster.traitor
+							target_monster.traitor = not state.party.character_by_id(reaction.mover_id).traitor
+						combat.pending_reaction = null
+						var friendly_attack: CombatFlowResult = _flow().submit_action(state, content, reaction.mover_id, &"attack", reaction.friendly_collision_target_id, rng, true)
+						if not friendly_attack.ok:
+							if target_monster != null:
+								target_monster.traitor = previous_traitor
+							events.append(DomainEvent.new(&"combat_contact_attack_failed", {"actorId": reaction.mover_id, "targetId": reaction.friendly_collision_target_id, "reason": String(friendly_attack.error_code)}))
+							return REACTION_COMPLETED
+						events.append_array(friendly_attack.events)
+						return REACTION_COMPLETED
 					var contact_target_id = _flow()._hostile_contact_target_id(state, reaction.mover_id, reaction.destination)
 					if not contact_target_id.is_empty():
 						if reaction.auto_switch_to_melee and combat.character_weapon_mode(reaction.mover_id) != &"melee":
@@ -279,6 +327,16 @@ func _commit_reaction_move(state: GameState, content: RealmzContent, reaction: C
 	else:
 		if combat.active_turn == null or combat.active_turn.actor_id != reaction.mover_id:
 			return REACTION_MOVER_DEFEATED
+	if reaction.friendly_collision_action == &"swap":
+		if combat.battlefield.actor_at(reaction.destination, reaction.mover_id) != reaction.friendly_collision_target_id or not combat.battlefield.swap_size_zero_actors(reaction.mover_id, reaction.friendly_collision_target_id):
+			return REACTION_MOVER_DEFEATED
+		var character := state.party.character_by_id(reaction.mover_id)
+		character.movement = maxi(0, character.movement - 5)
+		combat.invalidate_undo()
+		events.append(DomainEvent.new(&"combatants_swapped", {"actorId": reaction.mover_id, "targetId": reaction.friendly_collision_target_id, "from": [reaction.origin.x, reaction.origin.y], "to": [reaction.destination.x, reaction.destination.y], "cost": 5, "movementRemaining": character.movement, "automatic": _flow().is_processing_auto(), "source": "classic"}))
+		events.append(DomainEvent.new(&"sound_requested", {"soundId": 654, "waitForCompletion": false, "source": "classic-friendly-swap"}))
+		combat.pending_reaction = null
+		return REACTION_COMPLETED
 	if not combat.battlefield.move_actor(reaction.mover_id, reaction.destination):
 		return REACTION_MOVER_DEFEATED
 	if reaction.kind == CombatReactionState.CHARACTER_MOVE:

@@ -158,7 +158,13 @@ func _init(combat: CombatState, characters: Array[CharacterState] = [], content:
 						contact_target_id = probe.occupant_id
 						contact_target_name = _target_name(combat, characters, contact_target_id)
 						contact_attack_available = true
-					movement_options.append(CombatMoveOptionView.new(direction, probe, edge_retreat != null and edge_retreat.allowed, edge_retreat != null and edge_retreat.forced, contact_target_id, contact_target_name))
+					var move_option := CombatMoveOptionView.new(direction, probe, edge_retreat != null and edge_retreat.allowed, edge_retreat != null and edge_retreat.forced, contact_target_id, contact_target_name)
+					if probe.reason == &"occupied" and combat_flow.friendly_collision_target_id(game_state, active_character.id, destination) == probe.occupant_id:
+						move_option.enabled = true
+						move_option.reason = &""
+						move_option.reason_text = ""
+						move_option.movement_cost = 5
+					movement_options.append(move_option)
 				if weapon_mode == &"melee" and not contact_attack_available:
 					melee_attack_unavailable_reason = "No hostile battlefield footprint is adjacent."
 				if weapon_mode == &"melee":

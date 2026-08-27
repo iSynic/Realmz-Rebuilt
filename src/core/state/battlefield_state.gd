@@ -139,6 +139,24 @@ func move_actor(actor_id: String, destination: Vector2i) -> bool:
 	return true
 
 
+func swap_size_zero_actors(first_actor_id: String, second_actor_id: String) -> bool:
+	if first_actor_id.is_empty() or second_actor_id.is_empty() or first_actor_id == second_actor_id or actor_size(first_actor_id) != 0 or actor_size(second_actor_id) != 0:
+		return false
+	var first_position := actor_position(first_actor_id)
+	var second_position := actor_position(second_actor_id)
+	if not contains(first_position) or not contains(second_position):
+		return false
+	if _character_positions.has(first_actor_id):
+		_character_positions[first_actor_id] = second_position
+	else:
+		_monster_positions[first_actor_id] = second_position
+	if _character_positions.has(second_actor_id):
+		_character_positions[second_actor_id] = first_position
+	else:
+		_monster_positions[second_actor_id] = first_position
+	return true
+
+
 func replace_monster_id(current_id: String, replacement_id: String) -> bool:
 	if current_id.is_empty() or replacement_id.is_empty() or not _monster_positions.has(current_id) or _monster_positions.has(replacement_id) or _character_positions.has(replacement_id):
 		return false

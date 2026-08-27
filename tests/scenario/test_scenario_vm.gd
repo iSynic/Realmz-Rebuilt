@@ -48,7 +48,7 @@ func _test_scenario_wire_contracts() -> void:
 	assert_equal(JSON.parse_string(JSON.stringify(restored_context.to_data())), context_wire, "execution context preserves sparse declared fields")
 	var unknown_context := context_wire.duplicate(true); unknown_context["unexpected"] = true
 	assert_equal(ScenarioExecutionContext.from_data(unknown_context), null, "execution context rejects unknown fields")
-	var caller := ScenarioBattleCaller.classic(2, false, 0, 0); var handoff := ScenarioRuntimeHandoff.party_defeat("classic.battle.0", ScenarioRuntimeHandoff.CLASSIC_COMBAT, caller); var body := SessionContinuation.CombatBody.new(); body.battle_id = "classic.battle.0"; body.actor_id = "character.1"; body.mode = &"explicit"; body.destination = Vector2i(-100_000, -100_000)
+	var caller := ScenarioBattleCaller.classic(2, false, 0, 0); var handoff := ScenarioRuntimeHandoff.party_defeat("classic.battle.0", ScenarioRuntimeHandoff.CLASSIC_COMBAT, caller); var body := SessionContinuation.CombatBody.new(); body.battle_id = "classic.battle.0"; body.actor_id = "character.1"; body.mode = &"explicit"; body.destination = Vector2i(-100_000, -100_000); var collision_body := SessionContinuation.CombatBody.new(); collision_body.battle_id = body.battle_id; collision_body.actor_id = body.actor_id; collision_body.mode = &"friendly"; collision_body.destination = Vector2i(46, 45)
 	var contracts: Array[Dictionary] = [
 		{"name": "battle caller", "value": caller, "decode": ScenarioBattleCaller.from_data},
 		{"name": "encounter continuation", "value": ScenarioRuntimeContinuation.encounter(ScenarioRuntimeContinuation.CLASSIC_SIMPLE_ENCOUNTER, 0, false, [0]), "decode": ScenarioRuntimeContinuation.from_data},
@@ -56,7 +56,7 @@ func _test_scenario_wire_contracts() -> void:
 		{"name": "VM pending continuation", "value": ScenarioVmPendingContinuation.classic(ScenarioRuntimeContinuation.encounter(ScenarioRuntimeContinuation.CLASSIC_SIMPLE_ENCOUNTER, 0, false, [0])), "decode": ScenarioVmPendingContinuation.from_data},
 		{"name": "runtime handoff", "value": handoff, "decode": ScenarioRuntimeHandoff.from_data},
 		{"name": "VM handoff", "value": ScenarioVmHandoff.classic(handoff), "decode": ScenarioVmHandoff.from_data},
-		{"name": "session retreat", "value": SessionContinuation.combat_state(&"combat-retreat-confirmation", body), "decode": SessionContinuation.from_data},
+		{"name": "session retreat", "value": SessionContinuation.combat_state(&"combat-retreat-confirmation", body), "decode": SessionContinuation.from_data}, {"name": "session friendly collision", "value": SessionContinuation.combat_state(&"combat-friendly-collision", collision_body), "decode": SessionContinuation.from_data},
 	]
 	for contract: Dictionary in contracts:
 		var wire: Dictionary = JSON.parse_string(JSON.stringify(contract.value.to_data())); var decoded: Variant = contract.decode.call(wire)

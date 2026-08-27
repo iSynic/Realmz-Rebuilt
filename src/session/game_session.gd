@@ -615,6 +615,18 @@ func _combat_move(intent: PlayerIntent) -> SessionStep:
 		var forced_result := CombatRewardsWorkflow.move_character(_workflow_context(), payload, true)
 		return _finish_combat_result(forced_result)
 	var result := CombatRewardsWorkflow.move_character(_workflow_context(), payload, false)
+	if not result.ok and result.error_code == &"combat_friendly_collision_choice_required":
+		var target_id := _rules.combat_flow.friendly_collision_target_id(_state, payload.actor_id, payload.destination)
+		if target_id.is_empty():
+			return SessionStep.failed(_view_revision, &"invalid_friendly_collision", "The adjacent ally is no longer available.")
+		var collision := SessionContinuation.CombatBody.new()
+		collision.battle_id = _state.combat.battle_id
+		collision.actor_id = payload.actor_id
+		collision.mode = &"friendly"
+		collision.destination = payload.destination
+		_set_continuation(SessionContinuation.combat_state(&"combat-friendly-collision", collision))
+		_session_interaction = SessionInteractionFactory.friendly_collision("session.combat-friendly-collision:%d" % (_view_revision + 1))
+		return _finish_waiting(_session_interaction, [])
 	return _finish_combat_result(result)
 
 

@@ -18,6 +18,8 @@ var phase: StringName = GUARD_BEFORE
 var next_attacker_index: int = 0
 var mover_killed: bool = false
 var auto_switch_to_melee: bool = false
+var friendly_collision_action: StringName = &""
+var friendly_collision_target_id: String = ""
 var _attacker_ids: Array[String] = []
 var _origin_hostile_ids: Array[String] = []
 
@@ -73,13 +75,15 @@ func to_data() -> Dictionary:
 		"nextAttackerIndex": next_attacker_index,
 		"moverKilled": mover_killed,
 		"autoSwitchToMelee": auto_switch_to_melee,
+		"friendlyCollisionAction": String(friendly_collision_action),
+		"friendlyCollisionTargetId": friendly_collision_target_id,
 	}
 
 
 static func from_data(data: Variant) -> CombatReactionState:
-	if not data is Dictionary or data.size() not in [10, 11]:
+	if not data is Dictionary or data.size() not in [10, 11, 13]:
 		return null
-	if data.size() == 11 and not data.has("autoSwitchToMelee"):
+	if (data.size() == 11 and not data.has("autoSwitchToMelee")) or (data.size() == 13 and (not data.has("autoSwitchToMelee") or not data.has("friendlyCollisionAction") or not data.has("friendlyCollisionTargetId"))):
 		return null
 	for field: String in ["kind", "moverId", "origin", "destination", "movementCost", "phase", "attackerIds", "originHostileIds", "nextAttackerIndex", "moverKilled"]:
 		if not data.has(field):
@@ -88,8 +92,14 @@ static func from_data(data: Variant) -> CombatReactionState:
 		return null
 	if data.has("autoSwitchToMelee") and not data["autoSwitchToMelee"] is bool:
 		return null
+	if data.has("friendlyCollisionAction") and (not data["friendlyCollisionAction"] is String or data["friendlyCollisionAction"] not in ["", "swap", "attack"] or not data.get("friendlyCollisionTargetId") is String):
+		return null
 	var auto_switch: bool = bool(data.get("autoSwitchToMelee", false))
+	var collision_action := StringName(data.get("friendlyCollisionAction", ""))
+	var collision_target_id: String = data.get("friendlyCollisionTargetId", "")
 	if auto_switch and (data["kind"] != String(CHARACTER_MOVE) or data["phase"] != String(GUARD_BEFORE)):
+		return null
+	if collision_action.is_empty() != collision_target_id.is_empty() or (not collision_action.is_empty() and data["kind"] != String(CHARACTER_MOVE)):
 		return null
 	var source_origin := _coordinate(data["origin"])
 	var source_destination := _coordinate(data["destination"])
@@ -125,6 +135,8 @@ static func from_data(data: Variant) -> CombatReactionState:
 	result.next_attacker_index = attacker_index
 	result.mover_killed = data["moverKilled"]
 	result.auto_switch_to_melee = auto_switch
+	result.friendly_collision_action = collision_action
+	result.friendly_collision_target_id = collision_target_id
 	return result
 
 

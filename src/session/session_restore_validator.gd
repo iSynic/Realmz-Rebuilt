@@ -344,14 +344,9 @@ static func _valid_session_continuation(content: RealmzContent, state: GameState
 			var character := state.party.character_by_id(application.character_id)
 			return character != null and session_interaction.to_data() == SessionInteractionFactory.character_vault_confirmation(session_interaction.request_id, character.name).to_data()
 		&"combat-retreat-confirmation":
-			var combat := continuation.combat()
-			if combat == null or combat.mode not in [&"explicit", &"edge"] or vm_interaction != null or session_interaction == null or session_interaction.to_data() != SessionInteractionFactory.retreat_confirmation(session_interaction.request_id).to_data():
-				return false
-			if state.combat == null or state.combat.completed or state.combat.battle_id != combat.battle_id or state.combat.active_actor_id() != combat.actor_id:
-				return false
-			var rules := RealmzRules.new()
-			var probe: Variant = rules.combat_flow.probe_character_retreat(state.combat, state.party.characters(), combat.actor_id) if combat.mode == &"explicit" else rules.combat_flow.probe_edge_retreat(state.combat, combat.actor_id, combat.destination)
-			return probe.allowed and not probe.forced
+			return _valid_combat_retreat(continuation, state, vm_interaction, session_interaction)
+		&"combat-friendly-collision":
+			return _valid_friendly_collision(continuation, state, vm_interaction, session_interaction)
 		&"age-updates":
 			var age := continuation.age()
 			if age == null or vm_interaction != null or session_interaction == null or session_interaction.kind != InteractionRequest.AGE_UPDATE or age.updates.is_empty() or age.index < 1 or age.index > age.updates.size():
@@ -408,6 +403,26 @@ static func _valid_session_continuation(content: RealmzContent, state: GameState
 		&"post-move":
 			return _valid_post_move_continuation(content, state, continuation, vm_interaction, session_interaction)
 	return false
+
+
+static func _valid_friendly_collision(continuation: SessionContinuation, state: GameState, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
+	var combat := continuation.combat()
+	if combat == null or combat.mode != &"friendly" or vm_interaction != null or session_interaction == null or session_interaction.to_data() != SessionInteractionFactory.friendly_collision(session_interaction.request_id).to_data():
+		return false
+	if state.combat == null or state.combat.completed or state.combat.battle_id != combat.battle_id or state.combat.active_actor_id() != combat.actor_id:
+		return false
+	return not RealmzRules.new().combat_flow.friendly_collision_target_id(state, combat.actor_id, combat.destination).is_empty()
+
+
+static func _valid_combat_retreat(continuation: SessionContinuation, state: GameState, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
+	var combat := continuation.combat()
+	if combat == null or combat.mode not in [&"explicit", &"edge"] or vm_interaction != null or session_interaction == null or session_interaction.to_data() != SessionInteractionFactory.retreat_confirmation(session_interaction.request_id).to_data():
+		return false
+	if state.combat == null or state.combat.completed or state.combat.battle_id != combat.battle_id or state.combat.active_actor_id() != combat.actor_id:
+		return false
+	var rules := RealmzRules.new()
+	var probe: Variant = rules.combat_flow.probe_character_retreat(state.combat, state.party.characters(), combat.actor_id) if combat.mode == &"explicit" else rules.combat_flow.probe_edge_retreat(state.combat, combat.actor_id, combat.destination)
+	return probe.allowed and not probe.forced
 
 
 static func _valid_item_xap_continuation(content: RealmzContent, state: GameState, continuation: SessionContinuation, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:

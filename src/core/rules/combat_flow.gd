@@ -61,8 +61,8 @@ func _battle_setup_failure(state: GameState, instance_checkpoint: int, rng: Real
 	return _lifecycle._battle_setup_failure(state, instance_checkpoint, rng, checkpoint, code, message)
 
 
-func submit_action(state: GameState, content: RealmzContent, actor_id: String, action: StringName, target_id: String, rng: RealmzRng) -> CombatFlowResult:
-	return _actions.submit_action(state, content, actor_id, action, target_id, rng)
+func submit_action(state: GameState, content: RealmzContent, actor_id: String, action: StringName, target_id: String, rng: RealmzRng, allow_friendly_contact: bool = false) -> CombatFlowResult:
+	return _actions.submit_action(state, content, actor_id, action, target_id, rng, allow_friendly_contact)
 
 
 func probe_delay(state: GameState, actor_id: String) -> CombatCommandProbeType:
@@ -161,8 +161,12 @@ func retreat_character(state: GameState, content: RealmzContent, actor_id: Strin
 	return _reactions.retreat_character(state, content, actor_id, mode, destination, rng)
 
 
-func move_character(state: GameState, content: RealmzContent, actor_id: String, destination: Vector2i, rng: RealmzRng, auto_switch_to_melee: bool = false) -> CombatFlowResult:
-	return _reactions.move_character(state, content, actor_id, destination, rng, auto_switch_to_melee)
+func move_character(state: GameState, content: RealmzContent, actor_id: String, destination: Vector2i, rng: RealmzRng, auto_switch_to_melee: bool = false, friendly_collision_action: StringName = &"") -> CombatFlowResult:
+	return _reactions.move_character(state, content, actor_id, destination, rng, auto_switch_to_melee, friendly_collision_action)
+
+
+func friendly_collision_target_id(state: GameState, actor_id: String, destination: Vector2i) -> String:
+	return _reactions.friendly_collision_target_id(state, actor_id, destination)
 
 
 func _classic_projectile_uses_point_blank_auto_switch(actor: CharacterState, content: RealmzContent) -> bool:

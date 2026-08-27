@@ -10,6 +10,10 @@ static func retreat_confirmation(request_id: String) -> InteractionRequest:
 	return InteractionRequest.yes_no(request_id, "Will this character flee from battle?", "Embrace Cowardice", "Stay and Fight")
 
 
+static func friendly_collision(request_id: String) -> InteractionRequest:
+	return InteractionRequest.yes_no(request_id, "An ally occupies that battlefield position.", "Swap Positions", "Attack Friend")
+
+
 static func character_spell_confirmation(request_id: String, remaining: int) -> InteractionRequest:
 	return InteractionRequest.yes_no(request_id, "%d starting-spell selection points remain. Accept this character anyway?" % remaining, "Accept character", "Choose more spells")
 

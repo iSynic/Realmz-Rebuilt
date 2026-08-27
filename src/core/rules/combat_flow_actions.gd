@@ -39,7 +39,7 @@ func _init(flow: RefCounted, rules: ContextType) -> void:
 func _flow() -> RefCounted:
 	return _flow_ref.get_ref() if _flow_ref != null else null
 
-func submit_action(state: GameState, content: RealmzContent, actor_id: String, action: StringName, target_id: String, rng: RealmzRng) -> CombatFlowResult:
+func submit_action(state: GameState, content: RealmzContent, actor_id: String, action: StringName, target_id: String, rng: RealmzRng, allow_friendly_contact: bool = false) -> CombatFlowResult:
 	var combat := state.combat
 	if combat == null or combat.completed:
 		return CombatFlowResult.failed(&"no_active_battle", "No Realmz battle is accepting combat actions.")
@@ -51,7 +51,7 @@ func submit_action(state: GameState, content: RealmzContent, actor_id: String, a
 	var events: Array[DomainEvent] = []
 	match action:
 		&"attack":
-			var attack_result := _submit_character_attack(state, content, actor, target_id, rng)
+			var attack_result := _submit_character_attack(state, content, actor, target_id, rng, allow_friendly_contact)
 			if not attack_result.ok: return attack_result
 			events.append_array(attack_result.events)
 			if _flow()._events_include(events, &"monster_death_macro_requested"):
@@ -146,7 +146,7 @@ func submit_action(state: GameState, content: RealmzContent, actor_id: String, a
 	return CombatFlowResult.succeeded(events, state.combat.completed)
 
 
-func _submit_character_attack(state: GameState, content: RealmzContent, actor: CharacterState, target_id: String, rng: RealmzRng) -> CombatFlowResult:
+func _submit_character_attack(state: GameState, content: RealmzContent, actor: CharacterState, target_id: String, rng: RealmzRng, allow_friendly_contact: bool = false) -> CombatFlowResult:
 	var combat := state.combat
 	var events: Array[DomainEvent] = []
 	var equipment := _rules.inventory.combat_equipment(actor, content.item_definitions())
@@ -155,7 +155,7 @@ func _submit_character_attack(state: GameState, content: RealmzContent, actor: C
 	if combat.battlefield == null: return CombatFlowResult.failed(&"missing_battlefield", "Melee requires the session-owned Classic battlefield.")
 	if not _rules.battlefield.are_adjacent(combat.battlefield, actor.id, target_id): return CombatFlowResult.failed(&"combat_target_not_adjacent", "Classic melee can target only an enemy in an adjacent battlefield footprint.")
 	var monster_target := combat.monster_by_id(target_id)
-	if monster_target != null and monster_target.current_health > 0 and monster_target.traitor != actor.traitor:
+	if monster_target != null and monster_target.current_health > 0 and (monster_target.traitor != actor.traitor or allow_friendly_contact):
 		var definition := content.monster_by_id(monster_target.definition_id)
 		if definition == null: return CombatFlowResult.failed(&"unknown_monster_definition", "The selected monster has no immutable definition.")
 		_prepare_character_turn(combat, actor)
@@ -170,7 +170,7 @@ func _submit_character_attack(state: GameState, content: RealmzContent, actor: C
 		_flow()._remove_defeated_position(combat, monster_target.id, resolution.killed and not macro_requested)
 	else:
 		var character_target := state.party.character_by_id(target_id)
-		if character_target == null or character_target.id == actor.id or character_target.current_health <= 0 or character_target.traitor == actor.traitor: return CombatFlowResult.failed(&"invalid_combat_target", "The selected combatant is unavailable to this allegiance.")
+		if character_target == null or character_target.id == actor.id or character_target.current_health <= 0 or (character_target.traitor == actor.traitor and not allow_friendly_contact): return CombatFlowResult.failed(&"invalid_combat_target", "The selected combatant is unavailable to this allegiance.")
 		var target_equipment := _rules.inventory.combat_equipment(character_target, content.item_definitions())
 		if not target_equipment.valid: return CombatFlowResult.failed(target_equipment.error_code, target_equipment.error_message)
 		_prepare_character_turn(combat, actor)
