@@ -67,6 +67,7 @@ func build(request: InteractionRequest) -> void:
 	_add_command(strip, &"word", &"encounter.speak", "Speak", _word_action != null, "This encounter accepts no spoken response.")
 	_add_command(strip, &"spell", &"command.spells", "Spells", _spell_action != null and not _body.spells.is_empty(), "No eligible spell is available.")
 	_add_command(strip, &"back", &"encounter.stop", "Stop", _back_action != null, "This encounter cannot be left yet.")
+	encounter_dock_requested.emit(command_deck)
 	var context_deck := PanelContainer.new()
 	context_deck.name = "EncounterContextDeck"
 	context_deck.theme_type_variation = &"ClassicInset"
@@ -200,33 +201,39 @@ func _show_standard_spell_catalog() -> void:
 
 func _render_standard_spell_catalog() -> void:
 	_dispose_context_children()
-	var workspace := PanelContainer.new()
+	var hint := Label.new()
+	hint.text = "Choose an eligible spell from the Party spellbook."
+	hint.add_theme_color_override("font_color", Color("d5b45d"))
+	_context.add_child(hint)
+	var workspace := VBoxContainer.new()
 	workspace.name = "EncounterStandardSpellWorkspace"
-	workspace.theme_type_variation = &"ClassicInset"
 	workspace.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	workspace.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	workspace.add_theme_constant_override("separation", 5)
 	var column := VBoxContainer.new()
+	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	column.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	column.add_theme_constant_override("separation", 5)
 	workspace.add_child(column)
-	_context.add_child(workspace)
 	if _spell_workspace == null:
 		_spell_workspace = SpellsWorkspaceControllerScript.new()
-		_spell_workspace.set_layout_profile(UiLayoutProfile.COMPACT if _compact else UiLayoutProfile.WIDE)
+		_spell_workspace.set_layout_profile(UiLayoutProfile.COMPACT)
 		_spell_workspace.refresh_requested.connect(_render_standard_spell_catalog, CONNECT_DEFERRED)
 		_spell_workspace.encounter_spell_selected.connect(_submit_standard_encounter_spell)
 	_spell_workspace.present_encounter(column, _game_view, _media, 1.0, _body.spells)
 	var cancel := Button.new()
 	cancel.name = "EncounterCatalogCancel"
-	cancel.text = "Cancel"
+	cancel.text = "Back to encounter"
 	cancel.custom_minimum_size.y = 36.0
 	cancel.pressed.connect(_cancel_catalog)
 	column.add_child(cancel)
+	side_workspace_requested.emit(workspace)
 
 
 func _submit_standard_encounter_spell(character_id: String, classic_spell_id: int) -> void:
 	for entry: InteractionRequestValue.EncounterCatalogEntry in _body.spells:
 		if entry.character_id == character_id and entry.classic_id == classic_spell_id:
+			side_workspace_closed.emit()
 			response_body_submitted.emit(InteractionResponse.ComplexEncounterBody.new(&"spell", -1, "", classic_spell_id, 0, -1, character_id))
 			return
 
@@ -244,7 +251,13 @@ func _show_choices() -> void:
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	grid.add_theme_constant_override("h_separation", 6)
 	grid.add_theme_constant_override("v_separation", 5)
-	_context.add_child(grid)
+	var choice_scroll := ScrollContainer.new()
+	choice_scroll.name = "EncounterChoiceScroll"
+	choice_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	choice_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	choice_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	choice_scroll.add_child(grid)
+	_context.add_child(choice_scroll)
 	for index: int in _choice_actions.size():
 		var entry := _choice_actions[index]
 		var button := Button.new()
@@ -320,6 +333,7 @@ func _cancel_catalog() -> void:
 
 
 func _clear_context() -> void:
+	side_workspace_closed.emit()
 	application_workspace_closed.emit()
 	_inventory_workspace_content = null
 	_catalog_kind = &""

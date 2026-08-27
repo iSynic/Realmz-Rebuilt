@@ -237,7 +237,7 @@ func _test_public_thief_encounter(content: RealmzContent) -> void:
 	var loop_texts := source_complex.action_labels(); loop_texts.append(source_complex.expected_word()); var loop_complex := ComplexEncounterDefinition.new(source_complex.id, source_complex.prompt_message_id, source_complex.action_result, source_complex.word_result, source_complex.groups(), source_complex.spell_ids(), source_complex.spell_results(), source_complex.item_ids(), source_complex.item_results(), source_complex.can_back_out, source_complex.thief, 2, source_complex.caste_success, source_complex.thief_success, source_complex.thief_fail, loop_texts)
 	var loop_programs: Array[ScenarioProgramDefinition] = [ScenarioProgramDefinition.new("root.thief-loop", &"trigger", "thief-loop", [ClassicActionDefinition.new(0, 5, 5, loop_complex.id, false, [])])]
 	for outcome_index: int in 4:
-		loop_programs.append(ScenarioProgramDefinition.new("complex:%d:result:%d" % [loop_complex.id, outcome_index], &"complex-encounter-result", str(outcome_index), [ClassicActionDefinition.new(0, 25, 25, 0, false, [])]))
+		loop_programs.append(ScenarioProgramDefinition.new("complex:%d:result:%d" % [loop_complex.id, outcome_index], &"complex-encounter-result", str(outcome_index), [ClassicActionDefinition.new(0, 84, 84, 0, false, [])]))
 	var loop_definition := ScenarioDefinition.new(loop_programs, [])
 	var loop_messages: Array[MessageDefinition] = [content.message_by_id(absi(loop_complex.prompt_message_id))]
 	var loop_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, content.start_map_id, content.start_coordinate, content.world, loop_definition, loop_messages, [], [], [], [], [], [], [], [], [], [], [loop_complex], [source_thief])
@@ -247,7 +247,7 @@ func _test_public_thief_encounter(content: RealmzContent) -> void:
 	var loop_complex_choice := loop_vm.run(loop_api)
 	var loop_thief_choice := loop_vm.resume(InteractionResponse.from_data(loop_complex_choice.interaction.request_id, InteractionRequest.WORD_AND_ACTION, {"action": "thief"}), loop_api)
 	var repeated_after_thief := loop_vm.resume(InteractionResponse.from_data(loop_thief_choice.interaction.request_id, InteractionRequest.THIEF_ENCOUNTER, {"action": "attempt", "characterId": loop_character.id, "actionIndex": 0}), loop_api)
-	assert_equal([repeated_after_thief.state, repeated_after_thief.interaction.kind, loop_state.encounter_attempts(&"complex", loop_complex.id), loop_state.world.trigger_is_disabled("ap.thief-loop")], [ScenarioVmResult.State.WAITING, InteractionRequest.WORD_AND_ACTION, 1, true], "Thief result retains its issuing AP context while returning to the source Complex Encounter")
+	assert_equal([repeated_after_thief.state, repeated_after_thief.interaction.kind, loop_state.encounter_attempts(&"complex", loop_complex.id), loop_state.world.trigger_is_disabled("ap.thief-loop")], [ScenarioVmResult.State.WAITING, InteractionRequest.WORD_AND_ACTION, 1, false], "Thief result retains its issuing AP context while returning to the source Complex Encounter")
 	var loop_save := save_round_trip(SessionSnapshot.new(loop_content.campaign_id, loop_content.package_hash, loop_content.rules_version, 1, loop_state, loop_rng.snapshot(), loop_vm.snapshot(), ScenarioActionState.new()))
 	assert_true(loop_save != null and SessionRestoreValidator.validate(loop_content, loop_save).ok, "repeating Thief result passes the complete save validator")
 	if loop_save != null:
@@ -408,7 +408,7 @@ func _test_public_continuation_matrix(content: RealmzContent) -> void:
 		assert_equal(encounter.interaction.kind, InteractionRequest.ENCOUNTER_CHOICE, "age acknowledgement resumes destination trigger discovery")
 	var transfer_definition := ScenarioDefinition.new([
 		ScenarioProgramDefinition.new("root", &"trigger", "root", [ClassicActionDefinition.new(0, 39, 39, 0, false, [])]),
-		ScenarioProgramDefinition.new("xap:0", &"extra-action-point", "0", [ClassicActionDefinition.new(0, 25, 25, 0, false, []), ClassicActionDefinition.new(1, 111, 111, 0, false, [])]),
+		ScenarioProgramDefinition.new("xap:0", &"extra-action-point", "0", [ClassicActionDefinition.new(0, 25, 25, 0, false, []), ClassicActionDefinition.new(1, 84, 84, 0, false, [])]),
 	], [])
 	var transfer_state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("context", "Context", 1, 1)]), RealmzClock.new())
 	var transfer_vm := ScenarioVm.new()
@@ -416,7 +416,7 @@ func _test_public_continuation_matrix(content: RealmzContent) -> void:
 	transfer_vm.start_program("root", ScenarioExecutionContext.trigger(&"action", "ap.fixture.message", content.start_map_id))
 	var transferred := transfer_vm.run(RealmzRuntimeApi.new(content, transfer_state, RealmzRng.new(1), ScenarioActionState.new()))
 	assert_equal(transferred.state, ScenarioVmResult.State.COMPLETED, "opcode 39 returns through the transferred XAP")
-	assert_true(transfer_state.world.trigger_is_disabled("ap.fixture.message"), "opcode 25 retains the issuing AP origin")
+	assert_true(transfer_state.world.trigger_is_disabled("ap.fixture.message") and not _event_has(transferred.events, &"classic_control_marker"), "opcode 25 retains the issuing AP origin and terminates the complete timeline before later code")
 
 
 func _test_public_limits_and_errors(content: RealmzContent) -> void:

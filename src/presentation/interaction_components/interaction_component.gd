@@ -27,6 +27,10 @@ signal side_workspace_requested(workspace: Control)
 @warning_ignore("unused_signal")
 signal side_workspace_closed
 @warning_ignore("unused_signal")
+signal encounter_dock_requested(workspace: Control)
+@warning_ignore("unused_signal")
+signal encounter_dock_closed
+@warning_ignore("unused_signal")
 signal application_workspace_requested(workspace: Control)
 @warning_ignore("unused_signal")
 signal application_workspace_closed

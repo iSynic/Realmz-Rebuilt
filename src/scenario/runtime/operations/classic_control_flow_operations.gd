@@ -29,7 +29,7 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 			if trigger_id.is_empty():
 				return ScenarioRuntimeOperationResult.failed(&"missing_trigger_context", "Classic opcode 25 requires an Action Point origin.")
 			_game_state.world.disable_trigger(trigger_id)
-			return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"trigger_disabled", {"triggerId": trigger_id, "source": "classic"})])
+			return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"trigger_disabled", {"triggerId": trigger_id, "source": "classic"})], ScenarioVmDirective.finish_timeline())
 		42:
 			return _percent_branch(action, context)
 		46:

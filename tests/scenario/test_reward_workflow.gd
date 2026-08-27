@@ -106,12 +106,12 @@ func _test_experience_level_and_spell_restore(content: RealmzContent) -> void:
 	state.experience_multiplier = 2.5
 	var rng := RealmzRng.new(23)
 	var api := RealmzRuntimeApi.new(content, state, rng, ScenarioActionState.new(), RealmzRules.new())
-	var instructions: Array[ClassicActionDefinition] = [ClassicActionDefinition.new(0, 11, 11, 10_000, false, [])]
+	var instructions: Array[ClassicActionDefinition] = [ClassicActionDefinition.new(0, 11, 11, 10_000, false, []), ClassicActionDefinition.new(1, 25, 25, 0, false, []), ClassicActionDefinition.new(2, 84, 84, 0, false, [])]
 	var program := ScenarioProgramDefinition.new("reward.level-program", &"trigger", "reward.level", instructions)
 	var definition := ScenarioDefinition.new([program], [])
 	var vm := ScenarioVm.new()
 	vm.configure(definition)
-	assert_equal(vm.start_program(program.id, ScenarioExecutionContext.calling(&"action")).state, ScenarioVmResult.State.COMPLETED, "experience fixture starts through the ordinary VM")
+	assert_equal(vm.start_program(program.id, ScenarioExecutionContext.trigger(&"action", "ap.reward-level")).state, ScenarioVmResult.State.COMPLETED, "experience fixture starts through the ordinary VM")
 	var treasure_stage := vm.run(api)
 	assert_equal([treasure_stage.state, treasure_stage.interaction.kind, treasure_stage.interaction.body.to_data()["experienceShare"]], [ScenarioVmResult.State.WAITING, InteractionRequest.TREASURE_DISTRIBUTION, 25_000], "experience is awarded once with the selected party's Classic 250 percent setup multiplier before the empty treasure stage")
 	var level_stage := vm.resume(InteractionResponse.from_data(treasure_stage.interaction.request_id, treasure_stage.interaction.kind, {"action": "done"}), api)
@@ -135,7 +135,7 @@ func _test_experience_level_and_spell_restore(content: RealmzContent) -> void:
 	var spell_boundary := ScenarioVmSnapshot.from_data(JSON.parse_string(JSON.stringify(restored_vm.snapshot().to_data())))
 	assert_not_null(spell_boundary, "the spell-selection stage is independently serializable")
 	var completed := restored_vm.resume(InteractionResponse.from_data(spell_stage.interaction.request_id, InteractionRequest.LEVEL_UP, {"action": "confirm-spells", "characterId": character.id, "spellIds": []}), restored_api)
-	assert_equal(completed.state, ScenarioVmResult.State.COMPLETED, "confirmed spell selection resumes and completes the issuing VM exactly once")
+	assert_equal([completed.state, saved_game.world.trigger_is_disabled("ap.reward-level"), completed.events.any(func(event: DomainEvent) -> bool: return event.kind == &"classic_control_marker")], [ScenarioVmResult.State.COMPLETED, true, false], "a completed staged scenario reward reaches opcode 25, removes its issuing AP, and terminates before any later Encounter code")
 	assert_equal([saved_game.party.character_by_id(character.id).level, saved_game.party.character_by_id(character.id).experience], [2, 21_499], "the source-limited one-level result survives the complete continuation")
 
 

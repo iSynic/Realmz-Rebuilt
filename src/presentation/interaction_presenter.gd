@@ -42,6 +42,7 @@ var _playback_status_label: Label
 var _autojournal_enabled: bool = false
 var _treasure_recipient_id: String = ""
 var _side_workspace_panel: PanelContainer
+var _encounter_dock_panel: PanelContainer
 var _application_workspace_panel: PanelContainer
 var _modal_shield: ColorRect
 var _nested_modal: Control
@@ -82,6 +83,7 @@ func _submit_classic_acknowledgement() -> bool:
 
 func _exit_tree() -> void:
 	_close_side_workspace()
+	_close_encounter_dock()
 	_close_application_workspace()
 	_close_modal_shield()
 	_close_fast_spell_dock()
@@ -160,6 +162,8 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 	_component.combat_spellbook_closed.connect(func() -> void: combat_spellbook_closed.emit())
 	_component.side_workspace_requested.connect(_show_side_workspace)
 	_component.side_workspace_closed.connect(_close_side_workspace)
+	_component.encounter_dock_requested.connect(_show_encounter_dock)
+	_component.encounter_dock_closed.connect(_close_encounter_dock)
 	_component.application_workspace_requested.connect(_show_application_workspace)
 	_component.application_workspace_closed.connect(_close_application_workspace)
 	if _component is TreasureDistributionInteraction:
@@ -212,7 +216,6 @@ func set_classic_regions(stage_rect: Rect2, textbox_rect: Rect2, combat_rect: Re
 	_textbox_rect = textbox_rect
 	_combat_rect = combat_rect if combat_rect.has_area() else textbox_rect
 	var outer_stage := stage_rect.grow(8.0)
-	_side_workspace_rect = Rect2(outer_stage.end.x, outer_stage.position.y, maxf(0.0, _combat_rect.end.x - outer_stage.end.x), outer_stage.size.y)
 	var stage_inset := maxf(0.0, stage_rect.position.x - _combat_rect.position.x)
 	var application_top := maxf(0.0, stage_rect.position.y - stage_inset)
 	_application_rect = Rect2(
@@ -221,6 +224,7 @@ func set_classic_regions(stage_rect: Rect2, textbox_rect: Rect2, combat_rect: Re
 		_combat_rect.size.x,
 		maxf(stage_rect.end.y, _combat_rect.end.y) - application_top
 	)
+	_side_workspace_rect = Rect2(outer_stage.end.x, outer_stage.position.y, maxf(0.0, _combat_rect.end.x - outer_stage.end.x), maxf(0.0, _application_rect.end.y - outer_stage.position.y))
 	_apply_classic_region()
 	_apply_fast_spell_dock_layout()
 	_apply_classic_flash_layout()
@@ -573,6 +577,7 @@ func _submit_body(body: InteractionResponse.Body) -> void:
 	if _request == null:
 		return
 	_close_side_workspace()
+	_close_encounter_dock()
 	_close_application_workspace()
 	var response := InteractionPresenter.response_for(_request, body)
 	var preserve_treasure_workspace := _component is TreasureDistributionInteraction and body is InteractionResponse.TreasureBody and (body as InteractionResponse.TreasureBody).action in [&"assign", &"done"]
@@ -626,6 +631,7 @@ func _clear_options() -> void:
 	_combat_spellbook_open = false
 	combat_spellbook_closed.emit()
 	_close_side_workspace()
+	_close_encounter_dock()
 	_close_application_workspace()
 	_close_nested_modal()
 	_close_fast_spell_dock()
@@ -666,11 +672,15 @@ func _apply_classic_region() -> void:
 		theme_type_variation = &"ClassicInset"
 		var modal_region := _application_rect if uses_application_modal_region(_request) else _stage_rect
 		var desired := preferred_modal_size(_request, modal_region.size)
+		if _request != null and _request.kind == InteractionRequest.THIEF_ENCOUNTER:
+			desired.y = minf(maxf(280.0, _content.get_combined_minimum_size().y + 16.0), modal_region.size.y - 20.0)
 		position = modal_region.position + (modal_region.size - desired) * 0.5
 		size = desired
-	_update_modal_shield(not _playback_masked and _request != null and not uses_textbox_region(_request) and not uses_full_stage_region(_request))
+	var encounter_surface := _request != null and _request.kind in [InteractionRequest.WORD_AND_ACTION, InteractionRequest.THIEF_ENCOUNTER]
+	_update_modal_shield(not _playback_masked and _request != null and (encounter_surface or not uses_textbox_region(_request)) and not uses_full_stage_region(_request), not encounter_surface)
 	_apply_content_layout()
 	_apply_side_workspace_layout()
+	_apply_encounter_dock_layout()
 	_apply_application_workspace_layout()
 	_apply_nested_modal_layout()
 
@@ -689,11 +699,11 @@ static func preferred_modal_size(request: InteractionRequest, available_size: Ve
 				preferred = Vector2(560.0, 220.0) if lifecycle != null and lifecycle.operation != &"quit-application" else Vector2(460.0, 122.0)
 				minimum = Vector2(420.0, 190.0) if lifecycle != null and lifecycle.operation != &"quit-application" else Vector2(340.0, 110.0)
 			InteractionRequest.WORD_AND_ACTION:
-				preferred = Vector2(980.0, minf(620.0, available_size.y - 20.0))
-				minimum = Vector2(620.0, 440.0)
+				preferred = Vector2(720.0, 260.0)
+				minimum = Vector2(520.0, 180.0)
 			InteractionRequest.THIEF_ENCOUNTER:
-				preferred = Vector2(900.0, minf(580.0, available_size.y - 20.0))
-				minimum = Vector2(620.0, 440.0)
+				preferred = Vector2(760.0, minf(410.0, available_size.y - 20.0))
+				minimum = Vector2(560.0, 310.0)
 			InteractionRequest.LEVEL_UP:
 				var body := request.body as InteractionRequest.LevelUpRequestBody
 				preferred = Vector2(1080.0, minf(760.0, available_size.y - 20.0)) if body != null and body.mode == &"spell-selection" else Vector2(760.0, 430.0)
@@ -703,17 +713,17 @@ static func preferred_modal_size(request: InteractionRequest, available_size: Ve
 	return Vector2(maxf(minimum.x, desired.x), maxf(minimum.y, desired.y))
 
 
-func _update_modal_shield(needed: bool) -> void:
+func _update_modal_shield(needed: bool, dim_background: bool = true) -> void:
 	if not needed:
 		_close_modal_shield()
 		return
 	if _modal_shield == null:
 		_modal_shield = ColorRect.new()
 		_modal_shield.name = "LockedModalShield"
-		_modal_shield.color = Color(0.01, 0.015, 0.02, 0.62)
 		_modal_shield.mouse_filter = Control.MOUSE_FILTER_STOP
 		_modal_shield.z_index = z_index - 1
 		get_parent().add_child(_modal_shield)
+	_modal_shield.color = Color(0.01, 0.015, 0.02, 0.62) if dim_background else Color.TRANSPARENT
 	_modal_shield.position = _application_rect.position
 	_modal_shield.size = _application_rect.size
 	var parent := get_parent()
@@ -813,9 +823,15 @@ func _show_side_workspace(workspace: Control) -> void:
 	_side_workspace_panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	_side_workspace_panel.z_index = z_index + 1
 	get_parent().add_child(_side_workspace_panel)
+	var scroll := ScrollContainer.new()
+	scroll.name = "InteractionSideWorkspaceScroll"
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_side_workspace_panel.add_child(scroll)
 	workspace.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	workspace.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_side_workspace_panel.add_child(workspace)
+	scroll.add_child(workspace)
 	_apply_side_workspace_layout()
 
 
@@ -834,6 +850,44 @@ func _apply_side_workspace_layout() -> void:
 		return
 	_side_workspace_panel.position = _side_workspace_rect.position
 	_side_workspace_panel.size = _side_workspace_rect.size
+
+
+func _show_encounter_dock(workspace: Control) -> void:
+	_close_encounter_dock()
+	if workspace == null:
+		return
+	_encounter_dock_panel = PanelContainer.new()
+	_encounter_dock_panel.name = "EncounterCommandDock"
+	_encounter_dock_panel.theme_type_variation = &"ClassicInset"
+	_encounter_dock_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_encounter_dock_panel.z_index = z_index + 1
+	get_parent().add_child(_encounter_dock_panel)
+	workspace.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	workspace.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	workspace.reparent(_encounter_dock_panel)
+	_apply_encounter_dock_layout()
+
+
+func _close_encounter_dock() -> void:
+	if _encounter_dock_panel == null:
+		return
+	var dock_parent := _encounter_dock_panel.get_parent()
+	if dock_parent != null and dock_parent.is_queued_for_deletion():
+		_encounter_dock_panel = null
+		return
+	if dock_parent != null:
+		dock_parent.remove_child(_encounter_dock_panel)
+	_encounter_dock_panel.queue_free()
+	_encounter_dock_panel = null
+
+
+func _apply_encounter_dock_layout() -> void:
+	if _encounter_dock_panel == null:
+		return
+	var required_height := _encounter_dock_panel.get_combined_minimum_size().y
+	var dock_height := clampf(required_height, 58.0, minf(84.0, _stage_rect.size.y * 0.22))
+	_encounter_dock_panel.position = Vector2(_textbox_rect.position.x, maxf(_stage_rect.position.y, _textbox_rect.position.y - dock_height - 6.0))
+	_encounter_dock_panel.size = Vector2(_textbox_rect.size.x, dock_height)
 
 
 func _show_application_workspace(workspace: Control) -> void:
@@ -889,7 +943,7 @@ func _apply_content_layout() -> void:
 
 
 static func uses_textbox_region(request: InteractionRequest, passive_text: bool = false) -> bool:
-	return passive_text or request != null and not _is_player_map_request(request) and not _is_scrolling_text_request(request) and request.kind in [&"acknowledge", &"yes_no", &"encounter_choice", &"scenario_choice", &"character_selection", &"combat_action"]
+	return passive_text or request != null and not _is_player_map_request(request) and not _is_scrolling_text_request(request) and request.kind in [&"acknowledge", &"yes_no", &"encounter_choice", &"scenario_choice", &"character_selection", &"complex_encounter", &"combat_action"]
 
 
 static func uses_floating_choice_modal(request: InteractionRequest) -> bool:
@@ -905,7 +959,7 @@ static func uses_application_workspace(request: InteractionRequest) -> bool:
 
 
 static func uses_application_modal_region(request: InteractionRequest) -> bool:
-	return request != null and request.kind in [InteractionRequest.WORD_AND_ACTION, InteractionRequest.THIEF_ENCOUNTER, InteractionRequest.PICK_LOCK, InteractionRequest.SESSION_LIFECYCLE, InteractionRequest.ALLY_SELECTION, InteractionRequest.LEVEL_UP]
+	return request != null and request.kind in [InteractionRequest.PICK_LOCK, InteractionRequest.SESSION_LIFECYCLE, InteractionRequest.ALLY_SELECTION, InteractionRequest.LEVEL_UP]
 
 
 static func interaction_region(request: InteractionRequest, textbox_rect: Rect2, _unused_stage_rect: Rect2, combat_rect: Rect2 = Rect2()) -> Rect2:
@@ -986,7 +1040,7 @@ static func _is_scrolling_text_request(request: InteractionRequest) -> bool:
 
 static func _heading_for_kind(kind: StringName) -> String:
 	match kind:
-		&"acknowledge", &"yes_no", &"encounter_choice", &"scenario_choice":
+		&"acknowledge", &"yes_no", &"encounter_choice", &"scenario_choice", &"complex_encounter":
 			return ""
 		&"age_update":
 			return "Age Update"

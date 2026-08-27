@@ -74,9 +74,14 @@ func _build_character_navigator() -> PanelContainer:
 	panel.name = "ThiefCharacterNavigator"
 	panel.theme_type_variation = &"ClassicInset"
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 3)
+	panel.add_child(column)
 	var row := HBoxContainer.new()
+	row.name = "ThiefCharacterSelectorRow"
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", 6)
-	panel.add_child(row)
+	column.add_child(row)
 	var previous := Button.new()
 	previous.name = "ThiefPreviousCharacter"
 	previous.text = "‹"
@@ -85,16 +90,12 @@ func _build_character_navigator() -> PanelContainer:
 	previous.pressed.connect(_shift_character.bind(-1))
 	row.add_child(previous)
 	_portrait = TextureRect.new()
+	_portrait.name = "ThiefCharacterPortrait"
 	_portrait.custom_minimum_size = Vector2(54.0, 54.0)
 	_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_portrait.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	row.add_child(_portrait)
-	_character_name = Label.new()
-	_character_name.theme_type_variation = &"ClassicHeading"
-	_character_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_character_name.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	row.add_child(_character_name)
 	var next := Button.new()
 	next.name = "ThiefNextCharacter"
 	next.text = "›"
@@ -102,6 +103,11 @@ func _build_character_navigator() -> PanelContainer:
 	next.disabled = _body.characters.size() < 2
 	next.pressed.connect(_shift_character.bind(1))
 	row.add_child(next)
+	_character_name = Label.new()
+	_character_name.theme_type_variation = &"ClassicHeading"
+	_character_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_character_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	column.add_child(_character_name)
 	return panel
 
 
