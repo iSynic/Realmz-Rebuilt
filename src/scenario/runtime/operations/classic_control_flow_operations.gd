@@ -25,11 +25,12 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 		24:
 			return ScenarioRuntimeOperationResult.completed(null, [DomainEvent.new(&"action_point_kept", {"triggerId": context.trigger_id, "source": "classic"})], ScenarioVmDirective.finish_timeline())
 		25:
-			var trigger_id := context.trigger_id
-			if trigger_id.is_empty():
-				return ScenarioRuntimeOperationResult.failed(&"missing_trigger_context", "Classic opcode 25 requires an Action Point origin.")
-			_game_state.world.disable_trigger(trigger_id)
-			return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"trigger_disabled", {"triggerId": trigger_id, "source": "classic"})], ScenarioVmDirective.finish_timeline())
+			var trigger_id := _opcode_25_trigger_id(context)
+			var events: Array[DomainEvent] = []
+			if not trigger_id.is_empty():
+				_game_state.world.disable_trigger(trigger_id)
+				events.append(DomainEvent.new(&"trigger_disabled", {"triggerId": trigger_id, "source": "classic"}))
+			return ScenarioRuntimeOperationResult.completed(true, events, ScenarioVmDirective.finish_timeline())
 		42:
 			return _percent_branch(action, context)
 		46:
@@ -357,6 +358,20 @@ func _branch_encounter_result(mode: int, result_index: int, entry_cursor: int, g
 
 func _branch_xap(target_id: int, gosub: bool) -> ScenarioRuntimeOperationResult:
 	return ScenarioRuntimeOperationResult.completed(false) if target_id == 0 else ScenarioRuntimeOperationResult.completed(true, [], ScenarioVmDirective.branch_xap(target_id, gosub))
+
+
+func _opcode_25_trigger_id(context: ScenarioExecutionContext) -> String:
+	if context != null and not context.trigger_id.is_empty():
+		return context.trigger_id
+	if context == null:
+		return ""
+	for program_id: String in [context.origin_program_id, context.original_program_id]:
+		if program_id.begins_with("trigger:"):
+			var trigger_id := program_id.trim_prefix("trigger:")
+			var trigger := _content.trigger_by_id(trigger_id)
+			if trigger != null and trigger.program_id == program_id:
+				return trigger.id
+	return ""
 
 
 func resolve_program_id(program_id: String) -> String:

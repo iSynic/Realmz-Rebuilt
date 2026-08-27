@@ -129,14 +129,14 @@ func _test_session_money_workflow(content: RealmzContent) -> void:
 
 func _test_pooled_wealth_departure(content: RealmzContent) -> void:
 	var blocked_session := _departure_session(content, 109)
-	if blocked_session == null:
-		return
+	if blocked_session == null: return
+	assert_equal(blocked_session.apply_debug_command(SessionDebugCommand.warp("dungeon:0", Vector2i(1, 0))).state, SessionStep.State.COMPLETED, "the blocked-departure fixture uses an authored dungeon wall destination")
 	var invalid := blocked_session.submit_intent(PlayerIntent.move(Vector2i(2, 0)))
 	assert_equal(invalid.error_code, &"invalid_direction", "an invalid direction fails before the pooled-wealth warning")
 	assert_equal(blocked_session._state.party.pooled_wealth.gold, 10, "invalid movement preserves pooled wealth")
 	var blocked_warning := blocked_session.submit_intent(PlayerIntent.move(Vector2i.LEFT))
 	assert_equal([blocked_warning.state, blocked_warning.interaction.kind], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.YES_NO], "a no-bank movement attempt warns before resolving a blocked destination")
-	assert_equal(blocked_session.view().party_coordinate, Vector2i(1, 1), "the warning commits no movement")
+	assert_equal(blocked_session.view().party_coordinate, Vector2i(1, 0), "the warning commits no movement")
 	assert_equal(blocked_session._state.party.pooled_wealth.gold, 10, "the warning commits no wealth loss")
 	assert_true(blocked_warning.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 20005 and event.payload.get("stopExisting") == true), "the pooled-wealth question requests Castle's quiet-and-question sound")
 	var warning_save_data := save_data(blocked_session.snapshot())
@@ -154,7 +154,7 @@ func _test_pooled_wealth_departure(content: RealmzContent) -> void:
 	assert_equal(blocked_restored.restore(content, SaveEnvelope.from_data(warning_save_data)).state, SessionStep.State.COMPLETED, "the warning restores through the central save aggregate")
 	var blocked_decline := blocked_restored.respond(InteractionResponse.yes_no(blocked_restored.view().pending_interaction, false))
 	assert_equal(blocked_restored._state.party.pooled_wealth.gold, 0, "declining distribution clears the abandoned pool")
-	assert_equal(blocked_restored.view().party_coordinate, Vector2i(1, 1), "declining continues into the original blocked movement result")
+	assert_equal(blocked_restored.view().party_coordinate, Vector2i(1, 0), "declining continues into the original blocked movement result")
 	assert_true(blocked_decline.events.any(func(event: DomainEvent) -> bool: return event.kind == &"movement_blocked"), "the blocked destination is resolved only after the no-bank choice")
 
 	var distribute_session := _departure_session(content, 110)
@@ -204,8 +204,8 @@ func _test_pooled_wealth_departure(content: RealmzContent) -> void:
 	assert_equal(continue_session._state.party.pooled_wealth.gold, 0, "continued movement leaves no pooled wealth behind")
 
 	var bank_session := _departure_session(content, 112)
-	if bank_session == null:
-		return
+	if bank_session == null: return
+	assert_equal(bank_session.apply_debug_command(SessionDebugCommand.warp("dungeon:0", Vector2i(1, 0))).state, SessionStep.State.COMPLETED, "the bank-before-movement fixture uses the same authored dungeon wall destination")
 	bank_session._state.bank_available = true
 	var banked_block := bank_session.submit_intent(PlayerIntent.move(Vector2i.LEFT))
 	assert_equal(banked_block.state, SessionStep.State.COMPLETED, "bank-backed pooled wealth resolves without a question before a blocked attempt")

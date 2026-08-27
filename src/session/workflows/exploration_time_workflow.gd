@@ -366,7 +366,7 @@ static func post_move_continuation(context: SessionWorkflowContext, map: MapDefi
 	var exploration := SessionContinuation.ExplorationBody.new()
 	exploration.map_id = map.id
 	exploration.coordinate = coordinate
-	exploration.trigger_ids.assign(selected_placed_trigger_ids(context.content, cell))
+	exploration.trigger_ids.assign(selected_placed_trigger_ids(context.content, cell, context.state.world))
 	exploration.trigger_index = 0
 	exploration.active_trigger_id = ""
 	var region_ids := context.state.world.random_region_ids_at(map, coordinate)
@@ -441,7 +441,10 @@ static func classic_time_scale(map: MapDefinition) -> int:
 	return 1 if map != null and map.level_type == &"dungeon" else 5
 
 
-static func selected_placed_trigger_ids(content: RealmzContent, cell: MapCell) -> Array[String]:
+static func selected_placed_trigger_ids(content: RealmzContent, cell: MapCell, world_state: WorldState) -> Array[String]:
+	for feature: MapFeature in cell.features():
+		if cell.is_land and feature.kind == &"secret" and feature.orientation.is_empty() and not world_state.secret_is_discovered(feature.id, feature.initial_state == &"revealed"):
+			return []
 	var selected_id := ""
 	var selected_record_index := 2_147_483_647
 	for trigger_id: String in cell.trigger_ids():

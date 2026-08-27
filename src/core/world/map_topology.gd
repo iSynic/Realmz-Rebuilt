@@ -102,9 +102,6 @@ func probe_land_entry(coordinate: Vector2i, world_state: WorldState, party_in_bo
 		return TopologyMoveResult.blocked(&"water_requires_boat", cell)
 	if not cell.passable:
 		return TopologyMoveResult.blocked(&"terrain_blocked", cell)
-	var cell_secret := cell.feature_by_kind(&"secret")
-	if cell_secret != null and cell_secret.orientation.is_empty() and not world_state.secret_is_discovered(cell_secret.id, cell_secret.initial_state == &"revealed"):
-		return TopologyMoveResult.blocked(&"secret_hidden", cell)
 	return TopologyMoveResult.permitted(cell)
 
 
@@ -123,11 +120,11 @@ func has_line_of_sight(from: Vector2i, to: Vector2i, world_state: WorldState) ->
 		return false
 	var previous := from
 	for coordinate: Vector2i in _supercover_line(from, to):
-		if _transition_blocks_los(previous, coordinate, world_state):
-			return false
 		var cell := effective_cell_at(coordinate, world_state)
 		if cell == null:
 			return false
+		if _transition_blocks_los(previous, coordinate, world_state):
+			return coordinate == to and _cell_blocks_los(cell, world_state)
 		if coordinate != to and _cell_blocks_los(cell, world_state):
 			return false
 		previous = coordinate

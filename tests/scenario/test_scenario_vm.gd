@@ -407,16 +407,16 @@ func _test_public_continuation_matrix(content: RealmzContent) -> void:
 		var encounter := resumed.respond(InteractionResponse.age_update(resumed.view().pending_interaction))
 		assert_equal(encounter.interaction.kind, InteractionRequest.ENCOUNTER_CHOICE, "age acknowledgement resumes destination trigger discovery")
 	var transfer_definition := ScenarioDefinition.new([
-		ScenarioProgramDefinition.new("root", &"trigger", "root", [ClassicActionDefinition.new(0, 39, 39, 0, false, [])]),
-		ScenarioProgramDefinition.new("xap:0", &"extra-action-point", "0", [ClassicActionDefinition.new(0, 25, 25, 0, false, []), ClassicActionDefinition.new(1, 84, 84, 0, false, [])]),
+		ScenarioProgramDefinition.new("root", &"trigger", "root", [ClassicActionDefinition.new(0, 39, 39, 13, false, [])]),
+		ScenarioProgramDefinition.new("xap:13", &"extra-action-point", "13", [ClassicActionDefinition.new(0, 3, 3, 68, false, [0, 1, 17, 0, 0])]),
+		ScenarioProgramDefinition.new("xap:17", &"extra-action-point", "17", [ClassicActionDefinition.new(0, 25, 25, 0, false, []), ClassicActionDefinition.new(1, 84, 84, 0, false, [])]),
 	], [])
-	var transfer_state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("context", "Context", 1, 1)]), RealmzClock.new())
-	var transfer_vm := ScenarioVm.new()
-	transfer_vm.configure(transfer_definition)
-	transfer_vm.start_program("root", ScenarioExecutionContext.trigger(&"action", "ap.fixture.message", content.start_map_id))
-	var transferred := transfer_vm.run(RealmzRuntimeApi.new(content, transfer_state, RealmzRng.new(1), ScenarioActionState.new()))
-	assert_equal(transferred.state, ScenarioVmResult.State.COMPLETED, "opcode 39 returns through the transferred XAP")
-	assert_true(transfer_state.world.trigger_is_disabled("ap.fixture.message") and not _event_has(transferred.events, &"classic_control_marker"), "opcode 25 retains the issuing AP origin and terminates the complete timeline before later code")
+	var transfer_state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("context", "Context", 1, 1)]), RealmzClock.new()); var transfer_vm := ScenarioVm.new()
+	transfer_vm.configure(transfer_definition); transfer_vm.start_program("root", ScenarioExecutionContext.trigger(&"action", "ap.fixture.message", content.start_map_id))
+	var transfer_api := RealmzRuntimeApi.new(content, transfer_state, RealmzRng.new(1), ScenarioActionState.new()); var transfer_choice := transfer_vm.run(transfer_api)
+	var transferred := transfer_vm.resume(InteractionResponse.yes_no(transfer_choice.interaction, true), transfer_api)
+	assert_equal([transfer_choice.state, transferred.state], [ScenarioVmResult.State.WAITING, ScenarioVmResult.State.COMPLETED], "opcode 39 and a resumed Choice reach the selected XAP")
+	var source_less_vm := ScenarioVm.new(); source_less_vm.configure(transfer_definition); source_less_vm.start_program("xap:17"); var source_less := source_less_vm.run(RealmzRuntimeApi.new(content, transfer_state, RealmzRng.new(2), ScenarioActionState.new())); assert_true(transfer_state.world.trigger_is_disabled("ap.fixture.message") and not _event_has(transferred.events, &"classic_control_marker") and source_less.state == ScenarioVmResult.State.COMPLETED and not _event_has(source_less.events, &"trigger_disabled"), "opcode 25 retains the issuing AP origin through a transferred Choice, while a source-less XAP ends cleanly without inventing an AP removal")
 
 
 func _test_public_limits_and_errors(content: RealmzContent) -> void:
