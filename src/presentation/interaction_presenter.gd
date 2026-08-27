@@ -926,7 +926,10 @@ func _apply_application_workspace_layout() -> void:
 
 func _apply_content_layout() -> void:
 	var split_textbox := uses_textbox_region(_request, _passive_text) and _request != null and _request.kind == InteractionRequest.CHARACTER_SELECTION
+	var encounter_textbox := _request != null and _request.kind == InteractionRequest.WORD_AND_ACTION
 	_content.vertical = not split_textbox
+	_prompt.size_flags_vertical = Control.SIZE_SHRINK_BEGIN if encounter_textbox else Control.SIZE_EXPAND_FILL
+	_options.size_flags_stretch_ratio = 2.0 if encounter_textbox else 1.0
 	if split_textbox:
 		var available_width := _textbox_rect.size.x
 		var prompt_width := minf(620.0, maxf(320.0, available_width * 0.66))
