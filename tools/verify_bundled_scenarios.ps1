@@ -101,10 +101,28 @@ foreach ($scenario in $catalog.scenarios) {
         $worldReader = [System.IO.StreamReader]::new($worldEntry.Open())
         try { $world = $worldReader.ReadToEnd() | ConvertFrom-Json }
         finally { $worldReader.Dispose() }
+        $assetEntry = $archive.GetEntry("assets/index.json")
+        if ($null -eq $assetEntry) { throw "$($scenario.file) has no assets/index.json." }
+        $assetReader = [System.IO.StreamReader]::new($assetEntry.Open())
+        try { $assetIndex = $assetReader.ReadToEnd() | ConvertFrom-Json }
+        finally { $assetReader.Dispose() }
+        $assetIds = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+        $landCicnIds = [System.Collections.Generic.HashSet[int]]::new()
+        foreach ($asset in @($assetIndex.assets)) {
+            if (-not [string]::IsNullOrWhiteSpace([string]$asset.id)) { [void]$assetIds.Add([string]$asset.id) }
+            if ($asset.resourceType -eq "cicn" -and $null -ne $asset.resourceId) { [void]$landCicnIds.Add([int]$asset.resourceId) }
+        }
         foreach ($map in @($world.maps | Where-Object { $_.levelType -eq "land" })) {
             foreach ($cell in $map.cells) {
-                if ([string]$cell[0] -match '^classic\.terrain\.(-?\d+)$' -and [Math]::Abs([int]$Matches[1]) -gt 200 -and ([int]$cell[8] -gt 200 -or [string]::IsNullOrWhiteSpace([string]$cell[10]))) {
-                    throw "$($scenario.file) map $($map.id) retains an unseparated icon-backed land cell."
+                $overlayId = [string]$cell[10]
+                if (-not [string]::IsNullOrWhiteSpace($overlayId) -and (-not $assetIds.Contains($overlayId) -or [int]$cell[8] -gt 200)) {
+                    throw "$($scenario.file) map $($map.id) has an unresolved or unseparated land overlay '$overlayId'."
+                }
+                if ([string]$cell[0] -match '^classic\.terrain\.(-?\d+)$') {
+                    $terrainId = [int]$Matches[1]
+                    if (($terrainId -lt 0 -or $terrainId -gt 200) -and $landCicnIds.Contains($terrainId) -and [string]::IsNullOrWhiteSpace($overlayId)) {
+                        throw "$($scenario.file) map $($map.id) omits resolved land CICN $terrainId."
+                    }
                 }
             }
         }
