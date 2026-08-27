@@ -415,8 +415,9 @@ class NamedCharacter:
 	extends RefCounted
 	var id: String
 	var name: String
+	var portrait_id: String
 
-	func to_data() -> Dictionary: return {"id": id, "name": name}
+	func to_data() -> Dictionary: return {"id": id, "name": name, "portraitId": portrait_id}
 
 
 class ThiefAction:
@@ -447,10 +448,18 @@ class EncounterCatalogEntry:
 	var classic_id: int
 	var name: String
 	var kind: StringName
+	var character_id: String
+	var instance_id: String
+	var icon_resource_type: String
+	var icon_id: int
+	var charges: int
+	var equipped: bool
 
 	func to_data() -> Dictionary:
-		var data := {"name": name}
+		var data := {"name": name, "characterId": character_id}
 		data["classicItemId" if kind == &"item" else "classicSpellId"] = classic_id
+		if kind == &"item":
+			data.merge({"instanceId": instance_id, "iconResourceType": icon_resource_type, "iconId": icon_id, "charges": charges, "equipped": equipped})
 		return data
 
 
@@ -748,8 +757,8 @@ static func encounter_action(data: Variant) -> EncounterAction:
 
 
 static func named_character(data: Variant) -> NamedCharacter:
-	if not data is Dictionary or not _exact(data, ["id", "name"], ["id", "name"]) or not _strings(data, ["id", "name"]): return null
-	var result := NamedCharacter.new(); result.id = data["id"]; result.name = data["name"]; return result
+	if not data is Dictionary or not _exact(data, ["id", "name", "portraitId"], ["id", "name", "portraitId"]) or not _strings(data, ["id", "name", "portraitId"]): return null
+	var result := NamedCharacter.new(); result.id = data["id"]; result.name = data["name"]; result.portrait_id = data["portraitId"]; return result
 
 
 static func thief_action(data: Variant) -> ThiefAction:
@@ -783,8 +792,12 @@ static func thief_character(data: Variant) -> ThiefCharacter:
 
 static func encounter_catalog_entry(data: Variant, kind: StringName) -> EncounterCatalogEntry:
 	var id_field := "classicItemId" if kind == &"item" else "classicSpellId"
-	if not data is Dictionary or not _exact(data, [id_field, "name"], [id_field, "name"]) or not _whole(data[id_field]) or not data["name"] is String: return null
-	var result := EncounterCatalogEntry.new(); result.classic_id = int(data[id_field]); result.name = data["name"]; result.kind = kind; return result
+	var fields := [id_field, "name", "characterId"] if kind == &"spell" else [id_field, "name", "characterId", "instanceId", "iconResourceType", "iconId", "charges", "equipped"]
+	if not data is Dictionary or not _exact(data, fields, fields) or not _whole(data[id_field]) or not _strings(data, ["name", "characterId"]): return null
+	if kind == &"item" and (not _strings(data, ["instanceId", "iconResourceType"]) or not _ints(data, ["iconId", "charges"]) or not data["equipped"] is bool): return null
+	var result := EncounterCatalogEntry.new(); result.classic_id = int(data[id_field]); result.name = data["name"]; result.kind = kind; result.character_id = data["characterId"]
+	if kind == &"item": result.instance_id = data["instanceId"]; result.icon_resource_type = data["iconResourceType"]; result.icon_id = int(data["iconId"]); result.charges = int(data["charges"]); result.equipped = data["equipped"]
+	return result if not result.character_id.is_empty() and (kind != &"item" or not result.instance_id.is_empty()) else null
 
 
 static func choice_option(data: Variant) -> ChoiceOption:

@@ -365,15 +365,13 @@ func _resume_complex_encounter(continuation: ScenarioRuntimeContinuation, respon
 				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Complex word response requires text.")
 			outcome = _complex_word_outcome(encounter, selection.word)
 		"spell":
-			if selection.classic_spell_id == 0:
-				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Complex spell response requires a Classic spell ID.")
+			if selection.classic_spell_id == 0 or not _character_knows_classic_spell(selection.character_id, selection.classic_spell_id):
+				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Complex spell response requires an eligible living caster and known Classic spell.")
 			outcome = _complex_catalog_outcome(encounter.spell_ids(), encounter.spell_results(), selection.classic_spell_id)
 		"item":
-			if selection.classic_item_id == 0:
-				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Complex item response requires a Classic item ID.")
+			if selection.classic_item_id == 0 or not _character_owns_classic_item(selection.character_id, selection.instance_id, selection.classic_item_id):
+				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Complex item response requires an exact carried item and eligible living owner.")
 			var item_id := selection.classic_item_id
-			if not _party_has_classic_item(absi(item_id)):
-				return ScenarioRuntimeOperationResult.failed(&"item_not_owned", "The party does not possess the selected Complex Encounter item.")
 			outcome = _complex_catalog_outcome(encounter.item_ids(), encounter.item_results(), item_id)
 		"thief":
 			return _thief_operations.begin(encounter, choice_continuation.gosub, request_id, choice_continuation.encounter_attempt)
@@ -508,6 +506,23 @@ func _party_has_classic_item(classic_item_id: int, minimum_charges: int = -1, eq
 			if instance.definition_id == definition.id and (minimum_charges < 0 or instance.charges >= minimum_charges) and (not equipped_only or instance.equipped):
 				return true
 	return false
+
+
+func _character_owns_classic_item(character_id: String, instance_id: String, classic_item_id: int) -> bool:
+	var character := _game_state.party.character_by_id(character_id)
+	var definition := _content.item_by_classic_id(absi(classic_item_id))
+	if character == null or character.current_health <= 0 or definition == null or instance_id.is_empty():
+		return false
+	for instance: ItemInstance in character.inventory():
+		if instance.id == instance_id and instance.definition_id == definition.id:
+			return true
+	return false
+
+
+func _character_knows_classic_spell(character_id: String, classic_spell_id: int) -> bool:
+	var character := _game_state.party.character_by_id(character_id)
+	var definition := _content.spell_by_classic_id(absi(classic_spell_id))
+	return character != null and character.current_health > 0 and definition != null and character.known_spells().has(definition.id)
 
 
 func _branch_xap(target_id: int, gosub: bool) -> ScenarioRuntimeOperationResult:

@@ -9,6 +9,7 @@ signal intent_submitted(intent: PlayerIntent)
 signal route_requested(route_id: StringName)
 signal refresh_requested
 signal sound_requested(sound_id: int, wait_for_completion: bool, stop_existing: bool)
+signal encounter_spell_selected(character_id: String, classic_spell_id: int)
 
 const GOLD := Color("d5b45d")
 const TEXT := Color("e0e2e5")
@@ -23,6 +24,8 @@ var _section_id: StringName = &"known"
 var _selected_level: int = 1
 var _selected_power: int = 1
 var _compact: bool = false
+var _encounter_mode: bool = false
+var _encounter_spell_ids: Dictionary = {}
 
 
 func set_layout_profile(profile_id: StringName) -> void:
@@ -41,6 +44,8 @@ func present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog, 
 	if parent == null or view == null:
 		return
 	_view = view
+	_encounter_mode = false
+	_encounter_spell_ids.clear()
 	_text_scale = maxf(0.1, text_scale)
 	if view.party_members.is_empty():
 		_add_empty_state(parent, "No spellbooks", "The party has no characters.")
@@ -60,14 +65,36 @@ func present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog, 
 			_add_known_spells(parent, character, fixed_actions)
 
 
+func present_encounter(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog, text_scale: float, entries: Array[InteractionRequestValue.EncounterCatalogEntry]) -> void:
+	if parent == null or view == null:
+		return
+	_view = view
+	_text_scale = maxf(0.1, text_scale)
+	_encounter_mode = true
+	_encounter_spell_ids.clear()
+	for entry: InteractionRequestValue.EncounterCatalogEntry in entries:
+		var ids: Array[int] = []
+		ids.assign(_encounter_spell_ids.get(entry.character_id, []))
+		if not ids.has(entry.classic_id): ids.append(entry.classic_id)
+		_encounter_spell_ids[entry.character_id] = ids
+	var character := _selected_character()
+	if character == null:
+		_add_empty_state(parent, "No encounter spells", "No living party member knows an eligible spell.")
+		return
+	_add_character_selector(parent, character)
+	_add_known_spells(parent, character, null)
+
+
 func _selected_character() -> CharacterView:
 	for character: CharacterView in _view.party_members:
-		if character.id == _selected_character_id:
+		if character.id == _selected_character_id and not _eligible_spells(character).is_empty():
 			return character
 	for character: CharacterView in _view.party_members:
-		if not character.spells.is_empty():
+		if not _eligible_spells(character).is_empty():
 			_selected_character_id = character.id
 			return character
+	if _encounter_mode:
+		return null
 	var fallback: CharacterView = _view.party_members[0]
 	_selected_character_id = fallback.id
 	return fallback
@@ -88,6 +115,8 @@ func _add_character_selector(parent: VBoxContainer, character: CharacterView) ->
 	picker.theme_type_variation = &"ClassicTheldrowOptionButton"
 	picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	for candidate: CharacterView in _view.party_members:
+		if _encounter_mode and _eligible_spells(candidate).is_empty():
+			continue
 		picker.add_item("%s  •  SP %d/%d" % [candidate.name, candidate.spell_points, candidate.maximum_spell_points])
 		picker.set_item_metadata(picker.item_count - 1, candidate.id)
 		if candidate.id == character.id:
@@ -128,7 +157,7 @@ func _add_section_tabs(parent: VBoxContainer) -> void:
 
 
 func _add_known_spells(parent: VBoxContainer, character: CharacterView, fixed_actions: Container) -> void:
-	if character.spells.is_empty():
+	if _eligible_spells(character).is_empty():
 		_add_empty_state(parent, "No known spells", "%s does not currently know a spell." % character.name)
 		return
 	var spell := _selected_spell(character)
@@ -191,10 +220,11 @@ func _build_level_rail(available_levels: Array[int], spell: SpellView) -> PanelC
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.custom_minimum_size = Vector2(74.0 if _compact else 88.0, 24.0)
 		rail.add_child(button)
-	var divider := HSeparator.new()
-	divider.custom_minimum_size.y = 4.0
-	rail.add_child(divider)
-	rail.add_child(_build_power_rail(spell))
+	if not _encounter_mode:
+		var divider := HSeparator.new()
+		divider.custom_minimum_size.y = 4.0
+		rail.add_child(divider)
+		rail.add_child(_build_power_rail(spell))
 	return panel
 
 
@@ -238,11 +268,12 @@ func _build_spell_list(character: CharacterView, selected: SpellView) -> PanelCo
 
 
 func _selected_spell(character: CharacterView) -> SpellView:
-	for spell: SpellView in character.spells:
+	var eligible := _eligible_spells(character)
+	for spell: SpellView in eligible:
 		if spell.id == _selected_spell_id:
 			_selected_power = _valid_power(spell, _selected_power)
 			return spell
-	var fallback: SpellView = character.spells[0]
+	var fallback: SpellView = eligible[0]
 	_selected_spell_id = fallback.id
 	_selected_level = _spell_level(fallback)
 	_selected_power = _valid_power(fallback, 1)
@@ -321,6 +352,11 @@ func _build_spell_action_dock(character: CharacterView, spell: SpellView) -> Box
 	var row := HBoxContainer.new()
 	row.name = "SpellActionDock"
 	row.add_theme_constant_override("separation", 5)
+	if _encounter_mode:
+		var choose := _bitmap_action("EncounterSpellChoose", &"spells.action.cast", "Use %s in this encounter" % spell.name, ActionAvailabilityView.new(&"encounter_spell", true, ""), func() -> void: encounter_spell_selected.emit(character.id, spell.classic_id))
+		choose.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(choose)
+		return row
 	var cast := _bitmap_action("SpellCastAction", &"spells.action.cast", "Cast %s at power %d" % [spell.name, _selected_power], spell.field_cast, func() -> void:
 		intent_submitted.emit(PlayerIntent.cast_spell(spell.id, character.id, "", _selected_power))
 	)
@@ -339,7 +375,7 @@ func _build_spell_action_dock(character: CharacterView, spell: SpellView) -> Box
 
 func _available_levels(character: CharacterView) -> Array[int]:
 	var result: Array[int] = []
-	for spell: SpellView in character.spells:
+	for spell: SpellView in _eligible_spells(character):
 		var level := _spell_level(spell)
 		if not result.has(level):
 			result.append(level)
@@ -349,16 +385,30 @@ func _available_levels(character: CharacterView) -> Array[int]:
 
 func _spells_at_level(character: CharacterView, level: int) -> Array[SpellView]:
 	var result: Array[SpellView] = []
-	for spell: SpellView in character.spells:
+	for spell: SpellView in _eligible_spells(character):
 		if _spell_level(spell) == level:
 			result.append(spell)
 	result.sort_custom(func(left: SpellView, right: SpellView) -> bool: return left.name.naturalnocasecmp_to(right.name) < 0)
 	return result
 
 
+func _eligible_spells(character: CharacterView) -> Array[SpellView]:
+	if not _encounter_mode:
+		return character.spells
+	var classic_ids: Array[int] = []
+	classic_ids.assign(_encounter_spell_ids.get(character.id, []))
+	var result: Array[SpellView] = []
+	for spell: SpellView in character.spells:
+		if classic_ids.has(spell.classic_id): result.append(spell)
+	return result
+
+
 func _first_spell_at_level(character: CharacterView, level: int) -> SpellView:
 	var spells := _spells_at_level(character, level)
-	return spells[0] if not spells.is_empty() else character.spells[0]
+	if not spells.is_empty():
+		return spells[0]
+	var eligible := _eligible_spells(character)
+	return eligible[0] if not eligible.is_empty() else null
 
 
 static func _spell_level(spell: SpellView) -> int:

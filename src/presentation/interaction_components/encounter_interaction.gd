@@ -3,7 +3,12 @@ extends InteractionComponent
 
 const ClassicSpellLevelScript := preload("res://src/presentation/classic_spell_level.gd")
 const SpellSelectionChrome := preload("res://src/presentation/controllers/classic_spell_selection_chrome.gd")
+const ContentIconScript := preload("res://src/presentation/classic_content_icon.gd")
+const SpellsWorkspaceControllerScript := preload("res://src/presentation/controllers/spells_workspace_controller.gd")
 
+var _media: ClassicMediaCatalog
+var _game_view: GameView
+var _compact: bool
 var _body: InteractionRequest.ComplexEncounterRequestBody
 var _context: VBoxContainer
 var _choice_actions: Array[InteractionRequestValue.EncounterAction] = []
@@ -21,6 +26,27 @@ var _catalog_buttons: Array[Button] = []
 var _catalog_level: int = 1
 var _catalog_level_buttons: Array[Button] = []
 var _selected_action_slots: Array[int] = []
+var _catalog_character_index: int = 0
+var _catalog_character_name: Label
+var _catalog_character_portrait: TextureRect
+var _catalog_confirm: Button
+var _spell_workspace: SpellsWorkspaceController
+
+
+func configure(media: ClassicMediaCatalog, game_view: GameView = null, compact: bool = false) -> void:
+	_media = media
+	_game_view = game_view
+	_compact = compact
+
+
+func _notification(what: int) -> void:
+	if what != NOTIFICATION_PREDELETE or _spell_workspace == null:
+		return
+	if _spell_workspace.refresh_requested.is_connected(_render_standard_spell_catalog):
+		_spell_workspace.refresh_requested.disconnect(_render_standard_spell_catalog)
+	if _spell_workspace.encounter_spell_selected.is_connected(_submit_standard_encounter_spell):
+		_spell_workspace.encounter_spell_selected.disconnect(_submit_standard_encounter_spell)
+	_spell_workspace = null
 
 
 func build(request: InteractionRequest) -> void:
@@ -125,11 +151,54 @@ func _show_mode(mode: StringName) -> void:
 		&"action": _show_choices()
 		&"item": _show_catalog(&"item", _body.items)
 		&"word": _show_word()
-		&"spell": _show_catalog(&"spell", _body.spells)
+		&"spell": _show_standard_spell_catalog()
+
+
+func _show_standard_spell_catalog() -> void:
+	_catalog_kind = &"spell"
+	_render_standard_spell_catalog()
+
+
+func _render_standard_spell_catalog() -> void:
+	_dispose_context_children()
+	var workspace := PanelContainer.new()
+	workspace.name = "EncounterStandardSpellWorkspace"
+	workspace.theme_type_variation = &"ClassicInset"
+	workspace.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	workspace.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var column := VBoxContainer.new()
+	column.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	column.add_theme_constant_override("separation", 5)
+	workspace.add_child(column)
+	_context.add_child(workspace)
+	if _spell_workspace == null:
+		_spell_workspace = SpellsWorkspaceControllerScript.new()
+		_spell_workspace.set_layout_profile(UiLayoutProfile.COMPACT if _compact else UiLayoutProfile.WIDE)
+		_spell_workspace.refresh_requested.connect(_render_standard_spell_catalog, CONNECT_DEFERRED)
+		_spell_workspace.encounter_spell_selected.connect(_submit_standard_encounter_spell)
+	_spell_workspace.present_encounter(column, _game_view, _media, 1.0, _body.spells)
+	var cancel := Button.new()
+	cancel.name = "EncounterCatalogCancel"
+	cancel.text = "Cancel"
+	cancel.custom_minimum_size.y = 36.0
+	cancel.pressed.connect(_cancel_catalog)
+	column.add_child(cancel)
+
+
+func _submit_standard_encounter_spell(character_id: String, classic_spell_id: int) -> void:
+	for entry: InteractionRequestValue.EncounterCatalogEntry in _body.spells:
+		if entry.character_id == character_id and entry.classic_id == classic_spell_id:
+			response_body_submitted.emit(InteractionResponse.ComplexEncounterBody.new(&"spell", -1, "", classic_spell_id, 0, -1, character_id))
+			return
 
 
 func _show_choices() -> void:
 	_selected_action_slots.clear()
+	var instruction := Label.new()
+	instruction.name = "EncounterActionInstruction"
+	instruction.text = _action_selection_hint()
+	instruction.add_theme_color_override("font_color", Color("d5b45d"))
+	_context.add_child(instruction)
 	var grid := GridContainer.new()
 	grid.name = "EncounterChoiceGrid"
 	grid.columns = 1
@@ -167,7 +236,7 @@ func _toggle_action_slot(slot: int, button: Button) -> void:
 
 
 func _action_selection_hint() -> String:
-	return "Select %d action%s." % [_body.action_selection_count, "" if _body.action_selection_count == 1 else "s"]
+	return "Choose %d action%s, then press Done." % [_body.action_selection_count, "" if _body.action_selection_count == 1 else "s"]
 
 
 func _show_word() -> void:
@@ -209,8 +278,10 @@ func _show_catalog(kind: StringName, entries: Array[InteractionRequestValue.Enco
 	_catalog_selection = 0
 	_catalog_buttons.clear()
 	_catalog_level_buttons.clear()
+	_select_first_catalog_character()
+	_select_first_catalog_entry()
 	if kind == &"spell" and not entries.is_empty():
-		_catalog_level = ClassicSpellLevelScript.from_classic_id(entries[0].classic_id)
+		_catalog_level = ClassicSpellLevelScript.from_classic_id(entries[_catalog_selection].classic_id)
 	var workspace := PanelContainer.new()
 	workspace.name = "EncounterCatalogWorkspace"
 	workspace.theme_type_variation = &"ClassicInset"
@@ -225,11 +296,12 @@ func _show_catalog(kind: StringName, entries: Array[InteractionRequestValue.Enco
 	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	heading.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(heading)
+	column.add_child(_build_catalog_character_navigator())
 	if kind == &"spell":
 		column.add_child(_build_spell_level_rail())
 	var list_panel := PanelContainer.new()
 	list_panel.name = "EncounterCatalogList"
-	list_panel.theme_type_variation = &"ClassicTextWell"
+	list_panel.theme_type_variation = &"ClassicItemLedger" if kind == &"item" else &"ClassicTextWell"
 	list_panel.custom_minimum_size.y = 84.0
 	list_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	var scroll := ScrollContainer.new()
@@ -254,6 +326,7 @@ func _show_catalog(kind: StringName, entries: Array[InteractionRequestValue.Enco
 	actions.name = "EncounterCatalogActions"
 	actions.add_theme_constant_override("separation", 6)
 	var submit := Button.new()
+	_catalog_confirm = submit
 	submit.name = "EncounterCatalogConfirm"
 	submit.text = "Use item" if kind == &"item" else "Cast spell"
 	submit.custom_minimum_size.y = 36.0
@@ -268,16 +341,45 @@ func _show_catalog(kind: StringName, entries: Array[InteractionRequestValue.Enco
 	cancel.pressed.connect(_cancel_catalog)
 	actions.add_child(cancel)
 	column.add_child(actions)
-	if kind == &"spell" and not side_workspace_requested.get_connections().is_empty():
-		var hint := Label.new()
-		hint.text = "Choose a spell from the Party-side spellbook."
-		hint.add_theme_color_override("font_color", Color("d5b45d"))
-		_context.add_child(hint)
-		side_workspace_requested.emit(workspace)
-	else:
-		_context.add_child(workspace)
+	_context.add_child(workspace)
 	_rebuild_catalog_list()
 	_render_catalog_record()
+
+
+func _build_catalog_character_navigator() -> PanelContainer:
+	var panel := PanelContainer.new()
+	panel.name = "EncounterCatalogCharacterNavigator"
+	panel.theme_type_variation = &"ClassicInset"
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	panel.add_child(row)
+	var previous := Button.new()
+	previous.name = "EncounterCatalogPreviousCharacter"
+	previous.text = "‹"
+	previous.custom_minimum_size = Vector2(42.0, 42.0)
+	previous.disabled = _body.characters.size() < 2
+	previous.pressed.connect(_shift_catalog_character.bind(-1))
+	row.add_child(previous)
+	_catalog_character_portrait = TextureRect.new()
+	_catalog_character_portrait.custom_minimum_size = Vector2(42.0, 42.0)
+	_catalog_character_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_catalog_character_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_catalog_character_portrait.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	row.add_child(_catalog_character_portrait)
+	_catalog_character_name = Label.new()
+	_catalog_character_name.theme_type_variation = &"ClassicHeading"
+	_catalog_character_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_catalog_character_name.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(_catalog_character_name)
+	var next := Button.new()
+	next.name = "EncounterCatalogNextCharacter"
+	next.text = "›"
+	next.custom_minimum_size = Vector2(42.0, 42.0)
+	next.disabled = _body.characters.size() < 2
+	next.pressed.connect(_shift_catalog_character.bind(1))
+	row.add_child(next)
+	_render_catalog_character()
+	return panel
 
 
 func _build_spell_level_rail() -> PanelContainer:
@@ -303,6 +405,8 @@ func _build_spell_level_rail() -> PanelContainer:
 func _catalog_spell_levels() -> Array[int]:
 	var result: Array[int] = []
 	for entry: InteractionRequestValue.EncounterCatalogEntry in _catalog_entries:
+		if entry.character_id != _catalog_character_id():
+			continue
 		var level := ClassicSpellLevelScript.from_classic_id(entry.classic_id)
 		if not result.has(level):
 			result.append(level)
@@ -319,23 +423,35 @@ func _rebuild_catalog_list() -> void:
 	_catalog_buttons.clear()
 	for index: int in _catalog_entries.size():
 		var entry := _catalog_entries[index]
+		if entry.character_id != _catalog_character_id():
+			continue
 		if _catalog_kind == &"spell" and ClassicSpellLevelScript.from_classic_id(entry.classic_id) != _catalog_level:
 			continue
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 5)
+		if _catalog_kind == &"item":
+			var icon := ContentIconScript.new() as ClassicContentIcon
+			icon.configure(entry.icon_resource_type, entry.icon_id, _media, 36.0, entry.name)
+			row.add_child(icon)
 		var button := Button.new()
 		button.text = entry.name
+		button.name = "EncounterCatalogEntry_%s" % (entry.instance_id if _catalog_kind == &"item" else str(entry.classic_id))
+		button.theme_type_variation = &"ClassicItemLedgerButton" if _catalog_kind == &"item" else &"Button"
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.toggle_mode = true
 		button.button_pressed = index == _catalog_selection
 		button.set_meta("catalog_index", index)
 		button.pressed.connect(_select_catalog_entry.bind(index))
-		_catalog_list.add_child(button)
+		row.add_child(button)
+		_catalog_list.add_child(row)
 		_catalog_buttons.append(button)
 
 
 func _select_catalog_level(level: int) -> void:
 	_catalog_level = level
 	for index: int in _catalog_entries.size():
-		if ClassicSpellLevelScript.from_classic_id(_catalog_entries[index].classic_id) == level:
+		if _catalog_entries[index].character_id == _catalog_character_id() and ClassicSpellLevelScript.from_classic_id(_catalog_entries[index].classic_id) == level:
 			_catalog_selection = index
 			break
 	for button_index: int in _catalog_level_buttons.size():
@@ -351,13 +467,68 @@ func _select_catalog_entry(index: int) -> void:
 	_render_catalog_record()
 
 
+func _shift_catalog_character(delta: int) -> void:
+	if _body.characters.is_empty():
+		return
+	_catalog_character_index = posmod(_catalog_character_index + delta, _body.characters.size())
+	_select_first_catalog_entry()
+	_render_catalog_character()
+	_refresh_catalog_level_buttons()
+	_rebuild_catalog_list()
+	_render_catalog_record()
+
+
+func _select_first_catalog_character() -> void:
+	_catalog_character_index = 0
+	for character_index: int in _body.characters.size():
+		var character := _body.characters[character_index]
+		if _catalog_entries.any(func(entry: InteractionRequestValue.EncounterCatalogEntry) -> bool: return entry.character_id == character.id):
+			_catalog_character_index = character_index
+			return
+
+
+func _select_first_catalog_entry() -> void:
+	_catalog_selection = -1
+	for index: int in _catalog_entries.size():
+		if _catalog_entries[index].character_id == _catalog_character_id():
+			_catalog_selection = index
+			if _catalog_kind == &"spell":
+				_catalog_level = ClassicSpellLevelScript.from_classic_id(_catalog_entries[index].classic_id)
+			return
+
+
+func _refresh_catalog_level_buttons() -> void:
+	var available := _catalog_spell_levels()
+	for button_index: int in _catalog_level_buttons.size():
+		var level := button_index + 1
+		_catalog_level_buttons[button_index].disabled = not available.has(level)
+		_catalog_level_buttons[button_index].button_pressed = level == _catalog_level
+		_catalog_level_buttons[button_index].tooltip_text = "No eligible level %d spells" % level if not available.has(level) else "Show level %d spells" % level
+
+
+func _catalog_character_id() -> String:
+	return _body.characters[_catalog_character_index].id if not _body.characters.is_empty() else ""
+
+
+func _render_catalog_character() -> void:
+	if _body.characters.is_empty() or _catalog_character_name == null:
+		return
+	var character := _body.characters[_catalog_character_index]
+	_catalog_character_name.text = "%s · %s" % [character.name, "Items" if _catalog_kind == &"item" else "Spells"]
+	_catalog_character_portrait.texture = _media.image_texture(_media.asset_by_id(character.portrait_id)) if _media != null and not character.portrait_id.is_empty() else null
+	if _catalog_confirm != null:
+		_catalog_confirm.disabled = _catalog_selection < 0
+		_catalog_confirm.tooltip_text = "This character has no eligible %s." % ("items" if _catalog_kind == &"item" else "spells") if _catalog_selection < 0 else ""
+
+
 func _render_catalog_record() -> void:
 	if _catalog_record == null:
 		return
 	for child: Node in _catalog_record.get_children():
 		_catalog_record.remove_child(child)
-		child.queue_free()
-	if _catalog_entries.is_empty():
+		if child.is_inside_tree(): child.queue_free()
+		else: child.free()
+	if _catalog_selection < 0 or _catalog_selection >= _catalog_entries.size():
 		return
 	var entry := _catalog_entries[_catalog_selection]
 	var title := Label.new()
@@ -367,7 +538,7 @@ func _render_catalog_record() -> void:
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_catalog_record.add_child(title)
 	var role := Label.new()
-	role.text = "Carried encounter item" if _catalog_kind == &"item" else "Level %d  •  Eligible memorized spell" % ClassicSpellLevelScript.from_classic_id(entry.classic_id)
+	role.text = "%s%s" % ["Equipped" if entry.equipped else "Carried", " · %d charges" % entry.charges if entry.charges > 0 else ""] if _catalog_kind == &"item" else "Level %d  •  %s's memorized spell" % [ClassicSpellLevelScript.from_classic_id(entry.classic_id), _body.characters[_catalog_character_index].name]
 	role.add_theme_color_override("font_color", Color("9ca3ad"))
 	role.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	role.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -375,10 +546,11 @@ func _render_catalog_record() -> void:
 
 
 func _submit_catalog_entry() -> void:
-	if _catalog_entries.is_empty():
+	if _catalog_selection < 0 or _catalog_selection >= _catalog_entries.size():
 		return
 	var classic_id := _catalog_entries[_catalog_selection].classic_id
-	response_body_submitted.emit(InteractionResponse.ComplexEncounterBody.new(_catalog_kind, -1, "", classic_id if _catalog_kind == &"spell" else 0, classic_id if _catalog_kind == &"item" else 0))
+	var entry := _catalog_entries[_catalog_selection]
+	response_body_submitted.emit(InteractionResponse.ComplexEncounterBody.new(_catalog_kind, -1, "", classic_id if _catalog_kind == &"spell" else 0, classic_id if _catalog_kind == &"item" else 0, -1, entry.character_id, [], entry.instance_id))
 
 
 func _cancel_catalog() -> void:
@@ -390,14 +562,18 @@ func _cancel_catalog() -> void:
 
 
 func _clear_context() -> void:
-	if _catalog_kind == &"spell":
-		side_workspace_closed.emit()
 	_catalog_kind = &""
 	_catalog_entries.clear()
 	_catalog_buttons.clear()
 	_catalog_level_buttons.clear()
 	_catalog_list = null
 	_catalog_record = null
+	_catalog_confirm = null
+	_dispose_context_children()
+
+
+func _dispose_context_children() -> void:
 	for child: Node in _context.get_children():
 		_context.remove_child(child)
-		child.queue_free()
+		if child.is_inside_tree(): child.queue_free()
+		else: child.free()

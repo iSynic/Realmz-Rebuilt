@@ -119,21 +119,18 @@ func complex_encounter_request(encounter: ComplexEncounterDefinition, request_id
 	var characters: Array[Dictionary] = []
 	var items: Array[Dictionary] = []
 	var spells: Array[Dictionary] = []
-	var seen_items: Dictionary = {}
-	var seen_spells: Dictionary = {}
 	for character: CharacterState in _game_state.party.characters():
-		if character.current_health > 0:
-			characters.append({"id": character.id, "name": character.name})
+		if character.current_health <= 0:
+			continue
+		characters.append({"id": character.id, "name": character.name, "portraitId": character.portrait_id})
 		for instance: ItemInstance in character.inventory():
 			var item := _content.item_by_id(instance.definition_id)
-			if item != null and not seen_items.has(item.classic_id):
-				seen_items[item.classic_id] = true
-				items.append({"classicItemId": item.classic_id, "name": item.name})
+			if item != null:
+				items.append({"classicItemId": item.classic_id, "name": item.name if instance.identified else item.unidentified_name, "characterId": character.id, "instanceId": instance.id, "iconResourceType": "cicn", "iconId": item.visible_icon_id(instance.identified), "charges": instance.charges, "equipped": instance.equipped})
 		for spell_id: String in character.known_spells():
 			var spell := _content.spell_by_id(spell_id)
-			if spell != null and not seen_spells.has(spell.classic_id):
-				seen_spells[spell.classic_id] = true
-				spells.append({"classicSpellId": spell.classic_id, "name": spell.name})
+			if spell != null:
+				spells.append({"classicSpellId": spell.classic_id, "name": spell.name, "characterId": character.id})
 	return InteractionRequest.from_payload(request_id, &"complex_encounter", {"encounterKind": "complex", "encounterId": encounter.id, "prompt": prompt.text, "actions": actions, "characters": characters, "items": items, "spells": spells, "canBackOut": encounter.can_back_out, "actionSelectionCount": encounter.groups().filter(func(value: int) -> bool: return value != 0).size()})
 
 

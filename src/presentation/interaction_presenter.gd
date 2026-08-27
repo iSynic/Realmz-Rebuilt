@@ -468,7 +468,9 @@ func _component_for(request: InteractionRequest, game_view: GameView, media: Cla
 			level_up.configure(game_view, media)
 			return level_up
 		&"complex_encounter":
-			return EncounterInteraction.new()
+			var encounter := EncounterInteraction.new()
+			encounter.configure(media, game_view, _application_rect.size.x < 1000.0)
+			return encounter
 		&"thief_encounter":
 			var thief := ThiefEncounterInteractionScript.new()
 			thief.configure(media)
@@ -680,7 +682,11 @@ static func preferred_modal_size(request: InteractionRequest, available_size: Ve
 				preferred = Vector2(560.0, 220.0) if lifecycle != null and lifecycle.operation != &"quit-application" else Vector2(460.0, 122.0)
 				minimum = Vector2(420.0, 190.0) if lifecycle != null and lifecycle.operation != &"quit-application" else Vector2(340.0, 110.0)
 			InteractionRequest.WORD_AND_ACTION:
-				preferred.y = 380.0
+				preferred = Vector2(980.0, minf(620.0, available_size.y - 20.0))
+				minimum = Vector2(620.0, 440.0)
+			InteractionRequest.THIEF_ENCOUNTER:
+				preferred = Vector2(900.0, minf(580.0, available_size.y - 20.0))
+				minimum = Vector2(620.0, 440.0)
 			InteractionRequest.LEVEL_UP:
 				var body := request.body as InteractionRequest.LevelUpRequestBody
 				preferred = Vector2(1080.0, minf(760.0, available_size.y - 20.0)) if body != null and body.mode == &"spell-selection" else Vector2(760.0, 430.0)
@@ -855,10 +861,7 @@ static func uses_application_workspace(request: InteractionRequest) -> bool:
 
 
 static func uses_application_modal_region(request: InteractionRequest) -> bool:
-	if request == null or request.kind != InteractionRequest.LEVEL_UP:
-		return false
-	var body := request.body as InteractionRequest.LevelUpRequestBody
-	return body != null and body.mode == &"spell-selection"
+	return request != null and request.kind in [InteractionRequest.WORD_AND_ACTION, InteractionRequest.THIEF_ENCOUNTER, InteractionRequest.PICK_LOCK, InteractionRequest.SESSION_LIFECYCLE, InteractionRequest.ALLY_SELECTION, InteractionRequest.LEVEL_UP]
 
 
 static func interaction_region(request: InteractionRequest, textbox_rect: Rect2, _unused_stage_rect: Rect2, combat_rect: Rect2 = Rect2()) -> Rect2:
