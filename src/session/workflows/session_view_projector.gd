@@ -66,7 +66,7 @@ func _project_complete(context: SessionWorkflowContext, pending_interaction: Int
 	result.campaign_summary.maximum_party_size = campaign.restrictions.maximum_party_size
 	result.campaign_summary.maximum_level = campaign.restrictions.maximum_level
 	result.campaign_summary.recommended_party_levels = campaign.recommended_party_levels
-	result.campaign_summary.maximum_party_levels = campaign.maximum_party_levels
+	result.campaign_summary.maximum_party_levels = 0
 	result.campaign_summary.guidance_authored = campaign.guidance_authored
 	result.campaign_summary.banned_races = campaign.restrictions.banned_races.duplicate()
 	result.campaign_summary.banned_castes = campaign.restrictions.banned_castes.duplicate()

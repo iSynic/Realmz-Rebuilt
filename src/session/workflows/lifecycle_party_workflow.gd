@@ -10,12 +10,7 @@ static func create_party(context: SessionWorkflowContext, pending: bool, specs: 
 	var maximum_party_size := clampi(context.content.campaign_definition().restrictions.maximum_party_size, 1, 6)
 	if specs.is_empty() or specs.size() > maximum_party_size:
 		return SessionWorkflowResult.failed(&"invalid_party_size", "This campaign allows one through %d characters." % maximum_party_size)
-	var requested_levels := 0
-	for requested: CharacterCreationSpec in specs:
-		requested_levels += requested.starting_level
 	var campaign := context.content.campaign_definition()
-	if campaign != null and campaign.guidance_authored and campaign.maximum_party_levels > 0 and requested_levels > campaign.maximum_party_levels:
-		return SessionWorkflowResult.failed(&"party_level_limit_exceeded", "This party's combined %d levels exceed the scenario maximum of %d." % [requested_levels, campaign.maximum_party_levels])
 	var created: Array[CharacterState] = []
 	var names: Dictionary = {}
 	for index: int in specs.size():
@@ -45,9 +40,6 @@ static func begin_adventure(context: SessionWorkflowContext, pending: bool) -> S
 	var characters := context.state.party.characters()
 	if characters.is_empty():
 		return SessionWorkflowResult.failed(&"empty_party", "Add or import at least one character before beginning.")
-	var aggregate_error := _aggregate_party_level_error(context, characters)
-	if not aggregate_error.is_empty():
-		return SessionWorkflowResult.failed(&"party_level_limit_exceeded", aggregate_error)
 	context.state.experience_multiplier = party_experience_multiplier(characters, context.state.difficulty, context.content.campaign_definition())
 	context.state.party_setup_completed = true
 	var character_ids: Array[String] = []
@@ -77,11 +69,6 @@ static func import_vault_character(context: SessionWorkflowContext, pending: boo
 		return SessionWorkflowResult.failed(&"vault_character_ineligible", "The campaign restrictions reject this vault character.")
 	if restrictions.maximum_level > 0 and imported.level > restrictions.maximum_level:
 		return SessionWorkflowResult.failed(&"vault_character_ineligible", "The vault character exceeds this campaign's maximum level.")
-	var prospective_party := current_characters.duplicate()
-	prospective_party.append(imported)
-	var aggregate_error := _aggregate_party_level_error(context, prospective_party)
-	if not aggregate_error.is_empty():
-		return SessionWorkflowResult.failed(&"vault_character_ineligible", aggregate_error)
 	var race := context.content.race_by_id(imported.race_id)
 	var caste := context.content.caste_by_id(imported.caste_id)
 	context.rules.characters.ensure_age_group(imported, race, caste)
@@ -232,9 +219,6 @@ static func commit_character_draft(context: SessionWorkflowContext) -> Character
 		return CharacterFinalizeWorkflowResult.failed(&"character_creation_failed", "Realmz rules rejected the generated character.")
 	var party_context := context.state.party.characters()
 	party_context.append(character)
-	var aggregate_error := _aggregate_party_level_error(context, party_context)
-	if not aggregate_error.is_empty():
-		return CharacterFinalizeWorkflowResult.failed(&"party_level_limit_exceeded", aggregate_error)
 	if not _materialize_initial_inventory(context, character, context.content.caste_by_id(character.caste_id), party_context) or not context.state.party.add_character(character):
 		return CharacterFinalizeWorkflowResult.failed(&"character_creation_failed", "Realmz rules rejected the generated character.")
 	context.state.character_draft = null
@@ -356,18 +340,6 @@ static func change_character_appearance(context: SessionWorkflowContext, payload
 		"appearanceId": appearance.id,
 		"source": "classic-character-menu",
 	})])
-
-
-static func _aggregate_party_level_error(context: SessionWorkflowContext, characters: Array[CharacterState]) -> String:
-	var campaign := context.content.campaign_definition()
-	if campaign == null or not campaign.guidance_authored or campaign.maximum_party_levels <= 0:
-		return ""
-	var current_levels := 0
-	for character: CharacterState in characters:
-		current_levels += character.level
-	if current_levels <= campaign.maximum_party_levels:
-		return ""
-	return "This party's combined %d levels exceed the scenario maximum of %d." % [current_levels, campaign.maximum_party_levels]
 
 
 static func _character_creation_error(context: SessionWorkflowContext, spec: CharacterCreationSpec, existing_names: Dictionary) -> Dictionary:
