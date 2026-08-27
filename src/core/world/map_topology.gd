@@ -121,30 +121,20 @@ func probe_movement(coordinate: Vector2i, move_direction: Vector2i, world_state:
 func has_line_of_sight(from: Vector2i, to: Vector2i, world_state: WorldState) -> bool:
 	if not contains(from) or not contains(to):
 		return false
-	var x := from.x
-	var y := from.y
-	var dx := absi(to.x - from.x)
-	var dy := -absi(to.y - from.y)
-	var step_x := 1 if from.x < to.x else -1
-	var step_y := 1 if from.y < to.y else -1
-	var error := dx + dy
-	while x != to.x or y != to.y:
-		var twice_error := 2 * error
-		if twice_error >= dy:
-			error += dy
-			x += step_x
-		if twice_error <= dx:
-			error += dx
-			y += step_y
-		var cell := effective_cell_at(Vector2i(x, y), world_state)
+	var previous := from
+	for coordinate: Vector2i in _supercover_line(from, to):
+		if _transition_blocks_los(previous, coordinate, world_state):
+			return false
+		var cell := effective_cell_at(coordinate, world_state)
 		if cell == null:
 			return false
-		if Vector2i(x, y) != to and _cell_blocks_los(cell, world_state):
+		if coordinate != to and _cell_blocks_los(cell, world_state):
 			return false
+		previous = coordinate
 	return true
 
 
-func visible_cells(origin: Vector2i, radius: int, world_state: WorldState, use_los: bool) -> Array[Vector2i]:
+func visible_cells(origin: Vector2i, radius: int, world_state: WorldState, use_los: bool, ignore_blockers: bool = false) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []
 	var first_x := 0 if not use_los else maxi(0, origin.x - radius)
 	var first_y := 0 if not use_los else maxi(0, origin.y - radius)
@@ -153,8 +143,49 @@ func visible_cells(origin: Vector2i, radius: int, world_state: WorldState, use_l
 	for y: int in range(first_y, last_y):
 		for x: int in range(first_x, last_x):
 			var coordinate := Vector2i(x, y)
-			if not use_los or origin.distance_squared_to(coordinate) <= radius * radius and has_line_of_sight(origin, coordinate, world_state):
+			if not use_los or origin.distance_squared_to(coordinate) <= radius * radius and (ignore_blockers or has_line_of_sight(origin, coordinate, world_state)):
 				result.append(coordinate)
+	return result
+
+
+func _transition_blocks_los(from: Vector2i, to: Vector2i, world_state: WorldState) -> bool:
+	var delta := to - from
+	if is_cardinal_direction(delta):
+		return _edge_blocks_los(effective_cell_at(to, world_state).edge(direction_name(delta)), world_state)
+	if not is_diagonal_direction(delta):
+		return false
+	var horizontal := from + Vector2i(delta.x, 0)
+	var vertical := from + Vector2i(0, delta.y)
+	return _cardinal_step_blocks_los(from, horizontal, world_state) or _cardinal_step_blocks_los(from, vertical, world_state) or _cell_blocks_los(effective_cell_at(horizontal, world_state), world_state) or _cell_blocks_los(effective_cell_at(vertical, world_state), world_state)
+
+
+func _cardinal_step_blocks_los(from: Vector2i, to: Vector2i, world_state: WorldState) -> bool:
+	var cell := effective_cell_at(to, world_state)
+	return cell == null or _edge_blocks_los(cell.edge(direction_name(to - from)), world_state)
+
+
+static func _supercover_line(from: Vector2i, to: Vector2i) -> Array[Vector2i]:
+	var result: Array[Vector2i] = []
+	var coordinate := from
+	var delta := to - from
+	var step := Vector2i(signi(delta.x), signi(delta.y))
+	var width_steps := absi(delta.x)
+	var height_steps := absi(delta.y)
+	var x_steps := 0
+	var y_steps := 0
+	while x_steps < width_steps or y_steps < height_steps:
+		var decision := (1 + 2 * x_steps) * height_steps - (1 + 2 * y_steps) * width_steps
+		if decision == 0:
+			coordinate += step
+			x_steps += 1
+			y_steps += 1
+		elif decision < 0:
+			coordinate.x += step.x
+			x_steps += 1
+		else:
+			coordinate.y += step.y
+			y_steps += 1
+		result.append(coordinate)
 	return result
 
 
@@ -281,6 +312,8 @@ static func land_directions() -> Array[Vector2i]:
 
 
 static func _cell_blocks_los(cell: MapCell, world_state: WorldState) -> bool:
+	if cell == null:
+		return true
 	if not cell.blocks_los:
 		return false
 	for feature: MapFeature in cell.features():
@@ -288,6 +321,16 @@ static func _cell_blocks_los(cell: MapCell, world_state: WorldState) -> bool:
 			return false
 		if feature.kind == &"secret" and world_state.secret_is_discovered(feature.id, feature.initial_state == &"revealed"):
 			return false
+	return true
+
+
+static func _edge_blocks_los(edge: MapEdge, world_state: WorldState) -> bool:
+	if edge == null or not edge.blocks_los:
+		return false
+	if not edge.door_id.is_empty() and world_state.door_is_open(edge.door_id):
+		return false
+	if not edge.secret_id.is_empty() and world_state.secret_is_discovered(edge.secret_id, edge.initially_discovered):
+		return false
 	return true
 
 

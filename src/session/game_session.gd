@@ -106,6 +106,7 @@ func start(content: RealmzContent, initial_seed: int) -> SessionStep:
 	_session_interaction = null
 	_view_projector.clear()
 	_started = true
+	_record_current_visibility()
 	_view_revision = 1
 	return SessionStep.completed(_view_revision, [DomainEvent.new("session_started", {"campaignId": content.campaign_id})])
 
@@ -128,6 +129,7 @@ func restore(content: RealmzContent, save_envelope: SessionSnapshot) -> SessionS
 	_view_projector.clear()
 	_view_revision = candidate.view_revision
 	_started = true
+	_record_current_visibility()
 	return SessionStep.completed(_view_revision, [DomainEvent.new("session_restored")])
 
 
@@ -884,6 +886,7 @@ func _complete_random_program(events: Array[DomainEvent]) -> SessionStep:
 
 
 func _finish_completed(events: Array[DomainEvent]) -> SessionStep:
+	_record_current_visibility()
 	_view_revision += 1
 	return SessionStep.completed(_view_revision, events)
 
@@ -919,6 +922,7 @@ func _finish_magic_transition(result: InventoryMagicServicesWorkflow.MagicTransi
 
 
 func _finish_waiting(request: InteractionRequest, events: Array[DomainEvent]) -> SessionStep:
+	_record_current_visibility()
 	_view_revision += 1
 	return SessionStep.waiting(_view_revision, request, events)
 
@@ -926,6 +930,16 @@ func _finish_waiting(request: InteractionRequest, events: Array[DomainEvent]) ->
 func _finish_failed(code: StringName, message: String, events: Array[DomainEvent]) -> SessionStep:
 	_view_revision += 1
 	return SessionStep.failed(_view_revision, code, message, events)
+
+
+func _record_current_visibility() -> void:
+	if not _started or _content == null or _state == null:
+		return
+	var map := _content.world.map_by_id(_state.party.map_id)
+	if map == null or not map.uses_los:
+		return
+	var wizard_eye := _state.party.conditions.is_active(ConditionRules.PARTY_WIZARDS_EYE)
+	_state.world.mark_seen_many(map.id, map.topology.visible_cells(_state.party.coordinate, 8, _state.world, true, wizard_eye))
 
 
 func _pending_interaction() -> InteractionRequest:

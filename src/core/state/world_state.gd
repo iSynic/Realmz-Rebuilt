@@ -7,6 +7,7 @@ var _door_states: Dictionary = {}
 var _discovered_secrets: Dictionary = {}
 var _disabled_triggers: Dictionary = {}
 var _visited_cells: Dictionary = {}
+var _seen_cells: Dictionary = {}
 var _trigger_chances: Dictionary = {}
 var _acquired_maps: Dictionary = {}
 var _random_regions: Dictionary = {}
@@ -188,7 +189,9 @@ func map_landlook(map: MapDefinition) -> int:
 
 
 func mark_visited(map_id: String, coordinate: Vector2i) -> void:
-	_visited_cells[_cell_key(map_id, coordinate)] = true
+	var key := _cell_key(map_id, coordinate)
+	_visited_cells[key] = true
+	_seen_cells[key] = true
 
 
 func was_visited(map_id: String, coordinate: Vector2i) -> bool:
@@ -196,9 +199,30 @@ func was_visited(map_id: String, coordinate: Vector2i) -> bool:
 
 
 func visited_coordinates(map_id: String) -> Array[Vector2i]:
+	return _coordinates_for(map_id, _visited_cells)
+
+
+func mark_seen(map_id: String, coordinate: Vector2i) -> void:
+	_seen_cells[_cell_key(map_id, coordinate)] = true
+
+
+func mark_seen_many(map_id: String, coordinates: Array[Vector2i]) -> void:
+	for coordinate: Vector2i in coordinates:
+		mark_seen(map_id, coordinate)
+
+
+func was_seen(map_id: String, coordinate: Vector2i) -> bool:
+	return _seen_cells.has(_cell_key(map_id, coordinate))
+
+
+func seen_coordinates(map_id: String) -> Array[Vector2i]:
+	return _coordinates_for(map_id, _seen_cells)
+
+
+func _coordinates_for(map_id: String, source: Dictionary) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []
 	var prefix := "%s:" % map_id
-	for key_value: Variant in _visited_cells.keys():
+	for key_value: Variant in source.keys():
 		var key := String(key_value)
 		if not key.begins_with(prefix):
 			continue
@@ -226,6 +250,7 @@ func to_data() -> Dictionary:
 		"discoveredSecrets": _sorted_keys(_discovered_secrets),
 		"disabledTriggers": _sorted_keys(_disabled_triggers),
 		"visitedCells": _sorted_keys(_visited_cells),
+		"seenCells": _sorted_keys(_seen_cells),
 		"triggerChances": _sorted_dictionary(_trigger_chances),
 		"acquiredMaps": _sorted_keys(_acquired_maps),
 		"randomRegions": random_regions,
@@ -261,6 +286,13 @@ static func from_data(data: Variant) -> WorldState:
 		state._door_states[key] = data["doorStates"][key]
 	if not _load_key_array(data["discoveredSecrets"], state._discovered_secrets) or not _load_key_array(data["disabledTriggers"], state._disabled_triggers) or not _load_key_array(data["visitedCells"], state._visited_cells):
 		return null
+	if data.has("seenCells"):
+		if not _load_key_array(data["seenCells"], state._seen_cells):
+			return null
+	else:
+		state._seen_cells = state._visited_cells.duplicate()
+	for key: Variant in state._visited_cells:
+		state._seen_cells[key] = true
 	if data.has("triggerChances"):
 		if not data["triggerChances"] is Dictionary:
 			return null

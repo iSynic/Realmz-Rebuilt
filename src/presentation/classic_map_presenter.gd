@@ -143,24 +143,27 @@ func _draw() -> void:
 	var viewport_cells := Vector2i(mini(requested_cells.x, map_view.width), mini(requested_cells.y, map_view.height))
 	var draw_origin := map_draw_origin_for(size, map_origin, cell_size, viewport_cells)
 	var map_rect := Rect2(draw_origin, Vector2(viewport_cells) * cell_size)
-	var los_blackout := requires_los_blackout(map_view.cells())
+	var los_blackout := map_view.uses_los
 	_draw_exploration_stage(map_rect, los_blackout)
 	var camera := camera_top_left(map_view.party_coordinate, Vector2i(map_view.width, map_view.height), viewport_cells)
 	var camera_end := camera + viewport_cells
 	var classic_rect := classic_visible_rect(map_view.party_coordinate, Vector2i(map_view.width, map_view.height))
 	var dungeon_discovery := dungeon_discovery_coordinates(map_view.visited_coordinates()) if map_view.level_type == &"dungeon" else {}
-	var revealed_coordinates := dungeon_discovery if map_view.level_type == &"dungeon" else land_discovery_coordinates(map_view.visited_coordinates(), Vector2i(map_view.width, map_view.height))
+	var seen_coordinates: Dictionary = {}
+	for coordinate: Vector2i in map_view.seen_coordinates():
+		seen_coordinates[coordinate] = true
+	var revealed_coordinates := seen_coordinates if los_blackout else (dungeon_discovery if map_view.level_type == &"dungeon" else land_discovery_coordinates(map_view.visited_coordinates(), Vector2i(map_view.width, map_view.height)))
 	for cell: MapCellView in map_view.cells():
 		if cell.coordinate.x < camera.x or cell.coordinate.y < camera.y or cell.coordinate.x >= camera_end.x or cell.coordinate.y >= camera_end.y:
 			continue
 		var rect := Rect2(draw_origin + Vector2(cell.coordinate - camera) * cell_size, Vector2.ONE * cell_size)
-		if los_blackout and not cell.visible:
+		if los_blackout and not cell.visible and not seen_coordinates.has(cell.coordinate):
 			continue
-		var outside_classic_view := classic_exploration_visibility and not classic_rect.has_point(cell.coordinate)
+		var outside_classic_view := not los_blackout and classic_exploration_visibility and not classic_rect.has_point(cell.coordinate)
 		if outside_classic_view and not revealed_coordinates.has(cell.coordinate):
 			_draw_unvisited_cell(rect)
 			continue
-		_draw_cell(cell, rect, map_view.level_type, map_view.dark, not cell.has_feature(&"unmapped") or dungeon_discovery.has(cell.coordinate), outside_classic_view, map_view.darkness_level)
+		_draw_cell(cell, rect, map_view.level_type, map_view.dark, not cell.has_feature(&"unmapped") or dungeon_discovery.has(cell.coordinate), not cell.visible or outside_classic_view, map_view.darkness_level)
 		if map_view.level_type == &"land":
 			_draw_land_markers(cell, rect)
 		if show_debug_facts:
