@@ -657,7 +657,7 @@ func _apply_classic_region() -> void:
 		position = region.position
 		size = region.size
 	elif uses_textbox_region(_request, _passive_text):
-		theme_type_variation = textbox_theme_variation()
+		theme_type_variation = textbox_theme_variation(_request)
 		var region := interaction_region(_request, _textbox_rect, _stage_rect, _combat_rect)
 		if _combat_spellbook_open and _request != null and _request.kind == InteractionRequest.COMBAT:
 			region.size.x = minf(region.size.x, maxf(0.0, _side_workspace_rect.position.x - region.position.x))
@@ -685,8 +685,8 @@ func _apply_classic_region() -> void:
 	_apply_nested_modal_layout()
 
 
-static func textbox_theme_variation() -> StringName:
-	return &"ClassicTextboxOverlay"
+static func textbox_theme_variation(request: InteractionRequest = null) -> StringName:
+	return &"ClassicOpenRight" if request != null and request.kind == InteractionRequest.COMBAT else &"ClassicTextboxOverlay"
 
 
 static func preferred_modal_size(request: InteractionRequest, available_size: Vector2) -> Vector2:
