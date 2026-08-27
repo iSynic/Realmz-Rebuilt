@@ -26,6 +26,10 @@ signal combat_spellbook_closed
 signal side_workspace_requested(workspace: Control)
 @warning_ignore("unused_signal")
 signal side_workspace_closed
+@warning_ignore("unused_signal")
+signal application_workspace_requested(workspace: Control)
+@warning_ignore("unused_signal")
+signal application_workspace_closed
 
 
 func build(_request: InteractionRequest) -> void:

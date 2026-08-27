@@ -42,6 +42,7 @@ var _playback_status_label: Label
 var _autojournal_enabled: bool = false
 var _treasure_recipient_id: String = ""
 var _side_workspace_panel: PanelContainer
+var _application_workspace_panel: PanelContainer
 var _modal_shield: ColorRect
 var _nested_modal: Control
 var _combat_spellbook_open: bool = false
@@ -81,6 +82,7 @@ func _submit_classic_acknowledgement() -> bool:
 
 func _exit_tree() -> void:
 	_close_side_workspace()
+	_close_application_workspace()
 	_close_modal_shield()
 	_close_fast_spell_dock()
 	_close_classic_flash()
@@ -158,6 +160,8 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 	_component.combat_spellbook_closed.connect(func() -> void: combat_spellbook_closed.emit())
 	_component.side_workspace_requested.connect(_show_side_workspace)
 	_component.side_workspace_closed.connect(_close_side_workspace)
+	_component.application_workspace_requested.connect(_show_application_workspace)
+	_component.application_workspace_closed.connect(_close_application_workspace)
 	if _component is TreasureDistributionInteraction:
 		var treasure := _component as TreasureDistributionInteraction
 		treasure.recipient_selected.connect(func(character_id: String) -> void: _treasure_recipient_id = character_id)
@@ -569,6 +573,7 @@ func _submit_body(body: InteractionResponse.Body) -> void:
 	if _request == null:
 		return
 	_close_side_workspace()
+	_close_application_workspace()
 	var response := InteractionPresenter.response_for(_request, body)
 	var preserve_treasure_workspace := _component is TreasureDistributionInteraction and body is InteractionResponse.TreasureBody and (body as InteractionResponse.TreasureBody).action in [&"assign", &"done"]
 	_request = null
@@ -621,6 +626,7 @@ func _clear_options() -> void:
 	_combat_spellbook_open = false
 	combat_spellbook_closed.emit()
 	_close_side_workspace()
+	_close_application_workspace()
 	_close_nested_modal()
 	_close_fast_spell_dock()
 	_component = null
@@ -665,6 +671,7 @@ func _apply_classic_region() -> void:
 	_update_modal_shield(not _playback_masked and _request != null and not uses_textbox_region(_request) and not uses_full_stage_region(_request))
 	_apply_content_layout()
 	_apply_side_workspace_layout()
+	_apply_application_workspace_layout()
 	_apply_nested_modal_layout()
 
 
@@ -724,6 +731,9 @@ func _close_modal_shield() -> void:
 	if _modal_shield == null:
 		return
 	var shield_parent := _modal_shield.get_parent()
+	if shield_parent != null and shield_parent.is_queued_for_deletion():
+		_modal_shield = null
+		return
 	if shield_parent != null:
 		shield_parent.remove_child(_modal_shield)
 	_modal_shield.queue_free()
@@ -826,6 +836,40 @@ func _apply_side_workspace_layout() -> void:
 	_side_workspace_panel.size = _side_workspace_rect.size
 
 
+func _show_application_workspace(workspace: Control) -> void:
+	_close_application_workspace()
+	if workspace == null:
+		return
+	_application_workspace_panel = PanelContainer.new()
+	_application_workspace_panel.name = "InteractionApplicationWorkspace"
+	_application_workspace_panel.theme_type_variation = &"ClassicInset"
+	_application_workspace_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_application_workspace_panel.z_index = z_index + 2
+	get_parent().add_child(_application_workspace_panel)
+	workspace.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	workspace.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_application_workspace_panel.add_child(workspace)
+	_apply_application_workspace_layout()
+
+
+func _close_application_workspace() -> void:
+	if _application_workspace_panel == null:
+		return
+	var workspace_parent := _application_workspace_panel.get_parent()
+	if workspace_parent != null and workspace_parent.is_queued_for_deletion():
+		_application_workspace_panel = null
+		return
+	_application_workspace_panel.queue_free()
+	_application_workspace_panel = null
+
+
+func _apply_application_workspace_layout() -> void:
+	if _application_workspace_panel == null:
+		return
+	_application_workspace_panel.position = _application_rect.position
+	_application_workspace_panel.size = _application_rect.size
+
+
 func _apply_content_layout() -> void:
 	var split_textbox := uses_textbox_region(_request, _passive_text) and _request != null and _request.kind == InteractionRequest.CHARACTER_SELECTION
 	_content.vertical = not split_textbox
@@ -909,6 +953,10 @@ static func _title_for_kind(kind: StringName) -> String:
 
 
 static func _prompt_for(request: InteractionRequest, classic_text_context: String) -> String:
+	if request.kind == InteractionRequest.WORD_AND_ACTION:
+		var encounter_context := classic_text_context.strip_edges()
+		if not encounter_context.is_empty():
+			return encounter_context
 	var explicit_prompt := request.body.prompt_text().strip_edges()
 	if not explicit_prompt.is_empty():
 		return explicit_prompt

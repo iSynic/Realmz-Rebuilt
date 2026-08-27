@@ -5,6 +5,7 @@ signal intent_submitted(intent: PlayerIntent)
 signal refresh_requested
 signal route_requested(screen_id: StringName)
 signal back_requested
+signal encounter_item_selected(character_id: String, instance_id: String, classic_item_id: int)
 
 const GOLD := Color("d5b45d")
 const TEXT := Color("e0e2e5")
@@ -28,6 +29,8 @@ var _pending_item_action_label: String = ""
 var _pending_item_intent: PlayerIntent
 var _text_scale: float = 1.0
 var _layout_profile: StringName = UiLayoutProfile.WIDE
+var _encounter_mode: bool = false
+var _encounter_items: Dictionary = {}
 
 
 func set_layout_profile(profile_id: StringName) -> void:
@@ -45,9 +48,27 @@ func reset() -> void:
 	_selected_trade_target_id = ""
 	_trade_status = ""
 	_clear_pending_action()
+	_encounter_mode = false
+	_encounter_items.clear()
 
 
 func present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog, text_scale: float) -> void:
+	_encounter_mode = false
+	_encounter_items.clear()
+	_present(parent, view, media, text_scale)
+
+
+func present_encounter(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog, text_scale: float, entries: Array[InteractionRequestValue.EncounterCatalogEntry]) -> void:
+	_encounter_mode = true
+	_encounter_items.clear()
+	for entry: InteractionRequestValue.EncounterCatalogEntry in entries:
+		if not _encounter_items.has(entry.character_id):
+			_encounter_items[entry.character_id] = {}
+		(_encounter_items[entry.character_id] as Dictionary)[entry.instance_id] = entry.classic_id
+	_present(parent, view, media, text_scale)
+
+
+func _present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog, text_scale: float) -> void:
 	if parent == null:
 		return
 	_clear(parent)
@@ -57,16 +78,20 @@ func present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog, 
 	if view.party_members.is_empty():
 		_add_empty_state(parent, "No party inventory", "The party has no characters.")
 		return
+	var available_characters := _eligible_characters(view)
+	if available_characters.is_empty():
+		_add_empty_state(parent, "No encounter items", "No carried item can be selected for this encounter.")
+		return
 	var selected_character := _selected_character(view)
 	if selected_character == null:
-		selected_character = view.party_members[0]
+		selected_character = available_characters[0]
 		_selected_character_id = selected_character.id
 		_selected_item_instance_id = ""
 		_trade_mode = false
 		_selected_trade_target_id = ""
 		_trade_status = ""
 		_clear_pending_action()
-	var visible_items := selected_character.items
+	var visible_items := _eligible_items(selected_character)
 	var selected_item := _selected_item(visible_items)
 	if selected_item == null and not visible_items.is_empty():
 		selected_item = visible_items[0]
@@ -96,10 +121,11 @@ func _build_character_selector(view: GameView, selected: CharacterView, media: C
 	panel.name = "InventoryCharacterSelector"
 	panel.theme_type_variation = &"ClassicInset"
 	var row := GridContainer.new()
-	row.columns = mini(3, view.party_members.size()) if _layout_profile == UiLayoutProfile.COMPACT else view.party_members.size()
+	var characters := _eligible_characters(view)
+	row.columns = mini(3, characters.size()) if _layout_profile == UiLayoutProfile.COMPACT else characters.size()
 	row.add_theme_constant_override("h_separation", 3)
 	panel.add_child(row)
-	for character: CharacterView in view.party_members:
+	for character: CharacterView in characters:
 		var button := Button.new()
 		button.name = "InventoryCharacter_%s" % character.id
 		button.icon = _appearance_texture(character.portrait_id, media)
@@ -394,6 +420,16 @@ func _render_item_facts(parent: VBoxContainer, item: ItemView) -> void:
 
 
 func _render_item_actions(parent: VBoxContainer, view: GameView, item: ItemView, character: CharacterView, media: ClassicMediaCatalog) -> void:
+	if _encounter_mode:
+		var actions := GridContainer.new()
+		actions.name = "InventoryActionDock"
+		actions.columns = 1
+		var choose := _bitmap_button(&"inventory.action.use", "Use in encounter")
+		choose.name = "EncounterItemChoose"
+		choose.command_requested.connect(func(_command_id: StringName) -> void: _submit_encounter_item(character.id, item.instance_id))
+		actions.add_child(choose)
+		parent.add_child(actions)
+		return
 	if not _pending_item_action.is_empty():
 		_render_operation_stage(parent, item, character)
 		return
@@ -683,9 +719,36 @@ func _submit_trade(instance_id: String, source_id: String, target_id: String) ->
 
 func _selected_character(view: GameView) -> CharacterView:
 	for character: CharacterView in view.party_members:
-		if character.id == _selected_character_id:
+		if character.id == _selected_character_id and (not _encounter_mode or _encounter_items.has(character.id)):
 			return character
 	return null
+
+
+func _eligible_characters(view: GameView) -> Array[CharacterView]:
+	if not _encounter_mode:
+		return view.party_members
+	var result: Array[CharacterView] = []
+	for character: CharacterView in view.party_members:
+		if _encounter_items.has(character.id) and not _eligible_items(character).is_empty():
+			result.append(character)
+	return result
+
+
+func _eligible_items(character: CharacterView) -> Array[ItemView]:
+	if not _encounter_mode:
+		return character.items
+	var result: Array[ItemView] = []
+	var instances := _encounter_items.get(character.id, {}) as Dictionary
+	for item: ItemView in character.items:
+		if instances.has(item.instance_id):
+			result.append(item)
+	return result
+
+
+func _submit_encounter_item(character_id: String, instance_id: String) -> void:
+	var instances := _encounter_items.get(character_id, {}) as Dictionary
+	if instances.has(instance_id):
+		encounter_item_selected.emit(character_id, instance_id, int(instances[instance_id]))
 
 
 func _selected_item(items: Array[ItemView]) -> ItemView:

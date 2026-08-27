@@ -40,7 +40,7 @@ Own deterministic automated proofs, synthetic fixtures, oracle provenance, route
 ## Work Guidance
 
 - Split large suites by public workflow ownership, not by individual bugs or implementation helpers.
-- Every suite supports named focused cases through the shared test-case contract. The runner awaits selected cases and the scene-backed application composition proof so real readiness and teardown can settle without turning ordinary synchronous suites into separate probes.
+- Every suite supports named focused cases through the shared test-case contract. The runner awaits selected cases and the registered scene-backed application composition and Encounter-workspace proofs so real readiness and teardown can settle without turning ordinary synchronous suites into separate probes.
 - Use fixture builders for repeated setup, but keep expected player-visible outcomes explicit at the owning public boundary.
 - Keep presentation tests centered on primary-workspace exclusivity, modal input ownership, responsive reachability, detached information safety, and required Classic stage/roster/command structure.
 - Keep local AOGM, War, and commercial-campaign routes outside version control; record only permitted evidence labels and durable conclusions.
