@@ -24,6 +24,38 @@ func replace_terrain(map_id: String, coordinate: Vector2i, terrain_id: String) -
 	_terrain_overrides[_cell_key(map_id, coordinate)] = terrain_id
 
 
+func has_terrain_override(map_id: String, coordinate: Vector2i) -> bool:
+	return _terrain_overrides.has(_cell_key(map_id, coordinate))
+
+
+func classic_tile_for(map_id: String, cell: MapCell) -> int:
+	var terrain_id := terrain_for(map_id, cell)
+	var prefix := "classic.terrain."
+	if terrain_id.begins_with(prefix):
+		var value := terrain_id.trim_prefix(prefix)
+		if value.is_valid_int():
+			return int(value)
+	return cell.render_tile
+
+
+static func normalized_classic_land_tile(raw_tile: int) -> int:
+	var magnitude := -raw_tile if raw_tile < 0 else raw_tile & ~0x6000
+	while magnitude > 999:
+		magnitude -= 1000
+	return magnitude
+
+
+static func classic_special_land_overlay(raw_tile: int) -> String:
+	if raw_tile >= 0 or raw_tile < -3999:
+		return ""
+	var resource_id := raw_tile
+	for index: int in 3:
+		if resource_id >= -999:
+			break
+		resource_id += 1000
+	return "realmz-special-land-neg-%d" % absi(resource_id)
+
+
 func set_boat_present(map_id: String, coordinate: Vector2i, present: bool) -> void:
 	_boat_presence_overrides[_cell_key(map_id, coordinate)] = present
 

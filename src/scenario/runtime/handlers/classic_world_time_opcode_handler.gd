@@ -273,7 +273,7 @@ func _mutate_triggers(action: ClassicActionDefinition) -> ScenarioRuntimeOperati
 	for record_index: int in record_indexes:
 		var trigger := _content.trigger_by_map_record(map.id, record_index)
 		if trigger == null:
-			return ScenarioRuntimeOperationResult.failed(&"unknown_trigger", "Classic trigger mutation references unavailable record %d on map '%s'." % [record_index, map.id])
+			continue
 		_game_state.world.set_trigger_chance(trigger.id, action.extra_code[2])
 		changed.append(trigger.id)
 	return ScenarioRuntimeOperationResult.completed(changed, [DomainEvent.new(&"trigger_chances_changed", {"triggerIds": changed, "chancePercent": action.extra_code[2]})])

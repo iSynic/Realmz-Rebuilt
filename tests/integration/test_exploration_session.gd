@@ -22,8 +22,7 @@ func run() -> void:
 	assert_equal(session.view().party_coordinate, Vector2i(1, 1), "Providence start coordinate is authoritative"); assert_equal(session.view().map_view.cells().size(), 625, "GameView exposes one complete bounded topology-derived window at the north-west edge")
 	assert_true(session.view().map_view.can_move(Vector2i.UP), "the detached view exposes an authoritative passable movement direction"); assert_false(session.view().map_view.can_move(Vector2i.LEFT), "the detached view exposes an authoritative blocked movement direction")
 	assert_equal(session.view().map_view.visited_coordinates(), [Vector2i(1, 1)], "the minimap receives only session-owned visited coordinates"); assert_equal(session.view().map_view.cell_at(Vector2i(2, 2)).overlay_asset_id, "fixture.special-land.neg-99", "the detached presentation view retains the validated special-land overlay identity")
-	var search_clock_before := session.snapshot().game_state.clock.total_minutes()
-	var search_rng_before := session.rng_trace().size()
+	var search_clock_before := session.snapshot().game_state.clock.total_minutes(); var search_rng_before := session.rng_trace().size()
 	var search_mode_on := session.submit_intent(PlayerIntent.toggle_search())
 	assert_true(_has_event(search_mode_on, &"search_mode_changed") and session.view().party_summary.searching, "Search toggles Castle party condition 5 on without performing an Area Search")
 	assert_equal([session.snapshot().game_state.clock.total_minutes(), session.rng_trace().size()], [search_clock_before, search_rng_before], "Search mode consumes neither gameplay time nor RNG")
@@ -95,6 +94,7 @@ func run() -> void:
 	assert_true(north_restored.snapshot().game_state.world.trigger_is_disabled(north_trigger_id), "an ordinary placed Action Point becomes one-shot after its complete resumed timeline")
 	session = north_restored
 	assert_equal(session.view().map_view.cell_at(Vector2i(2, 2)).terrain_id, "classic.terrain.2", "presenter view reads the same tile overlay as simulation")
+	var special_snapshot := session.snapshot(); special_snapshot.game_state.world.replace_terrain("land:0", Vector2i(2, 2), "classic.terrain.-1018"); var special_session := GameSession.new(); assert_equal(special_session.restore(content, save_round_trip(special_snapshot)).state, SessionStep.State.COMPLETED, "a signed Classic special-land replacement restores transactionally"); var special_cell := special_session.view().map_view.cell_at(Vector2i(2, 2)); assert_equal([special_cell.render_tile, special_cell.overlay_asset_id], [content.world.battle_terrain_set_for_map(content.world.map_by_id("land:0"), special_snapshot.game_state.world).base_tile, "realmz-special-land-neg-18"], "a restored opcode-12 terrain value projects its landlook base and normalized special-land overlay")
 
 	session.submit_intent(PlayerIntent.move(Vector2i.DOWN))
 	var blocked_start_minutes := session._state.clock.total_minutes()
@@ -152,7 +152,7 @@ func run() -> void:
 	var zero_ap_step := zero_ap_session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
 	assert_false(_has_event(zero_ap_step, &"trigger_fired"), "Classic percent zero disables the selected AP without falling through"); assert_equal(zero_ap_session.rng_trace().size(), 0, "a disabled selected AP consumes no random draw")
 	var inactive_ap_content := _inactive_placed_ap_content(content); var inactive_ap_session := GameSession.new(); inactive_ap_session.start(inactive_ap_content, 1); _begin_fixture_adventure(inactive_ap_session, inactive_ap_content)
-	var enabled_ap_step := inactive_ap_session.submit_intent(PlayerIntent.move(Vector2i.RIGHT)); assert_true(_has_event(enabled_ap_step, &"trigger_chances_changed"), "opcode 13 can enable an initially inactive placed AP")
+	var enabled_ap_step := inactive_ap_session.submit_intent(PlayerIntent.move(Vector2i.RIGHT)); assert_true(_has_event(enabled_ap_step, &"trigger_chances_changed"), "opcode 13 ignores an unplaced native row while enabling an initially inactive placed AP")
 	var inactive_ap_step := inactive_ap_session.submit_intent(PlayerIntent.move(Vector2i.RIGHT)); assert_equal(_event(inactive_ap_step, &"trigger_fired").payload["triggerId"], "ap.inactive-placed", "a positive runtime chance override activates the addressed AP")
 
 	var disabled_ap_content := _duplicate_placed_ap_content(100, content); var disabled_ap_source := GameSession.new(); disabled_ap_source.start(disabled_ap_content, 1); _begin_fixture_adventure(disabled_ap_source, disabled_ap_content)
@@ -575,7 +575,7 @@ func _inactive_placed_ap_content(source_content: RealmzContent) -> RealmzContent
 	var empty_ids: Array[String] = []; var empty_features: Array[MapFeature] = []
 	var cells: Array[MapCell] = [MapCell.new("inactive-ap:cell:0,0", Vector2i.ZERO, "classic.terrain.1", true, 1, false, true, false, false, false, false, false, 0, 1, "fixture.tileset", empty_ids, empty_ids, {}, empty_features), MapCell.new("inactive-ap:cell:1,0", Vector2i(1, 0), "classic.terrain.1", true, 1, false, true, false, false, false, false, false, 0, 1, "fixture.tileset", ["ap.enable-inactive"], empty_ids, {}, empty_features), MapCell.new("inactive-ap:cell:2,0", Vector2i(2, 0), "classic.terrain.1", true, 1, false, true, false, false, false, false, false, 0, 1, "fixture.tileset", ["ap.inactive-placed"], empty_ids, {}, empty_features)]
 	var map := MapDefinition.new("inactive-ap", "Inactive AP", &"land", 0, MapTopology.new(3, 1, cells)); var enable := TriggerDefinition.new("ap.enable-inactive", "program.enable-inactive", map.id, Vector2i(1, 0), true, 100, null, 1); var inactive := TriggerDefinition.new("ap.inactive-placed", "program.inactive-placed", map.id, Vector2i(2, 0), false, 0, null, 57)
-	var programs: Array[ScenarioProgramDefinition] = [ScenarioProgramDefinition.new(enable.program_id, &"trigger", enable.id, [ClassicActionDefinition.new(0, 13, 13, 0, false, [0, 57, 100, 1, 0])]), ScenarioProgramDefinition.new(inactive.program_id, &"trigger", inactive.id, [])]
+	var programs: Array[ScenarioProgramDefinition] = [ScenarioProgramDefinition.new(enable.program_id, &"trigger", enable.id, [ClassicActionDefinition.new(0, 13, 13, 0, false, [0, 57, 100, 59, 59])]), ScenarioProgramDefinition.new(inactive.program_id, &"trigger", inactive.id, [])]
 	return RealmzContent.new("inactive-ap", "0".repeat(64), "inactive-ap-content", "realmz-classic-1", map.id, Vector2i.ZERO, WorldDefinition.new([map]), ScenarioDefinition.new(programs, []), [], [enable, inactive], [], source_content.race_definitions(), source_content.caste_definitions())
 
 

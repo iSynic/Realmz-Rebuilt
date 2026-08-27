@@ -830,7 +830,17 @@ static func _build_cell_view(context: SessionWorkflowContext, map: MapDefinition
 	var can_enter := cell.passable and not hidden_secret
 	var effective_landlook := context.state.world.map_landlook(map)
 	var tileset_id := "landlook-%d" % effective_landlook if map.level_type == &"land" and effective_landlook >= 0 else cell.tileset_id
-	return MapCellView.new(cell.coordinate, context.state.world.terrain_for(map.id, cell), cell.render_tile, tileset_id, can_enter, cell.blocks_los, is_visible, context.state.world.was_visited(map.id, cell.coordinate), not hidden_secret and not cell.trigger_ids().is_empty(), not context.state.world.random_region_ids_at(map, cell.coordinate).is_empty(), feature_kinds, feature_orientations, edge_kinds, edge_passability, cell.overlay_asset_id)
+	var render_tile := cell.render_tile
+	var overlay_asset_id := cell.overlay_asset_id
+	if map.level_type == &"land" and context.state.world.has_terrain_override(map.id, cell.coordinate):
+		var raw_tile := context.state.world.classic_tile_for(map.id, cell)
+		overlay_asset_id = WorldState.classic_special_land_overlay(raw_tile)
+		if raw_tile < 0:
+			var terrain_set := context.content.world.battle_terrain_set_for_map(map, context.state.world)
+			render_tile = cell.render_tile if terrain_set == null else terrain_set.base_tile
+		else:
+			render_tile = WorldState.normalized_classic_land_tile(raw_tile)
+	return MapCellView.new(cell.coordinate, context.state.world.terrain_for(map.id, cell), render_tile, tileset_id, can_enter, cell.blocks_los, is_visible, context.state.world.was_visited(map.id, cell.coordinate), not hidden_secret and not cell.trigger_ids().is_empty(), not context.state.world.random_region_ids_at(map, cell.coordinate).is_empty(), feature_kinds, feature_orientations, edge_kinds, edge_passability, overlay_asset_id)
 
 
 static func _probe_movement(context: SessionWorkflowContext, direction: Vector2i) -> WorldMovementResult:

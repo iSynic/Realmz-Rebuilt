@@ -138,7 +138,7 @@ func _monster_position_is_legal(battlefield: BattlefieldState, terrain_set: Batt
 
 
 func _land_build(map_id: String, cell: MapCell, world_state: WorldState, terrain_set: BattleTerrainSetDefinition) -> Array:
-	var tile := _effective_land_tile(map_id, cell, world_state)
+	var tile := _effective_land_tile(map_id, cell, world_state, terrain_set.base_tile)
 	if tile <= 0 or tile >= 201:
 		tile = terrain_set.base_tile
 	var definition := terrain_set.tile_by_id(tile)
@@ -262,14 +262,9 @@ func _decorate_rubble_cell(battlefield: BattlefieldState, coordinate: Vector2i, 
 		battlefield.set_terrain(coordinate, 200 + rng.draw_between(range_limits.x, range_limits.y, &"battle.terrain.rubble-tile"))
 
 
-static func _effective_land_tile(map_id: String, cell: MapCell, world_state: WorldState) -> int:
-	var terrain_id := world_state.terrain_for(map_id, cell)
-	var prefix := "classic.terrain."
-	if terrain_id.begins_with(prefix):
-		var suffix := terrain_id.trim_prefix(prefix)
-		if suffix.is_valid_int():
-			return int(suffix)
-	return cell.render_tile
+static func _effective_land_tile(map_id: String, cell: MapCell, world_state: WorldState, base_tile: int) -> int:
+	var raw_tile := world_state.classic_tile_for(map_id, cell)
+	return base_tile if raw_tile < 0 and world_state.has_terrain_override(map_id, cell.coordinate) else WorldState.normalized_classic_land_tile(raw_tile)
 
 
 static func _inside_good_rect(coordinate: Vector2i) -> bool:

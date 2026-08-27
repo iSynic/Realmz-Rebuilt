@@ -17,7 +17,7 @@ func _test_land_source_window_and_overlay() -> void:
 	var map := MapDefinition.new("land.test", "Land", &"land", 0, MapTopology.new(30, 30, cells), false, false, 1, [], "terrain.land")
 	var terrain := _terrain_set("terrain.land", 1, 1)
 	var world := WorldState.new()
-	world.replace_terrain(map.id, Vector2i.ZERO, "classic.terrain.2")
+	world.replace_terrain(map.id, Vector2i.ZERO, "classic.terrain.2"); world.replace_terrain(map.id, Vector2i(1, 0), "classic.terrain.-1018")
 	var rng := ScriptedRng.new([])
 	var built := BattlefieldBuilder.new().build_terrain(map, world, terrain, Vector2i.ZERO, rng)
 	assert_true(built.is_ok(), "a normalized land map builds Castle's 30 by 30 source window")
@@ -25,7 +25,7 @@ func _test_land_source_window_and_overlay() -> void:
 		return
 	assert_equal([built.battlefield.source_origin, built.battlefield.map_shift, built.battlefield.party_anchor], [Vector2i.ZERO, Vector2i(-45, -45), Vector2i.ZERO], "a corner battle preserves Castle's source clamp and negative map shift")
 	assert_equal(built.battlefield.terrain_at(Vector2i.ZERO), 2, "battle terrain reads the live tile-replacement overlay")
-	assert_equal(built.battlefield.terrain_at(Vector2i(3, 0)), 2, "the adjacent source tile begins at the next three-cell combat block")
+	assert_equal(built.battlefield.terrain_at(Vector2i(3, 0)), 1, "a negative special-land replacement keeps the landlook base inside the next combat block")
 	assert_equal(rng.snapshot().draw_count, 0, "a non-rubble landlook with no forest consumes no decoration draws")
 	var restored := BattlefieldState.from_data(JSON.parse_string(JSON.stringify(built.battlefield.to_data())))
 	assert_not_null(restored, "the complete generated field is centrally serializable")
