@@ -12,6 +12,10 @@ signal combat_spell_cast_requested(option: InteractionRequestValue.CastOption)
 signal combat_spellbook_back_requested
 
 const MUTED := Color("9da8aa")
+const CLASSIC_PORTRAIT_STAGE_SIZE := Vector2i(50, 50)
+const CLASSIC_DEATH_HEALTH := -10
+const CLASSIC_PORTRAIT_SHADE_CICN := 2019
+const CLASSIC_DEATH_MARKER_CICN := 2015
 const SPELLBOOK_POWER_HEIGHT := 22.0
 const SPELLBOOK_POWER_LABEL_WIDTH := 60.0
 const SPELLBOOK_POWER_BUTTON_WIDTH := 20.0
@@ -22,6 +26,7 @@ const SPELLBOOK_POWER_BUTTON_WIDTH := 20.0
 @onready var _party_scroll: ScrollContainer = %PartyScroll
 
 var _media: ClassicMediaCatalog
+var _portrait_composites: Dictionary = {}
 var _selected_character_id: String = ""
 var _current_view: GameView
 var _selection_request_id: String = ""
@@ -48,6 +53,7 @@ func _exit_tree() -> void:
 
 func set_media_catalog(media: ClassicMediaCatalog) -> void:
 	_media = media
+	_portrait_composites.clear()
 
 
 func present(view: GameView, selected_character_id: String = "") -> void:
@@ -518,7 +524,7 @@ func _add_character(character: CharacterView, combat_active: bool, auto_characte
 	row.set_meta("character_id", character.id)
 	row.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	row.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	row.add_theme_constant_override("icon_max_width", 42)
+	row.add_theme_constant_override("icon_max_width", CLASSIC_PORTRAIT_STAGE_SIZE.x)
 	row.toggle_mode = false
 	row.tooltip_text = "Level %d • %s / %s • Movement %d/%d" % [character.level, character.race_name, character.caste_name, character.movement, character.maximum_movement]
 	var selection_eligible := _selection_eligible_ids.has(character.id)
@@ -541,7 +547,7 @@ func _add_character(character: CharacterView, combat_active: bool, auto_characte
 	row.set_meta("base_tooltip", row.tooltip_text)
 	if not character_selection_active():
 		row.tooltip_text += " • Current character; click to open its record." if character.id == _selected_character_id else " • Click to make this the current character."
-	var portrait := _portrait_texture(character.portrait_id)
+	var portrait := _roster_portrait_texture(character)
 	if portrait != null:
 		row.icon = portrait
 	row.pressed.connect(func() -> void:
@@ -719,6 +725,46 @@ func _portrait_texture(asset_id: String) -> Texture2D:
 	if asset == null or not asset.is_picture():
 		return null
 	return _media.image_texture(asset)
+
+
+func _roster_portrait_texture(character: CharacterView) -> Texture2D:
+	var state := 2 if character.current_health <= CLASSIC_DEATH_HEALTH else 1 if character.current_health < 1 else 0
+	var cache_key := "%s|%d" % [character.portrait_id, state]
+	if _portrait_composites.has(cache_key):
+		return _portrait_composites[cache_key] as Texture2D
+	var portrait := _portrait_texture(character.portrait_id)
+	if portrait == null and state == 0:
+		return null
+	var image := Image.create(CLASSIC_PORTRAIT_STAGE_SIZE.x, CLASSIC_PORTRAIT_STAGE_SIZE.y, false, Image.FORMAT_RGBA8)
+	image.fill(Color.TRANSPARENT)
+	_blend_centered(image, portrait)
+	if state > 0:
+		_blend_centered(image, _resource_texture(CLASSIC_PORTRAIT_SHADE_CICN))
+	if state == 2:
+		_blend_centered(image, _resource_texture(CLASSIC_DEATH_MARKER_CICN))
+	var composite := ImageTexture.create_from_image(image)
+	_portrait_composites[cache_key] = composite
+	return composite
+
+
+func _resource_texture(resource_id: int) -> Texture2D:
+	if _media == null:
+		return null
+	var asset := _media.asset_by_resource("cicn", resource_id)
+	return _media.image_texture(asset) if asset != null and asset.is_picture() else null
+
+
+static func _blend_centered(destination: Image, texture: Texture2D) -> void:
+	if texture == null:
+		return
+	var source := texture.get_image()
+	if source == null or source.is_empty():
+		return
+	var width := mini(source.get_width(), destination.get_width())
+	var height := mini(source.get_height(), destination.get_height())
+	var source_position := Vector2i((source.get_width() - width) / 2, (source.get_height() - height) / 2)
+	var destination_position := Vector2i((destination.get_width() - width) / 2, (destination.get_height() - height) / 2)
+	destination.blend_rect(source, Rect2i(source_position, Vector2i(width, height)), destination_position)
 
 
 func _condition_summary(values: Array[int]) -> String:
