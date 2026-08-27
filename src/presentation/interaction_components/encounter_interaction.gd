@@ -20,6 +20,7 @@ var _catalog_list: VBoxContainer
 var _catalog_buttons: Array[Button] = []
 var _catalog_level: int = 1
 var _catalog_level_buttons: Array[Button] = []
+var _selected_action_slots: Array[int] = []
 
 
 func build(request: InteractionRequest) -> void:
@@ -128,6 +129,7 @@ func _show_mode(mode: StringName) -> void:
 
 
 func _show_choices() -> void:
+	_selected_action_slots.clear()
 	var grid := GridContainer.new()
 	grid.name = "EncounterChoiceGrid"
 	grid.columns = 1
@@ -137,8 +139,35 @@ func _show_choices() -> void:
 	_context.add_child(grid)
 	for index: int in _choice_actions.size():
 		var entry := _choice_actions[index]
-		var response := InteractionResponse.ComplexEncounterBody.new(&"choice", entry.slot)
-		add_response_to(grid, "%d · %s" % [index + 1, entry.label], response)
+		var button := Button.new()
+		button.text = "%d · %s" % [index + 1, entry.label]
+		button.toggle_mode = true
+		button.pressed.connect(_toggle_action_slot.bind(entry.slot, button))
+		grid.add_child(button)
+	var done := Button.new()
+	done.name = "EncounterChoiceDone"
+	done.text = "Done"
+	done.disabled = _body.action_selection_count != 0
+	done.tooltip_text = _action_selection_hint()
+	done.pressed.connect(func() -> void: response_body_submitted.emit(InteractionResponse.ComplexEncounterBody.new(&"choice", -1, "", 0, 0, -1, "", _selected_action_slots)))
+	_context.add_child(done)
+	set_meta("encounter_choice_done", done)
+
+
+func _toggle_action_slot(slot: int, button: Button) -> void:
+	if button.button_pressed:
+		_selected_action_slots.append(slot)
+	else:
+		_selected_action_slots.erase(slot)
+	_selected_action_slots.sort()
+	var done := get_meta("encounter_choice_done", null) as Button
+	if done != null:
+		done.disabled = _selected_action_slots.size() != _body.action_selection_count
+		done.tooltip_text = _action_selection_hint()
+
+
+func _action_selection_hint() -> String:
+	return "Select %d action%s." % [_body.action_selection_count, "" if _body.action_selection_count == 1 else "s"]
 
 
 func _show_word() -> void:

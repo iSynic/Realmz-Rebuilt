@@ -134,7 +134,7 @@ func complex_encounter_request(encounter: ComplexEncounterDefinition, request_id
 			if spell != null and not seen_spells.has(spell.classic_id):
 				seen_spells[spell.classic_id] = true
 				spells.append({"classicSpellId": spell.classic_id, "name": spell.name})
-	return InteractionRequest.from_payload(request_id, &"complex_encounter", {"encounterKind": "complex", "encounterId": encounter.id, "prompt": prompt.text, "actions": actions, "characters": characters, "items": items, "spells": spells, "canBackOut": encounter.can_back_out})
+	return InteractionRequest.from_payload(request_id, &"complex_encounter", {"encounterKind": "complex", "encounterId": encounter.id, "prompt": prompt.text, "actions": actions, "characters": characters, "items": items, "spells": spells, "canBackOut": encounter.can_back_out, "actionSelectionCount": encounter.groups().filter(func(value: int) -> bool: return value != 0).size()})
 
 
 func _request_classic_choice(action: ClassicActionDefinition, request_id: String) -> ScenarioRuntimeOperationResult:

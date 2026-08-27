@@ -100,8 +100,9 @@ class ComplexEncounterBody:
 	var classic_item_id: int
 	var action_index: int
 	var character_id: String
+	var selected_slots: Array[int]
 
-	func _init(action_value: StringName, slot_value: int = -1, word_value: String = "", spell_id: int = 0, item_id: int = 0, thief_action_index: int = -1, character: String = "") -> void:
+	func _init(action_value: StringName, slot_value: int = -1, word_value: String = "", spell_id: int = 0, item_id: int = 0, thief_action_index: int = -1, character: String = "", slots: Array[int] = []) -> void:
 		action = action_value
 		slot = slot_value
 		word = word_value
@@ -109,13 +110,16 @@ class ComplexEncounterBody:
 		classic_item_id = item_id
 		action_index = thief_action_index
 		character_id = character
+		selected_slots = slots.duplicate()
 
 	func is_valid() -> bool:
 		return not action.is_empty()
 
 	func to_data() -> Dictionary:
 		var data := {"action": String(action)}
-		if slot >= 0:
+		if not selected_slots.is_empty():
+			data["slots"] = selected_slots.duplicate()
+		elif slot >= 0:
 			data["slot"] = slot
 		if not word.is_empty():
 			data["word"] = word
@@ -496,11 +500,15 @@ static func _body_from_data(response_kind: StringName, data: Dictionary) -> Body
 				selected_ids.append(value)
 			return AllySelectionBody.new(selected_ids)
 		InteractionRequest.WORD_AND_ACTION:
-			if not _fields_are_exact(data, ["action", "slot", "word", "classicSpellId", "classicItemId", "actionIndex", "characterId"], ["action"]) or not _is_string_value(data["action"]):
+			if not _fields_are_exact(data, ["action", "slot", "slots", "word", "classicSpellId", "classicItemId", "actionIndex", "characterId"], ["action"]) or not _is_string_value(data["action"]):
 				return null
-			if not _optional_strings_are_valid(data, ["word", "characterId"]) or not _optional_integers_are_valid(data, ["slot", "classicSpellId", "classicItemId", "actionIndex"]):
+			if not _optional_strings_are_valid(data, ["word", "characterId"]) or not _optional_integers_are_valid(data, ["slot", "classicSpellId", "classicItemId", "actionIndex"]) or data.has("slot") and data.has("slots") or data.has("slots") and not data["slots"] is Array:
 				return null
-			return ComplexEncounterBody.new(StringName(data.get("action", "")), int(data.get("slot", -1)), String(data.get("word", "")), int(data.get("classicSpellId", 0)), int(data.get("classicItemId", 0)), int(data.get("actionIndex", -1)), String(data.get("characterId", "")))
+			var slots: Array[int] = []
+			for value: Variant in data.get("slots", []):
+				if not value is int or slots.has(value): return null
+				slots.append(value)
+			return ComplexEncounterBody.new(StringName(data.get("action", "")), int(data.get("slot", -1)), String(data.get("word", "")), int(data.get("classicSpellId", 0)), int(data.get("classicItemId", 0)), int(data.get("actionIndex", -1)), String(data.get("characterId", "")), slots)
 		InteractionRequest.THIEF_ENCOUNTER:
 			if not _fields_are_exact(data, ["action", "characterId", "actionIndex"], ["action"]) or not _is_string_value(data["action"]) or not _optional_strings_are_valid(data, ["characterId"]) or not _optional_integers_are_valid(data, ["actionIndex"]):
 				return null

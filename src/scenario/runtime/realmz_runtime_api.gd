@@ -342,14 +342,24 @@ func _resume_complex_encounter(continuation: ScenarioRuntimeContinuation, respon
 				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "This Complex Encounter cannot be cancelled.")
 			return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"encounter_cancelled", {"encounterKind": "complex", "encounterId": encounter.id})], ScenarioVmDirective.finish())
 		"choice":
-			if selection.slot < 0:
-				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Complex action response requires an authored slot.")
-			var slot := selection.slot
+			var selected_slots := selection.selected_slots.duplicate()
+			if selected_slots.is_empty() and selection.slot >= 0:
+				selected_slots.append(selection.slot)
 			var labels := encounter.action_labels()
-			if slot < 0 or slot >= labels.size() or labels[slot].strip_edges() in ["", "*"]:
-				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Complex action slot is unavailable.")
-			outcome = encounter.action_result
-			context.option_slot = slot
+			for slot: int in selected_slots:
+				if slot < 0 or slot >= labels.size() or labels[slot].strip_edges() in ["", "*"]:
+					return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Complex action slot is unavailable.")
+			var required := encounter.groups()
+			if selected_slots.size() != required.filter(func(value: int) -> bool: return value != 0).size():
+				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Complex action response must select the authored number of actions.")
+			var exact_match := true
+			for slot: int in labels.size():
+				if selected_slots.has(slot) != (slot < required.size() and required[slot] != 0):
+					exact_match = false
+					break
+			outcome = encounter.action_result if exact_match else 4
+			context.option_slot = selected_slots[0] if selected_slots.size() == 1 else -1
+			events.append(DomainEvent.new(&"complex_action_set_selected", {"encounterId": encounter.id, "selectedSlots": selected_slots, "exactMatch": exact_match}))
 		"word":
 			if selection.word.is_empty():
 				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Complex word response requires text.")

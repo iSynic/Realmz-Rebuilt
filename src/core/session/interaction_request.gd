@@ -199,9 +199,10 @@ class ComplexEncounterRequestBody:
 	var items: Array[InteractionRequestValue.EncounterCatalogEntry] = []
 	var spells: Array[InteractionRequestValue.EncounterCatalogEntry] = []
 	var can_back_out: bool
+	var action_selection_count: int
 
 	func to_data() -> Dictionary:
-		return {"encounterKind": String(encounter_kind), "encounterId": encounter_id, "prompt": prompt, "actions": actions.map(func(value: InteractionRequestValue.EncounterAction) -> Dictionary: return value.to_data()), "characters": characters.map(func(value: InteractionRequestValue.NamedCharacter) -> Dictionary: return value.to_data()), "items": items.map(func(value: InteractionRequestValue.EncounterCatalogEntry) -> Dictionary: return value.to_data()), "spells": spells.map(func(value: InteractionRequestValue.EncounterCatalogEntry) -> Dictionary: return value.to_data()), "canBackOut": can_back_out}
+		return {"encounterKind": String(encounter_kind), "encounterId": encounter_id, "prompt": prompt, "actions": actions.map(func(value: InteractionRequestValue.EncounterAction) -> Dictionary: return value.to_data()), "characters": characters.map(func(value: InteractionRequestValue.NamedCharacter) -> Dictionary: return value.to_data()), "items": items.map(func(value: InteractionRequestValue.EncounterCatalogEntry) -> Dictionary: return value.to_data()), "spells": spells.map(func(value: InteractionRequestValue.EncounterCatalogEntry) -> Dictionary: return value.to_data()), "canBackOut": can_back_out, "actionSelectionCount": action_selection_count}
 
 	func prompt_text() -> String: return prompt
 
@@ -663,7 +664,7 @@ static func _parse_selection_body(request_kind: StringName, payload: Dictionary)
 			var candidate := InteractionRequestValue.selection_candidate(entry); if candidate == null: return null
 			allies.candidates.append(candidate)
 		return allies
-	if request_kind != WORD_AND_ACTION or not _fields_are_exact(payload, ["encounterKind", "encounterId", "prompt", "actions", "characters", "items", "spells", "canBackOut"], ["encounterKind", "encounterId", "prompt", "actions", "characters", "items", "spells", "canBackOut"]) or not _required_strings(payload, ["encounterKind", "prompt"]) or not _required_ints(payload, ["encounterId"]) or not payload["actions"] is Array or not payload["characters"] is Array or not payload["items"] is Array or not payload["spells"] is Array or not payload["canBackOut"] is bool: return null
+	if request_kind != WORD_AND_ACTION or not _fields_are_exact(payload, ["encounterKind", "encounterId", "prompt", "actions", "characters", "items", "spells", "canBackOut", "actionSelectionCount"], ["encounterKind", "encounterId", "prompt", "actions", "characters", "items", "spells", "canBackOut", "actionSelectionCount"]) or not _required_strings(payload, ["encounterKind", "prompt"]) or not _required_ints(payload, ["encounterId", "actionSelectionCount"]) or not payload["actions"] is Array or not payload["characters"] is Array or not payload["items"] is Array or not payload["spells"] is Array or not payload["canBackOut"] is bool: return null
 	var complex := ComplexEncounterRequestBody.new()
 	complex.encounter_kind = StringName(payload["encounterKind"])
 	if complex.encounter_kind != &"complex": return null
@@ -682,7 +683,8 @@ static func _parse_selection_body(request_kind: StringName, payload: Dictionary)
 		var spell := InteractionRequestValue.encounter_catalog_entry(entry, &"spell"); if spell == null: return null
 		complex.spells.append(spell)
 	complex.can_back_out = payload["canBackOut"]
-	return complex
+	complex.action_selection_count = int(payload["actionSelectionCount"])
+	return complex if complex.action_selection_count >= 0 and complex.action_selection_count <= 8 else null
 
 
 static func _parse_thief_body(request_kind: StringName, payload: Dictionary) -> Body:
