@@ -51,6 +51,8 @@ const HELD_COMMAND_START_SOUND_IDS: Dictionary = {
 	&"area_search": 6001,
 	&"rest": 6001,
 }
+# Castle sounds the shared Shop/Temple/Encounter control before dispatching it.
+const CONTEXTUAL_CONTROL_SOUND_ID := 141
 const TORCH_BUTTON_SCRIPT := preload("res://src/presentation/classic_torch_command_button.gd")
 const SEARCH_BUTTON_SCRIPT := preload("res://src/presentation/classic_search_command_button.gd")
 const MUSIC_PLAYLIST_DIALOG_SCRIPT := preload("res://src/presentation/music_playlist_dialog.gd")
@@ -804,7 +806,7 @@ static func command_route(command_id: StringName) -> StringName:
 
 
 func _activate_command(command_id: StringName, held_repeat: bool = false) -> void:
-	var start_sound_id := held_command_start_sound_id(command_id, held_repeat)
+	var start_sound_id := command_activation_sound_id(command_id, held_repeat)
 	if start_sound_id > 0:
 		presentation_sound_requested.emit(start_sound_id, false, false, false)
 	match command_id:
@@ -874,9 +876,11 @@ func _begin_held_command(command_id: StringName) -> void:
 		_held_command_timer.start()
 
 
-static func held_command_start_sound_id(command_id: StringName, held_repeat: bool) -> int:
+static func command_activation_sound_id(command_id: StringName, held_repeat: bool) -> int:
 	if held_repeat:
 		return 0
+	if command_id == &"contextual":
+		return CONTEXTUAL_CONTROL_SOUND_ID
 	return int(HELD_COMMAND_START_SOUND_IDS.get(command_id, 0))
 
 
