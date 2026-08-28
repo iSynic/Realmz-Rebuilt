@@ -267,11 +267,13 @@ func _build_footer() -> void:
 	_identify_button = _action_button("ShopIdentify", "Identify", _submit_identify)
 	for button: Button in [_buy_button, _sell_button, _identify_button]: button.custom_minimum_size = Vector2(55.0, 28.0); actions.add_child(button)
 	footer.add_child(_build_shopper_selector(true))
-	var restore := _action_button("ShopKeeperRestore", "Shop\nKeeper", _restore_shopkeeper)
-	restore.custom_minimum_size = Vector2(70.0, 56.0)
+	var restore := _route_button("ShopKeeperRestore", "Shop Keeper", &"command.shop_original", _restore_shopkeeper)
 	footer.add_child(restore)
-	for spec: Array in [["ShopItems", "Items", _show_items], ["ShopMoney", "Money", _show_money], ["ShopDone", "Done", _submit_leave]]:
-		var button := _action_button(spec[0], spec[1], spec[2]); button.custom_minimum_size = Vector2(62.0, 56.0); footer.add_child(button)
+	for spec: Array in [["ShopItems", "Items", &"command.inventory", _show_items], ["ShopMoney", "Money", &"command.money", _show_money]]:
+		footer.add_child(_route_button(spec[0], spec[1], spec[2], spec[3]))
+	var done := _action_button("ShopDone", "Done", _submit_leave)
+	done.custom_minimum_size = Vector2(62.0, 70.0)
+	footer.add_child(done)
 	_right_load = _compact_fact("ShopRightLoad")
 	footer.add_child(_right_load)
 	var detail := HBoxContainer.new()
@@ -288,6 +290,14 @@ func _build_footer() -> void:
 	_item_stats.name = "ShopItemStats"
 	stats.add_child(_item_stats)
 	_selection_summary = _item_description
+
+
+func _route_button(node_name: String, caption: String, asset_id: StringName, callback: Callable) -> ClassicBitmapButton:
+	var button := ClassicBitmapButton.new()
+	button.name = node_name
+	button.configure({"id": StringName(node_name), "asset_id": asset_id, "tooltip": caption, "label": caption, "group": &"shop-route"}, 1)
+	button.command_requested.connect(func(_command_id: StringName) -> void: callback.call())
+	return button
 
 
 func _select_character(character_id: String) -> void:
