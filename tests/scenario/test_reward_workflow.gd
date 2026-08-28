@@ -269,7 +269,7 @@ func _test_opcode_48_bonus_reward_chain(content: RealmzContent) -> void:
 	var source_battle := content.battle_by_id("classic.battle.0")
 	if source_battle == null:
 		return
-	var bonus_content := _content_with_bonus_treasure(content, source_battle); var battle := bonus_content.battle_by_id(source_battle.id); var bonus_treasure := bonus_content.treasure_by_classic_id(1); var opening_state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [_character(content, "reward.opcode-48-opening", "Opening", 5_000, -100_000)]), RealmzClock.new()); var opening_api := RealmzRuntimeApi.new(bonus_content, opening_state, RealmzRng.new(47), ScenarioActionState.new(), RealmzRules.new())
+	var bonus_content := _content_with_bonus_treasure(content, source_battle); var battle := bonus_content.battle_by_id(source_battle.id); var bonus_treasure := bonus_content.treasure_by_classic_id(1); var opening_state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [_character(content, "reward.opcode-48-opening", "Opening", 5_000, -100_000)]), RealmzClock.new()); opening_state.set_selected_character_ids([opening_state.party.characters()[0].id]); var opening_api := RealmzRuntimeApi.new(bonus_content, opening_state, RealmzRng.new(47), ScenarioActionState.new(), RealmzRules.new())
 	var action := ClassicActionDefinition.new(0, 48, 48, battle.classic_id, false, [battle.classic_id, 0, 0, 0, bonus_treasure.classic_id])
 	var opened := opening_api.execute_classic(action, "battle.opcode-48.open")
 	var combat_body := opened.continuation.body as ScenarioRuntimeContinuation.CombatBody if opened.continuation != null else null

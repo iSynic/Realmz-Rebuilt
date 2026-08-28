@@ -79,7 +79,12 @@ func _start_classic_battle(action: ClassicActionDefinition, request_id: String) 
 	var battle := _content.battle_by_classic_id(absi(battle_id))
 	if battle == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_battle", "Classic opcode %d references unavailable battle %d." % [action.opcode, battle_id])
-	var operation := start_battle_definition(battle, request_id, "classic", caller)
+	var participants: Array[String] = []
+	if action.opcode == 48:
+		participants = _game_state.selected_character_ids()
+		if participants.is_empty():
+			return ScenarioRuntimeOperationResult.failed(&"no_selected_characters", "Classic opcode 48 requires at least one selected party member.")
+	var operation := start_battle_definition(battle, request_id, "classic", caller, participants)
 	if operation.state != ScenarioRuntimeOperationResult.State.FAILED:
 		operation.events = prelude + operation.events
 	return operation
@@ -131,8 +136,8 @@ func complete_party_defeat_handoff(handoff: ScenarioRuntimeHandoff) -> ScenarioR
 	return ScenarioRuntimeOperationResult.completed(battle_id, events, directive)
 
 
-func start_battle_definition(battle: BattleDefinition, request_id: String, source: String, caller: ScenarioBattleCaller) -> ScenarioRuntimeOperationResult:
-	var result := _rules.combat_flow.start_battle(_game_state, _content, battle, _rng)
+func start_battle_definition(battle: BattleDefinition, request_id: String, source: String, caller: ScenarioBattleCaller, participant_character_ids: Array[String] = []) -> ScenarioRuntimeOperationResult:
+	var result := _rules.combat_flow.start_battle(_game_state, _content, battle, _rng, 0, participant_character_ids)
 	if not result.ok:
 		return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message)
 	var events: Array[DomainEvent] = []
@@ -297,6 +302,18 @@ func _finish_battle_with_allies(source_kind: StringName, caller: ScenarioBattleC
 		mode_ten.events = events + mode_ten.events
 		return mode_ten
 	if combat.outcome == &"defeat":
+		if caller.kind == ScenarioBattleCaller.CLASSIC and caller.opcode == 48:
+			var battle_id := combat.battle_id
+			var participant_ids: Array[String] = []
+			for actor_id: String in combat.turn_order():
+				if _game_state.party.character_by_id(actor_id) != null:
+					participant_ids.append(actor_id)
+			var defeat_events: Array[DomainEvent] = []
+			defeat_events.assign(events)
+			defeat_events.append(DomainEvent.new(&"classic_notification_requested", {"text": "There is nobody left to collect any treasure.", "soundId": 6000, "source": "classic-opcode-48"}))
+			defeat_events.append(DomainEvent.new(&"battle_returned", {"battleId": battle_id, "outcome": "defeat", "participantCharacterIds": participant_ids}))
+			_game_state.combat = null
+			return ScenarioRuntimeOperationResult.completed(battle_id, defeat_events)
 		return ScenarioRuntimeOperationResult.suspended(ScenarioRuntimeHandoff.party_defeat(combat.battle_id, source_kind, caller), events)
 	var payload := _rules.combat_flow.ally_selection_payload(_game_state, _content)
 	if not payload.is_empty():

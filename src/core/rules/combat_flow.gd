@@ -53,8 +53,8 @@ func is_processing_auto() -> bool:
 func set_processing_auto(value: bool) -> void:
 	_rules.processing_auto = value
 
-func start_battle(state: GameState, content: RealmzContent, battle: BattleDefinition, rng: RealmzRng, surprise: int = 0) -> CombatFlowResult:
-	return _lifecycle.start_battle(state, content, battle, rng, surprise)
+func start_battle(state: GameState, content: RealmzContent, battle: BattleDefinition, rng: RealmzRng, surprise: int = 0, participant_character_ids: Array[String] = []) -> CombatFlowResult:
+	return _lifecycle.start_battle(state, content, battle, rng, surprise, participant_character_ids)
 
 
 func _battle_setup_failure(state: GameState, instance_checkpoint: int, rng: RealmzRng, checkpoint: Dictionary, code: StringName, message: String) -> CombatFlowResult:

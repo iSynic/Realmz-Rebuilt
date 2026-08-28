@@ -40,7 +40,7 @@ func _init(flow: RefCounted, rules: ContextType) -> void:
 func _flow() -> RefCounted:
 	return _flow_ref.get_ref() if _flow_ref != null else null
 
-func start_battle(state: GameState, content: RealmzContent, battle: BattleDefinition, rng: RealmzRng, surprise: int = 0) -> CombatFlowResult:
+func start_battle(state: GameState, content: RealmzContent, battle: BattleDefinition, rng: RealmzRng, surprise: int = 0, participant_character_ids: Array[String] = []) -> CombatFlowResult:
 	if state == null or content == null or battle == null or rng == null:
 		return CombatFlowResult.failed(&"invalid_battle", "Battle setup requires validated state, content, and randomness.")
 	if state.combat != null and not state.combat.completed:
@@ -51,8 +51,18 @@ func start_battle(state: GameState, content: RealmzContent, battle: BattleDefini
 	var terrain_set := content.world.battle_terrain_set_for_map(map, state.world)
 	if terrain_set == null:
 		return CombatFlowResult.failed(&"missing_battle_terrain", "Map '%s' has no validated Classic battle-terrain catalog." % map.id)
+	var party_characters := state.party.characters()
+	if not participant_character_ids.is_empty():
+		var participant_set: Dictionary = {}
+		for character_id: String in participant_character_ids:
+			if participant_set.has(character_id) or state.party.character_by_id(character_id) == null:
+				return CombatFlowResult.failed(&"invalid_battle_participants", "Battle participants must be unique members of the current party.")
+			participant_set[character_id] = true
+		party_characters = party_characters.filter(func(character: CharacterState) -> bool: return participant_set.has(character.id))
+		if party_characters.is_empty():
+			return CombatFlowResult.failed(&"invalid_battle_participants", "A selective battle requires at least one party participant.")
 	var initial_weapon_modes: Dictionary = {}
-	for character: CharacterState in state.party.characters():
+	for character: CharacterState in party_characters:
 		if character.current_health <= 0:
 			continue
 		var equipment := _rules.inventory.combat_equipment(character, content.item_definitions())
@@ -91,7 +101,6 @@ func start_battle(state: GameState, content: RealmzContent, battle: BattleDefini
 	var formation := battlefield_builder.roll_formation(battlefield, battle, rng)
 	if formation.is_empty():
 		return _battle_setup_failure(state, instance_checkpoint, rng, rng_checkpoint, &"invalid_battle_formation", "Battle '%s' could not derive Castle's opening formation." % battle.id)
-	var party_characters := state.party.characters()
 	for party_index: int in party_characters.size():
 		var character := party_characters[party_index]
 		if not battlefield_builder.place_character(battlefield, terrain_set, character.id, party_index, formation):
@@ -135,8 +144,8 @@ func start_battle(state: GameState, content: RealmzContent, battle: BattleDefini
 		monster.id = instance_id
 		monsters.append(monster)
 	var combat := CombatState.new(battle.id, monsters, battle.macro_id, battlefield)
-	combat.set_turn_order(_rules.combat.initiative_order(state.party.characters(), monsters, surprise, rng))
-	for character: CharacterState in state.party.characters():
+	combat.set_turn_order(_rules.combat.initiative_order(party_characters, monsters, surprise, rng))
+	for character: CharacterState in party_characters:
 		if character.current_health <= 0:
 			continue
 		var initial_mode := StringName(initial_weapon_modes.get(character.id, &"melee"))
@@ -146,14 +155,14 @@ func start_battle(state: GameState, content: RealmzContent, battle: BattleDefini
 		ally.traitor = false
 	if not state.allies_suspended:
 		state.party.set_allies([])
-	for character: CharacterState in state.party.characters():
+	for character: CharacterState in party_characters:
 		character.traitor = false
 		character.attacks_remaining = 0
 		character.movement = character.maximum_movement
 	state.combat = combat
 	var events: Array[DomainEvent] = [
 		DomainEvent.new(&"sound_requested", {"soundId": 10049, "waitForCompletion": false, "source": "classic-battle-entry"}),
-		DomainEvent.new(&"battle_started", {"battleId": battle.id, "classicId": battle.classic_id, "distance": battle.distance, "rolledDistance": battlefield.rolled_distance, "direction": battlefield.direction_degrees, "mapId": battlefield.map_id, "surprise": surprise, "turnOrder": combat.turn_order(), "consumedAllyIds": consumed_allies}),
+		DomainEvent.new(&"battle_started", {"battleId": battle.id, "classicId": battle.classic_id, "distance": battle.distance, "rolledDistance": battlefield.rolled_distance, "direction": battlefield.direction_degrees, "mapId": battlefield.map_id, "surprise": surprise, "turnOrder": combat.turn_order(), "participantCharacterIds": party_characters.map(func(character: CharacterState) -> String: return character.id), "consumedAllyIds": consumed_allies}),
 	]
 	_flow()._process_monster_turns(state, content, rng, events)
 	return CombatFlowResult.succeeded(events, state.combat.completed)
