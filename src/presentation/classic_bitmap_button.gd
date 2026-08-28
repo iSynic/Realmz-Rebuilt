@@ -12,6 +12,7 @@ const SURFACE_DARK := Color("080a0c")
 const EDGE_LIGHT := Color("686b68")
 
 var command_id: StringName
+var visual_asset_id: StringName
 var _native_size := Vector2i(50, 50)
 var _art_scale: int = 1
 var _art_texture: Texture2D
@@ -38,6 +39,7 @@ func _ready() -> void:
 func configure(definition: Dictionary, art_scale: int = 1) -> void:
 	command_id = StringName(definition.get("id", &""))
 	var asset_id := StringName(definition.get("asset_id", &""))
+	visual_asset_id = asset_id
 	var pressed_asset_id := StringName(definition.get("pressed_asset_id", &""))
 	var direct_path := String(definition.get("asset_path", ""))
 	var source_texture := load(direct_path) as Texture2D if not direct_path.is_empty() else ClassicUiAssetCatalog.texture(asset_id)
@@ -61,6 +63,10 @@ func configure(definition: Dictionary, art_scale: int = 1) -> void:
 	if not accelerator.is_empty():
 		tooltip_text += " [%s]" % accelerator
 	set_art_scale(art_scale)
+
+
+func has_visual_art() -> bool:
+	return _art_texture != null
 
 
 func set_art_scale(value: int) -> void:

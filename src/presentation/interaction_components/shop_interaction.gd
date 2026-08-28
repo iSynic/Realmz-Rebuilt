@@ -26,7 +26,7 @@ var _selected_item: InteractionRequestValue.InventoryItem
 var _selected_category: StringName = &"weapons"
 var _stock_rows: VBoxContainer
 var _inventory_rows: VBoxContainer
-var _inspector_facts: VBoxContainer
+var _selection_summary: Label
 var _buy_button: Button
 var _sell_button: Button
 var _identify_button: Button
@@ -84,13 +84,11 @@ func _build_workspace() -> void:
 	add_child(columns)
 	if _compact:
 		_build_compact_browser(columns)
-		_build_inspector_pane(columns, true)
 	else:
 		columns.name = "ShopExchangeLedgers"
-		_build_stock_pane(columns)
-		_build_control_spine(columns)
 		_build_pack_pane(columns)
-		_build_inspector_pane(self, false)
+		_build_control_spine(columns)
+		_build_stock_pane(columns)
 
 
 func _build_compact_browser(parent: HBoxContainer) -> void:
@@ -106,16 +104,16 @@ func _build_compact_browser(parent: HBoxContainer) -> void:
 	tabs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	panel.add_child(tabs)
-	var stock := VBoxContainer.new()
-	stock.name = "Stock"
-	stock.add_theme_constant_override("separation", 4)
-	tabs.add_child(stock)
-	_build_stock_content(stock, true)
 	var pack := VBoxContainer.new()
 	pack.name = "Pack"
 	pack.add_theme_constant_override("separation", 4)
 	tabs.add_child(pack)
 	_build_pack_content(pack, true)
+	var stock := VBoxContainer.new()
+	stock.name = "Stock"
+	stock.add_theme_constant_override("separation", 4)
+	tabs.add_child(stock)
+	_build_stock_content(stock, true)
 
 
 func _build_stock_pane(parent: HBoxContainer) -> void:
@@ -191,19 +189,6 @@ func _build_pack_content(content: VBoxContainer, include_controls: bool) -> void
 	_refresh_inventory()
 
 
-func _build_inspector_pane(parent: Container, compact: bool) -> void:
-	var content := _pane(parent, "ItemInspectorRail", "Selected Item", 1.05)
-	if not compact:
-		(content.get_parent() as PanelContainer).custom_minimum_size.y = 60.0
-		(content.get_parent() as PanelContainer).size_flags_vertical = Control.SIZE_FILL
-	_inspector_facts = VBoxContainer.new()
-	_inspector_facts.name = "InspectorFacts"
-	_inspector_facts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_inspector_facts.size_flags_vertical = Control.SIZE_EXPAND_FILL if compact else Control.SIZE_FILL
-	_inspector_facts.add_theme_constant_override("separation", 4)
-	content.add_child(_inspector_facts)
-
-
 func _build_footer() -> void:
 	var footer := HBoxContainer.new()
 	footer.name = "ShopFooter"
@@ -216,8 +201,13 @@ func _build_footer() -> void:
 	footer.add_child(_buy_button)
 	footer.add_child(_sell_button)
 	footer.add_child(_identify_button)
+	_selection_summary = _label("Choose stock or a carried item.", MUTED)
+	_selection_summary.name = "ShopSelectionSummary"
+	_selection_summary.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_selection_summary.clip_text = true
+	footer.add_child(_selection_summary)
 	var spacer := Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	spacer.custom_minimum_size.x = 6.0
 	footer.add_child(spacer)
 	var leave := _action_button("ShopLeave", "Leave Shop", _submit_leave)
 	leave.custom_minimum_size.x = 150.0
@@ -307,11 +297,8 @@ func _refresh_inventory() -> void:
 
 
 func _refresh_inspector() -> void:
-	if _inspector_facts == null:
+	if _selection_summary == null:
 		return
-	for child: Node in _inspector_facts.get_children():
-		_inspector_facts.remove_child(child)
-		child.free()
 	_buy_button.disabled = _selected_stock == null or _selected_character_id.is_empty() or not _selected_stock.can_buy
 	_sell_button.disabled = _selected_item == null or not _selected_item.can_sell
 	_identify_button.disabled = _selected_item == null or not _selected_item.can_identify
@@ -319,31 +306,16 @@ func _refresh_inspector() -> void:
 	_sell_button.tooltip_text = "Select a carried item." if _selected_item == null else _selected_item.sell_reason if not _selected_item.can_sell else ""
 	_identify_button.tooltip_text = "Select a carried item." if _selected_item == null else _selected_item.identify_reason if not _selected_item.can_identify else ""
 	if _selected_stock != null:
-		_add_inspector_record(_selected_stock.name, ["Buy for %d gold" % _selected_stock.buy_price, "%d remaining" % _selected_stock.quantity], _selected_stock.can_buy, _selected_stock.buy_reason, _selected_stock.icon_resource_type, _selected_stock.icon_id)
+		_selection_summary.text = "%s  •  Buy %d gold  •  %d left" % [_selected_stock.name, _selected_stock.buy_price, _selected_stock.quantity]
+		_selection_summary.tooltip_text = _selected_stock.buy_reason
 	elif _selected_item != null:
 		var state := "Equipped" if _selected_item.equipped else "Carried"
 		var knowledge := "Identified" if _selected_item.identified else "Unidentified"
-		_add_inspector_record(_selected_item.name, ["%s  •  %s" % [state, knowledge], "Sell for %d gold" % _selected_item.sell_price, "Identify for %d gold" % _body.identify_price], _selected_item.can_sell or _selected_item.can_identify, _selected_item.sell_reason if not _selected_item.can_sell else _selected_item.identify_reason, _selected_item.icon_resource_type, _selected_item.icon_id)
+		_selection_summary.text = "%s  •  %s  •  %s  •  Sell %d gold" % [_selected_item.name, state, knowledge, _selected_item.sell_price]
+		_selection_summary.tooltip_text = _selected_item.sell_reason if not _selected_item.can_sell else _selected_item.identify_reason if not _selected_item.can_identify else ""
 	else:
-		_inspector_facts.add_child(_label("Choose stock to buy or an item from the selected adventurer's pack.", MUTED))
-
-
-func _add_inspector_record(title: String, facts: Array[String], available: bool, reason: String, resource_type: String, resource_id: int) -> void:
-	var header := HBoxContainer.new()
-	header.add_theme_constant_override("separation", 8)
-	var icon := CONTENT_ICON_SCRIPT.new() as Control
-	icon.name = "ShopSelectedItemIcon"
-	icon.configure(resource_type, resource_id, _media, 58.0, title)
-	header.add_child(icon)
-	var record := VBoxContainer.new()
-	record.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	record.add_child(_label(title, GOLD))
-	for fact: String in facts:
-		record.add_child(_label(fact, CYAN))
-	header.add_child(record)
-	_inspector_facts.add_child(header)
-	if not available and not reason.is_empty():
-		_inspector_facts.add_child(_label(reason, Color("d48a78")))
+		_selection_summary.text = "Choose stock or a carried item."
+		_selection_summary.tooltip_text = ""
 
 
 func _submit_buy() -> void:
@@ -395,6 +367,7 @@ func _build_category_filters(parent: VBoxContainer) -> void:
 	for filter: Dictionary in STOCK_FILTERS:
 		var category_id := StringName(filter["id"])
 		var definition := ClassicUiAssetCatalog.definition(filter["asset"]).duplicate(true)
+		definition["asset_id"] = filter["asset"]
 		definition["id"] = StringName("shop.category.%s" % category_id)
 		definition["label"] = filter["label"]
 		definition["tooltip"] = "Show %s" % filter.get("tooltip", filter["label"])
@@ -432,6 +405,7 @@ func _build_control_spine(parent: HBoxContainer) -> void:
 	for filter: Dictionary in STOCK_FILTERS:
 		var category_id := StringName(filter["id"])
 		var definition := ClassicUiAssetCatalog.definition(filter["asset"]).duplicate(true)
+		definition["asset_id"] = filter["asset"]
 		definition["id"] = StringName("shop.category.%s" % category_id)
 		definition["label"] = filter["label"]
 		definition["tooltip"] = "Show %s" % filter.get("tooltip", filter["label"])
