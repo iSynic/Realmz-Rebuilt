@@ -89,6 +89,9 @@ func probe_land_entry(coordinate: Vector2i, world_state: WorldState, party_in_bo
 	var cell := effective_cell_at(coordinate, world_state)
 	if cell == null:
 		return TopologyMoveResult.blocked(&"outside_map")
+	var secret := cell.feature_by_kind(&"secret")
+	if secret != null and secret.orientation.is_empty() and world_state.secret_is_discovered(secret.id, secret.initial_state == &"revealed"):
+		return TopologyMoveResult.permitted(cell)
 	var boat_requirement := cell.boat_requirement
 	if party_in_boat:
 		if cell.is_shore:
