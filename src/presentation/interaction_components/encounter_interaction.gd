@@ -265,6 +265,12 @@ func _show_choices() -> void:
 		button.toggle_mode = true
 		button.pressed.connect(_toggle_action_slot.bind(entry.slot, button))
 		grid.add_child(button)
+	var visible_choice_count := mini(grid.get_child_count(), 1 if _compact else 2)
+	var visible_choice_height := 0.0
+	for index: int in visible_choice_count:
+		visible_choice_height += (grid.get_child(index) as Control).get_combined_minimum_size().y
+	visible_choice_height += maxi(0, visible_choice_count - 1) * grid.get_theme_constant("v_separation")
+	choice_scroll.custom_minimum_size.y = visible_choice_height
 	var done := Button.new()
 	done.name = "EncounterChoiceDone"
 	done.text = "Done"
