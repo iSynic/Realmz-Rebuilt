@@ -1,13 +1,18 @@
 class_name DebugToolsHost
 extends Node
 
+const DebugActionConsoleScript := preload("res://src/presentation/debug_action_console.gd")
+
 signal status_changed(message: String, failed: bool)
 
 var _controller: GameSessionController
 var _content_provider: Callable
 var _dialog: DebugToolsDialog
+var _console: PanelContainer
 var _noclip: bool = false
 var _recent_auto_actions: Array[String] = []
+var _action_lines: Array[String] = []
+var _console_shortcut_enabled: bool = true
 
 
 func bind(controller: GameSessionController, overlay: Control, content_provider: Callable) -> void:
@@ -17,26 +22,39 @@ func bind(controller: GameSessionController, overlay: Control, content_provider:
 		return
 	_dialog = DebugToolsDialog.new()
 	overlay.add_child(_dialog)
+	_console = DebugActionConsoleScript.new()
+	overlay.add_child(_console)
 	_controller.step_committed.connect(_record_step)
 	_dialog.command_requested.connect(_submit)
 	_dialog.noclip_changed.connect(func(enabled: bool) -> void:
 		_noclip = enabled
 		_dialog.show_result("No clip enabled." if enabled else "No clip disabled.", false)
 	)
+	_dialog.console_requested.connect(_open_console)
+	_dialog.console_shortcut_changed.connect(func(enabled: bool) -> void: _console_shortcut_enabled = enabled)
+	_console.close_requested.connect(_console.close_console)
+	_console.clear_requested.connect(func() -> void: _action_lines.clear(); _console.set_lines(_action_lines))
 
 
 func handle_input(event: InputEvent) -> bool:
-	if _dialog == null or not event.is_action_pressed(&"realmz_debug_tools"):
+	if _dialog == null:
+		return false
+	if _console_shortcut_enabled and event.is_action_pressed(&"realmz_debug_console"):
+		if _console.visible: _console.close_console()
+		else: _open_console()
+		return true
+	if not event.is_action_pressed(&"realmz_debug_tools"):
 		return false
 	if _dialog.visible:
 		_dialog.close_dialog()
 	else:
-		_dialog.present(_controller.view(), _map_records(), _noclip, _recent_auto_actions)
+		if _console.visible: _console.close_console()
+		_dialog.present(_controller.view(), _map_records(), _noclip, _recent_auto_actions, _console_shortcut_enabled)
 	return true
 
 
 func is_open() -> bool:
-	return _dialog != null and _dialog.visible
+	return _dialog != null and (_dialog.visible or _console != null and _console.visible)
 
 
 func noclip_step(intent: PlayerIntent) -> SessionStep:
@@ -73,11 +91,29 @@ func _map_records() -> Array[Dictionary]:
 
 
 func _record_step(step: SessionStep) -> void:
+	_action_lines.append_array(action_lines(step.events))
+	while _action_lines.size() > 2000:
+		_action_lines.pop_front()
 	_recent_auto_actions.append_array(auto_action_lines(step.events, _controller.view(), _content_provider.call() if _content_provider.is_valid() else null))
 	while _recent_auto_actions.size() > 40:
 		_recent_auto_actions.pop_front()
 	if _dialog != null and _dialog.visible:
 		_dialog.set_auto_actions(_recent_auto_actions)
+	if _console != null and _console.visible:
+		_console.set_lines(_action_lines)
+
+
+func _open_console() -> void:
+	_dialog.close_dialog()
+	_console.present(_action_lines)
+
+
+static func action_lines(events: Array[DomainEvent]) -> Array[String]:
+	var result: Array[String] = []
+	for event: DomainEvent in events:
+		var payload := JSON.stringify(event.payload)
+		result.append("%s%s" % [String(event.kind), " · " + payload if payload != "{}" else ""])
+	return result
 
 
 static func auto_action_lines(events: Array[DomainEvent], view: GameView, content: RealmzContent) -> Array[String]:

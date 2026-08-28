@@ -3,6 +3,8 @@ extends PanelContainer
 
 signal command_requested(command: SessionDebugCommand)
 signal noclip_changed(enabled: bool)
+signal console_requested
+signal console_shortcut_changed(enabled: bool)
 
 var _map_select: OptionButton
 var _x: SpinBox
@@ -18,6 +20,7 @@ var _win_battle: Button
 var _noclip: CheckButton
 var _status: Label
 var _auto_log: MenuButton
+var _console_shortcut: CheckButton
 
 
 func _ready() -> void:
@@ -99,11 +102,17 @@ func _ready() -> void:
 	_auto_log = MenuButton.new()
 	_auto_log.name = "RecentAutoActions"
 	root.add_child(_auto_log)
+	root.add_child(_button("Open game-action console · ` / ~", func() -> void: console_requested.emit()))
+	_console_shortcut = CheckButton.new()
+	_console_shortcut.text = "Enable ` / ~ console shortcut"
+	_console_shortcut.button_pressed = true
+	_console_shortcut.toggled.connect(func(enabled: bool) -> void: console_shortcut_changed.emit(enabled))
+	root.add_child(_console_shortcut)
 	root.add_child(_button("Close", close_dialog))
 	visible = false
 
 
-func present(view: GameView, maps: Array[Dictionary], noclip: bool, auto_actions: Array[String] = []) -> void:
+func present(view: GameView, maps: Array[Dictionary], noclip: bool, auto_actions: Array[String] = [], console_shortcut_enabled: bool = true) -> void:
 	var selected_map := "" if view == null else view.party_map_id
 	_map_select.clear()
 	for record: Dictionary in maps:
@@ -116,6 +125,7 @@ func present(view: GameView, maps: Array[Dictionary], noclip: bool, auto_actions
 	_x.value = 0 if view == null else view.party_coordinate.x
 	_y.value = 0 if view == null else view.party_coordinate.y
 	_noclip.set_pressed_no_signal(noclip)
+	_console_shortcut.set_pressed_no_signal(console_shortcut_enabled)
 	_warp.disabled = not exploration or maps.is_empty()
 	_noclip.disabled = not exploration
 	_restore.disabled = not (exploration or active_battle)
