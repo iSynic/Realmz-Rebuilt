@@ -112,8 +112,12 @@ func _alter_random_region_geometry(action: ClassicActionDefinition) -> ScenarioR
 	if action.extra_code.size() != 10 or action.extra_code[4] not in [-1, 0, 1, 2]:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_random_region_geometry", "Classic opcode 92 requires two five-value Extra Code rows and a valid geometry mode.")
 	var map_type := &"dungeon" if action.extra_code[2] != 0 else &"land"
-	var map := _content.world.map_by_type_and_index(map_type, action.extra_code[0])
-	var region := null if map == null else map.random_region_by_index(action.extra_code[1])
+	# Castle's PC build falls back to the first map on a negative file seek and
+	# explicitly clamps an out-of-range rectangle to slot zero.
+	var map_index: int = maxi(action.extra_code[0], 0)
+	var region_index: int = action.extra_code[1] if action.extra_code[1] >= 0 and action.extra_code[1] < 20 else 0
+	var map := _content.world.map_by_type_and_index(map_type, map_index)
+	var region := null if map == null else map.random_region_by_index(region_index)
 	if region == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_random_region", "Classic opcode 92 references an unavailable random rectangle.")
 	var previous := _game_state.world.random_region(region)

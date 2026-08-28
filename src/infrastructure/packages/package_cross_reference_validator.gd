@@ -200,8 +200,10 @@ func _validate_player_map_opcode_references(scenario: ScenarioDefinition, world:
 						return _reject("Scenario program '%s' opcode 57 references an unavailable land level or landlook." % program.id)
 				92:
 					var map_type := &"dungeon" if instruction.extra_code[2] != 0 else &"land"
-					var map := world.map_by_type_and_index(map_type, instruction.extra_code[0])
-					if map == null or map.random_region_by_index(instruction.extra_code[1]) == null:
+					var map_index: int = maxi(instruction.extra_code[0], 0)
+					var region_index: int = instruction.extra_code[1] if instruction.extra_code[1] >= 0 and instruction.extra_code[1] < 20 else 0
+					var map := world.map_by_type_and_index(map_type, map_index)
+					if map == null or map.random_region_by_index(region_index) == null:
 						return _reject("Scenario program '%s' opcode 92 references an unavailable random rectangle." % program.id)
 	return true
 
