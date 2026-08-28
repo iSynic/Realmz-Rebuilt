@@ -958,6 +958,7 @@ func _apply_application_workspace_layout() -> void:
 func _apply_content_layout() -> void:
 	var split_textbox := uses_textbox_region(_request, _passive_text) and _request != null and _request.kind == InteractionRequest.CHARACTER_SELECTION
 	var encounter_textbox := _request != null and _request.kind == InteractionRequest.WORD_AND_ACTION
+	_scroll.vertical_scroll_mode = interaction_vertical_scroll_mode(_request)
 	_content.vertical = not split_textbox
 	_prompt.size_flags_vertical = Control.SIZE_SHRINK_BEGIN if encounter_textbox else Control.SIZE_EXPAND_FILL
 	_options.size_flags_stretch_ratio = 2.0 if encounter_textbox else 1.0
@@ -978,6 +979,10 @@ func _apply_content_layout() -> void:
 
 static func uses_textbox_region(request: InteractionRequest, passive_text: bool = false) -> bool:
 	return passive_text or request != null and not _is_player_map_request(request) and not _is_scrolling_text_request(request) and request.kind in [&"acknowledge", &"yes_no", &"encounter_choice", &"scenario_choice", &"character_selection", &"complex_encounter", &"combat_action"]
+
+
+static func interaction_vertical_scroll_mode(request: InteractionRequest) -> int:
+	return ScrollContainer.SCROLL_MODE_DISABLED if request != null and request.kind == InteractionRequest.SHOP else ScrollContainer.SCROLL_MODE_AUTO
 
 
 static func uses_floating_choice_modal(request: InteractionRequest) -> bool:

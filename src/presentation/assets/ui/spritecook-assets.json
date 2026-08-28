@@ -123,6 +123,24 @@
         "height": 75,
         "sha256": "bf5682d9efcb33a5251543bf7fb9bd92efa912abfdbd12dd715b1d05565a3112"
       }
+    },
+    {
+      "asset_id": "project-owner-shop-0532bd956f4f",
+      "label": "Realmz Rebuilt transparent Shop command mark",
+      "provider": "project-owner",
+      "license": "Project-Owner-Supplied",
+      "source_sha256": "0532bd956f4fc890a25d3f6b3da14316679980fd44bb9cf1150371e0f2154106",
+      "source_sha256_prefix": "0532bd956f4f",
+      "source_width": 31,
+      "source_height": 33,
+      "mode": "ui",
+      "derivation": "direct project-owner-supplied transparent PNG isolating the source-proven PICT 225 Shop mark; presentation preserves the supplied pixels without masking or resampling",
+      "file": {
+        "path": "res://src/presentation/assets/ui/commands/shop.png",
+        "width": 31,
+        "height": 33,
+        "sha256": "0532bd956f4fc890a25d3f6b3da14316679980fd44bb9cf1150371e0f2154106"
+      }
     }
   ],
   "derivation": {

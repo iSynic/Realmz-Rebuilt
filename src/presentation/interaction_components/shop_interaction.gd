@@ -8,6 +8,11 @@ const CONTENT_ICON_SCRIPT := preload("res://src/presentation/classic_content_ico
 const EXCHANGE_ITEM_BUTTON_SCRIPT := preload("res://src/presentation/interaction_components/classic_exchange_item_button.gd")
 const EXCHANGE_LEDGER_SCRIPT := preload("res://src/presentation/interaction_components/classic_exchange_ledger.gd")
 const ITEM_DETAIL_POPOVER_SCRIPT := preload("res://src/presentation/classic_item_detail_popover.gd")
+const CLASSIC_VISIBLE_ROWS := 9
+const WIDE_LEDGER_ROW_HEIGHT := 46.0
+const COMPACT_LEDGER_ROW_HEIGHT := 40.0
+const LEDGER_ROW_SEPARATION := 3.0
+const CLASSIC_FOOTER_HEIGHT := 73.0
 const STOCK_FILTERS: Array[Dictionary] = [
 	{"id": &"weapons", "asset": &"inventory.category.weapons", "label": "Weapons"},
 	{"id": &"armor", "asset": &"inventory.category.armor", "label": "Armor"},
@@ -53,8 +58,8 @@ func build(request: InteractionRequest) -> void:
 	_stock = _body.stock.duplicate()
 	if not _characters.is_empty():
 		_selected_character_id = _characters[0].id
-	size_flags_vertical = Control.SIZE_EXPAND_FILL
-	custom_minimum_size = Vector2(0.0, 500.0) if _compact else Vector2.ZERO
+	size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	custom_minimum_size = Vector2.ZERO
 	add_theme_constant_override("separation", 6)
 	_detail_popover = ITEM_DETAIL_POPOVER_SCRIPT.new()
 	add_child(_detail_popover)
@@ -84,7 +89,7 @@ func _build_workspace() -> void:
 	var columns := HBoxContainer.new()
 	columns.name = "ShopColumns"
 	columns.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	columns.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	columns.add_theme_constant_override("separation", 6)
 	add_child(columns)
 	if _compact:
@@ -135,7 +140,7 @@ func _build_stock_content(content: VBoxContainer, include_controls: bool) -> voi
 	_stock_rows = VBoxContainer.new()
 	_stock_rows.name = "ShopStockRows"
 	_stock_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_stock_rows.add_theme_constant_override("separation", 3)
+	_stock_rows.add_theme_constant_override("separation", int(LEDGER_ROW_SEPARATION))
 	scroll.add_child(_stock_rows)
 	_refresh_stock()
 
@@ -155,14 +160,14 @@ func _refresh_stock() -> void:
 		row.add_theme_constant_override("separation", 5)
 		var icon := CONTENT_ICON_SCRIPT.new() as Control
 		icon.name = "StockIcon_%s" % entry.stock_key.replace(":", "_").replace(".", "_")
-		icon.configure(entry.icon_resource_type, entry.icon_id, _media, 46.0, entry.name)
+		icon.configure(entry.icon_resource_type, entry.icon_id, _media, _ledger_row_height(), entry.name)
 		row.add_child(icon)
 		var button := EXCHANGE_ITEM_BUTTON_SCRIPT.new()
 		button.name = "Stock_%s" % entry.stock_key.replace(":", "_").replace(".", "_")
 		button.text = "%s\n%d gold  •  %d left" % [entry.name, entry.buy_price, entry.quantity]
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.clip_text = true
-		button.custom_minimum_size.y = 46.0
+		button.custom_minimum_size.y = _ledger_row_height()
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.theme_type_variation = &"ClassicItemLedgerButton"
 		button.focus_mode = Control.FOCUS_NONE
@@ -191,7 +196,7 @@ func _build_pack_content(content: VBoxContainer, include_controls: bool) -> void
 	_inventory_rows = VBoxContainer.new()
 	_inventory_rows.name = "InventoryRows"
 	_inventory_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_inventory_rows.add_theme_constant_override("separation", 3)
+	_inventory_rows.add_theme_constant_override("separation", int(LEDGER_ROW_SEPARATION))
 	scroll.add_child(_inventory_rows)
 	_refresh_inventory()
 
@@ -200,6 +205,9 @@ func _build_footer() -> void:
 	var footer := HBoxContainer.new()
 	footer.name = "ShopFooter"
 	footer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	footer.size_flags_vertical = Control.SIZE_SHRINK_END
+	footer.custom_minimum_size.y = CLASSIC_FOOTER_HEIGHT
+	footer.alignment = BoxContainer.ALIGNMENT_CENTER
 	footer.add_theme_constant_override("separation", 5)
 	add_child(footer)
 	_buy_button = _action_button("ShopBuy", "Buy", _submit_buy)
@@ -282,14 +290,14 @@ func _refresh_inventory() -> void:
 		row.add_theme_constant_override("separation", 5)
 		var icon := CONTENT_ICON_SCRIPT.new() as Control
 		icon.name = "InventoryIcon_%s" % item.instance_id.replace(".", "_")
-		icon.configure(item.icon_resource_type, item.icon_id, _media, 46.0, item.name)
+		icon.configure(item.icon_resource_type, item.icon_id, _media, _ledger_row_height(), item.name)
 		row.add_child(icon)
 		var button := EXCHANGE_ITEM_BUTTON_SCRIPT.new()
 		button.name = "Inventory_%s" % item.instance_id.replace(".", "_")
 		button.text = "%s\n%s  •  sell %d gold" % [item.name, "Equipped" if item.equipped else "Carried", item.sell_price]
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.clip_text = true
-		button.custom_minimum_size.y = 46.0
+		button.custom_minimum_size.y = _ledger_row_height()
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.theme_type_variation = &"ClassicItemLedgerButton"
 		button.focus_mode = Control.FOCUS_NONE
@@ -402,6 +410,7 @@ func _build_control_spine(parent: HBoxContainer) -> void:
 	panel.name = "ShopExchangeDivider"
 	panel.theme_type_variation = &"ClassicInset"
 	panel.custom_minimum_size.x = 170.0
+	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	parent.add_child(panel)
 	var spine := VBoxContainer.new()
 	spine.name = "ShopControlSpine"
@@ -555,8 +564,17 @@ func _scroll(scroll_name: String) -> ScrollContainer:
 	scroll.name = scroll_name
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	scroll.custom_minimum_size.y = _ledger_scroll_height()
 	return scroll
+
+
+func _ledger_row_height() -> float:
+	return COMPACT_LEDGER_ROW_HEIGHT if _compact else WIDE_LEDGER_ROW_HEIGHT
+
+
+func _ledger_scroll_height() -> float:
+	return CLASSIC_VISIBLE_ROWS * _ledger_row_height() + (CLASSIC_VISIBLE_ROWS - 1) * LEDGER_ROW_SEPARATION
 
 
 func _label(text: String, color: Color) -> Label:
