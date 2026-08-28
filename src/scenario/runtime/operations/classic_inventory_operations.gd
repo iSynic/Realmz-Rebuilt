@@ -27,7 +27,7 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 		36:
 			return toggle_equipment_storage(action.operand_id != 0)
 		38:
-			return _branch_on_item_result(action)
+			return _branch_on_item_result(action, context)
 		49:
 			return _configure_banking()
 		51:
@@ -43,10 +43,14 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 
 func _take_wealth(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
 	var values := action.extra_code
-	var amount := absi(action.operand_id) if values.is_empty() else absi(values[0])
-	var kind := WealthState.Kind.GOLD if values.size() < 2 else clampi(values[1], WealthState.Kind.GOLD, WealthState.Kind.JEWELRY) as WealthState.Kind
+	var signed_amount := action.operand_id if values.is_empty() else values[0]
+	var amount := absi(signed_amount)
+	var kind := WealthState.Kind.GEMS if signed_amount < 0 else WealthState.Kind.GOLD
 	var paid := _rules.economy.take(_game_state.party, amount, kind)
-	return ScenarioRuntimeOperationResult.completed(paid, [DomainEvent.new(&"wealth_taken", {"amount": amount, "kind": kind, "paid": paid, "source": "classic"})])
+	var events: Array[DomainEvent] = [DomainEvent.new(&"wealth_taken", {"amount": amount, "kind": kind, "paid": paid, "source": "classic"})]
+	if not paid:
+		events.append(DomainEvent.new(&"classic_notification_requested", {"text": "The party does not have enough gold.", "soundId": 6000, "source": "classic-opcode-33"}))
+	return ScenarioRuntimeOperationResult.completed(paid, events)
 
 
 func _branch_on_item(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
@@ -69,13 +73,13 @@ func _branch_on_item(action: ClassicActionDefinition) -> ScenarioRuntimeOperatio
 	return ScenarioRuntimeOperationResult.failed(&"invalid_item_branch", "Classic item possession branch has an invalid failure mode.")
 
 
-func _branch_on_item_result(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
+func _branch_on_item_result(action: ClassicActionDefinition, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	if action.extra_code.size() < 5:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 38 requires a five-value Extra Code row.")
 	var possessed := _party_has_classic_item(absi(action.extra_code[0]))
 	var test_mode := action.extra_code[1]
 	if test_mode == 2 or test_mode == 0 and not possessed or test_mode == 1 and possessed:
-		return _branch_from_values(action.extra_code, false)
+		return _branch_from_values(action.extra_code, false, context)
 	if test_mode not in [0, 1, 2]:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_item_branch", "Classic item result branch has an invalid test mode.")
 	return ScenarioRuntimeOperationResult.completed(false)
@@ -153,13 +157,25 @@ func _party_has_classic_item(classic_item_id: int, minimum_charges: int = -1, eq
 	return false
 
 
-func _branch_from_values(values: Array[int], gosub: bool) -> ScenarioRuntimeOperationResult:
+func _branch_from_values(values: Array[int], gosub: bool, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	match values[2]:
 		0:
 			return _branch_xap(values[3], gosub)
+		1, 2:
+			return _branch_encounter_result(values[2], values[3], values[4], gosub, context)
 		3:
 			return ScenarioRuntimeOperationResult.completed(true, [], ScenarioVmDirective.finish())
 	return ScenarioRuntimeOperationResult.failed(&"unsupported_branch_mode", "Classic branch mode %d is not available in this execution context." % values[2])
+
+
+func _branch_encounter_result(mode: int, result_index: int, entry_cursor: int, gosub: bool, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
+	var kind := &"simple" if mode == 1 else &"complex"
+	if context == null or context.encounter_kind != kind or context.encounter_id < 0:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_encounter_context", "Classic branch mode %d requires an active %s Encounter result." % [mode, String(kind).capitalize()])
+	if result_index < 0 or result_index > 3 or entry_cursor < 0 or entry_cursor > 7:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_encounter_branch", "Classic encounter-result branches require result 0 through 3 and code cursor 0 through 7.")
+	var program_id := "%s:%d:result:%d" % [String(kind), context.encounter_id, result_index]
+	return ScenarioRuntimeOperationResult.completed(true, [], ScenarioVmDirective.branch_program_at(program_id, gosub, context, entry_cursor))
 
 
 func _branch_target_mode(mode: int, target_id: int, gosub: bool) -> ScenarioRuntimeOperationResult:

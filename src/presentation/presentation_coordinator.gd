@@ -103,6 +103,8 @@ func _present_committed_step(step: SessionStep, game_view: GameView, include_aud
 			passive_classic_text = String(event.payload.get("text", ""))
 		if event.kind == &"player_map_acquired" and event.payload.has("notificationText"):
 			classic_flash_messages.append({"text": String(event.payload.get("notificationText", "")), "soundId": int(event.payload.get("notificationSoundId", 0))})
+		elif event.kind == &"classic_notification_requested":
+			classic_flash_messages.append({"text": String(event.payload.get("text", "")), "soundId": int(event.payload.get("soundId", 0))})
 	_present_interaction(game_view)
 	refresh_music()
 	if game_view.pending_interaction == null and not passive_classic_text.is_empty():

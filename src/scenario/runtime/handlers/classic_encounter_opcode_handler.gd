@@ -68,7 +68,7 @@ func request_encounter(kind: StringName, encounter_id: int, gosub: bool, request
 	if options.is_empty():
 		return ScenarioRuntimeOperationResult.failed(&"encounter_has_no_options", "Simple Encounter %d has no remaining responses." % encounter.id)
 	var request := InteractionRequest.from_payload(request_id, &"encounter_choice", {"encounterKind": "simple", "encounterId": encounter.id, "prompt": prompt.text, "options": options, "canBackOut": encounter.can_back_out})
-	return ScenarioRuntimeOperationResult.waiting(request, ScenarioRuntimeContinuation.encounter(ScenarioRuntimeContinuation.CLASSIC_SIMPLE_ENCOUNTER, encounter.id, gosub, option_indexes, _encounter_attempt(context, &"simple", encounter.id)))
+	return ScenarioRuntimeOperationResult.waiting(request, ScenarioRuntimeContinuation.encounter(ScenarioRuntimeContinuation.CLASSIC_SIMPLE_ENCOUNTER, encounter.id, gosub, option_indexes, _encounter_attempt(context, &"simple", encounter.id)), [_encounter_open_sound(&"simple", encounter.id)])
 
 
 func _request_complex_encounter(encounter_id: int, gosub: bool, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
@@ -78,7 +78,11 @@ func _request_complex_encounter(encounter_id: int, gosub: bool, request_id: Stri
 	var request := complex_encounter_request(encounter, request_id)
 	if request == null:
 		return ScenarioRuntimeOperationResult.failed(&"encounter_has_no_options", "Complex Encounter %d has no available responses." % encounter.id)
-	return ScenarioRuntimeOperationResult.waiting(request, ScenarioRuntimeContinuation.encounter(ScenarioRuntimeContinuation.CLASSIC_COMPLEX_ENCOUNTER, encounter.id, gosub, [], _encounter_attempt(context, &"complex", encounter.id)))
+	return ScenarioRuntimeOperationResult.waiting(request, ScenarioRuntimeContinuation.encounter(ScenarioRuntimeContinuation.CLASSIC_COMPLEX_ENCOUNTER, encounter.id, gosub, [], _encounter_attempt(context, &"complex", encounter.id)), [_encounter_open_sound(&"complex", encounter.id)])
+
+
+static func _encounter_open_sound(kind: StringName, encounter_id: int) -> DomainEvent:
+	return DomainEvent.new(&"sound_requested", {"soundId": 20005, "waitForCompletion": false, "reducedSoundEligible": true, "source": "classic-%s-encounter-open" % String(kind), "encounterId": encounter_id})
 
 
 static func _encounter_attempt(context: ScenarioExecutionContext, kind: StringName, encounter_id: int) -> int:
