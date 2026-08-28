@@ -666,14 +666,14 @@ func _test_movement_input() -> void:
 	held.advance(0.149); assert_equal(pulses.size(), 1, "an ordinary click cannot cross the initial held-repeat threshold")
 	held.advance(0.002); assert_equal(pulses.size(), 2, "a deliberate hold begins repeating after 150 milliseconds")
 	held.advance(0.011); held.advance(0.002); assert_equal(pulses.size(), 3, "subsequent held steps use the selected 12.5 millisecond cadence")
-	held.advance(1.0); assert_equal(pulses.size(), 4, "a slow frame emits one step rather than a queued burst")
+	held.advance(1.0); assert_equal(pulses.size(), 4, "a slow frame emits one step rather than a queued burst"); held.update(&"keyboard", Vector2i.LEFT); assert_equal(pulses, [Vector2i.RIGHT, Vector2i.RIGHT, Vector2i.RIGHT, Vector2i.RIGHT, Vector2i.LEFT], "changing held direction requests the new direction immediately without a release")
 	assert_false(held.request_in_progress(), "a synchronous movement callback settles before the next interval begins")
 	held.set_speed_percent(25)
 	assert_equal(held.interval_seconds(), 0.2, "the slowest movement setting uses the documented 200 millisecond interval"); held.set_speed_percent(100)
 	assert_equal(held.interval_seconds(), 0.05, "the default movement setting sustains twenty scheduled steps per second")
 	held.stop(&"keyboard")
 	held.advance(1.0)
-	assert_equal(pulses.size(), 4, "release stops further held movement")
+	assert_equal(pulses.size(), 5, "release stops further held movement")
 	held.free()
 
 

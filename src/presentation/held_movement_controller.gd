@@ -63,7 +63,10 @@ func start(source: StringName, direction: Vector2i) -> void:
 func update(source: StringName, direction: Vector2i) -> void:
 	if source != _source or direction == Vector2i.ZERO:
 		return
+	if direction == _direction:
+		return
 	_direction = direction
+	_emit_request(interval_seconds(), false)
 
 
 func stop(source: StringName = &"") -> void:
