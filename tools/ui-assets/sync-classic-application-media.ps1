@@ -3,13 +3,14 @@ param(
     [string]$CastleRepository,
     [string]$PictDecoderPath = "",
     [switch]$SoundOnly,
-    [switch]$CicnOnly
+    [switch]$CicnOnly,
+    [switch]$PictOnly
 )
 
 $ErrorActionPreference = "Stop"
 
-if ($SoundOnly -and $CicnOnly) {
-    throw "SoundOnly and CicnOnly are mutually exclusive"
+if (@($SoundOnly, $CicnOnly, $PictOnly).Where({ [bool]$_ }).Count -gt 1) {
+    throw "SoundOnly, CicnOnly, and PictOnly are mutually exclusive"
 }
 
 function Get-U16([byte[]]$Bytes, [int]$Offset) {
@@ -223,10 +224,11 @@ $outputRoot = Join-Path $stagingRoot "output"
 $sidecarRoot = Join-Path $stagingRoot "sidecars"
 $destinationRoot = Join-Path $repoRoot "src/presentation/assets/classic-media"
 $manifestPath = Join-Path $repoRoot "src/presentation/assets/classic-application-media.json"
-$existingManifest = if ($SoundOnly -or $CicnOnly) { Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json } else { $null }
+$existingManifest = if ($SoundOnly -or $CicnOnly -or $PictOnly) { Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json } else { $null }
 $activeResourceSets = @($catalog.resource_sets | Where-Object {
     if ($SoundOnly) { return $_.resource_type -eq "snd " }
     if ($CicnOnly) { return $_.resource_type -eq "cicn" }
+    if ($PictOnly) { return $_.resource_type -eq "PICT" }
     return $true
 })
 New-Item -ItemType Directory -Path $extractRoot, $outputRoot, $sidecarRoot | Out-Null
@@ -267,19 +269,21 @@ try {
                 if ([string]::IsNullOrWhiteSpace($PictDecoderPath)) {
                     throw "PictDecoderPath is required for cataloged Classic PICT assets"
                 }
+                $isDarknessMask = $set.target_directory -eq "darkness-masks"
                 $landlook = $entry.Id - 300
-                $landlookMetadata = @{
-                    0 = @("Plains", 156)
-                    3 = @("Subterranean", 155)
-                    4 = @("Castle", 111)
-                    5 = @("Desert", 191)
-                    9 = @("Swamp", 155)
-                    10 = @("Snow", 155)
-                }[$landlook]
-                if ($null -eq $landlookMetadata) {
+                $darknessLevel = $entry.Id - 350
+                $landlookMetadata = if ($isDarknessMask) { $null } else { @{
+                        0 = @("Plains", 156)
+                        3 = @("Subterranean", 155)
+                        4 = @("Castle", 111)
+                        5 = @("Desert", 191)
+                        9 = @("Swamp", 155)
+                        10 = @("Snow", 155)
+                    }[$landlook] }
+                if (-not $isDarknessMask -and $null -eq $landlookMetadata) {
                     throw "Unsupported stock landlook PICT: $($entry.Id)"
                 }
-                $relativePath = "$($set.target_directory)/landlook-$landlook.png"
+                $relativePath = if ($isDarknessMask) { "$($set.target_directory)/darkness-mask-$darknessLevel.png" } else { "$($set.target_directory)/landlook-$landlook.png" }
                 $targetPath = Join-Path $outputRoot ($relativePath -replace "/", [IO.Path]::DirectorySeparatorChar)
                 & $pictExporterPath -ResourceForkPath $sourcePath -ResourceId $entry.Id -PictDecoderPath $PictDecoderPath -OutputPath $targetPath
                 if ($LASTEXITCODE -ne 0) {
@@ -287,17 +291,18 @@ try {
                 }
                 $pngBytes = [IO.File]::ReadAllBytes($targetPath)
                 if ($pngBytes.Length -lt 24) {
-                    throw "Decoded landlook PNG is truncated: $($entry.Id)"
+                    throw "Decoded Classic PICT PNG is truncated: $($entry.Id)"
                 }
                 $width = [int](Get-U32 $pngBytes 16)
                 $height = [int](Get-U32 $pngBytes 20)
-                if ($width -ne 640 -or $height -ne 320) {
-                    throw "Decoded landlook PICT $($entry.Id) is ${width}x${height}; expected 640x320"
+                $expectedWidth = if ($isDarknessMask) { 320 } else { 640 }
+                if ($width -ne $expectedWidth -or $height -ne 320) {
+                    throw "Decoded Classic PICT $($entry.Id) is ${width}x${height}; expected ${expectedWidth}x320"
                 }
-                $records += [ordered]@{
-                    id = "landlook-$landlook"
-                    label = $landlookMetadata[0]
-                    kind = "tileset"
+                $record = [ordered]@{
+                    id = if ($isDarknessMask) { "classic-darkness-mask-$darknessLevel" } else { "landlook-$landlook" }
+                    label = if ($isDarknessMask) { "Classic darkness mask $darknessLevel" } else { $landlookMetadata[0] }
+                    kind = if ($isDarknessMask) { "picture" } else { "tileset" }
                     mime_type = "image/png"
                     resource_type = $set.resource_type
                     resource_id = $entry.Id
@@ -306,12 +311,6 @@ try {
                     sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $targetPath).Hash.ToLowerInvariant()
                     width = $width
                     height = $height
-                    tile_width = 32
-                    tile_height = 32
-                    columns = 20
-                    rows = 10
-                    landlook = $landlook
-                    base_tile = $landlookMetadata[1]
                     source_repository = $catalog.source_repository
                     source_commit = $catalog.source_commit
                     source_path = $set.source_path
@@ -324,6 +323,15 @@ try {
                         note = $set.evidence_note
                     }
                 }
+                if (-not $isDarknessMask) {
+                    $record["tile_width"] = 32
+                    $record["tile_height"] = 32
+                    $record["columns"] = 20
+                    $record["rows"] = 10
+                    $record["landlook"] = $landlook
+                    $record["base_tile"] = $landlookMetadata[1]
+                }
+                $records += $record
                 continue
             }
             if ($set.resource_type -eq "snd ") {
@@ -449,6 +457,25 @@ try {
             return $generatedCicns[$_.id]
         })
         $newRecords = @($records | Where-Object { -not $existingCicnIds.ContainsKey($_.id) })
+        $records = @($mergedRecords) + @($newRecords)
+    }
+    elseif ($PictOnly) {
+        $generatedPicts = @{}
+        foreach ($record in $records) {
+            $generatedPicts[$record.id] = $record
+        }
+        $existingPictIds = @{}
+        $mergedRecords = @($existingManifest.assets | ForEach-Object {
+            if ($_.resource_type -ne "PICT") {
+                return $_
+            }
+            if ($generatedPicts.ContainsKey($_.id)) {
+                $existingPictIds[$_.id] = $true
+                return $generatedPicts[$_.id]
+            }
+            return $_
+        })
+        $newRecords = @($records | Where-Object { -not $existingPictIds.ContainsKey($_.id) })
         $records = @($mergedRecords) + @($newRecords)
     }
 

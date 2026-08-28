@@ -15,6 +15,7 @@ const PARTY_MARKER_ASSET_ID: StringName = PARTY_MARKER_RIGHT_ASSET_ID
 const BOAT_MARKER_LEFT_ASSET_IDS: Dictionary = {0: &"map.party.boat.left.0", 3: &"map.party.boat.left.3", 5: &"map.party.boat.left.5", 6: &"map.party.boat.left.6", 7: &"map.party.boat.left.7"}
 const BOAT_MARKER_RIGHT_ASSET_IDS: Dictionary = {0: &"map.party.boat.right.0", 3: &"map.party.boat.right.3", 5: &"map.party.boat.right.5", 6: &"map.party.boat.right.6", 7: &"map.party.boat.right.7"}
 const SURROUND_TEXTURE_PATH := "res://src/presentation/assets/ui/classic-exploration-surround-tile.png"
+const DARKNESS_MASK_SIZE := Vector2(320.0, 320.0)
 
 @export var cell_size: float = 32.0
 @export var map_origin: Vector2 = Vector2.ZERO
@@ -28,6 +29,7 @@ var _media: ClassicMediaCatalog
 var _atlas_assets: Dictionary = {}
 var _atlas_textures: Dictionary = {}
 var _overlay_textures: Dictionary = {}
+var _darkness_mask_textures: Dictionary = {}
 var _land_marker_textures: Dictionary = {}
 var _party_rect: Rect2
 var _minimap_rect: Rect2
@@ -164,6 +166,7 @@ func set_media_catalog(media: ClassicMediaCatalog) -> void:
 	_atlas_assets.clear()
 	_atlas_textures.clear()
 	_overlay_textures.clear()
+	_darkness_mask_textures.clear()
 	_land_marker_textures.clear()
 	if _media == null:
 		queue_redraw()
@@ -173,6 +176,9 @@ func set_media_catalog(media: ClassicMediaCatalog) -> void:
 			continue
 		var texture := _load_image_texture(asset)
 		if texture == null:
+			continue
+		if asset.resource_type == "PICT" and asset.resource_id >= 350 and asset.resource_id <= 356:
+			_darkness_mask_textures[asset.resource_id - 350] = _darkness_overlay_texture(texture)
 			continue
 		if asset.is_tileset() or asset.is_battle_tileset():
 			_atlas_assets[asset.id] = asset
@@ -219,7 +225,7 @@ func _draw() -> void:
 		if outside_classic_view and not revealed_coordinates.has(cell.coordinate):
 			_draw_unvisited_cell(rect)
 			continue
-		_draw_cell(cell, rect, map_view.level_type, map_view.dark, not cell.has_feature(&"unmapped") or dungeon_discovery.has(cell.coordinate), not cell.visible or outside_classic_view, map_view.darkness_level)
+		_draw_cell(cell, rect, map_view.level_type, false, not cell.has_feature(&"unmapped") or dungeon_discovery.has(cell.coordinate), not cell.visible or outside_classic_view, map_view.darkness_level)
 		if map_view.level_type == &"land":
 			_draw_land_markers(cell, rect)
 		if show_debug_facts:
@@ -235,6 +241,8 @@ func _draw() -> void:
 			draw_string(font, rect.position + Vector2(7, 17), facts, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.78, 0.82, 0.88))
 	_party_rect = Rect2(draw_origin + Vector2(map_view.party_coordinate - camera) * cell_size, Vector2.ONE * cell_size)
 	_draw_party_marker(_party_rect)
+	if map_view.dark:
+		_draw_darkness_mask(map_rect, _party_rect, map_view.darkness_level)
 	if show_travel_preview:
 		_draw_minimap(map_view, font)
 	else:
@@ -251,6 +259,44 @@ func _draw_exploration_stage(map_rect: Rect2, los_blackout: bool) -> void:
 
 static func requires_los_blackout(cells: Array[MapCellView]) -> bool:
 	return cells.any(func(cell: MapCellView) -> bool: return not cell.visible)
+
+
+static func darkness_mask_asset_id(level: int) -> String:
+	return "classic-darkness-mask-%d" % clampi(level, 0, 6)
+
+
+static func darkness_mask_rect(party_rect: Rect2) -> Rect2:
+	return Rect2(party_rect.position - DARKNESS_MASK_SIZE * 0.5, DARKNESS_MASK_SIZE)
+
+
+func _draw_darkness_mask(map_rect: Rect2, party_rect: Rect2, level: int) -> void:
+	var mask_rect := darkness_mask_rect(party_rect)
+	var clipped := map_rect.intersection(mask_rect)
+	if clipped.position.y > map_rect.position.y:
+		draw_rect(Rect2(map_rect.position, Vector2(map_rect.size.x, clipped.position.y - map_rect.position.y)), Color.BLACK, true)
+	if clipped.end.y < map_rect.end.y:
+		draw_rect(Rect2(Vector2(map_rect.position.x, clipped.end.y), Vector2(map_rect.size.x, map_rect.end.y - clipped.end.y)), Color.BLACK, true)
+	if clipped.position.x > map_rect.position.x:
+		draw_rect(Rect2(Vector2(map_rect.position.x, clipped.position.y), Vector2(clipped.position.x - map_rect.position.x, clipped.size.y)), Color.BLACK, true)
+	if clipped.end.x < map_rect.end.x:
+		draw_rect(Rect2(Vector2(clipped.end.x, clipped.position.y), Vector2(map_rect.end.x - clipped.end.x, clipped.size.y)), Color.BLACK, true)
+	var texture := _darkness_mask_textures.get(clampi(level, 0, 6)) as Texture2D
+	if texture == null:
+		draw_rect(clipped, Color.BLACK, true)
+		return
+	draw_texture_rect_region(texture, clipped, Rect2(clipped.position - mask_rect.position, clipped.size))
+
+
+static func _darkness_overlay_texture(texture: Texture2D) -> ImageTexture:
+	var source := texture.get_image()
+	if source == null:
+		return null
+	source.convert(Image.FORMAT_RGBA8)
+	for y: int in source.get_height():
+		for x: int in source.get_width():
+			var alpha := source.get_pixel(x, y).get_luminance()
+			source.set_pixel(x, y, Color(0.0, 0.0, 0.0, alpha))
+	return ImageTexture.create_from_image(source)
 
 
 static func land_marker_tile_ids(cell: MapCellView) -> Array[int]:

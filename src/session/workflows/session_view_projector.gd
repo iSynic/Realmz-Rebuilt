@@ -767,7 +767,13 @@ static func _build_map_view(context: SessionWorkflowContext, reusable_cells: Dic
 		var direction_name := MapTopology.direction_name(direction)
 		var probe := _probe_movement(context, direction)
 		movement_options[direction_name] = {"allowed": probe.allowed, "reason": String(probe.reason)}
-	return MapView.new(map.id, map.name, map.level_type, map.topology.width, map.topology.height, state.party.coordinate, cells, state.world.map_is_dark(map), state.world.visited_coordinates(map.id), movement_options, state.last_move_direction, state.world.map_landlook(map), state.dungeon_heading, state.dungeon_multiview, state.party.conditions.is_active(ConditionRules.PARTY_WIZARDS_EYE), map.base_scale, state.xy_display_hidden, state.compass_enabled, -1, map.uses_los, state.world.seen_coordinates(map.id))
+	var dark := state.world.map_is_dark(map)
+	var darkness_level := classic_darkness_level(state.party.conditions.value(ConditionRules.PARTY_TORCH_LIT)) if dark else -1
+	return MapView.new(map.id, map.name, map.level_type, map.topology.width, map.topology.height, state.party.coordinate, cells, dark, state.world.visited_coordinates(map.id), movement_options, state.last_move_direction, state.world.map_landlook(map), state.dungeon_heading, state.dungeon_multiview, state.party.conditions.is_active(ConditionRules.PARTY_WIZARDS_EYE), map.base_scale, state.xy_display_hidden, state.compass_enabled, darkness_level, map.uses_los, state.world.seen_coordinates(map.id))
+
+
+static func classic_darkness_level(torch_value: int) -> int:
+	return 0 if torch_value <= 0 else clampi(floori(float(torch_value) / 30.0) + 1, 0, 6)
 
 
 static func _build_player_map_view(context: SessionWorkflowContext, definition: PlayerMapDefinition) -> PlayerMapView:

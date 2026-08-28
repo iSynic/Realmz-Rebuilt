@@ -59,13 +59,20 @@ $soundCount = @($manifest.assets | Where-Object { $_.resource_type -eq "snd " })
 $combatIconCount = @($manifest.assets | Where-Object { $_.path -like "*/combat-icons/*" }).Count
 $itemIconCount = @($manifest.assets | Where-Object { $_.path -like "*/item-icons/*" }).Count
 $landTilesetCount = @($manifest.assets | Where-Object { $_.kind -eq "tileset" }).Count
-if ($soundCount -ne 142 -or $combatIconCount -ne 145 -or $itemIconCount -ne 271 -or $landTilesetCount -ne 6) {
-	throw "Expected 142 built-in sounds, 145 source-backed combat icons, 271 shared or stock-supply item icons, and 6 stock land tilesets; found $soundCount sounds, $combatIconCount combat icons, $itemIconCount item icons, and $landTilesetCount land tilesets"
+$darknessMaskCount = @($manifest.assets | Where-Object { $_.id -like "classic-darkness-mask-*" }).Count
+if ($soundCount -ne 142 -or $combatIconCount -ne 145 -or $itemIconCount -ne 271 -or $landTilesetCount -ne 6 -or $darknessMaskCount -ne 7) {
+	throw "Expected 142 built-in sounds, 145 source-backed combat icons, 271 shared or stock-supply item icons, 6 stock land tilesets, and 7 darkness masks; found $soundCount sounds, $combatIconCount combat icons, $itemIconCount item icons, $landTilesetCount land tilesets, and $darknessMaskCount darkness masks"
 }
 foreach ($landlook in @(0, 3, 4, 5, 9, 10)) {
     $tileset = @($manifest.assets | Where-Object { $_.id -eq "landlook-$landlook" })
     if ($tileset.Count -ne 1 -or $tileset[0].resource_type -ne "PICT" -or $tileset[0].resource_id -ne 300 + $landlook -or $tileset[0].width -ne 640 -or $tileset[0].height -ne 320 -or $tileset[0].tile_width -ne 32 -or $tileset[0].tile_height -ne 32 -or $tileset[0].columns -ne 20 -or $tileset[0].rows -ne 10 -or $tileset[0].landlook -ne $landlook) {
         throw "Stock application landlook contract is invalid: $landlook"
+    }
+}
+foreach ($darknessLevel in 0..6) {
+    $mask = @($manifest.assets | Where-Object { $_.id -eq "classic-darkness-mask-$darknessLevel" })
+	if ($mask.Count -ne 1 -or $mask[0].resource_type -ne "PICT" -or $mask[0].resource_id -ne (350 + $darknessLevel) -or $mask[0].width -ne 320 -or $mask[0].height -ne 320) {
+        throw "Stock application darkness mask contract is invalid: $darknessLevel"
     }
 }
 foreach ($requiredSupplyIcon in @(142, 601, 602, 603, 604, 605, 607, 608, 2011, 2013, 6195)) {

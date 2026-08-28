@@ -20,6 +20,16 @@
     {
       "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
       "source_file_sha256": "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c",
+      "resource_type": "PICT",
+      "resource_ids": [350, 351, 352, 353, 354, 355, 356],
+      "target_directory": "darkness-masks",
+      "classification": "classic-application-resource",
+      "evidence_path": "src/realmz_orig/showdamage-loaddark-cansee.c:67-84; src/realmz_orig/centerpict.c:242-302",
+      "evidence_note": "Castle loads one exact application-owned PICT 350-356 for the active light level, clears the playfield to black, and copies the rendered map through that 320-pixel mask centered on the party."
+    },
+    {
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
+      "source_file_sha256": "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c",
       "resource_type": "cicn",
       "resource_ids": [-72, 379, 380, 382, 383, 403, 409, 411, 793],
       "target_directory": "land-icons",
