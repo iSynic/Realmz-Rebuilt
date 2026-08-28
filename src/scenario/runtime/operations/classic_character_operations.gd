@@ -53,9 +53,10 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 		82, 83:
 			_game_state.priest_turning_allowed = action.opcode == 83
 			var turning_message := "You regain your ability to turn undead and nether spawn." if _game_state.priest_turning_allowed else "You may not use your ability to turn undead or nether spawn."
+			var turning_sound := 20004 if _game_state.priest_turning_allowed else 10105
 			return ScenarioRuntimeOperationResult.completed(_game_state.priest_turning_allowed, [
 				DomainEvent.new(&"priest_turning_availability_changed", {"allowed": _game_state.priest_turning_allowed, "source": "classic"}),
-				DomainEvent.new(&"message_shown", {"text": turning_message, "source": "classic"}),
+				DomainEvent.new(&"classic_notification_requested", {"text": turning_message, "soundId": turning_sound, "source": "classic-opcode-%d" % action.opcode}),
 			])
 		87:
 			return _branch_on_ally(action)
@@ -271,12 +272,16 @@ func _apply_classic_condition(action: ClassicActionDefinition) -> ScenarioRuntim
 		for character: CharacterState in _game_state.party.characters():
 			if target_mode == 0 or character.current_health > 0:
 				targets.append(character)
+	var ids: Array[String] = []
+	var events: Array[DomainEvent] = []
 	for character: CharacterState in targets:
 		character.conditions.set_value(condition_index, duration)
-	var ids: Array[String] = []
-	for character: CharacterState in targets:
 		ids.append(character.id)
-	return ScenarioRuntimeOperationResult.completed(ids, [DomainEvent.new(&"condition_applied", {"characterIds": ids, "condition": condition_index, "duration": duration, "soundId": action.extra_code[3] if action.extra_code.size() > 3 else 0})])
+		if action.extra_code.size() > 3 and action.extra_code[3] != 0:
+			events.append(DomainEvent.new(&"sound_requested", {"soundId": absi(action.extra_code[3]), "waitForCompletion": action.extra_code[3] < 0, "source": "classic-opcode-43"}))
+		events.append(DomainEvent.new(&"character_effect_requested", {"characterId": character.id, "resourceType": "cicn", "firstResourceId": 12032, "frameCount": 8, "source": "classic-opcode-43"}))
+	events.append(DomainEvent.new(&"condition_applied", {"characterIds": ids, "condition": condition_index, "duration": duration}))
+	return ScenarioRuntimeOperationResult.completed(ids, events)
 
 
 func _select_characters_by_identity(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
@@ -619,6 +624,11 @@ func apply_scenario_spell(action: ClassicActionDefinition, entire_party: bool) -
 		var resolution := _rules.magic.resolve_scenario_spell(character, spell, int(action.extra_code[1]), int(action.extra_code[2]), int(action.extra_code[3]) != 0, _rng, caste, race)
 		if resolution == null:
 			return ScenarioRuntimeOperationResult.failed(&"invalid_spell_effect", "Classic scenario spell inputs are invalid.")
+		var event_source := "classic-opcode-%d" % action.opcode
+		if spell.sound_end + 600 != 0:
+			events.append(DomainEvent.new(&"sound_requested", {"soundId": absi(spell.sound_end + 600), "waitForCompletion": false, "source": event_source}))
+		var first_effect_resource := 12032 if spell.look_start == 0 else 11992 + spell.look_start * 8
+		events.append(DomainEvent.new(&"character_effect_requested", {"characterId": character.id, "resourceType": "cicn", "firstResourceId": first_effect_resource, "frameCount": 8, "source": event_source}))
 		events.append(DomainEvent.new(&"scenario_spell_applied", {
 			"spellId": spell.id,
 			"classicSpellId": spell.classic_id,
