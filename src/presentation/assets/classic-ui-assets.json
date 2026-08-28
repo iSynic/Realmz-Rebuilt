@@ -257,7 +257,7 @@
       "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
       "native_width": 50,
       "native_height": 50,
-      "sha256": "3c7619d65a58844ad765a95f2daefc51b8f036e8b2a53d1bebc9e74c5295f91e",
+      "sha256": "14d02806cca2830ebf44333572b8069de5cbdb493ec98989884f020a1372ca7a",
       "classification": "classic-resource-extract",
       "classic_evidence": {
         "status": "source-control-flow",
@@ -277,6 +277,35 @@
       "source_file_sha256": "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c",
       "source_resource_type": "PICT",
       "source_resource_id": 180
+    },
+    {
+      "id": "command.shop_original",
+      "path": "res://src/presentation/assets/classic-controls/commands/shop-original.png",
+      "source_repository": "Realmz Castle Realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
+      "native_width": 50,
+      "native_height": 50,
+      "sha256": "4b30790a39f17f5b6dcd9c7a5aba276df954d6b0890180ca22ce21b8a582a4f9",
+      "classification": "classic-resource-extract",
+      "classic_evidence": {
+        "status": "source-control-flow",
+        "path": "src/realmz_orig/updatecontrols.c:74-78",
+        "note": "Castle updatecontrols draws exact application PICT 225 whenever a Shop is available. Rebuilt samples only its shop mark and recomposes the live Shop caption on application slate.",
+        "repository": "Realmz Castle Realmz",
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3"
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      },
+      "source_file_sha256": "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c",
+      "source_resource_type": "PICT",
+      "source_resource_id": 225
     },
     {
       "id": "effects.search_animation",

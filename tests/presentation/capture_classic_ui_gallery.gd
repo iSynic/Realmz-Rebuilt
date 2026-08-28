@@ -435,7 +435,7 @@ func _capture_gallery() -> void:
 	var service := ServiceView.new()
 	service.service_id = "gallery-shop"
 	service.service_kind = &"shop"
-	service.title = "Provisioner"
+	service.title = "Shop"
 	service.actions = [&"buy", &"sell", &"identify", &"leave"]
 	service.disabled_reasons[&"identify"] = "This shop does not identify items."
 	gallery_view.services.clear()

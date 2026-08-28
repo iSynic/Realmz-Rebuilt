@@ -273,7 +273,7 @@ static func _populate_services(context: SessionWorkflowContext, result: GameView
 			var shop_view := ServiceView.new()
 			shop_view.service_id = shop.id
 			shop_view.service_kind = &"shop"
-			shop_view.title = "Shop %d" % shop.classic_id
+			shop_view.title = "Shop"
 			shop_view.actions = [&"enter"]
 			result.services.append(shop_view)
 	if context.state.temple_available:

@@ -847,6 +847,10 @@ func _presentation_command_definition(definition: Dictionary) -> Dictionary:
 		result["asset_id"] = &"command.temple"
 		result["art_region"] = [9, 2, 37, 34]
 		result.erase("art_mask")
+	elif service.service_kind == &"shop":
+		result["asset_id"] = &"command.shop_original"
+		result["art_region"] = [10, 0, 31, 31]
+		result["art_mask"] = &"circle"
 	else:
 		result["asset_id"] = &""
 		result.erase("art_region")
