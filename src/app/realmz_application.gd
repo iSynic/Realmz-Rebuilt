@@ -109,7 +109,7 @@ func _ready() -> void:
 	_shell_presenter.window_mode_changed.connect(_on_window_mode_changed)
 	_shell_presenter.reduced_motion_changed.connect(_on_reduced_motion_changed); _shell_presenter.reduced_sound_changed.connect(_on_reduced_sound_changed)
 	_shell_presenter.auto_switch_to_melee_changed.connect(_on_auto_switch_to_melee_changed)
-	_shell_presenter.exploration_speed_changed.connect(_on_exploration_speed_changed)
+	_shell_presenter.exploration_speed_changed.connect(_on_exploration_speed_changed); _shell_presenter.combat_playback_speed_changed.connect(_on_combat_playback_speed_changed)
 	_shell_presenter.exploration_minimap_changed.connect(_on_exploration_minimap_changed); _shell_presenter.classic_exploration_visibility_changed.connect(_on_classic_exploration_visibility_changed)
 	_shell_presenter.autojournal_changed.connect(_on_autojournal_changed)
 	_shell_presenter.layout_changed.connect(_on_shell_layout_changed)
@@ -121,7 +121,7 @@ func _ready() -> void:
 	_shell_presenter.character_selection_completed.connect(_interaction_presenter.submit_character_selection)
 	_audio_presenter.music_state_changed.connect(_shell_presenter.set_music_playback_state)
 	_shell_presenter.apply_settings(_presentation_settings)
-	presentation_coordinator.set_reduced_motion(_presentation_settings.reduced_motion)
+	presentation_coordinator.set_reduced_motion(_presentation_settings.reduced_motion); presentation_coordinator.set_combat_playback_speed_percent(_presentation_settings.combat_playback_speed_percent)
 	_apply_application_theme()
 	_interaction_presenter.set_text_scale(_presentation_settings.text_scale)
 	_interaction_presenter.set_autojournal_enabled(_presentation_settings.autojournal_enabled)
@@ -1153,9 +1153,10 @@ func _on_auto_switch_to_melee_changed(enabled: bool) -> void:
 
 
 func _on_exploration_speed_changed(percent: int) -> void:
-	_presentation_settings.exploration_speed_percent = clampi(snappedi(percent, 25), 25, 400)
-	_held_movement.set_speed_percent(_presentation_settings.exploration_speed_percent)
-	settings_repository.save_settings(_presentation_settings)
+	_presentation_settings.exploration_speed_percent = clampi(snappedi(percent, 25), 25, 400); _held_movement.set_speed_percent(_presentation_settings.exploration_speed_percent); settings_repository.save_settings(_presentation_settings)
+
+
+func _on_combat_playback_speed_changed(percent: int) -> void: _presentation_settings.combat_playback_speed_percent = clampi(snappedi(percent, 25), 25, 200); presentation_coordinator.set_combat_playback_speed_percent(_presentation_settings.combat_playback_speed_percent); settings_repository.save_settings(_presentation_settings)
 
 
 func _on_exploration_minimap_changed(enabled: bool) -> void:

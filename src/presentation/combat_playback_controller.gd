@@ -48,6 +48,7 @@ var _frame_index: int = -1
 var _elapsed_seconds: float = 0.0
 var _frame_started: bool = false
 var _active: bool = false
+var _speed_percent: int = 100
 
 
 func begin(previous: GameView, events: Array[DomainEvent], final: GameView, reduced_motion: bool) -> bool:
@@ -98,6 +99,10 @@ func current_frame() -> CombatPlaybackFrame:
 
 func frame_count() -> int:
 	return _frames.size()
+
+
+func set_speed_percent(value: int) -> void:
+	_speed_percent = clampi(snappedi(value, 25), 25, 200)
 
 
 func advance(delta_seconds: float, sound_is_blocking: bool = false) -> void:
@@ -420,7 +425,7 @@ func _assign_camera_focus_ids() -> void:
 
 
 func _new_frame(kind: StringName, duration: float, positions: Dictionary, hidden: Array[String]) -> CombatPlaybackFrame:
-	var frame := CombatPlaybackFrame.new(kind, duration)
+	var frame := CombatPlaybackFrame.new(kind, duration * 100.0 / float(_speed_percent))
 	frame.combatant_positions = positions.duplicate(true)
 	frame.hidden_combatant_ids = hidden.duplicate()
 	return frame

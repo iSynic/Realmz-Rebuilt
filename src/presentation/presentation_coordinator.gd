@@ -202,6 +202,11 @@ func set_reduced_motion(enabled: bool) -> void:
 		skip_combat_playback()
 
 
+func set_combat_playback_speed_percent(percent: int) -> void:
+	if _combat_playback != null:
+		_combat_playback.set_speed_percent(percent)
+
+
 func is_combat_playback_active() -> bool:
 	return _combat_playback != null and _combat_playback.is_active()
 

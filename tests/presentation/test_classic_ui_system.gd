@@ -603,12 +603,12 @@ func _test_layout_profiles() -> void:
 	assert_equal([ultrawide.ui_scale, ultrawide.bitmap_scale, ultrawide.application_rect], [2.0, 2, Rect2(440, 0, 2560, 1440)], "Fit centers one bounded 16:9 application canvas on ultrawide while keeping imported art at exact 2x pixels"); var four_k := UiLayoutProfile.for_viewport(Vector2(3840, 2160), PresentationSettings.UI_SCALE_AUTO); assert_equal([four_k.ui_scale, four_k.bitmap_scale, four_k.application_rect], [3.0, 2, Rect2(0, 0, 3840, 2160)], "4K scales layout geometry to 3x without stretching legacy bitmap art beyond 2x"); assert_equal(UiLayoutProfile.application_rect_for(Vector2(800, 600)), Rect2(0, 0, 800, 600), "the optional 800x600 Classic composition retains its complete 4:3 canvas"); var offset_spell_rect := ClassicScreenRouter.spell_workspace_rect_for(ultrawide, ultrawide.application_rect.size, ultrawide.application_rect.position); assert_equal(offset_spell_rect.position.x, 2160.0, "the wider spell sidebar inherits the bounded canvas origin")
 func _test_settings_schema_and_migration() -> void:
 	var settings := PresentationSettings.new(); settings.ui_scale_mode = PresentationSettings.UI_SCALE_125; settings.window_mode = PresentationSettings.BORDERLESS_FULLSCREEN
-	settings.text_scale = 1.5; settings.auto_switch_to_melee = false; settings.exploration_speed_percent = 250
+	settings.text_scale = 1.5; settings.auto_switch_to_melee = false; settings.exploration_speed_percent = 250; settings.combat_playback_speed_percent = 50
 	settings.show_exploration_minimap = true; settings.classic_exploration_visibility = false; settings.autojournal_enabled = false; settings.typography_mode = PresentationSettings.TYPOGRAPHY_READABLE; settings.reduced_sound = true
-	var restored := PresentationSettings.from_data(settings.to_data()); assert_not_null(restored, "schema-ten presentation settings round-trip")
+	var restored := PresentationSettings.from_data(settings.to_data()); assert_not_null(restored, "schema-eleven presentation settings round-trip")
 	assert_equal(restored.ui_scale_mode, PresentationSettings.UI_SCALE_125, "interface density persists separately"); assert_equal(restored.window_mode, PresentationSettings.BORDERLESS_FULLSCREEN, "window mode persists")
 	assert_equal(restored.text_scale, 1.5, "text scale remains independent"); assert_false(restored.auto_switch_to_melee, "Auto Weapon Switch persists as an application preference rather than battle state")
-	assert_equal(restored.exploration_speed_percent, 250, "exploration speed persists independently of simulation state")
+	assert_equal([restored.exploration_speed_percent, restored.combat_playback_speed_percent], [250, 50], "exploration and combat visual speeds persist independently of simulation state")
 	assert_equal([restored.show_exploration_minimap, restored.classic_exploration_visibility, restored.autojournal_enabled, restored.typography_mode, restored.reduced_sound], [true, false, false, PresentationSettings.TYPOGRAPHY_READABLE, true], "travel preview, Classic-distance fog, Auto Note, typography, and Reduced Sound persist as presentation preferences")
 	var version_two := PresentationSettings.from_data({"kind": "realmz2.presentation-settings", "schemaVersion": 2, "masterVolume": 0.5, "topologyDebug": false, "textScale": 1.0, "reducedMotion": false, "dungeon3d": true}); assert_not_null(version_two, "schema-two settings migrate")
 	assert_equal(version_two.ui_scale_mode, PresentationSettings.UI_SCALE_AUTO, "migrated settings default to automatic interface density"); assert_equal(version_two.window_mode, PresentationSettings.WINDOWED, "migrated settings retain windowed behavior")
@@ -987,7 +987,7 @@ func _test_combat_playback_controller() -> void:
 	var previous := _combat_playback_view(20, Vector2i(45, 45), Vector2i(47, 45), &"active")
 	var final := _combat_playback_view(12, Vector2i(46, 45), Vector2i(47, 45), &"active")
 	var events: Array[DomainEvent] = [DomainEvent.new(&"combat_auto_started", {"actorId": "hero"}), DomainEvent.new(&"combatant_moved", {"actorId": "hero", "from": [45, 45], "to": [46, 45]}), DomainEvent.new(&"combat_attack_resolved", {"actorId": "hero", "targetId": "monster", "hit": true, "damage": 8, "classicResultEffectResourceId": 160}), DomainEvent.new(&"combat_spell_resolved", {"actorId": "hero", "targetId": "monster", "resisted": true, "classicResolutionEffectResourceIds": [12032, 12033, 12034, 12035, 12036, 12037, 12038, 12039]}), DomainEvent.new(&"combat_auto_completed", {"actorId": "hero"})]
-	var controller := CombatPlaybackController.new()
+	var controller := CombatPlaybackController.new(); controller.set_speed_percent(50)
 	var frames: Array[CombatPlaybackFrame] = []
 	controller.frame_changed.connect(func(frame: CombatPlaybackFrame) -> void: if frame.progress == 0.0: frames.append(frame))
 	assert_true(controller.begin(previous, events, final, false), "combat events create one presentation playback transaction")
@@ -995,7 +995,7 @@ func _test_combat_playback_controller() -> void:
 	var kinds: Array[StringName] = []
 	for frame: CombatPlaybackFrame in frames:
 		kinds.append(frame.kind)
-	assert_true(kinds.has(&"move_start") and kinds.has(&"melee_attack") and frames[0].duration_seconds < 0.08 and frames.any(func(frame: CombatPlaybackFrame) -> bool: return frame.kind == &"move_start" and frame.automatic and InteractionPresenter.playback_status_text(frame).begins_with("Auto Turn") and InteractionPresenter.playback_status_text(frame).contains("Esc cancels Party Auto")), "automatic movement and physical results retain distinct accelerated frames and expose the full-party safety hatch")
+	assert_true(kinds.has(&"move_start") and kinds.has(&"melee_attack") and is_equal_approx(frames[0].duration_seconds, 0.032) and frames.any(func(frame: CombatPlaybackFrame) -> bool: return frame.kind == &"move_start" and frame.automatic and InteractionPresenter.playback_status_text(frame).begins_with("Auto Turn") and InteractionPresenter.playback_status_text(frame).contains("Esc cancels Party Auto")), "the persisted 50-percent combat speed slows automatic movement while retaining distinct frames and the full-party safety hatch")
 	assert_equal(kinds.count(&"spell_effect"), 8, "source-backed spell resolution retains its eight-frame family")
 	assert_true(frames.any(func(frame: CombatPlaybackFrame) -> bool: return frame.kind == &"result" and frame.display_text == "8"), "damage is shown once over the target")
 	assert_equal(controller.base_view, previous, "playback retains the previous battlefield until visuals settle")
