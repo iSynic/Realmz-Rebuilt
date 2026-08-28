@@ -123,7 +123,7 @@ func shop_request(shop: ShopDefinition, request_id: String, accept_ranges: Array
 				identify_reason = "This item is already identified."
 			elif party_gold < 20:
 				identify_reason = "Identification costs 20 gold."
-			inventory.append({
+			var item_view := {
 				"instanceId": instance.id,
 				"itemId": definition.id,
 				"name": definition.name if instance.identified else definition.unidentified_name,
@@ -135,9 +135,12 @@ func shop_request(shop: ShopDefinition, request_id: String, accept_ranges: Array
 				"sellReason": sell_reason,
 				"canIdentify": can_identify,
 				"identifyReason": identify_reason,
-				"iconResourceType": "cicn",
-				"iconId": definition.visible_icon_id(instance.identified),
-			})
+			}
+			var visible_icon_id := definition.visible_icon_id(instance.identified)
+			if visible_icon_id > 0:
+				item_view["iconResourceType"] = "cicn"
+				item_view["iconId"] = visible_icon_id
+			inventory.append(item_view)
 		characters.append({"id": character.id, "name": character.name, "portraitId": character.portrait_id, "inventory": inventory})
 	return InteractionRequest.from_payload(request_id, &"shop_action", {
 		"shopId": shop.id,
@@ -573,7 +576,7 @@ func _recalculate_party_movement() -> void:
 
 func _shop_stock_view(item: ItemDefinition, stock_key: String, stock_index: int, quantity: int, shop: ShopDefinition) -> Dictionary:
 	var price := _rules.economy.shop_buy_price(item, _game_state.shop_inflation(shop))
-	return {
+	var result := {
 		"stockKey": stock_key,
 		"index": stock_index,
 		"itemId": item.id,
@@ -583,9 +586,12 @@ func _shop_stock_view(item: ItemDefinition, stock_key: String, stock_index: int,
 		"canBuy": quantity > 0 and _rules.economy.available(_game_state.party, WealthState.Kind.GOLD) >= price,
 		"buyReason": "Out of stock." if quantity < 1 else "The party cannot afford this item." if _rules.economy.available(_game_state.party, WealthState.Kind.GOLD) < price else "",
 		"category": String(_shop_category(stock_index)),
-		"iconResourceType": "cicn",
-		"iconId": item.visible_icon_id(true),
 	}
+	var visible_icon_id := item.visible_icon_id(true)
+	if visible_icon_id > 0:
+		result["iconResourceType"] = "cicn"
+		result["iconId"] = visible_icon_id
+	return result
 
 
 func _matching_base_stock_index(shop: ShopDefinition, item_id: String) -> int:

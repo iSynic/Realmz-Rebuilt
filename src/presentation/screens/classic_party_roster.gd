@@ -33,7 +33,8 @@ var _selection_request_id: String = ""
 var _selection_count: int = 0
 var _selection_eligible_ids: Array[String] = []
 var _selection_order: Array[String] = []
-var _selection_cursors: Dictionary = {}
+var _selection_cursor_layer: CanvasLayer
+var _selection_cursor_label: Label
 var _combat_spellbook_active: bool = false
 var _spellbook_options: Array[InteractionRequestValue.CastOption] = []
 var _spellbook_actor_id: String = ""
@@ -49,6 +50,16 @@ var _spellbook_cast: Button
 
 func _exit_tree() -> void:
 	_restore_pointer()
+
+
+func _process(_delta: float) -> void:
+	if not character_selection_active() or not is_instance_valid(_selection_cursor_label):
+		set_process(false)
+		return
+	Input.set_custom_mouse_cursor(null, Input.CURSOR_ARROW)
+	var viewport := get_viewport()
+	if viewport != null:
+		_selection_cursor_label.position = viewport.get_mouse_position() + Vector2(14.0, 10.0)
 
 
 func set_media_catalog(media: ClassicMediaCatalog) -> void:
@@ -627,6 +638,7 @@ func present_character_selection(request: InteractionRequest) -> void:
 		call_deferred("_focus_first_eligible")
 	_update_selection_cursor()
 	_represent()
+	_update_selection_cursor()
 
 
 func clear_character_selection() -> void:
@@ -680,32 +692,73 @@ func _update_selection_cursor() -> void:
 	if remaining < 1:
 		_restore_pointer()
 		return
-	if not _selection_cursors.has(remaining):
-		_selection_cursors[remaining] = _number_cursor(remaining)
-	Input.set_custom_mouse_cursor(_selection_cursors[remaining], Input.CURSOR_ARROW, Vector2(8.0, 10.0))
+	_ensure_selection_cursor_label()
+	_selection_cursor_label.text = str(remaining)
+	_selection_cursor_label.visible = true
+	set_process(true)
+	_process(0.0)
 
 
 func _restore_pointer() -> void:
 	Input.set_custom_mouse_cursor(null, Input.CURSOR_ARROW)
+	set_process(false)
+	if is_instance_valid(_selection_cursor_label):
+		_selection_cursor_label.visible = false
+		_selection_cursor_label.text = ""
 
 
-static func _number_cursor(number: int) -> ImageTexture:
-	var patterns := {
-		1: ["010", "110", "010", "010", "111"], 2: ["110", "001", "010", "100", "111"],
-		3: ["110", "001", "010", "001", "110"], 4: ["101", "101", "111", "001", "001"],
-		5: ["111", "100", "110", "001", "110"], 6: ["011", "100", "111", "101", "111"],
-	}
-	var image := Image.create(18, 22, false, Image.FORMAT_RGBA8)
+func _ensure_selection_cursor_label() -> void:
+	if is_instance_valid(_selection_cursor_label):
+		return
+	_selection_cursor_layer = CanvasLayer.new()
+	_selection_cursor_layer.name = "CharacterSelectionCursorLayer"
+	_selection_cursor_layer.layer = 600
+	add_child(_selection_cursor_layer)
+	_selection_cursor_label = Label.new()
+	_selection_cursor_label.name = "CharacterSelectionCursorCount"
+	_selection_cursor_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_selection_cursor_label.add_theme_font_override("font", load("res://src/presentation/assets/fonts/AlegreyaSans-Bold.ttf") as Font)
+	_selection_cursor_label.add_theme_font_size_override("font_size", 22)
+	_selection_cursor_label.add_theme_color_override("font_color", Color("e0bc53"))
+	_selection_cursor_label.add_theme_color_override("font_outline_color", Color("16191d"))
+	_selection_cursor_label.add_theme_constant_override("outline_size", 3)
+	_selection_cursor_layer.add_child(_selection_cursor_label)
+
+
+func play_character_effect(character_id: String, first_resource_id: int, frame_count: int) -> void:
+	if character_id.is_empty() or first_resource_id <= 0 or frame_count <= 0:
+		return
+	var row := _character_row(character_id)
+	if row == null:
+		return
+	var base_icon := row.icon
+	var tween := create_tween()
+	for frame_index: int in frame_count:
+		tween.tween_callback(_set_character_effect_frame.bind(row, base_icon, first_resource_id + frame_index))
+		tween.tween_interval(0.055)
+	tween.tween_callback(_restore_character_effect.bind(row, base_icon))
+
+
+func _character_row(character_id: String) -> Button:
+	for node: Node in _party_list.find_children("*", "Button", true, false):
+		if node.has_meta("character_id") and String(node.get_meta("character_id")) == character_id:
+			return node as Button
+	return null
+
+
+func _set_character_effect_frame(row: Button, base_icon: Texture2D, resource_id: int) -> void:
+	if not is_instance_valid(row):
+		return
+	var image := Image.create(CLASSIC_PORTRAIT_STAGE_SIZE.x, CLASSIC_PORTRAIT_STAGE_SIZE.y, false, Image.FORMAT_RGBA8)
 	image.fill(Color.TRANSPARENT)
-	var pattern: Array = patterns.get(number, patterns[1])
-	for y: int in pattern.size():
-		for x: int in 3:
-			if String(pattern[y]).substr(x, 1) != "1":
-				continue
-			for pixel_y: int in 3:
-				for pixel_x: int in 3:
-					image.set_pixel(4 + x * 3 + pixel_x, 3 + y * 3 + pixel_y, Color("e0bc53"))
-	return ImageTexture.create_from_image(image)
+	_blend_centered(image, base_icon)
+	_blend_centered(image, _resource_texture(resource_id))
+	row.icon = ImageTexture.create_from_image(image)
+
+
+static func _restore_character_effect(row: Button, base_icon: Texture2D) -> void:
+	if is_instance_valid(row):
+		row.icon = base_icon
 
 
 func _add_empty(text: String) -> void:

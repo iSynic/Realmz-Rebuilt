@@ -147,16 +147,19 @@ func _take_experience(action: ClassicActionDefinition) -> ScenarioRuntimeOperati
 
 func _level_selected_characters() -> ScenarioRuntimeOperationResult:
 	var leveled: Array[String] = []
+	var balances: Dictionary = {}
 	for character: CharacterState in _game_state.selected_characters():
 		var race := _content.race_by_id(character.race_id)
 		var caste := _content.caste_by_id(character.caste_id)
 		if race == null or caste == null:
 			return ScenarioRuntimeOperationResult.failed(&"unknown_character_profile", "Classic opcode 102 requires source-defined race and caste profiles.")
-		character.experience = 1
+		var threshold_index := clampi(character.level, 1, 30) - 1
+		character.experience = 1 - caste.victory_threshold(threshold_index)
 		if _rules.characters.level_up(character, race, caste, _rng) == null:
 			return ScenarioRuntimeOperationResult.failed(&"character_level_failed", "Classic opcode 102 could not level character '%s'." % character.id)
 		leveled.append(character.id)
-	return ScenarioRuntimeOperationResult.completed(leveled, [DomainEvent.new(&"characters_leveled", {"characterIds": leveled, "source": "classic"})])
+		balances[character.id] = character.experience
+	return ScenarioRuntimeOperationResult.completed(leveled, [DomainEvent.new(&"characters_leveled", {"characterIds": leveled, "experienceRemaining": balances, "source": "classic"})])
 
 
 func _request_character_selection(action: ClassicActionDefinition, request_id: String, invert: bool) -> ScenarioRuntimeOperationResult:
@@ -190,17 +193,29 @@ func _request_character_ability(action: ClassicActionDefinition, request_id: Str
 
 
 func _apply_health(action: ClassicActionDefinition, whole_party: bool) -> ScenarioRuntimeOperationResult:
-	if action.extra_code.size() < 5 or action.extra_code[2] < action.extra_code[1]:
+	if action.extra_code.size() < 5:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_health_effect", "Classic health action requires a valid Extra Code roll range.")
+	var message: MessageDefinition = null
+	if action.extra_code[4] != 0:
+		message = _content.message_by_id(absi(action.extra_code[4]))
+		if message == null:
+			return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic opcode 15 references unavailable message %d." % action.extra_code[4])
 	var targets := _game_state.party.characters() if whole_party else _game_state.selected_characters()
 	var hits: Array[Dictionary] = []
+	var events: Array[DomainEvent] = []
 	for character: CharacterState in targets:
-		var roll := _rng.draw_between(action.extra_code[1], action.extra_code[2], &"classic.health-effect")
+		if action.extra_code[3] != 0:
+			events.append(DomainEvent.new(&"sound_requested", {"soundId": absi(action.extra_code[3]), "waitForCompletion": action.extra_code[3] < 0, "source": "classic-opcode-15"}))
+		var roll := _rng.draw_between_classic(action.extra_code[1], action.extra_code[2], &"classic.health-effect")
 		var amount := action.extra_code[0] * roll
 		var previous := character.current_health
 		character.current_health = mini(character.maximum_health, maxi(-32_768, character.current_health + amount))
 		hits.append({"characterId": character.id, "previousHealth": previous, "health": character.current_health, "amount": character.current_health - previous})
-	return ScenarioRuntimeOperationResult.completed(hits, [DomainEvent.new(&"party_health_changed", {"targets": "party" if whole_party else "selected", "hits": hits, "soundId": action.extra_code[3], "messageId": action.extra_code[4]})])
+		events.append(DomainEvent.new(&"character_effect_requested", {"characterId": character.id, "resourceType": "cicn", "firstResourceId": 12112, "frameCount": 8, "source": "classic-opcode-15"}))
+	events.append(DomainEvent.new(&"party_health_changed", {"targets": "party" if whole_party else "selected", "hits": hits}))
+	if message != null:
+		events.append(DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-opcode-15", "classicClick": action.extra_code[4] > 0}))
+	return ScenarioRuntimeOperationResult.completed(hits, events)
 
 
 func _filter_character_selection(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:

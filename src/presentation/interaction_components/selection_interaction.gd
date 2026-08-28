@@ -13,12 +13,6 @@ var _media: ClassicMediaCatalog
 var _game_view: GameView
 var _ally_summary: Label
 var _ally_maximum := 0
-var _character_selection_ids: Array[String] = []
-var _character_selection_order: Array[String] = []
-var _character_selection_count: int = 1
-var _character_selection_continue: Button
-
-
 func configure(media: ClassicMediaCatalog, game_view: GameView = null) -> void:
 	_media = media
 	_game_view = game_view
@@ -36,65 +30,7 @@ func _build_character_selection(request: InteractionRequest) -> void:
 	if body == null: return
 	if body.spell_context != null:
 		_add_spell_target_context(body.spell_context)
-	_character_selection_count = body.count
-	add_hint("Choose %d party member%s." % [body.count, "" if body.count == 1 else "s"])
-	var panel := PanelContainer.new()
-	panel.name = "CharacterSelectionPane"
-	panel.theme_type_variation = &"ClassicInset"
-	var grid := GridContainer.new()
-	grid.name = "CharacterSelectionGrid"
-	grid.columns = mini(3, maxi(1, body.eligible.size()))
-	grid.add_theme_constant_override("h_separation", 5)
-	grid.add_theme_constant_override("v_separation", 5)
-	panel.add_child(grid)
-	for candidate: InteractionRequestValue.SelectionCandidate in body.eligible:
-		_character_selection_order.append(candidate.id)
-		var button := Button.new()
-		button.name = "CharacterSelection_%s" % candidate.id
-		button.text = candidate.name
-		button.icon = _character_portrait(candidate.id)
-		button.expand_icon = true
-		button.toggle_mode = true
-		button.custom_minimum_size.y = 46.0
-		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		button.pressed.connect(_toggle_character.bind(candidate.id, button))
-		grid.add_child(button)
-	add_child(panel)
-	if body.count > 1:
-		_character_selection_continue = Button.new()
-		_character_selection_continue.name = "CharacterSelectionContinue"
-		_character_selection_continue.text = "Continue"
-		_character_selection_continue.disabled = true
-		_character_selection_continue.pressed.connect(_submit_character_selection)
-		add_child(_character_selection_continue)
-
-
-func _toggle_character(character_id: String, button: Button) -> void:
-	if button.button_pressed:
-		_character_selection_ids.append(character_id)
-	else:
-		_character_selection_ids.erase(character_id)
-	if _character_selection_count == 1:
-		response_body_submitted.emit(InteractionResponse.SelectionBody.new([character_id]))
-	elif _character_selection_continue != null:
-		_character_selection_continue.disabled = _character_selection_ids.size() != _character_selection_count
-
-
-func _submit_character_selection() -> void:
-	if _character_selection_ids.size() == _character_selection_count:
-		var ordered: Array[String] = []
-		for character_id: String in _character_selection_order:
-			if _character_selection_ids.has(character_id): ordered.append(character_id)
-		response_body_submitted.emit(InteractionResponse.SelectionBody.new(ordered))
-
-
-func _character_portrait(character_id: String) -> Texture2D:
-	if _media == null or _game_view == null:
-		return null
-	for character: CharacterView in _game_view.party_members:
-		if character.id == character_id and not character.portrait_id.is_empty():
-			return _media.image_texture(_media.asset_by_id(character.portrait_id))
-	return null
+	add_hint("Choose %d party member%s from the Party roster." % [body.count, "" if body.count == 1 else "s"])
 
 
 func _add_spell_target_context(context: InteractionRequestValue.SpellTargetContext) -> void:

@@ -319,6 +319,9 @@ func present_media_events(events: Array[DomainEvent], media: ClassicMediaCatalog
 	if media == null:
 		return
 	for event: DomainEvent in events:
+		if event.kind == &"character_effect_requested":
+			_party_roster.play_character_effect(String(event.payload.get("characterId", "")), int(event.payload.get("firstResourceId", 0)), int(event.payload.get("frameCount", 0)))
+			continue
 		if event.kind != &"picture_requested":
 			continue
 		var picture_id := int(event.payload.get("pictureId", 0))
@@ -366,15 +369,15 @@ func set_music_playback_state(playlist_id: int, title: String, playing: bool) ->
 
 
 func accepts_exploration_input() -> bool:
-	return not _picture_stage.visible and (_music_dialog == null or not _music_dialog.visible) and _router.accepts_exploration_input()
+	return (_music_dialog == null or not _music_dialog.visible) and _router.accepts_exploration_input()
 
 
 func handle_back() -> bool:
 	if _music_dialog != null and _music_dialog.visible:
 		_music_dialog.close()
 		return true
-	if _picture_stage.visible:
-		_picture_stage.visible = false
+	if _router.current_screen() == &"exploration" and _current_view != null and _current_view.session_started:
+		_router.open_screen(&"system")
 		return true
 	var handled := _router.handle_back()
 	if handled:

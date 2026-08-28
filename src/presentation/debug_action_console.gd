@@ -1,6 +1,8 @@
 class_name DebugActionConsole
 extends PanelContainer
 
+const ClassicTypographyScript := preload("res://src/presentation/classic_typography.gd")
+
 signal close_requested
 signal clear_requested
 
@@ -13,7 +15,7 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 24)
 	z_index = 510
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color("e614181c")
+	style.bg_color = Color("101317")
 	style.border_color = Color("bd9c55")
 	style.set_border_width_all(2)
 	style.set_corner_radius_all(4)
@@ -27,11 +29,14 @@ func _ready() -> void:
 	add_child(root)
 	var toolbar := HBoxContainer.new()
 	var title := Label.new()
+	var readable_font := load(ClassicTypographyScript.READABLE_UI_PATH) as Font
 	title.text = "GAME-ACTION CONSOLE · DEBUG"
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title.add_theme_font_size_override("font_size", 22)
+	title.add_theme_font_override("font", readable_font)
 	toolbar.add_child(title)
 	_count = Label.new()
+	_count.add_theme_font_override("font", readable_font)
 	toolbar.add_child(_count)
 	toolbar.add_child(_button("Clear", func() -> void: clear_requested.emit()))
 	toolbar.add_child(_button("Copy all", _copy_all))
@@ -45,6 +50,8 @@ func _ready() -> void:
 	_log.scroll_following = true
 	_log.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_log.add_theme_font_size_override("normal_font_size", 15)
+	_log.add_theme_font_override("normal_font", readable_font)
+	_log.add_theme_color_override("default_color", Color("eef2f4"))
 	root.add_child(_log)
 	visible = false
 
@@ -75,5 +82,6 @@ func _copy_all() -> void:
 static func _button(text: String, pressed: Callable) -> Button:
 	var button := Button.new()
 	button.text = text
+	button.add_theme_font_override("font", load(ClassicTypographyScript.READABLE_UI_PATH) as Font)
 	button.pressed.connect(pressed)
 	return button

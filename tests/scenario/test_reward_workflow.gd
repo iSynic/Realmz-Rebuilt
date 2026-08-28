@@ -98,7 +98,7 @@ func _test_ordinary_distribution_and_restore(content: RealmzContent) -> void:
 
 
 func _test_experience_level_and_spell_restore(content: RealmzContent) -> void:
-	var character := _character(content, "reward.leveler", "Leveler", 500, -1, 6)
+	var ordinary := _character(content, "reward.ordinary", "Ordinary", 100, -1_000); ordinary.race_id = (content.race_definitions().filter(func(race: RaceDefinition) -> bool: return race.max_age > 0)[0] as RaceDefinition).id; var ordinary_state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [ordinary]), RealmzClock.new()); ordinary_state.experience_multiplier = 1.0; var ordinary_api := RealmzRuntimeApi.new(content, ordinary_state, RealmzRng.new(19), ScenarioActionState.new(), RealmzRules.new()); var ordinary_reward: ScenarioRuntimeOperationResult = ordinary_api.execute_classic(ClassicActionDefinition.new(0, 11, 11, 100, false, []), "reward.ordinary"); var ordinary_done: ScenarioRuntimeOperationResult = ordinary_api.resume_safe(ordinary_reward.continuation, InteractionResponse.from_data(ordinary_reward.interaction.request_id, ordinary_reward.interaction.kind, {"action": "done"}), "reward.ordinary.done"); assert_equal([ordinary_done.state, ordinary.level, ordinary.experience, ordinary_done.events.any(func(event: DomainEvent) -> bool: return event.kind == &"character_leveled")], [ScenarioRuntimeOperationResult.State.COMPLETED, 1, -900, false], "an ordinary negative VP balance receives its share without entering level-up progression"); var character := _character(content, "reward.leveler", "Leveler", 500, -1, 6)
 	character.knowledge = 18
 	character.judgment = 16
 	character.vitality = 15
