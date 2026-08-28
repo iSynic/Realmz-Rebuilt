@@ -7,6 +7,7 @@ const GOLD := Color("e5c45c")
 const CYAN := Color("8fcfd1")
 const MUTED := Color("aeb6ba")
 const INK := Color("111315")
+const ITEM_DETAIL_POPOVER_SCRIPT := preload("res://src/presentation/classic_item_detail_popover.gd")
 
 var _compact := false
 var _media: ClassicMediaCatalog
@@ -24,6 +25,7 @@ var _transferring := false
 var _transfer_item: InteractionRequestValue.RewardItem
 var _transfer_source: Button
 var _transfer_target: Button
+var _detail_popover: CanvasLayer
 
 
 func configure(media: ClassicMediaCatalog, game_view: GameView, compact: bool, selected_recipient_id: String = "") -> void:
@@ -40,6 +42,9 @@ func build(request: InteractionRequest) -> void:
 		return
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
 	custom_minimum_size = Vector2(0.0, 500.0 if _compact else 0.0)
+	_detail_popover = ITEM_DETAIL_POPOVER_SCRIPT.new()
+	add_child(_detail_popover)
+	_detail_popover.configure(_media, get_theme())
 	match body.mode:
 		&"fumbled-item-recovery":
 			_build_workspace(body, true)
@@ -253,6 +258,7 @@ func _add_loot_item(parent: GridContainer, item: InteractionRequestValue.RewardI
 	cell.mouse_exited.connect(_hide_loot_ring.bind(item.instance_id))
 	cell.focus_exited.connect(_hide_loot_ring.bind(item.instance_id))
 	cell.pressed.connect(_begin_item_transfer.bind(item, cell))
+	_detail_popover.bind_hover(cell, _item_detail(item))
 
 
 func _build_party_side(parent: HBoxContainer, body: InteractionRequest.TreasureRequestBody) -> void:
@@ -866,6 +872,15 @@ func _item_state(item: InteractionRequestValue.RewardItem) -> String:
 	if item.magical:
 		return "Identified • magic detected" if item.identified else "Magic detected • unidentified"
 	return "Identified" if item.identified else "Unidentified"
+
+
+func _item_detail(item: InteractionRequestValue.RewardItem) -> Dictionary:
+	var facts: Array[Dictionary] = []
+	for fact: InteractionRequestValue.RewardFact in item.facts:
+		facts.append({"label": fact.label, "value": fact.value})
+	if item.charges != 0:
+		facts.append({"label": "Charges", "value": "Unlimited" if item.charges < 0 else str(item.charges)})
+	return {"title": item.name, "subtitle": _item_state(item), "description": item.description, "facts": facts, "iconResourceType": item.icon_resource_type, "iconId": item.icon_id}
 
 
 func _add_expanding_spacer(parent: Container, spacer_name: String) -> void:

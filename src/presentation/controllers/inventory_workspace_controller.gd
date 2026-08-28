@@ -18,6 +18,7 @@ const LEDGER_RED := Color("ad2721")
 const CONTENT_ICON_SCRIPT := preload("res://src/presentation/classic_content_icon.gd")
 const EXCHANGE_ITEM_BUTTON_SCRIPT := preload("res://src/presentation/interaction_components/classic_exchange_item_button.gd")
 const EXCHANGE_LEDGER_SCRIPT := preload("res://src/presentation/interaction_components/classic_exchange_ledger.gd")
+const ITEM_DETAIL_POPOVER_SCRIPT := preload("res://src/presentation/classic_item_detail_popover.gd")
 
 var _selected_character_id: String = ""
 var _selected_item_instance_id: String = ""
@@ -92,6 +93,9 @@ func _present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog,
 		_trade_status = ""
 		_clear_pending_action()
 	var visible_items := _eligible_items(selected_character)
+	var detail_popover := ITEM_DETAIL_POPOVER_SCRIPT.new() as CanvasLayer
+	parent.add_child(detail_popover)
+	detail_popover.configure(media, parent.get_theme())
 	var selected_item := _selected_item(visible_items)
 	if selected_item == null and not visible_items.is_empty():
 		selected_item = visible_items[0]
@@ -101,7 +105,7 @@ func _present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog,
 		if target == null:
 			_cancel_trade()
 			return
-		parent.add_child(_build_trade_workspace(view, selected_character, target, selected_item, media))
+		parent.add_child(_build_trade_workspace(view, selected_character, target, selected_item, media, detail_popover))
 		parent.add_child(_build_trade_item_record(selected_character, selected_item, media))
 		return
 	var main_split := HBoxContainer.new()
@@ -110,7 +114,7 @@ func _present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog,
 	main_split.custom_minimum_size.y = 300.0 if _layout_profile == UiLayoutProfile.COMPACT else 410.0
 	main_split.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	main_split.size_flags_vertical = Control.SIZE_FILL if _layout_profile == UiLayoutProfile.COMPACT else Control.SIZE_EXPAND_FILL
-	main_split.add_child(_build_item_browser(selected_character, visible_items, selected_item, media))
+	main_split.add_child(_build_item_browser(selected_character, visible_items, selected_item, media, detail_popover))
 	main_split.add_child(_build_character_command_rail(view, selected_character, selected_item, media))
 	parent.add_child(main_split)
 	parent.add_child(_build_item_record(selected_character, selected_item, media))
@@ -181,7 +185,7 @@ func select_roster_character(character_id: String, view: GameView) -> bool:
 	return true
 
 
-func _build_item_browser(character: CharacterView, items: Array[ItemView], selected: ItemView, media: ClassicMediaCatalog) -> PanelContainer:
+func _build_item_browser(character: CharacterView, items: Array[ItemView], selected: ItemView, media: ClassicMediaCatalog, detail_popover: CanvasLayer) -> PanelContainer:
 	var panel := PanelContainer.new()
 	panel.name = "InventoryItemBrowser"
 	panel.theme_type_variation = &"ClassicItemLedger"
@@ -220,7 +224,8 @@ func _build_item_browser(character: CharacterView, items: Array[ItemView], selec
 		row_panel.theme_type_variation = &"ClassicItemLedgerSelectedRow" if selected != null and selected.instance_id == item.instance_id else &"ClassicItemLedgerRow"
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 5)
-		row.add_child(_content_icon(item.icon_resource_type, item.icon_id, media, 38.0, item.name))
+		var icon := _content_icon(item.icon_resource_type, item.icon_id, media, 38.0, item.name)
+		row.add_child(icon)
 		var item_text := VBoxContainer.new()
 		item_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		item_text.add_theme_constant_override("separation", -2)
@@ -243,6 +248,8 @@ func _build_item_browser(character: CharacterView, items: Array[ItemView], selec
 			fact_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			item_text.add_child(fact_label)
 		row.add_child(item_text)
+		detail_popover.bind_hover(icon, _item_detail(item))
+		detail_popover.bind_hover(button, _item_detail(item))
 		var state_parts: Array[String] = []
 		if item.equipped:
 			state_parts.append("Equipped")
@@ -257,6 +264,13 @@ func _build_item_browser(character: CharacterView, items: Array[ItemView], selec
 		row_panel.add_child(row)
 		list.add_child(row_panel)
 	return panel
+
+
+static func _item_detail(item: ItemView) -> Dictionary:
+	var facts: Array[Dictionary] = []
+	for fact: ItemFactView in item.facts:
+		facts.append({"label": fact.label, "value": fact.value})
+	return {"title": item.name, "subtitle": "%s  •  Weight %d  •  %s" % ["Equipped" if item.equipped else "Carried", item.weight, "Unlimited charges" if item.charges < 0 else "%d charges" % item.charges], "description": item.description, "facts": facts, "properties": item.properties.duplicate(), "restrictions": item.restrictions.duplicate(), "iconResourceType": item.icon_resource_type, "iconId": item.icon_id}
 
 
 func _item_line_fact(item: ItemView) -> ItemFactView:
@@ -522,7 +536,7 @@ func _clear_pending_action() -> void:
 	_pending_item_intent = null
 
 
-func _build_trade_workspace(view: GameView, source: CharacterView, target: CharacterView, selected_item: ItemView, media: ClassicMediaCatalog) -> PanelContainer:
+func _build_trade_workspace(view: GameView, source: CharacterView, target: CharacterView, selected_item: ItemView, media: ClassicMediaCatalog, detail_popover: CanvasLayer) -> PanelContainer:
 	var panel := PanelContainer.new()
 	panel.name = "InventoryTradeWorkspace"
 	panel.theme_type_variation = &"ClassicInset"
@@ -535,16 +549,16 @@ func _build_trade_workspace(view: GameView, source: CharacterView, target: Chara
 	ledgers.name = "InventoryTradeLedgers"
 	ledgers.add_theme_constant_override("separation", 8)
 	ledgers.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	ledgers.add_child(_build_trade_ledger(view, source, target.id, media))
+	ledgers.add_child(_build_trade_ledger(view, source, target.id, media, detail_popover))
 	ledgers.add_child(_build_trade_control_spine(view, source, target, media))
-	ledgers.add_child(_build_trade_ledger(view, target, source.id, media))
+	ledgers.add_child(_build_trade_ledger(view, target, source.id, media, detail_popover))
 	column.add_child(ledgers)
 	if not _trade_status.is_empty():
 		_add_label(column, _trade_status, WARNING, 12)
 	return panel
 
 
-func _build_trade_ledger(view: GameView, character: CharacterView, other_id: String, media: ClassicMediaCatalog) -> PanelContainer:
+func _build_trade_ledger(view: GameView, character: CharacterView, other_id: String, media: ClassicMediaCatalog, detail_popover: CanvasLayer) -> PanelContainer:
 	var ledger := EXCHANGE_LEDGER_SCRIPT.new()
 	ledger.name = "InventoryTradeLedger_%s" % character.id
 	ledger.theme_type_variation = &"ClassicItemLedger"
@@ -573,7 +587,8 @@ func _build_trade_ledger(view: GameView, character: CharacterView, other_id: Str
 	for item: ItemView in character.items:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 4)
-		row.add_child(_content_icon(item.icon_resource_type, item.icon_id, media, 34.0, item.name))
+		var icon := _content_icon(item.icon_resource_type, item.icon_id, media, 34.0, item.name)
+		row.add_child(icon)
 		var button := EXCHANGE_ITEM_BUTTON_SCRIPT.new()
 		button.name = "InventoryTradeItem_%s" % item.instance_id
 		button.theme_type_variation = &"ClassicItemLedgerButton"
@@ -585,6 +600,8 @@ func _build_trade_ledger(view: GameView, character: CharacterView, other_id: Str
 		button.pressed.connect(_select_trade_item.bind(view, character.id, item.instance_id, other_id))
 		button.configure_drag({"kind": &"inventory-trade-item", "sourceId": character.id, "instanceId": item.instance_id})
 		row.add_child(button)
+		detail_popover.bind_hover(icon, _item_detail(item))
+		detail_popover.bind_hover(button, _item_detail(item))
 		rows.add_child(row)
 	if character.items.is_empty():
 		_add_label(rows, "No carried items.", LEDGER_MUTED, 12)

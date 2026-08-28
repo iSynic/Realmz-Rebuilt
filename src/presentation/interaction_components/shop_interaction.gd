@@ -7,6 +7,7 @@ const MUTED := Color("aeb6ba")
 const CONTENT_ICON_SCRIPT := preload("res://src/presentation/classic_content_icon.gd")
 const EXCHANGE_ITEM_BUTTON_SCRIPT := preload("res://src/presentation/interaction_components/classic_exchange_item_button.gd")
 const EXCHANGE_LEDGER_SCRIPT := preload("res://src/presentation/interaction_components/classic_exchange_ledger.gd")
+const ITEM_DETAIL_POPOVER_SCRIPT := preload("res://src/presentation/classic_item_detail_popover.gd")
 const STOCK_FILTERS: Array[Dictionary] = [
 	{"id": &"weapons", "asset": &"inventory.category.weapons", "label": "Weapons"},
 	{"id": &"armor", "asset": &"inventory.category.armor", "label": "Armor"},
@@ -35,6 +36,7 @@ var _inventory_group := ButtonGroup.new()
 var _category_group := ButtonGroup.new()
 var _category_buttons: Dictionary = {}
 var _shopper_buttons: Dictionary = {}
+var _detail_popover: CanvasLayer
 
 
 func configure(media: ClassicMediaCatalog, compact: bool) -> void:
@@ -54,6 +56,9 @@ func build(request: InteractionRequest) -> void:
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
 	custom_minimum_size = Vector2(0.0, 500.0) if _compact else Vector2.ZERO
 	add_theme_constant_override("separation", 6)
+	_detail_popover = ITEM_DETAIL_POPOVER_SCRIPT.new()
+	add_child(_detail_popover)
+	_detail_popover.configure(_media, get_theme())
 	_build_header()
 	_build_workspace()
 	_build_footer()
@@ -167,6 +172,8 @@ func _refresh_stock() -> void:
 		button.pressed.connect(_select_stock.bind(entry.stock_key))
 		button.configure_drag({"kind": &"shop-stock-item", "sourceId": "shop", "stockKey": entry.stock_key})
 		row.add_child(button)
+		_detail_popover.bind_hover(icon, _stock_detail(entry))
+		_detail_popover.bind_hover(button, _stock_detail(entry))
 		_stock_rows.add_child(row)
 
 
@@ -291,6 +298,8 @@ func _refresh_inventory() -> void:
 		button.pressed.connect(_select_item.bind(character.id, item.instance_id))
 		button.configure_drag({"kind": &"shop-inventory-item", "sourceId": character.id, "instanceId": item.instance_id})
 		row.add_child(button)
+		_detail_popover.bind_hover(icon, _inventory_detail(item))
+		_detail_popover.bind_hover(button, _inventory_detail(item))
 		_inventory_rows.add_child(row)
 	if character.inventory.is_empty():
 		_inventory_rows.add_child(_label("%s carries no items." % character.name, MUTED))
@@ -486,6 +495,20 @@ func _portrait_texture(asset_id: String) -> Texture2D:
 	if _media == null or asset_id.is_empty():
 		return null
 	return _media.image_texture(_media.asset_by_id(asset_id))
+
+
+func _stock_detail(entry: InteractionRequestValue.ShopStock) -> Dictionary:
+	return {"title": entry.name, "subtitle": "Shop stock", "facts": [{"label": "Price", "value": "%d gold" % entry.buy_price}, {"label": "Quantity", "value": str(entry.quantity)}], "restrictions": [entry.buy_reason] if not entry.buy_reason.is_empty() else [], "iconResourceType": entry.icon_resource_type, "iconId": entry.icon_id}
+
+
+func _inventory_detail(item: InteractionRequestValue.InventoryItem) -> Dictionary:
+	var facts: Array[Dictionary] = [{"label": "State", "value": "Equipped" if item.equipped else "Carried"}, {"label": "Knowledge", "value": "Identified" if item.identified else "Unidentified"}, {"label": "Sell", "value": "%d gold" % item.sell_price}]
+	if item.charges != 0:
+		facts.append({"label": "Charges", "value": "Unlimited" if item.charges < 0 else str(item.charges)})
+	var restrictions: Array[String] = []
+	if not item.sell_reason.is_empty(): restrictions.append(item.sell_reason)
+	if not item.identify_reason.is_empty(): restrictions.append(item.identify_reason)
+	return {"title": item.name, "subtitle": "Adventurer pack", "facts": facts, "restrictions": restrictions, "iconResourceType": item.icon_resource_type, "iconId": item.icon_id}
 
 
 func _exchange_pane(parent: HBoxContainer, pane_name: String, title: String, accepted_kind: StringName, target_id: String) -> VBoxContainer:
