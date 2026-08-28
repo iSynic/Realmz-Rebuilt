@@ -443,6 +443,7 @@ ClassicItemLedgerButton/base_type = &"Button"
 ClassicItemLedgerButton/colors/font_color = Color(0.055, 0.055, 0.05, 1)
 ClassicItemLedgerButton/colors/font_hover_color = Color(0.02, 0.26, 0.52, 1)
 ClassicItemLedgerButton/colors/font_pressed_color = Color(0.34, 0.25, 0.02, 1)
+ClassicItemLedgerButton/colors/font_hover_pressed_color = Color(0.34, 0.25, 0.02, 1)
 ClassicItemLedgerButton/fonts/font = ExtResource("6_button")
 ClassicItemLedgerButton/font_sizes/font_size = 17
 ClassicItemLedgerButton/styles/normal = SubResource("ItemLedgerButtonNormal")
