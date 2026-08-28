@@ -27,7 +27,7 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 				"source": "classic",
 			})])
 		19:
-			return _show_random_message(action)
+			return _show_random_message(action, request_id)
 		26:
 			return ScenarioRuntimeOperationResult.waiting(
 				InteractionRequest.from_payload(request_id, &"acknowledge", {"prompt": "Continue", "soundId": 30005}),
@@ -93,15 +93,29 @@ func _show_message(action: ClassicActionDefinition, request_id: String) -> Scena
 	return ScenarioRuntimeOperationResult.waiting(request, ScenarioRuntimeContinuation.textbox(message_id), [event])
 
 
-func _show_random_message(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
+func _show_random_message(action: ClassicActionDefinition, request_id: String) -> ScenarioRuntimeOperationResult:
 	var low_id := action.extra_code[0] if action.extra_code.size() > 0 else action.operand_id
 	var high_id := action.extra_code[1] if action.extra_code.size() > 1 else low_id
 	var selected_id := _rng.draw_between_classic(low_id, high_id, &"classic.random-message")
-	var message := _content.message_by_id(selected_id)
+	if selected_id == 0:
+		return ScenarioRuntimeOperationResult.completed(selected_id)
+	var message_id := absi(selected_id)
+	var message := _content.message_by_id(message_id)
 	if message == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic opcode 19 has no available message.")
-	return ScenarioRuntimeOperationResult.completed(selected_id, [DomainEvent.new(&"message_shown", {
-		"messageId": selected_id,
+	var event := DomainEvent.new(&"message_shown", {
+		"messageId": message_id,
 		"text": message.text,
 		"source": "classic-random",
-	})])
+		"classicClick": selected_id > 0,
+	})
+	if selected_id < 0:
+		return ScenarioRuntimeOperationResult.completed(selected_id, [event])
+	var journal_eligible := GameState.journal_message_id_is_valid(message_id)
+	return ScenarioRuntimeOperationResult.waiting(InteractionRequest.from_payload(request_id, InteractionRequest.ACKNOWLEDGE, {
+		"prompt": message.text,
+		"messageId": message_id,
+		"presentation": "classic-textbox",
+		"journalEligible": journal_eligible,
+		"journalRecorded": journal_eligible and _game_state.journal_message_is_recorded(message_id),
+	}), ScenarioRuntimeContinuation.textbox(message_id), [event])

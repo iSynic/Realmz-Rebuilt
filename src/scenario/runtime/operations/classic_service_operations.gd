@@ -37,7 +37,7 @@ func opcode_ids() -> Array[int]:
 func execute(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	match action.opcode:
 		6:
-			return _request_shop(action.operand_id, request_id)
+			return _configure_classic_shop(action.operand_id, request_id)
 		32:
 			return _configure_temple(action)
 		73:
@@ -210,6 +210,18 @@ func _request_shop(classic_shop_id: int, request_id: String, accept_ranges: Arra
 	if shop == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_shop", "Classic opcode 6 references unavailable shop %d." % classic_shop_id)
 	return request_shop_definition(shop, request_id, accept_ranges)
+
+
+func _configure_classic_shop(classic_shop_id: int, request_id: String) -> ScenarioRuntimeOperationResult:
+	var shop := _content.shop_by_classic_id(absi(classic_shop_id))
+	if shop == null:
+		return ScenarioRuntimeOperationResult.failed(&"unknown_shop", "Classic opcode 6 references unavailable shop %d." % classic_shop_id)
+	var accept_ranges: Array[int] = [0, 0, 0, 0]
+	if not _game_state.set_active_shop(shop.id, accept_ranges):
+		return ScenarioRuntimeOperationResult.failed(&"invalid_shop_configuration", "Classic opcode 6 shop configuration is invalid.")
+	if classic_shop_id < 0:
+		return request_shop_definition(shop, request_id, accept_ranges)
+	return ScenarioRuntimeOperationResult.completed(shop.id, [DomainEvent.new(&"shop_available", {"shopId": shop.id, "acceptRanges": accept_ranges})])
 
 
 func _configure_shop(action: ClassicActionDefinition, request_id: String) -> ScenarioRuntimeOperationResult:

@@ -68,19 +68,6 @@ func build(request: InteractionRequest) -> void:
 	_add_command(strip, &"spell", &"command.spells", "Spells", _spell_action != null and not _body.spells.is_empty(), "No eligible spell is available.")
 	_add_command(strip, &"back", &"encounter.stop", "Stop", _back_action != null, "This encounter cannot be left yet.")
 	encounter_dock_requested.emit(command_deck)
-	var context_deck := PanelContainer.new()
-	context_deck.name = "EncounterContextDeck"
-	context_deck.theme_type_variation = &"ClassicInset"
-	context_deck.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	context_deck.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	add_child(context_deck)
-	_context = VBoxContainer.new()
-	_context.name = "EncounterContextPane"
-	_context.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_context.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_context.add_theme_constant_override("separation", 5)
-	context_deck.add_child(_context)
-	_show_first_available()
 
 
 func handle_back() -> bool:
@@ -120,26 +107,6 @@ func _on_command_requested(mode: StringName) -> void:
 		&"action", &"item", &"word", &"spell": _show_mode(mode)
 		&"thief": response_body_submitted.emit(InteractionResponse.ComplexEncounterBody.new(&"thief"))
 		&"back": response_body_submitted.emit(InteractionResponse.ComplexEncounterBody.new(&"back"))
-
-
-func _show_first_available() -> void:
-	for mode: StringName in [&"action", &"item", &"word", &"spell"]:
-		if _mode_available(mode):
-			_show_mode(mode)
-			return
-	var label := Label.new()
-	label.text = "Choose an available encounter command."
-	label.add_theme_color_override("font_color", Color("d5b45d"))
-	_context.add_child(label)
-
-
-func _mode_available(mode: StringName) -> bool:
-	match mode:
-		&"action": return not _choice_actions.is_empty()
-		&"item": return _item_action != null and not _body.items.is_empty()
-		&"word": return _word_action != null
-		&"spell": return _spell_action != null and not _body.spells.is_empty()
-	return false
 
 
 func _show_mode(mode: StringName) -> void:
@@ -201,10 +168,6 @@ func _show_standard_spell_catalog() -> void:
 
 func _render_standard_spell_catalog() -> void:
 	_dispose_context_children()
-	var hint := Label.new()
-	hint.text = "Choose an eligible spell from the Party spellbook."
-	hint.add_theme_color_override("font_color", Color("d5b45d"))
-	_context.add_child(hint)
 	var workspace := VBoxContainer.new()
 	workspace.name = "EncounterStandardSpellWorkspace"
 	workspace.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -239,12 +202,18 @@ func _submit_standard_encounter_spell(character_id: String, classic_spell_id: in
 
 
 func _show_choices() -> void:
+	_catalog_kind = &"action"
 	_selected_action_slots.clear()
+	var workspace := VBoxContainer.new()
+	workspace.name = "EncounterActionWorkspace"
+	workspace.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	workspace.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	workspace.add_theme_constant_override("separation", 6)
 	var instruction := Label.new()
 	instruction.name = "EncounterActionInstruction"
 	instruction.text = _action_selection_hint()
 	instruction.add_theme_color_override("font_color", Color("d5b45d"))
-	_context.add_child(instruction)
+	workspace.add_child(instruction)
 	var grid := GridContainer.new()
 	grid.name = "EncounterChoiceGrid"
 	grid.columns = 1
@@ -257,7 +226,7 @@ func _show_choices() -> void:
 	choice_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	choice_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	choice_scroll.add_child(grid)
-	_context.add_child(choice_scroll)
+	workspace.add_child(choice_scroll)
 	for index: int in _choice_actions.size():
 		var entry := _choice_actions[index]
 		var button := Button.new()
@@ -265,20 +234,34 @@ func _show_choices() -> void:
 		button.toggle_mode = true
 		button.pressed.connect(_toggle_action_slot.bind(entry.slot, button))
 		grid.add_child(button)
-	var visible_choice_count := mini(grid.get_child_count(), 1 if _compact else 2)
+	var visible_choice_count := mini(grid.get_child_count(), 6 if _compact else 8)
 	var visible_choice_height := 0.0
 	for index: int in visible_choice_count:
 		visible_choice_height += (grid.get_child(index) as Control).get_combined_minimum_size().y
 	visible_choice_height += maxi(0, visible_choice_count - 1) * grid.get_theme_constant("v_separation")
 	choice_scroll.custom_minimum_size.y = visible_choice_height
-	var done := Button.new()
+	var footer := HBoxContainer.new()
+	footer.name = "EncounterActionFooter"
+	footer.alignment = BoxContainer.ALIGNMENT_BEGIN
+	footer.add_theme_constant_override("separation", 6)
+	workspace.add_child(footer)
+	var done := ClassicBitmapButton.new()
 	done.name = "EncounterChoiceDone"
-	done.text = "Done"
+	done.configure({"id": &"done", "asset_id": &"", "tooltip": "Commit the selected action", "label": "Done"}, 1)
 	done.disabled = _body.action_selection_count != 0
 	done.tooltip_text = _action_selection_hint()
-	done.pressed.connect(func() -> void: response_body_submitted.emit(InteractionResponse.ComplexEncounterBody.new(&"choice", -1, "", 0, 0, -1, "", _selected_action_slots)))
-	_context.add_child(done)
+	done.command_requested.connect(func(_command_id: StringName) -> void: response_body_submitted.emit(InteractionResponse.ComplexEncounterBody.new(&"choice", -1, "", 0, 0, -1, "", _selected_action_slots)))
+	footer.add_child(done)
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	footer.add_child(spacer)
+	var stop := ClassicBitmapButton.new()
+	stop.name = "EncounterChoiceStop"
+	stop.configure({"id": &"stop", "asset_id": &"encounter.stop", "tooltip": "Return to the encounter", "label": "Stop"}, 1)
+	stop.command_requested.connect(func(_command_id: StringName) -> void: _cancel_catalog())
+	footer.add_child(stop)
 	set_meta("encounter_choice_done", done)
+	side_workspace_requested.emit(workspace)
 
 
 func _toggle_action_slot(slot: int, button: Button) -> void:
@@ -287,7 +270,7 @@ func _toggle_action_slot(slot: int, button: Button) -> void:
 	else:
 		_selected_action_slots.erase(slot)
 	_selected_action_slots.sort()
-	var done := get_meta("encounter_choice_done", null) as Button
+	var done := get_meta("encounter_choice_done", null) as ClassicBitmapButton
 	if done != null:
 		done.disabled = _selected_action_slots.size() != _body.action_selection_count
 		done.tooltip_text = _action_selection_hint()
@@ -298,6 +281,7 @@ func _action_selection_hint() -> String:
 
 
 func _show_word() -> void:
+	_ensure_context()
 	var workspace := VBoxContainer.new()
 	workspace.name = "EncounterWordWorkspace"
 	workspace.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -332,10 +316,6 @@ func _show_word() -> void:
 
 func _cancel_catalog() -> void:
 	_clear_context()
-	var hint := Label.new()
-	hint.text = "Choose an encounter command."
-	hint.add_theme_color_override("font_color", Color("d5b45d"))
-	_context.add_child(hint)
 
 
 func _clear_context() -> void:
@@ -344,10 +324,35 @@ func _clear_context() -> void:
 	_inventory_workspace_content = null
 	_catalog_kind = &""
 	_dispose_context_children()
+	if _context != null:
+		var context_deck := _context.get_parent()
+		_context = null
+		remove_child(context_deck)
+		if context_deck.is_inside_tree(): context_deck.queue_free()
+		else: context_deck.free()
 
 
 func _dispose_context_children() -> void:
+	if _context == null:
+		return
 	for child: Node in _context.get_children():
 		_context.remove_child(child)
 		if child.is_inside_tree(): child.queue_free()
 		else: child.free()
+
+
+func _ensure_context() -> void:
+	if _context != null:
+		return
+	var context_deck := PanelContainer.new()
+	context_deck.name = "EncounterContextDeck"
+	context_deck.theme_type_variation = &"ClassicInset"
+	context_deck.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	context_deck.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	add_child(context_deck)
+	_context = VBoxContainer.new()
+	_context.name = "EncounterContextPane"
+	_context.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_context.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_context.add_theme_constant_override("separation", 5)
+	context_deck.add_child(_context)
