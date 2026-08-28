@@ -17,6 +17,9 @@ class ShopStockResolution:
 		quantity = available
 
 
+const SHOP_AVAILABLE_SOUND_ID := 30005
+
+
 var _content: RealmzContent
 var _game_state: GameState
 var _rng: RealmzRng
@@ -123,6 +126,10 @@ func shop_request(shop: ShopDefinition, request_id: String, accept_ranges: Array
 				identify_reason = "This item is already identified."
 			elif party_gold < 20:
 				identify_reason = "Identification costs 20 gold."
+			var presentation_definition: ItemDefinition = definition
+			if not instance.equipped and not definition.cursed_item_id.is_empty():
+				presentation_definition = _content.item_by_id(definition.cursed_item_id)
+			var public_view := ItemView.new(instance, definition, presentation_definition, _content)
 			var item_view := {
 				"instanceId": instance.id,
 				"itemId": definition.id,
@@ -135,13 +142,16 @@ func shop_request(shop: ShopDefinition, request_id: String, accept_ranges: Array
 				"sellReason": sell_reason,
 				"canIdentify": can_identify,
 				"identifyReason": identify_reason,
+				"description": public_view.description,
+				"weight": public_view.weight,
+				"facts": public_view.facts.map(func(fact: ItemFactView) -> Dictionary: return {"label": fact.label, "value": fact.value}),
 			}
 			var visible_icon_id := definition.visible_icon_id(instance.identified)
 			if visible_icon_id > 0:
 				item_view["iconResourceType"] = "cicn"
 				item_view["iconId"] = visible_icon_id
 			inventory.append(item_view)
-		characters.append({"id": character.id, "name": character.name, "portraitId": character.portrait_id, "inventory": inventory})
+		characters.append({"id": character.id, "name": character.name, "portraitId": character.portrait_id, "load": character.carried_load, "maximumLoad": character.maximum_load, "inventory": inventory})
 	return InteractionRequest.from_payload(request_id, &"shop_action", {
 		"shopId": shop.id,
 		"inflationPercent": _game_state.shop_inflation(shop),
@@ -221,7 +231,7 @@ func _configure_classic_shop(classic_shop_id: int, request_id: String) -> Scenar
 		return ScenarioRuntimeOperationResult.failed(&"invalid_shop_configuration", "Classic opcode 6 shop configuration is invalid.")
 	if classic_shop_id < 0:
 		return request_shop_definition(shop, request_id, accept_ranges)
-	return ScenarioRuntimeOperationResult.completed(shop.id, [DomainEvent.new(&"shop_available", {"shopId": shop.id, "acceptRanges": accept_ranges})])
+	return ScenarioRuntimeOperationResult.completed(shop.id, _shop_available_events(shop.id, accept_ranges))
 
 
 func _configure_shop(action: ClassicActionDefinition, request_id: String) -> ScenarioRuntimeOperationResult:
@@ -235,7 +245,7 @@ func _configure_shop(action: ClassicActionDefinition, request_id: String) -> Sce
 		return ScenarioRuntimeOperationResult.failed(&"invalid_shop_configuration", "Classic opcode 73 shop restrictions are invalid.")
 	if action.extra_code[0] < 0:
 		return _request_shop(action.extra_code[0], request_id, accept_ranges)
-	return ScenarioRuntimeOperationResult.completed(shop.id, [DomainEvent.new(&"shop_available", {"shopId": shop.id, "acceptRanges": accept_ranges})])
+	return ScenarioRuntimeOperationResult.completed(shop.id, _shop_available_events(shop.id, accept_ranges))
 
 
 func _configure_temple(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
@@ -588,6 +598,7 @@ func _recalculate_party_movement() -> void:
 
 func _shop_stock_view(item: ItemDefinition, stock_key: String, stock_index: int, quantity: int, shop: ShopDefinition) -> Dictionary:
 	var price := _rules.economy.shop_buy_price(item, _game_state.shop_inflation(shop))
+	var public_view := ItemView.new(ItemInstance.new("shop.preview", item.id, item.initial_charges, false, true), item, item, _content)
 	var result := {
 		"stockKey": stock_key,
 		"index": stock_index,
@@ -598,12 +609,22 @@ func _shop_stock_view(item: ItemDefinition, stock_key: String, stock_index: int,
 		"canBuy": quantity > 0 and _rules.economy.available(_game_state.party, WealthState.Kind.GOLD) >= price,
 		"buyReason": "Out of stock." if quantity < 1 else "The party cannot afford this item." if _rules.economy.available(_game_state.party, WealthState.Kind.GOLD) < price else "",
 		"category": String(_shop_category(stock_index)),
+		"description": public_view.description,
+		"weight": public_view.weight,
+		"facts": public_view.facts.map(func(fact: ItemFactView) -> Dictionary: return {"label": fact.label, "value": fact.value}),
 	}
 	var visible_icon_id := item.visible_icon_id(true)
 	if visible_icon_id > 0:
 		result["iconResourceType"] = "cicn"
 		result["iconId"] = visible_icon_id
 	return result
+
+
+func _shop_available_events(shop_id: String, accept_ranges: Array[int]) -> Array[DomainEvent]:
+	return [
+		DomainEvent.new(&"shop_available", {"shopId": shop_id, "acceptRanges": accept_ranges}),
+		DomainEvent.new(&"sound_requested", {"soundId": SHOP_AVAILABLE_SOUND_ID, "waitForCompletion": false, "source": "classic-shop-offer"}),
+	]
 
 
 func _matching_base_stock_index(shop: ShopDefinition, item_id: String) -> int:

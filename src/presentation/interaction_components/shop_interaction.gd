@@ -9,10 +9,11 @@ const EXCHANGE_ITEM_BUTTON_SCRIPT := preload("res://src/presentation/interaction
 const EXCHANGE_LEDGER_SCRIPT := preload("res://src/presentation/interaction_components/classic_exchange_ledger.gd")
 const ITEM_DETAIL_POPOVER_SCRIPT := preload("res://src/presentation/classic_item_detail_popover.gd")
 const CLASSIC_VISIBLE_ROWS := 9
-const WIDE_LEDGER_ROW_HEIGHT := 46.0
-const COMPACT_LEDGER_ROW_HEIGHT := 40.0
-const LEDGER_ROW_SEPARATION := 3.0
-const CLASSIC_FOOTER_HEIGHT := 73.0
+const WIDE_LEDGER_ROW_HEIGHT := 34.0
+const COMPACT_LEDGER_ROW_HEIGHT := 30.0
+const LEDGER_ROW_SEPARATION := 2.0
+const CLASSIC_CONTROL_STRIP_HEIGHT := 76.0
+const CLASSIC_DETAIL_STRIP_HEIGHT := 82.0
 const STOCK_FILTERS: Array[Dictionary] = [
 	{"id": &"weapons", "asset": &"inventory.category.weapons", "label": "Weapons"},
 	{"id": &"armor", "asset": &"inventory.category.armor", "label": "Armor"},
@@ -27,12 +28,22 @@ var _body: InteractionRequest.ShopRequestBody
 var _characters: Array[InteractionRequestValue.ServiceCharacter] = []
 var _stock: Array[InteractionRequestValue.ShopStock] = []
 var _selected_character_id: String
+var _right_character_id: String
+var _selected_item_owner_id: String
 var _selected_stock: InteractionRequestValue.ShopStock
 var _selected_item: InteractionRequestValue.InventoryItem
 var _selected_category: StringName = &"weapons"
 var _stock_rows: VBoxContainer
 var _inventory_rows: VBoxContainer
+var _stock_heading: Label
 var _selection_summary: Label
+var _left_load: Label
+var _right_load: Label
+var _shopper_name: Label
+var _transaction_facts: Label
+var _item_description: Label
+var _item_stats: Label
+var _selected_portrait: TextureRect
 var _buy_button: Button
 var _sell_button: Button
 var _identify_button: Button
@@ -128,6 +139,8 @@ func _build_compact_browser(parent: HBoxContainer) -> void:
 
 func _build_stock_pane(parent: HBoxContainer) -> void:
 	var content := _exchange_pane(parent, "ShopStockColumn", "Shop Stock", &"shop-inventory-item", "shop")
+	_stock_heading = content.get_child(0) as Label
+	_stock_heading.name = "ShopStockHeading"
 	content.get_parent().connect("item_dropped", _drop_on_shop)
 	_build_stock_content(content, false)
 
@@ -151,6 +164,14 @@ func _refresh_stock() -> void:
 	for child: Node in _stock_rows.get_children():
 		_stock_rows.remove_child(child)
 		child.free()
+	var right_character := _character_by_id(_right_character_id)
+	if _stock_heading != null:
+		_stock_heading.text = "Shop Stock" if right_character == null else "%s's Pack" % right_character.name
+	if right_character != null:
+		for item: InteractionRequestValue.InventoryItem in right_character.inventory:
+			_stock_rows.add_child(_inventory_row(right_character, item, "RightInventory"))
+		if right_character.inventory.is_empty(): _stock_rows.add_child(_label("%s carries no items." % right_character.name, MUTED))
+		return
 	var visible := _visible_stock()
 	if visible.is_empty():
 		_stock_rows.add_child(_label("No stock is available in this category.", MUTED))
@@ -202,41 +223,100 @@ func _build_pack_content(content: VBoxContainer, include_controls: bool) -> void
 
 
 func _build_footer() -> void:
+	var lower := VBoxContainer.new()
+	lower.name = "ShopLowerWorkspace"
+	lower.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lower.add_theme_constant_override("separation", 4)
+	add_child(lower)
+	var control_panel := PanelContainer.new()
+	control_panel.name = "ShopControlStrip"
+	control_panel.theme_type_variation = &"ClassicInset"
+	control_panel.custom_minimum_size.y = CLASSIC_CONTROL_STRIP_HEIGHT
+	lower.add_child(control_panel)
 	var footer := HBoxContainer.new()
-	footer.name = "ShopFooter"
-	footer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	footer.size_flags_vertical = Control.SIZE_SHRINK_END
-	footer.custom_minimum_size.y = CLASSIC_FOOTER_HEIGHT
+	footer.name = "ShopControls"
 	footer.alignment = BoxContainer.ALIGNMENT_CENTER
 	footer.add_theme_constant_override("separation", 5)
-	add_child(footer)
+	control_panel.add_child(footer)
+	_left_load = _compact_fact("ShopLeftLoad")
+	footer.add_child(_left_load)
+	var shopper := VBoxContainer.new()
+	shopper.name = "ShopSelectedShopper"
+	shopper.custom_minimum_size.x = 104.0
+	footer.add_child(shopper)
+	_selected_portrait = TextureRect.new()
+	_selected_portrait.name = "ShopSelectedPortrait"
+	_selected_portrait.custom_minimum_size = Vector2(48.0, 46.0)
+	_selected_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_selected_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	shopper.add_child(_selected_portrait)
+	_shopper_name = _label("", GOLD)
+	_shopper_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	shopper.add_child(_shopper_name)
+	var transaction := VBoxContainer.new()
+	transaction.name = "ShopTransactionPanel"
+	transaction.custom_minimum_size.x = 175.0
+	footer.add_child(transaction)
+	_transaction_facts = _compact_fact("ShopTransactionFacts")
+	transaction.add_child(_transaction_facts)
+	var actions := HBoxContainer.new()
+	actions.add_theme_constant_override("separation", 3)
+	transaction.add_child(actions)
 	_buy_button = _action_button("ShopBuy", "Buy", _submit_buy)
 	_sell_button = _action_button("ShopSellSelected", "Sell", _submit_sell)
 	_identify_button = _action_button("ShopIdentify", "Identify", _submit_identify)
-	footer.add_child(_buy_button)
-	footer.add_child(_sell_button)
-	footer.add_child(_identify_button)
-	_selection_summary = _label("Choose stock or a carried item.", MUTED)
-	_selection_summary.name = "ShopSelectionSummary"
-	_selection_summary.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_selection_summary.clip_text = true
-	footer.add_child(_selection_summary)
-	var spacer := Control.new()
-	spacer.custom_minimum_size.x = 6.0
-	footer.add_child(spacer)
-	var leave := _action_button("ShopLeave", "Leave Shop", _submit_leave)
-	leave.custom_minimum_size.x = 150.0
-	footer.add_child(leave)
+	for button: Button in [_buy_button, _sell_button, _identify_button]: button.custom_minimum_size = Vector2(55.0, 28.0); actions.add_child(button)
+	footer.add_child(_build_shopper_selector(true))
+	var restore := _action_button("ShopKeeperRestore", "Shop\nKeeper", _restore_shopkeeper)
+	restore.custom_minimum_size = Vector2(70.0, 56.0)
+	footer.add_child(restore)
+	for spec: Array in [["ShopItems", "Items", _show_items], ["ShopMoney", "Money", _show_money], ["ShopDone", "Done", _submit_leave]]:
+		var button := _action_button(spec[0], spec[1], spec[2]); button.custom_minimum_size = Vector2(62.0, 56.0); footer.add_child(button)
+	_right_load = _compact_fact("ShopRightLoad")
+	footer.add_child(_right_load)
+	var detail := HBoxContainer.new()
+	detail.name = "ShopDetailStrip"
+	detail.custom_minimum_size.y = CLASSIC_DETAIL_STRIP_HEIGHT
+	detail.add_theme_constant_override("separation", 4)
+	lower.add_child(detail)
+	var description := _pane(detail, "ShopItemDescriptionPane", "Item Description", 1.0)
+	_item_description = _label("Choose an item to inspect.", MUTED)
+	_item_description.name = "ShopItemDescription"
+	description.add_child(_item_description)
+	var stats := _pane(detail, "ShopItemStatsPane", "Item Statistics", 1.0)
+	_item_stats = _label("", CYAN)
+	_item_stats.name = "ShopItemStats"
+	stats.add_child(_item_stats)
+	_selection_summary = _item_description
 
 
 func _select_character(character_id: String) -> void:
 	_selected_character_id = character_id
 	_selected_stock = null
 	_selected_item = null
-	for id: Variant in _shopper_buttons:
-		var button := _shopper_buttons[id] as BaseButton
-		button.set_pressed_no_signal(String(button.get_meta(&"character_id", "")) == character_id)
+	_selected_item_owner_id = ""
+	_update_shopper_buttons()
 	_refresh_inventory()
+	_refresh_inspector()
+
+
+func _select_right_character(character_id: String) -> void:
+	_right_character_id = character_id
+	_selected_stock = null
+	_selected_item = null
+	_selected_item_owner_id = ""
+	_update_shopper_buttons()
+	_refresh_stock()
+	_refresh_inspector()
+
+
+func _restore_shopkeeper() -> void:
+	_right_character_id = ""
+	_selected_stock = null
+	_selected_item = null
+	_selected_item_owner_id = ""
+	_update_shopper_buttons()
+	_refresh_stock()
 	_refresh_inspector()
 
 
@@ -252,11 +332,14 @@ func _select_stock(stock_key: String) -> void:
 
 func _select_category(category: StringName) -> void:
 	_selected_category = category
+	_right_character_id = ""
 	_selected_stock = null
 	_selected_item = null
+	_selected_item_owner_id = ""
 	for id: Variant in _category_buttons:
 		(_category_buttons[id] as BaseButton).set_pressed_no_signal(StringName(id) == category)
 	_refresh_stock()
+	_update_shopper_buttons()
 	_refresh_inspector()
 
 
@@ -269,7 +352,7 @@ func _select_item(character_id: String, instance_id: String) -> void:
 		for item: InteractionRequestValue.InventoryItem in character.inventory:
 			if item.instance_id == instance_id:
 				_selected_item = item
-				_selected_character_id = character.id
+				_selected_item_owner_id = character.id
 				break
 		break
 	_refresh_inspector()
@@ -286,29 +369,7 @@ func _refresh_inventory() -> void:
 		_inventory_rows.add_child(_label("No adventurer is selected.", MUTED))
 		return
 	for item: InteractionRequestValue.InventoryItem in character.inventory:
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 5)
-		var icon := CONTENT_ICON_SCRIPT.new() as Control
-		icon.name = "InventoryIcon_%s" % item.instance_id.replace(".", "_")
-		icon.configure(item.icon_resource_type, item.icon_id, _media, _ledger_row_height(), item.name)
-		row.add_child(icon)
-		var button := EXCHANGE_ITEM_BUTTON_SCRIPT.new()
-		button.name = "Inventory_%s" % item.instance_id.replace(".", "_")
-		button.text = "%s\n%s  •  sell %d gold" % [item.name, "Equipped" if item.equipped else "Carried", item.sell_price]
-		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		button.clip_text = true
-		button.custom_minimum_size.y = _ledger_row_height()
-		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		button.theme_type_variation = &"ClassicItemLedgerButton"
-		button.focus_mode = Control.FOCUS_NONE
-		button.toggle_mode = true
-		button.button_group = _inventory_group
-		button.pressed.connect(_select_item.bind(character.id, item.instance_id))
-		button.configure_drag({"kind": &"shop-inventory-item", "sourceId": character.id, "instanceId": item.instance_id})
-		row.add_child(button)
-		_detail_popover.bind_hover(icon, _inventory_detail(item))
-		_detail_popover.bind_hover(button, _inventory_detail(item))
-		_inventory_rows.add_child(row)
+		_inventory_rows.add_child(_inventory_row(character, item, "Inventory"))
 	if character.inventory.is_empty():
 		_inventory_rows.add_child(_label("%s carries no items." % character.name, MUTED))
 
@@ -317,22 +378,29 @@ func _refresh_inspector() -> void:
 	if _selection_summary == null:
 		return
 	_buy_button.disabled = _selected_stock == null or _selected_character_id.is_empty() or not _selected_stock.can_buy
-	_sell_button.disabled = _selected_item == null or not _selected_item.can_sell
-	_identify_button.disabled = _selected_item == null or not _selected_item.can_identify
+	_sell_button.disabled = _selected_item == null or _selected_item_owner_id.is_empty() or not _selected_item.can_sell
+	_identify_button.disabled = _selected_item == null or _selected_item_owner_id.is_empty() or not _selected_item.can_identify
 	_buy_button.tooltip_text = "Select shop stock." if _selected_stock == null else "No shopper is available." if _selected_character_id.is_empty() else _selected_stock.buy_reason if not _selected_stock.can_buy else ""
 	_sell_button.tooltip_text = "Select a carried item." if _selected_item == null else _selected_item.sell_reason if not _selected_item.can_sell else ""
 	_identify_button.tooltip_text = "Select a carried item." if _selected_item == null else _selected_item.identify_reason if not _selected_item.can_identify else ""
 	if _selected_stock != null:
-		_selection_summary.text = "%s  •  Buy %d gold  •  %d left" % [_selected_stock.name, _selected_stock.buy_price, _selected_stock.quantity]
+		_selection_summary.text = _selected_stock.description if not _selected_stock.description.is_empty() else _selected_stock.name
 		_selection_summary.tooltip_text = _selected_stock.buy_reason
+		_transaction_facts.text = "Cost %d  •  Offer —  •  Weight %d" % [_selected_stock.buy_price, _selected_stock.weight]
+		_item_stats.text = _facts_text(_selected_stock.facts, "Quantity", str(_selected_stock.quantity))
 	elif _selected_item != null:
 		var state := "Equipped" if _selected_item.equipped else "Carried"
 		var knowledge := "Identified" if _selected_item.identified else "Unidentified"
-		_selection_summary.text = "%s  •  %s  •  %s  •  Sell %d gold" % [_selected_item.name, state, knowledge, _selected_item.sell_price]
+		_selection_summary.text = _selected_item.description if not _selected_item.description.is_empty() else _selected_item.name
 		_selection_summary.tooltip_text = _selected_item.sell_reason if not _selected_item.can_sell else _selected_item.identify_reason if not _selected_item.can_identify else ""
+		_transaction_facts.text = "Cost —  •  Offer %d  •  Weight %d" % [_selected_item.sell_price, _selected_item.weight]
+		_item_stats.text = _facts_text(_selected_item.facts, "State", "%s / %s" % [state, knowledge])
 	else:
 		_selection_summary.text = "Choose stock or a carried item."
 		_selection_summary.tooltip_text = ""
+		_transaction_facts.text = "Cost —  •  Offer —  •  Weight —"
+		_item_stats.text = ""
+	_refresh_shopper_facts()
 
 
 func _submit_buy() -> void:
@@ -342,12 +410,12 @@ func _submit_buy() -> void:
 
 func _submit_sell() -> void:
 	if _selected_item != null and _selected_item.can_sell:
-		response_body_submitted.emit(InteractionResponse.ShopBody.new(&"sell", _selected_character_id, _selected_item.instance_id))
+		response_body_submitted.emit(InteractionResponse.ShopBody.new(&"sell", _selected_item_owner_id, _selected_item.instance_id))
 
 
 func _submit_identify() -> void:
 	if _selected_item != null and _selected_item.can_identify:
-		response_body_submitted.emit(InteractionResponse.ShopBody.new(&"identify", _selected_character_id, _selected_item.instance_id))
+		response_body_submitted.emit(InteractionResponse.ShopBody.new(&"identify", _selected_item_owner_id, _selected_item.instance_id))
 
 
 func _submit_leave() -> void:
@@ -444,7 +512,6 @@ func _build_control_spine(parent: HBoxContainer) -> void:
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	spine.add_child(spacer)
-	spine.add_child(_build_shopper_selector(true))
 
 
 func _build_shopper_selector(duplicate_columns: bool = false) -> PanelContainer:
@@ -482,14 +549,97 @@ func _shopper_portrait(character: InteractionRequestValue.ServiceCharacter, side
 	button.icon = _portrait_texture(character.portrait_id)
 	button.expand_icon = true
 	button.toggle_mode = true
-	button.button_pressed = character.id == _selected_character_id
+	button.button_pressed = character.id == (_selected_character_id if side != "Seller" else _right_character_id)
 	button.custom_minimum_size = Vector2(34.0, 30.0) if side != "Shopper" else Vector2(52.0, 42.0)
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	button.tooltip_text = "%s: %s using party funds" % [side, character.name]
+	button.tooltip_text = "%s: %s" % ["Left shopper" if side != "Seller" else "Right shopper", character.name]
 	button.set_meta(&"character_id", character.id)
-	button.pressed.connect(_select_character.bind(character.id))
+	button.set_meta(&"shop_side", side)
+	button.pressed.connect((_select_right_character if side == "Seller" else _select_character).bind(character.id))
 	_shopper_buttons[button.name] = button
 	return button
+
+
+func _inventory_row(character: InteractionRequestValue.ServiceCharacter, item: InteractionRequestValue.InventoryItem, prefix: String) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 5)
+	var icon := CONTENT_ICON_SCRIPT.new() as Control
+	icon.name = "%sIcon_%s" % [prefix, item.instance_id.replace(".", "_")]
+	icon.configure(item.icon_resource_type, item.icon_id, _media, _ledger_row_height(), item.name)
+	row.add_child(icon)
+	var button := EXCHANGE_ITEM_BUTTON_SCRIPT.new()
+	button.name = "%s_%s" % [prefix, item.instance_id.replace(".", "_")]
+	button.text = "%s\n%s  •  sell %d gold" % [item.name, "Equipped" if item.equipped else "Carried", item.sell_price]
+	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	button.clip_text = true
+	button.custom_minimum_size.y = _ledger_row_height()
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.theme_type_variation = &"ClassicItemLedgerButton"
+	button.focus_mode = Control.FOCUS_NONE
+	button.toggle_mode = true
+	button.button_group = _inventory_group
+	button.button_pressed = _selected_item != null and _selected_item.instance_id == item.instance_id and _selected_item_owner_id == character.id
+	button.pressed.connect(_select_item.bind(character.id, item.instance_id))
+	button.configure_drag({"kind": &"shop-inventory-item", "sourceId": character.id, "instanceId": item.instance_id})
+	row.add_child(button)
+	_detail_popover.bind_hover(icon, _inventory_detail(item))
+	_detail_popover.bind_hover(button, _inventory_detail(item))
+	return row
+
+
+func _update_shopper_buttons() -> void:
+	for id: Variant in _shopper_buttons:
+		var button := _shopper_buttons[id] as BaseButton
+		var side := String(button.get_meta(&"shop_side", ""))
+		var selected_id := _right_character_id if side == "Seller" else _selected_character_id
+		button.set_pressed_no_signal(String(button.get_meta(&"character_id", "")) == selected_id)
+
+
+func _refresh_shopper_facts() -> void:
+	var left := _character_by_id(_selected_character_id)
+	var right := _character_by_id(_right_character_id)
+	if left != null:
+		_left_load.text = "Load\n%d / %d\nItems %d" % [left.load, left.maximum_load, left.inventory.size()]
+		_shopper_name.text = left.name
+		_selected_portrait.texture = _portrait_texture(left.portrait_id)
+	else:
+		_left_load.text = "No shopper"
+		_shopper_name.text = ""
+		_selected_portrait.texture = null
+	_right_load.text = "Shop Keeper\nStock %d" % _stock.size() if right == null else "Load\n%d / %d\nItems %d" % [right.load, right.maximum_load, right.inventory.size()]
+
+
+func _show_items() -> void:
+	var character := _character_by_id(_selected_character_id)
+	_selected_stock = null
+	_selected_item = null
+	_selected_item_owner_id = ""
+	_refresh_inspector()
+	_item_description.text = "%s carries %d item%s. Select a row in the left ledger to inspect or trade it." % [character.name, character.inventory.size(), "" if character.inventory.size() == 1 else "s"] if character != null else "No adventurer is selected."
+
+
+func _show_money() -> void:
+	_selected_stock = null
+	_selected_item = null
+	_selected_item_owner_id = ""
+	_refresh_inspector()
+	_item_description.text = "The party has %d gold available for this shop." % _body.party_gold
+
+
+func _facts_text(facts: Array[InteractionRequestValue.ItemDetailFact], extra_label: String, extra_value: String) -> String:
+	var lines: Array[String] = []
+	for fact: InteractionRequestValue.ItemDetailFact in facts:
+		lines.append("%s  %s" % [fact.label, fact.value])
+	lines.append("%s  %s" % [extra_label, extra_value])
+	return "  •  ".join(lines)
+
+
+func _detail_facts(facts: Array[InteractionRequestValue.ItemDetailFact], suffix: Array[Dictionary]) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	for fact: InteractionRequestValue.ItemDetailFact in facts:
+		result.append({"label": fact.label, "value": fact.value})
+	result.append_array(suffix)
+	return result
 
 
 func _visible_stock() -> Array[InteractionRequestValue.ShopStock]:
@@ -507,17 +657,17 @@ func _portrait_texture(asset_id: String) -> Texture2D:
 
 
 func _stock_detail(entry: InteractionRequestValue.ShopStock) -> Dictionary:
-	return {"title": entry.name, "subtitle": "Shop stock", "facts": [{"label": "Price", "value": "%d gold" % entry.buy_price}, {"label": "Quantity", "value": str(entry.quantity)}], "restrictions": [entry.buy_reason] if not entry.buy_reason.is_empty() else [], "iconResourceType": entry.icon_resource_type, "iconId": entry.icon_id}
+	return {"title": entry.name, "subtitle": entry.description, "facts": _detail_facts(entry.facts, [{"label": "Price", "value": "%d gold" % entry.buy_price}, {"label": "Quantity", "value": str(entry.quantity)}]), "restrictions": [entry.buy_reason] if not entry.buy_reason.is_empty() else [], "iconResourceType": entry.icon_resource_type, "iconId": entry.icon_id}
 
 
 func _inventory_detail(item: InteractionRequestValue.InventoryItem) -> Dictionary:
-	var facts: Array[Dictionary] = [{"label": "State", "value": "Equipped" if item.equipped else "Carried"}, {"label": "Knowledge", "value": "Identified" if item.identified else "Unidentified"}, {"label": "Sell", "value": "%d gold" % item.sell_price}]
+	var facts: Array[Dictionary] = _detail_facts(item.facts, [{"label": "State", "value": "Equipped" if item.equipped else "Carried"}, {"label": "Knowledge", "value": "Identified" if item.identified else "Unidentified"}, {"label": "Sell", "value": "%d gold" % item.sell_price}])
 	if item.charges != 0:
 		facts.append({"label": "Charges", "value": "Unlimited" if item.charges < 0 else str(item.charges)})
 	var restrictions: Array[String] = []
 	if not item.sell_reason.is_empty(): restrictions.append(item.sell_reason)
 	if not item.identify_reason.is_empty(): restrictions.append(item.identify_reason)
-	return {"title": item.name, "subtitle": "Adventurer pack", "facts": facts, "restrictions": restrictions, "iconResourceType": item.icon_resource_type, "iconId": item.icon_id}
+	return {"title": item.name, "subtitle": item.description, "facts": facts, "restrictions": restrictions, "iconResourceType": item.icon_resource_type, "iconId": item.icon_id}
 
 
 func _exchange_pane(parent: HBoxContainer, pane_name: String, title: String, accepted_kind: StringName, target_id: String) -> VBoxContainer:
@@ -583,6 +733,15 @@ func _label(text: String, color: Color) -> Label:
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label.add_theme_color_override("font_color", color)
+	return label
+
+
+func _compact_fact(control_name: String) -> Label:
+	var label := _label("", CYAN)
+	label.name = control_name
+	label.custom_minimum_size.x = 78.0
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	return label
 
 
