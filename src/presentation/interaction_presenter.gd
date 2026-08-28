@@ -66,6 +66,11 @@ func _gui_input(event: InputEvent) -> void:
 		accept_event()
 
 
+func handle_global_pointer_acknowledgement(event: InputEvent) -> bool:
+	var mouse_event := event as InputEventMouseButton
+	return mouse_event != null and mouse_event.pressed and mouse_event.button_index == MOUSE_BUTTON_LEFT and _uses_global_classic_acknowledgement() and _submit_classic_acknowledgement()
+
+
 func _unhandled_key_input(event: InputEvent) -> void:
 	var key_event := event as InputEventKey
 	if key_event == null or not key_event.pressed or key_event.echo or key_event.keycode not in [KEY_ENTER, KEY_KP_ENTER, KEY_SPACE]:
@@ -82,6 +87,7 @@ func _submit_classic_acknowledgement() -> bool:
 
 
 func _exit_tree() -> void:
+	_set_classic_acknowledgement_cursor(false)
 	_close_side_workspace()
 	_close_encounter_dock()
 	_close_application_workspace()
@@ -104,6 +110,7 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 	if request == null or request.kind != InteractionRequest.TREASURE_DISTRIBUTION:
 		_treasure_recipient_id = ""
 	_request = request
+	_set_classic_acknowledgement_cursor(_uses_global_classic_acknowledgement())
 	_passive_text = false
 	_playback_masked = false
 	_reset_interaction_scroll()
@@ -180,6 +187,7 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 
 func present_combat_playback_mask(frame: CombatPlaybackFrame = null) -> void:
 	_request = null
+	_set_classic_acknowledgement_cursor(false)
 	_passive_text = false
 	_playback_masked = true
 	_reset_interaction_scroll()
@@ -582,10 +590,26 @@ func _submit_body(body: InteractionResponse.Body) -> void:
 	var response := InteractionPresenter.response_for(_request, body)
 	var preserve_treasure_workspace := _component is TreasureDistributionInteraction and body is InteractionResponse.TreasureBody and (body as InteractionResponse.TreasureBody).action in [&"assign", &"done"]
 	_request = null
+	_set_classic_acknowledgement_cursor(false)
 	_close_fast_spell_dock()
 	if not preserve_treasure_workspace:
 		visible = false
 	response_submitted.emit(response)
+
+
+func _uses_global_classic_acknowledgement() -> bool:
+	if _request == null or _request.kind != InteractionRequest.ACKNOWLEDGE:
+		return false
+	var body := _request.body as InteractionRequest.AcknowledgeBody
+	return body != null and body.presentation == &"classic-textbox"
+
+
+func _set_classic_acknowledgement_cursor(enabled: bool) -> void:
+	if enabled:
+		var asset_id := &"interaction.cursor.continue"
+		Input.set_custom_mouse_cursor(ClassicUiAssetCatalog.texture(asset_id), Input.CURSOR_ARROW, ClassicUiAssetCatalog.cursor_hotspot(asset_id))
+	else:
+		Input.set_custom_mouse_cursor(null, Input.CURSOR_ARROW)
 
 
 func begin_treasure_transfer(reduced_motion: bool) -> bool:

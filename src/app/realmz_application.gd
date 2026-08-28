@@ -288,10 +288,9 @@ func _complete_package_install(prepared: PreparedPackage, initial_seed: int) -> 
 
 
 func _input(event: InputEvent) -> void:
-	if _debug_tools != null and _debug_tools.handle_input(event):
-		get_viewport().set_input_as_handled()
-		return
+	if _debug_tools != null and _debug_tools.handle_input(event): get_viewport().set_input_as_handled(); return
 	if _debug_tools != null and _debug_tools.is_open(): return
+	if _interaction_presenter != null and _interaction_presenter.handle_global_pointer_acknowledgement(event): get_viewport().set_input_as_handled(); return
 	var released_direction := UiInputActions.released_movement_direction(event)
 	if released_direction != Vector2i.ZERO and _held_movement != null:
 		if not (_dungeon_presenter.is_active() and _dungeon_presenter.handle_keyboard_release(released_direction)) and _held_movement.active_direction() == released_direction: _held_movement.stop(&"keyboard")

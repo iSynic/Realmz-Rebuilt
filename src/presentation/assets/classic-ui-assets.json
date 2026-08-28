@@ -866,6 +866,39 @@
       "source_resource_id": 13407
     },
     {
+      "id": "interaction.cursor.continue",
+      "path": "res://src/presentation/assets/classic-controls/interaction/cursor-continue.png",
+      "source_repository": "Realmz Castle Realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
+      "native_width": 16,
+      "native_height": 16,
+      "sha256": "f770c77b26edc133cab3e2b4de51fba148bd6cbab31f25c054616250bfa634e7",
+      "classification": "classic-resource-extract",
+      "classic_evidence": {
+        "status": "source-control-flow",
+        "path": "src/realmz_orig/textbox-time.c:91-122",
+        "note": "Castle installs exact color cursor 129 while a positive Classic textbox waits for any mouse or key acknowledgement, unless the separate take-note cursor is active.",
+        "repository": "Realmz Castle Realmz",
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3"
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      },
+      "cursor_hotspot": [
+        7,
+        6
+      ],
+      "source_file_sha256": "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c",
+      "source_resource_type": "crsr",
+      "source_resource_id": 129
+    },
+    {
       "id": "map.cursor.northwest",
       "path": "res://src/presentation/assets/classic-controls/map/cursor-northwest.png",
       "source_repository": "Realmz Castle Realmz",
