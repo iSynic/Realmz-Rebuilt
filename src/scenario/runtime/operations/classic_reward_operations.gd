@@ -640,7 +640,9 @@ func _advance_reward_levels(reward: ClassicRewardState, request_id: String, even
 			var spell_ids := reward.spell_character_ids()
 			spell_ids.append(character.id)
 			reward.set_spell_character_ids(spell_ids)
-		events.append(DomainEvent.new(&"character_leveled", reward.pending_level_result))
+		var level_event_payload := reward.pending_level_result.duplicate(true)
+		level_event_payload["experienceRemaining"] = character.experience
+		events.append(DomainEvent.new(&"character_leveled", level_event_payload))
 		return _wait_for_reward(reward, request_id, events)
 	reward.phase = ClassicRewardState.SPELL_PHASE
 	return _advance_reward_spells(reward, request_id, events)

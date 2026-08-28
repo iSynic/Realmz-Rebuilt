@@ -115,7 +115,7 @@ func _test_experience_level_and_spell_restore(content: RealmzContent) -> void:
 	var treasure_stage := vm.run(api)
 	assert_equal([treasure_stage.state, treasure_stage.interaction.kind, treasure_stage.interaction.body.to_data()["experienceShare"]], [ScenarioVmResult.State.WAITING, InteractionRequest.TREASURE_DISTRIBUTION, 25_000], "experience is awarded once with the selected party's Classic 250 percent setup multiplier before the empty treasure stage")
 	var level_stage := vm.resume(InteractionResponse.from_data(treasure_stage.interaction.request_id, treasure_stage.interaction.kind, {"action": "done"}), api)
-	assert_equal([level_stage.state, level_stage.interaction.kind, level_stage.interaction.body.to_data()["mode"], character.level], [ScenarioVmResult.State.WAITING, InteractionRequest.LEVEL_UP, "result", 2], "positive residual experience produces one staged source-backed level result")
+	assert_equal([level_stage.state, level_stage.interaction.kind, level_stage.interaction.body.to_data()["mode"], character.level, level_stage.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"character_leveled")[0].payload.get("experienceRemaining")], [ScenarioVmResult.State.WAITING, InteractionRequest.LEVEL_UP, "result", 2, 21_499], "positive residual experience produces one staged source-backed level result with its carried-VP diagnostic")
 	assert_equal(character.experience, 21_499, "one reward close subtracts one threshold and retains positive scaled residual experience without auto-looping")
 	var saved_vm := ScenarioVmSnapshot.from_data(JSON.parse_string(JSON.stringify(vm.snapshot().to_data())))
 	var saved_game := GameState.from_data(state.to_data())
