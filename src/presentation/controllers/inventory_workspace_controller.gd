@@ -426,6 +426,7 @@ func _render_item_actions(parent: VBoxContainer, view: GameView, item: ItemView,
 		actions.columns = 1
 		var choose := _bitmap_button(&"inventory.action.use", "Use in encounter")
 		choose.name = "EncounterItemChoose"
+		choose.custom_minimum_size.x = 150.0
 		choose.command_requested.connect(func(_command_id: StringName) -> void: _submit_encounter_item(character.id, item.instance_id))
 		actions.add_child(choose)
 		parent.add_child(actions)
