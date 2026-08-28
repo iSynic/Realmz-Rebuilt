@@ -236,14 +236,16 @@ func _build_footer() -> void:
 	var footer := HBoxContainer.new()
 	footer.name = "ShopControls"
 	footer.alignment = BoxContainer.ALIGNMENT_CENTER
-	footer.add_theme_constant_override("separation", 5)
+	footer.add_theme_constant_override("separation", 3)
 	control_panel.add_child(footer)
+	var left_load_group := _footer_group(footer, "ShopLeftLoadPanel", 86.0)
 	_left_load = _compact_fact("ShopLeftLoad")
-	footer.add_child(_left_load)
+	left_load_group.add_child(_left_load)
+	var shopper_group := _footer_group(footer, "ShopSelectedShopperPanel", 84.0)
 	var shopper := VBoxContainer.new()
 	shopper.name = "ShopSelectedShopper"
-	shopper.custom_minimum_size.x = 104.0
-	footer.add_child(shopper)
+	shopper.custom_minimum_size.x = 76.0
+	shopper_group.add_child(shopper)
 	_selected_portrait = TextureRect.new()
 	_selected_portrait.name = "ShopSelectedPortrait"
 	_selected_portrait.custom_minimum_size = Vector2(48.0, 46.0)
@@ -253,10 +255,11 @@ func _build_footer() -> void:
 	_shopper_name = _label("", GOLD)
 	_shopper_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	shopper.add_child(_shopper_name)
+	var transaction_group := _footer_group(footer, "ShopTransactionContainer", 174.0)
 	var transaction := VBoxContainer.new()
 	transaction.name = "ShopTransactionPanel"
-	transaction.custom_minimum_size.x = 175.0
-	footer.add_child(transaction)
+	transaction.custom_minimum_size.x = 166.0
+	transaction_group.add_child(transaction)
 	_transaction_facts = _compact_fact("ShopTransactionFacts")
 	transaction.add_child(_transaction_facts)
 	var actions := HBoxContainer.new()
@@ -267,15 +270,17 @@ func _build_footer() -> void:
 	_identify_button = _action_button("ShopIdentify", "Identify", _submit_identify)
 	for button: Button in [_buy_button, _sell_button, _identify_button]: button.custom_minimum_size = Vector2(55.0, 28.0); actions.add_child(button)
 	footer.add_child(_build_shopper_selector(true))
+	var route_group := _footer_group(footer, "ShopRouteControls", 257.0)
 	var restore := _route_button("ShopKeeperRestore", "Shop Keeper", &"command.shop_original", _restore_shopkeeper)
-	footer.add_child(restore)
+	route_group.add_child(restore)
 	for spec: Array in [["ShopItems", "Items", &"command.inventory", _show_items], ["ShopMoney", "Money", &"command.money", _show_money]]:
-		footer.add_child(_route_button(spec[0], spec[1], spec[2], spec[3]))
+		route_group.add_child(_route_button(spec[0], spec[1], spec[2], spec[3]))
 	var done := _action_button("ShopDone", "Done", _submit_leave)
 	done.custom_minimum_size = Vector2(62.0, 70.0)
-	footer.add_child(done)
+	route_group.add_child(done)
+	var right_load_group := _footer_group(footer, "ShopRightLoadPanel", 86.0)
 	_right_load = _compact_fact("ShopRightLoad")
-	footer.add_child(_right_load)
+	right_load_group.add_child(_right_load)
 	var detail := HBoxContainer.new()
 	detail.name = "ShopDetailStrip"
 	detail.custom_minimum_size.y = CLASSIC_DETAIL_STRIP_HEIGHT
@@ -298,6 +303,20 @@ func _route_button(node_name: String, caption: String, asset_id: StringName, cal
 	button.configure({"id": StringName(node_name), "asset_id": asset_id, "tooltip": caption, "label": caption, "group": &"shop-route"}, 1)
 	button.command_requested.connect(func(_command_id: StringName) -> void: callback.call())
 	return button
+
+
+func _footer_group(parent: HBoxContainer, group_name: String, minimum_width: float) -> HBoxContainer:
+	var panel := PanelContainer.new()
+	panel.name = group_name
+	panel.theme_type_variation = &"ClassicInset"
+	panel.custom_minimum_size.x = minimum_width
+	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	parent.add_child(panel)
+	var content := HBoxContainer.new()
+	content.alignment = BoxContainer.ALIGNMENT_CENTER
+	content.add_theme_constant_override("separation", 2)
+	panel.add_child(content)
+	return content
 
 
 func _select_character(character_id: String) -> void:
@@ -560,7 +579,7 @@ func _shopper_portrait(character: InteractionRequestValue.ServiceCharacter, side
 	button.expand_icon = true
 	button.toggle_mode = true
 	button.button_pressed = character.id == (_selected_character_id if side != "Seller" else _right_character_id)
-	button.custom_minimum_size = Vector2(34.0, 30.0) if side != "Shopper" else Vector2(52.0, 42.0)
+	button.custom_minimum_size = Vector2(28.0, 22.0) if side != "Shopper" else Vector2(52.0, 42.0)
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.tooltip_text = "%s: %s" % ["Left shopper" if side != "Seller" else "Right shopper", character.name]
 	button.set_meta(&"character_id", character.id)

@@ -623,7 +623,7 @@ func _shop_stock_view(item: ItemDefinition, stock_key: String, stock_index: int,
 func _shop_available_events(shop_id: String, accept_ranges: Array[int]) -> Array[DomainEvent]:
 	return [
 		DomainEvent.new(&"shop_available", {"shopId": shop_id, "acceptRanges": accept_ranges}),
-		DomainEvent.new(&"sound_requested", {"soundId": SHOP_AVAILABLE_SOUND_ID, "waitForCompletion": false, "source": "classic-shop-offer"}),
+		DomainEvent.new(&"sound_requested", {"soundId": SHOP_AVAILABLE_SOUND_ID, "waitForCompletion": false, "stopExisting": true, "source": "classic-shop-offer"}),
 	]
 
 
