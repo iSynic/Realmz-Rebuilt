@@ -30,6 +30,7 @@ signal combat_spellbook_closed
 @onready var _stage_backing: TextureRect = $StageBacking
 
 var _request: InteractionRequest
+var _owns_classic_acknowledgement_cursor: bool = false
 var _component: InteractionComponent
 var _stage_rect := Rect2(0.0, 28.0, 992.0, 502.0)
 var _textbox_rect := Rect2(8.0, 530.0, 984.0, 182.0)
@@ -606,10 +607,16 @@ func _uses_global_classic_acknowledgement() -> bool:
 
 func _set_classic_acknowledgement_cursor(enabled: bool) -> void:
 	if enabled:
+		if _owns_classic_acknowledgement_cursor:
+			return
 		var asset_id := &"interaction.cursor.continue"
-		Input.set_custom_mouse_cursor(ClassicUiAssetCatalog.texture(asset_id), Input.CURSOR_ARROW, ClassicUiAssetCatalog.cursor_hotspot(asset_id))
-	else:
+		var texture := ClassicUiAssetCatalog.texture(asset_id)
+		if texture != null:
+			Input.set_custom_mouse_cursor(texture, Input.CURSOR_ARROW, ClassicUiAssetCatalog.cursor_hotspot(asset_id))
+			_owns_classic_acknowledgement_cursor = true
+	elif _owns_classic_acknowledgement_cursor:
 		Input.set_custom_mouse_cursor(null, Input.CURSOR_ARROW)
+		_owns_classic_acknowledgement_cursor = false
 
 
 func begin_treasure_transfer(reduced_motion: bool) -> bool:

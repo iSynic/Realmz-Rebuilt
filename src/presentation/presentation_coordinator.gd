@@ -220,8 +220,7 @@ func refresh() -> void:
 
 
 func present_host_interaction(request: InteractionRequest) -> void:
-	_shell_presenter.present_character_selection(request)
-	_interaction_presenter.present(request, _shell_presenter.latest_classic_text(), _session_controller.view(), _media)
+	_present_request(request, _session_controller.view(), request)
 
 
 func dismiss_host_interaction() -> void:
@@ -299,5 +298,16 @@ static func should_show_battle_stage(active_route: StringName, game_view: GameVi
 
 
 func _present_interaction(game_view: GameView) -> void:
-	_shell_presenter.present_character_selection(game_view.pending_interaction)
-	_interaction_presenter.present(game_view.active_interaction_request(), _shell_presenter.latest_classic_text(), game_view, _media)
+	_present_request(game_view.active_interaction_request(), game_view, game_view.pending_interaction)
+
+
+func _present_request(request: InteractionRequest, game_view: GameView, character_selection_request: InteractionRequest) -> void:
+	var enables_spatial_cursor := request == null
+	if not enables_spatial_cursor:
+		_map_presenter.set_movement_cursor_enabled(false)
+		_dungeon_presenter.set_navigation_cursor_enabled(false)
+	_shell_presenter.present_character_selection(character_selection_request)
+	_interaction_presenter.present(request, _shell_presenter.latest_classic_text(), game_view, _media)
+	if enables_spatial_cursor:
+		_map_presenter.set_movement_cursor_enabled(true)
+		_dungeon_presenter.set_navigation_cursor_enabled(true)

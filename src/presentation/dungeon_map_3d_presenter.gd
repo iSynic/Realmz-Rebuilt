@@ -25,6 +25,8 @@ var _geometry: MeshInstance3D
 var _camera: Camera3D
 var _active_tween: Tween
 var _keyboard_direction: Vector2i = Vector2i.ZERO
+var _navigation_cursor_enabled: bool = true
+var _owns_navigation_cursor: bool = false
 var _atlas: Texture2D = load(ATLAS_PATH) as Texture2D
 var _cursor_forward: Texture2D = load(CURSOR_FORWARD_PATH) as Texture2D
 var _cursor_reverse: Texture2D = load(CURSOR_REVERSE_PATH) as Texture2D
@@ -78,9 +80,24 @@ func _ready() -> void:
 	_layout_internal_view()
 
 
+func _exit_tree() -> void:
+	_clear_navigation_cursor()
+
+
 func set_enabled(enabled: bool) -> void:
 	_enabled = enabled
 	_update_visibility()
+
+
+func set_navigation_cursor_enabled(enabled: bool) -> void:
+	if _navigation_cursor_enabled == enabled:
+		return
+	_navigation_cursor_enabled = enabled
+	if not enabled:
+		_clear_navigation_cursor()
+		return
+	if is_visible_in_tree():
+		_set_navigation_cursor(_action_at_position(get_local_mouse_position()))
 
 
 func present(game_view: GameView) -> void:
@@ -102,7 +119,7 @@ func projection() -> DungeonGeometryProjection:
 
 
 func _gui_input(event: InputEvent) -> void:
-	if not is_active():
+	if not is_active() or not _navigation_cursor_enabled:
 		return
 	if event is InputEventMouseMotion:
 		_set_navigation_cursor(_action_at_position(event.position))
@@ -218,16 +235,27 @@ func _action_at_position(local_position: Vector2) -> StringName:
 
 
 func _set_navigation_cursor(action: StringName) -> void:
+	if not _navigation_cursor_enabled:
+		_clear_navigation_cursor()
+		return
 	match action:
-		&"forward": Input.set_custom_mouse_cursor(_cursor_forward, Input.CURSOR_ARROW, Vector2(8.0, 0.0))
-		&"reverse": Input.set_custom_mouse_cursor(_cursor_reverse, Input.CURSOR_ARROW, Vector2(8.0, 15.0))
-		&"turn_left": Input.set_custom_mouse_cursor(_cursor_left, Input.CURSOR_ARROW, Vector2(0.0, 8.0))
-		&"turn_right": Input.set_custom_mouse_cursor(_cursor_right, Input.CURSOR_ARROW, Vector2(15.0, 8.0))
+		&"forward": _install_navigation_cursor(_cursor_forward, Vector2(8.0, 0.0))
+		&"reverse": _install_navigation_cursor(_cursor_reverse, Vector2(8.0, 15.0))
+		&"turn_left": _install_navigation_cursor(_cursor_left, Vector2(0.0, 8.0))
+		&"turn_right": _install_navigation_cursor(_cursor_right, Vector2(15.0, 8.0))
 		_: _clear_navigation_cursor()
 
 
+func _install_navigation_cursor(texture: Texture2D, hotspot: Vector2) -> void:
+	Input.set_custom_mouse_cursor(texture, Input.CURSOR_ARROW, hotspot)
+	_owns_navigation_cursor = true
+
+
 func _clear_navigation_cursor() -> void:
+	if not _owns_navigation_cursor:
+		return
 	Input.set_custom_mouse_cursor(null, Input.CURSOR_ARROW)
+	_owns_navigation_cursor = false
 
 
 static func heading_yaw(heading: int) -> float:

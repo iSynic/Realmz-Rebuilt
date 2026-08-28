@@ -36,6 +36,14 @@ var _party_marker_textures: Dictionary = {}
 var _party_marker_asset_id: StringName = PARTY_MARKER_RIGHT_ASSET_ID
 var _party_facing_asset_id: StringName = PARTY_MARKER_RIGHT_ASSET_ID
 var _movement_cursor_asset_id: StringName
+var _movement_cursor_enabled: bool = true
+var _visibility_cache_map_id: String = ""
+var _visibility_cache_map_size: Vector2i = Vector2i.ZERO
+var _visibility_cache_level_type: StringName = &""
+var _visited_coordinate_cache: Dictionary = {}
+var _seen_coordinate_cache: Dictionary = {}
+var _land_discovery_cache: Dictionary = {}
+var _dungeon_discovery_cache: Dictionary = {}
 var _surround_texture: Texture2D = load(SURROUND_TEXTURE_PATH) as Texture2D
 
 
@@ -51,6 +59,8 @@ func _ready() -> void:
 
 
 func _gui_input(event: InputEvent) -> void:
+	if not _movement_cursor_enabled:
+		return
 	if event is InputEventMouseMotion:
 		_update_movement_cursor((event as InputEventMouseMotion).position)
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
@@ -80,6 +90,7 @@ func present(game_view: GameView) -> void:
 	_view = game_view
 	visible = game_view != null and game_view.session_started and game_view.map_view != null
 	if visible:
+		_update_visibility_cache(game_view.map_view)
 		_party_facing_asset_id = party_marker_asset_id_for_direction(game_view.map_view.last_move_direction, _party_facing_asset_id)
 		var summary := game_view.party_summary
 		var boat_asset_id := boat_marker_asset_id(game_view.map_view.landlook, _party_facing_asset_id == PARTY_MARKER_RIGHT_ASSET_ID)
@@ -88,9 +99,17 @@ func present(game_view: GameView) -> void:
 		_clear_movement_cursor()
 		_held_direction = Vector2i.ZERO
 		movement_hold_stopped.emit()
-	elif _held_direction != Vector2i.ZERO:
-		call_deferred("_restore_held_movement_cursor")
 	queue_redraw()
+
+
+func set_movement_cursor_enabled(enabled: bool) -> void:
+	if _movement_cursor_enabled == enabled:
+		return
+	_movement_cursor_enabled = enabled
+	if not enabled:
+		_clear_movement_cursor()
+		return
+	_restore_movement_cursor_at_pointer()
 
 
 func set_travel_preview_visible(enabled: bool) -> void:
@@ -103,6 +122,41 @@ func set_travel_preview_visible(enabled: bool) -> void:
 func set_classic_exploration_visibility(enabled: bool) -> void:
 	classic_exploration_visibility = enabled
 	queue_redraw()
+
+
+func _update_visibility_cache(map_view: MapView) -> void:
+	var map_size := Vector2i(map_view.width, map_view.height)
+	var visited := map_view.visited_coordinates()
+	var seen := map_view.seen_coordinates()
+	var map_changed := _visibility_cache_map_id != map_view.map_id or _visibility_cache_map_size != map_size or _visibility_cache_level_type != map_view.level_type
+	if map_changed or _coordinate_set_replaced(_visited_coordinate_cache, visited) or _coordinate_set_replaced(_seen_coordinate_cache, seen):
+		_visibility_cache_map_id = map_view.map_id
+		_visibility_cache_map_size = map_size
+		_visibility_cache_level_type = map_view.level_type
+		_visited_coordinate_cache.clear()
+		_seen_coordinate_cache.clear()
+		_land_discovery_cache.clear()
+		_dungeon_discovery_cache.clear()
+	for coordinate: Vector2i in visited:
+		if _visited_coordinate_cache.has(coordinate):
+			continue
+		_visited_coordinate_cache[coordinate] = true
+		if map_view.level_type == &"dungeon":
+			append_dungeon_discovery(_dungeon_discovery_cache, coordinate)
+		else:
+			append_land_discovery(_land_discovery_cache, coordinate, map_size)
+	for coordinate: Vector2i in seen:
+		_seen_coordinate_cache[coordinate] = true
+
+
+static func _coordinate_set_replaced(cached: Dictionary, current: Array[Vector2i]) -> bool:
+	if current.size() < cached.size():
+		return true
+	var retained := 0
+	for coordinate: Vector2i in current:
+		if cached.has(coordinate):
+			retained += 1
+	return retained < cached.size()
 
 
 func set_media_catalog(media: ClassicMediaCatalog) -> void:
@@ -153,16 +207,13 @@ func _draw() -> void:
 	var camera := camera_top_left(map_view.party_coordinate, Vector2i(map_view.width, map_view.height), viewport_cells)
 	var camera_end := camera + viewport_cells
 	var classic_rect := classic_visible_rect(map_view.party_coordinate, Vector2i(map_view.width, map_view.height))
-	var dungeon_discovery := dungeon_discovery_coordinates(map_view.visited_coordinates()) if map_view.level_type == &"dungeon" else {}
-	var seen_coordinates: Dictionary = {}
-	for coordinate: Vector2i in map_view.seen_coordinates():
-		seen_coordinates[coordinate] = true
-	var revealed_coordinates := seen_coordinates if los_blackout else (dungeon_discovery if map_view.level_type == &"dungeon" else land_discovery_coordinates(map_view.visited_coordinates(), Vector2i(map_view.width, map_view.height)))
+	var dungeon_discovery := _dungeon_discovery_cache if map_view.level_type == &"dungeon" else {}
+	var revealed_coordinates := _seen_coordinate_cache if los_blackout else (dungeon_discovery if map_view.level_type == &"dungeon" else _land_discovery_cache)
 	for cell: MapCellView in map_view.cells():
 		if cell.coordinate.x < camera.x or cell.coordinate.y < camera.y or cell.coordinate.x >= camera_end.x or cell.coordinate.y >= camera_end.y:
 			continue
 		var rect := Rect2(draw_origin + Vector2(cell.coordinate - camera) * cell_size, Vector2.ONE * cell_size)
-		if los_blackout and not cell.visible and not seen_coordinates.has(cell.coordinate):
+		if los_blackout and not cell.visible and not _seen_coordinate_cache.has(cell.coordinate):
 			continue
 		var outside_classic_view := not los_blackout and classic_exploration_visibility and not classic_rect.has_point(cell.coordinate)
 		if outside_classic_view and not revealed_coordinates.has(cell.coordinate):
@@ -294,11 +345,15 @@ static func classic_visible_rect(party_coordinate: Vector2i, map_size: Vector2i)
 static func land_discovery_coordinates(visited: Array[Vector2i], map_size: Vector2i) -> Dictionary:
 	var result: Dictionary = {}
 	for coordinate: Vector2i in visited:
-		var visible_rect := classic_visible_rect(coordinate, map_size)
-		for y: int in range(visible_rect.position.y, visible_rect.end.y):
-			for x: int in range(visible_rect.position.x, visible_rect.end.x):
-				result[Vector2i(x, y)] = true
+		append_land_discovery(result, coordinate, map_size)
 	return result
+
+
+static func append_land_discovery(result: Dictionary, coordinate: Vector2i, map_size: Vector2i) -> void:
+	var visible_rect := classic_visible_rect(coordinate, map_size)
+	for y: int in range(visible_rect.position.y, visible_rect.end.y):
+		for x: int in range(visible_rect.position.x, visible_rect.end.x):
+			result[Vector2i(x, y)] = true
 
 
 static func viewport_cells_for(control_size: Vector2, header_height: float, native_cell_size: float) -> Vector2i:
@@ -354,10 +409,14 @@ func _draw_cell(cell: MapCellView, rect: Rect2, level_type: StringName, dark: bo
 static func dungeon_discovery_coordinates(visited: Array[Vector2i]) -> Dictionary:
 	var result: Dictionary = {}
 	for coordinate: Vector2i in visited:
-		for y: int in range(coordinate.y - 1, coordinate.y + 2):
-			for x: int in range(coordinate.x - 1, coordinate.x + 2):
-				result[Vector2i(x, y)] = true
+		append_dungeon_discovery(result, coordinate)
 	return result
+
+
+static func append_dungeon_discovery(result: Dictionary, coordinate: Vector2i) -> void:
+	for y: int in range(coordinate.y - 1, coordinate.y + 2):
+		for x: int in range(coordinate.x - 1, coordinate.x + 2):
+			result[Vector2i(x, y)] = true
 
 
 static func darkness_overlay_alpha(saved_darkness_level: int) -> float:
@@ -472,7 +531,7 @@ func _movement_direction_at(position: Vector2) -> Vector2i:
 
 
 func _update_movement_cursor(position: Vector2) -> void:
-	if not is_visible_in_tree() or _view == null or _view.map_view == null:
+	if not _movement_cursor_enabled or not is_visible_in_tree() or _view == null or _view.map_view == null:
 		_clear_movement_cursor()
 		return
 	var asset_id := movement_cursor_asset_id(_movement_direction_at(position))
@@ -484,14 +543,12 @@ func _update_movement_cursor(position: Vector2) -> void:
 	_movement_cursor_asset_id = asset_id
 
 
-func _restore_held_movement_cursor() -> void:
-	if not is_visible_in_tree() or _held_direction == Vector2i.ZERO:
+func _restore_movement_cursor_at_pointer() -> void:
+	if not _movement_cursor_enabled or not is_visible_in_tree():
 		return
-	var asset_id := movement_cursor_asset_id(_held_direction)
-	var texture := ClassicUiAssetCatalog.texture(asset_id)
-	if texture != null:
-		Input.set_custom_mouse_cursor(texture, Input.CURSOR_ARROW, ClassicUiAssetCatalog.cursor_hotspot(asset_id))
-		_movement_cursor_asset_id = asset_id
+	var local_position := get_local_mouse_position()
+	if Rect2(Vector2.ZERO, size).has_point(local_position):
+		_update_movement_cursor(local_position)
 
 
 func _clear_movement_cursor() -> void:
