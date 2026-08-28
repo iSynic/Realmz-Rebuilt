@@ -245,8 +245,9 @@ func _continue_post_move(events: Array[DomainEvent]) -> SessionCoordinatorResult
 		if completed_trigger == null:
 			_context.session_continuation.clear()
 			return _context.failed(&"invalid_session_continuation", "Completed trigger continuation is unavailable.", events)
-		if _context.events_have(events, &"classic_choice_backout_requested"):
-			return _complete_classic_choice_backout(map, coordinate, active_trigger_id, events)
+		var backout_kind: StringName = &"choice" if _context.events_have(events, &"classic_choice_backout_requested") else &"encounter" if _context.events_have(events, &"encounter_cancelled") else &""
+		if not backout_kind.is_empty():
+			return _complete_classic_backout(map, coordinate, active_trigger_id, events, backout_kind)
 		_context.scenario()._finalize_completed_trigger(completed_trigger, events)
 		if _context.scenario()._apply_trigger_destination(completed_trigger, events, exploration.action_point_destination_depth == 0 and not _context.events_have(events, &"party_position_restored")):
 			var destination_map = _context.content.world.map_by_id(_context.state.party.map_id)
@@ -307,19 +308,19 @@ func _continue_post_move(events: Array[DomainEvent]) -> SessionCoordinatorResult
 	return _context.completed(events)
 
 
-func _complete_classic_choice_backout(map: MapDefinition, coordinate: Vector2i, trigger_id: String, events: Array[DomainEvent]) -> SessionCoordinatorResult:
+func _complete_classic_backout(map: MapDefinition, coordinate: Vector2i, trigger_id: String, events: Array[DomainEvent], backout_kind: StringName) -> SessionCoordinatorResult:
 	if _context.state.party.map_id != map.id or _context.state.party.coordinate != coordinate:
 		_context.session_continuation.clear()
-		return _context.failed(&"invalid_choice_backout", "Classic Choice backout lost its action-point location.", events)
+		return _context.failed(&"invalid_choice_backout", "Classic backout lost its action-point location.", events)
 	if map.level_type == &"land":
 		var direction := _context.state.last_move_direction
 		var destination := coordinate - direction
 		if direction == Vector2i.ZERO or map.topology.cell_at(destination) == null:
 			_context.session_continuation.clear()
-			return _context.failed(&"invalid_choice_backout", "Classic Choice cannot reverse the preceding overland step.", events)
+			return _context.failed(&"invalid_choice_backout", "Classic backout cannot reverse the preceding overland step.", events)
 		_context.state.party.coordinate = destination
-		events.append(DomainEvent.new(&"party_moved", {"fromMapId": map.id, "fromX": coordinate.x, "fromY": coordinate.y, "mapId": map.id, "x": destination.x, "y": destination.y, "source": "classic-choice-backout", "triggerId": trigger_id}))
-	events.append(DomainEvent.new(&"classic_choice_backout_completed", {"triggerId": trigger_id, "mapId": map.id, "fromX": coordinate.x, "fromY": coordinate.y, "x": _context.state.party.coordinate.x, "y": _context.state.party.coordinate.y}))
+		events.append(DomainEvent.new(&"party_moved", {"fromMapId": map.id, "fromX": coordinate.x, "fromY": coordinate.y, "mapId": map.id, "x": destination.x, "y": destination.y, "source": "classic-%s-backout" % backout_kind, "triggerId": trigger_id}))
+	events.append(DomainEvent.new(&"classic_%s_backout_completed" % backout_kind, {"triggerId": trigger_id, "mapId": map.id, "fromX": coordinate.x, "fromY": coordinate.y, "x": _context.state.party.coordinate.x, "y": _context.state.party.coordinate.y}))
 	_context.session_continuation.clear()
 	return _context.completed(events)
 
