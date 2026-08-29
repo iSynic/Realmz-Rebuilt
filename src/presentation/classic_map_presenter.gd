@@ -47,6 +47,12 @@ var _visited_coordinate_cache: Dictionary = {}
 var _seen_coordinate_cache: Dictionary = {}
 var _land_discovery_cache: Dictionary = {}
 var _dungeon_discovery_cache: Dictionary = {}
+var _visible_cell_cache: Array[MapCellView] = []
+var _visible_cells_by_coordinate: Dictionary = {}
+var _visible_cache_map_id: String = ""
+var _visible_cache_camera: Vector2i = Vector2i(-1, -1)
+var _visible_cache_size: Vector2i = Vector2i.ZERO
+var _visible_cache_party_coordinate: Vector2i = Vector2i(-1, -1)
 var _surround_texture: Texture2D = load(SURROUND_TEXTURE_PATH) as Texture2D
 
 
@@ -94,6 +100,7 @@ func present(game_view: GameView) -> void:
 	visible = game_view != null and game_view.session_started and game_view.map_view != null
 	if visible:
 		_update_visibility_cache(game_view.map_view)
+		_update_visible_cell_cache(game_view.map_view)
 		_party_facing_asset_id = party_marker_asset_id_for_direction(game_view.map_view.last_move_direction, _party_facing_asset_id)
 		var summary := game_view.party_summary
 		var boat_asset_id := boat_marker_asset_id(game_view.map_view.landlook, _party_facing_asset_id == PARTY_MARKER_RIGHT_ASSET_ID)
@@ -129,10 +136,10 @@ func set_classic_exploration_visibility(enabled: bool) -> void:
 
 func _update_visibility_cache(map_view: MapView) -> void:
 	var map_size := Vector2i(map_view.width, map_view.height)
-	var visited := map_view.visited_coordinates()
-	var seen := map_view.seen_coordinates()
 	var map_changed := _visibility_cache_map_id != map_view.map_id or _visibility_cache_map_size != map_size or _visibility_cache_level_type != map_view.level_type
-	if map_changed or _coordinate_set_replaced(_visited_coordinate_cache, visited) or _coordinate_set_replaced(_seen_coordinate_cache, seen):
+	var delta: Variant = map_view.presentation_delta
+	var can_append_delta: bool = not map_changed and delta != null and delta.map_id == map_view.map_id
+	if not can_append_delta:
 		_visibility_cache_map_id = map_view.map_id
 		_visibility_cache_map_size = map_size
 		_visibility_cache_level_type = map_view.level_type
@@ -140,6 +147,12 @@ func _update_visibility_cache(map_view: MapView) -> void:
 		_seen_coordinate_cache.clear()
 		_land_discovery_cache.clear()
 		_dungeon_discovery_cache.clear()
+	var visited: Array[Vector2i] = []
+	var seen: Array[Vector2i] = []
+	if can_append_delta:
+		visited.assign(delta.newly_visited); seen.assign(delta.newly_seen)
+	else:
+		visited = map_view.visited_coordinates(); seen = map_view.seen_coordinates()
 	for coordinate: Vector2i in visited:
 		if _visited_coordinate_cache.has(coordinate):
 			continue
@@ -152,14 +165,26 @@ func _update_visibility_cache(map_view: MapView) -> void:
 		_seen_coordinate_cache[coordinate] = true
 
 
-static func _coordinate_set_replaced(cached: Dictionary, current: Array[Vector2i]) -> bool:
-	if current.size() < cached.size():
-		return true
-	var retained := 0
-	for coordinate: Vector2i in current:
-		if cached.has(coordinate):
-			retained += 1
-	return retained < cached.size()
+func _update_visible_cell_cache(map_view: MapView) -> void:
+	var requested := viewport_cells_for(size, map_origin.y, cell_size)
+	var viewport_size := Vector2i(mini(requested.x, map_view.width), mini(requested.y, map_view.height))
+	var camera := camera_top_left(map_view.party_coordinate, Vector2i(map_view.width, map_view.height), viewport_size)
+	var delta: Variant = map_view.presentation_delta
+	var can_reuse: bool = _visible_cache_map_id == map_view.map_id and _visible_cache_size == viewport_size and delta != null and delta.matches(map_view.map_id, _visible_cache_party_coordinate, map_view.party_coordinate)
+	var changed: Dictionary = {}
+	if can_reuse:
+		for coordinate: Vector2i in delta.newly_visited + delta.newly_seen: changed[coordinate] = true
+	var previous := _visible_cells_by_coordinate if can_reuse else {}
+	var next_by_coordinate: Dictionary = {}
+	var next_cells: Array[MapCellView] = []
+	for y: int in range(camera.y, camera.y + viewport_size.y):
+		for x: int in range(camera.x, camera.x + viewport_size.x):
+			var coordinate := Vector2i(x, y)
+			var cell := previous.get(coordinate) as MapCellView
+			if cell == null or changed.has(coordinate): cell = map_view.cell_at(coordinate)
+			if cell != null: next_by_coordinate[coordinate] = cell; next_cells.append(cell)
+	_visible_cache_map_id = map_view.map_id; _visible_cache_camera = camera; _visible_cache_size = viewport_size; _visible_cache_party_coordinate = map_view.party_coordinate
+	_visible_cells_by_coordinate = next_by_coordinate; _visible_cell_cache = next_cells
 
 
 func set_media_catalog(media: ClassicMediaCatalog) -> void:
@@ -183,18 +208,18 @@ func _draw() -> void:
 	var font := get_theme_font(&"font", &"Label")
 	var requested_cells := viewport_cells_for(size, map_origin.y, cell_size)
 	var viewport_cells := Vector2i(mini(requested_cells.x, map_view.width), mini(requested_cells.y, map_view.height))
+	var expected_camera := camera_top_left(map_view.party_coordinate, Vector2i(map_view.width, map_view.height), viewport_cells)
+	if _visible_cache_map_id != map_view.map_id or _visible_cache_size != viewport_cells or _visible_cache_camera != expected_camera:
+		_update_visible_cell_cache(map_view)
 	var draw_origin := map_draw_origin_for(size, map_origin, cell_size, viewport_cells)
 	var map_rect := Rect2(draw_origin, Vector2(viewport_cells) * cell_size)
 	var los_blackout := map_view.uses_los
 	_draw_exploration_stage(map_rect, los_blackout)
-	var camera := camera_top_left(map_view.party_coordinate, Vector2i(map_view.width, map_view.height), viewport_cells)
-	var camera_end := camera + viewport_cells
+	var camera := _visible_cache_camera
 	var classic_rect := classic_visible_rect(map_view.party_coordinate, Vector2i(map_view.width, map_view.height))
 	var dungeon_discovery := _dungeon_discovery_cache if map_view.level_type == &"dungeon" else {}
 	var revealed_coordinates := _seen_coordinate_cache if los_blackout else (dungeon_discovery if map_view.level_type == &"dungeon" else _land_discovery_cache)
-	for cell: MapCellView in map_view.cells():
-		if cell.coordinate.x < camera.x or cell.coordinate.y < camera.y or cell.coordinate.x >= camera_end.x or cell.coordinate.y >= camera_end.y:
-			continue
+	for cell: MapCellView in _visible_cell_cache:
 		var rect := Rect2(draw_origin + Vector2(cell.coordinate - camera) * cell_size, Vector2.ONE * cell_size)
 		if los_blackout and not cell.visible and not _seen_coordinate_cache.has(cell.coordinate):
 			continue
@@ -591,7 +616,7 @@ func _draw_minimap(map_view: MapView, font: Font) -> void:
 	_minimap_rect = Rect2(origin - Vector2.ONE * 4.0, map_pixel_size + Vector2.ONE * 8.0)
 	draw_rect(_minimap_rect, Color(0.035, 0.04, 0.05, 0.9), true)
 	draw_string(font, origin - Vector2(0, 7), "Map", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.72, 0.76, 0.82))
-	for coordinate: Vector2i in map_view.visited_coordinates():
+	for coordinate: Vector2i in _visited_coordinate_cache:
 		var rect := Rect2(origin + Vector2(coordinate) * scale, Vector2.ONE * maxf(scale, 1.0))
 		draw_rect(rect, Color(0.28, 0.48, 0.32), true)
 	var party_center := origin + (Vector2(map_view.party_coordinate) + Vector2.ONE * 0.5) * scale

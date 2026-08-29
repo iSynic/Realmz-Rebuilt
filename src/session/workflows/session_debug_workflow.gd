@@ -25,6 +25,22 @@ static func warp(context: SessionWorkflowContext, map_id: String, coordinate: Ve
 	return SessionWorkflowResult.completed([DomainEvent.new(&"debug_party_warped", {"fromMapId": source_map, "fromX": source_coordinate.x, "fromY": source_coordinate.y, "mapId": map.id, "x": coordinate.x, "y": coordinate.y})])
 
 
+static func noclip_step(context: SessionWorkflowContext, direction: Vector2i) -> SessionWorkflowResult:
+	if not MapTopology.is_cardinal_direction(direction) and not MapTopology.is_diagonal_direction(direction):
+		return SessionWorkflowResult.failed(&"debug_direction_invalid", "No-clip movement requires one adjacent direction.")
+	var map := context.content.world.map_by_id(context.state.party.map_id)
+	var source := context.state.party.coordinate
+	var target := source + direction
+	if map == null or map.topology.cell_at(target) == null:
+		return SessionWorkflowResult.failed(&"debug_location_unavailable", "No-clip movement cannot leave the current map.")
+	if context.state.combat != null or context.scenario_vm.is_active():
+		return SessionWorkflowResult.failed(&"debug_exploration_required", "No-clip movement is available only at a committed exploration boundary.")
+	context.state.party.coordinate = target
+	context.state.last_move_direction = direction
+	context.state.world.mark_visited(map.id, target)
+	return SessionWorkflowResult.completed([DomainEvent.new(&"debug_party_noclip_moved", {"fromMapId": map.id, "fromX": source.x, "fromY": source.y, "mapId": map.id, "x": target.x, "y": target.y})])
+
+
 static func restore_party(context: SessionWorkflowContext) -> SessionWorkflowResult:
 	if context.state.party.characters().is_empty():
 		return SessionWorkflowResult.failed(&"debug_party_unavailable", "The party has no characters to restore.")

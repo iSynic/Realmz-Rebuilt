@@ -4,12 +4,15 @@ extends RefCounted
 const MAP_VIEW_RADIUS: int = 12
 const LOCATION_NOTE_VIEW_SIZE: Vector2i = Vector2i(15, 13)
 const ViewDomainRevisionsScript := preload("res://src/core/session/view_domain_revisions.gd")
+const MapPresentationDeltaScript := preload("res://src/core/view/map_presentation_delta.gd")
 
 var _cached_map_revision: int = -1
 var _cached_map_id: String = ""
 var _cached_map_coordinate: Vector2i = Vector2i(-1, -1)
 var _cached_map_view: MapView
 var _cached_map_cells_by_coordinate: Dictionary = {}
+var _cached_visited_membership: Dictionary = {}
+var _cached_seen_membership: Dictionary = {}
 var _cached_view: GameView
 
 
@@ -124,6 +127,8 @@ func clear() -> void:
 	_cached_map_coordinate = Vector2i(-1, -1)
 	_cached_map_view = null
 	_cached_map_cells_by_coordinate.clear()
+	_cached_visited_membership.clear()
+	_cached_seen_membership.clear()
 	_cached_view = null
 
 
@@ -132,10 +137,13 @@ func _can_project_ordinary_movement(context: SessionWorkflowContext, pending_int
 		return false
 	if _cached_view.party_map_id != context.state.party.map_id:
 		return false
+	var current_map := context.content.world.map_by_id(context.state.party.map_id)
+	if current_map == null or current_map.uses_los:
+		return false
 	var moved_count := 0
 	for event: DomainEvent in events:
 		match event.kind:
-			&"party_moved":
+			&"party_moved", &"debug_party_noclip_moved":
 				if event.payload.has("source"):
 					return false
 				if String(event.payload.get("fromMapId", "")) != _cached_view.party_map_id or String(event.payload.get("mapId", "")) != context.state.party.map_id:
@@ -177,7 +185,7 @@ func _project_ordinary_movement(context: SessionWorkflowContext, revision: int) 
 	result.combat_icon_options.assign(_cached_view.combat_icon_options)
 	result.campaign_summary = _cached_view.campaign_summary
 	result.party_setup = _cached_view.party_setup
-	result.party_summary = _cached_view.party_summary
+	result.party_summary = _ordinary_party_summary(context, _cached_view.party_summary)
 	result.journal_entries.assign(_cached_view.journal_entries)
 	result.services.assign(_cached_view.services)
 	result.money_workspace = _cached_view.money_workspace
@@ -204,14 +212,42 @@ func _map_view(context: SessionWorkflowContext, revision: int, reuse_ordinary_ce
 		return _cached_map_view
 	if reuse_static and _cached_map_view != null and _cached_map_id == context.state.party.map_id and _cached_map_coordinate == context.state.party.coordinate:
 		return _cached_map_view
+	var previous_map_view := _cached_map_view
+	var presentation_delta: RefCounted
+	if reuse_ordinary_cells and previous_map_view != null:
+		var destination := context.state.party.coordinate
+		var newly_visited: Array[Vector2i] = []
+		var newly_seen: Array[Vector2i] = []
+		if not _cached_visited_membership.has(destination): newly_visited.append(destination)
+		presentation_delta = MapPresentationDeltaScript.new(context.state.party.map_id, previous_map_view.party_coordinate, destination, newly_visited, newly_seen)
 	_cached_map_revision = revision
 	_cached_map_id = context.state.party.map_id
 	_cached_map_coordinate = context.state.party.coordinate
-	_cached_map_view = _build_map_view(context, _cached_map_cells_by_coordinate if reuse_ordinary_cells else {})
+	_cached_map_view = _build_map_view(context, _cached_map_cells_by_coordinate if reuse_ordinary_cells else {}, previous_map_view, presentation_delta)
 	_cached_map_cells_by_coordinate.clear()
 	for cell: MapCellView in _cached_map_view.cells():
 		_cached_map_cells_by_coordinate[cell.coordinate] = cell
+	if presentation_delta != null:
+		for coordinate: Vector2i in presentation_delta.newly_visited:
+			_cached_visited_membership[coordinate] = true
+		for coordinate: Vector2i in presentation_delta.newly_seen:
+			_cached_seen_membership[coordinate] = true
+	else:
+		_cached_visited_membership.clear(); _cached_seen_membership.clear()
+		for coordinate: Vector2i in _cached_map_view.visited_coordinates(): _cached_visited_membership[coordinate] = true
+		for coordinate: Vector2i in _cached_map_view.seen_coordinates(): _cached_seen_membership[coordinate] = true
 	return _cached_map_view
+
+
+static func _ordinary_party_summary(context: SessionWorkflowContext, previous: PartySummaryView) -> PartySummaryView:
+	if previous == null:
+		return null
+	var result := PartySummaryView.new()
+	result.character_ids.assign(previous.character_ids); result.ally_ids.assign(previous.ally_ids); result.acquired_map_ids.assign(previous.acquired_map_ids)
+	result.pooled_gold = previous.pooled_gold; result.banked_gold = previous.banked_gold; result.has_classic_torch = previous.has_classic_torch
+	result.fatigue = context.state.party.fatigue; result.light_remaining = context.state.party.conditions.value(ConditionRules.PARTY_TORCH_LIT)
+	result.camping = previous.camping; result.searching = previous.searching; result.in_boat = previous.in_boat
+	return result
 
 
 func _can_reuse_static_map_projections(state: GameState) -> bool:
@@ -731,7 +767,7 @@ static func _money_kind(value: StringName) -> int:
 	return -1
 
 
-static func _build_map_view(context: SessionWorkflowContext, reusable_cells: Dictionary = {}) -> MapView:
+static func _build_map_view(context: SessionWorkflowContext, reusable_cells: Dictionary = {}, previous_map_view: MapView = null, presentation_delta: RefCounted = null) -> MapView:
 	var content := context.content
 	var state := context.state
 	var map := content.world.map_by_id(state.party.map_id)
@@ -769,7 +805,13 @@ static func _build_map_view(context: SessionWorkflowContext, reusable_cells: Dic
 		movement_options[direction_name] = {"allowed": probe.allowed, "reason": String(probe.reason)}
 	var dark := state.world.map_is_dark(map)
 	var darkness_level := classic_darkness_level(state.party.conditions.value(ConditionRules.PARTY_TORCH_LIT)) if dark else -1
-	return MapView.new(map.id, map.name, map.level_type, map.topology.width, map.topology.height, state.party.coordinate, cells, dark, state.world.visited_coordinates(map.id), movement_options, state.last_move_direction, state.world.map_landlook(map), state.dungeon_heading, state.dungeon_multiview, state.party.conditions.is_active(ConditionRules.PARTY_WIZARDS_EYE), map.base_scale, state.xy_display_hidden, state.compass_enabled, darkness_level, map.uses_los, state.world.seen_coordinates(map.id))
+	var visited: Array[Vector2i] = []
+	var seen: Array[Vector2i] = []
+	if presentation_delta == null:
+		visited = state.world.visited_coordinates(map.id); seen = state.world.seen_coordinates(map.id)
+	var result := MapView.new(map.id, map.name, map.level_type, map.topology.width, map.topology.height, state.party.coordinate, cells, dark, visited, movement_options, state.last_move_direction, state.world.map_landlook(map), state.dungeon_heading, state.dungeon_multiview, state.party.conditions.is_active(ConditionRules.PARTY_WIZARDS_EYE), map.base_scale, state.xy_display_hidden, state.compass_enabled, darkness_level, map.uses_los, seen, presentation_delta)
+	result.inherit_visibility(previous_map_view)
+	return result
 
 
 static func classic_darkness_level(torch_value: int) -> int:

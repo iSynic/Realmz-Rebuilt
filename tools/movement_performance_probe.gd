@@ -21,7 +21,7 @@ func _initialize() -> void:
 		call_deferred("_quit_cleanly", 1)
 		return
 	var pair := _safe_movement_pair(session, loaded.content)
-	if pair.is_empty() or not _place_party(session, loaded.content, pair["origin"]):
+	if pair.is_empty() or not _place_party(session, loaded.content, pair["origin"], 4096):
 		printerr("SESSION_REJECTED: no trigger-free movement pair is available")
 		call_deferred("_quit_cleanly", 1)
 		return
@@ -70,6 +70,7 @@ func _initialize() -> void:
 		"scheduledStepsPerSecond100": 20,
 		"scheduledStepsPerSecond400": 80,
 		"ordinaryProjectionCount": ordinary_projection_count,
+		"visitedHistorySize": session.view().map_view.visited_coordinates().size(),
 		"eventKinds": event_kinds,
 		"eventSequences": event_sequences,
 		"fatiguePayload": fatigue_payload,
@@ -138,9 +139,15 @@ static func _safe_cell(cell: MapCell) -> bool:
 	return cell != null and cell.passable and cell.trigger_ids().is_empty() and cell.random_rect_ids().is_empty() and cell.features().is_empty()
 
 
-func _place_party(session: GameSession, content: RealmzContent, coordinate: Vector2i) -> bool:
+func _place_party(session: GameSession, content: RealmzContent, coordinate: Vector2i, visited_history_target: int = 0) -> bool:
 	var snapshot := session.snapshot()
 	snapshot.game_state.party.coordinate = coordinate
+	var map := content.world.map_by_id(snapshot.game_state.party.map_id)
+	if map != null:
+		var seeded := 0
+		for cell: MapCell in map.topology.cells():
+			snapshot.game_state.world.mark_visited(map.id, cell.coordinate); seeded += 1
+			if seeded >= visited_history_target: break
 	snapshot.game_state.world.mark_visited(snapshot.game_state.party.map_id, coordinate)
 	return session.restore(content, snapshot).state == SessionStep.State.COMPLETED
 

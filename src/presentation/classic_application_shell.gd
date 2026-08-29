@@ -156,7 +156,11 @@ func present(game_view: GameView) -> void:
 	var previous_view := _current_view
 	var previous_campaign_id := _current_view.campaign_id if _current_view != null and _current_view.session_started else ""
 	var contextual_service_closed := _current_view != null and _current_view.pending_interaction != null and _current_view.pending_interaction.kind in [InteractionRequest.SHOP, InteractionRequest.TEMPLE, InteractionRequest.BANK] and game_view != null and game_view.pending_interaction == null
+	var ordinary_exploration_update: bool = previous_view != null and game_view != null and game_view.domain_revisions.is_ordinary_exploration_update_from(previous_view.domain_revisions)
 	_current_view = game_view
+	if ordinary_exploration_update:
+		_present_ordinary_exploration_shell(game_view)
+		return
 	if not _held_command.is_empty() and (game_view == null or game_view.pending_interaction != null or not game_view.availability(_held_command).enabled):
 		_stop_held_command()
 	if game_view == null or not game_view.session_started:
@@ -188,27 +192,28 @@ func present(game_view: GameView) -> void:
 	_package_status.text = game_view.campaign_summary.title if game_view.campaign_summary != null else game_view.campaign_id
 	if not game_view.party_members.any(func(character: CharacterView) -> bool: return character.id == _selected_character_id):
 		_on_character_selected(game_view.party_members[0].id if not game_view.party_members.is_empty() else "")
-	var ordinary_exploration_update: bool = previous_view != null and game_view.domain_revisions.is_ordinary_exploration_update_from(previous_view.domain_revisions)
-	if not ordinary_exploration_update:
-		# Party setup owns its six-slot assembly pane and covers the persistent
-		# gameplay roster. Rebuilding that hidden roster after every import added a
-		# second set of rows and portrait work with no visible result.
-		if not game_view.party_setup_available:
-			_party_roster.present(game_view, _selected_character_id)
-		_router.present(game_view)
+	# Party setup owns its six-slot assembly pane and covers the persistent
+	# gameplay roster. Rebuilding that hidden roster after every import added a
+	# second set of rows and portrait work with no visible result.
+	if not game_view.party_setup_available:
+		_party_roster.present(game_view, _selected_character_id)
+	_router.present(game_view)
 	var play_regions_visible := not _router.full_stage_overlay_visible()
 	_set_play_regions_visible(play_regions_visible)
 	var automatic_route := automatic_workflow_route(_router.current_screen(), game_view, contextual_service_closed)
 	if automatic_route != _router.current_screen():
 		_router.open_screen(automatic_route, false)
-	if not ordinary_exploration_update:
-		_build_menus()
-		_rebuild_command_deck()
-	else:
-		# Ordinary movement preserves the command context and its detached
-		# availability facts. Recreating every bitmap button once per square was
-		# pure presentation churn and made held movement visibly stall.
-		_update_command_availability()
+	_build_menus()
+	_rebuild_command_deck()
+
+
+func _present_ordinary_exploration_shell(game_view: GameView) -> void:
+	_clock_label.text = "Day %d • %02d:%02d" % [game_view.realmz_day, game_view.realmz_hour, game_view.realmz_minute]
+	_coordinates_label.text = location_fact_text(game_view)
+	_fatigue_label.text = "Fatigue %d" % game_view.party_fatigue
+	_fatigue_bar.value = game_view.party_fatigue
+	_fatigue_bar.tooltip_text = "Fatigue %d / 135" % game_view.party_fatigue
+	_light_label.text = "Light %d" % game_view.party_summary.light_remaining if game_view.party_summary != null else "Light —"
 
 
 static func location_fact_text(game_view: GameView) -> String:

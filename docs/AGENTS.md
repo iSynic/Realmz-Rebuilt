@@ -44,3 +44,4 @@ Own current architecture, ADRs, package/save contracts, fidelity decisions, orac
 - `scenario-vm-evidence.md` owns Classic control-flow, nested macro, and host-boundary evidence.
 - `ui-strategy.md` owns the canonical visual language, responsive profiles, route/screen matrix, scaling, input, accessibility, media, and fidelity boundaries.
 - `ui-visual-audit.md` owns the complete player-visible screen/state inventory, Castle/Remake design leads, target composition decisions, media opportunities, and phased visual-remediation queue.
+- `runtime-performance.md` owns the current startup, package-prewarm, vault-insertion, and rendered-overworld performance evidence, acceptance boundaries, and machine-specific measured results.

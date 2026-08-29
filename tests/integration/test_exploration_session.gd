@@ -37,12 +37,12 @@ func run() -> void:
 	var before_open_view := open_session.view()
 	var open_step := open_session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
 	var open_view := open_session.view(open_step.events)
-	assert_equal(open_view.domain_revisions.party, before_open_view.domain_revisions.party, "ordinary movement reuses the unchanged party projection"); assert_equal(open_view.domain_revisions.exploration, open_view.revision, "ordinary movement advances the exploration projection revision")
-	assert_true(open_session.view() == open_view and open_view.map_view.cell_at(Vector2i(2, 1)).has_feature(&"discovered_path"), "repeated reads reuse the detached view and a walked Classic path exposes its saved red-cross marker")
+	assert_equal(open_view.domain_revisions.party, before_open_view.domain_revisions.party, "ordinary movement reuses the unchanged party projection"); assert_equal(open_view.domain_revisions.exploration, open_view.revision, "ordinary movement advances the exploration projection revision"); assert_true(open_view.map_view.presentation_delta != null and open_view.map_view.presentation_delta.viewport_shift == Vector2i.RIGHT and open_view.map_view.presentation_delta.newly_visited == [Vector2i(2, 1)], "strict ordinary movement carries only its detached viewport and visibility delta")
+	assert_true(open_session.view() == open_view and open_view.map_view.cell_at(Vector2i(2, 1)).has_feature(&"discovered_path"), "repeated reads reuse the detached view and a walked Classic path exposes its saved red-cross marker"); assert_equal([before_open_view.map_view.visited_coordinates(), open_view.map_view.visited_coordinates()], [[Vector2i(1, 1)], [Vector2i(1, 1), Vector2i(2, 1)]], "delta materialization preserves the previous detached history while appending the newly walked cell")
 	assert_equal(before_open_view.party_coordinate, Vector2i(1, 1), "a later projection cannot mutate the previous detached view")
-	var full_projection_session := GameSession.new(); full_projection_session.restore(open_content, save_round_trip(open_session.snapshot()))
-	var full_open_view := full_projection_session.view()
-	assert_equal([open_view.party_coordinate, open_view.realmz_day, open_view.realmz_hour, open_view.realmz_minute, open_view.map_view.cells().size(), open_view.party_members.size()], [full_open_view.party_coordinate, full_open_view.realmz_day, full_open_view.realmz_hour, full_open_view.realmz_minute, full_open_view.map_view.cells().size(), full_open_view.party_members.size()], "incremental and full projections expose the same movement-owned state")
+	var full_projection_session := GameSession.new(); full_projection_session.restore(open_content, save_round_trip(open_session.snapshot())); var full_open_view := full_projection_session.view()
+	assert_equal([open_view.party_coordinate, open_view.realmz_day, open_view.realmz_hour, open_view.realmz_minute, open_view.map_view.cells().size(), open_view.party_members.size()], [full_open_view.party_coordinate, full_open_view.realmz_day, full_open_view.realmz_hour, full_open_view.realmz_minute, full_open_view.map_view.cells().size(), full_open_view.party_members.size()], "incremental and full projections expose the same movement-owned state"); assert_equal(full_open_view.map_view.presentation_delta, null, "restore reconstructs a complete authoritative map projection without carrying a runtime delta")
+	var los_content := _open_movement_content(content, true); var los_session := GameSession.new(); los_session.start(los_content, 1); _begin_fixture_adventure(los_session, los_content); var los_step := los_session.submit_intent(PlayerIntent.move(Vector2i.RIGHT)); var moved_los_view := los_session.view(los_step.events); assert_true(moved_los_view.map_view.presentation_delta == null and moved_los_view.domain_revisions.party == moved_los_view.revision, "LOS movement conservatively forces a complete detached projection")
 	for action_id: Variant in full_open_view.action_availability:
 		var action := StringName(action_id)
 		assert_equal([open_view.availability(action).enabled, open_view.availability(action).reason], [full_open_view.availability(action).enabled, full_open_view.availability(action).reason], "incremental and full projections agree on %s availability" % action)
@@ -585,7 +585,7 @@ func _classic_backout_content(source_content: RealmzContent, encounter_kind: Str
 	return RealmzContent.new("classic-backout", "0".repeat(64), "classic-backout-content", "realmz-classic-1", map.id, Vector2i.ZERO, WorldDefinition.new([map]), ScenarioDefinition.new([program], []), messages, [trigger], simple, source_content.race_definitions(), source_content.caste_definitions(), [], [], [], [], [], [], complex)
 
 
-func _open_movement_content(source_content: RealmzContent) -> RealmzContent:
+func _open_movement_content(source_content: RealmzContent, uses_los: bool = false) -> RealmzContent:
 	var cells: Array[MapCell] = []
 	var empty_ids: Array[String] = []
 	var empty_features: Array[MapFeature] = []
@@ -599,7 +599,7 @@ func _open_movement_content(source_content: RealmzContent) -> RealmzContent:
 		for x: int in 3:
 			var coordinate := Vector2i(x, y)
 			cells.append(MapCell.new("open:cell:%d,%d" % [x, y], coordinate, "classic.terrain.1", true, 1, false, true, false, false, true, false, false, 151, 1, "fixture.tileset", empty_ids, empty_ids, open_edges, empty_features))
-	var map := MapDefinition.new("open", "Open movement", &"land", 0, MapTopology.new(3, 3, cells))
+	var map := MapDefinition.new("open", "Open movement", &"land", 0, MapTopology.new(3, 3, cells), false, uses_los)
 	var maps: Array[MapDefinition] = [map]
 	return RealmzContent.new("open-movement", "0".repeat(64), "open-movement-content", "realmz-classic-1", map.id, Vector2i(1, 1), WorldDefinition.new(maps), ScenarioDefinition.new([], []), [], [], [], source_content.race_definitions(), source_content.caste_definitions())
 

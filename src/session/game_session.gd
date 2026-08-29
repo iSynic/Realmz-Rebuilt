@@ -275,6 +275,8 @@ func apply_debug_command(command: SessionDebugCommand) -> SessionStep:
 	match command.kind:
 		SessionDebugCommand.Kind.WARP:
 			return _commit_workflow_result(SessionDebugWorkflow.warp(_workflow_context(), command.map_id, command.coordinate))
+		SessionDebugCommand.Kind.NOCLIP_STEP:
+			return _commit_workflow_result(SessionDebugWorkflow.noclip_step(_workflow_context(), command.coordinate))
 		SessionDebugCommand.Kind.RESTORE_PARTY:
 			return _commit_workflow_result(SessionDebugWorkflow.restore_party(_workflow_context()))
 		SessionDebugCommand.Kind.START_BATTLE:
