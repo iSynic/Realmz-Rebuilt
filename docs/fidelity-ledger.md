@@ -22,6 +22,16 @@ Classic-visible behavior is the default ruleset. This ledger records deliberate 
 - Tests: `test_classic_ui_system.gd::_test_fixture_gallery_coverage` proves that the character picker exposes no cancel or premature-submit control and auto-submits only the exact count. `test_scenario_vm.gd::_test_public_character_checks` proves that an invalid or missing response cannot consume the check draw or resume the VM. The differential case is `scenario.character-check-abort`.
 - Legacy quirk: none. Silent party-slot-zero selection is an implementation defect, not a useful authored capability.
 
+## FD-SCENARIO-003 — Opcode 55 specific picked position
+
+- Affected rule: Classic opcode 55 selectors 1 through 6, which branch on whether a specific party position is picked.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/newland.c`, `newland`, lines 3315–3365. The switch labels every selector as “Success if Specific Picked,” but cases 1 through 6 all read `track[0]`.
+- Observable source inconsistency: selectors 2 through 6 cannot test their authored positions and instead duplicate selector 1. The source observation is `tests/fixtures/oracle/scenario-picked-position-correction.json`, SHA-256 `c9c41c270df73967ed42a7b205cc8492be13f09b5537f19062a121bd74c407f8`. This is `source-control-flow` evidence, not a Castle-runtime claim.
+- Player-facing problem: Tutorial's check for the second party member reports the first member as the second, and any scenario branch aimed at positions 2 through 6 resolves against the wrong character.
+- Chosen 2.0 behavior: selectors 1 through 6 test the corresponding one-based party position. Selector 0 and the absolute picked-count modes remain unchanged and no branch consumes RNG.
+- Tests: `test_scenario_vm.gd::_test_public_character_checks` proves selector 2 rejects a first-position-only pick and accepts a second-position pick while preserving the authored GOSUB branch.
+- Legacy quirk: none. Six distinct authored switch cases collapsing onto `track[0]` is a source typo, not a meaningful scenario capability.
+
 ## FD-ECONOMY-001 — Zero-charge shop valuation
 
 - Affected rule: shop sale value for an item definition whose authored charge count is zero.

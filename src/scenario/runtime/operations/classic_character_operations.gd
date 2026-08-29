@@ -399,7 +399,8 @@ func _branch_on_picked_characters(action: ClassicActionDefinition) -> ScenarioRu
 	var matched := not selected_ids.is_empty() if selector == 0 else selected_ids.size() == absi(selector)
 	if selector >= 1 and selector <= 6:
 		var party := _game_state.party.characters()
-		matched = not party.is_empty() and selected_ids.has(party[0].id)
+		var party_index := selector - 1
+		matched = party_index < party.size() and selected_ids.has(party[party_index].id)
 	var event := DomainEvent.new(&"picked_characters_tested", {"selector": selector, "matched": matched, "characterIds": selected_ids, "failureBehavior": failure_behavior, "source": "classic"})
 	if matched:
 		var success := _branch_xap(action.extra_code[3], action.gosub)
