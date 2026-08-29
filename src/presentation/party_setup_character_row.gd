@@ -19,6 +19,8 @@ var import_enabled: bool = false
 var _drag_label: String = ""
 var _drag_portrait: Texture2D
 var _drag_cursor_texture: Texture2D
+var _drag_cursor_key: String = ""
+var _drag_cursor_active: bool = false
 var _portrait_view: TextureRect
 var _summary: Label
 var _add_button: Button
@@ -39,6 +41,7 @@ func configure(revision: CharacterVaultRevisionView, enabled: bool, reason: Stri
 		caste_name = revision.character.caste_name
 	_drag_label = revision.name
 	_drag_portrait = portrait
+	_prepare_drag_cursor(revision.revision_hash, portrait)
 	if _add_button != null:
 		_portrait_view.texture = portrait
 		_portrait_view.tooltip_text = "%s's portrait" % revision.name
@@ -122,12 +125,29 @@ func _exit_tree() -> void:
 
 func _start_drag_cursor() -> void:
 	_clear_drag_cursor()
-	_drag_cursor_texture = _make_drag_cursor_texture()
 	if _drag_cursor_texture == null:
 		return
 	var hotspot := Vector2(PORTRAIT_SIZE, PORTRAIT_SIZE) * 0.5
 	for shape: Input.CursorShape in DRAG_CURSOR_SHAPES:
 		Input.set_custom_mouse_cursor(_drag_cursor_texture, shape, hotspot)
+	_drag_cursor_active = true
+
+
+func _prepare_drag_cursor(prepared_revision_hash: String, portrait: Texture2D) -> void:
+	var next_key := "%s:%d" % [prepared_revision_hash, portrait.get_instance_id() if portrait != null else 0]
+	if next_key == _drag_cursor_key:
+		return
+	_clear_drag_cursor()
+	_drag_cursor_key = next_key
+	_drag_cursor_texture = _make_drag_cursor_texture()
+
+
+func drag_cursor_prepared() -> bool:
+	return _drag_cursor_texture != null
+
+
+func drag_cursor_texture_identity() -> int:
+	return _drag_cursor_texture.get_instance_id() if _drag_cursor_texture != null else 0
 
 
 func _make_drag_cursor_texture() -> Texture2D:
@@ -147,11 +167,11 @@ func _make_drag_cursor_texture() -> Texture2D:
 
 
 func _clear_drag_cursor() -> void:
-	if _drag_cursor_texture == null:
+	if not _drag_cursor_active:
 		return
 	for shape: Input.CursorShape in DRAG_CURSOR_SHAPES:
 		Input.set_custom_mouse_cursor(null, shape)
-	_drag_cursor_texture = null
+	_drag_cursor_active = false
 
 
 static func row_style() -> StyleBoxFlat:

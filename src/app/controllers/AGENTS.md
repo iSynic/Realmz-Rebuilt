@@ -13,6 +13,7 @@ Own host-side package, save, vault, and creator workflows behind detached app va
 - `PackageHostController` loads the immutable built-in Character Files catalog on its own joined worker after the first-frame boundary. It hands one detached result to the composition root and never applies media, starts a session, or leaves the worker running on close.
 - `PackageHostController` merges manifest-only bundled and user campaign discovery deterministically. User revisions replace matching bundled baselines; rejected duplicates do not hide a ready campaign.
 - `PackageHostController` resolves optional last-campaign prewarm only from those detached discovery rows, runs it on the existing cancellable worker, and retains at most one prepared candidate. A matching foreground request claims it immediately; a different request cooperatively supersedes it and receives foreground status/progress without exposing package DTOs to presentation. Background failure retains nothing and permits retry.
+- `CharacterVaultController` caches only records already validated while listing Character Files, keyed by `(characterId, revisionHash)`. Import returns a detached `CharacterState` clone from that cache, while publish, archive, restore, and a fresh listing invalidate or replace cached records so repository mutations cannot leave stale imports.
 - No controller contains Realmz rules, accesses presenter Nodes, or invents compatibility behavior.
 
 ## Verification

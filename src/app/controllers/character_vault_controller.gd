@@ -4,6 +4,7 @@ extends RefCounted
 const CharacterVaultRepositoryScript := preload("res://src/infrastructure/characters/character_vault_repository.gd")
 
 var _repository: CharacterVaultRepository
+var _validated_records: Dictionary = {}
 
 
 func _init(repository: CharacterVaultRepository = null) -> void:
@@ -11,10 +12,16 @@ func _init(repository: CharacterVaultRepository = null) -> void:
 
 
 func import_intent(character_id: String, revision_hash: String) -> PlayerIntent:
-	var record := _repository.load_revision(character_id, revision_hash)
+	var cache_key := _cache_key(character_id, revision_hash)
+	var record := _validated_records.get(cache_key) as CharacterVaultRecord
+	if record == null:
+		record = _repository.load_revision(character_id, revision_hash)
+		if record != null:
+			_validated_records[cache_key] = record
 	if record == null:
 		return null
-	return PlayerIntent.import_vault_character(record.character_id, record.revision_hash, record.state, record.source_campaign_id, record.source_package_hash)
+	var detached_state := CharacterState.from_data(record.state.to_data())
+	return PlayerIntent.import_vault_character(record.character_id, record.revision_hash, detached_state, record.source_campaign_id, record.source_package_hash) if detached_state != null else null
 
 
 func publish(character: CharacterState, rules_version: String, source_campaign_id: String, source_package_hash: String, publication_source: String) -> bool:
@@ -22,16 +29,21 @@ func publish(character: CharacterState, rules_version: String, source_campaign_i
 		return false
 	var record := CharacterVaultRecord.new(character.id, rules_version, source_campaign_id, source_package_hash, character)
 	record.publication_metadata = {"name": character.name, "level": character.level, "source": publication_source}
-	return _repository.publish_revision(record)
+	var published := _repository.publish_revision(record)
+	if published:
+		_validated_records.clear()
+	return published
 
 
 func revisions(active_content: RealmzContent, fallback_content: RealmzContent = null) -> Array[CharacterVaultRevisionView]:
+	_validated_records.clear()
 	var result: Array[CharacterVaultRevisionView] = []
 	var display_content := active_content if active_content != null else fallback_content
 	for character_id: String in _repository.list_character_ids():
 		var current_hash := _repository.current_revision_hash(character_id)
 		var character_archived := current_hash.is_empty()
 		for record: CharacterVaultRecord in _repository.list_revisions(character_id):
+			_validated_records[_cache_key(record.character_id, record.revision_hash)] = record
 			var eligibility := _repository.campaign_eligibility(record, active_content) if active_content != null else null
 			result.append(CharacterVaultRevisionView.from_record(record, eligibility, record.revision_hash == current_hash, character_archived, display_content))
 	result.sort_custom(func(left: CharacterVaultRevisionView, right: CharacterVaultRevisionView) -> bool:
@@ -56,12 +68,26 @@ func next_character_file_identity() -> CharacterFileIdentity:
 
 
 func archive(character_id: String) -> bool:
-	return _repository.archive_character(character_id)
+	var archived := _repository.archive_character(character_id)
+	if archived:
+		_validated_records.clear()
+	return archived
 
 
 func restore(character_id: String, revision_hash: String) -> bool:
-	return _repository.restore_revision(character_id, revision_hash)
+	var restored := _repository.restore_revision(character_id, revision_hash)
+	if restored:
+		_validated_records.clear()
+	return restored
+
+
+func cached_revision_count() -> int:
+	return _validated_records.size()
 
 
 func last_error() -> String:
 	return _repository.last_error
+
+
+static func _cache_key(character_id: String, revision_hash: String) -> String:
+	return "%s:%s" % [character_id, revision_hash]

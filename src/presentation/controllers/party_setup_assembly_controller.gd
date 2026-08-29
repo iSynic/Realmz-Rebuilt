@@ -1,9 +1,13 @@
 class_name PartySetupAssemblyController
 extends "res://src/presentation/controllers/party_setup_controller_component.gd"
 
+const PartySetupPartySlotScript := preload("res://src/presentation/party_setup_party_slot.gd")
+
 var _inspection: RefCounted
 var _stored_revision_signature: String = ""
 var _stored_character_page: int = 0
+var _party_slots: Array[Control] = []
+var _party_slots_owner: PartySetupPartyList
 
 
 func _init(state: RefCounted, inspection: RefCounted) -> void:
@@ -17,7 +21,7 @@ func _inspect_setup_character(character_id: String) -> void:
 func _refresh_party_list() -> void:
 	if party_list == null:
 		return
-	_clear(party_list)
+	_ensure_party_slots()
 	_ensure_appearance_textures()
 	var import_available: bool = view != null and view.availability(&"import_vault_character").enabled and view.party_members.size() < _maximum_party_size()
 	var import_reason := "" if import_available else "The party cannot accept another stored character right now."
@@ -26,70 +30,19 @@ func _refresh_party_list() -> void:
 	if party_count != null:
 		party_count.text = "• %d / %d" % [view.party_members.size() if view != null else 0, _maximum_party_size()]
 	for slot_index: int in _maximum_party_size():
-		if view == null or not view.party_setup_available or slot_index >= view.party_members.size():
-			var empty := PanelContainer.new()
-			empty.name = "EmptyPartySlot%d" % (slot_index + 1)
-			empty.custom_minimum_size.y = PartySetupCharacterRowScript.ROW_HEIGHT
-			empty.add_theme_stylebox_override("panel", PartySetupCharacterRowScript.row_style())
-			empty.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			var empty_row := HBoxContainer.new()
-			empty_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			empty_row.add_theme_constant_override("separation", 6)
-			empty.add_child(empty_row)
-			var portrait_space := Control.new()
-			portrait_space.custom_minimum_size = Vector2(PartySetupCharacterRowScript.PORTRAIT_SIZE, PartySetupCharacterRowScript.PORTRAIT_SIZE)
-			portrait_space.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			empty_row.add_child(portrait_space)
-			var empty_label := Label.new()
-			empty_label.text = "%d. Empty position" % (slot_index + 1)
-			empty_label.modulate = MUTED
-			empty_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-			empty_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			empty_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			empty_row.add_child(empty_label)
-			var action_space := Control.new()
-			action_space.custom_minimum_size.x = 84.0 if layout_profile == UiLayoutProfile.COMPACT else 130.0
-			action_space.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			empty_row.add_child(action_space)
-			party_list.add_child(empty)
-			continue
-		var character: CharacterView = view.party_members[slot_index]
-		var row_panel := PanelContainer.new()
-		row_panel.name = "PartySlot_%s" % character.id.validate_node_name()
-		row_panel.custom_minimum_size.y = PartySetupCharacterRowScript.ROW_HEIGHT
-		row_panel.add_theme_stylebox_override("panel", PartySetupCharacterRowScript.row_style())
-		row_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 6)
-		row_panel.add_child(row)
-		var portrait_view := TextureRect.new()
-		portrait_view.name = "Portrait"
-		portrait_view.custom_minimum_size = Vector2(PartySetupCharacterRowScript.PORTRAIT_SIZE, PartySetupCharacterRowScript.PORTRAIT_SIZE)
-		portrait_view.texture = _appearance_textures.get(character.portrait_id) as Texture2D
-		portrait_view.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		portrait_view.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		portrait_view.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		portrait_view.tooltip_text = "%s's portrait" % character.name
-		row.add_child(portrait_view)
-		var label := Label.new()
-		label.text = PartySetupCharacterRowScript._summary_text(character.name, character.level, character.race_name, character.caste_name, character, slot_index + 1)
-		label.add_theme_font_size_override("font_size", 12)
-		label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		label.modulate = Color("e0e2e5")
-		row.add_child(label)
-		var inspect_button := Button.new()
-		inspect_button.text = "View" if layout_profile == UiLayoutProfile.COMPACT else "Inspect"
-		inspect_button.tooltip_text = "Open %s's complete character record without changing party state." % character.name
-		inspect_button.pressed.connect(_inspect_setup_character.bind(character.id))
-		row.add_child(inspect_button)
-		var remove_button := Button.new()
-		remove_button.text = "−" if layout_profile == UiLayoutProfile.COMPACT else "Remove"
-		remove_button.tooltip_text = "Remove %s from the current party." % character.name
-		_apply_availability(remove_button, &"remove_party_member")
-		remove_button.pressed.connect(_remove_setup_character.bind(character.id))
-		row.add_child(remove_button)
-		party_list.add_child(row_panel)
+		var character: CharacterView = view.party_members[slot_index] if view != null and view.party_setup_available and slot_index < view.party_members.size() else null
+		var portrait: Texture2D = (_appearance_textures.get(character.portrait_id) as Texture2D) if character != null else null
+		var remove_availability := view.availability(&"remove_party_member") if view != null else ActionAvailabilityView.new(&"remove_party_member", false, "No active setup.")
+		_party_slots[slot_index].call("configure", slot_index, character, portrait, layout_profile == UiLayoutProfile.COMPACT, remove_availability)
+
+
+func _ensure_party_slots() -> void:
+	if _party_slots_owner == party_list and _party_slots.size() == _maximum_party_size():
+		return
+	_clear(party_list); _party_slots.clear(); _party_slots_owner = party_list
+	for slot_index: int in _maximum_party_size():
+		var slot := PartySetupPartySlotScript.new() as Control
+		slot.name = "PartySlot%d" % (slot_index + 1); slot.inspect_requested.connect(_inspect_setup_character); slot.remove_requested.connect(_remove_setup_character); party_list.add_child(slot); _party_slots.append(slot)
 
 func _render_party_assembly() -> void:
 	var campaign_setup := view != null and view.party_setup_available and not standalone_character_creation_active
