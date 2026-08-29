@@ -1,7 +1,7 @@
 class_name PresentationSettings
 extends RefCounted
 
-const SCHEMA_VERSION: int = 11
+const SCHEMA_VERSION: int = 12
 const MUSIC_SLOT_COUNT: int = 20
 const MUSIC_OFF: int = 0
 const MUSIC_PLAY: int = 1
@@ -35,6 +35,7 @@ var show_exploration_minimap: bool = false
 var classic_exploration_visibility: bool = true
 var autojournal_enabled: bool = false
 var typography_mode: String = TYPOGRAPHY_CLASSIC
+var last_campaign_id: String = ""
 
 
 func to_data() -> Dictionary:
@@ -60,6 +61,7 @@ func to_data() -> Dictionary:
 		"classicExplorationVisibility": classic_exploration_visibility,
 		"autojournalEnabled": autojournal_enabled,
 		"typographyMode": typography_mode,
+		"lastCampaignId": last_campaign_id,
 	}
 
 
@@ -72,7 +74,7 @@ static func from_data(data: Variant) -> PresentationSettings:
 	var schema_version := int(schema_value)
 	if float(schema_version) != float(schema_value):
 		return null
-	if data.get("kind") != "realmz2.presentation-settings" or schema_version not in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, SCHEMA_VERSION]:
+	if data.get("kind") != "realmz2.presentation-settings" or schema_version not in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, SCHEMA_VERSION]:
 		return null
 	if not data.get("masterVolume") is float or not data.get("topologyDebug") is bool or not data.get("textScale") is float or not data.get("reducedMotion") is bool:
 		return null
@@ -118,6 +120,8 @@ static func from_data(data: Variant) -> PresentationSettings:
 		var combat_speed_value: Variant = data.get("combatPlaybackSpeedPercent")
 		if (not combat_speed_value is int and not combat_speed_value is float) or float(int(combat_speed_value)) != float(combat_speed_value) or int(combat_speed_value) < 25 or int(combat_speed_value) > 200 or int(combat_speed_value) % 25 != 0:
 			return null
+	if schema_version >= 12 and not data.get("lastCampaignId") is String:
+		return null
 	var volume: float = data["masterVolume"]
 	var scale: float = data["textScale"]
 	if volume < 0.0 or volume > 1.0 or scale < 0.8 or scale > 1.5:
@@ -142,6 +146,7 @@ static func from_data(data: Variant) -> PresentationSettings:
 	settings.classic_exploration_visibility = bool(data.get("classicExplorationVisibility", true))
 	settings.autojournal_enabled = bool(data.get("autojournalEnabled", false))
 	settings.typography_mode = String(data.get("typographyMode", TYPOGRAPHY_CLASSIC))
+	settings.last_campaign_id = String(data.get("lastCampaignId", "")).strip_edges()
 	return settings
 
 

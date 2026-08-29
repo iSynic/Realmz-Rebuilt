@@ -186,6 +186,7 @@ func _on_application_ready() -> void:
 	_startup_failure.visible = false
 	if _splash_complete:
 		_menu_controller.set_startup_actions_ready(true)
+		_application.set_meta(&"startup_front_door_revealed", true)
 	var elapsed_ms := float(Time.get_ticks_usec() - _load_started_at) / 1000.0
 	application_loaded.emit(elapsed_ms)
 
@@ -224,6 +225,8 @@ func _on_splash_exit_delay_timeout() -> void:
 		return
 	_menu_controller.show_splash()
 	_menu_controller.set_startup_actions_ready(application_ready())
+	if application_ready():
+		_application.set_meta(&"startup_front_door_revealed", true)
 	_launch_music.play()
 	if _load_failed:
 		_startup_failure.visible = true

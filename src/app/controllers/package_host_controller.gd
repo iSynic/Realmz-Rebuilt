@@ -10,31 +10,114 @@ const USER_CAMPAIGN_ROOT: String = "user://packages"
 var _repository: PackageRepository
 var _task: PackageInstallTask
 var _bundled_task: RefCounted
+var _install_root: String = USER_CAMPAIGN_ROOT
+var _task_source_path: String = ""
+var _task_campaign_id: String = ""
+var _task_is_foreground: bool = false
+var _queued_foreground_path: String = ""
+var _prepared_candidate: PreparedPackage
+var _prepared_candidate_source_path: String = ""
+var _prepared_candidate_campaign_id: String = ""
+var _foreground_prepared: PreparedPackage
+var _foreground_operation := PackageOperationView.new()
 
 
-func _init(repository: PackageRepository = null) -> void:
+func _init(repository: PackageRepository = null, install_root: String = USER_CAMPAIGN_ROOT) -> void:
 	_repository = repository if repository != null else PackageRepositoryScript.new()
+	_install_root = install_root
 	_task = PackageInstallTaskScript.new(_repository)
 	_bundled_task = BundledPackageLoadTaskScript.new()
 
 
 func start_install(package_path: String) -> bool:
-	return _task.start(package_path)
+	_advance_task()
+	if package_path.is_empty():
+		return false
+	if _prepared_candidate != null and _prepared_candidate_source_path == package_path:
+		_foreground_prepared = _prepared_candidate
+		_prepared_candidate = null
+		_prepared_candidate_source_path = ""
+		_prepared_candidate_campaign_id = ""
+		_foreground_operation = PackageOperationView.new(PackageOperationView.SUCCEEDED, &"complete", 1, 1, "Campaign ready.")
+		return true
+	if _task.snapshot().is_running():
+		if _task_source_path == package_path:
+			_task_is_foreground = true
+			return true
+		_queued_foreground_path = package_path
+		_prepared_candidate = null
+		_prepared_candidate_source_path = ""
+		_prepared_candidate_campaign_id = ""
+		_task.cancel()
+		return true
+	_prepared_candidate = null
+	_prepared_candidate_source_path = ""
+	_prepared_candidate_campaign_id = ""
+	return _start_task(package_path, "", true)
+
+
+func prewarm_last_campaign(campaigns: Array[CampaignPackageView], campaign_id: String) -> bool:
+	if campaign_id.is_empty():
+		return false
+	for campaign: CampaignPackageView in campaigns:
+		if campaign.ready and campaign.campaign_id == campaign_id:
+			return start_prewarm(campaign.path, campaign_id)
+	return false
+
+
+func start_prewarm(package_path: String, campaign_id: String) -> bool:
+	_advance_task()
+	if package_path.is_empty() or campaign_id.is_empty() or _task.snapshot().is_running() or _foreground_prepared != null or _foreground_operation.state != PackageOperationView.IDLE:
+		return false
+	if _prepared_candidate != null and _prepared_candidate_source_path == package_path:
+		return true
+	_prepared_candidate = null
+	_prepared_candidate_source_path = ""
+	_prepared_candidate_campaign_id = ""
+	return _start_task(package_path, campaign_id, false)
 
 
 func cancel() -> void:
-	_task.cancel()
+	if not _queued_foreground_path.is_empty():
+		_queued_foreground_path = ""
+		_task_is_foreground = true
+	if _task_is_foreground:
+		_task.cancel()
 
 
 func operation_view() -> PackageOperationView:
-	return PackageOperationView.from_status(_task.snapshot())
+	_advance_task()
+	if _foreground_operation.state != PackageOperationView.IDLE:
+		return _foreground_operation
+	if _task_is_foreground or not _queued_foreground_path.is_empty():
+		return PackageOperationView.from_status(_task.snapshot())
+	return PackageOperationView.new()
 
 
 func take_prepared_package() -> PreparedPackage:
-	var status := operation_view()
+	_advance_task()
+	var status := _foreground_operation
 	if status.is_running() or status.state == PackageOperationView.IDLE:
 		return null
-	return _prepare(_task.take_result())
+	var prepared := _foreground_prepared
+	_foreground_prepared = null
+	_foreground_operation = PackageOperationView.new()
+	return prepared
+
+
+func retained_candidate_count() -> int:
+	_advance_task()
+	return 1 if _prepared_candidate != null else 0
+
+
+func prepared_campaign_id() -> String:
+	_advance_task()
+	return _prepared_candidate_campaign_id
+
+
+func prewarm_running() -> bool:
+	_advance_task()
+	return _task.snapshot().is_running() and not _task_is_foreground
 
 
 func install_sync(package_path: String) -> PreparedPackage:
@@ -106,6 +189,48 @@ func close() -> void:
 	_task.shutdown()
 	_bundled_task.shutdown()
 	_repository.close()
+	_prepared_candidate = null
+	_foreground_prepared = null
+
+
+func _start_task(package_path: String, campaign_id: String, foreground: bool) -> bool:
+	if not _task.start(package_path, _install_root):
+		return false
+	_task_source_path = package_path
+	_task_campaign_id = campaign_id
+	_task_is_foreground = foreground
+	if foreground:
+		_foreground_operation = PackageOperationView.from_status(_task.snapshot())
+	return true
+
+
+func _advance_task() -> void:
+	var status := _task.snapshot()
+	if status.is_running() or status.state == PackageOperationView.IDLE:
+		if _task_is_foreground and status.is_running():
+			_foreground_operation = PackageOperationView.from_status(status)
+		return
+	var completed_source_path := _task_source_path
+	var completed_campaign_id := _task_campaign_id
+	var completed_in_foreground := _task_is_foreground
+	var prepared := _prepare(_task.take_result())
+	_task_source_path = ""
+	_task_campaign_id = ""
+	_task_is_foreground = false
+	if completed_in_foreground:
+		_foreground_prepared = prepared
+		_foreground_operation = PackageOperationView.from_status(status)
+	elif prepared != null and prepared.is_ok():
+		_prepared_candidate = prepared
+		_prepared_candidate_source_path = completed_source_path
+		_prepared_candidate_campaign_id = completed_campaign_id
+	if not _queued_foreground_path.is_empty():
+		var next_path := _queued_foreground_path
+		_queued_foreground_path = ""
+		_prepared_candidate = null
+		_prepared_candidate_source_path = ""
+		_prepared_candidate_campaign_id = ""
+		_start_task(next_path, "", true)
 
 
 func _prepare(installation: PackageInstallResult) -> PreparedPackage:

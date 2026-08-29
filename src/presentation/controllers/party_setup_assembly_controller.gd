@@ -111,12 +111,19 @@ func _render_party_assembly() -> void:
 	setup_message.visible = false
 	var current_revisions := _current_vault_revisions()
 	_clamp_stored_character_page(current_revisions.size())
+	var visible_revision_asset_ids: Array[String] = []
+	for revision: CharacterVaultRevisionView in _stored_character_page_items(current_revisions):
+		var portrait_id := revision.character.portrait_id if revision.character != null else revision.portrait_id
+		if not portrait_id.is_empty():
+			visible_revision_asset_ids.append(portrait_id)
+		if revision.character != null and not revision.character.combat_icon_id.is_empty():
+			visible_revision_asset_ids.append(revision.character.combat_icon_id)
+	_ensure_appearance_textures(visible_revision_asset_ids)
 	var next_signature := "%s:%s:%d" % [_vault_signature(current_revisions), str(layout_profile), _stored_character_page]
 	if stored_character_list != null and is_instance_valid(stored_character_list) and stored_character_list.is_inside_tree() and next_signature == _stored_revision_signature:
 		_refresh_stored_character_rows(current_revisions, campaign_setup, party_full)
 		return
 	_clear_creator_page()
-	_ensure_appearance_textures()
 	var heading := CenterContainer.new()
 	heading.name = "CharacterFilesHeading"
 	heading.custom_minimum_size.y = 28.0

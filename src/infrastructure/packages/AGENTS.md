@@ -26,6 +26,7 @@ Install, discover, decode, validate, cache, and release immutable Providence pac
 - Strict decoding requires each monster's independent Classic name ID, authored bestiary description, and menu-exclusion flag; each map's nullable base scale; each occupied shop record's unique native slot; the compact cell forest bit; and every media asset's nullable scenario-music slot. Scenario music slots are unique 1–3 audio assets, and only opcode 92 may carry the compiler-preserved second five-operand row.
 - `PackageRepository` coordinates explicit collaborators. It does not construct domain records, retain unbounded package graphs, or grant external files trusted cache status.
 - The graph cache retains at most the active package and one candidate. Promotion and close release obsolete graphs explicitly.
+- Last-campaign prewarming uses the ordinary install worker and repository path after manifest-only discovery resolves the stable campaign identity. The host may retain one prepared candidate, claim a matching selection without reopening it, or cancel/supersede it for a different foreground selection; receipt, integrity, schema, immutable-install, and graph-cache rules are identical to ordinary selection.
 - Validation errors are detached strings/results suitable for readiness UI. No collaborator accesses Nodes, presenters, sessions, or mutable gameplay state.
 
 ## Work Guidance
@@ -37,7 +38,7 @@ Install, discover, decode, validate, cache, and release immutable Providence pac
 ## Verification
 
 - `tests/infrastructure/test_package_repository.gd` owns package trust, contract, installation, receipt, bounded graph-cache behavior, and parsed-document cache fallback/identity behavior.
-- `tests/infrastructure/test_package_install_task.gd` owns worker progress, cancellation, result handoff, and shutdown behavior.
+- `tests/infrastructure/test_package_install_task.gd` owns worker progress, cancellation, result handoff, shutdown behavior, and the host's bounded prewarm claim/supersession/failure-retry lifecycle.
 - `tools/verify.ps1` verifies the schema mirror, synthetic fixture provenance, architecture boundaries, and the full typed suite.
 
 ## Child DOX Index

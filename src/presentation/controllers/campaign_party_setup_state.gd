@@ -134,31 +134,22 @@ func attach(host: Control) -> void:
 	_host = host
 	_campaign_library.attach(host)
 
-func _ensure_appearance_textures() -> void:
+func _ensure_appearance_textures(requested_asset_ids: Array[String] = []) -> void:
 	if media == null:
 		return
-	var assets: Array[MediaAsset] = []
+	var asset_ids: Array[String] = requested_asset_ids.duplicate()
 	if view != null:
-		for option: CharacterAppearanceOptionView in view.portrait_options:
-			var asset := media.asset_by_id(option.id)
-			if asset != null:
-				assets.append(asset)
-		for option: CharacterAppearanceOptionView in view.combat_icon_options:
-			var asset := media.asset_by_id(option.id)
-			if asset != null:
-				assets.append(asset)
-	for revision: CharacterVaultRevisionView in vault_revisions:
-		var portrait_id := revision.character.portrait_id if revision.character != null else revision.portrait_id
-		var portrait := media.asset_by_id(portrait_id)
-		if portrait != null:
-			assets.append(portrait)
-		if revision.character != null:
-			var combat_icon := media.asset_by_id(revision.character.combat_icon_id)
-			if combat_icon != null:
-				assets.append(combat_icon)
-	assets.append_array(media.assets_of_kind("portrait"))
-	assets.append_array(media.assets_of_kind("combat-icon"))
-	for asset: MediaAsset in assets:
+		for character: CharacterView in view.party_members:
+			if not character.portrait_id.is_empty() and not asset_ids.has(character.portrait_id):
+				asset_ids.append(character.portrait_id)
+			if not character.combat_icon_id.is_empty() and not asset_ids.has(character.combat_icon_id):
+				asset_ids.append(character.combat_icon_id)
+	for asset_id: String in asset_ids:
+		if asset_id.is_empty() or _appearance_textures.has(asset_id):
+			continue
+		var asset := media.asset_by_id(asset_id)
+		if asset == null:
+			continue
 		if _appearance_textures.has(asset.id):
 			continue
 		var texture := media.image_texture(asset)

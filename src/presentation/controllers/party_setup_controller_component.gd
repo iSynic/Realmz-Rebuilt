@@ -220,8 +220,8 @@ func attach(host: Control) -> void:
 	_state.attach(host)
 
 
-func _ensure_appearance_textures() -> void:
-	_state._ensure_appearance_textures()
+func _ensure_appearance_textures(requested_asset_ids: Array[String] = []) -> void:
+	_state._ensure_appearance_textures(requested_asset_ids)
 
 
 func _apply_availability(button: BaseButton, action_id: StringName) -> void:

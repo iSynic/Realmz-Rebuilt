@@ -35,17 +35,15 @@ var _host_interaction: InteractionRequest
 var _package_host: PackageHostController
 var _save_host: SaveHostController
 var _vault_host: CharacterVaultController
-var _pending_package_seed: int = 1
-var _last_package_operation_key: String = ""
-var _character_library_content: RealmzContent
-var _character_library_media: MediaSource
+var _pending_package_seed: int = 1; var _last_package_operation_key: String = ""
+var _character_library_content: RealmzContent; var _character_library_media: MediaSource
 var _character_library_load_complete: bool = false; var _pending_prepared_package: PreparedPackage
 var _character_creation_host: CharacterCreationHostController
 var _session_close_waits_for_playback: bool = false
 var _held_movement: HeldMovementControllerScript
 var _queued_combat_auto_changes: Dictionary = {}
 var _save_and_quit_pending: bool = false; var _quit_operation: Callable
-var _debug_tools: DebugToolsHost
+var _debug_tools: DebugToolsHost; var _campaigns: Array[CampaignPackageView] = []; var _last_campaign_prewarm_requested: bool = false
 
 
 func configure_lifecycle_host(save_host: SaveHostController, quit_operation: Callable = Callable()) -> void: assert(not is_node_ready(), "Lifecycle host dependencies must be configured before the application enters the scene tree"); _save_host = save_host; _quit_operation = quit_operation
@@ -140,7 +138,7 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
-	_poll_classic_character_library_load(); if _held_movement != null and _held_movement.is_active():
+	_poll_classic_character_library_load(); _try_prewarm_last_campaign(); if _held_movement != null and _held_movement.is_active():
 		if not accepts_exploration_input():
 			_held_movement.stop()
 		elif _held_movement.active_source() == &"mouse" and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
@@ -274,7 +272,7 @@ func _complete_package_install(prepared: PreparedPackage, initial_seed: int) -> 
 		return step
 	_queued_combat_auto_changes.clear()
 	_active_content = prepared.content
-	_package_host.promote(prepared)
+	_package_host.promote(prepared); if _presentation_settings.last_campaign_id != _active_content.campaign_id: _presentation_settings.last_campaign_id = _active_content.campaign_id; settings_repository.save_settings(_presentation_settings)
 	presentation_coordinator.set_package_media(prepared.media)
 	presentation_coordinator.refresh()
 	_refresh_save_previews()
@@ -1018,7 +1016,12 @@ func _refresh_save_previews() -> void:
 func _refresh_campaigns() -> void:
 	if _package_host != null and _package_host.operation_view().is_running():
 		return
-	_shell_presenter.set_campaigns(_package_host.discover_available_campaigns())
+	_campaigns = _package_host.discover_available_campaigns(); _shell_presenter.set_campaigns(_campaigns); _try_prewarm_last_campaign()
+
+
+func _try_prewarm_last_campaign() -> void:
+	if _last_campaign_prewarm_requested or _package_host == null or _presentation_settings == null or _presentation_settings.last_campaign_id.is_empty() or bool(get_meta(&"startup_splash_suppressed", false)) and not bool(get_meta(&"startup_front_door_revealed", false)): return
+	_last_campaign_prewarm_requested = true; _package_host.prewarm_last_campaign(_campaigns, _presentation_settings.last_campaign_id)
 
 
 func _on_topology_debug_changed(enabled: bool) -> void:

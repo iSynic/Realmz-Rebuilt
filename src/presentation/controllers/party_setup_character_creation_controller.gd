@@ -357,7 +357,10 @@ func _definition_option(options: Array[DefinitionOptionView], option_id: String)
 
 func _build_creator_appearance() -> void:
 	creator_page.add_child(_label("Appearance", GOLD, 20))
-	_ensure_appearance_textures()
+	var selected_asset_ids: Array[String] = []
+	if not draft_portrait_id.is_empty(): selected_asset_ids.append(draft_portrait_id)
+	if not draft_combat_icon_id.is_empty(): selected_asset_ids.append(draft_combat_icon_id)
+	_ensure_appearance_textures(selected_asset_ids)
 	var appearance_row := HBoxContainer.new()
 	appearance_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	appearance_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -463,6 +466,11 @@ func _build_appearance_thumbnail_strip(control: OptionButton, options: Array[Cha
 	var selected_id := String(control.get_item_metadata(control.selected)) if control.selected >= 0 else ""
 	var start_row := page * APPEARANCE_ROWS_PER_PAGE
 	var finish_row := mini(start_row + APPEARANCE_ROWS_PER_PAGE, rows.size())
+	var visible_asset_ids: Array[String] = []
+	for row_index: int in range(start_row, finish_row):
+		for option: CharacterAppearanceOptionView in (rows[row_index]["options"] as Array):
+			visible_asset_ids.append(option.id)
+	_ensure_appearance_textures(visible_asset_ids)
 	for row_index: int in range(start_row, finish_row):
 		var row_record: Dictionary = rows[row_index]
 		var row_section := VBoxContainer.new()
@@ -651,7 +659,8 @@ func _build_creator_review() -> void:
 	if view == null or view.character_draft == null:
 		return
 	var character := view.character_draft
-	_ensure_appearance_textures()
+	var review_asset_ids: Array[String] = [character.portrait_id, character.combat_icon_id]
+	_ensure_appearance_textures(review_asset_ids)
 	var sheet := ClassicCharacterSheet.new()
 	sheet.name = "CreatorReviewSheet"
 	sheet.size_flags_horizontal = Control.SIZE_EXPAND_FILL

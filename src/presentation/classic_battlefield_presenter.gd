@@ -49,6 +49,9 @@ func present(game_view: GameView) -> void:
 	_last_active_actor_id = next_active_actor_id
 	_view = game_view
 	_playback_frame = null
+	if _view != null and _view.combat_view != null and _media != null and _atlas_texture == null:
+		_atlas_asset = _media.battle_tileset()
+		_atlas_texture = _load_image_texture(_atlas_asset)
 	if _view == null or _view.combat_view == null:
 		_movement_costs_visible = false
 		_hovered_coordinate = Vector2i(-1, -1)
@@ -95,9 +98,6 @@ func set_media_catalog(media: ClassicMediaCatalog) -> void:
 	_upper_atlas_asset = null
 	_upper_atlas_texture = null
 	_actor_textures.clear()
-	if _media != null:
-		_atlas_asset = _media.battle_tileset()
-		_atlas_texture = _load_image_texture(_atlas_asset)
 	queue_redraw()
 
 
