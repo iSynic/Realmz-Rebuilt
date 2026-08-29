@@ -94,7 +94,7 @@ func _notification(what: int) -> void:
 
 func _exit_tree() -> void:
 	if _menu_controller != null:
-		_menu_controller.hide_overlays()
+		_menu_controller.release_intro_resources()
 	if is_instance_valid(_application) and get_tree() != null and get_tree().current_scene != _application:
 		_application.queue_free()
 	_menu_controller = null
@@ -150,6 +150,7 @@ func _initialize_after_first_draw() -> void:
 	_menu_controller.vault_requested.connect(func() -> void: _request_action(ACTION_VAULT))
 	_menu_controller.quit_requested.connect(func() -> void: _request_action(ACTION_QUIT))
 	_menu_controller.hide_overlays()
+	_menu_controller.prepare_intro_behind_splash()
 	_apply_layout()
 	_begin_application_load()
 

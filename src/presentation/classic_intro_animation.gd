@@ -7,6 +7,9 @@ const INTRO_SOUNDTRACK_PATH := "res://src/presentation/assets/ui/intro/rebuilt-i
 var audio_enabled: bool = false
 var _master_volume: float = 1.0
 var _soundtrack: AudioStreamPlayer
+var _prepared: bool = false
+var _released: bool = false
+var _preparation_count: int = 0
 
 
 func _init() -> void:
@@ -21,27 +24,69 @@ func _init() -> void:
 
 func _ready() -> void:
 	_ensure_soundtrack_player()
-	activate()
 
 
-func activate() -> void:
+func prepare() -> void:
+	if _prepared:
+		return
+	_released = false
+	stream = ResourceLoader.load(INTRO_STREAM_PATH, "VideoStream") as VideoStream
+	_prepared = stream != null
+	if _prepared:
+		_preparation_count += 1
+
+
+func start_playback() -> void:
 	_ensure_soundtrack_player()
-	if stream == null:
-		stream = ResourceLoader.load(INTRO_STREAM_PATH, "VideoStream", ResourceLoader.CACHE_MODE_IGNORE) as VideoStream
+	prepare()
 	if audio_enabled:
 		_load_soundtrack()
-	if is_inside_tree() and stream != null and not is_playing():
-		play()
+	if is_inside_tree() and stream != null:
+		if not is_playing():
+			play()
+		else:
+			paused = false
 	if is_inside_tree() and audio_enabled and _soundtrack.stream != null and not _soundtrack.playing:
 		_soundtrack.play()
 
 
-func deactivate() -> void:
+func suspend_playback() -> void:
+	if is_playing():
+		paused = true
+	if _soundtrack != null:
+		_soundtrack.stream_paused = true
+
+
+func release_resources() -> void:
+	if _released:
+		return
+	_released = true
 	stop()
 	stream = null
+	_prepared = false
 	if _soundtrack != null:
 		_soundtrack.stop()
 		_soundtrack.stream = null
+
+
+func activate() -> void:
+	start_playback()
+
+
+func deactivate() -> void:
+	suspend_playback()
+
+
+func preparation_count() -> int:
+	return _preparation_count
+
+
+func resources_prepared() -> bool:
+	return _prepared and stream != null
+
+
+func playback_active() -> bool:
+	return is_playing() and not paused
 
 
 func set_master_volume(value: float) -> void:
@@ -56,6 +101,8 @@ func toggle_audio() -> void:
 	_load_soundtrack()
 	if audio_enabled and is_inside_tree() and _soundtrack.stream != null and not _soundtrack.playing:
 		_soundtrack.play()
+	if _soundtrack != null:
+		_soundtrack.stream_paused = not audio_enabled or not playback_active()
 	_apply_audio_volume()
 
 
@@ -87,8 +134,12 @@ func _load_soundtrack() -> void:
 	_ensure_soundtrack_player()
 	if _soundtrack.stream != null:
 		return
-	var soundtrack := ResourceLoader.load(INTRO_SOUNDTRACK_PATH, "AudioStream", ResourceLoader.CACHE_MODE_IGNORE) as AudioStreamMP3
+	var soundtrack := ResourceLoader.load(INTRO_SOUNDTRACK_PATH, "AudioStream") as AudioStreamMP3
 	if soundtrack == null:
 		return
 	soundtrack.loop = true
 	_soundtrack.stream = soundtrack
+
+
+func _exit_tree() -> void:
+	release_resources()

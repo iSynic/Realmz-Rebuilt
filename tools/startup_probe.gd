@@ -46,6 +46,13 @@ func _report_application_ready(background_load_ms: float) -> void:
 func _report_transition() -> void:
 	while not _root.menu_visible():
 		await process_frame
+	var intro := _root.find_child("RealmzIntroAnimation", true, false) as ClassicIntroAnimation
+	var prepared_decoder_count: int = 0
+	for candidate: Node in get_root().find_children("RealmzIntroAnimation", "ClassicIntroAnimation", true, false):
+		if (candidate as ClassicIntroAnimation).resources_prepared():
+			prepared_decoder_count += 1
+	var intro_prepared_once := intro != null and intro.resources_prepared() and intro.preparation_count() == 1
+	var intro_playing_at_reveal := intro != null and intro.playback_active()
 	var scenario_action := _root.find_child("ChooseScenario", true, false) as Button
 	var scenario_action_enabled := scenario_action != null and not scenario_action.disabled
 	if scenario_action_enabled:
@@ -61,6 +68,9 @@ func _report_transition() -> void:
 		"instantiateMs": _milliseconds(_loaded_at, _instantiated_at),
 		"loadSceneMs": _milliseconds(_started_at, _loaded_at),
 		"menuVisibleOnFirstFrame": _menu_visible_on_first_frame,
+		"introPlayingAtMenuReveal": intro_playing_at_reveal,
+		"introPreparedOnce": intro_prepared_once,
+		"preparedDecoderCountAtMenuReveal": prepared_decoder_count,
 		"scenarioActionEnabledAtTransition": scenario_action_enabled,
 		"queuedScenarioTransitionSucceeded": transitioned and campaign_setup != null and campaign_setup.visible,
 		"readyMs": _milliseconds(_instantiated_at, _readied_at),

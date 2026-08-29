@@ -316,14 +316,28 @@ func hide_overlays() -> void:
 	_set_intro_active(false)
 
 
+func prepare_intro_behind_splash() -> void:
+	var intro := splash_animation as ClassicIntroAnimation
+	if intro == null:
+		return
+	intro.prepare()
+	intro.start_playback()
+
+
+func release_intro_resources() -> void:
+	var intro := splash_animation as ClassicIntroAnimation
+	if intro != null:
+		intro.release_resources()
+
+
 func _set_intro_active(active: bool) -> void:
 	var intro := splash_animation as ClassicIntroAnimation
 	if intro == null:
 		return
 	if active:
-		intro.activate()
+		intro.start_playback()
 	else:
-		intro.deactivate()
+		intro.suspend_playback()
 
 
 func full_stage_overlay_visible() -> bool:
