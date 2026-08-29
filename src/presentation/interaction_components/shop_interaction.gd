@@ -14,12 +14,17 @@ const COMPACT_LEDGER_ROW_HEIGHT := 30.0
 const LEDGER_ROW_SEPARATION := 2.0
 const CLASSIC_CONTROL_STRIP_HEIGHT := 76.0
 const CLASSIC_DETAIL_STRIP_HEIGHT := 82.0
+const FILTER_RAIL_WIDTH := 68.0
+const FILTER_BUTTON_SIZE := Vector2(62.0, 58.0)
+const ROUTE_BUTTON_SIZE := Vector2(62.0, 62.0)
+const FOOTER_PORTRAIT_SIZE := Vector2(22.0, 22.0)
+const COMPACT_PORTRAIT_SIZE := Vector2(36.0, 36.0)
 const STOCK_FILTERS: Array[Dictionary] = [
-	{"id": &"weapons", "asset": &"inventory.category.weapons", "label": "Weapons"},
-	{"id": &"armor", "asset": &"inventory.category.armor", "label": "Armor"},
-	{"id": &"limb_armor", "asset": &"inventory.category.limb_armor", "label": "Armor", "tooltip": "Limb Armor", "region": [0, 0, 50, 50]},
-	{"id": &"magic", "asset": &"inventory.category.magic", "label": "Magic"},
-	{"id": &"supplies", "asset": &"inventory.category.supplies", "label": "Supplies"},
+	{"id": &"weapons", "asset": &"inventory.category.weapons", "label": "Weapons", "region": [0, 0, 50, 34]},
+	{"id": &"armor", "asset": &"inventory.category.armor", "label": "Armor", "region": [0, 0, 50, 34]},
+	{"id": &"limb_armor", "asset": &"inventory.category.limb_armor", "label": "Armor", "tooltip": "Limb Armor", "region": [0, 0, 50, 34]},
+	{"id": &"magic", "asset": &"inventory.category.magic", "label": "Magic", "region": [0, 0, 50, 34]},
+	{"id": &"supplies", "asset": &"inventory.category.supplies", "label": "Supplies", "region": [0, 0, 50, 34]},
 ]
 
 var _compact := false
@@ -271,12 +276,12 @@ func _build_footer() -> void:
 	for button: Button in [_buy_button, _sell_button, _identify_button]: button.custom_minimum_size = Vector2(55.0, 28.0); actions.add_child(button)
 	footer.add_child(_build_shopper_selector(true))
 	var route_group := _footer_group(footer, "ShopRouteControls", 257.0)
-	var restore := _route_button("ShopKeeperRestore", "Shop Keeper", &"command.shop_original", _restore_shopkeeper)
+	var restore := _route_button("ShopKeeperRestore", "Shop Keeper", &"command.shop_original", _restore_shopkeeper, {"asset_path": "res://src/presentation/assets/ui/commands/shop.png"})
 	route_group.add_child(restore)
-	for spec: Array in [["ShopItems", "Items", &"command.inventory", _show_items], ["ShopMoney", "Money", &"command.money", _show_money]]:
-		route_group.add_child(_route_button(spec[0], spec[1], spec[2], spec[3]))
+	for spec: Array in [["ShopItems", "Items", &"command.inventory", _show_items, [5, 2, 36, 34], [[0, 4, 4, 8]]], ["ShopMoney", "Money", &"command.money", _show_money, [5, 5, 35, 31], [[0, 0, 8, 8]]]]:
+		route_group.add_child(_route_button(spec[0], spec[1], spec[2], spec[3], {"art_region": spec[4], "art_clear_regions": spec[5]}))
 	var done := _action_button("ShopDone", "Done", _submit_leave)
-	done.custom_minimum_size = Vector2(62.0, 70.0)
+	done.custom_minimum_size = ROUTE_BUTTON_SIZE
 	route_group.add_child(done)
 	var right_load_group := _footer_group(footer, "ShopRightLoadPanel", 86.0)
 	_right_load = _compact_fact("ShopRightLoad")
@@ -297,10 +302,13 @@ func _build_footer() -> void:
 	_selection_summary = _item_description
 
 
-func _route_button(node_name: String, caption: String, asset_id: StringName, callback: Callable) -> ClassicBitmapButton:
+func _route_button(node_name: String, caption: String, asset_id: StringName, callback: Callable, art_options: Dictionary = {}) -> ClassicBitmapButton:
 	var button := ClassicBitmapButton.new()
 	button.name = node_name
-	button.configure({"id": StringName(node_name), "asset_id": asset_id, "tooltip": caption, "label": caption, "group": &"shop-route"}, 1)
+	var definition := {"id": StringName(node_name), "asset_id": asset_id, "tooltip": caption, "label": ""}
+	definition.merge(art_options, true)
+	button.configure(definition, 1)
+	button.custom_minimum_size = ROUTE_BUTTON_SIZE
 	button.command_requested.connect(func(_command_id: StringName) -> void: callback.call())
 	return button
 
@@ -487,14 +495,12 @@ func _build_category_filters(parent: VBoxContainer) -> void:
 		definition["tooltip"] = "Show %s" % filter.get("tooltip", filter["label"])
 		definition["group"] = &"shop-category"
 		definition["toggle_mode"] = true
-		if filter.has("region"):
-			definition["art_region"] = filter["region"]
-		else:
-			definition["art_clear_regions"] = [[0, 34, 50, 16]]
+		definition["art_region"] = filter["region"]
 		var button := ClassicBitmapButton.new()
 		button.name = "ShopFilter_%s" % category_id
 		button.configure(definition, 1)
-		button.custom_minimum_size.y = 58.0
+		button.custom_minimum_size = FILTER_BUTTON_SIZE
+		button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		button.button_group = _category_group
 		button.button_pressed = category_id == _selected_category
 		button.command_requested.connect(func(_command_id: StringName) -> void: _select_category(category_id))
@@ -506,7 +512,7 @@ func _build_control_spine(parent: HBoxContainer) -> void:
 	var panel := PanelContainer.new()
 	panel.name = "ShopExchangeDivider"
 	panel.theme_type_variation = &"ClassicInset"
-	panel.custom_minimum_size.x = 170.0
+	panel.custom_minimum_size.x = FILTER_RAIL_WIDTH
 	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	parent.add_child(panel)
 	var spine := VBoxContainer.new()
@@ -516,6 +522,7 @@ func _build_control_spine(parent: HBoxContainer) -> void:
 	var filters := VBoxContainer.new()
 	filters.name = "ShopCategoryFilters"
 	filters.add_theme_constant_override("separation", 2)
+	filters.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	spine.add_child(filters)
 	for filter: Dictionary in STOCK_FILTERS:
 		var category_id := StringName(filter["id"])
@@ -526,13 +533,12 @@ func _build_control_spine(parent: HBoxContainer) -> void:
 		definition["tooltip"] = "Show %s" % filter.get("tooltip", filter["label"])
 		definition["group"] = &"shop-category"
 		definition["toggle_mode"] = true
-		if filter.has("region"):
-			definition["art_region"] = filter["region"]
-		else:
-			definition["art_clear_regions"] = [[0, 34, 50, 16]]
+		definition["art_region"] = filter["region"]
 		var button := ClassicBitmapButton.new()
 		button.name = "ShopFilter_%s" % category_id
 		button.configure(definition, 1)
+		button.custom_minimum_size = FILTER_BUTTON_SIZE
+		button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		button.button_group = _category_group
 		button.button_pressed = category_id == _selected_category
 		button.command_requested.connect(func(_command_id: StringName) -> void: _select_category(category_id))
@@ -547,17 +553,20 @@ func _build_shopper_selector(duplicate_columns: bool = false) -> PanelContainer:
 	var panel := PanelContainer.new()
 	panel.name = "ShopperPortraitSelector"
 	panel.theme_type_variation = &"ClassicInset"
+	panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	if duplicate_columns:
+		panel.custom_minimum_size.x = 96.0
 		var pair := HBoxContainer.new()
 		pair.name = "ShopPortraitMatrix"
-		pair.add_theme_constant_override("separation", 4)
+		pair.alignment = BoxContainer.ALIGNMENT_CENTER
+		pair.add_theme_constant_override("separation", 2)
 		panel.add_child(pair)
 		for side: String in ["Buyer", "Seller"]:
 			var group := GridContainer.new()
 			group.name = "Shop%sPortraits" % side
 			group.columns = 2
-			group.add_theme_constant_override("h_separation", 2)
-			group.add_theme_constant_override("v_separation", 2)
+			group.add_theme_constant_override("h_separation", 1)
+			group.add_theme_constant_override("v_separation", 1)
 			pair.add_child(group)
 			for character: InteractionRequestValue.ServiceCharacter in _characters:
 				group.add_child(_shopper_portrait(character, side))
@@ -565,7 +574,9 @@ func _build_shopper_selector(duplicate_columns: bool = false) -> PanelContainer:
 	var row := GridContainer.new()
 	row.name = "ShopPortraitMatrix"
 	row.columns = mini(3, _characters.size())
-	row.add_theme_constant_override("h_separation", 3)
+	row.add_theme_constant_override("h_separation", 1)
+	row.add_theme_constant_override("v_separation", 1)
+	row.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	panel.add_child(row)
 	for character: InteractionRequestValue.ServiceCharacter in _characters:
 		row.add_child(_shopper_portrait(character, "Shopper"))
@@ -579,14 +590,29 @@ func _shopper_portrait(character: InteractionRequestValue.ServiceCharacter, side
 	button.expand_icon = true
 	button.toggle_mode = true
 	button.button_pressed = character.id == (_selected_character_id if side != "Seller" else _right_character_id)
-	button.custom_minimum_size = Vector2(28.0, 22.0) if side != "Shopper" else Vector2(52.0, 42.0)
-	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.custom_minimum_size = FOOTER_PORTRAIT_SIZE if side != "Shopper" else COMPACT_PORTRAIT_SIZE
+	button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	button.clip_contents = true
+	_apply_portrait_button_styles(button)
 	button.tooltip_text = "%s: %s" % ["Left shopper" if side != "Seller" else "Right shopper", character.name]
 	button.set_meta(&"character_id", character.id)
 	button.set_meta(&"shop_side", side)
 	button.pressed.connect((_select_right_character if side == "Seller" else _select_character).bind(character.id))
 	_shopper_buttons[button.name] = button
 	return button
+
+
+func _apply_portrait_button_styles(button: Button) -> void:
+	for state: StringName in [&"normal", &"hover", &"pressed", &"focus", &"disabled"]:
+		var style := StyleBoxFlat.new()
+		style.bg_color = Color("15191b") if state != &"pressed" else Color("3b3420")
+		style.border_color = GOLD if state in [&"hover", &"pressed", &"focus"] else Color("4d5559")
+		style.set_border_width_all(1)
+		style.content_margin_left = 0.0
+		style.content_margin_top = 0.0
+		style.content_margin_right = 0.0
+		style.content_margin_bottom = 0.0
+		button.add_theme_stylebox_override(state, style)
 
 
 func _inventory_row(character: InteractionRequestValue.ServiceCharacter, item: InteractionRequestValue.InventoryItem, prefix: String) -> HBoxContainer:
