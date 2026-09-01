@@ -197,7 +197,7 @@ func probe_step(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefi
 	return _probe_step_with_cost_floor(battlefield, terrain_set, actor_id, direction, movement_available, 0)
 
 
-func probe_path_step_toward_actors(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, actor_id: String, target_ids: Array[String], movement_available: int, immediate_swappable_actor_ids: Array[String] = []) -> BattlefieldStepResult:
+func probe_path_step_toward_actors(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, actor_id: String, target_ids: Array[String], movement_available: int, swappable_actor_ids: Array[String] = [], forbidden_anchors: Array[Vector2i] = []) -> BattlefieldStepResult:
 	if battlefield == null or terrain_set == null or not battlefield.has_actor(actor_id):
 		return BattlefieldStepResult.blocked(&"invalid_actor")
 	var valid_targets: Array[String] = []
@@ -227,7 +227,7 @@ func probe_path_step_toward_actors(battlefield: BattlefieldState, terrain_set: B
 			continue
 		for coordinate: Vector2i in battlefield.actor_footprint(candidate_id):
 			_route_workspace.occupied_cells[coordinate] = true
-			if immediate_swappable_actor_ids.has(candidate_id):
+			if swappable_actor_ids.has(candidate_id):
 				_route_workspace.swappable_cells[coordinate] = true
 	_route_workspace.distances[origin_index] = 0
 	_route_workspace.distance_generations[origin_index] = generation
@@ -244,7 +244,7 @@ func probe_path_step_toward_actors(battlefield: BattlefieldState, terrain_set: B
 		if _route_workspace.goal_generations[current_index] == generation:
 			var first_step := _route_coordinate(_route_workspace.first_steps[current_index])
 			var probe := _probe_step_with_cost_floor(battlefield, terrain_set, actor_id, first_step - origin, movement_available, 0)
-			if not probe.allowed and probe.reason == &"occupied" and immediate_swappable_actor_ids.has(probe.occupant_id):
+			if not probe.allowed and probe.reason == &"occupied" and swappable_actor_ids.has(probe.occupant_id):
 				return BattlefieldStepResult.permitted(first_step, 5) if movement_available >= 5 else _blocked_with_cost(&"insufficient_movement", first_step, 5, probe.occupant_id)
 			return probe
 		var anchor := _route_coordinate(current_index)
@@ -253,15 +253,15 @@ func probe_path_step_toward_actors(battlefield: BattlefieldState, terrain_set: B
 			# are a wall-following forecast: mobile combatants may vacate them before
 			# this actor reaches them, while terrain remains authoritative.
 			var destination := anchor + direction
-			if not BattlefieldState.contains(destination):
+			if not BattlefieldState.contains(destination) or destination != origin and forbidden_anchors.has(destination):
 				continue
 			var destination_index := _route_index(destination)
 			if _route_workspace.closed_generations[destination_index] == generation or profile.passable[destination_index] == 0:
 				continue
-			var immediate_swap := anchor == origin and actor_size == 0 and _route_workspace.swappable_cells.has(destination)
-			if anchor == origin and not immediate_swap and not _route_footprint_is_unoccupied(destination, actor_size, _route_workspace.occupied_cells):
+			var planned_swap := actor_size == 0 and _route_workspace.swappable_cells.has(destination)
+			if anchor == origin and not planned_swap and not _route_footprint_is_unoccupied(destination, actor_size, _route_workspace.occupied_cells):
 				continue
-			var step_cost := 5 if immediate_swap else profile.destination_movement_base[destination_index] + _direction_cost(direction)
+			var step_cost := 5 if planned_swap else profile.destination_movement_base[destination_index] + _direction_cost(direction)
 			if anchor == origin and step_cost > movement_available:
 				continue
 			var next_distance := _route_workspace.distances[current_index] + step_cost

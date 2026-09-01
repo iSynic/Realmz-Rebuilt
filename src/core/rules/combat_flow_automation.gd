@@ -70,6 +70,7 @@ func _run_auto_turn_unchecked(state: GameState, content: RealmzContent, actor_id
 	# until the active-turn record is prepared.
 	_flow()._prepare_character_turn(state.combat, actor)
 	var events: Array[DomainEvent] = [DomainEvent.new(&"combat_auto_started", {"actorId": actor.id, "persistent": state.combat_auto_enabled(actor.id), "source": "classic"})]
+	var visited_anchors: Array[Vector2i] = [state.combat.battlefield.actor_position(actor.id)]
 	var starting_round := state.combat.round_number
 	var operation_count := 0
 	var previous_processing = _flow().is_processing_auto()
@@ -78,19 +79,23 @@ func _run_auto_turn_unchecked(state: GameState, content: RealmzContent, actor_id
 		operation_count += 1
 		var choice: Dictionary = _ai_scoring.choose_party_action(state, content, actor, rng)
 		var chosen_action := StringName(choice.get("action", &"defend"))
-		var result := _execute_auto_choice(state, content, actor, choice, rng)
+		var result := _execute_auto_choice(state, content, actor, choice, rng, visited_anchors)
 		if result == null or not result.ok:
 			# A scored spell or attack can become invalid when an earlier operation in
 			# the same activation changes occupancy or resources. Continue tactical
 			# pursuit before falling back to Castle's stationary defend action.
 			if chosen_action != &"move" and actor.movement > 0:
-				result = _auto_move_toward_target(state, content, actor, rng)
+				result = _auto_move_toward_target(state, content, actor, rng, visited_anchors)
 		if result == null or not result.ok:
 			result = _flow().submit_action(state, content, actor.id, &"defend", "", rng)
 		if result == null or not result.ok:
 			_flow().set_processing_auto(previous_processing)
 			return CombatFlowResult.failed(&"combat_auto_failed", "Automatic combat could not choose a legal source-backed action.")
 		events.append_array(result.events)
+		if state.combat != null and state.combat.battlefield.has_actor(actor.id):
+			var current_anchor := state.combat.battlefield.actor_position(actor.id)
+			if not visited_anchors.has(current_anchor):
+				visited_anchors.append(current_anchor)
 		if result.completed or _events_include(result.events, &"monster_death_macro_requested") or state.combat.pending_monster_attack != null:
 			break
 	_flow().set_processing_auto(previous_processing)
@@ -100,7 +105,7 @@ func _run_auto_turn_unchecked(state: GameState, content: RealmzContent, actor_id
 	return CombatFlowResult.succeeded(events, state.combat == null or state.combat.completed)
 
 
-func _execute_auto_choice(state: GameState, content: RealmzContent, actor: CharacterState, choice: Dictionary, rng: RealmzRng) -> CombatFlowResult:
+func _execute_auto_choice(state: GameState, content: RealmzContent, actor: CharacterState, choice: Dictionary, rng: RealmzRng, visited_anchors: Array[Vector2i]) -> CombatFlowResult:
 	var action := StringName(choice.get("action", &"defend"))
 	if action == &"cast_spell":
 		var target_ids: Array[String] = []
@@ -109,7 +114,7 @@ func _execute_auto_choice(state: GameState, content: RealmzContent, actor: Chara
 		target_coordinates.assign(choice.get("targetCoordinates", []))
 		return _flow().cast_spell(state, content, actor.id, String(choice.get("targetId", "")), String(choice["spellId"]), int(choice["power"]), rng, choice.get("coordinate", INVALID_COORDINATE), int(choice.get("rotation", 0)), target_ids, target_coordinates)
 	if action == &"move":
-		return _auto_move_toward_target(state, content, actor, rng)
+		return _auto_move_toward_target(state, content, actor, rng, visited_anchors)
 	return _flow().submit_action(state, content, actor.id, action, String(choice.get("targetId", "")), rng)
 
 
@@ -149,7 +154,7 @@ func _commit_or_rollback(state: GameState, rng: RealmzRng, state_checkpoint: Dic
 	return result
 
 
-func _auto_move_toward_target(state: GameState, content: RealmzContent, actor: CharacterState, rng: RealmzRng) -> CombatFlowResult:
+func _auto_move_toward_target(state: GameState, content: RealmzContent, actor: CharacterState, rng: RealmzRng, visited_anchors: Array[Vector2i] = []) -> CombatFlowResult:
 	var combat := state.combat
 	_flow()._prepare_character_turn(combat, actor)
 	if actor.movement <= 0:
@@ -170,15 +175,21 @@ func _auto_move_toward_target(state: GameState, content: RealmzContent, actor: C
 	var origin := combat.battlefield.actor_position(actor.id)
 	var terrain_set := _battle_terrain_set(content, combat.battlefield)
 	var swappable_ids: Array[String] = []
-	for candidate_id: String in combat.battlefield.actor_ids():
-		if _flow().friendly_collision_target_id(state, actor.id, combat.battlefield.actor_position(candidate_id)) == candidate_id:
-			swappable_ids.append(candidate_id)
-	var path_probe := _rules.battlefield.probe_path_step_toward_actors(combat.battlefield, terrain_set, actor.id, candidates, actor.movement, swappable_ids)
+	if combat.battlefield.actor_size(actor.id) == 0:
+		for character: CharacterState in state.party.characters():
+			if character.id != actor.id and character.current_health > 0 and character.traitor == actor.traitor and combat.battlefield.has_actor(character.id) and combat.battlefield.actor_size(character.id) == 0:
+				swappable_ids.append(character.id)
+		for monster: MonsterState in combat.monsters():
+			if monster.current_health > 0 and monster.traitor == actor.traitor and combat.battlefield.has_actor(monster.id) and combat.battlefield.actor_size(monster.id) == 0:
+				swappable_ids.append(monster.id)
+	var path_probe := _rules.battlefield.probe_path_step_toward_actors(combat.battlefield, terrain_set, actor.id, candidates, actor.movement, swappable_ids, visited_anchors)
 	if path_probe.allowed:
 		return _flow().move_character(state, content, actor.id, path_probe.destination, rng)
+	if path_probe.reason != &"path_not_found":
+		return CombatFlowResult.failed(&"combat_auto_route_satisfied", "The automatic character has no productive pursuit step.")
 	for retry: int in 20:
 		var shifted := Vector2i(rng.draw(3, StringName("combat.auto.%s.shift.%d.x" % [actor.id, retry])) - 2, rng.draw(3, StringName("combat.auto.%s.shift.%d.y" % [actor.id, retry])) - 2)
-		if shifted == Vector2i.ZERO:
+		if shifted == Vector2i.ZERO or visited_anchors.has(origin + shifted):
 			continue
 		var shifted_result = _flow().move_character(state, content, actor.id, origin + shifted, rng)
 		if shifted_result.ok:

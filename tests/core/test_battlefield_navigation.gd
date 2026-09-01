@@ -49,8 +49,8 @@ func _test_dynamic_occupancy_forecast() -> void:
 	var terrain := _terrain_set()
 	var forecast := BattlefieldRules.new().probe_path_step_toward_actors(forecast_field, terrain, "mover", ["target"], 20)
 	assert_equal([forecast.allowed, forecast.destination], [true, Vector2i(41, 45)], "later mobile occupancy remains a route forecast rather than a permanent wall")
-	var immediate_field := BattlefieldState.from_data(forecast_field.to_data())
-	immediate_field.move_actor("traffic", Vector2i(41, 45))
+	var swap_forecast_field := _field(1); swap_forecast_field.place_character("mover", Vector2i(40, 45)); swap_forecast_field.place_character("traffic", Vector2i(42, 45)); swap_forecast_field.place_character("target", Vector2i(44, 45)); swap_forecast_field.set_terrain(Vector2i(42, 44), 2); swap_forecast_field.set_terrain(Vector2i(42, 46), 2); var swap_forecast := BattlefieldRules.new().probe_path_step_toward_actors(swap_forecast_field, terrain, "mover", ["target"], 20, ["traffic"]); assert_equal([swap_forecast.allowed, swap_forecast.destination], [true, Vector2i(41, 44)], "a later legal allied swap carries its real five-movement cost so repeated route-first decisions do not steer into and then away from the same occupied lane")
+	var immediate_field := BattlefieldState.from_data(forecast_field.to_data()); immediate_field.move_actor("traffic", Vector2i(41, 45))
 	var blocked := BattlefieldRules.new().probe_path_step_toward_actors(immediate_field, terrain, "mover", ["target"], 20)
 	assert_equal([blocked.allowed, blocked.reason], [false, &"path_not_found"], "the same dynamic occupancy blocks the immediate move when the corridor has no legal alternative")
 
