@@ -67,7 +67,13 @@ func is_battle_tileset() -> bool:
 func region_for(tile_id: int) -> Rect2i:
 	if not is_tileset() and not is_battle_tileset():
 		return Rect2i()
-	var atlas_index := maxi(tile_id - 1, 0)
+	# Castle's tile artwork is one-based. Zero-valued combat-build cells do not
+	# alias the first atlas cell; treating them as tile one creates jumbled 3x3
+	# patches wherever an authored mapstats record intentionally leaves a build
+	# cell empty.
+	if tile_id <= 0:
+		return Rect2i()
+	var atlas_index := tile_id - 1
 	if atlas_index >= columns * rows:
 		return Rect2i()
 	return Rect2i((atlas_index % columns) * tile_width, floori(float(atlas_index) / float(columns)) * tile_height, tile_width, tile_height)

@@ -115,6 +115,7 @@ func run() -> void:
 	if battle_atlas != null:
 		assert_true(battle_atlas.is_battle_tileset(), "the battle atlas retains Castle's 20 by 20 grid of native 32-pixel cells")
 		assert_equal(battle_atlas.region_for(1), Rect2i(0, 0, 32, 32), "Classic battle tile one maps to the first PICT 302 cell")
+		assert_false(battle_atlas.region_for(0).has_area(), "Classic combat-build tile zero remains empty instead of aliasing battle tile one")
 		assert_equal(battle_atlas.region_for(400), Rect2i(608, 608, 32, 32), "Classic battle tile 400 maps to the final PICT 302 cell")
 		assert_false(battle_atlas.region_for(401).has_area(), "battle terrain cannot address beyond Castle's 400 artwork cells")
 	var battle_tiles: Array[int] = []
