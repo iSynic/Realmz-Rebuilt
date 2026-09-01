@@ -11,6 +11,7 @@ var party_anchor: Vector2i
 var direction_degrees: int = 0
 var rolled_distance: int = 0
 var _terrain_tiles: Array[int] = []
+var _terrain_revision: int = 0
 var _character_positions: Dictionary = {}
 var _monster_positions: Dictionary = {}
 var _monster_sizes: Dictionary = {}
@@ -35,8 +36,15 @@ func terrain_at(coordinate: Vector2i) -> int:
 func set_terrain(coordinate: Vector2i, tile: int) -> bool:
 	if not contains(coordinate) or tile < 0 or tile > 400:
 		return false
-	_terrain_tiles[coordinate.y * SIZE + coordinate.x] = tile
+	var index := coordinate.y * SIZE + coordinate.x
+	if _terrain_tiles[index] != tile:
+		_terrain_tiles[index] = tile
+		_terrain_revision += 1
 	return true
+
+
+func terrain_revision() -> int:
+	return _terrain_revision
 
 
 func character_position(actor_id: String) -> Vector2i:

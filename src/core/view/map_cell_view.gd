@@ -18,7 +18,24 @@ var _edge_kinds: Dictionary = {}
 var _edge_passability: Dictionary = {}
 
 
-func _init(cell_coordinate: Vector2i, terrain: String, tile: int, cell_tileset_id: String, can_enter: bool, blocks_visibility: bool, is_visible: bool, was_visited: bool, trigger_present: bool, random_region_present: bool, feature_kinds: Array[StringName], feature_orientations: Dictionary, edge_kinds: Dictionary, edge_passability: Dictionary, cell_overlay_asset_id: String = "") -> void:
+func _init(cell_coordinate: Vector2i, terrain: String, tile: int, cell_tileset_id: String, can_enter: bool, blocks_visibility: bool, is_visible: bool, was_visited: bool, trigger_present: bool, random_region_present: bool, feature_kinds: Array[StringName], feature_orientations: Dictionary, edge_kinds: Dictionary, edge_passability: Dictionary, cell_overlay_asset_id: String = "", static_source: MapCellView = null) -> void:
+	if static_source != null:
+		coordinate = static_source.coordinate
+		terrain_id = static_source.terrain_id
+		render_tile = static_source.render_tile
+		tileset_id = static_source.tileset_id
+		overlay_asset_id = static_source.overlay_asset_id
+		passable = static_source.passable
+		blocks_los = static_source.blocks_los
+		visible = is_visible
+		visited = was_visited
+		has_trigger = static_source.has_trigger
+		in_random_region = static_source.in_random_region
+		_feature_kinds = static_source._feature_kinds
+		_feature_orientations = static_source._feature_orientations
+		_edge_kinds = static_source._edge_kinds
+		_edge_passability = static_source._edge_passability
+		return
 	coordinate = cell_coordinate
 	terrain_id = terrain
 	render_tile = tile
@@ -34,6 +51,11 @@ func _init(cell_coordinate: Vector2i, terrain: String, tile: int, cell_tileset_i
 	_feature_orientations = feature_orientations.duplicate()
 	_edge_kinds = edge_kinds.duplicate()
 	_edge_passability = edge_passability.duplicate()
+
+
+func detached_with_visibility(is_visible: bool, was_visited: bool) -> MapCellView:
+	var empty_features: Array[StringName] = []
+	return get_script().new(coordinate, terrain_id, render_tile, tileset_id, passable, blocks_los, is_visible, was_visited, has_trigger, in_random_region, empty_features, {}, {}, {}, overlay_asset_id, self)
 
 
 func has_feature(feature_kind: StringName) -> bool:

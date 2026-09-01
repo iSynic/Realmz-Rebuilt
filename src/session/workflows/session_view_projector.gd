@@ -1,19 +1,26 @@
 class_name SessionViewProjector
 extends RefCounted
 
-const MAP_VIEW_RADIUS: int = 12
-const LOCATION_NOTE_VIEW_SIZE: Vector2i = Vector2i(15, 13)
+const DEFAULT_MAP_VIEW_SIZE: Vector2i = Vector2i(25, 25)
 const ViewDomainRevisionsScript := preload("res://src/core/session/view_domain_revisions.gd")
 const MapPresentationDeltaScript := preload("res://src/core/view/map_presentation_delta.gd")
+const ViewChangeSetScript := preload("res://src/core/view/view_change_set.gd")
 
 var _cached_map_revision: int = -1
 var _cached_map_id: String = ""
 var _cached_map_coordinate: Vector2i = Vector2i(-1, -1)
 var _cached_map_view: MapView
-var _cached_map_cells_by_coordinate: Dictionary = {}
 var _cached_visited_membership: Dictionary = {}
 var _cached_seen_membership: Dictionary = {}
+var _cached_visible_membership: Dictionary = {}
 var _cached_view: GameView
+var _prepared_visibility_map_id: String = ""
+var _prepared_visibility_coordinate: Vector2i = Vector2i(-1, -1)
+var _prepared_visible_coordinates: Dictionary = {}
+var _visibility_membership_cache: Dictionary = {}
+var _map_projection_size: Vector2i = DEFAULT_MAP_VIEW_SIZE
+var _equipment_by_character_id: Dictionary = {}
+var _map_window_cache: Dictionary = {}
 
 
 func project(context: SessionWorkflowContext, pending_interaction: InteractionRequest, revision: int, started: bool, events: Array[DomainEvent] = []) -> GameView:
@@ -23,7 +30,7 @@ func project(context: SessionWorkflowContext, pending_interaction: InteractionRe
 		_cached_view = GameView.new(revision, false, null)
 		return _cached_view
 	if _can_project_ordinary_movement(context, pending_interaction, events):
-		_cached_view = _project_ordinary_movement(context, revision)
+		_cached_view = _project_ordinary_movement(context, revision, events)
 		return _cached_view
 	_cached_view = _project_complete(context, pending_interaction, revision)
 	return _cached_view
@@ -34,9 +41,14 @@ func _project_complete(context: SessionWorkflowContext, pending_interaction: Int
 	var state := context.state
 	var rules := context.rules
 	var members: Array[CharacterView] = []
+	var item_definitions := content.item_definitions()
+	_equipment_by_character_id.clear()
+	_map_window_cache.clear()
 	for character: CharacterState in state.party.characters():
 		var member_view := CharacterView.new(character, content)
-		member_view.apply_equipment(rules.inventory.combat_equipment(character, content.item_definitions()))
+		var equipment := rules.inventory.combat_equipment(character, item_definitions)
+		_equipment_by_character_id[character.id] = equipment
+		member_view.apply_equipment(equipment)
 		members.append(member_view)
 	var current_combat: CombatView
 	if state.combat != null:
@@ -52,6 +64,7 @@ func _project_complete(context: SessionWorkflowContext, pending_interaction: Int
 		result.bestiary_entries.append(MonsterCatalogEntryView.new(definition, content))
 	result.campaign_id = content.campaign_id
 	result.rules_version = content.rules_version
+	result.character_spellcasting_blocked = state.character_spellcasting_blocked
 	result.party_setup_available = not state.party_setup_completed
 	if state.character_draft != null and state.character_draft.generated_character != null:
 		result.character_draft = CharacterView.new(state.character_draft.generated_character, content)
@@ -90,6 +103,7 @@ func _project_complete(context: SessionWorkflowContext, pending_interaction: Int
 	result.party_summary.banked_gold = state.party.banked_wealth.gold
 	result.party_summary.fatigue = state.party.fatigue
 	result.party_summary.light_remaining = state.party.conditions.value(0)
+	result.party_summary.condition_values = state.party.conditions.values()
 	result.party_summary.has_classic_torch = not InventoryMagicServicesWorkflow.classic_torch_item(context).is_empty()
 	result.party_summary.camping = state.party_camping
 	result.party_summary.searching = state.party.conditions.is_active(ConditionRules.PARTY_SEARCHING)
@@ -126,10 +140,40 @@ func clear() -> void:
 	_cached_map_id = ""
 	_cached_map_coordinate = Vector2i(-1, -1)
 	_cached_map_view = null
-	_cached_map_cells_by_coordinate.clear()
 	_cached_visited_membership.clear()
 	_cached_seen_membership.clear()
+	_cached_visible_membership.clear()
 	_cached_view = null
+	_prepared_visibility_map_id = ""
+	_prepared_visibility_coordinate = Vector2i(-1, -1)
+	_prepared_visible_coordinates.clear()
+	_visibility_membership_cache.clear()
+	_equipment_by_character_id.clear()
+
+
+func set_map_projection_size(requested_size: Vector2i) -> bool:
+	var normalized := Vector2i(maxi(requested_size.x, 1), maxi(requested_size.y, 1))
+	if normalized == _map_projection_size:
+		return false
+	_map_projection_size = normalized
+	clear()
+	return true
+
+
+func record_visibility(map_id: String, coordinate: Vector2i, visible_coordinates: Array[Vector2i], topology_revision: int = 0, wizard_eye: bool = false) -> void:
+	_prepared_visibility_map_id = map_id
+	_prepared_visibility_coordinate = coordinate
+	var cache_key := "%s:%d:%d,%d:%d" % [map_id, topology_revision, coordinate.x, coordinate.y, int(wizard_eye)]
+	if _visibility_membership_cache.has(cache_key):
+		_prepared_visible_coordinates = _visibility_membership_cache[cache_key]
+		return
+	var membership: Dictionary = {}
+	for visible_coordinate: Vector2i in visible_coordinates:
+		membership[visible_coordinate] = true
+	if _visibility_membership_cache.size() >= 512:
+		_visibility_membership_cache.clear()
+	_visibility_membership_cache[cache_key] = membership
+	_prepared_visible_coordinates = membership
 
 
 func _can_project_ordinary_movement(context: SessionWorkflowContext, pending_interaction: InteractionRequest, events: Array[DomainEvent]) -> bool:
@@ -138,7 +182,7 @@ func _can_project_ordinary_movement(context: SessionWorkflowContext, pending_int
 	if _cached_view.party_map_id != context.state.party.map_id:
 		return false
 	var current_map := context.content.world.map_by_id(context.state.party.map_id)
-	if current_map == null or current_map.uses_los:
+	if current_map == null:
 		return false
 	var moved_count := 0
 	for event: DomainEvent in events:
@@ -161,50 +205,279 @@ func _can_project_ordinary_movement(context: SessionWorkflowContext, pending_int
 			&"fatigue_changed":
 				if String(event.payload.get("source", "")) != "classic" or String(event.payload.get("reason", "")) != "hour-boundary" or int(event.payload.get("current", -1)) != context.state.party.fatigue:
 					return false
+			&"spell_points_recovered":
+				var character := context.state.party.character_by_id(String(event.payload.get("characterId", "")))
+				if String(event.payload.get("source", "")) != "classic-hour" or character == null or int(event.payload.get("amount", 0)) <= 0:
+					return false
+			&"ally_spell_points_recovered":
+				var ally := _ally_by_id(context.state.party, String(event.payload.get("allyId", "")))
+				if String(event.payload.get("source", "")) != "classic-hour" or ally == null or int(event.payload.get("amount", 0)) <= 0:
+					return false
+			&"condition_expired":
+				var character := context.state.party.character_by_id(String(event.payload.get("characterId", "")))
+				var condition := int(event.payload.get("condition", -1))
+				if character == null or condition < 0 or condition >= ConditionSet.CHARACTER_COUNT or character.conditions.value(condition) != 0:
+					return false
+			&"condition_healed", &"condition_damaged":
+				var character := context.state.party.character_by_id(String(event.payload.get("characterId", "")))
+				var condition := int(event.payload.get("condition", -1))
+				if character == null or condition < 0 or condition >= ConditionSet.CHARACTER_COUNT or int(event.payload.get("amount", 0)) <= 0:
+					return false
+			&"party_condition_expired":
+				var condition := int(event.payload.get("condition", -1))
+				if condition < 0 or condition >= ConditionSet.PARTY_COUNT or context.state.party.conditions.value(condition) != 0:
+					return false
+			&"ally_condition_expired":
+				var ally := _ally_by_id(context.state.party, String(event.payload.get("allyId", "")))
+				var condition := int(event.payload.get("condition", -1))
+				if ally == null or condition < 0 or condition >= ConditionSet.CHARACTER_COUNT or ally.conditions.value(condition) != 0:
+					return false
+			&"health_recovered":
+				var character := context.state.party.character_by_id(String(event.payload.get("characterId", "")))
+				if String(event.payload.get("source", "")) != "classic-half-day" or character == null or int(event.payload.get("amount", 0)) <= 0:
+					return false
+			&"ally_health_recovered":
+				var ally := _ally_by_id(context.state.party, String(event.payload.get("allyId", "")))
+				if String(event.payload.get("source", "")) != "classic-half-day" or ally == null or int(event.payload.get("amount", 0)) <= 0:
+					return false
+			&"rest_ration_consumed":
+				if String(event.payload.get("source", "")) != "classic-half-day" or String(event.payload.get("characterId", "")).is_empty() or String(event.payload.get("instanceId", "")).is_empty():
+					return false
 			&"random_encounter_checked":
 				if bool(event.payload.get("triggered", false)):
+					return false
+			&"movement_secret_search_completed":
+				if String(event.payload.get("mapId", "")) != context.state.party.map_id or Vector2i(int(event.payload.get("x", -100000)), int(event.payload.get("y", -100000))) != context.state.party.coordinate or not (event.payload.get("discoveredSecrets", []) as Array).is_empty():
 					return false
 			_:
 				return false
 	return moved_count == 1
 
 
-func _project_ordinary_movement(context: SessionWorkflowContext, revision: int) -> GameView:
+static func _ally_by_id(party: PartyState, ally_id: String) -> MonsterState:
+	for ally: MonsterState in party.allies():
+		if ally.id == ally_id:
+			return ally
+	return null
+
+
+func _project_ordinary_movement(context: SessionWorkflowContext, revision: int, events: Array[DomainEvent]) -> GameView:
+	var projection_started := Time.get_ticks_usec()
 	var state := context.state
-	var result := GameView.new(revision, true, null, state.party.map_id, state.party.coordinate, state.clock.day(), state.clock.hour(), state.clock.minute(), _map_view(context, revision, true), _cached_view.party_members, state.party.fatigue, state.party.pooled_wealth.gold, null)
+	# Every hour mutates positive character/ally conditions even when no expiry
+	# event is published. Rebuild only the party-owned detached records at that
+	# boundary while retaining the expensive immutable campaign catalogs.
+	var refresh_party := events.any(func(event: DomainEvent) -> bool:
+		return event.kind == &"fatigue_changed" and String(event.payload.get("source", "")) == "classic" and String(event.payload.get("reason", "")) == "hour-boundary"
+	)
+	var magic_character_ids := _ordinary_magic_character_ids(events)
+	var magic_affordability_ids := _ordinary_affordability_character_ids(context, events)
+	var structural_magic_refresh := _ordinary_magic_requires_structural_refresh(events)
+	var inventory_refresh := _ordinary_inventory_refresh(context, events)
+	var status_character_ids: Dictionary = {}
+	var members: Array[CharacterView] = []
+	if refresh_party:
+		var characters := state.party.characters()
+		for character_index: int in characters.size():
+			var character: CharacterState = characters[character_index]
+			var previous_member := _cached_view.party_members[character_index] if character_index < _cached_view.party_members.size() and _cached_view.party_members[character_index].id == character.id else _character_view_by_id(_cached_view.party_members, character.id)
+			var magic_changed := magic_affordability_ids.has(character.id)
+			if not magic_changed and not inventory_refresh and not _character_status_changed(character, previous_member):
+				members.append(previous_member)
+				continue
+			status_character_ids[character.id] = true
+			var equipment := _equipment_by_character_id.get(character.id) as CharacterCombatEquipment
+			if equipment == null:
+				equipment = context.rules.inventory.combat_equipment(character, context.content.item_definitions())
+				_equipment_by_character_id[character.id] = equipment
+			members.append(CharacterView.new(character, context.content, previous_member, true, magic_changed) if inventory_refresh else CharacterView.refreshed_status(character, context.content, previous_member, equipment, magic_changed, structural_magic_refresh))
+			if inventory_refresh: members[-1].apply_equipment(equipment)
+	else:
+		members.assign(_cached_view.party_members)
+	var party_done := Time.get_ticks_usec()
+	var projected_map := _map_view(context, revision, true)
+	var map_done := Time.get_ticks_usec()
+	var result := GameView.new(revision, true, null, state.party.map_id, state.party.coordinate, state.clock.day(), state.clock.hour(), state.clock.minute(), projected_map, members, state.party.fatigue, state.party.pooled_wealth.gold, null)
 	result.campaign_id = _cached_view.campaign_id
 	result.rules_version = _cached_view.rules_version
+	result.character_spellcasting_blocked = _cached_view.character_spellcasting_blocked
 	result.party_setup_available = _cached_view.party_setup_available
 	result.character_draft = _cached_view.character_draft
-	result.character_draft_spell_options.assign(_cached_view.character_draft_spell_options)
+	result.character_draft_spell_options = _cached_view.character_draft_spell_options
 	result.character_draft_spell_points_total = _cached_view.character_draft_spell_points_total
 	result.character_draft_spell_points_remaining = _cached_view.character_draft_spell_points_remaining
-	result.race_options.assign(_cached_view.race_options)
-	result.caste_options.assign(_cached_view.caste_options)
-	result.portrait_options.assign(_cached_view.portrait_options)
-	result.combat_icon_options.assign(_cached_view.combat_icon_options)
+	result.race_options = _cached_view.race_options
+	result.caste_options = _cached_view.caste_options
+	result.portrait_options = _cached_view.portrait_options
+	result.combat_icon_options = _cached_view.combat_icon_options
 	result.campaign_summary = _cached_view.campaign_summary
 	result.party_setup = _cached_view.party_setup
 	result.party_summary = _ordinary_party_summary(context, _cached_view.party_summary)
-	result.journal_entries.assign(_cached_view.journal_entries)
-	result.services.assign(_cached_view.services)
+	if refresh_party:
+		for ally: MonsterState in state.party.allies():
+			result.party_allies.append(MonsterView.new(ally, context.content.monster_by_id(ally.definition_id), context.content))
+	else:
+		result.party_allies.assign(_cached_view.party_allies)
+	result.bestiary_entries = _cached_view.bestiary_entries
+	result.journal_entries = _cached_view.journal_entries
+	result.services = _cached_view.services
 	result.money_workspace = _cached_view.money_workspace
 	_populate_ordinary_movement_map_views(context, result, _cached_view)
+	var shell_done := Time.get_ticks_usec()
 	# The strict ordinary-movement classifier excludes every interaction,
 	# overlay, service, combat, inventory, condition, and campaign-state change.
 	# Reuse those already-computed commands; directional movement facts live on
 	# the freshly projected MapView.
-	result.action_availability = _cached_view.action_availability.duplicate()
+	if inventory_refresh:
+		_populate_inventory_item_actions(context, result)
+	var inventory_done := Time.get_ticks_usec()
+	if not magic_affordability_ids.is_empty():
+		if structural_magic_refresh:
+			_populate_spell_actions(context, result, magic_affordability_ids)
+		else:
+			_populate_spell_affordability(context, result, magic_affordability_ids)
+	var magic_done := Time.get_ticks_usec()
+	if refresh_party:
+		_populate_ordinary_action_availability(result, _cached_view, inventory_refresh, not magic_affordability_ids.is_empty())
+	else:
+		result.action_availability = _cached_view.action_availability.duplicate()
 	var revisions := ViewDomainRevisionsScript.new()
-	revisions.party = _cached_view.domain_revisions.party
+	revisions.party_roster = _cached_view.domain_revisions.party_roster
+	revisions.party_status = revision if refresh_party else _cached_view.domain_revisions.party_status
 	revisions.setup = _cached_view.domain_revisions.setup
 	revisions.exploration = revision
-	revisions.inventory_magic = _cached_view.domain_revisions.inventory_magic
+	revisions.inventory = revision if inventory_refresh else _cached_view.domain_revisions.inventory
+	revisions.magic = revision if not magic_character_ids.is_empty() else _cached_view.domain_revisions.magic
 	revisions.services = _cached_view.domain_revisions.services
 	revisions.combat = _cached_view.domain_revisions.combat
 	revisions.system = revision
+	revisions.synchronize_legacy_aggregates()
 	result.domain_revisions = revisions
+	var changes := ViewChangeSetScript.new()
+	changes.mark_domain(ViewChangeSetScript.EXPLORATION)
+	if refresh_party:
+		changes.mark_domain(ViewChangeSetScript.PARTY_STATUS)
+		for character_id: String in status_character_ids: changes.mark_character(character_id)
+	if inventory_refresh: changes.mark_domain(ViewChangeSetScript.INVENTORY)
+	if not magic_character_ids.is_empty(): changes.mark_domain(ViewChangeSetScript.MAGIC)
+	changes.mark_domain(ViewChangeSetScript.SYSTEM)
+	for character_id: String in magic_character_ids: changes.mark_character(character_id)
+	result.change_set = changes
+	result.projection_timings_usec = {
+		"partyStatus": party_done - projection_started,
+		"mapWindow": map_done - party_done,
+		"explorationShell": shell_done - map_done,
+		"inventory": inventory_done - shell_done,
+		"magic": magic_done - inventory_done,
+		"finalize": Time.get_ticks_usec() - magic_done,
+	}
 	return result
+
+
+static func _character_status_changed(character: CharacterState, previous: CharacterView) -> bool:
+	return previous == null \
+		or character.current_health != previous.current_health \
+		or character.maximum_health != previous.maximum_health \
+		or character.spell_points != previous.spell_points \
+		or character.maximum_spell_points != previous.maximum_spell_points \
+		or character.age_days != previous.age_days \
+		or character.conditions.values() != previous.condition_values
+
+
+static func _character_view_by_id(members: Array[CharacterView], character_id: String) -> CharacterView:
+	for member: CharacterView in members:
+		if member.id == character_id:
+			return member
+	return null
+
+
+static func _populate_ordinary_action_availability(result: GameView, previous: GameView, inventory_changed: bool, magic_changed: bool) -> void:
+	result.action_availability = previous.action_availability.duplicate()
+	var fatigue_blocked := result.party_fatigue > 134
+	result.set_action_availability(&"area_search", not fatigue_blocked, "The party is too fatigued to continue Area Search." if fatigue_blocked else "")
+	result.set_action_availability(&"heal", not fatigue_blocked, "The party is too fatigued to continue Heal." if fatigue_blocked else "")
+	if inventory_changed:
+		var field_item_available := result.party_members.any(func(member: CharacterView) -> bool: return member.items.any(func(item: ItemView) -> bool: return item.actions != null and item.actions.use.enabled))
+		result.set_action_availability(&"use_item", field_item_available, "No carried item has a supported Classic field use." if not field_item_available else "")
+	if magic_changed:
+		var field_spell_available := false
+		var field_spell_reason := "No known spell has a supported Classic field use."
+		for member: CharacterView in result.party_members:
+			for spell: SpellView in member.spells:
+				if spell.field_cast.enabled:
+					field_spell_available = true
+					break
+				if not spell.field_cast.reason.is_empty(): field_spell_reason = spell.field_cast.reason
+			if field_spell_available: break
+		result.set_action_availability(&"cast_spell", field_spell_available, "" if field_spell_available else field_spell_reason)
+
+
+static func _ordinary_magic_character_ids(events: Array[DomainEvent]) -> Dictionary:
+	var result: Dictionary = {}
+	for event: DomainEvent in events:
+		var character_id := String(event.payload.get("characterId", ""))
+		if event.kind in [&"spell_points_recovered", &"condition_expired", &"condition_healed", &"condition_damaged"] and not character_id.is_empty():
+			result[character_id] = true
+	return result
+
+
+func _ordinary_affordability_character_ids(context: SessionWorkflowContext, events: Array[DomainEvent]) -> Dictionary:
+	var result: Dictionary = {}
+	for event: DomainEvent in events:
+		var character_id := String(event.payload.get("characterId", ""))
+		if character_id.is_empty():
+			continue
+		if event.kind in [&"condition_expired", &"condition_healed", &"condition_damaged"] or event.kind == &"spell_points_recovered" and _spell_affordability_crossed(context, character_id):
+			result[character_id] = true
+	return result
+
+
+func _spell_affordability_crossed(context: SessionWorkflowContext, character_id: String) -> bool:
+	var character := context.state.party.character_by_id(character_id)
+	var previous := _character_view_by_id(_cached_view.party_members, character_id)
+	if character == null or previous == null:
+		return true
+	var before := previous.spell_points
+	var after := character.spell_points
+	for spell_view: SpellView in previous.spells:
+		var spell := context.content.spell_by_id(spell_view.id)
+		if spell == null:
+			continue
+		for power: int in spell_view.structural_power_levels:
+			if before < absi(spell.cost * power) and after >= absi(spell.cost * power):
+				return true
+		for power: int in spell_view.structural_scroll_power_levels:
+			if before < absi(spell.cost * power * 2) and after >= absi(spell.cost * power * 2):
+				return true
+	for binding: FastSpellBindingView in previous.fast_spells:
+		if binding.spell_id.is_empty():
+			continue
+		var spell := context.content.spell_by_id(binding.spell_id)
+		if spell != null and before < absi(spell.cost * binding.power) and after >= absi(spell.cost * binding.power):
+			return true
+	return false
+
+
+static func _ordinary_magic_requires_structural_refresh(events: Array[DomainEvent]) -> bool:
+	return events.any(func(event: DomainEvent) -> bool: return event.kind in [&"condition_expired", &"condition_healed", &"condition_damaged"])
+
+
+func _ordinary_inventory_refresh(context: SessionWorkflowContext, events: Array[DomainEvent]) -> bool:
+	if events.any(func(event: DomainEvent) -> bool: return event.kind == &"rest_ration_consumed"):
+		return true
+	for event: DomainEvent in events:
+		if event.kind != &"spell_points_recovered":
+			continue
+		var character_id := String(event.payload.get("characterId", ""))
+		var current := context.state.party.character_by_id(character_id)
+		var previous := _character_view_by_id(_cached_view.party_members, character_id)
+		if current == null or previous == null or previous.spell_points >= 25 or current.spell_points < 25:
+			continue
+		for spell_id: String in current.known_spells():
+			var spell := context.content.spell_by_id(spell_id)
+			if spell != null and absi(spell.special) == 48:
+				return true
+	return false
 
 
 func _map_view(context: SessionWorkflowContext, revision: int, reuse_ordinary_cells: bool = false, reuse_static: bool = false) -> MapView:
@@ -214,19 +487,28 @@ func _map_view(context: SessionWorkflowContext, revision: int, reuse_ordinary_ce
 		return _cached_map_view
 	var previous_map_view := _cached_map_view
 	var presentation_delta: RefCounted
-	if reuse_ordinary_cells and previous_map_view != null:
+	var current_map := context.content.world.map_by_id(context.state.party.map_id)
+	# LOS movement returns every cell in the current projection, but shares
+	# unchanged immutable cell views and identifies its changed visibility edge.
+	var can_reuse_map_cells := reuse_ordinary_cells and previous_map_view != null and current_map != null
+	if can_reuse_map_cells:
 		var destination := context.state.party.coordinate
 		var newly_visited: Array[Vector2i] = []
 		var newly_seen: Array[Vector2i] = []
+		var visibility_changed: Array[Vector2i] = []
 		if not _cached_visited_membership.has(destination): newly_visited.append(destination)
-		presentation_delta = MapPresentationDeltaScript.new(context.state.party.map_id, previous_map_view.party_coordinate, destination, newly_visited, newly_seen)
+		if current_map.uses_los:
+			for coordinate: Vector2i in _prepared_visible_coordinates:
+				if not _cached_seen_membership.has(coordinate): newly_seen.append(coordinate)
+			for coordinate: Vector2i in _cached_visible_membership:
+				if not _prepared_visible_coordinates.has(coordinate): visibility_changed.append(coordinate)
+			for coordinate: Vector2i in _prepared_visible_coordinates:
+				if not _cached_visible_membership.has(coordinate): visibility_changed.append(coordinate)
+		presentation_delta = MapPresentationDeltaScript.new(context.state.party.map_id, previous_map_view.party_coordinate, destination, newly_visited, newly_seen, visibility_changed)
 	_cached_map_revision = revision
 	_cached_map_id = context.state.party.map_id
 	_cached_map_coordinate = context.state.party.coordinate
-	_cached_map_view = _build_map_view(context, _cached_map_cells_by_coordinate if reuse_ordinary_cells else {}, previous_map_view, presentation_delta)
-	_cached_map_cells_by_coordinate.clear()
-	for cell: MapCellView in _cached_map_view.cells():
-		_cached_map_cells_by_coordinate[cell.coordinate] = cell
+	_cached_map_view = SessionMapViewBuilder.build_map_view(context, _map_projection_size, _prepared_visibility_map_id, _prepared_visibility_coordinate, _prepared_visible_coordinates, _map_window_cache, previous_map_view if can_reuse_map_cells else null, presentation_delta)
 	if presentation_delta != null:
 		for coordinate: Vector2i in presentation_delta.newly_visited:
 			_cached_visited_membership[coordinate] = true
@@ -236,6 +518,7 @@ func _map_view(context: SessionWorkflowContext, revision: int, reuse_ordinary_ce
 		_cached_visited_membership.clear(); _cached_seen_membership.clear()
 		for coordinate: Vector2i in _cached_map_view.visited_coordinates(): _cached_visited_membership[coordinate] = true
 		for coordinate: Vector2i in _cached_map_view.seen_coordinates(): _cached_seen_membership[coordinate] = true
+	_cached_visible_membership = _prepared_visible_coordinates if current_map != null and current_map.uses_los else {}
 	return _cached_map_view
 
 
@@ -243,9 +526,10 @@ static func _ordinary_party_summary(context: SessionWorkflowContext, previous: P
 	if previous == null:
 		return null
 	var result := PartySummaryView.new()
-	result.character_ids.assign(previous.character_ids); result.ally_ids.assign(previous.ally_ids); result.acquired_map_ids.assign(previous.acquired_map_ids)
+	result.character_ids = previous.character_ids; result.ally_ids = previous.ally_ids; result.acquired_map_ids = previous.acquired_map_ids
 	result.pooled_gold = previous.pooled_gold; result.banked_gold = previous.banked_gold; result.has_classic_torch = previous.has_classic_torch
 	result.fatigue = context.state.party.fatigue; result.light_remaining = context.state.party.conditions.value(ConditionRules.PARTY_TORCH_LIT)
+	result.condition_values = context.state.party.conditions.values()
 	result.camping = previous.camping; result.searching = previous.searching; result.in_boat = previous.in_boat
 	return result
 
@@ -266,7 +550,7 @@ static func _populate_movement_map_views(context: SessionWorkflowContext, result
 	var state := context.state
 	for definition: PlayerMapDefinition in content.world.player_maps():
 		var acquired := state.world.has_map(definition.id)
-		var player_map_view := _build_player_map_view(context, definition) if acquired else PlayerMapView.new(definition, [], false, Vector2i.ZERO, false)
+		var player_map_view := SessionMapViewBuilder.build_player_map_view(context, definition) if acquired else PlayerMapView.new(definition, [], false, Vector2i.ZERO, false)
 		result.player_map_menu_entries.append(player_map_view)
 		if acquired:
 			result.acquired_player_maps.append(player_map_view)
@@ -278,7 +562,7 @@ static func _populate_movement_map_views(context: SessionWorkflowContext, result
 	for note: LocationNoteState in state.world.location_notes_for_kind(current_map.level_type):
 		var note_map := content.world.map_by_id(note.map_id)
 		if note_map != null:
-			result.location_notes.append(LocationNoteView.new(note.map_id, note_map.name, note_map.level_type, note_map.level_index, note.coordinate, note.text, note.darkness_value, note.record_ordinal, note.map_id == state.party.map_id and note.coordinate == state.party.coordinate, _build_location_note_map_view(context, note_map, note)))
+			result.location_notes.append(LocationNoteView.new(note.map_id, note_map.name, note_map.level_type, note_map.level_index, note.coordinate, note.text, note.darkness_value, note.record_ordinal, note.map_id == state.party.map_id and note.coordinate == state.party.coordinate, SessionMapViewBuilder.build_location_note_map_view(context, note_map, note)))
 
 
 static func _populate_ordinary_movement_map_views(context: SessionWorkflowContext, result: GameView, previous: GameView) -> void:
@@ -288,7 +572,7 @@ static func _populate_ordinary_movement_map_views(context: SessionWorkflowContex
 		if definition == null:
 			continue
 		var source_map := context.content.world.map_by_id(definition.map_id) if not definition.map_id.is_empty() else null
-		var show_party := _player_map_shows_party(definition, source_map, state.party.map_id, state.party.coordinate)
+		var show_party := SessionMapViewBuilder.player_map_shows_party(definition, source_map, state.party.map_id, state.party.coordinate)
 		var refreshed := PlayerMapView.new(definition, previous_map.cells, show_party, state.party.coordinate, previous_map.acquired)
 		result.player_map_menu_entries.append(refreshed)
 		if refreshed.acquired:
@@ -449,16 +733,19 @@ static func _populate_action_availability(context: SessionWorkflowContext, resul
 	result.set_action_availability(&"combat_move", combat_move_enabled, combat_move_reason)
 
 
-static func _populate_spell_actions(context: SessionWorkflowContext, result: GameView) -> void:
+static func _populate_spell_actions(context: SessionWorkflowContext, result: GameView, character_filter: Dictionary = {}) -> void:
 	var state := context.state
 	var content := context.content
 	var rules := context.rules
 	var blocked_reason := "Resolve the current interaction first." if result.pending_interaction != null else "Complete party setup first." if result.party_setup_available else ""
 	var battle_active := result.combat_view != null and result.combat_view.outcome == &"active"
 	for member_view: CharacterView in result.party_members:
+		if not character_filter.is_empty() and not character_filter.has(member_view.id):
+			continue
 		var character := state.party.character_by_id(member_view.id)
 		for spell_view: SpellView in member_view.spells:
 			var spell := content.spell_by_id(spell_view.id)
+			spell_view.power_levels.clear(); spell_view.structural_power_levels.clear(); spell_view.scroll_power_levels.clear(); spell_view.structural_scroll_power_levels.clear()
 			if not blocked_reason.is_empty():
 				spell_view.combat_cast = ActionAvailabilityView.new(&"cast_spell", false, blocked_reason)
 				spell_view.field_cast = ActionAvailabilityView.new(&"cast_spell", false, blocked_reason)
@@ -482,9 +769,11 @@ static func _populate_spell_actions(context: SessionWorkflowContext, result: Gam
 			spell_view.combat_cast = ActionAvailabilityView.new(&"cast_spell", false, "Combat casting requires an active battle.")
 			var first_reason := ""
 			for power: int in range(1, 8):
-				var probe := _field_spell_probe(context, character, spell, power)
+				var probe := _field_spell_probe(context, character, spell, power, false)
 				if probe.allowed:
-					spell_view.power_levels.append(power)
+					spell_view.structural_power_levels.append(power)
+					if character.spell_points >= absi(spell.cost * power): spell_view.power_levels.append(power)
+					elif first_reason.is_empty(): first_reason = "The character does not have enough spell points."
 				elif first_reason.is_empty():
 					first_reason = probe.reason
 				if spell != null and spell.cost < 0:
@@ -492,9 +781,11 @@ static func _populate_spell_actions(context: SessionWorkflowContext, result: Gam
 			spell_view.field_cast = ActionAvailabilityView.new(&"cast_spell", not spell_view.power_levels.is_empty(), first_reason)
 			var make_reason := ""
 			for power: int in range(1, 8):
-				var make_probe := _make_scroll_probe(context, character, spell, power)
+				var make_probe := _make_scroll_probe(context, character, spell, power, false)
 				if make_probe.allowed:
-					spell_view.scroll_power_levels.append(power)
+					spell_view.structural_scroll_power_levels.append(power)
+					if character.spell_points >= absi(spell.cost * power * 2): spell_view.scroll_power_levels.append(power)
+					elif make_reason.is_empty(): make_reason = "Scribing requires twice the spell's normal spell-point cost."
 				elif make_reason.is_empty():
 					make_reason = make_probe.reason
 				if spell != null and spell.cost < 0:
@@ -535,6 +826,42 @@ static func _populate_spell_actions(context: SessionWorkflowContext, result: Gam
 			else:
 				var field_probe := _field_spell_probe(context, character, bound_spell, fast_spell.power)
 				fast_spell.activation = ActionAvailabilityView.new(&"cast_spell", field_probe.allowed, field_probe.reason)
+
+
+static func _populate_spell_affordability(context: SessionWorkflowContext, result: GameView, character_filter: Dictionary) -> void:
+	for member_view: CharacterView in result.party_members:
+		if not character_filter.has(member_view.id):
+			continue
+		var character := context.state.party.character_by_id(member_view.id)
+		for spell_index: int in member_view.spells.size():
+			var spell_view: SpellView = member_view.spells[spell_index]
+			var spell := context.content.spell_by_id(spell_view.id)
+			if spell == null:
+				continue
+			var affordable: Array[int] = []
+			var affordable_scrolls: Array[int] = []
+			for power: int in spell_view.structural_power_levels:
+				if character.spell_points >= absi(spell.cost * power): affordable.append(power)
+			for power: int in spell_view.structural_scroll_power_levels:
+				if character.spell_points >= absi(spell.cost * power * 2): affordable_scrolls.append(power)
+			if affordable == spell_view.power_levels and affordable_scrolls == spell_view.scroll_power_levels:
+				continue
+			spell_view = SpellView.new(spell, spell_view)
+			spell_view.power_levels = affordable
+			spell_view.scroll_power_levels = affordable_scrolls
+			spell_view.field_cast = ActionAvailabilityView.new(&"cast_spell", not spell_view.power_levels.is_empty(), "The character does not have enough spell points.")
+			spell_view.make_scroll = ActionAvailabilityView.new(&"cast_spell", not spell_view.scroll_power_levels.is_empty(), "Scribing requires twice the spell's normal spell-point cost.")
+			member_view.spells[spell_index] = spell_view
+		for fast_index: int in member_view.fast_spells.size():
+			var fast_spell: FastSpellBindingView = member_view.fast_spells[fast_index]
+			if fast_spell.spell_id.is_empty():
+				continue
+			var bound_spell := context.content.spell_by_id(fast_spell.spell_id)
+			var field_probe := _field_spell_probe(context, character, bound_spell, fast_spell.power)
+			if fast_spell.activation.enabled != field_probe.allowed or fast_spell.activation.reason != field_probe.reason:
+				var replacement := FastSpellBindingView.new(fast_index, character.fast_spell_at(fast_index), bound_spell)
+				replacement.activation = ActionAvailabilityView.new(&"cast_spell", field_probe.allowed, field_probe.reason)
+				member_view.fast_spells[fast_index] = replacement
 
 
 static func _populate_inventory_item_actions(context: SessionWorkflowContext, result: GameView) -> void:
@@ -642,7 +969,7 @@ static func _current_location_note_darkness(context: SessionWorkflowContext, map
 	return clampi(int(context.state.party.conditions.value(0) / 30) + 1, 1, 255)
 
 
-static func _make_scroll_probe(context: SessionWorkflowContext, character: CharacterState, spell: SpellDefinition, power: int) -> InventoryActionProbe:
+static func _make_scroll_probe(context: SessionWorkflowContext, character: CharacterState, spell: SpellDefinition, power: int, check_affordability: bool = true) -> InventoryActionProbe:
 	if character == null or spell == null or not character.known_spells().has(spell.id):
 		return InventoryActionProbe.block("The character does not know that spell.")
 	if not context.state.party_camping:
@@ -657,7 +984,7 @@ static func _make_scroll_probe(context: SessionWorkflowContext, character: Chara
 		return InventoryActionProbe.block("The character has no parchment.")
 	if power < 1 or power > 7 or spell.cost < 0 and power != 1:
 		return InventoryActionProbe.block("This spell does not support the selected scroll power.")
-	if character.spell_points < absi(spell.cost * power * 2):
+	if check_affordability and character.spell_points < absi(spell.cost * power * 2):
 		return InventoryActionProbe.block("Scribing requires twice the spell's normal spell-point cost.")
 	return InventoryActionProbe.permit()
 
@@ -694,12 +1021,12 @@ static func _scroll_discard_probe(context: SessionWorkflowContext, character: Ch
 	return InventoryActionProbe.permit()
 
 
-static func _field_spell_probe(context: SessionWorkflowContext, character: CharacterState, spell: SpellDefinition, power: int) -> InventoryActionProbe:
+static func _field_spell_probe(context: SessionWorkflowContext, character: CharacterState, spell: SpellDefinition, power: int, check_affordability: bool = true) -> InventoryActionProbe:
 	if character == null or spell == null or not character.known_spells().has(spell.id):
 		return InventoryActionProbe.block("The character does not know that spell.")
 	if context.state.character_spellcasting_blocked:
 		return InventoryActionProbe.block("Classic scenario state currently blocks character spellcasting.")
-	if character.current_health < 1 or character.spell_points < 1:
+	if character.current_health < 1 or check_affordability and character.spell_points < 1:
 		return InventoryActionProbe.block("The character cannot cast in their current state.")
 	for condition: int in [ConditionRules.CONFUSED, ConditionRules.SILENCED, ConditionRules.HELPLESS, ConditionRules.STUPID, ConditionRules.ANIMATED]:
 		if character.conditions.is_active(condition):
@@ -708,7 +1035,7 @@ static func _field_spell_probe(context: SessionWorkflowContext, character: Chara
 		return InventoryActionProbe.block("This spell cannot be cast outside battle.")
 	if power < 1 or power > 7 or spell.cost < 0 and power != 1:
 		return InventoryActionProbe.block("This spell does not support the selected power level.")
-	if character.spell_points < absi(spell.cost * power):
+	if check_affordability and character.spell_points < absi(spell.cost * power):
 		return InventoryActionProbe.block("The character does not have enough spell points.")
 	if spell.target_type < 0 or spell.target_type > 12:
 		return InventoryActionProbe.block("This spell has an invalid Classic field target type.")
@@ -767,129 +1094,4 @@ static func _money_kind(value: StringName) -> int:
 	return -1
 
 
-static func _build_map_view(context: SessionWorkflowContext, reusable_cells: Dictionary = {}, previous_map_view: MapView = null, presentation_delta: RefCounted = null) -> MapView:
-	var content := context.content
-	var state := context.state
-	var map := content.world.map_by_id(state.party.map_id)
-	var visible: Dictionary = {}
-	if map.uses_los:
-		var wizard_eye := state.party.conditions.is_active(ConditionRules.PARTY_WIZARDS_EYE)
-		for coordinate: Vector2i in map.topology.visible_cells(state.party.coordinate, 8, state.world, true, wizard_eye):
-			visible[coordinate] = true
-	var cells: Array[MapCellView] = []
-	var projection_diameter := MAP_VIEW_RADIUS * 2 + 1
-	var projection_width := mini(map.topology.width, projection_diameter)
-	var projection_height := mini(map.topology.height, projection_diameter)
-	var first_x := clampi(state.party.coordinate.x - MAP_VIEW_RADIUS, 0, map.topology.width - projection_width)
-	var first_y := clampi(state.party.coordinate.y - MAP_VIEW_RADIUS, 0, map.topology.height - projection_height)
-	var last_x := first_x + projection_width
-	var last_y := first_y + projection_height
-	for y: int in range(first_y, last_y):
-		for x: int in range(first_x, last_x):
-			var cell := map.topology.cell_at(Vector2i(x, y))
-			if cell == null:
-				continue
-			# An ordinary land step changes only the destination's visited flag. Keep
-			# overlapping detached cells and build the entering strip plus destination.
-			# LOS maps must rebuild because moving changes visibility across the window.
-			var reusable := reusable_cells.get(cell.coordinate) as MapCellView
-			if not map.uses_los and cell.coordinate != state.party.coordinate and reusable != null:
-				cells.append(reusable)
-			else:
-				cells.append(_build_cell_view(context, map, cell, not map.uses_los or visible.has(cell.coordinate)))
-	var movement_options: Dictionary = {}
-	var directions := MapTopology.land_directions() if map.level_type == &"land" else MapTopology.cardinal_directions()
-	for direction: Vector2i in directions:
-		var direction_name := MapTopology.direction_name(direction)
-		var probe := _probe_movement(context, direction)
-		movement_options[direction_name] = {"allowed": probe.allowed, "reason": String(probe.reason)}
-	var dark := state.world.map_is_dark(map)
-	var darkness_level := classic_darkness_level(state.party.conditions.value(ConditionRules.PARTY_TORCH_LIT)) if dark else -1
-	var visited: Array[Vector2i] = []
-	var seen: Array[Vector2i] = []
-	if presentation_delta == null:
-		visited = state.world.visited_coordinates(map.id); seen = state.world.seen_coordinates(map.id)
-	var result := MapView.new(map.id, map.name, map.level_type, map.topology.width, map.topology.height, state.party.coordinate, cells, dark, visited, movement_options, state.last_move_direction, state.world.map_landlook(map), state.dungeon_heading, state.dungeon_multiview, state.party.conditions.is_active(ConditionRules.PARTY_WIZARDS_EYE), map.base_scale, state.xy_display_hidden, state.compass_enabled, darkness_level, map.uses_los, seen, presentation_delta)
-	result.inherit_visibility(previous_map_view)
-	return result
-
-
-static func classic_darkness_level(torch_value: int) -> int:
-	return 0 if torch_value <= 0 else clampi(floori(float(torch_value) / 30.0) + 1, 0, 6)
-
-
-static func _build_player_map_view(context: SessionWorkflowContext, definition: PlayerMapDefinition) -> PlayerMapView:
-	var cells: Array[MapCellView] = []
-	var source_map: MapDefinition = context.content.world.map_by_id(definition.map_id) if not definition.map_id.is_empty() else null
-	if definition.mode in [PlayerMapDefinition.LAND_CROP, PlayerMapDefinition.DUNGEON_CROP] and source_map != null:
-		var cell_size := 16 if definition.mode == PlayerMapDefinition.DUNGEON_CROP else definition.icon_size
-		var tile_count := ceili(320.0 / float(cell_size))
-		for y: int in range(definition.start.y, definition.start.y + tile_count):
-			for x: int in range(definition.start.x, definition.start.x + tile_count):
-				var cell := source_map.topology.cell_at(Vector2i(x, y))
-				if cell != null:
-					cells.append(_build_cell_view(context, source_map, cell, true))
-	var show_party := _player_map_shows_party(definition, source_map, context.state.party.map_id, context.state.party.coordinate)
-	return PlayerMapView.new(definition, cells, show_party, context.state.party.coordinate, true)
-
-
-static func _build_location_note_map_view(context: SessionWorkflowContext, map: MapDefinition, note: LocationNoteState) -> MapView:
-	var view_size := Vector2i(mini(LOCATION_NOTE_VIEW_SIZE.x, map.topology.width), mini(LOCATION_NOTE_VIEW_SIZE.y, map.topology.height))
-	var maximum := Vector2i(map.topology.width, map.topology.height) - view_size
-	var origin := Vector2i(clampi(note.coordinate.x - 8, 0, maximum.x), clampi(note.coordinate.y - 6, 0, maximum.y))
-	var cells: Array[MapCellView] = []
-	for y: int in range(origin.y, origin.y + view_size.y):
-		for x: int in range(origin.x, origin.x + view_size.x):
-			var cell := map.topology.cell_at(Vector2i(x, y))
-			if cell != null:
-				cells.append(_build_cell_view(context, map, cell, true))
-	var visited: Array[Vector2i] = [note.coordinate]
-	return MapView.new(map.id, map.name, map.level_type, map.topology.width, map.topology.height, note.coordinate, cells, note.darkness_value > 0, visited, {}, Vector2i.ZERO, context.state.world.map_landlook(map), 1, true, false, map.base_scale, false, true, clampi(note.darkness_value, 0, 6))
-
-
-static func _player_map_shows_party(definition: PlayerMapDefinition, source_map: MapDefinition, party_map_id: String, party_coordinate: Vector2i) -> bool:
-	if source_map == null or source_map.id != party_map_id or definition.mode == PlayerMapDefinition.SCROLLING_TEXT:
-		return false
-	var visible_tiles := 320 / definition.icon_size
-	var marker_bounds := Rect2i(definition.start - Vector2i.ONE, Vector2i(visible_tiles + 1, visible_tiles + 1))
-	return marker_bounds.has_point(party_coordinate)
-
-
-static func _build_cell_view(context: SessionWorkflowContext, map: MapDefinition, cell: MapCell, is_visible: bool) -> MapCellView:
-	cell = map.topology.effective_cell_at(cell.coordinate, context.state.world)
-	var feature_kinds: Array[StringName] = []
-	var feature_orientations: Dictionary = {}
-	var edge_kinds: Dictionary = {}
-	var edge_passability: Dictionary = {}
-	for direction: StringName in [&"north", &"east", &"south", &"west"]:
-		var edge := cell.edge(direction)
-		edge_kinds[direction] = edge.kind
-		edge_passability[direction] = edge.passable
-	var hidden_secret := false
-	for feature: MapFeature in cell.features():
-		if feature.kind == &"secret" and feature.orientation.is_empty() and not context.state.world.secret_is_discovered(feature.id, feature.initial_state == &"revealed"):
-			hidden_secret = true
-			continue
-		if not feature_kinds.has(feature.kind):
-			feature_kinds.append(feature.kind)
-			feature_orientations[feature.kind] = feature.orientation
-	if cell.is_path and context.state.world.was_visited(map.id, cell.coordinate):
-		feature_kinds.append(&"discovered_path")
-	var can_enter := cell.passable
-	var effective_landlook := context.state.world.map_landlook(map)
-	var tileset_id := "landlook-%d" % effective_landlook if map.level_type == &"land" and effective_landlook >= 0 else cell.tileset_id
-	var render_tile := cell.render_tile
-	var overlay_asset_id := cell.overlay_asset_id
-	if map.level_type == &"land" and context.state.world.has_terrain_override(map.id, cell.coordinate):
-		var raw_tile := context.state.world.classic_tile_for(map.id, cell)
-		overlay_asset_id = WorldState.classic_special_land_overlay(raw_tile)
-		if not overlay_asset_id.is_empty():
-			var terrain_set := context.content.world.battle_terrain_set_for_map(map, context.state.world)
-			render_tile = cell.render_tile if terrain_set == null else terrain_set.base_tile
-		else:
-			render_tile = WorldState.normalized_classic_land_tile(raw_tile)
-	return MapCellView.new(cell.coordinate, context.state.world.terrain_for(map.id, cell), render_tile, tileset_id, can_enter, cell.blocks_los, is_visible, context.state.world.was_visited(map.id, cell.coordinate), not hidden_secret and not cell.trigger_ids().is_empty(), not context.state.world.random_region_ids_at(map, cell.coordinate).is_empty(), feature_kinds, feature_orientations, edge_kinds, edge_passability, overlay_asset_id)
-
-
-static func _probe_movement(context: SessionWorkflowContext, direction: Vector2i) -> WorldMovementResult:
-	return context.content.world.probe_movement(context.state.party.map_id, context.state.party.coordinate, direction, context.state.world, context.state.party_in_boat)
+static func classic_darkness_level(torch_value: int) -> int: return 0 if torch_value <= 0 else clampi(floori(float(torch_value) / 30.0) + 1, 0, 6)

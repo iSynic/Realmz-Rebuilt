@@ -14,6 +14,8 @@ var _random_regions: Dictionary = {}
 var _map_darkness: Dictionary = {}
 var _map_landlooks: Dictionary = {}
 var _location_notes: Dictionary = {}
+var _topology_revision: int = 0
+var _exploration_revision: int = 0
 
 
 func terrain_for(map_id: String, cell: MapCell) -> String:
@@ -21,7 +23,10 @@ func terrain_for(map_id: String, cell: MapCell) -> String:
 
 
 func replace_terrain(map_id: String, coordinate: Vector2i, terrain_id: String) -> void:
-	_terrain_overrides[_cell_key(map_id, coordinate)] = terrain_id
+	var key := _cell_key(map_id, coordinate)
+	if String(_terrain_overrides.get(key, "")) != terrain_id:
+		_terrain_overrides[key] = terrain_id
+		_topology_revision += 1
 
 
 func has_terrain_override(map_id: String, coordinate: Vector2i) -> bool:
@@ -60,7 +65,10 @@ static func classic_special_land_overlay(raw_tile: int) -> String:
 
 
 func set_boat_present(map_id: String, coordinate: Vector2i, present: bool) -> void:
-	_boat_presence_overrides[_cell_key(map_id, coordinate)] = present
+	var key := _cell_key(map_id, coordinate)
+	if not _boat_presence_overrides.has(key) or bool(_boat_presence_overrides[key]) != present:
+		_boat_presence_overrides[key] = present
+		_topology_revision += 1
 
 
 func boat_presence_state(map_id: String, coordinate: Vector2i) -> int:
@@ -75,8 +83,9 @@ func boat_presence_overrides() -> Dictionary:
 
 
 func open_door(door_id: String) -> void:
-	if not door_id.is_empty():
+	if not door_id.is_empty() and not door_is_open(door_id):
 		_door_states[door_id] = "open"
+		_topology_revision += 1
 
 
 func door_is_open(door_id: String, initially_open: bool = false) -> bool:
@@ -86,12 +95,21 @@ func door_is_open(door_id: String, initially_open: bool = false) -> bool:
 
 
 func discover_secret(secret_id: String) -> void:
-	if not secret_id.is_empty():
+	if not secret_id.is_empty() and not _discovered_secrets.has(secret_id):
 		_discovered_secrets[secret_id] = true
+		_topology_revision += 1
 
 
 func secret_is_discovered(secret_id: String, initially_discovered: bool = false) -> bool:
 	return secret_id.is_empty() or initially_discovered or _discovered_secrets.has(secret_id)
+
+
+func topology_revision() -> int:
+	return _topology_revision
+
+
+func exploration_revision() -> int:
+	return _exploration_revision
 
 
 func disable_trigger(trigger_id: String) -> void:
@@ -225,8 +243,10 @@ func map_landlook(map: MapDefinition) -> int:
 
 func mark_visited(map_id: String, coordinate: Vector2i) -> void:
 	var key := _cell_key(map_id, coordinate)
-	_visited_cells[key] = true
-	_seen_cells[key] = true
+	if not _visited_cells.has(key) or not _seen_cells.has(key):
+		_visited_cells[key] = true
+		_seen_cells[key] = true
+		_exploration_revision += 1
 
 
 func was_visited(map_id: String, coordinate: Vector2i) -> bool:
@@ -238,7 +258,10 @@ func visited_coordinates(map_id: String) -> Array[Vector2i]:
 
 
 func mark_seen(map_id: String, coordinate: Vector2i) -> void:
-	_seen_cells[_cell_key(map_id, coordinate)] = true
+	var key := _cell_key(map_id, coordinate)
+	if not _seen_cells.has(key):
+		_seen_cells[key] = true
+		_exploration_revision += 1
 
 
 func mark_seen_many(map_id: String, coordinates: Array[Vector2i]) -> void:

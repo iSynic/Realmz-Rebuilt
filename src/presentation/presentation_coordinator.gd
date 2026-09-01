@@ -221,6 +221,17 @@ func refresh() -> void:
 	_present_current_view()
 
 
+func refresh_spatial_projection() -> void:
+	if _session_controller == null:
+		return
+	var game_view := _session_controller.view()
+	_map_presenter.present(game_view)
+	_dungeon_presenter.present(game_view)
+	_presented_view = game_view
+	_sync_dungeon_view(game_view)
+	_update_spatial_visibility(game_view)
+
+
 func present_host_interaction(request: InteractionRequest) -> void:
 	_present_request(request, _session_controller.view(), request)
 

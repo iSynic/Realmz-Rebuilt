@@ -5,6 +5,7 @@ signal step_committed(step: SessionStep)
 
 var _session: GameSession = GameSession.new()
 var _current_view: GameView = _session.view()
+var _map_projection_size: Vector2i = SessionViewProjector.DEFAULT_MAP_VIEW_SIZE
 
 
 func session() -> GameSession:
@@ -15,9 +16,20 @@ func view() -> GameView:
 	return _current_view
 
 
+func set_map_projection_size(requested_size: Vector2i) -> bool:
+	var normalized := Vector2i(maxi(requested_size.x, 1), maxi(requested_size.y, 1))
+	if normalized == _map_projection_size:
+		return false
+	_map_projection_size = normalized
+	_session.set_map_projection_size(normalized)
+	_current_view = _session.view()
+	return true
+
+
 func replace_session(replacement: GameSession) -> void:
 	assert(replacement != null, "A session replacement is required")
 	_session = replacement
+	_session.set_map_projection_size(_map_projection_size)
 	_current_view = _session.view()
 
 

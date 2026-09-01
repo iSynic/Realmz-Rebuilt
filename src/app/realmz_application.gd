@@ -448,7 +448,7 @@ static func combat_body_with_preferences(body: InteractionResponse.CombatBody, s
 
 
 func _on_battlefield_combatant_inspected(combatant_id: String) -> void:
-	_interaction_presenter.inspect_combatant(combatant_id)
+	_interaction_presenter.open_combatant_inspection(combatant_id)
 
 
 func _on_combat_targeting_requested(request: CombatTargetingRequest) -> void:
@@ -1122,8 +1122,8 @@ func _on_shell_layout_changed(workspace_rect: Rect2, _profile: UiLayoutProfile) 
 	if _dungeon_presenter != null:
 		_dungeon_presenter.position = content_rect.position
 		_dungeon_presenter.size = content_rect.size
-	var canvas_rect := _profile.application_rect
-	var textbox_rect := Rect2(Vector2(canvas_rect.position.x, workspace_rect.end.y), Vector2(canvas_rect.size.x, _profile.bottom_height))
+	var projection_size := ClassicMapPresenter.viewport_cells_for(_map_presenter.size, _map_presenter.map_origin.y, _map_presenter.cell_size); if session_controller.set_map_projection_size(projection_size): presentation_coordinator.refresh_spatial_projection()
+	var canvas_rect := _profile.application_rect; var textbox_rect := Rect2(Vector2(canvas_rect.position.x, workspace_rect.end.y), Vector2(canvas_rect.size.x, _profile.bottom_height))
 	var combat_rect := Rect2(Vector2(canvas_rect.position.x, canvas_rect.end.y - _profile.bottom_height), Vector2(canvas_rect.size.x, _profile.bottom_height))
 	_interaction_presenter.set_classic_regions(content_rect, textbox_rect, combat_rect)
 	call_deferred("_sync_interaction_narrative_region", content_rect, combat_rect)

@@ -19,6 +19,7 @@ var dark: bool
 var darkness_level: int
 var uses_los: bool
 var presentation_delta: RefCounted
+var map_window: RefCounted
 var _cells: Array[MapCellView]
 var _cells_by_coordinate: Dictionary = {}
 var _visited_coordinates: Array[Vector2i] = []
@@ -29,7 +30,7 @@ var _visibility_parent: MapView
 var _movement_options: Dictionary = {}
 
 
-func _init(view_map_id: String, view_map_name: String, view_level_type: StringName, map_width: int, map_height: int, party_position: Vector2i, cell_views: Array[MapCellView], is_dark: bool = false, visited_cells: Array[Vector2i] = [], movement_options: Dictionary = {}, party_last_move_direction: Vector2i = Vector2i.ZERO, view_landlook: int = -1, party_dungeon_heading: int = 1, allows_dungeon_multiview: bool = true, has_wizard_eye: bool = false, view_base_scale: int = -1, hides_coordinates: bool = false, shows_compass: bool = true, saved_darkness_level: int = -1, line_of_sight_enabled: bool = false, seen_cells: Array[Vector2i] = [], delta: RefCounted = null) -> void:
+func _init(view_map_id: String, view_map_name: String, view_level_type: StringName, map_width: int, map_height: int, party_position: Vector2i, cell_views: Array[MapCellView], is_dark: bool = false, visited_cells: Array[Vector2i] = [], movement_options: Dictionary = {}, party_last_move_direction: Vector2i = Vector2i.ZERO, view_landlook: int = -1, party_dungeon_heading: int = 1, allows_dungeon_multiview: bool = true, has_wizard_eye: bool = false, view_base_scale: int = -1, hides_coordinates: bool = false, shows_compass: bool = true, saved_darkness_level: int = -1, line_of_sight_enabled: bool = false, seen_cells: Array[Vector2i] = [], delta: RefCounted = null, window: RefCounted = null) -> void:
 	map_id = view_map_id
 	map_name = view_map_name
 	level_type = view_level_type
@@ -48,12 +49,14 @@ func _init(view_map_id: String, view_map_name: String, view_level_type: StringNa
 	darkness_level = saved_darkness_level
 	uses_los = line_of_sight_enabled
 	presentation_delta = delta
+	map_window = window
 	_cells = cell_views.duplicate()
 	_visited_coordinates = visited_cells.duplicate()
 	_seen_coordinates = seen_cells.duplicate()
 	_movement_options = movement_options.duplicate(true)
-	for cell_view: MapCellView in _cells:
-		_cells_by_coordinate[cell_view.coordinate] = cell_view
+	if map_window == null:
+		for cell_view: MapCellView in _cells:
+			_cells_by_coordinate[cell_view.coordinate] = cell_view
 	for coordinate: Vector2i in _visited_coordinates:
 		_visited_coordinate_set[coordinate] = true
 	for coordinate: Vector2i in _seen_coordinates:
@@ -61,11 +64,11 @@ func _init(view_map_id: String, view_map_name: String, view_level_type: StringNa
 
 
 func cells() -> Array[MapCellView]:
-	return _cells.duplicate()
+	return map_window.cells() if map_window != null else _cells.duplicate()
 
 
 func cell_at(coordinate: Vector2i) -> MapCellView:
-	return _cells_by_coordinate.get(coordinate) as MapCellView
+	return map_window.cell_at(coordinate) if map_window != null else _cells_by_coordinate.get(coordinate) as MapCellView
 
 
 func visited_coordinates() -> Array[Vector2i]:

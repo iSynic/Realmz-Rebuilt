@@ -16,6 +16,7 @@ const BOAT_MARKER_LEFT_ASSET_IDS: Dictionary = {0: &"map.party.boat.left.0", 3: 
 const BOAT_MARKER_RIGHT_ASSET_IDS: Dictionary = {0: &"map.party.boat.right.0", 3: &"map.party.boat.right.3", 5: &"map.party.boat.right.5", 6: &"map.party.boat.right.6", 7: &"map.party.boat.right.7"}
 const SURROUND_TEXTURE_PATH := "res://src/presentation/assets/ui/classic-exploration-surround-tile.png"
 const DARKNESS_MASK_SIZE := Vector2(320.0, 320.0)
+const RetainedMapSurfaceScript := preload("res://src/presentation/classic_retained_map_surface.gd")
 
 @export var cell_size: float = 32.0
 @export var map_origin: Vector2 = Vector2.ZERO
@@ -54,10 +55,12 @@ var _visible_cache_camera: Vector2i = Vector2i(-1, -1)
 var _visible_cache_size: Vector2i = Vector2i.ZERO
 var _visible_cache_party_coordinate: Vector2i = Vector2i(-1, -1)
 var _surround_texture: Texture2D = load(SURROUND_TEXTURE_PATH) as Texture2D
+var _retained_surface: Control
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	clip_contents = true
 	mouse_exited.connect(_clear_movement_cursor)
 	visibility_changed.connect(_on_visibility_changed)
 	_party_marker_textures[PARTY_MARKER_LEFT_ASSET_ID] = ClassicUiAssetCatalog.texture(PARTY_MARKER_LEFT_ASSET_ID)
@@ -65,6 +68,12 @@ func _ready() -> void:
 	_party_marker_textures[PARTY_MARKER_CAMP_ASSET_ID] = ClassicUiAssetCatalog.texture(PARTY_MARKER_CAMP_ASSET_ID)
 	for asset_id: StringName in BOAT_MARKER_LEFT_ASSET_IDS.values() + BOAT_MARKER_RIGHT_ASSET_IDS.values():
 		_party_marker_textures[asset_id] = ClassicUiAssetCatalog.texture(asset_id)
+	_retained_surface = RetainedMapSurfaceScript.new()
+	_retained_surface.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_retained_surface.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_retained_surface)
+	_retained_surface.set_media_catalog(_media)
+	resized.connect(_present_retained_surface)
 
 
 func _gui_input(event: InputEvent) -> void:
@@ -100,11 +109,11 @@ func present(game_view: GameView) -> void:
 	visible = game_view != null and game_view.session_started and game_view.map_view != null
 	if visible:
 		_update_visibility_cache(game_view.map_view)
-		_update_visible_cell_cache(game_view.map_view)
 		_party_facing_asset_id = party_marker_asset_id_for_direction(game_view.map_view.last_move_direction, _party_facing_asset_id)
 		var summary := game_view.party_summary
 		var boat_asset_id := boat_marker_asset_id(game_view.map_view.landlook, _party_facing_asset_id == PARTY_MARKER_RIGHT_ASSET_ID)
 		_party_marker_asset_id = boat_asset_id if summary != null and summary.in_boat and not boat_asset_id.is_empty() else PARTY_MARKER_CAMP_ASSET_ID if summary != null and summary.camping else _party_facing_asset_id
+	_present_retained_surface()
 	if not visible:
 		_clear_movement_cursor()
 		_held_direction = Vector2i.ZERO
@@ -127,11 +136,13 @@ func set_travel_preview_visible(enabled: bool) -> void:
 	if not enabled:
 		_minimap_rect = Rect2()
 	queue_redraw()
+	_present_retained_surface()
 
 
 func set_classic_exploration_visibility(enabled: bool) -> void:
 	classic_exploration_visibility = enabled
 	queue_redraw()
+	_present_retained_surface()
 
 
 func _update_visibility_cache(map_view: MapView) -> void:
@@ -173,7 +184,7 @@ func _update_visible_cell_cache(map_view: MapView) -> void:
 	var can_reuse: bool = _visible_cache_map_id == map_view.map_id and _visible_cache_size == viewport_size and delta != null and delta.matches(map_view.map_id, _visible_cache_party_coordinate, map_view.party_coordinate)
 	var changed: Dictionary = {}
 	if can_reuse:
-		for coordinate: Vector2i in delta.newly_visited + delta.newly_seen: changed[coordinate] = true
+		for coordinate: Vector2i in delta.newly_visited + delta.newly_seen + delta.visibility_changed: changed[coordinate] = true
 	var previous := _visible_cells_by_coordinate if can_reuse else {}
 	var next_by_coordinate: Dictionary = {}
 	var next_cells: Array[MapCellView] = []
@@ -195,6 +206,8 @@ func set_media_catalog(media: ClassicMediaCatalog) -> void:
 	_darkness_mask_textures.clear()
 	_land_marker_textures.clear()
 	_missing_image_assets.clear()
+	if _retained_surface != null:
+		_retained_surface.set_media_catalog(media)
 	if _media == null:
 		queue_redraw()
 		return
@@ -203,6 +216,8 @@ func set_media_catalog(media: ClassicMediaCatalog) -> void:
 
 func _draw() -> void:
 	if _view == null or _view.map_view == null:
+		return
+	if _retained_surface != null and _retained_surface.visible:
 		return
 	var map_view := _view.map_view
 	var font := get_theme_font(&"font", &"Label")
@@ -249,6 +264,22 @@ func _draw() -> void:
 		_draw_minimap(map_view, font)
 	else:
 		_minimap_rect = Rect2()
+
+
+func _present_retained_surface() -> void:
+	if _retained_surface == null:
+		return
+	if _view == null or _view.map_view == null:
+		_retained_surface.visible = false
+		return
+	if show_debug_facts:
+		_retained_surface.visible = false
+		_update_visible_cell_cache(_view.map_view)
+		return
+	var party_texture := _party_marker_textures.get(_party_marker_asset_id) as Texture2D
+	_retained_surface.present(_view, party_texture, size, map_origin, cell_size, minimap_size, classic_exploration_visibility, show_travel_preview, _visited_coordinate_cache, _seen_coordinate_cache, _land_discovery_cache, _dungeon_discovery_cache)
+	_party_rect = _retained_surface.party_rect()
+	_minimap_rect = _retained_surface.minimap_rect()
 
 
 func _draw_exploration_stage(map_rect: Rect2, los_blackout: bool) -> void:

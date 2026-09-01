@@ -28,6 +28,12 @@ func _initialize() -> void:
 	var direction: Vector2i = pair["direction"]
 	var transaction_samples: Array[int] = []
 	var projection_samples: Array[int] = []
+	var ordinary_transaction_samples: Array[int] = []
+	var hourly_transaction_samples: Array[int] = []
+	var ordinary_projection_samples: Array[int] = []
+	var hourly_projection_samples: Array[int] = []
+	var ordinary_domain_samples: Dictionary = {}
+	var hourly_domain_samples: Dictionary = {}
 	var event_kinds: Array[String] = []
 	var event_sequences: Dictionary = {}
 	var fatigue_payload: Dictionary = {}
@@ -56,6 +62,10 @@ func _initialize() -> void:
 		if index >= 10:
 			transaction_samples.append(transaction_done - started_at)
 			projection_samples.append(projection_done - transaction_done)
+			var hourly := step.events.any(func(event: DomainEvent) -> bool: return event.kind == &"fatigue_changed" and String(event.payload.get("reason", "")) == "hour-boundary")
+			(hourly_transaction_samples if hourly else ordinary_transaction_samples).append(transaction_done - started_at)
+			(hourly_projection_samples if hourly else ordinary_projection_samples).append(projection_done - transaction_done)
+			_append_domain_timings(hourly_domain_samples if hourly else ordinary_domain_samples, view.projection_timings_usec)
 		direction = -direction
 	var total_samples: Array[int] = []
 	for index: int in transaction_samples.size():
@@ -67,6 +77,12 @@ func _initialize() -> void:
 		"transactionP95Ms": _p95_milliseconds(transaction_samples),
 		"projectionP95Ms": _p95_milliseconds(projection_samples),
 		"transactionPlusProjectionP95Ms": _p95_milliseconds(total_samples),
+		"ordinaryTransactionP95Ms": _p95_milliseconds(ordinary_transaction_samples),
+		"ordinaryProjectionP95Ms": _p95_milliseconds(ordinary_projection_samples),
+		"hourlyTransactionP95Ms": _p95_milliseconds(hourly_transaction_samples),
+		"hourlyProjectionP95Ms": _p95_milliseconds(hourly_projection_samples),
+		"ordinaryProjectionDomainsP95Ms": _domain_p95_milliseconds(ordinary_domain_samples),
+		"hourlyProjectionDomainsP95Ms": _domain_p95_milliseconds(hourly_domain_samples),
 		"scheduledStepsPerSecond100": 20,
 		"scheduledStepsPerSecond400": 80,
 		"ordinaryProjectionCount": ordinary_projection_count,
@@ -82,8 +98,8 @@ func _initialize() -> void:
 		printerr("MOVEMENT_INCREMENTAL_PROJECTION_MISSED expected=60 actual=%d sequences=%s" % [ordinary_projection_count, event_sequences])
 		call_deferred("_quit_cleanly", 1)
 		return
-	if float(output["transactionPlusProjectionP95Ms"]) >= 50.0:
-		printerr("MOVEMENT_P95_EXCEEDED expectedBelowMs=50 actualMs=%s" % output["transactionPlusProjectionP95Ms"])
+	if float(output["transactionPlusProjectionP95Ms"]) > 3.0:
+		printerr("MOVEMENT_P95_EXCEEDED expectedAtMostMs=3 actualMs=%s" % output["transactionPlusProjectionP95Ms"])
 		call_deferred("_quit_cleanly", 1)
 		return
 	call_deferred("_quit_cleanly", 0)
@@ -94,16 +110,34 @@ func _assemble_six_character_party(session: GameSession, content: RealmzContent)
 	var castes := content.caste_definitions()
 	if races.is_empty() or castes.is_empty():
 		return false
-	var race := races[0]
+	var race: RaceDefinition
 	var caste: CasteDefinition
-	for candidate: CasteDefinition in castes:
-		if race.eligible_caste_ids.is_empty() or race.eligible_caste_ids.has(candidate.id):
-			caste = candidate
-			break
-	if caste == null:
+	var caster_type := 0
+	for race_candidate: RaceDefinition in races:
+		for caste_candidate: CasteDefinition in castes:
+			if not race_candidate.eligible_caste_ids.is_empty() and not race_candidate.eligible_caste_ids.has(caste_candidate.id):
+				continue
+			var rows := caste_candidate.spellcaster_rows()
+			for row_index: int in mini(3, rows.size()):
+				if rows[row_index].y > 0:
+					race = race_candidate; caste = caste_candidate; caster_type = row_index + 1
+					break
+			if caste != null: break
+		if caste != null: break
+	if race == null or caste == null:
 		return false
+	var known_spells: Array[String] = []
+	for spell: SpellDefinition in content.spell_definitions():
+		if int(spell.classic_id / 1000) == caster_type and spell.classic_tier() >= 0:
+			known_spells.append(spell.id)
+			if known_spells.size() >= 4: break
 	for index: int in 6:
 		var character := CharacterState.new("movement-probe-%d" % index, "Probe %d" % (index + 1), 20, 20)
+		character.level = 10
+		character.spellcaster_type = caster_type
+		character.maximum_spell_points = 100
+		character.spell_points = 0
+		character.set_known_spells(known_spells)
 		character.race_id = race.id
 		character.caste_id = caste.id
 		var imported := session.submit_intent(PlayerIntent.import_vault_character(character.id, "%064d" % (index + 1), character, "movement-probe", content.package_hash))
@@ -159,6 +193,19 @@ static func _p95_milliseconds(samples: Array[int]) -> float:
 	ordered.sort()
 	var index := clampi(ceili(float(ordered.size()) * 0.95) - 1, 0, ordered.size() - 1)
 	return snappedf(float(ordered[index]) / 1000.0, 0.001)
+
+
+static func _append_domain_timings(samples: Dictionary, timings: Dictionary) -> void:
+	for domain: String in timings:
+		if not samples.has(domain): samples[domain] = [] as Array[int]
+		(samples[domain] as Array[int]).append(int(timings[domain]))
+
+
+static func _domain_p95_milliseconds(samples: Dictionary) -> Dictionary:
+	var result: Dictionary = {}
+	for domain: String in samples:
+		result[domain] = _p95_milliseconds(samples[domain] as Array[int])
+	return result
 
 
 func _quit_cleanly(exit_code: int) -> void:

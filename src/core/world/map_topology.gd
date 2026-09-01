@@ -1,6 +1,9 @@
 class_name MapTopology
 extends RefCounted
 
+const EXPLORATION_VISIBILITY_RADIUS: int = 8
+const WIZARDS_EYE_VISIBILITY_RADIUS: int = 16
+
 var width: int
 var height: int
 var _cells: Array[MapCell]
@@ -10,6 +13,7 @@ var _compact_rows: Array = []
 var _compact_cells_by_index: Dictionary = {}
 var _boat_removed_profile: LandTileProfile
 var _boat_placed_profile: LandTileProfile
+var _visibility_cache: Dictionary = {}
 
 
 func _init(map_width: int, map_height: int, map_cells: Array[MapCell]) -> void:
@@ -90,7 +94,15 @@ func probe_land_entry(coordinate: Vector2i, world_state: WorldState, party_in_bo
 	if cell == null:
 		return TopologyMoveResult.blocked(&"outside_map")
 	var secret := cell.feature_by_kind(&"secret")
-	if secret != null and secret.orientation.is_empty() and world_state.secret_is_discovered(secret.id, secret.initial_state == &"revealed"):
+	var concealed_land_secret := secret != null and secret.orientation.is_empty()
+	if concealed_land_secret:
+		if world_state.secret_is_discovered(secret.id, secret.initial_state == &"revealed"):
+			return TopologyMoveResult.permitted(cell)
+	# Castle overlays placed Data DD records into the land field as door-band
+	# values and enters that branch before ordinary boat/terrain collision. An
+	# undiscovered 3000-band secret is first reduced to its underlying terrain,
+	# so its colocated AP cannot bypass that terrain's collision.
+	if not concealed_land_secret and not cell.trigger_ids().is_empty():
 		return TopologyMoveResult.permitted(cell)
 	var boat_requirement := cell.boat_requirement
 	if party_in_boat:
@@ -121,12 +133,32 @@ func probe_movement(coordinate: Vector2i, move_direction: Vector2i, world_state:
 func has_line_of_sight(from: Vector2i, to: Vector2i, world_state: WorldState) -> bool:
 	if not contains(from) or not contains(to):
 		return false
+	if from == to:
+		return true
 	var previous := from
-	for coordinate: Vector2i in _supercover_line(from, to):
+	var coordinate := from
+	var delta := to - from
+	var step := Vector2i(signi(delta.x), signi(delta.y))
+	var width_steps := absi(delta.x)
+	var height_steps := absi(delta.y)
+	var x_steps := 0
+	var y_steps := 0
+	while x_steps < width_steps or y_steps < height_steps:
+		var decision := (1 + 2 * x_steps) * height_steps - (1 + 2 * y_steps) * width_steps
+		if decision == 0:
+			coordinate += step
+			x_steps += 1
+			y_steps += 1
+		elif decision < 0:
+			coordinate.x += step.x
+			x_steps += 1
+		else:
+			coordinate.y += step.y
+			y_steps += 1
 		var cell := effective_cell_at(coordinate, world_state)
 		if cell == null:
 			return false
-		if _transition_blocks_los(previous, coordinate, world_state):
+		if _transition_blocks_los(previous, coordinate, cell, world_state):
 			return coordinate == to and _cell_blocks_los(cell, world_state)
 		if coordinate != to and _cell_blocks_los(cell, world_state):
 			return false
@@ -135,6 +167,12 @@ func has_line_of_sight(from: Vector2i, to: Vector2i, world_state: WorldState) ->
 
 
 func visible_cells(origin: Vector2i, radius: int, world_state: WorldState, use_los: bool, ignore_blockers: bool = false) -> Array[Vector2i]:
+	var cache_key := ""
+	if use_los and world_state != null:
+		cache_key = "%d:%d:%d,%d:%d:%d" % [world_state.get_instance_id(), world_state.topology_revision(), origin.x, origin.y, radius, int(ignore_blockers)]
+		if _visibility_cache.has(cache_key):
+			var cached: Array[Vector2i] = _visibility_cache[cache_key]
+			return cached
 	var result: Array[Vector2i] = []
 	var first_x := 0 if not use_los else maxi(0, origin.x - radius)
 	var first_y := 0 if not use_los else maxi(0, origin.y - radius)
@@ -145,23 +183,32 @@ func visible_cells(origin: Vector2i, radius: int, world_state: WorldState, use_l
 			var coordinate := Vector2i(x, y)
 			if not use_los or origin.distance_squared_to(coordinate) <= radius * radius and (ignore_blockers or has_line_of_sight(origin, coordinate, world_state)):
 				result.append(coordinate)
+	if not cache_key.is_empty():
+		if _visibility_cache.size() >= 512:
+			_visibility_cache.clear()
+		_visibility_cache[cache_key] = result
 	return result
 
 
-func _transition_blocks_los(from: Vector2i, to: Vector2i, world_state: WorldState) -> bool:
+func exploration_visible_cells(origin: Vector2i, world_state: WorldState, use_los: bool, wizard_eye_active: bool = false) -> Array[Vector2i]:
+	var radius := WIZARDS_EYE_VISIBILITY_RADIUS if wizard_eye_active else EXPLORATION_VISIBILITY_RADIUS
+	return visible_cells(origin, radius, world_state, use_los, wizard_eye_active)
+
+
+func _transition_blocks_los(from: Vector2i, to: Vector2i, destination_cell: MapCell, world_state: WorldState) -> bool:
 	var delta := to - from
 	if is_cardinal_direction(delta):
-		return _edge_blocks_los(effective_cell_at(to, world_state).edge(direction_name(delta)), world_state)
+		return destination_cell == null or _edge_blocks_los(destination_cell.edge(direction_name(delta)), world_state)
 	if not is_diagonal_direction(delta):
 		return false
 	var horizontal := from + Vector2i(delta.x, 0)
 	var vertical := from + Vector2i(0, delta.y)
-	return _cardinal_step_blocks_los(from, horizontal, world_state) or _cardinal_step_blocks_los(from, vertical, world_state) or _cell_blocks_los(effective_cell_at(horizontal, world_state), world_state) or _cell_blocks_los(effective_cell_at(vertical, world_state), world_state)
-
-
-func _cardinal_step_blocks_los(from: Vector2i, to: Vector2i, world_state: WorldState) -> bool:
-	var cell := effective_cell_at(to, world_state)
-	return cell == null or _edge_blocks_los(cell.edge(direction_name(to - from)), world_state)
+	var horizontal_cell := effective_cell_at(horizontal, world_state)
+	var vertical_cell := effective_cell_at(vertical, world_state)
+	return horizontal_cell == null or vertical_cell == null \
+		or _edge_blocks_los(horizontal_cell.edge(direction_name(horizontal - from)), world_state) \
+		or _edge_blocks_los(vertical_cell.edge(direction_name(vertical - from)), world_state) \
+		or _cell_blocks_los(horizontal_cell, world_state) or _cell_blocks_los(vertical_cell, world_state)
 
 
 static func _supercover_line(from: Vector2i, to: Vector2i) -> Array[Vector2i]:

@@ -1,10 +1,10 @@
 # Runtime performance evidence
 
-Measured 2026-08-29 with Godot 4.7.1 Compatibility/OpenGL on Windows, an NVIDIA GeForce RTX 3080, and the canonical 1280x720 application profile. Machine timings are evidence for this pass, not portable guarantees.
+Measured through 2026-09-01 with Godot 4.7.1 Compatibility/OpenGL on Windows, an NVIDIA GeForce RTX 3080, and the canonical 1280x720 application profile. Machine timings are evidence for this pass, not portable guarantees.
 
 ## Scope and boundaries
 
-This pass covers launch-video scheduling, last-campaign preparation, Character Files insertion, and ordinary overworld presentation. It does not change opcode behavior, package trust, movement speed, splash timing, scenario data, or GUI design.
+This pass covers launch-video scheduling, last-campaign preparation, Character Files insertion, dependency-driven exploration projection, retained overworld presentation, and deterministic combat pursuit. It does not change opcode behavior, package trust, overworld movement speed, splash timing, scenario data, or GUI design.
 
 The user-provided diagnostic baseline was approximately 9.1 seconds to application readiness, 0.45 seconds for warm Tutorial preparation, 4.1 seconds cold and 1.95 seconds warm for the 52.8 MiB Wrath package, and 3.2 ms p95 for ordinary movement transaction plus projection. Those figures predate this checkout's final instrumentation and are retained as the comparison baseline rather than rewritten as current measurements.
 
@@ -28,18 +28,34 @@ The rendered Tutorial runs measured cached vault-import p95 at 0.208 ms (400 per
 
 ## Overworld traversal
 
-Ordinary same-map movement emits a nonserialized presentation delta containing the viewport shift and only newly visited/seen coordinates. Unknown events, restores, map transitions, interactions, and LOS changes still force complete projection. The shell's ordinary path updates only coordinates, clock, fatigue, light, and map presentation. The map presenter retains decoded atlas/overlay textures and visible-cell state across adjacent steps.
+Ordinary movement now scales with changed state. `GameView` carries a nonserialized `ViewChangeSet` and independent roster, status, inventory, and magic revisions. Hourly SP recovery always advances status and magic revisions, but spell records are copied only when structural legality changes or an affordability threshold is crossed. Equipment facts remain cached by inventory revision. Previous detached snapshots retain their original scalar and component records.
 
-The deterministic session-only probe seeds 4,096 visited coordinates and reports 0.496 ms transaction p95, 2.175 ms projection p95, and 2.610 ms combined p95 across 60 ordinary steps. That probe does not claim draw performance.
+The map read model is an 8x8 copy-on-write `MapWindowView`. Adjacent movement shares unchanged chunks and creates only entering-strip, destination, overlay, discovery, and LOS-edge cells. A bounded coordinate/revision cache reuses an already-detached LOS window. Resize, map/topology change, restore, Wizard's Eye expansion, and unknown events request a complete rebuild; topology, collision, visited, and visibility truth remain in simulation.
 
-The rendered acceptance probe uses Tutorial `land:0`, not a tileless fixture: 90x90 and 8,100 authored cells, resolved `landlook-10` atlas (640x320, 32x32 tiles, 527,686 bytes), and 14 overlay asset identities. Its deterministic 8,366-tile route spans the complete `[0,0]-[89,89]` map and covers 8,012 unique coordinates through horizontal, vertical, and diagonal sweeps. Adjacent debug no-clip avoids AP/collision pauses while using the same incremental map and shell presentation path; ordinary transaction behavior remains covered by the session probe.
+Normal rendering no longer redraws every terrain cell through `Control._draw()`. One clipped SubViewport retains base, six ordered feature, marker, and fog `TileMapLayer` surfaces, pooled CICN `Sprite2D` overlays, and a `Camera2D`. The presenter applies only `MapPresentationDelta` coordinates on ordinary travel. Debug facts, cursors/selections, and the minimap remain custom Control drawing.
 
-| Run | Distance / unique cells | Actual cadence | p95 / p99 / max movement frame | 60 Hz gate | 120 Hz tier |
-|---|---:|---:|---:|---|---|
-| Tutorial 400% for 30.025 s | 2,399 / 2,266 | 79.901 steps/s | 10.636 / 14.615 / 17.982 ms | Pass: 0 over 20 ms, 0 over 33.3 ms | Miss: p95 and p99 exceed 8.3/12.5 ms |
-| Tutorial 100% for 30.025 s | 600 / 508 | 19.983 steps/s | 11.281 / 14.919 / 17.171 ms | Pass: 0 over 20 ms, 0 over 33.3 ms | Miss: p95 and p99 exceed 8.3/12.5 ms |
+The original rules-enabled baseline was 135.804 ms combined p95 when an hourly recovery forced a complete `GameView`. The final isolated probe uses six depleted level-10 casters with four spells each and at least 4,096 explored cells. Its latest run reports 0.500 ms transaction p95, 0.697 ms projection p95, and 1.175 ms combined p95; hourly transaction and projection p95 are 0.616 and 0.885 ms. No-clip is not part of either acceptance probe.
 
-The 400 percent run had zero queued catch-up bursts and one skipped schedule window; the missed window was discarded rather than replayed. The 100 percent run had neither a skipped interval nor a catch-up burst. Both satisfy the hard 60 Hz release target. The optional 120 Hz target remains open.
+The rendered probe uses normal `PlayerIntent.move`, real AOGM map media, five-minute Classic timeclicks, repeated hourly recovery, and separate ordinary/hourly samples. A benchmark-only snapshot moves authored timed encounters beyond the measurement window so a modal timeline cannot replace a travel sample. Eighty warm frames allocate retained layers and driver resources before measurement. Vsync is disabled; native GPU completion uses an unswapped forced draw so the 120 Hz engine-work measurement is not capped by the physical monitor.
+
+Current 1280x720 results (five seconds per run):
+
+| AOGM map / cadence | Combined p95 | Frame p95 / p99 / max | Hourly combined / frame p95 | Schedule |
+|---|---:|---:|---:|---|
+| `land:0` ordinary, 100% | 2.017 ms | 6.924 / 7.135 / 7.147 ms | 2.113 / 6.910 ms | 0 skipped, 0 catch-up |
+| `land:0` ordinary, 400% | 1.600 ms | 4.939 / 6.295 / 6.979 ms | 1.777 / 5.690 ms | 0 skipped, 0 catch-up |
+| `land:2` darkness, 100% | 1.929 ms | 6.941 / 6.965 / 7.029 ms | 2.230 / 6.935 ms | 0 skipped, 0 catch-up |
+| `land:2` darkness, 400% | 1.606 ms | 4.860 / 7.443 / 9.555 ms | 2.054 / 6.018 ms | 0 skipped, 0 catch-up |
+| `land:4` LOS, 100% | 2.033 ms | 6.930 / 6.951 / 6.964 ms | 2.276 / 6.940 ms | 0 skipped, 0 catch-up |
+| `land:4` LOS, 400% | 1.703 ms | 4.863 / 6.832 / 7.898 ms | 1.835 / 5.005 ms | 0 skipped, 0 catch-up |
+
+Native 3440x1440 runs on the same machine also passed at both cadences for ordinary, darkness, and LOS travel. The final-build 400% runs completed 400 measured moves in approximately five seconds with zero skipped or catch-up intervals; combined p95 remained 1.703 ms or lower, frame p95 remained 5.957 ms or lower, frame p99 remained 7.796 ms or lower, and no frame exceeded 11.252 ms. Hour-boundary combined and frame p95 remained at or below 1.936 and 7.670 ms. The latest native LOS 100% run reported 2.742 ms combined p95, 7.703 ms frame p95, 9.921 ms p99, and 10.208 ms maximum. These results meet the 3.0/8.3/12.5/16.7 ms acceptance thresholds without reducing the visible tile count, native cell size, interface density, or simulation frequency.
+
+## Combat navigation
+
+Party Auto and monster advance now request a weighted route to every legal hostile contact position before committing a movement step. Each edge uses the same complete-footprint maximum terrain charge as actual movement; a rules-legal size-zero friendly swap is represented by its actual five-point edge. Four derived 1x1, 1x2, 2x1, and 2x2 profiles retain static passability and destination movement base until battlefield terrain changes; typed distance, first-step, closed, goal, heuristic, queue, and heap storage is reused with generation counters. Other dynamic combatants block the immediate move but remain forecast occupancy later in the route. If no route exists, monsters retain Castle's deterministic bounded random shifting.
+
+The tool-only `battlefield_navigation_benchmark.gd` compared ten repeated decisions for every combination of six fixtures and four footprint shapes. It subclasses `AStarGrid2D` only inside the probe so both planners use the same footprint passability and exact edge cost; the engine comparator runs one query per legal contact goal because it has no native multi-goal contract. Across 240 decisions, the custom planner took 5.071 seconds and `AStarGrid2D` took 3.770 seconds. All twenty reachable fixture/footprint combinations agreed on the first step, and all four unreachable cases agreed that no route existed. Routine open, choke, and congestion means were 1.34-2.43 ms for the custom planner versus 1.07-3.53 ms for the engine comparator. U-shaped detours remained the largest reachable custom cost at 31.29-35.08 ms; unreachable full-field exhaustion measured 79.11-80.14 ms versus 46.15-64.80 ms. The native engine search is therefore still faster in the worst cases, but it remains comparison infrastructure: the custom planner preserves stable tie-breaking, exact multi-cell rules, multi-goal pursuit, query-time occupancy semantics, and the Node-free deterministic core boundary.
 
 ## Verification boundary
 

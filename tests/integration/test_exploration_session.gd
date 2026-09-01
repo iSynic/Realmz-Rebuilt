@@ -1,6 +1,7 @@
 extends RealmzTestCase
 
 const FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-fixture.realmz2"
+const ViewChangeSetScript := preload("res://src/core/view/view_change_set.gd")
 
 
 func selected_case_arguments() -> Array:
@@ -17,6 +18,7 @@ func run() -> void:
 	var content := loaded.content
 	_test_map_view_projection_edges(content)
 	_test_field_heal(content)
+	_test_attempted_land_move_search(content)
 	var session := GameSession.new()
 	assert_equal(session.start(content, 1).state, SessionStep.State.COMPLETED, "exploration session starts"); _begin_fixture_adventure(session, content)
 	assert_equal(session.view().party_coordinate, Vector2i(1, 1), "Providence start coordinate is authoritative"); assert_equal(session.view().map_view.cells().size(), 625, "GameView exposes one complete bounded topology-derived window at the north-west edge")
@@ -38,11 +40,18 @@ func run() -> void:
 	var open_step := open_session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
 	var open_view := open_session.view(open_step.events)
 	assert_equal(open_view.domain_revisions.party, before_open_view.domain_revisions.party, "ordinary movement reuses the unchanged party projection"); assert_equal(open_view.domain_revisions.exploration, open_view.revision, "ordinary movement advances the exploration projection revision"); assert_true(open_view.map_view.presentation_delta != null and open_view.map_view.presentation_delta.viewport_shift == Vector2i.RIGHT and open_view.map_view.presentation_delta.newly_visited == [Vector2i(2, 1)], "strict ordinary movement carries only its detached viewport and visibility delta")
+	assert_equal([open_view.domain_revisions.party_roster, open_view.domain_revisions.party_status, open_view.domain_revisions.inventory, open_view.domain_revisions.magic], [before_open_view.domain_revisions.party_roster, before_open_view.domain_revisions.party_status, before_open_view.domain_revisions.inventory, before_open_view.domain_revisions.magic], "movement leaves every unchanged party dependency revision stable"); assert_true(not open_view.change_set.complete_refresh and open_view.change_set.has_domain(ViewChangeSetScript.EXPLORATION) and open_view.change_set.has_domain(ViewChangeSetScript.SYSTEM) and not open_view.change_set.has_domain(ViewChangeSetScript.PARTY_STATUS), "movement publishes an explicit exploration-only dependency change set")
 	assert_true(open_session.view() == open_view and open_view.map_view.cell_at(Vector2i(2, 1)).has_feature(&"discovered_path"), "repeated reads reuse the detached view and a walked Classic path exposes its saved red-cross marker"); assert_equal([before_open_view.map_view.visited_coordinates(), open_view.map_view.visited_coordinates()], [[Vector2i(1, 1)], [Vector2i(1, 1), Vector2i(2, 1)]], "delta materialization preserves the previous detached history while appending the newly walked cell")
-	assert_equal(before_open_view.party_coordinate, Vector2i(1, 1), "a later projection cannot mutate the previous detached view")
+	assert_equal([before_open_view.party_coordinate, before_open_view.map_view.cell_at(Vector2i(2, 1)).visited, before_open_view.map_view.cell_at(Vector2i(2, 1)).has_feature(&"discovered_path")], [Vector2i(1, 1), false, false], "a later chunk patch cannot mutate the previous detached party or map window")
 	var full_projection_session := GameSession.new(); full_projection_session.restore(open_content, save_round_trip(open_session.snapshot())); var full_open_view := full_projection_session.view()
 	assert_equal([open_view.party_coordinate, open_view.realmz_day, open_view.realmz_hour, open_view.realmz_minute, open_view.map_view.cells().size(), open_view.party_members.size()], [full_open_view.party_coordinate, full_open_view.realmz_day, full_open_view.realmz_hour, full_open_view.realmz_minute, full_open_view.map_view.cells().size(), full_open_view.party_members.size()], "incremental and full projections expose the same movement-owned state"); assert_equal(full_open_view.map_view.presentation_delta, null, "restore reconstructs a complete authoritative map projection without carrying a runtime delta")
-	var los_content := _open_movement_content(content, true); var los_session := GameSession.new(); los_session.start(los_content, 1); _begin_fixture_adventure(los_session, los_content); var los_step := los_session.submit_intent(PlayerIntent.move(Vector2i.RIGHT)); var moved_los_view := los_session.view(los_step.events); assert_true(moved_los_view.map_view.presentation_delta == null and moved_los_view.domain_revisions.party == moved_los_view.revision, "LOS movement conservatively forces a complete detached projection")
+	var hourly_snapshot := open_session.snapshot(); var hourly_character := hourly_snapshot.game_state.party.characters()[0]; hourly_character.level = 10; hourly_character.maximum_spell_points = 100; hourly_character.spell_points = 0; var minute_offset := posmod(55 - hourly_snapshot.game_state.clock.total_minutes(), 60); hourly_snapshot.game_state.clock.advance_minutes(minute_offset); assert_equal(open_session.restore(open_content, hourly_snapshot).state, SessionStep.State.COMPLETED, "the hourly movement projection fixture restores at a committed boundary"); var before_hourly_view := open_session.view(); var hourly_step := open_session.submit_intent(PlayerIntent.move(Vector2i.LEFT)); var hourly_view := open_session.view(hourly_step.events)
+	assert_true(_has_event(hourly_step, &"spell_points_recovered") and hourly_view.map_view.presentation_delta != null and hourly_view.domain_revisions.is_ordinary_exploration_update_from(before_hourly_view.domain_revisions), "an hour-crossing movement with spell recovery retains the incremental exploration path")
+	assert_true(hourly_view.domain_revisions.party_roster == before_hourly_view.domain_revisions.party_roster and hourly_view.domain_revisions.party_status == hourly_view.revision and hourly_view.domain_revisions.magic == hourly_view.revision and hourly_view.change_set.has_domain(ViewChangeSetScript.PARTY_STATUS) and hourly_view.change_set.has_domain(ViewChangeSetScript.MAGIC), "hourly recovery invalidates status and magic without rebuilding roster identity")
+	assert_equal([hourly_view.party_members[0].spell_points, hourly_view.domain_revisions.party, hourly_view.domain_revisions.inventory_magic, hourly_view.bestiary_entries.size()], [open_session.snapshot().game_state.party.characters()[0].spell_points, hourly_view.revision, hourly_view.revision, before_hourly_view.bestiary_entries.size()], "hourly movement refreshes mutable party and magic projections while retaining the immutable Bestiary catalog")
+	var hourly_full_session := GameSession.new(); hourly_full_session.restore(open_content, save_round_trip(open_session.snapshot())); var hourly_full_view := hourly_full_session.view(); assert_equal([hourly_view.party_members[0].spell_points, hourly_view.party_members[0].condition_values, hourly_view.availability(&"cast_spell").enabled, hourly_view.availability(&"cast_spell").reason], [hourly_full_view.party_members[0].spell_points, hourly_full_view.party_members[0].condition_values, hourly_full_view.availability(&"cast_spell").enabled, hourly_full_view.availability(&"cast_spell").reason], "incremental hourly party and spell availability match a complete restored projection")
+	var los_content := _open_movement_content(content, true); var los_session := GameSession.new(); los_session.start(los_content, 1); _begin_fixture_adventure(los_session, los_content); var initial_los_view := los_session.view(); var los_step := los_session.submit_intent(PlayerIntent.move(Vector2i.RIGHT)); var moved_los_view := los_session.view(los_step.events); assert_true(moved_los_view.map_view.presentation_delta != null and moved_los_view.domain_revisions.party == initial_los_view.domain_revisions.party and moved_los_view.domain_revisions.exploration == moved_los_view.revision, "LOS movement identifies its visibility-sensitive cells while retaining the ordinary shell and unchanged view domains")
+	var restored_los_session := GameSession.new(); restored_los_session.restore(los_content, save_round_trip(los_session.snapshot())); var restored_los_view := restored_los_session.view(); var incremental_los_cells := moved_los_view.map_view.cells().map(func(cell: MapCellView) -> Array: return [cell.coordinate, cell.visible, cell.visited]); var restored_los_cells := restored_los_view.map_view.cells().map(func(cell: MapCellView) -> Array: return [cell.coordinate, cell.visible, cell.visited]); assert_equal([incremental_los_cells, moved_los_view.map_view.seen_coordinates()], [restored_los_cells, restored_los_view.map_view.seen_coordinates()], "incremental LOS visibility and sight memory match a complete restored projection")
 	for action_id: Variant in full_open_view.action_availability:
 		var action := StringName(action_id)
 		assert_equal([open_view.availability(action).enabled, open_view.availability(action).reason], [full_open_view.availability(action).enabled, full_open_view.availability(action).reason], "incremental and full projections agree on %s availability" % action)
@@ -107,7 +116,7 @@ func run() -> void:
 	assert_false(session.view().map_view.cell_at(hidden_destination.coordinate).has_feature(&"secret"), "walking onto a land secret does not discover its marker")
 	assert_equal(session.submit_intent(PlayerIntent.move(Vector2i.RIGHT)).state, SessionStep.State.COMPLETED, "ordinary movement leaves the still-concealed square")
 	var search := session.submit_intent(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
-	assert_equal(_event(search, &"search_completed").payload["roll"], 45, "search follows the centralized RNG after concealed-square travel")
+	assert_equal(_event(search, &"search_completed").payload["roll"], 37, "search follows the centralized RNG after ordinary movement attempts consume their secret-check draws")
 	assert_true(_has_event(search, &"secret_discovered"), "search commits secret discovery")
 	assert_true(session.view().map_view.can_move(Vector2i.LEFT) and session.view().map_view.cell_at(hidden_destination.coordinate).has_feature(&"secret"), "search reveals the Classic S marker without changing collision")
 	var revealed_entry := session.submit_intent(PlayerIntent.move(Vector2i.LEFT)); assert_true(revealed_entry.state == SessionStep.State.WAITING_FOR_INTERACTION and _has_event(revealed_entry, &"message_shown"), "the colocated AP activates when the discovered secret square is entered")
@@ -400,6 +409,9 @@ func _test_contextual_encounter_command(source_content: RealmzContent) -> void:
 	var restored := GameSession.new(); assert_equal(restored.restore(content, save_round_trip(session.snapshot())).state, SessionStep.State.COMPLETED, "the consumed seamless Encounter door restores transactionally")
 	assert_true(restored.view().availability(&"contextual_encounter").enabled, "a consumed seamless door does not disable Castle's persistent Encounter control"); var fallback := restored.submit_intent(PlayerIntent.contextual_encounter()); var fallback_event := _event(fallback, &"contextual_encounter_triggered")
 	assert_equal([fallback.state, fallback_event.payload["programId"], fallback_event.payload["coordinate"], fallback_event.payload["defaultProgram"]], [SessionStep.State.COMPLETED, "xap:0", Vector2i.RIGHT, true], "Encounter runs XAP 0 at the faced land coordinate when no seamless door fires")
+	for repeat_index: int in 8:
+		var repeated := restored.submit_intent(PlayerIntent.contextual_encounter())
+		assert_equal([repeated.state, repeated.error_code, _event(repeated, &"contextual_encounter_triggered").payload["programId"]], [SessionStep.State.COMPLETED, &"", "xap:0"], "repeated Explore Encounter activation %d retains its typed coordinator result" % (repeat_index + 1))
 
 
 func _test_map_view_projection_edges(content: RealmzContent) -> void:
@@ -413,6 +425,21 @@ func _test_map_view_projection_edges(content: RealmzContent) -> void:
 	assert_equal(session.view().map_view.cells().size(), 625, "the detached projection keeps its full dimensions at the east map edge")
 	assert_not_null(session.view().map_view.cell_at(Vector2i(65, 0)), "the east-edge projection shifts west to retain the complete viewport")
 	assert_not_null(session.view().map_view.cell_at(Vector2i(89, 24)), "the east-edge projection still reaches the authoritative map boundary"); assert_true(session.view().map_view.cell_at(Vector2i(64, 0)) == null, "the shifted east-edge projection remains bounded to twenty-five columns")
+	var before_projection := session.snapshot()
+	var projection_state := [JSON.stringify(before_projection.game_state.to_data()), JSON.stringify(before_projection.rng_state.to_data()), JSON.stringify(before_projection.scenario_vm.to_data()), JSON.stringify(before_projection.scenario_action_state.to_data())]
+	assert_true(session.set_map_projection_size(Vector2i(55, 18)), "the detached presentation projection accepts the current rendered cell span without mutating gameplay")
+	var expanded_view := session.view()
+	assert_equal(expanded_view.map_view.cells().size(), 990, "a maximized 55-by-18 map stage receives one matching detached projection")
+	assert_not_null(expanded_view.map_view.cell_at(Vector2i(35, 0)), "the expanded east-edge projection begins at the same camera column as the maximized presenter")
+	assert_not_null(expanded_view.map_view.cell_at(Vector2i(89, 17)), "the expanded projection reaches the authoritative east edge and complete visible height")
+	assert_true(expanded_view.map_view.cell_at(Vector2i(34, 0)) == null and not session.set_map_projection_size(Vector2i(55, 18)), "the projection remains exactly viewport-sized and an unchanged layout does not invalidate it again")
+	var after_projection := session.snapshot()
+	var resized_state := [JSON.stringify(after_projection.game_state.to_data()), JSON.stringify(after_projection.rng_state.to_data()), JSON.stringify(after_projection.scenario_vm.to_data()), JSON.stringify(after_projection.scenario_action_state.to_data())]
+	assert_equal([expanded_view.revision, resized_state], [before_projection.view_revision, projection_state], "responsive projection sizing changes neither the committed revision nor any save-owned state")
+	var controller := GameSessionController.new()
+	assert_true(controller.set_map_projection_size(Vector2i(55, 18)) and controller.start(content, 2).state == SessionStep.State.COMPLETED, "the host retains its layout projection request while replacing the session")
+	assert_equal(controller.view().map_view.cells().size(), 990, "a replacement session is first projected at the retained host viewport size")
+	controller.free()
 
 
 func _test_field_heal(content: RealmzContent) -> void:
@@ -424,6 +451,14 @@ func _test_field_heal(content: RealmzContent) -> void:
 	assert_equal([session._state.clock.total_minutes() - before_minutes, healer.spell_points, wounded.current_health > 1, wounded.current_health <= wounded.maximum_health], [5, 15, true, true], "one land Heal pulse spends five minutes and ten spell points for its eligible wounded recipient")
 	var restored := GameSession.new(); assert_equal(restored.restore(content, save_round_trip(session.snapshot())).state, SessionStep.State.COMPLETED, "Heal state restores through the public save boundary")
 	assert_equal([restored._state.party.character_by_id(healer.id).spell_points, restored._state.party.character_by_id(wounded.id).current_health], [healer.spell_points, wounded.current_health], "Heal spell points and stamina persist together")
+	var blocked_before := JSON.stringify(session._state.to_data())
+	session._state.character_spellcasting_blocked = true
+	blocked_before = JSON.stringify(session._state.to_data())
+	var blocked_rng_before := session.rng_trace().size()
+	var blocked := session.submit_intent(PlayerIntent.heal())
+	var warning := _event(blocked, &"classic_notification_requested")
+	assert_true(warning != null and warning.payload.get("text") == "Your characters can't cast spells in this area." and warning.payload.get("soundId") == 6000, "blocked field Heal requests Castle warning 113 as its compact sounded notification")
+	assert_equal([JSON.stringify(session._state.to_data()), session.rng_trace().size()], [blocked_before, blocked_rng_before], "blocked field Heal changes no health, spell points, clock, fatigue, RNG-owned state, or scenario state")
 
 
 func _test_special_dungeon_bits(source_content: RealmzContent) -> void:
@@ -522,6 +557,9 @@ func _test_boat_movement(source_content: RealmzContent) -> void:
 	var declined_prompt := declined_session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
 	var declined := declined_session.respond(InteractionResponse.yes_no(declined_prompt.interaction, false))
 	assert_equal([declined.state, declined_session.view().party_coordinate, declined_session.snapshot().game_state.party_in_boat, _sound_ids(declined)], [SessionStep.State.COMPLETED, Vector2i.ZERO, false, [11]], "declining a boat retains the party and still applies Castle's target sound/time")
+	var ap_content := _boat_action_point_content(source_content); var ap_session := GameSession.new(); assert_equal(ap_session.start(ap_content, 1).state, SessionStep.State.COMPLETED, "boat action-point fixture starts"); _begin_fixture_adventure(ap_session, ap_content); var aboard_envelope := ap_session.snapshot(); aboard_envelope.game_state.party_in_boat = true; assert_equal(ap_session.restore(ap_content, aboard_envelope).state, SessionStep.State.COMPLETED, "the source-shaped fixture restores aboard its water origin")
+	var entered_ap := ap_session.submit_intent(PlayerIntent.move(Vector2i.RIGHT)); assert_equal([entered_ap.state, ap_session.view().party_coordinate, _has_event(entered_ap, &"trigger_fired")], [SessionStep.State.COMPLETED, Vector2i(1, 0), true], "an embarked party enters a placed land action point through Castle's door-band branch")
+	var ordinary_land_block := ap_session.submit_intent(PlayerIntent.move(Vector2i.RIGHT)); assert_equal([ordinary_land_block.state, ap_session.view().party_coordinate, _sound_ids(ordinary_land_block)], [SessionStep.State.COMPLETED, Vector2i(1, 0), [-148, 11]], "the action-point exception does not let an embarked party traverse ordinary needBoat-0 terrain")
 
 
 func _boat_movement_content(source_content: RealmzContent) -> RealmzContent:
@@ -536,6 +574,21 @@ func _boat_movement_content(source_content: RealmzContent) -> RealmzContent:
 	var map := MapDefinition.new("boat-land", "Boat Land", &"land", 0, MapTopology.from_compact_rows("boat-land", 4, 1, rows, removed, placed))
 	var maps: Array[MapDefinition] = [map]
 	return RealmzContent.new("boat-movement", "0".repeat(64), "boat-movement-content", "realmz-classic-1", map.id, Vector2i.ZERO, WorldDefinition.new(maps), ScenarioDefinition.new([], []), [], [], [], source_content.race_definitions(), source_content.caste_definitions())
+
+
+func _boat_action_point_content(source_content: RealmzContent) -> RealmzContent:
+	var rows: Array = [
+		_compact_land_row(60, 2, 22, 2, false),
+		_compact_land_row(60, 7, 88, 0, false),
+		_compact_land_row(1, 1, 11, 0, false),
+	]
+	var trigger_id := "Data DD:1:6"
+	rows[1][4] = [trigger_id]
+	rows[1][7] = [["boat-action-point", "action-point", "active", null]]
+	var map := MapDefinition.new("boat-action-point", "Boat Action Point", &"land", 1, MapTopology.from_compact_rows("boat-action-point", 3, 1, rows))
+	var program := ScenarioProgramDefinition.new("program.boat-action-point", &"trigger", trigger_id, [])
+	var trigger := TriggerDefinition.new(trigger_id, program.id, map.id, Vector2i(1, 0), true, 100, null, 6)
+	return RealmzContent.new("boat-action-point", "0".repeat(64), "boat-action-point-content", "realmz-classic-1", map.id, Vector2i.ZERO, WorldDefinition.new([map]), ScenarioDefinition.new([program], []), [], [trigger], [], source_content.race_definitions(), source_content.caste_definitions())
 
 
 func _compact_land_row(tile: int, movement_cost: int, sound_id: int, boat_requirement: int, shore: bool) -> Array:
@@ -602,6 +655,29 @@ func _open_movement_content(source_content: RealmzContent, uses_los: bool = fals
 	var map := MapDefinition.new("open", "Open movement", &"land", 0, MapTopology.new(3, 3, cells), false, uses_los)
 	var maps: Array[MapDefinition] = [map]
 	return RealmzContent.new("open-movement", "0".repeat(64), "open-movement-content", "realmz-classic-1", map.id, Vector2i(1, 1), WorldDefinition.new(maps), ScenarioDefinition.new([], []), [], [], [], source_content.race_definitions(), source_content.caste_definitions())
+
+
+func _test_attempted_land_move_search(source_content: RealmzContent) -> void:
+	var content := _attempted_land_move_content(source_content)
+	var ordinary := GameSession.new(); ordinary.start(content, 1); _begin_fixture_adventure(ordinary, content); var rng_before := ordinary.rng_trace().size(); var ordinary_attempt := ordinary.submit_intent(PlayerIntent.move(Vector2i.LEFT)); var ordinary_search := _event(ordinary_attempt, &"movement_secret_search_completed")
+	assert_true(ordinary_attempt.state == SessionStep.State.COMPLETED and ordinary.view().party_coordinate == Vector2i(1, 0) and _has_event(ordinary_attempt, &"movement_blocked") and ordinary_search != null and ordinary.rng_trace().size() == rng_before + 1, "a blocked valid land move remains in place but still performs Castle's ordinary deterministic secret check")
+	assert_false(ordinary.view().map_view.cell_at(Vector2i.ZERO).has_feature(&"secret"), "an unsuccessful ordinary check leaves the hidden land secret concealed")
+	var searching := GameSession.new(); searching.start(content, 1); _begin_fixture_adventure(searching, content); assert_equal(searching.submit_intent(PlayerIntent.toggle_search()).state, SessionStep.State.COMPLETED, "the blocked-attempt fixture enables persistent Search mode"); var minutes_before := searching.snapshot().game_state.clock.total_minutes(); var searched_attempt := searching.submit_intent(PlayerIntent.move(Vector2i.LEFT))
+	assert_true(searched_attempt.state == SessionStep.State.COMPLETED and searching.view().party_coordinate == Vector2i(1, 0) and _has_event(searched_attempt, &"movement_blocked") and _has_event(searched_attempt, &"secret_discovered") and searching.view().map_view.cell_at(Vector2i.ZERO).has_feature(&"secret"), "Search mode makes the same blocked land attempt reveal the adjacent secret without admitting the party through the wall")
+	assert_equal(searching.snapshot().game_state.clock.total_minutes(), minutes_before + 30, "the attempted blocked tile pays its two outdoor time-clicks before Search mode pays Castle's separate four")
+
+
+func _attempted_land_move_content(source_content: RealmzContent) -> RealmzContent:
+	var empty_ids: Array[String] = []
+	var open_edges := {&"north": MapEdge.new(&"open", true, false), &"east": MapEdge.new(&"open", true, false), &"south": MapEdge.new(&"open", true, false), &"west": MapEdge.new(&"open", true, false)}
+	var secret_features: Array[MapFeature] = [MapFeature.new("blocked-land-secret", &"secret", &"hidden")]
+	var no_features: Array[MapFeature] = []
+	var cells: Array[MapCell] = [
+		MapCell.new("attempted-search:cell:0,0", Vector2i.ZERO, "classic.terrain.39", false, 2, true, true, false, false, false, false, false, 0, 39, "fixture.tileset", empty_ids, empty_ids, open_edges, secret_features),
+		MapCell.new("attempted-search:cell:1,0", Vector2i(1, 0), "classic.terrain.1", true, 1, false, true, false, false, false, false, false, 0, 1, "fixture.tileset", empty_ids, empty_ids, open_edges, no_features),
+	]
+	var map := MapDefinition.new("attempted-search", "Attempted Search", &"land", 0, MapTopology.new(2, 1, cells))
+	return RealmzContent.new("attempted-search", "0".repeat(64), "attempted-search-content", "realmz-classic-1", map.id, Vector2i(1, 0), WorldDefinition.new([map]), ScenarioDefinition.new([], []), [], [], [], source_content.race_definitions(), source_content.caste_definitions())
 
 
 func _dungeon_special_content(source_content: RealmzContent, dungeon_case: Dictionary) -> RealmzContent:
