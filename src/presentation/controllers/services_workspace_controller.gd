@@ -40,41 +40,62 @@ func _render_money_workspace(parent: VBoxContainer, view: GameView) -> void:
 		return
 	if workspace.character(_money_character_id) == null:
 		_money_character_id = workspace.characters[0].character_id
-	var columns := BoxContainer.new()
-	columns.name = "MoneyWorkspaceColumns"
-	columns.vertical = _layout_profile == UiLayoutProfile.COMPACT
-	columns.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	columns.add_theme_constant_override("separation", 8)
-	columns.add_child(_build_pool_pane(view, workspace))
+	var workspace_column := VBoxContainer.new()
+	workspace_column.name = "MoneyWorkspaceColumns"
+	workspace_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	workspace_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	workspace_column.add_theme_constant_override("separation", 8)
+	workspace_column.add_child(_build_pool_pane(view, workspace))
+	var exchange := BoxContainer.new()
+	exchange.name = "MoneyExchangeWorkspace"
+	exchange.vertical = _layout_profile == UiLayoutProfile.COMPACT
+	exchange.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	exchange.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	exchange.add_theme_constant_override("separation", 8)
 	if _layout_profile != UiLayoutProfile.COMPACT:
-		columns.add_child(_build_party_pane(workspace))
-	columns.add_child(_build_swap_pane(view, workspace))
-	parent.add_child(columns)
+		exchange.add_child(_build_party_pane(workspace))
+	exchange.add_child(_build_swap_pane(view, workspace))
+	workspace_column.add_child(exchange)
+	parent.add_child(workspace_column)
 
 
 func _build_pool_pane(view: GameView, workspace: MoneyWorkspaceView) -> PanelContainer:
-	var panel := _pane("MoneyPoolPane", 0.78)
+	var panel := _pane("MoneyPoolPane", 1.0)
+	panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	var column := _pane_column(panel)
-	_add_section_heading(column, "Party Pool")
-	_add_wealth_record(column, workspace.pooled_gold, workspace.pooled_gems, workspace.pooled_jewelry)
-	var banked := _label("Banked  %d gold  •  %d gems  •  %d jewelry" % [workspace.banked_gold, workspace.banked_gems, workspace.banked_jewelry], MUTED, 13)
+	var summary := BoxContainer.new()
+	summary.name = "MoneyPoolSummary"
+	summary.vertical = _layout_profile == UiLayoutProfile.COMPACT
+	summary.add_theme_constant_override("separation", 8)
+	column.add_child(summary)
+	var identity := VBoxContainer.new()
+	identity.custom_minimum_size.x = 180.0
+	identity.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_add_section_heading(identity, "Party Pool")
+	var banked := _label("Banked  %d gold  •  %d gems  •  %d jewelry" % [workspace.banked_gold, workspace.banked_gems, workspace.banked_jewelry], MUTED, 12)
 	banked.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	column.add_child(banked)
-	var spacer := Control.new()
-	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	column.add_child(spacer)
+	identity.add_child(banked)
+	summary.add_child(identity)
+	var values := HBoxContainer.new()
+	values.name = "MoneyPoolValues"
+	values.add_theme_constant_override("separation", 6)
+	values.add_child(_wealth_chip("Gold", workspace.pooled_gold))
+	values.add_child(_wealth_chip("Gems", workspace.pooled_gems))
+	values.add_child(_wealth_chip("Jewelry", workspace.pooled_jewelry))
+	summary.add_child(values)
 	var actions := HBoxContainer.new()
 	actions.name = "MoneyPoolActions"
+	actions.size_flags_horizontal = Control.SIZE_SHRINK_END
+	actions.alignment = BoxContainer.ALIGNMENT_END
 	actions.add_theme_constant_override("separation", 5)
 	_add_money_intent_action(actions, view, "Pool", workspace.pool, PlayerIntent.money_action(&"pool"))
 	_add_money_intent_action(actions, view, "Share", workspace.share, PlayerIntent.money_action(&"share"))
-	column.add_child(actions)
+	summary.add_child(actions)
 	return panel
 
 
 func _build_party_pane(workspace: MoneyWorkspaceView) -> PanelContainer:
-	var panel := _pane("MoneyPartyPane", 1.05)
+	var panel := _pane("MoneyPartyPane", 1.12)
 	var column := _pane_column(panel)
 	_add_section_heading(column, "Adventurers", "%d" % workspace.characters.size())
 	var group := ButtonGroup.new()
@@ -85,7 +106,8 @@ func _build_party_pane(workspace: MoneyWorkspaceView) -> PanelContainer:
 		button.toggle_mode = true
 		button.button_group = group
 		button.button_pressed = character.character_id == _money_character_id
-		button.custom_minimum_size.y = 52.0
+		button.theme_type_variation = &"ClassicItemLedgerButton"
+		button.custom_minimum_size.y = 48.0
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.pressed.connect(_select_money_character.bind(character.character_id))
 		column.add_child(button)
@@ -94,25 +116,27 @@ func _build_party_pane(workspace: MoneyWorkspaceView) -> PanelContainer:
 
 func _build_swap_pane(view: GameView, workspace: MoneyWorkspaceView) -> PanelContainer:
 	var selected := workspace.character(_money_character_id)
-	var panel := _pane("MoneySwapPane", 1.18)
+	var panel := _pane("MoneySwapPane", 1.0)
 	var column := _pane_column(panel)
-	_add_section_heading(column, "Swap", selected.name)
+	_add_section_heading(column, "Exchange", selected.name)
 	if _layout_profile == UiLayoutProfile.COMPACT:
 		column.add_child(_character_picker(workspace))
-	_add_wealth_record(column, selected.gold, selected.gems, selected.jewelry)
-	column.add_child(_label("Carried load  %d / %d" % [selected.carried_load, selected.maximum_load], MUTED, 13))
-	var transfers := GridContainer.new()
+	var current := HBoxContainer.new()
+	current.name = "MoneySelectedSummary"
+	current.add_theme_constant_override("separation", 6)
+	current.add_child(_wealth_chip("Gold", selected.gold))
+	current.add_child(_wealth_chip("Gems", selected.gems))
+	current.add_child(_wealth_chip("Jewelry", selected.jewelry))
+	var load := _label("Carried load\n%d / %d" % [selected.carried_load, selected.maximum_load], MUTED, 12)
+	load.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	load.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	current.add_child(load)
+	column.add_child(current)
+	var transfers := VBoxContainer.new()
 	transfers.name = "MoneyTransferGrid"
-	transfers.columns = 3
-	transfers.add_theme_constant_override("h_separation", 5)
-	transfers.add_theme_constant_override("v_separation", 5)
+	transfers.add_theme_constant_override("separation", 6)
 	for transfer: MoneyTransferView in selected.transfers:
-		var denomination := String(transfer.denomination).capitalize()
-		var label := _label("%s  ×%d" % [denomination, transfer.amount], TEXT, 13)
-		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		transfers.add_child(label)
-		_add_money_intent_action(transfers, view, "To pool", transfer.to_pool, PlayerIntent.money_action(&"to-pool", selected.character_id, String(transfer.denomination), transfer.amount))
-		_add_money_intent_action(transfers, view, "To %s" % selected.name, transfer.to_character, PlayerIntent.money_action(&"to-character", selected.character_id, String(transfer.denomination), transfer.amount))
+		transfers.add_child(_build_transfer_row(view, selected, transfer))
 	column.add_child(transfers)
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -148,6 +172,40 @@ func _add_wealth_record(parent: Container, gold: int, gems: int, jewelry: int) -
 		value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		grid.add_child(value)
 	parent.add_child(grid)
+
+
+func _wealth_chip(label_text: String, value: int) -> PanelContainer:
+	var chip := PanelContainer.new()
+	chip.theme_type_variation = &"ClassicInset"
+	chip.custom_minimum_size.x = 88.0
+	chip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 0)
+	chip.add_child(column)
+	var heading := _label(label_text, MUTED, 11)
+	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(heading)
+	var amount := _label(str(value), TEXT, 17)
+	amount.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(amount)
+	return chip
+
+
+func _build_transfer_row(view: GameView, selected: MoneyCharacterView, transfer: MoneyTransferView) -> PanelContainer:
+	var panel := PanelContainer.new()
+	panel.theme_type_variation = &"ClassicInset"
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	panel.add_child(row)
+	var denomination := String(transfer.denomination).capitalize()
+	var label := _label("%s  ×%d" % [denomination, transfer.amount], TEXT, 13)
+	label.custom_minimum_size.x = 104.0
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(label)
+	_add_money_intent_action(row, view, "To pool", transfer.to_pool, PlayerIntent.money_action(&"to-pool", selected.character_id, String(transfer.denomination), transfer.amount))
+	_add_money_intent_action(row, view, "To %s" % selected.name, transfer.to_character, PlayerIntent.money_action(&"to-character", selected.character_id, String(transfer.denomination), transfer.amount))
+	return panel
 
 
 func _render_location_services(parent: VBoxContainer, view: GameView) -> void:
@@ -203,7 +261,7 @@ func _submit_service_action(service_id: String, action: StringName) -> void:
 func _pane(panel_name: String, ratio: float) -> PanelContainer:
 	var panel := PanelContainer.new()
 	panel.name = panel_name
-	panel.theme_type_variation = &"ClassicTextWell"
+	panel.theme_type_variation = &"ClassicInset"
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	panel.size_flags_stretch_ratio = ratio

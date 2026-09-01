@@ -1141,7 +1141,10 @@ func _test_money_workspace() -> void:
 	controller.present(body, view)
 	var buttons := _buttons_in(body)
 	var labels := _labels_in(body)
-	assert_true(body.find_child("MoneyPoolPane", true, false) != null and body.find_child("MoneyPartyPane", true, false) != null and body.find_child("MoneySwapPane", true, false) != null and ["Gold", "Gems", "Jewelry", "15"].all(func(text: String) -> bool: return labels.has(text)), "money workspace separates the detached pool, adventurers, and exact-denomination Swap records")
+	var pool_pane := body.find_child("MoneyPoolPane", true, false) as PanelContainer
+	var party_pane := body.find_child("MoneyPartyPane", true, false) as PanelContainer
+	var swap_pane := body.find_child("MoneySwapPane", true, false) as PanelContainer
+	assert_true(pool_pane != null and party_pane != null and swap_pane != null and body.find_child("MoneyPoolSummary", true, false) != null and body.find_child("MoneyExchangeWorkspace", true, false) != null and body.find_child("MoneySelectedSummary", true, false) != null and pool_pane.theme_type_variation == &"ClassicInset" and party_pane.theme_type_variation == &"ClassicInset" and swap_pane.theme_type_variation == &"ClassicInset" and ["Gold", "Gems", "Jewelry", "15"].all(func(text: String) -> bool: return labels.has(text)), "money workspace uses the shared modern inset chrome for its pool summary, adventurer ledger, selected exchange, and exact-denomination records")
 	assert_true(labels.any(func(text: String) -> bool: return text.contains("Banked") and text.contains("50 gold")), "banked wealth remains visible without being merged into ordinary Swap")
 	var pool_button: Button = buttons.filter(func(button: Button) -> bool: return button.text == "Pool")[0]
 	var share_button: Button = buttons.filter(func(button: Button) -> bool: return button.text == "Share")[0]
