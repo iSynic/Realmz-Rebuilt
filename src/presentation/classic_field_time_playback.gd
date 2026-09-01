@@ -1,7 +1,7 @@
 class_name ClassicFieldTimePlayback
 extends RefCounted
 
-const FRAME_SECONDS := 1.0 / 60.0
+const FRAME_SECONDS := 1.0 / 120.0
 
 var _tween: Tween
 
