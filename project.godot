@@ -15,7 +15,7 @@ config/version="0.1.0"
 run/main_scene="res://src/presentation/startup_front_door.tscn"
 config/use_custom_user_dir=true
 config/custom_user_dir_name="RealmzRemake2"
-config/features=PackedStringArray("4.7", "GL Compatibility")
+config/features=PackedStringArray("4.7", "Mobile")
 boot_splash/bg_color=Color(0, 0, 0, 1)
 boot_splash/show_image=false
 
@@ -34,6 +34,5 @@ enabled=PackedStringArray("res://addons/godot_mcp/plugin.cfg")
 
 [rendering]
 
-renderer/rendering_method="gl_compatibility"
-renderer/rendering_method.mobile="gl_compatibility"
+renderer/rendering_method="mobile"
 textures/vram_compression/import_etc2_astc=true

@@ -16,6 +16,8 @@ Use Godot 4.7.1 stable. Run the local verification lane from PowerShell:
 ./tools/verify.ps1
 ```
 
+Native builds use Godot's Mobile renderer, which selects Vulkan on supported Windows and Linux systems and Metal on macOS. For older or problematic graphics drivers, launch the same executable with `--rendering-method gl_compatibility --rendering-driver opengl3`.
+
 Godot MCP Pro 1.16.0 is vendored under `addons/godot_mcp`; its Node server remains an external local tool. See [docs/development.md](docs/development.md).
 
 The 13 scenarios distributed with Castle Realmz are bundled under CC BY-NC-SA 4.0 with pinned source/compiler provenance. City of Bywater uses the project-owner-designated production snapshot pending its adoption by Castle; the other twelve use the pinned Castle source. No other commercial or user-owned scenario payloads, extracted assets, user saves, or generated oracle installations belong in this repository. The synthetic package remains test-only and is excluded from release exports.

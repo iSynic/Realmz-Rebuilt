@@ -1,10 +1,25 @@
 # Runtime performance evidence
 
-Measured through 2026-09-01 with Godot 4.7.1 Compatibility/OpenGL on Windows, an NVIDIA GeForce RTX 3080, and the canonical 1280x720 application profile. Machine timings are evidence for this pass, not portable guarantees.
+Measured through 2026-09-01 with Godot 4.7.1 on Windows and an NVIDIA GeForce RTX 3080 at the canonical 1280x720 and native 3440x1440 profiles. Machine timings are evidence for this pass, not portable guarantees.
 
 ## Scope and boundaries
 
 This pass covers launch-video scheduling, last-campaign preparation, Character Files insertion, dependency-driven exploration projection, retained overworld presentation, and deterministic combat pursuit. It does not change opcode behavior, package trust, overworld movement speed, splash timing, scenario data, or GUI design.
+
+## Rendering method
+
+Native releases default to Godot's Mobile RenderingDevice path. On the measured Windows system this resolves to Vulkan; the same project retains `--rendering-method gl_compatibility --rendering-driver opengl3` as an explicit fallback for older or problematic hardware. The renderer choice does not enter presentation settings, saves, packages, or simulation state because Godot establishes it before project scripts run.
+
+The equal-workload AOGM `land:0` probe used 400 percent cadence, 400 ordinary rules-enabled moves, eighty warmup frames, the same package and retained scene, disabled VSync, and forced unswapped GPU completion. Mobile/Vulkan improved frame and post-draw tails at both measured sizes without changing transaction/projection time or producing skipped intervals:
+
+| Viewport / method | Frame p95 / p99 / max | Post-draw p95 | Skipped / catch-up |
+|---|---:|---:|---:|
+| 1280x720 Compatibility/OpenGL | 4.656 / 5.826 / 7.117 ms | 2.534 ms | 0 / 0 |
+| 1280x720 Mobile/Vulkan | 3.943 / 5.072 / 6.136 ms | 1.695 ms | 0 / 0 |
+| 3440x1440 Compatibility/OpenGL | 4.911 / 6.130 / 7.051 ms | 2.808 ms | 0 / 0 |
+| 3440x1440 Mobile/Vulkan | 4.198 / 5.174 / 7.008 ms | 1.849 ms | 0 / 0 |
+
+This supports Mobile as the default but does not reclassify CPU-side simulation or projection work as a renderer responsibility. `runtime_performance_probe.gd` records the resolved rendering method and driver in every subsequent report so results from different backends cannot be silently aggregated.
 
 The user-provided diagnostic baseline was approximately 9.1 seconds to application readiness, 0.45 seconds for warm Tutorial preparation, 4.1 seconds cold and 1.95 seconds warm for the 52.8 MiB Wrath package, and 3.2 ms p95 for ordinary movement transaction plus projection. Those figures predate this checkout's final instrumentation and are retained as the comparison baseline rather than rewritten as current measurements.
 

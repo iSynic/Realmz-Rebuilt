@@ -59,6 +59,9 @@ if ($macOptions -notmatch '(?m)^binary_format/architecture="universal"$' -or $ma
     throw "The universal macOS release preset must enable ETC2/ASTC texture import."
 }
 $projectSettings = Get-Content -Raw -LiteralPath $projectPath
+if ($projectSettings -notmatch '(?m)^config/features=PackedStringArray\("4\.7", "Mobile"\)$' -or $projectSettings -notmatch '(?m)^renderer/rendering_method="mobile"$') {
+    throw "Native releases must default to Godot's Mobile RenderingDevice path; Compatibility remains an explicit launch override."
+}
 if ($projectSettings -notmatch '(?m)^textures/vram_compression/import_etc2_astc=true$') {
     throw "The project must import ETC2/ASTC textures for universal macOS export."
 }

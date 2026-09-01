@@ -34,6 +34,7 @@ Own reproducible local verification, contract checks, fixture tooling, and relea
 ## Local Contracts
 
 - Tools must resolve the repository root from their own path and avoid machine-specific committed paths.
+- Native release settings default to Godot's Mobile RenderingDevice path. `verify_export_contract.ps1` preserves that default, while Compatibility/OpenGL remains a documented command-line override rather than a separate simulation or package variant.
 - Do not modify source-reference worktrees or commercial campaign installations.
 - Keep local absolute MCP/server configuration untracked.
 - The vendored MCP plugin must skip initialization in headless editor processes so verification cannot claim or remove a live interactive editor's temporary runtime-service autoloads.
