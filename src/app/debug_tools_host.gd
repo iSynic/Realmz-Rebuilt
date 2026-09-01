@@ -93,10 +93,12 @@ func _map_records() -> Array[Dictionary]:
 
 
 func _record_step(step: SessionStep) -> void:
-	_action_lines.append_array(action_lines(step.events))
+	var view := _controller.view()
+	var content: RealmzContent = _content_provider.call() if _content_provider.is_valid() else null
+	_action_lines.append_array(action_lines(step.events, view, content))
 	while _action_lines.size() > 2000:
 		_action_lines.pop_front()
-	_recent_auto_actions.append_array(auto_action_lines(step.events, _controller.view(), _content_provider.call() if _content_provider.is_valid() else null))
+	_recent_auto_actions.append_array(auto_action_lines(step.events, view, content))
 	while _recent_auto_actions.size() > 40:
 		_recent_auto_actions.pop_front()
 	if _dialog != null and _dialog.visible:
@@ -110,12 +112,54 @@ func _open_console() -> void:
 	_console.present(_action_lines)
 
 
-static func action_lines(events: Array[DomainEvent]) -> Array[String]:
+static func action_lines(events: Array[DomainEvent], view: GameView = null, content: RealmzContent = null) -> Array[String]:
 	var result: Array[String] = []
 	for event: DomainEvent in events:
+		var readable := _readable_event_line(event, view, content)
+		if not readable.is_empty():
+			result.append(readable)
+			continue
 		var payload := JSON.stringify(event.payload)
-		result.append("%s%s" % [String(event.kind), " · " + payload if payload != "{}" else ""])
+		result.append("[EVENT] %s%s" % [String(event.kind), " · " + payload if payload != "{}" else ""])
 	return result
+
+
+static func _readable_event_line(event: DomainEvent, view: GameView, content: RealmzContent) -> String:
+	var actor_id := String(event.payload.get("actorId", ""))
+	var target_id := String(event.payload.get("targetId", ""))
+	var actor_name := _actor_name(view, actor_id)
+	var target_name := _actor_name(view, target_id)
+	match event.kind:
+		&"combat_auto_started":
+			return "── %s · Auto Turn ──" % actor_name
+		&"combat_auto_completed":
+			return "[COMBAT] %s finished Auto Turn (%d actions)." % [actor_name, int(event.payload.get("operations", 0))]
+		&"combat_auto_choice_rejected":
+			return "[COMBAT] %s could not %s: %s" % [actor_name, String(event.payload.get("action", "act")).replace("_", " "), String(event.payload.get("message", event.payload.get("reason", "unavailable")))]
+		&"combatant_moved":
+			var destination: Array = event.payload.get("to", [])
+			return "[COMBAT] %s moved to %d,%d." % [actor_name, int(destination[0]), int(destination[1])] if destination.size() == 2 else "[COMBAT] %s moved." % actor_name
+		&"combat_attack_resolved", &"combat_projectile_resolved":
+			var action := String(event.payload.get("action", "attack")).replace("_", " ")
+			if not bool(event.payload.get("hit", false)):
+				return "[COMBAT] %s used %s on %s — miss." % [actor_name, action, target_name]
+			var defeat := " — defeated" if bool(event.payload.get("defeated", false)) else ""
+			return "[COMBAT] %s used %s on %s — %d damage%s." % [actor_name, action, target_name, int(event.payload.get("damage", 0)), defeat]
+		&"combat_spell_cast":
+			var spell := content.spell_by_id(String(event.payload.get("spellId", ""))) if content != null else null
+			var spell_name := spell.name if spell != null else String(event.payload.get("spellName", event.payload.get("spellId", "Unknown spell")))
+			return "[COMBAT] %s cast %s on %s." % [actor_name, spell_name, _spell_target_text(event, spell, view, actor_id)]
+		&"combat_spell_resolved":
+			var spell := content.spell_by_id(String(event.payload.get("spellId", ""))) if content != null else null
+			var spell_name := spell.name if spell != null else String(event.payload.get("spellName", event.payload.get("spellId", "Spell")))
+			var amount := int(event.payload.get("healing", event.payload.get("damage", 0)))
+			var outcome := "%d healing" % amount if event.payload.has("healing") else "%d damage" % amount if event.payload.has("damage") else "resolved"
+			return "[COMBAT] %s → %s: %s." % [spell_name, target_name if not target_id.is_empty() else _spell_target_text(event, spell, view, actor_id), outcome]
+		&"combatant_guarded":
+			return "[COMBAT] %s defended." % actor_name
+		&"time_advanced":
+			return "[TIME] +%d min · Day %d · %02d:%02d" % [int(event.payload.get("minutes", 0)), int(event.payload.get("day", 0)), int(event.payload.get("hour", 0)), int(event.payload.get("minute", 0))]
+	return ""
 
 
 static func auto_action_lines(events: Array[DomainEvent], view: GameView, content: RealmzContent) -> Array[String]:

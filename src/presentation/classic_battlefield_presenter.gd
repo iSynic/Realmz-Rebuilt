@@ -625,7 +625,7 @@ func _draw_classic_effect(destination: Rect2, role: String) -> void:
 		draw_rect(destination.grow(4.0), Color(0.82, 0.72, 1.0, 0.90), false, 3.0)
 		return
 	var asset := _media.asset_by_resource(_playback_frame.effect_resource_type, _playback_frame.effect_resource_id)
-	var texture := _texture_for(asset)
+	var texture := _effect_texture_for(asset)
 	last_playback_media_diagnostic = _media.resolution_diagnostic(_playback_frame.effect_resource_type, _playback_frame.effect_resource_id, role, "decoded" if texture != null else "decode-failed")
 	if texture == null:
 		draw_rect(destination.grow(4.0), Color(0.82, 0.72, 1.0, 0.90), false, 3.0)
@@ -714,6 +714,53 @@ func _texture_for(asset: MediaAsset) -> Texture2D:
 	var texture := _load_image_texture(asset)
 	_actor_textures[asset.id] = texture
 	return texture
+
+
+func _effect_texture_for(asset: MediaAsset) -> Texture2D:
+	if asset == null:
+		return null
+	var cache_key := "effect:%s" % asset.id
+	if _actor_textures.has(cache_key):
+		return _actor_textures[cache_key] as Texture2D
+	var texture := remove_opaque_white_matte(_load_image_texture(asset))
+	_actor_textures[cache_key] = texture
+	return texture
+
+
+static func remove_opaque_white_matte(texture: Texture2D) -> Texture2D:
+	if texture == null:
+		return null
+	var image := texture.get_image()
+	if image == null or image.is_empty():
+		return texture
+	image.convert(Image.FORMAT_RGBA8)
+	var width := image.get_width()
+	var height := image.get_height()
+	var seeds: Array[Vector2i] = [Vector2i.ZERO, Vector2i(width - 1, 0), Vector2i(0, height - 1), Vector2i(width - 1, height - 1)]
+	if not seeds.any(func(point: Vector2i) -> bool: return _is_opaque_white(image.get_pixelv(point))):
+		return texture
+	var visited := PackedByteArray()
+	visited.resize(width * height)
+	var pending: Array[Vector2i] = seeds
+	while not pending.is_empty():
+		var point: Vector2i = pending.pop_back()
+		var index: int = point.y * width + point.x
+		if visited[index] != 0:
+			continue
+		visited[index] = 1
+		var color := image.get_pixelv(point)
+		if not _is_opaque_white(color):
+			continue
+		image.set_pixelv(point, Color(color.r, color.g, color.b, 0.0))
+		for direction: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+			var neighbor: Vector2i = point + direction
+			if neighbor.x >= 0 and neighbor.y >= 0 and neighbor.x < width and neighbor.y < height:
+				pending.append(neighbor)
+	return ImageTexture.create_from_image(image)
+
+
+static func _is_opaque_white(color: Color) -> bool:
+	return color.a > 0.98 and color.r > 0.92 and color.g > 0.92 and color.b > 0.92
 
 
 func _load_image_texture(asset: MediaAsset) -> Texture2D:

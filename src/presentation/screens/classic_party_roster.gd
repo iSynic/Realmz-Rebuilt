@@ -89,6 +89,26 @@ func present(view: GameView, selected_character_id: String = "") -> void:
 		_add_empty("Empty position %d" % (view.party_members.size() + index + 1))
 
 
+func present_ordinary_exploration(view: GameView, selected_character_id: String = "", affected_character_ids: Array[String] = []) -> void:
+	_ensure_controls()
+	if view == null or not view.session_started or character_selection_active() or _combat_spellbook_active or view.combat_view != null:
+		present(view, selected_character_id)
+		return
+	for character: CharacterView in view.party_members:
+		if _character_row(character.id) == null:
+			present(view, selected_character_id)
+			return
+	_current_view = view
+	var selection_changed := _selected_character_id != selected_character_id
+	_selected_character_id = selected_character_id
+	for character: CharacterView in view.party_members:
+		if not affected_character_ids.is_empty() and not affected_character_ids.has(character.id):
+			continue
+		_update_exploration_character_row(_character_row(character.id), character)
+	if selection_changed:
+		_update_current_character_markers()
+
+
 func present_combat_spellbook(actor_id: String, options: Array[InteractionRequestValue.CastOption]) -> void:
 	_ensure_controls()
 	_party_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -556,6 +576,7 @@ func _add_character(character: CharacterView, combat_active: bool, auto_characte
 	if not condition_text.is_empty():
 		row.tooltip_text += " • %s" % condition_text
 	row.set_meta("base_tooltip", row.tooltip_text)
+	row.set_meta("condition_values", character.condition_values.duplicate())
 	if not character_selection_active():
 		row.tooltip_text += " • Current character; click to open its record." if character.id == _selected_character_id else " • Click to make this the current character."
 	var portrait := _roster_portrait_texture(character)
@@ -604,6 +625,30 @@ func _add_character(character: CharacterView, combat_active: bool, auto_characte
 		)
 		row_container.add_child(auto_toggle)
 	_party_list.add_child(row_container)
+
+
+func _update_exploration_character_row(row: Button, character: CharacterView) -> void:
+	if row == null:
+		return
+	var condition_text := _condition_summary(character.condition_values)
+	var action_fact := "SP %d/%d" % [character.spell_points, character.maximum_spell_points] if character.maximum_spell_points > 0 else "Attacks %d" % character.normal_attacks
+	row.text = "%s\nHP %d/%d  •  %s  •  AR %d\n%s / %s" % [
+		character.name,
+		character.current_health,
+		character.maximum_health,
+		action_fact,
+		character.armor,
+		character.race_name,
+		character.caste_name,
+	]
+	var previous_condition_values: Array = row.get_meta("condition_values", []) as Array
+	if previous_condition_values != character.condition_values:
+		var base_tooltip := "Level %d • %s / %s • Movement %d/%d" % [character.level, character.race_name, character.caste_name, character.movement, character.maximum_movement]
+		if not condition_text.is_empty():
+			base_tooltip += " • %s" % condition_text
+		row.set_meta("base_tooltip", base_tooltip)
+		row.set_meta("condition_values", character.condition_values.duplicate())
+		row.tooltip_text = base_tooltip + (" • Current character; click to open its record." if character.id == _selected_character_id else " • Click to make this the current character.")
 
 
 func _update_current_character_markers() -> void:

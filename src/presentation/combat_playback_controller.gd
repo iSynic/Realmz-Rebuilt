@@ -7,15 +7,15 @@ signal playback_finished
 
 const SOUND_FRAME_SECONDS: float = 0.01
 const CUE_SECONDS: float = 0.28
-const MOVE_START_SECONDS: float = 0.08
-const MOVE_END_SECONDS: float = 0.10
-const ATTACK_SECONDS: float = 0.12
-const PROJECTILE_SECONDS: float = 0.18
-const SPELL_CAST_SECONDS: float = 0.12
-const SPELL_EFFECT_SECONDS: float = 0.07
-const RESULT_SECONDS: float = 0.34
-const DEFEAT_SECONDS: float = 0.18
-const AUTOMATIC_PLAYBACK_SCALE: float = 0.20
+const MOVE_START_SECONDS: float = 0.12
+const MOVE_END_SECONDS: float = 0.14
+const ATTACK_SECONDS: float = 0.18
+const PROJECTILE_SECONDS: float = 0.24
+const SPELL_CAST_SECONDS: float = 0.24
+const SPELL_EFFECT_SECONDS: float = 0.12
+const RESULT_SECONDS: float = 0.40
+const DEFEAT_SECONDS: float = 0.24
+const AUTOMATIC_PLAYBACK_SCALE: float = 0.75
 
 const PLAYBACK_EVENT_KINDS: Array[StringName] = [
 	&"battle_started",
@@ -66,8 +66,8 @@ func begin(previous: GameView, events: Array[DomainEvent], final: GameView, redu
 				_frames.append(sound_frame)
 		_frames.append(CombatPlaybackFrame.new(&"settle", 0.0))
 	else:
-		_build_frames(events)
-		_append_next_actor_cue()
+		var hidden_combatant_ids := _build_frames(events)
+		_append_next_actor_cue(hidden_combatant_ids)
 		_assign_camera_focus_ids()
 	if _frames.is_empty():
 		return false
@@ -168,7 +168,7 @@ func _choose_base_view(previous: GameView, final: GameView) -> GameView:
 	return null
 
 
-func _build_frames(events: Array[DomainEvent]) -> void:
+func _build_frames(events: Array[DomainEvent]) -> Array[String]:
 	var positions := _positions_for(base_view)
 	var hidden: Array[String] = []
 	var accelerated_sequence := false
@@ -241,6 +241,7 @@ func _build_frames(events: Array[DomainEvent]) -> void:
 		var automatic_event := automatic_sequence or bool(event.payload.get("automatic", false))
 		if accelerated_sequence or automatic_event:
 			_accelerate_frames(first_frame_index, automatic_event)
+	return hidden
 
 
 func _accelerate_frames(first_frame_index: int, automatic: bool) -> void:
@@ -301,6 +302,7 @@ func _append_spell_cast(event: DomainEvent, positions: Dictionary, hidden: Array
 	if cast.to_coordinate.x < 0:
 		cast.to_coordinate = _position_for(cast.target_id, positions)
 	cast.effect_resource_id = int(event.payload.get("classicEffectResourceId", 0))
+	cast.display_text = "Cast %s" % String(event.payload.get("spellName", event.payload.get("spellId", "spell")))
 	_frames.append(cast)
 
 
@@ -327,6 +329,7 @@ func _append_spell_result(event: DomainEvent, positions: Dictionary, hidden: Arr
 		if effect.to_coordinate.x < 0:
 			effect.to_coordinate = _position_for(effect.target_id, positions)
 		effect.effect_resource_id = int(effect_value)
+		effect.display_text = String(event.payload.get("spellName", event.payload.get("spellId", "Spell effect")))
 		_frames.append(effect)
 
 
@@ -392,7 +395,7 @@ func _append_result(event: DomainEvent, positions: Dictionary, hidden: Array[Str
 			hidden.append(result.target_id)
 
 
-func _append_next_actor_cue() -> void:
+func _append_next_actor_cue(hidden_combatant_ids: Array[String]) -> void:
 	if final_view == null or final_view.combat_view == null or final_view.combat_view.outcome != &"active":
 		return
 	var prior_actor := previous_view.combat_view.active_actor_id if previous_view != null and previous_view.combat_view != null else ""
@@ -401,7 +404,7 @@ func _append_next_actor_cue() -> void:
 	if next_actor == prior_actor and final_view.combat_view.round_number == prior_round:
 		return
 	var positions := _positions_for(final_view)
-	var cue := _new_frame(&"actor_cue", CUE_SECONDS, positions, [])
+	var cue := _new_frame(&"actor_cue", CUE_SECONDS, positions, hidden_combatant_ids)
 	cue.actor_id = next_actor
 	cue.target_id = next_actor
 	cue.display_text = "Round %d" % final_view.combat_view.round_number if final_view.combat_view.round_number != prior_round else ""
@@ -487,6 +490,20 @@ static func _result_kind(payload: Dictionary) -> StringName:
 		return &"healing"
 	if int(payload.get("damage", 0)) > 0:
 		return &"damage"
+	if payload.has("appliedCondition") or payload.has("partyCondition"):
+		return &"condition"
+	if int(payload.get("clearedConditionCount", 0)) > 0 or payload.has("clearedCondition"):
+		return &"condition_cleared"
+	if int(payload.get("spellPointDelta", 0)) != 0:
+		return &"spell_points"
+	if bool(payload.get("allegianceChanged", false)) or payload.has("traitorAfter"):
+		return &"allegiance"
+	if payload.has("transformedDefinitionAfter"):
+		return &"transformed"
+	if not String(payload.get("specialResult", "")).is_empty():
+		return StringName(payload.get("specialResult"))
+	if int(payload.get("duration", 0)) > 0:
+		return &"affected"
 	return &"no_effect"
 
 
@@ -508,4 +525,16 @@ static func _result_text(result_kind: StringName, amount: int) -> String:
 			return "+%d" % amount
 		&"damage":
 			return str(amount)
+		&"condition":
+			return "Condition applied"
+		&"condition_cleared":
+			return "Condition cleared"
+		&"spell_points":
+			return "Spell points changed"
+		&"allegiance":
+			return "Allegiance changed"
+		&"transformed":
+			return "Transformed"
+		&"affected":
+			return "Affected"
 	return "No effect"

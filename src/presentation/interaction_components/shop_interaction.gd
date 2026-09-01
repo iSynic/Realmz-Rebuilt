@@ -9,15 +9,18 @@ const EXCHANGE_ITEM_BUTTON_SCRIPT := preload("res://src/presentation/interaction
 const EXCHANGE_LEDGER_SCRIPT := preload("res://src/presentation/interaction_components/classic_exchange_ledger.gd")
 const ITEM_DETAIL_POPOVER_SCRIPT := preload("res://src/presentation/classic_item_detail_popover.gd")
 const CLASSIC_VISIBLE_ROWS := 9
+const COMPACT_VISIBLE_ROWS := 5
 const WIDE_LEDGER_ROW_HEIGHT := 34.0
 const COMPACT_LEDGER_ROW_HEIGHT := 30.0
 const LEDGER_ROW_SEPARATION := 2.0
-const CLASSIC_CONTROL_STRIP_HEIGHT := 76.0
+const CLASSIC_CONTROL_STRIP_HEIGHT := 68.0
 const CLASSIC_DETAIL_STRIP_HEIGHT := 82.0
 const FILTER_RAIL_WIDTH := 68.0
 const FILTER_BUTTON_SIZE := Vector2(62.0, 58.0)
-const ROUTE_BUTTON_SIZE := Vector2(62.0, 62.0)
-const FOOTER_PORTRAIT_SIZE := Vector2(22.0, 22.0)
+const ROUTE_BUTTON_SIZE := Vector2(54.0, 54.0)
+const COMPACT_ROUTE_BUTTON_SIZE := Vector2(46.0, 46.0)
+const FOOTER_PORTRAIT_SIZE := Vector2(18.0, 18.0)
+const COMPACT_FOOTER_PORTRAIT_SIZE := Vector2(16.0, 16.0)
 const COMPACT_PORTRAIT_SIZE := Vector2(36.0, 36.0)
 const STOCK_FILTERS: Array[Dictionary] = [
 	{"id": &"weapons", "asset": &"inventory.category.weapons", "label": "Weapons", "region": [0, 0, 50, 34]},
@@ -74,7 +77,7 @@ func build(request: InteractionRequest) -> void:
 	_stock = _body.stock.duplicate()
 	if not _characters.is_empty():
 		_selected_character_id = _characters[0].id
-	size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	size_flags_vertical = Control.SIZE_EXPAND_FILL
 	custom_minimum_size = Vector2.ZERO
 	add_theme_constant_override("separation", 6)
 	_detail_popover = ITEM_DETAIL_POPOVER_SCRIPT.new()
@@ -105,7 +108,7 @@ func _build_workspace() -> void:
 	var columns := HBoxContainer.new()
 	columns.name = "ShopColumns"
 	columns.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	columns.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	columns.add_theme_constant_override("separation", 6)
 	add_child(columns)
 	if _compact:
@@ -231,6 +234,7 @@ func _build_footer() -> void:
 	var lower := VBoxContainer.new()
 	lower.name = "ShopLowerWorkspace"
 	lower.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lower.size_flags_vertical = Control.SIZE_SHRINK_END
 	lower.add_theme_constant_override("separation", 4)
 	add_child(lower)
 	var control_panel := PanelContainer.new()
@@ -240,30 +244,38 @@ func _build_footer() -> void:
 	lower.add_child(control_panel)
 	var footer := HBoxContainer.new()
 	footer.name = "ShopControls"
-	footer.alignment = BoxContainer.ALIGNMENT_CENTER
 	footer.add_theme_constant_override("separation", 3)
 	control_panel.add_child(footer)
-	var left_load_group := _footer_group(footer, "ShopLeftLoadPanel", 86.0)
-	_left_load = _compact_fact("ShopLeftLoad")
+	var left_controls := HBoxContainer.new()
+	left_controls.name = "ShopLeftControls"
+	left_controls.alignment = BoxContainer.ALIGNMENT_END
+	left_controls.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	left_controls.size_flags_stretch_ratio = 1.0
+	left_controls.add_theme_constant_override("separation", 3)
+	footer.add_child(left_controls)
+	var left_load_group := _footer_group(left_controls, "ShopLeftLoadPanel", 66.0 if _compact else 86.0)
+	_left_load = _compact_fact("ShopLeftLoad", 62.0 if _compact else 78.0)
 	left_load_group.add_child(_left_load)
-	var shopper_group := _footer_group(footer, "ShopSelectedShopperPanel", 84.0)
+	var shopper_group := _footer_group(left_controls, "ShopSelectedShopperPanel", 64.0 if _compact else 84.0)
 	var shopper := VBoxContainer.new()
 	shopper.name = "ShopSelectedShopper"
-	shopper.custom_minimum_size.x = 76.0
+	shopper.custom_minimum_size.x = 56.0 if _compact else 76.0
+	shopper.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	shopper_group.add_child(shopper)
 	_selected_portrait = TextureRect.new()
 	_selected_portrait.name = "ShopSelectedPortrait"
-	_selected_portrait.custom_minimum_size = Vector2(48.0, 46.0)
+	_selected_portrait.custom_minimum_size = Vector2(40.0, 38.0)
 	_selected_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_selected_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	shopper.add_child(_selected_portrait)
 	_shopper_name = _label("", GOLD)
 	_shopper_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	shopper.add_child(_shopper_name)
-	var transaction_group := _footer_group(footer, "ShopTransactionContainer", 174.0)
+	var transaction_group := _footer_group(left_controls, "ShopTransactionContainer", 150.0 if _compact else 174.0)
 	var transaction := VBoxContainer.new()
 	transaction.name = "ShopTransactionPanel"
-	transaction.custom_minimum_size.x = 166.0
+	transaction.custom_minimum_size.x = 142.0 if _compact else 166.0
+	transaction.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	transaction_group.add_child(transaction)
 	_transaction_facts = _compact_fact("ShopTransactionFacts")
 	transaction.add_child(_transaction_facts)
@@ -273,18 +285,26 @@ func _build_footer() -> void:
 	_buy_button = _action_button("ShopBuy", "Buy", _submit_buy)
 	_sell_button = _action_button("ShopSellSelected", "Sell", _submit_sell)
 	_identify_button = _action_button("ShopIdentify", "Identify", _submit_identify)
-	for button: Button in [_buy_button, _sell_button, _identify_button]: button.custom_minimum_size = Vector2(55.0, 28.0); actions.add_child(button)
+	for button: Button in [_buy_button, _sell_button, _identify_button]: button.custom_minimum_size = Vector2(44.0, 22.0) if _compact else Vector2(52.0, 24.0); button.size_flags_vertical = Control.SIZE_SHRINK_CENTER; actions.add_child(button)
 	footer.add_child(_build_shopper_selector(true))
-	var route_group := _footer_group(footer, "ShopRouteControls", 257.0)
+	var right_controls := HBoxContainer.new()
+	right_controls.name = "ShopRightControls"
+	right_controls.alignment = BoxContainer.ALIGNMENT_BEGIN
+	right_controls.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	right_controls.size_flags_stretch_ratio = 1.0
+	right_controls.add_theme_constant_override("separation", 3)
+	footer.add_child(right_controls)
+	var route_group := _footer_group(right_controls, "ShopRouteControls", 210.0 if _compact else 257.0)
 	var restore := _route_button("ShopKeeperRestore", "Shop Keeper", &"command.shop_original", _restore_shopkeeper, {"asset_path": "res://src/presentation/assets/ui/commands/shop.png"})
 	route_group.add_child(restore)
 	for spec: Array in [["ShopItems", "Items", &"command.inventory", _show_items, [5, 2, 36, 34], [[0, 4, 4, 8]]], ["ShopMoney", "Money", &"command.money", _show_money, [5, 5, 35, 31], [[0, 0, 8, 8]]]]:
 		route_group.add_child(_route_button(spec[0], spec[1], spec[2], spec[3], {"art_region": spec[4], "art_clear_regions": spec[5]}))
 	var done := _action_button("ShopDone", "Done", _submit_leave)
-	done.custom_minimum_size = ROUTE_BUTTON_SIZE
+	done.custom_minimum_size = _route_button_size()
+	done.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	route_group.add_child(done)
-	var right_load_group := _footer_group(footer, "ShopRightLoadPanel", 86.0)
-	_right_load = _compact_fact("ShopRightLoad")
+	var right_load_group := _footer_group(right_controls, "ShopRightLoadPanel", 66.0 if _compact else 86.0)
+	_right_load = _compact_fact("ShopRightLoad", 62.0 if _compact else 78.0)
 	right_load_group.add_child(_right_load)
 	var detail := HBoxContainer.new()
 	detail.name = "ShopDetailStrip"
@@ -308,7 +328,8 @@ func _route_button(node_name: String, caption: String, asset_id: StringName, cal
 	var definition := {"id": StringName(node_name), "asset_id": asset_id, "tooltip": caption, "label": ""}
 	definition.merge(art_options, true)
 	button.configure(definition, 1)
-	button.custom_minimum_size = ROUTE_BUTTON_SIZE
+	button.custom_minimum_size = _route_button_size()
+	button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	button.command_requested.connect(func(_command_id: StringName) -> void: callback.call())
 	return button
 
@@ -554,8 +575,9 @@ func _build_shopper_selector(duplicate_columns: bool = false) -> PanelContainer:
 	panel.name = "ShopperPortraitSelector"
 	panel.theme_type_variation = &"ClassicInset"
 	panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	panel.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	if duplicate_columns:
-		panel.custom_minimum_size.x = 96.0
+		panel.custom_minimum_size.x = 76.0 if _compact else 96.0
 		var pair := HBoxContainer.new()
 		pair.name = "ShopPortraitMatrix"
 		pair.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -590,8 +612,10 @@ func _shopper_portrait(character: InteractionRequestValue.ServiceCharacter, side
 	button.expand_icon = true
 	button.toggle_mode = true
 	button.button_pressed = character.id == (_selected_character_id if side != "Seller" else _right_character_id)
-	button.custom_minimum_size = FOOTER_PORTRAIT_SIZE if side != "Shopper" else COMPACT_PORTRAIT_SIZE
+	button.custom_minimum_size = (COMPACT_FOOTER_PORTRAIT_SIZE if _compact else FOOTER_PORTRAIT_SIZE) if side != "Shopper" else COMPACT_PORTRAIT_SIZE
+	button.add_theme_constant_override("icon_max_width", int(button.custom_minimum_size.x))
 	button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	button.clip_contents = true
 	_apply_portrait_button_styles(button)
 	button.tooltip_text = "%s: %s" % ["Left shopper" if side != "Seller" else "Right shopper", character.name]
@@ -661,7 +685,7 @@ func _refresh_shopper_facts() -> void:
 		_left_load.text = "No shopper"
 		_shopper_name.text = ""
 		_selected_portrait.texture = null
-	_right_load.text = "Shop Keeper\nStock %d" % _stock.size() if right == null else "Load\n%d / %d\nItems %d" % [right.load, right.maximum_load, right.inventory.size()]
+	_right_load.text = ("Shop\nStock %d" if _compact else "Shop Keeper\nStock %d") % _stock.size() if right == null else "Load\n%d / %d\nItems %d" % [right.load, right.maximum_load, right.inventory.size()]
 
 
 func _show_items() -> void:
@@ -769,7 +793,7 @@ func _scroll(scroll_name: String) -> ScrollContainer:
 	scroll.name = scroll_name
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.custom_minimum_size.y = _ledger_scroll_height()
 	return scroll
 
@@ -778,8 +802,13 @@ func _ledger_row_height() -> float:
 	return COMPACT_LEDGER_ROW_HEIGHT if _compact else WIDE_LEDGER_ROW_HEIGHT
 
 
+func _route_button_size() -> Vector2:
+	return COMPACT_ROUTE_BUTTON_SIZE if _compact else ROUTE_BUTTON_SIZE
+
+
 func _ledger_scroll_height() -> float:
-	return CLASSIC_VISIBLE_ROWS * _ledger_row_height() + (CLASSIC_VISIBLE_ROWS - 1) * LEDGER_ROW_SEPARATION
+	var visible_rows := COMPACT_VISIBLE_ROWS if _compact else CLASSIC_VISIBLE_ROWS
+	return visible_rows * _ledger_row_height() + (visible_rows - 1) * LEDGER_ROW_SEPARATION
 
 
 func _label(text: String, color: Color) -> Label:
@@ -791,10 +820,10 @@ func _label(text: String, color: Color) -> Label:
 	return label
 
 
-func _compact_fact(control_name: String) -> Label:
+func _compact_fact(control_name: String, minimum_width: float = 78.0) -> Label:
 	var label := _label("", CYAN)
 	label.name = control_name
-	label.custom_minimum_size.x = 78.0
+	label.custom_minimum_size.x = minimum_width
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	return label

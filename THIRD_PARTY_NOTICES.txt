@@ -32,10 +32,12 @@ SPDX identifier: CC-BY-NC-SA-4.0
 https://creativecommons.org/licenses/by-nc-sa/4.0/
 
 Modifications: Macintosh PICT resources 300, 303, 304, 305, 309, and 310 were
-decoded to exact 640x320 PNG stock landlook atlases. Macintosh snd resources
-were decoded and linearly rendered to 48000 Hz, 16-bit mono WAV files using
-Castle's playback algorithm. Castle's two output channels are byte-identical,
-so Godot duplicates the single stored waveform only during playback.
+decoded to exact 640x320 PNG stock landlook atlases. Macintosh ppat resource
+129 was decoded to an exact 64x64 PNG scrolling-text tile. Macintosh snd
+resources were decoded and linearly rendered to 48000 Hz, 16-bit mono WAV
+files using Castle's playback algorithm. Castle's two output channels are
+byte-identical, so Godot duplicates the single stored waveform only during
+playback.
 
 Per-resource source and output hashes are recorded in
 src/presentation/assets/classic-application-media.json.

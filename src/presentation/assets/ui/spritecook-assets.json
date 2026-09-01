@@ -67,6 +67,44 @@
       }
     }
   ],
+  "project_authored_vector_assets": [
+    {
+      "label": "Native scrollbar up step glyph",
+      "provider": "project-authored-svg",
+      "purpose": "Godot VScrollBar decrement region",
+      "path": "res://src/presentation/assets/ui/scroll-arrow-up.svg",
+      "width": 12,
+      "height": 12,
+      "sha256": "20a3cbfd665d1c62ac4f4443bb8e08bd1611cc8fc6fb4aebc383809c2eadbd3b"
+    },
+    {
+      "label": "Native scrollbar down step glyph",
+      "provider": "project-authored-svg",
+      "purpose": "Godot VScrollBar increment region",
+      "path": "res://src/presentation/assets/ui/scroll-arrow-down.svg",
+      "width": 12,
+      "height": 12,
+      "sha256": "30eaba313a7d5d0bd98356ed7818656b041d33c18c798ffbf6508ae0b033e610"
+    },
+    {
+      "label": "Native scrollbar left step glyph",
+      "provider": "project-authored-svg",
+      "purpose": "Godot HScrollBar decrement region",
+      "path": "res://src/presentation/assets/ui/scroll-arrow-left.svg",
+      "width": 12,
+      "height": 12,
+      "sha256": "79fe8635b6fb89c04a27f638e7cac854a6e4769c008b56865e2717004fd2b7b0"
+    },
+    {
+      "label": "Native scrollbar right step glyph",
+      "provider": "project-authored-svg",
+      "purpose": "Godot HScrollBar increment region",
+      "path": "res://src/presentation/assets/ui/scroll-arrow-right.svg",
+      "width": 12,
+      "height": 12,
+      "sha256": "82489c873c97899ba69a6ab44392acab104e0b4c12c1ce659aa2d47d19ee6cd7"
+    }
+  ],
   "status_assets": [
     {
       "asset_id": "21a091ea-2e71-4008-a8c9-8feae6748acf",

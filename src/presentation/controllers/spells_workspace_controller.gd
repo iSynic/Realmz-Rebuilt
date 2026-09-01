@@ -56,6 +56,8 @@ func present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog, 
 		return
 	_add_character_selector(parent, character)
 	_add_section_tabs(parent)
+	if view.character_spellcasting_blocked:
+		_add_spellcasting_blocked_notice(parent)
 	match _section_id:
 		&"fast":
 			_add_fast_spells(parent, character)
@@ -154,6 +156,19 @@ func _add_section_tabs(parent: VBoxContainer) -> void:
 		button.pressed.connect(_select_section.bind(section_id))
 		row.add_child(button)
 	parent.add_child(row)
+
+
+func _add_spellcasting_blocked_notice(parent: VBoxContainer) -> void:
+	var panel := PanelContainer.new()
+	panel.name = "SpellcastingBlockedNotice"
+	panel.theme_type_variation = &"ClassicInset"
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var label := _label("Spellcasting is disabled in this area.", Color("efc85c"), 14)
+	label.name = "SpellcastingBlockedNoticeText"
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.tooltip_text = "You may inspect spellbooks, Fast Spells, and scrolls, but characters cannot cast while this effect is active."
+	panel.add_child(label)
+	parent.add_child(panel)
 
 
 func _add_known_spells(parent: VBoxContainer, character: CharacterView, fixed_actions: Container) -> void:
@@ -263,6 +278,11 @@ func _build_spell_list(character: CharacterView, selected: SpellView) -> PanelCo
 		button.custom_minimum_size.y = 21.0
 		button.add_theme_font_size_override("font_size", int(round(14.0 * _text_scale)))
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		if _view.character_spellcasting_blocked:
+			# Keep the record browsable while making the unavailable casting state
+			# unmistakable. The action probe remains the authority for Cast.
+			button.modulate = Color(0.58, 0.58, 0.58, 1.0)
+			button.tooltip_text = "%s — spellcasting is disabled in this area." % candidate.name
 		list.add_child(button)
 	return panel
 

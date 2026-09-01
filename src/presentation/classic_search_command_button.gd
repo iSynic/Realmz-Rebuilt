@@ -28,7 +28,7 @@ func _ready() -> void:
 	focus_mode = Control.FOCUS_ALL
 	toggle_mode = true
 	custom_minimum_size = Vector2(62.0, 70.0)
-	_atlas = _remove_classic_matte(ClassicUiAssetCatalog.texture(ATLAS_ASSET_ID))
+	_atlas = remove_classic_matte(ClassicUiAssetCatalog.texture(ATLAS_ASSET_ID))
 	mouse_entered.connect(queue_redraw)
 	mouse_exited.connect(queue_redraw)
 	focus_entered.connect(queue_redraw)
@@ -96,7 +96,7 @@ func _draw() -> void:
 		draw_rect(rect, HOVER_COLOR, false, 1.0)
 
 
-func _remove_classic_matte(texture: Texture2D) -> Texture2D:
+static func remove_classic_matte(texture: Texture2D) -> Texture2D:
 	if texture == null:
 		return null
 	var image := texture.get_image()

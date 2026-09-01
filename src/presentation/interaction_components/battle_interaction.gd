@@ -4,6 +4,13 @@ extends InteractionComponent
 const MAX_VISIBLE_TURNS := 6
 const COMMAND_HEIGHT := 30.0
 const SUMMARY_HEIGHT := 58.0
+const PRESENTATION_COMMAND_HEIGHT := 24.0
+const COMMAND_FONT_SIZE := 14.0
+const COMMAND_GROUP_HEIGHT := 100.0
+const COMMAND_GROUP_SEPARATION := 10.0
+const COMMAND_COLUMN_SEPARATION := 4.0
+const COMMAND_ROW_SEPARATION := 5.0
+const COMMAND_BASE_SIZE_META: StringName = &"battle_command_base_size"
 const PRIMARY_COMMAND_COLOR := Color("f0ce59")
 const VIEW_COMMAND_COLOR := Color("63d8e7")
 const TURN_COMMAND_COLOR := Color("8fe080")
@@ -26,10 +33,28 @@ var _spell_panel: VBoxContainer
 var _combatant_icons: Dictionary = {}
 var _overview: Control
 var _inspected_icon: TextureRect
+var _inspection_panel: VBoxContainer
+var _inspection_title: Label
+var _inspection_content: Label
+var _inspection_section: StringName = &"attacks"
+var _inspection_buttons: Dictionary = {}
+var _command_scale: float = 1.0
+var _command_shelf: HBoxContainer
+var _scaled_command_panels: Array[Control] = []
+var _scaled_command_columns: Array[VBoxContainer] = []
+var _scaled_command_headings: Array[Label] = []
+var _scaled_command_rows: Array[HBoxContainer] = []
+var _scaled_command_buttons: Array[Button] = []
 
 
-func configure(combatant_icons: Dictionary) -> void:
+func configure(combatant_icons: Dictionary, command_scale: float = 1.0) -> void:
 	_combatant_icons = combatant_icons.duplicate()
+	set_command_scale(command_scale)
+
+
+func set_command_scale(command_scale: float) -> void:
+	_command_scale = clampf(command_scale, 1.0, 2.0)
+	_apply_command_scale()
 
 
 func build(request: InteractionRequest) -> void:
@@ -37,6 +62,7 @@ func build(request: InteractionRequest) -> void:
 	if body == null: return
 	var actor_id := body.actor_id
 	_actor_id = actor_id
+	_reset_command_scale_targets()
 	_mode_panels.clear()
 	_targeting_status_label = null
 	_targeting_confirm_button = null
@@ -53,7 +79,10 @@ func build(request: InteractionRequest) -> void:
 	var scroll_panel := VBoxContainer.new()
 	var item_panel := VBoxContainer.new()
 	var bandage_panel := VBoxContainer.new()
-	var mode_panels: Array[Control] = [target_panel, spell_panel, scroll_panel, item_panel, bandage_panel]
+	var inspection_panel := VBoxContainer.new()
+	inspection_panel.name = "BattleCombatantInspection"
+	_inspection_panel = inspection_panel
+	var mode_panels: Array[Control] = [target_panel, spell_panel, scroll_panel, item_panel, bandage_panel, inspection_panel]
 	_mode_panels.assign(mode_panels)
 	_spell_casts = body.spell_casts
 	_fast_spells = body.fast_spells
@@ -73,6 +102,7 @@ func build(request: InteractionRequest) -> void:
 		_add_mode_back_button(panel, overview, mode_panels)
 	_build_attack_panel(body, actor_id, action_ids, targets, target_panel, weapon_mode)
 	_build_spell_panel(body, actor_id, action_ids, spell_panel)
+	_build_combatant_inspection(inspection_panel)
 	if action_ids.has("use_scroll") and not body.scroll_casts.is_empty():
 		var scroll_picker := OptionButton.new()
 		scroll_picker.name = "CombatScrollPicker"
@@ -361,12 +391,26 @@ func _restore_targeting_setup() -> void:
 	_targeting_parent_was_visible = false
 
 
-func inspect_combatant(combatant_id: String) -> void:
+func inspect_combatant(combatant_id: String) -> bool:
 	for index: int in _combatants.size():
 		if _combatants[index].id == combatant_id:
 			_inspected_index = index
 			_refresh_inspected_label()
-			return
+			return true
+	return false
+
+
+func open_combatant_inspection(combatant_id: String) -> bool:
+	if not inspect_combatant(combatant_id) or _inspection_panel == null:
+		return false
+	_cancel_active_targeting()
+	for panel: Control in _mode_panels:
+		panel.visible = panel == _inspection_panel
+	if _overview != null:
+		_overview.visible = false
+	_inspection_section = &"attacks"
+	_refresh_combatant_inspection()
+	return true
 
 
 func _read_combatants(value: Array[InteractionRequestValue.Combatant]) -> void:
@@ -429,7 +473,7 @@ func _add_presentation_button(parent: Container, text: String, action: StringNam
 	button.name = "CombatPresentation%s" % String(action).to_pascal_case()
 	button.text = text
 	button.theme_type_variation = &"BattleCommandButton"
-	button.custom_minimum_size.y = 24.0
+	_register_scaled_command_button(button, Vector2(0.0, PRESENTATION_COMMAND_HEIGHT))
 	button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	if action == &"reveal_friends":
 		_color_command(button, VIEW_COMMAND_COLOR)
@@ -480,6 +524,73 @@ func _refresh_inspected_label() -> void:
 	var defense_line := "\n%s" % " • ".join(defenses) if not defenses.is_empty() else ""
 	_inspected_label.text = "Shown • %s\n%s • %s" % [combatant.name, " • ".join(details), " • ".join(secondary)]
 	_inspected_label.tooltip_text = "Shown • %s\n%s\n%s%s" % [combatant.name, " • ".join(details), " • ".join(secondary), defense_line]
+	_refresh_combatant_inspection()
+
+
+func _build_combatant_inspection(parent: VBoxContainer) -> void:
+	var heading := HBoxContainer.new()
+	heading.name = "BattleInspectionHeading"
+	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	heading.add_theme_constant_override("separation", 4)
+	_inspection_title = Label.new()
+	_inspection_title.name = "BattleInspectionTitle"
+	_inspection_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_inspection_title.add_theme_color_override("font_color", VIEW_COMMAND_COLOR)
+	heading.add_child(_inspection_title)
+	_inspection_buttons.clear()
+	for section: StringName in [&"items", &"conditions", &"attacks"]:
+		var button := Button.new()
+		button.name = "BattleInspection%s" % String(section).to_pascal_case()
+		button.text = String(section).capitalize()
+		button.toggle_mode = true
+		button.theme_type_variation = &"BattleCommandButton"
+		_register_scaled_command_button(button, Vector2(0.0, PRESENTATION_COMMAND_HEIGHT))
+		button.pressed.connect(func() -> void:
+			_inspection_section = section
+			_refresh_combatant_inspection()
+		)
+		heading.add_child(button)
+		_inspection_buttons[section] = button
+	parent.add_child(heading)
+	var frame := _summary_panel("BattleInspectionRecord", 1.0)
+	frame.custom_minimum_size.y = 58.0
+	var scroll := ScrollContainer.new()
+	scroll.name = "BattleInspectionScroll"
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_inspection_content = Label.new()
+	_inspection_content.name = "BattleInspectionContent"
+	_inspection_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_inspection_content.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_inspection_content.add_theme_font_size_override("font_size", 12)
+	scroll.add_child(_inspection_content)
+	frame.add_child(scroll)
+	parent.add_child(frame)
+	_refresh_combatant_inspection()
+
+
+func _refresh_combatant_inspection() -> void:
+	if _inspection_title == null or _inspection_content == null:
+		return
+	if _inspected_index < 0 or _inspected_index >= _combatants.size():
+		_inspection_title.text = "Inspect combatant"
+		_inspection_content.text = "No combatant selected."
+		return
+	var combatant := _combatants[_inspected_index]
+	_inspection_title.text = "%s • %s" % [combatant.name, String(_inspection_section).capitalize()]
+	var rows: Array[String] = []
+	match _inspection_section:
+		&"items": rows.assign(combatant.items)
+		&"conditions": rows.assign(combatant.conditions)
+		_: rows.assign(combatant.attack_rows)
+	if rows.is_empty():
+		rows.append("None")
+	_inspection_content.text = "\n".join(rows)
+	_inspection_content.tooltip_text = _inspection_content.text
+	for section: StringName in _inspection_buttons:
+		(_inspection_buttons[section] as Button).set_pressed_no_signal(section == _inspection_section)
 
 
 func _combatant_icon(combatant_id: String, extent: float) -> TextureRect:
@@ -522,7 +633,8 @@ func _build_command_shelf(body: InteractionRequest.CombatRequestBody, actor_id: 
 	var shelf := HBoxContainer.new()
 	shelf.name = "BattleCommandShelf"
 	shelf.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	shelf.add_theme_constant_override("separation", 10)
+	_command_shelf = shelf
+	shelf.add_theme_constant_override("separation", roundi(COMMAND_GROUP_SEPARATION * _command_scale))
 	shelf_center.add_child(shelf)
 	var inspection := _command_group(shelf, "BattleInspectionCommands", "View", VIEW_COMMAND_COLOR)
 	var inspection_rows := _command_rows(inspection, "BattleInspection")
@@ -583,19 +695,22 @@ func _add_classic_turn_commands(first_row: Container, second_row: Container, bod
 
 func _command_group(parent: Container, group_name: String, heading_text: String, heading_color: Color) -> VBoxContainer:
 	var panel := _summary_panel("%sInset" % group_name, 1.0)
-	panel.custom_minimum_size.y = 100.0
+	panel.custom_minimum_size.y = COMMAND_GROUP_HEIGHT * _command_scale
 	panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_scaled_command_panels.append(panel)
 	parent.add_child(panel)
 	var column := VBoxContainer.new()
 	column.name = group_name
 	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	column.add_theme_constant_override("separation", 4)
+	column.add_theme_constant_override("separation", roundi(COMMAND_COLUMN_SEPARATION * _command_scale))
+	_scaled_command_columns.append(column)
 	var heading := Label.new()
 	heading.text = heading_text.to_upper()
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	heading.add_theme_font_size_override("font_size", 14)
+	heading.add_theme_font_size_override("font_size", roundi(COMMAND_FONT_SIZE * _command_scale))
 	heading.add_theme_color_override("font_color", heading_color)
+	_scaled_command_headings.append(heading)
 	column.add_child(heading)
 	var divider := HSeparator.new()
 	divider.name = "%sDivider" % group_name
@@ -615,7 +730,8 @@ func _command_rows(parent: Container, name_prefix: String) -> Array[HBoxContaine
 		var row := HBoxContainer.new()
 		row.name = "%s%s" % [name_prefix, suffix]
 		row.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		row.add_theme_constant_override("separation", 5)
+		row.add_theme_constant_override("separation", roundi(COMMAND_ROW_SEPARATION * _command_scale))
+		_scaled_command_rows.append(row)
 		center.add_child(row)
 		rows.append(row)
 	return rows
@@ -696,7 +812,7 @@ func _add_fixed_response(parent: Container, command_name: String, label: String,
 func _name_command(button: Button, command_name: String) -> void:
 	button.name = "CombatCommand%s" % command_name
 	button.theme_type_variation = &"BattleCommandButton"
-	button.custom_minimum_size.y = COMMAND_HEIGHT
+	_register_scaled_command_button(button, Vector2(0.0, COMMAND_HEIGHT))
 	button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 
 
@@ -739,7 +855,6 @@ func _add_bandage_panel(parent: Control, actor_id: String, targets: Array[Intera
 func _add_panel_toggle(parent: Container, label: String, panel: Control, panels: Array[Control], overview: Control, enabled: bool, reason: String, presentation_sound_id: int = 0) -> Button:
 	var button := Button.new()
 	button.text = label
-	button.custom_minimum_size.y = COMMAND_HEIGHT
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.disabled = not enabled
 	button.tooltip_text = reason if not enabled else ""
@@ -760,7 +875,7 @@ func _add_mode_back_button(panel: Container, overview: Control, panels: Array[Co
 	back.name = "BattleModeBack"
 	back.text = "Back to battle"
 	back.theme_type_variation = &"BattleCommandButton"
-	back.custom_minimum_size = Vector2(180.0, COMMAND_HEIGHT)
+	_register_scaled_command_button(back, Vector2(180.0, COMMAND_HEIGHT))
 	back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	back.pressed.connect(func() -> void:
 		if _targeting_active:
@@ -773,6 +888,49 @@ func _add_mode_back_button(panel: Container, overview: Control, panels: Array[Co
 	)
 	panel.add_child(back)
 	panel.move_child(back, 0)
+
+
+func _reset_command_scale_targets() -> void:
+	_command_shelf = null
+	_scaled_command_panels.clear()
+	_scaled_command_columns.clear()
+	_scaled_command_headings.clear()
+	_scaled_command_rows.clear()
+	_scaled_command_buttons.clear()
+
+
+func _register_scaled_command_button(button: Button, base_size: Vector2) -> void:
+	button.set_meta(COMMAND_BASE_SIZE_META, base_size)
+	if not _scaled_command_buttons.has(button):
+		_scaled_command_buttons.append(button)
+	_apply_scaled_command_button(button)
+
+
+func _apply_scaled_command_button(button: Button) -> void:
+	if button == null or not is_instance_valid(button) or not button.has_meta(COMMAND_BASE_SIZE_META):
+		return
+	var base_size := button.get_meta(COMMAND_BASE_SIZE_META) as Vector2
+	button.custom_minimum_size = base_size * _command_scale
+	button.add_theme_font_size_override("font_size", roundi(COMMAND_FONT_SIZE * _command_scale))
+
+
+func _apply_command_scale() -> void:
+	if _command_shelf != null and is_instance_valid(_command_shelf):
+		_command_shelf.add_theme_constant_override("separation", roundi(COMMAND_GROUP_SEPARATION * _command_scale))
+	for panel: Control in _scaled_command_panels:
+		if is_instance_valid(panel):
+			panel.custom_minimum_size.y = COMMAND_GROUP_HEIGHT * _command_scale
+	for column: VBoxContainer in _scaled_command_columns:
+		if is_instance_valid(column):
+			column.add_theme_constant_override("separation", roundi(COMMAND_COLUMN_SEPARATION * _command_scale))
+	for heading: Label in _scaled_command_headings:
+		if is_instance_valid(heading):
+			heading.add_theme_font_size_override("font_size", roundi(COMMAND_FONT_SIZE * _command_scale))
+	for row: HBoxContainer in _scaled_command_rows:
+		if is_instance_valid(row):
+			row.add_theme_constant_override("separation", roundi(COMMAND_ROW_SEPARATION * _command_scale))
+	for button: Button in _scaled_command_buttons:
+		_apply_scaled_command_button(button)
 
 
 func _add_hint_to(parent: Container, text: String) -> Label:

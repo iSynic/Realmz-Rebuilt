@@ -2,12 +2,14 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$CastleRepository,
     [string]$PictDecoderPath = "",
+    [string]$ResourceDasmPath = "",
     [switch]$SoundOnly,
     [switch]$CicnOnly,
     [switch]$PictOnly
 )
 
 $ErrorActionPreference = "Stop"
+Add-Type -AssemblyName System.Drawing
 
 if (@($SoundOnly, $CicnOnly, $PictOnly).Where({ [bool]$_ }).Count -gt 1) {
     throw "SoundOnly, CicnOnly, and PictOnly are mutually exclusive"
@@ -332,6 +334,64 @@ try {
                     $record["base_tile"] = $landlookMetadata[1]
                 }
                 $records += $record
+                continue
+            }
+            if ($set.resource_type -eq "ppat") {
+                if ([string]::IsNullOrWhiteSpace($ResourceDasmPath) -or -not (Test-Path -LiteralPath $ResourceDasmPath -PathType Leaf)) {
+                    throw "ResourceDasmPath is required for cataloged Classic ppat assets"
+                }
+                $decodeRoot = Join-Path $stagingRoot "ppat-$($entry.Id)"
+                $rawPath = Join-Path $decodeRoot "ppat-$($entry.Id).bin"
+                New-Item -ItemType Directory -Path $decodeRoot -Force | Out-Null
+                [IO.File]::WriteAllBytes($rawPath, $entry.Bytes)
+                & $ResourceDasmPath "--decode-single-resource=ppat:$($entry.Id)" $rawPath
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Classic ppat export failed for resource $($entry.Id)"
+                }
+                $decodedBitmapPath = "$rawPath`_ppat_$($entry.Id).bmp"
+                if (-not (Test-Path -LiteralPath $decodedBitmapPath -PathType Leaf)) {
+                    throw "Classic ppat export did not produce its primary bitmap for resource $($entry.Id)"
+                }
+                $relativePath = "$($set.target_directory)/ppat-$($entry.Id).png"
+                $targetPath = Join-Path $outputRoot ($relativePath -replace "/", [IO.Path]::DirectorySeparatorChar)
+                New-Item -ItemType Directory -Path (Split-Path -Parent $targetPath) -Force | Out-Null
+                $bitmap = [Drawing.Bitmap]::new($decodedBitmapPath)
+                try {
+                    $width = $bitmap.Width
+                    $height = $bitmap.Height
+                    $bitmap.Save($targetPath, [Drawing.Imaging.ImageFormat]::Png)
+                }
+                finally {
+                    $bitmap.Dispose()
+                }
+                if ($entry.Id -ne 129 -or $width -ne 64 -or $height -ne 64) {
+                    throw "Decoded Classic ppat $($entry.Id) is ${width}x${height}; expected ppat 129 at 64x64"
+                }
+                $pngBytes = [IO.File]::ReadAllBytes($targetPath)
+                $records += [ordered]@{
+                    id = "realmz-application-ppat-$($entry.Id)"
+                    label = "Classic scrolling text background"
+                    kind = "pattern"
+                    mime_type = "image/png"
+                    resource_type = $set.resource_type
+                    resource_id = $entry.Id
+                    path = "res://src/presentation/assets/classic-media/$relativePath"
+                    bytes = $pngBytes.Length
+                    sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $targetPath).Hash.ToLowerInvariant()
+                    width = $width
+                    height = $height
+                    source_repository = $catalog.source_repository
+                    source_commit = $catalog.source_commit
+                    source_path = $set.source_path
+                    source_file_sha256 = $set.source_file_sha256
+                    source_resource_sha256 = (Get-FileHash -InputStream ([IO.MemoryStream]::new($entry.Bytes)) -Algorithm SHA256).Hash.ToLowerInvariant()
+                    classification = $set.classification
+                    classic_evidence = [ordered]@{
+                        status = "source-control-flow"
+                        path = $set.evidence_path
+                        note = $set.evidence_note
+                    }
+                }
                 continue
             }
             if ($set.resource_type -eq "snd ") {

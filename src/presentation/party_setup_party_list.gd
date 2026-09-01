@@ -24,10 +24,16 @@ func _notification(what: int) -> void:
 
 
 func _can_drop_data(_position: Vector2, data: Variant) -> bool:
-	return accepts_imports and data is Dictionary and data.get("kind") == "party-setup-character" and data.get("characterId") is String and data.get("revisionHash") is String
+	return accepts_drop_payload(data)
 
 
 func _drop_data(_position: Vector2, data: Variant) -> void:
-	if not _can_drop_data(_position, data):
-		return
-	import_requested.emit(String(data["characterId"]), String(data["revisionHash"]))
+	submit_drop_payload(data)
+
+
+func accepts_drop_payload(data: Variant) -> bool:
+	return accepts_imports and data is Dictionary and data.get("kind") == "party-setup-character" and data.get("characterId") is String and data.get("revisionHash") is String
+
+
+func submit_drop_payload(data: Variant) -> void:
+	if accepts_drop_payload(data): import_requested.emit(String(data["characterId"]), String(data["revisionHash"]))

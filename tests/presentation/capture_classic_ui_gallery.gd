@@ -107,7 +107,12 @@ func _capture_gallery() -> void:
 	await _settle()
 	await _resize(Vector2i(1280, 720))
 	_router.open_screen(&"exploration"); await _settle(); await _capture("canonical-explore-1280x720")
-	var explore_view := _application.session_controller.view() as GameView; explore_view.party_summary.camping = true; _shell.present(GameView.new(0, false, null)); _shell.present(explore_view); await _settle(); await _capture("canonical-camp-mode-1280x720"); await _resize(Vector2i(800, 600)); await _capture("classic-camp-mode-800x600"); await _resize(Vector2i(1280, 720))
+	var explore_view := _application.session_controller.view() as GameView
+	explore_view.party_summary.condition_values[ConditionRules.PARTY_SEARCHING] = -1
+	_shell.present(explore_view); await _settle(); await _capture("canonical-search-effect-1280x720")
+	await _resize(Vector2i(800, 600)); await _capture("compact-search-effect-800x600"); await _resize(Vector2i(1280, 720))
+	explore_view.party_summary.condition_values[ConditionRules.PARTY_SEARCHING] = 0
+	explore_view.party_summary.camping = true; _shell.present(GameView.new(0, false, null)); _shell.present(explore_view); await _settle(); await _capture("canonical-camp-mode-1280x720"); await _resize(Vector2i(800, 600)); await _capture("classic-camp-mode-800x600"); await _resize(Vector2i(1280, 720))
 	explore_view.party_summary.camping = false; _shell.present(GameView.new(0, false, null)); _shell.present(explore_view); await _settle()
 	_interaction.present(InteractionRequest.acknowledge("gallery-edge-to-edge", "The party follows the old road toward Northgate."))
 	await _settle()
@@ -118,6 +123,14 @@ func _capture_gallery() -> void:
 	_interaction.present(null)
 	var gallery_view: Variant = _application.session_controller.view()
 	var gallery_media := _application.presentation_coordinator.get("_media") as ClassicMediaCatalog
+	var scrolling_gallery_text := "<<< Click & Drag Mouse To Move About >>>\n<<< Double Click To End This Message >>>\n\nYou can edit this text via a Resource editor.\n\nInside the scenario is an authored TEXT resource. Opcode 62 displays that exact text as a scrolling message instead of a normal map.\n\nThis passage continues so the stage visibly advances over Castle's tiled background. ".repeat(5)
+	_interaction.present(InteractionRequest.from_payload("gallery-scrolling-text", InteractionRequest.ACKNOWLEDGE, {"prompt": scrolling_gallery_text, "messageId": 1, "presentation": "classic-scrolling-text"}), "", gallery_view, gallery_media)
+	await _settle()
+	await _capture("canonical-scrolling-text-1280x720")
+	await _resize(Vector2i(800, 600))
+	await _capture("classic-scrolling-text-800x600")
+	await _resize(Vector2i(1280, 720))
+	_interaction.present(null)
 	if not gallery_view.party_members.is_empty():
 		var active_content: Variant = _application.get("_active_content")
 		var definition: Variant = active_content.item_by_id("classic.item.901")

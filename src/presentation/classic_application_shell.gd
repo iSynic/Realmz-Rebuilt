@@ -46,7 +46,11 @@ signal combat_spellbook_back_requested
 const MUTED := Color("9aa4a5")
 const ERROR := Color("ef7770")
 const TEXT := Color("d8d9d2")
-const HELD_COMMAND_INTERVAL := 0.22
+const SCROLL_ARROW_STEP := 32.0
+const SCROLL_ARROW_INITIAL_DELAY := 0.34
+const SCROLL_ARROW_REPEAT_INTERVAL := 0.065
+const HELD_COMMAND_INTERVAL := 1.0 / 60.0
+const PARTY_EFFECT_FRAME_COUNT := ClassicPartyEffects.FRAME_COUNT
 const HELD_COMMAND_START_SOUND_IDS: Dictionary = {
 	&"area_search": 6001,
 	&"rest": 6001,
@@ -82,12 +86,13 @@ const JOURNAL_STATUS_TEXTURE_PATH := "res://src/presentation/assets/ui/status/jo
 @onready var _world_command_panel: PanelContainer = %WorldCommandPanel
 @onready var _world_command_column: VBoxContainer = $BottomRegion/BottomRow/WorldCommandPanel/WorldCommandColumn
 @onready var _world_command_grid: GridContainer = %WorldCommandGrid
-@onready var _world_command_heading: Label = %WorldCommandHeading
 @onready var _narrative_well: PanelContainer = %NarrativeWell
 @onready var _command_panel: PanelContainer = %CommandPanel
-@onready var _command_column: VBoxContainer = $BottomRegion/BottomRow/CommandPanel/CommandColumn
+@onready var _party_effects_row: BoxContainer = %PartyEffectsRow
+@onready var _party_command_column: VBoxContainer = %PartyCommandColumn
 @onready var _command_grid: GridContainer = %CommandGrid
-@onready var _command_heading: Label = $BottomRegion/BottomRow/CommandPanel/CommandColumn/CommandHeading
+@onready var _effects_panel: PanelContainer = %EffectsPanel
+@onready var _effects_grid: GridContainer = %EffectsGrid
 @onready var _router: ClassicScreenRouter = %ScreenRouter
 @onready var _smoke_action: Button = %SmokeAction
 @onready var _activity_indicator: PanelContainer = %ActivityIndicator
@@ -105,11 +110,16 @@ var _menu_actions: Dictionary = {}
 var _menus_connected: Dictionary = {}
 var _held_command: StringName = &""
 var _held_command_timer: Timer
+var _effect_frame_timer: Timer
+var _effect_frame_index: int = 0
+var _effect_slots: Array[TextureRect] = []
+var _effect_texture_cache: Dictionary = {}
 var _music_dialog: MusicPlaylistDialog
 var _music_playlist_id: int = 0
 var _music_title: String = ""
 var _music_playing: bool = false
 var _activity_tween: Tween
+var _field_time_playback: RefCounted = preload("res://src/presentation/classic_field_time_playback.gd").new()
 var _save_status_texture: Texture2D = load(SAVE_STATUS_TEXTURE_PATH) as Texture2D
 var _journal_status_texture: Texture2D = load(JOURNAL_STATUS_TEXTURE_PATH) as Texture2D
 
@@ -118,10 +128,18 @@ func _ready() -> void:
 	# The shell is structural; only its concrete controls should participate in
 	# GUI hit testing. A full-window PASS control masks earlier root siblings.
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	get_tree().node_added.connect(_on_tree_node_added)
+	ClassicScrollArrowController.configure_descendants(self, SCROLL_ARROW_STEP, SCROLL_ARROW_INITIAL_DELAY, SCROLL_ARROW_REPEAT_INTERVAL)
 	_held_command_timer = Timer.new()
 	_held_command_timer.wait_time = HELD_COMMAND_INTERVAL
 	_held_command_timer.timeout.connect(_on_held_command_timeout)
 	add_child(_held_command_timer)
+	_effect_slots = ClassicPartyEffects.build_slots(_effects_grid)
+	_effect_frame_timer = Timer.new()
+	_effect_frame_timer.wait_time = 0.12
+	_effect_frame_timer.autostart = true
+	_effect_frame_timer.timeout.connect(_advance_effect_frame)
+	add_child(_effect_frame_timer)
 	_music_dialog = MUSIC_PLAYLIST_DIALOG_SCRIPT.new()
 	add_child(_music_dialog)
 	_music_dialog.music_enabled_changed.connect(func(enabled: bool) -> void: music_enabled_changed.emit(enabled))
@@ -152,14 +170,28 @@ func _ready() -> void:
 	_apply_layout()
 
 
+func _on_tree_node_added(node: Node) -> void:
+	if node is ScrollContainer:
+		ClassicScrollArrowController.bind(node as ScrollContainer, SCROLL_ARROW_STEP, SCROLL_ARROW_INITIAL_DELAY, SCROLL_ARROW_REPEAT_INTERVAL)
+
+
+static func configure_scroll_container(scroll: ScrollContainer) -> void:
+	ClassicScrollArrowController.configure(scroll, SCROLL_ARROW_STEP)
+
+
+static func scrollbar_arrow_direction(bar: ScrollBar, position: Vector2, vertical: bool) -> int:
+	return ClassicScrollArrowController.arrow_direction(bar, position, vertical)
+
+
 func present(game_view: GameView) -> void:
 	var previous_view := _current_view
 	var previous_campaign_id := _current_view.campaign_id if _current_view != null and _current_view.session_started else ""
 	var contextual_service_closed := _current_view != null and _current_view.pending_interaction != null and _current_view.pending_interaction.kind in [InteractionRequest.SHOP, InteractionRequest.TEMPLE, InteractionRequest.BANK] and game_view != null and game_view.pending_interaction == null
 	var ordinary_exploration_update: bool = previous_view != null and game_view != null and game_view.domain_revisions.is_ordinary_exploration_update_from(previous_view.domain_revisions)
+	var ordinary_party_update: bool = ordinary_exploration_update and game_view.domain_revisions.party != previous_view.domain_revisions.party
 	_current_view = game_view
 	if ordinary_exploration_update:
-		_present_ordinary_exploration_shell(game_view)
+		_present_ordinary_exploration_shell(game_view, ordinary_party_update)
 		return
 	if not _held_command.is_empty() and (game_view == null or game_view.pending_interaction != null or not game_view.availability(_held_command).enabled):
 		_stop_held_command()
@@ -173,6 +205,8 @@ func present(game_view: GameView) -> void:
 		_fatigue_bar.value = 4.0
 		_fatigue_bar.tooltip_text = "No active party fatigue."
 		_light_label.text = "Light —"
+		_effects_panel.visible = false
+		_refresh_effect_slots()
 		_party_roster.present(game_view)
 		_router.present(game_view)
 		_set_play_regions_visible(false)
@@ -188,6 +222,7 @@ func present(game_view: GameView) -> void:
 	_fatigue_bar.value = game_view.party_fatigue
 	_fatigue_bar.tooltip_text = "Fatigue %d / 135" % game_view.party_fatigue
 	_light_label.text = "Light %d" % game_view.party_summary.light_remaining if game_view.party_summary != null else "Light —"
+	_refresh_effect_slots()
 	_apply_exploration_mode()
 	_package_status.text = game_view.campaign_summary.title if game_view.campaign_summary != null else game_view.campaign_id
 	if not game_view.party_members.any(func(character: CharacterView) -> bool: return character.id == _selected_character_id):
@@ -207,13 +242,19 @@ func present(game_view: GameView) -> void:
 	_rebuild_command_deck()
 
 
-func _present_ordinary_exploration_shell(game_view: GameView) -> void:
+func _present_ordinary_exploration_shell(game_view: GameView, party_update: bool = false) -> void:
 	_clock_label.text = "Day %d • %02d:%02d" % [game_view.realmz_day, game_view.realmz_hour, game_view.realmz_minute]
 	_coordinates_label.text = location_fact_text(game_view)
 	_fatigue_label.text = "Fatigue %d" % game_view.party_fatigue
 	_fatigue_bar.value = game_view.party_fatigue
 	_fatigue_bar.tooltip_text = "Fatigue %d / 135" % game_view.party_fatigue
 	_light_label.text = "Light %d" % game_view.party_summary.light_remaining if game_view.party_summary != null else "Light —"
+	_refresh_effect_slots()
+	if party_update:
+		var affected_character_ids: Array[String] = game_view.change_set.affected_character_ids()
+		if not affected_character_ids.is_empty():
+			_party_roster.present_ordinary_exploration(game_view, _selected_character_id, affected_character_ids)
+		_update_command_availability()
 
 
 static func location_fact_text(game_view: GameView) -> String:
@@ -267,7 +308,7 @@ func present_step(step: SessionStep) -> void:
 		set_status("Action failed • %s" % step.error_message, true)
 		_append_narrative("Action failed: %s" % step.error_message)
 		return
-	_picture_stage.visible = false
+	_picture_stage.visible = false; _field_time_playback.present(self, _clock_label, step.events)
 	for event: DomainEvent in step.events:
 		_present_event(event)
 
@@ -317,8 +358,10 @@ func set_package_media(media: ClassicMediaCatalog) -> void:
 	if _media == media:
 		return
 	_media = media
+	_effect_texture_cache.clear()
 	_party_roster.set_media_catalog(media)
 	_router.set_media_catalog(media)
+	_refresh_effect_slots()
 
 
 func present_media_events(events: Array[DomainEvent], media: ClassicMediaCatalog) -> void:
@@ -526,12 +569,12 @@ func _apply_layout() -> void:
 	var command_width := minf(_profile.command_width, viewport_size.x * 0.26)
 	_world_command_panel.visible = _profile.id != UiLayoutProfile.COMPACT
 	_apply_exploration_mode()
-	_command_heading.text = "Party" if _world_command_panel.visible else "Commands"
 	var side_command_width := maxf(300.0 * _profile.ui_scale, command_width)
 	_world_command_panel.custom_minimum_size.x = side_command_width if _world_command_panel.visible else 0.0
 	_world_command_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL if _world_command_panel.visible else Control.SIZE_SHRINK_BEGIN
 	_world_command_panel.size_flags_stretch_ratio = 1.0
 	_command_panel.visible = _router.current_screen() != &"spells"
+	_effects_panel.visible = _command_panel.visible and _current_view != null and _current_view.session_started
 	_command_panel.custom_minimum_size.x = side_command_width if _world_command_panel.visible else command_width
 	_command_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL if _world_command_panel.visible else Control.SIZE_SHRINK_END
 	_command_panel.size_flags_stretch_ratio = 1.0
@@ -540,13 +583,20 @@ func _apply_layout() -> void:
 	_narrative_well.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_narrative_well.size_flags_stretch_ratio = 1.45 if _world_command_panel.visible else 1.0
 	_world_command_column.alignment = BoxContainer.ALIGNMENT_CENTER
-	_command_column.alignment = BoxContainer.ALIGNMENT_CENTER
+	_party_effects_row.vertical = not _world_command_panel.visible
+	_party_effects_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	_party_command_column.alignment = BoxContainer.ALIGNMENT_CENTER
 	_world_command_grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_world_command_grid.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_command_grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_command_grid.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_world_command_grid.columns = 4
-	_command_grid.columns = 4 if _world_command_panel.visible else maxi(2, floori(command_width / (108.0 if _profile.bitmap_scale == 2 else 58.0)))
+	_command_grid.columns = 2 if _world_command_panel.visible else maxi(2, floori(command_width / (108.0 if _profile.bitmap_scale == 2 else 58.0)))
+	var effect_icon_size := party_effect_icon_size(_profile.bitmap_scale)
+	var effect_slot_size := party_effect_slot_size(_profile.bitmap_scale)
+	for icon: TextureRect in _effect_slots:
+		icon.custom_minimum_size = Vector2(effect_icon_size, effect_icon_size)
+		(icon.get_parent().get_parent() as Control).custom_minimum_size = Vector2(effect_slot_size, effect_slot_size)
 	# Orientation and child minima must settle before shrinking the outer panel;
 	# otherwise Control retains the previous wider profile's minimum-clamped size.
 	_bottom_region.position = origin + Vector2(0.0, viewport_size.y - _profile.bottom_height)
@@ -558,6 +608,38 @@ func _apply_layout() -> void:
 	_build_menus()
 	_rebuild_command_deck()
 	layout_changed.emit(Rect2(stage_rect.position, Vector2(combat_spellbook_stage_width(stage_rect.size.x, viewport_size.x, roster_width), stage_rect.size.y)), _profile)
+
+
+static func party_effect_icon_size(bitmap_scale: int) -> float:
+	return ClassicPartyEffects.icon_size(bitmap_scale)
+
+
+static func party_effect_slot_size(bitmap_scale: int) -> float:
+	return ClassicPartyEffects.slot_size(bitmap_scale)
+
+
+func _advance_effect_frame() -> void:
+	_effect_frame_index = (_effect_frame_index + 1) % PARTY_EFFECT_FRAME_COUNT
+	_refresh_effect_slots()
+
+
+func _refresh_effect_slots() -> void:
+	var values: Array[int] = []
+	if _current_view != null and _current_view.party_summary != null:
+		values = _current_view.party_summary.condition_values
+	for slot_index: int in _effect_slots.size():
+		var active := values.size() > slot_index + 1 and values[slot_index + 1] != 0
+		var texture := _party_effect_texture(slot_index + 1, _effect_frame_index) if active else null
+		_effect_slots[slot_index].texture = texture
+		_effect_slots[slot_index].modulate = Color.WHITE if active else Color(0.35, 0.35, 0.35, 0.35)
+
+
+func _party_effect_texture(condition_index: int, frame_index: int) -> Texture2D:
+	return ClassicPartyEffects.texture(_media, _effect_texture_cache, condition_index, frame_index)
+
+
+static func party_effect_resource_id(condition_index: int, frame_index: int) -> int:
+	return ClassicPartyEffects.resource_id(condition_index, frame_index)
 
 
 static func party_roster_height(viewport_height: float, menu_height: float, stage_height: float, combat_spellbook_active: bool) -> float:
@@ -583,8 +665,6 @@ static func exploration_footer_width(viewport_size: Vector2, profile: UiLayoutPr
 func _apply_exploration_mode() -> void:
 	if not is_node_ready():
 		return
-	var camping := _current_view != null and _current_view.party_summary != null and _current_view.party_summary.camping
-	_world_command_heading.text = "Camp" if camping else "Adventure"
 	_world_command_panel.theme_type_variation = &"ClassicSharedStone"
 	_command_panel.theme_type_variation = &"ClassicSharedStone"
 
@@ -919,6 +999,7 @@ func _on_held_command_timeout() -> void:
 	if _current_view == null or _current_view.pending_interaction != null or not _current_view.availability(_held_command).enabled:
 		_stop_held_command()
 		return
+	if _field_time_playback.is_active(): return
 	_activate_command(_held_command, true)
 
 

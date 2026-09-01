@@ -58,10 +58,16 @@ foreach ($asset in $manifest.assets) {
 $soundCount = @($manifest.assets | Where-Object { $_.resource_type -eq "snd " }).Count
 $combatIconCount = @($manifest.assets | Where-Object { $_.path -like "*/combat-icons/*" }).Count
 $itemIconCount = @($manifest.assets | Where-Object { $_.path -like "*/item-icons/*" }).Count
+$effectIconCount = @($manifest.assets | Where-Object { $_.path -like "*/effect-icons/*" }).Count
 $landTilesetCount = @($manifest.assets | Where-Object { $_.kind -eq "tileset" }).Count
 $darknessMaskCount = @($manifest.assets | Where-Object { $_.id -like "classic-darkness-mask-*" }).Count
-if ($soundCount -ne 142 -or $combatIconCount -ne 145 -or $itemIconCount -ne 271 -or $landTilesetCount -ne 6 -or $darknessMaskCount -ne 7) {
-	throw "Expected 142 built-in sounds, 145 source-backed combat icons, 271 shared or stock-supply item icons, 6 stock land tilesets, and 7 darkness masks; found $soundCount sounds, $combatIconCount combat icons, $itemIconCount item icons, $landTilesetCount land tilesets, and $darknessMaskCount darkness masks"
+if ($soundCount -ne 142 -or $combatIconCount -ne 145 -or $itemIconCount -ne 271 -or $effectIconCount -ne 64 -or $landTilesetCount -ne 6 -or $darknessMaskCount -ne 7) {
+	throw "Expected 142 built-in sounds, 145 source-backed combat icons, 271 shared or stock-supply item icons, 64 animated effect icons, 6 stock land tilesets, and 7 darkness masks; found $soundCount sounds, $combatIconCount combat icons, $itemIconCount item icons, $effectIconCount effect icons, $landTilesetCount land tilesets, and $darknessMaskCount darkness masks"
+}
+foreach ($effectResourceId in 14000..14063) {
+    if (-not $keys.ContainsKey("cicn:$effectResourceId")) {
+        throw "Required application-owned party effect icon is missing: cicn:$effectResourceId"
+    }
 }
 foreach ($landlook in @(0, 3, 4, 5, 9, 10)) {
     $tileset = @($manifest.assets | Where-Object { $_.id -eq "landlook-$landlook" })
@@ -74,6 +80,10 @@ foreach ($darknessLevel in 0..6) {
 	if ($mask.Count -ne 1 -or $mask[0].resource_type -ne "PICT" -or $mask[0].resource_id -ne (350 + $darknessLevel) -or $mask[0].width -ne 320 -or $mask[0].height -ne 320) {
         throw "Stock application darkness mask contract is invalid: $darknessLevel"
     }
+}
+$scrollingPattern = @($manifest.assets | Where-Object { $_.resource_type -eq "ppat" -and $_.resource_id -eq 129 })
+if ($scrollingPattern.Count -ne 1 -or $scrollingPattern[0].id -ne "realmz-application-ppat-129" -or $scrollingPattern[0].kind -ne "pattern" -or $scrollingPattern[0].width -ne 64 -or $scrollingPattern[0].height -ne 64) {
+    throw "Classic scrolling-text ppat 129 contract is invalid"
 }
 foreach ($requiredSupplyIcon in @(142, 601, 602, 603, 604, 605, 607, 608, 2011, 2013, 6195)) {
     if (-not $keys.ContainsKey("cicn:$requiredSupplyIcon")) {

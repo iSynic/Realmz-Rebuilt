@@ -1,4 +1,4 @@
-[gd_resource type="Theme" load_steps=39 format=3]
+[gd_resource type="Theme" load_steps=43 format=3]
 
 [ext_resource type="Texture2D" path="res://src/presentation/assets/ui/classic-raised-frame.png" id="1_raised"]
 [ext_resource type="Texture2D" path="res://src/presentation/assets/ui/classic-inset-frame.png" id="2_inset"]
@@ -6,6 +6,10 @@
 [ext_resource type="FontFile" path="res://src/presentation/assets/fonts/AlegreyaSans-Bold.ttf" id="4_ui_bold"]
 [ext_resource type="FontFile" path="res://src/presentation/assets/fonts/Alegreya-Variable.ttf" id="5_narrative"]
 [ext_resource type="FontFile" path="res://src/presentation/assets/fonts/BlackChancery-Realmz.ttf" id="6_button"]
+[ext_resource type="Texture2D" path="res://src/presentation/assets/ui/scroll-arrow-up.svg" id="7_scroll_up"]
+[ext_resource type="Texture2D" path="res://src/presentation/assets/ui/scroll-arrow-down.svg" id="8_scroll_down"]
+[ext_resource type="Texture2D" path="res://src/presentation/assets/ui/scroll-arrow-left.svg" id="9_scroll_left"]
+[ext_resource type="Texture2D" path="res://src/presentation/assets/ui/scroll-arrow-right.svg" id="10_scroll_right"]
 
 [sub_resource type="StyleBoxTexture" id="RaisedPanel"]
 texture = ExtResource("1_raised")
@@ -406,6 +410,18 @@ PopupMenu/styles/hover = SubResource("Selection")
 RichTextLabel/colors/default_color = Color(0.93, 0.92, 0.84, 1)
 RichTextLabel/fonts/normal_font = ExtResource("5_narrative")
 ScrollContainer/styles/panel = SubResource("Empty")
+VScrollBar/icons/decrement = ExtResource("7_scroll_up")
+VScrollBar/icons/decrement_highlight = ExtResource("7_scroll_up")
+VScrollBar/icons/decrement_pressed = ExtResource("7_scroll_up")
+VScrollBar/icons/increment = ExtResource("8_scroll_down")
+VScrollBar/icons/increment_highlight = ExtResource("8_scroll_down")
+VScrollBar/icons/increment_pressed = ExtResource("8_scroll_down")
+HScrollBar/icons/decrement = ExtResource("9_scroll_left")
+HScrollBar/icons/decrement_highlight = ExtResource("9_scroll_left")
+HScrollBar/icons/decrement_pressed = ExtResource("9_scroll_left")
+HScrollBar/icons/increment = ExtResource("10_scroll_right")
+HScrollBar/icons/increment_highlight = ExtResource("10_scroll_right")
+HScrollBar/icons/increment_pressed = ExtResource("10_scroll_right")
 ItemList/colors/font_color = Color(0.91, 0.91, 0.87, 1)
 ItemList/colors/font_selected_color = Color(1, 0.94, 0.58, 1)
 ItemList/fonts/font = ExtResource("3_ui")

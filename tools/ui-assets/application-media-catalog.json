@@ -5,7 +5,7 @@
   "copyright": "Realmz copyright 1994 by Tim Phillips",
   "license": "CC-BY-NC-SA-4.0",
   "license_url": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
-  "modification": "Classic land PICT, item cicn, and selected combat cicn resources decoded from their Macintosh resource-fork representation into PNG files; snd resources rendered into 48 kHz 16-bit mono WAV files with Castle's linear interpolation for Godot presentation, with Godot duplicating the identical Castle channels during playback.",
+  "modification": "Classic land PICT, ppat, item cicn, and selected combat cicn resources decoded from their Macintosh resource-fork representation into PNG files; snd resources rendered into 48 kHz 16-bit mono WAV files with Castle's linear interpolation for Godot presentation, with Godot duplicating the identical Castle channels during playback.",
   "resource_sets": [
     {
       "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
@@ -26,6 +26,16 @@
       "classification": "classic-application-resource",
       "evidence_path": "src/realmz_orig/showdamage-loaddark-cansee.c:67-84; src/realmz_orig/centerpict.c:242-302",
       "evidence_note": "Castle loads one exact application-owned PICT 350-356 for the active light level, clears the playfield to black, and copies the rendered map through that 320-pixel mask centered on the party."
+    },
+    {
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
+      "source_file_sha256": "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c",
+      "resource_type": "ppat",
+      "resource_ids": [129],
+      "target_directory": "patterns",
+      "classification": "classic-application-resource",
+      "evidence_path": "src/realmz_orig/newland.c:3612; src/realmz_orig/movie.c:24-58",
+      "evidence_note": "Castle opcode 62 opens the scrolling-text movie with application ppat 129, tiles that exact pattern across the stage, and draws the authored TEXT resource above it. A scenario resource with the same exact key remains an override."
     },
     {
       "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
@@ -59,6 +69,19 @@
       "classification": "classic-application-resource",
       "evidence_path": "src/realmz_orig/combatinfo-combatchoice.c:76-122; src/realmz_orig/showdamage.c:1-149; src/realmz_orig/cast.c:30-37; src/realmz_orig/spelleffect.c:1-42; src/realmz_orig/showresults.c:5-544",
       "evidence_note": "Castle resolves active-actor cues, result icons, death effects, and spell cast/resolution frames from the application resource chain. Scenario resources with the same exact cicn key remain later overrides. CICNs 159-167 retain neutral result-effect labels until runtime observation establishes stronger visual semantics."
+    },
+    {
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
+      "source_file_sha256": "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c",
+      "resource_type": "cicn",
+      "resource_ids": [],
+      "resource_ranges": [
+        {"start": 14000, "end": 14063}
+      ],
+      "target_directory": "effect-icons",
+      "classification": "classic-application-resource",
+      "evidence_path": "src/realmz_orig/tickcheck.c-updatetorch.c:24-35; src/realmz_orig/structs.h:390-399",
+      "evidence_note": "Castle draws eight party-condition slots in a fixed four-by-two Effects bank and advances each active condition through its exact eight-frame application CICN sequence using condition * 8 + 13992 + frame."
     },
     {
       "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
