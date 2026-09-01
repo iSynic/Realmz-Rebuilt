@@ -161,6 +161,7 @@ func _construct_races(value: Variant) -> Variant:
 	var result: Array[RaceDefinition] = []
 	var ids: Dictionary = {}
 	var classic_ids: Dictionary = {}
+	var has_functional_rules: bool = false
 	for value_record: Variant in value:
 		if not value_record is Dictionary:
 			_reject("Race definition is not an object.")
@@ -206,7 +207,11 @@ func _construct_races(value: Variant) -> Variant:
 				_reject("Race eligibility IDs must be non-empty strings.")
 				return null
 			eligible_castes.append(caste_id)
+		has_functional_rules = has_functional_rules or integers["maximumAge"] != 0 or integers["baseMovement"] != 0 or integers["baseAttacks"] != 0 or integers["maximumAttacks"] != 0 or not eligible_castes.is_empty() or limits_value.any(func(number: int) -> bool: return number != 0)
 		result.append(RaceDefinition.new(record["id"], integers["classicId"], record["name"], hit_value, save_value, bonus_value, limits_value, conditions_value, ages, age_changes, integers["maximumAge"], record["doesNotDie"], integers["baseMovement"], integers["magicResistance"], integers["twoHandBonus"], integers["missileBonus"], integers["baseAttacks"], integers["maximumAttacks"], record["canRegenerate"], integers["defaultIconSet"], masks[0], masks[1], integers["descriptorFlags"], record["description"], eligible_castes, abilities_value))
+	if not has_functional_rules:
+		_reject("Content races cannot be a semantically empty 30-record table.")
+		return null
 	return result
 
 func _construct_castes(value: Variant) -> Variant:
@@ -221,6 +226,7 @@ func _construct_castes(value: Variant) -> Variant:
 	var result: Array[CasteDefinition] = []
 	var ids: Dictionary = {}
 	var classic_ids: Dictionary = {}
+	var has_functional_rules: bool = false
 	for value_record: Variant in value:
 		if not value_record is Dictionary:
 			_reject("Caste definition is not an object.")
@@ -274,7 +280,11 @@ func _construct_castes(value: Variant) -> Variant:
 				_reject("Caste eligibility IDs must be non-empty strings.")
 				return null
 			eligible_races.append(race_id)
+		has_functional_rules = has_functional_rules or integers["casteClass"] != 0 or integers["movementBonus"] != 0 or integers["maximumAttacks"] != 0 or integers["startMoney"] != 0 or not eligible_races.is_empty() or victory_value.any(func(number: int) -> bool: return number != 0) or limits_value.any(func(number: int) -> bool: return number != 0) or stamina_value.any(func(number: int) -> bool: return number != 0) or attacks_value.any(func(number: int) -> bool: return number != 0)
 		result.append(CasteDefinition.new(record["id"], integers["classicId"], record["name"], saves_value, bonuses_value, limits_value, conditions_value, Vector2i(stamina[0], stamina[1]), Vector2i(to_hit[0], to_hit[1]), Vector2i(dodge[0], dodge[1]), Vector2i(missile[0], missile[1]), Vector2i(hand[0], hand[1]), spellcasters, attacks_value, start_items_value, integers["casteClass"], integers["minimumAgeGroup"], integers["movementBonus"], integers["magicResistanceMultiplier"], integers["twoHandBonus"], integers["maximumStaminaBonus"], integers["bonusAttacks"], integers["maximumAttacks"], integers["startMoney"], record["canUseMissile"], record["getsMissileBonus"], integers["defaultIcon"], masks[0], masks[1], Vector2i(strength[0], strength[1]), record["description"], eligible_races, initial_abilities_value, level_abilities_value, victory_value))
+	if not has_functional_rules:
+		_reject("Content castes cannot be a semantically empty 30-record table.")
+		return null
 	return result
 
 func _construct_spells(value: Variant) -> Variant:
