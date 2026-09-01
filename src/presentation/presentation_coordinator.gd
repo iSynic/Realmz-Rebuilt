@@ -73,8 +73,7 @@ func _process(delta: float) -> void:
 
 func _on_step_committed(step: SessionStep) -> void:
 	var game_view := _session_controller.view()
-	if _has_event(step.events, &"reward_item_assigned"):
-		_interaction_presenter.begin_treasure_transfer(_reduced_motion)
+	var treasure_transfer_captured := _has_event(step.events, &"reward_item_assigned") and _interaction_presenter.capture_treasure_transfer()
 	if _combat_playback != null and _combat_playback.begin(_presented_view, step.events, game_view, _reduced_motion):
 		_deferred_step = step
 		_deferred_view = game_view
@@ -83,6 +82,8 @@ func _on_step_committed(step: SessionStep) -> void:
 		set_process(true)
 		return
 	_present_committed_step(step, game_view, true)
+	if treasure_transfer_captured:
+		_interaction_presenter.begin_treasure_transfer(_reduced_motion)
 	playback_step_settled.emit(step)
 
 

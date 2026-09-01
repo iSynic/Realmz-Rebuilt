@@ -36,6 +36,7 @@ signal combat_spellbook_closed
 
 var _request: InteractionRequest
 var _owns_classic_acknowledgement_cursor: bool = false
+var _pending_treasure_transfer: Dictionary = {}
 var _component: InteractionComponent
 var _stage_rect := Rect2(0.0, 28.0, 992.0, 502.0)
 var _textbox_rect := Rect2(8.0, 530.0, 984.0, 182.0)
@@ -633,10 +634,16 @@ func _set_classic_acknowledgement_cursor(enabled: bool) -> void:
 		_owns_classic_acknowledgement_cursor = false
 
 
-func begin_treasure_transfer(reduced_motion: bool) -> bool:
+func capture_treasure_transfer() -> bool:
 	if not _component is TreasureDistributionInteraction:
 		return false
-	var path := (_component as TreasureDistributionInteraction).take_committed_transfer_path()
+	_pending_treasure_transfer = (_component as TreasureDistributionInteraction).take_committed_transfer_path()
+	return not _pending_treasure_transfer.is_empty()
+
+
+func begin_treasure_transfer(reduced_motion: bool) -> bool:
+	var path := _pending_treasure_transfer
+	_pending_treasure_transfer = {}
 	if path.is_empty():
 		return false
 	if reduced_motion:
@@ -646,7 +653,7 @@ func begin_treasure_transfer(reduced_motion: bool) -> bool:
 	pulse.name = "TreasureTakeEffect"
 	add_child(pulse)
 	var source := path["from"] as Vector2
-	var tween := pulse.call("begin", path.get("texture") as Texture2D) as Tween
+	var tween := pulse.call("begin", path.get("texture") as Texture2D, String(path.get("instanceId", ""))) as Tween
 	pulse.global_position = source - pulse.size * 0.5
 	tween.finished.connect(func() -> void:
 		pulse.queue_free()

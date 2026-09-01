@@ -435,8 +435,8 @@ func take_committed_transfer_path() -> Dictionary:
 		return {}
 	var path := {
 		"from": _transfer_source.get_global_rect().get_center(),
-		"to": _transfer_target.get_global_rect().get_center(),
 		"texture": _item_texture(_transfer_item),
+		"instanceId": _transfer_item.instance_id,
 	}
 	_transferring = false
 	_transfer_item = null
