@@ -76,6 +76,8 @@ func present(game_view: GameView) -> void:
 
 
 func present_playback_frame(frame: CombatPlaybackFrame) -> void:
+	if _playback_frame == null and frame != null:
+		_camera_focus_id = ""
 	if frame != _playback_frame and frame != null and frame.kind == &"actor_cue":
 		_render_camera_focus_id = ""
 	if frame != null and frame.kind == &"move_start" and not frame.actor_id.is_empty() and frame.from_coordinate.x >= 0 and frame.to_coordinate.x >= 0:
