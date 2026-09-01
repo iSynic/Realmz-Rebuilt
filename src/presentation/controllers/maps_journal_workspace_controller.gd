@@ -229,12 +229,15 @@ func _render_selected_player_map(parent: VBoxContainer, selected: PlayerMapView,
 	stage_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	stage_body.add_theme_constant_override("separation", 2)
 	stage.add_child(stage_body)
+	var header_panel := PanelContainer.new()
+	header_panel.name = "PlayerMapStageHeader"
+	header_panel.theme_type_variation = &"ClassicInset"
+	header_panel.custom_minimum_size.y = 30.0
+	stage_body.add_child(header_panel)
 	var header := HBoxContainer.new()
-	header.name = "PlayerMapStageHeader"
-	header.custom_minimum_size.y = 26.0
 	header.add_theme_constant_override("separation", 4)
-	stage_body.add_child(header)
-	var title := _label(selected.name, BOOK_INK, 19)
+	header_panel.add_child(header)
+	var title := _label(selected.name, GOLD, 19)
 	title.name = "PlayerMapTitle"
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
@@ -251,6 +254,13 @@ func _render_selected_player_map(parent: VBoxContainer, selected: PlayerMapView,
 	toolbar.add_child(fit)
 	var zoom_in := _map_zoom_button("PlayerMapZoomIn", "+", 0.5)
 	toolbar.add_child(zoom_in)
+	if not selected.note.is_empty():
+		var note := _label(selected.note, Color("e0e2e5"), 14)
+		note.name = "PlayerMapNote"
+		note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		stage_body.add_child(note)
 	var scroll := ScrollContainer.new()
 	scroll.name = "PlayerMapScroll"
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -258,7 +268,7 @@ func _render_selected_player_map(parent: VBoxContainer, selected: PlayerMapView,
 	stage_body.add_child(scroll)
 	var center := CenterContainer.new()
 	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	center.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	center.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	scroll.add_child(center)
 	var parchment := PlayerMapParchmentMatType.new()
 	center.add_child(parchment)
@@ -268,11 +278,6 @@ func _render_selected_player_map(parent: VBoxContainer, selected: PlayerMapView,
 	presenter.set_map_zoom(_player_map_zoom)
 	parchment.set_map_zoom(_player_map_zoom)
 	parchment.add_child(presenter)
-	if not selected.note.is_empty():
-		var note := _label(selected.note, BOOK_INK, 14)
-		note.name = "PlayerMapNote"
-		note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		stage_body.add_child(note)
 	for button: Button in [zoom_out, fit, zoom_in]:
 		button.pressed.connect(_change_player_map_zoom.bind(presenter, parchment, zoom_label, float(button.get_meta("zoom_delta"))))
 
