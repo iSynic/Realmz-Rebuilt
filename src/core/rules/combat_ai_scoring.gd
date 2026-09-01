@@ -41,7 +41,8 @@ func choose_party_action(state: GameState, content: RealmzContent, actor: Charac
 			_append_positive_choice(choices, melee)
 	else:
 		_append_positive_choice(choices, _best_projectile(state, content, actor))
-		choices.append({"action": &"move", "score": 100})
+		if actor.movement > 0:
+			choices.append({"action": &"move", "score": 100})
 	var selected := _weighted_choice(choices, rng, StringName("combat.auto.%s.action-choice" % actor.id))
 	return {"action": &"defend", "score": 0} if selected.is_empty() else selected
 

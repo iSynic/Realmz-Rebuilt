@@ -67,7 +67,7 @@ func _resolve_character_phase(state: GameState, content: RealmzContent, caster: 
 	var defeated := not collision_actor_id.is_empty() or phased_into_solid
 	var events: Array[DomainEvent] = [
 		DomainEvent.new(&"sound_requested", {"soundId": 699, "waitForCompletion": false, "source": "classic-combat-phase-start"}),
-		DomainEvent.new(&"combat_spell_cast", {"actorId": caster.id, "targetId": "", "spellId": spell.id, "classicEffectResourceId": 11_992 + spell.look_start * 8, "targetCoordinate": [destination.x, destination.y], "source": event_source}),
+		DomainEvent.new(&"combat_spell_cast", {"actorId": caster.id, "targetId": "", "spellId": spell.id, "spellName": spell.name, "classicEffectResourceId": 11_992 + spell.look_start * 8, "targetCoordinate": [destination.x, destination.y], "source": event_source}),
 	]
 	if defeated:
 		caster.current_health = -10

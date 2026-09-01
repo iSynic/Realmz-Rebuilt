@@ -746,7 +746,7 @@ static func _append_spell_sound(events: Array[DomainEvent], authored_sound_id: i
 
 static func _append_spell_cast_event(events: Array[DomainEvent], actor_id: String, spell: SpellDefinition, resolutions: GroupSpellResolution, center: Vector2i, shape: int, source: String) -> void:
 	var target_id := resolutions.target_ids[0] if not resolutions.target_ids.is_empty() else ""
-	var payload := {"actorId": actor_id, "targetId": target_id, "spellId": spell.id, "classicEffectResourceId": 11_992 + spell.look_start * 8, "source": source}
+	var payload := {"actorId": actor_id, "targetId": target_id, "spellId": spell.id, "spellName": spell.name, "classicEffectResourceId": 11_992 + spell.look_start * 8, "source": source}
 	if shape > 0:
 		payload["areaCenter"] = [center.x, center.y]
 		payload["areaShape"] = shape
@@ -760,7 +760,7 @@ static func _append_spell_projectile_event(events: Array[DomainEvent], actor_id:
 
 
 static func _append_spell_presentation(payload: Dictionary, spell: SpellDefinition, sequence_index: int, sequence_count: int, target_defeated: bool) -> void:
-	payload["castSequenceIndex"] = sequence_index
+	payload["spellName"] = spell.name; payload["castSequenceIndex"] = sequence_index
 	payload["castSequenceCount"] = sequence_count
 	# resolvespell.c bypasses the ordinary eight-frame resolution effect when the
 	# target dies, and group-body flashes (9/10) use a separate path.

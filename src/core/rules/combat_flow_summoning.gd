@@ -117,7 +117,7 @@ func cast_character_summon(state: GameState, content: RealmzContent, caster: Cha
 		_flow()._append_spell_projectile_event(events, caster.id, summoned.id, spell, event_source)
 		_flow()._append_spell_sound(events, spell.sound_end, "classic-combat-spell-result")
 		events.append(DomainEvent.new(&"combat_summoned", {"actorId": caster.id, "monsterId": summoned.id, "monsterDefinitionId": definition.id, "classicMonsterId": definition.classic_id, "coordinate": [target_coordinates[index].x, target_coordinates[index].y], "size": definition.size, "spellId": spell.id, "power": power_level, "castSequenceIndex": index, "castSequenceCount": target_coordinates.size(), "source": event_source}))
-	events.insert(1, DomainEvent.new(&"combat_spell_cast", {"actorId": caster.id, "targetId": summoned_ids[0] if not summoned_ids.is_empty() else "", "targetIds": summoned_ids, "targetCoordinates": target_coordinates.map(func(coordinate: Vector2i) -> Array[int]: return [coordinate.x, coordinate.y]), "spellId": spell.id, "classicEffectResourceId": 11_992 + spell.look_start * 8, "source": event_source}))
+	events.insert(1, DomainEvent.new(&"combat_spell_cast", {"actorId": caster.id, "targetId": summoned_ids[0] if not summoned_ids.is_empty() else "", "targetIds": summoned_ids, "targetCoordinates": target_coordinates.map(func(coordinate: Vector2i) -> Array[int]: return [coordinate.x, coordinate.y]), "spellId": spell.id, "spellName": spell.name, "classicEffectResourceId": 11_992 + spell.look_start * 8, "source": event_source}))
 	var advances_turn: bool = not _flow()._character_can_continue(caster)
 	if advances_turn:
 		_flow()._advance_turn(state, content, rng, events)
@@ -168,7 +168,7 @@ func cast_monster_summon(state: GameState, content: RealmzContent, caster: Monst
 		_flow()._append_spell_projectile_event(events, caster.id, summoned.id, spell, "classic-monster")
 		_flow()._append_spell_sound(events, spell.sound_end, "classic-monster-spell-result")
 		events.append(DomainEvent.new(&"combat_summoned", {"actorId": caster.id, "monsterId": summoned.id, "monsterDefinitionId": definition.id, "classicMonsterId": definition.classic_id, "coordinate": [target_coordinates[index].x, target_coordinates[index].y], "size": definition.size, "spellId": spell.id, "power": power_level, "castSequenceIndex": index, "castSequenceCount": target_coordinates.size(), "source": "classic-monster"}))
-	events.insert(1, DomainEvent.new(&"combat_spell_cast", {"actorId": caster.id, "targetId": summoned_ids[0] if not summoned_ids.is_empty() else "", "targetIds": summoned_ids, "targetCoordinates": target_coordinates.map(func(coordinate: Vector2i) -> Array[int]: return [coordinate.x, coordinate.y]), "spellId": spell.id, "classicEffectResourceId": 11_992 + spell.look_start * 8, "source": "classic-monster"}))
+	events.insert(1, DomainEvent.new(&"combat_spell_cast", {"actorId": caster.id, "targetId": summoned_ids[0] if not summoned_ids.is_empty() else "", "targetIds": summoned_ids, "targetCoordinates": target_coordinates.map(func(coordinate: Vector2i) -> Array[int]: return [coordinate.x, coordinate.y]), "spellId": spell.id, "spellName": spell.name, "classicEffectResourceId": 11_992 + spell.look_start * 8, "source": "classic-monster"}))
 	return CombatFlowResult.succeeded(events)
 
 

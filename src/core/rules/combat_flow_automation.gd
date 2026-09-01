@@ -65,6 +65,10 @@ func run_auto_activation_chain(state: GameState, content: RealmzContent, actor_i
 
 func _run_auto_turn_unchecked(state: GameState, content: RealmzContent, actor_id: String, rng: RealmzRng) -> CombatFlowResult:
 	var actor := state.party.character_by_id(actor_id)
+	# Action scoring must see this activation's authoritative movement and attack
+	# allowances. CharacterState retains the spent values from its prior turn
+	# until the active-turn record is prepared.
+	_flow()._prepare_character_turn(state.combat, actor)
 	var events: Array[DomainEvent] = [DomainEvent.new(&"combat_auto_started", {"actorId": actor.id, "persistent": state.combat_auto_enabled(actor.id), "source": "classic"})]
 	var starting_round := state.combat.round_number
 	var operation_count := 0
@@ -72,7 +76,15 @@ func _run_auto_turn_unchecked(state: GameState, content: RealmzContent, actor_id
 	_flow().set_processing_auto(true)
 	while operation_count < MAX_AUTO_OPERATIONS and state.combat != null and not state.combat.completed and state.combat.active_actor_id() == actor_id and state.combat.round_number == starting_round:
 		operation_count += 1
-		var result := _execute_auto_choice(state, content, actor, _ai_scoring.choose_party_action(state, content, actor, rng), rng)
+		var choice: Dictionary = _ai_scoring.choose_party_action(state, content, actor, rng)
+		var chosen_action := StringName(choice.get("action", &"defend"))
+		var result := _execute_auto_choice(state, content, actor, choice, rng)
+		if result == null or not result.ok:
+			# A scored spell or attack can become invalid when an earlier operation in
+			# the same activation changes occupancy or resources. Continue tactical
+			# pursuit before falling back to Castle's stationary defend action.
+			if chosen_action != &"move" and actor.movement > 0:
+				result = _auto_move_toward_target(state, content, actor, rng)
 		if result == null or not result.ok:
 			result = _flow().submit_action(state, content, actor.id, &"defend", "", rng)
 		if result == null or not result.ok:
@@ -156,14 +168,12 @@ func _auto_move_toward_target(state: GameState, content: RealmzContent, actor: C
 		target_id = candidates[rng.draw_between(0, candidates.size() - 1, StringName("combat.auto.%s.target" % actor.id))]
 		combat.active_turn.target_id = target_id
 	var origin := combat.battlefield.actor_position(actor.id)
-	var target := combat.battlefield.actor_position(target_id)
-	var direction := Vector2i(signi(target.x - origin.x), signi(target.y - origin.y))
-	if direction != Vector2i.ZERO:
-		var direct = _flow().move_character(state, content, actor.id, origin + direction, rng)
-		if direct.ok:
-			return direct
 	var terrain_set := _battle_terrain_set(content, combat.battlefield)
-	var path_probe := _rules.battlefield.probe_path_step_toward_actors(combat.battlefield, terrain_set, actor.id, candidates, actor.movement)
+	var swappable_ids: Array[String] = []
+	for candidate_id: String in combat.battlefield.actor_ids():
+		if _flow().friendly_collision_target_id(state, actor.id, combat.battlefield.actor_position(candidate_id)) == candidate_id:
+			swappable_ids.append(candidate_id)
+	var path_probe := _rules.battlefield.probe_path_step_toward_actors(combat.battlefield, terrain_set, actor.id, candidates, actor.movement, swappable_ids)
 	if path_probe.allowed:
 		return _flow().move_character(state, content, actor.id, path_probe.destination, rng)
 	for retry: int in 20:
@@ -187,7 +197,10 @@ func _process_monster_turns(state: GameState, content: RealmzContent, rng: Realm
 	var combat := state.combat
 	if combat == null or not combat.pending_spell_death_macro_id().is_empty():
 		return
-	var guard := combat.turn_order().size()
+	# The order may grow while this loop is active when a monster casts a
+	# multi-summon or a death macro adds combatants. Bound the scan by the
+	# authoritative actor capacities instead of the order's stale entry count.
+	var guard := MAX_MONSTERS + state.party.characters().size()
 	while guard > 0 and not combat.completed:
 		if not combat.pending_spell_death_macro_id().is_empty(): return
 		var actor_id := combat.active_actor_id()
@@ -525,19 +538,15 @@ func _process_monster_advance(state: GameState, content: RealmzContent, monster:
 			active_turn.movement_remaining = 0
 			events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "advance", "reason": "no-visible-target"}))
 			return MONSTER_ATTACK_COMPLETED
-		var target_coordinate := combat.battlefield.actor_position(active_turn.target_id)
 		var origin := combat.battlefield.actor_position(monster.id)
-		var direction := Vector2i(signi(target_coordinate.x - origin.x), signi(target_coordinate.y - origin.y))
-		var probe := _rules.battlefield.probe_step(combat.battlefield, terrain_set, monster.id, direction, active_turn.movement_remaining)
 		var route_targets: Array[String] = [active_turn.target_id]
 		for character: CharacterState in state.party.characters():
 			if _monster_target_is_available(state, monster, character.id) and not route_targets.has(character.id): route_targets.append(character.id)
 		for candidate: MonsterState in combat.monsters():
 			if _monster_target_is_available(state, monster, candidate.id) and not route_targets.has(candidate.id): route_targets.append(candidate.id)
+		var probe := _rules.battlefield.probe_path_step_toward_actors(combat.battlefield, terrain_set, monster.id, route_targets, active_turn.movement_remaining)
 		if not probe.allowed:
-			probe = _rules.battlefield.probe_path_step_toward_actors(combat.battlefield, terrain_set, monster.id, route_targets, active_turn.movement_remaining)
-		if not probe.allowed:
-			probe = _rules.battlefield.probe_monster_step_toward(combat.battlefield, terrain_set, monster.id, target_coordinate, active_turn.movement_remaining, rng)
+			probe = _rules.battlefield.probe_monster_step_toward(combat.battlefield, terrain_set, monster.id, combat.battlefield.actor_position(active_turn.target_id), active_turn.movement_remaining, rng)
 		if not probe.allowed:
 			active_turn.target_id = ""
 			monster.target_id = ""

@@ -6,6 +6,56 @@ const DIRECTIONS: Array[Vector2i] = [
 	Vector2i(-1, 0), Vector2i(1, 0),
 	Vector2i(-1, 1), Vector2i(0, 1), Vector2i(1, 1),
 ]
+const ROUTE_GENERATION_LIMIT: int = 2_000_000_000
+
+
+class NavigationProfile extends RefCounted:
+	var passable := PackedByteArray()
+	var destination_movement_base := PackedInt32Array()
+
+	func _init() -> void:
+		passable.resize(BattlefieldState.CELL_COUNT)
+		destination_movement_base.resize(BattlefieldState.CELL_COUNT)
+
+
+class RouteWorkspace extends RefCounted:
+	var generation: int = 0
+	var distances := PackedInt32Array()
+	var distance_generations := PackedInt32Array()
+	var first_steps := PackedInt32Array()
+	var closed_generations := PackedInt32Array()
+	var goal_generations := PackedInt32Array()
+	var heuristics := PackedInt32Array()
+	var heuristic_generations := PackedInt32Array()
+	var queue := PackedInt32Array()
+	var heap: Array[Vector4i] = []
+	var occupied_cells: Dictionary = {}
+	var swappable_cells: Dictionary = {}
+
+	func _init() -> void:
+		for storage: PackedInt32Array in [distances, distance_generations, first_steps, closed_generations, goal_generations, heuristics, heuristic_generations, queue]:
+			storage.resize(BattlefieldState.CELL_COUNT)
+
+	func begin_search() -> int:
+		generation += 1
+		if generation >= ROUTE_GENERATION_LIMIT:
+			distance_generations.fill(0)
+			closed_generations.fill(0)
+			goal_generations.fill(0)
+			heuristic_generations.fill(0)
+			generation = 1
+		heap.clear()
+		occupied_cells.clear()
+		swappable_cells.clear()
+		return generation
+
+
+var _navigation_battlefield_id: int = 0
+var _navigation_terrain_set_id: int = 0
+var _navigation_terrain_revision: int = -1
+var _navigation_profiles: Array[NavigationProfile] = []
+var _navigation_profile_build_count: int = 0
+var _route_workspace := RouteWorkspace.new()
 
 
 func adjacent_actor_ids(battlefield: BattlefieldState, actor_id: String, anchor_override: Vector2i = Vector2i(-1, -1)) -> Array[String]:
@@ -147,7 +197,7 @@ func probe_step(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefi
 	return _probe_step_with_cost_floor(battlefield, terrain_set, actor_id, direction, movement_available, 0)
 
 
-func probe_path_step_toward_actors(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, actor_id: String, target_ids: Array[String], movement_available: int) -> BattlefieldStepResult:
+func probe_path_step_toward_actors(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, actor_id: String, target_ids: Array[String], movement_available: int, immediate_swappable_actor_ids: Array[String] = []) -> BattlefieldStepResult:
 	if battlefield == null or terrain_set == null or not battlefield.has_actor(actor_id):
 		return BattlefieldStepResult.blocked(&"invalid_actor")
 	var valid_targets: Array[String] = []
@@ -158,42 +208,45 @@ func probe_path_step_toward_actors(battlefield: BattlefieldState, terrain_set: B
 		return BattlefieldStepResult.blocked(&"invalid_actor")
 	var origin := battlefield.actor_position(actor_id)
 	var actor_size := battlefield.actor_size(actor_id)
+	var profile := _navigation_profile(battlefield, terrain_set, actor_size)
+	if profile == null:
+		return BattlefieldStepResult.blocked(&"invalid_actor", origin)
+	var generation := _route_workspace.begin_search()
 	var target_cells: Dictionary = {}
 	for target_id: String in valid_targets:
 		for coordinate: Vector2i in battlefield.actor_footprint(target_id):
 			target_cells[coordinate] = true
-	var goals := _route_goal_anchors(target_cells, actor_size)
+	var goal_count := _mark_route_goal_anchors(target_cells, actor_size, profile, generation)
+	if goal_count == 0:
+		return BattlefieldStepResult.blocked(&"path_not_found", origin)
 	var origin_index := _route_index(origin)
-	if goals[origin_index] != 0:
+	if _route_workspace.goal_generations[origin_index] == generation:
 		return BattlefieldStepResult.blocked(&"already_adjacent", origin)
-	var occupied_cells: Dictionary = {}
 	for candidate_id: String in battlefield.actor_ids():
 		if candidate_id == actor_id:
 			continue
 		for coordinate: Vector2i in battlefield.actor_footprint(candidate_id):
-			occupied_cells[coordinate] = true
-	var heuristics := _route_heuristics(goals)
-	var distances := PackedInt32Array()
-	distances.resize(BattlefieldState.CELL_COUNT)
-	distances.fill(0x3fff_ffff)
-	distances[origin_index] = 0
-	var first_steps := PackedInt32Array()
-	first_steps.resize(BattlefieldState.CELL_COUNT)
-	first_steps.fill(-1)
-	var closed := PackedByteArray()
-	closed.resize(BattlefieldState.CELL_COUNT)
-	var heap: Array[Vector4i] = []
+			_route_workspace.occupied_cells[coordinate] = true
+			if immediate_swappable_actor_ids.has(candidate_id):
+				_route_workspace.swappable_cells[coordinate] = true
+	_route_workspace.distances[origin_index] = 0
+	_route_workspace.distance_generations[origin_index] = generation
+	_route_workspace.first_steps[origin_index] = -1
 	var sequence := 0
-	_route_heap_push(heap, Vector4i(heuristics[origin_index], heuristics[origin_index], sequence, origin_index))
-	while not heap.is_empty():
-		var current := _route_heap_pop(heap)
+	var origin_heuristic := _route_heuristic(origin_index, generation, goal_count)
+	_route_heap_push(_route_workspace.heap, Vector4i(origin_heuristic, origin_heuristic, sequence, origin_index))
+	while not _route_workspace.heap.is_empty():
+		var current := _route_heap_pop(_route_workspace.heap)
 		var current_index := current.w
-		if closed[current_index] != 0:
+		if _route_workspace.closed_generations[current_index] == generation:
 			continue
-		closed[current_index] = 1
-		if goals[current_index] != 0:
-			var first_step := _route_coordinate(first_steps[current_index])
-			return _probe_step_with_cost_floor(battlefield, terrain_set, actor_id, first_step - origin, movement_available, 0)
+		_route_workspace.closed_generations[current_index] = generation
+		if _route_workspace.goal_generations[current_index] == generation:
+			var first_step := _route_coordinate(_route_workspace.first_steps[current_index])
+			var probe := _probe_step_with_cost_floor(battlefield, terrain_set, actor_id, first_step - origin, movement_available, 0)
+			if not probe.allowed and probe.reason == &"occupied" and immediate_swappable_actor_ids.has(probe.occupant_id):
+				return BattlefieldStepResult.permitted(first_step, 5) if movement_available >= 5 else _blocked_with_cost(&"insufficient_movement", first_step, 5, probe.occupant_id)
+			return probe
 		var anchor := _route_coordinate(current_index)
 		for direction: Vector2i in DIRECTIONS:
 			# Only the immediate step must respect current actors. Later route cells
@@ -203,18 +256,23 @@ func probe_path_step_toward_actors(battlefield: BattlefieldState, terrain_set: B
 			if not BattlefieldState.contains(destination):
 				continue
 			var destination_index := _route_index(destination)
-			if closed[destination_index] != 0:
+			if _route_workspace.closed_generations[destination_index] == generation or profile.passable[destination_index] == 0:
 				continue
-			var footprint := BattlefieldState.footprint_cells(destination, actor_size)
-			if not _route_footprint_is_passable(battlefield, terrain_set, actor_size, footprint, occupied_cells, anchor == origin):
+			var immediate_swap := anchor == origin and actor_size == 0 and _route_workspace.swappable_cells.has(destination)
+			if anchor == origin and not immediate_swap and not _route_footprint_is_unoccupied(destination, actor_size, _route_workspace.occupied_cells):
 				continue
-			var next_distance := distances[current_index] + 1
-			if next_distance >= distances[destination_index]:
+			var step_cost := 5 if immediate_swap else profile.destination_movement_base[destination_index] + _direction_cost(direction)
+			if anchor == origin and step_cost > movement_available:
 				continue
-			distances[destination_index] = next_distance
-			first_steps[destination_index] = destination_index if current_index == origin_index else first_steps[current_index]
+			var next_distance := _route_workspace.distances[current_index] + step_cost
+			if _route_workspace.distance_generations[destination_index] == generation and next_distance >= _route_workspace.distances[destination_index]:
+				continue
+			_route_workspace.distances[destination_index] = next_distance
+			_route_workspace.distance_generations[destination_index] = generation
+			_route_workspace.first_steps[destination_index] = destination_index if current_index == origin_index else _route_workspace.first_steps[current_index]
 			sequence += 1
-			_route_heap_push(heap, Vector4i(next_distance + heuristics[destination_index], heuristics[destination_index], sequence, destination_index))
+			var heuristic := _route_heuristic(destination_index, generation, goal_count)
+			_route_heap_push(_route_workspace.heap, Vector4i(next_distance + heuristic, heuristic, sequence, destination_index))
 	return BattlefieldStepResult.blocked(&"path_not_found", origin)
 
 
@@ -228,48 +286,99 @@ static func _route_footprint_is_passable(battlefield: BattlefieldState, terrain_
 	return true
 
 
-static func _route_goal_anchors(target_cells: Dictionary, actor_size: int) -> PackedByteArray:
-	var result := PackedByteArray()
-	result.resize(BattlefieldState.CELL_COUNT)
+func _mark_route_goal_anchors(target_cells: Dictionary, actor_size: int, profile: NavigationProfile, generation: int) -> int:
+	var goal_count := 0
 	var offsets := BattlefieldState.footprint_cells(Vector2i.ZERO, actor_size)
 	for value: Variant in target_cells:
 		var target_cell: Vector2i = value
 		for direction: Vector2i in DIRECTIONS:
 			for offset: Vector2i in offsets:
 				var anchor := target_cell - direction - offset
-				if BattlefieldState.contains(anchor):
-					result[_route_index(anchor)] = 1
+				if not BattlefieldState.contains(anchor):
+					continue
+				var index := _route_index(anchor)
+				if profile.passable[index] != 0 and _route_workspace.goal_generations[index] != generation and _route_contact_anchor_is_legal(anchor, actor_size, target_cells):
+					_route_workspace.goal_generations[index] = generation
+					_route_workspace.queue[goal_count] = index
+					goal_count += 1
+	return goal_count
+
+
+func _route_heuristic(index: int, generation: int, goal_count: int) -> int:
+	if _route_workspace.heuristic_generations[index] == generation:
+		return _route_workspace.heuristics[index]
+	var coordinate := _route_coordinate(index)
+	var result := BattlefieldState.SIZE
+	for goal_cursor: int in goal_count:
+		var goal := _route_coordinate(_route_workspace.queue[goal_cursor])
+		result = mini(result, maxi(absi(goal.x - coordinate.x), absi(goal.y - coordinate.y)))
+	_route_workspace.heuristics[index] = result
+	_route_workspace.heuristic_generations[index] = generation
 	return result
 
 
-static func _route_heuristics(goals: PackedByteArray) -> PackedInt32Array:
-	var result := PackedInt32Array()
-	result.resize(BattlefieldState.CELL_COUNT)
-	result.fill(0x3fff_ffff)
-	var queue := PackedInt32Array()
-	queue.resize(BattlefieldState.CELL_COUNT)
-	var cursor := 0
-	var count := 0
-	for index: int in BattlefieldState.CELL_COUNT:
-		if goals[index] != 0:
-			result[index] = 0
-			queue[count] = index
-			count += 1
-	while cursor < count:
-		var index := queue[cursor]
-		cursor += 1
-		var coordinate := _route_coordinate(index)
+static func _route_contact_anchor_is_legal(anchor: Vector2i, actor_size: int, target_cells: Dictionary) -> bool:
+	var actor_cells := BattlefieldState.footprint_cells(anchor, actor_size)
+	for actor_cell: Vector2i in actor_cells:
+		if target_cells.has(actor_cell):
+			return false
+	for actor_cell: Vector2i in actor_cells:
 		for direction: Vector2i in DIRECTIONS:
-			var neighbor := coordinate + direction
-			if not BattlefieldState.contains(neighbor):
-				continue
-			var neighbor_index := _route_index(neighbor)
-			if result[neighbor_index] <= result[index] + 1:
-				continue
-			result[neighbor_index] = result[index] + 1
-			queue[count] = neighbor_index
-			count += 1
-	return result
+			if target_cells.has(actor_cell + direction):
+				return true
+	return false
+
+
+static func _route_footprint_is_unoccupied(anchor: Vector2i, actor_size: int, occupied_cells: Dictionary) -> bool:
+	for coordinate: Vector2i in BattlefieldState.footprint_cells(anchor, actor_size):
+		if occupied_cells.has(coordinate):
+			return false
+	return true
+
+
+func _navigation_profile(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, actor_size: int) -> NavigationProfile:
+	if actor_size < 0 or actor_size > 3:
+		return null
+	var battlefield_id := battlefield.get_instance_id()
+	var terrain_set_id := terrain_set.get_instance_id()
+	if _navigation_battlefield_id != battlefield_id or _navigation_terrain_set_id != terrain_set_id or _navigation_terrain_revision != battlefield.terrain_revision():
+		_rebuild_navigation_profiles(battlefield, terrain_set)
+	return _navigation_profiles[actor_size]
+
+
+func _rebuild_navigation_profiles(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition) -> void:
+	_navigation_profiles.clear()
+	for actor_size: int in 4:
+		var profile := NavigationProfile.new()
+		for index: int in BattlefieldState.CELL_COUNT:
+			var anchor := _route_coordinate(index)
+			var passable := true
+			var maximum_base := 0
+			for coordinate: Vector2i in BattlefieldState.footprint_cells(anchor, actor_size):
+				if not BattlefieldState.contains(coordinate):
+					passable = false
+					break
+				var terrain := terrain_set.tile_by_id(battlefield.terrain_at(coordinate))
+				if terrain == null or actor_size == 0 and terrain.solid != 0 or actor_size > 0 and terrain.solid > 1:
+					passable = false
+					break
+				maximum_base = maxi(maximum_base, _movement_base(terrain))
+			if passable:
+				profile.passable[index] = 1
+				profile.destination_movement_base[index] = maximum_base
+		_navigation_profiles.append(profile)
+	_navigation_battlefield_id = battlefield.get_instance_id()
+	_navigation_terrain_set_id = terrain_set.get_instance_id()
+	_navigation_terrain_revision = battlefield.terrain_revision()
+	_navigation_profile_build_count += 1
+
+
+func debug_navigation_profile_build_count() -> int:
+	return _navigation_profile_build_count
+
+
+func debug_route_workspace_generation() -> int:
+	return _route_workspace.generation
 
 
 static func _route_heap_push(heap: Array[Vector4i], value: Vector4i) -> void:
@@ -356,7 +465,15 @@ static func _blocked_with_cost(reason: StringName, destination: Vector2i, moveme
 
 
 static func _movement_cost(terrain: BattleTerrainTileDefinition, direction: Vector2i) -> int:
-	var cost := maxi(0, floori(float(terrain.movement_time) / 2.0) - 1)
+	return _movement_base(terrain) + _direction_cost(direction)
+
+
+static func _movement_base(terrain: BattleTerrainTileDefinition) -> int:
+	return maxi(0, floori(float(terrain.movement_time) / 2.0) - 1)
+
+
+static func _direction_cost(direction: Vector2i) -> int:
+	var cost := 0
 	if direction.x != 0:
 		cost += 1
 	if direction.y != 0:
