@@ -11,11 +11,6 @@ func present(view: PlayerMapView, media: ClassicMediaCatalog) -> void:
 		child.queue_free()
 	if view == null:
 		return
-	var title := Label.new()
-	title.text = view.name
-	title.add_theme_font_size_override("font_size", 18)
-	title.add_theme_color_override("font_color", Color("d5b45d"))
-	add_child(title)
 	if view.mode == PlayerMapDefinition.SCROLLING_TEXT:
 		var text := RichTextLabel.new()
 		text.name = "PlayerMapScrollingText"
@@ -31,12 +26,6 @@ func present(view: PlayerMapView, media: ClassicMediaCatalog) -> void:
 		canvas.present(view, media)
 		_canvas = canvas
 		add_child(canvas)
-		if not view.note.is_empty():
-			var note := Label.new()
-			note.name = "PlayerMapNote"
-			note.text = view.note
-			note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			add_child(note)
 
 
 func set_map_zoom(zoom: float) -> void:

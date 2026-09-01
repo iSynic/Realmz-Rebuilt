@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "label": "Player-map parchment mat tile",
+  "provider": "project-owner",
+  "license": "Project-Owner-Supplied",
+  "source_name": "4dcb767d-94d9-4830-8148-0218988ada52(1).png",
+  "source_width": 243,
+  "source_height": 226,
+  "source_sha256": "33c1e9972922d99bee33863e86a8fb12287e6475705cac86d4e2303104dc0454",
+  "derivation": "byte-exact copy; runtime repeats the native image in both axes without stretching",
+  "presentation_contract": "The tile appears only as a 12.5-percent mat behind the drawn 320-pixel player map and scales proportionally with integer-clean map zoom.",
+  "file": {
+    "path": "res://src/presentation/assets/ui/map-parchment-tile.png",
+    "width": 243,
+    "height": 226,
+    "sha256": "33c1e9972922d99bee33863e86a8fb12287e6475705cac86d4e2303104dc0454"
+  }
+}

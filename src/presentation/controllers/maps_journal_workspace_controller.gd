@@ -2,6 +2,7 @@ class_name MapsJournalWorkspaceController
 extends RefCounted
 
 const PlayerMapCartographicStageType := preload("res://src/presentation/screens/player_map_cartographic_stage.gd")
+const PlayerMapParchmentMatType := preload("res://src/presentation/screens/player_map_parchment_mat.gd")
 const ClassicMapPresenterType := preload("res://src/presentation/classic_map_presenter.gd")
 
 signal intent_submitted(intent: PlayerIntent)
@@ -154,9 +155,13 @@ static func _location_note(view: GameView, note_id: String) -> LocationNoteView:
 func _build_maps_tab(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog) -> void:
 	var columns := _columns(parent, "AcquiredMapsWorkspace")
 	var browser := _pane(columns, "PlayerMapBrowser", "Acquired Maps", 0.5)
-	var display := _pane(columns, "PlayerMapDisplay", "Selected Map", 2.15)
+	var display := VBoxContainer.new()
+	display.name = "PlayerMapDisplay"
+	display.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	display.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	display.size_flags_stretch_ratio = 2.5
+	columns.add_child(display)
 	_style_pane(browser, COOL_SURFACE, COOL_BORDER, 2)
-	_style_pane(display, Color("131719"), COOL_BORDER, 2)
 	if view.player_map_menu_entries.is_empty():
 		_add_empty_state(browser, "No player-map records", "This campaign supplies no Maps/Notes entries.")
 		_add_empty_state(display, "No selected map", "There is no authored map record to display.")
@@ -216,10 +221,27 @@ func _render_selected_player_map(parent: VBoxContainer, selected: PlayerMapView,
 	if selected == null:
 		_add_empty_state(parent, "No acquired maps", "Maps remain unavailable until the session records their acquisition.")
 		return
+	var stage := PlayerMapCartographicStageType.new()
+	parent.add_child(stage)
+	var stage_body := VBoxContainer.new()
+	stage_body.name = "PlayerMapStageBody"
+	stage_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stage_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	stage_body.add_theme_constant_override("separation", 2)
+	stage.add_child(stage_body)
+	var header := HBoxContainer.new()
+	header.name = "PlayerMapStageHeader"
+	header.custom_minimum_size.y = 26.0
+	header.add_theme_constant_override("separation", 4)
+	stage_body.add_child(header)
+	var title := _label(selected.name, BOOK_INK, 19)
+	title.name = "PlayerMapTitle"
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(title)
 	var toolbar := HBoxContainer.new()
 	toolbar.name = "PlayerMapZoomToolbar"
-	toolbar.alignment = BoxContainer.ALIGNMENT_CENTER
-	parent.add_child(toolbar)
+	toolbar.alignment = BoxContainer.ALIGNMENT_END
+	header.add_child(toolbar)
 	var zoom_out := _map_zoom_button("PlayerMapZoomOut", "−", -0.5)
 	toolbar.add_child(zoom_out)
 	var zoom_label := _label("%d%%" % roundi(_player_map_zoom * 100.0), CYAN, 14)
@@ -233,36 +255,41 @@ func _render_selected_player_map(parent: VBoxContainer, selected: PlayerMapView,
 	scroll.name = "PlayerMapScroll"
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	parent.add_child(scroll)
-	var stage := PlayerMapCartographicStageType.new()
-	stage.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	stage.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.add_child(stage)
+	stage_body.add_child(scroll)
 	var center := CenterContainer.new()
 	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	center.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	stage.add_child(center)
+	scroll.add_child(center)
+	var parchment := PlayerMapParchmentMatType.new()
+	center.add_child(parchment)
 	var presenter := PlayerMapPresenter.new()
 	presenter.name = "AcquiredPlayerMap"
 	presenter.present(selected, media)
 	presenter.set_map_zoom(_player_map_zoom)
-	center.add_child(presenter)
+	parchment.set_map_zoom(_player_map_zoom)
+	parchment.add_child(presenter)
+	if not selected.note.is_empty():
+		var note := _label(selected.note, BOOK_INK, 14)
+		note.name = "PlayerMapNote"
+		note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		stage_body.add_child(note)
 	for button: Button in [zoom_out, fit, zoom_in]:
-		button.pressed.connect(_change_player_map_zoom.bind(presenter, zoom_label, float(button.get_meta("zoom_delta"))))
+		button.pressed.connect(_change_player_map_zoom.bind(presenter, parchment, zoom_label, float(button.get_meta("zoom_delta"))))
 
 
 func _map_zoom_button(node_name: String, text: String, delta: float) -> Button:
 	var button := Button.new()
 	button.name = node_name
 	button.text = text
-	button.custom_minimum_size = Vector2(58, 30)
+	button.custom_minimum_size = Vector2(46, 26)
 	button.set_meta("zoom_delta", delta)
 	return button
 
 
-func _change_player_map_zoom(presenter: PlayerMapPresenter, label: Label, delta: float) -> void:
-	_player_map_zoom = 1.0 if is_zero_approx(delta) else clampf(_player_map_zoom + delta, 1.0, 6.0)
+func _change_player_map_zoom(presenter: PlayerMapPresenter, parchment, label: Label, delta: float) -> void:
+	_player_map_zoom = 1.0 if is_zero_approx(delta) else clampf(_player_map_zoom + delta, 1.0, 4.0)
 	presenter.set_map_zoom(_player_map_zoom)
+	parchment.set_map_zoom(_player_map_zoom)
 	label.text = "%d%%" % roundi(_player_map_zoom * 100.0)
 
 
