@@ -29,6 +29,7 @@ var _render_camera_visible_cells := Vector2i.ZERO
 var _last_active_actor_id: String = ""
 var _reveal_friends: bool = false
 var _playback_frame: CombatPlaybackFrame
+var _monster_facing_right: Dictionary = {}
 var last_playback_media_diagnostic: Dictionary = {}
 var _targeting: CombatTargetingState
 var _surround_texture: Texture2D = load(SURROUND_TEXTURE_PATH) as Texture2D
@@ -49,6 +50,7 @@ func present(game_view: GameView) -> void:
 	_last_active_actor_id = next_active_actor_id
 	_view = game_view
 	_playback_frame = null
+	_sync_monster_facings()
 	if _view != null and _view.combat_view != null and _media != null and _atlas_texture == null:
 		_atlas_asset = _media.battle_tileset()
 		_atlas_texture = _load_image_texture(_atlas_asset)
@@ -76,6 +78,8 @@ func present(game_view: GameView) -> void:
 func present_playback_frame(frame: CombatPlaybackFrame) -> void:
 	if frame != _playback_frame and frame != null and frame.kind == &"actor_cue":
 		_render_camera_focus_id = ""
+	if frame != null and frame.kind == &"move_start" and not frame.actor_id.is_empty() and frame.from_coordinate.x >= 0 and frame.to_coordinate.x >= 0:
+		_monster_facing_right[frame.actor_id] = frame.to_coordinate.x > frame.from_coordinate.x
 	_playback_frame = frame
 	queue_redraw()
 
@@ -502,10 +506,11 @@ func _draw_monsters(combat: CombatView, camera: Vector2i, visible_cells: Vector2
 				visible_footprint.append(coordinate)
 		if visible_footprint.is_empty():
 			continue
-		var rect := footprint_rect(visible_footprint, camera, draw_origin)
-		if _playback_frame != null and _playback_frame.actor_id == monster.id and _playback_frame.kind == &"move_start":
-			rect.position = _interpolated_draw_position(_playback_frame, camera, draw_origin)
-		var asset := _media.asset_by_resource(monster.icon_resource_type, monster.icon_id) if _media != null else null
+		var rect := moving_footprint_rect(visible_footprint, effective_anchor, _playback_frame if _playback_frame != null and _playback_frame.actor_id == monster.id else null, camera, draw_origin)
+		var icon_id := classic_monster_icon_id(monster.icon_id, bool(_monster_facing_right.get(monster.id, false)))
+		var asset := _media.asset_by_resource(monster.icon_resource_type, icon_id) if _media != null else null
+		if _media != null and asset == null and icon_id != monster.icon_id:
+			asset = _media.asset_by_resource(monster.icon_resource_type, monster.icon_id)
 		_draw_actor(rect, _texture_for(asset), monster.name, _actor_is_highlighted(monster.id, combat.active_actor_id), target_ids.has(monster.id), monster.traitor)
 
 
@@ -670,10 +675,44 @@ func _playback_actor_rect(actor_id: String, coordinate: Vector2i, camera: Vector
 	return rect
 
 
-func _interpolated_draw_position(frame: CombatPlaybackFrame, camera: Vector2i, draw_origin: Vector2) -> Vector2:
+static func _interpolated_draw_position(frame: CombatPlaybackFrame, camera: Vector2i, draw_origin: Vector2) -> Vector2:
 	var from_position := draw_origin + Vector2(frame.from_coordinate - camera) * NATIVE_CELL_SIZE
 	var to_position := draw_origin + Vector2(frame.to_coordinate - camera) * NATIVE_CELL_SIZE
 	return from_position.lerp(to_position, frame.progress)
+
+
+static func moving_footprint_rect(footprint: Array[Vector2i], footprint_anchor: Vector2i, frame: CombatPlaybackFrame, camera: Vector2i, draw_origin: Vector2) -> Rect2:
+	var rect := footprint_rect(footprint, camera, draw_origin)
+	if not rect.has_area() or frame == null or frame.kind != &"move_start":
+		return rect
+	var anchor_position := cell_rect(footprint_anchor, camera, draw_origin).position
+	rect.position += _interpolated_draw_position(frame, camera, draw_origin) - anchor_position
+	return rect
+
+
+static func classic_monster_icon_id(base_icon_id: int, facing_right: bool) -> int:
+	return base_icon_id + 308 if facing_right else base_icon_id
+
+
+func _sync_monster_facings() -> void:
+	if _view == null or _view.combat_view == null or _view.combat_view.battlefield == null:
+		_monster_facing_right.clear()
+		return
+	var combat := _view.combat_view
+	var party_reference := combat.battlefield.party_anchor
+	for character: CharacterView in _view.party_members:
+		var coordinate := combat.battlefield.character_position(character.id)
+		if coordinate.x >= 0:
+			party_reference = coordinate
+			break
+	var active_ids: Dictionary = {}
+	for monster: MonsterView in combat.monsters:
+		active_ids[monster.id] = true
+		if not _monster_facing_right.has(monster.id):
+			_monster_facing_right[monster.id] = combat.battlefield.monster_position(monster.id).x < party_reference.x
+	for actor_id: Variant in _monster_facing_right.keys():
+		if not active_ids.has(actor_id):
+			_monster_facing_right.erase(actor_id)
 
 
 func _combatant_rect(combat: CombatView, actor_id: String, camera: Vector2i, visible_cells: Vector2i, draw_origin: Vector2) -> Rect2:
