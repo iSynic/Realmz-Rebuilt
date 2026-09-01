@@ -99,13 +99,13 @@ func _build_save_tab(parent: VBoxContainer, view: GameView) -> void:
 	rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(rows)
 	if _save_previews.is_empty():
-		_add_card(rows, "No saves for this campaign", "Return to party setup and begin a new adventure." if view.party_setup_available else "Quick Save creates the first validated slot.", "")
+		_add_card(rows, "No saves for this campaign", "Return to party setup and begin a new adventure." if view.party_setup_available else "Use either Quick Save slot or create a named save below.", "")
 	else:
 		var group := ButtonGroup.new()
 		for preview: SaveSlotPreview in _save_previews:
 			var button := Button.new()
 			button.name = "SavePreview_%s_%s" % [preview.slot_id, String(preview.source)]
-			button.text = "%s  •  %s\n%s" % [preview.slot_id, preview.source_label(), preview.status_label()]
+			button.text = "%s  •  %s\n%s" % [slot_label(preview.slot_id), preview.source_label(), preview.status_label()]
 			button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 			button.custom_minimum_size.y = 54.0
 			button.toggle_mode = true
@@ -132,7 +132,8 @@ func _build_save_footer(parent: VBoxContainer, view: GameView) -> void:
 		save_and_quit.tooltip_text = "Save to the selected slot, then quit Realmz Rebuilt."
 		save_and_quit.pressed.connect(_save_selected_and_quit)
 	elif not view.party_setup_available:
-		_add_action(actions, "Quick Save", &"save", "quick")
+		_add_action(actions, "Quick Save 1", &"save", "quick")
+		_add_action(actions, "Quick Save 2", &"save", "quick-2")
 		var save_selected := _add_action(actions, "Save Selected", &"", null)
 		save_selected.name = "SaveSelectedSlot"
 		save_selected.pressed.connect(_save_selected_preview)
@@ -188,7 +189,7 @@ func _refresh_save_detail() -> void:
 	if preview == null:
 		_add_card(_save_detail, "No selected record", "Save slots appear at left.", "")
 		return
-	_save_detail.add_child(_label("%s  •  %s" % [preview.slot_id, preview.source_label()], GOLD, 18))
+	_save_detail.add_child(_label("%s  •  %s" % [slot_label(preview.slot_id), preview.source_label()], GOLD, 18))
 	_save_detail.add_child(_label(preview.status_label(), CYAN if preview.can_load else Color("d48a78"), 14))
 	if preview.status != SaveSlotPreviewScript.VALID:
 		_save_detail.add_child(_label(preview.error_message, MUTED, 14))
@@ -241,6 +242,13 @@ static func slot_id_is_portable(value: String) -> bool:
 		if not ((code >= 48 and code <= 57) or (code >= 65 and code <= 90) or (code >= 97 and code <= 122) or code in [45, 95]):
 			return false
 	return true
+
+
+static func slot_label(slot_id: String) -> String:
+	match slot_id:
+		"quick": return "Quick Save 1"
+		"quick-2": return "Quick Save 2"
+		_: return slot_id
 
 
 func _build_display_tab(parent: VBoxContainer, settings: PresentationSettings) -> void:

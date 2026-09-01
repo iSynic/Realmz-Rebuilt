@@ -682,8 +682,8 @@ func _build_menus() -> void:
 	])
 	_fill_menu($MenuStrip/MenuRow/GameMenu, [
 		{"label": "Campaigns…", "system": &"campaigns", "disabled_reason": _campaign_library_reason()},
-		{"label": "Quick Save", "system": &"save", "disabled_reason": _save_reason()},
-		{"label": "Quick Load", "system": &"load", "disabled_reason": _load_reason()},
+		{"label": "Save & Load…", "route": &"system", "disabled_reason": _save_reason()}, {"label": "Quick Save 1", "system": &"save", "value": "quick", "disabled_reason": _save_reason()}, {"label": "Quick Save 2", "system": &"save", "value": "quick-2", "disabled_reason": _save_reason()},
+		{"label": "Quick Load 1", "system": &"load", "value": "quick", "disabled_reason": _load_reason()}, {"label": "Quick Load 2", "system": &"load", "value": "quick-2", "disabled_reason": _load_reason()},
 		{"label": "Main Menu…", "system": &"end_adventure", "disabled_reason": _end_adventure_reason()},
 		{"label": "Quit", "system": &"quit"},
 	])
@@ -715,7 +715,7 @@ func _build_menus() -> void:
 	])
 	_fill_menu($MenuStrip/MenuRow/PreferencesMenu, [
 		{"label": "Display, Audio, and Access", "route": &"system"},
-		{"label": "Save and Package Diagnostics", "route": &"system"},
+		{"label": "Save, Load, and Package Diagnostics", "route": &"system"},
 	])
 	_fill_menu($MenuStrip/MenuRow/MusicMenu, [
 		{"label": "Now Playing: %s" % (_music_title if _music_playing else "Nothing"), "disabled_reason": "Current music title"},
@@ -740,8 +740,8 @@ func _build_menus() -> void:
 		{"label": "Allies — Current Allies", "route": &"allies", "disabled_reason": _allies_reason()},
 		{"label": "Allies — Bestiary", "route": &"bestiary"},
 		{"label": "Maps / Notes", "route": &"journal"},
-		{"label": "Game — Quick Save", "system": &"save", "disabled_reason": _save_reason()},
-		{"label": "Game — Quick Load", "system": &"load", "disabled_reason": _load_reason()},
+		{"label": "Game — Save & Load…", "route": &"system", "disabled_reason": _save_reason()}, {"label": "Game — Quick Save 1", "system": &"save", "value": "quick", "disabled_reason": _save_reason()}, {"label": "Game — Quick Save 2", "system": &"save", "value": "quick-2", "disabled_reason": _save_reason()},
+		{"label": "Game — Quick Load 1", "system": &"load", "value": "quick", "disabled_reason": _load_reason()}, {"label": "Game — Quick Load 2", "system": &"load", "value": "quick-2", "disabled_reason": _load_reason()},
 		{"label": "Game — Main Menu", "system": &"end_adventure", "disabled_reason": _end_adventure_reason()},
 		{"label": "Game — Campaigns", "system": &"campaigns", "disabled_reason": _campaign_library_reason()},
 		{"label": "Preferences", "route": &"system"},
@@ -788,7 +788,7 @@ func _on_menu_item_pressed(item_id: int, menu: MenuButton) -> void:
 	elif entry.has("command"):
 		_activate_command(StringName(entry["command"]))
 	elif entry.has("system"):
-		_on_system_action_requested(StringName(entry["system"]), null)
+		_on_system_action_requested(StringName(entry["system"]), entry.get("value"))
 
 
 func _rebuild_command_deck() -> void:
