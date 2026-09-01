@@ -516,12 +516,12 @@ func _capture_gallery() -> void:
 	var corrupt_row := _router.find_child("SavePreview_broken_primary", true, false) as Button
 	corrupt_row.pressed.emit(); await _settle(); await _capture("canonical-system-corrupt-save-1280x720")
 	var system_tabs := _router.find_child("SystemWorkspaceTabs", true, false) as TabContainer
-	for index: int in range(1, 6):
-		system_tabs.current_tab = index; await _settle(); await _capture("canonical-system-%s-1280x720" % ["display", "audio", "accessibility", "controls", "diagnostics"][index - 1])
+	for index: int in range(1, 7):
+		system_tabs.current_tab = index; await _settle(); await _capture("canonical-system-%s-1280x720" % ["display", "audio", "pacing", "accessibility", "controls", "diagnostics"][index - 1])
 	system_tabs.current_tab = 2; await _settle(); (_router.find_child("OpenMusicPlaylist", true, false) as Button).pressed.emit(); await _settle(); await _capture("canonical-music-playlist-1280x720"); (_shell.find_child("MusicDone", true, false) as Button).pressed.emit(); await _settle()
 	await _resize(Vector2i(800, 600)); _router.open_screen(&"system"); await _settle(); system_tabs = _router.find_child("SystemWorkspaceTabs", true, false) as TabContainer
-	for index: int in range(0, 6):
-		system_tabs.current_tab = index; await _settle(); await _capture("classic-system-%s-800x600" % ["save-load", "display", "audio", "accessibility", "controls", "diagnostics"][index])
+	for index: int in range(0, 7):
+		system_tabs.current_tab = index; await _settle(); await _capture("classic-system-%s-800x600" % ["save-load", "display", "audio", "pacing", "accessibility", "controls", "diagnostics"][index])
 	system_tabs.current_tab = 2; await _settle(); (_router.find_child("OpenMusicPlaylist", true, false) as Button).pressed.emit(); await _settle(); await _capture("classic-music-playlist-800x600"); (_shell.find_child("MusicDone", true, false) as Button).pressed.emit(); await _settle()
 	var settings := PresentationSettings.new()
 	settings.text_scale = 1.5

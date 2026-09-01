@@ -58,6 +58,7 @@ func present(parent: VBoxContainer, view: GameView, settings: PresentationSettin
 	_build_save_tab(_tab(tabs, "Save & Load"), view)
 	_build_display_tab(_tab(tabs, "Display"), settings)
 	_build_audio_tab(_tab(tabs, "Audio"), settings)
+	_build_pacing_tab(_tab(tabs, "Pacing"), settings)
 	_build_accessibility_tab(_tab(tabs, "Accessibility"), settings)
 	_build_controls_tab(_tab(tabs, "Controls"), settings)
 	_build_diagnostics_tab(_tab(tabs, "Diagnostics"), settings)
@@ -325,18 +326,47 @@ func _build_accessibility_tab(parent: VBoxContainer, settings: PresentationSetti
 	content.add_child(_label("Reduced motion settles combat feedback in one presentation frame without skipping committed events.", MUTED, 14))
 
 
+func _build_pacing_tab(parent: VBoxContainer, settings: PresentationSettings) -> void:
+	var content := _settings_panel(parent, "Pacing", "Choose how long committed movement and animation remain on screen. Pacing never changes rules, turn order, movement points, or random results.")
+	var combat_speed := HSlider.new()
+	combat_speed.name = "CombatPlaybackSpeedSlider"
+	combat_speed.min_value = 25.0
+	combat_speed.max_value = 200.0
+	combat_speed.step = 25.0
+	combat_speed.tick_count = 8
+	combat_speed.ticks_on_borders = true
+	combat_speed.value = settings.combat_playback_speed_percent
+	combat_speed.tooltip_text = "%d%%  •  affects movement, attacks, projectiles, spells, and result holds" % settings.combat_playback_speed_percent
+	var combat_caption := _add_setting_row(content, "Combat & animation speed  •  %d%%" % settings.combat_playback_speed_percent, combat_speed)
+	combat_caption.name = "CombatPlaybackSpeedCaption"
+	combat_speed.value_changed.connect(func(value: float) -> void:
+		var percent := int(value)
+		combat_caption.text = "Combat & animation speed  •  %d%%" % percent
+		combat_speed.tooltip_text = "%d%%  •  affects movement, attacks, projectiles, spells, and result holds" % percent
+		setting_changed.emit(&"combat_playback_speed_percent", percent)
+	)
+	content.add_child(_label("100% is the designed combat pace. Castle separated global speed from Hurry Spell Resolution; this single control applies consistently to every combat visual.", MUTED, 14))
+	var movement_speed := HSlider.new()
+	movement_speed.name = "ExplorationSpeedSlider"
+	movement_speed.min_value = 25.0
+	movement_speed.max_value = 400.0
+	movement_speed.step = 25.0
+	movement_speed.tick_count = 16
+	movement_speed.ticks_on_borders = true
+	movement_speed.value = settings.exploration_speed_percent
+	movement_speed.tooltip_text = "%d%%  •  %.3f seconds per held step" % [settings.exploration_speed_percent, HeldMovementControllerScript.BASE_INTERVAL_SECONDS * 100.0 / float(settings.exploration_speed_percent)]
+	var movement_caption := _add_setting_row(content, "Exploration travel speed  •  %d%%" % settings.exploration_speed_percent, movement_speed)
+	movement_caption.name = "ExplorationSpeedCaption"
+	movement_speed.value_changed.connect(func(value: float) -> void:
+		var percent := int(value)
+		movement_caption.text = "Exploration travel speed  •  %d%%" % percent
+		movement_speed.tooltip_text = "%d%%  •  %.3f seconds per held step" % [percent, HeldMovementControllerScript.BASE_INTERVAL_SECONDS * 100.0 / float(percent)]
+		setting_changed.emit(&"exploration_speed_percent", percent)
+	)
+
+
 func _build_controls_tab(parent: VBoxContainer, settings: PresentationSettings) -> void:
 	var content := _settings_panel(parent, "Controls", "Keyboard and mouse controls remain fixed so prompts, shortcuts, and visible commands always agree.")
-	var movement_row := HBoxContainer.new()
-	var movement_speed := HSlider.new()
-	movement_speed.min_value = 25.0; movement_speed.max_value = 400.0; movement_speed.step = 25.0; movement_speed.value = settings.exploration_speed_percent
-	movement_speed.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	movement_speed.tooltip_text = "%d%%  •  %.3f seconds per held step" % [settings.exploration_speed_percent, HeldMovementControllerScript.BASE_INTERVAL_SECONDS * 100.0 / float(settings.exploration_speed_percent)]
-	movement_speed.value_changed.connect(func(value: float) -> void: setting_changed.emit(&"exploration_speed_percent", int(value)))
-	movement_row.add_child(movement_speed)
-	_add_setting_row(content, "Exploration speed  •  %d%%" % settings.exploration_speed_percent, movement_row)
-	var combat_speed := HSlider.new(); combat_speed.min_value = 25.0; combat_speed.max_value = 200.0; combat_speed.step = 25.0; combat_speed.value = settings.combat_playback_speed_percent; combat_speed.size_flags_horizontal = Control.SIZE_EXPAND_FILL; combat_speed.tooltip_text = "%d%%  •  affects manual and Auto visual playback only" % settings.combat_playback_speed_percent; combat_speed.value_changed.connect(func(value: float) -> void: setting_changed.emit(&"combat_playback_speed_percent", int(value)))
-	_add_setting_row(content, "Combat playback speed  •  %d%%" % settings.combat_playback_speed_percent, combat_speed)
 	_add_setting_toggle(content, "Auto Switch To Melee Weapon", settings.auto_switch_to_melee, &"auto_switch_to_melee")
 	_add_setting_toggle(content, "Show travel preview on the exploration map", settings.show_exploration_minimap, &"show_exploration_minimap")
 	_add_setting_toggle(content, "Add eligible scenario text to Notes automatically", settings.autojournal_enabled, &"autojournal_enabled")
@@ -394,7 +424,7 @@ func _add_control_help(parent: Container, entry: Dictionary) -> void:
 	row.add_child(detail)
 
 
-func _add_setting_row(parent: Container, label: String, control: Control) -> void:
+func _add_setting_row(parent: Container, label: String, control: Control) -> Label:
 	var card := PanelContainer.new()
 	card.theme_type_variation = &"ClassicInset"
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -408,6 +438,7 @@ func _add_setting_row(parent: Container, label: String, control: Control) -> voi
 	row.add_child(caption)
 	control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(control)
+	return caption
 
 
 func _tab(tabs: TabContainer, tab_name: String) -> VBoxContainer:
