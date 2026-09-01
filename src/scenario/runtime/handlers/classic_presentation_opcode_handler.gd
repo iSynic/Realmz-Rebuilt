@@ -30,8 +30,9 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 			return _show_random_message(action, request_id)
 		26:
 			return ScenarioRuntimeOperationResult.waiting(
-				InteractionRequest.from_payload(request_id, &"acknowledge", {"prompt": "Continue", "soundId": 30005}),
-				ScenarioRuntimeContinuation.empty(ScenarioRuntimeContinuation.CLASSIC_ACKNOWLEDGE)
+				InteractionRequest.from_payload(request_id, &"acknowledge", {"prompt": "Continue", "presentation": "classic-click-modal"}),
+				ScenarioRuntimeContinuation.empty(ScenarioRuntimeContinuation.CLASSIC_ACKNOWLEDGE),
+				[DomainEvent.new(&"sound_requested", {"soundId": 30005, "waitForCompletion": false, "source": "classic-opcode-26"})]
 			)
 		27:
 			return ScenarioRuntimeOperationResult.completed(null, [DomainEvent.new(&"picture_requested", {
@@ -41,16 +42,14 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 		28:
 			return ScenarioRuntimeOperationResult.completed(null, [DomainEvent.new(&"map_redraw_requested", {"source": "classic"})])
 		62:
-			var scrolling_message := _content.message_by_id(absi(action.operand_id))
-			if scrolling_message == null:
-				return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic opcode 62 references unavailable scrolling text %d." % action.operand_id)
 			return ScenarioRuntimeOperationResult.waiting(InteractionRequest.from_payload(request_id, InteractionRequest.ACKNOWLEDGE, {
-				"prompt": scrolling_message.text,
-				"messageId": scrolling_message.id,
+				"prompt": "",
 				"presentation": "classic-scrolling-text",
+				"resourceType": "TEXT",
+				"resourceId": action.operand_id,
 			}), ScenarioRuntimeContinuation.empty(ScenarioRuntimeContinuation.CLASSIC_ACKNOWLEDGE), [DomainEvent.new(&"scrolling_text_requested", {
-				"messageId": scrolling_message.id,
-				"text": scrolling_message.text,
+				"resourceType": "TEXT",
+				"resourceId": action.operand_id,
 				"source": "classic",
 			})])
 		71:

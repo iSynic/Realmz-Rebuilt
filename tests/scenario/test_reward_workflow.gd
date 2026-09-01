@@ -1,6 +1,7 @@
 extends RealmzTestCase
 
 const FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-fixture.realmz2"
+const LEVEL_DRAIN_CORRECTION_PATH: String = "res://tests/fixtures/oracle/reward-earned-level-drain-correction.json"
 
 
 func selected_case_arguments() -> Array:
@@ -10,6 +11,11 @@ func selected_case_arguments() -> Array:
 
 
 func run() -> void:
+	var level_drain_correction: Variant = JSON.parse_string(FileAccess.get_file_as_string(LEVEL_DRAIN_CORRECTION_PATH))
+	assert_true(level_drain_correction is Dictionary, "the earned-level drain fidelity decision is parseable")
+	if level_drain_correction is Dictionary:
+		assert_equal(level_drain_correction["castleSourceObservation"]["levelChecksPerRecipientPerRewardClose"], 1, "the fixture records Castle's single level check per recipient")
+		assert_equal(level_drain_correction["realmz2ChosenResult"]["levelChecks"], "repeat for the same eligible recipient while carried victory points remain positive", "the fixture records the correction that drains every level earned by the reward")
 	var loaded := PackageRepository.new().load_package(FIXTURE_PATH)
 	assert_true(loaded.is_ok(), "reward workflow fixture loads: %s" % loaded.error_message)
 	if not loaded.is_ok():
@@ -98,7 +104,7 @@ func _test_ordinary_distribution_and_restore(content: RealmzContent) -> void:
 
 
 func _test_experience_level_and_spell_restore(content: RealmzContent) -> void:
-	var ordinary := _character(content, "reward.ordinary", "Ordinary", 100, -1_000); ordinary.race_id = (content.race_definitions().filter(func(race: RaceDefinition) -> bool: return race.max_age > 0)[0] as RaceDefinition).id; var ordinary_state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [ordinary]), RealmzClock.new()); ordinary_state.experience_multiplier = 1.0; var ordinary_api := RealmzRuntimeApi.new(content, ordinary_state, RealmzRng.new(19), ScenarioActionState.new(), RealmzRules.new()); var ordinary_reward: ScenarioRuntimeOperationResult = ordinary_api.execute_classic(ClassicActionDefinition.new(0, 11, 11, 100, false, []), "reward.ordinary"); var ordinary_done: ScenarioRuntimeOperationResult = ordinary_api.resume_safe(ordinary_reward.continuation, InteractionResponse.from_data(ordinary_reward.interaction.request_id, ordinary_reward.interaction.kind, {"action": "done"}), "reward.ordinary.done"); assert_equal([ordinary_done.state, ordinary.level, ordinary.experience, ordinary_done.events.any(func(event: DomainEvent) -> bool: return event.kind == &"character_leveled")], [ScenarioRuntimeOperationResult.State.COMPLETED, 1, -900, false], "an ordinary negative VP balance receives its share without entering level-up progression"); var character := _character(content, "reward.leveler", "Leveler", 500, -1, 6)
+	var ordinary := _character(content, "reward.ordinary", "Ordinary", 100, -1_000); ordinary.race_id = (content.race_definitions().filter(func(race: RaceDefinition) -> bool: return race.max_age > 0)[0] as RaceDefinition).id; var ordinary_state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [ordinary]), RealmzClock.new()); ordinary_state.experience_multiplier = 1.0; var ordinary_api := RealmzRuntimeApi.new(content, ordinary_state, RealmzRng.new(19), ScenarioActionState.new(), RealmzRules.new()); var ordinary_reward: ScenarioRuntimeOperationResult = ordinary_api.execute_classic(ClassicActionDefinition.new(0, 11, 11, 100, false, []), "reward.ordinary"); var ordinary_done: ScenarioRuntimeOperationResult = ordinary_api.resume_safe(ordinary_reward.continuation, InteractionResponse.from_data(ordinary_reward.interaction.request_id, ordinary_reward.interaction.kind, {"action": "done"}), "reward.ordinary.done"); assert_equal([ordinary_done.state, ordinary.level, ordinary.experience, ordinary_done.events.any(func(event: DomainEvent) -> bool: return event.kind == &"character_leveled")], [ScenarioRuntimeOperationResult.State.COMPLETED, 1, -900, false], "an ordinary negative VP balance receives its share without entering level-up progression"); var capped := _character(content, "reward.capped", "Capped", 100, -1); var capped_state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [capped]), RealmzClock.new()); var capped_api := RealmzRuntimeApi.new(content, capped_state, RealmzRng.new(20), ScenarioActionState.new(), RealmzRules.new()); var capped_reward := capped_api.execute_classic(ClassicActionDefinition.new(0, 11, 11, 100, false, []), "reward.capped"); var capped_done := capped_api.resume_safe(capped_reward.continuation, InteractionResponse.from_data(capped_reward.interaction.request_id, capped_reward.interaction.kind, {"action": "done"}), "reward.capped.done"); assert_equal([capped_done.state, capped.level, capped.experience, capped_done.events.any(func(event: DomainEvent) -> bool: return event.kind == &"character_leveled"), capped_done.events.any(func(event: DomainEvent) -> bool: return event.kind == &"reward_threshold_corrected")], [ScenarioRuntimeOperationResult.State.COMPLETED, 1, -1, false, true], "a nonpositive next-level threshold records the invalid content and grants no repeat level"); var character := _character(content, "reward.leveler", "Leveler", 500, -1, 6)
 	character.knowledge = 18
 	character.judgment = 16
 	character.vitality = 15
@@ -115,8 +121,8 @@ func _test_experience_level_and_spell_restore(content: RealmzContent) -> void:
 	var treasure_stage := vm.run(api)
 	assert_equal([treasure_stage.state, treasure_stage.interaction.kind, treasure_stage.interaction.body.to_data()["experienceShare"]], [ScenarioVmResult.State.WAITING, InteractionRequest.TREASURE_DISTRIBUTION, 25_000], "experience is awarded once with the selected party's Classic 250 percent setup multiplier before the empty treasure stage")
 	var level_stage := vm.resume(InteractionResponse.from_data(treasure_stage.interaction.request_id, treasure_stage.interaction.kind, {"action": "done"}), api)
-	assert_equal([level_stage.state, level_stage.interaction.kind, level_stage.interaction.body.to_data()["mode"], character.level, level_stage.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"character_leveled")[0].payload.get("experienceRemaining")], [ScenarioVmResult.State.WAITING, InteractionRequest.LEVEL_UP, "result", 2, 21_499], "positive residual experience produces one staged source-backed level result with its carried-VP diagnostic")
-	assert_equal(character.experience, 21_499, "one reward close subtracts one threshold and retains positive scaled residual experience without auto-looping")
+	assert_equal([level_stage.state, level_stage.interaction.kind, level_stage.interaction.body.to_data()["mode"], character.level, level_stage.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"character_leveled")[0].payload.get("experienceRemaining")], [ScenarioVmResult.State.WAITING, InteractionRequest.LEVEL_UP, "result", 2, 21_499], "positive residual experience produces the first staged level result with its carried-VP diagnostic")
+	assert_equal(character.experience, 21_499, "the first result retains the balance needed to drain additional earned levels in the same reward")
 	var saved_vm := ScenarioVmSnapshot.from_data(JSON.parse_string(JSON.stringify(vm.snapshot().to_data())))
 	var saved_game := GameState.from_data(state.to_data())
 	var saved_rng := rng.snapshot()
@@ -131,12 +137,17 @@ func _test_experience_level_and_spell_restore(content: RealmzContent) -> void:
 	var wrong_level := restored_vm.resume(InteractionResponse.from_data(saved_vm.pending_request.request_id, InteractionRequest.LEVEL_UP, {"action": "continue", "characterId": "reward.someone-else"}), restored_api)
 	assert_equal([wrong_level.error_code, restored_vm.pending_request().request_id], [&"invalid_interaction_response", saved_vm.pending_request.request_id], "a rejected level-result response preserves the issuing VM request for a corrected response")
 	var spell_stage := restored_vm.resume(InteractionResponse.from_data(saved_vm.pending_request.request_id, InteractionRequest.LEVEL_UP, {"action": "continue", "characterId": character.id}), restored_api)
+	var acknowledged_levels := 1
+	while spell_stage.state == ScenarioVmResult.State.WAITING and spell_stage.interaction.kind == InteractionRequest.LEVEL_UP and spell_stage.interaction.body.to_data()["mode"] == "result":
+		acknowledged_levels += 1
+		spell_stage = restored_vm.resume(InteractionResponse.from_data(spell_stage.interaction.request_id, InteractionRequest.LEVEL_UP, {"action": "continue", "characterId": character.id}), restored_api)
 	assert_true(spell_stage.state == ScenarioVmResult.State.WAITING and spell_stage.interaction.kind == InteractionRequest.LEVEL_UP and spell_stage.interaction.body.to_data()["mode"] == "spell-selection" and not spell_stage.interaction.body.to_data()["spells"].is_empty() and not String(spell_stage.interaction.body.to_data()["spells"][0]["description"]).is_empty(), "a qualifying caster advances to a dedicated spell-selection stage with the exact application spell description")
+	assert_equal(acknowledged_levels, 4, "the same reward drains every earned level instead of deferring them to later one-point awards")
 	var spell_boundary := ScenarioVmSnapshot.from_data(JSON.parse_string(JSON.stringify(restored_vm.snapshot().to_data())))
 	assert_not_null(spell_boundary, "the spell-selection stage is independently serializable")
 	var completed := restored_vm.resume(InteractionResponse.from_data(spell_stage.interaction.request_id, InteractionRequest.LEVEL_UP, {"action": "confirm-spells", "characterId": character.id, "spellIds": []}), restored_api)
 	assert_equal([completed.state, saved_game.world.trigger_is_disabled("ap.reward-level"), completed.events.any(func(event: DomainEvent) -> bool: return event.kind == &"classic_control_marker")], [ScenarioVmResult.State.COMPLETED, true, false], "a completed staged scenario reward reaches opcode 25, removes its issuing AP, and terminates before any later Encounter code")
-	assert_equal([saved_game.party.character_by_id(character.id).level, saved_game.party.character_by_id(character.id).experience], [2, 21_499], "the source-limited one-level result survives the complete continuation")
+	assert_equal([saved_game.party.character_by_id(character.id).level, saved_game.party.character_by_id(character.id).experience], [5, -23_001], "all earned levels survive the complete continuation with a negative balance toward the next level")
 
 
 func _test_terminal_battle_rewards_once(content: RealmzContent) -> void:

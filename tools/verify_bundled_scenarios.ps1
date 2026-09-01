@@ -67,7 +67,7 @@ try {
 } finally {
     $sourceHashAlgorithm.Dispose()
 }
-$sourceHash = [Convert]::ToHexString($sourceHashBytes).ToLowerInvariant()
+$sourceHash = ([BitConverter]::ToString($sourceHashBytes) -replace "-", "").ToLowerInvariant()
 if ($sourceBytes -ne [long]$citySource.snapshot.bytes -or $sourceHash -ne $citySource.snapshot.sha256 -or $sourceHash -ne $city[0].sourceOverride.snapshotSha256) {
     throw "City of Bywater source snapshot identity does not match its provenance catalogs."
 }
@@ -140,6 +140,8 @@ foreach ($scenario in $catalog.scenarios) {
             $ranthogReward = @($scenarioDocument.programs | Where-Object { $_.id -eq "xap:50" })
             $cryptDoorEncounter = @($contentDocument.complexEncounters | Where-Object { $_.id -eq 4 })
             $cryptDoorPrompt = @($contentDocument.messages | Where-Object { $_.id -eq 218 })
+            $cobLandFive = @($world.maps | Where-Object { $_.id -eq "land:5" })
+            $cobSecretCell = if ($cobLandFive.Count -eq 1) { $cobLandFive[0].cells[(10 * [int]$cobLandFive[0].width) + 61] } else { $null }
             if ($ranthogTrigger.Count -ne 1 -or $ranthogTrigger[0].active -ne $false -or $ranthogTrigger[0].chancePercent -ne -100 -or $ranthogTrigger[0].mapId -ne "land:0" -or $ranthogTrigger[0].coordinate.x -ne 39 -or $ranthogTrigger[0].coordinate.y -ne 56) {
                 throw "City of Bywater must preserve dormant placed Action Point Data DD:0:39 at land:0 39,56."
             }
@@ -148,6 +150,13 @@ foreach ($scenario in $catalog.scenarios) {
             }
             if ($cryptDoorEncounter.Count -ne 1 -or $cryptDoorEncounter[0].promptMessageId -ne 218 -or (@($cryptDoorEncounter[0].texts[0], $cryptDoorEncounter[0].texts[1]) -join "|") -ne "Bang on the door.|Try and force the door." -or $cryptDoorPrompt.Count -ne 1) {
                 throw "City of Bywater Complex Encounter 4 must retain prompt 218 and both authored door actions."
+            }
+            $secretFeatures = @()
+            if ($null -ne $cobSecretCell) {
+                $secretFeatures = @($cobSecretCell[7] | Where-Object { $_[1] -eq "secret" -and $_[2] -eq "hidden" })
+            }
+            if ($null -eq $cobSecretCell -or $cobSecretCell[0] -ne "classic.terrain.39" -or (([int]$cobSecretCell[2]) -band 1) -ne 0 -or -not (@($cobSecretCell[4]) -contains "Data DD:5:51") -or $secretFeatures.Count -ne 1) {
+                throw "City of Bywater Land 5 cell 61,10 must retain solid terrain 39, hidden-secret state, and Action Point Data DD:5:51."
             }
         }
     } finally {

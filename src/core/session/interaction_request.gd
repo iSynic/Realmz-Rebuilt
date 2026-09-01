@@ -42,11 +42,14 @@ class AcknowledgeBody:
 	var journal_recorded: bool
 	var sound_id: int
 	var player_map_id: String
+	var resource_type: String
+	var resource_id: int
 	var has_message_id: bool
 	var has_presentation: bool
 	var has_journal_state: bool
 	var has_sound_id: bool
 	var has_player_map_id: bool
+	var has_resource: bool
 
 	func to_data() -> Dictionary:
 		var data := {"prompt": prompt}
@@ -57,6 +60,9 @@ class AcknowledgeBody:
 			data["journalRecorded"] = journal_recorded
 		if has_sound_id: data["soundId"] = sound_id
 		if has_player_map_id: data["playerMapId"] = player_map_id
+		if has_resource:
+			data["resourceType"] = resource_type
+			data["resourceId"] = resource_id
 		return data
 
 	func prompt_text() -> String: return prompt
@@ -563,8 +569,9 @@ static func _from_payload(id: String, request_kind: StringName, payload: Diction
 
 static func _parse_dialog_body(request_kind: StringName, payload: Dictionary) -> Body:
 	if request_kind == ACKNOWLEDGE:
-		if not _fields_are_exact(payload, ["prompt", "messageId", "presentation", "journalEligible", "journalRecorded", "soundId", "playerMapId"], ["prompt"]) or not payload["prompt"] is String or not _optional_ints(payload, ["messageId", "soundId"]) or not _optional_strings(payload, ["presentation", "playerMapId"]) or not _optional_bools(payload, ["journalEligible", "journalRecorded"]): return null
+		if not _fields_are_exact(payload, ["prompt", "messageId", "presentation", "journalEligible", "journalRecorded", "soundId", "playerMapId", "resourceType", "resourceId"], ["prompt"]) or not payload["prompt"] is String or not _optional_ints(payload, ["messageId", "soundId", "resourceId"]) or not _optional_strings(payload, ["presentation", "playerMapId", "resourceType"]) or not _optional_bools(payload, ["journalEligible", "journalRecorded"]): return null
 		if payload.has("journalEligible") != payload.has("journalRecorded"): return null
+		if payload.has("resourceType") != payload.has("resourceId") or (payload.has("resourceType") and String(payload["resourceType"]).is_empty()): return null
 		var acknowledge_body := AcknowledgeBody.new()
 		acknowledge_body.prompt = payload["prompt"]
 		acknowledge_body.message_id = int(payload.get("messageId", 0))
@@ -573,11 +580,14 @@ static func _parse_dialog_body(request_kind: StringName, payload: Dictionary) ->
 		acknowledge_body.journal_recorded = bool(payload.get("journalRecorded", false))
 		acknowledge_body.sound_id = int(payload.get("soundId", 0))
 		acknowledge_body.player_map_id = String(payload.get("playerMapId", ""))
+		acknowledge_body.resource_type = String(payload.get("resourceType", ""))
+		acknowledge_body.resource_id = int(payload.get("resourceId", 0))
 		acknowledge_body.has_message_id = payload.has("messageId")
 		acknowledge_body.has_presentation = payload.has("presentation")
 		acknowledge_body.has_journal_state = payload.has("journalEligible") or payload.has("journalRecorded")
 		acknowledge_body.has_sound_id = payload.has("soundId")
 		acknowledge_body.has_player_map_id = payload.has("playerMapId")
+		acknowledge_body.has_resource = payload.has("resourceType")
 		return acknowledge_body
 	if request_kind == YES_NO:
 		if not _fields_are_exact(payload, ["prompt", "yesId", "yesLabel", "noId", "noLabel", "regionId"], ["yesLabel", "noLabel"]) or not _required_strings(payload, ["yesLabel", "noLabel"]) or not _optional_strings(payload, ["prompt", "regionId"]) or not _optional_ints(payload, ["yesId", "noId"]): return null

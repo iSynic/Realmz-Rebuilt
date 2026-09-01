@@ -92,9 +92,20 @@ static func toggle_camp(context: SessionWorkflowContext) -> ClockTransitionResul
 	if map == null:
 		return ClockTransitionResult.failed(&"unknown_map", "The current map is unavailable for Camp.", events)
 	var previous_day := context.state.clock.day()
-	events.append_array(context.rules.clock.advance_classic_field_time(context.state, context.content, 5 if context.state.party_camping else 2, classic_time_scale(map), true))
+	events.append_array(context.rules.clock.advance_classic_field_time(context.state, context.content, 3 if context.state.party_camping else 2, classic_time_scale(map), true))
 	var crossed_midnight := context.state.clock.day() != previous_day
-	return ClockTransitionResult.completed(map, events, context.state.party_camping, context.state.clock.day() if crossed_midnight else 0)
+	return ClockTransitionResult.completed(map, events, false, context.state.clock.day() if crossed_midnight else 0)
+
+
+static func complete_camp_entry(context: SessionWorkflowContext, preceding_events: Array[DomainEvent]) -> ClockTransitionResult:
+	var map := context.content.world.map_by_id(context.state.party.map_id)
+	if map == null or not context.state.party_camping:
+		return ClockTransitionResult.failed(&"invalid_camp_entry", "The second Camp time stage is unavailable.", preceding_events)
+	var events: Array[DomainEvent] = []
+	events.assign(preceding_events)
+	var previous_day := context.state.clock.day()
+	events.append_array(context.rules.clock.advance_classic_field_time(context.state, context.content, 2, classic_time_scale(map), true))
+	return ClockTransitionResult.completed(map, events, true, context.state.clock.day() if context.state.clock.day() != previous_day else 0)
 
 
 static func rest(context: SessionWorkflowContext) -> ClockTransitionResult:
@@ -109,7 +120,18 @@ static func rest(context: SessionWorkflowContext) -> ClockTransitionResult:
 	context.rules.clock.change_fatigue(context.state.party, -2)
 	var events: Array[DomainEvent] = [DomainEvent.new(&"fatigue_changed", {"previous": previous_fatigue, "current": context.state.party.fatigue, "reason": "rest", "source": "classic"})]
 	var previous_day := context.state.clock.day()
-	events.append_array(context.rules.clock.advance_classic_field_time(context.state, context.content, 5, classic_time_scale(map), true))
+	events.append_array(context.rules.clock.advance_classic_field_time(context.state, context.content, 3, classic_time_scale(map), true))
+	return ClockTransitionResult.completed(map, events, false, context.state.clock.day() if context.state.clock.day() != previous_day else 0)
+
+
+static func complete_rest(context: SessionWorkflowContext, preceding_events: Array[DomainEvent]) -> ClockTransitionResult:
+	var map := context.content.world.map_by_id(context.state.party.map_id)
+	if map == null or not context.state.party_camping:
+		return ClockTransitionResult.failed(&"invalid_rest_stage", "The second Rest time stage is unavailable.", preceding_events)
+	var events: Array[DomainEvent] = []
+	events.assign(preceding_events)
+	var previous_day := context.state.clock.day()
+	events.append_array(context.rules.clock.advance_classic_field_time(context.state, context.content, 2, classic_time_scale(map), true))
 	events.append(DomainEvent.new(&"party_rested", {"timeclicks": 5, "mapId": map.id, "source": "classic"}))
 	return ClockTransitionResult.completed(map, events, true, context.state.clock.day() if context.state.clock.day() != previous_day else 0)
 
@@ -195,6 +217,48 @@ static func search(context: SessionWorkflowContext) -> ClockTransitionResult:
 	return ClockTransitionResult.completed(current_map, events, true, context.state.clock.day() if context.state.clock.day() != previous_day else 0)
 
 
+static func search_after_land_movement_attempt(context: SessionWorkflowContext, preceding_events: Array[DomainEvent]) -> ClockTransitionResult:
+	var current_map := context.content.world.map_by_id(context.state.party.map_id)
+	if current_map == null:
+		return ClockTransitionResult.failed(&"unknown_map", "The current map is unavailable for the post-movement secret check.", preceding_events)
+	var events: Array[DomainEvent] = []
+	events.assign(preceding_events)
+	if current_map.level_type != &"land":
+		return ClockTransitionResult.completed(current_map, events, false, 0)
+	var chance := 0
+	var characters := context.state.party.characters()
+	for character: CharacterState in characters:
+		chance += character.special_value(4)
+	if not characters.is_empty():
+		chance /= characters.size()
+	var searching := context.state.party.conditions.is_active(ConditionRules.PARTY_SEARCHING)
+	if searching or context.state.party.conditions.is_active(ConditionRules.PARTY_DISCOVER_SECRET):
+		chance = 100
+	var discovered: Array[String] = []
+	var first_roll := 0
+	for y: int in range(context.state.party.coordinate.y - 1, context.state.party.coordinate.y + 2):
+		for x: int in range(context.state.party.coordinate.x - 1, context.state.party.coordinate.x + 2):
+			var cell := current_map.topology.cell_at(Vector2i(x, y))
+			if cell == null:
+				continue
+			for feature: MapFeature in cell.features():
+				if feature.kind != &"secret" or context.state.world.secret_is_discovered(feature.id, feature.initial_state == &"revealed"):
+					continue
+				var roll := context.rng.draw(100, StringName("exploration.movement-search.%s" % feature.id))
+				if first_roll == 0:
+					first_roll = roll
+				if roll <= chance:
+					context.state.world.discover_secret(feature.id)
+					discovered.append(feature.id)
+	events.append(DomainEvent.new(&"movement_secret_search_completed", {"mapId": current_map.id, "x": context.state.party.coordinate.x, "y": context.state.party.coordinate.y, "roll": first_roll, "chance": chance, "discoveredSecrets": discovered}))
+	for secret_id: String in discovered:
+		events.append(DomainEvent.new(&"secret_discovered", {"secretId": secret_id, "byMovementAttempt": true}))
+	var previous_day := context.state.clock.day()
+	if searching:
+		events.append_array(context.rules.clock.advance_classic_field_time(context.state, context.content, 4, classic_time_scale(current_map), true))
+	return ClockTransitionResult.completed(current_map, events, searching, context.state.clock.day() if context.state.clock.day() != previous_day else 0)
+
+
 static func complete_area_search(context: SessionWorkflowContext, preceding_events: Array[DomainEvent]) -> ClockTransitionResult:
 	var current_map := context.content.world.map_by_id(context.state.party.map_id)
 	if current_map == null:
@@ -244,7 +308,19 @@ static func depart_camp_for_movement(context: SessionWorkflowContext, direction:
 	events.append(DomainEvent.new(&"camp_mode_changed", {"camping": false, "source": "classic-movement"}))
 	events.append(DomainEvent.new(&"camp_departed_for_movement", {"mapId": map.id, "x": context.state.party.coordinate.x, "y": context.state.party.coordinate.y, "direction": [direction.x, direction.y], "source": "classic"}))
 	var previous_day := context.state.clock.day()
-	events.append_array(context.rules.clock.advance_classic_field_time(context.state, context.content, 2 if map.level_type == &"dungeon" else 15, classic_time_scale(map), true))
+	var departure_clicks := 2 if map.level_type == &"dungeon" else 5
+	events.append_array(context.rules.clock.advance_classic_field_time(context.state, context.content, departure_clicks, classic_time_scale(map), true))
+	return MovementTransitionResult.after_clock(map, events, &"move" if map.level_type == &"dungeon" else &"camp-departure-second", direction, map.level_type == &"dungeon", context.state.clock.day() if context.state.clock.day() != previous_day else 0, context.state.party.coordinate + direction)
+
+
+static func complete_land_camp_departure(context: SessionWorkflowContext, direction: Vector2i, preceding_events: Array[DomainEvent]) -> MovementTransitionResult:
+	var map := context.content.world.map_by_id(context.state.party.map_id)
+	if map == null or map.level_type != &"land" or context.state.party_camping:
+		return MovementTransitionResult.failed(&"invalid_camp_departure", "The second movement-departure time stage is unavailable.", preceding_events)
+	var events: Array[DomainEvent] = []
+	events.assign(preceding_events)
+	var previous_day := context.state.clock.day()
+	events.append_array(context.rules.clock.advance_classic_field_time(context.state, context.content, 10, classic_time_scale(map), true))
 	return MovementTransitionResult.after_clock(map, events, &"move", direction, true, context.state.clock.day() if context.state.clock.day() != previous_day else 0, context.state.party.coordinate + direction)
 
 
@@ -276,11 +352,12 @@ static func commit_blocked_attempt(context: SessionWorkflowContext, movement: Wo
 		blocked_events.append(_sound_event(-148, "classic-boat-collision"))
 	append_movement_sound(blocked_events, movement)
 	var attempt_cost := blocked_land_attempt_cost(movement)
+	var searches_after_attempt := movement.source_map != null and movement.source_map.level_type == &"land"
 	if attempt_cost <= 0:
-		return MovementTransitionResult.completed(blocked_events)
+		return MovementTransitionResult.after_clock(movement.source_map, blocked_events, &"attempt-search-completed", Vector2i.ZERO, false, 0, movement.target_coordinate) if searches_after_attempt else MovementTransitionResult.completed(blocked_events)
 	var previous_day := context.state.clock.day()
 	blocked_events.append_array(context.rules.clock.advance_classic_field_time(context.state, context.content, attempt_cost, classic_time_scale(movement.source_map), true))
-	return MovementTransitionResult.after_clock(movement.source_map, blocked_events, &"completed", Vector2i.ZERO, true, context.state.clock.day() if context.state.clock.day() != previous_day else 0, movement.target_coordinate)
+	return MovementTransitionResult.after_clock(movement.source_map, blocked_events, &"attempt-search-completed" if searches_after_attempt else &"completed", Vector2i.ZERO, true, context.state.clock.day() if context.state.clock.day() != previous_day else 0, movement.target_coordinate)
 
 
 static func commit_permitted_move(context: SessionWorkflowContext, movement: WorldMovementResult, direction: Vector2i, preceding_events: Array[DomainEvent] = []) -> MovementTransitionResult:
@@ -316,7 +393,8 @@ static func commit_permitted_move(context: SessionWorkflowContext, movement: Wor
 	events.append_array(context.rules.clock.advance_classic_field_time(context.state, context.content, probe.target_cell.movement_cost, classic_time_scale(target_map), true))
 	if transition != null:
 		events.append(DomainEvent.new(&"map_transitioned", {"transitionId": transition.id, "sourceMapId": source_map_id, "targetMapId": target_map.id}))
-	return MovementTransitionResult.after_clock(target_map, events, &"post-move", Vector2i.ZERO, false, context.state.clock.day() if context.state.clock.day() != previous_day else 0, target_coordinate)
+	var resume_kind := &"attempt-search-post-move" if target_map.level_type == &"land" else &"post-move"
+	return MovementTransitionResult.after_clock(target_map, events, resume_kind, Vector2i.ZERO, false, context.state.clock.day() if context.state.clock.day() != previous_day else 0, target_coordinate)
 
 
 static func blocked_land_attempt_cost(movement: WorldMovementResult) -> int:

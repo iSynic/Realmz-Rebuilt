@@ -58,7 +58,7 @@ func _validate_monster_record_references(monsters: Array[MonsterDefinition], ite
 				return _reject("Monster '%s' random weapon table %d can produce unavailable weapon '%s'." % [monster.id, monster.random_weapon_table, random_weapon_id])
 	return true
 
-func _validate_scenario_references(scenario: ScenarioDefinition, message_ids: Dictionary, encounters: Array[SimpleEncounterDefinition], complex_encounters: Array[ComplexEncounterDefinition], thief_encounters: Array[ThiefEncounterDefinition], items: Array[ItemDefinition], spells: Array[SpellDefinition]) -> bool:
+func _validate_scenario_references(scenario: ScenarioDefinition, message_ids: Dictionary, encounters: Array[SimpleEncounterDefinition], complex_encounters: Array[ComplexEncounterDefinition], thief_encounters: Array[ThiefEncounterDefinition], items: Array[ItemDefinition], spells: Array[SpellDefinition], media_assets: Array[MediaAsset]) -> bool:
 	var encounter_ids: Dictionary = {}
 	for encounter: SimpleEncounterDefinition in encounters:
 		encounter_ids[encounter.id] = true
@@ -88,6 +88,9 @@ func _validate_scenario_references(scenario: ScenarioDefinition, message_ids: Di
 	var classic_item_ids: Dictionary = {}
 	for item: ItemDefinition in items:
 		classic_item_ids[item.classic_id] = true
+	var media_resource_keys: Dictionary = {}
+	for asset: MediaAsset in media_assets:
+		media_resource_keys["%s:%d" % [asset.resource_type, asset.resource_id]] = true
 	for program_id: String in scenario.program_ids():
 		var program := scenario.program_by_id(program_id)
 		for index: int in range(program.instruction_count()):
@@ -107,6 +110,9 @@ func _validate_scenario_references(scenario: ScenarioDefinition, message_ids: Di
 				39:
 					if scenario.program_by_id("xap:%d" % instruction.operand_id) == null:
 						return _reject("Scenario program '%s' references unavailable XAP %d." % [program.id, instruction.operand_id])
+				62:
+					if not media_resource_keys.has("TEXT:%d" % instruction.operand_id):
+						return _reject("Scenario program '%s' opcode 62 references unavailable TEXT resource %d." % [program.id, instruction.operand_id])
 				67:
 					if not classic_item_ids.has(instruction.extra_code[0]):
 						return _reject("Scenario program '%s' opcode 67 references unavailable Classic item %d." % [program.id, instruction.extra_code[0]])

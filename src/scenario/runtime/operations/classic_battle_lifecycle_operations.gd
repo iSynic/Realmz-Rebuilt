@@ -581,14 +581,14 @@ func _combat_request(request_id: String) -> InteractionRequest:
 		var character := CharacterView.new(character_state, _content)
 		var equipment := _rules.inventory.combat_equipment(character_state, _content.item_definitions())
 		character.apply_equipment(equipment)
-		var payload := _character_combatant_payload(character)
+		var payload := _character_combatant_payload(character, equipment)
 		_append_combatant_position_facts(payload, combat_view.active_actor_id, character.id, terrain_set)
 		_append_character_weapon_facts(payload, character_state, equipment, combat_view.weapon_mode if character.id == combat_view.active_actor_id else &"melee")
 		combatants_by_id[character.id] = payload
 	for monster: MonsterView in combat_view.monsters:
 		if _game_state.combat.battlefield == null or not _game_state.combat.battlefield.has_actor(monster.id):
 			continue
-		var payload := _monster_combatant_payload(monster)
+		var payload := _monster_combatant_payload(monster, _content.monster_by_id(monster.definition_id))
 		_append_combatant_position_facts(payload, combat_view.active_actor_id, monster.id, terrain_set)
 		combatants_by_id[monster.id] = payload
 	var combatants: Array[Dictionary] = []
@@ -692,12 +692,42 @@ func active_combat_request(request_id: String) -> InteractionRequest:
 	return _combat_request(request_id)
 
 
-static func _character_combatant_payload(character: CharacterView) -> Dictionary:
-	return {"id": character.id, "kind": "character", "name": character.name, "currentHealth": character.current_health, "maximumHealth": character.maximum_health, "spellPoints": character.spell_points, "maximumSpellPoints": character.maximum_spell_points, "armor": character.armor, "magicResistance": character.magic_resistance, "attacks": character.attacks_per_round, "movement": character.movement, "maximumMovement": character.maximum_movement, "traitor": character.traitor, "helpless": character.condition_values[ConditionRules.HELPLESS] != 0, "conditions": character.conditions.map(func(condition: CharacterMetricView) -> String: return condition.name)}
+static func _character_combatant_payload(character: CharacterView, equipment: CharacterCombatEquipment) -> Dictionary:
+	var items: Array[String] = []
+	for item: ItemView in character.items:
+		var row := "%s • %s" % [item.name, "Equipped" if item.equipped else "Carried"]
+		if item.charges >= 0:
+			row += " • %d charge%s" % [item.charges, "" if item.charges == 1 else "s"]
+		items.append(row)
+	var attack_rows: Array[String] = []
+	var melee: ItemDefinition = equipment.melee_weapon if equipment != null and equipment.valid else null
+	var missile: ItemDefinition = equipment.missile_weapon if equipment != null and equipment.valid else null
+	attack_rows.append(_character_attack_row("Melee", melee, character.attacks_per_round))
+	if missile != null:
+		attack_rows.append(_character_attack_row("Missile", missile, character.attacks_per_round))
+	return {"id": character.id, "kind": "character", "name": character.name, "currentHealth": character.current_health, "maximumHealth": character.maximum_health, "spellPoints": character.spell_points, "maximumSpellPoints": character.maximum_spell_points, "armor": character.armor, "magicResistance": character.magic_resistance, "attacks": character.attacks_per_round, "movement": character.movement, "maximumMovement": character.maximum_movement, "traitor": character.traitor, "helpless": character.condition_values[ConditionRules.HELPLESS] != 0, "conditions": character.conditions.map(func(condition: CharacterMetricView) -> String: return condition.name), "items": items, "attackRows": attack_rows}
 
 
-static func _monster_combatant_payload(monster: MonsterView) -> Dictionary:
-	return {"id": monster.id, "kind": "monster", "name": monster.name, "currentHealth": monster.current_health, "maximumHealth": monster.maximum_health, "spellPoints": monster.spell_points, "maximumSpellPoints": monster.maximum_spell_points, "armor": monster.armor, "magicResistance": monster.magic_resistance, "hitDice": monster.hit_dice, "attacks": str(monster.attack_count), "movement": monster.movement_maximum, "maximumMovement": monster.movement_maximum, "traitor": monster.traitor, "helpless": monster.helpless, "conditions": monster.conditions.duplicate(), "immunities": monster.immunities.duplicate(), "vulnerabilities": monster.vulnerabilities.duplicate(), "weapon": monster.weapon_name}
+static func _monster_combatant_payload(monster: MonsterView, definition: MonsterDefinition) -> Dictionary:
+	var attack_rows: Array[String] = []
+	if definition != null:
+		var attacks := definition.attacks()
+		for index: int in attacks.size():
+			var attack := attacks[index]
+			attack_rows.append("Attack %d • %d–%d damage" % [index + 1, attack.damage_min, attack.damage_max])
+	var items: Array[String] = []
+	if not monster.weapon_name.is_empty() and monster.weapon_name != "Unarmed":
+		items.append("%s • Equipped" % monster.weapon_name)
+	return {"id": monster.id, "kind": "monster", "name": monster.name, "currentHealth": monster.current_health, "maximumHealth": monster.maximum_health, "spellPoints": monster.spell_points, "maximumSpellPoints": monster.maximum_spell_points, "armor": monster.armor, "magicResistance": monster.magic_resistance, "hitDice": monster.hit_dice, "attacks": str(monster.attack_count), "movement": monster.movement_maximum, "maximumMovement": monster.movement_maximum, "traitor": monster.traitor, "helpless": monster.helpless, "conditions": monster.conditions.duplicate(), "items": items, "attackRows": attack_rows, "immunities": monster.immunities.duplicate(), "vulnerabilities": monster.vulnerabilities.duplicate(), "weapon": monster.weapon_name}
+
+
+static func _character_attack_row(label: String, weapon: ItemDefinition, attacks: String) -> String:
+	if weapon == null:
+		return "%s • Unarmed • %s attack%s" % [label, attacks, "" if attacks == "1" else "s"]
+	var damage := ""
+	if weapon.vs_small > 0:
+		damage = " • %d–%d damage" % [1 + weapon.damage_bonus, weapon.damage_bonus + weapon.vs_small]
+	return "%s • %s%s • %s attack%s" % [label, weapon.name, damage, attacks, "" if attacks == "1" else "s"]
 
 
 func _append_combatant_position_facts(payload: Dictionary, active_actor_id: String, combatant_id: String, terrain_set: BattleTerrainSetDefinition) -> void:

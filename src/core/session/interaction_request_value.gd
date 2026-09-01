@@ -186,6 +186,8 @@ class Combatant:
 	var traitor: bool
 	var helpless: bool
 	var conditions: Array[String] = []
+	var items: Array[String] = []
+	var attack_rows: Array[String] = []
 	var immunities: Array[String] = []
 	var vulnerabilities: Array[String] = []
 	var weapon: String
@@ -196,7 +198,7 @@ class Combatant:
 	var has_position_facts: bool
 
 	func to_data() -> Dictionary:
-		var data := {"id": id, "kind": String(kind), "name": name, "currentHealth": current_health, "maximumHealth": maximum_health, "spellPoints": spell_points, "maximumSpellPoints": maximum_spell_points, "armor": armor, "magicResistance": magic_resistance, "attacks": attacks, "movement": movement, "maximumMovement": maximum_movement, "traitor": traitor, "helpless": helpless, "conditions": conditions.duplicate()}
+		var data := {"id": id, "kind": String(kind), "name": name, "currentHealth": current_health, "maximumHealth": maximum_health, "spellPoints": spell_points, "maximumSpellPoints": maximum_spell_points, "armor": armor, "magicResistance": magic_resistance, "attacks": attacks, "movement": movement, "maximumMovement": maximum_movement, "traitor": traitor, "helpless": helpless, "conditions": conditions.duplicate(), "items": items.duplicate(), "attackRows": attack_rows.duplicate()}
 		if has_hit_dice: data["hitDice"] = hit_dice
 		if not immunities.is_empty(): data["immunities"] = immunities.duplicate()
 		if not vulnerabilities.is_empty(): data["vulnerabilities"] = vulnerabilities.duplicate()
@@ -652,13 +654,13 @@ static func combat_target(data: Variant) -> CombatTarget:
 
 
 static func combatant(data: Variant) -> Combatant:
-	var allowed := ["id", "kind", "name", "currentHealth", "maximumHealth", "spellPoints", "maximumSpellPoints", "armor", "magicResistance", "hitDice", "attacks", "movement", "maximumMovement", "traitor", "helpless", "conditions", "immunities", "vulnerabilities", "weapon", "weaponCharges", "range", "blocked"]
+	var allowed := ["id", "kind", "name", "currentHealth", "maximumHealth", "spellPoints", "maximumSpellPoints", "armor", "magicResistance", "hitDice", "attacks", "movement", "maximumMovement", "traitor", "helpless", "conditions", "items", "attackRows", "immunities", "vulnerabilities", "weapon", "weaponCharges", "range", "blocked"]
 	var required := ["id", "kind", "name", "currentHealth", "maximumHealth", "spellPoints", "maximumSpellPoints", "armor", "magicResistance", "attacks", "movement", "maximumMovement", "traitor", "helpless", "conditions"]
 	if not data is Dictionary or not _exact(data, allowed, required) or not _strings(data, ["id", "kind", "name"]) or not _ints(data, ["currentHealth", "maximumHealth", "spellPoints", "maximumSpellPoints", "armor", "magicResistance", "movement", "maximumMovement"]) or not data["attacks"] is String or not _bools(data, ["traitor", "helpless"]) or not _string_array(data["conditions"]): return null
-	if not _optional_int(data, "hitDice") or not _optional_string(data, "weapon") or not _optional_int(data, "weaponCharges") or not _optional_int(data, "range") or data.has("blocked") and not data["blocked"] is bool or data.has("immunities") and not _string_array(data["immunities"]) or data.has("vulnerabilities") and not _string_array(data["vulnerabilities"]): return null
+	if not _optional_int(data, "hitDice") or not _optional_string(data, "weapon") or not _optional_int(data, "weaponCharges") or not _optional_int(data, "range") or data.has("blocked") and not data["blocked"] is bool or data.has("items") and not _string_array(data["items"]) or data.has("attackRows") and not _string_array(data["attackRows"]) or data.has("immunities") and not _string_array(data["immunities"]) or data.has("vulnerabilities") and not _string_array(data["vulnerabilities"]): return null
 	var result := Combatant.new()
 	result.id = data["id"]; result.kind = StringName(data["kind"]); result.name = data["name"]; result.current_health = int(data["currentHealth"]); result.maximum_health = int(data["maximumHealth"]); result.spell_points = int(data["spellPoints"]); result.maximum_spell_points = int(data["maximumSpellPoints"]); result.armor = int(data["armor"]); result.magic_resistance = int(data["magicResistance"]); result.attacks = data["attacks"]; result.movement = int(data["movement"]); result.maximum_movement = int(data["maximumMovement"]); result.traitor = data["traitor"]; result.helpless = data["helpless"]
-	result.conditions = _string_values(data["conditions"]); result.immunities = _string_values(data.get("immunities", [])); result.vulnerabilities = _string_values(data.get("vulnerabilities", [])); result.hit_dice = int(data.get("hitDice", 0)); result.has_hit_dice = data.has("hitDice"); result.weapon = String(data.get("weapon", "")); result.weapon_charges = int(data.get("weaponCharges", -1)); result.has_weapon_charges = data.has("weaponCharges"); result.range = int(data.get("range", -1)); result.blocked = bool(data.get("blocked", false)); result.has_position_facts = data.has("range")
+	result.conditions = _string_values(data["conditions"]); result.items = _string_values(data.get("items", [])); result.attack_rows = _string_values(data.get("attackRows", [])); result.immunities = _string_values(data.get("immunities", [])); result.vulnerabilities = _string_values(data.get("vulnerabilities", [])); result.hit_dice = int(data.get("hitDice", 0)); result.has_hit_dice = data.has("hitDice"); result.weapon = String(data.get("weapon", "")); result.weapon_charges = int(data.get("weaponCharges", -1)); result.has_weapon_charges = data.has("weaponCharges"); result.range = int(data.get("range", -1)); result.blocked = bool(data.get("blocked", false)); result.has_position_facts = data.has("range")
 	return result
 
 

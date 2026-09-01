@@ -1,6 +1,10 @@
 class_name ClassicCharacterOperations
 extends ClassicOpcodeHandler
 
+const CLASSIC_ALLY_RECORD_CORRECTIONS: Dictionary = {
+	"scenario-tutorial": {149: 116},
+}
+
 var _content: RealmzContent
 var _game_state: GameState
 var _rng: RealmzRng
@@ -501,13 +505,23 @@ func _remove_classic_ally(classic_monster_id: int) -> int:
 
 
 func _add_classic_ally(classic_monster_id: int) -> ScenarioRuntimeOperationResult:
-	var definition := _content.monster_by_classic_id_for_set(classic_monster_id, _game_state.monster_set)
+	var definition := _resolve_classic_ally_definition(classic_monster_id)
 	if definition == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_monster", "Classic opcode 89 references unavailable monster %d." % classic_monster_id)
 	var ally := _rules.monsters.build_monster(definition, _game_state.next_instance_id("party.ally"), 0, _game_state.difficulty, _game_state.clock.day(), _rng)
 	if ally == null or not _game_state.party.add_ally(ally):
 		return ScenarioRuntimeOperationResult.failed(&"ally_add_failed", "The ally could not join the party.")
-	return ScenarioRuntimeOperationResult.completed(ally.id, [DomainEvent.new(&"ally_added", {"allyId": ally.id, "monsterId": definition.id})])
+	return ScenarioRuntimeOperationResult.completed(ally.id, [DomainEvent.new(&"ally_added", {"allyId": ally.id, "monsterId": definition.id, "requestedClassicMonsterId": classic_monster_id, "resolvedClassicMonsterId": definition.classic_id})])
+
+
+func _resolve_classic_ally_definition(classic_monster_id: int) -> MonsterDefinition:
+	var definition := _content.monster_by_classic_id_for_set(classic_monster_id, _game_state.monster_set)
+	if definition != null:
+		return definition
+	var campaign_corrections: Variant = CLASSIC_ALLY_RECORD_CORRECTIONS.get(_content.campaign_id)
+	if campaign_corrections is Dictionary and campaign_corrections.has(classic_monster_id):
+		return _content.monster_by_classic_id_for_set(int(campaign_corrections[classic_monster_id]), _game_state.monster_set)
+	return null
 
 
 func _alter_selected_characters(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:

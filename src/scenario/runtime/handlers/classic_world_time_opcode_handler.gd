@@ -300,19 +300,31 @@ func _shift_party(action: ClassicActionDefinition) -> ScenarioRuntimeOperationRe
 		var y_magnitude := _rng.draw_between(1, action.extra_code[2], &"classic.opcode61.y-magnitude")
 		delta = Vector2i(x_sign * x_magnitude, y_sign * y_magnitude)
 	var source_coordinate := _game_state.party.coordinate
-	var target_coordinate := source_coordinate + delta
+	var requested_coordinate := source_coordinate + delta
+	var target_coordinate := requested_coordinate
+	# Castle applies the shift before centerpict(), whose land-view recentering
+	# collapses either axis back into the 0..89 field at the map boundary.
+	if current_map.level_type == &"land":
+		target_coordinate = Vector2i(
+			clampi(requested_coordinate.x, 0, current_map.topology.width - 1),
+			clampi(requested_coordinate.y, 0, current_map.topology.height - 1)
+		)
 	if current_map.topology.cell_at(target_coordinate) == null:
 		return ScenarioRuntimeOperationResult.failed(&"shift_out_of_bounds", "Classic opcode 61 shifts the party outside the current map.")
 	_game_state.party.coordinate = target_coordinate
 	_game_state.world.mark_visited(current_map.id, target_coordinate)
+	var committed_delta := target_coordinate - source_coordinate
 	return ScenarioRuntimeOperationResult.completed(target_coordinate, [DomainEvent.new(&"party_shifted", {
 		"mapId": current_map.id,
 		"sourceX": source_coordinate.x,
 		"sourceY": source_coordinate.y,
 		"x": target_coordinate.x,
 		"y": target_coordinate.y,
-		"deltaX": delta.x,
-		"deltaY": delta.y,
+		"deltaX": committed_delta.x,
+		"deltaY": committed_delta.y,
+		"requestedDeltaX": delta.x,
+		"requestedDeltaY": delta.y,
+		"clamped": target_coordinate != requested_coordinate,
 		"random": random_shift,
 		"source": "classic",
 	})])

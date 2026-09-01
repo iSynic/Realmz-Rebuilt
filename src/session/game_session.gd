@@ -400,6 +400,10 @@ func view(events: Array[DomainEvent] = []) -> GameView:
 	return result
 
 
+func set_map_projection_size(requested_size: Vector2i) -> bool:
+	return _view_projector.set_map_projection_size(requested_size)
+
+
 func _workflow_context(events: Array[DomainEvent] = []) -> SessionWorkflowContext:
 	return SessionWorkflowContext.new(_content, _state, _rules, _rng, _scenario_vm, _scenario_action_state, events)
 
@@ -439,7 +443,7 @@ func _camp() -> SessionStep:
 		return _finish_failed(result.error_code, result.error_message, result.events)
 	if not _state.party_camping and result.timed_day == 0:
 		return _finish_with_age_updates(result.events, "completed")
-	_set_post_time_continuation(result.map, "completed", Vector2i.ZERO, result.check_random, result.timed_day, _state.party.coordinate)
+	_set_post_time_continuation(result.map, "camp-entry-second" if _state.party_camping else "completed", Vector2i.ZERO, result.check_random, result.timed_day, _state.party.coordinate)
 	return _finish_with_age_updates(result.events, &"post-clock", _session_continuation.copy())
 
 
@@ -447,11 +451,19 @@ func _rest() -> SessionStep:
 	var result := ExplorationTimeWorkflow.rest(_workflow_context())
 	if not result.ok:
 		return _finish_failed(result.error_code, result.error_message, result.events)
-	_set_post_time_continuation(result.map, "completed", Vector2i.ZERO, result.check_random, result.timed_day, _state.party.coordinate)
+	_set_post_time_continuation(result.map, "rest-second", Vector2i.ZERO, result.check_random, result.timed_day, _state.party.coordinate)
 	return _finish_with_age_updates(result.events, &"post-clock", _session_continuation.copy())
 
 
 func _heal() -> SessionStep:
+	if _state.character_spellcasting_blocked:
+		return _finish_completed([
+			DomainEvent.new(&"classic_notification_requested", {
+				"text": "Your characters can't cast spells in this area.",
+				"soundId": 6000,
+				"source": "classic-field-heal",
+			}),
+		])
 	var result := ExplorationTimeWorkflow.heal(_workflow_context())
 	if not result.ok:
 		return _finish_failed(result.error_code, result.error_message, result.events)
@@ -710,7 +722,8 @@ func _use_torch() -> SessionStep:
 
 func _contextual_encounter() -> SessionStep:
 	_ensure_coordinators()
-	return _commit_coordinator_result(_exploration_coordinator.begin_contextual_encounter())
+	var result: SessionCoordinatorResult = _exploration_coordinator.begin_contextual_encounter()
+	return _commit_coordinator_result(result)
 
 
 func _move(direction: Vector2i) -> SessionStep:
@@ -953,7 +966,9 @@ func _record_current_visibility() -> void:
 	if map == null or not map.uses_los:
 		return
 	var wizard_eye := _state.party.conditions.is_active(ConditionRules.PARTY_WIZARDS_EYE)
-	_state.world.mark_seen_many(map.id, map.topology.visible_cells(_state.party.coordinate, 8, _state.world, true, wizard_eye))
+	var visible_coordinates := map.topology.exploration_visible_cells(_state.party.coordinate, _state.world, true, wizard_eye)
+	_state.world.mark_seen_many(map.id, visible_coordinates)
+	_view_projector.record_visibility(map.id, _state.party.coordinate, visible_coordinates, _state.world.topology_revision(), wizard_eye)
 
 
 func _pending_interaction() -> InteractionRequest:

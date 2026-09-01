@@ -545,7 +545,7 @@ static func _decode_combat(continuation_kind: StringName, data: Dictionary) -> S
 
 static func _decode_post_clock(data: Dictionary) -> SessionContinuation:
 	var fields: Array[String] = ["mapId", "x", "y", "timedDay", "timedEncounterIndex", "activeTimedProgramId", "midnightRecoveryPending", "timedCheckX", "timedCheckY", "checkRandom", "randomRegionIds", "randomRegionIndex", "activeRandomProgramId", "activeRandomRegionId", "randomBattleStage", "resumeKind", "directionX", "directionY"]
-	if not _has_exact_fields(data, fields) or not data.get("mapId") is String or data["mapId"].is_empty() or not data.get("activeTimedProgramId") is String or not data.get("midnightRecoveryPending") is bool or not data.get("checkRandom") is bool or not data.get("randomRegionIds") is Array or not data.get("activeRandomProgramId") is String or not data.get("activeRandomRegionId") is String or data.get("randomBattleStage") not in ["", "surprise-choice"] or data.get("resumeKind") not in ["completed", "move", "post-move", "area-search-second", "heal"]:
+	if not _has_exact_fields(data, fields) or not data.get("mapId") is String or data["mapId"].is_empty() or not data.get("activeTimedProgramId") is String or not data.get("midnightRecoveryPending") is bool or not data.get("checkRandom") is bool or not data.get("randomRegionIds") is Array or not data.get("activeRandomProgramId") is String or not data.get("activeRandomRegionId") is String or data.get("randomBattleStage") not in ["", "surprise-choice"] or data.get("resumeKind") not in ["completed", "move", "post-move", "attempt-search-completed", "attempt-search-post-move", "area-search-second", "camp-entry-second", "rest-second", "camp-departure-second", "heal"]:
 		return null
 	var body := ExplorationBody.new()
 	body.map_id = data["mapId"]
@@ -565,7 +565,7 @@ static func _decode_post_clock(data: Dictionary) -> SessionContinuation:
 	body.direction = Vector2i(_signed_integer(data["directionX"]), _signed_integer(data["directionY"]))
 	if body.coordinate.x < 0 or body.coordinate.y < 0 or body.timed_day < 0 or body.timed_encounter_index < 0 or body.timed_check_coordinate.x < -1 or body.timed_check_coordinate.y < -1 or body.random_region_ids.size() != data["randomRegionIds"].size() or body.random_region_index < -1 or body.random_region_index >= body.random_region_ids.size() or body.direction.x < -1 or body.direction.x > 1 or body.direction.y < -1 or body.direction.y > 1:
 		return null
-	if body.resume_kind in [&"completed", &"post-move", &"area-search-second", &"heal"] and body.direction != Vector2i.ZERO or body.resume_kind == &"move" and body.direction == Vector2i.ZERO or body.random_battle_stage == &"surprise-choice" and body.active_random_region_id.is_empty():
+	if body.resume_kind in [&"completed", &"post-move", &"attempt-search-completed", &"attempt-search-post-move", &"area-search-second", &"camp-entry-second", &"rest-second", &"heal"] and body.direction != Vector2i.ZERO or body.resume_kind in [&"move", &"camp-departure-second"] and body.direction == Vector2i.ZERO or body.random_battle_stage == &"surprise-choice" and body.active_random_region_id.is_empty():
 		return null
 	return post_clock(body)
 

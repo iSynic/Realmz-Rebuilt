@@ -98,6 +98,8 @@ func run() -> void:
 	var rested := rest_session.submit_intent(PlayerIntent.rest())
 	assert_equal(rested.state, SessionStep.State.COMPLETED, "one typed Rest intent commits one held-control pulse")
 	assert_equal(rest_session._state.clock.total_minutes(), 75, "one outdoor Rest pulse advances five five-minute time clicks")
+	assert_equal(_events(rested, &"time_advanced").map(func(event: DomainEvent) -> int: return int(event.payload["minutes"])), [5, 5, 5, 5, 5], "Rest publishes each Classic five-minute time click instead of collapsing the pulse into one twenty-five-minute event")
+	assert_equal(_events(rested, &"time_advanced").map(func(event: DomainEvent) -> int: return int(event.payload["minute"])), [55, 0, 5, 10, 15], "the five-minute trace preserves the exact intermediate clock state around the crossed hour")
 	assert_equal(rest_session._state.party.fatigue, 79, "Rest removes two fatigue before the crossed hour adds one")
 	assert_equal(rest_session._state.party.conditions.value(ConditionRules.PARTY_TORCH_LIT), 1, "the crossed hour applies Castle's generic and torch-specific light decrements")
 	assert_equal(rest_caster.spell_points, 3, "the crossed hour restores half the character level in spell points")
@@ -240,7 +242,7 @@ func run() -> void:
 	assert_equal(accepted_departure.state, SessionStep.State.COMPLETED, "accepting the camp-departure interruption enters battle")
 	assert_not_null(battle_departure._state.combat, "the random battle remains session-owned after camp departure")
 	if battle_departure._state.combat != null:
-		assert_equal([battle_departure._battle_return_continuation.kind, battle_departure._battle_return_continuation.exploration().resume_kind], [&"post-clock", &"move"], "the battle retains the exact post-clock movement return")
+		assert_equal([battle_departure._battle_return_continuation.kind, battle_departure._battle_return_continuation.exploration().resume_kind], [&"post-clock", &"move"], "the battle retains the exact second-stage post-clock movement return")
 		var battle_save := save_round_trip(battle_departure.snapshot())
 		var battle_restored := GameSession.new()
 		var battle_restore := battle_restored.restore(content, battle_save)
@@ -270,7 +272,7 @@ func run() -> void:
 	assert_equal(dungeon_departed.state, SessionStep.State.COMPLETED, "dungeon movement leaves camp before committing the requested cardinal step")
 	assert_false(dungeon_departure._state.party_camping, "dungeon departure clears the same session-owned camp mode")
 	assert_equal(dungeon_departure._state.party.coordinate, Vector2i(3, 0), "dungeon departure resumes the requested move")
-	assert_equal(_events(dungeon_departed, &"time_advanced")[0].payload["minutes"], 2, "dungeon departure advances Castle's two one-minute time clicks before movement")
+	assert_equal(_events(dungeon_departed, &"time_advanced").slice(0, 2).map(func(event: DomainEvent) -> int: return int(event.payload["minutes"])), [1, 1], "dungeon departure exposes Castle's two one-minute time clicks before movement")
 
 	var scroll_save := save_round_trip(restored.snapshot())
 	var scroll_restored := GameSession.new()
@@ -303,7 +305,7 @@ func run() -> void:
 	assert_equal(departed.state, SessionStep.State.COMPLETED, "movement while camped performs the Classic departure and then the requested move")
 	assert_false(pending_restored._state.party_camping, "automatic movement departure clears camp before moving")
 	assert_equal(pending_restored.view().party_coordinate, Vector2i(2, 1), "the requested move commits after camp departure")
-	assert_equal(_events(departed, &"time_advanced")[0].payload["minutes"], 75, "outdoor movement departure advances fifteen time clicks before terrain movement time")
+	assert_equal(_events(departed, &"time_advanced").slice(0, 15).map(func(event: DomainEvent) -> int: return int(event.payload["minutes"])), [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5], "outdoor movement departure exposes fifteen five-minute time clicks before terrain movement time")
 	var destination_cost := content.world.map_by_id("land:0").topology.cell_at(Vector2i(2, 1)).movement_cost
 	assert_equal(pending_restored._state.clock.total_minutes(), departure_start + 75 + destination_cost * 5, "ordinary terrain movement time follows the exact authored departure cost, including zero")
 	assert_true(_has_event(departed, &"camp_departed_for_movement"), "automatic departure has an explicit domain trace")
@@ -313,7 +315,7 @@ func run() -> void:
 	var left := pending_restored.submit_intent(PlayerIntent.camp())
 	assert_equal(left.state, SessionStep.State.COMPLETED, "Camp toggles back out of camp mode")
 	assert_false(pending_restored._state.party_camping, "leaving camp clears the session-owned mode")
-	assert_equal(_events(left, &"time_advanced")[0].payload["minutes"], 10, "explicit land camp departure adds Castle's two scaled time clicks")
+	assert_equal(_events(left, &"time_advanced").map(func(event: DomainEvent) -> int: return int(event.payload["minutes"])), [5, 5], "explicit land camp departure exposes Castle's two scaled time clicks")
 	assert_equal([pending_restored.view().realmz_hour, pending_restored.view().realmz_minute], [pending_restored._state.clock.hour(), pending_restored._state.clock.minute()], "the detached clock remains exact after camp departure")
 
 
@@ -405,7 +407,7 @@ func _event_position(step: SessionStep, kind: StringName) -> int:
 func _drain_battle_return(session: GameSession, step: SessionStep) -> SessionStep:
 	var current := step
 	var boundary_count := 0
-	while current.state == SessionStep.State.WAITING_FOR_INTERACTION and boundary_count < 64:
+	while current.state == SessionStep.State.WAITING_FOR_INTERACTION and boundary_count < 256:
 		var request := current.interaction
 		var payload: Dictionary
 		if request.kind == InteractionRequest.ALLY_SELECTION:
@@ -422,5 +424,5 @@ func _drain_battle_return(session: GameSession, step: SessionStep) -> SessionSte
 			payload = {"action": "done"}
 		current = session.respond(InteractionResponse.from_data(request.request_id, request.kind, payload))
 		boundary_count += 1
-	assert_true(boundary_count < 64, "the interrupted battle return remains bounded")
+	assert_true(boundary_count < 256, "the interrupted battle return remains bounded")
 	return current

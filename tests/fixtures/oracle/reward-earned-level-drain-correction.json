@@ -1,0 +1,36 @@
+{
+  "formatVersion": 1,
+  "decisionId": "FD-REWARD-001",
+  "evidence": "source-control-flow",
+  "castleCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "sources": [
+    {
+      "path": "src/realmz_orig/booty.c",
+      "symbol": "short booty",
+      "range": "1081-1100"
+    },
+    {
+      "path": "src/realmz_orig/misc.c",
+      "symbol": "void getexp",
+      "range": "274-288"
+    },
+    {
+      "path": "src/realmz_orig/levelup.c",
+      "symbol": "short levelup",
+      "range": "5-18"
+    }
+  ],
+  "castleSourceObservation": {
+    "levelChecksPerRecipientPerRewardClose": 1,
+    "thresholdSubtractionsPerRecipientPerRewardClose": 1,
+    "positiveResidualExperiencePersists": true,
+    "spellSelectionPassesPerRecipient": 1
+  },
+  "playerFacingProblem": "A reward large enough to earn several levels grants only one immediately. Each later positive victory-point award then grants another previously earned level, making the new award appear to cause the level.",
+  "realmz2ChosenResult": {
+    "levelChecks": "repeat for the same eligible recipient while carried victory points remain positive",
+    "resultBoundary": "publish and acknowledge one typed result for every gained level",
+    "spellSelectionPassesPerRecipient": 1,
+    "invalidThresholdGuard": "record the invalid threshold, normalize the unusable positive balance, and grant no level"
+  }
+}

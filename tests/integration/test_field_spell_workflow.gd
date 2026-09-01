@@ -30,7 +30,7 @@ func run() -> void:
 	var active_caster := session._state.party.character_by_id(caster.id)
 	var active_target := session._state.party.character_by_id(target.id)
 	active_caster.spell_points = 50; active_caster.maximum_spell_points = 50
-	active_caster.set_known_spells(["classic.spell.field-bolt", "classic.spell.field-fixed", "classic.spell.field-light", "classic.spell.field-rest", "classic.spell.heal-poison", "classic.spell.remove-item", "classic.spell.4308", "classic.spell.1101", "classic.spell.2102", "classic.spell.3102", "classic.spell.1609", "classic.spell.2504", "classic.spell.2609", "classic.spell.2611", "classic.spell.3111", "classic.spell.3112", "classic.spell.3410", "classic.spell.3709", "classic.spell.3711", "classic.spell.2106"])
+	active_caster.set_known_spells(["classic.spell.field-bolt", "classic.spell.field-fixed", "classic.spell.field-light", "classic.spell.field-rest", "classic.spell.heal-poison", "classic.spell.remove-item", "classic.spell.1512", "classic.spell.4308", "classic.spell.1101", "classic.spell.2102", "classic.spell.3102", "classic.spell.1609", "classic.spell.2504", "classic.spell.2609", "classic.spell.2611", "classic.spell.3111", "classic.spell.3112", "classic.spell.3410", "classic.spell.3709", "classic.spell.3711", "classic.spell.2106"])
 	active_target.current_health = 20
 	active_target.maximum_health = 20
 	active_target.magic_resistance = 120
@@ -101,6 +101,11 @@ func run() -> void:
 	assert_equal(light.state, SessionStep.State.COMPLETED, "party-state field magic commits without a character picker")
 	assert_equal(restored._state.party.conditions.value(0), 29, "Classic light stores thirty turns per power minus one")
 	assert_equal(restored.view().party_summary.light_remaining, 29, "the detached party view exposes the authoritative light condition")
+	var wizard_probe := restored.view().party_coordinate + Vector2i(9, 0)
+	assert_not_null(restored.view().map_view.cell_at(wizard_probe), "the Wizard's Eye probe lies inside the detached LOS projection")
+	assert_false(restored.view().map_view.cell_at(wizard_probe).visible, "ordinary exploration does not reveal a cell beyond radius eight")
+	var wizard_caster := restored._state.party.character_by_id(active_caster.id); wizard_caster.spell_points = 200; restored._rng = ScriptedRng.new([0, 0, 0, 0]); var wizard_eye := restored.submit_intent(PlayerIntent.cast_spell("classic.spell.1512", wizard_caster.id, "", 1))
+	assert_equal([wizard_eye.state, restored._state.party.conditions.is_active(ConditionRules.PARTY_WIZARDS_EYE), restored.view().map_view.cell_at(wizard_probe).visible, restored.view().map_view.seen_coordinates().has(wizard_probe)], [SessionStep.State.COMPLETED, true, true, true], "casting Wizard's Eye immediately extends authoritative LOS and sight memory beyond the ordinary radius")
 
 	restored._state.party.fatigue = 90
 	restored._rng = ScriptedRng.new([0, 0])
@@ -151,8 +156,9 @@ func _field_content(source: RealmzContent) -> RealmzContent:
 	var heroism := SpellDefinition.new("classic.spell.4308", 4308, "Heroism"); heroism.in_camp = true; heroism.in_combat = true; heroism.target_type = 5; heroism.spell_class = 8; heroism.damage_type = 8; heroism.cannot = 3; heroism.duration_min = 5; heroism.duration_max = 12
 	var races: Array[RaceDefinition] = [race]; var castes: Array[CasteDefinition] = [caste]
 	var cursed := ItemDefinition.new("classic.item.cursed-blade", 880, "Cursed Blade"); cursed.cursed_item_id = cursed.id; var ordinary := ItemDefinition.new("classic.item.ordinary-shield", 881, "Ordinary Shield"); var items: Array[ItemDefinition] = [cursed, ordinary]
-	var ally_definition := MonsterDefinition.new("classic.monster.field-ally", 1, "Field Ally", 1, 0, 1, 0, 0, [], [], [], [], [], [], []); var library := PackageRepository.new().load_bundled_package("res://src/infrastructure/characters/realmz-classic-character-library.realmz2", "realmz-classic-character-library", "6e3f23c9a452f70b25040c729e17533de5ddf0c420ff35484fc52f6e0dd25e68"); items.append(library.content.item_by_classic_id(609)); items.append(library.content.item_by_classic_id(723)); var spells: Array[SpellDefinition] = [bolt, fixed, light, rest, cure, remove_item, heroism, library.content.spell_by_classic_id(1101), library.content.spell_by_classic_id(2102), library.content.spell_by_classic_id(3102), library.content.spell_by_classic_id(2106)]; for classic_id: int in [1609, 2504, 2609, 2611, 3111, 3112, 3410, 3709, 3711, 4310, 4713]: spells.append(library.content.spell_by_classic_id(classic_id))
-	return RealmzContent.new("field-spell-workflow", source.package_hash, "field-spell-content", source.rules_version, source.start_map_id, source.start_coordinate, source.world, ScenarioDefinition.new([], []), [], [], [], races, castes, items, spells, [ally_definition])
+	var ally_definition := MonsterDefinition.new("classic.monster.field-ally", 1, "Field Ally", 1, 0, 1, 0, 0, [], [], [], [], [], [], []); var library := PackageRepository.new().load_bundled_package("res://src/infrastructure/characters/realmz-classic-character-library.realmz2", "realmz-classic-character-library", "6e3f23c9a452f70b25040c729e17533de5ddf0c420ff35484fc52f6e0dd25e68"); items.append(library.content.item_by_classic_id(609)); items.append(library.content.item_by_classic_id(723)); var spells: Array[SpellDefinition] = [bolt, fixed, light, rest, cure, remove_item, heroism, library.content.spell_by_classic_id(1101), library.content.spell_by_classic_id(1512), library.content.spell_by_classic_id(2102), library.content.spell_by_classic_id(3102), library.content.spell_by_classic_id(2106)]; for classic_id: int in [1609, 2504, 2609, 2611, 3111, 3112, 3410, 3709, 3711, 4310, 4713]: spells.append(library.content.spell_by_classic_id(classic_id))
+	var source_map := source.world.map_by_id(source.start_map_id); var los_map := MapDefinition.new(source_map.id, source_map.name, source_map.level_type, source_map.level_index, source_map.topology, source_map.dark, true, source_map.landlook, source_map.random_regions(), source_map.battle_terrain_set_id, source_map.base_scale)
+	return RealmzContent.new("field-spell-workflow", source.package_hash, "field-spell-content", source.rules_version, source.start_map_id, source.start_coordinate, WorldDefinition.new([los_map]), ScenarioDefinition.new([], []), [], [], [], races, castes, items, spells, [ally_definition])
 
 
 func _character(character_id: String, display_name: String, content: RealmzContent) -> CharacterState:

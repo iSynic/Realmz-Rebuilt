@@ -262,6 +262,16 @@ Classic-visible behavior is the default ruleset. This ledger records deliberate 
 - Tests: `_test_public_tangle_weed_correction_matrix` loads the bundled application record, proves all four combat-source dispositions, resolves the exact Tangle condition and persistent field through every source, and restores the result and queue from public save data.
 - Legacy quirk: none. An out-of-bounds condition write is not a portable authored dependency; any different intended effect would require contradictory application data or controlled runtime evidence.
 
+## FD-REWARD-001 — Drain every level earned by one reward
+
+- Affected rule: post-reward level progression when a recipient retains enough positive victory points for more than one level.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/booty.c`, `booty`, lines 1081–1100; `src/realmz_orig/misc.c`, `getexp`, lines 274–288; and `src/realmz_orig/levelup.c`, `levelup`, lines 5–18.
+- Observable source behavior: the reward close calls `getexp` and `levelup` once per positive living recipient. One threshold is subtracted and one level is gained; a still-positive balance persists until another reward close. The source-observation fixture is `tests/fixtures/oracle/reward-earned-level-drain-correction.json`, SHA-256 `ceef3b2534f74bbe66cdcf3bff794dbaf16b8a7e38e5e42a36bc5d98ed35bdbf`. This is `source-control-flow` evidence, not a Castle-runtime claim.
+- Player-facing problem: a large reward visibly grants only one level, then a later one-point award can appear to grant another level even though that level was earned earlier.
+- Chosen 2.0 behavior: retain the same divided award, threshold table, deterministic level transaction, and recipient order, but repeat the same recipient until its carried victory points are nonpositive. Each gained level remains a separate saveable result acknowledgement, and each eligible recipient receives at most one spell-selection pass after its complete level sequence. A nonpositive authored threshold publishes a correction event, normalizes the unusable positive balance, and grants no level rather than entering an unbounded or repeat-award loop.
+- Tests: `_test_experience_level_and_spell_restore` proves four earned levels, save/restore after the first result, exact acknowledgement count, final negative balance, and one completed continuation. The differential case is `rewards.experience-level-up`.
+- Legacy quirk: none. The timing of an already-earned level is not an authored scenario input, and retaining the Castle defect makes progression appear dependent on an unrelated later reward.
+
 ## FD-SYSTEM-001 — Immutable definition names with source-classified Reduced Sound
 
 - Affected rule: Classic Preferences Reduced Sound and the adjacent Edit Spell Names and Edit Race/Caste Names commands.

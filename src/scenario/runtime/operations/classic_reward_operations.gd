@@ -631,15 +631,22 @@ func _advance_reward_levels(reward: ClassicRewardState, request_id: String, even
 		if character == null or race == null or caste == null or character.current_health <= 0 or character.experience <= 0:
 			return ScenarioRuntimeOperationResult.failed(&"invalid_reward_progression", "A character in the level-up queue is no longer eligible.")
 		var threshold_index := clampi(character.level, 1, 30) - 1
-		character.experience -= caste.victory_threshold(threshold_index)
+		var threshold := caste.victory_threshold(threshold_index)
+		if threshold <= 0:
+			events.append(DomainEvent.new(&"reward_threshold_corrected", {"characterId": character.id, "level": character.level, "authoredThreshold": threshold, "source": "invalid-content-guard"}))
+			character.experience = -1
+			reward.level_index += 1
+			continue
+		character.experience -= threshold
 		var level_result := _rules.characters.level_up(character, race, caste, _rng)
 		if level_result == null:
 			return ScenarioRuntimeOperationResult.failed(&"character_level_failed", "Character '%s' could not level." % character.id)
 		reward.pending_level_result = {"characterId": character.id, "characterName": character.name, "level": character.level, "stamina": level_result.stamina_gained, "spellPoints": level_result.spell_points_gained, "toHit": level_result.to_hit_gained, "magicResistance": level_result.magic_resistance_gained}
 		if character.spellcaster_type > 0 and character.maximum_spell_points > 0:
 			var spell_ids := reward.spell_character_ids()
-			spell_ids.append(character.id)
-			reward.set_spell_character_ids(spell_ids)
+			if not spell_ids.has(character.id):
+				spell_ids.append(character.id)
+				reward.set_spell_character_ids(spell_ids)
 		var level_event_payload := reward.pending_level_result.duplicate(true)
 		level_event_payload["experienceRemaining"] = character.experience
 		events.append(DomainEvent.new(&"character_leveled", level_event_payload))
@@ -661,7 +668,12 @@ func _resume_reward_level(reward: ClassicRewardState, response: InteractionRespo
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "The level result must be acknowledged by its character ID.")
 	var character_id := String(reward.pending_level_result.get("characterId", ""))
 	reward.pending_level_result.clear()
-	reward.level_index += 1
+	var character := _game_state.party.character_by_id(character_id)
+	# Drain every level earned by this reward before advancing to the next
+	# recipient. Castle's one-level close leaves a large positive balance that
+	# makes a later one-point award appear to grant another level.
+	if character == null or character.experience <= 0:
+		reward.level_index += 1
 	return _advance_reward_levels(reward, request_id, [DomainEvent.new(&"level_result_acknowledged", {"characterId": character_id})])
 
 

@@ -104,7 +104,7 @@ func _continue_post_time(events: Array[DomainEvent]) -> SessionCoordinatorResult
 	if not active_program_id.is_empty():
 		exploration.active_random_program_id = ""
 		return _complete_post_time(events)
-	if exploration.check_random and exploration.resume_kind != &"post-move":
+	if exploration.check_random:
 		var random_step = _continue_random_regions(map, events)
 		if random_step != null:
 			return random_step
@@ -121,16 +121,42 @@ func _complete_post_time(events: Array[DomainEvent]) -> SessionCoordinatorResult
 	_context.session_continuation.clear()
 	if resume_kind == &"move":
 		return _finish_exploration_movement(ExplorationTimeWorkflow.commit_move(_context.workflow_context(), direction, events))
+	if resume_kind == &"camp-departure-second":
+		return _finish_exploration_movement(ExplorationTimeWorkflow.complete_land_camp_departure(_context.workflow_context(), direction, events))
 	if resume_kind == &"post-move":
 		var map = _context.content.world.map_by_id(_context.state.party.map_id)
 		_set_post_move_continuation(map, _context.state.party.coordinate)
 		return _continue_post_move(events)
+	if resume_kind in [&"attempt-search-completed", &"attempt-search-post-move"]:
+		var search_result := ExplorationTimeWorkflow.search_after_land_movement_attempt(_context.workflow_context(), events)
+		if not search_result.ok:
+			return _context.failed(search_result.error_code, search_result.error_message, search_result.events)
+		var final_resume_kind := &"post-move" if resume_kind == &"attempt-search-post-move" else &"completed"
+		if search_result.check_random:
+			_set_post_time_continuation(search_result.map, final_resume_kind, Vector2i.ZERO, true, search_result.timed_day, _context.state.party.coordinate)
+			return _context.responses()._finish_with_age_updates(search_result.events, &"post-clock", _context.session_continuation.copy())
+		if final_resume_kind == &"post-move":
+			_set_post_move_continuation(search_result.map, _context.state.party.coordinate)
+			return _continue_post_move(search_result.events)
+		return _context.completed(search_result.events)
 	if resume_kind == &"area-search-second":
 		var result := ExplorationTimeWorkflow.complete_area_search(_context.workflow_context(), events)
 		if not result.ok:
 			return _context.failed(result.error_code, result.error_message, result.events)
 		_set_post_time_continuation(result.map, "completed", Vector2i.ZERO, result.check_random, result.timed_day, _context.state.party.coordinate)
 		return _context.responses()._finish_with_age_updates(result.events, &"post-clock", _context.session_continuation.copy())
+	if resume_kind == &"camp-entry-second":
+		var camp_result := ExplorationTimeWorkflow.complete_camp_entry(_context.workflow_context(), events)
+		if not camp_result.ok:
+			return _context.failed(camp_result.error_code, camp_result.error_message, camp_result.events)
+		_set_post_time_continuation(camp_result.map, "completed", Vector2i.ZERO, camp_result.check_random, camp_result.timed_day, _context.state.party.coordinate)
+		return _context.responses()._finish_with_age_updates(camp_result.events, &"post-clock", _context.session_continuation.copy())
+	if resume_kind == &"rest-second":
+		var rest_result := ExplorationTimeWorkflow.complete_rest(_context.workflow_context(), events)
+		if not rest_result.ok:
+			return _context.failed(rest_result.error_code, rest_result.error_message, rest_result.events)
+		_set_post_time_continuation(rest_result.map, "completed", Vector2i.ZERO, rest_result.check_random, rest_result.timed_day, _context.state.party.coordinate)
+		return _context.responses()._finish_with_age_updates(rest_result.events, &"post-clock", _context.session_continuation.copy())
 	if resume_kind == &"heal":
 		var heal_result := ExplorationTimeWorkflow.complete_heal(_context.workflow_context(), events)
 		return _context.completed(heal_result.events) if heal_result.ok else _context.failed(heal_result.error_code, heal_result.error_message, heal_result.events)

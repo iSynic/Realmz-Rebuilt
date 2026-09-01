@@ -10,7 +10,7 @@
   },
   "compiler": {
     "repository": "Realmz Providence",
-    "revision": "32cd8e69eaa53ea57afb02275146066e395df9ed",
+    "revision": "a39255343ccda5e101fd2cf543adae4827692cef",
     "packageSchemaVersion": 3
   },
   "scenarios": [
@@ -18,17 +18,17 @@
       "name": "Assault on Giant Mountain",
       "campaignId": "scenario-assault-on-giant-mountain",
       "file": "scenario-assault-on-giant-mountain.realmz2",
-      "packageHash": "42e7582c7b09034ed9547f56d465f360916a204b6e431060a7d8f74ca64c8103",
-      "archiveSha256": "53439445ec1037d57117a9e94dc803cb3959b034471715aed58006ab771e2cb2",
-      "bytes": 21287257
+      "packageHash": "c90cc97a536475de5cc351e5a0cdcecf3894cde503779de0be6968d9e525c7ad",
+      "archiveSha256": "1a2540cc47f06b52c32908f585c928c39b3daa378ccb725226bc5e5a9c748169",
+      "bytes": 21314004
     },
     {
       "name": "Castle in the Clouds",
       "campaignId": "scenario-castle-in-the-clouds",
       "file": "scenario-castle-in-the-clouds.realmz2",
-      "packageHash": "c0a34763c62459b4499ac8767bf417f38cb171fca8f1bf0c01920438340a950c",
-      "archiveSha256": "1343206f3bb03b7082c65eeaee608e0dcfba886dc674ed2609e299a942dc4452",
-      "bytes": 26018759
+      "packageHash": "3b48d4167075e2bfea7fe05344ef6cc43ec1059c6f4aa5aa24cb9fd46fed5229",
+      "archiveSha256": "1e63eb3f757e98fb9ef24b9abaffc3b23aacc01344f0845ddf019c5a0cd57ba6",
+      "bytes": 26062160
     },
     {
       "name": "City of Bywater",
@@ -39,89 +39,89 @@
         "catalog": "city-of-bywater.source.json",
         "snapshotSha256": "ab4b6fc19a1a42bb61353629feb71187e76e760f94c46392958311a5e1361d2e"
       },
-      "packageHash": "c5d6ea5d3327d6b2b385905e663a3423433efad7ec09af136c92b7d35180f4c5",
-      "archiveSha256": "adeadf19a8dc26e5f1e520b71adc946ef55a0b956f48983134f1a8e79a632284",
-      "bytes": 23692681
+      "packageHash": "f6f837359da5e70ac99b6b46a7556e85483323802b635564124440a94b7e5cf4",
+      "archiveSha256": "30e894403f3dd3f3294cfdf375a8224890c8d928222a66d4554947894ec7f76b",
+      "bytes": 23761008
     },
     {
       "name": "Destroy the Necronomicon",
       "campaignId": "scenario-destroy-the-necronomicon",
       "file": "scenario-destroy-the-necronomicon.realmz2",
-      "packageHash": "2e059f178e5a64893d3e09d84610a49168efb458ad65849959781569d2236974",
-      "archiveSha256": "c1292e140c42d3f6175995e15463bbd134076ac9aa5cd1afbe62a93d81829a67",
-      "bytes": 25965607
+      "packageHash": "fb070ac5cadd277ead84bac4f857500b06552e6c15433fcca37614560781c48e",
+      "archiveSha256": "a36ecf78daf1d919805c3530aab3511d15abdec01195db4b3dbaf109f828f9e0",
+      "bytes": 25998759
     },
     {
       "name": "Grilochs Revenge",
       "campaignId": "scenario-grilochs-revenge",
       "file": "scenario-grilochs-revenge.realmz2",
-      "packageHash": "d168b4a88ec5513a0490593eb5f1ef93529b83cd583542c0586ff92fd949e9c5",
-      "archiveSha256": "c6f6e7f0eb33ffb6b41bb32e1fbc3972b657787cc04d615221b0722b196bb576",
-      "bytes": 31798230
+      "packageHash": "fbad2e67eabd23c2fff6393d947f4af12d4447fd03876b541731eb9dd4fe7661",
+      "archiveSha256": "472fa2a245c166ff75b66eea3671ec5fca533063d5fb57dc275e9b222561e8f8",
+      "bytes": 31847627
     },
     {
       "name": "Half Truth",
       "campaignId": "scenario-half-truth",
       "file": "scenario-half-truth.realmz2",
-      "packageHash": "9eac6b48c18924b2cdd3e10b2292317cf18c2322af00659477858dad41143623",
-      "archiveSha256": "644af342e86caec06078a5e3ad287e13e83e949c79e6cb3db8d68ab28d113143",
-      "bytes": 31110753
+      "packageHash": "c621f9cd83bab79d0c661a4103f8730e15b285b9cb0ed401942568b586b1a062",
+      "archiveSha256": "b93e39e9e6d5695f898a5fe8aab576b2e6266ed9f94dc021cc24c7632ba0ff81",
+      "bytes": 31140103
     },
     {
       "name": "Mithril Vault",
       "campaignId": "scenario-mithril-vault",
       "file": "scenario-mithril-vault.realmz2",
-      "packageHash": "98e544ff2738df397932b8e9b8796049a3d14058e9d441155df130e22b21f871",
-      "archiveSha256": "f1fcff0740857085b9db2eb8f1381115af81d868959017fbba6cc000b1cd8422",
-      "bytes": 33905805
+      "packageHash": "4ac96e6a806d308a3e47f66de38c2da36ce4cc5e8a5a3a5a60a435920e40eb04",
+      "archiveSha256": "b18c16a2b945ad05e46440271090cb9ef8a6d7ac055f4377f6a83638e47a45e1",
+      "bytes": 33947770
     },
     {
       "name": "Prelude to Pestilence",
       "campaignId": "scenario-prelude-to-pestilence",
       "file": "scenario-prelude-to-pestilence.realmz2",
-      "packageHash": "352f59c47f008df27158e7c18ce1020eb23d33ac3c1a17881b957b46b38b1871",
-      "archiveSha256": "c2c72e6572b6e2667dce68d2832098f0ba54d0a0b301f2bd55ea1dc7ebd208c7",
-      "bytes": 16137993
+      "packageHash": "48774bb8e8fec76ba5a80876938dcc028e78c547435e25ba778aa79776aa3845",
+      "archiveSha256": "2b82434d45bc4cca11d7941028124f64ef82734dce41b75ff9c97b8194c730ef",
+      "bytes": 16153233
     },
     {
       "name": "Trouble in the Sword Lands",
       "campaignId": "scenario-trouble-in-the-sword-lands",
       "file": "scenario-trouble-in-the-sword-lands.realmz2",
-      "packageHash": "b89e1236937ebc470ab38466455134d2a1fafd093f63d8bb1c8e6d282f76dc1e",
-      "archiveSha256": "fd7545ac3e757751da9247bca9adbe416edf44b7ab6d68037f894bb381fa23e0",
-      "bytes": 50418543
+      "packageHash": "4f586809f21d232e1266dca48e1d4677c473009ab7ee8033937f18d6fc396e61",
+      "archiveSha256": "14007e253685366c74bda8a2b6b79acd84b51d4621c40f71203338e18b0d5db0",
+      "bytes": 50459050
     },
     {
       "name": "Twin Sands of Time",
       "campaignId": "scenario-twin-sands-of-time",
       "file": "scenario-twin-sands-of-time.realmz2",
-      "packageHash": "109e0a0488f5983f2932fb3abd5a7ec50d76c5da04dba8dbe6ccc388cb3e9fa8",
-      "archiveSha256": "8b26a0a51f29295955ed2c229580243e2102fb004ea4ac5f22cfacb1b533c52d",
-      "bytes": 23075064
+      "packageHash": "5d27e9730d3217137ca3500e0566a96c5a466dd5dfe15de1a3d1fe550f67ce8b",
+      "archiveSha256": "f0200996130c95c3a15f4a13d51091b80000ce98d99a0dc0f00e3e14d6fec0e7",
+      "bytes": 23103510
     },
     {
       "name": "War in the Sword Lands",
       "campaignId": "scenario-war-in-the-sword-lands",
       "file": "scenario-war-in-the-sword-lands.realmz2",
-      "packageHash": "4aa5d9733be0f8ac92c763e133826b5ff693aba6b938c05a1b86e15d4d988d1c",
-      "archiveSha256": "3efa6808a1ddc47e831c4132bbdcebd9b165f42f4d2e418b303241d4ba8931d9",
-      "bytes": 59985186
+      "packageHash": "8b437b0a75bac35dd4e30572030d2a5977e45aaed8cc28d861ae361f892ef971",
+      "archiveSha256": "4b2d3c4a74fff8a900ae069a94ff9e5762395eb160495224d3bca06b0e71986d",
+      "bytes": 60021488
     },
     {
       "name": "White Dragon",
       "campaignId": "scenario-white-dragon",
       "file": "scenario-white-dragon.realmz2",
-      "packageHash": "fad18b45c12e43b2350d2082410fa65a26bd0313786bdab14ef5bc030666e3f2",
-      "archiveSha256": "f00a3d75ac6a1c1f20bf313a942f7c77f669a538d81cf36a3dfc01c0646562a3",
-      "bytes": 28937601
+      "packageHash": "cc4b1c8313cf265cb0ab0e10248424d963c456661479e8af9a2f24aaa15d16a3",
+      "archiveSha256": "c31d0a3cb01cf8e5143e0a5086741ba11cc6eed47c9e86ea27bab58f0b7e9a54",
+      "bytes": 28997176
     },
     {
       "name": "Wrath of the Mind Lords",
       "campaignId": "scenario-wrath-of-the-mind-lords",
       "file": "scenario-wrath-of-the-mind-lords.realmz2",
-      "packageHash": "c4b9e9c21e4c79e068cc0714edb77c2f2af0c082064e3e03ec12831a1f241cf7",
-      "archiveSha256": "bf90ad1447e1757e52e002d327a565221158b4671e34d325af0598479d7c0951",
-      "bytes": 55379433
+      "packageHash": "3c21b5283c0d3cf45aae38ce8b7ad7cbe927f707fc8a9a540b6ef26b736bedb6",
+      "archiveSha256": "56ffeca5238f625096a1fe2ff2acde1a684a22e36a9478bbf34c2d02beb720c3",
+      "bytes": 55423658
     }
   ]
 }
