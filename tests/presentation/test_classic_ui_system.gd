@@ -917,7 +917,7 @@ func _test_exploration_map_camera_preserves_viewport_geometry() -> void:
 	map_presenter.size = expected_viewport_rect.size
 	var viewport_rect := Rect2(map_presenter.position, map_presenter.size)
 	var viewport_parent := map_presenter.get_parent()
-	var viewport_cells := ClassicMapPresenter.viewport_cells_for(map_presenter.size, map_presenter.map_origin.y, map_presenter.cell_size)
+	var viewport_cells := ClassicMapPresenter.viewport_cells_for(map_presenter.size, map_presenter.map_origin.y, map_presenter.cell_size); var projection_cells := ClassicMapPresenter.projection_cells_for(map_presenter.size, map_presenter.map_origin.y, map_presenter.cell_size)
 	var draw_origin := ClassicMapPresenter.map_draw_origin_for(map_presenter.size, map_presenter.map_origin, map_presenter.cell_size, viewport_cells)
 	var map_size := Vector2i(90, 90)
 	var positions: Array[Vector2i] = [Vector2i(0, 45), Vector2i(45, 45), Vector2i(89, 45), Vector2i(45, 0), Vector2i(45, 89)]
@@ -928,7 +928,7 @@ func _test_exploration_map_camera_preserves_viewport_geometry() -> void:
 		if child.get_script() == RetainedMapSurfaceScript:
 			retained_surface = child as Control
 			break
-	assert_true(retained_surface != null and retained_surface.find_children("*", "TileMapLayer", true, false).size() == 9 and not retained_surface.find_children("*", "Camera2D", true, false).is_empty() and not retained_surface.find_children("*", "SubViewport", true, false).is_empty(), "exploration owns one clipped retained SubViewport with base, six feature, marker, and fog TileMapLayer surfaces plus a Camera2D")
+	assert_true(retained_surface != null and retained_surface.find_children("*", "TileMapLayer", true, false).size() == 9 and not retained_surface.find_children("*", "Camera2D", true, false).is_empty() and not retained_surface.find_children("*", "SubViewport", true, false).is_empty() and projection_cells == viewport_cells + Vector2i(2, 2), "exploration owns one clipped retained SubViewport with base, six feature, marker, and fog TileMapLayer surfaces plus a Camera2D and one preprojected guard cell on every edge")
 	var retained_base_layer := retained_surface.find_children("*", "TileMapLayer", true, false)[0] if retained_surface != null else null
 	for coordinate: Vector2i in positions:
 		var cells: Array[MapCellView] = [MapCellView.new(coordinate, "fixture.terrain", 1, "fixture.tileset", true, false, true, true, false, false, [], {}, {}, {})]

@@ -52,7 +52,10 @@ func patched(window_bounds: Rect2i, replacements: Dictionary) -> RefCounted:
 		var key := _chunk_key(coordinate)
 		var chunk := chunks.get(key) as Chunk
 		if not copied.has(key):
-			chunk = Chunk.new(chunk.cells if chunk != null else [])
+			var source: Array[MapCellView] = []
+			if chunk != null:
+				source = chunk.cells
+			chunk = Chunk.new(source)
 			chunks[key] = chunk
 			copied[key] = true
 		chunk.set_cell(coordinate, replacements[coordinate])

@@ -5,9 +5,10 @@ const MapWindowViewScript := preload("res://src/core/view/map_window_view.gd")
 const LOCATION_NOTE_VIEW_SIZE := Vector2i(15, 13)
 
 
-static func build_map_view(context: SessionWorkflowContext, projection_size: Vector2i, prepared_map_id: String, prepared_coordinate: Vector2i, prepared_visible: Dictionary, window_cache: Dictionary, previous_map_view: MapView = null, presentation_delta: RefCounted = null) -> MapView:
+static func build_map_view(context: SessionWorkflowContext, projection_size: Vector2i, prepared_map_id: String, prepared_coordinate: Vector2i, prepared_visible: Dictionary, window_cache: Dictionary, cell_cache: Dictionary, previous_map_view: MapView = null, presentation_delta: RefCounted = null) -> MapView:
 	var state := context.state
 	var map := context.content.world.map_by_id(state.party.map_id)
+	_ensure_cell_cache(context, map, cell_cache)
 	var visible: Dictionary = {}
 	if map.uses_los:
 		if prepared_map_id == map.id and prepared_coordinate == state.party.coordinate:
@@ -42,14 +43,14 @@ static func build_map_view(context: SessionWorkflowContext, projection_size: Vec
 				var was_visited := state.world.was_visited(map.id, coordinate)
 				if reusable != null and cell.is_path and reusable.visited != was_visited:
 					reusable = null
-				replacements[coordinate] = reusable.detached_with_visibility(is_visible, was_visited) if reusable != null else build_cell_view(context, map, cell, is_visible)
+				replacements[coordinate] = reusable.detached_with_visibility(is_visible, was_visited) if reusable != null else _cached_cell_view(context, map, cell, is_visible, cell_cache)
 		window = previous_map_view.map_window.patched(bounds, replacements)
 	else:
 		for y: int in range(bounds.position.y, bounds.end.y):
 			for x: int in range(bounds.position.x, bounds.end.x):
 				var cell := map.topology.cell_at(Vector2i(x, y))
 				if cell != null:
-					cells.append(build_cell_view(context, map, cell, not map.uses_los or visible.has(cell.coordinate)))
+					cells.append(_cached_cell_view(context, map, cell, not map.uses_los or visible.has(cell.coordinate), cell_cache))
 		window = MapWindowViewScript.new(bounds, {}, cells)
 		if presentation_delta != null:
 			presentation_delta.complete_window_rebuild = true
@@ -140,7 +141,28 @@ static func build_cell_view(context: SessionWorkflowContext, map: MapDefinition,
 			render_tile = cell.render_tile if terrain_set == null else terrain_set.base_tile
 		else:
 			render_tile = WorldState.normalized_classic_land_tile(raw_tile)
-	return MapCellView.new(cell.coordinate, context.state.world.terrain_for(map.id, cell), render_tile, tileset_id, cell.passable, cell.blocks_los, is_visible, context.state.world.was_visited(map.id, cell.coordinate), not hidden_secret and not cell.trigger_ids().is_empty(), not context.state.world.random_region_ids_at(map, cell.coordinate).is_empty(), feature_kinds, feature_orientations, edge_kinds, edge_passability, overlay_asset_id)
+	return MapCellView.new(cell.coordinate, context.state.world.terrain_for(map.id, cell), render_tile, tileset_id, cell.passable, cell.blocks_los, is_visible, context.state.world.was_visited(map.id, cell.coordinate), not hidden_secret and not cell.trigger_ids().is_empty(), context.state.world.has_random_region_at(map, cell.coordinate), feature_kinds, feature_orientations, edge_kinds, edge_passability, overlay_asset_id)
+
+
+static func _ensure_cell_cache(context: SessionWorkflowContext, map: MapDefinition, cell_cache: Dictionary) -> void:
+	var signature := "%s:%d:%d:%d" % [map.id, context.state.world.topology_revision(), context.state.world.random_region_bounds_revision(), context.state.world.map_landlook(map)]
+	if String(cell_cache.get(&"signature", "")) == signature:
+		return
+	cell_cache.clear()
+	cell_cache[&"signature"] = signature
+	for cell: MapCell in map.topology.cells():
+		cell_cache[cell.coordinate] = build_cell_view(context, map, cell, true)
+
+
+static func _cached_cell_view(context: SessionWorkflowContext, map: MapDefinition, cell: MapCell, is_visible: bool, cell_cache: Dictionary) -> MapCellView:
+	var was_visited := context.state.world.was_visited(map.id, cell.coordinate)
+	var cached := cell_cache.get(cell.coordinate) as MapCellView
+	if cached == null or cell.is_path and cached.visited != was_visited:
+		cached = build_cell_view(context, map, cell, is_visible)
+		cell_cache[cell.coordinate] = cached
+	if cached.visible == is_visible and cached.visited == was_visited:
+		return cached
+	return cached.detached_with_visibility(is_visible, was_visited)
 
 
 static func _entered_coordinates(previous: Rect2i, current: Rect2i) -> Array[Vector2i]:

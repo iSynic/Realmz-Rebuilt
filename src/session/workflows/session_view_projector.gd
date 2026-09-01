@@ -19,8 +19,7 @@ var _prepared_visibility_coordinate: Vector2i = Vector2i(-1, -1)
 var _prepared_visible_coordinates: Dictionary = {}
 var _visibility_membership_cache: Dictionary = {}
 var _map_projection_size: Vector2i = DEFAULT_MAP_VIEW_SIZE
-var _equipment_by_character_id: Dictionary = {}
-var _map_window_cache: Dictionary = {}
+var _equipment_by_character_id: Dictionary = {}; var _map_window_cache: Dictionary = {}; var _map_cell_cache: Dictionary = {}
 
 
 func project(context: SessionWorkflowContext, pending_interaction: InteractionRequest, revision: int, started: bool, events: Array[DomainEvent] = []) -> GameView:
@@ -42,8 +41,7 @@ func _project_complete(context: SessionWorkflowContext, pending_interaction: Int
 	var rules := context.rules
 	var members: Array[CharacterView] = []
 	var item_definitions := content.item_definitions()
-	_equipment_by_character_id.clear()
-	_map_window_cache.clear()
+	_equipment_by_character_id.clear(); _map_window_cache.clear()
 	for character: CharacterState in state.party.characters():
 		var member_view := CharacterView.new(character, content)
 		var equipment := rules.inventory.combat_equipment(character, item_definitions)
@@ -148,7 +146,7 @@ func clear() -> void:
 	_prepared_visibility_coordinate = Vector2i(-1, -1)
 	_prepared_visible_coordinates.clear()
 	_visibility_membership_cache.clear()
-	_equipment_by_character_id.clear()
+	_equipment_by_character_id.clear(); _map_window_cache.clear(); _map_cell_cache.clear()
 
 
 func set_map_projection_size(requested_size: Vector2i) -> bool:
@@ -508,7 +506,7 @@ func _map_view(context: SessionWorkflowContext, revision: int, reuse_ordinary_ce
 	_cached_map_revision = revision
 	_cached_map_id = context.state.party.map_id
 	_cached_map_coordinate = context.state.party.coordinate
-	_cached_map_view = SessionMapViewBuilder.build_map_view(context, _map_projection_size, _prepared_visibility_map_id, _prepared_visibility_coordinate, _prepared_visible_coordinates, _map_window_cache, previous_map_view if can_reuse_map_cells else null, presentation_delta)
+	_cached_map_view = SessionMapViewBuilder.build_map_view(context, _map_projection_size, _prepared_visibility_map_id, _prepared_visibility_coordinate, _prepared_visible_coordinates, _map_window_cache, _map_cell_cache, previous_map_view if can_reuse_map_cells else null, presentation_delta)
 	if presentation_delta != null:
 		for coordinate: Vector2i in presentation_delta.newly_visited:
 			_cached_visited_membership[coordinate] = true

@@ -5,6 +5,7 @@ signal movement_hold_started(direction: Vector2i)
 signal movement_hold_updated(direction: Vector2i)
 signal movement_hold_stopped
 const CLASSIC_VIEW_CELLS: Vector2i = Vector2i(15, 13)
+const RETAINED_PROJECTION_MARGIN_CELLS: Vector2i = Vector2i.ONE
 const CLASSIC_BATTLE_ATLAS_ID := "classic-battle-tiles-302"
 const SECRET_LAND_MARKER_TILE_ID := 251
 const PATH_LAND_MARKER_TILE_ID := 253
@@ -440,6 +441,10 @@ static func viewport_cells_for(control_size: Vector2, header_height: float, nati
 		maxi(1, floori(control_size.x / native_cell_size)),
 		maxi(1, floori((control_size.y - header_height) / native_cell_size))
 	)
+
+
+static func projection_cells_for(control_size: Vector2, header_height: float, native_cell_size: float) -> Vector2i:
+	return viewport_cells_for(control_size, header_height, native_cell_size) + RETAINED_PROJECTION_MARGIN_CELLS * 2
 
 
 static func map_draw_origin_for(control_size: Vector2, minimum_origin: Vector2, native_cell_size: float, viewport_cells: Vector2i) -> Vector2:

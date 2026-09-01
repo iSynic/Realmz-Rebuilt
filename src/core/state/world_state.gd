@@ -11,6 +11,8 @@ var _seen_cells: Dictionary = {}
 var _trigger_chances: Dictionary = {}
 var _acquired_maps: Dictionary = {}
 var _random_regions: Dictionary = {}
+var _has_random_region_bounds_override: bool = false
+var _random_region_bounds_revision: int = 0
 var _map_darkness: Dictionary = {}
 var _map_landlooks: Dictionary = {}
 var _location_notes: Dictionary = {}
@@ -202,7 +204,15 @@ func next_location_note_ordinal(map_kind: StringName) -> int:
 
 func set_random_region(region: RandomRegionState) -> void:
 	if region != null and not region.id.is_empty():
+		var previous := _random_regions.get(region.id) as RandomRegionState
+		if previous == null and region.bounds_overridden or previous != null and (previous.bounds_overridden != region.bounds_overridden or region.bounds_overridden and previous.bounds_edges() != region.bounds_edges()):
+			_random_region_bounds_revision += 1
 		_random_regions[region.id] = region
+		_has_random_region_bounds_override = false
+		for value: RandomRegionState in _random_regions.values():
+			if value.bounds_overridden:
+				_has_random_region_bounds_override = true
+				break
 
 
 func random_region(region: RandomEncounterRegion) -> RandomRegionState:
@@ -221,6 +231,26 @@ func random_region_ids_at(map: MapDefinition, coordinate: Vector2i) -> Array[Str
 		if effective.contains(region.bounds, coordinate) if effective.bounds_overridden else authored_ids.has(region.id):
 			result.append(region.id)
 	return result
+
+
+func has_random_region_at(map: MapDefinition, coordinate: Vector2i) -> bool:
+	if map == null:
+		return false
+	var cell := map.topology.cell_at(coordinate)
+	if cell == null:
+		return false
+	var authored_ids := cell.random_rect_ids()
+	if not _has_random_region_bounds_override:
+		return not authored_ids.is_empty()
+	for region: RandomEncounterRegion in map.random_regions():
+		var effective := random_region(region)
+		if effective.contains(region.bounds, coordinate) if effective.bounds_overridden else authored_ids.has(region.id):
+			return true
+	return false
+
+
+func random_region_bounds_revision() -> int:
+	return _random_region_bounds_revision
 
 
 func set_map_darkness(map_id: String, dark: bool) -> void:
@@ -368,7 +398,7 @@ static func from_data(data: Variant) -> WorldState:
 			var region := RandomRegionState.from_data(entry)
 			if region == null or state._random_regions.has(region.id):
 				return null
-			state._random_regions[region.id] = region
+			state.set_random_region(region)
 	if data.has("mapDarkness"):
 		if not data["mapDarkness"] is Dictionary:
 			return null

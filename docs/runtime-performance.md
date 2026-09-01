@@ -10,7 +10,7 @@ This pass covers launch-video scheduling, last-campaign preparation, Character F
 
 Native releases default to Godot's Mobile RenderingDevice path. On the measured Windows system this resolves to Vulkan; the same project retains `--rendering-method gl_compatibility --rendering-driver opengl3` as an explicit fallback for older or problematic hardware. The renderer choice does not enter presentation settings, saves, packages, or simulation state because Godot establishes it before project scripts run.
 
-The equal-workload AOGM `land:0` probe used 400 percent cadence, 400 ordinary rules-enabled moves, eighty warmup frames, the same package and retained scene, disabled VSync, and forced unswapped GPU completion. Mobile/Vulkan improved frame and post-draw tails at both measured sizes without changing transaction/projection time or producing skipped intervals:
+The original equal-workload AOGM `land:0` renderer comparison used 400 percent cadence, 400 ordinary rules-enabled moves, eighty warmup frames, the same package and retained scene, disabled VSync, and forced unswapped GPU completion. Mobile/Vulkan improved frame and post-draw tails at both measured sizes without changing transaction/projection time or producing skipped intervals. That comparison used the former alternating two-cell route, so it remains valid only as a renderer-backend comparison and is not current traversal certification:
 
 | Viewport / method | Frame p95 / p99 / max | Post-draw p95 | Skipped / catch-up |
 |---|---:|---:|---:|
@@ -45,26 +45,22 @@ The rendered Tutorial runs measured cached vault-import p95 at 0.208 ms (400 per
 
 Ordinary movement now scales with changed state. `GameView` carries a nonserialized `ViewChangeSet` and independent roster, status, inventory, and magic revisions. Hourly SP recovery always advances status and magic revisions, but spell records are copied only when structural legality changes or an affordability threshold is crossed. Equipment facts remain cached by inventory revision. Previous detached snapshots retain their original scalar and component records.
 
-The map read model is an 8x8 copy-on-write `MapWindowView`. Adjacent movement shares unchanged chunks and creates only entering-strip, destination, overlay, discovery, and LOS-edge cells. A bounded coordinate/revision cache reuses an already-detached LOS window. Resize, map/topology change, restore, Wizard's Eye expansion, and unknown events request a complete rebuild; topology, collision, visited, and visibility truth remain in simulation.
+The map read model is an 8x8 copy-on-write `MapWindowView`. Adjacent movement shares unchanged chunks and creates only entering-strip, destination, overlay, discovery, and LOS-edge cells. A typed empty chunk is allocated before a patch crosses into a previously absent 8x8 region; the prior untyped empty-array expression failed at those boundaries and could leave the camera advanced against a stale retained edge. A nonserialized per-map cell cache derives reusable static detached facts once per map/topology/effective-region/landlook revision, so entering-strip cost no longer scales with repeated feature and edge reconstruction at native width. A bounded coordinate/revision cache reuses an already-detached LOS window. Resize, map/topology change, restore, Wizard's Eye expansion, and unknown events request a complete rebuild; topology, collision, visited, and visibility truth remain in simulation.
 
-Normal rendering no longer redraws every terrain cell through `Control._draw()`. One clipped SubViewport retains base, six ordered feature, marker, and fog `TileMapLayer` surfaces, pooled CICN `Sprite2D` overlays, and a `Camera2D`. The presenter applies only `MapPresentationDelta` coordinates on ordinary travel. Debug facts, cursors/selections, and the minimap remain custom Control drawing.
+Normal rendering no longer redraws every terrain cell through `Control._draw()`. One clipped SubViewport retains base, six ordered feature, marker, and fog `TileMapLayer` surfaces, pooled CICN `Sprite2D` overlays, and a `Camera2D`. The host projects one guard cell beyond each clipped visible edge, and the presenter applies only `MapPresentationDelta` coordinates on ordinary travel. Debug facts, cursors/selections, and the minimap remain custom Control drawing.
 
 The original rules-enabled baseline was 135.804 ms combined p95 when an hourly recovery forced a complete `GameView`. The final isolated probe uses six depleted level-10 casters with four spells each and at least 4,096 explored cells. Its latest run reports 0.500 ms transaction p95, 0.697 ms projection p95, and 1.175 ms combined p95; hourly transaction and projection p95 are 0.616 and 0.885 ms. No-clip is not part of either acceptance probe.
 
-The rendered probe uses normal `PlayerIntent.move`, real AOGM map media, five-minute Classic timeclicks, repeated hourly recovery, and separate ordinary/hourly samples. A benchmark-only snapshot moves authored timed encounters beyond the measurement window so a modal timeline cannot replace a travel sample. Eighty warm frames allocate retained layers and driver resources before measurement. Vsync is disabled; native GPU completion uses an unswapped forced draw so the 120 Hz engine-work measurement is not capped by the physical monitor.
+The rendered probe uses normal `PlayerIntent.move`, real AOGM map media, five-minute Classic timeclicks, repeated hourly recovery, and separate ordinary/hourly samples. It now derives a long cardinal route between farthest reachable cells, reports its bounds and unique-cell count, and crosses retained 8x8 chunk boundaries; the former two-cell loop is explicitly insufficient. A benchmark-only snapshot moves authored timed encounters beyond the measurement window and zeroes random-region chance so a modal timeline cannot replace a travel sample. Eighty warm frames allocate retained layers and driver resources before measurement. Vsync is disabled; native GPU completion uses an unswapped forced draw so the 120 Hz engine-work measurement is not capped by the physical monitor.
 
-Current 1280x720 results (five seconds per run):
+The prior six-map matrix used the now-rejected two-cell route and is superseded for traversal acceptance. The current 2026-09-01 regression used AOGM `land:0`, a 155-cell route spanning `(1,5)` through `(26,79)`, 240 measured moves in three seconds at 400 percent cadence, normal rules, and one guard cell per visible edge:
 
-| AOGM map / cadence | Combined p95 | Frame p95 / p99 / max | Hourly combined / frame p95 | Schedule |
+| Viewport | Combined p95 | Frame p95 / p99 / max | Hourly combined / frame p95 | Schedule |
 |---|---:|---:|---:|---|
-| `land:0` ordinary, 100% | 2.017 ms | 6.924 / 7.135 / 7.147 ms | 2.113 / 6.910 ms | 0 skipped, 0 catch-up |
-| `land:0` ordinary, 400% | 1.600 ms | 4.939 / 6.295 / 6.979 ms | 1.777 / 5.690 ms | 0 skipped, 0 catch-up |
-| `land:2` darkness, 100% | 1.929 ms | 6.941 / 6.965 / 7.029 ms | 2.230 / 6.935 ms | 0 skipped, 0 catch-up |
-| `land:2` darkness, 400% | 1.606 ms | 4.860 / 7.443 / 9.555 ms | 2.054 / 6.018 ms | 0 skipped, 0 catch-up |
-| `land:4` LOS, 100% | 2.033 ms | 6.930 / 6.951 / 6.964 ms | 2.276 / 6.940 ms | 0 skipped, 0 catch-up |
-| `land:4` LOS, 400% | 1.703 ms | 4.863 / 6.832 / 7.898 ms | 1.835 / 5.005 ms | 0 skipped, 0 catch-up |
+| 1280x720 | 1.851 ms | 6.948 / 7.190 / 12.515 ms | 2.111 / 6.947 ms | 0 skipped, 0 catch-up |
+| 3440x1440 | 2.270 ms | 6.186 / 10.603 / 11.498 ms | 2.575 / 7.486 ms | 0 skipped, 0 catch-up |
 
-Native 3440x1440 runs on the same machine also passed at both cadences for ordinary, darkness, and LOS travel. The final-build 400% runs completed 400 measured moves in approximately five seconds with zero skipped or catch-up intervals; combined p95 remained 1.703 ms or lower, frame p95 remained 5.957 ms or lower, frame p99 remained 7.796 ms or lower, and no frame exceeded 11.252 ms. Hour-boundary combined and frame p95 remained at or below 1.936 and 7.670 ms. The latest native LOS 100% run reported 2.742 ms combined p95, 7.703 ms frame p95, 9.921 ms p99, and 10.208 ms maximum. These results meet the 3.0/8.3/12.5/16.7 ms acceptance thresholds without reducing the visible tile count, native cell size, interface density, or simulation frequency.
+Both long-route runs crossed multiple retained chunks without a script error, completed at approximately 79.4 steps per second, and met the 3.0/8.3/12.5/16.7 ms thresholds without reducing visible tile count, native cell size, interface density, or simulation frequency. Darkness and LOS long-route recertification remains separate from this non-LOS chunk-boundary regression rather than inheriting the superseded two-cell evidence.
 
 ## Combat navigation
 

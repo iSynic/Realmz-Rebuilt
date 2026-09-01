@@ -41,7 +41,7 @@ func _initialize() -> void:
 	root.size = viewport_size; root.add_child(shell); root.add_child(map_presenter)
 	var viewport_scale := Vector2(viewport_size) / Vector2(1280, 720)
 	map_presenter.position = Vector2(2, 72) * viewport_scale; map_presenter.size = Vector2(926, 488) * viewport_scale
-	session.set_map_projection_size(ClassicMapPresenter.viewport_cells_for(map_presenter.size, map_presenter.map_origin.y, map_presenter.cell_size))
+	session.set_map_projection_size(ClassicMapPresenter.projection_cells_for(map_presenter.size, map_presenter.map_origin.y, map_presenter.cell_size))
 	var media := ClassicMediaCatalog.new(loaded.media, ApplicationMediaCatalog.new())
 	map_presenter.set_media_catalog(media)
 	await process_frame
@@ -93,7 +93,7 @@ func _initialize() -> void:
 		next_movement_at += interval_us
 	var output := {
 		"campaignId": loaded.content.campaign_id, "mapId": map.id, "mapName": map.name, "mapSize": [map.topology.width, map.topology.height], "mapCellCount": map.topology.cells().size(), "usesLos": map.uses_los, "renderingMethod": RenderingServer.get_current_rendering_method(), "renderingDriver": RenderingServer.get_current_rendering_driver_name(),
-		"presentationMode": "ordinary-rules-movement", "vsyncDuringMeasurement": "disabled", "drawCompletion": "process-frame-plus-forced-render-without-buffer-swap", "mapProjectionMode": "los-visibility-delta" if map.uses_los else "incremental", "routeLengthTiles": directions.size(), "routeUniqueCells": route["uniqueCells"], "routeBounds": route["bounds"], "uniqueCellsTraversed": traversed.size(), "distanceTiles": movement_count, "directionCounts": direction_counts, "tilesets": _tileset_evidence(map, media), "overlayAssetCount": route["overlayAssetCount"],
+		"presentationMode": "ordinary-rules-movement", "vsyncDuringMeasurement": "disabled", "drawCompletion": "process-frame-plus-forced-render-without-buffer-swap", "mapProjectionMode": "los-visibility-delta" if map.uses_los else "incremental", "projectionGuardCellsPerEdge": ClassicMapPresenter.RETAINED_PROJECTION_MARGIN_CELLS.x, "routeLengthTiles": directions.size(), "routeUniqueCells": route["uniqueCells"], "routeBounds": route["bounds"], "uniqueCellsTraversed": traversed.size(), "distanceTiles": movement_count, "directionCounts": direction_counts, "tilesets": _tileset_evidence(map, media), "overlayAssetCount": route["overlayAssetCount"], "randomEncounterChanceDuringMeasurement": 0,
 		"viewport": "%dx%d" % [viewport_size.x, viewport_size.y], "speedPercent": speed_percent, "scheduledStepsPerSecond": 20.0 * float(speed_percent) / 100.0, "actualStepsPerSecond": snappedf(float(movement_count) * 1_000_000.0 / float(Time.get_ticks_usec() - measured_started), 0.001), "durationSeconds": snappedf(float(Time.get_ticks_usec() - measured_started) / 1_000_000.0, 0.001), "movementFrames": movement_count, "ordinarySamples": ordinary_frames.size(), "hourlySamples": hourly_frames.size(), "segmentRestartsAtGameplayBoundaries": segment_restarts, "queuedCatchUpBursts": 0, "skippedIntervals": skipped_intervals,
 		"packagePreparationMs": snappedf(float(package_us) / 1000.0, 0.001), "vaultCachedImportP95Ms": vault_result["p95Ms"], "vaultCacheSize": vault_result["cacheSize"],
 		"transactionP95Ms": _percentile_ms(transaction_samples, 0.95), "sessionProjectionP95Ms": _percentile_ms(projection_samples, 0.95), "mapPresentationP95Ms": _percentile_ms(map_samples, 0.95), "shellPresentationP95Ms": _percentile_ms(shell_samples, 0.95), "postDrawP95Ms": _percentile_ms(post_draw_samples, 0.95),
@@ -168,21 +168,70 @@ func _noclip_route(map: MapDefinition) -> Dictionary:
 func _ordinary_route_pair(content: RealmzContent, state: GameState, map: MapDefinition) -> Dictionary:
 	if map == null:
 		return {}
-	var directions := MapTopology.land_directions() if map.level_type == &"land" else MapTopology.cardinal_directions()
+	var seed := Vector2i(-1, -1)
 	for cell: MapCell in map.topology.cells():
-		if not _safe_ordinary_cell(cell) or not state.world.random_region_ids_at(map, cell.coordinate).is_empty(): continue
+		if _safe_route_coordinate(state, map, cell):
+			seed = cell.coordinate
+			break
+	if seed.x < 0:
+		return {}
+	var first_search := _ordinary_route_search(content, state, map, seed)
+	var first_end: Vector2i = first_search["farthest"]
+	var second_search := _ordinary_route_search(content, state, map, first_end)
+	var second_end: Vector2i = second_search["farthest"]
+	var parents: Dictionary = second_search["parents"]
+	var coordinates: Array[Vector2i] = [second_end]
+	while coordinates[-1] != first_end:
+		if not parents.has(coordinates[-1]):
+			return {}
+		coordinates.append(parents[coordinates[-1]])
+	coordinates.reverse()
+	if coordinates.size() < 2:
+		return {}
+	var route_directions: Array[Vector2i] = []
+	var minimum := coordinates[0]
+	var maximum := coordinates[0]
+	for index: int in range(1, coordinates.size()):
+		var direction := coordinates[index] - coordinates[index - 1]
+		route_directions.append(direction)
+		minimum = Vector2i(mini(minimum.x, coordinates[index].x), mini(minimum.y, coordinates[index].y))
+		maximum = Vector2i(maxi(maximum.x, coordinates[index].x), maxi(maximum.y, coordinates[index].y))
+	for index: int in range(coordinates.size() - 1, 0, -1):
+		route_directions.append(coordinates[index - 1] - coordinates[index])
+	return {"coordinates": coordinates, "directions": route_directions, "uniqueCells": coordinates.size(), "bounds": [minimum.x, minimum.y, maximum.x, maximum.y], "overlayAssetCount": 0}
+
+
+func _ordinary_route_search(content: RealmzContent, state: GameState, map: MapDefinition, origin: Vector2i) -> Dictionary:
+	var directions := MapTopology.cardinal_directions()
+	var queue: Array[Vector2i] = [origin]
+	var head := 0
+	var parents: Dictionary = {}
+	var distances: Dictionary = {origin: 0}
+	var farthest := origin
+	while head < queue.size():
+		var coordinate := queue[head]
+		head += 1
 		for direction: Vector2i in directions:
-			var movement := content.world.probe_movement(map.id, cell.coordinate, direction, state.world, state.party_in_boat)
-			if movement.allowed and movement.target_map == map and _safe_ordinary_cell(movement.topology_result.target_cell) and state.world.random_region_ids_at(map, movement.topology_result.target_cell.coordinate).is_empty():
-				var destination := movement.topology_result.target_cell.coordinate
-				var coordinates: Array[Vector2i] = [cell.coordinate, destination]
-				var route_directions: Array[Vector2i] = [direction, -direction]
-				return {"coordinates": coordinates, "directions": route_directions, "uniqueCells": 2, "bounds": [mini(cell.coordinate.x, destination.x), mini(cell.coordinate.y, destination.y), maxi(cell.coordinate.x, destination.x), maxi(cell.coordinate.y, destination.y)], "overlayAssetCount": 0}
-	return {}
+			var movement := content.world.probe_movement(map.id, coordinate, direction, state.world, state.party_in_boat)
+			if not movement.allowed or movement.target_map != map or not _safe_route_coordinate(state, map, movement.topology_result.target_cell):
+				continue
+			var destination: Vector2i = movement.topology_result.target_cell.coordinate
+			if distances.has(destination):
+				continue
+			parents[destination] = coordinate
+			distances[destination] = int(distances[coordinate]) + 1
+			queue.append(destination)
+			if int(distances[destination]) > int(distances[farthest]):
+				farthest = destination
+	return {"farthest": farthest, "parents": parents}
+
+
+static func _safe_route_coordinate(_state: GameState, _map: MapDefinition, cell: MapCell) -> bool:
+	return _safe_ordinary_cell(cell)
 
 
 static func _safe_ordinary_cell(cell: MapCell) -> bool:
-	return cell != null and cell.passable and cell.trigger_ids().is_empty() and cell.random_rect_ids().is_empty() and cell.features().is_empty()
+	return cell != null and cell.passable and cell.trigger_ids().is_empty() and cell.features().is_empty()
 
 
 static func _append_line(coordinates: Array[Vector2i], target: Vector2i) -> void:
@@ -212,6 +261,10 @@ func _place_party(session: GameSession, content: RealmzContent, map_id: String, 
 		snapshot.game_state.set_timed_encounter_override(encounter.id, {"day": snapshot.game_state.clock.day() + 10_000, "percent": encounter.chance_percent})
 	var map := content.world.map_by_id(map_id); var seeded := 0
 	if map != null:
+		for region: RandomEncounterRegion in map.random_regions():
+			var effective := snapshot.game_state.world.random_region(region)
+			effective.chance_ten_thousand = 0
+			snapshot.game_state.world.set_random_region(effective)
 		for cell: MapCell in map.topology.cells():
 			snapshot.game_state.world.mark_visited(map_id, cell.coordinate); seeded += 1
 			if seeded >= visited_history_target: break
