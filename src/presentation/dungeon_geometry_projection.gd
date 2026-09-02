@@ -57,13 +57,13 @@ var party_coordinate: Vector2i
 var heading: int = HEADING_NORTH
 var facing_direction: Vector2i = Vector2i.UP
 var dark: bool = false
-var _cells: Array[CellProjection] = []
-var _edges: Array[EdgeProjection] = []
-var _cells_by_coordinate: Dictionary = {}
-var _edges_by_direction: Dictionary = {}
+var geometry_source_id: int = 0
+var geometry_source: RefCounted
+var _source_cells: Array[MapCellView] = []
+var _source_cells_by_coordinate: Dictionary = {}
 
 
-static func from_map_view(map_view: MapView) -> DungeonGeometryProjection:
+static func from_map_view(map_view: MapView, reusable_geometry: DungeonGeometryProjection = null) -> DungeonGeometryProjection:
 	if map_view == null or map_view.level_type != &"dungeon":
 		return null
 	var projection := DungeonGeometryProjection.new()
@@ -73,17 +73,22 @@ static func from_map_view(map_view: MapView) -> DungeonGeometryProjection:
 	projection.heading = normalize_heading(map_view.dungeon_heading)
 	projection.facing_direction = heading_vector(projection.heading)
 	projection.dark = map_view.dark
+	projection.geometry_source = map_view.map_window if map_view.map_window != null else map_view
+	projection.geometry_source_id = geometry_source_id_for(map_view)
+	if reusable_geometry != null and reusable_geometry.map_id == projection.map_id and reusable_geometry.geometry_source_id == projection.geometry_source_id:
+		projection._source_cells = reusable_geometry._source_cells
+		projection._source_cells_by_coordinate = reusable_geometry._source_cells_by_coordinate
+		return projection
 	for cell: MapCellView in map_view.cells():
 		if not cell.visible:
 			continue
-		var cell_projection := CellProjection.new(cell)
-		projection._cells.append(cell_projection)
-		projection._cells_by_coordinate[cell.coordinate] = cell_projection
-		for direction: StringName in DIRECTIONS:
-			var edge := EdgeProjection.new(cell.coordinate, direction, cell.edge_kind(direction), cell.edge_is_passable(direction))
-			projection._edges.append(edge)
-			projection._edges_by_direction[_directed_edge_key(cell.coordinate, direction)] = edge
+		projection._source_cells.append(cell)
+		projection._source_cells_by_coordinate[cell.coordinate] = cell
 	return projection
+
+
+static func geometry_source_id_for(map_view: MapView) -> int:
+	return map_view.map_window.get_instance_id() if map_view != null and map_view.map_window != null else map_view.get_instance_id() if map_view != null else 0
 
 
 static func cardinal_facing(direction: Vector2i) -> Vector2i:
@@ -120,19 +125,50 @@ static func direction_vector(direction: StringName) -> Vector2i:
 
 
 func cells() -> Array[CellProjection]:
-	return _cells.duplicate()
+	var result: Array[CellProjection] = []
+	for source: MapCellView in _source_cells:
+		result.append(CellProjection.new(source))
+	return result
 
 
 func edges() -> Array[EdgeProjection]:
-	return _edges.duplicate()
+	var result: Array[EdgeProjection] = []
+	for source: MapCellView in _source_cells:
+		for direction: StringName in DIRECTIONS:
+			result.append(EdgeProjection.new(source.coordinate, direction, source.edge_kind(direction), source.edge_is_passable(direction)))
+	return result
 
 
 func cell_at(coordinate: Vector2i) -> CellProjection:
-	return _cells_by_coordinate.get(coordinate) as CellProjection
+	var source := source_cell_at(coordinate)
+	return CellProjection.new(source) if source != null else null
 
 
 func edge_at(coordinate: Vector2i, direction: StringName) -> EdgeProjection:
-	return _edges_by_direction.get(_directed_edge_key(coordinate, direction)) as EdgeProjection
+	var source := source_cell_at(coordinate)
+	return EdgeProjection.new(coordinate, direction, source.edge_kind(direction), source.edge_is_passable(direction)) if source != null else null
+
+
+func source_cells() -> Array[MapCellView]:
+	return _source_cells.duplicate()
+
+
+func source_cell_at(coordinate: Vector2i) -> MapCellView:
+	return _source_cells_by_coordinate.get(coordinate) as MapCellView
+
+
+func edge_kind_at(coordinate: Vector2i, direction: StringName) -> StringName:
+	var source := source_cell_at(coordinate)
+	return source.edge_kind(direction) if source != null else &"map-boundary"
+
+
+func edge_passable_at(coordinate: Vector2i, direction: StringName) -> bool:
+	var source := source_cell_at(coordinate)
+	return source != null and source.edge_is_passable(direction)
+
+
+func geometry_cache_key() -> String:
+	return "%s:%d:%d,%d" % [map_id, geometry_source_id, party_coordinate.x, party_coordinate.y]
 
 
 static func canonical_edge_key(coordinate: Vector2i, direction: StringName) -> String:

@@ -119,7 +119,7 @@ func _ready() -> void:
 	_shell_presenter.character_selection_completed.connect(_interaction_presenter.submit_character_selection)
 	_audio_presenter.music_state_changed.connect(_shell_presenter.set_music_playback_state)
 	_shell_presenter.apply_settings(_presentation_settings)
-	presentation_coordinator.set_reduced_motion(_presentation_settings.reduced_motion); presentation_coordinator.set_combat_playback_speed_percent(_presentation_settings.combat_playback_speed_percent)
+	presentation_coordinator.set_reduced_motion(_presentation_settings.reduced_motion); presentation_coordinator.set_combat_playback_speed_percent(_presentation_settings.combat_playback_speed_percent); presentation_coordinator.set_exploration_speed_percent(_presentation_settings.exploration_speed_percent)
 	_apply_application_theme()
 	_interaction_presenter.set_text_scale(_presentation_settings.text_scale)
 	_interaction_presenter.set_autojournal_enabled(_presentation_settings.autojournal_enabled)
@@ -1156,7 +1156,7 @@ func _on_auto_switch_to_melee_changed(enabled: bool) -> void:
 
 
 func _on_exploration_speed_changed(percent: int) -> void:
-	_presentation_settings.exploration_speed_percent = clampi(snappedi(percent, 25), 25, 400); _held_movement.set_speed_percent(_presentation_settings.exploration_speed_percent); settings_repository.save_settings(_presentation_settings)
+	_presentation_settings.exploration_speed_percent = clampi(snappedi(percent, 25), 25, 400); _held_movement.set_speed_percent(_presentation_settings.exploration_speed_percent); presentation_coordinator.set_exploration_speed_percent(_presentation_settings.exploration_speed_percent); settings_repository.save_settings(_presentation_settings)
 
 
 func _on_combat_playback_speed_changed(percent: int) -> void: _presentation_settings.combat_playback_speed_percent = clampi(snappedi(percent, 25), 25, 200); presentation_coordinator.set_combat_playback_speed_percent(_presentation_settings.combat_playback_speed_percent); settings_repository.save_settings(_presentation_settings)

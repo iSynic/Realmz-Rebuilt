@@ -13,17 +13,33 @@ const CURSOR_REVERSE_PATH := "res://src/presentation/assets/classic-dungeon/curs
 const CURSOR_LEFT_PATH := "res://src/presentation/assets/classic-dungeon/cursor-left.png"
 const CURSOR_RIGHT_PATH := "res://src/presentation/assets/classic-dungeon/cursor-right.png"
 const INTERNAL_SIZE := Vector2i(400, 225)
-const MOVE_TWEEN_SECONDS := 0.14
-const TURN_TWEEN_SECONDS := 0.11
+const MOVE_TWEEN_SECONDS := 0.045
+const TURN_TWEEN_SECONDS := 0.04
+const MESH_CACHE_CAPACITY := 24
 
 var _enabled: bool = false
 var _projection: DungeonGeometryProjection
 var _previous_projection: DungeonGeometryProjection
 var _viewport: SubViewport
 var _display: TextureRect
+var _world: Node3D
 var _geometry: MeshInstance3D
 var _camera: Camera3D
 var _active_tween: Tween
+var _speed_percent: int = 100
+var _reduced_motion: bool = false
+var _mesh_cache: Dictionary = {}
+var _mesh_cache_order: Array[String] = []
+var _projection_geometry_cache: Dictionary = {}
+var _projection_geometry_cache_order: Array[String] = []
+var _geometry_rebuild_count: int = 0
+var _geometry_cache_hit_count: int = 0
+var _last_geometry_build_usec: int = 0
+var _retained_map_id: String = ""
+var _retained_coordinates: Dictionary = {}
+var _retained_doorways: Dictionary = {}
+var _retained_pillar_corners: Dictionary = {}
+var _geometry_batches: Array[MeshInstance3D] = []
 var _keyboard_direction: Vector2i = Vector2i.ZERO
 var _navigation_cursor_enabled: bool = true
 var _owns_navigation_cursor: bool = false
@@ -45,19 +61,19 @@ func _ready() -> void:
 	_viewport.own_world_3d = true
 	_viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	add_child(_viewport)
-	var world := Node3D.new()
-	world.name = "DungeonWorld"
-	_viewport.add_child(world)
+	_world = Node3D.new()
+	_world.name = "DungeonWorld"
+	_viewport.add_child(_world)
 	_geometry = MeshInstance3D.new()
 	_geometry.name = "DungeonSceneMesh"
-	world.add_child(_geometry)
+	_world.add_child(_geometry)
 	_camera = Camera3D.new()
 	_camera.name = "DungeonCamera"
 	_camera.fov = 70.0
 	_camera.near = 0.04
 	_camera.far = 12.0
 	_camera.position = Vector3(0.0, 0.72, 0.0)
-	world.add_child(_camera)
+	_world.add_child(_camera)
 	var environment_node := WorldEnvironment.new()
 	var environment := Environment.new()
 	environment.background_mode = Environment.BG_COLOR
@@ -66,7 +82,7 @@ func _ready() -> void:
 	environment.fog_light_color = Color.BLACK
 	environment.fog_density = 0.072
 	environment_node.environment = environment
-	world.add_child(environment_node)
+	_world.add_child(environment_node)
 	_display = TextureRect.new()
 	_display.name = "DungeonDisplay"
 	_display.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -89,6 +105,17 @@ func set_enabled(enabled: bool) -> void:
 	_update_visibility()
 
 
+func set_speed_percent(percent: int) -> void:
+	_speed_percent = clampi(snappedi(percent, 25), 25, 400)
+
+
+func set_reduced_motion(enabled: bool) -> void:
+	_reduced_motion = enabled
+	if enabled and _active_tween != null and _active_tween.is_valid():
+		_active_tween.kill()
+		_snap_camera_to_projection()
+
+
 func set_navigation_cursor_enabled(enabled: bool) -> void:
 	if _navigation_cursor_enabled == enabled:
 		return
@@ -104,10 +131,29 @@ func present(game_view: GameView) -> void:
 	_previous_projection = _projection
 	_projection = null
 	if game_view != null and game_view.session_started:
-		_projection = DungeonGeometryProjection.from_map_view(game_view.map_view)
-	_rebuild_geometry()
+		var source_key := _projection_source_key(game_view.map_view)
+		_projection = DungeonGeometryProjection.from_map_view(game_view.map_view, _projection_geometry_cache.get(source_key) as DungeonGeometryProjection)
+		if _projection != null:
+			_store_projection_geometry(source_key, _projection)
+	_rebuild_geometry(game_view.map_view if game_view != null else null)
 	_update_visibility()
 	_animate_authoritative_change()
+
+
+func _projection_source_key(map_view: MapView) -> String:
+	if map_view == null:
+		return ""
+	return "%s:%d" % [map_view.map_id, DungeonGeometryProjection.geometry_source_id_for(map_view)]
+
+
+func _store_projection_geometry(source_key: String, projection: DungeonGeometryProjection) -> void:
+	if source_key.is_empty():
+		return
+	_projection_geometry_cache[source_key] = projection
+	_projection_geometry_cache_order.erase(source_key)
+	_projection_geometry_cache_order.append(source_key)
+	while _projection_geometry_cache_order.size() > MESH_CACHE_CAPACITY:
+		_projection_geometry_cache.erase(_projection_geometry_cache_order.pop_front())
 
 
 func is_active() -> bool:
@@ -176,10 +222,96 @@ func _update_visibility() -> void:
 		_clear_navigation_cursor()
 
 
-func _rebuild_geometry() -> void:
+func _rebuild_geometry(map_view: MapView) -> void:
 	if _geometry == null:
 		return
-	_geometry.mesh = null if _projection == null else MeshBuilder.build(_projection, _atlas)
+	if _projection == null:
+		_clear_retained_geometry()
+		return
+	if map_view != null and not map_view.uses_los:
+		_retain_world_geometry(map_view)
+		return
+	_clear_retained_geometry(false)
+	var cache_key := _projection.geometry_cache_key()
+	var cached := _mesh_cache.get(cache_key) as ArrayMesh
+	if cached != null:
+		_geometry_cache_hit_count += 1
+		_touch_mesh_cache_key(cache_key)
+		_geometry.mesh = cached
+		_last_geometry_build_usec = 0
+		return
+	var started := Time.get_ticks_usec()
+	var built := MeshBuilder.build(_projection, _atlas)
+	_last_geometry_build_usec = Time.get_ticks_usec() - started
+	_geometry_rebuild_count += 1
+	_geometry.mesh = built
+	_mesh_cache[cache_key] = built
+	_mesh_cache_order.append(cache_key)
+	while _mesh_cache_order.size() > MESH_CACHE_CAPACITY:
+		_mesh_cache.erase(_mesh_cache_order.pop_front())
+
+
+func _retain_world_geometry(map_view: MapView) -> void:
+	var delta := map_view.presentation_delta as MapPresentationDelta
+	if _retained_map_id == _projection.map_id and _previous_projection != null and _previous_projection.geometry_source_id == _projection.geometry_source_id:
+		_geometry_cache_hit_count += 1
+		_last_geometry_build_usec = 0
+		return
+	var extends_current := _retained_map_id == _projection.map_id and _previous_projection != null and delta != null and not delta.complete_window_rebuild and delta.matches(_previous_projection.map_id, _previous_projection.party_coordinate, _projection.party_coordinate)
+	if not extends_current:
+		_clear_retained_geometry()
+		_retained_map_id = _projection.map_id
+		var all_coordinates: Dictionary = {}
+		for cell: MapCellView in _projection.source_cells():
+			all_coordinates[cell.coordinate] = true
+		_add_world_geometry_batch(all_coordinates, true)
+		return
+	var entering: Dictionary = {}
+	for coordinate: Vector2i in delta.entered:
+		if not _retained_coordinates.has(coordinate) and _projection.source_cell_at(coordinate) != null:
+			entering[coordinate] = true
+	if entering.is_empty():
+		_geometry_cache_hit_count += 1
+		_last_geometry_build_usec = 0
+		return
+	_add_world_geometry_batch(entering, false)
+
+
+func _add_world_geometry_batch(coordinates: Dictionary, primary: bool) -> void:
+	var started := Time.get_ticks_usec()
+	var built := MeshBuilder.build_world_batch(_projection, _atlas, coordinates, _retained_doorways, _retained_pillar_corners)
+	_last_geometry_build_usec = Time.get_ticks_usec() - started
+	_geometry_rebuild_count += 1
+	for coordinate: Vector2i in coordinates:
+		_retained_coordinates[coordinate] = true
+	if primary:
+		_geometry.mesh = built
+		return
+	var batch := MeshInstance3D.new()
+	batch.name = "DungeonScenePatch%d" % _geometry_batches.size()
+	batch.mesh = built
+	_world.add_child(batch)
+	_geometry_batches.append(batch)
+
+
+func _clear_retained_geometry(clear_primary: bool = true) -> void:
+	for batch: MeshInstance3D in _geometry_batches:
+		if is_instance_valid(batch):
+			if batch.get_parent() != null:
+				batch.get_parent().remove_child(batch)
+			batch.queue_free()
+	_geometry_batches.clear()
+	_retained_map_id = ""
+	_retained_coordinates.clear()
+	_retained_doorways.clear()
+	_retained_pillar_corners.clear()
+	if clear_primary and _geometry != null:
+		_geometry.mesh = null
+
+
+func _touch_mesh_cache_key(cache_key: String) -> void:
+	_mesh_cache_order.erase(cache_key)
+	_mesh_cache_order.append(cache_key)
 
 
 func _animate_authoritative_change() -> void:
@@ -188,21 +320,29 @@ func _animate_authoritative_change() -> void:
 	if _active_tween != null and _active_tween.is_valid():
 		_active_tween.kill()
 	var target_yaw := heading_yaw(_projection.heading)
+	if _reduced_motion:
+		_snap_camera_to_projection()
+		return
 	if _previous_projection != null and _previous_projection.map_id == _projection.map_id:
-		var offset := _previous_projection.party_coordinate - _projection.party_coordinate
-		if absi(offset.x) + absi(offset.y) == 1 and _previous_projection.heading == _projection.heading:
-			_camera.position = Vector3(float(offset.x), 0.72, float(offset.y))
+		var movement := _projection.party_coordinate - _previous_projection.party_coordinate
+		if absi(movement.x) + absi(movement.y) == 1 and _previous_projection.heading == _projection.heading:
 			_camera.rotation = Vector3(0.0, target_yaw, 0.0)
-			_start_camera_tween(&"position", Vector3(0.0, 0.72, 0.0), MOVE_TWEEN_SECONDS)
+			_start_camera_tween(&"position", camera_position_for(_projection.party_coordinate), transition_duration(MOVE_TWEEN_SECONDS, _speed_percent))
 			return
 		if _previous_projection.party_coordinate == _projection.party_coordinate and _previous_projection.heading != _projection.heading:
-			_camera.position = Vector3(0.0, 0.72, 0.0)
+			_camera.position = camera_position_for(_projection.party_coordinate)
 			var current_yaw := heading_yaw(_previous_projection.heading)
 			_camera.rotation = Vector3(0.0, current_yaw, 0.0)
-			_start_camera_tween(&"rotation:y", current_yaw + wrapf(target_yaw - current_yaw, -PI, PI), TURN_TWEEN_SECONDS)
+			_start_camera_tween(&"rotation:y", current_yaw + wrapf(target_yaw - current_yaw, -PI, PI), transition_duration(TURN_TWEEN_SECONDS, _speed_percent))
 			return
-	_camera.position = Vector3(0.0, 0.72, 0.0)
-	_camera.rotation = Vector3(0.0, target_yaw, 0.0)
+	_snap_camera_to_projection()
+
+
+func _snap_camera_to_projection() -> void:
+	if _camera == null or _projection == null:
+		return
+	_camera.position = camera_position_for(_projection.party_coordinate)
+	_camera.rotation = Vector3(0.0, heading_yaw(_projection.heading), 0.0)
 
 
 func _start_camera_tween(property: StringName, target: Variant, duration: float) -> void:
@@ -210,6 +350,26 @@ func _start_camera_tween(property: StringName, target: Variant, duration: float)
 	_active_tween.set_trans(Tween.TRANS_QUAD)
 	_active_tween.set_ease(Tween.EASE_IN_OUT)
 	_active_tween.tween_property(_camera, NodePath(property), target, duration)
+
+
+func geometry_rebuild_count() -> int:
+	return _geometry_rebuild_count
+
+
+func geometry_cache_hit_count() -> int:
+	return _geometry_cache_hit_count
+
+
+func last_geometry_build_usec() -> int:
+	return _last_geometry_build_usec
+
+
+static func transition_duration(base_seconds: float, speed_percent: int) -> float:
+	return base_seconds * 100.0 / float(clampi(speed_percent, 25, 400))
+
+
+static func camera_position_for(coordinate: Vector2i) -> Vector3:
+	return Vector3(float(coordinate.x), 0.72, float(coordinate.y))
 
 
 func _layout_internal_view() -> void:

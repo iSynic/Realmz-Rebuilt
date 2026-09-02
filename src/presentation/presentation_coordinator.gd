@@ -201,8 +201,15 @@ func toggle_dungeon_view() -> bool:
 
 func set_reduced_motion(enabled: bool) -> void:
 	_reduced_motion = enabled
+	if _dungeon_presenter != null:
+		_dungeon_presenter.set_reduced_motion(enabled)
 	if enabled and is_combat_playback_active():
 		skip_combat_playback()
+
+
+func set_exploration_speed_percent(percent: int) -> void:
+	if _dungeon_presenter != null:
+		_dungeon_presenter.set_speed_percent(percent)
 
 
 func set_combat_playback_speed_percent(percent: int) -> void:
