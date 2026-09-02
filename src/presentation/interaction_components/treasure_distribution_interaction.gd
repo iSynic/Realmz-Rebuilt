@@ -12,6 +12,7 @@ const ITEM_DETAIL_POPOVER_SCRIPT := preload("res://src/presentation/classic_item
 var _compact := false
 var _media: ClassicMediaCatalog
 var _game_view: GameView
+var _loot_slot_order: Array[String] = []
 var _selected_recipient_id: String
 var _selected_item: InteractionRequestValue.RewardItem
 var _item_buttons: Dictionary = {}
@@ -23,16 +24,16 @@ var _selected_item_description: Label
 var _selected_item_facts: GridContainer
 var _transferring := false
 var _transfer_item: InteractionRequestValue.RewardItem
-var _transfer_source: Button
-var _transfer_target: Button
+var _transfer_origin := Vector2.ZERO
 var _detail_popover: CanvasLayer
 
 
-func configure(media: ClassicMediaCatalog, game_view: GameView, compact: bool, selected_recipient_id: String = "") -> void:
+func configure(media: ClassicMediaCatalog, game_view: GameView, compact: bool, selected_recipient_id: String = "", loot_slot_order: Array[String] = []) -> void:
 	_media = media
 	_game_view = game_view
 	_compact = compact
 	_selected_recipient_id = selected_recipient_id
+	_loot_slot_order.assign(loot_slot_order)
 
 
 func build(request: InteractionRequest) -> void:
@@ -114,16 +115,25 @@ func _build_loot_side(parent: HBoxContainer, body: InteractionRequest.TreasureRe
 	if not _compact:
 		scroll.resized.connect(_update_loot_columns.bind(scroll, grid))
 		call_deferred("_update_loot_columns", scroll, grid)
-	if body.items.is_empty():
+	var items_by_id: Dictionary = {}
+	for item: InteractionRequestValue.RewardItem in body.items:
+		items_by_id[item.instance_id] = item
+		if not _loot_slot_order.has(item.instance_id):
+			_loot_slot_order.append(item.instance_id)
+	if _loot_slot_order.is_empty():
 		var empty := Label.new()
 		empty.name = "TreasureEmptyField"
 		empty.text = "No items remain."
 		empty.add_theme_color_override("font_color", INK)
 		grid.add_child(empty)
 	else:
-		_selected_item = body.items[0]
-		for item: InteractionRequestValue.RewardItem in body.items:
-			_add_loot_item(grid, item)
+		_selected_item = body.items[0] if not body.items.is_empty() else null
+		for slot_id: String in _loot_slot_order:
+			var item := items_by_id.get(slot_id) as InteractionRequestValue.RewardItem
+			if item != null:
+				_add_loot_item(grid, item)
+			else:
+				_add_vacant_loot_slot(grid, slot_id)
 
 
 func _build_item_inspector(body: InteractionRequest.TreasureRequestBody) -> void:
@@ -259,6 +269,14 @@ func _add_loot_item(parent: GridContainer, item: InteractionRequestValue.RewardI
 	cell.focus_exited.connect(_hide_loot_ring.bind(item.instance_id))
 	cell.pressed.connect(_begin_item_transfer.bind(item, cell))
 	_detail_popover.bind_hover(cell, _item_detail(item))
+
+
+func _add_vacant_loot_slot(parent: GridContainer, instance_id: String) -> void:
+	var slot := Control.new()
+	slot.name = "TreasureVacantSlot_%s" % _node_fragment(instance_id)
+	slot.custom_minimum_size = Vector2(50.0, 60.0)
+	slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(slot)
 
 
 func _build_party_side(parent: HBoxContainer, body: InteractionRequest.TreasureRequestBody) -> void:
@@ -424,24 +442,22 @@ func _begin_item_transfer(item: InteractionRequestValue.RewardItem, source: Butt
 		return
 	_transferring = true
 	_transfer_item = item
-	_transfer_source = source
-	_transfer_target = target
+	_transfer_origin = source.get_global_rect().get_center()
 	_refresh_item_availability()
 	response_body_submitted.emit(InteractionResponse.TreasureBody.new(&"assign", item.instance_id, _selected_recipient_id))
 
 
 func take_committed_transfer_path() -> Dictionary:
-	if not _transferring or _transfer_item == null or _transfer_source == null or _transfer_target == null or not is_inside_tree():
+	if not _transferring or _transfer_item == null:
 		return {}
 	var path := {
-		"from": _transfer_source.get_global_rect().get_center(),
+		"from": _transfer_origin,
 		"texture": _item_texture(_transfer_item),
 		"instanceId": _transfer_item.instance_id,
 	}
 	_transferring = false
 	_transfer_item = null
-	_transfer_source = null
-	_transfer_target = null
+	_transfer_origin = Vector2.ZERO
 	return path
 
 

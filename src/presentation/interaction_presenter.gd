@@ -48,6 +48,8 @@ var _playback_masked: bool = false
 var _playback_status_label: Label
 var _autojournal_enabled: bool = false
 var _treasure_recipient_id: String = ""
+var _treasure_workspace_id: String = ""
+var _treasure_slot_order: Array[String] = []
 var _side_workspace_panel: PanelContainer
 var _encounter_dock_panel: PanelContainer
 var _application_workspace_panel: PanelContainer
@@ -116,6 +118,10 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 		return
 	if request == null or request.kind != InteractionRequest.TREASURE_DISTRIBUTION:
 		_treasure_recipient_id = ""
+		_treasure_workspace_id = ""
+		_treasure_slot_order.clear()
+	else:
+		_update_treasure_slot_order(request)
 	_request = request
 	_set_classic_acknowledgement_cursor(_uses_global_classic_acknowledgement())
 	_passive_text = false
@@ -492,7 +498,7 @@ func _component_for(request: InteractionRequest, game_view: GameView, media: Cla
 			return selection
 		&"treasure_distribution":
 			var treasure := TreasureDistributionInteraction.new()
-			treasure.configure(media, game_view, _application_rect.size.x < 1000.0, _treasure_recipient_id)
+			treasure.configure(media, game_view, _application_rect.size.x < 1000.0, _treasure_recipient_id, _treasure_slot_order)
 			return treasure
 		&"level_up":
 			var level_up := LevelUpInteraction.new()
@@ -649,17 +655,33 @@ func begin_treasure_transfer(reduced_motion: bool) -> bool:
 	if reduced_motion:
 		presentation_sound_requested.emit(6002)
 		return true
+	var effect_layer := CanvasLayer.new()
+	effect_layer.name = "TreasureTakeEffectLayer"
+	effect_layer.layer = 200
+	add_child(effect_layer)
 	var pulse := ClassicTreasureTakeEffectScript.new() as Control
 	pulse.name = "TreasureTakeEffect"
-	add_child(pulse)
+	effect_layer.add_child(pulse)
 	var source := path["from"] as Vector2
 	var tween := pulse.call("begin", path.get("texture") as Texture2D, String(path.get("instanceId", ""))) as Tween
-	pulse.global_position = source - pulse.size * 0.5
+	pulse.position = source - pulse.size * 0.5
 	tween.finished.connect(func() -> void:
-		pulse.queue_free()
+		effect_layer.queue_free()
 		presentation_sound_requested.emit(6002)
 	)
 	return true
+
+
+func _update_treasure_slot_order(request: InteractionRequest) -> void:
+	var body := request.body as InteractionRequest.TreasureRequestBody
+	if body == null or body.mode != &"ordinary":
+		return
+	if _treasure_workspace_id != request.request_id:
+		_treasure_workspace_id = request.request_id
+		_treasure_slot_order.clear()
+	for item: InteractionRequestValue.RewardItem in body.items:
+		if not _treasure_slot_order.has(item.instance_id):
+			_treasure_slot_order.append(item.instance_id)
 
 
 static func response_for(request: InteractionRequest, body: InteractionResponse.Body) -> InteractionResponse:

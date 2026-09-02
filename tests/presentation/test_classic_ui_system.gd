@@ -24,6 +24,7 @@ func run() -> void:
 	_test_movement_input()
 	_test_fast_spell_input()
 	_test_fixture_gallery_coverage()
+	await _test_treasure_slot_and_pickup_origin()
 	_test_lifecycle_interaction()
 	await _test_battle_weapon_mode_component()
 	_test_battle_typed_option_contracts()
@@ -753,6 +754,45 @@ func _test_fixture_gallery_coverage() -> void:
 	roster.present_character_selection(null)
 	assert_false(_labels_in(roster).any(func(text: String) -> bool: return text in ["1", "2"]), "leaving the interaction clears temporary Party-list numbering")
 	roster.free()
+
+
+func _test_treasure_slot_and_pickup_origin() -> void:
+	var host := Control.new()
+	host.size = Vector2(1280.0, 720.0)
+	(Engine.get_main_loop() as SceneTree).root.add_child(host)
+	var presenter := load("res://src/presentation/interaction_presenter.tscn").instantiate() as InteractionPresenter
+	host.add_child(presenter)
+	await (Engine.get_main_loop() as SceneTree).process_frame
+	presenter.set_classic_regions(Rect2(0.0, 28.0, 928.0, 532.0), Rect2(330.0, 568.0, 620.0, 152.0), Rect2(0.0, 568.0, 1280.0, 152.0))
+	var media := ClassicMediaCatalog.new(null, ApplicationMediaCatalog.new())
+	var request := ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION, &"oversized")
+	presenter.present(request, "", null, media)
+	await (Engine.get_main_loop() as SceneTree).process_frame
+	var source := presenter.find_child("TreasureItem_reward_item_2", true, false) as Button
+	var original_grid := presenter.find_child("TreasureItemGrid", true, false) as GridContainer
+	var original_third := presenter.find_child("TreasureItem_reward_item_3", true, false) as Button
+	var source_center := source.get_global_rect().get_center()
+	var original_child_count := original_grid.get_child_count()
+	var original_third_index := original_third.get_index()
+	source.pressed.emit()
+	assert_true(presenter.capture_treasure_transfer(), "a committed Treasure assignment captures its source before the request rebuild")
+	var payload := (request.body as InteractionRequest.TreasureRequestBody).to_data()
+	var remaining_items: Array = payload["items"]
+	payload["items"] = remaining_items.filter(func(item: Dictionary) -> bool: return item["instanceId"] != "reward.item.2")
+	payload["remaining"] = (payload["items"] as Array).size()
+	var updated := InteractionRequest.from_payload(request.request_id, InteractionRequest.TREASURE_DISTRIBUTION, payload)
+	presenter.present(updated, "", null, media)
+	await (Engine.get_main_loop() as SceneTree).process_frame
+	var updated_grid := presenter.find_child("TreasureItemGrid", true, false) as GridContainer
+	var vacant_second := presenter.find_child("TreasureVacantSlot_reward_item_2", true, false) as Control
+	var retained_third := presenter.find_child("TreasureItem_reward_item_3", true, false) as Button
+	assert_true(updated_grid.get_child_count() == original_child_count and vacant_second != null and vacant_second.get_index() == 1 and retained_third.get_index() == original_third_index, "claimed Treasure items leave an empty authored slot instead of compacting later loot")
+	assert_true(presenter.begin_treasure_transfer(false), "the captured Treasure pickup starts after the committed request is presented")
+	await (Engine.get_main_loop() as SceneTree).process_frame
+	var effect := presenter.find_child("TreasureTakeEffect", true, false) as Control
+	assert_true(effect != null and effect.get_parent() is CanvasLayer and effect.get_global_rect().get_center().is_equal_approx(source_center), "the Treasure pickup overlay remains centered on the clicked item instead of being arranged by the interaction container")
+	host.queue_free()
+	await (Engine.get_main_loop() as SceneTree).process_frame
 
 
 func _test_lifecycle_interaction() -> void:
