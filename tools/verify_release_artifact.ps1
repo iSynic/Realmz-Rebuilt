@@ -20,7 +20,7 @@ $logText = Get-Content -Raw -LiteralPath $logPath
 if ($logText -match '(?m)^(?:WARNING|ERROR|SCRIPT ERROR):') {
     throw "Release export emitted a warning or error: $($Matches[0])"
 }
-$forbidden = 'Storing File:\s+res://(?:addons/godot_mcp(?:/|\\)|tests(?:/|\\)|tools(?:/|\\)|docs(?:/|\\)|contracts(?:/|\\)|artifacts(?:/|\\)|\.references(?:/|\\)|\.github(?:/|\\)|\.mcp\.json|AGENTS\.md|README\.md)'
+$forbidden = 'Storing File:\s+res://(?:addons/godot_mcp(?:/|\\)|tests(?:/|\\)|tools(?:/|\\)|docs(?:/|\\)|contracts(?:/|\\)|artifacts(?:/|\\)|\.references(?:/|\\)|\.github(?:/|\\)|\.mcp\.json|(?:[^\r\n]+/)?AGENTS\.md|README\.md|CONTRIBUTING\.md)'
 if ($logText -match $forbidden) {
     throw "Release export contains an excluded development resource: $($Matches[0])"
 }
@@ -30,6 +30,11 @@ $expectedPackagePaths += @($catalog.scenarios | ForEach-Object { "res://src/infr
 $expectedPackagePaths = @($expectedPackagePaths | Sort-Object)
 if (($packagePaths -join '|') -ne ($expectedPackagePaths -join '|')) {
     throw "Release export contains an unexpected Realmz package set: $($packagePaths -join ', ')"
+}
+foreach ($requiredRuntimeFile in @('res://LICENSE', 'res://THIRD_PARTY_NOTICES.txt', 'res://src/infrastructure/characters/realmz-classic-starter-characters.json')) {
+    if ($logText -notmatch ('Storing File:\s+' + [regex]::Escape($requiredRuntimeFile) + '(?:\r?\n|$)')) {
+        throw "Release export is missing required runtime/license file: $requiredRuntimeFile"
+    }
 }
 
 $artifact = Get-Item -LiteralPath $outputPath
@@ -82,6 +87,11 @@ $manifest = [ordered]@{
                 bytes = [long]$_.bytes
             }
         })
+    }
+    starterCharacterCatalog = [ordered]@{
+        file = "src/infrastructure/characters/realmz-classic-starter-characters.json"
+        sha256 = (Get-FileHash -LiteralPath (Join-Path $repoRoot "src\infrastructure\characters\realmz-classic-starter-characters.json") -Algorithm SHA256).Hash.ToLowerInvariant()
+        recordCount = 6
     }
 }
 $manifestPath = Join-Path $artifactDirectory "release-manifest.json"

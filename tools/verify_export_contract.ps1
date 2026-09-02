@@ -11,6 +11,7 @@ $fixtureRoot = Join-Path $repoRoot "tests\fixtures\packages"
 $fixtureManifestPath = Join-Path $fixtureRoot "fixture-provenance.json"
 $noticePath = Join-Path $repoRoot "THIRD_PARTY_NOTICES.txt"
 $ciPath = Join-Path $repoRoot ".github\workflows\ci.yml"
+$releaseWorkflowPath = Join-Path $repoRoot ".github\workflows\release.yml"
 
 if (-not (Test-Path -LiteralPath $presetPath)) {
     throw "export_presets.cfg is required."
@@ -32,12 +33,12 @@ foreach ($expected in $expectedPresets.GetEnumerator()) {
     if ($body -notmatch ('(?m)^platform="' + [regex]::Escape($expected.Value) + '"$') -or $body -notmatch '(?m)^script_export_mode=2$') {
         throw "Release preset $($expected.Key) must target $($expected.Value) with compiled script export."
     }
-    foreach ($requiredExclusion in @("addons/godot_mcp/**", "tests/**", "tools/**", "docs/**", "contracts/**", "artifacts/**", ".references/**", ".github/**", ".mcp.json", "AGENTS.md", "README.md")) {
+    foreach ($requiredExclusion in @("addons/godot_mcp/**", "tests/**", "tools/**", "docs/**", "contracts/**", "artifacts/**", ".references/**", ".github/**", ".mcp.json", "**/AGENTS.md", "README.md", "CONTRIBUTING.md")) {
         if (-not $body.Contains($requiredExclusion)) {
             throw "Release preset $($expected.Key) must exclude $requiredExclusion"
         }
     }
-    foreach ($requiredBundledFile in @("THIRD_PARTY_NOTICES.txt", "src/presentation/assets/classic-application-media.json", "src/presentation/assets/classic-media/**")) {
+    foreach ($requiredBundledFile in @("LICENSE", "THIRD_PARTY_NOTICES.txt", "src/presentation/assets/classic-application-media.json", "src/presentation/assets/classic-media/**", "src/infrastructure/characters/realmz-classic-starter-characters.json")) {
         if ($body -notmatch ('(?m)^include_filter="[^"]*' + [regex]::Escape($requiredBundledFile) + '[^"]*"$')) {
             throw "Release preset $($expected.Key) must include $requiredBundledFile"
         }
@@ -52,6 +53,9 @@ foreach ($requiredNotice in @("Realmz copyright 1994 by Tim Phillips", "CC-BY-NC
     if (-not $notice.Contains($requiredNotice)) {
         throw "THIRD_PARTY_NOTICES.txt is missing required integrated-media provenance: $requiredNotice"
     }
+}
+foreach ($starterNotice in @("Classic Realmz 7.1.2 starter characters", "Kevlar: 6a5124c03e41977002d93fcfbc52d206c84e4b0b1948a84bcaf41052aa5b41a2", "Vormale: 440e0b9cb675f7cc68553ab3414b830bb8d1889518e095ba4e16d00805f957f5", "GPL")) {
+    if (-not $notice.Contains($starterNotice)) { throw "THIRD_PARTY_NOTICES.txt is missing release-license/starter provenance: $starterNotice" }
 }
 
 $macOptions = [regex]::Match($preset, '(?ms)^\[preset\.2\.options\]\s*(.*?)(?=^\[preset\.\d+|\z)').Groups[1].Value
@@ -81,6 +85,14 @@ foreach ($artifactPath in @("dist/windows", "dist/linux", "dist/macos")) {
 }
 foreach ($requiredStep in @("verify_release_artifact.ps1", "Launch exported Windows runtime", "Launch exported Linux runtime", "Launch exported macOS runtime", 'path: ${{ matrix.artifactPath }}')) {
     if (-not $ci.Contains($requiredStep)) { throw "Release CI is missing required artifact/native-smoke contract: $requiredStep" }
+}
+foreach ($requiredCiContract in @("lfs: true", "fetch-depth: 1", "verify_public_source.ps1", "Realmz Rebuilt.exe", "Realmz Rebuilt.x86_64", "Realmz Rebuilt.zip", "realmz-rebuilt-windows-x86_64", "realmz-rebuilt-linux-x86_64", "realmz-rebuilt-macos-universal")) {
+    if (-not $ci.Contains($requiredCiContract)) { throw "Release CI is missing required public-release contract: $requiredCiContract" }
+}
+if (-not (Test-Path -LiteralPath $releaseWorkflowPath -PathType Leaf)) { throw "The tag draft-prerelease workflow is missing." }
+$releaseWorkflow = Get-Content -Raw -LiteralPath $releaseWorkflowPath
+foreach ($requiredReleaseContract in @('tags:', '"v*"', "draft: true", "prerelease: true", "SHA256SUMS", "realmz-rebuilt-windows-x86_64.zip", "realmz-rebuilt-linux-x86_64.tar.gz", "realmz-rebuilt-macos-universal.zip")) {
+    if (-not $releaseWorkflow.Contains($requiredReleaseContract)) { throw "Tag workflow is missing required draft-prerelease contract: $requiredReleaseContract" }
 }
 
 Write-Host "Windows, Linux, and macOS release export contracts verified."
