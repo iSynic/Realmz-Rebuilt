@@ -349,7 +349,7 @@ func _draw_land_markers(cell: MapCellView, rect: Rect2) -> void:
 			draw_texture_rect(texture, rect, false)
 
 
-static func _transparent_atlas_tile(atlas: MediaAsset, texture: Texture2D, tile_id: int) -> ImageTexture:
+static func transparent_atlas_tile(atlas: MediaAsset, texture: Texture2D, tile_id: int) -> ImageTexture:
 	if atlas == null or texture == null:
 		return null
 	var region := atlas.region_for(tile_id)
@@ -595,7 +595,7 @@ func _land_marker_texture(tile_id: int) -> Texture2D:
 	if _land_marker_textures.has(tile_id):
 		return _land_marker_textures[tile_id] as Texture2D
 	_ensure_atlas(CLASSIC_BATTLE_ATLAS_ID)
-	var texture := _transparent_atlas_tile(_atlas_assets.get(CLASSIC_BATTLE_ATLAS_ID) as MediaAsset, _atlas_textures.get(CLASSIC_BATTLE_ATLAS_ID) as Texture2D, tile_id)
+	var texture := transparent_atlas_tile(_atlas_assets.get(CLASSIC_BATTLE_ATLAS_ID) as MediaAsset, _atlas_textures.get(CLASSIC_BATTLE_ATLAS_ID) as Texture2D, tile_id)
 	if texture != null:
 		_land_marker_textures[tile_id] = texture
 	return texture

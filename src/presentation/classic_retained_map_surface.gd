@@ -21,6 +21,7 @@ var _media: ClassicMediaCatalog
 var _tile_set := TileSet.new()
 var _fog_tile_set := TileSet.new()
 var _source_by_asset_id: Dictionary = {}
+var _transparent_marker_source_by_tile_id: Dictionary = {}
 var _missing_sources: Dictionary = {}
 var _map_id: String = ""
 var _map_view: MapView
@@ -78,6 +79,7 @@ func _build_viewport() -> void:
 		if index == 0: _base_layer = layer
 		else: _feature_layers.append(layer)
 	_marker_layer = TileMapLayer.new()
+	_marker_layer.name = "LandSecretMarkerLayer"
 	_marker_layer.tile_set = _tile_set
 	_marker_layer.z_index = 5
 	_viewport.add_child(_marker_layer)
@@ -103,6 +105,7 @@ func set_media_catalog(media: ClassicMediaCatalog) -> void:
 		return
 	_media = media
 	_source_by_asset_id.clear()
+	_transparent_marker_source_by_tile_id.clear()
 	_missing_sources.clear()
 	for index: int in range(_tile_set.get_source_count() - 1, -1, -1):
 		_tile_set.remove_source(_tile_set.get_source_id(index))
@@ -190,8 +193,8 @@ func _update_cell(cell: MapCellView, current_classic_rect: Rect2i) -> void:
 	else:
 		_set_atlas_cell(_base_layer, cell.coordinate, cell.tileset_id, cell.render_tile)
 		if not cell.overlay_asset_id.is_empty(): _set_overlay(cell.coordinate, cell.overlay_asset_id)
-		if cell.has_feature(&"secret"): _set_atlas_cell(_marker_layer, cell.coordinate, BATTLE_ATLAS_ID, SECRET_TILE_ID)
-		if cell.has_feature(&"discovered_path"): _set_atlas_cell(_feature_layers[0], cell.coordinate, BATTLE_ATLAS_ID, PATH_TILE_ID)
+		if cell.has_feature(&"secret"): _set_transparent_marker_cell(_marker_layer, cell.coordinate, SECRET_TILE_ID)
+		if cell.has_feature(&"discovered_path"): _set_transparent_marker_cell(_feature_layers[0], cell.coordinate, PATH_TILE_ID)
 	if not cell.visible or outside_classic:
 		_set_fog(cell.coordinate, 0)
 
@@ -214,6 +217,35 @@ func _set_atlas_cell(layer: TileMapLayer, coordinate: Vector2i, asset_id: String
 	var atlas_index := maxi(tile_id - 1, 0)
 	var atlas_coordinate := Vector2i(atlas_index % asset.columns, floori(float(atlas_index) / asset.columns))
 	layer.set_cell(coordinate, int(source[0]), atlas_coordinate)
+
+
+func _set_transparent_marker_cell(layer: TileMapLayer, coordinate: Vector2i, tile_id: int) -> void:
+	var source_id := _transparent_marker_source(tile_id)
+	if source_id >= 0:
+		layer.set_cell(coordinate, source_id, Vector2i.ZERO)
+
+
+func _transparent_marker_source(tile_id: int) -> int:
+	if _transparent_marker_source_by_tile_id.has(tile_id):
+		return int(_transparent_marker_source_by_tile_id[tile_id])
+	if _media == null:
+		return -1
+	var asset := _media.asset_by_id(BATTLE_ATLAS_ID)
+	var texture := _media.image_texture(asset) if asset != null else null
+	var marker := transparent_marker_tile(asset, texture, tile_id)
+	if marker == null:
+		return -1
+	var atlas := TileSetAtlasSource.new()
+	atlas.texture = marker
+	atlas.texture_region_size = marker.get_size()
+	atlas.create_tile(Vector2i.ZERO)
+	var source_id := _tile_set.add_source(atlas)
+	_transparent_marker_source_by_tile_id[tile_id] = source_id
+	return source_id
+
+
+static func transparent_marker_tile(atlas: MediaAsset, texture: Texture2D, tile_id: int) -> ImageTexture:
+	return ClassicMapPresenter.transparent_atlas_tile(atlas, texture, tile_id)
 
 
 func _atlas_source(asset_id: String) -> Array:
