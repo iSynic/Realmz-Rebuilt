@@ -87,7 +87,13 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path (Split-Path '${{ matrix.output }}') | Out-Null
           $exportLog = Join-Path (Split-Path '${{ matrix.output }}') 'export.log'
-          $output = & (Get-Command godot).Source --headless --path . --export-release '${{ matrix.preset }}' '${{ matrix.output }}' 2>&1
+          $godotPath = (Get-Command godot).Source
+          if ($IsWindows) {
+            $windowsGodotPath = Join-Path $env:RUNNER_TEMP 'godot.exe'
+            Copy-Item -LiteralPath $godotPath -Destination $windowsGodotPath
+            $godotPath = $windowsGodotPath
+          }
+          $output = & $godotPath --headless --path . --export-release '${{ matrix.preset }}' '${{ matrix.output }}' 2>&1
           $exitCode = $LASTEXITCODE
           $output | Tee-Object -FilePath $exportLog
           if ($exitCode -ne 0) { throw "Godot export failed with exit code $exitCode." }
