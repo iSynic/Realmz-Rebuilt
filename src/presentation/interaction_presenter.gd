@@ -48,7 +48,6 @@ var _playback_masked: bool = false
 var _playback_status_label: Label
 var _autojournal_enabled: bool = false
 var _treasure_recipient_id: String = ""
-var _treasure_workspace_id: String = ""
 var _treasure_slot_order: Array[String] = []
 var _side_workspace_panel: PanelContainer
 var _encounter_dock_panel: PanelContainer
@@ -118,7 +117,6 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 		return
 	if request == null or request.kind != InteractionRequest.TREASURE_DISTRIBUTION:
 		_treasure_recipient_id = ""
-		_treasure_workspace_id = ""
 		_treasure_slot_order.clear()
 	else:
 		_update_treasure_slot_order(request)
@@ -676,8 +674,8 @@ func _update_treasure_slot_order(request: InteractionRequest) -> void:
 	var body := request.body as InteractionRequest.TreasureRequestBody
 	if body == null or body.mode != &"ordinary":
 		return
-	if _treasure_workspace_id != request.request_id:
-		_treasure_workspace_id = request.request_id
+	var continues_current_layout := body.items.is_empty() or body.items.any(func(item: InteractionRequestValue.RewardItem) -> bool: return _treasure_slot_order.has(item.instance_id))
+	if not _treasure_slot_order.is_empty() and not continues_current_layout:
 		_treasure_slot_order.clear()
 	for item: InteractionRequestValue.RewardItem in body.items:
 		if not _treasure_slot_order.has(item.instance_id):

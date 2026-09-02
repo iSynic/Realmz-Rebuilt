@@ -780,13 +780,13 @@ func _test_treasure_slot_and_pickup_origin() -> void:
 	var remaining_items: Array = payload["items"]
 	payload["items"] = remaining_items.filter(func(item: Dictionary) -> bool: return item["instanceId"] != "reward.item.2")
 	payload["remaining"] = (payload["items"] as Array).size()
-	var updated := InteractionRequest.from_payload(request.request_id, InteractionRequest.TREASURE_DISTRIBUTION, payload)
+	var updated := InteractionRequest.from_payload("fixture.treasure.after-assignment", InteractionRequest.TREASURE_DISTRIBUTION, payload)
 	presenter.present(updated, "", null, media)
 	await (Engine.get_main_loop() as SceneTree).process_frame
 	var updated_grid := presenter.find_child("TreasureItemGrid", true, false) as GridContainer
 	var vacant_second := presenter.find_child("TreasureVacantSlot_reward_item_2", true, false) as Control
 	var retained_third := presenter.find_child("TreasureItem_reward_item_3", true, false) as Button
-	assert_true(updated_grid.get_child_count() == original_child_count and vacant_second != null and vacant_second.get_index() == 1 and retained_third.get_index() == original_third_index, "claimed Treasure items leave an empty authored slot instead of compacting later loot")
+	assert_true(updated.request_id != request.request_id and updated_grid.get_child_count() == original_child_count and vacant_second != null and vacant_second.get_index() == 1 and retained_third.get_index() == original_third_index, "a newly issued post-assignment Treasure request leaves an empty authored slot instead of compacting later loot")
 	assert_true(presenter.begin_treasure_transfer(false), "the captured Treasure pickup starts after the committed request is presented")
 	await (Engine.get_main_loop() as SceneTree).process_frame
 	var effect := presenter.find_child("TreasureTakeEffect", true, false) as Control
