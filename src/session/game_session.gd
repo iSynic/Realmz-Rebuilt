@@ -189,7 +189,8 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 		return SessionStep.failed(_view_revision, &"battle_in_progress", "Resolve the active battle before returning to exploration.")
 	match intent.kind:
 		PlayerIntent.Kind.MOVE:
-			return _move((intent.payload as PlayerIntent.MovePayload).direction)
+			var move_payload := intent.payload as PlayerIntent.MovePayload
+			return _move(move_payload.direction, move_payload.aligns_dungeon_heading)
 		PlayerIntent.Kind.DUNGEON_TURN:
 			return _turn_dungeon((intent.payload as PlayerIntent.DungeonTurnPayload).delta)
 		PlayerIntent.Kind.SEARCH:
@@ -726,23 +727,31 @@ func _contextual_encounter() -> SessionStep:
 	return _commit_coordinator_result(result)
 
 
-func _move(direction: Vector2i) -> SessionStep:
+func _move(direction: Vector2i, aligns_dungeon_heading: bool = false) -> SessionStep:
 	var movement := _content.world.probe_movement(_state.party.map_id, _state.party.coordinate, direction, _state.world, _state.party_in_boat)
 	if not movement.allowed and movement.reason == &"invalid_direction":
 		return SessionStep.failed(_view_revision, &"invalid_direction", "Movement requires a cardinal direction, or a diagonal direction on a land map.")
+	var preceding_events: Array[DomainEvent] = []
+	if aligns_dungeon_heading:
+		var heading_result := ExplorationTimeWorkflow.align_dungeon_heading_for_overhead_move(_workflow_context(), direction)
+		if not heading_result.ok:
+			return _finish_failed(heading_result.error_code, heading_result.error_message, heading_result.events)
+		preceding_events.append_array(heading_result.events)
 	if _state.bank_available and SessionInteractionFactory.has_pooled_wealth(_state.party):
 		var banked := _state.party.pooled_wealth.to_data()
 		_rules.economy.pool_to_bank(_state.party)
 		_state.bank_available = false
-		return _move_after_pooled_wealth(direction, [DomainEvent.new(&"pooled_wealth_banked_before_movement", {"wealth": banked, "direction": [direction.x, direction.y]})])
+		preceding_events.append(DomainEvent.new(&"pooled_wealth_banked_before_movement", {"wealth": banked, "direction": [direction.x, direction.y]}))
+		return _move_after_pooled_wealth(direction, preceding_events)
 	if not _state.bank_available and SessionInteractionFactory.has_pooled_wealth(_state.party):
 		_set_continuation(SessionContinuation.pooled_wealth_departure(&"warning", direction))
 		_session_interaction = SessionInteractionFactory.pooled_wealth_departure_warning("pooled-wealth-departure:%d" % (_view_revision + 1))
-		return _finish_waiting(_session_interaction, [
+		preceding_events.append_array([
 			DomainEvent.new(&"pooled_wealth_departure_warning", {"wealth": _state.party.pooled_wealth.to_data(), "direction": [direction.x, direction.y]}),
 			DomainEvent.new(&"sound_requested", {"soundId": 20005, "waitForCompletion": false, "stopExisting": true, "source": "classic-pooled-wealth-departure-question"}),
 		])
-	return _move_after_pooled_wealth(direction)
+		return _finish_waiting(_session_interaction, preceding_events)
+	return _move_after_pooled_wealth(direction, preceding_events)
 
 
 func _move_after_pooled_wealth(direction: Vector2i, preceding_events: Array[DomainEvent] = []) -> SessionStep:

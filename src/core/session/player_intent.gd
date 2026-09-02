@@ -52,9 +52,11 @@ class EmptyPayload:
 class MovePayload:
 	extends Payload
 	var direction: Vector2i
+	var aligns_dungeon_heading: bool
 
-	func _init(value: Vector2i) -> void:
+	func _init(value: Vector2i, align_heading: bool = false) -> void:
 		direction = value
+		aligns_dungeon_heading = align_heading
 
 
 class DungeonTurnPayload:
@@ -331,6 +333,10 @@ func is_valid() -> bool:
 
 static func move(move_direction: Vector2i) -> PlayerIntent:
 	return PlayerIntent.new(Kind.MOVE, MovePayload.new(move_direction))
+
+
+static func overhead_dungeon_move(move_direction: Vector2i) -> PlayerIntent:
+	return PlayerIntent.new(Kind.MOVE, MovePayload.new(move_direction, true))
 
 
 static func dungeon_turn(delta: int) -> PlayerIntent:

@@ -196,6 +196,9 @@ func _can_project_ordinary_movement(context: SessionWorkflowContext, pending_int
 				if origin != _cached_view.party_coordinate or destination != context.state.party.coordinate or delta == Vector2i.ZERO or absi(delta.x) > 1 or absi(delta.y) > 1:
 					return false
 				moved_count += 1
+			&"dungeon_heading_changed":
+				if current_map.level_type != &"dungeon" or String(event.payload.get("source", "")) != "classic-overhead-movement" or int(event.payload.get("current", 0)) != context.state.dungeon_heading:
+					return false
 			&"time_advanced": pass
 			&"sound_requested":
 				if String(event.payload.get("source", "")) != "classic-map-movement" or bool(event.payload.get("waitForCompletion", true)) or event.payload.has("stopExisting"):

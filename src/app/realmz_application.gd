@@ -480,7 +480,7 @@ func _submit_movement(direction: Vector2i) -> bool:
 	if MapTopology.is_diagonal_direction(direction) and (map_view == null or map_view.level_type != &"land"):
 		return false
 	var before := session_controller.view()
-	var step := _submit_intent(PlayerIntent.move(direction))
+	var step := _submit_intent(PlayerIntent.overhead_dungeon_move(direction) if map_view != null and map_view.level_type == &"dungeon" and (_dungeon_presenter == null or not _dungeon_presenter.is_active()) else PlayerIntent.move(direction))
 	var after := session_controller.view()
 	if step.state == SessionStep.State.FAILED or after == null or after.pending_interaction != null or after.combat_view != null:
 		return false

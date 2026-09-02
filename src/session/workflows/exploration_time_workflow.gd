@@ -295,6 +295,34 @@ static func turn_dungeon(context: SessionWorkflowContext, delta: int) -> Session
 	return SessionWorkflowResult.completed([DomainEvent.new(&"dungeon_heading_changed", {"heading": context.state.dungeon_heading, "delta": delta, "source": "classic"})])
 
 
+static func align_dungeon_heading_for_overhead_move(context: SessionWorkflowContext, direction: Vector2i) -> SessionWorkflowResult:
+	var map := context.content.world.map_by_id(context.state.party.map_id)
+	if map == null:
+		return SessionWorkflowResult.failed(&"unknown_map", "The current map is unavailable for dungeon movement.")
+	if map.level_type != &"dungeon":
+		return SessionWorkflowResult.completed()
+	var heading := dungeon_heading_for_direction(direction)
+	if heading == 0:
+		return SessionWorkflowResult.failed(&"invalid_direction", "Dungeon movement requires one cardinal direction.")
+	if heading == context.state.dungeon_heading:
+		return SessionWorkflowResult.completed()
+	var previous := context.state.dungeon_heading
+	context.state.dungeon_heading = heading
+	return SessionWorkflowResult.completed([DomainEvent.new(&"dungeon_heading_changed", {"previous": previous, "current": heading, "direction": [direction.x, direction.y], "source": "classic-overhead-movement"})])
+
+
+static func dungeon_heading_for_direction(direction: Vector2i) -> int:
+	if direction == Vector2i.UP:
+		return 1
+	if direction == Vector2i.RIGHT:
+		return 2
+	if direction == Vector2i.DOWN:
+		return 3
+	if direction == Vector2i.LEFT:
+		return 4
+	return 0
+
+
 static func depart_camp_for_movement(context: SessionWorkflowContext, direction: Vector2i, preceding_events: Array[DomainEvent] = []) -> MovementTransitionResult:
 	var movement := context.content.world.probe_movement(context.state.party.map_id, context.state.party.coordinate, direction, context.state.world, context.state.party_in_boat)
 	if not movement.allowed and movement.reason == &"invalid_direction":
