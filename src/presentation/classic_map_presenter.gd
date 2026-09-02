@@ -388,8 +388,21 @@ func _draw_party_marker(party_rect: Rect2) -> void:
 
 func _party_marker_texture() -> Texture2D:
 	if _view != null and _view.map_view != null and _view.map_view.level_type == &"dungeon":
-		return _dungeon_party_marker_textures.get(clampi(_view.map_view.dungeon_heading, 1, 4)) as Texture2D
+		var heading := dungeon_party_marker_heading(_view.map_view.last_move_direction, _view.map_view.dungeon_heading)
+		return _dungeon_party_marker_textures.get(heading) as Texture2D
 	return _party_marker_textures.get(_party_marker_asset_id) as Texture2D
+
+
+static func dungeon_party_marker_heading(last_move_direction: Vector2i, fallback_heading: int = 1) -> int:
+	if last_move_direction == Vector2i.UP:
+		return 1
+	if last_move_direction == Vector2i.RIGHT:
+		return 2
+	if last_move_direction == Vector2i.DOWN:
+		return 3
+	if last_move_direction == Vector2i.LEFT:
+		return 4
+	return clampi(fallback_heading, 1, 4)
 
 
 static func dungeon_party_marker_region(heading: int) -> Rect2:
