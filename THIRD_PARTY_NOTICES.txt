@@ -1,5 +1,38 @@
 Realmz Rebuilt third-party notices
 
+License boundary
+
+Original Realmz Rebuilt program source is licensed under the GNU General Public
+License version 3 or, at your option, any later version. Realmz-derived
+scenarios, application resources, music, fonts, artwork, and starter-character
+data described below are separate works licensed under CC BY-NC-SA 4.0 or their
+specifically named licenses. They are not relicensed by the program's GPL.
+
+Classic Realmz 7.1.2 starter characters
+
+Realmz copyright 1994 by Tim Phillips.
+Source: the six original 872-byte Character Files distributed with Realmz
+7.1.2: Kevlar, Lothlorian, Silver Leaf, Traskelion, Trevor, and Vormale.
+License: Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
+SPDX identifier: CC-BY-NC-SA-4.0
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+Source SHA-256 values:
+Kevlar: 6a5124c03e41977002d93fcfbc52d206c84e4b0b1948a84bcaf41052aa5b41a2
+Lothlorian: 0cf31e9ec12d6435f266689548bb1bc7201cdf66da414bc3fea88e51ef7e6b54
+Silver Leaf: ee736cec9c32eb6226b239d0d79d3ee9f270cf87f29a0d6b1c48268b78bf70d9
+Traskelion: 62a785a49d93f7aebfb4abca4aa3eb8d347e6f6dea1b0526b5483c20d8a1a262
+Trevor: 06e65b0ae81a0d0cb220a7f46ab8e2daf28ecf4575396e71d269603b1e3aa15b
+Vormale: 440e0b9cb675f7cc68553ab3414b830bb8d1889518e095ba4e16d00805f957f5
+
+Modifications: tools/convert_classic_starter_characters.py decodes the pinned
+Castle character structure and emits canonical CharacterVaultRecord payloads.
+The conversion behavior is pinned to Castle source revision
+491816ad60037394f92c428e99c004494d3c28b3 and application character-library
+package SHA-256
+6e3f23c9a452f70b25040c729e17533de5ddf0c420ff35484fc52f6e0dd25e68.
+The original files remain converter fixtures and are excluded from exports.
+
 Castle-distributed Realmz scenarios
 
 Realmz copyright 1994 by Tim Phillips.

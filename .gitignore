@@ -5,6 +5,10 @@ build/
 dist/
 artifacts/
 test-results/
+release-evidence/
+*.bundle
+*.pyc
+__pycache__/
 user-data/
 *.r2save
 *.r2save.bak

@@ -1,0 +1,80 @@
+name: Beta bug report
+description: Report a reproducible problem in a Realmz Rebuilt beta.
+title: "[Beta] "
+labels: ["beta", "bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for testing Realmz Rebuilt. Please remove private data before attaching logs or saves.
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: v0.1.0-beta.1 or full commit SHA
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options: [Windows, Linux, macOS]
+    validations:
+      required: true
+  - type: input
+    id: architecture
+    attributes:
+      label: Architecture
+      placeholder: x86_64, arm64, or universal
+    validations:
+      required: true
+  - type: dropdown
+    id: renderer
+    attributes:
+      label: Renderer
+      options: [Mobile / RenderingDevice, gl_compatibility / OpenGL, Unknown]
+    validations:
+      required: true
+  - type: input
+    id: scenario
+    attributes:
+      label: Scenario and package identity
+      description: Include the scenario name and package hash or source identity when available.
+    validations:
+      required: true
+  - type: input
+    id: location
+    attributes:
+      label: Coordinates or battle
+      placeholder: land:5 81,29; dungeon:0 69,6 east; or battle 239
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      placeholder: Numbered, minimal steps from a fresh launch or named save.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Relevant log and save identity
+      description: Paste only the relevant log excerpt. Attach a save only after checking it for private or unlicensed content.
+      render: text
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Data check
+      options:
+        - label: I reviewed attachments for private data and unlicensed scenarios.
+          required: true
