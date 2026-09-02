@@ -86,6 +86,7 @@ func _build_viewport() -> void:
 	_viewport.add_child(_marker_layer)
 	_build_fog_tiles()
 	_fog_layer = TileMapLayer.new()
+	_fog_layer.name = "LineOfSightBlackoutLayer"
 	_fog_layer.tile_set = _fog_tile_set
 	_fog_layer.z_index = 6
 	_viewport.add_child(_fog_layer)
@@ -178,10 +179,10 @@ func minimap_rect() -> Rect2:
 func _update_cell(cell: MapCellView, current_classic_rect: Rect2i) -> void:
 	_erase_coordinate(cell.coordinate)
 	var los := _map_view.uses_los
-	if los and not cell.visible and not _seen.has(cell.coordinate):
+	if ClassicMapPresenter.los_cell_requires_blackout(los, cell.visible):
 		_set_fog(cell.coordinate)
 		return
-	var revealed := _seen if los else _dungeon_discovery if _map_view.level_type == &"dungeon" else _land_discovery
+	var revealed := _dungeon_discovery if _map_view.level_type == &"dungeon" else _land_discovery
 	var outside_classic := not los and _classic_visibility and not current_classic_rect.has_point(cell.coordinate)
 	if outside_classic and not revealed.has(cell.coordinate):
 		return

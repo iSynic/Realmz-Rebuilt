@@ -234,10 +234,10 @@ func _draw() -> void:
 	var camera := _visible_cache_camera
 	var classic_rect := classic_visible_rect(map_view.party_coordinate, Vector2i(map_view.width, map_view.height))
 	var dungeon_discovery := _dungeon_discovery_cache if map_view.level_type == &"dungeon" else {}
-	var revealed_coordinates := _seen_coordinate_cache if los_blackout else (dungeon_discovery if map_view.level_type == &"dungeon" else _land_discovery_cache)
+	var revealed_coordinates := dungeon_discovery if map_view.level_type == &"dungeon" else _land_discovery_cache
 	for cell: MapCellView in _visible_cell_cache:
 		var rect := Rect2(draw_origin + Vector2(cell.coordinate - camera) * cell_size, Vector2.ONE * cell_size)
-		if los_blackout and not cell.visible and not _seen_coordinate_cache.has(cell.coordinate):
+		if los_cell_requires_blackout(los_blackout, cell.visible):
 			continue
 		var outside_classic_view := not los_blackout and classic_exploration_visibility and not classic_rect.has_point(cell.coordinate)
 		if outside_classic_view and not revealed_coordinates.has(cell.coordinate):
@@ -293,6 +293,10 @@ func _draw_exploration_stage(map_rect: Rect2, los_blackout: bool) -> void:
 
 static func requires_los_blackout(cells: Array[MapCellView]) -> bool:
 	return cells.any(func(cell: MapCellView) -> bool: return not cell.visible)
+
+
+static func los_cell_requires_blackout(uses_los: bool, currently_visible: bool) -> bool:
+	return uses_los and not currently_visible
 
 
 static func darkness_mask_asset_id(level: int) -> String:
