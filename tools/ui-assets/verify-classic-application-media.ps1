@@ -1,5 +1,56 @@
 $ErrorActionPreference = "Stop"
-Add-Type -AssemblyName System.Drawing
+
+function Read-UInt16BigEndian([byte[]]$Bytes, [int]$Offset) {
+    return ([int]$Bytes[$Offset] -shl 8) -bor [int]$Bytes[$Offset + 1]
+}
+
+function Read-UInt32BigEndian([byte[]]$Bytes, [int]$Offset) {
+    return ([uint32]$Bytes[$Offset] -shl 24) -bor
+        ([uint32]$Bytes[$Offset + 1] -shl 16) -bor
+        ([uint32]$Bytes[$Offset + 2] -shl 8) -bor
+        [uint32]$Bytes[$Offset + 3]
+}
+
+function Get-ImageDimensions([string]$Path) {
+    [byte[]]$bytes = [IO.File]::ReadAllBytes($Path)
+    [byte[]]$pngSignature = @(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a)
+    $isPng = $bytes.Length -ge 24
+    for ($index = 0; $isPng -and $index -lt $pngSignature.Length; $index++) {
+        $isPng = $bytes[$index] -eq $pngSignature[$index]
+    }
+    if ($isPng) {
+        return [pscustomobject]@{
+            Width = [int](Read-UInt32BigEndian $bytes 16)
+            Height = [int](Read-UInt32BigEndian $bytes 20)
+        }
+    }
+
+    if ($bytes.Length -ge 4 -and $bytes[0] -eq 0xff -and $bytes[1] -eq 0xd8) {
+        $offset = 2
+        $startOfFrameMarkers = @(0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf)
+        while ($offset + 3 -lt $bytes.Length) {
+            while ($offset -lt $bytes.Length -and $bytes[$offset] -ne 0xff) { $offset++ }
+            while ($offset -lt $bytes.Length -and $bytes[$offset] -eq 0xff) { $offset++ }
+            if ($offset -ge $bytes.Length) { break }
+            $marker = [int]$bytes[$offset]
+            $offset++
+            if ($marker -eq 0xd9 -or $marker -eq 0xda) { break }
+            if ($marker -eq 0x01 -or ($marker -ge 0xd0 -and $marker -le 0xd8)) { continue }
+            if ($offset + 1 -ge $bytes.Length) { break }
+            $segmentLength = Read-UInt16BigEndian $bytes $offset
+            if ($segmentLength -lt 2 -or $offset + $segmentLength -gt $bytes.Length) { break }
+            if ($startOfFrameMarkers -contains $marker) {
+                if ($segmentLength -lt 7) { break }
+                return [pscustomobject]@{
+                    Width = Read-UInt16BigEndian $bytes ($offset + 5)
+                    Height = Read-UInt16BigEndian $bytes ($offset + 3)
+                }
+            }
+            $offset += $segmentLength
+        }
+    }
+    throw "Unsupported or malformed image header: $Path"
+}
 
 $toolRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = Split-Path -Parent (Split-Path -Parent $toolRoot)
@@ -166,10 +217,8 @@ $projectSettings = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "project.g
 if ($projectSettings -notmatch 'boot_splash/bg_color=Color\(0, 0, 0, 1\)' -or $projectSettings -notmatch 'boot_splash/show_image=false' -or $projectSettings -match 'boot_splash/image=') {
     throw "Godot boot must remain black until the ready runtime reveals the Rebuilt card and its first cue together"
 }
-$launchBitmap = [Drawing.Bitmap]::new([string]$launchSplashPath)
-try {
-    if ($launchBitmap.Width -ne $launchSplash.width -or $launchBitmap.Height -ne $launchSplash.height) { throw "Realmz Rebuilt launch splash dimensions do not match" }
-} finally { $launchBitmap.Dispose() }
+$launchDimensions = Get-ImageDimensions $launchSplashPath
+if ($launchDimensions.Width -ne $launchSplash.width -or $launchDimensions.Height -ne $launchSplash.height) { throw "Realmz Rebuilt launch splash dimensions do not match" }
 $introVideoPath = Join-Path $repoRoot ($introManifest.path.Substring("res://".Length) -replace "/", [IO.Path]::DirectorySeparatorChar)
 if (-not (Test-Path -LiteralPath $introVideoPath -PathType Leaf)) { throw "Realmz Rebuilt intro video is missing" }
 if ((Get-Item -LiteralPath $introVideoPath).Length -ne $introManifest.bytes) { throw "Realmz Rebuilt intro video byte length does not match" }
@@ -239,13 +288,10 @@ foreach ($file in $chromeFiles) {
     if ($sha256 -ne $file.sha256) {
         throw "Generated chrome hash does not match: $($file.path)"
     }
-    $bitmap = [Drawing.Bitmap]::new([string]$path)
-    try {
-        if ($bitmap.Width -ne $file.width -or $bitmap.Height -ne $file.height) {
-            throw "Generated chrome dimensions do not match: $($file.path)"
-        }
+    $dimensions = Get-ImageDimensions $path
+    if ($dimensions.Width -ne $file.width -or $dimensions.Height -ne $file.height) {
+        throw "Generated chrome dimensions do not match: $($file.path)"
     }
-    finally { $bitmap.Dispose() }
 }
 Write-Host "Classic application media verified: $($manifest.assets.Count) assets; fonts verified: $($fontManifest.assets.Count) assets; intro media verified: $($launchSplash.width)x$($launchSplash.height) launch + $($introManifest.width)x$($introManifest.height) video + $($introSoundtrack.duration_ms)ms soundtrack; generated chrome verified: $($chromeFiles.Count) files."
 exit 0

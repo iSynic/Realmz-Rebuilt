@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cq6wivcynidjo"
-path="res://.godot/imported/dungeon-party-arrows.png-2c1caf845efc52a3213405c51718d82a.ctex"
+uid="uid://ro5ae7xhhntg"
+path="res://.godot/imported/cicn-2002.png-f853ee27cdcc776d0b57514971736b0b.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://src/presentation/assets/classic-controls/map/dungeon-party-arrows.png"
-dest_files=["res://.godot/imported/dungeon-party-arrows.png-2c1caf845efc52a3213405c51718d82a.ctex"]
+source_file="res://src/presentation/assets/classic-media/item-icons/cicn-2002.png"
+dest_files=["res://.godot/imported/cicn-2002.png-f853ee27cdcc776d0b57514971736b0b.ctex"]
 
 [params]
 

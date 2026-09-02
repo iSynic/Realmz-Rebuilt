@@ -6,6 +6,7 @@ Own scenes, controls, screen presenters, topology-derived rendering caches, anim
 
 ## Ownership
 
+- `InteractionLayoutPolicy` owns stateless request classification, sizing, scrolling, click-region, and modal-region calculations; actual `Control` ownership and mutation remain in `InteractionPresenter`.
 - Classic-wide 2D shell and optional topology-derived 3D dungeon presenter.
 - Translation of user input to typed intents/responses.
 - `InteractionPresenter` is the dedicated Classic interaction layer. It owns modal/request identity and delegates text/choice, selection, encounter, shop, temple, bank, battle, and one-item recovery controls to typed components that emit `InteractionResponse.Body` variants. Combat targeting and presentation-only commands use explicit typed signals rather than a dictionary command bus.

@@ -12,6 +12,7 @@ Own domain-oriented, presentation-independent operations invoked by the session 
 - Combat and rewards.
 - Scenario application-hook protocol preparation.
 - Detached `GameView` projection.
+- `SessionViewProjectionPolicy` owns stateless application-view classifications and lookups; projector and map builder retain detached view assembly and caching.
 
 ## Local Contracts
 

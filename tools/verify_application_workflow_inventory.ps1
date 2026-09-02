@@ -478,10 +478,16 @@ Assert-Condition ($null -ne $batch) "Current parity-convergence batch is missing
 Assert-Condition ([string]$batch.id -match '^[a-z][a-z0-9-]+$') "Current batch has an invalid ID."
 Assert-Condition (-not [string]::IsNullOrWhiteSpace([string]$batch.name)) "Current batch has no name."
 Assert-Condition ([string]$batch.baselineCommit -match '^[0-9a-f]{40}$') "Current batch has no full baseline commit."
-$null = & git -C $repoRoot cat-file -e "$($batch.baselineCommit)^{commit}" 2>$null
-Assert-Condition ($LASTEXITCODE -eq 0) "Current batch baseline commit does not exist locally."
-$null = & git -C $repoRoot merge-base --is-ancestor $batch.baselineCommit HEAD 2>$null
-Assert-Condition ($LASTEXITCODE -eq 0) "Current batch baseline commit is not an ancestor of HEAD."
+$attributesText = Get-Content -Raw -LiteralPath (Join-Path $repoRoot ".gitattributes")
+$hasLfsPackageBoundary = $attributesText -match '(?m)^\*\.realmz2\s+filter=lfs\s+diff=lfs\s+merge=lfs\s+-text\s*$'
+if ($hasLfsPackageBoundary) {
+    Write-Host "Application workflow inventory: private batch-baseline ancestry validation skipped in sanitized public history."
+} else {
+    $null = & git -C $repoRoot cat-file -e "$($batch.baselineCommit)^{commit}" 2>$null
+    Assert-Condition ($LASTEXITCODE -eq 0) "Current batch baseline commit does not exist locally."
+    $null = & git -C $repoRoot merge-base --is-ancestor $batch.baselineCommit HEAD 2>$null
+    Assert-Condition ($LASTEXITCODE -eq 0) "Current batch baseline commit is not an ancestor of HEAD."
+}
 Assert-Condition (-not [string]::IsNullOrWhiteSpace([string]$batch.selectionRationale)) "Current batch has no selection rationale."
 $batchTargets = @($batch.targets)
 Assert-Condition ($batchTargets.Count -ge 3 -and $batchTargets.Count -le 5) "Current batch must contain 3 to 5 workflows."

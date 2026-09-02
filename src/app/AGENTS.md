@@ -11,6 +11,7 @@ Own the Godot composition root and translate host input/output into the pure ses
 - `GameSessionController` materializes one detached `GameView` per committed revision and shares it with host input checks and presenters; host code must not rebuild the same revision repeatedly. It also retains the presentation-requested map-cell span across session replacement and may rebuild that read model at the same gameplay revision when responsive layout changes.
 - Detached campaign, vault, and host view models live under `src/app/view`; `CharacterVaultRevisionView` is app-owned while remaining `class_name`-compatible. Prepared package views expose the core `MediaSource` abstraction and never leak an infrastructure package catalog into presentation.
 - This boundary coordinates repositories and presenters but contains no Realmz rules.
+- After the application character library validates, the composition root asks the vault controller to install the trusted six-record starter catalog only when the vault is absent or completely empty; catalog or staging failure is a nonfatal startup diagnostic and ordinary character creation remains available.
 
 ## Local Contracts
 

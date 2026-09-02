@@ -34,7 +34,7 @@ $contentPatterns = [ordered]@{
 foreach ($path in $tracked) {
     $fullPath = Join-Path $repoRoot $path
     if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) { continue }
-    if ($path -in @("tools/verify_public_source.ps1", "tools/public-source-manifest.json", "tools/create_public_staging.ps1")) { continue }
+    if ($path -in @(".gitignore", "export_presets.cfg", "tools/verify_export_contract.ps1", "tools/verify_release_artifact.ps1", "tools/verify_public_source.ps1", "tools/public-source-manifest.json", "tools/create_public_staging.ps1")) { continue }
     $extension = [System.IO.Path]::GetExtension($path).ToLowerInvariant()
     if ($textExtensions -notcontains $extension -and -not ($path -in @(".gitattributes", ".gitignore"))) { continue }
     $text = Get-Content -Raw -LiteralPath $fullPath

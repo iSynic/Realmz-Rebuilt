@@ -1,5 +1,11 @@
 # Delivery roadmap
 
+## Beta 1 public-release preparation
+
+The internal preparation branch now has four focused implementation commits: stateless interaction/view policy extraction with restored hotspot gates; deterministic conversion and atomic empty-vault installation of the six Realmz 7.1.2 starter characters; GPL/CC licensing plus an explicit public-source manifest; and Git LFS/cross-platform draft-release automation. The aggregate Godot 4.7.1 gate passes 3,683 assertions across 27 suites, architecture and hotspot limits, the exact 13-scenario package catalog, schema/fixture hashes, 101 differential cases, 69 Classic and 8 host workflows, and gameplay-parity regeneration. The measured tree is 63,354 substantive production lines and 8,556 test lines (13.51 percent), with maximums of 1,000 lines per product file, 150 per function, and 1,200 per suite.
+
+An external baseline `git bundle --all` is hash-recorded, verified, cloned, and connectivity-checked. The remaining public-launch gates are the final post-preparation bundle, manifest-built clean root, LFS clone/archive validation, first push and repository configuration, public CI on all three native runners, and the ordinary-play candidate walkthrough. macOS execution remains uncertified until the public runner launches the exported `.app`; no Beta 1 tag or prerelease may be published before that evidence is green and owner-reviewed.
+
 Status values describe current evidence, not intent. A phase completes only when its exit gate is proven.
 
 - **Architecture complete** means the approved ownership and boundary contracts exist and pass their architecture gates.

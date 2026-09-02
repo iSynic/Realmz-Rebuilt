@@ -10,6 +10,7 @@ Own package loading, schema/hash validation, strict save persistence, and extern
 - Strict `.r2save` v4 encoding/decoding, validation, backup rotation, and explicit rejection of older envelopes.
 - Installed package discovery, current-revision selection, and capability/readiness reporting.
 - The provenance-pinned Castle-distributed bundled campaign catalog.
+- The provenance-pinned Classic starter-character catalog and atomic empty-vault installation boundary.
 
 ## Local Contracts
 
