@@ -478,11 +478,10 @@ Assert-Condition ($null -ne $batch) "Current parity-convergence batch is missing
 Assert-Condition ([string]$batch.id -match '^[a-z][a-z0-9-]+$') "Current batch has an invalid ID."
 Assert-Condition (-not [string]::IsNullOrWhiteSpace([string]$batch.name)) "Current batch has no name."
 Assert-Condition ([string]$batch.baselineCommit -match '^[0-9a-f]{40}$') "Current batch has no full baseline commit."
-$historyCount = [int]((& git -C $repoRoot rev-list --count HEAD).Trim())
-Assert-Condition ($LASTEXITCODE -eq 0) "Repository history could not be inspected."
-$isSingleCommitCheckout = $historyCount -eq 1
-if ($isSingleCommitCheckout) {
-    Write-Host "Application workflow inventory: private batch-baseline ancestry validation skipped in sanitized one-root public history."
+$attributesText = Get-Content -Raw -LiteralPath (Join-Path $repoRoot ".gitattributes")
+$hasLfsPackageBoundary = $attributesText -match '(?m)^\*\.realmz2\s+filter=lfs\s+diff=lfs\s+merge=lfs\s+-text\s*$'
+if ($hasLfsPackageBoundary) {
+    Write-Host "Application workflow inventory: private batch-baseline ancestry validation skipped in sanitized public history."
 } else {
     $null = & git -C $repoRoot cat-file -e "$($batch.baselineCommit)^{commit}" 2>$null
     Assert-Condition ($LASTEXITCODE -eq 0) "Current batch baseline commit does not exist locally."

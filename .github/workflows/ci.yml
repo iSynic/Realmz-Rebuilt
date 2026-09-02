@@ -37,7 +37,14 @@ jobs:
         run: ./tools/verify_public_source.ps1
       - name: Verify project
         shell: pwsh
-        run: ./tools/verify.ps1 -GodotPath (Get-Command godot).Source
+        run: |
+          $godotPath = (Get-Command godot).Source
+          if ($IsWindows) {
+            $windowsGodotPath = Join-Path $env:RUNNER_TEMP 'godot.exe'
+            Copy-Item -LiteralPath $godotPath -Destination $windowsGodotPath
+            $godotPath = $windowsGodotPath
+          }
+          ./tools/verify.ps1 -GodotPath $godotPath
 
   export:
     name: Export (${{ matrix.platform }})
