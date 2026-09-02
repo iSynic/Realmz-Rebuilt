@@ -41,6 +41,7 @@ Own deterministic automated proofs, synthetic fixtures, oracle provenance, route
 - The test-budget ratchet begins at 11,807 substantive lines, may only decrease during hotspot maintenance, and closes at no more than 7,900 lines, 20 percent of production, and 1,200 lines per suite. These caps eliminate duplicate/incidental proof; they never authorize removal of a unique high-risk or source-backed owner.
 - RNG, VM, save, authoritative topology, package integrity, and exact-once terminal-combat coverage are high-value and may not be removed merely to reduce line count.
 - Combat automation coverage includes initiative growth during an active monster scan so summoned or death-macro-added actors cannot strand the session on a 0/0 monster turn.
+- The public Scenario VM combat-mutation proof owns opcode 124's battle-macro source anchor, complete-footprint expanding placement, allegiance default, authored sound cue, battlefield occupancy, and turn-order insertion; it must never accept an unpositioned ghost combatant.
 - A passing delegated-agent result is review input only; Sol validates integration and any audit-status change. Unknown or ambiguous Castle behavior remains explicit.
 
 ## Work Guidance

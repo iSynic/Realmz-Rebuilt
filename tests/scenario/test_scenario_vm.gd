@@ -23,7 +23,7 @@ func run() -> void:
 	_test_public_classic_encounter_iterations(content)
 	_test_public_thief_encounter(content)
 	_test_public_session_resume(content)
-	_test_public_vm_combat_auto(content); _test_public_classic_forced_victory(content); _test_public_classic_combat_mutation(content)
+	_test_public_vm_combat_auto(content); _test_public_classic_forced_victory(content); _test_public_classic_combat_spawn(content); _test_public_classic_combat_mutation(content)
 	_test_public_vm_repeated_combat_item(content)
 	_test_public_continuation_matrix(content)
 	_test_public_limits_and_errors(content)
@@ -320,6 +320,42 @@ func _test_public_vm_combat_auto(content: RealmzContent) -> void:
 
 func _test_public_classic_forced_victory(content: RealmzContent) -> void:
 	var battle := content.battle_by_id("classic.battle.0"); var slots := battle.monster_slots() if battle != null else []; var definition := content.monster_by_id(slots[0].monster_id) if not slots.is_empty() else null; assert_true(battle != null and definition != null, "opcode 100 fixture has source-backed battle content"); if battle == null or definition == null: return; var character := CharacterState.new("opcode100.hero", "Hero", 20, 20); var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [character]), RealmzClock.new()); var tiles: Array[int] = []; tiles.resize(BattlefieldState.CELL_COUNT); tiles.fill(0); var field := BattlefieldState.new(content.start_map_id, tiles); field.place_character(character.id, Vector2i(45, 45)); var monster := MonsterState.new("opcode100.monster", definition.id, definition.name, 20, 20, definition.hit_dice, definition.agility, definition.armor, definition.magic_resistance, 0, true); field.place_monster(monster.id, Vector2i(47, 45), 0); state.combat = CombatState.new(battle.id, [monster], -1, field); state.combat.set_turn_order([character.id, monster.id]); var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(100), ScenarioActionState.new(), RealmzRules.new()); var program := ScenarioProgramDefinition.new("xap:100", &"xap", "100", [ClassicActionDefinition.new(0, 100, 100, 0, false, []), ClassicActionDefinition.new(1, 1, 1, 1, false, [])]); var vm := ScenarioVm.new(); vm.configure(ScenarioDefinition.new([program], [])); vm.start_program(program.id, ScenarioExecutionContext.calling(&"battle-macro").set_battle(battle.id)); var result := vm.run(api); var restored := CombatState.from_data(JSON.parse_string(JSON.stringify(state.combat.to_data()))); var reward := api.begin_completed_battle_reward("opcode100.reward", ScenarioBattleCaller.classic(2, false, 0, 0)); var reward_event: DomainEvent = reward.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"battle_reward_constructed")[0] if reward.events.any(func(event: DomainEvent) -> bool: return event.kind == &"battle_reward_constructed") else null; assert_equal([result.state, result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"message_shown"), state.combat.outcome, monster.current_health, restored.classic_post_battle_sentinel if restored != null else -1, reward_event.payload.get("experienceOnly") if reward_event != null else false, reward_event.payload.get("wealth") if reward_event != null else {}], [ScenarioVmResult.State.COMPLETED, false, &"victory", 0, 8, true, {"gold": 0, "gems": 0, "jewelry": 0}], "opcode 100 ends its macro, forces victory, preserves Castle's slot-eight sentinel through save state, and enters ordinary experience-only rewards without running later macro code")
+
+
+func _test_public_classic_combat_spawn(content: RealmzContent) -> void:
+	var source_definition := MonsterDefinition.new("classic.monster.12", 12, "Summoner", 1, 4, 8, 0, 0, [], [], [], [], [], [], [])
+	source_definition.size = 3
+	source_definition.traitor = true
+	source_definition.can_summon = -1
+	var summoned_definition := MonsterDefinition.new("classic.monster.4", 4, "Minor Demon", 1, 4, 8, 0, 0, [], [], [], [], [], [], [])
+	summoned_definition.size = 3
+	summoned_definition.traitor = true
+	summoned_definition.can_summon = -1
+	var battle := BattleDefinition.new("battle.opcode124", 1240, [])
+	var spawn_content := RealmzContent.new("opcode124", "1".repeat(64), "opcode124", content.rules_version, content.start_map_id, content.start_coordinate, content.world, ScenarioDefinition.new([], []), [], [], [], [], [], [], [], [source_definition, summoned_definition], [battle])
+	var hero := CharacterState.new("opcode124.hero", "Hero", 20, 20)
+	var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [hero]), RealmzClock.new())
+	var map := content.world.map_by_id(content.start_map_id)
+	var terrain_set := content.world.battle_terrain_set_for_map(map, state.world) if map != null else null
+	assert_not_null(terrain_set, "opcode 124 fixture resolves the active map's battle terrain")
+	if terrain_set == null:
+		return
+	var tiles: Array[int] = []
+	tiles.resize(BattlefieldState.CELL_COUNT)
+	tiles.fill(terrain_set.base_tile)
+	var field := BattlefieldState.new(content.start_map_id, tiles)
+	field.place_character(hero.id, Vector2i(45, 45))
+	var source := MonsterState.new("opcode124.source", source_definition.id, source_definition.name, 20, 20, 1, 8, 0, 0, 0, true)
+	field.place_monster(source.id, Vector2i(50, 50), source_definition.size)
+	state.combat = CombatState.new(battle.id, [source], -1, field)
+	state.combat.set_turn_order([hero.id, source.id])
+	var api := RealmzRuntimeApi.new(spawn_content, state, RealmzRng.for_oracle(124), ScenarioActionState.new(), RealmzRules.new())
+	var result := api.execute_classic(ClassicActionDefinition.new(0, 124, 124, 0, false, [0, 4, 1, 605, 0]), "combat.spawn", ScenarioExecutionContext.calling(&"battle-macro").set_battle(battle.id))
+	var spawned_id: String = result.value[0] if result.value is Array and not result.value.is_empty() else ""
+	var spawned := state.combat.monster_by_id(spawned_id)
+	var spawn_event: DomainEvent = result.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_monsters_spawned")[0] if result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_monsters_spawned") else null
+	assert_equal([result.state, spawned != null, spawned.traitor if spawned != null else false, field.has_actor(spawned_id), field.actor_position(spawned_id), state.combat.turn_order().back(), spawn_event.payload.get("coordinates") if spawn_event != null else [], result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 605)], [ScenarioRuntimeOperationResult.State.COMPLETED, true, true, true, Vector2i(48, 48), spawned_id, [Vector2i(48, 48)], true], "opcode 124 places a battle-macro summon through Castle's expanding complete-footprint scan, appends its turn, and publishes its authored cue")
+	assert_true(BattlefieldState.footprint_cells(field.actor_position(spawned_id), summoned_definition.size).all(func(coordinate: Vector2i) -> bool: return field.actor_at(coordinate) == spawned_id), "the summoned 2x2 monster owns every authoritative battlefield cell and therefore appears in combat presentation")
 
 
 func _test_public_classic_combat_mutation(content: RealmzContent) -> void:

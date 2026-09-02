@@ -42,7 +42,7 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 		123:
 			return _cause_monsters_to_route(action, context)
 		124:
-			return _spawn_classic_monsters(action)
+			return _spawn_classic_monsters(action, context)
 		125:
 			return _destroy_related_monsters(action)
 		126:
@@ -272,23 +272,69 @@ func _cause_monsters_to_route(action: ClassicActionDefinition, context: Scenario
 	return ScenarioRuntimeOperationResult.completed(routed.size(), [DomainEvent.new(&"combat_route_applied", {"count": routed.size(), "monsterIds": routed, "traitorSide": source_traitor, "source": "classic"})])
 
 
-func _spawn_classic_monsters(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
+func _spawn_classic_monsters(action: ClassicActionDefinition, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	if _game_state.combat == null or _game_state.combat.completed:
 		return ScenarioRuntimeOperationResult.failed(&"no_active_battle", "Classic opcode 124 requires an active battle.")
-	if action.extra_code.size() < 3:
+	if action.extra_code.size() < 5:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 124 requires a five-value Extra Code row.")
 	var definition := _content.monster_by_classic_id_for_set(absi(action.extra_code[1]), _game_state.monster_set)
 	if definition == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_monster", "Classic opcode 124 references unavailable monster %d." % action.extra_code[1])
+	var battlefield := _game_state.combat.battlefield
+	var map := _content.world.map_by_id(battlefield.map_id) if battlefield != null else null
+	var terrain_set := _content.world.battle_terrain_set_for_map(map, _game_state.world) if map != null else null
+	if battlefield == null or terrain_set == null:
+		return ScenarioRuntimeOperationResult.failed(&"missing_battlefield", "Classic opcode 124 cannot place its monster without the active battlefield terrain.")
+	var source_coordinate := _classic_spawn_source_coordinate(context)
+	if not BattlefieldState.contains(source_coordinate):
+		return ScenarioRuntimeOperationResult.failed(&"missing_spawn_source", "Classic opcode 124 cannot resolve the combatant position used to place its monster.")
 	var authored_count := action.extra_code[2]
 	var count := _rng.draw(absi(authored_count), &"classic.combat.spawn-count") if authored_count < 0 else authored_count
 	var spawned: Array[String] = []
+	var coordinates: Array[Vector2i] = []
+	var traitor_override := _classic_spawn_traitor_override(action, context)
+	var builder := BattlefieldBuilder.new()
 	for _index: int in maxi(0, count):
-		var monster := _rules.monsters.build_monster(definition, _game_state.next_instance_id("combat.spawn"), -1, _game_state.difficulty, _game_state.clock.day(), _rng)
-		if monster != null and _game_state.combat.add_monster(monster):
-			_game_state.combat.append_turn_actor(monster.id)
-			spawned.append(monster.id)
-	return ScenarioRuntimeOperationResult.completed(spawned, [DomainEvent.new(&"combat_monsters_spawned", {"monsterId": definition.id, "instanceIds": spawned, "soundId": action.extra_code[3] if action.extra_code.size() > 3 else 0})])
+		var monster := _rules.monsters.build_monster(definition, _game_state.next_instance_id("combat.spawn"), traitor_override, _game_state.difficulty, _game_state.clock.day(), _rng)
+		if monster == null:
+			continue
+		var desired_local := source_coordinate - battlefield.party_anchor
+		var coordinate := builder.find_monster_position(battlefield, terrain_set, desired_local, definition.size)
+		if coordinate.x < 0 or not battlefield.place_monster(monster.id, coordinate, definition.size):
+			continue
+		if not _game_state.combat.add_monster(monster):
+			battlefield.remove_monster(monster.id)
+			continue
+		_game_state.combat.append_turn_actor(monster.id)
+		spawned.append(monster.id)
+		coordinates.append(coordinate)
+	var events: Array[DomainEvent] = []
+	if action.extra_code[3] != 0 and not spawned.is_empty():
+		events.append(DomainEvent.new(&"sound_requested", {"soundId": absi(action.extra_code[3]), "waitForCompletion": action.extra_code[3] < 0, "source": "classic"}))
+	events.append(DomainEvent.new(&"combat_monsters_spawned", {"monsterId": definition.id, "instanceIds": spawned, "coordinates": coordinates, "requestedCount": maxi(0, count), "soundId": action.extra_code[3], "source": "classic"}))
+	return ScenarioRuntimeOperationResult.completed(spawned, events)
+
+
+func _classic_spawn_source_coordinate(context: ScenarioExecutionContext) -> Vector2i:
+	var battlefield := _game_state.combat.battlefield
+	if context != null and not context.combatant_id.is_empty() and battlefield.has_actor(context.combatant_id):
+		return battlefield.actor_position(context.combatant_id)
+	# Castle's battle-round macro path leaves macromonster at its default slot
+	# zero, so source-order monster zero is the placement center.
+	for monster: MonsterState in _game_state.combat.monsters():
+		if battlefield.has_actor(monster.id):
+			return battlefield.actor_position(monster.id)
+	return Vector2i(-1, -1)
+
+
+func _classic_spawn_traitor_override(action: ClassicActionDefinition, context: ScenarioExecutionContext) -> int:
+	if action.extra_code[4] != 0:
+		return action.extra_code[4]
+	if context != null and not context.combatant_id.is_empty():
+		var source := _game_state.combat.monster_by_id(context.combatant_id)
+		if source != null:
+			return 1 if source.traitor else 0
+	return -1
 
 
 func _branch_battle_round_macro(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
