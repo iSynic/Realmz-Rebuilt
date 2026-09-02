@@ -336,9 +336,12 @@ func _append_spell_result(event: DomainEvent, positions: Dictionary, hidden: Arr
 func _append_turn_undead_result(event: DomainEvent, positions: Dictionary, hidden: Array[String]) -> void:
 	var result_kind := StringName(event.payload.get("result", "resisted"))
 	var text := "Resist" if result_kind == &"resisted" else "Destroyed" if result_kind == &"destroyed" else "Turned"
+	var target_id := String(event.payload.get("targetId", ""))
+	if result_kind == &"destroyed":
+		_hide_combatant(target_id, hidden)
 	var result := _new_frame(&"result", RESULT_SECONDS, positions, hidden)
 	result.actor_id = String(event.payload.get("actorId", ""))
-	result.target_id = String(event.payload.get("targetId", ""))
+	result.target_id = target_id
 	result.result_kind = result_kind
 	result.display_text = text
 	_frames.append(result)
@@ -350,21 +353,17 @@ func _append_turn_undead_result(event: DomainEvent, positions: Dictionary, hidde
 			effect.to_coordinate = _position_for(effect.target_id, positions)
 			effect.effect_resource_id = int(event.payload.get("effectResourceId", 0)) + _frame_index_value
 			_frames.append(effect)
-	elif result_kind == &"destroyed":
-		var target_id := String(event.payload.get("targetId", ""))
-		if not target_id.is_empty() and not hidden.has(target_id):
-			hidden.append(target_id)
 
 
 func _append_bleeding_result(event: DomainEvent, positions: Dictionary, hidden: Array[String], defeated: bool) -> void:
 	var target_id := String(event.payload.get("characterId", ""))
+	if defeated:
+		_hide_combatant(target_id, hidden)
 	var frame := _new_frame(&"result", RESULT_SECONDS, positions, hidden)
 	frame.target_id = target_id
 	frame.result_kind = &"bleeding"
 	frame.display_text = "Bled to death" if defeated else "Bleeding"
 	_frames.append(frame)
-	if defeated and not target_id.is_empty() and not hidden.has(target_id):
-		hidden.append(target_id)
 
 
 func _append_simple_result(event: DomainEvent, positions: Dictionary, hidden: Array[String], result_kind: StringName, text: String) -> void:
@@ -377,22 +376,29 @@ func _append_simple_result(event: DomainEvent, positions: Dictionary, hidden: Ar
 
 
 func _append_result(event: DomainEvent, positions: Dictionary, hidden: Array[String]) -> void:
+	var target_id := String(event.payload.get("targetId", ""))
+	var defeated := bool(event.payload.get("defeated", false))
+	if defeated:
+		_hide_combatant(target_id, hidden)
 	var result := _new_frame(&"result", RESULT_SECONDS, positions, hidden)
 	result.actor_id = String(event.payload.get("actorId", ""))
-	result.target_id = String(event.payload.get("targetId", ""))
+	result.target_id = target_id
 	result.result_kind = _result_kind(event.payload)
 	result.display_amount = int(event.payload.get("healing", event.payload.get("damage", 0)))
 	result.display_text = _result_text(result.result_kind, result.display_amount)
 	result.effect_resource_id = int(event.payload.get("classicResultEffectResourceId", 0))
 	_frames.append(result)
-	if bool(event.payload.get("defeated", false)) and not result.target_id.is_empty():
+	if defeated and not result.target_id.is_empty():
 		var defeat := _new_frame(&"defeat", DEFEAT_SECONDS, positions, hidden)
 		defeat.target_id = result.target_id
 		defeat.result_kind = &"defeat"
 		defeat.display_text = "Defeated"
 		_frames.append(defeat)
-		if not hidden.has(result.target_id):
-			hidden.append(result.target_id)
+
+
+static func _hide_combatant(combatant_id: String, hidden: Array[String]) -> void:
+	if not combatant_id.is_empty() and not hidden.has(combatant_id):
+		hidden.append(combatant_id)
 
 
 func _append_next_actor_cue(hidden_combatant_ids: Array[String]) -> void:
