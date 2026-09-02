@@ -127,7 +127,19 @@ try {
             & $cicnExporterPath -ResourceForkPath $sourcePath -ResourceId $entry.resource_id -OutputPath $targetPath
         }
         elseif ($isClassicPict) {
-            & $pictExporterPath -ResourceForkPath $sourcePath -ResourceId $entry.resource_id -PictDecoderPath $PictDecoderPath -OutputPath $targetPath
+            $pictArguments = @{
+                ResourceForkPath = $sourcePath
+                ResourceId = $entry.resource_id
+                PictDecoderPath = $PictDecoderPath
+                OutputPath = $targetPath
+            }
+            if ($entry.PSObject.Properties.Name -contains "crop_width") {
+                $pictArguments["CropX"] = $entry.crop_x
+                $pictArguments["CropY"] = $entry.crop_y
+                $pictArguments["CropWidth"] = $entry.crop_width
+                $pictArguments["CropHeight"] = $entry.crop_height
+            }
+            & $pictExporterPath @pictArguments
         }
         elseif ($isClassicCrsr) {
             & $crsrExporterPath -ResourceForkPath $sourcePath -ResourceId $entry.resource_id -ExpectedHotspotX $entry.hotspot_x -ExpectedHotspotY $entry.hotspot_y -OutputPath $targetPath
@@ -186,6 +198,9 @@ try {
             $record["source_file_sha256"] = $entry.source_file_sha256
             $record["source_resource_type"] = $entry.resource_type
             $record["source_resource_id"] = $entry.resource_id
+        }
+        if ($isClassicPict -and $entry.PSObject.Properties.Name -contains "crop_width") {
+            $record["source_rectangle"] = @($entry.crop_x, $entry.crop_y, $entry.crop_width, $entry.crop_height)
         }
         if ($entry.PSObject.Properties.Name -contains "license") {
             $record["license"] = $entry.license

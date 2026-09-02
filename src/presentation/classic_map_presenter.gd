@@ -12,6 +12,7 @@ const PATH_LAND_MARKER_TILE_ID := 253
 const PARTY_MARKER_LEFT_ASSET_ID: StringName = &"map.party.left"
 const PARTY_MARKER_RIGHT_ASSET_ID: StringName = &"map.party.right"
 const PARTY_MARKER_CAMP_ASSET_ID: StringName = &"map.party.camp"
+const DUNGEON_PARTY_ARROWS_ASSET_ID: StringName = &"map.party.dungeon.arrows"
 const PARTY_MARKER_ASSET_ID: StringName = PARTY_MARKER_RIGHT_ASSET_ID
 const BOAT_MARKER_LEFT_ASSET_IDS: Dictionary = {0: &"map.party.boat.left.0", 3: &"map.party.boat.left.3", 5: &"map.party.boat.left.5", 6: &"map.party.boat.left.6", 7: &"map.party.boat.left.7"}
 const BOAT_MARKER_RIGHT_ASSET_IDS: Dictionary = {0: &"map.party.boat.right.0", 3: &"map.party.boat.right.3", 5: &"map.party.boat.right.5", 6: &"map.party.boat.right.6", 7: &"map.party.boat.right.7"}
@@ -38,6 +39,7 @@ var _party_rect: Rect2
 var _minimap_rect: Rect2
 var _held_direction: Vector2i = Vector2i.ZERO
 var _party_marker_textures: Dictionary = {}
+var _dungeon_party_marker_textures: Dictionary = {}
 var _party_marker_asset_id: StringName = PARTY_MARKER_RIGHT_ASSET_ID
 var _party_facing_asset_id: StringName = PARTY_MARKER_RIGHT_ASSET_ID
 var _movement_cursor_asset_id: StringName
@@ -67,6 +69,10 @@ func _ready() -> void:
 	_party_marker_textures[PARTY_MARKER_LEFT_ASSET_ID] = ClassicUiAssetCatalog.texture(PARTY_MARKER_LEFT_ASSET_ID)
 	_party_marker_textures[PARTY_MARKER_RIGHT_ASSET_ID] = ClassicUiAssetCatalog.texture(PARTY_MARKER_RIGHT_ASSET_ID)
 	_party_marker_textures[PARTY_MARKER_CAMP_ASSET_ID] = ClassicUiAssetCatalog.texture(PARTY_MARKER_CAMP_ASSET_ID)
+	var dungeon_arrow_strip := ClassicUiAssetCatalog.texture(DUNGEON_PARTY_ARROWS_ASSET_ID)
+	if dungeon_arrow_strip != null:
+		for heading: int in range(1, 5):
+			_dungeon_party_marker_textures[heading] = dungeon_party_marker_texture(dungeon_arrow_strip, heading)
 	for asset_id: StringName in BOAT_MARKER_LEFT_ASSET_IDS.values() + BOAT_MARKER_RIGHT_ASSET_IDS.values():
 		_party_marker_textures[asset_id] = ClassicUiAssetCatalog.texture(asset_id)
 	_retained_surface = RetainedMapSurfaceScript.new()
@@ -110,10 +116,11 @@ func present(game_view: GameView) -> void:
 	visible = game_view != null and game_view.session_started and game_view.map_view != null
 	if visible:
 		_update_visibility_cache(game_view.map_view)
-		_party_facing_asset_id = party_marker_asset_id_for_direction(game_view.map_view.last_move_direction, _party_facing_asset_id)
-		var summary := game_view.party_summary
-		var boat_asset_id := boat_marker_asset_id(game_view.map_view.landlook, _party_facing_asset_id == PARTY_MARKER_RIGHT_ASSET_ID)
-		_party_marker_asset_id = boat_asset_id if summary != null and summary.in_boat and not boat_asset_id.is_empty() else PARTY_MARKER_CAMP_ASSET_ID if summary != null and summary.camping else _party_facing_asset_id
+		if game_view.map_view.level_type != &"dungeon":
+			_party_facing_asset_id = party_marker_asset_id_for_direction(game_view.map_view.last_move_direction, _party_facing_asset_id)
+			var summary := game_view.party_summary
+			var boat_asset_id := boat_marker_asset_id(game_view.map_view.landlook, _party_facing_asset_id == PARTY_MARKER_RIGHT_ASSET_ID)
+			_party_marker_asset_id = boat_asset_id if summary != null and summary.in_boat and not boat_asset_id.is_empty() else PARTY_MARKER_CAMP_ASSET_ID if summary != null and summary.camping else _party_facing_asset_id
 	_present_retained_surface()
 	if not visible:
 		_clear_movement_cursor()
@@ -277,7 +284,7 @@ func _present_retained_surface() -> void:
 		_retained_surface.visible = false
 		_update_visible_cell_cache(_view.map_view)
 		return
-	var party_texture := _party_marker_textures.get(_party_marker_asset_id) as Texture2D
+	var party_texture := _party_marker_texture()
 	_retained_surface.present(_view, party_texture, size, map_origin, cell_size, minimap_size, classic_exploration_visibility, show_travel_preview, _visited_coordinate_cache, _seen_coordinate_cache, _land_discovery_cache, _dungeon_discovery_cache)
 	_party_rect = _retained_surface.party_rect()
 	_minimap_rect = _retained_surface.minimap_rect()
@@ -371,12 +378,38 @@ static func transparent_atlas_tile(atlas: MediaAsset, texture: Texture2D, tile_i
 
 
 func _draw_party_marker(party_rect: Rect2) -> void:
-	var party_marker_texture: Texture2D = _party_marker_textures.get(_party_marker_asset_id) as Texture2D
+	var party_marker_texture := _party_marker_texture()
 	if party_marker_texture != null:
 		draw_texture_rect(party_marker_texture, party_rect, false)
 		return
 	draw_circle(party_rect.get_center(), 10.0, Color(0.92, 0.78, 0.34))
 	draw_circle(party_rect.get_center(), 5.0, Color(0.17, 0.12, 0.06))
+
+
+func _party_marker_texture() -> Texture2D:
+	if _view != null and _view.map_view != null and _view.map_view.level_type == &"dungeon":
+		return _dungeon_party_marker_textures.get(clampi(_view.map_view.dungeon_heading, 1, 4)) as Texture2D
+	return _party_marker_textures.get(_party_marker_asset_id) as Texture2D
+
+
+static func dungeon_party_marker_region(heading: int) -> Rect2:
+	return Rect2(float(clampi(heading, 1, 4) - 1) * 16.0, 0.0, 16.0, 16.0)
+
+
+static func dungeon_party_marker_texture(strip: Texture2D, heading: int) -> ImageTexture:
+	if strip == null:
+		return null
+	var source := strip.get_image()
+	if source == null:
+		return null
+	var arrow := source.get_region(Rect2i(dungeon_party_marker_region(heading)))
+	arrow.convert(Image.FORMAT_RGBA8)
+	for y: int in arrow.get_height():
+		for x: int in arrow.get_width():
+			var pixel := arrow.get_pixel(x, y)
+			if pixel.r == 1.0 and pixel.g == 1.0 and pixel.b == 1.0:
+				arrow.set_pixel(x, y, Color(1.0, 1.0, 1.0, 0.0))
+	return ImageTexture.create_from_image(arrow)
 
 
 static func party_marker_asset_id_for_direction(direction: Vector2i, current_asset_id: StringName = PARTY_MARKER_RIGHT_ASSET_ID) -> StringName:

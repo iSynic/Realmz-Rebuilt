@@ -547,6 +547,41 @@
       "source_resource_id": 175
     },
     {
+      "id": "map.party.dungeon.arrows",
+      "path": "res://src/presentation/assets/classic-controls/map/dungeon-party-arrows.png",
+      "source_repository": "Realmz Castle Realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
+      "native_width": 64,
+      "native_height": 16,
+      "sha256": "ca922cd4249ff12ea47564325d23d5727b0ac6bd41f8eb2381197172f81a47fb",
+      "classification": "classic-resource-extract",
+      "classic_evidence": {
+        "status": "source-control-flow",
+        "path": "src/realmz_orig/threed.c:744-770",
+        "note": "Castle 2D dungeon presentation draws PICT 302 tiny tile head + 15 over the party cell with QuickDraw's transparent transfer. This exact 64-by-16 strip preserves source tiles 17 through 20 for headings north, east, south, and west; runtime masks only the exact-white matte.",
+        "repository": "Realmz Castle Realmz",
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3"
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      },
+      "source_file_sha256": "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c",
+      "source_resource_type": "PICT",
+      "source_resource_id": 302,
+      "source_rectangle": [
+        576,
+        384,
+        64,
+        16
+      ]
+    },
+    {
       "id": "map.party.camp",
       "path": "res://src/presentation/assets/classic-controls/map/party-camp.png",
       "source_repository": "Realmz Castle Realmz",

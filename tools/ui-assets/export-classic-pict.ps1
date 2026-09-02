@@ -6,10 +6,15 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$PictDecoderPath,
     [Parameter(Mandatory = $true)]
-    [string]$OutputPath
+    [string]$OutputPath,
+    [int]$CropX = 0,
+    [int]$CropY = 0,
+    [int]$CropWidth = 0,
+    [int]$CropHeight = 0
 )
 
 $ErrorActionPreference = "Stop"
+Add-Type -AssemblyName System.Drawing
 
 function Get-U16([byte[]]$Bytes, [int]$Offset) {
     return ([int]$Bytes[$Offset] -shl 8) -bor [int]$Bytes[$Offset + 1]
@@ -52,15 +57,45 @@ function Get-ResourceBytes([byte[]]$ForkBytes, [string]$ResourceType, [int]$Want
 $decoder = (Resolve-Path -LiteralPath $PictDecoderPath).Path
 $forkBytes = [IO.File]::ReadAllBytes((Resolve-Path -LiteralPath $ResourceForkPath).Path)
 $rawPath = Join-Path ([IO.Path]::GetTempPath()) ("realmz2-pict-" + [Guid]::NewGuid().ToString("N") + ".pict")
+$decodedPath = if ($CropWidth -gt 0 -or $CropHeight -gt 0) {
+    Join-Path ([IO.Path]::GetTempPath()) ("realmz2-pict-" + [Guid]::NewGuid().ToString("N") + ".png")
+}
+else {
+    $OutputPath
+}
 try {
     [IO.File]::WriteAllBytes($rawPath, (Get-ResourceBytes $forkBytes "PICT" $ResourceId))
     $parent = Split-Path -Parent $OutputPath
     if ($parent) { New-Item -ItemType Directory -Path $parent -Force | Out-Null }
-    & $decoder $rawPath $OutputPath
-    if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $OutputPath -PathType Leaf)) {
+    & $decoder $rawPath $decodedPath
+    if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $decodedPath -PathType Leaf)) {
         throw "PICT decoder failed for PICT $ResourceId"
+    }
+    if ($decodedPath -ne $OutputPath) {
+        if ($CropX -lt 0 -or $CropY -lt 0 -or $CropWidth -le 0 -or $CropHeight -le 0) {
+            throw "PICT crop rectangle is invalid for PICT $ResourceId"
+        }
+        $source = [Drawing.Bitmap]::new($decodedPath)
+        try {
+            $bounds = [Drawing.Rectangle]::new(0, 0, $source.Width, $source.Height)
+            $cropBounds = [Drawing.Rectangle]::new($CropX, $CropY, $CropWidth, $CropHeight)
+            if (-not $bounds.Contains($cropBounds)) {
+                throw "PICT crop rectangle exceeds decoded PICT $ResourceId bounds"
+            }
+            $crop = $source.Clone($cropBounds, $source.PixelFormat)
+            try {
+                $crop.Save($OutputPath, [Drawing.Imaging.ImageFormat]::Png)
+            }
+            finally {
+                $crop.Dispose()
+            }
+        }
+        finally {
+            $source.Dispose()
+        }
     }
 }
 finally {
     if (Test-Path -LiteralPath $rawPath) { Remove-Item -LiteralPath $rawPath -Force }
+    if ($decodedPath -ne $OutputPath -and (Test-Path -LiteralPath $decodedPath)) { Remove-Item -LiteralPath $decodedPath -Force }
 }

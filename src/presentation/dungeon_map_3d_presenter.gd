@@ -14,7 +14,7 @@ const CURSOR_LEFT_PATH := "res://src/presentation/assets/classic-dungeon/cursor-
 const CURSOR_RIGHT_PATH := "res://src/presentation/assets/classic-dungeon/cursor-right.png"
 const INTERNAL_SIZE := Vector2i(400, 225)
 const MOVE_TWEEN_SECONDS := 0.045
-const TURN_TWEEN_SECONDS := 0.04
+const TURN_TWEEN_SECONDS := 0.0
 const MESH_CACHE_CAPACITY := 24
 
 var _enabled: bool = false
@@ -333,7 +333,11 @@ func _animate_authoritative_change() -> void:
 			_camera.position = camera_position_for(_projection.party_coordinate)
 			var current_yaw := heading_yaw(_previous_projection.heading)
 			_camera.rotation = Vector3(0.0, current_yaw, 0.0)
-			_start_camera_tween(&"rotation:y", current_yaw + wrapf(target_yaw - current_yaw, -PI, PI), transition_duration(TURN_TWEEN_SECONDS, _speed_percent))
+			var turn_duration := transition_duration(TURN_TWEEN_SECONDS, _speed_percent)
+			if is_zero_approx(turn_duration):
+				_camera.rotation = Vector3(0.0, target_yaw, 0.0)
+			else:
+				_start_camera_tween(&"rotation:y", current_yaw + wrapf(target_yaw - current_yaw, -PI, PI), turn_duration)
 			return
 	_snap_camera_to_projection()
 
