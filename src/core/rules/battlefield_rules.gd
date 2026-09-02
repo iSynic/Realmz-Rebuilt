@@ -348,25 +348,43 @@ func _navigation_profile(battlefield: BattlefieldState, terrain_set: BattleTerra
 
 func _rebuild_navigation_profiles(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition) -> void:
 	_navigation_profiles.clear()
-	for actor_size: int in 4:
-		var profile := NavigationProfile.new()
-		for index: int in BattlefieldState.CELL_COUNT:
-			var anchor := _route_coordinate(index)
-			var passable := true
-			var maximum_base := 0
-			for coordinate: Vector2i in BattlefieldState.footprint_cells(anchor, actor_size):
-				if not BattlefieldState.contains(coordinate):
-					passable = false
-					break
-				var terrain := terrain_set.tile_by_id(battlefield.terrain_at(coordinate))
-				if terrain == null or actor_size == 0 and terrain.solid != 0 or actor_size > 0 and terrain.solid > 1:
-					passable = false
-					break
-				maximum_base = maxi(maximum_base, _movement_base(terrain))
-			if passable:
-				profile.passable[index] = 1
-				profile.destination_movement_base[index] = maximum_base
-		_navigation_profiles.append(profile)
+	for _actor_size: int in 4:
+		_navigation_profiles.append(NavigationProfile.new())
+	var terrain_tiles := battlefield.terrain_tiles()
+	var small_passable := PackedByteArray()
+	var large_passable := PackedByteArray()
+	var movement_bases := PackedInt32Array()
+	small_passable.resize(BattlefieldState.CELL_COUNT)
+	large_passable.resize(BattlefieldState.CELL_COUNT)
+	movement_bases.resize(BattlefieldState.CELL_COUNT)
+	for index: int in BattlefieldState.CELL_COUNT:
+		var terrain := terrain_set.tile_by_id(terrain_tiles[index])
+		if terrain == null:
+			continue
+		small_passable[index] = 1 if terrain.solid == 0 else 0
+		large_passable[index] = 1 if terrain.solid <= 1 else 0
+		movement_bases[index] = _movement_base(terrain)
+	for index: int in BattlefieldState.CELL_COUNT:
+		var x := index % BattlefieldState.SIZE
+		var y := index / BattlefieldState.SIZE
+		if small_passable[index] != 0:
+			_navigation_profiles[0].passable[index] = 1
+			_navigation_profiles[0].destination_movement_base[index] = movement_bases[index]
+		if y > 0:
+			var upper_index := index - BattlefieldState.SIZE
+			if large_passable[index] != 0 and large_passable[upper_index] != 0:
+				_navigation_profiles[1].passable[index] = 1
+				_navigation_profiles[1].destination_movement_base[index] = maxi(movement_bases[index], movement_bases[upper_index])
+		if x > 0:
+			var left_index := index - 1
+			if large_passable[index] != 0 and large_passable[left_index] != 0:
+				_navigation_profiles[2].passable[index] = 1
+				_navigation_profiles[2].destination_movement_base[index] = maxi(movement_bases[index], movement_bases[left_index])
+			if y > 0:
+				var upper_left_index := index - BattlefieldState.SIZE - 1
+				if large_passable[index] != 0 and large_passable[left_index] != 0 and large_passable[index - BattlefieldState.SIZE] != 0 and large_passable[upper_left_index] != 0:
+					_navigation_profiles[3].passable[index] = 1
+					_navigation_profiles[3].destination_movement_base[index] = maxi(maxi(movement_bases[index], movement_bases[left_index]), maxi(movement_bases[index - BattlefieldState.SIZE], movement_bases[upper_left_index]))
 	_navigation_battlefield_id = battlefield.get_instance_id()
 	_navigation_terrain_set_id = terrain_set.get_instance_id()
 	_navigation_terrain_revision = battlefield.terrain_revision()

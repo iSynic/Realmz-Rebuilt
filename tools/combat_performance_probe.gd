@@ -49,10 +49,23 @@ func _initialize() -> void:
 		printerr("BATTLE_REJECTED: probe requires living party and monster actors")
 		call_deferred("_quit_cleanly", 1)
 		return
+	var map := content.world.map_by_id(state.combat.battlefield.map_id)
+	var terrain_set := content.world.battle_terrain_set_for_map(map, state.world) if map != null else null
+	if terrain_set == null:
+		printerr("BATTLE_REJECTED: battlefield has no terrain set")
+		call_deferred("_quit_cleanly", 1)
+		return
 	state.combat.set_turn_order(character_ids + monster_ids)
 	var combat_data := state.combat.to_data()
 	combat_data["attackedActorIds"] = []
 	state.combat = CombatState.from_data(combat_data)
+	var monster_phase_state := GameState.from_data(state.to_data())
+	var warm_monster_phase_state := GameState.from_data(state.to_data())
+	var monster_phase_rng := RealmzRng.new()
+	var monster_phase_rng_start := rng.snapshot()
+	monster_phase_rng.restore(monster_phase_rng_start)
+	var warm_monster_phase_rng := RealmzRng.new()
+	warm_monster_phase_rng.restore(monster_phase_rng_start)
 	var previous_view := _combat_view(state, content, rules, 1)
 	var view_started := Time.get_ticks_usec()
 	var view := CombatView.new(state.combat, state.party.characters(), content, rules.inventory, rules.battlefield, rules.combat_flow, state)
@@ -66,6 +79,38 @@ func _initialize() -> void:
 	var checkpoint_started := Time.get_ticks_usec()
 	state.to_data()
 	var checkpoint_us := Time.get_ticks_usec() - checkpoint_started
+	var cold_route_started := Time.get_ticks_usec()
+	rules.battlefield.probe_path_step_toward_actors(state.combat.battlefield, terrain_set, monster_ids[0], character_ids, 16)
+	var cold_route_us := Time.get_ticks_usec() - cold_route_started
+	var repeated_route_started := Time.get_ticks_usec()
+	for _repeat: int in 16:
+		rules.battlefield.probe_path_step_toward_actors(state.combat.battlefield, terrain_set, monster_ids[0], character_ids, 16)
+	var repeated_route_us := Time.get_ticks_usec() - repeated_route_started
+	var monster_phase_started := Time.get_ticks_usec()
+	var monster_phase_events: Array[DomainEvent] = []
+	var monster_phase: CombatFlowResult = null
+	for character_id: String in character_ids:
+		monster_phase = rules.combat_flow.submit_action(monster_phase_state, content, character_id, &"finish", "", monster_phase_rng)
+		if not monster_phase.ok:
+			break
+		monster_phase_events.append_array(monster_phase.events)
+	var monster_phase_us := Time.get_ticks_usec() - monster_phase_started
+	if monster_phase == null or not monster_phase.ok:
+		printerr("MONSTER_PHASE_REJECTED %s: %s" % [monster_phase.error_code, monster_phase.error_message])
+		call_deferred("_quit_cleanly", 1)
+		return
+	rules.battlefield.probe_path_step_toward_actors(warm_monster_phase_state.combat.battlefield, terrain_set, monster_ids[0], character_ids, 16)
+	var warm_monster_phase_started := Time.get_ticks_usec()
+	var warm_monster_phase: CombatFlowResult = null
+	for character_id: String in character_ids:
+		warm_monster_phase = rules.combat_flow.submit_action(warm_monster_phase_state, content, character_id, &"finish", "", warm_monster_phase_rng)
+		if not warm_monster_phase.ok:
+			break
+	var warm_monster_phase_us := Time.get_ticks_usec() - warm_monster_phase_started
+	if warm_monster_phase == null or not warm_monster_phase.ok:
+		printerr("WARM_MONSTER_PHASE_REJECTED %s: %s" % [warm_monster_phase.error_code, warm_monster_phase.error_message])
+		call_deferred("_quit_cleanly", 1)
+		return
 	var auto_started := Time.get_ticks_usec()
 	var auto := rules.combat_flow.submit_action(state, content, character_ids[0], &"auto", "", rng)
 	var auto_us := Time.get_ticks_usec() - auto_started
@@ -105,6 +150,7 @@ func _initialize() -> void:
 		"battleSetupPlaybackFrames": setup_playback["frames"],
 		"battleSetupPlaybackSeconds": setup_playback["seconds"],
 		"combatViewMs": _milliseconds(view_us),
+		"coldLargeRouteMs": _milliseconds(cold_route_us),
 		"combatSpellOptionCount": spell_options.size(),
 		"combatSpellOptionsMs": _milliseconds(spell_options_us),
 		"combatSpellUnavailableReasonMs": _milliseconds(spell_reason_us),
@@ -112,7 +158,13 @@ func _initialize() -> void:
 		"combatPackageAssetIndividualReadMs": _milliseconds(individual_media_us),
 		"combatPackageAssetBatchReadMs": _milliseconds(batch_media_us),
 		"monsterCount": monster_ids.size(),
+		"monsterPhaseEventCount": monster_phase_events.size(),
+		"monsterPhaseEventKinds": monster_phase_events.map(func(event: DomainEvent) -> String: return String(event.kind)),
+		"monsterPhaseMs": _milliseconds(monster_phase_us),
+		"monsterPhaseRngDrawCount": monster_phase_rng.snapshot().draw_count - monster_phase_rng_start.draw_count,
+		"warmMonsterPhaseMs": _milliseconds(warm_monster_phase_us),
 		"partySize": character_ids.size(),
+		"repeatedLargeRouteAverageMs": _milliseconds(repeated_route_us) / 16.0,
 		"rngDrawCount": rng.snapshot().draw_count,
 		"stateCheckpointMs": _milliseconds(checkpoint_us),
 		"viewMovementOptionCount": view.movement_options.size(),

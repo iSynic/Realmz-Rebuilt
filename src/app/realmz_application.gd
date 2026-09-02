@@ -769,8 +769,10 @@ func _flush_queued_combat_auto_changes() -> void:
 
 
 func _continue_persistent_auto_after_playback() -> void:
-	if presentation_coordinator == null or presentation_coordinator.is_combat_playback_active() or not _queued_combat_auto_changes.is_empty() or _host_interaction != null:
-		return
+	# Reduced motion can settle playback before its battlefield draws. Let that
+	# committed view reach the screen before another synchronous Auto activation.
+	await RenderingServer.frame_post_draw
+	if presentation_coordinator == null or presentation_coordinator.is_combat_playback_active() or not _queued_combat_auto_changes.is_empty() or _host_interaction != null: return
 	var response := persistent_auto_response(session_controller.view())
 	if response != null:
 		_on_interaction_response_submitted(response)
