@@ -1,0 +1,8 @@
+{
+  "opcodes": [53, 55],
+  "castleSource": "src/realmz_orig/newland.c cases 53 and 55",
+  "divinitySource": "public/divinity-manual/index.html, Scripting Codes 30 through 59",
+  "runtimeContract": "Opcode 53 replaces the tracked set by exact caste or an authored caste group, with Castle's clear-before-mode-two behavior producing an empty set. Opcode 55 tests any pick, Castle's party-slot-zero behavior for selectors 1 through 6, or an exact absolute count. Success branches to the authored XAP; failure exits, follows the documented failure XAP, or publishes the authored message and exits.",
+  "correction": "Castle loads the documented failure XAP for behavior one and then overwrites its loop cursor with the exit sentinel. Realmz 2.0 retains the authoring contract and the pinned Remake donor's usable failure branch.",
+  "determinism": "Both operations use stable party order and consume no RNG."
+}

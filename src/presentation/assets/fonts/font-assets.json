@@ -1,0 +1,201 @@
+{
+  "schema_version": 3,
+  "runtime_network_dependency": false,
+  "assets": [
+    {
+      "id": "font.narrative.alegreya.variable",
+      "path": "res://src/presentation/assets/fonts/Alegreya-Variable.ttf",
+      "source_repository": "google/fonts",
+      "source_commit": "2d85e20401920891efb7cd6272d6339685df2820",
+      "sha256": "ba5564634b93a8f8ba57b48cd4f1ae7417d2b4656fbac779028679b00de3cf12",
+      "license": "OFL-1.1"
+    },
+    {
+      "id": "font.ui.alegreya_sans.regular",
+      "path": "res://src/presentation/assets/fonts/AlegreyaSans-Regular.ttf",
+      "source_repository": "google/fonts",
+      "source_commit": "2d85e20401920891efb7cd6272d6339685df2820",
+      "sha256": "8fab634196007afca839f1e5a6fb300976daff55d8528b590ef032f01b14ea10",
+      "license": "OFL-1.1"
+    },
+    {
+      "id": "font.ui.alegreya_sans.bold",
+      "path": "res://src/presentation/assets/fonts/AlegreyaSans-Bold.ttf",
+      "source_repository": "google/fonts",
+      "source_commit": "2d85e20401920891efb7cd6272d6339685df2820",
+      "sha256": "a3055a1893759bdbd7504bb22abc583769e7974c49353176eac0b03792c9fb8e",
+      "license": "OFL-1.1"
+    },
+    {
+      "id": "license.alegreya",
+      "path": "res://src/presentation/assets/fonts/licenses/Alegreya-OFL.txt",
+      "source_repository": "google/fonts",
+      "source_commit": "2d85e20401920891efb7cd6272d6339685df2820",
+      "sha256": "f6f60d5d4cf4f4b1fc4e41353c897a2f5a16e6396c0cd8fa8bdfd2f4586a9a68",
+      "license": "OFL-1.1"
+    },
+    {
+      "id": "license.alegreya_sans",
+      "path": "res://src/presentation/assets/fonts/licenses/AlegreyaSans-OFL.txt",
+      "source_repository": "google/fonts",
+      "source_commit": "2d85e20401920891efb7cd6272d6339685df2820",
+      "sha256": "0677891e6a143f297350d260ad766ad33bfc18ed5fa4f213acf648d6b597ec1a",
+      "license": "OFL-1.1"
+    },
+    {
+      "id": "font.classic.black_chancery.regular",
+      "path": "res://src/presentation/assets/fonts/BlackChancery-Realmz.ttf",
+      "source_repository": "Realmz-Castle/realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "resources/Black Chancery.ttf",
+      "sha256": "1a3a41b4a7ab327002897275520c200028f0303f599e77c20b0e0e6a93b24357",
+      "license": "Public-Domain",
+      "role": "character names, item statistics, movement, load, and compact status text"
+    },
+    {
+      "id": "font.classic.chicago_flf.regular",
+      "path": "res://src/presentation/assets/fonts/ChicagoFLF.ttf",
+      "source_repository": "Realmz-Castle/realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "resources/ChicagoFLF.ttf",
+      "sha256": "b442111f37639e27572d9df0c5190e7480e6a7b01ec768aea47a154efab8d50d",
+      "license": "Public-Domain",
+      "role": "Classic 3D-view help text"
+    },
+    {
+      "id": "font.classic.geneva_substitute.inter",
+      "path": "res://src/presentation/assets/fonts/InterVariable-Castle.ttf",
+      "source_repository": "Realmz-Castle/realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "vendored/Inter/InterVariable.ttf",
+      "sha256": "4989b125924991b90d05b2d16e0e388c48f7d5bb8b30539bbf9c755278d0ccaf",
+      "license": "OFL-1.1",
+      "role": "Castle's open substitute for Geneva utility and detail text"
+    },
+    {
+      "id": "font.classic.theldrow.bitmap",
+      "path": "res://src/presentation/assets/fonts/Theldrow-Classic.fnt",
+      "source_repository": "Realmz-Castle/realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc:FONT 1601",
+      "sha256": "58d26ee47c046a97ca3332dc65819f9eb3c0c9ea54128ba785b66a83309c8dcb",
+      "license": "Realmz-Art-NonCommercial",
+      "role": "exact default Realmz interface, dialog, and narrative text metrics"
+    },
+    {
+      "id": "font.classic.theldrow.atlas",
+      "path": "res://src/presentation/assets/fonts/Theldrow-Classic.png",
+      "source_repository": "Realmz-Castle/realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc:FONT 1601",
+      "sha256": "7dbba1d6638e5a27049098acf41f648ea390b3a482610f8065f809b5c753f394",
+      "license": "Realmz-Art-NonCommercial",
+      "role": "exact default Realmz bitmap glyph strike"
+    },
+    {
+      "id": "font.classic.theldrow.vector",
+      "path": "res://src/presentation/assets/fonts/Theldrow-Classic-Vector.ttf",
+      "source_repository": "iSynic/Realmz-Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/Fonts/theldrowremake.ttf",
+      "source_sha256": "597df5baae37e494f90f6e5b48714e723900ed99e6b29a1734d1e405b79ed2cf",
+      "metric_source_repository": "Realmz-Castle/realmz",
+      "metric_source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "metric_source_path": "base/Realmz/Data Files/The Family Jewels.rsrc:FONT 1601",
+      "metric_source_sha256": "cda33a0e5f352d7d38d8fdfcc64b71db10a23fcfd9d8c7a699fa1646ffcab553",
+      "sha256": "999aafa27022234d06e26b2385f3dda46cb0e1ea7e440b9e7e51a170e8586eea",
+      "license": "CC0-1.0",
+      "role": "scalable Samuel Theldrow outlines with original FONT 1601 advance widths"
+    },
+    {
+      "id": "font.classic.theldrow.rebuilt",
+      "path": "res://src/presentation/assets/fonts/Theldrow-Rebuilt.ttf",
+      "source_repository": "Realmz-Rebuilt/Pencil-export",
+      "source_commit": "1f0420531587dc657e5fc06ea8014440a42f3dc79f8ec6c0eb5b43b6f32827e9",
+      "source_path": "tools/ui-assets/theldrow-modernized-glyphs.json",
+      "source_sha256": "1f0420531587dc657e5fc06ea8014440a42f3dc79f8ec6c0eb5b43b6f32827e9",
+      "metric_source_repository": "Realmz-Castle/realmz",
+      "metric_source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "metric_source_path": "base/Realmz/Data Files/The Family Jewels.rsrc:FONT 1601",
+      "metric_source_sha256": "cda33a0e5f352d7d38d8fdfcc64b71db10a23fcfd9d8c7a699fa1646ffcab553",
+      "baseline_source_repository": "iSynic/Realmz-Remake",
+      "baseline_source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "baseline_source_path": "src/Fonts/theldrowremake.ttf",
+      "baseline_source_sha256": "597df5baae37e494f90f6e5b48714e723900ed99e6b29a1734d1e405b79ed2cf",
+      "utility_source_repository": "google/fonts",
+      "utility_source_commit": "2d85e20401920891efb7cd6272d6339685df2820",
+      "utility_source_path": "ofl/grenzegotisch/GrenzeGotisch[wght].ttf",
+      "utility_source_sha256": "701b299d8dc002a2b4bea2ff0f1272c0e4081a2835914354804565c410d0c637",
+      "build_tool_path": "tools/ui-assets/build-theldrow-modernized.py",
+      "build_tool_sha256": "4b4bd1bfd21c4fcf44c5aba7cb304495dd349b3ca0264b315b6fb97207fd3acd",
+      "style_rule_path": "tools/ui-assets/theldrow-modernized-rules.json",
+      "style_rule_sha256": "429ef0ab43d1fc91db4c055e6fccef8f790ac681e4f4086bf7e5a445a20b261c",
+      "verify_tool_path": "tools/ui-assets/verify-theldrow-modernized.py",
+      "verify_tool_sha256": "d630209d14f51da9fec92f920037454516a37aed95ee7b3dcd410a5250ca4b95",
+      "sha256": "79c7b7d54ad746db41b103ffc9f1bc3fabacb2cf2b594af080c0ac2c2fc7705d",
+      "license": "Realmz-Art-NonCommercial + CC0-1.0 + OFL-1.1",
+      "role": "runtime Classic body and narrative font: project-owner-approved Pen contours, strict production-sheet proportions and mixed-case optical weight, exact Castle advances, cap-height figures, and Grenze Gotisch utility glyphs"
+    },
+    {
+      "id": "license.black_chancery",
+      "path": "res://src/presentation/assets/fonts/licenses/BlackChancery-PUBLIC-DOMAIN.txt",
+      "source_repository": "Realmz-Castle/realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "sha256": "406ca1bc9447b9dc0008d41bc16faf34662b16147bb9e419e8996266e8e50439",
+      "license": "Public-Domain"
+    },
+    {
+      "id": "license.chicago_flf",
+      "path": "res://src/presentation/assets/fonts/licenses/ChicagoFLF-PUBLIC-DOMAIN.txt",
+      "source_repository": "Realmz-Castle/realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "sha256": "d3aa7c92ada2b4764847bd4d78618aac1f16e6aecafdf19b116528f773ce7280",
+      "license": "Public-Domain"
+    },
+    {
+      "id": "license.inter",
+      "path": "res://src/presentation/assets/fonts/licenses/Inter-OFL.txt",
+      "source_repository": "Realmz-Castle/realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "vendored/Inter/LICENSE.txt",
+      "sha256": "262481e844521b326f5ecd053e59b98c8b2da78c8ee1bdbb6e8174305e54935a",
+      "license": "OFL-1.1"
+    },
+    {
+      "id": "license.grenze_gotisch",
+      "path": "res://src/presentation/assets/fonts/licenses/GrenzeGotisch-OFL.txt",
+      "source_repository": "google/fonts",
+      "source_commit": "2d85e20401920891efb7cd6272d6339685df2820",
+      "source_path": "ofl/grenzegotisch/OFL.txt",
+      "sha256": "bca29af2c3c9e142d11f523f414902ab8fb9ab8ffa3c34c63b6b72aa4e7d6acc",
+      "license": "OFL-1.1"
+    },
+    {
+      "id": "license.theldrow_realmz",
+      "path": "res://src/presentation/assets/fonts/licenses/Theldrow-REALMZ-NONCOMMERCIAL.txt",
+      "source_repository": "Realmz-Castle/realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc:FONT 1601",
+      "sha256": "a709ac83e2e5df8eee7c373a1c6ef959c47a22ef4312b67ee1ac593776875bcb",
+      "license": "Realmz-Art-NonCommercial"
+    },
+    {
+      "id": "license.theldrow_cc0",
+      "path": "res://src/presentation/assets/fonts/licenses/Theldrow-CC0-LICENSE.txt",
+      "source_repository": "iSynic/Realmz-Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/Fonts/theldrow.zip:license.txt",
+      "sha256": "06e78657db8da0c0563f15f51e48a022272b9f884cb51846b1f1e8e8c0d1b7f4",
+      "license": "CC0-1.0"
+    },
+    {
+      "id": "readme.theldrow_cc0",
+      "path": "res://src/presentation/assets/fonts/licenses/Theldrow-CC0-README.txt",
+      "source_repository": "iSynic/Realmz-Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/Fonts/theldrow.zip:readme.txt",
+      "sha256": "b92407393b07874bf347592e17d6ab0224e97beed8f3cb758b0dc54f3eac6371",
+      "license": "CC0-1.0"
+    }
+  ]
+}

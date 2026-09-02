@@ -1,0 +1,33 @@
+{
+  "formatVersion": 1,
+  "evidenceClass": "source-control-flow",
+  "castleSourceCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "applicationDataCorrectionCommit": "ef95fcff40d81f14ac668d5e13466da4a51de6f4",
+  "applicationDataSha256": "f47776aadc0f4ebf42320e0aaedd39dd7b5a2c76c125a44e99ea461d962860e7",
+  "item": {
+    "classicItemId": 747,
+    "name": "Salt",
+    "itemType": 22,
+    "initialCharges": 20,
+    "spellPower": -1,
+    "classicSpellId": 4612
+  },
+  "spell": {
+    "classicSpellId": 4612,
+    "targetType": 3,
+    "size": 4,
+    "spellClass": 4,
+    "damageType": 4,
+    "damage": 5,
+    "duration": 2,
+    "special": 28,
+    "cost": -10
+  },
+  "sourceObservations": [
+    "items.c lines 608-686 loads an item's sp2 spell, fixes power from abs(item.sp1), commits one positive charge, and returns the active character to combat spell targeting.",
+    "cast.c and resolvespell.c resolve target type 3 as one area transaction and apply special 28 by replacing base damage with the rolled duration before writing condition slot 27.",
+    "The application library contains item 747 as the owner of spell 4612 and contains no monster definition whose fixed spell slots reference 4612.",
+    "combat.c would add spell points for a negative-cost generic monster cast, but no authored application monster exposes this Salt record through that path."
+  ],
+  "runtimeContract": "Salt spell 4612 is executable only from its owning charged item. It uses fixed power one, consumes one charge, spends no spell points, and resolves the shared area special-28 duration damage and Blind condition. Learned, scroll, and monster contexts are not applicable."
+}

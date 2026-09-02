@@ -1,0 +1,38 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="Realmz Rebuilt"
+config/version="0.1.0"
+run/main_scene="res://src/presentation/startup_front_door.tscn"
+config/use_custom_user_dir=true
+config/custom_user_dir_name="RealmzRemake2"
+config/features=PackedStringArray("4.7", "Mobile")
+boot_splash/bg_color=Color(0, 0, 0, 1)
+boot_splash/show_image=false
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/size/window_width_override=1280
+window/size/window_height_override=720
+window/size/min_width=800
+window/size/min_height=600
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/godot_mcp/plugin.cfg")
+
+[rendering]
+
+renderer/rendering_method="mobile"
+textures/vram_compression/import_etc2_astc=true

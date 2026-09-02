@@ -1,0 +1,24 @@
+{
+  "formatVersion": 1,
+  "evidenceClass": "source-control-flow",
+  "castleSourceCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "applicationDataCorrectionCommit": "ef95fcff40d81f14ac668d5e13466da4a51de6f4",
+  "applicationDataSha256": "f47776aadc0f4ebf42320e0aaedd39dd7b5a2c76c125a44e99ea461d962860e7",
+  "record": {
+    "classicSpellId": 4608,
+    "name": "Shatter",
+    "targetType": 12,
+    "spellClass": 7,
+    "damageType": 7,
+    "special": 49,
+    "saveBonus": 10,
+    "cost": 0
+  },
+  "sourceObservations": [
+    "combat.c lines 162-174 builds target type 12 from every living party slot followed by every living monster slot and resolves the spell once.",
+    "resolvespell.c rolls shared duration and damage before applying resistance, save, protection, and special handling independently in target order.",
+    "Special 49 replaces a failed-save target's zero base damage with lethal damage while a successful save returns before the death effect.",
+    "Castle's monster target-12 branch reaches resolution before setting power or charging spell points and does not clear Guard or movement; Shatter's zero cost and unscaled effect make the stale power and resource state unobservable."
+  ],
+  "runtimeContract": "A monster may choose Shatter when the complete living target set has more opposed than friendly actors. The cast resolves party then monsters through the shared group save and special-49 death path, spends no spell points, and deliberately clears Guard and movement as one ordinary action."
+}

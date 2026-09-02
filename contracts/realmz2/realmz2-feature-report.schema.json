@@ -1,0 +1,199 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://realmz.dev/schemas/realmz2-feature-report.schema.json",
+  "title": "Realmz Remake 2.0 Gameplay Feature Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "kind",
+    "formatVersion",
+    "schemaHash",
+    "package",
+    "opcodes",
+    "spells",
+    "interactions",
+    "combat",
+    "rewards",
+    "world",
+    "shops",
+    "allies",
+    "compiler"
+  ],
+  "properties": {
+    "kind": { "const": "realmz2.feature-report" },
+    "formatVersion": { "const": 2 },
+    "schemaHash": { "$ref": "#/$defs/sha256" },
+    "package": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format", "formatVersion", "schemaVersion", "schemaHash", "packageHash", "campaignIdentityHash"],
+      "properties": {
+        "format": { "const": "realmz2" },
+        "formatVersion": { "type": "integer", "minimum": 1 },
+        "schemaVersion": { "type": "integer", "minimum": 1 },
+        "schemaHash": { "$ref": "#/$defs/sha256" },
+        "packageHash": { "$ref": "#/$defs/sha256" },
+        "campaignIdentityHash": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "opcodes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["occurrences", "identityCount", "variantCount", "identities", "variants"],
+      "properties": {
+        "occurrences": { "$ref": "#/$defs/count" },
+        "identityCount": { "$ref": "#/$defs/count" },
+        "variantCount": { "$ref": "#/$defs/count" },
+        "identities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["opcode", "count", "variantCount"],
+            "properties": {
+              "opcode": { "type": "integer", "minimum": -32768, "maximum": 32767 },
+              "count": { "$ref": "#/$defs/count" },
+              "variantCount": { "$ref": "#/$defs/count" }
+            }
+          }
+        },
+        "variants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["signatureHash", "opcode", "rawOpcodeClass", "gosub", "operandShape", "extraCodeShape", "parameterHash", "ownerKinds", "count"],
+            "properties": {
+              "signatureHash": { "$ref": "#/$defs/sha256" },
+              "opcode": { "type": "integer" },
+              "rawOpcodeClass": { "$ref": "#/$defs/signedClass" },
+              "gosub": { "type": "boolean" },
+              "operandShape": { "type": "string" },
+              "extraCodeShape": { "type": "array", "items": { "type": "string" } },
+              "parameterHash": { "$ref": "#/$defs/sha256" },
+              "ownerKinds": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+              "count": { "$ref": "#/$defs/count" }
+            }
+          }
+        }
+      }
+    },
+    "spells": { "$ref": "#/$defs/signatureSection" },
+    "interactions": { "type": "object" },
+    "combat": { "type": "object" },
+    "rewards": { "type": "object" },
+    "world": { "type": "object" },
+    "shops": { "type": "object" },
+    "allies": { "type": "object" },
+    "compiler": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["projectSchemaVersion", "diagnosticCount", "diagnostics", "compilerLossDiagnostics", "unresolvedCompilerLossCount"],
+      "properties": {
+        "projectSchemaVersion": { "$ref": "#/$defs/count" },
+        "diagnosticCount": { "$ref": "#/$defs/count" },
+        "diagnostics": { "type": "array", "items": { "$ref": "#/$defs/diagnostic" } },
+        "compilerLossDiagnostics": { "type": "array", "items": { "$ref": "#/$defs/diagnostic" } },
+        "unresolvedCompilerLossCount": { "$ref": "#/$defs/count" }
+      }
+    }
+  },
+  "$defs": {
+    "count": { "type": "integer", "minimum": 0 },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "signedClass": { "enum": ["negative", "zero", "positive"] },
+    "diagnostic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["severity", "code", "count"],
+      "properties": {
+        "severity": { "enum": ["info", "warning", "error"] },
+        "code": { "type": "string", "minLength": 1 },
+        "count": { "$ref": "#/$defs/count" }
+      }
+    },
+    "signatureSection": {
+      "type": "object",
+      "required": ["definitions", "applicationDefinitions", "scenarioDefinitions", "behaviorSignatureCount", "behaviorSignatures"],
+      "properties": {
+        "definitions": { "$ref": "#/$defs/count" },
+        "applicationDefinitions": { "$ref": "#/$defs/count" },
+        "scenarioDefinitions": { "$ref": "#/$defs/count" },
+        "behaviorSignatureCount": { "$ref": "#/$defs/count" },
+        "behaviorSignatures": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["signatureHash", "count", "origins", "behavior"],
+            "properties": {
+              "signatureHash": { "$ref": "#/$defs/sha256" },
+              "count": { "$ref": "#/$defs/count" },
+              "origins": { "type": "array", "items": { "enum": ["application", "scenario"] }, "uniqueItems": true },
+              "behavior": { "$ref": "#/$defs/spellBehavior" }
+            }
+          }
+        }
+      }
+    },
+    "spellBehavior": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rangeMin",
+        "rangeMax",
+        "queueIcon",
+        "toHitBonus",
+        "saveBonus",
+        "fixedTargetCount",
+        "canRotate",
+        "saveAdjust",
+        "cannot",
+        "resistanceAdjust",
+        "cost",
+        "damageMin",
+        "damageMax",
+        "powerDamageMin",
+        "powerDamageMax",
+        "durationMin",
+        "durationMax",
+        "powerDurationMin",
+        "powerDurationMax",
+        "targetType",
+        "size",
+        "special",
+        "damageType",
+        "spellClass",
+        "inCombat",
+        "inCamp"
+      ],
+      "properties": {
+        "rangeMin": { "type": ["integer", "null"] },
+        "rangeMax": { "type": ["integer", "null"] },
+        "queueIcon": { "type": ["integer", "null"] },
+        "toHitBonus": { "type": ["integer", "null"] },
+        "saveBonus": { "type": ["integer", "null"] },
+        "fixedTargetCount": { "type": ["integer", "null"] },
+        "canRotate": { "type": ["boolean", "null"] },
+        "saveAdjust": { "type": ["integer", "null"] },
+        "cannot": { "type": ["integer", "null"] },
+        "resistanceAdjust": { "type": ["integer", "null"] },
+        "cost": { "type": ["integer", "null"] },
+        "damageMin": { "type": ["integer", "null"] },
+        "damageMax": { "type": ["integer", "null"] },
+        "powerDamageMin": { "type": ["integer", "null"] },
+        "powerDamageMax": { "type": ["integer", "null"] },
+        "durationMin": { "type": ["integer", "null"] },
+        "durationMax": { "type": ["integer", "null"] },
+        "powerDurationMin": { "type": ["integer", "null"] },
+        "powerDurationMax": { "type": ["integer", "null"] },
+        "targetType": { "type": ["integer", "null"] },
+        "size": { "type": ["integer", "null"] },
+        "special": { "type": ["integer", "null"] },
+        "damageType": { "type": ["integer", "null"] },
+        "spellClass": { "type": ["integer", "null"] },
+        "inCombat": { "type": ["boolean", "null"] },
+        "inCamp": { "type": ["boolean", "null"] }
+      }
+    }
+  }
+}

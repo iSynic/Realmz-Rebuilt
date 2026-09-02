@@ -1,0 +1,6 @@
+{
+  "opcode": 74,
+  "castleSource": "src/realmz_orig/newland.c case 74",
+  "runtimeContract": "For each selected character with a nonzero maximum, draw the authored range abs(count) times, apply only the final draw with the count sign, clamp current spell points to zero through maximum, optionally request the lower range bound as Castle's sound identity, then publish the authored message.",
+  "determinism": "Characters resolve in party selection order and each draw is serialized through the session RNG."
+}

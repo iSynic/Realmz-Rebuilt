@@ -1,0 +1,36 @@
+{
+  "formatVersion": 1,
+  "decisionId": "FD-COMBAT-008",
+  "evidence": "source-control-flow",
+  "castleCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "sources": [
+    {
+      "path": "src/realmz_orig/cansee.c",
+      "symbol": "short cansee(short fromx, short fromy, short tox, short toy)",
+      "range": "5-52"
+    },
+    {
+      "path": "src/realmz_orig/combat.c",
+      "symbol": "void combat(short suprise, short mode)",
+      "range": "388-480"
+    }
+  ],
+  "inputs": {
+    "origin": [10, 10],
+    "target": [20, 10],
+    "blockingTerrain": [18, 10],
+    "sampleCount": 128,
+    "comparedDelaySpeeds": [0, 64]
+  },
+  "castleSourceObservation": {
+    "step": "the pixel delta is divided by 128 plus delayspeed while the loop still executes exactly 128 samples",
+    "delayZero": "the samples reach the blocker near the target and report no line of sight",
+    "delaySixtyFour": "the samples cover only two thirds of the segment and report line of sight without reaching the blocker",
+    "gameplayUse": "monster target selection calls cansee before movement, so the preference changes AI target eligibility"
+  },
+  "realmz2ChosenResult": {
+    "sampling": "retain Castle's 128 center-offset samples with a fixed divisor of 128",
+    "settingsBoundary": "presentation delay and reduced-motion settings never enter simulation",
+    "occupiedCells": "retain Castle field behavior in which actor-occupied cells hide their underlying terrain from this query"
+  }
+}

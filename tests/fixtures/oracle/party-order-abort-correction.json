@@ -1,0 +1,35 @@
+{
+  "formatVersion": 1,
+  "decisionId": "FD-CHARACTER-003",
+  "evidence": "source-control-flow",
+  "castleCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "sources": [
+    {
+      "path": "src/realmz_orig/getchoice.c",
+      "symbol": "short getchoice(short number, short initems, short candead)",
+      "range": "43-50"
+    },
+    {
+      "path": "src/realmz_orig/save-direction-order.c",
+      "symbol": "void order(void)",
+      "range": "606-618"
+    }
+  ],
+  "inputs": {
+    "partyCharacterIds": ["character.alis", "character.borin", "character.cerys"],
+    "stagedOrder": ["character.borin", "character.alis", "character.cerys"],
+    "action": "cancel"
+  },
+  "castleSourceObservation": {
+    "getchoiceAbortResult": "Clears every track entry to zero and returns through the abort label.",
+    "orderAbortHandling": "Ignores getchoice's result and indexes c[track[t] - 1] for every party member.",
+    "resultingIndexExpression": "c[-1]",
+    "classification": "apparent out-of-bounds write"
+  },
+  "realmz2ChosenResult": {
+    "cancelBehavior": "Discard the presentation-owned draft without emitting an intent or mutating PartyState.",
+    "applyPrecondition": "The intent must contain every current stable character ID exactly once.",
+    "committedOrder": ["character.alis", "character.borin", "character.cerys"],
+    "stateMutation": false
+  }
+}

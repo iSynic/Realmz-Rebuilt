@@ -1,0 +1,29 @@
+{
+  "formatVersion": 1,
+  "decisionId": "FD-COMBAT-002",
+  "evidence": "source-control-flow",
+  "castleCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "source": {
+    "path": "src/realmz_orig/attack.c",
+    "symbol": "short attack(short chare, short mon)",
+    "monsterTargetRange": "301-334",
+    "characterTargetRange": "343-373"
+  },
+  "inputs": {
+    "weaponElementalDamage": 8,
+    "attackerSaveSucceeded": false,
+    "defenderSaveSucceeded": true,
+    "matchingProtection": true
+  },
+  "castleSourceObservation": {
+    "monsterTargetSaveIdentity": "attacker",
+    "monsterTargetCommittedElementalDamage": 4,
+    "characterTargetSaveIdentity": "defender",
+    "characterTargetCommittedElementalDamage": 2
+  },
+  "realmz2ChosenResult": {
+    "allTargetKindsSaveIdentity": "defender",
+    "monsterTargetCommittedElementalDamage": 2,
+    "characterTargetCommittedElementalDamage": 2
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "formatVersion": 1,
+  "evidenceClass": "source-control-flow",
+  "castleSourceCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "applicationDataCorrectionCommit": "ef95fcff40d81f14ac668d5e13466da4a51de6f4",
+  "applicationDataSha256": "f47776aadc0f4ebf42320e0aaedd39dd7b5a2c76c125a44e99ea461d962860e7",
+  "records": [
+    {"classicSpellId": 1101, "name": "Discover Magic I", "targetType": 1, "cost": 1, "special": 63},
+    {"classicSpellId": 2102, "name": "Discover Magic", "targetType": 4, "cost": 1, "special": 63},
+    {"classicSpellId": 3102, "name": "Discover Magic", "targetType": 4, "cost": 1, "special": 63}
+  ],
+  "sourceObservations": [
+    "Outside combat, target type 1 selects one party character and target type 4 tracks the complete party before one resolvespell call.",
+    "resolvespell retains the ordinary shared duration then damage rolls and pays the learned spell's authored cost.",
+    "spelllist special 63 changes only a monster target by marking its magical loot slots; party character targets are unchanged.",
+    "Treasure Detect Magic uses a separate reward command and cost despite deriving eligibility from a character who knows a special-63 spell."
+  ],
+  "runtimeContract": "All three stock Discover Magic records are legal field casts. They preserve their one-target or whole-party selection, cost, RNG order, and save state while leaving selected characters unchanged; Treasure detection remains a separate workflow."
+}

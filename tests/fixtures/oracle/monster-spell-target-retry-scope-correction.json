@@ -1,0 +1,31 @@
+{
+  "formatVersion": 1,
+  "decisionId": "FD-COMBAT-011",
+  "evidence": "source-control-flow",
+  "castleCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "sources": [
+    {
+      "path": "src/realmz_orig/combat.c",
+      "symbol": "void combat(short suprise, short mode)",
+      "range": "9-12,209-370"
+    }
+  ],
+  "inputs": {
+    "previousSuccessfulTargetSamples": 100,
+    "nextCastRequiredTargets": 1,
+    "nextCandidateIsValid": true
+  },
+  "castleSourceObservation": {
+    "counterScope": "entire battle",
+    "nextAttemptNumber": 101,
+    "samplesRngBeforeCutoff": false,
+    "nextCastResult": "abandoned before sampling its valid candidate"
+  },
+  "realmz2ChosenResult": {
+    "counterScope": "one monster spell cast",
+    "nextCastFirstAttemptNumber": 1,
+    "samplesRng": true,
+    "nextCastResult": "resolves against the valid candidate",
+    "withinCastExhaustion": "retain Castle's partial-cast result and full chosen-power cost"
+  }
+}

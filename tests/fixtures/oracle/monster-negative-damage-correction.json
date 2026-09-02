@@ -1,0 +1,32 @@
+{
+  "formatVersion": 1,
+  "decisionId": "FD-COMBAT-004",
+  "evidence": "source-control-flow",
+  "castleCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "sources": [
+    {
+      "path": "src/realmz_orig/attack.c",
+      "symbol": "short attack2(short mon, short chare, short attacknum)",
+      "range": "689-697,1201-1219"
+    },
+    {
+      "path": "src/realmz_orig/share-movecost-dialog.c",
+      "symbol": "short Rand(short range)",
+      "range": "44-51"
+    }
+  ],
+  "inputs": {
+    "monsterDamageBonus": -5,
+    "attackMinimum": 1,
+    "attackMaximum": 1,
+    "targetHealth": 10
+  },
+  "castleSourceObservation": {
+    "physicalDamage": -4,
+    "targetHealthAfterSubtraction": 14
+  },
+  "realmz2ChosenResult": {
+    "physicalDamage": 0,
+    "targetHealthAfterSubtraction": 10
+  }
+}

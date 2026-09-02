@@ -1,0 +1,30 @@
+{
+  "formatVersion": 1,
+  "decisionId": "FD-SPELL-003",
+  "domain": "spellcasting",
+  "affectedRule": "Fast Spell activation cost and target-selection transaction",
+  "castle": {
+    "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+    "evidence": "source-control-flow",
+    "sources": [
+      {
+        "path": "src/realmz_orig/checkkeypad.c",
+        "symbol": "short checkkeypad"
+      },
+      {
+        "path": "src/realmz_orig/castspell.c",
+        "symbol": "short castspell"
+      }
+    ],
+    "observation": "Castle's Command-number Fast Spell path rejects a character whose spell points exactly equal the spell cost because it tests cost greater than or equal to spell points. It also deducts spell points before entering the cancellable ordinary target-selection path."
+  },
+  "playerFacingProblem": "A character cannot spend their last legal spell points through a Fast Spell, and cancelling target selection can consume spell points without resolving an effect.",
+  "chosenBehavior": "Fast Spell activation delegates to the same typed ordinary cast path as the spellbook. Exact-cost casts are legal, and spell points, RNG, and effects commit only after a valid target response.",
+  "tests": [
+    {
+      "path": "tests/integration/test_field_spell_workflow.gd",
+      "symbol": "func run"
+    }
+  ],
+  "legacyQuirk": "none"
+}

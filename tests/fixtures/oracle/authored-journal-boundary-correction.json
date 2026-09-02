@@ -1,0 +1,69 @@
+{
+  "formatVersion": 1,
+  "decisionId": "FD-MAPS-002",
+  "evidence": "source-control-flow",
+  "castleCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "sources": [
+    {
+      "path": "src/realmz_orig/variables.h",
+      "symbol": "extern Boolean notes[3000];",
+      "observation": "Castle declares exactly 3,000 persisted authored-journal discovery flags."
+    },
+    {
+      "path": "src/realmz_orig/textbox-time.c",
+      "symbol": "notes[abs(index)] = TRUE;",
+      "observation": "A positive Data SD2 textbox records its absolute message index when the player presses N or Auto Note is enabled."
+    },
+    {
+      "path": "src/realmz_orig/handlemenuchoice.c",
+      "symbol": "if (journalindex2 > 5999)",
+      "observation": "The journal browser clamps its cursor to 5,999 even though its discovery array has only 3,000 elements and the adjacent scan loop tests notes before proving the cursor is in range."
+    },
+    {
+      "path": "src/realmz_orig/save-direction-order.c",
+      "symbol": "fwrite(&notes, sizeof notes, 1, fp);",
+      "observation": "The 3,000 discovery flags are playthrough-owned save state."
+    },
+    {
+      "path": "src/realmz_orig/loadsavedgame.c",
+      "symbol": "fread(&notes, sizeof notes, 1, fp);",
+      "observation": "Castle restores the complete fixed discovery table from the game save."
+    },
+    {
+      "path": "src/ResourceManager.cpp",
+      "symbol": "memmove((char*)*pref_handle + offsetof(PrefRecord, autonote), end_of_name_str, 18);",
+      "observation": "Castle expands the variable-length default PRFN 128 record into PrefRecord without changing its serialized Auto Note byte."
+    },
+    {
+      "path": "src/realmz_orig/pref.c",
+      "symbol": "autonote = (**(PrefHandle)data_handle).autonote;",
+      "observation": "A missing host preference file loads the application PRFN Auto Note byte as the live default."
+    }
+  ],
+  "castleSourceObservation": {
+    "discovery": "Authored journal entries are Data SD2 message identities recorded from interactive source text, not chronological copies of event text.",
+    "order": "Previous and next scan the discovery flags by numeric message index.",
+    "autoNote": "pref.c loads autonote from application PRFN 128 and persists the same explicit preference value.",
+    "anomaly": "The browser's 5,999 clamp and test ordering permit indexing beyond the 3,000-element discovery array. Runtime behavior at that boundary is unsafe and is not a valid authored contract."
+  },
+  "castleResourceObservation": {
+    "path": "resources/realmz.rsrc",
+    "sha256": "5bc76d986eb0f31589ef58120f4b9ad40234f228448bb75c09eb40e59c97bc9f",
+    "resourceType": "PRFN",
+    "resourceId": 128,
+    "resourceBytes": 64,
+    "nameLength": 1,
+    "autoNoteOffset": 46,
+    "autoNote": 0
+  },
+  "realmz2ChosenResult": {
+    "capacity": 3000,
+    "validMessageIds": "0 through 2999",
+    "recording": "Only an explicit Take note response from a positive Classic textbox records the immutable source message ID; negative no-click text does not fabricate a player action.",
+    "autoNote": "The host preference defaults off; an explicit persisted user choice may enable automatic recording without entering adventure state.",
+    "ordering": "Detached journal entries are sorted by numeric source message ID.",
+    "restore": "Reject duplicates, out-of-range IDs, and IDs absent from the installed package before replacing the active session.",
+    "cursor": "Journal browsing position remains presentation-owned and is not persisted; no out-of-bounds native cursor behavior is reproduced."
+  },
+  "unresolved": []
+}

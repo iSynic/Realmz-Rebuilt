@@ -1,0 +1,41 @@
+{
+  "kind": "realmz2.classic-character-library-provenance",
+  "formatVersion": 1,
+  "compiler": {
+    "name": "Providence",
+    "commit": "efee09f5ce05de7000dacf20efb0ebbc72bcd047",
+    "entrypoint": "src-tauri/examples/export_classic_character_library.rs"
+  },
+  "castle": {
+    "baseCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+    "standardTables": [
+      "base/Realmz/Data Files/Data Race",
+      "base/Realmz/Data Files/Data Caste",
+      "base/Realmz/Data Files/Data ID",
+      "base/Realmz/Data Files/Data S",
+      "base/Realmz/Scenarios/New Scenario/Data NI"
+    ],
+    "corrections": [
+      {
+        "path": "base/Realmz/Data Files/Data S",
+        "commit": "ef95fcff40d81f14ac668d5e13466da4a51de6f4",
+        "sha256": "f47776aadc0f4ebf42320e0aaedd39dd7b5a2c76c125a44e99ea461d962860e7",
+        "record": 206,
+        "classicSpellId": 2712,
+        "fields": {
+          "durationMin": 1,
+          "durationMax": 1,
+          "special": 2
+        }
+      }
+    ]
+  },
+  "package": {
+    "path": "src/infrastructure/characters/realmz-classic-character-library.realmz2",
+    "campaignId": "realmz-classic-character-library",
+    "packageHash": "6e3f23c9a452f70b25040c729e17533de5ddf0c420ff35484fc52f6e0dd25e68",
+    "archiveSha256": "707e9e5f47c3bec6622c92e70041fe9806e2eb49956d933e711bd3e0c52821ff",
+    "bytes": 3748183
+  },
+  "scenarioOverrides": false
+}

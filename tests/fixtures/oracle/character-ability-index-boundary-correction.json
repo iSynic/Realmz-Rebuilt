@@ -1,0 +1,45 @@
+{
+  "formatVersion": 1,
+  "decisionId": "FD-CHARACTER-001",
+  "evidence": "source-control-flow",
+  "castleCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "sources": [
+    {
+      "path": "src/realmz_orig/structs.h",
+      "symbol": "short specialability[14];",
+      "range": "58-61"
+    },
+    {
+      "path": "src/realmz_orig/structs.h",
+      "symbol": "short specialability[2][14];",
+      "range": "93-95"
+    },
+    {
+      "path": "src/realmz_orig/structs.h",
+      "symbol": "short condition[40], special[12], armor[20], spec[15], save[8], currentagegroup, verify2;",
+      "range": "309-315"
+    },
+    {
+      "path": "src/realmz_orig/updatespec.c",
+      "symbol": "for (t = 0; t < 15; t++) // v7.1",
+      "range": "53-85"
+    }
+  ],
+  "inputs": {
+    "raceAuthoredAbilityCount": 14,
+    "casteAuthoredAbilityCountPerRow": 14,
+    "characterRuntimeAbilityCount": 15
+  },
+  "castleSourceObservation": {
+    "initialSlot14Read": "caste level-up ability die 0 plus race save bonus 0 through adjacent struct storage",
+    "levelUpSlot14Read": "caste save bonus 0 as an ability die through adjacent struct storage",
+    "result": "character spec slot 14 depends on unrelated neighboring fields and may consume unrelated RNG"
+  },
+  "realmz2ChosenResult": {
+    "authoredAbilityCount": 14,
+    "characterRuntimeAbilityCount": 15,
+    "slot14": 0,
+    "rng": "no draw for an unauthored ability",
+    "separation": "racial special[12] combat modifiers remain distinct from trained spec[15] abilities"
+  }
+}

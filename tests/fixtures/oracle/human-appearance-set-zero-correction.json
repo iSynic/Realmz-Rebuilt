@@ -1,0 +1,47 @@
+{
+  "fixtureVersion": 1,
+  "id": "human-appearance-set-zero-correction",
+  "evidenceLabel": "source-control-flow",
+  "commercialPayload": false,
+  "castleCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "sources": [
+    {
+      "path": "src/realmz_orig/newcharacter.c",
+      "symbol": "void CharacterGen(void)"
+    },
+    {
+      "path": "src/realmz_orig/portrait-picklock.c",
+      "symbol": "void portrait(short mode)"
+    },
+    {
+      "path": "src/realmz_orig/iconpict.c",
+      "symbol": "void iconpicture(short mode)"
+    },
+    {
+      "path": "src/realmz_orig/main.c",
+      "symbol": "portraitrefnum = MyrOpenResFile"
+    },
+    {
+      "path": "src/realmz_orig/main.c",
+      "symbol": "tacticalrefnum = MyrOpenResFile"
+    }
+  ],
+  "authoredInput": {
+    "raceClassicId": 1,
+    "defaultIconSet": 0
+  },
+  "sourceObservation": {
+    "literalInitialPortraitId": 251,
+    "literalInitialCombatIconId": 8994,
+    "browseablePortraitRange": [257, 376],
+    "browseableCombatIconRange": [9000, 9119],
+    "firstPairedPortraitId": 257,
+    "firstPairedCombatIconId": 9000
+  },
+  "chosenBehavior": {
+    "portraitSetZeroAliasesSetOne": true,
+    "defaultPortraitId": 257,
+    "defaultCombatIconId": 9000,
+    "reason": "The literal formula selects resources outside both browseable Classic character catalogs."
+  }
+}

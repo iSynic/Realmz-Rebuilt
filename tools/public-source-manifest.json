@@ -1,0 +1,40 @@
+{
+  "formatVersion": 1,
+  "includeRoots": [
+    ".gitattributes",
+    ".github",
+    ".gitignore",
+    "addons",
+    "CONTRIBUTING.md",
+    "contracts",
+    "docs",
+    "export_presets.cfg",
+    "LICENSE",
+    "project.godot",
+    "README.md",
+    "src",
+    "tests",
+    "THIRD_PARTY_NOTICES.txt",
+    "tools"
+  ],
+  "excludeNames": [
+    "AGENTS.md"
+  ],
+  "excludePaths": [
+    ".mcp.json",
+    "docs/development.md",
+    "docs/roadmap.md"
+  ],
+  "excludePrefixes": [
+    ".git/",
+    ".godot/",
+    ".references/",
+    ".ua/",
+    ".understand/",
+    "artifacts/",
+    "dist/",
+    "docs/codemap/",
+    "release-evidence/",
+    "test-results/"
+  ]
+}

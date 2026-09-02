@@ -1,0 +1,41 @@
+{
+  "formatVersion": 1,
+  "decisionId": "FD-CHARACTER-005",
+  "evidence": "source-control-flow",
+  "castleCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "sources": [
+    {
+      "path": "src/realmz_orig/handlemenuchoice.c",
+      "symbol": "short HandleMenuChoice"
+    },
+    {
+      "path": "src/realmz_orig/modify-cancast.c",
+      "symbol": "void modify(short mode)"
+    },
+    {
+      "path": "src/realmz_orig/portrait-picklock.c",
+      "symbol": "void portrait(short mode)"
+    },
+    {
+      "path": "src/realmz_orig/iconpict.c",
+      "symbol": "void iconpicture(short mode)"
+    }
+  ],
+  "castleSourceObservation": {
+    "commands": ["new portrait", "new icon"],
+    "portraitRecommendation": "six resources selected by Data Race defaulticonset",
+    "combatIconRecommendation": "six resources selected by one-based character race",
+    "commitBoundary": "closing either picker copies characterl into the active party slot",
+    "externalWrite": "modify also rewrites the standalone Character Files record with the active campaign character",
+    "cancelRollback": false
+  },
+  "realmz2ChosenResult": {
+    "portraitAndCombatIconIndependent": true,
+    "previewIsPresentationOnly": true,
+    "applyMutatesSessionOnce": true,
+    "discardMutatesSession": false,
+    "vaultPublicationImplicit": false,
+    "recommendationFormulasPreservedSeparately": true,
+    "reason": "The Castle picker establishes independent identities and recommendation formulas, but its standalone file write conflicts with Realmz 2.0's explicit immutable vault-revision boundary. Explicit Apply and Discard prevent UI browsing from mutating the deterministic session."
+  }
+}

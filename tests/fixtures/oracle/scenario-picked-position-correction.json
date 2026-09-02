@@ -1,0 +1,21 @@
+{
+  "formatVersion": 1,
+  "decisionId": "FD-SCENARIO-003",
+  "evidence": "source-control-flow",
+  "castleCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "sourceSha256": "77d06c03bedfe520127bb6ed113c22b0573c11012db956cec3ceee967d816198",
+  "sources": [
+    {
+      "path": "src/realmz_orig/newland.c",
+      "symbol": "case 55: /*************** Branch on Picked ****************/",
+      "range": "3315-3365"
+    }
+  ],
+  "sourceObservation": {
+    "authoredSelectorMeaning": "The switch labels selectors 1 through 6 as specific picked-character checks.",
+    "castleDefect": "Every one of those six switch cases reads track[0], so selectors 2 through 6 alias the first party position.",
+    "unaffectedModes": "Selector 0 checks whether any character is picked; every other selector compares the absolute selector with the picked count."
+  },
+  "playerFacingProblem": "An authored check for the second through sixth party position silently tests the first position instead, so Tutorial's second-character demonstration and ordinary scenario branches return the wrong result.",
+  "realmz2ChosenResult": "Selectors 1 through 6 test the corresponding one-based party position. Selector 0 and picked-count modes retain Castle's control flow and consume no RNG."
+}

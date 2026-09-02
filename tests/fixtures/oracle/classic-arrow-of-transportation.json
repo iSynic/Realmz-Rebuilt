@@ -1,0 +1,26 @@
+{
+  "formatVersion": 1,
+  "evidenceClass": "source-control-flow",
+  "castleSourceCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "applicationDataCorrectionCommit": "ef95fcff40d81f14ac668d5e13466da4a51de6f4",
+  "applicationDataSha256": "f47776aadc0f4ebf42320e0aaedd39dd7b5a2c76c125a44e99ea461d962860e7",
+  "record": {
+    "classicSpellId": 4405,
+    "name": "Arrow of Transportation",
+    "targetType": -1,
+    "size": 1,
+    "range": 20,
+    "spellClass": 9,
+    "damageType": 9,
+    "special": 56,
+    "cost": 0
+  },
+  "sourceObservations": [
+    "items.c lines 608-686 loads an item's sp2 spell, fixes power from abs(item.sp1), and enters combat spell targeting while retaining the loaded item.",
+    "combatinfo-combatchoice.c lines 645-664 treats target types below one as power-count targets and uses the ordinary coordinate picker when range is nonzero.",
+    "combatinfo-combatchoice.c lines 1273-1304 accepts a nonactor battlefield cell when size is nonzero and stores its exact field coordinate.",
+    "cast.c lines 85-88 treats nonzero-size target types below two as coordinate destinations rather than actor selectors.",
+    "resolvespell.c lines 192-231 applies special 56 to the caster at target[0], retains attacks when size is nonzero, and kills the caster on an occupied or solid destination."
+  ],
+  "runtimeContract": "Arrow of Transportation is an application-owned item projectile. Its first selected open coordinate uses the existing Phase transaction; learned, scroll, and monster spell-list contexts are not applicable because they do not own the source item launch and Castle's monster negative-target path produces incompatible selector data."
+}

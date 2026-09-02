@@ -1,0 +1,30 @@
+{
+  "formatVersion": 1,
+  "decisionId": "FD-COMBAT-014",
+  "domain": "combat",
+  "affectedRule": "Undo restoration when another combatant occupies the activation-start cell",
+  "castle": {
+    "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+    "evidence": "source-control-flow",
+    "sources": [
+      {
+        "path": "src/realmz_orig/getup.c",
+        "symbol": "void getup(short skip)"
+      },
+      {
+        "path": "src/realmz_orig/combat.c",
+        "symbol": "void combat(short suprise, short mode)"
+      }
+    ],
+    "observation": "getup records only undox and undoy. The Undo branch later restores the active character's old underlying cell, assigns charunder from field[undox][undoy], and then writes the active character into field[undox][undoy] without checking whether another combatant now occupies that destination."
+  },
+  "playerFacingProblem": "A legal intervening position change can make Undo overwrite another combatant's battlefield occupancy and leave actor-position and field state inconsistent.",
+  "chosenBehavior": "Undo is disabled when the activation-start cell is occupied by another combatant. A submitted command is rejected without changing either actor, the turn, or RNG.",
+  "tests": [
+    {
+      "path": "tests/core/test_combat_flow.gd",
+      "symbol": "func _test_bounded_classic_undo_and_restore()"
+    }
+  ],
+  "legacyQuirk": "none"
+}

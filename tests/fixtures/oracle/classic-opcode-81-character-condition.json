@@ -1,0 +1,8 @@
+{
+  "opcode": 81,
+  "castleSource": "src/realmz_orig/newland.c case 81",
+  "divinitySource": "public/divinity-manual/index.html, Code 81 Branch on Character Condition",
+  "runtimeContract": "Start matched, require every character in the whole-party or picked set to have the condition, or test Castle's directly indexed party position, then branch to the success or failure XAP with the authored GOSUB flag.",
+  "sourceQuirks": "Castle directly indexes positive candidate modes even though Divinity labels one as the top character, and never reads the documented failure-message field. Empty picked sets remain matched.",
+  "determinism": "The operation consumes no RNG and reads only save-owned character conditions and selected identities."
+}

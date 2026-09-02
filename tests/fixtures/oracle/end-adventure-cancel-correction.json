@@ -1,0 +1,26 @@
+{
+  "formatVersion": 1,
+  "decisionId": "FD-APPLICATION-001",
+  "evidence": "source-control-flow",
+  "castleCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "sources": [
+    {
+      "path": "src/realmz_orig/handlemenuchoice.c",
+      "symbol": "short HandleMenuChoice"
+    }
+  ],
+  "castleSourceObservation": {
+    "outsideCombatYes": "save and continue ending the game",
+    "outsideCombatNo": "skip saving and continue ending the game",
+    "outsideCombatCancel": false,
+    "inCombatNo": "cancel End Game",
+    "inCombatSave": false
+  },
+  "realmz2ChosenResult": {
+    "outsideCombatChoices": ["save-and-end", "end-without-saving", "cancel"],
+    "inCombatChoices": ["end-without-saving", "cancel"],
+    "saveFailureKeepsSessionOpen": true,
+    "hostPromptPersistedInGameplaySave": false,
+    "reason": "Explicitly separating discard from cancel prevents an ambiguous negative response from destroying an active session, while retaining Castle's save-and-end, discard-and-end, and combat no-save outcomes."
+  }
+}

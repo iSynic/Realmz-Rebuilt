@@ -1,0 +1,36 @@
+extends RealmzTestCase
+
+
+func run() -> void:
+	var session := GameSession.new()
+	var before_start := session.submit_intent(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
+	assert_equal(before_start.state, SessionStep.State.FAILED, "an unstarted session rejects intents")
+	assert_equal(before_start.error_code, &"session_not_started", "the rejection is explicit")
+
+	var invalid_start := session.start(null, 42); assert_equal(invalid_start.state, SessionStep.State.FAILED, "start requires validated typed content")
+	assert_equal(invalid_start.error_code, &"invalid_content", "invalid content never partially starts a session")
+
+	var snapshot := session.snapshot(); assert_equal(snapshot, null, "an unstarted session has no save boundary")
+
+	var character := CharacterState.new("fast.spell.character", "Quickcaster", 12, 12)
+	assert_equal(character.fast_spells().size(), 10, "every character owns Castle's ten Fast Spell slots")
+	assert_true(character.fast_spells().all(func(binding: FastSpellBindingState) -> bool: return binding.is_empty()), "new characters default every Fast Spell slot to undefined")
+	assert_true(character.bind_fast_spell(9, "classic.spell.quick", 4), "slot ten accepts a typed stable spell identity and power")
+	var round_trip := CharacterState.from_data(JSON.parse_string(JSON.stringify(character.to_data())))
+	assert_equal(round_trip.fast_spell_at(9).to_data(), {"spellId": "classic.spell.quick", "power": 4}, "Fast Spell bindings round-trip inside character-owned state")
+	var corrupt := character.to_data()
+	corrupt["fastSpells"][0] = {"spellId": "", "power": 2}
+	assert_equal(CharacterState.from_data(corrupt), null, "malformed empty Fast Spell bindings fail strict character restoration")
+	var debug_package := PackageRepository.new().load_package("res://tests/fixtures/packages/realmz2-synthetic-fixture.realmz2"); var debug_content := debug_package.content; var debug_race := debug_content.race_definitions()[0]; var debug_caste := debug_race.eligible_caste_ids[0]; var debug_session := GameSession.new(); debug_session.start(debug_content, 17); debug_session.submit_intent(PlayerIntent.create_party([CharacterCreationSpec.new("Debugger", debug_race.id, debug_caste, 1)])); var rng_before_debug := debug_session.snapshot().rng_state.to_data(); assert_equal(debug_session.apply_debug_command(SessionDebugCommand.warp("dungeon:0", Vector2i.ZERO)).state, SessionStep.State.COMPLETED, "a public debug warp commits only to a validated topology cell"); assert_equal([debug_session.view().party_map_id, debug_session.view().party_coordinate, debug_session.snapshot().rng_state.to_data()], ["dungeon:0", Vector2i.ZERO, rng_before_debug], "debug warp changes no gameplay RNG and exposes the committed destination through the detached view"); var noclip_step := debug_session.apply_debug_command(SessionDebugCommand.noclip_step(Vector2i.RIGHT)); var noclip_view := debug_session.view(noclip_step.events); assert_equal([noclip_step.state, noclip_view.party_coordinate, noclip_view.map_view.presentation_delta != null, debug_session.snapshot().rng_state.to_data()], [SessionStep.State.COMPLETED, Vector2i.RIGHT, true, rng_before_debug], "adjacent no-clip bypasses topology through the incremental presentation path without RNG"); assert_equal(debug_session.apply_debug_command(SessionDebugCommand.restore_party()).state, SessionStep.State.COMPLETED, "party restoration is a public committed debug command")
+	var encounter_session := GameSession.new(); encounter_session.start(debug_content, 19); encounter_session.submit_intent(PlayerIntent.create_party([CharacterCreationSpec.new("Encounter Debugger", debug_race.id, debug_caste, 1)])); var encounter_step := encounter_session.apply_debug_command(SessionDebugCommand.start_encounter(&"simple", 0)); assert_equal([encounter_step.state, encounter_step.interaction.kind, encounter_session.snapshot()], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.ENCOUNTER_CHOICE, null], "a debug encounter uses the ordinary typed interaction but cannot enter a save"); var battle_session := GameSession.new(); battle_session.start(debug_content, 23); battle_session.submit_intent(PlayerIntent.create_party([CharacterCreationSpec.new("Battle Debugger", debug_race.id, debug_caste, 1), CharacterCreationSpec.new("Swap Ally", debug_race.id, debug_caste, 1)])); assert_equal(battle_session.apply_debug_command(SessionDebugCommand.start_battle(0)).state, SessionStep.State.COMPLETED, "a debug battle uses ordinary deterministic battle construction"); var tactical := battle_session.view(); var swap_options := tactical.combat_view.movement_options.filter(func(option: CombatMoveOptionView) -> bool: return option.enabled and option.movement_cost == 5); assert_false(swap_options.is_empty(), "the detached public combat view enables an adjacent allied footprint as Castle's five-movement swap"); var swap_step := battle_session.submit_intent(PlayerIntent.combat_move(tactical.combat_view.active_actor_id, swap_options[0].destination)); assert_equal([swap_step.state, swap_step.interaction.kind, swap_step.interaction.body.yes_label, swap_step.interaction.body.no_label], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.YES_NO, "Swap Positions", "Attack Friend"], "manual movement opens Castle's typed friendly-collision choice"); var swap_boundary := battle_session.snapshot(); assert_not_null(swap_boundary, "the friendly-collision choice is a saveable committed boundary"); var resumed_swap := GameSession.new(); assert_equal(resumed_swap.restore(debug_content, swap_boundary).state, SessionStep.State.COMPLETED, "the friendly-collision choice restores without rerunning movement"); assert_true(resumed_swap.respond(InteractionResponse.yes_no(resumed_swap.view().pending_interaction, true)).events.any(func(event: DomainEvent) -> bool: return event.kind == &"combatants_swapped"), "accepting Swap Positions resumes the restored combat transaction exactly once"); battle_session = resumed_swap; var victory := battle_session.apply_debug_command(SessionDebugCommand.win_battle()); assert_true(victory.state != SessionStep.State.FAILED and victory.events.any(func(event: DomainEvent) -> bool: return event.kind == &"battle_completed" and event.payload.get("outcome") == "victory"), "debug victory enters the ordinary terminal battle and reward flow")
+
+	var malformed_requests: Array = [
+		[InteractionRequest.ACKNOWLEDGE, {"prompt": "Read this.", "journalEligible": true}],
+		[InteractionRequest.YES_NO, {"yesLabel": "Yes", "noLabel": "No", "yesId": 1}],
+		[InteractionRequest.INDEXED_CHOICE, {"prompt": "Choose.", "options": [{"label": 7}]}],
+		[InteractionRequest.CHARACTER_SELECTION, {"count": 1, "eligible": [{"id": "hero"}]}],
+		[InteractionRequest.ALLY_SELECTION, {"prompt": "Choose.", "maximum": 1, "selectedIds": [], "requiredIds": [], "candidates": [{"id": "ally", "name": "Ally", "classicMonsterId": 1}]}],
+		[InteractionRequest.SESSION_LIFECYCLE, {"operation": "quit-application", "prompt": "Quit?", "inCombat": false, "options": [{"action": "cancel", "label": 3}]}],
+	]
+	for malformed: Array in malformed_requests:
+		assert_equal(InteractionRequest.from_payload("malformed.contract", malformed[0], malformed[1]), null, "typed interaction request variants reject partial or malformed nested records")

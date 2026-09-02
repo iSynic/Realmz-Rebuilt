@@ -1,0 +1,101 @@
+[gd_scene format=3 uid="uid://c6inglyqe3c6v"]
+
+[ext_resource type="Script" uid="uid://c4lmfeiqvh15e" path="res://src/app/realmz_application.gd" id="1_application"]
+[ext_resource type="Script" uid="uid://cx16ce4so2bne" path="res://src/presentation/classic_map_presenter.gd" id="2_gxxd3"]
+[ext_resource type="PackedScene" path="res://src/presentation/interaction_presenter.tscn" id="3_uarpi"]
+[ext_resource type="PackedScene" path="res://src/presentation/classic_application_shell.tscn" id="4_shell"]
+[ext_resource type="Script" uid="uid://3njyl4c48r3i" path="res://src/presentation/classic_audio_presenter.gd" id="5_lvslj"]
+[ext_resource type="Texture2D" path="res://src/presentation/assets/ui/classic-charcoal-slate-tile.png" id="6_stone"]
+[ext_resource type="Theme" path="res://src/presentation/classic_ui_theme.tres" id="7_theme"]
+[ext_resource type="Script" path="res://src/presentation/classic_battlefield_presenter.gd" id="8_p3gde"]
+[ext_resource type="Script" path="res://src/app/startup_route_bridge.gd" id="9_startup"]
+
+[sub_resource type="StyleBoxFlat" id="InteractionStyle"]
+bg_color = Color(0.055, 0.063, 0.078, 0.985)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.84, 0.71, 0.36, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+content_margin_left = 18.0
+content_margin_top = 16.0
+content_margin_right = 18.0
+content_margin_bottom = 16.0
+
+[node name="RealmzApplication" type="Control" unique_id=180838614]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_application")
+theme = ExtResource("7_theme")
+
+[node name="Background" type="ColorRect" parent="." unique_id=968727885]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.035, 0.043, 0.055, 1)
+
+[node name="StoneTexture" type="TextureRect" parent="."]
+modulate = Color(0.78, 0.8, 0.8, 0.72)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture_repeat = 2
+texture = ExtResource("6_stone")
+expand_mode = 1
+stretch_mode = 1
+
+[node name="ExplorationMap" type="Control" parent="." unique_id=169771348]
+unique_name_in_owner = true
+z_index = 5
+clip_contents = true
+texture_filter = 1
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -275.0
+offset_top = -242.0
+offset_right = 255.0
+offset_bottom = 210.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("2_gxxd3")
+
+[node name="ClassicShell" parent="." unique_id=387710786 instance=ExtResource("4_shell")]
+
+[node name="InteractionPanel" parent="." instance=ExtResource("3_uarpi")]
+
+[node name="ClassicAudio" type="Node" parent="." unique_id=321473188]
+unique_name_in_owner = true
+script = ExtResource("5_lvslj")
+
+[node name="BattlefieldMap" type="Control" parent="." unique_id=1843424003]
+unique_name_in_owner = true
+z_index = 5
+texture_filter = 1
+clip_contents = true
+anchors_preset = 0
+mouse_filter = 2
+script = ExtResource("8_p3gde")
+
+[node name="StartupRouteBridge" type="Node" parent="."]
+script = ExtResource("9_startup")

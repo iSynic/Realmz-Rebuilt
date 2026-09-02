@@ -1,0 +1,43 @@
+{
+  "formatVersion": 1,
+  "decisionId": "FD-COMBAT-015",
+  "domain": "combat",
+  "affectedRule": "Stock Tangle Weed special 253 condition resolution",
+  "castle": {
+    "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+    "evidence": "source-control-flow",
+    "sources": [
+      {
+        "path": "src/realmz_orig/structs.h",
+        "symbol": "struct spell"
+      },
+      {
+        "path": "src/realmz_orig/resolvespell.c",
+        "symbol": "void resolvespell(void)"
+      }
+    ],
+    "applicationData": {
+      "commit": "ef95fcff40d81f14ac668d5e13466da4a51de6f4",
+      "path": "base/Realmz/Data Files/Data S",
+      "sha256": "f47776aadc0f4ebf42320e0aaedd39dd7b5a2c76c125a44e99ea461d962860e7",
+      "classicSpellId": 2412,
+      "name": "Tangle Weed",
+      "special": 253,
+      "targetType": 3,
+      "size": 14,
+      "queueIcon": 4,
+      "powerDurationMinimum": 1,
+      "powerDurationMaximum": 2
+    },
+    "observation": "Castle stores spell.special as unsigned char, converts it to a short with abs, and sends every special above 99 to condition[special - 101]. Stock special 253 therefore addresses condition slot 152 outside the forty-slot array instead of applying Tangle. The neighboring condition contract identifies special 3 as condition slot 2, Entangled."
+  },
+  "playerFacingProblem": "Casting the authored stock Tangle Weed can write outside combatant condition state instead of applying its named condition, risking corrupt state or a crash while leaving the spell unusable for deterministic parity.",
+  "chosenBehavior": "Preserve authored special 253 in immutable package content and behavior signatures, but normalize that otherwise impossible condition reference to special 3 at the combat-condition boundary. Every legal casting source then uses the ordinary target-type-3 area, queue, defense, duration, movement, save, and automation contracts.",
+  "tests": [
+    {
+      "path": "tests/core/test_combat_flow.gd",
+      "symbol": "func _test_public_tangle_weed_correction_matrix()"
+    }
+  ],
+  "legacyQuirk": "none"
+}

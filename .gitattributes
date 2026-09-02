@@ -1,0 +1,10 @@
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ogg binary
+*.mp3 binary
+*.wav binary
+*.realmz2 filter=lfs diff=lfs merge=lfs -text
+*.r2save binary
+src/presentation/assets/fonts/licenses/*.txt binary

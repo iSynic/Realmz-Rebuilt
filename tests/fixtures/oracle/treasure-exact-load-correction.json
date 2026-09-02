@@ -1,0 +1,28 @@
+{
+  "formatVersion": 1,
+  "decisionId": "FD-ECONOMY-002",
+  "evidence": "source-control-flow",
+  "castleCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "sources": [
+    {
+      "path": "src/realmz_orig/booty.c",
+      "symbol": "void booty(short mode)",
+      "range": "1544-1583"
+    }
+  ],
+  "inputs": {
+    "recipientLoad": 90,
+    "recipientMaximumLoad": 100,
+    "pendingItemCurrentWeight": 10,
+    "recipientItemCount": 0
+  },
+  "castleSourceObservation": {
+    "eligibilityExpression": "recipientLoad + itemBaseWeight < recipientMaximumLoad",
+    "assignmentAllowedAtExactMaximum": false
+  },
+  "realmz2ChosenResult": {
+    "eligibilityExpression": "recipientLoad + exactInstanceWeight <= recipientMaximumLoad",
+    "assignmentAllowedAtExactMaximum": true,
+    "resultingLoad": 100
+  }
+}

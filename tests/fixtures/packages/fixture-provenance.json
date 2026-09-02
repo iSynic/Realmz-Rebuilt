@@ -1,0 +1,16 @@
+{
+  "fixture_id": "realmz2-synthetic-compiler-preservation-v28",
+  "evidence_label": "runtime-integration",
+  "authoring": "synthetic Providence-authored data",
+  "commercial_payload": false,
+  "providence_commit": "efee09f5ce05de7000dacf20efb0ebbc72bcd047",
+  "schema_sha256": "12376856235a11f507b993835acad87b546f87b9ad519533967ed2701ddb89cd",
+  "castle_correction_commit": "ef95fcff40d81f14ac668d5e13466da4a51de6f4",
+  "application_data_s_sha256": "f47776aadc0f4ebf42320e0aaedd39dd7b5a2c76c125a44e99ea461d962860e7",
+  "package_bytes": 6394499,
+  "package_sha256": "20ad40f04b34a933c94aebc072cc9b10c539bd55314e8e4e080dd02395b32dd4",
+  "package_hash": "eb2a9249c532106aa5bfabcec7976b03ae94a7d8f9a237b44bfb27eda6a9fbfd",
+  "negative_fixture_sha256": "fef62d904df5847278ce72a24402c525e04fcbaf83d5821b750afb64fbccca72",
+  "negative_fixture_mutation": "content.json changes the synthetic Fixture Wand name without updating manifest integrity",
+  "generator": "cargo run --manifest-path src-tauri/Cargo.toml --example export_realmz2_fixture -- <output-directory>"
+}

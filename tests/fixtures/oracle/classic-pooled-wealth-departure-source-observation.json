@@ -1,0 +1,62 @@
+{
+  "formatVersion": 1,
+  "caseId": "economy.pooled-wealth-departure",
+  "evidence": "source-control-flow",
+  "castleCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "sources": [
+    {
+      "path": "src/realmz_orig/buttonchoice.c",
+      "symbol": "short buttonchoice(short skipin)",
+      "observation": "Entering the land movement loop calls checkmoneypool before destination input and passability, so pooled wealth is resolved even when the eventual movement attempt is blocked."
+    },
+    {
+      "path": "src/realmz_orig/checkmoneypool.c",
+      "symbol": "void checkmoneypool(void)",
+      "observation": "Without banking, question 6 offers distribution; accepting opens Swap, declining skips it, and both paths clear every remaining pooled denomination before returning to the caller, which continues ordinary movement processing."
+    },
+    {
+      "path": "src/realmz_orig/moveparty.c",
+      "symbol": "void moveparty(short forward)",
+      "observation": "The internal forward-move fallback repeats the no-bank guard: accepting question 6 opens Swap, clears the remainder, redraws, and returns before coordinate mutation; declining clears the pool and continues. Ordinary land and dungeon input normally call checkmoneypool before reaching this fallback."
+    },
+    {
+      "path": "src/realmz_orig/threed.c",
+      "symbol": "makemove:",
+      "observation": "Dungeon movement validates a nonzero direction and fatigue before checkmoneypool, but resolves the pool before camp/service clearing, wall passability, and movement time."
+    },
+    {
+      "path": "src/realmz_orig/question.c",
+      "symbol": "short question(short stringnum)",
+      "observation": "The question dialog quiets every channel and requests sound 20005 before returning No as zero or Yes as one. The text for STR# 135 entry 6 is not present in the committed source."
+    },
+    {
+      "path": "src/realmz_orig/swap.c",
+      "symbol": "void swap(void)",
+      "observation": "Direct Swap entry quiets every channel, requests sound 3003 unless reduced sound is enabled, supports Pool, Share, and exact transfers, and requests sound 141 on Done."
+    }
+  ],
+  "branches": [
+    {
+      "choice": "decline-distribution",
+      "outcome": "Clear every pooled denomination and continue the original movement attempt."
+    },
+    {
+      "choice": "accept-distribution",
+      "outcome": "Open Swap, clear every unassigned remainder when Swap closes, then continue the ordinary land or dungeon movement caller. The internal moveparty fallback has a distinct early-return branch."
+    }
+  ],
+  "expectedTrace": [
+    "detect nonzero pooled gold, gems, or jewelry without banking",
+    "quiet existing channels and request question sound 20005",
+    "persist one typed yes-or-no boundary with the original direction",
+    "decline by clearing the pool and resolving that direction once",
+    "or accept by opening typed Swap with sound 3003",
+    "apply Pool, Share, and exact transfers through core economy rules",
+    "persist every distribution mutation and pending response",
+    "close with sound 141, clear the remainder, and resume the saved ordinary movement"
+  ],
+  "unknowns": [
+    "The exact Classic question wording is stored in a resource string table not present in the pinned source tree; Realmz 2.0 uses explicitly synthetic wording until an authoritative resource or runtime observation is available.",
+    "Realmz 2.0 has no separately exposed caller corresponding to the internal moveparty fallback's accept-and-return branch; it is not substituted for ordinary checkmoneypool travel."
+  ]
+}

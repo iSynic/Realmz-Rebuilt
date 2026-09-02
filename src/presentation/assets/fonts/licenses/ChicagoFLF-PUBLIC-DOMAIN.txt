@@ -1,0 +1,9 @@
+ChicagoFLF
+
+Source: Realmz Castle resources/ChicagoFLF.ttf at commit
+491816ad60037394f92c428e99c004494d3c28b3.
+
+Embedded font notice from designer Robin Casady:
+ChicagoFLF and CheckboxFLF were returned to their authors when Casady & Greene,
+Inc. closed. Robin Casady created both faces, permits their unrestricted use,
+and considers them public domain.

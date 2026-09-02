@@ -1,0 +1,215 @@
+{
+  "schema_version": 8,
+  "selected_asset": {
+    "asset_id": "3f355030-0f8c-4d4e-b079-26ba8d3dbc32",
+    "label": "Realmz 2 Classic-wide charcoal slate",
+    "source_sha256": "19b3750d5a16960944b2bb9702b6c87079303c57dbd588a9d970bb93e94ea1e9",
+    "source_sha256_prefix": "19b3750d5a16",
+    "mode": "texture"
+  },
+  "decorative_assets": [
+    {
+      "asset_id": "8877b91f-4451-4254-97df-6d3d677444f7",
+      "label": "Realmz Rebuilt exploration gutter rail",
+      "source_sha256": "a028158e26694dc088c2075be572673e86b383eb4da6a54649ffc75c9607847c",
+      "source_sha256_prefix": "a028158e2669",
+      "source_width": 1324,
+      "source_height": 1324,
+      "generation_job_id": "e5e7e74c-a0c0-4fef-93fb-bcb38aa2fe6b",
+      "model": "gemini-3.1-flash-image",
+      "style_asset_id": "3f355030-0f8c-4d4e-b079-26ba8d3dbc32",
+      "mode": "ui",
+      "derivation": "alpha-bounds-594-0-135-1323-plus-system-drawing-bicubic-48x468",
+      "file": {
+        "path": "res://src/presentation/assets/ui/classic-exploration-rail.png",
+        "width": 48,
+        "height": 468,
+        "sha256": "62f91650d005c0eca117b66e7ff5ae26521b5993a5809a97dd6c19b7e33d3ec9"
+      }
+    },
+    {
+      "asset_id": "a37eadf1-ee93-4abf-9d48-90b9f8316261",
+      "label": "Realmz Rebuilt front-door intro frame",
+      "source_sha256": "2bd8594faccb531aa1c0a9d013e2136ccbfe6017d8f6d3ce00fb327327ae4878",
+      "source_sha256_prefix": "2bd8594faccb",
+      "source_width": 1024,
+      "source_height": 1024,
+      "generation_job_id": "cf5169b3-fb4e-4b08-b481-526698a25d30",
+      "model": "gemini-3.1-flash-image",
+      "style_asset_id": "3f355030-0f8c-4d4e-b079-26ba8d3dbc32",
+      "mode": "ui",
+      "derivation": "alpha-center-clear-181-181-661-661-plus-alpha-bounds-88-88-848-848-system-drawing-bicubic-512x512",
+      "file": {
+        "path": "res://src/presentation/assets/ui/classic-intro-frame.png",
+        "width": 512,
+        "height": 512,
+        "sha256": "fb5802230437d813a1cd7ca7a6cba147de60aaf408a1925af69e57680f68d802"
+      }
+    }
+  ],
+  "imagegen_assets": [
+    {
+      "asset_id": "exec-825b668b-b971-489b-9a8b-8fe7aa9aca14",
+      "label": "Realmz Rebuilt seamless exploration surround",
+      "provider": "openai-imagegen",
+      "mode": "stylized-concept",
+      "source_sha256": "b66be0cebf8121b60fd7bb5b22abdda565c6873054c854c7d9858489d32ddf02",
+      "source_sha256_prefix": "b66be0cebf81",
+      "source_width": 1254,
+      "source_height": 1254,
+      "generation_job_id": "exec-825b668b-b971-489b-9a8b-8fe7aa9aca14",
+      "derivation": "system-drawing-high-quality-bicubic-512x512-plus-64px-cosine-opposite-edge-feather",
+      "file": {
+        "path": "res://src/presentation/assets/ui/classic-exploration-surround-tile.png",
+        "width": 512,
+        "height": 512,
+        "sha256": "ab076b93bd4a0143c7bb2294baa19c5ff0a630151be27854b6b4f1a5abe073fa"
+      }
+    }
+  ],
+  "project_authored_vector_assets": [
+    {
+      "label": "Native scrollbar up step glyph",
+      "provider": "project-authored-svg",
+      "purpose": "Godot VScrollBar decrement region",
+      "path": "res://src/presentation/assets/ui/scroll-arrow-up.svg",
+      "width": 12,
+      "height": 12,
+      "sha256": "20a3cbfd665d1c62ac4f4443bb8e08bd1611cc8fc6fb4aebc383809c2eadbd3b"
+    },
+    {
+      "label": "Native scrollbar down step glyph",
+      "provider": "project-authored-svg",
+      "purpose": "Godot VScrollBar increment region",
+      "path": "res://src/presentation/assets/ui/scroll-arrow-down.svg",
+      "width": 12,
+      "height": 12,
+      "sha256": "30eaba313a7d5d0bd98356ed7818656b041d33c18c798ffbf6508ae0b033e610"
+    },
+    {
+      "label": "Native scrollbar left step glyph",
+      "provider": "project-authored-svg",
+      "purpose": "Godot HScrollBar decrement region",
+      "path": "res://src/presentation/assets/ui/scroll-arrow-left.svg",
+      "width": 12,
+      "height": 12,
+      "sha256": "79fe8635b6fb89c04a27f638e7cac854a6e4769c008b56865e2717004fd2b7b0"
+    },
+    {
+      "label": "Native scrollbar right step glyph",
+      "provider": "project-authored-svg",
+      "purpose": "Godot HScrollBar increment region",
+      "path": "res://src/presentation/assets/ui/scroll-arrow-right.svg",
+      "width": 12,
+      "height": 12,
+      "sha256": "82489c873c97899ba69a6ab44392acab104e0b4c12c1ce659aa2d47d19ee6cd7"
+    }
+  ],
+  "status_assets": [
+    {
+      "asset_id": "21a091ea-2e71-4008-a8c9-8feae6748acf",
+      "label": "Realmz Rebuilt save status glyph",
+      "source_sha256": "d3abbcff64e00bb37e079ebbaddfef4eb540035833ccaaabd6af45306c0602c6",
+      "source_sha256_prefix": "d3abbcff64e0",
+      "source_width": 32,
+      "source_height": 32,
+      "generation_job_id": "96215e51-9302-4d75-99df-2ad450a0b1f8",
+      "model": "gemini-3.1-flash-image",
+      "mode": "ui",
+      "derivation": "direct SpriteCook pixel output without post-processing",
+      "file": {
+        "path": "res://src/presentation/assets/ui/status/save-status.png",
+        "width": 32,
+        "height": 32,
+        "sha256": "d3abbcff64e00bb37e079ebbaddfef4eb540035833ccaaabd6af45306c0602c6"
+      }
+    },
+    {
+      "asset_id": "fb6d7b33-c005-45bc-a3d4-c7f485dc74d0",
+      "label": "Realmz Rebuilt journal status glyph",
+      "source_sha256": "e5639679999fd8f76b95e4d9035a75b98c0072e0516a470e3366a3c209df1ef5",
+      "source_sha256_prefix": "e5639679999f",
+      "source_width": 20,
+      "source_height": 20,
+      "generation_job_id": "8589ecb8-c383-4ffd-bf5a-e48849b65820",
+      "model": "gemini-3.1-flash-image",
+      "mode": "ui",
+      "derivation": "direct SpriteCook pixel output without post-processing",
+      "file": {
+        "path": "res://src/presentation/assets/ui/status/journal-status.png",
+        "width": 20,
+        "height": 20,
+        "sha256": "e5639679999fd8f76b95e4d9035a75b98c0072e0516a470e3366a3c209df1ef5"
+      }
+    }
+  ],
+  "command_assets": [
+    {
+      "asset_id": "project-owner-heal-bf5682d9efcb",
+      "label": "Realmz Rebuilt Heal command glyph",
+      "provider": "project-owner",
+      "license": "Project-Owner-Supplied",
+      "source_sha256": "bf5682d9efcb33a5251543bf7fb9bd92efa912abfdbd12dd715b1d05565a3112",
+      "source_sha256_prefix": "bf5682d9efcb",
+      "source_width": 73,
+      "source_height": 75,
+      "mode": "ui",
+      "derivation": "direct project-owner-supplied PNG; presentation crops transparent alpha bounds 13,18,47,40 without resampling",
+      "file": {
+        "path": "res://src/presentation/assets/ui/commands/heal.png",
+        "width": 73,
+        "height": 75,
+        "sha256": "bf5682d9efcb33a5251543bf7fb9bd92efa912abfdbd12dd715b1d05565a3112"
+      }
+    },
+    {
+      "asset_id": "project-owner-shop-0532bd956f4f",
+      "label": "Realmz Rebuilt transparent Shop command mark",
+      "provider": "project-owner",
+      "license": "Project-Owner-Supplied",
+      "source_sha256": "0532bd956f4fc890a25d3f6b3da14316679980fd44bb9cf1150371e0f2154106",
+      "source_sha256_prefix": "0532bd956f4f",
+      "source_width": 31,
+      "source_height": 33,
+      "mode": "ui",
+      "derivation": "direct project-owner-supplied transparent PNG isolating the source-proven PICT 225 Shop mark; presentation preserves the supplied pixels without masking or resampling",
+      "file": {
+        "path": "res://src/presentation/assets/ui/commands/shop.png",
+        "width": 31,
+        "height": 33,
+        "sha256": "0532bd956f4fc890a25d3f6b3da14316679980fd44bb9cf1150371e0f2154106"
+      }
+    }
+  ],
+  "derivation": {
+    "generator": "tools/ui-assets/build-classic-surfaces.ps1",
+    "algorithm": "system-drawing-bicubic-512-plus-cosine-feathered-512-tile-and-opaque-528px-bevel-v3",
+    "seamless_strategy": "64px-cosine-opposite-edge-feather"
+  },
+  "files": [
+    {
+      "path": "res://src/presentation/assets/ui/classic-charcoal-slate.png",
+      "width": 512,
+      "height": 512,
+      "sha256": "a74e15df0db5c2ecc8cb7ef993ce7183ce73384ffdbb9c55c606951e2e78feaa"
+    },
+    {
+      "path": "res://src/presentation/assets/ui/classic-charcoal-slate-tile.png",
+      "width": 512,
+      "height": 512,
+      "sha256": "5dcb9790b5dddcf06c2c15d13f10a46317b0f39b16214c57d185493e46484949"
+    },
+    {
+      "path": "res://src/presentation/assets/ui/classic-raised-frame.png",
+      "width": 528,
+      "height": 528,
+      "sha256": "975be046918b3f18ef1178d04778382c1ccf98af083476062bd3eaddfb2a7158"
+    },
+    {
+      "path": "res://src/presentation/assets/ui/classic-inset-frame.png",
+      "width": 528,
+      "height": 528,
+      "sha256": "8ddf7d4573cf164ae3806d8aa56b6f421f5fa3c2af27679f6f0f690e200f73bc"
+    }
+  ]
+}

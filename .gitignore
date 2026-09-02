@@ -1,0 +1,26 @@
+.godot/
+.mcp.json
+*.log
+build/
+dist/
+artifacts/
+test-results/
+release-evidence/
+*.bundle
+*.pyc
+__pycache__/
+user-data/
+*.r2save
+*.r2save.bak
+*.realmz2
+!tests/fixtures/packages/*.realmz2
+!src/infrastructure/characters/realmz-classic-character-library.realmz2
+!src/infrastructure/campaigns/*.realmz2
+
+# Local oracle/reference worktrees are never repository content.
+.references/
+
+# Local source-intelligence workspaces and generated browsers are not product source.
+.ua/
+.understand/
+docs/codemap/

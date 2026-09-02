@@ -1,0 +1,17 @@
+[remap]
+
+importer="font_data_bmfont"
+type="FontFile"
+uid="uid://gxmax4dhdcco"
+path="res://.godot/imported/Theldrow-Classic.fnt-16987b34b76d0ff5bca11f392d066c00.fontdata"
+
+[deps]
+
+source_file="res://src/presentation/assets/fonts/Theldrow-Classic.fnt"
+dest_files=["res://.godot/imported/Theldrow-Classic.fnt-16987b34b76d0ff5bca11f392d066c00.fontdata"]
+
+[params]
+
+fallbacks=[]
+compress=true
+scaling_mode=2

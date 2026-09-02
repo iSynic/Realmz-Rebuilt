@@ -1,0 +1,42 @@
+{
+  "formatVersion": 1,
+  "caseId": "economy.classic-bank-swap",
+  "evidence": "source-control-flow",
+  "castleCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "sources": [
+    {
+      "path": "src/realmz_orig/newland.c",
+      "symbol": "case 49",
+      "observation": "Opcode 49 enables banking and does not open a separate amount-transfer workspace."
+    },
+    {
+      "path": "src/realmz_orig/buttonchoice.c",
+      "symbol": "if (theControl == swapbut)",
+      "observation": "The ordinary Swap button requests sound 141 before entering the modal."
+    },
+    {
+      "path": "src/realmz_orig/swap.c",
+      "symbol": "void swap(void)",
+      "observation": "Opening Swap quiets every sound channel, requests sound 3003 unless reduced sound is enabled, and while banking is available moves all banked gold, gems, and jewelry into the shared pool; transfers use five gold or one gem or jewelry; Done requests sound 141 and performs no bank mutation."
+    },
+    {
+      "path": "src/realmz_orig/moveparty.c",
+      "symbol": "void moveparty(short forward)",
+      "observation": "Forward location departure returns every remaining pooled denomination to the bank and disables banking."
+    },
+    {
+      "path": "src/realmz_orig/checkmoneypool.c",
+      "symbol": "void checkmoneypool(void)",
+      "observation": "Location cleanup also returns the complete pool to the bank and disables banking."
+    }
+  ],
+  "expectedTrace": [
+    "enable banking",
+    "request button sound 141",
+    "quiet existing channels and request modal sound 3003",
+    "move all banked denominations to the pool once",
+    "perform Pool, Share, or exact character transfers",
+    "close Swap without re-banking",
+    "return the remaining pool to the bank on location departure"
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "formatVersion": 1,
+  "decisionId": "FD-APPLICATION-002",
+  "evidence": "source-control-flow",
+  "castleCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "sources": [
+    {
+      "path": "src/realmz_orig/handlemenuchoice.c",
+      "symbol": "short DoQuitRealmz(void)"
+    }
+  ],
+  "castleSourceObservation": {
+    "outsideCombatYes": "save and continue quitting Realmz",
+    "outsideCombatNo": "skip saving and continue quitting Realmz",
+    "outsideCombatCancel": false,
+    "inCombatNo": "cancel Quit",
+    "inCombatSave": false,
+    "globalQuitMacroRuns": false
+  },
+  "realmz2ChosenResult": {
+    "outsideCombatChoices": ["save-and-quit", "quit-without-saving", "cancel"],
+    "inCombatChoices": ["quit-without-saving", "cancel"],
+    "noSessionChoices": ["quit-without-saving", "cancel"],
+    "saveFailureKeepsApplicationOpen": true,
+    "windowCloseUsesSamePrompt": true,
+    "reason": "Explicitly separating discard from cancel prevents an ambiguous negative response or window-close request from terminating the application accidentally, while retaining Castle's save-and-quit, no-save quit, and combat no-save outcomes."
+  }
+}

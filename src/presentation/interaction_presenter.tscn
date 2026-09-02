@@ -1,0 +1,81 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/presentation/interaction_presenter.gd" id="1_presenter"]
+[ext_resource type="Texture2D" path="res://src/presentation/assets/ui/classic-charcoal-slate-tile.png" id="2_stone"]
+
+[node name="InteractionPanel" type="PanelContainer"]
+unique_name_in_owner = true
+visible = false
+z_index = 80
+mouse_filter = 0
+theme_type_variation = &"ClassicInset"
+script = ExtResource("1_presenter")
+
+[node name="StageOpaqueBacking" type="ColorRect" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.105882, 0.109804, 0.105882, 1)
+
+[node name="StageBacking" type="TextureRect" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture_repeat = 2
+texture = ExtResource("2_stone")
+expand_mode = 1
+stretch_mode = 1
+
+[node name="InteractionScroll" type="ScrollContainer" parent="."]
+layout_mode = 2
+mouse_filter = 1
+horizontal_scroll_mode = 0
+follow_focus = true
+
+[node name="InteractionContent" type="BoxContainer" parent="InteractionScroll"]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+mouse_filter = 1
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="PromptColumn" type="VBoxContainer" parent="InteractionScroll/InteractionContent"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 1
+theme_override_constants/separation = 4
+
+[node name="InteractionHeading" type="Label" parent="InteractionScroll/InteractionContent/PromptColumn"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+mouse_filter = 1
+theme_type_variation = &"ClassicHeading"
+
+[node name="InteractionPrompt" type="Label" parent="InteractionScroll/InteractionContent/PromptColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 1
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.95, 0.93, 0.83, 1)
+theme_override_font_sizes/font_size = 18
+text = "Choose an option"
+autowrap_mode = 2
+
+[node name="InteractionOptions" type="VBoxContainer" parent="InteractionScroll/InteractionContent"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 1
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8

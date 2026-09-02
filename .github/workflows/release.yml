@@ -1,0 +1,154 @@
+name: draft prerelease
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    name: Verify tag (${{ matrix.platform }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: Windows x86_64
+          - os: ubuntu-latest
+            platform: Linux x86_64
+          - os: macos-latest
+            platform: macOS universal
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+          fetch-depth: 1
+      - uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.7.1
+          use-dotnet: false
+          include-templates: false
+      - name: Verify tagged source
+        shell: pwsh
+        run: |
+          if ((git rev-parse HEAD).Trim() -ne '${{ github.sha }}') { throw 'Checkout does not match the tagged commit.' }
+          ./tools/verify_public_source.ps1
+          ./tools/verify.ps1 -GodotPath (Get-Command godot).Source
+
+  build:
+    name: Build tag (${{ matrix.platform }})
+    needs: verify
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: Windows x86_64
+            preset: Windows Desktop
+            output: dist/windows/Realmz Rebuilt.exe
+            artifactPath: dist/windows
+            package: release/realmz-rebuilt-windows-x86_64.zip
+            upload: release-windows
+          - os: ubuntu-latest
+            platform: Linux x86_64
+            preset: Linux
+            output: dist/linux/Realmz Rebuilt.x86_64
+            artifactPath: dist/linux
+            package: release/realmz-rebuilt-linux-x86_64.tar.gz
+            upload: release-linux
+          - os: macos-latest
+            platform: macOS universal
+            preset: macOS
+            output: dist/macos/Realmz Rebuilt.zip
+            artifactPath: dist/macos
+            package: release/realmz-rebuilt-macos-universal.zip
+            upload: release-macos
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+          fetch-depth: 1
+      - uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.7.1
+          use-dotnet: false
+          include-templates: true
+      - name: Export tagged runtime
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path (Split-Path '${{ matrix.output }}') | Out-Null
+          New-Item -ItemType Directory -Force -Path release | Out-Null
+          $exportLog = Join-Path (Split-Path '${{ matrix.output }}') 'export.log'
+          $output = & (Get-Command godot).Source --headless --path . --export-release '${{ matrix.preset }}' '${{ matrix.output }}' 2>&1
+          $exitCode = $LASTEXITCODE
+          $output | Tee-Object -FilePath $exportLog
+          if ($exitCode -ne 0) { throw "Godot export failed with exit code $exitCode." }
+          ./tools/verify_release_artifact.ps1 -Preset '${{ matrix.preset }}' -Output '${{ matrix.output }}' -ExportLog $exportLog
+      - name: Native startup and package
+        shell: pwsh
+        run: |
+          $log = Join-Path '${{ matrix.artifactPath }}' 'smoke.log'
+          if ('${{ runner.os }}' -eq 'Windows') {
+            $process = Start-Process -FilePath '${{ matrix.output }}' -ArgumentList @('--headless', '--quit-after', '2', '--log-file', $log) -WindowStyle Hidden -Wait -PassThru
+            if ($process.ExitCode -ne 0) { throw "Windows startup failed: $($process.ExitCode)" }
+            Compress-Archive -Path '${{ matrix.artifactPath }}/*' -DestinationPath '${{ matrix.package }}'
+          } elseif ('${{ runner.os }}' -eq 'Linux') {
+            chmod +x '${{ matrix.output }}'
+            & './${{ matrix.output }}' --headless --quit-after 2 --log-file $log
+            if ($LASTEXITCODE -ne 0) { throw "Linux startup failed: $LASTEXITCODE" }
+            tar -czf '${{ matrix.package }}' -C '${{ matrix.artifactPath }}' .
+          } else {
+            $extracted = Join-Path $env:RUNNER_TEMP 'realmz-rebuilt-native-smoke'
+            Expand-Archive -LiteralPath '${{ matrix.output }}' -DestinationPath $extracted
+            $binary = Join-Path $extracted 'Realmz Rebuilt.app/Contents/MacOS/Realmz Rebuilt'
+            chmod +x $binary
+            & $binary --headless --quit-after 2 --log-file $log
+            if ($LASTEXITCODE -ne 0) { throw "macOS startup failed: $LASTEXITCODE" }
+            Copy-Item -LiteralPath '${{ matrix.output }}' -Destination '${{ matrix.package }}'
+          }
+          $content = Get-Content -Raw -LiteralPath $log
+          if ($content -match '(?m)^(?:ERROR|SCRIPT ERROR):') { throw 'Native startup log contains an error.' }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.upload }}
+          path: ${{ matrix.package }}
+          if-no-files-found: error
+
+  draft:
+    name: Create reviewed draft prerelease
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+          fetch-depth: 1
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: release
+          merge-multiple: true
+      - name: Generate checksums
+        shell: pwsh
+        run: |
+          $lines = Get-ChildItem -LiteralPath release -File | Sort-Object Name | ForEach-Object {
+            "{0}  {1}" -f (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant(), $_.Name
+          }
+          [System.IO.File]::WriteAllLines((Join-Path (Resolve-Path release) 'SHA256SUMS'), $lines, [System.Text.UTF8Encoding]::new($false))
+      - name: Create draft prerelease
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Realmz Rebuilt 0.1.0 Beta 1
+          draft: true
+          prerelease: true
+          generate_release_notes: true
+          files: |
+            release/realmz-rebuilt-windows-x86_64.zip
+            release/realmz-rebuilt-linux-x86_64.tar.gz
+            release/realmz-rebuilt-macos-universal.zip
+            release/SHA256SUMS

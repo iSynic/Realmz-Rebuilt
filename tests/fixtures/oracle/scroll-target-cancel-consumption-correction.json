@@ -1,0 +1,29 @@
+{
+  "formatVersion": 1,
+  "decisionId": "FD-SPELL-002",
+  "evidence": "source-control-flow",
+  "castleCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "sources": [
+    {
+      "path": "src/realmz_orig/getscroll.c",
+      "symbol": "short getscroll(void)",
+      "range": "185-217"
+    },
+    {
+      "path": "src/realmz_orig/buttonchoice.c",
+      "symbol": "short buttonchoice(void)",
+      "range": "603-642"
+    }
+  ],
+  "castleSourceObservation": {
+    "validScrollClearedBeforeTargetSelection": true,
+    "cancelledTargetSelectionRestoresScroll": false,
+    "effectResolvedAfterCancellation": false
+  },
+  "realmz2ChosenResult": {
+    "scrollClearedAfterValidTargetSelection": true,
+    "invalidOrCancelledSelectionPreservesScroll": true,
+    "effectRandomnessBeginsAfterValidTargetSelection": true,
+    "appliesToFieldAndCombatUse": true
+  }
+}

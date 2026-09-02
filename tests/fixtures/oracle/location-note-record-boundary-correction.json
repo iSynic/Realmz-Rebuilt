@@ -1,0 +1,41 @@
+{
+  "formatVersion": 1,
+  "decisionId": "FD-MAPS-001",
+  "evidence": "source-control-flow",
+  "castleCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "sources": [
+    {
+      "path": "src/realmz_orig/structs.h",
+      "symbol": "struct note {",
+      "range": "173-179"
+    },
+    {
+      "path": "src/realmz_orig/handlemenuchoice.c",
+      "symbol": "if (notenum > 500)",
+      "range": "565-645"
+    },
+    {
+      "path": "src/realmz_orig/handlemenuchoice.c",
+      "symbol": "if (notenum == orignoteid) /**** save note only if on original ****/",
+      "range": "755-799"
+    }
+  ],
+  "inputs": {
+    "separateRecordStreams": ["land WN", "dungeon DN"],
+    "searchableRecordOrdinals": [0, 500],
+    "textField": "Str255",
+    "nativeLocationId": "10000 * level + x * 90 + y"
+  },
+  "castleSourceObservation": {
+    "search": "Castle scans record ordinals zero through 500 and jumps to the append path once notenum becomes 501.",
+    "append": "The append path does not reject a full stream, so an additional record can be written after the last record the same workflow will search.",
+    "result": "A note appended beyond the searchable prefix can become unreachable and later appends can continue growing the working note file."
+  },
+  "realmz2ChosenResult": {
+    "capacityPerMapKind": 501,
+    "recordOrder": "preserve a separate stable ordinal for land and dungeon notes and reuse a free ordinal after deletion",
+    "overflow": "reject a new note transactionally before mutating session state",
+    "restore": "reject duplicate ordinals, out-of-range ordinals, mismatched map metadata, and over-capacity state",
+    "presentationDraft": "Revert draft is presentation-owned and does not claim Castle dialog-item cancel semantics"
+  }
+}

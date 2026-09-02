@@ -1,0 +1,142 @@
+{
+  "schemaVersion": 1,
+  "unitsPerEm": 2048,
+  "verticalZones": {
+    "capitalFlat": {
+      "characters": "ABDEFHIKLMNPRTUVWXYZ",
+      "yMin": 0,
+      "yMax": 1600
+    },
+    "capitalRound": {
+      "characters": "CGOS",
+      "yMin": -16,
+      "yMax": 1616
+    },
+    "capitalJ": {
+      "characters": "J",
+      "yMin": -128,
+      "yMax": 1600
+    },
+    "capitalQ": {
+      "characters": "Q",
+      "yMin": -192,
+      "yMax": 1616
+    },
+    "lowercaseFlat": {
+      "characters": "amnruvwxz",
+      "yMin": 0,
+      "yMax": 1100
+    },
+    "lowercaseRound": {
+      "characters": "ceos",
+      "yMin": -16,
+      "yMax": 1116
+    },
+    "lowercaseAscender": {
+      "characters": "bdfkl",
+      "yMin": 0,
+      "yMax": 1560
+    },
+    "lowercaseH": {
+      "characters": "h",
+      "yMin": -48,
+      "yMax": 1640
+    },
+    "lowercaseI": {
+      "characters": "i",
+      "yMin": 0,
+      "yMax": 1440
+    },
+    "lowercaseJ": {
+      "characters": "j",
+      "yMin": -512,
+      "yMax": 1440
+    },
+    "lowercaseT": {
+      "characters": "t",
+      "yMin": 0,
+      "yMax": 1375
+    },
+    "lowercaseDescender": {
+      "characters": "gpqy",
+      "yMin": -512,
+      "yMax": 1116
+    }
+  },
+  "utilityVerticalZones": {
+    "figures": {
+      "characters": "0123456789",
+      "yMin": 0,
+      "yMax": 1600
+    }
+  },
+  "horizontal": {
+    "capitalMaxWidthRatio": 0.86,
+    "widthRatios": {
+      "A": 0.84,
+      "H": 0.86,
+      "I": 0.44,
+      "b": 0.75,
+      "e": 0.75,
+      "h": 0.82,
+      "o": 0.75
+    },
+    "offsetRatios": {
+      "A": -0.03,
+      "H": -0.02,
+      "e": 0.02,
+      "h": 0.015
+    },
+    "minimumCapitalLeftRatio": 0.048,
+    "minimumCapitalRightRatio": 0.058,
+    "specialMinimumRightRatios": {
+      "A": 0.108,
+      "H": 0.088
+    },
+    "weightExpansionUnits": {
+      "capitalX": 34,
+      "capitalY": 24
+    }
+  },
+  "hierarchy": {
+    "capHeight": 1600,
+    "xHeight": 1100,
+    "maximumXHeightToCapHeightRatio": 0.7,
+    "minimumHAboveCap": 32,
+    "minimumHBelowBaseline": 32
+  },
+  "pairMinimumGapUnits": {
+    "As": 220,
+    "Ha": 200,
+    "He": 230,
+    "Hh": 180
+  },
+  "inkDensity": {
+    "capitalRange": [
+      0.24,
+      0.72
+    ],
+    "lowercaseRange": [
+      0.43,
+      0.71
+    ],
+    "capitalReferenceCharacters": "BDEHKMNPRU",
+    "lowercaseReferenceCharacters": "bdeghnopu",
+    "minimumReferenceMedianRatio": 0.82,
+    "minimumMixedCasePairRatios": {
+      "Aa": 0.65,
+      "Gg": 0.67,
+      "Hh": 0.86,
+      "Nn": 0.72,
+      "Rr": 0.72,
+      "Ss": 0.72
+    }
+  },
+  "specimens": [
+    "Assault",
+    "Hearth",
+    "High",
+    "Aa Hh Ee",
+    "The quick brown fox jumps over the lazy dog."
+  ]
+}

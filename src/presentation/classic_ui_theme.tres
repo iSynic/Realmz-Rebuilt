@@ -1,0 +1,483 @@
+[gd_resource type="Theme" load_steps=43 format=3]
+
+[ext_resource type="Texture2D" path="res://src/presentation/assets/ui/classic-raised-frame.png" id="1_raised"]
+[ext_resource type="Texture2D" path="res://src/presentation/assets/ui/classic-inset-frame.png" id="2_inset"]
+[ext_resource type="FontFile" path="res://src/presentation/assets/fonts/AlegreyaSans-Regular.ttf" id="3_ui"]
+[ext_resource type="FontFile" path="res://src/presentation/assets/fonts/AlegreyaSans-Bold.ttf" id="4_ui_bold"]
+[ext_resource type="FontFile" path="res://src/presentation/assets/fonts/Alegreya-Variable.ttf" id="5_narrative"]
+[ext_resource type="FontFile" path="res://src/presentation/assets/fonts/BlackChancery-Realmz.ttf" id="6_button"]
+[ext_resource type="Texture2D" path="res://src/presentation/assets/ui/scroll-arrow-up.svg" id="7_scroll_up"]
+[ext_resource type="Texture2D" path="res://src/presentation/assets/ui/scroll-arrow-down.svg" id="8_scroll_down"]
+[ext_resource type="Texture2D" path="res://src/presentation/assets/ui/scroll-arrow-left.svg" id="9_scroll_left"]
+[ext_resource type="Texture2D" path="res://src/presentation/assets/ui/scroll-arrow-right.svg" id="10_scroll_right"]
+
+[sub_resource type="StyleBoxTexture" id="RaisedPanel"]
+texture = ExtResource("1_raised")
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
+texture_margin_left = 8.0
+texture_margin_top = 8.0
+texture_margin_right = 8.0
+texture_margin_bottom = 8.0
+content_margin_left = 10.0
+content_margin_top = 8.0
+content_margin_right = 10.0
+content_margin_bottom = 8.0
+
+[sub_resource type="StyleBoxTexture" id="InsetPanel"]
+texture = ExtResource("2_inset")
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
+texture_margin_left = 8.0
+texture_margin_top = 8.0
+texture_margin_right = 8.0
+texture_margin_bottom = 8.0
+content_margin_left = 10.0
+content_margin_top = 8.0
+content_margin_right = 10.0
+content_margin_bottom = 8.0
+
+[sub_resource type="StyleBoxTexture" id="FooterCommandWellPanel"]
+texture = ExtResource("2_inset")
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
+texture_margin_left = 8.0
+texture_margin_top = 8.0
+texture_margin_right = 8.0
+texture_margin_bottom = 8.0
+content_margin_left = 5.0
+content_margin_top = 3.0
+content_margin_right = 5.0
+content_margin_bottom = 3.0
+
+[sub_resource type="StyleBoxTexture" id="SpellTargetBadgePanel"]
+texture = ExtResource("2_inset")
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
+texture_margin_left = 8.0
+texture_margin_top = 8.0
+texture_margin_right = 8.0
+texture_margin_bottom = 8.0
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
+
+[sub_resource type="StyleBoxFlat" id="ContentWell"]
+bg_color = Color(0.012, 0.016, 0.018, 0.96)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.26, 0.31, 0.32, 1)
+content_margin_left = 10.0
+content_margin_top = 8.0
+content_margin_right = 10.0
+content_margin_bottom = 8.0
+
+[sub_resource type="StyleBoxFlat" id="PopupPanel"]
+bg_color = Color(0.045, 0.052, 0.052, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.32, 0.36, 0.37, 1)
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
+
+[sub_resource type="StyleBoxTexture" id="ButtonNormal"]
+texture = ExtResource("1_raised")
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
+texture_margin_left = 8.0
+texture_margin_top = 8.0
+texture_margin_right = 8.0
+texture_margin_bottom = 8.0
+content_margin_left = 9.0
+content_margin_top = 5.0
+content_margin_right = 9.0
+content_margin_bottom = 5.0
+modulate_color = Color(0.76, 0.79, 0.79, 1)
+
+[sub_resource type="StyleBoxTexture" id="ButtonHover"]
+texture = ExtResource("1_raised")
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
+texture_margin_left = 8.0
+texture_margin_top = 8.0
+texture_margin_right = 8.0
+texture_margin_bottom = 8.0
+content_margin_left = 9.0
+content_margin_top = 5.0
+content_margin_right = 9.0
+content_margin_bottom = 5.0
+modulate_color = Color(0.92, 0.98, 1, 1)
+
+[sub_resource type="StyleBoxTexture" id="ButtonPressed"]
+texture = ExtResource("2_inset")
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
+texture_margin_left = 8.0
+texture_margin_top = 8.0
+texture_margin_right = 8.0
+texture_margin_bottom = 8.0
+content_margin_left = 10.0
+content_margin_top = 6.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+
+[sub_resource type="StyleBoxTexture" id="ButtonDisabled"]
+texture = ExtResource("2_inset")
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
+texture_margin_left = 8.0
+texture_margin_top = 8.0
+texture_margin_right = 8.0
+texture_margin_bottom = 8.0
+content_margin_left = 9.0
+content_margin_top = 5.0
+content_margin_right = 9.0
+content_margin_bottom = 5.0
+modulate_color = Color(0.35, 0.37, 0.37, 0.82)
+
+[sub_resource type="StyleBoxTexture" id="BattleSummaryInset"]
+texture = ExtResource("2_inset")
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
+texture_margin_left = 8.0
+texture_margin_top = 8.0
+texture_margin_right = 8.0
+texture_margin_bottom = 8.0
+content_margin_left = 6.0
+content_margin_top = 3.0
+content_margin_right = 6.0
+content_margin_bottom = 3.0
+
+[sub_resource type="StyleBoxTexture" id="BattleButtonNormal"]
+texture = ExtResource("1_raised")
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
+texture_margin_left = 8.0
+texture_margin_top = 8.0
+texture_margin_right = 8.0
+texture_margin_bottom = 8.0
+content_margin_left = 5.0
+content_margin_top = 2.0
+content_margin_right = 5.0
+content_margin_bottom = 2.0
+modulate_color = Color(0.76, 0.79, 0.79, 1)
+
+[sub_resource type="StyleBoxTexture" id="BattleButtonHover"]
+texture = ExtResource("1_raised")
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
+texture_margin_left = 8.0
+texture_margin_top = 8.0
+texture_margin_right = 8.0
+texture_margin_bottom = 8.0
+content_margin_left = 5.0
+content_margin_top = 2.0
+content_margin_right = 5.0
+content_margin_bottom = 2.0
+modulate_color = Color(0.92, 0.98, 1, 1)
+
+[sub_resource type="StyleBoxTexture" id="BattleButtonPressed"]
+texture = ExtResource("2_inset")
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
+texture_margin_left = 8.0
+texture_margin_top = 8.0
+texture_margin_right = 8.0
+texture_margin_bottom = 8.0
+content_margin_left = 6.0
+content_margin_top = 3.0
+content_margin_right = 4.0
+content_margin_bottom = 1.0
+
+[sub_resource type="StyleBoxTexture" id="BattleButtonDisabled"]
+texture = ExtResource("2_inset")
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
+texture_margin_left = 8.0
+texture_margin_top = 8.0
+texture_margin_right = 8.0
+texture_margin_bottom = 8.0
+content_margin_left = 5.0
+content_margin_top = 2.0
+content_margin_right = 5.0
+content_margin_bottom = 2.0
+modulate_color = Color(0.35, 0.37, 0.37, 0.82)
+
+[sub_resource type="StyleBoxFlat" id="Focus"]
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.99, 0.89, 0.38, 1)
+expand_margin_left = 2.0
+expand_margin_top = 2.0
+expand_margin_right = 2.0
+expand_margin_bottom = 2.0
+
+[sub_resource type="StyleBoxFlat" id="LineEdit"]
+bg_color = Color(0.012, 0.016, 0.018, 0.98)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.32, 0.38, 0.39, 1)
+content_margin_left = 8.0
+content_margin_top = 5.0
+content_margin_right = 8.0
+content_margin_bottom = 5.0
+
+[sub_resource type="StyleBoxFlat" id="Selection"]
+bg_color = Color(0.15, 0.34, 0.4, 0.72)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.46, 0.84, 0.91, 1)
+
+[sub_resource type="StyleBoxEmpty" id="Empty"]
+
+[sub_resource type="StyleBoxFlat" id="MenuNormal"]
+bg_color = Color(0, 0, 0, 0)
+content_margin_left = 7.0
+content_margin_top = 2.0
+content_margin_right = 7.0
+content_margin_bottom = 2.0
+
+[sub_resource type="StyleBoxFlat" id="MenuHover"]
+bg_color = Color(0.13, 0.15, 0.15, 0.94)
+border_width_bottom = 1
+border_color = Color(0.48, 0.43, 0.22, 1)
+content_margin_left = 7.0
+content_margin_top = 2.0
+content_margin_right = 7.0
+content_margin_bottom = 2.0
+
+[sub_resource type="StyleBoxFlat" id="MenuPressed"]
+bg_color = Color(0.045, 0.052, 0.052, 0.98)
+border_width_bottom = 1
+border_color = Color(0.99, 0.89, 0.38, 1)
+content_margin_left = 7.0
+content_margin_top = 2.0
+content_margin_right = 7.0
+content_margin_bottom = 2.0
+
+[sub_resource type="StyleBoxFlat" id="MenuDisabled"]
+bg_color = Color(0, 0, 0, 0)
+content_margin_left = 7.0
+content_margin_top = 2.0
+content_margin_right = 7.0
+content_margin_bottom = 2.0
+
+[sub_resource type="AtlasTexture" id="OpenRightFrameTexture"]
+atlas = ExtResource("1_raised")
+region = Rect2(0, 0, 520, 528)
+
+[sub_resource type="StyleBoxTexture" id="OpenRightPanel"]
+texture = SubResource("OpenRightFrameTexture")
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
+texture_margin_left = 8.0
+texture_margin_top = 8.0
+texture_margin_bottom = 8.0
+content_margin_left = 10.0
+content_margin_top = 8.0
+content_margin_right = 10.0
+content_margin_bottom = 8.0
+
+[sub_resource type="StyleBoxEmpty" id="SharedStoneSurface"]
+content_margin_left = 10.0
+content_margin_top = 8.0
+content_margin_right = 10.0
+content_margin_bottom = 8.0
+
+[sub_resource type="StyleBoxFlat" id="TextboxOverlaySurface"]
+bg_color = Color(0.012, 0.016, 0.018, 1)
+content_margin_left = 10.0
+content_margin_top = 8.0
+content_margin_right = 10.0
+content_margin_bottom = 8.0
+
+[sub_resource type="StyleBoxFlat" id="ItemLedgerPanel"]
+bg_color = Color(0.965, 0.957, 0.918, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.38, 0.4, 0.39, 1)
+content_margin_left = 7.0
+content_margin_top = 6.0
+content_margin_right = 7.0
+content_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxFlat" id="ItemLedgerRow"]
+bg_color = Color(0.995, 0.992, 0.976, 1)
+border_width_bottom = 1
+border_color = Color(0.82, 0.81, 0.76, 1)
+content_margin_left = 4.0
+content_margin_top = 2.0
+content_margin_right = 4.0
+content_margin_bottom = 2.0
+
+[sub_resource type="StyleBoxFlat" id="ItemLedgerSelectedRow"]
+bg_color = Color(1, 0.944, 0.72, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.76, 0.6, 0.13, 1)
+content_margin_left = 3.0
+content_margin_top = 1.0
+content_margin_right = 3.0
+content_margin_bottom = 1.0
+
+[sub_resource type="StyleBoxFlat" id="ItemLedgerButtonNormal"]
+bg_color = Color(0, 0, 0, 0)
+content_margin_left = 4.0
+content_margin_top = 2.0
+content_margin_right = 4.0
+content_margin_bottom = 2.0
+
+[sub_resource type="StyleBoxFlat" id="ItemLedgerButtonHover"]
+bg_color = Color(0.77, 0.9, 0.94, 0.6)
+content_margin_left = 4.0
+content_margin_top = 2.0
+content_margin_right = 4.0
+content_margin_bottom = 2.0
+
+[resource]
+default_font = ExtResource("3_ui")
+default_font_size = 15
+Button/colors/font_color = Color(0.94, 0.94, 0.9, 1)
+Button/colors/font_hover_color = Color(1, 0.92, 0.45, 1)
+Button/colors/font_pressed_color = Color(1, 0.92, 0.45, 1)
+Button/colors/font_disabled_color = Color(0.47, 0.5, 0.5, 1)
+Button/fonts/font = ExtResource("3_ui")
+Button/styles/normal = SubResource("ButtonNormal")
+Button/styles/hover = SubResource("ButtonHover")
+Button/styles/pressed = SubResource("ButtonPressed")
+Button/styles/disabled = SubResource("ButtonDisabled")
+Button/styles/focus = SubResource("Focus")
+BattleCommandButton/base_type = &"Button"
+BattleCommandButton/font_sizes/font_size = 13
+BattleCommandButton/styles/normal = SubResource("BattleButtonNormal")
+BattleCommandButton/styles/hover = SubResource("BattleButtonHover")
+BattleCommandButton/styles/pressed = SubResource("BattleButtonPressed")
+BattleCommandButton/styles/disabled = SubResource("BattleButtonDisabled")
+BattleCommandButton/styles/focus = SubResource("Focus")
+ClassicChoiceButton/base_type = &"Button"
+ClassicChoiceButton/font_sizes/font_size = 16
+ClassicChoiceButton/styles/normal = SubResource("BattleButtonNormal")
+ClassicChoiceButton/styles/hover = SubResource("BattleButtonHover")
+ClassicChoiceButton/styles/pressed = SubResource("BattleButtonPressed")
+ClassicChoiceButton/styles/disabled = SubResource("BattleButtonDisabled")
+ClassicChoiceButton/styles/focus = SubResource("Focus")
+BattleSummaryInset/base_type = &"PanelContainer"
+BattleSummaryInset/styles/panel = SubResource("BattleSummaryInset")
+CheckButton/colors/font_color = Color(0.92, 0.92, 0.88, 1)
+CheckButton/fonts/font = ExtResource("3_ui")
+Label/colors/font_color = Color(0.91, 0.91, 0.87, 1)
+Label/fonts/font = ExtResource("3_ui")
+LineEdit/colors/font_color = Color(0.94, 0.94, 0.9, 1)
+LineEdit/colors/font_placeholder_color = Color(0.52, 0.57, 0.58, 1)
+LineEdit/fonts/font = ExtResource("3_ui")
+LineEdit/styles/normal = SubResource("LineEdit")
+LineEdit/styles/focus = SubResource("Focus")
+MenuButton/colors/font_color = Color(0.96, 0.9, 0.52, 1)
+MenuButton/colors/font_hover_color = Color(1, 0.95, 0.69, 1)
+MenuButton/fonts/font = ExtResource("4_ui_bold")
+MenuButton/styles/normal = SubResource("MenuNormal")
+MenuButton/styles/hover = SubResource("MenuHover")
+MenuButton/styles/pressed = SubResource("MenuPressed")
+MenuButton/styles/disabled = SubResource("MenuDisabled")
+MenuButton/styles/focus = SubResource("Focus")
+OptionButton/colors/font_color = Color(0.92, 0.92, 0.88, 1)
+OptionButton/fonts/font = ExtResource("3_ui")
+Panel/styles/panel = SubResource("RaisedPanel")
+PanelContainer/styles/panel = SubResource("RaisedPanel")
+PopupMenu/colors/font_color = Color(0.93, 0.93, 0.89, 1)
+PopupMenu/colors/font_accelerator_color = Color(0.48, 0.82, 0.89, 1)
+PopupMenu/fonts/font = ExtResource("3_ui")
+PopupMenu/styles/panel = SubResource("PopupPanel")
+PopupMenu/styles/hover = SubResource("Selection")
+RichTextLabel/colors/default_color = Color(0.93, 0.92, 0.84, 1)
+RichTextLabel/fonts/normal_font = ExtResource("5_narrative")
+ScrollContainer/styles/panel = SubResource("Empty")
+VScrollBar/icons/decrement = ExtResource("7_scroll_up")
+VScrollBar/icons/decrement_highlight = ExtResource("7_scroll_up")
+VScrollBar/icons/decrement_pressed = ExtResource("7_scroll_up")
+VScrollBar/icons/increment = ExtResource("8_scroll_down")
+VScrollBar/icons/increment_highlight = ExtResource("8_scroll_down")
+VScrollBar/icons/increment_pressed = ExtResource("8_scroll_down")
+HScrollBar/icons/decrement = ExtResource("9_scroll_left")
+HScrollBar/icons/decrement_highlight = ExtResource("9_scroll_left")
+HScrollBar/icons/decrement_pressed = ExtResource("9_scroll_left")
+HScrollBar/icons/increment = ExtResource("10_scroll_right")
+HScrollBar/icons/increment_highlight = ExtResource("10_scroll_right")
+HScrollBar/icons/increment_pressed = ExtResource("10_scroll_right")
+ItemList/colors/font_color = Color(0.91, 0.91, 0.87, 1)
+ItemList/colors/font_selected_color = Color(1, 0.94, 0.58, 1)
+ItemList/fonts/font = ExtResource("3_ui")
+ItemList/styles/panel = SubResource("ContentWell")
+ItemList/styles/selected = SubResource("Selection")
+ClassicHeading/base_type = &"Label"
+ClassicHeading/colors/font_color = Color(0.98, 0.87, 0.32, 1)
+ClassicHeading/fonts/font = ExtResource("4_ui_bold")
+ClassicHeading/font_sizes/font_size = 18
+ClassicNarrative/base_type = &"RichTextLabel"
+ClassicNarrative/colors/default_color = Color(0.95, 0.93, 0.83, 1)
+ClassicNarrative/fonts/normal_font = ExtResource("5_narrative")
+ClassicNarrative/font_sizes/normal_font_size = 17
+ClassicTextWell/base_type = &"PanelContainer"
+ClassicTextWell/styles/panel = SubResource("ContentWell")
+ClassicInset/base_type = &"PanelContainer"
+ClassicInset/styles/panel = SubResource("InsetPanel")
+ClassicFooterCommandWell/base_type = &"PanelContainer"
+ClassicFooterCommandWell/styles/panel = SubResource("FooterCommandWellPanel")
+ClassicSpellTargetBadge/base_type = &"PanelContainer"
+ClassicSpellTargetBadge/styles/panel = SubResource("SpellTargetBadgePanel")
+ClassicOpenRight/base_type = &"PanelContainer"
+ClassicOpenRight/styles/panel = SubResource("OpenRightPanel")
+ClassicSharedStone/base_type = &"PanelContainer"
+ClassicSharedStone/styles/panel = SubResource("SharedStoneSurface")
+ClassicTextboxOverlay/base_type = &"PanelContainer"
+ClassicTextboxOverlay/styles/panel = SubResource("TextboxOverlaySurface")
+ClassicItemLedger/base_type = &"PanelContainer"
+ClassicItemLedger/styles/panel = SubResource("ItemLedgerPanel")
+ClassicItemLedgerRow/base_type = &"PanelContainer"
+ClassicItemLedgerRow/styles/panel = SubResource("ItemLedgerRow")
+ClassicItemLedgerSelectedRow/base_type = &"PanelContainer"
+ClassicItemLedgerSelectedRow/styles/panel = SubResource("ItemLedgerSelectedRow")
+ClassicItemLedgerButton/base_type = &"Button"
+ClassicItemLedgerButton/colors/font_color = Color(0.055, 0.055, 0.05, 1)
+ClassicItemLedgerButton/colors/font_hover_color = Color(0.02, 0.26, 0.52, 1)
+ClassicItemLedgerButton/colors/font_pressed_color = Color(0.34, 0.25, 0.02, 1)
+ClassicItemLedgerButton/colors/font_hover_pressed_color = Color(0.34, 0.25, 0.02, 1)
+ClassicItemLedgerButton/fonts/font = ExtResource("6_button")
+ClassicItemLedgerButton/font_sizes/font_size = 17
+ClassicItemLedgerButton/styles/normal = SubResource("ItemLedgerButtonNormal")
+ClassicItemLedgerButton/styles/hover = SubResource("ItemLedgerButtonHover")
+ClassicItemLedgerButton/styles/pressed = SubResource("ItemLedgerButtonNormal")
+ClassicItemLedgerButton/styles/disabled = SubResource("ItemLedgerButtonNormal")
+ClassicItemLedgerButton/styles/focus = SubResource("Focus")
+ClassicMoneyLedgerButton/base_type = &"Button"
+ClassicMoneyLedgerButton/colors/font_color = Color(0.88, 0.89, 0.9, 1)
+ClassicMoneyLedgerButton/colors/font_hover_color = Color(0.97, 0.98, 0.98, 1)
+ClassicMoneyLedgerButton/colors/font_pressed_color = Color(0.98, 0.87, 0.32, 1)
+ClassicMoneyLedgerButton/colors/font_hover_pressed_color = Color(1, 0.93, 0.5, 1)
+ClassicMoneyLedgerButton/colors/font_focus_color = Color(0.98, 0.87, 0.32, 1)
+ClassicMoneyLedgerButton/colors/font_disabled_color = Color(0.46, 0.48, 0.49, 1)
+ClassicMoneyLedgerButton/fonts/font = ExtResource("6_button")
+ClassicMoneyLedgerButton/font_sizes/font_size = 17
+ClassicMoneyLedgerButton/styles/normal = SubResource("ButtonNormal")
+ClassicMoneyLedgerButton/styles/hover = SubResource("ButtonHover")
+ClassicMoneyLedgerButton/styles/pressed = SubResource("ButtonPressed")
+ClassicMoneyLedgerButton/styles/disabled = SubResource("ButtonDisabled")
+ClassicMoneyLedgerButton/styles/focus = SubResource("Focus")

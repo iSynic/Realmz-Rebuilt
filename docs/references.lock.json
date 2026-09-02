@@ -1,0 +1,33 @@
+{
+  "format_version": 1,
+  "references": [
+    {
+      "id": "realmz-castle-oracle",
+      "repository": "Realmz Castle Realmz",
+      "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "role": "behavioral oracle and source/control-flow evidence",
+      "policy": "read-only clean worktree; local oracle harness changes use an isolated branch"
+    },
+    {
+      "id": "realmz-remake-vm-reference",
+      "repository": "Realmz Remake",
+      "commit": "cdaa0d8dcc5ab81c195aa960c860bf74e7d4f40b",
+      "role": "selected VM concepts, mappings, and tests only",
+      "policy": "read-only clean worktree; do not port host architecture"
+    },
+    {
+      "id": "realmz-remake-functional-reference",
+      "repository": "Realmz Remake",
+      "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "role": "functional differences, decoded mappings, tests, and presentation behavior",
+      "policy": "read-only clean worktree; Castle adjudicates behavior and no host architecture is ported"
+    },
+    {
+      "id": "providence-compiler-base",
+      "repository": "Realmz Providence",
+      "commit": "9fb0021a47272aea00403644f0e4084c03e1e3b7",
+      "role": "canonical project, deterministic package compiler, synthetic fixture generator, and application-media ownership boundary",
+      "policy": "coordinated implementation branch preserving existing export targets"
+    }
+  ]
+}

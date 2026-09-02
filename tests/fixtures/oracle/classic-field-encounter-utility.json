@@ -1,0 +1,12 @@
+{
+  "decisionId": "FD-SPELL-004",
+  "scope": "application encounter-utility spells in ordinary field casting",
+  "classicSourceObservation": {
+    "spellSelection": "castspell.c admits inCamp records outside combat, fixes negative-cost records at power one, deducts the absolute cost, and returns the packed spell ID",
+    "ordinaryFieldDispatch": "buttonchoice.c selects the whole party for target type 11 or one character for target type 0, calls resolvespell, and plays the target-type-11 completion sound",
+    "effectResolution": "resolvespell.c rolls shared duration then damage but has no special-zero utility mutation",
+    "encounterDispatch": "encounters.c separately compares the packed selected spell ID or spell class with the authored Complex Encounter table"
+  },
+  "applicationRecords": [1609, 2504, 2609, 2611, 3111, 3112, 3410, 3709, 3711],
+  "runtimeContract": "Ordinary field use preserves each record's target shape, fixed power-one absolute spell-point cost, duration-before-damage RNG order, and target-type-11 completion sound without inventing a terrain, language, movement, or encounter mutation. Complex Encounters retain their separate authored spell-ID branch contract."
+}

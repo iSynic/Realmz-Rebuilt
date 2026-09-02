@@ -1,0 +1,133 @@
+Realmz Rebuilt third-party notices
+
+License boundary
+
+Original Realmz Rebuilt program source is licensed under the GNU General Public
+License version 3 or, at your option, any later version. Realmz-derived
+scenarios, application resources, music, fonts, artwork, and starter-character
+data described below are separate works licensed under CC BY-NC-SA 4.0 or their
+specifically named licenses. They are not relicensed by the program's GPL.
+
+Classic Realmz 7.1.2 starter characters
+
+Realmz copyright 1994 by Tim Phillips.
+Source: the six original 872-byte Character Files distributed with Realmz
+7.1.2: Kevlar, Lothlorian, Silver Leaf, Traskelion, Trevor, and Vormale.
+License: Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
+SPDX identifier: CC-BY-NC-SA-4.0
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+Source SHA-256 values:
+Kevlar: 6a5124c03e41977002d93fcfbc52d206c84e4b0b1948a84bcaf41052aa5b41a2
+Lothlorian: 0cf31e9ec12d6435f266689548bb1bc7201cdf66da414bc3fea88e51ef7e6b54
+Silver Leaf: ee736cec9c32eb6226b239d0d79d3ee9f270cf87f29a0d6b1c48268b78bf70d9
+Traskelion: 62a785a49d93f7aebfb4abca4aa3eb8d347e6f6dea1b0526b5483c20d8a1a262
+Trevor: 06e65b0ae81a0d0cb220a7f46ab8e2daf28ecf4575396e71d269603b1e3aa15b
+Vormale: 440e0b9cb675f7cc68553ab3414b830bb8d1889518e095ba4e16d00805f957f5
+
+Modifications: tools/convert_classic_starter_characters.py decodes the pinned
+Castle character structure and emits canonical CharacterVaultRecord payloads.
+The conversion behavior is pinned to Castle source revision
+491816ad60037394f92c428e99c004494d3c28b3 and application character-library
+package SHA-256
+6e3f23c9a452f70b25040c729e17533de5ddf0c420ff35484fc52f6e0dd25e68.
+The original files remain converter fixtures and are excluded from exports.
+
+Castle-distributed Realmz scenarios
+
+Realmz copyright 1994 by Tim Phillips.
+Source: twelve scenario directories distributed by Realmz Castle Realmz at
+commit ef95fcff40d81f14ac668d5e13466da4a51de6f4, plus the project-owner-designated
+City of Bywater production snapshot pending its byte-for-byte adoption by
+Castle. The bundled set remains Assault on Giant Mountain, Castle in the
+Clouds, City of Bywater, Destroy the Necronomicon, Grilochs Revenge, Half
+Truth, Mithril Vault, Prelude to Pestilence, Trouble in the Sword Lands, Twin
+Sands of Time, War in the Sword Lands, White Dragon, and Wrath of the Mind
+Lords.
+License: Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
+SPDX identifier: CC-BY-NC-SA-4.0
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+Modifications: Realmz Providence commit
+badcd91486f6a0ad2c042520e3f9c699c603956d compiles the native scenario data
+and resources into deterministic schema-v3 Realmz 2 packages. Exact source,
+compiler, package, and archive identities are recorded in
+src/infrastructure/campaigns/castle-bundled-scenarios.provenance.json. The exact
+designated City of Bywater source-file identities are recorded in
+src/infrastructure/campaigns/city-of-bywater.source.json.
+
+Integrated Classic Realmz media
+Realmz copyright 1994 by Tim Phillips.
+Source: The Family Jewels resource fork in Realmz Castle Realmz,
+commit 491816ad60037394f92c428e99c004494d3c28b3.
+License: Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
+SPDX identifier: CC-BY-NC-SA-4.0
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+Modifications: Macintosh PICT resources 300, 303, 304, 305, 309, and 310 were
+decoded to exact 640x320 PNG stock landlook atlases. Macintosh ppat resource
+129 was decoded to an exact 64x64 PNG scrolling-text tile. Macintosh snd
+resources were decoded and linearly rendered to 48000 Hz, 16-bit mono WAV
+files using Castle's playback algorithm. Castle's two output channels are
+byte-identical, so Godot duplicates the single stored waveform only during
+playback.
+
+Per-resource source and output hashes are recorded in
+src/presentation/assets/classic-application-media.json.
+
+Integrated Classic Realmz music
+
+Realmz copyright 1994 by Tim Phillips.
+Source: Realmz Music modules in Realmz Castle Realmz. Ten stock modules use
+commit 491816ad60037394f92c428e99c004494d3c28b3. Outdoor uses the exact standard
+MOD replacement from commit 7f6d7fa26b0b5223a668bb32985470f366157601
+because the pinned legacy MADG file is not supported by OpenMPT.
+License: Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
+SPDX identifier: CC-BY-NC-SA-4.0
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+Modifications: the source tracker modules were rendered deterministically to
+48 kHz stereo float PCM by libopenmpt/openmpt123 0.8.9, then encoded as Ogg
+Vorbis by FFmpeg 9.0.1 for portable Godot playback. These build tools and their
+native libraries are not distributed with Realmz Rebuilt. libopenmpt is
+BSD-3-Clause licensed: https://lib.openmpt.org/
+
+Per-track source and output hashes, durations, tool versions, and the Outdoor
+replacement record are stored in
+src/presentation/assets/classic-application-music.json.
+
+Classic typography
+
+Black Chancery is the public-domain digitization shipped in the Realmz game
+resources. ChicagoFLF is public domain by its designer, Robin Casady. Both are
+imported from Realmz Castle at commit
+491816ad60037394f92c428e99c004494d3c28b3.
+
+Theldrow-Classic.fnt and Theldrow-Classic.png are deterministic conversions of
+the original Realmz FONT 1601 bitmap strike and metrics in the pinned Castle
+resource fork. They remain native-size reference assets under this project's
+non-commercial Realmz artwork license and are not separately licensed for reuse.
+
+Theldrow-Classic-Vector.ttf is derived from Samuel/iSynic's scalable
+theldrowremake.ttf glyph outlines at Realmz Remake commit
+86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61. Those outlines are a CC0
+FontStruction by wasikinghit. Realmz Rebuilt deterministically replaces their
+horizontal advances with the original Realmz FONT 1601 advances so scalable
+text retains Classic spacing. The CC0 license and readme are included beside
+the bundled fonts.
+
+Inter is distributed under the SIL Open Font License 1.1 and is the open
+Geneva substitute selected by Realmz Castle. Its license is included beside
+the bundled fonts.
+
+Exact font hashes and accompanying notices are recorded in
+src/presentation/assets/fonts/font-assets.json and its licenses directory.
+
+Realmz intro animation
+
+The looping front-door animation is a deterministic 12-fps conversion of the
+Realmz intro GIF supplied by the project owner. The source GIF SHA-256 is
+2f3b7f6788c00bab329b924f0c6059aa20df31375a2e775e5dc48d59000695cb.
+It is used under this project's non-commercial Realmz artwork license.
+Per-frame hashes and preserved timing are recorded in
+src/presentation/assets/ui/intro/intro-animation.json.

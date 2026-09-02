@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "source_repository": "https://github.com/Realmz-Castle/Realmz-Remake.git",
+  "ownership": "project-owner-authored donor plus project-owner-supplied exact textures",
+  "implementation_commits": [
+    "f52c184cdf3140b487aaba64c4f64f1c016c3e15",
+    "de6893c4241708d567360875f7f5aad1d78a5c5c",
+    "893bc13e12e054d224debc20edffc9e64d25839f",
+    "caab3d15347754eeeb5844390fa000015a47a670"
+  ],
+  "assets": [
+    {
+      "path": "classic-dungeon-atlas.png",
+      "source_path": "src/assets/classic_dungeon_3d/classic_dungeon_atlas.png",
+      "source_commit": "de6893c4241708d567360875f7f5aad1d78a5c5c",
+      "sha256": "183d57647bf1ba70eb392417e6c8c804fc6f7ecd86ba115e71a4fc9f4ef640c9",
+      "role": "framed door, recessed stair, arch, and pillar surfaces"
+    },
+    {
+      "path": "classic-dungeon-palette.png",
+      "source_path": "src/assets/classic_dungeon_3d/classic_dungeon_palette.png",
+      "source_commit": "f52c184cdf3140b487aaba64c4f64f1c016c3e15",
+      "sha256": "3f5bb0f15f895a9609509fa96d70d0629537070416273127dbd5385f33d61ff2",
+      "role": "Macintosh-palette design reference"
+    },
+    {
+      "path": "floor-sand.jpg",
+      "source_path": "ac2b3008-06ef-4123-b941-f3d5c8b68d5f.png",
+      "source_commit": "user-provided",
+      "sha256": "268c91e9fba3f5b4d747e0f59ea4a335b66592b6469ace26b5257bc4d1ec7d92",
+      "role": "project-owner-supplied square dungeon floor and ceiling texture"
+    },
+    {
+      "path": "wall-sand-bricks.jpg",
+      "source_path": "97f6f5a5-75c2-44c3-90d4-7fc748ee4002.png",
+      "source_commit": "user-provided",
+      "sha256": "4ceb4d7ef311b8854b6c7833cc14206f1b99aef4e5f255491a150dbd17da4342",
+      "role": "project-owner-supplied horizontal-brick dungeon wall and frame texture"
+    },
+    {
+      "path": "cursor-forward.png",
+      "source_path": "src/shared_assets/cursors/forward.png",
+      "source_commit": "f4458f76a2cd371e0fd3aa5ad41a13c241f14457",
+      "sha256": "b92adbd9a4ca748a79e832b8ee41f79f8cb0f0fcb7fd154dc53645d0c2599a8d",
+      "role": "first-person forward pointer"
+    },
+    {
+      "path": "cursor-reverse.png",
+      "source_path": "src/shared_assets/cursors/reverse.png",
+      "source_commit": "f4458f76a2cd371e0fd3aa5ad41a13c241f14457",
+      "sha256": "996b120f5d242f1dfaf2171c3282d816df3c1368b93140d3a9a6fb38eba758f5",
+      "role": "first-person reverse pointer"
+    },
+    {
+      "path": "cursor-left.png",
+      "source_path": "src/shared_assets/cursors/left.png",
+      "source_commit": "f4458f76a2cd371e0fd3aa5ad41a13c241f14457",
+      "sha256": "0a560307a156e495e33e9fb6c9ddff59e33608dc21c6e3f8176a5763fed34ad8",
+      "role": "first-person turn-left pointer"
+    },
+    {
+      "path": "cursor-right.png",
+      "source_path": "src/shared_assets/cursors/right.png",
+      "source_commit": "f4458f76a2cd371e0fd3aa5ad41a13c241f14457",
+      "sha256": "886f5c57806c64ff75d5cf3821a0b36e50d7fff61fbfb1458b097702b7ffc983",
+      "role": "first-person turn-right pointer"
+    }
+  ]
+}
