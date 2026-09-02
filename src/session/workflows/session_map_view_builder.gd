@@ -64,7 +64,7 @@ static func build_map_view(context: SessionWorkflowContext, projection_size: Vec
 		var probe := context.content.world.probe_movement(state.party.map_id, state.party.coordinate, direction, state.world, state.party_in_boat)
 		movement_options[MapTopology.direction_name(direction)] = {"allowed": probe.allowed, "reason": String(probe.reason)}
 	var dark := state.world.map_is_dark(map)
-	var darkness_level := SessionViewProjector.classic_darkness_level(state.party.conditions.value(ConditionRules.PARTY_TORCH_LIT)) if dark else -1
+	var darkness_level := SessionViewProjectionPolicy.classic_darkness_level(state.party.conditions.value(ConditionRules.PARTY_TORCH_LIT)) if dark else -1
 	var visited: Array[Vector2i] = []
 	var seen: Array[Vector2i] = []
 	if presentation_delta == null:

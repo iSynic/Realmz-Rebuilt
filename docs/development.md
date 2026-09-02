@@ -11,13 +11,13 @@ The project-local `.mcp.json` contains machine-specific absolute paths and stays
 
 The project uses `application/config/use_custom_user_dir` with the stable name `RealmzRemake2`. This keeps Godot 4.7.1 and MCP Pro 1.16.0 on the same file-IPC `user://` path and gives save repositories a predictable root.
 
-## Risk-tiered delivery and delegation
+## Risk-tiered delivery
 
 Normal player-visible work is planned as a coherent batch of 3–5 related workflows. Each workflow has one focused-verified commit. In the roadmap, a rolling pass means this workflow batch; the roadmap does not create a new rolling pass for a tiny edit, and a tiny edit does not pay the batch closeout gate by itself.
 
 The architecture-hardening tranche was a bounded maintenance exception rather than a player-workflow batch. Its inventory pause held workflow counts and the selected parity batch steady while public wire contracts, ownership boundaries, package startup, and owning tests were hardened. The pause closed only after the full aggregate gate and an ordinary AOGM regression; parity delivery now follows the audit-guided batch cadence below.
 
-The `rebuilt-hotspot-test-performance` maintenance pause is complete. It closed with 40,434 substantive production lines and 6,782 substantive test lines (16.77 percent), down from the approved 11,807-line test baseline. Every handwritten product file is at or below 1,000 substantive lines, every function is at or below 150, every test suite is at or below 1,200, both grandfather lists are empty, and tests no longer call private product methods. The six-character AOGM probe measured 23.713 ms transaction-plus-projection p95, while the MCP walkthrough sustained the required default and accelerated movement cadence without queued input. These maintenance results do not upgrade workflow delivery states; the unchanged audit-guided parity batch resumes.
+The `rebuilt-hotspot-test-performance` maintenance pause is complete. The release-preparation pass measures 63,354 substantive production lines and 8,556 substantive test lines (13.51 percent), down from the approved 11,807-line test baseline. The prior 8,023-line ratchet had not been advanced with later accepted workflow suites, so release preparation reset it to the measured tree after separately restoring every file, function, and suite cap; future growth remains prohibited. Every handwritten product file is at or below 1,000 substantive lines, every function is at or below 150, every test suite is at or below 1,200, both grandfather lists are empty, and tests no longer call private product methods. These maintenance results do not upgrade workflow delivery states.
 
 The immediate boundary follow-up replaced session coordinators' owner `WeakRef` backchannel with an operation-scoped typed context/result protocol and replaced party setup's five-level behavior inheritance with a facade that composes shared state, inspection, assembly, and creation controllers. The architecture gate now prevents either shortcut from returning. This is responsibility hardening only; it does not change saves, packages, gameplay traces, UI workflows, or audit completion counts.
 
@@ -31,17 +31,7 @@ Use the lowest tier that covers the changed boundary:
 
 Move directly to Tier 3 for package or schema changes; save, migration, or continuation changes; RNG or VM changes; topology changes; terminal combat or reward sequencing; and composition-root ownership changes. CI remains comprehensive regardless of the local tier.
 
-At batch start, Sol identifies the critical path and any suitable sidecars. If suitable sidecars exist, use no more than two `gpt-5.6-luna` agents at `xhigh`, each with a detailed self-contained prompt and a disjoint write scope. Luna may perform bounded archaeology, settled regression tests, isolated UI or fixture implementation, mechanical evidence/DOX work, review, and parallel verification. Sol retains architecture, ambiguous Castle/fidelity adjudication, high-risk boundaries, the critical path, cross-cutting integration, final review/tests/commit, and final conclusions. Delegation is optional when it is unsafe or wasteful; the requirement to consider a sidecar never overrides the storage guard below.
-
-Every Luna prompt states the objective; repository and base; DOX requirements; read and write scope; settled interfaces and evidence; non-goals; tests; ambiguity handling; and final-report format. Luna must not commit or push, modify references, broaden scope, or make fidelity decisions unless explicitly authorized. Sol reviews every result, and Luna evidence never upgrades audit status without Sol validation.
-
-### Delegation storage guard
-
-Subagents start with `fork_context: false` and a self-contained prompt. Never copy or fork the parent conversation history into a child agent merely for convenience. A long-lived parent task may contain gigabytes of local rollout history, and a context-forked child can duplicate that history into a separate `C:\Users\<user>\.codex\sessions` file.
-
-Before delegating, inspect the active parent rollout when it can be identified cheaply. Do not spawn any child from a parent rollout larger than 256 MiB; perform the work locally or begin a fresh user-directed task with a compact handoff. After spawning an eligible non-forked child, inspect its rollout once initialization settles. If it exceeds 64 MiB before substantive work, close it immediately, retain no further children from that parent, and report the storage anomaly. Close completed or interrupted agents promptly.
-
-Treat 512 MiB of cumulative child-session storage as a hard batch ceiling. Crossing the ceiling stops further delegation but does not block local implementation. Delegation from this repository's August 2026 long-running reconstruction task is permanently disabled because inherited child rollouts consumed more than 100 GiB; future work from that task remains Sol-local unless the user starts a fresh compact task. Session-storage checks are operational safeguards and do not enter product tests or completion evidence.
+At batch start, the maintainer identifies the critical path, high-risk boundaries, required reference evidence, and any work that can be reviewed independently. Contributors receive a bounded objective, explicit read and write scope, settled interfaces, non-goals, required verification, and an ambiguity-escalation rule. Contributors do not broaden scope, change pinned references, make unresolved fidelity decisions, commit, or push unless the maintainer explicitly authorizes those actions. The maintainer owns cross-cutting integration, final review, verification, commits, and release conclusions.
 
 ### Parity convergence
 

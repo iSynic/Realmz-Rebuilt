@@ -5,6 +5,7 @@ const DEFAULT_MAP_VIEW_SIZE: Vector2i = Vector2i(25, 25)
 const ViewDomainRevisionsScript := preload("res://src/core/session/view_domain_revisions.gd")
 const MapPresentationDeltaScript := preload("res://src/core/view/map_presentation_delta.gd")
 const ViewChangeSetScript := preload("res://src/core/view/view_change_set.gd")
+const ProjectionPolicy := preload("res://src/session/workflows/session_view_projection_policy.gd")
 
 var _cached_map_revision: int = -1
 var _cached_map_id: String = ""
@@ -644,7 +645,7 @@ static func _populate_money_workspace(context: SessionWorkflowContext, result: G
 	for character: CharacterState in state.party.characters():
 		var character_view := MoneyCharacterView.new(character)
 		for denomination: StringName in [&"gold", &"gems", &"jewelry"]:
-			var kind := _money_kind(denomination)
+			var kind := ProjectionPolicy.money_kind(denomination)
 			var amount := EconomyRules.classic_transfer_increment(kind as WealthState.Kind)
 			var to_pool := context.rules.economy.transfer_probe(state.party, character, kind as WealthState.Kind, amount, false)
 			var to_character := context.rules.economy.transfer_probe(state.party, character, kind as WealthState.Kind, amount, true)
@@ -899,7 +900,7 @@ static func _populate_inventory_item_actions(context: SessionWorkflowContext, re
 		var caste := content.caste_by_id(character.caste_id)
 		var identify_cast := _inventory_identify_cast(context, character)
 		for item_view: ItemView in member_view.items:
-			var instance := _item_instance(character, item_view.instance_id)
+			var instance := ProjectionPolicy.item_instance(character, item_view.instance_id)
 			var definition: ItemDefinition = null if instance == null else content.item_by_id(instance.definition_id)
 			var actions := InventoryItemActionsView.new()
 			if not context_reason.is_empty():
@@ -992,7 +993,7 @@ static func _make_scroll_probe(context: SessionWorkflowContext, character: Chara
 		return InventoryActionProbe.block("The selected character cannot scribe scrolls.")
 	if not _has_equipped_scroll_case(context, character):
 		return InventoryActionProbe.block("Equip a scroll case before making a scroll.")
-	if _first_empty_scroll_slot(character) < 0:
+	if ProjectionPolicy.first_empty_scroll_slot(character) < 0:
 		return InventoryActionProbe.block("The scroll case already contains five spells.")
 	if _parchment_instance(context, character) == null:
 		return InventoryActionProbe.block("The character has no parchment.")
@@ -1017,7 +1018,7 @@ static func _scroll_use_probe(context: SessionWorkflowContext, character: Charac
 		return InventoryActionProbe.block("This scroll cannot be used outside battle; Classic offers to discard it.")
 	if spell.target_type < 0 or spell.target_type > 12:
 		return InventoryActionProbe.block("This scroll has an invalid Classic field target type.")
-	if not _field_spell_effect_supported(spell):
+	if not ProjectionPolicy.field_spell_effect_supported(spell):
 		return InventoryActionProbe.block("This scroll's Classic field effect is not implemented yet.")
 	return InventoryActionProbe.permit()
 
@@ -1053,13 +1054,9 @@ static func _field_spell_probe(context: SessionWorkflowContext, character: Chara
 		return InventoryActionProbe.block("The character does not have enough spell points.")
 	if spell.target_type < 0 or spell.target_type > 12:
 		return InventoryActionProbe.block("This spell has an invalid Classic field target type.")
-	if not _field_spell_effect_supported(spell):
+	if not ProjectionPolicy.field_spell_effect_supported(spell):
 		return InventoryActionProbe.block("This spell's Classic field effect is not implemented yet.")
 	return InventoryActionProbe.permit()
-
-
-static func _field_spell_effect_supported(spell: SpellDefinition) -> bool:
-	return ClassicSpellCapabilityCatalog.field_character_disposition(spell) == ClassicSpellCapabilityCatalog.DISPOSITION_EXECUTABLE
 
 
 static func _has_equipped_scroll_case(context: SessionWorkflowContext, character: CharacterState) -> bool:
@@ -1080,32 +1077,3 @@ static func _parchment_instance(context: SessionWorkflowContext, character: Char
 		if definition != null and definition.classic_id == 806 and instance.charges != 0:
 			return instance
 	return null
-
-
-static func _first_empty_scroll_slot(character: CharacterState) -> int:
-	if character == null:
-		return -1
-	for index: int in character.scroll_case().size():
-		if character.scroll_at(index).is_empty():
-			return index
-	return -1
-
-
-static func _item_instance(character: CharacterState, instance_id: String) -> ItemInstance:
-	if character == null or instance_id.is_empty():
-		return null
-	for instance: ItemInstance in character.inventory():
-		if instance.id == instance_id:
-			return instance
-	return null
-
-
-static func _money_kind(value: StringName) -> int:
-	match value:
-		&"gold": return WealthState.Kind.GOLD
-		&"gems": return WealthState.Kind.GEMS
-		&"jewelry": return WealthState.Kind.JEWELRY
-	return -1
-
-
-static func classic_darkness_level(torch_value: int) -> int: return 0 if torch_value <= 0 else clampi(floori(float(torch_value) / 30.0) + 1, 0, 6)

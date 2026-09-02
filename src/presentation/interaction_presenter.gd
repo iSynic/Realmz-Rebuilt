@@ -9,9 +9,7 @@ const ThiefEncounterInteractionScript := preload("res://src/presentation/interac
 const LifecycleInteractionScript := preload("res://src/presentation/interaction_components/lifecycle_interaction.gd")
 const FastSpellDockScript := preload("res://src/presentation/interaction_components/fast_spell_dock.gd")
 const ScrollingTextInteractionScript := preload("res://src/presentation/interaction_components/scrolling_text_interaction.gd")
-const COMBAT_COMMAND_BASE_WIDTH := 1280.0
-const COMBAT_COMMAND_BASE_HEIGHT := 100.0
-const COMBAT_FIXED_HEIGHT := 90.0
+const LayoutPolicy := preload("res://src/presentation/interaction_layout_policy.gd")
 
 signal response_submitted(response: InteractionResponse)
 signal combat_targeting_requested(request: CombatTargetingRequest)
@@ -129,7 +127,7 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 	visible = request != null
 	if visible:
 		_claim_modal_layer()
-	var full_stage := uses_full_stage_region(request)
+	var full_stage := LayoutPolicy.uses_full_stage_region(request)
 	_stage_opaque_backing.visible = full_stage
 	_stage_backing.visible = full_stage
 	if request == null:
@@ -143,9 +141,9 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 	if request.kind == InteractionRequest.CHARACTER_SELECTION and (request.body as InteractionRequest.CharacterSelectionRequestBody).spell_context != null:
 		_set_heading("Spell Target")
 	_prompt.text = _prompt_for(request, classic_text_context)
-	_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER if uses_classic_click_modal(request) else HORIZONTAL_ALIGNMENT_LEFT
+	_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER if LayoutPolicy.uses_classic_click_modal(request) else HORIZONTAL_ALIGNMENT_LEFT
 	_prompt.visible = not _prompt.text.is_empty()
-	if uses_application_workspace(request):
+	if LayoutPolicy.uses_application_workspace(request):
 		_set_heading("")
 		_prompt.text = ""
 		_prompt.visible = false
@@ -153,7 +151,7 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 		_set_heading("")
 		_prompt.text = ""
 		_prompt.visible = false
-	if _is_player_map_request(request) or _is_scrolling_text_request(request):
+	if LayoutPolicy.is_player_map_request(request) or LayoutPolicy.is_scrolling_text_request(request):
 		_prompt.text = ""
 		_prompt.visible = false
 	if request.kind == &"combat_action":
@@ -246,7 +244,7 @@ func set_classic_regions(stage_rect: Rect2, textbox_rect: Rect2, combat_rect: Re
 	)
 	_side_workspace_rect = Rect2(outer_stage.end.x, outer_stage.position.y, maxf(0.0, _combat_rect.end.x - outer_stage.end.x), maxf(0.0, _application_rect.end.y - outer_stage.position.y))
 	if _component is BattleInteraction:
-		(_component as BattleInteraction).set_command_scale(combat_command_scale(_combat_rect))
+		(_component as BattleInteraction).set_command_scale(LayoutPolicy.combat_command_scale(_combat_rect))
 	_apply_classic_region()
 	_apply_fast_spell_dock_layout()
 	_apply_classic_flash_layout()
@@ -375,7 +373,7 @@ func _apply_classic_flash_layout() -> void:
 	_classic_flash_shield.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
 	_classic_flash_shield.position = _application_rect.position
 	_classic_flash_shield.size = _application_rect.size
-	var region := classic_flash_modal_rect(_application_rect, _textbox_rect)
+	var region := LayoutPolicy.classic_flash_modal_rect(_application_rect, _textbox_rect)
 	_classic_flash_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
 	_classic_flash_panel.custom_minimum_size = region.size
 	_classic_flash_panel.position = region.position
@@ -473,11 +471,11 @@ func set_autojournal_enabled(enabled: bool) -> void:
 
 
 func _component_for(request: InteractionRequest, game_view: GameView, media: ClassicMediaCatalog) -> InteractionComponent:
-	if _is_player_map_request(request):
+	if LayoutPolicy.is_player_map_request(request):
 		var player_map := PlayerMapInteraction.new()
 		player_map.configure(game_view, media)
 		return player_map
-	if _is_scrolling_text_request(request):
+	if LayoutPolicy.is_scrolling_text_request(request):
 		var scrolling_text := ScrollingTextInteractionScript.new()
 		scrolling_text.configure(media)
 		return scrolling_text
@@ -528,7 +526,7 @@ func _component_for(request: InteractionRequest, game_view: GameView, media: Cla
 			return bank
 		&"combat_action":
 			var battle := BattleInteraction.new()
-			battle.configure(_combatant_icon_textures(game_view, media), combat_command_scale(_combat_rect))
+			battle.configure(_combatant_icon_textures(game_view, media), LayoutPolicy.combat_command_scale(_combat_rect))
 			return battle
 		&"session_lifecycle":
 			return LifecycleInteractionScript.new()
@@ -715,72 +713,44 @@ func _apply_classic_region() -> void:
 		theme_type_variation = &"ClassicOpenRight"
 		position = _combat_rect.position
 		size = _combat_rect.size
-	elif uses_classic_click_modal(_request):
+	elif LayoutPolicy.uses_classic_click_modal(_request):
 		theme_type_variation = &"ClassicInset"
 		_content.custom_minimum_size.x = 0.0
-		var region := classic_click_modal_rect(_application_rect, _textbox_rect)
+		var region := LayoutPolicy.classic_click_modal_rect(_application_rect, _textbox_rect)
 		position = region.position
 		size = region.size
-	elif uses_floating_choice_modal(_request):
+	elif LayoutPolicy.uses_floating_choice_modal(_request):
 		theme_type_variation = &"ClassicInset"
-		var region := floating_choice_rect(_stage_rect, _textbox_rect, _content.get_combined_minimum_size() + Vector2(16.0, 16.0))
+		var region := LayoutPolicy.floating_choice_rect(_stage_rect, _textbox_rect, _content.get_combined_minimum_size() + Vector2(16.0, 16.0))
 		position = region.position
 		size = region.size
-	elif uses_textbox_region(_request, _passive_text):
-		theme_type_variation = textbox_theme_variation(_request)
-		var region := interaction_region(_request, _textbox_rect, _stage_rect, _combat_rect)
+	elif LayoutPolicy.uses_textbox_region(_request, _passive_text):
+		theme_type_variation = LayoutPolicy.textbox_theme_variation(_request)
+		var region := LayoutPolicy.interaction_region(_request, _textbox_rect, _combat_rect)
 		if _combat_spellbook_open and _request != null and _request.kind == InteractionRequest.COMBAT:
 			region.size.x = minf(region.size.x, maxf(0.0, _side_workspace_rect.position.x - region.position.x))
 		position = region.position
 		size = region.size
-	elif uses_full_stage_region(_request):
+	elif LayoutPolicy.uses_full_stage_region(_request):
 		theme_type_variation = &"ClassicInset"
-		var region := _application_rect if uses_application_workspace(_request) or _request.kind == InteractionRequest.SESSION_LIFECYCLE else _stage_rect
+		var region := _application_rect if LayoutPolicy.uses_application_workspace(_request) or _request.kind == InteractionRequest.SESSION_LIFECYCLE else _stage_rect
 		position = region.position
 		size = region.size
 	else:
 		theme_type_variation = &"ClassicInset"
-		var modal_region := _application_rect if uses_application_modal_region(_request) else _stage_rect
-		var desired := preferred_modal_size(_request, modal_region.size)
+		var modal_region := _application_rect if LayoutPolicy.uses_application_modal_region(_request) else _stage_rect
+		var desired := LayoutPolicy.preferred_modal_size(_request, modal_region.size)
 		if _request != null and _request.kind == InteractionRequest.THIEF_ENCOUNTER:
 			desired.y = minf(maxf(280.0, _content.get_combined_minimum_size().y + 16.0), modal_region.size.y - 20.0)
 		position = modal_region.position + (modal_region.size - desired) * 0.5
 		size = desired
 	var encounter_surface := _request != null and _request.kind in [InteractionRequest.WORD_AND_ACTION, InteractionRequest.THIEF_ENCOUNTER]
-	_update_modal_shield(not _playback_masked and _request != null and (encounter_surface or not uses_textbox_region(_request)) and not uses_full_stage_region(_request), not encounter_surface)
+	_update_modal_shield(not _playback_masked and _request != null and (encounter_surface or not LayoutPolicy.uses_textbox_region(_request)) and not LayoutPolicy.uses_full_stage_region(_request), not encounter_surface)
 	_apply_content_layout()
 	_apply_side_workspace_layout()
 	_apply_encounter_dock_layout()
 	_apply_application_workspace_layout()
 	_apply_nested_modal_layout()
-
-
-static func textbox_theme_variation(request: InteractionRequest = null) -> StringName:
-	return &"ClassicOpenRight" if request != null and request.kind == InteractionRequest.COMBAT else &"ClassicTextboxOverlay"
-
-
-static func preferred_modal_size(request: InteractionRequest, available_size: Vector2) -> Vector2:
-	var preferred := Vector2(700.0, 520.0)
-	var minimum := Vector2(300.0, 260.0)
-	if request != null:
-		match request.kind:
-			InteractionRequest.SESSION_LIFECYCLE:
-				var lifecycle := request.body as InteractionRequest.LifecycleRequestBody
-				preferred = Vector2(560.0, 220.0) if lifecycle != null and lifecycle.operation != &"quit-application" else Vector2(460.0, 135.0)
-				minimum = Vector2(420.0, 190.0) if lifecycle != null and lifecycle.operation != &"quit-application" else Vector2(340.0, 135.0)
-			InteractionRequest.WORD_AND_ACTION:
-				preferred = Vector2(720.0, 260.0)
-				minimum = Vector2(520.0, 180.0)
-			InteractionRequest.THIEF_ENCOUNTER:
-				preferred = Vector2(760.0, minf(410.0, available_size.y - 20.0))
-				minimum = Vector2(560.0, 310.0)
-			InteractionRequest.LEVEL_UP:
-				var body := request.body as InteractionRequest.LevelUpRequestBody
-				preferred = Vector2(1080.0, minf(760.0, available_size.y - 20.0)) if body != null and body.mode == &"spell-selection" else Vector2(760.0, 430.0)
-			InteractionRequest.ALLY_SELECTION:
-				preferred = Vector2(820.0, 500.0)
-	var desired := Vector2(minf(preferred.x, available_size.x - 20.0), minf(preferred.y, available_size.y - 20.0))
-	return Vector2(maxf(minimum.x, desired.x), maxf(minimum.y, desired.y))
 
 
 func _update_modal_shield(needed: bool, dim_background: bool = true) -> void:
@@ -861,19 +831,6 @@ func _close_nested_modal() -> void:
 	remove_child(_nested_modal)
 	_nested_modal.queue_free()
 	_nested_modal = null
-
-
-static func floating_choice_rect(stage_rect: Rect2, textbox_rect: Rect2, minimum: Vector2) -> Rect2:
-	var available_width := minf(maxf(300.0, stage_rect.size.x - 20.0), maxf(300.0, textbox_rect.size.x))
-	var modal_size := Vector2(
-		minf(maxf(520.0, minimum.x), available_width),
-		minf(maxf(116.0, minimum.y), maxf(116.0, stage_rect.size.y - 20.0))
-	)
-	var lower_right := Vector2(minf(stage_rect.end.x - 10.0, textbox_rect.end.x), minf(stage_rect.end.y - 10.0, textbox_rect.position.y - 8.0))
-	return Rect2(
-		Vector2(maxf(stage_rect.position.x + 10.0, lower_right.x - modal_size.x), maxf(stage_rect.position.y + 10.0, lower_right.y - modal_size.y)),
-		modal_size
-	)
 
 
 func _apply_nested_modal_layout() -> void:
@@ -995,10 +952,10 @@ func _apply_application_workspace_layout() -> void:
 
 
 func _apply_content_layout() -> void:
-	var split_textbox := uses_textbox_region(_request, _passive_text) and _request != null and _request.kind == InteractionRequest.CHARACTER_SELECTION
+	var split_textbox := LayoutPolicy.uses_textbox_region(_request, _passive_text) and _request != null and _request.kind == InteractionRequest.CHARACTER_SELECTION
 	var encounter_textbox := _request != null and _request.kind == InteractionRequest.WORD_AND_ACTION
-	_content.custom_minimum_size.x = 0.0 if uses_classic_click_modal(_request) else 280.0
-	_scroll.vertical_scroll_mode = interaction_vertical_scroll_mode(_request)
+	_content.custom_minimum_size.x = 0.0 if LayoutPolicy.uses_classic_click_modal(_request) else 280.0
+	_scroll.vertical_scroll_mode = LayoutPolicy.interaction_vertical_scroll_mode(_request)
 	_content.vertical = not split_textbox
 	_prompt.size_flags_vertical = Control.SIZE_SHRINK_BEGIN if encounter_textbox else Control.SIZE_EXPAND_FILL
 	_options.size_flags_stretch_ratio = 2.0 if encounter_textbox else 1.0
@@ -1014,7 +971,7 @@ func _apply_content_layout() -> void:
 		_prompt_column.custom_minimum_size.x = 0.0
 		_prompt_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_options.custom_minimum_size.x = 0.0
-	if uses_application_workspace(_request):
+	if LayoutPolicy.uses_application_workspace(_request):
 		# Full-stage workspaces are assigned from the stable shell region. Using
 		# this control's content-driven size here would create a minimum-size
 		# feedback loop whenever a route expands to fill the available height.
@@ -1022,77 +979,7 @@ func _apply_content_layout() -> void:
 	elif _request != null and _request.kind == InteractionRequest.SESSION_LIFECYCLE:
 		_options.custom_minimum_size.y = 0.0
 	else:
-		_options.custom_minimum_size.y = maxf(0.0, size.y - 16.0) if uses_application_modal_region(_request) or _is_scrolling_text_request(_request) else 0.0
-
-
-static func uses_textbox_region(request: InteractionRequest, passive_text: bool = false) -> bool:
-	return passive_text or request != null and not uses_classic_click_modal(request) and not _is_player_map_request(request) and not _is_scrolling_text_request(request) and request.kind in [&"acknowledge", &"yes_no", &"encounter_choice", &"scenario_choice", &"character_selection", &"complex_encounter", &"combat_action"]
-
-
-static func uses_classic_click_modal(request: InteractionRequest) -> bool:
-	if request == null or request.kind != InteractionRequest.ACKNOWLEDGE:
-		return false
-	var body := request.body as InteractionRequest.AcknowledgeBody
-	return body != null and body.presentation == &"classic-click-modal"
-
-
-static func classic_click_modal_rect(application_rect: Rect2, textbox_rect: Rect2) -> Rect2:
-	var desired := Vector2(minf(174.0, application_rect.size.x - 40.0), minf(60.0, application_rect.size.y - 40.0))
-	var preferred_y := textbox_rect.position.y - desired.y - 12.0
-	return Rect2(
-		Vector2(
-			application_rect.position.x + (application_rect.size.x - desired.x) * 0.5,
-			clampf(preferred_y, application_rect.position.y + 20.0, application_rect.end.y - desired.y - 20.0)
-		),
-		desired
-	)
-
-
-static func classic_flash_modal_rect(application_rect: Rect2, textbox_rect: Rect2) -> Rect2:
-	var desired := Vector2(minf(520.0, application_rect.size.x - 40.0), minf(118.0, application_rect.size.y - 40.0))
-	var preferred_y := textbox_rect.position.y - desired.y - 12.0
-	return Rect2(
-		Vector2(
-			application_rect.position.x + (application_rect.size.x - desired.x) * 0.5,
-			clampf(preferred_y, application_rect.position.y + 20.0, application_rect.end.y - desired.y - 20.0)
-		),
-		desired
-	)
-
-
-static func interaction_vertical_scroll_mode(request: InteractionRequest) -> int:
-	return ScrollContainer.SCROLL_MODE_DISABLED if request != null and request.kind in [InteractionRequest.SHOP, InteractionRequest.SESSION_LIFECYCLE] else ScrollContainer.SCROLL_MODE_AUTO
-
-
-static func combat_command_scale(combat_rect: Rect2) -> float:
-	if not combat_rect.has_area():
-		return 1.0
-	var width_scale := combat_rect.size.x / COMBAT_COMMAND_BASE_WIDTH
-	var available_command_height := maxf(0.0, combat_rect.size.y - COMBAT_FIXED_HEIGHT)
-	var height_scale := available_command_height / COMBAT_COMMAND_BASE_HEIGHT
-	return clampf(minf(width_scale, height_scale), 1.0, 2.0)
-
-
-static func uses_floating_choice_modal(request: InteractionRequest) -> bool:
-	return request != null and request.kind in [InteractionRequest.YES_NO, InteractionRequest.ENCOUNTER_CHOICE, InteractionRequest.INDEXED_CHOICE]
-
-
-static func uses_full_stage_region(request: InteractionRequest) -> bool:
-	return uses_application_workspace(request) or _is_scrolling_text_request(request)
-
-
-static func uses_application_workspace(request: InteractionRequest) -> bool:
-	return request != null and request.kind in [InteractionRequest.TREASURE_DISTRIBUTION, InteractionRequest.SHOP, InteractionRequest.TEMPLE, InteractionRequest.BANK, InteractionRequest.POOLED_WEALTH_DEPARTURE]
-
-
-static func uses_application_modal_region(request: InteractionRequest) -> bool:
-	return request != null and request.kind in [InteractionRequest.PICK_LOCK, InteractionRequest.SESSION_LIFECYCLE, InteractionRequest.ALLY_SELECTION, InteractionRequest.LEVEL_UP]
-
-
-static func interaction_region(request: InteractionRequest, textbox_rect: Rect2, _unused_stage_rect: Rect2, combat_rect: Rect2 = Rect2()) -> Rect2:
-	if request == null or request.kind != &"combat_action":
-		return textbox_rect
-	return combat_rect if combat_rect.has_area() else textbox_rect
+		_options.custom_minimum_size.y = maxf(0.0, size.y - 16.0) if LayoutPolicy.uses_application_modal_region(_request) or LayoutPolicy.is_scrolling_text_request(_request) else 0.0
 
 
 func _add_hint(text: String) -> Label:
@@ -1145,20 +1032,6 @@ static func _prompt_for(request: InteractionRequest, classic_text_context: Strin
 			return authored_context
 		return "Choose Yes or No to continue."
 	return _title_for_kind(request.kind)
-
-
-static func _is_player_map_request(request: InteractionRequest) -> bool:
-	if request == null or request.kind != InteractionRequest.ACKNOWLEDGE:
-		return false
-	var body := request.body as InteractionRequest.AcknowledgeBody
-	return body != null and body.presentation == &"player-map"
-
-
-static func _is_scrolling_text_request(request: InteractionRequest) -> bool:
-	if request == null or request.kind != InteractionRequest.ACKNOWLEDGE:
-		return false
-	var body := request.body as InteractionRequest.AcknowledgeBody
-	return body != null and body.presentation == &"classic-scrolling-text"
 
 
 static func _heading_for_kind(kind: StringName) -> String:

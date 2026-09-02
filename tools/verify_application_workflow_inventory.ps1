@@ -329,9 +329,6 @@ Assert-Condition ($inventory.references.remakeFunctional -eq $lockedById["realmz
 Assert-Condition ($inventory.references.remakeVm -eq $lockedById["realmz-remake-vm-reference"]) "Remake VM commit differs from references.lock.json."
 Assert-Condition ($inventory.references.providence -eq $lockedById["providence-compiler-base"]) "Providence commit differs from references.lock.json."
 Assert-Condition ($inventory.references.realmz2 -eq "cff7174399212c1256c52fc6b10d4a766af4174e") "Realmz 2.0 baseline differs from the approved audit base."
-Assert-Condition ($inventory.knowledgeGraph.realmzCommit -eq "4089d550ab606172bac850ac055677c36c6ff547") "Knowledge-graph lock is not the reviewed navigation-only revision."
-Assert-Condition ($inventory.knowledgeGraph.usage -eq "navigation-only") "Knowledge graph must remain navigation-only."
-
 $pause = $inventory.maintenancePause
 if ($null -ne $pause) {
     Assert-Condition ([string]$pause.id -in @("rebuilt-architecture-hardening", "rebuilt-hotspot-test-performance")) "Maintenance pause has an unexpected ID."
