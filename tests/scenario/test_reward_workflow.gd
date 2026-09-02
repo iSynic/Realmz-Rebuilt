@@ -5,8 +5,7 @@ const LEVEL_DRAIN_CORRECTION_PATH: String = "res://tests/fixtures/oracle/reward-
 
 
 func selected_case_arguments() -> Array:
-	var loaded := PackageRepository.new().load_package(FIXTURE_PATH)
-	assert_true(loaded.is_ok(), "reward workflow fixture loads: %s" % loaded.error_message)
+	var loaded := load_test_package(FIXTURE_PATH)
 	return [loaded.content] if loaded.is_ok() else []
 
 
@@ -16,8 +15,7 @@ func run() -> void:
 	if level_drain_correction is Dictionary:
 		assert_equal(level_drain_correction["castleSourceObservation"]["levelChecksPerRecipientPerRewardClose"], 1, "the fixture records Castle's single level check per recipient")
 		assert_equal(level_drain_correction["realmz2ChosenResult"]["levelChecks"], "repeat for the same eligible recipient while carried victory points remain positive", "the fixture records the correction that drains every level earned by the reward")
-	var loaded := PackageRepository.new().load_package(FIXTURE_PATH)
-	assert_true(loaded.is_ok(), "reward workflow fixture loads: %s" % loaded.error_message)
+	var loaded := load_test_package(FIXTURE_PATH)
 	if not loaded.is_ok():
 		return
 	_test_ordinary_distribution_and_restore(loaded.content)

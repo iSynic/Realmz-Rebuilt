@@ -4,8 +4,7 @@ const FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-fi
 
 
 func run() -> void:
-	var package_result := PackageRepository.new().load_package(FIXTURE_PATH)
-	assert_true(package_result.is_ok(), "the synthetic package loads before Party Order testing")
+	var package_result := load_test_package(FIXTURE_PATH)
 	if not package_result.is_ok():
 		return
 	var content := package_result.content

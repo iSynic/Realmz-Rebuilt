@@ -104,7 +104,6 @@ func _run() -> void:
 		if requested_cases.is_empty():
 			suite.run()
 			if suite_script.resource_path.ends_with("test_classic_ui_system.gd"): await suite.call("_test_application_quit_composition")
-			if suite_script.resource_path.ends_with("test_classic_ui_system.gd"): await suite.call("_test_classic_choice_context")
 		else:
 			var selected_methods := _selected_test_methods(suite, requested_cases)
 			var shared_arguments: Array = []

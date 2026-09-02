@@ -11,14 +11,13 @@ const POLL_DELAY_MILLISECONDS: int = 2
 
 
 func selected_case_arguments() -> Array:
-	var package := PackageRepository.new().load_package(FIXTURE_PATH)
-	assert_true(package.is_ok(), "the package-task success fixture passes independent package validation")
+	var package := load_test_package(FIXTURE_PATH)
 	if not package.is_ok(): return []
 	return [package.content.campaign_id, package.content.package_hash]
 
 
 func run() -> void:
-	var package := PackageRepository.new().load_package(FIXTURE_PATH); assert_true(package.is_ok(), "the package-task success fixture passes independent package validation")
+	var package := load_test_package(FIXTURE_PATH)
 	if not package.is_ok():
 		return
 	var campaign_id: String = package.content.campaign_id
@@ -33,7 +32,7 @@ func run() -> void:
 
 
 func _test_successful_task(campaign_id: String, package_hash: String) -> void:
-	_cleanup_test_root(); var task_repository := PackageRepository.new(); var task: RefCounted = PackageInstallTaskScript.new(task_repository); assert_true(task.start(FIXTURE_PATH, TEST_ROOT), "a package install task starts from the positive fixture")
+	_cleanup_test_root(); var task_repository := test_package_repository(); var task: RefCounted = PackageInstallTaskScript.new(task_repository); assert_true(task.start(FIXTURE_PATH, TEST_ROOT), "a package install task starts from the positive fixture")
 	var observed_phases: Array[StringName] = []; var terminal := _wait_for_terminal(task, observed_phases)
 	assert_not_null(terminal, "the successful package task reaches a bounded terminal state")
 	if terminal == null:
@@ -82,26 +81,26 @@ func _test_shutdown_joins_worker() -> void:
 
 func _test_bundled_load_task() -> void:
 	var task: RefCounted = BundledPackageLoadTaskScript.new(); var deadline := Time.get_ticks_msec() + TERMINAL_WAIT_MILLISECONDS
-	assert_true(task.start("res://src/infrastructure/characters/realmz-classic-character-library.realmz2", "realmz-classic-character-library", "6e3f23c9a452f70b25040c729e17533de5ddf0c420ff35484fc52f6e0dd25e68"), "the built-in library starts outside the first-frame boundary")
+	assert_true(task.start("res://src/infrastructure/characters/realmz-classic-character-library.realmz2", "realmz-classic-character-library", "c7e093f46bcca49d2382d68c2995ae5ff90c0e706dbd538682b613af9b80e0bd"), "the built-in library starts outside the first-frame boundary")
 	while task.is_running() and Time.get_ticks_msec() < deadline: OS.delay_msec(POLL_DELAY_MILLISECONDS)
 	var result: PackageLoadResult = task.take_result()
 	assert_true(result != null and result.is_ok() and result.content.race_definitions().size() == 30, "the asynchronous built-in load returns the complete trusted Classic library"); assert_true(task.take_result() == null, "the built-in result is consumed exactly once"); task.shutdown()
 
 
 func _test_package_host_prewarm(campaign_id: String, package_hash: String) -> void:
-	_cleanup_test_root(); var campaign := CampaignPackageView.new(FIXTURE_PATH, true, campaign_id, package_hash); var host := PackageHostController.new(PackageRepository.new(), TEST_ROOT)
+	_cleanup_test_root(); var campaign := CampaignPackageView.new(FIXTURE_PATH, true, campaign_id, package_hash); var host := PackageHostController.new(test_package_repository(), TEST_ROOT)
 	assert_false(host.prewarm_last_campaign([campaign], "missing.campaign"), "a missing last-played campaign falls back without starting package work"); assert_true(host.prewarm_last_campaign([campaign], campaign_id), "the resolved last-played campaign starts on the existing cancellable package worker"); _wait_for_host_prewarm(host)
 	assert_equal([host.retained_candidate_count(), host.prepared_campaign_id()], [1, campaign_id], "successful prewarm retains exactly one identity-bound prepared candidate")
 	assert_true(host.start_install(FIXTURE_PATH), "selecting the matching campaign claims its prepared candidate"); var claimed_operation := host.operation_view(); var claimed := host.take_prepared_package()
 	assert_true(claimed_operation.state == PackageOperationView.SUCCEEDED and claimed != null and claimed.is_ok() and claimed.content.campaign_id == campaign_id and host.retained_candidate_count() == 0, "matching selection returns the validated package immediately and consumes the retained candidate")
-	host.close(); _cleanup_test_root(); host = PackageHostController.new(PackageRepository.new(), TEST_ROOT)
+	host.close(); _cleanup_test_root(); host = PackageHostController.new(test_package_repository(), TEST_ROOT)
 	assert_true(host.start_prewarm(TAMPERED_FIXTURE_PATH, "broken.campaign"), "a failed background preparation starts independently of foreground UI state"); _wait_for_host_prewarm(host)
 	assert_equal(host.retained_candidate_count(), 0, "failed prewarm retains no package and permits retry")
 	assert_true(host.start_prewarm(FIXTURE_PATH, campaign_id), "a later valid prewarm retries after background failure"); _wait_for_host_prewarm(host)
 	assert_equal(host.retained_candidate_count(), 1, "retry retains the successfully validated candidate")
 	assert_true(host.start_install(TAMPERED_FIXTURE_PATH), "selecting a different campaign supersedes the retained candidate with foreground priority"); var superseded_operation := _wait_for_host_operation(host); var superseded := host.take_prepared_package()
 	assert_true(superseded_operation.state == PackageOperationView.FAILED and superseded != null and not superseded.is_ok() and host.retained_candidate_count() == 0, "different-campaign supersession preserves validation failure and leaves no stale prepared package")
-	host.close(); _cleanup_test_root(); host = PackageHostController.new(PackageRepository.new(), TEST_ROOT)
+	host.close(); _cleanup_test_root(); host = PackageHostController.new(test_package_repository(), TEST_ROOT)
 	assert_true(host.start_install(FIXTURE_PATH), "foreground preparation starts before cooperative cancellation"); host.cancel()
 	var cancelled_operation := _wait_for_host_operation(host)
 	assert_equal(cancelled_operation.state, PackageOperationView.CANCELLED, "foreground cancellation reaches a typed terminal state without publishing a prepared candidate")

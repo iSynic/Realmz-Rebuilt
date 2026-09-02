@@ -100,6 +100,9 @@ func _construct_items(value: Variant) -> Variant:
 		if not _exact_fields(record, fields) or integers_value == null or not _definition_identity(record, ids, "Item") or not record["unidentifiedName"] is String or record["unidentifiedName"].is_empty() or not record["description"] is String or not record["cursedItemId"] is String or not record["specificRaceId"] is String or not record["specificCasteId"] is String or not record["magical"] is bool or not record["dropOnEmpty"] is bool:
 			_reject("Item definition is malformed or duplicated.")
 			return null
+		if integers_value["classicId"] <= 0 or record["id"] != "classic.item.%d" % integers_value["classicId"]:
+			_reject("Item definition identity must match its positive Classic ID.")
+			return null
 		var special_value: Variant = _integer_array(record["special"], 5, "Item special values")
 		if special_value == null:
 			return null
@@ -153,9 +156,6 @@ func _construct_races(value: Variant) -> Variant:
 	if not value is Array:
 		_reject("Content races must be an array.")
 		return null
-	if value.size() != 30:
-		_reject("Content races must contain all 30 Classic records.")
-		return null
 	var fields: Array[String] = ["id", "classicId", "name", "description", "eligibleCasteIds", "hitModifiers", "abilityBonuses", "saveBonuses", "attributeBonuses", "attributeLimits", "conditionLevels", "ageRanges", "ageChanges", "maximumAge", "doesNotDie", "baseMovement", "magicResistance", "twoHandBonus", "missileBonus", "baseAttacks", "maximumAttacks", "canRegenerate", "defaultIconSet", "itemCategoryMasks", "descriptorFlags"]
 	var integer_fields: Array[String] = ["classicId", "maximumAge", "baseMovement", "magicResistance", "twoHandBonus", "missileBonus", "baseAttacks", "maximumAttacks", "defaultIconSet", "descriptorFlags"]
 	var result: Array[RaceDefinition] = []
@@ -172,7 +172,7 @@ func _construct_races(value: Variant) -> Variant:
 			_reject("Race definition is malformed or duplicated.")
 			return null
 		var classic_id: int = integers_value["classicId"]
-		if classic_id < 1 or classic_id > 30 or classic_ids.has(classic_id):
+		if classic_id < 1 or classic_id > 30 or classic_ids.has(classic_id) or record["id"] != "classic.race.%d" % classic_id:
 			_reject("Race Classic IDs must uniquely cover 1 through 30.")
 			return null
 		classic_ids[classic_id] = true
@@ -209,7 +209,7 @@ func _construct_races(value: Variant) -> Variant:
 			eligible_castes.append(caste_id)
 		has_functional_rules = has_functional_rules or integers["maximumAge"] != 0 or integers["baseMovement"] != 0 or integers["baseAttacks"] != 0 or integers["maximumAttacks"] != 0 or not eligible_castes.is_empty() or limits_value.any(func(number: int) -> bool: return number != 0)
 		result.append(RaceDefinition.new(record["id"], integers["classicId"], record["name"], hit_value, save_value, bonus_value, limits_value, conditions_value, ages, age_changes, integers["maximumAge"], record["doesNotDie"], integers["baseMovement"], integers["magicResistance"], integers["twoHandBonus"], integers["missileBonus"], integers["baseAttacks"], integers["maximumAttacks"], record["canRegenerate"], integers["defaultIconSet"], masks[0], masks[1], integers["descriptorFlags"], record["description"], eligible_castes, abilities_value))
-	if not has_functional_rules:
+	if not result.is_empty() and not has_functional_rules:
 		_reject("Content races cannot be a semantically empty 30-record table.")
 		return null
 	return result
@@ -217,9 +217,6 @@ func _construct_races(value: Variant) -> Variant:
 func _construct_castes(value: Variant) -> Variant:
 	if not value is Array:
 		_reject("Content castes must be an array.")
-		return null
-	if value.size() != 30:
-		_reject("Content castes must contain all 30 Classic records.")
 		return null
 	var fields: Array[String] = ["id", "classicId", "name", "description", "eligibleRaceIds", "initialAbilityValues", "levelAbilityDice", "victoryThresholds", "saveBonuses", "attributeBonuses", "attributeLimits", "conditionLevels", "staminaDice", "strengthValues", "dodgeValues", "toHitValues", "missileValues", "handToHandValues", "spellcasterRows", "attackLevels", "startingItemIds", "casteClass", "minimumAgeGroup", "movementBonus", "magicResistanceMultiplier", "twoHandBonus", "maximumStaminaBonus", "bonusAttacks", "maximumAttacks", "startMoney", "canUseMissile", "getsMissileBonus", "defaultIcon", "itemCategoryMasks"]
 	var integer_fields: Array[String] = ["classicId", "casteClass", "minimumAgeGroup", "movementBonus", "magicResistanceMultiplier", "twoHandBonus", "maximumStaminaBonus", "bonusAttacks", "maximumAttacks", "startMoney", "defaultIcon"]
@@ -237,7 +234,7 @@ func _construct_castes(value: Variant) -> Variant:
 			_reject("Caste definition is malformed or duplicated.")
 			return null
 		var classic_id: int = integers_value["classicId"]
-		if classic_id < 1 or classic_id > 30 or classic_ids.has(classic_id):
+		if classic_id < 1 or classic_id > 30 or classic_ids.has(classic_id) or record["id"] != "classic.caste.%d" % classic_id:
 			_reject("Caste Classic IDs must uniquely cover 1 through 30.")
 			return null
 		classic_ids[classic_id] = true
@@ -282,7 +279,7 @@ func _construct_castes(value: Variant) -> Variant:
 			eligible_races.append(race_id)
 		has_functional_rules = has_functional_rules or integers["casteClass"] != 0 or integers["movementBonus"] != 0 or integers["maximumAttacks"] != 0 or integers["startMoney"] != 0 or not eligible_races.is_empty() or victory_value.any(func(number: int) -> bool: return number != 0) or limits_value.any(func(number: int) -> bool: return number != 0) or stamina_value.any(func(number: int) -> bool: return number != 0) or attacks_value.any(func(number: int) -> bool: return number != 0)
 		result.append(CasteDefinition.new(record["id"], integers["classicId"], record["name"], saves_value, bonuses_value, limits_value, conditions_value, Vector2i(stamina[0], stamina[1]), Vector2i(to_hit[0], to_hit[1]), Vector2i(dodge[0], dodge[1]), Vector2i(missile[0], missile[1]), Vector2i(hand[0], hand[1]), spellcasters, attacks_value, start_items_value, integers["casteClass"], integers["minimumAgeGroup"], integers["movementBonus"], integers["magicResistanceMultiplier"], integers["twoHandBonus"], integers["maximumStaminaBonus"], integers["bonusAttacks"], integers["maximumAttacks"], integers["startMoney"], record["canUseMissile"], record["getsMissileBonus"], integers["defaultIcon"], masks[0], masks[1], Vector2i(strength[0], strength[1]), record["description"], eligible_races, initial_abilities_value, level_abilities_value, victory_value))
-	if not has_functional_rules:
+	if not result.is_empty() and not has_functional_rules:
 		_reject("Content castes cannot be a semantically empty 30-record table.")
 		return null
 	return result
@@ -314,6 +311,9 @@ func _construct_spells(value: Variant) -> Variant:
 			_reject("Spell definition is malformed or duplicated.")
 			return null
 		var integers: Dictionary = integers_value
+		if integers["classicId"] <= 0 or record["id"] != "classic.spell.%d" % integers["classicId"]:
+			_reject("Spell definition identity must match its positive Classic ID.")
+			return null
 		var description: String = record["description"]
 		if ApplicationSpellText.owns(integers["classicId"]):
 			if not description.is_empty():

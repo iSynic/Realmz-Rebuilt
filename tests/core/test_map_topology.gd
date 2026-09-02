@@ -4,8 +4,7 @@ const FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-fi
 
 
 func run() -> void:
-	var loaded := PackageRepository.new().load_package(FIXTURE_PATH)
-	assert_true(loaded.is_ok(), "topology fixture loads: %s" % loaded.error_message)
+	var loaded := load_test_package(FIXTURE_PATH)
 	if not loaded.is_ok():
 		return
 	var world_state := WorldState.new()

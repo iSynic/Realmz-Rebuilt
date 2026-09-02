@@ -4,14 +4,12 @@ const FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-fi
 
 
 func selected_case_arguments() -> Array:
-	var loaded := PackageRepository.new().load_package(FIXTURE_PATH)
-	assert_true(loaded.is_ok(), "inventory workflow starts from the validated package fixture")
+	var loaded := load_test_package(FIXTURE_PATH)
 	return [_inventory_content(loaded.content)] if loaded.is_ok() else []
 
 
 func run() -> void:
-	var loaded := PackageRepository.new().load_package(FIXTURE_PATH)
-	assert_true(loaded.is_ok(), "inventory workflow starts from the validated package fixture")
+	var loaded := load_test_package(FIXTURE_PATH)
 	if not loaded.is_ok():
 		return
 	var content := _inventory_content(loaded.content)

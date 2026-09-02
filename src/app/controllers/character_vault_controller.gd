@@ -4,7 +4,7 @@ extends RefCounted
 const CharacterVaultRepositoryScript := preload("res://src/infrastructure/characters/character_vault_repository.gd")
 const ClassicStarterCharacterCatalogScript := preload("res://src/infrastructure/characters/classic_starter_character_catalog.gd")
 const CLASSIC_STARTER_CATALOG_PATH := "res://src/infrastructure/characters/realmz-classic-starter-characters.json"
-const CLASSIC_CHARACTER_LIBRARY_HASH := "6e3f23c9a452f70b25040c729e17533de5ddf0c420ff35484fc52f6e0dd25e68"
+const CLASSIC_CHARACTER_LIBRARY_HASH := "c7e093f46bcca49d2382d68c2995ae5ff90c0e706dbd538682b613af9b80e0bd"
 
 var _repository: CharacterVaultRepository
 var _validated_records: Dictionary = {}

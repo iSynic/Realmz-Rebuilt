@@ -6,16 +6,14 @@ const DEPARTURE_OBSERVATION_PATH: String = "res://tests/fixtures/oracle/classic-
 
 
 func selected_case_arguments() -> Array:
-	var loaded := PackageRepository.new().load_package(FIXTURE_PATH)
-	assert_true(loaded.is_ok(), "money workflow starts from the validated package fixture")
+	var loaded := load_test_package(FIXTURE_PATH)
 	return [loaded.content] if loaded.is_ok() else []
 
 
 func run() -> void:
 	_test_share_capacity_correction()
 	_test_pooled_departure_source_observation()
-	var loaded := PackageRepository.new().load_package(FIXTURE_PATH)
-	assert_true(loaded.is_ok(), "money workflow starts from the validated package fixture")
+	var loaded := load_test_package(FIXTURE_PATH)
 	if not loaded.is_ok():
 		return
 	_test_session_money_workflow(loaded.content)

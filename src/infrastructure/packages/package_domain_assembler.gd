@@ -2,8 +2,11 @@ class_name PackageDomainAssembler
 extends PackageDecoderBase
 
 
-func assemble(manifest: Dictionary, content: Dictionary, world: Dictionary, scenario: Dictionary, media_assets: Array[MediaAsset] = [], trusted_install: bool = false) -> RealmzContent:
+func assemble(manifest: Dictionary, content: Dictionary, world: Dictionary, scenario: Dictionary, media_assets: Array[MediaAsset] = [], trusted_install: bool = false, application_content: RealmzContent = null, application_media_assets: Array[MediaAsset] = []) -> RealmzContent:
 	clear_error()
+	if application_content != null and application_content.rules_version != manifest["engine"]["rulesVersion"]:
+		_reject("The scenario rules version does not match the loaded application definition catalog.")
+		return null
 	var _content_decoder := PackageContentDecoder.new(_diagnostic)
 	var _scenario_decoder := PackageScenarioDecoder.new(_diagnostic)
 	var _world_decoder := PackageWorldDecoder.new(_diagnostic)
@@ -53,10 +56,12 @@ func assemble(manifest: Dictionary, content: Dictionary, world: Dictionary, scen
 	var shops_value: Variant = _content_decoder._construct_shops(content.get("shops"))
 	if races_value == null or castes_value == null or items_value == null or spells_value == null or monsters_value == null or monster_sets_value == null or battles_value == null or treasures_value == null or shops_value == null:
 		return null
-	var races: Array[RaceDefinition] = races_value
-	var castes: Array[CasteDefinition] = castes_value
-	var items: Array[ItemDefinition] = items_value
-	var spells: Array[SpellDefinition] = spells_value
+	var effective_catalogs := _compose_catalogs(races_value, castes_value, items_value, spells_value, media_assets, application_content, application_media_assets)
+	if effective_catalogs.is_empty(): return null
+	var races: Array[RaceDefinition] = effective_catalogs["races"]
+	var castes: Array[CasteDefinition] = effective_catalogs["castes"]
+	var items: Array[ItemDefinition] = effective_catalogs["items"]
+	var spells: Array[SpellDefinition] = effective_catalogs["spells"]; var effective_media_assets: Array[MediaAsset] = effective_catalogs["media"]
 	var monsters: Array[MonsterDefinition] = monsters_value
 	var monster_sets: Dictionary = monster_sets_value
 	var battles: Array[BattleDefinition] = battles_value
@@ -77,9 +82,9 @@ func assemble(manifest: Dictionary, content: Dictionary, world: Dictionary, scen
 			if not covered_classic_ids.has(base_id):
 				_reject("Monster set %d is missing Classic monster '%s'." % [int(set_id), base_id])
 				return null
-	if not trusted_install and not _media_validator._validate_monster_media(all_monsters, media_assets):
+	if not trusted_install and not _media_validator._validate_monster_media(all_monsters, effective_media_assets):
 		return null
-	var appearance_options := _media_validator._construct_character_appearance_options(media_assets, races)
+	var appearance_options := _media_validator._construct_character_appearance_options(effective_media_assets, races)
 	var scenario_definition := _scenario_decoder._construct_scenario(scenario, manifest["campaignId"])
 	if scenario_definition == null:
 		return null
@@ -87,7 +92,7 @@ func assemble(manifest: Dictionary, content: Dictionary, world: Dictionary, scen
 	if triggers_value == null:
 		return null
 	var triggers: Array[TriggerDefinition] = triggers_value
-	if not trusted_install and not _reference_validator._validate_scenario_references(scenario_definition, message_ids, simple_encounters, complex_encounters, thief_encounters, items, spells, media_assets):
+	if not trusted_install and not _reference_validator._validate_scenario_references(scenario_definition, message_ids, simple_encounters, complex_encounters, thief_encounters, items, spells, effective_media_assets):
 		return null
 	if not trusted_install and not _reference_validator._validate_timed_encounter_references(scenario_definition, timed_encounters):
 		return null
@@ -113,7 +118,7 @@ func assemble(manifest: Dictionary, content: Dictionary, world: Dictionary, scen
 	if maps_value == null:
 		return null
 	var maps: Array[MapDefinition] = maps_value
-	var player_maps_value: Variant = _world_decoder._construct_player_maps(world.get("playerMaps"), maps, media_assets)
+	var player_maps_value: Variant = _world_decoder._construct_player_maps(world.get("playerMaps"), maps, effective_media_assets)
 	if player_maps_value == null:
 		return null
 	var player_maps: Array[PlayerMapDefinition] = player_maps_value
@@ -147,6 +152,49 @@ func assemble(manifest: Dictionary, content: Dictionary, world: Dictionary, scen
 				_reject("Trigger '%s' references an unavailable post-action location." % trigger.id)
 				return null
 	return RealmzContent.new(manifest["campaignId"], manifest["packageHash"], manifest["contentId"], manifest["engine"]["rulesVersion"], start["mapId"], start_coordinate, world_definition, scenario_definition, messages, triggers, simple_encounters, races, castes, items, spells, monsters, battles, treasures, shops, complex_encounters, thief_encounters, timed_encounters, option_labels, campaign_definition, appearance_options, monster_sets_value)
+
+
+func _compose_catalogs(races_value: Variant, castes_value: Variant, items_value: Variant, spells_value: Variant, scenario_media: Array[MediaAsset], application_content: RealmzContent, application_media: Array[MediaAsset]) -> Dictionary:
+	var races: Array[RaceDefinition] = []
+	var castes: Array[CasteDefinition] = []
+	var items: Array[ItemDefinition] = []
+	var spells: Array[SpellDefinition] = []
+	if application_content != null:
+		races.assign(application_content.race_definitions())
+		castes.assign(application_content.caste_definitions())
+		items.assign(application_content.item_definitions())
+		spells.assign(application_content.spell_definitions())
+	_overlay_definitions(races, races_value)
+	_overlay_definitions(castes, castes_value)
+	_overlay_definitions(items, items_value)
+	_overlay_definitions(spells, spells_value)
+	if races.size() != 30 or castes.size() != 30:
+		_reject("The effective application-plus-scenario Race and Caste catalogs must each contain all 30 Classic records.")
+		return {}
+	var effective_media: Array[MediaAsset] = scenario_media.duplicate()
+	_overlay_media(effective_media, application_media)
+	return {"races": races, "castes": castes, "items": items, "spells": spells, "media": effective_media}
+
+
+func _overlay_definitions(effective: Array, local: Array) -> void:
+	var indices: Dictionary = {}
+	for index: int in effective.size():
+		indices[effective[index].id] = index
+	for definition: Variant in local:
+		if indices.has(definition.id):
+			effective[indices[definition.id]] = definition
+		else:
+			indices[definition.id] = effective.size()
+			effective.append(definition)
+
+
+func _overlay_media(effective: Array[MediaAsset], application: Array[MediaAsset]) -> void:
+	var local_keys: Dictionary = {}
+	for asset: MediaAsset in effective:
+		local_keys["%s:%d" % [asset.resource_type, asset.resource_id]] = true
+	for asset: MediaAsset in application:
+		if not local_keys.has("%s:%d" % [asset.resource_type, asset.resource_id]):
+			effective.append(asset)
 
 
 func _normalize_missing_encounter_prompts(messages: Array[MessageDefinition], message_ids: Dictionary, simple_encounters: Array[SimpleEncounterDefinition], complex_encounters: Array[ComplexEncounterDefinition]) -> void:

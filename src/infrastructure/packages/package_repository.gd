@@ -2,8 +2,8 @@ class_name PackageRepository
 extends RefCounted
 
 const PackageDocumentCacheScript := preload("res://src/infrastructure/packages/package_document_cache.gd")
-const EXPECTED_SCHEMA_HASH: String = "12376856235a11f507b993835acad87b546f87b9ad519533967ed2701ddb89cd"
-const DECODER_VERSION: int = 5
+const EXPECTED_SCHEMA_HASH: String = "05ced7b000683f53e6220b9ac8f7d41c801e7e2c78c874287c2ae694b585273d"
+const DECODER_VERSION: int = 6
 const REQUIRED_DOCUMENTS: Array[String] = ["assets/index.json", "content.json", "scenario.json", "world.json"]
 const SUPPORTED_CAPABILITIES: Array[String] = [
 	"realmz.core.classic-rules-v1",
@@ -26,6 +26,16 @@ var _document_cache := PackageDocumentCacheScript.new(EXPECTED_SCHEMA_HASH, DECO
 var _manifest_discovery := PackageManifestDiscovery.new(EXPECTED_SCHEMA_HASH, SUPPORTED_CAPABILITIES, DEFERRED_PACKAGE_CAPABILITIES, _archive_reader)
 var _media_validator := PackageMediaValidatorResolver.new()
 var _domain_assembler := PackageDomainAssembler.new()
+var _application_content: RealmzContent
+var _application_media_assets: Array[MediaAsset] = []
+
+
+func set_application_content(content: RealmzContent, media_assets: Array[MediaAsset] = []) -> void:
+	if _application_content == content and _application_media_assets == media_assets:
+		return
+	_application_content = content
+	_application_media_assets.assign(media_assets)
+	_package_cache.clear()
 
 
 func promote_installed_package(path: String) -> void:
@@ -281,7 +291,7 @@ func _load_open_archive(archive: ZIPReader, source_path: String, progress_callba
 			return _validation_failure()
 	var runtime_assets := _media_validator.construct_assets(asset_document)
 	_report_progress(progress_callback, &"constructing-content", 0, 1)
-	var runtime_content := _domain_assembler.assemble(manifest, content_document, world_document, scenario_document, runtime_assets, not trusted_receipt.is_empty())
+	var runtime_content := _domain_assembler.assemble(manifest, content_document, world_document, scenario_document, runtime_assets, not trusted_receipt.is_empty(), _application_content, _application_media_assets)
 	if runtime_content == null:
 		_last_error = _domain_assembler.error_message()
 		return _validation_failure()
