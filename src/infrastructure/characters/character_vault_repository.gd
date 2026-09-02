@@ -132,6 +132,46 @@ func publish_revision(record: CharacterVaultRecord) -> bool:
 	return _write_current_hash(record.character_id, record.revision_hash)
 
 
+func seed_if_empty(records: Array[CharacterVaultRecord]) -> bool:
+	last_error = ""
+	if records.is_empty():
+		return _fail("Starter-character seeding requires at least one record.")
+	var root_directory := DirAccess.open(_root_path)
+	if root_directory != null:
+		root_directory.list_dir_begin()
+		var existing_entry := root_directory.get_next()
+		root_directory.list_dir_end()
+		if not existing_entry.is_empty():
+			return true
+		root_directory = null
+	var stage_path := _root_path + ".starter-seed"
+	if not _remove_tree(stage_path):
+		return _fail("Could not clear an interrupted starter-character staging directory.")
+	var stage_repository := CharacterVaultRepository.new(stage_path)
+	for source_record: CharacterVaultRecord in records:
+		var staged_record := CharacterVaultRecord.from_data(source_record.to_data()) if source_record != null else null
+		if staged_record == null or not stage_repository.publish_revision(staged_record) or staged_record.revision_hash != source_record.revision_hash:
+			_remove_tree(stage_path)
+			return _fail("Starter-character staging failed: %s" % stage_repository.last_error)
+	var staged_records := stage_repository.list_current_records()
+	if staged_records.size() != records.size():
+		_remove_tree(stage_path)
+		return _fail("Starter-character staging did not produce the complete catalog.")
+	for record: CharacterVaultRecord in records:
+		var staged := stage_repository.load_revision(record.character_id, record.revision_hash)
+		if staged == null or CanonicalJson.encode(staged.to_data()) != CanonicalJson.encode(record.to_data()):
+			_remove_tree(stage_path)
+			return _fail("Starter-character staging readback failed.")
+	if DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(_root_path)) and DirAccess.remove_absolute(ProjectSettings.globalize_path(_root_path)) != OK:
+		_remove_tree(stage_path)
+		return _fail("Could not replace the empty character-vault directory.")
+	var rename_error := DirAccess.rename_absolute(ProjectSettings.globalize_path(stage_path), ProjectSettings.globalize_path(_root_path))
+	if rename_error != OK:
+		_remove_tree(stage_path)
+		return _fail("Could not install the starter-character vault (error %d)." % rename_error)
+	return true
+
+
 func archive_character(character_id: String) -> bool:
 	last_error = ""
 	if not _safe_component(character_id):
@@ -318,6 +358,26 @@ func _revision_hash(record: CharacterVaultRecord) -> String:
 func _delete_file(path: String) -> bool:
 	if not FileAccess.file_exists(path):
 		return true
+	return DirAccess.remove_absolute(ProjectSettings.globalize_path(path)) == OK
+
+
+func _remove_tree(path: String) -> bool:
+	var directory := DirAccess.open(path)
+	if directory == null:
+		return true
+	directory.list_dir_begin()
+	var entry := directory.get_next()
+	while not entry.is_empty():
+		var child := "%s/%s" % [path, entry]
+		if directory.current_is_dir():
+			if not _remove_tree(child):
+				directory.list_dir_end()
+				return false
+		elif DirAccess.remove_absolute(ProjectSettings.globalize_path(child)) != OK:
+			directory.list_dir_end()
+			return false
+		entry = directory.get_next()
+	directory.list_dir_end()
 	return DirAccess.remove_absolute(ProjectSettings.globalize_path(path)) == OK
 
 

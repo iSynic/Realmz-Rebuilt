@@ -2,9 +2,13 @@ class_name CharacterVaultController
 extends RefCounted
 
 const CharacterVaultRepositoryScript := preload("res://src/infrastructure/characters/character_vault_repository.gd")
+const ClassicStarterCharacterCatalogScript := preload("res://src/infrastructure/characters/classic_starter_character_catalog.gd")
+const CLASSIC_STARTER_CATALOG_PATH := "res://src/infrastructure/characters/realmz-classic-starter-characters.json"
+const CLASSIC_CHARACTER_LIBRARY_HASH := "6e3f23c9a452f70b25040c729e17533de5ddf0c420ff35484fc52f6e0dd25e68"
 
 var _repository: CharacterVaultRepository
 var _validated_records: Dictionary = {}
+var _operation_error: String = ""
 
 
 func _init(repository: CharacterVaultRepository = null) -> void:
@@ -33,6 +37,27 @@ func publish(character: CharacterState, rules_version: String, source_campaign_i
 	if published:
 		_validated_records.clear()
 	return published
+
+
+func seed_if_empty(records: Array[CharacterVaultRecord]) -> bool:
+	_operation_error = ""
+	var seeded := _repository.seed_if_empty(records)
+	if seeded:
+		_validated_records.clear()
+	return seeded
+
+
+func seed_classic_starters_if_empty(catalog_path: String = CLASSIC_STARTER_CATALOG_PATH, application_library_hash: String = CLASSIC_CHARACTER_LIBRARY_HASH) -> bool:
+	var catalog := ClassicStarterCharacterCatalogScript.new()
+	var records := catalog.load_records(catalog_path, application_library_hash)
+	if records.is_empty():
+		_operation_error = catalog.last_error
+		push_warning("Starter characters were not installed: %s" % _operation_error)
+		return false
+	var seeded := seed_if_empty(records)
+	if not seeded:
+		push_warning("Starter characters were not installed: %s" % last_error())
+	return seeded
 
 
 func revisions(active_content: RealmzContent, fallback_content: RealmzContent = null) -> Array[CharacterVaultRevisionView]:
@@ -86,7 +111,7 @@ func cached_revision_count() -> int:
 
 
 func last_error() -> String:
-	return _repository.last_error
+	return _operation_error if not _operation_error.is_empty() else _repository.last_error
 
 
 static func _cache_key(character_id: String, revision_hash: String) -> String:

@@ -885,11 +885,10 @@ func _poll_classic_character_library_load() -> void:
 		_classic_shell.set_standalone_character_creation_available(false, prepared.error_message); _shell_presenter.set_status("Character Files creation unavailable • %s" % prepared.error_message, true)
 	else:
 		_character_library_content = prepared.content; _character_library_media = prepared.media
-		presentation_coordinator.set_application_character_media(_character_library_media); presentation_coordinator.set_package_media(_character_library_media)
+		presentation_coordinator.set_application_character_media(_character_library_media); presentation_coordinator.set_package_media(_character_library_media); _vault_host.seed_classic_starters_if_empty()
 		_classic_shell.set_standalone_character_creation_available(true); _refresh_vault_views()
 	if _pending_prepared_package != null:
 		var pending := _pending_prepared_package; _pending_prepared_package = null; _complete_package_install(pending, _pending_package_seed)
-
 
 func _begin_standalone_character_creation() -> void:
 	if _active_content != null or session_controller.view().session_started:

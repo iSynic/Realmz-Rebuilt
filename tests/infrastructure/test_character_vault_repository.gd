@@ -1,9 +1,13 @@
 extends RealmzTestCase
 
 const FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-fixture.realmz2"
+const STARTER_CATALOG_PATH: String = "res://src/infrastructure/characters/realmz-classic-starter-characters.json"
+const CHARACTER_LIBRARY_HASH: String = "6e3f23c9a452f70b25040c729e17533de5ddf0c420ff35484fc52f6e0dd25e68"
+const ClassicStarterCharacterCatalogScript := preload("res://src/infrastructure/characters/classic_starter_character_catalog.gd")
 
 
 func run() -> void:
+	_test_classic_starter_seeding()
 	var repository := CharacterVaultRepository.new("user://realmz2-tests/character-vault-v1")
 	var character := CharacterState.new("party.character.1", "Vault Fixture", 12, 12)
 	character.race_id = "classic.race.1"
@@ -75,3 +79,42 @@ func run() -> void:
 	var loaded_fast := repository.load_revision(fast_record.character_id, fast_record.revision_hash)
 	assert_equal(loaded_fast.state.fast_spell_at(9).to_data(), {"spellId": "classic.spell.quick", "power": 3}, "vault revisions preserve the exact Fast Spell slot and power")
 	assert_true(repository.archive_character(fast_record.character_id), "the Fast Spell vault fixture is archived without destructive deletion")
+
+
+func _test_classic_starter_seeding() -> void:
+	var catalog := ClassicStarterCharacterCatalogScript.new()
+	var records: Array[CharacterVaultRecord] = catalog.load_records(STARTER_CATALOG_PATH, CHARACTER_LIBRARY_HASH)
+	assert_equal(records.map(func(record: CharacterVaultRecord) -> String: return record.character_id), ["classic.starter.kevlar", "classic.starter.lothlorian", "classic.starter.silver-leaf", "classic.starter.traskelion", "classic.starter.trevor", "classic.starter.vormale"], "the trusted catalog exposes exactly the six pinned Realmz 7.1.2 starter identities")
+	assert_equal(records.map(func(record: CharacterVaultRecord) -> String: return record.revision_hash), ["f943057acbd32444d8c6f002acea535ade1be0c7d15e911923705ec42e608c62", "0fe4438b7063af9fd09d22f37006b3ca248c563e8316f0f64c4cea0fa79c795f", "394a60afc98777169f265b28ec0f8de3aa9309cb2e6f1827d08f6657a4456a0c", "6207c9213d373eb25692fcc84dd108b34415c1851c64683016b5ded36e36eca0", "13813f22ad4172c644c968f7d461e820e483dc0f821ffc630945698227927c6d", "222e04fc9036edd78bda062952e874d6fe5d5fee3f363800efc9dd52328fea7d"], "the offline conversion produces deterministic canonical revision hashes")
+	var seeded_root := "user://realmz2-tests/classic-starter-seed"
+	_remove_test_tree(seeded_root); _remove_test_tree(seeded_root + ".starter-seed")
+	var repository := CharacterVaultRepository.new(seeded_root)
+	assert_true(repository.seed_if_empty(records) and repository.list_current_records().size() == 6, "an absent vault installs all six validated records atomically")
+	var original_hash := repository.current_revision_hash("classic.starter.kevlar")
+	assert_true(repository.seed_if_empty(records) and repository.current_revision_hash("classic.starter.kevlar") == original_hash, "an existing vault is never reinstalled or overwritten")
+	var occupied_root := "user://realmz2-tests/classic-starter-occupied"
+	_remove_test_tree(occupied_root); DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(occupied_root)); var sentinel := FileAccess.open(occupied_root + "/unknown.tmp", FileAccess.WRITE); sentinel.store_string("preserve"); sentinel.close()
+	var occupied := CharacterVaultRepository.new(occupied_root)
+	assert_true(occupied.seed_if_empty(records) and occupied.list_current_records().is_empty() and FileAccess.file_exists(occupied_root + "/unknown.tmp"), "any unknown, invalid, temporary, or archived vault entry suppresses seeding without mutation")
+	var failed_root := "user://realmz2-tests/classic-starter-failure"
+	_remove_test_tree(failed_root); _remove_test_tree(failed_root + ".starter-seed")
+	var invalid_records: Array[CharacterVaultRecord] = records.duplicate(); var invalid := CharacterVaultRecord.from_data(records[0].to_data()); invalid.state.traitor = true; invalid_records[0] = invalid
+	var failing := CharacterVaultRepository.new(failed_root)
+	assert_false(failing.seed_if_empty(invalid_records), "one invalid catalog record rejects the complete seed transaction")
+	assert_false(DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(failed_root)) or DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(failed_root + ".starter-seed")), "failed seeding leaves neither a partial vault nor a staging directory")
+	_remove_test_tree(seeded_root); _remove_test_tree(occupied_root); _remove_test_tree(failed_root)
+
+
+func _remove_test_tree(path: String) -> void:
+	var directory := DirAccess.open(path)
+	if directory == null:
+		return
+	directory.list_dir_begin()
+	var entry := directory.get_next()
+	while not entry.is_empty():
+		var child := "%s/%s" % [path, entry]
+		if directory.current_is_dir(): _remove_test_tree(child)
+		else: DirAccess.remove_absolute(ProjectSettings.globalize_path(child))
+		entry = directory.get_next()
+	directory.list_dir_end()
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
