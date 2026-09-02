@@ -214,7 +214,7 @@ func _move_between_maps(action: ClassicActionDefinition, dungeon_move: bool, act
 		if message == null:
 			return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic teleport references unavailable message %d." % message_id)
 		events.append(DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-teleport"}))
-	if activate_destination:
+	if activate_destination and not target_map.topology.cell_at(coordinate).trigger_ids().is_empty():
 		events.append(DomainEvent.new(&"destination_trigger_recheck_requested", {"mapId": target_map.id, "x": coordinate.x, "y": coordinate.y, "source": "classic-opcode-20"}))
 		return ScenarioRuntimeOperationResult.completed(target_map.id, events, ScenarioVmDirective.finish())
 	return ScenarioRuntimeOperationResult.completed(target_map.id, events)
