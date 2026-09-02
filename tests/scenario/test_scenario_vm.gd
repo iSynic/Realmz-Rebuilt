@@ -5,14 +5,12 @@ const AOGM_OPCODE_INVENTORY_PATH: String = "res://tests/fixtures/oracle/aogm-act
 
 
 func selected_case_arguments() -> Array:
-	var loaded := PackageRepository.new().load_package(FIXTURE_PATH)
-	assert_true(loaded.is_ok(), "Scenario VM fixture loads: %s" % loaded.error_message)
+	var loaded := load_test_package(FIXTURE_PATH)
 	return [loaded.content] if loaded.is_ok() else []
 
 
 func run() -> void:
-	var loaded := PackageRepository.new().load_package(FIXTURE_PATH)
-	assert_true(loaded.is_ok(), "Scenario VM fixture loads: %s" % loaded.error_message)
+	var loaded := load_test_package(FIXTURE_PATH)
 	if not loaded.is_ok():
 		return
 	var content: RealmzContent = loaded.content
@@ -305,7 +303,7 @@ func _test_public_vm_combat_auto(content: RealmzContent) -> void:
 	content.scenario = ScenarioDefinition.new([program], [], ScenarioApplicationHooks.new(program.id, "", "", "", ""))
 	var sixth_id := "fixture.vm-auto.6"
 	var inactive_session := _vm_combat_auto_session(content, 1)
-	var active_session := _vm_combat_auto_session(content, 8)
+	var active_session := _vm_combat_auto_session(content, 3)
 	assert_true(inactive_session != null and active_session != null, "public VM combat fixture provides inactive and active sixth-member turns")
 	if inactive_session == null or active_session == null:
 		content.scenario = original_scenario

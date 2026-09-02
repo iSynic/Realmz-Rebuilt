@@ -22,8 +22,7 @@ func run() -> void:
 	if timed_recovery_correction is Dictionary:
 		assert_equal(timed_recovery_correction["castleSourceObservation"]["halfDayRecoveryCount"], 2, "the fixture records Castle's repeated recovery path")
 		assert_equal(timed_recovery_correction["realmz2ChosenResult"]["halfDayRecoveryCount"], 1, "the fixture records one recovery per midnight")
-	var loaded := PackageRepository.new().load_package(FIXTURE_PATH)
-	assert_true(loaded.is_ok(), "scroll/camp workflow starts from the validated package fixture")
+	var loaded := load_test_package(FIXTURE_PATH)
 	if not loaded.is_ok():
 		return
 	var content := _scroll_content(loaded.content)

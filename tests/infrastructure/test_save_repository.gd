@@ -6,8 +6,7 @@ const SaveSlotPreviewScript := preload("res://src/core/view/save_slot_preview.gd
 
 
 func run() -> void:
-	var loaded := PackageRepository.new().load_package(FIXTURE_PATH)
-	assert_true(loaded.is_ok(), "save-preview fixture loads before repository tests")
+	var loaded := load_test_package(FIXTURE_PATH)
 	if not loaded.is_ok():
 		return
 	var campaign_id: String = loaded.content.campaign_id

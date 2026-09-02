@@ -5,14 +5,12 @@ const ViewChangeSetScript := preload("res://src/core/view/view_change_set.gd")
 
 
 func selected_case_arguments() -> Array:
-	var loaded := PackageRepository.new().load_package(FIXTURE_PATH)
-	assert_true(loaded.is_ok(), "exploration fixture loads: %s" % loaded.error_message)
+	var loaded := load_test_package(FIXTURE_PATH)
 	return [loaded.content] if loaded.is_ok() else []
 
 
 func run() -> void:
-	var loaded := PackageRepository.new().load_package(FIXTURE_PATH)
-	assert_true(loaded.is_ok(), "exploration fixture loads: %s" % loaded.error_message)
+	var loaded := load_test_package(FIXTURE_PATH)
 	if not loaded.is_ok():
 		return
 	var content := loaded.content

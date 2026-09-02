@@ -4,7 +4,7 @@ const FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-fi
 
 
 func selected_case_arguments() -> Array:
-	var package_result := PackageRepository.new().load_package(FIXTURE_PATH)
+	var package_result := load_test_package(FIXTURE_PATH)
 	return [package_result.content if package_result.is_ok() else null]
 
 

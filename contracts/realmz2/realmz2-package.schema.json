@@ -311,8 +311,8 @@
         "thiefEncounters": { "type": "array", "items": { "$ref": "#/$defs/thiefEncounter" } },
         "timedEncounters": { "type": "array", "items": { "$ref": "#/$defs/timedEncounter" } },
         "spells": { "type": "array", "items": { "$ref": "#/$defs/spellDefinition" } },
-        "races": { "type": "array", "minItems": 30, "maxItems": 30, "items": { "$ref": "#/$defs/raceDefinition" } },
-        "castes": { "type": "array", "minItems": 30, "maxItems": 30, "items": { "$ref": "#/$defs/casteDefinition" } }
+        "races": { "type": "array", "maxItems": 30, "items": { "$ref": "#/$defs/raceDefinition" } },
+        "castes": { "type": "array", "maxItems": 30, "items": { "$ref": "#/$defs/casteDefinition" } }
       },
       "additionalProperties": false
     },

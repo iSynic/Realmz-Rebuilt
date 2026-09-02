@@ -14,7 +14,7 @@ const HeldMovementControllerScript := preload("res://src/presentation/held_movem
 const DebugToolsHostScript := preload("res://src/app/debug_tools_host.gd")
 const CLASSIC_CHARACTER_LIBRARY_PATH := "res://src/infrastructure/characters/realmz-classic-character-library.realmz2"
 const CLASSIC_CHARACTER_LIBRARY_ID := "realmz-classic-character-library"
-const CLASSIC_CHARACTER_LIBRARY_HASH := "6e3f23c9a452f70b25040c729e17533de5ddf0c420ff35484fc52f6e0dd25e68"
+const CLASSIC_CHARACTER_LIBRARY_HASH := "c7e093f46bcca49d2382d68c2995ae5ff90c0e706dbd538682b613af9b80e0bd"
 
 @onready var _status_label: Label = $ClassicShell/BottomRegion/BottomRow/NarrativeWell/NarrativeColumn/Facts/Status
 @onready var _smoke_button: Button = $ClassicShell/SmokeAction
@@ -884,7 +884,7 @@ func _poll_classic_character_library_load() -> void:
 	if not prepared.is_ok():
 		_classic_shell.set_standalone_character_creation_available(false, prepared.error_message); _shell_presenter.set_status("Character Files creation unavailable • %s" % prepared.error_message, true)
 	else:
-		_character_library_content = prepared.content; _character_library_media = prepared.media
+		_character_library_content = prepared.content; _character_library_media = prepared.media; _package_host.set_application_content(_character_library_content, _character_library_media.assets())
 		presentation_coordinator.set_application_character_media(_character_library_media); presentation_coordinator.set_package_media(_character_library_media); _vault_host.seed_classic_starters_if_empty()
 		_classic_shell.set_standalone_character_creation_available(true); _refresh_vault_views()
 	if _pending_prepared_package != null:
@@ -1021,7 +1021,7 @@ func _refresh_campaigns() -> void:
 
 
 func _try_prewarm_last_campaign() -> void:
-	if _last_campaign_prewarm_requested or _package_host == null or _presentation_settings == null or _presentation_settings.last_campaign_id.is_empty() or bool(get_meta(&"startup_splash_suppressed", false)) and not bool(get_meta(&"startup_front_door_revealed", false)): return
+	if _last_campaign_prewarm_requested or _package_host == null or _character_library_content == null or _presentation_settings == null or _presentation_settings.last_campaign_id.is_empty() or bool(get_meta(&"startup_splash_suppressed", false)) and not bool(get_meta(&"startup_front_door_revealed", false)): return
 	_last_campaign_prewarm_requested = true; _package_host.prewarm_last_campaign(_campaigns, _presentation_settings.last_campaign_id)
 
 

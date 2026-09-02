@@ -124,6 +124,12 @@ func install_sync(package_path: String) -> PreparedPackage:
 	return _prepare(_repository.install_package(package_path))
 
 
+func set_application_content(content: RealmzContent, media_assets: Array[MediaAsset] = []) -> void:
+	_advance_task()
+	assert(not _task.snapshot().is_running(), "Application definitions cannot change during package preparation.")
+	_repository.set_application_content(content, media_assets)
+
+
 func discover_campaigns(search_roots: Array[String]) -> Array[CampaignPackageView]:
 	var result: Array[CampaignPackageView] = []
 	for record: PackageDiscoveryResult in _repository.discover_campaigns(search_roots):

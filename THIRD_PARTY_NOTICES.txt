@@ -30,7 +30,7 @@ Castle character structure and emits canonical CharacterVaultRecord payloads.
 The conversion behavior is pinned to Castle source revision
 491816ad60037394f92c428e99c004494d3c28b3 and application character-library
 package SHA-256
-6e3f23c9a452f70b25040c729e17533de5ddf0c420ff35484fc52f6e0dd25e68.
+c7e093f46bcca49d2382d68c2995ae5ff90c0e706dbd538682b613af9b80e0bd.
 The original files remain converter fixtures and are excluded from exports.
 
 Castle-distributed Realmz scenarios

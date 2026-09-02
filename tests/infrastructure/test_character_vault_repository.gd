@@ -2,7 +2,7 @@ extends RealmzTestCase
 
 const FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-fixture.realmz2"
 const STARTER_CATALOG_PATH: String = "res://src/infrastructure/characters/realmz-classic-starter-characters.json"
-const CHARACTER_LIBRARY_HASH: String = "6e3f23c9a452f70b25040c729e17533de5ddf0c420ff35484fc52f6e0dd25e68"
+const CHARACTER_LIBRARY_HASH: String = "c7e093f46bcca49d2382d68c2995ae5ff90c0e706dbd538682b613af9b80e0bd"
 const ClassicStarterCharacterCatalogScript := preload("res://src/infrastructure/characters/classic_starter_character_catalog.gd")
 
 
@@ -32,8 +32,7 @@ func run() -> void:
 	assert_true(records.any(func(candidate: CharacterVaultRecord) -> bool: return candidate.character_id == record.character_id), "the current-revision index exposes published characters")
 	assert_true(repository.list_character_ids().has(record.character_id), "vault enumeration includes active character identities without reading presentation state")
 	var vault_controller := CharacterVaultController.new(repository); var cached_views := vault_controller.revisions(null); assert_true(not cached_views.is_empty() and vault_controller.cached_revision_count() >= 1, "listing Character Files retains each already validated revision by stable identity"); assert_true(repository.archive_character(record.character_id), "the cache proof temporarily removes the source record from the active vault without deleting it"); var first_cached_intent := vault_controller.import_intent(record.character_id, record.revision_hash); var second_cached_intent := vault_controller.import_intent(record.character_id, record.revision_hash); assert_true(first_cached_intent != null and second_cached_intent != null and (first_cached_intent.payload as PlayerIntent.VaultImportPayload).character_state != (second_cached_intent.payload as PlayerIntent.VaultImportPayload).character_state, "cached imports remain available without a drop-frame read and return detached state clones"); (first_cached_intent.payload as PlayerIntent.VaultImportPayload).character_state.name = "Detached mutation"; assert_equal((second_cached_intent.payload as PlayerIntent.VaultImportPayload).character_state.name, "Vault Fixture", "one cached import cannot mutate another"); assert_true(repository.restore_revision(record.character_id, record.revision_hash), "the cache proof restores the active revision before ordinary repository checks continue")
-	var package := PackageRepository.new().load_package(FIXTURE_PATH)
-	assert_true(package.is_ok(), "the fixture package loads for campaign eligibility checks")
+	var package := load_test_package(FIXTURE_PATH)
 	if package.is_ok():
 		var eligibility := repository.campaign_eligibility(record, package.content)
 		assert_true(eligibility.eligible, "a matching race and class are eligible for the target campaign")
@@ -85,7 +84,7 @@ func _test_classic_starter_seeding() -> void:
 	var catalog := ClassicStarterCharacterCatalogScript.new()
 	var records: Array[CharacterVaultRecord] = catalog.load_records(STARTER_CATALOG_PATH, CHARACTER_LIBRARY_HASH)
 	assert_equal(records.map(func(record: CharacterVaultRecord) -> String: return record.character_id), ["classic.starter.kevlar", "classic.starter.lothlorian", "classic.starter.silver-leaf", "classic.starter.traskelion", "classic.starter.trevor", "classic.starter.vormale"], "the trusted catalog exposes exactly the six pinned Realmz 7.1.2 starter identities")
-	assert_equal(records.map(func(record: CharacterVaultRecord) -> String: return record.revision_hash), ["f943057acbd32444d8c6f002acea535ade1be0c7d15e911923705ec42e608c62", "0fe4438b7063af9fd09d22f37006b3ca248c563e8316f0f64c4cea0fa79c795f", "394a60afc98777169f265b28ec0f8de3aa9309cb2e6f1827d08f6657a4456a0c", "6207c9213d373eb25692fcc84dd108b34415c1851c64683016b5ded36e36eca0", "13813f22ad4172c644c968f7d461e820e483dc0f821ffc630945698227927c6d", "222e04fc9036edd78bda062952e874d6fe5d5fee3f363800efc9dd52328fea7d"], "the offline conversion produces deterministic canonical revision hashes")
+	assert_equal(records.map(func(record: CharacterVaultRecord) -> String: return record.revision_hash), ["ca58f46312fb6bc78d3bd552965255a89a8c26240a44d160ef8757dd283b36a1", "700b8da90d4631e102f04c7bbf6a3f9c721c4f654268e7c64130a602e9777a40", "15f5608ca6ddee780fe426ff9bb21fd0335900a0f975e26f8eb92446fddee75c", "03483faee09d2698ed4e5e42f4212e4546694d1dce020584d6e523e42cd8ed36", "ebb73d8ffd5881f11536474b7ef78589d08b58589d66e687eca1a3457f50fbb4", "90b5f9a35837a73cc55847f69add3754ac067c1245f3bfac3744795e152eb153"], "the offline conversion produces deterministic canonical revision hashes")
 	var seeded_root := "user://realmz2-tests/classic-starter-seed"
 	_remove_test_tree(seeded_root); _remove_test_tree(seeded_root + ".starter-seed")
 	var repository := CharacterVaultRepository.new(seeded_root)

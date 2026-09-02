@@ -108,9 +108,32 @@ foreach ($scenario in $catalog.scenarios) {
         finally { $assetReader.Dispose() }
         $assetIds = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
         $landCicnIds = [System.Collections.Generic.HashSet[int]]::new()
+        $resourceKeys = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
         foreach ($asset in @($assetIndex.assets)) {
             if (-not [string]::IsNullOrWhiteSpace([string]$asset.id)) { [void]$assetIds.Add([string]$asset.id) }
             if ($asset.resourceType -eq "cicn" -and $null -ne $asset.resourceId) { [void]$landCicnIds.Add([int]$asset.resourceId) }
+            if (-not [string]::IsNullOrWhiteSpace([string]$asset.resourceType) -and $null -ne $asset.resourceId) {
+                [void]$resourceKeys.Add("$($asset.resourceType):$([int]$asset.resourceId)")
+            }
+        }
+        $scenarioEntry = $archive.GetEntry("scenario.json")
+        if ($null -eq $scenarioEntry) { throw "$($scenario.file) has no scenario.json." }
+        $scenarioReader = [System.IO.StreamReader]::new($scenarioEntry.Open())
+        try { $scenarioDocument = $scenarioReader.ReadToEnd() | ConvertFrom-Json }
+        finally { $scenarioReader.Dispose() }
+        foreach ($program in @($scenarioDocument.programs)) {
+            foreach ($instruction in @($program.instructions | Where-Object { $_.kind -eq "classicAction" -and $_.opcode -eq 62 })) {
+                $resourceId = [int]$instruction.id
+                if ($resourceId -eq 0) {
+                    throw "$($scenario.file) program $($program.id) retains Castle's invalid scrolling-text resource ID 0."
+                }
+                if (-not $resourceKeys.Contains("TEXT:$resourceId")) {
+                    throw "$($scenario.file) program $($program.id) has no exact scenario TEXT $resourceId asset for scrolling text."
+                }
+                if (-not $resourceKeys.Contains("styl:$resourceId")) {
+                    throw "$($scenario.file) program $($program.id) has no same-ID Classic styl $resourceId asset for scrolling text."
+                }
+            }
         }
         foreach ($map in @($world.maps | Where-Object { $_.levelType -eq "land" })) {
             foreach ($cell in $map.cells) {
@@ -127,12 +150,8 @@ foreach ($scenario in $catalog.scenarios) {
             }
         }
         if ($scenario.campaignId -eq "scenario-city-of-bywater") {
-            $scenarioEntry = $archive.GetEntry("scenario.json")
             $contentEntry = $archive.GetEntry("content.json")
-            if ($null -eq $scenarioEntry -or $null -eq $contentEntry) { throw "City of Bywater has no compiled content or scenario document." }
-            $scenarioReader = [System.IO.StreamReader]::new($scenarioEntry.Open())
-            try { $scenarioDocument = $scenarioReader.ReadToEnd() | ConvertFrom-Json }
-            finally { $scenarioReader.Dispose() }
+            if ($null -eq $contentEntry) { throw "City of Bywater has no compiled content document." }
             $contentReader = [System.IO.StreamReader]::new($contentEntry.Open())
             try { $contentDocument = $contentReader.ReadToEnd() | ConvertFrom-Json }
             finally { $contentReader.Dispose() }
@@ -165,9 +184,10 @@ foreach ($scenario in $catalog.scenarios) {
     if ($manifest.campaignId -ne $scenario.campaignId -or $manifest.name -ne $scenario.name -or $manifest.packageHash -ne $scenario.packageHash) {
         throw "$($scenario.file) manifest identity does not match provenance."
     }
-    if ($manifest.compiler.commit -ne $catalog.compiler.revision) {
-        throw "$($scenario.file) was not produced by the pinned Providence revision."
+    $expectedCompilerRevision = if ([string]::IsNullOrWhiteSpace([string]$scenario.compilerRevision)) { $catalog.compiler.revision } else { $scenario.compilerRevision }
+    if ($manifest.compiler.commit -ne $expectedCompilerRevision) {
+        throw "$($scenario.file) was not produced by its pinned Providence revision."
     }
 }
 
-Write-Host "Verified the 13-scenario bundle and designated City of Bywater source snapshot."
+Write-Host "Verified the 13-scenario bundle, scrolling-text resources, and designated City of Bywater source snapshot."
