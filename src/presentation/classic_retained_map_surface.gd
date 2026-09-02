@@ -6,6 +6,7 @@ const BATTLE_ATLAS_ID := "classic-battle-tiles-302"
 const SECRET_TILE_ID := 251
 const PATH_TILE_ID := 253
 const DARKNESS_MASK_SIZE := Vector2(320.0, 320.0)
+const DARKNESS_MEMORY_OPACITY := 0.8
 
 var _viewport_container: SubViewportContainer
 var _viewport: SubViewport
@@ -195,7 +196,7 @@ func _update_cell(cell: MapCellView, current_classic_rect: Rect2i) -> void:
 		if not cell.overlay_asset_id.is_empty(): _set_overlay(cell.coordinate, cell.overlay_asset_id)
 		if cell.has_feature(&"secret"): _set_transparent_marker_cell(_marker_layer, cell.coordinate, SECRET_TILE_ID)
 		if cell.has_feature(&"discovered_path"): _set_transparent_marker_cell(_feature_layers[0], cell.coordinate, PATH_TILE_ID)
-	if not cell.visible or outside_classic:
+	if (not cell.visible or outside_classic) and (not _map_view.dark or los):
 		_set_fog(cell.coordinate, 0)
 
 
@@ -334,14 +335,69 @@ func _draw() -> void:
 
 
 func _draw_darkness_mask(level: int) -> void:
-	var mask_rect := Rect2(_party_rect.position - DARKNESS_MASK_SIZE * 0.5, DARKNESS_MASK_SIZE)
+	var surface_rect := Rect2(Vector2.ZERO, size)
+	var mask_rect := ClassicMapPresenter.darkness_mask_rect(_party_rect)
 	var clipped := _map_rect.intersection(mask_rect)
-	if clipped.position.y > _map_rect.position.y: draw_rect(Rect2(_map_rect.position, Vector2(_map_rect.size.x, clipped.position.y - _map_rect.position.y)), Color.BLACK)
-	if clipped.end.y < _map_rect.end.y: draw_rect(Rect2(Vector2(_map_rect.position.x, clipped.end.y), Vector2(_map_rect.size.x, _map_rect.end.y - clipped.end.y)), Color.BLACK)
-	if clipped.position.x > _map_rect.position.x: draw_rect(Rect2(Vector2(_map_rect.position.x, clipped.position.y), Vector2(clipped.position.x - _map_rect.position.x, clipped.size.y)), Color.BLACK)
-	if clipped.end.x < _map_rect.end.x: draw_rect(Rect2(Vector2(clipped.end.x, clipped.position.y), Vector2(_map_rect.end.x - clipped.end.x, clipped.size.y)), Color.BLACK)
+	for blackout_rect: Rect2 in darkness_blackout_rects(surface_rect, clipped):
+		draw_rect(blackout_rect, Color.BLACK)
+	_draw_darkness_memory(clipped)
 	var texture := _darkness_texture(level)
-	if texture != null: draw_texture_rect_region(texture, clipped, Rect2(clipped.position - mask_rect.position, clipped.size))
+	if texture == null:
+		draw_rect(clipped, Color.BLACK)
+		return
+	draw_texture_rect_region(texture, clipped, Rect2(clipped.position - mask_rect.position, clipped.size))
+
+
+func _draw_darkness_memory(lit_rect: Rect2) -> void:
+	if _viewport == null or _map_view == null:
+		return
+	var discovered := _seen if _map_view.uses_los else _dungeon_discovery if _map_view.level_type == &"dungeon" else _land_discovery
+	var viewport_cells := Vector2i(roundi(_map_rect.size.x / _cell_size), roundi(_map_rect.size.y / _cell_size))
+	var viewport_texture := _viewport.get_texture()
+	var memory_color := Color(1.0, 1.0, 1.0, 1.0 - DARKNESS_MEMORY_OPACITY)
+	for memory_rect: Rect2 in darkness_memory_rects(_map_rect, _camera_coordinate, viewport_cells, _cell_size, discovered):
+		for visible_part: Rect2 in _rect_parts_outside(memory_rect, lit_rect):
+			draw_texture_rect_region(viewport_texture, visible_part, visible_part, memory_color)
+
+
+static func darkness_blackout_rects(surface_rect: Rect2, lit_rect: Rect2) -> Array[Rect2]:
+	return _rect_parts_outside(surface_rect, surface_rect.intersection(lit_rect))
+
+
+static func darkness_memory_rects(map_rect: Rect2, camera: Vector2i, viewport_cells: Vector2i, cell_size: float, discovered: Dictionary) -> Array[Rect2]:
+	var result: Array[Rect2] = []
+	for local_y: int in viewport_cells.y:
+		var run_start := -1
+		for local_x: int in range(viewport_cells.x + 1):
+			var recalled := local_x < viewport_cells.x and discovered.has(camera + Vector2i(local_x, local_y))
+			if recalled and run_start < 0:
+				run_start = local_x
+			elif not recalled and run_start >= 0:
+				result.append(Rect2(map_rect.position + Vector2(run_start, local_y) * cell_size, Vector2(local_x - run_start, 1) * cell_size))
+				run_start = -1
+	return result
+
+
+static func darkness_memory_opacity() -> float:
+	return DARKNESS_MEMORY_OPACITY
+
+
+static func _rect_parts_outside(outer: Rect2, inner: Rect2) -> Array[Rect2]:
+	if not outer.has_area():
+		return []
+	var clipped := outer.intersection(inner)
+	if not clipped.has_area():
+		return [outer]
+	var result: Array[Rect2] = []
+	if clipped.position.y > outer.position.y:
+		result.append(Rect2(outer.position, Vector2(outer.size.x, clipped.position.y - outer.position.y)))
+	if clipped.end.y < outer.end.y:
+		result.append(Rect2(Vector2(outer.position.x, clipped.end.y), Vector2(outer.size.x, outer.end.y - clipped.end.y)))
+	if clipped.position.x > outer.position.x:
+		result.append(Rect2(Vector2(outer.position.x, clipped.position.y), Vector2(clipped.position.x - outer.position.x, clipped.size.y)))
+	if clipped.end.x < outer.end.x:
+		result.append(Rect2(Vector2(clipped.end.x, clipped.position.y), Vector2(outer.end.x - clipped.end.x, clipped.size.y)))
+	return result
 
 
 func _darkness_texture(level: int) -> Texture2D:
