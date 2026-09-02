@@ -152,14 +152,44 @@ static func _readable_event_line(event: DomainEvent, view: GameView, content: Re
 		&"combat_spell_resolved":
 			var spell := content.spell_by_id(String(event.payload.get("spellId", ""))) if content != null else null
 			var spell_name := spell.name if spell != null else String(event.payload.get("spellName", event.payload.get("spellId", "Spell")))
-			var amount := int(event.payload.get("healing", event.payload.get("damage", 0)))
-			var outcome := "%d healing" % amount if event.payload.has("healing") else "%d damage" % amount if event.payload.has("damage") else "resolved"
+			var outcome := _spell_resolution_outcome(event.payload)
 			return "[COMBAT] %s → %s: %s." % [spell_name, target_name if not target_id.is_empty() else _spell_target_text(event, spell, view, actor_id), outcome]
 		&"combatant_guarded":
 			return "[COMBAT] %s defended." % actor_name
 		&"time_advanced":
 			return "[TIME] +%d min · Day %d · %02d:%02d" % [int(event.payload.get("minutes", 0)), int(event.payload.get("day", 0)), int(event.payload.get("hour", 0)), int(event.payload.get("minute", 0))]
 	return ""
+
+
+static func _spell_resolution_outcome(payload: Dictionary) -> String:
+	if bool(payload.get("resisted", false)):
+		return "resisted"
+	if bool(payload.get("saved", false)):
+		return "saved"
+	var detected_count := int(payload.get("detectedMagicItemCount", 0))
+	if detected_count > 0:
+		return "%d magical item%s detected" % [detected_count, "" if detected_count == 1 else "s"]
+	var healing := int(payload.get("healing", 0))
+	if healing > 0:
+		return "%d healing" % healing
+	var damage := int(payload.get("damage", 0))
+	if damage > 0:
+		return "%d damage" % damage
+	if payload.has("appliedCondition") or payload.has("partyCondition"):
+		return "condition applied"
+	if int(payload.get("clearedConditionCount", 0)) > 0 or payload.has("clearedCondition"):
+		return "condition cleared"
+	if int(payload.get("spellPointDelta", 0)) != 0:
+		return "spell points changed"
+	if payload.has("transformedDefinitionAfter"):
+		return "transformed"
+	if bool(payload.get("allegianceChanged", false)) or payload.has("traitorAfter"):
+		return "allegiance changed"
+	if not String(payload.get("specialResult", "")).is_empty():
+		return String(payload.get("specialResult")).replace("_", " ")
+	if int(payload.get("duration", 0)) > 0:
+		return "effect applied"
+	return "no effect"
 
 
 static func auto_action_lines(events: Array[DomainEvent], view: GameView, content: RealmzContent) -> Array[String]:

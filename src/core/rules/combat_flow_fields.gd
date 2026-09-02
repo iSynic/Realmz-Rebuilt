@@ -122,7 +122,7 @@ func resolve_actor_collisions(state: GameState, content: RealmzContent, actor_id
 			combat.mark_persistent_field_collision(field.slot)
 		if resolution.damage > 0 or resolution.damage < 0 and monster != null:
 			combat.mark_attacked(actor_id)
-		var payload := {"actorId": field.caster_id, "targetId": actor_id, "targetKind": "character" if character != null else "monster", "spellId": spell.id, "targetType": spell.target_type, "power": field.power_level, "classicTier": field.cast_level, "reflected": false, "resisted": resolution.resisted, "saved": resolution.saved, "damage": resolution.damage, "healing": maxi(0, -resolution.damage), "duration": resolution.duration, "defeated": resolution.target_defeated, "fieldSlot": field.slot, "areaCenter": [field.center.x, field.center.y], "areaShape": field.shape, "source": "classic-persistent-field"}
+		var payload := {"actorId": field.caster_id, "targetId": actor_id, "targetKind": "character" if character != null else "monster", "spellId": spell.id, "targetType": spell.target_type, "power": field.power_level, "classicTier": field.cast_level, "reflected": false, "resisted": resolution.resisted, "saved": resolution.saved, "damage": resolution.damage, "healing": maxi(0, -resolution.damage), "duration": resolution.duration, "defeated": resolution.target_defeated, "fieldSlot": field.slot, "areaCenter": [field.center.x, field.center.y], "areaShape": field.shape, "source": "classic-persistent-field", "detectedMagicItemCount": resolution.detected_magic_item_count}
 		if resolution.applied_condition >= 0:
 			payload["appliedCondition"] = resolution.applied_condition
 		events.append(DomainEvent.new(&"combat_spell_resolved", payload))
