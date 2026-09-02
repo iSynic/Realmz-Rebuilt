@@ -13,6 +13,8 @@ var _compact_rows: Array = []
 var _compact_cells_by_index: Dictionary = {}
 var _boat_removed_profile: LandTileProfile
 var _boat_placed_profile: LandTileProfile
+var _authored_landlook: int = -1
+var _land_terrain_sets_by_landlook: Dictionary = {}
 var _visibility_cache: Dictionary = {}
 
 
@@ -24,12 +26,14 @@ func _init(map_width: int, map_height: int, map_cells: Array[MapCell]) -> void:
 		_cells_by_coordinate[cell.coordinate] = cell
 
 
-static func from_compact_rows(map_id: String, map_width: int, map_height: int, rows: Array, boat_removed_profile: LandTileProfile = null, boat_placed_profile: LandTileProfile = null) -> MapTopology:
+static func from_compact_rows(map_id: String, map_width: int, map_height: int, rows: Array, boat_removed_profile: LandTileProfile = null, boat_placed_profile: LandTileProfile = null, authored_landlook: int = -1, land_terrain_sets_by_landlook: Dictionary = {}) -> MapTopology:
 	var topology := MapTopology.new(map_width, map_height, [])
 	topology._compact_map_id = map_id
 	topology._compact_rows = rows
 	topology._boat_removed_profile = boat_removed_profile
 	topology._boat_placed_profile = boat_placed_profile
+	topology._authored_landlook = authored_landlook
+	topology._land_terrain_sets_by_landlook = land_terrain_sets_by_landlook.duplicate()
 	return topology
 
 
@@ -56,6 +60,7 @@ func effective_cell_at(coordinate: Vector2i, world_state: WorldState) -> MapCell
 	var cell := cell_at(coordinate)
 	if cell == null or world_state == null or _compact_map_id.is_empty():
 		return cell
+	cell = _terrain_replacement_cell(cell, world_state)
 	match world_state.boat_presence_state(_compact_map_id, coordinate):
 		0:
 			return cell if _boat_removed_profile == null else _boat_removed_profile.apply_to(cell)
@@ -63,6 +68,26 @@ func effective_cell_at(coordinate: Vector2i, world_state: WorldState) -> MapCell
 			return cell if _boat_placed_profile == null else _boat_placed_profile.apply_to(cell)
 		_:
 			return cell
+
+
+func _terrain_replacement_cell(cell: MapCell, world_state: WorldState) -> MapCell:
+	if not world_state.has_terrain_override(_compact_map_id, cell.coordinate):
+		return cell
+	var raw_tile := world_state.classic_tile_for(_compact_map_id, cell)
+	if raw_tile < 0:
+		return cell
+	var tile_id := WorldState.normalized_classic_land_tile(raw_tile)
+	if tile_id < 0 or tile_id > 200:
+		return cell
+	var landlook := world_state.map_landlook_for(_compact_map_id, _authored_landlook)
+	var terrain_set := _land_terrain_sets_by_landlook.get(landlook) as BattleTerrainSetDefinition
+	if terrain_set == null:
+		return cell
+	var tile_definition := terrain_set.tile_by_id(tile_id)
+	if tile_definition == null:
+		return cell
+	var profile := tile_definition.land_profile()
+	return cell if profile == null else profile.apply_to(cell)
 
 
 func cells() -> Array[MapCell]:

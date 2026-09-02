@@ -263,12 +263,17 @@ func map_is_dark(map: MapDefinition) -> bool:
 
 
 func set_map_landlook(map_id: String, landlook: int) -> void:
-	if not map_id.is_empty():
+	if not map_id.is_empty() and (not _map_landlooks.has(map_id) or int(_map_landlooks[map_id]) != landlook):
 		_map_landlooks[map_id] = landlook
+		_topology_revision += 1
 
 
 func map_landlook(map: MapDefinition) -> int:
 	return -1 if map == null else int(_map_landlooks.get(map.id, map.landlook))
+
+
+func map_landlook_for(map_id: String, authored_landlook: int) -> int:
+	return int(_map_landlooks.get(map_id, authored_landlook))
 
 
 func mark_visited(map_id: String, coordinate: Vector2i) -> void:

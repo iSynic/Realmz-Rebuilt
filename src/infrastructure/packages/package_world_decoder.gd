@@ -133,6 +133,11 @@ func _construct_maps(value: Variant, trigger_ids: Dictionary, battle_terrain_set
 		return null
 	var maps: Array[MapDefinition] = []
 	var map_ids: Dictionary = {}
+	var land_terrain_sets_by_landlook: Dictionary = {}
+	for terrain_set_value: Variant in battle_terrain_sets.values():
+		var land_terrain_set := terrain_set_value as BattleTerrainSetDefinition
+		if land_terrain_set != null and land_terrain_set.landlook >= 0:
+			land_terrain_sets_by_landlook[land_terrain_set.landlook] = land_terrain_set
 	for record: Variant in value:
 		if not record is Dictionary or not record.get("id") is String or record["id"].is_empty() or not record.get("name") is String:
 			_reject("Map definition is malformed.")
@@ -189,7 +194,7 @@ func _construct_maps(value: Variant, trigger_ids: Dictionary, battle_terrain_set
 		if boat_profiles_value == null:
 			return null
 		var boat_profiles: Array = boat_profiles_value
-		var topology := MapTopology.from_compact_rows(record["id"], width, height, record["cells"], boat_profiles[0] as LandTileProfile, boat_profiles[1] as LandTileProfile)
+		var topology := MapTopology.from_compact_rows(record["id"], width, height, record["cells"], boat_profiles[0] as LandTileProfile, boat_profiles[1] as LandTileProfile, landlook, land_terrain_sets_by_landlook)
 		maps.append(MapDefinition.new(record["id"], record["name"], StringName(level_type), level_index, topology, metadata["dark"], metadata["usesLos"], landlook, regions, terrain_set_id, base_scale))
 	return maps
 

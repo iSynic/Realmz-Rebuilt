@@ -19,6 +19,7 @@ func run() -> void:
 	_test_map_view_projection_edges(content)
 	_test_field_heal(content)
 	_test_attempted_land_move_search(content)
+	_test_terrain_replacement_topology(content)
 	var session := GameSession.new()
 	assert_equal(session.start(content, 1).state, SessionStep.State.COMPLETED, "exploration session starts"); _begin_fixture_adventure(session, content)
 	assert_equal(session.view().party_coordinate, Vector2i(1, 1), "Providence start coordinate is authoritative"); assert_equal(session.view().map_view.cells().size(), 625, "GameView exposes one complete bounded topology-derived window at the north-west edge")
@@ -459,6 +460,32 @@ func _test_field_heal(content: RealmzContent) -> void:
 	var warning := _event(blocked, &"classic_notification_requested")
 	assert_true(warning != null and warning.payload.get("text") == "Your characters can't cast spells in this area." and warning.payload.get("soundId") == 6000, "blocked field Heal requests Castle warning 113 as its compact sounded notification")
 	assert_equal([JSON.stringify(session._state.to_data()), session.rng_trace().size()], [blocked_before, blocked_rng_before], "blocked field Heal changes no health, spell points, clock, fatigue, RNG-owned state, or scenario state")
+
+
+func _test_terrain_replacement_topology(content: RealmzContent) -> void:
+	var map := content.world.map_by_id("land:0")
+	var terrain_set := content.world.battle_terrain_set_for_map(map, null)
+	var coordinate := Vector2i(4, 4)
+	var source_cell := map.topology.cell_at(coordinate)
+	var world_state := WorldState.new()
+	world_state.replace_terrain(map.id, coordinate, "classic.terrain.200")
+	var closed_cell := map.topology.effective_cell_at(coordinate, world_state)
+	var closed_definition := terrain_set.tile_by_id(200)
+	assert_equal(
+		[closed_cell.passable, closed_cell.blocks_los, closed_cell.movement_cost, closed_cell.movement_sound_id, closed_cell.render_tile],
+		[closed_definition.solid == 0, closed_definition.blocks_los, closed_definition.movement_time, closed_definition.sound, 200],
+		"an ordinary terrain replacement projects the active landlook's complete movement and LOS facts",
+	)
+	assert_false(map.topology.probe_land_entry(coordinate, world_state).allowed, "a replacement with solid mapstats blocks the authoritative exploration probe")
+	world_state.replace_terrain(map.id, coordinate, "classic.terrain.1")
+	var opened_cell := map.topology.effective_cell_at(coordinate, world_state)
+	var open_definition := terrain_set.tile_by_id(1)
+	assert_equal(
+		[opened_cell.passable, opened_cell.blocks_los, opened_cell.movement_cost, opened_cell.movement_sound_id, opened_cell.render_tile, source_cell.id],
+		[true, open_definition.blocks_los, open_definition.movement_time, open_definition.sound, 1, opened_cell.id],
+		"replacing that same coordinate with open terrain retains cell identity while changing every topology consumer's effective facts",
+	)
+	assert_true(map.topology.probe_land_entry(coordinate, world_state).allowed, "an opened replacement immediately becomes traversable without rebuilding immutable map content")
 
 
 func _test_special_dungeon_bits(source_content: RealmzContent) -> void:
