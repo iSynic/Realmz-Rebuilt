@@ -258,15 +258,41 @@ func _atlas_source(asset_id: String) -> Array:
 	if asset == null or texture == null or not asset.is_tileset() and not asset.is_battle_tileset():
 		_missing_sources[asset_id] = true
 		return []
+	var retained_texture := _retained_atlas_texture(asset, texture, _tile_set.tile_size)
+	if retained_texture == null:
+		_missing_sources[asset_id] = true
+		return []
 	var atlas := TileSetAtlasSource.new()
-	atlas.texture = texture
-	atlas.texture_region_size = Vector2i(asset.tile_width, asset.tile_height)
+	atlas.texture = retained_texture
+	atlas.texture_region_size = _tile_set.tile_size
 	for y: int in asset.rows:
 		for x: int in asset.columns: atlas.create_tile(Vector2i(x, y))
 	var source_id := _tile_set.add_source(atlas)
 	var result: Array = [source_id, asset]
 	_source_by_asset_id[asset_id] = result
 	return result
+
+
+static func _retained_atlas_texture(asset: MediaAsset, texture: Texture2D, cell_size: Vector2i) -> Texture2D:
+	var source_tile_size := Vector2i(asset.tile_width, asset.tile_height)
+	if source_tile_size == cell_size:
+		return texture
+	var source := texture.get_image()
+	if source == null or source_tile_size.x <= 0 or source_tile_size.y <= 0 or cell_size.x <= 0 or cell_size.y <= 0:
+		return null
+	var source_extent := source_tile_size * Vector2i(asset.columns, asset.rows)
+	if source.get_width() < source_extent.x or source.get_height() < source_extent.y:
+		return null
+	source.convert(Image.FORMAT_RGBA8)
+	var retained := Image.create(cell_size.x * asset.columns, cell_size.y * asset.rows, false, Image.FORMAT_RGBA8)
+	retained.fill(Color.TRANSPARENT)
+	for y: int in asset.rows:
+		for x: int in asset.columns:
+			var source_origin := Vector2i(x, y) * source_tile_size
+			var tile := source.get_region(Rect2i(source_origin, source_tile_size))
+			tile.resize(cell_size.x, cell_size.y, Image.INTERPOLATE_NEAREST)
+			retained.blit_rect(tile, Rect2i(Vector2i.ZERO, cell_size), Vector2i(x, y) * cell_size)
+	return ImageTexture.create_from_image(retained)
 
 
 func _set_overlay(coordinate: Vector2i, asset_id: String) -> void:

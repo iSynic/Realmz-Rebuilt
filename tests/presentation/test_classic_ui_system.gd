@@ -1003,6 +1003,15 @@ func _test_exploration_map_camera_preserves_viewport_geometry() -> void:
 	var room_delta := MapPresentationDelta.new(first_los_view.map_id, first_room, remembered_room, [], [], [first_room, remembered_room]); var second_los_cells: Array[MapCellView] = [MapCellView.new(first_room, "fixture.terrain", 1, "fixture.tileset", true, false, false, true, false, false, [], {}, {}, {}), MapCellView.new(remembered_room, "fixture.terrain", 1, "fixture.tileset", true, false, true, true, false, false, [], {}, {}, {})]
 	var second_los_view := MapView.new(first_los_view.map_id, first_los_view.map_name, &"land", map_size.x, map_size.y, remembered_room, second_los_cells, false, los_seen, {}, Vector2i.RIGHT, -1, 1, true, false, -1, false, true, -1, true, los_seen, room_delta)
 	map_presenter.present(GameView.new(3, true, null, second_los_view.map_id, remembered_room, 0, 12, 0, second_los_view)); assert_equal([remembered_room_initial_blackout, los_blackout.get_cell_source_id(first_room), los_blackout.get_cell_source_id(remembered_room), ClassicMapPresenter.los_cell_requires_blackout(true, false), ClassicMapPresenter.los_cell_requires_blackout(false, false)], [0, 0, -1, true, false], "the live LOS projection blacks a previously seen room, blacks the room just left, and incrementally reveals only the newly visible room")
+	var package := PackageRepository.new().load_package("res://tests/fixtures/packages/realmz2-synthetic-fixture.realmz2"); assert_true(package.is_ok(), "the retained dungeon proof loads the validated package fixture")
+	if package.is_ok():
+		map_presenter.set_media_catalog(ClassicMediaCatalog.new(package.media, null))
+		var dungeon_cells: Array[MapCellView] = [MapCellView.new(Vector2i.ZERO, "classic.dungeon.floor", 1, "dungeon-top-down-302", true, false, true, true, false, false, [], {}, {}, {}), MapCellView.new(Vector2i.RIGHT, "classic.dungeon.floor", 1, "dungeon-top-down-302", true, false, true, true, false, false, [&"column"], {}, {}, {})]
+		var dungeon_view := MapView.new("dungeon:retained", "Retained Dungeon", &"dungeon", 3, 2, Vector2i.ZERO, dungeon_cells)
+		map_presenter.present(GameView.new(4, true, null, dungeon_view.map_id, dungeon_view.party_coordinate, 0, 0, 0, dungeon_view))
+		var dungeon_base_layer := retained_surface.find_children("*", "TileMapLayer", true, false)[0] as TileMapLayer; var dungeon_source_id := dungeon_base_layer.get_cell_source_id(Vector2i.ZERO); var dungeon_source := dungeon_base_layer.tile_set.get_source(dungeon_source_id) as TileSetAtlasSource if dungeon_source_id >= 0 else null
+		assert_true(dungeon_source != null and dungeon_source.texture_region_size == Vector2i(32, 32) and dungeon_source.texture.get_size() == Vector2(128, 128), "the retained 2D renderer expands every native 16x16 dungeon atlas tile to one complete 32x32 map cell")
+		assert_equal(dungeon_base_layer.map_to_local(Vector2i.RIGHT) - dungeon_base_layer.map_to_local(Vector2i.ZERO), Vector2(32, 0), "adjacent retained dungeon cells remain contiguous on the 32-pixel exploration grid")
 	map_presenter.get_parent().remove_child(map_presenter)
 	map_presenter.free()
 
