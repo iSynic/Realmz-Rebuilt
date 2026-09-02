@@ -83,10 +83,13 @@ func _present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog,
 		return
 	if view.party_members.is_empty():
 		_add_empty_state(parent, "No party inventory", "The party has no characters.")
+		_add_inventory_done(parent)
 		return
 	var available_characters := _eligible_characters(view)
 	if available_characters.is_empty():
 		_add_empty_state(parent, "No encounter items", "No carried item can be selected for this encounter.")
+		if not _encounter_mode:
+			_add_inventory_done(parent)
 		return
 	var selected_character := _selected_character(view)
 	if selected_character == null:
@@ -356,10 +359,16 @@ func _build_item_record(character: CharacterView, item: ItemView, media: Classic
 	panel.theme_type_variation = &"ClassicInset"
 	panel.custom_minimum_size.y = 150.0
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var content := HBoxContainer.new()
+	content.add_theme_constant_override("separation", 8)
+	panel.add_child(content)
 	var record: BoxContainer = VBoxContainer.new() if _layout_profile == UiLayoutProfile.COMPACT else HBoxContainer.new()
 	record.name = "InventorySelectedItemRecord"
 	record.add_theme_constant_override("separation", 12)
-	panel.add_child(record)
+	record.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content.add_child(record)
+	if not _encounter_mode:
+		content.add_child(_build_inventory_done_column())
 	if item == null:
 		_add_label(record, "Select an item to inspect it.", MUTED)
 		return panel
@@ -377,6 +386,32 @@ func _build_item_record(character: CharacterView, item: ItemView, media: Classic
 	_render_item_facts(facts, item)
 	record.add_child(facts)
 	return panel
+
+
+func _add_inventory_done(parent: Container) -> void:
+	var row := HBoxContainer.new()
+	row.name = "InventoryEmptyActions"
+	row.alignment = BoxContainer.ALIGNMENT_END
+	parent.add_child(row)
+	row.add_child(_build_inventory_done_column())
+
+
+func _build_inventory_done_column() -> VBoxContainer:
+	var column := VBoxContainer.new()
+	column.name = "InventoryDoneColumn"
+	column.custom_minimum_size.x = 56.0
+	column.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var spacer := Control.new()
+	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	column.add_child(spacer)
+	var done := Button.new()
+	done.name = "InventoryDone"
+	done.text = "Done"
+	done.tooltip_text = "Return to the previous screen."
+	done.custom_minimum_size = Vector2(56.0, 56.0)
+	done.pressed.connect(func() -> void: back_requested.emit())
+	column.add_child(done)
+	return column
 
 
 func _build_trade_item_record(character: CharacterView, item: ItemView, media: ClassicMediaCatalog) -> PanelContainer:
