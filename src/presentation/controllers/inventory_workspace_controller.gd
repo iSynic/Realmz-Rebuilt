@@ -32,6 +32,8 @@ var _text_scale: float = 1.0
 var _layout_profile: StringName = UiLayoutProfile.WIDE
 var _encounter_mode: bool = false
 var _encounter_items: Dictionary = {}
+var _rendered_character_id: String = ""
+var _item_scroll_position: int = 0
 
 
 func set_layout_profile(profile_id: StringName) -> void:
@@ -51,6 +53,8 @@ func reset() -> void:
 	_clear_pending_action()
 	_encounter_mode = false
 	_encounter_items.clear()
+	_rendered_character_id = ""
+	_item_scroll_position = 0
 
 
 func present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog, text_scale: float) -> void:
@@ -72,6 +76,7 @@ func present_encounter(parent: VBoxContainer, view: GameView, media: ClassicMedi
 func _present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog, text_scale: float) -> void:
 	if parent == null:
 		return
+	_capture_item_scroll(parent)
 	_clear(parent)
 	_text_scale = maxf(text_scale, 0.1)
 	if view == null:
@@ -88,10 +93,12 @@ func _present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog,
 		selected_character = available_characters[0]
 		_selected_character_id = selected_character.id
 		_selected_item_instance_id = ""
+		_item_scroll_position = 0
 		_trade_mode = false
 		_selected_trade_target_id = ""
 		_trade_status = ""
 		_clear_pending_action()
+	_rendered_character_id = selected_character.id
 	var visible_items := _eligible_items(selected_character)
 	var detail_popover := ITEM_DETAIL_POPOVER_SCRIPT.new() as CanvasLayer
 	parent.add_child(detail_popover)
@@ -207,6 +214,7 @@ func _build_item_browser(character: CharacterView, items: Array[ItemView], selec
 	heading.add_child(count)
 	column.add_child(heading)
 	var scroll := ScrollContainer.new()
+	scroll.name = "InventoryItemScroll"
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -214,6 +222,7 @@ func _build_item_browser(character: CharacterView, items: Array[ItemView], selec
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	list.add_theme_constant_override("separation", 0)
 	scroll.add_child(list)
+	_bind_item_scroll(scroll)
 	column.add_child(scroll)
 	if items.is_empty():
 		_add_label(list, "No carried items.", LEDGER_MUTED)
@@ -782,6 +791,7 @@ func _select_character(character_id: String) -> void:
 	_trade_mode = false
 	_selected_trade_target_id = ""
 	_trade_status = ""
+	_item_scroll_position = 0
 	_clear_pending_action()
 	refresh_requested.emit()
 
@@ -910,3 +920,25 @@ func _clear(parent: Container) -> void:
 	for child: Node in parent.get_children():
 		parent.remove_child(child)
 		child.queue_free()
+
+
+func _capture_item_scroll(parent: Container) -> void:
+	if _rendered_character_id != _selected_character_id:
+		return
+	var scroll := parent.find_child("InventoryItemScroll", true, false) as ScrollContainer
+	if scroll != null:
+		_item_scroll_position = scroll.scroll_vertical
+
+
+func _bind_item_scroll(scroll: ScrollContainer) -> void:
+	var scroll_ref: WeakRef = weakref(scroll)
+	var desired_position := _item_scroll_position
+	var tree := Engine.get_main_loop() as SceneTree
+	tree.process_frame.connect(func() -> void:
+		var current_scroll := scroll_ref.get_ref() as ScrollContainer
+		if current_scroll == null or not current_scroll.is_inside_tree():
+			return
+		var current_bar := current_scroll.get_v_scroll_bar()
+		var maximum := maxi(0, int(current_bar.max_value - current_bar.page))
+		current_scroll.scroll_vertical = clampi(desired_position, 0, maximum)
+	, CONNECT_ONE_SHOT)
