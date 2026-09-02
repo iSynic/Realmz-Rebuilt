@@ -12,10 +12,11 @@ func _test_land_source_window_and_overlay() -> void:
 	var cells: Array[MapCell] = []
 	for y: int in 30:
 		for x: int in 30:
-			var tile := 2 if x == 1 and y == 0 else 1
+			var tile := 2 if x == 1 and y == 0 else 3 if x == 2 and y == 0 else 1
 			cells.append(_cell(Vector2i(x, y), tile, &"land"))
 	var map := MapDefinition.new("land.test", "Land", &"land", 0, MapTopology.new(30, 30, cells), false, false, 1, [], "terrain.land")
-	var terrain := _terrain_set("terrain.land", 1, 1)
+	var asymmetric_build := [[31, 32, 33], [34, 35, 36], [37, 38, 39]]
+	var terrain := _terrain_set("terrain.land", 1, 1, {}, {3: asymmetric_build})
 	var world := WorldState.new()
 	world.replace_terrain(map.id, Vector2i.ZERO, "classic.terrain.2"); world.replace_terrain(map.id, Vector2i(1, 0), "classic.terrain.-1018")
 	var rng := ScriptedRng.new([])
@@ -26,6 +27,11 @@ func _test_land_source_window_and_overlay() -> void:
 	assert_equal([built.battlefield.source_origin, built.battlefield.map_shift, built.battlefield.party_anchor], [Vector2i.ZERO, Vector2i(-45, -45), Vector2i.ZERO], "a corner battle preserves Castle's source clamp and negative map shift")
 	assert_equal(built.battlefield.terrain_at(Vector2i.ZERO), 2, "battle terrain reads the live tile-replacement overlay")
 	assert_equal(built.battlefield.terrain_at(Vector2i(3, 0)), 1, "a negative special-land replacement keeps the landlook base inside the next combat block")
+	var expanded_build: Array[int] = []
+	for sub_y: int in 3:
+		for sub_x: int in 3:
+			expanded_build.append(built.battlefield.terrain_at(Vector2i(6 + sub_x, sub_y)))
+	assert_equal(expanded_build, [31, 32, 33, 34, 35, 36, 37, 38, 39], "an asymmetric authored combat build preserves Castle's row and column order")
 	assert_equal(rng.snapshot().draw_count, 0, "a non-rubble landlook with no forest consumes no decoration draws")
 	var restored := BattlefieldState.from_data(JSON.parse_string(JSON.stringify(built.battlefield.to_data())))
 	assert_not_null(restored, "the complete generated field is centrally serializable")
@@ -106,11 +112,12 @@ func _test_battle_monster_construction_path() -> void:
 	assert_equal(rng.trace().map(func(entry: Dictionary) -> String: return entry["tag"]), ["battle.monster.monster.battle.1.armor", "battle.monster.monster.battle.1.agility", "battle.monster.monster.battle.1.spell-points", "battle.monster.monster.battle.1.stamina.0", "battle.monster.monster.battle.1.stamina.1", "battle.monster.monster.battle.1.random-weapon"], "battle construction preserves AC, agility, spell points, health dice, and weapon draw order")
 
 
-func _terrain_set(id: String, landlook: int, base_tile: int, solid_overrides: Dictionary = {}) -> BattleTerrainSetDefinition:
+func _terrain_set(id: String, landlook: int, base_tile: int, solid_overrides: Dictionary = {}, build_overrides: Dictionary = {}) -> BattleTerrainSetDefinition:
 	var tiles: Array[BattleTerrainTileDefinition] = []
 	for tile: int in 401:
 		var solid := int(solid_overrides.get(tile, 0))
-		tiles.append(BattleTerrainTileDefinition.new(tile, 0, 0, solid, false, 0, false, false, false, 0, [[tile, tile, tile], [tile, tile, tile], [tile, tile, tile]]))
+		var build: Array = build_overrides.get(tile, [[tile, tile, tile], [tile, tile, tile], [tile, tile, tile]])
+		tiles.append(BattleTerrainTileDefinition.new(tile, 0, 0, solid, false, 0, false, false, false, 0, build))
 	return BattleTerrainSetDefinition.new(id, landlook, base_tile, tiles)
 
 
