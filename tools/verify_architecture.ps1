@@ -150,19 +150,21 @@ function Get-RepositoryRelativePath {
     )
 
     # Windows PowerShell 5.1 does not expose the newer .NET relative-path API.
-    # Resolve both paths first, then remove the
-    # repository-root prefix without allowing a sibling path such as
-    # C:\repo-other to pass as a child of C:\repo.
-    $resolvedRoot = [IO.Path]::GetFullPath($RootPath).TrimEnd('\')
+    # Resolve both paths first, then remove the platform-native repository-root
+    # prefix without allowing a sibling path such as repo-other to pass as a
+    # child of repo. Return one slash-normalized representation on every host.
+    $directorySeparators = [char[]]@([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)
+    $resolvedRoot = [IO.Path]::GetFullPath($RootPath).TrimEnd($directorySeparators)
     $resolvedTarget = [IO.Path]::GetFullPath($TargetPath)
-    if ($resolvedTarget.Equals($resolvedRoot, [StringComparison]::OrdinalIgnoreCase)) {
+    $pathComparison = if ([IO.Path]::DirectorySeparatorChar -eq '\') { [StringComparison]::OrdinalIgnoreCase } else { [StringComparison]::Ordinal }
+    if ($resolvedTarget.Equals($resolvedRoot, $pathComparison)) {
         return ''
     }
-    $rootPrefix = $resolvedRoot + '\'
-    if (-not $resolvedTarget.StartsWith($rootPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+    $rootPrefix = $resolvedRoot + [IO.Path]::DirectorySeparatorChar
+    if (-not $resolvedTarget.StartsWith($rootPrefix, $pathComparison)) {
         throw "Target path '$TargetPath' is outside repository root '$RootPath'."
     }
-    return $resolvedTarget.Substring($rootPrefix.Length).Replace('/', '\')
+    return $resolvedTarget.Substring($rootPrefix.Length).Replace('\', '/')
 }
 
 function Get-ClassNameSymbolTable {
@@ -472,9 +474,9 @@ foreach ($protocolRoot in $protocolRoots) {
             if ($line -notmatch '\bbody\.to_data\(\)') {
                 continue
             }
-            $isWireSerializer = ($relativePath -eq "src\core\session\interaction_request.gd" -and $line -match '"payload": body\.to_data\(\)') -or
-                ($relativePath -eq "src\scenario\runtime\scenario_runtime_continuation.gd" -and $line -match 'continuation_data\s*:=\s*body\.to_data\(\)')
-            $isDetachedEvent = $relativePath -eq "src\scenario\runtime\operations\classic_battle_reward_operations.gd" -and $line -match 'DomainEvent\.new\(&"reward_wealth_transferred", body\.to_data\(\)\)'
+            $isWireSerializer = ($relativePath -eq "src/core/session/interaction_request.gd" -and $line -match '"payload": body\.to_data\(\)') -or
+                ($relativePath -eq "src/scenario/runtime/scenario_runtime_continuation.gd" -and $line -match 'continuation_data\s*:=\s*body\.to_data\(\)')
+            $isDetachedEvent = $relativePath -eq "src/scenario/runtime/operations/classic_battle_reward_operations.gd" -and $line -match 'DomainEvent\.new\(&"reward_wealth_transferred", body\.to_data\(\)\)'
             if (-not $isWireSerializer -and -not $isDetachedEvent) {
                 $violations += "$($file.FullName):$lineNumber interaction request bodies must remain typed outside codecs and detached event serialization"
             }
