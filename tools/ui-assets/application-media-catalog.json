@@ -112,6 +112,16 @@
       "classification": "classic-application-resource",
       "evidence_path": "src/realmz_orig/main.c:949-954; src/realmz_orig/misc.c:1769-1779; src/realmz_orig/loaditem.c:4-33; src/realmz_orig/ploticon.c:42-59",
       "evidence_note": "Castle loads the active scenario's supply records separately from shared Data ID, then resolves each authored supply icon through the open resource chain. These application-owned keys cover the ordinary AOGM supply references that are not present in the shared Data ID icon set; scenario resources with an exact matching key remain later overrides."
+    },
+    {
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
+      "source_file_sha256": "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c",
+      "resource_type": "cicn",
+      "resource_ids": [2002, 2012, 2014],
+      "target_directory": "item-icons",
+      "classification": "classic-application-resource",
+      "evidence_path": "src/realmz_orig/swap.c:36-57",
+      "evidence_note": "Castle composes the Money Changing workspace from the application-owned gold, gem, and jewelry CICNs. CICN 2011 is already present through stock supply coverage; these remaining exact keys complete the source-backed wealth art without duplicating its resource identity."
     }
   ]
 }

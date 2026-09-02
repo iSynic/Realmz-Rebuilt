@@ -12,6 +12,7 @@ const MUTED := Color("9aa0a8")
 var _money_character_id: String = ""
 var _text_scale: float = 1.0
 var _layout_profile: StringName = UiLayoutProfile.WIDE
+var _media: ClassicMediaCatalog
 
 
 func set_text_scale(scale: float) -> void:
@@ -22,9 +23,10 @@ func set_layout_profile(profile_id: StringName) -> void:
 	_layout_profile = profile_id
 
 
-func present(parent: VBoxContainer, view: GameView) -> void:
+func present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog = null) -> void:
 	if parent == null or view == null:
 		return
+	_media = media
 	_render_money_workspace(parent, view)
 	if not view.services.is_empty():
 		_render_location_services(parent, view)
@@ -79,9 +81,9 @@ func _build_pool_pane(view: GameView, workspace: MoneyWorkspaceView) -> PanelCon
 	var values := HBoxContainer.new()
 	values.name = "MoneyPoolValues"
 	values.add_theme_constant_override("separation", 6)
-	values.add_child(_wealth_chip("Gold", workspace.pooled_gold))
-	values.add_child(_wealth_chip("Gems", workspace.pooled_gems))
-	values.add_child(_wealth_chip("Jewelry", workspace.pooled_jewelry))
+	values.add_child(_wealth_chip(&"gold", workspace.pooled_gold))
+	values.add_child(_wealth_chip(&"gems", workspace.pooled_gems))
+	values.add_child(_wealth_chip(&"jewelry", workspace.pooled_jewelry))
 	summary.add_child(values)
 	var actions := HBoxContainer.new()
 	actions.name = "MoneyPoolActions"
@@ -106,7 +108,7 @@ func _build_party_pane(workspace: MoneyWorkspaceView) -> PanelContainer:
 		button.toggle_mode = true
 		button.button_group = group
 		button.button_pressed = character.character_id == _money_character_id
-		button.theme_type_variation = &"ClassicItemLedgerButton"
+		button.theme_type_variation = &"ClassicMoneyLedgerButton"
 		button.custom_minimum_size.y = 48.0
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.pressed.connect(_select_money_character.bind(character.character_id))
@@ -124,9 +126,9 @@ func _build_swap_pane(view: GameView, workspace: MoneyWorkspaceView) -> PanelCon
 	var current := HBoxContainer.new()
 	current.name = "MoneySelectedSummary"
 	current.add_theme_constant_override("separation", 6)
-	current.add_child(_wealth_chip("Gold", selected.gold))
-	current.add_child(_wealth_chip("Gems", selected.gems))
-	current.add_child(_wealth_chip("Jewelry", selected.jewelry))
+	current.add_child(_wealth_chip(&"gold", selected.gold))
+	current.add_child(_wealth_chip(&"gems", selected.gems))
+	current.add_child(_wealth_chip(&"jewelry", selected.jewelry))
 	var load := _label("Carried load\n%d / %d" % [selected.carried_load, selected.maximum_load], MUTED, 12)
 	load.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	load.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -174,15 +176,20 @@ func _add_wealth_record(parent: Container, gold: int, gems: int, jewelry: int) -
 	parent.add_child(grid)
 
 
-func _wealth_chip(label_text: String, value: int) -> PanelContainer:
+func _wealth_chip(denomination: StringName, value: int) -> PanelContainer:
 	var chip := PanelContainer.new()
 	chip.theme_type_variation = &"ClassicInset"
-	chip.custom_minimum_size.x = 88.0
+	chip.custom_minimum_size.x = 104.0
 	chip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 4)
+	chip.add_child(row)
+	row.add_child(_wealth_icon(denomination))
 	var column := VBoxContainer.new()
+	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	column.add_theme_constant_override("separation", 0)
-	chip.add_child(column)
-	var heading := _label(label_text, MUTED, 11)
+	row.add_child(column)
+	var heading := _label(String(denomination).capitalize(), MUTED, 11)
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(heading)
 	var amount := _label(str(value), TEXT, 17)
@@ -198,6 +205,7 @@ func _build_transfer_row(view: GameView, selected: MoneyCharacterView, transfer:
 	row.add_theme_constant_override("separation", 6)
 	panel.add_child(row)
 	var denomination := String(transfer.denomination).capitalize()
+	row.add_child(_wealth_icon(transfer.denomination))
 	var label := _label("%s  ×%d" % [denomination, transfer.amount], TEXT, 13)
 	label.custom_minimum_size.x = 104.0
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -206,6 +214,24 @@ func _build_transfer_row(view: GameView, selected: MoneyCharacterView, transfer:
 	_add_money_intent_action(row, view, "To pool", transfer.to_pool, PlayerIntent.money_action(&"to-pool", selected.character_id, String(transfer.denomination), transfer.amount))
 	_add_money_intent_action(row, view, "To %s" % selected.name, transfer.to_character, PlayerIntent.money_action(&"to-character", selected.character_id, String(transfer.denomination), transfer.amount))
 	return panel
+
+
+func _wealth_icon(denomination: StringName) -> ClassicContentIcon:
+	var icon := ClassicContentIcon.new()
+	icon.name = "Money%sIcon" % String(denomination).capitalize()
+	icon.configure("cicn", wealth_resource_id(denomination), _media, 32.0, String(denomination).capitalize(), "Classic wealth image unavailable")
+	return icon
+
+
+static func wealth_resource_id(denomination: StringName) -> int:
+	match denomination:
+		&"gold":
+			return 2002
+		&"gems":
+			return 2011
+		&"jewelry":
+			return 2012
+	return 0
 
 
 func _render_location_services(parent: VBoxContainer, view: GameView) -> void:

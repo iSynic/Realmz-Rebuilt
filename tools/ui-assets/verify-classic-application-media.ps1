@@ -61,8 +61,8 @@ $itemIconCount = @($manifest.assets | Where-Object { $_.path -like "*/item-icons
 $effectIconCount = @($manifest.assets | Where-Object { $_.path -like "*/effect-icons/*" }).Count
 $landTilesetCount = @($manifest.assets | Where-Object { $_.kind -eq "tileset" }).Count
 $darknessMaskCount = @($manifest.assets | Where-Object { $_.id -like "classic-darkness-mask-*" }).Count
-if ($soundCount -ne 142 -or $combatIconCount -ne 145 -or $itemIconCount -ne 271 -or $effectIconCount -ne 64 -or $landTilesetCount -ne 6 -or $darknessMaskCount -ne 7) {
-	throw "Expected 142 built-in sounds, 145 source-backed combat icons, 271 shared or stock-supply item icons, 64 animated effect icons, 6 stock land tilesets, and 7 darkness masks; found $soundCount sounds, $combatIconCount combat icons, $itemIconCount item icons, $effectIconCount effect icons, $landTilesetCount land tilesets, and $darknessMaskCount darkness masks"
+if ($soundCount -ne 142 -or $combatIconCount -ne 145 -or $itemIconCount -ne 274 -or $effectIconCount -ne 64 -or $landTilesetCount -ne 6 -or $darknessMaskCount -ne 7) {
+	throw "Expected 142 built-in sounds, 145 source-backed combat icons, 274 shared, stock-supply, or Money Changing item icons, 64 animated effect icons, 6 stock land tilesets, and 7 darkness masks; found $soundCount sounds, $combatIconCount combat icons, $itemIconCount item icons, $effectIconCount effect icons, $landTilesetCount land tilesets, and $darknessMaskCount darkness masks"
 }
 foreach ($effectResourceId in 14000..14063) {
     if (-not $keys.ContainsKey("cicn:$effectResourceId")) {
@@ -88,6 +88,11 @@ if ($scrollingPattern.Count -ne 1 -or $scrollingPattern[0].id -ne "realmz-applic
 foreach ($requiredSupplyIcon in @(142, 601, 602, 603, 604, 605, 607, 608, 2011, 2013, 6195)) {
     if (-not $keys.ContainsKey("cicn:$requiredSupplyIcon")) {
         throw "Required application-owned stock supply icon is missing: cicn:$requiredSupplyIcon"
+    }
+}
+foreach ($requiredWealthIcon in @(2002, 2011, 2012, 2014)) {
+    if (-not $keys.ContainsKey("cicn:$requiredWealthIcon")) {
+        throw "Required application-owned Money Changing icon is missing: cicn:$requiredWealthIcon"
     }
 }
 

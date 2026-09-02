@@ -15950,6 +15950,78 @@
         "path": "src/realmz_orig/tickcheck.c-updatetorch.c:24-35; src/realmz_orig/structs.h:390-399",
         "note": "Castle draws eight party-condition slots in a fixed four-by-two Effects bank and advances each active condition through its exact eight-frame application CICN sequence using condition * 8 + 13992 + frame."
       }
+    },
+    {
+      "id": "realmz-application-cicn-2002",
+      "label": "Realmz color icon 2002",
+      "kind": "icon",
+      "mime_type": "image/png",
+      "resource_type": "cicn",
+      "resource_id": 2002,
+      "path": "res://src/presentation/assets/classic-media/item-icons/cicn-2002.png",
+      "bytes": 736,
+      "sha256": "0660030a26ee41bab07e0370bcc00dd9235424b68b2e54a43550bd89a18cdd13",
+      "width": 32,
+      "height": 32,
+      "source_repository": "Realmz Castle Realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
+      "source_file_sha256": "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c",
+      "source_resource_sha256": "19cff460b1f8990ead9eefb2539f88c730ecc572109a688517ca8a0a2ddb2f57",
+      "classification": "classic-application-resource",
+      "classic_evidence": {
+        "status": "source-control-flow",
+        "path": "src/realmz_orig/swap.c:36-57",
+        "note": "Castle composes the Money Changing workspace from the application-owned gold, gem, and jewelry CICNs. CICN 2011 is already present through stock supply coverage; these remaining exact keys complete the source-backed wealth art without duplicating its resource identity."
+      }
+    },
+    {
+      "id": "realmz-application-cicn-2012",
+      "label": "Realmz color icon 2012",
+      "kind": "icon",
+      "mime_type": "image/png",
+      "resource_type": "cicn",
+      "resource_id": 2012,
+      "path": "res://src/presentation/assets/classic-media/item-icons/cicn-2012.png",
+      "bytes": 779,
+      "sha256": "9557345bd7d723b129df1c40a74c4624da3240a04bbb1d174b21988704d74f76",
+      "width": 32,
+      "height": 32,
+      "source_repository": "Realmz Castle Realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
+      "source_file_sha256": "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c",
+      "source_resource_sha256": "8e83750de2922dbce77e3ea274a9d7595bac3cc4c1c4a2392a66cb4feb68ef77",
+      "classification": "classic-application-resource",
+      "classic_evidence": {
+        "status": "source-control-flow",
+        "path": "src/realmz_orig/swap.c:36-57",
+        "note": "Castle composes the Money Changing workspace from the application-owned gold, gem, and jewelry CICNs. CICN 2011 is already present through stock supply coverage; these remaining exact keys complete the source-backed wealth art without duplicating its resource identity."
+      }
+    },
+    {
+      "id": "realmz-application-cicn-2014",
+      "label": "Realmz color icon 2014",
+      "kind": "icon",
+      "mime_type": "image/png",
+      "resource_type": "cicn",
+      "resource_id": 2014,
+      "path": "res://src/presentation/assets/classic-media/item-icons/cicn-2014.png",
+      "bytes": 772,
+      "sha256": "f0df05bd35e0debb6383b07a1c01498a37481770036c035e83b1dda44f158352",
+      "width": 32,
+      "height": 32,
+      "source_repository": "Realmz Castle Realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
+      "source_file_sha256": "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c",
+      "source_resource_sha256": "6ebbd84f6828019af606dd54ded21eec04cfdf8db96f22cae2606987b17beefc",
+      "classification": "classic-application-resource",
+      "classic_evidence": {
+        "status": "source-control-flow",
+        "path": "src/realmz_orig/swap.c:36-57",
+        "note": "Castle composes the Money Changing workspace from the application-owned gold, gem, and jewelry CICNs. CICN 2011 is already present through stock supply coverage; these remaining exact keys complete the source-backed wealth art without duplicating its resource identity."
+      }
     }
   ]
 }

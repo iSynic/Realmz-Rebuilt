@@ -229,7 +229,7 @@ func present(screen_id: StringName, body: Container, appearance_textures: Dictio
 			_spells_controller.present(body, _view, _media, _settings.text_scale, context_actions)
 		&"services":
 			_services_controller.set_text_scale(_settings.text_scale)
-			_services_controller.present(body, _view)
+			_services_controller.present(body, _view, _media)
 		&"journal":
 			_maps_journal_controller.set_text_scale(_settings.text_scale)
 			_maps_journal_controller.present(body, _view, _media)
