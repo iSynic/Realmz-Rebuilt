@@ -183,6 +183,7 @@ func _can_project_ordinary_movement(context: SessionWorkflowContext, pending_int
 	if current_map == null:
 		return false
 	var moved_count := 0
+	var heading_change_count := 0
 	for event: DomainEvent in events:
 		match event.kind:
 			&"party_moved", &"debug_party_noclip_moved":
@@ -197,7 +198,19 @@ func _can_project_ordinary_movement(context: SessionWorkflowContext, pending_int
 					return false
 				moved_count += 1
 			&"dungeon_heading_changed":
-				if current_map.level_type != &"dungeon" or String(event.payload.get("source", "")) != "classic-overhead-movement" or int(event.payload.get("current", 0)) != context.state.dungeon_heading:
+				if current_map.level_type != &"dungeon":
+					return false
+				var source := String(event.payload.get("source", ""))
+				if source == "classic":
+					if int(event.payload.get("heading", 0)) != context.state.dungeon_heading or int(event.payload.get("delta", 0)) not in [-1, 1]:
+						return false
+				elif source == "classic-overhead-movement":
+					if int(event.payload.get("current", 0)) != context.state.dungeon_heading:
+						return false
+				else:
+					return false
+				heading_change_count += 1
+				if heading_change_count > 1:
 					return false
 			&"time_advanced": pass
 			&"sound_requested":
@@ -252,7 +265,7 @@ func _can_project_ordinary_movement(context: SessionWorkflowContext, pending_int
 					return false
 			_:
 				return false
-	return moved_count == 1
+	return moved_count == 1 or moved_count == 0 and heading_change_count == 1 and _cached_view.party_coordinate == context.state.party.coordinate
 
 
 static func _ally_by_id(party: PartyState, ally_id: String) -> MonsterState:
