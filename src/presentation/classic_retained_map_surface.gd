@@ -179,7 +179,7 @@ func _update_cell(cell: MapCellView, current_classic_rect: Rect2i) -> void:
 	_erase_coordinate(cell.coordinate)
 	var los := _map_view.uses_los
 	if los and not cell.visible and not _seen.has(cell.coordinate):
-		_set_fog(cell.coordinate, 1)
+		_set_fog(cell.coordinate)
 		return
 	var revealed := _seen if los else _dungeon_discovery if _map_view.level_type == &"dungeon" else _land_discovery
 	var outside_classic := not los and _classic_visibility and not current_classic_rect.has_point(cell.coordinate)
@@ -196,8 +196,6 @@ func _update_cell(cell: MapCellView, current_classic_rect: Rect2i) -> void:
 		if not cell.overlay_asset_id.is_empty(): _set_overlay(cell.coordinate, cell.overlay_asset_id)
 		if cell.has_feature(&"secret"): _set_transparent_marker_cell(_marker_layer, cell.coordinate, SECRET_TILE_ID)
 		if cell.has_feature(&"discovered_path"): _set_transparent_marker_cell(_feature_layers[0], cell.coordinate, PATH_TILE_ID)
-	if (not cell.visible or outside_classic) and (not _map_view.dark or los):
-		_set_fog(cell.coordinate, 0)
 
 
 func _erase_coordinate(coordinate: Vector2i) -> void:
@@ -298,19 +296,17 @@ func _texture_scale(texture: Texture2D) -> Vector2:
 
 func _build_fog_tiles() -> void:
 	_fog_tile_set.tile_size = Vector2i(32, 32)
-	var image := Image.create(64, 32, false, Image.FORMAT_RGBA8)
-	image.fill(Color(0.02, 0.025, 0.03, 0.28))
-	image.fill_rect(Rect2i(32, 0, 32, 32), Color.BLACK)
+	var image := Image.create(32, 32, false, Image.FORMAT_RGBA8)
+	image.fill(Color.BLACK)
 	var atlas := TileSetAtlasSource.new()
 	atlas.texture = ImageTexture.create_from_image(image)
 	atlas.texture_region_size = Vector2i(32, 32)
 	atlas.create_tile(Vector2i.ZERO)
-	atlas.create_tile(Vector2i(1, 0))
 	_fog_tile_set.add_source(atlas, 0)
 
 
-func _set_fog(coordinate: Vector2i, tile: int) -> void:
-	_fog_layer.set_cell(coordinate, 0, Vector2i(tile, 0))
+func _set_fog(coordinate: Vector2i) -> void:
+	_fog_layer.set_cell(coordinate, 0, Vector2i.ZERO)
 
 
 func _clear_layers() -> void:

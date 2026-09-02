@@ -474,8 +474,6 @@ func _draw_cell(cell: MapCellView, rect: Rect2, level_type: StringName, dark: bo
 		_draw_dungeon_atlas_cell(cell, rect, atlas_asset, atlas_texture)
 		if dark:
 			draw_rect(rect, Color(0.0, 0.0, 0.0, darkness_overlay_alpha(saved_darkness_level)), true)
-		elif recalled:
-			draw_rect(rect, Color(0.02, 0.025, 0.03, 0.28), true)
 		return
 	var region := Rect2i() if atlas_asset == null else atlas_asset.region_for(cell.render_tile)
 	if atlas_texture == null or not region.has_area():
@@ -487,8 +485,6 @@ func _draw_cell(cell: MapCellView, rect: Rect2, level_type: StringName, dark: bo
 		draw_texture_rect(overlay_texture, rect, false)
 	if dark:
 		draw_rect(rect, Color(0.0, 0.0, 0.0, darkness_overlay_alpha(saved_darkness_level)), true)
-	elif recalled:
-		draw_rect(rect, Color(0.02, 0.025, 0.03, 0.28), true)
 
 
 static func dungeon_discovery_coordinates(visited: Array[Vector2i]) -> Dictionary:
