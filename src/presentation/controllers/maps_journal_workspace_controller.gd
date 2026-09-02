@@ -254,6 +254,13 @@ func _render_selected_player_map(parent: VBoxContainer, selected: PlayerMapView,
 	toolbar.add_child(fit)
 	var zoom_in := _map_zoom_button("PlayerMapZoomIn", "+", 0.5)
 	toolbar.add_child(zoom_in)
+	if selected.mode == PlayerMapDefinition.SCROLLING_TEXT:
+		toolbar.visible = false
+		var scrolling_presenter := PlayerMapPresenter.new()
+		scrolling_presenter.name = "AcquiredPlayerMap"
+		scrolling_presenter.present(selected, media)
+		stage_body.add_child(scrolling_presenter)
+		return
 	if not selected.note.is_empty():
 		var note := _label(selected.note, Color("e0e2e5"), 14)
 		note.name = "PlayerMapNote"
