@@ -12,7 +12,7 @@ func _test_land_source_window_and_overlay() -> void:
 	var cells: Array[MapCell] = []
 	for y: int in 30:
 		for x: int in 30:
-			var tile := 2 if x == 1 and y == 0 else 3 if x == 2 and y == 0 else 1
+			var tile := 2 if x == 1 and y == 0 else 3 if x == 2 and y == 0 else -173 if x == 3 and y == 0 else 1
 			cells.append(_cell(Vector2i(x, y), tile, &"land"))
 	var map := MapDefinition.new("land.test", "Land", &"land", 0, MapTopology.new(30, 30, cells), false, false, 1, [], "terrain.land")
 	var asymmetric_build := [[31, 32, 33], [34, 35, 36], [37, 38, 39]]
@@ -27,6 +27,7 @@ func _test_land_source_window_and_overlay() -> void:
 	assert_equal([built.battlefield.source_origin, built.battlefield.map_shift, built.battlefield.party_anchor], [Vector2i.ZERO, Vector2i(-45, -45), Vector2i.ZERO], "a corner battle preserves Castle's source clamp and negative map shift")
 	assert_equal(built.battlefield.terrain_at(Vector2i.ZERO), 2, "battle terrain reads the live tile-replacement overlay")
 	assert_equal(built.battlefield.terrain_at(Vector2i(3, 0)), 1, "a negative special-land replacement keeps the landlook base inside the next combat block")
+	assert_equal(built.battlefield.terrain_at(Vector2i(9, 0)), 1, "an untouched negative special-land icon also becomes the active landlook base instead of leaking its absolute tile build into combat")
 	var expanded_build: Array[int] = []
 	for sub_y: int in 3:
 		for sub_x: int in 3:

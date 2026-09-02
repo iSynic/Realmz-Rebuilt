@@ -264,7 +264,7 @@ func _decorate_rubble_cell(battlefield: BattlefieldState, coordinate: Vector2i, 
 
 static func _effective_land_tile(map_id: String, cell: MapCell, world_state: WorldState, base_tile: int) -> int:
 	var raw_tile := world_state.classic_tile_for(map_id, cell)
-	return base_tile if raw_tile < 0 and world_state.has_terrain_override(map_id, cell.coordinate) else WorldState.normalized_classic_land_tile(raw_tile)
+	return base_tile if raw_tile < 0 else WorldState.normalized_classic_land_tile(raw_tile)
 
 
 static func _inside_good_rect(coordinate: Vector2i) -> bool:
