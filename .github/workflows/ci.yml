@@ -93,27 +93,29 @@ jobs:
             Copy-Item -LiteralPath $godotPath -Destination $windowsGodotPath
             $godotPath = $windowsGodotPath
           }
-          $output = & $godotPath --headless --path . --export-release '${{ matrix.preset }}' '${{ matrix.output }}' 2>&1
-          $exitCode = $LASTEXITCODE
-          $output | Tee-Object -FilePath $exportLog
-          if ($exitCode -ne 0) { throw "Godot export failed with exit code $exitCode." }
+          . ./tools/stream_process.ps1
+          $result = Invoke-StreamingProcess -FilePath $godotPath -ArgumentList @('--headless', '--path', '.', '--export-release', '${{ matrix.preset }}', '${{ matrix.output }}') -Label '${{ matrix.platform }} export'
+          [IO.File]::WriteAllLines($exportLog, $result.Output, [Text.UTF8Encoding]::new($false))
+          if ($result.ExitCode -ne 0) { throw "Godot export failed with exit code $($result.ExitCode)." }
           ./tools/verify_release_artifact.ps1 -Preset '${{ matrix.preset }}' -Output '${{ matrix.output }}' -ExportLog $exportLog
       - name: Launch exported Windows runtime
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $log = Join-Path '${{ matrix.artifactPath }}' 'smoke.log'
+          $log = Join-Path (Resolve-Path -LiteralPath '${{ matrix.artifactPath }}').Path 'smoke.log'
           $process = Start-Process -FilePath '${{ matrix.output }}' -ArgumentList @('--headless', '--quit-after', '2', '--log-file', $log) -WindowStyle Hidden -Wait -PassThru
+          if (-not (Test-Path -LiteralPath $log -PathType Leaf)) { throw 'Windows release smoke did not produce its required log.' }
           $content = Get-Content -Raw -LiteralPath $log
           if ($process.ExitCode -ne 0 -or $content -match '(?m)^(?:ERROR|SCRIPT ERROR):') { throw "Windows release smoke failed with exit code $($process.ExitCode)." }
       - name: Launch exported Linux runtime
         if: runner.os == 'Linux'
         shell: pwsh
         run: |
-          $log = Join-Path '${{ matrix.artifactPath }}' 'smoke.log'
+          $log = Join-Path (Resolve-Path -LiteralPath '${{ matrix.artifactPath }}').Path 'smoke.log'
           chmod +x '${{ matrix.output }}'
           & './${{ matrix.output }}' --headless --quit-after 2 --log-file $log
           $exitCode = $LASTEXITCODE
+          if (-not (Test-Path -LiteralPath $log -PathType Leaf)) { throw "Linux release smoke did not produce its required log; exit code $exitCode." }
           $content = Get-Content -Raw -LiteralPath $log
           if ($exitCode -ne 0 -or $content -match '(?m)^(?:ERROR|SCRIPT ERROR):') { throw "Linux release smoke failed with exit code $exitCode." }
       - name: Launch exported macOS runtime
@@ -121,12 +123,13 @@ jobs:
         shell: pwsh
         run: |
           $extracted = Join-Path $env:RUNNER_TEMP 'realmz-rebuilt-native-smoke'
-          $log = Join-Path '${{ matrix.artifactPath }}' 'smoke.log'
+          $log = Join-Path (Resolve-Path -LiteralPath '${{ matrix.artifactPath }}').Path 'smoke.log'
           Expand-Archive -LiteralPath '${{ matrix.output }}' -DestinationPath $extracted
           $binary = Join-Path $extracted 'Realmz Rebuilt.app/Contents/MacOS/Realmz Rebuilt'
           chmod +x $binary
           & $binary --headless --quit-after 2 --log-file $log
           $exitCode = $LASTEXITCODE
+          if (-not (Test-Path -LiteralPath $log -PathType Leaf)) { throw "macOS release smoke did not produce its required log; exit code $exitCode." }
           $content = Get-Content -Raw -LiteralPath $log
           if ($exitCode -ne 0 -or $content -match '(?m)^(?:ERROR|SCRIPT ERROR):') { throw "macOS release smoke failed with exit code $exitCode." }
       - uses: actions/upload-artifact@v4

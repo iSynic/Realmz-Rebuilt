@@ -96,15 +96,15 @@ jobs:
             Copy-Item -LiteralPath $godotPath -Destination $windowsGodotPath
             $godotPath = $windowsGodotPath
           }
-          $output = & $godotPath --headless --path . --export-release '${{ matrix.preset }}' '${{ matrix.output }}' 2>&1
-          $exitCode = $LASTEXITCODE
-          $output | Tee-Object -FilePath $exportLog
-          if ($exitCode -ne 0) { throw "Godot export failed with exit code $exitCode." }
+          . ./tools/stream_process.ps1
+          $result = Invoke-StreamingProcess -FilePath $godotPath -ArgumentList @('--headless', '--path', '.', '--export-release', '${{ matrix.preset }}', '${{ matrix.output }}') -Label '${{ matrix.platform }} tagged export'
+          [IO.File]::WriteAllLines($exportLog, $result.Output, [Text.UTF8Encoding]::new($false))
+          if ($result.ExitCode -ne 0) { throw "Godot export failed with exit code $($result.ExitCode)." }
           ./tools/verify_release_artifact.ps1 -Preset '${{ matrix.preset }}' -Output '${{ matrix.output }}' -ExportLog $exportLog
       - name: Native startup and package
         shell: pwsh
         run: |
-          $log = Join-Path '${{ matrix.artifactPath }}' 'smoke.log'
+          $log = Join-Path (Resolve-Path -LiteralPath '${{ matrix.artifactPath }}').Path 'smoke.log'
           if ('${{ runner.os }}' -eq 'Windows') {
             $process = Start-Process -FilePath '${{ matrix.output }}' -ArgumentList @('--headless', '--quit-after', '2', '--log-file', $log) -WindowStyle Hidden -Wait -PassThru
             if ($process.ExitCode -ne 0) { throw "Windows startup failed: $($process.ExitCode)" }
@@ -123,6 +123,7 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw "macOS startup failed: $LASTEXITCODE" }
             Copy-Item -LiteralPath '${{ matrix.output }}' -Destination '${{ matrix.package }}'
           }
+          if (-not (Test-Path -LiteralPath $log -PathType Leaf)) { throw "Native startup did not produce its required log on ${{ runner.os }}." }
           $content = Get-Content -Raw -LiteralPath $log
           if ($content -match '(?m)^(?:ERROR|SCRIPT ERROR):') { throw 'Native startup log contains an error.' }
       - uses: actions/upload-artifact@v4
