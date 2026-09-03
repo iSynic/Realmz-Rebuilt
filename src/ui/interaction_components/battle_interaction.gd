@@ -16,6 +16,7 @@ const COMMAND_BASE_SIZE_META: StringName = &"battle_command_base_size"
 const PRIMARY_COMMAND_COLOR := Color("f0ce59")
 const VIEW_COMMAND_COLOR := Color("63d8e7")
 const TURN_COMMAND_COLOR := Color("8fe080")
+const BattleInitiativePanelBuilderType = preload("res://src/ui/interaction_components/battle_initiative_panel_builder.gd")
 
 var _actor_id: String = ""
 var _combatants: Array[InteractionRequestValue.Combatant] = []
@@ -620,14 +621,6 @@ func _combatant_name(combatant_id: String) -> String:
 	return combatant_id
 
 
-static func _string_array(value: Variant) -> Array[String]:
-	var result: Array[String] = []
-	if value is Array:
-		for entry: Variant in value:
-			result.append(String(entry))
-	return result
-
-
 func accepts_spatial_input() -> bool:
 	for panel: Control in _mode_panels:
 		if panel.visible:
@@ -758,59 +751,12 @@ func _summary_panel(panel_name: String, stretch_ratio: float) -> PanelContainer:
 
 
 func _build_initiative_panel(round_number: int) -> PanelContainer:
-	var panel := _summary_panel("BattleInitiative", 1.55)
-	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 2)
-	var heading := Label.new()
-	heading.text = "Round %d • Turn order" % round_number
-	heading.add_theme_color_override("font_color", Color("63d8e7"))
-	heading.add_theme_font_size_override("font_size", 10)
-	column.add_child(heading)
-	var turns := HBoxContainer.new()
-	turns.name = "BattleInitiativeOrder"
-	turns.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	turns.add_theme_constant_override("separation", 3)
-	column.add_child(turns)
-	panel.add_child(column)
-	var ordered := _ordered_combatants_from_active()
-	for index: int in mini(ordered.size(), MAX_VISIBLE_TURNS):
-		var combatant := ordered[index]
-		var button := Button.new()
-		button.name = "Initiative%s" % combatant.id.to_pascal_case()
-		var turn_label := "NOW" if index == 0 else "NEXT" if index == 1 else str(index + 1)
-		var icon := _combatant_icons.get(combatant.id) as Texture2D
-		button.text = turn_label if icon != null else "%s %s" % [turn_label, combatant.name.left(8)]
-		button.icon = icon
-		button.expand_icon = true
-		button.add_theme_constant_override("icon_max_width", 22)
-		button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		button.tooltip_text = "%s • %s" % ["Current actor" if index == 0 else "Upcoming actor %d" % index, combatant.name]
-		button.theme_type_variation = &"BattleCommandButton"
-		button.custom_minimum_size.y = 28.0
-		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		if index == 0:
-			button.add_theme_color_override("font_color", Color("f8dc52"))
-		var combatant_id := combatant.id
-		button.pressed.connect(func() -> void:
-			inspect_combatant(combatant_id)
-			combatant_focus_requested.emit(combatant_id, true)
-		)
-		turns.add_child(button)
-	return panel
+	return BattleInitiativePanelBuilderType.build(round_number, _combatants, _actor_id, _combatant_icons, _select_initiative_combatant, MAX_VISIBLE_TURNS)
 
 
-func _ordered_combatants_from_active() -> Array[InteractionRequestValue.Combatant]:
-	var result: Array[InteractionRequestValue.Combatant] = []
-	if _combatants.is_empty():
-		return result
-	var active_index := 0
-	for index: int in _combatants.size():
-		if _combatants[index].id == _actor_id:
-			active_index = index
-			break
-	for offset: int in _combatants.size():
-		result.append(_combatants[(active_index + offset) % _combatants.size()])
-	return result
+func _select_initiative_combatant(combatant_id: String) -> void:
+	inspect_combatant(combatant_id)
+	combatant_focus_requested.emit(combatant_id, true)
 
 
 func _add_fixed_response(parent: Container, command_name: String, label: String, body: InteractionResponse.Body, enabled: bool, reason: String) -> Button:
