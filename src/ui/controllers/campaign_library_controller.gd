@@ -1,6 +1,8 @@
 class_name CampaignLibraryController
 extends RefCounted
 
+## Owns the front-door campaign browser and its startup command surfaces.
+
 const PackageOperationViewScript := preload("res://src/app/package_operation_view.gd")
 const ClassicIntroAnimationScript := preload("res://src/ui/classic_intro_animation.gd")
 const INTRO_FRAME_TEXTURE_PATH := "res://src/ui/assets/ui/classic-intro-frame.png"
@@ -55,15 +57,7 @@ func build_splash_overlay() -> void:
 	splash_overlay = PanelContainer.new()
 	splash_overlay.name = "SplashScreen"
 	splash_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
-	var surface := StyleBoxFlat.new()
-	surface.bg_color = Color(0.0, 0.0, 0.0, 0.0)
-	surface.border_color = Color("4b5157")
-	surface.set_border_width_all(1)
-	surface.content_margin_left = 24.0
-	surface.content_margin_top = 20.0
-	surface.content_margin_right = 24.0
-	surface.content_margin_bottom = 20.0
-	splash_overlay.add_theme_stylebox_override("panel", surface)
+	_style_splash_overlay()
 	splash_overlay.z_index = MAXIMUM_MODAL_Z_INDEX
 	_host.add_child(splash_overlay)
 	splash_composition = BoxContainer.new()
@@ -157,6 +151,18 @@ func build_splash_overlay() -> void:
 	quit.custom_minimum_size.y = 42.0
 	quit.pressed.connect(func() -> void: quit_requested.emit())
 	column.add_child(quit)
+
+
+func _style_splash_overlay() -> void:
+	var surface := StyleBoxFlat.new()
+	surface.bg_color = Color(0.0, 0.0, 0.0, 0.0)
+	surface.border_color = Color("4b5157")
+	surface.set_border_width_all(1)
+	surface.content_margin_left = 24.0
+	surface.content_margin_top = 20.0
+	surface.content_margin_right = 24.0
+	surface.content_margin_bottom = 20.0
+	splash_overlay.add_theme_stylebox_override("panel", surface)
 
 
 func build_campaign_overlay() -> void:

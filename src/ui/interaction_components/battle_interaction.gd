@@ -1,6 +1,8 @@
 class_name BattleInteraction
 extends InteractionComponent
 
+## Presents one typed battle request and emits typed combat responses.
+
 const MAX_VISIBLE_TURNS := 6
 const COMMAND_HEIGHT := 30.0
 const SUMMARY_HEIGHT := 58.0
@@ -103,6 +105,11 @@ func build(request: InteractionRequest) -> void:
 	_build_attack_panel(body, actor_id, action_ids, targets, target_panel, weapon_mode)
 	_build_spell_panel(body, actor_id, action_ids, spell_panel)
 	_build_combatant_inspection(inspection_panel)
+	_build_scroll_panel(body, actor_id, action_ids, scroll_panel)
+	_build_item_panel(body, actor_id, action_ids, item_panel)
+
+
+func _build_scroll_panel(body: InteractionRequest.CombatRequestBody, actor_id: String, action_ids: Array[String], scroll_panel: VBoxContainer) -> void:
 	if action_ids.has("use_scroll") and not body.scroll_casts.is_empty():
 		var scroll_picker := OptionButton.new()
 		scroll_picker.name = "CombatScrollPicker"
@@ -139,6 +146,9 @@ func build(request: InteractionRequest) -> void:
 		refresh_scroll_button.call(scroll_picker.selected)
 	elif not body.scroll_cast_reason.is_empty():
 		add_response_to(scroll_panel, "Use scroll unavailable", InteractionResponse.CombatBody.new(&"use_scroll", actor_id), false, body.scroll_cast_reason)
+
+
+func _build_item_panel(body: InteractionRequest.CombatRequestBody, actor_id: String, action_ids: Array[String], item_panel: VBoxContainer) -> void:
 	if action_ids.has("use_item") and not body.item_casts.is_empty():
 		var item_row := HBoxContainer.new()
 		item_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL

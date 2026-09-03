@@ -77,14 +77,9 @@ func grant_treasure_definition(treasure: TreasureDefinition, request_id: String)
 
 func begin_completed_battle_reward(request_id: String, caller: ScenarioBattleCaller = null) -> ScenarioRuntimeOperationResult:
 	var combat := _game_state.combat
-	if combat == null or not combat.completed:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "Battle rewards require a completed battle.")
-	if combat.rewards_completed:
-		return ScenarioRuntimeOperationResult.completed(String(combat.outcome))
-	if combat.rewards_started:
-		return ScenarioRuntimeOperationResult.failed(&"battle_reward_already_started", "The completed battle already has an active reward continuation.")
-	if caller != null and caller.kind == ScenarioBattleCaller.CLASSIC and caller.opcode == 2 and caller.mode == 10:
-		return _complete_mode_ten_battle(combat)
+	var early_result := _early_battle_reward_result(combat, caller)
+	if early_result != null:
+		return early_result
 	var bonus_treasure_id := caller.mode if combat.outcome == &"victory" and caller != null and caller.kind == ScenarioBattleCaller.CLASSIC and caller.opcode == 48 else 0
 	if bonus_treasure_id != 0 and _content.treasure_by_classic_id(absi(bonus_treasure_id)) == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_treasure", "Classic opcode 48 references unavailable bonus treasure %d." % bonus_treasure_id)
@@ -183,6 +178,18 @@ func begin_completed_battle_reward(request_id: String, caller: ScenarioBattleCal
 	combat.clear_fumbled_items()
 	operation.events = events + operation.events
 	return operation
+
+
+func _early_battle_reward_result(combat: CombatState, caller: ScenarioBattleCaller) -> ScenarioRuntimeOperationResult:
+	if combat == null or not combat.completed:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "Battle rewards require a completed battle.")
+	if combat.rewards_completed:
+		return ScenarioRuntimeOperationResult.completed(String(combat.outcome))
+	if combat.rewards_started:
+		return ScenarioRuntimeOperationResult.failed(&"battle_reward_already_started", "The completed battle already has an active reward continuation.")
+	if caller != null and caller.kind == ScenarioBattleCaller.CLASSIC and caller.opcode == 2 and caller.mode == 10:
+		return _complete_mode_ten_battle(combat)
+	return null
 
 
 func _recovered_fumble_items(combat: CombatState) -> Variant:
