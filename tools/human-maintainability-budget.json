@@ -171,13 +171,6 @@
       "functions": ["_add_character_check", "_add_spell_target_context", "_build_ally_candidates", "_build_ally_decision", "_build_ally_selection", "_label"]
     },
     {
-      "path": "src/ui/interaction_components/treasure_distribution_interaction.gd",
-      "kind": "request-workspace",
-      "reason": "Treasure composes request-sized loot, recipients, lore casters, transfers, recovery, and completion-confirmation modes.",
-      "currentMaximum": 66,
-      "functions": ["_add_caster_control", "_add_colored_label", "_add_column", "_add_expanding_spacer", "_add_loot_item", "_add_recipient_row", "_add_swap_controls", "_add_vacant_loot_slot", "_add_workspace_header", "_build_classic_treasure_workspace", "_build_command_column", "_build_compact_commands", "_build_completion_confirmation", "_build_footer", "_build_item_column", "_build_item_inspector", "_build_loot_side", "_build_party_side", "_build_recipient_column", "_build_workspace", "_loot_marker"]
-    },
-    {
       "path": "src/ui/interaction_presenter.gd",
       "kind": "conditional-chrome",
       "reason": "The presenter creates short-lived modal shields, media flashes, and side-workspace hosts only for the active request.",

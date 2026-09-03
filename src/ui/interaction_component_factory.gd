@@ -14,6 +14,7 @@ const THIEF_ENCOUNTER_INTERACTION_SCENE_PATH := "res://src/ui/interaction_compon
 const LEVEL_UP_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/level_up_interaction.tscn"
 const ENCOUNTER_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/encounter_interaction.tscn"
 const SHOP_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/shop_interaction.tscn"
+const TREASURE_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/treasure_distribution_interaction.tscn"
 const LayoutPolicy := preload("res://src/ui/interaction_layout_policy.gd")
 
 
@@ -49,7 +50,7 @@ static func create(
 			selection.configure(media, game_view)
 			return selection
 		&"treasure_distribution":
-			var treasure := TreasureDistributionInteraction.new()
+			var treasure := (load(TREASURE_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as TreasureDistributionInteraction
 			treasure.configure(media, game_view, compact, treasure_recipient_id, treasure_slot_order)
 			return treasure
 		&"level_up":

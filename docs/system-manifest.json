@@ -147,7 +147,7 @@
     {"id": "shop", "scene": "src/ui/interaction_components/shop_interaction.tscn"},
     {"id": "temple", "scene": "src/ui/interaction_components/temple_interaction.tscn"},
     {"id": "bank", "scene": "src/ui/interaction_components/bank_interaction.tscn"},
-    {"id": "treasure", "scene": null},
+    {"id": "treasure", "scene": "src/ui/interaction_components/treasure_distribution_interaction.tscn"},
     {"id": "encounter", "scene": "src/ui/interaction_components/encounter_interaction.tscn"},
     {"id": "level-up", "scene": "src/ui/interaction_components/level_up_interaction.tscn"},
     {"id": "pick-lock", "scene": "src/ui/interaction_components/pick_lock_interaction.tscn"},
