@@ -1,6 +1,111 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
+
 [ext_resource type="PackedScene" path="res://src/ui/screens/screen_frame.tscn" id="1_base"]
+[ext_resource type="Script" path="res://src/ui/screens/system_screen.gd" id="2_screen"]
+
 [node name="SystemScreen" instance=ExtResource("1_base")]
 route_id = &"system"
 title = "Preferences and Game"
 description = "Save, restore, display, audio, accessibility, and package diagnostics."
+script = ExtResource("2_screen")
+
+[node name="SystemSummary" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="EditorHint" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/SystemSummary"]
+layout_mode = 2
+text = "Current campaign and rules"
+horizontal_alignment = 2
+
+[node name="SystemWorkspaceTabs" type="TabContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+clip_tabs = true
+
+[node name="Save & Load" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/SystemWorkspaceTabs"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 5
+
+[node name="EditorHint" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/SystemWorkspaceTabs/Save & Load"]
+layout_mode = 2
+text = "Save browser, selected record, and save actions"
+horizontal_alignment = 1
+
+[node name="Display" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/SystemWorkspaceTabs"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="EditorHint" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/SystemWorkspaceTabs/Display"]
+layout_mode = 2
+text = "Display preferences"
+horizontal_alignment = 1
+
+[node name="Audio" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/SystemWorkspaceTabs"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="EditorHint" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/SystemWorkspaceTabs/Audio"]
+layout_mode = 2
+text = "Audio preferences"
+horizontal_alignment = 1
+
+[node name="Pacing" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/SystemWorkspaceTabs"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="EditorHint" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/SystemWorkspaceTabs/Pacing"]
+layout_mode = 2
+text = "Movement and combat pacing"
+horizontal_alignment = 1
+
+[node name="Accessibility" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/SystemWorkspaceTabs"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="EditorHint" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/SystemWorkspaceTabs/Accessibility"]
+layout_mode = 2
+text = "Accessibility preferences"
+horizontal_alignment = 1
+
+[node name="Controls" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/SystemWorkspaceTabs"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="EditorHint" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/SystemWorkspaceTabs/Controls"]
+layout_mode = 2
+text = "Keyboard and mouse reference"
+horizontal_alignment = 1
+
+[node name="Diagnostics" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/SystemWorkspaceTabs"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="EditorHint" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/SystemWorkspaceTabs/Diagnostics"]
+layout_mode = 2
+text = "Package and renderer diagnostics"
+horizontal_alignment = 1
+
+[node name="SystemAlternateContent" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3

@@ -46,23 +46,28 @@ func set_save_and_quit_mode(enabled: bool) -> void:
 	_save_and_quit_mode = enabled
 
 
-func present(parent: VBoxContainer, view: GameView, settings: PresentationSettings) -> void:
-	if parent == null or view == null or settings == null:
+func present(target: Control, view: GameView, settings: PresentationSettings) -> void:
+	if target == null or view == null or settings == null:
 		return
-	_add_header(parent, view)
-	var tabs := TabContainer.new()
-	tabs.name = "SystemWorkspaceTabs"
-	tabs.clip_tabs = true
-	tabs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	parent.add_child(tabs)
-	_build_save_tab(_tab(tabs, "Save & Load"), view)
-	_build_display_tab(_tab(tabs, "Display"), settings)
-	_build_audio_tab(_tab(tabs, "Audio"), settings)
-	_build_pacing_tab(_tab(tabs, "Pacing"), settings)
-	_build_accessibility_tab(_tab(tabs, "Accessibility"), settings)
-	_build_controls_tab(_tab(tabs, "Controls"), settings)
-	_build_diagnostics_tab(_tab(tabs, "Diagnostics"), settings)
+	var screen := target as SystemScreen
+	var parent := screen.body_control() if screen != null else target as VBoxContainer
+	if screen != null:
+		screen.prepare_for_render()
+	_add_header(screen.summary_area() if screen != null else parent, view)
+	var tabs := screen.tabs() if screen != null else TabContainer.new()
+	if screen == null:
+		tabs.name = "SystemWorkspaceTabs"
+		tabs.clip_tabs = true
+		tabs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		parent.add_child(tabs)
+	_build_save_tab(screen.tab_area("Save & Load") if screen != null else _tab(tabs, "Save & Load"), view)
+	_build_display_tab(screen.tab_area("Display") if screen != null else _tab(tabs, "Display"), settings)
+	_build_audio_tab(screen.tab_area("Audio") if screen != null else _tab(tabs, "Audio"), settings)
+	_build_pacing_tab(screen.tab_area("Pacing") if screen != null else _tab(tabs, "Pacing"), settings)
+	_build_accessibility_tab(screen.tab_area("Accessibility") if screen != null else _tab(tabs, "Accessibility"), settings)
+	_build_controls_tab(screen.tab_area("Controls") if screen != null else _tab(tabs, "Controls"), settings)
+	_build_diagnostics_tab(screen.tab_area("Diagnostics") if screen != null else _tab(tabs, "Diagnostics"), settings)
 
 
 func _add_header(parent: VBoxContainer, view: GameView) -> void:

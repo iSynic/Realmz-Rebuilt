@@ -210,7 +210,7 @@ func present(screen_id: StringName, screen: ScreenFrame, appearance_textures: Di
 	if screen == null:
 		return
 	var body := screen.body_control()
-	if screen_id not in [&"allies", &"bestiary", &"character", &"inventory", &"journal", &"services", &"spells"]:
+	if screen_id not in [&"allies", &"bestiary", &"character", &"inventory", &"journal", &"services", &"spells", &"system"]:
 		_clear(body)
 	if context_actions != null:
 		_clear(context_actions)
@@ -232,6 +232,8 @@ func present(screen_id: StringName, screen: ScreenFrame, appearance_textures: Di
 			message_host = (screen as ServicesScreen).prepare_alternate_layout()
 		elif screen is SpellsScreen:
 			message_host = (screen as SpellsScreen).prepare_alternate_layout()
+		elif screen is SystemScreen:
+			message_host = (screen as SystemScreen).prepare_alternate_layout()
 		_add_label(message_host, "No active session. Choose a validated campaign to begin.", MUTED)
 		return
 	match screen_id:
@@ -256,7 +258,7 @@ func present(screen_id: StringName, screen: ScreenFrame, appearance_textures: Di
 			_maps_journal_controller.set_text_scale(_settings.text_scale)
 			_maps_journal_controller.present(screen, _view, _media)
 		&"system":
-			_system_controller.present(body, _view, _settings)
+			_system_controller.present(screen, _view, _settings)
 
 
 func _add_card(parent: Container, title: String, subtitle: String, detail: String) -> void:
