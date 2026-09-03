@@ -1,6 +1,8 @@
 class_name ClassicBattleLifecycleOperations
 extends RefCounted
 
+## Adapts Classic battle opcodes and resumable combat requests to game rules.
+
 var _content: RealmzContent
 var _game_state: GameState
 var _rng: RealmzRng
@@ -601,76 +603,16 @@ func _combat_request(request_id: String) -> InteractionRequest:
 	var movement: Array[Dictionary] = []
 	for option: CombatMoveOptionView in combat_view.movement_options:
 		movement.append({"direction": [option.direction.x, option.direction.y], "destination": [option.destination.x, option.destination.y], "cost": option.movement_cost, "enabled": option.enabled, "reasonCode": String(option.reason), "reason": option.reason_text, "retreat": option.retreats_from_battle, "forcedRetreat": option.forced_retreat, "attackTargetId": option.attack_target_id, "attackTargetName": option.attack_target_name})
-	var spell_casts: Array[Dictionary] = []
-	for option: CombatSpellOptionView in _rules.combat_flow.character_spell_options(_game_state, _content, combat_view.active_actor_id):
-		var spell_cast := {"spellId": option.spell_id, "spellName": option.spell_name, "power": option.power, "cost": option.cost, "targetId": option.target_id, "targetName": option.target_name, "targetCurrentHealth": option.target_current_health, "targetMaximumHealth": option.target_maximum_health, "targetMode": String(option.target_mode)}
-		if option.target_mode in [&"sequence", &"coordinate_sequence"]:
-			spell_cast["maximumTargets"] = option.maximum_targets
-		if option.target_mode == &"sequence":
-			var candidates: Array[Dictionary] = []
-			for candidate: CombatSpellTargetView in option.target_candidates:
-				candidates.append({"id": candidate.id, "kind": String(candidate.kind), "name": candidate.name, "currentHealth": candidate.current_health, "maximumHealth": candidate.maximum_health})
-			spell_cast["targetCandidates"] = candidates
-		if option.target_mode == &"area":
-			spell_cast["areaShape"] = option.area_shape
-			spell_cast["defaultTargetCoordinate"] = [option.default_target_coordinate.x, option.default_target_coordinate.y]
-			spell_cast["areaOffsets"] = option.area_offsets.map(func(offset: Vector2i) -> Array[int]: return [offset.x, offset.y])
-			spell_cast["areaRotationOffsets"] = option.area_rotation_offsets.map(func(offsets: Array) -> Array: return offsets.map(func(offset: Vector2i) -> Array[int]: return [offset.x, offset.y]))
-			spell_cast["legalTargetCoordinates"] = option.legal_target_coordinates.map(func(coordinate: Vector2i) -> Array[int]: return [coordinate.x, coordinate.y])
-		spell_casts.append(spell_cast)
+	var spell_casts := _combat_spell_cast_payloads(combat_view.active_actor_id)
 	if not spell_casts.is_empty():
 		actions.append("cast_spell")
 	var spell_cast_reason := _rules.combat_flow.character_spell_unavailable_reason(_game_state, _content, combat_view.active_actor_id)
-	var fast_spells: Array[Dictionary] = []
-	var active_character := _game_state.party.character_by_id(combat_view.active_actor_id)
-	if active_character != null:
-		for index: int in active_character.fast_spells().size():
-			var binding := active_character.fast_spell_at(index)
-			var bound_spell := _content.spell_by_id(binding.spell_id) if binding != null and not binding.is_empty() else null
-			var binding_enabled := false
-			if bound_spell != null:
-				for cast: Dictionary in spell_casts:
-					if cast.get("spellId") == binding.spell_id and int(cast.get("power", 0)) == binding.power:
-						binding_enabled = true
-						break
-			var binding_reason := "This Fast Spell slot is undefined." if binding == null or binding.is_empty() else "The stored spell is unavailable to this character." if bound_spell == null or not active_character.known_spells().has(binding.spell_id) else "No legal target or casting action is currently available."
-			fast_spells.append({"slot": index, "spellId": binding.spell_id if binding != null else "", "spellName": bound_spell.name if bound_spell != null else "Undefined Spell", "power": binding.power if binding != null else 0, "enabled": binding_enabled, "reason": "" if binding_enabled else binding_reason})
-	var item_casts: Array[Dictionary] = []
-	for option: CombatItemOptionView in _rules.combat_flow.character_item_spell_options(_game_state, _content, combat_view.active_actor_id):
-		var item_cast := {"itemInstanceId": option.item_instance_id, "itemId": option.item_definition_id, "itemName": option.item_name, "charges": option.charges, "powerStaged": option.power_staged, "spellId": option.spell_id, "spellName": option.spell_name, "power": option.power, "targetId": option.target_id, "targetName": option.target_name, "targetCurrentHealth": option.target_current_health, "targetMaximumHealth": option.target_maximum_health, "targetMode": String(option.target_mode)}
-		if option.target_mode in [&"sequence", &"coordinate_sequence"]: item_cast["maximumTargets"] = option.maximum_targets
-		if option.target_mode == &"sequence":
-			var candidates: Array[Dictionary] = []
-			for candidate: CombatSpellTargetView in option.target_candidates:
-				candidates.append({"id": candidate.id, "kind": String(candidate.kind), "name": candidate.name, "currentHealth": candidate.current_health, "maximumHealth": candidate.maximum_health})
-			item_cast["targetCandidates"] = candidates
-		if option.target_mode == &"area":
-			item_cast["areaShape"] = option.area_shape
-			item_cast["defaultTargetCoordinate"] = [option.default_target_coordinate.x, option.default_target_coordinate.y]
-			item_cast["areaOffsets"] = option.area_offsets.map(func(offset: Vector2i) -> Array[int]: return [offset.x, offset.y])
-			item_cast["areaRotationOffsets"] = option.area_rotation_offsets.map(func(offsets: Array) -> Array: return offsets.map(func(offset: Vector2i) -> Array[int]: return [offset.x, offset.y]))
-			item_cast["legalTargetCoordinates"] = option.legal_target_coordinates.map(func(coordinate: Vector2i) -> Array[int]: return [coordinate.x, coordinate.y])
-		item_casts.append(item_cast)
+	var fast_spells := _fast_spell_payloads(combat_view.active_actor_id, spell_casts)
+	var item_casts := _combat_item_cast_payloads(combat_view.active_actor_id)
 	if not item_casts.is_empty():
 		actions.append("use_item")
 	var item_cast_reason := _rules.combat_flow.character_item_spell_unavailable_reason(_game_state, _content, combat_view.active_actor_id)
-	var scroll_casts: Array[Dictionary] = []
-	for option: Variant in _rules.combat_flow.character_scroll_options(_game_state, _content, combat_view.active_actor_id):
-		var scroll_cast := {"scrollSlot": option.scroll_slot, "spellId": option.spell_id, "spellName": option.spell_name, "power": option.power, "targetId": option.target_id, "targetName": option.target_name, "targetCurrentHealth": option.target_current_health, "targetMaximumHealth": option.target_maximum_health, "targetMode": String(option.target_mode)}
-		if option.target_mode in [&"sequence", &"coordinate_sequence"]:
-			scroll_cast["maximumTargets"] = option.maximum_targets
-		if option.target_mode == &"sequence":
-			var candidates: Array[Dictionary] = []
-			for candidate: CombatSpellTargetView in option.target_candidates:
-				candidates.append({"id": candidate.id, "kind": String(candidate.kind), "name": candidate.name, "currentHealth": candidate.current_health, "maximumHealth": candidate.maximum_health})
-			scroll_cast["targetCandidates"] = candidates
-		if option.target_mode == &"area":
-			scroll_cast["areaShape"] = option.area_shape
-			scroll_cast["defaultTargetCoordinate"] = [option.default_target_coordinate.x, option.default_target_coordinate.y]
-			scroll_cast["areaOffsets"] = option.area_offsets.map(func(offset: Vector2i) -> Array[int]: return [offset.x, offset.y])
-			scroll_cast["areaRotationOffsets"] = option.area_rotation_offsets.map(func(offsets: Array) -> Array: return offsets.map(func(offset: Vector2i) -> Array[int]: return [offset.x, offset.y]))
-			scroll_cast["legalTargetCoordinates"] = option.legal_target_coordinates.map(func(coordinate: Vector2i) -> Array[int]: return [coordinate.x, coordinate.y])
-		scroll_casts.append(scroll_cast)
+	var scroll_casts := _combat_scroll_cast_payloads(combat_view.active_actor_id)
 	if not scroll_casts.is_empty():
 		actions.append("use_scroll")
 	var scroll_cast_reason := _rules.combat_flow.character_scroll_unavailable_reason(_game_state, _content, combat_view.active_actor_id)
@@ -686,6 +628,68 @@ func _combat_request(request_id: String) -> InteractionRequest:
 	if request != null:
 		request.transient_combat_view = combat_view
 	return request
+
+
+func _combat_spell_cast_payloads(actor_id: String) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	for option: CombatSpellOptionView in _rules.combat_flow.character_spell_options(_game_state, _content, actor_id):
+		var payload := {"spellId": option.spell_id, "spellName": option.spell_name, "power": option.power, "cost": option.cost, "targetId": option.target_id, "targetName": option.target_name, "targetCurrentHealth": option.target_current_health, "targetMaximumHealth": option.target_maximum_health, "targetMode": String(option.target_mode)}
+		_append_spell_target_payload(payload, option)
+		result.append(payload)
+	return result
+
+
+func _combat_item_cast_payloads(actor_id: String) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	for option: CombatItemOptionView in _rules.combat_flow.character_item_spell_options(_game_state, _content, actor_id):
+		var payload := {"itemInstanceId": option.item_instance_id, "itemId": option.item_definition_id, "itemName": option.item_name, "charges": option.charges, "powerStaged": option.power_staged, "spellId": option.spell_id, "spellName": option.spell_name, "power": option.power, "targetId": option.target_id, "targetName": option.target_name, "targetCurrentHealth": option.target_current_health, "targetMaximumHealth": option.target_maximum_health, "targetMode": String(option.target_mode)}
+		_append_spell_target_payload(payload, option)
+		result.append(payload)
+	return result
+
+
+func _combat_scroll_cast_payloads(actor_id: String) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	for option: Variant in _rules.combat_flow.character_scroll_options(_game_state, _content, actor_id):
+		var payload := {"scrollSlot": option.scroll_slot, "spellId": option.spell_id, "spellName": option.spell_name, "power": option.power, "targetId": option.target_id, "targetName": option.target_name, "targetCurrentHealth": option.target_current_health, "targetMaximumHealth": option.target_maximum_health, "targetMode": String(option.target_mode)}
+		_append_spell_target_payload(payload, option)
+		result.append(payload)
+	return result
+
+
+func _append_spell_target_payload(payload: Dictionary, option: Variant) -> void:
+	if option.target_mode in [&"sequence", &"coordinate_sequence"]:
+		payload["maximumTargets"] = option.maximum_targets
+	if option.target_mode == &"sequence":
+		var candidates: Array[Dictionary] = []
+		for candidate: CombatSpellTargetView in option.target_candidates:
+			candidates.append({"id": candidate.id, "kind": String(candidate.kind), "name": candidate.name, "currentHealth": candidate.current_health, "maximumHealth": candidate.maximum_health})
+		payload["targetCandidates"] = candidates
+	if option.target_mode == &"area":
+		payload["areaShape"] = option.area_shape
+		payload["defaultTargetCoordinate"] = [option.default_target_coordinate.x, option.default_target_coordinate.y]
+		payload["areaOffsets"] = option.area_offsets.map(func(offset: Vector2i) -> Array[int]: return [offset.x, offset.y])
+		payload["areaRotationOffsets"] = option.area_rotation_offsets.map(func(offsets: Array) -> Array: return offsets.map(func(offset: Vector2i) -> Array[int]: return [offset.x, offset.y]))
+		payload["legalTargetCoordinates"] = option.legal_target_coordinates.map(func(coordinate: Vector2i) -> Array[int]: return [coordinate.x, coordinate.y])
+
+
+func _fast_spell_payloads(actor_id: String, spell_casts: Array[Dictionary]) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	var character := _game_state.party.character_by_id(actor_id)
+	if character == null:
+		return result
+	for index: int in character.fast_spells().size():
+		var binding := character.fast_spell_at(index)
+		var spell := _content.spell_by_id(binding.spell_id) if binding != null and not binding.is_empty() else null
+		var enabled := false
+		if spell != null:
+			for cast: Dictionary in spell_casts:
+				if cast.get("spellId") == binding.spell_id and int(cast.get("power", 0)) == binding.power:
+					enabled = true
+					break
+		var reason := "This Fast Spell slot is undefined." if binding == null or binding.is_empty() else "The stored spell is unavailable to this character." if spell == null or not character.known_spells().has(binding.spell_id) else "No legal target or casting action is currently available."
+		result.append({"slot": index, "spellId": binding.spell_id if binding != null else "", "spellName": spell.name if spell != null else "Undefined Spell", "power": binding.power if binding != null else 0, "enabled": enabled, "reason": "" if enabled else reason})
+	return result
 
 
 func active_combat_request(request_id: String) -> InteractionRequest:
