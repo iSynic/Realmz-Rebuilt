@@ -28,9 +28,10 @@ var _visited_coordinate_set: Dictionary = {}
 var _seen_coordinate_set: Dictionary = {}
 var _visibility_parent: MapView
 var _movement_options: Dictionary = {}
+var _random_region_bounds: Array[Rect2i] = []
 
 
-func _init(view_map_id: String, view_map_name: String, view_level_type: StringName, map_width: int, map_height: int, party_position: Vector2i, cell_views: Array[MapCellView], is_dark: bool = false, visited_cells: Array[Vector2i] = [], movement_options: Dictionary = {}, party_last_move_direction: Vector2i = Vector2i.ZERO, view_landlook: int = -1, party_dungeon_heading: int = 1, allows_dungeon_multiview: bool = true, has_wizard_eye: bool = false, view_base_scale: int = -1, hides_coordinates: bool = false, shows_compass: bool = true, saved_darkness_level: int = -1, line_of_sight_enabled: bool = false, seen_cells: Array[Vector2i] = [], delta: RefCounted = null, window: RefCounted = null) -> void:
+func _init(view_map_id: String, view_map_name: String, view_level_type: StringName, map_width: int, map_height: int, party_position: Vector2i, cell_views: Array[MapCellView], is_dark: bool = false, visited_cells: Array[Vector2i] = [], movement_options: Dictionary = {}, party_last_move_direction: Vector2i = Vector2i.ZERO, view_landlook: int = -1, party_dungeon_heading: int = 1, allows_dungeon_multiview: bool = true, has_wizard_eye: bool = false, view_base_scale: int = -1, hides_coordinates: bool = false, shows_compass: bool = true, saved_darkness_level: int = -1, line_of_sight_enabled: bool = false, seen_cells: Array[Vector2i] = [], delta: RefCounted = null, window: RefCounted = null, effective_random_region_bounds: Array[Rect2i] = []) -> void:
 	map_id = view_map_id
 	map_name = view_map_name
 	level_type = view_level_type
@@ -54,6 +55,7 @@ func _init(view_map_id: String, view_map_name: String, view_level_type: StringNa
 	_visited_coordinates = visited_cells.duplicate()
 	_seen_coordinates = seen_cells.duplicate()
 	_movement_options = movement_options.duplicate(true)
+	_random_region_bounds = effective_random_region_bounds.duplicate()
 	if map_window == null:
 		for cell_view: MapCellView in _cells:
 			_cells_by_coordinate[cell_view.coordinate] = cell_view
@@ -77,6 +79,10 @@ func visited_coordinates() -> Array[Vector2i]:
 
 func seen_coordinates() -> Array[Vector2i]:
 	return _materialize_coordinates(false)
+
+
+func random_region_bounds() -> Array[Rect2i]:
+	return _random_region_bounds.duplicate()
 
 
 func was_visited(coordinate: Vector2i) -> bool:

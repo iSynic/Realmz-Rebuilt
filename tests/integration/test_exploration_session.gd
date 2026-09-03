@@ -20,7 +20,7 @@ func run() -> void:
 	_test_terrain_replacement_topology(content)
 	var session := GameSession.new()
 	assert_equal(session.start(content, 1).state, SessionStep.State.COMPLETED, "exploration session starts"); _begin_fixture_adventure(session, content)
-	assert_equal(session.view().party_coordinate, Vector2i(1, 1), "Providence start coordinate is authoritative"); assert_equal(session.view().map_view.cells().size(), 625, "GameView exposes one complete bounded topology-derived window at the north-west edge")
+	assert_equal(session.view().party_coordinate, Vector2i(1, 1), "Providence start coordinate is authoritative"); assert_true(session.view().map_view.cells().size() == 625 and not session.view().map_view.random_region_bounds().is_empty(), "GameView exposes one complete bounded topology-derived window plus detached effective random-rectangle bounds at the north-west edge")
 	assert_true(session.view().map_view.can_move(Vector2i.UP), "the detached view exposes an authoritative passable movement direction"); assert_true(session.view().map_view.can_move(Vector2i.LEFT), "the detached view preserves the hidden land secret's underlying passability")
 	assert_equal(session.view().map_view.visited_coordinates(), [Vector2i(1, 1)], "the minimap receives only session-owned visited coordinates"); assert_equal(session.view().map_view.cell_at(Vector2i(2, 2)).overlay_asset_id, "fixture.special-land.neg-99", "the detached presentation view retains the validated special-land overlay identity")
 	var search_clock_before := session.snapshot().game_state.clock.total_minutes(); var search_rng_before := session.rng_trace().size()

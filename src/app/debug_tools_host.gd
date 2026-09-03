@@ -4,6 +4,7 @@ extends Node
 const DebugActionConsoleScript := preload("res://src/presentation/debug_action_console.gd")
 
 signal status_changed(message: String, failed: bool)
+signal topology_debug_changed(enabled: bool)
 
 var _controller: GameSessionController
 var _content_provider: Callable
@@ -13,6 +14,7 @@ var _noclip: bool = false
 var _recent_auto_actions: Array[String] = []
 var _action_lines: Array[String] = []
 var _console_shortcut_enabled: bool = true
+var _topology_debug: bool = false
 
 
 func bind(controller: GameSessionController, overlay: Control, content_provider: Callable) -> void:
@@ -29,6 +31,10 @@ func bind(controller: GameSessionController, overlay: Control, content_provider:
 	_dialog.noclip_changed.connect(func(enabled: bool) -> void:
 		_noclip = enabled
 		_dialog.show_result("No clip enabled." if enabled else "No clip disabled.", false)
+	)
+	_dialog.topology_debug_changed.connect(func(enabled: bool) -> void:
+		_topology_debug = enabled
+		topology_debug_changed.emit(enabled)
 	)
 	_dialog.console_requested.connect(_open_console)
 	_dialog.console_shortcut_changed.connect(func(enabled: bool) -> void: _console_shortcut_enabled = enabled)
@@ -49,12 +55,18 @@ func handle_input(event: InputEvent) -> bool:
 		_dialog.close_dialog()
 	else:
 		if _console.visible: _console.close_console()
-		_dialog.present(_controller.view(), _map_records(), _noclip, _recent_auto_actions, _console_shortcut_enabled)
+		_dialog.present(_controller.view(), _map_records(), _noclip, _recent_auto_actions, _console_shortcut_enabled, _topology_debug)
 	return true
 
 
 func is_open() -> bool:
 	return _dialog != null and (_dialog.visible or _console != null and _console.visible)
+
+
+func set_topology_debug(enabled: bool) -> void:
+	_topology_debug = enabled
+	if _dialog != null:
+		_dialog.set_topology_debug(enabled)
 
 
 func noclip_step(intent: PlayerIntent) -> SessionStep:

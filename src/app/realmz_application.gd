@@ -60,7 +60,7 @@ func _ready() -> void:
 	add_child(_dungeon_presenter); add_child(_held_movement)
 	_debug_tools = DebugToolsHostScript.new(); add_child(_debug_tools)
 	_debug_tools.bind(session_controller, self, func() -> RealmzContent: return _active_content)
-	_debug_tools.status_changed.connect(func(message: String, failed: bool) -> void: _shell_presenter.set_status(message, failed))
+	_debug_tools.status_changed.connect(func(message: String, failed: bool) -> void: _shell_presenter.set_status(message, failed)); _debug_tools.topology_debug_changed.connect(_on_topology_debug_changed)
 	_held_movement.set_speed_percent(_presentation_settings.exploration_speed_percent)
 	_held_movement.movement_requested.connect(_on_held_movement_requested)
 	presentation_coordinator.bind(session_controller, _map_presenter, _battlefield_presenter, _dungeon_presenter, _interaction_presenter, _shell_presenter, _audio_presenter)
@@ -1026,8 +1026,7 @@ func _try_prewarm_last_campaign() -> void:
 
 
 func _on_topology_debug_changed(enabled: bool) -> void:
-	_map_presenter.show_debug_facts = enabled
-	_map_presenter.queue_redraw()
+	_map_presenter.set_topology_debug_visible(enabled); if _debug_tools != null: _debug_tools.set_topology_debug(enabled)
 	if _presentation_settings != null:
 		_presentation_settings.topology_debug = enabled
 		settings_repository.save_settings(_presentation_settings)

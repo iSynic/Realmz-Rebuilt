@@ -18,6 +18,8 @@ const BOAT_MARKER_LEFT_ASSET_IDS: Dictionary = {0: &"map.party.boat.left.0", 3: 
 const BOAT_MARKER_RIGHT_ASSET_IDS: Dictionary = {0: &"map.party.boat.right.0", 3: &"map.party.boat.right.3", 5: &"map.party.boat.right.5", 6: &"map.party.boat.right.6", 7: &"map.party.boat.right.7"}
 const SURROUND_TEXTURE_PATH := "res://src/presentation/assets/ui/classic-exploration-surround-tile.png"
 const DARKNESS_MASK_SIZE := Vector2(320.0, 320.0)
+const DEBUG_AP_COLOR := Color(0.95, 0.72, 0.26, 0.88)
+const DEBUG_RANDOM_RECT_COLOR := Color(0.96, 0.75, 0.36, 0.78)
 const RetainedMapSurfaceScript := preload("res://src/presentation/classic_retained_map_surface.gd")
 
 @export var cell_size: float = 32.0
@@ -153,6 +155,12 @@ func set_classic_exploration_visibility(enabled: bool) -> void:
 	_present_retained_surface()
 
 
+func set_topology_debug_visible(enabled: bool) -> void:
+	show_debug_facts = enabled
+	_present_retained_surface()
+	queue_redraw()
+
+
 func _update_visibility_cache(map_view: MapView) -> void:
 	var map_size := Vector2i(map_view.width, map_view.height)
 	var map_changed := _visibility_cache_map_id != map_view.map_id or _visibility_cache_map_size != map_size or _visibility_cache_level_type != map_view.level_type
@@ -242,8 +250,11 @@ func _draw() -> void:
 	var classic_rect := classic_visible_rect(map_view.party_coordinate, Vector2i(map_view.width, map_view.height))
 	var dungeon_discovery := _dungeon_discovery_cache if map_view.level_type == &"dungeon" else {}
 	var revealed_coordinates := dungeon_discovery if map_view.level_type == &"dungeon" else _land_discovery_cache
+	var action_point_rects: Array[Rect2] = []
 	for cell: MapCellView in _visible_cell_cache:
 		var rect := Rect2(draw_origin + Vector2(cell.coordinate - camera) * cell_size, Vector2.ONE * cell_size)
+		if show_debug_facts and cell.has_trigger:
+			action_point_rects.append(rect)
 		if los_cell_requires_blackout(los_blackout, cell.visible):
 			continue
 		var outside_classic_view := not los_blackout and classic_exploration_visibility and not classic_rect.has_point(cell.coordinate)
@@ -257,13 +268,12 @@ func _draw() -> void:
 			draw_rect(rect, Color(0.22, 0.25, 0.30), false, 1.0)
 			_draw_edges(cell, rect)
 			_draw_features(cell, rect)
-			if cell.has_trigger:
-				var center := rect.get_center()
-				draw_colored_polygon(PackedVector2Array([center + Vector2(0, -6), center + Vector2(6, 0), center + Vector2(0, 6), center + Vector2(-6, 0)]), Color(0.95, 0.72, 0.26))
-			if cell.in_random_region:
-				draw_rect(rect.grow(-4.0), Color(0.48, 0.29, 0.58, 0.9), false, 2.0)
 			var facts := "%s%s%s" % ["M" if cell.passable else "X", "L" if cell.blocks_los else "", "R" if cell.in_random_region else ""]
 			draw_string(font, rect.position + Vector2(7, 17), facts, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.78, 0.82, 0.88))
+	if show_debug_facts:
+		_draw_random_region_outlines(map_view, draw_origin, camera, viewport_cells)
+		for rect: Rect2 in action_point_rects:
+			_draw_action_point_marker(rect)
 	_party_rect = Rect2(draw_origin + Vector2(map_view.party_coordinate - camera) * cell_size, Vector2.ONE * cell_size)
 	_draw_party_marker(_party_rect)
 	if map_view.dark:
@@ -272,6 +282,41 @@ func _draw() -> void:
 		_draw_minimap(map_view, font)
 	else:
 		_minimap_rect = Rect2()
+
+
+func _draw_action_point_marker(rect: Rect2) -> void:
+	var center := rect.get_center()
+	var radius := maxf(3.0, minf(rect.size.x, rect.size.y) * 0.34)
+	var points := PackedVector2Array([center + Vector2(0.0, -radius), center + Vector2(radius, 0.0), center + Vector2(0.0, radius), center + Vector2(-radius, 0.0)])
+	draw_colored_polygon(points, DEBUG_AP_COLOR)
+	points.append(points[0])
+	draw_polyline(points, Color(0.03, 0.04, 0.05, 0.92), maxf(1.0, rect.size.x * 0.08), true)
+	draw_circle(center, maxf(1.5, rect.size.x * 0.08), Color(0.03, 0.04, 0.05, 0.8))
+
+
+func _draw_random_region_outlines(map_view: MapView, draw_origin: Vector2, camera: Vector2i, viewport_size: Vector2i) -> void:
+	var viewport_bounds := Rect2i(camera, viewport_size)
+	for region_bounds: Rect2i in map_view.random_region_bounds():
+		for segment: PackedVector2Array in random_region_outline_segments(region_bounds, viewport_bounds):
+			var start := draw_origin + (segment[0] - Vector2(camera)) * cell_size
+			var finish := draw_origin + (segment[1] - Vector2(camera)) * cell_size
+			draw_line(start, finish, DEBUG_RANDOM_RECT_COLOR, 2.0, true)
+
+
+static func random_region_outline_segments(region_bounds: Rect2i, viewport_bounds: Rect2i) -> Array[PackedVector2Array]:
+	var result: Array[PackedVector2Array] = []
+	var clipped := region_bounds.intersection(viewport_bounds)
+	if clipped.size.x <= 0 or clipped.size.y <= 0:
+		return result
+	if region_bounds.position.x >= viewport_bounds.position.x and region_bounds.position.x <= viewport_bounds.end.x:
+		result.append(PackedVector2Array([Vector2(region_bounds.position.x, clipped.position.y), Vector2(region_bounds.position.x, clipped.end.y)]))
+	if region_bounds.end.x >= viewport_bounds.position.x and region_bounds.end.x <= viewport_bounds.end.x:
+		result.append(PackedVector2Array([Vector2(region_bounds.end.x, clipped.position.y), Vector2(region_bounds.end.x, clipped.end.y)]))
+	if region_bounds.position.y >= viewport_bounds.position.y and region_bounds.position.y <= viewport_bounds.end.y:
+		result.append(PackedVector2Array([Vector2(clipped.position.x, region_bounds.position.y), Vector2(clipped.end.x, region_bounds.position.y)]))
+	if region_bounds.end.y >= viewport_bounds.position.y and region_bounds.end.y <= viewport_bounds.end.y:
+		result.append(PackedVector2Array([Vector2(clipped.position.x, region_bounds.end.y), Vector2(clipped.end.x, region_bounds.end.y)]))
+	return result
 
 
 func _present_retained_surface() -> void:

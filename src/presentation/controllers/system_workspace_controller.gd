@@ -376,8 +376,8 @@ func _build_controls_tab(parent: VBoxContainer, settings: PresentationSettings) 
 
 func _build_diagnostics_tab(parent: VBoxContainer, settings: PresentationSettings) -> void:
 	var content := _settings_panel(parent, "Diagnostics", "Developer overlays expose detached topology facts without becoming gameplay authority.")
-	_add_setting_toggle(content, "Show topology diagnostics", settings.topology_debug, &"topology_debug")
-	content.add_child(_label("Topology diagnostics display movement, visibility, and trigger projections derived from the same authoritative map model.", MUTED, 14))
+	_add_setting_toggle(content, "Show APs and random rectangles on map", settings.topology_debug, &"topology_debug")
+	content.add_child(_label("Gold diamonds mark placed Action Points and gold outlines show effective random encounter rectangles. Movement and visibility facts come from the same authoritative map model.", MUTED, 14))
 
 
 func _settings_panel(parent: VBoxContainer, title: String, description: String) -> VBoxContainer:

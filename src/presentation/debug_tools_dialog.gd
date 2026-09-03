@@ -3,6 +3,7 @@ extends PanelContainer
 
 signal command_requested(command: SessionDebugCommand)
 signal noclip_changed(enabled: bool)
+signal topology_debug_changed(enabled: bool)
 signal console_requested
 signal console_shortcut_changed(enabled: bool)
 
@@ -18,6 +19,7 @@ var _trigger_encounter: Button
 var _trigger_battle: Button
 var _win_battle: Button
 var _noclip: CheckButton
+var _topology_debug: CheckButton
 var _status: Label
 var _auto_log: MenuButton
 var _console_shortcut: CheckButton
@@ -56,7 +58,7 @@ func _ready() -> void:
 	title.add_theme_font_size_override("font_size", 24)
 	root.add_child(title)
 	_status = Label.new()
-	_status.text = "Debug-only commands are not saved."
+	_status.text = "Debug commands do not enter adventure saves."
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	root.add_child(_status)
 	root.add_child(_heading("Exploration"))
@@ -76,6 +78,12 @@ func _ready() -> void:
 	_noclip.text = "No clip movement"
 	_noclip.toggled.connect(func(enabled: bool) -> void: noclip_changed.emit(enabled))
 	root.add_child(_noclip)
+	_topology_debug = CheckButton.new()
+	_topology_debug.name = "TopologyDebug"
+	_topology_debug.text = "Show APs and random rectangles on map"
+	_topology_debug.tooltip_text = "Gold diamonds mark placed Action Points; gold outlines show effective random encounter rectangles."
+	_topology_debug.toggled.connect(func(enabled: bool) -> void: topology_debug_changed.emit(enabled))
+	root.add_child(_topology_debug)
 	root.add_child(_heading("Party and scenarios"))
 	_restore = _button("Restore party HP / SP and bad conditions", func() -> void: command_requested.emit(SessionDebugCommand.restore_party()))
 	root.add_child(_restore)
@@ -112,7 +120,7 @@ func _ready() -> void:
 	visible = false
 
 
-func present(view: GameView, maps: Array[Dictionary], noclip: bool, auto_actions: Array[String] = [], console_shortcut_enabled: bool = true) -> void:
+func present(view: GameView, maps: Array[Dictionary], noclip: bool, auto_actions: Array[String] = [], console_shortcut_enabled: bool = true, topology_debug: bool = false) -> void:
 	var selected_map := "" if view == null else view.party_map_id
 	_map_select.clear()
 	for record: Dictionary in maps:
@@ -125,6 +133,7 @@ func present(view: GameView, maps: Array[Dictionary], noclip: bool, auto_actions
 	_x.value = 0 if view == null else view.party_coordinate.x
 	_y.value = 0 if view == null else view.party_coordinate.y
 	_noclip.set_pressed_no_signal(noclip)
+	_topology_debug.set_pressed_no_signal(topology_debug)
 	_console_shortcut.set_pressed_no_signal(console_shortcut_enabled)
 	_warp.disabled = not exploration or maps.is_empty()
 	_noclip.disabled = not exploration
@@ -137,6 +146,11 @@ func present(view: GameView, maps: Array[Dictionary], noclip: bool, auto_actions
 	show()
 	_x.get_line_edit().grab_focus()
 	_x.get_line_edit().select_all()
+
+
+func set_topology_debug(enabled: bool) -> void:
+	if _topology_debug != null:
+		_topology_debug.set_pressed_no_signal(enabled)
 
 
 func show_result(message: String, failed: bool) -> void:

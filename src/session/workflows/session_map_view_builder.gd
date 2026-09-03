@@ -70,8 +70,20 @@ static func build_map_view(context: SessionWorkflowContext, projection_size: Vec
 	if presentation_delta == null:
 		visited = state.world.visited_coordinates(map.id)
 		seen = state.world.seen_coordinates(map.id)
-	var result := MapView.new(map.id, map.name, map.level_type, map.topology.width, map.topology.height, state.party.coordinate, cells, dark, visited, movement_options, state.last_move_direction, state.world.map_landlook(map), state.dungeon_heading, state.dungeon_multiview, state.party.conditions.is_active(ConditionRules.PARTY_WIZARDS_EYE), map.base_scale, state.xy_display_hidden, state.compass_enabled, darkness_level, map.uses_los, seen, presentation_delta, window)
+	var result := MapView.new(map.id, map.name, map.level_type, map.topology.width, map.topology.height, state.party.coordinate, cells, dark, visited, movement_options, state.last_move_direction, state.world.map_landlook(map), state.dungeon_heading, state.dungeon_multiview, state.party.conditions.is_active(ConditionRules.PARTY_WIZARDS_EYE), map.base_scale, state.xy_display_hidden, state.compass_enabled, darkness_level, map.uses_los, seen, presentation_delta, window, _effective_random_region_bounds(context, map))
 	result.inherit_visibility(previous_map_view)
+	return result
+
+
+static func _effective_random_region_bounds(context: SessionWorkflowContext, map: MapDefinition) -> Array[Rect2i]:
+	var result: Array[Rect2i] = []
+	for region: RandomEncounterRegion in map.random_regions():
+		var effective := context.state.world.random_region(region)
+		if effective.bounds_overridden:
+			var edges := effective.bounds_edges()
+			result.append(Rect2i(edges[0], edges[2], edges[1] - edges[0] + 1, edges[3] - edges[2] + 1))
+		else:
+			result.append(region.bounds)
 	return result
 
 
@@ -141,7 +153,7 @@ static func build_cell_view(context: SessionWorkflowContext, map: MapDefinition,
 			render_tile = cell.render_tile if terrain_set == null else terrain_set.base_tile
 		else:
 			render_tile = WorldState.normalized_classic_land_tile(raw_tile)
-	return MapCellView.new(cell.coordinate, context.state.world.terrain_for(map.id, cell), render_tile, tileset_id, cell.passable, cell.blocks_los, is_visible, context.state.world.was_visited(map.id, cell.coordinate), not hidden_secret and not cell.trigger_ids().is_empty(), context.state.world.has_random_region_at(map, cell.coordinate), feature_kinds, feature_orientations, edge_kinds, edge_passability, overlay_asset_id)
+	return MapCellView.new(cell.coordinate, context.state.world.terrain_for(map.id, cell), render_tile, tileset_id, cell.passable, cell.blocks_los, is_visible, context.state.world.was_visited(map.id, cell.coordinate), not cell.trigger_ids().is_empty(), context.state.world.has_random_region_at(map, cell.coordinate), feature_kinds, feature_orientations, edge_kinds, edge_passability, overlay_asset_id)
 
 
 static func _ensure_cell_cache(context: SessionWorkflowContext, map: MapDefinition, cell_cache: Dictionary) -> void:
