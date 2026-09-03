@@ -24,46 +24,58 @@ func set_layout_profile(profile_id: StringName) -> void:
 	_layout_profile = profile_id
 
 
-func present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog = null) -> void:
-	if parent == null or view == null:
+func present(target: Control, view: GameView, media: ClassicMediaCatalog = null) -> void:
+	if target == null or view == null:
 		return
 	_media = media
-	_render_money_workspace(parent, view)
+	var screen := target as ServicesScreen
+	var parent := screen.body_control() if screen != null else target as VBoxContainer
+	if screen != null:
+		screen.prepare_for_render(_layout_profile == UiLayoutProfile.COMPACT)
+	if not _render_money_screen(parent, view, screen):
+		return
 	if not view.services.is_empty():
-		_render_location_services(parent, view)
+		_render_location_services(parent, view, screen)
 
 
-func _render_money_workspace(parent: VBoxContainer, view: GameView) -> void:
+func _render_money_screen(parent: VBoxContainer, view: GameView, screen: ServicesScreen = null) -> bool:
 	var workspace := view.money_workspace
 	if workspace == null:
-		_add_empty_state(parent, "Party wealth unavailable", "Begin the adventure before pooling or transferring wealth.")
-		return
+		_add_empty_state(screen.prepare_alternate_layout() if screen != null else parent, "Party wealth unavailable", "Begin the adventure before pooling or transferring wealth.")
+		return false
 	if workspace.characters.is_empty():
-		_add_empty_state(parent, "No adventurers", "A party member is required for Pool, Share, or Swap.")
-		return
+		_add_empty_state(screen.prepare_alternate_layout() if screen != null else parent, "No adventurers", "A party member is required for Pool, Share, or Swap.")
+		return false
 	if workspace.character(_money_character_id) == null:
 		_money_character_id = workspace.characters[0].character_id
-	var workspace_column := VBoxContainer.new()
-	workspace_column.name = "MoneyWorkspaceColumns"
+	var workspace_column := screen.get_node("WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/MoneyColumn") as VBoxContainer if screen != null else VBoxContainer.new()
+	workspace_column.name = "MoneyColumn" if screen != null else "MoneyWorkspaceColumns"
 	workspace_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	workspace_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	workspace_column.add_theme_constant_override("separation", 8)
-	workspace_column.add_child(_build_pool_pane(view, workspace))
-	var exchange := BoxContainer.new()
-	exchange.name = "MoneyExchangeWorkspace"
+	var pool_panel := _build_pool_pane(view, workspace, screen.pool_panel() if screen != null else null)
+	if screen == null:
+		workspace_column.add_child(pool_panel)
+	var exchange := screen.get_node("WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/MoneyColumn/MoneyExchangeArea") as BoxContainer if screen != null else BoxContainer.new()
+	exchange.name = "MoneyExchangeArea" if screen != null else "MoneyExchangeWorkspace"
 	exchange.vertical = _layout_profile == UiLayoutProfile.COMPACT
 	exchange.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	exchange.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	exchange.add_theme_constant_override("separation", 8)
 	if _layout_profile != UiLayoutProfile.COMPACT:
-		exchange.add_child(_build_party_pane(workspace))
-	exchange.add_child(_build_swap_pane(view, workspace))
-	workspace_column.add_child(exchange)
-	parent.add_child(workspace_column)
+		var party_panel := _build_party_pane(workspace, screen.party_panel() if screen != null else null)
+		if screen == null:
+			exchange.add_child(party_panel)
+	var swap_panel := _build_swap_pane(view, workspace, screen.swap_panel() if screen != null else null)
+	if screen == null:
+		exchange.add_child(swap_panel)
+		workspace_column.add_child(exchange)
+		parent.add_child(workspace_column)
+	return true
 
 
-func _build_pool_pane(view: GameView, workspace: MoneyWorkspaceView) -> PanelContainer:
-	var panel := _pane("MoneyPoolPane", 1.0)
+func _build_pool_pane(view: GameView, workspace: MoneyWorkspaceView, existing_panel: PanelContainer = null) -> PanelContainer:
+	var panel := _prepare_pane(existing_panel, "MoneyPoolPane", 1.0)
 	panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	var column := _pane_column(panel)
 	var summary := BoxContainer.new()
@@ -97,8 +109,8 @@ func _build_pool_pane(view: GameView, workspace: MoneyWorkspaceView) -> PanelCon
 	return panel
 
 
-func _build_party_pane(workspace: MoneyWorkspaceView) -> PanelContainer:
-	var panel := _pane("MoneyPartyPane", 1.12)
+func _build_party_pane(workspace: MoneyWorkspaceView, existing_panel: PanelContainer = null) -> PanelContainer:
+	var panel := _prepare_pane(existing_panel, "MoneyPartyPane", 1.12)
 	var column := _pane_column(panel)
 	_add_section_heading(column, "Adventurers", "%d" % workspace.characters.size())
 	var group := ButtonGroup.new()
@@ -117,9 +129,9 @@ func _build_party_pane(workspace: MoneyWorkspaceView) -> PanelContainer:
 	return panel
 
 
-func _build_swap_pane(view: GameView, workspace: MoneyWorkspaceView) -> PanelContainer:
+func _build_swap_pane(view: GameView, workspace: MoneyWorkspaceView, existing_panel: PanelContainer = null) -> PanelContainer:
 	var selected := workspace.character(_money_character_id)
-	var panel := _pane("MoneySwapPane", 1.0)
+	var panel := _prepare_pane(existing_panel, "MoneySwapPane", 1.0)
 	var column := _pane_column(panel)
 	_add_section_heading(column, "Exchange", selected.name)
 	if _layout_profile == UiLayoutProfile.COMPACT:
@@ -235,8 +247,10 @@ static func wealth_resource_id(denomination: StringName) -> int:
 	return 0
 
 
-func _render_location_services(parent: VBoxContainer, view: GameView) -> void:
-	var panel := _pane("LocationServicePane", 1.0)
+func _render_location_services(parent: VBoxContainer, view: GameView, screen: ServicesScreen = null) -> void:
+	var panel := _prepare_pane(screen.location_services_panel() if screen != null else null, "LocationServicePane", 1.0)
+	if screen != null:
+		screen.show_location_services()
 	var column := _pane_column(panel)
 	_add_section_heading(column, "At this location")
 	for service: ServiceView in view.services:
@@ -255,7 +269,8 @@ func _render_location_services(parent: VBoxContainer, view: GameView) -> void:
 				button.pressed.connect(_submit_service_action.bind(service.service_id, action))
 			row.add_child(button)
 		column.add_child(row)
-	parent.add_child(panel)
+	if screen == null:
+		parent.add_child(panel)
 
 
 func _select_money_character(character_id: String) -> void:
@@ -293,6 +308,19 @@ func _pane(panel_name: String, ratio: float) -> PanelContainer:
 	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	panel.size_flags_stretch_ratio = ratio
 	return panel
+
+
+func _prepare_pane(existing_panel: PanelContainer, panel_name: String, ratio: float) -> PanelContainer:
+	if existing_panel == null:
+		return _pane(panel_name, ratio)
+	for child: Node in existing_panel.get_children():
+		existing_panel.remove_child(child)
+		child.queue_free()
+	existing_panel.theme_type_variation = &"ClassicInset"
+	existing_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	existing_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	existing_panel.size_flags_stretch_ratio = ratio
+	return existing_panel
 
 
 func _pane_column(panel: PanelContainer) -> VBoxContainer:
