@@ -1,157 +1,238 @@
 class_name PackageDomainAssembler
 extends PackageDecoderBase
 
+## Builds the typed game domain from already verified package documents.
+
+
+class StoryContent extends RefCounted:
+	var campaign: CampaignDefinition
+	var messages: Array[MessageDefinition]
+	var option_labels: Array[OptionLabelDefinition]
+	var message_ids: Dictionary
+	var simple_encounters: Array[SimpleEncounterDefinition]
+	var complex_encounters: Array[ComplexEncounterDefinition]
+	var thief_encounters: Array[ThiefEncounterDefinition]
+	var timed_encounters: Array[TimedEncounterDefinition]
+
+
+class RulesContent extends RefCounted:
+	var races: Array[RaceDefinition]
+	var castes: Array[CasteDefinition]
+	var items: Array[ItemDefinition]
+	var spells: Array[SpellDefinition]
+	var monsters: Array[MonsterDefinition]
+	var monster_sets: Dictionary
+	var battles: Array[BattleDefinition]
+	var treasures: Array[TreasureDefinition]
+	var shops: Array[ShopDefinition]
+	var media: Array[MediaAsset]
+	var appearance_options: Array[CharacterAppearanceDefinition]
+
+
+class WorldContent extends RefCounted:
+	var definition: WorldDefinition
+	var triggers: Array[TriggerDefinition]
+
 
 func assemble(manifest: Dictionary, content: Dictionary, world: Dictionary, scenario: Dictionary, media_assets: Array[MediaAsset] = [], trusted_install: bool = false, application_content: RealmzContent = null, application_media_assets: Array[MediaAsset] = []) -> RealmzContent:
 	clear_error()
 	if application_content != null and application_content.rules_version != manifest["engine"]["rulesVersion"]:
 		_reject("The scenario rules version does not match the loaded application definition catalog.")
 		return null
-	var _content_decoder := PackageContentDecoder.new(_diagnostic)
-	var _scenario_decoder := PackageScenarioDecoder.new(_diagnostic)
-	var _world_decoder := PackageWorldDecoder.new(_diagnostic)
-	var _reference_validator := PackageCrossReferenceValidator.new(_diagnostic)
-	var _media_validator := PackageMediaValidatorResolver.new(_diagnostic)
 	if not content.has("campaign") or not content["campaign"] is Dictionary or content["campaign"].get("id") != manifest["campaignId"]:
 		_reject("Content campaign identity does not match the manifest.")
 		return null
-	var campaign_definition := _content_decoder._construct_campaign_definition(content["campaign"])
-	if campaign_definition == null:
+	var content_decoder := PackageContentDecoder.new(_diagnostic)
+	var story_content := _decode_story_content(content_decoder, content, world, trusted_install)
+	if story_content == null:
 		return null
-	var messages_value: Variant = _content_decoder._construct_messages(content.get("messages"))
-	if messages_value == null:
+	var media_validator := PackageMediaValidatorResolver.new(_diagnostic)
+	var rules_content := _decode_rules_content(content_decoder, media_validator, content, media_assets, trusted_install, application_content, application_media_assets)
+	if rules_content == null:
 		return null
-	var messages: Array[MessageDefinition] = messages_value
-	var option_labels_value: Variant = _content_decoder._construct_option_labels(content.get("optionLabels"))
-	if option_labels_value == null:
+	var scenario_decoder := PackageScenarioDecoder.new(_diagnostic)
+	var scenario_definition := scenario_decoder._construct_scenario(scenario, manifest["campaignId"])
+	if scenario_definition == null:
 		return null
-	var option_labels: Array[OptionLabelDefinition] = option_labels_value
-	var message_ids: Dictionary = {}
-	for message: MessageDefinition in messages:
-		message_ids[message.id] = true
-	var encounters_value: Variant = _content_decoder._construct_simple_encounters(content.get("simpleEncounters"))
-	if encounters_value == null:
+	var reference_validator := PackageCrossReferenceValidator.new(_diagnostic)
+	if not _validate_content_references(reference_validator, scenario_definition, story_content, rules_content, trusted_install):
 		return null
-	var simple_encounters: Array[SimpleEncounterDefinition] = encounters_value
-	var complex_encounters_value: Variant = _content_decoder._construct_complex_encounters(content.get("complexEncounters"))
-	var thief_encounters_value: Variant = _content_decoder._construct_thief_encounters(content.get("thiefEncounters"))
-	var timed_encounters_value: Variant = _content_decoder._construct_timed_encounters(content.get("timedEncounters"))
-	if complex_encounters_value == null or thief_encounters_value == null or timed_encounters_value == null:
+	var world_content := _decode_world_content(PackageWorldDecoder.new(_diagnostic), reference_validator, world, scenario_definition, rules_content, trusted_install)
+	if world_content == null:
+		return null
+	var start_coordinate_value: Variant = _validate_start(manifest, world_content, trusted_install)
+	if start_coordinate_value == null:
+		return null
+	var start_coordinate: Vector2i = start_coordinate_value
+	return RealmzContent.new(manifest["campaignId"], manifest["packageHash"], manifest["contentId"], manifest["engine"]["rulesVersion"], manifest["start"]["mapId"], start_coordinate, world_content.definition, scenario_definition, story_content.messages, world_content.triggers, story_content.simple_encounters, rules_content.races, rules_content.castes, rules_content.items, rules_content.spells, rules_content.monsters, rules_content.battles, rules_content.treasures, rules_content.shops, story_content.complex_encounters, story_content.thief_encounters, story_content.timed_encounters, story_content.option_labels, story_content.campaign, rules_content.appearance_options, rules_content.monster_sets)
+
+
+func _decode_story_content(decoder: PackageContentDecoder, content: Dictionary, world: Dictionary, trusted_install: bool) -> StoryContent:
+	var result := StoryContent.new()
+	result.campaign = decoder._construct_campaign_definition(content["campaign"])
+	var messages_value: Variant = decoder._construct_messages(content.get("messages"))
+	var option_labels_value: Variant = decoder._construct_option_labels(content.get("optionLabels"))
+	var simple_value: Variant = decoder._construct_simple_encounters(content.get("simpleEncounters"))
+	var complex_value: Variant = decoder._construct_complex_encounters(content.get("complexEncounters"))
+	var thief_value: Variant = decoder._construct_thief_encounters(content.get("thiefEncounters"))
+	var timed_value: Variant = decoder._construct_timed_encounters(content.get("timedEncounters"))
+	if result.campaign == null or messages_value == null or option_labels_value == null or simple_value == null or complex_value == null or thief_value == null or timed_value == null:
 		return null
 	if not trusted_install and CanonicalJson.encode(content.get("timedEncounters")) != CanonicalJson.encode(world.get("timedEncounters")):
 		_reject("Content and world timed-encounter inventories do not match.")
 		return null
-	var complex_encounters: Array[ComplexEncounterDefinition] = complex_encounters_value
-	var thief_encounters: Array[ThiefEncounterDefinition] = thief_encounters_value
-	var timed_encounters: Array[TimedEncounterDefinition] = timed_encounters_value
-	_normalize_missing_encounter_prompts(messages, message_ids, simple_encounters, complex_encounters)
-	var races_value: Variant = _content_decoder._construct_races(content.get("races"))
-	var castes_value: Variant = _content_decoder._construct_castes(content.get("castes"))
-	var items_value: Variant = _content_decoder._construct_items(content.get("items"))
-	var spells_value: Variant = _content_decoder._construct_spells(content.get("spells"))
-	var monsters_value: Variant = _content_decoder._construct_monsters(content.get("monsters"))
-	var monster_sets_value: Variant = _content_decoder._construct_monster_sets(content.get("monsterSets"))
-	var battles_value: Variant = _content_decoder._construct_battles(content.get("battles"))
-	var treasures_value: Variant = _content_decoder._construct_treasures(content.get("treasures"))
-	var shops_value: Variant = _content_decoder._construct_shops(content.get("shops"))
+	result.messages = messages_value
+	result.option_labels = option_labels_value
+	result.simple_encounters = simple_value
+	result.complex_encounters = complex_value
+	result.thief_encounters = thief_value
+	result.timed_encounters = timed_value
+	result.message_ids = {}
+	for message: MessageDefinition in result.messages:
+		result.message_ids[message.id] = true
+	_normalize_missing_encounter_prompts(result.messages, result.message_ids, result.simple_encounters, result.complex_encounters)
+	return result
+
+
+func _decode_rules_content(decoder: PackageContentDecoder, media_validator: PackageMediaValidatorResolver, content: Dictionary, scenario_media: Array[MediaAsset], trusted_install: bool, application_content: RealmzContent, application_media: Array[MediaAsset]) -> RulesContent:
+	var races_value: Variant = decoder._construct_races(content.get("races"))
+	var castes_value: Variant = decoder._construct_castes(content.get("castes"))
+	var items_value: Variant = decoder._construct_items(content.get("items"))
+	var spells_value: Variant = decoder._construct_spells(content.get("spells"))
+	var monsters_value: Variant = decoder._construct_monsters(content.get("monsters"))
+	var monster_sets_value: Variant = decoder._construct_monster_sets(content.get("monsterSets"))
+	var battles_value: Variant = decoder._construct_battles(content.get("battles"))
+	var treasures_value: Variant = decoder._construct_treasures(content.get("treasures"))
+	var shops_value: Variant = decoder._construct_shops(content.get("shops"))
 	if races_value == null or castes_value == null or items_value == null or spells_value == null or monsters_value == null or monster_sets_value == null or battles_value == null or treasures_value == null or shops_value == null:
 		return null
-	var effective_catalogs := _compose_catalogs(races_value, castes_value, items_value, spells_value, media_assets, application_content, application_media_assets)
-	if effective_catalogs.is_empty(): return null
-	var races: Array[RaceDefinition] = effective_catalogs["races"]
-	var castes: Array[CasteDefinition] = effective_catalogs["castes"]
-	var items: Array[ItemDefinition] = effective_catalogs["items"]
-	var spells: Array[SpellDefinition] = effective_catalogs["spells"]; var effective_media_assets: Array[MediaAsset] = effective_catalogs["media"]
-	var monsters: Array[MonsterDefinition] = monsters_value
-	var monster_sets: Dictionary = monster_sets_value
-	var battles: Array[BattleDefinition] = battles_value
-	var treasures: Array[TreasureDefinition] = treasures_value
-	var shops: Array[ShopDefinition] = shops_value
-	var all_monsters: Array[MonsterDefinition] = monsters.duplicate()
-	var base_monster_ids := _definition_ids(monsters)
+	var catalogs := _compose_catalogs(races_value, castes_value, items_value, spells_value, scenario_media, application_content, application_media)
+	if catalogs.is_empty():
+		return null
+	var result := RulesContent.new()
+	result.races = catalogs["races"]
+	result.castes = catalogs["castes"]
+	result.items = catalogs["items"]
+	result.spells = catalogs["spells"]
+	result.media = catalogs["media"]
+	result.monsters = monsters_value
+	result.monster_sets = monster_sets_value
+	result.battles = battles_value
+	result.treasures = treasures_value
+	result.shops = shops_value
+	var all_monsters: Variant = _all_monsters(result.monsters, result.monster_sets, trusted_install)
+	if all_monsters == null:
+		return null
+	if not trusted_install and not media_validator._validate_monster_media(all_monsters, result.media):
+		return null
+	result.appearance_options = media_validator._construct_character_appearance_options(result.media, result.races)
+	return result
+
+
+func _all_monsters(monsters: Array[MonsterDefinition], monster_sets: Dictionary, trusted_install: bool) -> Variant:
+	var result: Array[MonsterDefinition] = monsters.duplicate()
+	var base_ids := _definition_ids(monsters)
 	for set_id: Variant in monster_sets:
 		var set_monsters: Array[MonsterDefinition] = monster_sets[set_id]
-		var covered_classic_ids: Dictionary = {}
+		var covered_ids: Dictionary = {}
 		for monster: MonsterDefinition in set_monsters:
-			covered_classic_ids["classic.monster.%d" % monster.classic_id] = true
-			all_monsters.append(monster)
-		if not trusted_install and covered_classic_ids.size() != base_monster_ids.size():
+			covered_ids["classic.monster.%d" % monster.classic_id] = true
+			result.append(monster)
+		if trusted_install:
+			continue
+		if covered_ids.size() != base_ids.size():
 			_reject("Monster set %d does not define every packaged Classic monster." % int(set_id))
 			return null
-		for base_id: Variant in base_monster_ids if not trusted_install else []:
-			if not covered_classic_ids.has(base_id):
+		for base_id: Variant in base_ids:
+			if not covered_ids.has(base_id):
 				_reject("Monster set %d is missing Classic monster '%s'." % [int(set_id), base_id])
 				return null
-	if not trusted_install and not _media_validator._validate_monster_media(all_monsters, effective_media_assets):
-		return null
-	var appearance_options := _media_validator._construct_character_appearance_options(effective_media_assets, races)
-	var scenario_definition := _scenario_decoder._construct_scenario(scenario, manifest["campaignId"])
-	if scenario_definition == null:
-		return null
-	var triggers_value: Variant = _world_decoder._construct_triggers(world.get("triggers"), scenario_definition)
+	return result
+
+
+func _validate_content_references(validator: PackageCrossReferenceValidator, scenario: ScenarioDefinition, story: StoryContent, rules: RulesContent, trusted_install: bool) -> bool:
+	if trusted_install:
+		return true
+	if not validator._validate_scenario_references(scenario, story.message_ids, story.simple_encounters, story.complex_encounters, story.thief_encounters, rules.items, rules.spells, rules.media):
+		return false
+	if not validator._validate_timed_encounter_references(scenario, story.timed_encounters):
+		return false
+	if not validator._validate_rule_references(rules.races, rules.castes, rules.items, rules.spells, rules.monsters, rules.battles, rules.treasures, rules.shops, story.message_ids):
+		return false
+	for set_id: Variant in rules.monster_sets:
+		if not validator._validate_monster_record_references(rules.monster_sets[set_id], rules.items, rules.spells):
+			return false
+	return true
+
+
+func _decode_world_content(decoder: PackageWorldDecoder, validator: PackageCrossReferenceValidator, world: Dictionary, scenario: ScenarioDefinition, rules: RulesContent, trusted_install: bool) -> WorldContent:
+	var triggers_value: Variant = decoder._construct_triggers(world.get("triggers"), scenario)
 	if triggers_value == null:
 		return null
-	var triggers: Array[TriggerDefinition] = triggers_value
-	if not trusted_install and not _reference_validator._validate_scenario_references(scenario_definition, message_ids, simple_encounters, complex_encounters, thief_encounters, items, spells, effective_media_assets):
+	var result := WorldContent.new()
+	result.triggers = triggers_value
+	var trigger_ids: Variant = _trigger_ids(result.triggers)
+	if trigger_ids == null:
 		return null
-	if not trusted_install and not _reference_validator._validate_timed_encounter_references(scenario_definition, timed_encounters):
+	var terrain_value: Variant = decoder._construct_battle_terrain_sets(world.get("battleTerrainSets"))
+	if terrain_value == null:
 		return null
-	if not trusted_install and not _reference_validator._validate_rule_references(races, castes, items, spells, monsters, battles, treasures, shops, message_ids):
-		return null
-	for set_id: Variant in monster_sets if not trusted_install else {}:
-		if not _reference_validator._validate_monster_record_references(monster_sets[set_id], items, spells):
-			return null
-	var trigger_ids: Dictionary = {}
-	for trigger: TriggerDefinition in triggers:
-		if trigger_ids.has(trigger.id):
-			_reject("Trigger ID '%s' is duplicated." % trigger.id)
-			return null
-		trigger_ids[trigger.id] = true
-	var battle_terrain_sets_value: Variant = _world_decoder._construct_battle_terrain_sets(world.get("battleTerrainSets"))
-	if battle_terrain_sets_value == null:
-		return null
-	var battle_terrain_sets: Array[BattleTerrainSetDefinition] = battle_terrain_sets_value
-	var battle_terrain_sets_by_id: Dictionary = {}
-	for terrain_set: BattleTerrainSetDefinition in battle_terrain_sets:
-		battle_terrain_sets_by_id[terrain_set.id] = terrain_set
-	var maps_value: Variant = _world_decoder._construct_maps(world.get("maps"), trigger_ids, battle_terrain_sets_by_id, not battles.is_empty(), not trusted_install)
+	var terrain_sets: Array[BattleTerrainSetDefinition] = terrain_value
+	var terrain_by_id: Dictionary = {}
+	for terrain_set: BattleTerrainSetDefinition in terrain_sets:
+		terrain_by_id[terrain_set.id] = terrain_set
+	var maps_value: Variant = decoder._construct_maps(world.get("maps"), trigger_ids, terrain_by_id, not rules.battles.is_empty(), not trusted_install)
 	if maps_value == null:
 		return null
 	var maps: Array[MapDefinition] = maps_value
-	var player_maps_value: Variant = _world_decoder._construct_player_maps(world.get("playerMaps"), maps, effective_media_assets)
+	var player_maps_value: Variant = decoder._construct_player_maps(world.get("playerMaps"), maps, rules.media)
 	if player_maps_value == null:
 		return null
-	var player_maps: Array[PlayerMapDefinition] = player_maps_value
-	if not trusted_install and not _reference_validator._validate_random_region_references(maps, scenario_definition, battles):
-		return null
-	var transitions_value: Variant = _world_decoder._construct_transitions(world.get("transitions"), maps)
+	var transitions_value: Variant = decoder._construct_transitions(world.get("transitions"), maps)
 	if transitions_value == null:
 		return null
+	var player_maps: Array[PlayerMapDefinition] = player_maps_value
 	var transitions: Array[MapTransition] = transitions_value
-	var world_definition := WorldDefinition.new(maps, transitions, battle_terrain_sets, player_maps)
-	if not trusted_install and not _reference_validator._validate_player_map_opcode_references(scenario_definition, world_definition):
+	result.definition = WorldDefinition.new(maps, transitions, terrain_sets, player_maps)
+	if not trusted_install and not validator._validate_random_region_references(maps, scenario, rules.battles):
 		return null
+	if not trusted_install and not validator._validate_player_map_opcode_references(scenario, result.definition):
+		return null
+	return result
+
+
+func _trigger_ids(triggers: Array[TriggerDefinition]) -> Variant:
+	var result: Dictionary = {}
+	for trigger: TriggerDefinition in triggers:
+		if result.has(trigger.id):
+			_reject("Trigger ID '%s' is duplicated." % trigger.id)
+			return null
+		result[trigger.id] = true
+	return result
+
+
+func _validate_start(manifest: Dictionary, world: WorldContent, trusted_install: bool) -> Variant:
 	var start: Variant = manifest.get("start")
 	if not start is Dictionary or not start.get("mapId") is String or _integer(start.get("x")) < 0 or _integer(start.get("y")) < 0:
 		_reject("Manifest start location is malformed.")
 		return null
 	var start_coordinate := Vector2i(_integer(start["x"]), _integer(start["y"]))
-	var start_map := world_definition.map_by_id(start["mapId"])
+	var start_map := world.definition.map_by_id(start["mapId"])
 	if start_map == null or not trusted_install and start_map.topology.cell_at(start_coordinate) == null:
 		_reject("Manifest start location does not identify a topology cell.")
 		return null
-	for trigger: TriggerDefinition in triggers if not trusted_install else []:
+	for trigger: TriggerDefinition in world.triggers if not trusted_install else []:
 		if not trigger.map_id.is_empty():
-			var map := world_definition.map_by_id(trigger.map_id)
+			var map := world.definition.map_by_id(trigger.map_id)
 			if map == null or map.topology.cell_at(trigger.coordinate) == null:
 				_reject("Trigger '%s' references an unavailable topology coordinate." % trigger.id)
 				return null
 		if trigger.post_action_location != null:
-			var destination_map := world_definition.map_by_id(trigger.post_action_location.map_id)
+			var destination_map := world.definition.map_by_id(trigger.post_action_location.map_id)
 			if destination_map == null or destination_map.topology.cell_at(trigger.post_action_location.coordinate) == null:
 				_reject("Trigger '%s' references an unavailable post-action location." % trigger.id)
 				return null
-	return RealmzContent.new(manifest["campaignId"], manifest["packageHash"], manifest["contentId"], manifest["engine"]["rulesVersion"], start["mapId"], start_coordinate, world_definition, scenario_definition, messages, triggers, simple_encounters, races, castes, items, spells, monsters, battles, treasures, shops, complex_encounters, thief_encounters, timed_encounters, option_labels, campaign_definition, appearance_options, monster_sets_value)
+	return start_coordinate
 
 
 func _compose_catalogs(races_value: Variant, castes_value: Variant, items_value: Variant, spells_value: Variant, scenario_media: Array[MediaAsset], application_content: RealmzContent, application_media: Array[MediaAsset]) -> Dictionary:
