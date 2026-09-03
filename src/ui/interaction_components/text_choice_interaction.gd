@@ -1,3 +1,5 @@
+## Presents the dynamic text choice interaction without owning gameplay state.
+
 class_name TextChoiceInteraction
 extends InteractionComponent
 

@@ -1,3 +1,5 @@
+## Presents application media catalog through the Godot interface.
+
 class_name ApplicationMediaCatalog
 extends MediaSource
 

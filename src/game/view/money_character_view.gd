@@ -1,3 +1,5 @@
+## Carries detached money character data from gameplay into presentation.
+
 class_name MoneyCharacterView
 extends RefCounted
 

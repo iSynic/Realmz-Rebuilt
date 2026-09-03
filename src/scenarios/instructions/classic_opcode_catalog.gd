@@ -1,3 +1,5 @@
+## Defines validated Classic opcode catalog instruction metadata for scenario execution.
+
 class_name ClassicOpcodeCatalog
 extends RefCounted
 

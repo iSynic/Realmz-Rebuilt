@@ -1,3 +1,5 @@
+## Presents the dynamic battle interaction without owning gameplay state.
+
 class_name BattleInteraction
 extends InteractionComponent
 

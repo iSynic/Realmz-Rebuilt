@@ -1,3 +1,5 @@
+## Presents the dynamic battle initiative panel builder interaction without owning gameplay state.
+
 class_name BattleInitiativePanelBuilder
 extends RefCounted
 

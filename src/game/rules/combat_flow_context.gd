@@ -1,3 +1,5 @@
+## Implements deterministic combat flow context rules without presentation dependencies.
+
 class_name CombatFlowContext
 extends RefCounted
 

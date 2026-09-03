@@ -1,3 +1,5 @@
+## Presents Classic search command button through the Godot interface.
+
 class_name ClassicSearchCommandButton
 extends BaseButton
 

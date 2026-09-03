@@ -1,3 +1,5 @@
+## Defines the immutable option label record loaded from campaign content.
+
 class_name OptionLabelDefinition
 extends RefCounted
 

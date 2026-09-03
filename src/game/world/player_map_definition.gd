@@ -1,3 +1,5 @@
+## Defines the pure gameplay player map definition contract.
+
 class_name PlayerMapDefinition
 extends RefCounted
 

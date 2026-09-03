@@ -1,3 +1,5 @@
+## Defines the pure gameplay map feature contract.
+
 class_name MapFeature
 extends RefCounted
 

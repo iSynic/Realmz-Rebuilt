@@ -1,3 +1,5 @@
+## Presents the dynamic interaction component interaction without owning gameplay state.
+
 class_name InteractionComponent
 extends VBoxContainer
 

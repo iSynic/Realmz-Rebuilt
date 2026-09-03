@@ -1,3 +1,5 @@
+## Implements deterministic condition rules without presentation dependencies.
+
 class_name ConditionRules
 extends RefCounted
 

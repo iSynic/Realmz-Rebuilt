@@ -1,3 +1,5 @@
+## Defines the typed session restore validator contract used by playthrough transactions.
+
 class_name SessionRestoreValidator
 extends RefCounted
 

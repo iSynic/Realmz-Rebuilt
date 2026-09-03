@@ -21,6 +21,60 @@ function Convert-ToClassName {
     return ($parts | ForEach-Object { $_.Substring(0, 1).ToUpperInvariant() + $_.Substring(1) }) -join ''
 }
 
+function Get-CodeSemicolonLineCount {
+    param([string[]]$Lines)
+    $count = 0
+    $insideTripleQuotedString = $false
+    foreach ($line in $Lines) {
+        $quote = [char]0
+        $escaped = $false
+        $hasSemicolon = $false
+        for ($index = 0; $index -lt $line.Length; $index++) {
+            if ($insideTripleQuotedString) {
+                if ($index + 2 -lt $line.Length -and $line.Substring($index, 3) -eq '"""') {
+                    $insideTripleQuotedString = $false
+                    $index += 2
+                }
+                continue
+            }
+            if ($quote -ne [char]0) {
+                if ($escaped) {
+                    $escaped = $false
+                    continue
+                }
+                if ($line[$index] -eq '\') {
+                    $escaped = $true
+                    continue
+                }
+                if ($line[$index] -eq $quote) {
+                    $quote = [char]0
+                }
+                continue
+            }
+            if ($index + 2 -lt $line.Length -and $line.Substring($index, 3) -eq '"""') {
+                $insideTripleQuotedString = $true
+                $index += 2
+                continue
+            }
+            if ($line[$index] -eq '"' -or $line[$index] -eq "'") {
+                $quote = $line[$index]
+                continue
+            }
+            if ($line[$index] -eq '#') {
+                break
+            }
+            if ($line[$index] -eq ';') {
+                $hasSemicolon = $true
+                break
+            }
+        }
+        if ($hasSemicolon) {
+            $count++
+        }
+    }
+    return $count
+}
+
 $controlTypes = @(
     "Button", "CheckButton", "CheckBox", "ColorRect", "Control", "FlowContainer",
     "GridContainer", "HBoxContainer", "HFlowContainer", "HScrollBar", "HSeparator",
@@ -42,12 +96,7 @@ foreach ($file in $productionFiles) {
     if ($lines.Count -eq 0 -or -not $lines[0].StartsWith("## ")) {
         $missingPurposeHeaders++
     }
-    foreach ($line in $lines) {
-        $code = $line.Split('#')[0]
-        if ($code.Contains(';')) {
-            $statementSeparatorLines++
-        }
-    }
+    $statementSeparatorLines += Get-CodeSemicolonLineCount $lines
     $runtimeControlConstructions += [regex]::Matches($content, $controlPattern).Count
 
     $classMatch = [regex]::Match($content, '(?m)^class_name\s+([A-Za-z_][A-Za-z0-9_]*)\s*$')

@@ -1,3 +1,5 @@
+## Defines the immutable trigger destination record loaded from campaign content.
+
 class_name TriggerDestinationDefinition
 extends RefCounted
 

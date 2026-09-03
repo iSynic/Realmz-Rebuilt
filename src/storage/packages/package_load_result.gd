@@ -1,3 +1,5 @@
+## Validates and loads package load result data at the immutable package boundary.
+
 class_name PackageLoadResult
 extends RefCounted
 

@@ -1,3 +1,5 @@
+## Stores mutable monster state inside a deterministic playthrough.
+
 class_name MonsterState
 extends RefCounted
 

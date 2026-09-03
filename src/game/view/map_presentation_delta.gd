@@ -1,3 +1,5 @@
+## Carries detached map presentation delta data from gameplay into presentation.
+
 class_name MapPresentationDelta
 extends RefCounted
 

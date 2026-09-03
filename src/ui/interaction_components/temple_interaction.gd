@@ -1,3 +1,5 @@
+## Presents the dynamic temple interaction without owning gameplay state.
+
 class_name TempleInteraction
 extends InteractionComponent
 

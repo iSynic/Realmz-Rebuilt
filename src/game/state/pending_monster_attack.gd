@@ -1,3 +1,5 @@
+## Stores mutable pending monster attack state inside a deterministic playthrough.
+
 class_name PendingMonsterAttack
 extends RefCounted
 

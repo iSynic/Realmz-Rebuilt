@@ -1,3 +1,5 @@
+## Presents combat targeting request through the Godot interface.
+
 class_name CombatTargetingRequest
 extends RefCounted
 

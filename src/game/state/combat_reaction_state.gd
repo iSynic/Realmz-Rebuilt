@@ -1,3 +1,5 @@
+## Stores mutable combat reaction state inside a deterministic playthrough.
+
 class_name CombatReactionState
 extends RefCounted
 

@@ -1,3 +1,5 @@
+## Coordinates the scenario application hook workflow against committed session state.
+
 class_name ScenarioApplicationHookWorkflow
 extends RefCounted
 

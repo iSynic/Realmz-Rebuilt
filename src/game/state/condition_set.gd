@@ -1,3 +1,5 @@
+## Stores mutable condition set state inside a deterministic playthrough.
+
 class_name ConditionSet
 extends RefCounted
 

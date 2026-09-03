@@ -1,3 +1,5 @@
+## Validates and loads package operation status data at the immutable package boundary.
+
 class_name PackageOperationStatus
 extends RefCounted
 

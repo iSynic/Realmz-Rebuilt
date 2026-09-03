@@ -1,3 +1,5 @@
+## Defines the pure gameplay topology move result contract.
+
 class_name TopologyMoveResult
 extends RefCounted
 

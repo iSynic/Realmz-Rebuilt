@@ -1,3 +1,5 @@
+## Coordinates character vault services at the application boundary.
+
 class_name CharacterVaultController
 extends RefCounted
 

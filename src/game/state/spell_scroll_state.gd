@@ -1,3 +1,5 @@
+## Stores mutable spell scroll state inside a deterministic playthrough.
+
 class_name SpellScrollState
 extends RefCounted
 

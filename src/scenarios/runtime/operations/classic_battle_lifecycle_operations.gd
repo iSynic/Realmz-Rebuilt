@@ -1,3 +1,5 @@
+## Coordinates Classic battle lifecycle operations operations for the validated scenario runtime.
+
 class_name ClassicBattleLifecycleOperations
 extends RefCounted
 

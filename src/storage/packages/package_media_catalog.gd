@@ -1,3 +1,5 @@
+## Validates and loads package media catalog data at the immutable package boundary.
+
 class_name PackageMediaCatalog
 extends MediaSource
 

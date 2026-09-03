@@ -1,3 +1,5 @@
+## Presents Classic media catalog through the Godot interface.
+
 class_name ClassicMediaCatalog
 extends MediaSource
 

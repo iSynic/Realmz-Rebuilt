@@ -1,3 +1,5 @@
+## Carries detached action availability data from gameplay into presentation.
+
 class_name ActionAvailabilityView
 extends RefCounted
 

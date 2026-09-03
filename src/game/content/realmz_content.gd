@@ -1,3 +1,5 @@
+## Defines the immutable Realmz content record loaded from campaign content.
+
 class_name RealmzContent
 extends RefCounted
 

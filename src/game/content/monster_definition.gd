@@ -1,3 +1,5 @@
+## Defines the immutable monster record loaded from campaign content.
+
 class_name MonsterDefinition
 extends RefCounted
 

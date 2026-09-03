@@ -1,3 +1,5 @@
+## Coordinates Classic reward operations operations for the validated scenario runtime.
+
 class_name ClassicRewardOperations
 extends RefCounted
 

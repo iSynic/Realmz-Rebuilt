@@ -1,3 +1,5 @@
+## Coordinates session exploration coordinator responsibilities behind the public session boundary.
+
 class_name SessionExplorationCoordinator
 extends RefCounted
 

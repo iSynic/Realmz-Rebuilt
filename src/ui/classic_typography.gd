@@ -1,3 +1,5 @@
+## Presents Classic typography through the Godot interface.
+
 class_name ClassicTypography
 extends RefCounted
 

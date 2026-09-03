@@ -1,3 +1,5 @@
+## Defines the pure gameplay world movement result contract.
+
 class_name WorldMovementResult
 extends RefCounted
 

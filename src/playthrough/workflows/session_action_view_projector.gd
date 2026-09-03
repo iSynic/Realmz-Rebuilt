@@ -163,7 +163,10 @@ static func populate_spell_actions(context: SessionWorkflowContext, result: Game
 		var character := state.party.character_by_id(member_view.id)
 		for spell_view: SpellView in member_view.spells:
 			var spell := content.spell_by_id(spell_view.id)
-			spell_view.power_levels.clear(); spell_view.structural_power_levels.clear(); spell_view.scroll_power_levels.clear(); spell_view.structural_scroll_power_levels.clear()
+			spell_view.power_levels.clear()
+			spell_view.structural_power_levels.clear()
+			spell_view.scroll_power_levels.clear()
+			spell_view.structural_scroll_power_levels.clear()
 			if not blocked_reason.is_empty():
 				spell_view.combat_cast = ActionAvailabilityView.new(&"cast_spell", false, blocked_reason)
 				spell_view.field_cast = ActionAvailabilityView.new(&"cast_spell", false, blocked_reason)

@@ -1,3 +1,5 @@
+## Defines immutable Classic action definition data consumed by the scenario runtime.
+
 class_name ClassicActionDefinition
 extends RefCounted
 

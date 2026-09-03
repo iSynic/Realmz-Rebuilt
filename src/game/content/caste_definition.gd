@@ -1,3 +1,5 @@
+## Defines the immutable caste record loaded from campaign content.
+
 class_name CasteDefinition
 extends RefCounted
 

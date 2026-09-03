@@ -1,3 +1,5 @@
+## Carries detached definition option data from gameplay into presentation.
+
 class_name DefinitionOptionView
 extends RefCounted
 

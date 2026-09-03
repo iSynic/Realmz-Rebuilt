@@ -1,3 +1,5 @@
+## Presents party setup character row through the Godot interface.
+
 class_name PartySetupCharacterRow
 extends PanelContainer
 

@@ -1,3 +1,5 @@
+## Owns player map presenter presentation behavior for its scene-authored screen.
+
 class_name PlayerMapPresenter
 extends VBoxContainer
 

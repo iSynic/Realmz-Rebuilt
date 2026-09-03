@@ -1,3 +1,5 @@
+## Presents the dynamic scrolling text interaction without owning gameplay state.
+
 class_name ScrollingTextInteraction
 extends InteractionComponent
 

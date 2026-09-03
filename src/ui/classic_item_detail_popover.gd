@@ -1,3 +1,5 @@
+## Presents Classic item detail popover through the Godot interface.
+
 class_name ClassicItemDetailPopover
 extends CanvasLayer
 

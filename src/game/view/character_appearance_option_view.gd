@@ -1,3 +1,5 @@
+## Carries detached character appearance option data from gameplay into presentation.
+
 class_name CharacterAppearanceOptionView
 extends RefCounted
 

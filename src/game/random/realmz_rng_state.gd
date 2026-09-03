@@ -1,3 +1,5 @@
+## Defines the pure gameplay Realmz RNG state contract.
+
 class_name RealmzRngState
 extends RefCounted
 

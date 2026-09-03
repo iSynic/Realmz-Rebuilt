@@ -1,3 +1,5 @@
+## Carries detached character age band data from gameplay into presentation.
+
 class_name CharacterAgeBandView
 extends RefCounted
 

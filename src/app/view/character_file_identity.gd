@@ -1,3 +1,5 @@
+## Carries detached character file identity data between the application host and presentation.
+
 class_name CharacterFileIdentity
 extends RefCounted
 

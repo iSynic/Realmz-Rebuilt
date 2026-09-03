@@ -1,3 +1,5 @@
+## Coordinates UI input actions within application startup and host integration.
+
 class_name UiInputActions
 extends RefCounted
 

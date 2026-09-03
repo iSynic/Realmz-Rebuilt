@@ -1,3 +1,5 @@
+## Defines the typed game session contract used by playthrough transactions.
+
 class_name GameSession
 extends RefCounted
 

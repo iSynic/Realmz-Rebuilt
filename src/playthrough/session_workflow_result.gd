@@ -1,3 +1,5 @@
+## Defines the typed session workflow result contract used by playthrough transactions.
+
 class_name SessionWorkflowResult
 extends RefCounted
 

@@ -1,3 +1,5 @@
+## Carries detached party setup data from gameplay into presentation.
+
 class_name PartySetupView
 extends RefCounted
 

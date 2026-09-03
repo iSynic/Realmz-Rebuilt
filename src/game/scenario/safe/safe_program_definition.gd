@@ -1,3 +1,5 @@
+## Defines immutable safe program definition data consumed by the scenario runtime.
+
 class_name SafeProgramDefinition
 extends RefCounted
 

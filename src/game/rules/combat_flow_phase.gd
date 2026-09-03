@@ -1,3 +1,5 @@
+## Implements deterministic combat flow phase rules without presentation dependencies.
+
 class_name CombatFlowPhase
 extends RefCounted
 

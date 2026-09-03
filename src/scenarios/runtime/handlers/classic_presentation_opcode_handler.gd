@@ -1,3 +1,5 @@
+## Executes the Classic presentation opcode handler family of validated Classic instructions.
+
 class_name ClassicPresentationOpcodeHandler
 extends ClassicOpcodeHandler
 

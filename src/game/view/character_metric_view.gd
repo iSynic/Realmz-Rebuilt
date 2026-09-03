@@ -1,3 +1,5 @@
+## Carries detached character metric data from gameplay into presentation.
+
 class_name CharacterMetricView
 extends RefCounted
 

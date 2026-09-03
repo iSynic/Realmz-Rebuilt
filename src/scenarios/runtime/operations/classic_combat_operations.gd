@@ -1,3 +1,5 @@
+## Coordinates Classic combat operations operations for the validated scenario runtime.
+
 class_name ClassicCombatOperations
 extends ClassicOpcodeHandler
 

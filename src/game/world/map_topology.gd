@@ -1,3 +1,5 @@
+## Defines the pure gameplay map topology contract.
+
 class_name MapTopology
 extends RefCounted
 

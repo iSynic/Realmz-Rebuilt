@@ -1,3 +1,5 @@
+## Implements deterministic spell rolls rules without presentation dependencies.
+
 class_name SpellRolls
 extends RefCounted
 

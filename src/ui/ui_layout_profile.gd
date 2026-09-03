@@ -1,3 +1,5 @@
+## Presents UI layout profile through the Godot interface.
+
 class_name UiLayoutProfile
 extends RefCounted
 

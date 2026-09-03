@@ -1,3 +1,5 @@
+## Owns Classic character sheet presentation behavior for its scene-authored screen.
+
 class_name ClassicCharacterSheet
 extends VBoxContainer
 

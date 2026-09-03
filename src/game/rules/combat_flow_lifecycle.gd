@@ -1,3 +1,5 @@
+## Implements deterministic combat flow lifecycle rules without presentation dependencies.
+
 class_name CombatFlowLifecycle
 extends RefCounted
 

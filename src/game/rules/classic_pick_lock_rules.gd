@@ -1,3 +1,5 @@
+## Implements deterministic Classic pick lock rules without presentation dependencies.
+
 class_name ClassicPickLockRules
 extends RefCounted
 

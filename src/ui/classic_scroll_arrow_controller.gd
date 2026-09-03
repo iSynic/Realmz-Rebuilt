@@ -1,3 +1,5 @@
+## Presents Classic scroll arrow controller through the Godot interface.
+
 class_name ClassicScrollArrowController
 extends RefCounted
 

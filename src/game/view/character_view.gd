@@ -214,7 +214,9 @@ func _populate_items_and_magic(character: CharacterState, content: RealmzContent
 				presentation_definition = content.item_by_id(definition.cursed_item_id)
 			items.append(ItemView.new(item, definition, presentation_definition, content))
 	if can_reuse_static and not rebuild_magic:
-		spells.assign(reusable.spells); scrolls.assign(reusable.scrolls); fast_spells.assign(reusable.fast_spells)
+		spells.assign(reusable.spells)
+		scrolls.assign(reusable.scrolls)
+		fast_spells.assign(reusable.fast_spells)
 	elif content != null:
 		_populate_magic(character, content, reusable if can_reuse_static else null)
 	elif not can_reuse_static:
@@ -237,8 +239,13 @@ static func refreshed_status(character: CharacterState, content: RealmzContent, 
 		return rebuilt
 	var result := CharacterView.new(null)
 	result._copy_from(previous)
-	result.current_health = character.current_health; result.maximum_health = character.maximum_health; result.spell_points = character.spell_points; result.maximum_spell_points = character.maximum_spell_points
-	result.age_days = character.age_days; result.age_years = floori(float(character.age_days) / 365.0); result.condition_values = character.conditions.values()
+	result.current_health = character.current_health
+	result.maximum_health = character.maximum_health
+	result.spell_points = character.spell_points
+	result.maximum_spell_points = character.maximum_spell_points
+	result.age_days = character.age_days
+	result.age_years = floori(float(character.age_days) / 365.0)
+	result.condition_values = character.conditions.values()
 	var equipment_sensitive_status_changed := _equipment_sensitive_status_changed(previous.condition_values, result.condition_values)
 	if result.condition_values != previous.condition_values:
 		result.conditions = []
@@ -247,11 +254,16 @@ static func refreshed_status(character: CharacterState, content: RealmzContent, 
 			if amount != 0: result.conditions.append(CharacterMetricView.new(StringName("condition-%d" % index), index, _label_at(CONDITION_NAMES, index, "Classic condition %d" % (index + 1)), amount, "Permanent" if amount < 0 else "Value %d" % amount))
 	if refresh_magic:
 		if structural_magic_refresh:
-			result.spells = []; result.scrolls = []; result.fast_spells = []; result._populate_magic(character, content, previous)
+			result.spells = []
+			result.scrolls = []
+			result.fast_spells = []
+			result._populate_magic(character, content, previous)
 		else:
 			# Affordability refreshes copy only the component arrays. The projector
 			# replaces the few spell/binding records whose threshold changed.
-			result.spells = previous.spells.duplicate(); result.scrolls = previous.scrolls; result.fast_spells = previous.fast_spells.duplicate()
+			result.spells = previous.spells.duplicate()
+			result.scrolls = previous.scrolls
+			result.fast_spells = previous.fast_spells.duplicate()
 	# SP/HP recovery is the common hourly path and cannot alter equipment-derived
 	# combat facts. Preserve the already-detached values unless a condition used
 	# by the display modifier calculation actually changed.
@@ -268,20 +280,76 @@ static func _equipment_sensitive_status_changed(previous: Array[int], current: A
 
 
 func _copy_from(source: CharacterView) -> void:
-	id = source.id; name = source.name; current_health = source.current_health; maximum_health = source.maximum_health; spell_points = source.spell_points; maximum_spell_points = source.maximum_spell_points
-	level = source.level; experience = source.experience; age_days = source.age_days; age_years = source.age_years; age_group = source.age_group; age_group_name = source.age_group_name
-	race_id = source.race_id; caste_id = source.caste_id; race_name = source.race_name; caste_name = source.caste_name; race_description = source.race_description; caste_description = source.caste_description
-	gender = source.gender; gender_name = source.gender_name; portrait_id = source.portrait_id; combat_icon_id = source.combat_icon_id
-	brawn = source.brawn; knowledge = source.knowledge; judgment = source.judgment; agility = source.agility; vitality = source.vitality; luck = source.luck
-	armor = source.armor; to_hit = source.to_hit; attack_bonus = source.attack_bonus; defense_bonus = source.defense_bonus; dodge = source.dodge; missile = source.missile; two_hand = source.two_hand; hand_to_hand = source.hand_to_hand; damage_bonus = source.damage_bonus; magic_resistance = source.magic_resistance
-	normal_attacks = source.normal_attacks; attacks_per_round = source.attacks_per_round; spellcaster_type = source.spellcaster_type; movement = source.movement; maximum_movement = source.maximum_movement; carried_load = source.carried_load; maximum_load = source.maximum_load
-	traitor = source.traitor; gold = source.gold; gems = source.gems; jewelry = source.jewelry; prestige = source.prestige; prestige_penalty = source.prestige_penalty; lifetime_record = source.lifetime_record; record_available = source.record_available
+	id = source.id
+	name = source.name
+	current_health = source.current_health
+	maximum_health = source.maximum_health
+	spell_points = source.spell_points
+	maximum_spell_points = source.maximum_spell_points
+	level = source.level
+	experience = source.experience
+	age_days = source.age_days
+	age_years = source.age_years
+	age_group = source.age_group
+	age_group_name = source.age_group_name
+	race_id = source.race_id
+	caste_id = source.caste_id
+	race_name = source.race_name
+	caste_name = source.caste_name
+	race_description = source.race_description
+	caste_description = source.caste_description
+	gender = source.gender
+	gender_name = source.gender_name
+	portrait_id = source.portrait_id
+	combat_icon_id = source.combat_icon_id
+	brawn = source.brawn
+	knowledge = source.knowledge
+	judgment = source.judgment
+	agility = source.agility
+	vitality = source.vitality
+	luck = source.luck
+	armor = source.armor
+	to_hit = source.to_hit
+	attack_bonus = source.attack_bonus
+	defense_bonus = source.defense_bonus
+	dodge = source.dodge
+	missile = source.missile
+	two_hand = source.two_hand
+	hand_to_hand = source.hand_to_hand
+	damage_bonus = source.damage_bonus
+	magic_resistance = source.magic_resistance
+	normal_attacks = source.normal_attacks
+	attacks_per_round = source.attacks_per_round
+	spellcaster_type = source.spellcaster_type
+	movement = source.movement
+	maximum_movement = source.maximum_movement
+	carried_load = source.carried_load
+	maximum_load = source.maximum_load
+	traitor = source.traitor
+	gold = source.gold
+	gems = source.gems
+	jewelry = source.jewelry
+	prestige = source.prestige
+	prestige_penalty = source.prestige_penalty
+	lifetime_record = source.lifetime_record
+	record_available = source.record_available
 	# These detached component arrays are immutable after publication. Sharing the
 	# unchanged arrays is the cheap aggregate boundary; a refresh replaces an
 	# affected array before writing to it, so earlier GameView snapshots remain
 	# unchanged.
-	condition_values = source.condition_values; save_values = source.save_values; conditions = source.conditions; saving_throws = source.saving_throws; special_modifiers = source.special_modifiers; abilities = source.abilities
-	race_traits = source.race_traits; caste_traits = source.caste_traits; age_bands = source.age_bands; items = source.items; spells = source.spells; scrolls = source.scrolls; fast_spells = source.fast_spells
+	condition_values = source.condition_values
+	save_values = source.save_values
+	conditions = source.conditions
+	saving_throws = source.saving_throws
+	special_modifiers = source.special_modifiers
+	abilities = source.abilities
+	race_traits = source.race_traits
+	caste_traits = source.caste_traits
+	age_bands = source.age_bands
+	items = source.items
+	spells = source.spells
+	scrolls = source.scrolls
+	fast_spells = source.fast_spells
 
 
 func _populate_magic(character: CharacterState, content: RealmzContent, reusable: CharacterView = null) -> void:

@@ -1,3 +1,5 @@
+## Carries detached save slot preview data from gameplay into presentation.
+
 class_name SaveSlotPreview
 extends RefCounted
 

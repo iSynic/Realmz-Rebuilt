@@ -1,3 +1,5 @@
+## Carries detached location note data from gameplay into presentation.
+
 class_name LocationNoteView
 extends RefCounted
 

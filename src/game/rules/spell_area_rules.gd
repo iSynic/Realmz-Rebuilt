@@ -1,3 +1,5 @@
+## Implements deterministic spell area rules without presentation dependencies.
+
 class_name SpellAreaRules
 extends RefCounted
 

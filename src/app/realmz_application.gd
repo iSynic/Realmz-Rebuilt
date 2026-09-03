@@ -1,3 +1,5 @@
+## Coordinates Realmz application within application startup and host integration.
+
 class_name RealmzApplication
 extends Control
 
@@ -17,6 +19,7 @@ const DebugToolsHostScript := preload("res://src/app/debug_tools_host.gd")
 const ApplicationInputRouterScript := preload("res://src/app/application_input_router.gd")
 const ApplicationCombatPolicyScript := preload("res://src/app/application_combat_policy.gd")
 const ApplicationStepStatusTextScript := preload("res://src/app/application_step_status_text.gd")
+const ApplicationSettingsControllerScript := preload("res://src/app/controllers/application_settings_controller.gd")
 const CLASSIC_CHARACTER_LIBRARY_PATH := "res://src/storage/characters/realmz-classic-character-library.realmz2"
 const CLASSIC_CHARACTER_LIBRARY_ID := "realmz-classic-character-library"
 const CLASSIC_CHARACTER_LIBRARY_HASH := "c7e093f46bcca49d2382d68c2995ae5ff90c0e706dbd538682b613af9b80e0bd"
@@ -40,34 +43,56 @@ var _host_interaction: InteractionRequest
 var _package_host: PackageHostController
 var _save_host: SaveHostController
 var _vault_host: CharacterVaultController
-var _pending_package_seed: int = 1; var _last_package_operation_key: String = ""
-var _character_library_content: RealmzContent; var _character_library_media: MediaSource
-var _character_library_load_complete: bool = false; var _pending_prepared_package: PreparedPackage
+var _pending_package_seed: int = 1
+var _last_package_operation_key: String = ""
+var _character_library_content: RealmzContent
+var _character_library_media: MediaSource
+var _character_library_load_complete: bool = false
+var _pending_prepared_package: PreparedPackage
 var _character_creation_host: CharacterCreationHostController
 var _session_close_waits_for_playback: bool = false
 var _held_movement: HeldMovementControllerScript
 var _queued_combat_auto_changes: Dictionary = {}
-var _save_and_quit_pending: bool = false; var _quit_operation: Callable
-var _debug_tools: DebugToolsHost; var _campaigns: Array[CampaignPackageView] = []; var _last_campaign_prewarm_requested: bool = false
+var _save_and_quit_pending: bool = false
+var _quit_operation: Callable
+var _debug_tools: DebugToolsHost
+var _campaigns: Array[CampaignPackageView] = []
+var _last_campaign_prewarm_requested: bool = false
 var _input_router: ApplicationInputRouter
+var _settings_controller: ApplicationSettingsController
 
 
-func configure_lifecycle_host(save_host: SaveHostController, quit_operation: Callable = Callable()) -> void: assert(not is_node_ready(), "Lifecycle host dependencies must be configured before the application enters the scene tree"); _save_host = save_host; _quit_operation = quit_operation
+func configure_lifecycle_host(save_host: SaveHostController, quit_operation: Callable = Callable()) -> void:
+	assert(not is_node_ready(), "Lifecycle host dependencies must be configured before the application enters the scene tree")
+	_save_host = save_host
+	_quit_operation = quit_operation
 
 
 func _ready() -> void:
-	get_tree().set_auto_accept_quit(false); UiInputActions.ensure_defaults()
-	_package_host = PackageHostControllerScript.new(); if _save_host == null: _save_host = SaveHostControllerScript.new()
-	_vault_host = CharacterVaultControllerScript.new(); _character_creation_host = CharacterCreationHostControllerScript.new()
-	settings_repository = SettingsRepositoryScript.new(); _presentation_settings = settings_repository.load_settings()
-	session_controller = GameSessionControllerScript.new(); presentation_coordinator = PresentationCoordinatorScript.new()
-	_dungeon_presenter = DungeonMap3DPresenterScript.new(); _held_movement = HeldMovementControllerScript.new()
+	get_tree().set_auto_accept_quit(false)
+	UiInputActions.ensure_defaults()
+	_package_host = PackageHostControllerScript.new()
+	if _save_host == null: _save_host = SaveHostControllerScript.new()
+	_vault_host = CharacterVaultControllerScript.new()
+	_character_creation_host = CharacterCreationHostControllerScript.new()
+	settings_repository = SettingsRepositoryScript.new()
+	_presentation_settings = settings_repository.load_settings()
+	session_controller = GameSessionControllerScript.new()
+	presentation_coordinator = PresentationCoordinatorScript.new()
+	_dungeon_presenter = DungeonMap3DPresenterScript.new()
+	_held_movement = HeldMovementControllerScript.new()
 	_input_router = ApplicationInputRouterScript.new(self)
-	add_child(session_controller); add_child(presentation_coordinator)
-	add_child(_dungeon_presenter); add_child(_held_movement)
-	_debug_tools = DebugToolsHostScript.new(); add_child(_debug_tools)
+	add_child(session_controller)
+	add_child(presentation_coordinator)
+	add_child(_dungeon_presenter)
+	add_child(_held_movement)
+	_debug_tools = DebugToolsHostScript.new()
+	add_child(_debug_tools)
 	_debug_tools.bind(session_controller, self, func() -> RealmzContent: return _active_content)
-	_debug_tools.status_changed.connect(func(message: String, failed: bool) -> void: _shell_presenter.set_status(message, failed)); _debug_tools.topology_debug_changed.connect(_on_topology_debug_changed)
+	_debug_tools.status_changed.connect(
+		func(message: String, failed: bool) -> void:
+			_shell_presenter.set_status(message, failed)
+	)
 	_held_movement.set_speed_percent(_presentation_settings.exploration_speed_percent)
 	_held_movement.movement_requested.connect(_on_held_movement_requested)
 	presentation_coordinator.bind(session_controller, _map_presenter, _battlefield_presenter, _dungeon_presenter, _interaction_presenter, _shell_presenter, _audio_presenter)
@@ -84,7 +109,22 @@ func _ready() -> void:
 	_map_presenter.movement_hold_started.connect(func(direction: Vector2i) -> void: _held_movement.start(&"mouse", direction))
 	_map_presenter.movement_hold_updated.connect(func(direction: Vector2i) -> void: _held_movement.update(&"mouse", direction))
 	_map_presenter.movement_hold_stopped.connect(func() -> void: _held_movement.stop(&"mouse"))
-	_dungeon_presenter.turn_requested.connect(func(delta: int) -> void: _submit_intent(PlayerIntent.dungeon_turn(delta))); _dungeon_presenter.movement_requested.connect(func(direction: Vector2i) -> void: _submit_movement(direction)); _dungeon_presenter.movement_hold_started.connect(func(direction: Vector2i) -> void: _held_movement.start(&"keyboard", direction)); _dungeon_presenter.movement_hold_stopped.connect(func() -> void: _held_movement.stop(&"keyboard"))
+	_dungeon_presenter.turn_requested.connect(
+		func(delta: int) -> void:
+			_submit_intent(PlayerIntent.dungeon_turn(delta))
+	)
+	_dungeon_presenter.movement_requested.connect(
+		func(direction: Vector2i) -> void:
+			_submit_movement(direction)
+	)
+	_dungeon_presenter.movement_hold_started.connect(
+		func(direction: Vector2i) -> void:
+			_held_movement.start(&"keyboard", direction)
+	)
+	_dungeon_presenter.movement_hold_stopped.connect(
+		func() -> void:
+			_held_movement.stop(&"keyboard")
+	)
 	_battlefield_presenter.combat_body_submitted.connect(_on_battlefield_action_requested)
 	_battlefield_presenter.combatant_inspected.connect(_on_battlefield_combatant_inspected)
 	_battlefield_presenter.targeting_changed.connect(_interaction_presenter.update_combat_targeting)
@@ -101,22 +141,6 @@ func _ready() -> void:
 	_shell_presenter.end_adventure_requested.connect(_on_end_adventure_requested)
 	_shell_presenter.quit_requested.connect(_on_quit_requested)
 	_shell_presenter.route_changed.connect(_on_shell_route_changed)
-	_shell_presenter.topology_debug_changed.connect(_on_topology_debug_changed)
-	_shell_presenter.dungeon_3d_changed.connect(_on_dungeon_3d_changed)
-	_shell_presenter.master_volume_changed.connect(_on_master_volume_changed)
-	_shell_presenter.sound_volume_changed.connect(_on_sound_volume_changed)
-	_shell_presenter.music_volume_changed.connect(_on_music_volume_changed)
-	_shell_presenter.music_enabled_changed.connect(_on_music_enabled_changed)
-	_shell_presenter.music_playlist_mode_changed.connect(_on_music_playlist_mode_changed)
-	_shell_presenter.text_scale_changed.connect(_on_text_scale_changed)
-	_shell_presenter.typography_mode_changed.connect(_on_typography_mode_changed)
-	_shell_presenter.ui_scale_mode_changed.connect(_on_ui_scale_mode_changed)
-	_shell_presenter.window_mode_changed.connect(_on_window_mode_changed)
-	_shell_presenter.reduced_motion_changed.connect(_on_reduced_motion_changed); _shell_presenter.reduced_sound_changed.connect(_on_reduced_sound_changed)
-	_shell_presenter.auto_switch_to_melee_changed.connect(_on_auto_switch_to_melee_changed)
-	_shell_presenter.exploration_speed_changed.connect(_on_exploration_speed_changed); _shell_presenter.combat_playback_speed_changed.connect(_on_combat_playback_speed_changed)
-	_shell_presenter.exploration_minimap_changed.connect(_on_exploration_minimap_changed); _shell_presenter.classic_exploration_visibility_changed.connect(_on_classic_exploration_visibility_changed)
-	_shell_presenter.autojournal_changed.connect(_on_autojournal_changed)
 	_shell_presenter.layout_changed.connect(_on_shell_layout_changed)
 	_shell_presenter.route_changed.connect(_on_route_changed)
 	_shell_presenter.vault_archive_requested.connect(_archive_vault_character)
@@ -125,19 +149,11 @@ func _ready() -> void:
 	_shell_presenter.standalone_character_creation_cancelled.connect(_cancel_standalone_character_creation)
 	_shell_presenter.character_selection_completed.connect(_interaction_presenter.submit_character_selection)
 	_audio_presenter.music_state_changed.connect(_shell_presenter.set_music_playback_state)
-	_shell_presenter.apply_settings(_presentation_settings)
-	presentation_coordinator.set_reduced_motion(_presentation_settings.reduced_motion); presentation_coordinator.set_combat_playback_speed_percent(_presentation_settings.combat_playback_speed_percent); presentation_coordinator.set_exploration_speed_percent(_presentation_settings.exploration_speed_percent)
-	_apply_application_theme()
-	_interaction_presenter.set_text_scale(_presentation_settings.text_scale)
-	_interaction_presenter.set_autojournal_enabled(_presentation_settings.autojournal_enabled)
-	_map_presenter.set_travel_preview_visible(_presentation_settings.show_exploration_minimap); _map_presenter.set_classic_exploration_visibility(_presentation_settings.classic_exploration_visibility)
-	_apply_window_mode(_presentation_settings.window_mode)
-	_audio_presenter.set_master_volume(_presentation_settings.master_volume)
-	_audio_presenter.set_sound_volume(_presentation_settings.sound_volume); _audio_presenter.set_reduced_sound(_presentation_settings.reduced_sound)
-	_audio_presenter.set_music_volume(_presentation_settings.music_volume)
-	_on_topology_debug_changed(_presentation_settings.topology_debug)
-	_on_dungeon_3d_changed(_presentation_settings.dungeon_3d)
-	_game_shell.set_standalone_character_creation_available(false, "Loading the built-in Classic definitions…"); call_deferred("_begin_classic_character_library_load")
+	_settings_controller = ApplicationSettingsControllerScript.new(self, _presentation_settings, settings_repository, _shell_presenter, _map_presenter, _interaction_presenter, _audio_presenter, presentation_coordinator, _dungeon_presenter, _held_movement, _debug_tools)
+	_settings_controller.bind()
+	_settings_controller.apply_initial_settings()
+	_game_shell.set_standalone_character_creation_available(false, "Loading the built-in Classic definitions…")
+	call_deferred("_begin_classic_character_library_load")
 	_status_label.text = "Pure session boundary online"
 	_refresh_campaigns()
 	_refresh_vault_views()
@@ -145,7 +161,9 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
-	_poll_classic_character_library_load(); _try_prewarm_last_campaign(); if _held_movement != null and _held_movement.is_active():
+	_poll_classic_character_library_load()
+	_try_prewarm_last_campaign()
+	if _held_movement != null and _held_movement.is_active():
 		if not accepts_exploration_input():
 			_held_movement.stop()
 		elif _held_movement.active_source() == &"mouse" and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
@@ -167,7 +185,9 @@ func _process(_delta: float) -> void:
 		_shell_presenter.set_status("Campaign preparation cancelled.")
 		return
 	if not _character_library_load_complete:
-		_pending_prepared_package = prepared; _shell_presenter.set_status("Campaign ready • finishing the built-in Classic definitions…"); return
+		_pending_prepared_package = prepared
+		_shell_presenter.set_status("Campaign ready • finishing the built-in Classic definitions…")
+		return
 	_complete_package_install(prepared, _pending_package_seed)
 
 
@@ -279,7 +299,9 @@ func _complete_package_install(prepared: PreparedPackage, initial_seed: int) -> 
 		return step
 	_queued_combat_auto_changes.clear()
 	_active_content = prepared.content
-	_package_host.promote(prepared); if _presentation_settings.last_campaign_id != _active_content.campaign_id: _presentation_settings.last_campaign_id = _active_content.campaign_id; settings_repository.save_settings(_presentation_settings)
+	_package_host.promote(prepared)
+	if _presentation_settings.last_campaign_id != _active_content.campaign_id: _presentation_settings.last_campaign_id = _active_content.campaign_id
+	settings_repository.save_settings(_presentation_settings)
 	presentation_coordinator.set_package_media(prepared.media)
 	presentation_coordinator.refresh()
 	_refresh_save_previews()
@@ -675,7 +697,8 @@ func _refresh_vault_views() -> void:
 
 func _begin_classic_character_library_load() -> void:
 	if not _package_host.start_bundled_load(CLASSIC_CHARACTER_LIBRARY_PATH, CLASSIC_CHARACTER_LIBRARY_ID, CLASSIC_CHARACTER_LIBRARY_HASH):
-		_character_library_load_complete = true; _game_shell.set_standalone_character_creation_available(false, "The built-in Classic definitions could not start loading.")
+		_character_library_load_complete = true
+		_game_shell.set_standalone_character_creation_available(false, "The built-in Classic definitions could not start loading.")
 
 
 func _poll_classic_character_library_load() -> void:
@@ -685,13 +708,21 @@ func _poll_classic_character_library_load() -> void:
 	if prepared == null: return
 	_character_library_load_complete = true
 	if not prepared.is_ok():
-		_game_shell.set_standalone_character_creation_available(false, prepared.error_message); _shell_presenter.set_status("Character Files creation unavailable • %s" % prepared.error_message, true)
+		_game_shell.set_standalone_character_creation_available(false, prepared.error_message)
+		_shell_presenter.set_status("Character Files creation unavailable • %s" % prepared.error_message, true)
 	else:
-		_character_library_content = prepared.content; _character_library_media = prepared.media; _package_host.set_application_content(_character_library_content, _character_library_media.assets())
-		presentation_coordinator.set_application_character_media(_character_library_media); presentation_coordinator.set_package_media(_character_library_media); _vault_host.seed_classic_starters_if_empty()
-		_game_shell.set_standalone_character_creation_available(true); _refresh_vault_views()
+		_character_library_content = prepared.content
+		_character_library_media = prepared.media
+		_package_host.set_application_content(_character_library_content, _character_library_media.assets())
+		presentation_coordinator.set_application_character_media(_character_library_media)
+		presentation_coordinator.set_package_media(_character_library_media)
+		_vault_host.seed_classic_starters_if_empty()
+		_game_shell.set_standalone_character_creation_available(true)
+		_refresh_vault_views()
 	if _pending_prepared_package != null:
-		var pending := _pending_prepared_package; _pending_prepared_package = null; _complete_package_install(pending, _pending_package_seed)
+		var pending := _pending_prepared_package
+		_pending_prepared_package = null
+		_complete_package_install(pending, _pending_package_seed)
 
 func _begin_standalone_character_creation() -> void:
 	if _active_content != null or session_controller.view().session_started:
@@ -820,97 +851,15 @@ func _refresh_save_previews() -> void:
 func _refresh_campaigns() -> void:
 	if _package_host != null and _package_host.operation_view().is_running():
 		return
-	_campaigns = _package_host.discover_available_campaigns(); _shell_presenter.set_campaigns(_campaigns); _try_prewarm_last_campaign()
+	_campaigns = _package_host.discover_available_campaigns()
+	_shell_presenter.set_campaigns(_campaigns)
+	_try_prewarm_last_campaign()
 
 
 func _try_prewarm_last_campaign() -> void:
 	if _last_campaign_prewarm_requested or _package_host == null or _character_library_content == null or _presentation_settings == null or _presentation_settings.last_campaign_id.is_empty() or bool(get_meta(&"startup_splash_suppressed", false)) and not bool(get_meta(&"startup_front_door_revealed", false)): return
-	_last_campaign_prewarm_requested = true; _package_host.prewarm_last_campaign(_campaigns, _presentation_settings.last_campaign_id)
-
-
-func _on_topology_debug_changed(enabled: bool) -> void:
-	_map_presenter.set_topology_debug_visible(enabled); if _debug_tools != null: _debug_tools.set_topology_debug(enabled)
-	if _presentation_settings != null:
-		_presentation_settings.topology_debug = enabled
-		settings_repository.save_settings(_presentation_settings)
-
-
-func _on_dungeon_3d_changed(enabled: bool) -> void:
-	presentation_coordinator.set_dungeon_3d_enabled(enabled)
-	if _presentation_settings != null: _presentation_settings.dungeon_3d = enabled; settings_repository.save_settings(_presentation_settings)
-
-
-func _on_master_volume_changed(value: float) -> void:
-	_audio_presenter.set_master_volume(value)
-	_presentation_settings.master_volume = value
-	settings_repository.save_settings(_presentation_settings)
-
-
-func _on_sound_volume_changed(value: float) -> void:
-	_audio_presenter.set_sound_volume(value)
-	_presentation_settings.sound_volume = clampf(value, 0.0, 1.0)
-	_shell_presenter.apply_settings(_presentation_settings)
-	settings_repository.save_settings(_presentation_settings)
-
-
-func _on_music_volume_changed(value: float) -> void:
-	_audio_presenter.set_music_volume(value)
-	_presentation_settings.music_volume = clampf(value, 0.0, 1.0)
-	_shell_presenter.apply_settings(_presentation_settings)
-	settings_repository.save_settings(_presentation_settings)
-
-
-func _on_music_enabled_changed(enabled: bool) -> void:
-	_presentation_settings.music_enabled = enabled
-	_shell_presenter.apply_settings(_presentation_settings)
-	settings_repository.save_settings(_presentation_settings)
-	presentation_coordinator.refresh_music()
-
-
-func _on_music_playlist_mode_changed(playlist_id: int, mode: int) -> void:
-	if not _presentation_settings.set_music_mode(playlist_id, mode):
-		return
-	settings_repository.save_settings(_presentation_settings)
-	presentation_coordinator.refresh_music()
-
-
-func _on_text_scale_changed(value: float) -> void:
-	_presentation_settings.text_scale = value
-	_apply_application_theme()
-	_interaction_presenter.set_text_scale(value)
-	_shell_presenter.apply_settings(_presentation_settings)
-	settings_repository.save_settings(_presentation_settings)
-
-
-func _on_ui_scale_mode_changed(value: String) -> void:
-	_presentation_settings.ui_scale_mode = value
-	_shell_presenter.apply_settings(_presentation_settings)
-	settings_repository.save_settings(_presentation_settings)
-
-
-func _on_window_mode_changed(value: String) -> void:
-	_presentation_settings.window_mode = value
-	_apply_window_mode(value)
-	settings_repository.save_settings(_presentation_settings)
-
-
-func _apply_window_mode(value: String) -> void:
-	var mode := DisplayServer.WINDOW_MODE_FULLSCREEN if value == PresentationSettings.BORDERLESS_FULLSCREEN else DisplayServer.WINDOW_MODE_WINDOWED
-	DisplayServer.window_set_mode(mode)
-
-
-func _apply_application_theme() -> void:
-	var base_theme := load("res://src/ui/classic_ui_theme.tres") as Theme
-	theme = ClassicTypography.themed_copy(base_theme, _presentation_settings)
-
-
-func _on_typography_mode_changed(value: String) -> void:
-	if value not in [PresentationSettings.TYPOGRAPHY_CLASSIC, PresentationSettings.TYPOGRAPHY_READABLE]:
-		return
-	_presentation_settings.typography_mode = value
-	_apply_application_theme()
-	_shell_presenter.apply_settings(_presentation_settings)
-	settings_repository.save_settings(_presentation_settings)
+	_last_campaign_prewarm_requested = true
+	_package_host.prewarm_last_campaign(_campaigns, _presentation_settings.last_campaign_id)
 
 
 func _on_shell_layout_changed(workspace_rect: Rect2, _profile: UiLayoutProfile) -> void:
@@ -925,15 +874,18 @@ func _on_shell_layout_changed(workspace_rect: Rect2, _profile: UiLayoutProfile) 
 	if _dungeon_presenter != null:
 		_dungeon_presenter.position = content_rect.position
 		_dungeon_presenter.size = content_rect.size
-	var projection_size := ClassicMapPresenter.projection_cells_for(_map_presenter.size, _map_presenter.map_origin.y, _map_presenter.cell_size); if session_controller.set_map_projection_size(projection_size): presentation_coordinator.refresh_spatial_projection()
-	var canvas_rect := _profile.application_rect; var textbox_rect := Rect2(Vector2(canvas_rect.position.x, workspace_rect.end.y), Vector2(canvas_rect.size.x, _profile.bottom_height))
+	var projection_size := ClassicMapPresenter.projection_cells_for(_map_presenter.size, _map_presenter.map_origin.y, _map_presenter.cell_size)
+	if session_controller.set_map_projection_size(projection_size): presentation_coordinator.refresh_spatial_projection()
+	var canvas_rect := _profile.application_rect
+	var textbox_rect := Rect2(Vector2(canvas_rect.position.x, workspace_rect.end.y), Vector2(canvas_rect.size.x, _profile.bottom_height))
 	var combat_rect := Rect2(Vector2(canvas_rect.position.x, canvas_rect.end.y - _profile.bottom_height), Vector2(canvas_rect.size.x, _profile.bottom_height))
 	_interaction_presenter.set_classic_regions(content_rect, textbox_rect, combat_rect)
 	call_deferred("_sync_interaction_narrative_region", content_rect, combat_rect)
 
 
 func _sync_interaction_narrative_region(content_rect: Rect2, combat_rect: Rect2) -> void:
-	await get_tree().process_frame; var narrative_rect := _shell_presenter.narrative_region()
+	await get_tree().process_frame
+	var narrative_rect := _shell_presenter.narrative_region()
 	if narrative_rect.has_area():
 		_interaction_presenter.set_classic_regions(content_rect, narrative_rect, combat_rect)
 
@@ -945,38 +897,6 @@ static func classic_textbox_rect(workspace_rect: Rect2, bottom_height: float, fu
 
 static func classic_combat_rect(viewport_size: Vector2, bottom_height: float) -> Rect2:
 	return Rect2(0.0, maxf(0.0, viewport_size.y - bottom_height), viewport_size.x, minf(bottom_height, viewport_size.y))
-
-
-func _on_reduced_motion_changed(enabled: bool) -> void: _presentation_settings.reduced_motion = enabled; presentation_coordinator.set_reduced_motion(enabled); settings_repository.save_settings(_presentation_settings)
-
-
-func _on_reduced_sound_changed(enabled: bool) -> void: _presentation_settings.reduced_sound = enabled; _audio_presenter.set_reduced_sound(enabled); settings_repository.save_settings(_presentation_settings)
-
-
-func _on_auto_switch_to_melee_changed(enabled: bool) -> void:
-	_presentation_settings.auto_switch_to_melee = enabled
-	settings_repository.save_settings(_presentation_settings)
-
-
-func _on_exploration_speed_changed(percent: int) -> void:
-	_presentation_settings.exploration_speed_percent = clampi(snappedi(percent, 25), 25, 400); _held_movement.set_speed_percent(_presentation_settings.exploration_speed_percent); presentation_coordinator.set_exploration_speed_percent(_presentation_settings.exploration_speed_percent); settings_repository.save_settings(_presentation_settings)
-
-
-func _on_combat_playback_speed_changed(percent: int) -> void: _presentation_settings.combat_playback_speed_percent = clampi(snappedi(percent, 25), 25, 200); presentation_coordinator.set_combat_playback_speed_percent(_presentation_settings.combat_playback_speed_percent); settings_repository.save_settings(_presentation_settings)
-
-
-func _on_exploration_minimap_changed(enabled: bool) -> void:
-	_presentation_settings.show_exploration_minimap = enabled; _map_presenter.set_travel_preview_visible(enabled); settings_repository.save_settings(_presentation_settings)
-
-
-func _on_classic_exploration_visibility_changed(enabled: bool) -> void:
-	_presentation_settings.classic_exploration_visibility = enabled; _map_presenter.set_classic_exploration_visibility(enabled); settings_repository.save_settings(_presentation_settings)
-
-
-func _on_autojournal_changed(enabled: bool) -> void:
-	_presentation_settings.autojournal_enabled = enabled
-	_interaction_presenter.set_autojournal_enabled(enabled)
-	settings_repository.save_settings(_presentation_settings)
 
 
 func _on_route_changed(route_id: StringName) -> void:

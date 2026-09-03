@@ -1,3 +1,5 @@
+## Coordinates the session view projection policy workflow against committed session state.
+
 class_name SessionViewProjectionPolicy
 extends RefCounted
 

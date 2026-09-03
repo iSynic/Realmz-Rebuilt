@@ -1,3 +1,5 @@
+## Defines the immutable message record loaded from campaign content.
+
 class_name MessageDefinition
 extends RefCounted
 

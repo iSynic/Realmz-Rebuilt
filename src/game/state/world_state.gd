@@ -1,3 +1,5 @@
+## Stores mutable world state inside a deterministic playthrough.
+
 class_name WorldState
 extends RefCounted
 

@@ -1,3 +1,5 @@
+## Carries typed domain event data across the gameplay transaction boundary.
+
 class_name DomainEvent
 extends RefCounted
 

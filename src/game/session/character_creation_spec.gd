@@ -1,3 +1,5 @@
+## Carries typed character creation spec data across the gameplay transaction boundary.
+
 class_name CharacterCreationSpec
 extends RefCounted
 

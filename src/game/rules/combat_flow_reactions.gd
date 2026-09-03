@@ -1,3 +1,5 @@
+## Implements deterministic combat flow reactions rules without presentation dependencies.
+
 class_name CombatFlowReactions
 extends RefCounted
 

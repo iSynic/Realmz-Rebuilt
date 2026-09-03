@@ -1,3 +1,5 @@
+## Carries detached combat move option data from gameplay into presentation.
+
 class_name CombatMoveOptionView
 extends RefCounted
 

@@ -1,3 +1,5 @@
+## Carries typed Classic reward state data across the gameplay transaction boundary.
+
 class_name ClassicRewardState
 extends RefCounted
 

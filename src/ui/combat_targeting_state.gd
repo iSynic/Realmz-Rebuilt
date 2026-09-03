@@ -1,3 +1,5 @@
+## Presents combat targeting state through the Godot interface.
+
 class_name CombatTargetingState
 extends RefCounted
 

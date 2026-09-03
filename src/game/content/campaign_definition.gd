@@ -1,3 +1,5 @@
+## Defines the immutable campaign record loaded from campaign content.
+
 class_name CampaignDefinition
 extends RefCounted
 

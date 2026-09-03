@@ -1,3 +1,5 @@
+## Stores mutable random region state inside a deterministic playthrough.
+
 class_name RandomRegionState
 extends RefCounted
 

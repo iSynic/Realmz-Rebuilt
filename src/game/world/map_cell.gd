@@ -1,3 +1,5 @@
+## Defines the pure gameplay map cell contract.
+
 class_name MapCell
 extends RefCounted
 

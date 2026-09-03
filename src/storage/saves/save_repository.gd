@@ -1,3 +1,5 @@
+## Persists and validates save repository data at the save boundary.
+
 class_name SaveRepository
 extends RefCounted
 

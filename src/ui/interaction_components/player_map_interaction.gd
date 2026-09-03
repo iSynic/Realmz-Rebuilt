@@ -1,3 +1,5 @@
+## Presents the dynamic player map interaction without owning gameplay state.
+
 class_name PlayerMapInteraction
 extends InteractionComponent
 

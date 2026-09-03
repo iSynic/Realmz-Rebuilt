@@ -1,3 +1,5 @@
+## Owns player map parchment mat presentation behavior for its scene-authored screen.
+
 class_name PlayerMapParchmentMat
 extends PanelContainer
 

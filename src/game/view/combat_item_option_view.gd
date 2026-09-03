@@ -1,3 +1,5 @@
+## Carries detached combat item option data from gameplay into presentation.
+
 class_name CombatItemOptionView
 extends RefCounted
 

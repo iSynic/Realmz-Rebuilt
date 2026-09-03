@@ -1,3 +1,5 @@
+## Coordinates session coordinator result responsibilities behind the public session boundary.
+
 class_name SessionCoordinatorResult
 extends RefCounted
 

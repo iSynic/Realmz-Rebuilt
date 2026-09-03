@@ -6,7 +6,7 @@ Own the Godot composition root and translate host input/output into the pure ses
 
 ## Ownership
 
-- `RealmzApplication` remains the scene composition root. `ApplicationInputRouter` owns host input dispatch, `ApplicationCombatPolicy` owns the pure translation between combat UI responses, Auto playback state, and typed session commands, and `ApplicationStepStatusText` owns short shell-status wording.
+- `RealmzApplication` remains the scene composition root. `ApplicationInputRouter` owns host input dispatch, `ApplicationCombatPolicy` owns the pure translation between combat UI responses, Auto playback state, and typed session commands, `ApplicationStepStatusText` owns short shell-status wording, and `ApplicationSettingsController` binds, applies, and persists presentation-only preferences.
 - `CharacterVaultController` owns publishing a detached character from a committed session snapshot; the composition root supplies the snapshot and refreshes the visible vault after success.
 
 - `StartupFrontDoor` owns immediate process entry and background construction of `RealmzApplication`; `RealmzApplication` constructs the gameplay dependency graph explicitly.

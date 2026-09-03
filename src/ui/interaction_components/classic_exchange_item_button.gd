@@ -1,3 +1,5 @@
+## Presents the dynamic Classic exchange item button interaction without owning gameplay state.
+
 class_name ClassicExchangeItemButton
 extends Button
 

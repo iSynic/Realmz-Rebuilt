@@ -1,3 +1,5 @@
+## Owns Classic party roster presentation behavior for its scene-authored screen.
+
 class_name ClassicPartyRoster
 extends PanelContainer
 

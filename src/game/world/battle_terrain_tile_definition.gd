@@ -1,3 +1,5 @@
+## Defines the pure gameplay battle terrain tile definition contract.
+
 class_name BattleTerrainTileDefinition
 extends RefCounted
 

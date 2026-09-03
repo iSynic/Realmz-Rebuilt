@@ -1,3 +1,5 @@
+## Carries typed interaction response data across the gameplay transaction boundary.
+
 class_name InteractionResponse
 extends RefCounted
 

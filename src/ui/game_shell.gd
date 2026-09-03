@@ -298,7 +298,8 @@ func present_step(step: SessionStep) -> void:
 		set_status("Action failed • %s" % step.error_message, true)
 		_append_narrative("Action failed: %s" % step.error_message)
 		return
-	_picture_stage.visible = false; _field_time_playback.present(self, _clock_label, step.events)
+	_picture_stage.visible = false
+	_field_time_playback.present(self, _clock_label, step.events)
 	for event: DomainEvent in step.events:
 		_present_event(event)
 

@@ -1,3 +1,5 @@
+## Carries detached map cell data from gameplay into presentation.
+
 class_name MapCellView
 extends RefCounted
 

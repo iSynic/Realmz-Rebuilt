@@ -1,3 +1,5 @@
+## Coordinates the character finalize workflow result workflow against committed session state.
+
 class_name CharacterFinalizeWorkflowResult
 extends RefCounted
 

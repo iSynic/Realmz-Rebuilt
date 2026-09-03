@@ -1,3 +1,5 @@
+## Presents Classic spell target badge through the Godot interface.
+
 class_name ClassicSpellTargetBadge
 extends PanelContainer
 

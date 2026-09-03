@@ -1,3 +1,5 @@
+## Owns player map canvas presentation behavior for its scene-authored screen.
+
 class_name PlayerMapCanvas
 extends Control
 

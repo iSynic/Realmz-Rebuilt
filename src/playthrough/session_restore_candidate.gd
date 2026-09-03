@@ -1,3 +1,5 @@
+## Defines the typed session restore candidate contract used by playthrough transactions.
+
 class_name SessionRestoreCandidate
 extends RefCounted
 

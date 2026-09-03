@@ -1,3 +1,5 @@
+## Defines the typed scenario battle caller boundary used by the scenario VM.
+
 class_name ScenarioBattleCaller
 extends RefCounted
 

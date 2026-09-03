@@ -1,3 +1,5 @@
+## Presents interaction layout policy through the Godot interface.
+
 class_name InteractionLayoutPolicy
 extends RefCounted
 

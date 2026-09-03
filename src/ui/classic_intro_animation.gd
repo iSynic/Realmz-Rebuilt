@@ -1,3 +1,5 @@
+## Presents Classic intro animation through the Godot interface.
+
 class_name ClassicIntroAnimation
 extends VideoStreamPlayer
 

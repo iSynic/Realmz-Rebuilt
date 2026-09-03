@@ -1,3 +1,5 @@
+## Presents Classic spell level through the Godot interface.
+
 class_name ClassicSpellLevel
 extends RefCounted
 

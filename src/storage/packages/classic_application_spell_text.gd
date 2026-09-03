@@ -1,3 +1,5 @@
+## Validates and loads Classic application spell text data at the immutable package boundary.
+
 class_name ClassicApplicationSpellText
 extends RefCounted
 

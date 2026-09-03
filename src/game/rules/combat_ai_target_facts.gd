@@ -1,3 +1,5 @@
+## Implements deterministic combat AI target facts rules without presentation dependencies.
+
 class_name CombatAiTargetFacts
 extends RefCounted
 

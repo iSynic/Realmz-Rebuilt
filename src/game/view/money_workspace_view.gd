@@ -1,3 +1,5 @@
+## Carries detached money workspace data from gameplay into presentation.
+
 class_name MoneyWorkspaceView
 extends RefCounted
 

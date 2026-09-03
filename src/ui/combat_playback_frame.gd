@@ -1,3 +1,5 @@
+## Presents combat playback frame through the Godot interface.
+
 class_name CombatPlaybackFrame
 extends RefCounted
 

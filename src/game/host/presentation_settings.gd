@@ -1,3 +1,5 @@
+## Defines the pure gameplay presentation settings contract.
+
 class_name PresentationSettings
 extends RefCounted
 

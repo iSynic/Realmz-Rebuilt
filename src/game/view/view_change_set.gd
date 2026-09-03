@@ -1,3 +1,5 @@
+## Carries detached view change set data from gameplay into presentation.
+
 class_name ViewChangeSet
 extends RefCounted
 

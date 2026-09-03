@@ -1,3 +1,5 @@
+## Defines the typed session continuation contract used by playthrough transactions.
+
 class_name SessionContinuation
 extends RefCounted
 

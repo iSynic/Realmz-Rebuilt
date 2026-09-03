@@ -1,3 +1,5 @@
+## Implements deterministic magic rules without presentation dependencies.
+
 class_name MagicRules
 extends RefCounted
 

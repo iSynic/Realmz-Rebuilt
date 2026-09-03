@@ -1,3 +1,5 @@
+## Implements deterministic combat command probe rules without presentation dependencies.
+
 class_name CombatCommandProbe
 extends RefCounted
 

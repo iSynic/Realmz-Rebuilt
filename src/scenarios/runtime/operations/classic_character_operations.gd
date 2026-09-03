@@ -1,3 +1,5 @@
+## Coordinates Classic character operations operations for the validated scenario runtime.
+
 class_name ClassicCharacterOperations
 extends ClassicOpcodeHandler
 

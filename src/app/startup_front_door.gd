@@ -1,3 +1,5 @@
+## Coordinates startup front door within application startup and host integration.
+
 class_name StartupFrontDoor
 extends Control
 

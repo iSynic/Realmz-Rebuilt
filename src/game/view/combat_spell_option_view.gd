@@ -1,3 +1,5 @@
+## Carries detached combat spell option data from gameplay into presentation.
+
 class_name CombatSpellOptionView
 extends RefCounted
 

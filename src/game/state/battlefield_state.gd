@@ -1,3 +1,5 @@
+## Stores mutable battlefield state inside a deterministic playthrough.
+
 class_name BattlefieldState
 extends RefCounted
 

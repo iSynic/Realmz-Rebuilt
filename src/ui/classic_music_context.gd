@@ -1,3 +1,5 @@
+## Presents Classic music context through the Godot interface.
+
 class_name ClassicMusicContext
 extends RefCounted
 

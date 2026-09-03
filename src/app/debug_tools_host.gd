@@ -1,3 +1,5 @@
+## Coordinates debug tools host within application startup and host integration.
+
 class_name DebugToolsHost
 extends Node
 
@@ -39,7 +41,7 @@ func bind(controller: GameSessionController, overlay: Control, content_provider:
 	_dialog.console_requested.connect(_open_console)
 	_dialog.console_shortcut_changed.connect(func(enabled: bool) -> void: _console_shortcut_enabled = enabled)
 	_console.close_requested.connect(_console.close_console)
-	_console.clear_requested.connect(func() -> void: _action_lines.clear(); _console.set_lines(_action_lines))
+	_console.clear_requested.connect(_clear_console)
 
 
 func handle_input(event: InputEvent) -> bool:
@@ -271,3 +273,7 @@ static func _success_message(command: SessionDebugCommand) -> String:
 		SessionDebugCommand.Kind.START_BATTLE: return "Battle %d triggered." % command.classic_id
 		SessionDebugCommand.Kind.WIN_BATTLE: return "Battle victory committed through normal rewards."
 	return "Debug command committed."
+
+func _clear_console() -> void:
+	_action_lines.clear()
+	_console.set_lines(_action_lines)

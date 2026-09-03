@@ -1,3 +1,5 @@
+## Carries detached service data from gameplay into presentation.
+
 class_name ServiceView
 extends RefCounted
 

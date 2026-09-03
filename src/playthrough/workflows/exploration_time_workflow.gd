@@ -1,3 +1,5 @@
+## Coordinates the exploration time workflow against committed session state.
+
 class_name ExplorationTimeWorkflow
 extends RefCounted
 

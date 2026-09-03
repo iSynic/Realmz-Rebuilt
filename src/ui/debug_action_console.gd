@@ -1,3 +1,5 @@
+## Presents debug action console through the Godot interface.
+
 class_name DebugActionConsole
 extends PanelContainer
 

@@ -1,3 +1,5 @@
+## Implements deterministic party setup rules without presentation dependencies.
+
 class_name PartySetupRules
 extends RefCounted
 

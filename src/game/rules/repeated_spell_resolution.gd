@@ -1,3 +1,5 @@
+## Implements deterministic repeated spell resolution rules without presentation dependencies.
+
 class_name RepeatedSpellResolution
 extends GroupSpellResolution
 

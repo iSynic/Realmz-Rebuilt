@@ -22,7 +22,9 @@ var _prepared_visibility_coordinate: Vector2i = Vector2i(-1, -1)
 var _prepared_visible_coordinates: Dictionary = {}
 var _visibility_membership_cache: Dictionary = {}
 var _map_projection_size: Vector2i = DEFAULT_MAP_VIEW_SIZE
-var _equipment_by_character_id: Dictionary = {}; var _map_window_cache: Dictionary = {}; var _map_cell_cache: Dictionary = {}
+var _equipment_by_character_id: Dictionary = {}
+var _map_window_cache: Dictionary = {}
+var _map_cell_cache: Dictionary = {}
 
 
 func project(context: SessionWorkflowContext, pending_interaction: InteractionRequest, revision: int, started: bool, events: Array[DomainEvent] = []) -> GameView:
@@ -44,7 +46,8 @@ func _project_complete(context: SessionWorkflowContext, pending_interaction: Int
 	var rules := context.rules
 	var members: Array[CharacterView] = []
 	var item_definitions := content.item_definitions()
-	_equipment_by_character_id.clear(); _map_window_cache.clear()
+	_equipment_by_character_id.clear()
+	_map_window_cache.clear()
 	for character: CharacterState in state.party.characters():
 		var member_view := CharacterView.new(character, content)
 		var equipment := rules.inventory.combat_equipment(character, item_definitions)
@@ -149,7 +152,9 @@ func clear() -> void:
 	_prepared_visibility_coordinate = Vector2i(-1, -1)
 	_prepared_visible_coordinates.clear()
 	_visibility_membership_cache.clear()
-	_equipment_by_character_id.clear(); _map_window_cache.clear(); _map_cell_cache.clear()
+	_equipment_by_character_id.clear()
+	_map_window_cache.clear()
+	_map_cell_cache.clear()
 
 
 func set_map_projection_size(requested_size: Vector2i) -> bool:
@@ -538,7 +543,8 @@ func _map_view(context: SessionWorkflowContext, revision: int, reuse_ordinary_ce
 		for coordinate: Vector2i in presentation_delta.newly_seen:
 			_cached_seen_membership[coordinate] = true
 	else:
-		_cached_visited_membership.clear(); _cached_seen_membership.clear()
+		_cached_visited_membership.clear()
+		_cached_seen_membership.clear()
 		for coordinate: Vector2i in _cached_map_view.visited_coordinates(): _cached_visited_membership[coordinate] = true
 		for coordinate: Vector2i in _cached_map_view.seen_coordinates(): _cached_seen_membership[coordinate] = true
 	_cached_visible_membership = _prepared_visible_coordinates if current_map != null and current_map.uses_los else {}
@@ -549,11 +555,18 @@ static func _ordinary_party_summary(context: SessionWorkflowContext, previous: P
 	if previous == null:
 		return null
 	var result := PartySummaryView.new()
-	result.character_ids = previous.character_ids; result.ally_ids = previous.ally_ids; result.acquired_map_ids = previous.acquired_map_ids
-	result.pooled_gold = previous.pooled_gold; result.banked_gold = previous.banked_gold; result.has_classic_torch = previous.has_classic_torch
-	result.fatigue = context.state.party.fatigue; result.light_remaining = context.state.party.conditions.value(ConditionRules.PARTY_TORCH_LIT)
+	result.character_ids = previous.character_ids
+	result.ally_ids = previous.ally_ids
+	result.acquired_map_ids = previous.acquired_map_ids
+	result.pooled_gold = previous.pooled_gold
+	result.banked_gold = previous.banked_gold
+	result.has_classic_torch = previous.has_classic_torch
+	result.fatigue = context.state.party.fatigue
+	result.light_remaining = context.state.party.conditions.value(ConditionRules.PARTY_TORCH_LIT)
 	result.condition_values = context.state.party.conditions.values()
-	result.camping = previous.camping; result.searching = previous.searching; result.in_boat = previous.in_boat
+	result.camping = previous.camping
+	result.searching = previous.searching
+	result.in_boat = previous.in_boat
 	return result
 
 

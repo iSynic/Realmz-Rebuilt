@@ -1,3 +1,5 @@
+## Defines the immutable timed encounter record loaded from campaign content.
+
 class_name TimedEncounterDefinition
 extends RefCounted
 

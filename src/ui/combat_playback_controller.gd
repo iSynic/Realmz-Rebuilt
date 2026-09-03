@@ -1,3 +1,5 @@
+## Presents combat playback controller through the Godot interface.
+
 class_name CombatPlaybackController
 extends RefCounted
 

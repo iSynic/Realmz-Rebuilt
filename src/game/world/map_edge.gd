@@ -1,3 +1,5 @@
+## Defines the pure gameplay map edge contract.
+
 class_name MapEdge
 extends RefCounted
 

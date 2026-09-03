@@ -1,3 +1,5 @@
+## Carries typed session step data across the gameplay transaction boundary.
+
 class_name SessionStep
 extends RefCounted
 

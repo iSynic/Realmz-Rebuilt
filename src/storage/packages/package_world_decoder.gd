@@ -1,3 +1,5 @@
+## Validates and loads package world decoder data at the immutable package boundary.
+
 class_name PackageWorldDecoder
 extends PackageDecoderBase
 

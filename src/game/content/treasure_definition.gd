@@ -1,3 +1,5 @@
+## Defines the immutable treasure record loaded from campaign content.
+
 class_name TreasureDefinition
 extends RefCounted
 

@@ -1,3 +1,5 @@
+## Carries detached campaign summary data from gameplay into presentation.
+
 class_name CampaignSummaryView
 extends RefCounted
 

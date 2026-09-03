@@ -1,3 +1,5 @@
+## Binds detached Classic definition toggle list data to scene-owned controls.
+
 class_name ClassicDefinitionToggleList
 extends ScrollContainer
 

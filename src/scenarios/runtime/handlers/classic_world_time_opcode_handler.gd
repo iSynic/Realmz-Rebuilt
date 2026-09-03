@@ -1,3 +1,5 @@
+## Executes the Classic world time opcode handler family of validated Classic instructions.
+
 class_name ClassicWorldTimeOpcodeHandler
 extends ClassicOpcodeHandler
 

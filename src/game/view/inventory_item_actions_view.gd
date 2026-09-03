@@ -1,3 +1,5 @@
+## Carries detached inventory item actions data from gameplay into presentation.
+
 class_name InventoryItemActionsView
 extends RefCounted
 

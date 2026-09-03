@@ -1,3 +1,5 @@
+## Implements deterministic group spell resolution rules without presentation dependencies.
+
 class_name GroupSpellResolution
 extends RefCounted
 

@@ -1,3 +1,5 @@
+## Presents the dynamic bank interaction without owning gameplay state.
+
 class_name BankInteraction
 extends InteractionComponent
 

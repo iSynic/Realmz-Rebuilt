@@ -1,3 +1,5 @@
+## Presents Classic retained map surface through the Godot interface.
+
 class_name ClassicRetainedMapSurface
 extends Control
 
@@ -338,7 +340,9 @@ func _set_fog(coordinate: Vector2i) -> void:
 
 func _clear_layers() -> void:
 	if _base_layer == null: return
-	_base_layer.clear(); _marker_layer.clear(); _fog_layer.clear()
+	_base_layer.clear()
+	_marker_layer.clear()
+	_fog_layer.clear()
 	for layer: TileMapLayer in _feature_layers: layer.clear()
 	for sprite: Sprite2D in _overlay_sprites.values(): sprite.visible = false
 
@@ -430,7 +434,8 @@ func _darkness_texture(level: int) -> Texture2D:
 	var asset := _media.asset_by_id("classic-darkness-mask-%d" % key)
 	var texture := _media.image_texture(asset) if asset != null else null
 	if texture == null: return null
-	var image := texture.get_image(); image.convert(Image.FORMAT_RGBA8)
+	var image := texture.get_image()
+	image.convert(Image.FORMAT_RGBA8)
 	for y: int in image.get_height():
 		for x: int in image.get_width():
 			var alpha := image.get_pixel(x, y).get_luminance()

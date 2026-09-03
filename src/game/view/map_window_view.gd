@@ -1,3 +1,5 @@
+## Carries detached map window data from gameplay into presentation.
+
 class_name MapWindowView
 extends RefCounted
 

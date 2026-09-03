@@ -1,3 +1,5 @@
+## Defines the scenario VM handoff contract for scenario execution.
+
 class_name ScenarioVmHandoff
 extends RefCounted
 

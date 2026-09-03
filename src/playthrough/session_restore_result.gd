@@ -1,3 +1,5 @@
+## Defines the typed session restore result contract used by playthrough transactions.
+
 class_name SessionRestoreResult
 extends RefCounted
 

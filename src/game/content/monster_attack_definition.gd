@@ -1,3 +1,5 @@
+## Defines the immutable monster attack record loaded from campaign content.
+
 class_name MonsterAttackDefinition
 extends RefCounted
 

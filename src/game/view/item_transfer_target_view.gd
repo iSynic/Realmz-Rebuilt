@@ -1,3 +1,5 @@
+## Carries detached item transfer target data from gameplay into presentation.
+
 class_name ItemTransferTargetView
 extends RefCounted
 

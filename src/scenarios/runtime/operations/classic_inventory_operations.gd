@@ -1,3 +1,5 @@
+## Coordinates Classic inventory operations operations for the validated scenario runtime.
+
 class_name ClassicInventoryOperations
 extends ClassicOpcodeHandler
 

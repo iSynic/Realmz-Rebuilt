@@ -1,3 +1,5 @@
+## Stores mutable character lifetime record state inside a deterministic playthrough.
+
 class_name CharacterLifetimeRecord
 extends RefCounted
 

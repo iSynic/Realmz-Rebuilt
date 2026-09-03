@@ -1,3 +1,5 @@
+## Defines the pure gameplay world definition contract.
+
 class_name WorldDefinition
 extends RefCounted
 

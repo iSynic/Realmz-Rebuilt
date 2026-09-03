@@ -1,3 +1,5 @@
+## Validates and loads package domain assembler data at the immutable package boundary.
+
 class_name PackageDomainAssembler
 extends PackageDecoderBase
 

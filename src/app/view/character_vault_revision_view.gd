@@ -1,3 +1,5 @@
+## Carries detached character vault revision data between the application host and presentation.
+
 class_name CharacterVaultRevisionView
 extends RefCounted
 

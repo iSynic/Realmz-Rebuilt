@@ -1,3 +1,5 @@
+## Implements deterministic character combat equipment rules without presentation dependencies.
+
 class_name CharacterCombatEquipment
 extends RefCounted
 

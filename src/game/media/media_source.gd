@@ -1,3 +1,5 @@
+## Defines the pure gameplay media source contract.
+
 class_name MediaSource
 extends RefCounted
 

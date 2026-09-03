@@ -1,3 +1,5 @@
+## Binds detached party setup controller component data to scene-owned controls.
+
 class_name PartySetupControllerComponent
 extends RefCounted
 

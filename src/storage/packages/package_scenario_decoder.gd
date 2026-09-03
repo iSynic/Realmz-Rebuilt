@@ -1,3 +1,5 @@
+## Validates and loads package scenario decoder data at the immutable package boundary.
+
 class_name PackageScenarioDecoder
 extends PackageDecoderBase
 

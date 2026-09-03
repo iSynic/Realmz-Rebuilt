@@ -1,3 +1,5 @@
+## Carries detached combat spell target data from gameplay into presentation.
+
 class_name CombatSpellTargetView
 extends RefCounted
 

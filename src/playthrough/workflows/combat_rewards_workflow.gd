@@ -1,3 +1,5 @@
+## Coordinates the combat rewards workflow against committed session state.
+
 class_name CombatRewardsWorkflow
 extends RefCounted
 

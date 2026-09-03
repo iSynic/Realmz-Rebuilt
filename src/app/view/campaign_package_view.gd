@@ -1,3 +1,5 @@
+## Carries detached campaign package data between the application host and presentation.
+
 class_name CampaignPackageView
 extends RefCounted
 

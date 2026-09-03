@@ -1,3 +1,5 @@
+## Carries typed character draft data across the gameplay transaction boundary.
+
 class_name CharacterDraft
 extends RefCounted
 

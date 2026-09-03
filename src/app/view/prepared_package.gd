@@ -1,3 +1,5 @@
+## Carries detached prepared package data between the application host and presentation.
+
 class_name PreparedPackage
 extends RefCounted
 

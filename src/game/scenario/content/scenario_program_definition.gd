@@ -1,3 +1,5 @@
+## Defines immutable scenario program definition data consumed by the scenario runtime.
+
 class_name ScenarioProgramDefinition
 extends RefCounted
 

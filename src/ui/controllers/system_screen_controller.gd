@@ -270,7 +270,10 @@ func _build_display_tab(parent: VBoxContainer, settings: PresentationSettings) -
 	ui_scale.item_selected.connect(func(index: int) -> void: setting_changed.emit(&"ui_scale_mode", String(ui_scale.get_item_metadata(index))))
 	_add_setting_row(content, "Interface scale", ui_scale)
 	var text_scale := HSlider.new()
-	text_scale.min_value = 0.8; text_scale.max_value = 1.5; text_scale.step = 0.1; text_scale.value = settings.text_scale
+	text_scale.min_value = 0.8
+	text_scale.max_value = 1.5
+	text_scale.step = 0.1
+	text_scale.value = settings.text_scale
 	text_scale.tooltip_text = "Text scale %d%%" % int(round(settings.text_scale * 100.0))
 	text_scale.value_changed.connect(func(value: float) -> void: setting_changed.emit(&"text_scale", value))
 	_add_setting_row(content, "Text size  •  %d%%" % int(round(settings.text_scale * 100.0)), text_scale)
@@ -290,8 +293,10 @@ func _build_display_tab(parent: VBoxContainer, settings: PresentationSettings) -
 	var window_mode := OptionButton.new()
 	window_mode.name = "WindowModePicker"
 	window_mode.theme_type_variation = &"ClassicTheldrowOptionButton"
-	window_mode.add_item("Windowed"); window_mode.set_item_metadata(0, PresentationSettings.WINDOWED)
-	window_mode.add_item("Borderless fullscreen"); window_mode.set_item_metadata(1, PresentationSettings.BORDERLESS_FULLSCREEN)
+	window_mode.add_item("Windowed")
+	window_mode.set_item_metadata(0, PresentationSettings.WINDOWED)
+	window_mode.add_item("Borderless fullscreen")
+	window_mode.set_item_metadata(1, PresentationSettings.BORDERLESS_FULLSCREEN)
 	window_mode.select(1 if settings.window_mode == PresentationSettings.BORDERLESS_FULLSCREEN else 0)
 	window_mode.item_selected.connect(func(index: int) -> void: setting_changed.emit(&"window_mode", String(window_mode.get_item_metadata(index))))
 	_add_setting_row(content, "Window mode", window_mode)
@@ -302,17 +307,26 @@ func _build_display_tab(parent: VBoxContainer, settings: PresentationSettings) -
 func _build_audio_tab(parent: VBoxContainer, settings: PresentationSettings) -> void:
 	var content := _settings_panel(parent, "Audio", "Presentation audio never advances the simulation.")
 	var volume := HSlider.new()
-	volume.min_value = 0.0; volume.max_value = 1.0; volume.step = 0.05; volume.value = settings.master_volume
+	volume.min_value = 0.0
+	volume.max_value = 1.0
+	volume.step = 0.05
+	volume.value = settings.master_volume
 	volume.tooltip_text = "Master volume %d%%" % int(round(settings.master_volume * 100.0))
 	volume.value_changed.connect(func(value: float) -> void: setting_changed.emit(&"master_volume", value))
 	_add_setting_row(content, "Master volume  •  %d%%" % int(round(settings.master_volume * 100.0)), volume)
 	var sound := HSlider.new()
-	sound.min_value = 0.0; sound.max_value = 1.0; sound.step = 0.05; sound.value = settings.sound_volume
+	sound.min_value = 0.0
+	sound.max_value = 1.0
+	sound.step = 0.05
+	sound.value = settings.sound_volume
 	sound.tooltip_text = "Sound effects volume %d%%" % int(round(settings.sound_volume * 100.0))
 	sound.value_changed.connect(func(value: float) -> void: setting_changed.emit(&"sound_volume", value))
 	_add_setting_row(content, "Sound effects  •  %d%%" % int(round(settings.sound_volume * 100.0)), sound)
 	var music := HSlider.new()
-	music.min_value = 0.0; music.max_value = 1.0; music.step = 0.05; music.value = settings.music_volume
+	music.min_value = 0.0
+	music.max_value = 1.0
+	music.step = 0.05
+	music.value = settings.music_volume
 	music.tooltip_text = "Music volume %d%%" % int(round(settings.music_volume * 100.0))
 	music.value_changed.connect(func(value: float) -> void: setting_changed.emit(&"music_volume", value))
 	_add_setting_row(content, "Music  •  %d%%" % int(round(settings.music_volume * 100.0)), music)

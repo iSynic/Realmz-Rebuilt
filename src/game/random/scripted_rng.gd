@@ -1,3 +1,5 @@
+## Defines the pure gameplay scripted RNG contract.
+
 class_name ScriptedRng
 extends RealmzRng
 

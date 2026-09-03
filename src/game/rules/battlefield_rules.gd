@@ -1,3 +1,5 @@
+## Implements deterministic battlefield rules without presentation dependencies.
+
 class_name BattlefieldRules
 extends RefCounted
 

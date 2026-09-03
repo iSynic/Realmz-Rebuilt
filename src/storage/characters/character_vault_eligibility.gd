@@ -1,3 +1,5 @@
+## Persists and validates character vault eligibility data at the Character Files boundary.
+
 class_name CharacterVaultEligibility
 extends RefCounted
 

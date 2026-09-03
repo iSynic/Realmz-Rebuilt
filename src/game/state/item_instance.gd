@@ -1,3 +1,5 @@
+## Stores mutable item instance state inside a deterministic playthrough.
+
 class_name ItemInstance
 extends RefCounted
 

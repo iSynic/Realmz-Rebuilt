@@ -1,3 +1,5 @@
+## Carries detached money transfer data from gameplay into presentation.
+
 class_name MoneyTransferView
 extends RefCounted
 

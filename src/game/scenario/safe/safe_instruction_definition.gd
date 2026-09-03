@@ -1,3 +1,5 @@
+## Defines immutable safe instruction definition data consumed by the scenario runtime.
+
 class_name SafeInstructionDefinition
 extends RefCounted
 

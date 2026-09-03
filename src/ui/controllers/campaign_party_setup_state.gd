@@ -1,3 +1,5 @@
+## Binds detached campaign party setup state data to scene-owned controls.
+
 class_name CampaignPartySetupState
 extends RefCounted
 

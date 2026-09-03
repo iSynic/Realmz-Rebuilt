@@ -1,3 +1,5 @@
+## Presents the dynamic treasure distribution interaction without owning gameplay state.
+
 class_name TreasureDistributionInteraction
 extends InteractionComponent
 
@@ -508,8 +510,7 @@ static func _loot_field_style() -> StyleBoxFlat:
 	return style
 
 
-static func _node_fragment(value: String) -> String:
-	return value.replace(".", "_").replace(":", "_").replace("/", "_").replace("@", "_").replace('"', "_")
+static func _node_fragment(value: String) -> String: return value.replace(".", "_").replace(":", "_").replace("/", "_").replace("@", "_").replace('"', "_")
 
 
 func _build_workspace(body: InteractionRequest.TreasureRequestBody, recovering_fumble: bool) -> void:
@@ -853,9 +854,15 @@ func _refresh_swap_controls(index: int, selector: OptionButton, rows: Array[Inte
 		var reason := ""
 		if spec["direction"] == "to-character":
 			match String(spec["kind"]):
-				"gold": enabled = row.can_take_gold; reason = row.gold_reason
-				"gems": enabled = row.can_take_gems; reason = row.gems_reason
-				"jewelry": enabled = row.can_take_jewelry; reason = row.jewelry_reason
+				"gold":
+					enabled = row.can_take_gold
+					reason = row.gold_reason
+				"gems":
+					enabled = row.can_take_gems
+					reason = row.gems_reason
+				"jewelry":
+					enabled = row.can_take_jewelry
+					reason = row.jewelry_reason
 		else:
 			var carried_amount := carried.gold if spec["kind"] == "gold" else carried.gems if spec["kind"] == "gems" else carried.jewelry
 			enabled = carried_amount >= int(spec["amount"])

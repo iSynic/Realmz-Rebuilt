@@ -1,3 +1,5 @@
+## Coordinates Classic thief encounter operations operations for the validated scenario runtime.
+
 class_name ClassicThiefEncounterOperations
 extends RefCounted
 

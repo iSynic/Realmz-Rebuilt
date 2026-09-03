@@ -1,3 +1,5 @@
+## Defines the pure gameplay battle terrain set definition contract.
+
 class_name BattleTerrainSetDefinition
 extends RefCounted
 

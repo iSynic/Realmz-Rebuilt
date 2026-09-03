@@ -1,3 +1,5 @@
+## Coordinates application input router within application startup and host integration.
+
 class_name ApplicationInputRouter
 extends RefCounted
 

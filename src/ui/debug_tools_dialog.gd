@@ -1,3 +1,5 @@
+## Presents debug tools dialog through the Godot interface.
+
 class_name DebugToolsDialog
 extends PanelContainer
 

@@ -1,3 +1,5 @@
+## Persists and validates Classic starter character catalog data at the Character Files boundary.
+
 class_name ClassicStarterCharacterCatalog
 extends RefCounted
 

@@ -1,3 +1,5 @@
+## Implements the canonical json storage adapter.
+
 class_name CanonicalJson
 extends RefCounted
 

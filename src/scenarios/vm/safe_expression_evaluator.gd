@@ -1,3 +1,5 @@
+## Defines the safe expression evaluator contract for scenario execution.
+
 class_name SafeExpressionEvaluator
 extends RefCounted
 

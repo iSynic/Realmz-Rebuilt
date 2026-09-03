@@ -1,3 +1,5 @@
+## Presents the dynamic pick lock tumbler interaction without owning gameplay state.
+
 class_name PickLockTumbler
 extends Control
 

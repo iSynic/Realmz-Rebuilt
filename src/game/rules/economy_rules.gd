@@ -1,3 +1,5 @@
+## Implements deterministic economy rules without presentation dependencies.
+
 class_name EconomyRules
 extends RefCounted
 

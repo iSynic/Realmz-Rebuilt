@@ -1,3 +1,5 @@
+## Coordinates session scenario coordinator responsibilities behind the public session boundary.
+
 class_name SessionScenarioCoordinator
 extends RefCounted
 

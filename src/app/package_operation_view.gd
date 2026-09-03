@@ -1,3 +1,5 @@
+## Coordinates package operation view within application startup and host integration.
+
 class_name PackageOperationView
 extends RefCounted
 

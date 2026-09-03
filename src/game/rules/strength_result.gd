@@ -1,3 +1,5 @@
+## Implements deterministic strength result rules without presentation dependencies.
+
 class_name StrengthResult
 extends RefCounted
 

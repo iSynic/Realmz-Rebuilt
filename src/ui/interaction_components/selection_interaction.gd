@@ -1,3 +1,5 @@
+## Presents the dynamic selection interaction without owning gameplay state.
+
 class_name SelectionInteraction
 extends InteractionComponent
 

@@ -1,3 +1,5 @@
+## Presents Classic audio presenter through the Godot interface.
+
 class_name ClassicAudioPresenter
 extends Node
 

@@ -1,3 +1,5 @@
+## Defines the typed scenario VM directive boundary used by the scenario VM.
+
 class_name ScenarioVmDirective
 extends RefCounted
 

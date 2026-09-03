@@ -1,3 +1,5 @@
+## Defines the immutable race record loaded from campaign content.
+
 class_name RaceDefinition
 extends RefCounted
 

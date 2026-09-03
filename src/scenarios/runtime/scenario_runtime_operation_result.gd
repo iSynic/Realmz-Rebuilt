@@ -1,3 +1,5 @@
+## Defines the typed scenario runtime operation result boundary used by the scenario VM.
+
 class_name ScenarioRuntimeOperationResult
 extends RefCounted
 

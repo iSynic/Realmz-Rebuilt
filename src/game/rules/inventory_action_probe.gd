@@ -1,3 +1,5 @@
+## Implements deterministic inventory action probe rules without presentation dependencies.
+
 class_name InventoryActionProbe
 extends RefCounted
 

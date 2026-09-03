@@ -1,3 +1,5 @@
+## Defines immutable scenario action parameter data consumed by the scenario runtime.
+
 class_name ScenarioActionParameter
 extends RefCounted
 

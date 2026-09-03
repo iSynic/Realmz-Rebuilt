@@ -1,3 +1,5 @@
+## Implements deterministic inventory rules without presentation dependencies.
+
 class_name InventoryRules
 extends RefCounted
 

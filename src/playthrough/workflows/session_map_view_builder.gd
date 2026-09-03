@@ -1,3 +1,5 @@
+## Coordinates the session map view builder workflow against committed session state.
+
 class_name SessionMapViewBuilder
 extends RefCounted
 

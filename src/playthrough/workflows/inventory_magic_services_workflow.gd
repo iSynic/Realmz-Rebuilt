@@ -1,3 +1,5 @@
+## Coordinates the inventory magic services workflow against committed session state.
+
 class_name InventoryMagicServicesWorkflow
 extends RefCounted
 
@@ -707,7 +709,19 @@ static func _character_selection_request(request_id: String, character: Characte
 
 static func _spell_target_context(character: CharacterState, spell: SpellDefinition, power: int, target_count: int, source_kind: StringName) -> InteractionRequestValue.SpellTargetContext:
 	var result := InteractionRequestValue.SpellTargetContext.new()
-	result.actor_id = character.id; result.actor_name = character.name; result.spell_id = spell.id; result.spell_name = spell.name; result.description = spell.description; result.icon_resource_type = "cicn"; result.icon_id = spell.queue_icon; result.power = power; result.spell_point_cost = absi(spell.cost * power) if source_kind == &"field-spell" else 0; result.target_type = spell.target_type; result.target_size = spell.size; result.target_count = target_count; result.source_kind = source_kind
+	result.actor_id = character.id
+	result.actor_name = character.name
+	result.spell_id = spell.id
+	result.spell_name = spell.name
+	result.description = spell.description
+	result.icon_resource_type = "cicn"
+	result.icon_id = spell.queue_icon
+	result.power = power
+	result.spell_point_cost = absi(spell.cost * power) if source_kind == &"field-spell" else 0
+	result.target_type = spell.target_type
+	result.target_size = spell.size
+	result.target_count = target_count
+	result.source_kind = source_kind
 	return result
 
 

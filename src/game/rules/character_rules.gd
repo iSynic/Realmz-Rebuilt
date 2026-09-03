@@ -1,3 +1,5 @@
+## Implements deterministic character rules without presentation dependencies.
+
 class_name CharacterRules
 extends RefCounted
 
@@ -26,24 +28,58 @@ func strength_bonuses(brawn: int, maximum_damage_bonus: int) -> StrengthResult:
 		hit = -20
 	else:
 		match brawn:
-			4: hit = -15; damage = -1
-			5: hit = -10; damage = -1
+			4:
+				hit = -15
+				damage = -1
+			5:
+				hit = -10
+				damage = -1
 			6: hit = -5
-			16: hit = 5; damage = 1
-			17: hit = 5; damage = 2
-			18: hit = 10; damage = 2
-			19: hit = 10; damage = 3
-			20: hit = 15; damage = 3
-			21: hit = 15; damage = 4
-			22: hit = 20; damage = 4
-			23: hit = 20; damage = 5
-			24: hit = 25; damage = 5
-			25: hit = 25; damage = 6
-			26: hit = 30; damage = 6
-			27: hit = 30; damage = 7
-			28: hit = 35; damage = 7
-			29: hit = 35; damage = 8
-			30: hit = 40; damage = 8
+			16:
+				hit = 5
+				damage = 1
+			17:
+				hit = 5
+				damage = 2
+			18:
+				hit = 10
+				damage = 2
+			19:
+				hit = 10
+				damage = 3
+			20:
+				hit = 15
+				damage = 3
+			21:
+				hit = 15
+				damage = 4
+			22:
+				hit = 20
+				damage = 4
+			23:
+				hit = 20
+				damage = 5
+			24:
+				hit = 25
+				damage = 5
+			25:
+				hit = 25
+				damage = 6
+			26:
+				hit = 30
+				damage = 6
+			27:
+				hit = 30
+				damage = 7
+			28:
+				hit = 35
+				damage = 7
+			29:
+				hit = 35
+				damage = 8
+			30:
+				hit = 40
+				damage = 8
 	damage = mini(damage, maximum_damage_bonus)
 	return StrengthResult.new(hit, damage)
 

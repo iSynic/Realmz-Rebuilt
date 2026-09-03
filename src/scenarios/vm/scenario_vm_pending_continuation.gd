@@ -1,3 +1,5 @@
+## Defines the scenario VM pending continuation contract for scenario execution.
+
 class_name ScenarioVmPendingContinuation
 extends RefCounted
 

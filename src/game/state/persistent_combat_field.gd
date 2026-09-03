@@ -1,3 +1,5 @@
+## Stores mutable persistent combat field state inside a deterministic playthrough.
+
 class_name PersistentCombatField
 extends RefCounted
 

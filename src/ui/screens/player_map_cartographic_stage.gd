@@ -1,3 +1,5 @@
+## Owns player map cartographic stage presentation behavior for its scene-authored screen.
+
 class_name PlayerMapCartographicStage
 extends MarginContainer
 

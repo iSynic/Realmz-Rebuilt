@@ -1,3 +1,5 @@
+## Implements deterministic combat rules without presentation dependencies.
+
 class_name CombatRules
 extends RefCounted
 

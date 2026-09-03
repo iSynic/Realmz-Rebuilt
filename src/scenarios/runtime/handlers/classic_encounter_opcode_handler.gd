@@ -1,3 +1,5 @@
+## Executes the Classic encounter opcode handler family of validated Classic instructions.
+
 class_name ClassicEncounterOpcodeHandler
 extends ClassicOpcodeHandler
 

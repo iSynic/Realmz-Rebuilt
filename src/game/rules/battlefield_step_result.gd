@@ -1,3 +1,5 @@
+## Implements deterministic battlefield step result rules without presentation dependencies.
+
 class_name BattlefieldStepResult
 extends RefCounted
 

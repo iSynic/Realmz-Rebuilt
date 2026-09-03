@@ -1,3 +1,5 @@
+## Carries detached persistent combat field data from gameplay into presentation.
+
 class_name PersistentCombatFieldView
 extends RefCounted
 

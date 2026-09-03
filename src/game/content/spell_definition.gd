@@ -1,3 +1,5 @@
+## Defines the immutable spell record loaded from campaign content.
+
 class_name SpellDefinition
 extends RefCounted
 

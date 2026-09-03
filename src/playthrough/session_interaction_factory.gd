@@ -1,3 +1,5 @@
+## Defines the typed session interaction factory contract used by playthrough transactions.
+
 class_name SessionInteractionFactory
 extends RefCounted
 

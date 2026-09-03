@@ -1,3 +1,5 @@
+## Defines the pure gameplay land tile profile contract.
+
 class_name LandTileProfile
 extends RefCounted
 

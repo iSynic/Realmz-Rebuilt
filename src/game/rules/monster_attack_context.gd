@@ -1,3 +1,5 @@
+## Implements deterministic monster attack context rules without presentation dependencies.
+
 class_name MonsterAttackContext
 extends RefCounted
 

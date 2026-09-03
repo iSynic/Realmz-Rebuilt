@@ -1,3 +1,5 @@
+## Defines the immutable character appearance record loaded from campaign content.
+
 class_name CharacterAppearanceDefinition
 extends RefCounted
 

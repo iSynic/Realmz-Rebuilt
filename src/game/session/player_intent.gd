@@ -1,3 +1,5 @@
+## Carries typed player intent data across the gameplay transaction boundary.
+
 class_name PlayerIntent
 extends RefCounted
 

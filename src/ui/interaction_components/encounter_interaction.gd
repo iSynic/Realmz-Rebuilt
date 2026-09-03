@@ -1,3 +1,5 @@
+## Presents the dynamic encounter interaction without owning gameplay state.
+
 class_name EncounterInteraction
 extends InteractionComponent
 

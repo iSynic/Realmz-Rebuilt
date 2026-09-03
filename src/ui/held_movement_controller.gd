@@ -1,3 +1,5 @@
+## Presents held movement controller through the Godot interface.
+
 class_name HeldMovementController
 extends Node
 

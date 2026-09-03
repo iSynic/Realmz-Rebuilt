@@ -1,3 +1,5 @@
+## Presents presentation coordinator through the Godot interface.
+
 class_name PresentationCoordinator
 extends Node
 

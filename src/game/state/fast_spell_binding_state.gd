@@ -1,3 +1,5 @@
+## Stores mutable fast spell binding state inside a deterministic playthrough.
+
 class_name FastSpellBindingState
 extends RefCounted
 

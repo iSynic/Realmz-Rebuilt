@@ -1,3 +1,5 @@
+## Coordinates the session debug workflow against committed session state.
+
 class_name SessionDebugWorkflow
 extends RefCounted
 

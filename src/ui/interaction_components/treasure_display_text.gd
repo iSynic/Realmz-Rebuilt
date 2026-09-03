@@ -1,3 +1,5 @@
+## Presents the dynamic treasure display text interaction without owning gameplay state.
+
 class_name TreasureDisplayText
 extends RefCounted
 

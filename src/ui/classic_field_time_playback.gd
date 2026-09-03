@@ -1,3 +1,5 @@
+## Presents Classic field time playback through the Godot interface.
+
 class_name ClassicFieldTimePlayback
 extends RefCounted
 

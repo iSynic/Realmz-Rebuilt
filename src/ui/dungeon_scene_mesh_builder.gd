@@ -1,3 +1,5 @@
+## Presents dungeon scene mesh builder through the Godot interface.
+
 class_name DungeonSceneMeshBuilder
 extends RefCounted
 

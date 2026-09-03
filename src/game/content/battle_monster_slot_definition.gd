@@ -1,3 +1,5 @@
+## Defines the immutable battle monster slot record loaded from campaign content.
+
 class_name BattleMonsterSlotDefinition
 extends RefCounted
 

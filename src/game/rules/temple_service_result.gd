@@ -1,3 +1,5 @@
+## Implements deterministic temple service result rules without presentation dependencies.
+
 class_name TempleServiceResult
 extends RefCounted
 

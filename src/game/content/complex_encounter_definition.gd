@@ -1,3 +1,5 @@
+## Defines the immutable complex encounter record loaded from campaign content.
+
 class_name ComplexEncounterDefinition
 extends RefCounted
 

@@ -1,3 +1,5 @@
+## Binds detached Classic spell selection chrome data to scene-owned controls.
+
 class_name ClassicSpellSelectionChrome
 extends RefCounted
 

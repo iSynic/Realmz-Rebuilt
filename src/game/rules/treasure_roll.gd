@@ -1,3 +1,5 @@
+## Implements deterministic treasure roll rules without presentation dependencies.
+
 class_name TreasureRoll
 extends RefCounted
 

@@ -1,3 +1,5 @@
+## Presents UI route catalog through the Godot interface.
+
 class_name UiRouteCatalog
 extends RefCounted
 

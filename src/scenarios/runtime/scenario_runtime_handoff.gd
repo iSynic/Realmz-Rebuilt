@@ -1,3 +1,5 @@
+## Defines the typed scenario runtime handoff boundary used by the scenario VM.
+
 class_name ScenarioRuntimeHandoff
 extends RefCounted
 

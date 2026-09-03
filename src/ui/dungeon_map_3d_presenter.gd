@@ -1,3 +1,5 @@
+## Presents dungeon map 3d presenter through the Godot interface.
+
 class_name DungeonMap3DPresenter
 extends Control
 

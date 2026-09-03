@@ -1,3 +1,5 @@
+## Defines the pure gameplay Realmz clock contract.
+
 class_name RealmzClock
 extends RefCounted
 

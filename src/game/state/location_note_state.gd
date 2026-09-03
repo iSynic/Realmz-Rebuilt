@@ -1,3 +1,5 @@
+## Stores mutable location note state inside a deterministic playthrough.
+
 class_name LocationNoteState
 extends RefCounted
 

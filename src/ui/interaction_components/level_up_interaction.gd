@@ -1,3 +1,5 @@
+## Presents the dynamic level up interaction without owning gameplay state.
+
 class_name LevelUpInteraction
 extends InteractionComponent
 

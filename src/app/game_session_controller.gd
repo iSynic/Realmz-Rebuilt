@@ -1,3 +1,5 @@
+## Coordinates game session controller within application startup and host integration.
+
 class_name GameSessionController
 extends Node
 

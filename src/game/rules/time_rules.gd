@@ -1,3 +1,5 @@
+## Implements deterministic clock and fatigue rules without platform dependencies.
+
 class_name ClockRules
 extends RefCounted
 

@@ -1,3 +1,5 @@
+## Presents dungeon geometry projection through the Godot interface.
+
 class_name DungeonGeometryProjection
 extends RefCounted
 

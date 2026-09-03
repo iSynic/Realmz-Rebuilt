@@ -1,3 +1,5 @@
+## Binds detached party setup inspection data to scene-owned controls.
+
 class_name PartySetupInspectionController
 extends RefCounted
 

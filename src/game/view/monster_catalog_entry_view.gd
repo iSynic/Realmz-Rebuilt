@@ -1,3 +1,5 @@
+## Carries detached monster catalog entry data from gameplay into presentation.
+
 class_name MonsterCatalogEntryView
 extends RefCounted
 

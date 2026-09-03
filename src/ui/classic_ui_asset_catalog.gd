@@ -1,3 +1,5 @@
+## Presents Classic UI asset catalog through the Godot interface.
+
 class_name ClassicUiAssetCatalog
 extends RefCounted
 

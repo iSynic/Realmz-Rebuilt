@@ -1,3 +1,5 @@
+## Validates and loads package media validator resolver data at the immutable package boundary.
+
 class_name PackageMediaValidatorResolver
 extends PackageDecoderBase
 

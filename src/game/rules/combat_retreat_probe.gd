@@ -1,3 +1,5 @@
+## Implements deterministic combat retreat probe rules without presentation dependencies.
+
 class_name CombatRetreatProbe
 extends RefCounted
 

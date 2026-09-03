@@ -1,3 +1,5 @@
+## Carries detached party summary data from gameplay into presentation.
+
 class_name PartySummaryView
 extends RefCounted
 

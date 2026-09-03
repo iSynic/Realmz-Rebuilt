@@ -1,3 +1,5 @@
+## Owns screen frame presentation behavior for its scene-authored screen.
+
 class_name ScreenFrame
 extends PanelContainer
 

@@ -1,3 +1,5 @@
+## Carries detached player map data from gameplay into presentation.
+
 class_name PlayerMapView
 extends RefCounted
 

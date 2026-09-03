@@ -1,3 +1,5 @@
+## Defines the scenario VM result contract for scenario execution.
+
 class_name ScenarioVmResult
 extends RefCounted
 

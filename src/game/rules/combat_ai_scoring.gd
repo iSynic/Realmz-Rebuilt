@@ -1,3 +1,5 @@
+## Implements deterministic combat AI scoring rules without presentation dependencies.
+
 class_name CombatAiScoring
 extends RefCounted
 

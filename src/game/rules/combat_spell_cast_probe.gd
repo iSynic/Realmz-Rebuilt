@@ -1,3 +1,5 @@
+## Implements deterministic combat spell cast probe rules without presentation dependencies.
+
 class_name CombatSpellCastProbe
 extends RefCounted
 

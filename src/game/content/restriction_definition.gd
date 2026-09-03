@@ -1,3 +1,5 @@
+## Defines the immutable restriction record loaded from campaign content.
+
 class_name RestrictionDefinition
 extends RefCounted
 

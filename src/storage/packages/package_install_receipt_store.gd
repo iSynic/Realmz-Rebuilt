@@ -1,3 +1,5 @@
+## Validates and loads package install receipt store data at the immutable package boundary.
+
 class_name PackageInstallReceiptStore
 extends RefCounted
 

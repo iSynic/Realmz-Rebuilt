@@ -1,3 +1,5 @@
+## Carries detached fast spell binding data from gameplay into presentation.
+
 class_name FastSpellBindingView
 extends RefCounted
 

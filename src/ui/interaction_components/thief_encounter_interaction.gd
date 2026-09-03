@@ -1,3 +1,5 @@
+## Presents the dynamic thief encounter interaction without owning gameplay state.
+
 class_name ThiefEncounterInteraction
 extends InteractionComponent
 

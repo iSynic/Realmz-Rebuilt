@@ -1,3 +1,5 @@
+## Presents Classic battlefield presenter through the Godot interface.
+
 class_name ClassicBattlefieldPresenter
 extends Control
 

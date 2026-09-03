@@ -1,3 +1,5 @@
+## Validates and loads package manifest discovery data at the immutable package boundary.
+
 class_name PackageManifestDiscovery
 extends RefCounted
 

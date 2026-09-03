@@ -1,3 +1,5 @@
+## Stores mutable party state inside a deterministic playthrough.
+
 class_name PartyState
 extends RefCounted
 

@@ -1,3 +1,5 @@
+## Implements deterministic character aging result rules without presentation dependencies.
+
 class_name CharacterAgingResult
 extends RefCounted
 

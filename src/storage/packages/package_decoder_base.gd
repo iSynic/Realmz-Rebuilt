@@ -1,3 +1,5 @@
+## Validates and loads package decoder base data at the immutable package boundary.
+
 class_name PackageDecoderBase
 extends RefCounted
 

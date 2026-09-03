@@ -1,3 +1,5 @@
+## Owns Classic scrolling text surface presentation behavior for its scene-authored screen.
+
 class_name ClassicScrollingTextSurface
 extends PanelContainer
 

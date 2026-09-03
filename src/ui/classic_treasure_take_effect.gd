@@ -1,3 +1,5 @@
+## Presents Classic treasure take effect through the Godot interface.
+
 class_name ClassicTreasureTakeEffect
 extends Control
 

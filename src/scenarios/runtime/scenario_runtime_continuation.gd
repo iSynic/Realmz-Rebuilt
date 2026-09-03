@@ -1,3 +1,5 @@
+## Defines the typed scenario runtime continuation boundary used by the scenario VM.
+
 class_name ScenarioRuntimeContinuation
 extends RefCounted
 

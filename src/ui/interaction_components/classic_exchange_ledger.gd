@@ -1,3 +1,5 @@
+## Presents the dynamic Classic exchange ledger interaction without owning gameplay state.
+
 class_name ClassicExchangeLedger
 extends PanelContainer
 

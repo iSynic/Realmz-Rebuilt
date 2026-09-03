@@ -1,3 +1,5 @@
+## Presents Classic torch command button through the Godot interface.
+
 class_name ClassicTorchCommandButton
 extends BaseButton
 

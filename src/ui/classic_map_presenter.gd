@@ -1,3 +1,5 @@
+## Presents Classic map presenter through the Godot interface.
+
 class_name ClassicMapPresenter
 extends Control
 
@@ -178,9 +180,11 @@ func _update_visibility_cache(map_view: MapView) -> void:
 	var visited: Array[Vector2i] = []
 	var seen: Array[Vector2i] = []
 	if can_append_delta:
-		visited.assign(delta.newly_visited); seen.assign(delta.newly_seen)
+		visited.assign(delta.newly_visited)
+		seen.assign(delta.newly_seen)
 	else:
-		visited = map_view.visited_coordinates(); seen = map_view.seen_coordinates()
+		visited = map_view.visited_coordinates()
+		seen = map_view.seen_coordinates()
 	for coordinate: Vector2i in visited:
 		if _visited_coordinate_cache.has(coordinate):
 			continue
@@ -212,9 +216,15 @@ func _update_visible_cell_cache(map_view: MapView) -> void:
 			var coordinate := Vector2i(x, y)
 			var cell := previous.get(coordinate) as MapCellView
 			if cell == null or changed.has(coordinate): cell = map_view.cell_at(coordinate)
-			if cell != null: next_by_coordinate[coordinate] = cell; next_cells.append(cell)
-	_visible_cache_map_id = map_view.map_id; _visible_cache_camera = camera; _visible_cache_size = viewport_size; _visible_cache_party_coordinate = map_view.party_coordinate
-	_visible_cells_by_coordinate = next_by_coordinate; _visible_cell_cache = next_cells
+			if cell != null:
+				next_by_coordinate[coordinate] = cell
+				next_cells.append(cell)
+	_visible_cache_map_id = map_view.map_id
+	_visible_cache_camera = camera
+	_visible_cache_size = viewport_size
+	_visible_cache_party_coordinate = map_view.party_coordinate
+	_visible_cells_by_coordinate = next_by_coordinate
+	_visible_cell_cache = next_cells
 
 
 func set_media_catalog(media: ClassicMediaCatalog) -> void:

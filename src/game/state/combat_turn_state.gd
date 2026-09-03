@@ -1,3 +1,5 @@
+## Stores mutable combat turn state inside a deterministic playthrough.
+
 class_name CombatTurnState
 extends RefCounted
 

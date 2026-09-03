@@ -1,3 +1,5 @@
+## Implements deterministic monster polymorph context rules without presentation dependencies.
+
 class_name MonsterPolymorphContext
 extends RefCounted
 

@@ -1,3 +1,5 @@
+## Implements deterministic spell resolution rules without presentation dependencies.
+
 class_name SpellResolution
 extends RefCounted
 

@@ -1,3 +1,5 @@
+## Stores mutable game state inside a deterministic playthrough.
+
 class_name GameState
 extends RefCounted
 
@@ -638,7 +640,8 @@ static func _restore_location_settings(state: GameState, data: Dictionary) -> bo
 		var bookmark: Variant = data["partyPositionBookmark"]
 		if not bookmark is Dictionary or bookmark.size() != 4 or not bookmark.get("mapId") is String or bookmark["mapId"].is_empty() or bookmark.get("levelType") not in ["land", "dungeon"]:
 			return false
-		var bookmark_x := _signed_integer(bookmark.get("x")); var bookmark_y := _signed_integer(bookmark.get("y"))
+		var bookmark_x := _signed_integer(bookmark.get("x"))
+		var bookmark_y := _signed_integer(bookmark.get("y"))
 		if bookmark_x < 0 or bookmark_y < 0:
 			return false
 		state.saved_party_map_id = bookmark["mapId"]

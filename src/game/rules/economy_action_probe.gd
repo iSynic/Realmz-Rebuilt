@@ -1,3 +1,5 @@
+## Implements deterministic economy action probe rules without presentation dependencies.
+
 class_name EconomyActionProbe
 extends RefCounted
 

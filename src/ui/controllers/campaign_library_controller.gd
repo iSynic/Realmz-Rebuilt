@@ -1,3 +1,5 @@
+## Binds detached campaign library data to scene-owned controls.
+
 class_name CampaignLibraryController
 extends RefCounted
 

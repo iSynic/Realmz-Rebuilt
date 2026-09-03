@@ -1,3 +1,5 @@
+## Defines immutable call scenario action instruction data consumed by the scenario runtime.
+
 class_name CallScenarioActionInstruction
 extends RefCounted
 

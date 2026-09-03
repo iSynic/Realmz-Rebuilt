@@ -1,3 +1,5 @@
+## Carries typed view domain revisions data across the gameplay transaction boundary.
+
 class_name ViewDomainRevisions
 extends RefCounted
 

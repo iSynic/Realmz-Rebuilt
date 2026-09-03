@@ -1,3 +1,5 @@
+## Carries detached journal entry data from gameplay into presentation.
+
 class_name JournalEntryView
 extends RefCounted
 

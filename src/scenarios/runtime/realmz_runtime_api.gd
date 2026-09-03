@@ -1,3 +1,5 @@
+## Defines the typed Realmz runtime API boundary used by the scenario VM.
+
 class_name RealmzRuntimeApi
 extends RefCounted
 

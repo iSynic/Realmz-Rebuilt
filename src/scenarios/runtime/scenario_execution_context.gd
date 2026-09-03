@@ -1,3 +1,5 @@
+## Defines the typed scenario execution context boundary used by the scenario VM.
+
 class_name ScenarioExecutionContext
 extends RefCounted
 

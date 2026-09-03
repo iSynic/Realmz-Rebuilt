@@ -1,3 +1,5 @@
+## Presents the dynamic pick lock interaction without owning gameplay state.
+
 class_name PickLockInteraction
 extends InteractionComponent
 

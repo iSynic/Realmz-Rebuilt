@@ -1,3 +1,5 @@
+## Implements deterministic combat flow spell rollback rules without presentation dependencies.
+
 class_name CombatFlowSpellRollback
 extends RefCounted
 

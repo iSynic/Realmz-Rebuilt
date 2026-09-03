@@ -1,3 +1,5 @@
+## Implements deterministic projectile resolution rules without presentation dependencies.
+
 class_name ProjectileResolution
 extends RefCounted
 

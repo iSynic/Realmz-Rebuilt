@@ -1,3 +1,5 @@
+## Presents the dynamic shop interaction without owning gameplay state.
+
 class_name ShopInteraction
 extends InteractionComponent
 
@@ -285,7 +287,10 @@ func _build_footer() -> void:
 	_buy_button = _action_button("ShopBuy", "Buy", _submit_buy)
 	_sell_button = _action_button("ShopSellSelected", "Sell", _submit_sell)
 	_identify_button = _action_button("ShopIdentify", "Identify", _submit_identify)
-	for button: Button in [_buy_button, _sell_button, _identify_button]: button.custom_minimum_size = Vector2(44.0, 22.0) if _compact else Vector2(52.0, 24.0); button.size_flags_vertical = Control.SIZE_SHRINK_CENTER; actions.add_child(button)
+	for button: Button in [_buy_button, _sell_button, _identify_button]:
+		button.custom_minimum_size = Vector2(44.0, 22.0) if _compact else Vector2(52.0, 24.0)
+		button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		actions.add_child(button)
 	footer.add_child(_build_shopper_selector(true))
 	var right_controls := HBoxContainer.new()
 	right_controls.name = "ShopRightControls"

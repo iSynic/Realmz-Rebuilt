@@ -1,3 +1,5 @@
+## Validates and loads package graph cache data at the immutable package boundary.
+
 class_name PackageGraphCache
 extends RefCounted
 

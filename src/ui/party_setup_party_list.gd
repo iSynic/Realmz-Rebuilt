@@ -1,3 +1,5 @@
+## Presents party setup party list through the Godot interface.
+
 class_name PartySetupPartyList
 extends VBoxContainer
 

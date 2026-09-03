@@ -1,3 +1,5 @@
+## Defines the immutable item record loaded from campaign content.
+
 class_name ItemDefinition
 extends RefCounted
 

@@ -1,3 +1,5 @@
+## Presents Classic party effects through the Godot interface.
+
 class_name ClassicPartyEffects
 extends RefCounted
 

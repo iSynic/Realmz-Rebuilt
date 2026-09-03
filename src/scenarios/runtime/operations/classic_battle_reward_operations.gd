@@ -1,3 +1,5 @@
+## Coordinates Classic battle reward operations operations for the validated scenario runtime.
+
 class_name ClassicBattleRewardOperations
 extends ClassicOpcodeHandler
 

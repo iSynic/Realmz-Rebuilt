@@ -1,3 +1,5 @@
+## Coordinates the lifecycle party workflow against committed session state.
+
 class_name LifecyclePartyWorkflow
 extends RefCounted
 

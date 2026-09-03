@@ -1,3 +1,5 @@
+## Stores mutable combat undo state inside a deterministic playthrough.
+
 class_name CombatUndoState
 extends RefCounted
 

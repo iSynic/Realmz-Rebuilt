@@ -1,3 +1,5 @@
+## Carries detached battlefield data from gameplay into presentation.
+
 class_name BattlefieldView
 extends RefCounted
 

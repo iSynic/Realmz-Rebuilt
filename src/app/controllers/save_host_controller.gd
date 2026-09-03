@@ -1,3 +1,5 @@
+## Coordinates save host services at the application boundary.
+
 class_name SaveHostController
 extends RefCounted
 

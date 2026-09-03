@@ -1,3 +1,5 @@
+## Coordinates startup route bridge within application startup and host integration.
+
 class_name StartupRouteBridge
 extends Node
 

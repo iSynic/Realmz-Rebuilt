@@ -1,3 +1,5 @@
+## Presents the dynamic lifecycle interaction without owning gameplay state.
+
 extends InteractionComponent
 
 var _can_cancel: bool = false

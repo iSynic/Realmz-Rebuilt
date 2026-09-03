@@ -1,3 +1,5 @@
+## Carries detached combat scroll option data from gameplay into presentation.
+
 class_name CombatScrollOptionView
 extends CombatSpellOptionView
 

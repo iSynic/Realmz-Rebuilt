@@ -1,3 +1,5 @@
+## Implements deterministic monster rules without presentation dependencies.
+
 class_name MonsterRules
 extends RefCounted
 

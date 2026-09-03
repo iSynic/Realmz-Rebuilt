@@ -1,3 +1,5 @@
+## Presents the dynamic fast spell dock interaction without owning gameplay state.
+
 class_name FastSpellDock
 extends PanelContainer
 

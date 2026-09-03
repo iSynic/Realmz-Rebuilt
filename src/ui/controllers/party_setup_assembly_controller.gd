@@ -1,3 +1,5 @@
+## Binds detached party setup assembly data to scene-owned controls.
+
 class_name PartySetupAssemblyController
 extends "res://src/ui/controllers/party_setup_controller_component.gd"
 
@@ -39,10 +41,16 @@ func _refresh_party_list() -> void:
 func _ensure_party_slots() -> void:
 	if _party_slots_owner == party_list and _party_slots.size() == _maximum_party_size():
 		return
-	_clear(party_list); _party_slots.clear(); _party_slots_owner = party_list
+	_clear(party_list)
+	_party_slots.clear()
+	_party_slots_owner = party_list
 	for slot_index: int in _maximum_party_size():
 		var slot := PartySetupPartySlotScript.new() as Control
-		slot.name = "PartySlot%d" % (slot_index + 1); slot.inspect_requested.connect(_inspect_setup_character); slot.remove_requested.connect(_remove_setup_character); party_list.add_child(slot); _party_slots.append(slot)
+		slot.name = "PartySlot%d" % (slot_index + 1)
+		slot.inspect_requested.connect(_inspect_setup_character)
+		slot.remove_requested.connect(_remove_setup_character)
+		party_list.add_child(slot)
+		_party_slots.append(slot)
 
 func _render_party_assembly() -> void:
 	var campaign_setup := view != null and view.party_setup_available and not standalone_character_creation_active

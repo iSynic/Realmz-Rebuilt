@@ -1,3 +1,5 @@
+## Validates and loads bundled package load task data at the immutable package boundary.
+
 class_name BundledPackageLoadTask
 extends RefCounted
 

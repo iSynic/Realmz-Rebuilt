@@ -1,3 +1,5 @@
+## Implements deterministic projectile attack profile rules without presentation dependencies.
+
 class_name ProjectileAttackProfile
 extends RefCounted
 

@@ -1,3 +1,5 @@
+## Coordinates character creation host services at the application boundary.
+
 class_name CharacterCreationHostController
 extends RefCounted
 

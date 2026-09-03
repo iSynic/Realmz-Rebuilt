@@ -1,3 +1,5 @@
+## Stores mutable wealth state inside a deterministic playthrough.
+
 class_name WealthState
 extends RefCounted
 

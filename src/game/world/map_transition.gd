@@ -1,3 +1,5 @@
+## Defines the pure gameplay map transition contract.
+
 class_name MapTransition
 extends RefCounted
 

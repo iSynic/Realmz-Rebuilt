@@ -1,3 +1,5 @@
+## Presents Classic command catalog through the Godot interface.
+
 class_name ClassicCommandCatalog
 extends RefCounted
 

@@ -1,3 +1,5 @@
+## Defines the immutable thief encounter record loaded from campaign content.
+
 class_name ThiefEncounterDefinition
 extends RefCounted
 

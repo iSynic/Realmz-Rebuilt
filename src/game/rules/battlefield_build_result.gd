@@ -1,3 +1,5 @@
+## Implements deterministic battlefield build result rules without presentation dependencies.
+
 class_name BattlefieldBuildResult
 extends RefCounted
 

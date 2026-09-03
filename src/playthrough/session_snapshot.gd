@@ -1,3 +1,5 @@
+## Defines the typed session snapshot contract used by playthrough transactions.
+
 class_name SessionSnapshot
 extends RefCounted
 

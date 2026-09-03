@@ -1,3 +1,5 @@
+## Implements deterministic combat flow summoning rules without presentation dependencies.
+
 class_name CombatFlowSummoning
 extends RefCounted
 

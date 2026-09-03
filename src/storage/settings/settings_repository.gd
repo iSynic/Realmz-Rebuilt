@@ -1,3 +1,5 @@
+## Persists and validates settings repository host settings.
+
 class_name SettingsRepository
 extends RefCounted
 

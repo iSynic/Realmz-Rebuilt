@@ -1,3 +1,5 @@
+## Presents Classic content icon through the Godot interface.
+
 class_name ClassicContentIcon
 extends CenterContainer
 

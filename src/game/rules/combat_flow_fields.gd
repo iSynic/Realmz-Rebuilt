@@ -1,3 +1,5 @@
+## Implements deterministic combat flow fields rules without presentation dependencies.
+
 class_name CombatFlowFields
 extends RefCounted
 

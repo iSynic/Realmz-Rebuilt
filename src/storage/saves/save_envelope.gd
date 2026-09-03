@@ -1,3 +1,5 @@
+## Persists and validates save envelope data at the save boundary.
+
 class_name SaveEnvelope
 extends SessionSnapshot
 

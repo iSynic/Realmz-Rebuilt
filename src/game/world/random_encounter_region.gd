@@ -1,3 +1,5 @@
+## Defines the pure gameplay random encounter region contract.
+
 class_name RandomEncounterRegion
 extends RefCounted
 

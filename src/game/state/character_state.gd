@@ -1,3 +1,5 @@
+## Stores mutable character state inside a deterministic playthrough.
+
 class_name CharacterState
 extends RefCounted
 

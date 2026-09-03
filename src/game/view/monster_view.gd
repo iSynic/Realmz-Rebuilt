@@ -1,3 +1,5 @@
+## Carries detached monster data from gameplay into presentation.
+
 class_name MonsterView
 extends RefCounted
 

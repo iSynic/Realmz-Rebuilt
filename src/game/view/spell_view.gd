@@ -1,3 +1,5 @@
+## Carries detached spell data from gameplay into presentation.
+
 class_name SpellView
 extends RefCounted
 
@@ -43,14 +45,40 @@ var structural_scroll_power_levels: Array[int] = []
 
 func _init(definition: SpellDefinition, reusable: SpellView = null) -> void:
 	if reusable != null:
-		id = reusable.id; classic_id = reusable.classic_id; name = reusable.name; cost = reusable.cost; description = reusable.description; spell_class = reusable.spell_class
-		range_min = reusable.range_min; range_max = reusable.range_max; duration_min = reusable.duration_min; duration_max = reusable.duration_max
-		damage_min = reusable.damage_min; damage_max = reusable.damage_max; power_damage_min = reusable.power_damage_min; power_damage_max = reusable.power_damage_max
-		power_duration_min = reusable.power_duration_min; power_duration_max = reusable.power_duration_max; target_type = reusable.target_type; fixed_target_count = reusable.fixed_target_count
-		target_size = reusable.target_size; can_rotate = reusable.can_rotate; damage_type = reusable.damage_type; save_bonus = reusable.save_bonus; save_adjust = reusable.save_adjust
-		resistance_adjust = reusable.resistance_adjust; cannot = reusable.cannot; castable_in_combat = reusable.castable_in_combat; castable_in_camp = reusable.castable_in_camp
-		icon_id = reusable.icon_id; icon_resource_type = reusable.icon_resource_type; animation_resource_type = reusable.animation_resource_type; animation_resource_ids = reusable.animation_resource_ids
-		combat_cast = reusable.combat_cast; field_cast = reusable.field_cast; make_scroll = reusable.make_scroll
+		id = reusable.id
+		classic_id = reusable.classic_id
+		name = reusable.name
+		cost = reusable.cost
+		description = reusable.description
+		spell_class = reusable.spell_class
+		range_min = reusable.range_min
+		range_max = reusable.range_max
+		duration_min = reusable.duration_min
+		duration_max = reusable.duration_max
+		damage_min = reusable.damage_min
+		damage_max = reusable.damage_max
+		power_damage_min = reusable.power_damage_min
+		power_damage_max = reusable.power_damage_max
+		power_duration_min = reusable.power_duration_min
+		power_duration_max = reusable.power_duration_max
+		target_type = reusable.target_type
+		fixed_target_count = reusable.fixed_target_count
+		target_size = reusable.target_size
+		can_rotate = reusable.can_rotate
+		damage_type = reusable.damage_type
+		save_bonus = reusable.save_bonus
+		save_adjust = reusable.save_adjust
+		resistance_adjust = reusable.resistance_adjust
+		cannot = reusable.cannot
+		castable_in_combat = reusable.castable_in_combat
+		castable_in_camp = reusable.castable_in_camp
+		icon_id = reusable.icon_id
+		icon_resource_type = reusable.icon_resource_type
+		animation_resource_type = reusable.animation_resource_type
+		animation_resource_ids = reusable.animation_resource_ids
+		combat_cast = reusable.combat_cast
+		field_cast = reusable.field_cast
+		make_scroll = reusable.make_scroll
 		power_levels = reusable.power_levels.duplicate()
 		structural_power_levels = reusable.structural_power_levels.duplicate()
 		scroll_power_levels = reusable.scroll_power_levels.duplicate()

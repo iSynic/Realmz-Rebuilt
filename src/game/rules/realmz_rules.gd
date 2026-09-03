@@ -1,3 +1,5 @@
+## Implements deterministic Realmz rules without presentation dependencies.
+
 class_name RealmzRules
 extends RefCounted
 

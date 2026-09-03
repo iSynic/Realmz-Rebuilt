@@ -1,3 +1,5 @@
+## Validates and loads package document cache data at the immutable package boundary.
+
 class_name PackageDocumentCache
 extends RefCounted
 

@@ -1,3 +1,5 @@
+## Carries typed game view data across the gameplay transaction boundary.
+
 class_name GameView
 extends RefCounted
 

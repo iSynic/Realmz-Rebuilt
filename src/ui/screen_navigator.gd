@@ -1,3 +1,5 @@
+## Presents screen navigator through the Godot interface.
+
 class_name ScreenNavigator
 extends Control
 

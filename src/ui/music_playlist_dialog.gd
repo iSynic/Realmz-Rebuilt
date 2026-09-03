@@ -1,3 +1,5 @@
+## Presents music playlist dialog through the Godot interface.
+
 class_name MusicPlaylistDialog
 extends Control
 

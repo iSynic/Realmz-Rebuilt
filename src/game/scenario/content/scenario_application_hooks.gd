@@ -1,3 +1,5 @@
+## Defines immutable scenario application hooks data consumed by the scenario runtime.
+
 class_name ScenarioApplicationHooks
 extends RefCounted
 

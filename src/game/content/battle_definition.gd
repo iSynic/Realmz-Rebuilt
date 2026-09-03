@@ -1,3 +1,5 @@
+## Defines the immutable battle record loaded from campaign content.
+
 class_name BattleDefinition
 extends RefCounted
 

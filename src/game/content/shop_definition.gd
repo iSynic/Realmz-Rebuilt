@@ -1,3 +1,5 @@
+## Defines the immutable shop record loaded from campaign content.
+
 class_name ShopDefinition
 extends RefCounted
 

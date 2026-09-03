@@ -1,3 +1,5 @@
+## Validates and loads package cross reference validator data at the immutable package boundary.
+
 class_name PackageCrossReferenceValidator
 extends PackageDecoderBase
 

@@ -1,3 +1,5 @@
+## Implements deterministic combat spell event builder rules without presentation dependencies.
+
 class_name CombatSpellEventBuilder
 extends RefCounted
 

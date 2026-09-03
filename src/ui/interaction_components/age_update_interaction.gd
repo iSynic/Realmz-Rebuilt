@@ -1,3 +1,5 @@
+## Presents the dynamic age update interaction without owning gameplay state.
+
 class_name AgeUpdateInteraction
 extends InteractionComponent
 

@@ -1,3 +1,5 @@
+## Defines the scenario frame contract for scenario execution.
+
 class_name ScenarioFrame
 extends RefCounted
 

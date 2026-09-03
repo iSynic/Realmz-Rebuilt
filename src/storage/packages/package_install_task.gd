@@ -1,3 +1,5 @@
+## Validates and loads package install task data at the immutable package boundary.
+
 class_name PackageInstallTask
 extends RefCounted
 

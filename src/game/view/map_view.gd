@@ -1,3 +1,5 @@
+## Carries detached map data from gameplay into presentation.
+
 class_name MapView
 extends RefCounted
 
@@ -149,7 +151,8 @@ func _flatten_visibility() -> void:
 	_visited_coordinates = _materialize_coordinates(true)
 	_seen_coordinates = _materialize_coordinates(false)
 	_visibility_parent = null
-	_visited_coordinate_set.clear(); _seen_coordinate_set.clear()
+	_visited_coordinate_set.clear()
+	_seen_coordinate_set.clear()
 	for coordinate: Vector2i in _visited_coordinates: _visited_coordinate_set[coordinate] = true
 	for coordinate: Vector2i in _seen_coordinates: _seen_coordinate_set[coordinate] = true
 

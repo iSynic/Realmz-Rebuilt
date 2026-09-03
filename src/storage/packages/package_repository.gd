@@ -1,3 +1,5 @@
+## Validates and loads package repository data at the immutable package boundary.
+
 class_name PackageRepository
 extends RefCounted
 

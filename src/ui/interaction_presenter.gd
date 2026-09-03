@@ -1,3 +1,5 @@
+## Presents interaction presenter through the Godot interface.
+
 class_name InteractionPresenter
 extends PanelContainer
 

@@ -1,3 +1,5 @@
+## Validates and loads package install result data at the immutable package boundary.
+
 class_name PackageInstallResult
 extends RefCounted
 

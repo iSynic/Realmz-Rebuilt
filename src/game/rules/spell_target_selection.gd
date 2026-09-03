@@ -1,3 +1,5 @@
+## Implements deterministic spell target selection rules without presentation dependencies.
+
 class_name SpellTargetSelection
 extends RefCounted
 

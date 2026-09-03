@@ -1,3 +1,5 @@
+## Implements deterministic level up result rules without presentation dependencies.
+
 class_name LevelUpResult
 extends RefCounted
 

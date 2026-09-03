@@ -1,3 +1,5 @@
+## Presents Classic bitmap button through the Godot interface.
+
 class_name ClassicBitmapButton
 extends TextureButton
 
@@ -31,9 +33,14 @@ func _ready() -> void:
 	mouse_exited.connect(queue_redraw)
 	focus_entered.connect(queue_redraw)
 	focus_exited.connect(queue_redraw)
-	button_down.connect(func() -> void: _physical_pressed = true; queue_redraw())
-	button_up.connect(func() -> void: _physical_pressed = false; queue_redraw())
+	button_down.connect(func() -> void: _set_physical_pressed(true))
+	button_up.connect(func() -> void: _set_physical_pressed(false))
 	pressed.connect(func() -> void: command_requested.emit(command_id))
+
+
+func _set_physical_pressed(pressed: bool) -> void:
+	_physical_pressed = pressed
+	queue_redraw()
 
 
 func configure(definition: Dictionary, art_scale: int = 1) -> void:

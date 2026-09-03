@@ -1,3 +1,5 @@
+## Defines the scenario action state contract for scenario execution.
+
 class_name ScenarioActionState
 extends RefCounted
 

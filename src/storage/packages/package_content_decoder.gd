@@ -1,3 +1,5 @@
+## Validates and loads package content decoder data at the immutable package boundary.
+
 class_name PackageContentDecoder
 extends PackageDecoderBase
 

@@ -1,3 +1,5 @@
+## Defines immutable safe expression definition data consumed by the scenario runtime.
+
 class_name SafeExpressionDefinition
 extends RefCounted
 

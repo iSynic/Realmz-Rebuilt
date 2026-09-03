@@ -1,3 +1,5 @@
+## Implements deterministic temple rules without presentation dependencies.
+
 class_name TempleRules
 extends RefCounted
 

@@ -1,3 +1,5 @@
+## Defines the typed Classic opcode handler boundary used by the scenario VM.
+
 class_name ClassicOpcodeHandler
 extends RefCounted
 

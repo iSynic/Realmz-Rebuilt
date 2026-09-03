@@ -1,3 +1,5 @@
+## Defines the immutable simple encounter response record loaded from campaign content.
+
 class_name SimpleEncounterResponse
 extends RefCounted
 

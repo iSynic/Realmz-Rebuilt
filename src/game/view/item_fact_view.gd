@@ -1,3 +1,5 @@
+## Carries detached item fact data from gameplay into presentation.
+
 class_name ItemFactView
 extends RefCounted
 

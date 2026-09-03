@@ -1,3 +1,5 @@
+## Binds detached inventory item text data to scene-owned controls.
+
 class_name InventoryItemText
 extends RefCounted
 

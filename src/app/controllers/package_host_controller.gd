@@ -1,3 +1,5 @@
+## Coordinates package host services at the application boundary.
+
 class_name PackageHostController
 extends RefCounted
 

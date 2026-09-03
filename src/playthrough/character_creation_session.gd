@@ -1,3 +1,5 @@
+## Defines the typed character creation session contract used by playthrough transactions.
+
 class_name CharacterCreationSession
 extends RefCounted
 

@@ -1,3 +1,5 @@
+## Binds detached inventory view queries data to scene-owned controls.
+
 class_name InventoryViewQueries
 extends RefCounted
 

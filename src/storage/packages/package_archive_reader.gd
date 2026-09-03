@@ -1,3 +1,5 @@
+## Validates and loads package archive reader data at the immutable package boundary.
+
 class_name PackageArchiveReader
 extends RefCounted
 

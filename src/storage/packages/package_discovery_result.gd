@@ -1,3 +1,5 @@
+## Validates and loads package discovery result data at the immutable package boundary.
+
 class_name PackageDiscoveryResult
 extends RefCounted
 

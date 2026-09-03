@@ -1,3 +1,5 @@
+## Carries detached spell scroll data from gameplay into presentation.
+
 class_name SpellScrollView
 extends RefCounted
 

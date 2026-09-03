@@ -1,3 +1,5 @@
+## Presents Classic music catalog through the Godot interface.
+
 class_name ClassicMusicCatalog
 extends RefCounted
 

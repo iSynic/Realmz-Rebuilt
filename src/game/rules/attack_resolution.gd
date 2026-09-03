@@ -1,3 +1,5 @@
+## Implements deterministic attack resolution rules without presentation dependencies.
+
 class_name AttackResolution
 extends RefCounted
 

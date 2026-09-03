@@ -1,3 +1,5 @@
+## Presents Classic spell effect preview through the Godot interface.
+
 class_name ClassicSpellEffectPreview
 extends PanelContainer
 

@@ -1,3 +1,5 @@
+## Defines the pure gameplay media asset contract.
+
 class_name MediaAsset
 extends RefCounted
 

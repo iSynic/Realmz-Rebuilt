@@ -1,3 +1,5 @@
+## Defines the scenario VM snapshot contract for scenario execution.
+
 class_name ScenarioVmSnapshot
 extends RefCounted
 

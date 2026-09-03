@@ -1,3 +1,5 @@
+## Defines the typed session debug command contract used by playthrough transactions.
+
 class_name SessionDebugCommand
 extends RefCounted
 
