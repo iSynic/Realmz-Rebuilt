@@ -47,9 +47,9 @@
     {
       "path": "src/ui/controllers/character_screen_controller.gd",
       "kind": "data-collection",
-      "reason": "The Character and Character Files scenes own stable regions; these functions populate revision, party-order, and history records.",
-      "currentMaximum": 36,
-      "functions": ["_add_card", "_add_section_heading", "_label", "_render_party_order", "_render_party_order_summary", "_render_vault_current_row", "_render_vault_history", "_render_vault_inspection", "_vault_import_button", "present_vault"]
+      "reason": "The Character scene owns its party-order and character-sheet hierarchy; the remaining functions project variable Character File revisions, history, and inspection records during the vault migration.",
+      "currentMaximum": 24,
+      "functions": ["_add_card", "_label", "_render_vault_current_row", "_render_vault_history", "_render_vault_inspection", "_vault_import_button", "present_vault"]
     },
     {
       "path": "src/ui/controllers/classic_definition_toggle_list.gd",
@@ -173,9 +173,9 @@
     {
       "path": "src/ui/screens/classic_character_sheet.gd",
       "kind": "request-workspace",
-      "reason": "The reusable character sheet changes its tabs, editable fields, metric cards, item rows, spells, conditions, and background record by mode and detached character.",
-      "currentMaximum": 57,
-      "functions": ["_add_card", "_add_heading", "_add_metric_region", "_add_metric_views", "_appearance", "_appearance_picker", "_build_abilities", "_build_appearance", "_build_background", "_build_background_region", "_build_character_picker", "_build_conditions", "_build_equipment", "_build_identity", "_build_item_region", "_build_overview", "_build_record", "_build_spells", "_build_tabs", "_character_spell_card", "_equipment_item_card", "_label", "_media_icon", "_rebuild", "_spell_region"]
+      "reason": "The character-sheet scene owns its selector, identity, tabs, empty state, and workspace frame; the remaining classified functions still project tab-specific variable record collections during migration.",
+      "currentMaximum": 48,
+      "functions": ["_add_card", "_add_heading", "_add_metric_region", "_add_metric_views", "_appearance", "_appearance_picker", "_build_abilities", "_build_appearance", "_build_background", "_build_background_region", "_build_conditions", "_build_equipment", "_build_item_region", "_build_overview", "_build_record", "_build_spells", "_character_spell_card", "_equipment_item_card", "_label", "_media_icon", "_spell_region"]
     },
     {
       "path": "src/ui/screens/classic_party_roster.gd",

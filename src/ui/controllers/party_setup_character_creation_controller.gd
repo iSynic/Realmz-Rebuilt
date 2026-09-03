@@ -373,7 +373,7 @@ func _build_creator_review() -> void:
 	var character := view.character_draft
 	var review_asset_ids: Array[String] = [character.portrait_id, character.combat_icon_id]
 	_ensure_appearance_textures(review_asset_ids)
-	var sheet := ClassicCharacterSheet.new()
+	var sheet := _state.character_sheet_scene.instantiate() as ClassicCharacterSheet
 	sheet.name = "CreatorReviewSheet"
 	sheet.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	sheet.size_flags_vertical = Control.SIZE_EXPAND_FILL

@@ -1,0 +1,10 @@
+[gd_scene format=3]
+
+[node name="CharacterSheetSelectorButton" type="Button"]
+custom_minimum_size = Vector2(120, 48)
+size_flags_horizontal = 0
+toggle_mode = true
+action_mode = 0
+alignment = 1
+expand_icon = true
+theme_override_constants/icon_max_width = 40

@@ -24,6 +24,8 @@ const TABS: Array[Dictionary] = [
 	{"id": &"record", "label": "Lifetime Record"},
 ]
 
+@export var selector_button_scene: PackedScene
+
 var _characters: Array[CharacterView] = []
 var _selected_character_id: String = ""
 var _active_tab: StringName = &"overview"
@@ -67,27 +69,28 @@ func active_tab() -> StringName:
 
 
 func _rebuild() -> void:
-	_clear(self)
-	add_theme_constant_override("separation", 8)
+	var empty_state := get_node("CharacterEmptyState") as Label
+	var picker := get_node("CharacterPicker") as HFlowContainer
+	var identity := get_node("CharacterIdentity") as PanelContainer
+	var tabs := get_node("CharacterSheetTabs") as HFlowContainer
+	var workspace := get_node("CharacterSheetWorkspace") as PanelContainer
+	_content = get_node("CharacterSheetWorkspace/CharacterSheetContent") as VBoxContainer
+	_clear(picker)
+	_clear(tabs)
+	_clear(_content)
+	empty_state.visible = _characters.is_empty()
+	picker.visible = not _characters.is_empty() and _show_character_picker
+	identity.visible = not _characters.is_empty()
+	tabs.visible = not _characters.is_empty()
+	workspace.visible = not _characters.is_empty()
 	if _characters.is_empty():
-		_add_label(self, "No characters are available for inspection.", MUTED)
+		empty_state.add_theme_font_size_override("font_size", int(round(15.0 * _text_scale)))
 		return
 	if _show_character_picker:
 		_build_character_picker()
 	var character := _selected_character()
 	_build_identity(character)
 	_build_tabs()
-	var content_frame := PanelContainer.new()
-	content_frame.name = "CharacterSheetWorkspace"
-	content_frame.theme_type_variation = &"ClassicInset"
-	content_frame.custom_minimum_size.y = 300.0
-	content_frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	content_frame.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_content = VBoxContainer.new()
-	_content.name = "CharacterSheetContent"
-	_content.add_theme_constant_override("separation", 8)
-	content_frame.add_child(_content)
-	add_child(content_frame)
 	match _active_tab:
 		&"conditions":
 			_build_conditions(character)
@@ -108,12 +111,12 @@ func _rebuild() -> void:
 
 
 func _build_character_picker() -> void:
-	var picker := HFlowContainer.new()
-	picker.name = "CharacterPicker"
-	picker.add_theme_constant_override("h_separation", 6)
-	picker.add_theme_constant_override("v_separation", 6)
+	var picker := get_node("CharacterPicker") as HFlowContainer
 	for character: CharacterView in _characters:
-		var button := Button.new()
+		var button := selector_button_scene.instantiate() as Button
+		if button == null:
+			push_error("Character sheet selector scene must instantiate a Button.")
+			return
 		button.text = character.name
 		button.icon = _textures.get(character.portrait_id) as Texture2D
 		button.expand_icon = true
@@ -123,46 +126,51 @@ func _build_character_picker() -> void:
 		button.tooltip_text = "View %s without changing session state." % character.name
 		button.pressed.connect(_select_character.bind(character.id))
 		picker.add_child(button)
-	add_child(picker)
 
 
 func _build_identity(character: CharacterView) -> void:
-	var frame := PanelContainer.new()
-	frame.name = "CharacterIdentity"
-	frame.theme_type_variation = &"ClassicInset"
-	frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
-	frame.add_child(row)
-	var portrait := _appearance(character.portrait_id, character.name.left(1), "Portrait")
-	portrait.custom_minimum_size = Vector2(64.0, 64.0) if _layout_profile == UiLayoutProfile.COMPACT else Vector2(80.0, 80.0)
-	row.add_child(portrait)
-	var identity := VBoxContainer.new()
-	identity.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	identity.add_theme_constant_override("separation", 2)
-	row.add_child(identity)
-	_add_label(identity, character.name, GOLD, 22)
-	_add_label(identity, "Level %d %s %s • %s • Age %d (%s)" % [character.level, character.race_name, character.caste_name, character.gender_name, character.age_years, character.age_group_name])
-	_add_label(identity, "ST %d/%d • SP %d/%d • AR %d • Attacks %s • Load %d/%d" % [character.current_health, character.maximum_health, character.spell_points, character.maximum_spell_points, character.armor, character.attacks_per_round, character.carried_load, character.maximum_load], BAD if character.current_health <= 0 else Color("e0e2e5"))
-	var combat_icon := _appearance(character.combat_icon_id, "⚔", "Combat icon")
-	combat_icon.custom_minimum_size = Vector2(64.0, 64.0) if _layout_profile == UiLayoutProfile.COMPACT else Vector2(80.0, 80.0)
-	row.add_child(combat_icon)
-	add_child(frame)
+	var compact_size := Vector2(64.0, 64.0) if _layout_profile == UiLayoutProfile.COMPACT else Vector2(80.0, 80.0)
+	_bind_identity_media("CharacterIdentity/IdentityRow/PortraitMedia", character.portrait_id, character.name.left(1), "Portrait", compact_size)
+	_bind_identity_media("CharacterIdentity/IdentityRow/CombatIconMedia", character.combat_icon_id, "⚔", "Combat icon", compact_size)
+	_bind_existing_label("CharacterIdentity/IdentityRow/IdentityText/CharacterName", character.name, GOLD, 22)
+	_bind_existing_label("CharacterIdentity/IdentityRow/IdentityText/CharacterRole", "Level %d %s %s • %s • Age %d (%s)" % [character.level, character.race_name, character.caste_name, character.gender_name, character.age_years, character.age_group_name], Color("e0e2e5"), 15)
+	_bind_existing_label("CharacterIdentity/IdentityRow/IdentityText/CharacterSummary", "ST %d/%d • SP %d/%d • AR %d • Attacks %s • Load %d/%d" % [character.current_health, character.maximum_health, character.spell_points, character.maximum_spell_points, character.armor, character.attacks_per_round, character.carried_load, character.maximum_load], BAD if character.current_health <= 0 else Color("e0e2e5"), 15)
 
 
 func _build_tabs() -> void:
-	var tabs := HFlowContainer.new()
-	tabs.name = "CharacterSheetTabs"
-	tabs.add_theme_constant_override("h_separation", 4)
-	tabs.add_theme_constant_override("v_separation", 4)
+	var tabs := get_node("CharacterSheetTabs") as HFlowContainer
 	for tab: Dictionary in TABS:
-		var button := Button.new()
+		var button := selector_button_scene.instantiate() as Button
+		if button == null:
+			push_error("Character sheet selector scene must instantiate a Button.")
+			return
+		button.custom_minimum_size = Vector2.ZERO
 		button.text = String(tab["label"])
 		button.toggle_mode = true
 		button.button_pressed = StringName(tab["id"]) == _active_tab
 		button.pressed.connect(_select_tab.bind(StringName(tab["id"])))
 		tabs.add_child(button)
-	add_child(tabs)
+
+
+func _bind_identity_media(path: NodePath, asset_id: String, fallback_text: String, role: String, minimum_size: Vector2) -> void:
+	var frame := get_node(path) as PanelContainer
+	var image := frame.get_child(0) as TextureRect
+	var fallback := frame.get_child(1) as Label
+	var texture := _textures.get(asset_id) as Texture2D
+	frame.custom_minimum_size = minimum_size
+	image.texture = texture
+	image.visible = texture != null
+	fallback.visible = texture == null
+	fallback.text = fallback_text if not fallback_text.is_empty() else "?"
+	fallback.tooltip_text = "%s media unavailable." % role if texture == null else role
+	fallback.add_theme_font_size_override("font_size", int(round(18.0 * _text_scale)))
+
+
+func _bind_existing_label(path: NodePath, value: String, color: Color, font_size: int) -> void:
+	var label := get_node(path) as Label
+	label.text = value
+	label.add_theme_color_override("font_color", color)
+	label.add_theme_font_size_override("font_size", int(round(float(font_size) * _text_scale)))
 
 
 func _build_overview(character: CharacterView) -> void:

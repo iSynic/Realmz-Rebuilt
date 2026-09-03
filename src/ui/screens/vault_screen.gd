@@ -4,6 +4,8 @@ extends ScreenFrame
 
 const BODY_PATH := "WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody"
 
+@export var character_sheet_scene: PackedScene
+
 
 func prepare_list_layout() -> void:
 	clear_rendered_content()

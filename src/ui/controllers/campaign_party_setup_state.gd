@@ -83,6 +83,7 @@ var creator_next_button: Button
 var creator_cancel_button: Button
 var setup_inspection_overlay: PanelContainer
 var setup_inspection_body: VBoxContainer
+var character_sheet_scene: PackedScene
 
 var setup_inspection_character_id: String = ""
 var creator_step: int = 0

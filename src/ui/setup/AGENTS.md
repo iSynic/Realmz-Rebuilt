@@ -12,6 +12,7 @@
 - Setup scenes are full-stage application surfaces and never own simulation or repository access.
 - Party assembly and character creation are modes of one retained setup workspace.
 - Campaign and character rows remain reusable scene instances with stable identities.
+- `PartySetupWorkspace` exports the shared character-sheet scene used by setup inspection and creation review. Controllers receive that scene reference from the instantiated workspace; they must not preload the sheet through a script dependency cycle.
 
 # Work Guidance
 
@@ -23,4 +24,3 @@
 - Run the startup-shell and party-setup presentation fixtures plus `tools/startup_probe.gd` after composition changes.
 
 # Child DOX Index
-
