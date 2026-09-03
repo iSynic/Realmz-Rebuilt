@@ -164,13 +164,6 @@
       "functions": ["_ensure_hosts"]
     },
     {
-      "path": "src/ui/screens/classic_character_sheet.gd",
-      "kind": "request-workspace",
-      "reason": "The character-sheet scene owns its selector, identity, tabs, empty state, and workspace frame; the remaining classified functions still project tab-specific variable record collections during migration.",
-      "currentMaximum": 48,
-      "functions": ["_add_card", "_add_heading", "_add_metric_region", "_add_metric_views", "_appearance", "_appearance_picker", "_build_abilities", "_build_appearance", "_build_background", "_build_background_region", "_build_conditions", "_build_equipment", "_build_item_region", "_build_overview", "_build_record", "_build_spells", "_character_spell_card", "_equipment_item_card", "_label", "_media_icon", "_spell_region"]
-    },
-    {
       "path": "src/ui/screens/classic_party_roster.gd",
       "kind": "data-collection",
       "reason": "The roster scene owns its rails while these functions bind party members and the selected character's variable combat spellbook.",

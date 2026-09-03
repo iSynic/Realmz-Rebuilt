@@ -1,0 +1,164 @@
+[gd_scene format=3]
+
+[node name="CharacterSheetStatTabs" type="VBoxContainer"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="OverviewTab" type="VBoxContainer" parent="."]
+layout_mode = 2
+[node name="OverviewRegions" type="BoxContainer" parent="OverviewTab"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="OverviewAttributes" type="PanelContainer" parent="OverviewTab/OverviewRegions"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInset"
+[node name="Content" type="VBoxContainer" parent="OverviewTab/OverviewRegions/OverviewAttributes"]
+layout_mode = 2
+theme_override_constants/separation = 5
+[node name="Title" type="Label" parent="OverviewTab/OverviewRegions/OverviewAttributes/Content"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+text = "Attributes"
+[node name="MetricRows" type="GridContainer" parent="OverviewTab/OverviewRegions/OverviewAttributes/Content"]
+layout_mode = 2
+columns = 1
+
+[node name="OverviewCombat" type="PanelContainer" parent="OverviewTab/OverviewRegions"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInset"
+[node name="Content" type="VBoxContainer" parent="OverviewTab/OverviewRegions/OverviewCombat"]
+layout_mode = 2
+theme_override_constants/separation = 5
+[node name="Title" type="Label" parent="OverviewTab/OverviewRegions/OverviewCombat/Content"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+text = "Combat profile"
+[node name="MetricRows" type="GridContainer" parent="OverviewTab/OverviewRegions/OverviewCombat/Content"]
+layout_mode = 2
+columns = 1
+
+[node name="OverviewStatus" type="PanelContainer" parent="OverviewTab/OverviewRegions"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInset"
+[node name="Content" type="VBoxContainer" parent="OverviewTab/OverviewRegions/OverviewStatus"]
+layout_mode = 2
+theme_override_constants/separation = 5
+[node name="Title" type="Label" parent="OverviewTab/OverviewRegions/OverviewStatus/Content"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+text = "Resources and wealth"
+[node name="MetricRows" type="GridContainer" parent="OverviewTab/OverviewRegions/OverviewStatus/Content"]
+layout_mode = 2
+columns = 1
+[node name="ConditionsTitle" type="Label" parent="OverviewTab/OverviewRegions/OverviewStatus/Content"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+text = "Current conditions"
+[node name="ConditionRows" type="VBoxContainer" parent="OverviewTab/OverviewRegions/OverviewStatus/Content"]
+layout_mode = 2
+
+[node name="ConditionsTab" type="VBoxContainer" parent="."]
+visible = false
+layout_mode = 2
+[node name="ConditionSaveRegions" type="BoxContainer" parent="ConditionsTab"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+[node name="ConditionsRegion" type="PanelContainer" parent="ConditionsTab/ConditionSaveRegions"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInset"
+[node name="Content" type="VBoxContainer" parent="ConditionsTab/ConditionSaveRegions/ConditionsRegion"]
+layout_mode = 2
+theme_override_constants/separation = 5
+[node name="Title" type="Label" parent="ConditionsTab/ConditionSaveRegions/ConditionsRegion/Content"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+text = "Conditions"
+[node name="MetricRows" type="GridContainer" parent="ConditionsTab/ConditionSaveRegions/ConditionsRegion/Content"]
+layout_mode = 2
+columns = 1
+[node name="SavingThrowsRegion" type="PanelContainer" parent="ConditionsTab/ConditionSaveRegions"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInset"
+[node name="Content" type="VBoxContainer" parent="ConditionsTab/ConditionSaveRegions/SavingThrowsRegion"]
+layout_mode = 2
+theme_override_constants/separation = 5
+[node name="Title" type="Label" parent="ConditionsTab/ConditionSaveRegions/SavingThrowsRegion/Content"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+text = "Saving throws"
+[node name="MetricRows" type="GridContainer" parent="ConditionsTab/ConditionSaveRegions/SavingThrowsRegion/Content"]
+layout_mode = 2
+columns = 1
+
+[node name="AbilitiesTab" type="VBoxContainer" parent="."]
+visible = false
+layout_mode = 2
+[node name="AbilityRegions" type="BoxContainer" parent="AbilitiesTab"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+[node name="SpecialModifiersRegion" type="PanelContainer" parent="AbilitiesTab/AbilityRegions"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInset"
+[node name="Content" type="VBoxContainer" parent="AbilitiesTab/AbilityRegions/SpecialModifiersRegion"]
+layout_mode = 2
+theme_override_constants/separation = 5
+[node name="Title" type="Label" parent="AbilitiesTab/AbilityRegions/SpecialModifiersRegion/Content"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+text = "Special modifiers"
+[node name="MetricRows" type="GridContainer" parent="AbilitiesTab/AbilityRegions/SpecialModifiersRegion/Content"]
+layout_mode = 2
+columns = 1
+[node name="SpecialAbilitiesRegion" type="PanelContainer" parent="AbilitiesTab/AbilityRegions"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInset"
+[node name="Content" type="VBoxContainer" parent="AbilitiesTab/AbilityRegions/SpecialAbilitiesRegion"]
+layout_mode = 2
+theme_override_constants/separation = 5
+[node name="Title" type="Label" parent="AbilitiesTab/AbilityRegions/SpecialAbilitiesRegion/Content"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+text = "Special abilities"
+[node name="MetricRows" type="GridContainer" parent="AbilitiesTab/AbilityRegions/SpecialAbilitiesRegion/Content"]
+layout_mode = 2
+columns = 1
+
+[node name="RecordTab" type="VBoxContainer" parent="."]
+visible = false
+layout_mode = 2
+[node name="LifetimeRecord" type="PanelContainer" parent="RecordTab"]
+custom_minimum_size = Vector2(0, 180)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInset"
+[node name="Content" type="VBoxContainer" parent="RecordTab/LifetimeRecord"]
+layout_mode = 2
+theme_override_constants/separation = 10
+[node name="Header" type="HBoxContainer" parent="RecordTab/LifetimeRecord/Content"]
+layout_mode = 2
+[node name="Title" type="Label" parent="RecordTab/LifetimeRecord/Content/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicHeading"
+text = "Lifetime Record"
+[node name="Prestige" type="Label" parent="RecordTab/LifetimeRecord/Content/Header"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+text = "Prestige 0"
+[node name="RecordCards" type="GridContainer" parent="RecordTab/LifetimeRecord/Content"]
+layout_mode = 2
+columns = 2
+[node name="PrestigePenalty" type="Label" parent="RecordTab/LifetimeRecord/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)

@@ -1,0 +1,192 @@
+[gd_scene format=3]
+
+[node name="CharacterSheetIdentityTabs" type="VBoxContainer"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="AppearanceTab" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 8
+[node name="Header" type="HBoxContainer" parent="AppearanceTab"]
+layout_mode = 2
+[node name="Title" type="Label" parent="AppearanceTab/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicHeading"
+text = "Appearance"
+[node name="Detail" type="Label" parent="AppearanceTab/Header"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+text = "Portrait and tactical icon change independently"
+[node name="AppearanceRegions" type="BoxContainer" parent="AppearanceTab"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 14
+
+[node name="PortraitAppearanceRegion" type="PanelContainer" parent="AppearanceTab/AppearanceRegions"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInset"
+[node name="Content" type="VBoxContainer" parent="AppearanceTab/AppearanceRegions/PortraitAppearanceRegion"]
+layout_mode = 2
+theme_override_constants/separation = 8
+[node name="Header" type="HBoxContainer" parent="AppearanceTab/AppearanceRegions/PortraitAppearanceRegion/Content"]
+layout_mode = 2
+[node name="Title" type="Label" parent="AppearanceTab/AppearanceRegions/PortraitAppearanceRegion/Content/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicHeading"
+text = "Portrait"
+[node name="Count" type="Label" parent="AppearanceTab/AppearanceRegions/PortraitAppearanceRegion/Content/Header"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+[node name="PreviewCenter" type="CenterContainer" parent="AppearanceTab/AppearanceRegions/PortraitAppearanceRegion/Content"]
+layout_mode = 2
+[node name="PreviewMedia" type="PanelContainer" parent="AppearanceTab/AppearanceRegions/PortraitAppearanceRegion/Content/PreviewCenter"]
+custom_minimum_size = Vector2(132, 132)
+layout_mode = 2
+[node name="Image" type="TextureRect" parent="AppearanceTab/AppearanceRegions/PortraitAppearanceRegion/Content/PreviewCenter/PreviewMedia"]
+visible = false
+layout_mode = 2
+texture_filter = 1
+expand_mode = 1
+stretch_mode = 5
+[node name="Fallback" type="Label" parent="AppearanceTab/AppearanceRegions/PortraitAppearanceRegion/Content/PreviewCenter/PreviewMedia"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+text = "?"
+horizontal_alignment = 1
+vertical_alignment = 1
+[node name="PortraitPicker" type="OptionButton" parent="AppearanceTab/AppearanceRegions/PortraitAppearanceRegion/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+fit_to_longest_item = false
+text_overrun_behavior = 3
+clip_text = true
+[node name="ApplyPortrait" type="Button" parent="AppearanceTab/AppearanceRegions/PortraitAppearanceRegion/Content"]
+layout_mode = 2
+text = "Apply Portrait"
+
+[node name="CombatIconAppearanceRegion" type="PanelContainer" parent="AppearanceTab/AppearanceRegions"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInset"
+[node name="Content" type="VBoxContainer" parent="AppearanceTab/AppearanceRegions/CombatIconAppearanceRegion"]
+layout_mode = 2
+theme_override_constants/separation = 8
+[node name="Header" type="HBoxContainer" parent="AppearanceTab/AppearanceRegions/CombatIconAppearanceRegion/Content"]
+layout_mode = 2
+[node name="Title" type="Label" parent="AppearanceTab/AppearanceRegions/CombatIconAppearanceRegion/Content/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicHeading"
+text = "Combat icon"
+[node name="Count" type="Label" parent="AppearanceTab/AppearanceRegions/CombatIconAppearanceRegion/Content/Header"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+[node name="PreviewCenter" type="CenterContainer" parent="AppearanceTab/AppearanceRegions/CombatIconAppearanceRegion/Content"]
+layout_mode = 2
+[node name="PreviewMedia" type="PanelContainer" parent="AppearanceTab/AppearanceRegions/CombatIconAppearanceRegion/Content/PreviewCenter"]
+custom_minimum_size = Vector2(132, 132)
+layout_mode = 2
+[node name="Image" type="TextureRect" parent="AppearanceTab/AppearanceRegions/CombatIconAppearanceRegion/Content/PreviewCenter/PreviewMedia"]
+visible = false
+layout_mode = 2
+texture_filter = 1
+expand_mode = 1
+stretch_mode = 5
+[node name="Fallback" type="Label" parent="AppearanceTab/AppearanceRegions/CombatIconAppearanceRegion/Content/PreviewCenter/PreviewMedia"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+text = "⚔"
+horizontal_alignment = 1
+vertical_alignment = 1
+[node name="CombatIconPicker" type="OptionButton" parent="AppearanceTab/AppearanceRegions/CombatIconAppearanceRegion/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+fit_to_longest_item = false
+text_overrun_behavior = 3
+clip_text = true
+[node name="ApplyCombatIcon" type="Button" parent="AppearanceTab/AppearanceRegions/CombatIconAppearanceRegion/Content"]
+layout_mode = 2
+text = "Apply Combat icon"
+
+[node name="Unavailable" type="Label" parent="AppearanceTab"]
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.937, 0.467, 0.439, 1)
+autowrap_mode = 2
+[node name="DiscardAppearanceChanges" type="Button" parent="AppearanceTab"]
+layout_mode = 2
+text = "Discard Appearance Changes"
+
+[node name="BackgroundTab" type="VBoxContainer" parent="."]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 10
+[node name="RaceClassRegions" type="BoxContainer" parent="BackgroundTab"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+[node name="RaceRegion" type="PanelContainer" parent="BackgroundTab/RaceClassRegions"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInset"
+[node name="Content" type="VBoxContainer" parent="BackgroundTab/RaceClassRegions/RaceRegion"]
+layout_mode = 2
+theme_override_constants/separation = 5
+[node name="Header" type="HBoxContainer" parent="BackgroundTab/RaceClassRegions/RaceRegion/Content"]
+layout_mode = 2
+[node name="Title" type="Label" parent="BackgroundTab/RaceClassRegions/RaceRegion/Content/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicHeading"
+[node name="Kind" type="Label" parent="BackgroundTab/RaceClassRegions/RaceRegion/Content/Header"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+text = "Race"
+[node name="Description" type="Label" parent="BackgroundTab/RaceClassRegions/RaceRegion/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+autowrap_mode = 2
+[node name="MetricRows" type="VBoxContainer" parent="BackgroundTab/RaceClassRegions/RaceRegion/Content"]
+layout_mode = 2
+[node name="CasteRegion" type="PanelContainer" parent="BackgroundTab/RaceClassRegions"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInset"
+[node name="Content" type="VBoxContainer" parent="BackgroundTab/RaceClassRegions/CasteRegion"]
+layout_mode = 2
+theme_override_constants/separation = 5
+[node name="Header" type="HBoxContainer" parent="BackgroundTab/RaceClassRegions/CasteRegion/Content"]
+layout_mode = 2
+[node name="Title" type="Label" parent="BackgroundTab/RaceClassRegions/CasteRegion/Content/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicHeading"
+[node name="Kind" type="Label" parent="BackgroundTab/RaceClassRegions/CasteRegion/Content/Header"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+text = "Caste"
+[node name="Description" type="Label" parent="BackgroundTab/RaceClassRegions/CasteRegion/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+autowrap_mode = 2
+[node name="MetricRows" type="VBoxContainer" parent="BackgroundTab/RaceClassRegions/CasteRegion/Content"]
+layout_mode = 2
+
+[node name="AgingRegion" type="VBoxContainer" parent="BackgroundTab"]
+layout_mode = 2
+[node name="Header" type="HBoxContainer" parent="BackgroundTab/AgingRegion"]
+layout_mode = 2
+[node name="Title" type="Label" parent="BackgroundTab/AgingRegion/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicHeading"
+text = "Aging"
+[node name="Detail" type="Label" parent="BackgroundTab/AgingRegion/Header"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+[node name="AgeBands" type="GridContainer" parent="BackgroundTab/AgingRegion"]
+layout_mode = 2
+columns = 5
