@@ -314,22 +314,7 @@ func _project_ordinary_movement(context: SessionWorkflowContext, revision: int, 
 	var party_done := Time.get_ticks_usec()
 	var projected_map := _map_view(context, revision, true)
 	var map_done := Time.get_ticks_usec()
-	var result := GameView.new(revision, true, null, state.party.map_id, state.party.coordinate, state.clock.day(), state.clock.hour(), state.clock.minute(), projected_map, members, state.party.fatigue, state.party.pooled_wealth.gold, null)
-	result.campaign_id = _cached_view.campaign_id
-	result.rules_version = _cached_view.rules_version
-	result.character_spellcasting_blocked = _cached_view.character_spellcasting_blocked
-	result.party_setup_available = _cached_view.party_setup_available
-	result.character_draft = _cached_view.character_draft
-	result.character_draft_spell_options = _cached_view.character_draft_spell_options
-	result.character_draft_spell_points_total = _cached_view.character_draft_spell_points_total
-	result.character_draft_spell_points_remaining = _cached_view.character_draft_spell_points_remaining
-	result.race_options = _cached_view.race_options
-	result.caste_options = _cached_view.caste_options
-	result.portrait_options = _cached_view.portrait_options
-	result.combat_icon_options = _cached_view.combat_icon_options
-	result.campaign_summary = _cached_view.campaign_summary
-	result.party_setup = _cached_view.party_setup
-	result.party_summary = _ordinary_party_summary(context, _cached_view.party_summary)
+	var result := _ordinary_game_view(context, revision, projected_map, members)
 	if refresh_party:
 		for ally: MonsterState in state.party.allies():
 			result.party_allies.append(MonsterView.new(ally, context.content.monster_by_id(ally.definition_id), context.content))
@@ -388,6 +373,27 @@ func _project_ordinary_movement(context: SessionWorkflowContext, revision: int, 
 		"magic": magic_done - inventory_done,
 		"finalize": Time.get_ticks_usec() - magic_done,
 	}
+	return result
+
+
+func _ordinary_game_view(context: SessionWorkflowContext, revision: int, projected_map: MapView, members: Array[CharacterView]) -> GameView:
+	var state := context.state
+	var result := GameView.new(revision, true, null, state.party.map_id, state.party.coordinate, state.clock.day(), state.clock.hour(), state.clock.minute(), projected_map, members, state.party.fatigue, state.party.pooled_wealth.gold, null)
+	result.campaign_id = _cached_view.campaign_id
+	result.rules_version = _cached_view.rules_version
+	result.character_spellcasting_blocked = _cached_view.character_spellcasting_blocked
+	result.party_setup_available = _cached_view.party_setup_available
+	result.character_draft = _cached_view.character_draft
+	result.character_draft_spell_options = _cached_view.character_draft_spell_options
+	result.character_draft_spell_points_total = _cached_view.character_draft_spell_points_total
+	result.character_draft_spell_points_remaining = _cached_view.character_draft_spell_points_remaining
+	result.race_options = _cached_view.race_options
+	result.caste_options = _cached_view.caste_options
+	result.portrait_options = _cached_view.portrait_options
+	result.combat_icon_options = _cached_view.combat_icon_options
+	result.campaign_summary = _cached_view.campaign_summary
+	result.party_setup = _cached_view.party_setup
+	result.party_summary = _ordinary_party_summary(context, _cached_view.party_summary)
 	return result
 
 

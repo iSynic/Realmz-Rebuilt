@@ -1,3 +1,4 @@
+## Detaches one mutable character into player-facing identity, status, inventory, and magic records.
 class_name CharacterView
 extends RefCounted
 
@@ -95,6 +96,13 @@ func _init(character: CharacterState, content: RealmzContent = null, reusable: C
 	if character == null:
 		return
 	var can_reuse_static := reusable != null and reusable.id == character.id and reusable.race_id == character.race_id and reusable.caste_id == character.caste_id and reusable.age_group == character.age_group
+	_populate_identity(character, content, reusable, can_reuse_static)
+	_populate_statistics(character, reusable, can_reuse_static)
+	_populate_traits(character, reusable, can_reuse_static)
+	_populate_items_and_magic(character, content, reusable, can_reuse_static, rebuild_inventory, rebuild_magic)
+
+
+func _populate_identity(character: CharacterState, content: RealmzContent, reusable: CharacterView, can_reuse_static: bool) -> void:
 	id = character.id
 	name = character.name
 	current_health = character.current_health
@@ -130,6 +138,9 @@ func _init(character: CharacterState, content: RealmzContent = null, reusable: C
 			caste_name = caste.name
 			caste_description = caste.description
 			_populate_caste_details(caste)
+
+
+func _populate_statistics(character: CharacterState, reusable: CharacterView, can_reuse_static: bool) -> void:
 	gender = character.gender
 	gender_name = "Male" if gender == 1 else "Female"
 	portrait_id = character.portrait_id
@@ -168,6 +179,9 @@ func _init(character: CharacterState, content: RealmzContent = null, reusable: C
 		var amount: int = condition_values[index]
 		if amount != 0:
 			conditions.append(CharacterMetricView.new(StringName("condition-%d" % index), index, _label_at(CONDITION_NAMES, index, "Classic condition %d" % (index + 1)), amount, "Permanent" if amount < 0 else "Value %d" % amount))
+
+
+func _populate_traits(character: CharacterState, reusable: CharacterView, can_reuse_static: bool) -> void:
 	if can_reuse_static:
 		save_values.assign(reusable.save_values)
 		saving_throws.assign(reusable.saving_throws)
@@ -187,6 +201,9 @@ func _init(character: CharacterState, content: RealmzContent = null, reusable: C
 			if amount != 0:
 				var detail := "The original label is not recoverable from the pinned source tree; the Classic slot and value are preserved." if ABILITY_NAMES[index].begins_with("Classic ability") else ""
 				abilities.append(CharacterMetricView.new(StringName("ability-%d" % index), index, ABILITY_NAMES[index], amount, detail))
+
+
+func _populate_items_and_magic(character: CharacterState, content: RealmzContent, reusable: CharacterView, can_reuse_static: bool, rebuild_inventory: bool, rebuild_magic: bool) -> void:
 	if can_reuse_static and not rebuild_inventory:
 		items.assign(reusable.items)
 	else:
