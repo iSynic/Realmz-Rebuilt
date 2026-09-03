@@ -3,6 +3,8 @@ extends RefCounted
 
 ## Resolves physical attacks, defenses, weapon effects, and monster specials.
 
+const AttackPolicy := preload("res://src/game/rules/combat_attack_policy.gd")
+
 var _conditions: ConditionRules
 var _characters: CharacterRules
 
@@ -15,7 +17,7 @@ func _init(condition_rules: ConditionRules, character_rules: CharacterRules) -> 
 func resolve_character_attack(attacker: CharacterState, equipment: CharacterCombatEquipment, defender: MonsterState, defender_definition: MonsterDefinition, rng: RealmzRng, realmz_day: int = 0, behind: bool = false, allow_fumbles: bool = false, can_queue_fumble: bool = true) -> AttackResolution:
 	if attacker == null or equipment == null or not equipment.valid or defender == null or defender_definition == null or rng == null:
 		return null
-	var invalid_weapon := _invalid_weapon_reason(equipment.melee_weapon)
+	var invalid_weapon := AttackPolicy.invalid_weapon_reason(equipment.melee_weapon)
 	if not invalid_weapon.is_empty():
 		return _blocked_character_attack(invalid_weapon)
 	var condition_roll := _roll_weapon_condition_monster(equipment.melee_weapon, defender, defender_definition, rng)
@@ -25,7 +27,7 @@ func resolve_character_attack(attacker: CharacterState, equipment: CharacterComb
 	var chance := 50 + attacker.to_hit + (20 if behind else 0) + 5 * equipment.equipped_damage_bonus
 	if equipment.melee_weapon != null and equipment.melee_weapon.special_1 == 121:
 		chance += 5 * equipment.melee_weapon.damage_bonus
-	chance += _attacker_condition_modifier(attacker.conditions)
+	chance += AttackPolicy.attacker_condition_modifier(attacker.conditions)
 	if defender_definition.type_flag(4) and attacker.conditions.is_active(ConditionRules.PROTECTION_FROM_EVIL):
 		chance += 10
 	chance += rng.draw_classic(equipment.effective_luck, &"combat.attack.luck")
@@ -34,25 +36,25 @@ func resolve_character_attack(attacker: CharacterState, equipment: CharacterComb
 			chance += 5 * attacker.special_value(index)
 			type_damage += attacker.special_value(index)
 	chance -= defender.armor
-	chance += _defender_condition_modifier(defender.conditions, true)
+	chance += AttackPolicy.defender_condition_modifier(defender.conditions, true)
 	chance -= int(float(maxi(0, realmz_day)) / 120.0)
 	chance = maxi(5, chance)
 	var roll := rng.draw(100, &"combat.attack.hit")
 	var hit := roll <= chance or defender.conditions.is_active(ConditionRules.HELPLESS)
-	var fumble := _character_fumble(attacker, equipment, rng, allow_fumbles, can_queue_fumble)
+	var fumble := AttackPolicy.character_fumble(attacker, equipment, rng, allow_fumbles, can_queue_fumble)
 	if fumble.get("fumbled", false):
-		return _fumbled_attack(chance, roll, int(fumble["roll"]))
-	var magic_requirement := _magic_weapon_requirement_reason(attacker, equipment, defender_definition, hit)
+		return AttackPolicy.fumbled_attack(chance, roll, int(fumble["roll"]))
+	var magic_requirement := AttackPolicy.magic_weapon_requirement_reason(attacker, equipment, defender_definition, hit)
 	if not magic_requirement.is_empty():
-		return _with_fumble_observation(_blocked_character_attack(magic_requirement, chance, roll), fumble)
-	var weapon_requirement := _required_weapon_reason(equipment, defender_definition, hit)
+		return AttackPolicy.with_fumble_observation(_blocked_character_attack(magic_requirement, chance, roll), fumble)
+	var weapon_requirement := AttackPolicy.required_weapon_reason(equipment, defender_definition, hit)
 	if not weapon_requirement.is_empty():
-		return _with_fumble_observation(_blocked_character_attack(weapon_requirement, chance, roll), fumble)
+		return AttackPolicy.with_fumble_observation(_blocked_character_attack(weapon_requirement, chance, roll), fumble)
 	if equipment.melee_weapon != null and equipment.melee_weapon.special_1 == 120:
 		hit = true
 	if not hit:
 		attacker.lifetime_record.add_damage_given(0, false, false)
-		return _with_fumble_observation(AttackResolution.new(false, false, chance, roll, 0), fumble)
+		return AttackPolicy.with_fumble_observation(AttackResolution.new(false, false, chance, roll, 0), fumble)
 	var reflected := defender.conditions.is_active(ConditionRules.REFLECTING_ATTACKS) and rng.draw(100, &"combat.attack.reflect") < 34
 	var physical_damage := type_damage + equipment.effective_damage_bonus + attacker.conditions.value(ConditionRules.ATTACK_BONUS)
 	if attacker.conditions.is_active(ConditionRules.STRONG):
@@ -64,7 +66,7 @@ func resolve_character_attack(attacker: CharacterState, equipment: CharacterComb
 			elemental_damage = _roll_weapon_elements_character(equipment.melee_weapon, attacker, rng, effects)
 		else:
 			elemental_damage = _roll_weapon_elements_monster(equipment.melee_weapon, defender, defender_definition, rng, effects)
-		physical_damage += _roll_weapon_physical(equipment.melee_weapon, defender_definition if not reflected else null, rng)
+		physical_damage += AttackPolicy.roll_weapon_physical(equipment.melee_weapon, defender_definition if not reflected else null, rng)
 	else:
 		physical_damage += rng.draw(maxi(1, attacker.hand_to_hand), &"combat.attack.unarmed-damage")
 	var critical_rolls: Array[int] = [rng.draw(100, &"combat.attack.sneak-critical"), rng.draw(100, &"combat.attack.major-wound-critical")]
@@ -75,7 +77,7 @@ func resolve_character_attack(attacker: CharacterState, equipment: CharacterComb
 		physical_damage = attacker.current_health
 	var total_damage := physical_damage + elemental_damage
 	var resolution := AttackResolution.new(true, false, chance, roll, total_damage, reflected)
-	_with_fumble_observation(resolution, fumble)
+	AttackPolicy.with_fumble_observation(resolution, fumble)
 	resolution.physical_damage = physical_damage
 	resolution.weapon_effects = effects
 	resolution.critical_rolls = critical_rolls
@@ -95,7 +97,7 @@ func resolve_character_attack(attacker: CharacterState, equipment: CharacterComb
 func resolve_character_attack_character(attacker: CharacterState, attacker_equipment: CharacterCombatEquipment, defender: CharacterState, defender_equipment: CharacterCombatEquipment, rng: RealmzRng, behind: bool = false, allow_fumbles: bool = false, can_queue_fumble: bool = true) -> AttackResolution:
 	if attacker == null or attacker_equipment == null or not attacker_equipment.valid or defender == null or defender_equipment == null or not defender_equipment.valid or rng == null:
 		return null
-	var invalid_weapon := _invalid_weapon_reason(attacker_equipment.melee_weapon)
+	var invalid_weapon := AttackPolicy.invalid_weapon_reason(attacker_equipment.melee_weapon)
 	if not invalid_weapon.is_empty():
 		return _blocked_character_attack(invalid_weapon)
 	var condition_roll := _roll_weapon_condition_character(attacker_equipment.melee_weapon, defender, rng)
@@ -104,20 +106,20 @@ func resolve_character_attack_character(attacker: CharacterState, attacker_equip
 	var chance := 50 + attacker.to_hit + (20 if behind else 0) + 5 * attacker_equipment.equipped_damage_bonus
 	if attacker_equipment.melee_weapon != null and attacker_equipment.melee_weapon.special_1 == 121:
 		chance += 5 * attacker_equipment.melee_weapon.damage_bonus
-	chance += _attacker_condition_modifier(attacker.conditions)
+	chance += AttackPolicy.attacker_condition_modifier(attacker.conditions)
 	chance += rng.draw_classic(attacker_equipment.effective_luck, &"combat.attack.luck")
 	chance -= defender_equipment.effective_armor
-	chance += _defender_condition_modifier(defender.conditions, false)
+	chance += AttackPolicy.defender_condition_modifier(defender.conditions, false)
 	chance = maxi(5, chance)
 	var roll := rng.draw(100, &"combat.attack.hit")
 	var hit := roll <= chance or defender.conditions.is_active(ConditionRules.HELPLESS)
-	var fumble := _character_fumble(attacker, attacker_equipment, rng, allow_fumbles, can_queue_fumble)
+	var fumble := AttackPolicy.character_fumble(attacker, attacker_equipment, rng, allow_fumbles, can_queue_fumble)
 	if fumble.get("fumbled", false):
-		return _fumbled_attack(chance, roll, int(fumble["roll"]))
+		return AttackPolicy.fumbled_attack(chance, roll, int(fumble["roll"]))
 	if attacker_equipment.melee_weapon != null and attacker_equipment.melee_weapon.special_1 == 120:
 		hit = true
 	if not hit:
-		return _with_fumble_observation(AttackResolution.new(false, false, chance, roll, 0), fumble)
+		return AttackPolicy.with_fumble_observation(AttackResolution.new(false, false, chance, roll, 0), fumble)
 	var reflected := defender.conditions.is_active(ConditionRules.REFLECTING_ATTACKS) and rng.draw(100, &"combat.attack.reflect") < 34
 	var target := attacker if reflected else defender
 	var physical_damage := attacker_equipment.effective_damage_bonus + attacker.conditions.value(ConditionRules.ATTACK_BONUS)
@@ -127,7 +129,7 @@ func resolve_character_attack_character(attacker: CharacterState, attacker_equip
 	var elemental_damage := 0
 	if attacker_equipment.is_armed():
 		elemental_damage = _roll_weapon_elements_character(attacker_equipment.melee_weapon, target, rng, effects)
-		physical_damage += _roll_weapon_physical(attacker_equipment.melee_weapon, null, rng)
+		physical_damage += AttackPolicy.roll_weapon_physical(attacker_equipment.melee_weapon, null, rng)
 	else:
 		physical_damage += rng.draw(maxi(1, attacker.hand_to_hand), &"combat.attack.unarmed-damage")
 	var critical_rolls: Array[int] = [rng.draw(100, &"combat.attack.sneak-critical"), rng.draw(100, &"combat.attack.major-wound-critical")]
@@ -136,7 +138,7 @@ func resolve_character_attack_character(attacker: CharacterState, attacker_equip
 		physical_damage = target.current_health
 	var total_damage := physical_damage + elemental_damage
 	var resolution := AttackResolution.new(true, false, chance, roll, total_damage, reflected)
-	_with_fumble_observation(resolution, fumble)
+	AttackPolicy.with_fumble_observation(resolution, fumble)
 	resolution.physical_damage = physical_damage
 	resolution.weapon_effects = effects
 	resolution.critical_rolls = critical_rolls
@@ -152,78 +154,6 @@ static func _blocked_character_attack(reason: StringName, chance: int = 0, roll:
 	resolution.blocked = true
 	resolution.block_reason = reason
 	return resolution
-
-
-static func _character_fumble(attacker: CharacterState, equipment: CharacterCombatEquipment, rng: RealmzRng, allow_fumbles: bool, can_queue_fumble: bool) -> Dictionary:
-	if not allow_fumbles:
-		return {}
-	var roll := rng.draw(1000 + 100 * attacker.level, &"combat.attack.fumble")
-	if roll <= 50 or roll >= 60 or not equipment.is_armed():
-		return {"roll": roll}
-	if not equipment.melee_weapon.cursed_item_id.is_empty():
-		return {"roll": roll, "blockedReason": &"cursed_weapon"}
-	if not can_queue_fumble:
-		return {"roll": roll, "blockedReason": &"fumble_queue_full"}
-	return {"roll": roll, "fumbled": true}
-
-
-static func _fumbled_attack(chance: int, roll: int, fumble_roll: int) -> AttackResolution:
-	var resolution := AttackResolution.new(false, false, chance, roll, 0)
-	resolution.fumbled = true
-	resolution.fumble_roll = fumble_roll
-	return resolution
-
-
-static func _with_fumble_observation(resolution: AttackResolution, fumble: Dictionary) -> AttackResolution:
-	if resolution == null or fumble.is_empty():
-		return resolution
-	resolution.fumble_roll = int(fumble.get("roll", 0))
-	resolution.fumble_block_reason = StringName(fumble.get("blockedReason", &""))
-	return resolution
-
-
-static func _magic_weapon_requirement_reason(attacker: CharacterState, equipment: CharacterCombatEquipment, defender: MonsterDefinition, hit: bool) -> StringName:
-	if defender.magic_to_hit <= 0:
-		return &""
-	if equipment.is_armed():
-		if hit and defender.magic_to_hit > equipment.melee_weapon.damage_bonus:
-			return &"classic_magic_weapon_required"
-		return &""
-	if defender.magic_to_hit > attacker.level / 8:
-		return &"classic_magic_weapon_required"
-	return &""
-
-
-static func _required_weapon_reason(equipment: CharacterCombatEquipment, defender: MonsterDefinition, hit: bool) -> StringName:
-	if not hit or defender.required_weapon == 0:
-		return &""
-	if not equipment.is_armed():
-		if defender.required_weapon == -1:
-			return &"classic_blunt_weapon_required"
-		if defender.required_weapon == -2:
-			return &"classic_sharp_weapon_required"
-		return &"classic_specific_weapon_required"
-	if defender.required_weapon == -1:
-		return &"" if equipment.melee_weapon.blunt == -1 else &"classic_blunt_weapon_required"
-	if defender.required_weapon == -2:
-		return &"" if equipment.melee_weapon.blunt == -2 else &"classic_sharp_weapon_required"
-	# FD-COMBAT-003: Castle's minus-1024 comparison cannot match the shipped
-	# 1..999 item IDs. Divinity defines this byte as the ordinary Item Number.
-	var required_item_id := defender.required_weapon & 0xff
-	return &"" if equipment.melee_weapon.classic_id == required_item_id else &"classic_specific_weapon_required"
-
-
-static func _invalid_weapon_reason(weapon: ItemDefinition) -> StringName:
-	if weapon == null:
-		return &""
-	if weapon.vs_small < 0 or weapon.vs_large < 0 or weapon.heat < 0 or weapon.cold < 0 or weapon.electric < 0 or weapon.vs_undead < 0 or weapon.vs_demon_devil < 0 or weapon.vs_evil < 0:
-		return &"unsupported_negative_weapon_range"
-	if weapon.special_1 == -10:
-		if weapon.special_3 < 20 or weapon.special_3 >= 60:
-			return &"invalid_weapon_condition"
-		if weapon.special_2 == 1 and (weapon.special_4 < 0 or weapon.special_4 >= 8):
-			return &"invalid_weapon_condition_save"
-	return &""
 
 
 func _roll_weapon_condition_monster(weapon: ItemDefinition, defender: MonsterState, defender_definition: MonsterDefinition, rng: RealmzRng) -> Dictionary:
@@ -298,20 +228,6 @@ static func _record_weapon_condition_character(defender: CharacterState, conditi
 		resolution.weapon_condition_after += int(condition_roll["amount"])
 
 
-static func _roll_weapon_physical(weapon: ItemDefinition, defender_definition: MonsterDefinition, rng: RealmzRng) -> int:
-	var damage := 0
-	if defender_definition != null:
-		if weapon.vs_undead != 0 and defender_definition.type_flag(1):
-			damage += rng.draw(maxi(1, weapon.vs_undead), &"combat.attack.weapon-versus-undead")
-		if weapon.vs_demon_devil != 0 and defender_definition.type_flag(2):
-			damage += rng.draw(maxi(1, weapon.vs_demon_devil), &"combat.attack.weapon-versus-demon-devil")
-		if weapon.vs_evil != 0 and defender_definition.type_flag(4):
-			damage += rng.draw(maxi(1, weapon.vs_evil), &"combat.attack.weapon-versus-evil")
-	# Castle's player melee path always uses the small-target weapon die, including Rand(0).
-	damage += rng.draw(maxi(1, weapon.vs_small), &"combat.attack.weapon-physical")
-	return damage
-
-
 func _roll_weapon_elements_monster(weapon: ItemDefinition, defender: MonsterState, defender_definition: MonsterDefinition, rng: RealmzRng, effects: Array[Dictionary]) -> int:
 	var total := 0
 	var ranges: Array[int] = [weapon.heat, weapon.cold, weapon.electric]
@@ -362,19 +278,19 @@ func resolve_monster_attack(attacker: MonsterState, attacker_definition: Monster
 	if attacker == null or attacker_definition == null or defender == null or rng == null:
 		return null
 	var attack_context := context if context != null else MonsterAttackContext.new(null, 0, false, defender.luck)
-	var invalid_weapon := _invalid_weapon_reason(attack_context.attacker_weapon)
+	var invalid_weapon := AttackPolicy.invalid_weapon_reason(attack_context.attacker_weapon)
 	if not invalid_weapon.is_empty():
 		return _blocked_monster_attack(invalid_weapon)
 	var condition_roll := _roll_weapon_condition_character(attack_context.attacker_weapon, defender, rng)
 	if condition_roll.get("blocked", false):
 		return _blocked_monster_attack(StringName(condition_roll.get("reason", "invalid_weapon_condition")))
 	var chance := _monster_attack_base_chance(attacker, attacker_definition, attack_context)
-	chance += _attacker_condition_modifier(attacker.conditions)
+	chance += AttackPolicy.attacker_condition_modifier(attacker.conditions)
 	if attacker.conditions.is_active(ConditionRules.PROTECTION_FROM_EVIL):
 		chance += 10
 	chance -= rng.draw_classic(attack_context.defender_luck, &"combat.monster-attack.defender-luck")
 	chance -= attack_context.defender_armor if attack_context.defender_armor >= 0 else defender.armor
-	chance += _defender_condition_modifier(defender.conditions, false)
+	chance += AttackPolicy.defender_condition_modifier(defender.conditions, false)
 	if attacker_definition.type_flag(4) and defender.conditions.is_active(ConditionRules.PROTECTION_FROM_EVIL):
 		chance -= 10
 	chance = maxi(10, chance)
@@ -385,7 +301,7 @@ func resolve_monster_attack(attacker: MonsterState, attacker_definition: Monster
 		hit = true
 	var fumble_roll := _monster_fumble_roll(attacker, rng, allow_fumbles)
 	if _monster_fumbled(attack_context.attacker_weapon, fumble_roll):
-		return _fumbled_attack(chance, roll, fumble_roll)
+		return AttackPolicy.fumbled_attack(chance, roll, fumble_roll)
 	if not hit:
 		defender.lifetime_record.add_damage_taken(0, false)
 		return _with_monster_fumble_roll(AttackResolution.new(false, false, chance, roll, 0), fumble_roll)
@@ -436,7 +352,7 @@ func resolve_monster_attack(attacker: MonsterState, attacker_definition: Monster
 		resolution.special_saved = resolution.special_save_roll <= resolution.special_save_chance
 		if not resolution.special_saved:
 			resolution.special_applied = true
-			var age_factor := _signed_16(attack.damage_max * attacker.hit_dice)
+			var age_factor := AttackPolicy.signed_16(attack.damage_max * attacker.hit_dice)
 			resolution.special_age_days = int(float(race.max_age) * 0.01 * float(age_factor)) if race != null else 0
 			if race != null and caste != null:
 				resolution.aging = _characters.advance_age_days(defender, race, caste, resolution.special_age_days)
@@ -458,18 +374,18 @@ func resolve_monster_attack_monster(attacker: MonsterState, attacker_definition:
 	if attacker == null or attacker_definition == null or defender == null or defender_definition == null or rng == null:
 		return null
 	var attack_context := context if context != null else MonsterAttackContext.new()
-	var invalid_weapon := _invalid_weapon_reason(attack_context.attacker_weapon)
+	var invalid_weapon := AttackPolicy.invalid_weapon_reason(attack_context.attacker_weapon)
 	if not invalid_weapon.is_empty():
 		return _blocked_monster_attack(invalid_weapon)
 	var condition_roll := _roll_weapon_condition_monster(attack_context.attacker_weapon, defender, defender_definition, rng)
 	if condition_roll.get("blocked", false):
 		return _blocked_monster_attack(StringName(condition_roll.get("reason", "invalid_weapon_condition")))
 	var chance := _monster_attack_base_chance(attacker, attacker_definition, attack_context)
-	chance += _attacker_condition_modifier(attacker.conditions)
+	chance += AttackPolicy.attacker_condition_modifier(attacker.conditions)
 	if attacker.conditions.is_active(ConditionRules.PROTECTION_FROM_EVIL):
 		chance += 10
 	chance -= defender.armor
-	chance += _defender_condition_modifier(defender.conditions, false)
+	chance += AttackPolicy.defender_condition_modifier(defender.conditions, false)
 	if attacker_definition.type_flag(4) and defender.conditions.is_active(ConditionRules.PROTECTION_FROM_EVIL):
 		chance -= 10
 	chance = maxi(10, chance)
@@ -480,7 +396,7 @@ func resolve_monster_attack_monster(attacker: MonsterState, attacker_definition:
 		hit = true
 	var fumble_roll := _monster_fumble_roll(attacker, rng, allow_fumbles)
 	if _monster_fumbled(attack_context.attacker_weapon, fumble_roll):
-		return _fumbled_attack(chance, roll, fumble_roll)
+		return AttackPolicy.fumbled_attack(chance, roll, fumble_roll)
 	if not hit:
 		return _with_monster_fumble_roll(AttackResolution.new(false, false, chance, roll, 0), fumble_roll)
 	var weapon_requirement := _monster_required_weapon_reason(attack_context.attacker_weapon, defender_definition)
@@ -797,7 +713,7 @@ func _apply_party_status_special(resolution: AttackResolution, defender: Charact
 		resolution.special_blocked = true
 		resolution.special_block_reason = &"party_condition_cap"
 		return
-	resolution.special_condition_after = _signed_16(resolution.special_condition_before + absi(resolution.special_potency))
+	resolution.special_condition_after = AttackPolicy.signed_16(resolution.special_condition_before + absi(resolution.special_potency))
 	defender.conditions.set_value(resolution.special_condition_index, resolution.special_condition_after)
 	resolution.special_applied = resolution.special_condition_after != resolution.special_condition_before
 
@@ -817,7 +733,7 @@ func _apply_monster_status_special(resolution: AttackResolution, defender: Monst
 		resolution.special_blocked = true
 		resolution.special_block_reason = &"permanent_condition"
 		return
-	resolution.special_condition_after = _signed_16(resolution.special_condition_before + absi(resolution.special_potency))
+	resolution.special_condition_after = AttackPolicy.signed_16(resolution.special_condition_before + absi(resolution.special_potency))
 	defender.conditions.set_value(resolution.special_condition_index, resolution.special_condition_after)
 	resolution.special_applied = resolution.special_condition_after != resolution.special_condition_before
 	resolution.special_announced = true
@@ -847,8 +763,8 @@ func _apply_party_resource_special(resolution: AttackResolution, attacker: Monst
 		var drained := attacker.hit_dice * 3
 		if drained > defender.spell_points:
 			drained = defender.spell_points
-		defender.spell_points = _signed_16(defender.spell_points - drained)
-		attacker.spell_points = _signed_16(attacker.spell_points + drained)
+		defender.spell_points = AttackPolicy.signed_16(defender.spell_points - drained)
+		attacker.spell_points = AttackPolicy.signed_16(attacker.spell_points + drained)
 		resolution.special_amount = drained
 		resolution.special_target_after = defender.spell_points
 		resolution.special_actor_after = attacker.spell_points
@@ -856,7 +772,7 @@ func _apply_party_resource_special(resolution: AttackResolution, attacker: Monst
 		resolution.special_announced = resolution.special_applied
 		return
 	var removed := attacker.maximum_health * 20
-	defender.experience = _signed_32(defender.experience - removed)
+	defender.experience = AttackPolicy.signed_32(defender.experience - removed)
 	resolution.special_amount = removed
 	resolution.special_target_after = defender.experience
 	resolution.special_applied = removed != 0
@@ -880,8 +796,8 @@ func _apply_monster_spell_drain(resolution: AttackResolution, attacker: MonsterS
 	var drained := attacker.hit_dice * 3
 	if drained > defender.spell_points:
 		drained = defender.spell_points
-	defender.spell_points = _signed_16(defender.spell_points - drained)
-	attacker.spell_points = _signed_16(attacker.spell_points + drained)
+	defender.spell_points = AttackPolicy.signed_16(defender.spell_points - drained)
+	attacker.spell_points = AttackPolicy.signed_16(attacker.spell_points + drained)
 	resolution.special_amount = drained
 	resolution.special_target_after = defender.spell_points
 	resolution.special_actor_after = attacker.spell_points
@@ -972,104 +888,4 @@ static func _monster_saved(_monster: MonsterState, definition: MonsterDefinition
 
 
 func initiative_order(characters: Array[CharacterState], monsters: Array[MonsterState], surprise: int, rng: RealmzRng) -> Array[String]:
-	var order: Array[String] = []
-	for character: CharacterState in characters:
-		if character.current_health > 0:
-			order.append(character.id)
-	for monster: MonsterState in monsters:
-		if monster.current_health > 0:
-			order.append(monster.id)
-	if surprise > 0:
-		return _party_first(order, characters)
-	if surprise < 0:
-		return _monsters_first(order, monsters)
-	for index: int in range(order.size() - 1, 0, -1):
-		var swap_index := rng.draw_between(0, index, &"combat.initiative.slot")
-		var held := order[index]
-		order[index] = order[swap_index]
-		order[swap_index] = held
-	for left: int in order.size():
-		for right: int in range(left, order.size() - 1):
-			if _agility(order[right + 1], characters, monsters) > _agility(order[right], characters, monsters):
-				var held := order[right]
-				order[right] = order[right + 1]
-				order[right + 1] = held
-	return order
-
-
-func _attacker_condition_modifier(conditions: ConditionSet) -> int:
-	var modifier := 0
-	modifier -= absi(conditions.value(ConditionRules.TANGLED))
-	modifier += 15 if conditions.is_active(ConditionRules.STRONG) else 0
-	modifier -= 15 if conditions.is_active(ConditionRules.SLOW) else 0
-	modifier -= 10 if conditions.is_active(ConditionRules.CONFUSED) else 0
-	modifier -= 15 if conditions.is_active(ConditionRules.BLIND) else 0
-	modifier += 5 if conditions.is_active(ConditionRules.MAGIC_AURA) else 0
-	modifier -= 5 if conditions.is_active(ConditionRules.CURSED) else 0
-	modifier -= absi(conditions.value(ConditionRules.HINDERED_ATTACKS))
-	return modifier
-
-
-func _defender_condition_modifier(conditions: ConditionSet, include_protection_from_evil: bool = true) -> int:
-	var modifier := -2 * absi(conditions.value(ConditionRules.SHIELD_FROM_HITS))
-	modifier += 10 if conditions.is_active(ConditionRules.CONFUSED) else 0
-	modifier += 15 if conditions.is_active(ConditionRules.BLIND) else 0
-	modifier += 15 if conditions.is_active(ConditionRules.SLOW) else 0
-	modifier -= 5 if conditions.is_active(ConditionRules.MAGIC_AURA) else 0
-	modifier += 5 if conditions.is_active(ConditionRules.CURSED) else 0
-	modifier -= 10 if conditions.is_active(ConditionRules.INVISIBLE) else 0
-	modifier += absi(conditions.value(ConditionRules.TANGLED))
-	modifier += absi(conditions.value(ConditionRules.HINDERED_DEFENSE))
-	modifier -= absi(conditions.value(ConditionRules.DEFENSE_BONUS))
-	modifier -= 10 if include_protection_from_evil and conditions.is_active(ConditionRules.PROTECTION_FROM_EVIL) else 0
-	return modifier
-
-
-func _agility(id: String, characters: Array[CharacterState], monsters: Array[MonsterState]) -> int:
-	for character: CharacterState in characters:
-		if character.id == id:
-			return character.agility
-	for monster: MonsterState in monsters:
-		if monster.id == id:
-			return monster.agility
-	return 0
-
-
-func _party_first(order: Array[String], characters: Array[CharacterState]) -> Array[String]:
-	var party_ids: Dictionary = {}
-	for character: CharacterState in characters:
-		party_ids[character.id] = true
-	var first: Array[String] = []
-	var last: Array[String] = []
-	for id: String in order:
-		if party_ids.has(id):
-			first.append(id)
-		else:
-			last.append(id)
-	first.append_array(last)
-	return first
-
-
-func _monsters_first(order: Array[String], monsters: Array[MonsterState]) -> Array[String]:
-	var monster_ids: Dictionary = {}
-	for monster: MonsterState in monsters:
-		monster_ids[monster.id] = true
-	var first: Array[String] = []
-	var last: Array[String] = []
-	for id: String in order:
-		if monster_ids.has(id):
-			first.append(id)
-		else:
-			last.append(id)
-	first.append_array(last)
-	return first
-
-
-static func _signed_16(value: int) -> int:
-	var wrapped := value & 0xffff
-	return wrapped - 0x10000 if wrapped >= 0x8000 else wrapped
-
-
-static func _signed_32(value: int) -> int:
-	var wrapped := value & 0xffffffff
-	return wrapped - 0x100000000 if wrapped >= 0x80000000 else wrapped
+	return AttackPolicy.initiative_order(characters, monsters, surprise, rng)
