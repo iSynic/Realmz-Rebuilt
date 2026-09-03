@@ -35,9 +35,8 @@ func build(request: InteractionRequest) -> void:
 	if body == null:
 		add_hint("The level-up request is malformed.")
 		return
-	size_flags_vertical = Control.SIZE_EXPAND_FILL
-	custom_minimum_size = Vector2(0.0, 320.0)
-	add_theme_constant_override("separation", 6)
+	%LevelResultColumns.visible = false
+	%LevelSpellColumns.visible = false
 	if body.mode == &"result":
 		_build_result(body)
 	elif body.mode == &"spell-selection":
@@ -51,72 +50,19 @@ func _build_result(body: InteractionRequest.LevelUpRequestBody) -> void:
 		add_hint("The level result is unavailable.")
 		return
 	_build_header("Level Gained", "%s reached level %d" % [body.character_name, body.level])
-	var columns := HBoxContainer.new()
-	columns.name = "LevelResultColumns"
-	columns.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	columns.add_theme_constant_override("separation", 8)
-	add_child(columns)
-	_build_level_identity(columns, body)
-	_build_gain_record(columns, body)
-	_build_result_action(columns, body)
-
-
-func _build_level_identity(parent: HBoxContainer, body: InteractionRequest.LevelUpRequestBody) -> void:
-	var content := _pane(parent, "LevelIdentity", "Adventurer", 0.8)
-	var portrait := TextureRect.new()
-	portrait.name = "LevelPortrait"
+	%LevelResultColumns.visible = true
+	var portrait := %LevelPortrait as TextureRect
 	portrait.texture = _portrait(body.character_id)
-	portrait.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	portrait.custom_minimum_size = Vector2(160.0, 220.0)
-	portrait.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	content.add_child(portrait)
-	content.add_child(_label(body.character_name, GOLD, 18))
-	content.add_child(_label("Level %d" % body.level, CYAN, 16))
-	if portrait.texture == null:
-		portrait.custom_minimum_size.y = 80.0
-		content.add_child(_label("No exact portrait is available.", MUTED, 13))
-
-
-func _build_gain_record(parent: HBoxContainer, body: InteractionRequest.LevelUpRequestBody) -> void:
-	var content := _pane(parent, "LevelGains", "Committed Gains", 1.25)
-	var grid := GridContainer.new()
-	grid.name = "LevelGainGrid"
-	grid.columns = 2
-	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	grid.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	grid.add_theme_constant_override("h_separation", 6)
-	grid.add_theme_constant_override("v_separation", 6)
-	content.add_child(grid)
-	for record: Dictionary in [
-		{"label": "Stamina", "value": body.gains.stamina},
-		{"label": "Spell Points", "value": body.gains.spell_points},
-		{"label": "To Hit", "value": body.gains.to_hit},
-		{"label": "Magic Resistance", "value": body.gains.magic_resistance},
-	]:
-		var card := PanelContainer.new()
-		card.theme_type_variation = &"ClassicInset"
-		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		card.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		grid.add_child(card)
-		var facts := VBoxContainer.new()
-		facts.alignment = BoxContainer.ALIGNMENT_CENTER
-		facts.add_child(_label(String(record.label), MUTED, 14))
-		facts.add_child(_label("%+d" % int(record.value), GOLD, 24))
-		card.add_child(facts)
-
-
-func _build_result_action(parent: HBoxContainer, body: InteractionRequest.LevelUpRequestBody) -> void:
-	var content := _pane(parent, "LevelContinuation", "Adventure", 0.85)
-	content.add_child(_label("These gains are already committed to the adventure.", MUTED, 14))
-	var spacer := Control.new()
-	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	content.add_child(spacer)
-	var button := add_response_to(content, "Continue", InteractionResponse.LevelUpBody.new(&"continue", body.character_id))
-	button.name = "LevelContinue"
-	button.custom_minimum_size.y = 44.0
+	portrait.custom_minimum_size.y = 80.0 if portrait.texture == null else 220.0
+	%PortraitUnavailable.visible = portrait.texture == null
+	%CharacterName.text = body.character_name
+	%CharacterLevel.text = "Level %d" % body.level
+	%StaminaValue.text = "%+d" % body.gains.stamina
+	%SpellPointsValue.text = "%+d" % body.gains.spell_points
+	%ToHitValue.text = "%+d" % body.gains.to_hit
+	%MagicResistanceValue.text = "%+d" % body.gains.magic_resistance
+	var continue_button := %LevelContinue as Button
+	continue_button.pressed.connect(func() -> void: response_body_submitted.emit(InteractionResponse.LevelUpBody.new(&"continue", body.character_id)), CONNECT_ONE_SHOT)
 
 
 func _build_spell_selection(body: InteractionRequest.LevelUpRequestBody) -> void:
@@ -130,81 +76,30 @@ func _build_spell_selection(body: InteractionRequest.LevelUpRequestBody) -> void
 			_selected_spell_ids.append(spell.id)
 	var available_levels := _available_spell_levels(body)
 	_selected_level = available_levels[0] if not available_levels.is_empty() else 1
-	var columns := HBoxContainer.new()
-	columns.name = "LevelSpellColumns"
-	columns.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	columns.add_theme_constant_override("separation", 8)
-	add_child(columns)
-	_build_spell_level_rail(columns, body, available_levels)
-	var list_content := _pane(columns, "LevelSpellCandidates", "", 1.45)
-	_spell_list_heading = _label("", GOLD, 17)
-	_spell_list_heading.theme_type_variation = &"ClassicHeading"
-	list_content.add_child(_spell_list_heading)
-	var scroll := ScrollContainer.new()
-	scroll.name = "LevelSpellScroll"
-	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	list_content.add_child(scroll)
-	_spell_list = VBoxContainer.new()
-	_spell_list.name = "LevelSpellList"
-	_spell_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_spell_list.add_theme_constant_override("separation", 3)
-	scroll.add_child(_spell_list)
+	%LevelSpellColumns.visible = true
+	_build_spell_level_rail(body, available_levels)
+	_spell_list_heading = %LevelSpellListHeading as Label
+	_spell_list = %LevelSpellList as VBoxContainer
 	_rebuild_spell_list(body)
-	var action_content := _pane(columns, "LevelSpellAllowance", "Spell Record", 0.9)
-	_selection_summary = _label("", CYAN, 16)
-	action_content.add_child(_selection_summary)
-	_selection_warning = _label("", MUTED, 13)
-	_selection_warning.name = "LevelSpellBudgetNotice"
-	action_content.add_child(_selection_warning)
-	var record := PanelContainer.new()
-	record.name = "LevelSelectedSpellRecord"
-	record.theme_type_variation = &"ClassicInset"
-	record.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	record.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	action_content.add_child(record)
-	var record_content := VBoxContainer.new()
-	record_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	record_content.add_theme_constant_override("separation", 4)
-	record.add_child(record_content)
-	_spell_record_title = _label("", GOLD, 18)
-	_spell_record_title.theme_type_variation = &"ClassicHeading"
-	record_content.add_child(_spell_record_title)
-	_spell_record_cost = _label("", CYAN, 15)
-	record_content.add_child(_spell_record_cost)
-	_spell_record_state = _label("", MUTED, 14)
-	record_content.add_child(_spell_record_state)
-	_spell_record_description = _label("", Color("eee9db"), 14)
-	_spell_record_description.name = "LevelSpellDescription"
-	_spell_record_description.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	record_content.add_child(_spell_record_description)
-	_confirm_button = Button.new()
-	_confirm_button.name = "LevelSpellConfirm"
-	_confirm_button.text = "Confirm spell selection"
-	_confirm_button.theme_type_variation = &"ClassicTheldrowButton"
-	_confirm_button.custom_minimum_size.y = 44.0
-	_confirm_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_selection_summary = %SelectionSummary as Label
+	_selection_warning = %LevelSpellBudgetNotice as Label
+	_spell_record_title = %Title as Label
+	_spell_record_cost = %Cost as Label
+	_spell_record_state = %State as Label
+	_spell_record_description = %LevelSpellDescription as Label
+	_confirm_button = %LevelSpellConfirm as Button
 	_confirm_button.pressed.connect(_submit_spells.bind(body))
-	action_content.add_child(_confirm_button)
 	if not body.spells.is_empty():
 		var initial_spell := _first_spell_at_level(body, _selected_level)
 		_refresh_spell_record(initial_spell)
 	_refresh_spell_selection(body)
 
 
-func _build_spell_level_rail(parent: HBoxContainer, body: InteractionRequest.LevelUpRequestBody, available_levels: Array[int]) -> void:
-	var panel := PanelContainer.new()
-	panel.name = "LevelSpellLevelRail"
-	panel.theme_type_variation = &"ClassicTextWell"
-	panel.custom_minimum_size.x = 112.0
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	panel.size_flags_stretch_ratio = 0.45
-	parent.add_child(panel)
-	var rail := VBoxContainer.new()
-	rail.add_theme_constant_override("separation", 4)
-	panel.add_child(rail)
+func _build_spell_level_rail(body: InteractionRequest.LevelUpRequestBody, available_levels: Array[int]) -> void:
+	var rail := %Rail as VBoxContainer
+	for child: Node in rail.get_children():
+		rail.remove_child(child)
+		child.queue_free()
 	rail.add_child(SpellSelectionChrome.level_heading())
 	var group := ButtonGroup.new()
 	for level: int in range(1, 8):
@@ -347,46 +242,8 @@ func _submit_spells(body: InteractionRequest.LevelUpRequestBody) -> void:
 
 
 func _build_header(title: String, subtitle: String) -> void:
-	var row := HBoxContainer.new()
-	row.name = "LevelHeader"
-	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	add_child(row)
-	var heading := _label(title, GOLD, 20)
-	heading.theme_type_variation = &"ClassicHeading"
-	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(heading)
-	var context := _label(subtitle, CYAN, 15)
-	context.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	row.add_child(context)
-
-
-func _pane(parent: HBoxContainer, pane_name: String, title: String, ratio: float) -> VBoxContainer:
-	var panel := PanelContainer.new()
-	panel.name = pane_name
-	panel.theme_type_variation = &"ClassicTextWell"
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	panel.size_flags_stretch_ratio = ratio
-	parent.add_child(panel)
-	var content := VBoxContainer.new()
-	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	content.add_theme_constant_override("separation", 5)
-	panel.add_child(content)
-	var heading := _label(title, GOLD, 16)
-	heading.theme_type_variation = &"ClassicHeading"
-	content.add_child(heading)
-	return content
-
-
-func _label(text: String, color: Color, size: int) -> Label:
-	var label := Label.new()
-	label.text = text
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	label.add_theme_color_override("font_color", color)
-	label.add_theme_font_size_override("font_size", size)
-	return label
+	%Heading.text = title
+	%Context.text = subtitle
 
 
 func _character(character_id: String) -> CharacterView:

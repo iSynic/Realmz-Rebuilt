@@ -149,7 +149,7 @@
     {"id": "bank", "scene": "src/ui/interaction_components/bank_interaction.tscn"},
     {"id": "treasure", "scene": null},
     {"id": "encounter", "scene": null},
-    {"id": "level-up", "scene": null},
+    {"id": "level-up", "scene": "src/ui/interaction_components/level_up_interaction.tscn"},
     {"id": "pick-lock", "scene": "src/ui/interaction_components/pick_lock_interaction.tscn"},
     {"id": "lifecycle-prompts", "scene": "src/ui/interaction_components/lifecycle_interaction.tscn"},
     {"id": "scrolling-text", "scene": "src/ui/interaction_components/scrolling_text_interaction.tscn"},

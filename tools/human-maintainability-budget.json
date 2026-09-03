@@ -171,13 +171,6 @@
       "functions": ["add_hint", "character_option"]
     },
     {
-      "path": "src/ui/interaction_components/level_up_interaction.gd",
-      "kind": "request-workspace",
-      "reason": "Level Up alternates between committed-gain presentation and a class-dependent spell-selection workspace.",
-      "currentMaximum": 18,
-      "functions": ["_build_gain_record", "_build_header", "_build_level_identity", "_build_result", "_build_result_action", "_build_spell_level_rail", "_build_spell_selection", "_label", "_pane"]
-    },
-    {
       "path": "src/ui/interaction_components/selection_interaction.gd",
       "kind": "request-workspace",
       "reason": "Selection renders different spell-target context, character, and surviving-ally workflows from typed candidates.",

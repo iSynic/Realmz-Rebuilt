@@ -8,11 +8,11 @@
   },
   "migrationCeilings": {
     "oversizedProductionFiles": 28,
-    "oversizedFunctions": 103,
+    "oversizedFunctions": 102,
     "oversizedTopLevelClasses": 38,
     "crossObjectPrivateCalls": 203,
     "genericPreloadAliases": 133,
-    "majorSurfacesWithoutScene": 5,
+    "majorSurfacesWithoutScene": 4,
     "majorSurfacesWithoutPreview": 24,
     "shellModeMarkerScenes": 0
   },

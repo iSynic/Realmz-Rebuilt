@@ -11,6 +11,7 @@ const LIFECYCLE_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/l
 const BANK_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/bank_interaction.tscn"
 const TEMPLE_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/temple_interaction.tscn"
 const THIEF_ENCOUNTER_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/thief_encounter_interaction.tscn"
+const LEVEL_UP_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/level_up_interaction.tscn"
 const LayoutPolicy := preload("res://src/ui/interaction_layout_policy.gd")
 
 
@@ -50,7 +51,7 @@ static func create(
 			treasure.configure(media, game_view, compact, treasure_recipient_id, treasure_slot_order)
 			return treasure
 		&"level_up":
-			var level_up := LevelUpInteraction.new()
+			var level_up := (load(LEVEL_UP_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as LevelUpInteraction
 			level_up.configure(game_view, media)
 			return level_up
 		&"complex_encounter":
