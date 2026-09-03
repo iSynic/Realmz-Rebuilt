@@ -1,0 +1,11 @@
+[gd_scene format=3]
+
+[node name="CreatureLibraryRow" type="Button"]
+custom_minimum_size = Vector2(0, 54)
+size_flags_horizontal = 3
+toggle_mode = true
+action_mode = 0
+alignment = 0
+icon_alignment = 0
+expand_icon = true
+theme_override_constants/icon_max_width = 48

@@ -1,4 +1,4 @@
-## Presents detached ally and bestiary records without changing their game state.
+## Binds detached ally and bestiary records to their shared authored workspace.
 class_name CreatureLibraryScreenController
 extends RefCounted
 
@@ -21,125 +21,57 @@ func set_layout_profile(profile_id: StringName) -> void:
 
 
 func present_allies(target: Control, view: GameView, media: ClassicMediaCatalog, text_scale: float) -> void:
-	if target == null or view == null:
-		return
 	var screen := target as CreatureLibraryScreen
-	var parent := screen.body_control() if screen != null else target as VBoxContainer
-	if screen != null:
-		screen.prepare_for_render(_layout_profile == UiLayoutProfile.COMPACT)
-	else:
-		_clear_children(parent)
+	if screen == null or view == null:
+		return
+	screen.prepare_for_render(_layout_profile == UiLayoutProfile.COMPACT)
+	_bind_list_title(screen, "Current Allies  •  %d" % view.party_allies.size(), text_scale)
 	if view.party_allies.is_empty():
-		_add_empty_state(screen.detail_panel() if screen != null else parent, "No current allies", "No allies are currently with the party.", text_scale)
+		_bind_empty(screen, "No current allies", "No allies are currently with the party.", text_scale)
 		return
 	var selected := _selected_ally(view.party_allies)
 	if selected == null:
 		selected = view.party_allies[0]
 		_selected_ally_id = selected.id
-	var compact := _layout_profile == UiLayoutProfile.COMPACT
-	var columns := screen.columns_control() if screen != null else BoxContainer.new()
-	columns.name = "CreatureColumns" if screen != null else "AlliesColumns"
-	columns.vertical = compact
-	columns.add_theme_constant_override("separation", 10)
-	columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	if screen == null:
-		parent.add_child(columns)
-	var list_panel := screen.list_panel() if screen != null else PanelContainer.new()
-	list_panel.name = "CreatureListPanel" if screen != null else "AlliesListPane"
-	list_panel.theme_type_variation = &"ClassicInset"
-	list_panel.custom_minimum_size = Vector2(248.0, 150.0 if compact else 0.0)
-	list_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	list_panel.size_flags_stretch_ratio = 0.72
-	if screen == null:
-		columns.add_child(list_panel)
-	var list := VBoxContainer.new()
-	list.add_theme_constant_override("separation", 4)
-	list_panel.add_child(list)
-	_add_label(list, "Current Allies  •  %d" % view.party_allies.size(), GOLD, 16, text_scale)
 	for ally: MonsterView in view.party_allies:
-		var button := Button.new()
-		button.name = "AllyRow_%s" % ally.id.validate_node_name()
-		button.text = "%s\n%d/%d ST  •  %d HD" % [ally.name, ally.current_health, ally.maximum_health, ally.hit_dice]
-		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		button.toggle_mode = true
-		button.button_pressed = ally.id == selected.id
-		button.custom_minimum_size.y = 54.0
-		button.icon = _ally_icon_texture(ally, media)
-		button.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
-		button.expand_icon = true
-		button.tooltip_text = "Inspect %s" % ally.name
-		button.pressed.connect(_select_ally.bind(ally.id, target, view, media, text_scale))
-		list.add_child(button)
-	var detail_panel := screen.detail_panel() if screen != null else PanelContainer.new()
-	detail_panel.name = "CreatureDetailPanel" if screen != null else "AllyDetailPane"
-	detail_panel.theme_type_variation = &"ClassicInset"
-	detail_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	detail_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	detail_panel.size_flags_stretch_ratio = 1.78
-	if screen == null:
-		columns.add_child(detail_panel)
-	_render_ally(detail_panel, selected, media, text_scale, compact)
+		var row := _add_row(screen)
+		if row == null:
+			return
+		row.name = "AllyRow_%s" % ally.id.validate_node_name()
+		row.text = "%s\n%d/%d ST  •  %d HD" % [ally.name, ally.current_health, ally.maximum_health, ally.hit_dice]
+		row.button_pressed = ally.id == selected.id
+		row.icon = _ally_icon_texture(ally, media)
+		row.tooltip_text = "Inspect %s" % ally.name
+		row.add_theme_font_size_override("font_size", int(round(14.0 * text_scale)))
+		row.pressed.connect(_select_ally.bind(ally.id, screen, view, media, text_scale))
+	_bind_ally_record(screen, selected, media, text_scale)
 
 
 func present_bestiary(target: Control, view: GameView, media: ClassicMediaCatalog, text_scale: float) -> void:
-	if target == null or view == null:
-		return
 	var screen := target as CreatureLibraryScreen
-	var parent := screen.body_control() if screen != null else target as VBoxContainer
-	if screen != null:
-		screen.prepare_for_render(_layout_profile == UiLayoutProfile.COMPACT)
-	else:
-		_clear_children(parent)
+	if screen == null or view == null:
+		return
+	screen.prepare_for_render(_layout_profile == UiLayoutProfile.COMPACT)
+	_bind_list_title(screen, "Bestiary  •  %d" % view.bestiary_entries.size(), text_scale)
 	if view.bestiary_entries.is_empty():
-		_add_empty_state(screen.detail_panel() if screen != null else parent, "Bestiary unavailable", "This package has no menu-visible monster records.", text_scale)
+		_bind_empty(screen, "Bestiary unavailable", "This package has no menu-visible monster records.", text_scale)
 		return
 	var selected := _selected_bestiary(view.bestiary_entries)
 	if selected == null:
 		selected = view.bestiary_entries[0]
 		_selected_bestiary_id = selected.definition_id
-	var compact := _layout_profile == UiLayoutProfile.COMPACT
-	var columns := screen.columns_control() if screen != null else BoxContainer.new()
-	columns.name = "CreatureColumns" if screen != null else "BestiaryColumns"
-	columns.vertical = compact
-	columns.add_theme_constant_override("separation", 10)
-	columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	if screen == null:
-		parent.add_child(columns)
-	var list_panel := screen.list_panel() if screen != null else PanelContainer.new()
-	list_panel.name = "CreatureListPanel" if screen != null else "BestiaryListPane"
-	list_panel.theme_type_variation = &"ClassicInset"
-	list_panel.custom_minimum_size = Vector2(248.0, 150.0 if compact else 0.0)
-	list_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	list_panel.size_flags_stretch_ratio = 0.72
-	if screen == null:
-		columns.add_child(list_panel)
-	var list := VBoxContainer.new()
-	list.add_theme_constant_override("separation", 4)
-	list_panel.add_child(list)
-	_add_label(list, "Bestiary  •  %d" % view.bestiary_entries.size(), GOLD, 16, text_scale)
 	for entry: MonsterCatalogEntryView in view.bestiary_entries:
-		var button := Button.new()
-		button.name = "BestiaryRow_%s" % entry.definition_id.validate_node_name()
-		button.text = "%s\n%d HD  •  AC %d" % [entry.name, entry.hit_dice, entry.armor]
-		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		button.toggle_mode = true
-		button.button_pressed = entry.definition_id == selected.definition_id
-		button.custom_minimum_size.y = 54.0
-		button.icon = _catalog_icon_texture(entry, media)
-		button.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
-		button.expand_icon = true
-		button.tooltip_text = "Inspect %s" % entry.name
-		button.pressed.connect(_select_bestiary.bind(entry.definition_id, target, view, media, text_scale))
-		list.add_child(button)
-	var detail_panel := screen.detail_panel() if screen != null else PanelContainer.new()
-	detail_panel.name = "CreatureDetailPanel" if screen != null else "BestiaryDetailPane"
-	detail_panel.theme_type_variation = &"ClassicInset"
-	detail_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	detail_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	detail_panel.size_flags_stretch_ratio = 1.78
-	if screen == null:
-		columns.add_child(detail_panel)
-	_render_bestiary(detail_panel, selected, media, text_scale, compact)
+		var row := _add_row(screen)
+		if row == null:
+			return
+		row.name = "BestiaryRow_%s" % entry.definition_id.validate_node_name()
+		row.text = "%s\n%d HD  •  AC %d" % [entry.name, entry.hit_dice, entry.armor]
+		row.button_pressed = entry.definition_id == selected.definition_id
+		row.icon = _catalog_icon_texture(entry, media)
+		row.tooltip_text = "Inspect %s" % entry.name
+		row.add_theme_font_size_override("font_size", int(round(14.0 * text_scale)))
+		row.pressed.connect(_select_bestiary.bind(entry.definition_id, screen, view, media, text_scale))
+	_bind_bestiary_record(screen, selected, media, text_scale)
 
 
 func _selected_ally(allies: Array[MonsterView]) -> MonsterView:
@@ -156,115 +88,116 @@ func _selected_bestiary(entries: Array[MonsterCatalogEntryView]) -> MonsterCatal
 	return null
 
 
-func _select_ally(ally_id: String, target: Control, view: GameView, media: ClassicMediaCatalog, text_scale: float) -> void:
+func _select_ally(ally_id: String, screen: CreatureLibraryScreen, view: GameView, media: ClassicMediaCatalog, text_scale: float) -> void:
 	_selected_ally_id = ally_id
-	present_allies(target, view, media, text_scale)
+	present_allies(screen, view, media, text_scale)
 
 
-func _select_bestiary(definition_id: String, target: Control, view: GameView, media: ClassicMediaCatalog, text_scale: float) -> void:
+func _select_bestiary(definition_id: String, screen: CreatureLibraryScreen, view: GameView, media: ClassicMediaCatalog, text_scale: float) -> void:
 	_selected_bestiary_id = definition_id
-	present_bestiary(target, view, media, text_scale)
+	present_bestiary(screen, view, media, text_scale)
 
 
-func _clear_children(parent: Node) -> void:
-	for child: Node in parent.get_children():
-		parent.remove_child(child)
-		child.queue_free()
+func _add_row(screen: CreatureLibraryScreen) -> Button:
+	if screen.creature_row_scene == null:
+		push_error("Creature library screen has no row scene.")
+		return null
+	var row := screen.creature_row_scene.instantiate() as Button
+	if row == null:
+		push_error("Creature library row scene must instantiate a Button.")
+		return null
+	screen.list_rows().add_child(row)
+	return row
 
 
-func _render_ally(parent: PanelContainer, ally: MonsterView, media: ClassicMediaCatalog, text_scale: float, compact: bool) -> void:
-	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 6)
-	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	parent.add_child(column)
-	var header := HBoxContainer.new()
-	header.add_theme_constant_override("separation", 10)
-	column.add_child(header)
-	var icon := TextureRect.new()
-	icon.name = "AllyIcon"
-	icon.custom_minimum_size = Vector2(80.0, 80.0)
-	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	icon.texture = _ally_icon_texture(ally, media)
-	icon.tooltip_text = "CICN %d unavailable." % ally.icon_id if icon.texture == null else ally.name
-	header.add_child(icon)
-	var identity := VBoxContainer.new()
-	identity.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(identity)
-	_add_label(identity, ally.name, GOLD, 20, text_scale)
-	_add_label(identity, "Classic monster %d" % ally.classic_id, MUTED, 13, text_scale)
-	_add_label(identity, "%d Hit Dice" % ally.hit_dice, TEXT, 13, text_scale)
-	column.add_child(HSeparator.new())
-	var facts := GridContainer.new()
-	facts.columns = 2 if compact else 4
-	facts.add_theme_constant_override("h_separation", 16)
-	facts.add_theme_constant_override("v_separation", 4)
-	facts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	column.add_child(facts)
-	_add_fact(facts, "Stamina", "%d / %d" % [ally.current_health, ally.maximum_health], text_scale)
-	_add_fact(facts, "Spell Points", "%d / %d" % [ally.spell_points, ally.maximum_spell_points], text_scale)
-	_add_fact(facts, "Armor", str(ally.armor), text_scale)
-	_add_fact(facts, "Magic Resistance", "%d%%" % ally.magic_resistance, text_scale)
-	_add_fact(facts, "Movement", str(ally.movement_maximum), text_scale)
-	_add_fact(facts, "Attacks", str(ally.attack_count), text_scale)
-	_add_fact(facts, "Weapon", ally.weapon_name, text_scale)
-	_add_fact(facts, "Helpless", "Yes" if ally.helpless else "No", text_scale)
-	var states := BoxContainer.new()
-	states.name = "AllyStateCards"
-	states.vertical = compact
-	states.add_theme_constant_override("separation", 6)
-	states.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	column.add_child(states)
-	_add_state_card(states, "Conditions", ally.conditions, "None", text_scale)
-	_add_state_card(states, "Immunities", ally.immunities, "None", text_scale)
-	_add_state_card(states, "Vulnerabilities", ally.vulnerabilities, "None", text_scale)
+func _bind_empty(screen: CreatureLibraryScreen, title: String, detail: String, text_scale: float) -> void:
+	var empty := screen.empty_state()
+	empty.visible = true
+	_bind_label(empty.get_node("EmptyTitle") as Label, title, GOLD, 18, text_scale)
+	_bind_label(empty.get_node("EmptyDetail") as Label, detail, MUTED, 13, text_scale)
 
 
-func _render_bestiary(parent: PanelContainer, entry: MonsterCatalogEntryView, media: ClassicMediaCatalog, text_scale: float, compact: bool) -> void:
-	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 6)
-	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	parent.add_child(column)
-	var header := HBoxContainer.new()
-	header.add_theme_constant_override("separation", 10)
-	column.add_child(header)
-	var icon := TextureRect.new()
-	icon.name = "BestiaryIcon"
-	icon.custom_minimum_size = Vector2(80.0, 80.0)
-	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	icon.texture = _catalog_icon_texture(entry, media)
-	icon.tooltip_text = "CICN %d unavailable." % entry.icon_id if icon.texture == null else entry.name
-	header.add_child(icon)
-	var identity := VBoxContainer.new()
-	identity.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(identity)
-	_add_label(identity, entry.name, GOLD, 20, text_scale)
-	_add_label(identity, "Classic monster %d  •  name %d" % [entry.classic_id, entry.classic_name_id], MUTED, 13, text_scale)
-	_add_label(identity, "%d Hit Dice" % entry.hit_dice, TEXT, 13, text_scale)
-	column.add_child(HSeparator.new())
-	_add_label(column, entry.description if not entry.description.is_empty() else "No description supplied.", TEXT, 13, text_scale)
-	var facts := GridContainer.new()
-	facts.columns = 2 if compact else 4
-	facts.add_theme_constant_override("h_separation", 16)
-	facts.add_theme_constant_override("v_separation", 4)
-	column.add_child(facts)
-	_add_fact(facts, "Armor", str(entry.armor), text_scale)
-	_add_fact(facts, "Magic Resistance", "%d%%" % entry.magic_resistance, text_scale)
-	_add_fact(facts, "Movement", str(entry.movement_maximum), text_scale)
-	_add_fact(facts, "Weapon", entry.weapon_name, text_scale)
-	_add_fact(facts, "Attacks", str(entry.attack_count), text_scale)
-	_add_fact(facts, "Magic Attacks", str(entry.magic_attack_count), text_scale)
-	var states := BoxContainer.new()
-	states.name = "BestiaryStateCards"
-	states.vertical = compact
-	states.add_theme_constant_override("separation", 6)
-	column.add_child(states)
-	_add_state_card(states, "Attacks", entry.attack_rows, "None", text_scale)
-	_add_state_card(states, "Immunities", entry.immunities, "None", text_scale)
-	_add_state_card(states, "Vulnerabilities", entry.vulnerabilities, "None", text_scale)
+func _bind_list_title(screen: CreatureLibraryScreen, title: String, text_scale: float) -> void:
+	_bind_label(screen.list_title(), title, GOLD, 16, text_scale)
+
+
+func _bind_ally_record(screen: CreatureLibraryScreen, ally: MonsterView, media: ClassicMediaCatalog, text_scale: float) -> void:
+	_bind_record_identity(screen, ally.name, "Classic monster %d" % ally.classic_id, "%d Hit Dice" % ally.hit_dice, _ally_icon_texture(ally, media), "CICN %d unavailable." % ally.icon_id if ally.icon_id != 0 else ally.name, text_scale)
+	_bind_description(screen, "", text_scale)
+	_bind_facts(screen, [
+		["Stamina", "%d / %d" % [ally.current_health, ally.maximum_health]],
+		["Spell Points", "%d / %d" % [ally.spell_points, ally.maximum_spell_points]],
+		["Armor", str(ally.armor)],
+		["Magic Resistance", "%d%%" % ally.magic_resistance],
+		["Movement", str(ally.movement_maximum)],
+		["Attacks", str(ally.attack_count)],
+		["Weapon", ally.weapon_name],
+		["Helpless", "Yes" if ally.helpless else "No"],
+	], text_scale)
+	_bind_states(screen, [["Conditions", ally.conditions], ["Immunities", ally.immunities], ["Vulnerabilities", ally.vulnerabilities]], text_scale)
+
+
+func _bind_bestiary_record(screen: CreatureLibraryScreen, entry: MonsterCatalogEntryView, media: ClassicMediaCatalog, text_scale: float) -> void:
+	_bind_record_identity(screen, entry.name, "Classic monster %d  •  name %d" % [entry.classic_id, entry.classic_name_id], "%d Hit Dice" % entry.hit_dice, _catalog_icon_texture(entry, media), "CICN %d unavailable." % entry.icon_id if entry.icon_id != 0 else entry.name, text_scale)
+	_bind_description(screen, entry.description if not entry.description.is_empty() else "No description supplied.", text_scale)
+	_bind_facts(screen, [
+		["Armor", str(entry.armor)],
+		["Magic Resistance", "%d%%" % entry.magic_resistance],
+		["Movement", str(entry.movement_maximum)],
+		["Weapon", entry.weapon_name],
+		["Attacks", str(entry.attack_count)],
+		["Magic Attacks", str(entry.magic_attack_count)],
+	], text_scale)
+	_bind_states(screen, [["Attacks", entry.attack_rows], ["Immunities", entry.immunities], ["Vulnerabilities", entry.vulnerabilities]], text_scale)
+
+
+func _bind_record_identity(screen: CreatureLibraryScreen, title: String, source: String, hit_dice: String, texture: Texture2D, missing_tooltip: String, text_scale: float) -> void:
+	var record := screen.detail_record()
+	record.visible = true
+	var icon := record.get_node("Header/CreatureIcon") as TextureRect
+	icon.texture = texture
+	icon.tooltip_text = missing_tooltip if texture == null else title
+	_bind_label(record.get_node("Header/Identity/CreatureName") as Label, title, GOLD, 20, text_scale)
+	_bind_label(record.get_node("Header/Identity/CreatureSource") as Label, source, MUTED, 13, text_scale)
+	_bind_label(record.get_node("Header/Identity/CreatureHitDice") as Label, hit_dice, TEXT, 13, text_scale)
+
+
+func _bind_description(screen: CreatureLibraryScreen, value: String, text_scale: float) -> void:
+	var description := screen.detail_record().get_node("CreatureDescription") as Label
+	description.visible = not value.is_empty()
+	_bind_label(description, value, TEXT, 13, text_scale)
+
+
+func _bind_facts(screen: CreatureLibraryScreen, records: Array, text_scale: float) -> void:
+	var facts := screen.facts()
+	facts.columns = 2 if _layout_profile == UiLayoutProfile.COMPACT else 4
+	for index: int in range(8):
+		var key := facts.get_node("Fact%dKey" % (index + 1)) as Label
+		var value := facts.get_node("Fact%dValue" % (index + 1)) as Label
+		var visible := index < records.size()
+		key.visible = visible
+		value.visible = visible
+		if not visible:
+			continue
+		_bind_label(key, str(records[index][0]), MUTED, 13, text_scale)
+		key.custom_minimum_size.x = 104.0
+		_bind_label(value, str(records[index][1]), TEXT, 13, text_scale)
+
+
+func _bind_states(screen: CreatureLibraryScreen, records: Array, text_scale: float) -> void:
+	var cards := screen.state_cards()
+	for index: int in range(3):
+		var panel := cards.get_node("State%d" % (index + 1)) as PanelContainer
+		var values: Array[String] = []
+		values.assign(records[index][1])
+		_bind_label(panel.get_node("Content/Title") as Label, str(records[index][0]), GOLD, 14, text_scale)
+		_bind_label(panel.get_node("Content/Body") as Label, "None" if values.is_empty() else " • ".join(values), TEXT, 12, text_scale)
+
+
+func _bind_label(label: Label, value: String, color: Color, size: int, text_scale: float) -> void:
+	label.text = value
+	label.add_theme_color_override("font_color", color)
+	label.add_theme_font_size_override("font_size", int(round(float(size) * text_scale)))
 
 
 func _ally_icon_texture(ally: MonsterView, media: ClassicMediaCatalog) -> Texture2D:
@@ -279,42 +212,3 @@ func _catalog_icon_texture(entry: MonsterCatalogEntryView, media: ClassicMediaCa
 		return null
 	var asset := media.asset_by_resource("cicn", entry.icon_id)
 	return media.image_texture(asset) if asset != null else null
-
-
-func _add_fact(parent: GridContainer, label_text: String, value_text: String, text_scale: float) -> void:
-	var key := _add_label(parent, label_text, MUTED, 13, text_scale)
-	key.custom_minimum_size.x = 104.0
-	var value := _add_label(parent, value_text, TEXT, 13, text_scale)
-	value.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-
-
-func _add_state_card(parent: BoxContainer, title: String, values: Array[String], empty_text: String, text_scale: float) -> void:
-	var panel := PanelContainer.new()
-	panel.theme_type_variation = &"ClassicInset"
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var column := VBoxContainer.new()
-	panel.add_child(column)
-	_add_label(column, title, GOLD, 14, text_scale)
-	_add_label(column, empty_text if values.is_empty() else " • ".join(values), TEXT, 12, text_scale)
-	parent.add_child(panel)
-
-
-func _add_empty_state(parent: Container, title: String, detail: String, text_scale: float) -> void:
-	var panel := PanelContainer.new()
-	panel.theme_type_variation = &"ClassicInset"
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var column := VBoxContainer.new()
-	panel.add_child(column)
-	_add_label(column, title, GOLD, 18, text_scale)
-	_add_label(column, detail, MUTED, 13, text_scale)
-	parent.add_child(panel)
-
-
-func _add_label(parent: Container, value: String, color: Color, size: int, text_scale: float) -> Label:
-	var label := Label.new()
-	label.text = value
-	label.add_theme_color_override("font_color", color)
-	label.add_theme_font_size_override("font_size", int(round(float(size) * text_scale)))
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	parent.add_child(label)
-	return label

@@ -59,13 +59,6 @@
       "functions": ["<file>"]
     },
     {
-      "path": "src/ui/controllers/creature_library_screen_controller.gd",
-      "kind": "data-collection",
-      "reason": "The library scene owns its panes while these functions project variable ally and bestiary records.",
-      "currentMaximum": 25,
-      "functions": ["_add_empty_state", "_add_label", "_add_state_card", "_render_ally", "_render_bestiary", "present_allies", "present_bestiary"]
-    },
-    {
       "path": "src/ui/controllers/inventory_screen_controller.gd",
       "kind": "data-collection",
       "reason": "Inventory scenes own the browser, command rail, inspector, and Done regions; these functions bind variable characters, items, facts, and trade modes.",

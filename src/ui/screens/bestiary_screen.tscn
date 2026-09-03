@@ -1,43 +1,16 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="PackedScene" path="res://src/ui/screens/screen_frame.tscn" id="1_base"]
 [ext_resource type="Script" path="res://src/ui/screens/creature_library_screen.gd" id="2_screen"]
+[ext_resource type="PackedScene" path="res://src/ui/screens/creature_library_workspace.tscn" id="3_workspace"]
+[ext_resource type="PackedScene" path="res://src/ui/screens/creature_library_row.tscn" id="4_row"]
 
 [node name="BestiaryScreen" instance=ExtResource("1_base")]
 route_id = &"bestiary"
 title = "Bestiary"
 description = ""
 script = ExtResource("2_screen")
+creature_row_scene = ExtResource("4_row")
 
-[node name="CreatureColumns" type="BoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody"]
+[node name="CreatureColumns" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody" instance=ExtResource("3_workspace")]
 layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_constants/separation = 10
-
-[node name="CreatureListPanel" type="PanelContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/CreatureColumns"]
-layout_mode = 2
-custom_minimum_size = Vector2(248, 0)
-size_flags_horizontal = 3
-size_flags_vertical = 3
-size_flags_stretch_ratio = 0.72
-theme_type_variation = &"ClassicInset"
-
-[node name="EditorHint" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/CreatureColumns/CreatureListPanel"]
-layout_mode = 2
-text = "Bestiary entry list"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="CreatureDetailPanel" type="PanelContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/CreatureColumns"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-size_flags_stretch_ratio = 1.78
-theme_type_variation = &"ClassicInset"
-
-[node name="EditorHint" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/CreatureColumns/CreatureDetailPanel"]
-layout_mode = 2
-text = "Selected bestiary record"
-horizontal_alignment = 1
-vertical_alignment = 1
