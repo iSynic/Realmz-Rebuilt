@@ -45,13 +45,6 @@
       "functions": ["_label"]
     },
     {
-      "path": "src/ui/controllers/character_screen_controller.gd",
-      "kind": "data-collection",
-      "reason": "The Character scene owns its party-order and character-sheet hierarchy; the remaining functions project variable Character File revisions, history, and inspection records during the vault migration.",
-      "currentMaximum": 24,
-      "functions": ["_add_card", "_label", "_render_vault_current_row", "_render_vault_history", "_render_vault_inspection", "_vault_import_button", "present_vault"]
-    },
-    {
       "path": "src/ui/controllers/classic_definition_toggle_list.gd",
       "kind": "data-collection",
       "reason": "The custom list owns one retained content container whose children mirror the current definition set.",

@@ -8,7 +8,7 @@
   },
   "migrationCeilings": {
     "oversizedProductionFiles": 26,
-    "oversizedFunctions": 99,
+    "oversizedFunctions": 97,
     "oversizedTopLevelClasses": 36,
     "crossObjectPrivateCalls": 203,
     "genericPreloadAliases": 133,

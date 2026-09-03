@@ -75,68 +75,52 @@ func handle_vault_back() -> bool:
 
 
 func present_vault(target: Control, view: GameView, appearance_textures: Dictionary, text_scale: float, back_label: String = "Back", media: ClassicMediaCatalog = null) -> void:
-	if target == null:
-		return
 	var screen := target as VaultScreen
-	var parent := screen.body_control() if screen != null else target as VBoxContainer
+	if screen == null:
+		return
 	_vault_target = target
 	_vault_screen = screen
-	_vault_parent = parent
+	_vault_parent = screen.body_control()
 	_vault_view = view
 	_vault_appearance_textures = appearance_textures
 	_vault_text_scale = text_scale
 	_vault_back_label = back_label
 	_vault_media = media
-	if screen == null:
-		_clear(parent)
 	if not _vault_inspection_revision_hash.is_empty():
-		if screen != null:
-			_vault_parent = screen.prepare_inspection_layout()
+		screen.prepare_inspection_layout()
 		_render_vault_inspection()
 		return
-	if screen != null:
-		screen.prepare_list_layout()
-	var header_parent := screen.header_area() if screen != null else parent
-	var list_parent := screen.list_area() if screen != null else parent
-	var history_parent := screen.history_area() if screen != null else parent
-	var header := HBoxContainer.new()
-	header.name = "CharacterFilesHeader"
-	header.add_theme_constant_override("separation", 8)
-	var back := Button.new()
+	screen.prepare_list_layout(_layout_profile == UiLayoutProfile.COMPACT)
+	var back := screen.list_back_button()
 	back.text = back_label
+	_clear_pressed_connections(back)
 	back.pressed.connect(func() -> void: vault_back_requested.emit())
-	header.add_child(back)
-	var header_spacer := Control.new()
-	header_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(header_spacer)
 	var current_revisions := _current_vault_revisions()
-	header.add_child(_label("%d available" % current_revisions.size(), MUTED, 13))
-	header_parent.add_child(header)
-	if _vault_revisions.is_empty():
-		_add_card(list_parent, "Character vault is empty", "No immutable .r2char revisions are installed. New characters can be published after they are added to a campaign party.")
-		return
-	list_parent.add_child(_label("Current Character Files", GOLD, 15))
-	if view != null and view.campaign_summary != null:
-		list_parent.add_child(_label("Eligibility shown for %s" % view.campaign_summary.title, MUTED, 11))
-	var list := GridContainer.new()
-	list.name = "CharacterFileList"
-	list.columns = 1 if _layout_profile == UiLayoutProfile.COMPACT else 2
-	list.add_theme_constant_override("h_separation", 8)
-	list.add_theme_constant_override("v_separation", 8)
-	for revision: CharacterVaultRevisionView in current_revisions:
-		_render_vault_current_row(list, revision, view)
-	list_parent.add_child(list)
+	_bind_label(screen.available_count(), "%d available" % current_revisions.size(), MUTED, 13)
 	var history_count := _vault_revisions.size() - current_revisions.size()
-	var history_button := Button.new()
+	var history_button := screen.history_toggle()
 	history_button.text = ("Hide revision history" if _vault_show_history else "Revision history and archives") + " (%d)" % history_count
 	history_button.disabled = history_count == 0
-	history_button.pressed.connect(func() -> void:
-		_vault_show_history = not _vault_show_history
-		_refresh_vault()
-	)
-	history_parent.add_child(history_button)
+	_clear_pressed_connections(history_button)
+	if not history_button.disabled:
+		history_button.pressed.connect(func() -> void:
+			_vault_show_history = not _vault_show_history
+			_refresh_vault()
+		)
+	if _vault_revisions.is_empty():
+		screen.empty_state().visible = true
+		screen.current_title().visible = false
+		return
+	_bind_label(screen.current_title(), "Current Character Files", GOLD, 15)
+	if view != null and view.campaign_summary != null:
+		var context := screen.eligibility_context()
+		context.visible = true
+		_bind_label(context, "Eligibility shown for %s" % view.campaign_summary.title, MUTED, 11)
+	for revision: CharacterVaultRevisionView in current_revisions:
+		_render_vault_current_row(screen.character_file_list(), revision, view)
 	if _vault_show_history:
-		_render_vault_history(history_parent, current_revisions)
+		screen.history_title().visible = true
+		_render_vault_history(screen.history_rows(), current_revisions)
 
 
 func _current_vault_revisions() -> Array[CharacterVaultRevisionView]:
@@ -154,79 +138,42 @@ func _current_vault_revisions() -> Array[CharacterVaultRevisionView]:
 
 
 func _render_vault_current_row(parent: Container, revision: CharacterVaultRevisionView, view: GameView) -> void:
-	var panel := PanelContainer.new()
+	var panel := _vault_screen.character_card_scene.instantiate() as PanelContainer
+	if panel == null:
+		push_error("Character File card scene must instantiate a PanelContainer.")
+		return
 	panel.name = "CharacterFile_%s" % revision.character_id.validate_node_name()
-	panel.theme_type_variation = &"ClassicInset"
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var card := VBoxContainer.new()
-	card.custom_minimum_size.y = 138.0
-	card.add_theme_constant_override("separation", 6)
-	panel.add_child(card)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
-	card.add_child(row)
-	var media_pair := HBoxContainer.new()
-	media_pair.name = "StoredAppearancePair"
-	media_pair.add_theme_constant_override("separation", 3)
-	var portrait := TextureRect.new()
-	portrait.name = "StoredPortrait"
-	portrait.custom_minimum_size = Vector2(58.0, 58.0)
-	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	portrait.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	var portrait := panel.get_node("CardContent/Record/StoredAppearancePair/StoredPortrait") as TextureRect
 	portrait.texture = _vault_appearance_textures.get(revision.portrait_id) as Texture2D
-	media_pair.add_child(portrait)
-	var tactical := TextureRect.new()
-	tactical.name = "StoredTacticalIcon"
-	tactical.custom_minimum_size = Vector2(58.0, 58.0)
-	tactical.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	tactical.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	tactical.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	var tactical := panel.get_node("CardContent/Record/StoredAppearancePair/StoredTacticalIcon") as TextureRect
 	if revision.character != null:
 		tactical.texture = _vault_appearance_textures.get(revision.character.combat_icon_id) as Texture2D
-	media_pair.add_child(tactical)
-	row.add_child(media_pair)
-	var summary := VBoxContainer.new()
-	summary.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	summary.add_child(_label(revision.name, GOLD, 18))
+	_bind_label(panel.get_node("CardContent/Record/Summary/Name") as Label, revision.name, GOLD, 18)
 	var character := revision.character
 	var identity := "Level %d • %s / %s" % [revision.level, character.race_name if character != null else revision.race_id, character.caste_name if character != null else revision.caste_id]
-	summary.add_child(_label(identity, Color("e0e2e5"), 14))
+	_bind_label(panel.get_node("CardContent/Record/Summary/Identity") as Label, identity, Color("e0e2e5"), 14)
 	var facts := "Stored character record"
 	if character != null:
 		facts = "ST %d/%d • SP %d/%d • AR %d • Load %d/%d" % [character.current_health, character.maximum_health, character.spell_points, character.maximum_spell_points, character.armor, character.carried_load, character.maximum_load]
-	summary.add_child(_label(facts, MUTED, 12))
+	_bind_label(panel.get_node("CardContent/Record/Summary/Facts") as Label, facts, MUTED, 12)
 	var origin := "Realmz character file" if revision.source_campaign_id.is_empty() else "From %s" % revision.source_campaign_id
 	if not revision.publication_label.is_empty():
 		origin += " • %s" % revision.publication_label
-	summary.add_child(_label(origin, MUTED, 11))
-	row.add_child(summary)
-	var actions := HBoxContainer.new()
-	actions.name = "CharacterFileActions"
-	actions.add_theme_constant_override("separation", 6)
-	actions.add_child(_label("Eligible" if revision.eligible else "Unavailable", Color("75c889") if revision.eligible else Color("ef7770"), 13))
-	actions.add_spacer(true)
-	var inspect := Button.new()
-	inspect.text = "Inspect"
+	_bind_label(panel.get_node("CardContent/Record/Summary/Origin") as Label, origin, MUTED, 11)
+	_bind_label(panel.get_node("CardContent/CharacterFileActions/Eligibility") as Label, "Eligible" if revision.eligible else "Unavailable", Color("75c889") if revision.eligible else Color("ef7770"), 13)
+	var inspect := panel.get_node("CardContent/CharacterFileActions/Inspect") as Button
 	inspect.disabled = character == null
 	inspect.tooltip_text = "Open the complete detached character record." if not inspect.disabled else "This vault revision has no valid character record."
 	if not inspect.disabled:
 		inspect.pressed.connect(_inspect_vault.bind(revision.revision_hash))
-	actions.add_child(inspect)
-	var import_button := _vault_import_button(revision, view)
-	actions.add_child(import_button)
-	var archive := Button.new()
-	archive.text = "Archive"
+	_bind_vault_import_button(panel.get_node("CardContent/CharacterFileActions/AddToParty") as Button, revision, view)
+	var archive := panel.get_node("CardContent/CharacterFileActions/Archive") as Button
 	archive.tooltip_text = "Remove this character from the active list without deleting immutable history."
 	archive.pressed.connect(_confirm_vault_archive.bind(revision))
-	actions.add_child(archive)
-	card.add_child(actions)
 	parent.add_child(panel)
 
 
-func _vault_import_button(revision: CharacterVaultRevisionView, view: GameView) -> Button:
-	var button := Button.new()
-	button.text = "Add to party"
+func _bind_vault_import_button(button: Button, revision: CharacterVaultRevisionView, view: GameView) -> void:
 	button.tooltip_text = "\n".join(revision.eligibility_reasons)
 	if view == null or not view.session_started:
 		button.disabled = true
@@ -240,34 +187,29 @@ func _vault_import_button(revision: CharacterVaultRevisionView, view: GameView) 
 			button.tooltip_text = "Restore an archived revision before importing it."
 	if not button.disabled:
 		button.pressed.connect(func() -> void: intent_submitted.emit(PlayerIntent.import_vault_character(revision.character_id, revision.revision_hash)))
-	return button
 
 
 func _render_vault_history(parent: Container, current_revisions: Array[CharacterVaultRevisionView]) -> void:
 	var current_hashes: Dictionary = {}
 	for revision: CharacterVaultRevisionView in current_revisions:
 		current_hashes[revision.revision_hash] = true
-	parent.add_child(_label("Earlier revisions", GOLD, 17))
 	for revision: CharacterVaultRevisionView in _vault_revisions:
 		if current_hashes.has(revision.revision_hash):
 			continue
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 8)
+		var row := _vault_screen.history_row_scene.instantiate() as HBoxContainer
+		if row == null:
+			push_error("Character File history scene must instantiate an HBoxContainer.")
+			return
 		var state := "Archived" if revision.archived else "Earlier"
-		var label := _label("%s • %s • L%d • %s" % [revision.name, state, revision.level, revision.revision_hash.left(12)], MUTED, 13)
-		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(label)
-		var inspect := Button.new()
-		inspect.text = "Inspect"
+		_bind_label(row.get_node("Summary") as Label, "%s • %s • L%d • %s" % [revision.name, state, revision.level, revision.revision_hash.left(12)], MUTED, 13)
+		var inspect := row.get_node("Inspect") as Button
 		inspect.disabled = revision.character == null
 		if not inspect.disabled:
 			inspect.pressed.connect(_inspect_vault.bind(revision.revision_hash))
-		row.add_child(inspect)
+		var restore := row.get_node("Restore") as Button
+		restore.visible = revision.archived
 		if revision.archived:
-			var restore := Button.new()
-			restore.text = "Restore as current"
 			restore.pressed.connect(func() -> void: vault_restore_requested.emit(revision.character_id, revision.revision_hash))
-			row.add_child(restore)
 		parent.add_child(row)
 
 
@@ -292,24 +234,17 @@ func _render_vault_inspection() -> void:
 		_vault_inspection_revision_hash = ""
 		_refresh_vault()
 		return
-	var header := HBoxContainer.new()
-	header.add_theme_constant_override("separation", 8)
-	var back := Button.new()
-	back.text = "Back to character vault"
+	var back := _vault_screen.inspection_back_button()
+	_clear_pressed_connections(back)
 	back.pressed.connect(func() -> void:
 		_vault_inspection_revision_hash = ""
 		_refresh_vault()
 	)
-	header.add_child(back)
-	var heading := _label("Inspect %s" % revision.name, GOLD, 20)
-	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(heading)
-	_vault_parent.add_child(header)
+	_bind_label(_vault_screen.inspection_heading(), "Inspect %s" % revision.name, GOLD, 20)
 	var eligibility := "Eligible for this campaign" if revision.eligible else "Not eligible for this campaign"
 	var reasons := "" if revision.eligibility_reasons.is_empty() else "\n%s" % "\n".join(revision.eligibility_reasons)
-	_vault_parent.add_child(_label("%s%s" % [eligibility, reasons], Color("75c889") if revision.eligible else Color("ef7770"), 13))
-	var sheet := _vault_screen.character_sheet_scene.instantiate() as ClassicCharacterSheet
-	sheet.name = "VaultCharacterSheet"
+	_bind_label(_vault_screen.inspection_eligibility(), "%s%s" % [eligibility, reasons], Color("75c889") if revision.eligible else Color("ef7770"), 13)
+	var sheet := _vault_screen.character_sheet()
 	sheet.present(
 		[revision.character],
 		revision.character.id,
@@ -322,8 +257,12 @@ func _render_vault_inspection() -> void:
 		_vault_media,
 		_layout_profile
 	)
-	sheet.tab_changed.connect(func(tab_id: StringName) -> void: _selected_tab = tab_id)
-	_vault_parent.add_child(sheet)
+	if not sheet.tab_changed.is_connected(_on_vault_sheet_tab_changed):
+		sheet.tab_changed.connect(_on_vault_sheet_tab_changed)
+
+
+func _on_vault_sheet_tab_changed(tab_id: StringName) -> void:
+	_selected_tab = tab_id
 
 
 func _confirm_vault_archive(revision: CharacterVaultRevisionView) -> void:
@@ -488,29 +427,3 @@ func _move_draft(index: int, offset: int) -> void:
 	_draft_order_ids[index] = _draft_order_ids[destination]
 	_draft_order_ids[destination] = moved_character_id
 	refresh_requested.emit()
-
-
-func _add_card(parent: Container, title: String, detail: String) -> void:
-	var panel := PanelContainer.new()
-	panel.theme_type_variation = &"ClassicInset"
-	var column := VBoxContainer.new()
-	panel.add_child(column)
-	column.add_child(_label(title, GOLD, 16))
-	var body := _label(detail, MUTED, 13)
-	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	column.add_child(body)
-	parent.add_child(panel)
-
-
-func _label(text: String, color: Color, size: int) -> Label:
-	var result := Label.new()
-	result.text = text
-	result.add_theme_color_override("font_color", color)
-	result.add_theme_font_size_override("font_size", size)
-	return result
-
-
-func _clear(parent: Node) -> void:
-	for child: Node in parent.get_children():
-		parent.remove_child(child)
-		child.queue_free()

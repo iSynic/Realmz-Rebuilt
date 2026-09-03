@@ -1,0 +1,19 @@
+[gd_scene format=3]
+
+[node name="VaultHistoryRow" type="HBoxContainer"]
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="Summary" type="Label" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+
+[node name="Inspect" type="Button" parent="."]
+layout_mode = 2
+text = "Inspect"
+
+[node name="Restore" type="Button" parent="."]
+visible = false
+layout_mode = 2
+text = "Restore as current"
