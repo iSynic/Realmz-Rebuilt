@@ -1,7 +1,8 @@
-class_name ClassicWorkspacePresenter
+## Routes detached game views into the controller responsible for each mounted screen.
+class_name ScreenContentPresenter
 extends RefCounted
 
-const CREATURE_LIBRARY_CONTROLLER := preload("res://src/ui/controllers/creature_library_workspace_controller.gd")
+const CREATURE_LIBRARY_CONTROLLER := preload("res://src/ui/controllers/creature_library_screen_controller.gd")
 
 signal intent_submitted(intent: PlayerIntent)
 signal system_action_requested(action_id: StringName, value: Variant)
@@ -21,12 +22,12 @@ var _view: GameView
 var _settings: PresentationSettings = PresentationSettings.new()
 var _media: ClassicMediaCatalog
 var _ordinary_money_workspace_open: bool = false
-var _system_controller := SystemWorkspaceController.new()
-var _character_controller := CharacterWorkspaceController.new()
-var _inventory_controller := InventoryWorkspaceController.new()
-var _services_controller := ServicesWorkspaceController.new()
-var _maps_journal_controller := MapsJournalWorkspaceController.new()
-var _spells_controller := SpellsWorkspaceController.new()
+var _system_controller := SystemScreenController.new()
+var _character_controller := CharacterScreenController.new()
+var _inventory_controller := InventoryScreenController.new()
+var _services_controller := ServicesScreenController.new()
+var _maps_journal_controller := MapsJournalScreenController.new()
+var _spells_controller := SpellsScreenController.new()
 var _creature_library_controller := CREATURE_LIBRARY_CONTROLLER.new()
 
 
@@ -42,97 +43,97 @@ func set_layout_profile(profile_id: StringName) -> void:
 func _init() -> void:
 	var owner_ref: WeakRef = weakref(self)
 	_system_controller.action_requested.connect(func(action_id: StringName, value: Variant) -> void:
-		var owner := owner_ref.get_ref() as ClassicWorkspacePresenter
+		var owner := owner_ref.get_ref() as ScreenContentPresenter
 		if owner != null:
 			owner.system_action_requested.emit(action_id, value)
 	)
 	_system_controller.setting_changed.connect(func(setting_id: StringName, value: Variant) -> void:
-		var owner := owner_ref.get_ref() as ClassicWorkspacePresenter
+		var owner := owner_ref.get_ref() as ScreenContentPresenter
 		if owner != null:
 			owner.presentation_setting_changed.emit(setting_id, value)
 	)
 	_character_controller.intent_submitted.connect(func(intent: PlayerIntent) -> void:
-		var owner := owner_ref.get_ref() as ClassicWorkspacePresenter
+		var owner := owner_ref.get_ref() as ScreenContentPresenter
 		if owner != null:
 			owner.intent_submitted.emit(intent)
 	)
 	_character_controller.refresh_requested.connect(func() -> void:
-		var owner := owner_ref.get_ref() as ClassicWorkspacePresenter
+		var owner := owner_ref.get_ref() as ScreenContentPresenter
 		if owner != null:
 			owner.refresh_requested.emit()
 	)
 	_character_controller.vault_back_requested.connect(func() -> void:
-		var owner := owner_ref.get_ref() as ClassicWorkspacePresenter
+		var owner := owner_ref.get_ref() as ScreenContentPresenter
 		if owner != null:
 			owner.back_requested.emit()
 	)
 	_character_controller.vault_archive_requested.connect(func(character_id: String) -> void:
-		var owner := owner_ref.get_ref() as ClassicWorkspacePresenter
+		var owner := owner_ref.get_ref() as ScreenContentPresenter
 		if owner != null:
 			owner.vault_archive_requested.emit(character_id)
 	)
 	_character_controller.vault_restore_requested.connect(func(character_id: String, revision_hash: String) -> void:
-		var owner := owner_ref.get_ref() as ClassicWorkspacePresenter
+		var owner := owner_ref.get_ref() as ScreenContentPresenter
 		if owner != null:
 			owner.vault_restore_requested.emit(character_id, revision_hash)
 	)
 	_inventory_controller.intent_submitted.connect(func(intent: PlayerIntent) -> void:
-		var owner := owner_ref.get_ref() as ClassicWorkspacePresenter
+		var owner := owner_ref.get_ref() as ScreenContentPresenter
 		if owner != null:
 			owner.intent_submitted.emit(intent)
 	)
 	_inventory_controller.refresh_requested.connect(func() -> void:
-		var owner := owner_ref.get_ref() as ClassicWorkspacePresenter
+		var owner := owner_ref.get_ref() as ScreenContentPresenter
 		if owner != null:
 			owner.refresh_requested.emit()
 	)
 	_inventory_controller.route_requested.connect(func(screen_id: StringName) -> void:
-		var owner := owner_ref.get_ref() as ClassicWorkspacePresenter
+		var owner := owner_ref.get_ref() as ScreenContentPresenter
 		if owner != null:
 			owner.route_requested.emit(screen_id)
 	)
 	_inventory_controller.back_requested.connect(func() -> void:
-		var owner := owner_ref.get_ref() as ClassicWorkspacePresenter
+		var owner := owner_ref.get_ref() as ScreenContentPresenter
 		if owner != null:
 			owner.back_requested.emit()
 	)
 	_services_controller.intent_submitted.connect(func(intent: PlayerIntent) -> void:
-		var owner := owner_ref.get_ref() as ClassicWorkspacePresenter
+		var owner := owner_ref.get_ref() as ScreenContentPresenter
 		if owner != null:
 			owner.intent_submitted.emit(intent)
 	)
 	_services_controller.route_requested.connect(func(screen_id: StringName) -> void:
-		var owner := owner_ref.get_ref() as ClassicWorkspacePresenter
+		var owner := owner_ref.get_ref() as ScreenContentPresenter
 		if owner != null:
 			owner.route_requested.emit(screen_id)
 	)
 	_services_controller.refresh_requested.connect(func() -> void:
-		var owner := owner_ref.get_ref() as ClassicWorkspacePresenter
+		var owner := owner_ref.get_ref() as ScreenContentPresenter
 		if owner != null:
 			owner.refresh_requested.emit()
 	)
 	_maps_journal_controller.intent_submitted.connect(func(intent: PlayerIntent) -> void:
-		var owner := owner_ref.get_ref() as ClassicWorkspacePresenter
+		var owner := owner_ref.get_ref() as ScreenContentPresenter
 		if owner != null:
 			owner.intent_submitted.emit(intent)
 	)
 	_spells_controller.intent_submitted.connect(func(intent: PlayerIntent) -> void:
-		var owner := owner_ref.get_ref() as ClassicWorkspacePresenter
+		var owner := owner_ref.get_ref() as ScreenContentPresenter
 		if owner != null:
 			owner.intent_submitted.emit(intent)
 	)
 	_spells_controller.route_requested.connect(func(screen_id: StringName) -> void:
-		var owner := owner_ref.get_ref() as ClassicWorkspacePresenter
+		var owner := owner_ref.get_ref() as ScreenContentPresenter
 		if owner != null:
 			owner.route_requested.emit(screen_id)
 	)
 	_spells_controller.sound_requested.connect(func(sound_id: int, wait_for_completion: bool, stop_existing: bool) -> void:
-		var owner := owner_ref.get_ref() as ClassicWorkspacePresenter
+		var owner := owner_ref.get_ref() as ScreenContentPresenter
 		if owner != null:
 			owner.sound_requested.emit(sound_id, wait_for_completion, stop_existing, false)
 	)
 	_spells_controller.refresh_requested.connect(func() -> void:
-		var owner := owner_ref.get_ref() as ClassicWorkspacePresenter
+		var owner := owner_ref.get_ref() as ScreenContentPresenter
 		if owner != null:
 			owner.refresh_requested.emit()
 	)

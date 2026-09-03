@@ -1,4 +1,5 @@
-class_name InventoryWorkspaceController
+## Binds detached item records and item actions to Inventory screen regions.
+class_name InventoryScreenController
 extends RefCounted
 
 signal intent_submitted(intent: PlayerIntent)

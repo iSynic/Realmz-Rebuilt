@@ -1,4 +1,5 @@
-class_name CreatureLibraryWorkspaceController
+## Presents detached ally and bestiary records without changing their game state.
+class_name CreatureLibraryScreenController
 extends RefCounted
 
 const GOLD := Color("d5b45d")

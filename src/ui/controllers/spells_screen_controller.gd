@@ -1,4 +1,5 @@
-class_name SpellsWorkspaceController
+## Binds spellbooks, scrolls, and casting choices to the Spells screen.
+class_name SpellsScreenController
 extends RefCounted
 
 const SpellSelectionChrome := preload("res://src/ui/controllers/classic_spell_selection_chrome.gd")

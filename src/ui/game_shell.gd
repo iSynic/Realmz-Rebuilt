@@ -659,7 +659,7 @@ static func combat_spellbook_stage_width(stage_width: float, viewport_width: flo
 
 
 static func exploration_footer_width(viewport_size: Vector2, profile: UiLayoutProfile, route_id: StringName) -> float:
-	return ScreenNavigator.spell_workspace_rect_for(profile, viewport_size).position.x if route_id == &"spells" else viewport_size.x
+	return ScreenNavigator.spell_screen_rect_for(profile, viewport_size).position.x if route_id == &"spells" else viewport_size.x
 
 
 func _apply_exploration_mode() -> void:

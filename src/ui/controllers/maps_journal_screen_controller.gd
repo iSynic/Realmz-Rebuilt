@@ -1,4 +1,5 @@
-class_name MapsJournalWorkspaceController
+## Presents acquired maps, location notes, and journal entries from detached views.
+class_name MapsJournalScreenController
 extends RefCounted
 
 const PlayerMapCartographicStageType := preload("res://src/ui/screens/player_map_cartographic_stage.gd")

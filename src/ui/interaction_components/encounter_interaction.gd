@@ -1,8 +1,8 @@
 class_name EncounterInteraction
 extends InteractionComponent
 
-const SpellsWorkspaceControllerScript := preload("res://src/ui/controllers/spells_workspace_controller.gd")
-const InventoryWorkspaceControllerScript := preload("res://src/ui/controllers/inventory_workspace_controller.gd")
+const SpellsScreenControllerScript := preload("res://src/ui/controllers/spells_screen_controller.gd")
+const InventoryScreenControllerScript := preload("res://src/ui/controllers/inventory_screen_controller.gd")
 
 var _media: ClassicMediaCatalog
 var _game_view: GameView
@@ -17,9 +17,9 @@ var _thief_action: InteractionRequestValue.EncounterAction
 var _back_action: InteractionRequestValue.EncounterAction
 var _catalog_kind: StringName = &""
 var _selected_action_slots: Array[int] = []
-var _spell_workspace: SpellsWorkspaceController
-var _inventory_workspace: InventoryWorkspaceController
-var _inventory_workspace_content: VBoxContainer
+var _spell_screen_controller: SpellsScreenController
+var _inventory_screen_controller: InventoryScreenController
+var _inventory_screen_controller_content: VBoxContainer
 
 
 func configure(media: ClassicMediaCatalog, game_view: GameView = null, compact: bool = false) -> void:
@@ -31,18 +31,18 @@ func configure(media: ClassicMediaCatalog, game_view: GameView = null, compact: 
 func _notification(what: int) -> void:
 	if what != NOTIFICATION_PREDELETE:
 		return
-	if _spell_workspace != null:
-		if _spell_workspace.refresh_requested.is_connected(_render_standard_spell_catalog):
-			_spell_workspace.refresh_requested.disconnect(_render_standard_spell_catalog)
-		if _spell_workspace.encounter_spell_selected.is_connected(_submit_standard_encounter_spell):
-			_spell_workspace.encounter_spell_selected.disconnect(_submit_standard_encounter_spell)
-		_spell_workspace = null
-	if _inventory_workspace != null:
-		if _inventory_workspace.refresh_requested.is_connected(_render_standard_item_workspace):
-			_inventory_workspace.refresh_requested.disconnect(_render_standard_item_workspace)
-		if _inventory_workspace.encounter_item_selected.is_connected(_submit_standard_encounter_item):
-			_inventory_workspace.encounter_item_selected.disconnect(_submit_standard_encounter_item)
-		_inventory_workspace = null
+	if _spell_screen_controller != null:
+		if _spell_screen_controller.refresh_requested.is_connected(_render_standard_spell_catalog):
+			_spell_screen_controller.refresh_requested.disconnect(_render_standard_spell_catalog)
+		if _spell_screen_controller.encounter_spell_selected.is_connected(_submit_standard_encounter_spell):
+			_spell_screen_controller.encounter_spell_selected.disconnect(_submit_standard_encounter_spell)
+		_spell_screen_controller = null
+	if _inventory_screen_controller != null:
+		if _inventory_screen_controller.refresh_requested.is_connected(_render_standard_item_workspace):
+			_inventory_screen_controller.refresh_requested.disconnect(_render_standard_item_workspace)
+		if _inventory_screen_controller.encounter_item_selected.is_connected(_submit_standard_encounter_item):
+			_inventory_screen_controller.encounter_item_selected.disconnect(_submit_standard_encounter_item)
+		_inventory_screen_controller = null
 
 
 func build(request: InteractionRequest) -> void:
@@ -136,24 +136,24 @@ func _show_standard_item_workspace() -> void:
 	back.pressed.connect(_cancel_catalog)
 	heading.add_child(back)
 	workspace.add_child(heading)
-	_inventory_workspace_content = VBoxContainer.new()
-	_inventory_workspace_content.name = "EncounterInventoryContent"
-	_inventory_workspace_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_inventory_workspace_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	workspace.add_child(_inventory_workspace_content)
-	if _inventory_workspace == null:
-		_inventory_workspace = InventoryWorkspaceControllerScript.new()
-		_inventory_workspace.set_layout_profile(UiLayoutProfile.COMPACT if _compact else UiLayoutProfile.WIDE)
-		_inventory_workspace.refresh_requested.connect(_render_standard_item_workspace, CONNECT_DEFERRED)
-		_inventory_workspace.encounter_item_selected.connect(_submit_standard_encounter_item)
+	_inventory_screen_controller_content = VBoxContainer.new()
+	_inventory_screen_controller_content.name = "EncounterInventoryContent"
+	_inventory_screen_controller_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_inventory_screen_controller_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	workspace.add_child(_inventory_screen_controller_content)
+	if _inventory_screen_controller == null:
+		_inventory_screen_controller = InventoryScreenControllerScript.new()
+		_inventory_screen_controller.set_layout_profile(UiLayoutProfile.COMPACT if _compact else UiLayoutProfile.WIDE)
+		_inventory_screen_controller.refresh_requested.connect(_render_standard_item_workspace, CONNECT_DEFERRED)
+		_inventory_screen_controller.encounter_item_selected.connect(_submit_standard_encounter_item)
 	application_workspace_requested.emit(workspace)
 	_render_standard_item_workspace()
 
 
 func _render_standard_item_workspace() -> void:
-	if _inventory_workspace == null or _inventory_workspace_content == null or not is_instance_valid(_inventory_workspace_content):
+	if _inventory_screen_controller == null or _inventory_screen_controller_content == null or not is_instance_valid(_inventory_screen_controller_content):
 		return
-	_inventory_workspace.present_encounter(_inventory_workspace_content, _game_view, _media, 1.0, _body.items)
+	_inventory_screen_controller.present_encounter(_inventory_screen_controller_content, _game_view, _media, 1.0, _body.items)
 
 
 func _submit_standard_encounter_item(character_id: String, instance_id: String, classic_item_id: int) -> void:
@@ -178,12 +178,12 @@ func _render_standard_spell_catalog() -> void:
 	column.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	column.add_theme_constant_override("separation", 5)
 	workspace.add_child(column)
-	if _spell_workspace == null:
-		_spell_workspace = SpellsWorkspaceControllerScript.new()
-		_spell_workspace.set_layout_profile(UiLayoutProfile.COMPACT)
-		_spell_workspace.refresh_requested.connect(_render_standard_spell_catalog, CONNECT_DEFERRED)
-		_spell_workspace.encounter_spell_selected.connect(_submit_standard_encounter_spell)
-	_spell_workspace.present_encounter(column, _game_view, _media, 1.0, _body.spells)
+	if _spell_screen_controller == null:
+		_spell_screen_controller = SpellsScreenControllerScript.new()
+		_spell_screen_controller.set_layout_profile(UiLayoutProfile.COMPACT)
+		_spell_screen_controller.refresh_requested.connect(_render_standard_spell_catalog, CONNECT_DEFERRED)
+		_spell_screen_controller.encounter_spell_selected.connect(_submit_standard_encounter_spell)
+	_spell_screen_controller.present_encounter(column, _game_view, _media, 1.0, _body.spells)
 	var cancel := Button.new()
 	cancel.name = "EncounterCatalogCancel"
 	cancel.text = "Back to encounter"
@@ -321,7 +321,7 @@ func _cancel_catalog() -> void:
 func _clear_context() -> void:
 	side_workspace_closed.emit()
 	application_workspace_closed.emit()
-	_inventory_workspace_content = null
+	_inventory_screen_controller_content = null
 	_catalog_kind = &""
 	_dispose_context_children()
 	if _context != null:

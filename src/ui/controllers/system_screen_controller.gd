@@ -1,4 +1,5 @@
-class_name SystemWorkspaceController
+## Presents save operations and host preferences without mutating game rules.
+class_name SystemScreenController
 extends RefCounted
 
 const SaveSlotPreviewScript := preload("res://src/game/view/save_slot_preview.gd")

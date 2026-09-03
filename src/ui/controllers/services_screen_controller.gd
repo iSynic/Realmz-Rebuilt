@@ -1,4 +1,5 @@
-class_name ServicesWorkspaceController
+## Presents party wealth and scenario services from rules-owned availability data.
+class_name ServicesScreenController
 extends RefCounted
 
 signal intent_submitted(intent: PlayerIntent)

@@ -434,7 +434,7 @@ if (Test-Path -LiteralPath $preparedPackagePath) {
 $screenNavigatorPath = Join-Path $repoRoot "src\ui\screen_navigator.gd"
 if (Test-Path -LiteralPath $screenNavigatorPath) {
     $navigatorLines = Get-SanitizedGdscriptLines -Content ([IO.File]::ReadAllText($screenNavigatorPath))
-    $routeControllerPattern = '\b(?:Character|Inventory|Services|MapsJournal|Spells|System)WorkspaceController\b'
+    $routeControllerPattern = '\b(?:Character|Inventory|Services|MapsJournal|Spells|System)ScreenController\b'
     for ($index = 0; $index -lt $navigatorLines.Count; $index++) {
         $code = $navigatorLines[$index]
         $lineNumber = $index + 1

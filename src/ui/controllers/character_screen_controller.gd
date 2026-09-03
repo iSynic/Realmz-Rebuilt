@@ -1,4 +1,5 @@
-class_name CharacterWorkspaceController
+## Binds detached character records and party-order actions to the Character screen.
+class_name CharacterScreenController
 extends RefCounted
 
 signal intent_submitted(intent: PlayerIntent)

@@ -16,7 +16,7 @@ signal presentation_sound_requested(sound_id: int, wait_for_completion: bool, st
 signal standalone_character_creation_requested
 signal standalone_character_creation_cancelled
 
-const CLASSIC_WORKSPACE_PRESENTER := preload("res://src/ui/controllers/classic_workspace_presenter.gd")
+const SCREEN_CONTENT_PRESENTER := preload("res://src/ui/controllers/screen_content_presenter.gd")
 const WORKSPACE_OPEN_SOUND_IDS: Dictionary = {
 	&"inventory": 20001,
 	&"spells": 20002,
@@ -32,7 +32,7 @@ var _route_history: Array[StringName] = []
 var _route_transition_revision: int = 0
 var _focus_keys: Dictionary = {}
 var _workspace_rect := Rect2(220.0, 100.0, 512.0, 430.0)
-var _spell_workspace_rect := Rect2(928.0, 28.0, 352.0, 502.0)
+var _spell_screen_rect := Rect2(928.0, 28.0, 352.0, 502.0)
 var _full_height_workspace_rect := Rect2(0.0, 28.0, 992.0, 692.0)
 var _application_workspace_rect := Rect2(0.0, 28.0, 1280.0, 692.0)
 var _layout_profile: StringName = UiLayoutProfile.WIDE
@@ -48,7 +48,7 @@ var _system_return_to_setup: bool = false
 var _workspace_host: Control
 var _overlay_host: Control
 var _media: ClassicMediaCatalog
-var _workspace_presenter := CLASSIC_WORKSPACE_PRESENTER.new()
+var _screen_content_presenter := SCREEN_CONTENT_PRESENTER.new()
 var setup_controller := CampaignPartySetupController.new()
 var _initialized: bool = false
 var _startup_splash_enabled: bool = true
@@ -66,15 +66,15 @@ func _init() -> void:
 	setup_controller.load_saved_adventure_requested.connect(_show_load_workspace)
 	setup_controller.vault_requested.connect(show_vault_from_splash)
 	setup_controller.quit_requested.connect(func() -> void: system_action_requested.emit(&"quit", null))
-	_workspace_presenter.intent_submitted.connect(func(intent: PlayerIntent) -> void: intent_submitted.emit(intent))
-	_workspace_presenter.system_action_requested.connect(func(action_id: StringName, value: Variant) -> void: system_action_requested.emit(action_id, value))
-	_workspace_presenter.presentation_setting_changed.connect(func(setting_id: StringName, value: Variant) -> void: presentation_setting_changed.emit(setting_id, value))
-	_workspace_presenter.vault_archive_requested.connect(func(character_id: String) -> void: vault_archive_requested.emit(character_id))
-	_workspace_presenter.vault_restore_requested.connect(func(character_id: String, revision_hash: String) -> void: vault_restore_requested.emit(character_id, revision_hash))
-	_workspace_presenter.route_requested.connect(func(screen_id: StringName) -> void: open_screen(screen_id))
-	_workspace_presenter.refresh_requested.connect(func() -> void: _render_screen())
-	_workspace_presenter.back_requested.connect(func() -> void: handle_back())
-	_workspace_presenter.sound_requested.connect(func(sound_id: int, wait_for_completion: bool, stop_existing: bool, reduced_sound_eligible: bool) -> void: presentation_sound_requested.emit(sound_id, wait_for_completion, stop_existing, reduced_sound_eligible))
+	_screen_content_presenter.intent_submitted.connect(func(intent: PlayerIntent) -> void: intent_submitted.emit(intent))
+	_screen_content_presenter.system_action_requested.connect(func(action_id: StringName, value: Variant) -> void: system_action_requested.emit(action_id, value))
+	_screen_content_presenter.presentation_setting_changed.connect(func(setting_id: StringName, value: Variant) -> void: presentation_setting_changed.emit(setting_id, value))
+	_screen_content_presenter.vault_archive_requested.connect(func(character_id: String) -> void: vault_archive_requested.emit(character_id))
+	_screen_content_presenter.vault_restore_requested.connect(func(character_id: String, revision_hash: String) -> void: vault_restore_requested.emit(character_id, revision_hash))
+	_screen_content_presenter.route_requested.connect(func(screen_id: StringName) -> void: open_screen(screen_id))
+	_screen_content_presenter.refresh_requested.connect(func() -> void: _render_screen())
+	_screen_content_presenter.back_requested.connect(func() -> void: handle_back())
+	_screen_content_presenter.sound_requested.connect(func(sound_id: int, wait_for_completion: bool, stop_existing: bool, reduced_sound_eligible: bool) -> void: presentation_sound_requested.emit(sound_id, wait_for_completion, stop_existing, reduced_sound_eligible))
 
 
 func _ready() -> void:
@@ -126,14 +126,14 @@ func _ensure_hosts() -> void:
 func present(view: GameView) -> void:
 	var completed_party_setup := _party_setup_completed(_view, view)
 	_view = view
-	_workspace_presenter.set_view(view)
+	_screen_content_presenter.set_view(view)
 	if view == null or not view.session_started:
 		setup_controller.present(view)
 		_body_frame.visible = false
 		return
 	if not _presented_campaign_id.is_empty() and _presented_campaign_id != view.campaign_id:
 		setup_controller.reset_creator(true)
-		_workspace_presenter.reset_campaign()
+		_screen_content_presenter.reset_campaign()
 	_presented_campaign_id = view.campaign_id
 	setup_controller.present(view)
 	if view.party_setup_available:
@@ -165,13 +165,13 @@ func _finish_party_setup_navigation() -> void:
 	_vault_return_to_campaign = false
 	_load_after_campaign_selection = false
 	_system_return_to_setup = false
-	_workspace_presenter.clear_vault_inspection()
+	_screen_content_presenter.clear_vault_inspection()
 	setup_controller.finish_party_setup_navigation()
 	_route_history.clear()
 	if _screen_id == &"exploration":
 		return
 	_screen_id = &"exploration"
-	_workspace_presenter.sync_route_audio(_screen_id)
+	_screen_content_presenter.sync_route_audio(_screen_id)
 	screen_changed.emit(_screen_id)
 
 
@@ -184,7 +184,7 @@ func set_package_operation(status: RefCounted) -> void:
 
 
 func set_vault_revisions(revisions: Array[CharacterVaultRevisionView]) -> void:
-	_workspace_presenter.set_vault_revisions(revisions)
+	_screen_content_presenter.set_vault_revisions(revisions)
 	setup_controller.set_vault_revisions(revisions)
 	if _screen_id == &"vault":
 		_render_screen()
@@ -209,13 +209,13 @@ func present_party_setup_status(text: String, is_error: bool = false) -> void:
 
 
 func set_save_previews(previews: Array[SaveSlotPreview]) -> void:
-	_workspace_presenter.set_save_previews(previews)
+	_screen_content_presenter.set_save_previews(previews)
 	if _screen_id == &"system" and _view != null and _view.session_started:
 		_render_screen()
 
 
 func set_save_and_quit_mode(enabled: bool) -> void:
-	_workspace_presenter.set_save_and_quit_mode(enabled)
+	_screen_content_presenter.set_save_and_quit_mode(enabled)
 	if _screen_id == &"system" and _view != null and _view.session_started:
 		_render_screen()
 
@@ -224,7 +224,7 @@ func set_media_catalog(media: ClassicMediaCatalog) -> void:
 	if _media == media:
 		return
 	_media = media
-	_workspace_presenter.set_media_catalog(media)
+	_screen_content_presenter.set_media_catalog(media)
 	setup_controller.set_media_catalog(media)
 	if _view != null and _view.session_started:
 		_render_screen()
@@ -233,7 +233,7 @@ func set_media_catalog(media: ClassicMediaCatalog) -> void:
 func set_presentation_settings(settings: PresentationSettings) -> void:
 	if settings == null:
 		return
-	_workspace_presenter.set_presentation_settings(settings)
+	_screen_content_presenter.set_presentation_settings(settings)
 	setup_controller.set_presentation_settings(settings)
 	if _screen_id == &"system":
 		_render_screen()
@@ -243,11 +243,11 @@ func set_layout_profile(profile: UiLayoutProfile, viewport_size: Vector2, origin
 	if profile == null:
 		return
 	_layout_profile = profile.id
-	_workspace_presenter.set_layout_profile(profile.id)
+	_screen_content_presenter.set_layout_profile(profile.id)
 	var top := profile.menu_height
 	var bottom := profile.bottom_height
 	_workspace_rect = Rect2(origin + Vector2(0.0, top), Vector2(maxf(320.0, viewport_size.x - profile.party_width), maxf(220.0, viewport_size.y - top - bottom)))
-	_spell_workspace_rect = spell_workspace_rect_for(profile, viewport_size, origin)
+	_spell_screen_rect = spell_screen_rect_for(profile, viewport_size, origin)
 	_full_height_workspace_rect = Rect2(origin + Vector2(0.0, top), Vector2(maxf(320.0, viewport_size.x - profile.party_width), maxf(220.0, viewport_size.y - top)))
 	_application_workspace_rect = Rect2(origin + Vector2(0.0, top), Vector2(maxf(320.0, viewport_size.x), maxf(220.0, viewport_size.y - top)))
 	_modal_layout_rect = Rect2(origin + Vector2(12.0, top + 8.0), Vector2(maxf(320.0, viewport_size.x - 24.0), maxf(300.0, viewport_size.y - top - 16.0)))
@@ -265,7 +265,7 @@ static func campaign_rect_for(profile: UiLayoutProfile, viewport_size: Vector2, 
 	return Rect2(modal_rect.position, Vector2(campaign_width, modal_rect.size.y))
 
 
-static func spell_workspace_rect_for(profile: UiLayoutProfile, viewport_size: Vector2, origin: Vector2 = Vector2.ZERO) -> Rect2:
+static func spell_screen_rect_for(profile: UiLayoutProfile, viewport_size: Vector2, origin: Vector2 = Vector2.ZERO) -> Rect2:
 	var desired_width := (288.0 if profile.id == UiLayoutProfile.COMPACT else 420.0) * profile.ui_scale
 	var minimum_stage_width := 480.0 * profile.ui_scale
 	var workspace_width := minf(desired_width, maxf(profile.party_width, viewport_size.x - minimum_stage_width))
@@ -335,7 +335,7 @@ func open_screen(screen_id: StringName, play_opening_sound: bool = true) -> void
 		_route_history.append(_screen_id)
 	_screen_id = screen_id
 	setup_controller.hide_overlays()
-	_workspace_presenter.sync_route_audio(screen_id)
+	_screen_content_presenter.sync_route_audio(screen_id)
 	if changed and play_opening_sound and WORKSPACE_OPEN_SOUND_IDS.has(screen_id):
 		presentation_sound_requested.emit(int(WORKSPACE_OPEN_SOUND_IDS[screen_id]), false, false, true)
 	_render_screen(true)
@@ -353,7 +353,7 @@ func handle_back() -> bool:
 		_body_frame.visible = false
 		screen_changed.emit(_screen_id)
 		return true
-	if _screen_id == &"vault" and _workspace_presenter.handle_vault_back():
+	if _screen_id == &"vault" and _screen_content_presenter.handle_vault_back():
 		return true
 	if _screen_id == &"vault" and _vault_return_to_setup and _view != null and _view.party_setup_available:
 		_vault_return_to_setup = false
@@ -385,13 +385,13 @@ func handle_back() -> bool:
 		var previous: StringName = _route_history.pop_back()
 		route_exiting.emit(_screen_id)
 		_screen_id = previous
-		_workspace_presenter.sync_route_audio(previous)
+		_screen_content_presenter.sync_route_audio(previous)
 		_render_screen(true)
 		return true
 	if _screen_id != &"exploration":
 		route_exiting.emit(_screen_id)
 		_screen_id = &"exploration"
-		_workspace_presenter.sync_route_audio(_screen_id)
+		_screen_content_presenter.sync_route_audio(_screen_id)
 		_render_screen(true)
 		return true
 	return false
@@ -427,18 +427,18 @@ func primary_workspace_visible() -> bool:
 
 
 func party_order_draft_ids() -> Array[String]:
-	return _workspace_presenter.party_order_draft_ids()
+	return _screen_content_presenter.party_order_draft_ids()
 
 
 func select_inventory_character(character_id: String) -> bool:
-	if _screen_id != &"inventory" or not _workspace_presenter.select_inventory_character(character_id):
+	if _screen_id != &"inventory" or not _screen_content_presenter.select_inventory_character(character_id):
 		return false
 	_render_screen()
 	return true
 
 
 func select_character(character_id: String) -> bool:
-	if not _workspace_presenter.select_character(character_id):
+	if not _screen_content_presenter.select_character(character_id):
 		return false
 	if _screen_id == &"character":
 		_render_screen()
@@ -453,7 +453,7 @@ func _workspace_layout_rect() -> Rect2:
 	if _screen_id == &"vault":
 		return _modal_layout_rect
 	if _screen_id == &"spells":
-		return _spell_workspace_rect
+		return _spell_screen_rect
 	if _screen_id in [&"exploration", &"combat"]:
 		return _workspace_rect
 	return _application_workspace_rect
@@ -501,7 +501,7 @@ func _render_screen(notify_route_change: bool = false) -> void:
 		setup_controller.ensure_appearance_textures()
 	var vault_back_label := "Back to party setup" if _vault_return_to_setup else "Back to campaigns" if _vault_return_to_campaign else "Back"
 	var context_actions := _workspace_view.context_action_control() if _workspace_view != null and _screen_id == &"spells" else null
-	_workspace_presenter.present(_screen_id, _workspace_view, setup_controller.appearance_textures(), vault_back_label, context_actions)
+	_screen_content_presenter.present(_screen_id, _workspace_view, setup_controller.appearance_textures(), vault_back_label, context_actions)
 	if _workspace_view != null:
 		_workspace_view.apply_route_chrome()
 	if _screen_id in [&"exploration", &"combat"]:
