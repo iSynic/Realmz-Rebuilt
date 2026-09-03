@@ -182,7 +182,9 @@ func _auto_move_toward_target(state: GameState, content: RealmzContent, actor: C
 		for monster: MonsterState in combat.monsters():
 			if monster.current_health > 0 and monster.traitor == actor.traitor and combat.battlefield.has_actor(monster.id) and combat.battlefield.actor_size(monster.id) == 0:
 				swappable_ids.append(monster.id)
-	var path_probe := _rules.battlefield.probe_path_step_toward_actors(combat.battlefield, terrain_set, actor.id, candidates, actor.movement, swappable_ids, visited_anchors)
+	var path_probe := _direct_auto_swap_probe(combat.battlefield, actor.id, target_id, actor.movement, swappable_ids, visited_anchors)
+	if path_probe == null:
+		path_probe = _rules.battlefield.probe_path_step_toward_actors(combat.battlefield, terrain_set, actor.id, candidates, actor.movement, swappable_ids, visited_anchors)
 	if path_probe.allowed:
 		return _flow().move_character(state, content, actor.id, path_probe.destination, rng)
 	if path_probe.reason != &"path_not_found":
@@ -195,6 +197,17 @@ func _auto_move_toward_target(state: GameState, content: RealmzContent, actor: C
 		if shifted_result.ok:
 			return shifted_result
 	return CombatFlowResult.failed(&"combat_auto_blocked", "The automatic character exhausted Castle's bounded movement retries.")
+
+
+static func _direct_auto_swap_probe(battlefield: BattlefieldState, actor_id: String, target_id: String, movement: int, swappable_ids: Array[String], visited_anchors: Array[Vector2i]) -> BattlefieldStepResult:
+	if battlefield == null or movement < 5 or not battlefield.has_actor(actor_id) or not battlefield.has_actor(target_id):
+		return null
+	var origin := battlefield.actor_position(actor_id)
+	var target := battlefield.actor_position(target_id)
+	var destination := origin + Vector2i(signi(target.x - origin.x), signi(target.y - origin.y))
+	if visited_anchors.has(destination) or not swappable_ids.has(battlefield.actor_at(destination, actor_id)):
+		return null
+	return BattlefieldStepResult.permitted(destination, 5)
 
 
 static func _events_include(events: Array[DomainEvent], kind: StringName) -> bool:
