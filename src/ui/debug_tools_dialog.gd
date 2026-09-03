@@ -28,98 +28,48 @@ var _console_shortcut: CheckButton
 
 
 func _ready() -> void:
-	name = "DebugToolsDialog"
-	set_anchors_preset(Control.PRESET_CENTER)
-	offset_left = -260.0
-	offset_top = -270.0
-	offset_right = 260.0
-	offset_bottom = 270.0
-	z_index = 500
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color("20262b")
-	style.border_color = Color("bd9c55")
-	style.set_border_width_all(2)
-	style.set_corner_radius_all(4)
-	style.content_margin_left = 18.0
-	style.content_margin_right = 18.0
-	style.content_margin_top = 14.0
-	style.content_margin_bottom = 14.0
-	add_theme_stylebox_override("panel", style)
-	var scroll := ScrollContainer.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	add_child(scroll)
-	var root := VBoxContainer.new()
-	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	root.add_theme_constant_override("separation", 6)
-	scroll.add_child(root)
-	var title := Label.new()
-	title.text = "DEBUG TOOLS · F12"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 24)
-	root.add_child(title)
-	_status = Label.new()
-	_status.text = "Debug commands do not enter adventure saves."
-	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	root.add_child(_status)
-	root.add_child(_heading("Exploration"))
-	_map_select = OptionButton.new()
-	root.add_child(_labelled("Map", _map_select))
-	_x = _integer_input(0, 255)
-	_x.name = "WarpX"
-	_y = _integer_input(0, 255)
-	_y.name = "WarpY"
-	var coordinates := HBoxContainer.new()
-	coordinates.add_child(_labelled("X", _x))
-	coordinates.add_child(_labelled("Y", _y))
-	root.add_child(coordinates)
-	_warp = _button("Warp to map / X,Y", func() -> void: command_requested.emit(SessionDebugCommand.warp(String(_map_select.get_item_metadata(_map_select.selected)), Vector2i(int(_x.value), int(_y.value)))))
-	root.add_child(_warp)
-	_noclip = CheckButton.new()
-	_noclip.text = "No clip movement"
-	_noclip.toggled.connect(func(enabled: bool) -> void: noclip_changed.emit(enabled))
-	root.add_child(_noclip)
-	_topology_debug = CheckButton.new()
-	_topology_debug.name = "TopologyDebug"
-	_topology_debug.text = "Show APs and random rectangles on map"
-	_topology_debug.tooltip_text = "Gold diamonds mark placed Action Points; gold outlines show effective random encounter rectangles."
-	_topology_debug.toggled.connect(func(enabled: bool) -> void: topology_debug_changed.emit(enabled))
-	root.add_child(_topology_debug)
-	root.add_child(_heading("Party and scenarios"))
-	_restore = _button("Restore party HP / SP and bad conditions", func() -> void: command_requested.emit(SessionDebugCommand.restore_party()))
-	root.add_child(_restore)
-	_encounter_kind = OptionButton.new()
-	_encounter_kind.add_item("Simple Encounter")
+	_map_select = %MapSelect
+	_x = %WarpX
+	_y = %WarpY
+	_encounter_kind = %EncounterKind
+	_encounter_id = %EncounterId
+	_battle_id = %BattleId
+	_warp = %Warp
+	_restore = %Restore
+	_trigger_encounter = %TriggerEncounter
+	_trigger_battle = %TriggerBattle
+	_win_battle = %WinBattle
+	_noclip = %Noclip
+	_topology_debug = %TopologyDebug
+	_status = %Status
+	_auto_log = %RecentAutoActions
+	_console_shortcut = %ConsoleShortcut
+	for input: SpinBox in [_x, _y, _encounter_id, _battle_id]:
+		input.get_line_edit().select_all_on_focus = true
 	_encounter_kind.set_item_metadata(0, &"simple")
-	_encounter_kind.add_item("Complex Encounter")
 	_encounter_kind.set_item_metadata(1, &"complex")
-	_encounter_id = _integer_input(0, 32767)
-	var encounter_row := HBoxContainer.new()
-	encounter_row.add_child(_encounter_kind)
-	encounter_row.add_child(_labelled("ID", _encounter_id))
-	_trigger_encounter = _button("Trigger encounter", func() -> void: command_requested.emit(SessionDebugCommand.start_encounter(_encounter_kind.get_item_metadata(_encounter_kind.selected), int(_encounter_id.value))))
-	encounter_row.add_child(_trigger_encounter)
-	root.add_child(encounter_row)
-	_battle_id = _integer_input(0, 32767)
-	var battle_row := HBoxContainer.new()
-	battle_row.add_child(_labelled("Battle ID", _battle_id))
-	_trigger_battle = _button("Trigger battle", func() -> void: command_requested.emit(SessionDebugCommand.start_battle(int(_battle_id.value))))
-	battle_row.add_child(_trigger_battle)
-	root.add_child(battle_row)
-	_win_battle = _button("Win current battle", func() -> void: command_requested.emit(SessionDebugCommand.win_battle()))
-	root.add_child(_win_battle)
-	_auto_log = MenuButton.new()
-	_auto_log.name = "RecentAutoActions"
-	root.add_child(_auto_log)
-	root.add_child(_button("Open game-action console · ` / ~", func() -> void: console_requested.emit()))
-	_console_shortcut = CheckButton.new()
-	_console_shortcut.text = "Enable ` / ~ console shortcut"
-	_console_shortcut.button_pressed = true
+	_warp.pressed.connect(_request_warp)
+	_noclip.toggled.connect(func(enabled: bool) -> void: noclip_changed.emit(enabled))
+	_topology_debug.toggled.connect(func(enabled: bool) -> void: topology_debug_changed.emit(enabled))
+	_restore.pressed.connect(func() -> void: command_requested.emit(SessionDebugCommand.restore_party()))
+	_trigger_encounter.pressed.connect(_request_encounter)
+	_trigger_battle.pressed.connect(_request_battle)
+	_win_battle.pressed.connect(func() -> void: command_requested.emit(SessionDebugCommand.win_battle()))
+	%OpenConsole.pressed.connect(func() -> void: console_requested.emit())
 	_console_shortcut.toggled.connect(func(enabled: bool) -> void: console_shortcut_changed.emit(enabled))
-	root.add_child(_console_shortcut)
-	root.add_child(_button("Close", close_dialog))
-	visible = false
+	%Close.pressed.connect(close_dialog)
+
+
+func _request_warp() -> void:
+	command_requested.emit(SessionDebugCommand.warp(String(_map_select.get_item_metadata(_map_select.selected)), Vector2i(int(_x.value), int(_y.value))))
+
+
+func _request_encounter() -> void:
+	command_requested.emit(SessionDebugCommand.start_encounter(_encounter_kind.get_item_metadata(_encounter_kind.selected), int(_encounter_id.value)))
+
+
+func _request_battle() -> void:
+	command_requested.emit(SessionDebugCommand.start_battle(int(_battle_id.value)))
 
 
 func present(view: GameView, maps: Array[Dictionary], noclip: bool, auto_actions: Array[String] = [], console_shortcut_enabled: bool = true, topology_debug: bool = false) -> void:
@@ -182,44 +132,3 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	if visible and event.is_action_pressed(&"realmz_back"):
 		close_dialog()
 		get_viewport().set_input_as_handled()
-
-
-static func _heading(text: String) -> Label:
-	var label := Label.new()
-	label.text = text
-	label.add_theme_color_override("font_color", Color("efd88b"))
-	return label
-
-
-static func _labelled(text: String, control: Control) -> HBoxContainer:
-	var row := HBoxContainer.new()
-	var label := Label.new()
-	label.text = text
-	row.add_child(label)
-	control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(control)
-	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	return row
-
-
-static func _integer_input(minimum: int, maximum: int) -> SpinBox:
-	var input := SpinBox.new()
-	input.min_value = minimum
-	input.max_value = maximum
-	input.step = 1
-	input.allow_greater = false
-	input.allow_lesser = false
-	input.editable = true
-	input.update_on_text_changed = true
-	var line_edit := input.get_line_edit()
-	line_edit.editable = true
-	line_edit.select_all_on_focus = true
-	line_edit.mouse_filter = Control.MOUSE_FILTER_STOP
-	return input
-
-
-static func _button(text: String, pressed: Callable) -> Button:
-	var button := Button.new()
-	button.text = text
-	button.pressed.connect(pressed)
-	return button

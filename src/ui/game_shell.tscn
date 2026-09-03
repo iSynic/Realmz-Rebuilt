@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://src/ui/game_shell.gd" id="1_shell"]
 [ext_resource type="Script" path="res://src/ui/screen_navigator.gd" id="2_navigator"]
@@ -6,6 +6,7 @@
 [ext_resource type="Texture2D" path="res://src/ui/assets/ui/classic-raised-frame.png" id="4_frame"]
 [ext_resource type="PackedScene" path="res://src/ui/screens/classic_party_roster.tscn" id="5_roster"]
 [ext_resource type="Texture2D" path="res://src/ui/assets/ui/classic-charcoal-slate-tile.png" id="6_tile"]
+[ext_resource type="PackedScene" path="res://src/ui/music_playlist_dialog.tscn" id="7_music"]
 
 [sub_resource type="StyleBoxFlat" id="FatigueTrackStyle"]
 bg_color = Color(0.025, 0.035, 0.04, 1)
@@ -453,3 +454,5 @@ mouse_filter = 2
 unique_name_in_owner = true
 visible = false
 text = "Verify input"
+
+[node name="MusicPlaylistDialog" parent="." instance=ExtResource("7_music")]

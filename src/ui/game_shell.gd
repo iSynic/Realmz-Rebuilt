@@ -54,7 +54,6 @@ const HELD_COMMAND_INTERVAL := GameShellCommandController.HELD_COMMAND_INTERVAL
 const PARTY_EFFECT_FRAME_COUNT := ClassicPartyEffects.FRAME_COUNT
 const COMMAND_CONTROLLER_SCRIPT := preload("res://src/ui/game_shell_command_controller.gd")
 const MENU_CONTROLLER_SCRIPT := preload("res://src/ui/game_shell_menu_controller.gd")
-const MUSIC_PLAYLIST_DIALOG_SCRIPT := preload("res://src/ui/music_playlist_dialog.gd")
 const SAVE_STATUS_TEXTURE_PATH := "res://src/ui/assets/ui/status/save-status.png"
 const JOURNAL_STATUS_TEXTURE_PATH := "res://src/ui/assets/ui/status/journal-status.png"
 
@@ -92,6 +91,7 @@ const JOURNAL_STATUS_TEXTURE_PATH := "res://src/ui/assets/ui/status/journal-stat
 @onready var _smoke_action: Button = %SmokeAction
 @onready var _activity_indicator: PanelContainer = %ActivityIndicator
 @onready var _activity_icon: TextureRect = %ActivityIcon
+@onready var _music_dialog: MusicPlaylistDialog = %MusicPlaylistDialog
 
 var _current_view: GameView
 var last_picture_media_diagnostic: Dictionary = {}
@@ -106,7 +106,6 @@ var _effect_frame_timer: Timer
 var _effect_frame_index: int = 0
 var _effect_slots: Array[TextureRect] = []
 var _effect_texture_cache: Dictionary = {}
-var _music_dialog: MusicPlaylistDialog
 var _music_playlist_id: int = 0
 var _music_title: String = ""
 var _music_playing: bool = false
@@ -131,8 +130,6 @@ func _ready() -> void:
 	_effect_frame_timer.autostart = true
 	_effect_frame_timer.timeout.connect(_advance_effect_frame)
 	add_child(_effect_frame_timer)
-	_music_dialog = MUSIC_PLAYLIST_DIALOG_SCRIPT.new()
-	add_child(_music_dialog)
 	_music_dialog.music_enabled_changed.connect(func(enabled: bool) -> void: music_enabled_changed.emit(enabled))
 	_music_dialog.music_volume_changed.connect(func(value: float) -> void: music_volume_changed.emit(value))
 	_music_dialog.playlist_mode_changed.connect(func(playlist_id: int, mode: int) -> void: music_playlist_mode_changed.emit(playlist_id, mode))

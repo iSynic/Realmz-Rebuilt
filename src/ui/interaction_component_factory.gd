@@ -2,7 +2,7 @@
 class_name InteractionComponentFactory
 extends RefCounted
 
-const PickLockInteractionScript := preload("res://src/ui/interaction_components/pick_lock_interaction.gd")
+const PICK_LOCK_INTERACTION_SCENE := preload("res://src/ui/interaction_components/pick_lock_interaction.tscn")
 const ThiefEncounterInteractionScript := preload("res://src/ui/interaction_components/thief_encounter_interaction.gd")
 const LifecycleInteractionScript := preload("res://src/ui/interaction_components/lifecycle_interaction.gd")
 const ScrollingTextInteractionScript := preload("res://src/ui/interaction_components/scrolling_text_interaction.gd")
@@ -57,7 +57,7 @@ static func create(
 			thief.configure(media)
 			return thief
 		&"pick_lock":
-			var pick_lock := PickLockInteractionScript.new()
+			var pick_lock := PICK_LOCK_INTERACTION_SCENE.instantiate() as PickLockInteraction
 			pick_lock.configure(media)
 			return pick_lock
 		&"shop_action":

@@ -3,7 +3,7 @@
 class_name PickLockInteraction
 extends InteractionComponent
 
-const PickLockTumblerScript := preload("res://src/ui/interaction_components/pick_lock_tumbler.gd")
+const TUMBLER_ROW_SCENE := preload("res://src/ui/interaction_components/pick_lock_tumbler_row.tscn")
 
 var _media: ClassicMediaCatalog
 var _body: InteractionRequest.PickLockRequestBody
@@ -24,81 +24,23 @@ func build(request: InteractionRequest) -> void:
 	_body = request.body as InteractionRequest.PickLockRequestBody
 	if _body == null:
 		return
-	add_theme_constant_override("separation", 8)
-	var identity_panel := PanelContainer.new()
-	identity_panel.name = "PickLockIdentity"
-	identity_panel.theme_type_variation = &"ClassicInset"
-	identity_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	add_child(identity_panel)
-	var header := HBoxContainer.new()
-	header.add_theme_constant_override("separation", 12)
-	var portrait := TextureRect.new()
-	portrait.custom_minimum_size = Vector2(64.0, 64.0)
-	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	portrait.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	var portrait := %Portrait as TextureRect
 	portrait.texture = _portrait_texture(_body.portrait_id)
-	header.add_child(portrait)
-	var identity := VBoxContainer.new()
-	identity.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var title := Label.new()
-	title.text = _body.action_label
-	title.theme_type_variation = &"ClassicHeading"
-	identity.add_child(title)
-	var character := Label.new()
-	character.text = "%s • Ability %d" % [_body.character_name, _body.chance_percent]
-	identity.add_child(character)
-	var instruction := Label.new()
-	instruction.text = _body.prompt_text()
-	instruction.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	instruction.add_theme_color_override("font_color", Color("d5b45d"))
-	identity.add_child(instruction)
-	header.add_child(identity)
-	_countdown = Label.new()
-	_countdown.name = "PickLockCountdown"
-	_countdown.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_countdown.custom_minimum_size.x = 90.0
-	header.add_child(_countdown)
-	identity_panel.add_child(header)
-	var mechanism_panel := PanelContainer.new()
-	mechanism_panel.name = "PickLockMechanism"
-	mechanism_panel.theme_type_variation = &"ClassicTextWell"
-	mechanism_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	add_child(mechanism_panel)
-	var mechanism := VBoxContainer.new()
-	mechanism.add_theme_constant_override("separation", 4)
-	mechanism_panel.add_child(mechanism)
+	(%ActionTitle as Label).text = _body.action_label
+	(%CharacterFact as Label).text = "%s • Ability %d" % [_body.character_name, _body.chance_percent]
+	(%Instruction as Label).text = _body.prompt_text()
+	_countdown = %PickLockCountdown
+	var rows := %TumblerRows as VBoxContainer
 	for index: int in _body.frames[0].size():
-		var row := HBoxContainer.new()
-		var label := Label.new()
-		label.text = "Tumbler %d" % (index + 1)
-		label.custom_minimum_size.x = 82.0
-		row.add_child(label)
-		var tumbler := PickLockTumblerScript.new()
-		tumbler.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(tumbler)
-		mechanism.add_child(row)
+		var row := TUMBLER_ROW_SCENE.instantiate() as HBoxContainer
+		rows.add_child(row)
+		(row.get_node("Label") as Label).text = "Tumbler %d" % (index + 1)
+		var tumbler := row.get_node("Tumbler") as PickLockTumbler
 		_tumblers.append(tumbler)
-	var legend := HBoxContainer.new()
-	legend.name = "PickLockLegend"
-	legend.add_theme_constant_override("separation", 16)
-	for entry: Array in [["Red • not aligned", Color("d77b7b")], ["Gold • within range", Color("e0bc53")], ["Green • set", Color("7bdc8b")]]:
-		var label := Label.new()
-		label.text = entry[0]
-		label.add_theme_color_override("font_color", entry[1])
-		legend.add_child(label)
-	mechanism.add_child(legend)
-	var attempt := Button.new()
-	attempt.name = "PickLockStop"
-	attempt.text = "Stop tumblers"
-	attempt.custom_minimum_size.y = 42.0
-	attempt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	attempt.pressed.connect(_submit_current_frame)
-	add_child(attempt)
-	_timer = Timer.new()
+	(%PickLockStop as Button).pressed.connect(_submit_current_frame)
+	_timer = %Timer
 	_timer.wait_time = 1.0 / float(_body.frame_rate)
 	_timer.timeout.connect(_advance_frame)
-	add_child(_timer)
 	_render_frame()
 	_timer.start()
 
