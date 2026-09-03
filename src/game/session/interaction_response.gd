@@ -1,6 +1,8 @@
 class_name InteractionResponse
 extends RefCounted
 
+## Carries one typed player response and strictly decodes its save representation.
+
 
 class Body:
 	extends RefCounted
@@ -484,35 +486,11 @@ static func _body_from_data(response_kind: StringName, data: Dictionary) -> Body
 				return null
 			return ChoiceBody.new(int(data.get("index", -1)), data.get("cancelled", false), data.get("takeNote", false))
 		InteractionRequest.CHARACTER_SELECTION:
-			if not _fields_are_exact(data, ["characterIds", "cancelled"]):
-				return null
-			if data.has("characterIds") and not data["characterIds"] is Array or data.has("cancelled") and not data["cancelled"] is bool:
-				return null
-			var ids: Array[String] = []
-			for value: Variant in data.get("characterIds", []):
-				if not value is String:
-					return null
-				ids.append(value)
-			return SelectionBody.new(ids, data.get("cancelled", false))
+			return _selection_body_from_data(data)
 		InteractionRequest.ALLY_SELECTION:
-			if not _fields_are_exact(data, ["selectedIds"], ["selectedIds"]) or not data["selectedIds"] is Array:
-				return null
-			var selected_ids: Array[String] = []
-			for value: Variant in data.get("selectedIds", []):
-				if not value is String:
-					return null
-				selected_ids.append(value)
-			return AllySelectionBody.new(selected_ids)
+			return _ally_selection_body_from_data(data)
 		InteractionRequest.WORD_AND_ACTION:
-			if not _fields_are_exact(data, ["action", "slot", "slots", "word", "classicSpellId", "classicItemId", "actionIndex", "characterId", "instanceId"], ["action"]) or not _is_string_value(data["action"]):
-				return null
-			if not _optional_strings_are_valid(data, ["word", "characterId", "instanceId"]) or not _optional_integers_are_valid(data, ["slot", "classicSpellId", "classicItemId", "actionIndex"]) or data.has("slot") and data.has("slots") or data.has("slots") and not data["slots"] is Array:
-				return null
-			var slots: Array[int] = []
-			for value: Variant in data.get("slots", []):
-				if not value is int or slots.has(value): return null
-				slots.append(value)
-			return ComplexEncounterBody.new(StringName(data.get("action", "")), int(data.get("slot", -1)), String(data.get("word", "")), int(data.get("classicSpellId", 0)), int(data.get("classicItemId", 0)), int(data.get("actionIndex", -1)), String(data.get("characterId", "")), slots, String(data.get("instanceId", "")))
+			return _complex_encounter_body_from_data(data)
 		InteractionRequest.THIEF_ENCOUNTER:
 			if not _fields_are_exact(data, ["action", "characterId", "actionIndex"], ["action"]) or not _is_string_value(data["action"]) or not _optional_strings_are_valid(data, ["characterId"]) or not _optional_integers_are_valid(data, ["actionIndex"]):
 				return null
@@ -547,57 +525,106 @@ static func _body_from_data(response_kind: StringName, data: Dictionary) -> Body
 				return null
 			return TreasureBody.new(StringName(data.get("action", "")), String(data.get("instanceId", "")), String(data.get("characterId", "")), StringName(data.get("direction", "")), StringName(data.get("kind", "")), int(data.get("amount", 0)))
 		InteractionRequest.LEVEL_UP:
-			if not _fields_are_exact(data, ["action", "characterId", "spellIds"], ["action", "characterId"]) or not _is_string_value(data["action"]) or not data["characterId"] is String or data.has("spellIds") and not data["spellIds"] is Array:
-				return null
-			var spell_ids: Array[String] = []
-			for value: Variant in data.get("spellIds", []):
-				if not value is String:
-					return null
-				spell_ids.append(value)
-			return LevelUpBody.new(StringName(data.get("action", "")), String(data.get("characterId", "")), spell_ids)
+			return _level_up_body_from_data(data)
 		InteractionRequest.COMBAT:
-			if not _fields_are_exact(data, ["actorId", "action", "targetId", "enabled", "destination", "autoSwitchToMelee", "spellId", "power", "targetCoordinate", "targetCoordinates", "rotation", "targetIds", "itemInstanceId", "scrollSlot"], ["actorId", "action", "targetId"]):
-				return null
-			if not data["actorId"] is String or not _is_string_value(data["action"]) or not data["targetId"] is String:
-				return null
-			var combat := CombatBody.new(StringName(data.get("action", "")), String(data.get("actorId", "")), String(data.get("targetId", "")))
-			if data.has("enabled") and not data["enabled"] is bool or data.has("autoSwitchToMelee") and not data["autoSwitchToMelee"] is bool:
-				return null
-			if not _optional_strings_are_valid(data, ["spellId", "itemInstanceId"]) or not _optional_integers_are_valid(data, ["power", "rotation", "scrollSlot"]):
-				return null
-			if data.has("destination") and not _coordinate_is_valid(data["destination"]) or data.has("targetCoordinate") and not _coordinate_is_valid(data["targetCoordinate"]):
-				return null
-			if data.has("targetIds") and not data["targetIds"] is Array or data.has("targetCoordinates") and not data["targetCoordinates"] is Array:
-				return null
-			if data.has("targetCoordinate") and data.has("targetCoordinates") or data.has("targetIds") and data.has("targetCoordinates"):
-				return null
-			combat.enabled = data.get("enabled", false)
-			if data.get("destination") is Array and data["destination"].size() == 2:
-				combat.destination = Vector2i(int(data["destination"][0]), int(data["destination"][1]))
-				combat.has_destination = true
-			combat.auto_switch_to_melee = data.get("autoSwitchToMelee", false)
-			combat.spell_id = String(data.get("spellId", ""))
-			combat.power = int(data.get("power", 1))
-			if data.get("targetCoordinate") is Array and data["targetCoordinate"].size() == 2:
-				combat.target_coordinate = Vector2i(int(data["targetCoordinate"][0]), int(data["targetCoordinate"][1]))
-				combat.has_target_coordinate = true
-			combat.rotation = int(data.get("rotation", 0))
-			for value: Variant in data.get("targetIds", []):
-				if not value is String:
-					return null
-				combat.target_ids.append(value)
-			for value: Variant in data.get("targetCoordinates", []):
-				if not _coordinate_is_valid(value):
-					return null
-				combat.target_coordinates.append(Vector2i(int(value[0]), int(value[1])))
-			combat.item_instance_id = String(data.get("itemInstanceId", ""))
-			combat.scroll_slot = int(data.get("scrollSlot", -1))
-			return combat
+			return _combat_body_from_data(data)
 		InteractionRequest.SESSION_LIFECYCLE:
 			if not _fields_are_exact(data, ["action"], ["action"]) or not _is_string_value(data["action"]):
 				return null
 			return LifecycleBody.new(StringName(data.get("action", "")))
 	return null
+
+
+static func _selection_body_from_data(data: Dictionary) -> SelectionBody:
+	if not _fields_are_exact(data, ["characterIds", "cancelled"]):
+		return null
+	if data.has("characterIds") and not data["characterIds"] is Array or data.has("cancelled") and not data["cancelled"] is bool:
+		return null
+	var ids: Array[String] = []
+	for value: Variant in data.get("characterIds", []):
+		if not value is String:
+			return null
+		ids.append(value)
+	return SelectionBody.new(ids, data.get("cancelled", false))
+
+
+static func _ally_selection_body_from_data(data: Dictionary) -> AllySelectionBody:
+	if not _fields_are_exact(data, ["selectedIds"], ["selectedIds"]) or not data["selectedIds"] is Array:
+		return null
+	var selected_ids: Array[String] = []
+	for value: Variant in data.get("selectedIds", []):
+		if not value is String:
+			return null
+		selected_ids.append(value)
+	return AllySelectionBody.new(selected_ids)
+
+
+static func _complex_encounter_body_from_data(data: Dictionary) -> ComplexEncounterBody:
+	if not _fields_are_exact(data, ["action", "slot", "slots", "word", "classicSpellId", "classicItemId", "actionIndex", "characterId", "instanceId"], ["action"]) or not _is_string_value(data["action"]):
+		return null
+	if not _optional_strings_are_valid(data, ["word", "characterId", "instanceId"]) or not _optional_integers_are_valid(data, ["slot", "classicSpellId", "classicItemId", "actionIndex"]) or data.has("slot") and data.has("slots") or data.has("slots") and not data["slots"] is Array:
+		return null
+	var slots: Array[int] = []
+	for value: Variant in data.get("slots", []):
+		if not value is int or slots.has(value):
+			return null
+		slots.append(value)
+	return ComplexEncounterBody.new(StringName(data.get("action", "")), int(data.get("slot", -1)), String(data.get("word", "")), int(data.get("classicSpellId", 0)), int(data.get("classicItemId", 0)), int(data.get("actionIndex", -1)), String(data.get("characterId", "")), slots, String(data.get("instanceId", "")))
+
+
+static func _level_up_body_from_data(data: Dictionary) -> LevelUpBody:
+	if not _fields_are_exact(data, ["action", "characterId", "spellIds"], ["action", "characterId"]) or not _is_string_value(data["action"]) or not data["characterId"] is String or data.has("spellIds") and not data["spellIds"] is Array:
+		return null
+	var spell_ids: Array[String] = []
+	for value: Variant in data.get("spellIds", []):
+		if not value is String:
+			return null
+		spell_ids.append(value)
+	return LevelUpBody.new(StringName(data.get("action", "")), String(data.get("characterId", "")), spell_ids)
+
+
+static func _combat_body_from_data(data: Dictionary) -> CombatBody:
+	if not _combat_fields_are_valid(data):
+		return null
+	var combat := CombatBody.new(StringName(data.get("action", "")), String(data.get("actorId", "")), String(data.get("targetId", "")))
+	combat.enabled = data.get("enabled", false)
+	if data.get("destination") is Array and data["destination"].size() == 2:
+		combat.destination = Vector2i(int(data["destination"][0]), int(data["destination"][1]))
+		combat.has_destination = true
+	combat.auto_switch_to_melee = data.get("autoSwitchToMelee", false)
+	combat.spell_id = String(data.get("spellId", ""))
+	combat.power = int(data.get("power", 1))
+	if data.get("targetCoordinate") is Array and data["targetCoordinate"].size() == 2:
+		combat.target_coordinate = Vector2i(int(data["targetCoordinate"][0]), int(data["targetCoordinate"][1]))
+		combat.has_target_coordinate = true
+	combat.rotation = int(data.get("rotation", 0))
+	for value: Variant in data.get("targetIds", []):
+		if not value is String:
+			return null
+		combat.target_ids.append(value)
+	for value: Variant in data.get("targetCoordinates", []):
+		if not _coordinate_is_valid(value):
+			return null
+		combat.target_coordinates.append(Vector2i(int(value[0]), int(value[1])))
+	combat.item_instance_id = String(data.get("itemInstanceId", ""))
+	combat.scroll_slot = int(data.get("scrollSlot", -1))
+	return combat
+
+
+static func _combat_fields_are_valid(data: Dictionary) -> bool:
+	if not _fields_are_exact(data, ["actorId", "action", "targetId", "enabled", "destination", "autoSwitchToMelee", "spellId", "power", "targetCoordinate", "targetCoordinates", "rotation", "targetIds", "itemInstanceId", "scrollSlot"], ["actorId", "action", "targetId"]):
+		return false
+	if not data["actorId"] is String or not _is_string_value(data["action"]) or not data["targetId"] is String:
+		return false
+	if data.has("enabled") and not data["enabled"] is bool or data.has("autoSwitchToMelee") and not data["autoSwitchToMelee"] is bool:
+		return false
+	if not _optional_strings_are_valid(data, ["spellId", "itemInstanceId"]) or not _optional_integers_are_valid(data, ["power", "rotation", "scrollSlot"]):
+		return false
+	if data.has("destination") and not _coordinate_is_valid(data["destination"]) or data.has("targetCoordinate") and not _coordinate_is_valid(data["targetCoordinate"]):
+		return false
+	if data.has("targetIds") and not data["targetIds"] is Array or data.has("targetCoordinates") and not data["targetCoordinates"] is Array:
+		return false
+	return not (data.has("targetCoordinate") and data.has("targetCoordinates") or data.has("targetIds") and data.has("targetCoordinates"))
 
 
 static func _fields_are_exact(data: Dictionary, allowed: Array[String], required: Array[String] = []) -> bool:
