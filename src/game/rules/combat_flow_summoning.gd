@@ -1,7 +1,7 @@
 class_name CombatFlowSummoning
 extends RefCounted
 
-const ContextType = preload("res://src/core/rules/combat_flow_context.gd")
+const ContextType = preload("res://src/game/rules/combat_flow_context.gd")
 const INVALID_COORDINATE := Vector2i(-100_000, -100_000)
 const MAX_MONSTERS: int = 100
 const MAX_CLASSIC_SELECTION_ATTEMPTS: int = 400

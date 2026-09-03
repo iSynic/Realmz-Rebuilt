@@ -1,17 +1,17 @@
 class_name CombatFlow
 extends RefCounted
 
-const ContextType = preload("res://src/core/rules/combat_flow_context.gd")
-const CombatRetreatProbeType = preload("res://src/core/rules/combat_retreat_probe.gd")
-const CombatCommandProbeType = preload("res://src/core/rules/combat_command_probe.gd")
-const LifecycleType = preload("res://src/core/rules/combat_flow_lifecycle.gd")
-const ActionsType = preload("res://src/core/rules/combat_flow_actions.gd")
-const ReactionsType = preload("res://src/core/rules/combat_flow_reactions.gd")
-const MagicType = preload("res://src/core/rules/combat_flow_magic.gd")
-const FieldsType = preload("res://src/core/rules/combat_flow_fields.gd")
-const SummoningType = preload("res://src/core/rules/combat_flow_summoning.gd")
-const PhaseType = preload("res://src/core/rules/combat_flow_phase.gd")
-const AutomationType = preload("res://src/core/rules/combat_flow_automation.gd")
+const ContextType = preload("res://src/game/rules/combat_flow_context.gd")
+const CombatRetreatProbeType = preload("res://src/game/rules/combat_retreat_probe.gd")
+const CombatCommandProbeType = preload("res://src/game/rules/combat_command_probe.gd")
+const LifecycleType = preload("res://src/game/rules/combat_flow_lifecycle.gd")
+const ActionsType = preload("res://src/game/rules/combat_flow_actions.gd")
+const ReactionsType = preload("res://src/game/rules/combat_flow_reactions.gd")
+const MagicType = preload("res://src/game/rules/combat_flow_magic.gd")
+const FieldsType = preload("res://src/game/rules/combat_flow_fields.gd")
+const SummoningType = preload("res://src/game/rules/combat_flow_summoning.gd")
+const PhaseType = preload("res://src/game/rules/combat_flow_phase.gd")
+const AutomationType = preload("res://src/game/rules/combat_flow_automation.gd")
 
 const MONSTER_ATTACK_COMPLETED := 0
 const MONSTER_ATTACK_WAITING := 1

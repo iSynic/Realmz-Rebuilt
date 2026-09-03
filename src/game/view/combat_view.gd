@@ -1,7 +1,7 @@
 class_name CombatView
 extends RefCounted
 
-const PersistentCombatFieldViewType := preload("res://src/core/view/persistent_combat_field_view.gd")
+const PersistentCombatFieldViewType := preload("res://src/game/view/persistent_combat_field_view.gd")
 
 var battle_id: String
 var round_number: int

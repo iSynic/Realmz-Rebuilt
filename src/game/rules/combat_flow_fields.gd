@@ -1,8 +1,8 @@
 class_name CombatFlowFields
 extends RefCounted
 
-const ContextType = preload("res://src/core/rules/combat_flow_context.gd")
-const PersistentCombatFieldType = preload("res://src/core/state/persistent_combat_field.gd")
+const ContextType = preload("res://src/game/rules/combat_flow_context.gd")
+const PersistentCombatFieldType = preload("res://src/game/state/persistent_combat_field.gd")
 
 const COLLISION_COMPLETED := 0
 const COLLISION_DEFEATED := 1

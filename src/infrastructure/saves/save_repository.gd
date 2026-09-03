@@ -1,7 +1,7 @@
 class_name SaveRepository
 extends RefCounted
 
-const SaveSlotPreviewScript := preload("res://src/core/view/save_slot_preview.gd")
+const SaveSlotPreviewScript := preload("res://src/game/view/save_slot_preview.gd")
 
 var _root_path: String
 var last_error: String = ""

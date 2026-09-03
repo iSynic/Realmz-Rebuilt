@@ -1,8 +1,8 @@
 class_name CombatState
 extends RefCounted
 
-const CombatUndoStateType := preload("res://src/core/state/combat_undo_state.gd")
-const PersistentCombatFieldType := preload("res://src/core/state/persistent_combat_field.gd")
+const CombatUndoStateType := preload("res://src/game/state/combat_undo_state.gd")
+const PersistentCombatFieldType := preload("res://src/game/state/persistent_combat_field.gd")
 const MAX_SPELL_DEATH_MACROS := 100
 const MAX_PERSISTENT_FIELDS := 60
 

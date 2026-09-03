@@ -1,7 +1,7 @@
 class_name ClassicThiefEncounterOperations
 extends RefCounted
 
-const ClassicPickLockRulesScript := preload("res://src/core/rules/classic_pick_lock_rules.gd")
+const ClassicPickLockRulesScript := preload("res://src/game/rules/classic_pick_lock_rules.gd")
 
 const LOCK_ACTIONS: Array[int] = [2, 4, 6, 7]
 

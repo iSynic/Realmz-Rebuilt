@@ -1,8 +1,8 @@
 class_name GameView
 extends RefCounted
 
-const ViewDomainRevisionsScript := preload("res://src/core/session/view_domain_revisions.gd")
-const ViewChangeSetScript := preload("res://src/core/view/view_change_set.gd")
+const ViewDomainRevisionsScript := preload("res://src/game/session/view_domain_revisions.gd")
+const ViewChangeSetScript := preload("res://src/game/view/view_change_set.gd")
 
 var revision: int
 var session_started: bool

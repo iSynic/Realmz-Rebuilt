@@ -22,7 +22,7 @@ flowchart LR
 
 ## Layer ownership
 
-`src/core` owns direct Realmz models, fixed Classic rules, topology, clock, RNG, and the session aggregate. It is pure typed GDScript: no Nodes, scenes, autoloads, time, files, audio, OS calls, or Godot RNG.
+`src/game` owns direct Realmz models, fixed Classic rules, topology, clock, RNG, and detached read-model contracts. It is pure typed GDScript: no Nodes, scenes, autoloads, time, files, audio, OS calls, or Godot RNG.
 
 `src/scenario` owns the serializable VM and Scenario Action language. It asks a session-owned `RealmzRuntimeApi` for domain operations. The VM cannot discover Godot or call arbitrary scripts.
 

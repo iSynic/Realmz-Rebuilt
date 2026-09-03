@@ -1,7 +1,7 @@
 class_name ClassicBattlefieldPresenter
 extends Control
 
-const PersistentCombatFieldViewType := preload("res://src/core/view/persistent_combat_field_view.gd")
+const PersistentCombatFieldViewType := preload("res://src/game/view/persistent_combat_field_view.gd")
 
 signal combat_body_submitted(body: InteractionResponse.CombatBody)
 signal combatant_inspected(combatant_id: String)

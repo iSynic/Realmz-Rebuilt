@@ -568,7 +568,7 @@ foreach ($entrypoint in $inventory.castleEntrypoints) {
 }
 Assert-Condition (@($inventory.castleEntrypoints).Count -gt 0) "No Castle entrypoints were audited."
 
-$expectedIntents = Get-EnumNames (Join-Path $repoRoot "src\core\session\player_intent.gd") "Kind"
+$expectedIntents = Get-EnumNames (Join-Path $repoRoot "src\game\session\player_intent.gd") "Kind"
 $mappedIntents = @($inventory.boundaryCoverage.intents | ForEach-Object { [string]$_.id })
 Assert-Condition ((($expectedIntents | Sort-Object) -join '|') -eq (($mappedIntents | Sort-Object) -join '|')) "Intent coverage differs from PlayerIntent.Kind."
 foreach ($record in $inventory.boundaryCoverage.intents) {
@@ -578,7 +578,7 @@ foreach ($record in $inventory.boundaryCoverage.intents) {
     Assert-SourceReference $record.evidence "intent $($record.id) evidence" $repoRoot
 }
 
-$expectedInteractions = Get-InteractionKinds (Join-Path $repoRoot "src\core\session\interaction_request.gd")
+$expectedInteractions = Get-InteractionKinds (Join-Path $repoRoot "src\game\session\interaction_request.gd")
 $mappedInteractions = @($inventory.boundaryCoverage.interactions | ForEach-Object { [string]$_.id })
 Assert-Condition ((($expectedInteractions | Sort-Object) -join '|') -eq (($mappedInteractions | Sort-Object) -join '|')) "Interaction coverage differs from InteractionRequest constants."
 foreach ($record in $inventory.boundaryCoverage.interactions) { Assert-WorkflowLinks $record "interaction $($record.id)"; Assert-SourceReference $record.evidence "interaction $($record.id) evidence" $repoRoot }

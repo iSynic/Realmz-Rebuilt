@@ -1,7 +1,7 @@
 class_name SessionMapViewBuilder
 extends RefCounted
 
-const MapWindowViewScript := preload("res://src/core/view/map_window_view.gd")
+const MapWindowViewScript := preload("res://src/game/view/map_window_view.gd")
 const LOCATION_NOTE_VIEW_SIZE := Vector2i(15, 13)
 
 

@@ -134,12 +134,12 @@ function Get-SourceLayer {
     param([string]$RelativePath)
 
     $normalized = $RelativePath.Replace('\', '/')
-    if ($normalized -match '^src/core(?:/|$)') { return 'core' }
-    if ($normalized -match '^src/scenario(?:/|$)') { return 'scenario' }
-    if ($normalized -match '^src/infrastructure(?:/|$)') { return 'infrastructure' }
-    if ($normalized -match '^src/presentation(?:/|$)') { return 'presentation' }
+    if ($normalized -match '^src/game(?:/|$)') { return 'game' }
+    if ($normalized -match '^src/scenario(?:/|$)') { return 'scenarios' }
+    if ($normalized -match '^src/infrastructure(?:/|$)') { return 'storage' }
+    if ($normalized -match '^src/presentation(?:/|$)') { return 'ui' }
     if ($normalized -match '^src/app(?:/|$)') { return 'app' }
-    if ($normalized -match '^src/session(?:/|$)') { return 'session' }
+    if ($normalized -match '^src/session(?:/|$)') { return 'playthrough' }
     return $null
 }
 
@@ -257,7 +257,7 @@ function Get-SourceDependencyEdges {
     }
 }
 
-$coreFiles = Get-ChildItem (Join-Path $repoRoot "src\core") -Recurse -Filter "*.gd" -ErrorAction SilentlyContinue
+$gameFiles = Get-ChildItem (Join-Path $repoRoot "src\game") -Recurse -Filter "*.gd" -ErrorAction SilentlyContinue
 $forbiddenPatterns = @(
     @{ Pattern = '\bextends\s+(Node|Control|Node2D|Node3D)\b'; Reason = "simulation classes must not extend Godot nodes" },
     @{ Pattern = '\b(RandomNumberGenerator|randf|randi|randfn|randomize)\b'; Reason = "simulation randomness must go through RealmzRng" },
@@ -265,7 +265,7 @@ $forbiddenPatterns = @(
     @{ Pattern = '\b(get_tree|get_node|Engine\.get_)\b'; Reason = "simulation must not access the scene tree or engine singleton" }
 )
 
-foreach ($file in $coreFiles) {
+foreach ($file in $gameFiles) {
     $content = Get-Content -Raw $file.FullName
     foreach ($rule in $forbiddenPatterns) {
         if ($content -match $rule.Pattern) {
@@ -280,14 +280,14 @@ foreach ($file in $coreFiles) {
 # they enforce the settled ownership matrix without banning legitimate
 # collaborators or relying on line counts.
 $dependencyRules = @{
-    core = @('scenario', 'session', 'infrastructure', 'presentation', 'app')
-    scenario = @('infrastructure', 'presentation', 'app', 'session')
-    session = @('infrastructure', 'presentation', 'app')
-    infrastructure = @('presentation', 'app')
-    presentation = @('infrastructure')
+    game = @('scenarios', 'playthrough', 'storage', 'ui', 'app')
+    scenarios = @('storage', 'ui', 'app', 'playthrough')
+    playthrough = @('storage', 'ui', 'app')
+    storage = @('ui', 'app')
+    ui = @('storage')
 }
 $dependencyRoots = @(
-    (Join-Path $repoRoot "src\core"),
+    (Join-Path $repoRoot "src\game"),
     (Join-Path $repoRoot "src\scenario"),
     (Join-Path $repoRoot "src\session"),
     (Join-Path $repoRoot "src\infrastructure"),
@@ -389,17 +389,17 @@ foreach ($rootPath in $dependencyRoots) {
 }
 
 # PackageRepository is an infrastructure coordinator.  Domain construction is
-# owned by its package collaborators, so keep this check tied to explicit core
+# owned by its package collaborators, so keep this check tied to explicit game
 # class names and function declarations rather than banning generic words such
 # as "construct" in comments or diagnostics.
 $packageRepositoryPath = Join-Path $repoRoot "src\infrastructure\packages\package_repository.gd"
 if (Test-Path -LiteralPath $packageRepositoryPath) {
-    $coreClassNames = @{}
-    foreach ($coreFile in Get-ChildItem (Join-Path $repoRoot "src\core") -Recurse -Filter "*.gd" -ErrorAction SilentlyContinue) {
-        foreach ($line in Get-Content -LiteralPath $coreFile.FullName) {
+    $gameClassNames = @{}
+    foreach ($gameFile in Get-ChildItem (Join-Path $repoRoot "src\game") -Recurse -Filter "*.gd" -ErrorAction SilentlyContinue) {
+        foreach ($line in Get-Content -LiteralPath $gameFile.FullName) {
             $code = Remove-GdscriptLineComment $line
             if ($code -match '^\s*class_name\s+([A-Za-z_][A-Za-z0-9_]*)') {
-                $coreClassNames[$Matches[1]] = $true
+                $gameClassNames[$Matches[1]] = $true
             }
         }
     }
@@ -410,15 +410,15 @@ if (Test-Path -LiteralPath $packageRepositoryPath) {
         if ($code -match '^\s*func\s+_construct_[A-Za-z0-9_]*\s*\(') {
             $violations += "src/infrastructure/packages/package_repository.gd:$lineNumber PackageRepository must not own domain construction functions"
         }
-        foreach ($coreClassName in $coreClassNames.Keys) {
-            if ($code -match "\b$([regex]::Escape($coreClassName))\s*\.\s*new\s*\(") {
-                $violations += "src/infrastructure/packages/package_repository.gd:$lineNumber PackageRepository must not directly construct core domain type $coreClassName"
+        foreach ($gameClassName in $gameClassNames.Keys) {
+            if ($code -match "\b$([regex]::Escape($gameClassName))\s*\.\s*new\s*\(") {
+                $violations += "src/infrastructure/packages/package_repository.gd:$lineNumber PackageRepository must not directly construct game domain type $gameClassName"
             }
         }
     }
 }
 
-# App-facing prepared package values expose the core media abstraction, never
+# App-facing prepared package values expose the game media abstraction, never
 # an infrastructure decoder/catalog implementation. Presentation routing has a
 # similarly narrow responsibility: it may mount workspaces and navigate among
 # them, while route-local controllers and rendering belong to the workspace
@@ -461,9 +461,9 @@ if (Test-Path -LiteralPath $classicShellScenePath) {
 }
 
 # Typed request bodies may become dictionaries only at their wire serializer or
-# when a detached domain event is deliberately published. Live core, scenario,
+# when a detached domain event is deliberately published. Live game, scenario,
 # and presentation behavior must consume the typed request variants directly.
-$protocolRoots = @("src\core", "src\scenario", "src\presentation")
+$protocolRoots = @("src\game", "src\scenario", "src\presentation")
 foreach ($protocolRoot in $protocolRoots) {
     $rootPath = Join-Path $repoRoot $protocolRoot
     foreach ($file in Get-ChildItem $rootPath -Recurse -Filter "*.gd" -ErrorAction SilentlyContinue) {
@@ -474,7 +474,7 @@ foreach ($protocolRoot in $protocolRoots) {
             if ($line -notmatch '\bbody\.to_data\(\)') {
                 continue
             }
-            $isWireSerializer = ($relativePath -eq "src/core/session/interaction_request.gd" -and $line -match '"payload": body\.to_data\(\)') -or
+            $isWireSerializer = ($relativePath -eq "src/game/session/interaction_request.gd" -and $line -match '"payload": body\.to_data\(\)') -or
                 ($relativePath -eq "src/scenario/runtime/scenario_runtime_continuation.gd" -and $line -match 'continuation_data\s*:=\s*body\.to_data\(\)')
             $isDetachedEvent = $relativePath -eq "src/scenario/runtime/operations/classic_battle_reward_operations.gd" -and $line -match 'DomainEvent\.new\(&"reward_wealth_transferred", body\.to_data\(\)\)'
             if (-not $isWireSerializer -and -not $isDetachedEvent) {

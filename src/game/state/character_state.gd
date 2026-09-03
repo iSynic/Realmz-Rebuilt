@@ -1,7 +1,7 @@
 class_name CharacterState
 extends RefCounted
 
-const CharacterLifetimeRecordType := preload("res://src/core/state/character_lifetime_record.gd")
+const CharacterLifetimeRecordType := preload("res://src/game/state/character_lifetime_record.gd")
 
 var id: String
 var name: String

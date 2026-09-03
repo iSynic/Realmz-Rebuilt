@@ -8,13 +8,13 @@ Own the serializable Scenario VM, Classic instructions, Safe Scenario Actions, c
 
 - VM instruction/frame/trace/limit models and execution.
 - Classic AP, XAP, encounter, GOSUB, return, and result semantics.
-- Scenario Action execution, private helpers, state schemas, and migrations. Immutable compiled definitions live in `src/core/scenario` so core content never depends outward on the executor layer.
+- Scenario Action execution, private helpers, state schemas, and migrations. Immutable compiled definitions live in `src/game/scenario` so core content never depends outward on the executor layer.
 - Capability declarations and readiness checks.
 
 ## Local Contracts
 
 - The VM is presentation-independent and serializable at every interaction yield.
-- Scenario execution depends only on core models/contracts; immutable instruction and program records cross inward from `src/core/scenario` without importing executor behavior back into core.
+- Scenario execution depends only on core models/contracts; immutable instruction and program records cross inward from `src/game/scenario` without importing executor behavior back into core.
 - Domain mutations execute through one session-owned `RealmzRuntimeApi`; there are no Godot ports or dynamic GDScript fallbacks.
 - `RealmzRuntimeApi` is the single VM boundary and delegates source-backed work to typed domain executors under `runtime/operations`; those executors cannot bypass `GameState`, `RealmzRules`, or the session RNG.
 - Classic GOSUB depth is 20. Safe Action call depth is 32, program size 4,096 nodes, arrays 256 entries, and execution 65,536 steps.

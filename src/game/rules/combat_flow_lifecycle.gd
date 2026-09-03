@@ -1,11 +1,11 @@
 class_name CombatFlowLifecycle
 extends RefCounted
 
-const ContextType = preload("res://src/core/rules/combat_flow_context.gd")
-const CombatRetreatProbeType = preload("res://src/core/rules/combat_retreat_probe.gd")
-const CombatCommandProbeType = preload("res://src/core/rules/combat_command_probe.gd")
-const CombatScrollOptionViewType = preload("res://src/core/view/combat_scroll_option_view.gd")
-const FieldsType = preload("res://src/core/rules/combat_flow_fields.gd")
+const ContextType = preload("res://src/game/rules/combat_flow_context.gd")
+const CombatRetreatProbeType = preload("res://src/game/rules/combat_retreat_probe.gd")
+const CombatCommandProbeType = preload("res://src/game/rules/combat_command_probe.gd")
+const CombatScrollOptionViewType = preload("res://src/game/view/combat_scroll_option_view.gd")
+const FieldsType = preload("res://src/game/rules/combat_flow_fields.gd")
 
 const MONSTER_ATTACK_COMPLETED := 0
 const MONSTER_ATTACK_WAITING := 1

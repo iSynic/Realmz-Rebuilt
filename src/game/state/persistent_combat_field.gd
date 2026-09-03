@@ -57,7 +57,7 @@ static func from_data(data: Variant) -> RefCounted:
 	var loaded_center := Vector2i(x, y)
 	if loaded_slot < 0 or loaded_slot >= MAX_QUEUE_SLOTS or loaded_rotation < 0 or loaded_rotation > 3 or loaded_shape < 1 or loaded_shape > 127 or loaded_icon < -128 or loaded_icon > 127 or loaded_icon == 0 or loaded_power < 1 or loaded_power > 7 or loaded_cast_level < 0 or loaded_cast_level > 7 or loaded_duration < 1 or loaded_duration > 32_767 or loaded_phase < 0 or x == INVALID_INTEGER or y == INVALID_INTEGER or not BattlefieldState.contains(loaded_center):
 		return null
-	return load("res://src/core/state/persistent_combat_field.gd").new(loaded_slot, data["spellId"], data["casterId"], loaded_center, loaded_rotation, loaded_shape, loaded_icon, loaded_power, loaded_cast_level, loaded_duration, loaded_phase)
+	return load("res://src/game/state/persistent_combat_field.gd").new(loaded_slot, data["spellId"], data["casterId"], loaded_center, loaded_rotation, loaded_shape, loaded_icon, loaded_power, loaded_cast_level, loaded_duration, loaded_phase)
 
 
 static func _integer(value: Variant) -> int:

@@ -42,7 +42,7 @@ Own the Godot composition root and translate host input/output into the pure ses
 ## Work Guidance
 
 - Keep dependency construction visible in `RealmzApplication`.
-- Convert Godot input into typed intents and interaction responses before entering `src/core`.
+- Convert Godot input into typed intents and interaction responses before entering `src/game`.
 - Battlefield Ctrl/Command-click inspection is a presentation-only host route: forward the hit-tested stable combatant identity to the active battle component without submitting an interaction response or mutating the session.
 - Keep process Quit, campaign-library navigation, and the Main Menu/End Adventure lifecycle as distinct host operations. Do not turn session close into a free-standing gameplay intent.
 

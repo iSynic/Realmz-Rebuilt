@@ -9,7 +9,7 @@ const CAMPAIGN_LIBRARY_CONTROLLER_PATH := "res://src/presentation/controllers/ca
 const SETTINGS_REPOSITORY_PATH := "res://src/infrastructure/settings/settings_repository.gd"
 const CLASSIC_TYPOGRAPHY_PATH := "res://src/presentation/classic_typography.gd"
 const UI_LAYOUT_PROFILE_PATH := "res://src/presentation/ui_layout_profile.gd"
-const PRESENTATION_SETTINGS_PATH := "res://src/core/host/presentation_settings.gd"
+const PRESENTATION_SETTINGS_PATH := "res://src/game/host/presentation_settings.gd"
 const BASE_THEME_PATH := "res://src/presentation/classic_ui_theme.tres"
 const STONE_TEXTURE_PATH := "res://src/presentation/assets/ui/classic-charcoal-slate-tile.png"
 

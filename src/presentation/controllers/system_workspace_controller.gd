@@ -1,7 +1,7 @@
 class_name SystemWorkspaceController
 extends RefCounted
 
-const SaveSlotPreviewScript := preload("res://src/core/view/save_slot_preview.gd")
+const SaveSlotPreviewScript := preload("res://src/game/view/save_slot_preview.gd")
 const HeldMovementControllerScript := preload("res://src/presentation/held_movement_controller.gd")
 
 signal action_requested(action_id: StringName, value: Variant)

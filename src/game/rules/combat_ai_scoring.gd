@@ -3,7 +3,7 @@ extends RefCounted
 
 const INVALID_COORDINATE := Vector2i(-100_000, -100_000)
 
-const ContextType = preload("res://src/core/rules/combat_flow_context.gd")
+const ContextType = preload("res://src/game/rules/combat_flow_context.gd")
 const MAX_WEIGHTED_DRAW: int = 32_767
 
 var _flow_ref: WeakRef

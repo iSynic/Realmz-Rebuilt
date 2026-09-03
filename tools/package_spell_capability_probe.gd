@@ -1,6 +1,6 @@
 extends SceneTree
 
-const SpellCapabilities = preload("res://src/core/rules/classic_spell_capability_catalog.gd")
+const SpellCapabilities = preload("res://src/game/rules/classic_spell_capability_catalog.gd")
 
 
 func _initialize() -> void:

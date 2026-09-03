@@ -1,7 +1,7 @@
 class_name CharacterView
 extends RefCounted
 
-const CharacterLifetimeRecordType := preload("res://src/core/state/character_lifetime_record.gd")
+const CharacterLifetimeRecordType := preload("res://src/game/state/character_lifetime_record.gd")
 
 const CONDITION_NAMES: Array[String] = [
 	"In Retreat", "Is Helpless", "Entangled", "Cursed", "Magic Aura", "Stupid", "Moving Slowly", "Shielded from Hits", "Missile Shield", "Poisoned",

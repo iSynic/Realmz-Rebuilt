@@ -1,7 +1,7 @@
 class_name MonsterRules
 extends RefCounted
 
-const PolymorphContextType = preload("res://src/core/rules/monster_polymorph_context.gd")
+const PolymorphContextType = preload("res://src/game/rules/monster_polymorph_context.gd")
 
 const RANDOM_WEAPON_TABLES: Array = [
 	[[0, 50, 10], [51, 60, 20], [61, 70, 71], [71, 95, 75], [96, 100, 24]],

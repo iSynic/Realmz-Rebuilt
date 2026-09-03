@@ -2,9 +2,9 @@ extends SceneTree
 
 const FIXTURE_PATH := "res://tests/fixtures/packages/realmz2-synthetic-fixture.realmz2"
 const OUTPUT_ROOT := "res://artifacts/ui-gallery"
-const CHARACTER_VIEW_SCRIPT := preload("res://src/core/view/character_view.gd")
+const CHARACTER_VIEW_SCRIPT := preload("res://src/game/view/character_view.gd")
 const PACKAGE_OPERATION_VIEW_SCRIPT := preload("res://src/app/package_operation_view.gd")
-const SAVE_SLOT_PREVIEW_SCRIPT := preload("res://src/core/view/save_slot_preview.gd")
+const SAVE_SLOT_PREVIEW_SCRIPT := preload("res://src/game/view/save_slot_preview.gd")
 const APPLICATION_LIFECYCLE_SCRIPT := preload("res://src/app/application_lifecycle.gd")
 
 var _application: RealmzApplication

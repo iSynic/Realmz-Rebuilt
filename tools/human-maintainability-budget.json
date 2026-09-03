@@ -27,7 +27,7 @@
   ],
   "classNameExceptions": [
     {
-      "path": "src/core/rules/time_rules.gd",
+      "path": "src/game/rules/time_rules.gd",
       "className": "ClockRules"
     }
   ],

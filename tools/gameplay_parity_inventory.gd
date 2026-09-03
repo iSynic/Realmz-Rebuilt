@@ -8,7 +8,7 @@ const FEATURE_REPORT_PROVIDENCE_COMMIT := "8ae731e851544575d6687059b9c84a2535f89
 const FEATURE_REPORT_SCHEMA_HASH := "be4fa175ebfc8ed756a0db2b0c6073108bd9f635e8c23321d1258cfcf4e73ee4"
 const INVENTORY_PATH := "res://tests/fixtures/oracle/classic-gameplay-parity-inventory.json"
 const REPORT_PATH := "res://docs/classic-gameplay-parity-status.md"
-const SpellCapabilities = preload("res://src/core/rules/classic_spell_capability_catalog.gd")
+const SpellCapabilities = preload("res://src/game/rules/classic_spell_capability_catalog.gd")
 
 var _write := false
 

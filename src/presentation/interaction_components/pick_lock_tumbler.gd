@@ -1,7 +1,7 @@
 class_name PickLockTumbler
 extends Control
 
-const ClassicPickLockRulesScript := preload("res://src/core/rules/classic_pick_lock_rules.gd")
+const ClassicPickLockRulesScript := preload("res://src/game/rules/classic_pick_lock_rules.gd")
 
 var marker_position: int = 10
 var yellow_threshold: int = 100

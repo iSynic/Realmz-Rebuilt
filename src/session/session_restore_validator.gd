@@ -1,7 +1,7 @@
 class_name SessionRestoreValidator
 extends RefCounted
 
-const ClassicPickLockRulesScript := preload("res://src/core/rules/classic_pick_lock_rules.gd")
+const ClassicPickLockRulesScript := preload("res://src/game/rules/classic_pick_lock_rules.gd")
 
 static func validate(content: RealmzContent, snapshot: SessionSnapshot) -> SessionRestoreResult:
 	if content == null or content.scenario == null or snapshot == null:

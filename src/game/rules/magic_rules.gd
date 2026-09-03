@@ -1,7 +1,7 @@
 class_name MagicRules
 extends RefCounted
 
-const PolymorphContextType = preload("res://src/core/rules/monster_polymorph_context.gd")
+const PolymorphContextType = preload("res://src/game/rules/monster_polymorph_context.gd")
 
 var _characters: CharacterRules
 var _arithmetic: RealmzArithmetic
