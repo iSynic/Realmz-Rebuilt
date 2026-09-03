@@ -116,7 +116,7 @@ When the user requests a durable behavior change, record it here or in the relev
 - `src/game/AGENTS.md` owns the pure Realmz model, rules, topology, clock, RNG, and session state.
 - `src/infrastructure/AGENTS.md` owns package, save, validation, and external adapters.
 - `src/presentation/AGENTS.md` owns Godot scenes, controls, rendering, animation, and audio.
-- `src/scenario/AGENTS.md` owns the scenario VM, Classic instructions, Scenario Actions, capabilities, and runtime API contract.
+- `src/scenarios/AGENTS.md` owns the scenario VM, Classic instructions, Scenario Actions, capabilities, and runtime API contract.
 - `src/session/AGENTS.md` owns the pure transaction coordinator joining core state/rules to scenario execution.
 - `tests/AGENTS.md` owns test categories, fixture provenance, oracle evidence, and copyright boundaries.
 - `tools/AGENTS.md` owns local verification and development automation.

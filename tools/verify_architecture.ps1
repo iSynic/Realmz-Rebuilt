@@ -135,7 +135,7 @@ function Get-SourceLayer {
 
     $normalized = $RelativePath.Replace('\', '/')
     if ($normalized -match '^src/game(?:/|$)') { return 'game' }
-    if ($normalized -match '^src/scenario(?:/|$)') { return 'scenarios' }
+    if ($normalized -match '^src/scenarios(?:/|$)') { return 'scenarios' }
     if ($normalized -match '^src/infrastructure(?:/|$)') { return 'storage' }
     if ($normalized -match '^src/presentation(?:/|$)') { return 'ui' }
     if ($normalized -match '^src/app(?:/|$)') { return 'app' }
@@ -288,7 +288,7 @@ $dependencyRules = @{
 }
 $dependencyRoots = @(
     (Join-Path $repoRoot "src\game"),
-    (Join-Path $repoRoot "src\scenario"),
+    (Join-Path $repoRoot "src\scenarios"),
     (Join-Path $repoRoot "src\session"),
     (Join-Path $repoRoot "src\infrastructure"),
     (Join-Path $repoRoot "src\presentation"),
@@ -463,7 +463,7 @@ if (Test-Path -LiteralPath $classicShellScenePath) {
 # Typed request bodies may become dictionaries only at their wire serializer or
 # when a detached domain event is deliberately published. Live game, scenario,
 # and presentation behavior must consume the typed request variants directly.
-$protocolRoots = @("src\game", "src\scenario", "src\presentation")
+$protocolRoots = @("src\game", "src\scenarios", "src\presentation")
 foreach ($protocolRoot in $protocolRoots) {
     $rootPath = Join-Path $repoRoot $protocolRoot
     foreach ($file in Get-ChildItem $rootPath -Recurse -Filter "*.gd" -ErrorAction SilentlyContinue) {
@@ -475,8 +475,8 @@ foreach ($protocolRoot in $protocolRoots) {
                 continue
             }
             $isWireSerializer = ($relativePath -eq "src/game/session/interaction_request.gd" -and $line -match '"payload": body\.to_data\(\)') -or
-                ($relativePath -eq "src/scenario/runtime/scenario_runtime_continuation.gd" -and $line -match 'continuation_data\s*:=\s*body\.to_data\(\)')
-            $isDetachedEvent = $relativePath -eq "src/scenario/runtime/operations/classic_battle_reward_operations.gd" -and $line -match 'DomainEvent\.new\(&"reward_wealth_transferred", body\.to_data\(\)\)'
+                ($relativePath -eq "src/scenarios/runtime/scenario_runtime_continuation.gd" -and $line -match 'continuation_data\s*:=\s*body\.to_data\(\)')
+            $isDetachedEvent = $relativePath -eq "src/scenarios/runtime/operations/classic_battle_reward_operations.gd" -and $line -match 'DomainEvent\.new\(&"reward_wealth_transferred", body\.to_data\(\)\)'
             if (-not $isWireSerializer -and -not $isDetachedEvent) {
                 $violations += "$($file.FullName):$lineNumber interaction request bodies must remain typed outside codecs and detached event serialization"
             }
@@ -517,7 +517,7 @@ foreach ($protocolRoot in @("src\presentation", "src\app")) {
 # VM execution provenance is a closed typed protocol.  Dictionaries exist only
 # at ScenarioExecutionContext.to_data/from_data; frames, directives, handlers,
 # and runtime calls must not reopen that boundary with an arbitrary context.
-$scenarioRoot = Join-Path $repoRoot "src\scenario"
+$scenarioRoot = Join-Path $repoRoot "src\scenarios"
 foreach ($file in Get-ChildItem $scenarioRoot -Recurse -Filter "*.gd" -ErrorAction SilentlyContinue) {
     $relativePath = Get-RepositoryRelativePath -RootPath $repoRoot -TargetPath $file.FullName
     $lineNumber = 0

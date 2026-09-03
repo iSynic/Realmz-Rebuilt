@@ -1,8 +1,8 @@
 class_name ClassicBattleRewardOperations
 extends ClassicOpcodeHandler
 
-const BattleLifecycleType = preload("res://src/scenario/runtime/operations/classic_battle_lifecycle_operations.gd")
-const RewardOperationsType = preload("res://src/scenario/runtime/operations/classic_reward_operations.gd")
+const BattleLifecycleType = preload("res://src/scenarios/runtime/operations/classic_battle_lifecycle_operations.gd")
+const RewardOperationsType = preload("res://src/scenarios/runtime/operations/classic_reward_operations.gd")
 
 var _battle: RefCounted
 var _rewards: RefCounted

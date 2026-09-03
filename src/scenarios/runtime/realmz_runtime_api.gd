@@ -1,7 +1,7 @@
 class_name RealmzRuntimeApi
 extends RefCounted
 
-const ClassicThiefEncounterOperationsScript := preload("res://src/scenario/runtime/operations/classic_thief_encounter_operations.gd")
+const ClassicThiefEncounterOperationsScript := preload("res://src/scenarios/runtime/operations/classic_thief_encounter_operations.gd")
 
 const SUPPORTED_SAFE_CAPABILITIES: Array[String] = [
 	"core.combat.start",

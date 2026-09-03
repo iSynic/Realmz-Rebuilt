@@ -9,7 +9,7 @@ Realmz Rebuilt is being reorganized so that a maintainer can find a rule, open a
 | `src/app` | Startup, dependency construction, host lifecycle, and input translation | Realmz rules or screen layout |
 | `src/game` | Pure definitions, mutable game state, fixed rules, topology, clock, RNG, and detached read models | Nodes, files, audio, or platform services |
 | `src/playthrough` | `GameSession`, transactions, continuations, restore coordination, and player workflow orchestration | Presentation or filesystem access |
-| `src/scenarios` | Classic instruction execution, Safe Scenario Actions, and the scenario VM | Host UI or package I/O |
+| `src/scenarioss` | Classic instruction execution, Safe Scenario Actions, and the scenario VM | Host UI or package I/O |
 | `src/storage` | Package loading, saves, Character Files, settings, validation, and filesystem adapters | Gameplay decisions or screen behavior |
 | `src/ui` | Scenes, screens, dialogs, components, rendering, animation, audio, and themes | Mutable game truth or direct storage access |
 

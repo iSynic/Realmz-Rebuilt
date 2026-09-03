@@ -16,7 +16,7 @@ Own the pure transaction coordinator that joins core Realmz state and rules to t
 
 ## Local Contracts
 
-- This layer may depend on `src/game` and `src/scenario`; neither lower layer may depend on `src/session`.
+- This layer may depend on `src/game` and `src/scenarios`; neither lower layer may depend on `src/session`.
 - All classes are pure `RefCounted` or value-like data. They never retain Nodes, repositories, presenters, or the owning application.
 - Workflow services receive an explicit ephemeral `SessionWorkflowContext`; they never retain the owning `GameSession`.
 - Session continuation coordinators receive one explicit operation-scoped `SessionCoordinatorContext`, retain neither the owning `GameSession` nor the context beyond that operation, and return a typed `SessionCoordinatorResult`. `GameSession` retains that result locally before applying and releasing coordinator context; it alone advances revision, commits, rolls back, closes, and constructs the public `SessionStep`.
