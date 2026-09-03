@@ -7,6 +7,7 @@ Own the pure Realmz model, fixed Classic rules, topology, game clock, randomness
 ## Ownership
 
 - Direct Realmz definitions and mutable playthrough state, including characters, equipment, wealth, conditions, encounters, battles, shops, treasures, spells, monsters, races, castes, and immutable compiled scenario programs.
+- Combat spell mechanics remain in `CombatFlowMagic`; `CombatSpellEventBuilder` owns only the detached presentation-event shapes emitted after those mechanics resolve.
 - Detached party views include current held-over ally instances separately from hostile combatants. The active monster set's menu-visible immutable definitions project into a separate ordered Bestiary catalog with their authored descriptions; presentation may inspect either view but cannot mutate ally ownership or infer the catalog from current party state.
 - Typed intents/events/interactions/views and the core state carried by session snapshots.
 - Pure host-facing value contracts shared across adapters and presentation, including immutable media descriptors/read ports and presentation settings. These records never enter `GameSession` or alter Classic rules. `PresentationSettings` schema 12 may retain an optional stable last-campaign identity used only for host prewarming; it never stores an install path or enters an adventure save. Auto Note defaults off from application PRFN 128; an explicit saved host preference may enable it without entering adventure state.

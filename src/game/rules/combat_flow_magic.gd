@@ -1,11 +1,14 @@
 class_name CombatFlowMagic
 extends RefCounted
 
+## Validates and resolves character spell, scroll, and charged-item combat actions.
+
 const ContextType = preload("res://src/game/rules/combat_flow_context.gd"); const PolymorphContextType = preload("res://src/game/rules/monster_polymorph_context.gd")
 const CombatRetreatProbeType = preload("res://src/game/rules/combat_retreat_probe.gd")
 const CombatCommandProbeType = preload("res://src/game/rules/combat_command_probe.gd")
 const CombatScrollOptionViewType = preload("res://src/game/view/combat_scroll_option_view.gd")
 const CombatFlowSpellRollbackType = preload("res://src/game/rules/combat_flow_spell_rollback.gd")
+const CombatSpellEventBuilderType = preload("res://src/game/rules/combat_spell_event_builder.gd")
 
 const MONSTER_ATTACK_COMPLETED := 0
 const MONSTER_ATTACK_WAITING := 1
@@ -704,8 +707,8 @@ func _commit_character_multi_spell(state: GameState, content: RealmzContent, cas
 	caster.attacks_remaining = _rules.arithmetic.signed_16(caster.attacks_remaining - 2); caster.movement = maxi(0, caster.movement - 12)
 	var events: Array[DomainEvent] = []
 	_flow()._append_persistent_field_events(events, persistent_fields, event_source)
-	_append_spell_sound(events, spell.sound_start, "classic-combat-spell-start")
-	_append_spell_cast_event(events, caster.id, spell, group, center, shape, event_source)
+	CombatSpellEventBuilderType.append_sound(events, spell.sound_start, "classic-combat-spell-start")
+	CombatSpellEventBuilderType.append_cast(events, caster.id, spell, group, center, shape, event_source)
 	if spell.target_type == 7: var party_condition := absi(spell.special); state.party.conditions.set_value(party_condition, maxi(state.party.conditions.value(party_condition), group.duration)); events.append(DomainEvent.new(&"combat_spell_resolved", {"actorId": caster.id, "targetKind": "party", "spellId": spell.id, "targetType": spell.target_type, "power": power_level, "classicTier": cast_level, "duration": group.duration, "partyCondition": party_condition, "partyConditionValue": state.party.conditions.value(party_condition), "source": event_source}))
 	for index: int in group.resolutions.size():
 		var resolution := group.resolutions[index]
@@ -715,9 +718,9 @@ func _commit_character_multi_spell(state: GameState, content: RealmzContent, cas
 		var reflected := group.reflected_targets[index]
 		if target_kind == &"monster": var missile_spell := absi(spell.spell_class) == 9; caster.lifetime_record.add_spell_damage(resolution.damage, missile_spell and not resolution.resisted, missile_spell and resolution.resisted, resolution.target_defeated)
 		if resolution.damage > 0 or (resolution.damage < 0 and target_kind == &"monster"): combat.mark_attacked(resolved_target_id)
-		_append_spell_projectile_event(events, caster.id, resolved_target_id, spell, event_source)
+		CombatSpellEventBuilderType.append_projectile(events, caster.id, resolved_target_id, spell, event_source)
 		if resolution.special_result == &"turned": events.append(DomainEvent.new(&"sound_requested", {"soundId": 630, "waitForCompletion": false, "source": "classic-combat-destroy-turn-undead"}))
-		_append_spell_sound(events, spell.sound_end, "classic-combat-spell-result")
+		CombatSpellEventBuilderType.append_sound(events, spell.sound_end, "classic-combat-spell-result")
 		var payload := {"actorId": caster.id, "targetId": resolved_target_id, "selectedTargetId": selected_target_id, "targetKind": String(target_kind), "spellId": spell.id, "targetType": spell.target_type, "power": power_level, "classicTier": cast_level, "reflected": reflected, "resisted": resolution.resisted, "saved": resolution.saved, "damage": resolution.damage, "healing": maxi(0, -resolution.damage), "duration": resolution.duration, "defeated": resolution.target_defeated, "source": event_source, "clearedConditionCount": resolution.cleared_condition_count, "detectedMagicItemCount": resolution.detected_magic_item_count}
 		if resolution.spell_point_delta != 0 or ClassicSpellCapabilityCatalog.is_combat_spell_point_restore_spell(spell) or ClassicSpellCapabilityCatalog.is_combat_spell_point_drain_spell(spell):
 			payload["spellPointDelta"] = resolution.spell_point_delta
@@ -727,7 +730,7 @@ func _commit_character_multi_spell(state: GameState, content: RealmzContent, cas
 		if not resolution.transformed_definition_after.is_empty(): payload["transformedDefinitionBefore"] = resolution.transformed_definition_before; payload["transformedDefinitionAfter"] = resolution.transformed_definition_after
 		if not resolution.special_result.is_empty(): payload["specialResult"] = String(resolution.special_result); payload["specialRoll"] = resolution.special_roll; payload["specialThreshold"] = resolution.special_threshold
 		if resolution.allegiance_changed: payload["traitorBefore"] = resolution.target_traitor_before; payload["traitorAfter"] = resolution.target_traitor_after
-		_append_spell_presentation(payload, spell, index, group.resolutions.size(), resolution.target_defeated)
+		CombatSpellEventBuilderType.append_resolution_effect(payload, spell, index, group.resolutions.size(), resolution.target_defeated)
 		if not item_instance_id.is_empty():
 			payload["itemInstanceId"] = item_instance_id
 		if shape > 0:
@@ -754,42 +757,6 @@ func _commit_character_multi_spell(state: GameState, content: RealmzContent, cas
 		return CombatFlowResult.succeeded(events, true)
 	_flow()._process_monster_turns(state, content, rng, events)
 	return CombatFlowResult.succeeded(events, state.combat.completed)
-
-
-static func _append_spell_sound(events: Array[DomainEvent], authored_sound_id: int, source: String) -> void:
-	var native_sound_id := authored_sound_id + 600
-	if native_sound_id == 0:
-		return
-	events.append(DomainEvent.new(&"sound_requested", {"soundId": absi(native_sound_id), "waitForCompletion": native_sound_id < 0, "source": source}))
-
-
-static func _append_spell_cast_event(events: Array[DomainEvent], actor_id: String, spell: SpellDefinition, resolutions: GroupSpellResolution, center: Vector2i, shape: int, source: String) -> void:
-	var target_id := resolutions.target_ids[0] if not resolutions.target_ids.is_empty() else ""
-	var payload := {"actorId": actor_id, "targetId": target_id, "spellId": spell.id, "spellName": spell.name, "classicEffectResourceId": 11_992 + spell.look_start * 8, "source": source}
-	if shape > 0:
-		payload["areaCenter"] = [center.x, center.y]
-		payload["areaShape"] = shape
-	events.append(DomainEvent.new(&"combat_spell_cast", payload))
-
-
-static func _append_spell_projectile_event(events: Array[DomainEvent], actor_id: String, target_id: String, spell: SpellDefinition, source: String) -> void:
-	if not spell.target_type in [0, 1, 2, 5, 6, 7, 8, 11]:
-		return
-	events.append(DomainEvent.new(&"combat_spell_projectile", {"actorId": actor_id, "targetId": target_id, "spellId": spell.id, "classicBattleTileId": 200 + spell.look_start, "source": source}))
-
-
-static func _append_spell_presentation(payload: Dictionary, spell: SpellDefinition, sequence_index: int, sequence_count: int, target_defeated: bool) -> void:
-	payload["spellName"] = spell.name; payload["castSequenceIndex"] = sequence_index
-	payload["castSequenceCount"] = sequence_count
-	# resolvespell.c bypasses the ordinary eight-frame resolution effect when the
-	# target dies, and group-body flashes (9/10) use a separate path.
-	if target_defeated or spell.target_type in [9, 10]:
-		return
-	var first_resource_id := 12_032 if spell.look_end == 0 else 11_992 + spell.look_end * 8
-	var effect_ids: Array[int] = []
-	for frame_offset: int in 8:
-		effect_ids.append(first_resource_id + frame_offset)
-	payload["classicResolutionEffectResourceIds"] = effect_ids
 
 
 func probe_character_spell_choice(state: GameState, content: RealmzContent, caster_id: String, spell_id: String, power_level: int) -> CombatSpellCastProbe:

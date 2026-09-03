@@ -12,6 +12,7 @@ const FieldsType = preload("res://src/game/rules/combat_flow_fields.gd")
 const SummoningType = preload("res://src/game/rules/combat_flow_summoning.gd")
 const PhaseType = preload("res://src/game/rules/combat_flow_phase.gd")
 const AutomationType = preload("res://src/game/rules/combat_flow_automation.gd")
+const SpellEventBuilderType = preload("res://src/game/rules/combat_spell_event_builder.gd")
 
 const MONSTER_ATTACK_COMPLETED := 0
 const MONSTER_ATTACK_WAITING := 1
@@ -302,19 +303,19 @@ func _commit_character_multi_spell(state: GameState, content: RealmzContent, cas
 
 
 func _append_spell_sound(events: Array[DomainEvent], authored_sound_id: int, source: String) -> void:
-	_magic._append_spell_sound(events, authored_sound_id, source)
+	SpellEventBuilderType.append_sound(events, authored_sound_id, source)
 
 
 func _append_spell_cast_event(events: Array[DomainEvent], actor_id: String, spell: SpellDefinition, resolutions: GroupSpellResolution, center: Vector2i, shape: int, source: String) -> void:
-	_magic._append_spell_cast_event(events, actor_id, spell, resolutions, center, shape, source)
+	SpellEventBuilderType.append_cast(events, actor_id, spell, resolutions, center, shape, source)
 
 
 func _append_spell_projectile_event(events: Array[DomainEvent], actor_id: String, target_id: String, spell: SpellDefinition, source: String) -> void:
-	_magic._append_spell_projectile_event(events, actor_id, target_id, spell, source)
+	SpellEventBuilderType.append_projectile(events, actor_id, target_id, spell, source)
 
 
 func _append_spell_presentation(payload: Dictionary, spell: SpellDefinition, sequence_index: int, sequence_count: int, target_defeated: bool) -> void:
-	_magic._append_spell_presentation(payload, spell, sequence_index, sequence_count, target_defeated)
+	SpellEventBuilderType.append_resolution_effect(payload, spell, sequence_index, sequence_count, target_defeated)
 
 
 func _queue_persistent_field(combat: CombatState, caster_id: String, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, center: Vector2i, rotation: int, shape: int) -> RefCounted:
