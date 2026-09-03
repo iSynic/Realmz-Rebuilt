@@ -1,6 +1,10 @@
 class_name TreasureDistributionInteraction
 extends InteractionComponent
 
+## Presents Treasure assignment, wealth operations, lore actions, and completion confirmation.
+
+const TreasureDisplayTextType = preload("res://src/ui/interaction_components/treasure_display_text.gd")
+
 signal recipient_selected(character_id: String)
 
 const GOLD := Color("e5c45c")
@@ -268,7 +272,7 @@ func _add_loot_item(parent: GridContainer, item: InteractionRequestValue.RewardI
 	cell.mouse_exited.connect(_hide_loot_ring.bind(item.instance_id))
 	cell.focus_exited.connect(_hide_loot_ring.bind(item.instance_id))
 	cell.pressed.connect(_begin_item_transfer.bind(item, cell))
-	_detail_popover.bind_hover(cell, _item_detail(item))
+	_detail_popover.bind_hover(cell, TreasureDisplayTextType.item_detail(item))
 
 
 func _add_vacant_loot_slot(parent: GridContainer, instance_id: String) -> void:
@@ -328,7 +332,7 @@ func _add_recipient_row(parent: VBoxContainer, character: InteractionRequestValu
 	button.custom_minimum_size.y = 46.0
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	button.text = _recipient_text(character)
+	button.text = TreasureDisplayTextType.recipient(character)
 	button.icon = _portrait(character.id)
 	button.add_theme_constant_override("icon_max_width", 38)
 	button.expand_icon = true
@@ -340,7 +344,7 @@ func _add_recipient_row(parent: VBoxContainer, character: InteractionRequestValu
 
 
 func _build_compact_commands(parent: VBoxContainer, body: InteractionRequest.TreasureRequestBody) -> void:
-	_add_colored_label(parent, _wealth_text(body.wealth), GOLD, "TreasurePooledWealth")
+	_add_colored_label(parent, TreasureDisplayTextType.wealth(body.wealth), GOLD, "TreasurePooledWealth")
 	var actions := HBoxContainer.new()
 	actions.name = "TreasureWealthActions"
 	actions.add_theme_constant_override("separation", 4)
@@ -413,7 +417,7 @@ func _refresh_item_record(icon: TextureRect) -> void:
 	else:
 		_selected_item_name.remove_theme_color_override("font_color")
 	_selected_item_name.text = _selected_item.name
-	_selected_item_state.text = _item_state(_selected_item)
+	_selected_item_state.text = TreasureDisplayTextType.item_state(_selected_item)
 	_selected_item_description.text = _selected_item.description
 	for fact: InteractionRequestValue.RewardFact in _selected_item.facts:
 		var label := _add_muted_label(_selected_item_facts, fact.label, "TreasureFact_%s" % fact.label.to_snake_case())
@@ -542,7 +546,7 @@ func _add_workspace_header(body: InteractionRequest.TreasureRequestBody, recover
 	header.add_child(title)
 	var summary := Label.new()
 	summary.name = "TreasureWorkspaceSummary"
-	summary.text = _summary_text(body)
+	summary.text = TreasureDisplayTextType.summary(body)
 	summary.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	summary.add_theme_color_override("font_color", CYAN)
 	header.add_child(summary)
@@ -591,7 +595,7 @@ func _build_item_column(column: VBoxContainer, body: InteractionRequest.Treasure
 		item_name.text = body.item.name
 		item_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		facts.add_child(item_name)
-		_add_colored_label(facts, _item_state(body.item), CYAN, "TreasureSelectedItemState")
+		_add_colored_label(facts, TreasureDisplayTextType.item_state(body.item), CYAN, "TreasureSelectedItemState")
 		if body.item.charges > 0:
 			_add_muted_label(facts, "%d charge%s" % [body.item.charges, "" if body.item.charges == 1 else "s"], "TreasureSelectedItemCharges")
 	var remaining := "No items remain." if body.item == null or body.remaining <= 0 else "This is the final item." if body.remaining == 1 else "%d items remain including this selection." % body.remaining
@@ -619,7 +623,7 @@ func _build_recipient_column(column: VBoxContainer, body: InteractionRequest.Tre
 		_add_muted_label(rows, "No recipient is available.", "TreasureNoRecipients")
 		return
 	for character: InteractionRequestValue.RewardCharacter in body.characters:
-		var label := "%s%s" % ["Recover to " if recovering_fumble else "", _recipient_text(character)]
+		var label := "%s%s" % ["Recover to " if recovering_fumble else "", TreasureDisplayTextType.recipient(character)]
 		var button := add_response_to(rows, label, InteractionResponse.TreasureBody.new(&"assign", body.item.instance_id if body.item != null else "", character.id), character.enabled and body.item != null, character.reason)
 		button.name = "TreasureRecipient_%s" % character.id
 		button.custom_minimum_size.y = 48.0
@@ -627,7 +631,7 @@ func _build_recipient_column(column: VBoxContainer, body: InteractionRequest.Tre
 
 
 func _build_command_column(column: VBoxContainer, body: InteractionRequest.TreasureRequestBody) -> void:
-	_add_colored_label(column, _wealth_text(body.wealth), GOLD, "TreasurePooledWealth")
+	_add_colored_label(column, TreasureDisplayTextType.wealth(body.wealth), GOLD, "TreasurePooledWealth")
 	var wealth_actions := HBoxContainer.new()
 	wealth_actions.name = "TreasureWealthActions"
 	wealth_actions.add_theme_constant_override("separation", 4)
@@ -858,46 +862,6 @@ func _refresh_swap_controls(index: int, selector: OptionButton, rows: Array[Inte
 			reason = "This adventurer does not carry enough %s." % String(spec["kind"])
 		buttons[button_index].disabled = not enabled
 		buttons[button_index].tooltip_text = "" if enabled else reason
-
-
-func _summary_text(body: InteractionRequest.TreasureRequestBody) -> String:
-	var parts: Array[String] = []
-	if body.has_remaining:
-		parts.append("%d item%s" % [body.remaining, "" if body.remaining == 1 else "s"])
-	if body.wealth != null:
-		parts.append("%d gold" % body.wealth.gold)
-	if body.experience_share > 0:
-		parts.append("%d experience each" % body.experience_share)
-	return " • ".join(parts)
-
-
-func _recipient_text(character: InteractionRequestValue.RewardCharacter) -> String:
-	if character.has_health:
-		return "%s\nStamina %d/%d" % [character.name, character.current_health, character.maximum_health]
-	if character.wealth != null:
-		return "%s\nItems %d • Move %d • Load %d/%d" % [character.name, character.item_count, character.maximum_movement, character.carried_load, character.maximum_load]
-	return character.name
-
-
-func _wealth_text(wealth: InteractionRequestValue.Wealth) -> String:
-	if wealth == null:
-		return "Gold 0 • Gems 0 • Jewelry 0"
-	return "Gold %d • Gems %d • Jewelry %d" % [wealth.gold, wealth.gems, wealth.jewelry]
-
-
-func _item_state(item: InteractionRequestValue.RewardItem) -> String:
-	if item.magical:
-		return "Identified • magic detected" if item.identified else "Magic detected • unidentified"
-	return "Identified" if item.identified else "Unidentified"
-
-
-func _item_detail(item: InteractionRequestValue.RewardItem) -> Dictionary:
-	var facts: Array[Dictionary] = []
-	for fact: InteractionRequestValue.RewardFact in item.facts:
-		facts.append({"label": fact.label, "value": fact.value})
-	if item.charges != 0:
-		facts.append({"label": "Charges", "value": "Unlimited" if item.charges < 0 else str(item.charges)})
-	return {"title": item.name, "subtitle": _item_state(item), "description": item.description, "facts": facts, "iconResourceType": item.icon_resource_type, "iconId": item.icon_id}
 
 
 func _add_expanding_spacer(parent: Container, spacer_name: String) -> void:
