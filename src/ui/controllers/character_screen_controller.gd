@@ -18,6 +18,7 @@ var _source_order_ids: Array[String] = []
 var _draft_order_ids: Array[String] = []
 var _vault_revisions: Array[CharacterVaultRevisionView] = []
 var _vault_inspection_revision_hash: String = ""
+var _vault_target: Control
 var _vault_parent: VBoxContainer
 var _vault_view: GameView
 var _vault_appearance_textures: Dictionary = {}
@@ -40,6 +41,7 @@ func reset() -> void:
 	_draft_order_ids.clear()
 	_vault_inspection_revision_hash = ""
 	_vault_show_history = false
+	_vault_target = null
 	_vault_parent = null
 	_vault_view = null
 	_vault_media = null
@@ -71,19 +73,30 @@ func handle_vault_back() -> bool:
 	return true
 
 
-func present_vault(parent: VBoxContainer, view: GameView, appearance_textures: Dictionary, text_scale: float, back_label: String = "Back", media: ClassicMediaCatalog = null) -> void:
-	if parent == null:
+func present_vault(target: Control, view: GameView, appearance_textures: Dictionary, text_scale: float, back_label: String = "Back", media: ClassicMediaCatalog = null) -> void:
+	if target == null:
 		return
+	var screen := target as VaultScreen
+	var parent := screen.body_control() if screen != null else target as VBoxContainer
+	_vault_target = target
 	_vault_parent = parent
 	_vault_view = view
 	_vault_appearance_textures = appearance_textures
 	_vault_text_scale = text_scale
 	_vault_back_label = back_label
 	_vault_media = media
-	_clear(parent)
+	if screen == null:
+		_clear(parent)
 	if not _vault_inspection_revision_hash.is_empty():
+		if screen != null:
+			_vault_parent = screen.prepare_inspection_layout()
 		_render_vault_inspection()
 		return
+	if screen != null:
+		screen.prepare_list_layout()
+	var header_parent := screen.header_area() if screen != null else parent
+	var list_parent := screen.list_area() if screen != null else parent
+	var history_parent := screen.history_area() if screen != null else parent
 	var header := HBoxContainer.new()
 	header.name = "CharacterFilesHeader"
 	header.add_theme_constant_override("separation", 8)
@@ -96,13 +109,13 @@ func present_vault(parent: VBoxContainer, view: GameView, appearance_textures: D
 	header.add_child(header_spacer)
 	var current_revisions := _current_vault_revisions()
 	header.add_child(_label("%d available" % current_revisions.size(), MUTED, 13))
-	parent.add_child(header)
+	header_parent.add_child(header)
 	if _vault_revisions.is_empty():
-		_add_card(parent, "Character vault is empty", "No immutable .r2char revisions are installed. New characters can be published after they are added to a campaign party.")
+		_add_card(list_parent, "Character vault is empty", "No immutable .r2char revisions are installed. New characters can be published after they are added to a campaign party.")
 		return
-	parent.add_child(_label("Current Character Files", GOLD, 15))
+	list_parent.add_child(_label("Current Character Files", GOLD, 15))
 	if view != null and view.campaign_summary != null:
-		parent.add_child(_label("Eligibility shown for %s" % view.campaign_summary.title, MUTED, 11))
+		list_parent.add_child(_label("Eligibility shown for %s" % view.campaign_summary.title, MUTED, 11))
 	var list := GridContainer.new()
 	list.name = "CharacterFileList"
 	list.columns = 1 if _layout_profile == UiLayoutProfile.COMPACT else 2
@@ -110,7 +123,7 @@ func present_vault(parent: VBoxContainer, view: GameView, appearance_textures: D
 	list.add_theme_constant_override("v_separation", 8)
 	for revision: CharacterVaultRevisionView in current_revisions:
 		_render_vault_current_row(list, revision, view)
-	parent.add_child(list)
+	list_parent.add_child(list)
 	var history_count := _vault_revisions.size() - current_revisions.size()
 	var history_button := Button.new()
 	history_button.text = ("Hide revision history" if _vault_show_history else "Revision history and archives") + " (%d)" % history_count
@@ -119,9 +132,9 @@ func present_vault(parent: VBoxContainer, view: GameView, appearance_textures: D
 		_vault_show_history = not _vault_show_history
 		_refresh_vault()
 	)
-	parent.add_child(history_button)
+	history_parent.add_child(history_button)
 	if _vault_show_history:
-		_render_vault_history(parent, current_revisions)
+		_render_vault_history(history_parent, current_revisions)
 
 
 func _current_vault_revisions() -> Array[CharacterVaultRevisionView]:
@@ -263,8 +276,8 @@ func _inspect_vault(revision_hash: String) -> void:
 
 
 func _refresh_vault() -> void:
-	if _vault_parent != null:
-		present_vault(_vault_parent, _vault_view, _vault_appearance_textures, _vault_text_scale, _vault_back_label, _vault_media)
+	if is_instance_valid(_vault_target):
+		present_vault(_vault_target, _vault_view, _vault_appearance_textures, _vault_text_scale, _vault_back_label, _vault_media)
 
 
 func _render_vault_inspection() -> void:

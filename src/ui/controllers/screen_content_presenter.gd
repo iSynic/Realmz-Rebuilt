@@ -210,7 +210,7 @@ func present(screen_id: StringName, screen: ScreenFrame, appearance_textures: Di
 	if screen == null:
 		return
 	var body := screen.body_control()
-	if screen_id not in [&"allies", &"bestiary", &"character", &"inventory", &"journal", &"services", &"spells", &"system"]:
+	if screen_id not in [&"allies", &"bestiary", &"character", &"inventory", &"journal", &"services", &"spells", &"system", &"vault"]:
 		_clear(body)
 	if context_actions != null:
 		_clear(context_actions)
@@ -246,7 +246,7 @@ func present(screen_id: StringName, screen: ScreenFrame, appearance_textures: Di
 		&"bestiary":
 			_creature_library_controller.present_bestiary(screen, _view, _media, _settings.text_scale)
 		&"vault":
-			_character_controller.present_vault(body, _view, appearance_textures, _settings.text_scale, vault_back_label, _media)
+			_character_controller.present_vault(screen, _view, appearance_textures, _settings.text_scale, vault_back_label, _media)
 		&"inventory":
 			_inventory_controller.present(screen as InventoryScreen, _view, _media, _settings.text_scale)
 		&"spells":

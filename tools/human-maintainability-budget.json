@@ -12,9 +12,7 @@
     "currentMaximum": 369,
     "target": 0
   },
-  "legacyRouteScenes": [
-    "src/ui/screens/vault_screen.tscn"
-  ],
+  "legacyRouteScenes": [],
   "routeMarkerScenes": [
     "src/ui/screens/combat_screen.tscn",
     "src/ui/screens/exploration_screen.tscn"
