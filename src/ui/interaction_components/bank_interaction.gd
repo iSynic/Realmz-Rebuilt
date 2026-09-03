@@ -1,11 +1,10 @@
-## Presents the dynamic bank interaction without owning gameplay state.
+## Binds a bank request to the scene-authored wealth workspace.
 
 class_name BankInteraction
 extends InteractionComponent
 
-const GOLD := Color("e5c45c")
-const CYAN := Color("8fcfd1")
-const MUTED := Color("aeb6ba")
+const BANK_CHARACTER_ROW_SCENE := preload("res://src/ui/interaction_components/bank_character_row.tscn")
+const BANK_TRANSFER_ROW_SCENE := preload("res://src/ui/interaction_components/bank_transfer_row.tscn")
 
 var _compact := false
 var _body: InteractionRequest.BankRequestBody
@@ -13,7 +12,6 @@ var _departure_mode := false
 var _characters: Array[InteractionRequestValue.ServiceCharacter] = []
 var _selected_character_id: String
 var _character_picker: OptionButton
-var _summary: VBoxContainer
 var _character_group := ButtonGroup.new()
 
 
@@ -31,116 +29,65 @@ func build(request: InteractionRequest) -> void:
 	_selected_character_id = _body.selected_character_id
 	if _selected_character_id.is_empty() and not _characters.is_empty():
 		_selected_character_id = _characters[0].id
-	size_flags_vertical = Control.SIZE_EXPAND_FILL
-	custom_minimum_size = Vector2(0.0, 500.0)
-	add_theme_constant_override("separation", 6)
-	_build_header()
-	if _compact:
-		_build_compact_character_picker()
-	var columns := HBoxContainer.new()
-	columns.name = "BankWorkspaceColumns"
-	columns.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	columns.add_theme_constant_override("separation", 6)
-	add_child(columns)
-	_build_account_pane(columns)
-	if not _compact:
-		_build_character_pane(columns)
-	_build_swap_pane(columns)
-	_build_footer()
+	_bind_header_and_account()
+	_bind_character_picker()
+	_populate_character_rows()
+	_bind_footer()
 	_refresh_selected_character()
 
 
-func _build_header() -> void:
-	var row := HBoxContainer.new()
-	row.name = "BankHeader"
-	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	add_child(row)
-	var title := _label("Distribute pooled wealth before leaving" if _departure_mode else "Bank-backed Swap", GOLD)
-	title.theme_type_variation = &"ClassicHeading"
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(title)
-	var load_note := _label("Exact denomination transfers", CYAN)
-	load_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	row.add_child(load_note)
+func _bind_header_and_account() -> void:
+	(%Title as Label).text = "Distribute pooled wealth before leaving" if _departure_mode else "Bank-backed Swap"
+	((%PartyPoolCard as PanelContainer).get_node("Facts/Value") as Label).text = _wealth_text(_body.pooled_wealth)
+	(%BankedCard as PanelContainer).visible = not _departure_mode
+	((%BankedCard as PanelContainer).get_node("Facts/Value") as Label).text = _wealth_text(_body.banked_wealth)
+	(%Explanation as Label).text = (
+		"Done leaves any unassigned wealth behind, then continues this movement attempt."
+		if _departure_mode
+		else "Opening the bank moves banked wealth into the pool. Leaving the location returns the remaining pool to the bank."
+	)
 
 
-func _build_compact_character_picker() -> void:
-	_character_picker = character_option(_characters)
-	_character_picker.name = "BankCharacterPicker"
-	for index: int in _character_picker.item_count:
-		if String(_character_picker.get_item_metadata(index)) == _selected_character_id:
-			_character_picker.select(index)
-			break
+func _bind_character_picker() -> void:
+	_character_picker = %BankCharacterPicker
+	_character_picker.visible = _compact
+	(%BankCharacters as PanelContainer).visible = not _compact
+	for character: InteractionRequestValue.ServiceCharacter in _characters:
+		_character_picker.add_item(character.name)
+		_character_picker.set_item_metadata(_character_picker.item_count - 1, character.id)
+		if character.id == _selected_character_id:
+			_character_picker.select(_character_picker.item_count - 1)
 	_character_picker.item_selected.connect(func(_index: int) -> void:
 		_selected_character_id = String(_character_picker.get_selected_metadata())
 		_refresh_selected_character()
 	)
-	add_child(_character_picker)
 
 
-func _build_account_pane(parent: HBoxContainer) -> void:
-	var content := _pane(parent, "BankAccount", "Party Wealth", 0.8)
-	content.add_child(_wealth_card("Party Pool", _body.pooled_wealth))
-	if not _departure_mode:
-		content.add_child(_wealth_card("Banked until departure", _body.banked_wealth))
-	var explanation := "Done leaves any unassigned wealth behind, then continues this movement attempt." if _departure_mode else "Opening the bank moves banked wealth into the pool. Leaving the location returns the remaining pool to the bank."
-	content.add_child(_label(explanation, MUTED))
-	var spacer := Control.new()
-	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	content.add_child(spacer)
-
-
-func _build_character_pane(parent: HBoxContainer) -> void:
-	var content := _pane(parent, "BankCharacters", "Adventurers", 0.95)
-	var scroll := _scroll("BankCharacterScroll")
-	content.add_child(scroll)
-	var rows := VBoxContainer.new()
-	rows.name = "BankCharacterRows"
-	rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	rows.add_theme_constant_override("separation", 3)
-	scroll.add_child(rows)
-	if _characters.is_empty():
-		rows.add_child(_label("No eligible adventurer was supplied.", MUTED))
-		return
+func _populate_character_rows() -> void:
+	var rows := %BankCharacterRows as VBoxContainer
+	(%CharacterEmpty as Label).visible = _characters.is_empty()
 	for character: InteractionRequestValue.ServiceCharacter in _characters:
-		var button := Button.new()
+		var button := BANK_CHARACTER_ROW_SCENE.instantiate() as Button
 		button.name = "BankCharacter_%s" % character.id.replace(".", "_")
 		button.text = _character_row_text(character)
-		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		button.custom_minimum_size.y = 52.0
-		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		button.toggle_mode = true
 		button.button_group = _character_group
 		button.pressed.connect(_select_character.bind(character.id))
 		rows.add_child(button)
 		button.set_pressed_no_signal(character.id == _selected_character_id)
 
 
-func _build_swap_pane(parent: HBoxContainer) -> void:
-	var content := _pane(parent, "BankSwap", "Selected Adventurer", 1.25)
-	_summary = VBoxContainer.new()
-	_summary.name = "BankSelectedSummary"
-	_summary.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_summary.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_summary.add_theme_constant_override("separation", 5)
-	content.add_child(_summary)
+func _bind_footer() -> void:
+	_bind_action(%BankPool as Button, InteractionResponse.BankBody.new(&"pool"), _body.pool)
+	_bind_action(%BankShare as Button, InteractionResponse.BankBody.new(&"share"), _body.share)
+	(%BankDone as Button).pressed.connect(
+		func() -> void: response_body_submitted.emit(InteractionResponse.BankBody.new(&"leave"))
+	)
 
 
-func _build_footer() -> void:
-	var footer := HBoxContainer.new()
-	footer.name = "BankFooter"
-	footer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	footer.add_theme_constant_override("separation", 5)
-	add_child(footer)
-	_add_response(footer, "BankPool", "Pool party wealth", InteractionResponse.BankBody.new(&"pool"), _body.pool)
-	_add_response(footer, "BankShare", "Share pooled wealth", InteractionResponse.BankBody.new(&"share"), _body.share)
-	var spacer := Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	footer.add_child(spacer)
-	var done := add_response_to(footer, "Done", InteractionResponse.BankBody.new(&"leave"))
-	done.name = "BankDone"
-	done.custom_minimum_size.x = 160.0
+func _bind_action(button: Button, body: InteractionResponse.BankBody, availability: InteractionRequestValue.Availability) -> void:
+	button.disabled = not availability.enabled
+	button.tooltip_text = availability.reason
+	button.pressed.connect(func() -> void: response_body_submitted.emit(body))
 
 
 func _select_character(character_id: String) -> void:
@@ -149,44 +96,45 @@ func _select_character(character_id: String) -> void:
 
 
 func _refresh_selected_character() -> void:
-	if _summary == null:
-		return
-	for child: Node in _summary.get_children():
-		_summary.remove_child(child)
-		child.free()
+	var transfer_rows := %TransferRows as VBoxContainer
+	for child: Node in transfer_rows.get_children():
+		child.queue_free()
 	var character := _character_by_id(_selected_character_id)
-	if character == null or character.wealth == null:
-		_summary.add_child(_label("No selected adventurer is available.", MUTED))
+	var has_character := character != null and character.wealth != null
+	(%Unavailable as Label).visible = not has_character
+	for control: Control in [%CharacterName, %CharacterWealth, %CharacterLoad, %SummarySeparator, %TransferEmpty, %TransferRows]:
+		control.visible = has_character
+	if not has_character:
 		return
-	_summary.add_child(_label(character.name, GOLD))
-	_summary.add_child(_label(_wealth_text(character.wealth), CYAN))
-	_summary.add_child(_label("Load %d/%d" % [character.load, character.maximum_load], MUTED))
-	var separator := HSeparator.new()
-	_summary.add_child(separator)
-	if character.transfers.is_empty():
-		_summary.add_child(_label("No exact transfer increment was supplied.", MUTED))
-		return
+	(%CharacterName as Label).text = character.name
+	(%CharacterWealth as Label).text = _wealth_text(character.wealth)
+	(%CharacterLoad as Label).text = "Load %d/%d" % [character.load, character.maximum_load]
+	(%TransferEmpty as Label).visible = character.transfers.is_empty()
 	for transfer: InteractionRequestValue.Transfer in character.transfers:
-		_add_transfer_row(character, transfer)
+		_add_transfer_row(transfer_rows, character, transfer)
 
 
-func _add_transfer_row(character: InteractionRequestValue.ServiceCharacter, transfer: InteractionRequestValue.Transfer) -> void:
-	var panel := PanelContainer.new()
-	panel.name = "BankTransfer_%s" % String(transfer.denomination)
-	panel.theme_type_variation = &"ClassicInset"
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_summary.add_child(panel)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 4)
-	panel.add_child(row)
+func _add_transfer_row(parent: VBoxContainer, character: InteractionRequestValue.ServiceCharacter, transfer: InteractionRequestValue.Transfer) -> void:
+	var panel := BANK_TRANSFER_ROW_SCENE.instantiate() as PanelContainer
 	var denomination := String(transfer.denomination)
-	var label := _label("%s\n%d per transfer" % [denomination.capitalize(), transfer.amount], GOLD)
-	label.custom_minimum_size.x = 110.0
-	row.add_child(label)
-	var to_pool := add_response_to(row, "To pool", InteractionResponse.BankBody.new(&"to-pool", character.id, denomination, transfer.amount), transfer.to_pool.enabled, transfer.to_pool.reason)
+	panel.name = "BankTransfer_%s" % denomination
+	(panel.get_node("Actions/Denomination") as Label).text = "%s\n%d per transfer" % [denomination.capitalize(), transfer.amount]
+	var to_pool := panel.get_node("Actions/ToPool") as Button
 	to_pool.name = "BankToPool_%s" % denomination
-	var to_character := add_response_to(row, "To %s" % character.name, InteractionResponse.BankBody.new(&"to-character", character.id, denomination, transfer.amount), transfer.to_character.enabled, transfer.to_character.reason)
+	to_pool.disabled = not transfer.to_pool.enabled
+	to_pool.tooltip_text = transfer.to_pool.reason
+	to_pool.pressed.connect(func() -> void:
+		response_body_submitted.emit(InteractionResponse.BankBody.new(&"to-pool", character.id, denomination, transfer.amount))
+	)
+	var to_character := panel.get_node("Actions/ToCharacter") as Button
 	to_character.name = "BankToCharacter_%s" % denomination
+	to_character.text = "To %s" % character.name
+	to_character.disabled = not transfer.to_character.enabled
+	to_character.tooltip_text = transfer.to_character.reason
+	to_character.pressed.connect(func() -> void:
+		response_body_submitted.emit(InteractionResponse.BankBody.new(&"to-character", character.id, denomination, transfer.amount))
+	)
+	parent.add_child(panel)
 
 
 func _character_by_id(character_id: String) -> InteractionRequestValue.ServiceCharacter:
@@ -200,59 +148,5 @@ func _character_row_text(character: InteractionRequestValue.ServiceCharacter) ->
 	return "%s\n%s  •  Load %d/%d" % [character.name, _wealth_text(character.wealth), character.load, character.maximum_load]
 
 
-func _wealth_card(title: String, wealth: InteractionRequestValue.Wealth) -> PanelContainer:
-	var panel := PanelContainer.new()
-	panel.theme_type_variation = &"ClassicInset"
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var content := VBoxContainer.new()
-	content.add_child(_label(title, GOLD))
-	content.add_child(_label(_wealth_text(wealth), CYAN))
-	panel.add_child(content)
-	return panel
-
-
-func _pane(parent: HBoxContainer, pane_name: String, title: String, ratio: float) -> VBoxContainer:
-	var panel := PanelContainer.new()
-	panel.name = pane_name
-	panel.theme_type_variation = &"ClassicTextWell"
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	panel.size_flags_stretch_ratio = ratio
-	parent.add_child(panel)
-	var content := VBoxContainer.new()
-	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	content.add_theme_constant_override("separation", 4)
-	panel.add_child(content)
-	var heading := _label(title, GOLD)
-	heading.theme_type_variation = &"ClassicHeading"
-	content.add_child(heading)
-	return content
-
-
-func _scroll(scroll_name: String) -> ScrollContainer:
-	var scroll := ScrollContainer.new()
-	scroll.name = scroll_name
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	return scroll
-
-
-func _label(text: String, color: Color) -> Label:
-	var label := Label.new()
-	label.text = text
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	label.add_theme_color_override("font_color", color)
-	return label
-
-
 func _wealth_text(wealth: InteractionRequestValue.Wealth) -> String:
 	return "%d gold  •  %d gems  •  %d jewelry" % [wealth.gold, wealth.gems, wealth.jewelry] if wealth != null else "No wealth record"
-
-
-func _add_response(parent: Container, name_value: String, text: String, body: InteractionResponse.BankBody, availability: InteractionRequestValue.Availability) -> void:
-	var button := add_response_to(parent, text, body, availability.enabled, availability.reason)
-	button.name = name_value
-	button.custom_minimum_size.x = 150.0

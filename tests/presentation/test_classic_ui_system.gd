@@ -7,6 +7,7 @@ const LIFECYCLE_INTERACTION_SCENE := preload("res://src/ui/interaction_component
 const TEXT_CHOICE_INTERACTION_SCENE := preload("res://src/ui/interaction_components/text_choice_interaction.tscn")
 const SCROLLING_TEXT_INTERACTION_SCENE := preload("res://src/ui/interaction_components/scrolling_text_interaction.tscn")
 const SPELL_EFFECT_PREVIEW_SCENE := preload("res://src/ui/classic_spell_effect_preview.tscn")
+const BANK_INTERACTION_SCENE := preload("res://src/ui/interaction_components/bank_interaction.tscn")
 const HeldMovementControllerScript := preload("res://src/ui/held_movement_controller.gd")
 const RetainedMapSurfaceScript := preload("res://src/ui/classic_retained_map_surface.gd")
 const FAST_SPELL_DOCK_SCENE := preload("res://src/ui/interaction_components/fast_spell_dock.tscn"); const ScrollingTextInteractionScript := preload("res://src/ui/interaction_components/scrolling_text_interaction.gd")
@@ -333,7 +334,7 @@ func _test_bank_component() -> void:
 			],
 		}],
 	})
-	var component := BankInteraction.new()
+	var component := BANK_INTERACTION_SCENE.instantiate() as BankInteraction
 	var submitted: Array[Dictionary] = []
 	component.response_body_submitted.connect(func(body: InteractionResponse.Body) -> void: submitted.append(body.to_data()))
 	component.build(request)
@@ -355,7 +356,7 @@ func _test_bank_component() -> void:
 	component.free()
 
 	var departure_request := InteractionRequest.from_payload("departure.fixture", InteractionRequest.POOLED_WEALTH_DEPARTURE, request.body.to_data().merged({"mode": "departure"}, true))
-	var departure_component := BankInteraction.new()
+	var departure_component := BANK_INTERACTION_SCENE.instantiate() as BankInteraction
 	var departure_payloads: Array[Dictionary] = []
 	departure_component.response_body_submitted.connect(func(body: InteractionResponse.Body) -> void: departure_payloads.append(body.to_data()))
 	departure_component.build(departure_request)

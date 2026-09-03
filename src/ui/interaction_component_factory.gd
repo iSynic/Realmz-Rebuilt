@@ -8,6 +8,7 @@ const TEXT_CHOICE_INTERACTION_SCENE := preload("res://src/ui/interaction_compone
 const PLAYER_MAP_INTERACTION_SCENE := preload("res://src/ui/interaction_components/player_map_interaction.tscn")
 const SCROLLING_TEXT_INTERACTION_SCENE := preload("res://src/ui/interaction_components/scrolling_text_interaction.tscn")
 const LIFECYCLE_INTERACTION_SCENE := preload("res://src/ui/interaction_components/lifecycle_interaction.tscn")
+const BANK_INTERACTION_SCENE := preload("res://src/ui/interaction_components/bank_interaction.tscn")
 const ThiefEncounterInteractionScript := preload("res://src/ui/interaction_components/thief_encounter_interaction.gd")
 const LayoutPolicy := preload("res://src/ui/interaction_layout_policy.gd")
 
@@ -72,7 +73,7 @@ static func create(
 			temple.configure(media, compact)
 			return temple
 		&"bank_action", &"pooled_wealth_departure":
-			var bank := BankInteraction.new()
+			var bank := BANK_INTERACTION_SCENE.instantiate() as BankInteraction
 			bank.configure(compact)
 			return bank
 		&"combat_action":
