@@ -3,8 +3,6 @@
 class_name ScrollingTextInteraction
 extends InteractionComponent
 
-const ClassicScrollingTextSurfaceType := preload("res://src/ui/screens/classic_scrolling_text_surface.gd")
-
 var _media: ClassicMediaCatalog
 var _surface: ClassicScrollingTextSurface
 var _done: Button
@@ -19,29 +17,16 @@ func build(request: InteractionRequest) -> void:
 	var body := request.body as InteractionRequest.AcknowledgeBody
 	if body == null or body.presentation != &"classic-scrolling-text":
 		return
-	size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_surface = ClassicScrollingTextSurfaceType.new() as ClassicScrollingTextSurface
+	_surface = %ClassicScrollingTextWell as ClassicScrollingTextSurface
 	_surface.configure(_media)
-	_surface.name = "ClassicScrollingTextWell"
 	_surface.double_click_requested.connect(_complete)
 	var asset := _media.asset_by_resource(body.resource_type, body.resource_id) if body.has_resource and _media != null else null
 	if asset != null:
 		_surface.present_asset(asset)
 	else:
 		_surface.present_text(body.prompt)
-	add_child(_surface)
-	var footer := HBoxContainer.new()
-	footer.name = "ClassicScrollingTextActions"
-	footer.alignment = BoxContainer.ALIGNMENT_CENTER
-	add_child(footer)
-	_done = Button.new()
-	_done.name = "ClassicScrollingTextDone"
-	_done.text = "Done"
-	_done.custom_minimum_size = Vector2(140.0, 38.0)
-	_done.theme_type_variation = &"ClassicChoiceButton"
+	_done = %ClassicScrollingTextDone as Button
 	_done.pressed.connect(_complete)
-	footer.add_child(_done)
 	set_process(false)
 
 

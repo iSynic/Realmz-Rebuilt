@@ -23,20 +23,15 @@ func build(request: InteractionRequest) -> void:
 				selected = player_map
 				break
 	if selected == null:
-		add_hint("The acquired map is unavailable in the current detached view.")
-		add_response("Continue", InteractionResponse.AcknowledgeBody.new())
+		(%ImmediatePlayerMap as PlayerMapPresenter).visible = false
+		(%UnavailableHint as Label).visible = true
+		(%Continue as Button).pressed.connect(_complete)
 		return
-	var presenter := PlayerMapPresenter.new()
-	presenter.name = "ImmediatePlayerMap"
+	var presenter := %ImmediatePlayerMap as PlayerMapPresenter
 	presenter.present(selected, _media)
 	presenter.scrolling_text_finished.connect(_complete)
-	add_child(presenter)
-	var continue_button := Button.new()
-	continue_button.text = "Continue"
-	continue_button.custom_minimum_size.y = 36.0
-	continue_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var continue_button := %Continue as Button
 	continue_button.pressed.connect(_complete)
-	add_child(continue_button)
 
 
 func _complete() -> void:

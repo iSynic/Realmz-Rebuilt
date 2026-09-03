@@ -34,48 +34,11 @@ func configure(media: ClassicMediaCatalog, text_node_name: StringName = &"Classi
 	clip_contents = true
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
-	var stack := Control.new()
-	stack.name = "ClassicScrollingTextStack"
-	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	stack.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	add_child(stack)
-	var background := TextureRect.new()
-	background.name = "ClassicScrollingTextBackground"
-	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	background.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	background.texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
-	background.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	background.stretch_mode = TextureRect.STRETCH_TILE
+	var background := get_node("ClassicScrollingTextStack/ClassicScrollingTextBackground") as TextureRect
 	background.texture = _background_texture()
-	stack.add_child(background)
-	var margin := MarginContainer.new()
-	margin.name = "ClassicScrollingTextMargin"
-	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 8)
-	margin.add_theme_constant_override("margin_top", 6)
-	margin.add_theme_constant_override("margin_right", 8)
-	margin.add_theme_constant_override("margin_bottom", 6)
-	stack.add_child(margin)
-	_text = RichTextLabel.new()
+	_text = get_node("ClassicScrollingTextStack/ClassicScrollingTextMargin/ClassicScrollingText") as RichTextLabel
 	_text.name = text_node_name
-	_text.theme_type_variation = &"ClassicNarrative"
-	_text.add_theme_color_override("default_color", DEFAULT_INK)
-	_text.add_theme_color_override("font_outline_color", Color.TRANSPARENT)
-	_text.add_theme_constant_override("outline_size", 0)
-	_text.bbcode_enabled = false
-	_text.fit_content = false
-	_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_text.scroll_active = true
-	_text.scroll_following = false
-	_text.tab_size = 1
-	_text.selection_enabled = false
-	_text.mouse_filter = Control.MOUSE_FILTER_STOP
-	_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_text.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_text.gui_input.connect(_on_text_input)
-	margin.add_child(_text)
 	set_process(true)
 
 

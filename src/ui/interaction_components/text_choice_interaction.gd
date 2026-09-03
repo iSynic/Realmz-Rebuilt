@@ -39,7 +39,7 @@ func build(request: InteractionRequest) -> void:
 			_acknowledgement_body = InteractionResponse.AcknowledgeBody.new(take_note_on_continue)
 			if body.prompt.strip_edges().is_empty():
 				var grid := _choice_grid(1, true)
-				var continue_button := Button.new()
+				var continue_button := RESPONSE_BUTTON_SCENE.instantiate() as Button
 				continue_button.name = "AcknowledgeContinue"
 				continue_button.text = "Continue"
 				continue_button.custom_minimum_size = Vector2(140.0, 38.0)
@@ -72,18 +72,11 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 
 func _choice_grid(columns: int, content_width: bool = false) -> GridContainer:
-	var pane := PanelContainer.new()
-	pane.name = "ChoicePane"
-	pane.theme_type_variation = &"ClassicInset"
+	var pane := %ChoicePane as PanelContainer
+	pane.visible = true
 	pane.size_flags_horizontal = Control.SIZE_SHRINK_END if content_width else Control.SIZE_EXPAND_FILL
-	add_child(pane)
-	var grid := GridContainer.new()
-	grid.name = "ChoiceGrid"
+	var grid := %ChoiceGrid as GridContainer
 	grid.columns = columns
-	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	grid.add_theme_constant_override("h_separation", 6)
-	grid.add_theme_constant_override("v_separation", 6)
-	pane.add_child(grid)
 	return grid
 
 

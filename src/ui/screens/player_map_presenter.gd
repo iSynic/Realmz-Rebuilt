@@ -5,7 +5,7 @@ extends VBoxContainer
 
 signal scrolling_text_finished
 
-const ClassicScrollingTextSurfaceType := preload("res://src/ui/screens/classic_scrolling_text_surface.gd")
+const CLASSIC_SCROLLING_TEXT_SURFACE_SCENE := preload("res://src/ui/screens/classic_scrolling_text_surface.tscn")
 
 var _canvas: PlayerMapCanvas
 
@@ -20,7 +20,7 @@ func present(view: PlayerMapView, media: ClassicMediaCatalog) -> void:
 	if view == null:
 		return
 	if view.mode == PlayerMapDefinition.SCROLLING_TEXT:
-		var surface := ClassicScrollingTextSurfaceType.new() as ClassicScrollingTextSurface
+		var surface := CLASSIC_SCROLLING_TEXT_SURFACE_SCENE.instantiate() as ClassicScrollingTextSurface
 		surface.custom_minimum_size = Vector2(320, 320)
 		surface.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		surface.size_flags_vertical = Control.SIZE_EXPAND_FILL

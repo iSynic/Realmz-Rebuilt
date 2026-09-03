@@ -13,6 +13,8 @@
 
 # Local Contracts
 
+- `classic_scrolling_text_surface.tscn` owns the tiled background, margin, and text viewport. `ClassicScrollingTextSurface` decodes and binds application media, style runs, and scrolling behavior without reconstructing that stable hierarchy.
+
 - Workspaces are designed for the canonical 1280x720 composition and remain reachable in the optional 800x600 Classic composition through deliberate compact reflow or scrolling. The 4:3 mode keeps a square gameplay viewport. Intermediate sizes are fallback reflows, not additional design targets; route headers stack below the compact threshold, bound descriptions to two lines, and truncate instead of expanding a workspace off-screen.
 - Screens present only detached `GameView` facts and explicit action availability.
 - Inventory selects one party member and one exact carried item before presenting actions. Trade recipient rows, Cast Identify's source-selected caster/spell identity, and every disabled explanation come from the detached item action view; the workspace cannot expose scenario-owned opcode-36 escrow as a player stash.

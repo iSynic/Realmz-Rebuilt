@@ -3,9 +3,12 @@ class_name InteractionComponentFactory
 extends RefCounted
 
 const PICK_LOCK_INTERACTION_SCENE := preload("res://src/ui/interaction_components/pick_lock_interaction.tscn")
+const AGE_UPDATE_INTERACTION_SCENE := preload("res://src/ui/interaction_components/age_update_interaction.tscn")
+const TEXT_CHOICE_INTERACTION_SCENE := preload("res://src/ui/interaction_components/text_choice_interaction.tscn")
+const PLAYER_MAP_INTERACTION_SCENE := preload("res://src/ui/interaction_components/player_map_interaction.tscn")
+const SCROLLING_TEXT_INTERACTION_SCENE := preload("res://src/ui/interaction_components/scrolling_text_interaction.tscn")
+const LIFECYCLE_INTERACTION_SCENE := preload("res://src/ui/interaction_components/lifecycle_interaction.tscn")
 const ThiefEncounterInteractionScript := preload("res://src/ui/interaction_components/thief_encounter_interaction.gd")
-const LifecycleInteractionScript := preload("res://src/ui/interaction_components/lifecycle_interaction.gd")
-const ScrollingTextInteractionScript := preload("res://src/ui/interaction_components/scrolling_text_interaction.gd")
 const LayoutPolicy := preload("res://src/ui/interaction_layout_policy.gd")
 
 
@@ -20,20 +23,20 @@ static func create(
 	combat_rect: Rect2
 ) -> InteractionComponent:
 	if LayoutPolicy.is_player_map_request(request):
-		var player_map := PlayerMapInteraction.new()
+		var player_map := PLAYER_MAP_INTERACTION_SCENE.instantiate() as PlayerMapInteraction
 		player_map.configure(game_view, media)
 		return player_map
 	if LayoutPolicy.is_scrolling_text_request(request):
-		var scrolling_text := ScrollingTextInteractionScript.new()
+		var scrolling_text := SCROLLING_TEXT_INTERACTION_SCENE.instantiate() as ScrollingTextInteraction
 		scrolling_text.configure(media)
 		return scrolling_text
 	match request.kind:
 		&"acknowledge", &"yes_no", &"encounter_choice", &"scenario_choice":
-			var text_choice := TextChoiceInteraction.new()
+			var text_choice := TEXT_CHOICE_INTERACTION_SCENE.instantiate() as TextChoiceInteraction
 			text_choice.configure(autojournal_enabled)
 			return text_choice
 		&"age_update":
-			var age_update := AgeUpdateInteraction.new()
+			var age_update := AGE_UPDATE_INTERACTION_SCENE.instantiate() as AgeUpdateInteraction
 			age_update.configure(media)
 			return age_update
 		&"character_selection", &"ally_selection":
@@ -77,7 +80,7 @@ static func create(
 			battle.configure(_combatant_icon_textures(game_view, media), LayoutPolicy.combat_command_scale(combat_rect))
 			return battle
 		&"session_lifecycle":
-			return LifecycleInteractionScript.new()
+			return LIFECYCLE_INTERACTION_SCENE.instantiate() as InteractionComponent
 	return null
 
 

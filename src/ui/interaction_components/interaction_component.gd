@@ -3,6 +3,8 @@
 class_name InteractionComponent
 extends VBoxContainer
 
+const RESPONSE_BUTTON_SCENE := preload("res://src/ui/interaction_components/interaction_response_button.tscn")
+
 signal response_body_submitted(body: InteractionResponse.Body)
 @warning_ignore("unused_signal")
 signal combat_targeting_requested(request: CombatTargetingRequest)
@@ -55,10 +57,8 @@ func add_response(label: String, body: InteractionResponse.Body, enabled: bool =
 
 
 func add_response_to(parent: Container, label: String, body: InteractionResponse.Body, enabled: bool = true, reason: String = "") -> Button:
-	var button := Button.new()
+	var button := RESPONSE_BUTTON_SCENE.instantiate() as Button
 	button.text = label
-	button.custom_minimum_size.y = 36.0
-	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.disabled = not enabled
 	button.tooltip_text = reason
 	button.pressed.connect(func() -> void: response_body_submitted.emit(body))

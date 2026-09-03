@@ -12,20 +12,15 @@ func build(request: InteractionRequest) -> void:
 	var body := request.body as InteractionRequest.LifecycleRequestBody
 	if body == null: return
 	var compact_quit := body.operation == &"quit-application"
-	if not compact_quit:
-		var context := Label.new()
-		context.name = "LifecycleConsequence"
-		context.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var context := %LifecycleConsequence as Label
+	context.visible = not compact_quit
+	if context.visible:
 		context.text = "Saving is unavailable during battle." if body.in_combat else "Save first, or end this adventure without saving."
-		add_child(context)
-	var action_host: Container = self
-	if compact_quit:
-		var actions := HBoxContainer.new()
-		actions.name = "LifecycleActions"
-		actions.alignment = BoxContainer.ALIGNMENT_CENTER
-		actions.add_theme_constant_override("separation", 8)
-		add_child(actions)
-		action_host = actions
+	var compact_actions := %LifecycleActions as HBoxContainer
+	var vertical_actions := %LifecycleVerticalActions as VBoxContainer
+	compact_actions.visible = compact_quit
+	vertical_actions.visible = not compact_quit
+	var action_host: Container = compact_actions if compact_quit else vertical_actions
 	for option: InteractionRequestValue.LifecycleOption in body.options:
 		var action := option.action
 		var label := option.label.strip_edges()
