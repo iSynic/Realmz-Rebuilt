@@ -1,0 +1,8 @@
+[gd_scene format=3]
+
+[node name="PartyRosterEmptyRow" type="Label"]
+custom_minimum_size = Vector2(0, 42)
+theme_override_colors/font_color = Color(0.615686, 0.658824, 0.666667, 1)
+text = "Empty position"
+horizontal_alignment = 1
+vertical_alignment = 1

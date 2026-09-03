@@ -129,13 +129,6 @@
       "functions": ["_ensure_hosts"]
     },
     {
-      "path": "src/ui/screens/classic_party_roster.gd",
-      "kind": "data-collection",
-      "reason": "The roster scene owns its rails while these functions bind party members and the selected character's variable combat spellbook.",
-      "currentMaximum": 27,
-      "functions": ["_add_character", "_add_empty", "_build_spell_level_rail", "_build_spellbook", "_ensure_selection_cursor_label", "_present_spellbook_details", "_refresh_spellbook_power_choices", "_spellbook_label"]
-    },
-    {
       "path": "src/ui/screens/screen_frame.gd",
       "kind": "conditional-chrome",
       "reason": "A route frame adds navigation chrome only when its scene declares a Back label and destination.",
