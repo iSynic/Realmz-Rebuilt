@@ -396,19 +396,22 @@ func _test_money_workspace_audio() -> void:
 
 
 func _test_route_catalog() -> void:
-	assert_equal(UiRouteCatalog.ROUTES.size(), 11, "the canonical route registry contains the eleven implemented workspaces")
+	assert_equal(UiRouteCatalog.routes().size(), 11, "the canonical route registry contains the two shell modes and nine mounted workspaces")
 	var ids: Dictionary = {}
 	var shortcuts: Dictionary = {}
 	var primary_count: int = 0
-	for route: Dictionary in UiRouteCatalog.ROUTES:
-		ids[route["id"]] = true
-		shortcuts[route["shortcut"]] = true
-		primary_count += 1 if bool(route["primary"]) else 0
-		assert_false(String(route.get("description", "")).is_empty(), "every route has presentation guidance")
-		assert_true(ResourceLoader.exists(String(route.get("scene", "")), "PackedScene"), "every route owns a scene-backed workspace")
+	var shell_mode_count := 0
+	for route: UiRouteDefinition in UiRouteCatalog.routes():
+		ids[route.route_id] = true
+		shortcuts[route.shortcut] = true
+		primary_count += 1 if route.primary else 0
+		shell_mode_count += 0 if route.is_workspace() else 1
+		assert_false(route.description.is_empty(), "every route has presentation guidance")
+		assert_true(not route.is_workspace() or route.workspace_scene != null, "every workspace route owns an editor-authored scene")
 	assert_equal(ids.size(), 11, "route identifiers are unique")
 	assert_equal(shortcuts.size(), 10, "route shortcuts are unique except for the two intentionally shortcut-free Allies menu workspaces")
 	assert_equal(primary_count, 6, "both supported layout compositions keep six primary workspaces")
+	assert_equal(shell_mode_count, 2, "exploration and combat are typed shell modes rather than placeholder scenes")
 
 
 func _test_layout_profiles() -> void:

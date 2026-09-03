@@ -101,7 +101,7 @@ func initialize() -> void:
 		show_splash()
 	else:
 		setup_controller.hide_overlays()
-		_body_frame.visible = false
+		_set_workspace_visible(false)
 
 
 func set_startup_splash_enabled(enabled: bool) -> void:
@@ -131,7 +131,7 @@ func present(view: GameView) -> void:
 	_screen_content_presenter.set_view(view)
 	if view == null or not view.session_started:
 		setup_controller.present(view)
-		_body_frame.visible = false
+		_set_workspace_visible(false)
 		return
 	if not _presented_campaign_id.is_empty() and _presented_campaign_id != view.campaign_id:
 		setup_controller.reset_creator(true)
@@ -148,7 +148,7 @@ func present(view: GameView) -> void:
 			_render_screen()
 			return
 		setup_controller.show_party_setup()
-		_body_frame.visible = false
+		_set_workspace_visible(false)
 		call_deferred("_apply_modal_layouts")
 		call_deferred("_focus_first", setup_controller.setup_overlay)
 		return
@@ -302,7 +302,7 @@ func show_splash() -> void:
 	_load_after_campaign_selection = false
 	_system_return_to_setup = false
 	setup_controller.show_splash()
-	_body_frame.visible = false
+	_set_workspace_visible(false)
 
 
 func show_campaign_selection(load_after_selection: bool = false) -> void:
@@ -312,7 +312,7 @@ func show_campaign_selection(load_after_selection: bool = false) -> void:
 	_load_after_campaign_selection = load_after_selection
 	_system_return_to_setup = false
 	setup_controller.show_campaign_selection()
-	_body_frame.visible = false
+	_set_workspace_visible(false)
 	call_deferred("_prepare_campaign_selection")
 
 
@@ -352,7 +352,7 @@ func handle_back() -> bool:
 		_screen_id = &"exploration"
 		_route_history.clear()
 		setup_controller.show_party_setup()
-		_body_frame.visible = false
+		_set_workspace_visible(false)
 		screen_changed.emit(_screen_id)
 		return true
 	if _screen_id == &"vault" and _screen_content_presenter.handle_vault_back():
@@ -361,7 +361,7 @@ func handle_back() -> bool:
 		_vault_return_to_setup = false
 		_screen_id = &"exploration"
 		setup_controller.show_party_setup()
-		_body_frame.visible = false
+		_set_workspace_visible(false)
 		return true
 	if _screen_id == &"vault" and _vault_return_to_campaign:
 		show_campaign_selection()
@@ -464,15 +464,17 @@ func _workspace_layout_rect() -> Rect2:
 func _mount_workspace(screen_id: StringName) -> void:
 	if _workspace_view != null and _workspace_view.route_id == screen_id:
 		return
-	if _workspace_view != null:
-		_workspace_host.remove_child(_workspace_view)
-		_workspace_view.queue_free()
+	_release_workspace()
 	var definition := UiRouteCatalog.route(screen_id)
-	var scene := load(String(definition.get("scene", ""))) as PackedScene
-	if scene == null:
-		push_error("Missing Classic route scene for %s" % screen_id)
+	if definition == null:
+		push_error("Missing UI route definition for %s" % screen_id)
 		return
-	_workspace_view = scene.instantiate() as ScreenFrame
+	if not definition.is_workspace():
+		return
+	if definition.workspace_scene == null:
+		push_error("Missing workspace scene for %s" % screen_id)
+		return
+	_workspace_view = definition.workspace_scene.instantiate() as ScreenFrame
 	_workspace_view.name = "WorkspaceFrame"
 	_workspace_view.back_requested.connect(func() -> void: handle_back())
 	_workspace_host.add_child(_workspace_view)
@@ -481,6 +483,21 @@ func _mount_workspace(screen_id: StringName) -> void:
 	_body_frame = _workspace_view
 	_body_scroll = _workspace_view.scroll_control()
 	_body = _workspace_view.body_control()
+
+
+func _release_workspace() -> void:
+	if _workspace_view != null:
+		_workspace_host.remove_child(_workspace_view)
+		_workspace_view.queue_free()
+	_workspace_view = null
+	_body_frame = null
+	_body_scroll = null
+	_body = null
+
+
+func _set_workspace_visible(visible: bool) -> void:
+	if _body_frame != null:
+		_body_frame.visible = visible
 
 
 
@@ -498,7 +515,7 @@ func _render_screen(notify_route_change: bool = false) -> void:
 		return
 	_route_transition_revision += 1
 	var transition_revision := _route_transition_revision
-	_body_frame.visible = not setup_controller.full_stage_overlay_visible() and _screen_id not in [&"exploration", &"combat"]
+	_set_workspace_visible(not setup_controller.full_stage_overlay_visible())
 	if _screen_id in [&"character", &"vault"]:
 		setup_controller.ensure_appearance_textures()
 	var vault_back_label := "Back to party setup" if _vault_return_to_setup else "Back to campaigns" if _vault_return_to_campaign else "Back"
@@ -532,7 +549,7 @@ func _show_vault_from_campaign() -> void:
 	_vault_return_to_splash = false
 	setup_controller.hide_overlays()
 	_screen_id = &"vault"
-	_body_frame.visible = true
+	_set_workspace_visible(true)
 	screen_changed.emit(_screen_id)
 	_render_screen()
 
@@ -543,7 +560,7 @@ func show_vault_from_splash() -> void:
 	_vault_return_to_setup = false
 	setup_controller.hide_overlays()
 	_screen_id = &"vault"
-	_body_frame.visible = true
+	_set_workspace_visible(true)
 	screen_changed.emit(_screen_id)
 	_render_screen()
 

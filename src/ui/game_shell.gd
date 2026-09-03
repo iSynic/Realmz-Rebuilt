@@ -425,12 +425,12 @@ func handle_back() -> bool:
 
 
 func handle_route_shortcut(event: InputEvent) -> bool:
-	for definition: Dictionary in UiRouteCatalog.ROUTES:
-		var shortcut := StringName(definition["shortcut"])
+	for definition: UiRouteDefinition in UiRouteCatalog.routes():
+		var shortcut := definition.shortcut
 		if not shortcut.is_empty() and event.is_action_pressed(shortcut):
 			if not route_change_reason(_current_view).is_empty():
 				return true
-			_navigator.open_screen(StringName(definition["id"]))
+			_navigator.open_screen(definition.route_id)
 			return true
 	return false
 

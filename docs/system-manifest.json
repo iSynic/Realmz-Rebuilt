@@ -106,8 +106,8 @@
       "id": "shell-and-routing",
       "boundary": "ui",
       "guide": "docs/features/shell-and-routing.md",
-      "entryPoints": ["src/ui/game_shell.tscn", "src/ui/screen_navigator.gd", "src/ui/ui_route_catalog.gd"],
-      "publicInterfaces": ["GameShell", "ScreenNavigator", "UiRouteCatalog"],
+      "entryPoints": ["src/ui/game_shell.tscn", "src/ui/screen_navigator.gd", "src/ui/ui_route_definition.gd", "src/ui/ui_route_catalog.gd", "src/ui/routes"],
+      "publicInterfaces": ["GameShell", "ScreenNavigator", "UiRouteDefinition", "UiRouteCatalog"],
       "tests": ["tests/presentation/test_classic_ui_shell.gd", "tests/presentation/test_classic_ui_system.gd"],
       "performanceProbes": ["tools/runtime_performance_probe.gd"]
     },

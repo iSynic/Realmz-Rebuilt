@@ -30,7 +30,7 @@ The architecture verifier enforces these directions and the typed boundaries bet
 - Internal source moved from framework-shaped `core`, `session`, `scenario`, `infrastructure`, and `presentation` folders into the six product-facing areas above.
 - Major routes gained named `*_screen.tscn` scenes, but several expose only a frame or mounting regions. They are migration anchors, not evidence that the complete runtime composition is editor-authored.
 - Reusable inventory regions, party-setup rows, Fast Spell controls, exchange controls, Debug Tools, the action console, music playlist, shared content and spell visuals, scrolling text, player maps, Pick Lock, Age Update, lifecycle and text choices, Bank, Temple, and Thief workspaces now have editable scenes. Request-sized item, spell, character, statistic, transfer, service, and tumbler records use reusable row scenes.
-- Exploration and Combat still have one-node route markers. Typed shell-mode routing will remove those files rather than treating placeholders as editable scenes.
+- Exploration and Combat are typed shell modes and no longer have placeholder scenes. Their persistent visible structure remains authored once in `game_shell.tscn`.
 - `ScreenNavigator` owns navigation and mounting. Named screen controllers bind detached views and populate genuinely variable collections.
 - Large session, combat, application, interaction, and shell scripts were divided once, but 28 files still exceed the final 600-line limit, 103 functions exceed 60 lines, and 38 top-level scripts exceed the final method-count limits.
 - The obsolete `ClassicWorkspaceView` mounting-point scene was removed. Product files use screen, panel, dialog, row, card, canvas, renderer, definition, state, rules, repository, loader, decoder, result, and flow according to their actual role.
@@ -40,7 +40,7 @@ The architecture verifier enforces these directions and the typed boundaries bet
 
 Stable layout belongs in `.tscn`. Scripts bind data, respond to input, coordinate behavior, and build only variable collections. Repeated rows and cards should become small `PackedScene` components when their structure is stable enough to edit visually.
 
-Custom map, battlefield, first-person dungeon, animation, and effect drawing remain valid script-owned exceptions because their structure is algorithmic. Their viewport, cameras, layers, materials, masks, and surrounding controls still belong in scenes. One-node route markers are migration debt, not an accepted final exception.
+Custom map, battlefield, first-person dungeon, animation, and effect drawing remain valid script-owned exceptions because their structure is algorithmic. Their viewport, cameras, layers, materials, masks, and surrounding controls still belong in scenes. Shell modes are typed resources rather than duplicate or placeholder scenes.
 
 ## Readability budgets
 

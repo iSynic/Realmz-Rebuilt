@@ -1,29 +1,40 @@
-## Presents UI route catalog through the Godot interface.
+## Presents editor-authored UI route definitions through the Godot interface.
 
 class_name UiRouteCatalog
 extends RefCounted
 
-const ROUTES: Array[Dictionary] = [
-	{"id": &"exploration", "label": "Explore", "shortcut": "ui_screen_explore", "primary": true, "description": "Move, search, camp, and follow the scenario.", "scene": "res://src/ui/screens/exploration_screen.tscn"},
-	{"id": &"character", "label": "Characters", "shortcut": "ui_screen_characters", "primary": true, "description": "Inspect statistics, conditions, allies, and equipment.", "scene": "res://src/ui/screens/character_screen.tscn"},
-	{"id": &"allies", "label": "Allies", "shortcut": "", "primary": false, "description": "Inspect the monsters currently traveling with the party.", "scene": "res://src/ui/screens/allies_screen.tscn"},
-	{"id": &"bestiary", "label": "Bestiary", "shortcut": "", "primary": false, "description": "Browse the active Classic monster catalog.", "scene": "res://src/ui/screens/bestiary_screen.tscn"},
-	{"id": &"vault", "label": "Vault", "shortcut": "ui_screen_vault", "primary": false, "description": "Import and review reusable character revisions.", "scene": "res://src/ui/screens/vault_screen.tscn"},
-	{"id": &"inventory", "label": "Inventory", "shortcut": "ui_screen_inventory", "primary": true, "description": "Equip, identify, use, trade, and store items.", "scene": "res://src/ui/screens/inventory_screen.tscn"},
-	{"id": &"spells", "label": "Spells", "shortcut": "ui_screen_spells", "primary": true, "description": "Review known spells, powers, costs, and targets.", "scene": "res://src/ui/screens/spells_screen.tscn"},
-	{"id": &"services", "label": "Money", "shortcut": "ui_screen_services", "primary": false, "description": "Pool, share, and exchange party wealth.", "scene": "res://src/ui/screens/services_screen.tscn"},
-	{"id": &"combat", "label": "Battle", "shortcut": "ui_screen_battle", "primary": false, "description": "Choose actors, targets, and legal combat actions.", "scene": "res://src/ui/screens/combat_screen.tscn"},
-	{"id": &"journal", "label": "Journal", "shortcut": "ui_screen_journal", "primary": true, "description": "Review maps, notes, history, and campaign state.", "scene": "res://src/ui/screens/journal_screen.tscn"},
-	{"id": &"system", "label": "System", "shortcut": "ui_screen_system", "primary": true, "description": "Save, load, settings, and readiness diagnostics.", "scene": "res://src/ui/screens/system_screen.tscn"},
+const ROUTE_RESOURCE_PATHS: PackedStringArray = [
+	"res://src/ui/routes/exploration.tres",
+	"res://src/ui/routes/character.tres",
+	"res://src/ui/routes/allies.tres",
+	"res://src/ui/routes/bestiary.tres",
+	"res://src/ui/routes/vault.tres",
+	"res://src/ui/routes/inventory.tres",
+	"res://src/ui/routes/spells.tres",
+	"res://src/ui/routes/services.tres",
+	"res://src/ui/routes/combat.tres",
+	"res://src/ui/routes/journal.tres",
+	"res://src/ui/routes/system.tres",
 ]
 
+static var _routes: Array[UiRouteDefinition] = []
 
-static func route(route_id: StringName) -> Dictionary:
-	for definition: Dictionary in ROUTES:
-		if definition["id"] == route_id:
+
+static func routes() -> Array[UiRouteDefinition]:
+	if _routes.is_empty():
+		for path: String in ROUTE_RESOURCE_PATHS:
+			var definition := load(path) as UiRouteDefinition
+			assert(definition != null, "Invalid UI route resource: %s" % path)
+			_routes.append(definition)
+	return _routes
+
+
+static func route(route_id: StringName) -> UiRouteDefinition:
+	for definition: UiRouteDefinition in routes():
+		if definition.route_id == route_id:
 			return definition
-	return {}
+	return null
 
 
 static func has_route(route_id: StringName) -> bool:
-	return not UiRouteCatalog.route(route_id).is_empty()
+	return UiRouteCatalog.route(route_id) != null

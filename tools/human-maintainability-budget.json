@@ -246,10 +246,7 @@
     "target": 0
   },
   "legacyRouteScenes": [],
-  "routeMarkerScenes": [
-    "src/ui/screens/combat_screen.tscn",
-    "src/ui/screens/exploration_screen.tscn"
-  ],
+  "routeMarkerScenes": [],
   "classNameExceptions": [
     {
       "path": "src/game/rules/time_rules.gd",

@@ -112,9 +112,16 @@ function Get-InteractionKinds([string]$Path) {
 
 function Get-UiRoutes([string]$Path) {
     $text = Get-Content -LiteralPath $Path -Raw
-    $match = [regex]::Match($text, 'const\s+ROUTES:[\s\S]*?\n\]')
-    Assert-Condition $match.Success "Could not find ROUTES in $Path."
-    return @([regex]::Matches($match.Value, '"id":\s*&"([a-z-]+)"') | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
+    $resourcePaths = @([regex]::Matches($text, '"res://(src/ui/routes/[a-z-]+\.tres)"') | ForEach-Object { $_.Groups[1].Value })
+    Assert-Condition ($resourcePaths.Count -gt 0) "Could not find route resources in $Path."
+    return @($resourcePaths | ForEach-Object {
+        $resourcePath = Join-Path $repoRoot $_
+        Assert-Condition (Test-Path -LiteralPath $resourcePath -PathType Leaf) "Missing route resource $resourcePath."
+        $resourceText = Get-Content -LiteralPath $resourcePath -Raw
+        $routeMatch = [regex]::Match($resourceText, '(?m)^route_id\s*=\s*&"([a-z-]+)"')
+        Assert-Condition $routeMatch.Success "Route resource does not declare route_id: $resourcePath"
+        $routeMatch.Groups[1].Value
+    } | Sort-Object -Unique)
 }
 
 function Add-CountTable([System.Text.StringBuilder]$Builder, [object[]]$Workflows, [string]$Axis, [string[]]$Values) {
