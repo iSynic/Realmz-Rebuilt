@@ -101,6 +101,11 @@ foreach ($scenario in $catalog.scenarios) {
         $worldReader = [System.IO.StreamReader]::new($worldEntry.Open())
         try { $world = $worldReader.ReadToEnd() | ConvertFrom-Json }
         finally { $worldReader.Dispose() }
+        foreach ($playerMap in @($world.playerMaps)) {
+            if ([string]::IsNullOrWhiteSpace([string]$playerMap.name) -or [string]$playerMap.name -match '^Map \d+$') {
+                throw "$($scenario.file) player-map record $($playerMap.classicId) lost its authored STR# Map Names title."
+            }
+        }
         $assetEntry = $archive.GetEntry("assets/index.json")
         if ($null -eq $assetEntry) { throw "$($scenario.file) has no assets/index.json." }
         $assetReader = [System.IO.StreamReader]::new($assetEntry.Open())
@@ -160,6 +165,8 @@ foreach ($scenario in $catalog.scenarios) {
             $cryptDoorEncounter = @($contentDocument.complexEncounters | Where-Object { $_.id -eq 4 })
             $cryptDoorPrompt = @($contentDocument.messages | Where-Object { $_.id -eq 218 })
             $cobLandFive = @($world.maps | Where-Object { $_.id -eq "land:5" })
+            $cobSecretEntranceMap = @($world.playerMaps | Where-Object { $_.classicId -eq 1 -and $_.name -eq "Secret Castle Entrance" })
+            $cobLedgerMap = @($world.playerMaps | Where-Object { $_.classicId -eq 11 -and $_.name -eq "Ledger" })
             $cobSecretCell = if ($cobLandFive.Count -eq 1) { $cobLandFive[0].cells[(10 * [int]$cobLandFive[0].width) + 61] } else { $null }
             if ($ranthogTrigger.Count -ne 1 -or $ranthogTrigger[0].active -ne $false -or $ranthogTrigger[0].chancePercent -ne -100 -or $ranthogTrigger[0].mapId -ne "land:0" -or $ranthogTrigger[0].coordinate.x -ne 39 -or $ranthogTrigger[0].coordinate.y -ne 56) {
                 throw "City of Bywater must preserve dormant placed Action Point Data DD:0:39 at land:0 39,56."
@@ -169,6 +176,9 @@ foreach ($scenario in $catalog.scenarios) {
             }
             if ($cryptDoorEncounter.Count -ne 1 -or $cryptDoorEncounter[0].promptMessageId -ne 218 -or (@($cryptDoorEncounter[0].texts[0], $cryptDoorEncounter[0].texts[1]) -join "|") -ne "Bang on the door.|Try and force the door." -or $cryptDoorPrompt.Count -ne 1) {
                 throw "City of Bywater Complex Encounter 4 must retain prompt 218 and both authored door actions."
+            }
+            if ($cobSecretEntranceMap.Count -ne 1 -or $cobLedgerMap.Count -ne 1) {
+                throw "City of Bywater must retain the authored names for player-map records 1 and 11."
             }
             $secretFeatures = @()
             if ($null -ne $cobSecretCell) {
@@ -190,4 +200,4 @@ foreach ($scenario in $catalog.scenarios) {
     }
 }
 
-Write-Host "Verified the 13-scenario bundle, scrolling-text resources, and designated City of Bywater source snapshot."
+Write-Host "Verified the 13-scenario bundle, authored player-map names, scrolling-text resources, and designated City of Bywater source snapshot."
