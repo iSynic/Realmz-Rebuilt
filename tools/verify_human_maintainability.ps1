@@ -88,15 +88,29 @@ $legacySet = @{}
 foreach ($relative in @($config.legacyRouteScenes)) {
     $legacySet[[string]$relative] = $true
 }
+$markerSet = @{}
+foreach ($relative in @($config.routeMarkerScenes)) {
+    $path = Join-Path $repoRoot ([string]$relative)
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+        $failures.Add("Route-marker scene is missing: $relative")
+        continue
+    }
+    $content = [IO.File]::ReadAllText($path)
+    $nodeCount = @([regex]::Matches($content, '(?m)^\[node ')).Count
+    if ($nodeCount -ne 1 -or $content -notmatch 'route_id = &"(?:combat|exploration)"') {
+        $failures.Add("Route-marker scene must remain a one-node combat or exploration route token: $relative")
+    }
+    $markerSet[[string]$relative] = $true
+}
 foreach ($scene in @(Get-ChildItem (Join-Path $repoRoot "src") -Recurse -File -Filter "*_screen.tscn")) {
     $relative = Get-RelativePath $scene.FullName
     $nodeCount = @([regex]::Matches([IO.File]::ReadAllText($scene.FullName), '(?m)^\[node ')).Count
-    if ($nodeCount -eq 1 -and -not $legacySet.ContainsKey($relative)) {
+    if ($nodeCount -eq 1 -and -not $legacySet.ContainsKey($relative) -and -not $markerSet.ContainsKey($relative)) {
         $failures.Add("New one-node route scene is not allowed: $relative")
     }
 }
 
-Write-Host "Human-maintainability budget: semicolon-lines=$statementSeparatorLines/$($config.statementSeparatorLines.currentMaximum), runtime-controls=$runtimeControlConstructions/$($config.runtimeControlConstructions.currentMaximum), missing-purpose-headers=$missingPurposeHeaders/$($config.missingPurposeHeaders.currentMaximum), legacy-route-scenes=$($config.legacyRouteScenes.Count)."
+Write-Host "Human-maintainability budget: semicolon-lines=$statementSeparatorLines/$($config.statementSeparatorLines.currentMaximum), runtime-controls=$runtimeControlConstructions/$($config.runtimeControlConstructions.currentMaximum), missing-purpose-headers=$missingPurposeHeaders/$($config.missingPurposeHeaders.currentMaximum), legacy-route-scenes=$($config.legacyRouteScenes.Count), spatial-route-markers=$($config.routeMarkerScenes.Count)."
 if ($failures.Count -gt 0) {
     foreach ($failure in $failures) {
         Write-Error $failure

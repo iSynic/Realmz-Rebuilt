@@ -9,7 +9,7 @@ Realmz Rebuilt is being reorganized so that a maintainer can find a rule, open a
 | `src/app` | Startup, dependency construction, host lifecycle, and input translation | Realmz rules or screen layout |
 | `src/game` | Pure definitions, mutable game state, fixed rules, topology, clock, RNG, and detached read models | Nodes, files, audio, or platform services |
 | `src/playthrough` | `GameSession`, transactions, continuations, restore coordination, and player workflow orchestration | Presentation or filesystem access |
-| `src/scenarioss` | Classic instruction execution, Safe Scenario Actions, and the scenario VM | Host UI or package I/O |
+| `src/scenarios` | Classic instruction execution, Safe Scenario Actions, and the scenario VM | Host UI or package I/O |
 | `src/storage` | Package loading, saves, Character Files, settings, validation, and filesystem adapters | Gameplay decisions or screen behavior |
 | `src/ui` | Scenes, screens, dialogs, components, rendering, animation, audio, and themes | Mutable game truth or direct storage access |
 
@@ -21,7 +21,7 @@ game/playthrough/scenarios <- storage <- app
 game/playthrough <- ui <- app
 ```
 
-During migration, the old directory names remain valid only where their owning area has not moved yet. A boundary move includes its scripts, paired `.uid` files, resource paths, tests, verification rules, and DOX contract in one change.
+The six source boundaries are now in place. Any later boundary move includes its scripts, paired `.uid` files, resource paths, tests, verification rules, and DOX contract in one change.
 
 ## Names should tell the truth
 
@@ -49,6 +49,8 @@ handle_back()
 Screens emit typed intents and navigation requests. They may retain local display state such as selection or scroll position, but they do not own Realmz state and they do not read storage directly.
 
 Custom map, battlefield, first-person dungeon, animation, and effect drawing may remain script-driven when code is the clearer and faster representation. These are explicit rendering exceptions, not permission to build ordinary forms in code.
+
+Exploration and Combat use one further honest exception: their `*_screen.tscn` files are route tokens because their visible structure already lives in `game_shell.tscn`. The maintainability gate records those two marker scenes separately; it must never be satisfied by adding inert editor-only controls.
 
 ## A script should introduce itself
 

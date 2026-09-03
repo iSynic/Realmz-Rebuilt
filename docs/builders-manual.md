@@ -1,6 +1,8 @@
-# Architecture
+# The Realmz Rebuilt Builder's Manual
 
-Realmz Remake 2.0 is a deterministic Realmz engine hosted by Godot, not a Godot-shaped RPG framework. Providence compiles canonical authoring projects into immutable packages. The runtime validates a package, constructs typed Realmz content, and gives one `GameSession` complete ownership of mutable playthrough state.
+Welcome, builder. This volume is a map of the works: where the rules are kept, where a scenario enters the engine, where a character lives, and where Godot paints the visible game. You need not memorize the whole keep before changing one room. Begin with the landmark nearest your task, follow typed values across one boundary at a time, and let the verification gate warn you when a wall has been crossed.
+
+Realmz Rebuilt is a deterministic Realmz engine hosted by Godot, not a collection of scenes that happen to resemble an RPG. Providence compiles authored adventures into immutable packages. Rebuilt validates one of those packages, constructs typed Realmz content, and gives one `GameSession` complete ownership of the mutable playthrough.
 
 ```mermaid
 flowchart LR
@@ -20,7 +22,24 @@ flowchart LR
     Tests --> Session
 ```
 
-## Layer ownership
+## A traveller's first map
+
+If you seek a particular thing, begin here:
+
+| You wish to change | First place to look |
+|---|---|
+| A character, party, item, spell, monster, or map record | `src/game/state`, `src/game/content`, then `src/game/view` |
+| A fixed calculation such as fatigue, movement, combat, equipment, or spell effects | `src/game/rules` |
+| What happens after a player command | `src/playthrough/game_session.gd`, then the named coordinator or workflow |
+| A Classic opcode, AP/XAP, encounter, or Safe Scenario Action | `src/scenarios` |
+| Package loading, saves, Character Files, or settings | `src/storage` |
+| Startup, dependency wiring, and host input | `src/app` |
+| A visible screen, dialog, HUD region, animation, or renderer | `src/ui` |
+| Evidence for a Castle-visible behavior | `docs/*-evidence.md`, `docs/fidelity-ledger.md`, and `tests/fixtures/oracle` |
+
+The names are part of the map. `Definition` means immutable authored content. `State` means mutable playthrough truth. `View` means a detached, read-only presentation record. `Rules` perform pure calculations. A `Repository` persists data; a `Loader` or `Decoder` admits external input; a `Controller` binds a screen; a `Renderer` draws custom visuals. `Classic` is reserved for something demonstrably inherited from Castle Realmz, not used as a synonym for “old” or “important.”
+
+## The six halls
 
 `src/game` owns direct Realmz models, fixed Classic rules, topology, clock, RNG, and detached read-model contracts. It is pure typed GDScript: no Nodes, scenes, autoloads, time, files, audio, OS calls, or Godot RNG.
 
@@ -28,11 +47,28 @@ flowchart LR
 
 `src/storage` owns untrusted package/save bytes, schema and hash validation, typed construction, persistence, migrations, and installed-content discovery.
 
-`src/app` constructs dependencies and translates host operations. It may replace a session only after a complete restore has validated.
+`src/playthrough` owns the command transaction. `GameSession` accepts typed player intent, coordinates rules and scenario execution, records committed events, and returns the next detached view or interaction. A workflow may be resumable; none of it owns a Godot node.
+
+`src/app` constructs dependencies and translates host operations. It may replace a session only after a complete restore has validated. It is the composition root, not a second rules engine.
 
 The host materializes one detached `GameView` for a committed session revision and shares it across input gating and presenters. A map view contains the party-local 25×25 render projection, complete visited coordinates for the minimap, and cardinal movement results from topology; it does not rebuild all 8,100 cells of a Classic map for every key event.
 
 `src/ui` owns Godot scenes and controls. It reads `GameView` and ordered domain events, renders disposable caches, and sends typed intents/responses. Animation never controls simulation timing.
+
+Dependencies point inward. `game` knows none of the other halls. `scenarios` builds on `game`; `playthrough` coordinates both; `storage` converts external bytes into their types; `ui` displays detached values; `app` assembles the complete application. If a low-level file must preload a high-level screen to do its work, the rooms have likely been joined in the wrong direction.
+
+## Following one command
+
+Suppose the player presses an arrow key. `realmz_application.gd` translates input into a typed `PlayerIntent`. `GameSession.submit_intent` routes it to an exploration coordinator. Pure movement and topology rules decide whether the step is legal, scenario execution handles any reached trigger, and the playthrough commits ordered events. The application then requests a fresh `GameView`. `GameShell`, `ScreenNavigator`, and the map presenter render that view; they never decide whether the move was legal.
+
+The same trail applies elsewhere:
+
+```text
+input -> PlayerIntent -> GameSession -> coordinator/workflow -> rules or ScenarioVm
+      -> committed SessionStep -> GameView -> screen/controller/renderer
+```
+
+When a true decision is required, the session returns a serializable `InteractionRequest`. UI components display only its supplied options and return a typed `InteractionResponse`; the issuing workflow resumes exactly where it yielded. This is why a save can safely be made during a question, target picker, encounter, or other supported continuation.
 
 ## Session boundary
 
@@ -51,6 +87,8 @@ Mutations are synchronous. A step contains committed ordered events, an optional
 
 The engine models Realmz concepts—party, characters, maps, APs/XAPs, Simple/Complex/Thief/Timed Encounters, battles, shops, treasures, spells, items, monsters, races, and castes—rather than translating them into generic RPG resources. Mutable state directly represents conditions, equipment and charges, pooled/banked wealth, allies, encounter attempts, shops, combatants, and program replacement. `RealmzRules` is always present and has no provider registry or compatibility selector. Its character, condition/time, inventory/economy, combat, magic, and monster modules are fixed collaborators, not swappable providers. A narrow named legacy quirk exists only when authored content demonstrably needs it.
 
+There is no single “character class file” that defines a whole adventurer. Immutable records describe races, castes, spells, and items; `CharacterState` owns one character's changing stamina, spell points, inventory, conditions, appearance, and lifetime record; `CharacterView` is the detached copy presented to Godot. Search by the concept and suffix together—such as `CharacterState`, `CasteDefinition`, or `CharacterView`—rather than looking for one generic character script.
+
 ## Topology
 
 `MapTopology` and `WorldState` overlays are authoritative. Providence normalizes land cells, packed dungeon fields, Layout adjacency, and placed AP post-action destinations into cells with explicit directional edges/features, random regions, transitions, and validated map coordinates. Movement, LOS, deterministic pathfinding, searches, triggers, random encounters, AP destination rechecks, battle-terrain derivation, minimaps, 2D views, and the optional dungeon 3D view ask that same query surface. TileMaps, collisions, AStar graphs, textures, and meshes are presentation caches and cannot answer simulation questions. See `docs/topology-evidence.md` for the Castle evidence boundary and Phase 2 proofs.
@@ -63,6 +101,8 @@ Classic land presentation uses the package atlas at its native 32×32 cell size.
 
 Classic instructions retain raw/normalized opcode identity, slot, ID, and provenance. Triggers reference ordinary programs whose instructions are either preserved `ClassicAction` records or typed `CallScenarioAction` records. Negative Classic opcodes retain GOSUB intent; CODE 111 returns through the saved Classic frame, CODE 112 discards one, and opcode 39 replaces execution with an XAP program.
 
+Scenario rules are deliberately divided. Compiled scenario-owned facts enter through `src/storage/packages`; runtime programs and opcode meanings live under `src/scenarios`; reusable gameplay consequences are requested through the narrow runtime API and committed by `src/playthrough`; universal calculations remain in `src/game/rules`. A scenario package may supply data and invoke supported behavior, but it may not smuggle arbitrary GDScript into the simulation.
+
 Safe Scenario Actions compile in Providence to bounded bytecode. They use separate Safe frames, typed arguments, explicit caller contexts and capabilities, and versioned optional persistent state, but execute inside the same serializable VM. A domain operation goes through the one `RealmzRuntimeApi` owned by `GameSession`; that public boundary delegates to typed character, combat, control-flow, and inventory executors while older domains are extracted incrementally. A genuine player decision yields a serializable request and resumes the exact issuing frame after a matching typed response. Battle-round and monster-death macros use nested serializable frames, with death macros completing before allegiance and outcome resolution; Castle's post-battle body-count choice rebuilds the held-over ally list before exact battle-owned fumbles are prepended to the same ordinary booty continuation, then the issuing frame resumes. Program replacement is a save-owned mapping resolved once when a VM frame starts; it never rewrites package content. Core `realmz.*` operations cannot be overridden, package actions are namespaced, and unknown behavior fails explicitly. GDScript is not a fallback; packages requiring it are rejected until an OS-confined external process implements the same JSON-safe Scenario Action ABI. See `docs/scenario-vm-evidence.md` and `docs/gameplay-domain-evidence.md`.
 
 ## Persistence and randomness
@@ -71,9 +111,15 @@ One `.r2save` envelope contains all mutable session state, including overlays, c
 
 Every gameplay draw uses `RealmzRng`. It owns the QuickDraw `randSeed = randSeed * 16807 mod 2147483647` transition, signed low-word return (mapping `0x8000` to zero), Castle's inclusive `1 + abs(raw) * range / 32768` scaling, draw count, and semantic trace. Presentation has a separate cosmetic RNG. Oracle tests may inject raw scripted values so Castle and the new runtime take identical branches. See `docs/rng-evidence.md` for the evidence boundary.
 
-## Classic-wide application presentation
+## Godot's visible rooms
 
-The application uses one scene-backed `GameShell` and `ScreenNavigator` while the session protocol above remains unchanged. The shell owns the compact menu strip, dominant map/picture stage, right six-character roster, bottom narrative/status well, contextual bitmap command deck, campaign/setup surfaces, and Back behavior. Compact, Standard, and Wide profiles derive from effective available width; interface density and text scale remain independent. `UiRouteCatalog` is the sole route/shortcut/scene registry, and `ClassicCommandCatalog` is the sole contextual command registry. Rebuilt also owns one pinned stock Realmz application library containing the rules records, strings, fonts, controls, and integrated media that shipped with Realmz. Campaign packages contain only scenario-owned content and normalized stock references; package decoding composes those two authorities before constructing immutable content. See `docs/ui-strategy.md`, ADR 0010, and ADR 0014.
+The application uses one scene-backed `GameShell` and `ScreenNavigator` while the session protocol above remains unchanged. Open `src/ui/game_shell.tscn` to see the persistent menu, map/picture stage, six-character roster, narrative/status well, and contextual command regions. Route scenes live in `src/ui/screens`; stable panels belong in those `.tscn` files, while their controllers bind detached data and create only genuinely variable rows or records.
+
+Inventory and Character are the reference conversion. Their scenes expose named stable regions that survive a rerender; `InventoryScreenController` and `CharacterScreenController` repopulate those hosts. Allies and Bestiary share the same scene-authored list-and-detail pattern through `CreatureLibraryScreen`. Exploration and Combat are honest route markers: their visible structure already belongs to `game_shell.tscn`, so their route files do not contain duplicate dummy controls.
+
+Custom maps, battlefields, dungeon projection, animations, and effects may remain code-driven where algorithms are clearer than node trees. Ordinary forms, fixed panels, button rails, and inspectors belong in scenes. Repeated structures should become small `PackedScene` rows rather than long chains of `Control.new()` calls.
+
+Compact, Standard, and Wide profiles derive from effective available width; interface density and text scale remain independent. `UiRouteCatalog` is the sole route/shortcut/scene registry, and the Classic command catalog is the contextual command registry. Rebuilt also owns one pinned stock Realmz application library containing the rules records, strings, fonts, controls, and integrated media that shipped with Realmz. Campaign packages contain only scenario-owned content and normalized stock references; package decoding composes those two authorities before constructing immutable content. See `docs/ui-strategy.md`, ADR 0010, and ADR 0014.
 
 The dedicated `InteractionPresenter` delegates text/choice, selection, encounter, shop, temple, bank, and battle requests to typed components placed in either the textbox or stage region. Each component emits only the selected payload; the presenter preserves request identity and the application calls `GameSession.respond`. Each route owns a scene-backed clipped scroll surface so long content remains reachable at larger text scales.
 
@@ -81,4 +127,20 @@ The party-setup view is campaign-aware. It presents the authored campaign title/
 
 Reusable characters are separate from campaign saves. `CharacterVaultRepository` owns immutable `.r2char` revisions and recovery, while `GameSession` validates and clones a selected revision through `IMPORT_VAULT_CHARACTER`. Publishing is explicit and only occurs at a committed boundary. The vault cannot mutate an active session or silently rewrite a character from another campaign.
 
-The old dashboard composition and procedural shell presenter have been removed. All nine workspaces provide nominal and honest empty/unavailable surfaces in the Classic-wide material system. Original controls and integrated Classic sounds come through app-owned exact-commit catalogs. Scenario media remains typed separately; the composed presentation catalog resolves an exact scenario key before an application fallback and never collapses CICN, ICON, PICT, or `snd ` identity to a bare number. Gameplay operations that do not yet have a session implementation remain disabled with explicit reasons; presentation does not fabricate service availability, tactical positions, journal entries, or hidden item facts.
+Every route provides nominal and honest empty/unavailable surfaces in the Classic-wide material system. Original controls and integrated Classic sounds come through app-owned exact-commit catalogs. Scenario media remains typed separately; the composed presentation catalog resolves an exact scenario key before an application fallback and never collapses CICN, ICON, PICT, or `snd ` identity to a bare number. Gameplay operations that do not yet have a session implementation remain disabled with explicit reasons; presentation does not fabricate service availability, tactical positions, journal entries, or hidden item facts.
+
+## Working without waking the dragons
+
+Make one coherent change at a time. Read the nearest `AGENTS.md` contracts in the working repository, preserve serialized names unless a migration is explicitly designed, and keep the game runnable after every commit. Add behavior-focused tests at the boundary that owns the fact; do not test a private helper merely because it is nearby.
+
+For a normal source change, run the narrow affected suite while iterating and finish with:
+
+```powershell
+./tools/verify.ps1
+```
+
+The human-maintainability verifier is a ratchet, not a score to game. It prevents new compressed statements, runtime-built ordinary controls, unexplained scripts, mismatched class/file names, and empty route scenes. When a real scene replaces a legacy shell, remove it from the debt list. When an algorithmic renderer or route marker is the honest design, record that exception explicitly rather than adding decorative nodes.
+
+## Before leaving the workshop
+
+A newcomer should be able to answer five questions from names and nearby documentation alone: Who owns this truth? Is it immutable content or mutable state? Which typed command changes it? Which detached view displays it? Which test proves the contract? If any answer requires folklore, improve the name, the boundary, or this manual before adding another passageway.

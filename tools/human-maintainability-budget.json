@@ -13,13 +13,15 @@
     "target": 0
   },
   "legacyRouteScenes": [
-    "src/ui/screens/combat_screen.tscn",
-    "src/ui/screens/exploration_screen.tscn",
     "src/ui/screens/journal_screen.tscn",
     "src/ui/screens/services_screen.tscn",
     "src/ui/screens/spells_screen.tscn",
     "src/ui/screens/system_screen.tscn",
     "src/ui/screens/vault_screen.tscn"
+  ],
+  "routeMarkerScenes": [
+    "src/ui/screens/combat_screen.tscn",
+    "src/ui/screens/exploration_screen.tscn"
   ],
   "classNameExceptions": [
     {
