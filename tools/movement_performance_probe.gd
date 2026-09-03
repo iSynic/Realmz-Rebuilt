@@ -1,6 +1,6 @@
 extends SceneTree
 
-const PACKAGE_REPOSITORY_SCRIPT := preload("res://src/storage/packages/package_repository.gd")
+const PERFORMANCE_PACKAGE_LOADER := preload("res://tools/performance_package_loader.gd")
 
 
 func _initialize() -> void:
@@ -9,7 +9,7 @@ func _initialize() -> void:
 		printerr("Usage: godot --headless --path <project> --script res://tools/movement_performance_probe.gd -- <package.realmz2>")
 		call_deferred("_quit_cleanly", 2)
 		return
-	var loaded := PACKAGE_REPOSITORY_SCRIPT.new().load_package(arguments[0])
+	var loaded := PERFORMANCE_PACKAGE_LOADER.load_scenario(arguments[0])
 	if not loaded.is_ok():
 		printerr("PACKAGE_REJECTED %s: %s" % [loaded.error_code, loaded.error_message])
 		call_deferred("_quit_cleanly", 1)

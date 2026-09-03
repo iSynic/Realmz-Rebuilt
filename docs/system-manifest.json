@@ -1,0 +1,159 @@
+{
+  "schemaVersion": 1,
+  "betaBlocked": true,
+  "boundaries": ["app", "game", "playthrough", "scenarios", "storage", "ui"],
+  "systems": [
+    {
+      "id": "characters",
+      "boundary": "game",
+      "guide": "docs/features/characters.md",
+      "entryPoints": ["src/game/state/character_state.gd", "src/game/rules/character_rules.gd"],
+      "publicInterfaces": ["CharacterState", "CharacterRules", "CharacterView"],
+      "tests": ["tests/core/test_realmz_rules.gd", "tests/integration/test_character_appearance_workflow.gd"],
+      "performanceProbes": []
+    },
+    {
+      "id": "inventory",
+      "boundary": "game",
+      "guide": "docs/features/inventory.md",
+      "entryPoints": ["src/game/rules/inventory_rules.gd", "src/playthrough/workflows/inventory_magic_services_workflow.gd"],
+      "publicInterfaces": ["InventoryRules", "ItemDefinition", "ItemInstance"],
+      "tests": ["tests/integration/test_inventory_session.gd"],
+      "performanceProbes": []
+    },
+    {
+      "id": "magic",
+      "boundary": "game",
+      "guide": "docs/features/magic.md",
+      "entryPoints": ["src/game/rules/magic_rules.gd", "src/game/content/spell_definition.gd"],
+      "publicInterfaces": ["MagicRules", "SpellDefinition", "SpellView"],
+      "tests": ["tests/integration/test_field_spell_workflow.gd", "tests/integration/test_scroll_camp_workflow.gd"],
+      "performanceProbes": ["tools/combat_performance_probe.gd"]
+    },
+    {
+      "id": "economy-services",
+      "boundary": "game",
+      "guide": "docs/features/economy-and-services.md",
+      "entryPoints": ["src/game/rules/economy_rules.gd", "src/game/rules/temple_rules.gd"],
+      "publicInterfaces": ["EconomyRules", "TempleRules"],
+      "tests": ["tests/integration/test_money_workflow.gd"],
+      "performanceProbes": []
+    },
+    {
+      "id": "world-exploration",
+      "boundary": "game",
+      "guide": "docs/features/world-and-exploration.md",
+      "entryPoints": ["src/game/world/map_topology.gd", "src/playthrough/workflows/exploration_time_workflow.gd"],
+      "publicInterfaces": ["MapTopology", "WorldState", "ExplorationTimeWorkflow"],
+      "tests": ["tests/core/test_map_topology.gd", "tests/integration/test_exploration_session.gd"],
+      "performanceProbes": ["tools/movement_performance_probe.gd", "tools/runtime_performance_probe.gd", "tools/dungeon_transition_performance_probe.gd"]
+    },
+    {
+      "id": "combat",
+      "boundary": "game",
+      "guide": "docs/features/combat.md",
+      "entryPoints": ["src/game/rules/combat_flow.gd", "src/game/state/combat_state.gd"],
+      "publicInterfaces": ["CombatFlow", "CombatState", "CombatView"],
+      "tests": ["tests/core/test_combat_flow.gd", "tests/core/test_battlefield_navigation.gd"],
+      "performanceProbes": ["tools/combat_performance_probe.gd", "tools/battlefield_navigation_benchmark.gd"]
+    },
+    {
+      "id": "session-transactions",
+      "boundary": "playthrough",
+      "guide": "docs/features/session-transactions.md",
+      "entryPoints": ["src/playthrough/game_session.gd", "src/playthrough/session_workflow_context.gd"],
+      "publicInterfaces": ["GameSession", "SessionStep", "SessionSnapshot"],
+      "tests": ["tests/core/test_game_session.gd", "tests/integration/test_session_persistence.gd"],
+      "performanceProbes": ["tools/movement_performance_probe.gd"]
+    },
+    {
+      "id": "scenario-runtime",
+      "boundary": "scenarios",
+      "guide": "docs/features/scenario-runtime.md",
+      "entryPoints": ["src/scenarios/vm/scenario_vm.gd", "src/scenarios/runtime/realmz_runtime_api.gd"],
+      "publicInterfaces": ["ScenarioVm", "RealmzRuntimeApi", "ScenarioExecutionContext"],
+      "tests": ["tests/scenario/test_scenario_vm.gd", "tests/scenario/test_reward_workflow.gd"],
+      "performanceProbes": []
+    },
+    {
+      "id": "packages",
+      "boundary": "storage",
+      "guide": "docs/features/packages.md",
+      "entryPoints": ["src/storage/packages/package_repository.gd"],
+      "publicInterfaces": ["PackageRepository", "PackageLoadResult"],
+      "tests": ["tests/infrastructure/test_package_repository.gd", "tests/infrastructure/test_package_install_task.gd"],
+      "performanceProbes": ["tools/package_probe.gd", "tools/package_discovery_probe.gd", "tools/package_document_cache_probe.gd"]
+    },
+    {
+      "id": "saves-character-files-settings",
+      "boundary": "storage",
+      "guide": "docs/features/persistence.md",
+      "entryPoints": ["src/storage/saves/save_repository.gd", "src/storage/characters/character_vault_repository.gd", "src/storage/settings/settings_repository.gd"],
+      "publicInterfaces": ["SaveRepository", "CharacterVaultRepository", "SettingsRepository"],
+      "tests": ["tests/infrastructure/test_save_repository.gd", "tests/infrastructure/test_character_vault_repository.gd"],
+      "performanceProbes": []
+    },
+    {
+      "id": "startup-navigation-hosting",
+      "boundary": "app",
+      "guide": "docs/features/application-host.md",
+      "entryPoints": ["src/app/realmz_application.gd", "src/app/game_session_controller.gd", "src/ui/startup_front_door.tscn"],
+      "publicInterfaces": ["RealmzApplication", "GameSessionController", "ApplicationInputRouter"],
+      "tests": ["tests/presentation/test_classic_ui_system.gd"],
+      "performanceProbes": ["tools/startup_probe.gd"]
+    },
+    {
+      "id": "shell-and-routing",
+      "boundary": "ui",
+      "guide": "docs/features/shell-and-routing.md",
+      "entryPoints": ["src/ui/game_shell.tscn", "src/ui/screen_navigator.gd", "src/ui/ui_route_catalog.gd"],
+      "publicInterfaces": ["GameShell", "ScreenNavigator", "UiRouteCatalog"],
+      "tests": ["tests/presentation/test_classic_ui_shell.gd", "tests/presentation/test_classic_ui_system.gd"],
+      "performanceProbes": ["tools/runtime_performance_probe.gd"]
+    },
+    {
+      "id": "workspace-ui",
+      "boundary": "ui",
+      "guide": "docs/features/workspaces.md",
+      "entryPoints": ["src/ui/screens", "src/ui/controllers", "src/ui/interaction_components"],
+      "publicInterfaces": ["ScreenNavigator", "InteractionPresenter", "InteractionComponent"],
+      "tests": ["tests/presentation/test_classic_ui_system.gd", "tests/presentation/test_allies_workspace.gd"],
+      "performanceProbes": []
+    },
+    {
+      "id": "spatial-presentation",
+      "boundary": "ui",
+      "guide": "docs/features/spatial-presentation.md",
+      "entryPoints": ["src/ui/classic_map_presenter.gd", "src/ui/classic_battlefield_presenter.gd", "src/ui/dungeon_map_3d_presenter.gd"],
+      "publicInterfaces": ["ClassicMapPresenter", "ClassicBattlefieldPresenter", "DungeonMap3DPresenter"],
+      "tests": ["tests/presentation/test_dungeon_geometry_projection.gd"],
+      "performanceProbes": ["tools/runtime_performance_probe.gd", "tools/dungeon_transition_performance_probe.gd"]
+    }
+  ],
+  "majorUiSurfaces": [
+    {"id": "application-shell", "scene": "src/ui/game_shell.tscn"},
+    {"id": "character-sheet", "scene": "src/ui/screens/character_screen.tscn"},
+    {"id": "character-files", "scene": "src/ui/screens/vault_screen.tscn"},
+    {"id": "allies", "scene": "src/ui/screens/allies_screen.tscn"},
+    {"id": "bestiary", "scene": "src/ui/screens/bestiary_screen.tscn"},
+    {"id": "inventory", "scene": "src/ui/screens/inventory_screen.tscn"},
+    {"id": "spells", "scene": "src/ui/screens/spells_screen.tscn"},
+    {"id": "services", "scene": "src/ui/screens/services_screen.tscn"},
+    {"id": "maps-journal", "scene": "src/ui/screens/journal_screen.tscn"},
+    {"id": "system", "scene": "src/ui/screens/system_screen.tscn"},
+    {"id": "campaign-selection", "scene": null},
+    {"id": "party-assembly", "scene": null},
+    {"id": "character-creation", "scene": null},
+    {"id": "shop", "scene": null},
+    {"id": "temple", "scene": "src/ui/interaction_components/temple_interaction.tscn"},
+    {"id": "bank", "scene": "src/ui/interaction_components/bank_interaction.tscn"},
+    {"id": "treasure", "scene": null},
+    {"id": "encounter", "scene": null},
+    {"id": "level-up", "scene": null},
+    {"id": "pick-lock", "scene": "src/ui/interaction_components/pick_lock_interaction.tscn"},
+    {"id": "lifecycle-prompts", "scene": "src/ui/interaction_components/lifecycle_interaction.tscn"},
+    {"id": "scrolling-text", "scene": "src/ui/interaction_components/scrolling_text_interaction.tscn"},
+    {"id": "combat-command-deck", "scene": null},
+    {"id": "roster-spellbook", "scene": "src/ui/screens/classic_party_roster.tscn"}
+  ]
+}

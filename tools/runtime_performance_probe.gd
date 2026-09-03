@@ -1,9 +1,9 @@
 extends SceneTree
 
-const PackageRepositoryScript := preload("res://src/storage/packages/package_repository.gd")
-const CharacterVaultRepositoryScript := preload("res://src/storage/characters/character_vault_repository.gd")
-const CharacterVaultControllerScript := preload("res://src/app/controllers/character_vault_controller.gd")
-const ShellScene := preload("res://src/ui/game_shell.tscn")
+const PERFORMANCE_PACKAGE_LOADER := preload("res://tools/performance_package_loader.gd")
+const CHARACTER_VAULT_REPOSITORY := preload("res://src/storage/characters/character_vault_repository.gd")
+const CHARACTER_VAULT_CONTROLLER := preload("res://src/app/controllers/character_vault_controller.gd")
+const SHELL_SCENE := preload("res://src/ui/game_shell.tscn")
 const VAULT_PATH := "user://realmz2-tests/runtime-performance-vault"
 
 
@@ -24,7 +24,7 @@ func _initialize() -> void:
 	if viewport_size.x < 800 or viewport_size.y < 600:
 		viewport_size = Vector2i(1280, 720)
 	var package_started := Time.get_ticks_usec()
-	var loaded := PackageRepositoryScript.new().load_package(arguments[0])
+	var loaded := PERFORMANCE_PACKAGE_LOADER.load_scenario(arguments[0])
 	var package_us := Time.get_ticks_usec() - package_started
 	if not loaded.is_ok():
 		printerr("PACKAGE_REJECTED %s: %s" % [loaded.error_code, loaded.error_message]); call_deferred("_quit_cleanly", 1); return
@@ -36,7 +36,7 @@ func _initialize() -> void:
 	if route.is_empty() or not _place_party(session, loaded.content, map.id, route["coordinates"][0], 4096):
 		printerr("MOVEMENT_ROUTE_REJECTED"); call_deferred("_quit_cleanly", 1); return
 	var vault_result := _measure_vault_import(loaded.content)
-	var shell := ShellScene.instantiate() as GameShell
+	var shell := SHELL_SCENE.instantiate() as GameShell
 	var map_presenter := ClassicMapPresenter.new()
 	root.size = viewport_size; root.add_child(shell); root.add_child(map_presenter)
 	var viewport_scale := Vector2(viewport_size) / Vector2(1280, 720)
@@ -111,12 +111,12 @@ func _initialize() -> void:
 
 func _measure_vault_import(content: RealmzContent) -> Dictionary:
 	_remove_tree(ProjectSettings.globalize_path(VAULT_PATH))
-	var repository := CharacterVaultRepositoryScript.new(VAULT_PATH)
+	var repository := CHARACTER_VAULT_REPOSITORY.new(VAULT_PATH)
 	var race := content.race_definitions()[0]; var caste := content.caste_definitions()[0]
 	var character := CharacterState.new("runtime-performance-character", "Performance", 20, 20); character.race_id = race.id; character.caste_id = caste.id
 	var record := CharacterVaultRecord.new(character.id, content.rules_version, content.campaign_id, content.package_hash, character)
 	if not repository.publish_revision(record): return {"p95Ms": -1.0, "cacheSize": 0}
-	var controller := CharacterVaultControllerScript.new(repository); controller.revisions(content)
+	var controller := CHARACTER_VAULT_CONTROLLER.new(repository); controller.revisions(content)
 	var samples: Array[int] = []
 	for ignored: int in 100:
 		var started := Time.get_ticks_usec(); controller.import_intent(record.character_id, record.revision_hash); samples.append(Time.get_ticks_usec() - started)
