@@ -519,7 +519,7 @@ func _resolve_monster_attack_row(state: GameState, content: RealmzContent, monst
 
 
 func _select_adjacent_monster_target(state: GameState, monster: MonsterState, rng: RealmzRng) -> String:
-	return _automation._select_adjacent_monster_target(state, monster, rng)
+	return _automation.monster_actions().select_adjacent_target(state, monster, rng)
 
 
 func _monster_projectile_target_ids(state: GameState, monster: MonsterState, terrain_set: BattleTerrainSetDefinition, maximum_range: int) -> Array[String]:
@@ -527,11 +527,11 @@ func _monster_projectile_target_ids(state: GameState, monster: MonsterState, ter
 
 
 func _prepare_monster_melee_weapon(monster: MonsterState, definition: MonsterDefinition, content: RealmzContent) -> void:
-	_automation._prepare_monster_melee_weapon(monster, definition, content)
+	_automation.monster_actions().prepare_melee_weapon(monster, definition, content)
 
 
 func _select_visible_monster_target(state: GameState, monster: MonsterState, terrain_set: BattleTerrainSetDefinition, rng: RealmzRng) -> String:
-	return _automation._select_visible_monster_target(state, monster, terrain_set, rng)
+	return _automation.monster_actions().select_visible_target(state, monster, terrain_set, rng)
 
 
 func _scan_visible_monster_target(state: GameState, monster: MonsterState, terrain_set: BattleTerrainSetDefinition) -> String:
@@ -539,7 +539,7 @@ func _scan_visible_monster_target(state: GameState, monster: MonsterState, terra
 
 
 func _monster_target_id_for_slot(state: GameState, monster: MonsterState, slot: int) -> String:
-	return _automation._monster_target_id_for_slot(state, monster, slot)
+	return _automation.monster_actions().target_id_for_slot(state, monster, slot)
 
 
 func _has_available_monster_target(state: GameState, monster: MonsterState) -> bool:
@@ -547,15 +547,15 @@ func _has_available_monster_target(state: GameState, monster: MonsterState) -> b
 
 
 func _monster_target_is_available(state: GameState, monster: MonsterState, target_id: String) -> bool:
-	return _automation._monster_target_is_available(state, monster, target_id)
+	return _automation.monster_actions().target_is_available(state, monster, target_id)
 
 
 func _monster_movement_allowance(monster: MonsterState, definition: MonsterDefinition) -> int:
-	return _automation._monster_movement_allowance(monster, definition)
+	return _automation.monster_actions().movement_allowance(monster, definition)
 
 
 func _monster_attack_limit(definition: MonsterDefinition) -> int:
-	return _automation._monster_attack_limit(definition)
+	return _automation.monster_actions().attack_limit(definition)
 
 
 func _process_charmed_character_turn(state: GameState, content: RealmzContent, actor: CharacterState, rng: RealmzRng, events: Array[DomainEvent]) -> bool:
@@ -579,7 +579,7 @@ func _remove_all_defeated_positions(state: GameState) -> void:
 
 
 func _battle_terrain_set(content: RealmzContent, battlefield: BattlefieldState) -> BattleTerrainSetDefinition:
-	return _automation._battle_terrain_set(content, battlefield)
+	return _automation.monster_actions().battle_terrain_set(content, battlefield)
 
 
 func _movement_failure_message(result: BattlefieldStepResult) -> String:

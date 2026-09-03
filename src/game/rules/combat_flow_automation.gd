@@ -1,3 +1,4 @@
+## Coordinates automatic party and monster activations without owning combat rules.
 class_name CombatFlowAutomation
 extends RefCounted
 
@@ -7,6 +8,7 @@ const CombatCommandProbeType = preload("res://src/game/rules/combat_command_prob
 const CombatScrollOptionViewType = preload("res://src/game/view/combat_scroll_option_view.gd")
 const CombatAiScoringType = preload("res://src/game/rules/combat_ai_scoring.gd")
 const PolymorphContextType = preload("res://src/game/rules/monster_polymorph_context.gd")
+const CombatMonsterActionsType = preload("res://src/game/rules/combat_monster_actions.gd")
 
 const MONSTER_ATTACK_COMPLETED := 0
 const MONSTER_ATTACK_WAITING := 1
@@ -32,16 +34,21 @@ const MONSTER_FUMBLE_SOUNDS: Array[Dictionary] = [
 var _flow_ref: WeakRef
 var _rules: ContextType
 var _ai_scoring: RefCounted
+var _monster_actions: CombatMonsterActions
 
 
 func _init(flow: RefCounted, rules: ContextType) -> void:
 	_flow_ref = weakref(flow)
 	_rules = rules
 	_ai_scoring = CombatAiScoringType.new(flow, rules)
+	_monster_actions = CombatMonsterActionsType.new(flow, rules)
 
 
 func _flow() -> RefCounted:
 	return _flow_ref.get_ref() if _flow_ref != null else null
+
+func monster_actions() -> CombatMonsterActions:
+	return _monster_actions
 
 func run_auto_turn(state: GameState, content: RealmzContent, actor_id: String, rng: RealmzRng) -> CombatFlowResult:
 	var unavailable := _auto_unavailable(state, content, actor_id, rng)
@@ -173,7 +180,7 @@ func _auto_move_toward_target(state: GameState, content: RealmzContent, actor: C
 		target_id = candidates[rng.draw_between(0, candidates.size() - 1, StringName("combat.auto.%s.target" % actor.id))]
 		combat.active_turn.target_id = target_id
 	var origin := combat.battlefield.actor_position(actor.id)
-	var terrain_set := _battle_terrain_set(content, combat.battlefield)
+	var terrain_set := _monster_actions.battle_terrain_set(content, combat.battlefield)
 	var swappable_ids: Array[String] = []
 	if combat.battlefield.actor_size(actor.id) == 0:
 		for character: CharacterState in state.party.characters():
@@ -265,7 +272,7 @@ func _process_monster_turns(state: GameState, content: RealmzContent, rng: Realm
 			continue
 		var active_turn := combat.begin_active_turn()
 		if active_turn.movement_remaining < 0:
-			active_turn.movement_remaining = _monster_movement_allowance(monster, definition)
+			active_turn.movement_remaining = _monster_actions.movement_allowance(monster, definition)
 		if active_turn.target_id.is_empty() and active_turn.attack_index == 0:
 			active_turn.target_id = monster.target_id
 		if active_turn.action.is_empty():
@@ -536,7 +543,7 @@ static func _is_source_backed_combat_healing_spell(spell: SpellDefinition) -> bo
 
 func _process_monster_advance(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, active_turn: CombatTurnState, rng: RealmzRng, events: Array[DomainEvent]) -> int:
 	var combat := state.combat
-	var terrain_set := _battle_terrain_set(content, combat.battlefield)
+	var terrain_set := _monster_actions.battle_terrain_set(content, combat.battlefield)
 	if terrain_set == null:
 		events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "advance", "reason": "missing-battle-terrain"}))
 		active_turn.movement_remaining = 0
@@ -552,24 +559,24 @@ func _process_monster_advance(state: GameState, content: RealmzContent, monster:
 	if contact_result == REACTION_MOVER_DEFEATED:
 		return MONSTER_ATTACK_COMPLETED
 	var operation_guard := 512
-	while operation_guard > 0 and active_turn.attack_index < _monster_attack_limit(definition):
+	while operation_guard > 0 and active_turn.attack_index < _monster_actions.attack_limit(definition):
 		var adjacent_ids := _hostile_adjacent_ids(state, monster.id)
 		if not adjacent_ids.is_empty():
 			if (active_turn.attack_index == 0 and not active_turn.physical_action_committed) or not adjacent_ids.has(active_turn.target_id):
-				active_turn.target_id = _select_adjacent_monster_target(state, monster, rng)
+				active_turn.target_id = _monster_actions.select_adjacent_target(state, monster, rng)
 				monster.target_id = active_turn.target_id
-			while active_turn.attack_index < _monster_attack_limit(definition):
+			while active_turn.attack_index < _monster_actions.attack_limit(definition):
 				var attack_result := _resolve_monster_attack_row(state, content, monster, definition, active_turn.attack_index, active_turn, rng, events)
 				if attack_result != MONSTER_ATTACK_COMPLETED:
 					return attack_result
 			return MONSTER_ATTACK_COMPLETED
 		if active_turn.movement_remaining <= 0:
 			return MONSTER_ATTACK_COMPLETED
-		if _monster_target_is_available(state, monster, active_turn.target_id) and not _rules.battlefield.has_line_of_sight(combat.battlefield, terrain_set, monster.id, active_turn.target_id):
-			active_turn.target_id = _scan_visible_monster_target(state, monster, terrain_set)
+		if _monster_actions.target_is_available(state, monster, active_turn.target_id) and not _rules.battlefield.has_line_of_sight(combat.battlefield, terrain_set, monster.id, active_turn.target_id):
+			active_turn.target_id = _monster_actions.scan_visible_target(state, monster, terrain_set)
 			monster.target_id = active_turn.target_id
-		elif not _monster_target_is_available(state, monster, active_turn.target_id):
-			active_turn.target_id = _select_visible_monster_target(state, monster, terrain_set, rng)
+		elif not _monster_actions.target_is_available(state, monster, active_turn.target_id):
+			active_turn.target_id = _monster_actions.select_visible_target(state, monster, terrain_set, rng)
 			monster.target_id = active_turn.target_id
 		if active_turn.target_id.is_empty():
 			active_turn.movement_remaining = 0
@@ -578,9 +585,9 @@ func _process_monster_advance(state: GameState, content: RealmzContent, monster:
 		var origin := combat.battlefield.actor_position(monster.id)
 		var route_targets: Array[String] = [active_turn.target_id]
 		for character: CharacterState in state.party.characters():
-			if _monster_target_is_available(state, monster, character.id) and not route_targets.has(character.id): route_targets.append(character.id)
+			if _monster_actions.target_is_available(state, monster, character.id) and not route_targets.has(character.id): route_targets.append(character.id)
 		for candidate: MonsterState in combat.monsters():
-			if _monster_target_is_available(state, monster, candidate.id) and not route_targets.has(candidate.id): route_targets.append(candidate.id)
+			if _monster_actions.target_is_available(state, monster, candidate.id) and not route_targets.has(candidate.id): route_targets.append(candidate.id)
 		var probe := _rules.battlefield.probe_path_step_toward_actors(combat.battlefield, terrain_set, monster.id, route_targets, active_turn.movement_remaining)
 		if not probe.allowed:
 			probe = _rules.battlefield.probe_monster_step_toward(combat.battlefield, terrain_set, monster.id, combat.battlefield.actor_position(active_turn.target_id), active_turn.movement_remaining, rng)
@@ -607,84 +614,17 @@ func _process_monster_advance(state: GameState, content: RealmzContent, monster:
 
 
 func _process_monster_projectile(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, active_turn: CombatTurnState, rng: RealmzRng, events: Array[DomainEvent]) -> int:
-	var combat := state.combat
-	var projectile_item_id := definition.item_id_at(1)
-	var projectile_item := content.item_by_id(projectile_item_id) if not projectile_item_id.is_empty() else null
-	var projectile_spell := content.spell_by_classic_id(absi(projectile_item.special_2)) if projectile_item != null else null
-	var unavailable := "Monster missile slot 1 is empty or references an unavailable item."
-	if projectile_item != null and projectile_spell == null:
-		unavailable = "Monster missile item '%s' references an unavailable Classic spell." % projectile_item.id
-	elif projectile_spell != null:
-		unavailable = _flow()._projectile_spell_unavailable_reason(projectile_spell)
-	if projectile_item == null or projectile_spell == null or not unavailable.is_empty():
-		active_turn.movement_remaining = 0
-		events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "missile", "reason": unavailable, "source": "classic"}))
-		return MONSTER_ATTACK_COMPLETED
-	var terrain_set := _battle_terrain_set(content, combat.battlefield)
-	if terrain_set == null:
-		active_turn.movement_remaining = 0
-		events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "missile", "reason": "missing-battle-terrain", "source": "classic"}))
-		return MONSTER_ATTACK_COMPLETED
-	# combat.c rolls power for range and spell-point cost, then forces power 1
-	# immediately before resolving the actual missile effect.
-	var range_power := rng.draw(7, StringName("combat.monster-projectile.%s.power" % monster.id))
-	var maximum_range := absi(projectile_spell.range_min + projectile_spell.range_max * range_power)
-	var target_ids := _monster_projectile_target_ids(state, monster, terrain_set, maximum_range)
-	if target_ids.is_empty():
-		events.append(DomainEvent.new(&"combat_monster_projectile_skipped", {"actorId": monster.id, "reason": "no-character-target-in-range", "range": maximum_range, "source": "classic"}))
-		return MONSTER_ATTACK_FALLBACK
-	var cost_power := range_power
-	while cost_power > 0 and monster.spell_points < absi(projectile_spell.cost * cost_power):
-		cost_power -= 1
-	if cost_power <= 0:
-		events.append(DomainEvent.new(&"combat_monster_projectile_skipped", {"actorId": monster.id, "reason": "insufficient-spell-points", "source": "classic"}))
-		return MONSTER_ATTACK_FALLBACK
-	var spell_cost := absi(projectile_spell.cost * cost_power)
-	var target_id := target_ids[rng.draw_between(0, target_ids.size() - 1, StringName("combat.monster-projectile.%s.target" % monster.id))]
-	var target := state.party.character_by_id(target_id)
-	monster.weapon_id = projectile_item.id
-	monster.target_id = target.id
-	monster.spell_points -= spell_cost
-	active_turn.target_id = target.id
-	active_turn.movement_remaining = 0
-	active_turn.physical_action_committed = true
-	combat.set_guarding(monster.id, false)
-	var resolution := _rules.magic.resolve_monster_projectile(monster, projectile_item, target, projectile_spell, 1, rng)
-	if resolution == null:
-		events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "missile", "reason": "projectile-resolution-failed", "source": "classic"}))
-		return MONSTER_ATTACK_COMPLETED
-	target.lifetime_record.add_projectile_damage_taken(resolution.total_damage, resolution.hit_count, resolution.miss_count)
-	if resolution.total_damage > 0:
-		combat.mark_attacked(target.id)
-	events.append(DomainEvent.new(&"combat_projectile_resolved", {
-		"actorId": monster.id,
-		"targetId": target.id,
-		"targetKind": "character",
-		"itemId": projectile_item.id,
-		"spellId": projectile_spell.id,
-		"rangePower": range_power,
-		"costPower": cost_power,
-		"resolutionPower": 1,
-		"range": _rules.battlefield.classic_range(combat.battlefield, monster.id, target.id),
-		"hitCount": resolution.hit_count,
-		"missCount": resolution.miss_count,
-		"damage": resolution.total_damage,
-		"defeated": resolution.target_defeated,
-		"source": "classic-monster",
-	}))
-	_flow()._mark_character_bleeding(state, target, resolution.target_defeated)
-	_remove_defeated_position(combat, target.id, resolution.target_defeated)
-	return MONSTER_ATTACK_COMPLETED
+	return _monster_actions.process_projectile(state, content, monster, definition, active_turn, rng, events)
 
 
 func _process_monster_retreat(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, active_turn: CombatTurnState, rng: RealmzRng, events: Array[DomainEvent]) -> int:
 	var combat := state.combat
-	var terrain_set := _battle_terrain_set(content, combat.battlefield)
+	var terrain_set := _monster_actions.battle_terrain_set(content, combat.battlefield)
 	if terrain_set == null:
 		events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "retreat", "reason": "missing-battle-terrain"}))
 		active_turn.movement_remaining = 0
 		return MONSTER_ATTACK_COMPLETED
-	if not _monster_target_is_available(state, monster, active_turn.target_id):
+	if not _monster_actions.target_is_available(state, monster, active_turn.target_id):
 		# movemonster.c reads pos[-1] when a routed monster has no retained target.
 		# Keep that unsafe source path explicit instead of inventing a threat target.
 		active_turn.movement_remaining = 0
@@ -717,33 +657,17 @@ func _process_monster_retreat(state: GameState, content: RealmzContent, monster:
 
 
 func _retreating_monster_reached_edge(state: GameState, content: RealmzContent, monster_id: String, destination: Vector2i, events: Array[DomainEvent]) -> bool:
-	if destination.x >= 2 and destination.y >= 2 and destination.x <= 87 and destination.y <= 87:
-		return false
-	var monster := state.combat.monster_by_id(monster_id)
-	var definition := content.monster_by_id(monster.definition_id) if monster != null else null
-	if monster == null or definition == null:
-		return false
-	state.combat.set_guarding(monster.id, false)
-	state.combat.active_turn.movement_remaining = 0
-	if definition.can_summon < 0:
-		# Castle says mandatory allies cannot leave, but flips deltas only after
-		# committing the edge step. Stop safely at that observed boundary.
-		events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "retreat", "reason": "mandatory-ally-edge-retreat-unresolved"}))
-		return false
-	monster.current_health = 0
-	state.combat.battlefield.remove_monster(monster.id)
-	events.append(DomainEvent.new(&"combatant_retreated", {"actorId": monster.id, "mode": "battlefield-edge", "forced": true, "source": "classic-monster"}))
-	return true
+	return _monster_actions.retreat_reached_edge(state, content, monster_id, destination, events)
 
 
 func _resolve_monster_attack_row(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, attack_index: int, active_turn: CombatTurnState, rng: RealmzRng, events: Array[DomainEvent]) -> int:
 	var combat := state.combat
-	_prepare_monster_melee_weapon(monster, definition, content)
-	if not _monster_target_is_available(state, monster, active_turn.target_id) or not _rules.battlefield.are_adjacent(combat.battlefield, monster.id, active_turn.target_id):
-		active_turn.target_id = _select_adjacent_monster_target(state, monster, rng)
+	_monster_actions.prepare_melee_weapon(monster, definition, content)
+	if not _monster_actions.target_is_available(state, monster, active_turn.target_id) or not _rules.battlefield.are_adjacent(combat.battlefield, monster.id, active_turn.target_id):
+		active_turn.target_id = _monster_actions.select_adjacent_target(state, monster, rng)
 		monster.target_id = active_turn.target_id
 	if active_turn.target_id.is_empty():
-		active_turn.attack_index = _monster_attack_limit(definition)
+		active_turn.attack_index = _monster_actions.attack_limit(definition)
 		return MONSTER_ATTACK_COMPLETED
 	active_turn.attack_index += 1
 	active_turn.physical_action_committed = true
@@ -807,128 +731,10 @@ func _resolve_monster_attack_row(state: GameState, content: RealmzContent, monst
 		var death_macro_requested = _flow()._request_monster_death_macro(monster_target, target_definition, events)
 		_remove_defeated_position(combat, monster_target.id, not death_macro_requested)
 		if death_macro_requested:
-			if active_turn.attack_index >= _monster_attack_limit(definition):
+			if active_turn.attack_index >= _monster_actions.attack_limit(definition):
 				_flow()._advance_turn(state, content, rng, events)
 			return MONSTER_ATTACK_DEATH_MACRO
 	return MONSTER_ATTACK_COMPLETED
-
-
-func _select_adjacent_monster_target(state: GameState, monster: MonsterState, rng: RealmzRng) -> String:
-	var target_ids: Array[String] = []
-	var adjacent_ids := _rules.battlefield.adjacent_actor_ids(state.combat.battlefield, monster.id)
-	for character: CharacterState in state.party.characters():
-		if character.current_health > 0 and character.traitor != monster.traitor and adjacent_ids.has(character.id):
-			target_ids.append(character.id)
-	for candidate: MonsterState in state.combat.monsters():
-		if candidate.id != monster.id and candidate.current_health > 0 and candidate.traitor != monster.traitor and adjacent_ids.has(candidate.id):
-			target_ids.append(candidate.id)
-	if target_ids.is_empty():
-		return ""
-	return target_ids[rng.draw_between(0, target_ids.size() - 1, &"combat.monster-target")]
-
-
-func _monster_projectile_target_ids(state: GameState, monster: MonsterState, terrain_set: BattleTerrainSetDefinition, maximum_range: int) -> Array[String]:
-	var candidates: Array[String] = []
-	for character: CharacterState in state.party.characters():
-		if _monster_target_is_available(state, monster, character.id) and _rules.battlefield.projectile_target_is_valid(state.combat.battlefield, terrain_set, monster.id, character.id, maximum_range, true):
-			candidates.append(character.id)
-	# Hostile monsters normally target party slots. Castle's monster-on-monster
-	# projectile formula reads the stale global player missile statistic, so that
-	# ally/traitor branch remains explicitly disabled pending an oracle decision.
-	return candidates
-
-
-func _prepare_monster_melee_weapon(monster: MonsterState, definition: MonsterDefinition, content: RealmzContent) -> void:
-	if monster == null or definition == null or content == null or monster.weapon_id.is_empty():
-		return
-	var active_item := content.item_by_id(monster.weapon_id)
-	var active_spell := content.spell_by_classic_id(absi(active_item.special_2)) if active_item != null and active_item.special_2 != 0 else null
-	if active_spell == null or active_spell.damage_type != 9:
-		return
-	# attack2 writes this replacement through Castle's global monsterup instead
-	# of its mon argument. Apply the intended slot-0 replacement to the actual
-	# attacker so reactions cannot mutate an unrelated monster.
-	monster.weapon_id = definition.item_id_at(0)
-
-
-func _select_visible_monster_target(state: GameState, monster: MonsterState, terrain_set: BattleTerrainSetDefinition, rng: RealmzRng) -> String:
-	var slot_count := 10 + state.combat.monsters().size()
-	if not _has_available_monster_target(state, monster):
-		return ""
-	for _attempt: int in 4096:
-		var slot := rng.draw_between(0, slot_count - 1, &"combat.monster-target-slot")
-		var candidate_id := _monster_target_id_for_slot(state, monster, slot)
-		if candidate_id.is_empty():
-			continue
-		if _rules.battlefield.has_line_of_sight(state.combat.battlefield, terrain_set, monster.id, candidate_id):
-			return candidate_id
-		break
-	# Castle switches from random selection to ascending combat slots after its
-	# first unseen valid target. Bound the scan to real typed slots instead of
-	# reading uninitialized native monster entries through its 110 sentinel.
-	return _scan_visible_monster_target(state, monster, terrain_set)
-
-
-func _scan_visible_monster_target(state: GameState, monster: MonsterState, terrain_set: BattleTerrainSetDefinition) -> String:
-	var slot_count := 10 + state.combat.monsters().size()
-	for slot: int in slot_count:
-		var candidate_id := _monster_target_id_for_slot(state, monster, slot)
-		if not candidate_id.is_empty() and _rules.battlefield.has_line_of_sight(state.combat.battlefield, terrain_set, monster.id, candidate_id):
-			return candidate_id
-	return ""
-
-
-func _monster_target_id_for_slot(state: GameState, monster: MonsterState, slot: int) -> String:
-	if slot >= 0 and slot < 9:
-		var characters := state.party.characters()
-		if slot >= characters.size():
-			return ""
-		var character: CharacterState = characters[slot]
-		return character.id if _monster_target_is_available(state, monster, character.id) else ""
-	if slot < 10:
-		return ""
-	var monsters := state.combat.monsters()
-	var monster_index := slot - 10
-	if monster_index < 0 or monster_index >= monsters.size():
-		return ""
-	var candidate: MonsterState = monsters[monster_index]
-	return candidate.id if _monster_target_is_available(state, monster, candidate.id) else ""
-
-
-func _has_available_monster_target(state: GameState, monster: MonsterState) -> bool:
-	for character: CharacterState in state.party.characters():
-		if _monster_target_is_available(state, monster, character.id):
-			return true
-	for candidate: MonsterState in state.combat.monsters():
-		if _monster_target_is_available(state, monster, candidate.id):
-			return true
-	return false
-
-
-func _monster_target_is_available(state: GameState, monster: MonsterState, target_id: String) -> bool:
-	if target_id.is_empty():
-		return false
-	var character := state.party.character_by_id(target_id)
-	if character != null:
-		return character.current_health > 0 and character.traitor != monster.traitor and state.combat.battlefield.has_actor(character.id)
-	var candidate := state.combat.monster_by_id(target_id)
-	return candidate != null and candidate.id != monster.id and candidate.current_health > 0 and candidate.traitor != monster.traitor and state.combat.battlefield.has_actor(candidate.id)
-
-
-static func _monster_movement_allowance(monster: MonsterState, definition: MonsterDefinition) -> int:
-	var movement := definition.movement_max
-	var tangled := monster.conditions.value(ConditionRules.TANGLED)
-	if tangled > 0:
-		movement -= tangled
-	if monster.conditions.is_active(ConditionRules.SLOW):
-		movement = int(float(movement) / 2.0)
-	if monster.conditions.is_active(ConditionRules.SPEEDY):
-		movement *= 2
-	return maxi(0, movement)
-
-
-static func _monster_attack_limit(definition: MonsterDefinition) -> int:
-	return mini(maxi(0, definition.attack_count), definition.attacks().size())
 
 
 func _process_charmed_character_turn(state: GameState, content: RealmzContent, actor: CharacterState, rng: RealmzRng, events: Array[DomainEvent]) -> bool:
@@ -1052,11 +858,6 @@ static func _remove_all_defeated_positions(state: GameState) -> void:
 		_remove_defeated_position(state.combat, monster.id, monster.current_health <= 0)
 	for character: CharacterState in state.party.characters():
 		_remove_defeated_position(state.combat, character.id, character.current_health <= 0)
-
-
-static func _battle_terrain_set(content: RealmzContent, battlefield: BattlefieldState) -> BattleTerrainSetDefinition:
-	var map := content.world.map_by_id(battlefield.map_id)
-	return null if map == null else content.world.battle_terrain_set_by_id(map.battle_terrain_set_id)
 
 
 static func _movement_failure_message(result: BattlefieldStepResult) -> String:
