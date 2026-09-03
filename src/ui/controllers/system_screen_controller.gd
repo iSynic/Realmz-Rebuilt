@@ -1,9 +1,10 @@
-## Presents save operations and host preferences without mutating game rules.
+## Binds save operations and host preferences to the authored System workspace.
 class_name SystemScreenController
 extends RefCounted
 
 const SaveSlotPreviewScript := preload("res://src/game/view/save_slot_preview.gd")
 const HeldMovementControllerScript := preload("res://src/ui/held_movement_controller.gd")
+const WORKSPACE_SCENE_PATH := "res://src/ui/screens/system_workspace.tscn"
 
 signal action_requested(action_id: StringName, value: Variant)
 signal setting_changed(setting_id: StringName, value: Variant)
@@ -21,10 +22,9 @@ const CONTROL_HELP: Array[Dictionary] = [
 
 var _save_previews: Array[SaveSlotPreview] = []
 var _selected_save_key: String = ""
-var _save_detail: VBoxContainer
-var _load_selected: Button
 var _layout_profile: StringName = UiLayoutProfile.WIDE
 var _save_and_quit_mode: bool = false
+var _workspace: SystemWorkspace
 
 
 func set_layout_profile(profile_id: StringName) -> void:
@@ -50,135 +50,87 @@ func present(target: Control, view: GameView, settings: PresentationSettings) ->
 	if target == null or view == null or settings == null:
 		return
 	var screen := target as SystemScreen
-	var parent := screen.body_control() if screen != null else target as VBoxContainer
 	if screen != null:
-		screen.prepare_for_render()
-	_add_header(screen.summary_area() if screen != null else parent, view)
-	var tabs := screen.tabs() if screen != null else TabContainer.new()
-	if screen == null:
-		tabs.name = "SystemWorkspaceTabs"
-		tabs.clip_tabs = true
-		tabs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		parent.add_child(tabs)
-	_build_save_tab(screen.tab_area("Save & Load") if screen != null else _tab(tabs, "Save & Load"), view)
-	_build_display_tab(screen.tab_area("Display") if screen != null else _tab(tabs, "Display"), settings)
-	_build_audio_tab(screen.tab_area("Audio") if screen != null else _tab(tabs, "Audio"), settings)
-	_build_pacing_tab(screen.tab_area("Pacing") if screen != null else _tab(tabs, "Pacing"), settings)
-	_build_accessibility_tab(screen.tab_area("Accessibility") if screen != null else _tab(tabs, "Accessibility"), settings)
-	_build_controls_tab(screen.tab_area("Controls") if screen != null else _tab(tabs, "Controls"), settings)
-	_build_diagnostics_tab(screen.tab_area("Diagnostics") if screen != null else _tab(tabs, "Diagnostics"), settings)
-
-
-func _add_header(parent: VBoxContainer, view: GameView) -> void:
-	var row := HBoxContainer.new()
-	row.name = "SystemHeader"
-	parent.add_child(row)
-	var campaign := view.campaign_summary.title if view.campaign_summary != null else view.campaign_id
-	var fact := _label("%s  •  %s" % [campaign, view.rules_version], CYAN, 13)
-	fact.name = "SystemCampaignContext"
-	fact.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	fact.max_lines_visible = 2
-	fact.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	row.add_child(fact)
-
-
-func _build_save_tab(parent: VBoxContainer, view: GameView) -> void:
-	var columns := HBoxContainer.new()
-	columns.name = "SaveWorkspaceColumns"
-	columns.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	columns.add_theme_constant_override("separation", 6)
-	parent.add_child(columns)
-	var browser := _pane(columns, "SaveSlotBrowser", "Save Slots", 0.85)
-	var detail := _pane(columns, "SaveSlotDetail", "Selected Record", 1.25)
-	_save_detail = VBoxContainer.new()
-	_save_detail.name = "SaveSlotDetailBody"
-	_save_detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_save_detail.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_save_detail.add_theme_constant_override("separation", 5)
-	detail.add_child(_save_detail)
-	var scroll := _scroll("SaveSlotScroll")
-	browser.add_child(scroll)
-	var rows := VBoxContainer.new()
-	rows.name = "SaveSlotRows"
-	rows.add_theme_constant_override("separation", 4)
-	rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(rows)
-	if _save_previews.is_empty():
-		_add_card(rows, "No saves for this campaign", "Return to party setup and begin a new adventure." if view.party_setup_available else "Use either Quick Save slot or create a named save below.", "")
+		screen.prepare_for_render(_layout_profile == UiLayoutProfile.COMPACT)
+		_workspace = screen.workspace()
 	else:
-		var group := ButtonGroup.new()
-		for preview: SaveSlotPreview in _save_previews:
-			var button := Button.new()
-			button.name = "SavePreview_%s_%s" % [preview.slot_id, String(preview.source)]
-			button.text = "%s  •  %s\n%s" % [slot_label(preview.slot_id), preview.source_label(), preview.status_label()]
-			button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-			button.custom_minimum_size.y = 54.0
-			button.toggle_mode = true
-			button.button_group = group
-			button.button_pressed = _key(preview) == _selected_save_key
-			button.pressed.connect(_select_save.bind(preview))
-			rows.add_child(button)
-	_build_save_footer(parent, view)
+		var parent := target as VBoxContainer
+		_clear(parent)
+		_workspace = (load(WORKSPACE_SCENE_PATH) as PackedScene).instantiate() as SystemWorkspace
+		parent.add_child(_workspace)
+		_workspace.prepare(_layout_profile == UiLayoutProfile.COMPACT)
+	_bind_header(view)
+	_bind_save_workspace(view)
+	_bind_display(settings)
+	_bind_audio(settings)
+	_bind_pacing(settings)
+	_bind_accessibility(settings)
+	_bind_controls(settings)
+	_bind_diagnostics(settings)
+
+
+func _bind_header(view: GameView) -> void:
+	var campaign := view.campaign_summary.title if view.campaign_summary != null else view.campaign_id
+	_bind_label(_workspace.campaign_context(), "%s  •  %s" % [campaign, view.rules_version], CYAN, 13)
+
+
+func _bind_save_workspace(view: GameView) -> void:
+	var rows := _workspace.save_slot_rows()
+	var empty := _workspace.save_browser_empty()
+	empty.visible = _save_previews.is_empty()
+	if empty.visible:
+		(empty.get_node("Text") as Label).text = "No saves for this campaign\n%s" % ("Return to party setup and begin a new adventure." if view.party_setup_available else "Use either Quick Save slot or create a named save below.")
+	var group := ButtonGroup.new()
+	for preview: SaveSlotPreview in _save_previews:
+		var button := _workspace.save_slot_row_scene.instantiate() as Button
+		button.name = "SavePreview_%s_%s" % [preview.slot_id, String(preview.source)]
+		button.text = "%s  •  %s\n%s" % [slot_label(preview.slot_id), preview.source_label(), preview.status_label()]
+		button.button_group = group
+		button.button_pressed = _key(preview) == _selected_save_key
+		button.pressed.connect(_select_save.bind(preview))
+		rows.add_child(button)
+	_bind_save_footer(view)
 	_refresh_save_detail()
 
 
-func _build_save_footer(parent: VBoxContainer, view: GameView) -> void:
-	var footer := VBoxContainer.new()
-	footer.name = "SaveWorkspaceFooter"
-	footer.add_theme_constant_override("separation", 5)
-	parent.add_child(footer)
-	var actions := HBoxContainer.new()
-	actions.name = "SaveWorkspaceActions"
-	actions.add_theme_constant_override("separation", 5)
-	footer.add_child(actions)
-	if _save_and_quit_mode:
-		var save_and_quit := _add_action(actions, "Save and Quit", &"", null)
-		save_and_quit.name = "SaveAndQuitSelected"
-		save_and_quit.tooltip_text = "Save to the selected slot, then quit Realmz Rebuilt."
-		save_and_quit.pressed.connect(_save_selected_and_quit)
-	elif not view.party_setup_available:
-		_add_action(actions, "Quick Save 1", &"save", "quick")
-		_add_action(actions, "Quick Save 2", &"save", "quick-2")
-		var save_selected := _add_action(actions, "Save Selected", &"", null)
-		save_selected.name = "SaveSelectedSlot"
-		save_selected.pressed.connect(_save_selected_preview)
-	_load_selected = _add_action(actions, "Load Selected", &"", null)
-	_load_selected.name = "LoadSelectedSave"
-	_load_selected.pressed.connect(_load_selected_preview)
-	_add_action(actions, "Refresh", &"refresh_saves", null)
-	var spacer := Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	actions.add_child(spacer)
-	var end_adventure := _add_action(actions, "Main Menu", &"end_adventure", null)
-	end_adventure.disabled = view.pending_interaction != null and view.pending_interaction.kind != InteractionRequest.COMBAT
-	end_adventure.tooltip_text = "Resolve the current interaction first." if end_adventure.disabled else "Close this campaign session and return to the Realmz Rebuilt main menu."
-	if not _save_and_quit_mode and not view.party_setup_available:
-		_build_new_save_row(footer)
-
-
-func _build_new_save_row(parent: VBoxContainer) -> void:
-	var row := HBoxContainer.new()
-	row.name = "NewSaveSlotRow"
-	row.add_theme_constant_override("separation", 5)
-	parent.add_child(row)
-	var slot_name := LineEdit.new()
-	slot_name.name = "NewSaveSlotName"
-	slot_name.theme_type_variation = &"ClassicTheldrowLineEdit"
-	slot_name.placeholder_text = "New slot name (letters, numbers, - or _)"
-	slot_name.max_length = 128
-	slot_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(slot_name)
-	var save_new := _add_action(row, "Save New Slot", &"", null)
-	save_new.name = "SaveNewSlot"
-	save_new.disabled = true
-	var refresh := func(value: String) -> void:
+func _bind_save_footer(view: GameView) -> void:
+	var root := _workspace.get_node("SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter") as VBoxContainer
+	var actions := root.get_node("SaveWorkspaceActions") as BoxContainer
+	var save_and_quit := actions.get_node("SaveAndQuitSelected") as Button
+	var quick_one := actions.get_node("QuickSave1") as Button
+	var quick_two := actions.get_node("QuickSave2") as Button
+	var save_selected := actions.get_node("SaveSelectedSlot") as Button
+	var load_selected := actions.get_node("LoadSelectedSave") as Button
+	var refresh := actions.get_node("RefreshSaves") as Button
+	var main_menu := actions.get_node("MainMenu") as Button
+	var new_row := root.get_node("NewSaveSlotRow") as BoxContainer
+	var ordinary_save := not _save_and_quit_mode and not view.party_setup_available
+	save_and_quit.visible = _save_and_quit_mode
+	quick_one.visible = ordinary_save
+	quick_two.visible = ordinary_save
+	save_selected.visible = ordinary_save
+	new_row.visible = ordinary_save
+	_bind_action(save_and_quit, func() -> void: _save_selected_and_quit())
+	_bind_action(quick_one, func() -> void: action_requested.emit(&"save", "quick"))
+	_bind_action(quick_two, func() -> void: action_requested.emit(&"save", "quick-2"))
+	_bind_action(save_selected, func() -> void: _save_selected_preview())
+	_bind_action(load_selected, func() -> void: _load_selected_preview())
+	_bind_action(refresh, func() -> void: action_requested.emit(&"refresh_saves", null))
+	_bind_action(main_menu, func() -> void: action_requested.emit(&"end_adventure", null))
+	save_and_quit.tooltip_text = "Save to the selected slot, then quit Realmz Rebuilt."
+	main_menu.disabled = view.pending_interaction != null and view.pending_interaction.kind != InteractionRequest.COMBAT
+	main_menu.tooltip_text = "Resolve the current interaction first." if main_menu.disabled else "Close this campaign session and return to the Realmz Rebuilt main menu."
+	var slot_name := new_row.get_node("NewSaveSlotName") as LineEdit
+	var save_new := new_row.get_node("SaveNewSlot") as Button
+	_clear_text_changed_connections(slot_name)
+	_clear_pressed_connections(save_new)
+	slot_name.text = ""
+	var update_new_slot := func(value: String) -> void:
 		save_new.disabled = not slot_id_is_portable(value)
 		save_new.tooltip_text = "Use only letters, numbers, hyphens, or underscores." if save_new.disabled else "Create or replace this named save slot."
-	slot_name.text_changed.connect(refresh)
+	slot_name.text_changed.connect(update_new_slot)
 	save_new.pressed.connect(func() -> void: action_requested.emit(&"save", slot_name.text))
-	refresh.call(slot_name.text)
+	update_new_slot.call(slot_name.text)
 
 
 func _select_save(preview: SaveSlotPreview) -> void:
@@ -187,36 +139,44 @@ func _select_save(preview: SaveSlotPreview) -> void:
 
 
 func _refresh_save_detail() -> void:
-	if _save_detail == null or _load_selected == null:
+	if _workspace == null:
 		return
-	_clear(_save_detail)
 	var preview := _selected_preview()
-	_load_selected.disabled = preview == null or not preview.can_load
-	_load_selected.tooltip_text = "Select a validated save record." if preview == null else preview.error_message if not preview.can_load else "Restore this validated %s record." % preview.source_label().to_lower()
+	var load_selected := _workspace.get_node("SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/SaveWorkspaceActions/LoadSelectedSave") as Button
+	load_selected.disabled = preview == null or not preview.can_load
+	load_selected.tooltip_text = "Select a validated save record." if preview == null else preview.error_message if not preview.can_load else "Restore this validated %s record." % preview.source_label().to_lower()
+	var record := _workspace.save_detail_record()
+	var empty := _workspace.save_detail_empty()
+	record.visible = preview != null
+	empty.visible = preview == null
 	if preview == null:
-		_add_card(_save_detail, "No selected record", "Save slots appear at left.", "")
 		return
-	_save_detail.add_child(_label("%s  •  %s" % [slot_label(preview.slot_id), preview.source_label()], GOLD, 18))
-	_save_detail.add_child(_label(preview.status_label(), CYAN if preview.can_load else Color("d48a78"), 14))
-	if preview.status != SaveSlotPreviewScript.VALID:
-		_save_detail.add_child(_label(preview.error_message, MUTED, 14))
+	_bind_label(record.get_node("Title") as Label, "%s  •  %s" % [slot_label(preview.slot_id), preview.source_label()], GOLD, 18)
+	_bind_label(record.get_node("Status") as Label, preview.status_label(), CYAN if preview.can_load else Color("d48a78"), 14)
+	var error := record.get_node("Error") as Label
+	error.visible = preview.status != SaveSlotPreviewScript.VALID
+	_bind_label(error, preview.error_message, MUTED, 14)
+	var valid := preview.status == SaveSlotPreviewScript.VALID
+	for path: String in ["Location", "Party", "Divider", "Package", "Rules", "Saved"]:
+		record.get_node(path).visible = valid
+	if not valid:
 		return
 	var party := ", ".join(preview.character_names) if not preview.character_names.is_empty() else "No party members"
-	_save_detail.add_child(_label("Day %d  •  %02d:%02d  •  %s %d,%d" % [preview.realmz_day, preview.realmz_hour, preview.realmz_minute, preview.map_id, preview.coordinate.x, preview.coordinate.y], CYAN, 15))
-	_save_detail.add_child(_label(party, Color("e0e2e5"), 15))
-	_save_detail.add_child(HSeparator.new())
-	_save_detail.add_child(_label("Package %s" % preview.package_hash.left(12), MUTED, 13))
-	_save_detail.add_child(_label("Rules %s" % preview.rules_version, MUTED, 13))
-	if preview.modified_unix > 0:
-		_save_detail.add_child(_label("Saved %s" % Time.get_datetime_string_from_unix_time(preview.modified_unix), MUTED, 13))
+	_bind_label(record.get_node("Location") as Label, "Day %d  •  %02d:%02d  •  %s %d,%d" % [preview.realmz_day, preview.realmz_hour, preview.realmz_minute, preview.map_id, preview.coordinate.x, preview.coordinate.y], CYAN, 15)
+	_bind_label(record.get_node("Party") as Label, party, Color("e0e2e5"), 15)
+	_bind_label(record.get_node("Package") as Label, "Package %s" % preview.package_hash.left(12), MUTED, 13)
+	_bind_label(record.get_node("Rules") as Label, "Rules %s" % preview.rules_version, MUTED, 13)
+	var saved := record.get_node("Saved") as Label
+	saved.visible = preview.modified_unix > 0
+	if saved.visible:
+		_bind_label(saved, "Saved %s" % Time.get_datetime_string_from_unix_time(preview.modified_unix), MUTED, 13)
 
 
 func _load_selected_preview() -> void:
 	var preview := _selected_preview()
 	if preview == null or not preview.can_load:
 		return
-	var action: StringName = &"load_backup" if preview.source == SaveSlotPreviewScript.BACKUP else &"load"
-	action_requested.emit(action, preview.slot_id)
+	action_requested.emit(&"load_backup" if preview.source == SaveSlotPreviewScript.BACKUP else &"load", preview.slot_id)
 
 
 func _save_selected_preview() -> void:
@@ -258,293 +218,159 @@ static func slot_label(slot_id: String) -> String:
 		_: return slot_id
 
 
-func _build_display_tab(parent: VBoxContainer, settings: PresentationSettings) -> void:
-	var content := _settings_panel(parent, "Display", "Fit keeps the Classic application centered at wide resolutions. Interface density and text size remain independent; exact bitmap art stays at native 1× or 2× pixels.")
-	var ui_scale := OptionButton.new()
-	ui_scale.name = "InterfaceScalePicker"
-	ui_scale.theme_type_variation = &"ClassicTheldrowOptionButton"
-	for entry: Dictionary in [{"label": "Fit to window", "id": PresentationSettings.UI_SCALE_AUTO}, {"label": "Interface density: 100%", "id": PresentationSettings.UI_SCALE_100}, {"label": "Interface density: 125%", "id": PresentationSettings.UI_SCALE_125}, {"label": "Interface density: 150%", "id": PresentationSettings.UI_SCALE_150}]:
-		ui_scale.add_item(entry["label"])
-		ui_scale.set_item_metadata(ui_scale.item_count - 1, entry["id"])
-		if entry["id"] == settings.ui_scale_mode: ui_scale.select(ui_scale.item_count - 1)
-	ui_scale.item_selected.connect(func(index: int) -> void: setting_changed.emit(&"ui_scale_mode", String(ui_scale.get_item_metadata(index))))
-	_add_setting_row(content, "Interface scale", ui_scale)
-	var text_scale := HSlider.new()
-	text_scale.min_value = 0.8
-	text_scale.max_value = 1.5
-	text_scale.step = 0.1
-	text_scale.value = settings.text_scale
+func _bind_display(settings: PresentationSettings) -> void:
+	var root := _workspace.get_node("SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content")
+	_bind_option(root.get_node("InterfaceScaleRow/InterfaceScalePicker") as OptionButton, [
+		{"label": "Fit to window", "id": PresentationSettings.UI_SCALE_AUTO},
+		{"label": "Interface density: 100%", "id": PresentationSettings.UI_SCALE_100},
+		{"label": "Interface density: 125%", "id": PresentationSettings.UI_SCALE_125},
+		{"label": "Interface density: 150%", "id": PresentationSettings.UI_SCALE_150},
+	], settings.ui_scale_mode, &"ui_scale_mode")
+	var text_scale := root.get_node("TextScaleRow/TextScaleSlider") as HSlider
+	_bind_slider(text_scale, settings.text_scale, &"text_scale")
 	text_scale.tooltip_text = "Text scale %d%%" % int(round(settings.text_scale * 100.0))
-	text_scale.value_changed.connect(func(value: float) -> void: setting_changed.emit(&"text_scale", value))
-	_add_setting_row(content, "Text size  •  %d%%" % int(round(settings.text_scale * 100.0)), text_scale)
-	var typography := OptionButton.new()
-	typography.name = "TypographyPicker"
-	typography.theme_type_variation = &"ClassicTheldrowOptionButton"
-	for entry: Dictionary in [
+	_bind_label(root.get_node("TextScaleRow/Caption") as Label, "Text size  •  %d%%" % int(round(settings.text_scale * 100.0)), Color("e0e2e5"), 15)
+	_bind_option(root.get_node("TypographyRow/TypographyPicker") as OptionButton, [
 		{"label": "Classic Realmz fonts", "id": PresentationSettings.TYPOGRAPHY_CLASSIC},
 		{"label": "Readable modern fonts", "id": PresentationSettings.TYPOGRAPHY_READABLE},
-	]:
-		typography.add_item(entry["label"])
-		typography.set_item_metadata(typography.item_count - 1, entry["id"])
-		if entry["id"] == settings.typography_mode:
-			typography.select(typography.item_count - 1)
-	typography.item_selected.connect(func(index: int) -> void: setting_changed.emit(&"typography_mode", String(typography.get_item_metadata(index))))
-	_add_setting_row(content, "Typography", typography)
-	var window_mode := OptionButton.new()
-	window_mode.name = "WindowModePicker"
-	window_mode.theme_type_variation = &"ClassicTheldrowOptionButton"
-	window_mode.add_item("Windowed")
-	window_mode.set_item_metadata(0, PresentationSettings.WINDOWED)
-	window_mode.add_item("Borderless fullscreen")
-	window_mode.set_item_metadata(1, PresentationSettings.BORDERLESS_FULLSCREEN)
-	window_mode.select(1 if settings.window_mode == PresentationSettings.BORDERLESS_FULLSCREEN else 0)
-	window_mode.item_selected.connect(func(index: int) -> void: setting_changed.emit(&"window_mode", String(window_mode.get_item_metadata(index))))
-	_add_setting_row(content, "Window mode", window_mode)
-	_add_setting_toggle(content, "Use topology-derived 3D dungeons", settings.dungeon_3d, &"dungeon_3d")
-	_add_setting_toggle(content, "Classic exploration distance with visited outer tiles", settings.classic_exploration_visibility, &"classic_exploration_visibility")
+	], settings.typography_mode, &"typography_mode")
+	_bind_option(root.get_node("WindowModeRow/WindowModePicker") as OptionButton, [
+		{"label": "Windowed", "id": PresentationSettings.WINDOWED},
+		{"label": "Borderless fullscreen", "id": PresentationSettings.BORDERLESS_FULLSCREEN},
+	], settings.window_mode, &"window_mode")
+	_bind_toggle(root.get_node("Dungeon3d") as CheckButton, settings.dungeon_3d, &"dungeon_3d")
+	_bind_toggle(root.get_node("ClassicExplorationVisibility") as CheckButton, settings.classic_exploration_visibility, &"classic_exploration_visibility")
 
 
-func _build_audio_tab(parent: VBoxContainer, settings: PresentationSettings) -> void:
-	var content := _settings_panel(parent, "Audio", "Presentation audio never advances the simulation.")
-	var volume := HSlider.new()
-	volume.min_value = 0.0
-	volume.max_value = 1.0
-	volume.step = 0.05
-	volume.value = settings.master_volume
-	volume.tooltip_text = "Master volume %d%%" % int(round(settings.master_volume * 100.0))
-	volume.value_changed.connect(func(value: float) -> void: setting_changed.emit(&"master_volume", value))
-	_add_setting_row(content, "Master volume  •  %d%%" % int(round(settings.master_volume * 100.0)), volume)
-	var sound := HSlider.new()
-	sound.min_value = 0.0
-	sound.max_value = 1.0
-	sound.step = 0.05
-	sound.value = settings.sound_volume
-	sound.tooltip_text = "Sound effects volume %d%%" % int(round(settings.sound_volume * 100.0))
-	sound.value_changed.connect(func(value: float) -> void: setting_changed.emit(&"sound_volume", value))
-	_add_setting_row(content, "Sound effects  •  %d%%" % int(round(settings.sound_volume * 100.0)), sound)
-	var music := HSlider.new()
-	music.min_value = 0.0
-	music.max_value = 1.0
-	music.step = 0.05
-	music.value = settings.music_volume
-	music.tooltip_text = "Music volume %d%%" % int(round(settings.music_volume * 100.0))
-	music.value_changed.connect(func(value: float) -> void: setting_changed.emit(&"music_volume", value))
-	_add_setting_row(content, "Music  •  %d%%" % int(round(settings.music_volume * 100.0)), music)
-	_add_setting_toggle(content, "Music enabled", settings.music_enabled, &"music_enabled")
-	_add_setting_toggle(content, "Reduce Classic modal sounds", settings.reduced_sound, &"reduced_sound")
-	var playlist := Button.new()
-	playlist.name = "OpenMusicPlaylist"
-	playlist.text = "Open Music Playlist…"
-	playlist.tooltip_text = "Configure Castle's 20 context slots as Play, Continue, or Off."
-	playlist.pressed.connect(func() -> void: action_requested.emit(&"music_playlist", null))
-	content.add_child(playlist)
+func _bind_audio(settings: PresentationSettings) -> void:
+	var root := _workspace.get_node("SystemWorkspaceTabs/Audio/AudioSettingsScroll/AudioSettingsPanel/Content")
+	_bind_volume_row(root.get_node("MasterVolumeRow") as BoxContainer, "Master volume", settings.master_volume, &"master_volume")
+	_bind_volume_row(root.get_node("SoundVolumeRow") as BoxContainer, "Sound effects", settings.sound_volume, &"sound_volume")
+	_bind_volume_row(root.get_node("MusicVolumeRow") as BoxContainer, "Music", settings.music_volume, &"music_volume")
+	_bind_toggle(root.get_node("MusicEnabled") as CheckButton, settings.music_enabled, &"music_enabled")
+	_bind_toggle(root.get_node("ReducedSound") as CheckButton, settings.reduced_sound, &"reduced_sound")
+	_bind_action(root.get_node("OpenMusicPlaylist") as Button, func() -> void: action_requested.emit(&"music_playlist", null))
 
 
-func _build_accessibility_tab(parent: VBoxContainer, settings: PresentationSettings) -> void:
-	var content := _settings_panel(parent, "Accessibility", "Accessibility changes presentation only; Classic rules remain fixed.")
-	_add_setting_toggle(content, "Reduced motion", settings.reduced_motion, &"reduced_motion")
-	content.add_child(_label("Reduced motion settles combat feedback in one presentation frame without skipping committed events.", MUTED, 14))
+func _bind_volume_row(row: BoxContainer, title: String, value: float, setting_id: StringName) -> void:
+	_bind_label(row.get_node("Caption") as Label, "%s  •  %d%%" % [title, int(round(value * 100.0))], Color("e0e2e5"), 15)
+	var slider := row.get_child(1) as HSlider
+	_bind_slider(slider, value, setting_id)
+	slider.tooltip_text = "%s volume %d%%" % [title, int(round(value * 100.0))]
 
 
-func _build_pacing_tab(parent: VBoxContainer, settings: PresentationSettings) -> void:
-	var content := _settings_panel(parent, "Pacing", "Choose how long committed movement and animation remain on screen. Pacing never changes rules, turn order, movement points, or random results.")
-	var combat_speed := HSlider.new()
-	combat_speed.name = "CombatPlaybackSpeedSlider"
-	combat_speed.min_value = 25.0
-	combat_speed.max_value = 200.0
-	combat_speed.step = 25.0
-	combat_speed.tick_count = 8
-	combat_speed.ticks_on_borders = true
-	combat_speed.value = settings.combat_playback_speed_percent
-	combat_speed.tooltip_text = "%d%%  •  affects movement, attacks, projectiles, spells, and result holds" % settings.combat_playback_speed_percent
-	var combat_caption := _add_setting_row(content, "Combat & animation speed  •  %d%%" % settings.combat_playback_speed_percent, combat_speed)
-	combat_caption.name = "CombatPlaybackSpeedCaption"
-	combat_speed.value_changed.connect(func(value: float) -> void:
+func _bind_pacing(settings: PresentationSettings) -> void:
+	var root := _workspace.get_node("SystemWorkspaceTabs/Pacing/PacingSettingsScroll/PacingSettingsPanel/Content")
+	var combat := root.get_node("CombatSpeedRow/CombatPlaybackSpeedSlider") as HSlider
+	var combat_caption := root.get_node("CombatSpeedRow/CombatPlaybackSpeedCaption") as Label
+	_bind_label(combat_caption, "Combat & animation speed  •  %d%%" % settings.combat_playback_speed_percent, Color("e0e2e5"), 15)
+	_clear_value_changed_connections(combat)
+	combat.value = settings.combat_playback_speed_percent
+	combat.tooltip_text = "%d%%  •  affects movement, attacks, projectiles, spells, and result holds" % settings.combat_playback_speed_percent
+	combat.value_changed.connect(func(value: float) -> void:
 		var percent := int(value)
 		combat_caption.text = "Combat & animation speed  •  %d%%" % percent
-		combat_speed.tooltip_text = "%d%%  •  affects movement, attacks, projectiles, spells, and result holds" % percent
+		combat.tooltip_text = "%d%%  •  affects movement, attacks, projectiles, spells, and result holds" % percent
 		setting_changed.emit(&"combat_playback_speed_percent", percent)
 	)
-	content.add_child(_label("100% is the designed combat pace. Castle separated global speed from Hurry Spell Resolution; this single control applies consistently to every combat visual.", MUTED, 14))
-	var movement_speed := HSlider.new()
-	movement_speed.name = "ExplorationSpeedSlider"
-	movement_speed.min_value = 25.0
-	movement_speed.max_value = 400.0
-	movement_speed.step = 25.0
-	movement_speed.tick_count = 16
-	movement_speed.ticks_on_borders = true
-	movement_speed.value = settings.exploration_speed_percent
-	movement_speed.tooltip_text = "%d%%  •  %.3f seconds per held step" % [settings.exploration_speed_percent, HeldMovementControllerScript.BASE_INTERVAL_SECONDS * 100.0 / float(settings.exploration_speed_percent)]
-	var movement_caption := _add_setting_row(content, "Exploration travel speed  •  %d%%" % settings.exploration_speed_percent, movement_speed)
-	movement_caption.name = "ExplorationSpeedCaption"
-	movement_speed.value_changed.connect(func(value: float) -> void:
+	var movement := root.get_node("MovementSpeedRow/ExplorationSpeedSlider") as HSlider
+	var movement_caption := root.get_node("MovementSpeedRow/ExplorationSpeedCaption") as Label
+	_bind_label(movement_caption, "Exploration travel speed  •  %d%%" % settings.exploration_speed_percent, Color("e0e2e5"), 15)
+	_clear_value_changed_connections(movement)
+	movement.value = settings.exploration_speed_percent
+	movement.tooltip_text = "%d%%  •  %.3f seconds per held step" % [settings.exploration_speed_percent, HeldMovementControllerScript.BASE_INTERVAL_SECONDS * 100.0 / float(settings.exploration_speed_percent)]
+	movement.value_changed.connect(func(value: float) -> void:
 		var percent := int(value)
 		movement_caption.text = "Exploration travel speed  •  %d%%" % percent
-		movement_speed.tooltip_text = "%d%%  •  %.3f seconds per held step" % [percent, HeldMovementControllerScript.BASE_INTERVAL_SECONDS * 100.0 / float(percent)]
+		movement.tooltip_text = "%d%%  •  %.3f seconds per held step" % [percent, HeldMovementControllerScript.BASE_INTERVAL_SECONDS * 100.0 / float(percent)]
 		setting_changed.emit(&"exploration_speed_percent", percent)
 	)
 
 
-func _build_controls_tab(parent: VBoxContainer, settings: PresentationSettings) -> void:
-	var content := _settings_panel(parent, "Controls", "Keyboard and mouse controls remain fixed so prompts, shortcuts, and visible commands always agree.")
-	_add_setting_toggle(content, "Auto Switch To Melee Weapon", settings.auto_switch_to_melee, &"auto_switch_to_melee")
-	_add_setting_toggle(content, "Show travel preview on the exploration map", settings.show_exploration_minimap, &"show_exploration_minimap")
-	_add_setting_toggle(content, "Add eligible scenario text to Notes automatically", settings.autojournal_enabled, &"autojournal_enabled")
+func _bind_accessibility(settings: PresentationSettings) -> void:
+	var root := _workspace.get_node("SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content")
+	_bind_toggle(root.get_node("ReducedMotion") as CheckButton, settings.reduced_motion, &"reduced_motion")
+
+
+func _bind_controls(settings: PresentationSettings) -> void:
+	var root := _workspace.get_node("SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content")
+	_bind_toggle(root.get_node("AutoSwitchToMelee") as CheckButton, settings.auto_switch_to_melee, &"auto_switch_to_melee")
+	_bind_toggle(root.get_node("ShowExplorationMinimap") as CheckButton, settings.show_exploration_minimap, &"show_exploration_minimap")
+	_bind_toggle(root.get_node("AutojournalEnabled") as CheckButton, settings.autojournal_enabled, &"autojournal_enabled")
 	for entry: Dictionary in CONTROL_HELP:
-		_add_control_help(content, entry)
+		var card := root.get_node("ControlHelp%s" % String(entry["title"]).replace(" ", "")) as PanelContainer
+		var row := card.get_node("Row") as BoxContainer
+		_bind_label(row.get_node("Identity") as Label, "%s  •  %s" % [entry["title"], entry["keys"]], GOLD, 14)
+		_bind_label(row.get_node("Detail") as Label, String(entry["detail"]), MUTED, 13)
+		(row.get_node("Identity") as Label).custom_minimum_size.x = 0.0 if _layout_profile == UiLayoutProfile.COMPACT else 330.0
 
 
-func _build_diagnostics_tab(parent: VBoxContainer, settings: PresentationSettings) -> void:
-	var content := _settings_panel(parent, "Diagnostics", "Developer overlays expose detached topology facts without becoming gameplay authority.")
-	_add_setting_toggle(content, "Show APs and random rectangles on map", settings.topology_debug, &"topology_debug")
-	content.add_child(_label("Gold diamonds mark placed Action Points and gold outlines show effective random encounter rectangles. Movement and visibility facts come from the same authoritative map model.", MUTED, 14))
+func _bind_diagnostics(settings: PresentationSettings) -> void:
+	var root := _workspace.get_node("SystemWorkspaceTabs/Diagnostics/DiagnosticsSettingsScroll/DiagnosticsSettingsPanel/Content")
+	_bind_toggle(root.get_node("TopologyDebug") as CheckButton, settings.topology_debug, &"topology_debug")
 
 
-func _settings_panel(parent: VBoxContainer, title: String, description: String) -> VBoxContainer:
-	var scroll := ScrollContainer.new()
-	scroll.name = "%sSettingsScroll" % title.replace(" ", "")
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	parent.add_child(scroll)
-	var panel := PanelContainer.new()
-	panel.name = "%sSettingsPanel" % title.replace(" ", "")
-	panel.theme_type_variation = &"ClassicInset"
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(panel)
-	var content := VBoxContainer.new()
-	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	content.add_theme_constant_override("separation", 10)
-	panel.add_child(content)
-	var heading := _label(title, GOLD, 20)
-	heading.theme_type_variation = &"ClassicHeading"
-	content.add_child(heading)
-	content.add_child(_label(description, MUTED, 14))
-	content.add_child(HSeparator.new())
-	return content
+func _bind_option(picker: OptionButton, entries: Array[Dictionary], selected_id: String, setting_id: StringName) -> void:
+	_clear_item_selected_connections(picker)
+	picker.clear()
+	for entry: Dictionary in entries:
+		picker.add_item(entry["label"])
+		picker.set_item_metadata(picker.item_count - 1, entry["id"])
+		if entry["id"] == selected_id:
+			picker.select(picker.item_count - 1)
+	picker.item_selected.connect(func(index: int) -> void: setting_changed.emit(setting_id, String(picker.get_item_metadata(index))))
 
 
-func _add_control_help(parent: Container, entry: Dictionary) -> void:
-	var card := PanelContainer.new()
-	card.name = "ControlHelp%s" % String(entry["title"]).replace(" ", "")
-	card.theme_type_variation = &"ClassicInset"
-	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	parent.add_child(card)
-	var row := BoxContainer.new()
-	row.vertical = _layout_profile == UiLayoutProfile.COMPACT
-	row.add_theme_constant_override("separation", 8)
-	card.add_child(row)
-	var identity := _label("%s  •  %s" % [entry["title"], entry["keys"]], GOLD, 14)
-	identity.custom_minimum_size.x = 0.0 if row.vertical else 330.0
-	row.add_child(identity)
-	var detail := _label(String(entry["detail"]), MUTED, 13)
-	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(detail)
+func _bind_slider(slider: Range, value: float, setting_id: StringName) -> void:
+	_clear_value_changed_connections(slider)
+	slider.value = value
+	slider.value_changed.connect(func(changed_value: float) -> void: setting_changed.emit(setting_id, changed_value))
 
 
-func _add_setting_row(parent: Container, label: String, control: Control) -> Label:
-	var card := PanelContainer.new()
-	card.theme_type_variation = &"ClassicInset"
-	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	parent.add_child(card)
-	var row := BoxContainer.new()
-	row.vertical = _layout_profile == UiLayoutProfile.COMPACT
-	row.add_theme_constant_override("separation", 10)
-	card.add_child(row)
-	var caption := _label(label, Color("e0e2e5"), 15)
-	caption.custom_minimum_size.x = 0.0 if row.vertical else 230.0
-	row.add_child(caption)
-	control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(control)
-	return caption
-
-
-func _tab(tabs: TabContainer, tab_name: String) -> VBoxContainer:
-	var tab := VBoxContainer.new()
-	tab.name = tab_name
-	tab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	tab.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	tab.add_theme_constant_override("separation", 6)
-	tabs.add_child(tab)
-	return tab
-
-
-func _pane(parent: HBoxContainer, pane_name: String, title: String, ratio: float) -> VBoxContainer:
-	var panel := PanelContainer.new()
-	panel.name = pane_name
-	panel.theme_type_variation = &"ClassicInset"
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	panel.size_flags_stretch_ratio = ratio
-	parent.add_child(panel)
-	var content := VBoxContainer.new()
-	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	content.add_theme_constant_override("separation", 5)
-	panel.add_child(content)
-	var heading := _label(title, GOLD, 18)
-	heading.theme_type_variation = &"ClassicHeading"
-	content.add_child(heading)
-	return content
-
-
-func _scroll(node_name: String) -> ScrollContainer:
-	var scroll := ScrollContainer.new()
-	scroll.name = node_name
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	return scroll
-
-
-func _add_action(parent: Container, label: String, action_id: StringName, value: Variant) -> Button:
-	var button := Button.new()
-	button.text = label
-	button.custom_minimum_size.y = 38.0
-	if not action_id.is_empty():
-		button.pressed.connect(func() -> void: action_requested.emit(action_id, value))
-	parent.add_child(button)
-	return button
-
-
-func _add_card(parent: Container, title: String, subtitle: String, detail: String) -> void:
-	var panel := PanelContainer.new()
-	panel.theme_type_variation = &"ClassicInset"
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 3)
-	panel.add_child(column)
-	column.add_child(_label(title, GOLD, 16))
-	if not subtitle.is_empty(): column.add_child(_label(subtitle, MUTED, 13))
-	if not detail.is_empty(): column.add_child(_label(detail, Color.WHITE, 14))
-	parent.add_child(panel)
-
-
-func _add_setting_toggle(parent: Container, label: String, enabled: bool, setting_id: StringName) -> void:
-	var card := PanelContainer.new()
-	card.theme_type_variation = &"ClassicInset"
-	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	parent.add_child(card)
-	var toggle := CheckButton.new()
-	toggle.name = String(setting_id).to_pascal_case()
-	toggle.text = label
+func _bind_toggle(toggle: CheckButton, enabled: bool, setting_id: StringName) -> void:
+	_clear_toggled_connections(toggle)
 	toggle.button_pressed = enabled
 	toggle.toggled.connect(func(value: bool) -> void: setting_changed.emit(setting_id, value))
-	card.add_child(toggle)
 
 
-func _label(text: String, color: Color, size: int) -> Label:
-	var result := Label.new()
-	result.text = text
-	result.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	result.add_theme_color_override("font_color", color)
-	result.add_theme_font_size_override("font_size", size)
-	return result
+func _bind_action(button: Button, action: Callable) -> void:
+	_clear_pressed_connections(button)
+	button.custom_minimum_size.y = 38.0
+	button.pressed.connect(action)
 
 
-func _clear(parent: Container) -> void:
+static func _bind_label(label: Label, text: String, color: Color, size: int) -> void:
+	label.text = text
+	label.add_theme_color_override("font_color", color)
+	label.add_theme_font_size_override("font_size", size)
+
+
+static func _clear_pressed_connections(button: Button) -> void:
+	for connection: Dictionary in button.pressed.get_connections():
+		button.pressed.disconnect(connection["callable"] as Callable)
+
+
+static func _clear_toggled_connections(button: BaseButton) -> void:
+	for connection: Dictionary in button.toggled.get_connections():
+		button.toggled.disconnect(connection["callable"] as Callable)
+
+
+static func _clear_item_selected_connections(picker: OptionButton) -> void:
+	for connection: Dictionary in picker.item_selected.get_connections():
+		picker.item_selected.disconnect(connection["callable"] as Callable)
+
+
+static func _clear_value_changed_connections(control: Range) -> void:
+	for connection: Dictionary in control.value_changed.get_connections():
+		control.value_changed.disconnect(connection["callable"] as Callable)
+
+
+static func _clear_text_changed_connections(control: LineEdit) -> void:
+	for connection: Dictionary in control.text_changed.get_connections():
+		control.text_changed.disconnect(connection["callable"] as Callable)
+
+
+static func _clear(parent: Node) -> void:
 	for child: Node in parent.get_children():
 		parent.remove_child(child)
 		child.queue_free()

@@ -94,13 +94,6 @@
       "functions": ["_add_money_intent_action", "_add_section_heading", "_add_wealth_record", "_build_party_pane", "_build_pool_pane", "_build_swap_pane", "_build_transfer_row", "_character_picker", "_label", "_pane", "_pane_column", "_render_location_services", "_render_money_screen", "_wealth_chip"]
     },
     {
-      "path": "src/ui/controllers/system_screen_controller.gd",
-      "kind": "request-workspace",
-      "reason": "The System scene hosts tabs whose settings, saves, controls, and save-and-quit mode depend on current host state.",
-      "currentMaximum": 32,
-      "functions": ["_add_action", "_add_card", "_add_control_help", "_add_header", "_add_setting_row", "_add_setting_toggle", "_build_audio_tab", "_build_display_tab", "_build_new_save_row", "_build_save_footer", "_build_save_tab", "_label", "_pane", "_refresh_save_detail", "_scroll", "_settings_panel", "_tab", "present"]
-    },
-    {
       "path": "src/ui/dungeon_map_3d_presenter.gd",
       "kind": "algorithmic-surface",
       "reason": "The first-person dungeon creates a render-target display paired with its generated three-dimensional scene.",
