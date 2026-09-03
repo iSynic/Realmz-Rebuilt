@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://c4lmfeiqvh15e" path="res://src/app/realmz_application.gd" id="1_application"]
 [ext_resource type="Script" uid="uid://cx16ce4so2bne" path="res://src/ui/classic_map_presenter.gd" id="2_gxxd3"]
 [ext_resource type="PackedScene" path="res://src/ui/interaction_presenter.tscn" id="3_uarpi"]
-[ext_resource type="PackedScene" path="res://src/ui/classic_application_shell.tscn" id="4_shell"]
+[ext_resource type="PackedScene" path="res://src/ui/game_shell.tscn" id="4_shell"]
 [ext_resource type="Script" uid="uid://3njyl4c48r3i" path="res://src/ui/classic_audio_presenter.gd" id="5_lvslj"]
 [ext_resource type="Texture2D" path="res://src/ui/assets/ui/classic-charcoal-slate-tile.png" id="6_stone"]
 [ext_resource type="Theme" path="res://src/ui/classic_ui_theme.tres" id="7_theme"]
@@ -80,7 +80,7 @@ grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("2_gxxd3")
 
-[node name="ClassicShell" parent="." unique_id=387710786 instance=ExtResource("4_shell")]
+[node name="GameShell" parent="." unique_id=387710786 instance=ExtResource("4_shell")]
 
 [node name="InteractionPanel" parent="." instance=ExtResource("3_uarpi")]
 

@@ -3,7 +3,7 @@ extends SceneTree
 const PackageRepositoryScript := preload("res://src/storage/packages/package_repository.gd")
 const CharacterVaultRepositoryScript := preload("res://src/storage/characters/character_vault_repository.gd")
 const CharacterVaultControllerScript := preload("res://src/app/controllers/character_vault_controller.gd")
-const ShellScene := preload("res://src/ui/classic_application_shell.tscn")
+const ShellScene := preload("res://src/ui/game_shell.tscn")
 const VAULT_PATH := "user://realmz2-tests/runtime-performance-vault"
 
 
@@ -36,7 +36,7 @@ func _initialize() -> void:
 	if route.is_empty() or not _place_party(session, loaded.content, map.id, route["coordinates"][0], 4096):
 		printerr("MOVEMENT_ROUTE_REJECTED"); call_deferred("_quit_cleanly", 1); return
 	var vault_result := _measure_vault_import(loaded.content)
-	var shell := ShellScene.instantiate() as ClassicApplicationShell
+	var shell := ShellScene.instantiate() as GameShell
 	var map_presenter := ClassicMapPresenter.new()
 	root.size = viewport_size; root.add_child(shell); root.add_child(map_presenter)
 	var viewport_scale := Vector2(viewport_size) / Vector2(1280, 720)

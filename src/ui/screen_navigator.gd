@@ -1,4 +1,4 @@
-class_name ClassicScreenRouter
+class_name ScreenNavigator
 extends Control
 
 signal screen_changed(screen_id: StringName)
@@ -27,7 +27,7 @@ var _screen_id: StringName = &"exploration"
 var _body_scroll: ScrollContainer
 var _body: VBoxContainer
 var _body_frame: PanelContainer
-var _workspace_view: ClassicRouteScreen
+var _workspace_view: ScreenFrame
 var _route_history: Array[StringName] = []
 var _route_transition_revision: int = 0
 var _focus_keys: Dictionary = {}
@@ -251,7 +251,7 @@ func set_layout_profile(profile: UiLayoutProfile, viewport_size: Vector2, origin
 	_full_height_workspace_rect = Rect2(origin + Vector2(0.0, top), Vector2(maxf(320.0, viewport_size.x - profile.party_width), maxf(220.0, viewport_size.y - top)))
 	_application_workspace_rect = Rect2(origin + Vector2(0.0, top), Vector2(maxf(320.0, viewport_size.x), maxf(220.0, viewport_size.y - top)))
 	_modal_layout_rect = Rect2(origin + Vector2(12.0, top + 8.0), Vector2(maxf(320.0, viewport_size.x - 24.0), maxf(300.0, viewport_size.y - top - 16.0)))
-	_campaign_layout_rect = ClassicScreenRouter.campaign_rect_for(profile, viewport_size, origin)
+	_campaign_layout_rect = ScreenNavigator.campaign_rect_for(profile, viewport_size, origin)
 	_setup_layout_rect = _modal_layout_rect
 	if setup_controller.setup_overlay != null:
 		setup_controller.apply_layout(profile, _campaign_layout_rect, _setup_layout_rect)
@@ -417,7 +417,7 @@ func primary_workspace_id() -> StringName:
 func mounted_primary_workspace_count() -> int:
 	var count := 0
 	for child: Node in _workspace_host.get_children():
-		if child is ClassicRouteScreen:
+		if child is ScreenFrame:
 			count += 1
 	return count
 
@@ -470,7 +470,7 @@ func _mount_workspace(screen_id: StringName) -> void:
 	if scene == null:
 		push_error("Missing Classic route scene for %s" % screen_id)
 		return
-	_workspace_view = scene.instantiate() as ClassicRouteScreen
+	_workspace_view = scene.instantiate() as ScreenFrame
 	_workspace_view.name = "WorkspaceFrame"
 	_workspace_view.back_requested.connect(func() -> void: handle_back())
 	_workspace_host.add_child(_workspace_view)

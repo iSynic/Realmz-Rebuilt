@@ -1,13 +1,13 @@
 class_name StartupRouteBridge
 extends Node
 
-@onready var _shell: ClassicApplicationShell = get_parent().get_node("ClassicShell") as ClassicApplicationShell
+@onready var _shell: GameShell = get_parent().get_node("GameShell") as GameShell
 
 
 func _enter_tree() -> void:
 	var application := get_parent()
 	if bool(application.get_meta(&"startup_splash_suppressed", false)):
-		var router := application.get_node("ClassicShell/ScreenRouter") as ClassicScreenRouter
+		var router := application.get_node("GameShell/ScreenNavigator") as ScreenNavigator
 		router.set_startup_splash_enabled(false)
 
 

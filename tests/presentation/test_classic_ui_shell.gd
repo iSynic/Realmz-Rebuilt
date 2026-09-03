@@ -51,7 +51,7 @@ func _test_classic_click_modal() -> void:
 
 
 func _test_startup_party_setup_composition() -> void:
-	var router := ClassicScreenRouter.new()
+	var router := ScreenNavigator.new()
 	(Engine.get_main_loop() as SceneTree).root.add_child(router)
 	router.initialize()
 	var profile := UiLayoutProfile.for_viewport(Vector2(1280, 720), PresentationSettings.UI_SCALE_AUTO)
@@ -86,7 +86,7 @@ func _test_startup_party_setup_composition() -> void:
 
 
 func _test_package_operation_presentation() -> void:
-	var router := ClassicScreenRouter.new()
+	var router := ScreenNavigator.new()
 	(Engine.get_main_loop() as SceneTree).root.add_child(router)
 	router.initialize()
 	var canceled := [0]
@@ -104,7 +104,7 @@ func _test_package_operation_presentation() -> void:
 
 
 func _test_primary_workspace_lifecycle() -> void:
-	var router := ClassicScreenRouter.new(); (Engine.get_main_loop() as SceneTree).root.add_child(router)
+	var router := ScreenNavigator.new(); (Engine.get_main_loop() as SceneTree).root.add_child(router)
 	router.initialize()
 	var view := GameView.new(1, true, null)
 	view.campaign_id = "workspace-fixture"
@@ -118,7 +118,7 @@ func _test_primary_workspace_lifecycle() -> void:
 		assert_equal(router.current_screen(), route_id, "route selection commits the requested primary workspace")
 		assert_equal(router.primary_workspace_id(), route_id, "the mounted scene and route registry cannot diverge")
 		assert_equal(router.mounted_primary_workspace_count(), 1, "a route transition leaves exactly one primary workspace mounted")
-		assert_equal(router.primary_workspace_visible(), route_id not in [&"exploration", &"combat"], "only spatial play routes suppress their explanatory workspace body"); var route_back := router.find_child("RouteBackAction", true, false) as Button; var spell_screen := router.find_child("WorkspaceFrame", true, false) as ClassicRouteScreen if route_id == &"spells" else null; var context_actions := spell_screen.context_action_control() if spell_screen != null else null; var spell_title := spell_screen.find_child("ScreenTitle", true, false) as Control if spell_screen != null else null; var header_rule := spell_screen.find_child("HeaderRule", true, false) as Control if spell_screen != null else null; var inventory_done := router.find_child("InventoryDone", true, false) as Button if route_id == &"inventory" else null; var inventory_record := router.find_child("InventoryItemInspector", true, false) as Control if route_id == &"inventory" else null; assert_true(route_back != null and route_back.visible == (route_id not in [&"exploration", &"combat", &"vault", &"inventory"]) and (route_id != &"spells" or router.find_child("WorkspaceFooter", true, false) != null and context_actions != null and spell_title != null and not spell_title.visible and header_rule != null and not header_rule.visible) and (route_id != &"inventory" or inventory_done != null and inventory_done.visible and inventory_record != null and inventory_record.is_ancestor_of(inventory_done) and router.find_child("WorkspaceFooter", true, false) == null) and (route_id != &"character" or _buttons_in(router.find_child("CharacterPicker", true, false)).any(func(button: Button) -> bool: return button.text == "Mage" and button.button_pressed)), "route %s keeps one task-appropriate visible Done or Back action, integrates Inventory Done into its record, opens the current Character, and gives Spells a fixed action footer without a redundant route heading" % route_id)
+		assert_equal(router.primary_workspace_visible(), route_id not in [&"exploration", &"combat"], "only spatial play routes suppress their explanatory workspace body"); var route_back := router.find_child("RouteBackAction", true, false) as Button; var spell_screen := router.find_child("WorkspaceFrame", true, false) as ScreenFrame if route_id == &"spells" else null; var context_actions := spell_screen.context_action_control() if spell_screen != null else null; var spell_title := spell_screen.find_child("ScreenTitle", true, false) as Control if spell_screen != null else null; var header_rule := spell_screen.find_child("HeaderRule", true, false) as Control if spell_screen != null else null; var inventory_done := router.find_child("InventoryDone", true, false) as Button if route_id == &"inventory" else null; var inventory_record := router.find_child("InventoryItemInspector", true, false) as Control if route_id == &"inventory" else null; assert_true(route_back != null and route_back.visible == (route_id not in [&"exploration", &"combat", &"vault", &"inventory"]) and (route_id != &"spells" or router.find_child("WorkspaceFooter", true, false) != null and context_actions != null and spell_title != null and not spell_title.visible and header_rule != null and not header_rule.visible) and (route_id != &"inventory" or inventory_done != null and inventory_done.visible and inventory_record != null and inventory_record.is_ancestor_of(inventory_done) and router.find_child("WorkspaceFooter", true, false) == null) and (route_id != &"character" or _buttons_in(router.find_child("CharacterPicker", true, false)).any(func(button: Button) -> bool: return button.text == "Mage" and button.button_pressed)), "route %s keeps one task-appropriate visible Done or Back action, integrates Inventory Done into its record, opens the current Character, and gives Spells a fixed action footer without a redundant route heading" % route_id)
 	assert_equal(entered, [&"character", &"inventory", &"spells", &"services", &"journal", &"system", &"vault", &"exploration", &"combat"], "each primary transition publishes exactly one entered route after replacing the prior workspace"); router.open_screen(&"system"); var media := ClassicMediaCatalog.new(null, ApplicationMediaCatalog.new()); router.set_media_catalog(media); var retained_system_tabs := router.find_child("SystemWorkspaceTabs", true, false); router.set_media_catalog(media); assert_true(retained_system_tabs != null and router.find_child("SystemWorkspaceTabs", true, false) == retained_system_tabs, "reusing one effective media catalog preserves the mounted route content instead of rebuilding it during ordinary movement events"); (router.find_child("RouteBackAction", true, false) as Button).pressed.emit(); assert_equal(router.current_screen(), &"combat", "the persistent route Back action follows the same history path as Escape")
 	var setup_view := GameView.new(2, true, null); setup_view.campaign_summary = CampaignSummaryView.new(); setup_view.campaign_summary.campaign_id = "workspace-fixture"; setup_view.campaign_summary.title = "Workspace Scenario"; setup_view.campaign_summary.version = "6.0.0"; setup_view.campaign_summary.author = "Fantasoft"; setup_view.campaign_summary.restriction_description = "Up to six adventurers."; setup_view.campaign_summary.recommended_party_levels = 18; setup_view.campaign_summary.guidance_authored = true
 	setup_view.party_setup_available = true

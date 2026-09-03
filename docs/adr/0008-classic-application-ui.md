@@ -12,7 +12,7 @@ Castle is the behavioral and workflow oracle. Existing Remake scenes and assets 
 
 ## Decision
 
-Use a scene-backed `ClassicApplicationShell` with a presentation-owned `ClassicScreenRouter` and `InteractionPresenter`. Presenters consume detached `GameView` read models and emit typed intents or request-matched responses. Presentation selection, focus, menus, scrolling, animation, audio, and gallery state never enter `GameSession`.
+Use a scene-backed `GameShell` with a presentation-owned `ScreenNavigator` and `InteractionPresenter`. Presenters consume detached `GameView` read models and emit typed intents or request-matched responses. Presentation selection, focus, menus, scrolling, animation, audio, and gallery state never enter `GameSession`.
 
 The shell preserves Classic information hierarchy and pacing while using responsive containers, keyboard focus, explicit disabled reasons, and accessibility settings. A typed-fixture gallery is the first screen-completeness gate. The old procedural shell was removed after route parity rather than exposed as a second user-facing mode.
 

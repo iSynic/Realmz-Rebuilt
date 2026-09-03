@@ -9,7 +9,7 @@ Own route-local UI state and temporary dynamic control construction behind typed
 - Controllers receive an explicit target container and detached values; they never receive `GameSession`, repositories, or the owning router.
 - Controllers emit typed intents, host actions, or presentation-setting changes. They never mutate gameplay state.
 - Controller scripts reached by the background application graph must not script-preload imported textures or themes; resolve those resources only while constructing controller-owned controls on the main thread.
-- `ClassicScreenRouter` alone mounts primary workspaces and restores route focus.
+- `ScreenNavigator` alone mounts primary workspaces and restores route focus.
 - `ClassicWorkspacePresenter` owns route-local controller composition, detached route state, content rendering, and route-specific audio. The router supplies the mounted route body and navigation-owned back label; it does not render domain content.
 - A controller may preserve selection, filtering, sorting, tabs, and draft text for its own route only.
 - Application-route controllers own compact task-specific character selection inside their routed workspace. They do not depend on roster-row interaction, and item-local operations such as Trade keep their exact source item and recipient choices together.

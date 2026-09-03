@@ -16,13 +16,13 @@ const CLASSIC_CHARACTER_LIBRARY_PATH := "res://src/storage/characters/realmz-cla
 const CLASSIC_CHARACTER_LIBRARY_ID := "realmz-classic-character-library"
 const CLASSIC_CHARACTER_LIBRARY_HASH := "c7e093f46bcca49d2382d68c2995ae5ff90c0e706dbd538682b613af9b80e0bd"
 
-@onready var _status_label: Label = $ClassicShell/BottomRegion/BottomRow/NarrativeWell/NarrativeColumn/Facts/Status
-@onready var _smoke_button: Button = $ClassicShell/SmokeAction
+@onready var _status_label: Label = $GameShell/BottomRegion/BottomRow/NarrativeWell/NarrativeColumn/Facts/Status
+@onready var _smoke_button: Button = $GameShell/SmokeAction
 @onready var _map_presenter: ClassicMapPresenter = %ExplorationMap
 @onready var _battlefield_presenter: ClassicBattlefieldPresenter = %BattlefieldMap
 @onready var _interaction_presenter: InteractionPresenter = %InteractionPanel
-@onready var _shell_presenter: ClassicApplicationShell = $ClassicShell
-@onready var _classic_shell: ClassicApplicationShell = $ClassicShell
+@onready var _shell_presenter: GameShell = $GameShell
+@onready var _game_shell: GameShell = $GameShell
 @onready var _audio_presenter: ClassicAudioPresenter = %ClassicAudio
 
 var session_controller: GameSessionController
@@ -130,7 +130,7 @@ func _ready() -> void:
 	_audio_presenter.set_music_volume(_presentation_settings.music_volume)
 	_on_topology_debug_changed(_presentation_settings.topology_debug)
 	_on_dungeon_3d_changed(_presentation_settings.dungeon_3d)
-	_classic_shell.set_standalone_character_creation_available(false, "Loading the built-in Classic definitions…"); call_deferred("_begin_classic_character_library_load")
+	_game_shell.set_standalone_character_creation_available(false, "Loading the built-in Classic definitions…"); call_deferred("_begin_classic_character_library_load")
 	_status_label.text = "Pure session boundary online"
 	_refresh_campaigns()
 	_refresh_vault_views()
@@ -400,7 +400,7 @@ func accepts_route_input() -> bool:
 		return false
 	if presentation_coordinator.is_combat_playback_active() or _interaction_presenter.has_blocking_request():
 		return false
-	return ClassicApplicationShell.route_change_reason(session_controller.view()).is_empty()
+	return GameShell.route_change_reason(session_controller.view()).is_empty()
 
 
 func accepts_exploration_input() -> bool:
@@ -863,12 +863,12 @@ func _publish_character_revision(character_id: String) -> bool:
 
 
 func _refresh_vault_views() -> void:
-	_classic_shell.set_vault_revisions(_vault_host.revisions(_active_content, _character_library_content))
+	_game_shell.set_vault_revisions(_vault_host.revisions(_active_content, _character_library_content))
 
 
 func _begin_classic_character_library_load() -> void:
 	if not _package_host.start_bundled_load(CLASSIC_CHARACTER_LIBRARY_PATH, CLASSIC_CHARACTER_LIBRARY_ID, CLASSIC_CHARACTER_LIBRARY_HASH):
-		_character_library_load_complete = true; _classic_shell.set_standalone_character_creation_available(false, "The built-in Classic definitions could not start loading.")
+		_character_library_load_complete = true; _game_shell.set_standalone_character_creation_available(false, "The built-in Classic definitions could not start loading.")
 
 
 func _poll_classic_character_library_load() -> void:
@@ -878,11 +878,11 @@ func _poll_classic_character_library_load() -> void:
 	if prepared == null: return
 	_character_library_load_complete = true
 	if not prepared.is_ok():
-		_classic_shell.set_standalone_character_creation_available(false, prepared.error_message); _shell_presenter.set_status("Character Files creation unavailable • %s" % prepared.error_message, true)
+		_game_shell.set_standalone_character_creation_available(false, prepared.error_message); _shell_presenter.set_status("Character Files creation unavailable • %s" % prepared.error_message, true)
 	else:
 		_character_library_content = prepared.content; _character_library_media = prepared.media; _package_host.set_application_content(_character_library_content, _character_library_media.assets())
 		presentation_coordinator.set_application_character_media(_character_library_media); presentation_coordinator.set_package_media(_character_library_media); _vault_host.seed_classic_starters_if_empty()
-		_classic_shell.set_standalone_character_creation_available(true); _refresh_vault_views()
+		_game_shell.set_standalone_character_creation_available(true); _refresh_vault_views()
 	if _pending_prepared_package != null:
 		var pending := _pending_prepared_package; _pending_prepared_package = null; _complete_package_install(pending, _pending_package_seed)
 
@@ -900,7 +900,7 @@ func _begin_standalone_character_creation() -> void:
 		return
 	presentation_coordinator.set_package_media(_character_library_media)
 	presentation_coordinator.present_host_workflow(_character_creation_host.view(), step)
-	_classic_shell.begin_standalone_character_creation()
+	_game_shell.begin_standalone_character_creation()
 	_shell_presenter.set_status("Create a reusable character with the built-in Realmz races and classes.")
 
 
@@ -938,11 +938,11 @@ func _publish_standalone_character_revision() -> void:
 
 func _finish_standalone_character_creation(status: String) -> void:
 	_character_creation_host.finish()
-	_classic_shell.finish_standalone_character_creation()
+	_game_shell.finish_standalone_character_creation()
 	presentation_coordinator.set_package_media(_character_library_media)
 	presentation_coordinator.refresh()
 	_refresh_vault_views()
-	_classic_shell.show_campaign_selection()
+	_game_shell.show_campaign_selection()
 	_shell_presenter.set_status(status)
 
 

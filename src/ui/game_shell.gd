@@ -1,4 +1,4 @@
-class_name ClassicApplicationShell
+class_name GameShell
 extends Control
 
 signal start_package_requested(path: String, seed: int)
@@ -93,7 +93,7 @@ const JOURNAL_STATUS_TEXTURE_PATH := "res://src/ui/assets/ui/status/journal-stat
 @onready var _command_grid: GridContainer = %CommandGrid
 @onready var _effects_panel: PanelContainer = %EffectsPanel
 @onready var _effects_grid: GridContainer = %EffectsGrid
-@onready var _router: ClassicScreenRouter = %ScreenRouter
+@onready var _navigator: ScreenNavigator = %ScreenNavigator
 @onready var _smoke_action: Button = %SmokeAction
 @onready var _activity_indicator: PanelContainer = %ActivityIndicator
 @onready var _activity_icon: TextureRect = %ActivityIcon
@@ -145,18 +145,18 @@ func _ready() -> void:
 	_music_dialog.music_enabled_changed.connect(func(enabled: bool) -> void: music_enabled_changed.emit(enabled))
 	_music_dialog.music_volume_changed.connect(func(value: float) -> void: music_volume_changed.emit(value))
 	_music_dialog.playlist_mode_changed.connect(func(playlist_id: int, mode: int) -> void: music_playlist_mode_changed.emit(playlist_id, mode))
-	_router.start_requested.connect(func(path: String, seed: int) -> void: start_package_requested.emit(path, seed))
-	_router.cancel_package_requested.connect(func() -> void: cancel_package_requested.emit())
-	_router.refresh_requested.connect(func() -> void: refresh_campaigns_requested.emit())
-	_router.intent_submitted.connect(func(intent: PlayerIntent) -> void: intent_submitted.emit(intent))
-	_router.vault_archive_requested.connect(func(character_id: String) -> void: vault_archive_requested.emit(character_id))
-	_router.vault_restore_requested.connect(func(character_id: String, revision_hash: String) -> void: vault_restore_requested.emit(character_id, revision_hash))
-	_router.presentation_sound_requested.connect(func(sound_id: int, wait_for_completion: bool, stop_existing: bool, reduced_sound_eligible: bool) -> void: presentation_sound_requested.emit(sound_id, wait_for_completion, stop_existing, reduced_sound_eligible))
-	_router.standalone_character_creation_requested.connect(func() -> void: standalone_character_creation_requested.emit())
-	_router.standalone_character_creation_cancelled.connect(func() -> void: standalone_character_creation_cancelled.emit())
-	_router.screen_changed.connect(_on_screen_changed)
-	_router.system_action_requested.connect(_on_system_action_requested)
-	_router.presentation_setting_changed.connect(_on_presentation_setting_changed)
+	_navigator.start_requested.connect(func(path: String, seed: int) -> void: start_package_requested.emit(path, seed))
+	_navigator.cancel_package_requested.connect(func() -> void: cancel_package_requested.emit())
+	_navigator.refresh_requested.connect(func() -> void: refresh_campaigns_requested.emit())
+	_navigator.intent_submitted.connect(func(intent: PlayerIntent) -> void: intent_submitted.emit(intent))
+	_navigator.vault_archive_requested.connect(func(character_id: String) -> void: vault_archive_requested.emit(character_id))
+	_navigator.vault_restore_requested.connect(func(character_id: String, revision_hash: String) -> void: vault_restore_requested.emit(character_id, revision_hash))
+	_navigator.presentation_sound_requested.connect(func(sound_id: int, wait_for_completion: bool, stop_existing: bool, reduced_sound_eligible: bool) -> void: presentation_sound_requested.emit(sound_id, wait_for_completion, stop_existing, reduced_sound_eligible))
+	_navigator.standalone_character_creation_requested.connect(func() -> void: standalone_character_creation_requested.emit())
+	_navigator.standalone_character_creation_cancelled.connect(func() -> void: standalone_character_creation_cancelled.emit())
+	_navigator.screen_changed.connect(_on_screen_changed)
+	_navigator.system_action_requested.connect(_on_system_action_requested)
+	_navigator.presentation_setting_changed.connect(_on_presentation_setting_changed)
 	_party_roster.character_selected.connect(_on_character_selected)
 	_party_roster.character_activated.connect(_on_character_activated)
 	_party_roster.combat_auto_changed.connect(_on_combat_auto_changed)
@@ -208,7 +208,7 @@ func present(game_view: GameView) -> void:
 		_effects_panel.visible = false
 		_refresh_effect_slots()
 		_party_roster.present(game_view)
-		_router.present(game_view)
+		_navigator.present(game_view)
 		_set_play_regions_visible(false)
 		_build_menus()
 		_update_command_availability()
@@ -232,12 +232,12 @@ func present(game_view: GameView) -> void:
 	# second set of rows and portrait work with no visible result.
 	if not game_view.party_setup_available:
 		_party_roster.present(game_view, _selected_character_id)
-	_router.present(game_view)
-	var play_regions_visible := not _router.full_stage_overlay_visible()
+	_navigator.present(game_view)
+	var play_regions_visible := not _navigator.full_stage_overlay_visible()
 	_set_play_regions_visible(play_regions_visible)
-	var automatic_route := automatic_workflow_route(_router.current_screen(), game_view, contextual_service_closed)
-	if automatic_route != _router.current_screen():
-		_router.open_screen(automatic_route, false)
+	var automatic_route := automatic_workflow_route(_navigator.current_screen(), game_view, contextual_service_closed)
+	if automatic_route != _navigator.current_screen():
+		_navigator.open_screen(automatic_route, false)
 	_build_menus()
 	_rebuild_command_deck()
 
@@ -268,16 +268,16 @@ static func location_fact_text(game_view: GameView) -> String:
 
 
 func set_save_previews(previews: Array[SaveSlotPreview]) -> void:
-	_router.set_save_previews(previews)
+	_navigator.set_save_previews(previews)
 
 
 func show_save_and_quit_workspace() -> void:
-	_router.set_save_and_quit_mode(true)
-	_router.open_screen(&"system")
+	_navigator.set_save_and_quit_mode(true)
+	_navigator.open_screen(&"system")
 
 
 func set_save_and_quit_mode(enabled: bool) -> void:
-	_router.set_save_and_quit_mode(enabled)
+	_navigator.set_save_and_quit_mode(enabled)
 
 
 func show_activity_indicator(kind: StringName) -> void:
@@ -360,7 +360,7 @@ func set_package_media(media: ClassicMediaCatalog) -> void:
 	_media = media
 	_effect_texture_cache.clear()
 	_party_roster.set_media_catalog(media)
-	_router.set_media_catalog(media)
+	_navigator.set_media_catalog(media)
 	_refresh_effect_slots()
 
 
@@ -399,7 +399,7 @@ func apply_settings(settings: PresentationSettings) -> void:
 	var base_theme := load("res://src/ui/classic_ui_theme.tres") as Theme
 	theme = ClassicTypography.themed_copy(base_theme, settings)
 	_narrative.add_theme_font_size_override("normal_font_size", int(round(17.0 * settings.text_scale)))
-	_router.set_presentation_settings(settings)
+	_navigator.set_presentation_settings(settings)
 	if _music_dialog != null and _music_dialog.visible:
 		_music_dialog.open(settings, _music_playlist_id, _music_title, _music_playing)
 	_apply_layout()
@@ -419,19 +419,19 @@ func set_music_playback_state(playlist_id: int, title: String, playing: bool) ->
 
 
 func accepts_exploration_input() -> bool:
-	return (_music_dialog == null or not _music_dialog.visible) and _router.accepts_exploration_input()
+	return (_music_dialog == null or not _music_dialog.visible) and _navigator.accepts_exploration_input()
 
 
 func handle_back() -> bool:
 	if _music_dialog != null and _music_dialog.visible:
 		_music_dialog.close()
 		return true
-	if _router.current_screen() == &"exploration" and _current_view != null and _current_view.session_started:
-		_router.open_screen(&"system")
+	if _navigator.current_screen() == &"exploration" and _current_view != null and _current_view.session_started:
+		_navigator.open_screen(&"system")
 		return true
-	var handled := _router.handle_back()
+	var handled := _navigator.handle_back()
 	if handled:
-		var play_regions_visible := _current_view != null and _current_view.session_started and not _router.full_stage_overlay_visible()
+		var play_regions_visible := _current_view != null and _current_view.session_started and not _navigator.full_stage_overlay_visible()
 		_set_play_regions_visible(play_regions_visible)
 	return handled
 
@@ -442,7 +442,7 @@ func handle_route_shortcut(event: InputEvent) -> bool:
 		if not shortcut.is_empty() and event.is_action_pressed(shortcut):
 			if not route_change_reason(_current_view).is_empty():
 				return true
-			_router.open_screen(StringName(definition["id"]))
+			_navigator.open_screen(StringName(definition["id"]))
 			return true
 	return false
 
@@ -487,47 +487,47 @@ static func route_change_reason(game_view: GameView) -> String:
 func set_status(text: String, is_error: bool = false) -> void:
 	_status_label.text = text
 	_status_label.modulate = ERROR if is_error else TEXT
-	_router.present_party_setup_status(text, is_error)
+	_navigator.present_party_setup_status(text, is_error)
 
 
 func set_campaigns(campaigns: Array[CampaignPackageView]) -> void:
-	_router.set_campaigns(campaigns)
+	_navigator.set_campaigns(campaigns)
 
 
 func set_package_operation(status: RefCounted) -> void:
-	_router.set_package_operation(status)
+	_navigator.set_package_operation(status)
 
 
 func set_vault_revisions(revisions: Array[CharacterVaultRevisionView]) -> void:
-	_router.set_vault_revisions(revisions)
+	_navigator.set_vault_revisions(revisions)
 
 
 func set_standalone_character_creation_available(enabled: bool, reason: String = "") -> void:
-	_router.set_standalone_character_creation_available(enabled, reason)
+	_navigator.set_standalone_character_creation_available(enabled, reason)
 
 
 func begin_standalone_character_creation() -> void:
-	_router.begin_standalone_character_creation()
+	_navigator.begin_standalone_character_creation()
 
 
 func finish_standalone_character_creation() -> void:
-	_router.finish_standalone_character_creation()
+	_navigator.finish_standalone_character_creation()
 
 
 func show_campaign_selection(load_after_selection: bool = false) -> void:
-	_router.show_campaign_selection(load_after_selection)
+	_navigator.show_campaign_selection(load_after_selection)
 	_set_play_regions_visible(false)
 	_build_menus()
 
 
 func show_vault_from_splash() -> void:
-	_router.show_vault_from_splash()
+	_navigator.show_vault_from_splash()
 	_set_play_regions_visible(false)
 	_build_menus()
 
 
 func show_splash() -> void:
-	_router.show_splash()
+	_navigator.show_splash()
 	_set_play_regions_visible(false)
 	_build_menus()
 
@@ -560,7 +560,7 @@ func _apply_layout() -> void:
 	_activity_indicator.position = stage_rect.position + Vector2(10.0, 10.0)
 	_activity_indicator.size = Vector2(40.0, 40.0)
 	var roster_width := combat_spellbook_roster_width(viewport_size.x, _profile.party_width, _profile.ui_scale, _party_roster.combat_spellbook_active())
-	var footer_width := exploration_footer_width(viewport_size, _profile, _router.current_screen())
+	var footer_width := exploration_footer_width(viewport_size, _profile, _navigator.current_screen())
 	_party_roster.position = origin + Vector2(viewport_size.x - roster_width, _profile.menu_height)
 	_party_roster.size = Vector2(roster_width, party_roster_height(viewport_size.y, _profile.menu_height, stage_height, _party_roster.combat_spellbook_active()))
 	_party_roster.z_index = party_roster_z_index(_party_roster.combat_spellbook_active())
@@ -573,7 +573,7 @@ func _apply_layout() -> void:
 	_world_command_panel.custom_minimum_size.x = side_command_width if _world_command_panel.visible else 0.0
 	_world_command_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL if _world_command_panel.visible else Control.SIZE_SHRINK_BEGIN
 	_world_command_panel.size_flags_stretch_ratio = 1.0
-	_command_panel.visible = _router.current_screen() != &"spells"
+	_command_panel.visible = _navigator.current_screen() != &"spells"
 	_effects_panel.visible = _command_panel.visible and _current_view != null and _current_view.session_started
 	_command_panel.custom_minimum_size.x = side_command_width if _world_command_panel.visible else command_width
 	_command_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL if _world_command_panel.visible else Control.SIZE_SHRINK_END
@@ -604,7 +604,7 @@ func _apply_layout() -> void:
 	var picture_size := Vector2(minf(560.0 * _profile.ui_scale, stage_rect.size.x - 48.0), minf(360.0 * _profile.ui_scale, stage_rect.size.y - 48.0))
 	_picture_stage.position = stage_rect.position + (stage_rect.size - picture_size) * 0.5
 	_picture_stage.size = picture_size
-	_router.set_layout_profile(_profile, viewport_size, origin)
+	_navigator.set_layout_profile(_profile, viewport_size, origin)
 	_build_menus()
 	_rebuild_command_deck()
 	layout_changed.emit(Rect2(stage_rect.position, Vector2(combat_spellbook_stage_width(stage_rect.size.x, viewport_size.x, roster_width), stage_rect.size.y)), _profile)
@@ -659,7 +659,7 @@ static func combat_spellbook_stage_width(stage_width: float, viewport_width: flo
 
 
 static func exploration_footer_width(viewport_size: Vector2, profile: UiLayoutProfile, route_id: StringName) -> float:
-	return ClassicScreenRouter.spell_workspace_rect_for(profile, viewport_size).position.x if route_id == &"spells" else viewport_size.x
+	return ScreenNavigator.spell_workspace_rect_for(profile, viewport_size).position.x if route_id == &"spells" else viewport_size.x
 
 
 func _apply_exploration_mode() -> void:
@@ -784,7 +784,7 @@ func _on_menu_item_pressed(item_id: int, menu: MenuButton) -> void:
 	if entry.is_empty() or not String(entry.get("disabled_reason", "")).is_empty():
 		return
 	if entry.has("route"):
-		_router.open_screen(StringName(entry["route"]))
+		_navigator.open_screen(StringName(entry["route"]))
 	elif entry.has("command"):
 		_activate_command(StringName(entry["command"]))
 	elif entry.has("system"):
@@ -803,7 +803,7 @@ func _rebuild_command_deck() -> void:
 	# ordinary footer deck visible (and disabled where necessary) underneath a
 	# blocking interaction instead of replacing Party commands with a second,
 	# empty encounter command surface.
-	var context := _router.current_screen()
+	var context := _navigator.current_screen()
 	for definition: Dictionary in ClassicCommandCatalog.for_context(context):
 		definition = _presentation_command_definition(definition)
 		var button: BaseButton
@@ -877,7 +877,7 @@ func _command_is_visually_pressed(command_id: StringName) -> bool:
 		return party_summary != null and party_summary.camping
 	if command_id == _held_command:
 		return true
-	return command_route(command_id) == _router.current_screen()
+	return command_route(command_id) == _navigator.current_screen()
 
 
 static func command_route(command_id: StringName) -> StringName:
@@ -907,11 +907,11 @@ func _activate_command(command_id: StringName, held_repeat: bool = false) -> voi
 				intent_submitted.emit(PlayerIntent.service_action(service.service_id, service.actions[0]))
 			else:
 				intent_submitted.emit(PlayerIntent.contextual_encounter())
-		&"money": _router.open_screen(&"services")
-		&"inventory": _router.open_screen(&"inventory")
-		&"spells": _router.open_screen(&"spells")
-		&"maps": _router.open_screen(&"journal")
-		&"settings": _router.open_screen(&"system")
+		&"money": _navigator.open_screen(&"services")
+		&"inventory": _navigator.open_screen(&"inventory")
+		&"spells": _navigator.open_screen(&"spells")
+		&"maps": _navigator.open_screen(&"journal")
+		&"settings": _navigator.open_screen(&"system")
 		&"save": save_requested.emit("quick")
 
 
@@ -1009,7 +1009,7 @@ func _notification(what: int) -> void:
 
 
 func _on_screen_changed(screen_id: StringName) -> void:
-	var play_regions_visible := _current_view != null and _current_view.session_started and not _router.full_stage_overlay_visible()
+	var play_regions_visible := _current_view != null and _current_view.session_started and not _navigator.full_stage_overlay_visible()
 	_set_play_regions_visible(play_regions_visible)
 	_apply_layout()
 	set_status(String(screen_id).replace("_", " ").capitalize())
@@ -1019,9 +1019,9 @@ func _on_screen_changed(screen_id: StringName) -> void:
 
 
 func _set_play_regions_visible(visible: bool) -> void:
-	var play_route := visible and _router.current_screen() in [&"exploration", &"combat", &"spells"]
+	var play_route := visible and _navigator.current_screen() in [&"exploration", &"combat", &"spells"]
 	_stage_frame.visible = play_route
-	_bottom_region.visible = play_route and _router.current_screen() in [&"exploration", &"spells"]
+	_bottom_region.visible = play_route and _navigator.current_screen() in [&"exploration", &"spells"]
 	_party_roster.visible = play_route
 	play_stage_visibility_changed.emit(play_route)
 
@@ -1064,14 +1064,14 @@ func _on_presentation_setting_changed(setting_id: StringName, value: Variant) ->
 
 func _on_character_selected(character_id: String) -> void:
 	_selected_character_id = character_id
-	_router.select_character(character_id)
+	_navigator.select_character(character_id)
 
 
 func _on_character_activated(character_id: String) -> void:
 	_on_character_selected(character_id)
-	if _router.current_screen() == &"inventory" and _router.select_inventory_character(character_id):
+	if _navigator.current_screen() == &"inventory" and _navigator.select_inventory_character(character_id):
 		return
-	_router.open_screen(&"character")
+	_navigator.open_screen(&"character")
 
 
 func _on_combat_auto_changed(character_id: String, enabled: bool) -> void:

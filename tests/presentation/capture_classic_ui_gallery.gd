@@ -8,8 +8,8 @@ const SAVE_SLOT_PREVIEW_SCRIPT := preload("res://src/game/view/save_slot_preview
 const APPLICATION_LIFECYCLE_SCRIPT := preload("res://src/app/application_lifecycle.gd")
 
 var _application: RealmzApplication
-var _shell: ClassicApplicationShell
-var _router: ClassicScreenRouter
+var _shell: GameShell
+var _router: ScreenNavigator
 var _interaction: InteractionPresenter
 
 
@@ -21,8 +21,8 @@ func _capture_gallery() -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUTPUT_ROOT))
 	_application = load("res://src/ui/realmz_application.tscn").instantiate() as RealmzApplication
 	root.add_child(_application)
-	_shell = _application.get_node("ClassicShell") as ClassicApplicationShell
-	_router = _shell.get_node("ScreenRouter") as ClassicScreenRouter
+	_shell = _application.get_node("GameShell") as GameShell
+	_router = _shell.get_node("ScreenNavigator") as ScreenNavigator
 	_interaction = _application.get_node("InteractionPanel") as InteractionPresenter
 	await _settle()
 	await _resize(Vector2i(800, 600))

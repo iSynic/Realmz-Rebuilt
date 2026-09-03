@@ -1,4 +1,4 @@
-class_name ClassicRouteScreen
+class_name ScreenFrame
 extends PanelContainer
 
 signal back_requested

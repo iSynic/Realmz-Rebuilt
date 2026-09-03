@@ -10,7 +10,7 @@ var _map_presenter: ClassicMapPresenter
 var _battlefield_presenter: ClassicBattlefieldPresenter
 var _dungeon_presenter: DungeonMap3DPresenter
 var _interaction_presenter: InteractionPresenter
-var _shell_presenter: ClassicApplicationShell
+var _shell_presenter: GameShell
 var _audio_presenter: ClassicAudioPresenter
 var _media: ClassicMediaCatalog
 var _package_media: MediaSource
@@ -27,7 +27,7 @@ var _reduced_motion: bool = false
 var _dungeon_3d_enabled: bool = true
 
 
-func bind(session_controller: GameSessionController, map_presenter: ClassicMapPresenter, battlefield_presenter: ClassicBattlefieldPresenter, dungeon_presenter: DungeonMap3DPresenter, interaction_presenter: InteractionPresenter, shell_presenter: ClassicApplicationShell, audio_presenter: ClassicAudioPresenter) -> void:
+func bind(session_controller: GameSessionController, map_presenter: ClassicMapPresenter, battlefield_presenter: ClassicBattlefieldPresenter, dungeon_presenter: DungeonMap3DPresenter, interaction_presenter: InteractionPresenter, shell_presenter: GameShell, audio_presenter: ClassicAudioPresenter) -> void:
 	assert(session_controller != null, "Presentation requires a session controller")
 	assert(map_presenter != null, "Presentation requires an explicit map presenter")
 	assert(battlefield_presenter != null, "Presentation requires an explicit battlefield presenter")

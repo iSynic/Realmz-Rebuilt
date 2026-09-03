@@ -431,31 +431,31 @@ if (Test-Path -LiteralPath $preparedPackagePath) {
     }
 }
 
-$classicRouterPath = Join-Path $repoRoot "src\ui\classic_screen_router.gd"
-if (Test-Path -LiteralPath $classicRouterPath) {
-    $routerLines = Get-SanitizedGdscriptLines -Content ([IO.File]::ReadAllText($classicRouterPath))
+$screenNavigatorPath = Join-Path $repoRoot "src\ui\screen_navigator.gd"
+if (Test-Path -LiteralPath $screenNavigatorPath) {
+    $navigatorLines = Get-SanitizedGdscriptLines -Content ([IO.File]::ReadAllText($screenNavigatorPath))
     $routeControllerPattern = '\b(?:Character|Inventory|Services|MapsJournal|Spells|System)WorkspaceController\b'
-    for ($index = 0; $index -lt $routerLines.Count; $index++) {
-        $code = $routerLines[$index]
+    for ($index = 0; $index -lt $navigatorLines.Count; $index++) {
+        $code = $navigatorLines[$index]
         $lineNumber = $index + 1
         if ($code -match $routeControllerPattern) {
-            $violations += "src/ui/classic_screen_router.gd:$lineNumber ClassicScreenRouter must not construct or call route-domain workspace controllers"
+            $violations += "src/ui/screen_navigator.gd:$lineNumber ScreenNavigator must not construct or call route-domain workspace controllers"
         }
         if ($code -match '^\s*func\s+_render_(?:characters|vault|inventory|spells|services|journal|system)\s*\(') {
-            $violations += "src/ui/classic_screen_router.gd:$lineNumber ClassicScreenRouter must not render route-domain content"
+            $violations += "src/ui/screen_navigator.gd:$lineNumber ScreenNavigator must not render route-domain content"
         }
         if ($code -match '\bsetup_controller\.attach\s*\(\s*self\s*\)') {
-            $violations += "src/ui/classic_screen_router.gd:$lineNumber setup overlays must attach to the shell-owned OverlayHost, not the router"
+            $violations += "src/ui/screen_navigator.gd:$lineNumber setup overlays must attach to the shell-owned OverlayHost, not the router"
         }
     }
 }
 
-$classicShellScenePath = Join-Path $repoRoot "src\ui\classic_application_shell.tscn"
-if (Test-Path -LiteralPath $classicShellScenePath) {
-    $classicShellScene = [IO.File]::ReadAllText($classicShellScenePath)
+$gameShellScenePath = Join-Path $repoRoot "src\ui\game_shell.tscn"
+if (Test-Path -LiteralPath $gameShellScenePath) {
+    $gameShellScene = [IO.File]::ReadAllText($gameShellScenePath)
     foreach ($requiredHost in @('WorkspaceHost', 'OverlayHost')) {
-        if ($classicShellScene -notmatch ('\[node\s+name="' + [regex]::Escape($requiredHost) + '"\s+type="Control"\s+parent="ScreenRouter"\]')) {
-            $violations += "src/ui/classic_application_shell.tscn must provide ScreenRouter/$requiredHost as an explicit scene-owned presentation host"
+        if ($gameShellScene -notmatch ('\[node\s+name="' + [regex]::Escape($requiredHost) + '"\s+type="Control"\s+parent="ScreenNavigator"\]')) {
+            $violations += "src/ui/game_shell.tscn must provide ScreenNavigator/$requiredHost as an explicit scene-owned presentation host"
         }
     }
 }
