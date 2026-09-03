@@ -3,7 +3,8 @@
 class_name PartySetupAssemblyController
 extends "res://src/ui/controllers/party_setup_controller_component.gd"
 
-const PartySetupPartySlotScript := preload("res://src/ui/party_setup_party_slot.gd")
+const PARTY_SLOT_SCENE := preload("res://src/ui/party_setup_party_slot.tscn")
+const CHARACTER_ROW_SCENE := preload("res://src/ui/party_setup_character_row.tscn")
 
 var _inspection: RefCounted
 var _stored_revision_signature: String = ""
@@ -45,7 +46,7 @@ func _ensure_party_slots() -> void:
 	_party_slots.clear()
 	_party_slots_owner = party_list
 	for slot_index: int in _maximum_party_size():
-		var slot := PartySetupPartySlotScript.new() as Control
+		var slot := PARTY_SLOT_SCENE.instantiate() as PartySetupPartySlot
 		slot.name = "PartySlot%d" % (slot_index + 1)
 		slot.inspect_requested.connect(_inspect_setup_character)
 		slot.remove_requested.connect(_remove_setup_character)
@@ -117,13 +118,13 @@ func _render_party_assembly() -> void:
 			reason = global_available.reason
 		elif party_full:
 			reason = "This party already has %d characters." % _maximum_party_size()
-		var row := PartySetupCharacterRowScript.new()
+		var row := CHARACTER_ROW_SCENE.instantiate() as PartySetupCharacterRow
 		row.name = "StoredCharacter_%s" % revision.character_id.validate_node_name()
+		stored_character_list.add_child(row)
 		var portrait_id := revision.character.portrait_id if revision.character != null else revision.portrait_id
 		var portrait := _appearance_textures.get(portrait_id) as Texture2D
 		row.configure(revision, campaign_setup and revision.eligible and global_available.enabled and not party_full, reason, portrait)
 		row.import_requested.connect(_import_stored_character)
-		stored_character_list.add_child(row)
 	_add_stored_character_pager(current_revisions.size())
 
 

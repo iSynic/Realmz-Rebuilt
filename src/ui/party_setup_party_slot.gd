@@ -15,38 +15,23 @@ var _inspect: Button
 var _remove: Button
 
 
-func _init() -> void:
-	custom_minimum_size.y = CharacterRow.ROW_HEIGHT
-	add_theme_stylebox_override("panel", CharacterRow.row_style())
-	size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var row := HBoxContainer.new()
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_theme_constant_override("separation", 6)
-	add_child(row)
-	_portrait = TextureRect.new()
-	_portrait.name = "Portrait"
-	_portrait.custom_minimum_size = Vector2(CharacterRow.PORTRAIT_SIZE, CharacterRow.PORTRAIT_SIZE)
-	_portrait.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	_portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(_portrait)
-	_summary = Label.new()
-	_summary.name = "Summary"
-	_summary.add_theme_font_size_override("font_size", 12)
-	_summary.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_summary.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	_summary.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_summary.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(_summary)
-	_inspect = Button.new()
-	_inspect.name = "InspectPartyCharacter"
-	_inspect.pressed.connect(func() -> void: if not _character_id.is_empty(): inspect_requested.emit(_character_id))
-	row.add_child(_inspect)
-	_remove = Button.new()
-	_remove.name = "RemovePartyCharacter"
-	_remove.pressed.connect(func() -> void: if not _character_id.is_empty(): remove_requested.emit(_character_id))
-	row.add_child(_remove)
+func _bind_scene_nodes() -> void:
+	if _portrait != null:
+		return
+	_portrait = get_node("Row/Portrait") as TextureRect
+	_summary = get_node("Row/Summary") as Label
+	_inspect = get_node("Row/InspectPartyCharacter") as Button
+	_remove = get_node("Row/RemovePartyCharacter") as Button
+
+
+func _request_inspection() -> void:
+	if not _character_id.is_empty():
+		inspect_requested.emit(_character_id)
+
+
+func _request_removal() -> void:
+	if not _character_id.is_empty():
+		remove_requested.emit(_character_id)
 
 
 func _can_drop_data(position: Vector2, data: Variant) -> bool:
@@ -70,6 +55,7 @@ func submit_drop_payload(data: Variant) -> void:
 
 
 func configure(slot_index: int, character: CharacterView, portrait: Texture2D, compact: bool, remove_availability: ActionAvailabilityView) -> void:
+	_bind_scene_nodes()
 	name = ("PartySlot%d" if character != null else "EmptyPartySlot%d") % (slot_index + 1)
 	_character_id = character.id if character != null else ""
 	_portrait.texture = portrait

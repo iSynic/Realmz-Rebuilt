@@ -7,7 +7,7 @@ const GOLD := Color("e5c45c")
 const CYAN := Color("8fcfd1")
 const MUTED := Color("aeb6ba")
 const CONTENT_ICON_SCRIPT := preload("res://src/ui/classic_content_icon.gd")
-const EXCHANGE_ITEM_BUTTON_SCRIPT := preload("res://src/ui/interaction_components/classic_exchange_item_button.gd")
+const EXCHANGE_ITEM_BUTTON_SCENE := preload("res://src/ui/interaction_components/classic_exchange_item_button.tscn")
 const EXCHANGE_LEDGER_SCRIPT := preload("res://src/ui/interaction_components/classic_exchange_ledger.gd")
 const ITEM_DETAIL_POPOVER_SCRIPT := preload("res://src/ui/classic_item_detail_popover.gd")
 const CLASSIC_VISIBLE_ROWS := 9
@@ -193,7 +193,7 @@ func _refresh_stock() -> void:
 		icon.name = "StockIcon_%s" % entry.stock_key.replace(":", "_").replace(".", "_")
 		icon.configure(entry.icon_resource_type, entry.icon_id, _media, _ledger_row_height(), entry.name)
 		row.add_child(icon)
-		var button := EXCHANGE_ITEM_BUTTON_SCRIPT.new()
+		var button := EXCHANGE_ITEM_BUTTON_SCENE.instantiate() as ClassicExchangeItemButton
 		button.name = "Stock_%s" % entry.stock_key.replace(":", "_").replace(".", "_")
 		button.text = "%s\n%d gold  •  %d left" % [entry.name, entry.buy_price, entry.quantity]
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -651,7 +651,7 @@ func _inventory_row(character: InteractionRequestValue.ServiceCharacter, item: I
 	icon.name = "%sIcon_%s" % [prefix, item.instance_id.replace(".", "_")]
 	icon.configure(item.icon_resource_type, item.icon_id, _media, _ledger_row_height(), item.name)
 	row.add_child(icon)
-	var button := EXCHANGE_ITEM_BUTTON_SCRIPT.new()
+	var button := EXCHANGE_ITEM_BUTTON_SCENE.instantiate() as ClassicExchangeItemButton
 	button.name = "%s_%s" % [prefix, item.instance_id.replace(".", "_")]
 	button.text = "%s\n%s  •  sell %d gold" % [item.name, "Equipped" if item.equipped else "Carried", item.sell_price]
 	button.alignment = HORIZONTAL_ALIGNMENT_LEFT

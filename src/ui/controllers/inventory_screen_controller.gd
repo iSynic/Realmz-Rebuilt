@@ -17,9 +17,13 @@ const LEDGER_MUTED := Color("50575b")
 const LEDGER_BLUE := Color("2457bd")
 const LEDGER_RED := Color("ad2721")
 const CONTENT_ICON_SCRIPT := preload("res://src/ui/classic_content_icon.gd")
-const EXCHANGE_ITEM_BUTTON_SCRIPT := preload("res://src/ui/interaction_components/classic_exchange_item_button.gd")
+const EXCHANGE_ITEM_BUTTON_SCENE := preload("res://src/ui/interaction_components/classic_exchange_item_button.tscn")
 const EXCHANGE_LEDGER_SCRIPT := preload("res://src/ui/interaction_components/classic_exchange_ledger.gd")
 const ITEM_DETAIL_POPOVER_SCRIPT := preload("res://src/ui/classic_item_detail_popover.gd")
+const ITEM_BROWSER_SCENE := preload("res://src/ui/screens/inventory_item_browser.tscn")
+const COMMAND_RAIL_SCENE := preload("res://src/ui/screens/inventory_command_rail.tscn")
+const ITEM_INSPECTOR_SCENE := preload("res://src/ui/screens/inventory_item_inspector.tscn")
+const DONE_COLUMN_SCENE := preload("res://src/ui/screens/inventory_done_column.tscn")
 const InventoryItemTextType = preload("res://src/ui/controllers/inventory_item_text.gd")
 const InventoryViewQueriesType = preload("res://src/ui/controllers/inventory_view_queries.gd")
 
@@ -226,37 +230,19 @@ func select_roster_character(character_id: String, view: GameView) -> bool:
 
 func _build_item_browser(character: CharacterView, items: Array[ItemView], selected: ItemView, media: ClassicMediaCatalog, detail_popover: CanvasLayer, existing_panel: PanelContainer = null) -> PanelContainer:
 	var panel: PanelContainer = existing_panel if existing_panel != null else PanelContainer.new()
-	_clear(panel)
 	panel.name = "InventoryItemBrowser"
 	panel.theme_type_variation = &"ClassicItemLedger"
 	panel.custom_minimum_size = Vector2(390.0 if _layout_profile == UiLayoutProfile.COMPACT else 620.0, 280.0 if _layout_profile == UiLayoutProfile.COMPACT else 330.0)
 	panel.size_flags_horizontal = Control.SIZE_FILL if _layout_profile == UiLayoutProfile.COMPACT else Control.SIZE_EXPAND_FILL
 	panel.size_flags_stretch_ratio = 1.45
 	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 3)
-	panel.add_child(column)
-	var heading := HBoxContainer.new()
-	var title := _label("%s's items" % character.name, LEDGER_INK, 17)
-	title.theme_type_variation = &"ClassicHeading"
-	title.add_theme_color_override("font_color", LEDGER_INK)
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	heading.add_child(title)
-	var count := _label("%d carried" % items.size(), LEDGER_MUTED, 12)
-	count.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	heading.add_child(count)
-	column.add_child(heading)
-	var scroll := ScrollContainer.new()
-	scroll.name = "InventoryItemScroll"
-	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	var list := VBoxContainer.new()
-	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	list.add_theme_constant_override("separation", 0)
-	scroll.add_child(list)
+	var content := _inventory_browser_content(panel)
+	content.clear_dynamic_content()
+	content.title_label().text = "%s's items" % character.name
+	content.count_label().text = "%d carried" % items.size()
+	var scroll := content.item_scroll()
+	var list := content.item_list()
 	_bind_item_scroll(scroll)
-	column.add_child(scroll)
 	if items.is_empty():
 		_add_label(list, "No carried items.", LEDGER_MUTED)
 		return panel
@@ -310,23 +296,21 @@ func _build_item_browser(character: CharacterView, items: Array[ItemView], selec
 
 func _build_character_command_rail(view: GameView, character: CharacterView, item: ItemView, media: ClassicMediaCatalog, existing_panel: PanelContainer = null) -> PanelContainer:
 	var panel: PanelContainer = existing_panel if existing_panel != null else PanelContainer.new()
-	_clear(panel)
 	panel.name = "InventoryCharacterCommandRail"
 	panel.theme_type_variation = &"ClassicInset"
 	panel.custom_minimum_size = Vector2(350.0 if _layout_profile == UiLayoutProfile.COMPACT else 285.0, 280.0 if _layout_profile == UiLayoutProfile.COMPACT else 330.0)
 	panel.size_flags_horizontal = Control.SIZE_FILL if _layout_profile == UiLayoutProfile.COMPACT else Control.SIZE_EXPAND_FILL
 	panel.size_flags_stretch_ratio = 0.75
 	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 6)
-	panel.add_child(column)
-	_render_character_record(column, character, media)
+	var content := _inventory_command_rail_content(panel)
+	content.clear_dynamic_content()
+	_render_character_record(content.character_record(), character, media)
 	if item == null:
-		_add_label(column, "Select an item to see its commands.", MUTED)
-		column.add_child(_build_character_selector(view, character, media))
+		_add_label(content.item_actions(), "Select an item to see its commands.", MUTED)
+		content.character_selector().add_child(_build_character_selector(view, character, media))
 		return panel
-	_render_item_actions(column, view, item, character, media)
-	column.add_child(_build_character_selector(view, character, media))
+	_render_item_actions(content.item_actions(), view, item, character, media)
+	content.character_selector().add_child(_build_character_selector(view, character, media))
 	return panel
 
 
@@ -371,21 +355,17 @@ func _render_character_record(parent: VBoxContainer, character: CharacterView, m
 
 func _build_item_record(character: CharacterView, item: ItemView, media: ClassicMediaCatalog, existing_panel: PanelContainer = null) -> PanelContainer:
 	var panel: PanelContainer = existing_panel if existing_panel != null else PanelContainer.new()
-	_clear(panel)
 	panel.name = "InventoryItemInspector"
 	panel.theme_type_variation = &"ClassicInset"
 	panel.custom_minimum_size.y = 150.0
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var content := HBoxContainer.new()
-	content.add_theme_constant_override("separation", 8)
-	panel.add_child(content)
-	var record: BoxContainer = VBoxContainer.new() if _layout_profile == UiLayoutProfile.COMPACT else HBoxContainer.new()
-	record.name = "InventorySelectedItemRecord"
-	record.add_theme_constant_override("separation", 12)
-	record.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	content.add_child(record)
-	if not _encounter_mode:
-		content.add_child(_build_inventory_done_column())
+	var content := _inventory_item_inspector_content(panel)
+	content.clear_dynamic_content()
+	var record := content.record_host(_layout_profile == UiLayoutProfile.COMPACT)
+	content.done_column().visible = not _encounter_mode
+	var done := content.done_column().done_button()
+	if not done.pressed.is_connected(_request_inventory_back):
+		done.pressed.connect(_request_inventory_back)
 	if item == null:
 		_add_label(record, "Select an item to inspect it.", MUTED)
 		return panel
@@ -414,21 +394,37 @@ func _add_inventory_done(parent: Container) -> void:
 
 
 func _build_inventory_done_column() -> VBoxContainer:
-	var column := VBoxContainer.new()
-	column.name = "InventoryDoneColumn"
-	column.custom_minimum_size.x = 56.0
-	column.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	var spacer := Control.new()
-	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	column.add_child(spacer)
-	var done := Button.new()
-	done.name = "InventoryDone"
-	done.text = "Done"
-	done.tooltip_text = "Return to the previous screen."
-	done.custom_minimum_size = Vector2(56.0, 56.0)
-	done.pressed.connect(func() -> void: back_requested.emit())
-	column.add_child(done)
+	var column := DONE_COLUMN_SCENE.instantiate() as InventoryDoneColumn
+	column.done_button().pressed.connect(_request_inventory_back)
 	return column
+
+
+func _request_inventory_back() -> void:
+	back_requested.emit()
+
+
+func _inventory_browser_content(panel: PanelContainer) -> InventoryItemBrowser:
+	var content := panel.find_child("InventoryItemBrowserContent", false, false) as InventoryItemBrowser
+	if content == null:
+		content = ITEM_BROWSER_SCENE.instantiate() as InventoryItemBrowser
+		panel.add_child(content)
+	return content
+
+
+func _inventory_command_rail_content(panel: PanelContainer) -> InventoryCommandRail:
+	var content := panel.find_child("InventoryCommandRailContent", false, false) as InventoryCommandRail
+	if content == null:
+		content = COMMAND_RAIL_SCENE.instantiate() as InventoryCommandRail
+		panel.add_child(content)
+	return content
+
+
+func _inventory_item_inspector_content(panel: PanelContainer) -> InventoryItemInspector:
+	var content := panel.find_child("InventoryItemInspectorContent", false, false) as InventoryItemInspector
+	if content == null:
+		content = ITEM_INSPECTOR_SCENE.instantiate() as InventoryItemInspector
+		panel.add_child(content)
+	return content
 
 
 func _build_trade_item_record(character: CharacterView, item: ItemView, media: ClassicMediaCatalog) -> PanelContainer:
@@ -638,7 +634,7 @@ func _build_trade_ledger(view: GameView, character: CharacterView, other_id: Str
 		row.add_theme_constant_override("separation", 4)
 		var icon := _content_icon(item.icon_resource_type, item.icon_id, media, 34.0, item.name)
 		row.add_child(icon)
-		var button := EXCHANGE_ITEM_BUTTON_SCRIPT.new()
+		var button := EXCHANGE_ITEM_BUTTON_SCENE.instantiate() as ClassicExchangeItemButton
 		button.name = "InventoryTradeItem_%s" % item.instance_id
 		button.theme_type_variation = &"ClassicItemLedgerButton"
 		button.text = "%s\n%s" % [item.name, InventoryItemTextType.trade_line(item)]

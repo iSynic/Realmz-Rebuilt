@@ -25,9 +25,9 @@ func prepare_alternate_layout() -> VBoxContainer:
 
 
 func clear_rendered_content() -> void:
-	_clear_children(item_browser_panel())
-	_clear_children(command_rail_panel())
-	_clear_children(item_inspector_panel())
+	item_browser_content().clear_dynamic_content()
+	command_rail_content().clear_dynamic_content()
+	item_inspector_content().clear_dynamic_content()
 	_clear_children(_alternate_content())
 	for child: Node in body_control().get_children():
 		if child not in [_main_split(), item_inspector_panel(), _alternate_content()]:
@@ -45,6 +45,18 @@ func command_rail_panel() -> PanelContainer:
 
 func item_inspector_panel() -> PanelContainer:
 	return get_node(BODY_PATH + "/InventoryItemInspector") as PanelContainer
+
+
+func item_browser_content() -> InventoryItemBrowser:
+	return item_browser_panel().get_node("InventoryItemBrowserContent") as InventoryItemBrowser
+
+
+func command_rail_content() -> InventoryCommandRail:
+	return command_rail_panel().get_node("InventoryCommandRailContent") as InventoryCommandRail
+
+
+func item_inspector_content() -> InventoryItemInspector:
+	return item_inspector_panel().get_node("InventoryItemInspectorContent") as InventoryItemInspector
 
 
 func _main_split() -> HBoxContainer:

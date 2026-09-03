@@ -5,7 +5,7 @@ extends PanelContainer
 
 const ClassicTreasureTakeEffectScript := preload("res://src/ui/classic_treasure_take_effect.gd")
 
-const FastSpellDockScript := preload("res://src/ui/interaction_components/fast_spell_dock.gd")
+const FAST_SPELL_DOCK_SCENE := preload("res://src/ui/interaction_components/fast_spell_dock.tscn")
 const LayoutPolicy := preload("res://src/ui/interaction_layout_policy.gd")
 const ComponentFactory := preload("res://src/ui/interaction_component_factory.gd")
 
@@ -476,10 +476,10 @@ func _mount_fast_spell_dock(body: InteractionRequest.CombatRequestBody, game_vie
 	_close_fast_spell_dock()
 	if body == null:
 		return
-	_fast_spell_dock = FastSpellDockScript.new()
+	_fast_spell_dock = FAST_SPELL_DOCK_SCENE.instantiate() as FastSpellDock
+	get_parent().add_child(_fast_spell_dock)
 	_fast_spell_dock.configure(body.fast_spells, ComponentFactory.fast_spell_animation_frames(game_view, media, body.fast_spells))
 	_fast_spell_dock.slot_activated.connect(func(slot_index: int) -> void: activate_fast_spell_from_dock(slot_index))
-	get_parent().add_child(_fast_spell_dock)
 	_apply_fast_spell_dock_layout()
 
 

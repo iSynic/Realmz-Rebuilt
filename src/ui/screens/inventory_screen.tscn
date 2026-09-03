@@ -1,7 +1,10 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="PackedScene" path="res://src/ui/screens/screen_frame.tscn" id="1_base"]
 [ext_resource type="Script" path="res://src/ui/screens/inventory_screen.gd" id="2_screen"]
+[ext_resource type="PackedScene" path="res://src/ui/screens/inventory_item_browser.tscn" id="3_browser"]
+[ext_resource type="PackedScene" path="res://src/ui/screens/inventory_command_rail.tscn" id="4_rail"]
+[ext_resource type="PackedScene" path="res://src/ui/screens/inventory_item_inspector.tscn" id="5_inspector"]
 
 [node name="InventoryScreen" instance=ExtResource("1_base")]
 route_id = &"inventory"
@@ -24,11 +27,8 @@ size_flags_vertical = 3
 size_flags_stretch_ratio = 1.45
 theme_type_variation = &"ClassicItemLedger"
 
-[node name="EditorHint" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/InventoryMainSplit/InventoryItemBrowser"]
+[node name="InventoryItemBrowserContent" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/InventoryMainSplit/InventoryItemBrowser" instance=ExtResource("3_browser")]
 layout_mode = 2
-text = "Carried item ledger"
-horizontal_alignment = 1
-vertical_alignment = 1
 
 [node name="InventoryCharacterCommandRail" type="PanelContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/InventoryMainSplit"]
 unique_name_in_owner = true
@@ -39,12 +39,8 @@ size_flags_vertical = 3
 size_flags_stretch_ratio = 0.75
 theme_type_variation = &"ClassicInset"
 
-[node name="EditorHint" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/InventoryMainSplit/InventoryCharacterCommandRail"]
+[node name="InventoryCommandRailContent" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/InventoryMainSplit/InventoryCharacterCommandRail" instance=ExtResource("4_rail")]
 layout_mode = 2
-text = "Character record, item actions, and party selector"
-horizontal_alignment = 1
-vertical_alignment = 1
-autowrap_mode = 2
 
 [node name="InventoryItemInspector" type="PanelContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody"]
 unique_name_in_owner = true
@@ -53,11 +49,8 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"ClassicInset"
 
-[node name="EditorHint" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/InventoryItemInspector"]
+[node name="InventoryItemInspectorContent" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/InventoryItemInspector" instance=ExtResource("5_inspector")]
 layout_mode = 2
-text = "Selected item description, facts, and Done action"
-horizontal_alignment = 1
-vertical_alignment = 1
 
 [node name="InventoryAlternateContent" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody"]
 unique_name_in_owner = true

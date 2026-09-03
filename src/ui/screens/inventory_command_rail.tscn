@@ -1,0 +1,20 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/ui/screens/inventory_command_rail.gd" id="1_rail"]
+
+[node name="InventoryCommandRailContent" type="VBoxContainer"]
+theme_override_constants/separation = 6
+script = ExtResource("1_rail")
+
+[node name="CharacterRecord" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="ItemActions" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="CharacterSelector" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_vertical = 3
+alignment = 2

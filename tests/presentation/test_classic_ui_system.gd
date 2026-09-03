@@ -5,7 +5,7 @@ const ApplicationLifecycleScript := preload("res://src/app/application_lifecycle
 const LifecycleInteractionScript := preload("res://src/ui/interaction_components/lifecycle_interaction.gd")
 const HeldMovementControllerScript := preload("res://src/ui/held_movement_controller.gd")
 const RetainedMapSurfaceScript := preload("res://src/ui/classic_retained_map_surface.gd")
-const FastSpellDockScript := preload("res://src/ui/interaction_components/fast_spell_dock.gd"); const ScrollingTextInteractionScript := preload("res://src/ui/interaction_components/scrolling_text_interaction.gd")
+const FAST_SPELL_DOCK_SCENE := preload("res://src/ui/interaction_components/fast_spell_dock.tscn"); const ScrollingTextInteractionScript := preload("res://src/ui/interaction_components/scrolling_text_interaction.gd")
 const InteractionLayoutPolicyScript := preload("res://src/ui/interaction_layout_policy.gd")
 
 class RejectingSaveRepository extends SaveRepository:
@@ -519,12 +519,12 @@ func _test_fast_spell_input() -> void:
 	var spell_definition := SpellDefinition.new("classic.spell.1101", 1101, "Discover Magic", "Reveals magic."); assert_equal(SpellView.new(spell_definition).animation_resource_ids, [12032, 12033, 12034, 12035, 12036, 12037, 12038, 12039], "ordinary spell views expose Castle's exact eight-frame effect identity for transient Fast Spell previews")
 	var bindings: Array[InteractionRequestValue.FastSpell] = [InteractionRequestValueDecoder.fast_spell({"slot": 0, "spellId": "classic.spell.1101", "spellName": "Discover Magic", "power": 1, "enabled": true, "reason": ""}), InteractionRequestValueDecoder.fast_spell({"slot": 1, "spellId": "classic.spell.1102", "spellName": "Flame Hands", "power": 2, "enabled": false, "reason": "Not enough spell points."})]
 	var image := Image.create_empty(2, 2, false, Image.FORMAT_RGBA8); image.fill(Color.WHITE); var preview_frames: Array[Texture2D] = []; for _frame: int in 8: preview_frames.append(ImageTexture.create_from_image(image))
-	var dock := FastSpellDockScript.new(); dock.configure(bindings, {"classic.spell.1101": preview_frames}); var stage := Rect2(8.0, 28.0, 984.0, 502.0); dock.set_stage_rect(stage); var activated_slots: Array[int] = []; dock.slot_activated.connect(func(slot_index: int) -> void: activated_slots.append(slot_index))
+	var dock := FAST_SPELL_DOCK_SCENE.instantiate() as FastSpellDock; (Engine.get_main_loop() as SceneTree).root.add_child(dock); dock.configure(bindings, {"classic.spell.1101": preview_frames}); var stage := Rect2(8.0, 28.0, 984.0, 502.0); dock.set_stage_rect(stage); var activated_slots: Array[int] = []; dock.slot_activated.connect(func(slot_index: int) -> void: activated_slots.append(slot_index))
 	assert_true(dock.set_held(true) and dock.visible and dock.position.y >= stage.end.y - 84.0 and dock.position.x >= stage.position.x and dock.position.x + dock.size.x <= stage.end.x, "holding Alt opens one bounded Fast Spell dock over the bottom of the battle canvas")
 	var dock_buttons := _buttons_in(dock)
 	assert_true(dock_buttons.size() == 2 and not dock_buttons[0].disabled and dock_buttons[1].disabled and dock_buttons[1].tooltip_text.contains("Not enough spell points"), "the dock keeps assigned slot order and visibly preserves authoritative per-cast availability")
 	dock_buttons[0].pressed.emit(); assert_equal(activated_slots, [0], "clicking an enabled animation preview activates its ordinary Fast Spell slot")
-	dock.set_held(false); assert_false(dock.visible, "releasing Alt removes the transient battle-canvas overlay"); dock.free(); bindings[0].enabled = false; var disabled_dock := FastSpellDockScript.new(); disabled_dock.configure(bindings, {}); disabled_dock.set_stage_rect(stage); assert_true(disabled_dock.set_held(true) and disabled_dock.visible, "Alt still opens assigned Fast Spells when every binding is currently unavailable so their reasons remain discoverable"); disabled_dock.free()
+	dock.set_held(false); assert_false(dock.visible, "releasing Alt removes the transient battle-canvas overlay"); dock.free(); bindings[0].enabled = false; var disabled_dock := FAST_SPELL_DOCK_SCENE.instantiate() as FastSpellDock; (Engine.get_main_loop() as SceneTree).root.add_child(disabled_dock); disabled_dock.configure(bindings, {}); disabled_dock.set_stage_rect(stage); assert_true(disabled_dock.set_held(true) and disabled_dock.visible, "Alt still opens assigned Fast Spells when every binding is currently unavailable so their reasons remain discoverable"); disabled_dock.free()
 
 
 func _test_safe_item_display() -> void:
