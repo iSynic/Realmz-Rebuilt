@@ -54,6 +54,8 @@ Services and Battle open from typed session context, not as ordinary global dest
 
 Every route is an editor-authored `UiRouteDefinition` resource indexed by `UiRouteCatalog`. Exploration and Combat are persistent shell modes; other routes name their scene-backed workspace. Each ordinary reversible workspace exposes a persistent header Back action that follows the same router history as Escape; nested interactions and inspections keep their own explicit Cancel or context-specific Back action. The router may retain focus, selection, filter, and Back history; it cannot mutate simulation.
 
+The export-excluded Realmz Builder dock reads `addons/realmz_builder/scene_previews.json`, recognizes major scenes, offers the standard preview profiles, and opens their maintainer links. A registered surface counts as migrated only after its representative fixture uses the production binding path.
+
 ## Input, focus, and interaction
 
 - Mouse and keyboard have equivalent access. Named input actions own movement, search, camp, route shortcuts, activation, cancellation, and future device bindings.

@@ -22,7 +22,7 @@ $plainLogText = [regex]::Replace($logText, $ansiPattern, "")
 if ($plainLogText -match '(?m)^(?:WARNING|ERROR|SCRIPT ERROR):') {
     throw "Release export emitted a warning or error: $($Matches[0])"
 }
-$forbidden = 'Storing File:\s+res://(?:addons/godot_mcp(?:/|\\)|tests(?:/|\\)|tools(?:/|\\)|docs(?:/|\\)|contracts(?:/|\\)|artifacts(?:/|\\)|\.references(?:/|\\)|\.github(?:/|\\)|\.mcp\.json|(?:[^\r\n]+/)?AGENTS\.md|README\.md|CONTRIBUTING\.md)'
+$forbidden = 'Storing File:\s+res://(?:addons/(?:godot_mcp|realmz_builder)(?:/|\\)|tests(?:/|\\)|tools(?:/|\\)|docs(?:/|\\)|contracts(?:/|\\)|artifacts(?:/|\\)|\.references(?:/|\\)|\.github(?:/|\\)|\.mcp\.json|(?:[^\r\n]+/)?AGENTS\.md|README\.md|CONTRIBUTING\.md)'
 if ($plainLogText -match $forbidden) {
     throw "Release export contains an excluded development resource: $($Matches[0])"
 }

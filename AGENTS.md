@@ -110,6 +110,7 @@ When the user requests a durable behavior change, record it here or in the relev
 
 ## Child DOX Index
 
+- `addons/realmz_builder/AGENTS.md` owns the public editor-only scene preview and maintainer-navigation plugin.
 - `contracts/AGENTS.md` owns mirrored Providence schemas and contract-drift rules.
 - `docs/AGENTS.md` owns architecture, ADRs, fidelity decisions, provenance, and roadmap documentation.
 - `src/app/AGENTS.md` owns the composition root and host orchestration.

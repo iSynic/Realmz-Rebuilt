@@ -33,7 +33,7 @@ foreach ($expected in $expectedPresets.GetEnumerator()) {
     if ($body -notmatch ('(?m)^platform="' + [regex]::Escape($expected.Value) + '"$') -or $body -notmatch '(?m)^script_export_mode=2$') {
         throw "Release preset $($expected.Key) must target $($expected.Value) with compiled script export."
     }
-    foreach ($requiredExclusion in @("addons/godot_mcp/**", "tests/**", "tools/**", "docs/**", "contracts/**", "artifacts/**", ".references/**", ".github/**", ".mcp.json", "**/AGENTS.md", "README.md", "CONTRIBUTING.md")) {
+    foreach ($requiredExclusion in @("addons/godot_mcp/**", "addons/realmz_builder/**", "tests/**", "tools/**", "docs/**", "contracts/**", "artifacts/**", ".references/**", ".github/**", ".mcp.json", "**/AGENTS.md", "README.md", "CONTRIBUTING.md")) {
         if (-not $body.Contains($requiredExclusion)) {
             throw "Release preset $($expected.Key) must exclude $requiredExclusion"
         }

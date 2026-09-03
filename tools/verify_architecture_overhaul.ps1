@@ -149,9 +149,48 @@ $previewPaths = @{}
 $previewRegistryPath = Join-Path $repoRoot ([string]$budget.previewRegistryPath)
 if (Test-Path -LiteralPath $previewRegistryPath -PathType Leaf) {
     $previewRegistry = Get-Content -LiteralPath $previewRegistryPath -Raw | ConvertFrom-Json
-    foreach ($preview in @($previewRegistry.scenes)) {
-        $previewPaths[[string]$preview.scene] = $true
+    $requiredProfiles = @("Wide", "Compact", "Empty", "Long Content", "Unavailable", "Error")
+    foreach ($profile in $requiredProfiles) {
+        if (@($previewRegistry.profiles) -notcontains $profile) {
+            $failures.Add("Realmz Builder preview registry is missing the '$profile' profile.")
+        }
     }
+    $registeredPreviewIds = @{}
+    foreach ($preview in @($previewRegistry.scenes)) {
+        $previewId = [string]$preview.id
+        $previewScene = [string]$preview.scene
+        if ([string]::IsNullOrWhiteSpace($previewId) -or $registeredPreviewIds.ContainsKey($previewId)) {
+            $failures.Add("Realmz Builder contains a blank or duplicate scene id: '$previewId'")
+            continue
+        }
+        $registeredPreviewIds[$previewId] = $true
+        foreach ($property in @("scene", "guide", "controller", "view")) {
+            $relative = [string]$preview.$property
+            if ([string]::IsNullOrWhiteSpace($relative) -or -not (Test-Path -LiteralPath (Join-Path $repoRoot $relative) -PathType Leaf)) {
+                $failures.Add("Realmz Builder '$previewId' references a missing $property path: $relative")
+            }
+        }
+        if (@($preview.tests).Count -eq 0) {
+            $failures.Add("Realmz Builder '$previewId' must name at least one owning test.")
+        }
+        foreach ($test in @($preview.tests)) {
+            if (-not (Test-Path -LiteralPath (Join-Path $repoRoot ([string]$test)) -PathType Leaf)) {
+                $failures.Add("Realmz Builder '$previewId' references a missing test: $test")
+            }
+        }
+        if ($preview.productionBinding -eq $true) {
+            $previewPaths[$previewScene] = $true
+        }
+    }
+}
+$builderPluginPath = Join-Path $repoRoot "addons\realmz_builder\plugin.cfg"
+$builderScriptPath = Join-Path $repoRoot "addons\realmz_builder\realmz_builder_plugin.gd"
+if (-not (Test-Path -LiteralPath $builderPluginPath -PathType Leaf) -or -not (Test-Path -LiteralPath $builderScriptPath -PathType Leaf)) {
+    $failures.Add("The Realmz Builder editor plugin and its scene-preview registry are required.")
+}
+$projectSettings = Get-Content -LiteralPath (Join-Path $repoRoot "project.godot") -Raw
+if (-not $projectSettings.Contains('res://addons/realmz_builder/plugin.cfg')) {
+    $failures.Add("Realmz Builder must be enabled for contributors in project.godot.")
 }
 $surfaceIds = @{}
 $surfacesWithoutScene = 0
