@@ -57,10 +57,16 @@ func reset() -> void:
 	_item_scroll_position = 0
 
 
-func present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog, text_scale: float) -> void:
+func present(target: Control, view: GameView, media: ClassicMediaCatalog, text_scale: float) -> void:
+	if target == null:
+		return
 	_encounter_mode = false
 	_encounter_items.clear()
-	_present(parent, view, media, text_scale)
+	if target is InventoryScreen:
+		var screen := target as InventoryScreen
+		_present(screen.body_control(), view, media, text_scale, screen)
+		return
+	_present(target as VBoxContainer, view, media, text_scale)
 
 
 func present_encounter(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog, text_scale: float, entries: Array[InteractionRequestValue.EncounterCatalogEntry]) -> void:
@@ -73,23 +79,28 @@ func present_encounter(parent: VBoxContainer, view: GameView, media: ClassicMedi
 	_present(parent, view, media, text_scale)
 
 
-func _present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog, text_scale: float) -> void:
+func _present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog, text_scale: float, screen: InventoryScreen = null) -> void:
 	if parent == null:
 		return
 	_capture_item_scroll(parent)
-	_clear(parent)
+	if screen != null:
+		screen.clear_rendered_content()
+	else:
+		_clear(parent)
 	_text_scale = maxf(text_scale, 0.1)
 	if view == null:
 		return
 	if view.party_members.is_empty():
-		_add_empty_state(parent, "No party inventory", "The party has no characters.")
-		_add_inventory_done(parent)
+		var empty_host := screen.prepare_alternate_layout() if screen != null else parent
+		_add_empty_state(empty_host, "No party inventory", "The party has no characters.")
+		_add_inventory_done(empty_host)
 		return
 	var available_characters := _eligible_characters(view)
 	if available_characters.is_empty():
-		_add_empty_state(parent, "No encounter items", "No carried item can be selected for this encounter.")
+		var unavailable_host := screen.prepare_alternate_layout() if screen != null else parent
+		_add_empty_state(unavailable_host, "No encounter items", "No carried item can be selected for this encounter.")
 		if not _encounter_mode:
-			_add_inventory_done(parent)
+			_add_inventory_done(unavailable_host)
 		return
 	var selected_character := _selected_character(view)
 	if selected_character == null:
@@ -103,9 +114,6 @@ func _present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog,
 		_clear_pending_action()
 	_rendered_character_id = selected_character.id
 	var visible_items := _eligible_items(selected_character)
-	var detail_popover := ITEM_DETAIL_POPOVER_SCRIPT.new() as CanvasLayer
-	parent.add_child(detail_popover)
-	detail_popover.configure(media, parent.get_theme())
 	var selected_item := _selected_item(visible_items)
 	if selected_item == null and not visible_items.is_empty():
 		selected_item = visible_items[0]
@@ -115,9 +123,19 @@ func _present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog,
 		if target == null:
 			_cancel_trade()
 			return
-		parent.add_child(_build_trade_workspace(view, selected_character, target, selected_item, media, detail_popover))
-		parent.add_child(_build_trade_item_record(selected_character, selected_item, media))
+		var trade_host := screen.prepare_alternate_layout() if screen != null else parent
+		var trade_popover := _create_detail_popover(parent, media)
+		trade_host.add_child(_build_trade_workspace(view, selected_character, target, selected_item, media, trade_popover))
+		trade_host.add_child(_build_trade_item_record(selected_character, selected_item, media))
 		return
+	if screen != null:
+		screen.prepare_normal_layout(_layout_profile == UiLayoutProfile.COMPACT)
+		var detail_popover := _create_detail_popover(parent, media)
+		_build_item_browser(selected_character, visible_items, selected_item, media, detail_popover, screen.item_browser_panel())
+		_build_character_command_rail(view, selected_character, selected_item, media, screen.command_rail_panel())
+		_build_item_record(selected_character, selected_item, media, screen.item_inspector_panel())
+		return
+	var detail_popover := _create_detail_popover(parent, media)
 	var main_split := HBoxContainer.new()
 	main_split.name = "CastleInventoryMainSplit"
 	main_split.add_theme_constant_override("separation", 8)
@@ -128,6 +146,14 @@ func _present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog,
 	main_split.add_child(_build_character_command_rail(view, selected_character, selected_item, media))
 	parent.add_child(main_split)
 	parent.add_child(_build_item_record(selected_character, selected_item, media))
+
+
+func _create_detail_popover(parent: VBoxContainer, media: ClassicMediaCatalog) -> CanvasLayer:
+	var detail_popover := ITEM_DETAIL_POPOVER_SCRIPT.new() as CanvasLayer
+	detail_popover.name = "InventoryItemDetailPopover"
+	parent.add_child(detail_popover)
+	detail_popover.configure(media, parent.get_theme())
+	return detail_popover
 
 
 func _build_character_selector(view: GameView, selected: CharacterView, media: ClassicMediaCatalog) -> PanelContainer:
@@ -195,8 +221,9 @@ func select_roster_character(character_id: String, view: GameView) -> bool:
 	return true
 
 
-func _build_item_browser(character: CharacterView, items: Array[ItemView], selected: ItemView, media: ClassicMediaCatalog, detail_popover: CanvasLayer) -> PanelContainer:
-	var panel := PanelContainer.new()
+func _build_item_browser(character: CharacterView, items: Array[ItemView], selected: ItemView, media: ClassicMediaCatalog, detail_popover: CanvasLayer, existing_panel: PanelContainer = null) -> PanelContainer:
+	var panel: PanelContainer = existing_panel if existing_panel != null else PanelContainer.new()
+	_clear(panel)
 	panel.name = "InventoryItemBrowser"
 	panel.theme_type_variation = &"ClassicItemLedger"
 	panel.custom_minimum_size = Vector2(390.0 if _layout_profile == UiLayoutProfile.COMPACT else 620.0, 280.0 if _layout_profile == UiLayoutProfile.COMPACT else 330.0)
@@ -293,8 +320,9 @@ func _item_line_fact(item: ItemView) -> ItemFactView:
 	return null
 
 
-func _build_character_command_rail(view: GameView, character: CharacterView, item: ItemView, media: ClassicMediaCatalog) -> PanelContainer:
-	var panel := PanelContainer.new()
+func _build_character_command_rail(view: GameView, character: CharacterView, item: ItemView, media: ClassicMediaCatalog, existing_panel: PanelContainer = null) -> PanelContainer:
+	var panel: PanelContainer = existing_panel if existing_panel != null else PanelContainer.new()
+	_clear(panel)
 	panel.name = "InventoryCharacterCommandRail"
 	panel.theme_type_variation = &"ClassicInset"
 	panel.custom_minimum_size = Vector2(350.0 if _layout_profile == UiLayoutProfile.COMPACT else 285.0, 280.0 if _layout_profile == UiLayoutProfile.COMPACT else 330.0)
@@ -353,8 +381,9 @@ func _render_character_record(parent: VBoxContainer, character: CharacterView, m
 	condition_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 
 
-func _build_item_record(character: CharacterView, item: ItemView, media: ClassicMediaCatalog) -> PanelContainer:
-	var panel := PanelContainer.new()
+func _build_item_record(character: CharacterView, item: ItemView, media: ClassicMediaCatalog, existing_panel: PanelContainer = null) -> PanelContainer:
+	var panel: PanelContainer = existing_panel if existing_panel != null else PanelContainer.new()
+	_clear(panel)
 	panel.name = "InventoryItemInspector"
 	panel.theme_type_variation = &"ClassicInset"
 	panel.custom_minimum_size.y = 150.0

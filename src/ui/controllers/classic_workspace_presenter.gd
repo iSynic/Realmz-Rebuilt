@@ -203,18 +203,29 @@ func sync_route_audio(screen_id: StringName) -> void:
 		sound_requested.emit(SWAP_DONE_SOUND_ID, false, false, false)
 
 
-func present(screen_id: StringName, body: Container, appearance_textures: Dictionary, vault_back_label: String, context_actions: Container = null) -> void:
-	_clear(body)
+func present(screen_id: StringName, screen: ScreenFrame, appearance_textures: Dictionary, vault_back_label: String, context_actions: Container = null) -> void:
+	if screen == null:
+		return
+	var body := screen.body_control()
+	if screen_id not in [&"character", &"inventory"]:
+		_clear(body)
 	if context_actions != null:
 		_clear(context_actions)
 	if (_view == null or not _view.session_started) and screen_id != &"vault":
-		_add_label(body, "No active session. Choose a validated campaign to begin.", MUTED)
+		var message_host: Container = body
+		if screen is CharacterScreen:
+			var character_screen := screen as CharacterScreen
+			character_screen.prepare_for_render()
+			message_host = character_screen.character_sheet_area()
+		elif screen is InventoryScreen:
+			message_host = (screen as InventoryScreen).prepare_alternate_layout()
+		_add_label(message_host, "No active session. Choose a validated campaign to begin.", MUTED)
 		return
 	match screen_id:
 		&"exploration":
 			_add_card(body, "Exploration", "The map presenter occupies the central Classic viewport. Use the command rail and textbox overlay for player-facing actions.", "Day %d • %02d:%02d" % [_view.realmz_day, _view.realmz_hour, _view.realmz_minute])
 		&"character":
-			_character_controller.present(body, _view, appearance_textures, _settings, _media)
+			_character_controller.present(screen as CharacterScreen, _view, appearance_textures, _settings, _media)
 		&"allies":
 			_creature_library_controller.present_allies(body, _view, _media, _settings.text_scale)
 		&"bestiary":
@@ -222,7 +233,7 @@ func present(screen_id: StringName, body: Container, appearance_textures: Dictio
 		&"vault":
 			_character_controller.present_vault(body, _view, appearance_textures, _settings.text_scale, vault_back_label, _media)
 		&"inventory":
-			_inventory_controller.present(body, _view, _media, _settings.text_scale)
+			_inventory_controller.present(screen as InventoryScreen, _view, _media, _settings.text_scale)
 		&"spells":
 			_spells_controller.present(body, _view, _media, _settings.text_scale, context_actions)
 		&"services":

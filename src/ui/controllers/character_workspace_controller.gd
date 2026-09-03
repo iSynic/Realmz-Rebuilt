@@ -330,15 +330,18 @@ func draft_order_ids() -> Array[String]:
 	return _draft_order_ids.duplicate()
 
 
-func present(parent: VBoxContainer, view: GameView, appearance_textures: Dictionary, settings: PresentationSettings, media: ClassicMediaCatalog = null) -> void:
-	if parent == null or view == null:
+func present(screen: CharacterScreen, view: GameView, appearance_textures: Dictionary, settings: PresentationSettings, media: ClassicMediaCatalog = null) -> void:
+	if screen == null or view == null:
 		return
+	screen.prepare_for_render()
+	var party_order_area := screen.party_order_area()
+	var character_sheet_area := screen.character_sheet_area()
 	if view.party_members.is_empty():
-		_add_card(parent, "No characters", "Begin a campaign or import an eligible vault character.")
+		_add_card(character_sheet_area, "No characters", "Begin a campaign or import an eligible vault character.")
 		return
-	_render_party_order_summary(parent, view)
+	_render_party_order_summary(party_order_area, view)
 	if _party_order_open:
-		_render_party_order(parent, view)
+		_render_party_order(party_order_area, view)
 	var sheet := ClassicCharacterSheet.new()
 	sheet.name = "ClassicCharacterSheet"
 	sheet.present(view.party_members, _selected_character_id, appearance_textures, settings.text_scale, _selected_tab, view.portrait_options, view.combat_icon_options, view.availability(&"change_character_appearance"), media, _layout_profile)
@@ -346,7 +349,7 @@ func present(parent: VBoxContainer, view: GameView, appearance_textures: Diction
 	sheet.character_selected.connect(func(character_id: String) -> void: _selected_character_id = character_id)
 	sheet.tab_changed.connect(func(tab_id: StringName) -> void: _selected_tab = tab_id)
 	sheet.appearance_change_requested.connect(_submit_character_appearance)
-	parent.add_child(sheet)
+	character_sheet_area.add_child(sheet)
 
 
 func _render_party_order_summary(parent: VBoxContainer, view: GameView) -> void:

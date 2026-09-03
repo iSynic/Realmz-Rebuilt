@@ -15,10 +15,8 @@
   "legacyRouteScenes": [
     "src/ui/screens/allies_screen.tscn",
     "src/ui/screens/bestiary_screen.tscn",
-    "src/ui/screens/character_screen.tscn",
     "src/ui/screens/combat_screen.tscn",
     "src/ui/screens/exploration_screen.tscn",
-    "src/ui/screens/inventory_screen.tscn",
     "src/ui/screens/journal_screen.tscn",
     "src/ui/screens/services_screen.tscn",
     "src/ui/screens/spells_screen.tscn",
