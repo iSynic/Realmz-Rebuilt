@@ -1,7 +1,7 @@
 class_name MapTopology
 extends RefCounted
 
-const EXPLORATION_VISIBILITY_RADIUS: int = 8
+const EXPLORATION_VISIBILITY_RADIUS: int = 10
 const WIZARDS_EYE_VISIBILITY_RADIUS: int = 16
 
 var width: int

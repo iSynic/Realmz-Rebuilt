@@ -28,7 +28,7 @@ func run() -> void:
 	for x: int in 33:
 		sight_cells.append(MapCell.new("sight:%d" % x, Vector2i(x, 0), "classic.terrain.1", true, 1, false, true, false, false, false, false, false, 0, 1, "fixture.tileset", no_ids, no_ids, no_edges, no_features))
 	var sight_topology := MapTopology.new(33, 1, sight_cells); var sight_origin := Vector2i(16, 0); var ordinary_sight := sight_topology.exploration_visible_cells(sight_origin, WorldState.new(), true); var wizard_sight := sight_topology.exploration_visible_cells(sight_origin, WorldState.new(), true, true)
-	assert_equal([MapTopology.EXPLORATION_VISIBILITY_RADIUS, ordinary_sight.front(), ordinary_sight.back(), ordinary_sight.size()], [8, Vector2i(8, 0), Vector2i(24, 0), 17], "ordinary LOS remains the bounded radius-eight exploration probe")
+	assert_equal([MapTopology.EXPLORATION_VISIBILITY_RADIUS, ordinary_sight.front(), ordinary_sight.back(), ordinary_sight.size()], [10, Vector2i(6, 0), Vector2i(26, 0), 21], "ordinary LOS permits a wider bounded view through an open corridor")
 	assert_equal([MapTopology.WIZARDS_EYE_VISIBILITY_RADIUS, wizard_sight.front(), wizard_sight.back(), wizard_sight.size()], [16, Vector2i.ZERO, Vector2i(32, 0), 33], "Wizard's Eye doubles the exploration radius while remaining bounded to the current map")
 	var edge_only_cells: Array[MapCell] = [los_cells[0], MapCell.new("edge:1", Vector2i(1, 0), "classic.terrain.3", true, 1, false, true, false, false, false, false, false, 0, 3, "fixture.tileset", no_ids, no_ids, wall_edges, no_features)]; assert_false(MapTopology.new(2, 1, edge_only_cells).has_line_of_sight(Vector2i.ZERO, Vector2i(1, 0), WorldState.new()), "a blocking edge still hides a passable destination cell")
 

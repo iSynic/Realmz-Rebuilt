@@ -100,9 +100,9 @@ func run() -> void:
 	assert_equal(light.state, SessionStep.State.COMPLETED, "party-state field magic commits without a character picker")
 	assert_equal(restored._state.party.conditions.value(0), 29, "Classic light stores thirty turns per power minus one")
 	assert_equal(restored.view().party_summary.light_remaining, 29, "the detached party view exposes the authoritative light condition")
-	var wizard_probe := restored.view().party_coordinate + Vector2i(9, 0)
+	var wizard_probe := restored.view().party_coordinate + Vector2i(11, 0)
 	assert_not_null(restored.view().map_view.cell_at(wizard_probe), "the Wizard's Eye probe lies inside the detached LOS projection")
-	assert_false(restored.view().map_view.cell_at(wizard_probe).visible, "ordinary exploration does not reveal a cell beyond radius eight")
+	assert_false(restored.view().map_view.cell_at(wizard_probe).visible, "ordinary exploration does not reveal a cell beyond radius ten")
 	var wizard_caster := restored._state.party.character_by_id(active_caster.id); wizard_caster.spell_points = 200; restored._rng = ScriptedRng.new([0, 0, 0, 0]); var wizard_eye := restored.submit_intent(PlayerIntent.cast_spell("classic.spell.1512", wizard_caster.id, "", 1))
 	assert_equal([wizard_eye.state, restored._state.party.conditions.is_active(ConditionRules.PARTY_WIZARDS_EYE), restored.view().map_view.cell_at(wizard_probe).visible, restored.view().map_view.seen_coordinates().has(wizard_probe)], [SessionStep.State.COMPLETED, true, true, true], "casting Wizard's Eye immediately extends authoritative LOS and sight memory beyond the ordinary radius")
 
