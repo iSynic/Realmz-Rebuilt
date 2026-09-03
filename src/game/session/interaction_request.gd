@@ -1,6 +1,8 @@
 class_name InteractionRequest
 extends RefCounted
 
+const ServiceDecoder := preload("res://src/game/session/interaction_request_service_decoder.gd")
+
 const VERSION: int = 1
 
 const ACKNOWLEDGE: StringName = &"acknowledge"
@@ -826,138 +828,28 @@ static func _parse_reward_body(request_kind: StringName, payload: Dictionary) ->
 
 
 static func _parse_lifecycle_body(payload: Dictionary) -> LifecycleRequestBody:
-	if not _fields_are_exact(payload, ["operation", "prompt", "hasActiveSession", "inCombat", "options"], ["operation", "prompt", "inCombat", "options"]) or not _required_strings(payload, ["operation", "prompt"]) or not payload["inCombat"] is bool or not payload["options"] is Array or not _optional_bools(payload, ["hasActiveSession"]): return null
 	var value := LifecycleRequestBody.new()
-	value.operation = StringName(payload["operation"])
-	value.prompt = payload["prompt"]
-	value.has_active_session = bool(payload.get("hasActiveSession", false))
-	value.in_combat = payload["inCombat"]
-	value.includes_active_session = payload.has("hasActiveSession")
-	for entry: Variant in payload["options"]:
-		var option := InteractionRequestValue.lifecycle_option(entry); if option == null: return null
-		value.options.append(option)
-	return value
+	return value if ServiceDecoder.populate_lifecycle(payload, value) else null
 
 
 static func _parse_shop_body(payload: Dictionary) -> ShopRequestBody:
-	var fields: Array[String] = ["shopId", "inflationPercent", "partyGold", "identifyPrice", "stock", "characters", "acceptRanges", "actions"]
-	if not _fields_are_exact(payload, fields, fields) or not _required_strings(payload, ["shopId"]) or not _required_ints(payload, ["inflationPercent", "partyGold", "identifyPrice"]) or not payload["stock"] is Array or not payload["characters"] is Array or not payload["acceptRanges"] is Array or not payload["actions"] is Array: return null
 	var result := ShopRequestBody.new()
-	result.shop_id = payload["shopId"]
-	result.inflation_percent = int(payload["inflationPercent"])
-	result.party_gold = int(payload["partyGold"])
-	result.identify_price = int(payload["identifyPrice"])
-	for entry: Variant in payload["stock"]:
-		var stock := InteractionRequestValue.shop_stock(entry)
-		if stock == null: return null
-		result.stock.append(stock)
-	for entry: Variant in payload["characters"]:
-		var character := InteractionRequestValue.service_character(entry, &"shop")
-		if character == null: return null
-		result.characters.append(character)
-	for entry: Variant in payload["acceptRanges"]:
-		if not _whole_number(entry): return null
-		result.accept_ranges.append(int(entry))
-	if not _array_is_strings(payload["actions"]): return null
-	result.actions = _strings(payload["actions"])
-	return result
+	return result if ServiceDecoder.populate_shop(payload, result) else null
 
 
 static func _parse_temple_body(payload: Dictionary) -> TempleRequestBody:
-	var fields: Array[String] = ["costPercent", "characters", "services", "pooledWealth", "bankAvailable", "selectedCharacterId", "actions"]
-	if not _fields_are_exact(payload, fields, fields) or not _required_ints(payload, ["costPercent"]) or not payload["characters"] is Array or not payload["services"] is Array or not payload["bankAvailable"] is bool or not payload["selectedCharacterId"] is String or not payload["actions"] is Array: return null
 	var result := TempleRequestBody.new()
-	result.cost_percent = int(payload["costPercent"])
-	result.pooled_wealth = InteractionRequestValue.wealth(payload["pooledWealth"])
-	if result.pooled_wealth == null: return null
-	result.bank_available = payload["bankAvailable"]
-	result.selected_character_id = payload["selectedCharacterId"]
-	for entry: Variant in payload["characters"]:
-		var character := InteractionRequestValue.service_character(entry, &"temple")
-		if character == null: return null
-		result.characters.append(character)
-	for entry: Variant in payload["services"]:
-		var service := InteractionRequestValue.temple_service(entry)
-		if service == null: return null
-		result.services.append(service)
-	if not _array_is_strings(payload["actions"]): return null
-	result.actions = _strings(payload["actions"])
-	return result
+	return result if ServiceDecoder.populate_temple(payload, result) else null
 
 
 static func _parse_bank_body(payload: Dictionary, departure: bool) -> BankRequestBody:
-	var allowed: Array[String] = ["mode", "selectedCharacterId", "pooledWealth", "bankedWealth", "pool", "share", "characters", "actions"]
-	var required: Array[String] = ["selectedCharacterId", "pooledWealth", "bankedWealth", "pool", "share", "characters"]
-	if not departure: required.append("actions")
-	if not _fields_are_exact(payload, allowed, required) or not payload["selectedCharacterId"] is String or not payload["characters"] is Array or not _optional_strings(payload, ["mode"]): return null
-	if departure and String(payload.get("mode", "")) != "departure": return null
 	var result := BankRequestBody.new()
-	result.mode = StringName(payload.get("mode", ""))
-	result.has_mode = payload.has("mode")
-	result.selected_character_id = payload["selectedCharacterId"]
-	result.pooled_wealth = InteractionRequestValue.wealth(payload["pooledWealth"])
-	result.banked_wealth = InteractionRequestValue.wealth(payload["bankedWealth"])
-	result.pool = InteractionRequestValue.availability(payload["pool"])
-	result.share = InteractionRequestValue.availability(payload["share"])
-	if result.pooled_wealth == null or result.banked_wealth == null or result.pool == null or result.share == null: return null
-	for entry: Variant in payload["characters"]:
-		var character := InteractionRequestValue.service_character(entry, &"bank")
-		if character == null: return null
-		result.characters.append(character)
-	if payload.has("actions"):
-		if not _array_is_strings(payload["actions"]): return null
-		result.actions = _strings(payload["actions"])
-	return result
+	return result if ServiceDecoder.populate_bank(payload, departure, result) else null
 
 
 static func _parse_combat_body(payload: Dictionary) -> CombatRequestBody:
-	var fields: Array[String] = ["battleId", "round", "actorId", "attackUnitsRemaining", "movementRemaining", "enemiesRemaining", "actions", "weaponMode", "weaponSwitch", "rangedAttack", "retreat", "meleeAttackReason", "targets", "combatants", "movement", "spellCasts", "spellCastReason", "fastSpells", "itemCasts", "itemCastReason", "scrollCasts", "scrollCastReason", "autoTurn", "autoCharacterIds", "delay", "bandage", "turnUndead", "undo"]
-	if not _fields_are_exact(payload, fields, fields) or not _required_strings(payload, ["battleId", "actorId", "weaponMode", "meleeAttackReason", "spellCastReason", "itemCastReason", "scrollCastReason"]) or not _required_ints(payload, ["round", "attackUnitsRemaining", "movementRemaining", "enemiesRemaining"]): return null
-	for field: String in ["actions", "targets", "combatants", "movement", "spellCasts", "fastSpells", "itemCasts", "scrollCasts", "autoCharacterIds"]:
-		if not payload[field] is Array: return null
 	var result := CombatRequestBody.new()
-	result.battle_id = payload["battleId"]; result.round_number = int(payload["round"]); result.actor_id = payload["actorId"]; result.attack_units_remaining = int(payload["attackUnitsRemaining"]); result.movement_remaining = int(payload["movementRemaining"]); result.enemies_remaining = int(payload["enemiesRemaining"]); result.weapon_mode = StringName(payload["weaponMode"]); result.melee_attack_reason = payload["meleeAttackReason"]; result.spell_cast_reason = payload["spellCastReason"]; result.item_cast_reason = payload["itemCastReason"]; result.scroll_cast_reason = payload["scrollCastReason"]
-	if not _array_is_strings(payload["actions"]) or not _array_is_strings(payload["autoCharacterIds"]): return null
-	result.actions = _strings(payload["actions"]); result.auto_character_ids = _strings(payload["autoCharacterIds"])
-	result.weapon_switch = InteractionRequestValue.availability(payload["weaponSwitch"]); result.ranged_attack = InteractionRequestValue.availability(payload["rangedAttack"]); result.retreat = InteractionRequestValue.availability(payload["retreat"]); result.auto_turn = InteractionRequestValue.availability(payload["autoTurn"]); result.delay = InteractionRequestValue.availability(payload["delay"]); result.undo = InteractionRequestValue.availability(payload["undo"])
-	if result.weapon_switch == null or result.ranged_attack == null or result.retreat == null or result.auto_turn == null or result.delay == null or result.undo == null: return null
-	var bandage_parse: Variant = _parse_target_availability(payload["bandage"]); var turn_parse: Variant = _parse_target_availability(payload["turnUndead"])
-	if bandage_parse == null or turn_parse == null: return null
-	result.bandage = bandage_parse[0]; result.bandage_targets = bandage_parse[1]; result.turn_undead = turn_parse[0]; result.turn_undead_targets = turn_parse[1]
-	for entry: Variant in payload["targets"]:
-		var parsed_target := InteractionRequestValue.combat_target(entry); if parsed_target == null: return null
-		result.targets.append(parsed_target)
-	for entry: Variant in payload["combatants"]:
-		var parsed_combatant := InteractionRequestValue.combatant(entry); if parsed_combatant == null: return null
-		result.combatants.append(parsed_combatant)
-	for entry: Variant in payload["movement"]:
-		var parsed_movement := InteractionRequestValue.movement_option(entry); if parsed_movement == null: return null
-		result.movement.append(parsed_movement)
-	for entry: Variant in payload["spellCasts"]:
-		var parsed_cast := InteractionRequestValue.cast_option(entry, &"spell"); if parsed_cast == null: return null
-		result.spell_casts.append(parsed_cast)
-	for entry: Variant in payload["itemCasts"]:
-		var parsed_cast := InteractionRequestValue.cast_option(entry, &"item"); if parsed_cast == null: return null
-		result.item_casts.append(parsed_cast)
-	for entry: Variant in payload["scrollCasts"]:
-		var parsed_cast := InteractionRequestValue.cast_option(entry, &"scroll"); if parsed_cast == null: return null
-		result.scroll_casts.append(parsed_cast)
-	for entry: Variant in payload["fastSpells"]:
-		var parsed_fast := InteractionRequestValue.fast_spell(entry); if parsed_fast == null: return null
-		result.fast_spells.append(parsed_fast)
-	return result
-
-
-static func _parse_target_availability(data: Variant) -> Variant:
-	if not data is Dictionary or not _fields_are_exact(data, ["enabled", "reason", "targets"], ["enabled", "reason", "targets"]) or not data["enabled"] is bool or not data["reason"] is String or not data["targets"] is Array: return null
-	var availability_data := {"enabled": data["enabled"], "reason": data["reason"]}
-	var availability := InteractionRequestValue.availability(availability_data)
-	var targets: Array[InteractionRequestValue.CombatTarget] = []
-	for entry: Variant in data["targets"]:
-		var target := InteractionRequestValue.combat_target(entry)
-		if target == null: return null
-		targets.append(target)
-	return [availability, targets]
+	return result if ServiceDecoder.populate_combat(payload, result) else null
 
 
 static func _array_is_strings(values: Variant) -> bool:

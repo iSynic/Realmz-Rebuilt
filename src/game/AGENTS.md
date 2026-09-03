@@ -8,6 +8,7 @@ Own the pure Realmz model, fixed Classic rules, topology, game clock, randomness
 
 - Direct Realmz definitions and mutable playthrough state, including characters, equipment, wealth, conditions, encounters, battles, shops, treasures, spells, monsters, races, castes, and immutable compiled scenario programs.
 - Combat spell mechanics remain in `CombatFlowMagic`; `CombatSpellEventBuilder` owns only the detached presentation-event shapes emitted after those mechanics resolve.
+- `InteractionRequest` owns the public typed request family and wire-facing factory. `InteractionRequestServiceDecoder` owns strict validation and population of lifecycle, Shop, Temple, Bank, and Combat request bodies.
 - `SpellRolls` owns the shared base-and-power dice pattern; spell resolvers supply the authoritative ranges and serialized RNG tags.
 - `CombatAiTargetFacts` owns read-only allegiance, health, spell-point, condition, immunity, and reflection queries; `CombatAiScoring` owns deterministic tactical valuation and choice.
 - Detached party views include current held-over ally instances separately from hostile combatants. The active monster set's menu-visible immutable definitions project into a separate ordered Bestiary catalog with their authored descriptions; presentation may inspect either view but cannot mutate ally ownership or infer the catalog from current party state.
