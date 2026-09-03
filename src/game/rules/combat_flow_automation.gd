@@ -225,8 +225,7 @@ func _process_monster_turns(state: GameState, content: RealmzContent, rng: Realm
 	# multi-summon or a death macro adds combatants. Bound the scan by the
 	# authoritative actor capacities instead of the order's stale entry count.
 	var guard := MAX_MONSTERS + state.party.characters().size()
-	while guard > 0 and not combat.completed:
-		if not combat.pending_spell_death_macro_id().is_empty(): return
+	while guard > 0 and not combat.completed and combat.pending_spell_death_macro_id().is_empty():
 		var actor_id := combat.active_actor_id()
 		var monster := combat.monster_by_id(actor_id)
 		if monster == null:
@@ -421,46 +420,60 @@ func _process_monster_cast(state: GameState, content: RealmzContent, monster: Mo
 		_flow()._append_persistent_field_events(events, repeated_fields, "classic-monster")
 		_flow()._append_spell_sound(events, spell.sound_start, "classic-monster-spell-start")
 		_flow()._append_spell_cast_event(events, monster.id, spell, resolutions, area_center, area_shape, "classic-monster")
-		for index: int in resolutions.resolutions.size():
-			var resolution := resolutions.resolutions[index]
-			var resolved_target_id := resolutions.target_ids[index]
-			var selected_target_id := resolutions.selected_target_ids[index]
-			var target_kind := resolutions.target_kinds[index]
-			var reflected := resolutions.reflected_targets[index]
-			if resolution.damage > 0 or (resolution.damage < 0 and target_kind == &"monster"):
-				state.combat.mark_attacked(resolved_target_id)
-			_flow()._append_spell_projectile_event(events, monster.id, resolved_target_id, spell, "classic-monster")
-			_flow()._append_spell_sound(events, spell.sound_end, "classic-monster-spell-result")
-			var payload := {"actorId": monster.id, "targetId": resolved_target_id, "selectedTargetId": selected_target_id, "targetKind": String(target_kind), "spellId": spell.id, "targetType": spell.target_type, "power": cost_power, "rangePower": range_power, "classicTier": cast_level, "reflected": reflected, "resisted": resolution.resisted, "saved": resolution.saved, "damage": resolution.damage, "healing": maxi(0, -resolution.damage), "duration": resolution.duration, "defeated": resolution.target_defeated, "source": "classic-monster", "detectedMagicItemCount": resolution.detected_magic_item_count}
-			if resolution.spell_point_delta != 0 or ClassicSpellCapabilityCatalog.is_combat_spell_point_restore_spell(spell) or ClassicSpellCapabilityCatalog.is_combat_spell_point_drain_spell(spell):
-				payload["spellPointDelta"] = resolution.spell_point_delta
-			if resolution.cleared_condition >= 0:
-				payload["clearedCondition"] = resolution.cleared_condition
-			if resolution.applied_condition >= 0:
-				payload["appliedCondition"] = resolution.applied_condition
-			if resolution.allegiance_changed:
-				payload["traitorBefore"] = resolution.target_traitor_before
-				payload["traitorAfter"] = resolution.target_traitor_after
-			if not resolution.transformed_definition_after.is_empty(): payload["transformedDefinitionBefore"] = resolution.transformed_definition_before; payload["transformedDefinitionAfter"] = resolution.transformed_definition_after
-			if area_shape > 0:
-				payload["areaCenter"] = [area_center.x, area_center.y]
-				payload["areaShape"] = area_shape
-			_flow()._append_spell_presentation(payload, spell, index, resolutions.resolutions.size(), resolution.target_defeated)
-			events.append(DomainEvent.new(&"combat_spell_resolved", payload))
-			if not resolution.target_defeated:
-				continue
-			if target_kind == &"character":
-				_flow()._mark_character_bleeding(state, state.party.character_by_id(resolved_target_id), true)
-				_remove_defeated_position(state.combat, resolved_target_id, true)
-			else:
-				var defeated_monster := state.combat.monster_by_id(resolved_target_id)
-				var defeated_definition := content.monster_by_id(defeated_monster.definition_id) if defeated_monster != null else null
-				var queued = _flow()._queue_spell_death_macro(state.combat, defeated_monster, defeated_definition)
-				if not queued and defeated_definition != null and defeated_definition.death_macro > 0:
-					events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "cast", "targetId": resolved_target_id, "reason": "spell-death-macro-queue-limit"}))
-				# Castle's noofmagattacks loop continues after reflection kills the caster;
-				# retain its anchor until the complete spell sequence and queued macros finish.
-				_remove_defeated_position(state.combat, resolved_target_id, not queued and resolved_target_id != monster.id)
+		_append_monster_spell_resolution_events(state, content, monster, spell, resolutions, cost_power, range_power, cast_level, area_center, area_shape, events)
+	return _finish_monster_cast(state, content, monster, did_cast, events)
+
+
+func _append_monster_spell_resolution_events(state: GameState, content: RealmzContent, monster: MonsterState, spell: SpellDefinition, resolutions: GroupSpellResolution, cost_power: int, range_power: int, cast_level: int, area_center: Vector2i, area_shape: int, events: Array[DomainEvent]) -> void:
+	for index: int in resolutions.resolutions.size():
+		var resolution := resolutions.resolutions[index]
+		var resolved_target_id := resolutions.target_ids[index]
+		var selected_target_id := resolutions.selected_target_ids[index]
+		var target_kind := resolutions.target_kinds[index]
+		var reflected := resolutions.reflected_targets[index]
+		if resolution.damage > 0 or (resolution.damage < 0 and target_kind == &"monster"):
+			state.combat.mark_attacked(resolved_target_id)
+		_flow()._append_spell_projectile_event(events, monster.id, resolved_target_id, spell, "classic-monster")
+		_flow()._append_spell_sound(events, spell.sound_end, "classic-monster-spell-result")
+		var payload := {"actorId": monster.id, "targetId": resolved_target_id, "selectedTargetId": selected_target_id, "targetKind": String(target_kind), "spellId": spell.id, "targetType": spell.target_type, "power": cost_power, "rangePower": range_power, "classicTier": cast_level, "reflected": reflected, "resisted": resolution.resisted, "saved": resolution.saved, "damage": resolution.damage, "healing": maxi(0, -resolution.damage), "duration": resolution.duration, "defeated": resolution.target_defeated, "source": "classic-monster", "detectedMagicItemCount": resolution.detected_magic_item_count}
+		if resolution.spell_point_delta != 0 or ClassicSpellCapabilityCatalog.is_combat_spell_point_restore_spell(spell) or ClassicSpellCapabilityCatalog.is_combat_spell_point_drain_spell(spell):
+			payload["spellPointDelta"] = resolution.spell_point_delta
+		if resolution.cleared_condition >= 0:
+			payload["clearedCondition"] = resolution.cleared_condition
+		if resolution.applied_condition >= 0:
+			payload["appliedCondition"] = resolution.applied_condition
+		if resolution.allegiance_changed:
+			payload["traitorBefore"] = resolution.target_traitor_before
+			payload["traitorAfter"] = resolution.target_traitor_after
+		if not resolution.transformed_definition_after.is_empty():
+			payload["transformedDefinitionBefore"] = resolution.transformed_definition_before
+			payload["transformedDefinitionAfter"] = resolution.transformed_definition_after
+		if area_shape > 0:
+			payload["areaCenter"] = [area_center.x, area_center.y]
+			payload["areaShape"] = area_shape
+		_flow()._append_spell_presentation(payload, spell, index, resolutions.resolutions.size(), resolution.target_defeated)
+		events.append(DomainEvent.new(&"combat_spell_resolved", payload))
+		if not resolution.target_defeated:
+			continue
+		if target_kind == &"character":
+			_flow()._mark_character_bleeding(state, state.party.character_by_id(resolved_target_id), true)
+			_remove_defeated_position(state.combat, resolved_target_id, true)
+		else:
+			_handle_monster_spell_defeat(state, content, monster, resolved_target_id, events)
+
+
+func _handle_monster_spell_defeat(state: GameState, content: RealmzContent, caster: MonsterState, target_id: String, events: Array[DomainEvent]) -> void:
+	var defeated_monster := state.combat.monster_by_id(target_id)
+	var defeated_definition := content.monster_by_id(defeated_monster.definition_id) if defeated_monster != null else null
+	var queued = _flow()._queue_spell_death_macro(state.combat, defeated_monster, defeated_definition)
+	if not queued and defeated_definition != null and defeated_definition.death_macro > 0:
+		events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": caster.id, "action": "cast", "targetId": target_id, "reason": "spell-death-macro-queue-limit"}))
+	# Castle continues after reflection kills the caster, so retain its anchor until
+	# the spell sequence and queued death macros have both finished.
+	_remove_defeated_position(state.combat, target_id, not queued and target_id != caster.id)
+
+
+func _finish_monster_cast(state: GameState, content: RealmzContent, monster: MonsterState, did_cast: bool, events: Array[DomainEvent]) -> int:
 	if not state.combat.pending_spell_death_macro_id().is_empty():
 		if not state.combat.begin_spell_death_macro_sequence(monster.id, true) or not _flow()._request_next_spell_death_macro(state.combat, content, events):
 			events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "cast", "reason": "invalid-spell-death-macro-queue"}))
