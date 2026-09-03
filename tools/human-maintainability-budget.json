@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "statementSeparatorLines": {
+    "currentMaximum": 296,
+    "target": 0
+  },
+  "runtimeControlConstructions": {
+    "currentMaximum": 830,
+    "target": 0
+  },
+  "missingPurposeHeaders": {
+    "currentMaximum": 369,
+    "target": 0
+  },
+  "legacyRouteScenes": [
+    "src/presentation/screens/allies_screen.tscn",
+    "src/presentation/screens/bestiary_screen.tscn",
+    "src/presentation/screens/character_screen.tscn",
+    "src/presentation/screens/combat_screen.tscn",
+    "src/presentation/screens/exploration_screen.tscn",
+    "src/presentation/screens/inventory_screen.tscn",
+    "src/presentation/screens/journal_screen.tscn",
+    "src/presentation/screens/services_screen.tscn",
+    "src/presentation/screens/spells_screen.tscn",
+    "src/presentation/screens/system_screen.tscn",
+    "src/presentation/screens/vault_screen.tscn"
+  ],
+  "classNameExceptions": [
+    {
+      "path": "src/core/rules/time_rules.gd",
+      "className": "ClockRules"
+    }
+  ],
+  "finalLimits": {
+    "productionFileLines": 800,
+    "functionLines": 100
+  }
+}

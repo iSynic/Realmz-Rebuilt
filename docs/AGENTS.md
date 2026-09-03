@@ -8,6 +8,7 @@ Own current architecture, ADRs, package/save contracts, fidelity decisions, orac
 
 - Durable design decisions and their consequences.
 - Current roadmap and evidence-backed completion status.
+- The human-maintainability migration charter, source vocabulary, naming rules, and scene-ownership target.
 - Public Beta 1 installation, licensing, known-limitations, feedback, and release-acceptance documentation.
 - Castle/Providence/reference provenance without copied archaeology artifacts.
 - Source/runtime evidence boundaries for topology and each source-backed gameplay domain.
@@ -46,4 +47,5 @@ Own current architecture, ADRs, package/save contracts, fidelity decisions, orac
 - `ui-strategy.md` owns the canonical visual language, responsive profiles, route/screen matrix, scaling, input, accessibility, media, and fidelity boundaries.
 - `ui-visual-audit.md` owns the complete player-visible screen/state inventory, Castle/Remake design leads, target composition decisions, media opportunities, and phased visual-remediation queue.
 - `runtime-performance.md` owns the current startup, package-prewarm, vault-insertion, and rendered-overworld performance evidence, acceptance boundaries, and machine-specific measured results.
+- `architecture-migration.md` owns the active human-maintainability charter until its completed rules are absorbed into the Builder's Manual and ordinary architecture documentation.
 - `beta-1.md` owns public prerelease scope, candidate-walkthrough requirements, blocking severity, known limitations, and bug-report evidence expectations.

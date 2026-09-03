@@ -57,6 +57,9 @@ if (@($changedPaths | Where-Object { $_ -eq "src" -or $_.StartsWith("src/") -or 
 & "$PSScriptRoot\verify_hotspot_test_budget.ps1"
 if ($LASTEXITCODE -ne 0) { throw "Hotspot and test-budget verification failed." }
 
+& "$PSScriptRoot\verify_human_maintainability.ps1"
+if ($LASTEXITCODE -ne 0) { throw "Human-maintainability verification failed." }
+
 $referenceArguments = @{}
 if (-not [string]::IsNullOrWhiteSpace($CastleRoot)) { $referenceArguments.CastleRoot = $CastleRoot }
 if (-not [string]::IsNullOrWhiteSpace($RemakeRoot)) { $referenceArguments.RemakeRoot = $RemakeRoot }
