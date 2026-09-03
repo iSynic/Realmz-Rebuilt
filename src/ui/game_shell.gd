@@ -1,3 +1,4 @@
+## Owns the scene-backed application frame and coordinates its UI collaborators.
 class_name GameShell
 extends Control
 
@@ -49,16 +50,10 @@ const TEXT := Color("d8d9d2")
 const SCROLL_ARROW_STEP := 32.0
 const SCROLL_ARROW_INITIAL_DELAY := 0.34
 const SCROLL_ARROW_REPEAT_INTERVAL := 0.065
-const HELD_COMMAND_INTERVAL := 1.0 / 60.0
+const HELD_COMMAND_INTERVAL := GameShellCommandController.HELD_COMMAND_INTERVAL
 const PARTY_EFFECT_FRAME_COUNT := ClassicPartyEffects.FRAME_COUNT
-const HELD_COMMAND_START_SOUND_IDS: Dictionary = {
-	&"area_search": 6001,
-	&"rest": 6001,
-}
-# Castle sounds the shared Shop/Temple/Encounter control before dispatching it.
-const CONTEXTUAL_CONTROL_SOUND_ID := 141
-const TORCH_BUTTON_SCRIPT := preload("res://src/ui/classic_torch_command_button.gd")
-const SEARCH_BUTTON_SCRIPT := preload("res://src/ui/classic_search_command_button.gd")
+const COMMAND_CONTROLLER_SCRIPT := preload("res://src/ui/game_shell_command_controller.gd")
+const MENU_CONTROLLER_SCRIPT := preload("res://src/ui/game_shell_menu_controller.gd")
 const MUSIC_PLAYLIST_DIALOG_SCRIPT := preload("res://src/ui/music_playlist_dialog.gd")
 const SAVE_STATUS_TEXTURE_PATH := "res://src/ui/assets/ui/status/save-status.png"
 const JOURNAL_STATUS_TEXTURE_PATH := "res://src/ui/assets/ui/status/journal-status.png"
@@ -105,11 +100,8 @@ var _profile: UiLayoutProfile
 var _media: ClassicMediaCatalog
 var _selected_character_id: String = ""
 var _latest_classic_text: String = ""
-var _simulation_buttons: Dictionary = {}
-var _menu_actions: Dictionary = {}
-var _menus_connected: Dictionary = {}
-var _held_command: StringName = &""
-var _held_command_timer: Timer
+var _command_controller: GameShellCommandController
+var _menu_controller: GameShellMenuController
 var _effect_frame_timer: Timer
 var _effect_frame_index: int = 0
 var _effect_slots: Array[TextureRect] = []
@@ -130,10 +122,9 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	get_tree().node_added.connect(_on_tree_node_added)
 	ClassicScrollArrowController.configure_descendants(self, SCROLL_ARROW_STEP, SCROLL_ARROW_INITIAL_DELAY, SCROLL_ARROW_REPEAT_INTERVAL)
-	_held_command_timer = Timer.new()
-	_held_command_timer.wait_time = HELD_COMMAND_INTERVAL
-	_held_command_timer.timeout.connect(_on_held_command_timeout)
-	add_child(_held_command_timer)
+	_command_controller = COMMAND_CONTROLLER_SCRIPT.new(self)
+	_command_controller.initialize()
+	_menu_controller = MENU_CONTROLLER_SCRIPT.new(self)
 	_effect_slots = ClassicPartyEffects.build_slots(_effects_grid)
 	_effect_frame_timer = Timer.new()
 	_effect_frame_timer.wait_time = 0.12
@@ -193,8 +184,7 @@ func present(game_view: GameView) -> void:
 	if ordinary_exploration_update:
 		_present_ordinary_exploration_shell(game_view, ordinary_party_update)
 		return
-	if not _held_command.is_empty() and (game_view == null or game_view.pending_interaction != null or not game_view.availability(_held_command).enabled):
-		_stop_held_command()
+	_command_controller.present(game_view)
 	if game_view == null or not game_view.session_started:
 		_latest_classic_text = ""
 		_package_status.text = "No campaign"
@@ -754,258 +744,40 @@ func _build_menus() -> void:
 
 
 func _fill_menu(menu: MenuButton, entries: Array[Dictionary]) -> void:
-	var popup := menu.get_popup()
-	popup.clear()
-	var actions: Dictionary = {}
-	var enabled_count := 0
-	for index: int in entries.size():
-		var entry := entries[index]
-		popup.add_item(String(entry["label"]), index)
-		var reason := String(entry.get("disabled_reason", ""))
-		if reason.is_empty() and entry.has("route"):
-			reason = route_change_reason(_current_view)
-		if not reason.is_empty():
-			entry["disabled_reason"] = reason
-		actions[index] = entry
-		if not reason.is_empty():
-			popup.set_item_disabled(index, true)
-			popup.set_item_tooltip(index, reason)
-		else:
-			enabled_count += 1
-	_menu_actions[menu.get_instance_id()] = actions
-	menu.disabled = enabled_count == 0
-	if not _menus_connected.has(menu.get_instance_id()):
-		popup.id_pressed.connect(_on_menu_item_pressed.bind(menu))
-		_menus_connected[menu.get_instance_id()] = true
-
-
-func _on_menu_item_pressed(item_id: int, menu: MenuButton) -> void:
-	var entry: Dictionary = _menu_actions.get(menu.get_instance_id(), {}).get(item_id, {})
-	if entry.is_empty() or not String(entry.get("disabled_reason", "")).is_empty():
-		return
-	if entry.has("route"):
-		_navigator.open_screen(StringName(entry["route"]))
-	elif entry.has("command"):
-		_activate_command(StringName(entry["command"]))
-	elif entry.has("system"):
-		_on_system_action_requested(StringName(entry["system"]), entry.get("value"))
+	_menu_controller.fill(menu, entries)
 
 
 func _rebuild_command_deck() -> void:
-	if not is_node_ready() or _profile == null:
-		return
-	for grid: GridContainer in [_world_command_grid, _command_grid]:
-		for child: Node in grid.get_children():
-			grid.remove_child(child)
-			child.queue_free()
-	_simulation_buttons.clear()
-	# The typed interaction presenter owns encounter actions. Keep the route's
-	# ordinary footer deck visible (and disabled where necessary) underneath a
-	# blocking interaction instead of replacing Party commands with a second,
-	# empty encounter command surface.
-	var context := _navigator.current_screen()
-	for definition: Dictionary in ClassicCommandCatalog.for_context(context):
-		definition = _presentation_command_definition(definition)
-		var button: BaseButton
-		if bool(definition.get("search_animation", false)):
-			var search_button := SEARCH_BUTTON_SCRIPT.new() as BaseButton
-			search_button.command_requested.connect(_activate_command)
-			search_button.set_meta("search_animation", true)
-			button = search_button
-		elif bool(definition.get("torch_meter", false)):
-			var torch_button := TORCH_BUTTON_SCRIPT.new() as BaseButton
-			torch_button.command_requested.connect(_activate_command)
-			torch_button.set_meta("torch_meter", true)
-			button = torch_button
-		else:
-			var bitmap := ClassicBitmapButton.new()
-			bitmap.configure(definition, _profile.bitmap_scale)
-			if bool(definition.get("hold_repeat", false)):
-				bitmap.button_down.connect(_begin_held_command.bind(StringName(definition["id"])))
-				bitmap.button_up.connect(_on_held_command_button_up)
-			else:
-				bitmap.command_requested.connect(_activate_command)
-			button = bitmap
-		button.set_meta("focus_key", "command:%s" % definition["id"])
-		var group := StringName(definition.get("group", &"party"))
-		var target_grid := _world_command_grid if group == &"world" and _world_command_panel.visible else _command_grid
-		target_grid.add_child(button)
-		_simulation_buttons[StringName(definition["id"])] = button
-	_update_command_availability()
+	_command_controller.rebuild()
 
 
 func _update_command_availability() -> void:
-	for command_id: StringName in _simulation_buttons:
-		var button := _simulation_buttons[command_id] as BaseButton
-		var definition := _presentation_command_definition(ClassicCommandCatalog.command(command_id))
-		var availability_id := StringName(definition.get("availability", &""))
-		var reason := ""
-		if _current_view == null or not _current_view.session_started:
-			reason = "Begin a campaign first."
-		elif _current_view.pending_interaction != null and not String(command_id).begins_with("encounter_"):
-			reason = "Resolve the current interaction first."
-		elif String(command_id).begins_with("encounter_"):
-			reason = "Choose from the active encounter response controls."
-		elif not availability_id.is_empty():
-			reason = _availability_reason(availability_id)
-		if bool(button.get_meta("search_animation", false)):
-			var summary := _current_view.party_summary if _current_view != null else null
-			button.call("sync_status",
-				false if summary == null else summary.searching,
-				reason.is_empty(),
-				reason
-			)
-		elif bool(button.get_meta("torch_meter", false)):
-			var summary := _current_view.party_summary if _current_view != null else null
-			button.call("sync_status",
-				0 if summary == null else summary.light_remaining,
-				false if summary == null else summary.has_classic_torch,
-				reason.is_empty(),
-				reason
-			)
-		else:
-			button.disabled = not reason.is_empty()
-			button.tooltip_text = reason if not reason.is_empty() else "Break camp" if command_id == &"camp" and _current_view.party_summary != null and _current_view.party_summary.camping else String(definition.get("tooltip", ""))
-			if button is ClassicBitmapButton:
-				(button as ClassicBitmapButton).set_visual_pressed(_command_is_visually_pressed(command_id))
-		button.queue_redraw()
-
-
-func _command_is_visually_pressed(command_id: StringName) -> bool:
-	var party_summary := _current_view.party_summary if _current_view != null else null
-	if command_id == &"camp":
-		return party_summary != null and party_summary.camping
-	if command_id == _held_command:
-		return true
-	return command_route(command_id) == _navigator.current_screen()
+	_command_controller.update_availability()
 
 
 static func command_route(command_id: StringName) -> StringName:
-	return {
-		&"money": &"services",
-		&"inventory": &"inventory",
-		&"spells": &"spells",
-		&"maps": &"journal",
-		&"settings": &"system",
-	}.get(command_id, &"")
-
-
-func _activate_command(command_id: StringName, held_repeat: bool = false) -> void:
-	var start_sound_id := command_activation_sound_id(command_id, held_repeat)
-	if start_sound_id > 0:
-		presentation_sound_requested.emit(start_sound_id, false, false, false)
-	match command_id:
-		&"search_mode": intent_submitted.emit(PlayerIntent.toggle_search())
-		&"area_search": intent_submitted.emit(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
-		&"torch": intent_submitted.emit(PlayerIntent.use_torch())
-		&"camp": intent_submitted.emit(PlayerIntent.camp())
-		&"rest": intent_submitted.emit(PlayerIntent.rest())
-		&"heal": intent_submitted.emit(PlayerIntent.heal())
-		&"contextual":
-			var service := _contextual_service()
-			if service != null and not service.actions.is_empty():
-				intent_submitted.emit(PlayerIntent.service_action(service.service_id, service.actions[0]))
-			else:
-				intent_submitted.emit(PlayerIntent.contextual_encounter())
-		&"money": _navigator.open_screen(&"services")
-		&"inventory": _navigator.open_screen(&"inventory")
-		&"spells": _navigator.open_screen(&"spells")
-		&"maps": _navigator.open_screen(&"journal")
-		&"settings": _navigator.open_screen(&"system")
-		&"save": save_requested.emit("quick")
+	return GameShellCommandController.command_route(command_id)
 
 
 func _presentation_command_definition(definition: Dictionary) -> Dictionary:
-	var result := definition.duplicate()
-	var command_id := StringName(definition.get("id", &""))
-	if command_id == &"search_mode" and _current_view != null and _current_view.party_summary != null and _current_view.party_summary.searching:
-		result["label"] = "Stop Search"
-		result["tooltip"] = "Stop continuous secret searching"
-		return result
-	if command_id != &"contextual":
-		return result
-	var service := _contextual_service()
-	if service == null:
-		return result
-	result["label"] = service.title
-	result["tooltip"] = "Enter %s" % service.title
-	result["availability"] = &"service_action"
-	if service.service_kind == &"temple":
-		result["asset_id"] = &"command.temple"
-		result["art_region"] = [9, 2, 37, 34]
-		result.erase("art_mask")
-	elif service.service_kind == &"shop":
-		result["asset_id"] = &""
-		result["asset_path"] = "res://src/ui/assets/ui/commands/shop.png"
-		result.erase("art_region")
-		result.erase("art_mask")
-	else:
-		result["asset_id"] = &""
-		result.erase("art_region")
-		result.erase("art_mask")
-	return result
-
-
-func _contextual_service() -> ServiceView:
-	if _current_view == null:
-		return null
-	for service: ServiceView in _current_view.services:
-		if service.service_kind in [&"shop", &"temple"] and not service.actions.is_empty():
-			return service
-	return null
-
-
-func _begin_held_command(command_id: StringName) -> void:
-	_held_command = command_id
-	_activate_command(command_id)
-	if not _held_command.is_empty():
-		_held_command_timer.start()
+	return _command_controller.presentation_definition(definition)
 
 
 static func command_activation_sound_id(command_id: StringName, held_repeat: bool) -> int:
-	if held_repeat:
-		return 0
-	if command_id == &"contextual":
-		return CONTEXTUAL_CONTROL_SOUND_ID
-	return int(HELD_COMMAND_START_SOUND_IDS.get(command_id, 0))
-
-
-func _stop_held_command() -> void:
-	_held_command = &""
-	if _held_command_timer != null:
-		_held_command_timer.stop()
-	_update_command_availability()
-
-
-func _on_held_command_button_up() -> void:
-	# A synchronous pulse may replace the footer while the pointer is still held.
-	# Godot releases the removed BaseButton, but that is not a mouse release.
-	if should_stop_held_command_on_button_up(Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)):
-		_stop_held_command()
+	return GameShellCommandController.command_activation_sound_id(command_id, held_repeat)
 
 
 static func should_stop_held_command_on_button_up(left_mouse_pressed: bool) -> bool:
-	return not left_mouse_pressed
+	return GameShellCommandController.should_stop_held_command_on_button_up(left_mouse_pressed)
 
 
 func release_held_commands() -> void:
-	_stop_held_command()
-
-
-func _on_held_command_timeout() -> void:
-	if _held_command.is_empty():
-		_stop_held_command()
-		return
-	if _current_view == null or _current_view.pending_interaction != null or not _current_view.availability(_held_command).enabled:
-		_stop_held_command()
-		return
-	if _field_time_playback.is_active(): return
-	_activate_command(_held_command, true)
+	_command_controller.release()
 
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
-		_stop_held_command()
+		_command_controller.release()
 
 
 func _on_screen_changed(screen_id: StringName) -> void:
