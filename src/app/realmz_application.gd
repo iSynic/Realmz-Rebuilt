@@ -15,6 +15,8 @@ const ApplicationLifecycleScript := preload("res://src/app/application_lifecycle
 const HeldMovementControllerScript := preload("res://src/ui/held_movement_controller.gd")
 const DebugToolsHostScript := preload("res://src/app/debug_tools_host.gd")
 const ApplicationInputRouterScript := preload("res://src/app/application_input_router.gd")
+const ApplicationCombatPolicyScript := preload("res://src/app/application_combat_policy.gd")
+const ApplicationStepStatusTextScript := preload("res://src/app/application_step_status_text.gd")
 const CLASSIC_CHARACTER_LIBRARY_PATH := "res://src/storage/characters/realmz-classic-character-library.realmz2"
 const CLASSIC_CHARACTER_LIBRARY_ID := "realmz-classic-character-library"
 const CLASSIC_CHARACTER_LIBRARY_HASH := "c7e093f46bcca49d2382d68c2995ae5ff90c0e706dbd538682b613af9b80e0bd"
@@ -457,54 +459,15 @@ static func interaction_response_owner(has_host_interaction: bool, standalone_cr
 
 
 static func direct_combat_intent(body: InteractionResponse.CombatBody) -> PlayerIntent:
-	if body == null or not body.is_valid():
-		return null
-	match body.action:
-		&"set_auto":
-			return PlayerIntent.set_combat_auto(body.actor_id, body.enabled)
-		&"move", &"retreat_edge":
-			if not body.has_destination:
-				return null
-			return PlayerIntent.combat_move(body.actor_id, body.destination, body.auto_switch_to_melee)
-		&"cast_spell":
-			if body.spell_id.is_empty():
-				return null
-			if not body.target_coordinates.is_empty():
-				return PlayerIntent.cast_spell_at_coordinates(body.spell_id, body.actor_id, body.target_coordinates, body.power)
-			if body.has_target_coordinate:
-				return PlayerIntent.cast_spell_at(body.spell_id, body.actor_id, body.target_coordinate, body.power, body.rotation)
-			if not body.target_ids.is_empty():
-				return PlayerIntent.cast_spell_at_targets(body.spell_id, body.actor_id, body.target_ids, body.power)
-			return PlayerIntent.cast_spell(body.spell_id, body.actor_id, body.target_id, body.power)
-		&"use_item":
-			if body.item_instance_id.is_empty():
-				return null
-			return PlayerIntent.use_item_on_target(body.item_instance_id, body.actor_id, body.target_id, body.target_ids, body.target_coordinate if body.has_target_coordinate else CombatFlow.INVALID_COORDINATE, body.rotation, body.target_coordinates)
-		&"use_scroll":
-			if body.scroll_slot < 0:
-				return null
-			if not body.target_coordinates.is_empty():
-				return PlayerIntent.use_scroll_at_coordinates(body.actor_id, body.scroll_slot, body.target_coordinates)
-			return PlayerIntent.use_scroll_on_target(body.actor_id, body.scroll_slot, body.target_id, body.target_ids, body.target_coordinate if body.has_target_coordinate else CombatFlow.INVALID_COORDINATE, body.rotation)
-	return PlayerIntent.combat_action(body.action, body.actor_id, body.target_id)
+	return ApplicationCombatPolicyScript.direct_intent(body)
 
 
 static func combat_auto_change_to_queue(intent: PlayerIntent, playback_active: bool) -> Dictionary:
-	if not playback_active or intent == null or intent.kind != PlayerIntent.Kind.SET_COMBAT_AUTO or not intent.payload is PlayerIntent.CombatAutoPayload:
-		return {}
-	var payload := intent.payload as PlayerIntent.CombatAutoPayload
-	return {"characterId": payload.character_id, "enabled": payload.enabled}
+	return ApplicationCombatPolicyScript.auto_change_to_queue(intent, playback_active)
 
 
 static func combat_auto_abort_ids(view: GameView, queued_changes: Dictionary = {}) -> Array[String]:
-	var result: Array[String] = []
-	if view != null and view.combat_view != null:
-		result.assign(view.combat_view.auto_character_ids)
-	for character_id: Variant in queued_changes:
-		if bool(queued_changes[character_id]) and not result.has(String(character_id)):
-			result.append(String(character_id))
-	result.sort()
-	return result
+	return ApplicationCombatPolicyScript.auto_abort_ids(view, queued_changes)
 
 
 func _abort_full_party_auto(skip_playback: bool) -> bool:
@@ -522,15 +485,7 @@ func _abort_full_party_auto(skip_playback: bool) -> bool:
 
 
 static func persistent_auto_response(view: GameView) -> InteractionResponse:
-	if view == null or view.combat_view == null or view.combat_view.outcome != &"active":
-		return null
-	var actor_id := view.combat_view.active_actor_id
-	if actor_id.is_empty() or not view.combat_view.auto_character_ids.has(actor_id):
-		return null
-	var request := view.active_interaction_request()
-	if request == null or request.kind != InteractionRequest.COMBAT:
-		return null
-	return InteractionResponse.new(request.request_id, request.kind, InteractionResponse.CombatBody.new(&"auto", actor_id))
+	return ApplicationCombatPolicyScript.persistent_auto_response(view)
 
 
 func _respond_host_interaction(response: InteractionResponse) -> void:
@@ -675,13 +630,11 @@ func _continue_persistent_auto_after_playback() -> void:
 
 
 static func should_defer_session_close(step: SessionStep, playback_active: bool) -> bool:
-	return playback_active and step_ends_session(step)
+	return ApplicationCombatPolicyScript.should_defer_session_close(step, playback_active)
 
 
 static func step_ends_session(step: SessionStep) -> bool:
-	if step == null:
-		return false
-	return step.events.any(func(event: DomainEvent) -> bool: return event.kind == &"session_ended")
+	return ApplicationCombatPolicyScript.step_ends_session(step)
 
 
 func _present_step_status(step: SessionStep) -> void:
@@ -696,69 +649,23 @@ func _present_step_status(step: SessionStep) -> void:
 				return
 			_complete_closed_session()
 			return
-		match event.kind:
-			&"character_draft_generated":
-				_status_label.text = "Classic character roll ready for review"
-			&"character_draft_spells_changed":
-				_status_label.text = "%d starting-spell points remain" % event.payload.get("remaining", 0)
-			&"character_spell_confirmation_requested":
-				_status_label.text = "%d starting-spell points remain • confirm acceptance" % event.payload.get("remaining", 0)
-			&"character_spell_confirmation_declined":
-				_status_label.text = "Choose more starting spells or accept the remaining points"
-			&"character_draft_cancelled":
-				_status_label.text = "Character creation cancelled"
-			&"character_finalized":
-				_status_label.text = "Character added to party setup"
-			&"character_vault_confirmation_requested":
-				_status_label.text = "Character added • choose whether to publish a reusable vault revision"
-			&"character_publication_requested":
-				_publish_character_revision(String(event.payload.get("characterId", "")))
-			&"character_publication_declined":
-				_status_label.text = "Character kept in this campaign party only"
-			&"vault_character_imported":
-				_status_label.text = "Vault character added to party setup"
-			&"party_member_removed":
-				_status_label.text = "Character removed from party setup"
-			&"party_created":
-				_status_label.text = "Party assembled • the adventure begins"
-			&"character_age_changed":
-				_status_label.text = "%s entered a new age group" % event.payload.get("characterName", "A party member")
-			&"message_shown":
-				_status_label.text = "Scenario text" if event.payload.has("classicClick") else event.payload.get("text", "Message")
-			&"map_transitioned":
-				_status_label.text = "Entered %s" % event.payload.get("targetMapId", "map")
-			&"movement_blocked":
-				_status_label.text = "Blocked • %s" % event.payload.get("reason", "unknown")
-	if step.state == SessionStep.State.WAITING_FOR_INTERACTION:
-		var acknowledge := step.interaction.body as InteractionRequest.AcknowledgeBody
-		if step.interaction.kind == &"acknowledge" and acknowledge != null and acknowledge.presentation == &"classic-textbox":
-			_status_label.text = "Scenario text • continue when ready"
+		if event.kind == &"character_publication_requested":
+			_publish_character_revision(String(event.payload.get("characterId", "")))
 		else:
-			var prompt := step.interaction.body.prompt_text()
-			_status_label.text = prompt if not prompt.is_empty() else "Choose an option"
+			var status_text := ApplicationStepStatusTextScript.for_event(event)
+			if not status_text.is_empty(): _status_label.text = status_text
+	if step.state == SessionStep.State.WAITING_FOR_INTERACTION:
+		_status_label.text = ApplicationStepStatusTextScript.for_interaction(step.interaction)
 
 
 func _publish_character_revision(character_id: String) -> bool:
-	if _active_content == null or character_id.is_empty():
-		_status_label.text = "Vault publication failed • no active character or campaign"
-		return false
 	var boundary := session_controller.session().snapshot()
-	if boundary == null:
-		_status_label.text = "Vault publication failed • the session is not at a committed boundary"
-		return false
-	var source_character := boundary.game_state.party.character_by_id(character_id)
-	if source_character == null:
-		_status_label.text = "Vault publication failed • the character is unavailable"
-		return false
-	var character := CharacterState.from_data(source_character.to_data())
-	if character == null:
-		_status_label.text = "Vault publication failed • the character state is invalid"
-		return false
-	if not _vault_host.publish(character, _active_content.rules_version, _active_content.campaign_id, _active_content.package_hash, "character-creation"):
+	var character_name := _vault_host.publish_from_snapshot(boundary, _active_content, character_id)
+	if character_name.is_empty():
 		_status_label.text = "Vault publication failed • %s" % _vault_host.last_error()
 		return false
 	_refresh_vault_views()
-	_status_label.text = "Published %s to the character vault" % character.name
+	_status_label.text = "Published %s to the character vault" % character_name
 	return true
 
 

@@ -1,3 +1,4 @@
+## Strictly decodes lifecycle, service, and combat interaction request bodies.
 class_name InteractionRequestServiceDecoder
 extends RefCounted
 

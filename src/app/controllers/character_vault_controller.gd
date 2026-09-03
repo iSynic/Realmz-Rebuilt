@@ -39,6 +39,28 @@ func publish(character: CharacterState, rules_version: String, source_campaign_i
 	return published
 
 
+func publish_from_snapshot(snapshot: SessionSnapshot, content: RealmzContent, character_id: String) -> String:
+	_operation_error = ""
+	if content == null or character_id.is_empty():
+		_operation_error = "no active character or campaign"
+		return ""
+	if snapshot == null:
+		_operation_error = "the session is not at a committed boundary"
+		return ""
+	var source_character := snapshot.game_state.party.character_by_id(character_id)
+	if source_character == null:
+		_operation_error = "the character is unavailable"
+		return ""
+	var character := CharacterState.from_data(source_character.to_data())
+	if character == null:
+		_operation_error = "the character state is invalid"
+		return ""
+	if not publish(character, content.rules_version, content.campaign_id, content.package_hash, "character-creation"):
+		_operation_error = last_error()
+		return ""
+	return character.name
+
+
 func seed_if_empty(records: Array[CharacterVaultRecord]) -> bool:
 	_operation_error = ""
 	var seeded := _repository.seed_if_empty(records)

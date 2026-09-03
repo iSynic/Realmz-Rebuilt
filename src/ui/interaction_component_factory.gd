@@ -1,3 +1,4 @@
+## Selects and configures the visible component for one typed interaction request.
 class_name InteractionComponentFactory
 extends RefCounted
 
