@@ -1,0 +1,7 @@
+[gd_scene format=3]
+
+[node name="ShopEmptyLabel" type="Label"]
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.682, 0.714, 0.729, 1)
+text = "No items are available."
+autowrap_mode = 2

@@ -144,7 +144,7 @@
     {"id": "campaign-selection", "scene": "src/ui/setup/campaign_selection_panel.tscn"},
     {"id": "party-assembly", "scene": "src/ui/setup/party_setup_workspace.tscn"},
     {"id": "character-creation", "scene": "src/ui/setup/party_setup_workspace.tscn"},
-    {"id": "shop", "scene": null},
+    {"id": "shop", "scene": "src/ui/interaction_components/shop_interaction.tscn"},
     {"id": "temple", "scene": "src/ui/interaction_components/temple_interaction.tscn"},
     {"id": "bank", "scene": "src/ui/interaction_components/bank_interaction.tscn"},
     {"id": "treasure", "scene": null},

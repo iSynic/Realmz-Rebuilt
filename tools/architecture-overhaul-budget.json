@@ -7,12 +7,12 @@
     "publicMethodsPerClass": 20
   },
   "migrationCeilings": {
-    "oversizedProductionFiles": 28,
-    "oversizedFunctions": 101,
-    "oversizedTopLevelClasses": 38,
+    "oversizedProductionFiles": 27,
+    "oversizedFunctions": 100,
+    "oversizedTopLevelClasses": 37,
     "crossObjectPrivateCalls": 203,
     "genericPreloadAliases": 133,
-    "majorSurfacesWithoutScene": 3,
+    "majorSurfacesWithoutScene": 2,
     "majorSurfacesWithoutPreview": 24,
     "shellModeMarkerScenes": 0
   },

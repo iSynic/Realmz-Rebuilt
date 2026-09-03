@@ -171,13 +171,6 @@
       "functions": ["_add_character_check", "_add_spell_target_context", "_build_ally_candidates", "_build_ally_decision", "_build_ally_selection", "_label"]
     },
     {
-      "path": "src/ui/interaction_components/shop_interaction.gd",
-      "kind": "request-workspace",
-      "reason": "Shop inventory, shopper selection, categories, exchange mode, and command availability are entirely request supplied.",
-      "currentMaximum": 38,
-      "functions": ["_action_button", "_build_category_filters", "_build_compact_browser", "_build_control_spine", "_build_footer", "_build_header", "_build_pack_content", "_build_shopper_selector", "_build_stock_content", "_build_workspace", "_exchange_pane", "_footer_group", "_inventory_row", "_label", "_pane", "_refresh_stock", "_scroll", "_shopper_portrait"]
-    },
-    {
       "path": "src/ui/interaction_components/treasure_distribution_interaction.gd",
       "kind": "request-workspace",
       "reason": "Treasure composes request-sized loot, recipients, lore casters, transfers, recovery, and completion-confirmation modes.",

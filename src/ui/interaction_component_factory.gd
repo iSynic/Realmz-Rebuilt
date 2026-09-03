@@ -13,6 +13,7 @@ const TEMPLE_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/temp
 const THIEF_ENCOUNTER_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/thief_encounter_interaction.tscn"
 const LEVEL_UP_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/level_up_interaction.tscn"
 const ENCOUNTER_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/encounter_interaction.tscn"
+const SHOP_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/shop_interaction.tscn"
 const LayoutPolicy := preload("res://src/ui/interaction_layout_policy.gd")
 
 
@@ -68,7 +69,7 @@ static func create(
 			pick_lock.configure(media)
 			return pick_lock
 		&"shop_action":
-			var shop := ShopInteraction.new()
+			var shop := (load(SHOP_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as ShopInteraction
 			shop.configure(media, compact)
 			return shop
 		&"temple_action":
