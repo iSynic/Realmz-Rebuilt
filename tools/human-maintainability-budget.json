@@ -157,13 +157,6 @@
       "functions": ["_add_bandage_panel", "_add_hint_to", "_add_mode_back_button", "_add_panel_toggle", "_add_presentation_button", "_add_targeting_button", "_build_combatant_information", "_build_combatant_inspection", "_build_command_shelf", "_build_item_panel", "_build_scroll_panel", "_combatant_icon", "_command_group", "_command_rows", "_start_targeting", "_summary_panel", "build"]
     },
     {
-      "path": "src/ui/interaction_components/encounter_interaction.gd",
-      "kind": "request-workspace",
-      "reason": "A Complex Encounter swaps among request-defined action, item, spell, skill, speech, and result workspaces.",
-      "currentMaximum": 24,
-      "functions": ["_ensure_context", "_render_standard_spell_catalog", "_show_choices", "_show_standard_item_workspace", "_show_word", "build"]
-    },
-    {
       "path": "src/ui/interaction_components/interaction_component.gd",
       "kind": "conditional-chrome",
       "reason": "Shared hints and character pickers exist only when a typed interaction supplies those optional values.",

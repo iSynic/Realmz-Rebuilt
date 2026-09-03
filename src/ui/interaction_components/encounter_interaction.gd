@@ -6,6 +6,12 @@ extends InteractionComponent
 const SpellsScreenControllerScript := preload("res://src/ui/controllers/spells_screen_controller.gd")
 const InventoryScreenControllerScript := preload("res://src/ui/controllers/inventory_screen_controller.gd")
 
+@export var action_workspace_scene: PackedScene
+@export var item_workspace_scene: PackedScene
+@export var spell_workspace_scene: PackedScene
+@export var word_workspace_scene: PackedScene
+@export var choice_button_scene: PackedScene
+
 var _media: ClassicMediaCatalog
 var _game_view: GameView
 var _compact: bool
@@ -22,6 +28,7 @@ var _selected_action_slots: Array[int] = []
 var _spell_screen_controller: SpellsScreenController
 var _inventory_screen_controller: InventoryScreenController
 var _inventory_screen_controller_content: VBoxContainer
+var _choice_done_button: ClassicBitmapButton
 
 
 func configure(media: ClassicMediaCatalog, game_view: GameView = null, compact: bool = false) -> void:
@@ -52,24 +59,13 @@ func build(request: InteractionRequest) -> void:
 	if _body == null:
 		return
 	_classify_actions()
-	var command_deck := PanelContainer.new()
-	command_deck.name = "EncounterCommandDeck"
-	command_deck.theme_type_variation = &"ClassicInset"
-	command_deck.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	add_child(command_deck)
-	var strip := GridContainer.new()
-	strip.name = "EncounterCommandStrip"
-	strip.columns = 6
-	strip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	strip.add_theme_constant_override("h_separation", 6)
-	command_deck.add_child(strip)
-	_add_command(strip, &"action", &"encounter.action", "Action", not _choice_actions.is_empty(), "No authored actions are available.")
-	_add_command(strip, &"item", &"encounter.items", "Items", _item_action != null and not _body.items.is_empty(), "No eligible item is available.")
-	_add_command(strip, &"thief", &"encounter.skills", "Skills", _thief_action != null, "No thief action is available.")
-	_add_command(strip, &"word", &"encounter.speak", "Speak", _word_action != null, "This encounter accepts no spoken response.")
-	_add_command(strip, &"spell", &"command.spells", "Spells", _spell_action != null and not _body.spells.is_empty(), "No eligible spell is available.")
-	_add_command(strip, &"back", &"encounter.stop", "Stop", _back_action != null, "This encounter cannot be left yet.")
-	encounter_dock_requested.emit(command_deck)
+	_configure_command(%EncounterCommandAction, &"action", &"encounter.action", "Action", not _choice_actions.is_empty(), "No authored actions are available.")
+	_configure_command(%EncounterCommandItem, &"item", &"encounter.items", "Items", _item_action != null and not _body.items.is_empty(), "No eligible item is available.")
+	_configure_command(%EncounterCommandThief, &"thief", &"encounter.skills", "Skills", _thief_action != null, "No thief action is available.")
+	_configure_command(%EncounterCommandWord, &"word", &"encounter.speak", "Speak", _word_action != null, "This encounter accepts no spoken response.")
+	_configure_command(%EncounterCommandSpell, &"spell", &"command.spells", "Spells", _spell_action != null and not _body.spells.is_empty(), "No eligible spell is available.")
+	_configure_command(%EncounterCommandBack, &"back", &"encounter.stop", "Stop", _back_action != null, "This encounter cannot be left yet.")
+	encounter_dock_requested.emit(%EncounterCommandDeck)
 
 
 func handle_back() -> bool:
@@ -93,15 +89,12 @@ func _classify_actions() -> void:
 			&"back": _back_action = entry
 
 
-func _add_command(parent: GridContainer, mode: StringName, asset_id: StringName, label: String, enabled: bool, reason: String) -> void:
-	var button := ClassicBitmapButton.new()
-	button.name = "EncounterCommand%s" % String(mode).capitalize()
+func _configure_command(button: ClassicBitmapButton, mode: StringName, asset_id: StringName, label: String, enabled: bool, reason: String) -> void:
 	button.configure({"id": mode, "asset_id": asset_id, "tooltip": label, "accelerator": ""}, 1)
 	button.disabled = not enabled
 	if not enabled:
 		button.tooltip_text = reason
 	button.command_requested.connect(_on_command_requested)
-	parent.add_child(button)
 
 
 func _on_command_requested(mode: StringName) -> void:
@@ -122,27 +115,9 @@ func _show_mode(mode: StringName) -> void:
 
 func _show_standard_item_workspace() -> void:
 	_catalog_kind = &"item"
-	var workspace := VBoxContainer.new()
-	workspace.name = "EncounterStandardItemWorkspace"
-	workspace.add_theme_constant_override("separation", 6)
-	var heading := HBoxContainer.new()
-	var title := Label.new()
-	title.text = "Items"
-	title.theme_type_variation = &"ClassicHeading"
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	heading.add_child(title)
-	var back := Button.new()
-	back.name = "EncounterItemsBack"
-	back.text = "Back to encounter"
-	back.custom_minimum_size = Vector2(180.0, 36.0)
-	back.pressed.connect(_cancel_catalog)
-	heading.add_child(back)
-	workspace.add_child(heading)
-	_inventory_screen_controller_content = VBoxContainer.new()
-	_inventory_screen_controller_content.name = "EncounterInventoryContent"
-	_inventory_screen_controller_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_inventory_screen_controller_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	workspace.add_child(_inventory_screen_controller_content)
+	var workspace := item_workspace_scene.instantiate() as VBoxContainer
+	_inventory_screen_controller_content = workspace.get_node("%EncounterInventoryContent") as VBoxContainer
+	(workspace.get_node("%EncounterItemsBack") as Button).pressed.connect(_cancel_catalog)
 	if _inventory_screen_controller == null:
 		_inventory_screen_controller = InventoryScreenControllerScript.new()
 		_inventory_screen_controller.set_layout_profile(UiLayoutProfile.COMPACT if _compact else UiLayoutProfile.WIDE)
@@ -169,29 +144,16 @@ func _show_standard_spell_catalog() -> void:
 
 
 func _render_standard_spell_catalog() -> void:
-	_dispose_context_children()
-	var workspace := VBoxContainer.new()
-	workspace.name = "EncounterStandardSpellWorkspace"
-	workspace.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	workspace.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	workspace.add_theme_constant_override("separation", 5)
-	var column := VBoxContainer.new()
-	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	column.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	column.add_theme_constant_override("separation", 5)
-	workspace.add_child(column)
+	var workspace := spell_workspace_scene.instantiate() as VBoxContainer
+	var column := workspace.get_node("%EncounterSpellContent") as VBoxContainer
 	if _spell_screen_controller == null:
 		_spell_screen_controller = SpellsScreenControllerScript.new()
 		_spell_screen_controller.set_layout_profile(UiLayoutProfile.COMPACT)
 		_spell_screen_controller.refresh_requested.connect(_render_standard_spell_catalog, CONNECT_DEFERRED)
 		_spell_screen_controller.encounter_spell_selected.connect(_submit_standard_encounter_spell)
 	_spell_screen_controller.present_encounter(column, _game_view, _media, 1.0, _body.spells)
-	var cancel := Button.new()
-	cancel.name = "EncounterCatalogCancel"
-	cancel.text = "Back to encounter"
-	cancel.custom_minimum_size.y = 36.0
+	var cancel := workspace.get_node("%EncounterCatalogCancel") as Button
 	cancel.pressed.connect(_cancel_catalog)
-	column.add_child(cancel)
 	side_workspace_requested.emit(workspace)
 
 
@@ -206,32 +168,14 @@ func _submit_standard_encounter_spell(character_id: String, classic_spell_id: in
 func _show_choices() -> void:
 	_catalog_kind = &"action"
 	_selected_action_slots.clear()
-	var workspace := VBoxContainer.new()
-	workspace.name = "EncounterActionWorkspace"
-	workspace.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	workspace.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	workspace.add_theme_constant_override("separation", 6)
-	var instruction := Label.new()
-	instruction.name = "EncounterActionInstruction"
+	var workspace := action_workspace_scene.instantiate() as VBoxContainer
+	var instruction := workspace.get_node("%EncounterActionInstruction") as Label
 	instruction.text = _action_selection_hint()
-	instruction.add_theme_color_override("font_color", Color("d5b45d"))
-	workspace.add_child(instruction)
-	var grid := GridContainer.new()
-	grid.name = "EncounterChoiceGrid"
-	grid.columns = 1
-	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	grid.add_theme_constant_override("h_separation", 6)
-	grid.add_theme_constant_override("v_separation", 5)
-	var choice_scroll := ScrollContainer.new()
-	choice_scroll.name = "EncounterChoiceScroll"
-	choice_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	choice_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	choice_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	choice_scroll.add_child(grid)
-	workspace.add_child(choice_scroll)
+	var grid := workspace.get_node("%EncounterChoiceGrid") as GridContainer
+	var choice_scroll := workspace.get_node("%EncounterChoiceScroll") as ScrollContainer
 	for index: int in _choice_actions.size():
 		var entry := _choice_actions[index]
-		var button := Button.new()
+		var button := choice_button_scene.instantiate() as Button
 		button.text = "%d · %s" % [index + 1, entry.label]
 		button.toggle_mode = true
 		button.pressed.connect(_toggle_action_slot.bind(entry.slot, button))
@@ -242,27 +186,14 @@ func _show_choices() -> void:
 		visible_choice_height += (grid.get_child(index) as Control).get_combined_minimum_size().y
 	visible_choice_height += maxi(0, visible_choice_count - 1) * grid.get_theme_constant("v_separation")
 	choice_scroll.custom_minimum_size.y = visible_choice_height
-	var footer := HBoxContainer.new()
-	footer.name = "EncounterActionFooter"
-	footer.alignment = BoxContainer.ALIGNMENT_BEGIN
-	footer.add_theme_constant_override("separation", 6)
-	workspace.add_child(footer)
-	var done := ClassicBitmapButton.new()
-	done.name = "EncounterChoiceDone"
-	done.configure({"id": &"done", "asset_id": &"", "tooltip": "Commit the selected action", "label": "Done"}, 1)
-	done.disabled = _body.action_selection_count != 0
-	done.tooltip_text = _action_selection_hint()
-	done.command_requested.connect(func(_command_id: StringName) -> void: response_body_submitted.emit(InteractionResponse.ComplexEncounterBody.new(&"choice", -1, "", 0, 0, -1, "", _selected_action_slots)))
-	footer.add_child(done)
-	var spacer := Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	footer.add_child(spacer)
-	var stop := ClassicBitmapButton.new()
-	stop.name = "EncounterChoiceStop"
+	_choice_done_button = workspace.get_node("%EncounterChoiceDone") as ClassicBitmapButton
+	_choice_done_button.configure({"id": &"done", "asset_id": &"", "tooltip": "Commit the selected action", "label": "Done"}, 1)
+	_choice_done_button.disabled = _body.action_selection_count != 0
+	_choice_done_button.tooltip_text = _action_selection_hint()
+	_choice_done_button.command_requested.connect(func(_command_id: StringName) -> void: response_body_submitted.emit(InteractionResponse.ComplexEncounterBody.new(&"choice", -1, "", 0, 0, -1, "", _selected_action_slots)))
+	var stop := workspace.get_node("%EncounterChoiceStop") as ClassicBitmapButton
 	stop.configure({"id": &"stop", "asset_id": &"encounter.stop", "tooltip": "Return to the encounter", "label": "Stop"}, 1)
 	stop.command_requested.connect(func(_command_id: StringName) -> void: _cancel_catalog())
-	footer.add_child(stop)
-	set_meta("encounter_choice_done", done)
 	side_workspace_requested.emit(workspace)
 
 
@@ -272,10 +203,9 @@ func _toggle_action_slot(slot: int, button: Button) -> void:
 	else:
 		_selected_action_slots.erase(slot)
 	_selected_action_slots.sort()
-	var done := get_meta("encounter_choice_done", null) as ClassicBitmapButton
-	if done != null:
-		done.disabled = _selected_action_slots.size() != _body.action_selection_count
-		done.tooltip_text = _action_selection_hint()
+	if _choice_done_button != null:
+		_choice_done_button.disabled = _selected_action_slots.size() != _body.action_selection_count
+		_choice_done_button.tooltip_text = _action_selection_hint()
 
 
 func _action_selection_hint() -> String:
@@ -283,35 +213,13 @@ func _action_selection_hint() -> String:
 
 
 func _show_word() -> void:
-	_ensure_context()
-	var workspace := VBoxContainer.new()
-	workspace.name = "EncounterWordWorkspace"
-	workspace.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	workspace.add_theme_constant_override("separation", 3)
-	_context.add_child(workspace)
-	var entry_row := HBoxContainer.new()
-	entry_row.name = "EncounterWordActions"
-	entry_row.add_theme_constant_override("separation", 6)
-	workspace.add_child(entry_row)
-	var label := Label.new()
-	label.text = "Response"
-	label.custom_minimum_size.x = 72.0
-	entry_row.add_child(label)
-	var word := LineEdit.new()
-	word.name = "EncounterWord"
-	word.placeholder_text = "Word or phrase"
-	word.max_length = 39
-	word.theme_type_variation = &"ClassicTheldrowLineEdit"
-	word.custom_minimum_size = Vector2(300.0, 34.0)
-	word.size_flags_horizontal = Control.SIZE_FILL
-	entry_row.add_child(word)
-	var submit := Button.new()
-	submit.name = "EncounterWordSubmit"
+	var context_deck := word_workspace_scene.instantiate() as PanelContainer
+	_context = context_deck.get_node("%EncounterContextPane") as VBoxContainer
+	add_child(context_deck)
+	var word := context_deck.get_node("%EncounterWord") as LineEdit
+	var submit := context_deck.get_node("%EncounterWordSubmit") as Button
 	submit.text = _word_action.label if not _word_action.label.is_empty() else "Speak"
-	submit.theme_type_variation = &"ClassicTheldrowButton"
-	submit.custom_minimum_size = Vector2(68.0, 32.0)
 	submit.pressed.connect(func() -> void: response_body_submitted.emit(InteractionResponse.ComplexEncounterBody.new(&"word", -1, word.text)))
-	entry_row.add_child(submit)
 	word.text_submitted.connect(func(_value: String) -> void: submit.pressed.emit())
 	word.call_deferred("grab_focus")
 
@@ -324,37 +232,11 @@ func _clear_context() -> void:
 	side_workspace_closed.emit()
 	application_workspace_closed.emit()
 	_inventory_screen_controller_content = null
+	_choice_done_button = null
 	_catalog_kind = &""
-	_dispose_context_children()
 	if _context != null:
 		var context_deck := _context.get_parent()
 		_context = null
 		remove_child(context_deck)
 		if context_deck.is_inside_tree(): context_deck.queue_free()
 		else: context_deck.free()
-
-
-func _dispose_context_children() -> void:
-	if _context == null:
-		return
-	for child: Node in _context.get_children():
-		_context.remove_child(child)
-		if child.is_inside_tree(): child.queue_free()
-		else: child.free()
-
-
-func _ensure_context() -> void:
-	if _context != null:
-		return
-	var context_deck := PanelContainer.new()
-	context_deck.name = "EncounterContextDeck"
-	context_deck.theme_type_variation = &"ClassicInset"
-	context_deck.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	context_deck.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	add_child(context_deck)
-	_context = VBoxContainer.new()
-	_context.name = "EncounterContextPane"
-	_context.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_context.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_context.add_theme_constant_override("separation", 5)
-	context_deck.add_child(_context)

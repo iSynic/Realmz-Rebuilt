@@ -148,7 +148,7 @@
     {"id": "temple", "scene": "src/ui/interaction_components/temple_interaction.tscn"},
     {"id": "bank", "scene": "src/ui/interaction_components/bank_interaction.tscn"},
     {"id": "treasure", "scene": null},
-    {"id": "encounter", "scene": null},
+    {"id": "encounter", "scene": "src/ui/interaction_components/encounter_interaction.tscn"},
     {"id": "level-up", "scene": "src/ui/interaction_components/level_up_interaction.tscn"},
     {"id": "pick-lock", "scene": "src/ui/interaction_components/pick_lock_interaction.tscn"},
     {"id": "lifecycle-prompts", "scene": "src/ui/interaction_components/lifecycle_interaction.tscn"},

@@ -1,0 +1,27 @@
+[gd_scene format=3]
+
+[node name="EncounterStandardItemWorkspace" type="VBoxContainer"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="Heading" type="HBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Heading"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicHeading"
+text = "Items"
+
+[node name="EncounterItemsBack" type="Button" parent="Heading"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(180, 36)
+layout_mode = 2
+text = "Back to encounter"
+
+[node name="EncounterInventoryContent" type="VBoxContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
