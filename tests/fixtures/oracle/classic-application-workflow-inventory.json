@@ -9340,7 +9340,7 @@
           },
           {
             "path": "src/ui/controllers/maps_journal_screen_controller.gd",
-            "symbol": "func _render_location_note_preview"
+            "symbol": "func _bind_location_note_preview"
           },
           {
             "path": "src/ui/classic_map_presenter.gd",

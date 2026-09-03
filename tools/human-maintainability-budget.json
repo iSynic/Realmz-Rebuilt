@@ -52,13 +52,6 @@
       "functions": ["<file>"]
     },
     {
-      "path": "src/ui/controllers/maps_journal_screen_controller.gd",
-      "kind": "data-collection",
-      "reason": "The Maps and Notes scene owns route chrome while these functions project variable places, maps, notes, journal entries, and editor state.",
-      "currentMaximum": 36,
-      "functions": ["_add_card", "_add_header", "_build_journal_tab", "_build_maps_tab", "_build_places_tab", "_columns", "_label", "_map_zoom_button", "_pane", "_refresh_journal_detail", "_render_location_note_editor", "_render_selected_player_map", "_scroll", "_tab", "present"]
-    },
-    {
       "path": "src/ui/controllers/party_setup_appearance_editor.gd",
       "kind": "data-collection",
       "reason": "Appearance controls and thumbnails vary with the supplied portrait, icon, race, and class catalogs.",

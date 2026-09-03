@@ -1,20 +1,14 @@
-## Presents acquired maps, location notes, and journal entries from detached views.
+## Binds detached maps, location notes, and journal entries to their authored workspace.
 class_name MapsJournalScreenController
 extends RefCounted
 
-const PlayerMapCartographicStageType := preload("res://src/ui/screens/player_map_cartographic_stage.gd")
-const PlayerMapParchmentMatType := preload("res://src/ui/screens/player_map_parchment_mat.gd")
-const ClassicMapPresenterType := preload("res://src/ui/classic_map_presenter.gd")
+const WORKSPACE_SCENE_PATH := "res://src/ui/screens/maps_notes_workspace.tscn"
 
 signal intent_submitted(intent: PlayerIntent)
 
 const GOLD := Color("d5b45d")
 const CYAN := Color("8fcfd1")
 const MUTED := Color("9aa0a8")
-const COOL_SURFACE := Color("202729")
-const COOL_BORDER := Color("596266")
-const BOOK_LEATHER := Color("4b2822")
-const BOOK_PAPER := Color("d3bd86")
 const BOOK_PAPER_SELECTED := Color("c3aa70")
 const BOOK_INK := Color("30261c")
 const BOOK_MUTED_INK := Color("67553a")
@@ -28,7 +22,7 @@ var _selected_tab: int = 0
 var _journal_query: String = ""
 var _player_map_zoom: float = 1.0
 var _text_scale: float = 1.0
-var _journal_detail: VBoxContainer
+var _compact: bool = false
 var _rebuilding: bool = false
 
 
@@ -36,14 +30,25 @@ func set_text_scale(text_scale: float) -> void:
 	_text_scale = text_scale
 
 
+func set_layout_profile(profile_id: StringName) -> void:
+	_compact = profile_id == UiLayoutProfile.COMPACT
+
+
 func present(target: Control, view: GameView, media: ClassicMediaCatalog) -> void:
+	if target == null:
+		return
 	_rebuilding = true
 	var screen := target as JournalScreen
-	var parent := screen.body_control() if screen != null else target as VBoxContainer
+	var workspace: MapsNotesWorkspace
 	if screen != null:
-		screen.prepare_for_render()
+		screen.prepare_for_render(_compact)
+		workspace = screen.workspace()
 	else:
+		var parent := target as VBoxContainer
 		_clear(parent)
+		workspace = (load(WORKSPACE_SCENE_PATH) as PackedScene).instantiate() as MapsNotesWorkspace
+		parent.add_child(workspace)
+		workspace.prepare(_compact)
 	if view == null:
 		_rebuilding = false
 		return
@@ -53,16 +58,11 @@ func present(target: Control, view: GameView, media: ClassicMediaCatalog) -> voi
 		_selected_location_note_id = ""
 		_selected_journal_message_id = 0
 		_selected_tab = 0
-	_add_header(screen.summary_area() if screen != null else parent, view)
-	var tabs := screen.tabs() if screen != null else TabContainer.new()
-	if screen == null:
-		tabs.name = "MapsNotesTabs"
-		tabs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		parent.add_child(tabs)
-	_build_places_tab(screen.places_area() if screen != null else _tab(tabs, "Places"), view, media)
-	_build_maps_tab(screen.maps_area() if screen != null else _tab(tabs, "Maps"), view, media)
-	_build_journal_tab(screen.journal_area() if screen != null else _tab(tabs, "Journal"), view)
+	_bind_summary(workspace, view)
+	_bind_places(workspace, view, media)
+	_bind_maps(workspace, view, media)
+	_bind_journal(workspace, view)
+	var tabs := workspace.tabs()
 	tabs.current_tab = mini(_selected_tab, tabs.get_tab_count() - 1)
 	if not tabs.tab_changed.is_connected(_on_tab_changed):
 		tabs.tab_changed.connect(_on_tab_changed)
@@ -74,82 +74,52 @@ func _on_tab_changed(index: int) -> void:
 		_selected_tab = index
 
 
-func _add_header(parent: VBoxContainer, view: GameView) -> void:
-	var row := HBoxContainer.new()
-	row.name = "MapsNotesHeader"
-	parent.add_child(row)
+func _bind_summary(workspace: MapsNotesWorkspace, view: GameView) -> void:
 	var maps := view.party_summary.acquired_map_ids.size() if view.party_summary != null else 0
-	var facts := _label("%d places  •  %d maps  •  %d journal entries" % [view.location_notes.size(), maps, view.journal_entries.size()], CYAN, 13)
-	facts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	facts.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	row.add_child(facts)
+	_bind_label(workspace.summary_label(), "%d places  •  %d maps  •  %d journal entries" % [view.location_notes.size(), maps, view.journal_entries.size()], CYAN, 13)
+	workspace.summary_label().horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 
 
-func _build_places_tab(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog) -> void:
-	var columns := _columns(parent, "LocationNotesWorkspace")
-	var saved := _pane(columns, "SavedLocationNotes", "Saved Places", 0.8)
-	_style_pane(saved, COOL_SURFACE, COOL_BORDER, 2)
-	var scroll := _scroll("SavedLocationNoteScroll")
-	saved.add_child(scroll)
-	var rows := VBoxContainer.new()
-	rows.name = "SavedLocationNoteRows"
-	rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	rows.add_theme_constant_override("separation", 4)
-	scroll.add_child(rows)
-	if view.location_notes.is_empty():
-		_add_empty_state(rows, "No saved places", "Write a note at the current location to create the first record.")
-	else:
-		var selected := _location_note(view, _selected_location_note_id)
-		if selected == null:
-			selected = view.location_notes.filter(func(note: LocationNoteView) -> bool: return note.current).front() if view.location_notes.any(func(note: LocationNoteView) -> bool: return note.current) else view.location_notes[0]
-			_selected_location_note_id = selected.id
-		for note: LocationNoteView in view.location_notes:
-			var open := Button.new()
-			open.name = "LocationNote_%d" % note.record_ordinal
-			open.text = "%s  •  %d,%d%s\n%s" % [note.map_name, note.coordinate.x, note.coordinate.y, "  •  current" if note.current else "", note.text]
-			open.alignment = HORIZONTAL_ALIGNMENT_LEFT
-			open.toggle_mode = true
-			open.button_pressed = note.id == _selected_location_note_id
-			open.set_meta("location_note_id", note.id)
-			open.pressed.connect(_select_location_note.bind(parent, view, media, note.id))
-			rows.add_child(open)
-	var current := _pane(columns, "CurrentLocationNotePane", "Selected Place & Current Note", 1.25)
-	_style_pane(current, Color("222829"), COOL_BORDER, 2)
-	var preview := VBoxContainer.new()
-	preview.name = "LocationNotePreviewBody"
-	preview.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	current.add_child(preview)
-	_render_location_note_preview(preview, _location_note(view, _selected_location_note_id), media)
-	current.add_child(HSeparator.new())
-	_render_location_note_editor(current, view)
+func _bind_places(workspace: MapsNotesWorkspace, view: GameView, media: ClassicMediaCatalog) -> void:
+	var rows := workspace.location_note_rows()
+	workspace.location_notes_empty().visible = view.location_notes.is_empty()
+	var selected := _location_note(view, _selected_location_note_id)
+	if selected == null and not view.location_notes.is_empty():
+		var current_notes := view.location_notes.filter(func(note: LocationNoteView) -> bool: return note.current)
+		selected = current_notes[0] if not current_notes.is_empty() else view.location_notes[0]
+		_selected_location_note_id = selected.id
+	for note: LocationNoteView in view.location_notes:
+		var open := workspace.location_note_row_scene.instantiate() as Button
+		open.name = "LocationNote_%d" % note.record_ordinal
+		open.text = "%s  •  %d,%d%s\n%s" % [note.map_name, note.coordinate.x, note.coordinate.y, "  •  current" if note.current else "", note.text]
+		open.button_pressed = note.id == _selected_location_note_id
+		open.set_meta("location_note_id", note.id)
+		open.pressed.connect(_select_location_note.bind(workspace, view, media, note.id))
+		rows.add_child(open)
+	_bind_location_note_preview(workspace, selected, media)
+	_bind_location_note_editor(workspace, view)
 
 
-func _select_location_note(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog, note_id: String) -> void:
+func _select_location_note(workspace: MapsNotesWorkspace, view: GameView, media: ClassicMediaCatalog, note_id: String) -> void:
 	_selected_location_note_id = note_id
-	var rows := parent.find_child("SavedLocationNoteRows", true, false)
-	if rows != null:
-		for child: Node in rows.find_children("LocationNote_*", "Button", true, false):
+	for child: Node in workspace.location_note_rows().get_children():
+		if child is Button:
 			(child as Button).button_pressed = String(child.get_meta("location_note_id", "")) == note_id
-	var preview := parent.find_child("LocationNotePreviewBody", true, false) as VBoxContainer
-	if preview != null:
-		_clear(preview)
-		_render_location_note_preview(preview, _location_note(view, note_id), media)
+	_bind_location_note_preview(workspace, _location_note(view, note_id), media)
 
 
-func _render_location_note_preview(parent: VBoxContainer, note: LocationNoteView, media: ClassicMediaCatalog) -> void:
-	if note == null or note.preview_map == null:
-		_add_empty_state(parent, "No selected place", "Choose a saved note to recenter its detached map view.")
+func _bind_location_note_preview(workspace: MapsNotesWorkspace, note: LocationNoteView, media: ClassicMediaCatalog) -> void:
+	var facts := workspace.location_preview_facts()
+	var empty := workspace.location_preview_empty()
+	var presenter := workspace.historical_map()
+	var available := note != null and note.preview_map != null
+	facts.visible = available
+	empty.visible = not available
+	presenter.visible = available
+	if not available:
 		return
-	_add_label(parent, "%s  •  %s  •  %d,%d" % [note.map_name, String(note.level_type).capitalize(), note.coordinate.x, note.coordinate.y], CYAN, 14)
-	_add_label(parent, "Saved darkness mask %d of 6" % clampi(note.darkness_value, 0, 6) if note.darkness_value > 0 else "No saved darkness mask", MUTED, 12)
-	var presenter := ClassicMapPresenterType.new()
-	presenter.name = "HistoricalLocationMap"
-	presenter.custom_minimum_size = Vector2(0, 260)
-	presenter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	presenter.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	presenter.cell_size = 20.0
-	parent.add_child(presenter)
-	presenter.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_bind_label(facts.get_node("Location") as Label, "%s  •  %s  •  %d,%d" % [note.map_name, String(note.level_type).capitalize(), note.coordinate.x, note.coordinate.y], CYAN, 14)
+	_bind_label(facts.get_node("Darkness") as Label, "Saved darkness mask %d of 6" % clampi(note.darkness_value, 0, 6) if note.darkness_value > 0 else "No saved darkness mask", MUTED, 12)
 	presenter.set_classic_exploration_visibility(false)
 	presenter.set_media_catalog(media)
 	presenter.present(GameView.new(0, true, null, note.map_id, note.coordinate, 0, 0, 0, note.preview_map))
@@ -162,296 +132,23 @@ static func _location_note(view: GameView, note_id: String) -> LocationNoteView:
 	return null
 
 
-func _build_maps_tab(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog) -> void:
-	var columns := _columns(parent, "AcquiredMapsWorkspace")
-	var browser := _pane(columns, "PlayerMapBrowser", "Acquired Maps", 0.5)
-	var display := VBoxContainer.new()
-	display.name = "PlayerMapDisplay"
-	display.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	display.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	display.size_flags_stretch_ratio = 2.5
-	columns.add_child(display)
-	_style_pane(browser, COOL_SURFACE, COOL_BORDER, 2)
-	if view.player_map_menu_entries.is_empty():
-		_add_empty_state(browser, "No player-map records", "This campaign supplies no Maps/Notes entries.")
-		_add_empty_state(display, "No selected map", "There is no authored map record to display.")
-		return
-	var selected: PlayerMapView
-	for player_map: PlayerMapView in view.acquired_player_maps:
-		if player_map.id == _selected_player_map_id:
-			selected = player_map
-			break
-	if selected == null and not view.acquired_player_maps.is_empty():
-		selected = view.acquired_player_maps[0]
-		_selected_player_map_id = selected.id
-	var chooser := VBoxContainer.new()
-	chooser.name = "AcquiredMapChooser"
-	chooser.add_theme_constant_override("separation", 4)
-	browser.add_child(chooser)
-	var route_body := parent.get_parent().get_parent() as VBoxContainer
-	for player_map: PlayerMapView in view.player_map_menu_entries:
-		var button := Button.new()
-		button.text = player_map.name if player_map.acquired else player_map.unavailable_name
-		button.toggle_mode = true
-		button.disabled = not player_map.acquired
-		button.tooltip_text = "Map not acquired." if button.disabled else player_map.name
-		button.button_pressed = selected != null and player_map.id == selected.id
-		button.set_meta("player_map_id", player_map.id)
-		button.custom_minimum_size.y = 38.0
-		if not button.disabled:
-			button.pressed.connect(_select_player_map.bind(route_body, view, media, player_map.id))
-		chooser.add_child(button)
-	var display_body := VBoxContainer.new()
-	display_body.name = "PlayerMapDisplayBody"
-	display_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	display_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	display.add_child(display_body)
-	_render_selected_player_map(display_body, selected, media)
-
-
-func _select_player_map(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog, player_map_id: String) -> void:
-	_selected_player_map_id = player_map_id
-	_selected_tab = 1
-	var chooser := parent.find_child("AcquiredMapChooser", true, false)
-	if chooser != null:
-		for child: Node in chooser.find_children("*", "Button", true, false):
-			(child as Button).button_pressed = String(child.get_meta("player_map_id", "")) == player_map_id
-	var display_body := parent.find_child("PlayerMapDisplayBody", true, false) as VBoxContainer
-	var selected: PlayerMapView
-	for player_map: PlayerMapView in view.acquired_player_maps:
-		if player_map.id == player_map_id:
-			selected = player_map
-			break
-	if display_body != null:
-		_clear(display_body)
-		_render_selected_player_map(display_body, selected, media)
-
-
-func _render_selected_player_map(parent: VBoxContainer, selected: PlayerMapView, media: ClassicMediaCatalog) -> void:
-	if selected == null:
-		_add_empty_state(parent, "No acquired maps", "Maps remain unavailable until the session records their acquisition.")
-		return
-	var stage := PlayerMapCartographicStageType.new()
-	parent.add_child(stage)
-	var stage_body := VBoxContainer.new()
-	stage_body.name = "PlayerMapStageBody"
-	stage_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	stage_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	stage_body.add_theme_constant_override("separation", 2)
-	stage.add_child(stage_body)
-	var header_panel := PanelContainer.new()
-	header_panel.name = "PlayerMapStageHeader"
-	header_panel.theme_type_variation = &"ClassicInset"
-	header_panel.custom_minimum_size.y = 30.0
-	stage_body.add_child(header_panel)
-	var header := HBoxContainer.new()
-	header.add_theme_constant_override("separation", 4)
-	header_panel.add_child(header)
-	var title := _label(selected.name, GOLD, 19)
-	title.name = "PlayerMapTitle"
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(title)
-	var toolbar := HBoxContainer.new()
-	toolbar.name = "PlayerMapZoomToolbar"
-	toolbar.alignment = BoxContainer.ALIGNMENT_END
-	header.add_child(toolbar)
-	var zoom_out := _map_zoom_button("PlayerMapZoomOut", "−", -0.5)
-	toolbar.add_child(zoom_out)
-	var zoom_label := _label("%d%%" % roundi(_player_map_zoom * 100.0), CYAN, 14)
-	zoom_label.name = "PlayerMapZoomLabel"
-	toolbar.add_child(zoom_label)
-	var fit := _map_zoom_button("PlayerMapZoomFit", "Fit", 0.0)
-	toolbar.add_child(fit)
-	var zoom_in := _map_zoom_button("PlayerMapZoomIn", "+", 0.5)
-	toolbar.add_child(zoom_in)
-	if selected.mode == PlayerMapDefinition.SCROLLING_TEXT:
-		toolbar.visible = false
-		var scrolling_presenter := PlayerMapPresenter.new()
-		scrolling_presenter.name = "AcquiredPlayerMap"
-		scrolling_presenter.present(selected, media)
-		stage_body.add_child(scrolling_presenter)
-		return
-	if not selected.note.is_empty():
-		var note := _label(selected.note, Color("e0e2e5"), 14)
-		note.name = "PlayerMapNote"
-		note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		stage_body.add_child(note)
-	var scroll := ScrollContainer.new()
-	scroll.name = "PlayerMapScroll"
-	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	stage_body.add_child(scroll)
-	var center := CenterContainer.new()
-	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	center.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	scroll.add_child(center)
-	var parchment := PlayerMapParchmentMatType.new()
-	center.add_child(parchment)
-	var presenter := PlayerMapPresenter.new()
-	presenter.name = "AcquiredPlayerMap"
-	presenter.present(selected, media)
-	presenter.set_map_zoom(_player_map_zoom)
-	parchment.set_map_zoom(_player_map_zoom)
-	parchment.add_child(presenter)
-	for button: Button in [zoom_out, fit, zoom_in]:
-		button.pressed.connect(_change_player_map_zoom.bind(presenter, parchment, zoom_label, float(button.get_meta("zoom_delta"))))
-
-
-func _map_zoom_button(node_name: String, text: String, delta: float) -> Button:
-	var button := Button.new()
-	button.name = node_name
-	button.text = text
-	button.custom_minimum_size = Vector2(46, 26)
-	button.set_meta("zoom_delta", delta)
-	return button
-
-
-func _change_player_map_zoom(presenter: PlayerMapPresenter, parchment, label: Label, delta: float) -> void:
-	_player_map_zoom = 1.0 if is_zero_approx(delta) else clampf(_player_map_zoom + delta, 1.0, 4.0)
-	presenter.set_map_zoom(_player_map_zoom)
-	parchment.set_map_zoom(_player_map_zoom)
-	label.text = "%d%%" % roundi(_player_map_zoom * 100.0)
-
-
-func _build_journal_tab(parent: VBoxContainer, view: GameView) -> void:
-	var columns := _columns(parent, "JournalWorkspace")
-	columns.add_theme_constant_override("separation", 4)
-	var browser := _pane(columns, "JournalEntryBrowser", "Journal Entries", 1.0)
-	var detail := _pane(columns, "JournalEntryDetail", "Selected Entry", 1.0)
-	_style_pane(browser, BOOK_PAPER, BOOK_LEATHER, 2)
-	_style_pane(detail, BOOK_PAPER, BOOK_LEATHER, 2)
-	_style_pane_heading(browser, BOOK_RED)
-	_style_pane_heading(detail, BOOK_RED)
-	var spine := ColorRect.new()
-	spine.name = "JournalBookSpine"
-	spine.custom_minimum_size.x = 12.0
-	spine.color = BOOK_LEATHER
-	spine.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	columns.add_child(spine)
-	columns.move_child(spine, 1)
-	var search := LineEdit.new()
-	search.name = "JournalSearch"
-	search.theme_type_variation = &"ClassicTheldrowLineEdit"
-	search.placeholder_text = "Search journal…"
-	search.clear_button_enabled = true
-	search.text = _journal_query
-	search.add_theme_color_override("font_color", BOOK_INK)
-	search.add_theme_color_override("font_placeholder_color", BOOK_MUTED_INK)
-	search.add_theme_stylebox_override("normal", _flat_style(Color("dfcca0"), Color("89734c"), 1))
-	search.add_theme_stylebox_override("focus", _flat_style(Color("e5d4aa"), BOOK_RED, 2))
-	browser.add_child(search)
-	_journal_detail = VBoxContainer.new()
-	_journal_detail.name = "JournalEntryDetailBody"
-	_journal_detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_journal_detail.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_journal_detail.add_theme_constant_override("separation", 5)
-	var detail_scroll := _scroll("JournalEntryDetailScroll")
-	detail.add_child(detail_scroll)
-	detail_scroll.add_child(_journal_detail)
-	if view.journal_entries.is_empty():
-		_add_empty_state(browser, "The journal is empty", "No journal records were supplied by the current session.")
-		_add_empty_state(_journal_detail, "No selected entry", "Authored journal text will appear here.")
-		return
-	if _selected_journal_message_id == 0:
-		_selected_journal_message_id = view.journal_entries[0].message_id
-	var scroll := _scroll("JournalEntryScroll")
-	browser.add_child(scroll)
-	var rows := VBoxContainer.new()
-	rows.name = "JournalEntryRows"
-	rows.add_theme_constant_override("separation", 4)
-	rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(rows)
-	for entry: JournalEntryView in view.journal_entries:
-		var panel := PanelContainer.new()
-		var selected := entry.message_id == _selected_journal_message_id
-		panel.add_theme_stylebox_override("panel", _flat_style(BOOK_PAPER_SELECTED if selected else Color("d8c38e"), BOOK_RED if selected else Color("9a8358"), 2 if selected else 1))
-		panel.set_meta("journal_search_text", ("%d %s" % [entry.message_id, entry.text]).to_lower())
-		rows.add_child(panel)
-		var record := VBoxContainer.new()
-		panel.add_child(record)
-		var open := Button.new()
-		open.text = "Journal entry %d" % entry.message_id
-		open.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		open.toggle_mode = true
-		open.button_pressed = selected
-		_style_journal_button(open, selected)
-		open.pressed.connect(_select_journal_entry.bind(view, entry.message_id))
-		record.add_child(open)
-		var preview_text := entry.text.strip_edges()
-		if preview_text.length() > 140:
-			preview_text = preview_text.left(137).strip_edges() + "…"
-		var preview := _label(preview_text, BOOK_MUTED_INK, 13)
-		preview.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		preview.max_lines_visible = 2
-		preview.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-		record.add_child(preview)
-	search.text_changed.connect(_filter_journal_rows.bind(rows))
-	_filter_journal_rows(_journal_query, rows)
-	_refresh_journal_detail(view)
-
-
-func _select_journal_entry(view: GameView, message_id: int) -> void:
-	_selected_journal_message_id = message_id
-	_refresh_journal_detail(view)
-
-
-func _filter_journal_rows(query: String, rows: VBoxContainer) -> void:
-	_journal_query = query.strip_edges()
-	var needle := _journal_query.to_lower()
-	for child: Node in rows.get_children():
-		if child is Control and child.has_meta("journal_search_text"):
-			(child as Control).visible = needle.is_empty() or String(child.get_meta("journal_search_text")).contains(needle)
-
-
-func _refresh_journal_detail(view: GameView) -> void:
-	if _journal_detail == null:
-		return
-	_clear(_journal_detail)
-	for entry: JournalEntryView in view.journal_entries:
-		if entry.message_id == _selected_journal_message_id:
-			_journal_detail.add_child(_label("Journal entry %d" % entry.message_id, BOOK_RED, 20))
-			_journal_detail.add_child(HSeparator.new())
-			var text := _label(entry.text, BOOK_INK, 17)
-			text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			text.size_flags_vertical = Control.SIZE_EXPAND_FILL
-			_journal_detail.add_child(text)
-			return
-	_add_empty_state(_journal_detail, "Entry unavailable", "The selected journal record no longer exists.")
-
-
-func _render_location_note_editor(parent: VBoxContainer, view: GameView) -> void:
+func _bind_location_note_editor(workspace: MapsNotesWorkspace, view: GameView) -> void:
 	var current := view.current_location_note
+	var editor_area := workspace.location_editor()
+	var unavailable := workspace.location_editor_unavailable()
+	editor_area.visible = current != null
+	unavailable.visible = current == null
 	if current == null:
-		_add_empty_state(parent, "No mapped location", "A note can be edited only while the party occupies a validated map cell.")
 		return
-	_add_label(parent, "%s  •  %d,%d" % [current.map_name, current.coordinate.x, current.coordinate.y], CYAN, 15)
-	var editor := TextEdit.new()
-	editor.name = "CurrentLocationNoteText"
-	editor.custom_minimum_size = Vector2(0, 180)
-	editor.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	editor.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	editor.placeholder_text = "Write a location note…"
-	editor.add_theme_color_override("font_color", BOOK_INK)
-	editor.add_theme_color_override("font_placeholder_color", BOOK_MUTED_INK)
-	editor.add_theme_stylebox_override("normal", _flat_style(Color("d4c18f"), Color("8b754d"), 2))
-	editor.add_theme_stylebox_override("focus", _flat_style(Color("dccb9d"), GOLD, 2))
+	_bind_label(editor_area.get_node("CurrentLocation") as Label, "%s  •  %d,%d" % [current.map_name, current.coordinate.x, current.coordinate.y], CYAN, 15)
+	var editor := editor_area.get_node("CurrentLocationNoteText") as TextEdit
+	var count_label := editor_area.get_node("LocationNoteByteCount") as Label
+	var save := editor_area.get_node("Actions/SaveLocationNote") as Button
+	var revert := editor_area.get_node("Actions/CancelLocationNoteEdit") as Button
+	_clear_text_changed_connections(editor)
+	_clear_pressed_connections(save)
+	_clear_pressed_connections(revert)
 	editor.text = current.text
-	parent.add_child(editor)
-	var count_label := Label.new()
-	count_label.name = "LocationNoteByteCount"
-	parent.add_child(count_label)
-	var actions := HBoxContainer.new()
-	parent.add_child(actions)
-	var save := Button.new()
-	save.name = "SaveLocationNote"
-	save.text = "Save Note"
-	actions.add_child(save)
-	var revert := Button.new()
-	revert.name = "CancelLocationNoteEdit"
-	revert.text = "Revert Draft"
-	actions.add_child(revert)
 	var availability := view.availability(&"set_location_note")
 	var refresh := func() -> void:
 		var byte_count := editor.text.to_utf8_buffer().size()
@@ -469,69 +166,175 @@ func _render_location_note_editor(parent: VBoxContainer, view: GameView) -> void
 	refresh.call()
 
 
-func _tab(tabs: TabContainer, tab_name: String) -> VBoxContainer:
-	var tab := VBoxContainer.new()
-	tab.name = tab_name
-	tab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	tab.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	tab.add_theme_constant_override("separation", 5)
-	tabs.add_child(tab)
-	return tab
+func _bind_maps(workspace: MapsNotesWorkspace, view: GameView, media: ClassicMediaCatalog) -> void:
+	var no_records := view.player_map_menu_entries.is_empty()
+	workspace.player_map_browser_empty().visible = no_records
+	if no_records:
+		workspace.player_map_empty().visible = true
+		return
+	var selected: PlayerMapView
+	for player_map: PlayerMapView in view.acquired_player_maps:
+		if player_map.id == _selected_player_map_id:
+			selected = player_map
+			break
+	if selected == null and not view.acquired_player_maps.is_empty():
+		selected = view.acquired_player_maps[0]
+		_selected_player_map_id = selected.id
+	for player_map: PlayerMapView in view.player_map_menu_entries:
+		var button := workspace.player_map_row_scene.instantiate() as Button
+		button.text = player_map.name if player_map.acquired else player_map.unavailable_name
+		button.disabled = not player_map.acquired
+		button.tooltip_text = "Map not acquired." if button.disabled else player_map.name
+		button.button_pressed = selected != null and player_map.id == selected.id
+		button.set_meta("player_map_id", player_map.id)
+		if not button.disabled:
+			button.pressed.connect(_select_player_map.bind(workspace, view, media, player_map.id))
+		workspace.player_map_rows().add_child(button)
+	_bind_selected_player_map(workspace, selected, media)
 
 
-func _columns(parent: VBoxContainer, node_name: String) -> HBoxContainer:
-	var columns := HBoxContainer.new()
-	columns.name = node_name
-	columns.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	columns.add_theme_constant_override("separation", 6)
-	parent.add_child(columns)
-	return columns
+func _select_player_map(workspace: MapsNotesWorkspace, view: GameView, media: ClassicMediaCatalog, player_map_id: String) -> void:
+	_selected_player_map_id = player_map_id
+	_selected_tab = 1
+	for child: Node in workspace.player_map_rows().get_children():
+		if child is Button:
+			(child as Button).button_pressed = String(child.get_meta("player_map_id", "")) == player_map_id
+	var selected: PlayerMapView
+	for player_map: PlayerMapView in view.acquired_player_maps:
+		if player_map.id == player_map_id:
+			selected = player_map
+			break
+	_bind_selected_player_map(workspace, selected, media)
 
 
-func _pane(parent: HBoxContainer, node_name: String, title: String, ratio: float) -> VBoxContainer:
-	var panel := PanelContainer.new()
-	panel.name = node_name
-	panel.theme_type_variation = &"ClassicInset"
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	panel.size_flags_stretch_ratio = ratio
-	parent.add_child(panel)
-	var content := VBoxContainer.new()
-	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	content.add_theme_constant_override("separation", 5)
-	panel.add_child(content)
-	var heading := _label(title, GOLD, 18)
-	heading.theme_type_variation = &"ClassicHeading"
-	content.add_child(heading)
-	return content
+func _bind_selected_player_map(workspace: MapsNotesWorkspace, selected: PlayerMapView, media: ClassicMediaCatalog) -> void:
+	var stage := workspace.player_map_stage()
+	var empty := workspace.player_map_empty()
+	stage.visible = selected != null
+	empty.visible = selected == null
+	if selected == null:
+		return
+	var body := stage.get_node("PlayerMapStageBody") as VBoxContainer
+	_bind_label(body.get_node("PlayerMapStageHeader/Header/PlayerMapTitle") as Label, selected.name, GOLD, 19)
+	var toolbar := body.get_node("PlayerMapStageHeader/Header/PlayerMapZoomToolbar") as HBoxContainer
+	var note := body.get_node("PlayerMapNote") as Label
+	var scrolling := body.get_node("AcquiredScrollingPlayerMap") as PlayerMapPresenter
+	var scroll := body.get_node("PlayerMapScroll") as ScrollContainer
+	var parchment := scroll.get_node("Center/PlayerMapParchmentMat") as PlayerMapParchmentMat
+	var presenter := parchment.get_node("AcquiredPlayerMap") as PlayerMapPresenter
+	var scrolling_mode := selected.mode == PlayerMapDefinition.SCROLLING_TEXT
+	toolbar.visible = not scrolling_mode
+	note.visible = not scrolling_mode and not selected.note.is_empty()
+	scrolling.visible = scrolling_mode
+	scroll.visible = not scrolling_mode
+	if scrolling_mode:
+		scrolling.present(selected, media)
+		return
+	_bind_label(note, selected.note, Color("e0e2e5"), 14)
+	presenter.present(selected, media)
+	presenter.set_map_zoom(_player_map_zoom)
+	parchment.set_map_zoom(_player_map_zoom)
+	var zoom_label := toolbar.get_node("PlayerMapZoomLabel") as Label
+	_bind_label(zoom_label, "%d%%" % roundi(_player_map_zoom * 100.0), CYAN, 14)
+	_bind_zoom_button(toolbar.get_node("PlayerMapZoomOut") as Button, presenter, parchment, zoom_label, -0.5)
+	_bind_zoom_button(toolbar.get_node("PlayerMapZoomFit") as Button, presenter, parchment, zoom_label, 0.0)
+	_bind_zoom_button(toolbar.get_node("PlayerMapZoomIn") as Button, presenter, parchment, zoom_label, 0.5)
 
 
-func _style_pane(content: VBoxContainer, background: Color, border: Color, border_width: int) -> void:
-	var panel := content.get_parent() as PanelContainer
-	if panel != null:
-		panel.theme_type_variation = &""
-		panel.add_theme_stylebox_override("panel", _flat_style(background, border, border_width))
+func _bind_zoom_button(button: Button, presenter: PlayerMapPresenter, parchment: PlayerMapParchmentMat, label: Label, delta: float) -> void:
+	_clear_pressed_connections(button)
+	button.pressed.connect(_change_player_map_zoom.bind(presenter, parchment, label, delta))
 
 
-func _style_pane_heading(content: VBoxContainer, color: Color) -> void:
-	if content.get_child_count() > 0 and content.get_child(0) is Label:
-		(content.get_child(0) as Label).add_theme_color_override("font_color", color)
+func _change_player_map_zoom(presenter: PlayerMapPresenter, parchment: PlayerMapParchmentMat, label: Label, delta: float) -> void:
+	_player_map_zoom = 1.0 if is_zero_approx(delta) else clampf(_player_map_zoom + delta, 1.0, 4.0)
+	presenter.set_map_zoom(_player_map_zoom)
+	parchment.set_map_zoom(_player_map_zoom)
+	label.text = "%d%%" % roundi(_player_map_zoom * 100.0)
+
+
+func _bind_journal(workspace: MapsNotesWorkspace, view: GameView) -> void:
+	var search := workspace.get_node("MapsNotesTabs/Journal/JournalWorkspace/JournalEntryBrowser/Content/JournalSearch") as LineEdit
+	_clear_text_changed_connections(search)
+	search.text = _journal_query
+	workspace.journal_browser_empty().visible = view.journal_entries.is_empty()
+	if view.journal_entries.is_empty():
+		_bind_journal_detail(workspace, view)
+		return
+	if _selected_journal_message_id == 0:
+		_selected_journal_message_id = view.journal_entries[0].message_id
+	var rows := workspace.journal_entry_rows()
+	for entry: JournalEntryView in view.journal_entries:
+		var panel := workspace.journal_entry_row_scene.instantiate() as PanelContainer
+		var selected := entry.message_id == _selected_journal_message_id
+		panel.set_meta("journal_search_text", ("%d %s" % [entry.message_id, entry.text]).to_lower())
+		panel.set_meta("journal_message_id", entry.message_id)
+		_style_journal_row(panel, selected)
+		var open := panel.get_node("Content/Open") as Button
+		open.text = "Journal entry %d" % entry.message_id
+		open.button_pressed = selected
+		_style_journal_button(open, selected)
+		open.pressed.connect(_select_journal_entry.bind(workspace, view, entry.message_id))
+		var preview_text := entry.text.strip_edges()
+		if preview_text.length() > 140:
+			preview_text = preview_text.left(137).strip_edges() + "…"
+		_bind_label(panel.get_node("Content/Preview") as Label, preview_text, BOOK_MUTED_INK, 13)
+		rows.add_child(panel)
+	search.text_changed.connect(_filter_journal_rows.bind(rows))
+	_filter_journal_rows(_journal_query, rows)
+	_bind_journal_detail(workspace, view)
+
+
+func _select_journal_entry(workspace: MapsNotesWorkspace, view: GameView, message_id: int) -> void:
+	_selected_journal_message_id = message_id
+	for child: Node in workspace.journal_entry_rows().get_children():
+		if child is PanelContainer:
+			var selected := int(child.get_meta("journal_message_id", -1)) == message_id
+			_style_journal_row(child as PanelContainer, selected)
+			var button := child.get_node("Content/Open") as Button
+			button.button_pressed = selected
+			_style_journal_button(button, selected)
+	_bind_journal_detail(workspace, view)
+
+
+func _filter_journal_rows(query: String, rows: VBoxContainer) -> void:
+	_journal_query = query.strip_edges()
+	var needle := _journal_query.to_lower()
+	for child: Node in rows.get_children():
+		if child is Control and child.has_meta("journal_search_text"):
+			(child as Control).visible = needle.is_empty() or String(child.get_meta("journal_search_text")).contains(needle)
+
+
+func _bind_journal_detail(workspace: MapsNotesWorkspace, view: GameView) -> void:
+	var record := workspace.journal_detail_record()
+	var empty := workspace.journal_detail_empty()
+	for entry: JournalEntryView in view.journal_entries:
+		if entry.message_id == _selected_journal_message_id:
+			record.visible = true
+			empty.visible = false
+			_bind_label(record.get_node("Title") as Label, "Journal entry %d" % entry.message_id, BOOK_RED, 20)
+			_bind_label(record.get_node("JournalEntryText") as Label, entry.text, BOOK_INK, 17)
+			return
+	record.visible = false
+	empty.visible = true
+	var message := "No selected entry\nAuthored journal text will appear here." if view.journal_entries.is_empty() else "Entry unavailable\nThe selected journal record no longer exists."
+	(empty.get_node("Text") as Label).text = message
+
+
+func _style_journal_row(panel: PanelContainer, selected: bool) -> void:
+	panel.add_theme_stylebox_override("panel", _flat_style(BOOK_PAPER_SELECTED if selected else Color("d8c38e"), BOOK_RED if selected else Color("9a8358"), 2 if selected else 1))
 
 
 func _style_journal_button(button: Button, selected: bool) -> void:
-	button.add_theme_color_override("font_color", BOOK_INK)
+	button.add_theme_color_override("font_color", BOOK_RED if selected else BOOK_INK)
 	button.add_theme_color_override("font_hover_color", BOOK_RED)
 	button.add_theme_color_override("font_pressed_color", BOOK_RED)
 	button.add_theme_stylebox_override("normal", _flat_style(Color(0, 0, 0, 0), Color(0, 0, 0, 0), 0))
 	button.add_theme_stylebox_override("hover", _flat_style(Color("e0ca96"), Color("9a8358"), 1))
 	button.add_theme_stylebox_override("pressed", _flat_style(BOOK_PAPER_SELECTED, BOOK_RED, 1))
-	if selected:
-		button.add_theme_color_override("font_color", BOOK_RED)
 
 
-func _flat_style(background: Color, border: Color, border_width: int) -> StyleBoxFlat:
+static func _flat_style(background: Color, border: Color, border_width: int) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = background
 	style.border_color = border
@@ -550,50 +353,23 @@ func _flat_style(background: Color, border: Color, border_width: int) -> StyleBo
 	return style
 
 
-func _scroll(node_name: String) -> ScrollContainer:
-	var scroll := ScrollContainer.new()
-	scroll.name = node_name
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	return scroll
-
-
-func _add_empty_state(parent: Container, title: String, detail: String) -> void:
-	_add_card(parent, title, "Empty", detail)
-
-
-func _add_card(parent: Container, title: String, subtitle: String, detail: String) -> void:
-	var panel := PanelContainer.new()
-	panel.theme_type_variation = &"ClassicInset"
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 3)
-	panel.add_child(box)
-	_add_label(box, title, GOLD, 16)
-	if not subtitle.is_empty():
-		_add_label(box, subtitle, CYAN, 13)
-	if not detail.is_empty():
-		_add_label(box, detail, MUTED, 14)
-	parent.add_child(panel)
-
-
-func _add_label(parent: Container, text: String, color: Color = Color.WHITE, size: int = 15) -> Label:
-	var label := _label(text, color, size)
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	parent.add_child(label)
-	return label
-
-
-func _label(text: String, color: Color = Color.WHITE, size: int = 15) -> Label:
-	var label := Label.new()
+func _bind_label(label: Label, text: String, color: Color = Color.WHITE, size: int = 15) -> void:
 	label.text = text
 	label.add_theme_color_override("font_color", color)
 	label.add_theme_font_size_override("font_size", int(round(float(size) * _text_scale)))
-	return label
 
 
-func _clear(parent: Container) -> void:
+static func _clear_pressed_connections(button: Button) -> void:
+	for connection: Dictionary in button.pressed.get_connections():
+		button.pressed.disconnect(connection["callable"] as Callable)
+
+
+static func _clear_text_changed_connections(control: Control) -> void:
+	for connection: Dictionary in control.get_signal_connection_list(&"text_changed"):
+		control.disconnect(&"text_changed", connection["callable"] as Callable)
+
+
+static func _clear(parent: Node) -> void:
 	for child: Node in parent.get_children():
 		parent.remove_child(child)
 		child.queue_free()
