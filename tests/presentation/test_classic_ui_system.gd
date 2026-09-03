@@ -8,6 +8,7 @@ const TEXT_CHOICE_INTERACTION_SCENE := preload("res://src/ui/interaction_compone
 const SCROLLING_TEXT_INTERACTION_SCENE := preload("res://src/ui/interaction_components/scrolling_text_interaction.tscn")
 const SPELL_EFFECT_PREVIEW_SCENE := preload("res://src/ui/classic_spell_effect_preview.tscn")
 const BANK_INTERACTION_SCENE := preload("res://src/ui/interaction_components/bank_interaction.tscn")
+const TEMPLE_INTERACTION_SCENE := preload("res://src/ui/interaction_components/temple_interaction.tscn")
 const HeldMovementControllerScript := preload("res://src/ui/held_movement_controller.gd")
 const RetainedMapSurfaceScript := preload("res://src/ui/classic_retained_map_surface.gd")
 const FAST_SPELL_DOCK_SCENE := preload("res://src/ui/interaction_components/fast_spell_dock.tscn"); const ScrollingTextInteractionScript := preload("res://src/ui/interaction_components/scrolling_text_interaction.gd")
@@ -288,7 +289,7 @@ func _test_temple_component() -> void:
 			{"id": "revive-dead", "label": "Revive Dead", "description": "Restore an eligible dead character.", "cost": 1875},
 		],
 	})
-	var component := TempleInteraction.new()
+	var component := TEMPLE_INTERACTION_SCENE.instantiate() as TempleInteraction
 	var submitted: Array[Dictionary] = []
 	component.response_body_submitted.connect(func(body: InteractionResponse.Body) -> void: submitted.append(body.to_data()))
 	component.build(request)

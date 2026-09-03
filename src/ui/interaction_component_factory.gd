@@ -9,6 +9,7 @@ const PLAYER_MAP_INTERACTION_SCENE := preload("res://src/ui/interaction_componen
 const SCROLLING_TEXT_INTERACTION_SCENE := preload("res://src/ui/interaction_components/scrolling_text_interaction.tscn")
 const LIFECYCLE_INTERACTION_SCENE := preload("res://src/ui/interaction_components/lifecycle_interaction.tscn")
 const BANK_INTERACTION_SCENE := preload("res://src/ui/interaction_components/bank_interaction.tscn")
+const TEMPLE_INTERACTION_SCENE := preload("res://src/ui/interaction_components/temple_interaction.tscn")
 const ThiefEncounterInteractionScript := preload("res://src/ui/interaction_components/thief_encounter_interaction.gd")
 const LayoutPolicy := preload("res://src/ui/interaction_layout_policy.gd")
 
@@ -69,7 +70,7 @@ static func create(
 			shop.configure(media, compact)
 			return shop
 		&"temple_action":
-			var temple := TempleInteraction.new()
+			var temple := TEMPLE_INTERACTION_SCENE.instantiate() as TempleInteraction
 			temple.configure(media, compact)
 			return temple
 		&"bank_action", &"pooled_wealth_departure":
