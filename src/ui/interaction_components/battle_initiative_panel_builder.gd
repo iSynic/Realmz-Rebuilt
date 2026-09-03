@@ -3,11 +3,15 @@ extends RefCounted
 
 ## Builds the dynamic current-and-upcoming combatant strip for the battle command deck.
 
-const PANEL_SCENE := preload("res://src/ui/interaction_components/battle_initiative_panel.tscn")
+const PANEL_SCENE_PATH := "res://src/ui/interaction_components/battle_initiative_panel.tscn"
+
+static var _panel_scene: PackedScene
 
 
 static func build(round_number: int, combatants: Array[InteractionRequestValue.Combatant], active_actor_id: String, combatant_icons: Dictionary, selected: Callable, maximum_visible_turns: int) -> PanelContainer:
-	var panel := PANEL_SCENE.instantiate() as PanelContainer
+	if _panel_scene == null:
+		_panel_scene = load(PANEL_SCENE_PATH) as PackedScene
+	var panel := _panel_scene.instantiate() as PanelContainer
 	var heading := panel.get_node("%Heading") as Label
 	heading.text = "Round %d • Turn order" % round_number
 	var turns := panel.get_node("%BattleInitiativeOrder") as HBoxContainer
