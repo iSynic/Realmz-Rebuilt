@@ -7,6 +7,7 @@ extends RefCounted
 
 const PackageOperationViewScript := preload("res://src/app/package_operation_view.gd")
 const ClassicIntroAnimationScript := preload("res://src/ui/classic_intro_animation.gd")
+const CAMPAIGN_SELECTION_PANEL_SCENE := preload("res://src/ui/setup/campaign_selection_panel.tscn")
 const INTRO_FRAME_TEXTURE_PATH := "res://src/ui/assets/ui/classic-intro-frame.png"
 
 signal start_requested(package_path: String, seed: int)
@@ -170,63 +171,21 @@ func _style_splash_overlay() -> void:
 func build_campaign_overlay() -> void:
 	if campaign_overlay != null:
 		return
-	campaign_overlay = PanelContainer.new()
-	campaign_overlay.name = "ScenarioColumn"
-	campaign_overlay.theme_type_variation = &"ClassicInset"
+	campaign_overlay = CAMPAIGN_SELECTION_PANEL_SCENE.instantiate() as PanelContainer
 	campaign_overlay.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	campaign_overlay.custom_minimum_size.x = 210.0
-	campaign_overlay.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	campaign_overlay.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	campaign_overlay.size_flags_stretch_ratio = 0.72
 	campaign_overlay.z_index = 0
 	_host.add_child(campaign_overlay)
-	var column := VBoxContainer.new()
-	column.name = "ScenarioPaneContent"
-	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	column.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	column.add_theme_constant_override("separation", 8)
-	campaign_overlay.add_child(column)
-	var scenario_heading := _add_label(column, "Scenarios", GOLD, 20)
-	scenario_heading.name = "ScenarioHeading"
-	campaign_list = VBoxContainer.new()
-	campaign_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	campaign_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	campaign_scroll = ScrollContainer.new()
-	campaign_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	campaign_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	campaign_scroll.follow_focus = true
-	campaign_scroll.add_child(campaign_list)
-	column.add_child(campaign_scroll)
-	package_operation_host = PanelContainer.new()
-	package_operation_host.name = "PackageOperationHost"
-	package_operation_host.theme_type_variation = &"ClassicInset"
-	package_operation_host.visible = false
-	column.add_child(package_operation_host)
-	package_install_row = BoxContainer.new()
-	package_install_row.name = "PackageInstallRow"
-	package_install_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	install_button = Button.new()
-	install_button.name = "InstallPackage"
-	install_button.text = "Install Scenario"
-	install_button.custom_minimum_size = Vector2(150.0, 34.0)
+	campaign_list = campaign_overlay.get_node("ScenarioPaneContent/CampaignScroll/CampaignList") as VBoxContainer
+	campaign_scroll = campaign_overlay.get_node("ScenarioPaneContent/CampaignScroll") as ScrollContainer
+	package_operation_host = campaign_overlay.get_node("ScenarioPaneContent/PackageOperationHost") as PanelContainer
+	package_install_row = campaign_overlay.get_node("ScenarioPaneContent/PackageInstallRow") as BoxContainer
+	install_button = campaign_overlay.get_node("ScenarioPaneContent/PackageInstallRow/InstallPackage") as Button
 	install_button.pressed.connect(_open_package_dialog)
-	package_install_row.add_child(install_button)
-	column.add_child(package_install_row)
-	install_dialog = FileDialog.new()
-	install_dialog.name = "InstallScenarioDialog"
-	install_dialog.access = FileDialog.ACCESS_FILESYSTEM
-	install_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
-	install_dialog.filters = PackedStringArray(["*.realmz2 ; Realmz Rebuilt Scenario"])
-	install_dialog.use_native_dialog = true
+	install_dialog = campaign_overlay.get_node("InstallScenarioDialog") as FileDialog
 	install_dialog.file_selected.connect(_install_selected)
-	_host.add_child(install_dialog)
-	refresh_button = Button.new()
-	refresh_button.name = "RefreshScenarios"
-	refresh_button.text = "Refresh scenarios"
+	refresh_button = campaign_overlay.get_node("ScenarioPaneContent/LibraryActions/RefreshScenarios") as Button
 	refresh_button.pressed.connect(func() -> void: refresh_requested.emit())
-	var library_actions := HBoxContainer.new()
-	library_actions.add_child(refresh_button)
-	column.add_child(library_actions)
+	_clear(campaign_list)
 
 
 func set_campaigns(next_campaigns: Array[CampaignPackageView]) -> void:

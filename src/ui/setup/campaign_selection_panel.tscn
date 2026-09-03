@@ -1,0 +1,74 @@
+[gd_scene format=3]
+
+[node name="ScenarioColumn" type="PanelContainer"]
+custom_minimum_size = Vector2(210, 0)
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.72
+theme_type_variation = &"ClassicInset"
+
+[node name="ScenarioPaneContent" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="ScenarioHeading" type="Label" parent="ScenarioPaneContent"]
+layout_mode = 2
+text = "Scenarios"
+theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+theme_override_font_sizes/font_size = 20
+
+[node name="CampaignScroll" type="ScrollContainer" parent="ScenarioPaneContent"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+follow_focus = true
+
+[node name="CampaignList" type="VBoxContainer" parent="ScenarioPaneContent/CampaignScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="EditorEmptyState" type="Label" parent="ScenarioPaneContent/CampaignScroll/CampaignList"]
+layout_mode = 2
+text = "Installed scenarios appear here"
+horizontal_alignment = 1
+
+[node name="PackageOperationHost" type="PanelContainer" parent="ScenarioPaneContent"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"ClassicInset"
+
+[node name="PackageInstallRow" type="BoxContainer" parent="ScenarioPaneContent"]
+unique_name_in_owner = true
+layout_mode = 2
+alignment = 1
+
+[node name="InstallPackage" type="Button" parent="ScenarioPaneContent/PackageInstallRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 34)
+layout_mode = 2
+text = "Install Scenario"
+
+[node name="LibraryActions" type="HBoxContainer" parent="ScenarioPaneContent"]
+layout_mode = 2
+
+[node name="RefreshScenarios" type="Button" parent="ScenarioPaneContent/LibraryActions"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Refresh scenarios"
+
+[node name="InstallScenarioDialog" type="FileDialog" parent="."]
+unique_name_in_owner = true
+title = "Install Realmz Rebuilt Scenario"
+initial_position = 2
+size = Vector2i(900, 620)
+ok_button_text = "Install"
+file_mode = 0
+access = 2
+filters = PackedStringArray("*.realmz2 ; Realmz Rebuilt Scenario")
+use_native_dialog = true

@@ -7,6 +7,7 @@ const SetupStateScript := preload("res://src/ui/controllers/campaign_party_setup
 const PartySetupInspectionControllerScript := preload("res://src/ui/controllers/party_setup_inspection_controller.gd")
 const PartySetupAssemblyControllerScript := preload("res://src/ui/controllers/party_setup_assembly_controller.gd")
 const PartySetupCharacterCreationControllerScript := preload("res://src/ui/controllers/party_setup_character_creation_controller.gd")
+const PARTY_SETUP_WORKSPACE_PATH := "res://src/ui/setup/party_setup_workspace.tscn"
 
 var start_requested: Signal:
 	get: return _campaign_library.start_requested
@@ -54,231 +55,62 @@ func build_setup_overlay() -> void:
 		return
 	if campaign_overlay == null:
 		build_campaign_overlay()
-	var columns := _build_setup_columns()
-	_build_creator_stage(columns[0])
-	_build_party_stage(columns[1])
-	_build_setup_options(columns[0], columns[1])
-	_build_setup_actions(columns[0], columns[1])
+	_bind_setup_workspace()
 	_inspection._build_setup_character_inspection()
 	_creation.render_creator_step()
 
 
-func _build_setup_columns() -> Array[VBoxContainer]:
-	setup_overlay = PanelContainer.new()
-	setup_overlay.name = "PartySetup"
-	setup_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
-	var setup_surface := StyleBoxFlat.new()
-	setup_surface.bg_color = Color(0.0, 0.0, 0.0, 0.0)
-	setup_surface.set_border_width_all(0)
-	setup_surface.content_margin_left = 10.0
-	setup_surface.content_margin_top = 10.0
-	setup_surface.content_margin_right = 10.0
-	setup_surface.content_margin_bottom = 10.0
-	setup_overlay.add_theme_stylebox_override("panel", setup_surface)
+func _bind_setup_workspace() -> void:
+	var workspace_scene := load(PARTY_SETUP_WORKSPACE_PATH) as PackedScene
+	assert(workspace_scene != null, "Party setup workspace scene is unavailable.")
+	setup_overlay = workspace_scene.instantiate() as PanelContainer
 	setup_overlay.set_anchors_preset(Control.PRESET_CENTER)
-	setup_overlay.offset_left = -440.0
-	setup_overlay.offset_top = -238.0
-	setup_overlay.offset_right = 440.0
-	setup_overlay.offset_bottom = 238.0
 	setup_overlay.z_index = 25
 	_host.add_child(setup_overlay)
-	setup_body = HBoxContainer.new()
-	setup_body.name = "ScenarioPartyWorkspace"
-	setup_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	setup_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	setup_body.add_theme_constant_override("separation", 10)
+	setup_body = setup_overlay.get_node("ScenarioPartyWorkspace") as HBoxContainer
 	_host.remove_child(campaign_overlay)
 	setup_body.add_child(campaign_overlay)
-	setup_overlay.add_child(setup_body)
-
-	character_pane = PanelContainer.new()
-	character_pane.name = "CharacterFilesPane"
-	character_pane.theme_type_variation = &"ClassicInset"
-	character_pane.custom_minimum_size.x = 286.0
-	character_pane.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	character_pane.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	character_pane.size_flags_stretch_ratio = 1.15
-	setup_body.add_child(character_pane)
-	var character_column := VBoxContainer.new()
-	character_column.name = "CharacterFilesPaneContent"
-	character_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	character_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	character_column.add_theme_constant_override("separation", 6)
-	character_pane.add_child(character_column)
-
-	party_pane = PanelContainer.new()
-	party_pane.name = "CurrentPartyPane"
-	party_pane.theme_type_variation = &"ClassicInset"
-	party_pane.custom_minimum_size.x = 286.0
-	party_pane.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	party_pane.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	party_pane.size_flags_stretch_ratio = 1.15
-	setup_body.add_child(party_pane)
-	var party_column := VBoxContainer.new()
-	party_column.name = "PartyColumn"
-	party_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	party_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	party_column.add_theme_constant_override("separation", 6)
-	party_pane.add_child(party_column)
-	_state.apply_setup_mode_layout()
-	return [character_column, party_column]
-
-
-func _build_creator_stage(character_column: VBoxContainer) -> void:
-	creator_steps = HBoxContainer.new()
-	creator_steps.add_theme_constant_override("separation", 6)
-	creator_steps.custom_minimum_size.y = 24.0
-	for step: String in ["1 Identity", "2 Race & Caste", "3 Appearance", "4 Review", "5 Spells"]:
-		var step_label := _label(step, GOLD if step.begins_with("1") else MUTED, 13)
-		step_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		step_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		creator_steps.add_child(step_label)
-		creator_step_labels.append(step_label)
-	character_column.add_child(creator_steps)
-	creator_scroll = ScrollContainer.new()
-	creator_scroll.name = "CreatorScroll"
-	creator_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	creator_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	creator_scroll.custom_minimum_size.y = 220.0
-	creator_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	creator_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	creator_scroll.follow_focus = true
-	character_column.add_child(creator_scroll)
-	creator = BoxContainer.new()
-	creator.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	creator.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	creator.add_theme_constant_override("separation", 12)
-	creator_scroll.add_child(creator)
-	creator_page = VBoxContainer.new()
-	creator_page.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	creator_page.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	creator.add_child(creator_page)
-
-
-func _build_party_stage(party_column: VBoxContainer) -> void:
-	var party_heading := CenterContainer.new()
-	party_heading.name = "PartyHeading"
-	party_heading.custom_minimum_size.y = 28.0
-	var party_heading_content := HBoxContainer.new()
-	party_heading_content.add_child(_label("Current Party", GOLD, 20))
-	var party_count := _label("• 0 / 6", MUTED, 13)
-	party_count.name = "PartyCount"
-	party_heading_content.add_child(party_count)
-	party_heading.add_child(party_heading_content)
-	party_column.add_child(party_heading)
-	var party_scroll := ScrollContainer.new()
-	party_scroll.name = "PartySlotScroll"
-	party_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	party_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	party_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	party_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	party_scroll.follow_focus = true
-	party_list = PartySetupPartyListScript.new()
-	party_list.name = "PartySlots"
-	party_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	party_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	party_list.add_theme_constant_override("separation", 2)
+	setup_body.move_child(campaign_overlay, 0)
+	character_pane = setup_overlay.get_node("ScenarioPartyWorkspace/CharacterFilesPane") as PanelContainer
+	party_pane = setup_overlay.get_node("ScenarioPartyWorkspace/CurrentPartyPane") as PanelContainer
+	creator_steps = setup_overlay.get_node("%CreatorSteps") as HBoxContainer
+	creator_step_labels.clear()
+	for child: Node in creator_steps.get_children():
+		if child is Label:
+			creator_step_labels.append(child as Label)
+	creator_scroll = setup_overlay.get_node("%CreatorScroll") as ScrollContainer
+	creator = setup_overlay.get_node("%Creator") as BoxContainer
+	creator_page = setup_overlay.get_node("%CreatorPage") as VBoxContainer
+	_clear(creator_page)
+	party_list = setup_overlay.get_node("%PartySlots") as VBoxContainer
+	party_list.set_script(PartySetupPartyListScript)
 	party_list.import_requested.connect(_assembly._import_stored_character)
-	party_scroll.add_child(party_list)
-	party_column.add_child(party_scroll)
-
-
-func _build_setup_options(character_column: VBoxContainer, party_column: VBoxContainer) -> void:
-	setup_message = _add_label(character_column, "Enter a name to begin creating a character.", MUTED)
-	setup_message.custom_minimum_size.y = 32.0
-	setup_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	party_setup_options = VBoxContainer.new()
-	party_setup_options.name = "PartySetupOptions"
-	party_setup_options.add_theme_constant_override("separation", 4)
-	party_guidance_label = _label("", Color("e0e2e5"), 12)
-	party_guidance_label.name = "PartyLevelGuidance"
-	party_guidance_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	party_guidance_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	party_setup_options.add_child(party_guidance_label)
-	var experience_ratio := _label("Experience gained at —", GOLD, 14)
-	experience_ratio.name = "ExperienceRatio"
-	experience_ratio.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	party_setup_options.add_child(experience_ratio)
-	var selectors := HBoxContainer.new()
-	selectors.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	selectors.add_theme_constant_override("separation", 6)
-	var monster_column := VBoxContainer.new()
-	monster_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	monster_column.add_child(_label("Monster Set", MUTED, 12))
-	monster_set_option = OptionButton.new()
-	monster_set_option.name = "MonsterSetOption"
-	monster_set_option.theme_type_variation = &"ClassicTheldrowOptionButton"
-	monster_set_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	setup_message = setup_overlay.get_node("%SetupMessage") as Label
+	party_setup_options = setup_overlay.get_node("%PartySetupOptions") as VBoxContainer
+	party_guidance_label = setup_overlay.get_node("%PartyLevelGuidance") as Label
+	monster_set_option = setup_overlay.get_node("%MonsterSetOption") as OptionButton
 	monster_set_option.item_selected.connect(_assembly._party_setup_option_changed)
-	monster_column.add_child(monster_set_option)
-	selectors.add_child(monster_column)
-	var difficulty_column := VBoxContainer.new()
-	difficulty_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	difficulty_column.add_child(_label("Difficulty", MUTED, 12))
-	difficulty_option = OptionButton.new()
-	difficulty_option.name = "DifficultyOption"
-	difficulty_option.theme_type_variation = &"ClassicTheldrowOptionButton"
-	difficulty_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	difficulty_option = setup_overlay.get_node("%DifficultyOption") as OptionButton
 	for value: int in range(-2, 3):
 		difficulty_option.add_item(PartySetupView.difficulty_name(value))
 		difficulty_option.set_item_metadata(difficulty_option.item_count - 1, value)
 	difficulty_option.item_selected.connect(_assembly._party_setup_option_changed)
-	difficulty_column.add_child(difficulty_option)
-	selectors.add_child(difficulty_column)
-	party_setup_options.add_child(selectors)
-	party_column.add_child(party_setup_options)
-
-
-func _build_setup_actions(character_column: VBoxContainer, party_column: VBoxContainer) -> void:
-	creator_action_bar = HBoxContainer.new()
-	creator_action_bar.alignment = BoxContainer.ALIGNMENT_CENTER
-	creator_cancel_button = Button.new()
-	creator_cancel_button.text = "Cancel character"
-	creator_cancel_button.theme_type_variation = &"ClassicTheldrowButton"
+	creator_action_bar = setup_overlay.get_node("%CreatorActionBar") as HBoxContainer
+	creator_cancel_button = setup_overlay.get_node("%CreatorCancel") as Button
 	creator_cancel_button.pressed.connect(_creation._cancel_creator)
-	creator_action_bar.add_child(creator_cancel_button)
-	creator_action_bar.add_spacer(true)
-	creator_back_button = Button.new()
-	creator_back_button.text = "Back"
-	creator_back_button.theme_type_variation = &"ClassicTheldrowButton"
+	creator_back_button = setup_overlay.get_node("%CreatorBack") as Button
 	creator_back_button.pressed.connect(_creation.creator_back)
-	creator_action_bar.add_child(creator_back_button)
-	add_character_button = Button.new()
-	add_character_button.text = "Reroll"
-	add_character_button.theme_type_variation = &"ClassicTheldrowButton"
+	add_character_button = setup_overlay.get_node("%RerollCharacter") as Button
 	add_character_button.pressed.connect(_creation._reroll_character)
-	creator_action_bar.add_child(add_character_button)
-	creator_next_button = Button.new()
-	creator_next_button.text = "Continue"
-	creator_next_button.theme_type_variation = &"ClassicTheldrowButton"
+	creator_next_button = setup_overlay.get_node("%CreatorNext") as Button
 	creator_next_button.pressed.connect(_creation.creator_next)
-	creator_action_bar.add_child(creator_next_button)
-	character_column.add_child(creator_action_bar)
-	var character_footer := HBoxContainer.new()
-	create_character_button = Button.new()
-	create_character_button.name = "CreateCharacter"
-	create_character_button.text = "Create character"
-	create_character_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	create_character_button = setup_overlay.get_node("%CreateCharacter") as Button
 	create_character_button.pressed.connect(_creation._start_creator)
-	character_footer.add_child(create_character_button)
-	character_column.add_child(character_footer)
-	var party_footer := HBoxContainer.new()
-	var load_adventure := Button.new()
-	load_adventure.name = "LoadSavedAdventure"
-	load_adventure.text = "Load saved adventure"
-	load_adventure.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	load_adventure.custom_minimum_size.y = 34.0
+	var load_adventure := setup_overlay.get_node("%LoadSavedAdventure") as Button
 	load_adventure.pressed.connect(func() -> void: _state.load_saved_adventure_requested.emit())
-	party_footer.add_child(load_adventure)
-	begin_button = Button.new()
-	begin_button.name = "BeginAdventure"
-	begin_button.text = "Begin adventure"
-	begin_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	begin_button.custom_minimum_size.y = 34.0
-	begin_button.disabled = true
+	begin_button = setup_overlay.get_node("%BeginAdventure") as Button
 	begin_button.pressed.connect(_assembly.submit_party)
-	party_footer.add_child(begin_button)
-	party_column.add_child(party_footer)
+	_state.apply_setup_mode_layout()
 
 func set_view(next_view: GameView) -> void:
 	view = next_view

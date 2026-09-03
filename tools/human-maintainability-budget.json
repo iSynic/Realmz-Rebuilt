@@ -34,15 +34,8 @@
       "path": "src/ui/controllers/campaign_library_controller.gd",
       "kind": "request-workspace",
       "reason": "Campaign discovery, validation state, and front-door mode determine the complete transient package workspace.",
-      "currentMaximum": 28,
-      "functions": ["_add_selected_campaign_record", "_label", "_render_package_operation", "build_campaign_overlay", "build_splash_overlay", "render_campaign_list"]
-    },
-    {
-      "path": "src/ui/controllers/campaign_party_setup_controller.gd",
-      "kind": "request-workspace",
-      "reason": "The setup workflow composes mutually exclusive party, creator, and option stages from detached setup state.",
-      "currentMaximum": 27,
-      "functions": ["_build_creator_stage", "_build_party_stage", "_build_setup_actions", "_build_setup_columns", "_build_setup_options"]
+      "currentMaximum": 20,
+      "functions": ["_add_selected_campaign_record", "_label", "_render_package_operation", "build_splash_overlay", "render_campaign_list"]
     },
     {
       "path": "src/ui/controllers/campaign_party_setup_state.gd",

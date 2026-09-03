@@ -137,3 +137,4 @@ Own the Godot user interface: scenes, controls, screen presenters, topology-deri
 - `interaction_components/AGENTS.md` owns typed request-kind control surfaces and exact payload emission.
 - `routes/AGENTS.md` owns typed shell-mode and workspace route resources.
 - `screens/AGENTS.md` owns scene-backed workspace layout, scrolling, and focus containment.
+- `setup/AGENTS.md` owns campaign selection, party assembly, and character-creation scene composition.
