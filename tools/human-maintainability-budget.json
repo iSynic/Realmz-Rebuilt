@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
   "statementSeparatorLines": {
-    "currentMaximum": 296,
+    "currentMaximum": 276,
     "target": 0
   },
   "runtimeControlConstructions": {
-    "currentMaximum": 830,
+    "currentMaximum": 825,
     "target": 0
   },
   "missingPurposeHeaders": {
-    "currentMaximum": 369,
+    "currentMaximum": 362,
     "target": 0
   },
   "legacyRouteScenes": [],

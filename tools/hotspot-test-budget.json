@@ -7,7 +7,7 @@
     "testLines": 11807
   },
   "limits": {
-    "productionFileLines": 1000,
+    "productionFileLines": 800,
     "functionLines": 100,
     "testSuiteLines": 1200,
     "currentTestLines": 8596,
