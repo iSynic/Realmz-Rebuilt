@@ -1,6 +1,71 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
+
 [ext_resource type="PackedScene" path="res://src/ui/screens/screen_frame.tscn" id="1_base"]
+[ext_resource type="Script" path="res://src/ui/screens/journal_screen.gd" id="2_screen"]
+
 [node name="JournalScreen" instance=ExtResource("1_base")]
 route_id = &"journal"
 title = "Maps / Notes"
 description = "Acquired maps, scenario notes, and player-facing history."
+script = ExtResource("2_screen")
+
+[node name="MapsNotesSummary" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="EditorHint" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/MapsNotesSummary"]
+layout_mode = 2
+text = "Current Maps / Notes totals"
+horizontal_alignment = 2
+
+[node name="MapsNotesTabs" type="TabContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="Places" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/MapsNotesTabs"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 5
+
+[node name="EditorHint" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/MapsNotesTabs/Places"]
+layout_mode = 2
+text = "Saved places and current location note"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Maps" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/MapsNotesTabs"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 5
+
+[node name="EditorHint" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/MapsNotesTabs/Maps"]
+layout_mode = 2
+text = "Acquired map browser and selected map"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Journal" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/MapsNotesTabs"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 5
+
+[node name="EditorHint" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/MapsNotesTabs/Journal"]
+layout_mode = 2
+text = "Journal browser and selected entry"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="JournalAlternateContent" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3

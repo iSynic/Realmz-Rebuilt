@@ -36,9 +36,14 @@ func set_text_scale(text_scale: float) -> void:
 	_text_scale = text_scale
 
 
-func present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog) -> void:
+func present(target: Control, view: GameView, media: ClassicMediaCatalog) -> void:
 	_rebuilding = true
-	_clear(parent)
+	var screen := target as JournalScreen
+	var parent := screen.body_control() if screen != null else target as VBoxContainer
+	if screen != null:
+		screen.prepare_for_render()
+	else:
+		_clear(parent)
 	if view == null:
 		_rebuilding = false
 		return
@@ -48,21 +53,25 @@ func present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog) 
 		_selected_location_note_id = ""
 		_selected_journal_message_id = 0
 		_selected_tab = 0
-	_add_header(parent, view)
-	var tabs := TabContainer.new()
-	tabs.name = "MapsNotesTabs"
-	tabs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	parent.add_child(tabs)
-	_build_places_tab(_tab(tabs, "Places"), view, media)
-	_build_maps_tab(_tab(tabs, "Maps"), view, media)
-	_build_journal_tab(_tab(tabs, "Journal"), view)
+	_add_header(screen.summary_area() if screen != null else parent, view)
+	var tabs := screen.tabs() if screen != null else TabContainer.new()
+	if screen == null:
+		tabs.name = "MapsNotesTabs"
+		tabs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		parent.add_child(tabs)
+	_build_places_tab(screen.places_area() if screen != null else _tab(tabs, "Places"), view, media)
+	_build_maps_tab(screen.maps_area() if screen != null else _tab(tabs, "Maps"), view, media)
+	_build_journal_tab(screen.journal_area() if screen != null else _tab(tabs, "Journal"), view)
 	tabs.current_tab = mini(_selected_tab, tabs.get_tab_count() - 1)
-	tabs.tab_changed.connect(func(index: int) -> void:
-		if not _rebuilding and tabs.get_parent() != null:
-			_selected_tab = index
-	)
+	if not tabs.tab_changed.is_connected(_on_tab_changed):
+		tabs.tab_changed.connect(_on_tab_changed)
 	_rebuilding = false
+
+
+func _on_tab_changed(index: int) -> void:
+	if not _rebuilding:
+		_selected_tab = index
 
 
 func _add_header(parent: VBoxContainer, view: GameView) -> void:

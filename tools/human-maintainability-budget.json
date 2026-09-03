@@ -13,7 +13,6 @@
     "target": 0
   },
   "legacyRouteScenes": [
-    "src/ui/screens/journal_screen.tscn",
     "src/ui/screens/spells_screen.tscn",
     "src/ui/screens/system_screen.tscn",
     "src/ui/screens/vault_screen.tscn"
