@@ -3,13 +3,9 @@ extends PanelContainer
 
 const ClassicTreasureTakeEffectScript := preload("res://src/ui/classic_treasure_take_effect.gd")
 
-const PickLockInteractionScript := preload("res://src/ui/interaction_components/pick_lock_interaction.gd")
-const ThiefEncounterInteractionScript := preload("res://src/ui/interaction_components/thief_encounter_interaction.gd")
-
-const LifecycleInteractionScript := preload("res://src/ui/interaction_components/lifecycle_interaction.gd")
 const FastSpellDockScript := preload("res://src/ui/interaction_components/fast_spell_dock.gd")
-const ScrollingTextInteractionScript := preload("res://src/ui/interaction_components/scrolling_text_interaction.gd")
 const LayoutPolicy := preload("res://src/ui/interaction_layout_policy.gd")
+const ComponentFactory := preload("res://src/ui/interaction_component_factory.gd")
 
 signal response_submitted(response: InteractionResponse)
 signal combat_targeting_requested(request: CombatTargetingRequest)
@@ -135,7 +131,7 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 		_prompt.text = ""
 		_prompt.visible = false
 		return
-	_set_heading(_heading_for_kind(request.kind))
+	_set_heading(ComponentFactory.heading_for_kind(request.kind))
 	if request.kind == InteractionRequest.SESSION_LIFECYCLE:
 		_set_heading("")
 	if request.kind == InteractionRequest.CHARACTER_SELECTION and (request.body as InteractionRequest.CharacterSelectionRequestBody).spell_context != null:
@@ -158,7 +154,7 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 		_set_heading("")
 		_prompt.text = ""
 		_prompt.visible = false
-	_component = _component_for(request, game_view, media)
+	_component = _create_component(request, game_view, media)
 	if _component == null:
 		_set_heading("Unsupported Interaction")
 		_prompt.text = "Unsupported Realmz interaction: %s" % String(request.kind)
@@ -470,106 +466,8 @@ func set_autojournal_enabled(enabled: bool) -> void:
 	_autojournal_enabled = enabled
 
 
-func _component_for(request: InteractionRequest, game_view: GameView, media: ClassicMediaCatalog) -> InteractionComponent:
-	if LayoutPolicy.is_player_map_request(request):
-		var player_map := PlayerMapInteraction.new()
-		player_map.configure(game_view, media)
-		return player_map
-	if LayoutPolicy.is_scrolling_text_request(request):
-		var scrolling_text := ScrollingTextInteractionScript.new()
-		scrolling_text.configure(media)
-		return scrolling_text
-	match request.kind:
-		&"acknowledge", &"yes_no", &"encounter_choice", &"scenario_choice":
-			var text_choice := TextChoiceInteraction.new()
-			text_choice.configure(_autojournal_enabled)
-			return text_choice
-		&"age_update":
-			var age_update := AgeUpdateInteraction.new()
-			age_update.configure(media)
-			return age_update
-		&"character_selection", &"ally_selection":
-			var selection := SelectionInteraction.new()
-			selection.configure(media, game_view)
-			return selection
-		&"treasure_distribution":
-			var treasure := TreasureDistributionInteraction.new()
-			treasure.configure(media, game_view, _application_rect.size.x < 1000.0, _treasure_recipient_id, _treasure_slot_order)
-			return treasure
-		&"level_up":
-			var level_up := LevelUpInteraction.new()
-			level_up.configure(game_view, media)
-			return level_up
-		&"complex_encounter":
-			var encounter := EncounterInteraction.new()
-			encounter.configure(media, game_view, _application_rect.size.x < 1000.0)
-			return encounter
-		&"thief_encounter":
-			var thief := ThiefEncounterInteractionScript.new()
-			thief.configure(media)
-			return thief
-		&"pick_lock":
-			var pick_lock := PickLockInteractionScript.new()
-			pick_lock.configure(media)
-			return pick_lock
-		&"shop_action":
-			var shop := ShopInteraction.new()
-			shop.configure(media, _application_rect.size.x < 1000.0)
-			return shop
-		&"temple_action":
-			var temple := TempleInteraction.new()
-			temple.configure(media, _application_rect.size.x < 1000.0)
-			return temple
-		&"bank_action", &"pooled_wealth_departure":
-			var bank := BankInteraction.new()
-			bank.configure(_application_rect.size.x < 1000.0)
-			return bank
-		&"combat_action":
-			var battle := BattleInteraction.new()
-			battle.configure(_combatant_icon_textures(game_view, media), LayoutPolicy.combat_command_scale(_combat_rect))
-			return battle
-		&"session_lifecycle":
-			return LifecycleInteractionScript.new()
-	return null
-
-
-func _combatant_icon_textures(game_view: GameView, media: ClassicMediaCatalog) -> Dictionary:
-	var result: Dictionary = {}
-	if game_view == null or game_view.combat_view == null or media == null:
-		return result
-	for character: CharacterView in game_view.party_members:
-		var texture := media.image_texture(media.asset_by_id(character.combat_icon_id))
-		if texture != null:
-			result[character.id] = texture
-	for monster: MonsterView in game_view.combat_view.monsters:
-		var texture := media.image_texture(media.asset_by_resource(monster.icon_resource_type, monster.icon_id))
-		if texture != null:
-			result[monster.id] = texture
-	return result
-
-
-func _spell_animation_frames(game_view: GameView, media: ClassicMediaCatalog, bindings: Array[InteractionRequestValue.FastSpell]) -> Dictionary:
-	var result: Dictionary = {}
-	if game_view == null or media == null:
-		return result
-	var requested_spell_ids: Dictionary = {}
-	for binding: InteractionRequestValue.FastSpell in bindings:
-		if not binding.spell_id.is_empty():
-			requested_spell_ids[binding.spell_id] = true
-	for character: CharacterView in game_view.party_members:
-		for spell: SpellView in character.spells:
-			if not requested_spell_ids.has(spell.id) or result.has(spell.id):
-				continue
-			var frames: Array[Texture2D] = []
-			for resource_id: int in spell.animation_resource_ids:
-				var texture := media.image_texture(media.asset_by_resource(spell.animation_resource_type, resource_id))
-				if texture == null:
-					frames.clear()
-					break
-				frames.append(texture)
-			if frames.size() == spell.animation_resource_ids.size() and not frames.is_empty():
-				result[spell.id] = frames
-	return result
+func _create_component(request: InteractionRequest, game_view: GameView, media: ClassicMediaCatalog) -> InteractionComponent:
+	return ComponentFactory.create(request, game_view, media, _application_rect.size.x < 1000.0, _autojournal_enabled, _treasure_recipient_id, _treasure_slot_order, _combat_rect)
 
 
 func _mount_fast_spell_dock(body: InteractionRequest.CombatRequestBody, game_view: GameView, media: ClassicMediaCatalog) -> void:
@@ -577,7 +475,7 @@ func _mount_fast_spell_dock(body: InteractionRequest.CombatRequestBody, game_vie
 	if body == null:
 		return
 	_fast_spell_dock = FastSpellDockScript.new()
-	_fast_spell_dock.configure(body.fast_spells, _spell_animation_frames(game_view, media, body.fast_spells))
+	_fast_spell_dock.configure(body.fast_spells, ComponentFactory.fast_spell_animation_frames(game_view, media, body.fast_spells))
 	_fast_spell_dock.slot_activated.connect(func(slot_index: int) -> void: activate_fast_spell_from_dock(slot_index))
 	get_parent().add_child(_fast_spell_dock)
 	_apply_fast_spell_dock_layout()
@@ -818,7 +716,7 @@ func _present_nested_treasure_confirmation(request: InteractionRequest, game_vie
 	frame.theme_type_variation = &"ClassicInset"
 	frame.custom_minimum_size = Vector2(560.0, 210.0)
 	center.add_child(frame)
-	var component := _component_for(request, game_view, media)
+	var component := _create_component(request, game_view, media)
 	_component = component
 	component.response_body_submitted.connect(_submit_body)
 	frame.add_child(component)
@@ -1016,10 +914,6 @@ func _claim_modal_layer() -> void:
 		parent.move_child(self, parent.get_child_count() - 1)
 
 
-static func _title_for_kind(kind: StringName) -> String:
-	return String(kind).replace("_", " ").capitalize()
-
-
 static func _prompt_for(request: InteractionRequest, classic_text_context: String) -> String:
 	var explicit_prompt := request.body.prompt_text().strip_edges()
 	if not explicit_prompt.is_empty():
@@ -1031,38 +925,7 @@ static func _prompt_for(request: InteractionRequest, classic_text_context: Strin
 		if not authored_context.is_empty():
 			return authored_context
 		return "Choose Yes or No to continue."
-	return _title_for_kind(request.kind)
-
-
-static func _heading_for_kind(kind: StringName) -> String:
-	match kind:
-		&"acknowledge", &"yes_no", &"encounter_choice", &"scenario_choice", &"complex_encounter":
-			return ""
-		&"age_update":
-			return "Age Update"
-		&"complex_encounter", &"thief_encounter":
-			return "Encounter"
-		&"pick_lock":
-			return "Pick Lock"
-		&"character_selection", &"ally_selection":
-			return "Character Selection"
-		&"treasure_distribution":
-			return "Treasure"
-		&"level_up":
-			return "Level Up"
-		&"shop_action":
-			return "Shop"
-		&"temple_action":
-			return "Temple"
-		&"bank_action":
-			return "Bank"
-		&"pooled_wealth_departure":
-			return "Pooled Wealth"
-		&"combat_action":
-			return "Battle"
-		&"session_lifecycle":
-			return "Adventure"
-	return _title_for_kind(kind)
+	return ComponentFactory.title_for_kind(request.kind)
 
 
 func _set_heading(value: String) -> void:
