@@ -3,7 +3,7 @@
 class_name SelectionInteraction
 extends InteractionComponent
 
-const SPELL_TARGET_BADGE_SCENE := preload("res://src/ui/classic_spell_target_badge.tscn")
+const SPELL_TARGET_BADGE_SCENE_PATH := "res://src/ui/classic_spell_target_badge.tscn"
 
 const GOLD := Color("e0bc53")
 const TEXT := Color("d7d9dc")
@@ -60,7 +60,7 @@ func _add_spell_target_context(context: InteractionRequestValue.SpellTargetConte
 	facts.add_child(_label("%s • Power %d%s" % [source_label, context.power, cost_label], TEXT, 12))
 	facts.add_child(_label("%s • %d target%s" % [_target_label(context.target_type), context.target_count, "" if context.target_count == 1 else "s"], MUTED, 12))
 	row.add_child(facts)
-	var target_badge := SPELL_TARGET_BADGE_SCENE.instantiate() as ClassicSpellTargetBadge
+	var target_badge := (load(SPELL_TARGET_BADGE_SCENE_PATH) as PackedScene).instantiate() as ClassicSpellTargetBadge
 	if target_badge.present(context.target_type, context.target_size, _target_label(context.target_type), Vector2(48.0, 48.0)):
 		row.add_child(target_badge)
 	else:

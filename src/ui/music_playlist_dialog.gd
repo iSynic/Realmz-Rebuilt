@@ -8,7 +8,7 @@ signal music_enabled_changed(enabled: bool)
 signal music_volume_changed(value: float)
 signal playlist_mode_changed(playlist_id: int, mode: int)
 
-const PLAYLIST_ROW_SCENE := preload("res://src/ui/music_playlist_row.tscn")
+const PLAYLIST_ROW_SCENE_PATH := "res://src/ui/music_playlist_row.tscn"
 
 var _panel: PanelContainer
 var _now_playing: Label
@@ -70,7 +70,7 @@ func _populate_playlist_rows() -> void:
 		var column := get_node("MusicModalCenter/MusicPlaylistWindow/MusicPlaylistContent/PlaylistColumns/PlaylistColumn%d" % (column_index + 1)) as VBoxContainer
 		for row_index: int in 10:
 			var playlist_id := column_index * 10 + row_index + 1
-			var row := PLAYLIST_ROW_SCENE.instantiate() as MusicPlaylistRow
+			var row := (load(PLAYLIST_ROW_SCENE_PATH) as PackedScene).instantiate() as MusicPlaylistRow
 			column.add_child(row)
 			row.configure(playlist_id)
 			row.mode_selected.connect(_on_mode_pressed)

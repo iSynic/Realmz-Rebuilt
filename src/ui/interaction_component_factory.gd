@@ -2,15 +2,15 @@
 class_name InteractionComponentFactory
 extends RefCounted
 
-const PICK_LOCK_INTERACTION_SCENE := preload("res://src/ui/interaction_components/pick_lock_interaction.tscn")
-const AGE_UPDATE_INTERACTION_SCENE := preload("res://src/ui/interaction_components/age_update_interaction.tscn")
-const TEXT_CHOICE_INTERACTION_SCENE := preload("res://src/ui/interaction_components/text_choice_interaction.tscn")
-const PLAYER_MAP_INTERACTION_SCENE := preload("res://src/ui/interaction_components/player_map_interaction.tscn")
-const SCROLLING_TEXT_INTERACTION_SCENE := preload("res://src/ui/interaction_components/scrolling_text_interaction.tscn")
-const LIFECYCLE_INTERACTION_SCENE := preload("res://src/ui/interaction_components/lifecycle_interaction.tscn")
-const BANK_INTERACTION_SCENE := preload("res://src/ui/interaction_components/bank_interaction.tscn")
-const TEMPLE_INTERACTION_SCENE := preload("res://src/ui/interaction_components/temple_interaction.tscn")
-const THIEF_ENCOUNTER_INTERACTION_SCENE := preload("res://src/ui/interaction_components/thief_encounter_interaction.tscn")
+const PICK_LOCK_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/pick_lock_interaction.tscn"
+const AGE_UPDATE_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/age_update_interaction.tscn"
+const TEXT_CHOICE_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/text_choice_interaction.tscn"
+const PLAYER_MAP_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/player_map_interaction.tscn"
+const SCROLLING_TEXT_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/scrolling_text_interaction.tscn"
+const LIFECYCLE_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/lifecycle_interaction.tscn"
+const BANK_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/bank_interaction.tscn"
+const TEMPLE_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/temple_interaction.tscn"
+const THIEF_ENCOUNTER_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/thief_encounter_interaction.tscn"
 const LayoutPolicy := preload("res://src/ui/interaction_layout_policy.gd")
 
 
@@ -25,20 +25,20 @@ static func create(
 	combat_rect: Rect2
 ) -> InteractionComponent:
 	if LayoutPolicy.is_player_map_request(request):
-		var player_map := PLAYER_MAP_INTERACTION_SCENE.instantiate() as PlayerMapInteraction
+		var player_map := (load(PLAYER_MAP_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as PlayerMapInteraction
 		player_map.configure(game_view, media)
 		return player_map
 	if LayoutPolicy.is_scrolling_text_request(request):
-		var scrolling_text := SCROLLING_TEXT_INTERACTION_SCENE.instantiate() as ScrollingTextInteraction
+		var scrolling_text := (load(SCROLLING_TEXT_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as ScrollingTextInteraction
 		scrolling_text.configure(media)
 		return scrolling_text
 	match request.kind:
 		&"acknowledge", &"yes_no", &"encounter_choice", &"scenario_choice":
-			var text_choice := TEXT_CHOICE_INTERACTION_SCENE.instantiate() as TextChoiceInteraction
+			var text_choice := (load(TEXT_CHOICE_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as TextChoiceInteraction
 			text_choice.configure(autojournal_enabled)
 			return text_choice
 		&"age_update":
-			var age_update := AGE_UPDATE_INTERACTION_SCENE.instantiate() as AgeUpdateInteraction
+			var age_update := (load(AGE_UPDATE_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as AgeUpdateInteraction
 			age_update.configure(media)
 			return age_update
 		&"character_selection", &"ally_selection":
@@ -58,11 +58,11 @@ static func create(
 			encounter.configure(media, game_view, compact)
 			return encounter
 		&"thief_encounter":
-			var thief := THIEF_ENCOUNTER_INTERACTION_SCENE.instantiate() as ThiefEncounterInteraction
+			var thief := (load(THIEF_ENCOUNTER_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as ThiefEncounterInteraction
 			thief.configure(media)
 			return thief
 		&"pick_lock":
-			var pick_lock := PICK_LOCK_INTERACTION_SCENE.instantiate() as PickLockInteraction
+			var pick_lock := (load(PICK_LOCK_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as PickLockInteraction
 			pick_lock.configure(media)
 			return pick_lock
 		&"shop_action":
@@ -70,11 +70,11 @@ static func create(
 			shop.configure(media, compact)
 			return shop
 		&"temple_action":
-			var temple := TEMPLE_INTERACTION_SCENE.instantiate() as TempleInteraction
+			var temple := (load(TEMPLE_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as TempleInteraction
 			temple.configure(media, compact)
 			return temple
 		&"bank_action", &"pooled_wealth_departure":
-			var bank := BANK_INTERACTION_SCENE.instantiate() as BankInteraction
+			var bank := (load(BANK_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as BankInteraction
 			bank.configure(compact)
 			return bank
 		&"combat_action":
@@ -82,7 +82,7 @@ static func create(
 			battle.configure(_combatant_icon_textures(game_view, media), LayoutPolicy.combat_command_scale(combat_rect))
 			return battle
 		&"session_lifecycle":
-			return LIFECYCLE_INTERACTION_SCENE.instantiate() as InteractionComponent
+			return (load(LIFECYCLE_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as InteractionComponent
 	return null
 
 

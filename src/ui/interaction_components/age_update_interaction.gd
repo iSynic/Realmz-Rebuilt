@@ -3,7 +3,7 @@
 class_name AgeUpdateInteraction
 extends InteractionComponent
 
-const AGE_CHANGE_ROW_SCENE := preload("res://src/ui/interaction_components/age_change_row.tscn")
+const AGE_CHANGE_ROW_SCENE_PATH := "res://src/ui/interaction_components/age_change_row.tscn"
 
 const CHANGE_LABELS: Array[String] = [
 	"Brawn",
@@ -42,7 +42,7 @@ func build(request: InteractionRequest) -> void:
 		var amount := changes[index]
 		if amount == 0:
 			continue
-		var row := AGE_CHANGE_ROW_SCENE.instantiate() as HBoxContainer
+		var row := (load(AGE_CHANGE_ROW_SCENE_PATH) as PackedScene).instantiate() as HBoxContainer
 		grid.add_child(row)
 		(row.get_node("Fact") as Label).text = CHANGE_LABELS[index]
 		var value := row.get_node("Value") as Label

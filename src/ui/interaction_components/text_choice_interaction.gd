@@ -39,7 +39,7 @@ func build(request: InteractionRequest) -> void:
 			_acknowledgement_body = InteractionResponse.AcknowledgeBody.new(take_note_on_continue)
 			if body.prompt.strip_edges().is_empty():
 				var grid := _choice_grid(1, true)
-				var continue_button := RESPONSE_BUTTON_SCENE.instantiate() as Button
+				var continue_button := (load(RESPONSE_BUTTON_SCENE_PATH) as PackedScene).instantiate() as Button
 				continue_button.name = "AcknowledgeContinue"
 				continue_button.text = "Continue"
 				continue_button.custom_minimum_size = Vector2(140.0, 38.0)

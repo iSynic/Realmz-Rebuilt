@@ -3,8 +3,8 @@
 class_name TempleInteraction
 extends InteractionComponent
 
-const TEMPLE_CHARACTER_ROW_SCENE := preload("res://src/ui/interaction_components/temple_character_row.tscn")
-const TEMPLE_SERVICE_ROW_SCENE := preload("res://src/ui/interaction_components/temple_service_row.tscn")
+const TEMPLE_CHARACTER_ROW_SCENE_PATH := "res://src/ui/interaction_components/temple_character_row.tscn"
+const TEMPLE_SERVICE_ROW_SCENE_PATH := "res://src/ui/interaction_components/temple_service_row.tscn"
 
 var _media: ClassicMediaCatalog
 var _compact := false
@@ -63,7 +63,7 @@ func _populate_character_rows() -> void:
 	var rows := %TempleCharacterRows as VBoxContainer
 	(%CharacterEmpty as Label).visible = _characters.is_empty()
 	for character: InteractionRequestValue.ServiceCharacter in _characters:
-		var button := TEMPLE_CHARACTER_ROW_SCENE.instantiate() as Button
+		var button := (load(TEMPLE_CHARACTER_ROW_SCENE_PATH) as PackedScene).instantiate() as Button
 		button.name = "TempleCharacter_%s" % character.id.replace(".", "_")
 		button.text = "%s\nHP %d/%d  •  %d gold" % [
 			character.name,
@@ -82,7 +82,7 @@ func _populate_service_rows() -> void:
 	var rows := %TempleServiceRows as VBoxContainer
 	(%ServiceEmpty as Label).visible = _services.is_empty()
 	for service: InteractionRequestValue.TempleService in _services:
-		var button := TEMPLE_SERVICE_ROW_SCENE.instantiate() as Button
+		var button := (load(TEMPLE_SERVICE_ROW_SCENE_PATH) as PackedScene).instantiate() as Button
 		button.name = "TempleService_%s" % service.id.replace("-", "_")
 		button.text = "%s\n%d gold" % [service.label, service.cost]
 		button.button_group = _service_group

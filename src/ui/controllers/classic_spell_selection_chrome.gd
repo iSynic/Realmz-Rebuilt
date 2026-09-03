@@ -3,9 +3,9 @@
 class_name ClassicSpellSelectionChrome
 extends RefCounted
 
-const LEVEL_BUTTON_SCENE := preload("res://src/ui/classic_spell_level_button.tscn")
-const LEVEL_HEADING_SCENE := preload("res://src/ui/classic_spell_level_heading.tscn")
-const SPELL_BUTTON_SCENE := preload("res://src/ui/classic_spell_selection_button.tscn")
+const LEVEL_BUTTON_SCENE_PATH := "res://src/ui/classic_spell_level_button.tscn"
+const LEVEL_HEADING_SCENE_PATH := "res://src/ui/classic_spell_level_heading.tscn"
+const SPELL_BUTTON_SCENE_PATH := "res://src/ui/classic_spell_selection_button.tscn"
 
 const LEVEL_COLORS: Array[Color] = [
 	Color("f4df58"), Color("efcf45"), Color("eabb3e"), Color("e59d39"),
@@ -14,7 +14,7 @@ const LEVEL_COLORS: Array[Color] = [
 
 
 static func level_button(level: int, selected: bool, enabled: bool, action: Callable, unavailable_text: String) -> Button:
-	var button := LEVEL_BUTTON_SCENE.instantiate() as Button
+	var button := (load(LEVEL_BUTTON_SCENE_PATH) as PackedScene).instantiate() as Button
 	button.name = "SpellLevel%d" % level
 	button.text = "Level %d" % level
 	button.button_pressed = selected
@@ -29,13 +29,13 @@ static func level_button(level: int, selected: bool, enabled: bool, action: Call
 
 
 static func level_heading() -> TextureRect:
-	var heading := LEVEL_HEADING_SCENE.instantiate() as TextureRect
+	var heading := (load(LEVEL_HEADING_SCENE_PATH) as PackedScene).instantiate() as TextureRect
 	heading.texture = ClassicUiAssetCatalog.texture(&"spells.label.level")
 	return heading
 
 
 static func spell_button(node_name: String, text: String, selected: bool, enabled: bool, tooltip: String, action: Callable, icon: Texture2D = null) -> Button:
-	var button := SPELL_BUTTON_SCENE.instantiate() as Button
+	var button := (load(SPELL_BUTTON_SCENE_PATH) as PackedScene).instantiate() as Button
 	button.name = node_name
 	button.text = text
 	button.button_pressed = selected

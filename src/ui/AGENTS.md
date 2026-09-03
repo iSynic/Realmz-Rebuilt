@@ -9,6 +9,7 @@ Own the Godot user interface: scenes, controls, screen presenters, topology-deri
 - `InteractionPresenter` owns modal lifecycle and mounting. `InteractionComponentFactory` selects/configures the request-specific component, resolves its display heading, and gathers detached media needed by those components.
 
 - `InteractionLayoutPolicy` owns stateless request classification, sizing, scrolling, click-region, and modal-region calculations; actual `Control` ownership and mutation remain in `InteractionPresenter`.
+- Scene consumers keep editable `.tscn` resource paths as constants and load their `PackedScene` at the construction boundary. Do not script-preload scene files from the same application graph: root-script type dependencies can turn that eager load into a clean-import compilation cycle even when a warmed editor cache appears healthy.
 - Classic-wide 2D shell and optional topology-derived 3D dungeon presenter.
 - Translation of user input to typed intents/responses.
 - `InteractionPresenter` is the dedicated Classic interaction layer. It owns modal/request identity and delegates text/choice, selection, encounter, shop, temple, bank, battle, and one-item recovery controls to typed components that emit `InteractionResponse.Body` variants. Combat targeting and presentation-only commands use explicit typed signals rather than a dictionary command bus.

@@ -7,7 +7,7 @@ const GOLD := Color("e5c45c")
 const CYAN := Color("8fcfd1")
 const TEXT := Color("e0e2e5")
 const MUTED := Color("aeb6ba")
-const ITEM_DETAIL_HEADER_SCENE := preload("res://src/ui/classic_item_detail_header.tscn")
+const ITEM_DETAIL_HEADER_SCENE_PATH := "res://src/ui/classic_item_detail_header.tscn"
 
 var modifier_active := false:
 	set(value):
@@ -74,7 +74,7 @@ func _render_detail() -> void:
 	for child: Node in _content.get_children():
 		_content.remove_child(child)
 		child.free()
-	var header := ITEM_DETAIL_HEADER_SCENE.instantiate() as HBoxContainer
+	var header := (load(ITEM_DETAIL_HEADER_SCENE_PATH) as PackedScene).instantiate() as HBoxContainer
 	_content.add_child(header)
 	var icon := header.get_node("ClassicItemDetailIcon") as ClassicContentIcon
 	icon.configure(String(_hovered_detail.get("iconResourceType", "cicn")), int(_hovered_detail.get("iconId", 0)), _media, 48.0, String(_hovered_detail.get("title", "Item")))

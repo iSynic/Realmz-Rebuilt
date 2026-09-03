@@ -3,7 +3,7 @@
 class_name ClassicExchangeItemButton
 extends Button
 
-const DRAG_PREVIEW_SCENE := preload("res://src/ui/interaction_components/classic_exchange_drag_preview.tscn")
+const DRAG_PREVIEW_SCENE_PATH := "res://src/ui/interaction_components/classic_exchange_drag_preview.tscn"
 
 var drag_payload: Dictionary = {}
 
@@ -16,7 +16,7 @@ func configure_drag(payload: Dictionary) -> void:
 func _get_drag_data(_position: Vector2) -> Variant:
 	if disabled or drag_payload.is_empty():
 		return null
-	var preview := DRAG_PREVIEW_SCENE.instantiate() as Label
+	var preview := (load(DRAG_PREVIEW_SCENE_PATH) as PackedScene).instantiate() as Label
 	preview.text = text.get_slice("\n", 0)
 	set_drag_preview(preview)
 	return drag_payload.duplicate(true)

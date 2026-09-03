@@ -3,7 +3,7 @@
 class_name InteractionComponent
 extends VBoxContainer
 
-const RESPONSE_BUTTON_SCENE := preload("res://src/ui/interaction_components/interaction_response_button.tscn")
+const RESPONSE_BUTTON_SCENE_PATH := "res://src/ui/interaction_components/interaction_response_button.tscn"
 
 signal response_body_submitted(body: InteractionResponse.Body)
 @warning_ignore("unused_signal")
@@ -57,7 +57,7 @@ func add_response(label: String, body: InteractionResponse.Body, enabled: bool =
 
 
 func add_response_to(parent: Container, label: String, body: InteractionResponse.Body, enabled: bool = true, reason: String = "") -> Button:
-	var button := RESPONSE_BUTTON_SCENE.instantiate() as Button
+	var button := (load(RESPONSE_BUTTON_SCENE_PATH) as PackedScene).instantiate() as Button
 	button.text = label
 	button.disabled = not enabled
 	button.tooltip_text = reason

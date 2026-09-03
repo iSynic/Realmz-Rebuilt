@@ -9,7 +9,7 @@ signal refresh_requested
 const GOLD := Color("d5b45d")
 const TEXT := Color("e0e2e5")
 const MUTED := Color("9aa0a8")
-const CONTENT_ICON_SCENE := preload("res://src/ui/classic_content_icon.tscn")
+const CONTENT_ICON_SCENE_PATH := "res://src/ui/classic_content_icon.tscn"
 
 var _money_character_id: String = ""
 var _text_scale: float = 1.0
@@ -231,7 +231,7 @@ func _build_transfer_row(view: GameView, selected: MoneyCharacterView, transfer:
 
 
 func _wealth_icon(denomination: StringName) -> ClassicContentIcon:
-	var icon := CONTENT_ICON_SCENE.instantiate() as ClassicContentIcon
+	var icon := (load(CONTENT_ICON_SCENE_PATH) as PackedScene).instantiate() as ClassicContentIcon
 	icon.name = "Money%sIcon" % String(denomination).capitalize()
 	icon.configure("cicn", wealth_resource_id(denomination), _media, 32.0, String(denomination).capitalize(), "Classic wealth image unavailable")
 	return icon

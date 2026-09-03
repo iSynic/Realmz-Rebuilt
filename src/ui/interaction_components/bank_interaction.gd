@@ -3,8 +3,8 @@
 class_name BankInteraction
 extends InteractionComponent
 
-const BANK_CHARACTER_ROW_SCENE := preload("res://src/ui/interaction_components/bank_character_row.tscn")
-const BANK_TRANSFER_ROW_SCENE := preload("res://src/ui/interaction_components/bank_transfer_row.tscn")
+const BANK_CHARACTER_ROW_SCENE_PATH := "res://src/ui/interaction_components/bank_character_row.tscn"
+const BANK_TRANSFER_ROW_SCENE_PATH := "res://src/ui/interaction_components/bank_transfer_row.tscn"
 
 var _compact := false
 var _body: InteractionRequest.BankRequestBody
@@ -67,7 +67,7 @@ func _populate_character_rows() -> void:
 	var rows := %BankCharacterRows as VBoxContainer
 	(%CharacterEmpty as Label).visible = _characters.is_empty()
 	for character: InteractionRequestValue.ServiceCharacter in _characters:
-		var button := BANK_CHARACTER_ROW_SCENE.instantiate() as Button
+		var button := (load(BANK_CHARACTER_ROW_SCENE_PATH) as PackedScene).instantiate() as Button
 		button.name = "BankCharacter_%s" % character.id.replace(".", "_")
 		button.text = _character_row_text(character)
 		button.button_group = _character_group
@@ -115,7 +115,7 @@ func _refresh_selected_character() -> void:
 
 
 func _add_transfer_row(parent: VBoxContainer, character: InteractionRequestValue.ServiceCharacter, transfer: InteractionRequestValue.Transfer) -> void:
-	var panel := BANK_TRANSFER_ROW_SCENE.instantiate() as PanelContainer
+	var panel := (load(BANK_TRANSFER_ROW_SCENE_PATH) as PackedScene).instantiate() as PanelContainer
 	var denomination := String(transfer.denomination)
 	panel.name = "BankTransfer_%s" % denomination
 	(panel.get_node("Actions/Denomination") as Label).text = "%s\n%d per transfer" % [denomination.capitalize(), transfer.amount]

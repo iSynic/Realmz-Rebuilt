@@ -6,10 +6,10 @@ extends InteractionComponent
 const GOLD := Color("e5c45c")
 const CYAN := Color("8fcfd1")
 const MUTED := Color("aeb6ba")
-const CONTENT_ICON_SCENE := preload("res://src/ui/classic_content_icon.tscn")
-const EXCHANGE_ITEM_BUTTON_SCENE := preload("res://src/ui/interaction_components/classic_exchange_item_button.tscn")
+const CONTENT_ICON_SCENE_PATH := "res://src/ui/classic_content_icon.tscn"
+const EXCHANGE_ITEM_BUTTON_SCENE_PATH := "res://src/ui/interaction_components/classic_exchange_item_button.tscn"
 const EXCHANGE_LEDGER_SCRIPT := preload("res://src/ui/interaction_components/classic_exchange_ledger.gd")
-const ITEM_DETAIL_POPOVER_SCENE := preload("res://src/ui/classic_item_detail_popover.tscn")
+const ITEM_DETAIL_POPOVER_SCENE_PATH := "res://src/ui/classic_item_detail_popover.tscn"
 const CLASSIC_VISIBLE_ROWS := 9
 const COMPACT_VISIBLE_ROWS := 5
 const WIDE_LEDGER_ROW_HEIGHT := 34.0
@@ -82,7 +82,7 @@ func build(request: InteractionRequest) -> void:
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
 	custom_minimum_size = Vector2.ZERO
 	add_theme_constant_override("separation", 6)
-	_detail_popover = ITEM_DETAIL_POPOVER_SCENE.instantiate() as ClassicItemDetailPopover
+	_detail_popover = (load(ITEM_DETAIL_POPOVER_SCENE_PATH) as PackedScene).instantiate() as ClassicItemDetailPopover
 	add_child(_detail_popover)
 	_detail_popover.configure(_media, get_theme())
 	_build_header()
@@ -189,11 +189,11 @@ func _refresh_stock() -> void:
 	for entry: InteractionRequestValue.ShopStock in visible:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 5)
-		var icon := CONTENT_ICON_SCENE.instantiate() as ClassicContentIcon
+		var icon := (load(CONTENT_ICON_SCENE_PATH) as PackedScene).instantiate() as ClassicContentIcon
 		icon.name = "StockIcon_%s" % entry.stock_key.replace(":", "_").replace(".", "_")
 		icon.configure(entry.icon_resource_type, entry.icon_id, _media, _ledger_row_height(), entry.name)
 		row.add_child(icon)
-		var button := EXCHANGE_ITEM_BUTTON_SCENE.instantiate() as ClassicExchangeItemButton
+		var button := (load(EXCHANGE_ITEM_BUTTON_SCENE_PATH) as PackedScene).instantiate() as ClassicExchangeItemButton
 		button.name = "Stock_%s" % entry.stock_key.replace(":", "_").replace(".", "_")
 		button.text = "%s\n%d gold  •  %d left" % [entry.name, entry.buy_price, entry.quantity]
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -647,11 +647,11 @@ func _apply_portrait_button_styles(button: Button) -> void:
 func _inventory_row(character: InteractionRequestValue.ServiceCharacter, item: InteractionRequestValue.InventoryItem, prefix: String) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 5)
-	var icon := CONTENT_ICON_SCENE.instantiate() as ClassicContentIcon
+	var icon := (load(CONTENT_ICON_SCENE_PATH) as PackedScene).instantiate() as ClassicContentIcon
 	icon.name = "%sIcon_%s" % [prefix, item.instance_id.replace(".", "_")]
 	icon.configure(item.icon_resource_type, item.icon_id, _media, _ledger_row_height(), item.name)
 	row.add_child(icon)
-	var button := EXCHANGE_ITEM_BUTTON_SCENE.instantiate() as ClassicExchangeItemButton
+	var button := (load(EXCHANGE_ITEM_BUTTON_SCENE_PATH) as PackedScene).instantiate() as ClassicExchangeItemButton
 	button.name = "%s_%s" % [prefix, item.instance_id.replace(".", "_")]
 	button.text = "%s\n%s  •  sell %d gold" % [item.name, "Equipped" if item.equipped else "Carried", item.sell_price]
 	button.alignment = HORIZONTAL_ALIGNMENT_LEFT

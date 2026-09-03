@@ -16,14 +16,14 @@ const LEDGER_INK := Color("151512")
 const LEDGER_MUTED := Color("50575b")
 const LEDGER_BLUE := Color("2457bd")
 const LEDGER_RED := Color("ad2721")
-const CONTENT_ICON_SCENE := preload("res://src/ui/classic_content_icon.tscn")
-const EXCHANGE_ITEM_BUTTON_SCENE := preload("res://src/ui/interaction_components/classic_exchange_item_button.tscn")
+const CONTENT_ICON_SCENE_PATH := "res://src/ui/classic_content_icon.tscn"
+const EXCHANGE_ITEM_BUTTON_SCENE_PATH := "res://src/ui/interaction_components/classic_exchange_item_button.tscn"
 const EXCHANGE_LEDGER_SCRIPT := preload("res://src/ui/interaction_components/classic_exchange_ledger.gd")
-const ITEM_DETAIL_POPOVER_SCENE := preload("res://src/ui/classic_item_detail_popover.tscn")
-const ITEM_BROWSER_SCENE := preload("res://src/ui/screens/inventory_item_browser.tscn")
-const COMMAND_RAIL_SCENE := preload("res://src/ui/screens/inventory_command_rail.tscn")
-const ITEM_INSPECTOR_SCENE := preload("res://src/ui/screens/inventory_item_inspector.tscn")
-const DONE_COLUMN_SCENE := preload("res://src/ui/screens/inventory_done_column.tscn")
+const ITEM_DETAIL_POPOVER_SCENE_PATH := "res://src/ui/classic_item_detail_popover.tscn"
+const ITEM_BROWSER_SCENE_PATH := "res://src/ui/screens/inventory_item_browser.tscn"
+const COMMAND_RAIL_SCENE_PATH := "res://src/ui/screens/inventory_command_rail.tscn"
+const ITEM_INSPECTOR_SCENE_PATH := "res://src/ui/screens/inventory_item_inspector.tscn"
+const DONE_COLUMN_SCENE_PATH := "res://src/ui/screens/inventory_done_column.tscn"
 const InventoryItemTextType = preload("res://src/ui/controllers/inventory_item_text.gd")
 const InventoryViewQueriesType = preload("res://src/ui/controllers/inventory_view_queries.gd")
 
@@ -156,7 +156,7 @@ func _present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog,
 
 
 func _create_detail_popover(parent: VBoxContainer, media: ClassicMediaCatalog) -> CanvasLayer:
-	var detail_popover := ITEM_DETAIL_POPOVER_SCENE.instantiate() as ClassicItemDetailPopover
+	var detail_popover := (load(ITEM_DETAIL_POPOVER_SCENE_PATH) as PackedScene).instantiate() as ClassicItemDetailPopover
 	detail_popover.name = "InventoryItemDetailPopover"
 	parent.add_child(detail_popover)
 	detail_popover.configure(media, parent.get_theme())
@@ -394,7 +394,7 @@ func _add_inventory_done(parent: Container) -> void:
 
 
 func _build_inventory_done_column() -> VBoxContainer:
-	var column := DONE_COLUMN_SCENE.instantiate() as InventoryDoneColumn
+	var column := (load(DONE_COLUMN_SCENE_PATH) as PackedScene).instantiate() as InventoryDoneColumn
 	column.done_button().pressed.connect(_request_inventory_back)
 	return column
 
@@ -406,7 +406,7 @@ func _request_inventory_back() -> void:
 func _inventory_browser_content(panel: PanelContainer) -> InventoryItemBrowser:
 	var content := panel.find_child("InventoryItemBrowserContent", false, false) as InventoryItemBrowser
 	if content == null:
-		content = ITEM_BROWSER_SCENE.instantiate() as InventoryItemBrowser
+		content = (load(ITEM_BROWSER_SCENE_PATH) as PackedScene).instantiate() as InventoryItemBrowser
 		panel.add_child(content)
 	return content
 
@@ -414,7 +414,7 @@ func _inventory_browser_content(panel: PanelContainer) -> InventoryItemBrowser:
 func _inventory_command_rail_content(panel: PanelContainer) -> InventoryCommandRail:
 	var content := panel.find_child("InventoryCommandRailContent", false, false) as InventoryCommandRail
 	if content == null:
-		content = COMMAND_RAIL_SCENE.instantiate() as InventoryCommandRail
+		content = (load(COMMAND_RAIL_SCENE_PATH) as PackedScene).instantiate() as InventoryCommandRail
 		panel.add_child(content)
 	return content
 
@@ -422,7 +422,7 @@ func _inventory_command_rail_content(panel: PanelContainer) -> InventoryCommandR
 func _inventory_item_inspector_content(panel: PanelContainer) -> InventoryItemInspector:
 	var content := panel.find_child("InventoryItemInspectorContent", false, false) as InventoryItemInspector
 	if content == null:
-		content = ITEM_INSPECTOR_SCENE.instantiate() as InventoryItemInspector
+		content = (load(ITEM_INSPECTOR_SCENE_PATH) as PackedScene).instantiate() as InventoryItemInspector
 		panel.add_child(content)
 	return content
 
@@ -634,7 +634,7 @@ func _build_trade_ledger(view: GameView, character: CharacterView, other_id: Str
 		row.add_theme_constant_override("separation", 4)
 		var icon := _content_icon(item.icon_resource_type, item.icon_id, media, 34.0, item.name)
 		row.add_child(icon)
-		var button := EXCHANGE_ITEM_BUTTON_SCENE.instantiate() as ClassicExchangeItemButton
+		var button := (load(EXCHANGE_ITEM_BUTTON_SCENE_PATH) as PackedScene).instantiate() as ClassicExchangeItemButton
 		button.name = "InventoryTradeItem_%s" % item.instance_id
 		button.theme_type_variation = &"ClassicItemLedgerButton"
 		button.text = "%s\n%s" % [item.name, InventoryItemTextType.trade_line(item)]
@@ -796,7 +796,7 @@ func _add_trade_action(parent: Container, item: ItemView) -> void:
 
 
 func _content_icon(resource_type: String, resource_id: int, media: ClassicMediaCatalog, side: float = 52.0, semantic_label: String = "") -> Control:
-	var icon := CONTENT_ICON_SCENE.instantiate() as ClassicContentIcon
+	var icon := (load(CONTENT_ICON_SCENE_PATH) as PackedScene).instantiate() as ClassicContentIcon
 	icon.configure(resource_type, resource_id, media, side, semantic_label)
 	return icon
 

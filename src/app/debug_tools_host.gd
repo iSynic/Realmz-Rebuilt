@@ -3,8 +3,8 @@
 class_name DebugToolsHost
 extends Node
 
-const DEBUG_TOOLS_DIALOG_SCENE := preload("res://src/ui/debug_tools_dialog.tscn")
-const DEBUG_ACTION_CONSOLE_SCENE := preload("res://src/ui/debug_action_console.tscn")
+const DEBUG_TOOLS_DIALOG_SCENE_PATH := "res://src/ui/debug_tools_dialog.tscn"
+const DEBUG_ACTION_CONSOLE_SCENE_PATH := "res://src/ui/debug_action_console.tscn"
 
 signal status_changed(message: String, failed: bool)
 signal topology_debug_changed(enabled: bool)
@@ -25,9 +25,9 @@ func bind(controller: GameSessionController, overlay: Control, content_provider:
 	_content_provider = content_provider
 	if not OS.is_debug_build():
 		return
-	_dialog = DEBUG_TOOLS_DIALOG_SCENE.instantiate() as DebugToolsDialog
+	_dialog = (load(DEBUG_TOOLS_DIALOG_SCENE_PATH) as PackedScene).instantiate() as DebugToolsDialog
 	overlay.add_child(_dialog)
-	_console = DEBUG_ACTION_CONSOLE_SCENE.instantiate() as DebugActionConsole
+	_console = (load(DEBUG_ACTION_CONSOLE_SCENE_PATH) as PackedScene).instantiate() as DebugActionConsole
 	overlay.add_child(_console)
 	_controller.step_committed.connect(_record_step)
 	_dialog.command_requested.connect(_submit)

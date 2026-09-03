@@ -3,7 +3,7 @@
 class_name ThiefEncounterInteraction
 extends InteractionComponent
 
-const THIEF_ACTION_BUTTON_SCENE := preload("res://src/ui/interaction_components/thief_action_button.tscn")
+const THIEF_ACTION_BUTTON_SCENE_PATH := "res://src/ui/interaction_components/thief_action_button.tscn"
 
 var _media: ClassicMediaCatalog
 var _body: InteractionRequest.ThiefEncounterRequestBody
@@ -47,7 +47,7 @@ func _render_character() -> void:
 	for child: Node in _action_grid.get_children():
 		child.queue_free()
 	for action: InteractionRequestValue.ThiefAction in character.actions:
-		var button := THIEF_ACTION_BUTTON_SCENE.instantiate() as Button
+		var button := (load(THIEF_ACTION_BUTTON_SCENE_PATH) as PackedScene).instantiate() as Button
 		button.text = "%s  %d" % [action.label, action.value]
 		button.disabled = not action.enabled
 		button.tooltip_text = action.reason if not action.enabled else "%s ability %d" % [action.label, action.value]

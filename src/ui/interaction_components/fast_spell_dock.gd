@@ -10,7 +10,7 @@ const DOCK_HEIGHT := 76.0
 const MIN_SLOT_WIDTH := 44.0
 const MAX_SLOT_WIDTH := 68.0
 const SLOT_SEPARATION := 4.0
-const SLOT_SCENE := preload("res://src/ui/interaction_components/fast_spell_dock_slot.tscn")
+const SLOT_SCENE_PATH := "res://src/ui/interaction_components/fast_spell_dock_slot.tscn"
 
 var _stage_rect := Rect2()
 var _row: HBoxContainer
@@ -75,7 +75,7 @@ func _process(delta: float) -> void:
 
 
 func _add_binding(slot_index: int, binding: InteractionRequestValue.FastSpell, frames: Array) -> void:
-	var button := SLOT_SCENE.instantiate() as FastSpellDockSlot
+	var button := (load(SLOT_SCENE_PATH) as PackedScene).instantiate() as FastSpellDockSlot
 	button.name = "FastSpellDockSlot%d" % slot_index
 	_row.add_child(button)
 	button.configure(slot_index, binding, frames)

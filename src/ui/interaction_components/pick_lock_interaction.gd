@@ -3,7 +3,7 @@
 class_name PickLockInteraction
 extends InteractionComponent
 
-const TUMBLER_ROW_SCENE := preload("res://src/ui/interaction_components/pick_lock_tumbler_row.tscn")
+const TUMBLER_ROW_SCENE_PATH := "res://src/ui/interaction_components/pick_lock_tumbler_row.tscn"
 
 var _media: ClassicMediaCatalog
 var _body: InteractionRequest.PickLockRequestBody
@@ -32,7 +32,7 @@ func build(request: InteractionRequest) -> void:
 	_countdown = %PickLockCountdown
 	var rows := %TumblerRows as VBoxContainer
 	for index: int in _body.frames[0].size():
-		var row := TUMBLER_ROW_SCENE.instantiate() as HBoxContainer
+		var row := (load(TUMBLER_ROW_SCENE_PATH) as PackedScene).instantiate() as HBoxContainer
 		rows.add_child(row)
 		(row.get_node("Label") as Label).text = "Tumbler %d" % (index + 1)
 		var tumbler := row.get_node("Tumbler") as PickLockTumbler
