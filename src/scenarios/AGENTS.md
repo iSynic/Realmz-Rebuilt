@@ -7,6 +7,7 @@ Own the serializable Scenario VM, Classic instructions, Safe Scenario Actions, c
 ## Ownership
 
 - VM instruction/frame/trace/limit models and execution.
+- `SafeExpressionEvaluator` owns bounded expression and declared-value-type evaluation; `ScenarioVm` owns frames, calls, suspension, and control flow.
 - Classic AP, XAP, encounter, GOSUB, return, and result semantics.
 - Scenario Action execution, private helpers, state schemas, and migrations. Immutable compiled definitions live in `src/game/scenario` so game content never depends outward on the executor layer.
 - Capability declarations and readiness checks.
