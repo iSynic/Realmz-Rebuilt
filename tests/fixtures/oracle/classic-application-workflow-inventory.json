@@ -6751,7 +6751,7 @@
         "owners": [
           {
             "path": "src/ui/controllers/services_screen_controller.gd",
-            "symbol": "func _render_money_screen("
+            "symbol": "func _bind_money_workspace("
           },
           {
             "path": "src/ui/controllers/screen_content_presenter.gd",
@@ -6887,7 +6887,7 @@
         "owners": [
           {
             "path": "src/ui/controllers/services_screen_controller.gd",
-            "symbol": "func _render_money_screen("
+            "symbol": "func _bind_money_workspace("
           }
         ]
       },

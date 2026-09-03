@@ -87,13 +87,6 @@
       "functions": ["_add_card", "_add_label"]
     },
     {
-      "path": "src/ui/controllers/services_screen_controller.gd",
-      "kind": "request-workspace",
-      "reason": "The Money scene hosts services whose party, denomination, availability, and transfer controls are scenario supplied.",
-      "currentMaximum": 23,
-      "functions": ["_add_money_intent_action", "_add_section_heading", "_add_wealth_record", "_build_party_pane", "_build_pool_pane", "_build_swap_pane", "_build_transfer_row", "_character_picker", "_label", "_pane", "_pane_column", "_render_location_services", "_render_money_screen", "_wealth_chip"]
-    },
-    {
       "path": "src/ui/dungeon_map_3d_presenter.gd",
       "kind": "algorithmic-surface",
       "reason": "The first-person dungeon creates a render-target display paired with its generated three-dimensional scene.",

@@ -1,0 +1,5 @@
+[gd_scene format=3]
+
+[node name="ServiceAction" type="Button"]
+custom_minimum_size = Vector2(88, 36)
+text = "Action"

@@ -140,7 +140,7 @@ func _test_primary_workspace_lifecycle() -> void:
 			router.present(view)
 			assert_true(creature_regions.all(func(region: Node) -> bool: return is_instance_valid(region)) and creature_region_ids == creature_regions.map(func(region: Node) -> int: return region.get_instance_id()), "%s rerenders records inside stable scene-authored regions" % route_id)
 		if route_id == &"services":
-			var money_regions := [router.find_child("MoneyColumn", true, false), router.find_child("MoneyPoolPanel", true, false), router.find_child("MoneyPartyPanel", true, false), router.find_child("MoneySwapPanel", true, false)]
+			var money_regions := [router.find_child("MoneyColumn", true, false), router.find_child("MoneyPoolPane", true, false), router.find_child("MoneyPartyPane", true, false), router.find_child("MoneySwapPane", true, false)]
 			var money_region_ids := money_regions.map(func(region: Node) -> int: return region.get_instance_id())
 			router.present(view)
 			assert_true(money_regions.all(func(region: Node) -> bool: return is_instance_valid(region)) and money_region_ids == money_regions.map(func(region: Node) -> int: return region.get_instance_id()), "Party Wealth rerenders records inside stable scene-authored regions")
