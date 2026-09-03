@@ -52,13 +52,6 @@
       "functions": ["<file>"]
     },
     {
-      "path": "src/ui/controllers/inventory_screen_controller.gd",
-      "kind": "data-collection",
-      "reason": "Inventory scenes own the browser, command rail, inspector, and Done regions; these functions bind variable characters, items, facts, and trade modes.",
-      "currentMaximum": 50,
-      "functions": ["_add_empty_state", "_add_inventory_done", "_add_section_heading", "_build_character_command_rail", "_build_character_selector", "_build_item_browser", "_build_item_record", "_build_trade_control_spine", "_build_trade_item_record", "_build_trade_ledger", "_build_trade_workspace", "_label", "_portrait_icon", "_present", "_render_character_record", "_render_item_actions", "_render_item_detail", "_render_item_facts", "_render_operation_stage", "_trade_portrait"]
-    },
-    {
       "path": "src/ui/controllers/maps_journal_screen_controller.gd",
       "kind": "data-collection",
       "reason": "The Maps and Notes scene owns route chrome while these functions project variable places, maps, notes, journal entries, and editor state.",

@@ -4,12 +4,13 @@ class_name InventoryItemInspector
 extends HBoxContainer
 
 
+func record() -> InventorySelectedItemRecord:
+	return get_node("InventorySelectedItemRecord") as InventorySelectedItemRecord
+
+
 func record_host(compact: bool = false) -> BoxContainer:
-	var wide := get_node("InventorySelectedItemRecord") as HBoxContainer
-	var narrow := get_node("InventorySelectedItemRecordCompact") as VBoxContainer
-	wide.visible = not compact
-	narrow.visible = compact
-	return narrow if compact else wide
+	record().set_compact(compact)
+	return record()
 
 
 func done_column() -> InventoryDoneColumn:
@@ -17,7 +18,4 @@ func done_column() -> InventoryDoneColumn:
 
 
 func clear_dynamic_content() -> void:
-	for host: BoxContainer in [get_node("InventorySelectedItemRecord") as HBoxContainer, get_node("InventorySelectedItemRecordCompact") as VBoxContainer]:
-		for child: Node in host.get_children():
-			host.remove_child(child)
-			child.queue_free()
+	record().show_empty("Select an item to inspect it.")

@@ -5,19 +5,17 @@ extends VBoxContainer
 
 
 func character_record() -> VBoxContainer:
-	return get_node("CharacterRecord") as VBoxContainer
+	return get_node("InventoryCharacterRecord") as VBoxContainer
 
 
-func item_actions() -> VBoxContainer:
-	return get_node("ItemActions") as VBoxContainer
+func item_actions() -> InventoryActionPanel:
+	return get_node("InventoryActionPanel") as InventoryActionPanel
 
 
-func character_selector() -> VBoxContainer:
-	return get_node("CharacterSelector") as VBoxContainer
+func character_selector() -> InventoryCharacterSelector:
+	return get_node("InventoryCharacterSelector") as InventoryCharacterSelector
 
 
 func clear_dynamic_content() -> void:
-	for host: VBoxContainer in [character_record(), item_actions(), character_selector()]:
-		for child: Node in host.get_children():
-			host.remove_child(child)
-			child.queue_free()
+	character_selector().clear_characters()
+	item_actions().show_selection_hint()

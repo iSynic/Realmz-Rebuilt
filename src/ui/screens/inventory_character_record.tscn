@@ -1,0 +1,82 @@
+[gd_scene format=3]
+
+[node name="InventoryCharacterRecord" type="VBoxContainer"]
+theme_override_constants/separation = 3
+
+[node name="InventoryCharacterIdentity" type="HBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Portrait" type="TextureRect" parent="InventoryCharacterIdentity"]
+custom_minimum_size = Vector2(46, 46)
+layout_mode = 2
+texture_filter = 1
+expand_mode = 1
+stretch_mode = 5
+
+[node name="IdentityText" type="VBoxContainer" parent="InventoryCharacterIdentity"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Name" type="Label" parent="InventoryCharacterIdentity/IdentityText"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.835294, 0.705882, 0.364706, 1)
+theme_override_font_sizes/font_size = 19
+text = "Character"
+
+[node name="Role" type="Label" parent="InventoryCharacterIdentity/IdentityText"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.878431, 0.886275, 0.898039, 1)
+theme_override_font_sizes/font_size = 12
+text = "Race / Caste • Level 1"
+
+[node name="InventoryCharacterFacts" type="GridContainer" parent="."]
+layout_mode = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 2
+columns = 2
+
+[node name="Health" type="Label" parent="InventoryCharacterFacts"]
+custom_minimum_size = Vector2(104, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "ST 10/10"
+
+[node name="SpellPoints" type="Label" parent="InventoryCharacterFacts"]
+custom_minimum_size = Vector2(104, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "SP 0/0"
+
+[node name="Armor" type="Label" parent="InventoryCharacterFacts"]
+custom_minimum_size = Vector2(104, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "AR 0"
+
+[node name="Attacks" type="Label" parent="InventoryCharacterFacts"]
+custom_minimum_size = Vector2(104, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "Attacks 1"
+
+[node name="Movement" type="Label" parent="InventoryCharacterFacts"]
+custom_minimum_size = Vector2(104, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "Movement 0/0"
+
+[node name="Load" type="Label" parent="InventoryCharacterFacts"]
+custom_minimum_size = Vector2(104, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "Load 0/0"
+
+[node name="Conditions" type="Label" parent="."]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.603922, 0.627451, 0.658824, 1)
+theme_override_font_sizes/font_size = 11
+text = "Conditions: None"
+autowrap_mode = 2
+text_overrun_behavior = 3
+max_lines_visible = 2
