@@ -1,6 +1,8 @@
 class_name CombatFlowActions
 extends RefCounted
 
+## Resolves direct character combat commands and their deterministic turn effects.
+
 const ContextType = preload("res://src/game/rules/combat_flow_context.gd")
 const CombatRetreatProbeType = preload("res://src/game/rules/combat_retreat_probe.gd")
 const CombatCommandProbeType = preload("res://src/game/rules/combat_command_probe.gd")
@@ -57,17 +59,10 @@ func submit_action(state: GameState, content: RealmzContent, actor_id: String, a
 			if _flow()._events_include(events, &"monster_death_macro_requested"):
 				return CombatFlowResult.succeeded(events)
 		&"switch_weapon":
-			var equipment := _rules.inventory.combat_equipment(actor, content.item_definitions())
-			if not equipment.valid:
-				return CombatFlowResult.failed(equipment.error_code, equipment.error_message)
-			var current_mode := combat.character_weapon_mode(actor.id)
-			var next_mode: StringName = &"melee" if current_mode == &"missile" else &"missile"
-			if next_mode == &"missile" and equipment.missile_weapon == null:
-				return CombatFlowResult.failed(&"missile_weapon_unavailable", "The active character has no equipped Classic type-15 missile weapon.")
-			_prepare_character_turn(combat, actor)
-			if not combat.set_character_weapon_mode(actor.id, next_mode):
-				return CombatFlowResult.failed(&"invalid_weapon_mode", "The active character's battle weapon mode could not be changed.")
-			events.append(DomainEvent.new(&"combat_weapon_mode_changed", {"actorId": actor.id, "mode": String(next_mode)}))
+			var switch_result := _switch_character_weapon(combat, content, actor)
+			if not switch_result.ok:
+				return switch_result
+			events.append_array(switch_result.events)
 		&"defend":
 			_prepare_character_turn(combat, actor)
 			var guard_roll := rng.draw(100, &"combat.guard-sound")
@@ -144,6 +139,20 @@ func submit_action(state: GameState, content: RealmzContent, actor_id: String, a
 		return CombatFlowResult.succeeded(events, true)
 	_flow()._process_monster_turns(state, content, rng, events)
 	return CombatFlowResult.succeeded(events, state.combat.completed)
+
+
+func _switch_character_weapon(combat: CombatState, content: RealmzContent, actor: CharacterState) -> CombatFlowResult:
+	var equipment := _rules.inventory.combat_equipment(actor, content.item_definitions())
+	if not equipment.valid:
+		return CombatFlowResult.failed(equipment.error_code, equipment.error_message)
+	var current_mode := combat.character_weapon_mode(actor.id)
+	var next_mode: StringName = &"melee" if current_mode == &"missile" else &"missile"
+	if next_mode == &"missile" and equipment.missile_weapon == null:
+		return CombatFlowResult.failed(&"missile_weapon_unavailable", "The active character has no equipped Classic type-15 missile weapon.")
+	_prepare_character_turn(combat, actor)
+	if not combat.set_character_weapon_mode(actor.id, next_mode):
+		return CombatFlowResult.failed(&"invalid_weapon_mode", "The active character's battle weapon mode could not be changed.")
+	return CombatFlowResult.succeeded([DomainEvent.new(&"combat_weapon_mode_changed", {"actorId": actor.id, "mode": String(next_mode)})])
 
 
 func _submit_character_attack(state: GameState, content: RealmzContent, actor: CharacterState, target_id: String, rng: RealmzRng, allow_friendly_contact: bool = false) -> CombatFlowResult:

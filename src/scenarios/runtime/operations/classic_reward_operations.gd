@@ -1,6 +1,8 @@
 class_name ClassicRewardOperations
 extends RefCounted
 
+## Builds and resumes Classic treasure, battle rewards, and level-up sequences.
+
 var _content: RealmzContent
 var _game_state: GameState
 var _rng: RealmzRng
@@ -89,17 +91,10 @@ func begin_completed_battle_reward(request_id: String, caller: ScenarioBattleCal
 	var experience_only := combat.outcome == &"victory" and (combat.classic_post_battle_sentinel == 8 or caller != null and caller.kind == ScenarioBattleCaller.CLASSIC and caller.opcode == 2 and caller.mode == 5)
 	var defeated_monsters: Array[Dictionary] = []
 	var reward_monsters: Array[Dictionary] = []
-	var recovered_fumbles: Array[ItemInstance] = []
-	for fumbled: ItemInstance in combat.fumbled_items():
-		var definition := _content.item_by_id(fumbled.definition_id)
-		if definition == null:
-			return ScenarioRuntimeOperationResult.failed(&"unknown_item", "Battle recovery references unavailable item '%s'." % fumbled.definition_id)
-		var recovered := ItemInstance.from_data(fumbled.to_data())
-		if recovered == null:
-			return ScenarioRuntimeOperationResult.failed(&"invalid_reward", "A fumbled battle item cannot enter the reward queue.")
-		recovered.equipped = false
-		recovered.identified = true
-		recovered_fumbles.append(recovered)
+	var recovered_value: Variant = _recovered_fumble_items(combat)
+	if recovered_value is ScenarioRuntimeOperationResult:
+		return recovered_value
+	var recovered_fumbles: Array[ItemInstance] = recovered_value
 	var pending_item_count := recovered_fumbles.size()
 	if pending_item_count > ClassicRewardState.MAX_PENDING_ITEMS:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_reward", "The battle reward exceeds the supported Classic reward bounds.")
@@ -188,6 +183,21 @@ func begin_completed_battle_reward(request_id: String, caller: ScenarioBattleCal
 	combat.clear_fumbled_items()
 	operation.events = events + operation.events
 	return operation
+
+
+func _recovered_fumble_items(combat: CombatState) -> Variant:
+	var result: Array[ItemInstance] = []
+	for fumbled: ItemInstance in combat.fumbled_items():
+		var definition := _content.item_by_id(fumbled.definition_id)
+		if definition == null:
+			return ScenarioRuntimeOperationResult.failed(&"unknown_item", "Battle recovery references unavailable item '%s'." % fumbled.definition_id)
+		var recovered := ItemInstance.from_data(fumbled.to_data())
+		if recovered == null:
+			return ScenarioRuntimeOperationResult.failed(&"invalid_reward", "A fumbled battle item cannot enter the reward queue.")
+		recovered.equipped = false
+		recovered.identified = true
+		result.append(recovered)
+	return result
 
 
 func _complete_mode_ten_battle(combat: CombatState) -> ScenarioRuntimeOperationResult:

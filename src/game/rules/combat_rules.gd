@@ -1,6 +1,8 @@
 class_name CombatRules
 extends RefCounted
 
+## Resolves physical attacks, defenses, weapon effects, and monster specials.
+
 var _conditions: ConditionRules
 var _characters: CharacterRules
 
@@ -505,43 +507,8 @@ func resolve_monster_attack_monster(attacker: MonsterState, attacker_definition:
 	_with_monster_fumble_roll(resolution, fumble_roll)
 	resolution.physical_damage = damage
 	resolution.weapon_effects = effects
-	if attack.special != 0:
-		resolution.special_code = attack.special
-		var potency_low := int(float(attacker.hit_dice) / 2.0)
-		resolution.special_potency = maxi(1, rng.draw_between(potency_low, attacker.hit_dice, &"combat.monster-attack.special-potency"))
-		if _is_status_special(attack.special):
-			resolution.special_handled = true
-			resolution.special_save_index = _status_save_index(attack.special)
-			resolution.special_condition_index = _status_condition_index(attack.special)
-			resolution.special_condition_before = defender.conditions.value(resolution.special_condition_index)
-			resolution.special_condition_after = resolution.special_condition_before
-		elif _is_resource_special(attack.special):
-			resolution.special_handled = true
-			resolution.special_save_index = _resource_save_index(attack.special)
-			resolution.special_resource = &"spell_points" if attack.special == 8 else &"experience"
-		elif attack.special == 17:
-			resolution.special_handled = true
-		elif attack.special == 10:
-			resolution.special_handled = true
-			resolution.special_save_index = 0
-			resolution.special_allegiance_before = defender.traitor
-			resolution.special_allegiance_after = defender.traitor
-		elif _is_elemental_special(attack.special):
-			resolution.special_handled = true
-			resolution.special_save_index = attack.special - 10
-			resolution.special_condition_index = _elemental_condition_index(attack.special)
-			resolution.special_element = _elemental_name(attack.special)
-		elif attack.special in [18, 19]:
-			resolution.special_handled = true
-			resolution.special_save_index = 7
-			resolution.special_condition_index = ConditionRules.BLIND if attack.special == 18 else ConditionRules.TURNED_TO_STONE
-		if defender.magic_resistance > 100:
-			resolution.special_blocked = true
-			resolution.special_block_reason = &"magic_resistance"
-			resolution.hit = false
-			resolution.damage = 0
-			resolution.killed = false
-			return resolution
+	if attack.special != 0 and _prepare_monster_special(resolution, attack.special, attacker, defender, rng):
+		return resolution
 	if _is_status_special(attack.special):
 		_apply_monster_status_special(resolution, defender, defender_definition, rng)
 	elif attack.special == 8:
@@ -562,6 +529,46 @@ func resolve_monster_attack_monster(attacker: MonsterState, attacker_definition:
 		defender.current_health -= damage + elemental_damage + resolution.special_damage_amount
 		resolution.killed = defender.current_health <= 0
 	return resolution
+
+
+func _prepare_monster_special(resolution: AttackResolution, special: int, attacker: MonsterState, defender: MonsterState, rng: RealmzRng) -> bool:
+	resolution.special_code = special
+	var potency_low := int(float(attacker.hit_dice) / 2.0)
+	resolution.special_potency = maxi(1, rng.draw_between(potency_low, attacker.hit_dice, &"combat.monster-attack.special-potency"))
+	if _is_status_special(special):
+		resolution.special_handled = true
+		resolution.special_save_index = _status_save_index(special)
+		resolution.special_condition_index = _status_condition_index(special)
+		resolution.special_condition_before = defender.conditions.value(resolution.special_condition_index)
+		resolution.special_condition_after = resolution.special_condition_before
+	elif _is_resource_special(special):
+		resolution.special_handled = true
+		resolution.special_save_index = _resource_save_index(special)
+		resolution.special_resource = &"spell_points" if special == 8 else &"experience"
+	elif special == 17:
+		resolution.special_handled = true
+	elif special == 10:
+		resolution.special_handled = true
+		resolution.special_save_index = 0
+		resolution.special_allegiance_before = defender.traitor
+		resolution.special_allegiance_after = defender.traitor
+	elif _is_elemental_special(special):
+		resolution.special_handled = true
+		resolution.special_save_index = special - 10
+		resolution.special_condition_index = _elemental_condition_index(special)
+		resolution.special_element = _elemental_name(special)
+	elif special in [18, 19]:
+		resolution.special_handled = true
+		resolution.special_save_index = 7
+		resolution.special_condition_index = ConditionRules.BLIND if special == 18 else ConditionRules.TURNED_TO_STONE
+	if defender.magic_resistance <= 100:
+		return false
+	resolution.special_blocked = true
+	resolution.special_block_reason = &"magic_resistance"
+	resolution.hit = false
+	resolution.damage = 0
+	resolution.killed = false
+	return true
 
 
 static func _blocked_monster_attack(reason: StringName, chance: int = 0, roll: int = 0) -> AttackResolution:
