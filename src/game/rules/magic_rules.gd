@@ -1,6 +1,10 @@
 class_name MagicRules
 extends RefCounted
 
+## Resolves character, monster, field, and scenario spell effects.
+
+const SpellRollsType = preload("res://src/game/rules/spell_rolls.gd")
+
 const PolymorphContextType = preload("res://src/game/rules/monster_polymorph_context.gd")
 
 var _characters: CharacterRules
@@ -860,12 +864,7 @@ func _monster_resists(caster_level: int, target: MonsterState, definition: Monst
 
 
 func _scaled_roll(base_min: int, base_max: int, power_min: int, power_max: int, power_level: int, rng: RealmzRng, tag: StringName) -> int:
-	var total := rng.draw_between(base_min, base_max, tag) if base_max >= base_min else 0
-	if power_min != 0:
-		for index: int in power_level:
-			if power_max >= power_min:
-				total += rng.draw_between(power_min, power_max, StringName("%s.power.%d" % [tag, index]))
-	return total
+	return SpellRollsType.scaled(base_min, base_max, power_min, power_max, power_level, rng, tag)
 
 
 func _apply_attribute_increase(character: CharacterState, requested_attribute: int, caste: CasteDefinition, rng: RealmzRng, tag_prefix: String) -> void:
