@@ -10,7 +10,7 @@ const SCROLLING_TEXT_INTERACTION_SCENE := preload("res://src/ui/interaction_comp
 const LIFECYCLE_INTERACTION_SCENE := preload("res://src/ui/interaction_components/lifecycle_interaction.tscn")
 const BANK_INTERACTION_SCENE := preload("res://src/ui/interaction_components/bank_interaction.tscn")
 const TEMPLE_INTERACTION_SCENE := preload("res://src/ui/interaction_components/temple_interaction.tscn")
-const ThiefEncounterInteractionScript := preload("res://src/ui/interaction_components/thief_encounter_interaction.gd")
+const THIEF_ENCOUNTER_INTERACTION_SCENE := preload("res://src/ui/interaction_components/thief_encounter_interaction.tscn")
 const LayoutPolicy := preload("res://src/ui/interaction_layout_policy.gd")
 
 
@@ -58,7 +58,7 @@ static func create(
 			encounter.configure(media, game_view, compact)
 			return encounter
 		&"thief_encounter":
-			var thief := ThiefEncounterInteractionScript.new()
+			var thief := THIEF_ENCOUNTER_INTERACTION_SCENE.instantiate() as ThiefEncounterInteraction
 			thief.configure(media)
 			return thief
 		&"pick_lock":
