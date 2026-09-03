@@ -141,7 +141,7 @@ For a normal source change, run the narrow affected suite while iterating and fi
 ./tools/verify.ps1
 ```
 
-The human-maintainability verifier is a ratchet, not a score to game. It prevents new compressed statements, runtime-built ordinary controls, unexplained scripts, mismatched class/file names, and empty route scenes. When a real scene replaces a legacy shell, remove it from the debt list. When an algorithmic renderer or route marker is the honest design, record that exception explicitly rather than adding decorative nodes.
+The human-maintainability verifier is a ratchet, not a score to game. It prevents compressed statements, unexplained scripts, mismatched class/file names, and empty route scenes. A runtime-built ordinary control must now name its exact owning function, one of four narrow purposes—data collection, typed request workspace, algorithmic surface, or conditional chrome—and a plain-language reason. Each owner also carries an exact count, so adding a control to an already reviewed function still forces another review. Unclassified construction has a zero allowance. When a stable hierarchy moves into a scene, remove its old function from the inventory; when a renderer or request-sized collection is honestly clearer in code, keep the classification current rather than adding decorative nodes.
 
 ## Before leaving the workshop
 

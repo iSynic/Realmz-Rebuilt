@@ -29,6 +29,7 @@ The architecture verifier enforces these directions and the typed boundaries bet
 
 - Internal source moved from framework-shaped `core`, `session`, `scenario`, `infrastructure`, and `presentation` folders into the six product-facing areas above.
 - Stable routes gained named `*_screen.tscn` scenes. Inventory, Character, Allies, Bestiary, Maps/Notes, Money and services, Spells, System, and Character Files now expose their durable regions in the Godot editor.
+- Reusable inventory regions, party-setup rows, Fast Spell controls, exchange controls, Debug Tools, the action console, music playlist, shared content and spell visuals, scrolling text, player maps, Pick Lock, Age Update, lifecycle and text choices, Bank, Temple, and Thief workspaces now have editable scenes. Request-sized item, spell, character, statistic, transfer, service, and tumbler records use reusable row scenes.
 - Exploration and Combat remain explicit route markers because their persistent visible structure is already authored once in `game_shell.tscn`; duplicating decorative controls in their route scenes would make the editor lie.
 - `ScreenNavigator` owns navigation and mounting. Named screen controllers bind detached views and populate genuinely variable collections.
 - Large session, combat, application, interaction, and shell scripts were divided by responsibility behind typed collaborators. No production GDScript file exceeds 800 substantive lines and no function exceeds 100.
@@ -49,10 +50,11 @@ The repository now rejects:
 - functions over 100 substantive lines;
 - test suites over 1,200 substantive lines;
 - a regression in the measured test-line ratchet or test-to-production ratio;
-- growth in compressed statement lines, runtime-created ordinary controls, or production scripts lacking a purpose header;
+- any compressed statement line or production script without a purpose header;
+- any runtime-created ordinary control outside an exact reviewed function classification, any stale classification, or any per-owner count change that has not been reviewed;
 - class/file-name mismatches and unapproved one-node route scenes.
 
-The structural caps are complete and have no grandfather list. Three older local debts remain ratcheted rather than hidden: 276 compressed-statement lines, 825 runtime control constructions, and 362 scripts without purpose headers at this checkpoint. New work may reduce those numbers, never increase them. Runtime-created controls are not automatically defects—dynamic rows and algorithmic renderers are legitimate—but each accepted exception should become clearer as the ratchet approaches zero.
+The structural caps have no grandfather list. Compressed production statements, missing purpose headers, legacy empty route scenes, and unclassified runtime control construction are all at zero. The remaining 664 runtime-created ordinary controls are not hidden as a single permissive number: every constructor belongs to an exact named function, narrow purpose category, written reason, and exact per-owner count. Changing that count fails verification until a maintainer either moves stable structure into a scene and lowers the inventory or explicitly reviews the changed dynamic owner. This keeps variable collections and algorithmic renderers possible without allowing a new script-built screen to disappear inside a broad repository budget.
 
 ## Acceptance trail
 

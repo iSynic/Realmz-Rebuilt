@@ -1,0 +1,7 @@
+[gd_scene format=3]
+
+[node name="SpellSelectionButton" type="Button"]
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+toggle_mode = true
+alignment = 0

@@ -5,9 +5,242 @@
     "target": 0
   },
   "runtimeControlConstructions": {
-    "currentMaximum": 752,
+    "currentMaximum": 0,
     "target": 0
   },
+  "runtimeControlClassifications": [
+    {
+      "path": "src/ui/classic_item_detail_popover.gd",
+      "kind": "data-collection",
+      "reason": "The scene owns the popover shell; these functions render a variable detached item fact collection.",
+      "currentMaximum": 2,
+      "functions": ["_label", "_render_detail"]
+    },
+    {
+      "path": "src/ui/classic_party_effects.gd",
+      "kind": "data-collection",
+      "reason": "One compact status slot is created for each detached party effect supplied by the view.",
+      "currentMaximum": 3,
+      "functions": ["build_slots"]
+    },
+    {
+      "path": "src/ui/classic_retained_map_surface.gd",
+      "kind": "algorithmic-surface",
+      "reason": "The retained map allocates its viewport as part of an algorithmic canvas and texture pipeline.",
+      "currentMaximum": 1,
+      "functions": ["_build_viewport"]
+    },
+    {
+      "path": "src/ui/controllers/campaign_library_controller.gd",
+      "kind": "request-workspace",
+      "reason": "Campaign discovery, validation state, and front-door mode determine the complete transient package workspace.",
+      "currentMaximum": 28,
+      "functions": ["_add_selected_campaign_record", "_label", "_render_package_operation", "build_campaign_overlay", "build_splash_overlay", "render_campaign_list"]
+    },
+    {
+      "path": "src/ui/controllers/campaign_party_setup_controller.gd",
+      "kind": "request-workspace",
+      "reason": "The setup workflow composes mutually exclusive party, creator, and option stages from detached setup state.",
+      "currentMaximum": 27,
+      "functions": ["_build_creator_stage", "_build_party_stage", "_build_setup_actions", "_build_setup_columns", "_build_setup_options"]
+    },
+    {
+      "path": "src/ui/controllers/campaign_party_setup_state.gd",
+      "kind": "data-collection",
+      "reason": "This helper creates value labels only while projecting variable party-setup facts.",
+      "currentMaximum": 1,
+      "functions": ["_label"]
+    },
+    {
+      "path": "src/ui/controllers/character_screen_controller.gd",
+      "kind": "data-collection",
+      "reason": "The Character and Character Files scenes own stable regions; these functions populate revision, party-order, and history records.",
+      "currentMaximum": 36,
+      "functions": ["_add_card", "_add_section_heading", "_label", "_render_party_order", "_render_party_order_summary", "_render_vault_current_row", "_render_vault_history", "_render_vault_inspection", "_vault_import_button", "present_vault"]
+    },
+    {
+      "path": "src/ui/controllers/classic_definition_toggle_list.gd",
+      "kind": "data-collection",
+      "reason": "The custom list owns one retained content container whose children mirror the current definition set.",
+      "currentMaximum": 1,
+      "functions": ["<file>"]
+    },
+    {
+      "path": "src/ui/controllers/creature_library_screen_controller.gd",
+      "kind": "data-collection",
+      "reason": "The library scene owns its panes while these functions project variable ally and bestiary records.",
+      "currentMaximum": 25,
+      "functions": ["_add_empty_state", "_add_label", "_add_state_card", "_render_ally", "_render_bestiary", "present_allies", "present_bestiary"]
+    },
+    {
+      "path": "src/ui/controllers/inventory_screen_controller.gd",
+      "kind": "data-collection",
+      "reason": "Inventory scenes own the browser, command rail, inspector, and Done regions; these functions bind variable characters, items, facts, and trade modes.",
+      "currentMaximum": 50,
+      "functions": ["_add_empty_state", "_add_inventory_done", "_add_section_heading", "_build_character_command_rail", "_build_character_selector", "_build_item_browser", "_build_item_record", "_build_trade_control_spine", "_build_trade_item_record", "_build_trade_ledger", "_build_trade_workspace", "_label", "_portrait_icon", "_present", "_render_character_record", "_render_item_actions", "_render_item_detail", "_render_item_facts", "_render_operation_stage", "_trade_portrait"]
+    },
+    {
+      "path": "src/ui/controllers/maps_journal_screen_controller.gd",
+      "kind": "data-collection",
+      "reason": "The Maps and Notes scene owns route chrome while these functions project variable places, maps, notes, journal entries, and editor state.",
+      "currentMaximum": 36,
+      "functions": ["_add_card", "_add_header", "_build_journal_tab", "_build_maps_tab", "_build_places_tab", "_columns", "_label", "_map_zoom_button", "_pane", "_refresh_journal_detail", "_render_location_note_editor", "_render_selected_player_map", "_scroll", "_tab", "present"]
+    },
+    {
+      "path": "src/ui/controllers/party_setup_appearance_editor.gd",
+      "kind": "data-collection",
+      "reason": "Appearance controls and thumbnails vary with the supplied portrait, icon, race, and class catalogs.",
+      "currentMaximum": 16,
+      "functions": ["_add_thumbnail_row", "_build_option_control", "_build_preview", "_build_thumbnail_strip", "_preview_texture", "build"]
+    },
+    {
+      "path": "src/ui/controllers/party_setup_assembly_controller.gd",
+      "kind": "data-collection",
+      "reason": "Party assembly projects a variable vault page and current six-slot party from detached revisions.",
+      "currentMaximum": 5,
+      "functions": ["_add_stored_character_pager", "_render_party_assembly"]
+    },
+    {
+      "path": "src/ui/controllers/party_setup_character_creation_controller.gd",
+      "kind": "request-workspace",
+      "reason": "Character creation changes its fields and choices by wizard step and by the loaded application character library.",
+      "currentMaximum": 15,
+      "functions": ["_add_creator_panel", "_build_creator_identity", "_build_creator_race_class", "_build_creator_spells", "_classic_ui_art"]
+    },
+    {
+      "path": "src/ui/controllers/party_setup_inspection_controller.gd",
+      "kind": "data-collection",
+      "reason": "The inspection region projects the currently selected setup character and its variable record sections.",
+      "currentMaximum": 5,
+      "functions": ["_build_setup_character_inspection", "_render_setup_character_inspection"]
+    },
+    {
+      "path": "src/ui/controllers/screen_content_presenter.gd",
+      "kind": "data-collection",
+      "reason": "Shared cards and labels are emitted only while binding changing detached screen content.",
+      "currentMaximum": 3,
+      "functions": ["_add_card", "_add_label"]
+    },
+    {
+      "path": "src/ui/controllers/services_screen_controller.gd",
+      "kind": "request-workspace",
+      "reason": "The Money scene hosts services whose party, denomination, availability, and transfer controls are scenario supplied.",
+      "currentMaximum": 23,
+      "functions": ["_add_money_intent_action", "_add_section_heading", "_add_wealth_record", "_build_party_pane", "_build_pool_pane", "_build_swap_pane", "_build_transfer_row", "_character_picker", "_label", "_pane", "_pane_column", "_render_location_services", "_render_money_screen", "_wealth_chip"]
+    },
+    {
+      "path": "src/ui/controllers/spells_screen_controller.gd",
+      "kind": "data-collection",
+      "reason": "The Spells scene owns durable regions; these functions bind variable casters, levels, spells, powers, scrolls, and fast-spell assignments.",
+      "currentMaximum": 45,
+      "functions": ["_add_button", "_add_character_selector", "_add_empty_state", "_add_fast_spell_row", "_add_fast_spells", "_add_known_spells", "_add_scrolls", "_add_section_heading", "_add_section_tabs", "_add_spellcasting_blocked_notice", "_build_level_rail", "_build_power_rail", "_build_spell_action_dock", "_build_spell_list", "_label", "_spell_detail", "_ui_art"]
+    },
+    {
+      "path": "src/ui/controllers/system_screen_controller.gd",
+      "kind": "request-workspace",
+      "reason": "The System scene hosts tabs whose settings, saves, controls, and save-and-quit mode depend on current host state.",
+      "currentMaximum": 32,
+      "functions": ["_add_action", "_add_card", "_add_control_help", "_add_header", "_add_setting_row", "_add_setting_toggle", "_build_audio_tab", "_build_display_tab", "_build_new_save_row", "_build_save_footer", "_build_save_tab", "_label", "_pane", "_refresh_save_detail", "_scroll", "_settings_panel", "_tab", "present"]
+    },
+    {
+      "path": "src/ui/dungeon_map_3d_presenter.gd",
+      "kind": "algorithmic-surface",
+      "reason": "The first-person dungeon creates a render-target display paired with its generated three-dimensional scene.",
+      "currentMaximum": 1,
+      "functions": ["_ready"]
+    },
+    {
+      "path": "src/ui/interaction_components/battle_initiative_panel_builder.gd",
+      "kind": "data-collection",
+      "reason": "The scene-authored initiative panel receives one selectable entry per request-ordered combatant.",
+      "currentMaximum": 1,
+      "functions": ["build"]
+    },
+    {
+      "path": "src/ui/interaction_components/battle_interaction.gd",
+      "kind": "request-workspace",
+      "reason": "Battle controls are mutually exclusive typed command, inspection, targeting, item, spell, and tactic modes derived from each activation request.",
+      "currentMaximum": 41,
+      "functions": ["_add_bandage_panel", "_add_hint_to", "_add_mode_back_button", "_add_panel_toggle", "_add_presentation_button", "_add_targeting_button", "_build_combatant_information", "_build_combatant_inspection", "_build_command_shelf", "_build_item_panel", "_build_scroll_panel", "_combatant_icon", "_command_group", "_command_rows", "_start_targeting", "_summary_panel", "build"]
+    },
+    {
+      "path": "src/ui/interaction_components/encounter_interaction.gd",
+      "kind": "request-workspace",
+      "reason": "A Complex Encounter swaps among request-defined action, item, spell, skill, speech, and result workspaces.",
+      "currentMaximum": 24,
+      "functions": ["_ensure_context", "_render_standard_spell_catalog", "_show_choices", "_show_standard_item_workspace", "_show_word", "build"]
+    },
+    {
+      "path": "src/ui/interaction_components/interaction_component.gd",
+      "kind": "conditional-chrome",
+      "reason": "Shared hints and character pickers exist only when a typed interaction supplies those optional values.",
+      "currentMaximum": 2,
+      "functions": ["add_hint", "character_option"]
+    },
+    {
+      "path": "src/ui/interaction_components/level_up_interaction.gd",
+      "kind": "request-workspace",
+      "reason": "Level Up alternates between committed-gain presentation and a class-dependent spell-selection workspace.",
+      "currentMaximum": 18,
+      "functions": ["_build_gain_record", "_build_header", "_build_level_identity", "_build_result", "_build_result_action", "_build_spell_level_rail", "_build_spell_selection", "_label", "_pane"]
+    },
+    {
+      "path": "src/ui/interaction_components/selection_interaction.gd",
+      "kind": "request-workspace",
+      "reason": "Selection renders different spell-target context, character, and surviving-ally workflows from typed candidates.",
+      "currentMaximum": 16,
+      "functions": ["_add_character_check", "_add_spell_target_context", "_build_ally_candidates", "_build_ally_decision", "_build_ally_selection", "_label"]
+    },
+    {
+      "path": "src/ui/interaction_components/shop_interaction.gd",
+      "kind": "request-workspace",
+      "reason": "Shop inventory, shopper selection, categories, exchange mode, and command availability are entirely request supplied.",
+      "currentMaximum": 38,
+      "functions": ["_action_button", "_build_category_filters", "_build_compact_browser", "_build_control_spine", "_build_footer", "_build_header", "_build_pack_content", "_build_shopper_selector", "_build_stock_content", "_build_workspace", "_exchange_pane", "_footer_group", "_inventory_row", "_label", "_pane", "_refresh_stock", "_scroll", "_shopper_portrait"]
+    },
+    {
+      "path": "src/ui/interaction_components/treasure_distribution_interaction.gd",
+      "kind": "request-workspace",
+      "reason": "Treasure composes request-sized loot, recipients, lore casters, transfers, recovery, and completion-confirmation modes.",
+      "currentMaximum": 66,
+      "functions": ["_add_caster_control", "_add_colored_label", "_add_column", "_add_expanding_spacer", "_add_loot_item", "_add_recipient_row", "_add_swap_controls", "_add_vacant_loot_slot", "_add_workspace_header", "_build_classic_treasure_workspace", "_build_command_column", "_build_compact_commands", "_build_completion_confirmation", "_build_footer", "_build_item_column", "_build_item_inspector", "_build_loot_side", "_build_party_side", "_build_recipient_column", "_build_workspace", "_loot_marker"]
+    },
+    {
+      "path": "src/ui/interaction_presenter.gd",
+      "kind": "conditional-chrome",
+      "reason": "The presenter creates short-lived modal shields, media flashes, and side-workspace hosts only for the active request.",
+      "currentMaximum": 15,
+      "functions": ["_add_hint", "_present_nested_treasure_confirmation", "_show_application_workspace", "_show_encounter_dock", "_show_next_classic_flash", "_show_side_workspace", "_update_modal_shield"]
+    },
+    {
+      "path": "src/ui/screen_navigator.gd",
+      "kind": "conditional-chrome",
+      "reason": "The navigator supplies mount hosts only when embedded without the application shell's authored host nodes.",
+      "currentMaximum": 2,
+      "functions": ["_ensure_hosts"]
+    },
+    {
+      "path": "src/ui/screens/classic_character_sheet.gd",
+      "kind": "request-workspace",
+      "reason": "The reusable character sheet changes its tabs, editable fields, metric cards, item rows, spells, conditions, and background record by mode and detached character.",
+      "currentMaximum": 57,
+      "functions": ["_add_card", "_add_heading", "_add_metric_region", "_add_metric_views", "_appearance", "_appearance_picker", "_build_abilities", "_build_appearance", "_build_background", "_build_background_region", "_build_character_picker", "_build_conditions", "_build_equipment", "_build_identity", "_build_item_region", "_build_overview", "_build_record", "_build_spells", "_build_tabs", "_character_spell_card", "_equipment_item_card", "_label", "_media_icon", "_rebuild", "_spell_region"]
+    },
+    {
+      "path": "src/ui/screens/classic_party_roster.gd",
+      "kind": "data-collection",
+      "reason": "The roster scene owns its rails while these functions bind party members and the selected character's variable combat spellbook.",
+      "currentMaximum": 27,
+      "functions": ["_add_character", "_add_empty", "_build_spell_level_rail", "_build_spellbook", "_ensure_selection_cursor_label", "_present_spellbook_details", "_refresh_spellbook_power_choices", "_spellbook_label"]
+    },
+    {
+      "path": "src/ui/screens/screen_frame.gd",
+      "kind": "conditional-chrome",
+      "reason": "A route frame adds navigation chrome only when its scene declares a Back label and destination.",
+      "currentMaximum": 2,
+      "functions": ["_configure_navigation"]
+    }
+  ],
   "missingPurposeHeaders": {
     "currentMaximum": 0,
     "target": 0

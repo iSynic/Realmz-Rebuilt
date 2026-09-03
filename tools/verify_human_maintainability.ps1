@@ -87,6 +87,7 @@ $controlPattern = '\b(?:' + (($controlTypes | ForEach-Object { [regex]::Escape($
 $productionFiles = @(Get-ChildItem (Join-Path $repoRoot "src") -Recurse -File -Filter "*.gd")
 $statementSeparatorLines = 0
 $runtimeControlConstructions = 0
+$runtimeControlRecords = @{}
 $missingPurposeHeaders = 0
 
 foreach ($file in $productionFiles) {
@@ -97,7 +98,27 @@ foreach ($file in $productionFiles) {
         $missingPurposeHeaders++
     }
     $statementSeparatorLines += Get-CodeSemicolonLineCount $lines
-    $runtimeControlConstructions += [regex]::Matches($content, $controlPattern).Count
+    $functionName = "<file>"
+    foreach ($line in $lines) {
+        $functionMatch = [regex]::Match($line, '^\s*(?:static\s+)?func\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(')
+        if ($functionMatch.Success) {
+            $functionName = $functionMatch.Groups[1].Value
+        }
+        $lineCount = [regex]::Matches($line, $controlPattern).Count
+        if ($lineCount -eq 0) {
+            continue
+        }
+        $runtimeControlConstructions += $lineCount
+        $key = "$relative::$functionName"
+        if (-not $runtimeControlRecords.ContainsKey($key)) {
+            $runtimeControlRecords[$key] = [pscustomobject]@{
+                Path = $relative
+                Function = $functionName
+                Count = 0
+            }
+        }
+        $runtimeControlRecords[$key].Count += $lineCount
+    }
 
     $classMatch = [regex]::Match($content, '(?m)^class_name\s+([A-Za-z_][A-Za-z0-9_]*)\s*$')
     if (-not $classMatch.Success) {
@@ -114,8 +135,51 @@ foreach ($file in $productionFiles) {
 if ($statementSeparatorLines -gt [int]$config.statementSeparatorLines.currentMaximum) {
     $failures.Add("Statement-separator debt grew: $statementSeparatorLines > $($config.statementSeparatorLines.currentMaximum).")
 }
-if ($runtimeControlConstructions -gt [int]$config.runtimeControlConstructions.currentMaximum) {
-    $failures.Add("Runtime Control construction debt grew: $runtimeControlConstructions > $($config.runtimeControlConstructions.currentMaximum).")
+$classifiedControlConstructions = 0
+$classifiedKeys = @{}
+$allowedClassificationKinds = @("data-collection", "request-workspace", "algorithmic-surface", "conditional-chrome")
+foreach ($classification in @($config.runtimeControlClassifications)) {
+    $path = [string]$classification.path
+    $kind = [string]$classification.kind
+    $reason = [string]$classification.reason
+    if ($allowedClassificationKinds -notcontains $kind) {
+        $failures.Add("Unknown runtime Control classification kind '$kind' for $path.")
+    }
+    if ($reason.Trim().Length -lt 12) {
+        $failures.Add("Runtime Control classification needs a useful reason: $path")
+    }
+    $classificationCount = 0
+    foreach ($functionName in @($classification.functions)) {
+        $key = "$path::$functionName"
+        if ($classifiedKeys.ContainsKey($key)) {
+            $failures.Add("Duplicate runtime Control classification: $key")
+            continue
+        }
+        $classifiedKeys[$key] = $true
+        if (-not $runtimeControlRecords.ContainsKey($key)) {
+            $failures.Add("Stale runtime Control classification: $key")
+            continue
+        }
+        $classificationCount += $runtimeControlRecords[$key].Count
+    }
+    $classifiedControlConstructions += $classificationCount
+    if ($classificationCount -ne [int]$classification.currentMaximum) {
+        $failures.Add("Runtime Control classification budget changed for ${path}: $classificationCount != $($classification.currentMaximum). Review the functions and update the exact budget.")
+    }
+}
+
+$unclassifiedRecords = @($runtimeControlRecords.Values | Where-Object {
+    -not $classifiedKeys.ContainsKey("$($_.Path)::$($_.Function)")
+})
+$unclassifiedControlConstructions = ($unclassifiedRecords | Measure-Object -Property Count -Sum).Sum
+if ($null -eq $unclassifiedControlConstructions) {
+    $unclassifiedControlConstructions = 0
+}
+if ($unclassifiedControlConstructions -gt [int]$config.runtimeControlConstructions.currentMaximum) {
+    $details = ($unclassifiedRecords | Sort-Object -Property @{Expression = "Count"; Descending = $true}, Path, Function | Select-Object -First 12 | ForEach-Object {
+        "$($_.Path)::$($_.Function)=$($_.Count)"
+    }) -join ", "
+    $failures.Add("Unclassified runtime Control construction debt grew: $unclassifiedControlConstructions > $($config.runtimeControlConstructions.currentMaximum). $details")
 }
 if ($missingPurposeHeaders -gt [int]$config.missingPurposeHeaders.currentMaximum) {
     $failures.Add("Production scripts without purpose headers grew: $missingPurposeHeaders > $($config.missingPurposeHeaders.currentMaximum).")
@@ -159,7 +223,7 @@ foreach ($scene in @(Get-ChildItem (Join-Path $repoRoot "src") -Recurse -File -F
     }
 }
 
-Write-Host "Human-maintainability budget: semicolon-lines=$statementSeparatorLines/$($config.statementSeparatorLines.currentMaximum), runtime-controls=$runtimeControlConstructions/$($config.runtimeControlConstructions.currentMaximum), missing-purpose-headers=$missingPurposeHeaders/$($config.missingPurposeHeaders.currentMaximum), legacy-route-scenes=$($config.legacyRouteScenes.Count), spatial-route-markers=$($config.routeMarkerScenes.Count)."
+Write-Host "Human-maintainability budget: semicolon-lines=$statementSeparatorLines/$($config.statementSeparatorLines.currentMaximum), runtime-controls=$runtimeControlConstructions raw ($classifiedControlConstructions classified, $unclassifiedControlConstructions unclassified/$($config.runtimeControlConstructions.currentMaximum)), missing-purpose-headers=$missingPurposeHeaders/$($config.missingPurposeHeaders.currentMaximum), legacy-route-scenes=$($config.legacyRouteScenes.Count), spatial-route-markers=$($config.routeMarkerScenes.Count)."
 if ($failures.Count -gt 0) {
     foreach ($failure in $failures) {
         Write-Error $failure
