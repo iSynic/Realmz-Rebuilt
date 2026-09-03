@@ -41,9 +41,13 @@ func reset() -> void:
 	_selected_power = 1
 
 
-func present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog, text_scale: float, fixed_actions: Container = null) -> void:
-	if parent == null or view == null:
+func present(target: Control, view: GameView, media: ClassicMediaCatalog, text_scale: float, fixed_actions: Container = null) -> void:
+	if target == null or view == null:
 		return
+	var screen := target as SpellsScreen
+	var parent := screen.content_area() if screen != null else target as VBoxContainer
+	if screen != null:
+		screen.prepare_for_render()
 	_view = view
 	_encounter_mode = false
 	_encounter_spell_ids.clear()
@@ -55,10 +59,10 @@ func present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog, 
 	if character == null:
 		_add_empty_state(parent, "No spellbooks", "No party member can be selected.")
 		return
-	_add_character_selector(parent, character)
-	_add_section_tabs(parent)
+	_add_character_selector(screen.character_area() if screen != null else parent, character)
+	_add_section_tabs(screen.section_area() if screen != null else parent)
 	if view.character_spellcasting_blocked:
-		_add_spellcasting_blocked_notice(parent)
+		_add_spellcasting_blocked_notice(screen.notice_area() if screen != null else parent)
 	match _section_id:
 		&"fast":
 			_add_fast_spells(parent, character)

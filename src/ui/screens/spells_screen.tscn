@@ -1,6 +1,51 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
+
 [ext_resource type="PackedScene" path="res://src/ui/screens/screen_frame.tscn" id="1_base"]
+[ext_resource type="Script" path="res://src/ui/screens/spells_screen.gd" id="2_screen"]
+
 [node name="SpellsScreen" instance=ExtResource("1_base")]
 route_id = &"spells"
 title = "Spells"
 description = ""
+script = ExtResource("2_screen")
+
+[node name="SpellCharacterArea" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="EditorHint" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/SpellCharacterArea"]
+layout_mode = 2
+text = "Current caster"
+horizontal_alignment = 1
+
+[node name="SpellSectionArea" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="EditorHint" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/SpellSectionArea"]
+layout_mode = 2
+text = "Known Spells, Fast Spells, and Scroll Case"
+horizontal_alignment = 1
+
+[node name="SpellNoticeArea" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="SpellContentArea" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="EditorHint" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/SpellContentArea"]
+layout_mode = 2
+text = "Selected spellbook section"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="SpellAlternateContent" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3

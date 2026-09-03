@@ -210,7 +210,7 @@ func present(screen_id: StringName, screen: ScreenFrame, appearance_textures: Di
 	if screen == null:
 		return
 	var body := screen.body_control()
-	if screen_id not in [&"allies", &"bestiary", &"character", &"inventory", &"journal", &"services"]:
+	if screen_id not in [&"allies", &"bestiary", &"character", &"inventory", &"journal", &"services", &"spells"]:
 		_clear(body)
 	if context_actions != null:
 		_clear(context_actions)
@@ -230,6 +230,8 @@ func present(screen_id: StringName, screen: ScreenFrame, appearance_textures: Di
 			message_host = (screen as JournalScreen).prepare_alternate_layout()
 		elif screen is ServicesScreen:
 			message_host = (screen as ServicesScreen).prepare_alternate_layout()
+		elif screen is SpellsScreen:
+			message_host = (screen as SpellsScreen).prepare_alternate_layout()
 		_add_label(message_host, "No active session. Choose a validated campaign to begin.", MUTED)
 		return
 	match screen_id:
@@ -246,7 +248,7 @@ func present(screen_id: StringName, screen: ScreenFrame, appearance_textures: Di
 		&"inventory":
 			_inventory_controller.present(screen as InventoryScreen, _view, _media, _settings.text_scale)
 		&"spells":
-			_spells_controller.present(body, _view, _media, _settings.text_scale, context_actions)
+			_spells_controller.present(screen, _view, _media, _settings.text_scale, context_actions)
 		&"services":
 			_services_controller.set_text_scale(_settings.text_scale)
 			_services_controller.present(screen, _view, _media)
