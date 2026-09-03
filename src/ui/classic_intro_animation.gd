@@ -25,7 +25,9 @@ func _init() -> void:
 
 
 func _ready() -> void:
-	_ensure_soundtrack_player()
+	_soundtrack = get_node_or_null("RealmzIntroSoundtrack") as AudioStreamPlayer
+	assert(_soundtrack != null, "The intro animation requires its scene-authored soundtrack player.")
+	_apply_audio_volume()
 
 
 func prepare() -> void:
@@ -125,11 +127,7 @@ func _apply_audio_volume() -> void:
 func _ensure_soundtrack_player() -> void:
 	if _soundtrack != null:
 		return
-	_soundtrack = AudioStreamPlayer.new()
-	_soundtrack.name = "RealmzIntroSoundtrack"
-	_soundtrack.autoplay = false
-	add_child(_soundtrack)
-	_apply_audio_volume()
+	_soundtrack = get_node_or_null("RealmzIntroSoundtrack") as AudioStreamPlayer
 
 
 func _load_soundtrack() -> void:

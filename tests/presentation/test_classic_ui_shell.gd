@@ -99,7 +99,7 @@ func _test_package_operation_presentation() -> void:
 	cancel.pressed.emit()
 	assert_equal(canceled[0], 1, "cancellation remains a host signal")
 	router.set_package_operation(PackageOperationStatusScript.new())
-	assert_true(router.find_child("CancelPackageOperation", true, false) == null, "completed package work removes transient controls")
+	assert_true(not (router.find_child("PackageOperationHost", true, false) as Control).visible and not (router.find_child("InstallPackage", true, false) as Button).disabled and not (router.find_child("RefreshScenarios", true, false) as Button).disabled, "completed package work hides its authored status and restores library actions")
 	router.free()
 
 

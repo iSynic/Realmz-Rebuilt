@@ -31,13 +31,6 @@
       "functions": ["_build_viewport"]
     },
     {
-      "path": "src/ui/controllers/campaign_library_controller.gd",
-      "kind": "request-workspace",
-      "reason": "Campaign discovery, validation state, and front-door mode determine the complete transient package workspace.",
-      "currentMaximum": 20,
-      "functions": ["_add_selected_campaign_record", "_label", "_render_package_operation", "build_splash_overlay", "render_campaign_list"]
-    },
-    {
       "path": "src/ui/controllers/campaign_party_setup_state.gd",
       "kind": "data-collection",
       "reason": "This helper creates value labels only while projecting variable party-setup facts.",

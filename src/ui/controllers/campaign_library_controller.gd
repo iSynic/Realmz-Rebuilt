@@ -1,14 +1,11 @@
-## Binds detached campaign library data to scene-owned controls.
+## Binds detached campaign-library data to the authored front-door scenes.
 
 class_name CampaignLibraryController
 extends RefCounted
 
-## Owns the front-door campaign browser and its startup command surfaces.
-
 const PackageOperationViewScript := preload("res://src/app/package_operation_view.gd")
-const ClassicIntroAnimationScript := preload("res://src/ui/classic_intro_animation.gd")
 const CAMPAIGN_SELECTION_PANEL_SCENE := preload("res://src/ui/setup/campaign_selection_panel.tscn")
-const INTRO_FRAME_TEXTURE_PATH := "res://src/ui/assets/ui/classic-intro-frame.png"
+const FRONT_DOOR_MENU_PATH := "res://src/ui/setup/front_door_menu.tscn"
 
 signal start_requested(package_path: String, seed: int)
 signal cancel_package_requested
@@ -18,8 +15,6 @@ signal load_adventure_requested
 signal vault_requested
 signal quit_requested
 
-const GOLD := Color("d5b45d")
-const MUTED := Color("9aa0a8")
 const MAXIMUM_MODAL_Z_INDEX: int = 30
 
 var splash_overlay: PanelContainer
@@ -45,9 +40,23 @@ var campaign_layout_rect := Rect2(12.0, 36.0, 228.0, 556.0)
 var setup_layout_rect := Rect2(12.0, 36.0, 936.0, 556.0)
 
 var _host: Control
+var _campaign_row_scene: PackedScene
+var _no_campaigns_state: Label
+var _selected_summary: PanelContainer
+var _selected_title: Label
+var _selected_splash: TextureRect
+var _selected_splash_unavailable: Label
+var _selected_byline: Label
+var _selected_restrictions: Label
+var _selected_limits: Label
+var _selected_guidance: Label
+var _operation_phase: Label
+var _operation_percentage: Label
+var _operation_progress: ProgressBar
+var _operation_cancel: Button
+var _operation_status: Label
 var _startup_actions_ready: bool = true
 var _startup_action_tooltips: Dictionary = {}
-var _intro_frame_texture: Texture2D = load(INTRO_FRAME_TEXTURE_PATH) as Texture2D
 
 
 func attach(host: Control) -> void:
@@ -57,115 +66,31 @@ func attach(host: Control) -> void:
 func build_splash_overlay() -> void:
 	if splash_overlay != null:
 		return
-	splash_overlay = PanelContainer.new()
-	splash_overlay.name = "SplashScreen"
-	splash_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
-	_style_splash_overlay()
-	splash_overlay.z_index = MAXIMUM_MODAL_Z_INDEX
-	_host.add_child(splash_overlay)
-	splash_composition = BoxContainer.new()
-	splash_composition.name = "SplashComposition"
-	splash_composition.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	splash_composition.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	splash_composition.add_theme_constant_override("separation", 18)
-	splash_overlay.add_child(splash_composition)
-	var identity_panel := PanelContainer.new()
-	identity_panel.name = "SplashIdentityPanel"
-	identity_panel.theme_type_variation = &"ClassicInset"
-	identity_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	identity_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	identity_panel.size_flags_stretch_ratio = 1.65
-	splash_composition.add_child(identity_panel)
-	var identity_center := CenterContainer.new()
-	identity_center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	identity_center.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	identity_panel.add_child(identity_center)
-	var identity := VBoxContainer.new()
-	identity.custom_minimum_size.x = 360.0
-	identity.add_theme_constant_override("separation", 10)
-	identity_center.add_child(identity)
-	var title := _splash_label("Realmz Rebuilt", GOLD, 42)
-	title.name = "SplashTitle"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	identity.add_child(title)
-	splash_animation_host = NinePatchRect.new()
-	splash_animation_host.name = "RealmzIntroOrnament"
-	splash_animation_host.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	splash_animation_host.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	splash_animation_host.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-	splash_animation_host.texture = _intro_frame_texture
-	splash_animation_host.patch_margin_left = 90
-	splash_animation_host.patch_margin_top = 90
-	splash_animation_host.patch_margin_right = 90
-	splash_animation_host.patch_margin_bottom = 90
-	identity.add_child(splash_animation_host)
-	splash_animation = ClassicIntroAnimationScript.new()
-	splash_animation.name = "RealmzIntroAnimation"
-	splash_animation_host.add_child(splash_animation)
+	splash_overlay = _host.get_node_or_null("SplashScreen") as PanelContainer
+	if splash_overlay == null:
+		var scene := load(FRONT_DOOR_MENU_PATH) as PackedScene
+		assert(scene != null, "The front-door menu scene is unavailable.")
+		splash_overlay = scene.instantiate() as PanelContainer
+		splash_overlay.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		splash_overlay.z_index = MAXIMUM_MODAL_Z_INDEX
+		_host.add_child(splash_overlay)
+	splash_composition = splash_overlay.get_node("%SplashComposition") as BoxContainer
+	splash_animation_host = splash_overlay.get_node("%RealmzIntroOrnament") as NinePatchRect
+	splash_animation = splash_overlay.get_node("%RealmzIntroAnimation") as VideoStreamPlayer
+	var scenarios := splash_overlay.get_node("%ChooseScenario") as Button
+	var load_adventure := splash_overlay.get_node("%LoadAdventure") as Button
+	var characters := splash_overlay.get_node("%CharacterFiles") as Button
+	var quit := splash_overlay.get_node("%Quit") as Button
+	scenarios.pressed.connect(func() -> void: campaign_selection_requested.emit())
+	load_adventure.pressed.connect(func() -> void: load_adventure_requested.emit())
+	characters.pressed.connect(func() -> void: vault_requested.emit())
+	quit.pressed.connect(func() -> void: quit_requested.emit())
+	startup_action_buttons.clear()
+	_register_startup_action(scenarios)
+	_register_startup_action(load_adventure)
+	_register_startup_action(characters)
 	_apply_intro_volume()
 	_apply_intro_frame_layout(false)
-	var subtitle := _splash_label("Classic Adventures Reconstructed", Color("e0e2e5"), 20)
-	subtitle.name = "SplashSubtitle"
-	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	identity.add_child(subtitle)
-	var command_panel := PanelContainer.new()
-	command_panel.name = "SplashCommandPanel"
-	command_panel.theme_type_variation = &"ClassicInset"
-	command_panel.custom_minimum_size.x = 320.0
-	command_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	command_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	command_panel.size_flags_stretch_ratio = 0.75
-	splash_composition.add_child(command_panel)
-	var command_center := CenterContainer.new()
-	command_center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	command_center.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	command_panel.add_child(command_center)
-	var column := VBoxContainer.new()
-	column.custom_minimum_size.x = 280.0
-	column.add_theme_constant_override("separation", 12)
-	command_center.add_child(column)
-	column.add_child(_splash_label("Begin", GOLD, 24))
-	column.add_child(_splash_label("Choose an installed adventure or manage reusable adventurers.", MUTED, 15))
-	var scenarios := Button.new()
-	scenarios.name = "ChooseScenario"
-	scenarios.text = "Choose a scenario"
-	scenarios.custom_minimum_size.y = 42.0
-	scenarios.pressed.connect(func() -> void: campaign_selection_requested.emit())
-	_register_startup_action(scenarios)
-	column.add_child(scenarios)
-	var load_adventure := Button.new()
-	load_adventure.name = "LoadAdventure"
-	load_adventure.text = "Load saved adventure"
-	load_adventure.custom_minimum_size.y = 42.0
-	load_adventure.pressed.connect(func() -> void: load_adventure_requested.emit())
-	_register_startup_action(load_adventure)
-	column.add_child(load_adventure)
-	var characters := Button.new()
-	characters.name = "CharacterFiles"
-	characters.text = "Character files"
-	characters.tooltip_text = "Review reusable Character Files. Stock Realmz characters can be created without selecting a scenario; scenario-specific races and classes require that scenario."
-	characters.custom_minimum_size.y = 42.0
-	characters.pressed.connect(func() -> void: vault_requested.emit())
-	_register_startup_action(characters)
-	column.add_child(characters)
-	var quit := Button.new()
-	quit.name = "Quit"
-	quit.text = "Quit"
-	quit.custom_minimum_size.y = 42.0
-	quit.pressed.connect(func() -> void: quit_requested.emit())
-	column.add_child(quit)
-
-
-func _style_splash_overlay() -> void:
-	var surface := StyleBoxFlat.new()
-	surface.bg_color = Color(0.0, 0.0, 0.0, 0.0)
-	surface.border_color = Color("4b5157")
-	surface.set_border_width_all(1)
-	surface.content_margin_left = 24.0
-	surface.content_margin_top = 20.0
-	surface.content_margin_right = 24.0
-	surface.content_margin_bottom = 20.0
-	splash_overlay.add_theme_stylebox_override("panel", surface)
 
 
 func build_campaign_overlay() -> void:
@@ -175,17 +100,33 @@ func build_campaign_overlay() -> void:
 	campaign_overlay.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	campaign_overlay.z_index = 0
 	_host.add_child(campaign_overlay)
-	campaign_list = campaign_overlay.get_node("ScenarioPaneContent/CampaignScroll/CampaignList") as VBoxContainer
-	campaign_scroll = campaign_overlay.get_node("ScenarioPaneContent/CampaignScroll") as ScrollContainer
-	package_operation_host = campaign_overlay.get_node("ScenarioPaneContent/PackageOperationHost") as PanelContainer
-	package_install_row = campaign_overlay.get_node("ScenarioPaneContent/PackageInstallRow") as BoxContainer
-	install_button = campaign_overlay.get_node("ScenarioPaneContent/PackageInstallRow/InstallPackage") as Button
+	_campaign_row_scene = campaign_overlay.get("campaign_row_scene") as PackedScene
+	campaign_list = campaign_overlay.get_node("%CampaignList") as VBoxContainer
+	campaign_scroll = campaign_overlay.get_node("%CampaignScroll") as ScrollContainer
+	_no_campaigns_state = campaign_overlay.get_node("%NoCampaignsState") as Label
+	_selected_summary = campaign_overlay.get_node("%SelectedScenarioSummary") as PanelContainer
+	_selected_title = campaign_overlay.get_node("%SelectedScenarioTitle") as Label
+	_selected_splash = campaign_overlay.get_node("%SelectedScenarioSplash") as TextureRect
+	_selected_splash_unavailable = campaign_overlay.get_node("%SelectedScenarioSplashUnavailable") as Label
+	_selected_byline = campaign_overlay.get_node("%SelectedScenarioByline") as Label
+	_selected_restrictions = campaign_overlay.get_node("%SelectedScenarioRestrictions") as Label
+	_selected_limits = campaign_overlay.get_node("%SelectedScenarioLimits") as Label
+	_selected_guidance = campaign_overlay.get_node("%SelectedScenarioGuidance") as Label
+	package_operation_host = campaign_overlay.get_node("%PackageOperationHost") as PanelContainer
+	_operation_phase = campaign_overlay.get_node("%PackageOperationPhase") as Label
+	_operation_percentage = campaign_overlay.get_node("%PackageOperationPercentage") as Label
+	_operation_progress = campaign_overlay.get_node("%PackageOperationProgress") as ProgressBar
+	_operation_cancel = campaign_overlay.get_node("%CancelPackageOperation") as Button
+	_operation_status = campaign_overlay.get_node("%PackageOperationStatus") as Label
+	package_install_row = campaign_overlay.get_node("%PackageInstallRow") as BoxContainer
+	install_button = campaign_overlay.get_node("%InstallPackage") as Button
+	install_dialog = campaign_overlay.get_node("%InstallScenarioDialog") as FileDialog
+	refresh_button = campaign_overlay.get_node("%RefreshScenarios") as Button
 	install_button.pressed.connect(_open_package_dialog)
-	install_dialog = campaign_overlay.get_node("InstallScenarioDialog") as FileDialog
 	install_dialog.file_selected.connect(_install_selected)
-	refresh_button = campaign_overlay.get_node("ScenarioPaneContent/LibraryActions/RefreshScenarios") as Button
 	refresh_button.pressed.connect(func() -> void: refresh_requested.emit())
-	_clear(campaign_list)
+	_operation_cancel.pressed.connect(func() -> void: cancel_package_requested.emit())
+	render_campaign_list()
 
 
 func set_campaigns(next_campaigns: Array[CampaignPackageView]) -> void:
@@ -198,9 +139,11 @@ func set_package_operation(status: RefCounted) -> void:
 	package_operation_status = status if status != null else PackageOperationViewScript.new()
 	render_campaign_list()
 
+
 func set_selected_campaign_summary(summary: CampaignSummaryView) -> void:
 	selected_campaign_summary = summary
 	render_campaign_list()
+
 
 func set_media_catalog(next_media: ClassicMediaCatalog) -> void:
 	media = next_media
@@ -318,13 +261,14 @@ func splash_visible() -> bool:
 func render_campaign_list() -> void:
 	if campaign_list == null:
 		return
-	_clear(campaign_list)
+	_remove_campaign_rows()
 	_render_package_operation()
-	if selected_campaign_summary != null:
-		_add_selected_campaign_record()
+	_render_selected_campaign_record()
+	var running: bool = package_operation_status.is_running()
 	if campaigns.is_empty():
-		if not package_operation_status.is_running():
-			_add_label(campaign_list, "No installed scenarios. Install a Providence .realmz2 package below.", MUTED)
+		_no_campaigns_state.text = "No installed scenarios. Install a Providence .realmz2 package below."
+		_no_campaigns_state.visible = not running
+		_refresh_campaign_layout()
 		return
 	var ready_count := 0
 	var hidden_count := 0
@@ -333,137 +277,88 @@ func render_campaign_list() -> void:
 			hidden_count += 1
 			continue
 		ready_count += 1
-		var action := Button.new()
+		var action := _campaign_row_scene.instantiate() as Button
+		action.set_meta(&"campaign_record", true)
 		action.name = "Scenario_%s" % (campaign.campaign_id if not campaign.campaign_id.is_empty() else campaign.path.get_file()).validate_node_name()
-		action.custom_minimum_size = Vector2(0, 58)
-		action.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		action.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		action.clip_text = true
-		action.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-		var status := "Installed • ready"
-		action.text = "%s\n%s" % [_display_name(campaign), status]
+		action.text = "%s\nInstalled • ready" % _display_name(campaign)
 		action.tooltip_text = campaign.path
 		var selected := selected_campaign_summary != null and campaign.campaign_id == selected_campaign_summary.campaign_id
-		action.disabled = package_operation_status.is_running() or selected
-		action.toggle_mode = true
+		action.disabled = running or selected
 		action.button_pressed = selected
 		if selected:
 			action.text = "%s\nSelected • party setup open" % _display_name(campaign)
 			action.tooltip_text = "This scenario is selected."
 		action.pressed.connect(_campaign_pressed.bind(campaign))
 		campaign_list.add_child(action)
-	if ready_count == 0 and not package_operation_status.is_running():
-		_add_label(campaign_list, "No playable scenarios. Install a package from the current Providence exporter.", MUTED)
-	if hidden_count > 0:
-		campaign_overlay.tooltip_text = "%d incompatible or stale installation%s hidden from the ordinary scenario list." % [hidden_count, "" if hidden_count == 1 else "s"]
-	else:
-		campaign_overlay.tooltip_text = "Installed Providence scenarios."
+		campaign_list.move_child(action, _no_campaigns_state.get_index())
+	_no_campaigns_state.text = "No playable scenarios. Install a package from the current Providence exporter."
+	_no_campaigns_state.visible = ready_count == 0 and not running
+	campaign_overlay.tooltip_text = "%d incompatible or stale installation%s hidden from the ordinary scenario list." % [hidden_count, "" if hidden_count == 1 else "s"] if hidden_count > 0 else "Installed Providence scenarios."
 	_refresh_campaign_layout()
 
+
 func _render_package_operation() -> void:
-	if package_operation_host == null:
-		return
-	_clear(package_operation_host)
 	var running: bool = package_operation_status.is_running()
 	package_operation_host.visible = running
 	install_button.disabled = running
 	refresh_button.disabled = running
 	if not running:
 		return
-	var operation := VBoxContainer.new()
-	operation.name = "PackageOperationRow"
-	operation.add_theme_constant_override("separation", 4)
-	package_operation_host.add_child(operation)
-	var header := HBoxContainer.new()
 	var phase_text := String(package_operation_status.phase).replace("_", " ").capitalize()
-	var phase := _label(phase_text if not phase_text.is_empty() else "Installing", GOLD, 12)
-	phase.name = "PackageOperationPhase"
-	header.add_child(phase)
-	header.add_spacer(true)
-	var progress_text := "%d%%" % int(round(package_operation_status.progress_ratio() * 100.0)) if package_operation_status.total > 0 else "Working"
-	var percentage := _label(progress_text, MUTED, 11)
-	percentage.name = "PackageOperationPercentage"
-	header.add_child(percentage)
-	operation.add_child(header)
-	var controls := HBoxContainer.new()
-	controls.name = "PackageOperationControls"
-	var progress := ProgressBar.new()
-	progress.name = "PackageOperationProgress"
-	progress.custom_minimum_size = Vector2(72, 22)
-	progress.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	progress.show_percentage = false
-	progress.indeterminate = package_operation_status.total <= 0
-	progress.max_value = maxf(1.0, float(package_operation_status.total))
-	progress.value = clampf(float(package_operation_status.completed), 0.0, progress.max_value)
-	controls.add_child(progress)
-	var cancel := Button.new()
-	cancel.name = "CancelPackageOperation"
-	cancel.text = "Cancel"
-	cancel.pressed.connect(func() -> void: cancel_package_requested.emit())
-	controls.add_child(cancel)
-	operation.add_child(controls)
-	var message := _add_label(operation, package_operation_status.message, MUTED, 11)
-	message.name = "PackageOperationStatus"
-	message.max_lines_visible = 2
-	message.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	message.tooltip_text = package_operation_status.message
+	_operation_phase.text = phase_text if not phase_text.is_empty() else "Installing"
+	_operation_percentage.text = "%d%%" % int(round(package_operation_status.progress_ratio() * 100.0)) if package_operation_status.total > 0 else "Working"
+	_operation_progress.indeterminate = package_operation_status.total <= 0
+	_operation_progress.max_value = maxf(1.0, float(package_operation_status.total))
+	_operation_progress.value = clampf(float(package_operation_status.completed), 0.0, _operation_progress.max_value)
+	_operation_status.text = package_operation_status.message
+	_operation_status.tooltip_text = package_operation_status.message
 
-func _add_selected_campaign_record() -> void:
-	var panel := PanelContainer.new()
-	panel.name = "SelectedScenarioSummary"
-	panel.theme_type_variation = &"ClassicInset"
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var body := VBoxContainer.new()
-	body.add_theme_constant_override("separation", 4)
-	panel.add_child(body)
-	body.add_child(_label("Selected Scenario", MUTED, 11))
-	var title := _add_label(body, selected_campaign_summary.title, GOLD, 16)
-	title.tooltip_text = selected_campaign_summary.title
+
+func _render_selected_campaign_record() -> void:
+	_selected_summary.visible = selected_campaign_summary != null
+	if selected_campaign_summary == null:
+		return
+	_selected_title.text = selected_campaign_summary.title
+	_selected_title.tooltip_text = selected_campaign_summary.title
+	_selected_splash.texture = null
+	_selected_splash.visible = false
+	_selected_splash_unavailable.visible = false
 	if not selected_campaign_summary.splash_asset_id.is_empty():
 		var asset := media.asset_by_id(selected_campaign_summary.splash_asset_id) if media != null else null
 		var texture := media.image_texture(asset) if media != null and asset != null else null
-		if texture != null:
-			var picture := TextureRect.new()
-			picture.name = "SelectedScenarioSplash"
-			picture.custom_minimum_size = Vector2(0.0, 92.0)
-			picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			picture.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-			picture.texture = texture
-			body.add_child(picture)
-		else:
-			var missing := _add_label(body, "Campaign picture unavailable", MUTED, 11)
-			missing.name = "SelectedScenarioSplashUnavailable"
+		_selected_splash.texture = texture
+		_selected_splash.visible = texture != null
+		_selected_splash_unavailable.visible = texture == null
 	var byline_parts: Array[String] = []
 	if not selected_campaign_summary.version.is_empty():
 		byline_parts.append("v%s" % selected_campaign_summary.version)
 	if not selected_campaign_summary.author.is_empty():
 		byline_parts.append("by %s" % selected_campaign_summary.author)
-	if not byline_parts.is_empty():
-		_add_label(body, " • ".join(byline_parts), Color("e0e2e5"), 12)
-	_add_bounded_summary(body, selected_campaign_summary.restriction_description)
+	_selected_byline.text = " • ".join(byline_parts)
+	_selected_byline.visible = not byline_parts.is_empty()
+	var restrictions := selected_campaign_summary.restriction_description.strip_edges()
+	_selected_restrictions.text = restrictions
+	_selected_restrictions.tooltip_text = restrictions
+	_selected_restrictions.visible = not restrictions.is_empty()
 	var limits: Array[String] = ["Up to %d characters" % selected_campaign_summary.maximum_party_size]
 	if selected_campaign_summary.maximum_level > 0:
 		limits.append("character level cap %d" % selected_campaign_summary.maximum_level)
-	_add_label(body, " • ".join(limits), MUTED, 11)
+	_selected_limits.text = " • ".join(limits)
+	var guidance: Array[String] = []
 	if selected_campaign_summary.guidance_authored:
-		var guidance: Array[String] = []
 		if selected_campaign_summary.recommended_party_levels > 0:
 			guidance.append("recommended party total %d" % selected_campaign_summary.recommended_party_levels)
 		if selected_campaign_summary.maximum_party_levels > 0:
 			guidance.append("maximum %d" % selected_campaign_summary.maximum_party_levels)
-		if not guidance.is_empty():
-			_add_label(body, " • ".join(guidance), GOLD, 11)
-	campaign_list.add_child(panel)
+	_selected_guidance.text = " • ".join(guidance)
+	_selected_guidance.visible = not guidance.is_empty()
 
-func _add_bounded_summary(parent: Container, text: String) -> void:
-	var summary_text := text.strip_edges()
-	if summary_text.is_empty():
-		return
-	var label := _add_label(parent, summary_text, Color("e0e2e5"), 11)
-	label.max_lines_visible = 4
-	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	label.tooltip_text = summary_text
+
+func _remove_campaign_rows() -> void:
+	for child: Node in campaign_list.get_children():
+		if child.has_meta(&"campaign_record"):
+			campaign_list.remove_child(child)
+			child.queue_free()
 
 
 func _campaign_pressed(campaign: CampaignPackageView) -> void:
@@ -513,20 +408,6 @@ func _focus_first(parent: Node) -> void:
 			return
 
 
-func _label(text: String, color: Color = Color.WHITE, size: int = 15) -> Label:
-	var label := Label.new()
-	label.text = text
-	label.add_theme_color_override("font_color", color)
-	label.add_theme_font_size_override("font_size", int(round(float(size) * settings.text_scale)))
-	return label
-
-
-func _splash_label(text: String, color: Color = Color.WHITE, size: int = 15) -> Label:
-	var label := _label(text, color, size)
-	label.theme_type_variation = &"ClassicHeading"
-	return label
-
-
 func _register_startup_action(button: Button) -> void:
 	startup_action_buttons.append(button)
 	_startup_action_tooltips[button.name] = button.tooltip_text
@@ -556,18 +437,3 @@ func _apply_intro_volume() -> void:
 		(splash_animation as ClassicIntroAnimation).set_master_volume(value)
 	else:
 		splash_animation.volume_db = -80.0
-
-
-func _add_label(parent: Container, text: String, color: Color = Color.WHITE, size: int = 15) -> Label:
-	var label := _label(text, color, size)
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	parent.add_child(label)
-	return label
-
-
-func _clear(parent: Node) -> void:
-	if parent == null:
-		return
-	for child: Node in parent.get_children():
-		parent.remove_child(child)
-		child.queue_free()

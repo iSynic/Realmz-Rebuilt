@@ -97,7 +97,7 @@
       "id": "startup-navigation-hosting",
       "boundary": "app",
       "guide": "docs/features/application-host.md",
-      "entryPoints": ["src/app/realmz_application.gd", "src/app/game_session_controller.gd", "src/ui/startup_front_door.tscn", "src/ui/setup"],
+      "entryPoints": ["src/app/realmz_application.gd", "src/app/game_session_controller.gd", "src/ui/startup_front_door.tscn", "src/ui/setup/front_door_menu.tscn", "src/ui/setup/campaign_selection_panel.tscn", "src/ui/setup"],
       "publicInterfaces": ["RealmzApplication", "GameSessionController", "ApplicationInputRouter"],
       "tests": ["tests/presentation/test_classic_ui_system.gd"],
       "performanceProbes": ["tools/startup_probe.gd"]

@@ -72,6 +72,7 @@ func _bind_setup_workspace() -> void:
 	_host.remove_child(campaign_overlay)
 	setup_body.add_child(campaign_overlay)
 	setup_body.move_child(campaign_overlay, 0)
+	campaign_overlay.position = Vector2.ZERO
 	character_pane = setup_overlay.get_node("ScenarioPartyWorkspace/CharacterFilesPane") as PanelContainer
 	party_pane = setup_overlay.get_node("ScenarioPartyWorkspace/CurrentPartyPane") as PanelContainer
 	creator_steps = setup_overlay.get_node("%CreatorSteps") as HBoxContainer

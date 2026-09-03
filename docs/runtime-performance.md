@@ -27,7 +27,7 @@ The user-provided diagnostic baseline was approximately 9.1 seconds to applicati
 
 The front door prepares one OGV decoder behind the opaque splash, starts it before reveal, retains it while covered, and reveals active playback. MP3 materialization remains demand-driven. Remaining construction stays on the existing threaded scene-loading boundary.
 
-The current startup probe reports 38.354 ms to the first splash frame, 6,834 ms of background application loading, and 7,006.726 ms to application readiness. The menu was absent and the supplied splash present on the first frame. At menu reveal the intro was already playing, had been prepared exactly once, and exactly one prepared decoder existed. Playback and that single-decoder count remained unchanged for five additional menu seconds before a scenario transition succeeded.
+The 2026-09-03 front-door scene conversion used a controlled three-run comparison against its immediate parent commit because the earlier 38.354 ms first-frame sample was no longer reproducible on the same host. The parent measured 163.854–192.630 ms to first frame, 7,038.000–7,420.576 ms of background loading, and 7,230.192–7,608.897 ms to application readiness. The authored-scene branch measured 160.620–177.842 ms, 6,857.613–7,781.371 ms, and 7,018.000–7,958.842 ms respectively. That overlapping range shows no material startup regression; it is not evidence of a general speedup. Every run kept the menu absent and the launch card present on the first frame, prepared and played exactly one decoder, retained it for five menu seconds, enabled the scenario action, and completed the queued transition.
 
 ## Scenario preparation
 
