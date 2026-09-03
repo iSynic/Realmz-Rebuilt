@@ -15,6 +15,7 @@ const LEVEL_UP_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/le
 const ENCOUNTER_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/encounter_interaction.tscn"
 const SHOP_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/shop_interaction.tscn"
 const TREASURE_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/treasure_distribution_interaction.tscn"
+const BATTLE_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/battle_interaction.tscn"
 const LayoutPolicy := preload("res://src/ui/interaction_layout_policy.gd")
 
 
@@ -82,7 +83,7 @@ static func create(
 			bank.configure(compact)
 			return bank
 		&"combat_action":
-			var battle := BattleInteraction.new()
+			var battle := (load(BATTLE_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as BattleInteraction
 			battle.configure(_combatant_icon_textures(game_view, media), LayoutPolicy.combat_command_scale(combat_rect))
 			return battle
 		&"session_lifecycle":

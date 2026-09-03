@@ -12,7 +12,7 @@
     "oversizedTopLevelClasses": 36,
     "crossObjectPrivateCalls": 203,
     "genericPreloadAliases": 133,
-    "majorSurfacesWithoutScene": 1,
+    "majorSurfacesWithoutScene": 0,
     "majorSurfacesWithoutPreview": 24,
     "shellModeMarkerScenes": 0
   },

@@ -150,13 +150,6 @@
       "functions": ["build"]
     },
     {
-      "path": "src/ui/interaction_components/battle_interaction.gd",
-      "kind": "request-workspace",
-      "reason": "Battle controls are mutually exclusive typed command, inspection, targeting, item, spell, and tactic modes derived from each activation request.",
-      "currentMaximum": 41,
-      "functions": ["_add_bandage_panel", "_add_hint_to", "_add_mode_back_button", "_add_panel_toggle", "_add_presentation_button", "_add_targeting_button", "_build_combatant_information", "_build_combatant_inspection", "_build_command_shelf", "_build_item_panel", "_build_scroll_panel", "_combatant_icon", "_command_group", "_command_rows", "_start_targeting", "_summary_panel", "build"]
-    },
-    {
       "path": "src/ui/interaction_components/interaction_component.gd",
       "kind": "conditional-chrome",
       "reason": "Shared hints and character pickers exist only when a typed interaction supplies those optional values.",
