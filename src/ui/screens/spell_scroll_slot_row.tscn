@@ -1,0 +1,29 @@
+[gd_scene format=3]
+
+[node name="SpellScrollSlotRow" type="PanelContainer"]
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInset"
+
+[node name="Content" type="BoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="Record" type="Label" parent="Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.603922, 0.627451, 0.658824, 1)
+theme_override_font_sizes/font_size = 14
+text = "Slot 1 • Empty"
+vertical_alignment = 1
+autowrap_mode = 2
+
+[node name="Use" type="Button" parent="Content"]
+custom_minimum_size = Vector2(74, 34)
+layout_mode = 2
+text = "Use"
+
+[node name="Discard" type="Button" parent="Content"]
+custom_minimum_size = Vector2(74, 34)
+layout_mode = 2
+text = "Discard"

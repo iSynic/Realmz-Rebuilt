@@ -101,13 +101,6 @@
       "functions": ["_add_money_intent_action", "_add_section_heading", "_add_wealth_record", "_build_party_pane", "_build_pool_pane", "_build_swap_pane", "_build_transfer_row", "_character_picker", "_label", "_pane", "_pane_column", "_render_location_services", "_render_money_screen", "_wealth_chip"]
     },
     {
-      "path": "src/ui/controllers/spells_screen_controller.gd",
-      "kind": "data-collection",
-      "reason": "The Spells scene owns durable regions; these functions bind variable casters, levels, spells, powers, scrolls, and fast-spell assignments.",
-      "currentMaximum": 45,
-      "functions": ["_add_button", "_add_character_selector", "_add_empty_state", "_add_fast_spell_row", "_add_fast_spells", "_add_known_spells", "_add_scrolls", "_add_section_heading", "_add_section_tabs", "_add_spellcasting_blocked_notice", "_build_level_rail", "_build_power_rail", "_build_spell_action_dock", "_build_spell_list", "_label", "_spell_detail", "_ui_art"]
-    },
-    {
       "path": "src/ui/controllers/system_screen_controller.gd",
       "kind": "request-workspace",
       "reason": "The System scene hosts tabs whose settings, saves, controls, and save-and-quit mode depend on current host state.",

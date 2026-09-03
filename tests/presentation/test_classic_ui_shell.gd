@@ -150,7 +150,7 @@ func _test_primary_workspace_lifecycle() -> void:
 			router.present(view)
 			assert_true(journal_regions.all(func(region: Node) -> bool: return is_instance_valid(region)) and journal_region_ids == journal_regions.map(func(region: Node) -> int: return region.get_instance_id()), "Maps / Notes rerenders records inside stable scene-authored tab regions")
 		if route_id == &"spells":
-			var spell_regions := [router.find_child("SpellCharacterArea", true, false), router.find_child("SpellSectionArea", true, false), router.find_child("SpellNoticeArea", true, false), router.find_child("SpellContentArea", true, false)]
+			var spell_regions := [router.find_child("Caster", true, false), router.find_child("Sections", true, false), router.find_child("SpellcastingBlockedNotice", true, false), router.find_child("ClassicSpellbookWorkspace", true, false)]
 			var spell_region_ids := spell_regions.map(func(region: Node) -> int: return region.get_instance_id())
 			router.present(view)
 			assert_true(spell_regions.all(func(region: Node) -> bool: return is_instance_valid(region)) and spell_region_ids == spell_regions.map(func(region: Node) -> int: return region.get_instance_id()), "Spells rerenders records inside stable scene-authored regions")

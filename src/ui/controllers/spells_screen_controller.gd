@@ -4,7 +4,7 @@ extends RefCounted
 
 const SpellSelectionChrome := preload("res://src/ui/controllers/classic_spell_selection_chrome.gd")
 const ClassicSpellLevelScript := preload("res://src/ui/classic_spell_level.gd")
-const SPELL_TARGET_BADGE_SCENE_PATH := "res://src/ui/classic_spell_target_badge.tscn"
+const WORKSPACE_SCENE_PATH := "res://src/ui/screens/spells_workspace.tscn"
 
 signal intent_submitted(intent: PlayerIntent)
 signal route_requested(route_id: StringName)
@@ -45,37 +45,46 @@ func present(target: Control, view: GameView, media: ClassicMediaCatalog, text_s
 	if target == null or view == null:
 		return
 	var screen := target as SpellsScreen
-	var parent := screen.content_area() if screen != null else target as VBoxContainer
+	var workspace: SpellsWorkspace
 	if screen != null:
-		screen.prepare_for_render()
+		workspace = screen.workspace()
+	else:
+		var parent := target as VBoxContainer
+		_clear(parent)
+		workspace = (load(WORKSPACE_SCENE_PATH) as PackedScene).instantiate() as SpellsWorkspace
+		parent.add_child(workspace)
 	_view = view
 	_encounter_mode = false
 	_encounter_spell_ids.clear()
 	_text_scale = maxf(0.1, text_scale)
+	workspace.prepare(_compact)
 	if view.party_members.is_empty():
-		_add_empty_state(parent, "No spellbooks", "The party has no characters.")
+		workspace.show_empty("No spellbooks", "The party has no characters.")
 		return
 	var character := _selected_character()
 	if character == null:
-		_add_empty_state(parent, "No spellbooks", "No party member can be selected.")
+		workspace.show_empty("No spellbooks", "No party member can be selected.")
 		return
-	_add_character_selector(screen.character_area() if screen != null else parent, character)
-	_add_section_tabs(screen.section_area() if screen != null else parent)
+	_bind_character_selector(workspace, character)
+	_bind_section_tabs(workspace)
 	if view.character_spellcasting_blocked:
-		_add_spellcasting_blocked_notice(screen.notice_area() if screen != null else parent)
+		workspace.blocked_notice().visible = true
 	match _section_id:
 		&"fast":
-			_add_fast_spells(parent, character)
+			_bind_fast_spells(workspace, character)
 		&"scrolls":
-			_add_scrolls(parent, character)
+			_bind_scrolls(workspace, character)
 		_:
-			_add_known_spells(parent, character, fixed_actions)
+			_bind_known_spells(workspace, character, fixed_actions)
 
 
 func present_encounter(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog, text_scale: float, entries: Array[InteractionRequestValue.EncounterCatalogEntry]) -> void:
 	if parent == null or view == null:
 		return
 	_view = view
+	_clear(parent)
+	var workspace := (load(WORKSPACE_SCENE_PATH) as PackedScene).instantiate() as SpellsWorkspace
+	parent.add_child(workspace)
 	_text_scale = maxf(0.1, text_scale)
 	_encounter_mode = true
 	_encounter_spell_ids.clear()
@@ -84,12 +93,14 @@ func present_encounter(parent: VBoxContainer, view: GameView, media: ClassicMedi
 		ids.assign(_encounter_spell_ids.get(entry.character_id, []))
 		if not ids.has(entry.classic_id): ids.append(entry.classic_id)
 		_encounter_spell_ids[entry.character_id] = ids
+	workspace.prepare(_compact)
+	workspace.get_node("Sections").visible = false
 	var character := _selected_character()
 	if character == null:
-		_add_empty_state(parent, "No encounter spells", "No living party member knows an eligible spell.")
+		workspace.show_empty("No encounter spells", "No living party member knows an eligible spell.")
 		return
-	_add_character_selector(parent, character)
-	_add_known_spells(parent, character, null)
+	_bind_character_selector(workspace, character)
+	_bind_known_spells(workspace, character, null)
 
 
 func _selected_character() -> CharacterView:
@@ -107,20 +118,9 @@ func _selected_character() -> CharacterView:
 	return fallback
 
 
-func _add_character_selector(parent: VBoxContainer, character: CharacterView) -> void:
-	var panel := PanelContainer.new()
-	panel.theme_type_variation = &"ClassicInset"
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
-	panel.add_child(row)
-	var label := _label("Caster", GOLD, 14)
-	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	row.add_child(label)
-	var picker := OptionButton.new()
-	picker.name = "SpellCharacterSelector"
-	picker.theme_type_variation = &"ClassicTheldrowOptionButton"
-	picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+func _bind_character_selector(workspace: SpellsWorkspace, character: CharacterView) -> void:
+	var picker := workspace.caster_picker()
+	_clear_option_button(picker)
 	for candidate: CharacterView in _view.party_members:
 		if _encounter_mode and _eligible_spells(candidate).is_empty():
 			continue
@@ -129,56 +129,28 @@ func _add_character_selector(parent: VBoxContainer, character: CharacterView) ->
 		if candidate.id == character.id:
 			picker.select(picker.item_count - 1)
 	picker.item_selected.connect(func(index: int) -> void: _select_character(String(picker.get_item_metadata(index))))
-	row.add_child(picker)
-	parent.add_child(panel)
 
 
-func _add_section_tabs(parent: VBoxContainer) -> void:
-	if _compact:
-		var picker := OptionButton.new()
-		picker.name = "SpellSectionSelector"
-		picker.theme_type_variation = &"ClassicTheldrowOptionButton"
-		picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		for section_id: StringName in SECTIONS:
-			picker.add_item({&"known": "Known Spells", &"fast": "Fast Spells (1–0)", &"scrolls": "Scroll Case"}[section_id])
-			picker.set_item_metadata(picker.item_count - 1, section_id)
-			if section_id == _section_id:
-				picker.select(picker.item_count - 1)
-		picker.item_selected.connect(func(index: int) -> void: _select_section(picker.get_item_metadata(index) as StringName))
-		parent.add_child(picker)
-		return
-	var row := HBoxContainer.new()
-	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_theme_constant_override("separation", 5)
+func _bind_section_tabs(workspace: SpellsWorkspace) -> void:
+	var picker := workspace.compact_section_picker()
+	_clear_option_button(picker)
 	for section_id: StringName in SECTIONS:
-		var button := Button.new()
-		button.text = {&"known": "Known Spells", &"fast": "Fast Spells (1–0)", &"scrolls": "Scroll Case"}[section_id]
-		button.tooltip_text = {&"known": "Browse every spell this character knows.", &"fast": "Assign the ten Classic number-key quick-cast bindings.", &"scrolls": "Use one of the five Classic scroll slots."}[section_id]
-		button.toggle_mode = true
+		var label: String = {&"known": "Known Spells", &"fast": "Fast Spells (1–0)", &"scrolls": "Scroll Case"}[section_id]
+		picker.add_item(label)
+		picker.set_item_metadata(picker.item_count - 1, section_id)
+		if section_id == _section_id:
+			picker.select(picker.item_count - 1)
+		var button := workspace.wide_sections().get_node({&"known": "Known", &"fast": "Fast", &"scrolls": "Scrolls"}[section_id]) as Button
 		button.button_pressed = section_id == _section_id
-		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		button.custom_minimum_size.y = 34.0
+		_clear_pressed_connections(button)
 		button.pressed.connect(_select_section.bind(section_id))
-		row.add_child(button)
-	parent.add_child(row)
+	picker.item_selected.connect(func(index: int) -> void: _select_section(picker.get_item_metadata(index) as StringName))
 
 
-func _add_spellcasting_blocked_notice(parent: VBoxContainer) -> void:
-	var panel := PanelContainer.new()
-	panel.name = "SpellcastingBlockedNotice"
-	panel.theme_type_variation = &"ClassicInset"
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var label := _label("Spellcasting is disabled in this area.", Color("efc85c"), 14)
-	label.name = "SpellcastingBlockedNoticeText"
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.tooltip_text = "You may inspect spellbooks, Fast Spells, and scrolls, but characters cannot cast while this effect is active."
-	panel.add_child(label)
-	parent.add_child(panel)
-
-
-func _add_known_spells(parent: VBoxContainer, character: CharacterView, fixed_actions: Container) -> void:
+func _bind_known_spells(workspace: SpellsWorkspace, character: CharacterView, fixed_actions: Container) -> void:
+	workspace.show_section(&"known")
 	if _eligible_spells(character).is_empty():
-		_add_empty_state(parent, "No known spells", "%s does not currently know a spell." % character.name)
+		workspace.show_empty("No known spells", "%s does not currently know a spell." % character.name)
 		return
 	var spell := _selected_spell(character)
 	var available_levels := _available_levels(character)
@@ -187,50 +159,26 @@ func _add_known_spells(parent: VBoxContainer, character: CharacterView, fixed_ac
 	if _spell_level(spell) != _selected_level:
 		spell = _first_spell_at_level(character, _selected_level)
 		_selected_spell_id = spell.id
-	var workspace := PanelContainer.new()
-	workspace.name = "ClassicSpellbookWorkspace"
-	workspace.theme_type_variation = &"ClassicInset"
-	workspace.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	workspace.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 4)
-	workspace.add_child(column)
-	var browser := HBoxContainer.new()
-	browser.name = "LevelStructuredSpellbook"
-	browser.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	browser.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	browser.add_theme_constant_override("separation", 4)
-	column.add_child(browser)
-	browser.add_child(_build_level_rail(available_levels, spell))
-	var records := VBoxContainer.new()
-	records.name = "LevelSpellRecords"
-	records.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	records.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	records.add_theme_constant_override("separation", 4)
-	records.add_child(_build_spell_list(character, spell))
-	records.add_child(_spell_detail(character, spell))
-	browser.add_child(records)
-	var action_dock := _build_spell_action_dock(character, spell)
+	_bind_level_rail(workspace, available_levels, spell)
+	_bind_spell_list(workspace, character, spell)
+	_bind_spell_detail(workspace, character, spell)
+	var action_dock := _bind_spell_action_dock(workspace, character, spell)
 	if fixed_actions != null:
 		fixed_actions.add_child(action_dock)
 	else:
-		column.add_child(action_dock)
-	parent.add_child(workspace)
+		workspace.known_action_host().add_child(action_dock)
 
 
-func _build_level_rail(available_levels: Array[int], spell: SpellView) -> PanelContainer:
-	var panel := PanelContainer.new()
-	panel.name = "SpellLevelRail"
-	panel.theme_type_variation = &"ClassicInset"
+func _bind_level_rail(workspace: SpellsWorkspace, available_levels: Array[int], spell: SpellView) -> void:
+	var panel := workspace.get_node("ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/SpellLevelRail") as PanelContainer
 	panel.custom_minimum_size.x = 78.0 if _compact else 92.0
-	panel.size_flags_horizontal = Control.SIZE_FILL
-	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	var rail := VBoxContainer.new()
+	var rail := workspace.level_rail()
 	rail.add_theme_constant_override("separation", 2 if _compact else 3)
-	panel.add_child(rail)
-	rail.add_child(SpellSelectionChrome.level_heading())
+	(rail.get_node("SpellLevelHeading") as TextureRect).texture = ClassicUiAssetCatalog.texture(&"spells.label.level")
 	for level: int in range(1, 8):
-		var button := SpellSelectionChrome.level_button(
+		var button := rail.get_node("LevelButtons/SpellLevel%d" % level) as Button
+		SpellSelectionChrome.bind_level_button(
+			button,
 			level,
 			level == _selected_level,
 			available_levels.has(level),
@@ -239,38 +187,22 @@ func _build_level_rail(available_levels: Array[int], spell: SpellView) -> PanelC
 		)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.custom_minimum_size = Vector2(74.0 if _compact else 88.0, 24.0)
-		rail.add_child(button)
+	(rail.get_node("PowerDivider") as HSeparator).visible = not _encounter_mode
+	workspace.power_rail().visible = not _encounter_mode
 	if not _encounter_mode:
-		var divider := HSeparator.new()
-		divider.custom_minimum_size.y = 4.0
-		rail.add_child(divider)
-		rail.add_child(_build_power_rail(spell))
-	return panel
+		_bind_power_rail(workspace.power_rail(), spell)
 
 
-func _build_spell_list(character: CharacterView, selected: SpellView) -> PanelContainer:
-	var panel := PanelContainer.new()
-	panel.name = "KnownSpellList"
-	panel.theme_type_variation = &"ClassicInset"
-	panel.custom_minimum_size.y = 210.0
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	panel.size_flags_stretch_ratio = 2.5
-	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 2)
-	panel.add_child(column)
-	_add_section_heading(column, "Level %d spells" % _selected_level, "%d known" % _spells_at_level(character, _selected_level).size())
-	var scroll := ScrollContainer.new()
-	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	var list := VBoxContainer.new()
-	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	list.add_theme_constant_override("separation", 1)
-	scroll.add_child(list)
-	column.add_child(scroll)
+func _bind_spell_list(workspace: SpellsWorkspace, character: CharacterView, selected: SpellView) -> void:
+	var panel := workspace.get_node("ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/LevelSpellRecords/KnownSpellList") as PanelContainer
+	_bind_label(panel.get_node("Content/Header/Title") as Label, "Level %d spells" % _selected_level, GOLD, 18)
+	_bind_label(panel.get_node("Content/Header/Count") as Label, "%d known" % _spells_at_level(character, _selected_level).size(), MUTED, 13)
+	var list := workspace.known_spell_list()
+	_clear(list)
 	for candidate: SpellView in _spells_at_level(character, _selected_level):
-		var button := SpellSelectionChrome.spell_button(
+		var button := workspace.known_spell_button_scene.instantiate() as Button
+		SpellSelectionChrome.bind_spell_button(
+			button,
 			"KnownSpell_%s" % candidate.id,
 			"%s   %d SP" % [candidate.name, absi(candidate.cost)],
 			candidate.id == selected.id,
@@ -289,7 +221,6 @@ func _build_spell_list(character: CharacterView, selected: SpellView) -> PanelCo
 			button.modulate = Color(0.58, 0.58, 0.58, 1.0)
 			button.tooltip_text = "%s — spellcasting is disabled in this area." % candidate.name
 		list.add_child(button)
-	return panel
 
 
 func _selected_spell(character: CharacterView) -> SpellView:
@@ -305,96 +236,56 @@ func _selected_spell(character: CharacterView) -> SpellView:
 	return fallback
 
 
-func _spell_detail(character: CharacterView, spell: SpellView) -> Control:
-	var panel := PanelContainer.new()
-	panel.theme_type_variation = &"ClassicInset"
-	panel.name = "SelectedSpellRecord"
-	panel.custom_minimum_size.x = 0.0
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.size_flags_vertical = Control.SIZE_FILL
-	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 2)
-	panel.add_child(column)
-	var identity := HBoxContainer.new()
-	identity.add_theme_constant_override("separation", 10)
-	var title_box := VBoxContainer.new()
-	title_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_add_label(title_box, spell.name, Color("e7d078"), 16)
-	_add_label(title_box, "Level %d  •  SP %d/%d" % [_spell_level(spell), character.spell_points, character.maximum_spell_points], MUTED, 12)
-	identity.add_child(title_box)
-	column.add_child(identity)
-	var description := _add_label(column, spell.description, TEXT, 12)
-	description.max_lines_visible = 1
-	description.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+func _bind_spell_detail(workspace: SpellsWorkspace, character: CharacterView, spell: SpellView) -> void:
+	var panel := workspace.selected_spell_record()
+	var column := panel.get_node("Content") as VBoxContainer
+	_bind_label(column.get_node("Name") as Label, spell.name, Color("e7d078"), 16)
+	_bind_label(column.get_node("Resource") as Label, "Level %d  •  SP %d/%d" % [_spell_level(spell), character.spell_points, character.maximum_spell_points], MUTED, 12)
+	var description := column.get_node("Description") as Label
+	_bind_label(description, spell.description, TEXT, 12)
 	description.tooltip_text = spell.description
-	var target_row := HBoxContainer.new()
-	target_row.add_theme_constant_override("separation", 10)
-	if not _compact:
-		var target_badge := (load(SPELL_TARGET_BADGE_SCENE_PATH) as PackedScene).instantiate() as ClassicSpellTargetBadge
-		if target_badge.present(spell.target_type, spell.target_size, _target_label(spell), Vector2(48.0, 48.0)):
-			target_row.add_child(target_badge)
-		else:
-			target_badge.free()
-	var facts := GridContainer.new()
-	facts.columns = 4
-	facts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_add_fact(facts, "Target", _target_label(spell))
-	_add_fact(facts, "Range", str(absi(spell.range_min + spell.range_max * _selected_power)))
-	_add_fact(facts, "Damage", _scaled_pair(spell.damage_min, spell.damage_max, spell.power_damage_min, spell.power_damage_max))
-	_add_fact(facts, "Duration", _scaled_pair(spell.duration_min, spell.duration_max, spell.power_duration_min, spell.power_duration_max, true))
-	_add_fact(facts, "Magic resist", _magic_resistance_label(spell))
-	_add_fact(facts, "Saving throw", _saving_throw_label(spell))
-	target_row.add_child(facts)
-	column.add_child(target_row)
-	return panel
+	var target_badge := column.get_node("TargetAndFacts/ClassicSpellTargetBadge") as ClassicSpellTargetBadge
+	target_badge.visible = not _compact and target_badge.present(spell.target_type, spell.target_size, _target_label(spell), Vector2(48.0, 48.0))
+	var values := {"TargetValue": _target_label(spell), "RangeValue": str(absi(spell.range_min + spell.range_max * _selected_power)), "DamageValue": _scaled_pair(spell.damage_min, spell.damage_max, spell.power_damage_min, spell.power_damage_max), "DurationValue": _scaled_pair(spell.duration_min, spell.duration_max, spell.power_duration_min, spell.power_duration_max, true), "MagicResistValue": _magic_resistance_label(spell), "SavingThrowValue": _saving_throw_label(spell)}
+	var facts := column.get_node("TargetAndFacts/Facts") as GridContainer
+	for node_name: String in values:
+		var value_label := facts.get_node(node_name) as Label
+		_bind_label(value_label, values[node_name], TEXT, 12)
+		value_label.tooltip_text = values[node_name]
+	for name_node: String in ["TargetName", "RangeName", "DamageName", "DurationName", "MagicResistName", "SavingThrowName"]:
+		_bind_label(facts.get_node(name_node) as Label, (facts.get_node(name_node) as Label).text, MUTED, 12)
 
 
-func _build_power_rail(spell: SpellView) -> VBoxContainer:
-	var column := VBoxContainer.new()
-	column.name = "SpellPowerRail"
-	column.add_theme_constant_override("separation", 2)
-	column.add_child(_ui_art("spells.label.power", Vector2(68.0, 18.0)))
-	var cost := _label("Cost %d SP" % absi(spell.cost * _selected_power), GOLD, 12)
-	cost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	column.add_child(cost)
+func _bind_power_rail(column: VBoxContainer, spell: SpellView) -> void:
+	(column.get_node("PowerLabel") as TextureRect).texture = ClassicUiAssetCatalog.texture(&"spells.label.power")
+	_bind_label(column.get_node("Cost") as Label, "Cost %d SP" % absi(spell.cost * _selected_power), GOLD, 12)
 	var available_powers := _available_powers(spell)
 	for power: int in range(1, 8):
-		var button := Button.new()
-		button.name = "SpellPower%d" % power
-		button.text = str(power)
-		button.toggle_mode = true
+		var button := column.get_node("PowerButtons/SpellPower%d" % power) as Button
 		button.button_pressed = power == _selected_power
 		button.disabled = not available_powers.has(power)
-		button.custom_minimum_size = Vector2(0.0, 22.0)
-		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.tooltip_text = "%d SP" % absi(spell.cost * power) if not button.disabled else "This power is unavailable."
+		_clear_pressed_connections(button)
 		button.pressed.connect(_select_power.bind(power))
-		column.add_child(button)
-	return column
 
 
-func _build_spell_action_dock(character: CharacterView, spell: SpellView) -> BoxContainer:
-	var row := HBoxContainer.new()
-	row.name = "SpellActionDock"
-	row.add_theme_constant_override("separation", 5)
+func _bind_spell_action_dock(workspace: SpellsWorkspace, character: CharacterView, spell: SpellView) -> BoxContainer:
+	var row := workspace.action_dock_scene.instantiate() as HBoxContainer
+	var cast := row.get_node("SpellCastAction") as ClassicBitmapButton
 	if _encounter_mode:
-		var choose := _bitmap_action("EncounterSpellChoose", &"spells.action.cast", "Use %s in this encounter" % spell.name, ActionAvailabilityView.new(&"encounter_spell", true, ""), func() -> void: encounter_spell_selected.emit(character.id, spell.classic_id))
-		choose.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(choose)
+		cast.name = "EncounterSpellChoose"
+		_bind_bitmap_action(cast, &"spells.action.cast", "Use %s in this encounter" % spell.name, ActionAvailabilityView.new(&"encounter_spell", true, ""), func() -> void: encounter_spell_selected.emit(character.id, spell.classic_id))
+		row.get_node("MakeScrollAction").visible = false
 		return row
-	var cast := _bitmap_action("SpellCastAction", &"spells.action.cast", "Cast %s at power %d" % [spell.name, _selected_power], spell.field_cast, func() -> void:
+	_bind_bitmap_action(cast, &"spells.action.cast", "Cast %s at power %d" % [spell.name, _selected_power], spell.field_cast, func() -> void:
 		intent_submitted.emit(PlayerIntent.cast_spell(spell.id, character.id, "", _selected_power))
 	)
-	cast.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(cast)
-	var make_scroll := Button.new()
-	make_scroll.text = "Make Scroll"
-	make_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var make_scroll := row.get_node("MakeScrollAction") as Button
 	make_scroll.disabled = spell.make_scroll == null or not spell.make_scroll.enabled or not _available_scroll_powers(spell).has(_selected_power)
 	make_scroll.tooltip_text = "Unavailable at this power" if make_scroll.disabled and spell.make_scroll != null and spell.make_scroll.enabled else "Unavailable" if spell.make_scroll == null else spell.make_scroll.reason if make_scroll.disabled else "Scribe at power %d for %d SP" % [_selected_power, absi(spell.cost * 2 * _selected_power)]
+	_clear_pressed_connections(make_scroll)
 	if not make_scroll.disabled:
 		make_scroll.pressed.connect(func() -> void: intent_submitted.emit(PlayerIntent.make_scroll(spell.id, character.id, _selected_power)))
-	row.add_child(make_scroll)
 	return row
 
 
@@ -504,75 +395,34 @@ static func _target_label(spell: SpellView) -> String:
 	}.get(spell.target_type, "Classic target type %d" % spell.target_type)
 
 
-func _add_fact(parent: GridContainer, name: String, value: String) -> void:
-	var name_label := _label(name, MUTED, 12)
-	name_label.custom_minimum_size.x = 46.0 if _compact else 56.0
-	parent.add_child(name_label)
-	var value_label := _label(value, TEXT, 12)
-	value_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	value_label.max_lines_visible = 1
-	value_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	value_label.tooltip_text = value
-	parent.add_child(value_label)
-
-
-func _ui_art(asset_id: StringName, minimum_size: Vector2) -> TextureRect:
-	var texture := TextureRect.new()
-	texture.custom_minimum_size = minimum_size
-	texture.texture = ClassicUiAssetCatalog.texture(asset_id)
-	texture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	texture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	texture.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	return texture
-
-
-func _bitmap_action(node_name: String, asset_id: StringName, tooltip: String, availability: ActionAvailabilityView, callback: Callable) -> ClassicBitmapButton:
-	var button := ClassicBitmapButton.new()
-	button.name = node_name
-	button.configure({"id": asset_id, "asset_id": asset_id, "tooltip": tooltip, "accelerator": ""}, 1)
-	button.disabled = availability == null or not availability.enabled
-	button.tooltip_text = "Unavailable" if availability == null else availability.reason if button.disabled else tooltip
-	if not button.disabled:
-		button.pressed.connect(callback)
-	return button
-
-
-func _add_fast_spells(parent: VBoxContainer, character: CharacterView) -> void:
-	_add_section_heading(parent, "%s's Fast Spell bindings" % character.name, "Top-row 1–0")
-	var explanation := _add_label(parent, "Choosing a spell assigns it immediately. Clear removes it; Back keeps every assigned slot.", MUTED, 13)
-	explanation.max_lines_visible = 2
+func _bind_fast_spells(workspace: SpellsWorkspace, character: CharacterView) -> void:
+	workspace.show_section(&"fast")
+	_bind_label(workspace.get_node("FastSection/Header/Title") as Label, "%s's Fast Spell bindings" % character.name, GOLD, 18)
+	var detail := workspace.get_node("FastSection/Header/Detail") as Label
+	detail.visible = not _compact
+	_bind_label(detail, "Top-row 1–0", MUTED, 13)
+	_bind_label(workspace.get_node("FastSection/Explanation") as Label, "Choosing a spell assigns it immediately. Clear removes it; Back keeps every assigned slot.", MUTED, 13)
+	var grid := workspace.get_node("FastSection/FastSpellGrid") as PanelContainer
+	var empty := workspace.get_node("FastSection/Empty") as Label
+	grid.visible = not character.fast_spells.is_empty()
+	empty.visible = character.fast_spells.is_empty()
 	if character.fast_spells.is_empty():
-		_add_empty_state(parent, "No Fast Spell slots", "This character has no Fast Spell bindings.")
-	else:
-		var panel := PanelContainer.new()
-		panel.name = "FastSpellGrid"
-		panel.theme_type_variation = &"ClassicInset"
-		panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		var grid := GridContainer.new()
-		grid.columns = 1
-		grid.add_theme_constant_override("h_separation", 8)
-		grid.add_theme_constant_override("v_separation", 5)
-		panel.add_child(grid)
-		for binding: FastSpellBindingView in character.fast_spells:
-			_add_fast_spell_row(grid, character, binding)
-		parent.add_child(panel)
+		_bind_label(empty, "This character has no Fast Spell bindings.", MUTED, 15)
+		return
+	for binding: FastSpellBindingView in character.fast_spells:
+		_bind_fast_spell_row(workspace, character, binding)
 
 
-func _add_fast_spell_row(parent: Container, character: CharacterView, binding: FastSpellBindingView) -> void:
-	var panel := PanelContainer.new()
-	panel.theme_type_variation = &"ClassicInset"
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var row: BoxContainer = VBoxContainer.new() if _compact else HBoxContainer.new()
-	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_theme_constant_override("separation", 6)
-	panel.add_child(row)
-	var label := _add_label(row, "Slot %s" % binding.shortcut_label, GOLD, 13)
+func _bind_fast_spell_row(workspace: SpellsWorkspace, character: CharacterView, binding: FastSpellBindingView) -> void:
+	var panel := workspace.fast_spell_row_scene.instantiate() as PanelContainer
+	var row := panel.get_node("Content") as BoxContainer
+	row.vertical = _compact
+	var label := row.get_node("Slot") as Label
+	_bind_label(label, "Slot %s" % binding.shortcut_label, GOLD, 13)
 	label.custom_minimum_size.x = 0.0 if _compact else 52.0
-	var picker := OptionButton.new()
+	var picker := row.get_node("Picker") as OptionButton
 	picker.name = "FastSpellPicker%d" % binding.slot_index
-	picker.theme_type_variation = &"ClassicTheldrowOptionButton"
-	picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	picker.fit_to_longest_item = false
+	_clear_option_button(picker)
 	picker.add_item("Choose a spell")
 	picker.set_item_metadata(0, {})
 	for known_spell: SpellView in character.spells:
@@ -584,42 +434,38 @@ func _add_fast_spell_row(parent: Container, character: CharacterView, binding: F
 			if known_spell.id == binding.spell_id and power == binding.power:
 				picker.select(picker.item_count - 1)
 	picker.item_selected.connect(func(index: int) -> void: _assign_fast_spell(character.id, binding.slot_index, picker.get_item_metadata(index)))
-	row.add_child(picker)
 	var availability := _view.availability(&"set_fast_spell")
 	var clear_availability := availability if not binding.spell_id.is_empty() else ActionAvailabilityView.new(&"set_fast_spell", false, "This slot is already empty.")
-	var clear := _add_button(row, "Clear", clear_availability, _clear_fast_spell.bind(character.id, binding.slot_index))
-	clear.custom_minimum_size.x = 56.0
-	parent.add_child(panel)
+	_bind_button(row.get_node("Clear") as Button, "Clear", clear_availability, _clear_fast_spell.bind(character.id, binding.slot_index))
+	workspace.fast_spell_rows().add_child(panel)
 
 
-func _add_scrolls(parent: VBoxContainer, character: CharacterView) -> void:
-	_add_section_heading(parent, "%s's Scroll Case" % character.name, "Five fixed Classic slots")
-	var case_panel := PanelContainer.new()
-	case_panel.name = "SpellScrollCase"
-	case_panel.theme_type_variation = &"ClassicInset"
-	case_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	var case_column := VBoxContainer.new()
-	case_column.add_theme_constant_override("separation", 5)
-	case_panel.add_child(case_column)
-	for scroll: SpellScrollView in character.scrolls:
-		var panel := PanelContainer.new()
-		panel.theme_type_variation = &"ClassicInset"
-		panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var row: BoxContainer = VBoxContainer.new() if _compact else HBoxContainer.new()
-		row.add_theme_constant_override("separation", 8)
-		panel.add_child(row)
-		var text := "Slot %d  •  %s%s" % [scroll.slot_index + 1, scroll.spell_name, "" if scroll.power == 0 else "  •  Power %d" % scroll.power]
-		var label := _add_label(row, text, MUTED if scroll.power == 0 else Color("e0e2e5"), 14)
-		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		var use := _add_intent_action(row, "Use", scroll.use, PlayerIntent.use_scroll(character.id, scroll.slot_index))
-		use.name = "UseScroll%d" % scroll.slot_index
-		var discard := _add_intent_action(row, "Discard", scroll.discard, PlayerIntent.use_scroll(character.id, scroll.slot_index))
-		discard.name = "DiscardScroll%d" % scroll.slot_index
-		case_column.add_child(panel)
+func _bind_scrolls(workspace: SpellsWorkspace, character: CharacterView) -> void:
+	workspace.show_section(&"scrolls")
+	_bind_label(workspace.get_node("ScrollSection/Header/Title") as Label, "%s's Scroll Case" % character.name, GOLD, 18)
+	var detail := workspace.get_node("ScrollSection/Header/Detail") as Label
+	detail.visible = not _compact
+	_bind_label(detail, "Five fixed Classic slots", MUTED, 13)
+	var case_panel := workspace.get_node("ScrollSection/SpellScrollCase") as PanelContainer
+	var empty := workspace.get_node("ScrollSection/Empty") as Label
+	case_panel.visible = not character.scrolls.is_empty()
+	empty.visible = character.scrolls.is_empty()
 	if character.scrolls.is_empty():
-		_add_label(case_column, "This character has no Classic scroll slots.", MUTED)
-	parent.add_child(case_panel)
+		_bind_label(empty, "This character has no Classic scroll slots.", MUTED, 15)
+		return
+	for scroll: SpellScrollView in character.scrolls:
+		var panel := workspace.scroll_slot_row_scene.instantiate() as PanelContainer
+		var row := panel.get_node("Content") as BoxContainer
+		row.vertical = _compact
+		var text := "Slot %d  •  %s%s" % [scroll.slot_index + 1, scroll.spell_name, "" if scroll.power == 0 else "  •  Power %d" % scroll.power]
+		_bind_label(row.get_node("Record") as Label, text, MUTED if scroll.power == 0 else TEXT, 14)
+		var use := row.get_node("Use") as Button
+		use.name = "UseScroll%d" % scroll.slot_index
+		_bind_button(use, "Use", scroll.use, func() -> void: intent_submitted.emit(PlayerIntent.use_scroll(character.id, scroll.slot_index)))
+		var discard := row.get_node("Discard") as Button
+		discard.name = "DiscardScroll%d" % scroll.slot_index
+		_bind_button(discard, "Discard", scroll.discard, func() -> void: intent_submitted.emit(PlayerIntent.use_scroll(character.id, scroll.slot_index)))
+		workspace.scroll_rows().add_child(panel)
 
 
 func _select_character(character_id: String) -> void:
@@ -672,56 +518,44 @@ func _clear_fast_spell(character_id: String, slot_index: int) -> void:
 	intent_submitted.emit(PlayerIntent.set_fast_spell(character_id, slot_index))
 
 
-func _add_intent_action(parent: Container, label: String, availability: ActionAvailabilityView, intent: PlayerIntent) -> Button:
-	return _add_button(parent, label, availability, func() -> void: intent_submitted.emit(intent))
-
-
-func _add_button(parent: Container, label: String, availability: ActionAvailabilityView, callback: Callable) -> Button:
-	var button := Button.new()
+func _bind_button(button: Button, label: String, availability: ActionAvailabilityView, callback: Callable) -> void:
 	button.text = label
 	button.custom_minimum_size = Vector2(74.0, 34.0)
 	button.disabled = availability == null or not availability.enabled
 	button.tooltip_text = "Unavailable" if availability == null else availability.reason if not availability.enabled else label
+	_clear_pressed_connections(button)
 	if not button.disabled:
 		button.pressed.connect(callback)
-	parent.add_child(button)
-	return button
 
 
-func _add_section_heading(parent: Container, title: String, detail: String = "") -> void:
-	var row := HBoxContainer.new()
-	var heading := _label(title, GOLD, 18)
-	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(heading)
-	if not detail.is_empty() and not _compact:
-		var note := _label(detail, MUTED, 13)
-		note.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		row.add_child(note)
-	parent.add_child(row)
+func _bind_bitmap_action(button: ClassicBitmapButton, asset_id: StringName, tooltip: String, availability: ActionAvailabilityView, callback: Callable) -> void:
+	button.configure({"id": asset_id, "asset_id": asset_id, "tooltip": tooltip, "accelerator": ""}, 1)
+	button.disabled = availability == null or not availability.enabled
+	button.tooltip_text = "Unavailable" if availability == null else availability.reason if button.disabled else tooltip
+	if not button.disabled:
+		button.pressed.connect(callback)
 
 
-func _add_empty_state(parent: Container, title: String, detail: String) -> void:
-	var panel := PanelContainer.new()
-	panel.theme_type_variation = &"ClassicInset"
-	var column := VBoxContainer.new()
-	panel.add_child(column)
-	column.add_child(_label(title, GOLD, 16))
-	var body := _label(detail, MUTED, 13)
-	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	column.add_child(body)
-	parent.add_child(panel)
+func _bind_label(label: Label, text: String, color: Color = Color.WHITE, size: int = 15) -> void:
+	label.text = text
+	label.add_theme_color_override("font_color", color)
+	label.add_theme_font_size_override("font_size", int(round(float(size) * _text_scale)))
 
 
-func _add_label(parent: Container, text: String, color: Color = Color.WHITE, size: int = 15) -> Label:
-	var result := _label(text, color, size)
-	result.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	parent.add_child(result)
-	return result
+static func _clear_pressed_connections(button: Button) -> void:
+	for connection: Dictionary in button.pressed.get_connections():
+		button.pressed.disconnect(connection["callable"] as Callable)
 
 
-func _label(text: String, color: Color, size: int) -> Label:
-	var result := Label.new()
-	result.text = text
-	result.add_theme_color_override("font_color", color)
-	result.add_theme_font_size_override("font_size", int(round(float(size) * _text_scale)))
-	return result
+static func _clear_option_button(picker: OptionButton) -> void:
+	for connection: Dictionary in picker.item_selected.get_connections():
+		picker.item_selected.disconnect(connection["callable"] as Callable)
+	picker.clear()
+
+
+static func _clear(parent: Node) -> void:
+	if parent == null:
+		return
+	for child: Node in parent.get_children():
+		parent.remove_child(child)
+		child.queue_free()

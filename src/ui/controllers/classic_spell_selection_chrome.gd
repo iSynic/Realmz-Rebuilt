@@ -15,6 +15,11 @@ const LEVEL_COLORS: Array[Color] = [
 
 static func level_button(level: int, selected: bool, enabled: bool, action: Callable, unavailable_text: String) -> Button:
 	var button := (load(LEVEL_BUTTON_SCENE_PATH) as PackedScene).instantiate() as Button
+	bind_level_button(button, level, selected, enabled, action, unavailable_text)
+	return button
+
+
+static func bind_level_button(button: Button, level: int, selected: bool, enabled: bool, action: Callable, unavailable_text: String) -> void:
 	button.name = "SpellLevel%d" % level
 	button.text = "Level %d" % level
 	button.button_pressed = selected
@@ -24,8 +29,8 @@ static func level_button(level: int, selected: bool, enabled: bool, action: Call
 	for color_name: StringName in [&"font_color", &"font_hover_color", &"font_pressed_color", &"font_focus_color"]:
 		button.add_theme_color_override(color_name, color)
 	button.add_theme_color_override(&"font_disabled_color", color.darkened(0.52))
+	_clear_pressed_connections(button)
 	button.pressed.connect(action)
-	return button
 
 
 static func level_heading() -> TextureRect:
@@ -36,6 +41,11 @@ static func level_heading() -> TextureRect:
 
 static func spell_button(node_name: String, text: String, selected: bool, enabled: bool, tooltip: String, action: Callable, icon: Texture2D = null) -> Button:
 	var button := (load(SPELL_BUTTON_SCENE_PATH) as PackedScene).instantiate() as Button
+	bind_spell_button(button, node_name, text, selected, enabled, tooltip, action, icon)
+	return button
+
+
+static func bind_spell_button(button: Button, node_name: String, text: String, selected: bool, enabled: bool, tooltip: String, action: Callable, icon: Texture2D = null) -> void:
 	button.name = node_name
 	button.text = text
 	button.button_pressed = selected
@@ -43,9 +53,14 @@ static func spell_button(node_name: String, text: String, selected: bool, enable
 	button.tooltip_text = tooltip
 	if icon != null:
 		button.icon = icon
+	_clear_pressed_connections(button)
 	button.pressed.connect(action)
-	return button
 
 
 static func definition_button(node_name: String, text: String, selected: bool, enabled: bool, tooltip: String, action: Callable) -> Button:
 	return spell_button(node_name, text, selected, enabled, tooltip, action)
+
+
+static func _clear_pressed_connections(button: Button) -> void:
+	for connection: Dictionary in button.pressed.get_connections():
+		button.pressed.disconnect(connection["callable"] as Callable)
