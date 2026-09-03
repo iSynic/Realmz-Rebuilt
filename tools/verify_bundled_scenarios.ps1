@@ -114,11 +114,14 @@ foreach ($scenario in $catalog.scenarios) {
         $assetIds = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
         $landCicnIds = [System.Collections.Generic.HashSet[int]]::new()
         $resourceKeys = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+        $assetsByResourceKey = @{}
         foreach ($asset in @($assetIndex.assets)) {
             if (-not [string]::IsNullOrWhiteSpace([string]$asset.id)) { [void]$assetIds.Add([string]$asset.id) }
             if ($asset.resourceType -eq "cicn" -and $null -ne $asset.resourceId) { [void]$landCicnIds.Add([int]$asset.resourceId) }
             if (-not [string]::IsNullOrWhiteSpace([string]$asset.resourceType) -and $null -ne $asset.resourceId) {
-                [void]$resourceKeys.Add("$($asset.resourceType):$([int]$asset.resourceId)")
+                $resourceKey = "$($asset.resourceType):$([int]$asset.resourceId)"
+                [void]$resourceKeys.Add($resourceKey)
+                $assetsByResourceKey[$resourceKey] = $asset
             }
         }
         $scenarioEntry = $archive.GetEntry("scenario.json")
@@ -137,6 +140,46 @@ foreach ($scenario in $catalog.scenarios) {
                 }
                 if (-not $resourceKeys.Contains("styl:$resourceId")) {
                     throw "$($scenario.file) program $($program.id) has no same-ID Classic styl $resourceId asset for scrolling text."
+                }
+                $textAsset = $assetsByResourceKey["TEXT:$resourceId"]
+                $styleAsset = $assetsByResourceKey["styl:$resourceId"]
+                $textEntry = $archive.GetEntry([string]$textAsset.path)
+                $styleEntry = $archive.GetEntry([string]$styleAsset.path)
+                if ($null -eq $textEntry -or $null -eq $styleEntry) {
+                    throw "$($scenario.file) scrolling-text resource $resourceId has a missing payload."
+                }
+                $textReader = [System.IO.StreamReader]::new($textEntry.Open(), [System.Text.UTF8Encoding]::new($false, $true))
+                try { $scrollingText = $textReader.ReadToEnd() }
+                finally { $textReader.Dispose() }
+                $styleStream = $styleEntry.Open()
+                $styleMemory = [System.IO.MemoryStream]::new()
+                try {
+                    $styleStream.CopyTo($styleMemory)
+                    $styleBytes = $styleMemory.ToArray()
+                } finally {
+                    $styleStream.Dispose()
+                    $styleMemory.Dispose()
+                }
+                if ($styleBytes.Length -lt 2) {
+                    throw "$($scenario.file) scrolling-text styl $resourceId is truncated."
+                }
+                $styleCount = ([int]$styleBytes[0] -shl 8) -bor [int]$styleBytes[1]
+                if ($styleCount -eq 0 -or $styleBytes.Length -lt 2 + ($styleCount * 20)) {
+                    throw "$($scenario.file) scrolling-text styl $resourceId has an invalid 20-byte run table."
+                }
+                $styleStarts = @()
+                for ($styleIndex = 0; $styleIndex -lt $styleCount; $styleIndex += 1) {
+                    $styleOffset = 2 + ($styleIndex * 20)
+                    $styleStart = ([int64]$styleBytes[$styleOffset] -shl 24) -bor ([int64]$styleBytes[$styleOffset + 1] -shl 16) -bor ([int64]$styleBytes[$styleOffset + 2] -shl 8) -bor [int64]$styleBytes[$styleOffset + 3]
+                    if ($styleStart -lt 0 -or $styleStart -gt $scrollingText.Length) {
+                        throw "$($scenario.file) scrolling-text styl $resourceId has run $styleIndex outside its offset-preserving TEXT payload."
+                    }
+                    $styleStarts += $styleStart
+                }
+                if ($scenario.campaignId -eq "scenario-city-of-bywater" -and $resourceId -eq -200) {
+                    if (-not $scrollingText.StartsWith("`n`n`n`n<<< Click & Drag") -or $styleStarts.Count -lt 2 -or $styleStarts[1] -ne 89) {
+                        throw "City of Bywater TEXT/styl -200 must preserve its four authored leading returns and raw style offset 89."
+                    }
                 }
             }
         }

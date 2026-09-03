@@ -9,12 +9,20 @@ const BACKGROUND_RESOURCE_TYPE: String = "ppat"
 const BACKGROUND_RESOURCE_ID: int = 129
 const STYLE_RESOURCE_TYPE: String = "styl"
 const STYLE_RUN_BYTES: int = 20
-const DEFAULT_INK := Color(0.035, 0.025, 0.05, 1.0)
+const DEFAULT_FONT_ID: int = 1601
+const DEFAULT_FONT_SIZE: int = 10
+const DEFAULT_INK := Color.BLACK
+
+const FONT_ROLE_BODY: StringName = &"body"
+const FONT_ROLE_ORNAMENT: StringName = &"ornament"
+const FONT_ROLE_UTILITY: StringName = &"utility"
+const FONT_ROLE_CHICAGO: StringName = &"chicago"
 
 var _media: ClassicMediaCatalog
 var _text: RichTextLabel
 var _dragging: bool = false
 var _last_drag_y: float = 0.0
+var _fonts: Dictionary = {}
 
 
 func configure(media: ClassicMediaCatalog, text_node_name: StringName = &"ClassicScrollingText") -> void:
@@ -59,6 +67,7 @@ func configure(media: ClassicMediaCatalog, text_node_name: StringName = &"Classi
 	_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_text.scroll_active = true
 	_text.scroll_following = false
+	_text.tab_size = 1
 	_text.selection_enabled = false
 	_text.mouse_filter = Control.MOUSE_FILTER_STOP
 	_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -132,17 +141,16 @@ static func decode_style_runs(bytes: PackedByteArray, text_length: int) -> Array
 	if bytes.size() < 2:
 		return result
 	var count := _u16_be(bytes, 0)
-	if bytes.size() != 2 + count * STYLE_RUN_BYTES:
+	if count == 0 or bytes.size() < 2 + count * STYLE_RUN_BYTES:
 		return result
-	var previous_start := -1
 	for index: int in count:
 		var offset := 2 + index * STYLE_RUN_BYTES
 		var start := _i32_be(bytes, offset)
-		if start < previous_start or start < 0 or start > text_length:
-			return []
-		previous_start = start
+		if start < 0 or start > text_length:
+			continue
 		result.append({
 			"start": start,
+			"source_order": index,
 			"height": _i16_be(bytes, offset + 4),
 			"ascent": _i16_be(bytes, offset + 6),
 			"font": _i16_be(bytes, offset + 8),
@@ -155,19 +163,47 @@ static func decode_style_runs(bytes: PackedByteArray, text_length: int) -> Array
 				1.0
 			),
 		})
+	result.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
+		var left_start: int = int(left["start"])
+		var right_start: int = int(right["start"])
+		return left_start < right_start or (left_start == right_start and int(left["source_order"]) < int(right["source_order"]))
+	)
 	if not result.is_empty() and int(result[0]["start"]) > 0:
-		result.push_front({"start": 0, "face": 0, "size": 0, "color": DEFAULT_INK})
+		result.push_front({"start": 0, "font": DEFAULT_FONT_ID, "face": 0, "size": DEFAULT_FONT_SIZE, "color": DEFAULT_INK})
 	return result
+
+
+static func classic_font_role(font_id: int) -> StringName:
+	match font_id:
+		0:
+			return FONT_ROLE_CHICAGO
+		1, 3, 4, 10, 16, 21:
+			return FONT_ROLE_UTILITY
+		1602:
+			return FONT_ROLE_ORNAMENT
+		_:
+			return FONT_ROLE_BODY
+
+
+static func classic_font_size(font_id: int, authored_size: int) -> int:
+	if font_id == 4 and authored_size == 9:
+		return 11
+	if font_id == 21 and authored_size == 12:
+		return 9
+	return authored_size if authored_size > 0 else DEFAULT_FONT_SIZE
 
 
 func _push_style(run: Dictionary) -> int:
 	var depth := 0
+	var font_id: int = int(run.get("font", DEFAULT_FONT_ID))
+	var font := _font_for_role(classic_font_role(font_id))
+	if font != null:
+		_text.push_font(font)
+		depth += 1
 	_text.push_color(run["color"] as Color)
 	depth += 1
-	var size: int = int(run["size"])
-	if size > 0:
-		_text.push_font_size(size)
-		depth += 1
+	_text.push_font_size(classic_font_size(font_id, int(run["size"])))
+	depth += 1
 	var face: int = int(run["face"])
 	if face & 1:
 		_text.push_bold()
@@ -179,6 +215,24 @@ func _push_style(run: Dictionary) -> int:
 		_text.push_underline()
 		depth += 1
 	return depth
+
+
+func _font_for_role(role: StringName) -> Font:
+	if _fonts.has(role):
+		return _fonts[role] as Font
+	var path := ClassicTypography.THELDROW_PATH
+	match role:
+		FONT_ROLE_ORNAMENT:
+			path = ClassicTypography.BLACK_CHANCERY_PATH
+		FONT_ROLE_UTILITY:
+			path = ClassicTypography.CLASSIC_UTILITY_PATH
+		FONT_ROLE_CHICAGO:
+			path = ClassicTypography.CHICAGO_PATH
+	var source := load(path) as Font
+	if source == null and role != FONT_ROLE_BODY:
+		source = load(ClassicTypography.THELDROW_PATH) as Font
+	_fonts[role] = source
+	return source
 
 
 func _background_texture() -> Texture2D:
