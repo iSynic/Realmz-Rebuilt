@@ -13,7 +13,7 @@ const GOLD := Color("e5c45c")
 const CYAN := Color("8fcfd1")
 const MUTED := Color("aeb6ba")
 const INK := Color("111315")
-const ITEM_DETAIL_POPOVER_SCRIPT := preload("res://src/ui/classic_item_detail_popover.gd")
+const ITEM_DETAIL_POPOVER_SCENE := preload("res://src/ui/classic_item_detail_popover.tscn")
 
 var _compact := false
 var _media: ClassicMediaCatalog
@@ -49,7 +49,7 @@ func build(request: InteractionRequest) -> void:
 		return
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
 	custom_minimum_size = Vector2(0.0, 500.0 if _compact else 0.0)
-	_detail_popover = ITEM_DETAIL_POPOVER_SCRIPT.new()
+	_detail_popover = ITEM_DETAIL_POPOVER_SCENE.instantiate() as ClassicItemDetailPopover
 	add_child(_detail_popover)
 	_detail_popover.configure(_media, get_theme())
 	match body.mode:

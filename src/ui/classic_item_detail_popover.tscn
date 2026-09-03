@@ -1,0 +1,20 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/ui/classic_item_detail_popover.gd" id="1_popover"]
+
+[node name="ClassicItemDetailPopover" type="CanvasLayer"]
+layer = 90
+script = ExtResource("1_popover")
+
+[node name="ClassicItemDetailPanel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(360, 0)
+mouse_filter = 2
+theme_type_variation = &"ClassicTextWell"
+
+[node name="ClassicItemDetailContent" type="VBoxContainer" parent="ClassicItemDetailPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 4

@@ -4,7 +4,7 @@ class_name ClassicPartyRoster
 extends PanelContainer
 
 const ClassicSpellLevelScript := preload("res://src/ui/classic_spell_level.gd")
-const SpellTargetBadge := preload("res://src/ui/classic_spell_target_badge.gd")
+const SPELL_TARGET_BADGE_SCENE := preload("res://src/ui/classic_spell_target_badge.tscn")
 
 signal character_selected(character_id: String)
 signal character_activated(character_id: String)
@@ -378,7 +378,7 @@ func _present_spellbook_details(option: InteractionRequestValue.CastOption, targ
 	title_box.add_child(resource_label)
 	identity.add_child(title_box)
 	if spell != null and size.x >= 280.0:
-		var target_badge := SpellTargetBadge.new()
+		var target_badge := SPELL_TARGET_BADGE_SCENE.instantiate() as ClassicSpellTargetBadge
 		if target_badge.present(spell.target_type, spell.target_size, target_text, Vector2(48.0, 48.0)):
 			identity.add_child(target_badge)
 		else:

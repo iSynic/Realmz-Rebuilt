@@ -4,7 +4,7 @@ extends RefCounted
 
 const SpellSelectionChrome := preload("res://src/ui/controllers/classic_spell_selection_chrome.gd")
 const ClassicSpellLevelScript := preload("res://src/ui/classic_spell_level.gd")
-const SpellTargetBadge := preload("res://src/ui/classic_spell_target_badge.gd")
+const SPELL_TARGET_BADGE_SCENE := preload("res://src/ui/classic_spell_target_badge.tscn")
 
 signal intent_submitted(intent: PlayerIntent)
 signal route_requested(route_id: StringName)
@@ -330,7 +330,7 @@ func _spell_detail(character: CharacterView, spell: SpellView) -> Control:
 	var target_row := HBoxContainer.new()
 	target_row.add_theme_constant_override("separation", 10)
 	if not _compact:
-		var target_badge := SpellTargetBadge.new()
+		var target_badge := SPELL_TARGET_BADGE_SCENE.instantiate() as ClassicSpellTargetBadge
 		if target_badge.present(spell.target_type, spell.target_size, _target_label(spell), Vector2(48.0, 48.0)):
 			target_row.add_child(target_badge)
 		else:

@@ -3,7 +3,7 @@ class_name PartySetupCharacterCreationController
 extends "res://src/ui/controllers/party_setup_controller_component.gd"
 
 const SpellSelectionChrome := preload("res://src/ui/controllers/classic_spell_selection_chrome.gd")
-const SpellEffectPreview := preload("res://src/ui/classic_spell_effect_preview.gd")
+const SPELL_EFFECT_PREVIEW_SCENE := preload("res://src/ui/classic_spell_effect_preview.tscn")
 const AppearanceEditorType := preload("res://src/ui/controllers/party_setup_appearance_editor.gd")
 
 var _assembly: RefCounted
@@ -461,7 +461,7 @@ func _build_creator_spells() -> void:
 	else:
 		spell_label = _add_label(detail, selected.name, GOLD, 18)
 		_add_label(detail, "Level %d  •  %d selection point%s" % [selected.level, selected.selection_cost, "" if selected.selection_cost == 1 else "s"], Color("e0e2e5"), 13)
-		var preview := SpellEffectPreview.new()
+		var preview := SPELL_EFFECT_PREVIEW_SCENE.instantiate() as ClassicSpellEffectPreview
 		if preview.present(media, selected.animation_resource_type, selected.animation_resource_ids):
 			detail.add_child(preview)
 		else:

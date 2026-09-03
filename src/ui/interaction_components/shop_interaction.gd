@@ -6,10 +6,10 @@ extends InteractionComponent
 const GOLD := Color("e5c45c")
 const CYAN := Color("8fcfd1")
 const MUTED := Color("aeb6ba")
-const CONTENT_ICON_SCRIPT := preload("res://src/ui/classic_content_icon.gd")
+const CONTENT_ICON_SCENE := preload("res://src/ui/classic_content_icon.tscn")
 const EXCHANGE_ITEM_BUTTON_SCENE := preload("res://src/ui/interaction_components/classic_exchange_item_button.tscn")
 const EXCHANGE_LEDGER_SCRIPT := preload("res://src/ui/interaction_components/classic_exchange_ledger.gd")
-const ITEM_DETAIL_POPOVER_SCRIPT := preload("res://src/ui/classic_item_detail_popover.gd")
+const ITEM_DETAIL_POPOVER_SCENE := preload("res://src/ui/classic_item_detail_popover.tscn")
 const CLASSIC_VISIBLE_ROWS := 9
 const COMPACT_VISIBLE_ROWS := 5
 const WIDE_LEDGER_ROW_HEIGHT := 34.0
@@ -82,7 +82,7 @@ func build(request: InteractionRequest) -> void:
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
 	custom_minimum_size = Vector2.ZERO
 	add_theme_constant_override("separation", 6)
-	_detail_popover = ITEM_DETAIL_POPOVER_SCRIPT.new()
+	_detail_popover = ITEM_DETAIL_POPOVER_SCENE.instantiate() as ClassicItemDetailPopover
 	add_child(_detail_popover)
 	_detail_popover.configure(_media, get_theme())
 	_build_header()
@@ -189,7 +189,7 @@ func _refresh_stock() -> void:
 	for entry: InteractionRequestValue.ShopStock in visible:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 5)
-		var icon := CONTENT_ICON_SCRIPT.new() as Control
+		var icon := CONTENT_ICON_SCENE.instantiate() as ClassicContentIcon
 		icon.name = "StockIcon_%s" % entry.stock_key.replace(":", "_").replace(".", "_")
 		icon.configure(entry.icon_resource_type, entry.icon_id, _media, _ledger_row_height(), entry.name)
 		row.add_child(icon)
@@ -647,7 +647,7 @@ func _apply_portrait_button_styles(button: Button) -> void:
 func _inventory_row(character: InteractionRequestValue.ServiceCharacter, item: InteractionRequestValue.InventoryItem, prefix: String) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 5)
-	var icon := CONTENT_ICON_SCRIPT.new() as Control
+	var icon := CONTENT_ICON_SCENE.instantiate() as ClassicContentIcon
 	icon.name = "%sIcon_%s" % [prefix, item.instance_id.replace(".", "_")]
 	icon.configure(item.icon_resource_type, item.icon_id, _media, _ledger_row_height(), item.name)
 	row.add_child(icon)

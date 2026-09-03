@@ -7,7 +7,7 @@ const GOLD := Color("e5c45c")
 const CYAN := Color("8fcfd1")
 const TEXT := Color("e0e2e5")
 const MUTED := Color("aeb6ba")
-const CONTENT_ICON_SCRIPT := preload("res://src/ui/classic_content_icon.gd")
+const ITEM_DETAIL_HEADER_SCENE := preload("res://src/ui/classic_item_detail_header.tscn")
 
 var modifier_active := false:
 	set(value):
@@ -22,21 +22,9 @@ var _content: VBoxContainer
 
 func configure(media: ClassicMediaCatalog, ui_theme: Theme = null) -> void:
 	_media = media
-	name = "ClassicItemDetailPopover"
-	layer = 90
-	_panel = PanelContainer.new()
-	_panel.name = "ClassicItemDetailPanel"
-	_panel.theme_type_variation = &"ClassicTextWell"
+	_panel = %ClassicItemDetailPanel
 	_panel.theme = ui_theme
-	_panel.custom_minimum_size = Vector2(360.0, 0.0)
-	_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_panel.visible = false
-	add_child(_panel)
-	_content = VBoxContainer.new()
-	_content.name = "ClassicItemDetailContent"
-	_content.add_theme_constant_override("separation", 4)
-	_content.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_panel.add_child(_content)
+	_content = %ClassicItemDetailContent
 	set_process(true)
 
 
@@ -86,18 +74,11 @@ func _render_detail() -> void:
 	for child: Node in _content.get_children():
 		_content.remove_child(child)
 		child.free()
-	var header := HBoxContainer.new()
-	header.add_theme_constant_override("separation", 8)
-	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var header := ITEM_DETAIL_HEADER_SCENE.instantiate() as HBoxContainer
 	_content.add_child(header)
-	var icon := CONTENT_ICON_SCRIPT.new() as Control
-	icon.name = "ClassicItemDetailIcon"
+	var icon := header.get_node("ClassicItemDetailIcon") as ClassicContentIcon
 	icon.configure(String(_hovered_detail.get("iconResourceType", "cicn")), int(_hovered_detail.get("iconId", 0)), _media, 48.0, String(_hovered_detail.get("title", "Item")))
-	header.add_child(icon)
-	var identity := VBoxContainer.new()
-	identity.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	identity.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	header.add_child(identity)
+	var identity := header.get_node("Identity") as VBoxContainer
 	var title := _label(String(_hovered_detail.get("title", "Item")), GOLD, &"ClassicHeading")
 	title.name = "ClassicItemDetailTitle"
 	identity.add_child(title)

@@ -16,10 +16,10 @@ const LEDGER_INK := Color("151512")
 const LEDGER_MUTED := Color("50575b")
 const LEDGER_BLUE := Color("2457bd")
 const LEDGER_RED := Color("ad2721")
-const CONTENT_ICON_SCRIPT := preload("res://src/ui/classic_content_icon.gd")
+const CONTENT_ICON_SCENE := preload("res://src/ui/classic_content_icon.tscn")
 const EXCHANGE_ITEM_BUTTON_SCENE := preload("res://src/ui/interaction_components/classic_exchange_item_button.tscn")
 const EXCHANGE_LEDGER_SCRIPT := preload("res://src/ui/interaction_components/classic_exchange_ledger.gd")
-const ITEM_DETAIL_POPOVER_SCRIPT := preload("res://src/ui/classic_item_detail_popover.gd")
+const ITEM_DETAIL_POPOVER_SCENE := preload("res://src/ui/classic_item_detail_popover.tscn")
 const ITEM_BROWSER_SCENE := preload("res://src/ui/screens/inventory_item_browser.tscn")
 const COMMAND_RAIL_SCENE := preload("res://src/ui/screens/inventory_command_rail.tscn")
 const ITEM_INSPECTOR_SCENE := preload("res://src/ui/screens/inventory_item_inspector.tscn")
@@ -156,7 +156,7 @@ func _present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog,
 
 
 func _create_detail_popover(parent: VBoxContainer, media: ClassicMediaCatalog) -> CanvasLayer:
-	var detail_popover := ITEM_DETAIL_POPOVER_SCRIPT.new() as CanvasLayer
+	var detail_popover := ITEM_DETAIL_POPOVER_SCENE.instantiate() as ClassicItemDetailPopover
 	detail_popover.name = "InventoryItemDetailPopover"
 	parent.add_child(detail_popover)
 	detail_popover.configure(media, parent.get_theme())
@@ -796,7 +796,7 @@ func _add_trade_action(parent: Container, item: ItemView) -> void:
 
 
 func _content_icon(resource_type: String, resource_id: int, media: ClassicMediaCatalog, side: float = 52.0, semantic_label: String = "") -> Control:
-	var icon := CONTENT_ICON_SCRIPT.new() as Control
+	var icon := CONTENT_ICON_SCENE.instantiate() as ClassicContentIcon
 	icon.configure(resource_type, resource_id, media, side, semantic_label)
 	return icon
 
