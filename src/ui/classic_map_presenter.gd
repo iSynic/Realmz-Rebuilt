@@ -25,7 +25,7 @@ const RetainedMapSurfaceScript := preload("res://src/ui/classic_retained_map_sur
 @export var cell_size: float = 32.0
 @export var map_origin: Vector2 = Vector2.ZERO
 @export var minimap_size: float = 94.0
-@export var show_debug_facts: bool = false
+@export var show_cell_topology_details: bool = false
 @export var show_travel_preview: bool = false
 @export var classic_exploration_visibility: bool = true
 
@@ -61,6 +61,7 @@ var _visible_cache_size: Vector2i = Vector2i.ZERO
 var _visible_cache_party_coordinate: Vector2i = Vector2i(-1, -1)
 var _surround_texture: Texture2D = load(SURROUND_TEXTURE_PATH) as Texture2D
 var _retained_surface: Control
+var _show_topology_markers: bool = false
 
 
 func _ready() -> void:
@@ -156,7 +157,7 @@ func set_classic_exploration_visibility(enabled: bool) -> void:
 
 
 func set_topology_debug_visible(enabled: bool) -> void:
-	show_debug_facts = enabled
+	_show_topology_markers = enabled
 	_present_retained_surface()
 	queue_redraw()
 
@@ -255,7 +256,7 @@ func _draw() -> void:
 	var action_point_rects: Array[Rect2] = []
 	for cell: MapCellView in _visible_cell_cache:
 		var rect := Rect2(draw_origin + Vector2(cell.coordinate - camera) * cell_size, Vector2.ONE * cell_size)
-		if show_debug_facts and cell.has_trigger:
+		if _show_topology_markers and cell.has_trigger:
 			action_point_rects.append(rect)
 		if los_cell_requires_blackout(los_blackout, cell.visible):
 			continue
@@ -266,13 +267,13 @@ func _draw() -> void:
 		_draw_cell(cell, rect, map_view.level_type, false, not cell.has_feature(&"unmapped") or dungeon_discovery.has(cell.coordinate), not cell.visible or outside_classic_view, map_view.darkness_level)
 		if map_view.level_type == &"land":
 			_draw_land_markers(cell, rect)
-		if show_debug_facts:
+		if show_cell_topology_details:
 			draw_rect(rect, Color(0.22, 0.25, 0.30), false, 1.0)
 			_draw_edges(cell, rect)
 			_draw_features(cell, rect)
 			var facts := "%s%s%s" % ["M" if cell.passable else "X", "L" if cell.blocks_los else "", "R" if cell.in_random_region else ""]
 			draw_string(font, rect.position + Vector2(7, 17), facts, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.78, 0.82, 0.88))
-	if show_debug_facts:
+	if _show_topology_markers:
 		_draw_random_region_outlines(map_view, draw_origin, camera, viewport_cells)
 		for rect: Rect2 in action_point_rects:
 			_draw_action_point_marker(rect)
@@ -327,7 +328,7 @@ func _present_retained_surface() -> void:
 	if _view == null or _view.map_view == null:
 		_retained_surface.visible = false
 		return
-	if show_debug_facts:
+	if _show_topology_markers or show_cell_topology_details:
 		_retained_surface.visible = false
 		_update_visible_cell_cache(_view.map_view)
 		return
