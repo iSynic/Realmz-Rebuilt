@@ -134,7 +134,8 @@ func use_spell_item(state: GameState, content: RealmzContent, caster_id: String,
 	var item := content.item_by_id(instance.definition_id)
 	var spell := content.spell_by_classic_id(item.special_2)
 	var authored_power := absi(item.special_1)
-	var power_level := state.combat.staged_random_item_power(caster_id, instance.id) if authored_power == 8 else authored_power; var summon_spell: bool = _flow()._is_summon_spell(spell)
+	var power_level := state.combat.staged_random_item_power(caster_id, instance.id) if authored_power == 8 else authored_power
+	var summon_spell: bool = _flow()._is_summon_spell(spell)
 	if authored_power == 8 and power_level == 0:
 		var stage_state_checkpoint := state.to_data()
 		var stage_rng_checkpoint := rng.checkpoint()
@@ -145,16 +146,39 @@ func use_spell_item(state: GameState, content: RealmzContent, caster_id: String,
 		return CombatFlowResult.succeeded([DomainEvent.new(&"combat_item_power_staged", {"actorId": caster.id, "instanceId": instance.id, "itemId": item.id, "spellId": spell.id, "power": power_level, "source": "classic-item"})])
 	if spell.target_type in [3, 4] and target_coordinate == INVALID_COORDINATE:
 		return CombatFlowResult.failed(&"item_area_target_required", "Choose a battlefield center for this area item.")
-	if summon_spell and target_coordinates.is_empty(): return CombatFlowResult.failed(&"summon_target_required", "Choose at least one open battlefield space for this summon item.")
-	if not summon_spell and spell.target_type == 0 and target_ids.is_empty(): return CombatFlowResult.failed(&"item_target_required", "Choose at least one actor for this repeated item spell.")
-	if (ClassicSpellCapabilityCatalog.is_combat_phase_spell(spell) or ClassicSpellCapabilityCatalog.is_application_transport_projectile_item_profile(spell)) and target_coordinate == INVALID_COORDINATE: return CombatFlowResult.failed(&"item_area_target_required", "Choose a battlefield destination for Phase.")
-	var state_checkpoint := state.to_data(); var rng_checkpoint := rng.checkpoint()
+	if summon_spell and target_coordinates.is_empty():
+		return CombatFlowResult.failed(&"summon_target_required", "Choose at least one open battlefield space for this summon item.")
+	if not summon_spell and spell.target_type == 0 and target_ids.is_empty():
+		return CombatFlowResult.failed(&"item_target_required", "Choose at least one actor for this repeated item spell.")
+	if (ClassicSpellCapabilityCatalog.is_combat_phase_spell(spell) or ClassicSpellCapabilityCatalog.is_application_transport_projectile_item_profile(spell)) and target_coordinate == INVALID_COORDINATE:
+		return CombatFlowResult.failed(&"item_area_target_required", "Choose a battlefield destination for Phase.")
+	var state_checkpoint := state.to_data()
+	var rng_checkpoint := rng.checkpoint()
 	if not _rules.inventory.use_charge(caster, instance.id, item):
 		return CombatFlowResult.failed(&"item_charge_commit_failed", "The validated item charge could not be committed.")
-	var cast_level := spell.classic_tier(); var result: CombatFlowResult
-	if not ClassicSpellCapabilityCatalog.is_combat_phase_spell(spell) and not ClassicSpellCapabilityCatalog.is_application_transport_projectile_item_profile(spell) and not summon_spell: _flow()._prepare_character_turn(state.combat, caster); state.combat.invalidate_undo()
-	if summon_spell: result = _flow()._cast_character_summon(state, content, caster, spell, power_level, rng, target_coordinates, "classic-item", false, false)
-	elif ClassicSpellCapabilityCatalog.is_combat_phase_spell(spell) or ClassicSpellCapabilityCatalog.is_application_transport_projectile_item_profile(spell): result = _flow()._cast_character_phase(state, content, caster, spell, power_level, cast_level, rng, target_coordinate, false, "classic-item", false)
+	var cast_level := spell.classic_tier()
+	if not ClassicSpellCapabilityCatalog.is_combat_phase_spell(spell) and not ClassicSpellCapabilityCatalog.is_application_transport_projectile_item_profile(spell) and not summon_spell:
+		_flow()._prepare_character_turn(state.combat, caster)
+		state.combat.invalidate_undo()
+	var result := _resolve_spell_item(state, content, caster, instance, item, spell, power_level, cast_level, rng, target_id, target_coordinate, rotation, target_ids, target_coordinates, summon_spell, state_checkpoint, rng_checkpoint)
+	if not result.ok:
+		return CombatFlowSpellRollbackType.item(state, rng, state_checkpoint, rng_checkpoint, result.error_code, result.error_message)
+	state.combat.clear_staged_random_item_power()
+	var events: Array[DomainEvent] = [_item_used_event(caster_id, instance_id, item, spell, power_level, caster)]
+	var native_sound_id := item.sound_id + 600
+	if item.sound_id != 0:
+		events.append(DomainEvent.new(&"sound_requested", {"soundId": absi(native_sound_id), "waitForCompletion": native_sound_id < 0, "source": "classic-item"}))
+	events.append_array(result.events)
+	result.events = events
+	return result
+
+
+func _resolve_spell_item(state: GameState, content: RealmzContent, caster: CharacterState, instance: ItemInstance, item: ItemDefinition, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, target_id: String, target_coordinate: Vector2i, rotation: int, target_ids: Array[String], target_coordinates: Array[Vector2i], summon_spell: bool, state_checkpoint: Dictionary, rng_checkpoint: Dictionary) -> CombatFlowResult:
+	var result: CombatFlowResult
+	if summon_spell:
+		result = _flow()._cast_character_summon(state, content, caster, spell, power_level, rng, target_coordinates, "classic-item", false, false)
+	elif ClassicSpellCapabilityCatalog.is_combat_phase_spell(spell) or ClassicSpellCapabilityCatalog.is_application_transport_projectile_item_profile(spell):
+		result = _flow()._cast_character_phase(state, content, caster, spell, power_level, cast_level, rng, target_coordinate, false, "classic-item", false)
 	elif spell.target_type in [3, 4]:
 		var shape := _rules.spell_areas.shape_for(spell, power_level, rotation)
 		var persistent_field: RefCounted = _flow()._queue_persistent_field(state.combat, caster.id, spell, power_level, cast_level, rng, target_coordinate, rotation, shape)
@@ -169,7 +193,7 @@ func use_spell_item(state: GameState, content: RealmzContent, caster_id: String,
 		var area := _rules.magic.resolve_character_area_projectile_item(caster, content.caste_by_id(caster.caste_id), item, area_targets.get("characters", []), area_targets.get("monsters", []), area_targets.get("definitions", []), spell, power_level, cast_level, rng) if ClassicSpellCapabilityCatalog.is_application_area_projectile_item_profile(spell) else _rules.magic.resolve_character_group_spell(caster, area_targets.get("characters", []), area_targets.get("monsters", []), area_targets.get("definitions", []), spell, power_level, cast_level, rng, true, false, PolymorphContextType.new(content, state.monster_set, state.difficulty, state.clock.day()))
 		if area == null or not area.cast:
 			return CombatFlowSpellRollbackType.item(state, rng, state_checkpoint, rng_checkpoint, &"item_spell_failed", "The area item spell could not be resolved.")
-		result = _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, area, rng, target_coordinate, shape, "classic-item", instance_id, false, [persistent_field])
+		result = _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, area, rng, target_coordinate, shape, "classic-item", instance.id, false, [persistent_field])
 	elif spell.target_type == 0:
 		var selections: Array[SpellTargetSelection] = []
 		for selected_id: String in target_ids:
@@ -181,14 +205,16 @@ func use_spell_item(state: GameState, content: RealmzContent, caster_id: String,
 		var repeated := _rules.magic.resolve_character_repeated_spell(caster, selections, spell, power_level, cast_level, rng, false, _flow()._repeated_field_callback(state, spell, caster.id, target_ids, power_level, cast_level, rng, repeated_fields), content.item_definitions())
 		if repeated == null or not repeated.cast:
 			return CombatFlowSpellRollbackType.item(state, rng, state_checkpoint, rng_checkpoint, &"item_spell_failed", "The repeated item spell could not be resolved.")
-		result = _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, repeated, rng, INVALID_COORDINATE, 0, "classic-item", instance_id, false, repeated_fields)
+		result = _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, repeated, rng, INVALID_COORDINATE, 0, "classic-item", instance.id, false, repeated_fields)
 	elif spell.target_type == 6:
 		var ray_selections := _ray_spell_selections(state, content, caster.id, target_id, spell)
 		var ray := _rules.magic.resolve_character_ray_spell(caster, ray_selections, spell, power_level, cast_level, rng, false)
 		if ray == null or not ray.cast:
 			return CombatFlowSpellRollbackType.item(state, rng, state_checkpoint, rng_checkpoint, &"item_spell_failed", "The item ray spell could not be resolved.")
-		result = _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, ray, rng, INVALID_COORDINATE, 0, "classic-item", instance_id, false)
-	elif spell.target_type == 7: var party := _rules.magic.resolve_character_group_spell(caster, [], [], [], spell, power_level, cast_level, rng, true, false); result = CombatFlowSpellRollbackType.item(state, rng, state_checkpoint, rng_checkpoint, &"item_spell_failed", "The party item spell could not be resolved.") if party == null or not party.cast else _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, party, rng, INVALID_COORDINATE, 0, "classic-item", instance_id, false)
+		result = _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, ray, rng, INVALID_COORDINATE, 0, "classic-item", instance.id, false)
+	elif spell.target_type == 7:
+		var party := _rules.magic.resolve_character_group_spell(caster, [], [], [], spell, power_level, cast_level, rng, true, false)
+		result = CombatFlowSpellRollbackType.item(state, rng, state_checkpoint, rng_checkpoint, &"item_spell_failed", "The party item spell could not be resolved.") if party == null or not party.cast else _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, party, rng, INVALID_COORDINATE, 0, "classic-item", instance.id, false)
 	elif spell.target_type in [9, 10, 12]:
 		var character_targets: Array[CharacterState] = []
 		var monster_targets: Array[MonsterState] = []
@@ -207,25 +233,18 @@ func use_spell_item(state: GameState, content: RealmzContent, caster_id: String,
 		var group := _rules.magic.resolve_character_group_spell(caster, character_targets, monster_targets, monster_definitions, spell, power_level, cast_level, rng, false, false, PolymorphContextType.new(content, state.monster_set, state.difficulty, state.clock.day()))
 		if group == null or not group.cast:
 			return CombatFlowSpellRollbackType.item(state, rng, state_checkpoint, rng_checkpoint, &"item_spell_failed", "The item spell could not be resolved.")
-		result = _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, group, rng, INVALID_COORDINATE, 0, "classic-item", instance_id, false)
+		result = _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, group, rng, INVALID_COORDINATE, 0, "classic-item", instance.id, false)
 	else:
-		var effective_target_id := caster_id if spell.target_type == 5 else target_id; var selection := _spell_target_selection(state, content, effective_target_id)
-		var field_center := state.combat.battlefield.actor_position(caster.id) if spell.target_type == 5 else INVALID_COORDINATE; var persistent_field: RefCounted = _flow()._queue_persistent_field(state.combat, caster.id, spell, power_level, cast_level, rng, field_center, 0, 1) if spell.target_type == 5 else _flow()._queue_single_actor_field(state, caster.id, effective_target_id, spell, power_level, cast_level, rng) if spell.target_type == 1 else null
+		var effective_target_id := caster.id if spell.target_type == 5 else target_id
+		var selection := _spell_target_selection(state, content, effective_target_id)
+		var field_center := state.combat.battlefield.actor_position(caster.id) if spell.target_type == 5 else INVALID_COORDINATE
+		var persistent_field: RefCounted = _flow()._queue_persistent_field(state.combat, caster.id, spell, power_level, cast_level, rng, field_center, 0, 1) if spell.target_type == 5 else _flow()._queue_single_actor_field(state, caster.id, effective_target_id, spell, power_level, cast_level, rng) if spell.target_type == 1 else null
 		if ClassicSpellCapabilityCatalog.is_combat_persistent_field_spell(spell) and persistent_field == null:
 			return CombatFlowSpellRollbackType.item(state, rng, state_checkpoint, rng_checkpoint, &"persistent_field_queue_failed", "The self-centered item field could not be queued.")
 		var targeted := _rules.magic.resolve_character_targeted_spell(caster, selection, spell, power_level, cast_level, rng, false, PolymorphContextType.new(content, state.monster_set, state.difficulty, state.clock.day()))
 		if targeted == null or not targeted.cast:
 			return CombatFlowSpellRollbackType.item(state, rng, state_checkpoint, rng_checkpoint, &"item_spell_failed", "The item spell could not be resolved.")
-		result = _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, targeted, rng, field_center, 1 if spell.target_type == 5 and persistent_field != null else 0, "classic-item", instance_id, false, [persistent_field] if persistent_field != null else [])
-	if not result.ok:
-		return CombatFlowSpellRollbackType.item(state, rng, state_checkpoint, rng_checkpoint, result.error_code, result.error_message)
-	state.combat.clear_staged_random_item_power()
-	var events: Array[DomainEvent] = [_item_used_event(caster_id, instance_id, item, spell, power_level, caster)]
-	var native_sound_id := item.sound_id + 600
-	if item.sound_id != 0:
-		events.append(DomainEvent.new(&"sound_requested", {"soundId": absi(native_sound_id), "waitForCompletion": native_sound_id < 0, "source": "classic-item"}))
-	events.append_array(result.events)
-	result.events = events
+		result = _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, targeted, rng, field_center, 1 if spell.target_type == 5 and persistent_field != null else 0, "classic-item", instance.id, false, [persistent_field] if persistent_field != null else [])
 	return result
 
 
