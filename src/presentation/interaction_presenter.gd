@@ -381,7 +381,7 @@ func _apply_classic_flash_layout() -> void:
 
 
 func has_blocking_request() -> bool:
-	return _request != null or _playback_masked
+	return _request != null or _playback_masked or _classic_flash_panel != null
 
 
 func handle_back_request() -> bool:

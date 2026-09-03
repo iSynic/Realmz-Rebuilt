@@ -731,6 +731,9 @@ func _move(direction: Vector2i, aligns_dungeon_heading: bool = false) -> Session
 	var movement := _content.world.probe_movement(_state.party.map_id, _state.party.coordinate, direction, _state.world, _state.party_in_boat)
 	if not movement.allowed and movement.reason == &"invalid_direction":
 		return SessionStep.failed(_view_revision, &"invalid_direction", "Movement requires a cardinal direction, or a diagonal direction on a land map.")
+	var fatigue_warning := ExplorationTimeWorkflow.movement_fatigue_warning(_workflow_context())
+	if fatigue_warning != null:
+		return _finish_completed([fatigue_warning])
 	var preceding_events: Array[DomainEvent] = []
 	if aligns_dungeon_heading:
 		var heading_result := ExplorationTimeWorkflow.align_dungeon_heading_for_overhead_move(_workflow_context(), direction)

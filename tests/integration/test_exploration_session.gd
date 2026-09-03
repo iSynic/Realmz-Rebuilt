@@ -14,12 +14,8 @@ func run() -> void:
 	if not loaded.is_ok():
 		return
 	var content := loaded.content
-	_test_map_view_projection_edges(content)
-	_test_field_heal(content)
-	_test_attempted_land_move_search(content)
-	_test_terrain_replacement_topology(content)
-	var session := GameSession.new()
-	assert_equal(session.start(content, 1).state, SessionStep.State.COMPLETED, "exploration session starts"); _begin_fixture_adventure(session, content)
+	_test_map_view_projection_edges(content); _test_field_heal(content); _test_movement_fatigue_gate(content); _test_attempted_land_move_search(content); _test_terrain_replacement_topology(content)
+	var session := GameSession.new(); assert_equal(session.start(content, 1).state, SessionStep.State.COMPLETED, "exploration session starts"); _begin_fixture_adventure(session, content)
 	assert_equal(session.view().party_coordinate, Vector2i(1, 1), "Providence start coordinate is authoritative"); assert_true(session.view().map_view.cells().size() == 625 and not session.view().map_view.random_region_bounds().is_empty(), "GameView exposes one complete bounded topology-derived window plus detached effective random-rectangle bounds at the north-west edge")
 	assert_true(session.view().map_view.can_move(Vector2i.UP), "the detached view exposes an authoritative passable movement direction"); assert_true(session.view().map_view.can_move(Vector2i.LEFT), "the detached view preserves the hidden land secret's underlying passability")
 	assert_equal(session.view().map_view.visited_coordinates(), [Vector2i(1, 1)], "the minimap receives only session-owned visited coordinates"); assert_equal(session.view().map_view.cell_at(Vector2i(2, 2)).overlay_asset_id, "fixture.special-land.neg-99", "the detached presentation view retains the validated special-land overlay identity")
@@ -54,9 +50,7 @@ func run() -> void:
 	for action_id: Variant in full_open_view.action_availability:
 		var action := StringName(action_id)
 		assert_equal([open_view.availability(action).enabled, open_view.availability(action).reason], [full_open_view.availability(action).enabled, full_open_view.availability(action).reason], "incremental and full projections agree on %s availability" % action)
-	_test_boat_movement(content)
-	_test_special_dungeon_bits(content)
-	_test_location_notes(content)
+	_test_boat_movement(content); _test_special_dungeon_bits(content); _test_location_notes(content)
 	var diagonal_session := GameSession.new(); assert_equal(diagonal_session.start(content, 1).state, SessionStep.State.COMPLETED, "a dedicated land-diagonal session starts")
 	_begin_fixture_adventure(diagonal_session, content)
 	assert_true(diagonal_session.view().map_view.can_move(Vector2i(-1, -1)), "land views expose source-backed diagonal movement availability")
@@ -463,6 +457,14 @@ func _test_field_heal(content: RealmzContent) -> void:
 	var warning := _event(blocked, &"classic_notification_requested")
 	assert_true(warning != null and warning.payload.get("text") == "Your characters can't cast spells in this area." and warning.payload.get("soundId") == 6000, "blocked field Heal requests Castle warning 113 as its compact sounded notification")
 	assert_equal([JSON.stringify(session._state.to_data()), session.rng_trace().size()], [blocked_before, blocked_rng_before], "blocked field Heal changes no health, spell points, clock, fatigue, RNG-owned state, or scenario state")
+
+
+func _test_movement_fatigue_gate(content: RealmzContent) -> void:
+	var land_content := _open_movement_content(content); var land := GameSession.new(); land.start(land_content, 1); _begin_fixture_adventure(land, land_content); land._state.party.fatigue = 135; var land_before := JSON.stringify(land._state.to_data()); var land_rng_before := land.rng_trace().size(); var blocked_land := land.submit_intent(PlayerIntent.move(Vector2i.RIGHT)); var land_warning := _event(blocked_land, &"classic_notification_requested")
+	assert_equal([blocked_land.state, land_warning.payload.get("text") if land_warning != null else "", land_warning.payload.get("soundId") if land_warning != null else 0, JSON.stringify(land._state.to_data()), land.rng_trace().size()], [SessionStep.State.COMPLETED, "You are too tired to continue.  You need to rest.", 6000, land_before, land_rng_before], "fatigue 135 blocks ordinary land movement with Castle warning 54 without changing position, time, RNG, camp, wealth, or scenario state")
+	land._state.camping_allowed = false; var escaped_land := land.submit_intent(PlayerIntent.move(Vector2i.RIGHT)); assert_equal([escaped_land.state, land.view().party_coordinate], [SessionStep.State.COMPLETED, Vector2i(2, 1)], "Castle's exhausted-land escape hatch still permits travel where the scenario disabled camping so the party cannot be soft-locked")
+	var dungeon_source := GameSession.new(); dungeon_source.start(content, 1); _begin_fixture_adventure(dungeon_source, content); var dungeon_save := dungeon_source.snapshot(); dungeon_save.game_state.party.map_id = "dungeon:0"; dungeon_save.game_state.party.coordinate = Vector2i(2, 0); dungeon_save.game_state.party.fatigue = 135; dungeon_save.game_state.dungeon_heading = 4; var dungeon := GameSession.new(); assert_equal(dungeon.restore(content, dungeon_save).state, SessionStep.State.COMPLETED, "the exhausted dungeon fixture restores transactionally"); var dungeon_before := JSON.stringify(dungeon._state.to_data()); var dungeon_rng_before := dungeon.rng_trace().size(); var blocked_dungeon := dungeon.submit_intent(PlayerIntent.overhead_dungeon_move(Vector2i.UP)); var dungeon_warning := _event(blocked_dungeon, &"classic_notification_requested")
+	assert_equal([blocked_dungeon.state, dungeon_warning.payload.get("text") if dungeon_warning != null else "", dungeon.view().party_coordinate, dungeon.view().map_view.dungeon_heading, JSON.stringify(dungeon._state.to_data()), dungeon.rng_trace().size()], [SessionStep.State.COMPLETED, "You are too tired to continue.  You need to rest.", Vector2i(2, 0), 4, dungeon_before, dungeon_rng_before], "full fatigue blocks dungeon movement before overhead heading alignment and changes no location, heading, clock, RNG, or scenario state")
 
 
 func _test_terrain_replacement_topology(content: RealmzContent) -> void:

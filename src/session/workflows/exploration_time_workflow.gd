@@ -295,6 +295,21 @@ static func turn_dungeon(context: SessionWorkflowContext, delta: int) -> Session
 	return SessionWorkflowResult.completed([DomainEvent.new(&"dungeon_heading_changed", {"heading": context.state.dungeon_heading, "delta": delta, "source": "classic"})])
 
 
+static func movement_fatigue_warning(context: SessionWorkflowContext) -> DomainEvent:
+	var map := context.content.world.map_by_id(context.state.party.map_id)
+	if context.state.party.fatigue <= 134 or map == null:
+		return null
+	# Castle permits exhausted land travel only when camping was disabled by the
+	# scenario, preventing a party from becoming trapped without a way to rest.
+	if map.level_type == &"land" and not context.state.camping_allowed:
+		return null
+	return DomainEvent.new(&"classic_notification_requested", {
+		"text": "You are too tired to continue.  You need to rest.",
+		"soundId": 6000,
+		"source": "classic-movement-fatigue",
+	})
+
+
 static func align_dungeon_heading_for_overhead_move(context: SessionWorkflowContext, direction: Vector2i) -> SessionWorkflowResult:
 	var map := context.content.world.map_by_id(context.state.party.map_id)
 	if map == null:
