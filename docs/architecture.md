@@ -10,7 +10,7 @@ flowchart LR
     Loader --> Session["Deterministic GameSession"]
     Intent["Typed player intent"] --> Session
     Session --> Step["Events + interaction + revision"]
-    Step --> Godot["Godot presentation"]
+    Step --> Godot["Godot UI"]
     Godot --> Response["Typed interaction response"]
     Response --> Session
     VM["Scenario VM"] <--> API["Session RealmzRuntimeApi"]
@@ -32,7 +32,7 @@ flowchart LR
 
 The host materializes one detached `GameView` for a committed session revision and shares it across input gating and presenters. A map view contains the party-local 25×25 render projection, complete visited coordinates for the minimap, and cardinal movement results from topology; it does not rebuild all 8,100 cells of a Classic map for every key event.
 
-`src/presentation` reads `GameView` and ordered domain events, renders disposable caches, and sends typed intents/responses. Animation never controls simulation timing.
+`src/ui` owns Godot scenes and controls. It reads `GameView` and ordered domain events, renders disposable caches, and sends typed intents/responses. Animation never controls simulation timing.
 
 ## Session boundary
 

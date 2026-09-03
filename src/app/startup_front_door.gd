@@ -3,15 +3,15 @@ extends Control
 
 signal application_loaded(elapsed_ms: float)
 
-const APPLICATION_SCENE_PATH := "res://src/presentation/realmz_application.tscn"
+const APPLICATION_SCENE_PATH := "res://src/ui/realmz_application.tscn"
 const APPLICATION_SCRIPT_PATH := "res://src/app/realmz_application.gd"
-const CAMPAIGN_LIBRARY_CONTROLLER_PATH := "res://src/presentation/controllers/campaign_library_controller.gd"
+const CAMPAIGN_LIBRARY_CONTROLLER_PATH := "res://src/ui/controllers/campaign_library_controller.gd"
 const SETTINGS_REPOSITORY_PATH := "res://src/storage/settings/settings_repository.gd"
-const CLASSIC_TYPOGRAPHY_PATH := "res://src/presentation/classic_typography.gd"
-const UI_LAYOUT_PROFILE_PATH := "res://src/presentation/ui_layout_profile.gd"
+const CLASSIC_TYPOGRAPHY_PATH := "res://src/ui/classic_typography.gd"
+const UI_LAYOUT_PROFILE_PATH := "res://src/ui/ui_layout_profile.gd"
 const PRESENTATION_SETTINGS_PATH := "res://src/game/host/presentation_settings.gd"
-const BASE_THEME_PATH := "res://src/presentation/classic_ui_theme.tres"
-const STONE_TEXTURE_PATH := "res://src/presentation/assets/ui/classic-charcoal-slate-tile.png"
+const BASE_THEME_PATH := "res://src/ui/classic_ui_theme.tres"
+const STONE_TEXTURE_PATH := "res://src/ui/assets/ui/classic-charcoal-slate-tile.png"
 
 const SPLASH_HOLD_SECONDS: float = 3.0
 const EXIT_CUE_SECONDS: float = 1.513

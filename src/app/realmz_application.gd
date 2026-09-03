@@ -2,15 +2,15 @@ class_name RealmzApplication
 extends Control
 
 const GameSessionControllerScript := preload("res://src/app/game_session_controller.gd")
-const PresentationCoordinatorScript := preload("res://src/presentation/presentation_coordinator.gd")
+const PresentationCoordinatorScript := preload("res://src/ui/presentation_coordinator.gd")
 const PackageHostControllerScript := preload("res://src/app/controllers/package_host_controller.gd")
 const SaveHostControllerScript := preload("res://src/app/controllers/save_host_controller.gd")
 const CharacterVaultControllerScript := preload("res://src/app/controllers/character_vault_controller.gd")
 const CharacterCreationHostControllerScript := preload("res://src/app/controllers/character_creation_host_controller.gd")
 const SettingsRepositoryScript := preload("res://src/storage/settings/settings_repository.gd")
-const DungeonMap3DPresenterScript := preload("res://src/presentation/dungeon_map_3d_presenter.gd")
+const DungeonMap3DPresenterScript := preload("res://src/ui/dungeon_map_3d_presenter.gd")
 const ApplicationLifecycleScript := preload("res://src/app/application_lifecycle.gd")
-const HeldMovementControllerScript := preload("res://src/presentation/held_movement_controller.gd")
+const HeldMovementControllerScript := preload("res://src/ui/held_movement_controller.gd")
 const DebugToolsHostScript := preload("res://src/app/debug_tools_host.gd")
 const CLASSIC_CHARACTER_LIBRARY_PATH := "res://src/storage/characters/realmz-classic-character-library.realmz2"
 const CLASSIC_CHARACTER_LIBRARY_ID := "realmz-classic-character-library"
@@ -1093,7 +1093,7 @@ func _apply_window_mode(value: String) -> void:
 
 
 func _apply_application_theme() -> void:
-	var base_theme := load("res://src/presentation/classic_ui_theme.tres") as Theme
+	var base_theme := load("res://src/ui/classic_ui_theme.tres") as Theme
 	theme = ClassicTypography.themed_copy(base_theme, _presentation_settings)
 
 

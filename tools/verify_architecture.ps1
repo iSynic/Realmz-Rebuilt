@@ -137,7 +137,7 @@ function Get-SourceLayer {
     if ($normalized -match '^src/game(?:/|$)') { return 'game' }
     if ($normalized -match '^src/scenarios(?:/|$)') { return 'scenarios' }
     if ($normalized -match '^src/storage(?:/|$)') { return 'storage' }
-    if ($normalized -match '^src/presentation(?:/|$)') { return 'ui' }
+    if ($normalized -match '^src/ui(?:/|$)') { return 'ui' }
     if ($normalized -match '^src/app(?:/|$)') { return 'app' }
     if ($normalized -match '^src/playthrough(?:/|$)') { return 'playthrough' }
     return $null
@@ -291,7 +291,7 @@ $dependencyRoots = @(
     (Join-Path $repoRoot "src\scenarios"),
     (Join-Path $repoRoot "src\playthrough"),
     (Join-Path $repoRoot "src\storage"),
-    (Join-Path $repoRoot "src\presentation"),
+    (Join-Path $repoRoot "src\ui"),
     (Join-Path $repoRoot "src\app")
 )
 $classNameSymbols = Get-ClassNameSymbolTable -RootPath $repoRoot
@@ -346,10 +346,10 @@ if (Test-Path -LiteralPath $coordinatorContextPath) {
 # creation may share explicit setup state, but they may not inherit behavior
 # from one another or turn the public facade back into the old behavior chain.
 $partySetupControllerPaths = @(
-    "src\presentation\controllers\party_setup_inspection_controller.gd",
-    "src\presentation\controllers\party_setup_assembly_controller.gd",
-    "src\presentation\controllers\party_setup_character_creation_controller.gd",
-    "src\presentation\controllers\campaign_party_setup_controller.gd"
+    "src\ui\controllers\party_setup_inspection_controller.gd",
+    "src\ui\controllers\party_setup_assembly_controller.gd",
+    "src\ui\controllers\party_setup_character_creation_controller.gd",
+    "src\ui\controllers\campaign_party_setup_controller.gd"
 )
 foreach ($relativePath in $partySetupControllerPaths) {
     $path = Join-Path $repoRoot $relativePath
@@ -357,7 +357,7 @@ foreach ($relativePath in $partySetupControllerPaths) {
         continue
     }
     $content = [IO.File]::ReadAllText($path)
-    if ($content -match 'extends\s+"res://src/presentation/controllers/(?:campaign_party_setup_state|party_setup_inspection_controller|party_setup_assembly_controller|party_setup_character_creation_controller)\.gd"') {
+    if ($content -match 'extends\s+"res://src/ui/controllers/(?:campaign_party_setup_state|party_setup_inspection_controller|party_setup_assembly_controller|party_setup_character_creation_controller)\.gd"') {
         $violations += "$($relativePath -replace '\\','/') party setup controllers must compose responsibility collaborators instead of inheriting their behavior"
     }
 }
@@ -431,7 +431,7 @@ if (Test-Path -LiteralPath $preparedPackagePath) {
     }
 }
 
-$classicRouterPath = Join-Path $repoRoot "src\presentation\classic_screen_router.gd"
+$classicRouterPath = Join-Path $repoRoot "src\ui\classic_screen_router.gd"
 if (Test-Path -LiteralPath $classicRouterPath) {
     $routerLines = Get-SanitizedGdscriptLines -Content ([IO.File]::ReadAllText($classicRouterPath))
     $routeControllerPattern = '\b(?:Character|Inventory|Services|MapsJournal|Spells|System)WorkspaceController\b'
@@ -439,23 +439,23 @@ if (Test-Path -LiteralPath $classicRouterPath) {
         $code = $routerLines[$index]
         $lineNumber = $index + 1
         if ($code -match $routeControllerPattern) {
-            $violations += "src/presentation/classic_screen_router.gd:$lineNumber ClassicScreenRouter must not construct or call route-domain workspace controllers"
+            $violations += "src/ui/classic_screen_router.gd:$lineNumber ClassicScreenRouter must not construct or call route-domain workspace controllers"
         }
         if ($code -match '^\s*func\s+_render_(?:characters|vault|inventory|spells|services|journal|system)\s*\(') {
-            $violations += "src/presentation/classic_screen_router.gd:$lineNumber ClassicScreenRouter must not render route-domain content"
+            $violations += "src/ui/classic_screen_router.gd:$lineNumber ClassicScreenRouter must not render route-domain content"
         }
         if ($code -match '\bsetup_controller\.attach\s*\(\s*self\s*\)') {
-            $violations += "src/presentation/classic_screen_router.gd:$lineNumber setup overlays must attach to the shell-owned OverlayHost, not the router"
+            $violations += "src/ui/classic_screen_router.gd:$lineNumber setup overlays must attach to the shell-owned OverlayHost, not the router"
         }
     }
 }
 
-$classicShellScenePath = Join-Path $repoRoot "src\presentation\classic_application_shell.tscn"
+$classicShellScenePath = Join-Path $repoRoot "src\ui\classic_application_shell.tscn"
 if (Test-Path -LiteralPath $classicShellScenePath) {
     $classicShellScene = [IO.File]::ReadAllText($classicShellScenePath)
     foreach ($requiredHost in @('WorkspaceHost', 'OverlayHost')) {
         if ($classicShellScene -notmatch ('\[node\s+name="' + [regex]::Escape($requiredHost) + '"\s+type="Control"\s+parent="ScreenRouter"\]')) {
-            $violations += "src/presentation/classic_application_shell.tscn must provide ScreenRouter/$requiredHost as an explicit scene-owned presentation host"
+            $violations += "src/ui/classic_application_shell.tscn must provide ScreenRouter/$requiredHost as an explicit scene-owned presentation host"
         }
     }
 }
@@ -463,7 +463,7 @@ if (Test-Path -LiteralPath $classicShellScenePath) {
 # Typed request bodies may become dictionaries only at their wire serializer or
 # when a detached domain event is deliberately published. Live game, scenario,
 # and presentation behavior must consume the typed request variants directly.
-$protocolRoots = @("src\game", "src\scenarios", "src\presentation")
+$protocolRoots = @("src\game", "src\scenarios", "src\ui")
 foreach ($protocolRoot in $protocolRoots) {
     $rootPath = Join-Path $repoRoot $protocolRoot
     foreach ($file in Get-ChildItem $rootPath -Recurse -Filter "*.gd" -ErrorAction SilentlyContinue) {
@@ -498,7 +498,7 @@ $retiredLiveProtocolPatterns = @(
     @{ Pattern = '\bcommitted_payload\s*\('; Reason = "combat targeting commits a typed CombatBody" },
     @{ Pattern = '\bselection_data\s*\('; Reason = "combat targeting state must remain typed" }
 )
-foreach ($protocolRoot in @("src\presentation", "src\app")) {
+foreach ($protocolRoot in @("src\ui", "src\app")) {
     $rootPath = Join-Path $repoRoot $protocolRoot
     foreach ($file in Get-ChildItem $rootPath -Recurse -Filter "*.gd" -ErrorAction SilentlyContinue) {
         $relativePath = Get-RepositoryRelativePath -RootPath $repoRoot -TargetPath $file.FullName

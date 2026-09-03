@@ -2,7 +2,7 @@ extends "res://tests/presentation/classic_ui_test_support.gd"
 
 const PackageOperationStatusScript := preload("res://src/app/package_operation_view.gd")
 const ApplicationLifecycleScript := preload("res://src/app/application_lifecycle.gd")
-const InteractionLayoutPolicyScript := preload("res://src/presentation/interaction_layout_policy.gd")
+const InteractionLayoutPolicyScript := preload("res://src/ui/interaction_layout_policy.gd")
 
 
 func run() -> void:
@@ -30,7 +30,7 @@ func _test_classic_click_modal() -> void:
 	var parent := Control.new()
 	parent.size = Vector2(1280.0, 720.0)
 	(Engine.get_main_loop() as SceneTree).root.add_child(parent)
-	var presenter := load("res://src/presentation/interaction_presenter.tscn").instantiate() as InteractionPresenter
+	var presenter := load("res://src/ui/interaction_presenter.tscn").instantiate() as InteractionPresenter
 	parent.add_child(presenter)
 	await (Engine.get_main_loop() as SceneTree).process_frame
 	var stage_rect := Rect2(0.0, 28.0, 992.0, 502.0)

@@ -1,7 +1,7 @@
 class_name DebugToolsHost
 extends Node
 
-const DebugActionConsoleScript := preload("res://src/presentation/debug_action_console.gd")
+const DebugActionConsoleScript := preload("res://src/ui/debug_action_console.gd")
 
 signal status_changed(message: String, failed: bool)
 signal topology_debug_changed(enabled: bool)

@@ -1,6 +1,6 @@
 extends RealmzTestCase
 
-const Controller := preload("res://src/presentation/controllers/creature_library_workspace_controller.gd")
+const Controller := preload("res://src/ui/controllers/creature_library_workspace_controller.gd")
 
 
 func run() -> void:

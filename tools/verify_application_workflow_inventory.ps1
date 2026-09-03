@@ -583,7 +583,7 @@ $mappedInteractions = @($inventory.boundaryCoverage.interactions | ForEach-Objec
 Assert-Condition ((($expectedInteractions | Sort-Object) -join '|') -eq (($mappedInteractions | Sort-Object) -join '|')) "Interaction coverage differs from InteractionRequest constants."
 foreach ($record in $inventory.boundaryCoverage.interactions) { Assert-WorkflowLinks $record "interaction $($record.id)"; Assert-SourceReference $record.evidence "interaction $($record.id) evidence" $repoRoot }
 
-$expectedRoutes = Get-UiRoutes (Join-Path $repoRoot "src\presentation\ui_route_catalog.gd")
+$expectedRoutes = Get-UiRoutes (Join-Path $repoRoot "src\ui\ui_route_catalog.gd")
 $mappedRoutes = @($inventory.boundaryCoverage.routes | ForEach-Object { [string]$_.id })
 Assert-Condition ((($expectedRoutes | Sort-Object) -join '|') -eq (($mappedRoutes | Sort-Object) -join '|')) "UI route coverage differs from UiRouteCatalog."
 foreach ($record in $inventory.boundaryCoverage.routes) { Assert-WorkflowLinks $record "route $($record.id)"; Assert-SourceReference $record.evidence "route $($record.id) evidence" $repoRoot }
