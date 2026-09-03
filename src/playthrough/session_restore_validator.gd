@@ -1,6 +1,8 @@
 class_name SessionRestoreValidator
 extends RefCounted
 
+## Rebuilds and validates a saved playthrough before it can replace the live one.
+
 const ClassicPickLockRulesScript := preload("res://src/game/rules/classic_pick_lock_rules.gd")
 
 static func validate(content: RealmzContent, snapshot: SessionSnapshot) -> SessionRestoreResult:
@@ -265,144 +267,184 @@ static func _valid_session_continuation(content: RealmzContent, state: GameState
 		&"boat-choice":
 			return _valid_boat_continuation(content, state, continuation, vm_interaction, session_interaction)
 		&"application-hook":
-			var application := continuation.application()
-			if application == null or vm_interaction == null or session_interaction != null or application.program_id.is_empty():
-				return false
-			if content.scenario.application_hook_program_id(application.hook) != application.program_id or content.scenario.program_by_id(application.program_id) == null:
-				return false
-			match application.resume_kind:
-				&"begin-adventure":
-					return application.hook == ScenarioApplicationHooks.START_GAME and application.service_id.is_empty() and state.party_setup_completed and not state.party.characters().is_empty()
-				&"service":
-					return application.hook in [ScenarioApplicationHooks.SHOP, ScenarioApplicationHooks.TEMPLE] and not application.service_id.is_empty() and ((application.service_id == state.active_shop_id and content.shop_by_id(application.service_id) != null) or (application.service_id == "realmz.service.temple" and state.temple_available))
-				&"end-adventure":
-					return application.hook == ScenarioApplicationHooks.END_ADVENTURE and application.service_id.is_empty()
-				&"end-adventure-close":
-					return application.hook == ScenarioApplicationHooks.PARTY_DEATH and application.service_id.is_empty()
-				&"party-defeat":
-					return application.hook == ScenarioApplicationHooks.PARTY_DEATH and application.service_id.is_empty() and state.combat != null and state.combat.completed and state.combat.outcome == &"defeat"
-				&"scenario-party-defeat":
-					if application.hook != ScenarioApplicationHooks.PARTY_DEATH or not application.service_id.is_empty() or application.suspended_owner == null:
-						return false
-					var saved := application.suspended_vm
-					return ScenarioVm.handoff_is_valid(application.vm_handoff, saved) and RealmzRuntimeApi.party_defeat_handoff_is_valid(content, state, application.vm_handoff.runtime) and suspended_scenario_owner_is_valid(content, state, application.suspended_owner, saved)
-			return false
+			return _valid_application_continuation(content, state, continuation, vm_interaction, session_interaction)
 		&"pooled-wealth-departure":
-			var service := continuation.service()
-			if service == null or vm_interaction != null or session_interaction == null or state.party == null or state.bank_available:
-				return false
-			var departure_probe := content.world.probe_movement(state.party.map_id, state.party.coordinate, service.direction, state.world, state.party_in_boat)
-			if not departure_probe.allowed and departure_probe.reason == &"invalid_direction":
-				return false
-			if service.stage == &"warning":
-				return SessionInteractionFactory.has_pooled_wealth(state.party) and session_interaction.to_data() == SessionInteractionFactory.pooled_wealth_departure_warning(session_interaction.request_id).to_data()
-			if service.stage == &"distribution":
-				var bank_body := session_interaction.body as InteractionRequest.BankRequestBody
-				return session_interaction.kind == InteractionRequest.POOLED_WEALTH_DEPARTURE and bank_body != null and bank_body.mode == &"departure" and state.party.character_by_id(bank_body.selected_character_id) != null and session_interaction.to_data() == SessionInteractionFactory.pooled_wealth_departure_distribution(state, session_interaction.request_id, bank_body.selected_character_id).to_data()
-			return false
+			return _valid_pooled_wealth_continuation(content, state, continuation, vm_interaction, session_interaction)
 		&"service-interaction":
-			var service := continuation.service()
-			if service == null or vm_interaction != null or session_interaction == null:
-				return false
-			var runtime := service.runtime_continuation
-			if runtime == null:
-				return false
-			var runtime_body := runtime.body as ScenarioRuntimeContinuation.ServiceBody
-			var selected_temple_character := "" if runtime_body == null else runtime_body.selected_character_id
-			match runtime.kind:
-				&"classic-shop":
-					return service.service_id == state.active_shop_id and not service.service_id.is_empty() and content.shop_by_id(service.service_id) != null and session_interaction.kind == InteractionRequest.SHOP
-				&"classic-temple":
-					var temple_body := session_interaction.body as InteractionRequest.TempleRequestBody
-					return runtime_body != null and service.service_id == "realmz.service.temple" and state.temple_available and runtime_body.cost_percent == state.temple_cost_percent and runtime_body.bank_available == state.bank_available and state.party.character_by_id(selected_temple_character) != null and session_interaction.kind == InteractionRequest.TEMPLE and temple_body != null and temple_body.selected_character_id == selected_temple_character
-				&"classic-temple-exit":
-					return runtime_body != null and service.service_id == "realmz.service.temple" and state.temple_available and not state.bank_available and runtime_body.cost_percent == state.temple_cost_percent and not runtime_body.bank_available and state.party.character_by_id(selected_temple_character) != null and session_interaction.kind == InteractionRequest.YES_NO
-				&"classic-banking":
-					return service.service_id == "realmz.service.bank" and state.bank_available and session_interaction.kind == InteractionRequest.BANK
-			return false
+			return _valid_service_continuation(content, state, continuation, vm_interaction, session_interaction)
 		&"drop-item-confirmation", &"item-use-target-selection", &"field-spell-target-selection", &"scroll-target-selection", &"scroll-discard-confirmation":
 			return _valid_targeting_continuation(content, state, continuation, vm_interaction, session_interaction)
 		&"item-xap":
 			return _valid_item_xap_continuation(content, state, continuation, vm_interaction, session_interaction)
 		&"character-spell-confirmation":
-			var application := continuation.application()
-			if application == null or vm_interaction != null or session_interaction == null or state.party_setup_completed or state.character_draft == null or state.character_draft.generated_character == null:
-				return false
-			var character := state.character_draft.generated_character
-			if application.character_id != character.id or application.remaining < 1:
-				return false
-			var rules := RealmzRules.new()
-			var spent := 0
-			for spell_id: String in character.known_spells():
-				spent += rules.characters.spell_selection_cost(content.spell_by_id(spell_id))
-			var remaining := maxi(0, rules.characters.spell_selection_total(character, content.caste_by_id(character.caste_id)) - spent)
-			return remaining == application.remaining and session_interaction.to_data() == SessionInteractionFactory.character_spell_confirmation(session_interaction.request_id, remaining).to_data()
+			return _valid_character_spell_continuation(content, state, continuation, vm_interaction, session_interaction)
 		&"character-vault-publication":
-			var application := continuation.application()
-			if application == null or vm_interaction != null or session_interaction == null or state.party_setup_completed:
-				return false
-			var character := state.party.character_by_id(application.character_id)
-			return character != null and session_interaction.to_data() == SessionInteractionFactory.character_vault_confirmation(session_interaction.request_id, character.name).to_data()
+			return _valid_character_vault_continuation(state, continuation, vm_interaction, session_interaction)
 		&"combat-retreat-confirmation":
 			return _valid_combat_retreat(continuation, state, vm_interaction, session_interaction)
 		&"combat-friendly-collision":
 			return _valid_friendly_collision(continuation, state, vm_interaction, session_interaction)
 		&"age-updates":
-			var age := continuation.age()
-			if age == null or vm_interaction != null or session_interaction == null or session_interaction.kind != InteractionRequest.AGE_UPDATE or age.updates.is_empty() or age.index < 1 or age.index > age.updates.size():
-				return false
-			for update: InteractionRequest.AgeUpdateBody in age.updates:
-				if not _valid_age_update_payload(state, update):
-					return false
-			var current_update: InteractionRequest.AgeUpdateBody = age.updates[age.index - 1]
-			var expected_age_request := InteractionRequest.age_update_body("validation.age-update", current_update)
-			var actual_age_body := session_interaction.body as InteractionRequest.AgeUpdateBody
-			var expected_age_body: InteractionRequest.AgeUpdateBody = null if expected_age_request == null else expected_age_request.body as InteractionRequest.AgeUpdateBody
-			if actual_age_body == null or not actual_age_body.same_values(expected_age_body):
-				return false
-			if age.resume_kind == &"completed":
-				return age.resume_continuation == null
-			if age.resume_kind == &"combat-monster-turns":
-				return age.resume_continuation == null and state.combat != null and not state.combat.completed and state.combat.pending_monster_attack != null
-			if age.resume_kind == &"post-clock":
-				return _valid_post_time_continuation(content, state, age.resume_continuation, vm_interaction, null)
-			return age.resume_kind == &"post-move" and _valid_ready_post_move_continuation(content, state, age.resume_continuation)
+			return _valid_age_continuation(content, state, continuation, vm_interaction, session_interaction)
 		&"combat-death-macro":
-			var combat := continuation.combat()
-			if combat == null or session_interaction != null or vm_interaction == null or state.combat == null or state.combat.battle_id != combat.battle_id:
-				return false
-			var death_monster := state.combat.monster_by_id(combat.combatant_id)
-			if death_monster == null or content.scenario.program_by_id(combat.program_id) == null:
-				return false
-			var queued_id := state.combat.pending_spell_death_macro_id()
-			if not queued_id.is_empty():
-				var definition := content.monster_by_id(death_monster.definition_id)
-				return queued_id == combat.combatant_id and not combat.reset_traitor_on_complete and definition != null and combat.program_id == "xap:%d" % definition.death_macro
-			return combat.reset_traitor_on_complete
+			return _valid_combat_death_continuation(content, state, continuation, vm_interaction, session_interaction)
 		&"combat-ally-selection":
-			var combat := continuation.combat()
-			return combat != null and vm_interaction == null and session_interaction != null and session_interaction.kind == &"ally_selection" and state.combat != null and state.combat.completed and state.combat.battle_id == combat.battle_id
+			return _valid_combat_ally_continuation(state, continuation, vm_interaction, session_interaction)
 		&"combat-fumble-recovery":
-			var combat := continuation.combat()
-			if combat == null or vm_interaction != null or session_interaction == null or session_interaction.kind != InteractionRequest.TREASURE_DISTRIBUTION or state.combat == null or not state.combat.completed or state.combat.battle_id != combat.battle_id or state.combat.fumbled_items().is_empty():
-				return false
-			var expected_fumble_request := InteractionRequest.from_payload("validation.fumble-recovery", InteractionRequest.TREASURE_DISTRIBUTION, RealmzRules.new().combat_flow.fumble_recovery_payload(state, content))
-			var actual_fumble_body := session_interaction.body as InteractionRequest.TreasureRequestBody
-			var expected_fumble_body: InteractionRequest.TreasureRequestBody = null if expected_fumble_request == null else expected_fumble_request.body as InteractionRequest.TreasureRequestBody
-			return actual_fumble_body != null and actual_fumble_body.same_fumble_values(expected_fumble_body)
+			return _valid_combat_fumble_continuation(content, state, continuation, vm_interaction, session_interaction)
 		&"combat-reward":
-			var reward_body := continuation.reward()
-			if reward_body == null or vm_interaction != null:
-				return false
-			var runtime := reward_body.runtime_continuation
-			var runtime_body := runtime.body as ScenarioRuntimeContinuation.RewardBody if runtime != null and runtime.kind == ScenarioRuntimeContinuation.CLASSIC_REWARD else null
-			var reward := runtime_body.state if runtime_body != null else null
-			return reward != null and reward.origin == &"battle" and reward.source_id == reward_body.battle_id and _valid_reward_continuation(content, state, reward, session_interaction)
+			return _valid_combat_reward_continuation(content, state, continuation, vm_interaction, session_interaction)
 		&"post-clock":
 			return _valid_post_time_continuation(content, state, continuation, vm_interaction, session_interaction)
 		&"post-move":
 			return _valid_post_move_continuation(content, state, continuation, vm_interaction, session_interaction)
 	return false
+
+
+static func _valid_application_continuation(content: RealmzContent, state: GameState, continuation: SessionContinuation, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
+	var application := continuation.application()
+	if application == null or vm_interaction == null or session_interaction != null or application.program_id.is_empty():
+		return false
+	if content.scenario.application_hook_program_id(application.hook) != application.program_id or content.scenario.program_by_id(application.program_id) == null:
+		return false
+	match application.resume_kind:
+		&"begin-adventure":
+			return application.hook == ScenarioApplicationHooks.START_GAME and application.service_id.is_empty() and state.party_setup_completed and not state.party.characters().is_empty()
+		&"service":
+			return application.hook in [ScenarioApplicationHooks.SHOP, ScenarioApplicationHooks.TEMPLE] and not application.service_id.is_empty() and ((application.service_id == state.active_shop_id and content.shop_by_id(application.service_id) != null) or (application.service_id == "realmz.service.temple" and state.temple_available))
+		&"end-adventure":
+			return application.hook == ScenarioApplicationHooks.END_ADVENTURE and application.service_id.is_empty()
+		&"end-adventure-close":
+			return application.hook == ScenarioApplicationHooks.PARTY_DEATH and application.service_id.is_empty()
+		&"party-defeat":
+			return application.hook == ScenarioApplicationHooks.PARTY_DEATH and application.service_id.is_empty() and state.combat != null and state.combat.completed and state.combat.outcome == &"defeat"
+		&"scenario-party-defeat":
+			if application.hook != ScenarioApplicationHooks.PARTY_DEATH or not application.service_id.is_empty() or application.suspended_owner == null:
+				return false
+			var saved := application.suspended_vm
+			return ScenarioVm.handoff_is_valid(application.vm_handoff, saved) and RealmzRuntimeApi.party_defeat_handoff_is_valid(content, state, application.vm_handoff.runtime) and suspended_scenario_owner_is_valid(content, state, application.suspended_owner, saved)
+	return false
+
+
+static func _valid_pooled_wealth_continuation(content: RealmzContent, state: GameState, continuation: SessionContinuation, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
+	var service := continuation.service()
+	if service == null or vm_interaction != null or session_interaction == null or state.party == null or state.bank_available:
+		return false
+	var departure_probe := content.world.probe_movement(state.party.map_id, state.party.coordinate, service.direction, state.world, state.party_in_boat)
+	if not departure_probe.allowed and departure_probe.reason == &"invalid_direction":
+		return false
+	if service.stage == &"warning":
+		return SessionInteractionFactory.has_pooled_wealth(state.party) and session_interaction.to_data() == SessionInteractionFactory.pooled_wealth_departure_warning(session_interaction.request_id).to_data()
+	if service.stage == &"distribution":
+		var bank_body := session_interaction.body as InteractionRequest.BankRequestBody
+		return session_interaction.kind == InteractionRequest.POOLED_WEALTH_DEPARTURE and bank_body != null and bank_body.mode == &"departure" and state.party.character_by_id(bank_body.selected_character_id) != null and session_interaction.to_data() == SessionInteractionFactory.pooled_wealth_departure_distribution(state, session_interaction.request_id, bank_body.selected_character_id).to_data()
+	return false
+
+
+static func _valid_service_continuation(content: RealmzContent, state: GameState, continuation: SessionContinuation, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
+	var service := continuation.service()
+	if service == null or vm_interaction != null or session_interaction == null:
+		return false
+	var runtime := service.runtime_continuation
+	if runtime == null:
+		return false
+	var runtime_body := runtime.body as ScenarioRuntimeContinuation.ServiceBody
+	var selected_temple_character := "" if runtime_body == null else runtime_body.selected_character_id
+	match runtime.kind:
+		&"classic-shop":
+			return service.service_id == state.active_shop_id and not service.service_id.is_empty() and content.shop_by_id(service.service_id) != null and session_interaction.kind == InteractionRequest.SHOP
+		&"classic-temple":
+			var temple_body := session_interaction.body as InteractionRequest.TempleRequestBody
+			return runtime_body != null and service.service_id == "realmz.service.temple" and state.temple_available and runtime_body.cost_percent == state.temple_cost_percent and runtime_body.bank_available == state.bank_available and state.party.character_by_id(selected_temple_character) != null and session_interaction.kind == InteractionRequest.TEMPLE and temple_body != null and temple_body.selected_character_id == selected_temple_character
+		&"classic-temple-exit":
+			return runtime_body != null and service.service_id == "realmz.service.temple" and state.temple_available and not state.bank_available and runtime_body.cost_percent == state.temple_cost_percent and not runtime_body.bank_available and state.party.character_by_id(selected_temple_character) != null and session_interaction.kind == InteractionRequest.YES_NO
+		&"classic-banking":
+			return service.service_id == "realmz.service.bank" and state.bank_available and session_interaction.kind == InteractionRequest.BANK
+	return false
+
+
+static func _valid_character_spell_continuation(content: RealmzContent, state: GameState, continuation: SessionContinuation, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
+	var application := continuation.application()
+	if application == null or vm_interaction != null or session_interaction == null or state.party_setup_completed or state.character_draft == null or state.character_draft.generated_character == null:
+		return false
+	var character := state.character_draft.generated_character
+	if application.character_id != character.id or application.remaining < 1:
+		return false
+	var rules := RealmzRules.new()
+	var spent := 0
+	for spell_id: String in character.known_spells():
+		spent += rules.characters.spell_selection_cost(content.spell_by_id(spell_id))
+	var remaining := maxi(0, rules.characters.spell_selection_total(character, content.caste_by_id(character.caste_id)) - spent)
+	return remaining == application.remaining and session_interaction.to_data() == SessionInteractionFactory.character_spell_confirmation(session_interaction.request_id, remaining).to_data()
+
+
+static func _valid_character_vault_continuation(state: GameState, continuation: SessionContinuation, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
+	var application := continuation.application()
+	if application == null or vm_interaction != null or session_interaction == null or state.party_setup_completed:
+		return false
+	var character := state.party.character_by_id(application.character_id)
+	return character != null and session_interaction.to_data() == SessionInteractionFactory.character_vault_confirmation(session_interaction.request_id, character.name).to_data()
+
+
+static func _valid_age_continuation(content: RealmzContent, state: GameState, continuation: SessionContinuation, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
+	var age := continuation.age()
+	if age == null or vm_interaction != null or session_interaction == null or session_interaction.kind != InteractionRequest.AGE_UPDATE or age.updates.is_empty() or age.index < 1 or age.index > age.updates.size():
+		return false
+	for update: InteractionRequest.AgeUpdateBody in age.updates:
+		if not _valid_age_update_payload(state, update):
+			return false
+	var current_update: InteractionRequest.AgeUpdateBody = age.updates[age.index - 1]
+	var expected_age_request := InteractionRequest.age_update_body("validation.age-update", current_update)
+	var actual_age_body := session_interaction.body as InteractionRequest.AgeUpdateBody
+	var expected_age_body: InteractionRequest.AgeUpdateBody = null if expected_age_request == null else expected_age_request.body as InteractionRequest.AgeUpdateBody
+	if actual_age_body == null or not actual_age_body.same_values(expected_age_body):
+		return false
+	if age.resume_kind == &"completed":
+		return age.resume_continuation == null
+	if age.resume_kind == &"combat-monster-turns":
+		return age.resume_continuation == null and state.combat != null and not state.combat.completed and state.combat.pending_monster_attack != null
+	if age.resume_kind == &"post-clock":
+		return _valid_post_time_continuation(content, state, age.resume_continuation, vm_interaction, null)
+	return age.resume_kind == &"post-move" and _valid_ready_post_move_continuation(content, state, age.resume_continuation)
+
+
+static func _valid_combat_death_continuation(content: RealmzContent, state: GameState, continuation: SessionContinuation, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
+	var combat := continuation.combat()
+	if combat == null or session_interaction != null or vm_interaction == null or state.combat == null or state.combat.battle_id != combat.battle_id:
+		return false
+	var death_monster := state.combat.monster_by_id(combat.combatant_id)
+	if death_monster == null or content.scenario.program_by_id(combat.program_id) == null:
+		return false
+	var queued_id := state.combat.pending_spell_death_macro_id()
+	if not queued_id.is_empty():
+		var definition := content.monster_by_id(death_monster.definition_id)
+		return queued_id == combat.combatant_id and not combat.reset_traitor_on_complete and definition != null and combat.program_id == "xap:%d" % definition.death_macro
+	return combat.reset_traitor_on_complete
+
+
+static func _valid_combat_ally_continuation(state: GameState, continuation: SessionContinuation, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
+	var combat := continuation.combat()
+	return combat != null and vm_interaction == null and session_interaction != null and session_interaction.kind == &"ally_selection" and state.combat != null and state.combat.completed and state.combat.battle_id == combat.battle_id
+
+
+static func _valid_combat_fumble_continuation(content: RealmzContent, state: GameState, continuation: SessionContinuation, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
+	var combat := continuation.combat()
+	if combat == null or vm_interaction != null or session_interaction == null or session_interaction.kind != InteractionRequest.TREASURE_DISTRIBUTION or state.combat == null or not state.combat.completed or state.combat.battle_id != combat.battle_id or state.combat.fumbled_items().is_empty():
+		return false
+	var expected_request := InteractionRequest.from_payload("validation.fumble-recovery", InteractionRequest.TREASURE_DISTRIBUTION, RealmzRules.new().combat_flow.fumble_recovery_payload(state, content))
+	var actual_body := session_interaction.body as InteractionRequest.TreasureRequestBody
+	var expected_body: InteractionRequest.TreasureRequestBody = null if expected_request == null else expected_request.body as InteractionRequest.TreasureRequestBody
+	return actual_body != null and actual_body.same_fumble_values(expected_body)
+
+
+static func _valid_combat_reward_continuation(content: RealmzContent, state: GameState, continuation: SessionContinuation, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
+	var reward_body := continuation.reward()
+	if reward_body == null or vm_interaction != null:
+		return false
+	var runtime := reward_body.runtime_continuation
+	var runtime_body := runtime.body as ScenarioRuntimeContinuation.RewardBody if runtime != null and runtime.kind == ScenarioRuntimeContinuation.CLASSIC_REWARD else null
+	var reward := runtime_body.state if runtime_body != null else null
+	return reward != null and reward.origin == &"battle" and reward.source_id == reward_body.battle_id and _valid_reward_continuation(content, state, reward, session_interaction)
 
 
 static func _valid_friendly_collision(continuation: SessionContinuation, state: GameState, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
