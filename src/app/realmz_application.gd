@@ -14,6 +14,7 @@ const DungeonMap3DPresenterScript := preload("res://src/ui/dungeon_map_3d_presen
 const ApplicationLifecycleScript := preload("res://src/app/application_lifecycle.gd")
 const HeldMovementControllerScript := preload("res://src/ui/held_movement_controller.gd")
 const DebugToolsHostScript := preload("res://src/app/debug_tools_host.gd")
+const ApplicationInputRouterScript := preload("res://src/app/application_input_router.gd")
 const CLASSIC_CHARACTER_LIBRARY_PATH := "res://src/storage/characters/realmz-classic-character-library.realmz2"
 const CLASSIC_CHARACTER_LIBRARY_ID := "realmz-classic-character-library"
 const CLASSIC_CHARACTER_LIBRARY_HASH := "c7e093f46bcca49d2382d68c2995ae5ff90c0e706dbd538682b613af9b80e0bd"
@@ -46,6 +47,7 @@ var _held_movement: HeldMovementControllerScript
 var _queued_combat_auto_changes: Dictionary = {}
 var _save_and_quit_pending: bool = false; var _quit_operation: Callable
 var _debug_tools: DebugToolsHost; var _campaigns: Array[CampaignPackageView] = []; var _last_campaign_prewarm_requested: bool = false
+var _input_router: ApplicationInputRouter
 
 
 func configure_lifecycle_host(save_host: SaveHostController, quit_operation: Callable = Callable()) -> void: assert(not is_node_ready(), "Lifecycle host dependencies must be configured before the application enters the scene tree"); _save_host = save_host; _quit_operation = quit_operation
@@ -58,6 +60,7 @@ func _ready() -> void:
 	settings_repository = SettingsRepositoryScript.new(); _presentation_settings = settings_repository.load_settings()
 	session_controller = GameSessionControllerScript.new(); presentation_coordinator = PresentationCoordinatorScript.new()
 	_dungeon_presenter = DungeonMap3DPresenterScript.new(); _held_movement = HeldMovementControllerScript.new()
+	_input_router = ApplicationInputRouterScript.new(self)
 	add_child(session_controller); add_child(presentation_coordinator)
 	add_child(_dungeon_presenter); add_child(_held_movement)
 	_debug_tools = DebugToolsHostScript.new(); add_child(_debug_tools)
@@ -288,156 +291,8 @@ func _complete_package_install(prepared: PreparedPackage, initial_seed: int) -> 
 
 
 func _input(event: InputEvent) -> void:
-	if _handle_debug_or_acknowledgement_input(event):
-		return
-	var released_direction := UiInputActions.released_movement_direction(event)
-	if released_direction != Vector2i.ZERO and _held_movement != null:
-		if not (_dungeon_presenter.is_active() and _dungeon_presenter.handle_keyboard_release(released_direction)) and _held_movement.active_direction() == released_direction:
-			_held_movement.stop(&"keyboard")
-	var key_event := event as InputEventKey
-	if _handle_playback_or_combat_modifier_input(event, key_event):
-		return
-	var pending := session_controller.view().active_interaction_request()
-	var combat_pending := pending != null and pending.kind == InteractionRequest.COMBAT
-	if _handle_combat_inspection_input(event, combat_pending):
-		return
-	var mouse_button := event as InputEventMouseButton
-	if mouse_button != null and mouse_button.button_index == MOUSE_BUTTON_LEFT and not mouse_button.pressed:
-		_shell_presenter.release_held_commands()
-	if not event.is_pressed():
-		return
-	if combat_pending and _battlefield_presenter.dismiss_reveal_friends():
-		get_viewport().set_input_as_handled()
-		return
-	if _handle_back_input(event, combat_pending):
-		return
-	if _host_interaction != null:
-		return
-	if pending != null:
-		_handle_pending_interaction_input(event, key_event, pending)
-		return
-	if accepts_route_input() and _shell_presenter.handle_route_shortcut(event):
-		get_viewport().set_input_as_handled()
-		return
-	if accepts_exploration_input():
-		_handle_exploration_input(event, key_event)
-
-
-func _handle_debug_or_acknowledgement_input(event: InputEvent) -> bool:
-	if _debug_tools != null and _debug_tools.handle_input(event):
-		get_viewport().set_input_as_handled()
-		return true
-	if _debug_tools != null and _debug_tools.is_open():
-		return true
-	if _interaction_presenter != null and _interaction_presenter.handle_global_pointer_acknowledgement(event):
-		get_viewport().set_input_as_handled()
-		return true
-	return false
-
-
-func _handle_playback_or_combat_modifier_input(event: InputEvent, key_event: InputEventKey) -> bool:
-	if presentation_coordinator != null and presentation_coordinator.is_combat_playback_active():
-		if key_event != null and key_event.pressed and not key_event.echo and key_event.keycode == KEY_ESCAPE and _abort_full_party_auto(true):
-			get_viewport().set_input_as_handled()
-		elif key_event != null and key_event.pressed and not key_event.echo and key_event.keycode == KEY_SPACE:
-			presentation_coordinator.skip_combat_playback()
-			get_viewport().set_input_as_handled()
-		return true
-	var pending := session_controller.view().active_interaction_request()
-	var combat_pending := pending != null and pending.kind == InteractionRequest.COMBAT
-	if combat_pending and key_event != null and not key_event.echo and (key_event.keycode == KEY_ALT or key_event.physical_keycode == KEY_ALT):
-		var dock_available := _interaction_presenter.set_fast_spell_dock_held(key_event.pressed)
-		if dock_available or not key_event.pressed:
-			get_viewport().set_input_as_handled()
-		return true
-	if combat_pending and key_event != null and key_event.pressed and not key_event.echo and key_event.keycode == KEY_ESCAPE and _abort_full_party_auto(false):
-		get_viewport().set_input_as_handled()
-		return true
-	return false
-
-
-func _handle_combat_inspection_input(event: InputEvent, combat_pending: bool) -> bool:
-	if combat_pending and event.is_action_pressed(&"realmz_inspect_movement"):
-		_battlefield_presenter.set_movement_costs_visible(true)
-		get_viewport().set_input_as_handled()
-		return true
-	if combat_pending and event.is_action_released(&"realmz_inspect_movement"):
-		_battlefield_presenter.set_movement_costs_visible(false)
-		get_viewport().set_input_as_handled()
-		return true
-	return false
-
-
-func _handle_back_input(event: InputEvent, combat_pending: bool) -> bool:
-	if event.is_action_pressed(&"realmz_back"):
-		if combat_pending and _battlefield_presenter.cancel_targeting():
-			get_viewport().set_input_as_handled()
-			return true
-		if _interaction_presenter.handle_back_request():
-			get_viewport().set_input_as_handled()
-			return true
-		if _interaction_presenter.has_blocking_request():
-			_shell_presenter.set_status("Choose a response before leaving this interaction.")
-			get_viewport().set_input_as_handled()
-			return true
-		if _interaction_presenter.dismiss_passive_text() or _shell_presenter.handle_back():
-			get_viewport().set_input_as_handled()
-			return true
-	return false
-
-
-func _handle_pending_interaction_input(event: InputEvent, key_event: InputEventKey, pending: InteractionRequest) -> void:
-	if pending.kind != InteractionRequest.COMBAT:
-		return
-	if _battlefield_presenter.targeting_active() and event.is_action_pressed(&"realmz_target") and _battlefield_presenter.target_with_keyboard():
-		get_viewport().set_input_as_handled()
-		return
-	if _battlefield_presenter.targeting_active() and event.is_action_pressed(&"realmz_confirm_target") and _battlefield_presenter.confirm_targeting():
-		get_viewport().set_input_as_handled()
-		return
-	var combat_fast_spell := UiInputActions.fast_spell_slot(event, true)
-	var use_fast_spell := UiInputActions.combat_fast_spell_use_requested(event)
-	if combat_fast_spell >= 0 and (_interaction_presenter.activate_fast_spell_from_dock(combat_fast_spell) if use_fast_spell and key_event.alt_pressed else _interaction_presenter.handle_fast_spell(combat_fast_spell, use_fast_spell)):
-		get_viewport().set_input_as_handled()
-		return
-	var combat_direction := UiInputActions.movement_direction(event)
-	if combat_direction != Vector2i.ZERO and _interaction_presenter.accepts_combat_spatial_input() and _battlefield_presenter.submit_movement_direction(combat_direction):
-		get_viewport().set_input_as_handled()
-
-
-func _handle_exploration_input(event: InputEvent, key_event: InputEventKey) -> void:
-	if key_event != null and key_event.pressed and not key_event.echo and key_event.keycode == KEY_SPACE and presentation_coordinator.toggle_dungeon_view():
-		get_viewport().set_input_as_handled()
-		return
-	var fast_spell_slot := UiInputActions.fast_spell_slot(event)
-	if fast_spell_slot >= 0:
-		_handle_field_fast_spell(fast_spell_slot, UiInputActions.fast_spell_use_requested(event))
-		get_viewport().set_input_as_handled()
-		return
-	if event.is_action_pressed(&"realmz_search"):
-		_submit_intent(PlayerIntent.toggle_search())
-		get_viewport().set_input_as_handled()
-		return
-	if event.is_action_pressed(&"realmz_camp"):
-		_submit_intent(PlayerIntent.camp())
-		get_viewport().set_input_as_handled()
-		return
-	if event.is_action_pressed(&"realmz_rest"):
-		_submit_intent(PlayerIntent.rest())
-		get_viewport().set_input_as_handled()
-		return
-	if event.is_action_pressed(&"realmz_heal"):
-		_submit_intent(PlayerIntent.heal())
-		get_viewport().set_input_as_handled()
-		return
-	var direction := UiInputActions.movement_direction(event)
-	if direction != Vector2i.ZERO:
-		if not event is InputEventKey or not (event as InputEventKey).echo:
-			if _dungeon_presenter.is_active():
-				_dungeon_presenter.handle_keyboard_press(direction)
-			else:
-				_held_movement.start(&"keyboard", direction)
-		get_viewport().set_input_as_handled()
+	if _input_router != null:
+		_input_router.handle_input(event)
 
 
 func accepts_route_input() -> bool:
