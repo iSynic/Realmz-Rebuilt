@@ -5,6 +5,7 @@ signal movement_requested(direction: Vector2i)
 
 const BASE_INTERVAL_SECONDS: float = 0.05
 const INITIAL_REPEAT_DELAY_SECONDS: float = 0.15
+const STEP_BOUNDARY_EVENTS: Array[StringName] = [&"map_transitioned", &"timed_encounter_triggered", &"random_region_triggered", &"random_door_triggered", &"random_encounter_triggered"]
 
 var _speed_percent: int = 100
 var _source: StringName = &""
@@ -92,6 +93,18 @@ func active_source() -> StringName:
 
 func request_in_progress() -> bool:
 	return _request_in_progress
+
+
+static func continues_after_step(direction: Vector2i, before_map_id: String, before_coordinate: Vector2i, after_map_id: String, after_coordinate: Vector2i, events: Array[DomainEvent], accepts_input: bool) -> bool:
+	var ordinary_blocked := false
+	for event: DomainEvent in events:
+		if event.kind == &"movement_blocked":
+			ordinary_blocked = true
+		elif event.kind in STEP_BOUNDARY_EVENTS:
+			return false
+	if ordinary_blocked:
+		return true
+	return accepts_input and before_map_id == after_map_id and after_coordinate == before_coordinate + direction
 
 
 func _emit_request(repeat_delay_seconds: float = -1.0, consume_transaction_time: bool = true) -> void:

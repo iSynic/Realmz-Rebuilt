@@ -484,11 +484,7 @@ func _submit_movement(direction: Vector2i) -> bool:
 	var after := session_controller.view()
 	if step.state == SessionStep.State.FAILED or after == null or after.pending_interaction != null or after.combat_view != null:
 		return false
-	var ordinary_blocked := false
-	for event: DomainEvent in step.events:
-		if event.kind == &"movement_blocked": ordinary_blocked = true; continue
-		if event.kind in [&"map_transitioned", &"trigger_fired", &"timed_encounter_triggered", &"random_region_triggered", &"random_door_triggered", &"random_encounter_triggered"]: return false
-	return ordinary_blocked or before.party_map_id == after.party_map_id and before.party_coordinate != after.party_coordinate and accepts_exploration_input()
+	return HeldMovementControllerScript.continues_after_step(direction, before.party_map_id, before.party_coordinate, after.party_map_id, after.party_coordinate, step.events, accepts_exploration_input())
 
 
 func _submit_intent(intent: PlayerIntent) -> SessionStep:
