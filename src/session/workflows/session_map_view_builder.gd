@@ -129,12 +129,11 @@ static func build_cell_view(context: SessionWorkflowContext, map: MapDefinition,
 	var edge_passability: Dictionary = {}
 	for direction: StringName in [&"north", &"east", &"south", &"west"]:
 		var edge := cell.edge(direction)
-		edge_kinds[direction] = edge.kind
-		edge_passability[direction] = edge.passable
-	var hidden_secret := false
+		var concealed_secret := not edge.secret_id.is_empty() and not context.state.world.secret_is_discovered(edge.secret_id, edge.initially_discovered)
+		edge_kinds[direction] = &"wall" if concealed_secret else edge.kind
+		edge_passability[direction] = false if concealed_secret else edge.passable
 	for feature: MapFeature in cell.features():
-		if feature.kind == &"secret" and feature.orientation.is_empty() and not context.state.world.secret_is_discovered(feature.id, feature.initial_state == &"revealed"):
-			hidden_secret = true
+		if feature.kind == &"secret" and not context.state.world.secret_is_discovered(feature.id, feature.initial_state == &"revealed"):
 			continue
 		if not feature_kinds.has(feature.kind):
 			feature_kinds.append(feature.kind)

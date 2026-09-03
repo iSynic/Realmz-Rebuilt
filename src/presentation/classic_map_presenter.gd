@@ -188,6 +188,8 @@ func _update_visibility_cache(map_view: MapView) -> void:
 			append_dungeon_discovery(_dungeon_discovery_cache, coordinate)
 		else:
 			append_land_discovery(_land_discovery_cache, coordinate, map_size)
+	if map_view.level_type == &"dungeon":
+		append_dungeon_discovery(_dungeon_discovery_cache, map_view.party_coordinate)
 	for coordinate: Vector2i in seen:
 		_seen_coordinate_cache[coordinate] = true
 
