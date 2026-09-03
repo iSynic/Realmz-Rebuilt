@@ -4,6 +4,7 @@ extends RefCounted
 const ExplorationCoordinatorType = preload("res://src/playthrough/coordinators/session_exploration_coordinator.gd")
 const ScenarioCoordinatorType = preload("res://src/playthrough/coordinators/session_scenario_coordinator.gd")
 const ResponseCoordinatorType = preload("res://src/playthrough/coordinators/session_responses_coordinator.gd")
+const DebugCoordinatorType = preload("res://src/playthrough/coordinators/session_debug_coordinator.gd")
 var _content: RealmzContent
 var _state: GameState
 var _rng: RealmzRng
@@ -21,6 +22,7 @@ var _coordinator_context: SessionCoordinatorContext
 var _exploration_coordinator: RefCounted
 var _scenario_coordinator: RefCounted
 var _response_coordinator: RefCounted
+var _debug_coordinator: RefCounted
 var _debug_operation_active: bool = false
 
 
@@ -42,6 +44,7 @@ func _ensure_coordinators() -> void:
 	_scenario_coordinator = ScenarioCoordinatorType.new(_coordinator_context)
 	_response_coordinator = ResponseCoordinatorType.new(_coordinator_context)
 	_coordinator_context.bind_coordinators(_exploration_coordinator, _scenario_coordinator, _response_coordinator)
+	_debug_coordinator = DebugCoordinatorType.new(_coordinator_context)
 
 
 func _apply_coordinator_context() -> void:
@@ -61,6 +64,7 @@ func _apply_coordinator_context() -> void:
 	_exploration_coordinator = null
 	_scenario_coordinator = null
 	_response_coordinator = null
+	_debug_coordinator = null
 
 
 func _commit_coordinator_result(result: SessionCoordinatorResult) -> SessionStep:
@@ -267,87 +271,13 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 
 
 func apply_debug_command(command: SessionDebugCommand) -> SessionStep:
-	if not _started or command == null or not _state.party_setup_completed:
+	if not _started:
 		return SessionStep.failed(_view_revision, &"debug_command_unavailable", "Debug commands require a committed active adventure boundary.")
-	var pending := _pending_interaction()
-	var active_combat_command := command.kind in [SessionDebugCommand.Kind.RESTORE_PARTY, SessionDebugCommand.Kind.WIN_BATTLE] and _state.combat != null and not _state.combat.completed and (pending == null or pending.kind == InteractionRequest.COMBAT)
-	if not active_combat_command and (pending != null or _scenario_vm.is_active()):
-		return SessionStep.failed(_view_revision, &"debug_command_unavailable", "Debug commands require a committed active adventure boundary.")
-	match command.kind:
-		SessionDebugCommand.Kind.WARP:
-			return _commit_workflow_result(SessionDebugWorkflow.warp(_workflow_context(), command.map_id, command.coordinate))
-		SessionDebugCommand.Kind.NOCLIP_STEP:
-			return _commit_workflow_result(SessionDebugWorkflow.noclip_step(_workflow_context(), command.coordinate))
-		SessionDebugCommand.Kind.RESTORE_PARTY:
-			return _commit_workflow_result(SessionDebugWorkflow.restore_party(_workflow_context()))
-		SessionDebugCommand.Kind.START_BATTLE:
-			return _debug_start_battle(command.classic_id)
-		SessionDebugCommand.Kind.WIN_BATTLE:
-			return _debug_win_battle()
-		SessionDebugCommand.Kind.START_ENCOUNTER:
-			return _debug_start_encounter(command.encounter_kind, command.classic_id)
-	return SessionStep.failed(_view_revision, &"debug_command_unknown", "The debug command is unknown.")
-
-
-func _debug_start_battle(classic_id: int) -> SessionStep:
-	if _state.combat != null:
-		return SessionStep.failed(_view_revision, &"debug_battle_active", "A battle is already active.")
-	var battle := _content.battle_by_classic_id(classic_id)
-	if battle == null:
-		return SessionStep.failed(_view_revision, &"debug_battle_unknown", "Battle %d is unavailable." % classic_id)
-	var result := _rules.combat_flow.start_battle(_state, _content, battle, _rng)
-	if not result.ok:
-		return SessionStep.failed(_view_revision, result.error_code, result.error_message)
-	result.events.append(DomainEvent.new(&"debug_battle_started", {"battleId": battle.id, "classicId": classic_id}))
-	return _finish_completed(result.events)
-
-
-func _debug_win_battle() -> SessionStep:
-	if _state.combat == null or _state.combat.completed:
-		return SessionStep.failed(_view_revision, &"debug_battle_unavailable", "There is no active battle to win.")
-	var state_checkpoint := _state.to_data()
-	var rng_checkpoint := _rng.checkpoint()
-	var vm_checkpoint := _scenario_vm.snapshot() if _scenario_vm.is_active() else null
-	var events: Array[DomainEvent] = [DomainEvent.new(&"debug_battle_victory_requested", {"battleId": _state.combat.battle_id})]
-	for monster: MonsterState in _state.combat.monsters():
-		if monster.traitor:
-			monster.current_health = 0
-			_state.combat.battlefield.remove_monster(monster.id)
-	for character: CharacterState in _state.party.characters():
-		if character.traitor:
-			character.current_health = 0
-			_state.combat.battlefield.remove_character(character.id)
-	if not _rules.combat_flow.finish_debug_victory(_state, _content, events):
-		return SessionStep.failed(_view_revision, &"debug_victory_failed", "The active battle could not resolve as a victory.")
-	if vm_checkpoint != null:
-		var result := _scenario_vm.complete_debug_victory(_runtime_api, events)
-		if result.state == ScenarioVmResult.State.FAILED:
-			if not _state.restore_from_data(state_checkpoint) or not _rng.rollback(rng_checkpoint) or not _scenario_vm.restore(vm_checkpoint):
-				return SessionStep.failed(_view_revision, &"debug_victory_rollback_failed", "Debug victory failed and could not restore its combat continuation.")
-			return SessionStep.failed(_view_revision, result.error_code, result.error_message)
-		return _finish_resumed_vm_result(result, result.events)
-	return _finish_direct_battle(events)
-
-
-func _debug_start_encounter(kind: StringName, classic_id: int) -> SessionStep:
-	if _state.combat != null or kind not in [&"simple", &"complex"]:
-		return SessionStep.failed(_view_revision, &"debug_encounter_unavailable", "A Simple or Complex Encounter requires exploration.")
-	var available := _content.simple_encounter_by_id(classic_id) != null if kind == &"simple" else _content.complex_encounter_by_id(classic_id) != null
-	if not available:
-		return SessionStep.failed(_view_revision, &"debug_encounter_unknown", "%s Encounter %d is unavailable." % [String(kind).capitalize(), classic_id])
-	var opcode := 4 if kind == &"simple" else 5
-	var started := _scenario_vm.start_debug_instruction(ClassicActionDefinition.new(0, opcode, opcode, classic_id, false, []), ScenarioExecutionContext.trigger(&"debug", "", _state.party.map_id, _state.party.coordinate, true))
-	if started.state == ScenarioVmResult.State.FAILED:
-		return SessionStep.failed(_view_revision, started.error_code, started.error_message)
-	_debug_operation_active = true
-	var result := _scenario_vm.run(_runtime_api)
-	var events: Array[DomainEvent] = []
-	events.assign(result.events)
-	if result.state == ScenarioVmResult.State.WAITING:
-		events.append(DomainEvent.new(&"debug_encounter_started", {"kind": String(kind), "classicId": classic_id}))
-		return _finish_waiting(result.interaction, events)
-	_debug_operation_active = false
-	return _finish_failed(result.error_code, result.error_message, events) if result.state == ScenarioVmResult.State.FAILED else _finish_completed(events)
+	_ensure_coordinators()
+	var result: SessionCoordinatorResult = _debug_coordinator.run(command)
+	if _debug_coordinator.started_ephemeral_operation:
+		_debug_operation_active = true
+	return _commit_coordinator_result(result)
 
 
 func respond(response: InteractionResponse) -> SessionStep:
@@ -373,25 +303,8 @@ func respond(response: InteractionResponse) -> SessionStep:
 
 
 func _finish_resumed_vm_result(result: ScenarioVmResult, events: Array[DomainEvent]) -> SessionStep:
-	if result.state == ScenarioVmResult.State.SUSPENDED:
-		return _begin_scenario_handoff(result, events)
-	if result.state == ScenarioVmResult.State.WAITING:
-		if _session_continuation.kind == &"post-clock" and not _session_continuation.exploration().active_timed_program_id.is_empty() and not _rebase_post_time_location():
-			_session_continuation.clear()
-			return _finish_failed(&"invalid_timed_encounter_location", "The timed encounter moved the party to an unavailable location.", events)
-		return _finish_waiting(result.interaction, events)
-	if result.state == ScenarioVmResult.State.FAILED:
-		if _scenario_vm.pending_request() == null:
-			_session_continuation.clear()
-		return _finish_failed(result.error_code, result.error_message, events)
-	if not _session_continuation.is_empty():
-		if _session_continuation.kind == &"combat-death-macro":
-			return _continue_session_death_macro(events)
-		if _session_continuation.kind == &"item-xap":
-			_ensure_coordinators()
-			return _commit_coordinator_result(_scenario_coordinator._continue_item_xap(events))
-		return _continue_exploration_continuation(events)
-	return _finish_completed(events)
+	_ensure_coordinators()
+	return _commit_coordinator_result(_scenario_coordinator._finish_resumed_vm_result(result, events))
 
 
 func view(events: Array[DomainEvent] = []) -> GameView:
@@ -994,33 +907,6 @@ func _respond_session_interaction(response: InteractionResponse) -> SessionStep:
 	return _commit_coordinator_result(_response_coordinator._respond_session_interaction(response))
 
 
-func _respond_pooled_wealth_departure(response: InteractionResponse) -> SessionStep:
-	_ensure_coordinators()
-	return _commit_coordinator_result(_response_coordinator._respond_pooled_wealth_departure(response))
-
-
-func _pooled_wealth_departure_distribution_request(request_id: String, selected_character_id: String = "") -> InteractionRequest:
-	_ensure_coordinators()
-	var result: InteractionRequest = _response_coordinator._pooled_wealth_departure_distribution_request(request_id, selected_character_id)
-	_apply_coordinator_context()
-	return result
-
-
-func _respond_item_use_target(response: InteractionResponse) -> SessionStep:
-	_ensure_coordinators()
-	return _commit_coordinator_result(_response_coordinator._respond_item_use_target(response))
-
-
-func _respond_field_spell_target(response: InteractionResponse) -> SessionStep:
-	_ensure_coordinators()
-	return _commit_coordinator_result(_response_coordinator._respond_field_spell_target(response))
-
-
-func _respond_scroll_target(response: InteractionResponse) -> SessionStep:
-	_ensure_coordinators()
-	return _commit_coordinator_result(_response_coordinator._respond_scroll_target(response))
-
-
 func _service_action(intent: PlayerIntent) -> SessionStep:
 	var payload := intent.payload as PlayerIntent.ServicePayload
 	if payload.action != &"enter":
@@ -1055,71 +941,7 @@ func _open_contextual_service(service_id: String, preceding_events: Array[Domain
 
 
 func _money_action(intent: PlayerIntent) -> SessionStep:
-	var payload := intent.payload as PlayerIntent.MoneyPayload
-	var movement_error := _money_movement_context_error()
-	if not movement_error.is_empty():
-		return SessionStep.failed(_view_revision, &"invalid_money_context", movement_error)
-	var events: Array[DomainEvent] = []
-	match payload.action:
-		&"pool":
-			var probe := _rules.economy.pool_probe(_state.party)
-			if not probe.allowed:
-				return SessionStep.failed(_view_revision, &"money_action_unavailable", probe.reason)
-			_rules.economy.pool_party_wealth(_state.party)
-			events.append(DomainEvent.new(&"wealth_pooled", {"source": "classic-money", "wealth": _state.party.pooled_wealth.to_data()}))
-			events.append(DomainEvent.new(&"sound_requested", {"soundId": 128, "waitForCompletion": false, "source": "classic-money-pool"}))
-		&"share":
-			var probe := _rules.economy.share_probe(_state.party)
-			if not probe.allowed:
-				return SessionStep.failed(_view_revision, &"money_action_unavailable", probe.reason)
-			_rules.economy.share_pooled_wealth(_state.party)
-			events.append(DomainEvent.new(&"wealth_shared", {"source": "classic-money", "remaining": _state.party.pooled_wealth.to_data()}))
-			events.append(DomainEvent.new(&"sound_requested", {"soundId": 128, "waitForCompletion": false, "source": "classic-money-share"}))
-		&"to-pool", &"to-character":
-			var character := _state.party.character_by_id(payload.character_id)
-			var kind := _money_kind(payload.denomination)
-			if character == null:
-				return SessionStep.failed(_view_revision, &"unknown_character", "The selected money-transfer character is unavailable.")
-			if kind < 0:
-				return SessionStep.failed(_view_revision, &"unknown_wealth_kind", "The selected denomination is unavailable.")
-			var expected_amount := EconomyRules.classic_transfer_increment(kind as WealthState.Kind)
-			if payload.amount != expected_amount:
-				return SessionStep.failed(_view_revision, &"invalid_money_increment", "Classic Swap moves five gold or one gem or jewelry per action.")
-			var to_character := payload.action == &"to-character"
-			var probe := _rules.economy.transfer_probe(_state.party, character, kind as WealthState.Kind, payload.amount, to_character)
-			if not probe.allowed:
-				return SessionStep.failed(_view_revision, &"money_action_unavailable", probe.reason)
-			var transferred := _rules.economy.transfer_pool_to_character(_state.party, character, kind as WealthState.Kind, payload.amount) if to_character else _rules.economy.transfer_character_to_pool(_state.party, character, kind as WealthState.Kind, payload.amount)
-			if not transferred:
-				return SessionStep.failed(_view_revision, &"money_action_unavailable", "The selected wealth transfer is no longer available.")
-			events.append(DomainEvent.new(&"wealth_transferred", {"source": "classic-money", "characterId": character.id, "direction": String(payload.action), "kind": payload.denomination, "amount": payload.amount}))
-			events.append(DomainEvent.new(&"sound_requested", {"soundId": 10051 if to_character else 663, "waitForCompletion": false, "source": "classic-money-swap"}))
-		_:
-			return SessionStep.failed(_view_revision, &"unknown_money_action", "Money action '%s' is unavailable." % payload.action)
-	_recalculate_party_movement()
-	return _finish_completed(events)
-
-
-func _money_movement_context_error() -> String:
-	for character: CharacterState in _state.party.characters():
-		if _content.race_by_id(character.race_id) == null or _content.caste_by_id(character.caste_id) == null:
-			return "Character '%s' has no package-backed race or class for Classic movement recalculation." % character.id
-	return ""
-
-
-func _recalculate_party_movement() -> void:
-	for character: CharacterState in _state.party.characters():
-		var race := _content.race_by_id(character.race_id)
-		var caste := _content.caste_by_id(character.caste_id)
-		_rules.characters.recalculate_movement(character, race, caste.movement_bonus)
-
-
-static func _money_kind(value: String) -> int:
-	match value:
-		"gold": return WealthState.Kind.GOLD
-		"gems": return WealthState.Kind.GEMS
-		"jewelry": return WealthState.Kind.JEWELRY
-	return -1
+	return _commit_workflow_result(SessionMoneyWorkflow.perform(_workflow_context(), intent.payload as PlayerIntent.MoneyPayload))
 
 
 func _begin_runtime_service(service_id: String, operation: ScenarioRuntimeOperationResult) -> SessionStep:
@@ -1127,63 +949,6 @@ func _begin_runtime_service(service_id: String, operation: ScenarioRuntimeOperat
 	return _commit_coordinator_result(_response_coordinator._begin_runtime_service(service_id, operation))
 
 
-func _respond_runtime_service(response: InteractionResponse) -> SessionStep:
-	_ensure_coordinators()
-	return _commit_coordinator_result(_response_coordinator._respond_runtime_service(response))
-
-
-func _respond_drop_item(response: InteractionResponse) -> SessionStep:
-	_ensure_coordinators()
-	return _commit_coordinator_result(_response_coordinator._respond_drop_item(response))
-
-
-func _respond_character_spell_confirmation(response: InteractionResponse) -> SessionStep:
-	_ensure_coordinators()
-	return _commit_coordinator_result(_response_coordinator._respond_character_spell_confirmation(response))
-
-
-func _respond_character_vault_publication(response: InteractionResponse) -> SessionStep:
-	_ensure_coordinators()
-	return _commit_coordinator_result(_response_coordinator._respond_character_vault_publication(response))
-
-
-func _respond_session_retreat(response: InteractionResponse) -> SessionStep:
-	_ensure_coordinators()
-	return _commit_coordinator_result(_response_coordinator._respond_session_retreat(response))
-
-
 func _finish_with_age_updates(events: Array[DomainEvent], resume_kind: StringName, resume_continuation: SessionContinuation = null) -> SessionStep:
 	_ensure_coordinators()
 	return _commit_coordinator_result(_response_coordinator._finish_with_age_updates(events, resume_kind, resume_continuation))
-
-
-func _respond_session_age_update(response: InteractionResponse) -> SessionStep:
-	_ensure_coordinators()
-	return _commit_coordinator_result(_response_coordinator._respond_session_age_update(response))
-
-
-func _continue_after_session_combat_age_update(events: Array[DomainEvent]) -> SessionStep:
-	_ensure_coordinators()
-	return _commit_coordinator_result(_response_coordinator._continue_after_session_combat_age_update(events))
-
-
-func _session_age_update_request_id(update: InteractionRequest.AgeUpdateBody, index: int) -> String:
-	_ensure_coordinators()
-	var result: String = _response_coordinator._session_age_update_request_id(update, index)
-	_apply_coordinator_context()
-	return result
-
-
-func _respond_session_ally_selection(response: InteractionResponse) -> SessionStep:
-	_ensure_coordinators()
-	return _commit_coordinator_result(_response_coordinator._respond_session_ally_selection(response))
-
-
-func _respond_session_fumble_recovery(response: InteractionResponse) -> SessionStep:
-	_ensure_coordinators()
-	return _commit_coordinator_result(_response_coordinator._respond_session_fumble_recovery(response))
-
-
-func _respond_session_battle_reward(response: InteractionResponse) -> SessionStep:
-	_ensure_coordinators()
-	return _commit_coordinator_result(_response_coordinator._respond_session_battle_reward(response))

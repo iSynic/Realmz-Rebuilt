@@ -12,6 +12,7 @@ Own the pure transaction coordinator that joins Realmz game state and rules to t
 - `SessionInteractionFactory` is the single owner of session-level request reconstruction shared by live orchestration and restore validation.
 - Session workflow contexts and services for lifecycle, exploration, inventory/magic/services, combat/rewards, application hooks, and detached view projection.
 - Internal exploration, scenario, and response coordinators that own continuation sequencing while leaving transaction commit and rollback in `GameSession`.
+- `SessionDebugCoordinator` routes developer commands across workflow, combat, and scenario owners while `GameSession` retains the final transaction commit and unsaveable-operation flag.
 - The standalone character-creation session adapter.
 
 ## Local Contracts

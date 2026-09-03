@@ -128,6 +128,27 @@ func _resume_scenario_party_defeat(saved: ScenarioVmSnapshot, suspended_owner: S
 	return _context.exploration()._continue_exploration_continuation(events)
 
 
+func _finish_resumed_vm_result(result: ScenarioVmResult, events: Array[DomainEvent]) -> SessionCoordinatorResult:
+	if result.state == ScenarioVmResult.State.SUSPENDED:
+		return _begin_scenario_handoff(result, events)
+	if result.state == ScenarioVmResult.State.WAITING:
+		if _context.session_continuation.kind == &"post-clock" and not _context.session_continuation.exploration().active_timed_program_id.is_empty() and not _context.exploration()._rebase_post_time_location():
+			_context.session_continuation.clear()
+			return _context.failed(&"invalid_timed_encounter_location", "The timed encounter moved the party to an unavailable location.", events)
+		return _context.waiting(result.interaction, events)
+	if result.state == ScenarioVmResult.State.FAILED:
+		if _context.scenario_vm.pending_request() == null:
+			_context.session_continuation.clear()
+		return _context.failed(result.error_code, result.error_message, events)
+	if not _context.session_continuation.is_empty():
+		if _context.session_continuation.kind == &"combat-death-macro":
+			return _continue_session_death_macro(events)
+		if _context.session_continuation.kind == &"item-xap":
+			return _continue_item_xap(events)
+		return _context.exploration()._continue_exploration_continuation(events)
+	return _context.completed(events)
+
+
 func _start_item_xap(character: CharacterState, instance: ItemInstance, item: ItemDefinition) -> SessionCoordinatorResult:
 	var in_combat := _context.state.combat != null and not _context.state.combat.completed
 	var probe := InventoryMagicServicesWorkflow.door_item_probe(_context.workflow_context(), character, instance, item, in_combat)
