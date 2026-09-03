@@ -7,12 +7,12 @@ const PackageHostControllerScript := preload("res://src/app/controllers/package_
 const SaveHostControllerScript := preload("res://src/app/controllers/save_host_controller.gd")
 const CharacterVaultControllerScript := preload("res://src/app/controllers/character_vault_controller.gd")
 const CharacterCreationHostControllerScript := preload("res://src/app/controllers/character_creation_host_controller.gd")
-const SettingsRepositoryScript := preload("res://src/infrastructure/settings/settings_repository.gd")
+const SettingsRepositoryScript := preload("res://src/storage/settings/settings_repository.gd")
 const DungeonMap3DPresenterScript := preload("res://src/presentation/dungeon_map_3d_presenter.gd")
 const ApplicationLifecycleScript := preload("res://src/app/application_lifecycle.gd")
 const HeldMovementControllerScript := preload("res://src/presentation/held_movement_controller.gd")
 const DebugToolsHostScript := preload("res://src/app/debug_tools_host.gd")
-const CLASSIC_CHARACTER_LIBRARY_PATH := "res://src/infrastructure/characters/realmz-classic-character-library.realmz2"
+const CLASSIC_CHARACTER_LIBRARY_PATH := "res://src/storage/characters/realmz-classic-character-library.realmz2"
 const CLASSIC_CHARACTER_LIBRARY_ID := "realmz-classic-character-library"
 const CLASSIC_CHARACTER_LIBRARY_HASH := "c7e093f46bcca49d2382d68c2995ae5ff90c0e706dbd538682b613af9b80e0bd"
 

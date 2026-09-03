@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-$campaignRoot = Join-Path $repoRoot "src\infrastructure\campaigns"
+$campaignRoot = Join-Path $repoRoot "src\storage\campaigns"
 $catalogPath = Join-Path $campaignRoot "castle-bundled-scenarios.provenance.json"
 $citySourcePath = Join-Path $campaignRoot "city-of-bywater.source.json"
 $catalog = Get-Content -Raw -LiteralPath $catalogPath | ConvertFrom-Json

@@ -31,7 +31,7 @@
     ]
   },
   "package": {
-    "path": "src/infrastructure/characters/realmz-classic-character-library.realmz2",
+    "path": "src/storage/characters/realmz-classic-character-library.realmz2",
     "campaignId": "realmz-classic-character-library",
     "packageHash": "c7e093f46bcca49d2382d68c2995ae5ff90c0e706dbd538682b613af9b80e0bd",
     "archiveSha256": "a82631ff91e697201fd55d4b3e6367c192fb9afbd02c547fd79aa872ffe82cfe",

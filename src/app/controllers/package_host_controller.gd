@@ -1,10 +1,10 @@
 class_name PackageHostController
 extends RefCounted
 
-const PackageRepositoryScript := preload("res://src/infrastructure/packages/package_repository.gd")
-const PackageInstallTaskScript := preload("res://src/infrastructure/packages/package_install_task.gd")
-const BundledPackageLoadTaskScript := preload("res://src/infrastructure/packages/bundled_package_load_task.gd")
-const BUNDLED_CAMPAIGN_ROOT: String = "res://src/infrastructure/campaigns"
+const PackageRepositoryScript := preload("res://src/storage/packages/package_repository.gd")
+const PackageInstallTaskScript := preload("res://src/storage/packages/package_install_task.gd")
+const BundledPackageLoadTaskScript := preload("res://src/storage/packages/bundled_package_load_task.gd")
+const BUNDLED_CAMPAIGN_ROOT: String = "res://src/storage/campaigns"
 const USER_CAMPAIGN_ROOT: String = "user://packages"
 
 var _repository: PackageRepository

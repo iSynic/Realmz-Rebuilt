@@ -93,8 +93,8 @@ foreach ($path in $changedPaths) {
         throw "Save artifact must not enter a workflow commit: $path"
     }
     $isAllowedRealmz2 = $path.StartsWith("tests/fixtures/packages/") -or
-        $path -eq "src/infrastructure/characters/realmz-classic-character-library.realmz2" -or
-        $path.StartsWith("src/infrastructure/campaigns/")
+        $path -eq "src/storage/characters/realmz-classic-character-library.realmz2" -or
+        $path.StartsWith("src/storage/campaigns/")
     if ($extension -eq ".realmz2" -and -not $isAllowedRealmz2) {
         throw "Package outside the synthetic, application-library, or Castle-distributed bundle boundary must not enter a workflow commit: $path"
     }

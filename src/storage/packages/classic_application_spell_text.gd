@@ -1,7 +1,7 @@
 class_name ClassicApplicationSpellText
 extends RefCounted
 
-const CATALOG_PATH := "res://src/infrastructure/packages/classic-application-spell-descriptions.json"
+const CATALOG_PATH := "res://src/storage/packages/classic-application-spell-descriptions.json"
 const EXPECTED_DESCRIPTION_COUNT: int = 252
 const EXPECTED_SOURCE_COMMIT := "491816ad60037394f92c428e99c004494d3c28b3"
 const EXPECTED_SOURCE_PATH := "base/Realmz/Data Files/The Family Jewels.rsrc"

@@ -2,7 +2,7 @@ extends RealmzTestCase
 
 const FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-fixture.realmz2"
 const TAMPERED_FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-tampered.realmz2"
-const CLASSIC_CHARACTER_LIBRARY_PATH: String = "res://src/infrastructure/characters/realmz-classic-character-library.realmz2"
+const CLASSIC_CHARACTER_LIBRARY_PATH: String = "res://src/storage/characters/realmz-classic-character-library.realmz2"
 const CLASSIC_CHARACTER_LIBRARY_ID: String = "realmz-classic-character-library"
 const CLASSIC_CHARACTER_LIBRARY_HASH: String = "c7e093f46bcca49d2382d68c2995ae5ff90c0e706dbd538682b613af9b80e0bd"
 const INSTALL_TEST_ROOT: String = "user://realmz2-tests/package-install-schema-v3"
@@ -20,7 +20,7 @@ func run() -> void:
 		assert_equal(repository.retained_package_count(), 1, "the package repository retains one trusted bundled graph")
 		repository.set_application_content(character_library.content, character_library.media.assets())
 	var wrong_library_identity := repository.load_bundled_package(CLASSIC_CHARACTER_LIBRARY_PATH, CLASSIC_CHARACTER_LIBRARY_ID, "0".repeat(64)); assert_false(wrong_library_identity.is_ok(), "a bundled library whose pinned package identity drifts is rejected")
-	var production_scenario := repository.load_package("res://src/infrastructure/campaigns/scenario-assault-on-giant-mountain.realmz2")
+	var production_scenario := repository.load_package("res://src/storage/campaigns/scenario-assault-on-giant-mountain.realmz2")
 	assert_true(production_scenario.is_ok(), "a production scenario composes against the pinned application definition catalog: %s" % production_scenario.error_message)
 	if production_scenario.is_ok():
 		var portable_torch := ItemInstance.new("portable.item.torch", "classic.item.805")

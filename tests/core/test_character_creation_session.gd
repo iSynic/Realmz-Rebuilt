@@ -1,7 +1,7 @@
 extends RealmzTestCase
 
 const CharacterCreationSessionScript := preload("res://src/playthrough/character_creation_session.gd")
-const CLASSIC_CHARACTER_LIBRARY_PATH: String = "res://src/infrastructure/characters/realmz-classic-character-library.realmz2"
+const CLASSIC_CHARACTER_LIBRARY_PATH: String = "res://src/storage/characters/realmz-classic-character-library.realmz2"
 const CLASSIC_CHARACTER_LIBRARY_ID: String = "realmz-classic-character-library"
 const CLASSIC_CHARACTER_LIBRARY_HASH: String = "c7e093f46bcca49d2382d68c2995ae5ff90c0e706dbd538682b613af9b80e0bd"
 

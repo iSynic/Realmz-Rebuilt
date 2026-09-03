@@ -1,4 +1,4 @@
-# Package infrastructure contract
+# Package storage contract
 
 ## Purpose
 
@@ -38,8 +38,8 @@ Install, discover, decode, validate, cache, and release immutable Providence pac
 
 ## Verification
 
-- `tests/infrastructure/test_package_repository.gd` owns package trust, contract, installation, receipt, bounded graph-cache behavior, and parsed-document cache fallback/identity behavior.
-- `tests/infrastructure/test_package_install_task.gd` owns worker progress, cancellation, result handoff, shutdown behavior, and the host's bounded prewarm claim/supersession/failure-retry lifecycle.
+- `tests/storage/test_package_repository.gd` owns package trust, contract, installation, receipt, bounded graph-cache behavior, and parsed-document cache fallback/identity behavior.
+- `tests/storage/test_package_install_task.gd` owns worker progress, cancellation, result handoff, shutdown behavior, and the host's bounded prewarm claim/supersession/failure-retry lifecycle.
 - `tools/verify.ps1` verifies the schema mirror, synthetic fixture provenance, architecture boundaries, and the full typed suite.
 
 ## Child DOX Index

@@ -1,7 +1,7 @@
 class_name PackageContentDecoder
 extends PackageDecoderBase
 
-const ApplicationSpellText := preload("res://src/infrastructure/packages/classic_application_spell_text.gd")
+const ApplicationSpellText := preload("res://src/storage/packages/classic_application_spell_text.gd")
 
 func _construct_campaign_definition(value: Variant) -> CampaignDefinition:
 	if not value is Dictionary:

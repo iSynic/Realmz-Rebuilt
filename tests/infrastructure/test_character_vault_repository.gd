@@ -1,9 +1,9 @@
 extends RealmzTestCase
 
 const FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-fixture.realmz2"
-const STARTER_CATALOG_PATH: String = "res://src/infrastructure/characters/realmz-classic-starter-characters.json"
+const STARTER_CATALOG_PATH: String = "res://src/storage/characters/realmz-classic-starter-characters.json"
 const CHARACTER_LIBRARY_HASH: String = "c7e093f46bcca49d2382d68c2995ae5ff90c0e706dbd538682b613af9b80e0bd"
-const ClassicStarterCharacterCatalogScript := preload("res://src/infrastructure/characters/classic_starter_character_catalog.gd")
+const ClassicStarterCharacterCatalogScript := preload("res://src/storage/characters/classic_starter_character_catalog.gd")
 
 
 func run() -> void:

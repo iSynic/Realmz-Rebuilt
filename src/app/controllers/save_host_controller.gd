@@ -1,7 +1,7 @@
 class_name SaveHostController
 extends RefCounted
 
-const SaveRepositoryScript := preload("res://src/infrastructure/saves/save_repository.gd")
+const SaveRepositoryScript := preload("res://src/storage/saves/save_repository.gd")
 
 var _repository: SaveRepository
 

@@ -136,7 +136,7 @@ function Get-SourceLayer {
     $normalized = $RelativePath.Replace('\', '/')
     if ($normalized -match '^src/game(?:/|$)') { return 'game' }
     if ($normalized -match '^src/scenarios(?:/|$)') { return 'scenarios' }
-    if ($normalized -match '^src/infrastructure(?:/|$)') { return 'storage' }
+    if ($normalized -match '^src/storage(?:/|$)') { return 'storage' }
     if ($normalized -match '^src/presentation(?:/|$)') { return 'ui' }
     if ($normalized -match '^src/app(?:/|$)') { return 'app' }
     if ($normalized -match '^src/playthrough(?:/|$)') { return 'playthrough' }
@@ -290,7 +290,7 @@ $dependencyRoots = @(
     (Join-Path $repoRoot "src\game"),
     (Join-Path $repoRoot "src\scenarios"),
     (Join-Path $repoRoot "src\playthrough"),
-    (Join-Path $repoRoot "src\infrastructure"),
+    (Join-Path $repoRoot "src\storage"),
     (Join-Path $repoRoot "src\presentation"),
     (Join-Path $repoRoot "src\app")
 )
@@ -388,11 +388,11 @@ foreach ($rootPath in $dependencyRoots) {
     }
 }
 
-# PackageRepository is an infrastructure coordinator.  Domain construction is
+# PackageRepository is an storage coordinator.  Domain construction is
 # owned by its package collaborators, so keep this check tied to explicit game
 # class names and function declarations rather than banning generic words such
 # as "construct" in comments or diagnostics.
-$packageRepositoryPath = Join-Path $repoRoot "src\infrastructure\packages\package_repository.gd"
+$packageRepositoryPath = Join-Path $repoRoot "src\storage\packages\package_repository.gd"
 if (Test-Path -LiteralPath $packageRepositoryPath) {
     $gameClassNames = @{}
     foreach ($gameFile in Get-ChildItem (Join-Path $repoRoot "src\game") -Recurse -Filter "*.gd" -ErrorAction SilentlyContinue) {
@@ -408,18 +408,18 @@ if (Test-Path -LiteralPath $packageRepositoryPath) {
         $lineNumber++
         $code = Remove-GdscriptLineComment $line
         if ($code -match '^\s*func\s+_construct_[A-Za-z0-9_]*\s*\(') {
-            $violations += "src/infrastructure/packages/package_repository.gd:$lineNumber PackageRepository must not own domain construction functions"
+            $violations += "src/storage/packages/package_repository.gd:$lineNumber PackageRepository must not own domain construction functions"
         }
         foreach ($gameClassName in $gameClassNames.Keys) {
             if ($code -match "\b$([regex]::Escape($gameClassName))\s*\.\s*new\s*\(") {
-                $violations += "src/infrastructure/packages/package_repository.gd:$lineNumber PackageRepository must not directly construct game domain type $gameClassName"
+                $violations += "src/storage/packages/package_repository.gd:$lineNumber PackageRepository must not directly construct game domain type $gameClassName"
             }
         }
     }
 }
 
 # App-facing prepared package values expose the game media abstraction, never
-# an infrastructure decoder/catalog implementation. Presentation routing has a
+# an storage decoder/catalog implementation. Presentation routing has a
 # similarly narrow responsibility: it may mount workspaces and navigate among
 # them, while route-local controllers and rendering belong to the workspace
 # presenter mounted beneath the scene's explicit hosts.
@@ -427,7 +427,7 @@ $preparedPackagePath = Join-Path $repoRoot "src\app\view\prepared_package.gd"
 if (Test-Path -LiteralPath $preparedPackagePath) {
     $preparedPackageContent = [IO.File]::ReadAllText($preparedPackagePath)
     if ($preparedPackageContent -match '\bPackageMediaCatalog\b') {
-        $violations += "src/app/view/prepared_package.gd app view models must expose MediaSource instead of the infrastructure PackageMediaCatalog"
+        $violations += "src/app/view/prepared_package.gd app view models must expose MediaSource instead of the storage PackageMediaCatalog"
     }
 }
 

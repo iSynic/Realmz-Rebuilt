@@ -4,7 +4,7 @@ These six exact 872-byte files are the original starter Character Files distribu
 
 Realmz copyright 1994 by Tim Phillips. Licensed for this project under CC BY-NC-SA 4.0.
 
-`tools/convert_classic_starter_characters.py` verifies every source hash and deterministically produces the runtime catalog at `src/infrastructure/characters/realmz-classic-starter-characters.json`. Runtime code never parses these legacy files.
+`tools/convert_classic_starter_characters.py` verifies every source hash and deterministically produces the runtime catalog at `src/storage/characters/realmz-classic-starter-characters.json`. Runtime code never parses these legacy files.
 
 | File | SHA-256 |
 |---|---|

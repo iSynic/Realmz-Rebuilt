@@ -1,9 +1,9 @@
 class_name CharacterVaultController
 extends RefCounted
 
-const CharacterVaultRepositoryScript := preload("res://src/infrastructure/characters/character_vault_repository.gd")
-const ClassicStarterCharacterCatalogScript := preload("res://src/infrastructure/characters/classic_starter_character_catalog.gd")
-const CLASSIC_STARTER_CATALOG_PATH := "res://src/infrastructure/characters/realmz-classic-starter-characters.json"
+const CharacterVaultRepositoryScript := preload("res://src/storage/characters/character_vault_repository.gd")
+const ClassicStarterCharacterCatalogScript := preload("res://src/storage/characters/classic_starter_character_catalog.gd")
+const CLASSIC_STARTER_CATALOG_PATH := "res://src/storage/characters/realmz-classic-starter-characters.json"
 const CLASSIC_CHARACTER_LIBRARY_HASH := "c7e093f46bcca49d2382d68c2995ae5ff90c0e706dbd538682b613af9b80e0bd"
 
 var _repository: CharacterVaultRepository

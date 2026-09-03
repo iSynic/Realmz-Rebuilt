@@ -170,8 +170,8 @@ def convert(source_path: Path, appearance: dict[tuple[str, int], str]) -> tuple[
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--source", type=Path, default=Path("tools/fixtures/classic-character-files/7.1.2"))
-    parser.add_argument("--library", type=Path, default=Path("src/infrastructure/characters/realmz-classic-character-library.realmz2"))
-    parser.add_argument("--output", type=Path, default=Path("src/infrastructure/characters/realmz-classic-starter-characters.json"))
+    parser.add_argument("--library", type=Path, default=Path("src/storage/characters/realmz-classic-character-library.realmz2"))
+    parser.add_argument("--output", type=Path, default=Path("src/storage/characters/realmz-classic-starter-characters.json"))
     args = parser.parse_args()
     appearance = appearance_lookup(args.library)
     sources, records = [], []

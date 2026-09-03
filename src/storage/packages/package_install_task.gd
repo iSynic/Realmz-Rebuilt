@@ -1,8 +1,8 @@
 class_name PackageInstallTask
 extends RefCounted
 
-const PackageRepositoryScript := preload("res://src/infrastructure/packages/package_repository.gd")
-const PackageOperationStatusScript := preload("res://src/infrastructure/packages/package_operation_status.gd")
+const PackageRepositoryScript := preload("res://src/storage/packages/package_repository.gd")
+const PackageOperationStatusScript := preload("res://src/storage/packages/package_operation_status.gd")
 
 var _thread := Thread.new()
 var _repository: PackageRepository

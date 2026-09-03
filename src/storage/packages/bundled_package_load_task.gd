@@ -1,7 +1,7 @@
 class_name BundledPackageLoadTask
 extends RefCounted
 
-const PackageRepositoryScript := preload("res://src/infrastructure/packages/package_repository.gd")
+const PackageRepositoryScript := preload("res://src/storage/packages/package_repository.gd")
 
 var _thread := Thread.new()
 var _mutex := Mutex.new()

@@ -114,7 +114,7 @@ When the user requests a durable behavior change, record it here or in the relev
 - `docs/AGENTS.md` owns architecture, ADRs, fidelity decisions, provenance, and roadmap documentation.
 - `src/app/AGENTS.md` owns the composition root and host orchestration.
 - `src/game/AGENTS.md` owns the pure Realmz model, rules, topology, clock, RNG, and session state.
-- `src/infrastructure/AGENTS.md` owns package, save, validation, and external adapters.
+- `src/storage/AGENTS.md` owns package, save, validation, and external adapters.
 - `src/presentation/AGENTS.md` owns Godot scenes, controls, rendering, animation, and audio.
 - `src/scenarios/AGENTS.md` owns the scenario VM, Classic instructions, Scenario Actions, capabilities, and runtime API contract.
 - `src/playthrough/AGENTS.md` owns the pure transaction coordinator joining core state/rules to scenario execution.
