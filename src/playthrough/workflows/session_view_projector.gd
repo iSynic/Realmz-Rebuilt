@@ -5,7 +5,7 @@ const DEFAULT_MAP_VIEW_SIZE: Vector2i = Vector2i(25, 25)
 const ViewDomainRevisionsScript := preload("res://src/game/session/view_domain_revisions.gd")
 const MapPresentationDeltaScript := preload("res://src/game/view/map_presentation_delta.gd")
 const ViewChangeSetScript := preload("res://src/game/view/view_change_set.gd")
-const ProjectionPolicy := preload("res://src/session/workflows/session_view_projection_policy.gd")
+const ProjectionPolicy := preload("res://src/playthrough/workflows/session_view_projection_policy.gd")
 
 var _cached_map_revision: int = -1
 var _cached_map_id: String = ""

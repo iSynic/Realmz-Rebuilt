@@ -117,7 +117,7 @@ When the user requests a durable behavior change, record it here or in the relev
 - `src/infrastructure/AGENTS.md` owns package, save, validation, and external adapters.
 - `src/presentation/AGENTS.md` owns Godot scenes, controls, rendering, animation, and audio.
 - `src/scenarios/AGENTS.md` owns the scenario VM, Classic instructions, Scenario Actions, capabilities, and runtime API contract.
-- `src/session/AGENTS.md` owns the pure transaction coordinator joining core state/rules to scenario execution.
+- `src/playthrough/AGENTS.md` owns the pure transaction coordinator joining core state/rules to scenario execution.
 - `tests/AGENTS.md` owns test categories, fixture provenance, oracle evidence, and copyright boundaries.
 - `tools/AGENTS.md` owns local verification and development automation.
 - Root-owned files include `project.godot`, `README.md`, `.gitignore`, and repository-level configuration.

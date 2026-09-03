@@ -1,13 +1,13 @@
-# Deterministic session orchestration contract
+# Deterministic playthrough orchestration contract
 
 ## Purpose
 
-Own the pure transaction coordinator that joins core Realmz state and rules to the scenario VM without making either lower layer depend on the other.
+Own the pure transaction coordinator that joins Realmz game state and rules to the scenario VM without making either lower layer depend on the other.
 
 ## Ownership
 
 - `GameSession` public operations, transaction checkpoints, exact-once commit, request identity, revision, and aggregate lifetime.
-- `SessionSnapshot`, `SessionContinuation`, and the separate battle-return continuation that include core state, RNG, scenario VM/action state, and pending typed interactions.
+- `SessionSnapshot`, `SessionContinuation`, and the separate battle-return continuation that include game state, RNG, scenario VM/action state, and pending typed interactions.
 - `SessionRestoreValidator` constructs and validates a detached typed restore candidate. `GameSession.restore` alone commits that candidate to the live aggregate, so every failed validation leaves the current session untouched.
 - `SessionInteractionFactory` is the single owner of session-level request reconstruction shared by live orchestration and restore validation.
 - Session workflow contexts and services for lifecycle, exploration, inventory/magic/services, combat/rewards, application hooks, and detached view projection.
@@ -16,7 +16,7 @@ Own the pure transaction coordinator that joins core Realmz state and rules to t
 
 ## Local Contracts
 
-- This layer may depend on `src/game` and `src/scenarios`; neither lower layer may depend on `src/session`.
+- This layer may depend on `src/game` and `src/scenarios`; neither lower layer may depend on `src/playthrough`.
 - All classes are pure `RefCounted` or value-like data. They never retain Nodes, repositories, presenters, or the owning application.
 - Workflow services receive an explicit ephemeral `SessionWorkflowContext`; they never retain the owning `GameSession`.
 - Session continuation coordinators receive one explicit operation-scoped `SessionCoordinatorContext`, retain neither the owning `GameSession` nor the context beyond that operation, and return a typed `SessionCoordinatorResult`. `GameSession` retains that result locally before applying and releasing coordinator context; it alone advances revision, commits, rolls back, closes, and constructs the public `SessionStep`.
@@ -33,7 +33,7 @@ Own the pure transaction coordinator that joins core Realmz state and rules to t
 - Restore validation admits staged random-power combat items only when the active party actor still owns the usable authored-power-eight item and its executable spell. A pending VM combat request is regenerated from detached authoritative state and must match the saved typed request exactly, including the rolled power and target surface.
 - Restore validation admits save-owned shop buyback stock only when every quantity has one unique native slot in the item's 200-slot band and that slot does not collide with active immutable stock. The quantity and slot maps are one strict save contract and must restore together.
 - Restore validation must never mutate the live session. Candidate state, rules, RNG, VM, continuations, and interaction are replacement objects until the final `GameSession` assignment block.
-- Scenario-mediated and direct player operations must converge on the same core rules and workflow implementations.
+- Scenario-mediated and direct player operations must converge on the same game rules and playthrough implementations.
 - Dictionaries are permitted only while crossing an explicit package/save/event codec. Live workflow state and continuations are typed.
 - Every continuation body and nested scenario handoff must reject unknown fields and versions, detach mutable values, and round-trip through its strict wire codec before entering a snapshot.
 - Post-clock exploration admits explicit attempt-search completion kinds for blocked and successful land movement. They carry no direction, survive strict save validation, run the ordinary secret check exactly once, and then converge on the existing completed or post-move path.

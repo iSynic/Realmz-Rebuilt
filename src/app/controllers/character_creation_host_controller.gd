@@ -1,7 +1,7 @@
 class_name CharacterCreationHostController
 extends RefCounted
 
-const CharacterCreationSessionScript := preload("res://src/session/character_creation_session.gd")
+const CharacterCreationSessionScript := preload("res://src/playthrough/character_creation_session.gd")
 
 var _session: CharacterCreationSession
 

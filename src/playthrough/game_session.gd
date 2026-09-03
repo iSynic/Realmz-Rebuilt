@@ -1,9 +1,9 @@
 class_name GameSession
 extends RefCounted
 
-const ExplorationCoordinatorType = preload("res://src/session/coordinators/session_exploration_coordinator.gd")
-const ScenarioCoordinatorType = preload("res://src/session/coordinators/session_scenario_coordinator.gd")
-const ResponseCoordinatorType = preload("res://src/session/coordinators/session_responses_coordinator.gd")
+const ExplorationCoordinatorType = preload("res://src/playthrough/coordinators/session_exploration_coordinator.gd")
+const ScenarioCoordinatorType = preload("res://src/playthrough/coordinators/session_scenario_coordinator.gd")
+const ResponseCoordinatorType = preload("res://src/playthrough/coordinators/session_responses_coordinator.gd")
 var _content: RealmzContent
 var _state: GameState
 var _rng: RealmzRng

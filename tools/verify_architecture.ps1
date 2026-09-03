@@ -139,7 +139,7 @@ function Get-SourceLayer {
     if ($normalized -match '^src/infrastructure(?:/|$)') { return 'storage' }
     if ($normalized -match '^src/presentation(?:/|$)') { return 'ui' }
     if ($normalized -match '^src/app(?:/|$)') { return 'app' }
-    if ($normalized -match '^src/session(?:/|$)') { return 'playthrough' }
+    if ($normalized -match '^src/playthrough(?:/|$)') { return 'playthrough' }
     return $null
 }
 
@@ -289,7 +289,7 @@ $dependencyRules = @{
 $dependencyRoots = @(
     (Join-Path $repoRoot "src\game"),
     (Join-Path $repoRoot "src\scenarios"),
-    (Join-Path $repoRoot "src\session"),
+    (Join-Path $repoRoot "src\playthrough"),
     (Join-Path $repoRoot "src\infrastructure"),
     (Join-Path $repoRoot "src\presentation"),
     (Join-Path $repoRoot "src\app")
@@ -305,17 +305,17 @@ foreach ($symbolName in $classNameSymbols.Keys) {
 # GameSession owns public dispatch and the final all-or-nothing restore commit;
 # construction and validation of a detached restore candidate belong to the
 # typed validator. This guards responsibility rather than imposing a line cap.
-$gameSessionPath = Join-Path $repoRoot "src\session\game_session.gd"
+$gameSessionPath = Join-Path $repoRoot "src\playthrough\game_session.gd"
 if (Test-Path -LiteralPath $gameSessionPath) {
     $gameSessionContent = [IO.File]::ReadAllText($gameSessionPath)
     if ($gameSessionContent -notmatch '\bSessionRestoreValidator\.validate\s*\(') {
-        $violations += "src/session/game_session.gd GameSession.restore must delegate candidate validation to SessionRestoreValidator"
+        $violations += "src/playthrough/game_session.gd GameSession.restore must delegate candidate validation to SessionRestoreValidator"
     }
     $lineNumber = 0
     foreach ($line in Get-SanitizedGdscriptLines -Content $gameSessionContent) {
         $lineNumber++
         if ($line -match '^\s*(?:static\s+)?func\s+_(?:valid_|party_.*_is_valid|shop_state_is_valid|location_notes_are_valid|journal_messages_are_valid|acquired_player_maps_are_valid)') {
-            $violations += "src/session/game_session.gd:$lineNumber GameSession must not own restore-validation helpers"
+            $violations += "src/playthrough/game_session.gd:$lineNumber GameSession must not own restore-validation helpers"
         }
     }
 }
@@ -323,7 +323,7 @@ if (Test-Path -LiteralPath $gameSessionPath) {
 # Session continuation coordinators operate on one explicit operation context
 # and return an internal typed outcome. They may not regain a private owner
 # backchannel or construct the public SessionStep boundary themselves.
-$sessionCoordinatorRoot = Join-Path $repoRoot "src\session\coordinators"
+$sessionCoordinatorRoot = Join-Path $repoRoot "src\playthrough\coordinators"
 foreach ($file in Get-ChildItem $sessionCoordinatorRoot -Filter "session_*_coordinator.gd" -ErrorAction SilentlyContinue) {
     $relativePath = Get-RepositoryRelativePath -RootPath $repoRoot -TargetPath $file.FullName
     $lineNumber = 0
@@ -338,7 +338,7 @@ $coordinatorContextPath = Join-Path $sessionCoordinatorRoot "session_coordinator
 if (Test-Path -LiteralPath $coordinatorContextPath) {
     $contextContent = [IO.File]::ReadAllText($coordinatorContextPath)
     if ($contextContent -match '(?m)^var\s+view_revision\b') {
-        $violations += "src/session/coordinators/session_coordinator_context.gd request identity must use named revision capabilities instead of a writable revision field"
+        $violations += "src/playthrough/coordinators/session_coordinator_context.gd request identity must use named revision capabilities instead of a writable revision field"
     }
 }
 

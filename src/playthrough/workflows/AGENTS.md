@@ -1,4 +1,4 @@
-# Session workflow contract
+# Playthrough workflow contract
 
 ## Purpose
 
