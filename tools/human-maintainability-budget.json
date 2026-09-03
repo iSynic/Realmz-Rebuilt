@@ -13,8 +13,6 @@
     "target": 0
   },
   "legacyRouteScenes": [
-    "src/ui/screens/allies_screen.tscn",
-    "src/ui/screens/bestiary_screen.tscn",
     "src/ui/screens/combat_screen.tscn",
     "src/ui/screens/exploration_screen.tscn",
     "src/ui/screens/journal_screen.tscn",

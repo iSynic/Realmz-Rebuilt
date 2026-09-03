@@ -21,6 +21,7 @@ const SWAP_DONE_SOUND_ID: int = 141
 var _view: GameView
 var _settings: PresentationSettings = PresentationSettings.new()
 var _media: ClassicMediaCatalog
+var _layout_profile: StringName = UiLayoutProfile.WIDE
 var _ordinary_money_workspace_open: bool = false
 var _system_controller := SystemScreenController.new()
 var _character_controller := CharacterScreenController.new()
@@ -32,6 +33,7 @@ var _creature_library_controller := CREATURE_LIBRARY_CONTROLLER.new()
 
 
 func set_layout_profile(profile_id: StringName) -> void:
+	_layout_profile = profile_id
 	_character_controller.set_layout_profile(profile_id)
 	_creature_library_controller.set_layout_profile(profile_id)
 	_inventory_controller.set_layout_profile(profile_id)
@@ -208,7 +210,7 @@ func present(screen_id: StringName, screen: ScreenFrame, appearance_textures: Di
 	if screen == null:
 		return
 	var body := screen.body_control()
-	if screen_id not in [&"character", &"inventory"]:
+	if screen_id not in [&"allies", &"bestiary", &"character", &"inventory"]:
 		_clear(body)
 	if context_actions != null:
 		_clear(context_actions)
@@ -218,6 +220,10 @@ func present(screen_id: StringName, screen: ScreenFrame, appearance_textures: Di
 			var character_screen := screen as CharacterScreen
 			character_screen.prepare_for_render()
 			message_host = character_screen.character_sheet_area()
+		elif screen is CreatureLibraryScreen:
+			var creature_screen := screen as CreatureLibraryScreen
+			creature_screen.prepare_for_render(_layout_profile == UiLayoutProfile.COMPACT)
+			message_host = creature_screen.detail_panel()
 		elif screen is InventoryScreen:
 			message_host = (screen as InventoryScreen).prepare_alternate_layout()
 		_add_label(message_host, "No active session. Choose a validated campaign to begin.", MUTED)
@@ -228,9 +234,9 @@ func present(screen_id: StringName, screen: ScreenFrame, appearance_textures: Di
 		&"character":
 			_character_controller.present(screen as CharacterScreen, _view, appearance_textures, _settings, _media)
 		&"allies":
-			_creature_library_controller.present_allies(body, _view, _media, _settings.text_scale)
+			_creature_library_controller.present_allies(screen, _view, _media, _settings.text_scale)
 		&"bestiary":
-			_creature_library_controller.present_bestiary(body, _view, _media, _settings.text_scale)
+			_creature_library_controller.present_bestiary(screen, _view, _media, _settings.text_scale)
 		&"vault":
 			_character_controller.present_vault(body, _view, appearance_textures, _settings.text_scale, vault_back_label, _media)
 		&"inventory":

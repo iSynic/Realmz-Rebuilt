@@ -20,30 +20,38 @@ func set_layout_profile(profile_id: StringName) -> void:
 	_layout_profile = profile_id
 
 
-func present_allies(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog, text_scale: float) -> void:
-	if parent == null or view == null:
+func present_allies(target: Control, view: GameView, media: ClassicMediaCatalog, text_scale: float) -> void:
+	if target == null or view == null:
 		return
+	var screen := target as CreatureLibraryScreen
+	var parent := screen.body_control() if screen != null else target as VBoxContainer
+	if screen != null:
+		screen.prepare_for_render(_layout_profile == UiLayoutProfile.COMPACT)
+	else:
+		_clear_children(parent)
 	if view.party_allies.is_empty():
-		_add_empty_state(parent, "No current allies", "No allies are currently with the party.", text_scale)
+		_add_empty_state(screen.detail_panel() if screen != null else parent, "No current allies", "No allies are currently with the party.", text_scale)
 		return
 	var selected := _selected_ally(view.party_allies)
 	if selected == null:
 		selected = view.party_allies[0]
 		_selected_ally_id = selected.id
 	var compact := _layout_profile == UiLayoutProfile.COMPACT
-	var columns := BoxContainer.new()
-	columns.name = "AlliesColumns"
+	var columns := screen.columns_control() if screen != null else BoxContainer.new()
+	columns.name = "CreatureColumns" if screen != null else "AlliesColumns"
 	columns.vertical = compact
 	columns.add_theme_constant_override("separation", 10)
 	columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	parent.add_child(columns)
-	var list_panel := PanelContainer.new()
-	list_panel.name = "AlliesListPane"
+	if screen == null:
+		parent.add_child(columns)
+	var list_panel := screen.list_panel() if screen != null else PanelContainer.new()
+	list_panel.name = "CreatureListPanel" if screen != null else "AlliesListPane"
 	list_panel.theme_type_variation = &"ClassicInset"
 	list_panel.custom_minimum_size = Vector2(248.0, 150.0 if compact else 0.0)
 	list_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	list_panel.size_flags_stretch_ratio = 0.72
-	columns.add_child(list_panel)
+	if screen == null:
+		columns.add_child(list_panel)
 	var list := VBoxContainer.new()
 	list.add_theme_constant_override("separation", 4)
 	list_panel.add_child(list)
@@ -60,42 +68,51 @@ func present_allies(parent: VBoxContainer, view: GameView, media: ClassicMediaCa
 		button.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.expand_icon = true
 		button.tooltip_text = "Inspect %s" % ally.name
-		button.pressed.connect(_select_ally.bind(ally.id, parent, view, media, text_scale))
+		button.pressed.connect(_select_ally.bind(ally.id, target, view, media, text_scale))
 		list.add_child(button)
-	var detail_panel := PanelContainer.new()
-	detail_panel.name = "AllyDetailPane"
+	var detail_panel := screen.detail_panel() if screen != null else PanelContainer.new()
+	detail_panel.name = "CreatureDetailPanel" if screen != null else "AllyDetailPane"
 	detail_panel.theme_type_variation = &"ClassicInset"
 	detail_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	detail_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	detail_panel.size_flags_stretch_ratio = 1.78
-	columns.add_child(detail_panel)
+	if screen == null:
+		columns.add_child(detail_panel)
 	_render_ally(detail_panel, selected, media, text_scale, compact)
 
 
-func present_bestiary(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog, text_scale: float) -> void:
-	if parent == null or view == null:
+func present_bestiary(target: Control, view: GameView, media: ClassicMediaCatalog, text_scale: float) -> void:
+	if target == null or view == null:
 		return
+	var screen := target as CreatureLibraryScreen
+	var parent := screen.body_control() if screen != null else target as VBoxContainer
+	if screen != null:
+		screen.prepare_for_render(_layout_profile == UiLayoutProfile.COMPACT)
+	else:
+		_clear_children(parent)
 	if view.bestiary_entries.is_empty():
-		_add_empty_state(parent, "Bestiary unavailable", "This package has no menu-visible monster records.", text_scale)
+		_add_empty_state(screen.detail_panel() if screen != null else parent, "Bestiary unavailable", "This package has no menu-visible monster records.", text_scale)
 		return
 	var selected := _selected_bestiary(view.bestiary_entries)
 	if selected == null:
 		selected = view.bestiary_entries[0]
 		_selected_bestiary_id = selected.definition_id
 	var compact := _layout_profile == UiLayoutProfile.COMPACT
-	var columns := BoxContainer.new()
-	columns.name = "BestiaryColumns"
+	var columns := screen.columns_control() if screen != null else BoxContainer.new()
+	columns.name = "CreatureColumns" if screen != null else "BestiaryColumns"
 	columns.vertical = compact
 	columns.add_theme_constant_override("separation", 10)
 	columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	parent.add_child(columns)
-	var list_panel := PanelContainer.new()
-	list_panel.name = "BestiaryListPane"
+	if screen == null:
+		parent.add_child(columns)
+	var list_panel := screen.list_panel() if screen != null else PanelContainer.new()
+	list_panel.name = "CreatureListPanel" if screen != null else "BestiaryListPane"
 	list_panel.theme_type_variation = &"ClassicInset"
 	list_panel.custom_minimum_size = Vector2(248.0, 150.0 if compact else 0.0)
 	list_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	list_panel.size_flags_stretch_ratio = 0.72
-	columns.add_child(list_panel)
+	if screen == null:
+		columns.add_child(list_panel)
 	var list := VBoxContainer.new()
 	list.add_theme_constant_override("separation", 4)
 	list_panel.add_child(list)
@@ -112,15 +129,16 @@ func present_bestiary(parent: VBoxContainer, view: GameView, media: ClassicMedia
 		button.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.expand_icon = true
 		button.tooltip_text = "Inspect %s" % entry.name
-		button.pressed.connect(_select_bestiary.bind(entry.definition_id, parent, view, media, text_scale))
+		button.pressed.connect(_select_bestiary.bind(entry.definition_id, target, view, media, text_scale))
 		list.add_child(button)
-	var detail_panel := PanelContainer.new()
-	detail_panel.name = "BestiaryDetailPane"
+	var detail_panel := screen.detail_panel() if screen != null else PanelContainer.new()
+	detail_panel.name = "CreatureDetailPanel" if screen != null else "BestiaryDetailPane"
 	detail_panel.theme_type_variation = &"ClassicInset"
 	detail_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	detail_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	detail_panel.size_flags_stretch_ratio = 1.78
-	columns.add_child(detail_panel)
+	if screen == null:
+		columns.add_child(detail_panel)
 	_render_bestiary(detail_panel, selected, media, text_scale, compact)
 
 
@@ -138,20 +156,20 @@ func _selected_bestiary(entries: Array[MonsterCatalogEntryView]) -> MonsterCatal
 	return null
 
 
-func _select_ally(ally_id: String, parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog, text_scale: float) -> void:
+func _select_ally(ally_id: String, target: Control, view: GameView, media: ClassicMediaCatalog, text_scale: float) -> void:
 	_selected_ally_id = ally_id
-	for child: Node in parent.get_children():
-		parent.remove_child(child)
-		child.queue_free()
-	present_allies(parent, view, media, text_scale)
+	present_allies(target, view, media, text_scale)
 
 
-func _select_bestiary(definition_id: String, parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog, text_scale: float) -> void:
+func _select_bestiary(definition_id: String, target: Control, view: GameView, media: ClassicMediaCatalog, text_scale: float) -> void:
 	_selected_bestiary_id = definition_id
+	present_bestiary(target, view, media, text_scale)
+
+
+func _clear_children(parent: Node) -> void:
 	for child: Node in parent.get_children():
 		parent.remove_child(child)
 		child.queue_free()
-	present_bestiary(parent, view, media, text_scale)
 
 
 func _render_ally(parent: PanelContainer, ally: MonsterView, media: ClassicMediaCatalog, text_scale: float, compact: bool) -> void:
@@ -281,7 +299,7 @@ func _add_state_card(parent: BoxContainer, title: String, values: Array[String],
 	parent.add_child(panel)
 
 
-func _add_empty_state(parent: VBoxContainer, title: String, detail: String, text_scale: float) -> void:
+func _add_empty_state(parent: Container, title: String, detail: String, text_scale: float) -> void:
 	var panel := PanelContainer.new()
 	panel.theme_type_variation = &"ClassicInset"
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
