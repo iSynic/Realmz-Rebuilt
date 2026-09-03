@@ -5,7 +5,7 @@ signal movement_requested(direction: Vector2i)
 
 const BASE_INTERVAL_SECONDS: float = 0.05
 const INITIAL_REPEAT_DELAY_SECONDS: float = 0.15
-const STEP_BOUNDARY_EVENTS: Array[StringName] = [&"map_transitioned", &"timed_encounter_triggered", &"random_region_triggered", &"random_door_triggered", &"random_encounter_triggered"]
+const STEP_BOUNDARY_EVENTS: Array[StringName] = [&"map_transitioned", &"timed_encounter_triggered", &"random_door_triggered", &"random_encounter_triggered"]
 
 var _speed_percent: int = 100
 var _source: StringName = &""
