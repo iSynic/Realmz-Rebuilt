@@ -24,15 +24,15 @@ func cast_character_phase(state: GameState, content: RealmzContent, caster: Char
 
 
 func checkpoint_available(combat: CombatState, caster_id: String) -> bool:
-	var undo := combat.undo_state if combat != null else null
-	return undo != null and undo.available and undo.actor_id == caster_id and undo.round_number == combat.round_number and undo.turn_index == combat.turn_index
+	var undo := combat.turns.undo_state if combat != null else null
+	return undo != null and undo.available and undo.actor_id == caster_id and undo.round_number == combat.turns.round_number and undo.turn_index == combat.turns.turn_index
 
 
 func probe_destination(state: GameState, content: RealmzContent, caster_id: String, spell: SpellDefinition, power_level: int, destination: Vector2i) -> CombatSpellCastProbe:
 	var combat := state.combat
 	if destination == INVALID_COORDINATE:
 		return CombatSpellCastProbe.blocked(&"invalid_spell_target", "Choose a battlefield destination for Phase.")
-	if not checkpoint_available(combat, caster_id) and combat.active_turn != null:
+	if not checkpoint_available(combat, caster_id) and combat.turns.active_turn != null:
 		return CombatSpellCastProbe.blocked(&"phase_checkpoint_unavailable", "Phase is available only while this activation can still be undone.")
 	var map := content.world.map_by_id(combat.battlefield.map_id)
 	var terrain_set := content.world.battle_terrain_set_for_map(map, state.world) if map != null else null
@@ -51,11 +51,11 @@ func _resolve_character_phase(state: GameState, content: RealmzContent, caster: 
 	if phase == null or not phase.cast:
 		return CombatFlowResult.failed(&"spell_cast_failed", "Phase could not be cast with the available spell points.")
 	if count_spell_cast:
-		combat.active_turn.spell_cast_count += 1
+		combat.turns.active_turn.spell_cast_count += 1
 		caster.lifetime_record.record_spell_cast()
 	caster.attacks_remaining = _context.arithmetic.signed_16(caster.attacks_remaining - 2)
 	caster.movement = maxi(0, caster.movement - 12)
-	combat.invalidate_undo()
+	combat.turns.invalidate_undo()
 	var origin := combat.battlefield.actor_position(caster.id)
 	var collision_actor_id := combat.battlefield.actor_at(destination, caster.id)
 	var phased_into_solid := _destination_is_solid(state, content, combat, destination)
@@ -74,7 +74,7 @@ func _resolve_character_phase(state: GameState, content: RealmzContent, caster: 
 		events.append(DomainEvent.new(&"combatant_moved", {"actorId": caster.id, "from": [origin.x, origin.y], "to": [destination.x, destination.y], "cost": 12, "movementRemaining": caster.movement, "automatic": false, "source": "classic-combat-phase"}))
 		if spell.size == 0:
 			caster.attacks_remaining = 0
-		combat.mark_attacked(caster.id)
+		combat.actor_statuses.mark_attacked(caster.id)
 	events.append(DomainEvent.new(&"sound_requested", {"soundId": 658, "waitForCompletion": false, "source": "classic-combat-phase-arrival"}))
 	if defeated:
 		events.append(DomainEvent.new(&"sound_requested", {"soundId": 631, "waitForCompletion": false, "source": "classic-combat-phase-death"}))
@@ -84,7 +84,7 @@ func _resolve_character_phase(state: GameState, content: RealmzContent, caster: 
 		_context.rounds().advance_turn(state, content, rng, events)
 	if _context.rounds().finish_if_resolved(state, content, events):
 		return CombatFlowResult.succeeded(events, true)
-	if defeated and combat.active_actor_id() == caster.id:
+	if defeated and combat.turns.active_actor_id() == caster.id:
 		_context.rounds().advance_turn(state, content, rng, events)
 	_context.automation().process_monster_turns(state, content, rng, events)
 	return CombatFlowResult.succeeded(events, state.combat.completed)

@@ -16,7 +16,7 @@ func choose_party_action(state: GameState, content: RealmzContent, actor: Charac
 	_append_positive_choice(choices, _best_party_spell(state, content, actor))
 	var adjacent_ids := _hostile_adjacent_ids(state, actor.id)
 	if not adjacent_ids.is_empty():
-		if state.combat.character_weapon_mode(actor.id) == &"missile":
+		if state.combat.actor_statuses.character_weapon_mode(actor.id) == &"missile":
 			choices.append({"action": &"switch_weapon", "score": 640})
 		else:
 			var melee: Dictionary = {}
@@ -87,7 +87,7 @@ func _best_polymorph(state: GameState, content: RealmzContent, actor: CharacterS
 	if spell.target_type == 4:
 		return _best_area(state, content, actor, spell, option, 10, actors_by_cell, area_placement_cache, area_center_cache, -1, true)
 	var best: Dictionary = {}
-	for target: MonsterState in state.combat.monsters():
+	for target: MonsterState in state.combat.roster.monsters():
 		if target.current_health <= 0 or target.traitor == actor.traitor or not state.combat.battlefield.has_actor(target.id) or _target_reflects(state, target.id) or _target_hard_immune(state, content, target.id, spell) or not _context.magic_flow().selection().spell_actor_target_is_valid(state, content, actor.id, target.id, spell, option.power):
 			continue
 		best = _prefer(best, {"action": &"cast_spell", "spellId": spell.id, "power": option.power, "targetId": target.id, "score": 440 + target.hit_dice * 20 + target.current_health - option.cost * 3})
@@ -96,7 +96,7 @@ func _best_polymorph(state: GameState, content: RealmzContent, actor: CharacterS
 
 func _best_destroy_turn_undead(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, power: int) -> Dictionary:
 	var eligible := 0
-	for target: MonsterState in state.combat.monsters():
+	for target: MonsterState in state.combat.roster.monsters():
 		var definition := content.monster_by_id(target.definition_id)
 		if target.current_health > 0 and target.traitor and state.combat.battlefield.has_actor(target.id) and definition != null and definition.can_summon != -1 and (definition.type_flag(1) or definition.type_flag(2)):
 			eligible += 1
@@ -135,7 +135,7 @@ func _best_summon(state: GameState, content: RealmzContent, actor: CharacterStat
 		if character.current_health > 0 and state.combat.battlefield.has_actor(character.id):
 			if character.traitor == actor.traitor: friendly_count += 1
 			else: hostile_count += 1
-	for monster: MonsterState in state.combat.monsters():
+	for monster: MonsterState in state.combat.roster.monsters():
 		if monster.current_health <= 0 or not state.combat.battlefield.has_actor(monster.id):
 			continue
 		if monster.traitor == actor.traitor:
@@ -154,7 +154,7 @@ func _best_condition_cure(state: GameState, content: RealmzContent, actor: Chara
 	for character: CharacterState in state.party.characters():
 		if character.current_health > 0 and character.traitor == actor.traitor and character.conditions.is_active(condition_index) and state.combat.battlefield.has_actor(character.id):
 			candidates.append(character.id)
-	for monster: MonsterState in state.combat.monsters():
+	for monster: MonsterState in state.combat.roster.monsters():
 		if monster.current_health > 0 and monster.traitor == actor.traitor and monster.conditions.is_active(condition_index) and state.combat.battlefield.has_actor(monster.id):
 			candidates.append(monster.id)
 	candidates.sort_custom(func(left: String, right: String) -> bool: return _condition_cure_score(state, left, condition_index) > _condition_cure_score(state, right, condition_index) or (_condition_cure_score(state, left, condition_index) == _condition_cure_score(state, right, condition_index) and left < right))
@@ -193,7 +193,7 @@ func _best_condition_effect(state: GameState, content: RealmzContent, actor: Cha
 	var candidates: Array[String] = []
 	for target_id: String in candidate_ids:
 		var character := state.party.character_by_id(target_id)
-		var monster := state.combat.monster_by_id(target_id)
+		var monster := state.combat.roster.monster_by_id(target_id)
 		var conditions := character.conditions if character != null else monster.conditions if monster != null else null
 		if conditions == null or conditions.value(condition_index) != 0 or target_id != actor.id and _target_reflects(state, target_id):
 			continue
@@ -359,7 +359,7 @@ func _best_area(state: GameState, content: RealmzContent, actor: CharacterState,
 					var target_id := String(actors_by_cell.get(center + offset, ""))
 					if target_id.is_empty():
 						continue
-					if monster_targets_only and state.combat.monster_by_id(target_id) == null:
+					if monster_targets_only and state.combat.roster.monster_by_id(target_id) == null:
 						continue
 					if _actor_is_friendly(state, actor, target_id):
 						harms_friend = true
@@ -399,7 +399,7 @@ func _hostile_spell_targets(state: GameState, content: RealmzContent, actor: Cha
 	var result: Array[String] = []
 	for target_id: String in _opposed_actor_ids(state, actor):
 		var target_character := state.party.character_by_id(target_id)
-		var target_monster := state.combat.monster_by_id(target_id)
+		var target_monster := state.combat.roster.monster_by_id(target_id)
 		if _target_hard_immune(state, content, target_id, spell) or (target_character != null and target_character.conditions.is_active(ConditionRules.REFLECTING_SPELLS)) or (target_monster != null and target_monster.conditions.is_active(ConditionRules.REFLECTING_SPELLS)):
 			continue
 		if _context.magic_flow().selection().spell_actor_target_is_valid(state, content, actor.id, target_id, spell, power):
@@ -409,7 +409,7 @@ func _hostile_spell_targets(state: GameState, content: RealmzContent, actor: Cha
 
 
 func _best_projectile(state: GameState, content: RealmzContent, actor: CharacterState) -> Dictionary:
-	if state.combat.character_weapon_mode(actor.id) != &"missile":
+	if state.combat.actor_statuses.character_weapon_mode(actor.id) != &"missile":
 		return {}
 	var profile = _context.reactions().character_projectile_profile(actor, content, _context.inventory.combat_equipment(actor, content.item_definitions()))
 	if profile == null or not profile.available:

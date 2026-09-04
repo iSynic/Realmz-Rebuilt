@@ -374,7 +374,7 @@ func _test_combat_and_reward_persistence(content: RealmzContent) -> void:
 		fumble_session._context.state.combat.outcome = &"retreated"
 		fumble_session._context.state.last_battle_outcome = &"retreated"
 		var dropped := ItemInstance.new("fixture.fumbled-item", fumble_item.id, 7, false, true)
-		assert_true(fumble_session._context.state.combat.queue_fumbled_item(dropped), "a completed retreat retains its battle-local fumbled weapon")
+		assert_true(fumble_session._context.state.combat.dropped_items.queue(dropped), "a completed retreat retains its battle-local fumbled weapon")
 		# Simulate a save or live session created before empty Castle body-count
 		# boundaries were removed. Continue must heal it into the next real stage.
 		var stale_ally_request := InteractionRequest.from_payload("fixture.stale-empty-ally", InteractionRequest.ALLY_SELECTION, {"prompt": "Choose the allies who will continue with the party.", "candidates": [], "maximum": 4, "selectedIds": [], "requiredIds": []})
@@ -462,14 +462,14 @@ func _test_combat_and_reward_persistence(content: RealmzContent) -> void:
 		var setup: CombatFlowResult = reward_session._context.rules.combat_flow.start_battle(reward_session._context.state, content, battle, reward_session._context.rng)
 		assert_true(setup.ok, "the terminal reward integration starts through the source-backed battle builder")
 		if setup.ok:
-			assert_true(reward_session._context.state.combat.monsters().all(func(monster: MonsterState) -> bool: return monster.definition_id.begins_with("classic.monster-set.-1.")), "battle construction resolves every authored slot through the selected Classic Monster Set")
+			assert_true(reward_session._context.state.combat.roster.monsters().all(func(monster: MonsterState) -> bool: return monster.definition_id.begins_with("classic.monster-set.-1.")), "battle construction resolves every authored slot through the selected Classic Monster Set")
 			var reordered_turns: Array[String] = [reward_character.id]
-			for actor_id: String in reward_session._context.state.combat.turn_order():
+			for actor_id: String in reward_session._context.state.combat.turns.turn_order():
 				if actor_id != reward_character.id:
 					reordered_turns.append(actor_id)
 			reward_session._context.state.combat.set_turn_order(reordered_turns)
-			reward_session._context.state.combat.turn_index = 0
-			reward_session._context.state.combat.active_turn = null
+			reward_session._context.state.combat.turns.turn_index = 0
+			reward_session._context.state.combat.turns.active_turn = null
 			var tactical_view := reward_session.view()
 			assert_true(tactical_view.combat_view.movement_options.any(func(option: CombatMoveOptionView) -> bool: return option.enabled), "the active fixture character has at least one core-probed tactical step")
 			assert_true(tactical_view.availability(&"combat_move").enabled, "the public combat-move action derives from the active battle view instead of the stale global fallback: %s" % tactical_view.availability(&"combat_move").reason)
@@ -496,10 +496,10 @@ func _test_combat_and_reward_persistence(content: RealmzContent) -> void:
 			reward_session._context.session_interaction = InteractionRequest.from_payload("fixture.combat-action", InteractionRequest.COMBAT, {})
 			assert_true(reward_session.view().availability(&"combat_move").enabled, "the typed battle interaction keeps its legal movement action available: %s" % reward_session.view().availability(&"combat_move").reason)
 			reward_session._context.session_interaction = null
-			for monster: MonsterState in reward_session._context.state.combat.monsters():
+			for monster: MonsterState in reward_session._context.state.combat.roster.monsters():
 				if monster.traitor:
 					monster.current_health = 0
-			reward_session._context.state.combat.active_turn = null
+			reward_session._context.state.combat.turns.active_turn = null
 			reward_session._context.state.combat.pending_monster_attack = null
 			reward_session._context.state.combat.pending_reaction = null
 			var terminal := reward_session.submit_intent(PlayerIntent.combat_action(&"finish", reward_character.id))
@@ -558,7 +558,7 @@ func _complete_public_defeat(session: GameSession, content: RealmzContent, chara
 	if not setup.ok or session._context.state.combat == null:
 		return SessionStep.failed(session.view().revision, setup.error_code, setup.error_message)
 	var attacker: MonsterState = null
-	for monster: MonsterState in session._context.state.combat.monsters():
+	for monster: MonsterState in session._context.state.combat.roster.monsters():
 		if monster.traitor and attacker == null:
 			attacker = monster
 		elif monster.traitor:
@@ -568,8 +568,8 @@ func _complete_public_defeat(session: GameSession, content: RealmzContent, chara
 	attacker.target_id = character.id
 	var turn_order: Array[String] = [character.id, attacker.id]
 	session._context.state.combat.set_turn_order(turn_order)
-	session._context.state.combat.turn_index = 0
-	session._context.state.combat.active_turn = null
+	session._context.state.combat.turns.turn_index = 0
+	session._context.state.combat.turns.active_turn = null
 	var scripted_values: Array[int] = []
 	scripted_values.resize(512)
 	scripted_values.fill(0)

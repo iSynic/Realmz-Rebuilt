@@ -25,12 +25,12 @@ static func party_inventory_is_valid(content: RealmzContent, state: GameState, r
 
 
 static func combat_staged_item_is_valid(content: RealmzContent, state: GameState, rules: RealmzRules) -> bool:
-	if state.combat == null or state.combat.staged_random_item_instance_id().is_empty():
+	if state.combat == null or state.combat.turns.staged_random_item_instance_id().is_empty():
 		return true
-	var actor_id := state.combat.active_actor_id()
+	var actor_id := state.combat.turns.active_actor_id()
 	var character := state.party.character_by_id(actor_id)
-	var instance_id := state.combat.staged_random_item_instance_id()
-	if character == null or state.combat.completed or state.combat.staged_random_item_power(actor_id, instance_id) not in range(1, 8):
+	var instance_id := state.combat.turns.staged_random_item_instance_id()
+	if character == null or state.combat.completed or state.combat.turns.staged_random_item_power(actor_id, instance_id) not in range(1, 8):
 		return false
 	var instance: ItemInstance = null
 	for candidate: ItemInstance in character.inventory():

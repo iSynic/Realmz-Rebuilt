@@ -437,7 +437,7 @@ func _force_victory() -> void:
 	var combat := _session._state.combat
 	if combat == null:
 		return
-	for monster: MonsterState in combat.monsters():
+	for monster: MonsterState in combat.roster.monsters():
 		if monster.traitor:
 			monster.current_health = 0
 

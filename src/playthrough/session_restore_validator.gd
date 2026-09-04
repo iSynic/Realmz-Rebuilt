@@ -62,10 +62,10 @@ static func _validate_restored_state(content: RealmzContent, replacement_state: 
 	if replacement_state.party_setup_completed and replacement_state.experience_multiplier < 0.0:
 		replacement_state.experience_multiplier = LifecyclePartyWorkflow.party_experience_multiplier(replacement_state.party.characters(), replacement_state.difficulty, content.campaign_definition())
 	if replacement_state.combat != null:
-		for item: ItemInstance in replacement_state.combat.fumbled_items():
+		for item: ItemInstance in replacement_state.combat.dropped_items.items():
 			if content.item_by_id(item.definition_id) == null:
 				return SessionRestoreResult.failed(&"invalid_game_state", "The saved fumble queue references unavailable item content.")
-		for monster: MonsterState in replacement_state.combat.monsters():
+		for monster: MonsterState in replacement_state.combat.roster.monsters():
 			for item_id: String in monster.loot_item_ids():
 				if not item_id.is_empty() and content.item_by_id(item_id) == null:
 					return SessionRestoreResult.failed(&"invalid_game_state", "The saved monster loot references unavailable item content.")
@@ -277,10 +277,10 @@ static func _valid_combat_death_continuation(content: RealmzContent, state: Game
 	var combat := continuation.combat()
 	if combat == null or session_interaction != null or vm_interaction == null or state.combat == null or state.combat.battle_id != combat.battle_id:
 		return false
-	var death_monster := state.combat.monster_by_id(combat.combatant_id)
+	var death_monster := state.combat.roster.monster_by_id(combat.combatant_id)
 	if death_monster == null or content.scenario.program_by_id(combat.program_id) == null:
 		return false
-	var queued_id := state.combat.pending_spell_death_macro_id()
+	var queued_id := state.combat.spell_runtime.pending_death_macro_id()
 	if not queued_id.is_empty():
 		var definition := content.monster_by_id(death_monster.definition_id)
 		return queued_id == combat.combatant_id and not combat.reset_traitor_on_complete and definition != null and combat.program_id == "xap:%d" % definition.death_macro
@@ -294,7 +294,7 @@ static func _valid_combat_ally_continuation(state: GameState, continuation: Sess
 
 static func _valid_combat_fumble_continuation(content: RealmzContent, state: GameState, continuation: SessionContinuation, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
 	var combat := continuation.combat()
-	if combat == null or vm_interaction != null or session_interaction == null or session_interaction.kind != InteractionRequest.TREASURE_DISTRIBUTION or state.combat == null or not state.combat.completed or state.combat.battle_id != combat.battle_id or state.combat.fumbled_items().is_empty():
+	if combat == null or vm_interaction != null or session_interaction == null or session_interaction.kind != InteractionRequest.TREASURE_DISTRIBUTION or state.combat == null or not state.combat.completed or state.combat.battle_id != combat.battle_id or state.combat.dropped_items.items().is_empty():
 		return false
 	var expected_request := InteractionRequest.from_payload("validation.fumble-recovery", InteractionRequest.TREASURE_DISTRIBUTION, RealmzRules.new().combat_flow.rounds.fumble_recovery_payload(state, content))
 	var actual_body := session_interaction.body as TreasureRequestBody
@@ -316,7 +316,7 @@ static func _valid_friendly_collision(continuation: SessionContinuation, state: 
 	var combat := continuation.combat()
 	if combat == null or combat.mode != &"friendly" or vm_interaction != null or session_interaction == null or session_interaction.to_data() != SessionInteractionFactory.friendly_collision(session_interaction.request_id).to_data():
 		return false
-	if state.combat == null or state.combat.completed or state.combat.battle_id != combat.battle_id or state.combat.active_actor_id() != combat.actor_id:
+	if state.combat == null or state.combat.completed or state.combat.battle_id != combat.battle_id or state.combat.turns.active_actor_id() != combat.actor_id:
 		return false
 	return not RealmzRules.new().combat_flow.reactions.friendly_collision_target_id(state, combat.actor_id, combat.destination).is_empty()
 
@@ -325,7 +325,7 @@ static func _valid_combat_retreat(continuation: SessionContinuation, state: Game
 	var combat := continuation.combat()
 	if combat == null or combat.mode not in [&"explicit", &"edge"] or vm_interaction != null or session_interaction == null or session_interaction.to_data() != SessionInteractionFactory.retreat_confirmation(session_interaction.request_id).to_data():
 		return false
-	if state.combat == null or state.combat.completed or state.combat.battle_id != combat.battle_id or state.combat.active_actor_id() != combat.actor_id:
+	if state.combat == null or state.combat.completed or state.combat.battle_id != combat.battle_id or state.combat.turns.active_actor_id() != combat.actor_id:
 		return false
 	var rules := RealmzRules.new()
 	var probe: Variant = rules.combat_flow.reactions.probe_character_retreat(state.combat, state.party.characters(), combat.actor_id) if combat.mode == &"explicit" else rules.combat_flow.reactions.probe_edge_retreat(state.combat, combat.actor_id, combat.destination)

@@ -47,7 +47,7 @@ func group_targets(state: GameState, content: RealmzContent, caster: CharacterSt
 		elif not _selection.group_target_matches(spell.target_type, character.traitor, caster.traitor):
 			continue
 		character_targets.append(character)
-	for monster: MonsterState in state.combat.monsters():
+	for monster: MonsterState in state.combat.roster.monsters():
 		if monster.current_health <= 0 or not state.combat.battlefield.has_actor(monster.id):
 			continue
 		if area_target:
@@ -99,7 +99,7 @@ func cast_area(state: GameState, content: RealmzContent, caster: CharacterState,
 func commit(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition, power_level: int, cast_level: int, group: GroupSpellResolution, rng: RealmzRng, center: Vector2i = INVALID_COORDINATE, shape: int = 0, event_source: String = "classic", item_instance_id: String = "", count_spell_cast: bool = true, persistent_fields: Array = []) -> CombatFlowResult:
 	var combat := state.combat
 	if count_spell_cast:
-		combat.active_turn.spell_cast_count += 1
+		combat.turns.active_turn.spell_cast_count += 1
 		caster.lifetime_record.record_spell_cast()
 	caster.attacks_remaining = _context.arithmetic.signed_16(caster.attacks_remaining - 2)
 	caster.movement = maxi(0, caster.movement - 12)
@@ -114,8 +114,8 @@ func commit(state: GameState, content: RealmzContent, caster: CharacterState, sp
 	for index: int in group.resolutions.size():
 		_append_resolution(state, content, caster, spell, power_level, cast_level, group, index, center, shape, event_source, item_instance_id, events)
 	var advances_turn = not _context.actions().character_can_continue(caster)
-	if not combat.pending_spell_death_macro_id().is_empty():
-		if not combat.begin_spell_death_macro_sequence(caster.id, advances_turn) or not _context.actions().events().request_next_spell_death_macro(combat, content, events):
+	if not combat.spell_runtime.pending_death_macro_id().is_empty():
+		if not combat.spell_runtime.begin_death_macro_sequence(caster.id, advances_turn) or not _context.actions().events().request_next_spell_death_macro(combat, content, events):
 			return CombatFlowResult.failed(&"invalid_spell_death_macro_queue", "The multi-target spell death-macro queue could not retain its caster and source order.")
 		return CombatFlowResult.succeeded(events)
 	if advances_turn:
@@ -136,7 +136,7 @@ func _append_resolution(state: GameState, content: RealmzContent, caster: Charac
 		var missile_spell := absi(spell.spell_class) == 9
 		caster.lifetime_record.add_spell_damage(resolution.damage, missile_spell and not resolution.resisted, missile_spell and resolution.resisted, resolution.target_defeated)
 	if resolution.damage > 0 or (resolution.damage < 0 and target_kind == &"monster"):
-		state.combat.mark_attacked(resolved_target_id)
+		state.combat.actor_statuses.mark_attacked(resolved_target_id)
 	CombatSpellEventBuilder.append_projectile(events, caster.id, resolved_target_id, spell, event_source)
 	if resolution.special_result == &"turned":
 		events.append(DomainEvent.new(&"sound_requested", {"soundId": 630, "waitForCompletion": false, "source": "classic-combat-destroy-turn-undead"}))
@@ -181,7 +181,7 @@ func _remove_defeated_target(state: GameState, content: RealmzContent, target_id
 		_context.actions().mark_character_bleeding(state, state.party.character_by_id(target_id), true)
 		_context.automation().remove_defeated_position(state.combat, target_id, true)
 		return
-	var defeated_monster := state.combat.monster_by_id(target_id)
+	var defeated_monster := state.combat.roster.monster_by_id(target_id)
 	var defeated_definition := content.monster_by_id(defeated_monster.definition_id) if defeated_monster != null else null
 	var queued = _context.actions().events().queue_spell_death_macro(state.combat, defeated_monster, defeated_definition)
 	_context.automation().remove_defeated_position(state.combat, target_id, not queued)

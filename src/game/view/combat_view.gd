@@ -43,10 +43,10 @@ var auto_character_ids: Array[String] = []
 
 func _init(combat: CombatState, characters: Array[CharacterState] = [], content: RealmzContent = null, inventory_rules: InventoryRules = null, battlefield_rules: BattlefieldRules = null, combat_flow: CombatFlow = null, game_state: GameState = null) -> void:
 	battle_id = combat.battle_id
-	round_number = combat.round_number
-	active_actor_id = combat.active_actor_id()
+	round_number = combat.turns.round_number
+	active_actor_id = combat.turns.active_actor_id()
 	outcome = combat.outcome
-	turn_order = combat.turn_order()
+	turn_order = combat.turns.turn_order()
 	_populate_battlefield(combat, content, game_state)
 	var adjacent_ids := _adjacent_actor_ids(combat, battlefield_rules)
 	_populate_combatants(combat, characters, content, adjacent_ids)
@@ -71,7 +71,7 @@ func _populate_battlefield(combat: CombatState, content: RealmzContent, game_sta
 			terrain_set = content.world.battle_terrain_set_for_map(source_map, null if game_state == null else game_state.world)
 		battlefield = BattlefieldView.new(combat.battlefield, upper_tileset_id)
 		var area_rules := SpellAreaRules.new()
-		for field: PersistentCombatField in combat.persistent_fields():
+		for field: PersistentCombatField in combat.spell_runtime.persistent_fields():
 			var coordinates: Array[Vector2i] = []
 			for offset: Vector2i in area_rules.pattern(field.shape):
 				var coordinate := field.center + offset
@@ -92,7 +92,7 @@ func _adjacent_actor_ids(combat: CombatState, battlefield_rules: BattlefieldRule
 
 
 func _populate_combatants(combat: CombatState, characters: Array[CharacterState], content: RealmzContent, adjacent_ids: Array[String]) -> void:
-	for monster: MonsterState in combat.monsters():
+	for monster: MonsterState in combat.roster.monsters():
 		var definition := content.monster_by_id(monster.definition_id) if content != null else null
 		var view := MonsterView.new(monster, definition, content)
 		monsters.append(view)
@@ -101,7 +101,7 @@ func _populate_combatants(combat: CombatState, characters: Array[CharacterState]
 	for character: CharacterState in characters:
 		if character.id == active_actor_id:
 			attack_units_remaining = character.attacks_remaining
-			movement_remaining = character.maximum_movement if combat.active_turn == null else character.movement
+			movement_remaining = character.maximum_movement if combat.turns.active_turn == null else character.movement
 		if character.current_health > 0 and character.traitor and adjacent_ids.has(character.id):
 			character_targets.append(CharacterView.new(character, content))
 
@@ -140,14 +140,14 @@ func _populate_command_probes(combat: CombatState, characters: Array[CharacterSt
 		if candidate != null:
 			bandage_candidates.append(CharacterView.new(candidate, content))
 	for target_id: String in combat_flow.actions.turn_undead_target_ids(game_state, content):
-		var target := combat.monster_by_id(target_id)
+		var target := combat.roster.monster_by_id(target_id)
 		if target != null:
 			turn_undead_targets.append(MonsterView.new(target, content.monster_by_id(target.definition_id), content))
 
 
 func _populate_weapon_actions(combat: CombatState, content: RealmzContent, combat_flow: CombatFlow, game_state: GameState, active_character: CharacterState, equipment: CharacterCombatEquipment) -> void:
 	if equipment.valid:
-		weapon_mode = combat.character_weapon_mode(active_character.id)
+		weapon_mode = combat.actor_statuses.character_weapon_mode(active_character.id)
 		melee_weapon_id = equipment.melee_weapon.id if equipment.melee_weapon != null else ""
 		missile_weapon_id = equipment.missile_weapon.id if equipment.missile_weapon != null else ""
 		weapon_switch_available = weapon_mode == &"missile" or equipment.missile_weapon != null
@@ -169,7 +169,7 @@ func _populate_projectile_targets(combat: CombatState, content: RealmzContent, c
 	if profile == null or not profile.available:
 		ranged_attack_unavailable_reason = profile.error_message if profile != null else "Projectile rules are unavailable."
 		return
-	for monster: MonsterState in combat.monsters():
+	for monster: MonsterState in combat.roster.monsters():
 		if monster.current_health > 0 and monster.traitor != active_character.traitor and combat_flow.reactions.projectile_target_is_valid(combat, content, active_character.id, monster.id, profile.maximum_range, profile.spell.range_min + profile.spell.range_max > 0):
 			targets.append(MonsterView.new(monster, content.monster_by_id(monster.definition_id), content))
 	if targets.is_empty():
@@ -186,7 +186,7 @@ func _populate_movement_actions(combat: CombatState, characters: Array[Character
 	if terrain_set == null:
 		return
 	var contact_attack_available := false
-	var movement_allowance := active_character.maximum_movement if combat.active_turn == null else active_character.movement
+	var movement_allowance := active_character.maximum_movement if combat.turns.active_turn == null else active_character.movement
 	for direction: Vector2i in BattlefieldRules.DIRECTIONS:
 		var destination := combat.battlefield.actor_position(active_character.id) + direction
 		var edge_retreat: Variant = combat_flow.reactions.probe_edge_retreat(combat, active_character.id, destination) if combat_flow != null else null
@@ -237,7 +237,7 @@ func _populate_active_relationships(combat: CombatState, characters: Array[Chara
 		if character.current_health <= 0 or not combat.battlefield.has_actor(character.id):
 			continue
 		(friendly_actor_ids if not character.traitor else hostile_actor_ids).append(character.id)
-	for monster: MonsterState in combat.monsters():
+	for monster: MonsterState in combat.roster.monsters():
 		if monster.current_health <= 0 or not combat.battlefield.has_actor(monster.id):
 			continue
 		(friendly_actor_ids if not monster.traitor else hostile_actor_ids).append(monster.id)
@@ -246,7 +246,7 @@ func _populate_active_relationships(combat: CombatState, characters: Array[Chara
 static func _is_hostile_target(combat: CombatState, characters: Array[CharacterState], actor: CharacterState, target_id: String) -> bool:
 	if target_id.is_empty() or actor == null:
 		return false
-	var monster := combat.monster_by_id(target_id)
+	var monster := combat.roster.monster_by_id(target_id)
 	if monster != null:
 		return monster.current_health > 0 and monster.traitor != actor.traitor
 	for character: CharacterState in characters:
@@ -256,7 +256,7 @@ static func _is_hostile_target(combat: CombatState, characters: Array[CharacterS
 
 
 static func _target_name(combat: CombatState, characters: Array[CharacterState], target_id: String) -> String:
-	var monster := combat.monster_by_id(target_id)
+	var monster := combat.roster.monster_by_id(target_id)
 	if monster != null:
 		return monster.name
 	for character: CharacterState in characters:

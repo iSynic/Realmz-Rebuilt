@@ -29,7 +29,7 @@ func begin_completed_battle_reward(request_id: String, caller: ScenarioBattleCal
 	if pending_item_count > ClassicRewardState.MAX_PENDING_ITEMS:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_reward", "The battle reward exceeds the supported Classic reward bounds.")
 	if combat.outcome == &"victory":
-		for monster: MonsterState in combat.monsters():
+		for monster: MonsterState in combat.roster.monsters():
 			if monster.summoned:
 				continue
 			var definition := _content.monster_by_id(monster.definition_id)
@@ -110,7 +110,7 @@ func begin_completed_battle_reward(request_id: String, caller: ScenarioBattleCal
 	var operation := _workflow.begin_reward(&"battle", combat.battle_id, experience, wealth, item_ids, request_id, ClassicRewardState.ORDINARY_BATTLE_STAGE, absi(bonus_treasure_id), recovered_fumbles, item_magic_detected)
 	if operation.state == ScenarioRuntimeOperationResult.State.FAILED:
 		return _rollback_failed_reward(operation, state_checkpoint, rng_checkpoint)
-	combat.clear_fumbled_items()
+	combat.dropped_items.clear()
 	operation.events = events + operation.events
 	return operation
 
@@ -129,7 +129,7 @@ func _early_battle_reward_result(combat: CombatState, caller: ScenarioBattleCall
 
 func _recovered_fumble_items(combat: CombatState) -> Variant:
 	var result: Array[ItemInstance] = []
-	for fumbled: ItemInstance in combat.fumbled_items():
+	for fumbled: ItemInstance in combat.dropped_items.items():
 		var definition := _content.item_by_id(fumbled.definition_id)
 		if definition == null:
 			return ScenarioRuntimeOperationResult.failed(&"unknown_item", "Battle recovery references unavailable item '%s'." % fumbled.definition_id)

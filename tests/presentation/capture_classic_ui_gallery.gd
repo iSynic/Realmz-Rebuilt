@@ -594,7 +594,7 @@ func _combat_view(game_view: Variant) -> CombatView:
 	monster.icon_id = 9001
 	battlefield.place_monster(monster.id, Vector2i(47, 45), 0)
 	var combat := CombatState.new("classic.battle.gallery", [monster], 0, battlefield)
-	combat.set_turn_order([hero.id, monster.id]); combat.queue_persistent_field("classic.spell.1309", hero.id, Vector2i(49, 45), 0, 10, 15, 1, 3, 2)
+	combat.set_turn_order([hero.id, monster.id]); combat.spell_runtime.queue_persistent_field("classic.spell.1309", hero.id, Vector2i(49, 45), 0, 10, 15, 1, 3, 2)
 	var result := CombatView.new(combat, [hero], _application.get("_active_content"))
 	result.attack_units_remaining = 2
 	result.movement_remaining = 8

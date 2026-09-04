@@ -19,7 +19,7 @@ static func character_is_friendly(state: GameState, actor: CharacterState, targe
 	var character := state.party.character_by_id(target_id)
 	if character != null:
 		return character.traitor == actor.traitor
-	var monster := state.combat.monster_by_id(target_id)
+	var monster := state.combat.roster.monster_by_id(target_id)
 	return monster != null and monster.traitor == actor.traitor
 
 
@@ -27,7 +27,7 @@ static func monster_is_friendly(state: GameState, actor: MonsterState, target_id
 	var character := state.party.character_by_id(target_id)
 	if character != null:
 		return character.traitor == actor.traitor
-	var monster := state.combat.monster_by_id(target_id)
+	var monster := state.combat.roster.monster_by_id(target_id)
 	return monster != null and monster.traitor == actor.traitor
 
 
@@ -35,7 +35,7 @@ static func health(state: GameState, target_id: String) -> int:
 	var character := state.party.character_by_id(target_id)
 	if character != null:
 		return character.current_health
-	var monster := state.combat.monster_by_id(target_id)
+	var monster := state.combat.roster.monster_by_id(target_id)
 	return monster.current_health if monster != null else 0x7fff_ffff
 
 
@@ -43,7 +43,7 @@ static func maximum_health(state: GameState, target_id: String) -> int:
 	var character := state.party.character_by_id(target_id)
 	if character != null:
 		return character.maximum_health
-	var monster := state.combat.monster_by_id(target_id)
+	var monster := state.combat.roster.monster_by_id(target_id)
 	return monster.maximum_health if monster != null else 1
 
 
@@ -55,7 +55,7 @@ static func missing_spell_points(state: GameState, target_id: String) -> int:
 	var character := state.party.character_by_id(target_id)
 	if character != null:
 		return maxi(0, character.maximum_spell_points - character.spell_points)
-	var monster := state.combat.monster_by_id(target_id)
+	var monster := state.combat.roster.monster_by_id(target_id)
 	return maxi(0, monster.maximum_spell_points - monster.spell_points) if monster != null else 0
 
 
@@ -63,19 +63,19 @@ static func spell_points(state: GameState, target_id: String) -> int:
 	var character := state.party.character_by_id(target_id)
 	if character != null:
 		return maxi(0, character.spell_points)
-	var monster := state.combat.monster_by_id(target_id)
+	var monster := state.combat.roster.monster_by_id(target_id)
 	return maxi(0, monster.spell_points) if monster != null else 0
 
 
 static func condition_value(state: GameState, target_id: String, condition_index: int) -> int:
 	var character := state.party.character_by_id(target_id)
-	var monster := state.combat.monster_by_id(target_id) if character == null else null
+	var monster := state.combat.roster.monster_by_id(target_id) if character == null else null
 	return character.conditions.value(condition_index) if character != null else monster.conditions.value(condition_index) if monster != null else 0
 
 
 static func destroy_magic_score(state: GameState, caster_traitor: bool, target_id: String) -> int:
 	var character := state.party.character_by_id(target_id)
-	var monster := state.combat.monster_by_id(target_id) if character == null else null
+	var monster := state.combat.roster.monster_by_id(target_id) if character == null else null
 	var conditions: ConditionSet = character.conditions if character != null else monster.conditions if monster != null else null
 	if conditions == null:
 		return 0
@@ -100,7 +100,7 @@ static func all_actor_ids(state: GameState) -> Array[String]:
 	for character: CharacterState in state.party.characters():
 		if character.current_health > 0 and state.combat.battlefield.has_actor(character.id):
 			result.append(character.id)
-	for monster: MonsterState in state.combat.monsters():
+	for monster: MonsterState in state.combat.roster.monsters():
 		if monster.current_health > 0 and state.combat.battlefield.has_actor(monster.id):
 			result.append(monster.id)
 	return result
@@ -110,7 +110,7 @@ static func hard_immune(state: GameState, content: RealmzContent, target_id: Str
 	var character := state.party.character_by_id(target_id)
 	if character != null:
 		return character.magic_resistance > 100
-	var monster := state.combat.monster_by_id(target_id)
+	var monster := state.combat.roster.monster_by_id(target_id)
 	var definition := content.monster_by_id(monster.definition_id) if monster != null else null
 	return monster != null and (monster.magic_resistance > 100 or definition != null and definition.spell_immune(spell.spell_class))
 
@@ -119,7 +119,7 @@ static func reflects(state: GameState, target_id: String) -> bool:
 	var character := state.party.character_by_id(target_id)
 	if character != null:
 		return character.conditions.is_active(ConditionRules.REFLECTING_SPELLS)
-	var monster := state.combat.monster_by_id(target_id)
+	var monster := state.combat.roster.monster_by_id(target_id)
 	return monster != null and monster.conditions.is_active(ConditionRules.REFLECTING_SPELLS)
 
 

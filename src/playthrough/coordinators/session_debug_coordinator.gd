@@ -53,7 +53,7 @@ func _win_battle() -> SessionCoordinatorResult:
 	var rng_checkpoint := _context.rng.checkpoint()
 	var vm_checkpoint := _context.scenario_vm.snapshot() if _context.scenario_vm.is_active() else null
 	var events: Array[DomainEvent] = [DomainEvent.new(&"debug_battle_victory_requested", {"battleId": _context.state.combat.battle_id})]
-	for monster: MonsterState in _context.state.combat.monsters():
+	for monster: MonsterState in _context.state.combat.roster.monsters():
 		if monster.traitor:
 			monster.current_health = 0
 			_context.state.combat.battlefield.remove_monster(monster.id)

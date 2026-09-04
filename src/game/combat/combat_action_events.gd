@@ -54,18 +54,18 @@ static func append_physical_result_effect(event: DomainEvent, hit: bool, armed: 
 
 
 func commit_character_fumble(state: GameState, character: CharacterState, equipment: CharacterCombatEquipment, events: Array[DomainEvent]) -> bool:
-	if state.combat == null or equipment == null or equipment.melee_weapon == null or equipment.melee_weapon_instance_id.is_empty() or not state.combat.can_queue_fumbled_item():
+	if state.combat == null or equipment == null or equipment.melee_weapon == null or equipment.melee_weapon_instance_id.is_empty() or not state.combat.dropped_items.can_queue():
 		return false
 	var instance: ItemInstance = null
 	for carried: ItemInstance in character.inventory():
 		if carried.id == equipment.melee_weapon_instance_id and carried.definition_id == equipment.melee_weapon.id and carried.equipped:
 			instance = carried
 			break
-	if instance == null or not state.combat.queue_fumbled_item(instance):
+	if instance == null or not state.combat.dropped_items.queue(instance):
 		return false
 	var removed := _context.inventory.remove_item(character, instance.id, equipment.melee_weapon)
 	if removed == null:
-		state.combat.remove_fumbled_item(instance.id)
+		state.combat.dropped_items.remove(instance.id)
 		instance.equipped = true
 		return false
 	# FD-COMBAT-005 preserves the exact runtime item and its remaining charges.
@@ -211,12 +211,12 @@ static func request_monster_death_macro(monster: MonsterState, definition: Monst
 
 
 static func queue_spell_death_macro(combat: CombatState, monster: MonsterState, definition: MonsterDefinition) -> bool:
-	return combat != null and monster != null and definition != null and definition.death_macro > 0 and combat.queue_spell_death_macro(monster.id)
+	return combat != null and monster != null and definition != null and definition.death_macro > 0 and combat.spell_runtime.queue_death_macro(monster.id)
 
 
 static func request_next_spell_death_macro(combat: CombatState, content: RealmzContent, events: Array[DomainEvent]) -> bool:
-	var combatant_id := combat.pending_spell_death_macro_id() if combat != null else ""
-	var monster := combat.monster_by_id(combatant_id) if combat != null else null
+	var combatant_id := combat.spell_runtime.pending_death_macro_id() if combat != null else ""
+	var monster := combat.roster.monster_by_id(combatant_id) if combat != null else null
 	var definition := content.monster_by_id(monster.definition_id) if monster != null and content != null else null
 	if monster == null or definition == null or definition.death_macro <= 0:
 		return false

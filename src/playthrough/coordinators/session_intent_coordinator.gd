@@ -273,7 +273,7 @@ func _combat_move(payload: PlayerIntent.CombatMovePayload) -> SessionCoordinator
 
 
 func _request_retreat(actor_id: String, mode: StringName, destination: Vector2i) -> SessionCoordinatorResult:
-	if _context.state.combat == null or _context.state.combat.active_actor_id() != actor_id:
+	if _context.state.combat == null or _context.state.combat.turns.active_actor_id() != actor_id:
 		return _context.rejected(&"invalid_combat_actor", "The active character cannot retreat.")
 	var combat := SessionContinuation.CombatBody.new()
 	combat.battle_id = _context.state.combat.battle_id

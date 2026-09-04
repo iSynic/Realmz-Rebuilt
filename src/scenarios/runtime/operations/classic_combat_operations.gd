@@ -85,7 +85,7 @@ func _destroy_related_monsters(action: ClassicActionDefinition) -> ScenarioRunti
 	var include_loyal := action.extra_code[4] != 0
 	var destroyed: Array[String] = []
 	var death_macros: Array[String] = []
-	for monster: MonsterState in _game_state.combat.monsters():
+	for monster: MonsterState in _game_state.combat.roster.monsters():
 		if destroyed.size() >= limit:
 			break
 		var definition := _content.monster_by_id(monster.definition_id)
@@ -112,7 +112,7 @@ func _run_opcode_death_macros(combatant_ids: Array[String], preceding_events: Ar
 		return ScenarioRuntimeOperationResult.failed(&"invalid_death_macro_request", "Classic opcode 125 cannot execute monster death macros without an active runtime.")
 	var remaining := combatant_ids.duplicate()
 	var combatant_id: String = remaining.pop_front()
-	var monster := _game_state.combat.monster_by_id(combatant_id)
+	var monster := _game_state.combat.roster.monster_by_id(combatant_id)
 	var definition := _content.monster_by_id(monster.definition_id) if monster != null else null
 	if monster == null or definition == null or definition.death_macro <= 0:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_death_macro_request", "Classic opcode 125 references unavailable monster death-macro content.")
@@ -140,7 +140,7 @@ func _run_opcode_death_macros(combatant_ids: Array[String], preceding_events: Ar
 
 
 func _complete_opcode_death_macro(combatant_id: String, program_id: String, events: Array[DomainEvent]) -> void:
-	var monster := _game_state.combat.monster_by_id(combatant_id)
+	var monster := _game_state.combat.roster.monster_by_id(combatant_id)
 	if monster != null:
 		monster.traitor = false
 		if monster.current_health <= 0 and _game_state.combat.battlefield != null:
@@ -160,7 +160,7 @@ func cause_fumble(action: ClassicActionDefinition, context: ScenarioExecutionCon
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 122 requires message and sound fields.")
 	if _game_state.combat == null or _game_state.combat.completed:
 		return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"combat_fumble_skipped", {"reason": "no-active-battle", "source": "classic"})])
-	var actor_id := context.combatant_id if not context.combatant_id.is_empty() else _game_state.combat.active_actor_id()
+	var actor_id := context.combatant_id if not context.combatant_id.is_empty() else _game_state.combat.turns.active_actor_id()
 	var result := _rules.combat_flow.cause_active_fumble(_game_state, _content, actor_id)
 	if not result.ok:
 		return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message)
@@ -197,7 +197,7 @@ func _revive_after_combat_macro(context: ScenarioExecutionContext) -> ScenarioRu
 	if _game_state.combat == null:
 		return ScenarioRuntimeOperationResult.failed(&"revival_outside_combat", "Classic opcode 119 has no combatant to revive.")
 	var combatant_id := context.combatant_id
-	var monster := _game_state.combat.monster_by_id(combatant_id)
+	var monster := _game_state.combat.roster.monster_by_id(combatant_id)
 	if monster == null:
 		return ScenarioRuntimeOperationResult.failed(&"missing_combatant_context", "Classic opcode 119 requires its death-macro combatant identity.")
 	monster.current_health = 1
@@ -215,7 +215,7 @@ func _alter_combat_monsters(action: ClassicActionDefinition) -> ScenarioRuntimeO
 	var remaining := maxi(0, action.extra_code[2])
 	if target_kind < 1 or target_kind > 2 or definition == null:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_combat_monster_target", "Classic opcode 120 references an unavailable monster kind or identity.")
-	var candidates := _game_state.party.allies() if target_kind == 1 else _game_state.combat.monsters()
+	var candidates := _game_state.party.allies() if target_kind == 1 else _game_state.combat.roster.monsters()
 	var altered: Array[String] = []
 	for monster: MonsterState in candidates:
 		if remaining <= 0:
@@ -238,7 +238,7 @@ func _deanimate_lower_undead() -> ScenarioRuntimeOperationResult:
 	if _game_state.combat == null or _game_state.combat.completed:
 		return ScenarioRuntimeOperationResult.failed(&"no_active_battle", "Classic opcode 121 requires an active battle.")
 	var affected: Array[String] = []
-	for monster: MonsterState in _game_state.combat.monsters():
+	for monster: MonsterState in _game_state.combat.roster.monsters():
 		var definition := _content.monster_by_id(monster.definition_id)
 		if definition != null and definition.type_flag(1) and not definition.type_flag(5) and monster.current_health > 0:
 			monster.current_health = 0
@@ -253,7 +253,7 @@ func _cause_monsters_to_route(action: ClassicActionDefinition, context: Scenario
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 123 requires a five-value Extra Code row.")
 	var source_traitor := true
 	var source_id := context.combatant_id
-	var source_monster := _game_state.combat.monster_by_id(source_id)
+	var source_monster := _game_state.combat.roster.monster_by_id(source_id)
 	if source_monster != null:
 		source_traitor = source_monster.traitor
 	var definition_ids: Dictionary = {}
@@ -265,7 +265,7 @@ func _cause_monsters_to_route(action: ClassicActionDefinition, context: Scenario
 			return ScenarioRuntimeOperationResult.failed(&"unknown_monster", "Classic opcode 123 references unavailable monster %d." % classic_id)
 		definition_ids[definition.classic_id] = true
 	var routed: Array[String] = []
-	for monster: MonsterState in _game_state.combat.monsters():
+	for monster: MonsterState in _game_state.combat.roster.monsters():
 		var routed_definition := _content.monster_by_id(monster.definition_id)
 		if routed_definition != null and monster.current_health > 0 and monster.traitor == source_traitor and definition_ids.has(routed_definition.classic_id):
 			monster.conditions.set_value(ConditionRules.RUNS_AWAY, -1)
@@ -304,7 +304,7 @@ func _spawn_classic_monsters(action: ClassicActionDefinition, context: ScenarioE
 		var coordinate := builder.find_monster_position(battlefield, terrain_set, desired_local, definition.size)
 		if coordinate.x < 0 or not battlefield.place_monster(monster.id, coordinate, definition.size):
 			continue
-		if not _game_state.combat.add_monster(monster):
+		if not _game_state.combat.roster.add_monster(monster):
 			battlefield.remove_monster(monster.id)
 			continue
 		_game_state.combat.append_turn_actor(monster.id)
@@ -323,7 +323,7 @@ func _classic_spawn_source_coordinate(context: ScenarioExecutionContext) -> Vect
 		return battlefield.actor_position(context.combatant_id)
 	# Castle's battle-round macro path leaves macromonster at its default slot
 	# zero, so source-order monster zero is the placement center.
-	for monster: MonsterState in _game_state.combat.monsters():
+	for monster: MonsterState in _game_state.combat.roster.monsters():
 		if battlefield.has_actor(monster.id):
 			return battlefield.actor_position(monster.id)
 	return Vector2i(-1, -1)
@@ -333,7 +333,7 @@ func _classic_spawn_traitor_override(action: ClassicActionDefinition, context: S
 	if action.extra_code[4] != 0:
 		return action.extra_code[4]
 	if context != null and not context.combatant_id.is_empty():
-		var source := _game_state.combat.monster_by_id(context.combatant_id)
+		var source := _game_state.combat.roster.monster_by_id(context.combatant_id)
 		if source != null:
 			return 1 if source.traitor else 0
 	return -1
@@ -351,13 +351,13 @@ func _branch_battle_round_macro(action: ClassicActionDefinition) -> ScenarioRunt
 	var matched := false
 	match mode:
 		0:
-			matched = combat.round_number - 1 == action.extra_code[1]
+			matched = combat.turns.round_number - 1 == action.extra_code[1]
 		1:
 			matched = _rng.draw(100, &"classic.battle-round-macro-percent") <= action.extra_code[1]
 		_:
 			return ScenarioRuntimeOperationResult.failed(&"invalid_battle_macro_test", "Classic opcode 126 has an invalid round test mode.")
 	if not matched:
-		return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"battle_macro_tested", {"matched": false, "mode": mode, "round": combat.round_number, "source": "classic"})], ScenarioVmDirective.finish())
+		return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"battle_macro_tested", {"matched": false, "mode": mode, "round": combat.turns.round_number, "source": "classic"})], ScenarioVmDirective.finish())
 	if action.extra_code[2] != 1:
 		combat.macro_id = 0
 	var target_id := action.extra_code[3]
@@ -365,7 +365,7 @@ func _branch_battle_round_macro(action: ClassicActionDefinition) -> ScenarioRunt
 		target_id = _rng.draw_between(action.extra_code[3], action.extra_code[4], &"classic.battle-round-macro-target")
 	if target_id <= 0:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_macro_target", "Classic opcode 126 references an invalid Extra Action Point target.")
-	return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"battle_macro_tested", {"matched": true, "mode": mode, "round": combat.round_number, "targetId": target_id, "repeating": action.extra_code[2] == 1, "source": "classic"})], ScenarioVmDirective.branch_xap(target_id, false))
+	return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"battle_macro_tested", {"matched": true, "mode": mode, "round": combat.turns.round_number, "targetId": target_id, "repeating": action.extra_code[2] == 1, "source": "classic"})], ScenarioVmDirective.branch_xap(target_id, false))
 
 
 func _continue_if_monster_present(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
@@ -375,7 +375,7 @@ func _continue_if_monster_present(action: ClassicActionDefinition) -> ScenarioRu
 	if definition == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_monster", "Classic opcode 127 references unavailable monster %d." % action.operand_id)
 	var present := false
-	for monster: MonsterState in _game_state.combat.monsters():
+	for monster: MonsterState in _game_state.combat.roster.monsters():
 		var present_definition := _content.monster_by_id(monster.definition_id)
 		if present_definition != null and present_definition.classic_id == definition.classic_id and monster.current_health > 0:
 			present = true

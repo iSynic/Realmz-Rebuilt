@@ -978,7 +978,7 @@ func _combat_playback_view(monster_health: int, hero_position: Vector2i, monster
 	assert_true(battlefield.place_character("hero", hero_position), "playback fixture places the party actor")
 	var monster := MonsterState.new("monster", "classic.monster.1", "Goblin", monster_health, 20); monster.icon_id = 384
 	assert_true(battlefield.place_monster(monster.id, monster_position, 0), "playback fixture places the target")
-	var combat := CombatState.new("classic.battle.playback", [monster], 0, battlefield); combat.set_turn_order(["hero", "monster"]); assert_not_null(combat.queue_persistent_field("classic.spell.field", "hero", Vector2i(45, 45), 1, 16, 14, 1, 0, 2), "playback fixture queues one source-shaped persistent field"); combat.outcome = outcome
+	var combat := CombatState.new("classic.battle.playback", [monster], 0, battlefield); combat.set_turn_order(["hero", "monster"]); assert_not_null(combat.spell_runtime.queue_persistent_field("classic.spell.field", "hero", Vector2i(45, 45), 1, 16, 14, 1, 0, 2), "playback fixture queues one source-shaped persistent field"); combat.outcome = outcome
 	var character := CharacterState.new("hero", "Hero", 10, 10)
 	var view := GameView.new(1, true, null); view.party_members = [CharacterView.new(character)]; view.combat_view = CombatView.new(combat, [character])
 	return view

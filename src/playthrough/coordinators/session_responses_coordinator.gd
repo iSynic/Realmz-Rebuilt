@@ -360,7 +360,7 @@ func _respond_session_retreat(response: InteractionResponse) -> SessionCoordinat
 	if response.kind != InteractionRequest.YES_NO or body == null:
 		return _context.failed(&"invalid_interaction_response", "Escape confirmation requires a yes/no response.")
 	var continuation = _context.session_continuation.combat()
-	if continuation == null or _context.state.combat == null or _context.state.combat.completed or _context.state.combat.battle_id != continuation.battle_id or _context.state.combat.active_actor_id() != continuation.actor_id:
+	if continuation == null or _context.state.combat == null or _context.state.combat.completed or _context.state.combat.battle_id != continuation.battle_id or _context.state.combat.turns.active_actor_id() != continuation.actor_id:
 		return _context.failed(&"invalid_session_continuation", "The character awaiting Escape confirmation is unavailable.")
 	_context.session_interaction = null
 	_context.session_continuation.clear()
@@ -375,7 +375,7 @@ func _respond_session_friendly_collision(response: InteractionResponse) -> Sessi
 	if response.kind != InteractionRequest.YES_NO or body == null:
 		return _context.failed(&"invalid_interaction_response", "The Classic friendly-collision choice requires a yes/no response.")
 	var continuation = _context.session_continuation.combat()
-	if continuation == null or _context.state.combat == null or _context.state.combat.completed or _context.state.combat.battle_id != continuation.battle_id or _context.state.combat.active_actor_id() != continuation.actor_id or _context.rules.combat_flow.reactions.friendly_collision_target_id(_context.state, continuation.actor_id, continuation.destination).is_empty():
+	if continuation == null or _context.state.combat == null or _context.state.combat.completed or _context.state.combat.battle_id != continuation.battle_id or _context.state.combat.turns.active_actor_id() != continuation.actor_id or _context.rules.combat_flow.reactions.friendly_collision_target_id(_context.state, continuation.actor_id, continuation.destination).is_empty():
 		return _context.failed(&"invalid_session_continuation", "The adjacent ally awaiting a collision choice is unavailable.")
 	_context.session_interaction = null
 	_context.session_continuation.clear()

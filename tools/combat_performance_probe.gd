@@ -42,7 +42,7 @@ func _initialize() -> void:
 		if character.current_health > 0 and state.combat.battlefield.has_actor(character.id):
 			character_ids.append(character.id)
 	var monster_ids: Array[String] = []
-	for monster: MonsterState in state.combat.monsters():
+	for monster: MonsterState in state.combat.roster.monsters():
 		if monster.current_health > 0 and state.combat.battlefield.has_actor(monster.id):
 			monster_ids.append(monster.id)
 	if character_ids.is_empty() or monster_ids.is_empty():
@@ -123,7 +123,7 @@ func _initialize() -> void:
 	var setup_view := _combat_view(state, content, rules, 3)
 	var setup_playback := _playback_metrics(null, setup.events, setup_view)
 	var combat_assets: Array[MediaAsset] = []
-	for monster: MonsterState in state.combat.monsters():
+	for monster: MonsterState in state.combat.roster.monsters():
 		var definition := content.monster_by_id(monster.definition_id)
 		if definition == null:
 			continue

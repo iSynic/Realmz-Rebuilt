@@ -10,7 +10,7 @@ Own the explicit collaboration boundary shared by deterministic battle rules.
 - `CombatActionEvents` builds committed physical-action feedback and owns fumble and death-macro event transitions.
 - `README.md` is the public maintainer entry point for combat rules.
 
-Combat state remains under `src/game/state`, detached views remain under `src/game/view`, and the established rule collaborators remain under `src/game/rules` until a complete feature migration moves each file, test, UID, and reference atomically.
+Combat state remains under `src/game/state`: `CombatState` aggregates the battle, its roster/turn/status/dropped-item/spell-runtime owners hold cohesive mutable facts, and `CombatStateCodec` preserves the stable flat save shape. Detached views remain under `src/game/view`, and the established rule collaborators remain under `src/game/rules` until a complete feature migration moves each file, test, UID, and reference atomically.
 
 ## Local Contracts
 

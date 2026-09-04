@@ -1,6 +1,8 @@
 # Combat
 
-`CombatState` owns the active battle. `CombatFlow` is the stable command surface over round, action, reaction, magic, field, navigation, and automation collaborators. They share one explicit combat context and return typed results; callers must not reach into collaborator-private methods.
+`CombatState` is the saved aggregate for the active battle, not a sixty-method utility object. Its battle identity, outcome, battlefield, and pending action/reaction sit beside five named state owners: `CombatRosterState` for monsters, `CombatTurnSequenceState` for initiative and Undo, `CombatActorStatusState` for Guard and battle-only character markers, `CombatDroppedItemState` for fumbled equipment, and `CombatSpellRuntimeState` for death-macro and persistent-field state. `CombatStateCodec` alone translates that composition to the unchanged flat save representation. Call the owner that holds the fact instead of adding a forwarding method to the aggregate; the aggregate itself coordinates only invariants that must update more than one owner, such as replacing or extending initiative and advancing a turn.
+
+`CombatFlow` is the stable command surface over round, action, reaction, magic, field, navigation, and automation collaborators. They share one explicit combat context and return typed results; callers must not reach into collaborator-private methods.
 
 Automated decisions enter through the deliberately small `CombatAiScoring` facade. Follow party Auto choices into `CombatPartyActionPlanner`, monster choices and spell plans into `CombatMonsterActionPlanner`, shared deterministic weighting into `CombatAiScoringSupport`, and read-only health, allegiance, immunity, and reflection questions into `CombatAiTargetFacts`. These planners consume the session RNG supplied by the combat transaction; they do not own randomness or presentation state.
 

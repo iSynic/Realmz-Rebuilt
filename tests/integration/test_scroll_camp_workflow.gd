@@ -249,9 +249,9 @@ func run() -> void:
 		if battle_restore.state != SessionStep.State.COMPLETED:
 			return
 		battle_restored._context.state.random_encounters_enabled = false
-		for monster: MonsterState in battle_restored._context.state.combat.monsters():
+		for monster: MonsterState in battle_restored._context.state.combat.roster.monsters():
 			monster.current_health = 0
-		var actor_id := battle_restored._context.state.combat.active_actor_id()
+		var actor_id := battle_restored._context.state.combat.turns.active_actor_id()
 		var returned := battle_restored.submit_intent(PlayerIntent.combat_action(&"finish", actor_id))
 		returned = _drain_battle_return(battle_restored, returned)
 		assert_equal(returned.state, SessionStep.State.COMPLETED, "finishing the interrupted battle resumes the original movement once")

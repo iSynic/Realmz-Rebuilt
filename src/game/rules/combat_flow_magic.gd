@@ -42,9 +42,9 @@ func probe_character_item_spell(state: GameState, content: RealmzContent, caster
 	if state == null or content == null:
 		return CombatSpellCastProbe.blocked(&"invalid_item_turn", "Item use requires an active game session.")
 	var combat := state.combat
-	if combat == null or combat.completed or combat.battlefield == null or combat.active_actor_id() != caster_id:
+	if combat == null or combat.completed or combat.battlefield == null or combat.turns.active_actor_id() != caster_id:
 		return CombatSpellCastProbe.blocked(&"invalid_item_turn", "Only the active character may use an item in combat.")
-	if not combat.pending_spell_death_macro_id().is_empty():
+	if not combat.spell_runtime.pending_death_macro_id().is_empty():
 		return CombatSpellCastProbe.blocked(&"spell_death_macro_pending", "A spell-triggered monster death macro must complete before another combat action.")
 	var caster := state.party.character_by_id(caster_id)
 	var instance := inventory_instance(caster, instance_id)
@@ -55,13 +55,13 @@ func probe_character_item_spell(state: GameState, content: RealmzContent, caster
 		return CombatSpellCastProbe.blocked(item_use_reason_code(instance, item, spell), use_probe.reason)
 	if ClassicSpellDispositionRules.combat_item_disposition(spell) != ClassicSpellDispositionRules.DISPOSITION_EXECUTABLE:
 		return CombatSpellCastProbe.blocked(&"unsupported_combat_item_effect", ClassicSpellDispositionRules.unsupported_reason(spell, &"combat-item"))
-	if ClassicSpellConditionRules.is_combat_persistent_field_spell(spell) and not combat.can_queue_persistent_field():
+	if ClassicSpellConditionRules.is_combat_persistent_field_spell(spell) and not combat.spell_runtime.can_queue_persistent_field():
 		return CombatSpellCastProbe.blocked(&"persistent_field_queue_limit", "Castle's persistent battlefield-field queue is full.")
-	var staged_instance_id := combat.staged_random_item_instance_id()
+	var staged_instance_id := combat.turns.staged_random_item_instance_id()
 	if not staged_instance_id.is_empty() and staged_instance_id != instance.id:
 		return CombatSpellCastProbe.blocked(&"random_item_target_pending", "Finish targeting the random-power item already staged for this activation.")
 	var authored_power := absi(item.special_1)
-	var power_level := combat.staged_random_item_power(caster_id, instance.id) if authored_power == 8 else authored_power
+	var power_level := combat.turns.staged_random_item_power(caster_id, instance.id) if authored_power == 8 else authored_power
 	var summon_spell: bool = CombatFlowSummoning.is_summon_spell(spell)
 	if authored_power == 8 and power_level == 0:
 		if not target_id.is_empty() or not target_ids.is_empty() or not target_coordinates.is_empty() or target_coordinate != INVALID_COORDINATE or rotation != 0:
@@ -107,7 +107,7 @@ func probe_character_item_spell(state: GameState, content: RealmzContent, caster
 		for character: CharacterState in state.party.characters():
 			if character.current_health > 0 and combat.battlefield.has_actor(character.id) and _selection.group_target_matches(spell.target_type, character.traitor, caster.traitor):
 				group_target_count += 1
-		for monster: MonsterState in combat.monsters():
+		for monster: MonsterState in combat.roster.monsters():
 			if monster.current_health <= 0 or not combat.battlefield.has_actor(monster.id) or not _selection.group_target_matches(spell.target_type, monster.traitor, caster.traitor):
 				continue
 			if content.monster_by_id(monster.definition_id) == null:
@@ -133,14 +133,14 @@ func use_spell_item(state: GameState, content: RealmzContent, caster_id: String,
 	var item := content.item_by_id(instance.definition_id)
 	var spell := content.spell_by_classic_id(item.special_2)
 	var authored_power := absi(item.special_1)
-	var power_level := state.combat.staged_random_item_power(caster_id, instance.id) if authored_power == 8 else authored_power
+	var power_level := state.combat.turns.staged_random_item_power(caster_id, instance.id) if authored_power == 8 else authored_power
 	var summon_spell: bool = CombatFlowSummoning.is_summon_spell(spell)
 	if authored_power == 8 and power_level == 0:
 		var stage_state_checkpoint := state.to_data()
 		var stage_rng_checkpoint := rng.checkpoint()
 		_context.actions().prepare_character_turn(state.combat, caster)
 		power_level = rng.draw(7, StringName("combat.item.power.%s" % instance.id))
-		if not state.combat.stage_random_item_power(caster.id, instance.id, power_level):
+		if not state.combat.turns.stage_random_item_power(caster.id, instance.id, power_level):
 			return CombatFlowSpellRollback.item(state, rng, stage_state_checkpoint, stage_rng_checkpoint, &"item_power_stage_failed", "The random item power could not be staged for targeting.")
 		return CombatFlowResult.succeeded([DomainEvent.new(&"combat_item_power_staged", {"actorId": caster.id, "instanceId": instance.id, "itemId": item.id, "spellId": spell.id, "power": power_level, "source": "classic-item"})])
 	if spell.target_type in [3, 4] and target_coordinate == INVALID_COORDINATE:
@@ -158,11 +158,11 @@ func use_spell_item(state: GameState, content: RealmzContent, caster_id: String,
 	var cast_level := spell.classic_tier()
 	if not ClassicSpellSpecialEffectRules.is_combat_phase_spell(spell) and not ClassicSpellSourceRules.is_application_transport_projectile_item_profile(spell) and not summon_spell:
 		_context.actions().prepare_character_turn(state.combat, caster)
-		state.combat.invalidate_undo()
+		state.combat.turns.invalidate_undo()
 	var result := _resolve_spell_item(state, content, caster, instance, item, spell, power_level, cast_level, rng, target_id, target_coordinate, rotation, target_ids, target_coordinates, summon_spell, state_checkpoint, rng_checkpoint)
 	if not result.ok:
 		return CombatFlowSpellRollback.item(state, rng, state_checkpoint, rng_checkpoint, result.error_code, result.error_message)
-	state.combat.clear_staged_random_item_power()
+	state.combat.turns.clear_staged_random_item_power()
 	var events: Array[DomainEvent] = [item_used_event(caster_id, instance_id, item, spell, power_level, caster)]
 	var native_sound_id := item.sound_id + 600
 	if item.sound_id != 0:
@@ -221,7 +221,7 @@ func _resolve_spell_item(state: GameState, content: RealmzContent, caster: Chara
 		for character: CharacterState in state.party.characters():
 			if character.current_health > 0 and state.combat.battlefield.has_actor(character.id) and _selection.group_target_matches(spell.target_type, character.traitor, caster.traitor):
 				character_targets.append(character)
-		for monster: MonsterState in state.combat.monsters():
+		for monster: MonsterState in state.combat.roster.monsters():
 			if monster.current_health <= 0 or not state.combat.battlefield.has_actor(monster.id) or not _selection.group_target_matches(spell.target_type, monster.traitor, caster.traitor):
 				continue
 			var definition := content.monster_by_id(monster.definition_id)
@@ -249,19 +249,19 @@ func _resolve_spell_item(state: GameState, content: RealmzContent, caster: Chara
 
 func character_item_spell_options(state: GameState, content: RealmzContent, caster_id: String) -> Array[CombatItemOptionView]:
 	var result: Array[CombatItemOptionView] = []
-	if state == null or state.combat == null or state.combat.active_actor_id() != caster_id:
+	if state == null or state.combat == null or state.combat.turns.active_actor_id() != caster_id:
 		return result
 	var caster := state.party.character_by_id(caster_id)
 	if caster == null:
 		return result
-	var staged_instance_id := state.combat.staged_random_item_instance_id()
+	var staged_instance_id := state.combat.turns.staged_random_item_instance_id()
 	for instance: ItemInstance in caster.inventory():
 		var item := content.item_by_id(instance.definition_id)
 		var spell := content.spell_by_classic_id(item.special_2) if item != null else null
 		if item == null or spell == null or not staged_instance_id.is_empty() and staged_instance_id != instance.id:
 			continue
 		var authored_power := absi(item.special_1)
-		var power_level := state.combat.staged_random_item_power(caster_id, instance.id) if authored_power == 8 else authored_power
+		var power_level := state.combat.turns.staged_random_item_power(caster_id, instance.id) if authored_power == 8 else authored_power
 		if authored_power == 8 and power_level == 0:
 			if probe_character_item_spell(state, content, caster_id, "", instance.id).allowed:
 				result.append(CombatItemOptionView.new(instance, item, spell, 0, null, "Roll power before targeting", &"random_power"))
@@ -310,7 +310,7 @@ func _character_item_spell_options_for_power(state: GameState, content: RealmzCo
 func character_item_spell_unavailable_reason(state: GameState, content: RealmzContent, caster_id: String) -> String:
 	if not character_item_spell_options(state, content, caster_id).is_empty():
 		return ""
-	if state == null or state.combat == null or state.combat.active_actor_id() != caster_id:
+	if state == null or state.combat == null or state.combat.turns.active_actor_id() != caster_id:
 		return "Only the active character may use an item."
 	var caster := state.party.character_by_id(caster_id)
 	if caster == null or caster.inventory().is_empty():
@@ -377,13 +377,13 @@ func cast_spell(state: GameState, content: RealmzContent, caster_id: String, tar
 		var state_checkpoint := state.to_data()
 		var rng_checkpoint := rng.checkpoint()
 		_context.actions().prepare_character_turn(combat, caster)
-		combat.invalidate_undo()
+		combat.turns.invalidate_undo()
 		var area_result := _resolution.cast_area(state, content, caster, spell, power_level, cast_level, rng, target_coordinate, rotation)
 		return area_result if area_result.ok else CombatFlowSpellRollback.character_area(state, rng, state_checkpoint, rng_checkpoint, area_result.error_code, area_result.error_message)
 	var targeted_state_checkpoint := state.to_data() if spell.target_type == 5 and ClassicSpellConditionRules.is_combat_persistent_field_spell(spell) or ClassicSpellConditionRules.is_combat_single_actor_field_spell(spell) else {}
 	var targeted_rng_checkpoint := rng.checkpoint() if not targeted_state_checkpoint.is_empty() else {}
 	_context.actions().prepare_character_turn(combat, caster)
-	combat.invalidate_undo()
+	combat.turns.invalidate_undo()
 	if spell.target_type in [9, 10, 12]:
 		return _resolution.cast_group(state, content, caster, spell, power_level, cast_level, rng)
 	if spell.target_type == 7:
@@ -428,9 +428,9 @@ func probe_character_scroll_cast(state: GameState, content: RealmzContent, caste
 	if state == null or content == null:
 		return CombatSpellCastProbe.blocked(&"invalid_scroll_turn", "Scroll use requires an active game session.")
 	var combat := state.combat
-	if combat == null or combat.completed or combat.battlefield == null or combat.active_actor_id() != caster_id:
+	if combat == null or combat.completed or combat.battlefield == null or combat.turns.active_actor_id() != caster_id:
 		return CombatSpellCastProbe.blocked(&"invalid_scroll_turn", "Only the active character may use a scroll in combat.")
-	if not combat.pending_spell_death_macro_id().is_empty():
+	if not combat.spell_runtime.pending_death_macro_id().is_empty():
 		return CombatSpellCastProbe.blocked(&"spell_death_macro_pending", "A spell-triggered monster death macro must complete before another combat action.")
 	var caster := state.party.character_by_id(caster_id)
 	if caster == null or caster.current_health <= 0 or caster.conditions.is_active(ConditionRules.ANIMATED):
@@ -455,7 +455,7 @@ func probe_character_scroll_cast(state: GameState, content: RealmzContent, caste
 		return CombatSpellCastProbe.blocked(&"invalid_scroll_target", "The selected combatant is unavailable.")
 	if ClassicSpellDispositionRules.combat_scroll_disposition(spell) != ClassicSpellDispositionRules.DISPOSITION_EXECUTABLE:
 		return CombatSpellCastProbe.blocked(&"unsupported_combat_scroll", ClassicSpellDispositionRules.unsupported_reason(spell, &"combat-scroll"))
-	if ClassicSpellConditionRules.is_combat_persistent_field_spell(spell) and not combat.can_queue_persistent_field():
+	if ClassicSpellConditionRules.is_combat_persistent_field_spell(spell) and not combat.spell_runtime.can_queue_persistent_field():
 		return CombatSpellCastProbe.blocked(&"persistent_field_queue_limit", "Castle's persistent battlefield-field queue is full.")
 	if repeated_target and spell.size != 0 and not summon_spell:
 		return CombatSpellCastProbe.blocked(&"repeated_open_space_spell_unresolved", "Classic target type 0 with nonzero size selects open-space footprints for summoning or special behavior, not ordinary actors.")
@@ -498,7 +498,7 @@ func probe_character_scroll_cast(state: GameState, content: RealmzContent, caste
 		for character: CharacterState in state.party.characters():
 			if character.current_health > 0 and combat.battlefield.has_actor(character.id) and _selection.group_target_matches(spell.target_type, character.traitor, caster.traitor):
 				group_count += 1
-		for monster: MonsterState in combat.monsters():
+		for monster: MonsterState in combat.roster.monsters():
 			if monster.current_health > 0 and combat.battlefield.has_actor(monster.id) and _selection.group_target_matches(spell.target_type, monster.traitor, caster.traitor):
 				group_count += 1
 		if group_count == 0:
@@ -528,7 +528,7 @@ func use_combat_scroll(state: GameState, content: RealmzContent, caster_id: Stri
 	elif ClassicSpellSpecialEffectRules.is_combat_phase_spell(spell): result = _context.phase().cast_character_phase(state, content, caster, spell, power_level, cast_level, rng, target_coordinate, false, "classic-scroll", false)
 	else:
 		_context.actions().prepare_character_turn(state.combat, caster)
-		state.combat.invalidate_undo()
+		state.combat.turns.invalidate_undo()
 	if not CombatFlowSummoning.is_summon_spell(spell) and not ClassicSpellSpecialEffectRules.is_combat_phase_spell(spell) and spell.target_type in [3, 4]:
 		var shape := _context.spell_areas.shape_for(spell, power_level, rotation)
 		var persistent_field: RefCounted = _context.fields().queue_persistent_field(state.combat, caster.id, spell, power_level, cast_level, rng, target_coordinate, rotation, shape)

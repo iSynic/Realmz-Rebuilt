@@ -269,7 +269,7 @@ func start_session_death_macro(preceding_events: Array[DomainEvent]) -> SessionC
 		return _context.failed(&"invalid_death_macro_request", "Monster death-macro execution requires an active combatant request.", preceding_events)
 	var combatant_id = str(request.get("combatantId", ""))
 	var program_id = str(request.get("programId", ""))
-	var monster = combat.monster_by_id(combatant_id)
+	var monster = combat.roster.monster_by_id(combatant_id)
 	if monster == null or _context.content.scenario.program_by_id(program_id) == null:
 		return _context.failed(&"invalid_death_macro_request", "Monster death-macro execution references unavailable content.", preceding_events)
 	var continuation_body = SessionContinuation.CombatBody.new()
@@ -312,7 +312,7 @@ func continue_session_death_macro(events: Array[DomainEvent]) -> SessionCoordina
 	if combat == null or combat.battle_id != battle_id:
 		_context.session_continuation.clear()
 		return _context.failed(&"invalid_battle_continuation", "Monster death-macro completion lost its battle.", events)
-	var monster = combat.monster_by_id(combatant_id)
+	var monster = combat.roster.monster_by_id(combatant_id)
 	if monster != null and continuation.reset_traitor_on_complete:
 		monster.traitor = false
 	events.append(DomainEvent.new(&"monster_death_macro_completed", {"battleId": battle_id, "combatantId": combatant_id, "programId": program_id, "revived": monster != null and monster.current_health > 0}))

@@ -111,7 +111,7 @@ func start_battle(state: GameState, content: RealmzContent, battle: BattleDefini
 		if character.current_health <= 0:
 			continue
 		var initial_mode := StringName(inputs.initial_weapon_modes.get(character.id, &"melee"))
-		if not combat.set_character_weapon_mode(character.id, initial_mode):
+		if not combat.actor_statuses.set_character_weapon_mode(character.id, initial_mode):
 			return battle_setup_failure(state, instance_checkpoint, rng, rng_checkpoint, &"invalid_weapon_mode", "Battle '%s' could not initialize '%s' weapon mode." % [battle.id, character.id])
 	for ally: MonsterState in consumed_ally_states:
 		ally.traitor = false
@@ -124,7 +124,7 @@ func start_battle(state: GameState, content: RealmzContent, battle: BattleDefini
 	state.combat = combat
 	var events: Array[DomainEvent] = [
 		DomainEvent.new(&"sound_requested", {"soundId": 10049, "waitForCompletion": false, "source": "classic-battle-entry"}),
-		DomainEvent.new(&"battle_started", {"battleId": battle.id, "classicId": battle.classic_id, "distance": battle.distance, "rolledDistance": battlefield.rolled_distance, "direction": battlefield.direction_degrees, "mapId": battlefield.map_id, "surprise": surprise, "turnOrder": combat.turn_order(), "participantCharacterIds": inputs.party_characters.map(func(character: CharacterState) -> String: return character.id), "consumedAllyIds": consumed_allies}),
+		DomainEvent.new(&"battle_started", {"battleId": battle.id, "classicId": battle.classic_id, "distance": battle.distance, "rolledDistance": battlefield.rolled_distance, "direction": battlefield.direction_degrees, "mapId": battlefield.map_id, "surprise": surprise, "turnOrder": combat.turns.turn_order(), "participantCharacterIds": inputs.party_characters.map(func(character: CharacterState) -> String: return character.id), "consumedAllyIds": consumed_allies}),
 	]
 	_context.automation().process_monster_turns(state, content, rng, events)
 	return CombatFlowResult.succeeded(events, state.combat.completed)
@@ -190,7 +190,7 @@ func advance_turn(state: GameState, content: RealmzContent, rng: RealmzRng, even
 	if state == null or state.combat == null:
 		return
 	var round_advanced := state.combat.advance_turn()
-	for field: RefCounted in state.combat.decay_persistent_fields_for_phase(state.combat.turn_index):
+	for field: RefCounted in state.combat.spell_runtime.decay_persistent_fields_for_phase(state.combat.turns.turn_index):
 		events.append(DomainEvent.new(&"combat_persistent_field_expired", {"slot": field.slot, "spellId": field.spell_id, "center": [field.center.x, field.center.y], "shape": field.shape, "queueIcon": field.queue_icon, "source": "classic"}))
 	if round_advanced:
 		_process_persistent_field_round_collisions(state, content, rng, events)
@@ -199,36 +199,36 @@ func advance_turn(state: GameState, content: RealmzContent, rng: RealmzRng, even
 
 func _process_persistent_field_round_collisions(state: GameState, content: RealmzContent, rng: RealmzRng, events: Array[DomainEvent]) -> void:
 	var combat := state.combat
-	if combat == null or combat.battlefield == null or combat.persistent_fields().is_empty():
+	if combat == null or combat.battlefield == null or combat.spell_runtime.persistent_fields().is_empty():
 		return
 	var actor_ids: Array[String] = []
 	for character: CharacterState in state.party.characters():
 		if character.current_health > 0 and combat.battlefield.has_actor(character.id):
 			actor_ids.append(character.id)
-	for monster: MonsterState in combat.monsters():
+	for monster: MonsterState in combat.roster.monsters():
 		if monster.current_health > 0 and combat.battlefield.has_actor(monster.id):
 			actor_ids.append(monster.id)
 	for actor_id: String in actor_ids:
 		var result: int = _context.fields().resolve_actor_collisions(state, content, actor_id, rng, events, false, false)
 		if result == CombatFlowFields.COLLISION_INVALID:
 			events.append(DomainEvent.new(&"combat_persistent_field_collision_failed", {"actorId": actor_id, "reason": "invalid-runtime-state"}))
-	if not combat.pending_spell_death_macro_id().is_empty() and not _context.fields().begin_pending_death_macros(combat, content, events):
-		events.append(DomainEvent.new(&"combat_persistent_field_collision_failed", {"actorId": combat.active_actor_id(), "reason": "invalid-death-macro-queue"}))
+	if not combat.spell_runtime.pending_death_macro_id().is_empty() and not _context.fields().begin_pending_death_macros(combat, content, events):
+		events.append(DomainEvent.new(&"combat_persistent_field_collision_failed", {"actorId": combat.turns.active_actor_id(), "reason": "invalid-death-macro-queue"}))
 
 
 func process_bleeding_round(state: GameState, rng: RealmzRng, events: Array[DomainEvent]) -> void:
 	var combat := state.combat
 	for character: CharacterState in state.party.characters():
-		if not combat.is_character_bleeding(character.id):
+		if not combat.actor_statuses.is_character_bleeding(character.id):
 			continue
 		if character.current_health <= -10:
-			combat.set_character_bleeding(character.id, false)
+			combat.actor_statuses.set_character_bleeding(character.id, false)
 			state.set_combat_auto(character.id, false)
 			continue
 		character.current_health = _context.arithmetic.signed_16(character.current_health - 1)
 		if character.current_health < -9:
 			character.lifetime_record.record_death(true)
-			combat.set_character_bleeding(character.id, false)
+			combat.actor_statuses.set_character_bleeding(character.id, false)
 			state.set_combat_auto(character.id, false)
 			_context.automation().remove_defeated_position(combat, character.id, true)
 			events.append(DomainEvent.new(&"sound_requested", {"soundId": 132, "waitForCompletion": false, "source": "classic-combat-bleeding"}))
@@ -253,25 +253,25 @@ func continue_after_monster_death_macro(state: GameState, content: RealmzContent
 	if state == null or content == null or rng == null or state.combat == null:
 		return CombatFlowResult.failed(&"invalid_death_macro_continuation", "Monster death-macro continuation requires an active battle.")
 	var events: Array[DomainEvent] = []
-	if not state.combat.pending_spell_death_macro_id().is_empty():
-		var expected_id := state.combat.pending_spell_death_macro_id()
+	if not state.combat.spell_runtime.pending_death_macro_id().is_empty():
+		var expected_id := state.combat.spell_runtime.pending_death_macro_id()
 		if completed_combatant_id.is_empty():
 			completed_combatant_id = expected_id
-		if not state.combat.complete_spell_death_macro(completed_combatant_id):
+		if not state.combat.spell_runtime.complete_death_macro(completed_combatant_id):
 			return CombatFlowResult.failed(&"invalid_spell_death_macro_queue", "The completed spell death macro does not match the saved queue cursor.")
-		var completed_monster := state.combat.monster_by_id(completed_combatant_id)
-		var same_subject_remains := state.combat.spell_death_macro_queue().has(completed_combatant_id)
+		var completed_monster := state.combat.roster.monster_by_id(completed_combatant_id)
+		var same_subject_remains := state.combat.spell_runtime.death_macro_queue().has(completed_combatant_id)
 		_context.automation().remove_defeated_position(state.combat, completed_combatant_id, completed_monster != null and completed_monster.current_health <= 0 and not same_subject_remains)
-		if not state.combat.pending_spell_death_macro_id().is_empty():
+		if not state.combat.spell_runtime.pending_death_macro_id().is_empty():
 			if not _context.actions().events().request_next_spell_death_macro(state.combat, content, events):
 				return CombatFlowResult.failed(&"invalid_spell_death_macro_queue", "The next queued spell death macro references unavailable content.")
 			return CombatFlowResult.succeeded(events)
-		var spell_actor_id := state.combat.spell_macro_actor_id()
-		var advances_turn := state.combat.spell_macro_advances_turn()
+		var spell_actor_id := state.combat.spell_runtime.macro_actor_id()
+		var advances_turn := state.combat.spell_runtime.macro_advances_turn()
 		if advances_turn:
-			if state.combat.active_actor_id() != spell_actor_id:
+			if state.combat.turns.active_actor_id() != spell_actor_id:
 				return CombatFlowResult.failed(&"invalid_spell_death_macro_queue", "The active caster changed before the queued spell action completed.")
-		state.combat.clear_spell_death_macro_sequence()
+		state.combat.spell_runtime.clear_death_macro_sequence()
 		if advances_turn:
 			advance_turn(state, content, rng, events)
 	_context.automation().remove_all_defeated_positions(state)
@@ -288,7 +288,7 @@ func continue_after_monster_death_macro(state: GameState, content: RealmzContent
 				return CombatFlowResult.succeeded(events, state.combat.completed)
 		else:
 			state.combat.pending_reaction = null
-		if state.combat.active_actor_id() == mover_id:
+		if state.combat.turns.active_actor_id() == mover_id:
 			advance_turn(state, content, rng, events)
 	if state.combat.completed or finish_if_resolved(state, content, events):
 		return CombatFlowResult.succeeded(events, true)
@@ -322,12 +322,12 @@ func continue_after_age_update(state: GameState, content: RealmzContent, rng: Re
 	_context.actions().events().append_monster_physical_feedback(events, pending.physical_feedback_sound_id)
 	target.current_health -= pending.damage
 	if pending.damage > 0:
-		combat.mark_attacked(target.id)
+		combat.actor_statuses.mark_attacked(target.id)
 	var defeated := target.current_health <= 0
 	_context.actions().mark_character_bleeding(state, target, defeated)
 	_context.automation().remove_defeated_position(combat, target.id, defeated)
-	var pending_attack_index := maxi(0, combat.active_turn.attack_index - 1) if combat.active_turn != null and combat.pending_reaction == null else 0
-	var pending_attacker := combat.monster_by_id(pending.actor_id)
+	var pending_attack_index := maxi(0, combat.turns.active_turn.attack_index - 1) if combat.turns.active_turn != null and combat.pending_reaction == null else 0
+	var pending_attacker := combat.roster.monster_by_id(pending.actor_id)
 	var pending_definition := content.monster_by_id(pending_attacker.definition_id) if pending_attacker != null else null
 	var pending_weapon := content.item_by_id(pending_attacker.weapon_id) if pending_attacker != null and not pending_attacker.weapon_id.is_empty() else null
 	var pending_resolution := AttackResolution.new(true, defeated, pending.chance, pending.roll, pending.damage)
@@ -347,7 +347,7 @@ func continue_after_age_update(state: GameState, content: RealmzContent, rng: Re
 		if reaction_result == REACTION_WAITING or reaction_result == REACTION_DEATH_MACRO:
 			return CombatFlowResult.succeeded(events)
 		if reaction_result == REACTION_MOVER_DEFEATED:
-			if combat.active_actor_id() == mover_id:
+			if combat.turns.active_actor_id() == mover_id:
 				advance_turn(state, content, rng, events)
 			if finish_if_resolved(state, content, events):
 				return CombatFlowResult.succeeded(events, true)
@@ -359,12 +359,12 @@ func continue_after_age_update(state: GameState, content: RealmzContent, rng: Re
 		return CombatFlowResult.succeeded(events, state.combat.completed)
 	if finish_if_resolved(state, content, events):
 		return CombatFlowResult.succeeded(events, true)
-	var monster := combat.monster_by_id(pending.actor_id)
+	var monster := combat.roster.monster_by_id(pending.actor_id)
 	var definition := content.monster_by_id(monster.definition_id) if monster != null else null
-	if combat.active_turn == null or combat.active_turn.actor_id != pending.actor_id or pending.action != &"advance" or definition == null or combat.active_turn.attack_index >= _context.automation().monster_actions().attack_limit(definition):
+	if combat.turns.active_turn == null or combat.turns.active_turn.actor_id != pending.actor_id or pending.action != &"advance" or definition == null or combat.turns.active_turn.attack_index >= _context.automation().monster_actions().attack_limit(definition):
 		advance_turn(state, content, rng, events)
 	elif defeated:
-		combat.active_turn.target_id = ""
+		combat.turns.active_turn.target_id = ""
 	_context.automation().process_monster_turns(state, content, rng, events)
 	return CombatFlowResult.succeeded(events, state.combat.completed)
 
@@ -373,7 +373,7 @@ func ally_selection_payload(state: GameState, content: RealmzContent) -> Diction
 	if state == null or content == null or state.combat == null or not state.combat.completed or state.allies_suspended:
 		return {}
 	var candidates: Array[Dictionary] = []
-	for monster: MonsterState in state.combat.monsters():
+	for monster: MonsterState in state.combat.roster.monsters():
 		if candidates.size() >= 32 or monster.current_health <= 0 or monster.traitor:
 			continue
 		var definition := content.monster_by_id(monster.definition_id)
@@ -441,7 +441,7 @@ func apply_ally_selection(state: GameState, content: RealmzContent, selected_val
 			return CombatFlowResult.failed(&"invalid_ally_selection", "The ally selection contains an unavailable combatant.")
 	var retained: Array[MonsterState] = []
 	for selected_id: String in selected_ids:
-		var monster := state.combat.monster_by_id(selected_id)
+		var monster := state.combat.roster.monster_by_id(selected_id)
 		if monster == null:
 			return CombatFlowResult.failed(&"invalid_ally_selection", "The selected combatant is unavailable.")
 		monster.traitor = false
@@ -453,7 +453,7 @@ func apply_ally_selection(state: GameState, content: RealmzContent, selected_val
 func fumble_recovery_payload(state: GameState, content: RealmzContent) -> Dictionary:
 	if state == null or content == null or state.combat == null or not state.combat.completed:
 		return {}
-	var queued := state.combat.fumbled_items()
+	var queued := state.combat.dropped_items.items()
 	if queued.is_empty():
 		return {}
 	var item: ItemInstance = queued[0]
@@ -535,7 +535,7 @@ func apply_fumble_recovery(state: GameState, content: RealmzContent, action: Str
 	if instance_id != request_payload["item"]["instanceId"]:
 		return CombatFlowResult.failed(&"invalid_fumble_recovery", "Fumbled-weapon recovery must identify the pending item and action.")
 	if action == &"discard":
-		var discarded := state.combat.remove_fumbled_item(instance_id)
+		var discarded := state.combat.dropped_items.remove(instance_id)
 		if discarded == null:
 			return CombatFlowResult.failed(&"invalid_fumble_recovery", "The pending fumbled weapon is unavailable.")
 		return CombatFlowResult.succeeded([DomainEvent.new(&"fumbled_item_left_behind", {"battleId": state.combat.battle_id, "instanceId": discarded.id, "itemId": discarded.definition_id})])
@@ -549,14 +549,14 @@ func apply_fumble_recovery(state: GameState, content: RealmzContent, action: Str
 	if candidate.is_empty() or not candidate["enabled"]:
 		return CombatFlowResult.failed(&"invalid_fumble_recovery", "The selected character cannot receive the fumbled weapon.")
 	var character := state.party.character_by_id(character_id)
-	var queued: ItemInstance = state.combat.fumbled_items()[0]
+	var queued: ItemInstance = state.combat.dropped_items.items()[0]
 	var definition := content.item_by_id(queued.definition_id)
 	if character == null or definition == null or not _context.inventory.can_restore_item(character, queued, definition):
 		return CombatFlowResult.failed(&"invalid_fumble_recovery", "The selected character can no longer receive the fumbled weapon.")
-	var recovered := state.combat.remove_fumbled_item(instance_id)
+	var recovered := state.combat.dropped_items.remove(instance_id)
 	if recovered == null or not _context.inventory.restore_item(character, recovered, definition):
 		if recovered != null:
-			state.combat.requeue_fumbled_item_first(recovered)
+			state.combat.dropped_items.requeue_first(recovered)
 		return CombatFlowResult.failed(&"invalid_fumble_recovery", "The fumbled weapon could not be restored atomically.")
 	return CombatFlowResult.succeeded([DomainEvent.new(&"fumbled_item_recovered", {"battleId": state.combat.battle_id, "instanceId": recovered.id, "itemId": recovered.definition_id, "characterId": character.id})])
 
@@ -564,14 +564,14 @@ func apply_fumble_recovery(state: GameState, content: RealmzContent, action: Str
 func finish_if_resolved(state: GameState, content: RealmzContent, events: Array[DomainEvent]) -> bool:
 	state.prune_combat_auto_characters()
 	var combat := state.combat
-	if not combat.pending_spell_death_macro_id().is_empty() or not combat.spell_macro_actor_id().is_empty():
+	if not combat.spell_runtime.pending_death_macro_id().is_empty() or not combat.spell_runtime.macro_actor_id().is_empty():
 		return false
 	var enemies_alive := false
 	for character: CharacterState in state.party.characters():
 		if character.current_health > 0 and character.traitor and combat.battlefield != null and combat.battlefield.has_actor(character.id):
 			enemies_alive = true
 			break
-	for monster: MonsterState in combat.monsters():
+	for monster: MonsterState in combat.roster.monsters():
 		if monster.current_health > 0 and monster.traitor and combat.battlefield != null and combat.battlefield.has_actor(monster.id):
 			enemies_alive = true
 			break
@@ -587,7 +587,7 @@ func finish_classic_macro_victory(state: GameState, content: RealmzContent) -> C
 	if state == null or content == null or state.combat == null or state.combat.completed:
 		return CombatFlowResult.failed(&"no_active_battle", "Classic opcode 100 requires an active battle macro.")
 	var defeated: Array[String] = []
-	for monster: MonsterState in state.combat.monsters():
+	for monster: MonsterState in state.combat.roster.monsters():
 		if monster.current_health > 0 and monster.traitor:
 			monster.current_health = 0
 			state.combat.battlefield.remove_monster(monster.id)
@@ -602,7 +602,7 @@ func complete_battle(state: GameState, _content: RealmzContent, outcome: StringN
 	var combat := state.combat
 	combat.completed = true
 	combat.outcome = outcome
-	combat.clear_active_turn()
+	combat.turns.clear_active_turn()
 	state.last_battle_outcome = combat.outcome
 	restore_party_allegiance(state, events)
 	events.append(DomainEvent.new(&"battle_completed", {"battleId": combat.battle_id, "outcome": String(combat.outcome)}))
@@ -621,7 +621,7 @@ static func has_living_retreated_character(state: GameState) -> bool:
 	if state.combat == null or state.combat.battlefield == null:
 		return false
 	for character: CharacterState in state.party.characters():
-		if character.current_health > 0 and not character.traitor and state.combat.has_character_retreated(character.id):
+		if character.current_health > 0 and not character.traitor and state.combat.actor_statuses.has_character_retreated(character.id):
 			return true
 	return false
 

@@ -159,7 +159,7 @@ func start_battle_definition(battle: BattleDefinition, request_id: String, sourc
 	events.append_array(result.events)
 	var continuation_kind := ScenarioRuntimeContinuation.SAFE_COMBAT if source == "scenario-action" else ScenarioRuntimeContinuation.CLASSIC_COMBAT
 	if not CharacterAgingResult.update_payloads(result.events).is_empty():
-		return _wait_for_combat_age_updates(continuation_kind, caller, request_id, events, _game_state.combat.round_number)
+		return _wait_for_combat_age_updates(continuation_kind, caller, request_id, events, _game_state.combat.turns.round_number)
 	if not _death_macro_request(result.events).is_empty():
 		return _run_combat_death_macro(continuation_kind, caller, events, request_id)
 	if result.completed:
@@ -177,7 +177,7 @@ func _resume_battle(continuation: ScenarioRuntimeContinuation, response: Interac
 	var caller := combat_continuation.caller
 	if caller == null:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "The pending battle lost its originating caller.")
-	var previous_round := _game_state.combat.round_number
+	var previous_round := _game_state.combat.turns.round_number
 	var dispatch: Variant = _dispatch_combat_response(body, continuation, request_id)
 	if dispatch is ScenarioRuntimeOperationResult:
 		return dispatch
@@ -208,7 +208,7 @@ func _set_combat_auto(body: InteractionResponse.CombatBody, continuation: Scenar
 		DomainEvent.new(&"sound_requested", {"soundId": 147 if body.enabled else 139, "waitForCompletion": false, "source": "classic-combat-auto-toggle"}),
 		DomainEvent.new(&"combat_auto_changed", {"characterId": body.actor_id, "enabled": body.enabled, "source": "classic"}),
 	]
-	if not body.enabled or _game_state.combat.active_actor_id() != body.actor_id:
+	if not body.enabled or _game_state.combat.turns.active_actor_id() != body.actor_id:
 		return ScenarioRuntimeOperationResult.waiting(_request_builder.build(request_id), continuation, events)
 	events.append(DomainEvent.new(&"sound_requested", {"soundId": 141, "waitForCompletion": false, "source": "classic-combat-auto-button"}))
 	var result := _rules.combat_flow.run_persistent_auto_characters(_game_state, _content, _rng)
@@ -281,7 +281,7 @@ func _continue_after_combat_result(result: CombatFlowResult, body: InteractionRe
 		var completed_events: Array[DomainEvent] = []
 		completed_events.assign(result.events)
 		return _finish_battle_with_allies(continuation.kind, caller, request_id, completed_events)
-	if _game_state.combat.round_number > previous_round and _game_state.combat.macro_id < 0:
+	if _game_state.combat.turns.round_number > previous_round and _game_state.combat.macro_id < 0:
 		return _run_battle_macro(continuation.kind, caller, result.events, request_id)
 	return ScenarioRuntimeOperationResult.waiting(_request_builder.build(request_id), continuation, result.events)
 
@@ -300,7 +300,7 @@ func _resume_battle_retreat(continuation: ScenarioRuntimeContinuation, response:
 	if response.kind != InteractionRequest.YES_NO or body == null:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Escape confirmation requires a yes/no response.")
 	var combat_continuation := continuation.body as ScenarioRuntimeContinuation.CombatBody
-	if _game_state.combat == null or _game_state.combat.completed or _game_state.combat.battle_id != combat_continuation.battle_id or _game_state.combat.active_actor_id() != combat_continuation.actor_id:
+	if _game_state.combat == null or _game_state.combat.completed or _game_state.combat.battle_id != combat_continuation.battle_id or _game_state.combat.turns.active_actor_id() != combat_continuation.actor_id:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "The character awaiting Escape confirmation is unavailable.")
 	var source_kind := combat_continuation.source_kind
 	var caller := combat_continuation.caller
@@ -313,7 +313,7 @@ func _resume_battle_retreat(continuation: ScenarioRuntimeContinuation, response:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "The saved Escape confirmation no longer represents a promptable Classic action.")
 	if not body.accepted:
 		return ScenarioRuntimeOperationResult.waiting(_request_builder.build(request_id), ScenarioRuntimeContinuation.combat(source_kind, combat_continuation.battle_id, caller), [DomainEvent.new(&"combat_retreat_declined", {"actorId": combat_continuation.actor_id, "mode": String(mode), "source": "classic"})])
-	var previous_round := _game_state.combat.round_number
+	var previous_round := _game_state.combat.turns.round_number
 	var result := _rules.combat_flow.retreat_character(_game_state, _content, combat_continuation.actor_id, mode, destination, _rng)
 	if not result.ok:
 		return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message)
@@ -325,7 +325,7 @@ func _resume_battle_retreat(continuation: ScenarioRuntimeContinuation, response:
 		var completed_events: Array[DomainEvent] = []
 		completed_events.assign(result.events)
 		return _finish_battle_with_allies(source_kind, caller, request_id, completed_events)
-	if _game_state.combat.round_number > previous_round and _game_state.combat.macro_id < 0:
+	if _game_state.combat.turns.round_number > previous_round and _game_state.combat.macro_id < 0:
 		return _run_battle_macro(source_kind, caller, result.events, request_id)
 	return ScenarioRuntimeOperationResult.waiting(_request_builder.build(request_id), ScenarioRuntimeContinuation.combat(source_kind, combat_continuation.battle_id, caller), result.events)
 
@@ -342,7 +342,7 @@ func _finish_battle_with_allies(source_kind: StringName, caller: ScenarioBattleC
 		if caller.kind == ScenarioBattleCaller.CLASSIC and caller.opcode == 48:
 			var battle_id := combat.battle_id
 			var participant_ids: Array[String] = []
-			for actor_id: String in combat.turn_order():
+			for actor_id: String in combat.turns.turn_order():
 				if _game_state.party.character_by_id(actor_id) != null:
 					participant_ids.append(actor_id)
 			var defeat_events: Array[DomainEvent] = []
@@ -414,7 +414,7 @@ func _run_battle_macro(source_kind: StringName, caller: ScenarioBattleCaller, pr
 	var result := vm.run(_runtime_api())
 	var events: Array[DomainEvent] = []
 	events.assign(preceding_events)
-	events.append(DomainEvent.new(&"battle_macro_started", {"battleId": combat.battle_id, "programId": program_id, "round": combat.round_number}))
+	events.append(DomainEvent.new(&"battle_macro_started", {"battleId": combat.battle_id, "programId": program_id, "round": combat.turns.round_number}))
 	events.append_array(result.events)
 	if result.state == ScenarioVmResult.State.FAILED:
 		return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message)
@@ -451,7 +451,7 @@ func _resume_battle_macro(continuation: ScenarioRuntimeContinuation, response: I
 func _continue_after_battle_macro(source_kind: StringName, caller: ScenarioBattleCaller, request_id: String, program_id: String, events: Array[DomainEvent]) -> ScenarioRuntimeOperationResult:
 	var committed: Array[DomainEvent] = []
 	committed.assign(events)
-	committed.append(DomainEvent.new(&"battle_macro_completed", {"battleId": _game_state.combat.battle_id, "programId": program_id, "round": _game_state.combat.round_number}))
+	committed.append(DomainEvent.new(&"battle_macro_completed", {"battleId": _game_state.combat.battle_id, "programId": program_id, "round": _game_state.combat.turns.round_number}))
 	if _game_state.combat.completed:
 		return _finish_battle_with_allies(source_kind, caller, request_id, committed)
 	return ScenarioRuntimeOperationResult.waiting(_request_builder.build(request_id), ScenarioRuntimeContinuation.combat(source_kind, _game_state.combat.battle_id, caller), committed)
@@ -464,7 +464,7 @@ func _run_combat_death_macro(source_kind: StringName, caller: ScenarioBattleCall
 		return ScenarioRuntimeOperationResult.failed(&"invalid_death_macro_request", "Monster death-macro execution requires an active combatant request.")
 	var combatant_id := str(request.get("combatantId", ""))
 	var program_id := str(request.get("programId", ""))
-	var monster := combat.monster_by_id(combatant_id)
+	var monster := combat.roster.monster_by_id(combatant_id)
 	if monster == null or program_id.is_empty():
 		return ScenarioRuntimeOperationResult.failed(&"invalid_death_macro_request", "Monster death-macro execution references unavailable content.")
 	var vm := ScenarioVm.new()
@@ -516,13 +516,13 @@ func _continue_after_combat_death_macro(source_kind: StringName, caller: Scenari
 	var combat := _game_state.combat
 	if combat == null:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "Monster death-macro completion lost its battle.")
-	var monster := combat.monster_by_id(combatant_id)
+	var monster := combat.roster.monster_by_id(combatant_id)
 	if monster != null and reset_traitor_on_complete:
 		monster.traitor = false
 	var committed: Array[DomainEvent] = []
 	committed.assign(events)
 	committed.append(DomainEvent.new(&"monster_death_macro_completed", {"battleId": combat.battle_id, "combatantId": combatant_id, "programId": program_id, "revived": monster != null and monster.current_health > 0}))
-	var previous_round := combat.round_number
+	var previous_round := combat.turns.round_number
 	var continued := _rules.combat_flow.continue_after_monster_death_macro(_game_state, _content, _rng, combatant_id)
 	if not continued.ok:
 		return ScenarioRuntimeOperationResult.failed(continued.error_code, continued.error_message)
@@ -580,7 +580,7 @@ func _resume_combat_age_updates(continuation: ScenarioRuntimeContinuation, respo
 		return _run_combat_death_macro(source_kind, caller, events, request_id)
 	if continued.completed:
 		return _finish_battle_with_allies(source_kind, caller, request_id, events)
-	if _game_state.combat.round_number > round_before and _game_state.combat.macro_id < 0:
+	if _game_state.combat.turns.round_number > round_before and _game_state.combat.macro_id < 0:
 		return _run_battle_macro(source_kind, caller, events, request_id)
 	return ScenarioRuntimeOperationResult.waiting(_request_builder.build(request_id), ScenarioRuntimeContinuation.combat(source_kind, _game_state.combat.battle_id, caller), events)
 

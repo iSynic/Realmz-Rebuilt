@@ -45,11 +45,11 @@ func _run_auto_turn_unchecked(state: GameState, content: RealmzContent, actor_id
 	_context.actions().prepare_character_turn(state.combat, actor)
 	var events: Array[DomainEvent] = [DomainEvent.new(&"combat_auto_started", {"actorId": actor.id, "persistent": state.combat_auto_enabled(actor.id), "source": "classic"})]
 	var visited_anchors: Array[Vector2i] = [state.combat.battlefield.actor_position(actor.id)]
-	var starting_round := state.combat.round_number
+	var starting_round := state.combat.turns.round_number
 	var operation_count := 0
 	var previous_processing = _context.processing_auto
 	_context.processing_auto = true
-	while operation_count < MAX_AUTO_OPERATIONS and state.combat != null and not state.combat.completed and state.combat.active_actor_id() == actor_id and state.combat.round_number == starting_round:
+	while operation_count < MAX_AUTO_OPERATIONS and state.combat != null and not state.combat.completed and state.combat.turns.active_actor_id() == actor_id and state.combat.turns.round_number == starting_round:
 		operation_count += 1
 		var choice: Dictionary = _ai_scoring.choose_party_action(state, content, actor, rng)
 		var chosen_action := StringName(choice.get("action", &"defend"))
@@ -73,7 +73,7 @@ func _run_auto_turn_unchecked(state: GameState, content: RealmzContent, actor_id
 		if result.completed or _events_include(result.events, &"monster_death_macro_requested") or state.combat.pending_monster_attack != null:
 			break
 	_context.processing_auto = previous_processing
-	if operation_count >= MAX_AUTO_OPERATIONS and state.combat != null and not state.combat.completed and state.combat.active_actor_id() == actor_id and state.combat.round_number == starting_round:
+	if operation_count >= MAX_AUTO_OPERATIONS and state.combat != null and not state.combat.completed and state.combat.turns.active_actor_id() == actor_id and state.combat.turns.round_number == starting_round:
 		return CombatFlowResult.failed(&"combat_auto_operation_limit", "Automatic combat exceeded its 256-operation safety limit without committing a partial activation.")
 	events.append(DomainEvent.new(&"combat_auto_completed", {"actorId": actor.id, "operations": operation_count, "source": "classic"}))
 	return CombatFlowResult.succeeded(events, state.combat == null or state.combat.completed)
@@ -104,7 +104,7 @@ func run_persistent_auto_characters(state: GameState, content: RealmzContent, rn
 func _run_persistent_auto_unchecked(state: GameState, content: RealmzContent, rng: RealmzRng) -> CombatFlowResult:
 	if state.combat == null or state.combat.completed:
 		return CombatFlowResult.succeeded([], true)
-	var actor_id := state.combat.active_actor_id()
+	var actor_id := state.combat.turns.active_actor_id()
 	var actor := state.party.character_by_id(actor_id)
 	if actor == null or actor.traitor or not state.combat_auto_enabled(actor_id):
 		return CombatFlowResult.succeeded([])
@@ -115,7 +115,7 @@ func _auto_unavailable(state: GameState, content: RealmzContent, actor_id: Strin
 	if state == null or content == null or rng == null or state.combat == null or state.combat.completed:
 		return CombatFlowResult.failed(&"combat_auto_unavailable", "No active battle can resolve an automatic turn.")
 	var actor := state.party.character_by_id(actor_id)
-	if actor == null or actor.current_health <= 0 or actor.traitor or state.combat.active_actor_id() != actor_id:
+	if actor == null or actor.current_health <= 0 or actor.traitor or state.combat.turns.active_actor_id() != actor_id:
 		return CombatFlowResult.failed(&"combat_auto_unavailable", "Only the active loyal character can use Auto Turn.")
 	return null
 
@@ -137,15 +137,15 @@ func auto_move_toward_target(state: GameState, content: RealmzContent, actor: Ch
 	for character: CharacterState in state.party.characters():
 		if character.id != actor.id and character.current_health > 0 and character.traitor != actor.traitor and combat.battlefield.has_actor(character.id):
 			candidates.append(character.id)
-	for monster: MonsterState in combat.monsters():
+	for monster: MonsterState in combat.roster.monsters():
 		if monster.current_health > 0 and monster.traitor != actor.traitor and combat.battlefield.has_actor(monster.id):
 			candidates.append(monster.id)
 	if candidates.is_empty():
 		return CombatFlowResult.failed(&"combat_auto_no_target", "No opposed battlefield combatant remains.")
-	var target_id := combat.active_turn.target_id
+	var target_id := combat.turns.active_turn.target_id
 	if not candidates.has(target_id):
 		target_id = candidates[rng.draw_between(0, candidates.size() - 1, StringName("combat.auto.%s.target" % actor.id))]
-		combat.active_turn.target_id = target_id
+		combat.turns.active_turn.target_id = target_id
 	var origin := combat.battlefield.actor_position(actor.id)
 	var terrain_set := _monster_actions.battle_terrain_set(content, combat.battlefield)
 	var swappable_ids: Array[String] = []
@@ -153,7 +153,7 @@ func auto_move_toward_target(state: GameState, content: RealmzContent, actor: Ch
 		for character: CharacterState in state.party.characters():
 			if character.id != actor.id and character.current_health > 0 and character.traitor == actor.traitor and combat.battlefield.has_actor(character.id) and combat.battlefield.actor_size(character.id) == 0:
 				swappable_ids.append(character.id)
-		for monster: MonsterState in combat.monsters():
+		for monster: MonsterState in combat.roster.monsters():
 			if monster.current_health > 0 and monster.traitor == actor.traitor and combat.battlefield.has_actor(monster.id) and combat.battlefield.actor_size(monster.id) == 0:
 				swappable_ids.append(monster.id)
 	var path_probe := _direct_auto_swap_probe(combat.battlefield, actor.id, target_id, actor.movement, swappable_ids, visited_anchors)

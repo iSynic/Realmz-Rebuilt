@@ -23,7 +23,7 @@ func probe_choice(state: GameState, content: RealmzContent, caster_id: String, s
 		return CombatSpellCastProbe.blocked(&"summon_unavailable", "Combat summoning requires an active battlefield.")
 	if power_level < 1 or power_level > 7:
 		return CombatSpellCastProbe.blocked(&"invalid_summon_power", "A summon spell requires power 1 through 7.")
-	if state.combat.monsters().size() >= MAX_MONSTERS:
+	if state.combat.roster.monsters().size() >= MAX_MONSTERS:
 		return CombatSpellCastProbe.blocked(&"summon_capacity_reached", "The Classic battlefield already contains its maximum 100 monster instances.")
 	var map := content.world.map_by_id(state.combat.battlefield.map_id)
 	var terrain_set := content.world.battle_terrain_set_for_map(map, state.world) if map != null else null
@@ -46,7 +46,7 @@ func probe_coordinates(state: GameState, content: RealmzContent, caster_id: Stri
 		return choice
 	if target_coordinates.is_empty():
 		return CombatSpellCastProbe.blocked(&"summon_target_required", "Choose at least one open battlefield space for the summon.")
-	if target_coordinates.size() > power_level or state.combat.monsters().size() + target_coordinates.size() > MAX_MONSTERS:
+	if target_coordinates.size() > power_level or state.combat.roster.monsters().size() + target_coordinates.size() > MAX_MONSTERS:
 		return CombatSpellCastProbe.blocked(&"too_many_summon_targets", "A summon spell may choose at most one space per power level without exceeding 100 monster instances.")
 	var seen: Dictionary = {}
 	var map := content.world.map_by_id(state.combat.battlefield.map_id)
@@ -85,14 +85,14 @@ func cast_character_summon(state: GameState, content: RealmzContent, caster: Cha
 		for cell: Vector2i in BattlefieldState.footprint_cells(coordinate, definition.size):
 			planned_cells[cell] = true
 	_context.actions().prepare_character_turn(state.combat, caster)
-	state.combat.invalidate_undo()
+	state.combat.turns.invalidate_undo()
 	if spend_spell_points:
 		var cost := absi(spell.cost * power_level)
 		if caster.spell_points < cost:
 			return _rollback_failed_summon(state, rng, state_checkpoint, rng_checkpoint, &"insufficient_spell_points", "The caster no longer has enough spell points for this summon.")
 		caster.spell_points -= cost
 	if count_spell_cast:
-		state.combat.active_turn.spell_cast_count += 1
+		state.combat.turns.active_turn.spell_cast_count += 1
 		caster.lifetime_record.record_spell_cast()
 	caster.attacks_remaining = _context.arithmetic.signed_16(caster.attacks_remaining - 2)
 	caster.movement = maxi(0, caster.movement - 12)
@@ -105,7 +105,7 @@ func cast_character_summon(state: GameState, content: RealmzContent, caster: Cha
 		if summoned == null:
 			return _rollback_failed_summon(state, rng, state_checkpoint, rng_checkpoint, &"summon_construction_failed", "The selected Classic monster could not be constructed.")
 		summoned.summoned = true
-		if not state.combat.add_monster(summoned) or not battlefield.place_monster(summoned.id, target_coordinates[index], definition.size):
+		if not state.combat.roster.add_monster(summoned) or not battlefield.place_monster(summoned.id, target_coordinates[index], definition.size):
 			return _rollback_failed_summon(state, rng, state_checkpoint, rng_checkpoint, &"summon_placement_failed", "The selected Classic monster could not enter the battlefield.")
 		state.combat.append_turn_actor(summoned.id)
 		summoned_ids.append(summoned.id)
@@ -146,7 +146,7 @@ func cast_monster_summon(state: GameState, content: RealmzContent, caster: Monst
 	if cost < 0 or caster.spell_points < cost:
 		return _rollback_failed_summon(state, rng, state_checkpoint, rng_checkpoint, &"insufficient_spell_points", "The monster no longer has enough spell points for this summon.")
 	caster.spell_points -= cost
-	state.combat.active_turn.spell_cast_count += 1
+	state.combat.turns.active_turn.spell_cast_count += 1
 	var events: Array[DomainEvent] = []
 	CombatSpellEventBuilder.append_sound(events, spell.sound_start, "classic-monster-spell-start")
 	var summoned_ids: Array[String] = []
@@ -156,7 +156,7 @@ func cast_monster_summon(state: GameState, content: RealmzContent, caster: Monst
 		if summoned == null:
 			return _rollback_failed_summon(state, rng, state_checkpoint, rng_checkpoint, &"summon_construction_failed", "The selected Classic monster could not be constructed.")
 		summoned.summoned = true
-		if not state.combat.add_monster(summoned) or not battlefield.place_monster(summoned.id, target_coordinates[index], definition.size):
+		if not state.combat.roster.add_monster(summoned) or not battlefield.place_monster(summoned.id, target_coordinates[index], definition.size):
 			return _rollback_failed_summon(state, rng, state_checkpoint, rng_checkpoint, &"summon_placement_failed", "The selected Classic monster could not enter the battlefield.")
 		state.combat.append_turn_actor(summoned.id)
 		summoned_ids.append(summoned.id)
@@ -192,7 +192,7 @@ func _automatic_coordinate(state: GameState, content: RealmzContent, caster_id: 
 	if candidates.is_empty():
 		return INVALID_COORDINATE
 	var hostile_positions: Array[Vector2i] = []
-	for monster: MonsterState in state.combat.monsters():
+	for monster: MonsterState in state.combat.roster.monsters():
 		if monster.current_health > 0 and monster.traitor != caster_traitor and state.combat.battlefield.has_actor(monster.id):
 			hostile_positions.append(state.combat.battlefield.actor_position(monster.id))
 	for character: CharacterState in state.party.characters():

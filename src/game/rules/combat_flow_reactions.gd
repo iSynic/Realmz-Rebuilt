@@ -32,7 +32,7 @@ func _init(context: CombatContext) -> void:
 	_context = context
 
 func probe_character_retreat(combat: CombatState, characters: Array[CharacterState], actor_id: String):
-	if combat == null or combat.completed or combat.battlefield == null or combat.active_actor_id() != actor_id or not combat.battlefield.has_actor(actor_id):
+	if combat == null or combat.completed or combat.battlefield == null or combat.turns.active_actor_id() != actor_id or not combat.battlefield.has_actor(actor_id):
 		return CombatRetreatProbe.blocked(&"invalid_combat_actor", "The active character is unavailable.")
 	var actor: CharacterState = null
 	for character: CharacterState in characters:
@@ -46,7 +46,7 @@ func probe_character_retreat(combat: CombatState, characters: Array[CharacterSta
 	for character: CharacterState in characters:
 		if character.id != actor_id and character.current_health > 0 and character.traitor != actor.traitor and combat.battlefield.has_actor(character.id):
 			nearest_range = mini(nearest_range, floori(Vector2(combat.battlefield.actor_position(character.id) - origin).length()))
-	for monster: MonsterState in combat.monsters():
+	for monster: MonsterState in combat.roster.monsters():
 		if monster.current_health > 0 and monster.traitor != actor.traitor and combat.battlefield.has_actor(monster.id):
 			nearest_range = mini(nearest_range, floori(Vector2(combat.battlefield.actor_position(monster.id) - origin).length()))
 	if nearest_range < 10:
@@ -97,7 +97,7 @@ func projectile_target_is_valid(combat: CombatState, content: RealmzContent, act
 
 
 func probe_edge_retreat(combat: CombatState, actor_id: String, destination: Vector2i):
-	if combat == null or combat.completed or combat.battlefield == null or combat.active_actor_id() != actor_id or not combat.battlefield.has_actor(actor_id):
+	if combat == null or combat.completed or combat.battlefield == null or combat.turns.active_actor_id() != actor_id or not combat.battlefield.has_actor(actor_id):
 		return CombatRetreatProbe.blocked(&"invalid_combat_actor", "The active character is unavailable.")
 	var origin := combat.battlefield.actor_position(actor_id)
 	var direction := destination - origin
@@ -111,7 +111,7 @@ func probe_edge_retreat(combat: CombatState, actor_id: String, destination: Vect
 
 func retreat_character(state: GameState, content: RealmzContent, actor_id: String, mode: StringName, destination: Vector2i, rng: RealmzRng) -> CombatFlowResult:
 	var combat := state.combat
-	if combat == null or combat.completed or combat.battlefield == null or combat.active_actor_id() != actor_id:
+	if combat == null or combat.completed or combat.battlefield == null or combat.turns.active_actor_id() != actor_id:
 		return CombatFlowResult.failed(&"invalid_combat_actor", "The active character cannot retreat.")
 	var actor := state.party.character_by_id(actor_id)
 	if actor == null:
@@ -121,11 +121,11 @@ func retreat_character(state: GameState, content: RealmzContent, actor_id: Strin
 		return CombatFlowResult.failed(&"invalid_retreat_mode", "The retreat route is unavailable.")
 	if not probe.allowed:
 		return CombatFlowResult.failed(probe.reason, probe.reason_text)
-	if not combat.mark_character_retreated(actor.id):
+	if not combat.actor_statuses.mark_character_retreated(actor.id):
 		return CombatFlowResult.failed(&"invalid_retreat_state", "The active character's Escape state could not be recorded.")
 	combat.battlefield.remove_character(actor.id)
-	combat.set_guarding(actor.id, false)
-	combat.clear_active_turn()
+	combat.actor_statuses.set_guarding(actor.id, false)
+	combat.turns.clear_active_turn()
 	actor.attacks_remaining = 0
 	actor.movement = 0
 	actor.prestige_penalty = _context.arithmetic.signed_32(actor.prestige_penalty + 200)
@@ -144,7 +144,7 @@ func move_character(state: GameState, content: RealmzContent, actor_id: String, 
 		return CombatFlowResult.failed(&"no_active_battle", "No Realmz battle is accepting tactical movement.")
 	if combat.pending_reaction != null or combat.pending_monster_attack != null:
 		return CombatFlowResult.failed(&"combat_reaction_pending", "The previous Classic combat reaction must finish before another movement command.")
-	if combat.active_actor_id() != actor_id:
+	if combat.turns.active_actor_id() != actor_id:
 		return CombatFlowResult.failed(&"wrong_combat_actor", "Combat movement actor '%s' does not own the current turn." % actor_id)
 	var actor := state.party.character_by_id(actor_id)
 	if actor == null or actor.current_health <= 0 or actor.traitor or combat.battlefield == null:
@@ -154,7 +154,7 @@ func move_character(state: GameState, content: RealmzContent, actor_id: String, 
 		return CombatFlowResult.failed(&"missing_battle_terrain", "The active battlefield has no validated Classic terrain catalog.")
 	var origin := combat.battlefield.actor_position(actor_id)
 	var direction := destination - origin
-	var available_movement := actor.maximum_movement if combat.active_turn == null else actor.movement
+	var available_movement := actor.maximum_movement if combat.turns.active_turn == null else actor.movement
 	var probe := _context.battlefield.probe_step(combat.battlefield, terrain_set, actor_id, direction, available_movement)
 	var contact_target_id = _context.automation().hostile_contact_target_id(state, actor.id, probe.occupant_id) if probe.reason == &"occupied" else ""
 	var friendly_target_id := friendly_collision_target_id(state, actor.id, destination) if probe.reason == &"occupied" else ""
@@ -166,10 +166,10 @@ func move_character(state: GameState, content: RealmzContent, actor_id: String, 
 			return CombatFlowResult.failed(&"combat_friendly_collision_choice_required", "Choose whether to swap positions with or attack the adjacent ally.")
 	if not friendly_collision_action.is_empty() and (friendly_collision_action not in [&"swap", &"attack"] or friendly_target_id.is_empty()):
 		return CombatFlowResult.failed(&"invalid_friendly_collision", "The selected Classic friendly-collision action is no longer available.")
-	if friendly_collision_action == &"attack" and combat.character_weapon_mode(actor.id) != &"melee":
+	if friendly_collision_action == &"attack" and combat.actor_statuses.character_weapon_mode(actor.id) != &"melee":
 		return CombatFlowResult.failed(&"melee_weapon_mode_required", "Switch to the melee weapon before attacking an adjacent ally.")
 	var should_auto_switch := false
-	if not contact_target_id.is_empty() and combat.character_weapon_mode(actor.id) != &"melee":
+	if not contact_target_id.is_empty() and combat.actor_statuses.character_weapon_mode(actor.id) != &"melee":
 		if not auto_switch_to_melee or automatic_actor or not classic_projectile_uses_point_blank_auto_switch(actor, content):
 			return CombatFlowResult.failed(&"melee_weapon_mode_required", "Switch to the melee weapon before attacking an occupied hostile footprint.")
 		should_auto_switch = true
@@ -191,7 +191,7 @@ func move_character(state: GameState, content: RealmzContent, actor_id: String, 
 	var events: Array[DomainEvent] = []
 	var reaction_result := continue_pending_reaction(state, content, rng, events)
 	if reaction_result == REACTION_MOVER_DEFEATED:
-		if combat.active_actor_id() == actor.id:
+		if combat.turns.active_actor_id() == actor.id:
 			_context.rounds().advance_turn(state, content, rng, events)
 		if _context.rounds().finish_if_resolved(state, content, events):
 			return CombatFlowResult.succeeded(events, true)
@@ -202,11 +202,11 @@ func move_character(state: GameState, content: RealmzContent, actor_id: String, 
 func friendly_collision_target_id(state: GameState, actor_id: String, destination: Vector2i) -> String:
 	var combat := state.combat if state != null else null
 	var actor := state.party.character_by_id(actor_id) if state != null else null
-	if combat == null or combat.completed or combat.battlefield == null or actor == null or actor.current_health <= 0 or actor.traitor or combat.active_actor_id() != actor_id:
+	if combat == null or combat.completed or combat.battlefield == null or actor == null or actor.current_health <= 0 or actor.traitor or combat.turns.active_actor_id() != actor_id:
 		return ""
 	var origin := combat.battlefield.actor_position(actor_id)
 	var direction := destination - origin
-	var movement := actor.maximum_movement if combat.active_turn == null else actor.movement
+	var movement := actor.maximum_movement if combat.turns.active_turn == null else actor.movement
 	if direction == Vector2i.ZERO or absi(direction.x) > 1 or absi(direction.y) > 1 or movement <= 4:
 		return ""
 	var target_id := combat.battlefield.actor_at(destination, actor_id)
@@ -215,7 +215,7 @@ func friendly_collision_target_id(state: GameState, actor_id: String, destinatio
 	var target_character := state.party.character_by_id(target_id)
 	if target_character != null:
 		return target_id if target_character.current_health > 0 and target_character.traitor == actor.traitor else ""
-	var target_monster := combat.monster_by_id(target_id)
+	var target_monster := combat.roster.monster_by_id(target_id)
 	return target_id if target_monster != null and target_monster.current_health > 0 and target_monster.traitor == actor.traitor else ""
 
 
@@ -252,7 +252,7 @@ func continue_pending_reaction(state: GameState, content: RealmzContent, rng: Re
 			CombatReactionState.GUARD_BEFORE:
 				if reaction.kind == CombatReactionState.CHARACTER_MOVE:
 					if reaction.friendly_collision_action == &"attack":
-						var target_monster := combat.monster_by_id(reaction.friendly_collision_target_id)
+						var target_monster := combat.roster.monster_by_id(reaction.friendly_collision_target_id)
 						var previous_traitor := false
 						if target_monster != null:
 							previous_traitor = target_monster.traitor
@@ -268,8 +268,8 @@ func continue_pending_reaction(state: GameState, content: RealmzContent, rng: Re
 						return REACTION_COMPLETED
 					var contact_target_id = _context.automation().hostile_contact_target_id(state, reaction.mover_id, reaction.destination)
 					if not contact_target_id.is_empty():
-						if reaction.auto_switch_to_melee and combat.character_weapon_mode(reaction.mover_id) != &"melee":
-							if not combat.set_character_weapon_mode(reaction.mover_id, &"melee"):
+						if reaction.auto_switch_to_melee and combat.actor_statuses.character_weapon_mode(reaction.mover_id) != &"melee":
+							if not combat.actor_statuses.set_character_weapon_mode(reaction.mover_id, &"melee"):
 								combat.pending_reaction = null
 								events.append(DomainEvent.new(&"combat_contact_attack_failed", {"actorId": reaction.mover_id, "targetId": contact_target_id, "reason": "invalid_weapon_mode"}))
 								return REACTION_COMPLETED
@@ -316,14 +316,14 @@ func commit_reaction_move(state: GameState, content: RealmzContent, reaction: Co
 		if state.party.character_by_id(reaction.mover_id) == null:
 			return REACTION_MOVER_DEFEATED
 	else:
-		if combat.active_turn == null or combat.active_turn.actor_id != reaction.mover_id:
+		if combat.turns.active_turn == null or combat.turns.active_turn.actor_id != reaction.mover_id:
 			return REACTION_MOVER_DEFEATED
 	if reaction.friendly_collision_action == &"swap":
 		if combat.battlefield.actor_at(reaction.destination, reaction.mover_id) != reaction.friendly_collision_target_id or not combat.battlefield.swap_size_zero_actors(reaction.mover_id, reaction.friendly_collision_target_id):
 			return REACTION_MOVER_DEFEATED
 		var character := state.party.character_by_id(reaction.mover_id)
 		character.movement = maxi(0, character.movement - 5)
-		combat.invalidate_undo()
+		combat.turns.invalidate_undo()
 		events.append(DomainEvent.new(&"combatants_swapped", {"actorId": reaction.mover_id, "targetId": reaction.friendly_collision_target_id, "from": [reaction.origin.x, reaction.origin.y], "to": [reaction.destination.x, reaction.destination.y], "cost": 5, "movementRemaining": character.movement, "automatic": _context.processing_auto, "source": "classic"}))
 		events.append(DomainEvent.new(&"sound_requested", {"soundId": 654, "waitForCompletion": false, "source": "classic-friendly-swap"}))
 		combat.pending_reaction = null
@@ -335,8 +335,8 @@ func commit_reaction_move(state: GameState, content: RealmzContent, reaction: Co
 		character.movement = maxi(0, character.movement - reaction.movement_cost)
 		movement_remaining = character.movement
 	else:
-		combat.active_turn.movement_remaining = maxi(0, combat.active_turn.movement_remaining - reaction.movement_cost)
-		movement_remaining = combat.active_turn.movement_remaining
+		combat.turns.active_turn.movement_remaining = maxi(0, combat.turns.active_turn.movement_remaining - reaction.movement_cost)
+		movement_remaining = combat.turns.active_turn.movement_remaining
 	events.append(DomainEvent.new(&"combatant_moved", {
 		"actorId": reaction.mover_id,
 		"from": [reaction.origin.x, reaction.origin.y],
@@ -367,13 +367,13 @@ func resolve_reaction_attack(state: GameState, content: RealmzContent, attacker_
 	var combat := state.combat
 	if not combatant_is_alive(state, attacker_id) or combatant_is_helpless(state, attacker_id):
 		return REACTION_COMPLETED
-	combat.set_guarding(attacker_id, false)
+	combat.actor_statuses.set_guarding(attacker_id, false)
 	var action: StringName = &"withdrawal" if reaction.phase == CombatReactionState.WITHDRAWAL else &"guard"
 	var behind := reaction.phase == CombatReactionState.WITHDRAWAL
 	var character_attacker := state.party.character_by_id(attacker_id)
 	if character_attacker != null:
 		return resolve_character_reaction(state, content, character_attacker, reaction.mover_id, action, behind, rng, events)
-	var monster_attacker := combat.monster_by_id(attacker_id)
+	var monster_attacker := combat.roster.monster_by_id(attacker_id)
 	if monster_attacker == null:
 		return REACTION_COMPLETED
 	return resolve_monster_reaction(state, content, monster_attacker, reaction.mover_id, action, behind, rng, events)
@@ -381,17 +381,17 @@ func resolve_reaction_attack(state: GameState, content: RealmzContent, attacker_
 
 func resolve_character_reaction(state: GameState, content: RealmzContent, attacker: CharacterState, target_id: String, action: StringName, behind: bool, rng: RealmzRng, events: Array[DomainEvent]) -> int:
 	var combat := state.combat
-	combat.invalidate_undo()
+	combat.turns.invalidate_undo()
 	var equipment := _context.inventory.combat_equipment(attacker, content.item_definitions())
 	if not equipment.valid:
 		events.append(DomainEvent.new(&"combat_reaction_failed", {"actorId": attacker.id, "targetId": target_id, "reason": String(equipment.error_code)}))
 		return REACTION_COMPLETED
-	var monster_target := combat.monster_by_id(target_id)
+	var monster_target := combat.roster.monster_by_id(target_id)
 	if monster_target != null:
 		var definition := content.monster_by_id(monster_target.definition_id)
-		var reaction_resolution := _context.combat.resolve_character_attack(attacker, equipment, monster_target, definition, rng, state.clock.day(), behind, true, combat.can_queue_fumbled_item())
+		var reaction_resolution := _context.combat.resolve_character_attack(attacker, equipment, monster_target, definition, rng, state.clock.day(), behind, true, combat.dropped_items.can_queue())
 		if reaction_resolution.total_damage() > 0:
-			combat.mark_attacked(monster_target.id)
+			combat.actor_statuses.mark_attacked(monster_target.id)
 		if reaction_resolution.fumbled and not _context.actions().events().commit_character_fumble(state, attacker, equipment, events):
 			events.append(DomainEvent.new(&"combat_fumble_failed", {"actorId": attacker.id, "reason": "invalid-fumble-state"}))
 		_context.actions().events().append_character_attack_audio(events, attacker, equipment, reaction_resolution, &"monster")
@@ -411,9 +411,9 @@ func resolve_character_reaction(state: GameState, content: RealmzContent, attack
 	if not target_equipment.valid:
 		events.append(DomainEvent.new(&"combat_reaction_failed", {"actorId": attacker.id, "targetId": target_id, "reason": String(target_equipment.error_code)}))
 		return REACTION_COMPLETED
-	var resolution := _context.combat.resolve_character_attack_character(attacker, equipment, character_target, target_equipment, rng, behind, true, combat.can_queue_fumbled_item())
+	var resolution := _context.combat.resolve_character_attack_character(attacker, equipment, character_target, target_equipment, rng, behind, true, combat.dropped_items.can_queue())
 	if resolution.total_damage() > 0:
-		combat.mark_attacked(character_target.id)
+		combat.actor_statuses.mark_attacked(character_target.id)
 	if resolution.fumbled and not _context.actions().events().commit_character_fumble(state, attacker, equipment, events):
 		events.append(DomainEvent.new(&"combat_fumble_failed", {"actorId": attacker.id, "reason": "invalid-fumble-state"}))
 	_context.actions().events().append_character_attack_audio(events, attacker, equipment, resolution, &"character")
@@ -430,7 +430,7 @@ func resolve_character_reaction(state: GameState, content: RealmzContent, attack
 
 func resolve_monster_reaction(state: GameState, content: RealmzContent, attacker: MonsterState, target_id: String, action: StringName, behind: bool, rng: RealmzRng, events: Array[DomainEvent]) -> int:
 	var combat := state.combat
-	combat.invalidate_undo()
+	combat.turns.invalidate_undo()
 	var definition := content.monster_by_id(attacker.definition_id)
 	if definition == null:
 		return REACTION_COMPLETED
@@ -447,7 +447,7 @@ func resolve_monster_reaction(state: GameState, content: RealmzContent, attacker
 		var reaction_context := MonsterAttackContext.new(weapon, state.clock.day(), behind, defender_luck, state.party.conditions.is_active(ConditionRules.PARTY_DRAGON_HIDE), defender_armor)
 		var reaction_resolution := _context.combat.resolve_monster_attack(attacker, definition, 0, character_target, race, caste, rng, charm_bonus, reaction_context, true)
 		if reaction_resolution.total_damage() > 0:
-			combat.mark_attacked(character_target.id)
+			combat.actor_statuses.mark_attacked(character_target.id)
 		if reaction_resolution.fumbled:
 			_context.actions().events().commit_monster_fumble(attacker, events)
 		if reaction_resolution.special_handled:
@@ -468,14 +468,14 @@ func resolve_monster_reaction(state: GameState, content: RealmzContent, attacker
 			_context.automation().remove_defeated_position(combat, character_target.id, true)
 			return REACTION_MOVER_DEFEATED
 		return REACTION_COMPLETED
-	var monster_target := combat.monster_by_id(target_id)
+	var monster_target := combat.roster.monster_by_id(target_id)
 	if monster_target == null:
 		return REACTION_COMPLETED
 	var target_definition := content.monster_by_id(monster_target.definition_id)
 	var context := MonsterAttackContext.new(weapon, state.clock.day(), behind)
 	var resolution := _context.combat.resolve_monster_attack_monster(attacker, definition, 0, monster_target, target_definition, rng, context, true)
 	if resolution.total_damage() > 0:
-		combat.mark_attacked(monster_target.id)
+		combat.actor_statuses.mark_attacked(monster_target.id)
 	if resolution.fumbled:
 		_context.actions().events().commit_monster_fumble(attacker, events)
 	if resolution.special_handled:
@@ -503,7 +503,7 @@ static func append_reaction_identity(event: DomainEvent, action: StringName, beh
 func guarding_hostiles(state: GameState, mover_id: String, anchor_override: Vector2i = Vector2i(-1, -1)) -> Array[String]:
 	var result: Array[String] = []
 	for attacker_id: String in _context.automation().hostile_adjacent_ids(state, mover_id, anchor_override):
-		if state.combat.is_guarding(attacker_id) and not combatant_is_helpless(state, attacker_id):
+		if state.combat.actor_statuses.is_guarding(attacker_id) and not combatant_is_helpless(state, attacker_id):
 			result.append(attacker_id)
 	return result
 
@@ -522,7 +522,7 @@ func withdrawal_hostiles(state: GameState, reaction: CombatReactionState) -> Arr
 func guarding_actor_ids(state: GameState, actor_ids: Array[String]) -> Array[String]:
 	var result: Array[String] = []
 	for actor_id: String in actor_ids:
-		if state.combat.is_guarding(actor_id) and not combatant_is_helpless(state, actor_id):
+		if state.combat.actor_statuses.is_guarding(actor_id) and not combatant_is_helpless(state, actor_id):
 			result.append(actor_id)
 	return result
 
@@ -531,7 +531,7 @@ func combatant_is_alive(state: GameState, actor_id: String) -> bool:
 	var character := state.party.character_by_id(actor_id)
 	if character != null:
 		return character.current_health > 0
-	var monster := state.combat.monster_by_id(actor_id) if state.combat != null else null
+	var monster := state.combat.roster.monster_by_id(actor_id) if state.combat != null else null
 	return monster != null and monster.current_health > 0
 
 
@@ -539,7 +539,7 @@ func combatant_is_helpless(state: GameState, actor_id: String) -> bool:
 	var character := state.party.character_by_id(actor_id)
 	if character != null:
 		return character.conditions.is_active(ConditionRules.HELPLESS)
-	var monster := state.combat.monster_by_id(actor_id) if state.combat != null else null
+	var monster := state.combat.roster.monster_by_id(actor_id) if state.combat != null else null
 	return monster != null and monster.conditions.is_active(ConditionRules.HELPLESS)
 
 
@@ -547,7 +547,7 @@ func combatant_is_invisible(state: GameState, actor_id: String) -> bool:
 	var character := state.party.character_by_id(actor_id)
 	if character != null:
 		return character.conditions.is_active(ConditionRules.INVISIBLE)
-	var monster := state.combat.monster_by_id(actor_id) if state.combat != null else null
+	var monster := state.combat.roster.monster_by_id(actor_id) if state.combat != null else null
 	return monster != null and monster.conditions.is_active(ConditionRules.INVISIBLE)
 
 

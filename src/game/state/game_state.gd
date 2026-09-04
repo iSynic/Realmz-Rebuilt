@@ -340,7 +340,7 @@ static func _restore_combat_state(state: GameState, party_state: PartyState, dat
 	var owned_item_ids: Dictionary = {}
 	for item_id: String in party_state.item_instance_ids():
 		owned_item_ids[item_id] = true
-	for item: ItemInstance in state.combat.fumbled_items():
+	for item: ItemInstance in state.combat.dropped_items.items():
 		if owned_item_ids.has(item.id): return false
 		owned_item_ids[item.id] = true
 	return true
@@ -354,23 +354,23 @@ static func _combat_references_are_valid(state: GameState, party_state: PartySta
 		for actor_id: Variant in battlefield.character_positions():
 			if not actor_id is String or party_state.character_by_id(actor_id) == null: return false
 		for actor_id: Variant in battlefield.monster_positions():
-			if not actor_id is String or combat.monster_by_id(actor_id) == null: return false
-		for actor_id: String in combat.retreated_character_ids():
+			if not actor_id is String or combat.roster.monster_by_id(actor_id) == null: return false
+		for actor_id: String in combat.actor_statuses.retreated_character_ids():
 			if party_state.character_by_id(actor_id) == null: return false
 		for character: CharacterState in party_state.characters():
 			var on_field := battlefield.character_position(character.id).x >= 0
-			if character.current_health > 0 and not on_field and not combat.has_character_retreated(character.id): return false
-			if combat.has_character_retreated(character.id) and (character.current_health <= 0 or on_field): return false
-		for monster: MonsterState in combat.monsters():
+			if character.current_health > 0 and not on_field and not combat.actor_statuses.has_character_retreated(character.id): return false
+			if combat.actor_statuses.has_character_retreated(character.id) and (character.current_health <= 0 or on_field): return false
+		for monster: MonsterState in combat.roster.monsters():
 			if monster.current_health > 0 and battlefield.monster_position(monster.id).x < 0: return false
-	for monster: MonsterState in combat.monsters():
-		if not monster.target_id.is_empty() and party_state.character_by_id(monster.target_id) == null and combat.monster_by_id(monster.target_id) == null: return false
-	for character_id: String in combat.bleeding_character_ids():
+	for monster: MonsterState in combat.roster.monsters():
+		if not monster.target_id.is_empty() and party_state.character_by_id(monster.target_id) == null and combat.roster.monster_by_id(monster.target_id) == null: return false
+	for character_id: String in combat.actor_statuses.bleeding_character_ids():
 		var character := party_state.character_by_id(character_id)
 		if character == null or character.current_health > 0 or character.current_health <= -10: return false
-	for character_id: String in combat.turn_undead_actor_ids():
+	for character_id: String in combat.actor_statuses.turn_undead_actor_ids():
 		if party_state.character_by_id(character_id) == null: return false
-	if combat.active_turn != null and not combat.active_turn.target_id.is_empty() and party_state.character_by_id(combat.active_turn.target_id) == null and combat.monster_by_id(combat.active_turn.target_id) == null: return false
+	if combat.turns.active_turn != null and not combat.turns.active_turn.target_id.is_empty() and party_state.character_by_id(combat.turns.active_turn.target_id) == null and combat.roster.monster_by_id(combat.turns.active_turn.target_id) == null: return false
 	if combat.pending_monster_attack != null and party_state.character_by_id(combat.pending_monster_attack.target_id) == null: return false
 	return _combat_reaction_is_valid(combat, party_state)
 
@@ -379,12 +379,12 @@ static func _combat_reaction_is_valid(combat: CombatState, party_state: PartySta
 	if combat.pending_reaction == null: return true
 	var reaction := combat.pending_reaction
 	var mover_character := party_state.character_by_id(reaction.mover_id)
-	var mover_monster := combat.monster_by_id(reaction.mover_id)
+	var mover_monster := combat.roster.monster_by_id(reaction.mover_id)
 	if (reaction.kind == CombatReactionState.CHARACTER_MOVE and mover_character == null) or (reaction.kind != CombatReactionState.CHARACTER_MOVE and mover_monster == null): return false
 	for attacker_id: String in reaction.attackers():
-		if party_state.character_by_id(attacker_id) == null and combat.monster_by_id(attacker_id) == null: return false
+		if party_state.character_by_id(attacker_id) == null and combat.roster.monster_by_id(attacker_id) == null: return false
 	for hostile_id: String in reaction.origin_hostiles():
-		if party_state.character_by_id(hostile_id) == null and combat.monster_by_id(hostile_id) == null: return false
+		if party_state.character_by_id(hostile_id) == null and combat.roster.monster_by_id(hostile_id) == null: return false
 	if combat.battlefield == null: return false
 	var expected_position := reaction.destination if reaction.phase == CombatReactionState.GUARD_AFTER and reaction.kind != CombatReactionState.MONSTER_CONTACT else reaction.origin
 	return combat.battlefield.actor_position(reaction.mover_id) == expected_position

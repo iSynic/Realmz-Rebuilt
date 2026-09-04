@@ -155,12 +155,12 @@ func _test_terminal_battle_rewards_once(content: RealmzContent) -> void:
 	if not setup.ok:
 		return
 	var defeated_hostiles := 0
-	for monster: MonsterState in state.combat.monsters():
+	for monster: MonsterState in state.combat.roster.monsters():
 		if monster.traitor:
 			if defeated_hostiles == 0: monster.set_loot_item_ids([magical_loot.id]); monster.mark_loot_magic_detected()
 			monster.current_health = 0
 			defeated_hostiles += 1
-	state.combat.active_turn = null
+	state.combat.turns.active_turn = null
 	state.combat.pending_monster_attack = null
 	state.combat.pending_reaction = null
 	state.combat.completed = true
@@ -204,7 +204,7 @@ func _test_terminal_battle_rewards_once(content: RealmzContent) -> void:
 	assert_equal([defeat.state, defeat_state.combat, defeat_state.last_battle_outcome, defeat_rng.snapshot().draw_count], [ScenarioRuntimeOperationResult.State.COMPLETED, null, &"defeat", 0], "defeat closes and releases the terminal chain without inventing loot or reward draws")
 	assert_equal(defeat.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"battle_returned").size(), 1, "defeat publishes one terminal battle-return event")
 	var mode_ten_item := content.item_by_id(content.treasure_by_classic_id(0).item_ids()[0]); var mode_ten_character := _character(content, "reward.mode-ten", "Mode Ten", 500, 0); mode_ten_character.set_inventory([ItemInstance.new("mode-ten.stored", mode_ten_item.id, mode_ten_item.initial_charges)]); var mode_ten_party := PartyState.new(content.start_map_id, content.start_coordinate, [mode_ten_character]); mode_ten_party.pooled_wealth.gold = 40; assert_true(mode_ten_party.capture_equipment(), "mode 10 fixture captures the source-owned party equipment and wealth")
-	var mode_ten_state := GameState.new(mode_ten_party, RealmzClock.new()); var mode_ten_rules := RealmzRules.new(); var mode_ten_saved := GameState.from_data(JSON.parse_string(JSON.stringify(mode_ten_state.to_data()))); assert_true(mode_ten_rules.combat_flow.start_battle(mode_ten_saved, content, battle, RealmzRng.new(29)).ok, "mode 10 escrow restores before its battle starts through the public combat boundary"); var defeated_character := mode_ten_saved.party.character_by_id(mode_ten_character.id); defeated_character.current_health = 0; defeated_character.conditions.set_value(ConditionRules.ANIMATED, -1); mode_ten_saved.combat.active_turn = null; mode_ten_saved.combat.pending_monster_attack = null; mode_ten_saved.combat.pending_reaction = null; mode_ten_saved.combat.invalidate_undo(); mode_ten_saved.combat.completed = true; mode_ten_saved.combat.outcome = &"defeat"; mode_ten_saved.last_battle_outcome = &"defeat"; var mode_ten_rng := RealmzRng.new(31); var mode_ten_api := RealmzRuntimeApi.new(content, mode_ten_saved, mode_ten_rng, ScenarioActionState.new(), mode_ten_rules); var mode_ten_caller := ScenarioBattleCaller.classic(2, false, 10, 0)
+	var mode_ten_state := GameState.new(mode_ten_party, RealmzClock.new()); var mode_ten_rules := RealmzRules.new(); var mode_ten_saved := GameState.from_data(JSON.parse_string(JSON.stringify(mode_ten_state.to_data()))); assert_true(mode_ten_rules.combat_flow.start_battle(mode_ten_saved, content, battle, RealmzRng.new(29)).ok, "mode 10 escrow restores before its battle starts through the public combat boundary"); var defeated_character := mode_ten_saved.party.character_by_id(mode_ten_character.id); defeated_character.current_health = 0; defeated_character.conditions.set_value(ConditionRules.ANIMATED, -1); mode_ten_saved.combat.turns.active_turn = null; mode_ten_saved.combat.pending_monster_attack = null; mode_ten_saved.combat.pending_reaction = null; mode_ten_saved.combat.turns.invalidate_undo(); mode_ten_saved.combat.completed = true; mode_ten_saved.combat.outcome = &"defeat"; mode_ten_saved.last_battle_outcome = &"defeat"; var mode_ten_rng := RealmzRng.new(31); var mode_ten_api := RealmzRuntimeApi.new(content, mode_ten_saved, mode_ten_rng, ScenarioActionState.new(), mode_ten_rules); var mode_ten_caller := ScenarioBattleCaller.classic(2, false, 10, 0)
 	var mode_ten_handoff := ScenarioRuntimeHandoff.party_defeat(battle.id, ScenarioRuntimeHandoff.CLASSIC_COMBAT, mode_ten_caller); assert_false(RealmzRuntimeApi.party_defeat_handoff_is_valid(content, mode_ten_saved, mode_ten_handoff), "mode 10 never enters the ordinary Party Death handoff"); var restarted := mode_ten_api.begin_completed_battle_reward("battle.mode-ten.defeat", mode_ten_caller); var restarted_character := mode_ten_saved.party.character_by_id(mode_ten_character.id); assert_equal([restarted.state, restarted.directive.kind, restarted_character.current_health, restarted_character.conditions.value(ConditionRules.ANIMATED), mode_ten_saved.party.equipment_storage_active, mode_ten_saved.combat, mode_ten_rng.snapshot().draw_count], [ScenarioRuntimeOperationResult.State.COMPLETED, ScenarioVmDirective.RESTART_CURRENT_PROGRAM, 1, 0, true, null, 0], "mode 10 total defeat bypasses Party Death, revives the party, retains escrow, consumes no RNG, and requests the exact caller restart")
 	assert_equal([restarted.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"classic_battle_restart_requested").size(), restarted.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"battle_returned").size()], [1, 0], "the restarted defeat publishes one restart and no false terminal return")
 	assert_equal(ScenarioVmDirective.from_data(JSON.parse_string(JSON.stringify(restarted.directive.to_data()))).kind, ScenarioVmDirective.RESTART_CURRENT_PROGRAM, "the mode 10 restart directive survives its strict wire boundary")
@@ -228,12 +228,12 @@ func _test_terminal_battle_rewards_once(content: RealmzContent) -> void:
 	var partial_setup := rules.combat_flow.start_battle(partial_state, content, battle, partial_rng)
 	assert_true(partial_setup.ok, "partial-retreat reward fixture starts a source-backed battle")
 	if partial_setup.ok:
-		partial_state.combat.mark_character_retreated(escaped.id)
+		partial_state.combat.actor_statuses.mark_character_retreated(escaped.id)
 		partial_state.combat.battlefield.remove_character(escaped.id)
-		for monster: MonsterState in partial_state.combat.monsters():
+		for monster: MonsterState in partial_state.combat.roster.monsters():
 			if monster.traitor:
 				monster.current_health = 0
-		partial_state.combat.active_turn = null
+		partial_state.combat.turns.active_turn = null
 		partial_state.combat.pending_monster_attack = null
 		partial_state.combat.pending_reaction = null
 		partial_state.combat.completed = true
@@ -293,10 +293,10 @@ func _test_opcode_48_bonus_reward_chain(content: RealmzContent) -> void:
 	assert_true(setup.ok, "opcode 48 reward fixture starts a source-backed battle")
 	if not setup.ok:
 		return
-	for monster: MonsterState in state.combat.monsters():
+	for monster: MonsterState in state.combat.roster.monsters():
 		if monster.traitor:
 			monster.current_health = 0
-	state.combat.active_turn = null
+	state.combat.turns.active_turn = null
 	state.combat.pending_monster_attack = null
 	state.combat.pending_reaction = null
 	state.combat.completed = true
@@ -328,7 +328,7 @@ func _test_opcode_48_bonus_reward_chain(content: RealmzContent) -> void:
 	var defeat_setup := rules.combat_flow.start_battle(defeat_state, bonus_content, battle, defeat_rng)
 	assert_true(defeat_setup.ok, "opcode 48 defeat characterization starts a source-backed battle")
 	if defeat_setup.ok:
-		defeat_state.combat.active_turn = null
+		defeat_state.combat.turns.active_turn = null
 		defeat_state.combat.pending_monster_attack = null
 		defeat_state.combat.pending_reaction = null
 		defeat_state.combat.completed = true
@@ -372,11 +372,11 @@ func _test_corrupt_reward_boundaries(content: RealmzContent) -> void:
 	assert_true(setup.ok, "invalid-reward characterization begins from a valid battle")
 	if not setup.ok:
 		return
-	for monster: MonsterState in battle_state.combat.monsters():
+	for monster: MonsterState in battle_state.combat.roster.monsters():
 		if monster.traitor:
 			monster.current_health = 0
-	battle_state.combat.active_turn = null
-	battle_state.combat.undo_state = null
+	battle_state.combat.turns.active_turn = null
+	battle_state.combat.turns.undo_state = null
 	battle_state.combat.pending_monster_attack = null
 	battle_state.combat.pending_reaction = null
 	battle_state.combat.completed = true
@@ -387,7 +387,7 @@ func _test_corrupt_reward_boundaries(content: RealmzContent) -> void:
 	assert_equal([battle_state.combat.rewards_started, battle_rng.snapshot().draw_count], [false, draws_before], "bonus treasure validation neither claims the one-shot stage nor consumes reward RNG")
 	var corrupted_monster: MonsterState = null
 	var original_definition_id := ""
-	for monster: MonsterState in battle_state.combat.monsters():
+	for monster: MonsterState in battle_state.combat.roster.monsters():
 		if monster.traitor:
 			corrupted_monster = monster
 			original_definition_id = monster.definition_id
@@ -401,7 +401,7 @@ func _test_corrupt_reward_boundaries(content: RealmzContent) -> void:
 	var reward_item: ItemDefinition = content.item_definitions()[0]
 	assert_true(corrupted_monster.set_loot_item_ids([reward_item.id]), "post-validation rollback characterization fixes one source-valid loot item")
 	var colliding_instance_id := "reward.item.%d" % (battle_state.instance_id_checkpoint() + 1)
-	assert_true(battle_state.combat.queue_fumbled_item(ItemInstance.new(colliding_instance_id, reward_item.id, reward_item.initial_charges)), "post-validation rollback characterization queues a source-valid fumbled item")
+	assert_true(battle_state.combat.dropped_items.queue(ItemInstance.new(colliding_instance_id, reward_item.id, reward_item.initial_charges)), "post-validation rollback characterization queues a source-valid fumbled item")
 	var state_before_construction_failure := battle_state.to_data()
 	var rng_before_construction_failure := battle_rng.checkpoint()
 	var failed_construction := RealmzRuntimeApi.new(content, battle_state, battle_rng, ScenarioActionState.new(), rules).begin_completed_battle_reward("battle.invalid-construction")

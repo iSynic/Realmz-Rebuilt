@@ -19,7 +19,7 @@ func hostile_adjacent_ids(state: GameState, actor_id: String, anchor_override: V
 	if character != null:
 		actor_traitor = character.traitor
 	else:
-		var monster := state.combat.monster_by_id(actor_id)
+		var monster := state.combat.roster.monster_by_id(actor_id)
 		if monster == null:
 			return result
 		actor_traitor = monster.traitor
@@ -29,7 +29,7 @@ func hostile_adjacent_ids(state: GameState, actor_id: String, anchor_override: V
 	for candidate_character: CharacterState in state.party.characters():
 		if adjacent_ids.has(candidate_character.id) and candidate_character.current_health > 0 and candidate_character.traitor != actor_traitor:
 			result.append(candidate_character.id)
-	for candidate_monster: MonsterState in state.combat.monsters():
+	for candidate_monster: MonsterState in state.combat.roster.monsters():
 		if adjacent_ids.has(candidate_monster.id) and candidate_monster.current_health > 0 and candidate_monster.traitor != actor_traitor:
 			result.append(candidate_monster.id)
 	return result
@@ -48,7 +48,7 @@ func hostile_contact_target_id(state: GameState, actor_id: String, destination_o
 	var actor := state.party.character_by_id(actor_id)
 	if actor == null or actor.current_health <= 0:
 		return ""
-	var monster := state.combat.monster_by_id(candidate_id)
+	var monster := state.combat.roster.monster_by_id(candidate_id)
 	if monster != null:
 		return candidate_id if monster.current_health > 0 and monster.traitor != actor.traitor else ""
 	var character := state.party.character_by_id(candidate_id)
@@ -58,7 +58,7 @@ func hostile_contact_target_id(state: GameState, actor_id: String, destination_o
 static func remove_defeated_position(combat: CombatState, actor_id: String, defeated: bool) -> void:
 	if not defeated or combat == null or combat.battlefield == null:
 		return
-	if combat.monster_by_id(actor_id) != null:
+	if combat.roster.monster_by_id(actor_id) != null:
 		combat.battlefield.remove_monster(actor_id)
 	else:
 		combat.battlefield.remove_character(actor_id)
@@ -67,7 +67,7 @@ static func remove_defeated_position(combat: CombatState, actor_id: String, defe
 static func remove_all_defeated_positions(state: GameState) -> void:
 	if state == null or state.combat == null or state.combat.battlefield == null:
 		return
-	for monster: MonsterState in state.combat.monsters():
+	for monster: MonsterState in state.combat.roster.monsters():
 		remove_defeated_position(state.combat, monster.id, monster.current_health <= 0)
 	for character: CharacterState in state.party.characters():
 		remove_defeated_position(state.combat, character.id, character.current_health <= 0)

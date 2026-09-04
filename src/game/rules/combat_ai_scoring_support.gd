@@ -64,7 +64,7 @@ static func _choice_key(choice: Dictionary) -> String:
 
 static func _condition_cure_score(state: GameState, target_id: String, condition_index: int) -> int:
 	var character := state.party.character_by_id(target_id)
-	var condition_value := character.conditions.value(condition_index) if character != null else state.combat.monster_by_id(target_id).conditions.value(condition_index)
+	var condition_value := character.conditions.value(condition_index) if character != null else state.combat.roster.monster_by_id(target_id).conditions.value(condition_index)
 	var urgency := 900 if condition_index in [ConditionRules.POISONED, ConditionRules.DISEASED] else 720
 	return urgency + mini(200, absi(condition_value) * 10)
 
@@ -94,7 +94,7 @@ func _opposed_actor_ids(state: GameState, actor: CharacterState) -> Array[String
 	for character: CharacterState in state.party.characters():
 		if character.id != actor.id and character.current_health > 0 and character.traitor != actor.traitor and state.combat.battlefield.has_actor(character.id):
 			result.append(character.id)
-	for monster: MonsterState in state.combat.monsters():
+	for monster: MonsterState in state.combat.roster.monsters():
 		if monster.current_health > 0 and monster.traitor != actor.traitor and state.combat.battlefield.has_actor(monster.id):
 			result.append(monster.id)
 	return result
@@ -105,7 +105,7 @@ func _friendly_actor_ids(state: GameState, actor: CharacterState) -> Array[Strin
 	for character: CharacterState in state.party.characters():
 		if character.current_health > 0 and character.traitor == actor.traitor and state.combat.battlefield.has_actor(character.id):
 			result.append(character.id)
-	for monster: MonsterState in state.combat.monsters():
+	for monster: MonsterState in state.combat.roster.monsters():
 		if monster.current_health > 0 and monster.traitor == actor.traitor and state.combat.battlefield.has_actor(monster.id):
 			result.append(monster.id)
 	return result
@@ -126,7 +126,7 @@ func _hostile_adjacent_ids_for_monster(state: GameState, monster: MonsterState) 
 	var result: Array[String] = []
 	for target_id: String in _context.battlefield.adjacent_actor_ids(state.combat.battlefield, monster.id):
 		var character := state.party.character_by_id(target_id)
-		var target_monster := state.combat.monster_by_id(target_id)
+		var target_monster := state.combat.roster.monster_by_id(target_id)
 		if (character != null and character.current_health > 0 and character.traitor != monster.traitor) or (target_monster != null and target_monster.current_health > 0 and target_monster.traitor != monster.traitor):
 			result.append(target_id)
 	return result
@@ -137,7 +137,7 @@ func _opposed_actor_ids_for_monster(state: GameState, monster: MonsterState) -> 
 	for character: CharacterState in state.party.characters():
 		if character.current_health > 0 and character.traitor != monster.traitor and state.combat.battlefield.has_actor(character.id):
 			result.append(character.id)
-	for candidate: MonsterState in state.combat.monsters():
+	for candidate: MonsterState in state.combat.roster.monsters():
 		if candidate.id != monster.id and candidate.current_health > 0 and candidate.traitor != monster.traitor and state.combat.battlefield.has_actor(candidate.id):
 			result.append(candidate.id)
 	return result
@@ -147,7 +147,7 @@ func _friendly_actor_ids_for_monster(state: GameState, monster: MonsterState) ->
 	var result: Array[String] = []
 	for character: CharacterState in state.party.characters():
 		if character.current_health > 0 and character.traitor == monster.traitor and state.combat.battlefield.has_actor(character.id): result.append(character.id)
-	for candidate: MonsterState in state.combat.monsters():
+	for candidate: MonsterState in state.combat.roster.monsters():
 		if candidate.current_health > 0 and candidate.traitor == monster.traitor and state.combat.battlefield.has_actor(candidate.id): result.append(candidate.id)
 	return result
 
@@ -156,7 +156,7 @@ func _everybody_actor_ids(state: GameState) -> Array[String]:
 	var result: Array[String] = []
 	for character: CharacterState in state.party.characters():
 		if character.current_health > 0 and state.combat.battlefield.has_actor(character.id): result.append(character.id)
-	for monster: MonsterState in state.combat.monsters():
+	for monster: MonsterState in state.combat.roster.monsters():
 		if monster.current_health > 0 and state.combat.battlefield.has_actor(monster.id): result.append(monster.id)
 	return result
 

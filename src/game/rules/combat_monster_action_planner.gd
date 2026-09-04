@@ -21,7 +21,7 @@ func choose_monster_action(state: GameState, content: RealmzContent, monster: Mo
 
 
 func best_monster_spell_plan(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition) -> Dictionary:
-	if state.monster_spellcasting_blocked or state.combat.was_attacked(monster.id) or definition.magic_attack_count <= 0:
+	if state.monster_spellcasting_blocked or state.combat.actor_statuses.was_attacked(monster.id) or definition.magic_attack_count <= 0:
 		return {}
 	for condition: int in [ConditionRules.STUPID, ConditionRules.CONFUSED, ConditionRules.SILENCED, ConditionRules.HELPLESS]:
 		if monster.conditions.is_active(condition):
@@ -36,7 +36,7 @@ func best_monster_spell_plan(state: GameState, content: RealmzContent, monster: 
 			continue
 		if spell.target_type != 12 and not _auto_group_target_is_safe(spell):
 			continue
-		if ClassicSpellConditionRules.is_combat_persistent_field_spell(spell) and not state.combat.can_queue_persistent_field():
+		if ClassicSpellConditionRules.is_combat_persistent_field_spell(spell) and not state.combat.spell_runtime.can_queue_persistent_field():
 			continue
 		var maximum_power := 1 if ClassicSpellSourceRules.is_combat_application_elemental_attack(spell) else 7 if spell.cost == 0 else mini(7, monster.spell_points / spell.cost)
 		for power: int in range(1, maximum_power + 1):
@@ -73,7 +73,7 @@ func _monster_spell_power_plan(state: GameState, content: RealmzContent, monster
 	for character: CharacterState in state.party.characters():
 		if character.current_health > 0 and (character.traitor == monster.traitor) == friendly and (spell.target_type != 5 or character.id == monster.id) and (not spell_point_restore or _target_missing_spell_points(state, character.id) > 0) and (not spell_point_drain or _target_spell_points(state, character.id) > 0) and (cure_index < 0 or character.conditions.is_active(cure_index)) and (effect_index < 0 or character.conditions.value(effect_index) == 0) and (cure_index >= 0 or character.id == monster.id or not _target_reflects(state, character.id)) and (friendly or not _target_hard_immune(state, content, character.id, spell)) and state.combat.battlefield.has_actor(character.id) and _context.magic_flow().selection().spell_actor_target_is_valid(state, content, monster.id, character.id, spell, power):
 			candidates.append(character.id)
-	for candidate: MonsterState in state.combat.monsters():
+	for candidate: MonsterState in state.combat.roster.monsters():
 		if candidate.current_health > 0 and (candidate.traitor == monster.traitor) == friendly and (spell.target_type != 5 or candidate.id == monster.id) and (not spell_point_restore or _target_missing_spell_points(state, candidate.id) > 0) and (not spell_point_drain or _target_spell_points(state, candidate.id) > 0) and (cure_index < 0 or candidate.conditions.is_active(cure_index)) and (effect_index < 0 or candidate.conditions.value(effect_index) == 0) and (cure_index >= 0 or candidate.id == monster.id or not _target_reflects(state, candidate.id)) and (friendly or not _target_hard_immune(state, content, candidate.id, spell)) and state.combat.battlefield.has_actor(candidate.id) and content.monster_by_id(candidate.definition_id) != null and _context.magic_flow().selection().spell_actor_target_is_valid(state, content, monster.id, candidate.id, spell, power):
 			candidates.append(candidate.id)
 	if candidates.is_empty():
@@ -108,7 +108,7 @@ func _monster_summon_spell_power_plan(state: GameState, content: RealmzContent, 
 		if character.current_health > 0 and state.combat.battlefield.has_actor(character.id):
 			if character.traitor == monster.traitor: friendly_count += 1
 			else: hostile_count += 1
-	for candidate: MonsterState in state.combat.monsters():
+	for candidate: MonsterState in state.combat.roster.monsters():
 		if candidate.current_health <= 0 or not state.combat.battlefield.has_actor(candidate.id):
 			continue
 		if candidate.traitor == monster.traitor:
@@ -138,7 +138,7 @@ func _monster_destroy_magic_plan(state: GameState, content: RealmzContent, monst
 
 func _monster_polymorph_plan(state: GameState, content: RealmzContent, monster: MonsterState, spell: SpellDefinition, slot: int, power: int) -> Dictionary:
 	var best: Dictionary = {}
-	for target: MonsterState in state.combat.monsters():
+	for target: MonsterState in state.combat.roster.monsters():
 		if target.current_health <= 0 or target.traitor == monster.traitor or not state.combat.battlefield.has_actor(target.id) or _target_reflects(state, target.id) or _target_hard_immune(state, content, target.id, spell) or not _context.magic_flow().selection().spell_actor_target_is_valid(state, content, monster.id, target.id, spell, power):
 			continue
 		best = _prefer(best, {"spellId": spell.id, "spellSlot": slot, "power": power, "targetIds": [target.id], "score": 440 + target.hit_dice * 20 + target.current_health - spell.cost * power * 3})
@@ -164,7 +164,7 @@ func _monster_group_spell_power_plan(state: GameState, content: RealmzContent, m
 
 
 func _monster_area_spell_power_plan(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, spell: SpellDefinition, slot: int, power: int, actors_by_cell: Dictionary, area_placement_cache: Dictionary, area_center_cache: Dictionary) -> Dictionary:
-	if ClassicSpellConditionRules.is_combat_persistent_field_spell(spell) and not state.combat.can_queue_persistent_field():
+	if ClassicSpellConditionRules.is_combat_persistent_field_spell(spell) and not state.combat.spell_runtime.can_queue_persistent_field():
 		return {}
 	var expected := expected_spell_effect(spell, power)
 	var condition_index := ClassicSpellConditionRules.combat_persistent_field_condition_index(spell)
@@ -193,7 +193,7 @@ func _monster_area_spell_power_plan(state: GameState, content: RealmzContent, mo
 					var target_id := String(actors_by_cell.get(center + offset, ""))
 					if target_id.is_empty():
 						continue
-					if monster_targets_only and state.combat.monster_by_id(target_id) == null:
+					if monster_targets_only and state.combat.roster.monster_by_id(target_id) == null:
 						continue
 					if _actor_is_friendly_to_monster(state, monster, target_id):
 						harms_friend = true

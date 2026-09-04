@@ -10463,7 +10463,7 @@
             "symbol": "func probe_bandage("
           },
           {
-            "path": "src/game/state/combat_state.gd",
+            "path": "src/game/state/combat_actor_status_state.gd",
             "symbol": "func set_character_bleeding("
           }
         ]

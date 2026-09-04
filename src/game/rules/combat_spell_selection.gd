@@ -12,37 +12,54 @@ func _init(context: CombatContext) -> void:
 
 
 func probe_character_spell_choice(state: GameState, content: RealmzContent, caster_id: String, spell_id: String, power_level: int) -> CombatSpellCastProbe:
-	if state == null or content == null:
-		return CombatSpellCastProbe.blocked(&"invalid_spell_turn", "Spell casting requires an active game session.")
+	var turn_probe := _probe_character_turn(state, content, caster_id)
+	if not turn_probe.allowed:
+		return turn_probe
 	var combat := state.combat
-	if combat == null or combat.completed or combat.battlefield == null or combat.active_actor_id() != caster_id:
-		return CombatSpellCastProbe.blocked(&"invalid_spell_turn", "The caster does not own an active combat turn.")
-	if not combat.pending_spell_death_macro_id().is_empty():
-		return CombatSpellCastProbe.blocked(&"spell_death_macro_pending", "A spell-triggered monster death macro must complete before another combat action.")
 	var caster := state.party.character_by_id(caster_id)
 	var spell := content.spell_by_id(spell_id)
 	if caster == null or caster.current_health <= 0 or caster.traitor or spell == null or power_level < 1 or power_level > 7:
 		return CombatSpellCastProbe.blocked(&"invalid_spell_target", "The spell, caster, or power is unavailable.")
-	var repeated_target := spell.target_type == 0
-	var area_target := spell.target_type in [3, 4]
 	if not caster.known_spells().has(spell.id):
 		return CombatSpellCastProbe.blocked(&"spell_not_known", "The caster does not know '%s'." % spell.id)
+	var caster_probe := _probe_caster_casting(state, combat, caster)
+	return caster_probe if not caster_probe.allowed else _probe_spell_rules(state, content, combat, caster, spell, power_level)
+
+
+func _probe_character_turn(state: GameState, content: RealmzContent, caster_id: String) -> CombatSpellCastProbe:
+	if state == null or content == null:
+		return CombatSpellCastProbe.blocked(&"invalid_spell_turn", "Spell casting requires an active game session.")
+	var combat := state.combat
+	if combat == null or combat.completed or combat.battlefield == null or combat.turns.active_actor_id() != caster_id:
+		return CombatSpellCastProbe.blocked(&"invalid_spell_turn", "The caster does not own an active combat turn.")
+	if not combat.spell_runtime.pending_death_macro_id().is_empty():
+		return CombatSpellCastProbe.blocked(&"spell_death_macro_pending", "A spell-triggered monster death macro must complete before another combat action.")
+	return CombatSpellCastProbe.permitted()
+
+
+func _probe_caster_casting(state: GameState, combat: CombatState, caster: CharacterState) -> CombatSpellCastProbe:
 	if state.character_spellcasting_blocked:
 		return CombatSpellCastProbe.blocked(&"character_spellcasting_blocked", "Classic scenario state currently blocks character spellcasting.")
 	for condition: int in [ConditionRules.CONFUSED, ConditionRules.SILENCED, ConditionRules.HELPLESS, ConditionRules.STUPID, ConditionRules.ANIMATED]:
 		if caster.conditions.is_active(condition):
 			return CombatSpellCastProbe.blocked(&"spellcasting_condition_blocked", "The caster's current Classic condition prevents spellcasting.")
-	if combat.was_attacked(caster.id):
+	if combat.actor_statuses.was_attacked(caster.id):
 		return CombatSpellCastProbe.blocked(&"caster_attacked_this_round", "Castle prevents a character who has been attacked this combat round from casting.")
-	var committed_casts := combat.active_turn.spell_cast_count if combat.active_turn != null else 0
+	var committed_casts := combat.turns.active_turn.spell_cast_count if combat.turns.active_turn != null else 0
 	if caster.maximum_spell_attacks <= 0 or committed_casts >= caster.maximum_spell_attacks:
 		return CombatSpellCastProbe.blocked(&"spell_attack_limit_reached", "The caster has reached the Classic per-activation spell limit.")
+	return CombatSpellCastProbe.permitted()
+
+
+func _probe_spell_rules(state: GameState, content: RealmzContent, combat: CombatState, caster: CharacterState, spell: SpellDefinition, power_level: int) -> CombatSpellCastProbe:
 	if not spell.in_combat:
 		return CombatSpellCastProbe.blocked(&"spell_not_available_in_combat", "The selected spell is not available in combat.")
+	var repeated_target := spell.target_type == 0
+	var area_target := spell.target_type in [3, 4]
 	var summon_spell: bool = CombatFlowSummoning.is_summon_spell(spell)
 	if ClassicSpellDispositionRules.combat_character_disposition(spell) != ClassicSpellDispositionRules.DISPOSITION_EXECUTABLE:
 		return CombatSpellCastProbe.blocked(&"unsupported_combat_spell", ClassicSpellDispositionRules.unsupported_reason(spell, &"combat-character"))
-	if ClassicSpellConditionRules.is_combat_persistent_field_spell(spell) and not combat.can_queue_persistent_field():
+	if ClassicSpellConditionRules.is_combat_persistent_field_spell(spell) and not combat.spell_runtime.can_queue_persistent_field():
 		return CombatSpellCastProbe.blocked(&"persistent_field_queue_limit", "Castle's persistent battlefield-field queue is full.")
 	if repeated_target and spell.size != 0 and not summon_spell:
 		return CombatSpellCastProbe.blocked(&"repeated_open_space_spell_unresolved", "Classic target type 0 with nonzero size selects open-space footprints for summoning or special behavior, not ordinary actors.")
@@ -58,7 +75,7 @@ func probe_character_spell_choice(state: GameState, content: RealmzContent, cast
 		var shape := _context.spell_areas.shape_for(spell, power_level)
 		if _context.spell_areas.pattern(shape).is_empty():
 			return CombatSpellCastProbe.blocked(&"invalid_spell_area_shape", "The spell references an unavailable Classic Data AD area mask.")
-	return _context.summoning().probe_choice(state, content, caster_id, spell, power_level) if summon_spell else CombatSpellCastProbe.permitted()
+	return _context.summoning().probe_choice(state, content, caster.id, spell, power_level) if summon_spell else CombatSpellCastProbe.permitted()
 
 
 func probe_character_spell_cast(state: GameState, content: RealmzContent, caster_id: String, target_id: String, spell_id: String, power_level: int, target_coordinate: Vector2i = INVALID_COORDINATE, rotation: int = 0, target_ids: Array[String] = [], target_coordinates: Array[Vector2i] = []) -> CombatSpellCastProbe:
@@ -112,14 +129,17 @@ func probe_character_spell_cast(state: GameState, content: RealmzContent, caster
 
 func character_spell_options(state: GameState, content: RealmzContent, caster_id: String) -> Array[CombatSpellOptionView]:
 	var result: Array[CombatSpellOptionView] = []
-	if state == null or state.combat == null: return result
+	var turn_probe := _probe_character_turn(state, content, caster_id)
+	if not turn_probe.allowed: return result
 	var caster := state.party.character_by_id(caster_id)
-	if caster == null: return result
+	if caster == null or caster.current_health <= 0 or caster.traitor: return result
+	var combat := state.combat
+	if not _probe_caster_casting(state, combat, caster).allowed: return result
 	for spell_id: String in caster.known_spells():
 		var spell := content.spell_by_id(spell_id)
 		if spell == null: continue
 		for power_level: int in range(1, 8):
-			if not probe_character_spell_choice(state, content, caster_id, spell.id, power_level).allowed: continue
+			if not _probe_spell_rules(state, content, combat, caster, spell, power_level).allowed: continue
 			if spell.target_type == 0:
 				if CombatFlowSummoning.is_summon_spell(spell): result.append(CombatSpellOptionView.new(spell, power_level, null, "Choose up to %d open spaces" % power_level, &"coordinate_sequence", 0, state.combat.battlefield.actor_position(caster_id), [], power_level))
 				else: result.append(CombatSpellOptionView.new(spell, power_level, null, "Choose up to %d actors" % power_level, &"sequence", 0, INVALID_COORDINATE, [], power_level))
@@ -144,7 +164,7 @@ func character_spell_options(state: GameState, content: RealmzContent, caster_id
 
 func character_scroll_options(state: GameState, content: RealmzContent, caster_id: String) -> Array[CombatSpellOptionView]:
 	var result: Array[CombatSpellOptionView] = []
-	if state == null or content == null or state.combat == null or state.combat.active_actor_id() != caster_id: return result
+	if state == null or content == null or state.combat == null or state.combat.turns.active_actor_id() != caster_id: return result
 	var caster := state.party.character_by_id(caster_id)
 	if caster == null: return result
 	for scroll_slot: int in caster.scroll_case().size():
@@ -178,7 +198,7 @@ func character_scroll_options(state: GameState, content: RealmzContent, caster_i
 
 
 func character_scroll_unavailable_reason(state: GameState, content: RealmzContent, caster_id: String) -> String:
-	if state == null or state.combat == null or state.combat.active_actor_id() != caster_id: return "Only the active character may use a scroll."
+	if state == null or state.combat == null or state.combat.turns.active_actor_id() != caster_id: return "Only the active character may use a scroll."
 	var caster := state.party.character_by_id(caster_id)
 	if caster == null: return "The active character is unavailable."
 	if not _context.inventory.has_equipped_scroll_case(caster, content): return "Equip a scroll case before using its spells."
@@ -219,7 +239,7 @@ func character_actor_spell_candidates(state: GameState, content: RealmzContent, 
 	var result: Array[CombatSpellTargetView] = []
 	for character: CharacterState in state.party.characters():
 		if character.current_health > 0 and state.combat.battlefield.has_actor(character.id) and spell_actor_target_is_valid(state, content, caster.id, character.id, spell, power_level): result.append(CombatSpellTargetView.new(character.id, &"character", character.name, character.current_health, character.maximum_health))
-	for monster: MonsterState in state.combat.monsters():
+	for monster: MonsterState in state.combat.roster.monsters():
 		if monster.current_health > 0 and state.combat.battlefield.has_actor(monster.id) and spell_actor_target_is_valid(state, content, caster.id, monster.id, spell, power_level): result.append(CombatSpellTargetView.new(monster.id, &"monster", monster.name, monster.current_health, monster.maximum_health))
 	return result
 
@@ -227,7 +247,7 @@ func character_actor_spell_candidates(state: GameState, content: RealmzContent, 
 static func spell_target_view(state: GameState, content: RealmzContent, target_id: String) -> CombatSpellTargetView:
 	var character := state.party.character_by_id(target_id)
 	if character != null: return CombatSpellTargetView.new(character.id, &"character", character.name, character.current_health, character.maximum_health)
-	var monster := state.combat.monster_by_id(target_id) if state.combat != null else null
+	var monster := state.combat.roster.monster_by_id(target_id) if state.combat != null else null
 	if monster != null and content.monster_by_id(monster.definition_id) != null: return CombatSpellTargetView.new(monster.id, &"monster", monster.name, monster.current_health, monster.maximum_health)
 	return null
 
@@ -245,7 +265,7 @@ func spell_actor_target_is_valid(state: GameState, content: RealmzContent, caste
 static func spell_target_selection(state: GameState, content: RealmzContent, target_id: String) -> SpellTargetSelection:
 	var character := state.party.character_by_id(target_id)
 	if character != null and character.current_health > 0 and state.combat.battlefield.has_actor(character.id): return SpellTargetSelection.for_character(character)
-	var monster := state.combat.monster_by_id(target_id)
+	var monster := state.combat.roster.monster_by_id(target_id)
 	if monster == null or monster.current_health <= 0 or not state.combat.battlefield.has_actor(monster.id): return null
 	var definition := content.monster_by_id(monster.definition_id)
 	return SpellTargetSelection.for_monster(monster, definition) if definition != null else null

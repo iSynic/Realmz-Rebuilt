@@ -18,19 +18,19 @@ func _init(context: CombatContext) -> void:
 
 
 func queue_persistent_field(combat: CombatState, caster_id: String, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, center: Vector2i, rotation: int, shape: int) -> RefCounted:
-	if combat == null or caster_id.is_empty() or not ClassicSpellConditionRules.is_combat_persistent_field_spell(spell) or not combat.can_queue_persistent_field():
+	if combat == null or caster_id.is_empty() or not ClassicSpellConditionRules.is_combat_persistent_field_spell(spell) or not combat.spell_runtime.can_queue_persistent_field():
 		return null
 	var duration := _context.magic.roll_persistent_field_duration(spell, power_level, rng, StringName("combat.field.%s.duration" % spell.id))
 	if duration <= 0:
 		return null
-	return combat.queue_persistent_field(spell.id, caster_id, center, rotation if spell.can_rotate else 0, shape, spell.queue_icon, power_level, cast_level, duration)
+	return combat.spell_runtime.queue_persistent_field(spell.id, caster_id, center, rotation if spell.can_rotate else 0, shape, spell.queue_icon, power_level, cast_level, duration)
 
 
 func queue_single_actor_field(state: GameState, caster_id: String, target_id: String, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng) -> RefCounted:
-	if state == null or state.combat == null or not ClassicSpellConditionRules.is_combat_single_actor_field_spell(spell) or not state.combat.can_queue_persistent_field():
+	if state == null or state.combat == null or not ClassicSpellConditionRules.is_combat_single_actor_field_spell(spell) or not state.combat.spell_runtime.can_queue_persistent_field():
 		return null
 	var duration := _context.magic.roll_persistent_field_duration(spell, power_level, rng, StringName("combat.actor-field.%s.duration" % spell.id))
-	return state.combat.queue_persistent_field(spell.id, caster_id, _classic_target_selector(state, target_id), 0, 1, spell.queue_icon, power_level, cast_level, duration)
+	return state.combat.spell_runtime.queue_persistent_field(spell.id, caster_id, _classic_target_selector(state, target_id), 0, 1, spell.queue_icon, power_level, cast_level, duration)
 
 
 func repeated_field_callback(state: GameState, spell: SpellDefinition, caster_id: String, selected_target_ids: Array[String], power_level: int, cast_level: int, rng: RealmzRng, created_fields: Array[RefCounted]) -> Callable:
@@ -38,12 +38,12 @@ func repeated_field_callback(state: GameState, spell: SpellDefinition, caster_id
 		return Callable()
 	var first_center := _classic_target_selector(state, selected_target_ids[0])
 	return func(index: int) -> void:
-		if not state.combat.can_queue_persistent_field():
+		if not state.combat.spell_runtime.can_queue_persistent_field():
 			return
 		var duration := _context.magic.roll_persistent_field_duration(spell, power_level, rng, StringName("combat.repeated-field.%s.%d.duration" % [spell.id, index]))
 		var center := first_center if index == 0 else Vector2i.ZERO
 		var shape := 1 if index == 0 else CLEARED_TARGET_QUEUE_SHAPE
-		var field := state.combat.queue_persistent_field(spell.id, caster_id, center, 0, shape, spell.queue_icon, power_level, cast_level, duration)
+		var field := state.combat.spell_runtime.queue_persistent_field(spell.id, caster_id, center, 0, shape, spell.queue_icon, power_level, cast_level, duration)
 		if field != null:
 			created_fields.append(field)
 
@@ -59,7 +59,7 @@ static func _classic_target_selector(state: GameState, target_id: String) -> Vec
 	for index: int in characters.size():
 		if characters[index].id == target_id:
 			return Vector2i(index, 1)
-	var monsters := state.combat.monsters()
+	var monsters := state.combat.roster.monsters()
 	for index: int in monsters.size():
 		if monsters[index].id == target_id:
 			return Vector2i(index + 10, 2)
@@ -71,18 +71,18 @@ func resolve_actor_collisions(state: GameState, content: RealmzContent, actor_id
 		return COLLISION_INVALID
 	var combat := state.combat
 	var character := state.party.character_by_id(actor_id)
-	var monster := combat.monster_by_id(actor_id)
+	var monster := combat.roster.monster_by_id(actor_id)
 	if character == null and monster == null:
 		return COLLISION_INVALID
 	if not combat.battlefield.has_actor(actor_id):
 		return COLLISION_COMPLETED
 	var footprint := combat.battlefield.actor_footprint(actor_id)
-	for field: PersistentCombatField in combat.persistent_fields():
-		if retain_turn_collisions and combat.has_persistent_field_collision(field.slot):
+	for field: PersistentCombatField in combat.spell_runtime.persistent_fields():
+		if retain_turn_collisions and combat.spell_runtime.has_field_collision(field.slot):
 			continue
 		var spell := content.spell_by_id(field.spell_id)
 		var character_caster := state.party.character_by_id(field.caster_id)
-		var monster_caster := combat.monster_by_id(field.caster_id)
+		var monster_caster := combat.roster.monster_by_id(field.caster_id)
 		if spell == null or character_caster == null and monster_caster == null:
 			return COLLISION_INVALID
 		if not _field_intersects_footprint(field, footprint):
@@ -113,9 +113,9 @@ func resolve_actor_collisions(state: GameState, content: RealmzContent, actor_id
 			return COLLISION_INVALID
 		var resolution: SpellResolution = group.resolutions[0]
 		if retain_turn_collisions and _collision_consumes_field(spell, group, resolution):
-			combat.mark_persistent_field_collision(field.slot)
+			combat.spell_runtime.mark_field_collision(field.slot)
 		if resolution.damage > 0 or resolution.damage < 0 and monster != null:
-			combat.mark_attacked(actor_id)
+			combat.actor_statuses.mark_attacked(actor_id)
 		var payload := {"actorId": field.caster_id, "targetId": actor_id, "targetKind": "character" if character != null else "monster", "spellId": spell.id, "targetType": spell.target_type, "power": field.power_level, "classicTier": field.cast_level, "reflected": false, "resisted": resolution.resisted, "saved": resolution.saved, "damage": resolution.damage, "healing": maxi(0, -resolution.damage), "duration": resolution.duration, "defeated": resolution.target_defeated, "fieldSlot": field.slot, "areaCenter": [field.center.x, field.center.y], "areaShape": field.shape, "source": "classic-persistent-field", "detectedMagicItemCount": resolution.detected_magic_item_count}
 		if resolution.applied_condition >= 0:
 			payload["appliedCondition"] = resolution.applied_condition
@@ -129,17 +129,17 @@ func resolve_actor_collisions(state: GameState, content: RealmzContent, actor_id
 		var definition := content.monster_by_id(monster.definition_id)
 		var queued: bool = _context.actions().events().queue_spell_death_macro(combat, monster, definition)
 		_context.automation().remove_defeated_position(combat, actor_id, not queued)
-	if begin_death_macros and not combat.pending_spell_death_macro_id().is_empty():
+	if begin_death_macros and not combat.spell_runtime.pending_death_macro_id().is_empty():
 		return COLLISION_DEATH_MACRO if begin_pending_death_macros(combat, content, events) else COLLISION_INVALID
 	return COLLISION_DEFEATED
 
 
 func begin_pending_death_macros(combat: CombatState, content: RealmzContent, events: Array[DomainEvent]) -> bool:
-	if combat == null or content == null or combat.pending_spell_death_macro_id().is_empty():
+	if combat == null or content == null or combat.spell_runtime.pending_death_macro_id().is_empty():
 		return false
-	if not combat.spell_macro_actor_id().is_empty():
+	if not combat.spell_runtime.macro_actor_id().is_empty():
 		return true
-	return combat.begin_spell_death_macro_sequence(combat.active_actor_id(), false) and _context.actions().events().request_next_spell_death_macro(combat, content, events)
+	return combat.spell_runtime.begin_death_macro_sequence(combat.turns.active_actor_id(), false) and _context.actions().events().request_next_spell_death_macro(combat, content, events)
 
 
 func _field_intersects_footprint(field: PersistentCombatField, footprint: Array[Vector2i]) -> bool:
