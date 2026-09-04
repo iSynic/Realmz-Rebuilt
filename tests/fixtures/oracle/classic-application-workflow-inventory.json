@@ -6391,7 +6391,7 @@
             "symbol": "func _use_scroll"
           },
           {
-            "path": "src/game/rules/magic_rules.gd",
+            "path": "src/game/rules/field_scenario_spell_resolver.gd",
             "symbol": "func resolve_field_spell"
           },
           {
