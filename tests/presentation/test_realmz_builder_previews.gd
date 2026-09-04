@@ -19,6 +19,11 @@ const SURFACES := {
 	"spells": preload("res://src/ui/screens/spells_screen.tscn"),
 	"services": preload("res://src/ui/screens/services_screen.tscn"),
 	"roster-spellbook": preload("res://src/ui/screens/classic_party_roster.tscn"),
+	"character-files": preload("res://src/ui/screens/vault_screen.tscn"),
+	"allies": preload("res://src/ui/screens/allies_screen.tscn"),
+	"bestiary": preload("res://src/ui/screens/bestiary_screen.tscn"),
+	"maps-journal": preload("res://src/ui/screens/journal_screen.tscn"),
+	"system": preload("res://src/ui/screens/system_screen.tscn"),
 }
 const PROFILES: Array[String] = ["Wide", "Compact", "Empty", "Long Content", "Unavailable", "Error"]
 
@@ -56,6 +61,11 @@ func _test_representative_collections_and_modes() -> void:
 	var spells := _bound_surface("spells", "Wide")
 	var services := _bound_surface("services", "Wide")
 	var roster := _bound_surface("roster-spellbook", "Wide")
+	var vault := _bound_surface("character-files", "Wide")
+	var allies := _bound_surface("allies", "Wide")
+	var bestiary := _bound_surface("bestiary", "Wide")
+	var journal := _bound_surface("maps-journal", "Wide")
+	var system := _bound_surface("system", "Wide")
 	assert_equal((temple.find_child("TempleCharacterRows", true, false) as VBoxContainer).find_children("*", "Button", false, false).size(), 2, "Temple preview uses the production adventurer-row collection")
 	assert_equal((temple.find_child("TempleServiceRows", true, false) as VBoxContainer).find_children("*", "Button", false, false).size(), 3, "Temple preview uses the production service-row collection")
 	assert_true((bank.find_child("BankPool", true, false) as Button).disabled and (bank.find_child("BankShare", true, false) as Button).disabled, "Bank unavailable preview binds request-owned disabled actions")
@@ -72,7 +82,12 @@ func _test_representative_collections_and_modes() -> void:
 	assert_true(spells.find_children("KnownSpell_*", "Button", true, false).size() > 0, "Spells preview binds production spell records")
 	assert_equal((services.find_child("MoneyCharacterRows", true, false) as VBoxContainer).get_child_count(), 2, "Services preview binds production money rows")
 	assert_true((roster as ClassicPartyRoster).combat_spellbook_active(), "Roster preview opens the production combat spellbook")
-	for surface: Control in [temple, bank, pick_lock, lifecycle, scrolling_text, level_up, encounter, shop, treasure, combat, character_sheet, inventory, spells, services, roster]:
+	assert_equal(vault.find_children("CharacterFile_*", "PanelContainer", true, false).size(), 2, "Character Files preview binds production vault cards")
+	assert_equal(allies.find_children("AllyRow_*", "Button", true, false).size(), 3, "Allies preview binds production ally records")
+	assert_equal(bestiary.find_children("BestiaryRow_*", "Button", true, false).size(), 3, "Bestiary preview binds production catalog records")
+	assert_equal((journal.find_child("JournalEntryRows", true, false) as VBoxContainer).get_child_count(), 3, "Maps and Journal preview binds production journal records")
+	assert_equal(system.find_children("SavePreview_*", "Button", true, false).size(), 2, "System preview binds production save records")
+	for surface: Control in [temple, bank, pick_lock, lifecycle, scrolling_text, level_up, encounter, shop, treasure, combat, character_sheet, inventory, spells, services, roster, vault, allies, bestiary, journal, system]:
 		_free_surface(surface)
 
 

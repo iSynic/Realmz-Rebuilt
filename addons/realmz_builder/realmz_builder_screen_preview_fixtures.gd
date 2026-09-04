@@ -9,6 +9,11 @@ const SUPPORTED_SURFACES: Array[String] = [
 	"spells",
 	"services",
 	"roster-spellbook",
+	"character-files",
+	"allies",
+	"bestiary",
+	"maps-journal",
+	"system",
 ]
 
 
@@ -27,6 +32,11 @@ static func bind(surface: Node, surface_id: String, profile: String) -> bool:
 		"spells": _bind_spells_screen(surface as SpellsScreen, view, compact)
 		"services": _bind_services_screen(surface as ServicesScreen, view, compact)
 		"roster-spellbook": _bind_roster(surface as ClassicPartyRoster, view, profile)
+		"character-files": _bind_vault_screen(surface as VaultScreen, view, profile, compact)
+		"allies": _bind_creature_screen(surface as CreatureLibraryScreen, view, profile, compact, true)
+		"bestiary": _bind_creature_screen(surface as CreatureLibraryScreen, view, profile, compact, false)
+		"maps-journal": _bind_journal_screen(surface as JournalScreen, view, compact)
+		"system": _bind_system_screen(surface as SystemScreen, view, profile, compact)
 		_: return false
 	surface.set_meta("realmz_builder_profile", profile)
 	return true
@@ -66,13 +76,54 @@ static func _bind_roster(roster: ClassicPartyRoster, view: GameView, profile: St
 		roster.present_combat_spellbook(view.party_members[0].id, _cast_options(view.party_members[0]))
 
 
+static func _bind_vault_screen(screen: VaultScreen, view: GameView, profile: String, compact: bool) -> void:
+	var controller := CharacterScreenController.new()
+	controller.set_layout_profile(UiLayoutProfile.COMPACT if compact else UiLayoutProfile.WIDE)
+	controller.set_vault_revisions(_vault_revisions(view, profile))
+	controller.present_vault(screen, view, {}, 1.0)
+	screen.set_meta("realmz_builder_controller", controller)
+
+
+static func _bind_creature_screen(screen: CreatureLibraryScreen, view: GameView, profile: String, compact: bool, allies: bool) -> void:
+	var controller := CreatureLibraryScreenController.new()
+	controller.set_layout_profile(UiLayoutProfile.COMPACT if compact else UiLayoutProfile.WIDE)
+	_populate_creatures(view, profile)
+	if allies:
+		controller.present_allies(screen, view, null, 1.0)
+	else:
+		controller.present_bestiary(screen, view, null, 1.0)
+	screen.set_meta("realmz_builder_controller", controller)
+
+
+static func _bind_journal_screen(screen: JournalScreen, view: GameView, compact: bool) -> void:
+	var controller := MapsJournalScreenController.new()
+	controller.set_layout_profile(UiLayoutProfile.COMPACT if compact else UiLayoutProfile.WIDE)
+	controller.present(screen, view, null)
+	screen.set_meta("realmz_builder_controller", controller)
+
+
+static func _bind_system_screen(screen: SystemScreen, view: GameView, profile: String, compact: bool) -> void:
+	var controller := SystemScreenController.new()
+	controller.set_layout_profile(UiLayoutProfile.COMPACT if compact else UiLayoutProfile.WIDE)
+	controller.set_save_previews(_save_previews(profile))
+	controller.present(screen, view, PresentationSettings.new())
+	screen.set_meta("realmz_builder_controller", controller)
+
+
 static func _game_view(profile: String) -> GameView:
 	var view := GameView.new(1, profile != "Error", null)
 	view.party_summary = PartySummaryView.new()
+	view.campaign_id = "realmz-builder"
+	view.rules_version = "realmz-classic-1"
+	view.campaign_summary = CampaignSummaryView.new()
+	view.campaign_summary.campaign_id = view.campaign_id
+	view.campaign_summary.title = "City of Bywater"
 	view.set_action_availability(&"reorder_party", profile != "Unavailable", "Party order is locked during this preview state.")
 	view.set_action_availability(&"change_character_appearance", profile != "Unavailable", "Appearance changes are unavailable.")
 	view.set_action_availability(&"money_action", profile != "Unavailable", "Party wealth is unavailable.")
 	view.set_action_availability(&"service_action", profile != "Unavailable", "No location service is available.")
+	view.set_action_availability(&"import_vault_character", profile != "Unavailable", "Character import is unavailable.")
+	view.set_action_availability(&"set_location_note", profile != "Unavailable", "Location notes are unavailable.")
 	if profile in ["Empty", "Error"]:
 		return view
 	var count := 6 if profile == "Long Content" else 2
@@ -83,6 +134,7 @@ static func _game_view(profile: String) -> GameView:
 	view.money_workspace = _money_workspace(view.party_members, profile == "Unavailable")
 	view.party_summary.pooled_gold = view.money_workspace.pooled_gold
 	view.pooled_gold = view.money_workspace.pooled_gold
+	_populate_journal(view, profile)
 	return view
 
 
@@ -171,4 +223,84 @@ static func _cast_options(character: CharacterView) -> Array[InteractionRequestV
 		option.cost = spell.cost * 2
 		option.target_mode = &"automatic"
 		result.append(option)
+	return result
+
+
+static func _vault_revisions(view: GameView, profile: String) -> Array[CharacterVaultRevisionView]:
+	var result: Array[CharacterVaultRevisionView] = []
+	if profile in ["Empty", "Error"]:
+		return result
+	for index: int in view.party_members.size():
+		var character := view.party_members[index]
+		var revision := CharacterVaultRevisionView.new()
+		revision.character_id = character.id
+		revision.revision_hash = ("%x" % (index + 10)).repeat(64).left(64)
+		revision.name = character.name
+		revision.level = character.level
+		revision.race_id = character.race_id
+		revision.caste_id = character.caste_id
+		revision.is_current = true
+		revision.eligible = profile != "Unavailable"
+		if not revision.eligible:
+			revision.eligibility_reasons.append("This character is not eligible for the selected campaign.")
+		revision.character = character
+		result.append(revision)
+	return result
+
+
+static func _populate_creatures(view: GameView, profile: String) -> void:
+	if profile in ["Empty", "Error"]:
+		return
+	var count := 10 if profile == "Long Content" else 3
+	for index: int in count:
+		var definition := _monster_definition(index)
+		view.bestiary_entries.append(MonsterCatalogEntryView.new(definition))
+		var state := MonsterState.new("builder.ally.%d" % index, definition.id, definition.name, 12 + index, 20 + index, definition.hit_dice, 8, definition.armor, definition.magic_resistance, 4, false)
+		view.party_allies.append(MonsterView.new(state, definition))
+
+
+static func _monster_definition(index: int) -> MonsterDefinition:
+	var names: Array[String] = ["Allied Knight", "Forest Wolf", "Goblin Archer", "Cave Bear"]
+	var definition := MonsterDefinition.new(
+		"classic.monster.%d" % (index + 1), index + 1, names[index % names.size()], 2 + index % 5, 0, 8, 6 + index, 10 + index,
+		[0, 0, 0, 0], [20, 20, 20, 20, 20, 20, 20, 20], [0, 0, 0, 0, 0, 0], [0, 0, 0], [], [], [], [], 100 + index,
+		"A source-backed creature record represented through the shared library workspace."
+	)
+	definition.movement_max = 6
+	definition.attack_count = 2
+	return definition
+
+
+static func _populate_journal(view: GameView, profile: String) -> void:
+	var record_count := 18 if profile == "Long Content" else 3
+	for index: int in record_count:
+		view.journal_entries.append(JournalEntryView.new(100 + index, "Journal account %d: the company records a warning, a landmark, and the road ahead." % (index + 1)))
+	var note := LocationNoteView.new("land:0", "Northern Reaches", &"land", 0, Vector2i(12, 82), "A sheltered camp lies beside the old road.", 0, 1, true)
+	view.location_notes.append(note)
+	view.current_location_note = note
+	var definition := PlayerMapDefinition.new("builder.map.2", 2, "Cavern Route", "Unknown map", PlayerMapDefinition.PICTURE, "land:0", Vector2i.ZERO, 16, "", "", "", Rect2i(), [], "A map showing the concealed road into the keep.")
+	var player_map := PlayerMapView.new(definition)
+	view.acquired_player_maps.append(player_map)
+	view.player_map_menu_entries.append(player_map)
+	view.party_summary.acquired_map_ids.append(player_map.id)
+
+
+static func _save_previews(profile: String) -> Array[SaveSlotPreview]:
+	var result: Array[SaveSlotPreview] = []
+	if profile in ["Empty", "Error"]:
+		return result
+	var count := 8 if profile == "Long Content" else 2
+	for index: int in count:
+		var preview := SaveSlotPreview.new("quick" if index == 0 else "journey-%d" % index, SaveSlotPreview.PRIMARY, SaveSlotPreview.CORRUPT if profile == "Unavailable" and index == 0 else SaveSlotPreview.VALID)
+		preview.campaign_id = "realmz-builder"
+		preview.package_hash = "a".repeat(64)
+		preview.rules_version = "realmz-classic-1"
+		preview.realmz_day = 12
+		preview.realmz_hour = 7 + index
+		preview.map_id = "land:0"
+		preview.coordinate = Vector2i(12 + index, 82)
+		preview.character_names.assign(["Kevlar", "Lothlorian", "Silver Leaf"])
+		preview.can_load = preview.status == SaveSlotPreview.VALID
+		preview.error_message = "The save record could not be validated." if not preview.can_load else ""
+		result.append(preview)
 	return result
