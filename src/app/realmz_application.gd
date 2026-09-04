@@ -47,6 +47,14 @@ func configure_lifecycle_host(save_host: SaveHostController, quit_operation: Cal
 func _ready() -> void:
 	get_tree().set_auto_accept_quit(false)
 	UiInputActions.ensure_defaults()
+	_build_dependencies()
+	_bind_debug_and_movement()
+	_bind_combat_and_interactions()
+	_bind_shell_and_settings()
+	_finish_startup()
+
+
+func _build_dependencies() -> void:
 	_package_host = PackageHostController.new()
 	if _save_host == null: _save_host = SaveHostController.new()
 	settings_repository = SettingsRepository.new()
@@ -66,23 +74,15 @@ func _ready() -> void:
 	_character_files = ApplicationCharacterFilesHost.new(_package_host, session_controller, presentation_coordinator, _game_shell)
 	_spatial_layout = ApplicationSpatialLayout.new(_map_presenter, _battlefield_presenter, _dungeon_presenter, _interaction_presenter, _shell_presenter, session_controller, presentation_coordinator)
 	_lifecycle_host.bind(session_controller, presentation_coordinator, _shell_presenter, _held_movement, save_active_session, _refresh_save_previews, _present_step_status, _complete_closed_session, _quit_application)
+
+
+func _bind_debug_and_movement() -> void:
 	_debug_tools.status_changed.connect(
 		func(message: String, failed: bool) -> void:
 			_shell_presenter.set_status(message, failed)
 	)
 	_held_movement.set_speed_percent(_presentation_settings.exploration_speed_percent)
 	_held_movement.movement_requested.connect(_on_held_movement_requested)
-	presentation_coordinator.bind(session_controller, _map_presenter, _battlefield_presenter, _dungeon_presenter, _interaction_presenter, _shell_presenter, _audio_presenter)
-	presentation_coordinator.playback_step_settled.connect(_on_playback_step_settled)
-	_interaction_presenter.response_submitted.connect(_on_interaction_response_submitted)
-	_interaction_presenter.combat_targeting_requested.connect(_on_combat_targeting_requested)
-	_interaction_presenter.combat_targeting_confirm_requested.connect(_battlefield_presenter.confirm_targeting)
-	_interaction_presenter.combat_targeting_cancel_requested.connect(_battlefield_presenter.cancel_targeting)
-	_interaction_presenter.combat_targeting_rotate_requested.connect(_battlefield_presenter.rotate_targeting)
-	_interaction_presenter.combatant_focus_requested.connect(_on_combatant_focus_requested)
-	_interaction_presenter.reveal_friends_requested.connect(_on_reveal_friends_requested)
-	_interaction_presenter.presentation_sound_requested.connect(_on_interaction_sound_requested)
-	_interaction_presenter.presentation_status_requested.connect(_shell_presenter.set_status)
 	_map_presenter.movement_hold_started.connect(func(direction: Vector2i) -> void: _held_movement.start(&"mouse", direction))
 	_map_presenter.movement_hold_updated.connect(func(direction: Vector2i) -> void: _held_movement.update(&"mouse", direction))
 	_map_presenter.movement_hold_stopped.connect(func() -> void: _held_movement.stop(&"mouse"))
@@ -102,10 +102,27 @@ func _ready() -> void:
 		func() -> void:
 			_held_movement.stop(&"keyboard")
 	)
+
+
+func _bind_combat_and_interactions() -> void:
+	presentation_coordinator.bind(session_controller, _map_presenter, _battlefield_presenter, _dungeon_presenter, _interaction_presenter, _shell_presenter, _audio_presenter)
+	presentation_coordinator.playback_step_settled.connect(_on_playback_step_settled)
+	_interaction_presenter.response_submitted.connect(_on_interaction_response_submitted)
+	_interaction_presenter.combat_targeting_requested.connect(_on_combat_targeting_requested)
+	_interaction_presenter.combat_targeting_confirm_requested.connect(_battlefield_presenter.confirm_targeting)
+	_interaction_presenter.combat_targeting_cancel_requested.connect(_battlefield_presenter.cancel_targeting)
+	_interaction_presenter.combat_targeting_rotate_requested.connect(_battlefield_presenter.rotate_targeting)
+	_interaction_presenter.combatant_focus_requested.connect(_on_combatant_focus_requested)
+	_interaction_presenter.reveal_friends_requested.connect(_on_reveal_friends_requested)
+	_interaction_presenter.presentation_sound_requested.connect(_on_interaction_sound_requested)
+	_interaction_presenter.presentation_status_requested.connect(_shell_presenter.set_status)
 	_battlefield_presenter.combat_body_submitted.connect(_on_battlefield_action_requested)
 	_battlefield_presenter.combatant_inspected.connect(_on_battlefield_combatant_inspected)
 	_battlefield_presenter.targeting_changed.connect(_interaction_presenter.update_combat_targeting)
 	_battlefield_presenter.targeting_cancelled.connect(_interaction_presenter.combat_targeting_cancelled)
+
+
+func _bind_shell_and_settings() -> void:
 	_shell_presenter.start_package_requested.connect(_begin_package_start)
 	_shell_presenter.cancel_package_requested.connect(_cancel_package_start)
 	_shell_presenter.refresh_campaigns_requested.connect(_refresh_campaigns)
@@ -129,6 +146,9 @@ func _ready() -> void:
 	_settings_controller = ApplicationSettingsController.new(self, _presentation_settings, settings_repository, _shell_presenter, _map_presenter, _interaction_presenter, _audio_presenter, presentation_coordinator, _dungeon_presenter, _held_movement, _debug_tools)
 	_settings_controller.bind()
 	_settings_controller.apply_initial_settings()
+
+
+func _finish_startup() -> void:
 	_game_shell.set_standalone_character_creation_available(false, "Loading the built-in Classic definitions…")
 	Callable(_character_files, "begin_library_load").call_deferred()
 	_status_label.text = "Pure session boundary online"

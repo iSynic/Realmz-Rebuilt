@@ -35,7 +35,7 @@ var _body_frame: PanelContainer
 var _workspace_view: ScreenFrame
 var _route_history: Array[StringName] = []
 var _route_transition_revision: int = 0
-var _focus_keys: Dictionary = {}
+var _focus_controller := WorkspaceFocusController.new()
 var _workspace_rect := Rect2(220.0, 100.0, 512.0, 430.0)
 var _spell_screen_rect := Rect2(928.0, 28.0, 352.0, 502.0)
 var _full_height_workspace_rect := Rect2(0.0, 28.0, 992.0, 692.0)
@@ -143,7 +143,7 @@ func present(view: GameView) -> void:
 		setup_controller.show_party_setup()
 		_set_workspace_visible(false)
 		call_deferred("_apply_modal_layouts")
-		call_deferred("_focus_first", setup_controller.setup_overlay)
+		Callable(_focus_controller, "focus_first").call_deferred(setup_controller.setup_overlay)
 		return
 	if completed_party_setup:
 		_finish_party_setup_navigation()
@@ -519,20 +519,14 @@ func _render_screen(notify_route_change: bool = false) -> void:
 	if _screen_id in [&"exploration", &"combat"]:
 		call_deferred("_complete_route_render", transition_revision, false, previous_scroll_horizontal, previous_scroll_vertical)
 		return
-	_assign_focus_keys(_body)
+	_focus_controller.prepare(_body, _screen_id)
 	call_deferred("_complete_route_render", transition_revision, mounted_new_route, previous_scroll_horizontal, previous_scroll_vertical)
 
 
 func _complete_route_render(transition_revision: int, reset_scroll_to_top: bool, previous_scroll_horizontal: int, previous_scroll_vertical: int) -> void:
 	if transition_revision != _route_transition_revision:
 		return
-	_restore_focus(reset_scroll_to_top, previous_scroll_horizontal, previous_scroll_vertical)
-	var viewport := get_viewport()
-	if viewport == null:
-		workspace_focus_restored.emit(_screen_id, "")
-		return
-	var focus_owner := viewport.gui_get_focus_owner()
-	var focus_key := String(focus_owner.get_meta("focus_key", "")) if focus_owner != null and is_ancestor_of(focus_owner) else ""
+	var focus_key := _focus_controller.restore(self, _body, _body_scroll, _screen_id, reset_scroll_to_top, previous_scroll_horizontal, previous_scroll_vertical)
 	workspace_focus_restored.emit(_screen_id, focus_key)
 
 
@@ -558,61 +552,5 @@ func show_vault_from_splash() -> void:
 	_render_screen()
 
 
-func _assign_focus_keys(parent: Node, next_index: int = 0) -> int:
-	for child: Node in parent.get_children():
-		if child is Control and (child as Control).focus_mode != Control.FOCUS_NONE:
-			if not child.has_meta("focus_key"):
-				child.set_meta("focus_key", "%s:%d" % [_screen_id, next_index])
-			next_index += 1
-		next_index = _assign_focus_keys(child, next_index)
-	return next_index
-
-
 func _store_focus() -> void:
-	var viewport := get_viewport()
-	if viewport == null:
-		return
-	var owner := viewport.gui_get_focus_owner()
-	if owner != null and is_ancestor_of(owner) and owner.has_meta("focus_key"):
-		_focus_keys[_screen_id] = String(owner.get_meta("focus_key"))
-
-
-func _restore_focus(reset_scroll_to_top: bool = false, previous_scroll_horizontal: int = 0, previous_scroll_vertical: int = 0) -> void:
-	var wanted := String(_focus_keys.get(_screen_id, ""))
-	var restored := false
-	if not wanted.is_empty():
-		var focus_match := _find_focus_key(_body, wanted)
-		if focus_match != null:
-			focus_match.grab_focus()
-			restored = true
-	if not restored:
-		_focus_first(_body)
-	if _body_scroll != null:
-		# Focus restoration runs before the rebuilt layout has settled and can
-		# otherwise force the ScrollContainer to its final focusable control.
-		_body_scroll.scroll_horizontal = 0
-		_body_scroll.scroll_vertical = 0 if reset_scroll_to_top else previous_scroll_vertical
-
-
-func _find_focus_key(parent: Node, key: String) -> Control:
-	for child: Node in parent.get_children():
-		if child is Control and child.has_meta("focus_key") and String(child.get_meta("focus_key")) == key:
-			return child
-		var nested := _find_focus_key(child, key)
-		if nested != null:
-			return nested
-	return null
-
-
-func _focus_first(parent: Node) -> void:
-	for child: Node in parent.get_children():
-		if child is Control:
-			var control := child as Control
-			if control.is_inside_tree() and control.visible and control.focus_mode != Control.FOCUS_NONE and not (control is BaseButton and (control as BaseButton).disabled):
-				control.grab_focus()
-				return
-		_focus_first(child)
-		var viewport := get_viewport()
-		var focus_owner := viewport.gui_get_focus_owner() if viewport != null else null
-		if focus_owner != null and parent.is_ancestor_of(focus_owner):
-			return
+	_focus_controller.store(self, _screen_id)

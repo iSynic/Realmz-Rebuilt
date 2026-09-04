@@ -52,6 +52,14 @@ func set_layout_profile(profile_id: StringName) -> void:
 
 func _init() -> void:
 	var owner_ref: WeakRef = weakref(self)
+	_bind_system_controller(owner_ref)
+	_bind_character_controller(owner_ref)
+	_bind_inventory_controller(owner_ref)
+	_bind_services_controller(owner_ref)
+	_bind_maps_and_spells_controllers(owner_ref)
+
+
+func _bind_system_controller(owner_ref: WeakRef) -> void:
 	_system_controller.action_requested.connect(func(action_id: StringName, value: Variant) -> void:
 		var owner := owner_ref.get_ref() as ScreenContentPresenter
 		if owner != null:
@@ -62,6 +70,9 @@ func _init() -> void:
 		if owner != null:
 			owner.presentation_setting_changed.emit(setting_id, value)
 	)
+
+
+func _bind_character_controller(owner_ref: WeakRef) -> void:
 	_character_controller.intent_submitted.connect(func(intent: PlayerIntent) -> void:
 		var owner := owner_ref.get_ref() as ScreenContentPresenter
 		if owner != null:
@@ -87,6 +98,9 @@ func _init() -> void:
 		if owner != null:
 			owner.vault_restore_requested.emit(character_id, revision_hash)
 	)
+
+
+func _bind_inventory_controller(owner_ref: WeakRef) -> void:
 	_inventory_controller.intent_submitted.connect(func(intent: PlayerIntent) -> void:
 		var owner := owner_ref.get_ref() as ScreenContentPresenter
 		if owner != null:
@@ -107,6 +121,9 @@ func _init() -> void:
 		if owner != null:
 			owner.back_requested.emit()
 	)
+
+
+func _bind_services_controller(owner_ref: WeakRef) -> void:
 	_services_controller.intent_submitted.connect(func(intent: PlayerIntent) -> void:
 		var owner := owner_ref.get_ref() as ScreenContentPresenter
 		if owner != null:
@@ -122,6 +139,9 @@ func _init() -> void:
 		if owner != null:
 			owner.refresh_requested.emit()
 	)
+
+
+func _bind_maps_and_spells_controllers(owner_ref: WeakRef) -> void:
 	_maps_journal_controller.intent_submitted.connect(func(intent: PlayerIntent) -> void:
 		var owner := owner_ref.get_ref() as ScreenContentPresenter
 		if owner != null:
