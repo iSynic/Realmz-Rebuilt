@@ -376,6 +376,43 @@ foreach ($rootPath in @("src\game", "src\playthrough", "src\scenarios", "src\sto
     }
 }
 
+# WorldState is a save aggregate, not a broad forwarding API. Physical map
+# changes, encounter triggers, and exploration memory have direct state owners.
+$worldStatePath = Join-Path $repoRoot "src\game\state\world_state.gd"
+$worldCollaboratorPaths = @(
+    "src\game\state\world_topology_state.gd",
+    "src\game\state\world_trigger_state.gd",
+    "src\game\state\world_exploration_state.gd",
+    "src\game\world\classic_land_tile_rules.gd"
+)
+foreach ($relativePath in $worldCollaboratorPaths) {
+    if (-not (Test-Path -LiteralPath (Join-Path $repoRoot $relativePath))) {
+        $violations += "$($relativePath -replace '\\','/') must own its named world-state responsibility"
+    }
+}
+$worldAggregateMethodPattern = '(?:terrain_for|replace_terrain|has_terrain_override|classic_tile_for|set_boat_present|boat_presence_state|boat_presence_overrides|open_door|door_is_open|discover_secret|secret_is_discovered|topology_revision|set_map_darkness|map_is_dark|set_map_landlook|map_landlook|map_landlook_for|disable_trigger|trigger_is_disabled|set_trigger_chance|trigger_chance|trigger_chance_is_overridden|set_random_region|random_region|random_region_ids_at|has_random_region_at|random_region_bounds_revision|exploration_revision|acquire_map|has_map|acquired_map_ids|upsert_location_note|remove_location_note|location_note_at|location_notes|location_notes_for_kind|next_location_note_ordinal|mark_visited|was_visited|visited_coordinates|mark_seen|mark_seen_many|was_seen|seen_coordinates)'
+if (Test-Path -LiteralPath $worldStatePath) {
+    $worldStateContent = [IO.File]::ReadAllText($worldStatePath)
+    if ($worldStateContent -match ('(?m)^(?:static\s+)?func\s+' + $worldAggregateMethodPattern + '\s*\(')) {
+        $violations += "src/game/state/world_state.gd must not forward or re-own topology, trigger, or exploration behavior"
+    }
+}
+foreach ($rootPath in @("src\game", "src\playthrough", "src\scenarios", "src\storage", "src\ui", "src\app")) {
+    foreach ($file in Get-ChildItem (Join-Path $repoRoot $rootPath) -Recurse -Filter "*.gd" -ErrorAction SilentlyContinue) {
+        $relativePath = Get-RepositoryRelativePath -RootPath $repoRoot -TargetPath $file.FullName
+        $lineNumber = 0
+        foreach ($line in Get-SanitizedGdscriptLines -Content ([IO.File]::ReadAllText($file.FullName))) {
+            $lineNumber++
+            if ($line -match ('\.world\.' + $worldAggregateMethodPattern + '\s*\(')) {
+                $violations += "$($relativePath):$lineNumber production callers must address the direct WorldState collaborator"
+            }
+            if ($line -match '\bWorldState\.(?:normalized_classic_land_tile|classic_special_land_overlay)\s*\(') {
+                $violations += "$($relativePath):$lineNumber ClassicLandTileRules must own Classic land tile decoding"
+            }
+        }
+    }
+}
+
 # Party setup is a composed presentation workspace. Inspection, assembly, and
 # creation may share explicit setup state, but they may not inherit behavior
 # from one another or turn the public facade back into the old behavior chain.

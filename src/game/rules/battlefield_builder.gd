@@ -17,7 +17,7 @@ func build_terrain(map: MapDefinition, world_state: WorldState, terrain_set: Bat
 		return BattlefieldBuildResult.failed(&"invalid_battlefield_input", "Battlefield generation requires a map, overlays, terrain catalog, and session randomness.")
 	if map.topology.width < SOURCE_SIZE or map.topology.height < SOURCE_SIZE:
 		return BattlefieldBuildResult.failed(&"battlefield_map_too_small", "Map '%s' cannot provide Castle's 30 by 30 battle source window." % map.id)
-	if map.level_type == &"land" and terrain_set.landlook != world_state.map_landlook(map) or map.level_type == &"dungeon" and terrain_set.landlook != -1:
+	if map.level_type == &"land" and terrain_set.landlook != world_state.topology.map_landlook(map) or map.level_type == &"dungeon" and terrain_set.landlook != -1:
 		return BattlefieldBuildResult.failed(&"battlefield_terrain_mismatch", "Map '%s' references a battle terrain catalog for a different Classic map type." % map.id)
 	var requested_origin := party_coordinate - Vector2i(15, 15)
 	var source_origin := Vector2i(
@@ -265,8 +265,8 @@ func _decorate_rubble_cell(battlefield: BattlefieldState, coordinate: Vector2i, 
 
 
 static func _effective_land_tile(map_id: String, cell: MapCell, world_state: WorldState, base_tile: int) -> int:
-	var raw_tile := world_state.classic_tile_for(map_id, cell)
-	return base_tile if raw_tile < 0 else WorldState.normalized_classic_land_tile(raw_tile)
+	var raw_tile := world_state.topology.classic_tile_for(map_id, cell)
+	return base_tile if raw_tile < 0 else ClassicLandTileRules.normalized_tile(raw_tile)
 
 
 static func _inside_good_rect(coordinate: Vector2i) -> bool:

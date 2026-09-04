@@ -109,7 +109,7 @@ func _project_complete(context: SessionWorkflowContext, pending_interaction: Int
 	result.party_summary.camping = state.party_camping
 	result.party_summary.searching = state.party.conditions.is_active(ConditionRules.PARTY_SEARCHING)
 	result.party_summary.in_boat = state.party_in_boat
-	result.party_summary.acquired_map_ids = state.world.acquired_map_ids()
+	result.party_summary.acquired_map_ids = state.world.exploration.acquired_map_ids()
 	if state.combat != null and _can_reuse_static_map_projections(state):
 		_reuse_static_map_projections(result, _cached_view)
 	else:
@@ -582,7 +582,7 @@ static func _populate_movement_map_views(context: SessionWorkflowContext, result
 	var content := context.content
 	var state := context.state
 	for definition: PlayerMapDefinition in content.world.player_maps():
-		var acquired := state.world.has_map(definition.id)
+		var acquired := state.world.exploration.has_map(definition.id)
 		var player_map_view := SessionMapViewBuilder.build_player_map_view(context, definition) if acquired else PlayerMapView.new(definition, [], false, Vector2i.ZERO, false)
 		result.player_map_menu_entries.append(player_map_view)
 		if acquired:
@@ -590,9 +590,9 @@ static func _populate_movement_map_views(context: SessionWorkflowContext, result
 	var current_map := content.world.map_by_id(state.party.map_id)
 	if current_map == null:
 		return
-	var current_note := state.world.location_note_at(current_map.id, state.party.coordinate)
+	var current_note := state.world.exploration.location_note_at(current_map.id, state.party.coordinate)
 	result.current_location_note = LocationNoteView.new(current_map.id, current_map.name, current_map.level_type, current_map.level_index, state.party.coordinate, current_note.text if current_note != null else "", current_note.darkness_value if current_note != null else _current_location_note_darkness(context, current_map), current_note.record_ordinal if current_note != null else -1, true)
-	for note: LocationNoteState in state.world.location_notes_for_kind(current_map.level_type):
+	for note: LocationNoteState in state.world.exploration.location_notes_for_kind(current_map.level_type):
 		var note_map := content.world.map_by_id(note.map_id)
 		if note_map != null:
 			result.location_notes.append(LocationNoteView.new(note.map_id, note_map.name, note_map.level_type, note_map.level_index, note.coordinate, note.text, note.darkness_value, note.record_ordinal, note.map_id == state.party.map_id and note.coordinate == state.party.coordinate, SessionMapViewBuilder.build_location_note_map_view(context, note_map, note)))
@@ -613,13 +613,13 @@ static func _populate_ordinary_movement_map_views(context: SessionWorkflowContex
 	var current_map := context.content.world.map_by_id(state.party.map_id)
 	if current_map == null:
 		return
-	var current_note := state.world.location_note_at(current_map.id, state.party.coordinate)
+	var current_note := state.world.exploration.location_note_at(current_map.id, state.party.coordinate)
 	result.current_location_note = LocationNoteView.new(current_map.id, current_map.name, current_map.level_type, current_map.level_index, state.party.coordinate, current_note.text if current_note != null else "", current_note.darkness_value if current_note != null else _current_location_note_darkness(context, current_map), current_note.record_ordinal if current_note != null else -1, true)
 	for previous_note: LocationNoteView in previous.location_notes:
 		result.location_notes.append(LocationNoteView.new(previous_note.map_id, previous_note.map_name, previous_note.level_type, previous_note.level_index, previous_note.coordinate, previous_note.text, previous_note.darkness_value, previous_note.record_ordinal, previous_note.map_id == state.party.map_id and previous_note.coordinate == state.party.coordinate, previous_note.preview_map))
 
 
 static func _current_location_note_darkness(context: SessionWorkflowContext, map: MapDefinition) -> int:
-	if map == null or map.level_type == &"dungeon" or not context.state.world.map_is_dark(map):
+	if map == null or map.level_type == &"dungeon" or not context.state.world.topology.map_is_dark(map):
 		return 0
 	return clampi(int(context.state.party.conditions.value(0) / 30) + 1, 1, 255)

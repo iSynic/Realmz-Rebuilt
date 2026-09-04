@@ -243,8 +243,8 @@ func _record_current_visibility() -> void:
 		return
 	var wizard_eye := _context.state.party.conditions.is_active(ConditionRules.PARTY_WIZARDS_EYE)
 	var visible_coordinates := map.topology.exploration_visible_cells(_context.state.party.coordinate, _context.state.world, true, wizard_eye)
-	_context.state.world.mark_seen_many(map.id, visible_coordinates)
-	_view_projector.record_visibility(map.id, _context.state.party.coordinate, visible_coordinates, _context.state.world.topology_revision(), wizard_eye)
+	_context.state.world.exploration.mark_seen_many(map.id, visible_coordinates)
+	_view_projector.record_visibility(map.id, _context.state.party.coordinate, visible_coordinates, _context.state.world.topology.revision(), wizard_eye)
 
 
 func _pending_interaction() -> InteractionRequest:

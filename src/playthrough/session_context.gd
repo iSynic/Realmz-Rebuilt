@@ -48,7 +48,7 @@ func _init(
 func begin(content_library: RealmzContent, initial_seed: int) -> void:
 	content = content_library
 	state = GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, []), RealmzClock.new())
-	state.world.mark_visited(content.start_map_id, content.start_coordinate)
+	state.world.exploration.mark_visited(content.start_map_id, content.start_coordinate)
 	rng = RealmzRng.new(initial_seed)
 	rules = RealmzRules.new()
 	scenario_action_state = ScenarioActionState.new()

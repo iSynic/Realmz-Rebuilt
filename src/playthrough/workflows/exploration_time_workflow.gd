@@ -200,13 +200,13 @@ static func search(context: SessionWorkflowContext) -> ClockTransitionResult:
 			if cell == null:
 				continue
 			for feature: MapFeature in cell.features():
-				if feature.kind != &"secret" or context.state.world.secret_is_discovered(feature.id, feature.initial_state == &"revealed"):
+				if feature.kind != &"secret" or context.state.world.topology.secret_is_discovered(feature.id, feature.initial_state == &"revealed"):
 					continue
 				var roll := context.rng.draw(100, StringName("exploration.search.%s" % feature.id))
 				if first_roll == 0:
 					first_roll = roll
 				if roll <= 100:
-					context.state.world.discover_secret(feature.id)
+					context.state.world.topology.discover_secret(feature.id)
 					discovered.append(feature.id)
 	var events: Array[DomainEvent] = [DomainEvent.new(&"search_completed", {"mapId": context.state.party.map_id, "x": context.state.party.coordinate.x, "y": context.state.party.coordinate.y, "roll": first_roll, "discoveredSecrets": discovered})]
 	for secret_id: String in discovered:
@@ -244,13 +244,13 @@ static func search_after_land_movement_attempt(context: SessionWorkflowContext, 
 			if cell == null:
 				continue
 			for feature: MapFeature in cell.features():
-				if feature.kind != &"secret" or context.state.world.secret_is_discovered(feature.id, feature.initial_state == &"revealed"):
+				if feature.kind != &"secret" or context.state.world.topology.secret_is_discovered(feature.id, feature.initial_state == &"revealed"):
 					continue
 				var roll := context.rng.draw(100, StringName("exploration.movement-search.%s" % feature.id))
 				if first_roll == 0:
 					first_roll = roll
 				if roll <= chance:
-					context.state.world.discover_secret(feature.id)
+					context.state.world.topology.discover_secret(feature.id)
 					discovered.append(feature.id)
 	events.append(DomainEvent.new(&"movement_secret_search_completed", {"mapId": current_map.id, "x": context.state.party.coordinate.x, "y": context.state.party.coordinate.y, "roll": first_roll, "chance": chance, "discoveredSecrets": discovered}))
 	for secret_id: String in discovered:
@@ -414,11 +414,11 @@ static func commit_permitted_move(context: SessionWorkflowContext, movement: Wor
 	var probe := movement.topology_result
 	var events: Array[DomainEvent] = []
 	events.assign(preceding_events)
-	if not probe.door_id.is_empty() and not context.state.world.door_is_open(probe.door_id):
-		context.state.world.open_door(probe.door_id)
+	if not probe.door_id.is_empty() and not context.state.world.topology.door_is_open(probe.door_id):
+		context.state.world.topology.open_door(probe.door_id)
 		events.append(DomainEvent.new(&"door_opened", {"doorId": probe.door_id}))
-	if not probe.secret_id.is_empty() and not context.state.world.secret_is_discovered(probe.secret_id):
-		context.state.world.discover_secret(probe.secret_id)
+	if not probe.secret_id.is_empty() and not context.state.world.topology.secret_is_discovered(probe.secret_id):
+		context.state.world.topology.discover_secret(probe.secret_id)
 		events.append(DomainEvent.new(&"secret_discovered", {"secretId": probe.secret_id, "byMovement": true}))
 	var source_map_id := context.state.party.map_id
 	var source_coordinate := context.state.party.coordinate
@@ -431,7 +431,7 @@ static func commit_permitted_move(context: SessionWorkflowContext, movement: Wor
 	context.state.party.map_id = target_map.id
 	context.state.party.coordinate = target_coordinate
 	context.state.last_move_direction = direction
-	context.state.world.mark_visited(target_map.id, target_coordinate)
+	context.state.world.exploration.mark_visited(target_map.id, target_coordinate)
 	events.append(DomainEvent.new(&"party_moved", {"fromMapId": source_map_id, "fromX": source_coordinate.x, "fromY": source_coordinate.y, "mapId": target_map.id, "x": target_coordinate.x, "y": target_coordinate.y}))
 	append_movement_sound(events, movement)
 	var previous_day := context.state.clock.day()
@@ -473,7 +473,7 @@ static func post_time_continuation(context: SessionWorkflowContext, map: MapDefi
 	exploration.midnight_recovery_pending = timed_day > 0
 	exploration.timed_check_coordinate = timed_coordinate
 	exploration.check_random = check_random
-	var region_ids: Array[String] = [] if cell == null else context.state.world.random_region_ids_at(map, context.state.party.coordinate)
+	var region_ids: Array[String] = [] if cell == null else context.state.world.triggers.random_region_ids_at(map, context.state.party.coordinate)
 	exploration.random_region_ids.assign(region_ids)
 	exploration.random_region_index = region_ids.size() - 1
 	exploration.active_random_program_id = ""
@@ -492,7 +492,7 @@ static func post_move_continuation(context: SessionWorkflowContext, map: MapDefi
 	exploration.trigger_ids.assign(selected_placed_trigger_ids(context.content, cell, context.state.world))
 	exploration.trigger_index = 0
 	exploration.active_trigger_id = ""
-	var region_ids := context.state.world.random_region_ids_at(map, coordinate)
+	var region_ids := context.state.world.triggers.random_region_ids_at(map, coordinate)
 	exploration.random_region_ids.assign(region_ids)
 	exploration.random_region_index = region_ids.size() - 1
 	exploration.active_random_program_id = ""
@@ -513,7 +513,7 @@ static func rebase_post_time_location(context: SessionWorkflowContext, continuat
 	exploration.map_id = map.id
 	exploration.coordinate = context.state.party.coordinate
 	exploration.timed_check_coordinate = context.state.party.coordinate
-	var region_ids := context.state.world.random_region_ids_at(map, context.state.party.coordinate)
+	var region_ids := context.state.world.triggers.random_region_ids_at(map, context.state.party.coordinate)
 	exploration.random_region_ids.assign(region_ids)
 	exploration.random_region_index = region_ids.size() - 1
 	return true
@@ -540,7 +540,7 @@ static func timed_encounter_requirements_met(context: SessionWorkflowContext, en
 	var coordinate := exploration.timed_check_coordinate
 	if encounter.required_random_rectangle > -1:
 		var region := map.random_region_by_index(encounter.required_random_rectangle)
-		if region == null or not context.state.world.random_region(region).contains(region.bounds, coordinate):
+		if region == null or not context.state.world.triggers.random_region(region).contains(region.bounds, coordinate):
 			return false
 	if encounter.required_x > -1 and coordinate.x != encounter.required_x:
 		return false
@@ -566,7 +566,7 @@ static func classic_time_scale(map: MapDefinition) -> int:
 
 static func selected_placed_trigger_ids(content: RealmzContent, cell: MapCell, world_state: WorldState) -> Array[String]:
 	for feature: MapFeature in cell.features():
-		if cell.is_land and feature.kind == &"secret" and feature.orientation.is_empty() and not world_state.secret_is_discovered(feature.id, feature.initial_state == &"revealed"):
+		if cell.is_land and feature.kind == &"secret" and feature.orientation.is_empty() and not world_state.topology.secret_is_discovered(feature.id, feature.initial_state == &"revealed"):
 			return []
 	var selected_id := ""
 	var selected_record_index := 2_147_483_647
@@ -587,18 +587,18 @@ static func set_location_note(context: SessionWorkflowContext, text: String) -> 
 		return SessionWorkflowResult.failed(&"location_note_unavailable", "The current map location is unavailable.")
 	if not LocationNoteState.text_is_valid(text):
 		return SessionWorkflowResult.failed(&"location_note_too_long", "Classic location notes are limited to 255 encoded bytes.")
-	var existing := context.state.world.location_note_at(map.id, context.state.party.coordinate)
+	var existing := context.state.world.exploration.location_note_at(map.id, context.state.party.coordinate)
 	var darkness_value := _current_location_note_darkness(context, map)
-	if existing == null and not text.is_empty() and context.state.world.next_location_note_ordinal(map.level_type) < 0:
+	if existing == null and not text.is_empty() and context.state.world.exploration.next_location_note_ordinal(map.level_type) < 0:
 		return SessionWorkflowResult.failed(&"location_note_capacity", "The Classic location-note file for this map type is full.")
 	if existing != null and existing.text == text and existing.darkness_value == darkness_value or existing == null and text.is_empty():
 		return SessionWorkflowResult.failed(&"location_note_unchanged", "Change or clear the current location note before saving.")
 	var committed := false
 	if text.is_empty():
-		committed = context.state.world.remove_location_note(map.id, context.state.party.coordinate)
+		committed = context.state.world.exploration.remove_location_note(map.id, context.state.party.coordinate)
 	else:
-		var ordinal := existing.record_ordinal if existing != null else context.state.world.next_location_note_ordinal(map.level_type)
-		committed = context.state.world.upsert_location_note(LocationNoteState.new(map.id, map.level_type, map.level_index, context.state.party.coordinate, text, darkness_value, ordinal))
+		var ordinal := existing.record_ordinal if existing != null else context.state.world.exploration.next_location_note_ordinal(map.level_type)
+		committed = context.state.world.exploration.upsert_location_note(LocationNoteState.new(map.id, map.level_type, map.level_index, context.state.party.coordinate, text, darkness_value, ordinal))
 	if not committed:
 		return SessionWorkflowResult.failed(&"invalid_location_note", "The location note could not be committed.")
 	var event_kind: StringName = &"location_note_removed" if text.is_empty() else &"location_note_updated"
@@ -612,6 +612,6 @@ static func set_location_note(context: SessionWorkflowContext, text: String) -> 
 
 
 static func _current_location_note_darkness(context: SessionWorkflowContext, map: MapDefinition) -> int:
-	if map == null or map.level_type == &"dungeon" or not context.state.world.map_is_dark(map):
+	if map == null or map.level_type == &"dungeon" or not context.state.world.topology.map_is_dark(map):
 		return 0
 	return clampi(int(context.state.party.conditions.value(0) / 30) + 1, 1, 255)

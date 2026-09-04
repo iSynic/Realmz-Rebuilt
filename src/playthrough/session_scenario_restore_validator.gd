@@ -28,7 +28,7 @@ static func player_map_vm_continuation_is_valid(content: RealmzContent, state: G
 	var body: AcknowledgeRequestBody = null
 	if request != null:
 		body = request.body as AcknowledgeRequestBody
-	return request != null and request.kind == InteractionRequest.ACKNOWLEDGE and body != null and body.presentation == &"player-map" and body.player_map_id == player_map_id and body.has_presentation and body.has_player_map_id and not body.has_message_id and not body.has_journal_state and not body.has_sound_id and content.world.player_map_by_id(player_map_id) != null and state.world.has_map(player_map_id)
+	return request != null and request.kind == InteractionRequest.ACKNOWLEDGE and body != null and body.presentation == &"player-map" and body.player_map_id == player_map_id and body.has_presentation and body.has_player_map_id and not body.has_message_id and not body.has_journal_state and not body.has_sound_id and content.world.player_map_by_id(player_map_id) != null and state.world.exploration.has_map(player_map_id)
 
 
 static func thief_vm_continuation_is_valid(content: RealmzContent, state: GameState, rng_state: RealmzRngState, vm: ScenarioVm) -> bool:
@@ -178,5 +178,5 @@ static func ready_post_move_continuation_is_valid(content: RealmzContent, state:
 	var cell: MapCell = null if map == null else map.topology.cell_at(exploration.coordinate)
 	return cell != null and state.party.map_id == map.id and state.party.coordinate == exploration.coordinate \
 		and exploration.trigger_ids == ExplorationTimeWorkflow.selected_placed_trigger_ids(content, cell, state.world) \
-		and exploration.random_region_ids == state.world.random_region_ids_at(map, exploration.coordinate) \
+		and exploration.random_region_ids == state.world.triggers.random_region_ids_at(map, exploration.coordinate) \
 		and exploration.random_region_index == exploration.random_region_ids.size() - 1

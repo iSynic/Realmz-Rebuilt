@@ -137,7 +137,7 @@ func _run_step(step_definition: Dictionary) -> void:
 		return
 	_session._state.party.map_id = trigger.map_id
 	_session._state.party.coordinate = trigger.coordinate
-	_session._state.world.mark_visited(trigger.map_id, trigger.coordinate)
+	_session._state.world.exploration.mark_visited(trigger.map_id, trigger.coordinate)
 	var continuation_body := ExplorationContinuationBody.new()
 	continuation_body.map_id = trigger.map_id
 	continuation_body.coordinate = trigger.coordinate
@@ -178,7 +178,7 @@ func _run_travel_proof(proof: Dictionary) -> void:
 		return
 	_session._state.party.map_id = map.id
 	_session._state.party.coordinate = coordinate
-	_session._state.world.mark_visited(map.id, coordinate)
+	_session._state.world.exploration.mark_visited(map.id, coordinate)
 	var events: Array[DomainEvent] = []
 	var movement_steps := 0
 	for move: Variant in proof["moves"]:
@@ -284,7 +284,7 @@ func _run_program_step(step_id: String, step_definition: Dictionary, trigger: Tr
 		return
 	_session._state.party.map_id = map.id
 	_session._state.party.coordinate = coordinate
-	_session._state.world.mark_visited(map.id, coordinate)
+	_session._state.world.exploration.mark_visited(map.id, coordinate)
 	var events: Array[DomainEvent] = [DomainEvent.new(&"trigger_fired", {"triggerId": trigger.id, "source": "route-program"})]
 	var execution_context := ScenarioExecutionContext.trigger(&"action", trigger.id, map.id, coordinate, true)
 	var started := _session._scenario_vm.start_program(trigger.program_id, execution_context)
@@ -514,7 +514,7 @@ func _validate_completion(anchor: Variant) -> void:
 		var map := _content.world.map_by_type_and_index(StringName(override.get("levelType", "")), int(override.get("levelIndex", -1)))
 		var coordinate := Vector2i(int(override.get("x", -1)), int(override.get("y", -1)))
 		var cell: MapCell = null if map == null else map.topology.cell_at(coordinate)
-		var terrain := "" if cell == null else _session._state.world.terrain_for(map.id, cell)
+		var terrain := "" if cell == null else _session._state.world.topology.terrain_for(map.id, cell)
 		if terrain != "classic.terrain.%d" % int(override.get("value", -1)):
 			_fail("completion tile %s %s has terrain %s" % [map.id if map != null else "unknown", coordinate, terrain])
 	var item_ids := _party_classic_item_ids()

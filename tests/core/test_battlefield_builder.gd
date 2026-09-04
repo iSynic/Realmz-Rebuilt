@@ -18,7 +18,7 @@ func _test_land_source_window_and_overlay() -> void:
 	var asymmetric_build := [[31, 32, 33], [34, 35, 36], [37, 38, 39]]
 	var terrain := _terrain_set("terrain.land", 1, 1, {}, {3: asymmetric_build})
 	var world := WorldState.new()
-	world.replace_terrain(map.id, Vector2i.ZERO, "classic.terrain.2"); world.replace_terrain(map.id, Vector2i(1, 0), "classic.terrain.-1018")
+	world.topology.replace_terrain(map.id, Vector2i.ZERO, "classic.terrain.2"); world.topology.replace_terrain(map.id, Vector2i(1, 0), "classic.terrain.-1018")
 	var rng := ScriptedRng.new([])
 	var built := BattlefieldBuilder.new().build_terrain(map, world, terrain, Vector2i.ZERO, rng)
 	assert_true(built.is_ok(), "a normalized land map builds Castle's 30 by 30 source window")

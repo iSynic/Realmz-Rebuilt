@@ -233,7 +233,7 @@ func _fresh_state(content: RealmzContent) -> GameState:
 		characters.append(character)
 	var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, characters), RealmzClock.new())
 	state.party_setup_completed = true
-	state.world.mark_visited(content.start_map_id, content.start_coordinate)
+	state.world.exploration.mark_visited(content.start_map_id, content.start_coordinate)
 	return state
 
 

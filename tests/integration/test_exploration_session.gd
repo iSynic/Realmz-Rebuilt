@@ -93,10 +93,10 @@ func run() -> void:
 	assert_true(_has_event(north_completed, &"tile_replaced"), "Classic opcode 12 mutates the world overlay after acknowledgement")
 	assert_true(_has_event(north_completed, &"random_region_triggered"), "random rectangle gates after the moved-to AP finishes")
 	var north_trigger_id := content.world.map_by_id("land:0").topology.cell_at(Vector2i(1, 0)).trigger_ids()[0]
-	assert_true(north_restored.snapshot().game_state.world.trigger_is_disabled(north_trigger_id), "an ordinary placed Action Point becomes one-shot after its complete resumed timeline")
+	assert_true(north_restored.snapshot().game_state.world.triggers.trigger_is_disabled(north_trigger_id), "an ordinary placed Action Point becomes one-shot after its complete resumed timeline")
 	session = north_restored
 	assert_equal(session.view().map_view.cell_at(Vector2i(2, 2)).terrain_id, "classic.terrain.2", "presenter view reads the same tile overlay as simulation")
-	var special_snapshot := session.snapshot(); special_snapshot.game_state.world.replace_terrain("land:0", Vector2i(2, 2), "classic.terrain.-1018"); var special_session := GameSession.new(); assert_equal(special_session.restore(content, save_round_trip(special_snapshot)).state, SessionStep.State.COMPLETED, "a signed Classic special-land replacement restores transactionally"); var special_cell := special_session.view().map_view.cell_at(Vector2i(2, 2)); assert_equal([special_cell.render_tile, special_cell.overlay_asset_id], [content.world.battle_terrain_set_for_map(content.world.map_by_id("land:0"), special_snapshot.game_state.world).base_tile, "realmz-special-land-neg-18"], "a restored opcode-12 terrain value projects its landlook base and normalized special-land overlay"); special_snapshot.game_state.world.replace_terrain("land:0", Vector2i(2, 2), "classic.terrain.467"); assert_equal(special_session.restore(content, save_round_trip(special_snapshot)).state, SessionStep.State.COMPLETED, "a positive icon-backed Classic replacement restores transactionally"); special_cell = special_session.view().map_view.cell_at(Vector2i(2, 2)); assert_equal([special_cell.render_tile, special_cell.overlay_asset_id], [content.world.battle_terrain_set_for_map(content.world.map_by_id("land:0"), special_snapshot.game_state.world).base_tile, "realmz-land-cicn-467"], "positive icon-backed terrain uses the landlook base and exact CICN identity")
+	var special_snapshot := session.snapshot(); special_snapshot.game_state.world.topology.replace_terrain("land:0", Vector2i(2, 2), "classic.terrain.-1018"); var special_session := GameSession.new(); assert_equal(special_session.restore(content, save_round_trip(special_snapshot)).state, SessionStep.State.COMPLETED, "a signed Classic special-land replacement restores transactionally"); var special_cell := special_session.view().map_view.cell_at(Vector2i(2, 2)); assert_equal([special_cell.render_tile, special_cell.overlay_asset_id], [content.world.battle_terrain_set_for_map(content.world.map_by_id("land:0"), special_snapshot.game_state.world).base_tile, "realmz-special-land-neg-18"], "a restored opcode-12 terrain value projects its landlook base and normalized special-land overlay"); special_snapshot.game_state.world.topology.replace_terrain("land:0", Vector2i(2, 2), "classic.terrain.467"); assert_equal(special_session.restore(content, save_round_trip(special_snapshot)).state, SessionStep.State.COMPLETED, "a positive icon-backed Classic replacement restores transactionally"); special_cell = special_session.view().map_view.cell_at(Vector2i(2, 2)); assert_equal([special_cell.render_tile, special_cell.overlay_asset_id], [content.world.battle_terrain_set_for_map(content.world.map_by_id("land:0"), special_snapshot.game_state.world).base_tile, "realmz-land-cicn-467"], "positive icon-backed terrain uses the landlook base and exact CICN identity")
 
 	session.submit_intent(ExplorationIntents.move(Vector2i.DOWN))
 	var hidden_destination := content.world.map_by_id("land:0").topology.cell_at(Vector2i(0, 1))
@@ -125,16 +125,16 @@ func run() -> void:
 
 	var snapshot := session.snapshot()
 	var replacement_cell := content.world.map_by_id("land:0").topology.cell_at(Vector2i(2, 2))
-	assert_equal(snapshot.game_state.world.terrain_for("land:0", replacement_cell), "classic.terrain.2", "save aggregate owns tile mutation")
+	assert_equal(snapshot.game_state.world.topology.terrain_for("land:0", replacement_cell), "classic.terrain.2", "save aggregate owns tile mutation")
 	var restored := GameSession.new()
 	assert_equal(restored.restore(content, snapshot).state, SessionStep.State.COMPLETED, "exploration aggregate restores transactionally")
 	assert_equal(restored.view().party_map_id, "land:1", "restored session retains transitioned map")
-	assert_equal(restored.snapshot().game_state.world.terrain_for("land:0", replacement_cell), "classic.terrain.2", "restored session retains world overlays")
-	assert_true(restored.snapshot().game_state.world.trigger_is_disabled(north_trigger_id), "save/reload preserves default one-shot Action Point state")
+	assert_equal(restored.snapshot().game_state.world.topology.terrain_for("land:0", replacement_cell), "classic.terrain.2", "restored session retains world overlays")
+	assert_true(restored.snapshot().game_state.world.triggers.trigger_is_disabled(north_trigger_id), "save/reload preserves default one-shot Action Point state")
 
 	var keep_source := content.trigger_by_id("ap.fixture.destination-source"); var keep_program := ScenarioProgramDefinition.new(keep_source.program_id, &"trigger", keep_source.id, [ClassicActionDefinition.new(0, 24, 24, 0, false, [])]); var keep_trigger := TriggerDefinition.new(keep_source.id, keep_program.id, keep_source.map_id, keep_source.coordinate, keep_source.active, keep_source.chance_percent, keep_source.post_action_location, keep_source.classic_record_index); var keep_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, "land:1", Vector2i(0, 1), content.world, ScenarioDefinition.new([keep_program], []), [], [keep_trigger], [], content.race_definitions(), content.caste_definitions())
 	var keep_session := GameSession.new(); keep_session.start(keep_content, 1); _begin_fixture_adventure(keep_session, keep_content); var kept := keep_session.submit_intent(ExplorationIntents.move(Vector2i.UP))
-	assert_true(_has_event(kept, &"action_point_kept"), "Classic opcode 24 marks the issuing placed Action Point as Keep Codes"); assert_false(keep_session.snapshot().game_state.world.trigger_is_disabled(keep_trigger.id), "Keep Codes is the explicit exception to default one-shot Action Points")
+	assert_true(_has_event(kept, &"action_point_kept"), "Classic opcode 24 marks the issuing placed Action Point as Keep Codes"); assert_false(keep_session.snapshot().game_state.world.triggers.trigger_is_disabled(keep_trigger.id), "Keep Codes is the explicit exception to default one-shot Action Points")
 	var self_program := ScenarioProgramDefinition.new(keep_source.program_id, &"trigger", keep_source.id, [ClassicActionDefinition.new(0, 3, 3, 0, false, [1, 0, 0, 0, 0]), ClassicActionDefinition.new(1, 45, 45, 0, false, [-1, 1, 0, 0, 0])]); var self_trigger := TriggerDefinition.new(keep_source.id, self_program.id, keep_source.map_id, keep_source.coordinate, true, 100, TriggerDestinationDefinition.new(keep_source.map_id, keep_source.coordinate), keep_source.classic_record_index)
 	var self_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, "land:1", Vector2i(0, 1), content.world, ScenarioDefinition.new([self_program], []), [], [self_trigger], [], content.race_definitions(), content.caste_definitions()); var self_session := GameSession.new(); self_session.start(self_content, 1); _begin_fixture_adventure(self_session, self_content); var self_wait := self_session.submit_intent(ExplorationIntents.move(Vector2i.UP)); var self_completed := self_session.respond(InteractionResponse.from_data(self_wait.interaction.request_id, &"yes_no", {"accepted": true}))
 	assert_equal([self_completed.state, self_session.view().party_coordinate], [SessionStep.State.COMPLETED, Vector2i(1, 0)], "an AP header pointing to its own source cell cannot undo its resumed program teleport")
@@ -143,7 +143,7 @@ func run() -> void:
 
 	var ordered_ap_content := _duplicate_placed_ap_content(100, content); var ordered_ap_session := GameSession.new(); ordered_ap_session.start(ordered_ap_content, 1); _begin_fixture_adventure(ordered_ap_session, ordered_ap_content)
 	var ordered_ap_step := ordered_ap_session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT))
-	assert_equal(_event_count(ordered_ap_step, &"trigger_fired"), 1, "one coordinate selects only one placed Action Point"); assert_equal(_event(ordered_ap_step, &"trigger_fired").payload["triggerId"], "ap.first-native", "the lowest Classic record index wins even when cell references are reversed"); assert_false(ordered_ap_session.snapshot().game_state.world.trigger_is_disabled("ap.later-native"), "a later same-cell Action Point is not executed or consumed")
+	assert_equal(_event_count(ordered_ap_step, &"trigger_fired"), 1, "one coordinate selects only one placed Action Point"); assert_equal(_event(ordered_ap_step, &"trigger_fired").payload["triggerId"], "ap.first-native", "the lowest Classic record index wins even when cell references are reversed"); assert_false(ordered_ap_session.snapshot().game_state.world.triggers.trigger_is_disabled("ap.later-native"), "a later same-cell Action Point is not executed or consumed")
 
 	var chance_ap_content := _duplicate_placed_ap_content(1, content); var chance_ap_session := GameSession.new(); chance_ap_session.start(chance_ap_content, 1); _begin_fixture_adventure(chance_ap_session, chance_ap_content)
 	var chance_ap_step := chance_ap_session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT))
@@ -157,11 +157,11 @@ func run() -> void:
 	var inactive_ap_step := inactive_ap_session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT)); assert_equal(_event(inactive_ap_step, &"trigger_fired").payload["triggerId"], "ap.inactive-placed", "a positive runtime chance override activates the addressed AP")
 
 	var disabled_ap_content := _duplicate_placed_ap_content(100, content); var disabled_ap_source := GameSession.new(); disabled_ap_source.start(disabled_ap_content, 1); _begin_fixture_adventure(disabled_ap_source, disabled_ap_content)
-	var disabled_ap_save := disabled_ap_source.snapshot(); disabled_ap_save.game_state.world.disable_trigger("ap.first-native")
+	var disabled_ap_save := disabled_ap_source.snapshot(); disabled_ap_save.game_state.world.triggers.disable_trigger("ap.first-native")
 	var disabled_ap_session := GameSession.new()
 	assert_equal(disabled_ap_session.restore(disabled_ap_content, disabled_ap_save).state, SessionStep.State.COMPLETED, "a disabled first-record fixture restores transactionally")
 	var disabled_ap_step := disabled_ap_session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT))
-	assert_false(_has_event(disabled_ap_step, &"trigger_fired"), "a world-disabled selected AP does not fall through to a later same-cell record"); assert_false(disabled_ap_session.snapshot().game_state.world.trigger_is_disabled("ap.later-native"), "the unselected later AP remains untouched")
+	assert_false(_has_event(disabled_ap_step, &"trigger_fired"), "a world-disabled selected AP does not fall through to a later same-cell record"); assert_false(disabled_ap_session.snapshot().game_state.world.triggers.trigger_is_disabled("ap.later-native"), "the unselected later AP remains untouched")
 
 	var dungeon_envelope := session.snapshot()
 	dungeon_envelope.game_state.party.map_id = "dungeon:0"
@@ -177,12 +177,12 @@ func run() -> void:
 	var opened_door := dungeon_session.submit_intent(ExplorationIntents.overhead_dungeon_move(Vector2i.LEFT))
 	var door_id := "dungeon:0:cell:1,0:door"
 	assert_true(_has_event(opened_door, &"door_opened"), "entering the explicit dungeon door opens its world overlay")
-	assert_true(dungeon_session.snapshot().game_state.world.door_is_open(door_id) and dungeon_session.view().map_view.dungeon_heading == 4, "top-down travel and the 3D projection now share the west heading")
+	assert_true(dungeon_session.snapshot().game_state.world.topology.door_is_open(door_id) and dungeon_session.view().map_view.dungeon_heading == 4, "top-down travel and the 3D projection now share the west heading")
 	var reversed_in_first_person := dungeon_session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT))
 	assert_equal([reversed_in_first_person.state, dungeon_session.view().party_coordinate, dungeon_session.view().map_view.dungeon_heading], [SessionStep.State.COMPLETED, Vector2i(2, 0), 4], "first-person reverse movement changes position without rotating the shared heading")
 	var restored_dungeon := GameSession.new()
 	assert_equal(restored_dungeon.restore(content, dungeon_session.snapshot()).state, SessionStep.State.COMPLETED, "door-state save restores transactionally")
-	assert_true(restored_dungeon.snapshot().game_state.world.door_is_open(door_id) and restored_dungeon.view().map_view.dungeon_heading == 4, "restored session retains the opened door and Classic dungeon heading")
+	assert_true(restored_dungeon.snapshot().game_state.world.topology.door_is_open(door_id) and restored_dungeon.view().map_view.dungeon_heading == 4, "restored session retains the opened door and Classic dungeon heading")
 
 	var surprise_region := content.world.map_by_id("land:0").random_region_by_id("land:0:randlevel:rect:1"); surprise_region.battle_maximum = -1; var surprise_session := GameSession.new()
 	surprise_session.start(content, 1)
@@ -231,7 +231,7 @@ func run() -> void:
 	var first_door := door_session.submit_intent(ExplorationIntents.move(Vector2i.LEFT))
 	assert_true(_has_event(first_door, &"random_door_triggered"), "a positive random-door chance invokes its XAP through the normal VM")
 	var door_region := content.world.map_by_id("land:0").random_region_by_id("land:0:randlevel:rect:2")
-	assert_equal(door_session.snapshot().game_state.world.random_region(door_region).random_door_percents()[0], 0, "a positive random-door chance becomes one-shot world state")
+	assert_equal(door_session.snapshot().game_state.world.triggers.random_region(door_region).random_door_percents()[0], 0, "a positive random-door chance becomes one-shot world state")
 	var restored_door := GameSession.new()
 	restored_door.restore(content, door_session.snapshot())
 	restored_door.submit_intent(ExplorationIntents.move(Vector2i.RIGHT))
@@ -312,7 +312,7 @@ func _test_location_notes(content: RealmzContent) -> void:
 	var unchanged := session.submit_intent(ExplorationIntents.set_location_note("The road narrows beside the old stones."))
 	assert_equal(unchanged.error_code, &"location_note_unchanged", "an unchanged note is rejected without a false committed revision")
 	var dark_envelope := session.snapshot()
-	dark_envelope.game_state.world.set_map_darkness("land:0", true)
+	dark_envelope.game_state.world.topology.set_map_darkness("land:0", true)
 	dark_envelope.game_state.party.conditions.set_value(0, 60)
 	assert_equal(session.restore(content, dark_envelope).state, SessionStep.State.COMPLETED, "the fixture can establish a source-shaped dark land-note boundary")
 	var darkness_refresh := session.submit_intent(ExplorationIntents.set_location_note("The road narrows beside the old stones."))
@@ -350,7 +350,7 @@ func _test_location_notes(content: RealmzContent) -> void:
 			var coordinate := Vector2i(x, y)
 			if coordinate == capacity_envelope.game_state.party.coordinate:
 				continue
-			capacity_envelope.game_state.world.upsert_location_note(LocationNoteState.new("land:0", &"land", 0, coordinate, "Note %d" % added, 0, added))
+			capacity_envelope.game_state.world.exploration.upsert_location_note(LocationNoteState.new("land:0", &"land", 0, coordinate, "Note %d" % added, 0, added))
 			added += 1
 			if added == LocationNoteState.MAX_NOTES_PER_MAP_KIND:
 				break
@@ -361,7 +361,7 @@ func _test_location_notes(content: RealmzContent) -> void:
 	var capacity_rejection := capacity_session.submit_intent(ExplorationIntents.set_location_note("One note too many"))
 	assert_equal(capacity_rejection.error_code, &"location_note_capacity", "a new note cannot reproduce Castle's append-beyond-scan record defect")
 	var duplicate_ordinal := LocationNoteState.new("land:0", &"land", 0, capacity_envelope.game_state.party.coordinate, "Corrupt duplicate ordinal", 0, 0)
-	capacity_envelope.game_state.world._location_notes[duplicate_ordinal.id()] = duplicate_ordinal
+	capacity_envelope.game_state.world.exploration._location_notes[duplicate_ordinal.id()] = duplicate_ordinal
 	var corrupt_capacity := GameSession.new()
 	assert_equal(corrupt_capacity.restore(content, capacity_envelope).error_code, &"invalid_game_state", "restore rejects duplicate source ordinals transactionally")
 
@@ -369,11 +369,11 @@ func _test_location_notes(content: RealmzContent) -> void:
 func _test_classic_backout(source_content: RealmzContent) -> void:
 	var content := _classic_backout_content(source_content); var session := GameSession.new(); assert_equal(session.start(content, 1).state, SessionStep.State.COMPLETED, "Classic Choice backout session starts"); _begin_fixture_adventure(session, content); var waiting := session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT)); assert_equal([waiting.state, waiting.interaction.kind, session.view().party_coordinate], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.YES_NO, Vector2i(1, 0)], "entering the Choice AP commits its step before asking")
 	var saved := save_round_trip(session.snapshot()); var restored := GameSession.new(); assert_equal(restored.restore(content, saved).state, SessionStep.State.COMPLETED, "pending Classic Choice restores with its post-move owner"); var minutes_before_backout := restored.snapshot().game_state.clock.total_minutes(); var rng_before_backout := restored.rng_trace().size(); var backed_out := restored.respond(InteractionResponse.yes_no(restored.view().pending_interaction, true)); assert_equal([backed_out.state, restored.view().party_coordinate], [SessionStep.State.COMPLETED, Vector2i.ZERO], "selected Choice mode zero reverses the just-entered overland step"); assert_true(_has_event(backed_out, &"classic_choice_backout_completed") and _event(backed_out, &"party_moved").payload.get("source") == "classic-choice-backout", "the public session identifies the source-backed backout movement"); assert_false(_has_event(backed_out, &"trigger_disabled") or _has_event(backed_out, &"random_encounter_checked"), "backout preserves the issuing AP and skips destination-cell random checks")
-	assert_equal([restored.snapshot().game_state.clock.total_minutes(), restored.rng_trace().size()], [minutes_before_backout, rng_before_backout], "backout consumes neither additional time nor RNG"); assert_false(restored.snapshot().game_state.world.trigger_is_disabled("ap.choice-backout"), "backout leaves the Choice AP available for another entry"); var repeated := restored.submit_intent(ExplorationIntents.move(Vector2i.RIGHT)); assert_equal([repeated.state, repeated.interaction.kind], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.YES_NO], "re-entering the preserved AP asks the same authored Choice")
-	var continued := restored.respond(InteractionResponse.yes_no(repeated.interaction, false)); assert_equal([continued.state, restored.view().party_coordinate], [SessionStep.State.COMPLETED, Vector2i(2, 0)], "the unselected Choice branch continues and applies the AP header destination"); assert_true(_has_event(continued, &"action_point_kept") and _event(continued, &"party_moved").payload.get("source") == "action-point-destination", "the following authored slot executes before ordinary destination handling"); assert_false(restored.snapshot().game_state.world.trigger_is_disabled("ap.choice-backout"), "the following Keep Codes instruction remains authoritative")
+	assert_equal([restored.snapshot().game_state.clock.total_minutes(), restored.rng_trace().size()], [minutes_before_backout, rng_before_backout], "backout consumes neither additional time nor RNG"); assert_false(restored.snapshot().game_state.world.triggers.trigger_is_disabled("ap.choice-backout"), "backout leaves the Choice AP available for another entry"); var repeated := restored.submit_intent(ExplorationIntents.move(Vector2i.RIGHT)); assert_equal([repeated.state, repeated.interaction.kind], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.YES_NO], "re-entering the preserved AP asks the same authored Choice")
+	var continued := restored.respond(InteractionResponse.yes_no(repeated.interaction, false)); assert_equal([continued.state, restored.view().party_coordinate], [SessionStep.State.COMPLETED, Vector2i(2, 0)], "the unselected Choice branch continues and applies the AP header destination"); assert_true(_has_event(continued, &"action_point_kept") and _event(continued, &"party_moved").payload.get("source") == "action-point-destination", "the following authored slot executes before ordinary destination handling"); assert_false(restored.snapshot().game_state.world.triggers.trigger_is_disabled("ap.choice-backout"), "the following Keep Codes instruction remains authoritative")
 	for encounter_kind: StringName in [&"simple", &"complex"]:
 		var encounter_content := _classic_backout_content(source_content, encounter_kind); var encounter_session := GameSession.new(); assert_equal(encounter_session.start(encounter_content, 1).state, SessionStep.State.COMPLETED, "%s Encounter backout session starts" % encounter_kind); _begin_fixture_adventure(encounter_session, encounter_content); var encounter_waiting := encounter_session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT)); var encounter_saved := save_round_trip(encounter_session.snapshot()); var encounter_restored := GameSession.new(); assert_equal(encounter_restored.restore(encounter_content, encounter_saved).state, SessionStep.State.COMPLETED, "pending %s Encounter restores with its post-move owner" % encounter_kind)
-		var response_data: Dictionary = {"cancelled": true} if encounter_kind == &"simple" else {"action": "back"}; var encounter_backout := encounter_restored.respond(InteractionResponse.from_data(encounter_restored.view().pending_interaction.request_id, encounter_waiting.interaction.kind, response_data)); assert_equal([encounter_backout.state, encounter_restored.view().party_coordinate, _has_event(encounter_backout, &"classic_encounter_backout_completed"), encounter_restored.snapshot().game_state.world.trigger_is_disabled("ap.%s-backout" % encounter_kind)], [SessionStep.State.COMPLETED, Vector2i.ZERO, true, false], "Castle-authored %s Encounter cancellation reverses the entered land step and preserves its AP" % encounter_kind); var encounter_repeated := encounter_restored.submit_intent(ExplorationIntents.move(Vector2i.RIGHT)); assert_equal([encounter_repeated.state, encounter_repeated.interaction.kind], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.ENCOUNTER_CHOICE if encounter_kind == &"simple" else InteractionRequest.WORD_AND_ACTION], "re-entering the preserved %s Encounter AP asks again" % encounter_kind)
+		var response_data: Dictionary = {"cancelled": true} if encounter_kind == &"simple" else {"action": "back"}; var encounter_backout := encounter_restored.respond(InteractionResponse.from_data(encounter_restored.view().pending_interaction.request_id, encounter_waiting.interaction.kind, response_data)); assert_equal([encounter_backout.state, encounter_restored.view().party_coordinate, _has_event(encounter_backout, &"classic_encounter_backout_completed"), encounter_restored.snapshot().game_state.world.triggers.trigger_is_disabled("ap.%s-backout" % encounter_kind)], [SessionStep.State.COMPLETED, Vector2i.ZERO, true, false], "Castle-authored %s Encounter cancellation reverses the entered land step and preserves its AP" % encounter_kind); var encounter_repeated := encounter_restored.submit_intent(ExplorationIntents.move(Vector2i.RIGHT)); assert_equal([encounter_repeated.state, encounter_repeated.interaction.kind], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.ENCOUNTER_CHOICE if encounter_kind == &"simple" else InteractionRequest.WORD_AND_ACTION], "re-entering the preserved %s Encounter AP asks again" % encounter_kind)
 
 
 func _test_contextual_encounter_command(source_content: RealmzContent) -> void:
@@ -403,7 +403,7 @@ func _test_contextual_encounter_command(source_content: RealmzContent) -> void:
 	assert_equal(opened.state, SessionStep.State.COMPLETED, "Encounter resolves its selected seamless XAP through the ordinary VM boundary")
 	assert_equal([_event(opened, &"contextual_encounter_triggered").payload["programId"], _event(opened, &"contextual_encounter_triggered").payload["coordinate"]], ["xap:42", Vector2i.RIGHT], "land Encounter scans the faced cell and publishes the selected random-door program")
 	assert_equal(session.rng_trace()[0]["tag"], "contextual-encounter.contextual.fixture.region.door.0", "Encounter records the source-ordered door roll")
-	assert_equal(session.snapshot().game_state.world.random_region(region).random_door_percents()[0], 0, "a positive seamless door chance is consumed after it opens")
+	assert_equal(session.snapshot().game_state.world.triggers.random_region(region).random_door_percents()[0], 0, "a positive seamless door chance is consumed after it opens")
 	var restored := GameSession.new(); assert_equal(restored.restore(content, save_round_trip(session.snapshot())).state, SessionStep.State.COMPLETED, "the consumed seamless Encounter door restores transactionally")
 	assert_true(restored.view().availability(&"contextual_encounter").enabled, "a consumed seamless door does not disable Castle's persistent Encounter control"); var fallback := restored.submit_intent(ExplorationIntents.contextual_encounter()); var fallback_event := _event(fallback, &"contextual_encounter_triggered")
 	assert_equal([fallback.state, fallback_event.payload["programId"], fallback_event.payload["coordinate"], fallback_event.payload["defaultProgram"]], [SessionStep.State.COMPLETED, "xap:0", Vector2i.RIGHT, true], "Encounter runs XAP 0 at the faced land coordinate when no seamless door fires")
@@ -418,7 +418,7 @@ func _test_map_view_projection_edges(content: RealmzContent) -> void:
 	_begin_fixture_adventure(session, content)
 	assert_equal(session.view().map_view.cells().size(), 625, "the detached projection keeps its full dimensions at the north-west map edge")
 	assert_not_null(session.view().map_view.cell_at(Vector2i.ZERO), "the north-west projection begins at the map edge")
-	assert_not_null(session.view().map_view.cell_at(Vector2i(24, 24)), "the north-west projection shifts inward instead of shrinking around the party"); var winter_snapshot := session.snapshot(); winter_snapshot.game_state.world.set_map_landlook("land:0", 10); var winter_session := GameSession.new(); assert_equal(winter_session.restore(content, winter_snapshot).state, SessionStep.State.COMPLETED, "a save-owned seasonal landlook restores through the public session boundary"); assert_equal([winter_session.view().map_view.landlook, winter_session.view().map_view.cell_at(Vector2i.ZERO).tileset_id, winter_session.view().map_view.cell_at(Vector2i.ZERO).render_tile], [10, "landlook-10", content.world.map_by_id("land:0").topology.cell_at(Vector2i.ZERO).render_tile], "seasonal projection changes every land cell to the effective Snow atlas without changing its authored tile number")
+	assert_not_null(session.view().map_view.cell_at(Vector2i(24, 24)), "the north-west projection shifts inward instead of shrinking around the party"); var winter_snapshot := session.snapshot(); winter_snapshot.game_state.world.topology.set_map_landlook("land:0", 10); var winter_session := GameSession.new(); assert_equal(winter_session.restore(content, winter_snapshot).state, SessionStep.State.COMPLETED, "a save-owned seasonal landlook restores through the public session boundary"); assert_equal([winter_session.view().map_view.landlook, winter_session.view().map_view.cell_at(Vector2i.ZERO).tileset_id, winter_session.view().map_view.cell_at(Vector2i.ZERO).render_tile], [10, "landlook-10", content.world.map_by_id("land:0").topology.cell_at(Vector2i.ZERO).render_tile], "seasonal projection changes every land cell to the effective Snow atlas without changing its authored tile number")
 	_restore_fixture_position(session, content, "land:0", Vector2i(88, 1))
 	assert_equal(session.view().map_view.cells().size(), 625, "the detached projection keeps its full dimensions at the east map edge")
 	assert_not_null(session.view().map_view.cell_at(Vector2i(65, 0)), "the east-edge projection shifts west to retain the complete viewport")
@@ -473,7 +473,7 @@ func _test_terrain_replacement_topology(content: RealmzContent) -> void:
 	var coordinate := Vector2i(4, 4)
 	var source_cell := map.topology.cell_at(coordinate)
 	var world_state := WorldState.new()
-	world_state.replace_terrain(map.id, coordinate, "classic.terrain.200")
+	world_state.topology.replace_terrain(map.id, coordinate, "classic.terrain.200")
 	var closed_cell := map.topology.effective_cell_at(coordinate, world_state)
 	var closed_definition := terrain_set.tile_by_id(200)
 	assert_equal(
@@ -482,7 +482,7 @@ func _test_terrain_replacement_topology(content: RealmzContent) -> void:
 		"an ordinary terrain replacement projects the active landlook's complete movement and LOS facts",
 	)
 	assert_false(map.topology.probe_land_entry(coordinate, world_state).allowed, "a replacement with solid mapstats blocks the authoritative exploration probe")
-	world_state.replace_terrain(map.id, coordinate, "classic.terrain.1")
+	world_state.topology.replace_terrain(map.id, coordinate, "classic.terrain.1")
 	var opened_cell := map.topology.effective_cell_at(coordinate, world_state)
 	var open_definition := terrain_set.tile_by_id(1)
 	assert_equal(

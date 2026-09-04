@@ -112,7 +112,7 @@ static func location_notes_are_valid(content: RealmzContent, state: GameState) -
 		return false
 	var counts: Dictionary = {}
 	var ordinals: Dictionary = {}
-	for note: LocationNoteState in state.world.location_notes():
+	for note: LocationNoteState in state.world.exploration.location_notes():
 		var map := content.world.map_by_id(note.map_id)
 		if map == null or map.level_type != note.map_kind or map.level_index != note.level_index or note.native_location_id != LocationNoteState.native_id_for(map.level_index, note.coordinate) or map.topology.cell_at(note.coordinate) == null or note.text.is_empty() or not LocationNoteState.text_is_valid(note.text):
 			return false
@@ -129,7 +129,7 @@ static func location_notes_are_valid(content: RealmzContent, state: GameState) -
 static func boat_overlays_are_valid(content: RealmzContent, state: GameState) -> bool:
 	if content == null or state == null:
 		return false
-	for key_value: Variant in state.world.boat_presence_overrides().keys():
+	for key_value: Variant in state.world.topology.boat_presence_overrides().keys():
 		var key := String(key_value)
 		var separator := key.rfind(":")
 		if separator <= 0:
@@ -151,7 +151,7 @@ static func journal_messages_are_valid(content: RealmzContent, state: GameState)
 static func acquired_player_maps_are_valid(content: RealmzContent, state: GameState) -> bool:
 	if content == null or state == null:
 		return false
-	for player_map_id: String in state.world.acquired_map_ids():
+	for player_map_id: String in state.world.exploration.acquired_map_ids():
 		if content.world.player_map_by_id(player_map_id) == null:
 			return false
 	return true

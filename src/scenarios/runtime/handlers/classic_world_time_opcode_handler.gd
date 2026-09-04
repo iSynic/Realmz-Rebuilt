@@ -79,10 +79,10 @@ func _change_land_look(action: ClassicActionDefinition) -> ScenarioRuntimeOperat
 	var map := _content.world.map_by_type_and_index(&"land", action.extra_code[2])
 	if map == null or _content.world.battle_terrain_set_by_landlook(action.extra_code[0]) == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_land_look", "Classic opcode 57 references an unavailable land level or landlook.")
-	var previous_landlook := _game_state.world.map_landlook(map)
-	var previous_dark := _game_state.world.map_is_dark(map)
-	_game_state.world.set_map_landlook(map.id, action.extra_code[0])
-	_game_state.world.set_map_darkness(map.id, action.extra_code[1] != 0)
+	var previous_landlook := _game_state.world.topology.map_landlook(map)
+	var previous_dark := _game_state.world.topology.map_is_dark(map)
+	_game_state.world.topology.set_map_landlook(map.id, action.extra_code[0])
+	_game_state.world.topology.set_map_darkness(map.id, action.extra_code[1] != 0)
 	return ScenarioRuntimeOperationResult.completed(map.id, [DomainEvent.new(&"map_appearance_changed", {"mapId": map.id, "previousLandlook": previous_landlook, "landlook": action.extra_code[0], "previousDark": previous_dark, "dark": action.extra_code[1] != 0, "offscreen": map.id != _game_state.party.map_id, "source": "classic-opcode-57"}), DomainEvent.new(&"world_projection_invalidated", {"mapId": map.id, "reason": "map-appearance"})])
 
 
@@ -105,7 +105,7 @@ func _save_or_restore_party_position(action: ClassicActionDefinition) -> Scenari
 			var source_coordinate := _game_state.party.coordinate
 			_game_state.party.map_id = target_map.id
 			_game_state.party.coordinate = _game_state.saved_party_coordinate
-			_game_state.world.mark_visited(target_map.id, _game_state.saved_party_coordinate)
+			_game_state.world.exploration.mark_visited(target_map.id, _game_state.saved_party_coordinate)
 			return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"party_position_restored", {"fromMapId": source_map_id, "fromX": source_coordinate.x, "fromY": source_coordinate.y, "mapId": target_map.id, "x": _game_state.saved_party_coordinate.x, "y": _game_state.saved_party_coordinate.y, "levelType": String(target_map.level_type), "suppressActionPointDestination": true, "source": "classic-opcode-70"}), DomainEvent.new(&"world_projection_invalidated", {"mapId": target_map.id, "reason": "party-position-restore"})])
 	return ScenarioRuntimeOperationResult.failed(&"invalid_party_position_mode", "Classic opcode 70 requires save or restore mode.")
 
@@ -122,7 +122,7 @@ func _alter_random_region_geometry(action: ClassicActionDefinition) -> ScenarioR
 	var region := null if map == null else map.random_region_by_index(region_index)
 	if region == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_random_region", "Classic opcode 92 references an unavailable random rectangle.")
-	var previous := _game_state.world.random_region(region)
+	var previous := _game_state.world.triggers.random_region(region)
 	var edges := previous.bounds_edges()
 	if not previous.bounds_overridden:
 		edges = [region.bounds.position.x, region.bounds.end.x - 1, region.bounds.position.y, region.bounds.end.y - 1]
@@ -136,7 +136,7 @@ func _alter_random_region_geometry(action: ClassicActionDefinition) -> ScenarioR
 		return ScenarioRuntimeOperationResult.failed(&"invalid_random_region_geometry", "Classic opcode 92 could not preserve its rectangle geometry.")
 	elif previous.bounds_overridden:
 		updated.set_bounds_edges(edges)
-	_game_state.world.set_random_region(updated)
+	_game_state.world.triggers.set_random_region(updated)
 	return ScenarioRuntimeOperationResult.completed(region.id, [DomainEvent.new(&"random_region_geometry_changed", {"mapId": map.id, "regionId": region.id, "chanceTenThousand": updated.chance_ten_thousand, "bounds": updated.bounds_edges(), "geometryMode": action.extra_code[4], "offscreen": map.id != _game_state.party.map_id, "source": "classic-opcode-92"}), DomainEvent.new(&"world_projection_invalidated", {"mapId": map.id, "reason": "random-region"})])
 
 
@@ -171,8 +171,8 @@ func _acquire_player_map(action: ClassicActionDefinition, request_id: String) ->
 	var definition := _content.world.player_map_by_classic_id(classic_id)
 	if definition == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_player_map", "Classic opcode 29 references unavailable player-map record %d." % classic_id)
-	var already_acquired: bool = _game_state.world.has_map(definition.id)
-	_game_state.world.acquire_map(definition.id)
+	var already_acquired: bool = _game_state.world.exploration.has_map(definition.id)
+	_game_state.world.exploration.acquire_map(definition.id)
 	var event_payload := {"playerMapId": definition.id, "classicId": definition.classic_id, "name": definition.name, "alreadyAcquired": already_acquired, "source": "classic"}
 	if action.operand_id >= 0:
 		event_payload.merge({"notificationText": PLAYER_MAP_ACQUIRED_TEXT, "notificationSoundId": PLAYER_MAP_ACQUIRED_SOUND_ID})
@@ -202,7 +202,7 @@ func _move_between_maps(action: ClassicActionDefinition, dungeon_move: bool, act
 	var source_coordinate := _game_state.party.coordinate
 	_game_state.party.map_id = target_map.id
 	_game_state.party.coordinate = coordinate
-	_game_state.world.mark_visited(target_map.id, coordinate)
+	_game_state.world.exploration.mark_visited(target_map.id, coordinate)
 	if dungeon_move and target_type == &"dungeon":
 		_game_state.dungeon_heading = absi(authored_heading)
 		_game_state.dungeon_multiview = authored_heading >= 0
@@ -231,13 +231,13 @@ func _mutate_random_region(action: ClassicActionDefinition, dungeon: bool) -> Sc
 	var region := map.random_region_by_index(action.extra_code[1])
 	if region == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_random_region", "Classic random-region mutation references unavailable rectangle %d." % action.extra_code[1])
-	var previous := _game_state.world.random_region(region)
+	var previous := _game_state.world.triggers.random_region(region)
 	var battle_min := previous.battle_minimum if action.extra_code[3] < 0 else action.extra_code[3]
 	var battle_max := previous.battle_maximum if action.extra_code[4] < 0 else action.extra_code[4]
 	var updated := RandomRegionState.new(region.id, action.extra_code[2], battle_min, battle_max, previous.random_door_percents(), region.bounds, previous.bounds_overridden)
 	if previous.bounds_overridden:
 		updated.set_bounds_edges(previous.bounds_edges())
-	_game_state.world.set_random_region(updated)
+	_game_state.world.triggers.set_random_region(updated)
 	return ScenarioRuntimeOperationResult.completed(updated.id, [DomainEvent.new(&"random_region_changed", {"regionId": updated.id, "chanceTenThousand": updated.chance_ten_thousand, "battleMinimum": updated.battle_minimum, "battleMaximum": updated.battle_maximum})])
 
 
@@ -250,7 +250,7 @@ func _mutate_tile(action: ClassicActionDefinition) -> ScenarioRuntimeOperationRe
 	if map == null or map.topology.cell_at(coordinate) == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_map_cell", "Classic tile mutation references an unavailable map cell.")
 	var terrain_id := "classic.terrain.%d" % action.extra_code[3]
-	_game_state.world.replace_terrain(map.id, coordinate, terrain_id)
+	_game_state.world.topology.replace_terrain(map.id, coordinate, terrain_id)
 	return ScenarioRuntimeOperationResult.completed(terrain_id, [DomainEvent.new(&"tile_replaced", {"mapId": map.id, "x": coordinate.x, "y": coordinate.y, "terrainId": terrain_id, "source": "classic"})])
 
 
@@ -280,7 +280,7 @@ func _mutate_triggers(action: ClassicActionDefinition) -> ScenarioRuntimeOperati
 		var trigger := _content.trigger_by_map_record(map.id, record_index)
 		if trigger == null:
 			continue
-		_game_state.world.set_trigger_chance(trigger.id, action.extra_code[2])
+		_game_state.world.triggers.set_trigger_chance(trigger.id, action.extra_code[2])
 		changed.append(trigger.id)
 	return ScenarioRuntimeOperationResult.completed(changed, [DomainEvent.new(&"trigger_chances_changed", {"triggerIds": changed, "chancePercent": action.extra_code[2]})])
 
@@ -314,7 +314,7 @@ func _shift_party(action: ClassicActionDefinition) -> ScenarioRuntimeOperationRe
 	if current_map.topology.cell_at(target_coordinate) == null:
 		return ScenarioRuntimeOperationResult.failed(&"shift_out_of_bounds", "Classic opcode 61 shifts the party outside the current map.")
 	_game_state.party.coordinate = target_coordinate
-	_game_state.world.mark_visited(current_map.id, target_coordinate)
+	_game_state.world.exploration.mark_visited(current_map.id, target_coordinate)
 	var committed_delta := target_coordinate - source_coordinate
 	return ScenarioRuntimeOperationResult.completed(target_coordinate, [DomainEvent.new(&"party_shifted", {
 		"mapId": current_map.id,
@@ -392,7 +392,7 @@ func _back_up_party() -> ScenarioRuntimeOperationResult:
 	if current_map.topology.cell_at(target_coordinate) == null:
 		return ScenarioRuntimeOperationResult.failed(&"backup_out_of_bounds", "Classic opcode 101 backs the party outside the current map.")
 	_game_state.party.coordinate = target_coordinate
-	_game_state.world.mark_visited(current_map.id, target_coordinate)
+	_game_state.world.exploration.mark_visited(current_map.id, target_coordinate)
 	return ScenarioRuntimeOperationResult.completed(target_coordinate, [DomainEvent.new(&"party_backed_up", {
 		"mapId": current_map.id,
 		"sourceX": source_coordinate.x,
@@ -414,10 +414,10 @@ func _set_map_darkness(action: ClassicActionDefinition) -> ScenarioRuntimeOperat
 	if map == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_map", "Classic opcode 106 requires the party's current map.")
 	var dark := action.extra_code[0] == 2
-	var unchanged := _game_state.world.map_is_dark(map) == dark
+	var unchanged := _game_state.world.topology.map_is_dark(map) == dark
 	if unchanged and action.extra_code[1] != 0:
 		return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"map_darkness_unchanged", {"mapId": map.id, "dark": dark})], ScenarioVmDirective.finish())
-	_game_state.world.set_map_darkness(map.id, dark)
+	_game_state.world.topology.set_map_darkness(map.id, dark)
 	return ScenarioRuntimeOperationResult.completed(dark, [DomainEvent.new(&"map_darkness_changed", {"mapId": map.id, "dark": dark, "source": "classic"})])
 
 

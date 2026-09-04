@@ -63,7 +63,7 @@ func effective_cell_at(coordinate: Vector2i, world_state: WorldState) -> MapCell
 	if cell == null or world_state == null or _compact_map_id.is_empty():
 		return cell
 	cell = _terrain_replacement_cell(cell, world_state)
-	match world_state.boat_presence_state(_compact_map_id, coordinate):
+	match world_state.topology.boat_presence_state(_compact_map_id, coordinate):
 		0:
 			return cell if _boat_removed_profile == null else _boat_removed_profile.apply_to(cell)
 		1:
@@ -73,15 +73,15 @@ func effective_cell_at(coordinate: Vector2i, world_state: WorldState) -> MapCell
 
 
 func _terrain_replacement_cell(cell: MapCell, world_state: WorldState) -> MapCell:
-	if not world_state.has_terrain_override(_compact_map_id, cell.coordinate):
+	if not world_state.topology.has_terrain_override(_compact_map_id, cell.coordinate):
 		return cell
-	var raw_tile := world_state.classic_tile_for(_compact_map_id, cell)
+	var raw_tile := world_state.topology.classic_tile_for(_compact_map_id, cell)
 	if raw_tile < 0:
 		return cell
-	var tile_id := WorldState.normalized_classic_land_tile(raw_tile)
+	var tile_id := ClassicLandTileRules.normalized_tile(raw_tile)
 	if tile_id < 0 or tile_id > 200:
 		return cell
-	var landlook := world_state.map_landlook_for(_compact_map_id, _authored_landlook)
+	var landlook := world_state.topology.map_landlook_for(_compact_map_id, _authored_landlook)
 	var terrain_set := _land_terrain_sets_by_landlook.get(landlook) as BattleTerrainSetDefinition
 	if terrain_set == null:
 		return cell
@@ -123,7 +123,7 @@ func probe_land_entry(coordinate: Vector2i, world_state: WorldState, party_in_bo
 	var secret := cell.feature_by_kind(&"secret")
 	var concealed_land_secret := secret != null and secret.orientation.is_empty()
 	if concealed_land_secret:
-		if world_state.secret_is_discovered(secret.id, secret.initial_state == &"revealed"):
+		if world_state.topology.secret_is_discovered(secret.id, secret.initial_state == &"revealed"):
 			return TopologyMoveResult.permitted(cell)
 	# Castle overlays placed Data DD records into the land field as door-band
 	# values and enters that branch before ordinary boat/terrain collision. An
@@ -196,7 +196,7 @@ func has_line_of_sight(from: Vector2i, to: Vector2i, world_state: WorldState) ->
 func visible_cells(origin: Vector2i, radius: int, world_state: WorldState, use_los: bool, ignore_blockers: bool = false) -> Array[Vector2i]:
 	var cache_key := ""
 	if use_los and world_state != null:
-		cache_key = "%d:%d:%d,%d:%d:%d" % [world_state.get_instance_id(), world_state.topology_revision(), origin.x, origin.y, radius, int(ignore_blockers)]
+		cache_key = "%d:%d:%d,%d:%d:%d" % [world_state.get_instance_id(), world_state.topology.revision(), origin.x, origin.y, radius, int(ignore_blockers)]
 		if _visibility_cache.has(cache_key):
 			var cached: Array[Vector2i] = _visibility_cache[cache_key]
 			return cached
@@ -391,9 +391,9 @@ static func _cell_blocks_los(cell: MapCell, world_state: WorldState) -> bool:
 	if not cell.blocks_los:
 		return false
 	for feature: MapFeature in cell.features():
-		if feature.kind == &"door" and world_state.door_is_open(feature.id, feature.initial_state == &"open"):
+		if feature.kind == &"door" and world_state.topology.door_is_open(feature.id, feature.initial_state == &"open"):
 			return false
-		if feature.kind == &"secret" and world_state.secret_is_discovered(feature.id, feature.initial_state == &"revealed"):
+		if feature.kind == &"secret" and world_state.topology.secret_is_discovered(feature.id, feature.initial_state == &"revealed"):
 			return false
 	return true
 
@@ -401,9 +401,9 @@ static func _cell_blocks_los(cell: MapCell, world_state: WorldState) -> bool:
 static func _edge_blocks_los(edge: MapEdge, world_state: WorldState) -> bool:
 	if edge == null or not edge.blocks_los:
 		return false
-	if not edge.door_id.is_empty() and world_state.door_is_open(edge.door_id):
+	if not edge.door_id.is_empty() and world_state.topology.door_is_open(edge.door_id):
 		return false
-	if not edge.secret_id.is_empty() and world_state.secret_is_discovered(edge.secret_id, edge.initially_discovered):
+	if not edge.secret_id.is_empty() and world_state.topology.secret_is_discovered(edge.secret_id, edge.initially_discovered):
 		return false
 	return true
 

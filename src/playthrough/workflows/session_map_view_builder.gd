@@ -25,7 +25,7 @@ static func build_map_view(context: SessionWorkflowContext, projection_size: Vec
 	var bounds := Rect2i(first_x, first_y, width, height)
 	var cells: Array[MapCellView] = []
 	var window: RefCounted
-	var cache_key := "%s:%d:%d:%d,%d:%d,%d,%d,%d:%d" % [map.id, state.world.topology_revision(), state.world.exploration_revision(), state.party.coordinate.x, state.party.coordinate.y, bounds.position.x, bounds.position.y, bounds.size.x, bounds.size.y, int(state.party.conditions.is_active(ConditionRules.PARTY_WIZARDS_EYE))]
+	var cache_key := "%s:%d:%d:%d,%d:%d,%d,%d,%d:%d" % [map.id, state.world.topology.revision(), state.world.exploration.revision(), state.party.coordinate.x, state.party.coordinate.y, bounds.position.x, bounds.position.y, bounds.size.x, bounds.size.y, int(state.party.conditions.is_active(ConditionRules.PARTY_WIZARDS_EYE))]
 	if window_cache.has(cache_key):
 		window = window_cache[cache_key]
 	elif previous_map_view != null and previous_map_view.map_window != null and presentation_delta != null:
@@ -41,7 +41,7 @@ static func build_map_view(context: SessionWorkflowContext, projection_size: Vec
 			if cell != null:
 				var reusable := previous_map_view.map_window.retained_cell_at(coordinate) as MapCellView
 				var is_visible := not map.uses_los or visible.has(coordinate)
-				var was_visited := state.world.was_visited(map.id, coordinate)
+				var was_visited := state.world.exploration.was_visited(map.id, coordinate)
 				if reusable != null and cell.is_path and reusable.visited != was_visited:
 					reusable = null
 				replacements[coordinate] = reusable.detached_with_visibility(is_visible, was_visited) if reusable != null else _cached_cell_view(context, map, cell, is_visible, cell_cache)
@@ -64,14 +64,14 @@ static func build_map_view(context: SessionWorkflowContext, projection_size: Vec
 	for direction: Vector2i in directions:
 		var probe := context.content.world.probe_movement(state.party.map_id, state.party.coordinate, direction, state.world, state.party_in_boat)
 		movement_options[MapTopology.direction_name(direction)] = {"allowed": probe.allowed, "reason": String(probe.reason)}
-	var dark := state.world.map_is_dark(map)
+	var dark := state.world.topology.map_is_dark(map)
 	var darkness_level := SessionViewProjectionPolicy.classic_darkness_level(state.party.conditions.value(ConditionRules.PARTY_TORCH_LIT)) if dark else -1
 	var visited: Array[Vector2i] = []
 	var seen: Array[Vector2i] = []
 	if presentation_delta == null:
-		visited = state.world.visited_coordinates(map.id)
-		seen = state.world.seen_coordinates(map.id)
-	var result := MapView.new(map.id, map.name, map.level_type, map.topology.width, map.topology.height, state.party.coordinate, cells, dark, visited, movement_options, state.last_move_direction, state.world.map_landlook(map), state.dungeon_heading, state.dungeon_multiview, state.party.conditions.is_active(ConditionRules.PARTY_WIZARDS_EYE), map.base_scale, state.xy_display_hidden, state.compass_enabled, darkness_level, map.uses_los, seen, presentation_delta, window, _effective_random_region_bounds(context, map))
+		visited = state.world.exploration.visited_coordinates(map.id)
+		seen = state.world.exploration.seen_coordinates(map.id)
+	var result := MapView.new(map.id, map.name, map.level_type, map.topology.width, map.topology.height, state.party.coordinate, cells, dark, visited, movement_options, state.last_move_direction, state.world.topology.map_landlook(map), state.dungeon_heading, state.dungeon_multiview, state.party.conditions.is_active(ConditionRules.PARTY_WIZARDS_EYE), map.base_scale, state.xy_display_hidden, state.compass_enabled, darkness_level, map.uses_los, seen, presentation_delta, window, _effective_random_region_bounds(context, map))
 	result.inherit_visibility(previous_map_view)
 	return result
 
@@ -79,7 +79,7 @@ static func build_map_view(context: SessionWorkflowContext, projection_size: Vec
 static func _effective_random_region_bounds(context: SessionWorkflowContext, map: MapDefinition) -> Array[Rect2i]:
 	var result: Array[Rect2i] = []
 	for region: RandomEncounterRegion in map.random_regions():
-		var effective := context.state.world.random_region(region)
+		var effective := context.state.world.triggers.random_region(region)
 		if effective.bounds_overridden:
 			var edges := effective.bounds_edges()
 			result.append(Rect2i(edges[0], edges[2], edges[1] - edges[0] + 1, edges[3] - edges[2] + 1))
@@ -112,7 +112,7 @@ static func build_location_note_map_view(context: SessionWorkflowContext, map: M
 			var cell := map.topology.cell_at(Vector2i(x, y))
 			if cell != null:
 				cells.append(build_cell_view(context, map, cell, true))
-	return MapView.new(map.id, map.name, map.level_type, map.topology.width, map.topology.height, note.coordinate, cells, note.darkness_value > 0, [note.coordinate], {}, Vector2i.ZERO, context.state.world.map_landlook(map), 1, true, false, map.base_scale, false, true, clampi(note.darkness_value, 0, 6))
+	return MapView.new(map.id, map.name, map.level_type, map.topology.width, map.topology.height, note.coordinate, cells, note.darkness_value > 0, [note.coordinate], {}, Vector2i.ZERO, context.state.world.topology.map_landlook(map), 1, true, false, map.base_scale, false, true, clampi(note.darkness_value, 0, 6))
 
 
 static func player_map_shows_party(definition: PlayerMapDefinition, source_map: MapDefinition, party_map_id: String, party_coordinate: Vector2i) -> bool:
@@ -130,34 +130,34 @@ static func build_cell_view(context: SessionWorkflowContext, map: MapDefinition,
 	var edge_passability: Dictionary = {}
 	for direction: StringName in [&"north", &"east", &"south", &"west"]:
 		var edge := cell.edge(direction)
-		var concealed_secret := not edge.secret_id.is_empty() and not context.state.world.secret_is_discovered(edge.secret_id, edge.initially_discovered)
+		var concealed_secret := not edge.secret_id.is_empty() and not context.state.world.topology.secret_is_discovered(edge.secret_id, edge.initially_discovered)
 		edge_kinds[direction] = &"wall" if concealed_secret else edge.kind
 		edge_passability[direction] = false if concealed_secret else edge.passable
 	for feature: MapFeature in cell.features():
-		if feature.kind == &"secret" and not context.state.world.secret_is_discovered(feature.id, feature.initial_state == &"revealed"):
+		if feature.kind == &"secret" and not context.state.world.topology.secret_is_discovered(feature.id, feature.initial_state == &"revealed"):
 			continue
 		if not feature_kinds.has(feature.kind):
 			feature_kinds.append(feature.kind)
 			feature_orientations[feature.kind] = feature.orientation
-	if cell.is_path and context.state.world.was_visited(map.id, cell.coordinate):
+	if cell.is_path and context.state.world.exploration.was_visited(map.id, cell.coordinate):
 		feature_kinds.append(&"discovered_path")
-	var effective_landlook := context.state.world.map_landlook(map)
+	var effective_landlook := context.state.world.topology.map_landlook(map)
 	var tileset_id := "landlook-%d" % effective_landlook if map.level_type == &"land" and effective_landlook >= 0 else cell.tileset_id
 	var render_tile := cell.render_tile
 	var overlay_asset_id := cell.overlay_asset_id
-	if map.level_type == &"land" and context.state.world.has_terrain_override(map.id, cell.coordinate):
-		var raw_tile := context.state.world.classic_tile_for(map.id, cell)
-		overlay_asset_id = WorldState.classic_special_land_overlay(raw_tile)
+	if map.level_type == &"land" and context.state.world.topology.has_terrain_override(map.id, cell.coordinate):
+		var raw_tile := context.state.world.topology.classic_tile_for(map.id, cell)
+		overlay_asset_id = ClassicLandTileRules.special_overlay(raw_tile)
 		if not overlay_asset_id.is_empty():
 			var terrain_set := context.content.world.battle_terrain_set_for_map(map, context.state.world)
 			render_tile = cell.render_tile if terrain_set == null else terrain_set.base_tile
 		else:
-			render_tile = WorldState.normalized_classic_land_tile(raw_tile)
-	return MapCellView.new(cell.coordinate, context.state.world.terrain_for(map.id, cell), render_tile, tileset_id, cell.passable, cell.blocks_los, is_visible, context.state.world.was_visited(map.id, cell.coordinate), not cell.trigger_ids().is_empty(), context.state.world.has_random_region_at(map, cell.coordinate), feature_kinds, feature_orientations, edge_kinds, edge_passability, overlay_asset_id)
+			render_tile = ClassicLandTileRules.normalized_tile(raw_tile)
+	return MapCellView.new(cell.coordinate, context.state.world.topology.terrain_for(map.id, cell), render_tile, tileset_id, cell.passable, cell.blocks_los, is_visible, context.state.world.exploration.was_visited(map.id, cell.coordinate), not cell.trigger_ids().is_empty(), context.state.world.triggers.has_random_region_at(map, cell.coordinate), feature_kinds, feature_orientations, edge_kinds, edge_passability, overlay_asset_id)
 
 
 static func _ensure_cell_cache(context: SessionWorkflowContext, map: MapDefinition, cell_cache: Dictionary) -> void:
-	var signature := "%s:%d:%d:%d" % [map.id, context.state.world.topology_revision(), context.state.world.random_region_bounds_revision(), context.state.world.map_landlook(map)]
+	var signature := "%s:%d:%d:%d" % [map.id, context.state.world.topology.revision(), context.state.world.triggers.random_region_bounds_revision(), context.state.world.topology.map_landlook(map)]
 	if String(cell_cache.get(&"signature", "")) == signature:
 		return
 	cell_cache.clear()
@@ -167,7 +167,7 @@ static func _ensure_cell_cache(context: SessionWorkflowContext, map: MapDefiniti
 
 
 static func _cached_cell_view(context: SessionWorkflowContext, map: MapDefinition, cell: MapCell, is_visible: bool, cell_cache: Dictionary) -> MapCellView:
-	var was_visited := context.state.world.was_visited(map.id, cell.coordinate)
+	var was_visited := context.state.world.exploration.was_visited(map.id, cell.coordinate)
 	var cached := cell_cache.get(cell.coordinate) as MapCellView
 	if cached == null or cell.is_path and cached.visited != was_visited:
 		cached = build_cell_view(context, map, cell, is_visible)

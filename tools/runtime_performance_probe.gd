@@ -262,13 +262,13 @@ func _place_party(session: GameSession, content: RealmzContent, map_id: String, 
 	var map := content.world.map_by_id(map_id); var seeded := 0
 	if map != null:
 		for region: RandomEncounterRegion in map.random_regions():
-			var effective := snapshot.game_state.world.random_region(region)
+			var effective := snapshot.game_state.world.triggers.random_region(region)
 			effective.chance_ten_thousand = 0
-			snapshot.game_state.world.set_random_region(effective)
+			snapshot.game_state.world.triggers.set_random_region(effective)
 		for cell: MapCell in map.topology.cells():
-			snapshot.game_state.world.mark_visited(map_id, cell.coordinate); seeded += 1
+			snapshot.game_state.world.exploration.mark_visited(map_id, cell.coordinate); seeded += 1
 			if seeded >= visited_history_target: break
-	snapshot.game_state.world.mark_visited(map_id, coordinate)
+	snapshot.game_state.world.exploration.mark_visited(map_id, coordinate)
 	return session.restore(content, snapshot).state == SessionStep.State.COMPLETED
 
 

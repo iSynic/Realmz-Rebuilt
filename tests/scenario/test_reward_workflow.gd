@@ -144,7 +144,7 @@ func _test_experience_level_and_spell_restore(content: RealmzContent) -> void:
 	var spell_boundary := ScenarioVmSnapshot.from_data(JSON.parse_string(JSON.stringify(restored_vm.snapshot().to_data())))
 	assert_not_null(spell_boundary, "the spell-selection stage is independently serializable")
 	var completed := restored_vm.resume(InteractionResponse.from_data(spell_stage.interaction.request_id, InteractionRequest.LEVEL_UP, {"action": "confirm-spells", "characterId": character.id, "spellIds": []}), restored_api)
-	assert_equal([completed.state, saved_game.world.trigger_is_disabled("ap.reward-level"), completed.events.any(func(event: DomainEvent) -> bool: return event.kind == &"classic_control_marker")], [ScenarioVmResult.State.COMPLETED, true, false], "a completed staged scenario reward reaches opcode 25, removes its issuing AP, and terminates before any later Encounter code")
+	assert_equal([completed.state, saved_game.world.triggers.trigger_is_disabled("ap.reward-level"), completed.events.any(func(event: DomainEvent) -> bool: return event.kind == &"classic_control_marker")], [ScenarioVmResult.State.COMPLETED, true, false], "a completed staged scenario reward reaches opcode 25, removes its issuing AP, and terminates before any later Encounter code")
 	assert_equal([saved_game.party.character_by_id(character.id).level, saved_game.party.character_by_id(character.id).experience], [5, -23_001], "all earned levels survive the complete continuation with a negative balance toward the next level")
 
 

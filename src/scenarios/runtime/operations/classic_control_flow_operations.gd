@@ -30,7 +30,7 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 			var trigger_id := _opcode_25_trigger_id(context)
 			var events: Array[DomainEvent] = []
 			if not trigger_id.is_empty():
-				_game_state.world.disable_trigger(trigger_id)
+				_game_state.world.triggers.disable_trigger(trigger_id)
 				events.append(DomainEvent.new(&"trigger_disabled", {"triggerId": trigger_id, "source": "classic"}))
 			return ScenarioRuntimeOperationResult.completed(true, events, ScenarioVmDirective.finish_timeline())
 		42:
@@ -69,7 +69,7 @@ func _percent_branch(action: ClassicActionDefinition, context: ScenarioExecution
 		-2:
 			var trigger_id := context.trigger_id
 			if not trigger_id.is_empty():
-				_game_state.world.disable_trigger(trigger_id)
+				_game_state.world.triggers.disable_trigger(trigger_id)
 			return ScenarioRuntimeOperationResult.completed(true, [event], ScenarioVmDirective.finish())
 		1:
 			var branch := _branch_from_values(action.extra_code, false, context)
@@ -90,7 +90,7 @@ func _branch_on_difficulty(action: ClassicActionDefinition, context: ScenarioExe
 	match action.extra_code[1]:
 		-2:
 			if not context.trigger_id.is_empty():
-				_game_state.world.disable_trigger(context.trigger_id)
+				_game_state.world.triggers.disable_trigger(context.trigger_id)
 			return ScenarioRuntimeOperationResult.completed(true, [event], ScenarioVmDirective.finish_timeline())
 		1:
 			var branch := _branch_from_values(action.extra_code, action.gosub, context)
@@ -126,7 +126,7 @@ func _branch_on_faced_tile_source_defect(action: ClassicActionDefinition, contex
 	match action.extra_code[1]:
 		-2:
 			if not context.trigger_id.is_empty():
-				_game_state.world.disable_trigger(context.trigger_id)
+				_game_state.world.triggers.disable_trigger(context.trigger_id)
 			return ScenarioRuntimeOperationResult.completed(true, [event], ScenarioVmDirective.finish_timeline())
 		1:
 			var branch := _branch_from_values(action.extra_code, action.gosub, context)

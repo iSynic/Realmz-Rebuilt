@@ -65,7 +65,7 @@ func _populate_battlefield(combat: CombatState, content: RealmzContent, game_sta
 		var terrain_set: BattleTerrainSetDefinition
 		if content != null:
 			var source_map := content.world.map_by_id(combat.battlefield.map_id)
-			var landlook := -1 if source_map == null else source_map.landlook if game_state == null else game_state.world.map_landlook(source_map)
+			var landlook := -1 if source_map == null else source_map.landlook if game_state == null else game_state.world.topology.map_landlook(source_map)
 			if source_map != null and source_map.level_type == &"land" and landlook >= 0:
 				upper_tileset_id = "landlook-%d" % landlook
 			terrain_set = content.world.battle_terrain_set_for_map(source_map, null if game_state == null else game_state.world)

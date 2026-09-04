@@ -23,7 +23,7 @@ static func warp(context: SessionWorkflowContext, map_id: String, coordinate: Ve
 	context.state.party.map_id = map.id
 	context.state.party.coordinate = coordinate
 	context.state.last_move_direction = Vector2i.ZERO
-	context.state.world.mark_visited(map.id, coordinate)
+	context.state.world.exploration.mark_visited(map.id, coordinate)
 	return SessionWorkflowResult.completed([DomainEvent.new(&"debug_party_warped", {"fromMapId": source_map, "fromX": source_coordinate.x, "fromY": source_coordinate.y, "mapId": map.id, "x": coordinate.x, "y": coordinate.y})])
 
 
@@ -39,7 +39,7 @@ static func noclip_step(context: SessionWorkflowContext, direction: Vector2i) ->
 		return SessionWorkflowResult.failed(&"debug_exploration_required", "No-clip movement is available only at a committed exploration boundary.")
 	context.state.party.coordinate = target
 	context.state.last_move_direction = direction
-	context.state.world.mark_visited(map.id, target)
+	context.state.world.exploration.mark_visited(map.id, target)
 	return SessionWorkflowResult.completed([DomainEvent.new(&"debug_party_noclip_moved", {"fromMapId": map.id, "fromX": source.x, "fromY": source.y, "mapId": map.id, "x": target.x, "y": target.y})])
 
 

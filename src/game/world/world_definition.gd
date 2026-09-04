@@ -57,7 +57,7 @@ func battle_terrain_set_for_map(map: MapDefinition, world_state: WorldState) -> 
 	if map == null:
 		return null
 	if map.level_type == &"land":
-		var landlook := map.landlook if world_state == null else world_state.map_landlook(map)
+		var landlook := map.landlook if world_state == null else world_state.topology.map_landlook(map)
 		return _battle_terrain_sets_by_landlook.get(landlook) as BattleTerrainSetDefinition
 	return battle_terrain_set_by_id(map.battle_terrain_set_id)
 

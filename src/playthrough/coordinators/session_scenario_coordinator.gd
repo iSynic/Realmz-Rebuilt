@@ -229,15 +229,15 @@ func apply_trigger_destination(trigger: TriggerDefinition, events: Array[DomainE
 	var source_coordinate = _context.state.party.coordinate
 	_context.state.party.map_id = destination.map_id
 	_context.state.party.coordinate = destination.coordinate
-	_context.state.world.mark_visited(destination.map_id, destination.coordinate)
+	_context.state.world.exploration.mark_visited(destination.map_id, destination.coordinate)
 	events.append(DomainEvent.new(&"party_moved", {"fromMapId": source_map_id, "fromX": source_coordinate.x, "fromY": source_coordinate.y, "mapId": destination.map_id, "x": destination.coordinate.x, "y": destination.coordinate.y, "source": "action-point-destination", "triggerId": trigger.id}))
 	return true
 
 
 func finalize_completed_trigger(trigger: TriggerDefinition, events: Array[DomainEvent]) -> void:
-	if events_keep_trigger(events, trigger.id) or _context.state.world.trigger_is_disabled(trigger.id):
+	if events_keep_trigger(events, trigger.id) or _context.state.world.triggers.trigger_is_disabled(trigger.id):
 		return
-	_context.state.world.disable_trigger(trigger.id)
+	_context.state.world.triggers.disable_trigger(trigger.id)
 	events.append(DomainEvent.new(&"trigger_disabled", {"triggerId": trigger.id, "source": "classic-default-one-shot"}))
 
 

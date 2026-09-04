@@ -180,9 +180,9 @@ func _place_party(session: GameSession, content: RealmzContent, coordinate: Vect
 	if map != null:
 		var seeded := 0
 		for cell: MapCell in map.topology.cells():
-			snapshot.game_state.world.mark_visited(map.id, cell.coordinate); seeded += 1
+			snapshot.game_state.world.exploration.mark_visited(map.id, cell.coordinate); seeded += 1
 			if seeded >= visited_history_target: break
-	snapshot.game_state.world.mark_visited(snapshot.game_state.party.map_id, coordinate)
+	snapshot.game_state.world.exploration.mark_visited(snapshot.game_state.party.map_id, coordinate)
 	return session.restore(content, snapshot).state == SessionStep.State.COMPLETED
 
 

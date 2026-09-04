@@ -23,13 +23,13 @@ func begin_contextual_encounter() -> SessionCoordinatorResult:
 	var selected_program_id := ""
 	var selected_region_id := ""
 	var events: Array[DomainEvent] = []
-	var region_ids: Array[String] = [] if cell == null else _context.state.world.random_region_ids_at(map, encounter_coordinate)
+	var region_ids: Array[String] = [] if cell == null else _context.state.world.triggers.random_region_ids_at(map, encounter_coordinate)
 	for offset: int in region_ids.size():
 		var region_id: String = region_ids[region_ids.size() - 1 - offset]
 		var region := map.random_region_by_id(region_id)
 		if region == null:
 			return SessionCoordinatorResult.failed(&"invalid_random_region", "Encounter references an unavailable random rectangle.", events)
-		var effective := _context.state.world.random_region(region)
+		var effective := _context.state.world.triggers.random_region(region)
 		if effective.chance_ten_thousand >= 0:
 			continue
 		var door_ids := region.random_doors()
@@ -45,7 +45,7 @@ func begin_contextual_encounter() -> SessionCoordinatorResult:
 			if not fired:
 				continue
 			effective.consume_random_door(door_index)
-			_context.state.world.set_random_region(effective)
+			_context.state.world.triggers.set_random_region(effective)
 			selected_program_id = "xap:%d" % door_id
 			selected_region_id = region.id
 	var used_default_program := selected_program_id.is_empty()
@@ -288,11 +288,11 @@ func continue_post_move(events: Array[DomainEvent]) -> SessionCoordinatorResult:
 		var trigger_index = exploration.trigger_index
 		var trigger_id: String = String(trigger_ids[trigger_index])
 		var trigger = _context.content.trigger_by_id(trigger_id)
-		if trigger == null or _context.state.world.trigger_is_disabled(trigger_id):
+		if trigger == null or _context.state.world.triggers.trigger_is_disabled(trigger_id):
 			exploration.trigger_index = trigger_ids.size()
 			break
-		var trigger_chance = _context.state.world.trigger_chance(trigger.id, trigger.chance_percent)
-		if (not trigger.active and not _context.state.world.trigger_chance_is_overridden(trigger_id)) or trigger_chance < 1:
+		var trigger_chance = _context.state.world.triggers.trigger_chance(trigger.id, trigger.chance_percent)
+		if (not trigger.active and not _context.state.world.triggers.trigger_chance_is_overridden(trigger_id)) or trigger_chance < 1:
 			exploration.trigger_index = trigger_ids.size()
 			break
 		if trigger_chance < 100:
@@ -376,7 +376,7 @@ func continue_random_regions(map: MapDefinition, events: Array[DomainEvent]) -> 
 		if region == null:
 			_context.session_continuation.clear()
 			return SessionCoordinatorResult.failed(&"invalid_session_continuation", "Random-region continuation references unavailable content.", events)
-		var effective = _context.state.world.random_region(region)
+		var effective = _context.state.world.triggers.random_region(region)
 		var roll = _context.rng.draw(10_000, StringName("random-region.%s" % region.id))
 		var triggered = roll <= effective.chance_ten_thousand
 		events.append(DomainEvent.new("random_encounter_checked", {"regionId": region.id, "roll": roll, "chanceTenThousand": effective.chance_ten_thousand, "triggered": triggered}))
@@ -391,7 +391,7 @@ func continue_random_regions(map: MapDefinition, events: Array[DomainEvent]) -> 
 				if not door_fired:
 					continue
 				effective.consume_random_door(door_index)
-				_context.state.world.set_random_region(effective)
+				_context.state.world.triggers.set_random_region(effective)
 				var program_id = "xap:%d" % door_ids[door_index]
 				exploration.active_random_program_id = program_id
 				events.append(DomainEvent.new(&"random_door_triggered", {"regionId": region.id, "programId": program_id, "oneShot": door_percents[door_index] > 0}))
@@ -487,7 +487,7 @@ func _begin_boat_choice(result: ExplorationTimeWorkflow.MovementTransitionResult
 
 
 func start_random_battle(region: RandomEncounterRegion, surprise: int, events: Array[DomainEvent]) -> SessionCoordinatorResult:
-	var effective := _context.state.world.random_region(region)
+	var effective := _context.state.world.triggers.random_region(region)
 	var battle_id := _context.rng.draw_between_classic(effective.battle_minimum, effective.battle_maximum, StringName("random-region.%s.battle" % region.id))
 	var battle := _context.content.battle_by_classic_id(absi(battle_id))
 	if battle == null:

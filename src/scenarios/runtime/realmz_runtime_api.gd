@@ -246,7 +246,7 @@ func resume_classic(continuation: ScenarioRuntimeContinuation, response: Interac
 			if response.kind != &"acknowledge" or map_acknowledgement == null or map_acknowledgement.take_note:
 				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Classic player-map display requires an empty acknowledgement response.")
 			var player_map_id := (continuation.body as ScenarioTextContinuationBody).player_map_id
-			if _content.world.player_map_by_id(player_map_id) == null or not _game_state.world.has_map(player_map_id):
+			if _content.world.player_map_by_id(player_map_id) == null or not _game_state.world.exploration.has_map(player_map_id):
 				return ScenarioRuntimeOperationResult.failed(&"invalid_vm_continuation", "Classic player-map continuation references unavailable acquired content.")
 			return ScenarioRuntimeOperationResult.completed(true)
 		ScenarioRuntimeContinuation.CLASSIC_COMBAT, ScenarioRuntimeContinuation.CLASSIC_COMBAT_RETREAT, ScenarioRuntimeContinuation.CLASSIC_COMBAT_AGE, ScenarioRuntimeContinuation.CLASSIC_COMBAT_MACRO, ScenarioRuntimeContinuation.CLASSIC_COMBAT_DEATH_MACRO, ScenarioRuntimeContinuation.CLASSIC_COMBAT_ALLY, ScenarioRuntimeContinuation.CLASSIC_COMBAT_FUMBLE, ScenarioRuntimeContinuation.CLASSIC_REWARD:

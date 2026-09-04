@@ -214,7 +214,7 @@ func _capture_gallery() -> void:
 	var gallery_location_notes: Array[LocationNoteView] = [gallery_view.current_location_note, LocationNoteView.new("land:0", "Land level 0", &"land", 0, Vector2i(4, 6), "A sheltered campsite near the old road.", 0, 1)]; gallery_view.location_notes = gallery_location_notes
 	var gallery_journal_entries: Array[JournalEntryView] = [JournalEntryView.new(4, "The road bends toward the mountain."), JournalEntryView.new(19, "A long authored entry remains readable. " + "The party follows the old ridge road while the storm closes in. ".repeat(8))]; gallery_view.journal_entries = gallery_journal_entries
 	var map_snapshot := _application.session_controller.session().snapshot(); var player_map_definition: PlayerMapDefinition = _application.get("_active_content").world.player_map_by_classic_id(1)
-	map_snapshot.game_state.world.acquire_map(player_map_definition.id)
+	map_snapshot.game_state.world.exploration.acquire_map(player_map_definition.id)
 	var map_session := GameSession.new(); map_session.restore(_application.get("_active_content"), map_snapshot); var map_view := map_session.view()
 	gallery_view.player_map_menu_entries = map_view.player_map_menu_entries; gallery_view.acquired_player_maps = map_view.acquired_player_maps; gallery_view.party_summary.acquired_map_ids = map_view.party_summary.acquired_map_ids
 	_shell.present(gallery_view)

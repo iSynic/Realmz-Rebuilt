@@ -102,12 +102,12 @@ func _respond_boat_choice(response: InteractionResponse) -> SessionCoordinatorRe
 	var events: Array[DomainEvent] = [DomainEvent.new(&"boat_choice_resolved", {"action": String(choice.action), "accepted": answer.accepted})]
 	if choice.action == &"board" and answer.accepted:
 		var boarded_movement := WorldMovementResult.permitted(movement.source_map, movement.target_map, movement.target_coordinate, movement.transition, TopologyMoveResult.permitted(movement.topology_result.target_cell))
-		_context.state.world.set_boat_present(choice.target_map_id, choice.target_coordinate, false)
+		_context.state.world.topology.set_boat_present(choice.target_map_id, choice.target_coordinate, false)
 		_context.state.party_in_boat = true
 		events.append(DomainEvent.new(&"boat_boarded", {"mapId": choice.target_map_id, "x": choice.target_coordinate.x, "y": choice.target_coordinate.y}))
 		return _context.exploration().finish_exploration_movement(ExplorationTimeWorkflow.commit_permitted_move(_context.workflow_context(), boarded_movement, choice.direction, events))
 	if choice.action == &"disembark" and answer.accepted:
-		_context.state.world.set_boat_present(choice.source_map_id, choice.source_coordinate, true)
+		_context.state.world.topology.set_boat_present(choice.source_map_id, choice.source_coordinate, true)
 		_context.state.party_in_boat = false
 		events.append(DomainEvent.new(&"boat_disembarked", {"mapId": choice.source_map_id, "x": choice.source_coordinate.x, "y": choice.source_coordinate.y}))
 	return _context.exploration().finish_exploration_movement(ExplorationTimeWorkflow.commit_blocked_attempt(_context.workflow_context(), movement, events, false))

@@ -1,6 +1,6 @@
 # World and exploration
 
-`MapTopology` is the sole map truth. `WorldState` stores save-owned changes such as visited and seen cells, secrets, doors, terrain replacements, random-region bounds, notes, and player maps. `ExplorationTimeWorkflow` performs movement, search, time, fatigue, camp, rest, and field healing through the session transaction.
+`MapTopology` is the sole immutable map truth. `WorldState` is the small save aggregate around three direct collaborators: `WorldTopologyState` owns terrain, boats, doors, secrets, darkness, and landlook changes; `WorldTriggerState` owns Action Point availability and effective random regions; and `WorldExplorationState` owns visited/seen cells, acquired maps, and player location notes. Their serializers preserve the established flat `worldOverlays` save shape. `ClassicLandTileRules` decodes signed Castle tile identities without retaining playthrough state. `ExplorationTimeWorkflow` performs movement, search, time, fatigue, camp, rest, and field healing through the session transaction.
 
 Input begins with `ExplorationIntents`, whose factories distinguish ordinary movement, overhead dungeon movement, turns, Search, camp/rest/heal, contextual encounters, Torch, and location notes. `ExplorationIntentPayloads` carries only the direction, heading-alignment, turn, or note value; legality remains in the workflow and rules.
 
