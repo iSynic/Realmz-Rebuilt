@@ -84,7 +84,11 @@ var creator_cancel_button: Button
 var setup_inspection_overlay: PanelContainer
 var setup_inspection_body: VBoxContainer
 var character_sheet_scene: PackedScene
+var identity_step_scene_path: String
+var race_caste_step_scene_path: String
 var appearance_step_scene: PackedScene
+var review_step_scene_path: String
+var spells_step_scene_path: String
 
 var setup_inspection_character_id: String = ""
 var creator_step: int = 0

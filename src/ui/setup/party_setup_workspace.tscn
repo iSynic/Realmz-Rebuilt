@@ -20,7 +20,11 @@ mouse_filter = 0
 theme_override_styles/panel = SubResource("SetupSurface")
 script = ExtResource("1_script")
 character_sheet_scene = ExtResource("2_sheet")
+identity_step_scene_path = "res://src/ui/setup/character_creation_identity_step.tscn"
+race_caste_step_scene_path = "res://src/ui/setup/character_creation_race_caste_step.tscn"
 appearance_step_scene = ExtResource("3_appearance")
+review_step_scene_path = "res://src/ui/setup/character_creation_review_step.tscn"
+spells_step_scene_path = "res://src/ui/setup/character_creation_spells_step.tscn"
 
 [node name="ScenarioPartyWorkspace" type="HBoxContainer" parent="."]
 unique_name_in_owner = true

@@ -149,9 +149,21 @@ var setup_inspection_overlay: PanelContainer:
 var character_sheet_scene: PackedScene:
 	get: return _state.character_sheet_scene
 	set(value): _state.character_sheet_scene = value
+var identity_step_scene_path: String:
+	get: return _state.identity_step_scene_path
+	set(value): _state.identity_step_scene_path = value
+var race_caste_step_scene_path: String:
+	get: return _state.race_caste_step_scene_path
+	set(value): _state.race_caste_step_scene_path = value
 var appearance_step_scene: PackedScene:
 	get: return _state.appearance_step_scene
 	set(value): _state.appearance_step_scene = value
+var review_step_scene_path: String:
+	get: return _state.review_step_scene_path
+	set(value): _state.review_step_scene_path = value
+var spells_step_scene_path: String:
+	get: return _state.spells_step_scene_path
+	set(value): _state.spells_step_scene_path = value
 var setup_inspection_character_id: String:
 	get: return _state.setup_inspection_character_id
 	set(value): _state.setup_inspection_character_id = value

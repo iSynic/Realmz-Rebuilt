@@ -1,6 +1,6 @@
 # Runtime performance evidence
 
-Measured through 2026-09-01 with Godot 4.7.1 on Windows and an NVIDIA GeForce RTX 3080 at the canonical 1280x720 and native 3440x1440 profiles. Machine timings are evidence for this pass, not portable guarantees.
+Measured through 2026-09-03 with Godot 4.7.1 on Windows and an NVIDIA GeForce RTX 3080 at the canonical 1280x720 and native 3440x1440 profiles. Machine timings are evidence for this pass, not portable guarantees.
 
 ## Scope and boundaries
 
@@ -28,6 +28,8 @@ The user-provided diagnostic baseline was approximately 9.1 seconds to applicati
 The front door prepares one OGV decoder behind the opaque splash, starts it before reveal, retains it while covered, and reveals active playback. MP3 materialization remains demand-driven. Remaining construction stays on the existing threaded scene-loading boundary.
 
 The 2026-09-03 front-door scene conversion used a controlled three-run comparison against its immediate parent commit because the earlier 38.354 ms first-frame sample was no longer reproducible on the same host. The parent measured 163.854–192.630 ms to first frame, 7,038.000–7,420.576 ms of background loading, and 7,230.192–7,608.897 ms to application readiness. The authored-scene branch measured 160.620–177.842 ms, 6,857.613–7,781.371 ms, and 7,018.000–7,958.842 ms respectively. That overlapping range shows no material startup regression; it is not evidence of a general speedup. Every run kept the menu absent and the launch card present on the first frame, prepared and played exactly one decoder, retained it for five menu seconds, enabled the scenario action, and completed the queued transition.
+
+The five-scene character-creation conversion initially exposed four new step scenes as eager `PackedScene` dependencies and exceeded the startup budget, so those major workspaces were changed to editor-visible scene paths cached on first use; their variable row/component scenes remain exported `PackedScene` dependencies of the owning step. An interleaved three-run comparison against the immediate parent then measured parent medians of 160.338 ms to first frame, 7,349.759 ms of background loading, and 7,555.425 ms to application readiness. The accepted lazy-scene branch measured 155.377 ms, 6,980.143 ms, and 7,135.644 ms respectively. The ranges remained host-variable, so this is evidence of no material regression rather than a claimed speedup. Every run retained the launch-card, single-decoder, enabled-action, and queued-transition invariants.
 
 ## Scenario preparation
 

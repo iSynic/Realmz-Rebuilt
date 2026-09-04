@@ -3,12 +3,12 @@ class_name PartySetupCharacterCreationController
 extends "res://src/ui/controllers/party_setup_controller_component.gd"
 
 const SpellSelectionChrome := preload("res://src/ui/controllers/classic_spell_selection_chrome.gd")
-const SPELL_EFFECT_PREVIEW_SCENE_PATH := "res://src/ui/classic_spell_effect_preview.tscn"
 
 var _assembly: RefCounted
 var _starting_spell_level: int = 0
 var _starting_spell_id: String = ""
 var _appearance_editor: PartySetupAppearanceEditor
+var _step_scene_cache: Dictionary = {}
 
 
 func _init(state: RefCounted, assembly: RefCounted) -> void:
@@ -115,98 +115,26 @@ func render_creator_step() -> void:
 	_update_creator_actions()
 
 func _build_creator_identity() -> void:
-	creator_page.add_child(_label("Identity", GOLD, 20))
-	var stage := HBoxContainer.new()
-	stage.name = "CreatorIdentityStage"
-	stage.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	stage.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	stage.add_theme_constant_override("separation", 12)
-	creator_page.add_child(stage)
-	var preview := _add_creator_panel(stage, "IdentityPreview", "Character File", 0.65)
-	var preview_name := _add_label(preview, draft_name if not draft_name.is_empty() else "Unnamed adventurer", GOLD, 18)
-	preview_name.name = "IdentityPreviewName"
-	var preview_gender := _add_label(preview, "Male" if draft_gender == 1 else "Female", Color("e0e2e5"), 14)
-	preview_gender.name = "IdentityPreviewGender"
-	var preview_level := _add_label(preview, "Starting level %d" % draft_starting_level, Color("e0e2e5"), 14)
-	preview_level.name = "IdentityPreviewLevel"
-	_add_label(preview, "Portrait and battle icon are chosen in Appearance.", MUTED, 12)
-	var form := _add_creator_panel(stage, "IdentityFields", "Identity Record", 1.35)
-	form.add_child(_label("Name", MUTED, 12))
-	name_edit = LineEdit.new()
-	name_edit.name = "CharacterName"
-	name_edit.theme_type_variation = &"ClassicTheldrowLineEdit"
-	name_edit.placeholder_text = "Character name"
-	name_edit.max_length = 24
-	name_edit.text = draft_name
-	name_edit.text_changed.connect(func(value: String) -> void:
-		draft_name = value
-		preview_name.text = value.strip_edges() if not value.strip_edges().is_empty() else "Unnamed adventurer"
-	)
-	form.add_child(name_edit)
-	form.add_child(_label("Gender", MUTED, 12))
-	gender_option = OptionButton.new()
-	gender_option.name = "CharacterGender"
-	gender_option.theme_type_variation = &"ClassicTheldrowOptionButton"
-	gender_option.add_item("Male", 1)
-	gender_option.add_item("Female", 2)
-	gender_option.select(0 if draft_gender == 1 else 1)
-	gender_option.item_selected.connect(func(_index: int) -> void:
-		draft_gender = gender_option.get_selected_id()
-		preview_gender.text = "Male" if draft_gender == 1 else "Female"
-	)
-	form.add_child(gender_option)
-	form.add_child(_label("Starting Level", MUTED, 12))
-	starting_level_option = OptionButton.new()
-	starting_level_option.name = "StartingLevel"
-	starting_level_option.theme_type_variation = &"ClassicTheldrowOptionButton"
+	var step = _step_scene(identity_step_scene_path).instantiate()
+	creator_page.add_child(step)
+	var allowed_levels: Array[int] = []
 	var maximum_level := view.campaign_summary.maximum_level if view != null and view.campaign_summary != null else 0
 	for level: int in CharacterRules.STARTING_LEVELS:
 		if maximum_level > 0 and level > maximum_level:
 			continue
-		starting_level_option.add_item("Starting level %d" % level, level)
-	var selected_index := starting_level_option.get_item_index(draft_starting_level)
-	if selected_index < 0:
-		selected_index = 0
-		draft_starting_level = starting_level_option.get_item_id(0)
-	starting_level_option.select(selected_index)
-	starting_level_option.item_selected.connect(func(_index: int) -> void:
-		draft_starting_level = starting_level_option.get_selected_id()
-		preview_level.text = "Starting level %d" % draft_starting_level
+		allowed_levels.append(level)
+	if not allowed_levels.has(draft_starting_level):
+		draft_starting_level = allowed_levels[0]
+	step.bind_identity(draft_name, draft_gender, draft_starting_level, allowed_levels, _creation_context())
+	step.identity_changed.connect(func(next_name: String, next_gender: int, next_level: int) -> void:
+		draft_name = next_name
+		draft_gender = next_gender
+		draft_starting_level = next_level
 	)
-	starting_level_option.tooltip_text = "Castle offers fixed starting levels and runs every intervening ordinary level-up roll. Campaign level restrictions remove unavailable choices."
-	form.add_child(starting_level_option)
-	var context := _add_label(form, _creation_context(), MUTED, 12)
-	context.name = "IdentityCampaignContext"
+	name_edit = step.character_name_control()
+	gender_option = step.gender_control()
+	starting_level_option = step.starting_level_control()
 	_focus_first(creator_page)
-
-func _add_creator_panel(parent: Container, node_name: String, title: String, stretch: float = 1.0, title_asset_id: StringName = &"") -> VBoxContainer:
-	var panel := PanelContainer.new()
-	panel.name = node_name
-	panel.theme_type_variation = &"ClassicInset"
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	panel.size_flags_stretch_ratio = stretch
-	var body := VBoxContainer.new()
-	body.name = "%sBody" % node_name
-	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	body.add_theme_constant_override("separation", 6)
-	panel.add_child(body)
-	if not title_asset_id.is_empty():
-		body.add_child(_classic_ui_art(title_asset_id, Vector2(68.0, 18.0)))
-	elif not title.is_empty():
-		body.add_child(_label(title, GOLD, 15))
-	parent.add_child(panel)
-	return body
-
-func _classic_ui_art(asset_id: StringName, minimum_size: Vector2) -> TextureRect:
-	var art := TextureRect.new()
-	art.texture = ClassicUiAssetCatalog.texture(asset_id)
-	art.custom_minimum_size = minimum_size
-	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	return art
 
 func _creation_context() -> String:
 	if view == null or view.campaign_summary == null:
@@ -220,68 +148,13 @@ func _creation_context() -> String:
 	return " • ".join(facts)
 
 func _build_creator_race_class() -> void:
-	creator_page.add_child(_label("Race & Caste", GOLD, 20))
-	var columns := HBoxContainer.new()
-	race_caste_columns = columns
-	columns.name = "RaceCasteSelectors"
-	columns.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	columns.add_theme_constant_override("separation", 12)
-	var race_column := _add_creator_panel(columns, "RaceSelectorPanel", "Race", 1.0)
-	var race_record := HBoxContainer.new()
-	race_record.name = "RaceSelectorRecord"
-	race_record.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	race_record.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	race_record.add_theme_constant_override("separation", 8)
-	race_column.add_child(race_record)
-	race_list = ClassicDefinitionToggleList.new()
-	race_list.name = "RaceList"
-	race_list.custom_minimum_size = Vector2(150.0, 300.0)
-	race_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	race_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	race_list.size_flags_stretch_ratio = 1.0
+	var step = _step_scene(race_caste_step_scene_path).instantiate()
+	creator_page.add_child(step)
+	race_caste_columns = step.get_node("%RaceCasteSelectors") as BoxContainer
+	race_list = step.race_options()
+	caste_list = step.caste_options()
 	race_list.option_selected.connect(_race_selected)
-	race_record.add_child(race_list)
-	var race_detail_panel := _add_creator_panel(race_record, "RaceDetailPanel", "Selected Race", 2.0)
-	var race_detail_name := _add_label(race_detail_panel, "", GOLD, 18)
-	race_detail_name.name = "RaceDetailName"
-	var race_detail := _add_label(race_detail_panel, "", Color("e0e2e5"), 15)
-	race_detail.name = "RaceDescription"
-	race_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	var race_facts := _add_label(race_detail_panel, "", Color("e0e2e5"), 13)
-	race_facts.name = "RaceFacts"
-	race_facts.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	var race_relations := _add_label(race_detail_panel, "", MUTED, 13)
-	race_relations.name = "RaceRelations"
-	race_relations.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	var caste_column := _add_creator_panel(columns, "CasteSelectorPanel", "Caste", 1.0)
-	var caste_record := HBoxContainer.new()
-	caste_record.name = "CasteSelectorRecord"
-	caste_record.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	caste_record.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	caste_record.add_theme_constant_override("separation", 8)
-	caste_column.add_child(caste_record)
-	caste_list = ClassicDefinitionToggleList.new()
-	caste_list.name = "CasteList"
-	caste_list.custom_minimum_size = Vector2(150.0, 300.0)
-	caste_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	caste_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	caste_list.size_flags_stretch_ratio = 1.0
 	caste_list.option_selected.connect(_caste_selected)
-	caste_record.add_child(caste_list)
-	var caste_detail_panel := _add_creator_panel(caste_record, "CasteDetailPanel", "Selected Caste", 2.0)
-	var caste_detail_name := _add_label(caste_detail_panel, "", GOLD, 18)
-	caste_detail_name.name = "CasteDetailName"
-	var caste_detail := _add_label(caste_detail_panel, "", Color("e0e2e5"), 15)
-	caste_detail.name = "CasteDescription"
-	caste_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	var caste_facts := _add_label(caste_detail_panel, "", Color("e0e2e5"), 13)
-	caste_facts.name = "CasteFacts"
-	caste_facts.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	var caste_relations := _add_label(caste_detail_panel, "", MUTED, 13)
-	caste_relations.name = "CasteRelations"
-	caste_relations.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	creator_page.add_child(columns)
 	_populate_race_class_options()
 
 func _populate_race_class_options() -> void:
@@ -362,10 +235,9 @@ func _selected_appearance(control: OptionButton, portrait: bool) -> CharacterApp
 
 
 func _build_creator_review() -> void:
-	creator_page.add_child(_label("Review Classic Roll", GOLD, 20))
-	review_label = _add_label(creator_page, "Generating the character through Classic rules…", MUTED, 13)
-	review_label.name = "ReviewStatus"
-	review_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var step = _step_scene(review_step_scene_path).instantiate()
+	creator_page.add_child(step)
+	review_label = step.status_label()
 	_update_creator_review()
 	if view == null or view.character_draft == null:
 		return
@@ -390,33 +262,26 @@ func _build_creator_review() -> void:
 		layout_profile,
 		false
 	)
-	creator_page.add_child(sheet)
+	step.sheet_host().add_child(sheet)
 
 func _build_creator_spells() -> void:
-	creator_page.add_child(_label("Starting Spells", GOLD, 20))
+	var step = _step_scene(spells_step_scene_path).instantiate()
+	creator_page.add_child(step)
 	if view == null or view.character_draft == null:
-		var unavailable := _add_creator_panel(creator_page, "StartingSpellUnavailable", "Spell Selection")
-		spell_label = _add_label(unavailable, "Generate and review the character before choosing spells.", MUTED)
+		spell_label = step.show_unavailable("Generate and review the character before choosing spells.")
 		return
 	if view.character_draft.spellcaster_type < 1 or view.character_draft_spell_points_total < 1:
-		var not_applicable := _add_creator_panel(creator_page, "StartingSpellNotApplicable", "No Starting Spells")
-		spell_label = _add_label(not_applicable, "%s receives no Classic starting-spell choices." % view.character_draft.name, MUTED)
+		spell_label = step.show_not_applicable("%s receives no Classic starting-spell choices." % view.character_draft.name)
 		return
 	if view.character_draft_spell_options.is_empty():
-		var missing := _add_creator_panel(creator_page, "StartingSpellUnavailable", "Starting Spells Unavailable")
-		spell_label = _add_label(missing, "This caster has selection points, but the package exposes no matching Classic spell records. Finalization is blocked.", ERROR)
+		spell_label = step.show_missing("This caster has selection points, but the package exposes no matching Classic spell records. Finalization is blocked.")
 		return
+	step.show_workspace()
 	_prepare_starting_spell_selection()
-	var workspace := HBoxContainer.new()
-	workspace.name = "StartingSpellWorkspace"
-	workspace.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	workspace.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	workspace.add_theme_constant_override("separation", 8)
-	creator_page.add_child(workspace)
-	var level_rail := _add_creator_panel(workspace, "StartingSpellLevelRail", "", 0.38, &"spells.label.level")
-	level_rail.custom_minimum_size.x = 72.0
 	for level: int in range(1, 8):
-		var level_button := SpellSelectionChrome.level_button(
+		var level_button := step.level_button(level) as Button
+		SpellSelectionChrome.bind_level_button(
+			level_button,
 			level,
 			level == _starting_spell_level,
 			_starting_spell_level_available(level),
@@ -424,24 +289,15 @@ func _build_creator_spells() -> void:
 			"No starting spells are available at this level."
 		)
 		level_button.name = "StartingSpellLevel%d" % level
-		level_rail.add_child(level_button)
-	var list_panel := _add_creator_panel(workspace, "StartingSpellListPanel", "Available Spells", 1.05)
-	var spell_scroll := ScrollContainer.new()
-	spell_scroll.name = "StartingSpellScroll"
-	spell_scroll.custom_minimum_size = Vector2(260.0, 300.0)
-	spell_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	spell_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	spell_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	spell_list = VBoxContainer.new()
-	spell_list.name = "StartingSpellList"
-	spell_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	spell_list.add_theme_constant_override("separation", 3)
+	spell_list = step.spell_rows()
 	for option: CharacterSpellOptionView in view.character_draft_spell_options:
 		if option.level != _starting_spell_level:
 			continue
 		var enabled := option.selected or option.selection_cost <= view.character_draft_spell_points_remaining
 		var tooltip := option.description if enabled else "This spell costs %d points; %d remain." % [option.selection_cost, view.character_draft_spell_points_remaining]
-		var button := SpellSelectionChrome.spell_button(
+		var button := step.spell_button_scene.instantiate() as Button
+		SpellSelectionChrome.bind_spell_button(
+			button,
 			"StartingSpell_%s" % option.id,
 			"%s   %d point%s" % [option.name, option.selection_cost, "" if option.selection_cost == 1 else "s"],
 			option.selected,
@@ -451,38 +307,39 @@ func _build_creator_spells() -> void:
 			ClassicUiAssetCatalog.texture(&"spells.button.available" if option.selected else &"spells.button.unavailable")
 		)
 		spell_list.add_child(button)
-	spell_scroll.add_child(spell_list)
-	list_panel.add_child(spell_scroll)
-	var detail := _add_creator_panel(workspace, "StartingSpellRecord", "Selected Spell", 1.15)
 	var selected := _starting_spell_option(_starting_spell_id)
+	var prompt := step.get_node("%StartingSpellPrompt") as Label
+	var detail := step.get_node("%StartingSpellDetail") as VBoxContainer
 	if selected == null:
-		spell_label = _add_label(detail, "Choose a spell from level %d." % _starting_spell_level, MUTED)
+		prompt.text = "Choose a spell from level %d." % _starting_spell_level
+		prompt.visible = true
+		detail.visible = false
+		spell_label = prompt
 	else:
-		spell_label = _add_label(detail, selected.name, GOLD, 18)
-		_add_label(detail, "Level %d  •  %d selection point%s" % [selected.level, selected.selection_cost, "" if selected.selection_cost == 1 else "s"], Color("e0e2e5"), 13)
-		var preview := (load(SPELL_EFFECT_PREVIEW_SCENE_PATH) as PackedScene).instantiate() as ClassicSpellEffectPreview
+		prompt.visible = false
+		detail.visible = true
+		spell_label = step.get_node("%StartingSpellName") as Label
+		spell_label.text = selected.name
+		(step.get_node("%StartingSpellFacts") as Label).text = "Level %d  •  %d selection point%s" % [selected.level, selected.selection_cost, "" if selected.selection_cost == 1 else "s"]
+		var preview := step.effect_preview_scene.instantiate() as ClassicSpellEffectPreview
 		if preview.present(media, selected.animation_resource_type, selected.animation_resource_ids):
-			detail.add_child(preview)
+			step.effect_host().add_child(preview)
 		else:
 			preview.free()
-		var description_heading := _label("Description", GOLD, 13)
-		detail.add_child(description_heading)
 		var description := selected.description.strip_edges()
-		var description_label := _add_label(detail, description if not description.is_empty() else "Description unavailable.", Color("e0e2e5") if not description.is_empty() else MUTED, 16)
-		description_label.name = "StartingSpellDescription"
-		description_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		description_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		_add_label(detail, "Selected" if selected.selected else "Available", GOLD if selected.selected else MUTED, 13)
-	var allowance := PanelContainer.new()
-	allowance.name = "StartingSpellAllowance"
-	allowance.theme_type_variation = &"ClassicInset"
-	allowance.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var allowance_row := HBoxContainer.new()
-	allowance_row.add_child(_label("Spell allowance", MUTED, 12))
-	allowance_row.add_spacer(true)
-	allowance_row.add_child(_label("%d of %d points remain" % [view.character_draft_spell_points_remaining, view.character_draft_spell_points_total], GOLD, 14))
-	allowance.add_child(allowance_row)
-	creator_page.add_child(allowance)
+		var description_label := step.get_node("%StartingSpellDescription") as Label
+		description_label.text = description if not description.is_empty() else "Description unavailable."
+		description_label.add_theme_color_override("font_color", Color("e0e2e5") if not description.is_empty() else MUTED)
+		var selection_state := step.get_node("%StartingSpellSelectionState") as Label
+		selection_state.text = "Selected" if selected.selected else "Available"
+		selection_state.add_theme_color_override("font_color", GOLD if selected.selected else MUTED)
+	(step.get_node("%StartingSpellAllowanceValue") as Label).text = "%d of %d points remain" % [view.character_draft_spell_points_remaining, view.character_draft_spell_points_total]
+
+
+func _step_scene(path: String) -> PackedScene:
+	if not _step_scene_cache.has(path):
+		_step_scene_cache[path] = load(path) as PackedScene
+	return _step_scene_cache[path] as PackedScene
 
 func _prepare_starting_spell_selection() -> void:
 	if not _starting_spell_level_available(_starting_spell_level):

@@ -14,7 +14,7 @@
 - Party assembly and character creation are modes of one retained setup workspace.
 - Campaign and character rows remain reusable scene instances with stable identities. The campaign selector owns authored empty, selected-summary, and package-operation states and exports its campaign row scene.
 - `PartySetupWorkspace` exports the shared character-sheet scene used by setup inspection and creation review. Controllers receive that scene reference from the instantiated workspace; they must not preload the sheet through a script dependency cycle.
-- `PartySetupWorkspace` also exports `character_creation_appearance_step.tscn`. The step owns both catalog strips, paging, exact-media previews, alternate states, and hidden exact-ID selectors; it exports `appearance_thumbnail_row.tscn`, whose six stable choices are rebound for each detached race/catalog row.
+- `PartySetupWorkspace` exposes all five character-creation step scenes. Appearance remains an exported `PackedScene`; the other major steps use editor-visible scene paths cached on first use so unopened creator workspaces do not join the startup dependency graph. Identity owns its preview and exact draft fields; Race/Caste owns both definition selectors and detail records; Appearance owns both catalog strips, paging, exact-media previews, alternate states, and hidden exact-ID selectors; Review owns its status and shared-sheet host; Starting Spells owns its alternate states, fixed level rail, list/detail workspace, and allowance. Appearance exports `appearance_thumbnail_row.tscn`, whose six stable choices are rebound for each detached race/catalog row; Starting Spells exports the shared spell-row and effect-preview scenes.
 
 # Work Guidance
 

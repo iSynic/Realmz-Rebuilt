@@ -52,13 +52,6 @@
       "functions": ["_add_stored_character_pager", "_render_party_assembly"]
     },
     {
-      "path": "src/ui/controllers/party_setup_character_creation_controller.gd",
-      "kind": "request-workspace",
-      "reason": "Character creation changes its fields and choices by wizard step and by the loaded application character library.",
-      "currentMaximum": 15,
-      "functions": ["_add_creator_panel", "_build_creator_identity", "_build_creator_race_class", "_build_creator_spells", "_classic_ui_art"]
-    },
-    {
       "path": "src/ui/controllers/party_setup_inspection_controller.gd",
       "kind": "data-collection",
       "reason": "The inspection region projects the currently selected setup character and its variable record sections.",
