@@ -10,6 +10,7 @@ var _game_state: GameState
 var _rng: RealmzRng
 var _rules: RealmzRules
 var _rewards: RefCounted
+var _request_builder: CombatInteractionRequestBuilder
 var _runtime_api_ref: WeakRef
 
 
@@ -19,6 +20,7 @@ func _init(content: RealmzContent, game_state: GameState, rng: RealmzRng, rules:
 	_rng = rng
 	_rules = rules
 	_rewards = rewards
+	_request_builder = CombatInteractionRequestBuilder.new(content, game_state, rules)
 
 
 func bind_runtime_api(runtime_api: RealmzRuntimeApi) -> void:
@@ -50,6 +52,10 @@ func resume_battle(continuation: ScenarioRuntimeContinuation, response: Interact
 		ScenarioRuntimeContinuation.CLASSIC_COMBAT_FUMBLE, ScenarioRuntimeContinuation.SAFE_COMBAT_FUMBLE:
 			return _resume_fumble_recovery(continuation, response, request_id)
 	return ScenarioRuntimeOperationResult.failed(&"unknown_interaction_continuation", "Battle continuation is unavailable.")
+
+
+func active_combat_request(request_id: String) -> InteractionRequest:
+	return _request_builder.build(request_id)
 
 
 func complete_debug_victory(continuation: ScenarioRuntimeContinuation, request_id: String, events: Array[DomainEvent]) -> ScenarioRuntimeOperationResult:
@@ -158,7 +164,7 @@ func start_battle_definition(battle: BattleDefinition, request_id: String, sourc
 		return _run_combat_death_macro(continuation_kind, caller, events, request_id)
 	if result.completed:
 		return _finish_battle_with_allies(continuation_kind, caller, request_id, events)
-	return ScenarioRuntimeOperationResult.waiting(_combat_request(request_id), ScenarioRuntimeContinuation.combat(continuation_kind, battle.id, caller), events)
+	return ScenarioRuntimeOperationResult.waiting(_request_builder.build(request_id), ScenarioRuntimeContinuation.combat(continuation_kind, battle.id, caller), events)
 
 
 func _resume_battle(continuation: ScenarioRuntimeContinuation, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
@@ -168,77 +174,104 @@ func _resume_battle(continuation: ScenarioRuntimeContinuation, response: Interac
 	var combat_continuation := continuation.body as ScenarioRuntimeContinuation.CombatBody
 	if _game_state.combat == null or _game_state.combat.battle_id != combat_continuation.battle_id:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "The pending battle is unavailable.")
-	var previous_round := _game_state.combat.round_number
 	var caller := combat_continuation.caller
 	if caller == null:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "The pending battle lost its originating caller.")
-	var result: CombatFlowResult
-	if body.action == &"set_auto":
-		if _game_state.party.character_by_id(body.actor_id) == null:
-			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Persistent Auto requires a party character and an enabled boolean.")
-		var auto_state_checkpoint := _game_state.to_data()
-		var auto_rng_checkpoint := _rng.checkpoint()
-		if not _game_state.set_combat_auto(body.actor_id, body.enabled):
-			return ScenarioRuntimeOperationResult.failed(&"invalid_combat_auto_character", "Persistent Auto could not be changed for this character.")
-		var toggle_sound := 147 if body.enabled else 139
-		var auto_events: Array[DomainEvent] = [
-			DomainEvent.new(&"sound_requested", {"soundId": toggle_sound, "waitForCompletion": false, "source": "classic-combat-auto-toggle"}),
-			DomainEvent.new(&"combat_auto_changed", {"characterId": body.actor_id, "enabled": body.enabled, "source": "classic"}),
-		]
-		if not body.enabled or _game_state.combat.active_actor_id() != body.actor_id:
-			return ScenarioRuntimeOperationResult.waiting(_combat_request(request_id), continuation, auto_events)
-		auto_events.append(DomainEvent.new(&"sound_requested", {"soundId": 141, "waitForCompletion": false, "source": "classic-combat-auto-button"}))
-		result = _rules.combat_flow.run_persistent_auto_characters(_game_state, _content, _rng)
-		if not result.ok:
-			if not _game_state.restore_from_data(auto_state_checkpoint) or not _rng.rollback(auto_rng_checkpoint):
-				return ScenarioRuntimeOperationResult.failed(&"combat_auto_rollback_failed", "Persistent Auto failed and could not restore its toggle transaction.")
-			return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message)
-		if result.ok:
-			var combined_events: Array[DomainEvent] = []
-			combined_events.append_array(auto_events)
-			combined_events.append_array(result.events)
-			result.events = combined_events
-	elif body.action == &"retreat":
-		var retreat_probe: Variant = _rules.combat_flow.reactions.probe_character_retreat(_game_state.combat, _game_state.party.characters(), body.actor_id)
-		if not retreat_probe.allowed:
-			return ScenarioRuntimeOperationResult.failed(retreat_probe.reason, retreat_probe.reason_text)
-		return _wait_for_battle_retreat(continuation, body.actor_id, &"explicit", Vector2i(-100_000, -100_000), request_id)
-	elif body.action == &"retreat_edge":
-		var edge_destination := body.destination if body.has_destination else CombatFlow.INVALID_COORDINATE
-		var edge_probe: Variant = _rules.combat_flow.reactions.probe_edge_retreat(_game_state.combat, body.actor_id, edge_destination)
-		if not edge_probe.allowed:
-			return ScenarioRuntimeOperationResult.failed(edge_probe.reason, edge_probe.reason_text)
-		if not edge_probe.forced:
-			return _wait_for_battle_retreat(continuation, body.actor_id, &"edge", edge_destination, request_id)
-		result = _rules.combat_flow.retreat_character(_game_state, _content, body.actor_id, &"edge", edge_destination, _rng)
-	elif body.action == &"move":
-		if not body.has_destination:
-			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Combat movement requires a two-integer destination.")
-		result = _rules.combat_flow.move_character(_game_state, _content, body.actor_id, body.destination, _rng, body.auto_switch_to_melee)
-	elif body.action == &"cast_spell":
-		if body.spell_id.is_empty():
-			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Combat spell casting requires a spellId string and integer power.")
-		var target_coordinate := body.target_coordinate if body.has_target_coordinate else CombatFlow.INVALID_COORDINATE
-		result = _rules.combat_flow.cast_spell(_game_state, _content, body.actor_id, body.target_id, body.spell_id, body.power, _rng, target_coordinate, body.rotation, body.target_ids, body.target_coordinates)
-	elif body.action == &"use_item":
-		if body.item_instance_id.is_empty():
-			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Combat item use requires an itemInstanceId string.")
-		var item_target_coordinate := body.target_coordinate if body.has_target_coordinate else CombatFlow.INVALID_COORDINATE
-		result = _rules.combat_flow.use_spell_item(_game_state, _content, body.actor_id, body.target_id, body.item_instance_id, _rng, item_target_coordinate, body.rotation, body.target_ids, body.target_coordinates)
-	elif body.action == &"use_scroll":
-		if body.scroll_slot < 0:
-			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Combat scroll use requires an integer scrollSlot.")
-		var scroll_target_coordinate := body.target_coordinate if body.has_target_coordinate else CombatFlow.INVALID_COORDINATE
-		result = _rules.combat_flow.use_combat_scroll(_game_state, _content, body.actor_id, body.scroll_slot, body.target_id, _rng, scroll_target_coordinate, body.rotation, body.target_ids, body.target_coordinates)
-	else:
-		result = _rules.combat_flow.submit_action(_game_state, _content, body.actor_id, body.action, body.target_id, _rng)
+	var previous_round := _game_state.combat.round_number
+	var dispatch: Variant = _dispatch_combat_response(body, continuation, request_id)
+	if dispatch is ScenarioRuntimeOperationResult:
+		return dispatch
+	var result := dispatch as CombatFlowResult
+	return _continue_after_combat_result(result, body, continuation, caller, previous_round, request_id)
+
+
+func _dispatch_combat_response(body: InteractionResponse.CombatBody, continuation: ScenarioRuntimeContinuation, request_id: String) -> Variant:
+	match body.action:
+		&"set_auto":
+			return _set_combat_auto(body, continuation, request_id)
+		&"retreat":
+			return _request_explicit_retreat(body.actor_id, continuation, request_id)
+		&"retreat_edge":
+			return _request_edge_retreat(body, continuation, request_id)
+		_:
+			return _execute_combat_action(body)
+
+
+func _set_combat_auto(body: InteractionResponse.CombatBody, continuation: ScenarioRuntimeContinuation, request_id: String) -> Variant:
+	if _game_state.party.character_by_id(body.actor_id) == null:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Persistent Auto requires a party character and an enabled boolean.")
+	var state_checkpoint := _game_state.to_data()
+	var rng_checkpoint := _rng.checkpoint()
+	if not _game_state.set_combat_auto(body.actor_id, body.enabled):
+		return ScenarioRuntimeOperationResult.failed(&"invalid_combat_auto_character", "Persistent Auto could not be changed for this character.")
+	var events: Array[DomainEvent] = [
+		DomainEvent.new(&"sound_requested", {"soundId": 147 if body.enabled else 139, "waitForCompletion": false, "source": "classic-combat-auto-toggle"}),
+		DomainEvent.new(&"combat_auto_changed", {"characterId": body.actor_id, "enabled": body.enabled, "source": "classic"}),
+	]
+	if not body.enabled or _game_state.combat.active_actor_id() != body.actor_id:
+		return ScenarioRuntimeOperationResult.waiting(_request_builder.build(request_id), continuation, events)
+	events.append(DomainEvent.new(&"sound_requested", {"soundId": 141, "waitForCompletion": false, "source": "classic-combat-auto-button"}))
+	var result := _rules.combat_flow.run_persistent_auto_characters(_game_state, _content, _rng)
+	if not result.ok:
+		if not _game_state.restore_from_data(state_checkpoint) or not _rng.rollback(rng_checkpoint):
+			return ScenarioRuntimeOperationResult.failed(&"combat_auto_rollback_failed", "Persistent Auto failed and could not restore its toggle transaction.")
+		return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message)
+	var combined_events: Array[DomainEvent] = []
+	combined_events.append_array(events)
+	combined_events.append_array(result.events)
+	result.events = combined_events
+	return result
+
+
+func _request_explicit_retreat(actor_id: String, continuation: ScenarioRuntimeContinuation, request_id: String) -> ScenarioRuntimeOperationResult:
+	var probe: Variant = _rules.combat_flow.reactions.probe_character_retreat(_game_state.combat, _game_state.party.characters(), actor_id)
+	if not probe.allowed:
+		return ScenarioRuntimeOperationResult.failed(probe.reason, probe.reason_text)
+	return _wait_for_battle_retreat(continuation, actor_id, &"explicit", CombatFlow.INVALID_COORDINATE, request_id)
+
+
+func _request_edge_retreat(body: InteractionResponse.CombatBody, continuation: ScenarioRuntimeContinuation, request_id: String) -> Variant:
+	var destination := body.destination if body.has_destination else CombatFlow.INVALID_COORDINATE
+	var probe: Variant = _rules.combat_flow.reactions.probe_edge_retreat(_game_state.combat, body.actor_id, destination)
+	if not probe.allowed:
+		return ScenarioRuntimeOperationResult.failed(probe.reason, probe.reason_text)
+	if not probe.forced:
+		return _wait_for_battle_retreat(continuation, body.actor_id, &"edge", destination, request_id)
+	return _rules.combat_flow.retreat_character(_game_state, _content, body.actor_id, &"edge", destination, _rng)
+
+
+func _execute_combat_action(body: InteractionResponse.CombatBody) -> Variant:
+	match body.action:
+		&"move":
+			if not body.has_destination:
+				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Combat movement requires a two-integer destination.")
+			return _rules.combat_flow.move_character(_game_state, _content, body.actor_id, body.destination, _rng, body.auto_switch_to_melee)
+		&"cast_spell":
+			if body.spell_id.is_empty():
+				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Combat spell casting requires a spellId string and integer power.")
+			var target := body.target_coordinate if body.has_target_coordinate else CombatFlow.INVALID_COORDINATE
+			return _rules.combat_flow.cast_spell(_game_state, _content, body.actor_id, body.target_id, body.spell_id, body.power, _rng, target, body.rotation, body.target_ids, body.target_coordinates)
+		&"use_item":
+			if body.item_instance_id.is_empty():
+				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Combat item use requires an itemInstanceId string.")
+			var target := body.target_coordinate if body.has_target_coordinate else CombatFlow.INVALID_COORDINATE
+			return _rules.combat_flow.use_spell_item(_game_state, _content, body.actor_id, body.target_id, body.item_instance_id, _rng, target, body.rotation, body.target_ids, body.target_coordinates)
+		&"use_scroll":
+			if body.scroll_slot < 0:
+				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Combat scroll use requires an integer scrollSlot.")
+			var target := body.target_coordinate if body.has_target_coordinate else CombatFlow.INVALID_COORDINATE
+			return _rules.combat_flow.use_combat_scroll(_game_state, _content, body.actor_id, body.scroll_slot, body.target_id, _rng, target, body.rotation, body.target_ids, body.target_coordinates)
+	return _rules.combat_flow.submit_action(_game_state, _content, body.actor_id, body.action, body.target_id, _rng)
+
+
+func _continue_after_combat_result(result: CombatFlowResult, body: InteractionResponse.CombatBody, continuation: ScenarioRuntimeContinuation, caller: ScenarioBattleCaller, previous_round: int, request_id: String) -> ScenarioRuntimeOperationResult:
 	if not result.ok:
 		if body.action == &"move" and result.error_code == &"melee_weapon_mode_required":
 			var warning_events: Array[DomainEvent] = [
 				DomainEvent.new(&"sound_requested", {"soundId": 6000, "waitForCompletion": false, "source": "classic-auto-weapon-switch-warning"}),
 				DomainEvent.new(&"combat_action_unavailable", {"actorId": body.actor_id, "action": "move", "reason": String(result.error_code), "message": result.error_message, "source": "classic"}),
 			]
-			return ScenarioRuntimeOperationResult.waiting(_combat_request(request_id), continuation, warning_events)
+			return ScenarioRuntimeOperationResult.waiting(_request_builder.build(request_id), continuation, warning_events)
 		return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message)
 	if not CharacterAgingResult.update_payloads(result.events).is_empty():
 		return _wait_for_combat_age_updates(continuation.kind, caller, request_id, result.events, previous_round)
@@ -250,7 +283,7 @@ func _resume_battle(continuation: ScenarioRuntimeContinuation, response: Interac
 		return _finish_battle_with_allies(continuation.kind, caller, request_id, completed_events)
 	if _game_state.combat.round_number > previous_round and _game_state.combat.macro_id < 0:
 		return _run_battle_macro(continuation.kind, caller, result.events, request_id)
-	return ScenarioRuntimeOperationResult.waiting(_combat_request(request_id), continuation, result.events)
+	return ScenarioRuntimeOperationResult.waiting(_request_builder.build(request_id), continuation, result.events)
 
 
 func _wait_for_battle_retreat(continuation: ScenarioRuntimeContinuation, actor_id: String, mode: StringName, destination: Vector2i, request_id: String) -> ScenarioRuntimeOperationResult:
@@ -279,7 +312,7 @@ func _resume_battle_retreat(continuation: ScenarioRuntimeContinuation, response:
 	if probe == null or not probe.allowed or probe.forced:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "The saved Escape confirmation no longer represents a promptable Classic action.")
 	if not body.accepted:
-		return ScenarioRuntimeOperationResult.waiting(_combat_request(request_id), ScenarioRuntimeContinuation.combat(source_kind, combat_continuation.battle_id, caller), [DomainEvent.new(&"combat_retreat_declined", {"actorId": combat_continuation.actor_id, "mode": String(mode), "source": "classic"})])
+		return ScenarioRuntimeOperationResult.waiting(_request_builder.build(request_id), ScenarioRuntimeContinuation.combat(source_kind, combat_continuation.battle_id, caller), [DomainEvent.new(&"combat_retreat_declined", {"actorId": combat_continuation.actor_id, "mode": String(mode), "source": "classic"})])
 	var previous_round := _game_state.combat.round_number
 	var result := _rules.combat_flow.retreat_character(_game_state, _content, combat_continuation.actor_id, mode, destination, _rng)
 	if not result.ok:
@@ -294,7 +327,7 @@ func _resume_battle_retreat(continuation: ScenarioRuntimeContinuation, response:
 		return _finish_battle_with_allies(source_kind, caller, request_id, completed_events)
 	if _game_state.combat.round_number > previous_round and _game_state.combat.macro_id < 0:
 		return _run_battle_macro(source_kind, caller, result.events, request_id)
-	return ScenarioRuntimeOperationResult.waiting(_combat_request(request_id), ScenarioRuntimeContinuation.combat(source_kind, combat_continuation.battle_id, caller), result.events)
+	return ScenarioRuntimeOperationResult.waiting(_request_builder.build(request_id), ScenarioRuntimeContinuation.combat(source_kind, combat_continuation.battle_id, caller), result.events)
 
 
 func _finish_battle_with_allies(source_kind: StringName, caller: ScenarioBattleCaller, request_id: String, events: Array[DomainEvent]) -> ScenarioRuntimeOperationResult:
@@ -370,7 +403,7 @@ func _resume_fumble_recovery(continuation: ScenarioRuntimeContinuation, response
 func _run_battle_macro(source_kind: StringName, caller: ScenarioBattleCaller, preceding_events: Array[DomainEvent], request_id: String) -> ScenarioRuntimeOperationResult:
 	var combat := _game_state.combat
 	if combat == null or combat.completed or combat.macro_id >= 0:
-		return ScenarioRuntimeOperationResult.waiting(_combat_request(request_id), ScenarioRuntimeContinuation.combat(source_kind, combat.battle_id, caller), preceding_events)
+		return ScenarioRuntimeOperationResult.waiting(_request_builder.build(request_id), ScenarioRuntimeContinuation.combat(source_kind, combat.battle_id, caller), preceding_events)
 	var program_id := "xap:%d" % absi(combat.macro_id)
 	var vm := ScenarioVm.new()
 	vm.configure(_content.scenario)
@@ -421,7 +454,7 @@ func _continue_after_battle_macro(source_kind: StringName, caller: ScenarioBattl
 	committed.append(DomainEvent.new(&"battle_macro_completed", {"battleId": _game_state.combat.battle_id, "programId": program_id, "round": _game_state.combat.round_number}))
 	if _game_state.combat.completed:
 		return _finish_battle_with_allies(source_kind, caller, request_id, committed)
-	return ScenarioRuntimeOperationResult.waiting(_combat_request(request_id), ScenarioRuntimeContinuation.combat(source_kind, _game_state.combat.battle_id, caller), committed)
+	return ScenarioRuntimeOperationResult.waiting(_request_builder.build(request_id), ScenarioRuntimeContinuation.combat(source_kind, _game_state.combat.battle_id, caller), committed)
 
 
 func _run_combat_death_macro(source_kind: StringName, caller: ScenarioBattleCaller, preceding_events: Array[DomainEvent], request_id: String) -> ScenarioRuntimeOperationResult:
@@ -500,7 +533,7 @@ func _continue_after_combat_death_macro(source_kind: StringName, caller: Scenari
 		return _run_combat_death_macro(source_kind, caller, committed, request_id)
 	if continued.completed:
 		return _finish_battle_with_allies(source_kind, caller, request_id, committed)
-	return ScenarioRuntimeOperationResult.waiting(_combat_request(request_id), ScenarioRuntimeContinuation.combat(source_kind, combat.battle_id, caller), committed)
+	return ScenarioRuntimeOperationResult.waiting(_request_builder.build(request_id), ScenarioRuntimeContinuation.combat(source_kind, combat.battle_id, caller), committed)
 
 
 func _wait_for_combat_age_updates(source_kind: StringName, caller: ScenarioBattleCaller, request_id: String, events: Array[DomainEvent], round_before: int) -> ScenarioRuntimeOperationResult:
@@ -549,7 +582,7 @@ func _resume_combat_age_updates(continuation: ScenarioRuntimeContinuation, respo
 		return _finish_battle_with_allies(source_kind, caller, request_id, events)
 	if _game_state.combat.round_number > round_before and _game_state.combat.macro_id < 0:
 		return _run_battle_macro(source_kind, caller, events, request_id)
-	return ScenarioRuntimeOperationResult.waiting(_combat_request(request_id), ScenarioRuntimeContinuation.combat(source_kind, _game_state.combat.battle_id, caller), events)
+	return ScenarioRuntimeOperationResult.waiting(_request_builder.build(request_id), ScenarioRuntimeContinuation.combat(source_kind, _game_state.combat.battle_id, caller), events)
 
 
 static func _death_macro_request(events: Array[DomainEvent]) -> Dictionary:
@@ -558,212 +591,3 @@ static func _death_macro_request(events: Array[DomainEvent]) -> Dictionary:
 		if event.kind == &"monster_death_macro_requested":
 			return event.payload
 	return {}
-
-
-func _combat_request(request_id: String) -> InteractionRequest:
-	var combat := _game_state.combat
-	var combat_view := CombatView.new(combat, _game_state.party.characters(), _content, _rules.inventory, _rules.battlefield, _rules.combat_flow, _game_state)
-	var actions: Array[String] = []
-	for action: StringName in combat_view.legal_actions:
-		actions.append(String(action))
-	var weapon_switch := {
-		"enabled": combat_view.weapon_switch_available,
-		"targetMode": String(combat_view.weapon_switch_target_mode),
-		"reason": combat_view.weapon_switch_unavailable_reason,
-	}
-	var ranged_attack := {"enabled": combat_view.weapon_mode == &"missile" and combat_view.legal_actions.has(&"attack"), "reason": combat_view.ranged_attack_unavailable_reason}
-	var targets: Array[Dictionary] = []
-	for monster: MonsterView in combat_view.targets:
-		targets.append({"id": monster.id, "kind": "monster", "name": monster.name, "currentHealth": monster.current_health, "maximumHealth": monster.maximum_health})
-	for character: CharacterView in combat_view.character_targets:
-		targets.append({"id": character.id, "kind": "character", "name": character.name, "currentHealth": character.current_health, "maximumHealth": character.maximum_health})
-	var combatants_by_id: Dictionary = {}
-	var terrain_set := _combat_terrain_set()
-	for character_state: CharacterState in _game_state.party.characters():
-		if _game_state.combat.battlefield == null or not _game_state.combat.battlefield.has_actor(character_state.id):
-			continue
-		var character := CharacterView.new(character_state, _content)
-		var equipment := _rules.inventory.combat_equipment(character_state, _content.item_definitions())
-		character.apply_equipment(equipment)
-		var payload := _character_combatant_payload(character, equipment)
-		_append_combatant_position_facts(payload, combat_view.active_actor_id, character.id, terrain_set)
-		_append_character_weapon_facts(payload, character_state, equipment, combat_view.weapon_mode if character.id == combat_view.active_actor_id else &"melee")
-		combatants_by_id[character.id] = payload
-	for monster: MonsterView in combat_view.monsters:
-		if _game_state.combat.battlefield == null or not _game_state.combat.battlefield.has_actor(monster.id):
-			continue
-		var payload := _monster_combatant_payload(monster, _content.monster_by_id(monster.definition_id))
-		_append_combatant_position_facts(payload, combat_view.active_actor_id, monster.id, terrain_set)
-		combatants_by_id[monster.id] = payload
-	var combatants: Array[Dictionary] = []
-	for combatant_id: String in combat_view.turn_order:
-		if combatants_by_id.has(combatant_id):
-			combatants.append(combatants_by_id[combatant_id])
-			combatants_by_id.erase(combatant_id)
-	for remaining: Dictionary in combatants_by_id.values():
-		combatants.append(remaining)
-	var movement: Array[Dictionary] = []
-	for option: CombatMoveOptionView in combat_view.movement_options:
-		movement.append({"direction": [option.direction.x, option.direction.y], "destination": [option.destination.x, option.destination.y], "cost": option.movement_cost, "enabled": option.enabled, "reasonCode": String(option.reason), "reason": option.reason_text, "retreat": option.retreats_from_battle, "forcedRetreat": option.forced_retreat, "attackTargetId": option.attack_target_id, "attackTargetName": option.attack_target_name})
-	var spell_casts := _combat_spell_cast_payloads(combat_view.active_actor_id)
-	if not spell_casts.is_empty():
-		actions.append("cast_spell")
-	var spell_cast_reason := _rules.combat_flow.magic.selection().character_spell_unavailable_reason(_game_state, _content, combat_view.active_actor_id)
-	var fast_spells := _fast_spell_payloads(combat_view.active_actor_id, spell_casts)
-	var item_casts := _combat_item_cast_payloads(combat_view.active_actor_id)
-	if not item_casts.is_empty():
-		actions.append("use_item")
-	var item_cast_reason := _rules.combat_flow.magic.character_item_spell_unavailable_reason(_game_state, _content, combat_view.active_actor_id)
-	var scroll_casts := _combat_scroll_cast_payloads(combat_view.active_actor_id)
-	if not scroll_casts.is_empty():
-		actions.append("use_scroll")
-	var scroll_cast_reason := _rules.combat_flow.magic.selection().character_scroll_unavailable_reason(_game_state, _content, combat_view.active_actor_id)
-	var retreat := {"enabled": combat_view.retreat_available, "reason": combat_view.retreat_unavailable_reason, "nearestEnemyRange": combat_view.nearest_enemy_range}
-	var enemies_remaining := combat_view.hostile_actor_ids.size()
-	var bandage_targets: Array[Dictionary] = []
-	for candidate: CharacterView in combat_view.bandage_candidates:
-		bandage_targets.append({"id": candidate.id, "name": candidate.name, "currentHealth": candidate.current_health, "maximumHealth": candidate.maximum_health})
-	var turn_targets: Array[Dictionary] = []
-	for target: MonsterView in combat_view.turn_undead_targets:
-		turn_targets.append({"id": target.id, "name": target.name, "hitDice": target.hit_dice, "magicResistance": target.magic_resistance})
-	var request := InteractionRequest.from_payload(request_id, &"combat_action", {"battleId": combat_view.battle_id, "round": combat_view.round_number, "actorId": combat_view.active_actor_id, "attackUnitsRemaining": combat_view.attack_units_remaining, "movementRemaining": combat_view.movement_remaining, "enemiesRemaining": enemies_remaining, "actions": actions, "weaponMode": String(combat_view.weapon_mode), "weaponSwitch": weapon_switch, "rangedAttack": ranged_attack, "retreat": retreat, "meleeAttackReason": combat_view.melee_attack_unavailable_reason, "targets": targets, "combatants": combatants, "movement": movement, "spellCasts": spell_casts, "spellCastReason": spell_cast_reason, "fastSpells": fast_spells, "itemCasts": item_casts, "itemCastReason": item_cast_reason, "scrollCasts": scroll_casts, "scrollCastReason": scroll_cast_reason, "autoTurn": {"enabled": combat_view.auto_turn.enabled, "reason": combat_view.auto_turn.reason}, "autoCharacterIds": combat_view.auto_character_ids.duplicate(), "delay": {"enabled": combat_view.delay.enabled, "reason": combat_view.delay.reason}, "bandage": {"enabled": combat_view.bandage.enabled, "reason": combat_view.bandage.reason, "targets": bandage_targets}, "turnUndead": {"enabled": combat_view.turn_undead.enabled, "reason": combat_view.turn_undead.reason, "targets": turn_targets}, "undo": {"enabled": combat_view.undo.enabled, "reason": combat_view.undo.reason}})
-	if request != null:
-		request.transient_combat_view = combat_view
-	return request
-
-
-func _combat_spell_cast_payloads(actor_id: String) -> Array[Dictionary]:
-	var result: Array[Dictionary] = []
-	for option: CombatSpellOptionView in _rules.combat_flow.magic.selection().character_spell_options(_game_state, _content, actor_id):
-		var payload := {"spellId": option.spell_id, "spellName": option.spell_name, "power": option.power, "cost": option.cost, "targetId": option.target_id, "targetName": option.target_name, "targetCurrentHealth": option.target_current_health, "targetMaximumHealth": option.target_maximum_health, "targetMode": String(option.target_mode)}
-		_append_spell_target_payload(payload, option)
-		result.append(payload)
-	return result
-
-
-func _combat_item_cast_payloads(actor_id: String) -> Array[Dictionary]:
-	var result: Array[Dictionary] = []
-	for option: CombatItemOptionView in _rules.combat_flow.magic.character_item_spell_options(_game_state, _content, actor_id):
-		var payload := {"itemInstanceId": option.item_instance_id, "itemId": option.item_definition_id, "itemName": option.item_name, "charges": option.charges, "powerStaged": option.power_staged, "spellId": option.spell_id, "spellName": option.spell_name, "power": option.power, "targetId": option.target_id, "targetName": option.target_name, "targetCurrentHealth": option.target_current_health, "targetMaximumHealth": option.target_maximum_health, "targetMode": String(option.target_mode)}
-		_append_spell_target_payload(payload, option)
-		result.append(payload)
-	return result
-
-
-func _combat_scroll_cast_payloads(actor_id: String) -> Array[Dictionary]:
-	var result: Array[Dictionary] = []
-	for option: Variant in _rules.combat_flow.magic.selection().character_scroll_options(_game_state, _content, actor_id):
-		var payload := {"scrollSlot": option.scroll_slot, "spellId": option.spell_id, "spellName": option.spell_name, "power": option.power, "targetId": option.target_id, "targetName": option.target_name, "targetCurrentHealth": option.target_current_health, "targetMaximumHealth": option.target_maximum_health, "targetMode": String(option.target_mode)}
-		_append_spell_target_payload(payload, option)
-		result.append(payload)
-	return result
-
-
-func _append_spell_target_payload(payload: Dictionary, option: Variant) -> void:
-	if option.target_mode in [&"sequence", &"coordinate_sequence"]:
-		payload["maximumTargets"] = option.maximum_targets
-	if option.target_mode == &"sequence":
-		var candidates: Array[Dictionary] = []
-		for candidate: CombatSpellTargetView in option.target_candidates:
-			candidates.append({"id": candidate.id, "kind": String(candidate.kind), "name": candidate.name, "currentHealth": candidate.current_health, "maximumHealth": candidate.maximum_health})
-		payload["targetCandidates"] = candidates
-	if option.target_mode == &"area":
-		payload["areaShape"] = option.area_shape
-		payload["defaultTargetCoordinate"] = [option.default_target_coordinate.x, option.default_target_coordinate.y]
-		payload["areaOffsets"] = option.area_offsets.map(func(offset: Vector2i) -> Array[int]: return [offset.x, offset.y])
-		payload["areaRotationOffsets"] = option.area_rotation_offsets.map(func(offsets: Array) -> Array: return offsets.map(func(offset: Vector2i) -> Array[int]: return [offset.x, offset.y]))
-		payload["legalTargetCoordinates"] = option.legal_target_coordinates.map(func(coordinate: Vector2i) -> Array[int]: return [coordinate.x, coordinate.y])
-
-
-func _fast_spell_payloads(actor_id: String, spell_casts: Array[Dictionary]) -> Array[Dictionary]:
-	var result: Array[Dictionary] = []
-	var character := _game_state.party.character_by_id(actor_id)
-	if character == null:
-		return result
-	for index: int in character.fast_spells().size():
-		var binding := character.fast_spell_at(index)
-		var spell := _content.spell_by_id(binding.spell_id) if binding != null and not binding.is_empty() else null
-		var enabled := false
-		if spell != null:
-			for cast: Dictionary in spell_casts:
-				if cast.get("spellId") == binding.spell_id and int(cast.get("power", 0)) == binding.power:
-					enabled = true
-					break
-		var reason := "This Fast Spell slot is undefined." if binding == null or binding.is_empty() else "The stored spell is unavailable to this character." if spell == null or not character.known_spells().has(binding.spell_id) else "No legal target or casting action is currently available."
-		result.append({"slot": index, "spellId": binding.spell_id if binding != null else "", "spellName": spell.name if spell != null else "Undefined Spell", "power": binding.power if binding != null else 0, "enabled": enabled, "reason": "" if enabled else reason})
-	return result
-
-
-func active_combat_request(request_id: String) -> InteractionRequest:
-	return _combat_request(request_id)
-
-
-static func _character_combatant_payload(character: CharacterView, equipment: CharacterCombatEquipment) -> Dictionary:
-	var items: Array[String] = []
-	for item: ItemView in character.items:
-		var row := "%s • %s" % [item.name, "Equipped" if item.equipped else "Carried"]
-		if item.charges >= 0:
-			row += " • %d charge%s" % [item.charges, "" if item.charges == 1 else "s"]
-		items.append(row)
-	var attack_rows: Array[String] = []
-	var melee: ItemDefinition = equipment.melee_weapon if equipment != null and equipment.valid else null
-	var missile: ItemDefinition = equipment.missile_weapon if equipment != null and equipment.valid else null
-	attack_rows.append(_character_attack_row("Melee", melee, character.attacks_per_round))
-	if missile != null:
-		attack_rows.append(_character_attack_row("Missile", missile, character.attacks_per_round))
-	return {"id": character.id, "kind": "character", "name": character.name, "currentHealth": character.current_health, "maximumHealth": character.maximum_health, "spellPoints": character.spell_points, "maximumSpellPoints": character.maximum_spell_points, "armor": character.armor, "magicResistance": character.magic_resistance, "attacks": character.attacks_per_round, "movement": character.movement, "maximumMovement": character.maximum_movement, "traitor": character.traitor, "helpless": character.condition_values[ConditionRules.HELPLESS] != 0, "conditions": character.conditions.map(func(condition: CharacterMetricView) -> String: return condition.name), "items": items, "attackRows": attack_rows}
-
-
-static func _monster_combatant_payload(monster: MonsterView, definition: MonsterDefinition) -> Dictionary:
-	var attack_rows: Array[String] = []
-	if definition != null:
-		var attacks := definition.attacks()
-		for index: int in attacks.size():
-			var attack := attacks[index]
-			attack_rows.append("Attack %d • %d–%d damage" % [index + 1, attack.damage_min, attack.damage_max])
-	var items: Array[String] = []
-	if not monster.weapon_name.is_empty() and monster.weapon_name != "Unarmed":
-		items.append("%s • Equipped" % monster.weapon_name)
-	return {"id": monster.id, "kind": "monster", "name": monster.name, "currentHealth": monster.current_health, "maximumHealth": monster.maximum_health, "spellPoints": monster.spell_points, "maximumSpellPoints": monster.maximum_spell_points, "armor": monster.armor, "magicResistance": monster.magic_resistance, "hitDice": monster.hit_dice, "attacks": str(monster.attack_count), "movement": monster.movement_maximum, "maximumMovement": monster.movement_maximum, "traitor": monster.traitor, "helpless": monster.helpless, "conditions": monster.conditions.duplicate(), "items": items, "attackRows": attack_rows, "immunities": monster.immunities.duplicate(), "vulnerabilities": monster.vulnerabilities.duplicate(), "weapon": monster.weapon_name}
-
-
-static func _character_attack_row(label: String, weapon: ItemDefinition, attacks: String) -> String:
-	if weapon == null:
-		return "%s • Unarmed • %s attack%s" % [label, attacks, "" if attacks == "1" else "s"]
-	var damage := ""
-	if weapon.vs_small > 0:
-		damage = " • %d–%d damage" % [1 + weapon.damage_bonus, weapon.damage_bonus + weapon.vs_small]
-	return "%s • %s%s • %s attack%s" % [label, weapon.name, damage, attacks, "" if attacks == "1" else "s"]
-
-
-func _append_combatant_position_facts(payload: Dictionary, active_actor_id: String, combatant_id: String, terrain_set: BattleTerrainSetDefinition) -> void:
-	if _game_state.combat == null or _game_state.combat.battlefield == null or active_actor_id.is_empty() or combatant_id.is_empty():
-		return
-	payload["range"] = _rules.battlefield.classic_range(_game_state.combat.battlefield, active_actor_id, combatant_id)
-	payload["blocked"] = terrain_set == null or not _rules.battlefield.has_line_of_sight(_game_state.combat.battlefield, terrain_set, active_actor_id, combatant_id)
-
-
-func _append_character_weapon_facts(payload: Dictionary, character: CharacterState, equipment: CharacterCombatEquipment, weapon_mode: StringName) -> void:
-	if equipment == null or not equipment.valid:
-		return
-	var weapon := equipment.missile_weapon if weapon_mode == &"missile" else equipment.melee_weapon
-	var instance_id := equipment.missile_weapon_instance_id if weapon_mode == &"missile" else equipment.melee_weapon_instance_id
-	payload["weapon"] = weapon.name if weapon != null else "Unarmed"
-	payload["weaponCharges"] = -1
-	for instance: ItemInstance in character.inventory():
-		if instance.id == instance_id:
-			payload["weaponCharges"] = instance.charges
-			break
-
-
-func _combat_terrain_set() -> BattleTerrainSetDefinition:
-	if _game_state.combat == null or _game_state.combat.battlefield == null:
-		return null
-	var map := _content.world.map_by_id(_game_state.combat.battlefield.map_id)
-	return _content.world.battle_terrain_set_for_map(map, _game_state.world) if map != null else null
-
-
-static func _combat_destination(value: Variant) -> Vector2i:
-	if not value is Array or value.size() != 2 or not value[0] is int or not value[1] is int:
-		return Vector2i(-100_000, -100_000)
-	return Vector2i(value[0], value[1])
