@@ -15,6 +15,7 @@
 - Preview helpers have no scene owner and must never become saved children.
 - Production-bound previews instantiate one ownerless scene clone and bind it after the clone enters the edited scene tree; they never mutate the scene being authored.
 - Registration alone is not preview completion; `productionBinding` becomes true only when representative data uses the production binding method and row scenes.
+- All registered major surfaces are production-bound. The application shell's pre-ready editor clone binds its scene-authored facts and production roster directly; a ready runtime shell uses `GameShell.present`.
 
 # Work Guidance
 

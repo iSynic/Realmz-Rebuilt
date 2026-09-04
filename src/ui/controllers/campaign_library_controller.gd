@@ -95,10 +95,17 @@ func build_splash_overlay() -> void:
 func build_campaign_overlay() -> void:
 	if campaign_overlay != null:
 		return
-	campaign_overlay = CAMPAIGN_SELECTION_PANEL_SCENE.instantiate() as PanelContainer
-	campaign_overlay.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	campaign_overlay.z_index = 0
-	_host.add_child(campaign_overlay)
+	var panel := CAMPAIGN_SELECTION_PANEL_SCENE.instantiate() as CampaignSelectionPanel
+	panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	panel.z_index = 0
+	_host.add_child(panel)
+	bind_campaign_panel(panel)
+
+
+func bind_campaign_panel(panel: CampaignSelectionPanel) -> void:
+	assert(panel != null, "The campaign-selection panel is unavailable.")
+	assert(campaign_overlay == null or campaign_overlay == panel, "A different campaign-selection panel is already bound.")
+	campaign_overlay = panel
 	_campaign_row_scene = campaign_overlay.get("campaign_row_scene") as PackedScene
 	campaign_list = campaign_overlay.get_node("%CampaignList") as VBoxContainer
 	campaign_scroll = campaign_overlay.get_node("%CampaignScroll") as ScrollContainer

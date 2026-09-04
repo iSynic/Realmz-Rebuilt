@@ -14,6 +14,10 @@ const SUPPORTED_SURFACES: Array[String] = [
 	"bestiary",
 	"maps-journal",
 	"system",
+	"application-shell",
+	"campaign-selection",
+	"party-assembly",
+	"character-creation",
 ]
 
 
@@ -37,6 +41,10 @@ static func bind(surface: Node, surface_id: String, profile: String) -> bool:
 		"bestiary": _bind_creature_screen(surface as CreatureLibraryScreen, view, profile, compact, false)
 		"maps-journal": _bind_journal_screen(surface as JournalScreen, view, compact)
 		"system": _bind_system_screen(surface as SystemScreen, view, profile, compact)
+		"application-shell": _bind_application_shell(surface as GameShell, view)
+		"campaign-selection": _bind_campaign_selection(surface as CampaignSelectionPanel, view, profile)
+		"party-assembly": _bind_party_setup(surface as PartySetupWorkspace, view, profile, false)
+		"character-creation": _bind_party_setup(surface as PartySetupWorkspace, view, profile, true)
 		_: return false
 	surface.set_meta("realmz_builder_profile", profile)
 	return true
@@ -110,6 +118,42 @@ static func _bind_system_screen(screen: SystemScreen, view: GameView, profile: S
 	screen.set_meta("realmz_builder_controller", controller)
 
 
+static func _bind_application_shell(shell: GameShell, view: GameView) -> void:
+	if shell.is_node_ready():
+		shell.present(view)
+		shell.set_status("Realmz Builder representative application state")
+		return
+	(shell.find_child("PackageStatus", true, false) as Label).text = view.campaign_summary.title if view.campaign_summary != null else "No campaign"
+	(shell.find_child("Status", true, false) as Label).text = "Realmz Builder representative application state"
+	var roster := shell.find_child("PartyRoster", true, false) as ClassicPartyRoster
+	roster.present(view, view.party_members[0].id if not view.party_members.is_empty() else "")
+
+
+static func _bind_campaign_selection(panel: CampaignSelectionPanel, view: GameView, profile: String) -> void:
+	var controller := CampaignLibraryController.new()
+	controller.attach(panel)
+	controller.bind_campaign_panel(panel)
+	controller.set_campaigns(_campaigns(profile))
+	controller.set_selected_campaign_summary(view.campaign_summary if profile != "Empty" else null)
+	controller.show_campaign()
+	panel.set_meta("realmz_builder_controller", controller)
+
+
+static func _bind_party_setup(workspace: PartySetupWorkspace, view: GameView, profile: String, creator: bool) -> void:
+	_prepare_party_setup_view(view, profile)
+	var controller := CampaignPartySetupController.new()
+	controller.attach(workspace)
+	controller.build_campaign_overlay()
+	controller.bind_setup_workspace(workspace)
+	controller.set_campaigns(_campaigns(profile))
+	controller.set_vault_revisions(_vault_revisions(view, profile))
+	controller.set_view(view)
+	controller.show_party_setup()
+	if creator:
+		(workspace.find_child("CreateCharacter", true, false) as Button).pressed.emit()
+	workspace.set_meta("realmz_builder_controller", controller)
+
+
 static func _game_view(profile: String) -> GameView:
 	var view := GameView.new(1, profile != "Error", null)
 	view.party_summary = PartySummaryView.new()
@@ -124,6 +168,10 @@ static func _game_view(profile: String) -> GameView:
 	view.set_action_availability(&"service_action", profile != "Unavailable", "No location service is available.")
 	view.set_action_availability(&"import_vault_character", profile != "Unavailable", "Character import is unavailable.")
 	view.set_action_availability(&"set_location_note", profile != "Unavailable", "Location notes are unavailable.")
+	view.set_action_availability(&"remove_party_member", profile != "Unavailable", "The party order is locked.")
+	view.set_action_availability(&"begin_adventure", profile != "Unavailable", "The party cannot begin this adventure.")
+	view.set_action_availability(&"generate_character_draft", profile != "Unavailable", "Character generation is unavailable.")
+	view.set_action_availability(&"finalize_character", profile != "Unavailable", "This character cannot be finalized.")
 	if profile in ["Empty", "Error"]:
 		return view
 	var count := 6 if profile == "Long Content" else 2
@@ -136,6 +184,44 @@ static func _game_view(profile: String) -> GameView:
 	view.pooled_gold = view.money_workspace.pooled_gold
 	_populate_journal(view, profile)
 	return view
+
+
+static func _prepare_party_setup_view(view: GameView, profile: String) -> void:
+	view.party_setup_available = true
+	view.party_setup = PartySetupView.new()
+	view.party_setup.available_monster_sets.assign([0, -1, 1])
+	for character: CharacterView in view.party_members:
+		view.party_setup.current_party_levels += character.level
+	view.party_setup.experience_percent = 100
+	view.campaign_summary.version = "1.0"
+	view.campaign_summary.author = "The Realmz Guild"
+	view.campaign_summary.maximum_party_size = 6
+	view.campaign_summary.maximum_level = 10
+	view.campaign_summary.maximum_party_levels = 42
+	view.campaign_summary.recommended_party_levels = 24
+	view.campaign_summary.guidance_authored = true
+	view.campaign_summary.restriction_description = "A company of six experienced adventurers is recommended."
+	if profile == "Error":
+		view.campaign_summary.restriction_description = "The selected scenario could not be fully validated."
+
+
+static func _campaigns(profile: String) -> Array[CampaignPackageView]:
+	var result: Array[CampaignPackageView] = []
+	if profile == "Empty":
+		return result
+	var count := 8 if profile == "Long Content" else 3
+	for index: int in count:
+		var ready := profile != "Error" or index > 0
+		result.append(CampaignPackageView.new(
+			"res://packages/builder-%d.realmz2" % index,
+			ready,
+			"builder.campaign.%d" % index,
+			("%x" % (index + 1)).repeat(64).left(64),
+			"realmz-classic-1",
+			"Package validation failed." if not ready else "",
+			["City of Bywater", "Assault on Giant Mountain", "War in the Sword Lands"][index % 3]
+		))
+	return result
 
 
 static func _character(index: int, unavailable: bool, long_content: bool) -> CharacterView:

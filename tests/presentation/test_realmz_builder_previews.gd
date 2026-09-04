@@ -24,6 +24,10 @@ const SURFACES := {
 	"bestiary": preload("res://src/ui/screens/bestiary_screen.tscn"),
 	"maps-journal": preload("res://src/ui/screens/journal_screen.tscn"),
 	"system": preload("res://src/ui/screens/system_screen.tscn"),
+	"application-shell": preload("res://src/ui/game_shell.tscn"),
+	"campaign-selection": preload("res://src/ui/setup/campaign_selection_panel.tscn"),
+	"party-assembly": preload("res://src/ui/setup/party_setup_workspace.tscn"),
+	"character-creation": preload("res://src/ui/setup/party_setup_workspace.tscn"),
 }
 const PROFILES: Array[String] = ["Wide", "Compact", "Empty", "Long Content", "Unavailable", "Error"]
 
@@ -66,6 +70,10 @@ func _test_representative_collections_and_modes() -> void:
 	var bestiary := _bound_surface("bestiary", "Wide")
 	var journal := _bound_surface("maps-journal", "Wide")
 	var system := _bound_surface("system", "Wide")
+	var shell := _bound_surface("application-shell", "Wide")
+	var campaign_selection := _bound_surface("campaign-selection", "Wide")
+	var party_assembly := _bound_surface("party-assembly", "Wide")
+	var character_creation := _bound_surface("character-creation", "Wide")
 	assert_equal((temple.find_child("TempleCharacterRows", true, false) as VBoxContainer).find_children("*", "Button", false, false).size(), 2, "Temple preview uses the production adventurer-row collection")
 	assert_equal((temple.find_child("TempleServiceRows", true, false) as VBoxContainer).find_children("*", "Button", false, false).size(), 3, "Temple preview uses the production service-row collection")
 	assert_true((bank.find_child("BankPool", true, false) as Button).disabled and (bank.find_child("BankShare", true, false) as Button).disabled, "Bank unavailable preview binds request-owned disabled actions")
@@ -87,7 +95,11 @@ func _test_representative_collections_and_modes() -> void:
 	assert_equal(bestiary.find_children("BestiaryRow_*", "Button", true, false).size(), 3, "Bestiary preview binds production catalog records")
 	assert_equal((journal.find_child("JournalEntryRows", true, false) as VBoxContainer).get_child_count(), 3, "Maps and Journal preview binds production journal records")
 	assert_equal(system.find_children("SavePreview_*", "Button", true, false).size(), 2, "System preview binds production save records")
-	for surface: Control in [temple, bank, pick_lock, lifecycle, scrolling_text, level_up, encounter, shop, treasure, combat, character_sheet, inventory, spells, services, roster, vault, allies, bestiary, journal, system]:
+	assert_equal((shell.find_child("PackageStatus", true, false) as Label).text, "City of Bywater", "application-shell preview binds the detached campaign through GameShell")
+	assert_equal(campaign_selection.find_children("Scenario_*", "Button", true, false).size(), 3, "campaign selection preview binds installed scenarios through CampaignLibraryController")
+	assert_equal((party_assembly.find_child("PartySlots", true, false) as VBoxContainer).get_child_count(), 6, "party assembly preview binds the retained six-slot party through CampaignPartySetupController")
+	assert_not_null(character_creation.find_child("CharacterName", true, false), "character creation preview enters the production identity step")
+	for surface: Control in [temple, bank, pick_lock, lifecycle, scrolling_text, level_up, encounter, shop, treasure, combat, character_sheet, inventory, spells, services, roster, vault, allies, bestiary, journal, system, shell, campaign_selection, party_assembly, character_creation]:
 		_free_surface(surface)
 
 

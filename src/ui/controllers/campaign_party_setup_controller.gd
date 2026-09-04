@@ -51,24 +51,31 @@ func build_setup_overlay() -> void:
 		return
 	if campaign_overlay == null:
 		build_campaign_overlay()
-	_bind_setup_workspace()
+	var workspace_scene := load(PARTY_SETUP_WORKSPACE_PATH) as PackedScene
+	assert(workspace_scene != null, "Party setup workspace scene is unavailable.")
+	var workspace := workspace_scene.instantiate() as PartySetupWorkspace
+	workspace.set_anchors_preset(Control.PRESET_CENTER)
+	workspace.z_index = 25
+	_host.add_child(workspace)
+	bind_setup_workspace(workspace)
+
+
+func bind_setup_workspace(workspace: PartySetupWorkspace) -> void:
+	assert(workspace != null, "Party setup workspace is unavailable.")
+	assert(setup_overlay == null or setup_overlay == workspace, "A different party setup workspace is already bound.")
+	_bind_setup_workspace_controls(workspace)
 	_inspection.build_setup_character_inspection()
 	_creation.render_creator_step()
 
 
-func _bind_setup_workspace() -> void:
-	var workspace_scene := load(PARTY_SETUP_WORKSPACE_PATH) as PackedScene
-	assert(workspace_scene != null, "Party setup workspace scene is unavailable.")
-	setup_overlay = workspace_scene.instantiate() as PanelContainer
+func _bind_setup_workspace_controls(workspace: PartySetupWorkspace) -> void:
+	setup_overlay = workspace
 	character_sheet_scene = setup_overlay.get("character_sheet_scene") as PackedScene
 	identity_step_scene_path = setup_overlay.get("identity_step_scene_path") as String
 	race_caste_step_scene_path = setup_overlay.get("race_caste_step_scene_path") as String
 	appearance_step_scene = setup_overlay.get("appearance_step_scene") as PackedScene
 	review_step_scene_path = setup_overlay.get("review_step_scene_path") as String
 	spells_step_scene_path = setup_overlay.get("spells_step_scene_path") as String
-	setup_overlay.set_anchors_preset(Control.PRESET_CENTER)
-	setup_overlay.z_index = 25
-	_host.add_child(setup_overlay)
 	setup_body = setup_overlay.get_node("ScenarioPartyWorkspace") as HBoxContainer
 	_host.remove_child(campaign_overlay)
 	setup_body.add_child(campaign_overlay)
