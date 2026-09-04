@@ -45,20 +45,6 @@
       "functions": ["<file>"]
     },
     {
-      "path": "src/ui/controllers/party_setup_assembly_controller.gd",
-      "kind": "data-collection",
-      "reason": "Party assembly projects a variable vault page and current six-slot party from detached revisions.",
-      "currentMaximum": 5,
-      "functions": ["_add_stored_character_pager", "_render_party_assembly"]
-    },
-    {
-      "path": "src/ui/controllers/party_setup_inspection_controller.gd",
-      "kind": "data-collection",
-      "reason": "The inspection region projects the currently selected setup character and its variable record sections.",
-      "currentMaximum": 5,
-      "functions": ["_build_setup_character_inspection", "_render_setup_character_inspection"]
-    },
-    {
       "path": "src/ui/controllers/screen_content_presenter.gd",
       "kind": "data-collection",
       "reason": "Shared cards and labels are emitted only while binding changing detached screen content.",

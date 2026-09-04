@@ -4,13 +4,15 @@ class_name PartySetupAssemblyController
 extends "res://src/ui/controllers/party_setup_controller_component.gd"
 
 const PARTY_SLOT_SCENE_PATH := "res://src/ui/party_setup_party_slot.tscn"
-const CHARACTER_ROW_SCENE_PATH := "res://src/ui/party_setup_character_row.tscn"
+const ASSEMBLY_BROWSER_SCENE_PATH := "res://src/ui/setup/party_assembly_browser.tscn"
 
 var _inspection: RefCounted
 var _stored_revision_signature: String = ""
 var _stored_character_page: int = 0
 var _party_slots: Array[Control] = []
 var _party_slots_owner: PartySetupPartyList
+var _assembly_browser_scene: PackedScene
+var _assembly_browser: Control
 
 
 func _init(state: RefCounted, inspection: RefCounted) -> void:
@@ -86,26 +88,15 @@ func _render_party_assembly() -> void:
 		_refresh_stored_character_rows(current_revisions, campaign_setup, party_full)
 		return
 	_clear_creator_page()
-	var heading := CenterContainer.new()
-	heading.name = "CharacterFilesHeading"
-	heading.custom_minimum_size.y = 28.0
-	var heading_content := HBoxContainer.new()
-	heading_content.add_child(_label("Character Files", GOLD, 20))
-	var character_count := _label("• %d available" % _current_vault_revisions().size(), MUTED, 13)
-	character_count.name = "CharacterFileCount"
-	heading_content.add_child(character_count)
-	heading.add_child(heading_content)
-	creator_page.add_child(heading)
-	stored_character_list = VBoxContainer.new()
-	stored_character_list.name = "StoredCharacterList"
-	stored_character_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	stored_character_list.add_theme_constant_override("separation", 2)
-	creator_page.add_child(stored_character_list)
+	if _assembly_browser_scene == null:
+		_assembly_browser_scene = load(ASSEMBLY_BROWSER_SCENE_PATH) as PackedScene
+	_assembly_browser = _assembly_browser_scene.instantiate() as Control
+	creator_page.add_child(_assembly_browser)
+	stored_character_list = _assembly_browser.call("character_rows") as VBoxContainer
+	(_assembly_browser.get_node("%CharacterFileCount") as Label).text = "• %d available" % current_revisions.size()
 	_stored_revision_signature = next_signature
 	if current_revisions.is_empty():
-		var empty := _label("No Character Files yet. Create one here.", MUTED)
-		empty.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		stored_character_list.add_child(empty)
+		(_assembly_browser.get_node("%CharacterFilesEmpty") as Control).visible = true
 		return
 	var global_available: ActionAvailabilityView = view.availability(&"import_vault_character") if campaign_setup else ActionAvailabilityView.new(&"import_vault_character", false, "Choose a scenario before adding a Character File to a party.")
 	for revision: CharacterVaultRevisionView in _stored_character_page_items(current_revisions):
@@ -118,7 +109,8 @@ func _render_party_assembly() -> void:
 			reason = global_available.reason
 		elif party_full:
 			reason = "This party already has %d characters." % _maximum_party_size()
-		var row := (load(CHARACTER_ROW_SCENE_PATH) as PackedScene).instantiate() as PartySetupCharacterRow
+		var row_scene := _assembly_browser.get("character_row_scene") as PackedScene
+		var row := row_scene.instantiate() as PartySetupCharacterRow
 		row.name = "StoredCharacter_%s" % revision.character_id.validate_node_name()
 		stored_character_list.add_child(row)
 		var portrait_id := revision.character.portrait_id if revision.character != null else revision.portrait_id
@@ -174,26 +166,15 @@ func _stored_character_page_items(revisions: Array[CharacterVaultRevisionView]) 
 func _add_stored_character_pager(item_count: int) -> void:
 	var page_size := _stored_character_page_size()
 	var page_count := maxi(1, ceili(float(item_count) / float(page_size)))
-	if page_count <= 1:
-		return
-	var pager := HBoxContainer.new()
-	pager.name = "CharacterFilePager"
-	pager.add_theme_constant_override("separation", 6)
-	var previous := Button.new()
-	previous.text = "Previous"
+	var pager := _assembly_browser.get_node("%CharacterFilePager") as HBoxContainer
+	pager.visible = page_count > 1
+	var previous := _assembly_browser.get_node("%CharacterFilePrevious") as Button
 	previous.disabled = _stored_character_page == 0
 	previous.pressed.connect(_change_stored_character_page.bind(-1))
-	pager.add_child(previous)
-	var page_label := _label("Page %d of %d" % [_stored_character_page + 1, page_count], MUTED, 12)
-	page_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	page_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	pager.add_child(page_label)
-	var next := Button.new()
-	next.text = "Next"
+	(_assembly_browser.get_node("%CharacterFilePage") as Label).text = "Page %d of %d" % [_stored_character_page + 1, page_count]
+	var next := _assembly_browser.get_node("%CharacterFileNext") as Button
 	next.disabled = _stored_character_page >= page_count - 1
 	next.pressed.connect(_change_stored_character_page.bind(1))
-	pager.add_child(next)
-	creator_page.add_child(pager)
 
 
 func _change_stored_character_page(offset: int) -> void:
