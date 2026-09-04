@@ -47,7 +47,7 @@ The names are part of the map. `Definition` means immutable authored content. `S
 
 `src/storage` owns untrusted package/save bytes, schema and hash validation, typed construction, persistence, migrations, and installed-content discovery.
 
-`src/playthrough` owns the command transaction. `GameSession` accepts typed player intent, coordinates rules and scenario execution, records committed events, and returns the next detached view or interaction. A workflow may be resumable; none of it owns a Godot node.
+`src/playthrough` owns the command transaction. `GameSession` accepts typed player intent, coordinates rules and scenario execution, records committed events, and returns the next detached view or interaction. `SessionContext` carries the one live set of collaborators, while coordinators describe their outcome through `SessionCoordinatorResult`; neither masquerades as the other. A workflow may be resumable, but none of this layer owns a Godot node.
 
 `src/app` constructs dependencies and translates host operations. It may replace a session only after a complete restore has validated. It is the composition root, not a second rules engine.
 

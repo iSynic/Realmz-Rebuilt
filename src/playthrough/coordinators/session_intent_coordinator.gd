@@ -23,7 +23,7 @@ func submit(intent: PlayerIntent) -> SessionCoordinatorResult:
 	result = _submit_inventory_or_service_intent(intent)
 	if result != null:
 		return result
-	return _context.rejected(&"intent_not_implemented", "This Realmz intent is not implemented in the current slice.")
+	return SessionCoordinatorResult.rejected(&"intent_not_implemented", "This Realmz intent is not implemented in the current slice.")
 
 
 func _submit_exploration_intent(intent: PlayerIntent) -> SessionCoordinatorResult:
@@ -120,7 +120,7 @@ func _submit_inventory_or_service_intent(intent: PlayerIntent) -> SessionCoordin
 func _camp() -> SessionCoordinatorResult:
 	var result := ExplorationTimeWorkflow.toggle_camp(_context.workflow_context())
 	if not result.ok:
-		return _context.failed(result.error_code, result.error_message, result.events)
+		return SessionCoordinatorResult.failed(result.error_code, result.error_message, result.events)
 	if not _context.state.party_camping and result.timed_day == 0:
 		return _context.responses().finish_with_age_updates(result.events, &"completed")
 	_context.exploration().set_post_time_continuation(result.map, "camp-entry-second" if _context.state.party_camping else "completed", Vector2i.ZERO, result.check_random, result.timed_day, _context.state.party.coordinate)
@@ -130,17 +130,17 @@ func _camp() -> SessionCoordinatorResult:
 func _rest() -> SessionCoordinatorResult:
 	var result := ExplorationTimeWorkflow.rest(_context.workflow_context())
 	if not result.ok:
-		return _context.failed(result.error_code, result.error_message, result.events)
+		return SessionCoordinatorResult.failed(result.error_code, result.error_message, result.events)
 	_context.exploration().set_post_time_continuation(result.map, "rest-second", Vector2i.ZERO, result.check_random, result.timed_day, _context.state.party.coordinate)
 	return _context.responses().finish_with_age_updates(result.events, &"post-clock", _context.session_continuation.copy())
 
 
 func _heal() -> SessionCoordinatorResult:
 	if _context.state.character_spellcasting_blocked:
-		return _context.completed([DomainEvent.new(&"classic_notification_requested", {"text": "Your characters can't cast spells in this area.", "soundId": 6000, "source": "classic-field-heal"})])
+		return SessionCoordinatorResult.completed([DomainEvent.new(&"classic_notification_requested", {"text": "Your characters can't cast spells in this area.", "soundId": 6000, "source": "classic-field-heal"})])
 	var result := ExplorationTimeWorkflow.heal(_context.workflow_context())
 	if not result.ok:
-		return _context.failed(result.error_code, result.error_message, result.events)
+		return SessionCoordinatorResult.failed(result.error_code, result.error_message, result.events)
 	_context.exploration().set_post_time_continuation(result.map, "heal", Vector2i.ZERO, result.check_random, result.timed_day, _context.state.party.coordinate)
 	return _context.responses().finish_with_age_updates(result.events, &"post-clock", _context.session_continuation.copy())
 
@@ -148,7 +148,7 @@ func _heal() -> SessionCoordinatorResult:
 func _search() -> SessionCoordinatorResult:
 	var result := ExplorationTimeWorkflow.search(_context.workflow_context())
 	if not result.ok:
-		return _context.failed(result.error_code, result.error_message, result.events)
+		return SessionCoordinatorResult.failed(result.error_code, result.error_message, result.events)
 	_context.exploration().set_post_time_continuation(result.map, "area-search-second", Vector2i.ZERO, result.check_random, result.timed_day, _context.state.party.coordinate)
 	return _context.responses().finish_with_age_updates(result.events, &"post-clock", _context.session_continuation.copy())
 
@@ -156,15 +156,15 @@ func _search() -> SessionCoordinatorResult:
 func _move(direction: Vector2i, aligns_dungeon_heading: bool) -> SessionCoordinatorResult:
 	var movement := _context.content.world.probe_movement(_context.state.party.map_id, _context.state.party.coordinate, direction, _context.state.world, _context.state.party_in_boat)
 	if not movement.allowed and movement.reason == &"invalid_direction":
-		return _context.rejected(&"invalid_direction", "Movement requires a cardinal direction, or a diagonal direction on a land map.")
+		return SessionCoordinatorResult.rejected(&"invalid_direction", "Movement requires a cardinal direction, or a diagonal direction on a land map.")
 	var fatigue_warning := ExplorationTimeWorkflow.movement_fatigue_warning(_context.workflow_context())
 	if fatigue_warning != null:
-		return _context.completed([fatigue_warning])
+		return SessionCoordinatorResult.completed([fatigue_warning])
 	var events: Array[DomainEvent] = []
 	if aligns_dungeon_heading:
 		var heading := ExplorationTimeWorkflow.align_dungeon_heading_for_overhead_move(_context.workflow_context(), direction)
 		if not heading.ok:
-			return _context.failed(heading.error_code, heading.error_message, heading.events)
+			return SessionCoordinatorResult.failed(heading.error_code, heading.error_message, heading.events)
 		events.append_array(heading.events)
 	if _context.state.bank_available and SessionInteractionFactory.has_pooled_wealth(_context.state.party):
 		var banked := _context.state.party.pooled_wealth.to_data()
@@ -177,7 +177,7 @@ func _move(direction: Vector2i, aligns_dungeon_heading: bool) -> SessionCoordina
 		_context.session_interaction = SessionInteractionFactory.pooled_wealth_departure_warning("pooled-wealth-departure:%d" % _context.next_revision())
 		events.append(DomainEvent.new(&"pooled_wealth_departure_warning", {"wealth": _context.state.party.pooled_wealth.to_data(), "direction": [direction.x, direction.y]}))
 		events.append(DomainEvent.new(&"sound_requested", {"soundId": 20005, "waitForCompletion": false, "stopExisting": true, "source": "classic-pooled-wealth-departure-question"}))
-		return _context.waiting(_context.session_interaction, events)
+		return SessionCoordinatorResult.waiting(_context.session_interaction, events)
 	return _context.exploration().move_after_pooled_wealth(direction, events)
 
 
@@ -207,7 +207,7 @@ func _use_item(intent: PlayerIntent) -> SessionCoordinatorResult:
 	var instance := _context.item_instance(character, item_id)
 	var item: ItemDefinition = null if instance == null else _context.content.item_by_id(instance.definition_id)
 	if character == null or instance == null or item == null:
-		return _context.rejected(&"unknown_item_instance", "The selected character does not carry that item instance.")
+		return SessionCoordinatorResult.rejected(&"unknown_item_instance", "The selected character does not carry that item instance.")
 	if FieldItemWorkflow.is_classic_door_item(item):
 		return _context.scenario().start_item_xap(character, instance, item)
 	if _active_combat():
@@ -220,17 +220,17 @@ func _request_drop_item(payload: InventoryIntentPayloads.Action) -> SessionCoord
 	var instance := _context.item_instance(character, payload.item_id)
 	var definition: ItemDefinition = null if instance == null else _context.content.item_by_id(instance.definition_id)
 	if character == null or instance == null or definition == null:
-		return _context.rejected(&"unknown_item_instance", "The selected character does not carry that item instance.")
+		return SessionCoordinatorResult.rejected(&"unknown_item_instance", "The selected character does not carry that item instance.")
 	var probe := _context.rules.inventory.classic_drop_probe(character, instance)
 	if not probe.allowed:
-		return _context.rejected(&"item_cannot_drop", probe.reason)
+		return SessionCoordinatorResult.rejected(&"item_cannot_drop", probe.reason)
 	var targeting := TargetingContinuationBody.new()
 	targeting.character_id = character.id
 	targeting.instance_id = instance.id
 	_context.set_continuation(InventoryContinuations.drop_confirmation(targeting))
 	var display_name := definition.name if instance.identified else definition.unidentified_name
 	_context.session_interaction = SessionInteractionFactory.drop_item_confirmation("session.drop-item:%s:%d" % [instance.id, _context.next_revision()], display_name)
-	return _context.waiting(_context.session_interaction, [DomainEvent.new(&"item_drop_requested", {"characterId": character.id, "instanceId": instance.id})])
+	return SessionCoordinatorResult.waiting(_context.session_interaction, [DomainEvent.new(&"item_drop_requested", {"characterId": character.id, "instanceId": instance.id})])
 
 
 func _cast_spell(payload: SpellIntentPayload) -> SessionCoordinatorResult:
@@ -255,7 +255,7 @@ func _combat_action(payload: CombatIntentPayloads.Action) -> SessionCoordinatorR
 	if payload.action == &"retreat":
 		var probe: Variant = _context.rules.combat_flow.reactions.probe_character_retreat(_context.state.combat, _context.state.party.characters(), payload.actor_id)
 		if not probe.allowed:
-			return _context.rejected(probe.reason, probe.reason_text)
+			return SessionCoordinatorResult.rejected(probe.reason, probe.reason_text)
 		return _request_retreat(payload.actor_id, &"explicit", Vector2i(-100_000, -100_000))
 	return _combat_result(CombatRewardsWorkflow.submit_action(_context.workflow_context(), payload))
 
@@ -274,7 +274,7 @@ func _combat_move(payload: CombatIntentPayloads.Move) -> SessionCoordinatorResul
 
 func _request_retreat(actor_id: String, mode: StringName, destination: Vector2i) -> SessionCoordinatorResult:
 	if _context.state.combat == null or _context.state.combat.turns.active_actor_id() != actor_id:
-		return _context.rejected(&"invalid_combat_actor", "The active character cannot retreat.")
+		return SessionCoordinatorResult.rejected(&"invalid_combat_actor", "The active character cannot retreat.")
 	var combat := CombatContinuationBody.new()
 	combat.battle_id = _context.state.combat.battle_id
 	combat.actor_id = actor_id
@@ -282,13 +282,13 @@ func _request_retreat(actor_id: String, mode: StringName, destination: Vector2i)
 	combat.destination = destination
 	_context.set_continuation(CombatContinuations.retreat_confirmation(combat))
 	_context.session_interaction = SessionInteractionFactory.retreat_confirmation("session.combat-retreat:%d" % _context.next_revision())
-	return _context.waiting(_context.session_interaction, [])
+	return SessionCoordinatorResult.waiting(_context.session_interaction, [])
 
 
 func _request_friendly_collision(payload: CombatIntentPayloads.Move) -> SessionCoordinatorResult:
 	var target_id := _context.rules.combat_flow.reactions.friendly_collision_target_id(_context.state, payload.actor_id, payload.destination)
 	if target_id.is_empty():
-		return _context.rejected(&"invalid_friendly_collision", "The adjacent ally is no longer available.")
+		return SessionCoordinatorResult.rejected(&"invalid_friendly_collision", "The adjacent ally is no longer available.")
 	var collision := CombatContinuationBody.new()
 	collision.battle_id = _context.state.combat.battle_id
 	collision.actor_id = payload.actor_id
@@ -296,52 +296,52 @@ func _request_friendly_collision(payload: CombatIntentPayloads.Move) -> SessionC
 	collision.destination = payload.destination
 	_context.set_continuation(CombatContinuations.friendly_collision(collision))
 	_context.session_interaction = SessionInteractionFactory.friendly_collision("session.combat-friendly-collision:%d" % _context.next_revision())
-	return _context.waiting(_context.session_interaction, [])
+	return SessionCoordinatorResult.waiting(_context.session_interaction, [])
 
 
 func _begin_adventure() -> SessionCoordinatorResult:
 	var result := LifecyclePartyWorkflow.begin_adventure(_context.workflow_context(), _pending_interaction() != null)
 	if not result.ok:
-		return _context.failed(result.error_code, result.error_message, result.events)
+		return SessionCoordinatorResult.failed(result.error_code, result.error_message, result.events)
 	return _context.scenario().start_application_hook(ScenarioApplicationHooks.START_GAME, &"begin-adventure", "", result.events)
 
 
 func _finalize_character() -> SessionCoordinatorResult:
 	var result := LifecyclePartyWorkflow.prepare_character_finalize(_context.workflow_context(), _pending_interaction() != null)
 	if not result.ok:
-		return _context.failed(result.error_code, result.error_message, result.events)
+		return SessionCoordinatorResult.failed(result.error_code, result.error_message, result.events)
 	if result.remaining_spell_points > 0:
 		_context.set_continuation(ApplicationContinuations.character_spell_confirmation(result.character_id, result.remaining_spell_points))
 		_context.session_interaction = SessionInteractionFactory.character_spell_confirmation("character-spells:%s:%d" % [result.character_id, _context.next_revision()], result.remaining_spell_points)
-		return _context.waiting(_context.session_interaction, [DomainEvent.new(&"character_spell_confirmation_requested", {"characterId": result.character_id, "remaining": result.remaining_spell_points})])
+		return SessionCoordinatorResult.waiting(_context.session_interaction, [DomainEvent.new(&"character_spell_confirmation_requested", {"characterId": result.character_id, "remaining": result.remaining_spell_points})])
 	return _commit_character_draft()
 
 
 func _commit_character_draft(events: Array[DomainEvent] = []) -> SessionCoordinatorResult:
 	var result := LifecyclePartyWorkflow.commit_character_draft(_context.workflow_context())
 	if not result.ok:
-		return _context.failed(result.error_code, result.error_message, events)
+		return SessionCoordinatorResult.failed(result.error_code, result.error_message, events)
 	events.append_array(result.events)
 	_context.set_continuation(ApplicationContinuations.character_vault_publication(result.character_id))
 	_context.session_interaction = SessionInteractionFactory.character_vault_confirmation("character-vault:%s:%d" % [result.character_id, _context.next_revision()], result.character_name)
 	events.append(DomainEvent.new(&"character_vault_confirmation_requested", {"characterId": result.character_id}))
-	return _context.waiting(_context.session_interaction, events)
+	return SessionCoordinatorResult.waiting(_context.session_interaction, events)
 
 
 func _service_action(payload: EconomyIntentPayloads.Service) -> SessionCoordinatorResult:
 	if payload.action != &"enter":
-		return _context.rejected(&"unknown_service_action", "Only entering an available service is implemented through this intent.")
+		return SessionCoordinatorResult.rejected(&"unknown_service_action", "Only entering an available service is implemented through this intent.")
 	if payload.service_id == "realmz.service.temple":
 		if not _context.state.temple_available:
-			return _context.rejected(&"service_unavailable", "The selected temple is not available at this location.")
+			return SessionCoordinatorResult.rejected(&"service_unavailable", "The selected temple is not available at this location.")
 		return _context.scenario().start_application_hook(ScenarioApplicationHooks.TEMPLE, &"service", payload.service_id, [])
 	if payload.service_id == "realmz.service.bank":
 		return _open_contextual_service(payload.service_id)
 	if payload.service_id == _context.state.active_shop_id:
 		if payload.service_id.is_empty() or _context.content.shop_by_id(payload.service_id) == null:
-			return _context.rejected(&"service_unavailable", "The selected shop is not available at this location.")
+			return SessionCoordinatorResult.rejected(&"service_unavailable", "The selected shop is not available at this location.")
 		return _context.scenario().start_application_hook(ScenarioApplicationHooks.SHOP, &"service", payload.service_id, [])
-	return _context.rejected(&"service_unavailable", "The selected service is not available at this location.")
+	return SessionCoordinatorResult.rejected(&"service_unavailable", "The selected service is not available at this location.")
 
 
 func _open_contextual_service(service_id: String) -> SessionCoordinatorResult:
@@ -354,31 +354,31 @@ func _open_contextual_service(service_id: String) -> SessionCoordinatorResult:
 	elif service_id == _context.state.active_shop_id:
 		operation = _context.runtime_api.request_available_shop(request_id)
 	else:
-		return _context.failed(&"service_unavailable", "The selected service is not available at this location.")
+		return SessionCoordinatorResult.failed(&"service_unavailable", "The selected service is not available at this location.")
 	return _context.responses().begin_runtime_service(service_id, operation)
 
 
 func _workflow(result: SessionWorkflowResult) -> SessionCoordinatorResult:
 	if result == null:
-		return _context.rejected(&"invalid_workflow_result", "The session workflow returned no result.")
-	return _context.completed(result.events) if result.ok else _context.rejected(result.error_code, result.error_message)
+		return SessionCoordinatorResult.rejected(&"invalid_workflow_result", "The session workflow returned no result.")
+	return SessionCoordinatorResult.completed(result.events) if result.ok else SessionCoordinatorResult.rejected(result.error_code, result.error_message)
 
 
 func _combat_result(result: CombatFlowResult) -> SessionCoordinatorResult:
 	if result == null:
-		return _context.rejected(&"invalid_combat_result", "The combat workflow returned no result.")
+		return SessionCoordinatorResult.rejected(&"invalid_combat_result", "The combat workflow returned no result.")
 	if not result.ok:
-		return _context.rejected(result.error_code, result.error_message)
+		return SessionCoordinatorResult.rejected(result.error_code, result.error_message)
 	return _context.responses().finish_combat_result(result)
 
 
 func _magic_transition(result: MagicTransitionResult) -> SessionCoordinatorResult:
 	if result == null:
-		return _context.rejected(&"invalid_workflow_result", "The magic workflow returned no result.")
+		return SessionCoordinatorResult.rejected(&"invalid_workflow_result", "The magic workflow returned no result.")
 	if not result.ok:
-		return _context.rejected(result.error_code, result.error_message)
+		return SessionCoordinatorResult.rejected(result.error_code, result.error_message)
 	if not result.completed and (result.continuation == null or result.continuation.is_empty() or result.interaction == null):
-		return _context.rejected(&"invalid_workflow_result", "The magic workflow returned an incomplete interaction transition.")
+		return SessionCoordinatorResult.rejected(&"invalid_workflow_result", "The magic workflow returned an incomplete interaction transition.")
 	return _context.responses().finish_magic_transition(result)
 
 

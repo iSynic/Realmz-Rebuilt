@@ -332,6 +332,9 @@ foreach ($file in Get-ChildItem $sessionCoordinatorRoot -Filter "session_*_coord
         if ($line -match '\b(?:WeakRef|GameSession|SessionStep)\b' -or $line -match '\bfunc\s+_session\s*\(') {
             $violations += "$($relativePath):$lineNumber session coordinators must use the explicit operation context and SessionCoordinatorResult"
         }
+        if ($line -match '\b_context\.(?:completed|waiting|failed|rejected|closed)\s*\(') {
+            $violations += "$($relativePath):$lineNumber session coordinators must construct outcomes through SessionCoordinatorResult"
+        }
     }
 }
 $coordinatorContextPath = Join-Path $repoRoot "src\playthrough\session_context.gd"
@@ -339,6 +342,9 @@ if (Test-Path -LiteralPath $coordinatorContextPath) {
     $contextContent = [IO.File]::ReadAllText($coordinatorContextPath)
     if ($contextContent -match '(?m)^var\s+view_revision\b') {
         $violations += "src/playthrough/session_context.gd request identity must use named revision capabilities instead of a writable revision field"
+    }
+    if ($contextContent -match '(?m)^(?:static\s+)?func\s+(?:completed|waiting|failed|rejected|closed)\s*\(') {
+        $violations += "src/playthrough/session_context.gd SessionCoordinatorResult must own the coordinator outcome vocabulary"
     }
 }
 

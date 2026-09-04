@@ -159,26 +159,6 @@ func set_continuation(continuation: SessionContinuation) -> void:
 	session_continuation = continuation
 
 
-func completed(events: Array[DomainEvent]) -> SessionCoordinatorResult:
-	return SessionCoordinatorResult.completed(events)
-
-
-func waiting(request: InteractionRequest, events: Array[DomainEvent]) -> SessionCoordinatorResult:
-	return SessionCoordinatorResult.waiting(request, events)
-
-
-func failed(code: StringName, message: String, events: Array[DomainEvent] = []) -> SessionCoordinatorResult:
-	return SessionCoordinatorResult.failed(code, message, events)
-
-
-func rejected(code: StringName, message: String) -> SessionCoordinatorResult:
-	return SessionCoordinatorResult.rejected(code, message)
-
-
-func closed(events: Array[DomainEvent], reason: String) -> SessionCoordinatorResult:
-	return SessionCoordinatorResult.closed(events, reason)
-
-
 func events_have(events: Array[DomainEvent], kind: StringName) -> bool:
 	for event in events:
 		if event.kind == kind:
