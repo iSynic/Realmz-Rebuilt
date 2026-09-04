@@ -124,20 +124,28 @@ func install_package(source_path: String, install_root: String = "user://package
 		return PackageInstallResult.failed("package_install_directory_failed", "Could not create the package installation directory (error %d)." % create_error)
 	var target_path := campaign_root.path_join("%s.realmz2" % source.content.package_hash)
 	if FileAccess.file_exists(target_path):
-		if _same_package_path(source_path, target_path):
-			if not _receipt_store.write(target_path, source.content, _archive_reader.sha256_file(target_path)):
-				return PackageInstallResult.failed("package_receipt_write_failed", "Could not write the validated package installation receipt.")
-			_report_progress(progress_callback, &"complete", 1, 1)
-			return PackageInstallResult.succeeded(target_path, source)
-		var existing := _load_installed_package(target_path, install_root, progress_callback, cancel_callback)
-		if existing == null:
-			existing = load_package(target_path, progress_callback, cancel_callback)
-			if existing.is_ok() and not _receipt_store.write(target_path, existing.content, _archive_reader.sha256_file(target_path)):
-				return PackageInstallResult.failed("package_receipt_write_failed", "Could not write the validated package installation receipt.")
-		if existing.is_ok() and existing.content.package_hash == source.content.package_hash:
-			_report_progress(progress_callback, &"complete", 1, 1)
-			return PackageInstallResult.succeeded(target_path, existing)
-		return PackageInstallResult.failed("package_install_collision", "An invalid package already occupies the immutable installation path.")
+		return _resolve_existing_install(source_path, target_path, install_root, source, progress_callback, cancel_callback)
+	return _commit_package_install(source_path, target_path, source, progress_callback, cancel_callback)
+
+
+func _resolve_existing_install(source_path: String, target_path: String, install_root: String, source: PackageLoadResult, progress_callback: Callable, cancel_callback: Callable) -> PackageInstallResult:
+	if _same_package_path(source_path, target_path):
+		if not _receipt_store.write(target_path, source.content, _archive_reader.sha256_file(target_path)):
+			return PackageInstallResult.failed("package_receipt_write_failed", "Could not write the validated package installation receipt.")
+		_report_progress(progress_callback, &"complete", 1, 1)
+		return PackageInstallResult.succeeded(target_path, source)
+	var existing := _load_installed_package(target_path, install_root, progress_callback, cancel_callback)
+	if existing == null:
+		existing = load_package(target_path, progress_callback, cancel_callback)
+		if existing.is_ok() and not _receipt_store.write(target_path, existing.content, _archive_reader.sha256_file(target_path)):
+			return PackageInstallResult.failed("package_receipt_write_failed", "Could not write the validated package installation receipt.")
+	if existing.is_ok() and existing.content.package_hash == source.content.package_hash:
+		_report_progress(progress_callback, &"complete", 1, 1)
+		return PackageInstallResult.succeeded(target_path, existing)
+	return PackageInstallResult.failed("package_install_collision", "An invalid package already occupies the immutable installation path.")
+
+
+func _commit_package_install(source_path: String, target_path: String, source: PackageLoadResult, progress_callback: Callable, cancel_callback: Callable) -> PackageInstallResult:
 	_report_progress(progress_callback, &"copying-package", 0, 1)
 	var temporary_path := target_path + ".installing"
 	if FileAccess.file_exists(temporary_path):

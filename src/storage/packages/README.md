@@ -8,4 +8,6 @@ Begin with `PackageRepository` when following installation or discovery, and wit
 
 All decoders share one diagnostic dictionary and fail closed. Do not return transport dictionaries beyond this folder, invent defaults for malformed authored data, or copy stock application records into a scenario. Application content is composed first and the scenario contributes only owned records or exact-key overrides.
 
+Cross-reference validation proceeds in authored dependency order: rule catalogs, Simple Encounters, Thief and Complex Encounters, then program instructions and destinations. Installation first recognizes a validated immutable target; a new target is copied to a temporary sibling, checked byte for byte, renamed atomically, receipted, and only then cached.
+
 Package loading is startup-sensitive. Preserve receipt checks, parsed-document sidecars, bounded graph caching, and background installation. Run `tests/infrastructure/test_package_repository.gd` for decoder or validation work, `tests/infrastructure/test_package_install_task.gd` for worker lifecycle, and the full verification gate before changing a package contract.

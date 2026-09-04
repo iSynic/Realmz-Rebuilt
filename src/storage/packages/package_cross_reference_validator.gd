@@ -61,38 +61,64 @@ func validate_monster_record_references(monsters: Array[MonsterDefinition], item
 	return true
 
 func validate_scenario_references(scenario: ScenarioDefinition, message_ids: Dictionary, encounters: Array[SimpleEncounterDefinition], complex_encounters: Array[ComplexEncounterDefinition], thief_encounters: Array[ThiefEncounterDefinition], items: Array[ItemDefinition], spells: Array[SpellDefinition], media_assets: Array[MediaAsset]) -> bool:
-	var encounter_ids: Dictionary = {}
-	for encounter: SimpleEncounterDefinition in encounters:
-		encounter_ids[encounter.id] = true
-		if not message_ids.has(absi(encounter.prompt_message_id)):
-			return _reject("Simple Encounter %d references unavailable prompt message %d." % [encounter.id, encounter.prompt_message_id])
-		for response: SimpleEncounterResponse in encounter.responses():
-			if scenario.program_by_id(response.result_program_id) == null:
-				return _reject("Simple Encounter %d response '%s' references unavailable result program '%s'." % [encounter.id, response.id, response.result_program_id])
-	var complex_ids: Dictionary = {}
-	var thief_ids: Dictionary = {}
+	var encounter_ids_value: Variant = _validate_simple_encounters(scenario, message_ids, encounters)
+	if encounter_ids_value == null:
+		return false
+	var encounter_ids: Dictionary = encounter_ids_value
 	var classic_spell_ids: Dictionary = {}
 	for spell: SpellDefinition in spells:
 		classic_spell_ids[spell.classic_id] = true
-	for thief_encounter: ThiefEncounterDefinition in thief_encounters:
-		thief_ids[thief_encounter.id] = true
-		if thief_encounter.spell_id != 0 and not classic_spell_ids.has(thief_encounter.spell_id):
-			return _reject("Thief Encounter %d references unavailable Classic spell %d." % [thief_encounter.id, thief_encounter.spell_id])
-	for encounter: ComplexEncounterDefinition in complex_encounters:
-		complex_ids[encounter.id] = true
-		if not message_ids.has(absi(encounter.prompt_message_id)):
-			return _reject("Complex Encounter %d references unavailable prompt message %d." % [encounter.id, encounter.prompt_message_id])
-		for outcome: int in range(1, 5):
-			if scenario.program_by_id(encounter.result_program_id(outcome)) == null:
-				return _reject("Complex Encounter %d references unavailable result program %d." % [encounter.id, outcome])
-		if encounter.thief and not thief_ids.has(encounter.thief_success):
-			return _reject("Complex Encounter %d references unavailable Thief Encounter %d." % [encounter.id, encounter.thief_success])
+	var complex_ids_value: Variant = _validate_complex_encounters(scenario, message_ids, complex_encounters, thief_encounters, classic_spell_ids)
+	if complex_ids_value == null:
+		return false
+	var complex_ids: Dictionary = complex_ids_value
 	var classic_item_ids: Dictionary = {}
 	for item: ItemDefinition in items:
 		classic_item_ids[item.classic_id] = true
 	var media_resource_keys: Dictionary = {}
 	for asset: MediaAsset in media_assets:
 		media_resource_keys["%s:%d" % [asset.resource_type, asset.resource_id]] = true
+	return _validate_scenario_programs(scenario, encounter_ids, complex_ids, classic_item_ids, media_resource_keys, message_ids)
+
+
+func _validate_simple_encounters(scenario: ScenarioDefinition, message_ids: Dictionary, encounters: Array[SimpleEncounterDefinition]) -> Variant:
+	var encounter_ids: Dictionary = {}
+	for encounter: SimpleEncounterDefinition in encounters:
+		encounter_ids[encounter.id] = true
+		if not message_ids.has(absi(encounter.prompt_message_id)):
+			_reject("Simple Encounter %d references unavailable prompt message %d." % [encounter.id, encounter.prompt_message_id])
+			return null
+		for response: SimpleEncounterResponse in encounter.responses():
+			if scenario.program_by_id(response.result_program_id) == null:
+				_reject("Simple Encounter %d response '%s' references unavailable result program '%s'." % [encounter.id, response.id, response.result_program_id])
+				return null
+	return encounter_ids
+
+
+func _validate_complex_encounters(scenario: ScenarioDefinition, message_ids: Dictionary, encounters: Array[ComplexEncounterDefinition], thief_encounters: Array[ThiefEncounterDefinition], classic_spell_ids: Dictionary) -> Variant:
+	var thief_ids: Dictionary = {}
+	for thief_encounter: ThiefEncounterDefinition in thief_encounters:
+		thief_ids[thief_encounter.id] = true
+		if thief_encounter.spell_id != 0 and not classic_spell_ids.has(thief_encounter.spell_id):
+			_reject("Thief Encounter %d references unavailable Classic spell %d." % [thief_encounter.id, thief_encounter.spell_id])
+			return null
+	var complex_ids: Dictionary = {}
+	for encounter: ComplexEncounterDefinition in encounters:
+		complex_ids[encounter.id] = true
+		if not message_ids.has(absi(encounter.prompt_message_id)):
+			_reject("Complex Encounter %d references unavailable prompt message %d." % [encounter.id, encounter.prompt_message_id])
+			return null
+		for outcome: int in range(1, 5):
+			if scenario.program_by_id(encounter.result_program_id(outcome)) == null:
+				_reject("Complex Encounter %d references unavailable result program %d." % [encounter.id, outcome])
+				return null
+		if encounter.thief and not thief_ids.has(encounter.thief_success):
+			_reject("Complex Encounter %d references unavailable Thief Encounter %d." % [encounter.id, encounter.thief_success])
+			return null
+	return complex_ids
+
+
+func _validate_scenario_programs(scenario: ScenarioDefinition, encounter_ids: Dictionary, complex_ids: Dictionary, classic_item_ids: Dictionary, media_resource_keys: Dictionary, message_ids: Dictionary) -> bool:
 	for program_id: String in scenario.program_ids():
 		var program := scenario.program_by_id(program_id)
 		for index: int in range(program.instruction_count()):
