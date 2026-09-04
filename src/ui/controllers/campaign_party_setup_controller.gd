@@ -65,6 +65,7 @@ func _bind_setup_workspace() -> void:
 	assert(workspace_scene != null, "Party setup workspace scene is unavailable.")
 	setup_overlay = workspace_scene.instantiate() as PanelContainer
 	character_sheet_scene = setup_overlay.get("character_sheet_scene") as PackedScene
+	appearance_step_scene = setup_overlay.get("appearance_step_scene") as PackedScene
 	setup_overlay.set_anchors_preset(Control.PRESET_CENTER)
 	setup_overlay.z_index = 25
 	_host.add_child(setup_overlay)

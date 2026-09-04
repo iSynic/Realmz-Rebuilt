@@ -1,0 +1,192 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/ui/setup/character_creation_appearance_step.gd" id="1_step"]
+[ext_resource type="PackedScene" path="res://src/ui/setup/appearance_thumbnail_row.tscn" id="2_row"]
+
+[node name="CharacterCreationAppearanceStep" type="VBoxContainer"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("1_step")
+thumbnail_row_scene = ExtResource("2_row")
+
+[node name="AppearanceHeading" type="Label" parent="."]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+theme_override_font_sizes/font_size = 20
+text = "Appearance"
+
+[node name="AppearanceRow" type="HBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 14
+
+[node name="AppearancePreview" type="PanelContainer" parent="AppearanceRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(220, 300)
+layout_mode = 2
+size_flags_vertical = 3
+theme_type_variation = &"ClassicInset"
+
+[node name="PreviewColumn" type="VBoxContainer" parent="AppearanceRow/AppearancePreview"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 8
+
+[node name="PortraitHeading" type="Label" parent="AppearanceRow/AppearancePreview/PreviewColumn"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+theme_override_font_sizes/font_size = 14
+text = "Character Portrait"
+horizontal_alignment = 1
+
+[node name="PortraitPreview" type="TextureRect" parent="AppearanceRow/AppearancePreview/PreviewColumn"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(176, 176)
+layout_mode = 2
+texture_filter = 1
+expand_mode = 1
+stretch_mode = 5
+
+[node name="IconRow" type="HBoxContainer" parent="AppearanceRow/AppearancePreview/PreviewColumn"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 8
+
+[node name="CombatIconPreview" type="TextureRect" parent="AppearanceRow/AppearancePreview/PreviewColumn/IconRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 96)
+layout_mode = 2
+texture_filter = 1
+expand_mode = 1
+stretch_mode = 5
+
+[node name="IconLabel" type="Label" parent="AppearanceRow/AppearancePreview/PreviewColumn/IconRow"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+theme_override_font_sizes/font_size = 13
+text = "Battle icon"
+
+[node name="Choices" type="VBoxContainer" parent="AppearanceRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="PortraitOption" type="OptionButton" parent="AppearanceRow/Choices"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+fit_to_longest_item = false
+
+[node name="PortraitThumbnailStrip" type="PanelContainer" parent="AppearanceRow/Choices"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_type_variation = &"ClassicInset"
+
+[node name="PortraitStripBody" type="VBoxContainer" parent="AppearanceRow/Choices/PortraitThumbnailStrip"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="PortraitHeader" type="HBoxContainer" parent="AppearanceRow/Choices/PortraitThumbnailStrip/PortraitStripBody"]
+layout_mode = 2
+
+[node name="Heading" type="Label" parent="AppearanceRow/Choices/PortraitThumbnailStrip/PortraitStripBody/PortraitHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+theme_override_font_sizes/font_size = 15
+text = "Portraits"
+
+[node name="PortraitPrevious" type="Button" parent="AppearanceRow/Choices/PortraitThumbnailStrip/PortraitStripBody/PortraitHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Previous"
+
+[node name="PortraitPage" type="Label" parent="AppearanceRow/Choices/PortraitThumbnailStrip/PortraitStripBody/PortraitHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+theme_override_font_sizes/font_size = 12
+text = "Page 1 of 1"
+
+[node name="PortraitNext" type="Button" parent="AppearanceRow/Choices/PortraitThumbnailStrip/PortraitStripBody/PortraitHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Next"
+
+[node name="PortraitRows" type="VBoxContainer" parent="AppearanceRow/Choices/PortraitThumbnailStrip/PortraitStripBody"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="PortraitEmpty" type="Label" parent="AppearanceRow/Choices/PortraitThumbnailStrip/PortraitStripBody"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+theme_override_font_sizes/font_size = 12
+text = "No exact Classic appearance media is available."
+
+[node name="CombatIconOption" type="OptionButton" parent="AppearanceRow/Choices"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+fit_to_longest_item = false
+
+[node name="CombatIconThumbnailStrip" type="PanelContainer" parent="AppearanceRow/Choices"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_type_variation = &"ClassicInset"
+
+[node name="CombatIconStripBody" type="VBoxContainer" parent="AppearanceRow/Choices/CombatIconThumbnailStrip"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="CombatIconHeader" type="HBoxContainer" parent="AppearanceRow/Choices/CombatIconThumbnailStrip/CombatIconStripBody"]
+layout_mode = 2
+
+[node name="Heading" type="Label" parent="AppearanceRow/Choices/CombatIconThumbnailStrip/CombatIconStripBody/CombatIconHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+theme_override_font_sizes/font_size = 15
+text = "Combat Icons"
+
+[node name="CombatIconPrevious" type="Button" parent="AppearanceRow/Choices/CombatIconThumbnailStrip/CombatIconStripBody/CombatIconHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Previous"
+
+[node name="CombatIconPage" type="Label" parent="AppearanceRow/Choices/CombatIconThumbnailStrip/CombatIconStripBody/CombatIconHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+theme_override_font_sizes/font_size = 12
+text = "Page 1 of 1"
+
+[node name="CombatIconNext" type="Button" parent="AppearanceRow/Choices/CombatIconThumbnailStrip/CombatIconStripBody/CombatIconHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Next"
+
+[node name="CombatIconRows" type="VBoxContainer" parent="AppearanceRow/Choices/CombatIconThumbnailStrip/CombatIconStripBody"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="CombatIconEmpty" type="Label" parent="AppearanceRow/Choices/CombatIconThumbnailStrip/CombatIconStripBody"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+theme_override_font_sizes/font_size = 12
+text = "No exact Classic appearance media is available."
+
+[node name="AppearanceCatalogError" type="Label" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.937, 0.467, 0.439, 1)
+text = "This package does not expose the complete Classic appearance catalog. Character generation is unavailable until the package is re-exported."
+autowrap_mode = 2

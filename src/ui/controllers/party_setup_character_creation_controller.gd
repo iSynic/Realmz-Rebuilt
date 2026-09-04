@@ -4,7 +4,6 @@ extends "res://src/ui/controllers/party_setup_controller_component.gd"
 
 const SpellSelectionChrome := preload("res://src/ui/controllers/classic_spell_selection_chrome.gd")
 const SPELL_EFFECT_PREVIEW_SCENE_PATH := "res://src/ui/classic_spell_effect_preview.tscn"
-const AppearanceEditorType := preload("res://src/ui/controllers/party_setup_appearance_editor.gd")
 
 var _assembly: RefCounted
 var _starting_spell_level: int = 0
@@ -15,10 +14,10 @@ var _appearance_editor: PartySetupAppearanceEditor
 func _init(state: RefCounted, assembly: RefCounted) -> void:
 	super(state)
 	_assembly = assembly
-	_appearance_editor = AppearanceEditorType.new(self)
+	_appearance_editor = PartySetupAppearanceEditor.new(self)
 
-func ensure_appearance_textures() -> void:
-	_ensure_appearance_textures()
+func ensure_appearance_textures(requested_asset_ids: Array[String] = []) -> void:
+	_ensure_appearance_textures(requested_asset_ids)
 
 func appearance_textures() -> Dictionary:
 	_ensure_appearance_textures()

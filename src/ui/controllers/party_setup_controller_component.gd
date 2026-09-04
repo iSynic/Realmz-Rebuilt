@@ -149,6 +149,9 @@ var setup_inspection_overlay: PanelContainer:
 var character_sheet_scene: PackedScene:
 	get: return _state.character_sheet_scene
 	set(value): _state.character_sheet_scene = value
+var appearance_step_scene: PackedScene:
+	get: return _state.appearance_step_scene
+	set(value): _state.appearance_step_scene = value
 var setup_inspection_character_id: String:
 	get: return _state.setup_inspection_character_id
 	set(value): _state.setup_inspection_character_id = value

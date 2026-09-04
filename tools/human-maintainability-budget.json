@@ -45,13 +45,6 @@
       "functions": ["<file>"]
     },
     {
-      "path": "src/ui/controllers/party_setup_appearance_editor.gd",
-      "kind": "data-collection",
-      "reason": "Appearance controls and thumbnails vary with the supplied portrait, icon, race, and class catalogs.",
-      "currentMaximum": 16,
-      "functions": ["_add_thumbnail_row", "_build_option_control", "_build_preview", "_build_thumbnail_strip", "_preview_texture", "build"]
-    },
-    {
       "path": "src/ui/controllers/party_setup_assembly_controller.gd",
       "kind": "data-collection",
       "reason": "Party assembly projects a variable vault page and current six-slot party from detached revisions.",
