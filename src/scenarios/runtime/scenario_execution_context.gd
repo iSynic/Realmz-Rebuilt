@@ -3,34 +3,6 @@
 class_name ScenarioExecutionContext
 extends RefCounted
 
-const _FIELDS: Array[String] = [
-	"_programResolved",
-	"applicationHook",
-	"actionIndex",
-	"battleId",
-	"callingContext",
-	"characterId",
-	"classicMonsterId",
-	"combatantId",
-	"encounterId",
-	"encounterAttempt",
-	"encounterKind",
-	"mapId",
-	"optionIndex",
-	"optionSlot",
-	"originProgramId",
-	"originalProgramId",
-	"randomRegionId",
-	"responseId",
-	"responseKind",
-	"serviceId",
-	"timedEncounterId",
-	"traitor",
-	"triggerId",
-	"x",
-	"y",
-]
-
 var calling_context: StringName = &""
 var trigger_id: String = ""
 var map_id: String = ""
@@ -56,10 +28,10 @@ var program_resolved: bool = false
 var original_program_id: String = ""
 var origin_program_id: String = ""
 
-var _has_coordinate: bool = false
-var _has_service_id: bool = false
-var _has_classic_monster_id: bool = false
-var _has_traitor: bool = false
+var has_coordinate: bool = false
+var has_service_id: bool = false
+var has_classic_monster_id: bool = false
+var has_traitor: bool = false
 
 
 static func empty() -> ScenarioExecutionContext:
@@ -77,7 +49,7 @@ static func trigger(kind: StringName, trigger_identity: String, map_identity: St
 	result.trigger_id = trigger_identity
 	result.map_id = map_identity
 	result.coordinate = location
-	result._has_coordinate = include_location
+	result.has_coordinate = include_location
 	return result
 
 
@@ -145,7 +117,7 @@ func set_random_region(value: String) -> ScenarioExecutionContext:
 func set_application_hook(hook: StringName, service: String) -> ScenarioExecutionContext:
 	application_hook = hook
 	service_id = service
-	_has_service_id = true
+	has_service_id = true
 	return self
 
 
@@ -158,8 +130,8 @@ func set_combatant(value: String, monster_id: int = 0, monster_traitor: bool = f
 	combatant_id = value
 	classic_monster_id = monster_id
 	traitor = monster_traitor
-	_has_classic_monster_id = include_monster_facts
-	_has_traitor = include_monster_facts
+	has_classic_monster_id = include_monster_facts
+	has_traitor = include_monster_facts
 	return self
 
 
@@ -179,23 +151,23 @@ func merged(overlay: ScenarioExecutionContext) -> ScenarioExecutionContext:
 	if not overlay.calling_context.is_empty(): result.calling_context = overlay.calling_context
 	if not overlay.trigger_id.is_empty(): result.trigger_id = overlay.trigger_id
 	if not overlay.map_id.is_empty(): result.map_id = overlay.map_id
-	if overlay._has_coordinate:
+	if overlay.has_coordinate:
 		result.coordinate = overlay.coordinate
-		result._has_coordinate = true
+		result.has_coordinate = true
 	if overlay.timed_encounter_id >= 0: result.timed_encounter_id = overlay.timed_encounter_id
 	if not overlay.random_region_id.is_empty(): result.random_region_id = overlay.random_region_id
 	if not overlay.application_hook.is_empty(): result.application_hook = overlay.application_hook
-	if overlay._has_service_id:
+	if overlay.has_service_id:
 		result.service_id = overlay.service_id
-		result._has_service_id = true
+		result.has_service_id = true
 	if not overlay.battle_id.is_empty(): result.battle_id = overlay.battle_id
 	if not overlay.combatant_id.is_empty(): result.combatant_id = overlay.combatant_id
-	if overlay._has_classic_monster_id:
+	if overlay.has_classic_monster_id:
 		result.classic_monster_id = overlay.classic_monster_id
-		result._has_classic_monster_id = true
-	if overlay._has_traitor:
+		result.has_classic_monster_id = true
+	if overlay.has_traitor:
 		result.traitor = overlay.traitor
-		result._has_traitor = true
+		result.has_traitor = true
 	if not overlay.encounter_kind.is_empty(): result.encounter_kind = overlay.encounter_kind
 	if overlay.encounter_id >= 0: result.encounter_id = overlay.encounter_id
 	if overlay.encounter_attempt >= 0: result.encounter_attempt = overlay.encounter_attempt
@@ -216,16 +188,16 @@ func value(name: String) -> Variant:
 		"callingContext": return String(calling_context)
 		"triggerId": return trigger_id
 		"mapId": return map_id
-		"x": return coordinate.x if _has_coordinate else null
-		"y": return coordinate.y if _has_coordinate else null
+		"x": return coordinate.x if has_coordinate else null
+		"y": return coordinate.y if has_coordinate else null
 		"timedEncounterId": return timed_encounter_id if timed_encounter_id >= 0 else null
 		"randomRegionId": return random_region_id
 		"applicationHook": return String(application_hook)
-		"serviceId": return service_id if _has_service_id else null
+		"serviceId": return service_id if has_service_id else null
 		"battleId": return battle_id
 		"combatantId": return combatant_id
-		"classicMonsterId": return classic_monster_id if _has_classic_monster_id else null
-		"traitor": return traitor if _has_traitor else null
+		"classicMonsterId": return classic_monster_id if has_classic_monster_id else null
+		"traitor": return traitor if has_traitor else null
 		"encounterKind": return String(encounter_kind)
 		"encounterId": return encounter_id if encounter_id >= 0 else null
 		"encounterAttempt": return encounter_attempt if encounter_attempt >= 0 else null
@@ -242,110 +214,33 @@ func value(name: String) -> Variant:
 
 
 func copy() -> ScenarioExecutionContext:
-	return from_data(to_data())
-
-
-func to_data() -> Dictionary:
-	var result: Dictionary = {}
-	if not calling_context.is_empty(): result["callingContext"] = String(calling_context)
-	if not trigger_id.is_empty(): result["triggerId"] = trigger_id
-	if not map_id.is_empty(): result["mapId"] = map_id
-	if _has_coordinate:
-		result["x"] = coordinate.x
-		result["y"] = coordinate.y
-	if timed_encounter_id >= 0: result["timedEncounterId"] = timed_encounter_id
-	if not random_region_id.is_empty(): result["randomRegionId"] = random_region_id
-	if not application_hook.is_empty(): result["applicationHook"] = String(application_hook)
-	if _has_service_id: result["serviceId"] = service_id
-	if not battle_id.is_empty(): result["battleId"] = battle_id
-	if not combatant_id.is_empty(): result["combatantId"] = combatant_id
-	if _has_classic_monster_id: result["classicMonsterId"] = classic_monster_id
-	if _has_traitor: result["traitor"] = traitor
-	if not encounter_kind.is_empty(): result["encounterKind"] = String(encounter_kind)
-	if encounter_id >= 0: result["encounterId"] = encounter_id
-	if encounter_attempt >= 0: result["encounterAttempt"] = encounter_attempt
-	if not response_id.is_empty(): result["responseId"] = response_id
-	if option_index >= 0: result["optionIndex"] = option_index
-	if not response_kind.is_empty(): result["responseKind"] = String(response_kind)
-	if option_slot >= 0: result["optionSlot"] = option_slot
-	if action_index >= 0: result["actionIndex"] = action_index
-	if not character_id.is_empty(): result["characterId"] = character_id
-	if program_resolved: result["_programResolved"] = true
-	if not original_program_id.is_empty(): result["originalProgramId"] = original_program_id
-	if not origin_program_id.is_empty(): result["originProgramId"] = origin_program_id
-	return result
-
-
-static func from_data(value: Variant) -> ScenarioExecutionContext:
-	if not value is Dictionary:
-		return null
-	for key: Variant in value.keys():
-		if not key is String or key not in _FIELDS:
-			return null
 	var result := ScenarioExecutionContext.new()
-	if not _read_string_name(value, "callingContext", result, "calling_context"): return null
-	if not _read_string(value, "triggerId", result, "trigger_id"): return null
-	if not _read_string(value, "mapId", result, "map_id"): return null
-	if value.has("x") != value.has("y") or value.has("x") and (not _whole_number(value["x"]) or not _whole_number(value["y"])): return null
-	if value.has("x"):
-		result.coordinate = Vector2i(int(value["x"]), int(value["y"]))
-		result._has_coordinate = true
-	if not _read_nonnegative_int(value, "timedEncounterId", result, "timed_encounter_id"): return null
-	if not _read_string(value, "randomRegionId", result, "random_region_id"): return null
-	if not _read_string_name(value, "applicationHook", result, "application_hook"): return null
-	if value.has("serviceId"):
-		if not value["serviceId"] is String: return null
-		result.service_id = value["serviceId"]
-		result._has_service_id = true
-	if not _read_string(value, "battleId", result, "battle_id"): return null
-	if not _read_string(value, "combatantId", result, "combatant_id"): return null
-	if value.has("classicMonsterId"):
-		if not _whole_number(value["classicMonsterId"]): return null
-		result.classic_monster_id = int(value["classicMonsterId"])
-		result._has_classic_monster_id = true
-	if value.has("traitor"):
-		if not value["traitor"] is bool: return null
-		result.traitor = value["traitor"]
-		result._has_traitor = true
-	if not _read_string_name(value, "encounterKind", result, "encounter_kind"): return null
-	if not _read_nonnegative_int(value, "encounterId", result, "encounter_id"): return null
-	if not _read_nonnegative_int(value, "encounterAttempt", result, "encounter_attempt"): return null
-	if not _read_string(value, "responseId", result, "response_id"): return null
-	if not _read_nonnegative_int(value, "optionIndex", result, "option_index"): return null
-	if not _read_string_name(value, "responseKind", result, "response_kind"): return null
-	if not _read_nonnegative_int(value, "optionSlot", result, "option_slot"): return null
-	if not _read_nonnegative_int(value, "actionIndex", result, "action_index"): return null
-	if not _read_string(value, "characterId", result, "character_id"): return null
-	if value.has("_programResolved"):
-		if value["_programResolved"] != true: return null
-		result.program_resolved = true
-	if not _read_string(value, "originalProgramId", result, "original_program_id"): return null
-	if not _read_string(value, "originProgramId", result, "origin_program_id"): return null
+	result.calling_context = calling_context
+	result.trigger_id = trigger_id
+	result.map_id = map_id
+	result.coordinate = coordinate
+	result.timed_encounter_id = timed_encounter_id
+	result.random_region_id = random_region_id
+	result.application_hook = application_hook
+	result.service_id = service_id
+	result.battle_id = battle_id
+	result.combatant_id = combatant_id
+	result.classic_monster_id = classic_monster_id
+	result.traitor = traitor
+	result.encounter_kind = encounter_kind
+	result.encounter_id = encounter_id
+	result.encounter_attempt = encounter_attempt
+	result.response_id = response_id
+	result.option_index = option_index
+	result.response_kind = response_kind
+	result.option_slot = option_slot
+	result.action_index = action_index
+	result.character_id = character_id
+	result.program_resolved = program_resolved
+	result.original_program_id = original_program_id
+	result.origin_program_id = origin_program_id
+	result.has_coordinate = has_coordinate
+	result.has_service_id = has_service_id
+	result.has_classic_monster_id = has_classic_monster_id
+	result.has_traitor = has_traitor
 	return result
-
-
-static func _read_string(data: Dictionary, key: String, target: ScenarioExecutionContext, property: StringName) -> bool:
-	if not data.has(key): return true
-	if not data[key] is String: return false
-	target.set(property, data[key])
-	return true
-
-
-static func _read_string_name(data: Dictionary, key: String, target: ScenarioExecutionContext, property: StringName) -> bool:
-	if not data.has(key): return true
-	if not data[key] is String: return false
-	target.set(property, StringName(data[key]))
-	return true
-
-
-static func _read_nonnegative_int(data: Dictionary, key: String, target: ScenarioExecutionContext, property: StringName) -> bool:
-	if not data.has(key): return true
-	if not _whole_number(data[key]) or int(data[key]) < 0: return false
-	target.set(property, int(data[key]))
-	return true
-
-
-static func _whole_number(value: Variant) -> bool:
-	if value is int:
-		return true
-	return value is float and is_equal_approx(value, round(value))

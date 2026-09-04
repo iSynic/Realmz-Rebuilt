@@ -10,7 +10,7 @@ Own the single session-constructed VM runtime API and explicit Classic opcode ha
 - Duplicate-safe Classic opcode registration.
 - Domain handler groups for control flow, world/time, character, inventory/economy, encounters, combat/rewards, and presentation-producing operations.
 - Typed battle-caller, runtime-continuation, runtime-handoff, and VM-handoff records used at every wait, nested macro, and party-defeat boundary. Runtime continuation payloads, feature factories, and strict decoding live under `continuations/`.
-- `ScenarioExecutionContext`, the closed typed provenance passed through VM frames, directives, opcode handlers, and saved frame serialization.
+- `ScenarioExecutionContext`, the closed typed provenance passed through VM frames, directives, and opcode handlers; `ScenarioExecutionContextCodec` alone owns its sparse saved representation.
 
 ## Local Contracts
 
@@ -51,7 +51,7 @@ Own the single session-constructed VM runtime API and explicit Classic opcode ha
 - A Classic result-program branch may carry a validated entry cursor through `ScenarioVmDirective`; the VM applies it when constructing the target frame, and the strict codec preserves zero as the backward-compatible default. Control-flow and inventory handlers derive Simple or Complex result program identities only from the closed active encounter context. Opcode 38 preserves Castle's direct zero-based encounter-result index and source cursor while branching within the active Simple or Complex result table.
 - Opcode 33 derives gold versus gems from the sign of its authored amount. Insufficient pooled-plus-carried funds leave state unchanged and request Castle warning 50 with application sound 6000.
 - Opcode 55 selector zero retains Castle's any-picked check and non-position selectors retain its absolute picked-count check. `FD-SCENARIO-003` corrects selectors 1 through 6 to test their corresponding one-based party positions instead of reproducing Castle's six-way `track[0]` source typo.
-- Live execution context crosses the runtime/VM boundary only as `ScenarioExecutionContext`. Its sparse dictionary form exists solely inside its strict wire codec; unknown provenance fields fail restoration.
+- Live execution context crosses the runtime/VM boundary only as `ScenarioExecutionContext`. `ScenarioExecutionContextCodec` is the only public dictionary boundary; unknown provenance fields fail restoration, while ordinary copies remain typed and do not round-trip through serialization.
 - Live continuation queues contain typed interaction bodies. Dictionary payloads may enter only from detached domain events and are decoded once before the continuation is constructed.
 - Unknown opcodes fail explicitly. There is no script-name dispatch or GDScript fallback.
 - Handlers are explicitly constructed, retain only session-owned pure dependencies, and never access Nodes or host services.

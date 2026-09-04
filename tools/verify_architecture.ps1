@@ -523,9 +523,9 @@ foreach ($protocolRoot in @("src\ui", "src\app")) {
     }
 }
 
-# VM execution provenance is a closed typed protocol.  Dictionaries exist only
-# at ScenarioExecutionContext.to_data/from_data; frames, directives, handlers,
-# and runtime calls must not reopen that boundary with an arbitrary context.
+# VM execution provenance is a closed typed protocol. Dictionaries exist only
+# inside ScenarioExecutionContextCodec; frames, directives, handlers, and
+# runtime calls must not reopen that boundary with an arbitrary context.
 $scenarioRoot = Join-Path $repoRoot "src\scenarios"
 foreach ($file in Get-ChildItem $scenarioRoot -Recurse -Filter "*.gd" -ErrorAction SilentlyContinue) {
     $relativePath = Get-RepositoryRelativePath -RootPath $repoRoot -TargetPath $file.FullName

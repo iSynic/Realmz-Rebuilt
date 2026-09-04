@@ -90,14 +90,14 @@ func to_data() -> Dictionary:
 		BRANCH_XAP:
 			return {"kind": String(kind), "targetId": target_id, "gosub": gosub}
 		BRANCH_PROGRAM:
-			var data := {"kind": String(kind), "programId": program_id, "gosub": gosub, "context": context.to_data()}
+			var data := {"kind": String(kind), "programId": program_id, "gosub": gosub, "context": ScenarioExecutionContextCodec.encode(context)}
 			if entry_cursor != 0:
 				data["entryCursor"] = entry_cursor
 			return data
 		ENTER_ENCOUNTER:
 			return {"kind": String(kind), "encounterKind": String(encounter_kind), "encounterId": target_id, "gosub": gosub}
 		BRANCH_ENCOUNTER_RESULT:
-			return {"kind": String(kind), "programId": program_id, "gosub": gosub, "context": context.to_data(), "repeatEncounter": repeat_encounter}
+			return {"kind": String(kind), "programId": program_id, "gosub": gosub, "context": ScenarioExecutionContextCodec.encode(context), "repeatEncounter": repeat_encounter}
 	return {}
 
 
@@ -121,7 +121,7 @@ static func from_data(value: Variant) -> ScenarioVmDirective:
 			var cursor_value: Variant = value.get("entryCursor", 0)
 			if value.size() not in [4, 5] or (value.size() == 5 and not value.has("entryCursor")) or not value.get("programId") is String or value["programId"].is_empty() or not value.get("gosub") is bool or not value.get("context") is Dictionary or not _whole_number(cursor_value) or cursor_value < 0 or cursor_value > 4096:
 				return null
-			var restored_context := ScenarioExecutionContext.from_data(value["context"])
+			var restored_context := ScenarioExecutionContextCodec.decode(value["context"])
 			return null if restored_context == null else branch_program_at(value["programId"], value["gosub"], restored_context, int(cursor_value))
 		ENTER_ENCOUNTER:
 			var encounter_kind_value: Variant = value.get("encounterKind")
@@ -132,7 +132,7 @@ static func from_data(value: Variant) -> ScenarioVmDirective:
 		BRANCH_ENCOUNTER_RESULT:
 			if value.size() != 5 or not value.get("programId") is String or value["programId"].is_empty() or not value.get("gosub") is bool or not value.get("context") is Dictionary or not value.get("repeatEncounter") is bool:
 				return null
-			var restored_context := ScenarioExecutionContext.from_data(value["context"])
+			var restored_context := ScenarioExecutionContextCodec.decode(value["context"])
 			return null if restored_context == null else branch_encounter_result(value["programId"], value["gosub"], restored_context, value["repeatEncounter"])
 	return null
 

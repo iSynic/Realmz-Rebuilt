@@ -90,7 +90,7 @@ func to_data() -> Dictionary:
 		"countsAsClassicCall": counts_as_classic_call,
 		"parameters": _parameters.duplicate(true),
 		"locals": _locals.duplicate(true),
-		"context": _context.to_data(),
+		"context": ScenarioExecutionContextCodec.encode(_context),
 		"iterators": _iterators.duplicate(true),
 	}
 
@@ -106,7 +106,7 @@ static func from_data(data: Variant) -> ScenarioFrame:
 		return null
 	if not data["parameters"] is Dictionary or not data["locals"] is Dictionary or not data["context"] is Dictionary or not data["iterators"] is Array:
 		return null
-	var context := ScenarioExecutionContext.from_data(data["context"])
+	var context := ScenarioExecutionContextCodec.decode(data["context"])
 	if context == null:
 		return null
 	var frame := ScenarioFrame.new(StringName(data["kind"]), data["definitionId"], saved_cursor)
