@@ -122,7 +122,9 @@ func _field_content(source: RealmzContent) -> RealmzContent:
 	for _index: int in 5:
 		age_changes.append(PackedInt32Array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))
 	var race := RaceDefinition.new("classic.race.field", 1, "Human", empty_ints, empty_ints, empty_ints, empty_ints, empty_ints, empty_ranges, age_changes, 0, false, 10, 0, 0, 0, 1, 1, false, 0, 0, 4096)
-	var caste := CasteDefinition.new("classic.caste.field", 1, "Sorcerer", empty_ints, empty_ints, empty_ints, empty_ints, Vector2i(8, 8), Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO, [], [], [], 1, 1, 0, 1, 0, 0, 0, 1, 0, true, false, 0, 0, 4096)
+	var caste := CasteDefinition.new("classic.caste.field", 1, "Sorcerer", CasteDefinition.AttributeDefinition.new(empty_ints, empty_ints, empty_ints, empty_ints), CasteDefinition.ProgressionDefinition.new(Vector2i(8, 8), Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO))
+	caste.caste_class = 1
+	caste.item_category_mask_high = 4096
 	var bolt := SpellDefinition.new("classic.spell.field-bolt", 1101, "Field Bolt")
 	bolt.cost = 2
 	bolt.damage_min = 4

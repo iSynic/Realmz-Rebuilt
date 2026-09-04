@@ -225,8 +225,31 @@ func _decode_caste_record(value_record: Variant, fields: Array[String], integer_
 			return {}
 		eligible_races.append(race_id)
 	var functional: bool = integers["casteClass"] != 0 or integers["movementBonus"] != 0 or integers["maximumAttacks"] != 0 or integers["startMoney"] != 0 or not eligible_races.is_empty() or victory_value.any(func(number: int) -> bool: return number != 0) or limits_value.any(func(number: int) -> bool: return number != 0) or stamina_value.any(func(number: int) -> bool: return number != 0) or attacks_value.any(func(number: int) -> bool: return number != 0)
-	var definition := CasteDefinition.new(record["id"], integers["classicId"], record["name"], saves_value, bonuses_value, limits_value, conditions_value, Vector2i(stamina[0], stamina[1]), Vector2i(to_hit[0], to_hit[1]), Vector2i(dodge[0], dodge[1]), Vector2i(missile[0], missile[1]), Vector2i(hand[0], hand[1]), spellcasters, attacks_value, start_items_value, integers["casteClass"], integers["minimumAgeGroup"], integers["movementBonus"], integers["magicResistanceMultiplier"], integers["twoHandBonus"], integers["maximumStaminaBonus"], integers["bonusAttacks"], integers["maximumAttacks"], integers["startMoney"], record["canUseMissile"], record["getsMissileBonus"], integers["defaultIcon"], masks[0], masks[1], Vector2i(strength[0], strength[1]), record["description"], eligible_races, initial_abilities_value, level_abilities_value, victory_value)
+	var attributes := CasteDefinition.AttributeDefinition.new(saves_value, bonuses_value, limits_value, conditions_value, Vector2i(strength[0], strength[1]))
+	var progression := CasteDefinition.ProgressionDefinition.new(Vector2i(stamina[0], stamina[1]), Vector2i(to_hit[0], to_hit[1]), Vector2i(dodge[0], dodge[1]), Vector2i(missile[0], missile[1]), Vector2i(hand[0], hand[1]), spellcasters, attacks_value, initial_abilities_value, level_abilities_value, victory_value)
+	var definition := _build_caste_definition(record, integers, attributes, progression, start_items_value, eligible_races, masks)
 	return {"definition": definition, "functional": functional}
+
+
+func _build_caste_definition(record: Dictionary, integers: Dictionary, attributes: CasteDefinition.AttributeDefinition, progression: CasteDefinition.ProgressionDefinition, starting_items: Array[String], eligible_races: Array[String], masks: Array[int]) -> CasteDefinition:
+	var definition := CasteDefinition.new(record["id"], integers["classicId"], record["name"], attributes, progression, starting_items)
+	definition.description = record["description"]
+	definition.eligible_race_ids = eligible_races.duplicate()
+	definition.caste_class = integers["casteClass"]
+	definition.minimum_age_group = integers["minimumAgeGroup"]
+	definition.movement_bonus = integers["movementBonus"]
+	definition.magic_resistance_multiplier = maxi(1, integers["magicResistanceMultiplier"])
+	definition.two_hand_bonus = integers["twoHandBonus"]
+	definition.maximum_stamina_bonus = integers["maximumStaminaBonus"]
+	definition.bonus_attacks = integers["bonusAttacks"]
+	definition.maximum_attacks = integers["maximumAttacks"]
+	definition.start_money = integers["startMoney"]
+	definition.can_use_missile = record["canUseMissile"]
+	definition.gets_missile_bonus = record["getsMissileBonus"]
+	definition.default_icon = integers["defaultIcon"]
+	definition.item_category_mask_low = masks[0]
+	definition.item_category_mask_high = masks[1]
+	return definition
 
 func decode_spells(value: Variant) -> Variant:
 	if not value is Array:

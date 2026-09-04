@@ -254,7 +254,7 @@ func _test_party_and_creator_persistence(content: RealmzContent) -> void:
 	var advanced_spec := CharacterCreationSpec.new("Veteran", member.race_id, member.caste_id, member.gender, "", "", 3)
 	var advanced_generation := advanced_session.submit_intent(PartyIntents.generate_character_draft(advanced_spec))
 	assert_equal(advanced_generation.state, SessionStep.State.COMPLETED, "a fixed higher starting level reaches the ordinary saveable Review boundary")
-	assert_equal([advanced_session.view().character_draft.level, advanced_session.view().character_draft.experience], [3, -content.caste_by_id(member.caste_id).victory_threshold(2)], "the session exposes the target level and matching caste victory threshold without a shortcut profile")
+	assert_equal([advanced_session.view().character_draft.level, advanced_session.view().character_draft.experience], [3, -content.caste_by_id(member.caste_id).progression.victory_threshold(2)], "the session exposes the target level and matching caste victory threshold without a shortcut profile")
 	var invalid_level_spec := CharacterCreationSpec.new("Invalid Veteran", member.race_id, member.caste_id, member.gender, "", "", 2)
 	assert_equal(advanced_session.submit_intent(PartyIntents.generate_character_draft(invalid_level_spec)).error_code, &"invalid_starting_level", "non-Classic starting levels fail before consuming another character roll")
 	var staged_setup_save := restored_setup.snapshot()
@@ -602,7 +602,7 @@ func _spellcaster_creation_spec(content: RealmzContent) -> CharacterCreationSpec
 	for caste: CasteDefinition in content.caste_definitions():
 		var caster_at_level_one := false
 		var maximum_spell_level := 0
-		for row: Vector3i in caste.spellcaster_rows():
+		for row: Vector3i in caste.progression.spellcaster_rows():
 			caster_at_level_one = caster_at_level_one or row.y == 1
 			maximum_spell_level += row.z
 		if not caster_at_level_one or maximum_spell_level < 1:

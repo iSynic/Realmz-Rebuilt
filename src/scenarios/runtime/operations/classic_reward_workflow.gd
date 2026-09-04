@@ -404,7 +404,7 @@ func _advance_reward_levels(reward: ClassicRewardState, request_id: String, even
 		if character == null or race == null or caste == null or character.current_health <= 0 or character.experience <= 0:
 			return ScenarioRuntimeOperationResult.failed(&"invalid_reward_progression", "A character in the level-up queue is no longer eligible.")
 		var threshold_index := clampi(character.level, 1, 30) - 1
-		var threshold := caste.victory_threshold(threshold_index)
+		var threshold := caste.progression.victory_threshold(threshold_index)
 		if threshold <= 0:
 			events.append(DomainEvent.new(&"reward_threshold_corrected", {"characterId": character.id, "level": character.level, "authoredThreshold": threshold, "source": "invalid-content-guard"}))
 			character.experience = -1

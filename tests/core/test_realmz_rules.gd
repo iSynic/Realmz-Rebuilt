@@ -118,7 +118,9 @@ func _test_character_creation_and_leveling() -> void:
 	caste_conditions[5] = 1
 	caste_conditions[6] = 2
 	var defense_race := RaceDefinition.new("race.defense", 2, "Defense Race", _ints_size(8, 0), _ints([100, -200, 0, 0, 0, 0, 0, 100]), _ints_size(6, 0), _attribute_limits(), race_conditions, [Vector2i(18, 18)], _age_changes(), 100)
-	var defense_caste := CasteDefinition.new("caste.defense", 2, "Defense Caste", _ints([100, 0, 0, 0, 0, 0, 0, 100]), _ints_size(6, 0), _attribute_limits(), caste_conditions, Vector2i(8, 8), Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO)
+	var defense_attributes := CasteDefinition.AttributeDefinition.new(_ints([100, 0, 0, 0, 0, 0, 0, 100]), _ints_size(6, 0), _attribute_limits(), caste_conditions)
+	var defense_progression := CasteDefinition.ProgressionDefinition.new(Vector2i(8, 8), Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO)
+	var defense_caste := CasteDefinition.new("caste.defense", 2, "Defense Caste", defense_attributes, defense_progression)
 	var defended := rules.characters.create_character("character.defense", "Defender", defense_race, defense_caste, 1, ScriptedRng.new([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))
 	assert_equal([defended.save_value(0), defended.save_value(1), defended.save_value(7)], [120, -99, 120], "creation saves combine race and caste values within Castle's bounds")
 	assert_equal(defended.conditions.value(4), 2, "racial starting conditions retain their authored duration")
@@ -1035,7 +1037,14 @@ func _race() -> RaceDefinition:
 
 func _caste(minimum_age_group: int = 1) -> CasteDefinition:
 	var spellcasters: Array[Vector3i] = []
-	return CasteDefinition.new("caste.test", 1, "Test Caste", _ints_size(8, 0), _ints_size(6, 0), _attribute_limits(), _ints_size(40, 0), Vector2i(8, 8), Vector2i(10, 2), Vector2i(0, 1), Vector2i(2, 6), Vector2i(4, 1), spellcasters, _ints([2]), _strings(["item.start"]), 0, minimum_age_group, 0, 1, 0, 3, 0, 3, 12, true, false, 0, 0, 0, Vector2i(0, 5))
+	var attributes := CasteDefinition.AttributeDefinition.new(_ints_size(8, 0), _ints_size(6, 0), _attribute_limits(), _ints_size(40, 0), Vector2i(0, 5))
+	var progression := CasteDefinition.ProgressionDefinition.new(Vector2i(8, 8), Vector2i(10, 2), Vector2i(0, 1), Vector2i(2, 6), Vector2i(4, 1), spellcasters, _ints([2]))
+	var result := CasteDefinition.new("caste.test", 1, "Test Caste", attributes, progression, _strings(["item.start"]))
+	result.minimum_age_group = minimum_age_group
+	result.maximum_stamina_bonus = 3
+	result.maximum_attacks = 3
+	result.start_money = 12
+	return result
 
 
 func _progression_race() -> RaceDefinition:
@@ -1063,7 +1072,12 @@ func _progression_caste() -> CasteDefinition:
 	level_abilities[0] = 4
 	var victory := _ints_size(30, 0)
 	victory[2] = 12_345
-	return CasteDefinition.new("caste.progression", 2, "Progression Caste", _ints_size(8, 0), _ints_size(6, 0), _attribute_limits(), conditions, Vector2i(1, 1), Vector2i(0, 1), Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO, [], [], [], 0, 1, 0, 1, 50, 0, 0, 3, 0, true, false, 0, 0, 0, Vector2i(0, 8), "", [], initial_abilities, level_abilities, victory)
+	var attributes := CasteDefinition.AttributeDefinition.new(_ints_size(8, 0), _ints_size(6, 0), _attribute_limits(), conditions, Vector2i(0, 8))
+	var progression := CasteDefinition.ProgressionDefinition.new(Vector2i(1, 1), Vector2i(0, 1), Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO, [], [], initial_abilities, level_abilities, victory)
+	var result := CasteDefinition.new("caste.progression", 2, "Progression Caste", attributes, progression)
+	result.two_hand_bonus = 50
+	result.maximum_attacks = 3
+	return result
 
 
 func _age_changes() -> Array[PackedInt32Array]:

@@ -346,7 +346,7 @@ func _scroll_content(source: RealmzContent) -> RealmzContent:
 	var empty_ints: Array[int] = []; var empty_ranges: Array[Vector2i] = []; var age_changes: Array[PackedInt32Array] = []
 	for _index: int in 5: age_changes.append(PackedInt32Array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))
 	var race := RaceDefinition.new("classic.race.scroll", 1, "Human", empty_ints, empty_ints, empty_ints, empty_ints, empty_ints, empty_ranges, age_changes, 0, false, 10, 0, 0, 0, 1, 1, false, 0, 0, 0)
-	var caste := CasteDefinition.new("classic.caste.scroll", 1, "Sorcerer", empty_ints, empty_ints, empty_ints, empty_ints, Vector2i(8, 8), Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO)
+	var caste := CasteDefinition.new("classic.caste.scroll", 1, "Sorcerer", CasteDefinition.AttributeDefinition.new(empty_ints, empty_ints, empty_ints, empty_ints), CasteDefinition.ProgressionDefinition.new(Vector2i(8, 8), Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO))
 	var scroll_case := ItemDefinition.new("classic.item.scroll-case", 800, "Scroll Case"); scroll_case.item_type = 13; scroll_case.weight = 2
 	var parchment := ItemDefinition.new("classic.item.parchment", 806, "Parchment"); parchment.weight = 0; parchment.initial_charges = 3; parchment.weight_per_charge = 1; parchment.drop_on_empty = true
 	var rations := ItemDefinition.new("classic.item.iron-rations", 877, "Iron Rations"); rations.icon_id = 20; rations.weight = 1; rations.initial_charges = 4; rations.weight_per_charge = 1; rations.drop_on_empty = true

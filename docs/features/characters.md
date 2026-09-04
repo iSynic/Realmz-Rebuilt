@@ -2,6 +2,8 @@
 
 Start with `CharacterState` for one adventurer's mutable truth and `CharacterRules` for creation, aging, derived statistics, and character-level legality. `CharacterView` is the detached, read-only form used by the interface. Character creation and party membership are committed through `GameSession`; UI code never edits a character directly.
 
+`CasteDefinition` keeps identity, eligibility, equipment policy, and starting items together. Its named `AttributeDefinition` record owns save bonuses, attribute limits, starting conditions, and strength bounds; its `ProgressionDefinition` record owns stamina dice, combat growth, spellcaster rows, abilities, and victory thresholds. Providence's flat package record is unchanged, but `PackageCharacterContentDecoder` constructs these three concepts explicitly so maintainers do not have to interpret a 35-argument constructor.
+
 `PartyIntents` is the command entry point for party assembly, Character Files import, creation drafts, starting spells, appearance, party order, and Begin Adventure. Its `PartyIntentPayloads` values retain stable character and provenance identities without embedding session state or presentation objects.
 
 Character spell-point confirmation, Character Files publication, and source-ordered age acknowledgements resume through `ApplicationContinuations` and their typed application or age payload. They share the versioned session envelope without making character state responsible for save decoding.

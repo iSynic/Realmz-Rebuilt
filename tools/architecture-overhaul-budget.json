@@ -9,7 +9,7 @@
   "migrationCeilings": {
     "oversizedProductionFiles": 0,
     "oversizedFunctions": 59,
-    "oversizedTopLevelClasses": 18,
+    "oversizedTopLevelClasses": 17,
     "crossObjectPrivateCalls": 0,
     "genericPreloadAliases": 0,
     "majorSurfacesWithoutScene": 0,

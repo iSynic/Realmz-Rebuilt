@@ -481,7 +481,7 @@ func _apply_attribute_increase(character: CharacterState, requested_attribute: i
 		1:
 			if character.brawn >= 25:
 				return
-			var maximum_bonus := caste.maximum_damage_bonus() if caste != null else 32_767
+			var maximum_bonus := caste.attributes.maximum_damage_bonus() if caste != null else 32_767
 			var rules := CharacterRules.new()
 			var before := rules.strength_bonuses(character.brawn, maximum_bonus)
 			character.brawn += 1

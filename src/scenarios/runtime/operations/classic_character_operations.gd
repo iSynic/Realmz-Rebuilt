@@ -161,7 +161,7 @@ func _level_selected_characters() -> ScenarioRuntimeOperationResult:
 		if race == null or caste == null:
 			return ScenarioRuntimeOperationResult.failed(&"unknown_character_profile", "Classic opcode 102 requires source-defined race and caste profiles.")
 		var threshold_index := clampi(character.level, 1, 30) - 1
-		character.experience = 1 - caste.victory_threshold(threshold_index)
+		character.experience = 1 - caste.progression.victory_threshold(threshold_index)
 		if _rules.characters.level_up(character, race, caste, _rng) == null:
 			return ScenarioRuntimeOperationResult.failed(&"character_level_failed", "Classic opcode 102 could not level character '%s'." % character.id)
 		leveled.append(character.id)

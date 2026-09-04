@@ -7,9 +7,9 @@
       "id": "characters",
       "boundary": "game",
       "guide": "docs/features/characters.md",
-      "entryPoints": ["src/game/state/character_state.gd", "src/game/rules/character_rules.gd"],
-      "publicInterfaces": ["CharacterState", "CharacterRules", "CharacterView", "PartyIntents", "PartyIntentPayloads"],
-      "tests": ["tests/core/test_realmz_rules.gd", "tests/integration/test_character_appearance_workflow.gd"],
+      "entryPoints": ["src/game/state/character_state.gd", "src/game/rules/character_rules.gd", "src/game/content/caste_definition.gd"],
+      "publicInterfaces": ["CharacterState", "CharacterRules", "CharacterView", "CasteDefinition", "CasteDefinition.AttributeDefinition", "CasteDefinition.ProgressionDefinition", "PartyIntents", "PartyIntentPayloads"],
+      "tests": ["tests/core/test_realmz_rules.gd", "tests/infrastructure/test_package_repository.gd", "tests/integration/test_character_appearance_workflow.gd"],
       "performanceProbes": []
     },
     {

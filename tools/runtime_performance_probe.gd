@@ -130,7 +130,7 @@ func _assemble_party(session: GameSession, content: RealmzContent) -> bool:
 	for race_candidate: RaceDefinition in races:
 		for caste_candidate: CasteDefinition in castes:
 			if not race_candidate.eligible_caste_ids.is_empty() and not race_candidate.eligible_caste_ids.has(caste_candidate.id): continue
-			var rows := caste_candidate.spellcaster_rows()
+			var rows := caste_candidate.progression.spellcaster_rows()
 			for row_index: int in mini(3, rows.size()):
 				if rows[row_index].y > 0:
 					race = race_candidate; caste = caste_candidate; caster_type = row_index + 1; break

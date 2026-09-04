@@ -41,15 +41,15 @@ static func from_race(definition: RaceDefinition) -> DefinitionOptionView:
 
 static func from_caste(definition: CasteDefinition) -> DefinitionOptionView:
 	var display_facts: Array[String] = [
-		"Stamina d%d initially • d%d per level" % [definition.initial_stamina_die(), definition.level_stamina_die()],
-		"To hit %+d initially • %+d per level" % [definition.initial_to_hit(), definition.level_to_hit()],
-		"Dodge %+d initially • %+d per level" % [definition.initial_dodge(), definition.level_dodge()],
+		"Stamina d%d initially • d%d per level" % [definition.progression.initial_stamina_die(), definition.progression.level_stamina_die()],
+		"To hit %+d initially • %+d per level" % [definition.progression.initial_to_hit(), definition.progression.level_to_hit()],
+		"Dodge %+d initially • %+d per level" % [definition.progression.initial_dodge(), definition.progression.level_dodge()],
 	]
 	if definition.can_use_missile:
-		display_facts.append("Missile %+d initially • %+d per level" % [definition.initial_missile(), definition.level_missile()])
+		display_facts.append("Missile %+d initially • %+d per level" % [definition.progression.initial_missile(), definition.progression.level_missile()])
 	else:
 		display_facts.append("Cannot use missile weapons")
-	display_facts.append("Hand to hand %+d initially • %+d per level" % [definition.initial_hand_to_hand(), definition.level_hand_to_hand()])
+	display_facts.append("Hand to hand %+d initially • %+d per level" % [definition.progression.initial_hand_to_hand(), definition.progression.level_hand_to_hand()])
 	if definition.minimum_age_group > 0:
 		display_facts.append("Minimum age %s" % _minimum_age_label(definition.minimum_age_group))
 	_append_signed(display_facts, "Movement", definition.movement_bonus)
@@ -60,16 +60,16 @@ static func from_caste(definition: CasteDefinition) -> DefinitionOptionView:
 	_append_signed(display_facts, "Maximum stamina bonus", definition.maximum_stamina_bonus)
 	if definition.magic_resistance_multiplier != 1:
 		display_facts.append("Magic resistance ×%d" % definition.magic_resistance_multiplier)
-	if definition.spellcaster_rows().any(func(row: Vector3i) -> bool: return row.y > 0):
+	if definition.progression.spellcaster_rows().any(func(row: Vector3i) -> bool: return row.y > 0):
 		display_facts.append("Spellcaster")
 	if definition.gets_missile_bonus:
 		display_facts.append("Receives missile bonus")
 	if definition.start_money != 0:
 		display_facts.append("Starting gold %d" % definition.start_money)
-	var attributes := _named_modifiers(definition.attribute_bonus, ["Brawn", "Knowledge", "Judgment", "Agility", "Vitality", "Luck"])
+	var attributes := _named_modifiers(definition.attributes.attribute_bonus, ["Brawn", "Knowledge", "Judgment", "Agility", "Vitality", "Luck"])
 	if not attributes.is_empty():
 		display_facts.append("Attributes • %s" % attributes)
-	var saves := _named_modifiers(definition.save_bonus, ["Charm", "Fire", "Cold", "Shock", "Chemical", "Mental", "SP drain", "Special"])
+	var saves := _named_modifiers(definition.attributes.save_bonus, ["Charm", "Fire", "Cold", "Shock", "Chemical", "Mental", "SP drain", "Special"])
 	if not saves.is_empty():
 		display_facts.append("Saves • %s" % saves)
 	return DefinitionOptionView.new(definition.id, definition.name, definition.description, definition.eligible_race_ids, display_facts)

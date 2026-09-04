@@ -323,7 +323,9 @@ func _inventory_content(source: RealmzContent) -> RealmzContent:
 		age_changes.append(PackedInt32Array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))
 	var category_mask := (1 << 5) | (1 << 12)
 	var race := RaceDefinition.new("classic.race.inventory", 1, "Human", empty_ints, empty_ints, empty_ints, empty_ints, empty_ints, empty_ranges, age_changes, 0, false, 10, 0, 0, 0, 1, 1, false, 0, category_mask, 0)
-	var caste := CasteDefinition.new("classic.caste.inventory", 1, "Fighter", empty_ints, empty_ints, empty_ints, empty_ints, Vector2i(8, 8), Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO, [], [], [], 1, 1, 0, 1, 0, 0, 0, 1, 0, true, false, 0, category_mask, 0)
+	var caste := CasteDefinition.new("classic.caste.inventory", 1, "Fighter", CasteDefinition.AttributeDefinition.new(empty_ints, empty_ints, empty_ints, empty_ints), CasteDefinition.ProgressionDefinition.new(Vector2i(8, 8), Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO))
+	caste.caste_class = 1
+	caste.item_category_mask_low = category_mask
 	var sword := ItemDefinition.new("classic.item.inventory-sword", 10, "Longsword", "Sword", "A balanced one-handed sword."); sword.item_type = 2; sword.hands = 1; sword.weight = 12; sword.initial_charges = 2; sword.item_category_mask_low = 1 << 5; sword.damage_bonus = 2
 	var cursed := ItemDefinition.new("classic.item.inventory-curse", 11, "Cursed Longsword", "Sword", "A blade that refuses to leave its bearer."); cursed.item_type = 2; cursed.hands = 1; cursed.weight = 10; cursed.item_category_mask_low = 1 << 5; cursed.cursed_item_id = cursed.id
 	var healing_spell := SpellDefinition.new("classic.spell.inventory-heal", 1101, "Mending")
