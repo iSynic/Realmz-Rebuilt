@@ -145,44 +145,95 @@ func to_data() -> Dictionary:
 static func from_data(data: Variant) -> MonsterState:
 	if not data is Dictionary:
 		return null
-	for field: String in ["id", "definitionId", "name", "hitDice", "currentHealth", "maximumHealth", "agility", "armor", "magicResistance", "spellPoints", "maximumSpellPoints", "traitor", "weaponId", "conditions"]:
-		if not data.has(field):
-			return null
-	if not data["id"] is String or data["id"].is_empty() or not data["definitionId"] is String or data["definitionId"].is_empty() or not data["name"] is String or not data["traitor"] is bool or not data["weaponId"] is String or data.has("summoned") and not data["summoned"] is bool:
+	if not _required_fields_are_valid(data):
 		return null
-	var values: Dictionary = {}
+	var values_value: Variant = _numeric_fields_from_data(data)
+	if values_value == null:
+		return null
+	var values: Dictionary = values_value
+	var loaded_conditions := ConditionSet.from_data(data["conditions"], ConditionSet.CHARACTER_COUNT)
+	if loaded_conditions == null:
+		return null
+	var result := MonsterState.new(
+		data["id"],
+		data["definitionId"],
+		data["name"],
+		values["currentHealth"],
+		values["maximumHealth"],
+		values["hitDice"],
+		values["agility"],
+		values["armor"],
+		values["magicResistance"],
+		values["maximumSpellPoints"],
+		data["traitor"],
+	)
+	result.spell_points = values["spellPoints"]
+	result.summoned = bool(data.get("summoned", false))
+	if not _restore_optional_fields(result, data):
+		return null
+	result.conditions = loaded_conditions
+	return result
+
+
+static func _required_fields_are_valid(data: Dictionary) -> bool:
+	var required: Array[String] = [
+		"id", "definitionId", "name", "hitDice", "currentHealth", "maximumHealth",
+		"agility", "armor", "magicResistance", "spellPoints", "maximumSpellPoints",
+		"traitor", "weaponId", "conditions",
+	]
+	for field: String in required:
+		if not data.has(field):
+			return false
+	if not data["id"] is String or data["id"].is_empty():
+		return false
+	if not data["definitionId"] is String or data["definitionId"].is_empty():
+		return false
+	if not data["name"] is String or not data["traitor"] is bool or not data["weaponId"] is String:
+		return false
+	return not data.has("summoned") or data["summoned"] is bool
+
+
+static func _numeric_fields_from_data(data: Dictionary) -> Variant:
+	var result: Dictionary = {}
 	for field: String in ["hitDice", "currentHealth", "maximumHealth", "agility", "armor", "magicResistance", "spellPoints", "maximumSpellPoints"]:
 		var value := _integer(data[field])
 		if value == -100_000:
 			return null
-		values[field] = value
-	if values["hitDice"] < 0 or values["maximumHealth"] < 1 or values["maximumHealth"] > 32_767 or values["currentHealth"] < -32_768 or values["currentHealth"] > 32_767 or values["maximumSpellPoints"] < 0 or values["maximumSpellPoints"] > 32_767 or values["spellPoints"] < -32_768 or values["spellPoints"] > 32_767:
+		result[field] = value
+	if result["hitDice"] < 0 or result["maximumHealth"] < 1 or result["maximumHealth"] > 32_767:
 		return null
-	var loaded_conditions := ConditionSet.from_data(data["conditions"], ConditionSet.CHARACTER_COUNT)
-	if loaded_conditions == null:
+	if result["currentHealth"] < -32_768 or result["currentHealth"] > 32_767:
 		return null
-	var result := MonsterState.new(data["id"], data["definitionId"], data["name"], values["currentHealth"], values["maximumHealth"], values["hitDice"], values["agility"], values["armor"], values["magicResistance"], values["maximumSpellPoints"], data["traitor"])
-	result.spell_points = values["spellPoints"]
-	result.summoned = bool(data.get("summoned", false))
+	if result["maximumSpellPoints"] < 0 or result["maximumSpellPoints"] > 32_767 or result["spellPoints"] < -32_768 or result["spellPoints"] > 32_767:
+		return null
+	return result
+
+
+static func _restore_optional_fields(result: MonsterState, data: Dictionary) -> bool:
 	result.icon_id = _integer(data.get("iconId", 0))
-	if result.icon_id == -100_000:
-		return null
 	result.surrender_percent = _integer(data.get("surrenderPercent", 0))
-	if result.surrender_percent == -100_000:
-		return null
+	if result.icon_id == -100_000 or result.surrender_percent == -100_000:
+		return false
 	result.weapon_id = data["weaponId"]
 	var loot_data: Variant = data.get("lootItemIds", [])
 	if not loot_data is Array or loot_data.size() > 6:
-		return null
+		return false
 	var loot_ids: Array[String] = []
 	for loot_id: Variant in loot_data:
 		if not loot_id is String:
-			return null
+			return false
 		loot_ids.append(loot_id)
 	if not result.set_loot_item_ids(loot_ids):
-		return null
+		return false
+	var loot_detection_value: Variant = _loot_detection_from_data(data, loot_ids.size())
+	if loot_detection_value == null or not result.set_loot_magic_detected(loot_detection_value):
+		return false
+	return _restore_target_and_saves(result, data)
+
+
+static func _loot_detection_from_data(data: Dictionary, loot_count: int) -> Variant:
 	var loot_detection_data: Variant = data.get("lootMagicDetected", [])
-	if not loot_detection_data is Array or data.has("lootMagicDetected") and loot_detection_data.size() != loot_ids.size():
+	if not loot_detection_data is Array or data.has("lootMagicDetected") and loot_detection_data.size() != loot_count:
 		return null
 	var loot_detection: Array[bool] = []
 	if data.has("lootMagicDetected"):
@@ -191,24 +242,25 @@ static func from_data(data: Variant) -> MonsterState:
 				return null
 			loot_detection.append(detected)
 	else:
-		loot_detection.resize(loot_ids.size())
+		loot_detection.resize(loot_count)
 		loot_detection.fill(false)
-	if not result.set_loot_magic_detected(loot_detection):
-		return null
+	return loot_detection
+
+
+static func _restore_target_and_saves(result: MonsterState, data: Dictionary) -> bool:
 	if data.has("targetId"):
 		if not data["targetId"] is String:
-			return null
+			return false
 		result.target_id = data["targetId"]
 	if data.has("saves"):
 		var saves_data: Variant = data["saves"]
 		if not saves_data is Array or saves_data.size() != 8:
-			return null
+			return false
 		for index: int in 8:
 			var save := _integer(saves_data[index])
 			if save == -100_000 or not result.set_save_value(index, save):
-				return null
-	result.conditions = loaded_conditions
-	return result
+				return false
+	return true
 
 
 static func _integer(value: Variant) -> int:

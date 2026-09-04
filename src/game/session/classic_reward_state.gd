@@ -164,84 +164,137 @@ func to_data() -> Dictionary:
 static func from_data(data: Variant) -> ClassicRewardState:
 	if not data is Dictionary:
 		return null
-	var base_fields: Array[String] = ["origin", "sourceId", "experiencePool", "experienceShare", "initialWealth", "magicDetected", "identified", "completionPending", "phase", "items", "experienceAwards", "levelCharacterIds", "levelIndex", "spellCharacterIds", "spellIndex", "pendingLevelResult"]
-	var required := base_fields.duplicate()
 	var has_battle_sequence: bool = data.has("battleStage") or data.has("bonusTreasureClassicId")
 	var has_item_detection: bool = data.has("magicDetectedItemIds")
+	if not _serialized_shape_is_valid(data, has_battle_sequence, has_item_detection):
+		return null
+	var scalars_value: Variant = _scalar_values_from_data(data, has_battle_sequence)
+	if scalars_value == null:
+		return null
+	var scalars: Dictionary = scalars_value
+	var wealth := WealthState.from_data(data["initialWealth"])
+	if wealth == null:
+		return null
+	var result := ClassicRewardState.new(StringName(data["origin"]), data["sourceId"], scalars["experiencePool"], wealth)
+	result.experience_share = scalars["experienceShare"]
+	result.magic_detected = data["magicDetected"]
+	result.identified = data["identified"]
+	result.completion_pending = data["completionPending"]
+	result.phase = StringName(data["phase"])
+	result.battle_stage = scalars["battleStage"]
+	result.bonus_treasure_classic_id = scalars["bonusTreasureClassicId"]
+	if not _restore_items_and_awards(result, data, has_item_detection):
+		return null
+	if not _restore_progress(result, data, scalars["levelIndex"], scalars["spellIndex"]):
+		return null
+	return result
+
+
+static func _serialized_shape_is_valid(data: Dictionary, has_battle_sequence: bool, has_item_detection: bool) -> bool:
+	var required: Array[String] = [
+		"origin", "sourceId", "experiencePool", "experienceShare", "initialWealth",
+		"magicDetected", "identified", "completionPending", "phase", "items",
+		"experienceAwards", "levelCharacterIds", "levelIndex", "spellCharacterIds",
+		"spellIndex", "pendingLevelResult",
+	]
 	if has_battle_sequence:
 		required.append_array(["battleStage", "bonusTreasureClassicId"])
 	if has_item_detection:
 		required.append("magicDetectedItemIds")
 	if data.size() != required.size():
-		return null
+		return false
 	for field: String in required:
 		if not data.has(field):
-			return null
-	if not data["origin"] is String or data["origin"].is_empty() or not data["sourceId"] is String or not data["magicDetected"] is bool or not data["identified"] is bool or not data["completionPending"] is bool or not data["phase"] is String or StringName(data["phase"]) not in [ITEM_PHASE, LEVEL_PHASE, SPELL_PHASE] or not data["items"] is Array or not data["experienceAwards"] is Dictionary or not data["levelCharacterIds"] is Array or not data["spellCharacterIds"] is Array or not data["pendingLevelResult"] is Dictionary or (has_battle_sequence and not data["battleStage"] is String) or (has_item_detection and not data["magicDetectedItemIds"] is Array):
+			return false
+	if not data["origin"] is String or data["origin"].is_empty() or not data["sourceId"] is String:
+		return false
+	if not data["magicDetected"] is bool or not data["identified"] is bool or not data["completionPending"] is bool:
+		return false
+	if not data["phase"] is String or StringName(data["phase"]) not in [ITEM_PHASE, LEVEL_PHASE, SPELL_PHASE]:
+		return false
+	if not data["items"] is Array or not data["experienceAwards"] is Dictionary or not data["pendingLevelResult"] is Dictionary:
+		return false
+	if not data["levelCharacterIds"] is Array or not data["spellCharacterIds"] is Array:
+		return false
+	return (not has_battle_sequence or data["battleStage"] is String) and (not has_item_detection or data["magicDetectedItemIds"] is Array)
+
+
+static func _scalar_values_from_data(data: Dictionary, has_battle_sequence: bool) -> Variant:
+	var result := {
+		"experiencePool": _integer(data["experiencePool"]),
+		"experienceShare": _integer(data["experienceShare"]),
+		"levelIndex": _integer(data["levelIndex"]),
+		"spellIndex": _integer(data["spellIndex"]),
+		"bonusTreasureClassicId": _integer(data["bonusTreasureClassicId"]) if has_battle_sequence else 0,
+		"battleStage": StringName(data["battleStage"]) if has_battle_sequence else ORDINARY_BATTLE_STAGE if data["origin"] == "battle" else NO_BATTLE_STAGE,
+	}
+	if result["experiencePool"] < 0 or result["experienceShare"] < 0:
 		return null
-	var loaded_experience_pool := _integer(data["experiencePool"])
-	var loaded_experience_share := _integer(data["experienceShare"])
-	var loaded_level_index := _integer(data["levelIndex"])
-	var loaded_spell_index := _integer(data["spellIndex"])
-	var loaded_bonus_treasure_id := _integer(data["bonusTreasureClassicId"]) if has_battle_sequence else 0
-	var loaded_battle_stage := StringName(data["battleStage"]) if has_battle_sequence else ORDINARY_BATTLE_STAGE if data["origin"] == "battle" else NO_BATTLE_STAGE
-	if loaded_experience_pool < 0 or loaded_experience_share < 0 or loaded_level_index < 0 or loaded_spell_index < 0 or loaded_bonus_treasure_id < 0 or loaded_battle_stage not in [NO_BATTLE_STAGE, ORDINARY_BATTLE_STAGE, BONUS_BATTLE_STAGE]:
+	if result["levelIndex"] < 0 or result["spellIndex"] < 0 or result["bonusTreasureClassicId"] < 0:
 		return null
-	if (data["origin"] == "battle" and loaded_battle_stage == NO_BATTLE_STAGE) or (data["origin"] != "battle" and (loaded_battle_stage != NO_BATTLE_STAGE or loaded_bonus_treasure_id != 0)) or (loaded_battle_stage == BONUS_BATTLE_STAGE and loaded_bonus_treasure_id != 0):
+	if result["battleStage"] not in [NO_BATTLE_STAGE, ORDINARY_BATTLE_STAGE, BONUS_BATTLE_STAGE]:
 		return null
-	var wealth := WealthState.from_data(data["initialWealth"])
-	if wealth == null:
+	if data["origin"] == "battle" and result["battleStage"] == NO_BATTLE_STAGE:
 		return null
-	var result := ClassicRewardState.new(StringName(data["origin"]), data["sourceId"], loaded_experience_pool, wealth)
-	result.experience_share = loaded_experience_share
-	result.magic_detected = data["magicDetected"]
-	result.identified = data["identified"]
-	result.completion_pending = data["completionPending"]
-	result.phase = StringName(data["phase"])
-	result.battle_stage = loaded_battle_stage
-	result.bonus_treasure_classic_id = loaded_bonus_treasure_id
+	if data["origin"] != "battle" and (result["battleStage"] != NO_BATTLE_STAGE or result["bonusTreasureClassicId"] != 0):
+		return null
+	return null if result["battleStage"] == BONUS_BATTLE_STAGE and result["bonusTreasureClassicId"] != 0 else result
+
+
+static func _restore_items_and_awards(result: ClassicRewardState, data: Dictionary, has_item_detection: bool) -> bool:
 	var loaded_items: Array[ItemInstance] = []
 	for entry: Variant in data["items"]:
 		var item := ItemInstance.from_data(entry)
 		if item == null:
-			return null
+			return false
 		loaded_items.append(item)
 	var awards: Dictionary = {}
 	for character_id: Variant in data["experienceAwards"]:
 		if not character_id is String or character_id.is_empty():
-			return null
+			return false
 		var amount := _integer(data["experienceAwards"][character_id])
 		if amount < 0:
-			return null
+			return false
 		awards[character_id] = amount
 	if not result.set_items(loaded_items) or not result.set_experience_awards(awards):
-		return null
+		return false
 	var detected_item_ids: Array[String] = []
 	if has_item_detection:
 		for value: Variant in data["magicDetectedItemIds"]:
 			if not value is String:
-				return null
+				return false
 			detected_item_ids.append(value)
-	if not result.set_magic_detected_item_ids(detected_item_ids):
-		return null
-	var level_ids: Array[String] = []
-	for value: Variant in data["levelCharacterIds"]:
-		if not value is String:
-			return null
-		level_ids.append(value)
-	var spell_ids: Array[String] = []
-	for value: Variant in data["spellCharacterIds"]:
-		if not value is String:
-			return null
-		spell_ids.append(value)
+	return result.set_magic_detected_item_ids(detected_item_ids)
+
+
+static func _restore_progress(result: ClassicRewardState, data: Dictionary, loaded_level_index: int, loaded_spell_index: int) -> bool:
+	var level_ids_value: Variant = _string_array_from_data(data["levelCharacterIds"])
+	var spell_ids_value: Variant = _string_array_from_data(data["spellCharacterIds"])
+	if level_ids_value == null or spell_ids_value == null:
+		return false
+	var level_ids: Array[String] = level_ids_value
+	var spell_ids: Array[String] = spell_ids_value
 	result.level_index = loaded_level_index
 	result.spell_index = loaded_spell_index
-	if not result.set_level_character_ids(level_ids) or not result.set_spell_character_ids(spell_ids) or result.level_index < 0 or result.level_index > level_ids.size() or result.spell_index < 0 or result.spell_index > spell_ids.size():
-		return null
+	if not result.set_level_character_ids(level_ids) or not result.set_spell_character_ids(spell_ids):
+		return false
+	if result.level_index < 0 or result.level_index > level_ids.size():
+		return false
+	if result.spell_index < 0 or result.spell_index > spell_ids.size():
+		return false
 	var level_result: Variant = _normalized_level_result(data["pendingLevelResult"])
 	if level_result == null:
-		return null
+		return false
 	result.pending_level_result = level_result
+	return true
+
+
+static func _string_array_from_data(data: Array) -> Variant:
+	var result: Array[String] = []
+	for value: Variant in data:
+		if not value is String:
+			return null
+		result.append(value)
 	return result
 
 

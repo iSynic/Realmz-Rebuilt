@@ -468,6 +468,48 @@ static func from_data(id: String, response_kind: StringName, data: Variant) -> I
 
 
 static func _body_from_data(response_kind: StringName, data: Dictionary) -> Body:
+	if _is_common_body_kind(response_kind):
+		return _common_body_from_data(response_kind, data)
+	if _is_service_body_kind(response_kind):
+		return _service_body_from_data(response_kind, data)
+	match response_kind:
+		InteractionRequest.CHARACTER_SELECTION:
+			return _selection_body_from_data(data)
+		InteractionRequest.ALLY_SELECTION:
+			return _ally_selection_body_from_data(data)
+		InteractionRequest.WORD_AND_ACTION:
+			return _complex_encounter_body_from_data(data)
+		InteractionRequest.THIEF_ENCOUNTER, InteractionRequest.PICK_LOCK:
+			return _encounter_body_from_data(response_kind, data)
+		InteractionRequest.LEVEL_UP:
+			return _level_up_body_from_data(data)
+		InteractionRequest.COMBAT:
+			return _combat_body_from_data(data)
+	return null
+
+
+static func _is_common_body_kind(response_kind: StringName) -> bool:
+	return (
+		response_kind == InteractionRequest.ACKNOWLEDGE
+		or response_kind == InteractionRequest.AGE_UPDATE
+		or response_kind == InteractionRequest.YES_NO
+		or response_kind == InteractionRequest.INDEXED_CHOICE
+		or response_kind == InteractionRequest.ENCOUNTER_CHOICE
+	)
+
+
+static func _is_service_body_kind(response_kind: StringName) -> bool:
+	return (
+		response_kind == InteractionRequest.SHOP
+		or response_kind == InteractionRequest.TEMPLE
+		or response_kind == InteractionRequest.BANK
+		or response_kind == InteractionRequest.POOLED_WEALTH_DEPARTURE
+		or response_kind == InteractionRequest.TREASURE_DISTRIBUTION
+		or response_kind == InteractionRequest.SESSION_LIFECYCLE
+	)
+
+
+static func _common_body_from_data(response_kind: StringName, data: Dictionary) -> Body:
 	match response_kind:
 		InteractionRequest.ACKNOWLEDGE:
 			if not _fields_are_exact(data, ["takeNote"]):
@@ -484,57 +526,79 @@ static func _body_from_data(response_kind: StringName, data: Dictionary) -> Body
 		InteractionRequest.INDEXED_CHOICE, InteractionRequest.ENCOUNTER_CHOICE:
 			if not _fields_are_exact(data, ["index", "cancelled", "takeNote"]):
 				return null
-			if data.has("index") and not data["index"] is int or data.has("cancelled") and not data["cancelled"] is bool or data.has("takeNote") and not data["takeNote"] is bool:
+			if data.has("index") and not data["index"] is int:
+				return null
+			if data.has("cancelled") and not data["cancelled"] is bool:
+				return null
+			if data.has("takeNote") and not data["takeNote"] is bool:
 				return null
 			return ChoiceBody.new(int(data.get("index", -1)), data.get("cancelled", false), data.get("takeNote", false))
-		InteractionRequest.CHARACTER_SELECTION:
-			return _selection_body_from_data(data)
-		InteractionRequest.ALLY_SELECTION:
-			return _ally_selection_body_from_data(data)
-		InteractionRequest.WORD_AND_ACTION:
-			return _complex_encounter_body_from_data(data)
-		InteractionRequest.THIEF_ENCOUNTER:
-			if not _fields_are_exact(data, ["action", "characterId", "actionIndex"], ["action"]) or not _is_string_value(data["action"]) or not _optional_strings_are_valid(data, ["characterId"]) or not _optional_integers_are_valid(data, ["actionIndex"]):
-				return null
-			var thief := ThiefEncounterBody.new(StringName(data["action"]), String(data.get("characterId", "")), int(data.get("actionIndex", -1)))
-			return thief if thief.is_valid() else null
-		InteractionRequest.PICK_LOCK:
-			if not _fields_are_exact(data, ["frameIndex"], ["frameIndex"]) or not data["frameIndex"] is int:
-				return null
-			return PickLockBody.new(data["frameIndex"]) if data["frameIndex"] >= 0 else null
-		InteractionRequest.SHOP:
-			if not _fields_are_exact(data, ["action", "characterId", "instanceId", "stockKey"], ["action"]) or not _is_string_value(data["action"]):
-				return null
-			if not _optional_strings_are_valid(data, ["characterId", "instanceId", "stockKey"]):
-				return null
-			return ShopBody.new(StringName(data.get("action", "")), String(data.get("characterId", "")), String(data.get("instanceId", "")), String(data.get("stockKey", "")))
-		InteractionRequest.TEMPLE:
-			if not _fields_are_exact(data, ["action", "characterId", "serviceId"], ["action"]) or not _is_string_value(data["action"]):
-				return null
-			if not _optional_strings_are_valid(data, ["characterId", "serviceId"]):
-				return null
-			return TempleBody.new(StringName(data.get("action", "")), String(data.get("characterId", "")), String(data.get("serviceId", "")))
-		InteractionRequest.BANK, InteractionRequest.POOLED_WEALTH_DEPARTURE:
-			if not _fields_are_exact(data, ["action", "characterId", "denomination", "amount"], ["action"]) or not _is_string_value(data["action"]):
-				return null
-			if not _optional_strings_are_valid(data, ["characterId", "denomination"]) or not _optional_integers_are_valid(data, ["amount"]):
-				return null
-			return BankBody.new(StringName(data.get("action", "")), String(data.get("characterId", "")), String(data.get("denomination", "")), int(data.get("amount", 0)))
-		InteractionRequest.TREASURE_DISTRIBUTION:
-			if not _fields_are_exact(data, ["action", "instanceId", "characterId", "direction", "kind", "amount"], ["action"]) or not _is_string_value(data["action"]):
-				return null
-			if not _optional_strings_are_valid(data, ["instanceId", "characterId", "direction", "kind"]) or not _optional_integers_are_valid(data, ["amount"]):
-				return null
-			return TreasureBody.new(StringName(data.get("action", "")), String(data.get("instanceId", "")), String(data.get("characterId", "")), StringName(data.get("direction", "")), StringName(data.get("kind", "")), int(data.get("amount", 0)))
-		InteractionRequest.LEVEL_UP:
-			return _level_up_body_from_data(data)
-		InteractionRequest.COMBAT:
-			return _combat_body_from_data(data)
-		InteractionRequest.SESSION_LIFECYCLE:
-			if not _fields_are_exact(data, ["action"], ["action"]) or not _is_string_value(data["action"]):
-				return null
-			return LifecycleBody.new(StringName(data.get("action", "")))
 	return null
+
+
+static func _encounter_body_from_data(response_kind: StringName, data: Dictionary) -> Body:
+	if response_kind == InteractionRequest.THIEF_ENCOUNTER:
+		if not _fields_are_exact(data, ["action", "characterId", "actionIndex"], ["action"]):
+			return null
+		if not _is_string_value(data["action"]) or not _optional_strings_are_valid(data, ["characterId"]):
+			return null
+		if not _optional_integers_are_valid(data, ["actionIndex"]):
+			return null
+		var thief := ThiefEncounterBody.new(
+			StringName(data["action"]),
+			String(data.get("characterId", "")),
+			int(data.get("actionIndex", -1)),
+		)
+		return thief if thief.is_valid() else null
+	if not _fields_are_exact(data, ["frameIndex"], ["frameIndex"]) or not data["frameIndex"] is int:
+		return null
+	return PickLockBody.new(data["frameIndex"]) if data["frameIndex"] >= 0 else null
+
+
+static func _service_body_from_data(response_kind: StringName, data: Dictionary) -> Body:
+	if response_kind == InteractionRequest.SHOP:
+		if not _fields_are_exact(data, ["action", "characterId", "instanceId", "stockKey"], ["action"]):
+			return null
+		if not _is_string_value(data["action"]) or not _optional_strings_are_valid(data, ["characterId", "instanceId", "stockKey"]):
+			return null
+		return ShopBody.new(
+			StringName(data.get("action", "")),
+			String(data.get("characterId", "")),
+			String(data.get("instanceId", "")),
+			String(data.get("stockKey", "")),
+		)
+	if response_kind == InteractionRequest.TEMPLE:
+		if not _fields_are_exact(data, ["action", "characterId", "serviceId"], ["action"]):
+			return null
+		if not _is_string_value(data["action"]) or not _optional_strings_are_valid(data, ["characterId", "serviceId"]):
+			return null
+		return TempleBody.new(StringName(data.get("action", "")), String(data.get("characterId", "")), String(data.get("serviceId", "")))
+	if response_kind in [InteractionRequest.BANK, InteractionRequest.POOLED_WEALTH_DEPARTURE]:
+		if not _fields_are_exact(data, ["action", "characterId", "denomination", "amount"], ["action"]):
+			return null
+		if not _is_string_value(data["action"]) or not _optional_strings_are_valid(data, ["characterId", "denomination"]):
+			return null
+		if not _optional_integers_are_valid(data, ["amount"]):
+			return null
+		return BankBody.new(StringName(data.get("action", "")), String(data.get("characterId", "")), String(data.get("denomination", "")), int(data.get("amount", 0)))
+	if response_kind == InteractionRequest.TREASURE_DISTRIBUTION:
+		if not _fields_are_exact(data, ["action", "instanceId", "characterId", "direction", "kind", "amount"], ["action"]):
+			return null
+		if not _is_string_value(data["action"]) or not _optional_strings_are_valid(data, ["instanceId", "characterId", "direction", "kind"]):
+			return null
+		if not _optional_integers_are_valid(data, ["amount"]):
+			return null
+		return TreasureBody.new(
+			StringName(data.get("action", "")),
+			String(data.get("instanceId", "")),
+			String(data.get("characterId", "")),
+			StringName(data.get("direction", "")),
+			StringName(data.get("kind", "")),
+			int(data.get("amount", 0)),
+		)
+	if not _fields_are_exact(data, ["action"], ["action"]) or not _is_string_value(data["action"]):
+		return null
+	return LifecycleBody.new(StringName(data.get("action", "")))
 
 
 static func _selection_body_from_data(data: Dictionary) -> SelectionBody:

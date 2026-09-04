@@ -190,78 +190,128 @@ func to_data() -> Dictionary:
 		for item: ItemInstance in _equipment_storage[character_id]:
 			item_data.append(item.to_data())
 		equipment_data[character_id] = item_data
-	return {"mapId": map_id, "x": coordinate.x, "y": coordinate.y, "characters": character_data, "pooledWealth": pooled_wealth.to_data(), "bankedWealth": banked_wealth.to_data(), "fatigue": fatigue, "conditions": conditions.to_data(), "allies": ally_data, "storage": storage_data, "equipmentStorageActive": equipment_storage_active, "equipmentStorage": equipment_data, "equipmentWealth": _equipment_wealth.to_data()}
+	return {
+		"mapId": map_id,
+		"x": coordinate.x,
+		"y": coordinate.y,
+		"characters": character_data,
+		"pooledWealth": pooled_wealth.to_data(),
+		"bankedWealth": banked_wealth.to_data(),
+		"fatigue": fatigue,
+		"conditions": conditions.to_data(),
+		"allies": ally_data,
+		"storage": storage_data,
+		"equipmentStorageActive": equipment_storage_active,
+		"equipmentStorage": equipment_data,
+		"equipmentWealth": _equipment_wealth.to_data(),
+	}
 
 
 static func from_data(data: Variant) -> PartyState:
 	if not data is Dictionary:
 		return null
-	for field: String in ["mapId", "x", "y", "characters"]:
-		if not data.has(field):
-			return null
-	if not data["mapId"] is String or data["mapId"].is_empty():
+	if not _base_fields_are_valid(data):
 		return null
 	var x := _integer(data["x"])
 	var y := _integer(data["y"])
-	if x < 0 or y < 0 or not data["characters"] is Array:
+	if x < 0 or y < 0:
 		return null
-	var loaded_characters: Array[CharacterState] = []
-	for character_data: Variant in data["characters"]:
-		var character := CharacterState.from_data(character_data)
-		if character == null:
-			return null
-		loaded_characters.append(character)
+	var loaded_characters_value: Variant = _characters_from_data(data["characters"])
+	if loaded_characters_value == null:
+		return null
+	var loaded_characters: Array[CharacterState] = loaded_characters_value
 	var result := PartyState.new(data["mapId"], Vector2i(x, y), loaded_characters)
 	if not data.has("pooledWealth"):
 		return result if result.has_unique_item_ownership() else null
+	if not _restore_extended_state(result, data):
+		return null
+	if data.has("equipmentStorageActive") and not _restore_equipment_storage(result, data):
+		return null
+	return result if result.has_unique_item_ownership() else null
+
+
+static func _base_fields_are_valid(data: Dictionary) -> bool:
+	for field: String in ["mapId", "x", "y", "characters"]:
+		if not data.has(field):
+			return false
+	return data["mapId"] is String and not data["mapId"].is_empty() and data["characters"] is Array
+
+
+static func _characters_from_data(values: Array) -> Variant:
+	var result: Array[CharacterState] = []
+	for value: Variant in values:
+		var character := CharacterState.from_data(value)
+		if character == null:
+			return null
+		result.append(character)
+	return result
+
+
+static func _restore_extended_state(result: PartyState, data: Dictionary) -> bool:
 	for field: String in ["pooledWealth", "fatigue", "conditions", "allies", "storage"]:
 		if not data.has(field):
-			return null
+			return false
 	var wealth := WealthState.from_data(data["pooledWealth"])
 	var banked := WealthState.from_data(data.get("bankedWealth", {"gold": 0, "gems": 0, "jewelry": 0}))
 	var party_conditions := ConditionSet.from_data(data["conditions"], ConditionSet.PARTY_COUNT)
 	var loaded_fatigue := _integer(data["fatigue"])
-	if wealth == null or banked == null or party_conditions == null or loaded_fatigue < 4 or loaded_fatigue > 135 or not data["allies"] is Array or not data["storage"] is Array:
-		return null
-	var loaded_allies: Array[MonsterState] = []
-	for ally_data: Variant in data["allies"]:
-		var ally := MonsterState.from_data(ally_data)
-		if ally == null:
-			return null
-		loaded_allies.append(ally)
-	var stored_items: Array[ItemInstance] = []
-	for item_data: Variant in data["storage"]:
-		var item := ItemInstance.from_data(item_data)
-		if item == null:
-			return null
-		stored_items.append(item)
+	if wealth == null or banked == null or party_conditions == null:
+		return false
+	if loaded_fatigue < 4 or loaded_fatigue > 135:
+		return false
+	if not data["allies"] is Array or not data["storage"] is Array:
+		return false
+	var loaded_allies_value: Variant = _allies_from_data(data["allies"])
+	var stored_items_value: Variant = _items_from_data(data["storage"])
+	if loaded_allies_value == null or stored_items_value == null:
+		return false
 	result.pooled_wealth = wealth
 	result.banked_wealth = banked
 	result.fatigue = loaded_fatigue
 	result.conditions = party_conditions
-	result._allies = loaded_allies
-	result._storage = stored_items
-	if data.has("equipmentStorageActive"):
-		if not data["equipmentStorageActive"] is bool or not data.get("equipmentStorage") is Dictionary:
+	result._allies = loaded_allies_value
+	result._storage = stored_items_value
+	return true
+
+
+static func _allies_from_data(values: Array) -> Variant:
+	var result: Array[MonsterState] = []
+	for value: Variant in values:
+		var ally := MonsterState.from_data(value)
+		if ally == null:
 			return null
-		var equipment_wealth := WealthState.from_data(data.get("equipmentWealth"))
-		if equipment_wealth == null:
+		result.append(ally)
+	return result
+
+
+static func _items_from_data(values: Array) -> Variant:
+	var result: Array[ItemInstance] = []
+	for value: Variant in values:
+		var item := ItemInstance.from_data(value)
+		if item == null:
 			return null
-		var equipment_storage: Dictionary = {}
-		for character_id: Variant in data["equipmentStorage"]:
-			if not character_id is String or result.character_by_id(character_id) == null or not data["equipmentStorage"][character_id] is Array:
-				return null
-			var equipment_items: Array[ItemInstance] = []
-			for item_data: Variant in data["equipmentStorage"][character_id]:
-				var item := ItemInstance.from_data(item_data)
-				if item == null:
-					return null
-				equipment_items.append(item)
-			equipment_storage[character_id] = equipment_items
-		result.equipment_storage_active = data["equipmentStorageActive"]
-		result._equipment_storage = equipment_storage
-		result._equipment_wealth = equipment_wealth
-	return result if result.has_unique_item_ownership() else null
+		result.append(item)
+	return result
+
+
+static func _restore_equipment_storage(result: PartyState, data: Dictionary) -> bool:
+	if not data["equipmentStorageActive"] is bool or not data.get("equipmentStorage") is Dictionary:
+		return false
+	var equipment_wealth := WealthState.from_data(data.get("equipmentWealth"))
+	if equipment_wealth == null:
+		return false
+	var equipment_storage: Dictionary = {}
+	for character_id: Variant in data["equipmentStorage"]:
+		if not character_id is String or result.character_by_id(character_id) == null or not data["equipmentStorage"][character_id] is Array:
+			return false
+		var items_value: Variant = _items_from_data(data["equipmentStorage"][character_id])
+		if items_value == null:
+			return false
+		equipment_storage[character_id] = items_value
+	result.equipment_storage_active = data["equipmentStorageActive"]
+	result._equipment_storage = equipment_storage
+	result._equipment_wealth = equipment_wealth
+	return true
 
 
 func _items_are_unique_with(additional_items: Array[ItemInstance]) -> bool:

@@ -70,72 +70,92 @@ func to_data() -> Dictionary:
 static func from_data(data: Variant) -> PresentationSettings:
 	if not data is Dictionary:
 		return null
-	var schema_value: Variant = data.get("schemaVersion")
-	if not schema_value is int and not schema_value is float:
+	var schema_version := _schema_version_from_data(data)
+	if schema_version == 0 or not _base_fields_are_valid(data) or not _versioned_fields_are_valid(data, schema_version):
 		return null
-	var schema_version := int(schema_value)
-	if float(schema_version) != float(schema_value):
-		return null
-	if data.get("kind") != "realmz2.presentation-settings" or schema_version not in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, SCHEMA_VERSION]:
-		return null
-	if not data.get("masterVolume") is float or not data.get("topologyDebug") is bool or not data.get("textScale") is float or not data.get("reducedMotion") is bool:
-		return null
-	if schema_version >= 2 and not data.get("dungeon3d") is bool:
-		return null
-	if schema_version >= 3:
-		if not data.get("uiScaleMode") is String or not data.get("windowMode") is String:
-			return null
-		if data["uiScaleMode"] not in [UI_SCALE_AUTO, UI_SCALE_100, UI_SCALE_125, UI_SCALE_150]:
-			return null
-		if data["windowMode"] not in [WINDOWED, BORDERLESS_FULLSCREEN]:
-			return null
-	if schema_version >= 4 and not data.get("autoSwitchToMelee") is bool:
-		return null
-	if schema_version >= 5:
-		var speed_value: Variant = data.get("explorationSpeedPercent")
-		if not speed_value is int and not speed_value is float:
-			return null
-		var speed := int(speed_value)
-		if float(speed) != float(speed_value) or speed < 25 or speed > 400 or speed % 25 != 0:
-			return null
-	if schema_version >= 6 and (not data.get("showExplorationMinimap") is bool or not data.get("autojournalEnabled") is bool):
-		return null
-	if schema_version >= 7:
-		if not data.get("typographyMode") is String or data["typographyMode"] not in [TYPOGRAPHY_CLASSIC, TYPOGRAPHY_READABLE]:
-			return null
-	if schema_version >= 8:
-		if not data.get("soundVolume") is float or not data.get("musicVolume") is float or not data.get("musicEnabled") is bool or not data.get("musicPlaylistModes") is Array:
-			return null
-		if float(data["soundVolume"]) < 0.0 or float(data["soundVolume"]) > 1.0 or float(data["musicVolume"]) < 0.0 or float(data["musicVolume"]) > 1.0:
-			return null
-		var modes := data["musicPlaylistModes"] as Array
-		if modes.size() != MUSIC_SLOT_COUNT:
-			return null
-		for mode: Variant in modes:
-			if (not mode is int and not mode is float) or float(int(mode)) != float(mode) or int(mode) not in [MUSIC_OFF, MUSIC_PLAY, MUSIC_CONTINUE]:
-				return null
-	if schema_version >= 9 and not data.get("classicExplorationVisibility") is bool:
-		return null
-	if schema_version >= 10 and not data.get("reducedSound") is bool:
-		return null
-	if schema_version >= 11:
-		var combat_speed_value: Variant = data.get("combatPlaybackSpeedPercent")
-		if (not combat_speed_value is int and not combat_speed_value is float) or float(int(combat_speed_value)) != float(combat_speed_value) or int(combat_speed_value) < 25 or int(combat_speed_value) > 200 or int(combat_speed_value) % 25 != 0:
-			return null
-	if schema_version >= 12 and not data.get("lastCampaignId") is String:
-		return null
+	return _settings_from_valid_data(data)
+
+
+static func _schema_version_from_data(data: Dictionary) -> int:
+	var value: Variant = data.get("schemaVersion")
+	if (not value is int and not value is float) or float(int(value)) != float(value):
+		return 0
+	var version := int(value)
+	return version if data.get("kind") == "realmz2.presentation-settings" and version >= 1 and version <= SCHEMA_VERSION else 0
+
+
+static func _base_fields_are_valid(data: Dictionary) -> bool:
+	if not data.get("masterVolume") is float or not data.get("textScale") is float:
+		return false
+	if not data.get("topologyDebug") is bool or not data.get("reducedMotion") is bool:
+		return false
 	var volume: float = data["masterVolume"]
 	var scale: float = data["textScale"]
-	if volume < 0.0 or volume > 1.0 or scale < 0.8 or scale > 1.5:
-		return null
+	return volume >= 0.0 and volume <= 1.0 and scale >= 0.8 and scale <= 1.5
+
+
+static func _versioned_fields_are_valid(data: Dictionary, schema_version: int) -> bool:
+	if schema_version >= 2 and not data.get("dungeon3d") is bool:
+		return false
+	if schema_version >= 3 and not _window_fields_are_valid(data):
+		return false
+	if schema_version >= 4 and not data.get("autoSwitchToMelee") is bool:
+		return false
+	if schema_version >= 5 and not _stepped_number_is_valid(data.get("explorationSpeedPercent"), 25, 400):
+		return false
+	if schema_version >= 6 and (not data.get("showExplorationMinimap") is bool or not data.get("autojournalEnabled") is bool):
+		return false
+	if schema_version >= 7 and (not data.get("typographyMode") is String or data["typographyMode"] not in [TYPOGRAPHY_CLASSIC, TYPOGRAPHY_READABLE]):
+		return false
+	if schema_version >= 8 and not _music_fields_are_valid(data):
+		return false
+	if schema_version >= 9 and not data.get("classicExplorationVisibility") is bool:
+		return false
+	if schema_version >= 10 and not data.get("reducedSound") is bool:
+		return false
+	if schema_version >= 11 and not _stepped_number_is_valid(data.get("combatPlaybackSpeedPercent"), 25, 200):
+		return false
+	return schema_version < 12 or data.get("lastCampaignId") is String
+
+
+static func _window_fields_are_valid(data: Dictionary) -> bool:
+	if not data.get("uiScaleMode") is String or not data.get("windowMode") is String:
+		return false
+	return data["uiScaleMode"] in [UI_SCALE_AUTO, UI_SCALE_100, UI_SCALE_125, UI_SCALE_150] and data["windowMode"] in [WINDOWED, BORDERLESS_FULLSCREEN]
+
+
+static func _music_fields_are_valid(data: Dictionary) -> bool:
+	if not data.get("soundVolume") is float or not data.get("musicVolume") is float:
+		return false
+	if not data.get("musicEnabled") is bool or not data.get("musicPlaylistModes") is Array:
+		return false
+	if float(data["soundVolume"]) < 0.0 or float(data["soundVolume"]) > 1.0 or float(data["musicVolume"]) < 0.0 or float(data["musicVolume"]) > 1.0:
+		return false
+	var modes := data["musicPlaylistModes"] as Array
+	if modes.size() != MUSIC_SLOT_COUNT:
+		return false
+	for mode: Variant in modes:
+		if (not mode is int and not mode is float) or float(int(mode)) != float(mode) or int(mode) not in [MUSIC_OFF, MUSIC_PLAY, MUSIC_CONTINUE]:
+			return false
+	return true
+
+
+static func _stepped_number_is_valid(value: Variant, minimum: int, maximum: int) -> bool:
+	if not value is int and not value is float:
+		return false
+	var number := int(value)
+	return float(number) == float(value) and number >= minimum and number <= maximum and number % 25 == 0
+
+
+static func _settings_from_valid_data(data: Dictionary) -> PresentationSettings:
 	var settings := PresentationSettings.new()
-	settings.master_volume = volume
+	settings.master_volume = data["masterVolume"]
 	settings.sound_volume = float(data.get("soundVolume", 1.0))
 	settings.music_volume = float(data.get("musicVolume", 0.8))
 	settings.music_enabled = bool(data.get("musicEnabled", true))
 	settings.music_playlist_modes = _music_modes_from_data(data.get("musicPlaylistModes", []))
 	settings.topology_debug = data["topologyDebug"]
-	settings.text_scale = scale
+	settings.text_scale = data["textScale"]
 	settings.reduced_motion = data["reducedMotion"]
 	settings.reduced_sound = bool(data.get("reducedSound", false))
 	settings.auto_switch_to_melee = bool(data.get("autoSwitchToMelee", true))
