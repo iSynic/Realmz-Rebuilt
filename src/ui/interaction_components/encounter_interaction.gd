@@ -3,8 +3,6 @@
 class_name EncounterInteraction
 extends InteractionComponent
 
-const SpellsScreenControllerScript := preload("res://src/ui/controllers/spells_screen_controller.gd")
-const InventoryScreenControllerScript := preload("res://src/ui/controllers/inventory_screen_controller.gd")
 
 @export var action_workspace_scene: PackedScene
 @export var item_workspace_scene: PackedScene
@@ -119,7 +117,7 @@ func _show_standard_item_workspace() -> void:
 	_inventory_screen_controller_content = workspace.get_node("%EncounterInventoryContent") as VBoxContainer
 	(workspace.get_node("%EncounterItemsBack") as Button).pressed.connect(_cancel_catalog)
 	if _inventory_screen_controller == null:
-		_inventory_screen_controller = InventoryScreenControllerScript.new()
+		_inventory_screen_controller = InventoryScreenController.new()
 		_inventory_screen_controller.set_layout_profile(UiLayoutProfile.COMPACT if _compact else UiLayoutProfile.WIDE)
 		_inventory_screen_controller.refresh_requested.connect(_render_standard_item_workspace, CONNECT_DEFERRED)
 		_inventory_screen_controller.encounter_item_selected.connect(_submit_standard_encounter_item)
@@ -147,7 +145,7 @@ func _render_standard_spell_catalog() -> void:
 	var workspace := spell_workspace_scene.instantiate() as VBoxContainer
 	var column := workspace.get_node("%EncounterSpellContent") as VBoxContainer
 	if _spell_screen_controller == null:
-		_spell_screen_controller = SpellsScreenControllerScript.new()
+		_spell_screen_controller = SpellsScreenController.new()
 		_spell_screen_controller.set_layout_profile(UiLayoutProfile.COMPACT)
 		_spell_screen_controller.refresh_requested.connect(_render_standard_spell_catalog, CONNECT_DEFERRED)
 		_spell_screen_controller.encounter_spell_selected.connect(_submit_standard_encounter_spell)

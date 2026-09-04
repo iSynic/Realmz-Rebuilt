@@ -5,10 +5,6 @@ extends RefCounted
 
 ## Resolves direct character combat commands and their deterministic turn effects.
 
-const ContextType = preload("res://src/game/rules/combat_flow_context.gd")
-const CombatRetreatProbeType = preload("res://src/game/rules/combat_retreat_probe.gd")
-const CombatCommandProbeType = preload("res://src/game/rules/combat_command_probe.gd")
-const CombatScrollOptionViewType = preload("res://src/game/view/combat_scroll_option_view.gd")
 
 const MONSTER_ATTACK_COMPLETED := 0
 const MONSTER_ATTACK_WAITING := 1
@@ -32,10 +28,10 @@ const MONSTER_FUMBLE_SOUNDS: Array[Dictionary] = [
 ]
 
 var _flow_ref: WeakRef
-var _rules: ContextType
+var _rules: CombatFlowContext
 
 
-func _init(flow: RefCounted, rules: ContextType) -> void:
+func _init(flow: RefCounted, rules: CombatFlowContext) -> void:
 	_flow_ref = weakref(flow)
 	_rules = rules
 
@@ -199,34 +195,34 @@ func _submit_character_attack(state: GameState, content: RealmzContent, actor: C
 	return CombatFlowResult.succeeded(events)
 
 
-func probe_delay(state: GameState, actor_id: String) -> CombatCommandProbeType:
+func probe_delay(state: GameState, actor_id: String) -> CombatCommandProbe:
 	var actor := state.party.character_by_id(actor_id) if state != null else null
 	var combat := state.combat if state != null else null
 	if actor == null or combat == null or combat.completed or combat.active_actor_id() != actor_id or actor.current_health <= 0 or actor.traitor:
-		return CombatCommandProbeType.new(false, "Only the active loyal character can Delay.")
+		return CombatCommandProbe.new(false, "Only the active loyal character can Delay.")
 	if not _is_fresh_character_activation(combat, actor):
-		return CombatCommandProbeType.new(false, "Delay is available only before moving, attacking, or casting this activation.")
-	return CombatCommandProbeType.new(true)
+		return CombatCommandProbe.new(false, "Delay is available only before moving, attacking, or casting this activation.")
+	return CombatCommandProbe.new(true)
 
 
-func probe_undo(state: GameState, actor_id: String) -> CombatCommandProbeType:
+func probe_undo(state: GameState, actor_id: String) -> CombatCommandProbe:
 	var actor := state.party.character_by_id(actor_id) if state != null else null
 	var combat := state.combat if state != null else null
 	if actor == null or combat == null or combat.completed or combat.active_actor_id() != actor_id or actor.current_health <= 0:
-		return CombatCommandProbeType.new(false, "Only the active living character can Undo.")
+		return CombatCommandProbe.new(false, "Only the active living character can Undo.")
 	if actor.traitor or actor.conditions.is_active(ConditionRules.HELPLESS) or actor.conditions.is_active(ConditionRules.CONFUSED):
-		return CombatCommandProbeType.new(false, "This character's current combat state prevents Undo.")
+		return CombatCommandProbe.new(false, "This character's current combat state prevents Undo.")
 	if combat.pending_reaction != null or combat.pending_monster_attack != null:
-		return CombatCommandProbeType.new(false, "Resolve the current combat result before using Undo.")
+		return CombatCommandProbe.new(false, "Resolve the current combat result before using Undo.")
 	var undo := combat.undo_state
 	if combat.active_turn == null or undo == null or not undo.available or undo.actor_id != actor_id or undo.round_number != combat.round_number or undo.turn_index != combat.turn_index:
-		return CombatCommandProbeType.new(false, "Undo is unavailable after a combat result.")
+		return CombatCommandProbe.new(false, "Undo is unavailable after a combat result.")
 	if combat.battlefield == null or not combat.battlefield.has_actor(actor_id):
-		return CombatCommandProbeType.new(false, "The active character has no battlefield position to restore.")
+		return CombatCommandProbe.new(false, "The active character has no battlefield position to restore.")
 	var occupant := combat.battlefield.actor_at(undo.start_position, actor_id)
 	if not occupant.is_empty():
-		return CombatCommandProbeType.new(false, "The activation-start position is occupied.")
-	return CombatCommandProbeType.new(true)
+		return CombatCommandProbe.new(false, "The activation-start position is occupied.")
+	return CombatCommandProbe.new(true)
 
 
 func bandage_candidate_ids(state: GameState) -> Array[String]:
@@ -239,19 +235,19 @@ func bandage_candidate_ids(state: GameState) -> Array[String]:
 	return result
 
 
-func probe_bandage(state: GameState, actor_id: String, target_id: String = "") -> CombatCommandProbeType:
+func probe_bandage(state: GameState, actor_id: String, target_id: String = "") -> CombatCommandProbe:
 	var actor := state.party.character_by_id(actor_id) if state != null else null
 	var combat := state.combat if state != null else null
 	if actor == null or combat == null or combat.completed or combat.active_actor_id() != actor_id or actor.current_health <= 0 or actor.traitor:
-		return CombatCommandProbeType.new(false, "Only the active loyal character can Bandage.")
+		return CombatCommandProbe.new(false, "Only the active loyal character can Bandage.")
 	if not _is_fresh_character_activation(combat, actor):
-		return CombatCommandProbeType.new(false, "Bandage is available only before moving, attacking, or casting this activation.")
+		return CombatCommandProbe.new(false, "Bandage is available only before moving, attacking, or casting this activation.")
 	var candidates := bandage_candidate_ids(state)
 	if candidates.is_empty():
-		return CombatCommandProbeType.new(false, "No party member is bleeding.")
+		return CombatCommandProbe.new(false, "No party member is bleeding.")
 	if not target_id.is_empty() and not candidates.has(target_id):
-		return CombatCommandProbeType.new(false, "The selected party member is not a legal bleeding recipient.")
-	return CombatCommandProbeType.new(true)
+		return CombatCommandProbe.new(false, "The selected party member is not a legal bleeding recipient.")
+	return CombatCommandProbe.new(true)
 
 
 func turn_undead_target_ids(state: GameState, content: RealmzContent) -> Array[String]:
@@ -266,22 +262,22 @@ func turn_undead_target_ids(state: GameState, content: RealmzContent) -> Array[S
 	return result
 
 
-func probe_turn_undead(state: GameState, content: RealmzContent, actor_id: String) -> CombatCommandProbeType:
+func probe_turn_undead(state: GameState, content: RealmzContent, actor_id: String) -> CombatCommandProbe:
 	var actor := state.party.character_by_id(actor_id) if state != null else null
 	var combat := state.combat if state != null else null
 	if actor == null or combat == null or combat.completed or combat.active_actor_id() != actor_id or actor.current_health <= 0 or actor.traitor:
-		return CombatCommandProbeType.new(false, "Only the active loyal character can Turn Undead.")
+		return CombatCommandProbe.new(false, "Only the active loyal character can Turn Undead.")
 	if not state.priest_turning_allowed:
-		return CombatCommandProbeType.new(false, "This campaign location forbids priest turning.")
+		return CombatCommandProbe.new(false, "This campaign location forbids priest turning.")
 	if actor.ability_value(13) <= 0:
-		return CombatCommandProbeType.new(false, "This character has no Turn Undead ability.")
+		return CombatCommandProbe.new(false, "This character has no Turn Undead ability.")
 	if combat.has_used_turn_undead(actor.id):
-		return CombatCommandProbeType.new(false, "This character has already attempted Turn Undead in this battle.")
+		return CombatCommandProbe.new(false, "This character has already attempted Turn Undead in this battle.")
 	if combat.active_turn != null and actor.attacks_remaining < 2:
-		return CombatCommandProbeType.new(false, "Turn Undead requires one remaining attack.")
+		return CombatCommandProbe.new(false, "Turn Undead requires one remaining attack.")
 	if turn_undead_target_ids(state, content).is_empty():
-		return CombatCommandProbeType.new(false, "No hostile undead or nether spawn can be turned.")
-	return CombatCommandProbeType.new(true)
+		return CombatCommandProbe.new(false, "No hostile undead or nether spawn can be turned.")
+	return CombatCommandProbe.new(true)
 
 
 func _turn_undead(state: GameState, content: RealmzContent, actor: CharacterState, rng: RealmzRng) -> CombatFlowResult:

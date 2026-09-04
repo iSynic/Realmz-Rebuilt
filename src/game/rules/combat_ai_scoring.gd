@@ -7,15 +7,13 @@ extends RefCounted
 
 const INVALID_COORDINATE := Vector2i(-100_000, -100_000)
 
-const ContextType = preload("res://src/game/rules/combat_flow_context.gd")
-const TargetFactsType = preload("res://src/game/rules/combat_ai_target_facts.gd")
 const MAX_WEIGHTED_DRAW: int = 32_767
 
 var _flow_ref: WeakRef
-var _rules: ContextType
+var _rules: CombatFlowContext
 
 
-func _init(flow: RefCounted, rules: ContextType) -> void:
+func _init(flow: RefCounted, rules: CombatFlowContext) -> void:
 	_flow_ref = weakref(flow)
 	_rules = rules
 
@@ -860,39 +858,39 @@ func _everybody_actor_ids(state: GameState) -> Array[String]:
 
 
 static func expected_spell_effect(spell: SpellDefinition, power: int) -> int:
-	return TargetFactsType.expected_spell_effect(spell, power)
+	return CombatAiTargetFacts.expected_spell_effect(spell, power)
 
 
 static func _actor_is_friendly(state: GameState, actor: CharacterState, target_id: String) -> bool:
-	return TargetFactsType.character_is_friendly(state, actor, target_id)
+	return CombatAiTargetFacts.character_is_friendly(state, actor, target_id)
 
 
 static func _actor_is_friendly_to_monster(state: GameState, actor: MonsterState, target_id: String) -> bool:
-	return TargetFactsType.monster_is_friendly(state, actor, target_id)
+	return CombatAiTargetFacts.monster_is_friendly(state, actor, target_id)
 
 
 static func _target_health(state: GameState, target_id: String) -> int:
-	return TargetFactsType.health(state, target_id)
+	return CombatAiTargetFacts.health(state, target_id)
 
 
 static func _target_maximum_health(state: GameState, target_id: String) -> int:
-	return TargetFactsType.maximum_health(state, target_id)
+	return CombatAiTargetFacts.maximum_health(state, target_id)
 
 
 static func _target_missing_health(state: GameState, target_id: String) -> int:
-	return TargetFactsType.missing_health(state, target_id)
+	return CombatAiTargetFacts.missing_health(state, target_id)
 
 
 static func _target_missing_spell_points(state: GameState, target_id: String) -> int:
-	return TargetFactsType.missing_spell_points(state, target_id)
+	return CombatAiTargetFacts.missing_spell_points(state, target_id)
 
 
 static func _target_spell_points(state: GameState, target_id: String) -> int:
-	return TargetFactsType.spell_points(state, target_id)
+	return CombatAiTargetFacts.spell_points(state, target_id)
 
 
 static func _target_condition_value(state: GameState, target_id: String, condition_index: int) -> int:
-	return TargetFactsType.condition_value(state, target_id, condition_index)
+	return CombatAiTargetFacts.condition_value(state, target_id, condition_index)
 
 
 func _destroy_magic_candidates(state: GameState, content: RealmzContent, caster_id: String, caster_traitor: bool, spell: SpellDefinition, power: int) -> Array[String]:
@@ -906,24 +904,24 @@ func _destroy_magic_candidates(state: GameState, content: RealmzContent, caster_
 
 
 static func _destroy_magic_target_score(state: GameState, caster_traitor: bool, target_id: String) -> int:
-	return TargetFactsType.destroy_magic_score(state, caster_traitor, target_id)
+	return CombatAiTargetFacts.destroy_magic_score(state, caster_traitor, target_id)
 
 
 static func _all_actor_ids(state: GameState) -> Array[String]:
-	return TargetFactsType.all_actor_ids(state)
+	return CombatAiTargetFacts.all_actor_ids(state)
 
 
 static func _target_hard_immune(state: GameState, content: RealmzContent, target_id: String, spell: SpellDefinition) -> bool:
-	return TargetFactsType.hard_immune(state, content, target_id, spell)
+	return CombatAiTargetFacts.hard_immune(state, content, target_id, spell)
 
 
 static func _target_reflects(state: GameState, target_id: String) -> bool:
-	return TargetFactsType.reflects(state, target_id)
+	return CombatAiTargetFacts.reflects(state, target_id)
 
 
 static func _lethal_bonus(state: GameState, target_id: String, expected: int) -> int:
-	return TargetFactsType.lethal_bonus(state, target_id, expected)
+	return CombatAiTargetFacts.lethal_bonus(state, target_id, expected)
 
 
 static func _lethal_pressure(state: GameState, target_id: String) -> int:
-	return TargetFactsType.lethal_pressure(state, target_id)
+	return CombatAiTargetFacts.lethal_pressure(state, target_id)

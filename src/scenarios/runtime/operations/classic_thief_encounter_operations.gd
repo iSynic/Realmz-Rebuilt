@@ -3,7 +3,6 @@
 class_name ClassicThiefEncounterOperations
 extends RefCounted
 
-const ClassicPickLockRulesScript := preload("res://src/game/rules/classic_pick_lock_rules.gd")
 
 const LOCK_ACTIONS: Array[int] = [2, 4, 6, 7]
 
@@ -51,8 +50,8 @@ func resume_pick_lock(continuation: ScenarioRuntimeContinuation, response: Inter
 	var character := _state.party.character_by_id(owner.character_id) if owner != null else null
 	if response.kind != InteractionRequest.PICK_LOCK or selection == null or encounter == null or thief == null or character == null or character.current_health <= 0:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Pick Lock response does not match its source character and encounter.")
-	var chance := ClassicPickLockRulesScript.chance(character.ability_value(ClassicPickLockRulesScript.ability_index(owner.action_index)), thief.modifiers()[owner.action_index])
-	var resolved := ClassicPickLockRulesScript.resolve(_rng, thief.tumblers, chance, selection.frame_index)
+	var chance := ClassicPickLockRules.chance(character.ability_value(ClassicPickLockRules.ability_index(owner.action_index)), thief.modifiers()[owner.action_index])
+	var resolved := ClassicPickLockRules.resolve(_rng, thief.tumblers, chance, selection.frame_index)
 	if resolved.is_empty():
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Pick Lock response selected a frame outside the source timer.")
 	var flags := _state.thief_encounter_type_flags(thief)
@@ -99,7 +98,7 @@ func _attempt(encounter: ComplexEncounterDefinition, gosub: bool, selection: Int
 	_state.set_thief_encounter_type_flags(thief, flags)
 	if action_index in LOCK_ACTIONS:
 		return _start_pick_lock(encounter, thief, gosub, character, action_index, request_id, encounter_attempt)
-	var chance := character.ability_value(ClassicPickLockRulesScript.ability_index(action_index)) + thief.modifiers()[action_index]
+	var chance := character.ability_value(ClassicPickLockRules.ability_index(action_index)) + thief.modifiers()[action_index]
 	var succeeded := _rng.draw(100, &"classic.thief-encounter") <= chance
 	if succeeded and action_index == 1 and trap_armed:
 		flags[2] = true
@@ -109,21 +108,21 @@ func _attempt(encounter: ComplexEncounterDefinition, gosub: bool, selection: Int
 
 
 func _start_pick_lock(encounter: ComplexEncounterDefinition, thief: ThiefEncounterDefinition, gosub: bool, character: CharacterState, action_index: int, request_id: String, encounter_attempt: int) -> ScenarioRuntimeOperationResult:
-	var chance := ClassicPickLockRulesScript.chance(character.ability_value(ClassicPickLockRulesScript.ability_index(action_index)), thief.modifiers()[action_index])
-	var frames := ClassicPickLockRulesScript.preview(_rng.snapshot(), thief.tumblers, chance)
+	var chance := ClassicPickLockRules.chance(character.ability_value(ClassicPickLockRules.ability_index(action_index)), thief.modifiers()[action_index])
+	var frames := ClassicPickLockRules.preview(_rng.snapshot(), thief.tumblers, chance)
 	if frames.is_empty():
 		return ScenarioRuntimeOperationResult.failed(&"invalid_pick_lock_state", "Pick Lock could not build its deterministic tumbler sequence.")
 	var request := InteractionRequest.from_payload(request_id, InteractionRequest.PICK_LOCK, {
-		"encounterId": encounter.id, "actionIndex": action_index, "actionLabel": ClassicPickLockRulesScript.action_label(action_index),
+		"encounterId": encounter.id, "actionIndex": action_index, "actionLabel": ClassicPickLockRules.action_label(action_index),
 		"characterId": character.id, "characterName": character.name, "portraitId": character.portrait_id,
-		"chancePercent": chance, "yellowThreshold": ClassicPickLockRulesScript.yellow_threshold(chance),
-		"greenThreshold": ClassicPickLockRulesScript.green_threshold(chance), "frameRate": ClassicPickLockRulesScript.FRAME_RATE,
-		"timeLimitFrames": ClassicPickLockRulesScript.time_limit_frames(thief.tumblers),
+		"chancePercent": chance, "yellowThreshold": ClassicPickLockRules.yellow_threshold(chance),
+		"greenThreshold": ClassicPickLockRules.green_threshold(chance), "frameRate": ClassicPickLockRules.FRAME_RATE,
+		"timeLimitFrames": ClassicPickLockRules.time_limit_frames(thief.tumblers),
 		"frames": frames,
 	})
 	if request == null:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_pick_lock_state", "Pick Lock generated an invalid typed interaction.")
-	return ScenarioRuntimeOperationResult.waiting(request, ScenarioRuntimeContinuation.pick_lock(encounter.id, gosub, action_index, character.id, encounter_attempt), [DomainEvent.new(&"pick_lock_started", {"encounterId": encounter.id, "characterId": character.id, "actionIndex": action_index, "chancePercent": chance, "tumblers": ClassicPickLockRulesScript.tumbler_count(thief.tumblers)})])
+	return ScenarioRuntimeOperationResult.waiting(request, ScenarioRuntimeContinuation.pick_lock(encounter.id, gosub, action_index, character.id, encounter_attempt), [DomainEvent.new(&"pick_lock_started", {"encounterId": encounter.id, "characterId": character.id, "actionIndex": action_index, "chancePercent": chance, "tumblers": ClassicPickLockRules.tumbler_count(thief.tumblers)})])
 
 
 func _finish_action(encounter: ComplexEncounterDefinition, thief: ThiefEncounterDefinition, gosub: bool, character: CharacterState, action_index: int, succeeded: bool, request_id: String, events: Array[DomainEvent], encounter_attempt: int) -> ScenarioRuntimeOperationResult:
@@ -226,12 +225,12 @@ func _thief_request(encounter: ComplexEncounterDefinition, request_id: String, p
 		if not _character_eligible(character):
 			continue
 		var actions: Array[Dictionary] = []
-		for index: int in ClassicPickLockRulesScript.ACTION_LABELS.size():
-			var ability := character.ability_value(ClassicPickLockRulesScript.ability_index(index))
+		for index: int in ClassicPickLockRules.ACTION_LABELS.size():
+			var ability := character.ability_value(ClassicPickLockRules.ability_index(index))
 			var value := ability + thief.modifiers()[index] if ability != 0 else 0
 			var enabled := _action_available(character, thief, flags, index)
 			var reason := "" if enabled else "This action is no longer available." if not flags[index] else "This character lacks the required ability." if ability == 0 else "The authored modifier reduces this action below zero."
-			actions.append({"index": index, "label": ClassicPickLockRulesScript.action_label(index), "value": value, "enabled": enabled, "reason": reason})
+			actions.append({"index": index, "label": ClassicPickLockRules.action_label(index), "value": value, "enabled": enabled, "reason": reason})
 		characters.append({"id": character.id, "name": character.name, "portraitId": character.portrait_id, "actions": actions})
 	var sounds := thief.prompt_sounds()
 	var opening_sound := sounds[0] if play_opening_sound and not sounds.is_empty() else 0
@@ -247,7 +246,7 @@ static func _character_eligible(character: CharacterState) -> bool:
 
 
 static func _action_available(character: CharacterState, thief: ThiefEncounterDefinition, flags: Array[bool], action_index: int) -> bool:
-	var ability_index := ClassicPickLockRulesScript.ability_index(action_index)
+	var ability_index := ClassicPickLockRules.ability_index(action_index)
 	var ability := character.ability_value(ability_index)
 	return ability_index >= 0 and flags.size() == 10 and flags[action_index] and ability != 0 and ability + thief.modifiers()[action_index] > 0
 

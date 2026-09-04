@@ -3,14 +3,13 @@
 class_name CombatFlowPhase
 extends RefCounted
 
-const ContextType = preload("res://src/game/rules/combat_flow_context.gd")
 const INVALID_COORDINATE := Vector2i(-100_000, -100_000)
 
 var _flow_ref: WeakRef
-var _rules: ContextType
+var _rules: CombatFlowContext
 
 
-func _init(flow: RefCounted, rules: ContextType) -> void:
+func _init(flow: RefCounted, rules: CombatFlowContext) -> void:
 	_flow_ref = weakref(flow)
 	_rules = rules
 

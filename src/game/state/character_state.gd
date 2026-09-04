@@ -3,7 +3,6 @@
 class_name CharacterState
 extends RefCounted
 
-const CharacterLifetimeRecordType := preload("res://src/game/state/character_lifetime_record.gd")
 
 var id: String
 var name: String
@@ -44,7 +43,7 @@ var maximum_spell_points: int = 0
 var carried_load: int = 0
 var maximum_load: int = 0
 var prestige_penalty: int = 0
-var lifetime_record: CharacterLifetimeRecordType
+var lifetime_record: CharacterLifetimeRecord
 var traitor: bool = false
 var conditions: ConditionSet
 var money: WealthState
@@ -64,7 +63,7 @@ func _init(character_id: String, character_name: String, health: int, max_health
 	maximum_health = max_health
 	conditions = ConditionSet.new()
 	money = WealthState.new()
-	lifetime_record = CharacterLifetimeRecordType.new()
+	lifetime_record = CharacterLifetimeRecord.new()
 	_saves.resize(8)
 	_saves.fill(50)
 	_specials.resize(12)
@@ -294,7 +293,7 @@ static func _restore_numeric_fields(result: CharacterState, data: Dictionary) ->
 	result.carried_load = numeric_values["load"]
 	result.maximum_load = numeric_values["maximumLoad"]
 	result.prestige_penalty = numeric_values["prestigePenalty"]
-	result.lifetime_record = CharacterLifetimeRecordType.from_data(data.get("lifetimeRecord", {}), CharacterLifetimeRecordType.new())
+	result.lifetime_record = CharacterLifetimeRecord.from_data(data.get("lifetimeRecord", {}), CharacterLifetimeRecord.new())
 	if result.lifetime_record == null:
 		return false
 	if data.has("traitor") and not data["traitor"] is bool:

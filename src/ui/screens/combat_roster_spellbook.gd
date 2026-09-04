@@ -5,7 +5,6 @@ extends VBoxContainer
 signal cast_requested(option: InteractionRequestValue.CastOption)
 signal back_requested
 
-const ClassicSpellLevelScript := preload("res://src/ui/classic_spell_level.gd")
 const MUTED := Color("9da8aa")
 
 @export var spell_button_scene: PackedScene
@@ -51,7 +50,7 @@ func close() -> void:
 func _available_levels() -> Array[int]:
 	var levels: Array[int] = []
 	for spell: SpellView in _known_combat_spells():
-		var level := ClassicSpellLevelScript.from_classic_id(spell.classic_id)
+		var level := ClassicSpellLevel.from_classic_id(spell.classic_id)
 		if not levels.has(level):
 			levels.append(level)
 	for option: InteractionRequestValue.CastOption in _options:
@@ -88,7 +87,7 @@ func _refresh_spell_list() -> void:
 	_spell_buttons.clear()
 	var spell_ids: Array[String] = []
 	for spell: SpellView in _known_combat_spells():
-		if ClassicSpellLevelScript.from_classic_id(spell.classic_id) == _level:
+		if ClassicSpellLevel.from_classic_id(spell.classic_id) == _level:
 			spell_ids.append(spell.id)
 	for option: InteractionRequestValue.CastOption in _options:
 		if _classic_spell_level(option.spell_id) == _level and not spell_ids.has(option.spell_id):
@@ -306,7 +305,7 @@ static func _saving_throw(spell: SpellView, power: int) -> String:
 static func _classic_spell_level(spell_id: String) -> int:
 	var parts := spell_id.split(".")
 	var classic_id := String(parts[parts.size() - 1]).to_int() if not parts.is_empty() else 0
-	return ClassicSpellLevelScript.from_classic_id(classic_id)
+	return ClassicSpellLevel.from_classic_id(classic_id)
 
 
 func _ensure_controls() -> void:

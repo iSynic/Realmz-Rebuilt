@@ -3,14 +3,11 @@
 class_name PartySetupControllerComponent
 extends RefCounted
 
-const PartySetupCharacterRowScript := preload("res://src/ui/party_setup_character_row.gd")
-const PartySetupPartyListScript := preload("res://src/ui/party_setup_party_list.gd")
-const CampaignPartySetupStateScript := preload("res://src/ui/controllers/campaign_party_setup_state.gd")
 
-const GOLD := CampaignPartySetupStateScript.GOLD
-const MUTED := CampaignPartySetupStateScript.MUTED
-const ERROR := CampaignPartySetupStateScript.ERROR
-const MAXIMUM_MODAL_Z_INDEX := CampaignPartySetupStateScript.MAXIMUM_MODAL_Z_INDEX
+const GOLD := CampaignPartySetupState.GOLD
+const MUTED := CampaignPartySetupState.MUTED
+const ERROR := CampaignPartySetupState.ERROR
+const MAXIMUM_MODAL_Z_INDEX := CampaignPartySetupState.MAXIMUM_MODAL_Z_INDEX
 
 var _state: RefCounted
 

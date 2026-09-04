@@ -3,7 +3,6 @@
 class_name PackageRepository
 extends RefCounted
 
-const PackageDocumentCacheScript := preload("res://src/storage/packages/package_document_cache.gd")
 const EXPECTED_SCHEMA_HASH: String = "05ced7b000683f53e6220b9ac8f7d41c801e7e2c78c874287c2ae694b585273d"
 const DECODER_VERSION: int = 6
 const REQUIRED_DOCUMENTS: Array[String] = ["assets/index.json", "content.json", "scenario.json", "world.json"]
@@ -24,7 +23,7 @@ var _last_error: String = ""
 var _package_cache := PackageGraphCache.new()
 var _receipt_store := PackageInstallReceiptStore.new(EXPECTED_SCHEMA_HASH, DECODER_VERSION)
 var _archive_reader := PackageArchiveReader.new()
-var _document_cache := PackageDocumentCacheScript.new(EXPECTED_SCHEMA_HASH, DECODER_VERSION)
+var _document_cache := PackageDocumentCache.new(EXPECTED_SCHEMA_HASH, DECODER_VERSION)
 var _manifest_discovery := PackageManifestDiscovery.new(EXPECTED_SCHEMA_HASH, SUPPORTED_CAPABILITIES, DEFERRED_PACKAGE_CAPABILITIES, _archive_reader)
 var _media_validator := PackageMediaValidatorResolver.new()
 var _domain_assembler := PackageDomainAssembler.new()

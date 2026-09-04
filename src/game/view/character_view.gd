@@ -2,7 +2,6 @@
 class_name CharacterView
 extends RefCounted
 
-const CharacterLifetimeRecordType := preload("res://src/game/state/character_lifetime_record.gd")
 
 const CONDITION_NAMES: Array[String] = [
 	"In Retreat", "Is Helpless", "Entangled", "Cursed", "Magic Aura", "Stupid", "Moving Slowly", "Shielded from Hits", "Missile Shield", "Poisoned",
@@ -85,7 +84,7 @@ var age_bands: Array[CharacterAgeBandView] = []
 var record_available: bool = true
 var prestige: int
 var prestige_penalty: int
-var lifetime_record: CharacterLifetimeRecordType
+var lifetime_record: CharacterLifetimeRecord
 var items: Array[ItemView] = []
 var spells: Array[SpellView] = []
 var scrolls: Array[SpellScrollView] = []
@@ -170,7 +169,7 @@ func _populate_statistics(character: CharacterState, reusable: CharacterView, ca
 	gold = character.money.gold
 	gems = character.money.gems
 	jewelry = character.money.jewelry
-	lifetime_record = reusable.lifetime_record if can_reuse_static else CharacterLifetimeRecordType.from_data(character.lifetime_record.to_data(), CharacterLifetimeRecordType.new())
+	lifetime_record = reusable.lifetime_record if can_reuse_static else CharacterLifetimeRecord.from_data(character.lifetime_record.to_data(), CharacterLifetimeRecord.new())
 	prestige_penalty = character.prestige_penalty
 	prestige = lifetime_record.prestige(prestige_penalty)
 	condition_values = character.conditions.values()

@@ -3,10 +3,6 @@
 class_name CampaignPartySetupController
 extends "res://src/ui/controllers/party_setup_controller_component.gd"
 
-const SetupStateScript := preload("res://src/ui/controllers/campaign_party_setup_state.gd")
-const PartySetupInspectionControllerScript := preload("res://src/ui/controllers/party_setup_inspection_controller.gd")
-const PartySetupAssemblyControllerScript := preload("res://src/ui/controllers/party_setup_assembly_controller.gd")
-const PartySetupCharacterCreationControllerScript := preload("res://src/ui/controllers/party_setup_character_creation_controller.gd")
 const PARTY_SETUP_WORKSPACE_PATH := "res://src/ui/setup/party_setup_workspace.tscn"
 
 var start_requested: Signal:
@@ -38,11 +34,11 @@ var _creation: RefCounted
 
 
 func _init() -> void:
-	var state := SetupStateScript.new()
+	var state := CampaignPartySetupState.new()
 	super(state)
-	_inspection = PartySetupInspectionControllerScript.new(state)
-	_assembly = PartySetupAssemblyControllerScript.new(state, _inspection)
-	_creation = PartySetupCharacterCreationControllerScript.new(state, _assembly)
+	_inspection = PartySetupInspectionController.new(state)
+	_assembly = PartySetupAssemblyController.new(state, _inspection)
+	_creation = PartySetupCharacterCreationController.new(state, _assembly)
 
 func build_splash_overlay() -> void:
 	_campaign_library.build_splash_overlay()
@@ -90,7 +86,7 @@ func _bind_setup_workspace() -> void:
 	creator_page = setup_overlay.get_node("%CreatorPage") as VBoxContainer
 	_clear(creator_page)
 	party_list = setup_overlay.get_node("%PartySlots") as VBoxContainer
-	party_list.set_script(PartySetupPartyListScript)
+	party_list.set_script(PartySetupPartyList)
 	party_list.import_requested.connect(_assembly._import_stored_character)
 	setup_message = setup_overlay.get_node("%SetupMessage") as Label
 	party_setup_options = setup_overlay.get_node("%PartySetupOptions") as VBoxContainer

@@ -5,7 +5,6 @@ extends InteractionComponent
 
 ## Presents Treasure assignment, wealth operations, lore actions, and completion confirmation.
 
-const TreasureDisplayTextType = preload("res://src/ui/interaction_components/treasure_display_text.gd")
 
 signal recipient_selected(character_id: String)
 
@@ -87,7 +86,7 @@ func preferred_initial_focus() -> Control:
 func _build_classic_treasure_workspace(body: InteractionRequest.TreasureRequestBody) -> void:
 	_select_initial_recipient(body)
 	%TreasureWorkspaceTitle.text = "Victory Spoils" if body.origin == &"battle" else "Treasure"
-	%TreasureWorkspaceSummary.text = TreasureDisplayTextType.summary(body)
+	%TreasureWorkspaceSummary.text = TreasureDisplayText.summary(body)
 	_build_loot_side(body)
 	_build_party_side(body)
 	_build_item_inspector(body)
@@ -175,7 +174,7 @@ func _add_loot_item(parent: GridContainer, item: InteractionRequestValue.RewardI
 	cell.mouse_exited.connect(_hide_loot_ring.bind(item.instance_id))
 	cell.focus_exited.connect(_hide_loot_ring.bind(item.instance_id))
 	cell.pressed.connect(_begin_item_transfer.bind(item, cell))
-	_detail_popover.bind_hover(cell, TreasureDisplayTextType.item_detail(item))
+	_detail_popover.bind_hover(cell, TreasureDisplayText.item_detail(item))
 
 
 func _add_vacant_loot_slot(parent: GridContainer, instance_id: String) -> void:
@@ -197,7 +196,7 @@ func _add_recipient_row(parent: VBoxContainer, character: InteractionRequestValu
 	var button := recipient_button_scene.instantiate() as Button
 	button.name = "TreasureRecipient_%s" % character.id
 	button.button_pressed = character.id == _selected_recipient_id
-	button.text = TreasureDisplayTextType.recipient(character)
+	button.text = TreasureDisplayText.recipient(character)
 	button.icon = _portrait(character.id)
 	button.disabled = not character.enabled
 	button.tooltip_text = character.reason
@@ -207,7 +206,7 @@ func _add_recipient_row(parent: VBoxContainer, character: InteractionRequestValu
 
 
 func _build_compact_commands(parent: VBoxContainer, body: InteractionRequest.TreasureRequestBody) -> void:
-	%TreasurePooledWealth.text = TreasureDisplayTextType.wealth(body.wealth)
+	%TreasurePooledWealth.text = TreasureDisplayText.wealth(body.wealth)
 	var has_carried_wealth := body.characters.any(func(character: InteractionRequestValue.RewardCharacter) -> bool:
 		return character.wealth != null and (character.wealth.gold > 0 or character.wealth.gems > 0 or character.wealth.jewelry > 0)
 	)
@@ -281,7 +280,7 @@ func _refresh_item_record(icon: TextureRect) -> void:
 	else:
 		_selected_item_name.remove_theme_color_override("font_color")
 	_selected_item_name.text = _selected_item.name
-	_selected_item_state.text = TreasureDisplayTextType.item_state(_selected_item)
+	_selected_item_state.text = TreasureDisplayText.item_state(_selected_item)
 	_selected_item_description.text = _selected_item.description
 	for fact: InteractionRequestValue.RewardFact in _selected_item.facts:
 		var label := _add_muted_label(_selected_item_facts, fact.label, "TreasureFact_%s" % fact.label.to_snake_case())
@@ -373,7 +372,7 @@ func _build_recovery_workspace(body: InteractionRequest.TreasureRequestBody) -> 
 		return
 	var workspace := recovery_workspace_scene.instantiate() as VBoxContainer
 	add_child(workspace)
-	(workspace.get_node("%TreasureWorkspaceSummary") as Label).text = TreasureDisplayTextType.summary(body)
+	(workspace.get_node("%TreasureWorkspaceSummary") as Label).text = TreasureDisplayText.summary(body)
 	var loot_field := workspace.get_node("%TreasureLootField") as CenterContainer
 	loot_field.custom_minimum_size.y = 104.0 if _compact else 132.0
 	var stage := loot_field.get_node("Stage") as Control
@@ -391,7 +390,7 @@ func _build_recovery_workspace(body: InteractionRequest.TreasureRequestBody) -> 
 		var button := recipient_button_scene.instantiate() as Button
 		button.name = "TreasureRecipient_%s" % character.id
 		button.toggle_mode = false
-		button.text = "Recover to %s" % TreasureDisplayTextType.recipient(character)
+		button.text = "Recover to %s" % TreasureDisplayText.recipient(character)
 		button.icon = _portrait(character.id)
 		button.disabled = not character.enabled
 		button.tooltip_text = character.reason
@@ -412,7 +411,7 @@ func _bind_recovery_item(workspace: VBoxContainer, item: InteractionRequestValue
 	unavailable.visible = icon.texture == null
 	unavailable.tooltip_text = "Item image unavailable"
 	(workspace.get_node("%TreasureSelectedItemName") as Label).text = item.name
-	(workspace.get_node("%TreasureSelectedItemState") as Label).text = TreasureDisplayTextType.item_state(item)
+	(workspace.get_node("%TreasureSelectedItemState") as Label).text = TreasureDisplayText.item_state(item)
 	var charges := workspace.get_node("%TreasureSelectedItemCharges") as Label
 	charges.visible = item.charges > 0
 	charges.text = "%d charge%s" % [item.charges, "" if item.charges == 1 else "s"]

@@ -3,7 +3,6 @@
 class_name RealmzRuntimeApi
 extends RefCounted
 
-const ClassicThiefEncounterOperationsScript := preload("res://src/scenarios/runtime/operations/classic_thief_encounter_operations.gd")
 
 const SUPPORTED_SAFE_CAPABILITIES: Array[String] = [
 	"core.combat.start",
@@ -53,7 +52,7 @@ func _init(content: RealmzContent, game_state: GameState, rng: RealmzRng, action
 	_presentation_operations = ClassicPresentationOpcodeHandler.new(_content, _game_state, _rng)
 	_world_time_operations = ClassicWorldTimeOpcodeHandler.new(_content, _game_state, _rng)
 	_encounter_operations = ClassicEncounterOpcodeHandler.new(_content, _game_state)
-	_thief_operations = ClassicThiefEncounterOperationsScript.new(_content, _game_state, _rng, _rules, _encounter_operations)
+	_thief_operations = ClassicThiefEncounterOperations.new(_content, _game_state, _rng, _rules, _encounter_operations)
 	_classic_handlers = ClassicOpcodeHandlerRegistry.new()
 	for handler: ClassicOpcodeHandler in [_control_flow_operations, _character_operations, _inventory_operations, _service_operations, _combat_operations, _battle_reward_operations, _presentation_operations, _world_time_operations, _encounter_operations]:
 		if not _classic_handlers.register(handler):

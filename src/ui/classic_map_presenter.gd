@@ -22,7 +22,6 @@ const SURROUND_TEXTURE_PATH := "res://src/ui/assets/ui/classic-exploration-surro
 const DARKNESS_MASK_SIZE := Vector2(320.0, 320.0)
 const DEBUG_AP_COLOR := Color(0.95, 0.72, 0.26, 0.88)
 const DEBUG_RANDOM_RECT_COLOR := Color(0.96, 0.75, 0.36, 0.78)
-const RetainedMapSurfaceScript := preload("res://src/ui/classic_retained_map_surface.gd")
 
 @export var cell_size: float = 32.0
 @export var map_origin: Vector2 = Vector2.ZERO
@@ -80,7 +79,7 @@ func _ready() -> void:
 			_dungeon_party_marker_textures[heading] = dungeon_party_marker_texture(dungeon_arrow_strip, heading)
 	for asset_id: StringName in BOAT_MARKER_LEFT_ASSET_IDS.values() + BOAT_MARKER_RIGHT_ASSET_IDS.values():
 		_party_marker_textures[asset_id] = ClassicUiAssetCatalog.texture(asset_id)
-	_retained_surface = RetainedMapSurfaceScript.new()
+	_retained_surface = ClassicRetainedMapSurface.new()
 	_retained_surface.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_retained_surface.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_retained_surface)

@@ -3,7 +3,6 @@
 class_name CampaignLibraryController
 extends RefCounted
 
-const PackageOperationViewScript := preload("res://src/app/package_operation_view.gd")
 const CAMPAIGN_SELECTION_PANEL_SCENE := preload("res://src/ui/setup/campaign_selection_panel.tscn")
 const FRONT_DOOR_MENU_PATH := "res://src/ui/setup/front_door_menu.tscn"
 
@@ -32,7 +31,7 @@ var package_install_row: BoxContainer
 var startup_action_buttons: Array[Button] = []
 
 var campaigns: Array[CampaignPackageView] = []
-var package_operation_status: RefCounted = PackageOperationViewScript.new()
+var package_operation_status: RefCounted = PackageOperationView.new()
 var selected_campaign_summary: CampaignSummaryView
 var media: ClassicMediaCatalog
 var settings: PresentationSettings = PresentationSettings.new()
@@ -136,7 +135,7 @@ func set_campaigns(next_campaigns: Array[CampaignPackageView]) -> void:
 
 
 func set_package_operation(status: RefCounted) -> void:
-	package_operation_status = status if status != null else PackageOperationViewScript.new()
+	package_operation_status = status if status != null else PackageOperationView.new()
 	render_campaign_list()
 
 

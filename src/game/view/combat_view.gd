@@ -2,7 +2,6 @@
 class_name CombatView
 extends RefCounted
 
-const PersistentCombatFieldViewType := preload("res://src/game/view/persistent_combat_field_view.gd")
 
 var battle_id: String
 var round_number: int
@@ -31,7 +30,7 @@ var character_targets: Array[CharacterView] = []
 var movement_options: Array[CombatMoveOptionView] = []
 var monsters: Array[MonsterView] = []
 var battlefield: BattlefieldView
-var persistent_fields: Array[PersistentCombatFieldViewType] = []
+var persistent_fields: Array[PersistentCombatFieldView] = []
 var auto_turn: ActionAvailabilityView = ActionAvailabilityView.new(&"auto", false, "Auto Turn is unavailable.")
 var delay: ActionAvailabilityView = ActionAvailabilityView.new(&"delay", false, "Delay is unavailable.")
 var bandage: ActionAvailabilityView = ActionAvailabilityView.new(&"bandage", false, "Bandage is unavailable.")
@@ -82,7 +81,7 @@ func _populate_battlefield(combat: CombatState, content: RealmzContent, game_sta
 				if terrain == null or terrain.solid == 0:
 					coordinates.append(coordinate)
 			var spell := content.spell_by_id(field.spell_id) if content != null else null
-			persistent_fields.append(PersistentCombatFieldViewType.new(field, spell.name if spell != null else field.spell_id, coordinates))
+			persistent_fields.append(PersistentCombatFieldView.new(field, spell.name if spell != null else field.spell_id, coordinates))
 
 
 func _adjacent_actor_ids(combat: CombatState, battlefield_rules: BattlefieldRules) -> Array[String]:

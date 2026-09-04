@@ -3,7 +3,6 @@
 class_name ClassicCharacterSheet
 extends VBoxContainer
 
-const ClassicSpellLevelScript := preload("res://src/ui/classic_spell_level.gd")
 
 signal character_selected(character_id: String)
 signal tab_changed(tab_id: StringName)
@@ -315,7 +314,7 @@ func _character_spell_card(spell: SpellView) -> PanelContainer:
 
 
 static func _classic_spell_level(spell: SpellView) -> int:
-	return ClassicSpellLevelScript.from_classic_id(spell.classic_id)
+	return ClassicSpellLevel.from_classic_id(spell.classic_id)
 
 
 func _build_appearance(character: CharacterView) -> void:

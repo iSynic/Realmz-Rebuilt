@@ -5,7 +5,6 @@ extends RefCounted
 
 ## Rebuilds and validates a saved playthrough before it can replace the live one.
 
-const ClassicPickLockRulesScript := preload("res://src/game/rules/classic_pick_lock_rules.gd")
 
 static func validate(content: RealmzContent, snapshot: SessionSnapshot) -> SessionRestoreResult:
 	if content == null or content.scenario == null or snapshot == null:
@@ -671,9 +670,9 @@ static func _valid_thief_vm_continuation(content: RealmzContent, state: GameStat
 	if request.kind != InteractionRequest.PICK_LOCK or body == null or owner.action_index not in [2, 4, 6, 7] or body.encounter_id != encounter.id or body.action_index != owner.action_index or body.character_id != owner.character_id or character == null or character.current_health <= 0 or character.conditions.is_active(ConditionRules.ANIMATED):
 		return false
 	var flags := state.thief_encounter_type_flags(thief)
-	var chance := ClassicPickLockRulesScript.chance(character.ability_value(ClassicPickLockRulesScript.ability_index(owner.action_index)), thief.modifiers()[owner.action_index])
-	var expected_frames := ClassicPickLockRulesScript.preview(rng_state, thief.tumblers, chance)
-	return flags.size() == 10 and not flags[owner.action_index] and chance > 0 and body.action_label == ClassicPickLockRulesScript.action_label(owner.action_index) and body.character_name == character.name and body.portrait_id == character.portrait_id and body.chance_percent == chance and body.yellow_threshold == ClassicPickLockRulesScript.yellow_threshold(chance) and body.green_threshold == ClassicPickLockRulesScript.green_threshold(chance) and body.frame_rate == ClassicPickLockRulesScript.FRAME_RATE and body.time_limit_frames == ClassicPickLockRulesScript.time_limit_frames(thief.tumblers) and body.frames == expected_frames
+	var chance := ClassicPickLockRules.chance(character.ability_value(ClassicPickLockRules.ability_index(owner.action_index)), thief.modifiers()[owner.action_index])
+	var expected_frames := ClassicPickLockRules.preview(rng_state, thief.tumblers, chance)
+	return flags.size() == 10 and not flags[owner.action_index] and chance > 0 and body.action_label == ClassicPickLockRules.action_label(owner.action_index) and body.character_name == character.name and body.portrait_id == character.portrait_id and body.chance_percent == chance and body.yellow_threshold == ClassicPickLockRules.yellow_threshold(chance) and body.green_threshold == ClassicPickLockRules.green_threshold(chance) and body.frame_rate == ClassicPickLockRules.FRAME_RATE and body.time_limit_frames == ClassicPickLockRules.time_limit_frames(thief.tumblers) and body.frames == expected_frames
 
 
 static func _valid_thief_request(content: RealmzContent, state: GameState, thief: ThiefEncounterDefinition, body: InteractionRequest.ThiefEncounterRequestBody) -> bool:
@@ -698,11 +697,11 @@ static func _valid_thief_request(content: RealmzContent, state: GameState, thief
 			return false
 		for action_index: int in 8:
 			var action := detached.actions[action_index]
-			var ability := character.ability_value(ClassicPickLockRulesScript.ability_index(action_index))
+			var ability := character.ability_value(ClassicPickLockRules.ability_index(action_index))
 			var effective := ability + thief.modifiers()[action_index]
 			var expected_enabled := flags[action_index] and ability != 0 and effective > 0
 			var expected_reason := "" if expected_enabled else "This action is no longer available." if not flags[action_index] else "This character lacks the required ability." if ability == 0 else "The authored modifier reduces this action below zero."
-			if action.index != action_index or action.label != ClassicPickLockRulesScript.action_label(action_index) or action.value != (effective if ability != 0 else 0) or action.enabled != expected_enabled or action.reason != expected_reason:
+			if action.index != action_index or action.label != ClassicPickLockRules.action_label(action_index) or action.value != (effective if ability != 0 else 0) or action.enabled != expected_enabled or action.reason != expected_reason:
 				return false
 	return true
 

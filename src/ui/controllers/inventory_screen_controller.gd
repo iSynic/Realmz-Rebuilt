@@ -18,8 +18,6 @@ const LEDGER_BLUE := Color("2457bd")
 const LEDGER_RED := Color("ad2721")
 const ITEM_DETAIL_POPOVER_SCENE_PATH := "res://src/ui/classic_item_detail_popover.tscn"
 const WORKSPACE_SCENE_PATH := "res://src/ui/screens/inventory_workspace.tscn"
-const InventoryItemTextType = preload("res://src/ui/controllers/inventory_item_text.gd")
-const InventoryViewQueriesType = preload("res://src/ui/controllers/inventory_view_queries.gd")
 
 var _selected_character_id: String = ""
 var _selected_item_instance_id: String = ""
@@ -98,11 +96,11 @@ func _present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog,
 	if view.party_members.is_empty():
 		_present_empty(workspace, "No party inventory", "The party has no characters.", true)
 		return
-	var available_characters := InventoryViewQueriesType.eligible_characters(view, _encounter_mode, _encounter_items)
+	var available_characters := InventoryViewQueries.eligible_characters(view, _encounter_mode, _encounter_items)
 	if available_characters.is_empty():
 		_present_empty(workspace, "No encounter items", "No carried item can be selected for this encounter.", not _encounter_mode)
 		return
-	var selected_character := InventoryViewQueriesType.selected_character(view, _selected_character_id, _encounter_mode, _encounter_items)
+	var selected_character := InventoryViewQueries.selected_character(view, _selected_character_id, _encounter_mode, _encounter_items)
 	if selected_character == null:
 		selected_character = available_characters[0]
 		_selected_character_id = selected_character.id
@@ -113,13 +111,13 @@ func _present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog,
 		_trade_status = ""
 		_clear_pending_action()
 	_rendered_character_id = selected_character.id
-	var visible_items := InventoryViewQueriesType.eligible_items(selected_character, _encounter_mode, _encounter_items)
-	var selected_item := InventoryViewQueriesType.selected_item(visible_items, _selected_item_instance_id)
+	var visible_items := InventoryViewQueries.eligible_items(selected_character, _encounter_mode, _encounter_items)
+	var selected_item := InventoryViewQueries.selected_item(visible_items, _selected_item_instance_id)
 	if selected_item == null and not visible_items.is_empty():
 		selected_item = visible_items[0]
 		_selected_item_instance_id = selected_item.instance_id
 	if _trade_mode:
-		var target := InventoryViewQueriesType.character_by_id(view, _selected_trade_target_id)
+		var target := InventoryViewQueries.character_by_id(view, _selected_trade_target_id)
 		if target == null:
 			_cancel_trade()
 			return
@@ -156,7 +154,7 @@ func _present_empty(workspace: InventoryWorkspace, title: String, detail: String
 
 func _bind_character_selector(selector: InventoryCharacterSelector, view: GameView, selected: CharacterView, media: ClassicMediaCatalog) -> void:
 	selector.clear_characters()
-	var characters := InventoryViewQueriesType.eligible_characters(view, _encounter_mode, _encounter_items)
+	var characters := InventoryViewQueries.eligible_characters(view, _encounter_mode, _encounter_items)
 	var row := selector.characters()
 	row.columns = mini(3, characters.size()) if _layout_profile == UiLayoutProfile.COMPACT else characters.size()
 	for character: CharacterView in characters:
@@ -183,7 +181,7 @@ func select_roster_character(character_id: String, view: GameView) -> bool:
 	if not _trade_mode:
 		_select_character(character.id)
 		return true
-	var source := InventoryViewQueriesType.selected_character(view, _selected_character_id, _encounter_mode, _encounter_items)
+	var source := InventoryViewQueries.selected_character(view, _selected_character_id, _encounter_mode, _encounter_items)
 	var selected_item: ItemView = null
 	if source != null:
 		for item: ItemView in source.items:
@@ -232,13 +230,13 @@ func _bind_item_browser(content: InventoryItemBrowser, character: CharacterView,
 		button.text = item.name
 		button.tooltip_text = "%s%s" % ["Equipped" if item.equipped else "Carried", " • %d charges" % item.charges if item.charges > 0 else ""]
 		button.pressed.connect(_select_item.bind(item.instance_id))
-		var line_fact := InventoryItemTextType.line_fact(item)
+		var line_fact := InventoryItemText.line_fact(item)
 		var fact_label := row_panel.get_node("Row/ItemText/InventoryItemLineFact") as Label
 		fact_label.visible = line_fact != null
 		if line_fact != null:
 			_bind_label(fact_label, "%s %s" % [line_fact.label, line_fact.value], LEDGER_RED if line_fact.id == &"damage-range" else LEDGER_BLUE, 11)
-		detail_popover.bind_hover(icon, InventoryItemTextType.detail(item))
-		detail_popover.bind_hover(button, InventoryItemTextType.detail(item))
+		detail_popover.bind_hover(icon, InventoryItemText.detail(item))
+		detail_popover.bind_hover(button, InventoryItemText.detail(item))
 		var state_parts: Array[String] = []
 		if item.equipped:
 			state_parts.append("Equipped")
@@ -363,7 +361,7 @@ func _render_operation_stage(panel: InventoryActionPanel, item: ItemView, charac
 	var facts: Array[String] = ["Weight %d" % item.weight]
 	facts.append("Unlimited charges" if item.charges < 0 else "%d charge%s" % [item.charges, "" if item.charges == 1 else "s"])
 	_bind_label(column.get_node("Facts") as Label, " • ".join(facts), MUTED, 13)
-	_bind_label(column.get_node("Description") as Label, InventoryItemTextType.operation_description(_pending_item_action, item, character), TEXT, 13)
+	_bind_label(column.get_node("Description") as Label, InventoryItemText.operation_description(_pending_item_action, item, character), TEXT, 13)
 	var confirm := column.get_node("InventoryOperationActions/Confirm") as Button
 	confirm.text = _pending_item_action_label
 	_clear_pressed_connections(confirm)
@@ -425,11 +423,11 @@ func _bind_trade_ledger(ledger: InventoryTradeLedger, view: GameView, character:
 		icon.configure(item.icon_resource_type, item.icon_id, media, 34.0, item.name)
 		var button := row.get_node("SelectItem") as ClassicExchangeItemButton
 		button.name = "InventoryTradeItem_%s" % item.instance_id
-		button.text = "%s\n%s" % [item.name, InventoryItemTextType.trade_line(item)]
+		button.text = "%s\n%s" % [item.name, InventoryItemText.trade_line(item)]
 		button.pressed.connect(_select_trade_item.bind(view, character.id, item.instance_id, other_id))
 		button.configure_drag({"kind": &"inventory-trade-item", "sourceId": character.id, "instanceId": item.instance_id})
-		detail_popover.bind_hover(icon, InventoryItemTextType.detail(item))
-		detail_popover.bind_hover(button, InventoryItemTextType.detail(item))
+		detail_popover.bind_hover(icon, InventoryItemText.detail(item))
+		detail_popover.bind_hover(button, InventoryItemText.detail(item))
 		rows.add_child(row)
 	if character.items.is_empty():
 		_add_text_row(rows, ledger.empty_row_scene, "No carried items.", LEDGER_MUTED, 12)
@@ -475,15 +473,15 @@ func _select_trade_character(character_id: String, left_side: bool) -> void:
 
 
 func _select_trade_item(view: GameView, character_id: String, instance_id: String, preferred_target_id: String) -> void:
-	var character := InventoryViewQueriesType.character_by_id(view, character_id)
+	var character := InventoryViewQueries.character_by_id(view, character_id)
 	if character == null:
 		return
-	var item := InventoryViewQueriesType.item_by_id(character, instance_id)
+	var item := InventoryViewQueries.item_by_id(character, instance_id)
 	if item == null:
 		return
 	_selected_character_id = character_id
 	_selected_item_instance_id = instance_id
-	_selected_trade_target_id = InventoryViewQueriesType.first_enabled_trade_target(item, preferred_target_id)
+	_selected_trade_target_id = InventoryViewQueries.first_enabled_trade_target(item, preferred_target_id)
 	_trade_status = "Choose a destination for %s." % item.name if _selected_trade_target_id.is_empty() else "Ready to transfer %s." % item.name
 	refresh_requested.emit()
 
@@ -491,9 +489,9 @@ func _select_trade_item(view: GameView, character_id: String, instance_id: Strin
 func _drop_trade_item(view: GameView, payload: Dictionary, target_id: String) -> void:
 	var source_id := String(payload.get("sourceId", ""))
 	var instance_id := String(payload.get("instanceId", ""))
-	var source := InventoryViewQueriesType.character_by_id(view, source_id)
-	var item := InventoryViewQueriesType.item_by_id(source, instance_id)
-	var availability := InventoryViewQueriesType.trade_target(item, target_id)
+	var source := InventoryViewQueries.character_by_id(view, source_id)
+	var item := InventoryViewQueries.item_by_id(source, instance_id)
+	var availability := InventoryViewQueries.trade_target(item, target_id)
 	if availability == null or not availability.enabled:
 		_trade_status = "This item cannot be transferred there." if availability == null else availability.reason
 		refresh_requested.emit()
@@ -534,7 +532,7 @@ func _select_item(instance_id: String) -> void:
 
 func _begin_trade(item: ItemView) -> void:
 	_trade_mode = true
-	_selected_trade_target_id = InventoryViewQueriesType.first_enabled_trade_target(item)
+	_selected_trade_target_id = InventoryViewQueries.first_enabled_trade_target(item)
 	_trade_status = ""
 	_clear_pending_action()
 	refresh_requested.emit()

@@ -3,8 +3,6 @@
 class_name GameView
 extends RefCounted
 
-const ViewDomainRevisionsScript := preload("res://src/game/session/view_domain_revisions.gd")
-const ViewChangeSetScript := preload("res://src/game/view/view_change_set.gd")
 
 var revision: int
 var session_started: bool
@@ -67,8 +65,8 @@ func _init(current_revision: int, started: bool, interaction: InteractionRequest
 	party_fatigue = fatigue
 	pooled_gold = gold
 	combat_view = current_combat
-	domain_revisions = ViewDomainRevisionsScript.new(current_revision)
-	change_set = ViewChangeSetScript.new(true)
+	domain_revisions = ViewDomainRevisions.new(current_revision)
+	change_set = ViewChangeSet.new(true)
 
 
 func set_action_availability(action_id: StringName, enabled: bool, reason: String = "") -> void:

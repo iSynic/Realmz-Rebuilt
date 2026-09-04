@@ -2,7 +2,6 @@
 class_name CombatSpellSelection
 extends RefCounted
 
-const CombatScrollOptionViewType = preload("res://src/game/view/combat_scroll_option_view.gd")
 const INVALID_COORDINATE := Vector2i(-100_000, -100_000)
 
 var _flow_ref: WeakRef
@@ -160,27 +159,27 @@ func character_scroll_options(state: GameState, content: RealmzContent, caster_i
 		if spell == null: continue
 		if spell.target_type == 0:
 			if _flow().probe_character_scroll_cast(state, content, caster_id, scroll_slot).allowed:
-				if _flow()._is_summon_spell(spell): result.append(CombatScrollOptionViewType.new(scroll_slot, spell, scroll.power, null, "Choose up to %d open spaces" % scroll.power, &"coordinate_sequence", 0, state.combat.battlefield.actor_position(caster_id), [], scroll.power))
-				else: result.append(CombatScrollOptionViewType.new(scroll_slot, spell, scroll.power, null, "Choose up to %d actors" % scroll.power, &"sequence", 0, INVALID_COORDINATE, [], scroll.power, character_actor_spell_candidates(state, content, caster, spell, scroll.power)))
+				if _flow()._is_summon_spell(spell): result.append(CombatScrollOptionView.new(scroll_slot, spell, scroll.power, null, "Choose up to %d open spaces" % scroll.power, &"coordinate_sequence", 0, state.combat.battlefield.actor_position(caster_id), [], scroll.power))
+				else: result.append(CombatScrollOptionView.new(scroll_slot, spell, scroll.power, null, "Choose up to %d actors" % scroll.power, &"sequence", 0, INVALID_COORDINATE, [], scroll.power, character_actor_spell_candidates(state, content, caster, spell, scroll.power)))
 			continue
 		if ClassicSpellCapabilityCatalog.is_combat_phase_spell(spell):
-			if _flow().probe_character_scroll_cast(state, content, caster_id, scroll_slot).allowed: result.append(CombatScrollOptionViewType.new(scroll_slot, spell, scroll.power, null, "Choose battlefield destination", &"area", 0, state.combat.battlefield.actor_position(caster_id), [Vector2i.ZERO]))
+			if _flow().probe_character_scroll_cast(state, content, caster_id, scroll_slot).allowed: result.append(CombatScrollOptionView.new(scroll_slot, spell, scroll.power, null, "Choose battlefield destination", &"area", 0, state.combat.battlefield.actor_position(caster_id), [Vector2i.ZERO]))
 			continue
 		if spell.target_type in [9, 10, 12]:
-			if _flow().probe_character_scroll_cast(state, content, caster_id, scroll_slot).allowed: result.append(CombatScrollOptionViewType.new(scroll_slot, spell, scroll.power, null, group_spell_target_label(spell.target_type), &"automatic"))
+			if _flow().probe_character_scroll_cast(state, content, caster_id, scroll_slot).allowed: result.append(CombatScrollOptionView.new(scroll_slot, spell, scroll.power, null, group_spell_target_label(spell.target_type), &"automatic"))
 			continue
 		if spell.target_type in [3, 4]:
 			if _flow().probe_character_scroll_cast(state, content, caster_id, scroll_slot).allowed:
 				var shape := _rules.spell_areas.shape_for(spell, scroll.power)
 				var offsets := _rules.spell_areas.pattern(shape)
 				var legal_coordinates := legal_area_spell_target_coordinates(state, content, caster_id, spell, scroll.power, shape)
-				result.append(CombatScrollOptionViewType.new(scroll_slot, spell, scroll.power, null, "Choose battlefield point", &"area", shape, state.combat.battlefield.actor_position(caster_id), offsets, 1, [], legal_coordinates, _rules.spell_areas.rotation_patterns(spell, scroll.power)))
+				result.append(CombatScrollOptionView.new(scroll_slot, spell, scroll.power, null, "Choose battlefield point", &"area", shape, state.combat.battlefield.actor_position(caster_id), offsets, 1, [], legal_coordinates, _rules.spell_areas.rotation_patterns(spell, scroll.power)))
 			continue
 		if spell.target_type in [5, 7]:
-			if _flow().probe_character_scroll_cast(state, content, caster_id, scroll_slot, caster_id).allowed: result.append(CombatScrollOptionViewType.new(scroll_slot, spell, scroll.power, spell_target_view(state, content, caster_id), "Party" if spell.target_type == 7 else "Self", &"automatic"))
+			if _flow().probe_character_scroll_cast(state, content, caster_id, scroll_slot, caster_id).allowed: result.append(CombatScrollOptionView.new(scroll_slot, spell, scroll.power, spell_target_view(state, content, caster_id), "Party" if spell.target_type == 7 else "Self", &"automatic"))
 			continue
 		for target: CombatSpellTargetView in character_actor_spell_candidates(state, content, caster, spell, scroll.power):
-			if _flow().probe_character_scroll_cast(state, content, caster_id, scroll_slot, target.id).allowed: result.append(CombatScrollOptionViewType.new(scroll_slot, spell, scroll.power, target))
+			if _flow().probe_character_scroll_cast(state, content, caster_id, scroll_slot, target.id).allowed: result.append(CombatScrollOptionView.new(scroll_slot, spell, scroll.power, target))
 	return result
 
 

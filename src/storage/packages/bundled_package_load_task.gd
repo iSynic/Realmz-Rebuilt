@@ -3,7 +3,6 @@
 class_name BundledPackageLoadTask
 extends RefCounted
 
-const PackageRepositoryScript := preload("res://src/storage/packages/package_repository.gd")
 
 var _thread := Thread.new()
 var _mutex := Mutex.new()
@@ -60,7 +59,7 @@ func shutdown() -> void:
 
 
 func _run(path: String, campaign_id: String, package_hash: String) -> void:
-	var repository := PackageRepositoryScript.new()
+	var repository := PackageRepository.new()
 	var loaded := repository.load_bundled_package(path, campaign_id, package_hash)
 	repository.close()
 	_mutex.lock()

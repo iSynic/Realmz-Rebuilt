@@ -3,9 +3,6 @@
 class_name CampaignPartySetupState
 extends RefCounted
 
-const CampaignLibraryControllerScript := preload("res://src/ui/controllers/campaign_library_controller.gd")
-const PartySetupCharacterRowScript := preload("res://src/ui/party_setup_character_row.gd")
-const PartySetupPartyListScript := preload("res://src/ui/party_setup_party_list.gd")
 
 signal intent_submitted(intent: PlayerIntent)
 signal load_saved_adventure_requested
@@ -15,9 +12,9 @@ signal standalone_character_creation_cancelled
 const GOLD := Color("d5b45d")
 const MUTED := Color("9aa0a8")
 const ERROR := Color("ef7770")
-const MAXIMUM_MODAL_Z_INDEX: int = CampaignLibraryControllerScript.MAXIMUM_MODAL_Z_INDEX
+const MAXIMUM_MODAL_Z_INDEX: int = CampaignLibraryController.MAXIMUM_MODAL_Z_INDEX
 
-var _campaign_library := CampaignLibraryControllerScript.new()
+var _campaign_library := CampaignLibraryController.new()
 var campaign_overlay: PanelContainer:
 	get:
 		return _campaign_library.campaign_overlay

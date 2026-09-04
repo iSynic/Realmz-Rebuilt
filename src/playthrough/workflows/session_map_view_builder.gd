@@ -3,7 +3,6 @@
 class_name SessionMapViewBuilder
 extends RefCounted
 
-const MapWindowViewScript := preload("res://src/game/view/map_window_view.gd")
 const LOCATION_NOTE_VIEW_SIZE := Vector2i(15, 13)
 
 
@@ -53,7 +52,7 @@ static func build_map_view(context: SessionWorkflowContext, projection_size: Vec
 				var cell := map.topology.cell_at(Vector2i(x, y))
 				if cell != null:
 					cells.append(_cached_cell_view(context, map, cell, not map.uses_los or visible.has(cell.coordinate), cell_cache))
-		window = MapWindowViewScript.new(bounds, {}, cells)
+		window = MapWindowView.new(bounds, {}, cells)
 		if presentation_delta != null:
 			presentation_delta.complete_window_rebuild = true
 	if not window_cache.has(cache_key):

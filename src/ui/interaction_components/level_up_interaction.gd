@@ -4,7 +4,6 @@ class_name LevelUpInteraction
 extends InteractionComponent
 
 const SpellSelectionChrome := preload("res://src/ui/controllers/classic_spell_selection_chrome.gd")
-const ClassicSpellLevelScript := preload("res://src/ui/classic_spell_level.gd")
 const GOLD := Color("e5c45c")
 const CYAN := Color("8fcfd1")
 const MUTED := Color("aeb6ba")
@@ -143,7 +142,7 @@ func _select_spell_level(body: InteractionRequest.LevelUpRequestBody, level: int
 func _available_spell_levels(body: InteractionRequest.LevelUpRequestBody) -> Array[int]:
 	var levels: Array[int] = []
 	for spell: InteractionRequestValue.SpellChoice in body.spells:
-		var level := ClassicSpellLevelScript.from_classic_id(spell.classic_id)
+		var level := ClassicSpellLevel.from_classic_id(spell.classic_id)
 		if not levels.has(level):
 			levels.append(level)
 	levels.sort()
@@ -153,7 +152,7 @@ func _available_spell_levels(body: InteractionRequest.LevelUpRequestBody) -> Arr
 func _spells_at_level(body: InteractionRequest.LevelUpRequestBody, level: int) -> Array[InteractionRequestValue.SpellChoice]:
 	var spells: Array[InteractionRequestValue.SpellChoice] = []
 	for spell: InteractionRequestValue.SpellChoice in body.spells:
-		if ClassicSpellLevelScript.from_classic_id(spell.classic_id) == level:
+		if ClassicSpellLevel.from_classic_id(spell.classic_id) == level:
 			spells.append(spell)
 	return spells
 

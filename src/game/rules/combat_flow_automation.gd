@@ -2,13 +2,6 @@
 class_name CombatFlowAutomation
 extends RefCounted
 
-const ContextType = preload("res://src/game/rules/combat_flow_context.gd")
-const CombatRetreatProbeType = preload("res://src/game/rules/combat_retreat_probe.gd")
-const CombatCommandProbeType = preload("res://src/game/rules/combat_command_probe.gd")
-const CombatScrollOptionViewType = preload("res://src/game/view/combat_scroll_option_view.gd")
-const CombatAiScoringType = preload("res://src/game/rules/combat_ai_scoring.gd")
-const PolymorphContextType = preload("res://src/game/rules/monster_polymorph_context.gd")
-const CombatMonsterActionsType = preload("res://src/game/rules/combat_monster_actions.gd")
 
 const MONSTER_ATTACK_COMPLETED := 0
 const MONSTER_ATTACK_WAITING := 1
@@ -32,16 +25,16 @@ const MONSTER_FUMBLE_SOUNDS: Array[Dictionary] = [
 ]
 
 var _flow_ref: WeakRef
-var _rules: ContextType
+var _rules: CombatFlowContext
 var _ai_scoring: RefCounted
 var _monster_actions: CombatMonsterActions
 
 
-func _init(flow: RefCounted, rules: ContextType) -> void:
+func _init(flow: RefCounted, rules: CombatFlowContext) -> void:
 	_flow_ref = weakref(flow)
 	_rules = rules
-	_ai_scoring = CombatAiScoringType.new(flow, rules)
-	_monster_actions = CombatMonsterActionsType.new(flow, rules)
+	_ai_scoring = CombatAiScoring.new(flow, rules)
+	_monster_actions = CombatMonsterActions.new(flow, rules)
 
 
 func _flow() -> RefCounted:
@@ -407,15 +400,15 @@ func _process_monster_cast(state: GameState, content: RealmzContent, monster: Mo
 			var actor_field: RefCounted = _flow()._queue_single_actor_field(state, monster.id, planned_target_ids[0], spell, cost_power, cast_level, rng)
 			if actor_field != null: repeated_fields.append(actor_field)
 		if spell.target_type in [3, 4]:
-			resolutions = _rules.magic.resolve_monster_group_spell(monster, definition, selected_targets, spell, cost_power, cast_level, rng, true, true, PolymorphContextType.new(content, state.monster_set, state.difficulty, state.clock.day()))
+			resolutions = _rules.magic.resolve_monster_group_spell(monster, definition, selected_targets, spell, cost_power, cast_level, rng, true, true, MonsterPolymorphContext.new(content, state.monster_set, state.difficulty, state.clock.day()))
 		elif spell.target_type in [9, 10, 12]:
-			resolutions = _rules.magic.resolve_monster_group_spell(monster, definition, selected_targets, spell, cost_power, cast_level, rng, false, true, PolymorphContextType.new(content, state.monster_set, state.difficulty, state.clock.day()))
+			resolutions = _rules.magic.resolve_monster_group_spell(monster, definition, selected_targets, spell, cost_power, cast_level, rng, false, true, MonsterPolymorphContext.new(content, state.monster_set, state.difficulty, state.clock.day()))
 		elif spell.target_type == 0:
 			resolutions = _rules.magic.resolve_monster_repeated_spell(monster, definition, selected_targets, spell, cost_power, cast_level, rng, _flow()._repeated_field_callback(state, spell, monster.id, planned_target_ids, cost_power, cast_level, rng, repeated_fields))
 		elif spell.target_type == 6:
 			resolutions = _rules.magic.resolve_monster_ray_spell(monster, definition, selected_targets, spell, cost_power, cast_level, rng)
 		else:
-			resolutions = _rules.magic.resolve_monster_targeted_spell(monster, definition, selected_targets[0], spell, cost_power, cast_level, rng, PolymorphContextType.new(content, state.monster_set, state.difficulty, state.clock.day()))
+			resolutions = _rules.magic.resolve_monster_targeted_spell(monster, definition, selected_targets[0], spell, cost_power, cast_level, rng, MonsterPolymorphContext.new(content, state.monster_set, state.difficulty, state.clock.day()))
 		if resolutions == null or not resolutions.cast:
 			if did_cast:
 				break

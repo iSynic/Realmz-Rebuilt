@@ -3,8 +3,6 @@
 class_name CombatFlowFields
 extends RefCounted
 
-const ContextType = preload("res://src/game/rules/combat_flow_context.gd")
-const PersistentCombatFieldType = preload("res://src/game/state/persistent_combat_field.gd")
 
 const COLLISION_COMPLETED := 0
 const COLLISION_DEFEATED := 1
@@ -13,10 +11,10 @@ const COLLISION_INVALID := 3
 const CLEARED_TARGET_QUEUE_SHAPE := 127
 
 var _flow_ref: WeakRef
-var _rules: ContextType
+var _rules: CombatFlowContext
 
 
-func _init(flow: RefCounted, rules: ContextType) -> void:
+func _init(flow: RefCounted, rules: CombatFlowContext) -> void:
 	_flow_ref = weakref(flow)
 	_rules = rules
 
@@ -85,7 +83,7 @@ func resolve_actor_collisions(state: GameState, content: RealmzContent, actor_id
 	if not combat.battlefield.has_actor(actor_id):
 		return COLLISION_COMPLETED
 	var footprint := combat.battlefield.actor_footprint(actor_id)
-	for field: PersistentCombatFieldType in combat.persistent_fields():
+	for field: PersistentCombatField in combat.persistent_fields():
 		if retain_turn_collisions and combat.has_persistent_field_collision(field.slot):
 			continue
 		var spell := content.spell_by_id(field.spell_id)
@@ -150,7 +148,7 @@ func begin_pending_death_macros(combat: CombatState, content: RealmzContent, eve
 	return combat.begin_spell_death_macro_sequence(combat.active_actor_id(), false) and _flow()._request_next_spell_death_macro(combat, content, events)
 
 
-func _field_intersects_footprint(field: PersistentCombatFieldType, footprint: Array[Vector2i]) -> bool:
+func _field_intersects_footprint(field: PersistentCombatField, footprint: Array[Vector2i]) -> bool:
 	var covered: Dictionary = {}
 	for offset: Vector2i in _rules.spell_areas.pattern(field.shape):
 		covered[field.center + offset] = true

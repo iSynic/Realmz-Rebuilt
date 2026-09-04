@@ -5,7 +5,6 @@ extends Node
 
 signal playback_step_settled(step: SessionStep)
 
-const CombatPlaybackControllerScript := preload("res://src/ui/combat_playback_controller.gd")
 
 var _session_controller: GameSessionController
 var _map_presenter: ClassicMapPresenter
@@ -44,7 +43,7 @@ func bind(session_controller: GameSessionController, map_presenter: ClassicMapPr
 	_interaction_presenter = interaction_presenter
 	_shell_presenter = shell_presenter
 	_audio_presenter = audio_presenter
-	_combat_playback = CombatPlaybackControllerScript.new()
+	_combat_playback = CombatPlaybackController.new()
 	_combat_playback.frame_changed.connect(_on_combat_playback_frame_changed)
 	_combat_playback.sound_requested.connect(_on_combat_playback_sound_requested)
 	_combat_playback.playback_finished.connect(_on_combat_playback_finished)

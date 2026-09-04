@@ -3,7 +3,6 @@ class_name SpellsScreenController
 extends RefCounted
 
 const SpellSelectionChrome := preload("res://src/ui/controllers/classic_spell_selection_chrome.gd")
-const ClassicSpellLevelScript := preload("res://src/ui/classic_spell_level.gd")
 const WORKSPACE_SCENE_PATH := "res://src/ui/screens/spells_workspace.tscn"
 
 signal intent_submitted(intent: PlayerIntent)
@@ -328,7 +327,7 @@ func _first_spell_at_level(character: CharacterView, level: int) -> SpellView:
 
 
 static func _spell_level(spell: SpellView) -> int:
-	return ClassicSpellLevelScript.from_classic_id(spell.classic_id)
+	return ClassicSpellLevel.from_classic_id(spell.classic_id)
 
 
 static func _available_powers(spell: SpellView) -> Array[int]:

@@ -3,16 +3,14 @@
 class_name ClassicBattleRewardOperations
 extends ClassicOpcodeHandler
 
-const BattleLifecycleType = preload("res://src/scenarios/runtime/operations/classic_battle_lifecycle_operations.gd")
-const RewardOperationsType = preload("res://src/scenarios/runtime/operations/classic_reward_operations.gd")
 
 var _battle: RefCounted
 var _rewards: RefCounted
 
 
 func _init(content: RealmzContent, game_state: GameState, rng: RealmzRng, rules: RealmzRules) -> void:
-	_rewards = RewardOperationsType.new(content, game_state, rng, rules)
-	_battle = BattleLifecycleType.new(content, game_state, rng, rules, _rewards)
+	_rewards = ClassicRewardOperations.new(content, game_state, rng, rules)
+	_battle = ClassicBattleLifecycleOperations.new(content, game_state, rng, rules, _rewards)
 
 
 func bind_runtime_api(runtime_api: RealmzRuntimeApi) -> void:
@@ -43,7 +41,7 @@ func resume(continuation: ScenarioRuntimeContinuation, response: InteractionResp
 
 
 static func party_defeat_handoff_is_valid(content: RealmzContent, state: GameState, handoff: ScenarioRuntimeHandoff) -> bool:
-	return BattleLifecycleType.party_defeat_handoff_is_valid(content, state, handoff)
+	return ClassicBattleLifecycleOperations.party_defeat_handoff_is_valid(content, state, handoff)
 
 
 func complete_party_defeat_handoff(handoff: ScenarioRuntimeHandoff) -> ScenarioRuntimeOperationResult:

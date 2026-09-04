@@ -3,7 +3,6 @@
 class_name ClassicBattlefieldPresenter
 extends Control
 
-const PersistentCombatFieldViewType := preload("res://src/game/view/persistent_combat_field_view.gd")
 
 signal combat_body_submitted(body: InteractionResponse.CombatBody)
 signal combatant_inspected(combatant_id: String)
@@ -451,7 +450,7 @@ func _draw_characters(combat: CombatView, camera: Vector2i, visible_cells: Vecto
 
 
 func _draw_persistent_fields(combat: CombatView, camera: Vector2i, visible_cells: Vector2i, draw_origin: Vector2) -> void:
-	for field: PersistentCombatFieldViewType in combat.persistent_fields:
+	for field: PersistentCombatFieldView in combat.persistent_fields:
 		var tile_id := persistent_field_tile_id(field.queue_icon)
 		var region := Rect2i() if _atlas_asset == null else _atlas_asset.region_for(tile_id)
 		for coordinate: Vector2i in field.affected_coordinates:

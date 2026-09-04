@@ -3,13 +3,11 @@
 class_name PackageInstallTask
 extends RefCounted
 
-const PackageRepositoryScript := preload("res://src/storage/packages/package_repository.gd")
-const PackageOperationStatusScript := preload("res://src/storage/packages/package_operation_status.gd")
 
 var _thread := Thread.new()
 var _repository: PackageRepository
 var _mutex := Mutex.new()
-var _state: StringName = PackageOperationStatusScript.IDLE
+var _state: StringName = PackageOperationStatus.IDLE
 var _phase: StringName = &""
 var _completed: int = 0
 var _total: int = 0
@@ -19,14 +17,14 @@ var _result: PackageInstallResult
 
 
 func _init(repository: PackageRepository = null) -> void:
-	_repository = repository if repository != null else PackageRepositoryScript.new()
+	_repository = repository if repository != null else PackageRepository.new()
 
 
 func start(source_path: String, install_root: String = "user://packages") -> bool:
 	if source_path.is_empty() or snapshot().is_running() or _thread.is_started():
 		return false
 	_mutex.lock()
-	_state = PackageOperationStatusScript.RUNNING
+	_state = PackageOperationStatus.RUNNING
 	_phase = &"queued"
 	_completed = 0
 	_total = 0
@@ -38,7 +36,7 @@ func start(source_path: String, install_root: String = "user://packages") -> boo
 	if error == OK:
 		return true
 	_mutex.lock()
-	_state = PackageOperationStatusScript.FAILED
+	_state = PackageOperationStatus.FAILED
 	_message = "Could not start campaign preparation (error %d)." % error
 	_mutex.unlock()
 	return false
@@ -46,7 +44,7 @@ func start(source_path: String, install_root: String = "user://packages") -> boo
 
 func cancel() -> void:
 	_mutex.lock()
-	if _state == PackageOperationStatusScript.RUNNING:
+	if _state == PackageOperationStatus.RUNNING:
 		_cancel_requested = true
 		_message = "Cancelling after the current integrity item…"
 	_mutex.unlock()
@@ -54,20 +52,20 @@ func cancel() -> void:
 
 func snapshot() -> RefCounted:
 	_mutex.lock()
-	var result := PackageOperationStatusScript.new(_state, _phase, _completed, _total, _message)
+	var result := PackageOperationStatus.new(_state, _phase, _completed, _total, _message)
 	_mutex.unlock()
 	return result
 
 
 func take_result() -> PackageInstallResult:
 	var current := snapshot()
-	if current.is_running() or current.state == PackageOperationStatusScript.IDLE:
+	if current.is_running() or current.state == PackageOperationStatus.IDLE:
 		return null
 	_join_thread()
 	_mutex.lock()
 	var result := _result
 	_result = null
-	_state = PackageOperationStatusScript.IDLE
+	_state = PackageOperationStatus.IDLE
 	_phase = &""
 	_completed = 0
 	_total = 0
@@ -86,16 +84,16 @@ func _run_install(source_path: String, install_root: String) -> void:
 	_mutex.lock()
 	_result = result
 	if result != null and result.is_ok():
-		_state = PackageOperationStatusScript.SUCCEEDED
+		_state = PackageOperationStatus.SUCCEEDED
 		_phase = &"complete"
 		_completed = 1
 		_total = 1
 		_message = "Campaign ready."
 	elif result != null and result.error_code == &"package_cancelled":
-		_state = PackageOperationStatusScript.CANCELLED
+		_state = PackageOperationStatus.CANCELLED
 		_message = "Campaign preparation cancelled."
 	else:
-		_state = PackageOperationStatusScript.FAILED
+		_state = PackageOperationStatus.FAILED
 		_message = result.error_message if result != null else "Campaign preparation failed."
 	_mutex.unlock()
 

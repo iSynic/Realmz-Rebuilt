@@ -3,10 +3,6 @@
 class_name GameSession
 extends RefCounted
 
-const ExplorationCoordinatorType = preload("res://src/playthrough/coordinators/session_exploration_coordinator.gd")
-const ScenarioCoordinatorType = preload("res://src/playthrough/coordinators/session_scenario_coordinator.gd")
-const ResponseCoordinatorType = preload("res://src/playthrough/coordinators/session_responses_coordinator.gd")
-const DebugCoordinatorType = preload("res://src/playthrough/coordinators/session_debug_coordinator.gd")
 var _content: RealmzContent
 var _state: GameState
 var _rng: RealmzRng
@@ -42,11 +38,11 @@ func _ensure_coordinators() -> void:
 		_session_interaction,
 		_view_revision
 	)
-	_exploration_coordinator = ExplorationCoordinatorType.new(_coordinator_context)
-	_scenario_coordinator = ScenarioCoordinatorType.new(_coordinator_context)
-	_response_coordinator = ResponseCoordinatorType.new(_coordinator_context)
+	_exploration_coordinator = SessionExplorationCoordinator.new(_coordinator_context)
+	_scenario_coordinator = SessionScenarioCoordinator.new(_coordinator_context)
+	_response_coordinator = SessionResponsesCoordinator.new(_coordinator_context)
 	_coordinator_context.bind_coordinators(_exploration_coordinator, _scenario_coordinator, _response_coordinator)
-	_debug_coordinator = DebugCoordinatorType.new(_coordinator_context)
+	_debug_coordinator = SessionDebugCoordinator.new(_coordinator_context)
 
 
 func _apply_coordinator_context() -> void:

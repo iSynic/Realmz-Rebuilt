@@ -5,11 +5,6 @@ extends RefCounted
 
 ## Owns battle setup, initiative changes, round effects, and battle completion.
 
-const ContextType = preload("res://src/game/rules/combat_flow_context.gd")
-const CombatRetreatProbeType = preload("res://src/game/rules/combat_retreat_probe.gd")
-const CombatCommandProbeType = preload("res://src/game/rules/combat_command_probe.gd")
-const CombatScrollOptionViewType = preload("res://src/game/view/combat_scroll_option_view.gd")
-const FieldsType = preload("res://src/game/rules/combat_flow_fields.gd")
 
 const MONSTER_ATTACK_COMPLETED := 0
 const MONSTER_ATTACK_WAITING := 1
@@ -43,10 +38,10 @@ class BattleInputs extends RefCounted:
 	var authored_definitions: Dictionary
 
 var _flow_ref: WeakRef
-var _rules: ContextType
+var _rules: CombatFlowContext
 
 
-func _init(flow: RefCounted, rules: ContextType) -> void:
+func _init(flow: RefCounted, rules: CombatFlowContext) -> void:
 	_flow_ref = weakref(flow)
 	_rules = rules
 
@@ -221,7 +216,7 @@ func _process_persistent_field_round_collisions(state: GameState, content: Realm
 			actor_ids.append(monster.id)
 	for actor_id: String in actor_ids:
 		var result: int = _flow()._resolve_persistent_field_collisions(state, content, actor_id, rng, events, false, false)
-		if result == FieldsType.COLLISION_INVALID:
+		if result == CombatFlowFields.COLLISION_INVALID:
 			events.append(DomainEvent.new(&"combat_persistent_field_collision_failed", {"actorId": actor_id, "reason": "invalid-runtime-state"}))
 	if not combat.pending_spell_death_macro_id().is_empty() and not _flow()._begin_persistent_field_death_macros(combat, content, events):
 		events.append(DomainEvent.new(&"combat_persistent_field_collision_failed", {"actorId": combat.active_actor_id(), "reason": "invalid-death-macro-queue"}))

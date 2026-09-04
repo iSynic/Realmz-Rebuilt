@@ -3,7 +3,6 @@
 class_name MonsterRules
 extends RefCounted
 
-const PolymorphContextType = preload("res://src/game/rules/monster_polymorph_context.gd")
 
 const RANDOM_WEAPON_TABLES: Array = [
 	[[0, 50, 10], [51, 60, 20], [61, 70, 71], [71, 95, 75], [96, 100, 24]],
@@ -94,7 +93,7 @@ func build_battle_monster(definition: MonsterDefinition, instance_id: String, in
 	return result
 
 
-func polymorph_monster(target: MonsterState, target_definition: MonsterDefinition, context: PolymorphContextType, rng: RealmzRng) -> String:
+func polymorph_monster(target: MonsterState, target_definition: MonsterDefinition, context: MonsterPolymorphContext, rng: RealmzRng) -> String:
 	if target == null or target_definition == null or context == null or rng == null or not context.has_eligible_definition(target_definition.size):
 		return ""
 	var definition: MonsterDefinition = null

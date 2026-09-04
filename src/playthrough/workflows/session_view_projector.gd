@@ -3,9 +3,6 @@ class_name SessionViewProjector
 extends RefCounted
 
 const DEFAULT_MAP_VIEW_SIZE: Vector2i = Vector2i(25, 25)
-const ViewDomainRevisionsScript := preload("res://src/game/session/view_domain_revisions.gd")
-const MapPresentationDeltaScript := preload("res://src/game/view/map_presentation_delta.gd")
-const ViewChangeSetScript := preload("res://src/game/view/view_change_set.gd")
 const ProjectionPolicy := preload("res://src/playthrough/workflows/session_view_projection_policy.gd")
 const ActionViewProjector := preload("res://src/playthrough/workflows/session_action_view_projector.gd")
 
@@ -135,7 +132,7 @@ func _project_complete(context: SessionWorkflowContext, pending_interaction: Int
 	ActionViewProjector.populate_money_screen(context, result)
 	ActionViewProjector.populate_services(context, result)
 	ActionViewProjector.populate_action_availability(context, result)
-	result.domain_revisions = ViewDomainRevisionsScript.new(revision)
+	result.domain_revisions = ViewDomainRevisions.new(revision)
 	return result
 
 
@@ -348,7 +345,7 @@ func _project_ordinary_movement(context: SessionWorkflowContext, revision: int, 
 		_populate_ordinary_action_availability(result, _cached_view, inventory_refresh, not magic_affordability_ids.is_empty())
 	else:
 		result.action_availability = _cached_view.action_availability.duplicate()
-	var revisions := ViewDomainRevisionsScript.new()
+	var revisions := ViewDomainRevisions.new()
 	revisions.party_roster = _cached_view.domain_revisions.party_roster
 	revisions.party_status = revision if refresh_party else _cached_view.domain_revisions.party_status
 	revisions.setup = _cached_view.domain_revisions.setup
@@ -360,14 +357,14 @@ func _project_ordinary_movement(context: SessionWorkflowContext, revision: int, 
 	revisions.system = revision
 	revisions.synchronize_legacy_aggregates()
 	result.domain_revisions = revisions
-	var changes := ViewChangeSetScript.new()
-	changes.mark_domain(ViewChangeSetScript.EXPLORATION)
+	var changes := ViewChangeSet.new()
+	changes.mark_domain(ViewChangeSet.EXPLORATION)
 	if refresh_party:
-		changes.mark_domain(ViewChangeSetScript.PARTY_STATUS)
+		changes.mark_domain(ViewChangeSet.PARTY_STATUS)
 		for character_id: String in status_character_ids: changes.mark_character(character_id)
-	if inventory_refresh: changes.mark_domain(ViewChangeSetScript.INVENTORY)
-	if not magic_character_ids.is_empty(): changes.mark_domain(ViewChangeSetScript.MAGIC)
-	changes.mark_domain(ViewChangeSetScript.SYSTEM)
+	if inventory_refresh: changes.mark_domain(ViewChangeSet.INVENTORY)
+	if not magic_character_ids.is_empty(): changes.mark_domain(ViewChangeSet.MAGIC)
+	changes.mark_domain(ViewChangeSet.SYSTEM)
 	for character_id: String in magic_character_ids: changes.mark_character(character_id)
 	result.change_set = changes
 	result.projection_timings_usec = {
@@ -532,7 +529,7 @@ func _map_view(context: SessionWorkflowContext, revision: int, reuse_ordinary_ce
 				if not _prepared_visible_coordinates.has(coordinate): visibility_changed.append(coordinate)
 			for coordinate: Vector2i in _prepared_visible_coordinates:
 				if not _cached_visible_membership.has(coordinate): visibility_changed.append(coordinate)
-		presentation_delta = MapPresentationDeltaScript.new(context.state.party.map_id, previous_map_view.party_coordinate, destination, newly_visited, newly_seen, visibility_changed)
+		presentation_delta = MapPresentationDelta.new(context.state.party.map_id, previous_map_view.party_coordinate, destination, newly_visited, newly_seen, visibility_changed)
 	_cached_map_revision = revision
 	_cached_map_id = context.state.party.map_id
 	_cached_map_coordinate = context.state.party.coordinate

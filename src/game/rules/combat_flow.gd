@@ -3,18 +3,6 @@
 class_name CombatFlow
 extends RefCounted
 
-const ContextType = preload("res://src/game/rules/combat_flow_context.gd")
-const CombatRetreatProbeType = preload("res://src/game/rules/combat_retreat_probe.gd")
-const CombatCommandProbeType = preload("res://src/game/rules/combat_command_probe.gd")
-const LifecycleType = preload("res://src/game/rules/combat_flow_lifecycle.gd")
-const ActionsType = preload("res://src/game/rules/combat_flow_actions.gd")
-const ReactionsType = preload("res://src/game/rules/combat_flow_reactions.gd")
-const MagicType = preload("res://src/game/rules/combat_flow_magic.gd")
-const FieldsType = preload("res://src/game/rules/combat_flow_fields.gd")
-const SummoningType = preload("res://src/game/rules/combat_flow_summoning.gd")
-const PhaseType = preload("res://src/game/rules/combat_flow_phase.gd")
-const AutomationType = preload("res://src/game/rules/combat_flow_automation.gd")
-const SpellEventBuilderType = preload("res://src/game/rules/combat_spell_event_builder.gd")
 
 const MONSTER_ATTACK_COMPLETED := 0
 const MONSTER_ATTACK_WAITING := 1
@@ -26,7 +14,7 @@ const REACTION_DEATH_MACRO := 2
 const REACTION_MOVER_DEFEATED := 3
 const INVALID_COORDINATE := Vector2i(-100_000, -100_000)
 
-var _rules: ContextType
+var _rules: CombatFlowContext
 var _lifecycle: RefCounted
 var _actions: RefCounted
 var _reactions: RefCounted
@@ -38,15 +26,15 @@ var _automation: RefCounted
 
 
 func _init(rules: RealmzRules) -> void:
-	_rules = ContextType.new(rules)
-	_lifecycle = LifecycleType.new(self, _rules)
-	_actions = ActionsType.new(self, _rules)
-	_reactions = ReactionsType.new(self, _rules)
-	_magic = MagicType.new(self, _rules)
-	_fields = FieldsType.new(self, _rules)
-	_summoning = SummoningType.new(self, _rules)
-	_phase = PhaseType.new(self, _rules)
-	_automation = AutomationType.new(self, _rules)
+	_rules = CombatFlowContext.new(rules)
+	_lifecycle = CombatFlowLifecycle.new(self, _rules)
+	_actions = CombatFlowActions.new(self, _rules)
+	_reactions = CombatFlowReactions.new(self, _rules)
+	_magic = CombatFlowMagic.new(self, _rules)
+	_fields = CombatFlowFields.new(self, _rules)
+	_summoning = CombatFlowSummoning.new(self, _rules)
+	_phase = CombatFlowPhase.new(self, _rules)
+	_automation = CombatFlowAutomation.new(self, _rules)
 
 
 func is_processing_auto() -> bool:
@@ -68,11 +56,11 @@ func submit_action(state: GameState, content: RealmzContent, actor_id: String, a
 	return _actions.submit_action(state, content, actor_id, action, target_id, rng, allow_friendly_contact)
 
 
-func probe_delay(state: GameState, actor_id: String) -> CombatCommandProbeType:
+func probe_delay(state: GameState, actor_id: String) -> CombatCommandProbe:
 	return _actions.probe_delay(state, actor_id)
 
 
-func probe_undo(state: GameState, actor_id: String) -> CombatCommandProbeType:
+func probe_undo(state: GameState, actor_id: String) -> CombatCommandProbe:
 	return _actions.probe_undo(state, actor_id)
 
 
@@ -80,7 +68,7 @@ func bandage_candidate_ids(state: GameState) -> Array[String]:
 	return _actions.bandage_candidate_ids(state)
 
 
-func probe_bandage(state: GameState, actor_id: String, target_id: String = "") -> CombatCommandProbeType:
+func probe_bandage(state: GameState, actor_id: String, target_id: String = "") -> CombatCommandProbe:
 	return _actions.probe_bandage(state, actor_id, target_id)
 
 
@@ -88,7 +76,7 @@ func turn_undead_target_ids(state: GameState, content: RealmzContent) -> Array[S
 	return _actions.turn_undead_target_ids(state, content)
 
 
-func probe_turn_undead(state: GameState, content: RealmzContent, actor_id: String) -> CombatCommandProbeType:
+func probe_turn_undead(state: GameState, content: RealmzContent, actor_id: String) -> CombatCommandProbe:
 	return _actions.probe_turn_undead(state, content, actor_id)
 
 
@@ -305,19 +293,19 @@ func _commit_character_multi_spell(state: GameState, content: RealmzContent, cas
 
 
 func _append_spell_sound(events: Array[DomainEvent], authored_sound_id: int, source: String) -> void:
-	SpellEventBuilderType.append_sound(events, authored_sound_id, source)
+	CombatSpellEventBuilder.append_sound(events, authored_sound_id, source)
 
 
 func _append_spell_cast_event(events: Array[DomainEvent], actor_id: String, spell: SpellDefinition, resolutions: GroupSpellResolution, center: Vector2i, shape: int, source: String) -> void:
-	SpellEventBuilderType.append_cast(events, actor_id, spell, resolutions, center, shape, source)
+	CombatSpellEventBuilder.append_cast(events, actor_id, spell, resolutions, center, shape, source)
 
 
 func _append_spell_projectile_event(events: Array[DomainEvent], actor_id: String, target_id: String, spell: SpellDefinition, source: String) -> void:
-	SpellEventBuilderType.append_projectile(events, actor_id, target_id, spell, source)
+	CombatSpellEventBuilder.append_projectile(events, actor_id, target_id, spell, source)
 
 
 func _append_spell_presentation(payload: Dictionary, spell: SpellDefinition, sequence_index: int, sequence_count: int, target_defeated: bool) -> void:
-	SpellEventBuilderType.append_resolution_effect(payload, spell, sequence_index, sequence_count, target_defeated)
+	CombatSpellEventBuilder.append_resolution_effect(payload, spell, sequence_index, sequence_count, target_defeated)
 
 
 func _queue_persistent_field(combat: CombatState, caster_id: String, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, center: Vector2i, rotation: int, shape: int) -> RefCounted:
@@ -361,7 +349,7 @@ func _legal_area_spell_target_coordinates(state: GameState, content: RealmzConte
 
 
 func _is_summon_spell(spell: SpellDefinition) -> bool:
-	return SummoningType.is_summon_spell(spell)
+	return CombatFlowSummoning.is_summon_spell(spell)
 
 
 func _probe_summon_choice(state: GameState, content: RealmzContent, caster_id: String, spell: SpellDefinition, power_level: int) -> CombatSpellCastProbe:

@@ -3,7 +3,6 @@
 class_name DebugActionConsole
 extends PanelContainer
 
-const ClassicTypographyScript := preload("res://src/ui/classic_typography.gd")
 
 signal close_requested
 signal clear_requested
@@ -13,7 +12,7 @@ var _count: Label
 
 
 func _ready() -> void:
-	var readable_font := load(ClassicTypographyScript.READABLE_UI_PATH) as Font
+	var readable_font := load(ClassicTypography.READABLE_UI_PATH) as Font
 	var title := get_node("Content/Toolbar/Title") as Label
 	title.add_theme_font_override("font", readable_font)
 	_count = %Count

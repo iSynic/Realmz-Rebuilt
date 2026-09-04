@@ -5,7 +5,6 @@ extends RefCounted
 
 ## Runs serializable Classic programs and Safe Scenario Actions through the typed runtime API.
 
-const SafeExpressionEvaluatorType = preload("res://src/scenarios/vm/safe_expression_evaluator.gd")
 
 const CLASSIC_CALL_LIMIT: int = 20
 const ACTION_CALL_LIMIT: int = 32
@@ -718,7 +717,7 @@ func _evaluate_safe_arguments(instruction: SafeInstructionDefinition, frame: Sce
 
 
 func _evaluate(expression: SafeExpressionDefinition, frame: ScenarioFrame, runtime_api: RealmzRuntimeApi) -> Dictionary:
-	return SafeExpressionEvaluatorType.evaluate(expression, frame, runtime_api)
+	return SafeExpressionEvaluator.evaluate(expression, frame, runtime_api)
 
 
 func _pop_classic_caller_below_top() -> void:
@@ -758,7 +757,7 @@ func _calling_context(frame: ScenarioFrame, program: ScenarioProgramDefinition) 
 
 
 static func _value_matches_type(value: Variant, value_type: StringName, max_length: int = -1) -> bool:
-	return SafeExpressionEvaluatorType.value_matches_type(value, value_type, max_length)
+	return SafeExpressionEvaluator.value_matches_type(value, value_type, max_length)
 
 
 func _next_request_id() -> String:

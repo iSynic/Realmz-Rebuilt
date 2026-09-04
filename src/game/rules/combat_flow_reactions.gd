@@ -3,11 +3,6 @@
 class_name CombatFlowReactions
 extends RefCounted
 
-const ContextType = preload("res://src/game/rules/combat_flow_context.gd")
-const CombatRetreatProbeType = preload("res://src/game/rules/combat_retreat_probe.gd")
-const CombatCommandProbeType = preload("res://src/game/rules/combat_command_probe.gd")
-const FieldsType = preload("res://src/game/rules/combat_flow_fields.gd")
-const CombatScrollOptionViewType = preload("res://src/game/view/combat_scroll_option_view.gd")
 
 const MONSTER_ATTACK_COMPLETED := 0
 const MONSTER_ATTACK_WAITING := 1
@@ -31,10 +26,10 @@ const MONSTER_FUMBLE_SOUNDS: Array[Dictionary] = [
 ]
 
 var _flow_ref: WeakRef
-var _rules: ContextType
+var _rules: CombatFlowContext
 
 
-func _init(flow: RefCounted, rules: ContextType) -> void:
+func _init(flow: RefCounted, rules: CombatFlowContext) -> void:
 	_flow_ref = weakref(flow)
 	_rules = rules
 
@@ -44,14 +39,14 @@ func _flow() -> RefCounted:
 
 func probe_character_retreat(combat: CombatState, characters: Array[CharacterState], actor_id: String):
 	if combat == null or combat.completed or combat.battlefield == null or combat.active_actor_id() != actor_id or not combat.battlefield.has_actor(actor_id):
-		return CombatRetreatProbeType.blocked(&"invalid_combat_actor", "The active character is unavailable.")
+		return CombatRetreatProbe.blocked(&"invalid_combat_actor", "The active character is unavailable.")
 	var actor: CharacterState = null
 	for character: CharacterState in characters:
 		if character.id == actor_id:
 			actor = character
 			break
 	if actor == null or actor.current_health <= 0 or actor.traitor:
-		return CombatRetreatProbeType.blocked(&"invalid_combat_actor", "Only a living loyal character can retreat.")
+		return CombatRetreatProbe.blocked(&"invalid_combat_actor", "Only a living loyal character can retreat.")
 	var nearest_range := 127
 	var origin := combat.battlefield.actor_position(actor_id)
 	for character: CharacterState in characters:
@@ -61,11 +56,11 @@ func probe_character_retreat(combat: CombatState, characters: Array[CharacterSta
 		if monster.current_health > 0 and monster.traitor != actor.traitor and combat.battlefield.has_actor(monster.id):
 			nearest_range = mini(nearest_range, floori(Vector2(combat.battlefield.actor_position(monster.id) - origin).length()))
 	if nearest_range < 10:
-		return CombatRetreatProbeType.blocked(&"enemy_too_close", "Classic Escape requires every enemy to be at least 10 battlefield cells away.", nearest_range)
+		return CombatRetreatProbe.blocked(&"enemy_too_close", "Classic Escape requires every enemy to be at least 10 battlefield cells away.", nearest_range)
 	for condition: int in [ConditionRules.HELPLESS, ConditionRules.CONFUSED, ConditionRules.TANGLED, ConditionRules.SLOW]:
 		if actor.conditions.is_active(condition):
-			return CombatRetreatProbeType.blocked(&"retreat_condition_blocked", "This character's current condition prevents Escape.", nearest_range)
-	return CombatRetreatProbeType.permitted(nearest_range)
+			return CombatRetreatProbe.blocked(&"retreat_condition_blocked", "This character's current condition prevents Escape.", nearest_range)
+	return CombatRetreatProbe.permitted(nearest_range)
 
 
 func character_projectile_profile(character: CharacterState, content: RealmzContent, equipment: CharacterCombatEquipment = null) -> ProjectileAttackProfile:
@@ -109,15 +104,15 @@ func projectile_target_is_valid(combat: CombatState, content: RealmzContent, act
 
 func probe_edge_retreat(combat: CombatState, actor_id: String, destination: Vector2i):
 	if combat == null or combat.completed or combat.battlefield == null or combat.active_actor_id() != actor_id or not combat.battlefield.has_actor(actor_id):
-		return CombatRetreatProbeType.blocked(&"invalid_combat_actor", "The active character is unavailable.")
+		return CombatRetreatProbe.blocked(&"invalid_combat_actor", "The active character is unavailable.")
 	var origin := combat.battlefield.actor_position(actor_id)
 	var direction := destination - origin
 	if direction == Vector2i.ZERO or absi(direction.x) > 1 or absi(direction.y) > 1:
-		return CombatRetreatProbeType.blocked(&"invalid_direction", "Battlefield-edge retreat requires one adjacent movement direction.")
+		return CombatRetreatProbe.blocked(&"invalid_direction", "Battlefield-edge retreat requires one adjacent movement direction.")
 	if destination.x >= 2 and destination.y >= 2 and destination.x <= 87 and destination.y <= 87:
-		return CombatRetreatProbeType.blocked(&"not_battlefield_edge", "This movement does not enter Castle's retreat band.")
+		return CombatRetreatProbe.blocked(&"not_battlefield_edge", "This movement does not enter Castle's retreat band.")
 	var forced := origin.x < 1 or origin.y < 1 or origin.x > 88 or origin.y > 88
-	return CombatRetreatProbeType.permitted(127, forced)
+	return CombatRetreatProbe.permitted(127, forced)
 
 
 func retreat_character(state: GameState, content: RealmzContent, actor_id: String, mode: StringName, destination: Vector2i, rng: RealmzRng) -> CombatFlowResult:
@@ -361,11 +356,11 @@ func _commit_reaction_move(state: GameState, content: RealmzContent, reaction: C
 	if terrain != null and terrain.sound != 0:
 		events.append(DomainEvent.new(&"sound_requested", {"soundId": terrain.sound, "waitForCompletion": terrain.sound < 0, "source": "classic-battle-movement"}))
 	var collision_result: int = _flow()._resolve_persistent_field_collisions(state, content, reaction.mover_id, rng, events)
-	if collision_result == FieldsType.COLLISION_DEATH_MACRO:
+	if collision_result == CombatFlowFields.COLLISION_DEATH_MACRO:
 		return REACTION_DEATH_MACRO
-	if collision_result == FieldsType.COLLISION_INVALID:
+	if collision_result == CombatFlowFields.COLLISION_INVALID:
 		events.append(DomainEvent.new(&"combat_persistent_field_collision_failed", {"actorId": reaction.mover_id, "reason": "invalid-runtime-state"}))
-	if collision_result == FieldsType.COLLISION_DEFEATED:
+	if collision_result == CombatFlowFields.COLLISION_DEFEATED:
 		return REACTION_MOVER_DEFEATED
 	if reaction.kind == CombatReactionState.MONSTER_RETREAT and _flow()._retreating_monster_reached_edge(state, content, reaction.mover_id, reaction.destination, events):
 		reaction.set_phase(CombatReactionState.GUARD_AFTER, [])

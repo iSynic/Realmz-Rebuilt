@@ -2,8 +2,6 @@
 class_name SystemScreenController
 extends RefCounted
 
-const SaveSlotPreviewScript := preload("res://src/game/view/save_slot_preview.gd")
-const HeldMovementControllerScript := preload("res://src/ui/held_movement_controller.gd")
 const WORKSPACE_SCENE_PATH := "res://src/ui/screens/system_workspace.tscn"
 
 signal action_requested(action_id: StringName, value: Variant)
@@ -40,7 +38,7 @@ func set_save_previews(previews: Array[SaveSlotPreview]) -> void:
 func set_save_and_quit_mode(enabled: bool) -> void:
 	if enabled and not _save_and_quit_mode:
 		for preview: SaveSlotPreview in _save_previews:
-			if preview.source == SaveSlotPreviewScript.PRIMARY and preview.can_load:
+			if preview.source == SaveSlotPreview.PRIMARY and preview.can_load:
 				_selected_save_key = _key(preview)
 				break
 	_save_and_quit_mode = enabled
@@ -154,9 +152,9 @@ func _refresh_save_detail() -> void:
 	_bind_label(record.get_node("Title") as Label, "%s  •  %s" % [slot_label(preview.slot_id), preview.source_label()], GOLD, 18)
 	_bind_label(record.get_node("Status") as Label, preview.status_label(), CYAN if preview.can_load else Color("d48a78"), 14)
 	var error := record.get_node("Error") as Label
-	error.visible = preview.status != SaveSlotPreviewScript.VALID
+	error.visible = preview.status != SaveSlotPreview.VALID
 	_bind_label(error, preview.error_message, MUTED, 14)
-	var valid := preview.status == SaveSlotPreviewScript.VALID
+	var valid := preview.status == SaveSlotPreview.VALID
 	for path: String in ["Location", "Party", "Divider", "Package", "Rules", "Saved"]:
 		record.get_node(path).visible = valid
 	if not valid:
@@ -176,7 +174,7 @@ func _load_selected_preview() -> void:
 	var preview := _selected_preview()
 	if preview == null or not preview.can_load:
 		return
-	action_requested.emit(&"load_backup" if preview.source == SaveSlotPreviewScript.BACKUP else &"load", preview.slot_id)
+	action_requested.emit(&"load_backup" if preview.source == SaveSlotPreview.BACKUP else &"load", preview.slot_id)
 
 
 func _save_selected_preview() -> void:
@@ -278,11 +276,11 @@ func _bind_pacing(settings: PresentationSettings) -> void:
 	_bind_label(movement_caption, "Exploration travel speed  •  %d%%" % settings.exploration_speed_percent, Color("e0e2e5"), 15)
 	_clear_value_changed_connections(movement)
 	movement.value = settings.exploration_speed_percent
-	movement.tooltip_text = "%d%%  •  %.3f seconds per held step" % [settings.exploration_speed_percent, HeldMovementControllerScript.BASE_INTERVAL_SECONDS * 100.0 / float(settings.exploration_speed_percent)]
+	movement.tooltip_text = "%d%%  •  %.3f seconds per held step" % [settings.exploration_speed_percent, HeldMovementController.BASE_INTERVAL_SECONDS * 100.0 / float(settings.exploration_speed_percent)]
 	movement.value_changed.connect(func(value: float) -> void:
 		var percent := int(value)
 		movement_caption.text = "Exploration travel speed  •  %d%%" % percent
-		movement.tooltip_text = "%d%%  •  %.3f seconds per held step" % [percent, HeldMovementControllerScript.BASE_INTERVAL_SECONDS * 100.0 / float(percent)]
+		movement.tooltip_text = "%d%%  •  %.3f seconds per held step" % [percent, HeldMovementController.BASE_INTERVAL_SECONDS * 100.0 / float(percent)]
 		setting_changed.emit(&"exploration_speed_percent", percent)
 	)
 

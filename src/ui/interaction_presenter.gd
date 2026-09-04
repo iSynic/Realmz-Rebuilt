@@ -3,7 +3,6 @@
 class_name InteractionPresenter
 extends PanelContainer
 
-const ClassicTreasureTakeEffectScript := preload("res://src/ui/classic_treasure_take_effect.gd")
 
 const FAST_SPELL_DOCK_SCENE_PATH := "res://src/ui/interaction_components/fast_spell_dock.tscn"
 const LayoutPolicy := preload("res://src/ui/interaction_layout_policy.gd")
@@ -535,7 +534,7 @@ func begin_treasure_transfer(reduced_motion: bool) -> bool:
 	effect_layer.name = "TreasureTakeEffectLayer"
 	effect_layer.layer = 200
 	add_child(effect_layer)
-	var pulse := ClassicTreasureTakeEffectScript.new() as Control
+	var pulse := ClassicTreasureTakeEffect.new() as Control
 	pulse.name = "TreasureTakeEffect"
 	effect_layer.add_child(pulse)
 	var source := path["from"] as Vector2
