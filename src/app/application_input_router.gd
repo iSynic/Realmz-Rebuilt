@@ -36,7 +36,7 @@ func handle_input(event: InputEvent) -> void:
 		return
 	if _handle_back_input(event, combat_pending):
 		return
-	if _application.has_host_interaction():
+	if _application.lifecycle_host.has_active_interaction():
 		return
 	if pending != null:
 		_handle_pending_interaction_input(event, key_event, pending)

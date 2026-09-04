@@ -33,8 +33,9 @@ var _campaigns: Array[CampaignPackageView] = []
 var _last_campaign_prewarm_requested: bool = false
 var _input_router: ApplicationInputRouter
 var _settings_controller: ApplicationSettingsController
-var _lifecycle_host := ApplicationLifecycleHost.new()
-var _character_files: ApplicationCharacterFilesHost
+var lifecycle_host := ApplicationLifecycleHost.new()
+var character_files: ApplicationCharacterFilesHost
+var adventure_storage: ApplicationAdventureStorageHost
 var _spatial_layout: ApplicationSpatialLayout
 
 
@@ -71,9 +72,10 @@ func _build_dependencies() -> void:
 	_debug_tools = DebugToolsHost.new()
 	add_child(_debug_tools)
 	_debug_tools.bind(session_controller, self, func() -> RealmzContent: return _active_content)
-	_character_files = ApplicationCharacterFilesHost.new(_package_host, session_controller, presentation_coordinator, _game_shell)
+	character_files = ApplicationCharacterFilesHost.new(_package_host, session_controller, presentation_coordinator, _game_shell)
+	adventure_storage = ApplicationAdventureStorageHost.new(_save_host, session_controller, _game_shell, func() -> void: _queued_combat_auto_changes.clear())
 	_spatial_layout = ApplicationSpatialLayout.new(_map_presenter, _battlefield_presenter, _dungeon_presenter, _interaction_presenter, _shell_presenter, session_controller, presentation_coordinator)
-	_lifecycle_host.bind(session_controller, presentation_coordinator, _shell_presenter, _held_movement, save_active_session, _refresh_save_previews, _present_step_status, _complete_closed_session, _quit_application)
+	lifecycle_host.bind(session_controller, presentation_coordinator, _shell_presenter, _held_movement, func(slot_id: String) -> bool: return adventure_storage.save(_active_content, slot_id), func() -> void: adventure_storage.refresh(_active_content), _present_step_status, _complete_closed_session, _quit_application)
 
 
 func _bind_debug_and_movement() -> void:
@@ -127,20 +129,20 @@ func _bind_shell_and_settings() -> void:
 	_shell_presenter.cancel_package_requested.connect(_cancel_package_start)
 	_shell_presenter.refresh_campaigns_requested.connect(_refresh_campaigns)
 	_shell_presenter.intent_submitted.connect(submit_intent)
-	_shell_presenter.save_requested.connect(save_active_session)
-	_shell_presenter.save_and_quit_requested.connect(_lifecycle_host.save_and_quit)
-	_shell_presenter.load_requested.connect(load_active_session)
-	_shell_presenter.load_backup_requested.connect(load_backup_session)
-	_shell_presenter.refresh_saves_requested.connect(_refresh_save_previews)
-	_shell_presenter.end_adventure_requested.connect(_lifecycle_host.request_end_adventure)
-	_shell_presenter.quit_requested.connect(_lifecycle_host.request_quit)
-	_shell_presenter.route_changed.connect(_lifecycle_host.route_changed)
+	_shell_presenter.save_requested.connect(func(slot_id: String) -> void: adventure_storage.save(_active_content, slot_id))
+	_shell_presenter.save_and_quit_requested.connect(lifecycle_host.save_and_quit)
+	_shell_presenter.load_requested.connect(func(slot_id: String) -> void: adventure_storage.load(_active_content, slot_id))
+	_shell_presenter.load_backup_requested.connect(func(slot_id: String) -> void: adventure_storage.load(_active_content, slot_id, true))
+	_shell_presenter.refresh_saves_requested.connect(func() -> void: adventure_storage.refresh(_active_content))
+	_shell_presenter.end_adventure_requested.connect(lifecycle_host.request_end_adventure)
+	_shell_presenter.quit_requested.connect(lifecycle_host.request_quit)
+	_shell_presenter.route_changed.connect(lifecycle_host.route_changed)
 	_shell_presenter.layout_changed.connect(_on_shell_layout_changed)
 	_shell_presenter.route_changed.connect(_on_route_changed)
-	_shell_presenter.vault_archive_requested.connect(func(character_id: String) -> void: _character_files.archive_character(_active_content, character_id))
-	_shell_presenter.vault_restore_requested.connect(func(character_id: String, revision_hash: String) -> void: _character_files.restore_character(_active_content, character_id, revision_hash))
-	_shell_presenter.standalone_character_creation_requested.connect(func() -> void: _character_files.begin_creation(_active_content))
-	_shell_presenter.standalone_character_creation_cancelled.connect(func() -> void: _character_files.cancel_creation(_active_content))
+	_shell_presenter.vault_archive_requested.connect(func(character_id: String) -> void: character_files.archive_character(_active_content, character_id))
+	_shell_presenter.vault_restore_requested.connect(func(character_id: String, revision_hash: String) -> void: character_files.restore_character(_active_content, character_id, revision_hash))
+	_shell_presenter.standalone_character_creation_requested.connect(func() -> void: character_files.begin_creation(_active_content))
+	_shell_presenter.standalone_character_creation_cancelled.connect(func() -> void: character_files.cancel_creation(_active_content))
 	_shell_presenter.character_selection_completed.connect(_interaction_presenter.submit_character_selection)
 	_audio_presenter.music_state_changed.connect(_shell_presenter.set_music_playback_state)
 	_settings_controller = ApplicationSettingsController.new(self, _presentation_settings, settings_repository, _shell_presenter, _map_presenter, _interaction_presenter, _audio_presenter, presentation_coordinator, _dungeon_presenter, _held_movement, _debug_tools)
@@ -150,15 +152,15 @@ func _bind_shell_and_settings() -> void:
 
 func _finish_startup() -> void:
 	_game_shell.set_standalone_character_creation_available(false, "Loading the built-in Classic definitions…")
-	Callable(_character_files, "begin_library_load").call_deferred()
+	Callable(character_files, "begin_library_load").call_deferred()
 	_status_label.text = "Pure session boundary online"
 	_refresh_campaigns()
-	_character_files.refresh_vault_views(_active_content)
+	character_files.refresh_vault_views(_active_content)
 	set_process(true)
 
 
 func _process(_delta: float) -> void:
-	var library_completed := _character_files.poll_library_load(_active_content)
+	var library_completed := character_files.poll_library_load(_active_content)
 	if library_completed and _pending_prepared_package != null:
 		var pending := _pending_prepared_package
 		_pending_prepared_package = null
@@ -185,7 +187,7 @@ func _process(_delta: float) -> void:
 	if operation.state == PackageOperationView.CANCELLED:
 		_shell_presenter.set_status("Campaign preparation cancelled.")
 		return
-	if not _character_files.library_ready():
+	if not character_files.library_ready():
 		_pending_prepared_package = prepared
 		_shell_presenter.set_status("Campaign ready • finishing the built-in Classic definitions…")
 		return
@@ -219,7 +221,7 @@ func _notification(what: int) -> void:
 		if _interaction_presenter != null:
 			_interaction_presenter.set_fast_spell_dock_held(false)
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
-		_lifecycle_host.request_quit()
+		lifecycle_host.request_quit()
 
 
 func start_package(package_path: String, initial_seed: int) -> SessionStep:
@@ -259,7 +261,7 @@ func _complete_package_install(prepared: PreparedPackage, initial_seed: int) -> 
 		_status_label.text = "Package rejected • %s" % prepared.error_message
 		_shell_presenter.set_status(_status_label.text, true)
 		return SessionStep.failed(0, prepared.error_code, prepared.error_message)
-	prepared.content.set_application_appearance_catalog(_character_files.library_content())
+	prepared.content.set_application_appearance_catalog(character_files.library_content())
 	var step := session_controller.start(prepared.content, initial_seed)
 	if step.state == SessionStep.State.FAILED:
 		_status_label.text = "Session start failed • %s" % step.error_message
@@ -272,8 +274,8 @@ func _complete_package_install(prepared: PreparedPackage, initial_seed: int) -> 
 	settings_repository.save_settings(_presentation_settings)
 	presentation_coordinator.set_package_media(prepared.media)
 	presentation_coordinator.refresh()
-	_refresh_save_previews()
-	_character_files.refresh_vault_views(_active_content)
+	adventure_storage.refresh(_active_content)
+	character_files.refresh_vault_views(_active_content)
 	_smoke_button.text = "Search area"
 	var current_view := session_controller.view()
 	_status_label.text = "Loaded %s • %s %d,%d • seed %d" % [_active_content.campaign_id, current_view.party_map_id, current_view.party_coordinate.x, current_view.party_coordinate.y, initial_seed]
@@ -288,23 +290,15 @@ func _input(event: InputEvent) -> void:
 
 
 func accepts_route_input() -> bool:
-	if has_host_interaction() or presentation_coordinator == null or _interaction_presenter == null:
+	if lifecycle_host.has_active_interaction() or presentation_coordinator == null or _interaction_presenter == null:
 		return false
 	if presentation_coordinator.is_combat_playback_active() or _interaction_presenter.has_blocking_request():
 		return false
 	return GameShellAvailability.route_change_reason(session_controller.view()).is_empty()
 
 
-func has_host_interaction() -> bool:
-	return _lifecycle_host.has_active_interaction()
-
-
-func character_library_ready() -> bool:
-	return _character_files != null and _character_files.library_ready()
-
-
 func accepts_exploration_input() -> bool:
-	if has_host_interaction() or presentation_coordinator == null or _interaction_presenter == null or _shell_presenter == null:
+	if lifecycle_host.has_active_interaction() or presentation_coordinator == null or _interaction_presenter == null or _shell_presenter == null:
 		return false
 	if presentation_coordinator.is_combat_playback_active() or _interaction_presenter.has_blocking_request():
 		return false
@@ -381,8 +375,8 @@ func _submit_movement(direction: Vector2i) -> bool:
 
 
 func submit_intent(intent: PlayerIntent) -> SessionStep:
-	if _character_files.creator_active():
-		return _character_files.submit_creator_intent(intent)
+	if character_files.creator_active():
+		return character_files.submit_creator_intent(intent)
 	var debug_step := _debug_tools.noclip_step(intent) if _debug_tools != null else null
 	if debug_step != null:
 		_present_step_status(debug_step)
@@ -396,9 +390,9 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 		return SessionStep.completed(session_controller.view().revision)
 	if intent != null and intent.kind == PlayerIntent.Kind.IMPORT_VAULT_CHARACTER:
 		var vault_import := intent.payload as PlayerIntent.VaultImportPayload
-		var import_intent := _character_files.vault_import_intent(vault_import.character_id, vault_import.revision_hash)
+		var import_intent := character_files.vault_import_intent(vault_import.character_id, vault_import.revision_hash)
 		if import_intent == null:
-			var message := _character_files.vault_error() if not _character_files.vault_error().is_empty() else "The requested vault revision is unavailable."
+			var message := character_files.vault_error() if not character_files.vault_error().is_empty() else "The requested vault revision is unavailable."
 			var failed := SessionStep.failed(session_controller.view().revision, &"vault_load_failed", message)
 			_present_step_status(failed)
 			return failed
@@ -412,12 +406,12 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 
 
 func _on_interaction_response_submitted(response: InteractionResponse) -> void:
-	match ApplicationLifecycleHost.response_owner(has_host_interaction(), _character_files.creator_active()):
+	match ApplicationLifecycleHost.response_owner(lifecycle_host.has_active_interaction(), character_files.creator_active()):
 		&"host":
-			_lifecycle_host.respond(response)
+			lifecycle_host.respond(response)
 			return
 		&"standalone-creator":
-			_character_files.respond_to_creator(response)
+			character_files.respond_to_creator(response)
 			return
 	var current_view := session_controller.view()
 	var journal_count_before := current_view.journal_entries.size()
@@ -463,9 +457,9 @@ func _quit_application() -> void:
 func _complete_closed_session() -> void:
 	_queued_combat_auto_changes.clear()
 	_active_content = null
-	presentation_coordinator.set_package_media(_character_files.library_media())
-	_refresh_save_previews()
-	_character_files.refresh_vault_views(_active_content)
+	presentation_coordinator.set_package_media(character_files.library_media())
+	adventure_storage.refresh(_active_content)
+	character_files.refresh_vault_views(_active_content)
 	_refresh_campaigns()
 	_shell_presenter.show_splash()
 	_status_label.text = "Adventure ended • main menu"
@@ -473,7 +467,7 @@ func _complete_closed_session() -> void:
 
 
 func _on_playback_step_settled(step: SessionStep) -> void:
-	if _lifecycle_host.playback_step_settled(step):
+	if lifecycle_host.playback_step_settled(step):
 		return
 	_flush_queued_combat_auto_changes()
 	call_deferred("_continue_persistent_auto_after_playback")
@@ -495,7 +489,7 @@ func _continue_persistent_auto_after_playback() -> void:
 	# Reduced motion can settle playback before its battlefield draws. Let that
 	# committed view reach the screen before another synchronous Auto activation.
 	await RenderingServer.frame_post_draw
-	if presentation_coordinator == null or presentation_coordinator.is_combat_playback_active() or not _queued_combat_auto_changes.is_empty() or has_host_interaction(): return
+	if presentation_coordinator == null or presentation_coordinator.is_combat_playback_active() or not _queued_combat_auto_changes.is_empty() or lifecycle_host.has_active_interaction(): return
 	var response := ApplicationCombatPolicy.persistent_auto_response(session_controller.view())
 	if response != null:
 		_on_interaction_response_submitted(response)
@@ -508,59 +502,15 @@ func _present_step_status(step: SessionStep) -> void:
 		return
 	for event: DomainEvent in step.events:
 		if event.kind == &"session_ended":
-			_lifecycle_host.handles_terminal_step(step, presentation_coordinator.is_combat_playback_active())
+			lifecycle_host.handles_terminal_step(step, presentation_coordinator.is_combat_playback_active())
 			return
 		if event.kind == &"character_publication_requested":
-			_character_files.publish_campaign_character(_active_content, String(event.payload.get("characterId", "")))
+			character_files.publish_campaign_character(_active_content, String(event.payload.get("characterId", "")))
 		else:
 			var status_text := ApplicationStepStatusText.for_event(event)
 			if not status_text.is_empty(): _status_label.text = status_text
 	if step.state == SessionStep.State.WAITING_FOR_INTERACTION:
 		_status_label.text = ApplicationStepStatusText.for_interaction(step.interaction)
-
-
-func save_active_session(slot_id: String) -> bool:
-	if _active_content == null:
-		_status_label.text = "Save failed • no package loaded"
-		_shell_presenter.set_status(_status_label.text, true)
-		return false
-	var saved := _save_host.save(_active_content, slot_id, session_controller.session().snapshot())
-	_status_label.text = "Saved %s" % slot_id if saved else "Save failed • %s" % _save_host.last_error()
-	_shell_presenter.set_status(_status_label.text, not saved)
-	if saved:
-		_refresh_save_previews()
-		_shell_presenter.show_activity_indicator(&"save")
-	return saved
-
-
-func load_active_session(slot_id: String) -> SessionStep:
-	return _load_session_record(slot_id, false)
-
-
-func load_backup_session(slot_id: String) -> SessionStep:
-	return _load_session_record(slot_id, true)
-
-
-func _load_session_record(slot_id: String, backup: bool) -> SessionStep:
-	if _active_content == null:
-		_status_label.text = "Load failed • no package loaded"
-		_shell_presenter.set_status(_status_label.text, true)
-		return SessionStep.failed(0, "no_package_loaded", "Load a package before restoring a save.")
-	var envelope := _save_host.load(_active_content, slot_id, backup)
-	if envelope == null:
-		_status_label.text = "Load failed • %s" % _save_host.last_error()
-		_shell_presenter.set_status(_status_label.text, true)
-		return SessionStep.failed(session_controller.view().revision, "save_load_failed", _save_host.last_error())
-	var step := session_controller.restore(_active_content, envelope)
-	if step.state != SessionStep.State.FAILED:
-		_queued_combat_auto_changes.clear()
-	_status_label.text = "Loaded %s %s" % ["backup" if backup else "save", slot_id] if step.state != SessionStep.State.FAILED else "Load failed • %s" % step.error_message
-	_shell_presenter.set_status(_status_label.text, step.state == SessionStep.State.FAILED)
-	return step
-
-
-func _refresh_save_previews() -> void:
-	_shell_presenter.set_save_previews(_save_host.previews(_active_content))
 
 
 func _refresh_campaigns() -> void:
@@ -572,7 +522,7 @@ func _refresh_campaigns() -> void:
 
 
 func _try_prewarm_last_campaign() -> void:
-	if _last_campaign_prewarm_requested or _package_host == null or _character_files.library_content() == null or _presentation_settings == null or _presentation_settings.last_campaign_id.is_empty() or bool(get_meta(&"startup_splash_suppressed", false)) and not bool(get_meta(&"startup_front_door_revealed", false)): return
+	if _last_campaign_prewarm_requested or _package_host == null or character_files.library_content() == null or _presentation_settings == null or _presentation_settings.last_campaign_id.is_empty() or bool(get_meta(&"startup_splash_suppressed", false)) and not bool(get_meta(&"startup_front_door_revealed", false)): return
 	_last_campaign_prewarm_requested = true
 	_package_host.prewarm_last_campaign(_campaigns, _presentation_settings.last_campaign_id)
 

@@ -749,7 +749,7 @@ func _test_lifecycle_interaction() -> void:
 func _test_application_quit_composition() -> void:
 	var quit_calls: Array[String] = []; var app := load("res://src/ui/realmz_application.tscn").instantiate() as RealmzApplication; app.configure_lifecycle_host(SaveHostController.new(RejectingSaveRepository.new()), func() -> void: quit_calls.append("quit")); (Engine.get_main_loop() as SceneTree).root.add_child(app)
 	await (Engine.get_main_loop() as SceneTree).process_frame
-	while not app.character_library_ready():
+	while not app.character_files.library_ready():
 		await (Engine.get_main_loop() as SceneTree).process_frame
 	var started := app.start_package(FIXTURE_PATH, 271); var shell := app.get_node("GameShell") as GameShell; var status := app.get_node("GameShell/BottomRegion/BottomRow/NarrativeWell/NarrativeColumn/Facts/Status") as Label; assert_true(started.state != SessionStep.State.FAILED, "the composition-root Quit proof starts the public synthetic package through the real application")
 	shell.quit_requested.emit()
