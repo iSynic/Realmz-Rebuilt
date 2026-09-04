@@ -3,6 +3,13 @@ class_name ApplicationCombatPolicy
 extends RefCounted
 
 
+static func body_with_preferences(body: InteractionResponse.CombatBody, settings: PresentationSettings) -> InteractionResponse.CombatBody:
+	var result := body.duplicate_body()
+	if result.action == &"move":
+		result.auto_switch_to_melee = settings != null and settings.auto_switch_to_melee
+	return result
+
+
 static func direct_intent(body: InteractionResponse.CombatBody) -> PlayerIntent:
 	if body == null or not body.is_valid(): return null
 	match body.action:

@@ -2645,8 +2645,8 @@
             "symbol": "func close"
           },
           {
-            "path": "src/app/realmz_application.gd",
-            "symbol": "func _on_end_adventure_requested"
+            "path": "src/app/application_lifecycle_host.gd",
+            "symbol": "func request_end_adventure"
           }
         ]
       },
