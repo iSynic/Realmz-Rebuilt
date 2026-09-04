@@ -10,7 +10,7 @@
     "oversizedProductionFiles": 22,
     "oversizedFunctions": 88,
     "oversizedTopLevelClasses": 35,
-    "crossObjectPrivateCalls": 168,
+    "crossObjectPrivateCalls": 161,
     "genericPreloadAliases": 0,
     "majorSurfacesWithoutScene": 0,
     "majorSurfacesWithoutPreview": 24,

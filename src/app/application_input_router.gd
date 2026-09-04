@@ -62,7 +62,7 @@ func _handle_debug_or_acknowledgement_input(event: InputEvent) -> bool:
 
 func _handle_playback_or_combat_modifier_input(event: InputEvent, key_event: InputEventKey) -> bool:
 	if _application.presentation_coordinator != null and _application.presentation_coordinator.is_combat_playback_active():
-		if key_event != null and key_event.pressed and not key_event.echo and key_event.keycode == KEY_ESCAPE and _application._abort_full_party_auto(true):
+		if key_event != null and key_event.pressed and not key_event.echo and key_event.keycode == KEY_ESCAPE and _application.abort_full_party_auto(true):
 			_mark_handled()
 		elif key_event != null and key_event.pressed and not key_event.echo and key_event.keycode == KEY_SPACE:
 			_application.presentation_coordinator.skip_combat_playback()
@@ -75,7 +75,7 @@ func _handle_playback_or_combat_modifier_input(event: InputEvent, key_event: Inp
 		if dock_available or not key_event.pressed:
 			_mark_handled()
 		return true
-	if combat_pending and key_event != null and key_event.pressed and not key_event.echo and key_event.keycode == KEY_ESCAPE and _application._abort_full_party_auto(false):
+	if combat_pending and key_event != null and key_event.pressed and not key_event.echo and key_event.keycode == KEY_ESCAPE and _application.abort_full_party_auto(false):
 		_mark_handled()
 		return true
 	return false
@@ -137,23 +137,23 @@ func _handle_exploration_input(event: InputEvent, key_event: InputEventKey) -> v
 		return
 	var fast_spell_slot := UiInputActions.fast_spell_slot(event)
 	if fast_spell_slot >= 0:
-		_application._handle_field_fast_spell(fast_spell_slot, UiInputActions.fast_spell_use_requested(event))
+		_application.handle_field_fast_spell(fast_spell_slot, UiInputActions.fast_spell_use_requested(event))
 		_mark_handled()
 		return
 	if event.is_action_pressed(&"realmz_search"):
-		_application._submit_intent(PlayerIntent.toggle_search())
+		_application.submit_intent(PlayerIntent.toggle_search())
 		_mark_handled()
 		return
 	if event.is_action_pressed(&"realmz_camp"):
-		_application._submit_intent(PlayerIntent.camp())
+		_application.submit_intent(PlayerIntent.camp())
 		_mark_handled()
 		return
 	if event.is_action_pressed(&"realmz_rest"):
-		_application._submit_intent(PlayerIntent.rest())
+		_application.submit_intent(PlayerIntent.rest())
 		_mark_handled()
 		return
 	if event.is_action_pressed(&"realmz_heal"):
-		_application._submit_intent(PlayerIntent.heal())
+		_application.submit_intent(PlayerIntent.heal())
 		_mark_handled()
 		return
 	var direction := UiInputActions.movement_direction(event)

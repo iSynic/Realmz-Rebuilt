@@ -12,6 +12,7 @@ Own the Godot composition root and translate host input/output into the pure ses
 - `StartupFrontDoor` owns immediate process entry and background construction of `RealmzApplication`; `RealmzApplication` constructs the gameplay dependency graph explicitly.
 - `GameSessionController` owns the replaceable `GameSession` instance and publishes committed steps.
 - `ApplicationInputRouter` owns keyboard and pointer routing policy; `RealmzApplication` constructs it and remains the Godot input entry point.
+- `ApplicationInputRouter` may invoke only the composition root's public `submit_intent`, `handle_field_fast_spell`, and `abort_full_party_auto` input operations; it must not reach into private host methods.
 - `GameSessionController` materializes one detached `GameView` per committed revision and shares it with host input checks and presenters; host code must not rebuild the same revision repeatedly. It also retains the presentation-requested map-cell span across session replacement and may rebuild that read model at the same gameplay revision when responsive layout changes.
 - Detached campaign, vault, and host view models live under `src/app/view`; `CharacterVaultRevisionView` is app-owned while remaining `class_name`-compatible. Prepared package views expose the core `MediaSource` abstraction and never leak an storage package catalog into presentation.
 - This boundary coordinates repositories and presenters but contains no Realmz rules.

@@ -96,7 +96,7 @@ func _ready() -> void:
 	_map_presenter.movement_hold_stopped.connect(func() -> void: _held_movement.stop(&"mouse"))
 	_dungeon_presenter.turn_requested.connect(
 		func(delta: int) -> void:
-			_submit_intent(PlayerIntent.dungeon_turn(delta))
+			submit_intent(PlayerIntent.dungeon_turn(delta))
 	)
 	_dungeon_presenter.movement_requested.connect(
 		func(direction: Vector2i) -> void:
@@ -117,7 +117,7 @@ func _ready() -> void:
 	_shell_presenter.start_package_requested.connect(_begin_package_start)
 	_shell_presenter.cancel_package_requested.connect(_cancel_package_start)
 	_shell_presenter.refresh_campaigns_requested.connect(_refresh_campaigns)
-	_shell_presenter.intent_submitted.connect(_submit_intent)
+	_shell_presenter.intent_submitted.connect(submit_intent)
 	_shell_presenter.save_requested.connect(save_active_session)
 	_shell_presenter.save_and_quit_requested.connect(_on_save_and_quit_requested)
 	_shell_presenter.load_requested.connect(load_active_session)
@@ -188,7 +188,7 @@ func _on_smoke_action_pressed() -> void:
 	if not session_controller.view().session_started:
 		_status_label.text = "MCP input verified • no package loaded"
 		return
-	var step := _submit_intent(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
+	var step := submit_intent(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
 	if step.state == SessionStep.State.FAILED:
 		return
 	var roll: int = step.events[0].payload.get("roll", 0)
@@ -321,7 +321,7 @@ func accepts_exploration_input() -> bool:
 	return view != null and view.session_started and view.pending_interaction == null and _shell_presenter.accepts_exploration_input()
 
 
-func _handle_field_fast_spell(slot_index: int, use_spell: bool) -> void:
+func handle_field_fast_spell(slot_index: int, use_spell: bool) -> void:
 	var binding := _shell_presenter.selected_fast_spell(slot_index)
 	if binding.is_empty() or String(binding.get("spellId", "")).is_empty():
 		_shell_presenter.set_status("Fast Spell %s • Undefined Spell" % ("0" if slot_index == 9 else str(slot_index + 1)))
@@ -336,7 +336,7 @@ func _handle_field_fast_spell(slot_index: int, use_spell: bool) -> void:
 		_shell_presenter.set_status("%s • %s" % [summary, binding.get("reason", "Unavailable")], true)
 		_audio_presenter.present_sound(143, presentation_coordinator.package_media())
 		return
-	_submit_intent(PlayerIntent.cast_spell(binding["spellId"], binding["characterId"], "", binding["power"]))
+	submit_intent(PlayerIntent.cast_spell(binding["spellId"], binding["characterId"], "", binding["power"]))
 
 
 func _on_held_movement_requested(direction: Vector2i) -> void:
@@ -389,14 +389,14 @@ func _submit_movement(direction: Vector2i) -> bool:
 	if MapTopology.is_diagonal_direction(direction) and (map_view == null or map_view.level_type != &"land"):
 		return false
 	var before := session_controller.view()
-	var step := _submit_intent(PlayerIntent.overhead_dungeon_move(direction) if map_view != null and map_view.level_type == &"dungeon" and (_dungeon_presenter == null or not _dungeon_presenter.is_active()) else PlayerIntent.move(direction))
+	var step := submit_intent(PlayerIntent.overhead_dungeon_move(direction) if map_view != null and map_view.level_type == &"dungeon" and (_dungeon_presenter == null or not _dungeon_presenter.is_active()) else PlayerIntent.move(direction))
 	var after := session_controller.view()
 	if step.state == SessionStep.State.FAILED or after == null or after.pending_interaction != null or after.combat_view != null:
 		return false
 	return HeldMovementController.continues_after_step(direction, before.party_map_id, before.party_coordinate, after.party_map_id, after.party_coordinate, step.events, accepts_exploration_input())
 
 
-func _submit_intent(intent: PlayerIntent) -> SessionStep:
+func submit_intent(intent: PlayerIntent) -> SessionStep:
 	if _character_creation_host.is_active():
 		var creator_step: SessionStep = _character_creation_host.submit(intent)
 		_present_standalone_character_step(creator_step)
@@ -445,7 +445,7 @@ func _on_interaction_response_submitted(response: InteractionResponse) -> void:
 			_shell_presenter.set_status("The combat command was invalid.", true)
 			presentation_coordinator.refresh()
 			return
-		var direct_step := _submit_intent(direct_intent)
+		var direct_step := submit_intent(direct_intent)
 		if direct_step.state == SessionStep.State.COMPLETED and direct_step.events.is_empty() and session_controller.view().pending_interaction == null:
 			_shell_presenter.set_status("")
 		return
@@ -477,7 +477,7 @@ static func combat_auto_abort_ids(view: GameView, queued_changes: Dictionary = {
 	return ApplicationCombatPolicy.auto_abort_ids(view, queued_changes)
 
 
-func _abort_full_party_auto(skip_playback: bool) -> bool:
+func abort_full_party_auto(skip_playback: bool) -> bool:
 	var character_ids := combat_auto_abort_ids(session_controller.view(), _queued_combat_auto_changes)
 	if character_ids.is_empty():
 		return false
@@ -623,7 +623,7 @@ func _flush_queued_combat_auto_changes() -> void:
 	character_ids.assign(changes.keys())
 	character_ids.sort()
 	for character_id: String in character_ids:
-		_submit_intent(PlayerIntent.set_combat_auto(character_id, bool(changes[character_id])))
+		submit_intent(PlayerIntent.set_combat_auto(character_id, bool(changes[character_id])))
 
 
 func _continue_persistent_auto_after_playback() -> void:

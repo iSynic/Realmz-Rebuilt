@@ -3451,7 +3451,7 @@
           },
           {
             "path": "src/app/realmz_application.gd",
-            "symbol": "func _handle_field_fast_spell"
+            "symbol": "func handle_field_fast_spell"
           },
           {
             "path": "src/ui/interaction_components/battle_interaction.gd",
