@@ -7,7 +7,7 @@ const SUPPORTED_SAFE_CAPABILITIES: Array[String] = RealmzRuntimeApi.SUPPORTED_SA
 const SUPPORTED_ACTION_CONTEXTS: Array[String] = ["action", "encounter", "spell", "item", "monster-ai", "lifecycle", "rule-modifier"]
 const SUPPORTED_VALUE_TYPES: Array[String] = ["void", "bool", "int", "float", "string", "location-snapshot", "time-snapshot", "wealth-snapshot", "character-snapshot", "character-snapshot-array", "combat-snapshot", "action-outcome", "encounter-outcome", "effect-outcome", "spell-validation-outcome", "spell-cast-outcome", "spell-effect-outcome", "spell-tick-outcome", "spell-expiration-outcome", "item-outcome", "monster-decision", "rule-modifier", "bool-array", "int-array", "float-array", "string-array"]
 
-func _construct_scenario(document: Dictionary, campaign_id: String) -> ScenarioDefinition:
+func decode_scenario(document: Dictionary, campaign_id: String) -> ScenarioDefinition:
 	var reference_validator := PackageCrossReferenceValidator.new(_diagnostic)
 	if not _has_fields(document, ["applicationHooks", "programs", "scenarioActions", "stateDefinitions", "migrations"], "scenario document"):
 		return null
@@ -33,8 +33,8 @@ func _construct_scenario(document: Dictionary, campaign_id: String) -> ScenarioD
 			var instruction: Variant = program.instruction_at(index)
 			if instruction is CallScenarioActionInstruction:
 				var called_action := definition.action_by_id(instruction.action_id)
-				var calling_context: StringName = reference_validator._program_context(program.owner_kind)
-				if called_action == null or called_action.visibility != &"public" or calling_context == &"" or not called_action.allows_context(calling_context) or not reference_validator._call_arguments_match(instruction.argument_names(), instruction.result_target, called_action):
+				var calling_context: StringName = reference_validator.program_context(program.owner_kind)
+				if called_action == null or called_action.visibility != &"public" or calling_context == &"" or not called_action.allows_context(calling_context) or not reference_validator.call_arguments_match(instruction.argument_names(), instruction.result_target, called_action):
 					_reject("Scenario program '%s' has an invalid public Scenario Action call to '%s'." % [program.id, instruction.action_id])
 					return null
 	for action: ScenarioActionDefinition in actions:
@@ -42,7 +42,7 @@ func _construct_scenario(document: Dictionary, campaign_id: String) -> ScenarioD
 			var instruction := action.program.instruction_at(index)
 			if instruction.kind == SafeInstructionDefinition.Kind.CALL_ACTION:
 				var called_action := definition.action_by_id(instruction.action_id)
-				if called_action == null or not reference_validator._call_arguments_match(instruction.argument_names(), instruction.result_target, called_action) or not reference_validator._contexts_are_compatible(action, called_action):
+				if called_action == null or not reference_validator.call_arguments_match(instruction.argument_names(), instruction.result_target, called_action) or not reference_validator.contexts_are_compatible(action, called_action):
 					_reject("Scenario Action '%s' has an invalid call to '%s'." % [action.id, instruction.action_id])
 					return null
 	return definition

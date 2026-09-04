@@ -8,7 +8,7 @@ const TRANSITION_DIRECTIONS: Array[String] = ["north", "northeast", "east", "sou
 const EDGE_KINDS: Array[String] = ["open", "wall", "door", "secret", "archway", "map-boundary"]
 const FEATURE_KINDS: Array[String] = ["door", "secret", "stairs", "column", "unmapped", "note", "action-point", "archway", "no-wall-in-battle"]
 
-func _construct_triggers(value: Variant, scenario: ScenarioDefinition) -> Variant:
+func decode_triggers(value: Variant, scenario: ScenarioDefinition) -> Variant:
 	if not value is Array:
 		_reject("World triggers must be an array.")
 		return null
@@ -56,7 +56,7 @@ func _construct_triggers(value: Variant, scenario: ScenarioDefinition) -> Varian
 		triggers.append(TriggerDefinition.new(record["id"], record["programId"], map_id, coordinate, record["active"], chance, destination, _integer(record["classicRecordIndex"])))
 	return triggers
 
-func _construct_battle_terrain_sets(value: Variant) -> Variant:
+func decode_battle_terrain_sets(value: Variant) -> Variant:
 	if not value is Array:
 		_reject("World battle terrain sets must be an array.")
 		return null
@@ -129,7 +129,7 @@ func _construct_battle_terrain_tile(value: Variant) -> BattleTerrainTileDefiniti
 		combat_build.append(parsed_row)
 	return BattleTerrainTileDefinition.new(integers["tile"], integers["sound"], integers["time"], integers["solid"], record["shore"], integers["needBoat"], record["isPath"], record["los"], record["flyFloat"], integers["forest"], combat_build)
 
-func _construct_maps(value: Variant, trigger_ids: Dictionary, battle_terrain_sets: Dictionary = {}, require_battle_terrain: bool = false, validate_compact_rows: bool = true) -> Variant:
+func decode_maps(value: Variant, trigger_ids: Dictionary, battle_terrain_sets: Dictionary = {}, require_battle_terrain: bool = false, validate_compact_rows: bool = true) -> Variant:
 	if not value is Array or value.is_empty():
 		_reject("World maps must be a non-empty array.")
 		return null
@@ -296,7 +296,7 @@ func _validate_compact_cell(value: Variant, map_id: String, cell_index: int, tri
 		return _reject("Dungeon map '%s' compact topology row %d contains land-only movement facts." % [map_id, cell_index])
 	return true
 
-func _construct_player_maps(value: Variant, maps: Array[MapDefinition], media_assets: Array[MediaAsset]) -> Variant:
+func decode_player_maps(value: Variant, maps: Array[MapDefinition], media_assets: Array[MediaAsset]) -> Variant:
 	if not value is Array or value.size() > 20:
 		_reject("World player maps must be an array of no more than twenty records.")
 		return null
@@ -423,7 +423,7 @@ func _construct_random_regions(value: Variant, width: int, height: int, map_id: 
 		regions.append(RandomEncounterRegion.new(record["id"], Rect2i(left, top, right - left + 1, bottom - top + 1), chance, battle_range[0], battle_range[1], doors, percents, record["only"], _integer(record["option"]), _integer(record["soundId"]), _integer(record["textId"])))
 	return regions
 
-func _construct_transitions(value: Variant, maps: Array[MapDefinition]) -> Variant:
+func decode_transitions(value: Variant, maps: Array[MapDefinition]) -> Variant:
 	if not value is Array:
 		_reject("World transitions must be an array.")
 		return null

@@ -3,7 +3,7 @@
 class_name PackageMediaValidatorResolver
 extends PackageDecoderBase
 
-func _validate_monster_media(monsters: Array[MonsterDefinition], media_assets: Array[MediaAsset]) -> bool:
+func validate_monster_media(monsters: Array[MonsterDefinition], media_assets: Array[MediaAsset]) -> bool:
 	var assets_by_resource: Dictionary = {}
 	for asset: MediaAsset in media_assets:
 		if not asset.resource_type.is_empty():
@@ -136,7 +136,7 @@ func construct_assets(document: Dictionary) -> Array[MediaAsset]:
 		))
 	return assets
 
-func _construct_character_appearance_options(assets: Array[MediaAsset], races: Array[RaceDefinition]) -> Array[CharacterAppearanceDefinition]:
+func resolve_character_appearance_options(assets: Array[MediaAsset], races: Array[RaceDefinition]) -> Array[CharacterAppearanceDefinition]:
 	var result: Array[CharacterAppearanceDefinition] = []
 	for asset: MediaAsset in assets:
 		var kind := CharacterAppearanceDefinition.PORTRAIT if asset.kind == "portrait" else CharacterAppearanceDefinition.COMBAT_ICON if asset.kind == "combat-icon" else &""

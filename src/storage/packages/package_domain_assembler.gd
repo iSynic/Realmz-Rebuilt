@@ -53,7 +53,7 @@ func assemble(manifest: Dictionary, content: Dictionary, world: Dictionary, scen
 	if rules_content == null:
 		return null
 	var scenario_decoder := PackageScenarioDecoder.new(_diagnostic)
-	var scenario_definition := scenario_decoder._construct_scenario(scenario, manifest["campaignId"])
+	var scenario_definition := scenario_decoder.decode_scenario(scenario, manifest["campaignId"])
 	if scenario_definition == null:
 		return null
 	var reference_validator := PackageCrossReferenceValidator.new(_diagnostic)
@@ -71,13 +71,13 @@ func assemble(manifest: Dictionary, content: Dictionary, world: Dictionary, scen
 
 func _decode_story_content(decoder: PackageContentDecoder, content: Dictionary, world: Dictionary, trusted_install: bool) -> StoryContent:
 	var result := StoryContent.new()
-	result.campaign = decoder._construct_campaign_definition(content["campaign"])
-	var messages_value: Variant = decoder._construct_messages(content.get("messages"))
-	var option_labels_value: Variant = decoder._construct_option_labels(content.get("optionLabels"))
-	var simple_value: Variant = decoder._construct_simple_encounters(content.get("simpleEncounters"))
-	var complex_value: Variant = decoder._construct_complex_encounters(content.get("complexEncounters"))
-	var thief_value: Variant = decoder._construct_thief_encounters(content.get("thiefEncounters"))
-	var timed_value: Variant = decoder._construct_timed_encounters(content.get("timedEncounters"))
+	result.campaign = decoder.decode_campaign_definition(content["campaign"])
+	var messages_value: Variant = decoder.decode_messages(content.get("messages"))
+	var option_labels_value: Variant = decoder.decode_option_labels(content.get("optionLabels"))
+	var simple_value: Variant = decoder.decode_simple_encounters(content.get("simpleEncounters"))
+	var complex_value: Variant = decoder.decode_complex_encounters(content.get("complexEncounters"))
+	var thief_value: Variant = decoder.decode_thief_encounters(content.get("thiefEncounters"))
+	var timed_value: Variant = decoder.decode_timed_encounters(content.get("timedEncounters"))
 	if result.campaign == null or messages_value == null or option_labels_value == null or simple_value == null or complex_value == null or thief_value == null or timed_value == null:
 		return null
 	if not trusted_install and CanonicalJson.encode(content.get("timedEncounters")) != CanonicalJson.encode(world.get("timedEncounters")):
@@ -97,15 +97,15 @@ func _decode_story_content(decoder: PackageContentDecoder, content: Dictionary, 
 
 
 func _decode_rules_content(decoder: PackageContentDecoder, media_validator: PackageMediaValidatorResolver, content: Dictionary, scenario_media: Array[MediaAsset], trusted_install: bool, application_content: RealmzContent, application_media: Array[MediaAsset]) -> RulesContent:
-	var races_value: Variant = decoder._construct_races(content.get("races"))
-	var castes_value: Variant = decoder._construct_castes(content.get("castes"))
-	var items_value: Variant = decoder._construct_items(content.get("items"))
-	var spells_value: Variant = decoder._construct_spells(content.get("spells"))
-	var monsters_value: Variant = decoder._construct_monsters(content.get("monsters"))
-	var monster_sets_value: Variant = decoder._construct_monster_sets(content.get("monsterSets"))
-	var battles_value: Variant = decoder._construct_battles(content.get("battles"))
-	var treasures_value: Variant = decoder._construct_treasures(content.get("treasures"))
-	var shops_value: Variant = decoder._construct_shops(content.get("shops"))
+	var races_value: Variant = decoder.decode_races(content.get("races"))
+	var castes_value: Variant = decoder.decode_castes(content.get("castes"))
+	var items_value: Variant = decoder.decode_items(content.get("items"))
+	var spells_value: Variant = decoder.decode_spells(content.get("spells"))
+	var monsters_value: Variant = decoder.decode_monsters(content.get("monsters"))
+	var monster_sets_value: Variant = decoder.decode_monster_sets(content.get("monsterSets"))
+	var battles_value: Variant = decoder.decode_battles(content.get("battles"))
+	var treasures_value: Variant = decoder.decode_treasures(content.get("treasures"))
+	var shops_value: Variant = decoder.decode_shops(content.get("shops"))
 	if races_value == null or castes_value == null or items_value == null or spells_value == null or monsters_value == null or monster_sets_value == null or battles_value == null or treasures_value == null or shops_value == null:
 		return null
 	var catalogs := _compose_catalogs(races_value, castes_value, items_value, spells_value, scenario_media, application_content, application_media)
@@ -125,9 +125,9 @@ func _decode_rules_content(decoder: PackageContentDecoder, media_validator: Pack
 	var all_monsters: Variant = _all_monsters(result.monsters, result.monster_sets, trusted_install)
 	if all_monsters == null:
 		return null
-	if not trusted_install and not media_validator._validate_monster_media(all_monsters, result.media):
+	if not trusted_install and not media_validator.validate_monster_media(all_monsters, result.media):
 		return null
-	result.appearance_options = media_validator._construct_character_appearance_options(result.media, result.races)
+	result.appearance_options = media_validator.resolve_character_appearance_options(result.media, result.races)
 	return result
 
 
@@ -155,20 +155,20 @@ func _all_monsters(monsters: Array[MonsterDefinition], monster_sets: Dictionary,
 func _validate_content_references(validator: PackageCrossReferenceValidator, scenario: ScenarioDefinition, story: StoryContent, rules: RulesContent, trusted_install: bool) -> bool:
 	if trusted_install:
 		return true
-	if not validator._validate_scenario_references(scenario, story.message_ids, story.simple_encounters, story.complex_encounters, story.thief_encounters, rules.items, rules.spells, rules.media):
+	if not validator.validate_scenario_references(scenario, story.message_ids, story.simple_encounters, story.complex_encounters, story.thief_encounters, rules.items, rules.spells, rules.media):
 		return false
-	if not validator._validate_timed_encounter_references(scenario, story.timed_encounters):
+	if not validator.validate_timed_encounter_references(scenario, story.timed_encounters):
 		return false
-	if not validator._validate_rule_references(rules.races, rules.castes, rules.items, rules.spells, rules.monsters, rules.battles, rules.treasures, rules.shops, story.message_ids):
+	if not validator.validate_rule_references(rules.races, rules.castes, rules.items, rules.spells, rules.monsters, rules.battles, rules.treasures, rules.shops, story.message_ids):
 		return false
 	for set_id: Variant in rules.monster_sets:
-		if not validator._validate_monster_record_references(rules.monster_sets[set_id], rules.items, rules.spells):
+		if not validator.validate_monster_record_references(rules.monster_sets[set_id], rules.items, rules.spells):
 			return false
 	return true
 
 
 func _decode_world_content(decoder: PackageWorldDecoder, validator: PackageCrossReferenceValidator, world: Dictionary, scenario: ScenarioDefinition, rules: RulesContent, trusted_install: bool) -> WorldContent:
-	var triggers_value: Variant = decoder._construct_triggers(world.get("triggers"), scenario)
+	var triggers_value: Variant = decoder.decode_triggers(world.get("triggers"), scenario)
 	if triggers_value == null:
 		return null
 	var result := WorldContent.new()
@@ -176,29 +176,29 @@ func _decode_world_content(decoder: PackageWorldDecoder, validator: PackageCross
 	var trigger_ids: Variant = _trigger_ids(result.triggers)
 	if trigger_ids == null:
 		return null
-	var terrain_value: Variant = decoder._construct_battle_terrain_sets(world.get("battleTerrainSets"))
+	var terrain_value: Variant = decoder.decode_battle_terrain_sets(world.get("battleTerrainSets"))
 	if terrain_value == null:
 		return null
 	var terrain_sets: Array[BattleTerrainSetDefinition] = terrain_value
 	var terrain_by_id: Dictionary = {}
 	for terrain_set: BattleTerrainSetDefinition in terrain_sets:
 		terrain_by_id[terrain_set.id] = terrain_set
-	var maps_value: Variant = decoder._construct_maps(world.get("maps"), trigger_ids, terrain_by_id, not rules.battles.is_empty(), not trusted_install)
+	var maps_value: Variant = decoder.decode_maps(world.get("maps"), trigger_ids, terrain_by_id, not rules.battles.is_empty(), not trusted_install)
 	if maps_value == null:
 		return null
 	var maps: Array[MapDefinition] = maps_value
-	var player_maps_value: Variant = decoder._construct_player_maps(world.get("playerMaps"), maps, rules.media)
+	var player_maps_value: Variant = decoder.decode_player_maps(world.get("playerMaps"), maps, rules.media)
 	if player_maps_value == null:
 		return null
-	var transitions_value: Variant = decoder._construct_transitions(world.get("transitions"), maps)
+	var transitions_value: Variant = decoder.decode_transitions(world.get("transitions"), maps)
 	if transitions_value == null:
 		return null
 	var player_maps: Array[PlayerMapDefinition] = player_maps_value
 	var transitions: Array[MapTransition] = transitions_value
 	result.definition = WorldDefinition.new(maps, transitions, terrain_sets, player_maps)
-	if not trusted_install and not validator._validate_random_region_references(maps, scenario, rules.battles):
+	if not trusted_install and not validator.validate_random_region_references(maps, scenario, rules.battles):
 		return null
-	if not trusted_install and not validator._validate_player_map_opcode_references(scenario, result.definition):
+	if not trusted_install and not validator.validate_player_map_opcode_references(scenario, result.definition):
 		return null
 	return result
 

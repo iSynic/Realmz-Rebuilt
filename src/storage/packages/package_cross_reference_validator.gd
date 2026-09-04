@@ -6,7 +6,7 @@ extends PackageDecoderBase
 const CLASSIC_UNMATCHABLE_RACE_ID := "classic.race.-32768"
 const CLASSIC_UNMATCHABLE_CASTE_ID := "classic.caste.-32768"
 
-func _validate_rule_references(races: Array[RaceDefinition], castes: Array[CasteDefinition], items: Array[ItemDefinition], spells: Array[SpellDefinition], monsters: Array[MonsterDefinition], battles: Array[BattleDefinition], treasures: Array[TreasureDefinition], shops: Array[ShopDefinition], message_ids: Dictionary) -> bool:
+func validate_rule_references(races: Array[RaceDefinition], castes: Array[CasteDefinition], items: Array[ItemDefinition], spells: Array[SpellDefinition], monsters: Array[MonsterDefinition], battles: Array[BattleDefinition], treasures: Array[TreasureDefinition], shops: Array[ShopDefinition], message_ids: Dictionary) -> bool:
 	var race_ids := _definition_ids(races)
 	var caste_ids := _definition_ids(castes)
 	var item_ids := _definition_ids(items)
@@ -22,7 +22,7 @@ func _validate_rule_references(races: Array[RaceDefinition], castes: Array[Caste
 		for item_id: String in caste.start_items():
 			if not item_ids.has(item_id):
 				return _reject("Caste '%s' references unavailable starting item '%s'." % [caste.id, item_id])
-	if not _validate_monster_record_references(monsters, items, spells):
+	if not validate_monster_record_references(monsters, items, spells):
 		return false
 	for battle: BattleDefinition in battles:
 		for slot: BattleMonsterSlotDefinition in battle.monster_slots():
@@ -41,7 +41,7 @@ func _validate_rule_references(races: Array[RaceDefinition], castes: Array[Caste
 				return _reject("Shop '%s' references unavailable item '%s'." % [shop.id, item_id])
 	return true
 
-func _validate_monster_record_references(monsters: Array[MonsterDefinition], items: Array[ItemDefinition], spells: Array[SpellDefinition]) -> bool:
+func validate_monster_record_references(monsters: Array[MonsterDefinition], items: Array[ItemDefinition], spells: Array[SpellDefinition]) -> bool:
 	var item_ids := _definition_ids(items)
 	var spell_ids := _definition_ids(spells)
 	for monster: MonsterDefinition in monsters:
@@ -60,7 +60,7 @@ func _validate_monster_record_references(monsters: Array[MonsterDefinition], ite
 				return _reject("Monster '%s' random weapon table %d can produce unavailable weapon '%s'." % [monster.id, monster.random_weapon_table, random_weapon_id])
 	return true
 
-func _validate_scenario_references(scenario: ScenarioDefinition, message_ids: Dictionary, encounters: Array[SimpleEncounterDefinition], complex_encounters: Array[ComplexEncounterDefinition], thief_encounters: Array[ThiefEncounterDefinition], items: Array[ItemDefinition], spells: Array[SpellDefinition], media_assets: Array[MediaAsset]) -> bool:
+func validate_scenario_references(scenario: ScenarioDefinition, message_ids: Dictionary, encounters: Array[SimpleEncounterDefinition], complex_encounters: Array[ComplexEncounterDefinition], thief_encounters: Array[ThiefEncounterDefinition], items: Array[ItemDefinition], spells: Array[SpellDefinition], media_assets: Array[MediaAsset]) -> bool:
 	var encounter_ids: Dictionary = {}
 	for encounter: SimpleEncounterDefinition in encounters:
 		encounter_ids[encounter.id] = true
@@ -162,7 +162,7 @@ func _validate_branch_destination(scenario: ScenarioDefinition, encounter_ids: D
 	return _reject("Scenario program '%s' opcode %d has invalid destination mode %d." % [program_id, opcode, mode])
 
 
-func _validate_timed_encounter_references(scenario: ScenarioDefinition, encounters: Array[TimedEncounterDefinition]) -> bool:
+func validate_timed_encounter_references(scenario: ScenarioDefinition, encounters: Array[TimedEncounterDefinition]) -> bool:
 	for encounter: TimedEncounterDefinition in encounters:
 		var expected_program_id := "xap:%d" % encounter.classic_macro_id
 		var program := scenario.program_by_id(encounter.program_id)
@@ -170,7 +170,7 @@ func _validate_timed_encounter_references(scenario: ScenarioDefinition, encounte
 			return _reject("Timed Encounter %d references unavailable Classic XAP program '%s'." % [encounter.id, encounter.program_id])
 	return true
 
-func _validate_random_region_references(maps: Array[MapDefinition], scenario: ScenarioDefinition, battles: Array[BattleDefinition]) -> bool:
+func validate_random_region_references(maps: Array[MapDefinition], scenario: ScenarioDefinition, battles: Array[BattleDefinition]) -> bool:
 	var battle_ids: Dictionary = {}
 	for battle: BattleDefinition in battles:
 		battle_ids[battle.classic_id] = true
@@ -189,7 +189,7 @@ func _validate_random_region_references(maps: Array[MapDefinition], scenario: Sc
 					return _reject("Random rectangle '%s' references unavailable battle %d." % [region.id, battle_id])
 	return true
 
-func _validate_player_map_opcode_references(scenario: ScenarioDefinition, world: WorldDefinition) -> bool:
+func validate_player_map_opcode_references(scenario: ScenarioDefinition, world: WorldDefinition) -> bool:
 	for program_id: String in scenario.program_ids():
 		var program := scenario.program_by_id(program_id)
 		for index: int in range(program.instruction_count()):
@@ -215,7 +215,7 @@ func _validate_player_map_opcode_references(scenario: ScenarioDefinition, world:
 						return _reject("Scenario program '%s' opcode 92 references an unavailable random rectangle." % program.id)
 	return true
 
-func _program_context(owner_kind: StringName) -> StringName:
+func program_context(owner_kind: StringName) -> StringName:
 	match owner_kind:
 		&"simple-encounter-result", &"complex-encounter-result":
 			return &"encounter"
@@ -223,14 +223,14 @@ func _program_context(owner_kind: StringName) -> StringName:
 			return &"action"
 	return &""
 
-func _call_arguments_match(argument_names: Array[String], result_target: String, action: ScenarioActionDefinition) -> bool:
+func call_arguments_match(argument_names: Array[String], result_target: String, action: ScenarioActionDefinition) -> bool:
 	if argument_names != action.parameter_names():
 		return false
 	if result_target.is_empty():
 		return true
 	return action.return_type != &"void" and _safe_identifier(result_target)
 
-func _contexts_are_compatible(caller: ScenarioActionDefinition, called: ScenarioActionDefinition) -> bool:
+func contexts_are_compatible(caller: ScenarioActionDefinition, called: ScenarioActionDefinition) -> bool:
 	for context: StringName in caller.allowed_contexts():
 		if not called.allows_context(context):
 			return false

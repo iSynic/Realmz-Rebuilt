@@ -5,7 +5,7 @@ extends PackageDecoderBase
 
 const ApplicationSpellText := preload("res://src/storage/packages/classic_application_spell_text.gd")
 
-func _construct_campaign_definition(value: Variant) -> CampaignDefinition:
+func decode_campaign_definition(value: Variant) -> CampaignDefinition:
 	if not value is Dictionary:
 		_reject("Content campaign metadata must be an object.")
 		return null
@@ -49,7 +49,7 @@ func _construct_campaign_definition(value: Variant) -> CampaignDefinition:
 		result.restrictions.banned_castes.append(caste_id)
 	return result
 
-func _construct_messages(value: Variant) -> Variant:
+func decode_messages(value: Variant) -> Variant:
 	if not value is Array:
 		_reject("Content messages must be an array.")
 		return null
@@ -67,7 +67,7 @@ func _construct_messages(value: Variant) -> Variant:
 		messages.append(MessageDefinition.new(id, record["text"]))
 	return messages
 
-func _construct_option_labels(value: Variant) -> Variant:
+func decode_option_labels(value: Variant) -> Variant:
 	if not value is Array:
 		_reject("Content option labels must be an array.")
 		return null
@@ -85,7 +85,7 @@ func _construct_option_labels(value: Variant) -> Variant:
 		option_labels.append(OptionLabelDefinition.new(id, record["text"]))
 	return option_labels
 
-func _construct_items(value: Variant) -> Variant:
+func decode_items(value: Variant) -> Variant:
 	if not value is Array:
 		_reject("Content items must be an array.")
 		return null
@@ -154,7 +154,7 @@ func _construct_items(value: Variant) -> Variant:
 		result.append(item)
 	return result
 
-func _construct_races(value: Variant) -> Variant:
+func decode_races(value: Variant) -> Variant:
 	if not value is Array:
 		_reject("Content races must be an array.")
 		return null
@@ -216,7 +216,7 @@ func _construct_races(value: Variant) -> Variant:
 		return null
 	return result
 
-func _construct_castes(value: Variant) -> Variant:
+func decode_castes(value: Variant) -> Variant:
 	if not value is Array:
 		_reject("Content castes must be an array.")
 		return null
@@ -286,7 +286,7 @@ func _construct_castes(value: Variant) -> Variant:
 		return null
 	return result
 
-func _construct_spells(value: Variant) -> Variant:
+func decode_spells(value: Variant) -> Variant:
 	if not value is Array:
 		_reject("Content spells must be an array.")
 		return null
@@ -359,7 +359,7 @@ func _construct_spells(value: Variant) -> Variant:
 		result.append(spell)
 	return result
 
-func _construct_monsters(value: Variant) -> Variant:
+func decode_monsters(value: Variant) -> Variant:
 	if not value is Array:
 		_reject("Content monsters must be an array.")
 		return null
@@ -422,7 +422,7 @@ func _construct_monsters(value: Variant) -> Variant:
 		result.append(monster)
 	return result
 
-func _construct_monster_sets(value: Variant) -> Variant:
+func decode_monster_sets(value: Variant) -> Variant:
 	if not value is Array:
 		_reject("Monster sets must be an array.")
 		return null
@@ -435,13 +435,13 @@ func _construct_monster_sets(value: Variant) -> Variant:
 		if set_id not in [-1, 1] or result.has(set_id) or not entry["name"] is String or entry["name"].is_empty():
 			_reject("Monster-set identity is invalid or duplicated.")
 			return null
-		var records: Variant = _construct_monsters(entry["monsters"])
+		var records: Variant = decode_monsters(entry["monsters"])
 		if records == null:
 			return null
 		result[set_id] = records
 	return result
 
-func _construct_battles(value: Variant) -> Variant:
+func decode_battles(value: Variant) -> Variant:
 	if not value is Array:
 		_reject("Content battles must be an array.")
 		return null
@@ -473,7 +473,7 @@ func _construct_battles(value: Variant) -> Variant:
 		result.append(BattleDefinition.new(record["id"], integers["classicId"], monster_slots, integers["distance"], integers["messageBeforeId"], integers["messageAfterId"], integers["macroId"]))
 	return result
 
-func _construct_treasures(value: Variant) -> Variant:
+func decode_treasures(value: Variant) -> Variant:
 	if not value is Array:
 		_reject("Content treasures must be an array.")
 		return null
@@ -494,7 +494,7 @@ func _construct_treasures(value: Variant) -> Variant:
 		result.append(TreasureDefinition.new(record["id"], integers["classicId"], item_ids_value, integers["experience"], integers["gold"], integers["gems"], integers["jewelry"]))
 	return result
 
-func _construct_shops(value: Variant) -> Variant:
+func decode_shops(value: Variant) -> Variant:
 	if not value is Array:
 		_reject("Content shops must be an array.")
 		return null
@@ -524,7 +524,7 @@ func _construct_shops(value: Variant) -> Variant:
 		result.append(ShopDefinition.new(record["id"], integers["classicId"], item_ids, quantities, integers["inflationPercent"], slots))
 	return result
 
-func _construct_simple_encounters(value: Variant) -> Variant:
+func decode_simple_encounters(value: Variant) -> Variant:
 	if not value is Array:
 		_reject("Simple Encounters must be an array.")
 		return null
@@ -550,7 +550,7 @@ func _construct_simple_encounters(value: Variant) -> Variant:
 		encounters.append(SimpleEncounterDefinition.new(encounter_id, _integer(record["promptMessageId"]), responses, record["canBackOut"], _integer(record["maxTimes"]), _integer(record["casteSuccess"])))
 	return encounters
 
-func _construct_complex_encounters(value: Variant) -> Variant:
+func decode_complex_encounters(value: Variant) -> Variant:
 	if not value is Array:
 		_reject("Complex Encounters must be an array.")
 		return null
@@ -591,7 +591,7 @@ func _construct_complex_encounters(value: Variant) -> Variant:
 		encounters.append(ComplexEncounterDefinition.new(scalars["id"], scalars["promptMessageId"], scalars["actionResult"], scalars["wordResult"], groups, spell_ids, spell_results, item_ids, item_results, record["canBackOut"], record["thief"], scalars["maxTimes"], scalars["casteSuccess"], scalars["thiefSuccess"], scalars["thiefFail"], texts_value))
 	return encounters
 
-func _construct_thief_encounters(value: Variant) -> Variant:
+func decode_thief_encounters(value: Variant) -> Variant:
 	if not value is Array:
 		_reject("Thief Encounters must be an array.")
 		return null
@@ -636,7 +636,7 @@ func _construct_thief_encounters(value: Variant) -> Variant:
 		encounters.append(ThiefEncounterDefinition.new(scalars["id"], type_flags_value, modifiers_value, success_codes_value, failure_codes_value, success_text_value, failure_text_value, success_sounds_value, failure_sounds_value, scalars["spellId"], scalars["lowDamage"], scalars["highDamage"], scalars["tumblers"], prompts_value, prompt_sounds_value))
 	return encounters
 
-func _construct_timed_encounters(value: Variant) -> Variant:
+func decode_timed_encounters(value: Variant) -> Variant:
 	if not value is Array:
 		_reject("Timed Encounters must be an array.")
 		return null
