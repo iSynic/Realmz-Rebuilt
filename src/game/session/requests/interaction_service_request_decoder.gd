@@ -1,6 +1,27 @@
 ## Strictly decodes lifecycle, service, and combat interaction request bodies.
-class_name InteractionRequestServiceDecoder
+class_name InteractionServiceRequestDecoder
 extends RefCounted
+
+
+static func parse(request_kind: StringName, payload: Dictionary) -> InteractionRequestBody:
+	match request_kind:
+		&"shop_action":
+			var shop := ShopRequestBody.new()
+			return shop if populate_shop(payload, shop) else null
+		&"temple_action":
+			var temple := TempleRequestBody.new()
+			return temple if populate_temple(payload, temple) else null
+		&"bank_action", &"pooled_wealth_departure":
+			var bank := BankRequestBody.new()
+			var departure := request_kind == &"pooled_wealth_departure"
+			return bank if populate_bank(payload, departure, bank) else null
+		&"combat_action":
+			var combat := CombatRequestBody.new()
+			return combat if populate_combat(payload, combat) else null
+		&"session_lifecycle":
+			var lifecycle := LifecycleRequestBody.new()
+			return lifecycle if populate_lifecycle(payload, lifecycle) else null
+	return null
 
 
 static func populate_lifecycle(payload: Dictionary, result: Variant) -> bool:

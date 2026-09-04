@@ -8,6 +8,7 @@ Own the feature-level typed payloads carried by `InteractionRequest`.
 
 - Detached request bodies and their exact `to_data()` representation.
 - Request-specific equality helpers used by restore validation.
+- Dialog, selection, thief, service/combat, and reward top-level request decoders.
 - Shared, service, combat, reward, and selection nested-value decoders plus their common wire-shape predicates.
 
 ## Local Contracts
@@ -22,7 +23,7 @@ Own the feature-level typed payloads carried by `InteractionRequest`.
 ## Work Guidance
 
 - Move one coherent request family with its production callers and tests.
-- Keep the central request class limited to kind registration, construction, and codec dispatch.
+- Keep the central request class limited to kind registration, construction, and codec dispatch; each feature decoder admits only its registered stable kinds.
 
 ## Verification
 

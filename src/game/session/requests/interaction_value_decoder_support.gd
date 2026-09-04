@@ -43,6 +43,27 @@ static func optional_int(data: Dictionary, field: String) -> bool:
 	return not data.has(field) or whole(data[field])
 
 
+static func optional_strings(data: Dictionary, fields: Array) -> bool:
+	for field: Variant in fields:
+		if not optional_string(data, field):
+			return false
+	return true
+
+
+static func optional_ints(data: Dictionary, fields: Array) -> bool:
+	for field: Variant in fields:
+		if not optional_int(data, field):
+			return false
+	return true
+
+
+static func optional_bools(data: Dictionary, fields: Array) -> bool:
+	for field: Variant in fields:
+		if data.has(field) and not data[field] is bool:
+			return false
+	return true
+
+
 static func optional_resource_key(data: Dictionary) -> bool:
 	if data.has("iconResourceType") != data.has("iconId"):
 		return false
