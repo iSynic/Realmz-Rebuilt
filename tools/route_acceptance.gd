@@ -138,7 +138,7 @@ func _run_step(step_definition: Dictionary) -> void:
 	_session._state.party.map_id = trigger.map_id
 	_session._state.party.coordinate = trigger.coordinate
 	_session._state.world.mark_visited(trigger.map_id, trigger.coordinate)
-	var continuation_body := SessionContinuation.ExplorationBody.new()
+	var continuation_body := ExplorationContinuationBody.new()
 	continuation_body.map_id = trigger.map_id
 	continuation_body.coordinate = trigger.coordinate
 	continuation_body.trigger_ids = [trigger.id]
@@ -147,7 +147,7 @@ func _run_step(step_definition: Dictionary) -> void:
 	continuation_body.random_region_index = -1
 	continuation_body.random_battle_stage = &""
 	continuation_body.action_point_destination_depth = 0
-	_session._session_continuation = SessionContinuation.post_move(continuation_body)
+	_session._session_continuation = ExplorationContinuations.post_move(continuation_body)
 	if _session._session_continuation == null:
 		_fail("%s could not construct its typed post-move continuation" % step_id)
 		_stage(step_id, failure_count)

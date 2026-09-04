@@ -4,6 +4,8 @@
 
 `EconomyIntents.money` and `EconomyIntents.service` are the player-command entry points. Their typed payloads carry only the selected operation, character, denomination, service, and amount; affordability and mutation remain in the owning workflow and rules.
 
+`ServiceContinuations` owns the resumable service and pooled-wealth departure handoffs. `ServiceContinuationBody` carries only the active service continuation or the exact departure stage and direction; the shared saved envelope does not implement economy behavior.
+
 Presentation renders detached prices, balances, load, and availability; it never recalculates affordability. The public regression owner is `tests/integration/test_money_workflow.gd`. Stable service layout belongs in the Services, Shop, Temple, and Bank scenes, with scripts limited to binding the supplied records.
 
 Scenario rewards enter through `ClassicRewardOperations`. Follow terminal combat settlement and recovered fumbles into `ClassicBattleRewardBuilder`; follow Treasure assignment, Detect/Identify, level gains, and spell learning into `ClassicRewardWorkflow`. Their shared rollback and battle-message policy lives in `ClassicRewardOperationsSupport`. Reward behavior is characterized by `tests/scenario/test_reward_workflow.gd` and persistence coverage in `tests/integration/test_session_persistence.gd`.

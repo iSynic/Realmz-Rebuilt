@@ -379,9 +379,9 @@ func _test_combat_and_reward_persistence(content: RealmzContent) -> void:
 		# boundaries were removed. Continue must heal it into the next real stage.
 		var stale_ally_request := InteractionRequest.from_payload("fixture.stale-empty-ally", InteractionRequest.ALLY_SELECTION, {"prompt": "Choose the allies who will continue with the party.", "candidates": [], "maximum": 4, "selectedIds": [], "requiredIds": []})
 		fumble_session._context.session_interaction = stale_ally_request
-		var combat_body := SessionContinuation.CombatBody.new()
+		var combat_body := CombatContinuationBody.new()
 		combat_body.battle_id = fumble_session._context.state.combat.battle_id
-		fumble_session._context.session_continuation = SessionContinuation.combat_state(&"combat-ally-selection", combat_body)
+		fumble_session._context.session_continuation = CombatContinuations.ally_selection(combat_body)
 		var recovery_step := fumble_session.respond(InteractionResponse.from_data(stale_ally_request.request_id, stale_ally_request.kind, {"selectedIds": []}))
 		assert_equal(recovery_step.state, SessionStep.State.WAITING_FOR_INTERACTION, "retreat opens one typed treasure boundary containing the fumbled weapon")
 		assert_false(recovery_step.events.any(func(event: DomainEvent) -> bool: return event.kind == &"allies_selected"), "a stale empty body-count stage is bypassed rather than manufactured")

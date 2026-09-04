@@ -7,7 +7,7 @@ Own the pure transaction coordinator that joins Realmz game state and rules to t
 ## Ownership
 
 - `GameSession` public operations, transaction checkpoints, exact-once commit, request identity, revision, and aggregate lifetime.
-- `SessionSnapshot`, `SessionContinuation`, and the separate battle-return continuation that include game state, RNG, scenario VM/action state, and pending typed interactions.
+- `SessionSnapshot`, the small `SessionContinuation` envelope, and the separate battle-return continuation that include game state, RNG, scenario VM/action state, and pending typed interactions. Feature-owned payloads, factories, and strict decoding live under `continuations/`.
 - `SessionRestoreValidator` is the restore transaction entry point and validates session continuations. `SessionRestoreStateValidator` validates detached game truth, and `SessionScenarioRestoreValidator` validates pending VM workflows. Together they construct one detached typed restore candidate; `GameSession.restore` alone commits it to the live aggregate, so every failed validation leaves the current session untouched.
 - `SessionInteractionFactory` is the single owner of session-level request reconstruction shared by live orchestration and restore validation.
 - Session workflow contexts and services for lifecycle, exploration, inventory/magic/services, combat/rewards, application hooks, and detached view projection.
@@ -56,4 +56,5 @@ Own the pure transaction coordinator that joins Realmz game state and rules to t
 
 ## Child DOX Index
 
+- `continuations/AGENTS.md` owns typed resumable transaction payloads, feature factories, and their strict saved codec.
 - `workflows/AGENTS.md` owns the domain workflow and detached projection contracts.

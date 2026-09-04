@@ -464,7 +464,7 @@ static func sound_event(sound_id: int, source: String) -> DomainEvent:
 
 static func post_time_continuation(context: SessionWorkflowContext, map: MapDefinition, resume_kind: StringName, direction: Vector2i = Vector2i.ZERO, check_random: bool = true, timed_day: int = 0, timed_coordinate: Vector2i = Vector2i(-1, -1)) -> SessionContinuation:
 	var cell := map.topology.cell_at(context.state.party.coordinate)
-	var exploration := SessionContinuation.ExplorationBody.new()
+	var exploration := ExplorationContinuationBody.new()
 	exploration.map_id = map.id
 	exploration.coordinate = context.state.party.coordinate
 	exploration.timed_day = timed_day
@@ -481,12 +481,12 @@ static func post_time_continuation(context: SessionWorkflowContext, map: MapDefi
 	exploration.random_battle_stage = &""
 	exploration.resume_kind = resume_kind
 	exploration.direction = direction
-	return SessionContinuation.post_clock(exploration)
+	return ExplorationContinuations.post_clock(exploration)
 
 
 static func post_move_continuation(context: SessionWorkflowContext, map: MapDefinition, coordinate: Vector2i, destination_depth: int = 0) -> SessionContinuation:
 	var cell := map.topology.cell_at(coordinate)
-	var exploration := SessionContinuation.ExplorationBody.new()
+	var exploration := ExplorationContinuationBody.new()
 	exploration.map_id = map.id
 	exploration.coordinate = coordinate
 	exploration.trigger_ids.assign(selected_placed_trigger_ids(context.content, cell, context.state.world))
@@ -499,7 +499,7 @@ static func post_move_continuation(context: SessionWorkflowContext, map: MapDefi
 	exploration.active_random_region_id = ""
 	exploration.random_battle_stage = &""
 	exploration.action_point_destination_depth = destination_depth
-	return SessionContinuation.post_move(exploration)
+	return ExplorationContinuations.post_move(exploration)
 
 
 static func rebase_post_time_location(context: SessionWorkflowContext, continuation: SessionContinuation) -> bool:
@@ -519,14 +519,14 @@ static func rebase_post_time_location(context: SessionWorkflowContext, continuat
 	return true
 
 
-static func apply_pending_midnight_recovery(context: SessionWorkflowContext, exploration: SessionContinuation.ExplorationBody, events: Array[DomainEvent]) -> void:
+static func apply_pending_midnight_recovery(context: SessionWorkflowContext, exploration: ExplorationContinuationBody, events: Array[DomainEvent]) -> void:
 	if exploration == null or not exploration.midnight_recovery_pending:
 		return
 	exploration.midnight_recovery_pending = false
 	events.append_array(context.rules.clock.restore_half_day_health(context.state.party, context.content))
 
 
-static func timed_encounter_requirements_met(context: SessionWorkflowContext, encounter: TimedEncounterDefinition, map: MapDefinition, exploration: SessionContinuation.ExplorationBody) -> bool:
+static func timed_encounter_requirements_met(context: SessionWorkflowContext, encounter: TimedEncounterDefinition, map: MapDefinition, exploration: ExplorationContinuationBody) -> bool:
 	if encounter.required_item_id > 0 and not party_has_classic_item(context, encounter.required_item_id):
 		return false
 	if encounter.required_quest_id > -1 and not context.state.scenario_progress.quest_is_set(encounter.required_quest_id):

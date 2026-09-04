@@ -6,6 +6,8 @@
 
 Player battle input begins at `CombatIntents`: `choose_action`, `move`, and `set_auto` construct the stable command kinds with `CombatIntentPayloads.Action`, `Move`, and `Auto`. They carry player choice only; action admission and mutation remain in the combat collaborators below.
 
+Battle confirmation, friendly collision, death macro, ally selection, fumble recovery, and reward handoffs are created by `CombatContinuations`. `CombatContinuationBody` and `CombatRewardContinuationBody` retain only the facts needed to resume; `SessionContinuationCodec` preserves their established save representation.
+
 Automated decisions enter through the deliberately small `CombatAiScoring` facade. Follow party Auto choices into `CombatPartyActionPlanner`, monster choices and spell plans into `CombatMonsterActionPlanner`, shared deterministic weighting into `CombatAiScoringSupport`, and read-only health, allegiance, immunity, and reflection questions into `CombatAiTargetFacts`. These planners consume the session RNG supplied by the combat transaction; they do not own randomness or presentation state.
 
 After a category is selected, `CombatFlowAutomation` routes it to `CombatPartyAutomation` for party Auto or `CombatMonsterAutomation` for monster phases and charmed turns. `CombatOccupancyRules` is the one owner for hostility queries and defeated-actor battlefield cleanup. This keeps choice policy separate from the commands that mutate battle state.

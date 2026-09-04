@@ -68,7 +68,7 @@ input -> feature intent factory -> PlayerIntent -> GameSession -> coordinator/wo
       -> committed SessionStep -> GameView -> screen/controller/renderer
 ```
 
-When a true decision is required, the session returns a serializable `InteractionRequest`. UI components display only its supplied options and return a typed `InteractionResponse`; the issuing workflow resumes exactly where it yielded. This is why a save can safely be made during a question, target picker, encounter, or other supported continuation.
+When a true decision is required, the session returns a serializable `InteractionRequest`. UI components display only its supplied options and return a typed `InteractionResponse`; the issuing workflow resumes through a feature-named payload under `src/playthrough/continuations`. `SessionContinuation` is only the stable saved envelope, while `SessionContinuationCodec` rejects unknown or mismatched payloads before restore. This is why a save can safely be made during a question, target picker, encounter, or other supported continuation.
 
 ## Session boundary
 
@@ -115,7 +115,7 @@ Every gameplay draw uses `RealmzRng`. It owns the QuickDraw `randSeed = randSeed
 
 The application uses one scene-backed `GameShell` and `ScreenNavigator` while the session protocol above remains unchanged. Open `src/ui/game_shell.tscn` to see the persistent menu, map/picture stage, six-character roster, narrative/status well, and contextual command regions. Route scenes live in `src/ui/screens`; stable panels belong in those `.tscn` files, while their controllers bind detached data and create only genuinely variable rows or records.
 
-The scenes under `src/ui/screens` are the migration anchors for editor-authored workspaces. Some already expose stable regions, but Inventory, Character, Allies, Bestiary, Maps/Notes, Money and services, Spells, System, and Character Files still vary in how much of their runtime hierarchy is visible in the editor. The active overhaul moves every stable panel, split, tab, heading, button rail, inspector, and empty state into those scenes and leaves controllers to bind detached data. Exploration and Combat are shell modes; their temporary one-node marker files will disappear when typed routing distinguishes a shell mode from a mounted workspace.
+The scenes under `src/ui/screens` expose the complete stable hierarchy for Inventory, Character, Allies, Bestiary, Maps/Notes, Money and services, Spells, System, and Character Files. Open the Realmz Builder dock to bind the same production controllers to Wide, Compact, Empty, Long Content, Unavailable, or Error preview data without saving preview children into the scene. Exploration and Combat are typed modes of the persistent shell rather than misleading one-node workspace scenes.
 
 The persistent shell follows the same rule at a larger scale. `game_shell.tscn` owns the visible stage, roster, narrative well, and command regions; `GameShell` coordinates them; `GameShellMenuController` owns menu population and dispatch; and `GameShellCommandController` owns contextual command availability and held-button presentation. None of those classes decides whether a command is legal in Realmz—the detached view reports that fact, and `GameSession` remains the mutation boundary.
 

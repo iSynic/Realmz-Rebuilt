@@ -103,12 +103,12 @@ static func begin_field_scroll(context: SessionWorkflowContext, payload: SpellIn
 	if not slot_probe.allowed:
 		return MagicTransitionResult.failed(&"scroll_unavailable", slot_probe.reason)
 	if not spell.in_camp:
-		var discard := SessionContinuation.TargetingBody.new()
+		var discard := TargetingContinuationBody.new()
 		discard.character_id = character.id
 		discard.scroll_slot = payload.scroll_slot
 		discard.spell_id = spell.id
 		discard.power = scroll.power
-		var continuation := SessionContinuation.targeting_selection(&"scroll-discard-confirmation", discard)
+		var continuation := MagicContinuations.scroll_discard(discard)
 		var interaction := scroll_discard_request("session.scroll-discard:%s:%d:%d" % [character.id, payload.scroll_slot, request_revision], spell.name)
 		return MagicTransitionResult.waiting(continuation, interaction, [DomainEvent.new(&"scroll_discard_requested", {"characterId": character.id, "slot": payload.scroll_slot, "spellId": spell.id, "power": scroll.power, "source": "classic"})])
 	var probe := scroll_use_probe(context, character, payload.scroll_slot, spell)
@@ -120,18 +120,18 @@ static func begin_field_scroll(context: SessionWorkflowContext, payload: SpellIn
 		return MagicTransitionResult.committed(commit_field_scroll(context, character.id, payload.scroll_slot, spell.id, scroll.power, target_ids), true)
 	if not target_ids.is_empty():
 		return MagicTransitionResult.failed(&"invalid_scroll_target", "The scroll requires exactly %d valid party target%s." % [required_count, "" if required_count == 1 else "s"])
-	var targeting := SessionContinuation.TargetingBody.new()
+	var targeting := TargetingContinuationBody.new()
 	targeting.character_id = character.id
 	targeting.scroll_slot = payload.scroll_slot
 	targeting.spell_id = spell.id
 	targeting.power = scroll.power
 	targeting.target_count = required_count
-	var continuation := SessionContinuation.targeting_selection(&"scroll-target-selection", targeting)
+	var continuation := MagicContinuations.scroll_target(targeting)
 	var interaction := FieldMagicTargetRequestBuilder.scroll_target_request("session.scroll:%s:%d:%d" % [character.id, payload.scroll_slot, request_revision], character, payload.scroll_slot, spell, scroll.power, required_count, context.state.party.characters())
 	return MagicTransitionResult.waiting(continuation, interaction, [DomainEvent.new(&"scroll_target_requested", {"characterId": character.id, "slot": payload.scroll_slot, "spellId": spell.id, "power": scroll.power, "targetCount": required_count, "source": "classic"})])
 
 
-static func discard_field_scroll(context: SessionWorkflowContext, targeting: SessionContinuation.TargetingBody, accepted: bool) -> SessionWorkflowResult:
+static func discard_field_scroll(context: SessionWorkflowContext, targeting: TargetingContinuationBody, accepted: bool) -> SessionWorkflowResult:
 	if targeting == null:
 		return SessionWorkflowResult.failed(&"invalid_session_continuation", "The scroll awaiting discard confirmation is unavailable.")
 	var character := context.state.party.character_by_id(targeting.character_id)
@@ -151,7 +151,7 @@ static func scroll_discard_request(request_id: String, spell_name: String) -> In
 	return InteractionRequest.yes_no(request_id, "%s cannot be cast outside battle. Discard this scroll?" % spell_name, "Discard", "Keep")
 
 
-static func resume_field_scroll(context: SessionWorkflowContext, targeting: SessionContinuation.TargetingBody, target_ids: Array[String]) -> MagicTransitionResult:
+static func resume_field_scroll(context: SessionWorkflowContext, targeting: TargetingContinuationBody, target_ids: Array[String]) -> MagicTransitionResult:
 	if targeting == null:
 		return MagicTransitionResult.failed(&"invalid_session_continuation", "The scroll target continuation is unavailable.")
 	if target_ids.size() != targeting.target_count:
@@ -248,18 +248,18 @@ static func begin_field_spell(context: SessionWorkflowContext, payload: SpellInt
 		return MagicTransitionResult.committed(commit_field_spell(context, character.id, spell.id, payload.power, target_ids), true)
 	if not target_ids.is_empty():
 		return MagicTransitionResult.failed(&"invalid_field_spell_target", "The spell requires exactly %d valid party target%s." % [required_count, "" if required_count == 1 else "s"])
-	var targeting := SessionContinuation.TargetingBody.new()
+	var targeting := TargetingContinuationBody.new()
 	targeting.character_id = character.id
 	targeting.spell_id = spell.id
 	targeting.power = payload.power
 	targeting.target_count = required_count
 	targeting.starting_spell_points = character.spell_points
-	var continuation := SessionContinuation.targeting_selection(&"field-spell-target-selection", targeting)
+	var continuation := MagicContinuations.field_spell_target(targeting)
 	var interaction := FieldMagicTargetRequestBuilder.spell_target_request("session.field-spell:%s:%d" % [spell.id, request_revision], character, spell, payload.power, required_count, context.state.party.characters())
 	return MagicTransitionResult.waiting(continuation, interaction, [DomainEvent.new(&"field_spell_target_requested", {"characterId": character.id, "spellId": spell.id, "power": payload.power, "targetCount": required_count, "source": "classic"})])
 
 
-static func resume_field_spell(context: SessionWorkflowContext, targeting: SessionContinuation.TargetingBody, target_ids: Array[String]) -> MagicTransitionResult:
+static func resume_field_spell(context: SessionWorkflowContext, targeting: TargetingContinuationBody, target_ids: Array[String]) -> MagicTransitionResult:
 	if targeting == null:
 		return MagicTransitionResult.failed(&"invalid_session_continuation", "The field-spell target continuation is unavailable.")
 	if target_ids.size() != targeting.target_count:

@@ -31,6 +31,7 @@ func run() -> void:
 
 
 func _test_scenario_wire_contracts() -> void:
+	_test_session_continuation_contracts()
 	var branch := ScenarioVmDirective.branch_program_at("xap:7", true, ScenarioExecutionContext.trigger(&"", "ap.fixture"), 3); var restored := ScenarioVmDirective.from_data(JSON.parse_string(JSON.stringify(branch.to_data())))
 	assert_not_null(restored, "VM directive round-trips through its typed wire contract"); assert_equal([restored.kind, restored.program_id, restored.gosub, restored.entry_cursor, restored.context.to_data()], [ScenarioVmDirective.BRANCH_PROGRAM, "xap:7", true, 3, {"triggerId": "ap.fixture"}], "VM directive preserves branch cursor and trigger state")
 	var encounter_context := ScenarioExecutionContext.encounter(&"complex", 2, "", -1, &"choice", 0).set_encounter_attempt(3); var encounter_branch := ScenarioVmDirective.branch_encounter_result("complex:2:result:0", false, encounter_context, true); var restored_encounter_branch := ScenarioVmDirective.from_data(JSON.parse_string(JSON.stringify(encounter_branch.to_data()))); var enter_encounter := ScenarioVmDirective.from_data(JSON.parse_string(JSON.stringify(ScenarioVmDirective.enter_encounter(&"simple", 7, true).to_data()))); assert_equal([restored_encounter_branch.kind, restored_encounter_branch.repeat_encounter, restored_encounter_branch.context.value("encounterAttempt"), ScenarioVmDirective.from_data(ScenarioVmDirective.finish_timeline().to_data()).kind, ScenarioVmDirective.from_data(ScenarioVmDirective.resume_after_encounter().to_data()).kind, enter_encounter.kind, enter_encounter.encounter_kind, enter_encounter.target_id, enter_encounter.gosub], [ScenarioVmDirective.BRANCH_ENCOUNTER_RESULT, true, 3, ScenarioVmDirective.FINISH_TIMELINE, ScenarioVmDirective.RESUME_AFTER_ENCOUNTER, ScenarioVmDirective.ENTER_ENCOUNTER, &"simple", 7, true], "VM directives preserve encounter repetition, selected encounter entry, signed GOSUB, and both source-backed exits")
@@ -45,7 +46,7 @@ func _test_scenario_wire_contracts() -> void:
 	assert_equal(JSON.parse_string(JSON.stringify(restored_context.to_data())), context_wire, "execution context preserves sparse declared fields")
 	var unknown_context := context_wire.duplicate(true); unknown_context["unexpected"] = true
 	assert_equal(ScenarioExecutionContext.from_data(unknown_context), null, "execution context rejects unknown fields")
-	var caller := ScenarioBattleCaller.classic(2, false, 0, 0); var handoff := ScenarioRuntimeHandoff.party_defeat("classic.battle.0", ScenarioRuntimeHandoff.CLASSIC_COMBAT, caller); var body := SessionContinuation.CombatBody.new(); body.battle_id = "classic.battle.0"; body.actor_id = "character.1"; body.mode = &"explicit"; body.destination = Vector2i(-100_000, -100_000); var collision_body := SessionContinuation.CombatBody.new(); collision_body.battle_id = body.battle_id; collision_body.actor_id = body.actor_id; collision_body.mode = &"friendly"; collision_body.destination = Vector2i(46, 45)
+	var caller := ScenarioBattleCaller.classic(2, false, 0, 0); var handoff := ScenarioRuntimeHandoff.party_defeat("classic.battle.0", ScenarioRuntimeHandoff.CLASSIC_COMBAT, caller); var body := CombatContinuationBody.new(); body.battle_id = "classic.battle.0"; body.actor_id = "character.1"; body.mode = &"explicit"; body.destination = Vector2i(-100_000, -100_000); var collision_body := CombatContinuationBody.new(); collision_body.battle_id = body.battle_id; collision_body.actor_id = body.actor_id; collision_body.mode = &"friendly"; collision_body.destination = Vector2i(46, 45)
 	var contracts: Array[Dictionary] = [
 		{"name": "battle caller", "value": caller, "decode": ScenarioBattleCaller.from_data},
 		{"name": "encounter continuation", "value": ScenarioRuntimeContinuation.encounter(ScenarioRuntimeContinuation.CLASSIC_SIMPLE_ENCOUNTER, 0, false, [0]), "decode": ScenarioRuntimeContinuation.from_data},
@@ -53,7 +54,7 @@ func _test_scenario_wire_contracts() -> void:
 		{"name": "VM pending continuation", "value": ScenarioVmPendingContinuation.classic(ScenarioRuntimeContinuation.encounter(ScenarioRuntimeContinuation.CLASSIC_SIMPLE_ENCOUNTER, 0, false, [0])), "decode": ScenarioVmPendingContinuation.from_data},
 		{"name": "runtime handoff", "value": handoff, "decode": ScenarioRuntimeHandoff.from_data},
 		{"name": "VM handoff", "value": ScenarioVmHandoff.classic(handoff), "decode": ScenarioVmHandoff.from_data},
-		{"name": "session retreat", "value": SessionContinuation.combat_state(&"combat-retreat-confirmation", body), "decode": SessionContinuation.from_data}, {"name": "session friendly collision", "value": SessionContinuation.combat_state(&"combat-friendly-collision", collision_body), "decode": SessionContinuation.from_data},
+		{"name": "session retreat", "value": CombatContinuations.retreat_confirmation(body), "decode": SessionContinuation.from_data}, {"name": "session friendly collision", "value": CombatContinuations.friendly_collision(collision_body), "decode": SessionContinuation.from_data},
 	]
 	for contract: Dictionary in contracts:
 		var wire: Dictionary = JSON.parse_string(JSON.stringify(contract.value.to_data())); var decoded: Variant = contract.decode.call(wire)
@@ -65,6 +66,66 @@ func _test_scenario_wire_contracts() -> void:
 	assert_equal((combat_response.body as InteractionResponse.CombatBody).target_coordinates, [Vector2i(44, 46), Vector2i(43, 46)], "typed combat responses preserve ordered summon-space coordinates"); var ambiguous_combat: Dictionary = combat_wire.duplicate(true); ambiguous_combat["targetIds"] = ["monster.0"]; assert_equal(InteractionResponse.from_data("combat.ambiguous", InteractionRequest.COMBAT, ambiguous_combat).body, null, "typed combat responses reject mixed actor and coordinate target sequences")
 	var snapshot := ScenarioVmSnapshot.new().to_data(); snapshot["unexpected"] = true
 	assert_equal(ScenarioVmSnapshot.from_data(snapshot), null, "VM snapshots reject unknown fields")
+
+
+func _test_session_continuation_contracts() -> void:
+	var post_clock := ExplorationContinuationBody.new()
+	post_clock.map_id = "land:0"; post_clock.coordinate = Vector2i(12, 34); post_clock.timed_day = 2; post_clock.timed_check_coordinate = Vector2i(-1, -1); post_clock.random_region_index = -1; post_clock.resume_kind = &"completed"
+	var post_move := ExplorationContinuationBody.new()
+	post_move.map_id = "land:0"; post_move.coordinate = Vector2i(13, 34); post_move.trigger_index = 0; post_move.random_region_index = -1
+	var boat := BoatContinuationBody.new()
+	boat.action = &"board"; boat.source_map_id = "land:0"; boat.source_coordinate = Vector2i(12, 34); boat.target_map_id = "land:0"; boat.target_coordinate = Vector2i(13, 34); boat.direction = Vector2i.RIGHT
+	var application := ApplicationContinuationBody.new()
+	application.hook = ScenarioApplicationHooks.START_GAME; application.program_id = "xap:1"; application.resume_kind = &"begin-adventure"
+	var item_target := TargetingContinuationBody.new()
+	item_target.character_id = "character.1"; item_target.instance_id = "item.1"; item_target.spell_id = "classic.spell.1"; item_target.power = 1; item_target.target_count = 1; item_target.starting_charges = 2
+	var spell_target := TargetingContinuationBody.new()
+	spell_target.character_id = "character.1"; spell_target.spell_id = "classic.spell.1"; spell_target.power = 1; spell_target.target_count = 1; spell_target.starting_spell_points = 10
+	var scroll_target := TargetingContinuationBody.new()
+	scroll_target.character_id = "character.1"; scroll_target.spell_id = "classic.spell.1"; scroll_target.power = 1; scroll_target.target_count = 1; scroll_target.scroll_slot = 0
+	var scroll_discard := TargetingContinuationBody.new()
+	scroll_discard.character_id = "character.1"; scroll_discard.spell_id = "classic.spell.1"; scroll_discard.power = 1; scroll_discard.scroll_slot = 0
+	var drop_item := TargetingContinuationBody.new()
+	drop_item.character_id = "character.1"; drop_item.instance_id = "item.1"
+	var item_xap := ItemXapContinuationBody.new()
+	item_xap.character_id = "character.1"; item_xap.instance_id = "item.1"; item_xap.item_id = "classic.item.1"; item_xap.program_id = "xap:1"
+	var age_update := AgeUpdateRequestBody.new()
+	age_update.character_id = "character.1"; age_update.character_name = "Ari"; age_update.portrait_id = "portrait.1"; age_update.combat_icon_id = "icon.1"; age_update.race_id = "race.1"; age_update.race_name = "Human"; age_update.age_group_name = "Adult"; age_update.age_minimum_years = 18; age_update.age_maximum_years = 60; age_update.transition = 1; age_update.applied_age_group = 1; age_update.prompt = "Ari grows older."; age_update.presentation = &"classic-textbox"; age_update.sound_id = 1; age_update.source = &"test"
+	var age := AgeContinuationBody.new()
+	age.updates.append(age_update); age.index = 1; age.resume_kind = &"completed"
+	var retreat := _session_combat_body("classic.battle.1")
+	retreat.actor_id = "character.1"; retreat.mode = &"explicit"; retreat.destination = Vector2i(-100_000, -100_000)
+	var collision := _session_combat_body("classic.battle.1")
+	collision.actor_id = "character.1"; collision.mode = &"friendly"; collision.destination = Vector2i(4, 5)
+	var death_macro := _session_combat_body("classic.battle.1")
+	death_macro.combatant_id = "monster.1"; death_macro.program_id = "xap:2"
+	var reward_state := ClassicRewardState.new(&"battle", "classic.battle.1", 0, WealthState.new())
+	reward_state.battle_stage = ClassicRewardState.ORDINARY_BATTLE_STAGE
+	var reward_runtime := ScenarioRuntimeContinuation.reward(reward_state)
+	var continuations: Array[SessionContinuation] = [
+		ExplorationContinuations.post_clock(post_clock), ExplorationContinuations.post_move(post_move), ExplorationContinuations.boat_choice(boat), ApplicationContinuations.hook(application),
+		ApplicationContinuations.character_spell_confirmation("character.1", 3), ApplicationContinuations.character_vault_publication("character.1"),
+		InventoryContinuations.item_target(item_target), MagicContinuations.field_spell_target(spell_target), MagicContinuations.scroll_target(scroll_target), MagicContinuations.scroll_discard(scroll_discard), InventoryContinuations.drop_confirmation(drop_item),
+		InventoryContinuations.item_xap(item_xap), ServiceContinuations.interaction("bank.1", ScenarioRuntimeContinuation.banking()), ServiceContinuations.pooled_wealth_departure(&"warning", Vector2i.RIGHT), ApplicationContinuations.age_updates(age),
+		CombatContinuations.retreat_confirmation(retreat), CombatContinuations.friendly_collision(collision), CombatContinuations.death_macro(death_macro), CombatContinuations.ally_selection(_session_combat_body("classic.battle.1")), CombatContinuations.fumble_recovery(_session_combat_body("classic.battle.1")), CombatContinuations.reward("classic.battle.1", reward_runtime),
+	]
+	var kinds: Dictionary = {}
+	for continuation: SessionContinuation in continuations:
+		var wire: Dictionary = JSON.parse_string(JSON.stringify(continuation.to_data()))
+		var restored := SessionContinuation.from_data(wire)
+		assert_not_null(restored, "%s continuation round-trips" % continuation.kind)
+		assert_equal(JSON.parse_string(JSON.stringify(restored.to_data())), wire, "%s continuation preserves its exact wire payload" % continuation.kind)
+		kinds[continuation.kind] = true
+		var unknown_data := wire.duplicate(true); unknown_data["data"]["unexpected"] = true
+		assert_equal(SessionContinuation.from_data(unknown_data), null, "%s continuation rejects unknown payload fields" % continuation.kind)
+	assert_equal([continuations.size(), kinds.size()], [21, 21], "the continuation contract covers every stable kind exactly once")
+	assert_equal(SessionContinuation.from_data(SessionContinuation.new(&"post-clock", retreat).to_data()), null, "continuation decoding rejects a mismatched payload family")
+
+
+func _session_combat_body(battle_id: String) -> CombatContinuationBody:
+	var body := CombatContinuationBody.new()
+	body.battle_id = battle_id
+	return body
 
 
 func _test_public_interaction_matrix(content: RealmzContent) -> void:

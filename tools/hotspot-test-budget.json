@@ -10,8 +10,8 @@
     "productionFileLines": 800,
     "functionLines": 100,
     "testSuiteLines": 1200,
-    "currentTestLines": 8786,
-    "finalTestLines": 8786,
+    "currentTestLines": 8843,
+    "finalTestLines": 8843,
     "testToProductionPercent": 20.0
   },
   "productionGrandfather": [],

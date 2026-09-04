@@ -272,7 +272,7 @@ func begin_runtime_service(service_id: String, operation: ScenarioRuntimeOperati
 		return _context.failed(operation.error_code, operation.error_message, operation.events)
 	if operation.state != ScenarioRuntimeOperationResult.State.WAITING or operation.interaction == null:
 		return _context.failed(&"service_failed", "The selected service did not produce its required interaction.", operation.events)
-	_context.set_continuation(SessionContinuation.service_interaction(service_id, operation.continuation))
+	_context.set_continuation(ServiceContinuations.interaction(service_id, operation.continuation))
 	_context.session_interaction = operation.interaction
 	return _context.waiting(_context.session_interaction, operation.events)
 
@@ -396,13 +396,13 @@ func finish_with_age_updates(events: Array[DomainEvent], resume_kind: StringName
 		if resume_kind == &"combat-monster-turns":
 			return _continue_after_session_combat_age_update(events)
 		return _context.completed(events)
-	var age = SessionContinuation.AgeBody.new()
+	var age = AgeContinuationBody.new()
 	for update: AgeUpdateRequestBody in updates:
 		age.updates.append(InteractionRequest.age_update_body("session.age-copy", update).body as AgeUpdateRequestBody)
 	age.index = 1
 	age.resume_kind = resume_kind
 	age.resume_continuation = null if resume_continuation == null else resume_continuation.copy()
-	_context.set_continuation(SessionContinuation.age_updates(age))
+	_context.set_continuation(ApplicationContinuations.age_updates(age))
 	_context.session_interaction = InteractionRequest.age_update_body(_session_age_update_request_id(updates[0], 0), updates[0])
 	events.append(CharacterAgingResult.sound_event_for_update(updates[0]))
 	return _context.waiting(_context.session_interaction, events)
@@ -554,7 +554,7 @@ func _commit_character_draft(events: Array[DomainEvent] = []) -> SessionCoordina
 		return _context.failed(result.error_code, result.error_message, events)
 	events.append_array(result.events)
 	var request_id := "character-vault:%s:%d" % [result.character_id, _context.next_revision()]
-	_context.set_continuation(SessionContinuation.character_vault_publication(result.character_id))
+	_context.set_continuation(ApplicationContinuations.character_vault_publication(result.character_id))
 	_context.session_interaction = SessionInteractionFactory.character_vault_confirmation(request_id, result.character_name)
 	events.append(DomainEvent.new(&"character_vault_confirmation_requested", {"characterId": result.character_id}))
 	return _context.waiting(_context.session_interaction, events)

@@ -466,7 +466,7 @@ func _begin_boat_choice(result: ExplorationTimeWorkflow.MovementTransitionResult
 	var movement := result.choice_movement
 	if movement == null or movement.source_map == null or movement.target_map == null or movement.topology_result == null or movement.topology_result.target_cell == null or result.choice_kind not in [&"board", &"disembark"]:
 		return _context.failed(&"invalid_boat_choice", "The Classic boat movement choice is unavailable.", result.events)
-	var body := SessionContinuation.BoatBody.new()
+	var body := BoatContinuationBody.new()
 	body.action = result.choice_kind
 	body.source_map_id = movement.source_map.id
 	body.source_coordinate = _context.state.party.coordinate
@@ -475,7 +475,7 @@ func _begin_boat_choice(result: ExplorationTimeWorkflow.MovementTransitionResult
 	body.direction = result.direction
 	if body.direction == Vector2i.ZERO:
 		return _context.failed(&"invalid_boat_choice", "The Classic boat movement direction is unavailable.", result.events)
-	_context.set_continuation(SessionContinuation.boat_choice(body))
+	_context.set_continuation(ExplorationContinuations.boat_choice(body))
 	var prompt := "Board this boat?" if body.action == &"board" else "Leave the boat here and go ashore?"
 	var yes_label := "Board" if body.action == &"board" else "Leave boat"
 	var no_label := "Stay ashore" if body.action == &"board" else "Remain aboard"

@@ -150,19 +150,19 @@ static func begin_field_spell_item(context: SessionWorkflowContext, actor_id: St
 		if not random_power_checkpoint.is_empty():
 			context.rng.rollback(random_power_checkpoint)
 		return MagicTransitionResult.failed(&"invalid_item_use_target", "The item requires exactly %d valid party target%s." % [required_count, "" if required_count == 1 else "s"])
-	var targeting := SessionContinuation.TargetingBody.new()
+	var targeting := TargetingContinuationBody.new()
 	targeting.character_id = character.id
 	targeting.instance_id = instance.id
 	targeting.spell_id = spell.id
 	targeting.power = power
 	targeting.target_count = required_count
 	targeting.starting_charges = instance.charges
-	var continuation := SessionContinuation.targeting_selection(&"item-use-target-selection", targeting)
+	var continuation := InventoryContinuations.item_target(targeting)
 	var interaction := FieldMagicTargetRequestBuilder.item_target_request("session.item-use:%s:%d" % [instance.id, request_revision], character, instance.id, item, spell, power, required_count, context.state.party.characters())
 	return MagicTransitionResult.waiting(continuation, interaction, [DomainEvent.new(&"item_target_requested", {"characterId": character.id, "instanceId": instance.id, "itemId": item.id, "spellId": spell.id, "power": power, "targetCount": required_count, "source": "classic"})])
 
 
-static func resume_field_spell_item(context: SessionWorkflowContext, targeting: SessionContinuation.TargetingBody, target_ids: Array[String]) -> MagicTransitionResult:
+static func resume_field_spell_item(context: SessionWorkflowContext, targeting: TargetingContinuationBody, target_ids: Array[String]) -> MagicTransitionResult:
 	if targeting == null:
 		return MagicTransitionResult.failed(&"invalid_session_continuation", "The item target continuation is unavailable.")
 	if target_ids.size() != targeting.target_count:

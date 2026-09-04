@@ -173,7 +173,7 @@ func _move(direction: Vector2i, aligns_dungeon_heading: bool) -> SessionCoordina
 		events.append(DomainEvent.new(&"pooled_wealth_banked_before_movement", {"wealth": banked, "direction": [direction.x, direction.y]}))
 		return _context.exploration().move_after_pooled_wealth(direction, events)
 	if not _context.state.bank_available and SessionInteractionFactory.has_pooled_wealth(_context.state.party):
-		_context.set_continuation(SessionContinuation.pooled_wealth_departure(&"warning", direction))
+		_context.set_continuation(ServiceContinuations.pooled_wealth_departure(&"warning", direction))
 		_context.session_interaction = SessionInteractionFactory.pooled_wealth_departure_warning("pooled-wealth-departure:%d" % _context.next_revision())
 		events.append(DomainEvent.new(&"pooled_wealth_departure_warning", {"wealth": _context.state.party.pooled_wealth.to_data(), "direction": [direction.x, direction.y]}))
 		events.append(DomainEvent.new(&"sound_requested", {"soundId": 20005, "waitForCompletion": false, "stopExisting": true, "source": "classic-pooled-wealth-departure-question"}))
@@ -224,10 +224,10 @@ func _request_drop_item(payload: InventoryIntentPayloads.Action) -> SessionCoord
 	var probe := _context.rules.inventory.classic_drop_probe(character, instance)
 	if not probe.allowed:
 		return _context.rejected(&"item_cannot_drop", probe.reason)
-	var targeting := SessionContinuation.TargetingBody.new()
+	var targeting := TargetingContinuationBody.new()
 	targeting.character_id = character.id
 	targeting.instance_id = instance.id
-	_context.set_continuation(SessionContinuation.targeting_selection(&"drop-item-confirmation", targeting))
+	_context.set_continuation(InventoryContinuations.drop_confirmation(targeting))
 	var display_name := definition.name if instance.identified else definition.unidentified_name
 	_context.session_interaction = SessionInteractionFactory.drop_item_confirmation("session.drop-item:%s:%d" % [instance.id, _context.next_revision()], display_name)
 	return _context.waiting(_context.session_interaction, [DomainEvent.new(&"item_drop_requested", {"characterId": character.id, "instanceId": instance.id})])
@@ -275,12 +275,12 @@ func _combat_move(payload: CombatIntentPayloads.Move) -> SessionCoordinatorResul
 func _request_retreat(actor_id: String, mode: StringName, destination: Vector2i) -> SessionCoordinatorResult:
 	if _context.state.combat == null or _context.state.combat.turns.active_actor_id() != actor_id:
 		return _context.rejected(&"invalid_combat_actor", "The active character cannot retreat.")
-	var combat := SessionContinuation.CombatBody.new()
+	var combat := CombatContinuationBody.new()
 	combat.battle_id = _context.state.combat.battle_id
 	combat.actor_id = actor_id
 	combat.mode = mode
 	combat.destination = destination
-	_context.set_continuation(SessionContinuation.combat_state(&"combat-retreat-confirmation", combat))
+	_context.set_continuation(CombatContinuations.retreat_confirmation(combat))
 	_context.session_interaction = SessionInteractionFactory.retreat_confirmation("session.combat-retreat:%d" % _context.next_revision())
 	return _context.waiting(_context.session_interaction, [])
 
@@ -289,12 +289,12 @@ func _request_friendly_collision(payload: CombatIntentPayloads.Move) -> SessionC
 	var target_id := _context.rules.combat_flow.reactions.friendly_collision_target_id(_context.state, payload.actor_id, payload.destination)
 	if target_id.is_empty():
 		return _context.rejected(&"invalid_friendly_collision", "The adjacent ally is no longer available.")
-	var collision := SessionContinuation.CombatBody.new()
+	var collision := CombatContinuationBody.new()
 	collision.battle_id = _context.state.combat.battle_id
 	collision.actor_id = payload.actor_id
 	collision.mode = &"friendly"
 	collision.destination = payload.destination
-	_context.set_continuation(SessionContinuation.combat_state(&"combat-friendly-collision", collision))
+	_context.set_continuation(CombatContinuations.friendly_collision(collision))
 	_context.session_interaction = SessionInteractionFactory.friendly_collision("session.combat-friendly-collision:%d" % _context.next_revision())
 	return _context.waiting(_context.session_interaction, [])
 
@@ -311,7 +311,7 @@ func _finalize_character() -> SessionCoordinatorResult:
 	if not result.ok:
 		return _context.failed(result.error_code, result.error_message, result.events)
 	if result.remaining_spell_points > 0:
-		_context.set_continuation(SessionContinuation.character_spell_confirmation(result.character_id, result.remaining_spell_points))
+		_context.set_continuation(ApplicationContinuations.character_spell_confirmation(result.character_id, result.remaining_spell_points))
 		_context.session_interaction = SessionInteractionFactory.character_spell_confirmation("character-spells:%s:%d" % [result.character_id, _context.next_revision()], result.remaining_spell_points)
 		return _context.waiting(_context.session_interaction, [DomainEvent.new(&"character_spell_confirmation_requested", {"characterId": result.character_id, "remaining": result.remaining_spell_points})])
 	return _commit_character_draft()
@@ -322,7 +322,7 @@ func _commit_character_draft(events: Array[DomainEvent] = []) -> SessionCoordina
 	if not result.ok:
 		return _context.failed(result.error_code, result.error_message, events)
 	events.append_array(result.events)
-	_context.set_continuation(SessionContinuation.character_vault_publication(result.character_id))
+	_context.set_continuation(ApplicationContinuations.character_vault_publication(result.character_id))
 	_context.session_interaction = SessionInteractionFactory.character_vault_confirmation("character-vault:%s:%d" % [result.character_id, _context.next_revision()], result.character_name)
 	events.append(DomainEvent.new(&"character_vault_confirmation_requested", {"characterId": result.character_id}))
 	return _context.waiting(_context.session_interaction, events)
