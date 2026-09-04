@@ -153,7 +153,7 @@ func finish_resumed_vm_result(result: ScenarioVmResult, events: Array[DomainEven
 
 func start_item_xap(character: CharacterState, instance: ItemInstance, item: ItemDefinition) -> SessionCoordinatorResult:
 	var in_combat := _context.state.combat != null and not _context.state.combat.completed
-	var probe := InventoryMagicServicesWorkflow.door_item_probe(_context.workflow_context(), character, instance, item, in_combat)
+	var probe := FieldItemWorkflow.door_item_probe(_context.workflow_context(), character, instance, item, in_combat)
 	if not probe.allowed:
 		return _context.failed(&"item_cannot_be_used", probe.reason)
 	var state_checkpoint := _context.state.to_data()

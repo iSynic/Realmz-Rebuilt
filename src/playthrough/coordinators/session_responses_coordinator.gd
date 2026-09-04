@@ -211,7 +211,7 @@ func _respond_item_use_target(response: InteractionResponse) -> SessionCoordinat
 	var saved_interaction = _context.session_interaction
 	_context.session_continuation.clear()
 	_context.session_interaction = null
-	var completed = _finish_magic_transition(InventoryMagicServicesWorkflow.resume_field_spell_item(_context.workflow_context(), targeting, target_ids))
+	var completed = _finish_magic_transition(FieldItemWorkflow.resume_field_spell_item(_context.workflow_context(), targeting, target_ids))
 	if completed.state == SessionCoordinatorResult.State.FAILED:
 		_context.set_continuation(saved_continuation)
 		_context.session_interaction = saved_interaction
@@ -228,7 +228,7 @@ func _respond_field_spell_target(response: InteractionResponse) -> SessionCoordi
 	var saved_interaction = _context.session_interaction
 	_context.session_continuation.clear()
 	_context.session_interaction = null
-	var completed = _finish_magic_transition(InventoryMagicServicesWorkflow.resume_field_spell(_context.workflow_context(), targeting, target_ids))
+	var completed = _finish_magic_transition(FieldMagicWorkflow.resume_field_spell(_context.workflow_context(), targeting, target_ids))
 	if completed.state == SessionCoordinatorResult.State.FAILED:
 		_context.set_continuation(saved_continuation)
 		_context.session_interaction = saved_interaction
@@ -245,7 +245,7 @@ func _respond_scroll_target(response: InteractionResponse) -> SessionCoordinator
 	var saved_interaction = _context.session_interaction
 	_context.session_continuation.clear()
 	_context.session_interaction = null
-	var completed = _finish_magic_transition(InventoryMagicServicesWorkflow.resume_field_scroll(_context.workflow_context(), targeting, target_ids))
+	var completed = _finish_magic_transition(FieldMagicWorkflow.resume_field_scroll(_context.workflow_context(), targeting, target_ids))
 	if completed.state == SessionCoordinatorResult.State.FAILED:
 		_context.set_continuation(saved_continuation)
 		_context.session_interaction = saved_interaction
@@ -257,7 +257,7 @@ func _respond_scroll_discard(response: InteractionResponse) -> SessionCoordinato
 	if response.kind != InteractionRequest.YES_NO or body == null:
 		return _context.failed(&"invalid_interaction_response", "Discarding a scroll requires a yes/no response.")
 	var targeting = _context.session_continuation.targeting()
-	var result := InventoryMagicServicesWorkflow.discard_field_scroll(_context.workflow_context(), targeting, body.accepted)
+	var result := FieldMagicWorkflow.discard_field_scroll(_context.workflow_context(), targeting, body.accepted)
 	if not result.ok:
 		return _context.failed(result.error_code, result.error_message, result.events)
 	_context.session_interaction = null
@@ -522,7 +522,7 @@ func _respond_session_battle_reward(response: InteractionResponse) -> SessionCoo
 	return _context.scenario().finish_after_direct_battle(result.events, return_continuation, battle_outcome)
 
 
-func _finish_magic_transition(result: InventoryMagicServicesWorkflow.MagicTransitionResult) -> SessionCoordinatorResult:
+func _finish_magic_transition(result: MagicTransitionResult) -> SessionCoordinatorResult:
 	if result == null:
 		return _context.failed(&"invalid_workflow_result", "The magic workflow returned no result.")
 	if not result.ok:

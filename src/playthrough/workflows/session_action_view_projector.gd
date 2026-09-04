@@ -80,7 +80,7 @@ static func populate_action_availability(context: SessionWorkflowContext, result
 	result.set_action_availability(&"toggle_search", search_reason.is_empty(), search_reason)
 	var area_search_reason := search_reason if not search_reason.is_empty() else "The party is too fatigued to continue Area Search." if state.party.fatigue > 134 else ""
 	result.set_action_availability(&"area_search", area_search_reason.is_empty(), area_search_reason)
-	var torch_probe := InventoryMagicServicesWorkflow.classic_torch_probe(context)
+	var torch_probe := FieldItemWorkflow.classic_torch_probe(context)
 	result.set_action_availability(&"use_torch", ordinary_reason.is_empty() and not battle_active and torch_probe.allowed, ordinary_reason if not ordinary_reason.is_empty() else "Torches are unavailable during battle." if battle_active else torch_probe.reason)
 	var encounter_reason := ordinary_reason if not ordinary_reason.is_empty() else "Encounters are unavailable during battle." if battle_active else "Break camp before using Encounter." if state.party_camping else ""
 	result.set_action_availability(&"contextual_encounter", encounter_reason.is_empty(), encounter_reason)
@@ -318,7 +318,7 @@ static func populate_inventory_item_actions(context: SessionWorkflowContext, res
 			var drop_probe := rules.inventory.classic_drop_probe(character, instance)
 			var split_probe := rules.inventory.classic_split_probe(character, instance, definition)
 			var join_probe := rules.inventory.classic_join_probe(character, instance, definition)
-			var use_probe := InventoryMagicServicesWorkflow.field_item_use_probe(context, character, instance, definition)
+			var use_probe := FieldItemWorkflow.field_item_use_probe(context, character, instance, definition)
 			actions.equip = ActionAvailabilityView.new(&"equip_item", equip_probe.allowed, equip_probe.reason)
 			actions.unequip = ActionAvailabilityView.new(&"unequip_item", unequip_probe.allowed, unequip_probe.reason)
 			actions.drop = ActionAvailabilityView.new(&"drop_item", drop_probe.allowed, drop_probe.reason)
@@ -334,7 +334,7 @@ static func populate_inventory_item_actions(context: SessionWorkflowContext, res
 			for destination: CharacterState in party:
 				if destination == character:
 					continue
-				var trade_probe := InventoryMagicServicesWorkflow.trade_item_probe(context, character, destination, instance, definition)
+				var trade_probe := InventoryWorkflow.trade_item_probe(context, character, destination, instance, definition)
 				actions.trade_targets.append(ItemTransferTargetView.new(destination.id, destination.name, trade_probe.allowed, trade_probe.reason, destination.carried_load, destination.carried_load + item_view.weight, destination.maximum_load))
 			var enabled_targets := actions.trade_targets.filter(func(target: ItemTransferTargetView) -> bool: return target.enabled)
 			var trade_reason := "Choose another party member." if actions.trade_targets.is_empty() else actions.trade_targets[0].reason if enabled_targets.is_empty() else ""
@@ -351,7 +351,7 @@ static func _inventory_identify_cast(context: SessionWorkflowContext, target: Ch
 				spells.append(spell)
 		spells.sort_custom(func(left: SpellDefinition, right: SpellDefinition) -> bool: return left.classic_id < right.classic_id)
 		for spell: SpellDefinition in spells:
-			if InventoryMagicServicesWorkflow.inventory_identify_probe(context, target.id, caster.id, spell.id).allowed:
+			if FieldItemWorkflow.inventory_identify_probe(context, target.id, caster.id, spell.id).allowed:
 				return [caster.id, spell.id]
 	return []
 

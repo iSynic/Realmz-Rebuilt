@@ -182,7 +182,7 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 		PlayerIntent.Kind.CAST_SPELL:
 			return _cast_spell(intent)
 		PlayerIntent.Kind.SET_FAST_SPELL:
-			return _commit_workflow_result(InventoryMagicServicesWorkflow.set_fast_spell(_workflow_context(), intent.payload as PlayerIntent.SpellPayload))
+			return _commit_workflow_result(FieldMagicWorkflow.set_fast_spell(_workflow_context(), intent.payload as PlayerIntent.SpellPayload))
 		PlayerIntent.Kind.CHOOSE_COMBAT_ACTION:
 			return _combat_action(intent)
 		PlayerIntent.Kind.COMBAT_MOVE:
@@ -213,17 +213,17 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 		PlayerIntent.Kind.CHANGE_CHARACTER_APPEARANCE:
 			return _commit_workflow_result(LifecyclePartyWorkflow.change_character_appearance(_workflow_context(), intent.payload as PlayerIntent.AppearancePayload))
 		PlayerIntent.Kind.EQUIP_ITEM:
-			return _commit_workflow_result(InventoryMagicServicesWorkflow.equip_item(_workflow_context(), intent.payload as PlayerIntent.ItemActionPayload))
+			return _commit_workflow_result(InventoryWorkflow.equip_item(_workflow_context(), intent.payload as PlayerIntent.ItemActionPayload))
 		PlayerIntent.Kind.UNEQUIP_ITEM:
-			return _commit_workflow_result(InventoryMagicServicesWorkflow.unequip_item(_workflow_context(), intent.payload as PlayerIntent.ItemActionPayload))
+			return _commit_workflow_result(InventoryWorkflow.unequip_item(_workflow_context(), intent.payload as PlayerIntent.ItemActionPayload))
 		PlayerIntent.Kind.SPLIT_ITEM:
-			return _commit_workflow_result(InventoryMagicServicesWorkflow.split_item(_workflow_context(), intent.payload as PlayerIntent.ItemActionPayload))
+			return _commit_workflow_result(InventoryWorkflow.split_item(_workflow_context(), intent.payload as PlayerIntent.ItemActionPayload))
 		PlayerIntent.Kind.JOIN_ITEM:
-			return _commit_workflow_result(InventoryMagicServicesWorkflow.join_item(_workflow_context(), intent.payload as PlayerIntent.ItemActionPayload))
+			return _commit_workflow_result(InventoryWorkflow.join_item(_workflow_context(), intent.payload as PlayerIntent.ItemActionPayload))
 		PlayerIntent.Kind.DROP_ITEM:
 			return _request_drop_item(intent)
 		PlayerIntent.Kind.TRADE_ITEM:
-			return _commit_workflow_result(InventoryMagicServicesWorkflow.trade_item(_workflow_context(), intent.payload as PlayerIntent.ItemActionPayload))
+			return _commit_workflow_result(InventoryWorkflow.trade_item(_workflow_context(), intent.payload as PlayerIntent.ItemActionPayload))
 		PlayerIntent.Kind.MONEY_ACTION:
 			return _money_action(intent)
 		PlayerIntent.Kind.SERVICE_ACTION:
@@ -372,12 +372,12 @@ func _use_item(intent: PlayerIntent) -> SessionStep:
 		rotation = target_payload.rotation
 	var character := _context.state.party.character_by_id(actor_id)
 	if character == null:
-		character = InventoryMagicServicesWorkflow.item_owner(_workflow_context(), item_id)
+		character = FieldItemWorkflow.item_owner(_workflow_context(), item_id)
 	var instance := _item_instance(character, item_id)
 	var item: ItemDefinition = null if instance == null else _context.content.item_by_id(instance.definition_id)
 	if character == null or instance == null or item == null:
 		return SessionStep.failed(_context.current_revision(), &"unknown_item_instance", "The selected character does not carry that item instance.")
-	if InventoryMagicServicesWorkflow.is_classic_door_item(item):
+	if FieldItemWorkflow.is_classic_door_item(item):
 		_ensure_coordinators()
 		return _commit_coordinator_result(_scenario_coordinator.start_item_xap(character, instance, item))
 	if _context.state.combat != null and not _context.state.combat.completed:
@@ -391,7 +391,7 @@ func _use_item(intent: PlayerIntent) -> SessionStep:
 		if combat_result.completed:
 			return _finish_direct_battle(combat_result.events)
 		return _finish_completed(combat_result.events)
-	return _finish_magic_transition(InventoryMagicServicesWorkflow.begin_field_spell_item(_workflow_context(), actor_id, item_id, target_id, target_ids, _context.next_revision()))
+	return _finish_magic_transition(FieldItemWorkflow.begin_field_spell_item(_workflow_context(), actor_id, item_id, target_id, target_ids, _context.next_revision()))
 
 
 func _request_drop_item(intent: PlayerIntent) -> SessionStep:
@@ -425,9 +425,9 @@ func _item_instance(character: CharacterState, instance_id: String) -> ItemInsta
 func _cast_spell(intent: PlayerIntent) -> SessionStep:
 	var payload := intent.payload as PlayerIntent.SpellPayload
 	if payload.operation == &"identify-inventory":
-		return _commit_workflow_result(InventoryMagicServicesWorkflow.identify_inventory(_workflow_context(), payload))
+		return _commit_workflow_result(FieldItemWorkflow.identify_inventory(_workflow_context(), payload))
 	if payload.operation == &"make-scroll":
-		return _commit_workflow_result(InventoryMagicServicesWorkflow.make_scroll(_workflow_context(), payload))
+		return _commit_workflow_result(FieldMagicWorkflow.make_scroll(_workflow_context(), payload))
 	if payload.operation == &"use-scroll":
 		return _use_scroll(payload)
 	if _context.state.combat == null or _context.state.combat.completed:
@@ -454,11 +454,11 @@ func _use_scroll(payload: PlayerIntent.SpellPayload) -> SessionStep:
 		if combat_result.completed:
 			return _finish_direct_battle(combat_result.events)
 		return _finish_completed(combat_result.events)
-	return _finish_magic_transition(InventoryMagicServicesWorkflow.begin_field_scroll(_workflow_context(), payload, _context.next_revision()))
+	return _finish_magic_transition(FieldMagicWorkflow.begin_field_scroll(_workflow_context(), payload, _context.next_revision()))
 
 
 func _cast_field_spell(payload: PlayerIntent.SpellPayload) -> SessionStep:
-	return _finish_magic_transition(InventoryMagicServicesWorkflow.begin_field_spell(_workflow_context(), payload, _context.next_revision()))
+	return _finish_magic_transition(FieldMagicWorkflow.begin_field_spell(_workflow_context(), payload, _context.next_revision()))
 
 
 func _combat_action(intent: PlayerIntent) -> SessionStep:
@@ -595,7 +595,7 @@ func _turn_dungeon(delta: int) -> SessionStep:
 
 
 func _use_torch() -> SessionStep:
-	return _finish_magic_transition(InventoryMagicServicesWorkflow.begin_classic_torch(_workflow_context(), _context.next_revision()))
+	return _finish_magic_transition(FieldItemWorkflow.begin_classic_torch(_workflow_context(), _context.next_revision()))
 
 
 func _contextual_encounter() -> SessionStep:
@@ -817,7 +817,7 @@ func _finish_magic_workflow(result: SessionWorkflowResult) -> SessionStep:
 	return _finish_completed(result.events)
 
 
-func _finish_magic_transition(result: InventoryMagicServicesWorkflow.MagicTransitionResult) -> SessionStep:
+func _finish_magic_transition(result: MagicTransitionResult) -> SessionStep:
 	if result == null:
 		return SessionStep.failed(_context.current_revision(), &"invalid_workflow_result", "The magic workflow returned no result.")
 	if not result.ok:

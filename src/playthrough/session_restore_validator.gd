@@ -375,7 +375,7 @@ static func _valid_targeting_continuation(content: RealmzContent, state: GameSta
 			if carried.equipped and carried_definition != null and absi(carried_definition.item_type) == 13:
 				equipped_case = true
 				break
-		return equipped_case and session_interaction.to_data() == InventoryMagicServicesWorkflow.scroll_discard_request(session_interaction.request_id, discard_spell.name).to_data()
+		return equipped_case and session_interaction.to_data() == FieldMagicWorkflow.scroll_discard_request(session_interaction.request_id, discard_spell.name).to_data()
 	if continuation.kind == &"drop-item-confirmation":
 		var instance := _item_instance_for_state(character, targeting.instance_id)
 		var definition: ItemDefinition = null if instance == null else content.item_by_id(instance.definition_id)
@@ -397,7 +397,7 @@ static func _valid_targeting_continuation(content: RealmzContent, state: GameSta
 		var expected_count := state.party.characters().size() if spell.target_type > 2 else mini(targeting.power, state.party.characters().size()) if spell.target_type == 0 else 1
 		var probe := RealmzRules.new().inventory.classic_spell_item_probe(character, instance, definition, spell, content.race_by_id(character.race_id), content.caste_by_id(character.caste_id), false)
 		var supported := spell.special == 0 and absi(spell.damage_type) >= 1 and absi(spell.damage_type) <= 6 and absi(spell.spell_class) != 9 or absi(spell.special) == 57
-		return (authored_power == 8 or targeting.power == authored_power) and targeting.target_count == expected_count and spell.target_type not in [5, 7] and spell.target_type >= 0 and spell.target_type <= 12 and probe.allowed and supported and session_interaction.to_data() == InventoryMagicServicesWorkflow.item_target_request(session_interaction.request_id, character, instance.id, definition, spell, targeting.power, expected_count, state.party.characters()).to_data()
+		return (authored_power == 8 or targeting.power == authored_power) and targeting.target_count == expected_count and spell.target_type not in [5, 7] and spell.target_type >= 0 and spell.target_type <= 12 and probe.allowed and supported and session_interaction.to_data() == FieldMagicTargetRequestBuilder.item_target_request(session_interaction.request_id, character, instance.id, definition, spell, targeting.power, expected_count, state.party.characters()).to_data()
 	if continuation.kind == &"field-spell-target-selection":
 		if not character.known_spells().has(spell.id) or character.spell_points != targeting.starting_spell_points or state.character_spellcasting_blocked or character.current_health < 1 or character.spell_points < absi(spell.cost * targeting.power) or not spell.in_camp or spell.cost < 0 and targeting.power != 1:
 			return false
@@ -420,7 +420,7 @@ static func _valid_targeting_continuation(content: RealmzContent, state: GameSta
 	var expected_count := mini(targeting.power, state.party.characters().size()) if spell.target_type == 0 else 1
 	if targeting.target_count != expected_count or spell.target_type < 0 or spell.target_type > 2 or not supported:
 		return false
-	return session_interaction.to_data() == (InventoryMagicServicesWorkflow.field_spell_target_request(session_interaction.request_id, character, spell, targeting.power, expected_count, state.party.characters()).to_data() if continuation.kind == &"field-spell-target-selection" else InventoryMagicServicesWorkflow.scroll_target_request(session_interaction.request_id, character, targeting.scroll_slot, spell, targeting.power, expected_count, state.party.characters()).to_data())
+	return session_interaction.to_data() == (FieldMagicTargetRequestBuilder.spell_target_request(session_interaction.request_id, character, spell, targeting.power, expected_count, state.party.characters()).to_data() if continuation.kind == &"field-spell-target-selection" else FieldMagicTargetRequestBuilder.scroll_target_request(session_interaction.request_id, character, targeting.scroll_slot, spell, targeting.power, expected_count, state.party.characters()).to_data())
 
 
 static func _item_instance_for_state(character: CharacterState, instance_id: String) -> ItemInstance:

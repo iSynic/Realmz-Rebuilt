@@ -105,7 +105,7 @@ func _project_complete(context: SessionWorkflowContext, pending_interaction: Int
 	result.party_summary.fatigue = state.party.fatigue
 	result.party_summary.light_remaining = state.party.conditions.value(0)
 	result.party_summary.condition_values = state.party.conditions.values()
-	result.party_summary.has_classic_torch = not InventoryMagicServicesWorkflow.classic_torch_item(context).is_empty()
+	result.party_summary.has_classic_torch = not FieldItemWorkflow.classic_torch_item(context).is_empty()
 	result.party_summary.camping = state.party_camping
 	result.party_summary.searching = state.party.conditions.is_active(ConditionRules.PARTY_SEARCHING)
 	result.party_summary.in_boat = state.party_in_boat
