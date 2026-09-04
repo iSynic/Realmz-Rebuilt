@@ -11,10 +11,11 @@ Install, discover, decode, validate, cache, and release immutable Providence pac
 - Strict schema-v3 domain decoding and cross-reference validation.
 - Exact Classic media-key validation and resolution.
 - Durable installation receipts, the bounded active/candidate package graph cache, and disposable parsed-document sidecars for trusted installed revisions.
+- `README.md` is the public maintainer entry point for package discovery, assembly, decoder ownership, and performance-sensitive loading.
 
 ## Local Contracts
 
-- `PackageDomainAssembler` coordinates typed package construction through public decoder and validator operations. `PackageContentDecoder` exposes record-family `decode_*` operations, `PackageWorldDecoder` exposes world-family `decode_*` operations, `PackageScenarioDecoder.decode_scenario` owns scenario construction, and cross-reference/media validation uses named public validation or resolution methods; package collaborators must not call one another's private helpers.
+- `PackageDomainAssembler` coordinates typed package construction through public decoder and validator operations. `PackageContentDecoder` is the stable record-family entry point over `PackageStoryContentDecoder`, `PackageCharacterContentDecoder`, and `PackageEncounterContentDecoder`. `PackageWorldDecoder` exposes world-family `decode_*` operations, `PackageScenarioDecoder.decode_scenario` owns scenario construction, and cross-reference/media validation uses named public validation or resolution methods; package collaborators must not call one another's private helpers.
 
 - Providence schema v3 is the only accepted package contract: manifest format version 2, document schema version 3, and mirrored schema SHA-256 `05ced7b000683f53e6220b9ac8f7d41c801e7e2c78c874287c2ae694b585273d`.
 - Package decoding requires the pinned application definition catalog before campaign assembly, checks matching `rulesVersion`, and applies scenario definitions as exact-ID overlays before reference validation. Portable item instances retain stable definition IDs and therefore resolve through the active composed catalog. It never treats duplicated campaign data as the authority for unoverridden stock definitions, text, or media.
