@@ -42,7 +42,8 @@ func build(request: InteractionRequest) -> void:
 	_timer.wait_time = 1.0 / float(_body.frame_rate)
 	_timer.timeout.connect(_advance_frame)
 	_render_frame()
-	_timer.start()
+	if is_inside_tree():
+		_timer.start()
 
 
 func _unhandled_key_input(event: InputEvent) -> void:

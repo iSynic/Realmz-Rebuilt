@@ -3,6 +3,7 @@ extends EditorPlugin
 
 const REGISTRY_PATH := "res://addons/realmz_builder/scene_previews.json"
 const DOCK_SCENE := preload("res://addons/realmz_builder/realmz_builder_dock.tscn")
+const PREVIEW_FIXTURES := preload("res://addons/realmz_builder/realmz_builder_preview_fixtures.gd")
 const PREVIEW_NODE_NAME := "__RealmzBuilderPreview"
 
 var _dock: Control
@@ -65,20 +66,32 @@ func _apply_preview(profile: String) -> void:
 	var registration := Dictionary(_registrations.get(scene_path, {}))
 	if registration.is_empty():
 		return
-	var preview_root := Node.new()
+	var preview_root := Control.new()
 	preview_root.name = PREVIEW_NODE_NAME
 	preview_root.set_meta("editor_only", true)
+	preview_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	preview_root.mouse_filter = Control.MOUSE_FILTER_STOP
 	_edited_root.add_child(preview_root)
 	preview_root.owner = null
+	var scene_resource := load("res://" + scene_path) as PackedScene
+	var preview_surface := scene_resource.instantiate() as Control if scene_resource != null else null
+	var preview_bound := false
+	if preview_surface != null:
+		preview_root.add_child(preview_surface)
+		preview_surface.owner = null
+		preview_surface.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		preview_bound = PREVIEW_FIXTURES.bind(preview_surface, String(registration.get("id", "")), profile)
+		if not preview_bound:
+			preview_surface.queue_free()
 	var badge := Label.new()
 	badge.name = "PreviewProfile"
-	badge.text = "Realmz Builder · %s · %s" % [String(registration.get("id", "scene")), profile]
+	badge.text = "Realmz Builder · %s · %s%s" % [String(registration.get("id", "scene")), profile, "" if preview_bound else " · representative data pending"]
 	badge.position = Vector2(12.0, 12.0)
 	badge.z_index = 4096
 	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	preview_root.add_child(badge)
 	badge.owner = null
-	if _edited_root.has_method("apply_editor_preview"):
+	if not preview_bound and _edited_root.has_method("apply_editor_preview"):
 		_edited_root.call("apply_editor_preview", profile)
 
 
