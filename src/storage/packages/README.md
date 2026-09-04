@@ -2,7 +2,7 @@
 
 Begin with `PackageRepository` when following installation or discovery, and with `PackageDomainAssembler` when following the conversion of verified JSON documents into immutable game content. The assembler coordinates public decoders and validators; it does not parse record families itself.
 
-`PackageContentDecoder` is the stable content-record entry point. Campaign metadata, messages, and option labels belong to `PackageStoryContentDecoder`; items, Races, Castes, and spells belong to `PackageCharacterContentDecoder`; monsters, battles, treasures, shops, and encounters belong to `PackageEncounterContentDecoder`. World topology and scenario bytecode have their own neighboring decoders.
+`PackageContentDecoder` is the stable content-record entry point. Campaign metadata, messages, and option labels belong to `PackageStoryContentDecoder`; items, Races, Castes, and spells belong to `PackageCharacterContentDecoder`; monsters, battles, treasures, shops, and encounters belong to `PackageEncounterContentDecoder`. Collection operations preserve authored order and duplicate tracking while focused record helpers validate and build one definition at a time. World topology and scenario bytecode have their own neighboring decoders.
 
 All decoders share one diagnostic dictionary and fail closed. Do not return transport dictionaries beyond this folder, invent defaults for malformed authored data, or copy stock application records into a scenario. Application content is composed first and the scenario contributes only owned records or exact-key overrides.
 

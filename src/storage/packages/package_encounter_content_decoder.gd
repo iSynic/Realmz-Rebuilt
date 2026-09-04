@@ -12,59 +12,65 @@ func decode_monsters(value: Variant) -> Variant:
 	var result: Array[MonsterDefinition] = []
 	var ids: Dictionary = {}
 	for value_record: Variant in value:
-		if not value_record is Dictionary:
-			_reject("Monster definition is not an object.")
+		var monster := _decode_monster_record(value_record, fields, integer_fields, ids)
+		if monster == null:
 			return null
-		var record: Dictionary = value_record
-		var integers_value: Variant = _validated_integer_fields(record, integer_fields, "Monster definition")
-		if not _exact_fields(record, fields) or integers_value == null or not _definition_identity(record, ids, "Monster") or not record["description"] is String or not record["notOnMenu"] is bool or not record["traitor"] is bool or not record["weaponId"] is String or not record["attacks"] is Array or _integer(record["classicNameId"]) < 0 or _integer(record["classicNameId"]) > 255 or _integer(record["requiredWeapon"]) < -128 or _integer(record["requiredWeapon"]) > 127 or _integer(record["magicToHit"]) < 0 or _integer(record["magicToHit"]) > 127 or _integer(record["randomWeaponTable"]) < 0 or _integer(record["randomWeaponTable"]) > 10:
-			_reject("Monster definition is malformed or duplicated.")
-			return null
-		var type_value: Variant = _integer_array(record["typeFlags"], 8, "Monster type flags")
-		var saves_value: Variant = _integer_array(record["saves"], 6, "Monster saves")
-		var immunity_value: Variant = _integer_array(record["spellImmunities"], 6, "Monster spell immunities")
-		var conditions_value: Variant = _integer_array(record["conditions"], 40, "Monster starting conditions")
-		var money_value: Variant = _integer_array(record["money"], 3, "Monster wealth")
-		var spell_ids_value: Variant = _fixed_or_empty_string_list(record["spellIds"], 10, 255, "Monster spell IDs")
-		var item_ids_value: Variant = _fixed_string_list(record["itemIds"], 6, 255, "Monster item IDs")
-		if type_value == null or saves_value == null or immunity_value == null or conditions_value == null or not _array_values_in_range(conditions_value, -128, 127) or money_value == null or spell_ids_value == null or item_ids_value == null:
-			return null
-		var attacks: Array[MonsterAttackDefinition] = []
-		for attack_value: Variant in record["attacks"]:
-			if not attack_value is Dictionary or not _exact_fields(attack_value, ["damageMin", "damageMax", "soundOrType", "special"]):
-				_reject("Monster attack definition is malformed.")
-				return null
-			var attack_integers_value: Variant = _validated_integer_fields(attack_value, ["damageMin", "damageMax", "soundOrType", "special"], "Monster attack")
-			if attack_integers_value == null:
-				return null
-			var attack_integers: Dictionary = attack_integers_value
-			attacks.append(MonsterAttackDefinition.new(attack_integers["damageMin"], attack_integers["damageMax"], attack_integers["soundOrType"], attack_integers["special"]))
-		var integers: Dictionary = integers_value
-		if integers["attackCount"] < 0 or integers["attackCount"] > 5 or integers["attackCount"] > attacks.size():
-			_reject("Monster attack count exceeds its fixed Classic attack rows.")
-			return null
-		var monster := MonsterDefinition.new(record["id"], integers["classicId"], record["name"], integers["hitDice"], integers["staminaBonus"], integers["agility"], integers["armor"], integers["magicResistance"], type_value, saves_value, immunity_value, money_value, spell_ids_value, item_ids_value, attacks, conditions_value, integers["classicNameId"], record["description"], record["notOnMenu"])
-		monster.movement_max = integers["movementMaximum"]
-		monster.required_weapon = integers["requiredWeapon"]
-		monster.magic_to_hit = integers["magicToHit"]
-		monster.traitor = record["traitor"]
-		monster.size = integers["size"]
-		monster.attack_count = integers["attackCount"]
-		monster.magic_attack_count = integers["magicAttackCount"]
-		monster.damage_bonus = integers["damageBonus"]
-		monster.cast_percent = integers["castPercent"]
-		monster.run_percent = integers["runPercent"]
-		monster.surrender_percent = integers["surrenderPercent"]
-		monster.missile_percent = integers["missilePercent"]
-		monster.can_summon = integers["canSummon"]
-		monster.weapon_id = record["weaponId"]
-		monster.random_weapon_table = integers["randomWeaponTable"]
-		monster.icon_id = integers["iconId"]
-		monster.spell_points = integers["spellPoints"]
-		monster.experience = integers["experience"]
-		monster.death_macro = integers["deathMacro"]
 		result.append(monster)
 	return result
+
+func _decode_monster_record(value_record: Variant, fields: Array[String], integer_fields: Array[String], ids: Dictionary) -> MonsterDefinition:
+	if not value_record is Dictionary:
+		_reject("Monster definition is not an object.")
+		return null
+	var record: Dictionary = value_record
+	var integers_value: Variant = _validated_integer_fields(record, integer_fields, "Monster definition")
+	if not _exact_fields(record, fields) or integers_value == null or not _definition_identity(record, ids, "Monster") or not record["description"] is String or not record["notOnMenu"] is bool or not record["traitor"] is bool or not record["weaponId"] is String or not record["attacks"] is Array or _integer(record["classicNameId"]) < 0 or _integer(record["classicNameId"]) > 255 or _integer(record["requiredWeapon"]) < -128 or _integer(record["requiredWeapon"]) > 127 or _integer(record["magicToHit"]) < 0 or _integer(record["magicToHit"]) > 127 or _integer(record["randomWeaponTable"]) < 0 or _integer(record["randomWeaponTable"]) > 10:
+		_reject("Monster definition is malformed or duplicated.")
+		return null
+	var type_value: Variant = _integer_array(record["typeFlags"], 8, "Monster type flags")
+	var saves_value: Variant = _integer_array(record["saves"], 6, "Monster saves")
+	var immunity_value: Variant = _integer_array(record["spellImmunities"], 6, "Monster spell immunities")
+	var conditions_value: Variant = _integer_array(record["conditions"], 40, "Monster starting conditions")
+	var money_value: Variant = _integer_array(record["money"], 3, "Monster wealth")
+	var spell_ids_value: Variant = _fixed_or_empty_string_list(record["spellIds"], 10, 255, "Monster spell IDs")
+	var item_ids_value: Variant = _fixed_string_list(record["itemIds"], 6, 255, "Monster item IDs")
+	if type_value == null or saves_value == null or immunity_value == null or conditions_value == null or not _array_values_in_range(conditions_value, -128, 127) or money_value == null or spell_ids_value == null or item_ids_value == null:
+		return null
+	var attacks: Array[MonsterAttackDefinition] = []
+	for attack_value: Variant in record["attacks"]:
+		if not attack_value is Dictionary or not _exact_fields(attack_value, ["damageMin", "damageMax", "soundOrType", "special"]):
+			_reject("Monster attack definition is malformed.")
+			return null
+		var attack_integers_value: Variant = _validated_integer_fields(attack_value, ["damageMin", "damageMax", "soundOrType", "special"], "Monster attack")
+		if attack_integers_value == null:
+			return null
+		var attack_integers: Dictionary = attack_integers_value
+		attacks.append(MonsterAttackDefinition.new(attack_integers["damageMin"], attack_integers["damageMax"], attack_integers["soundOrType"], attack_integers["special"]))
+	var integers: Dictionary = integers_value
+	if integers["attackCount"] < 0 or integers["attackCount"] > 5 or integers["attackCount"] > attacks.size():
+		_reject("Monster attack count exceeds its fixed Classic attack rows.")
+		return null
+	var monster := MonsterDefinition.new(record["id"], integers["classicId"], record["name"], integers["hitDice"], integers["staminaBonus"], integers["agility"], integers["armor"], integers["magicResistance"], type_value, saves_value, immunity_value, money_value, spell_ids_value, item_ids_value, attacks, conditions_value, integers["classicNameId"], record["description"], record["notOnMenu"])
+	monster.movement_max = integers["movementMaximum"]
+	monster.required_weapon = integers["requiredWeapon"]
+	monster.magic_to_hit = integers["magicToHit"]
+	monster.traitor = record["traitor"]
+	monster.size = integers["size"]
+	monster.attack_count = integers["attackCount"]
+	monster.magic_attack_count = integers["magicAttackCount"]
+	monster.damage_bonus = integers["damageBonus"]
+	monster.cast_percent = integers["castPercent"]
+	monster.run_percent = integers["runPercent"]
+	monster.surrender_percent = integers["surrenderPercent"]
+	monster.missile_percent = integers["missilePercent"]
+	monster.can_summon = integers["canSummon"]
+	monster.weapon_id = record["weaponId"]
+	monster.random_weapon_table = integers["randomWeaponTable"]
+	monster.icon_id = integers["iconId"]
+	monster.spell_points = integers["spellPoints"]
+	monster.experience = integers["experience"]
+	monster.death_macro = integers["deathMacro"]
+	return monster
 
 func decode_monster_sets(value: Variant) -> Variant:
 	if not value is Array:
