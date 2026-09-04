@@ -77,7 +77,7 @@ func _draw_cell(cell: MapCellView, destination: Rect2) -> void:
 	var atlas := _media.asset_by_id(cell.tileset_id)
 	var texture := _texture_for(cell.tileset_id)
 	if _view.mode == PlayerMapDefinition.DUNGEON_CROP and atlas != null and texture != null and atlas.id == "dungeon-top-down-302":
-		for tile_id: int in ClassicMapPresenter.dungeon_tile_ids(cell):
+		for tile_id: int in MapTextureCache.dungeon_tile_ids(cell):
 			_draw_atlas_region(destination, atlas, texture, tile_id)
 	else:
 		var region := Rect2i() if atlas == null else atlas.region_for(cell.render_tile)

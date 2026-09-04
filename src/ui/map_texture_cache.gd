@@ -4,6 +4,14 @@ class_name MapTextureCache
 extends RefCounted
 
 const CLASSIC_BATTLE_ATLAS_ID := "classic-battle-tiles-302"
+const SECRET_LAND_MARKER_TILE_ID := 251
+const PATH_LAND_MARKER_TILE_ID := 253
+const PARTY_MARKER_LEFT_ASSET_ID: StringName = &"map.party.left"
+const PARTY_MARKER_RIGHT_ASSET_ID: StringName = &"map.party.right"
+const PARTY_MARKER_CAMP_ASSET_ID: StringName = &"map.party.camp"
+const DUNGEON_PARTY_ARROWS_ASSET_ID: StringName = &"map.party.dungeon.arrows"
+const BOAT_MARKER_LEFT_ASSET_IDS: Dictionary = {0: &"map.party.boat.left.0", 3: &"map.party.boat.left.3", 5: &"map.party.boat.left.5", 6: &"map.party.boat.left.6", 7: &"map.party.boat.left.7"}
+const BOAT_MARKER_RIGHT_ASSET_IDS: Dictionary = {0: &"map.party.boat.right.0", 3: &"map.party.boat.right.3", 5: &"map.party.boat.right.5", 6: &"map.party.boat.right.6", 7: &"map.party.boat.right.7"}
 
 var _media: ClassicMediaCatalog
 var _atlas_assets: Dictionary = {}
@@ -72,6 +80,84 @@ func land_marker_texture(tile_id: int) -> Texture2D:
 	if texture != null:
 		_land_marker_textures[tile_id] = texture
 	return texture
+
+
+static func darkness_mask_asset_id(level: int) -> String:
+	return "classic-darkness-mask-%d" % clampi(level, 0, 6)
+
+
+static func land_marker_tile_ids(cell: MapCellView) -> Array[int]:
+	var result: Array[int] = []
+	if cell != null and cell.has_feature(&"secret"):
+		result.append(SECRET_LAND_MARKER_TILE_ID)
+	if cell != null and cell.has_feature(&"discovered_path"):
+		result.append(PATH_LAND_MARKER_TILE_ID)
+	return result
+
+
+static func dungeon_party_marker_region(heading: int) -> Rect2:
+	return Rect2(float(clampi(heading, 1, 4) - 1) * 16.0, 0.0, 16.0, 16.0)
+
+
+static func dungeon_party_marker_texture(strip: Texture2D, heading: int) -> ImageTexture:
+	if strip == null:
+		return null
+	var source := strip.get_image()
+	if source == null:
+		return null
+	var arrow := source.get_region(Rect2i(dungeon_party_marker_region(heading)))
+	arrow.convert(Image.FORMAT_RGBA8)
+	for y: int in arrow.get_height():
+		for x: int in arrow.get_width():
+			var pixel := arrow.get_pixel(x, y)
+			if pixel.r == 1.0 and pixel.g == 1.0 and pixel.b == 1.0:
+				arrow.set_pixel(x, y, Color(1.0, 1.0, 1.0, 0.0))
+	return ImageTexture.create_from_image(arrow)
+
+
+static func party_marker_asset_id_for_direction(direction: Vector2i, current_asset_id: StringName = PARTY_MARKER_RIGHT_ASSET_ID) -> StringName:
+	if direction.x < 0:
+		return PARTY_MARKER_LEFT_ASSET_ID
+	if direction.x > 0:
+		return PARTY_MARKER_RIGHT_ASSET_ID
+	return current_asset_id
+
+
+static func boat_marker_asset_id(landlook: int, facing_right: bool) -> StringName:
+	return StringName((BOAT_MARKER_RIGHT_ASSET_IDS if facing_right else BOAT_MARKER_LEFT_ASSET_IDS).get(landlook, ""))
+
+
+static func movement_cursor_asset_id(direction: Vector2i) -> StringName:
+	var normalized := Vector2i(signi(direction.x), signi(direction.y))
+	match normalized:
+		Vector2i(-1, -1): return &"map.cursor.northwest"
+		Vector2i(0, -1): return &"map.cursor.north"
+		Vector2i(1, -1): return &"map.cursor.northeast"
+		Vector2i(-1, 0): return &"map.cursor.west"
+		Vector2i(1, 0): return &"map.cursor.east"
+		Vector2i(-1, 1): return &"map.cursor.southwest"
+		Vector2i(0, 1): return &"map.cursor.south"
+		Vector2i(1, 1): return &"map.cursor.southeast"
+		_: return &"map.cursor.center"
+
+
+static func dungeon_tile_ids(cell: MapCellView) -> Array[int]:
+	var result: Array[int] = [16]
+	if cell.terrain_id == "classic.dungeon.wall":
+		result.append(1)
+	if cell.has_feature(&"door"):
+		result.append(3 if cell.feature_orientation(&"door") == &"vertical" else 2)
+	for feature_kind: StringName in [&"stairs", &"column", &"note"]:
+		if cell.has_feature(feature_kind):
+			result.append({&"stairs": 4, &"column": 5, &"note": 6}[feature_kind])
+	if cell.has_feature(&"secret"):
+		result.append({&"north": 9, &"east": 10, &"south": 11, &"west": 12}.get(cell.feature_orientation(&"secret"), 7))
+	if cell.has_feature(&"unmapped"):
+		result.append(8)
+	result.sort()
+	result.erase(16)
+	result.push_front(16)
+	return result
 
 
 func _ensure_atlas(asset_id: String) -> void:

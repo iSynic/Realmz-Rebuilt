@@ -134,17 +134,17 @@ func present(game_view: GameView, party_texture: Texture2D, control_size: Vector
 	_dungeon_discovery = dungeon_discovery
 	size = control_size
 	_resize_viewport()
-	var requested := ClassicMapPresenter.viewport_cells_for(control_size, origin.y, native_cell_size)
+	var requested := MapPresentationGeometry.viewport_cells_for(control_size, origin.y, native_cell_size)
 	var viewport_cells := Vector2i(mini(requested.x, _map_view.width), mini(requested.y, _map_view.height))
-	var camera := ClassicMapPresenter.camera_top_left(_map_view.party_coordinate, Vector2i(_map_view.width, _map_view.height), viewport_cells)
-	var draw_origin := ClassicMapPresenter.map_draw_origin_for(control_size, origin, native_cell_size, viewport_cells)
+	var camera := MapPresentationGeometry.camera_top_left(_map_view.party_coordinate, Vector2i(_map_view.width, _map_view.height), viewport_cells)
+	var draw_origin := MapPresentationGeometry.map_draw_origin_for(control_size, origin, native_cell_size, viewport_cells)
 	_map_rect = Rect2(draw_origin, Vector2(viewport_cells) * native_cell_size)
 	_party_rect = Rect2(draw_origin + Vector2(_map_view.party_coordinate - camera) * native_cell_size, Vector2.ONE * native_cell_size)
 	_camera.position = Vector2(camera) * native_cell_size - draw_origin
 	_party_sprite.texture = party_texture
 	_party_sprite.position = (Vector2(_map_view.party_coordinate) + Vector2.ONE * 0.5) * native_cell_size
 	_party_sprite.scale = _texture_scale(party_texture)
-	var next_classic_rect := ClassicMapPresenter.classic_visible_rect(_map_view.party_coordinate, Vector2i(_map_view.width, _map_view.height))
+	var next_classic_rect := MapPresentationGeometry.classic_visible_rect(_map_view.party_coordinate, Vector2i(_map_view.width, _map_view.height))
 	var full_refresh: bool = _map_id != _map_view.map_id or _map_view.presentation_delta == null or bool(_map_view.presentation_delta.complete_window_rebuild)
 	if full_refresh:
 		_clear_layers()
@@ -181,7 +181,7 @@ func minimap_rect() -> Rect2:
 func _update_cell(cell: MapCellView, current_classic_rect: Rect2i) -> void:
 	_erase_coordinate(cell.coordinate)
 	var los := _map_view.uses_los
-	if ClassicMapPresenter.los_cell_requires_blackout(los, cell.visible):
+	if MapPresentationGeometry.los_cell_requires_blackout(los, cell.visible):
 		_set_fog(cell.coordinate)
 		return
 	var revealed := _dungeon_discovery if _map_view.level_type == &"dungeon" else _land_discovery
@@ -363,7 +363,7 @@ func _draw() -> void:
 
 func _draw_darkness_mask(level: int) -> void:
 	var surface_rect := Rect2(Vector2.ZERO, size)
-	var mask_rect := ClassicMapPresenter.darkness_mask_rect(_party_rect)
+	var mask_rect := MapPresentationGeometry.darkness_mask_rect(_party_rect)
 	var clipped := _map_rect.intersection(mask_rect)
 	for blackout_rect: Rect2 in darkness_blackout_rects(surface_rect, clipped):
 		draw_rect(blackout_rect, Color.BLACK)

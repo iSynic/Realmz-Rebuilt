@@ -6,19 +6,7 @@ extends Control
 signal movement_hold_started(direction: Vector2i)
 signal movement_hold_updated(direction: Vector2i)
 signal movement_hold_stopped
-const CLASSIC_VIEW_CELLS: Vector2i = Vector2i(15, 13)
-const RETAINED_PROJECTION_MARGIN_CELLS: Vector2i = Vector2i.ONE
-const SECRET_LAND_MARKER_TILE_ID := 251
-const PATH_LAND_MARKER_TILE_ID := 253
-const PARTY_MARKER_LEFT_ASSET_ID: StringName = &"map.party.left"
-const PARTY_MARKER_RIGHT_ASSET_ID: StringName = &"map.party.right"
-const PARTY_MARKER_CAMP_ASSET_ID: StringName = &"map.party.camp"
-const DUNGEON_PARTY_ARROWS_ASSET_ID: StringName = &"map.party.dungeon.arrows"
-const PARTY_MARKER_ASSET_ID: StringName = PARTY_MARKER_RIGHT_ASSET_ID
-const BOAT_MARKER_LEFT_ASSET_IDS: Dictionary = {0: &"map.party.boat.left.0", 3: &"map.party.boat.left.3", 5: &"map.party.boat.left.5", 6: &"map.party.boat.left.6", 7: &"map.party.boat.left.7"}
-const BOAT_MARKER_RIGHT_ASSET_IDS: Dictionary = {0: &"map.party.boat.right.0", 3: &"map.party.boat.right.3", 5: &"map.party.boat.right.5", 6: &"map.party.boat.right.6", 7: &"map.party.boat.right.7"}
 const SURROUND_TEXTURE_PATH := "res://src/ui/assets/ui/classic-exploration-surround-tile.png"
-const DARKNESS_MASK_SIZE := Vector2(320.0, 320.0)
 const DEBUG_AP_COLOR := Color(0.95, 0.72, 0.26, 0.88)
 const DEBUG_RANDOM_RECT_COLOR := Color(0.96, 0.75, 0.36, 0.78)
 
@@ -37,8 +25,8 @@ var _minimap_rect: Rect2
 var _held_direction: Vector2i = Vector2i.ZERO
 var _party_marker_textures: Dictionary = {}
 var _dungeon_party_marker_textures: Dictionary = {}
-var _party_marker_asset_id: StringName = PARTY_MARKER_RIGHT_ASSET_ID
-var _party_facing_asset_id: StringName = PARTY_MARKER_RIGHT_ASSET_ID
+var _party_marker_asset_id: StringName = MapTextureCache.PARTY_MARKER_RIGHT_ASSET_ID
+var _party_facing_asset_id: StringName = MapTextureCache.PARTY_MARKER_RIGHT_ASSET_ID
 var _movement_cursor_asset_id: StringName
 var _movement_cursor_enabled: bool = true
 var _visibility_cache_map_id: String = ""
@@ -64,14 +52,14 @@ func _ready() -> void:
 	clip_contents = true
 	mouse_exited.connect(_clear_movement_cursor)
 	visibility_changed.connect(_on_visibility_changed)
-	_party_marker_textures[PARTY_MARKER_LEFT_ASSET_ID] = ClassicUiAssetCatalog.texture(PARTY_MARKER_LEFT_ASSET_ID)
-	_party_marker_textures[PARTY_MARKER_RIGHT_ASSET_ID] = ClassicUiAssetCatalog.texture(PARTY_MARKER_RIGHT_ASSET_ID)
-	_party_marker_textures[PARTY_MARKER_CAMP_ASSET_ID] = ClassicUiAssetCatalog.texture(PARTY_MARKER_CAMP_ASSET_ID)
-	var dungeon_arrow_strip := ClassicUiAssetCatalog.texture(DUNGEON_PARTY_ARROWS_ASSET_ID)
+	_party_marker_textures[MapTextureCache.PARTY_MARKER_LEFT_ASSET_ID] = ClassicUiAssetCatalog.texture(MapTextureCache.PARTY_MARKER_LEFT_ASSET_ID)
+	_party_marker_textures[MapTextureCache.PARTY_MARKER_RIGHT_ASSET_ID] = ClassicUiAssetCatalog.texture(MapTextureCache.PARTY_MARKER_RIGHT_ASSET_ID)
+	_party_marker_textures[MapTextureCache.PARTY_MARKER_CAMP_ASSET_ID] = ClassicUiAssetCatalog.texture(MapTextureCache.PARTY_MARKER_CAMP_ASSET_ID)
+	var dungeon_arrow_strip := ClassicUiAssetCatalog.texture(MapTextureCache.DUNGEON_PARTY_ARROWS_ASSET_ID)
 	if dungeon_arrow_strip != null:
 		for heading: int in range(1, 5):
-			_dungeon_party_marker_textures[heading] = dungeon_party_marker_texture(dungeon_arrow_strip, heading)
-	for asset_id: StringName in BOAT_MARKER_LEFT_ASSET_IDS.values() + BOAT_MARKER_RIGHT_ASSET_IDS.values():
+			_dungeon_party_marker_textures[heading] = MapTextureCache.dungeon_party_marker_texture(dungeon_arrow_strip, heading)
+	for asset_id: StringName in MapTextureCache.BOAT_MARKER_LEFT_ASSET_IDS.values() + MapTextureCache.BOAT_MARKER_RIGHT_ASSET_IDS.values():
 		_party_marker_textures[asset_id] = ClassicUiAssetCatalog.texture(asset_id)
 	_retained_surface = ClassicRetainedMapSurface.new()
 	_retained_surface.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -115,10 +103,10 @@ func present(game_view: GameView) -> void:
 	if visible:
 		_update_visibility_cache(game_view.map_view)
 		if game_view.map_view.level_type != &"dungeon":
-			_party_facing_asset_id = party_marker_asset_id_for_direction(game_view.map_view.last_move_direction, _party_facing_asset_id)
+			_party_facing_asset_id = MapTextureCache.party_marker_asset_id_for_direction(game_view.map_view.last_move_direction, _party_facing_asset_id)
 			var summary := game_view.party_summary
-			var boat_asset_id := boat_marker_asset_id(game_view.map_view.landlook, _party_facing_asset_id == PARTY_MARKER_RIGHT_ASSET_ID)
-			_party_marker_asset_id = boat_asset_id if summary != null and summary.in_boat and not boat_asset_id.is_empty() else PARTY_MARKER_CAMP_ASSET_ID if summary != null and summary.camping else _party_facing_asset_id
+			var boat_asset_id := MapTextureCache.boat_marker_asset_id(game_view.map_view.landlook, _party_facing_asset_id == MapTextureCache.PARTY_MARKER_RIGHT_ASSET_ID)
+			_party_marker_asset_id = boat_asset_id if summary != null and summary.in_boat and not boat_asset_id.is_empty() else MapTextureCache.PARTY_MARKER_CAMP_ASSET_ID if summary != null and summary.camping else _party_facing_asset_id
 	_present_retained_surface()
 	if not visible:
 		_clear_movement_cursor()
@@ -183,19 +171,19 @@ func _update_visibility_cache(map_view: MapView) -> void:
 			continue
 		_visited_coordinate_cache[coordinate] = true
 		if map_view.level_type == &"dungeon":
-			append_dungeon_discovery(_dungeon_discovery_cache, coordinate)
+			MapPresentationGeometry.append_dungeon_discovery(_dungeon_discovery_cache, coordinate)
 		else:
-			append_land_discovery(_land_discovery_cache, coordinate, map_size)
+			MapPresentationGeometry.append_land_discovery(_land_discovery_cache, coordinate, map_size)
 	if map_view.level_type == &"dungeon":
-		append_dungeon_discovery(_dungeon_discovery_cache, map_view.party_coordinate)
+		MapPresentationGeometry.append_dungeon_discovery(_dungeon_discovery_cache, map_view.party_coordinate)
 	for coordinate: Vector2i in seen:
 		_seen_coordinate_cache[coordinate] = true
 
 
 func _update_visible_cell_cache(map_view: MapView) -> void:
-	var requested := viewport_cells_for(size, map_origin.y, cell_size)
+	var requested := MapPresentationGeometry.viewport_cells_for(size, map_origin.y, cell_size)
 	var viewport_size := Vector2i(mini(requested.x, map_view.width), mini(requested.y, map_view.height))
-	var camera := camera_top_left(map_view.party_coordinate, Vector2i(map_view.width, map_view.height), viewport_size)
+	var camera := MapPresentationGeometry.camera_top_left(map_view.party_coordinate, Vector2i(map_view.width, map_view.height), viewport_size)
 	var delta: Variant = map_view.presentation_delta
 	var can_reuse: bool = _visible_cache_map_id == map_view.map_id and _visible_cache_size == viewport_size and delta != null and delta.matches(map_view.map_id, _visible_cache_party_coordinate, map_view.party_coordinate)
 	var changed: Dictionary = {}
@@ -238,17 +226,17 @@ func _draw() -> void:
 		return
 	var map_view := _view.map_view
 	var font := get_theme_font(&"font", &"Label")
-	var requested_cells := viewport_cells_for(size, map_origin.y, cell_size)
+	var requested_cells := MapPresentationGeometry.viewport_cells_for(size, map_origin.y, cell_size)
 	var viewport_cells := Vector2i(mini(requested_cells.x, map_view.width), mini(requested_cells.y, map_view.height))
-	var expected_camera := camera_top_left(map_view.party_coordinate, Vector2i(map_view.width, map_view.height), viewport_cells)
+	var expected_camera := MapPresentationGeometry.camera_top_left(map_view.party_coordinate, Vector2i(map_view.width, map_view.height), viewport_cells)
 	if _visible_cache_map_id != map_view.map_id or _visible_cache_size != viewport_cells or _visible_cache_camera != expected_camera:
 		_update_visible_cell_cache(map_view)
-	var draw_origin := map_draw_origin_for(size, map_origin, cell_size, viewport_cells)
+	var draw_origin := MapPresentationGeometry.map_draw_origin_for(size, map_origin, cell_size, viewport_cells)
 	var map_rect := Rect2(draw_origin, Vector2(viewport_cells) * cell_size)
 	var los_blackout := map_view.uses_los
 	_draw_exploration_stage(map_rect, los_blackout)
 	var camera := _visible_cache_camera
-	var classic_rect := classic_visible_rect(map_view.party_coordinate, Vector2i(map_view.width, map_view.height))
+	var classic_rect := MapPresentationGeometry.classic_visible_rect(map_view.party_coordinate, Vector2i(map_view.width, map_view.height))
 	var dungeon_discovery := _dungeon_discovery_cache if map_view.level_type == &"dungeon" else {}
 	var revealed_coordinates := dungeon_discovery if map_view.level_type == &"dungeon" else _land_discovery_cache
 	var action_point_rects: Array[Rect2] = []
@@ -256,7 +244,7 @@ func _draw() -> void:
 		var rect := Rect2(draw_origin + Vector2(cell.coordinate - camera) * cell_size, Vector2.ONE * cell_size)
 		if _show_topology_markers and cell.has_trigger:
 			action_point_rects.append(rect)
-		if los_cell_requires_blackout(los_blackout, cell.visible):
+		if MapPresentationGeometry.los_cell_requires_blackout(los_blackout, cell.visible):
 			continue
 		var outside_classic_view := not los_blackout and classic_exploration_visibility and not classic_rect.has_point(cell.coordinate)
 		if outside_classic_view and not revealed_coordinates.has(cell.coordinate):
@@ -298,26 +286,10 @@ func _draw_action_point_marker(rect: Rect2) -> void:
 func _draw_random_region_outlines(map_view: MapView, draw_origin: Vector2, camera: Vector2i, viewport_size: Vector2i) -> void:
 	var viewport_bounds := Rect2i(camera, viewport_size)
 	for region_bounds: Rect2i in map_view.random_region_bounds():
-		for segment: PackedVector2Array in random_region_outline_segments(region_bounds, viewport_bounds):
+		for segment: PackedVector2Array in MapPresentationGeometry.random_region_outline_segments(region_bounds, viewport_bounds):
 			var start := draw_origin + (segment[0] - Vector2(camera)) * cell_size
 			var finish := draw_origin + (segment[1] - Vector2(camera)) * cell_size
 			draw_line(start, finish, DEBUG_RANDOM_RECT_COLOR, 2.0, true)
-
-
-static func random_region_outline_segments(region_bounds: Rect2i, viewport_bounds: Rect2i) -> Array[PackedVector2Array]:
-	var result: Array[PackedVector2Array] = []
-	var clipped := region_bounds.intersection(viewport_bounds)
-	if clipped.size.x <= 0 or clipped.size.y <= 0:
-		return result
-	if region_bounds.position.x >= viewport_bounds.position.x and region_bounds.position.x <= viewport_bounds.end.x:
-		result.append(PackedVector2Array([Vector2(region_bounds.position.x, clipped.position.y), Vector2(region_bounds.position.x, clipped.end.y)]))
-	if region_bounds.end.x >= viewport_bounds.position.x and region_bounds.end.x <= viewport_bounds.end.x:
-		result.append(PackedVector2Array([Vector2(region_bounds.end.x, clipped.position.y), Vector2(region_bounds.end.x, clipped.end.y)]))
-	if region_bounds.position.y >= viewport_bounds.position.y and region_bounds.position.y <= viewport_bounds.end.y:
-		result.append(PackedVector2Array([Vector2(clipped.position.x, region_bounds.position.y), Vector2(clipped.end.x, region_bounds.position.y)]))
-	if region_bounds.end.y >= viewport_bounds.position.y and region_bounds.end.y <= viewport_bounds.end.y:
-		result.append(PackedVector2Array([Vector2(clipped.position.x, region_bounds.end.y), Vector2(clipped.end.x, region_bounds.end.y)]))
-	return result
 
 
 func _present_retained_surface() -> void:
@@ -344,24 +316,8 @@ func _draw_exploration_stage(map_rect: Rect2, los_blackout: bool) -> void:
 		draw_rect(map_rect, Color.BLACK, true)
 
 
-static func requires_los_blackout(cells: Array[MapCellView]) -> bool:
-	return cells.any(func(cell: MapCellView) -> bool: return not cell.visible)
-
-
-static func los_cell_requires_blackout(uses_los: bool, currently_visible: bool) -> bool:
-	return uses_los and not currently_visible
-
-
-static func darkness_mask_asset_id(level: int) -> String:
-	return "classic-darkness-mask-%d" % clampi(level, 0, 6)
-
-
-static func darkness_mask_rect(party_rect: Rect2) -> Rect2:
-	return Rect2(party_rect.position - DARKNESS_MASK_SIZE * 0.5, DARKNESS_MASK_SIZE)
-
-
 func _draw_darkness_mask(map_rect: Rect2, party_rect: Rect2, level: int) -> void:
-	var mask_rect := darkness_mask_rect(party_rect)
+	var mask_rect := MapPresentationGeometry.darkness_mask_rect(party_rect)
 	var clipped := map_rect.intersection(mask_rect)
 	if clipped.position.y > map_rect.position.y:
 		draw_rect(Rect2(map_rect.position, Vector2(map_rect.size.x, clipped.position.y - map_rect.position.y)), Color.BLACK, true)
@@ -378,24 +334,11 @@ func _draw_darkness_mask(map_rect: Rect2, party_rect: Rect2, level: int) -> void
 	draw_texture_rect_region(texture, clipped, Rect2(clipped.position - mask_rect.position, clipped.size))
 
 
-static func land_marker_tile_ids(cell: MapCellView) -> Array[int]:
-	var result: Array[int] = []
-	if cell != null and cell.has_feature(&"secret"):
-		result.append(SECRET_LAND_MARKER_TILE_ID)
-	if cell != null and cell.has_feature(&"discovered_path"):
-		result.append(PATH_LAND_MARKER_TILE_ID)
-	return result
-
-
 func _draw_land_markers(cell: MapCellView, rect: Rect2) -> void:
-	for tile_id: int in land_marker_tile_ids(cell):
+	for tile_id: int in MapTextureCache.land_marker_tile_ids(cell):
 		var texture := _textures.land_marker_texture(tile_id)
 		if texture != null:
 			draw_texture_rect(texture, rect, false)
-
-
-static func transparent_atlas_tile(atlas: MediaAsset, texture: Texture2D, tile_id: int) -> ImageTexture:
-	return MapTextureCache.transparent_atlas_tile(atlas, texture, tile_id)
 
 
 func _draw_party_marker(party_rect: Rect2) -> void:
@@ -411,107 +354,6 @@ func _party_marker_texture() -> Texture2D:
 	if _view != null and _view.map_view != null and _view.map_view.level_type == &"dungeon":
 		return _dungeon_party_marker_textures.get(clampi(_view.map_view.dungeon_heading, 1, 4)) as Texture2D
 	return _party_marker_textures.get(_party_marker_asset_id) as Texture2D
-
-
-static func dungeon_party_marker_region(heading: int) -> Rect2:
-	return Rect2(float(clampi(heading, 1, 4) - 1) * 16.0, 0.0, 16.0, 16.0)
-
-
-static func dungeon_party_marker_texture(strip: Texture2D, heading: int) -> ImageTexture:
-	if strip == null:
-		return null
-	var source := strip.get_image()
-	if source == null:
-		return null
-	var arrow := source.get_region(Rect2i(dungeon_party_marker_region(heading)))
-	arrow.convert(Image.FORMAT_RGBA8)
-	for y: int in arrow.get_height():
-		for x: int in arrow.get_width():
-			var pixel := arrow.get_pixel(x, y)
-			if pixel.r == 1.0 and pixel.g == 1.0 and pixel.b == 1.0:
-				arrow.set_pixel(x, y, Color(1.0, 1.0, 1.0, 0.0))
-	return ImageTexture.create_from_image(arrow)
-
-
-static func party_marker_asset_id_for_direction(direction: Vector2i, current_asset_id: StringName = PARTY_MARKER_RIGHT_ASSET_ID) -> StringName:
-	if direction.x < 0:
-		return PARTY_MARKER_LEFT_ASSET_ID
-	if direction.x > 0:
-		return PARTY_MARKER_RIGHT_ASSET_ID
-	return current_asset_id
-
-
-static func boat_marker_asset_id(landlook: int, facing_right: bool) -> StringName:
-	return StringName((BOAT_MARKER_RIGHT_ASSET_IDS if facing_right else BOAT_MARKER_LEFT_ASSET_IDS).get(landlook, ""))
-
-
-static func facing_label(direction: Vector2i) -> String:
-	var horizontal := "W" if direction.x < 0 else "E" if direction.x > 0 else ""
-	var vertical := "N" if direction.y < 0 else "S" if direction.y > 0 else ""
-	return "%s%s" % [vertical, horizontal] if not vertical.is_empty() or not horizontal.is_empty() else "—"
-
-
-static func movement_cursor_asset_id(direction: Vector2i) -> StringName:
-	var normalized := Vector2i(signi(direction.x), signi(direction.y))
-	match normalized:
-		Vector2i(-1, -1): return &"map.cursor.northwest"
-		Vector2i(0, -1): return &"map.cursor.north"
-		Vector2i(1, -1): return &"map.cursor.northeast"
-		Vector2i(-1, 0): return &"map.cursor.west"
-		Vector2i(1, 0): return &"map.cursor.east"
-		Vector2i(-1, 1): return &"map.cursor.southwest"
-		Vector2i(0, 1): return &"map.cursor.south"
-		Vector2i(1, 1): return &"map.cursor.southeast"
-		_: return &"map.cursor.center"
-
-
-static func camera_top_left(party_coordinate: Vector2i, map_size: Vector2i, viewport_cells: Vector2i) -> Vector2i:
-	var maximum := Vector2i(maxi(map_size.x - viewport_cells.x, 0), maxi(map_size.y - viewport_cells.y, 0))
-	return Vector2i(
-		clampi(party_coordinate.x - viewport_cells.x / 2, 0, maximum.x),
-		clampi(party_coordinate.y - viewport_cells.y / 2, 0, maximum.y)
-	)
-
-
-static func classic_visible_rect(party_coordinate: Vector2i, map_size: Vector2i) -> Rect2i:
-	var view_size := Vector2i(mini(CLASSIC_VIEW_CELLS.x, map_size.x), mini(CLASSIC_VIEW_CELLS.y, map_size.y))
-	var maximum := Vector2i(maxi(map_size.x - view_size.x, 0), maxi(map_size.y - view_size.y, 0))
-	var origin := Vector2i(clampi(party_coordinate.x - 8, 0, maximum.x), clampi(party_coordinate.y - 6, 0, maximum.y))
-	return Rect2i(origin, view_size)
-
-
-static func land_discovery_coordinates(visited: Array[Vector2i], map_size: Vector2i) -> Dictionary:
-	var result: Dictionary = {}
-	for coordinate: Vector2i in visited:
-		append_land_discovery(result, coordinate, map_size)
-	return result
-
-
-static func append_land_discovery(result: Dictionary, coordinate: Vector2i, map_size: Vector2i) -> void:
-	var visible_rect := classic_visible_rect(coordinate, map_size)
-	for y: int in range(visible_rect.position.y, visible_rect.end.y):
-		for x: int in range(visible_rect.position.x, visible_rect.end.x):
-			result[Vector2i(x, y)] = true
-
-
-static func viewport_cells_for(control_size: Vector2, header_height: float, native_cell_size: float) -> Vector2i:
-	return Vector2i(
-		maxi(1, floori(control_size.x / native_cell_size)),
-		maxi(1, floori((control_size.y - header_height) / native_cell_size))
-	)
-
-
-static func projection_cells_for(control_size: Vector2, header_height: float, native_cell_size: float) -> Vector2i:
-	return viewport_cells_for(control_size, header_height, native_cell_size) + RETAINED_PROJECTION_MARGIN_CELLS * 2
-
-
-static func map_draw_origin_for(control_size: Vector2, minimum_origin: Vector2, native_cell_size: float, viewport_cells: Vector2i) -> Vector2:
-	var map_pixel_size := Vector2(viewport_cells) * native_cell_size
-	var available_height := maxf(control_size.y - minimum_origin.y, 0.0)
-	return Vector2(
-		maxf(minimum_origin.x, floorf((control_size.x - map_pixel_size.x) * 0.5)),
-		minimum_origin.y + maxf(0.0, floorf((available_height - map_pixel_size.y) * 0.5))
-	)
 
 
 func _draw_unvisited_cell(_rect: Rect2) -> void:
@@ -530,7 +372,7 @@ func _draw_cell(cell: MapCellView, rect: Rect2, level_type: StringName, dark: bo
 	if level_type == &"dungeon" and atlas_asset != null and atlas_texture != null and atlas_asset.id == "dungeon-top-down-302":
 		_draw_dungeon_atlas_cell(cell, rect, atlas_asset, atlas_texture)
 		if dark:
-			draw_rect(rect, Color(0.0, 0.0, 0.0, darkness_overlay_alpha(saved_darkness_level)), true)
+			draw_rect(rect, Color(0.0, 0.0, 0.0, MapPresentationGeometry.darkness_overlay_alpha(saved_darkness_level)), true)
 		return
 	var region := Rect2i() if atlas_asset == null else atlas_asset.region_for(cell.render_tile)
 	if atlas_texture == null or not region.has_area():
@@ -541,50 +383,12 @@ func _draw_cell(cell: MapCellView, rect: Rect2, level_type: StringName, dark: bo
 	if overlay_texture != null:
 		draw_texture_rect(overlay_texture, rect, false)
 	if dark:
-		draw_rect(rect, Color(0.0, 0.0, 0.0, darkness_overlay_alpha(saved_darkness_level)), true)
-
-
-static func dungeon_discovery_coordinates(visited: Array[Vector2i]) -> Dictionary:
-	var result: Dictionary = {}
-	for coordinate: Vector2i in visited:
-		append_dungeon_discovery(result, coordinate)
-	return result
-
-
-static func append_dungeon_discovery(result: Dictionary, coordinate: Vector2i) -> void:
-	for y: int in range(coordinate.y - 1, coordinate.y + 2):
-		for x: int in range(coordinate.x - 1, coordinate.x + 2):
-			result[Vector2i(x, y)] = true
-
-
-static func darkness_overlay_alpha(saved_darkness_level: int) -> float:
-	if saved_darkness_level < 0:
-		return 0.45
-	return lerpf(0.72, 0.12, float(clampi(saved_darkness_level, 0, 6)) / 6.0)
+		draw_rect(rect, Color(0.0, 0.0, 0.0, MapPresentationGeometry.darkness_overlay_alpha(saved_darkness_level)), true)
 
 
 func _draw_dungeon_atlas_cell(cell: MapCellView, rect: Rect2, atlas_asset: MediaAsset, atlas_texture: Texture2D) -> void:
-	for tile_id: int in dungeon_tile_ids(cell):
+	for tile_id: int in MapTextureCache.dungeon_tile_ids(cell):
 		_draw_atlas_region(rect, atlas_asset, atlas_texture, tile_id)
-
-
-static func dungeon_tile_ids(cell: MapCellView) -> Array[int]:
-	var result: Array[int] = [16]
-	if cell.terrain_id == "classic.dungeon.wall":
-		result.append(1)
-	if cell.has_feature(&"door"):
-		result.append(3 if cell.feature_orientation(&"door") == &"vertical" else 2)
-	for feature_kind: StringName in [&"stairs", &"column", &"note"]:
-		if cell.has_feature(feature_kind):
-			result.append({&"stairs": 4, &"column": 5, &"note": 6}[feature_kind])
-	if cell.has_feature(&"secret"):
-		result.append({&"north": 9, &"east": 10, &"south": 11, &"west": 12}.get(cell.feature_orientation(&"secret"), 7))
-	if cell.has_feature(&"unmapped"):
-		result.append(8)
-	result.sort()
-	result.erase(16)
-	result.push_front(16)
-	return result
 
 
 func _draw_atlas_region(rect: Rect2, atlas_asset: MediaAsset, atlas_texture: Texture2D, tile_id: int) -> void:
@@ -655,7 +459,7 @@ func _movement_direction_at(position: Vector2) -> Vector2i:
 	if _party_rect.size == Vector2.ZERO or _minimap_rect.has_point(position):
 		return Vector2i.ZERO
 	if _view != null and _view.map_view != null and _view.map_view.level_type == &"land":
-		return land_direction_at(position, _party_rect)
+		return MapPresentationGeometry.land_direction_at(position, _party_rect)
 	var offset := position - _party_rect.get_center()
 	if absf(offset.x) < cell_size * 0.35 and absf(offset.y) < cell_size * 0.35:
 		return Vector2i.ZERO
@@ -668,7 +472,7 @@ func _update_movement_cursor(position: Vector2) -> void:
 	if not _movement_cursor_enabled or not is_visible_in_tree() or _view == null or _view.map_view == null:
 		_clear_movement_cursor()
 		return
-	var asset_id := movement_cursor_asset_id(_movement_direction_at(position))
+	var asset_id := MapTextureCache.movement_cursor_asset_id(_movement_direction_at(position))
 	var texture := ClassicUiAssetCatalog.texture(asset_id)
 	if texture == null:
 		_clear_movement_cursor()
@@ -699,9 +503,3 @@ func _on_visibility_changed() -> void:
 
 func _exit_tree() -> void:
 	_clear_movement_cursor()
-
-
-static func land_direction_at(position: Vector2, party_rect: Rect2) -> Vector2i:
-	var horizontal := -1 if position.x < party_rect.position.x else 1 if position.x > party_rect.end.x else 0
-	var vertical := -1 if position.y < party_rect.position.y else 1 if position.y > party_rect.end.y else 0
-	return Vector2i(horizontal, vertical)

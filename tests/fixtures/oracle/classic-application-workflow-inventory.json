@@ -9343,7 +9343,7 @@
             "symbol": "func _bind_location_note_preview"
           },
           {
-            "path": "src/ui/classic_map_presenter.gd",
+            "path": "src/ui/map_presentation_geometry.gd",
             "symbol": "static func darkness_overlay_alpha"
           }
         ]
