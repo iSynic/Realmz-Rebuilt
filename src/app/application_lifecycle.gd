@@ -50,7 +50,7 @@ static func response_action(request: InteractionRequest, response: InteractionRe
 	if body == null:
 		return &""
 	var action := body.action
-	var request_body := request.body as InteractionRequest.LifecycleRequestBody
+	var request_body := request.body as LifecycleRequestBody
 	if request_body == null:
 		return &""
 	for option: InteractionRequestValue.LifecycleOption in request_body.options:

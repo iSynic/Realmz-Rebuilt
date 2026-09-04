@@ -51,7 +51,7 @@ func configure(media: ClassicMediaCatalog, game_view: GameView, compact: bool, s
 
 
 func build(request: InteractionRequest) -> void:
-	var body := request.body as InteractionRequest.TreasureRequestBody
+	var body := request.body as TreasureRequestBody
 	if body == null:
 		add_hint("The treasure request is malformed.")
 		return
@@ -83,7 +83,7 @@ func preferred_initial_focus() -> Control:
 	return recipient if recipient != null and recipient.visible and not (recipient is BaseButton and (recipient as BaseButton).disabled) else null
 
 
-func _build_classic_treasure_workspace(body: InteractionRequest.TreasureRequestBody) -> void:
+func _build_classic_treasure_workspace(body: TreasureRequestBody) -> void:
 	_select_initial_recipient(body)
 	%TreasureWorkspaceTitle.text = "Victory Spoils" if body.origin == &"battle" else "Treasure"
 	%TreasureWorkspaceSummary.text = TreasureDisplayText.summary(body)
@@ -93,7 +93,7 @@ func _build_classic_treasure_workspace(body: InteractionRequest.TreasureRequestB
 	_refresh_item_availability()
 
 
-func _build_loot_side(body: InteractionRequest.TreasureRequestBody) -> void:
+func _build_loot_side(body: TreasureRequestBody) -> void:
 	var scroll := %TreasureItemScroll as ScrollContainer
 	var grid := %TreasureItemGrid as GridContainer
 	grid.columns = 6 if _compact else 16
@@ -121,7 +121,7 @@ func _build_loot_side(body: InteractionRequest.TreasureRequestBody) -> void:
 				_add_vacant_loot_slot(grid, slot_id)
 
 
-func _build_item_inspector(body: InteractionRequest.TreasureRequestBody) -> void:
+func _build_item_inspector(body: TreasureRequestBody) -> void:
 	var inspector := %TreasureItemRecord as BoxContainer
 	inspector.vertical = _compact
 	inspector.custom_minimum_size.y = 390.0 if _compact else 142.0
@@ -183,7 +183,7 @@ func _add_vacant_loot_slot(parent: GridContainer, instance_id: String) -> void:
 	parent.add_child(slot)
 
 
-func _build_party_side(body: InteractionRequest.TreasureRequestBody) -> void:
+func _build_party_side(body: TreasureRequestBody) -> void:
 	find_child("TreasurePartyPanel", true, false).custom_minimum_size.x = 250.0 if _compact else 330.0
 	var rows := %TreasureRecipientRows as VBoxContainer
 	for character: InteractionRequestValue.RewardCharacter in body.characters:
@@ -205,7 +205,7 @@ func _add_recipient_row(parent: VBoxContainer, character: InteractionRequestValu
 	_recipient_buttons[character.id] = button
 
 
-func _build_compact_commands(parent: VBoxContainer, body: InteractionRequest.TreasureRequestBody) -> void:
+func _build_compact_commands(parent: VBoxContainer, body: TreasureRequestBody) -> void:
 	%TreasurePooledWealth.text = TreasureDisplayText.wealth(body.wealth)
 	var has_carried_wealth := body.characters.any(func(character: InteractionRequestValue.RewardCharacter) -> bool:
 		return character.wealth != null and (character.wealth.gold > 0 or character.wealth.gems > 0 or character.wealth.jewelry > 0)
@@ -224,7 +224,7 @@ func _build_compact_commands(parent: VBoxContainer, body: InteractionRequest.Tre
 		_add_caster_control(parent, "Identify", &"identify", body.identify)
 
 
-func _select_initial_recipient(body: InteractionRequest.TreasureRequestBody) -> void:
+func _select_initial_recipient(body: TreasureRequestBody) -> void:
 	if body.characters.any(func(character: InteractionRequestValue.RewardCharacter) -> bool: return character.id == _selected_recipient_id and character.enabled):
 		return
 	_selected_recipient_id = ""
@@ -366,7 +366,7 @@ func _portrait(character_id: String) -> Texture2D:
 static func _node_fragment(value: String) -> String: return value.replace(".", "_").replace(":", "_").replace("/", "_").replace("@", "_").replace('"', "_")
 
 
-func _build_recovery_workspace(body: InteractionRequest.TreasureRequestBody) -> void:
+func _build_recovery_workspace(body: TreasureRequestBody) -> void:
 	if body.item == null:
 		add_hint("The recovery request is malformed.")
 		return
@@ -470,7 +470,7 @@ func _add_caster_control(parent: VBoxContainer, label: String, action: StringNam
 	)
 
 
-func _build_completion_confirmation(body: InteractionRequest.TreasureRequestBody) -> void:
+func _build_completion_confirmation(body: TreasureRequestBody) -> void:
 	var panel := completion_confirmation_scene.instantiate() as PanelContainer
 	add_child(panel)
 	(panel.get_node("%TreasureCompletionSummary") as Label).text = body.summary if not body.summary.is_empty() else "Unclaimed treasure will be left behind."

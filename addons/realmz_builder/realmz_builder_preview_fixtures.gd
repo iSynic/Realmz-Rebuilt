@@ -62,8 +62,8 @@ static func _request(surface_id: String, profile: String) -> InteractionRequest:
 	return null
 
 
-static func _temple_body(profile: String) -> InteractionRequest.TempleRequestBody:
-	var body := InteractionRequest.TempleRequestBody.new()
+static func _temple_body(profile: String) -> TempleRequestBody:
+	var body := TempleRequestBody.new()
 	body.cost_percent = 115
 	body.pooled_wealth = _wealth(740, 4, 1)
 	body.bank_available = true
@@ -74,8 +74,8 @@ static func _temple_body(profile: String) -> InteractionRequest.TempleRequestBod
 	return body
 
 
-static func _bank_body(profile: String) -> InteractionRequest.BankRequestBody:
-	var body := InteractionRequest.BankRequestBody.new()
+static func _bank_body(profile: String) -> BankRequestBody:
+	var body := BankRequestBody.new()
 	body.mode = &"bank"
 	body.has_mode = true
 	body.pooled_wealth = _wealth(740, 4, 1)
@@ -163,8 +163,8 @@ static func _pick_lock_body(profile: String) -> PickLockRequestBody:
 	return body
 
 
-static func _lifecycle_body(profile: String) -> InteractionRequest.LifecycleRequestBody:
-	var body := InteractionRequest.LifecycleRequestBody.new()
+static func _lifecycle_body(profile: String) -> LifecycleRequestBody:
+	var body := LifecycleRequestBody.new()
 	body.operation = &"end-adventure"
 	body.prompt = "The company is about to end this adventure."
 	body.has_active_session = true
@@ -191,8 +191,8 @@ static func _scrolling_text_body(profile: String) -> AcknowledgeRequestBody:
 	return body
 
 
-static func _level_up_body(profile: String) -> InteractionRequest.LevelUpRequestBody:
-	var body := InteractionRequest.LevelUpRequestBody.new()
+static func _level_up_body(profile: String) -> LevelUpRequestBody:
+	var body := LevelUpRequestBody.new()
 	body.mode = &"unknown" if profile == "Error" else &"spell-selection"
 	body.prompt = "Choose the spells Kevlar will learn."
 	body.character_id = "builder.character.0"
@@ -227,8 +227,8 @@ static func _encounter_body(profile: String) -> ComplexEncounterRequestBody:
 	return body
 
 
-static func _shop_body(profile: String) -> InteractionRequest.ShopRequestBody:
-	var body := InteractionRequest.ShopRequestBody.new()
+static func _shop_body(profile: String) -> ShopRequestBody:
+	var body := ShopRequestBody.new()
 	body.shop_id = "builder.shop.0"
 	body.inflation_percent = 110
 	body.party_gold = 1240
@@ -245,8 +245,8 @@ static func _shop_body(profile: String) -> InteractionRequest.ShopRequestBody:
 	return body
 
 
-static func _treasure_body(profile: String) -> InteractionRequest.TreasureRequestBody:
-	var body := InteractionRequest.TreasureRequestBody.new()
+static func _treasure_body(profile: String) -> TreasureRequestBody:
+	var body := TreasureRequestBody.new()
 	body.mode = &"malformed" if profile == "Error" else &"ordinary"
 	body.prompt = "The company has the pick of the recovered equipment."
 	body.origin = &"battle"
@@ -263,8 +263,8 @@ static func _treasure_body(profile: String) -> InteractionRequest.TreasureReques
 	return body
 
 
-static func _combat_body(profile: String) -> InteractionRequest.CombatRequestBody:
-	var body := InteractionRequest.CombatRequestBody.new()
+static func _combat_body(profile: String) -> CombatRequestBody:
+	var body := CombatRequestBody.new()
 	body.battle_id = "builder.battle.46"
 	body.round_number = 3
 	body.actor_id = "builder.character.0"

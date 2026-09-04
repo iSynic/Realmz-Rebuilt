@@ -8,7 +8,7 @@ const TEMPLE_SERVICE_ROW_SCENE_PATH := "res://src/ui/interaction_components/temp
 
 var _media: ClassicMediaCatalog
 var _compact := false
-var _body: InteractionRequest.TempleRequestBody
+var _body: TempleRequestBody
 var _characters: Array[InteractionRequestValue.ServiceCharacter] = []
 var _services: Array[InteractionRequestValue.TempleService] = []
 var _selected_character_id: String
@@ -25,7 +25,7 @@ func configure(media: ClassicMediaCatalog, compact: bool) -> void:
 
 
 func build(request: InteractionRequest) -> void:
-	_body = request.body as InteractionRequest.TempleRequestBody
+	_body = request.body as TempleRequestBody
 	if _body == null:
 		add_hint("The temple request is malformed.")
 		return

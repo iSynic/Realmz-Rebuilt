@@ -195,7 +195,7 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 	_options.visible = true
 	_component.build(request)
 	if request.kind == InteractionRequest.COMBAT:
-		_mount_fast_spell_dock(request.body as InteractionRequest.CombatRequestBody, game_view, media)
+		_mount_fast_spell_dock(request.body as CombatRequestBody, game_view, media)
 	_apply_classic_region()
 	call_deferred("_prepare_interaction_focus")
 
@@ -451,7 +451,7 @@ func _create_component(request: InteractionRequest, game_view: GameView, media: 
 	return ComponentFactory.create(request, game_view, media, _application_rect.size.x < 1000.0, _autojournal_enabled, _treasure_recipient_id, _treasure_slot_order, _combat_rect)
 
 
-func _mount_fast_spell_dock(body: InteractionRequest.CombatRequestBody, game_view: GameView, media: ClassicMediaCatalog) -> void:
+func _mount_fast_spell_dock(body: CombatRequestBody, game_view: GameView, media: ClassicMediaCatalog) -> void:
 	_close_fast_spell_dock()
 	if body == null:
 		return
@@ -548,7 +548,7 @@ func begin_treasure_transfer(reduced_motion: bool) -> bool:
 
 
 func _update_treasure_slot_order(request: InteractionRequest) -> void:
-	var body := request.body as InteractionRequest.TreasureRequestBody
+	var body := request.body as TreasureRequestBody
 	if body == null or body.mode != &"ordinary":
 		return
 	var continues_current_layout := body.items.is_empty() or body.items.any(func(item: InteractionRequestValue.RewardItem) -> bool: return _treasure_slot_order.has(item.instance_id))
@@ -670,7 +670,7 @@ func _close_modal_shield() -> void:
 func _can_present_nested_treasure_confirmation(request: InteractionRequest) -> bool:
 	if request == null or request.kind != InteractionRequest.TREASURE_DISTRIBUTION or not _component is TreasureDistributionInteraction:
 		return false
-	var body := request.body as InteractionRequest.TreasureRequestBody
+	var body := request.body as TreasureRequestBody
 	return body != null and body.mode == &"completion-confirmation"
 
 

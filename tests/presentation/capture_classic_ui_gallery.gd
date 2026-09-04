@@ -465,7 +465,7 @@ func _capture_gallery() -> void:
 	_application._battlefield_presenter.visible = true
 	var combat_media := _application.presentation_coordinator.package_media()
 	var combat_request := ClassicUiFixtureGallery.request_for(InteractionRequest.COMBAT)
-	var combat_body := combat_request.body as InteractionRequest.CombatRequestBody
+	var combat_body := combat_request.body as CombatRequestBody
 	var gallery_hero_id: String = gallery_view.party_members[0].id
 	var gallery_monster_id: String = combat_fixture.monsters[0].id
 	combat_body.actor_id = gallery_hero_id; combat_body.combatants[0].id = gallery_hero_id; combat_body.combatants[1].id = gallery_monster_id; combat_body.targets[0].id = gallery_monster_id

@@ -135,7 +135,7 @@ static func reward_continuation_is_valid(content: RealmzContent, state: GameStat
 		if String(character_id).is_empty() or state.party.character_by_id(String(character_id)) == null:
 			return false
 	if reward.phase == ClassicRewardState.ITEM_PHASE:
-		var treasure_body := request.body as InteractionRequest.TreasureRequestBody
+		var treasure_body := request.body as TreasureRequestBody
 		if request.kind != InteractionRequest.TREASURE_DISTRIBUTION or treasure_body == null:
 			return false
 		var expected_mode := &"completion-confirmation" if reward.completion_pending else &"ordinary"
@@ -151,11 +151,11 @@ static func reward_continuation_is_valid(content: RealmzContent, state: GameStat
 				return false
 		return true
 	if reward.phase == ClassicRewardState.LEVEL_PHASE:
-		var level_body := request.body as InteractionRequest.LevelUpRequestBody
+		var level_body := request.body as LevelUpRequestBody
 		return not reward.pending_level_result.is_empty() and request.kind == InteractionRequest.LEVEL_UP and level_body != null and level_body.mode == &"result" and level_body.character_id == reward.pending_level_result.get("characterId")
 	if reward.phase == ClassicRewardState.SPELL_PHASE:
 		var spell_ids := reward.spell_character_ids()
-		var level_body := request.body as InteractionRequest.LevelUpRequestBody
+		var level_body := request.body as LevelUpRequestBody
 		return reward.spell_index < spell_ids.size() and request.kind == InteractionRequest.LEVEL_UP and level_body != null and level_body.mode == &"spell-selection" and level_body.character_id == spell_ids[reward.spell_index]
 	return false
 

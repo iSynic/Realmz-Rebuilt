@@ -386,7 +386,7 @@ func _test_combat_and_reward_persistence(content: RealmzContent) -> void:
 		assert_equal(recovery_step.state, SessionStep.State.WAITING_FOR_INTERACTION, "retreat opens one typed treasure boundary containing the fumbled weapon")
 		assert_false(recovery_step.events.any(func(event: DomainEvent) -> bool: return event.kind == &"allies_selected"), "a stale empty body-count stage is bypassed rather than manufactured")
 		assert_equal(recovery_step.interaction.kind, InteractionRequest.TREASURE_DISTRIBUTION, "post-battle recovery uses the ordinary treasure-distribution request")
-		var merged_reward := recovery_step.interaction.body as InteractionRequest.TreasureRequestBody
+		var merged_reward := recovery_step.interaction.body as TreasureRequestBody
 		assert_not_null(merged_reward, "the merged post-battle request retains its typed treasure body")
 		if merged_reward != null:
 			assert_equal(merged_reward.mode, &"ordinary", "Castle fumbles enter the ordinary booty workspace rather than a second recovery screen")

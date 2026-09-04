@@ -30,7 +30,7 @@ func configure(game_view: GameView, media: ClassicMediaCatalog) -> void:
 
 
 func build(request: InteractionRequest) -> void:
-	var body := request.body as InteractionRequest.LevelUpRequestBody
+	var body := request.body as LevelUpRequestBody
 	if body == null:
 		add_hint("The level-up request is malformed.")
 		return
@@ -44,7 +44,7 @@ func build(request: InteractionRequest) -> void:
 		add_hint("The level-up request is malformed.")
 
 
-func _build_result(body: InteractionRequest.LevelUpRequestBody) -> void:
+func _build_result(body: LevelUpRequestBody) -> void:
 	if body.character_id.is_empty() or body.gains == null:
 		add_hint("The level result is unavailable.")
 		return
@@ -64,7 +64,7 @@ func _build_result(body: InteractionRequest.LevelUpRequestBody) -> void:
 	continue_button.pressed.connect(func() -> void: response_body_submitted.emit(InteractionResponse.LevelUpBody.new(&"continue", body.character_id)), CONNECT_ONE_SHOT)
 
 
-func _build_spell_selection(body: InteractionRequest.LevelUpRequestBody) -> void:
+func _build_spell_selection(body: LevelUpRequestBody) -> void:
 	if body.character_id.is_empty():
 		add_hint("The spell-selection request is unavailable.")
 		return
@@ -94,7 +94,7 @@ func _build_spell_selection(body: InteractionRequest.LevelUpRequestBody) -> void
 	_refresh_spell_selection(body)
 
 
-func _build_spell_level_rail(body: InteractionRequest.LevelUpRequestBody, available_levels: Array[int]) -> void:
+func _build_spell_level_rail(body: LevelUpRequestBody, available_levels: Array[int]) -> void:
 	var rail := %Rail as VBoxContainer
 	for child: Node in rail.get_children():
 		rail.remove_child(child)
@@ -109,7 +109,7 @@ func _build_spell_level_rail(body: InteractionRequest.LevelUpRequestBody, availa
 		rail.add_child(button)
 
 
-func _rebuild_spell_list(body: InteractionRequest.LevelUpRequestBody) -> void:
+func _rebuild_spell_list(body: LevelUpRequestBody) -> void:
 	if _spell_list == null:
 		return
 	for child: Node in _spell_list.get_children():
@@ -131,7 +131,7 @@ func _rebuild_spell_list(body: InteractionRequest.LevelUpRequestBody) -> void:
 		_spell_list.add_child(button)
 
 
-func _select_spell_level(body: InteractionRequest.LevelUpRequestBody, level: int) -> void:
+func _select_spell_level(body: LevelUpRequestBody, level: int) -> void:
 	_selected_level = level
 	_rebuild_spell_list(body)
 	var spell := _first_spell_at_level(body, level)
@@ -139,7 +139,7 @@ func _select_spell_level(body: InteractionRequest.LevelUpRequestBody, level: int
 		_refresh_spell_record(spell)
 
 
-func _available_spell_levels(body: InteractionRequest.LevelUpRequestBody) -> Array[int]:
+func _available_spell_levels(body: LevelUpRequestBody) -> Array[int]:
 	var levels: Array[int] = []
 	for spell: InteractionRequestValue.SpellChoice in body.spells:
 		var level := ClassicSpellLevel.from_classic_id(spell.classic_id)
@@ -149,7 +149,7 @@ func _available_spell_levels(body: InteractionRequest.LevelUpRequestBody) -> Arr
 	return levels
 
 
-func _spells_at_level(body: InteractionRequest.LevelUpRequestBody, level: int) -> Array[InteractionRequestValue.SpellChoice]:
+func _spells_at_level(body: LevelUpRequestBody, level: int) -> Array[InteractionRequestValue.SpellChoice]:
 	var spells: Array[InteractionRequestValue.SpellChoice] = []
 	for spell: InteractionRequestValue.SpellChoice in body.spells:
 		if ClassicSpellLevel.from_classic_id(spell.classic_id) == level:
@@ -157,12 +157,12 @@ func _spells_at_level(body: InteractionRequest.LevelUpRequestBody, level: int) -
 	return spells
 
 
-func _first_spell_at_level(body: InteractionRequest.LevelUpRequestBody, level: int) -> InteractionRequestValue.SpellChoice:
+func _first_spell_at_level(body: LevelUpRequestBody, level: int) -> InteractionRequestValue.SpellChoice:
 	var spells := _spells_at_level(body, level)
 	return spells[0] if not spells.is_empty() else null
 
 
-func _toggle_spell(body: InteractionRequest.LevelUpRequestBody, spell_id: String) -> void:
+func _toggle_spell(body: LevelUpRequestBody, spell_id: String) -> void:
 	var button := _spell_buttons.get(spell_id) as Button
 	if button == null:
 		return
@@ -182,7 +182,7 @@ func _toggle_spell(body: InteractionRequest.LevelUpRequestBody, spell_id: String
 	_refresh_spell_selection(body)
 
 
-func _refresh_spell_selection(body: InteractionRequest.LevelUpRequestBody) -> void:
+func _refresh_spell_selection(body: LevelUpRequestBody) -> void:
 	if _selection_summary == null:
 		return
 	var points := _selected_spell_points(body)
@@ -204,7 +204,7 @@ func _refresh_spell_selection(body: InteractionRequest.LevelUpRequestBody) -> vo
 		button.tooltip_text = spell.name if not button.disabled else "%s costs %d points; only %d remain." % [spell.name, spell.cost, maxi(remaining, 0)]
 
 
-func _selected_spell_points(body: InteractionRequest.LevelUpRequestBody) -> int:
+func _selected_spell_points(body: LevelUpRequestBody) -> int:
 	var points := 0
 	for spell: InteractionRequestValue.SpellChoice in body.spells:
 		if _selected_spell_ids.has(spell.id):
@@ -212,7 +212,7 @@ func _selected_spell_points(body: InteractionRequest.LevelUpRequestBody) -> int:
 	return points
 
 
-func _spell_choice(body: InteractionRequest.LevelUpRequestBody, spell_id: String) -> InteractionRequestValue.SpellChoice:
+func _spell_choice(body: LevelUpRequestBody, spell_id: String) -> InteractionRequestValue.SpellChoice:
 	for spell: InteractionRequestValue.SpellChoice in body.spells:
 		if spell.id == spell_id:
 			return spell
@@ -229,7 +229,7 @@ func _refresh_spell_record(spell: InteractionRequestValue.SpellChoice) -> void:
 	_spell_record_description.visible = not _spell_record_description.text.is_empty()
 
 
-func _submit_spells(body: InteractionRequest.LevelUpRequestBody) -> void:
+func _submit_spells(body: LevelUpRequestBody) -> void:
 	if _selected_spell_points(body) > body.point_total:
 		_refresh_spell_selection(body)
 		return

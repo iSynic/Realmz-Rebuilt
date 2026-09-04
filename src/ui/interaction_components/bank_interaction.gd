@@ -7,7 +7,7 @@ const BANK_CHARACTER_ROW_SCENE_PATH := "res://src/ui/interaction_components/bank
 const BANK_TRANSFER_ROW_SCENE_PATH := "res://src/ui/interaction_components/bank_transfer_row.tscn"
 
 var _compact := false
-var _body: InteractionRequest.BankRequestBody
+var _body: BankRequestBody
 var _departure_mode := false
 var _characters: Array[InteractionRequestValue.ServiceCharacter] = []
 var _selected_character_id: String
@@ -20,7 +20,7 @@ func configure(compact: bool) -> void:
 
 
 func build(request: InteractionRequest) -> void:
-	_body = request.body as InteractionRequest.BankRequestBody
+	_body = request.body as BankRequestBody
 	if _body == null:
 		add_hint("The wealth request is malformed.")
 		return

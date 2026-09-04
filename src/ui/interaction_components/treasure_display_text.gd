@@ -6,7 +6,7 @@ extends RefCounted
 ## Formats the player-visible summaries and item facts in the Treasure workspace.
 
 
-static func summary(body: InteractionRequest.TreasureRequestBody) -> String:
+static func summary(body: TreasureRequestBody) -> String:
 	var parts: Array[String] = []
 	if body.has_remaining:
 		parts.append("%d item%s" % [body.remaining, "" if body.remaining == 1 else "s"])

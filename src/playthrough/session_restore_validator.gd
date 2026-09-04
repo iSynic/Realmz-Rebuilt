@@ -201,7 +201,7 @@ static func _valid_pooled_wealth_continuation(content: RealmzContent, state: Gam
 	if service.stage == &"warning":
 		return SessionInteractionFactory.has_pooled_wealth(state.party) and session_interaction.to_data() == SessionInteractionFactory.pooled_wealth_departure_warning(session_interaction.request_id).to_data()
 	if service.stage == &"distribution":
-		var bank_body := session_interaction.body as InteractionRequest.BankRequestBody
+		var bank_body := session_interaction.body as BankRequestBody
 		return session_interaction.kind == InteractionRequest.POOLED_WEALTH_DEPARTURE and bank_body != null and bank_body.mode == &"departure" and state.party.character_by_id(bank_body.selected_character_id) != null and session_interaction.to_data() == SessionInteractionFactory.pooled_wealth_departure_distribution(state, session_interaction.request_id, bank_body.selected_character_id).to_data()
 	return false
 
@@ -219,7 +219,7 @@ static func _valid_service_continuation(content: RealmzContent, state: GameState
 		&"classic-shop":
 			return service.service_id == state.active_shop_id and not service.service_id.is_empty() and content.shop_by_id(service.service_id) != null and session_interaction.kind == InteractionRequest.SHOP
 		&"classic-temple":
-			var temple_body := session_interaction.body as InteractionRequest.TempleRequestBody
+			var temple_body := session_interaction.body as TempleRequestBody
 			return runtime_body != null and service.service_id == "realmz.service.temple" and state.temple_available and runtime_body.cost_percent == state.temple_cost_percent and runtime_body.bank_available == state.bank_available and state.party.character_by_id(selected_temple_character) != null and session_interaction.kind == InteractionRequest.TEMPLE and temple_body != null and temple_body.selected_character_id == selected_temple_character
 		&"classic-temple-exit":
 			return runtime_body != null and service.service_id == "realmz.service.temple" and state.temple_available and not state.bank_available and runtime_body.cost_percent == state.temple_cost_percent and not runtime_body.bank_available and state.party.character_by_id(selected_temple_character) != null and session_interaction.kind == InteractionRequest.YES_NO
@@ -297,8 +297,8 @@ static func _valid_combat_fumble_continuation(content: RealmzContent, state: Gam
 	if combat == null or vm_interaction != null or session_interaction == null or session_interaction.kind != InteractionRequest.TREASURE_DISTRIBUTION or state.combat == null or not state.combat.completed or state.combat.battle_id != combat.battle_id or state.combat.fumbled_items().is_empty():
 		return false
 	var expected_request := InteractionRequest.from_payload("validation.fumble-recovery", InteractionRequest.TREASURE_DISTRIBUTION, RealmzRules.new().combat_flow.rounds.fumble_recovery_payload(state, content))
-	var actual_body := session_interaction.body as InteractionRequest.TreasureRequestBody
-	var expected_body: InteractionRequest.TreasureRequestBody = null if expected_request == null else expected_request.body as InteractionRequest.TreasureRequestBody
+	var actual_body := session_interaction.body as TreasureRequestBody
+	var expected_body: TreasureRequestBody = null if expected_request == null else expected_request.body as TreasureRequestBody
 	return actual_body != null and actual_body.same_fumble_values(expected_body)
 
 

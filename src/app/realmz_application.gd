@@ -501,7 +501,7 @@ func _respond_host_interaction(response: InteractionResponse) -> void:
 		_shell_presenter.set_status("The lifecycle response was invalid.", true)
 		presentation_coordinator.present_host_interaction(_host_interaction)
 		return
-	var host_body := _host_interaction.body as InteractionRequest.LifecycleRequestBody
+	var host_body := _host_interaction.body as LifecycleRequestBody
 	var operation := host_body.operation if host_body != null else &""
 	if operation == &"quit-application":
 		_respond_quit_interaction(action)

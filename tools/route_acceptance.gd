@@ -390,7 +390,7 @@ func _default_response(request: InteractionRequest, step_id: String) -> Interact
 	match request.kind:
 		&"combat_action":
 			_force_victory()
-			var combat_body := request.body as InteractionRequest.CombatRequestBody
+			var combat_body := request.body as CombatRequestBody
 			if combat_body == null:
 				return null
 			return InteractionResponse.from_data(request.request_id, request.kind, {"actorId": combat_body.actor_id, "action": "defend", "targetId": ""})
@@ -412,7 +412,7 @@ func _default_response(request: InteractionRequest, step_id: String) -> Interact
 				return null
 			return InteractionResponse.from_data(request.request_id, request.kind, {"selectedIds": ally_body.selected_ids.duplicate()})
 		&"treasure_distribution":
-			var treasure_body := request.body as InteractionRequest.TreasureRequestBody
+			var treasure_body := request.body as TreasureRequestBody
 			if treasure_body == null:
 				return null
 			if treasure_body.mode == &"completion-confirmation":
@@ -421,7 +421,7 @@ func _default_response(request: InteractionRequest, step_id: String) -> Interact
 				return InteractionResponse.from_data(request.request_id, request.kind, {"action": "discard", "instanceId": treasure_body.item.instance_id})
 			return InteractionResponse.from_data(request.request_id, request.kind, {"action": "done"})
 		&"level_up":
-			var level_body := request.body as InteractionRequest.LevelUpRequestBody
+			var level_body := request.body as LevelUpRequestBody
 			if level_body == null:
 				return null
 			return InteractionResponse.from_data(request.request_id, request.kind, {

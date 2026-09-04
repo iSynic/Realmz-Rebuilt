@@ -29,7 +29,7 @@ const STOCK_FILTERS: Array[Dictionary] = [
 
 var _compact := false
 var _media: ClassicMediaCatalog
-var _body: InteractionRequest.ShopRequestBody
+var _body: ShopRequestBody
 var _characters: Array[InteractionRequestValue.ServiceCharacter] = []
 var _stock: Array[InteractionRequestValue.ShopStock] = []
 var _selected_character_id: String
@@ -70,7 +70,7 @@ func configure(media: ClassicMediaCatalog, compact: bool) -> void:
 
 
 func build(request: InteractionRequest) -> void:
-	_body = request.body as InteractionRequest.ShopRequestBody
+	_body = request.body as ShopRequestBody
 	if _body == null:
 		add_hint("The shop request is malformed.")
 		return

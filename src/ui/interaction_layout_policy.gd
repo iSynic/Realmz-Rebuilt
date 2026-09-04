@@ -18,7 +18,7 @@ static func preferred_modal_size(request: InteractionRequest, available_size: Ve
 	if request != null:
 		match request.kind:
 			InteractionRequest.SESSION_LIFECYCLE:
-				var lifecycle := request.body as InteractionRequest.LifecycleRequestBody
+				var lifecycle := request.body as LifecycleRequestBody
 				preferred = Vector2(560.0, 220.0) if lifecycle != null and lifecycle.operation != &"quit-application" else Vector2(460.0, 135.0)
 				minimum = Vector2(420.0, 190.0) if lifecycle != null and lifecycle.operation != &"quit-application" else Vector2(340.0, 135.0)
 			InteractionRequest.WORD_AND_ACTION:
@@ -28,7 +28,7 @@ static func preferred_modal_size(request: InteractionRequest, available_size: Ve
 				preferred = Vector2(760.0, minf(410.0, available_size.y - 20.0))
 				minimum = Vector2(560.0, 310.0)
 			InteractionRequest.LEVEL_UP:
-				var body := request.body as InteractionRequest.LevelUpRequestBody
+				var body := request.body as LevelUpRequestBody
 				preferred = Vector2(1080.0, minf(760.0, available_size.y - 20.0)) if body != null and body.mode == &"spell-selection" else Vector2(760.0, 430.0)
 			InteractionRequest.ALLY_SELECTION:
 				preferred = Vector2(820.0, 500.0)

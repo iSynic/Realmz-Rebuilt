@@ -66,7 +66,7 @@ func set_command_scale(command_scale: float) -> void:
 
 
 func build(request: InteractionRequest) -> void:
-	var body := request.body as InteractionRequest.CombatRequestBody
+	var body := request.body as CombatRequestBody
 	if body == null: return
 	var actor_id := body.actor_id
 	_actor_id = actor_id
@@ -107,7 +107,7 @@ func build(request: InteractionRequest) -> void:
 	_build_item_panel(body, actor_id, action_ids, item_panel)
 
 
-func _build_scroll_panel(body: InteractionRequest.CombatRequestBody, actor_id: String, action_ids: Array[String], scroll_panel: VBoxContainer) -> void:
+func _build_scroll_panel(body: CombatRequestBody, actor_id: String, action_ids: Array[String], scroll_panel: VBoxContainer) -> void:
 	var scroll_picker := %CombatScrollPicker as OptionButton
 	var use_scroll_button := %ChooseScrollTarget as Button
 	var unavailable := %ScrollUnavailable as Button
@@ -145,7 +145,7 @@ func _build_scroll_panel(body: InteractionRequest.CombatRequestBody, actor_id: S
 		unavailable.tooltip_text = body.scroll_cast_reason
 
 
-func _build_item_panel(body: InteractionRequest.CombatRequestBody, actor_id: String, action_ids: Array[String], item_panel: VBoxContainer) -> void:
+func _build_item_panel(body: CombatRequestBody, actor_id: String, action_ids: Array[String], item_panel: VBoxContainer) -> void:
 	var item_row := %CombatItemPicker as OptionButton
 	var item_picker := item_row
 	var use_button := %ChooseItemTarget as Button
@@ -180,7 +180,7 @@ func _build_item_panel(body: InteractionRequest.CombatRequestBody, actor_id: Str
 		unavailable.tooltip_text = body.item_cast_reason
 
 
-func _build_attack_panel(body: InteractionRequest.CombatRequestBody, actor_id: String, action_ids: Array[String], targets: Array[InteractionRequestValue.CombatTarget], target_panel: VBoxContainer, weapon_mode: String) -> void:
+func _build_attack_panel(body: CombatRequestBody, actor_id: String, action_ids: Array[String], targets: Array[InteractionRequestValue.CombatTarget], target_panel: VBoxContainer, weapon_mode: String) -> void:
 	var status := %AttackStatus as Label
 	var button := %ChooseAttackTarget as Button
 	if action_ids.has("attack"):
@@ -200,7 +200,7 @@ func _build_attack_panel(body: InteractionRequest.CombatRequestBody, actor_id: S
 		button.tooltip_text = body.ranged_attack.reason
 
 
-func _build_spell_panel(body: InteractionRequest.CombatRequestBody, actor_id: String, action_ids: Array[String], spell_panel: VBoxContainer) -> void:
+func _build_spell_panel(body: CombatRequestBody, actor_id: String, action_ids: Array[String], spell_panel: VBoxContainer) -> void:
 	var status := %CombatSpellbookStatus as Label
 	var unavailable := %SpellUnavailable as Button
 	if not action_ids.has("cast_spell") or body.spell_casts.is_empty():
@@ -389,7 +389,7 @@ func _read_combatants(value: Array[InteractionRequestValue.Combatant]) -> void:
 		if not combatant.id.is_empty(): _combatants.append(combatant)
 
 
-func _build_combatant_information(body: InteractionRequest.CombatRequestBody, targets: Array[InteractionRequestValue.CombatTarget]) -> void:
+func _build_combatant_information(body: CombatRequestBody, targets: Array[InteractionRequestValue.CombatTarget]) -> void:
 	var active_icon := %ActiveCombatantIcon as TextureRect
 	active_icon.texture = _combatant_icons.get(_actor_id) as Texture2D
 	active_icon.visible = active_icon.texture != null
@@ -517,7 +517,7 @@ func accepts_spatial_input() -> bool:
 	return true
 
 
-func _build_command_shelf(body: InteractionRequest.CombatRequestBody, actor_id: String, action_ids: Array[String], targets: Array[InteractionRequestValue.CombatTarget], target_panel: Control, spell_panel: Control, scroll_panel: Control, item_panel: Control, bandage_panel: Control, mode_panels: Array[Control], overview: Control) -> void:
+func _build_command_shelf(body: CombatRequestBody, actor_id: String, action_ids: Array[String], targets: Array[InteractionRequestValue.CombatTarget], target_panel: Control, spell_panel: Control, scroll_panel: Control, item_panel: Control, bandage_panel: Control, mode_panels: Array[Control], overview: Control) -> void:
 	_command_shelf = %BattleCommandShelf as HBoxContainer
 	_scaled_command_panels.assign([find_child("BattleInspectionCommandsInset", true, false), %BattlePrimaryCommandsInset, find_child("BattleTurnCommandsInset", true, false)])
 	_scaled_command_columns.assign([find_child("BattleInspectionCommands", true, false), %BattlePrimaryCommands, %BattleTurnCommands])
@@ -573,7 +573,7 @@ func _build_command_shelf(body: InteractionRequest.CombatRequestBody, actor_id: 
 	_apply_command_scale()
 
 
-func _add_classic_turn_commands(first_row: Container, second_row: Container, body: InteractionRequest.CombatRequestBody, actor_id: String, bandage_panel: Control, mode_panels: Array[Control], overview: Control) -> void:
+func _add_classic_turn_commands(first_row: Container, second_row: Container, body: CombatRequestBody, actor_id: String, bandage_panel: Control, mode_panels: Array[Control], overview: Control) -> void:
 	var auto_turn := first_row.get_node("AutoTurn") as Button
 	_bind_fixed_response(auto_turn, "AutoTurn", "Auto Turn", InteractionResponse.CombatBody.new(&"auto", actor_id), body.auto_turn.enabled, body.auto_turn.reason)
 	_color_command(auto_turn, TURN_COMMAND_COLOR)

@@ -9,7 +9,7 @@ func build(request: InteractionRequest) -> void:
 	_can_cancel = false
 	if request.kind != InteractionRequest.SESSION_LIFECYCLE:
 		return
-	var body := request.body as InteractionRequest.LifecycleRequestBody
+	var body := request.body as LifecycleRequestBody
 	if body == null: return
 	var compact_quit := body.operation == &"quit-application"
 	var context := %LifecycleConsequence as Label
