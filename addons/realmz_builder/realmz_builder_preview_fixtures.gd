@@ -4,6 +4,8 @@
 class_name RealmzBuilderPreviewFixtures
 extends RefCounted
 
+const SCREEN_FIXTURES := preload("res://addons/realmz_builder/realmz_builder_screen_preview_fixtures.gd")
+
 const SUPPORTED_SURFACES: Array[String] = [
 	"temple",
 	"bank",
@@ -19,6 +21,8 @@ const SUPPORTED_SURFACES: Array[String] = [
 
 
 static func bind(surface: Node, surface_id: String, profile: String) -> bool:
+	if SCREEN_FIXTURES.supports(surface_id):
+		return SCREEN_FIXTURES.bind(surface, surface_id, profile)
 	if surface == null or surface_id not in SUPPORTED_SURFACES or not surface.has_method("build"):
 		return false
 	var request := _request(surface_id, profile)

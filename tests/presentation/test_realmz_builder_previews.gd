@@ -14,6 +14,11 @@ const SURFACES := {
 	"shop": preload("res://src/ui/interaction_components/shop_interaction.tscn"),
 	"treasure": preload("res://src/ui/interaction_components/treasure_distribution_interaction.tscn"),
 	"combat-command-deck": preload("res://src/ui/interaction_components/battle_interaction.tscn"),
+	"character-sheet": preload("res://src/ui/screens/character_screen.tscn"),
+	"inventory": preload("res://src/ui/screens/inventory_screen.tscn"),
+	"spells": preload("res://src/ui/screens/spells_screen.tscn"),
+	"services": preload("res://src/ui/screens/services_screen.tscn"),
+	"roster-spellbook": preload("res://src/ui/screens/classic_party_roster.tscn"),
 }
 const PROFILES: Array[String] = ["Wide", "Compact", "Empty", "Long Content", "Unavailable", "Error"]
 
@@ -46,6 +51,11 @@ func _test_representative_collections_and_modes() -> void:
 	var shop := _bound_surface("shop", "Wide")
 	var treasure := _bound_surface("treasure", "Wide")
 	var combat := _bound_surface("combat-command-deck", "Wide")
+	var character_sheet := _bound_surface("character-sheet", "Wide")
+	var inventory := _bound_surface("inventory", "Long Content")
+	var spells := _bound_surface("spells", "Wide")
+	var services := _bound_surface("services", "Wide")
+	var roster := _bound_surface("roster-spellbook", "Wide")
 	assert_equal((temple.find_child("TempleCharacterRows", true, false) as VBoxContainer).find_children("*", "Button", false, false).size(), 2, "Temple preview uses the production adventurer-row collection")
 	assert_equal((temple.find_child("TempleServiceRows", true, false) as VBoxContainer).find_children("*", "Button", false, false).size(), 3, "Temple preview uses the production service-row collection")
 	assert_true((bank.find_child("BankPool", true, false) as Button).disabled and (bank.find_child("BankShare", true, false) as Button).disabled, "Bank unavailable preview binds request-owned disabled actions")
@@ -57,7 +67,12 @@ func _test_representative_collections_and_modes() -> void:
 	assert_true((shop.find_child("ShopStockRows", true, false) as VBoxContainer).get_child_count() > 0, "Shop preview binds production stock rows")
 	assert_equal((treasure.find_child("TreasureItemGrid", true, false) as GridContainer).get_child_count(), 4, "Treasure preview binds production loot cells")
 	assert_not_null(combat.find_child("CombatCommandAttack", true, false), "Combat preview binds the production command deck")
-	for surface: Control in [temple, bank, pick_lock, lifecycle, scrolling_text, level_up, encounter, shop, treasure, combat]:
+	assert_true((character_sheet.find_child("ClassicCharacterSheet", true, false) as Control).visible, "Character preview binds the production complete sheet")
+	assert_equal(inventory.find_children("InventoryItem_*", "Button", true, false).size(), 14, "Inventory long-content preview binds production item rows")
+	assert_true(spells.find_children("KnownSpell_*", "Button", true, false).size() > 0, "Spells preview binds production spell records")
+	assert_equal((services.find_child("MoneyCharacterRows", true, false) as VBoxContainer).get_child_count(), 2, "Services preview binds production money rows")
+	assert_true((roster as ClassicPartyRoster).combat_spellbook_active(), "Roster preview opens the production combat spellbook")
+	for surface: Control in [temple, bank, pick_lock, lifecycle, scrolling_text, level_up, encounter, shop, treasure, combat, character_sheet, inventory, spells, services, roster]:
 		_free_surface(surface)
 
 

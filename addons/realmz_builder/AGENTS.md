@@ -5,7 +5,7 @@
 # Ownership
 
 - `scene_previews.json` registers major scenes, their maintainer links, supported profiles, and preview-completion status.
-- `RealmzBuilderPreviewFixtures` supplies deterministic detached values to the same production binders used by registered scenes.
+- `RealmzBuilderPreviewFixtures` supplies deterministic detached interaction requests, while `realmz_builder_screen_preview_fixtures.gd` supplies detached game views to the same production controllers used by major screens.
 - The plugin and dock own editor lifecycle and transient preview helpers only.
 
 # Local Contracts
