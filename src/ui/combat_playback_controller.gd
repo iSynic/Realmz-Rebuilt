@@ -470,7 +470,7 @@ func _position_for(combatant_id: String, positions: Dictionary) -> Vector2i:
 func _view_position(view: GameView, combatant_id: String) -> Vector2i:
 	if view == null or view.combat_view == null:
 		return Vector2i(-1, -1)
-	return ClassicBattlefieldPresenter.actor_position(view.combat_view, view.party_members, combatant_id)
+	return BattlefieldPresentationGeometry.actor_position(view.combat_view, view.party_members, combatant_id)
 
 
 static func _payload_coordinate(value: Variant) -> Vector2i:

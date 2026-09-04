@@ -124,8 +124,8 @@
       "id": "spatial-presentation",
       "boundary": "ui",
       "guide": "docs/features/spatial-presentation.md",
-      "entryPoints": ["src/ui/classic_map_presenter.gd", "src/ui/map_presentation_geometry.gd", "src/ui/map_texture_cache.gd", "src/ui/classic_battlefield_presenter.gd", "src/ui/dungeon_map_3d_presenter.gd"],
-      "publicInterfaces": ["ClassicMapPresenter", "MapPresentationGeometry", "MapTextureCache", "ClassicBattlefieldPresenter", "DungeonMap3DPresenter"],
+      "entryPoints": ["src/ui/classic_map_presenter.gd", "src/ui/map_presentation_geometry.gd", "src/ui/map_texture_cache.gd", "src/ui/classic_battlefield_presenter.gd", "src/ui/battlefield_presentation_geometry.gd", "src/ui/battlefield_texture_cache.gd", "src/ui/dungeon_map_3d_presenter.gd"],
+      "publicInterfaces": ["ClassicMapPresenter", "MapPresentationGeometry", "MapTextureCache", "ClassicBattlefieldPresenter", "BattlefieldPresentationGeometry", "BattlefieldTextureCache", "DungeonMap3DPresenter"],
       "tests": ["tests/presentation/test_dungeon_geometry_projection.gd"],
       "performanceProbes": ["tools/runtime_performance_probe.gd", "tools/dungeon_transition_performance_probe.gd"]
     }
