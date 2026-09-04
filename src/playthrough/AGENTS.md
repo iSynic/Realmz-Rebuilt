@@ -8,7 +8,7 @@ Own the pure transaction coordinator that joins Realmz game state and rules to t
 
 - `GameSession` public operations, transaction checkpoints, exact-once commit, request identity, revision, and aggregate lifetime.
 - `SessionSnapshot`, `SessionContinuation`, and the separate battle-return continuation that include game state, RNG, scenario VM/action state, and pending typed interactions.
-- `SessionRestoreValidator` constructs and validates a detached typed restore candidate. `GameSession.restore` alone commits that candidate to the live aggregate, so every failed validation leaves the current session untouched.
+- `SessionRestoreValidator` is the restore transaction entry point and validates session continuations. `SessionRestoreStateValidator` validates detached game truth, and `SessionScenarioRestoreValidator` validates pending VM workflows. Together they construct one detached typed restore candidate; `GameSession.restore` alone commits it to the live aggregate, so every failed validation leaves the current session untouched.
 - `SessionInteractionFactory` is the single owner of session-level request reconstruction shared by live orchestration and restore validation.
 - Session workflow contexts and services for lifecycle, exploration, inventory/magic/services, combat/rewards, application hooks, and detached view projection.
 - `SessionContext` owns the current content, state, deterministic RNG, rules, VM, Scenario Action state, runtime API, continuations, pending session interaction, and revision. Internal exploration, scenario, response, and debug coordinators share that one context while leaving transaction commit and rollback in `GameSession`.

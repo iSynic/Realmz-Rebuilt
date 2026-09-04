@@ -7,6 +7,16 @@ extends RefCounted
 
 
 static func validate(content: RealmzContent, snapshot: SessionSnapshot) -> SessionRestoreResult:
+	var header_error := _validate_snapshot_header(content, snapshot)
+	if header_error != null:
+		return header_error
+	var core_result := _restore_core(content, snapshot)
+	if not core_result.ok:
+		return core_result
+	return _restore_continuations(content, snapshot, core_result.candidate)
+
+
+static func _validate_snapshot_header(content: RealmzContent, snapshot: SessionSnapshot) -> SessionRestoreResult:
 	if content == null or content.scenario == null or snapshot == null:
 		return SessionRestoreResult.failed(&"invalid_restore", "Validated content and save data are required.")
 	if snapshot.campaign_id != content.campaign_id or snapshot.package_hash != content.package_hash:
@@ -16,6 +26,10 @@ static func validate(content: RealmzContent, snapshot: SessionSnapshot) -> Sessi
 	var saved_map := content.world.map_by_id(snapshot.game_state.party.map_id)
 	if saved_map == null or saved_map.topology.cell_at(snapshot.game_state.party.coordinate) == null:
 		return SessionRestoreResult.failed(&"invalid_saved_location", "The saved party location is unavailable.")
+	return null
+
+
+static func _restore_core(content: RealmzContent, snapshot: SessionSnapshot) -> SessionRestoreResult:
 	var replacement_rng := RealmzRng.new()
 	if not replacement_rng.restore(snapshot.rng_state):
 		return SessionRestoreResult.failed(&"invalid_rng_state", "The saved random state is invalid.")
@@ -23,6 +37,26 @@ static func validate(content: RealmzContent, snapshot: SessionSnapshot) -> Sessi
 	var replacement_action_state := ScenarioActionState.from_data(snapshot.scenario_action_state.to_data())
 	if replacement_state == null or replacement_action_state == null:
 		return SessionRestoreResult.failed(&"invalid_game_state", "The saved game or Scenario Action state is invalid.")
+	var replacement_rules := RealmzRules.new()
+	var state_error := _validate_restored_state(content, replacement_state, replacement_rules)
+	if state_error != null:
+		return state_error
+	var replacement_vm := ScenarioVm.new()
+	replacement_vm.configure(content.scenario)
+	if not replacement_vm.restore(snapshot.scenario_vm):
+		return SessionRestoreResult.failed(&"invalid_vm_state", "The saved Scenario VM state is invalid.")
+	if not SessionScenarioRestoreValidator.vm_reward_continuation_is_valid(content, replacement_state, replacement_vm):
+		return SessionRestoreResult.failed(&"invalid_vm_state", "The saved Scenario VM reward continuation is invalid.")
+	if not SessionScenarioRestoreValidator.player_map_vm_continuation_is_valid(content, replacement_state, replacement_vm):
+		return SessionRestoreResult.failed(&"invalid_vm_state", "The saved Scenario VM player-map continuation is invalid.")
+	if not SessionScenarioRestoreValidator.thief_vm_continuation_is_valid(content, replacement_state, replacement_rng.snapshot(), replacement_vm):
+		return SessionRestoreResult.failed(&"invalid_vm_state", "The saved Scenario VM Thief Encounter continuation is invalid.")
+	if not SessionRestoreStateValidator.combat_vm_request_is_valid(content, replacement_state, replacement_rng, replacement_rules, replacement_action_state, replacement_vm.pending_request()):
+		return SessionRestoreResult.failed(&"invalid_vm_state", "The saved combat request does not match authoritative combat state.")
+	return SessionRestoreResult.succeeded(SessionRestoreCandidate.new(replacement_state, replacement_rng, replacement_rules, replacement_action_state, replacement_vm, SessionContinuation.new(), SessionContinuation.new(), null, snapshot.view_revision))
+
+
+static func _validate_restored_state(content: RealmzContent, replacement_state: GameState, replacement_rules: RealmzRules) -> SessionRestoreResult:
 	if not content.available_monster_sets().has(replacement_state.monster_set):
 		return SessionRestoreResult.failed(&"invalid_game_state", "The saved game selects a monster set unavailable in this package.")
 	if replacement_state.party_setup_completed and replacement_state.experience_multiplier < 0.0:
@@ -35,25 +69,24 @@ static func validate(content: RealmzContent, snapshot: SessionSnapshot) -> Sessi
 			for item_id: String in monster.loot_item_ids():
 				if not item_id.is_empty() and content.item_by_id(item_id) == null:
 					return SessionRestoreResult.failed(&"invalid_game_state", "The saved monster loot references unavailable item content.")
-	var replacement_rules := RealmzRules.new()
-	_normalize_age_groups(replacement_state, content, replacement_rules)
-	if not _party_inventory_is_valid(content, replacement_state, replacement_rules):
+	SessionRestoreStateValidator.normalize_age_groups(replacement_state, content, replacement_rules)
+	if not SessionRestoreStateValidator.party_inventory_is_valid(content, replacement_state, replacement_rules):
 		return SessionRestoreResult.failed(&"invalid_game_state", "The saved party inventory or carried load is invalid for this package.")
-	if not _combat_staged_item_is_valid(content, replacement_state, replacement_rules):
+	if not SessionRestoreStateValidator.combat_staged_item_is_valid(content, replacement_state, replacement_rules):
 		return SessionRestoreResult.failed(&"invalid_game_state", "The saved combat item staging state is invalid for this package.")
-	if not _party_fast_spells_are_valid(content, replacement_state):
+	if not SessionRestoreStateValidator.party_fast_spells_are_valid(content, replacement_state):
 		return SessionRestoreResult.failed(&"invalid_game_state", "The saved Fast Spell bindings reference unavailable package content.")
-	if not _party_appearance_is_valid(content, replacement_state):
+	if not SessionRestoreStateValidator.party_appearance_is_valid(content, replacement_state):
 		return SessionRestoreResult.failed(&"invalid_game_state", "The saved party appearance references unavailable package content.")
-	if not _shop_state_is_valid(content, replacement_state):
+	if not SessionRestoreStateValidator.shop_state_is_valid(content, replacement_state):
 		return SessionRestoreResult.failed(&"invalid_game_state", "The saved shop state references unavailable package content.")
-	if not _location_notes_are_valid(content, replacement_state):
+	if not SessionRestoreStateValidator.location_notes_are_valid(content, replacement_state):
 		return SessionRestoreResult.failed(&"invalid_game_state", "The saved location notes reference unavailable maps, cells, or invalid Classic note data.")
-	if not _journal_messages_are_valid(content, replacement_state):
+	if not SessionRestoreStateValidator.journal_messages_are_valid(content, replacement_state):
 		return SessionRestoreResult.failed(&"invalid_game_state", "The saved journal references unavailable or unrepresentable Classic messages.")
-	if not _acquired_player_maps_are_valid(content, replacement_state):
+	if not SessionRestoreStateValidator.acquired_player_maps_are_valid(content, replacement_state):
 		return SessionRestoreResult.failed(&"invalid_game_state", "The saved acquired maps reference unavailable package content.")
-	if not _boat_overlays_are_valid(content, replacement_state):
+	if not SessionRestoreStateValidator.boat_overlays_are_valid(content, replacement_state):
 		return SessionRestoreResult.failed(&"invalid_game_state", "The saved boat overlays reference unavailable land cells.")
 	if replacement_state.has_saved_party_position():
 		var bookmark_map := content.world.map_by_id(replacement_state.saved_party_map_id)
@@ -61,204 +94,35 @@ static func validate(content: RealmzContent, snapshot: SessionSnapshot) -> Sessi
 			return SessionRestoreResult.failed(&"invalid_game_state", "The saved party-position bookmark references an unavailable map or cell.")
 	if not LifecyclePartyWorkflow.character_draft_is_valid(content, replacement_state, replacement_rules):
 		return SessionRestoreResult.failed(&"invalid_character_draft", "The saved character-creation draft is invalid for this campaign.")
-	var replacement_vm := ScenarioVm.new()
-	replacement_vm.configure(content.scenario)
-	if not replacement_vm.restore(snapshot.scenario_vm):
-		return SessionRestoreResult.failed(&"invalid_vm_state", "The saved Scenario VM state is invalid.")
-	if not _valid_vm_reward_continuation(content, replacement_state, replacement_vm):
-		return SessionRestoreResult.failed(&"invalid_vm_state", "The saved Scenario VM reward continuation is invalid.")
-	if not _valid_player_map_vm_continuation(content, replacement_state, replacement_vm):
-		return SessionRestoreResult.failed(&"invalid_vm_state", "The saved Scenario VM player-map continuation is invalid.")
-	if not _valid_thief_vm_continuation(content, replacement_state, replacement_rng.snapshot(), replacement_vm):
-		return SessionRestoreResult.failed(&"invalid_vm_state", "The saved Scenario VM Thief Encounter continuation is invalid.")
-	if not _valid_combat_vm_request(content, replacement_state, replacement_rng, replacement_rules, replacement_action_state, replacement_vm.pending_request()):
-		return SessionRestoreResult.failed(&"invalid_vm_state", "The saved combat request does not match authoritative combat state.")
+	return null
+
+
+static func _restore_continuations(content: RealmzContent, snapshot: SessionSnapshot, candidate: SessionRestoreCandidate) -> SessionRestoreResult:
 	var replacement_continuation := SessionContinuation.new() if snapshot.continuation == null else SessionContinuation.from_data(snapshot.continuation.to_data())
 	if replacement_continuation == null:
 		return SessionRestoreResult.failed(&"invalid_session_continuation", "The saved session continuation is invalid.")
 	var replacement_battle_return := SessionContinuation.new() if snapshot.battle_return_continuation == null else SessionContinuation.from_data(snapshot.battle_return_continuation.to_data())
 	if replacement_battle_return == null:
 		return SessionRestoreResult.failed(&"invalid_battle_return_continuation", "The saved battle return continuation is invalid.")
-	if replacement_state.combat == null and not replacement_battle_return.is_empty():
+	if candidate.state.combat == null and not replacement_battle_return.is_empty():
 		return SessionRestoreResult.failed(&"invalid_battle_return_continuation", "A battle return continuation requires an active battle.")
-	if replacement_state.combat != null and not replacement_battle_return.is_empty():
+	if candidate.state.combat != null and not replacement_battle_return.is_empty():
 		var battle_exploration := replacement_battle_return.exploration()
-		if replacement_battle_return.kind != &"post-clock" or battle_exploration == null or battle_exploration.resume_kind != &"move" or not _valid_post_time_continuation(content, replacement_state, replacement_battle_return, null, null):
+		if replacement_battle_return.kind != &"post-clock" or battle_exploration == null or battle_exploration.resume_kind != &"move" or not _valid_post_time_continuation(content, candidate.state, replacement_battle_return, null, null):
 			return SessionRestoreResult.failed(&"invalid_battle_return_continuation", "The saved battle return references an unavailable exploration continuation.")
 	var replacement_session_interaction: InteractionRequest = null
 	if snapshot.session_interaction != null:
 		replacement_session_interaction = InteractionRequest.from_data(snapshot.session_interaction.to_data())
 		if replacement_session_interaction == null:
 			return SessionRestoreResult.failed(&"invalid_session_interaction", "The saved session interaction is invalid.")
-	if not replacement_continuation.is_empty() and not _valid_session_continuation(content, replacement_state, replacement_continuation, replacement_vm.pending_request(), replacement_session_interaction):
+	if not replacement_continuation.is_empty() and not _valid_session_continuation(content, candidate.state, replacement_continuation, candidate.scenario_vm.pending_request(), replacement_session_interaction):
 		return SessionRestoreResult.failed(&"invalid_session_continuation", "The saved session continuation is invalid.")
 	if replacement_continuation.is_empty() and replacement_session_interaction != null:
 		return SessionRestoreResult.failed(&"invalid_session_interaction", "The saved session interaction has no owning continuation.")
-	return SessionRestoreResult.succeeded(SessionRestoreCandidate.new(
-		replacement_state,
-		replacement_rng,
-		replacement_rules,
-		replacement_action_state,
-		replacement_vm,
-		replacement_continuation,
-		replacement_battle_return,
-		replacement_session_interaction,
-		snapshot.view_revision,
-	))
-
-
-static func _normalize_age_groups(state: GameState, content: RealmzContent, rules: RealmzRules) -> void:
-	for character: CharacterState in state.party.characters():
-		var race := content.race_by_id(character.race_id)
-		var caste := content.caste_by_id(character.caste_id)
-		if race != null and caste != null:
-			rules.characters.ensure_age_group(character, race, caste)
-
-
-static func _party_inventory_is_valid(content: RealmzContent, state: GameState, rules: RealmzRules) -> bool:
-	if content == null or state == null or rules == null:
-		return false
-	var definitions := content.item_definitions()
-	for character: CharacterState in state.party.characters():
-		if rules.inventory.calculated_load(character, definitions) != character.carried_load:
-			return false
-		for scroll: SpellScrollState in character.scroll_case():
-			if not scroll.is_empty() and content.spell_by_id(scroll.spell_id) == null:
-				return false
-	return true
-
-
-static func _combat_staged_item_is_valid(content: RealmzContent, state: GameState, rules: RealmzRules) -> bool:
-	if state.combat == null or state.combat.staged_random_item_instance_id().is_empty():
-		return true
-	var actor_id := state.combat.active_actor_id()
-	var character := state.party.character_by_id(actor_id)
-	var instance_id := state.combat.staged_random_item_instance_id()
-	if character == null or state.combat.completed or state.combat.staged_random_item_power(actor_id, instance_id) not in range(1, 8):
-		return false
-	var instance: ItemInstance = null
-	for candidate: ItemInstance in character.inventory():
-		if candidate.id == instance_id:
-			instance = candidate
-			break
-	var item := content.item_by_id(instance.definition_id) if instance != null else null
-	var spell := content.spell_by_classic_id(item.special_2) if item != null else null
-	if item == null or spell == null or absi(item.special_1) != 8:
-		return false
-	var use_probe := rules.inventory.classic_spell_item_probe(character, instance, item, spell, content.race_by_id(character.race_id), content.caste_by_id(character.caste_id), true)
-	if not use_probe.allowed or ClassicSpellCapabilityCatalog.combat_item_disposition(spell) != ClassicSpellCapabilityCatalog.DISPOSITION_EXECUTABLE:
-		return false
-	return true
-
-
-static func _valid_combat_vm_request(content: RealmzContent, state: GameState, rng: RealmzRng, rules: RealmzRules, action_state: ScenarioActionState, request: InteractionRequest) -> bool:
-	if request == null or request.kind != InteractionRequest.COMBAT:
-		return true
-	if state.combat == null or state.combat.completed:
-		return false
-	var expected := RealmzRuntimeApi.new(content, state, rng, action_state, rules).active_combat_request(request.request_id)
-	return expected != null and expected.to_data() == request.to_data()
-
-
-static func _party_fast_spells_are_valid(content: RealmzContent, state: GameState) -> bool:
-	if content == null or state == null:
-		return false
-	for character: CharacterState in state.party.characters():
-		for binding: FastSpellBindingState in character.fast_spells():
-			if binding.is_empty():
-				continue
-			var spell := content.spell_by_id(binding.spell_id)
-			if spell == null or not character.known_spells().has(binding.spell_id) or binding.power < 1 or binding.power > 7 or spell.cost < 0 and binding.power != 1:
-				return false
-	return true
-
-
-static func _party_appearance_is_valid(content: RealmzContent, state: GameState) -> bool:
-	if content == null or state == null:
-		return false
-	if not content.has_character_appearance_catalog():
-		return true
-	for character: CharacterState in state.party.characters():
-		if not character.portrait_id.is_empty():
-			var portrait := content.appearance_by_id(character.portrait_id)
-			if portrait == null or portrait.kind != CharacterAppearanceDefinition.PORTRAIT:
-				return false
-		if not character.combat_icon_id.is_empty():
-			var icon := content.appearance_by_id(character.combat_icon_id)
-			if icon == null or icon.kind != CharacterAppearanceDefinition.COMBAT_ICON:
-				return false
-	return true
-
-
-static func _shop_state_is_valid(content: RealmzContent, state: GameState) -> bool:
-	if content == null or state == null:
-		return false
-	if not state.active_shop_id.is_empty() and content.shop_by_id(state.active_shop_id) == null:
-		return false
-	for shop_id: Variant in state.shop_buyback_overrides():
-		var shop := content.shop_by_id(String(shop_id))
-		if shop == null:
-			return false
-		var occupied_slots: Dictionary = {}
-		for index: int in shop.item_ids().size():
-			if state.shop_quantity(shop, index) > 0: occupied_slots[shop.stock_slot(index)] = true
-		for item_id: Variant in state.shop_buyback_overrides()[shop_id]:
-			var item := content.item_by_id(String(item_id))
-			var slot := state.shop_buyback_slot(String(shop_id), String(item_id))
-			if item == null or slot < 0 or slot > 999 or slot / 200 != item.classic_id / 200 or occupied_slots.has(slot):
-				return false
-			occupied_slots[slot] = true
-	return true
-
-
-static func _location_notes_are_valid(content: RealmzContent, state: GameState) -> bool:
-	if content == null or state == null:
-		return false
-	var counts: Dictionary = {}
-	var ordinals: Dictionary = {}
-	for note: LocationNoteState in state.world.location_notes():
-		var map := content.world.map_by_id(note.map_id)
-		if map == null or map.level_type != note.map_kind or map.level_index != note.level_index or note.native_location_id != LocationNoteState.native_id_for(map.level_index, note.coordinate) or map.topology.cell_at(note.coordinate) == null or note.text.is_empty() or not LocationNoteState.text_is_valid(note.text):
-			return false
-		counts[note.map_kind] = int(counts.get(note.map_kind, 0)) + 1
-		var ordinal_key := "%s:%d" % [String(note.map_kind), note.record_ordinal]
-		if ordinals.has(ordinal_key):
-			return false
-		ordinals[ordinal_key] = true
-		if int(counts[note.map_kind]) > LocationNoteState.MAX_NOTES_PER_MAP_KIND:
-			return false
-	return true
-
-
-static func _boat_overlays_are_valid(content: RealmzContent, state: GameState) -> bool:
-	if content == null or state == null:
-		return false
-	for key_value: Variant in state.world.boat_presence_overrides().keys():
-		var key := String(key_value)
-		var separator := key.rfind(":")
-		if separator <= 0:
-			return false
-		var map := content.world.map_by_id(key.left(separator))
-		var components := key.substr(separator + 1).split(",", false, 1)
-		if map == null or map.level_type != &"land" or components.size() != 2 or not components[0].is_valid_int() or not components[1].is_valid_int() or map.topology.cell_at(Vector2i(int(components[0]), int(components[1]))) == null:
-			return false
-	return true
-
-
-static func _journal_messages_are_valid(content: RealmzContent, state: GameState) -> bool:
-	for message_id: int in state.journal_message_ids():
-		if not GameState.journal_message_id_is_valid(message_id) or content.message_by_id(message_id) == null:
-			return false
-	return true
-
-
-static func _acquired_player_maps_are_valid(content: RealmzContent, state: GameState) -> bool:
-	if content == null or state == null:
-		return false
-	for player_map_id: String in state.world.acquired_map_ids():
-		if content.world.player_map_by_id(player_map_id) == null:
-			return false
-	return true
+	candidate.continuation = replacement_continuation
+	candidate.battle_return_continuation = replacement_battle_return
+	candidate.session_interaction = replacement_session_interaction
+	return SessionRestoreResult.succeeded(candidate)
 
 
 static func _valid_session_continuation(content: RealmzContent, state: GameState, continuation: SessionContinuation, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
@@ -392,7 +256,7 @@ static func _valid_age_continuation(content: RealmzContent, state: GameState, co
 	if age == null or vm_interaction != null or session_interaction == null or session_interaction.kind != InteractionRequest.AGE_UPDATE or age.updates.is_empty() or age.index < 1 or age.index > age.updates.size():
 		return false
 	for update: InteractionRequest.AgeUpdateBody in age.updates:
-		if not _valid_age_update_payload(state, update):
+		if not SessionScenarioRestoreValidator.age_update_payload_is_valid(state, update):
 			return false
 	var current_update: InteractionRequest.AgeUpdateBody = age.updates[age.index - 1]
 	var expected_age_request := InteractionRequest.age_update_body("validation.age-update", current_update)
@@ -406,7 +270,7 @@ static func _valid_age_continuation(content: RealmzContent, state: GameState, co
 		return age.resume_continuation == null and state.combat != null and not state.combat.completed and state.combat.pending_monster_attack != null
 	if age.resume_kind == &"post-clock":
 		return _valid_post_time_continuation(content, state, age.resume_continuation, vm_interaction, null)
-	return age.resume_kind == &"post-move" and _valid_ready_post_move_continuation(content, state, age.resume_continuation)
+	return age.resume_kind == &"post-move" and SessionScenarioRestoreValidator.ready_post_move_continuation_is_valid(content, state, age.resume_continuation)
 
 
 static func _valid_combat_death_continuation(content: RealmzContent, state: GameState, continuation: SessionContinuation, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
@@ -445,7 +309,7 @@ static func _valid_combat_reward_continuation(content: RealmzContent, state: Gam
 	var runtime := reward_body.runtime_continuation
 	var runtime_body := runtime.body as ScenarioRuntimeContinuation.RewardBody if runtime != null and runtime.kind == ScenarioRuntimeContinuation.CLASSIC_REWARD else null
 	var reward := runtime_body.state if runtime_body != null else null
-	return reward != null and reward.origin == &"battle" and reward.source_id == reward_body.battle_id and _valid_reward_continuation(content, state, reward, session_interaction)
+	return reward != null and reward.origin == &"battle" and reward.source_id == reward_body.battle_id and SessionScenarioRestoreValidator.reward_continuation_is_valid(content, state, reward, session_interaction)
 
 
 static func _valid_friendly_collision(continuation: SessionContinuation, state: GameState, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
@@ -617,182 +481,3 @@ static func _valid_post_time_continuation(content: RealmzContent, state: GameSta
 			return exploration.active_random_program_id.is_empty() and content.scenario.program_by_id(exploration.active_timed_program_id) != null
 		return exploration.random_battle_stage.is_empty() and exploration.active_random_region_id.is_empty() and not exploration.active_random_program_id.is_empty() and content.scenario.program_by_id(exploration.active_random_program_id) != null
 	return exploration.random_battle_stage.is_empty() and exploration.active_random_region_id.is_empty() and exploration.active_random_program_id.is_empty() and exploration.active_timed_program_id.is_empty()
-
-
-static func _valid_vm_reward_continuation(content: RealmzContent, state: GameState, vm: ScenarioVm) -> bool:
-	var snapshot := vm.snapshot()
-	if snapshot.pending_continuation == null:
-		return true
-	var runtime := snapshot.pending_continuation.runtime
-	if runtime == null or runtime.kind != ScenarioRuntimeContinuation.CLASSIC_REWARD:
-		return true
-	var runtime_body := runtime.body as ScenarioRuntimeContinuation.RewardBody
-	var reward := runtime_body.state if runtime_body != null else null
-	return reward != null and _valid_reward_continuation(content, state, reward, vm.pending_request())
-
-
-static func _valid_player_map_vm_continuation(content: RealmzContent, state: GameState, vm: ScenarioVm) -> bool:
-	var snapshot := vm.snapshot()
-	if snapshot.pending_continuation == null:
-		return true
-	var runtime := snapshot.pending_continuation.runtime
-	if runtime == null or runtime.kind != ScenarioRuntimeContinuation.CLASSIC_PLAYER_MAP:
-		return true
-	var request := vm.pending_request()
-	var runtime_body := runtime.body as ScenarioRuntimeContinuation.TextBody
-	var player_map_id := "" if runtime_body == null else runtime_body.player_map_id
-	var body: InteractionRequest.AcknowledgeBody = null
-	if request != null:
-		body = request.body as InteractionRequest.AcknowledgeBody
-	return request != null and request.kind == InteractionRequest.ACKNOWLEDGE and body != null and body.presentation == &"player-map" and body.player_map_id == player_map_id and body.has_presentation and body.has_player_map_id and not body.has_message_id and not body.has_journal_state and not body.has_sound_id and content.world.player_map_by_id(player_map_id) != null and state.world.has_map(player_map_id)
-
-
-static func _valid_thief_vm_continuation(content: RealmzContent, state: GameState, rng_state: RealmzRngState, vm: ScenarioVm) -> bool:
-	var snapshot := vm.snapshot()
-	if snapshot.pending_continuation == null:
-		return true
-	var runtime := snapshot.pending_continuation.runtime
-	if runtime == null or runtime.kind not in [ScenarioRuntimeContinuation.CLASSIC_THIEF_ENCOUNTER, ScenarioRuntimeContinuation.CLASSIC_PICK_LOCK, ScenarioRuntimeContinuation.CLASSIC_THIEF_RESOLUTION]:
-		return true
-	var owner := runtime.body as ScenarioRuntimeContinuation.ThiefBody
-	var encounter := content.complex_encounter_by_id(owner.encounter_id) if owner != null else null
-	var thief := content.thief_encounter_by_id(encounter.thief_success) if encounter != null and encounter.thief else null
-	var request := vm.pending_request()
-	if owner == null or encounter == null or thief == null or request == null:
-		return false
-	if runtime.kind == ScenarioRuntimeContinuation.CLASSIC_THIEF_ENCOUNTER:
-		var body := request.body as InteractionRequest.ThiefEncounterRequestBody
-		return request.kind == InteractionRequest.THIEF_ENCOUNTER and body != null and body.encounter_id == encounter.id and _valid_thief_request(content, state, thief, body)
-	if runtime.kind == ScenarioRuntimeContinuation.CLASSIC_THIEF_RESOLUTION:
-		return _valid_thief_resolution_request(content, state, thief, owner, request)
-	var body := request.body as InteractionRequest.PickLockRequestBody
-	var character := state.party.character_by_id(owner.character_id)
-	if request.kind != InteractionRequest.PICK_LOCK or body == null or owner.action_index not in [2, 4, 6, 7] or body.encounter_id != encounter.id or body.action_index != owner.action_index or body.character_id != owner.character_id or character == null or character.current_health <= 0 or character.conditions.is_active(ConditionRules.ANIMATED):
-		return false
-	var flags := state.thief_encounter_type_flags(thief)
-	var chance := ClassicPickLockRules.chance(character.ability_value(ClassicPickLockRules.ability_index(owner.action_index)), thief.modifiers()[owner.action_index])
-	var expected_frames := ClassicPickLockRules.preview(rng_state, thief.tumblers, chance)
-	return flags.size() == 10 and not flags[owner.action_index] and chance > 0 and body.action_label == ClassicPickLockRules.action_label(owner.action_index) and body.character_name == character.name and body.portrait_id == character.portrait_id and body.chance_percent == chance and body.yellow_threshold == ClassicPickLockRules.yellow_threshold(chance) and body.green_threshold == ClassicPickLockRules.green_threshold(chance) and body.frame_rate == ClassicPickLockRules.FRAME_RATE and body.time_limit_frames == ClassicPickLockRules.time_limit_frames(thief.tumblers) and body.frames == expected_frames
-
-
-static func _valid_thief_request(content: RealmzContent, state: GameState, thief: ThiefEncounterDefinition, body: InteractionRequest.ThiefEncounterRequestBody) -> bool:
-	var prompt_id := absi(thief.prompts()[0]) if not thief.prompts().is_empty() else 0
-	var message := content.message_by_id(prompt_id)
-	if body.prompt != (message.text if message != null else "Choose a thief action."):
-		return false
-	var opening_sounds := thief.prompt_sounds()
-	if body.sound_id not in [0, opening_sounds[0] if not opening_sounds.is_empty() else 0]:
-		return false
-	var flags := state.thief_encounter_type_flags(thief)
-	var eligible: Array[CharacterState] = []
-	for character: CharacterState in state.party.characters():
-		if character.current_health > 0 and not character.conditions.is_active(ConditionRules.ANIMATED):
-			eligible.append(character)
-	if flags.size() != 10 or body.characters.size() != eligible.size():
-		return false
-	for index: int in eligible.size():
-		var character := eligible[index]
-		var detached := body.characters[index]
-		if detached.id != character.id or detached.name != character.name or detached.portrait_id != character.portrait_id or detached.actions.size() != 8:
-			return false
-		for action_index: int in 8:
-			var action := detached.actions[action_index]
-			var ability := character.ability_value(ClassicPickLockRules.ability_index(action_index))
-			var effective := ability + thief.modifiers()[action_index]
-			var expected_enabled := flags[action_index] and ability != 0 and effective > 0
-			var expected_reason := "" if expected_enabled else "This action is no longer available." if not flags[action_index] else "This character lacks the required ability." if ability == 0 else "The authored modifier reduces this action below zero."
-			if action.index != action_index or action.label != ClassicPickLockRules.action_label(action_index) or action.value != (effective if ability != 0 else 0) or action.enabled != expected_enabled or action.reason != expected_reason:
-				return false
-	return true
-
-
-static func _valid_thief_resolution_request(content: RealmzContent, state: GameState, thief: ThiefEncounterDefinition, owner: ScenarioRuntimeContinuation.ThiefBody, request: InteractionRequest) -> bool:
-	var body := request.body as InteractionRequest.AcknowledgeBody
-	var character := state.party.character_by_id(owner.character_id)
-	if request.kind != InteractionRequest.ACKNOWLEDGE or body == null or character == null or owner.action_index < 0 or owner.action_index > 7 or body.presentation != &"classic-textbox" or not body.has_presentation or body.has_journal_state or body.has_player_map_id:
-		return false
-	var flags := state.thief_encounter_type_flags(thief)
-	if flags.size() != 10:
-		return false
-	if owner.phase == &"trap-message":
-		return owner.trap_pending and flags[9] and body.prompt == "A trap is sprung." and not body.has_message_id and not body.has_sound_id
-	if owner.phase != &"action-message" or flags[owner.action_index]:
-		return false
-	var text_ids := thief.success_text() if owner.succeeded else thief.failure_text()
-	var sound_ids := thief.success_sounds() if owner.succeeded else thief.failure_sounds()
-	var signed_message_id := text_ids[owner.action_index]
-	var message_id := absi(signed_message_id)
-	var message := content.message_by_id(message_id)
-	return signed_message_id > 0 and message != null and body.has_message_id and body.message_id == message_id and body.prompt == message.text and body.has_sound_id and body.sound_id == sound_ids[owner.action_index] and (not owner.trap_pending or not owner.succeeded and flags[9])
-
-
-static func _valid_reward_continuation(content: RealmzContent, state: GameState, reward: ClassicRewardState, request: InteractionRequest) -> bool:
-	if reward == null or request == null or reward.source_id.is_empty() or reward.origin not in [&"scenario", &"battle"]:
-		return false
-	if reward.origin == &"battle" and (state.combat == null or not state.combat.completed or not state.combat.rewards_started or state.combat.rewards_completed or state.combat.battle_id != reward.source_id):
-		return false
-	if (reward.origin == &"battle" and reward.battle_stage not in [ClassicRewardState.ORDINARY_BATTLE_STAGE, ClassicRewardState.BONUS_BATTLE_STAGE]) or (reward.origin != &"battle" and (reward.battle_stage != ClassicRewardState.NO_BATTLE_STAGE or reward.bonus_treasure_classic_id != 0)) or (reward.battle_stage == ClassicRewardState.BONUS_BATTLE_STAGE and reward.bonus_treasure_classic_id != 0):
-		return false
-	if reward.bonus_treasure_classic_id != 0 and content.treasure_by_classic_id(reward.bonus_treasure_classic_id) == null:
-		return false
-	for item: ItemInstance in reward.items():
-		if content.item_by_id(item.definition_id) == null:
-			return false
-	var character_ids: Dictionary = {}
-	for character_id: Variant in reward.experience_awards():
-		character_ids[String(character_id)] = true
-	for character_id: String in reward.level_character_ids():
-		character_ids[character_id] = true
-	for character_id: String in reward.spell_character_ids():
-		character_ids[character_id] = true
-	if not reward.pending_level_result.is_empty():
-		character_ids[String(reward.pending_level_result.get("characterId", ""))] = true
-	for character_id: Variant in character_ids:
-		if String(character_id).is_empty() or state.party.character_by_id(String(character_id)) == null:
-			return false
-	if reward.phase == ClassicRewardState.ITEM_PHASE:
-		var treasure_body := request.body as InteractionRequest.TreasureRequestBody
-		if request.kind != InteractionRequest.TREASURE_DISTRIBUTION or treasure_body == null:
-			return false
-		var expected_mode := &"completion-confirmation" if reward.completion_pending else &"ordinary"
-		if treasure_body.mode != expected_mode:
-			return false
-		if reward.completion_pending:
-			return not treasure_body.has_item and not treasure_body.has_items
-		var pending_items := reward.items()
-		if not treasure_body.has_items or treasure_body.has_item or treasure_body.items.size() != pending_items.size():
-			return false
-		for index: int in pending_items.size():
-			if treasure_body.items[index].instance_id != pending_items[index].id or treasure_body.items[index].definition_id != pending_items[index].definition_id:
-				return false
-		return true
-	if reward.phase == ClassicRewardState.LEVEL_PHASE:
-		var level_body := request.body as InteractionRequest.LevelUpRequestBody
-		return not reward.pending_level_result.is_empty() and request.kind == InteractionRequest.LEVEL_UP and level_body != null and level_body.mode == &"result" and level_body.character_id == reward.pending_level_result.get("characterId")
-	if reward.phase == ClassicRewardState.SPELL_PHASE:
-		var spell_ids := reward.spell_character_ids()
-		var level_body := request.body as InteractionRequest.LevelUpRequestBody
-		return reward.spell_index < spell_ids.size() and request.kind == InteractionRequest.LEVEL_UP and level_body != null and level_body.mode == &"spell-selection" and level_body.character_id == spell_ids[reward.spell_index]
-	return false
-
-
-static func _valid_age_update_payload(state: GameState, update: InteractionRequest.AgeUpdateBody) -> bool:
-	return update != null and not update.character_id.is_empty() and state.party.character_by_id(update.character_id) != null \
-		and update.presentation == &"classic-age-update" \
-		and update.age_group >= 1 and update.age_group <= 5 \
-		and update.transition in [-1, 1] \
-		and update.changes.size() == 15
-
-
-static func _valid_ready_post_move_continuation(content: RealmzContent, state: GameState, continuation: SessionContinuation) -> bool:
-	if continuation == null or continuation.kind != &"post-move":
-		return false
-	var exploration := continuation.exploration()
-	if exploration == null or exploration.trigger_index != 0 or not exploration.active_trigger_id.is_empty() or not exploration.active_random_program_id.is_empty() or not exploration.active_random_region_id.is_empty() or not exploration.random_battle_stage.is_empty() or exploration.action_point_destination_depth < 0 or exploration.action_point_destination_depth > 1:
-		return false
-	var map := content.world.map_by_id(exploration.map_id)
-	var cell: MapCell = null if map == null else map.topology.cell_at(exploration.coordinate)
-	return cell != null and state.party.map_id == map.id and state.party.coordinate == exploration.coordinate \
-		and exploration.trigger_ids == ExplorationTimeWorkflow.selected_placed_trigger_ids(content, cell, state.world) \
-		and exploration.random_region_ids == state.world.random_region_ids_at(map, exploration.coordinate) \
-		and exploration.random_region_index == exploration.random_region_ids.size() - 1
