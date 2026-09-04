@@ -7264,8 +7264,8 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/scenarios/runtime/operations/classic_service_operations.gd",
-            "symbol": "func _resume_banking"
+            "path": "src/scenarios/runtime/operations/classic_banking_operations.gd",
+            "symbol": "func resume"
           },
           {
             "path": "src/playthrough/workflows/exploration_time_workflow.gd",
