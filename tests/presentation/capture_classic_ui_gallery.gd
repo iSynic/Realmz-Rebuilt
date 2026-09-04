@@ -276,7 +276,7 @@ func _capture_gallery() -> void:
 		if interaction_kind == InteractionRequest.CHARACTER_SELECTION and not gallery_view.party_members.is_empty():
 			var selection_body := interaction_request.body as CharacterSelectionRequestBody
 			selection_body.eligible[0].id = gallery_view.party_members[0].id; selection_body.eligible[0].name = gallery_view.party_members[0].name
-			_shell.present_character_selection(interaction_request)
+			_shell.roster.present_character_selection(interaction_request)
 		_interaction.present(interaction_request, "", gallery_view, gallery_media)
 		await _settle()
 		await _capture("wide-interaction-%s-1280x720" % String(interaction_kind).replace("_", "-"))
@@ -287,7 +287,7 @@ func _capture_gallery() -> void:
 		if interaction_kind == InteractionRequest.CHARACTER_SELECTION:
 			await _capture("wide-field-spell-target-1280x720")
 			await _resize(Vector2i(800, 600)); await _capture("classic-field-spell-target-800x600"); await _resize(Vector2i(1280, 720))
-			_shell.present_character_selection(null)
+			_shell.roster.present_character_selection(null)
 		if interaction_kind == InteractionRequest.ALLY_SELECTION:
 			await _resize(Vector2i(800, 600)); await _capture("classic-surviving-allies-800x600"); await _resize(Vector2i(1280, 720))
 		if interaction_kind == InteractionRequest.PICK_LOCK:

@@ -28,7 +28,7 @@ func handle_input(event: InputEvent) -> void:
 		return
 	var mouse_button := event as InputEventMouseButton
 	if mouse_button != null and mouse_button.button_index == MOUSE_BUTTON_LEFT and not mouse_button.pressed:
-		_application._shell_presenter.release_held_commands()
+		_application._shell_presenter.commands.release()
 	if not event.is_pressed():
 		return
 	if combat_pending and _application._battlefield_presenter.dismiss_reveal_friends():
@@ -103,7 +103,7 @@ func _handle_back_input(event: InputEvent, combat_pending: bool) -> bool:
 		_mark_handled()
 		return true
 	if _application._interaction_presenter.has_blocking_request():
-		_application._shell_presenter.set_status("Choose a response before leaving this interaction.")
+		_application._shell_presenter.status.set_status("Choose a response before leaving this interaction.")
 		_mark_handled()
 		return true
 	if _application._interaction_presenter.dismiss_passive_text() or _application._shell_presenter.handle_back():

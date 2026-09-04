@@ -81,7 +81,7 @@ func _build_dependencies() -> void:
 func _bind_debug_and_movement() -> void:
 	_debug_tools.status_changed.connect(
 		func(message: String, failed: bool) -> void:
-			_shell_presenter.set_status(message, failed)
+			_shell_presenter.status.set_status(message, failed)
 	)
 	_held_movement.set_speed_percent(_presentation_settings.exploration_speed_percent)
 	_held_movement.movement_requested.connect(_on_held_movement_requested)
@@ -117,7 +117,7 @@ func _bind_combat_and_interactions() -> void:
 	_interaction_presenter.combatant_focus_requested.connect(_on_combatant_focus_requested)
 	_interaction_presenter.reveal_friends_requested.connect(_on_reveal_friends_requested)
 	_interaction_presenter.presentation_sound_requested.connect(_on_interaction_sound_requested)
-	_interaction_presenter.presentation_status_requested.connect(_shell_presenter.set_status)
+	_interaction_presenter.presentation_status_requested.connect(_shell_presenter.status.set_status)
 	_battlefield_presenter.combat_body_submitted.connect(_on_battlefield_action_requested)
 	_battlefield_presenter.combatant_inspected.connect(_on_battlefield_combatant_inspected)
 	_battlefield_presenter.targeting_changed.connect(_interaction_presenter.update_combat_targeting)
@@ -151,7 +151,7 @@ func _bind_shell_and_settings() -> void:
 
 
 func _finish_startup() -> void:
-	_game_shell.set_standalone_character_creation_available(false, "Loading the built-in Classic definitions…")
+	_game_shell.navigator.setup_controller.set_standalone_character_creation_available(false, "Loading the built-in Classic definitions…")
 	Callable(character_files, "begin_library_load").call_deferred()
 	_status_label.text = "Pure session boundary online"
 	_refresh_campaigns()
@@ -177,19 +177,19 @@ func _process(_delta: float) -> void:
 	var operation_key := "%s:%s:%d:%d:%s" % [operation.state, operation.phase, operation.completed, operation.total, operation.message]
 	if operation_key != _last_package_operation_key:
 		_last_package_operation_key = operation_key
-		_shell_presenter.set_package_operation(operation)
-		_shell_presenter.set_status(operation.message, operation.state == PackageOperationView.FAILED)
+		_shell_presenter.navigator.setup_controller.set_package_operation(operation)
+		_shell_presenter.status.set_status(operation.message, operation.state == PackageOperationView.FAILED)
 	if operation.is_running() or operation.state == PackageOperationView.IDLE:
 		return
 	var prepared := _package_host.take_prepared_package()
-	_shell_presenter.set_package_operation(PackageOperationView.new())
+	_shell_presenter.navigator.setup_controller.set_package_operation(PackageOperationView.new())
 	_last_package_operation_key = ""
 	if operation.state == PackageOperationView.CANCELLED:
-		_shell_presenter.set_status("Campaign preparation cancelled.")
+		_shell_presenter.status.set_status("Campaign preparation cancelled.")
 		return
 	if not character_files.library_ready():
 		_pending_prepared_package = prepared
-		_shell_presenter.set_status("Campaign ready • finishing the built-in Classic definitions…")
+		_shell_presenter.status.set_status("Campaign ready • finishing the built-in Classic definitions…")
 		return
 	_complete_package_install(prepared, _pending_package_seed)
 
@@ -235,16 +235,16 @@ func _begin_package_start(package_path: String, initial_seed: int) -> void:
 	_held_movement.stop()
 	var current_view := session_controller.view()
 	if current_view.session_started and not current_view.party_setup_available:
-		_shell_presenter.set_status("End the active adventure before starting another campaign.", true)
+		_shell_presenter.status.set_status("End the active adventure before starting another campaign.", true)
 		return
 	if _package_host.operation_view().is_running():
 		return
 	_pending_package_seed = initial_seed
 	if not _package_host.start_install(package_path):
-		_shell_presenter.set_status(_package_host.operation_view().message, true)
+		_shell_presenter.status.set_status(_package_host.operation_view().message, true)
 		return
-	_shell_presenter.set_package_operation(_package_host.operation_view())
-	_shell_presenter.set_status("Preparing campaign…")
+	_shell_presenter.navigator.setup_controller.set_package_operation(_package_host.operation_view())
+	_shell_presenter.status.set_status("Preparing campaign…")
 
 
 func _cancel_package_start() -> void:
@@ -255,17 +255,17 @@ func _cancel_package_start() -> void:
 func _complete_package_install(prepared: PreparedPackage, initial_seed: int) -> SessionStep:
 	if prepared == null:
 		_status_label.text = "Package rejected • package operation returned no result"
-		_shell_presenter.set_status(_status_label.text, true)
+		_shell_presenter.status.set_status(_status_label.text, true)
 		return SessionStep.failed(0, &"package_operation_failed", "Package operation returned no result.")
 	if not prepared.is_ok():
 		_status_label.text = "Package rejected • %s" % prepared.error_message
-		_shell_presenter.set_status(_status_label.text, true)
+		_shell_presenter.status.set_status(_status_label.text, true)
 		return SessionStep.failed(0, prepared.error_code, prepared.error_message)
 	prepared.content.set_application_appearance_catalog(character_files.library_content())
 	var step := session_controller.start(prepared.content, initial_seed)
 	if step.state == SessionStep.State.FAILED:
 		_status_label.text = "Session start failed • %s" % step.error_message
-		_shell_presenter.set_status(_status_label.text, true)
+		_shell_presenter.status.set_status(_status_label.text, true)
 		return step
 	_queued_combat_auto_changes.clear()
 	_active_content = prepared.content
@@ -279,7 +279,7 @@ func _complete_package_install(prepared: PreparedPackage, initial_seed: int) -> 
 	_smoke_button.text = "Search area"
 	var current_view := session_controller.view()
 	_status_label.text = "Loaded %s • %s %d,%d • seed %d" % [_active_content.campaign_id, current_view.party_map_id, current_view.party_coordinate.x, current_view.party_coordinate.y, initial_seed]
-	_shell_presenter.set_status(_status_label.text)
+	_shell_presenter.status.set_status(_status_label.text)
 	_refresh_campaigns()
 	return step
 
@@ -307,18 +307,18 @@ func accepts_exploration_input() -> bool:
 
 
 func handle_field_fast_spell(slot_index: int, use_spell: bool) -> void:
-	var binding := _shell_presenter.selected_fast_spell(slot_index)
+	var binding := _shell_presenter.commands.selected_fast_spell(slot_index)
 	if binding.is_empty() or String(binding.get("spellId", "")).is_empty():
-		_shell_presenter.set_status("Fast Spell %s • Undefined Spell" % ("0" if slot_index == 9 else str(slot_index + 1)))
+		_shell_presenter.status.set_status("Fast Spell %s • Undefined Spell" % ("0" if slot_index == 9 else str(slot_index + 1)))
 		_audio_presenter.present_sound(143, presentation_coordinator.package_media())
 		return
 	var summary := "Fast Spell %s • %s P%d • %s" % ["0" if slot_index == 9 else str(slot_index + 1), binding["spellName"], binding["power"], binding["characterName"]]
 	if not use_spell:
-		_shell_presenter.set_status(summary)
+		_shell_presenter.status.set_status(summary)
 		_audio_presenter.present_sound(145, presentation_coordinator.package_media())
 		return
 	if not bool(binding.get("enabled", false)):
-		_shell_presenter.set_status("%s • %s" % [summary, binding.get("reason", "Unavailable")], true)
+		_shell_presenter.status.set_status("%s • %s" % [summary, binding.get("reason", "Unavailable")], true)
 		_audio_presenter.present_sound(143, presentation_coordinator.package_media())
 		return
 	submit_intent(PlayerIntent.cast_spell(binding["spellId"], binding["characterId"], "", binding["power"]))
@@ -340,7 +340,7 @@ func _on_battlefield_combatant_inspected(combatant_id: String) -> void:
 
 func _on_combat_targeting_requested(request: CombatTargetingRequest) -> void:
 	if not _battlefield_presenter.begin_targeting(request):
-		_shell_presenter.set_status("Battlefield targeting is unavailable for this action.", true)
+		_shell_presenter.status.set_status("Battlefield targeting is unavailable for this action.", true)
 
 
 func _on_combatant_focus_requested(combatant_id: String, play_sound: bool) -> void:
@@ -384,7 +384,7 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 	var queued_auto := ApplicationCombatPolicy.auto_change_to_queue(intent, presentation_coordinator != null and presentation_coordinator.is_combat_playback_active())
 	if not queued_auto.is_empty():
 		_queued_combat_auto_changes[String(queued_auto["characterId"])] = bool(queued_auto["enabled"])
-		_shell_presenter.set_status("Manual control queued after this Auto activation." if not bool(queued_auto["enabled"]) else "Auto queued after this activation.")
+		_shell_presenter.status.set_status("Manual control queued after this Auto activation." if not bool(queued_auto["enabled"]) else "Auto queued after this activation.")
 		if not bool(queued_auto["enabled"]):
 			presentation_coordinator.skip_combat_playback()
 		return SessionStep.completed(session_controller.view().revision)
@@ -418,19 +418,19 @@ func _on_interaction_response_submitted(response: InteractionResponse) -> void:
 	if current_view.pending_interaction == null and current_view.combat_action_request != null and response.request_id == current_view.combat_action_request.request_id and response.kind == InteractionRequest.COMBAT:
 		var direct_intent := ApplicationCombatPolicy.direct_intent(response.body as InteractionResponse.CombatBody)
 		if direct_intent == null:
-			_shell_presenter.set_status("The combat command was invalid.", true)
+			_shell_presenter.status.set_status("The combat command was invalid.", true)
 			presentation_coordinator.refresh()
 			return
 		var direct_step := submit_intent(direct_intent)
 		if direct_step.state == SessionStep.State.COMPLETED and direct_step.events.is_empty() and session_controller.view().pending_interaction == null:
-			_shell_presenter.set_status("")
+			_shell_presenter.status.set_status("")
 		return
 	var step := session_controller.respond(response)
 	_present_step_status(step)
 	if step.state != SessionStep.State.FAILED and session_controller.view().journal_entries.size() > journal_count_before:
-		_shell_presenter.show_activity_indicator(&"journal")
+		_shell_presenter.status.show_activity_indicator(&"journal")
 	if step.state == SessionStep.State.COMPLETED and step.events.is_empty() and session_controller.view().pending_interaction == null:
-		_shell_presenter.set_status("")
+		_shell_presenter.status.set_status("")
 
 
 func abort_full_party_auto(skip_playback: bool) -> bool:
@@ -439,7 +439,7 @@ func abort_full_party_auto(skip_playback: bool) -> bool:
 		return false
 	for character_id: String in character_ids:
 		_queued_combat_auto_changes[character_id] = false
-	_shell_presenter.set_status("Full-party Auto cancelled. Manual control resumes at the next activation.")
+	_shell_presenter.status.set_status("Full-party Auto cancelled. Manual control resumes at the next activation.")
 	if skip_playback:
 		presentation_coordinator.skip_combat_playback()
 	else:
@@ -463,7 +463,7 @@ func _complete_closed_session() -> void:
 	_refresh_campaigns()
 	_shell_presenter.show_splash()
 	_status_label.text = "Adventure ended • main menu"
-	_shell_presenter.set_status(_status_label.text)
+	_shell_presenter.status.set_status(_status_label.text)
 
 
 func _on_playback_step_settled(step: SessionStep) -> void:
@@ -498,7 +498,7 @@ func _continue_persistent_auto_after_playback() -> void:
 func _present_step_status(step: SessionStep) -> void:
 	if step.state == SessionStep.State.FAILED:
 		_status_label.text = "Action failed • %s" % step.error_message
-		_shell_presenter.set_status(_status_label.text, true)
+		_shell_presenter.status.set_status(_status_label.text, true)
 		return
 	for event: DomainEvent in step.events:
 		if event.kind == &"session_ended":
@@ -517,7 +517,7 @@ func _refresh_campaigns() -> void:
 	if _package_host != null and _package_host.operation_view().is_running():
 		return
 	_campaigns = _package_host.discover_available_campaigns()
-	_shell_presenter.set_campaigns(_campaigns)
+	_shell_presenter.navigator.setup_controller.set_campaigns(_campaigns)
 	_try_prewarm_last_campaign()
 
 

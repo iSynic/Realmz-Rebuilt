@@ -52,11 +52,13 @@ func bind(session_controller: GameSessionController, map_presenter: ClassicMapPr
 	_shell_presenter.presentation_sound_requested.connect(_on_presentation_sound_requested)
 	_interaction_presenter.combat_spellbook_requested.connect(func(actor_id: String, options: Array[InteractionRequestValue.CastOption]) -> void:
 		_interaction_presenter.set_combat_spellbook_open(true)
-		_shell_presenter.present_combat_spellbook(actor_id, options)
+		_shell_presenter.roster.present_combat_spellbook(actor_id, options)
+		_shell_presenter.refresh_layout()
 	)
 	_interaction_presenter.combat_spellbook_closed.connect(func() -> void:
 		_interaction_presenter.set_combat_spellbook_open(false)
-		_shell_presenter.close_combat_spellbook()
+		_shell_presenter.roster.close_combat_spellbook()
+		_shell_presenter.refresh_layout()
 	)
 	_shell_presenter.combat_spell_cast_requested.connect(func(option: InteractionRequestValue.CastOption) -> void: _interaction_presenter.cast_combat_spell(option))
 	_shell_presenter.combat_spellbook_back_requested.connect(func() -> void: _interaction_presenter.close_combat_spellbook())
@@ -94,7 +96,7 @@ static func _has_event(events: Array[DomainEvent], kind: StringName) -> bool:
 
 func _present_committed_step(step: SessionStep, game_view: GameView, include_audio: bool) -> void:
 	_present_view(game_view, false, false)
-	_shell_presenter.present_step(step)
+	_shell_presenter.status.present_step(step, game_view, _shell_presenter.picture_stage)
 	_shell_presenter.present_media_events(step.events, _media)
 	if include_audio:
 		_audio_presenter.present_events(step.events, _media)
@@ -172,7 +174,7 @@ func refresh_music() -> void:
 	if _audio_presenter == null or _shell_presenter == null:
 		return
 	var view := _session_controller.view() if _session_controller != null else _presented_view
-	_audio_presenter.present_music_context(ClassicMusicContext.playlist_for(_active_route, view), _shell_presenter.presentation_settings(), _media, _stock_music)
+	_audio_presenter.present_music_context(ClassicMusicContext.playlist_for(_active_route, view), _shell_presenter.settings, _media, _stock_music)
 
 
 func set_play_stage_visible(visible: bool) -> void:
@@ -192,7 +194,7 @@ func toggle_dungeon_view() -> bool:
 	if game_view == null or game_view.map_view == null or game_view.map_view.level_type != &"dungeon":
 		return false
 	if not dungeon_view_toggle_available(game_view.map_view):
-		_shell_presenter.set_status("This dungeon is locked to the 3D view. Wizard's Eye permits the overhead view.")
+		_shell_presenter.status.set_status("This dungeon is locked to the 3D view. Wizard's Eye permits the overhead view.")
 		return true
 	_dungeon_3d_enabled = not _dungeon_presenter.is_active()
 	_sync_dungeon_view(game_view)
@@ -256,7 +258,7 @@ func present_host_workflow(game_view: GameView, step: SessionStep = null) -> voi
 	# contracts as the ordinary creator.
 	_present_view(game_view, false)
 	if step != null:
-		_shell_presenter.present_step(step)
+		_shell_presenter.status.present_step(step, game_view, _shell_presenter.picture_stage)
 	_present_interaction(game_view)
 
 
@@ -328,8 +330,8 @@ func _present_request(request: InteractionRequest, game_view: GameView, characte
 	if not enables_spatial_cursor:
 		_map_presenter.set_movement_cursor_enabled(false)
 		_dungeon_presenter.set_navigation_cursor_enabled(false)
-	_shell_presenter.present_character_selection(character_selection_request)
-	_interaction_presenter.present(request, _shell_presenter.latest_classic_text(), game_view, _media)
+	_shell_presenter.roster.present_character_selection(character_selection_request)
+	_interaction_presenter.present(request, _shell_presenter.status.latest_classic_text(), game_view, _media)
 	if enables_spatial_cursor:
 		_map_presenter.set_movement_cursor_enabled(true)
 		_dungeon_presenter.set_navigation_cursor_enabled(true)

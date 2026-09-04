@@ -106,6 +106,32 @@ func update_availability() -> void:
 		button.queue_redraw()
 
 
+func selected_fast_spell(slot_index: int) -> Dictionary:
+	var owner = _owner()
+	if owner._current_view == null or slot_index < 0 or slot_index >= 10:
+		return {}
+	var character: CharacterView = null
+	for candidate: CharacterView in owner._current_view.party_members:
+		if candidate.id == owner._selected_character_id:
+			character = candidate
+			break
+	if character == null and not owner._current_view.party_members.is_empty():
+		character = owner._current_view.party_members[0]
+	if character == null or slot_index >= character.fast_spells.size():
+		return {}
+	var binding := character.fast_spells[slot_index]
+	return {
+		"characterId": character.id,
+		"characterName": character.name,
+		"slot": slot_index,
+		"spellId": binding.spell_id,
+		"spellName": binding.spell_name,
+		"power": binding.power,
+		"enabled": binding.activation.enabled,
+		"reason": binding.activation.reason,
+	}
+
+
 func _is_visually_pressed(command_id: StringName) -> bool:
 	var owner = _owner()
 	var party_summary: PartySummaryView = owner._current_view.party_summary if owner._current_view != null else null

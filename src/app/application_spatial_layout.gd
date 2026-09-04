@@ -65,6 +65,6 @@ static func _place_presenter(presenter: Control, content_rect: Rect2) -> void:
 
 func _sync_narrative_after_layout(content_rect: Rect2, combat_rect: Rect2) -> void:
 	await _shell.get_tree().process_frame
-	var narrative_rect := _shell.narrative_region()
+	var narrative_rect := _shell.status.narrative_region(_shell)
 	if narrative_rect.has_area():
 		_interaction.set_classic_regions(content_rect, narrative_rect, combat_rect)

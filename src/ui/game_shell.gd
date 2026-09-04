@@ -44,18 +44,11 @@ signal character_selection_completed(character_ids: Array[String])
 signal combat_spell_cast_requested(option: InteractionRequestValue.CastOption)
 signal combat_spellbook_back_requested
 
-const MUTED := Color("9aa4a5")
-const ERROR := Color("ef7770")
-const TEXT := Color("d8d9d2")
 const SCROLL_ARROW_STEP := 32.0
 const SCROLL_ARROW_INITIAL_DELAY := 0.34
 const SCROLL_ARROW_REPEAT_INTERVAL := 0.065
-const HELD_COMMAND_INTERVAL := GameShellCommandController.HELD_COMMAND_INTERVAL
-const PARTY_EFFECT_FRAME_COUNT := ClassicPartyEffects.FRAME_COUNT
 const COMMAND_CONTROLLER_SCRIPT := preload("res://src/ui/game_shell_command_controller.gd")
 const MENU_CONTROLLER_SCRIPT := preload("res://src/ui/game_shell_menu_controller.gd")
-const SAVE_STATUS_TEXTURE_PATH := "res://src/ui/assets/ui/status/save-status.png"
-const JOURNAL_STATUS_TEXTURE_PATH := "res://src/ui/assets/ui/status/journal-status.png"
 
 @export var party_effect_slot_scene: PackedScene
 
@@ -99,22 +92,28 @@ var _presentation_settings := PresentationSettings.new()
 var _profile: UiLayoutProfile
 var _media: ClassicMediaCatalog
 var _selected_character_id: String = ""
-var _latest_classic_text: String = ""
 var _command_controller: GameShellCommandController
 var _menu_controller: GameShellMenuController
 var _picture_presenter: GameShellPicturePresenter
 var _layout_controller: GameShellLayoutController
-var _effect_frame_timer: Timer
-var _effect_frame_index: int = 0
-var _effect_slots: Array[TextureRect] = []
-var _effect_texture_cache: Dictionary = {}
+var _status_controller: GameShellStatusController
+var _party_effects: GameShellPartyEffectsPresenter
 var _music_playlist_id: int = 0
 var _music_title: String = ""
 var _music_playing: bool = false
-var _activity_tween: Tween
-var _field_time_playback: RefCounted = preload("res://src/ui/classic_field_time_playback.gd").new()
-var _save_status_texture: Texture2D = load(SAVE_STATUS_TEXTURE_PATH) as Texture2D
-var _journal_status_texture: Texture2D = load(JOURNAL_STATUS_TEXTURE_PATH) as Texture2D
+
+var navigator: ScreenNavigator:
+	get: return _navigator
+var status: GameShellStatusController:
+	get: return _status_controller
+var commands: GameShellCommandController:
+	get: return _command_controller
+var roster: ClassicPartyRoster:
+	get: return _party_roster
+var settings: PresentationSettings:
+	get: return _presentation_settings
+var picture_stage: Control:
+	get: return _picture_stage
 
 
 func _ready() -> void:
@@ -128,13 +127,10 @@ func _ready() -> void:
 	_menu_controller = MENU_CONTROLLER_SCRIPT.new(self)
 	_picture_presenter = GameShellPicturePresenter.new(self)
 	_layout_controller = GameShellLayoutController.new(self)
-	_effect_slots = ClassicPartyEffects.build_slots(_effects_grid, party_effect_slot_scene)
-	_layout_controller.set_effect_slots(_effect_slots)
-	_effect_frame_timer = Timer.new()
-	_effect_frame_timer.wait_time = 0.12
-	_effect_frame_timer.autostart = true
-	_effect_frame_timer.timeout.connect(_advance_effect_frame)
-	add_child(_effect_frame_timer)
+	_status_controller = GameShellStatusController.new()
+	_status_controller.initialize(self, _status_label, _narrative, _narrative_well, _package_status, _coordinates_label, _fatigue_label, _fatigue_bar, _light_label, _clock_label, _gold_label, _activity_indicator, _activity_icon, _navigator.setup_controller)
+	_party_effects = GameShellPartyEffectsPresenter.new()
+	_layout_controller.set_effect_slots(_party_effects.initialize(self, _effects_grid, _effects_panel, party_effect_slot_scene))
 	_music_dialog.music_enabled_changed.connect(func(enabled: bool) -> void: music_enabled_changed.emit(enabled))
 	_music_dialog.music_volume_changed.connect(func(value: float) -> void: music_volume_changed.emit(value))
 	_music_dialog.playlist_mode_changed.connect(func(playlist_id: int, mode: int) -> void: music_playlist_mode_changed.emit(playlist_id, mode))
@@ -159,21 +155,13 @@ func _ready() -> void:
 	_smoke_action.pressed.connect(_on_smoke_pressed)
 	resized.connect(_apply_layout)
 	_build_menus()
-	set_status("Choose a validated Realmz campaign")
+	_status_controller.set_status("Choose a validated Realmz campaign")
 	_apply_layout()
 
 
 func _on_tree_node_added(node: Node) -> void:
 	if node is ScrollContainer:
 		ClassicScrollArrowController.bind(node as ScrollContainer, SCROLL_ARROW_STEP, SCROLL_ARROW_INITIAL_DELAY, SCROLL_ARROW_REPEAT_INTERVAL)
-
-
-static func configure_scroll_container(scroll: ScrollContainer) -> void:
-	ClassicScrollArrowController.configure(scroll, SCROLL_ARROW_STEP)
-
-
-static func scrollbar_arrow_direction(bar: ScrollBar, position: Vector2, vertical: bool) -> int:
-	return ClassicScrollArrowController.arrow_direction(bar, position, vertical)
 
 
 func present(game_view: GameView) -> void:
@@ -188,17 +176,8 @@ func present(game_view: GameView) -> void:
 		return
 	_command_controller.present(game_view)
 	if game_view == null or not game_view.session_started:
-		_latest_classic_text = ""
-		_package_status.text = "No campaign"
-		_clock_label.text = "Day —"
-		_gold_label.text = "Gold —"
-		_coordinates_label.text = "Map —"
-		_fatigue_label.text = "Fatigue —"
-		_fatigue_bar.value = 4.0
-		_fatigue_bar.tooltip_text = "No active party fatigue."
-		_light_label.text = "Light —"
-		_effects_panel.visible = false
-		_refresh_effect_slots()
+		_status_controller.present_inactive()
+		_party_effects.present(game_view)
 		_party_roster.present(game_view)
 		_navigator.present(game_view)
 		_set_play_regions_visible(false)
@@ -206,17 +185,11 @@ func present(game_view: GameView) -> void:
 		_update_command_availability()
 		return
 	if previous_campaign_id != game_view.campaign_id:
-		_latest_classic_text = ""
-	_clock_label.text = "Day %d • %02d:%02d" % [game_view.realmz_day, game_view.realmz_hour, game_view.realmz_minute]
-	_gold_label.text = "Gold %d" % game_view.pooled_gold
-	_coordinates_label.text = location_fact_text(game_view)
-	_fatigue_label.text = "Fatigue %d" % game_view.party_fatigue
-	_fatigue_bar.value = game_view.party_fatigue
-	_fatigue_bar.tooltip_text = "Fatigue %d / 135" % game_view.party_fatigue
-	_light_label.text = "Light %d" % game_view.party_summary.light_remaining if game_view.party_summary != null else "Light —"
-	_refresh_effect_slots()
+		_status_controller.reset_classic_text()
+	_status_controller.present_world_facts(game_view)
+	_party_effects.present(game_view)
 	_apply_exploration_mode()
-	_package_status.text = game_view.campaign_summary.title if game_view.campaign_summary != null else game_view.campaign_id
+	_status_controller.set_campaign_title(game_view.campaign_summary.title if game_view.campaign_summary != null else game_view.campaign_id)
 	if not game_view.party_members.any(func(character: CharacterView) -> bool: return character.id == _selected_character_id):
 		_on_character_selected(game_view.party_members[0].id if not game_view.party_members.is_empty() else "")
 	# Party setup owns its six-slot assembly pane and covers the persistent
@@ -227,7 +200,7 @@ func present(game_view: GameView) -> void:
 	_navigator.present(game_view)
 	var play_regions_visible := not _navigator.full_stage_overlay_visible
 	_set_play_regions_visible(play_regions_visible)
-	var automatic_route := automatic_workflow_route(_navigator.current_screen(), game_view, contextual_service_closed)
+	var automatic_route := GameShellRoutePolicy.automatic_route(_navigator.current_screen(), game_view, contextual_service_closed)
 	if automatic_route != _navigator.current_screen():
 		_navigator.open_screen(automatic_route, false)
 	_build_menus()
@@ -235,130 +208,21 @@ func present(game_view: GameView) -> void:
 
 
 func _present_ordinary_exploration_shell(game_view: GameView, party_update: bool = false) -> void:
-	_clock_label.text = "Day %d • %02d:%02d" % [game_view.realmz_day, game_view.realmz_hour, game_view.realmz_minute]
-	_coordinates_label.text = location_fact_text(game_view)
-	_fatigue_label.text = "Fatigue %d" % game_view.party_fatigue
-	_fatigue_bar.value = game_view.party_fatigue
-	_fatigue_bar.tooltip_text = "Fatigue %d / 135" % game_view.party_fatigue
-	_light_label.text = "Light %d" % game_view.party_summary.light_remaining if game_view.party_summary != null else "Light —"
-	_refresh_effect_slots()
+	_status_controller.present_world_facts(game_view, false)
+	_party_effects.present(game_view)
 	if party_update:
 		var affected_character_ids: Array[String] = game_view.change_set.affected_character_ids()
 		if not affected_character_ids.is_empty():
 			_party_roster.present_ordinary_exploration(game_view, _selected_character_id, affected_character_ids)
 		_update_command_availability()
-
-
-static func location_fact_text(game_view: GameView) -> String:
-	if game_view == null or not game_view.session_started:
-		return "Map —"
-	var coordinates := "?,?" if game_view.map_view != null and game_view.map_view.coordinates_hidden else "%d,%d" % [game_view.party_coordinate.x, game_view.party_coordinate.y]
-	var compass := ""
-	if game_view.map_view != null and game_view.map_view.level_type == &"dungeon" and game_view.map_view.compass_enabled:
-		compass = " • Compass %s" % ["N", "E", "S", "W"][clampi(game_view.map_view.dungeon_heading, 1, 4) - 1]
-	return "%s • %s%s" % [game_view.party_map_id, coordinates, compass]
-
-
-func set_save_previews(previews: Array[SaveSlotPreview]) -> void:
-	_navigator.content_presenter.set_save_previews(previews)
-	if _navigator.current_screen() == &"system" and _current_view != null and _current_view.session_started:
-		_navigator.refresh_current_workspace()
-
-
-func show_save_and_quit_workspace() -> void:
-	_navigator.content_presenter.set_save_and_quit_mode(true)
-	_navigator.open_screen(&"system")
-
-
-func set_save_and_quit_mode(enabled: bool) -> void:
-	_navigator.content_presenter.set_save_and_quit_mode(enabled)
-	if _navigator.current_screen() == &"system" and _current_view != null and _current_view.session_started:
-		_navigator.refresh_current_workspace()
-
-
-func show_activity_indicator(kind: StringName) -> void:
-	match kind:
-		&"save":
-			_activity_icon.texture = _save_status_texture
-			_activity_indicator.tooltip_text = "Adventure saved"
-		&"journal":
-			_activity_icon.texture = _journal_status_texture
-			_activity_indicator.tooltip_text = "Added to Journal"
-		_:
-			return
-	_activity_icon.custom_minimum_size = _activity_icon.texture.get_size()
-	if _activity_tween != null and _activity_tween.is_valid():
-		_activity_tween.kill()
-	_activity_indicator.modulate = Color.WHITE
-	_activity_indicator.visible = true
-	_activity_tween = create_tween()
-	_activity_tween.tween_interval(1.15)
-	_activity_tween.tween_property(_activity_indicator, "modulate:a", 0.0, 0.35)
-	_activity_tween.tween_callback(func() -> void: _activity_indicator.visible = false)
-
-
-func present_step(step: SessionStep) -> void:
-	if step == null:
-		return
-	if step.state == SessionStep.State.FAILED:
-		set_status("Action failed • %s" % step.error_message, true)
-		_append_narrative("Action failed: %s" % step.error_message)
-		return
-	_picture_stage.visible = false
-	_field_time_playback.present(self, _clock_label, step.events)
-	for event: DomainEvent in step.events:
-		_present_event(event)
-
-
-func latest_classic_text() -> String:
-	return _latest_classic_text
-
-
-func narrative_region() -> Rect2:
-	if _narrative_well == null or not _narrative_well.is_inside_tree():
-		return Rect2()
-	var local_origin := get_global_transform().affine_inverse() * _narrative_well.global_position
-	return Rect2(local_origin, _narrative_well.size)
-
-
-func present_character_selection(request: InteractionRequest) -> void:
-	_party_roster.present_character_selection(request)
-
-
-func present_combat_spellbook(actor_id: String, options: Array[InteractionRequestValue.CastOption]) -> void:
-	_party_roster.present_combat_spellbook(actor_id, options)
-	_apply_layout()
-
-
-func close_combat_spellbook() -> void:
-	_party_roster.close_combat_spellbook()
-	_apply_layout()
-
-
-static func automatic_workflow_route(current_route: StringName, game_view: GameView, contextual_service_closed: bool = false) -> StringName:
-	if game_view == null:
-		return current_route
-	if game_view.pending_interaction != null and game_view.pending_interaction.kind in [InteractionRequest.SHOP, InteractionRequest.TEMPLE, InteractionRequest.BANK]:
-		return &"services"
-	if game_view.combat_view != null:
-		return &"combat"
-	if game_view.pending_interaction != null:
-		return &"exploration"
-	if contextual_service_closed and current_route == &"services":
-		return &"exploration"
-	if game_view.combat_view == null and current_route == &"combat":
-		return &"exploration"
-	return current_route
-
-
 func set_package_media(media: ClassicMediaCatalog) -> void:
 	if _media == media:
 		return
 	_media = media
-	_effect_texture_cache.clear()
+	_party_effects.set_media(media)
 	_party_roster.set_media_catalog(media)
 	_navigator.set_media_catalog(media)
-	_refresh_effect_slots()
+	_party_effects.present(_current_view)
 
 
 func present_media_events(events: Array[DomainEvent], media: ClassicMediaCatalog) -> void:
@@ -383,10 +247,6 @@ func apply_settings(settings: PresentationSettings) -> void:
 	if _music_dialog != null and _music_dialog.visible:
 		_music_dialog.open(settings, _music_playlist_id, _music_title, _music_playing)
 	_apply_layout()
-
-
-func presentation_settings() -> PresentationSettings:
-	return _presentation_settings
 
 
 func set_music_playback_state(playlist_id: int, title: String, playing: bool) -> void:
@@ -427,61 +287,6 @@ func handle_route_shortcut(event: InputEvent) -> bool:
 	return false
 
 
-func selected_fast_spell(slot_index: int) -> Dictionary:
-	if _current_view == null or slot_index < 0 or slot_index >= 10:
-		return {}
-	var character: CharacterView = null
-	for candidate: CharacterView in _current_view.party_members:
-		if candidate.id == _selected_character_id:
-			character = candidate
-			break
-	if character == null and not _current_view.party_members.is_empty():
-		character = _current_view.party_members[0]
-	if character == null or slot_index >= character.fast_spells.size():
-		return {}
-	var binding := character.fast_spells[slot_index]
-	return {
-		"characterId": character.id,
-		"characterName": character.name,
-		"slot": slot_index,
-		"spellId": binding.spell_id,
-		"spellName": binding.spell_name,
-		"power": binding.power,
-		"enabled": binding.activation.enabled,
-		"reason": binding.activation.reason,
-	}
-
-
-func set_status(text: String, is_error: bool = false) -> void:
-	_status_label.text = text
-	_status_label.modulate = ERROR if is_error else TEXT
-	_navigator.setup_controller.present_party_setup_status(text, is_error)
-
-
-func set_campaigns(campaigns: Array[CampaignPackageView]) -> void:
-	_navigator.setup_controller.set_campaigns(campaigns)
-
-
-func set_package_operation(status: RefCounted) -> void:
-	_navigator.setup_controller.set_package_operation(status)
-
-
-func set_vault_revisions(revisions: Array[CharacterVaultRevisionView]) -> void:
-	_navigator.set_vault_revisions(revisions)
-
-
-func set_standalone_character_creation_available(enabled: bool, reason: String = "") -> void:
-	_navigator.setup_controller.set_standalone_character_creation_available(enabled, reason)
-
-
-func begin_standalone_character_creation() -> void:
-	_navigator.setup_controller.begin_standalone_character_creation()
-
-
-func finish_standalone_character_creation() -> void:
-	_navigator.setup_controller.finish_standalone_character_creation()
-
-
 func show_campaign_selection(load_after_selection: bool = false) -> void:
 	_navigator.show_campaign_selection(load_after_selection)
 	_set_play_regions_visible(false)
@@ -509,28 +314,8 @@ func _apply_layout() -> void:
 	layout_changed.emit(_layout_controller.workspace_rect, _profile)
 
 
-func _advance_effect_frame() -> void:
-	_effect_frame_index = (_effect_frame_index + 1) % PARTY_EFFECT_FRAME_COUNT
-	_refresh_effect_slots()
-
-
-func _refresh_effect_slots() -> void:
-	var values: Array[int] = []
-	if _current_view != null and _current_view.party_summary != null:
-		values = _current_view.party_summary.condition_values
-	for slot_index: int in _effect_slots.size():
-		var active := values.size() > slot_index + 1 and values[slot_index + 1] != 0
-		var texture := _party_effect_texture(slot_index + 1, _effect_frame_index) if active else null
-		_effect_slots[slot_index].texture = texture
-		_effect_slots[slot_index].modulate = Color.WHITE if active else Color(0.35, 0.35, 0.35, 0.35)
-
-
-func _party_effect_texture(condition_index: int, frame_index: int) -> Texture2D:
-	return ClassicPartyEffects.texture(_media, _effect_texture_cache, condition_index, frame_index)
-
-
-static func party_effect_resource_id(condition_index: int, frame_index: int) -> int:
-	return ClassicPartyEffects.resource_id(condition_index, frame_index)
+func refresh_layout() -> void:
+	_apply_layout()
 
 
 func _apply_exploration_mode() -> void:
@@ -554,24 +339,8 @@ func _update_command_availability() -> void:
 	_command_controller.update_availability()
 
 
-static func command_route(command_id: StringName) -> StringName:
-	return GameShellCommandController.command_route(command_id)
-
-
 func _presentation_command_definition(definition: Dictionary) -> Dictionary:
 	return _command_controller.presentation_definition(definition)
-
-
-static func command_activation_sound_id(command_id: StringName, held_repeat: bool) -> int:
-	return GameShellCommandController.command_activation_sound_id(command_id, held_repeat)
-
-
-static func should_stop_held_command_on_button_up(left_mouse_pressed: bool) -> bool:
-	return GameShellCommandController.should_stop_held_command_on_button_up(left_mouse_pressed)
-
-
-func release_held_commands() -> void:
-	_command_controller.release()
 
 
 func _notification(what: int) -> void:
@@ -583,7 +352,7 @@ func _on_screen_changed(screen_id: StringName) -> void:
 	var play_regions_visible := _current_view != null and _current_view.session_started and not _navigator.full_stage_overlay_visible
 	_set_play_regions_visible(play_regions_visible)
 	_apply_layout()
-	set_status(String(screen_id).replace("_", " ").capitalize())
+	_status_controller.set_status(String(screen_id).replace("_", " ").capitalize())
 	_build_menus()
 	_rebuild_command_deck()
 	route_changed.emit(screen_id)
@@ -656,42 +425,6 @@ func _on_combat_auto_changed(character_id: String, enabled: bool) -> void:
 func _on_smoke_pressed() -> void:
 	_smoke_action.release_focus()
 	if _current_view == null or not _current_view.session_started:
-		set_status("MCP input verified • no package loaded")
+		_status_controller.set_status("Input verified • no package loaded")
 		return
 	intent_submitted.emit(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
-
-
-func _present_event(event: DomainEvent) -> void:
-	match event.kind:
-		&"message_shown":
-			var text := String(event.payload.get("text", "Message"))
-			_latest_classic_text = text
-			_append_narrative(text)
-			set_status("Continue when ready" if bool(event.payload.get("classicClick", false)) else text)
-		&"party_created":
-			set_status("Party created • the adventure begins")
-			_append_narrative("The party enters the realm.")
-		&"party_moved": set_status("%s • %d,%d" % [_current_view.party_map_id if _current_view != null else "Map", int(event.payload.get("x", 0)), int(event.payload.get("y", 0))])
-		&"movement_blocked": set_status("That way is blocked")
-		&"search_completed": _append_narrative("The party searches the area.")
-		&"camp_mode_changed":
-			_append_narrative("The party makes camp." if bool(event.payload.get("camping", false)) else "The party breaks camp.")
-		&"character_age_changed":
-			var direction := int(event.payload.get("transition", 0))
-			var age_group := int(event.payload.get("ageGroup", 0))
-			var age_name := CharacterView.age_group_label(age_group)
-			var text := "%s has grown into the %s age group." % [event.payload.get("characterName", "A party member"), age_name] if direction > 0 else "%s has returned to the %s age group." % [event.payload.get("characterName", "A party member"), age_name]
-			set_status(text)
-			_append_narrative(text)
-		&"door_opened": _append_narrative("A door opens.")
-		&"secret_discovered": _append_narrative("A secret is revealed.")
-		&"battle_started": _append_narrative("Battle begins.")
-		&"battle_completed": _append_narrative("Battle completed • %s" % event.payload.get("outcome", "resolved"))
-
-
-func _append_narrative(text: String) -> void:
-	if _narrative.text.is_empty() or _narrative.text == "Choose a validated Realmz campaign to begin.":
-		_narrative.text = text
-	else:
-		_narrative.append_text("\n\n%s" % text)
-	_narrative.scroll_to_line(_narrative.get_line_count())

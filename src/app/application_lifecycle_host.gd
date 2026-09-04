@@ -56,12 +56,12 @@ func request_quit() -> void:
 		return
 	if _save_and_quit_pending:
 		_save_and_quit_pending = false
-		_shell.set_save_and_quit_mode(false)
+		_set_save_and_quit_mode(false)
 	var view := _session_controller.view()
 	var in_combat := view.combat_view != null and view.combat_view.outcome == &"active"
 	_interaction = ApplicationLifecycle.quit_application_request(view.session_started, in_combat)
 	_presentation.present_host_interaction(_interaction)
-	_shell.set_status("Confirm whether to quit Realmz Rebuilt.")
+	_shell.status.set_status("Confirm whether to quit Realmz Rebuilt.")
 
 
 func request_end_adventure() -> void:
@@ -72,14 +72,14 @@ func request_end_adventure() -> void:
 		return
 	var pending := view.active_interaction_request()
 	if pending != null and pending.kind != InteractionRequest.COMBAT:
-		_shell.set_status("Resolve the current interaction before ending the adventure.", true)
+		_shell.status.set_status("Resolve the current interaction before ending the adventure.", true)
 		return
 	if _interaction != null:
 		return
 	var in_combat := view.combat_view != null and view.combat_view.outcome == &"active"
 	_interaction = ApplicationLifecycle.end_adventure_request(in_combat)
 	_presentation.present_host_interaction(_interaction)
-	_shell.set_status("Choose how to return to the main menu.")
+	_shell.status.set_status("Choose how to return to the main menu.")
 
 
 func respond(response: InteractionResponse) -> void:
@@ -102,7 +102,7 @@ func save_and_quit(slot_id: String) -> void:
 	if not _save_and_quit_pending or not bool(_save_operation.call(slot_id)):
 		return
 	_save_and_quit_pending = false
-	_shell.set_save_and_quit_mode(false)
+	_set_save_and_quit_mode(false)
 	_quit_operation.call()
 
 
@@ -110,8 +110,8 @@ func route_changed(route_id: StringName) -> void:
 	if not _save_and_quit_pending or route_id == &"system":
 		return
 	_save_and_quit_pending = false
-	_shell.set_save_and_quit_mode(false)
-	_shell.set_status("Save and quit cancelled.")
+	_set_save_and_quit_mode(false)
+	_shell.status.set_status("Save and quit cancelled.")
 
 
 func handles_terminal_step(step: SessionStep, playback_active: bool) -> bool:
@@ -141,7 +141,7 @@ func _respond_end_adventure(action: StringName) -> void:
 	if state == &"cancelled":
 		_interaction = null
 		_presentation.refresh()
-		_shell.set_status("Adventure continues.")
+		_shell.status.set_status("Adventure continues.")
 	elif state == &"save-failed":
 		_presentation.present_host_interaction(_interaction)
 	elif state == &"close-failed":
@@ -162,8 +162,9 @@ func _respond_quit(action: StringName) -> void:
 		_presentation.dismiss_host_interaction()
 		_save_and_quit_pending = true
 		_refresh_saves_operation.call()
-		_shell.show_save_and_quit_workspace()
-		_shell.set_status("Choose a save slot, then Save and Quit.")
+		_shell.navigator.content_presenter.set_save_and_quit_mode(true)
+		_shell.navigator.open_screen(&"system")
+		_shell.status.set_status("Choose a save slot, then Save and Quit.")
 		return
 	var has_session := _session_controller.view().session_started
 	var state := ApplicationLifecycle.execute_quit(
@@ -174,14 +175,20 @@ func _respond_quit(action: StringName) -> void:
 	if state == &"cancelled":
 		_interaction = null
 		_presentation.dismiss_host_interaction()
-		_shell.set_status("Quit cancelled.")
+		_shell.status.set_status("Quit cancelled.")
 	elif state == &"save-failed":
 		_presentation.present_host_interaction(_interaction)
 
 
 func _represent_error(message: String) -> void:
-	_shell.set_status(message, true)
+	_shell.status.set_status(message, true)
 	_presentation.present_host_interaction(_interaction)
+
+
+func _set_save_and_quit_mode(enabled: bool) -> void:
+	_shell.navigator.content_presenter.set_save_and_quit_mode(enabled)
+	if _shell.navigator.current_screen() == &"system" and _session_controller.view().session_started:
+		_shell.navigator.refresh_current_workspace()
 
 
 func _complete_closed_session() -> void:

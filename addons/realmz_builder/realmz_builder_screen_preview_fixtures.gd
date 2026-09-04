@@ -121,7 +121,7 @@ static func _bind_system_screen(screen: SystemScreen, view: GameView, profile: S
 static func _bind_application_shell(shell: GameShell, view: GameView) -> void:
 	if shell.is_node_ready():
 		shell.present(view)
-		shell.set_status("Realmz Builder representative application state")
+		shell.status.set_status("Realmz Builder representative application state")
 		return
 	(shell.find_child("PackageStatus", true, false) as Label).text = view.campaign_summary.title if view.campaign_summary != null else "No campaign"
 	(shell.find_child("Status", true, false) as Label).text = "Realmz Builder representative application state"

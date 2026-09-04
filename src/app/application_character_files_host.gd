@@ -28,7 +28,7 @@ func begin_library_load() -> void:
 	if _package_host.start_bundled_load(LIBRARY_PATH, LIBRARY_ID, LIBRARY_HASH):
 		return
 	_library_load_complete = true
-	_shell.set_standalone_character_creation_available(false, "The built-in Classic definitions could not start loading.")
+	_shell.navigator.setup_controller.set_standalone_character_creation_available(false, "The built-in Classic definitions could not start loading.")
 
 
 func poll_library_load(active_content: RealmzContent) -> bool:
@@ -39,8 +39,8 @@ func poll_library_load(active_content: RealmzContent) -> bool:
 		return false
 	_library_load_complete = true
 	if not prepared.is_ok():
-		_shell.set_standalone_character_creation_available(false, prepared.error_message)
-		_shell.set_status("Character Files creation unavailable • %s" % prepared.error_message, true)
+		_shell.navigator.setup_controller.set_standalone_character_creation_available(false, prepared.error_message)
+		_shell.status.set_status("Character Files creation unavailable • %s" % prepared.error_message, true)
 		return true
 	_library_content = prepared.content
 	_library_media = prepared.media
@@ -48,7 +48,7 @@ func poll_library_load(active_content: RealmzContent) -> bool:
 	_presentation.set_application_character_media(_library_media)
 	_presentation.set_package_media(_library_media)
 	_vault.seed_classic_starters_if_empty()
-	_shell.set_standalone_character_creation_available(true)
+	_shell.navigator.setup_controller.set_standalone_character_creation_available(true)
 	refresh_vault_views(active_content)
 	return true
 
@@ -81,19 +81,19 @@ func respond_to_creator(response: InteractionResponse) -> void:
 
 func begin_creation(active_content: RealmzContent) -> void:
 	if active_content != null or _session.view().session_started:
-		_shell.set_status("Finish the current campaign setup before opening the general Character Files creator.", true)
+		_shell.status.set_status("Finish the current campaign setup before opening the general Character Files creator.", true)
 		return
 	if _library_content == null:
-		_shell.set_status("Character Files creation is unavailable because the built-in Classic definitions did not load.", true)
+		_shell.status.set_status("Character Files creation is unavailable because the built-in Classic definitions did not load.", true)
 		return
 	var step := _creator.start(_library_content, _vault.next_character_file_identity())
 	if step.state == SessionStep.State.FAILED:
-		_shell.set_status("Character Files creation failed • %s" % step.error_message, true)
+		_shell.status.set_status("Character Files creation failed • %s" % step.error_message, true)
 		return
 	_presentation.set_package_media(_library_media)
 	_presentation.present_host_workflow(_creator.view(), step)
-	_shell.begin_standalone_character_creation()
-	_shell.set_status("Create a reusable character with the built-in Realmz races and classes.")
+	_shell.navigator.setup_controller.begin_standalone_character_creation()
+	_shell.status.set_status("Create a reusable character with the built-in Realmz races and classes.")
 
 
 func cancel_creation(active_content: RealmzContent) -> void:
@@ -104,10 +104,10 @@ func cancel_creation(active_content: RealmzContent) -> void:
 func publish_campaign_character(active_content: RealmzContent, character_id: String) -> bool:
 	var character_name := _vault.publish_from_snapshot(_session.session().snapshot(), active_content, character_id)
 	if character_name.is_empty():
-		_shell.set_status("Vault publication failed • %s" % _vault.last_error(), true)
+		_shell.status.set_status("Vault publication failed • %s" % _vault.last_error(), true)
 		return false
 	refresh_vault_views(active_content)
-	_shell.set_status("Published %s to the character vault" % character_name)
+	_shell.status.set_status("Published %s to the character vault" % character_name)
 	return true
 
 
@@ -120,23 +120,23 @@ func vault_error() -> String:
 
 
 func refresh_vault_views(active_content: RealmzContent) -> void:
-	_shell.set_vault_revisions(_vault.revisions(active_content, _library_content))
+	_shell.navigator.set_vault_revisions(_vault.revisions(active_content, _library_content))
 
 
 func archive_character(active_content: RealmzContent, character_id: String) -> void:
 	if not _vault.archive(character_id):
-		_shell.set_status("Vault archive failed • %s" % _vault.last_error(), true)
+		_shell.status.set_status("Vault archive failed • %s" % _vault.last_error(), true)
 		return
 	refresh_vault_views(active_content)
-	_shell.set_status("Character archived • immutable revisions remain recoverable")
+	_shell.status.set_status("Character archived • immutable revisions remain recoverable")
 
 
 func restore_character(active_content: RealmzContent, character_id: String, revision_hash: String) -> void:
 	if not _vault.restore(character_id, revision_hash):
-		_shell.set_status("Vault restore failed • %s" % _vault.last_error(), true)
+		_shell.status.set_status("Vault restore failed • %s" % _vault.last_error(), true)
 		return
 	refresh_vault_views(active_content)
-	_shell.set_status("Character revision restored as current")
+	_shell.status.set_status("Character revision restored as current")
 
 
 func _present_creator_step(step: SessionStep) -> void:
@@ -144,7 +144,7 @@ func _present_creator_step(step: SessionStep) -> void:
 		return
 	_presentation.present_host_workflow(_creator.view(), step)
 	if step.state == SessionStep.State.FAILED:
-		_shell.set_status("Character creation failed • %s" % step.error_message, true)
+		_shell.status.set_status("Character creation failed • %s" % step.error_message, true)
 		return
 	for event: DomainEvent in step.events:
 		if event.kind == &"character_publication_requested":
@@ -155,10 +155,10 @@ func _present_creator_step(step: SessionStep) -> void:
 func _publish_standalone_character() -> void:
 	var character := _creator.completed_character()
 	if character == null:
-		_shell.set_status("Character File publication failed • the completed character is unavailable.", true)
+		_shell.status.set_status("Character File publication failed • the completed character is unavailable.", true)
 		return
 	if not _vault.publish(character, _library_content.rules_version, "", _library_content.package_hash, "classic-application"):
-		_shell.set_status("Character File publication failed • %s" % _vault.last_error(), true)
+		_shell.status.set_status("Character File publication failed • %s" % _vault.last_error(), true)
 		return
 	_creator.publication_committed()
 	_finish_creation(null, "Created Character File for %s." % character.name)
@@ -166,9 +166,9 @@ func _publish_standalone_character() -> void:
 
 func _finish_creation(active_content: RealmzContent, status: String) -> void:
 	_creator.finish()
-	_shell.finish_standalone_character_creation()
+	_shell.navigator.setup_controller.finish_standalone_character_creation()
 	_presentation.set_package_media(_library_media)
 	_presentation.refresh()
 	refresh_vault_views(active_content)
 	_shell.show_campaign_selection()
-	_shell.set_status(status)
+	_shell.status.set_status(status)

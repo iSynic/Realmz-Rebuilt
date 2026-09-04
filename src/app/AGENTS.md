@@ -6,7 +6,7 @@ Own the Godot composition root and translate host input/output into the pure ses
 
 ## Ownership
 
-- `RealmzApplication` remains the scene composition root. `ApplicationInputRouter` owns host input dispatch, `ApplicationCombatPolicy` owns the pure translation between combat UI responses, Auto playback state, and typed session commands, `ApplicationStepStatusText` owns short shell-status wording, and `ApplicationSettingsController` binds, applies, and persists presentation-only preferences.
+- `RealmzApplication` remains the scene composition root. `ApplicationInputRouter` owns host input dispatch, `ApplicationCombatPolicy` owns the pure translation between combat UI responses, Auto playback state, and typed session commands, `ApplicationStepStatusText` owns short shell-status wording, and `ApplicationSettingsController` binds, applies, and persists presentation-only preferences. Application and host collaborators address `GameShellStatusController`, `GameShellCommandController`, the persistent roster, and the navigator's setup/content controllers as their actual public owners; `GameShell` does not forward those APIs.
 - `ApplicationLifecycleHost` owns process-quit, End Adventure, Save and Quit, and deferred close interaction state. `ApplicationCharacterFilesHost` owns the built-in application library, vault publication/import, and standalone creator. `ApplicationSpatialLayout` aligns algorithmic presenters with the authored shell stage. `RealmzApplication` constructs and connects these collaborators but does not duplicate their state.
 - `CharacterVaultController` owns repository-facing immutable character operations; `ApplicationCharacterFilesHost` supplies committed snapshots and refreshes the visible vault after success.
 
