@@ -9,6 +9,11 @@ const SURFACES := {
 	"pick-lock": preload("res://src/ui/interaction_components/pick_lock_interaction.tscn"),
 	"lifecycle-prompts": preload("res://src/ui/interaction_components/lifecycle_interaction.tscn"),
 	"scrolling-text": preload("res://src/ui/interaction_components/scrolling_text_interaction.tscn"),
+	"level-up": preload("res://src/ui/interaction_components/level_up_interaction.tscn"),
+	"encounter": preload("res://src/ui/interaction_components/encounter_interaction.tscn"),
+	"shop": preload("res://src/ui/interaction_components/shop_interaction.tscn"),
+	"treasure": preload("res://src/ui/interaction_components/treasure_distribution_interaction.tscn"),
+	"combat-command-deck": preload("res://src/ui/interaction_components/battle_interaction.tscn"),
 }
 const PROFILES: Array[String] = ["Wide", "Compact", "Empty", "Long Content", "Unavailable", "Error"]
 
@@ -36,13 +41,23 @@ func _test_representative_collections_and_modes() -> void:
 	var pick_lock := _bound_surface("pick-lock", "Long Content")
 	var lifecycle := _bound_surface("lifecycle-prompts", "Wide")
 	var scrolling_text := _bound_surface("scrolling-text", "Long Content")
+	var level_up := _bound_surface("level-up", "Long Content")
+	var encounter := _bound_surface("encounter", "Wide")
+	var shop := _bound_surface("shop", "Wide")
+	var treasure := _bound_surface("treasure", "Wide")
+	var combat := _bound_surface("combat-command-deck", "Wide")
 	assert_equal((temple.find_child("TempleCharacterRows", true, false) as VBoxContainer).find_children("*", "Button", false, false).size(), 2, "Temple preview uses the production adventurer-row collection")
 	assert_equal((temple.find_child("TempleServiceRows", true, false) as VBoxContainer).find_children("*", "Button", false, false).size(), 3, "Temple preview uses the production service-row collection")
 	assert_true((bank.find_child("BankPool", true, false) as Button).disabled and (bank.find_child("BankShare", true, false) as Button).disabled, "Bank unavailable preview binds request-owned disabled actions")
 	assert_equal((pick_lock.find_child("TumblerRows", true, false) as VBoxContainer).get_child_count(), 6, "Pick Lock long-content preview uses the production tumbler rows")
 	assert_equal((lifecycle.find_child("LifecycleVerticalActions", true, false) as VBoxContainer).get_child_count(), 3, "Lifecycle preview creates the production response choices")
 	assert_not_null(scrolling_text.find_child("ClassicScrollingTextDone", true, false), "scrolling-text preview binds the production scrolling surface and fixed action")
-	for surface: Control in [temple, bank, pick_lock, lifecycle, scrolling_text]:
+	assert_true((level_up.find_child("LevelSpellColumns", true, false) as Control).visible, "Level Up preview binds the production spell-selection workspace")
+	assert_false((encounter.find_child("EncounterCommandAction", true, false) as BaseButton).disabled, "Encounter preview binds authored actions to the production command deck")
+	assert_true((shop.find_child("ShopStockRows", true, false) as VBoxContainer).get_child_count() > 0, "Shop preview binds production stock rows")
+	assert_equal((treasure.find_child("TreasureItemGrid", true, false) as GridContainer).get_child_count(), 4, "Treasure preview binds production loot cells")
+	assert_not_null(combat.find_child("CombatCommandAttack", true, false), "Combat preview binds the production command deck")
+	for surface: Control in [temple, bank, pick_lock, lifecycle, scrolling_text, level_up, encounter, shop, treasure, combat]:
 		_free_surface(surface)
 
 
