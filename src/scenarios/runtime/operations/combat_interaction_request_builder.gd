@@ -17,7 +17,7 @@ func _init(content: RealmzContent, game_state: GameState, rules: RealmzRules) ->
 
 
 func build(request_id: String) -> InteractionRequest:
-	var combat_view := CombatView.new(_game_state.combat, _game_state.party.characters(), _content, _rules.inventory, _rules.battlefield, _rules.combat_flow, _game_state)
+	var combat_view := CombatView.new(_game_state.combat, _game_state.party.characters(), _content, _rules.equipment, _rules.battlefield, _rules.combat_flow, _game_state)
 	var actions := _base_actions(combat_view)
 	var spell_casts := _spell_cast_payloads(combat_view.active_actor_id)
 	var item_casts := _item_cast_payloads(combat_view.active_actor_id)
@@ -114,7 +114,7 @@ func _combatant_payloads(combat_view: CombatView) -> Array[Dictionary]:
 		if _game_state.combat.battlefield == null or not _game_state.combat.battlefield.has_actor(character_state.id):
 			continue
 		var character := CharacterView.new(character_state, _content)
-		var equipment := _rules.inventory.combat_equipment(character_state, _content.item_definitions())
+		var equipment := _rules.equipment.combat_equipment(character_state, _content.item_definitions())
 		character.apply_equipment(equipment)
 		var payload := _character_combatant_payload(character, equipment)
 		_append_combatant_position_facts(payload, combat_view.active_actor_id, character.id, terrain_set)

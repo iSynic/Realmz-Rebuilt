@@ -130,7 +130,7 @@ func submit_action(state: GameState, content: RealmzContent, actor_id: String, a
 
 
 func _switch_character_weapon(combat: CombatState, content: RealmzContent, actor: CharacterState) -> CombatFlowResult:
-	var equipment := _context.inventory.combat_equipment(actor, content.item_definitions())
+	var equipment := _context.equipment.combat_equipment(actor, content.item_definitions())
 	if not equipment.valid:
 		return CombatFlowResult.failed(equipment.error_code, equipment.error_message)
 	var current_mode := combat.actor_statuses.character_weapon_mode(actor.id)
@@ -146,7 +146,7 @@ func _switch_character_weapon(combat: CombatState, content: RealmzContent, actor
 func _submit_character_attack(state: GameState, content: RealmzContent, actor: CharacterState, target_id: String, rng: RealmzRng, allow_friendly_contact: bool = false) -> CombatFlowResult:
 	var combat := state.combat
 	var events: Array[DomainEvent] = []
-	var equipment := _context.inventory.combat_equipment(actor, content.item_definitions())
+	var equipment := _context.equipment.combat_equipment(actor, content.item_definitions())
 	if not equipment.valid: return CombatFlowResult.failed(equipment.error_code, equipment.error_message)
 	if combat.actor_statuses.character_weapon_mode(actor.id) == &"missile": return fire_character_projectile(state, content, actor, equipment, target_id, rng)
 	if combat.battlefield == null: return CombatFlowResult.failed(&"missing_battlefield", "Melee requires the session-owned Classic battlefield.")
@@ -168,7 +168,7 @@ func _submit_character_attack(state: GameState, content: RealmzContent, actor: C
 	else:
 		var character_target := state.party.character_by_id(target_id)
 		if character_target == null or character_target.id == actor.id or character_target.current_health <= 0 or (character_target.traitor == actor.traitor and not allow_friendly_contact): return CombatFlowResult.failed(&"invalid_combat_target", "The selected combatant is unavailable to this allegiance.")
-		var target_equipment := _context.inventory.combat_equipment(character_target, content.item_definitions())
+		var target_equipment := _context.equipment.combat_equipment(character_target, content.item_definitions())
 		if not target_equipment.valid: return CombatFlowResult.failed(target_equipment.error_code, target_equipment.error_message)
 		prepare_character_turn(combat, actor)
 		combat.turns.invalidate_undo()
@@ -370,7 +370,7 @@ func cause_active_fumble(state: GameState, content: RealmzContent, actor_id: Str
 	# The monster branch nested below that guard is therefore unreachable.
 	if character == null:
 		return CombatFlowResult.succeeded([DomainEvent.new(&"combat_fumble_skipped", {"combatantId": actor_id, "reason": "not-party-actor", "source": "classic"})])
-	var equipment := _context.inventory.combat_equipment(character, content.item_definitions())
+	var equipment := _context.equipment.combat_equipment(character, content.item_definitions())
 	if not equipment.valid:
 		return CombatFlowResult.failed(equipment.error_code, equipment.error_message)
 	if not equipment.is_armed():

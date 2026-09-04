@@ -47,7 +47,7 @@ func _project_complete(context: SessionWorkflowContext, pending_interaction: Int
 	_map_window_cache.clear()
 	for character: CharacterState in state.party.characters():
 		var member_view := CharacterView.new(character, content)
-		var equipment := rules.inventory.combat_equipment(character, item_definitions)
+		var equipment := rules.equipment.combat_equipment(character, item_definitions)
 		_equipment_by_character_id[character.id] = equipment
 		member_view.apply_equipment(equipment)
 		members.append(member_view)
@@ -57,7 +57,7 @@ func _project_complete(context: SessionWorkflowContext, pending_interaction: Int
 		if prepared != null and prepared.battle_id == state.combat.battle_id:
 			current_combat = prepared
 		else:
-			current_combat = CombatView.new(state.combat, state.party.characters(), content, rules.inventory, rules.battlefield, rules.combat_flow, state)
+			current_combat = CombatView.new(state.combat, state.party.characters(), content, rules.equipment, rules.battlefield, rules.combat_flow, state)
 	var result := GameView.new(revision, true, pending_interaction, state.party.map_id, state.party.coordinate, state.clock.day(), state.clock.hour(), state.clock.minute(), _map_view(context, revision, false, state.combat != null), members, state.party.fatigue, state.party.pooled_wealth.gold, current_combat)
 	for ally: MonsterState in state.party.allies():
 		result.party_allies.append(MonsterView.new(ally, content.monster_by_id(ally.definition_id), content))
@@ -307,7 +307,7 @@ func _project_ordinary_movement(context: SessionWorkflowContext, revision: int, 
 			status_character_ids[character.id] = true
 			var equipment := _equipment_by_character_id.get(character.id) as CharacterCombatEquipment
 			if equipment == null:
-				equipment = context.rules.inventory.combat_equipment(character, context.content.item_definitions())
+				equipment = context.rules.equipment.combat_equipment(character, context.content.item_definitions())
 				_equipment_by_character_id[character.id] = equipment
 			members.append(CharacterView.new(character, context.content, previous_member, true, magic_changed) if inventory_refresh else CharacterView.refreshed_status(character, context.content, previous_member, equipment, magic_changed, structural_magic_refresh))
 			if inventory_refresh: members[-1].apply_equipment(equipment)

@@ -283,7 +283,7 @@ func _test_public_continuation_fumble_terminal_matrix() -> void:
 	if instance != null:
 		instance.charges = 7
 		fumbler.carried_load = weapon.instance_weight(instance.charges)
-		assert_true(rules.inventory.equip(fumbler, instance.id, weapon), "the public fumble fixture equips the weapon")
+		assert_true(rules.equipment.equip(fumbler, instance.id, weapon), "the public fumble fixture equips the weapon")
 		var fumble_definition := _monster_definition("monster.fumble", [])
 		var fumble_state := _state(fumbler, MonsterState.new("monster.fumble.instance", fumble_definition.id, fumble_definition.name, 100, 100, 1), "battle.fumble")
 		var fumble_content := _content([fumble_definition], [weapon])

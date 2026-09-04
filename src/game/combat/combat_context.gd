@@ -5,6 +5,7 @@ extends RefCounted
 
 var arithmetic: RealmzArithmetic
 var inventory: InventoryRules
+var equipment: EquipmentRules
 var combat: CombatRules
 var magic: MagicRules
 var monsters: MonsterRules
@@ -24,6 +25,7 @@ var _automation: WeakRef
 func _init(rules: RealmzRules) -> void:
 	arithmetic = rules.arithmetic
 	inventory = rules.inventory
+	equipment = rules.equipment
 	combat = rules.combat
 	magic = rules.magic
 	monsters = rules.monsters

@@ -409,7 +409,7 @@ static func _materialize_initial_inventory(context: SessionWorkflowContext, char
 	var race := context.content.race_by_id(character.race_id)
 	for instance: ItemInstance in added:
 		var definition := context.content.item_by_id(instance.definition_id)
-		context.rules.inventory.equip_classic(character, instance, definition, race, caste, party_context, definitions)
+		context.rules.equipment.equip_classic(character, instance, definition, race, caste, party_context, definitions)
 	return context.rules.inventory.calculated_load(character, definitions) == character.carried_load
 
 

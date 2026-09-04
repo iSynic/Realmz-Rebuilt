@@ -546,7 +546,7 @@ func resolve_monster_attack_row(state: GameState, content: RealmzContent, monste
 func _resolve_attack_against_character(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, attack_index: int, active_turn: CombatTurnState, target: CharacterState, rng: RealmzRng, events: Array[DomainEvent]) -> int:
 	var race := content.race_by_id(target.race_id)
 	var caste := content.caste_by_id(target.caste_id)
-	var equipment := _context.inventory.combat_equipment(target, content.item_definitions())
+	var equipment := _context.equipment.combat_equipment(target, content.item_definitions())
 	var defender_luck := equipment.effective_luck if equipment.valid else target.luck
 	var weapon := content.item_by_id(monster.weapon_id) if not monster.weapon_id.is_empty() else null
 	var defender_armor := equipment.effective_armor if equipment.valid else target.armor
@@ -618,7 +618,7 @@ func process_charmed_character_turn(state: GameState, content: RealmzContent, ac
 		events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": actor.id, "action": "advance", "reason": "tactical-movement-not-implemented"}))
 		return false
 	var target_index := rng.draw_between(0, target_count - 1, &"combat.charmed-target")
-	var equipment := _context.inventory.combat_equipment(actor, content.item_definitions())
+	var equipment := _context.equipment.combat_equipment(actor, content.item_definitions())
 	if not equipment.valid:
 		events.append(DomainEvent.new(&"combat_attack_blocked", {"actorId": actor.id, "reason": String(equipment.error_code), "message": equipment.error_message}))
 		return false
@@ -627,7 +627,7 @@ func process_charmed_character_turn(state: GameState, content: RealmzContent, ac
 		return false
 	if target_index < character_targets.size():
 		var character_target := character_targets[target_index]
-		var target_equipment := _context.inventory.combat_equipment(character_target, content.item_definitions())
+		var target_equipment := _context.equipment.combat_equipment(character_target, content.item_definitions())
 		if not target_equipment.valid:
 			events.append(DomainEvent.new(&"combat_attack_blocked", {"actorId": actor.id, "targetId": character_target.id, "reason": String(target_equipment.error_code), "message": target_equipment.error_message}))
 			return false

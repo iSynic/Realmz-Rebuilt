@@ -41,7 +41,7 @@ var turn_undead_targets: Array[MonsterView] = []
 var auto_character_ids: Array[String] = []
 
 
-func _init(combat: CombatState, characters: Array[CharacterState] = [], content: RealmzContent = null, inventory_rules: InventoryRules = null, battlefield_rules: BattlefieldRules = null, combat_flow: CombatFlow = null, game_state: GameState = null) -> void:
+func _init(combat: CombatState, characters: Array[CharacterState] = [], content: RealmzContent = null, equipment_rules: EquipmentRules = null, battlefield_rules: BattlefieldRules = null, combat_flow: CombatFlow = null, game_state: GameState = null) -> void:
 	battle_id = combat.battle_id
 	round_number = combat.turns.round_number
 	active_actor_id = combat.turns.active_actor_id()
@@ -54,8 +54,8 @@ func _init(combat: CombatState, characters: Array[CharacterState] = [], content:
 	if combat.completed:
 		return
 	var active_character := _active_character(characters)
-	if active_character != null and content != null and inventory_rules != null:
-		_populate_character_actions(combat, characters, content, inventory_rules, battlefield_rules, combat_flow, game_state, active_character)
+	if active_character != null and content != null and equipment_rules != null:
+		_populate_character_actions(combat, characters, content, equipment_rules, battlefield_rules, combat_flow, game_state, active_character)
 	_finalize_legal_actions(game_state)
 
 
@@ -113,10 +113,10 @@ func _active_character(characters: Array[CharacterState]) -> CharacterState:
 	return null
 
 
-func _populate_character_actions(combat: CombatState, characters: Array[CharacterState], content: RealmzContent, inventory_rules: InventoryRules, battlefield_rules: BattlefieldRules, combat_flow: CombatFlow, game_state: GameState, active_character: CharacterState) -> void:
+func _populate_character_actions(combat: CombatState, characters: Array[CharacterState], content: RealmzContent, equipment_rules: EquipmentRules, battlefield_rules: BattlefieldRules, combat_flow: CombatFlow, game_state: GameState, active_character: CharacterState) -> void:
 	if combat_flow != null:
 		_populate_command_probes(combat, characters, content, combat_flow, game_state, active_character)
-	var equipment := inventory_rules.combat_equipment(active_character, content.item_definitions())
+	var equipment := equipment_rules.combat_equipment(active_character, content.item_definitions())
 	_populate_weapon_actions(combat, content, combat_flow, game_state, active_character, equipment)
 	_populate_movement_actions(combat, characters, content, battlefield_rules, combat_flow, game_state, active_character)
 

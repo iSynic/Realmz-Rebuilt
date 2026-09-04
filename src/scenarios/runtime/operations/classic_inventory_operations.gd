@@ -140,7 +140,7 @@ func _mutate_items(action: ClassicActionDefinition) -> ScenarioRuntimeOperationR
 					var replacement_instance := _rules.inventory.add_item(character, replacement, _game_state.next_instance_id("classic.replacement"), false)
 					if replacement_instance == null:
 						return ScenarioRuntimeOperationResult.failed(&"inventory_full", "Classic replacement item no longer fits the character inventory.")
-					if was_equipped and _rules.inventory.can_equip(character, replacement):
+					if was_equipped and _rules.equipment.can_equip(character, replacement):
 						replacement_instance.equipped = true
 			changed += 1
 		if maximum > 0 and changed >= maximum:

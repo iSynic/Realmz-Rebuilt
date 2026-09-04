@@ -16,8 +16,8 @@
       "id": "inventory",
       "boundary": "game",
       "guide": "docs/features/inventory.md",
-      "entryPoints": ["src/game/rules/inventory_rules.gd", "src/playthrough/workflows/inventory_workflow.gd", "src/playthrough/workflows/field_item_workflow.gd"],
-      "publicInterfaces": ["InventoryRules", "InventoryWorkflow", "FieldItemWorkflow", "InventoryIntents", "InventoryIntentPayloads", "ItemDefinition", "ItemInstance"],
+      "entryPoints": ["src/game/rules/inventory_rules.gd", "src/game/rules/equipment_rules.gd", "src/playthrough/workflows/inventory_workflow.gd", "src/playthrough/workflows/field_item_workflow.gd"],
+      "publicInterfaces": ["InventoryRules", "EquipmentRules", "InventoryWorkflow", "FieldItemWorkflow", "InventoryIntents", "InventoryIntentPayloads", "ItemDefinition", "ItemInstance"],
       "tests": ["tests/integration/test_inventory_session.gd"],
       "performanceProbes": []
     },

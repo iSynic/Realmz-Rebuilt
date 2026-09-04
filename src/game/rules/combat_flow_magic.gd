@@ -435,7 +435,7 @@ func probe_character_scroll_cast(state: GameState, content: RealmzContent, caste
 	var caster := state.party.character_by_id(caster_id)
 	if caster == null or caster.current_health <= 0 or caster.conditions.is_active(ConditionRules.ANIMATED):
 		return CombatSpellCastProbe.blocked(&"scroll_user_unavailable", "The active character cannot use a scroll.")
-	if not _context.inventory.has_equipped_scroll_case(caster, content):
+	if not _context.equipment.has_equipped_scroll_case(caster, content):
 		return CombatSpellCastProbe.blocked(&"scroll_case_not_equipped", "Equip a scroll case before using its spells.")
 	var scroll := caster.scroll_at(scroll_slot)
 	var spell := content.spell_by_id(scroll.spell_id) if scroll != null and not scroll.is_empty() else null

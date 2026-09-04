@@ -152,7 +152,7 @@ func _prepare_battle_inputs(state: GameState, content: RealmzContent, battle: Ba
 	for character: CharacterState in result.party_characters:
 		if character.current_health <= 0:
 			continue
-		var equipment := _context.inventory.combat_equipment(character, content.item_definitions())
+		var equipment := _context.equipment.combat_equipment(character, content.item_definitions())
 		if not equipment.valid:
 			return CombatFlowResult.failed(equipment.error_code, equipment.error_message)
 		result.initial_weapon_modes[character.id] = &"missile" if equipment.melee_weapon == null and equipment.missile_weapon != null else &"melee"

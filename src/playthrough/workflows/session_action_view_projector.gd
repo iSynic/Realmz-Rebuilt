@@ -313,8 +313,8 @@ static func populate_inventory_item_actions(context: SessionWorkflowContext, res
 				actions.block_all(context_reason)
 				item_view.actions = actions
 				continue
-			var equip_probe := rules.inventory.classic_equip_probe(character, instance, definition, race, caste, party, definitions)
-			var unequip_probe := rules.inventory.classic_unequip_probe(character, instance, definition, definitions)
+			var equip_probe := rules.equipment.classic_equip_probe(character, instance, definition, race, caste, party, definitions)
+			var unequip_probe := rules.equipment.classic_unequip_probe(character, instance, definition, definitions)
 			var drop_probe := rules.inventory.classic_drop_probe(character, instance)
 			var split_probe := rules.inventory.classic_split_probe(character, instance, definition)
 			var join_probe := rules.inventory.classic_join_probe(character, instance, definition)
@@ -391,7 +391,7 @@ static func _make_scroll_probe(context: SessionWorkflowContext, character: Chara
 		return InventoryActionProbe.block("Enter camp before making a scroll.")
 	if character.current_health < 1 or character.spellcaster_type < 1:
 		return InventoryActionProbe.block("The selected character cannot scribe scrolls.")
-	if not _has_equipped_scroll_case(context, character):
+	if not context.rules.equipment.has_equipped_scroll_case(character, context.content):
 		return InventoryActionProbe.block("Equip a scroll case before making a scroll.")
 	if ProjectionPolicy.first_empty_scroll_slot(character) < 0:
 		return InventoryActionProbe.block("The scroll case already contains five spells.")
@@ -412,7 +412,7 @@ static func _scroll_use_probe(context: SessionWorkflowContext, character: Charac
 		return InventoryActionProbe.block("This scroll slot is empty or invalid.")
 	if character.current_health < 1 or character.conditions.is_active(ConditionRules.ANIMATED):
 		return InventoryActionProbe.block("The selected character cannot use a scroll.")
-	if not _has_equipped_scroll_case(context, character):
+	if not context.rules.equipment.has_equipped_scroll_case(character, context.content):
 		return InventoryActionProbe.block("Equip the scroll case before using its spells.")
 	if not spell.in_camp:
 		return InventoryActionProbe.block("This scroll cannot be used outside battle; Classic offers to discard it.")
@@ -431,7 +431,7 @@ static func _scroll_discard_probe(context: SessionWorkflowContext, character: Ch
 		return InventoryActionProbe.block("This scroll slot is empty or invalid.")
 	if character.current_health < 1 or character.conditions.is_active(ConditionRules.ANIMATED):
 		return InventoryActionProbe.block("The selected character cannot use a scroll.")
-	if not _has_equipped_scroll_case(context, character):
+	if not context.rules.equipment.has_equipped_scroll_case(character, context.content):
 		return InventoryActionProbe.block("Equip the scroll case before managing its spells.")
 	return InventoryActionProbe.permit()
 
@@ -457,16 +457,6 @@ static func _field_spell_probe(context: SessionWorkflowContext, character: Chara
 	if not ProjectionPolicy.field_spell_effect_supported(spell):
 		return InventoryActionProbe.block("This spell's Classic field effect is not implemented yet.")
 	return InventoryActionProbe.permit()
-
-
-static func _has_equipped_scroll_case(context: SessionWorkflowContext, character: CharacterState) -> bool:
-	if character == null:
-		return false
-	for instance: ItemInstance in character.inventory():
-		var definition := context.content.item_by_id(instance.definition_id)
-		if instance.equipped and definition != null and absi(definition.item_type) == 13:
-			return true
-	return false
 
 
 static func _parchment_instance(context: SessionWorkflowContext, character: CharacterState) -> ItemInstance:

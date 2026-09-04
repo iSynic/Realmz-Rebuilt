@@ -56,7 +56,7 @@ static func make_scroll_probe(context: SessionWorkflowContext, character: Charac
 		return InventoryActionProbe.block("Enter camp before making a scroll.")
 	if character.current_health < 1 or character.spellcaster_type < 1:
 		return InventoryActionProbe.block("The selected character cannot scribe scrolls.")
-	if not _has_equipped_scroll_case(context, character):
+	if not context.rules.equipment.has_equipped_scroll_case(character, context.content):
 		return InventoryActionProbe.block("Equip a scroll case before making a scroll.")
 	if _first_empty_scroll_slot(character) < 0:
 		return InventoryActionProbe.block("The scroll case already contains five spells.")
@@ -90,7 +90,7 @@ static func scroll_slot_probe(context: SessionWorkflowContext, character: Charac
 		return InventoryActionProbe.block("This scroll slot is empty or invalid.")
 	if character.current_health < 1 or character.conditions.is_active(ConditionRules.ANIMATED):
 		return InventoryActionProbe.block("The selected character cannot use a scroll.")
-	if not _has_equipped_scroll_case(context, character):
+	if not context.rules.equipment.has_equipped_scroll_case(character, context.content):
 		return InventoryActionProbe.block("Equip the scroll case before using its spells.")
 	return InventoryActionProbe.permit()
 
@@ -291,16 +291,6 @@ static func commit_field_spell(context: SessionWorkflowContext, character_id: St
 	FieldMagicResolver.append_events(context, events, character, spell, power, resolution, &"classic-field-spell", &"classic", &"field_spell_resolved")
 	return SessionWorkflowResult.completed(events)
 
-
-
-static func _has_equipped_scroll_case(context: SessionWorkflowContext, character: CharacterState) -> bool:
-	if character == null:
-		return false
-	for instance: ItemInstance in character.inventory():
-		var definition := context.content.item_by_id(instance.definition_id)
-		if instance.equipped and definition != null and absi(definition.item_type) == 13:
-			return true
-	return false
 
 
 static func _parchment_instance(context: SessionWorkflowContext, character: CharacterState) -> ItemInstance:

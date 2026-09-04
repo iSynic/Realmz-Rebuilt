@@ -201,7 +201,7 @@ func character_scroll_unavailable_reason(state: GameState, content: RealmzConten
 	if state == null or state.combat == null or state.combat.turns.active_actor_id() != caster_id: return "Only the active character may use a scroll."
 	var caster := state.party.character_by_id(caster_id)
 	if caster == null: return "The active character is unavailable."
-	if not _context.inventory.has_equipped_scroll_case(caster, content): return "Equip a scroll case before using its spells."
+	if not _context.equipment.has_equipped_scroll_case(caster, content): return "Equip a scroll case before using its spells."
 	for scroll_slot: int in caster.scroll_case().size():
 		var scroll := caster.scroll_at(scroll_slot)
 		if scroll == null or scroll.is_empty(): continue

@@ -10,7 +10,7 @@ static func equip_item(context: SessionWorkflowContext, payload: InventoryIntent
 	var definition: ItemDefinition = null if instance == null else context.content.item_by_id(instance.definition_id)
 	if character == null or instance == null or definition == null:
 		return SessionWorkflowResult.failed(&"unknown_item_instance", "The selected character does not carry that item instance.")
-	var probe := context.rules.inventory.equip_classic(character, instance, definition, context.content.race_by_id(character.race_id), context.content.caste_by_id(character.caste_id), context.state.party.characters(), context.content.item_definitions())
+	var probe := context.rules.equipment.equip_classic(character, instance, definition, context.content.race_by_id(character.race_id), context.content.caste_by_id(character.caste_id), context.state.party.characters(), context.content.item_definitions())
 	if not probe.allowed:
 		return SessionWorkflowResult.failed(&"item_cannot_equip", probe.reason)
 	return SessionWorkflowResult.completed([DomainEvent.new(&"item_equipped", {"characterId": character.id, "instanceId": instance.id, "itemId": definition.id, "identified": instance.identified})])
@@ -22,7 +22,7 @@ static func unequip_item(context: SessionWorkflowContext, payload: InventoryInte
 	var definition: ItemDefinition = null if instance == null else context.content.item_by_id(instance.definition_id)
 	if character == null or instance == null or definition == null:
 		return SessionWorkflowResult.failed(&"unknown_item_instance", "The selected character does not carry that item instance.")
-	var probe := context.rules.inventory.unequip_classic(character, instance, definition, context.content.item_definitions())
+	var probe := context.rules.equipment.unequip_classic(character, instance, definition, context.content.item_definitions())
 	if not probe.allowed:
 		return SessionWorkflowResult.failed(&"item_cannot_unequip", probe.reason)
 	return SessionWorkflowResult.completed([DomainEvent.new(&"item_unequipped", {"characterId": character.id, "instanceId": instance.id, "itemId": definition.id})])

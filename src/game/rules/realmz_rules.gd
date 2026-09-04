@@ -7,6 +7,7 @@ var arithmetic: RealmzArithmetic
 var characters: CharacterRules
 var conditions: ConditionRules
 var inventory: InventoryRules
+var equipment: EquipmentRules
 var economy: EconomyRules
 var temple: TempleRules
 var combat: CombatRules
@@ -23,6 +24,7 @@ func _init() -> void:
 	characters = CharacterRules.new()
 	conditions = ConditionRules.new()
 	inventory = InventoryRules.new()
+	equipment = EquipmentRules.new(inventory)
 	economy = EconomyRules.new()
 	temple = TempleRules.new()
 	combat = CombatRules.new(conditions, characters)

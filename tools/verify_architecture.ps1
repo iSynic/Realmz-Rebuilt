@@ -348,6 +348,34 @@ if (Test-Path -LiteralPath $coordinatorContextPath) {
     }
 }
 
+# Carried-item ownership and wearable equipment are separate rule concepts.
+# Production callers address EquipmentRules directly instead of rebuilding an
+# InventoryRules forwarding facade around equipment admission or projection.
+$inventoryRulesPath = Join-Path $repoRoot "src\game\rules\inventory_rules.gd"
+$equipmentRulesPath = Join-Path $repoRoot "src\game\rules\equipment_rules.gd"
+$equipmentMethodPattern = '(?:combat_equipment|has_equipped_scroll_case|classic_equip_probe|classic_unequip_probe|equip_classic|unequip_classic|can_equip|equip)'
+if (-not (Test-Path -LiteralPath $equipmentRulesPath)) {
+    $violations += "src/game/rules/equipment_rules.gd must own wearable equipment rules"
+}
+if (Test-Path -LiteralPath $inventoryRulesPath) {
+    $inventoryRulesContent = [IO.File]::ReadAllText($inventoryRulesPath)
+    if ($inventoryRulesContent -match ('(?m)^(?:static\s+)?func\s+' + $equipmentMethodPattern + '\s*\(')) {
+        $violations += "src/game/rules/inventory_rules.gd must not forward or re-own wearable equipment rules"
+    }
+}
+foreach ($rootPath in @("src\game", "src\playthrough", "src\scenarios", "src\storage", "src\ui", "src\app")) {
+    foreach ($file in Get-ChildItem (Join-Path $repoRoot $rootPath) -Recurse -Filter "*.gd" -ErrorAction SilentlyContinue) {
+        $relativePath = Get-RepositoryRelativePath -RootPath $repoRoot -TargetPath $file.FullName
+        $lineNumber = 0
+        foreach ($line in Get-SanitizedGdscriptLines -Content ([IO.File]::ReadAllText($file.FullName))) {
+            $lineNumber++
+            if ($line -match ('\.inventory\.' + $equipmentMethodPattern + '\s*\(')) {
+                $violations += "$($relativePath):$lineNumber production callers must address EquipmentRules for wearable equipment behavior"
+            }
+        }
+    }
+}
+
 # Party setup is a composed presentation workspace. Inspection, assembly, and
 # creation may share explicit setup state, but they may not inherit behavior
 # from one another or turn the public facade back into the old behavior chain.
