@@ -68,7 +68,7 @@ input -> feature intent factory -> PlayerIntent -> GameSession -> coordinator/wo
       -> committed SessionStep -> GameView -> screen/controller/renderer
 ```
 
-When a true decision is required, the session returns a serializable `InteractionRequest`. UI components display only its supplied options and return a typed `InteractionResponse`; the issuing workflow resumes through a feature-named payload under `src/playthrough/continuations`. `SessionContinuation` is only the stable saved envelope, while `SessionContinuationCodec` rejects unknown or mismatched payloads before restore. This is why a save can safely be made during a question, target picker, encounter, or other supported continuation.
+When a true decision is required, the session returns a serializable `InteractionRequest`. UI components display only its supplied options and return a typed `InteractionResponse`; the issuing workflow resumes through a feature-named payload under `src/playthrough/continuations`. Request bodies and their common, service, combat, reward, and selection record decoders live together under `src/game/session/requests`, so a maintainer can follow one decision without searching a universal codec. `SessionContinuation` is only the stable saved envelope, while `SessionContinuationCodec` rejects unknown or mismatched payloads before restore. This is why a save can safely be made during a question, target picker, encounter, or other supported continuation.
 
 ## Session boundary
 

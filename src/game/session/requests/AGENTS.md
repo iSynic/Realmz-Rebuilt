@@ -8,6 +8,7 @@ Own the feature-level typed payloads carried by `InteractionRequest`.
 
 - Detached request bodies and their exact `to_data()` representation.
 - Request-specific equality helpers used by restore validation.
+- Shared, service, combat, reward, and selection nested-value decoders plus their common wire-shape predicates.
 
 ## Local Contracts
 
@@ -16,6 +17,7 @@ Own the feature-level typed payloads carried by `InteractionRequest`.
 - Request decoding remains strict and rejects unknown or mixed fields.
 - Bodies never retain session state, Nodes, repositories, media bytes, or live continuations.
 - New callers use the top-level payload class directly; do not add nested compatibility aliases to `InteractionRequest`.
+- Callers address the feature decoder that owns a nested record. Do not reintroduce a central forwarding value decoder.
 
 ## Work Guidance
 

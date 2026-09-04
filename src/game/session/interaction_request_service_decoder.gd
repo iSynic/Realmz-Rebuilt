@@ -12,7 +12,7 @@ static func populate_lifecycle(payload: Dictionary, result: Variant) -> bool:
 	result.in_combat = payload["inCombat"]
 	result.includes_active_session = payload.has("hasActiveSession")
 	for entry: Variant in payload["options"]:
-		var option := InteractionRequestValueDecoder.lifecycle_option(entry)
+		var option := InteractionSelectionValueDecoder.lifecycle_option(entry)
 		if option == null: return false
 		result.options.append(option)
 	return true
@@ -27,11 +27,11 @@ static func populate_shop(payload: Dictionary, result: Variant) -> bool:
 	result.party_gold = int(payload["partyGold"])
 	result.identify_price = int(payload["identifyPrice"])
 	for entry: Variant in payload["stock"]:
-		var stock := InteractionRequestValueDecoder.shop_stock(entry)
+		var stock := InteractionServiceValueDecoder.shop_stock(entry)
 		if stock == null: return false
 		result.stock.append(stock)
 	for entry: Variant in payload["characters"]:
-		var character := InteractionRequestValueDecoder.service_character(entry, &"shop")
+		var character := InteractionServiceValueDecoder.service_character(entry, &"shop")
 		if character == null: return false
 		result.characters.append(character)
 	for entry: Variant in payload["acceptRanges"]:
@@ -47,16 +47,16 @@ static func populate_temple(payload: Dictionary, result: Variant) -> bool:
 	if not _fields_are_exact(payload, fields, fields) or not _required_ints(payload, ["costPercent"]): return false
 	if not _required_arrays(payload, ["characters", "services", "actions"]) or not payload["bankAvailable"] is bool or not payload["selectedCharacterId"] is String: return false
 	result.cost_percent = int(payload["costPercent"])
-	result.pooled_wealth = InteractionRequestValueDecoder.wealth(payload["pooledWealth"])
+	result.pooled_wealth = InteractionCommonValueDecoder.wealth(payload["pooledWealth"])
 	if result.pooled_wealth == null: return false
 	result.bank_available = payload["bankAvailable"]
 	result.selected_character_id = payload["selectedCharacterId"]
 	for entry: Variant in payload["characters"]:
-		var character := InteractionRequestValueDecoder.service_character(entry, &"temple")
+		var character := InteractionServiceValueDecoder.service_character(entry, &"temple")
 		if character == null: return false
 		result.characters.append(character)
 	for entry: Variant in payload["services"]:
-		var service := InteractionRequestValueDecoder.temple_service(entry)
+		var service := InteractionServiceValueDecoder.temple_service(entry)
 		if service == null: return false
 		result.services.append(service)
 	if not _array_is_strings(payload["actions"]): return false
@@ -73,13 +73,13 @@ static func populate_bank(payload: Dictionary, departure: bool, result: Variant)
 	result.mode = StringName(payload.get("mode", ""))
 	result.has_mode = payload.has("mode")
 	result.selected_character_id = payload["selectedCharacterId"]
-	result.pooled_wealth = InteractionRequestValueDecoder.wealth(payload["pooledWealth"])
-	result.banked_wealth = InteractionRequestValueDecoder.wealth(payload["bankedWealth"])
-	result.pool = InteractionRequestValueDecoder.availability(payload["pool"])
-	result.share = InteractionRequestValueDecoder.availability(payload["share"])
+	result.pooled_wealth = InteractionCommonValueDecoder.wealth(payload["pooledWealth"])
+	result.banked_wealth = InteractionCommonValueDecoder.wealth(payload["bankedWealth"])
+	result.pool = InteractionCommonValueDecoder.availability(payload["pool"])
+	result.share = InteractionCommonValueDecoder.availability(payload["share"])
 	if result.pooled_wealth == null or result.banked_wealth == null or result.pool == null or result.share == null: return false
 	for entry: Variant in payload["characters"]:
-		var character := InteractionRequestValueDecoder.service_character(entry, &"bank")
+		var character := InteractionServiceValueDecoder.service_character(entry, &"bank")
 		if character == null: return false
 		result.characters.append(character)
 	if payload.has("actions"):
@@ -108,12 +108,12 @@ static func populate_combat(payload: Dictionary, result: Variant) -> bool:
 	if not _array_is_strings(payload["actions"]) or not _array_is_strings(payload["autoCharacterIds"]): return false
 	result.actions = _strings(payload["actions"])
 	result.auto_character_ids = _strings(payload["autoCharacterIds"])
-	result.weapon_switch = InteractionRequestValueDecoder.availability(payload["weaponSwitch"])
-	result.ranged_attack = InteractionRequestValueDecoder.availability(payload["rangedAttack"])
-	result.retreat = InteractionRequestValueDecoder.availability(payload["retreat"])
-	result.auto_turn = InteractionRequestValueDecoder.availability(payload["autoTurn"])
-	result.delay = InteractionRequestValueDecoder.availability(payload["delay"])
-	result.undo = InteractionRequestValueDecoder.availability(payload["undo"])
+	result.weapon_switch = InteractionCommonValueDecoder.availability(payload["weaponSwitch"])
+	result.ranged_attack = InteractionCommonValueDecoder.availability(payload["rangedAttack"])
+	result.retreat = InteractionCommonValueDecoder.availability(payload["retreat"])
+	result.auto_turn = InteractionCommonValueDecoder.availability(payload["autoTurn"])
+	result.delay = InteractionCommonValueDecoder.availability(payload["delay"])
+	result.undo = InteractionCommonValueDecoder.availability(payload["undo"])
 	if result.weapon_switch == null or result.ranged_attack == null or result.retreat == null or result.auto_turn == null or result.delay == null or result.undo == null: return false
 	var bandage_parse: Variant = _parse_target_availability(payload["bandage"])
 	var turn_parse: Variant = _parse_target_availability(payload["turnUndead"])
@@ -128,22 +128,22 @@ static func populate_combat(payload: Dictionary, result: Variant) -> bool:
 
 static func _append_combat_entries(payload: Dictionary, result: Variant) -> bool:
 	for entry: Variant in payload["targets"]:
-		var target := InteractionRequestValueDecoder.combat_target(entry)
+		var target := InteractionCombatValueDecoder.combat_target(entry)
 		if target == null: return false
 		result.targets.append(target)
 	for entry: Variant in payload["combatants"]:
-		var combatant := InteractionRequestValueDecoder.combatant(entry)
+		var combatant := InteractionCombatValueDecoder.combatant(entry)
 		if combatant == null: return false
 		result.combatants.append(combatant)
 	for entry: Variant in payload["movement"]:
-		var movement := InteractionRequestValueDecoder.movement_option(entry)
+		var movement := InteractionCombatValueDecoder.movement_option(entry)
 		if movement == null: return false
 		result.movement.append(movement)
 	if not _append_casts(payload["spellCasts"], &"spell", result.spell_casts): return false
 	if not _append_casts(payload["itemCasts"], &"item", result.item_casts): return false
 	if not _append_casts(payload["scrollCasts"], &"scroll", result.scroll_casts): return false
 	for entry: Variant in payload["fastSpells"]:
-		var fast_spell := InteractionRequestValueDecoder.fast_spell(entry)
+		var fast_spell := InteractionCombatValueDecoder.fast_spell(entry)
 		if fast_spell == null: return false
 		result.fast_spells.append(fast_spell)
 	return true
@@ -151,7 +151,7 @@ static func _append_combat_entries(payload: Dictionary, result: Variant) -> bool
 
 static func _append_casts(entries: Array, source: StringName, destination: Variant) -> bool:
 	for entry: Variant in entries:
-		var cast := InteractionRequestValueDecoder.cast_option(entry, source)
+		var cast := InteractionCombatValueDecoder.cast_option(entry, source)
 		if cast == null: return false
 		destination.append(cast)
 	return true
@@ -160,10 +160,10 @@ static func _append_casts(entries: Array, source: StringName, destination: Varia
 static func _parse_target_availability(data: Variant) -> Variant:
 	if not data is Dictionary or not _fields_are_exact(data, ["enabled", "reason", "targets"], ["enabled", "reason", "targets"]): return null
 	if not data["enabled"] is bool or not data["reason"] is String or not data["targets"] is Array: return null
-	var availability := InteractionRequestValueDecoder.availability({"enabled": data["enabled"], "reason": data["reason"]})
+	var availability := InteractionCommonValueDecoder.availability({"enabled": data["enabled"], "reason": data["reason"]})
 	var targets: Array[InteractionRequestValue.CombatTarget] = []
 	for entry: Variant in data["targets"]:
-		var target := InteractionRequestValueDecoder.combat_target(entry)
+		var target := InteractionCombatValueDecoder.combat_target(entry)
 		if target == null: return null
 		targets.append(target)
 	return [availability, targets]

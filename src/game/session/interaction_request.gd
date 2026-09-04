@@ -107,7 +107,7 @@ static func indexed_choice(id: String, prompt: String, options: Array) -> Intera
 	var value := ChoiceRequestBody.new()
 	value.prompt = prompt
 	for entry: Variant in options:
-		var option := InteractionRequestValueDecoder.choice_option(entry)
+		var option := InteractionSelectionValueDecoder.choice_option(entry)
 		if option == null: return null
 		value.options.append(option)
 	return InteractionRequest.new(id, INDEXED_CHOICE, value)
@@ -223,7 +223,7 @@ static func _parse_selection_body(request_kind: StringName, payload: Dictionary)
 		var choice := ChoiceRequestBody.new()
 		choice.prompt = payload["prompt"]
 		for entry: Variant in payload["options"]:
-			var option := InteractionRequestValueDecoder.choice_option(entry)
+			var option := InteractionSelectionValueDecoder.choice_option(entry)
 			if option == null: return null
 			choice.options.append(option)
 		choice.can_back_out = bool(payload.get("canBackOut", false))
@@ -238,7 +238,7 @@ static func _parse_selection_body(request_kind: StringName, payload: Dictionary)
 		characters.prompt = String(payload.get("prompt", ""))
 		characters.count = int(payload["count"])
 		for entry: Variant in payload["eligible"]:
-			var candidate := InteractionRequestValueDecoder.selection_candidate(entry)
+			var candidate := InteractionSelectionValueDecoder.selection_candidate(entry)
 			if candidate == null: return null
 			characters.eligible.append(candidate)
 		characters.allow_dead = bool(payload.get("allowDead", false))
@@ -247,7 +247,7 @@ static func _parse_selection_body(request_kind: StringName, payload: Dictionary)
 		characters.spell_id = String(payload.get("spellId", ""))
 		characters.scroll_slot = int(payload.get("scrollSlot", -1))
 		if payload.has("spellContext"):
-			characters.spell_context = InteractionRequestValueDecoder.spell_target_context(payload["spellContext"])
+			characters.spell_context = InteractionSelectionValueDecoder.spell_target_context(payload["spellContext"])
 			if characters.spell_context == null or not characters.spell_id.is_empty() and characters.spell_context.spell_id != characters.spell_id: return null
 		return characters
 	if request_kind == ALLY_SELECTION:
@@ -259,7 +259,7 @@ static func _parse_selection_body(request_kind: StringName, payload: Dictionary)
 		allies.selected_ids = _strings(payload["selectedIds"])
 		allies.required_ids = _strings(payload["requiredIds"])
 		for entry: Variant in payload["candidates"]:
-			var candidate := InteractionRequestValueDecoder.selection_candidate(entry)
+			var candidate := InteractionSelectionValueDecoder.selection_candidate(entry)
 			if candidate == null: return null
 			allies.candidates.append(candidate)
 		return allies
@@ -270,19 +270,19 @@ static func _parse_selection_body(request_kind: StringName, payload: Dictionary)
 	complex.encounter_id = int(payload["encounterId"])
 	complex.prompt = payload["prompt"]
 	for entry: Variant in payload["actions"]:
-		var action := InteractionRequestValueDecoder.encounter_action(entry)
+		var action := InteractionSelectionValueDecoder.encounter_action(entry)
 		if action == null: return null
 		complex.actions.append(action)
 	for entry: Variant in payload["characters"]:
-		var character := InteractionRequestValueDecoder.named_character(entry)
+		var character := InteractionSelectionValueDecoder.named_character(entry)
 		if character == null: return null
 		complex.characters.append(character)
 	for entry: Variant in payload["items"]:
-		var item := InteractionRequestValueDecoder.encounter_catalog_entry(entry, &"item")
+		var item := InteractionSelectionValueDecoder.encounter_catalog_entry(entry, &"item")
 		if item == null: return null
 		complex.items.append(item)
 	for entry: Variant in payload["spells"]:
-		var spell := InteractionRequestValueDecoder.encounter_catalog_entry(entry, &"spell")
+		var spell := InteractionSelectionValueDecoder.encounter_catalog_entry(entry, &"spell")
 		if spell == null: return null
 		complex.spells.append(spell)
 	complex.can_back_out = payload["canBackOut"]
@@ -300,7 +300,7 @@ static func _parse_thief_body(request_kind: StringName, payload: Dictionary) -> 
 		result.prompt = payload["prompt"]
 		result.sound_id = int(payload["soundId"])
 		for entry: Variant in payload["characters"]:
-			var character := InteractionRequestValueDecoder.thief_character(entry)
+			var character := InteractionSelectionValueDecoder.thief_character(entry)
 			if character == null:
 				return null
 			result.characters.append(character)
@@ -351,13 +351,13 @@ static func _parse_reward_body(request_kind: StringName, payload: Dictionary) ->
 		if level_up.mode == &"result":
 			if not _fields_are_exact(payload, ["mode", "prompt", "characterId", "characterName", "level", "gains"], ["mode", "prompt", "characterId", "characterName", "level", "gains"]) or not _whole_number(payload["level"]): return null
 			level_up.level = int(payload["level"])
-			level_up.gains = InteractionRequestValueDecoder.level_gains(payload["gains"])
+			level_up.gains = InteractionRewardValueDecoder.level_gains(payload["gains"])
 			if level_up.gains == null: return null
 		else:
 			if not _fields_are_exact(payload, ["mode", "prompt", "characterId", "characterName", "pointTotal", "spells"], ["mode", "prompt", "characterId", "characterName", "pointTotal", "spells"]) or not _whole_number(payload["pointTotal"]) or not payload["spells"] is Array: return null
 			level_up.point_total = int(payload["pointTotal"])
 			for entry: Variant in payload["spells"]:
-				var spell := InteractionRequestValueDecoder.spell_choice(entry)
+				var spell := InteractionRewardValueDecoder.spell_choice(entry)
 				if spell == null: return null
 				level_up.spells.append(spell)
 		return level_up
@@ -369,13 +369,13 @@ static func _parse_reward_body(request_kind: StringName, payload: Dictionary) ->
 	treasure.prompt = String(payload.get("prompt", ""))
 	treasure.has_item = payload.has("item")
 	if treasure.has_item and payload["item"] != null:
-		treasure.item = InteractionRequestValueDecoder.reward_item(payload["item"])
+		treasure.item = InteractionRewardValueDecoder.reward_item(payload["item"])
 		if treasure.item == null: return null
 	treasure.has_items = payload.has("items")
 	if treasure.has_items:
 		if not payload["items"] is Array: return null
 		for entry: Variant in payload["items"]:
-			var reward_item := InteractionRequestValueDecoder.reward_item(entry)
+			var reward_item := InteractionRewardValueDecoder.reward_item(entry)
 			if reward_item == null: return null
 			treasure.items.append(reward_item)
 	if treasure.mode == &"ordinary" and (not treasure.has_items or treasure.has_item): return null
@@ -386,7 +386,7 @@ static func _parse_reward_body(request_kind: StringName, payload: Dictionary) ->
 	if payload.has("characters"):
 		if not payload["characters"] is Array: return null
 		for entry: Variant in payload["characters"]:
-			var character := InteractionRequestValueDecoder.reward_character(entry, treasure.mode)
+			var character := InteractionRewardValueDecoder.reward_character(entry, treasure.mode)
 			if character == null: return null
 			treasure.characters.append(character)
 	if treasure.mode == &"ordinary":
@@ -403,14 +403,14 @@ static func _parse_reward_body(request_kind: StringName, payload: Dictionary) ->
 	elif treasure.mode == &"fumbled-item-recovery" and treasure.item != null and treasure.item.has_assignments:
 		return null
 	if payload.has("wealth"):
-		treasure.wealth = InteractionRequestValueDecoder.wealth(payload["wealth"])
+		treasure.wealth = InteractionCommonValueDecoder.wealth(payload["wealth"])
 		if treasure.wealth == null: return null
 	treasure.experience_share = int(payload.get("experienceShare", 0))
 	if payload.has("detect"):
-		treasure.detect = InteractionRequestValueDecoder.reward_method(payload["detect"])
+		treasure.detect = InteractionRewardValueDecoder.reward_method(payload["detect"])
 		if treasure.detect == null: return null
 	if payload.has("identify"):
-		treasure.identify = InteractionRequestValueDecoder.reward_method(payload["identify"])
+		treasure.identify = InteractionRewardValueDecoder.reward_method(payload["identify"])
 		if treasure.identify == null: return null
 	treasure.has_share_capacity = bool(payload.get("hasShareCapacity", false))
 	treasure.summary = String(payload.get("summary", ""))
