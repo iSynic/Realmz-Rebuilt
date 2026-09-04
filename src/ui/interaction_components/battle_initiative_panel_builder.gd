@@ -10,7 +10,7 @@ const PANEL_SCENE_PATH := "res://src/ui/interaction_components/battle_initiative
 static var _panel_scene: PackedScene
 
 
-static func build(round_number: int, combatants: Array[InteractionRequestValue.Combatant], active_actor_id: String, combatant_icons: Dictionary, selected: Callable, maximum_visible_turns: int) -> PanelContainer:
+static func build(round_number: int, combatants: Array[InteractionRequestValue.Combatant], active_actor_id: String, combatant_icons: Dictionary, selected: Callable, maximum_visible_turns: int, entry_scene: PackedScene) -> PanelContainer:
 	if _panel_scene == null:
 		_panel_scene = load(PANEL_SCENE_PATH) as PackedScene
 	var panel := _panel_scene.instantiate() as PanelContainer
@@ -20,19 +20,13 @@ static func build(round_number: int, combatants: Array[InteractionRequestValue.C
 	var ordered := _ordered_from_active(combatants, active_actor_id)
 	for index: int in mini(ordered.size(), maximum_visible_turns):
 		var combatant := ordered[index]
-		var button := Button.new()
+		var button := entry_scene.instantiate() as Button
 		button.name = "Initiative%s" % combatant.id.to_pascal_case()
 		var turn_label := "NOW" if index == 0 else "NEXT" if index == 1 else str(index + 1)
 		var icon := combatant_icons.get(combatant.id) as Texture2D
 		button.text = turn_label if icon != null else "%s %s" % [turn_label, combatant.name.left(8)]
 		button.icon = icon
-		button.expand_icon = true
-		button.add_theme_constant_override("icon_max_width", 22)
-		button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		button.tooltip_text = "%s • %s" % ["Current actor" if index == 0 else "Upcoming actor %d" % index, combatant.name]
-		button.theme_type_variation = &"BattleCommandButton"
-		button.custom_minimum_size.y = 28.0
-		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		if index == 0:
 			button.add_theme_color_override("font_color", Color("f8dc52"))
 		button.pressed.connect(selected.bind(combatant.id))

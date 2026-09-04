@@ -17,7 +17,9 @@ const COMMAND_BASE_SIZE_META: StringName = &"battle_command_base_size"
 const PRIMARY_COMMAND_COLOR := Color("f0ce59")
 const VIEW_COMMAND_COLOR := Color("63d8e7")
 const TURN_COMMAND_COLOR := Color("8fe080")
-const BattleInitiativePanelBuilderType = preload("res://src/ui/interaction_components/battle_initiative_panel_builder.gd")
+const InitiativePanelBuilder := preload("res://src/ui/interaction_components/battle_initiative_panel_builder.gd")
+
+@export var initiative_entry_scene: PackedScene
 
 @export var targeting_controls_scene: PackedScene
 
@@ -596,7 +598,7 @@ func _add_classic_turn_commands(first_row: Container, second_row: Container, bod
 
 
 func _build_initiative_panel(round_number: int) -> PanelContainer:
-	return BattleInitiativePanelBuilderType.build(round_number, _combatants, _actor_id, _combatant_icons, _select_initiative_combatant, MAX_VISIBLE_TURNS)
+	return InitiativePanelBuilder.build(round_number, _combatants, _actor_id, _combatant_icons, _select_initiative_combatant, MAX_VISIBLE_TURNS, initiative_entry_scene)
 
 
 func _select_initiative_combatant(combatant_id: String) -> void:

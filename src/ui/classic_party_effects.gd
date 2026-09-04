@@ -19,33 +19,17 @@ const NAMES: Array[String] = [
 ]
 
 
-static func build_slots(grid: GridContainer) -> Array[TextureRect]:
+static func build_slots(grid: GridContainer, slot_scene: PackedScene) -> Array[TextureRect]:
 	var slots: Array[TextureRect] = []
 	for condition_index: int in range(1, 9):
-		var frame := Control.new()
+		var frame := slot_scene.instantiate() as Control
 		frame.name = "PartyEffectSlot%d" % condition_index
 		frame.custom_minimum_size = Vector2.ONE * slot_size(1)
-		var background := Panel.new()
-		background.name = "Background"
-		background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		background.theme_type_variation = &"ClassicInset"
-		background.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		frame.add_child(background)
-		var center := CenterContainer.new()
-		center.name = "Center"
-		center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		frame.add_child(center)
-		var icon := TextureRect.new()
+		var icon := frame.get_node("Center/PartyEffectIcon") as TextureRect
 		icon.name = "PartyEffectIcon%d" % condition_index
 		icon.custom_minimum_size = Vector2.ONE * icon_size(1)
-		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		icon.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
-		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		icon.tooltip_text = NAMES[condition_index - 1]
 		frame.tooltip_text = icon.tooltip_text
-		center.add_child(icon)
 		grid.add_child(frame)
 		slots.append(icon)
 	return slots

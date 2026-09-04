@@ -10,17 +10,10 @@ const SpellSelectionChrome := preload("res://src/ui/controllers/classic_spell_se
 var _buttons: Dictionary = {}
 var _order: Array[String] = []
 var _button_group := ButtonGroup.new()
-var _content := VBoxContainer.new()
+@onready var _content: VBoxContainer = %DefinitionOptions
 
 var item_count: int:
 	get: return _order.size()
-
-
-func _init() -> void:
-	horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_content.add_theme_constant_override("separation", 3)
-	add_child(_content)
 
 
 func add_option(option_id: String, display_name: String, tooltip: String, enabled: bool, selected: bool) -> void:

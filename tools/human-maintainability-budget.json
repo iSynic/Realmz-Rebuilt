@@ -10,20 +10,6 @@
   },
   "runtimeControlClassifications": [
     {
-      "path": "src/ui/classic_item_detail_popover.gd",
-      "kind": "data-collection",
-      "reason": "The scene owns the popover shell; these functions render a variable detached item fact collection.",
-      "currentMaximum": 2,
-      "functions": ["_label", "_render_detail"]
-    },
-    {
-      "path": "src/ui/classic_party_effects.gd",
-      "kind": "data-collection",
-      "reason": "One compact status slot is created for each detached party effect supplied by the view.",
-      "currentMaximum": 3,
-      "functions": ["build_slots"]
-    },
-    {
       "path": "src/ui/classic_retained_map_surface.gd",
       "kind": "algorithmic-surface",
       "reason": "The retained map allocates its viewport as part of an algorithmic canvas and texture pipeline.",
@@ -38,13 +24,6 @@
       "functions": ["_label"]
     },
     {
-      "path": "src/ui/controllers/classic_definition_toggle_list.gd",
-      "kind": "data-collection",
-      "reason": "The custom list owns one retained content container whose children mirror the current definition set.",
-      "currentMaximum": 1,
-      "functions": ["<file>"]
-    },
-    {
       "path": "src/ui/controllers/screen_content_presenter.gd",
       "kind": "data-collection",
       "reason": "Shared cards and labels are emitted only while binding changing detached screen content.",
@@ -57,20 +36,6 @@
       "reason": "The first-person dungeon creates a render-target display paired with its generated three-dimensional scene.",
       "currentMaximum": 1,
       "functions": ["_ready"]
-    },
-    {
-      "path": "src/ui/interaction_components/battle_initiative_panel_builder.gd",
-      "kind": "data-collection",
-      "reason": "The scene-authored initiative panel receives one selectable entry per request-ordered combatant.",
-      "currentMaximum": 1,
-      "functions": ["build"]
-    },
-    {
-      "path": "src/ui/interaction_components/interaction_component.gd",
-      "kind": "conditional-chrome",
-      "reason": "Shared hints and character pickers exist only when a typed interaction supplies those optional values.",
-      "currentMaximum": 2,
-      "functions": ["add_hint", "character_option"]
     },
     {
       "path": "src/ui/screen_navigator.gd",

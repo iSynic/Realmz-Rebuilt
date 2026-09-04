@@ -5,6 +5,9 @@ extends VBoxContainer
 
 const RESPONSE_BUTTON_SCENE_PATH := "res://src/ui/interaction_components/interaction_response_button.tscn"
 
+@export_file("*.tscn") var hint_scene_path := "res://src/ui/interaction_components/interaction_hint.tscn"
+@export_file("*.tscn") var character_option_scene_path := "res://src/ui/interaction_components/interaction_character_option.tscn"
+
 signal response_body_submitted(body: InteractionResponse.Body)
 @warning_ignore("unused_signal")
 signal combat_targeting_requested(request: CombatTargetingRequest)
@@ -67,17 +70,14 @@ func add_response_to(parent: Container, label: String, body: InteractionResponse
 
 
 func add_hint(text: String) -> Label:
-	var label := Label.new()
+	var label := (load(hint_scene_path) as PackedScene).instantiate() as Label
 	label.text = text
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.add_theme_color_override("font_color", Color("d5b45d"))
 	add_child(label)
 	return label
 
 
 func character_option(value: Variant) -> OptionButton:
-	var picker := OptionButton.new()
-	picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var picker := (load(character_option_scene_path) as PackedScene).instantiate() as OptionButton
 	if value is Array:
 		for character: Variant in value:
 			if character is Dictionary:

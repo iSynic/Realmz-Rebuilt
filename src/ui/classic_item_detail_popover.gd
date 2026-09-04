@@ -9,6 +9,9 @@ const TEXT := Color("e0e2e5")
 const MUTED := Color("aeb6ba")
 const ITEM_DETAIL_HEADER_SCENE_PATH := "res://src/ui/classic_item_detail_header.tscn"
 
+@export var detail_label_scene: PackedScene
+@export var fact_grid_scene: PackedScene
+
 var modifier_active := false:
 	set(value):
 		modifier_active = value
@@ -92,12 +95,7 @@ func _render_detail() -> void:
 		_content.add_child(description_label)
 	var facts: Array = _hovered_detail.get("facts", [])
 	if not facts.is_empty():
-		var fact_grid := GridContainer.new()
-		fact_grid.name = "ClassicItemDetailFacts"
-		fact_grid.columns = 2
-		fact_grid.add_theme_constant_override("h_separation", 12)
-		fact_grid.add_theme_constant_override("v_separation", 2)
-		fact_grid.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var fact_grid := fact_grid_scene.instantiate() as GridContainer
 		_content.add_child(fact_grid)
 		for fact: Variant in facts:
 			if fact is Dictionary:
@@ -122,12 +120,9 @@ func _place_panel() -> void:
 
 
 func _label(text: String, color: Color, variation: StringName = &"") -> Label:
-	var label := Label.new()
+	var label := detail_label_scene.instantiate() as Label
 	label.text = text
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label.add_theme_color_override("font_color", color)
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if not variation.is_empty():
 		label.theme_type_variation = variation
 	return label

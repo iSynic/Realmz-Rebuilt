@@ -6,6 +6,7 @@ Own route-local UI state and temporary dynamic control construction behind typed
 
 ## Local Contracts
 
+- `classic_definition_toggle_list.tscn` owns the retained scrolling option host used by Character Creation. Its controller binds definition buttons into that authored collection and never creates the list hierarchy.
 - Controllers receive an explicit target container and detached values; they never receive `GameSession`, repositories, or the owning router.
 - Controllers emit typed intents, host actions, or presentation-setting changes. They never mutate gameplay state.
 - Controller scripts reached by the background application graph must not script-preload imported textures or themes; resolve those resources only while constructing controller-owned controls on the main thread.

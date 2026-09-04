@@ -57,6 +57,8 @@ const MENU_CONTROLLER_SCRIPT := preload("res://src/ui/game_shell_menu_controller
 const SAVE_STATUS_TEXTURE_PATH := "res://src/ui/assets/ui/status/save-status.png"
 const JOURNAL_STATUS_TEXTURE_PATH := "res://src/ui/assets/ui/status/journal-status.png"
 
+@export var party_effect_slot_scene: PackedScene
+
 @onready var _menu_strip: PanelContainer = %MenuStrip
 @onready var _menu_row: HBoxContainer = %MenuRow
 @onready var _compact_menu: MenuButton = %CompactMenu
@@ -124,7 +126,7 @@ func _ready() -> void:
 	_command_controller = COMMAND_CONTROLLER_SCRIPT.new(self)
 	_command_controller.initialize()
 	_menu_controller = MENU_CONTROLLER_SCRIPT.new(self)
-	_effect_slots = ClassicPartyEffects.build_slots(_effects_grid)
+	_effect_slots = ClassicPartyEffects.build_slots(_effects_grid, party_effect_slot_scene)
 	_effect_frame_timer = Timer.new()
 	_effect_frame_timer.wait_time = 0.12
 	_effect_frame_timer.autostart = true

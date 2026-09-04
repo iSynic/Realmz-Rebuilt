@@ -1,7 +1,7 @@
 [gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://src/ui/setup/character_creation_race_caste_step.gd" id="1_step"]
-[ext_resource type="Script" path="res://src/ui/controllers/classic_definition_toggle_list.gd" id="2_list"]
+[ext_resource type="PackedScene" path="res://src/ui/controllers/classic_definition_toggle_list.tscn" id="2_list"]
 
 [node name="CharacterCreationRaceCasteStep" type="VBoxContainer"]
 size_flags_horizontal = 3
@@ -48,14 +48,13 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 8
 
-[node name="RaceList" type="ScrollContainer" parent="RaceCasteSelectors/RaceSelectorPanel/RacePanelContent/RaceSelectorRecord"]
+[node name="RaceList" parent="RaceCasteSelectors/RaceSelectorPanel/RacePanelContent/RaceSelectorRecord" instance=ExtResource("2_list")]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(150, 300)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 size_flags_stretch_ratio = 1.0
-script = ExtResource("2_list")
 
 [node name="RaceDetailPanel" type="PanelContainer" parent="RaceCasteSelectors/RaceSelectorPanel/RacePanelContent/RaceSelectorRecord"]
 unique_name_in_owner = true
@@ -134,14 +133,13 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 8
 
-[node name="CasteList" type="ScrollContainer" parent="RaceCasteSelectors/CasteSelectorPanel/CastePanelContent/CasteSelectorRecord"]
+[node name="CasteList" parent="RaceCasteSelectors/CasteSelectorPanel/CastePanelContent/CasteSelectorRecord" instance=ExtResource("2_list")]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(150, 300)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 size_flags_stretch_ratio = 1.0
-script = ExtResource("2_list")
 
 [node name="CasteDetailPanel" type="PanelContainer" parent="RaceCasteSelectors/CasteSelectorPanel/CastePanelContent/CasteSelectorRecord"]
 unique_name_in_owner = true

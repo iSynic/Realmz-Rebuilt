@@ -1,13 +1,15 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://src/ui/interaction_components/battle_interaction.gd" id="1_script"]
 [ext_resource type="PackedScene" path="res://src/ui/interaction_components/battle_targeting_controls.tscn" id="2_targeting"]
+[ext_resource type="PackedScene" path="res://src/ui/interaction_components/battle_initiative_entry.tscn" id="3_initiative"]
 
 [node name="BattleInteraction" type="VBoxContainer"]
 size_flags_horizontal = 3
 theme_override_constants/separation = 3
 script = ExtResource("1_script")
 targeting_controls_scene = ExtResource("2_targeting")
+initiative_entry_scene = ExtResource("3_initiative")
 
 [node name="BattleOverview" type="VBoxContainer" parent="."]
 unique_name_in_owner = true
