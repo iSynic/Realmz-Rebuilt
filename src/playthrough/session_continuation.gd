@@ -9,7 +9,7 @@ const VERSION: int = 1
 class Body:
 	extends RefCounted
 
-	func _payload_data(_kind: StringName) -> Dictionary:
+	func wire_payload(_kind: StringName) -> Dictionary:
 		return {}
 
 
@@ -35,7 +35,7 @@ class ExplorationBody:
 	var active_trigger_id: String
 	var action_point_destination_depth: int
 
-	func _payload_data(kind: StringName) -> Dictionary:
+	func wire_payload(kind: StringName) -> Dictionary:
 		if kind == &"post-clock":
 			return {"kind": String(kind), "mapId": map_id, "x": coordinate.x, "y": coordinate.y, "timedDay": timed_day, "timedEncounterIndex": timed_encounter_index, "activeTimedProgramId": active_timed_program_id, "midnightRecoveryPending": midnight_recovery_pending, "timedCheckX": timed_check_coordinate.x, "timedCheckY": timed_check_coordinate.y, "checkRandom": check_random, "randomRegionIds": random_region_ids.duplicate(), "randomRegionIndex": random_region_index, "activeRandomProgramId": active_random_program_id, "activeRandomRegionId": active_random_region_id, "randomBattleStage": String(random_battle_stage), "resumeKind": String(resume_kind), "directionX": direction.x, "directionY": direction.y}
 		return {"kind": String(kind), "mapId": map_id, "x": coordinate.x, "y": coordinate.y, "triggerIds": trigger_ids.duplicate(), "triggerIndex": trigger_index, "activeTriggerId": active_trigger_id, "randomRegionIds": random_region_ids.duplicate(), "randomRegionIndex": random_region_index, "activeRandomProgramId": active_random_program_id, "activeRandomRegionId": active_random_region_id, "randomBattleStage": String(random_battle_stage), "actionPointDestinationDepth": action_point_destination_depth}
@@ -54,7 +54,7 @@ class ApplicationBody:
 	var character_id: String
 	var remaining: int
 
-	func _payload_data(kind: StringName) -> Dictionary:
+	func wire_payload(kind: StringName) -> Dictionary:
 		if kind == &"character-spell-confirmation":
 			return {"kind": String(kind), "characterId": character_id, "remaining": remaining}
 		if kind == &"character-vault-publication":
@@ -78,7 +78,7 @@ class TargetingBody:
 	var starting_spell_points: int
 	var scroll_slot: int
 
-	func _payload_data(kind: StringName) -> Dictionary:
+	func wire_payload(kind: StringName) -> Dictionary:
 		if kind == &"drop-item-confirmation":
 			return {"kind": String(kind), "characterId": character_id, "instanceId": instance_id}
 		if kind == &"scroll-discard-confirmation":
@@ -102,7 +102,7 @@ class ItemBody:
 	var program_id: String
 	var source_battle_id: String
 
-	func _payload_data(kind: StringName) -> Dictionary:
+	func wire_payload(kind: StringName) -> Dictionary:
 		return {"kind": String(kind), "characterId": character_id, "instanceId": instance_id, "itemId": item_id, "programId": program_id, "sourceBattleId": source_battle_id}
 
 
@@ -113,7 +113,7 @@ class ServiceBody:
 	var stage: StringName
 	var direction: Vector2i
 
-	func _payload_data(kind: StringName) -> Dictionary:
+	func wire_payload(kind: StringName) -> Dictionary:
 		if kind == &"pooled-wealth-departure":
 			return {"kind": String(kind), "stage": String(stage), "directionX": direction.x, "directionY": direction.y}
 		return {"kind": String(kind), "serviceId": service_id, "runtimeContinuation": {} if runtime_continuation == null else runtime_continuation.to_data()}
@@ -126,7 +126,7 @@ class AgeBody:
 	var resume_kind: StringName
 	var resume_continuation: SessionContinuation
 
-	func _payload_data(kind: StringName) -> Dictionary:
+	func wire_payload(kind: StringName) -> Dictionary:
 		var serialized_updates: Array[Dictionary] = []
 		for update: InteractionRequest.AgeUpdateBody in updates:
 			serialized_updates.append(update.to_data())
@@ -143,7 +143,7 @@ class CombatBody:
 	var program_id: String
 	var reset_traitor_on_complete: bool = true
 
-	func _payload_data(kind: StringName) -> Dictionary:
+	func wire_payload(kind: StringName) -> Dictionary:
 		if kind in [&"combat-retreat-confirmation", &"combat-friendly-collision"]:
 			return {"kind": String(kind), "battleId": battle_id, "actorId": actor_id, "mode": String(mode), "destination": [destination.x, destination.y]}
 		if kind == &"combat-death-macro":
@@ -156,7 +156,7 @@ class RewardBody:
 	var battle_id: String
 	var runtime_continuation: ScenarioRuntimeContinuation
 
-	func _payload_data(kind: StringName) -> Dictionary:
+	func wire_payload(kind: StringName) -> Dictionary:
 		return {"kind": String(kind), "battleId": battle_id, "runtimeContinuation": {} if runtime_continuation == null else runtime_continuation.to_data()}
 
 
@@ -169,7 +169,7 @@ class BoatBody:
 	var target_coordinate: Vector2i
 	var direction: Vector2i
 
-	func _payload_data(kind: StringName) -> Dictionary:
+	func wire_payload(kind: StringName) -> Dictionary:
 		return {"kind": String(kind), "action": String(action), "sourceMapId": source_map_id, "sourceX": source_coordinate.x, "sourceY": source_coordinate.y, "targetMapId": target_map_id, "targetX": target_coordinate.x, "targetY": target_coordinate.y, "directionX": direction.x, "directionY": direction.y}
 
 
@@ -304,7 +304,7 @@ func copy() -> SessionContinuation:
 
 
 func _wire_payload() -> Dictionary:
-	return body._payload_data(kind) if body != null else {}
+	return body.wire_payload(kind) if body != null else {}
 
 
 func to_data() -> Dictionary:

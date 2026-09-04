@@ -145,7 +145,7 @@ func _ready() -> void:
 	_navigator.standalone_character_creation_requested.connect(func() -> void: standalone_character_creation_requested.emit())
 	_navigator.standalone_character_creation_cancelled.connect(func() -> void: standalone_character_creation_cancelled.emit())
 	_navigator.screen_changed.connect(_on_screen_changed)
-	_navigator.system_action_requested.connect(_on_system_action_requested)
+	_navigator.system_action_requested.connect(handle_system_action_requested)
 	_navigator.presentation_setting_changed.connect(_on_presentation_setting_changed)
 	_party_roster.character_selected.connect(_on_character_selected)
 	_party_roster.character_activated.connect(_on_character_activated)
@@ -679,14 +679,14 @@ func _build_menus() -> void:
 	])
 	_fill_menu($MenuStrip/MenuRow/AdventureMenu, [
 		{"label": "Explore", "route": &"exploration"},
-		{"label": "Search", "command": &"search_mode", "disabled_reason": _availability_reason(&"toggle_search")},
-		{"label": "Area Search", "command": &"area_search", "disabled_reason": _availability_reason(&"area_search")},
-		{"label": "Torch", "command": &"torch", "disabled_reason": _availability_reason(&"use_torch")},
-		{"label": "Camp", "command": &"camp", "disabled_reason": _availability_reason(&"camp")},
-		{"label": "Rest", "command": &"rest", "disabled_reason": _availability_reason(&"rest")},
-		{"label": "Heal", "command": &"heal", "disabled_reason": _availability_reason(&"heal")},
-		{"label": contextual_label, "command": &"contextual", "disabled_reason": _availability_reason(contextual_availability)},
-		{"label": "Money", "command": &"money", "disabled_reason": _availability_reason(&"money_action")},
+		{"label": "Search", "command": &"search_mode", "disabled_reason": availability_reason(&"toggle_search")},
+		{"label": "Area Search", "command": &"area_search", "disabled_reason": availability_reason(&"area_search")},
+		{"label": "Torch", "command": &"torch", "disabled_reason": availability_reason(&"use_torch")},
+		{"label": "Camp", "command": &"camp", "disabled_reason": availability_reason(&"camp")},
+		{"label": "Rest", "command": &"rest", "disabled_reason": availability_reason(&"rest")},
+		{"label": "Heal", "command": &"heal", "disabled_reason": availability_reason(&"heal")},
+		{"label": contextual_label, "command": &"contextual", "disabled_reason": availability_reason(contextual_availability)},
+		{"label": "Money", "command": &"money", "disabled_reason": availability_reason(&"money_action")},
 	])
 	_fill_menu($MenuStrip/MenuRow/CharacterMenu, [
 		{"label": "Party Order", "route": &"character"},
@@ -714,14 +714,14 @@ func _build_menus() -> void:
 	])
 	var compact_entries: Array[Dictionary] = [
 		{"label": "Adventure — Explore", "route": &"exploration"},
-		{"label": "Adventure — Search", "command": &"search_mode", "disabled_reason": _availability_reason(&"toggle_search")},
-		{"label": "Adventure — Area Search", "command": &"area_search", "disabled_reason": _availability_reason(&"area_search")},
-		{"label": "Adventure — Torch", "command": &"torch", "disabled_reason": _availability_reason(&"use_torch")},
-		{"label": "Adventure — Camp", "command": &"camp", "disabled_reason": _availability_reason(&"camp")},
-		{"label": "Adventure — Rest", "command": &"rest", "disabled_reason": _availability_reason(&"rest")},
-		{"label": "Adventure — Heal", "command": &"heal", "disabled_reason": _availability_reason(&"heal")},
-		{"label": "Adventure — %s" % contextual_label, "command": &"contextual", "disabled_reason": _availability_reason(contextual_availability)},
-		{"label": "Adventure — Money", "command": &"money", "disabled_reason": _availability_reason(&"money_action")},
+		{"label": "Adventure — Search", "command": &"search_mode", "disabled_reason": availability_reason(&"toggle_search")},
+		{"label": "Adventure — Area Search", "command": &"area_search", "disabled_reason": availability_reason(&"area_search")},
+		{"label": "Adventure — Torch", "command": &"torch", "disabled_reason": availability_reason(&"use_torch")},
+		{"label": "Adventure — Camp", "command": &"camp", "disabled_reason": availability_reason(&"camp")},
+		{"label": "Adventure — Rest", "command": &"rest", "disabled_reason": availability_reason(&"rest")},
+		{"label": "Adventure — Heal", "command": &"heal", "disabled_reason": availability_reason(&"heal")},
+		{"label": "Adventure — %s" % contextual_label, "command": &"contextual", "disabled_reason": availability_reason(contextual_availability)},
+		{"label": "Adventure — Money", "command": &"money", "disabled_reason": availability_reason(&"money_action")},
 		{"label": "Character — Party Order", "route": &"character"},
 		{"label": "Character — Character Sheets", "route": &"character"},
 		{"label": "Character — Inventory", "route": &"inventory"},
@@ -798,7 +798,7 @@ func _set_play_regions_visible(visible: bool) -> void:
 	play_stage_visibility_changed.emit(play_route)
 
 
-func _on_system_action_requested(action_id: StringName, value: Variant) -> void:
+func handle_system_action_requested(action_id: StringName, value: Variant) -> void:
 	match action_id:
 		&"save": save_requested.emit("quick" if value == null else String(value))
 		&"save_and_quit": save_and_quit_requested.emit("quick" if value == null else String(value))
@@ -878,7 +878,7 @@ func _present_event(event: DomainEvent) -> void:
 		&"character_age_changed":
 			var direction := int(event.payload.get("transition", 0))
 			var age_group := int(event.payload.get("ageGroup", 0))
-			var age_name := CharacterView._age_group_name(age_group)
+			var age_name := CharacterView.age_group_label(age_group)
 			var text := "%s has grown into the %s age group." % [event.payload.get("characterName", "A party member"), age_name] if direction > 0 else "%s has returned to the %s age group." % [event.payload.get("characterName", "A party member"), age_name]
 			set_status(text)
 			_append_narrative(text)
@@ -896,7 +896,7 @@ func _append_narrative(text: String) -> void:
 	_narrative.scroll_to_line(_narrative.get_line_count())
 
 
-func _availability_reason(action_id: StringName) -> String:
+func availability_reason(action_id: StringName) -> String:
 	if _current_view == null or not _current_view.session_started:
 		return "Begin a campaign first."
 	var availability := _current_view.availability(action_id)

@@ -249,7 +249,7 @@ static func from_data(data: Variant) -> BattlefieldState:
 		if not actor_id is String or actor_id.is_empty() or not result._monster_positions.has(actor_id) or size < 0 or size > 3:
 			return null
 		result._monster_sizes[actor_id] = size
-	if result._monster_sizes.size() != result._monster_positions.size() or not result._placements_are_valid():
+	if result._monster_sizes.size() != result._monster_positions.size() or not result.placements_are_valid():
 		return null
 	return result
 
@@ -269,7 +269,7 @@ static func footprint_cells(anchor: Vector2i, size: int) -> Array[Vector2i]:
 	return result
 
 
-func _placements_are_valid() -> bool:
+func placements_are_valid() -> bool:
 	var occupied: Dictionary = {}
 	for actor_id: Variant in _character_positions:
 		if _monster_positions.has(actor_id):

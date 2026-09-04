@@ -17,6 +17,7 @@ Own the pure transaction coordinator that joins Realmz game state and rules to t
 
 ## Local Contracts
 
+- Each typed `SessionContinuation` body implements the public `wire_payload` codec operation used by the owning envelope. Continuation callers use typed accessors and never invoke body-private serialization helpers.
 - This layer may depend on `src/game` and `src/scenarios`; neither lower layer may depend on `src/playthrough`.
 - All classes are pure `RefCounted` or value-like data. They never retain Nodes, repositories, presenters, or the owning application.
 - Workflow services receive an explicit ephemeral `SessionWorkflowContext`; they never retain the owning `GameSession`.

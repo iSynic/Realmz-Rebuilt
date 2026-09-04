@@ -14,6 +14,7 @@ Own the single session-constructed VM runtime API and explicit Classic opcode ha
 
 ## Local Contracts
 
+- `ScenarioRuntimeHandoff.caller_matches_source` is the public codec invariant used after decoding; handoff factories and codecs do not reach through another instance's private helpers.
 - Each Classic opcode has one owner. Registration rejects duplicate opcode IDs and VM-owned control-flow opcodes.
 - `RealmzRuntimeApi` may coordinate typed waits and resumes but must delegate source-backed domain mutation to a handler or shared game workflow/rule operation.
 - `ClassicServiceOperations` owns shop/temple/bank opcode execution, request projection, and continuation mutation. `ClassicBattleRewardOperations` is the opcode-facing facade over `ClassicBattleLifecycleOperations` and `ClassicRewardOperations`; the delegates respectively own battle startup/terminal handoff and reward/level continuation. Runtime API wrappers expose those operations to `GameSession` without duplicating their behavior.

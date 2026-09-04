@@ -113,7 +113,7 @@ func _populate_identity(character: CharacterState, content: RealmzContent, reusa
 	age_days = character.age_days
 	age_years = floori(float(character.age_days) / 365.0)
 	age_group = character.age_group
-	age_group_name = _age_group_name(age_group)
+	age_group_name = age_group_label(age_group)
 	race_id = character.race_id
 	caste_id = character.caste_id
 	race_name = race_id.replace("_", " ").replace("-", " ").capitalize()
@@ -217,7 +217,7 @@ func _populate_items_and_magic(character: CharacterState, content: RealmzContent
 		scrolls.assign(reusable.scrolls)
 		fast_spells.assign(reusable.fast_spells)
 	elif content != null:
-		_populate_magic(character, content, reusable if can_reuse_static else null)
+		populate_magic(character, content, reusable if can_reuse_static else null)
 	elif not can_reuse_static:
 		for index: int in character.fast_spells().size():
 			var binding := character.fast_spell_at(index)
@@ -237,7 +237,7 @@ static func refreshed_status(character: CharacterState, content: RealmzContent, 
 		rebuilt.apply_equipment(equipment)
 		return rebuilt
 	var result := CharacterView.new(null)
-	result._copy_from(previous)
+	result.copy_from(previous)
 	result.current_health = character.current_health
 	result.maximum_health = character.maximum_health
 	result.spell_points = character.spell_points
@@ -256,7 +256,7 @@ static func refreshed_status(character: CharacterState, content: RealmzContent, 
 			result.spells = []
 			result.scrolls = []
 			result.fast_spells = []
-			result._populate_magic(character, content, previous)
+			result.populate_magic(character, content, previous)
 		else:
 			# Affordability refreshes copy only the component arrays. The projector
 			# replaces the few spell/binding records whose threshold changed.
@@ -278,7 +278,7 @@ static func _equipment_sensitive_status_changed(previous: Array[int], current: A
 	return false
 
 
-func _copy_from(source: CharacterView) -> void:
+func copy_from(source: CharacterView) -> void:
 	id = source.id
 	name = source.name
 	current_health = source.current_health
@@ -351,7 +351,7 @@ func _copy_from(source: CharacterView) -> void:
 	fast_spells = source.fast_spells
 
 
-func _populate_magic(character: CharacterState, content: RealmzContent, reusable: CharacterView = null) -> void:
+func populate_magic(character: CharacterState, content: RealmzContent, reusable: CharacterView = null) -> void:
 	for spell_id: String in character.known_spells():
 		var definition := content.spell_by_id(spell_id)
 		if definition != null:
@@ -417,12 +417,12 @@ func _populate_race_details(race: RaceDefinition) -> void:
 	for band_index: int in 5:
 		var age_range := race.age_range(band_index)
 		var active := age_years >= age_range.x and age_years <= age_range.y
-		age_bands.append(CharacterAgeBandView.new(band_index + 1, _age_group_name(band_index + 1), age_range, active, race.age_change(band_index), AGE_CHANGE_NAMES))
+		age_bands.append(CharacterAgeBandView.new(band_index + 1, age_group_label(band_index + 1), age_range, active, race.age_change(band_index), AGE_CHANGE_NAMES))
 
 
 func _populate_caste_details(caste: CasteDefinition) -> void:
 	caste_traits = [
-		CharacterMetricView.new(&"minimum-age-group", 0, "Minimum Age Group", caste.minimum_age_group, _age_group_name(caste.minimum_age_group)),
+		CharacterMetricView.new(&"minimum-age-group", 0, "Minimum Age Group", caste.minimum_age_group, age_group_label(caste.minimum_age_group)),
 		CharacterMetricView.new(&"movement-bonus", 1, "Movement Bonus", caste.movement_bonus),
 		CharacterMetricView.new(&"magic-resistance-multiplier", 2, "Magic Resistance Multiplier", caste.magic_resistance_multiplier),
 		CharacterMetricView.new(&"two-hand", 3, "Two-Hand Bonus", caste.two_hand_bonus),
@@ -446,5 +446,5 @@ static func _label_at(labels: Array[String], index: int, fallback: String) -> St
 	return fallback if index < 0 or index >= labels.size() else labels[index]
 
 
-static func _age_group_name(group: int) -> String:
+static func age_group_label(group: int) -> String:
 	return CharacterAgingResult.age_group_name(group)

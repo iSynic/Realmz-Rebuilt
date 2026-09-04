@@ -482,7 +482,7 @@ func _begin_boat_choice(result: ExplorationTimeWorkflow.MovementTransitionResult
 	_context.session_interaction = InteractionRequest.from_payload("boat-choice:%s:%d" % [String(body.action), _context.next_revision()], &"yes_no", {"prompt": prompt, "yesLabel": yes_label, "noLabel": no_label})
 	var events := result.events.duplicate()
 	if body.action == &"disembark":
-		events.append(ExplorationTimeWorkflow._sound_event(-148, "classic-boat-shore"))
+		events.append(ExplorationTimeWorkflow.sound_event(-148, "classic-boat-shore"))
 	return _context.waiting(_context.session_interaction, events)
 
 

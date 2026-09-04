@@ -16,6 +16,7 @@ Own domain-oriented, presentation-independent operations invoked by the session 
 
 ## Local Contracts
 
+- `ExplorationTimeWorkflow.sound_event` is the shared source-tagged sound-event constructor for exploration coordinators; all other workflow helpers remain private unless another collaborator genuinely owns a call site.
 - Operations receive an ephemeral `SessionWorkflowContext` and never retain the session or context.
 - Registered Castle reads the Data SC aggregate maximum and then disables it before party selection. Rebuilt preserves that source field as package evidence but never enforces or presents it as a cap; only the independent Data RI per-character maximum may reject a character, with zero meaning uncapped.
 - Domain mutations use core rules and state; callers own transaction rollback, request IDs, revisions, pending interactions, and exact-once commit.

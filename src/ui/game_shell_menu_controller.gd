@@ -52,4 +52,4 @@ func _on_item_pressed(item_id: int, menu: MenuButton) -> void:
 	elif entry.has("command"):
 		owner._command_controller.activate(StringName(entry["command"]))
 	elif entry.has("system"):
-		owner._on_system_action_requested(StringName(entry["system"]), entry.get("value"))
+		owner.handle_system_action_requested(StringName(entry["system"]), entry.get("value"))

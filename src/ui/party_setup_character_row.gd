@@ -59,12 +59,12 @@ func configure(revision: CharacterVaultRevisionView, enabled: bool, reason: Stri
 	_prepare_drag_cursor(revision.revision_hash, portrait)
 	_portrait_view.texture = portrait
 	_portrait_view.tooltip_text = "%s's portrait" % revision.name
-	_summary.text = _summary_text(revision.name, revision.level, race_name, caste_name, revision.character)
+	_summary.text = summary_text(revision.name, revision.level, race_name, caste_name, revision.character)
 	_add_button.disabled = not enabled
 	_add_button.tooltip_text = tooltip_text
 
 
-static func _summary_text(character_name: String, level: int, race_name: String, caste_name: String, character: CharacterView = null, slot_number: int = 0) -> String:
+static func summary_text(character_name: String, level: int, race_name: String, caste_name: String, character: CharacterView = null, slot_number: int = 0) -> String:
 	var prefix := "%d. " % slot_number if slot_number > 0 else ""
 	var identity := "%s%s • L%d • %s / %s" % [prefix, character_name, level, race_name, caste_name]
 	if character == null:

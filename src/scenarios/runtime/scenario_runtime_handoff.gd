@@ -33,7 +33,7 @@ func copy() -> ScenarioRuntimeHandoff:
 
 
 func to_data() -> Dictionary:
-	if kind != PARTY_DEFEAT or battle_id.is_empty() or source_kind not in [CLASSIC_COMBAT, SAFE_COMBAT] or caller == null or not _caller_matches_source():
+	if kind != PARTY_DEFEAT or battle_id.is_empty() or source_kind not in [CLASSIC_COMBAT, SAFE_COMBAT] or caller == null or not caller_matches_source():
 		return {}
 	var caller_data := caller.to_data()
 	if caller_data.is_empty():
@@ -59,10 +59,10 @@ static func from_data(value: Variant) -> ScenarioRuntimeHandoff:
 	if parsed_caller == null:
 		return null
 	var result := party_defeat(data["battleId"], StringName(data["sourceKind"]), parsed_caller)
-	return result if result._caller_matches_source() else null
+	return result if result.caller_matches_source() else null
 
 
-func _caller_matches_source() -> bool:
+func caller_matches_source() -> bool:
 	if caller == null:
 		return false
 	return source_kind == SAFE_COMBAT and caller.kind == ScenarioBattleCaller.SAFE or source_kind == CLASSIC_COMBAT and caller.kind == ScenarioBattleCaller.CLASSIC

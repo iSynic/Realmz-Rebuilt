@@ -66,7 +66,7 @@ func configure(slot_index: int, character: CharacterView, portrait: Texture2D, c
 		_inspect.visible = false
 		_remove.visible = false
 		return
-	_summary.text = CharacterRow._summary_text(character.name, character.level, character.race_name, character.caste_name, character, slot_index + 1)
+	_summary.text = CharacterRow.summary_text(character.name, character.level, character.race_name, character.caste_name, character, slot_index + 1)
 	_summary.modulate = Color("e0e2e5")
 	_inspect.visible = true
 	_inspect.text = "View" if compact else "Inspect"

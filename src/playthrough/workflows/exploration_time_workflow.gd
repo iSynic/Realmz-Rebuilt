@@ -85,7 +85,7 @@ static func toggle_camp(context: SessionWorkflowContext) -> ClockTransitionResul
 		return ClockTransitionResult.failed(&"camping_disabled", "Camping is not allowed at this location.")
 	context.state.party_camping = not context.state.party_camping
 	var events: Array[DomainEvent] = [
-		_sound_event(10001 if context.state.party_camping else 141, "classic-camp-enter" if context.state.party_camping else "classic-camp-exit"),
+		sound_event(10001 if context.state.party_camping else 141, "classic-camp-enter" if context.state.party_camping else "classic-camp-exit"),
 		DomainEvent.new(&"camp_mode_changed", {"camping": context.state.party_camping, "source": "classic"}),
 	]
 	if context.state.party_camping:
@@ -147,7 +147,7 @@ static func heal(context: SessionWorkflowContext) -> ClockTransitionResult:
 	if map == null:
 		return ClockTransitionResult.failed(&"unknown_map", "The current map is unavailable for Heal.")
 	var previous_day := context.state.clock.day()
-	var events: Array[DomainEvent] = [_sound_event(10105, "classic-heal")]
+	var events: Array[DomainEvent] = [sound_event(10105, "classic-heal")]
 	events.append_array(context.rules.clock.advance_classic_field_time(context.state, context.content, 5 if map.level_type == &"dungeon" else 1, classic_time_scale(map), true))
 	return ClockTransitionResult.completed(map, events, true, context.state.clock.day() if context.state.clock.day() != previous_day else 0)
 
@@ -281,7 +281,7 @@ static func toggle_search(context: SessionWorkflowContext) -> SessionWorkflowRes
 	context.state.party.conditions.set_value(ConditionRules.PARTY_SEARCHING, -1 if searching else 0)
 	return SessionWorkflowResult.completed([
 		DomainEvent.new(&"search_mode_changed", {"searching": searching, "source": "classic"}),
-		_sound_event(141, "classic-search-mode"),
+		sound_event(141, "classic-search-mode"),
 	])
 
 
@@ -394,7 +394,7 @@ static func commit_blocked_attempt(context: SessionWorkflowContext, movement: Wo
 	blocked_events.assign(preceding_events)
 	blocked_events.append(DomainEvent.new(&"movement_blocked", {"reason": String(movement.reason)}))
 	if include_collision_sound and context.state.party_in_boat and movement.reason in [&"boat_shore", &"boat_terrain_blocked"]:
-		blocked_events.append(_sound_event(-148, "classic-boat-collision"))
+		blocked_events.append(sound_event(-148, "classic-boat-collision"))
 	append_movement_sound(blocked_events, movement)
 	var attempt_cost := blocked_land_attempt_cost(movement)
 	var searches_after_attempt := movement.source_map != null and movement.source_map.level_type == &"land"
@@ -455,10 +455,10 @@ static func append_movement_sound(events: Array[DomainEvent], movement: WorldMov
 		return
 	var sound_id := movement.topology_result.target_cell.movement_sound_id
 	if sound_id != 0:
-		events.append(_sound_event(sound_id, "classic-map-movement"))
+		events.append(sound_event(sound_id, "classic-map-movement"))
 
 
-static func _sound_event(sound_id: int, source: String) -> DomainEvent:
+static func sound_event(sound_id: int, source: String) -> DomainEvent:
 	return DomainEvent.new(&"sound_requested", {"soundId": sound_id, "waitForCompletion": false, "source": source})
 
 
