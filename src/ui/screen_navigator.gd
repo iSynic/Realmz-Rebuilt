@@ -24,6 +24,9 @@ const WORKSPACE_OPEN_SOUND_IDS: Dictionary = {
 	&"spells": 20002,
 }
 
+@export_file("*.tscn") var message_label_scene_path := "res://src/ui/screens/screen_message_label.tscn"
+@export_file("*.tscn") var summary_card_scene_path := "res://src/ui/screens/screen_summary_card.tscn"
+
 var _view: GameView
 var _screen_id: StringName = &"exploration"
 var _body_scroll: ScrollContainer
@@ -87,6 +90,7 @@ func initialize() -> void:
 	if _initialized:
 		return
 	_initialized = true
+	_screen_content_presenter.set_component_scene_paths(message_label_scene_path, summary_card_scene_path)
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	# The router spans the window for layout only. Its panels and workspace own
 	# input; the router itself must not cover menus or other shell controls.
@@ -110,19 +114,8 @@ func set_startup_splash_enabled(enabled: bool) -> void:
 
 func _ensure_hosts() -> void:
 	_workspace_host = get_node_or_null("WorkspaceHost") as Control
-	if _workspace_host == null:
-		_workspace_host = Control.new()
-		_workspace_host.name = "WorkspaceHost"
-		_workspace_host.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		_workspace_host.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		add_child(_workspace_host)
 	_overlay_host = get_node_or_null("OverlayHost") as Control
-	if _overlay_host == null:
-		_overlay_host = Control.new()
-		_overlay_host.name = "OverlayHost"
-		_overlay_host.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		_overlay_host.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		add_child(_overlay_host)
+	assert(_workspace_host != null and _overlay_host != null, "ScreenNavigator must be instantiated from its authored scene")
 
 
 func present(view: GameView) -> void:

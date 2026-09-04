@@ -188,19 +188,6 @@ func _focus_first(parent: Node) -> void:
 		if focus_owner != null and parent.is_ancestor_of(focus_owner):
 			return
 
-func _label(text: String, color: Color = Color.WHITE, size: int = 15) -> Label:
-	var label := Label.new()
-	label.text = text
-	label.add_theme_color_override("font_color", color)
-	label.add_theme_font_size_override("font_size", int(round(float(size) * settings.text_scale)))
-	return label
-
-func _add_label(parent: Container, text: String, color: Color = Color.WHITE, size: int = 15) -> Label:
-	var label := _label(text, color, size)
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	parent.add_child(label)
-	return label
-
 func _clear(parent: Node) -> void:
 	if parent == null:
 		return

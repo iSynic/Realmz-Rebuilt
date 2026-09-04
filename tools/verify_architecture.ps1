@@ -451,13 +451,22 @@ if (Test-Path -LiteralPath $screenNavigatorPath) {
 }
 
 $gameShellScenePath = Join-Path $repoRoot "src\ui\game_shell.tscn"
+$screenNavigatorScenePath = Join-Path $repoRoot "src\ui\screen_navigator.tscn"
 if (Test-Path -LiteralPath $gameShellScenePath) {
     $gameShellScene = [IO.File]::ReadAllText($gameShellScenePath)
+    if ($gameShellScene -notmatch '\[ext_resource\s+type="PackedScene"\s+path="res://src/ui/screen_navigator\.tscn"') {
+        $violations += "src/ui/game_shell.tscn must instance the authored src/ui/screen_navigator.tscn presentation host"
+    }
+}
+if (Test-Path -LiteralPath $screenNavigatorScenePath) {
+    $screenNavigatorScene = [IO.File]::ReadAllText($screenNavigatorScenePath)
     foreach ($requiredHost in @('WorkspaceHost', 'OverlayHost')) {
-        if ($gameShellScene -notmatch ('\[node\s+name="' + [regex]::Escape($requiredHost) + '"\s+type="Control"\s+parent="ScreenNavigator"\]')) {
-            $violations += "src/ui/game_shell.tscn must provide ScreenNavigator/$requiredHost as an explicit scene-owned presentation host"
+        if ($screenNavigatorScene -notmatch ('\[node\s+name="' + [regex]::Escape($requiredHost) + '"\s+type="Control"\s+parent="\."\]')) {
+            $violations += "src/ui/screen_navigator.tscn must provide $requiredHost as an explicit scene-owned presentation host"
         }
     }
+} else {
+    $violations += "src/ui/screen_navigator.tscn must own the navigation presentation hosts"
 }
 
 # Typed request bodies may become dictionaries only at their wire serializer or

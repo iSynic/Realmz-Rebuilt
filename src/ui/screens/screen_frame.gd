@@ -59,34 +59,16 @@ func _configure_navigation() -> void:
 	action.text = "Back"
 	if route_id != &"spells":
 		return
-	if find_child("WorkspaceFooter", true, false) != null:
-		return
-	var footer := Control.new()
-	footer.name = "WorkspaceFooter"
-	footer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(footer)
-	action.owner = null
-	action.reparent(footer)
-	action.owner = self
-	action.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	var footer := find_child("WorkspaceFooter", true, false) as Control
+	var back_host := find_child("SpellsBackHost", true, false) as Container
+	assert(footer != null and back_host != null, "The Spells route requires its authored footer and Back host")
+	if action.get_parent() != back_host:
+		action.owner = null
+		action.reparent(back_host)
+		action.owner = self
 	var navigation_size := Vector2(82.0, 34.0)
-	action.offset_left = -navigation_size.x - 8.0
-	action.offset_top = -navigation_size.y - 8.0
-	action.offset_right = -8.0
-	action.offset_bottom = -8.0
-	if route_id == &"spells":
-		var context_actions := HBoxContainer.new()
-		context_actions.name = "WorkspaceContextActions"
-		context_actions.add_theme_constant_override("separation", 5)
-		context_actions.anchor_left = 0.0
-		context_actions.anchor_top = 1.0
-		context_actions.anchor_right = 1.0
-		context_actions.anchor_bottom = 1.0
-		context_actions.offset_left = 8.0
-		context_actions.offset_top = -navigation_size.y - 8.0
-		context_actions.offset_right = -navigation_size.x - 14.0
-		context_actions.offset_bottom = -8.0
-		footer.add_child(context_actions)
+	action.custom_minimum_size = navigation_size
+	action.size_flags_horizontal = Control.SIZE_SHRINK_END
 	var body_scroll := scroll
 	if body_scroll == null:
 		body_scroll = get_node("WorkspaceColumn/BodyClip/ScreenBodyScroll") as ScrollContainer

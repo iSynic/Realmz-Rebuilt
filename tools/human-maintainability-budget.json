@@ -17,39 +17,11 @@
       "functions": ["_build_viewport"]
     },
     {
-      "path": "src/ui/controllers/campaign_party_setup_state.gd",
-      "kind": "data-collection",
-      "reason": "This helper creates value labels only while projecting variable party-setup facts.",
-      "currentMaximum": 1,
-      "functions": ["_label"]
-    },
-    {
-      "path": "src/ui/controllers/screen_content_presenter.gd",
-      "kind": "data-collection",
-      "reason": "Shared cards and labels are emitted only while binding changing detached screen content.",
-      "currentMaximum": 3,
-      "functions": ["_add_card", "_add_label"]
-    },
-    {
       "path": "src/ui/dungeon_map_3d_presenter.gd",
       "kind": "algorithmic-surface",
       "reason": "The first-person dungeon creates a render-target display paired with its generated three-dimensional scene.",
       "currentMaximum": 1,
       "functions": ["_ready"]
-    },
-    {
-      "path": "src/ui/screen_navigator.gd",
-      "kind": "conditional-chrome",
-      "reason": "The navigator supplies mount hosts only when embedded without the application shell's authored host nodes.",
-      "currentMaximum": 2,
-      "functions": ["_ensure_hosts"]
-    },
-    {
-      "path": "src/ui/screens/screen_frame.gd",
-      "kind": "conditional-chrome",
-      "reason": "A route frame adds navigation chrome only when its scene declares a Back label and destination.",
-      "currentMaximum": 2,
-      "functions": ["_configure_navigation"]
     }
   ],
   "missingPurposeHeaders": {

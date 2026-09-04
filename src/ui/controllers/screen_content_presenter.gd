@@ -30,6 +30,13 @@ var _services_controller := ServicesScreenController.new()
 var _maps_journal_controller := MapsJournalScreenController.new()
 var _spells_controller := SpellsScreenController.new()
 var _creature_library_controller := CREATURE_LIBRARY_CONTROLLER.new()
+var _message_label_scene_path := "res://src/ui/screens/screen_message_label.tscn"
+var _summary_card_scene_path := "res://src/ui/screens/screen_summary_card.tscn"
+
+
+func set_component_scene_paths(message_label_path: String, summary_card_path: String) -> void:
+	_message_label_scene_path = message_label_path
+	_summary_card_scene_path = summary_card_path
 
 
 func set_layout_profile(profile_id: StringName) -> void:
@@ -263,26 +270,24 @@ func present(screen_id: StringName, screen: ScreenFrame, appearance_textures: Di
 
 
 func _add_card(parent: Container, title: String, subtitle: String, detail: String) -> void:
-	var panel := PanelContainer.new()
-	panel.theme_type_variation = &"ClassicInset"
-	panel.custom_minimum_size.x = 280.0
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 3)
-	panel.add_child(box)
-	_add_label(box, title, Color("e7d078"), 17)
-	_add_label(box, subtitle, Color("e0e2e5"))
-	if not detail.is_empty():
-		_add_label(box, detail, MUTED)
+	var panel := (load(_summary_card_scene_path) as PackedScene).instantiate() as PanelContainer
+	var title_label := panel.get_node("SummaryContent/SummaryTitle") as Label
+	var subtitle_label := panel.get_node("SummaryContent/SummarySubtitle") as Label
+	var detail_label := panel.get_node("SummaryContent/SummaryDetail") as Label
+	title_label.text = title
+	subtitle_label.text = subtitle
+	detail_label.text = detail
+	detail_label.visible = not detail.is_empty()
+	for label: Label in [title_label, subtitle_label, detail_label]:
+		label.add_theme_font_size_override("font_size", int(round(float(label.get_theme_font_size("font_size")) * _settings.text_scale)))
 	parent.add_child(panel)
 
 
 func _add_label(parent: Container, text: String, color: Color = Color.WHITE, size: int = 15) -> Label:
-	var label := Label.new()
+	var label := (load(_message_label_scene_path) as PackedScene).instantiate() as Label
 	label.text = text
 	label.add_theme_color_override("font_color", color)
 	label.add_theme_font_size_override("font_size", int(round(float(size) * _settings.text_scale)))
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	parent.add_child(label)
 	return label
 

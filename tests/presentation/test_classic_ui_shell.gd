@@ -51,7 +51,7 @@ func _test_classic_click_modal() -> void:
 
 
 func _test_startup_party_setup_composition() -> void:
-	var router := ScreenNavigator.new()
+	var router := instantiate_ui_scene("res://src/ui/screen_navigator.tscn") as ScreenNavigator
 	(Engine.get_main_loop() as SceneTree).root.add_child(router)
 	router.initialize()
 	var profile := UiLayoutProfile.for_viewport(Vector2(1280, 720), PresentationSettings.UI_SCALE_AUTO)
@@ -86,7 +86,7 @@ func _test_startup_party_setup_composition() -> void:
 
 
 func _test_package_operation_presentation() -> void:
-	var router := ScreenNavigator.new()
+	var router := instantiate_ui_scene("res://src/ui/screen_navigator.tscn") as ScreenNavigator
 	(Engine.get_main_loop() as SceneTree).root.add_child(router)
 	router.initialize()
 	var canceled := [0]
@@ -104,7 +104,7 @@ func _test_package_operation_presentation() -> void:
 
 
 func _test_primary_workspace_lifecycle() -> void:
-	var router := ScreenNavigator.new(); (Engine.get_main_loop() as SceneTree).root.add_child(router)
+	var router := instantiate_ui_scene("res://src/ui/screen_navigator.tscn") as ScreenNavigator; (Engine.get_main_loop() as SceneTree).root.add_child(router)
 	router.initialize()
 	var view := GameView.new(1, true, null)
 	view.campaign_id = "workspace-fixture"
