@@ -12,11 +12,11 @@ const MAXIMUM_MODAL_Z_INDEX := CampaignPartySetupState.MAXIMUM_MODAL_Z_INDEX
 var _state: RefCounted
 
 var _campaign_library:
-	get: return _state._campaign_library
+	get: return _state.campaign_library
 var _host: Control:
-	get: return _state._host
+	get: return _state.host
 var _appearance_textures: Dictionary:
-	get: return _state._appearance_textures
+	get: return _state.appearance_textures
 var campaign_overlay: PanelContainer:
 	get: return _state.campaign_overlay
 var setup_overlay: PanelContainer:
@@ -238,35 +238,27 @@ func attach(host: Control) -> void:
 
 
 func _ensure_appearance_textures(requested_asset_ids: Array[String] = []) -> void:
-	_state._ensure_appearance_textures(requested_asset_ids)
+	_state.ensure_appearance_textures(requested_asset_ids)
 
 
 func _apply_availability(button: BaseButton, action_id: StringName) -> void:
-	_state._apply_availability(button, action_id)
+	_state.apply_availability(button, action_id)
 
 
 func _select_option_metadata(option: OptionButton, value: int) -> void:
-	_state._select_option_metadata(option, value)
+	_state.select_option_metadata(option, value)
 
 
 func _focus_first(parent: Node) -> void:
-	_state._focus_first(parent)
+	_state.focus_first(parent)
 
 
 func focus_first(parent: Node) -> void:
-	_state._focus_first(parent)
-
-
-func _label(text: String, color: Color = Color.WHITE, size: int = 15) -> Label:
-	return _state._label(text, color, size)
-
-
-func _add_label(parent: Container, text: String, color: Color = Color.WHITE, size: int = 15) -> Label:
-	return _state._add_label(parent, text, color, size)
+	_state.focus_first(parent)
 
 
 func _clear(parent: Node) -> void:
-	_state._clear(parent)
+	_state.clear_children(parent)
 
 
 func _clear_creator_page() -> void:

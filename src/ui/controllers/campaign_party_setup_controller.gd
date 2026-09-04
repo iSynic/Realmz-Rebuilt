@@ -52,7 +52,7 @@ func build_setup_overlay() -> void:
 	if campaign_overlay == null:
 		build_campaign_overlay()
 	_bind_setup_workspace()
-	_inspection._build_setup_character_inspection()
+	_inspection.build_setup_character_inspection()
 	_creation.render_creator_step()
 
 
@@ -87,28 +87,28 @@ func _bind_setup_workspace() -> void:
 	_clear(creator_page)
 	party_list = setup_overlay.get_node("%PartySlots") as VBoxContainer
 	party_list.set_script(PartySetupPartyList)
-	party_list.import_requested.connect(_assembly._import_stored_character)
+	party_list.import_requested.connect(_assembly.import_stored_character)
 	setup_message = setup_overlay.get_node("%SetupMessage") as Label
 	party_setup_options = setup_overlay.get_node("%PartySetupOptions") as VBoxContainer
 	party_guidance_label = setup_overlay.get_node("%PartyLevelGuidance") as Label
 	monster_set_option = setup_overlay.get_node("%MonsterSetOption") as OptionButton
-	monster_set_option.item_selected.connect(_assembly._party_setup_option_changed)
+	monster_set_option.item_selected.connect(_assembly.party_setup_option_changed)
 	difficulty_option = setup_overlay.get_node("%DifficultyOption") as OptionButton
 	for value: int in range(-2, 3):
 		difficulty_option.add_item(PartySetupView.difficulty_name(value))
 		difficulty_option.set_item_metadata(difficulty_option.item_count - 1, value)
-	difficulty_option.item_selected.connect(_assembly._party_setup_option_changed)
+	difficulty_option.item_selected.connect(_assembly.party_setup_option_changed)
 	creator_action_bar = setup_overlay.get_node("%CreatorActionBar") as HBoxContainer
 	creator_cancel_button = setup_overlay.get_node("%CreatorCancel") as Button
-	creator_cancel_button.pressed.connect(_creation._cancel_creator)
+	creator_cancel_button.pressed.connect(_creation.cancel_creator)
 	creator_back_button = setup_overlay.get_node("%CreatorBack") as Button
 	creator_back_button.pressed.connect(_creation.creator_back)
 	add_character_button = setup_overlay.get_node("%RerollCharacter") as Button
-	add_character_button.pressed.connect(_creation._reroll_character)
+	add_character_button.pressed.connect(_creation.reroll_character)
 	creator_next_button = setup_overlay.get_node("%CreatorNext") as Button
 	creator_next_button.pressed.connect(_creation.creator_next)
 	create_character_button = setup_overlay.get_node("%CreateCharacter") as Button
-	create_character_button.pressed.connect(_creation._start_creator)
+	create_character_button.pressed.connect(_creation.start_creator)
 	var load_adventure := setup_overlay.get_node("%LoadSavedAdventure") as Button
 	load_adventure.pressed.connect(func() -> void: _state.load_saved_adventure_requested.emit())
 	begin_button = setup_overlay.get_node("%BeginAdventure") as Button
@@ -157,7 +157,7 @@ func apply_layout(profile: UiLayoutProfile, campaign_rect: Rect2, setup_rect: Re
 		return
 	layout_profile = profile.id
 	setup_layout_rect = setup_rect
-	_creation._apply_creator_layout(profile.id)
+	_creation.apply_creator_layout(profile.id)
 	_state.apply_setup_mode_layout()
 	if creator_scroll != null:
 		creator_scroll.custom_minimum_size.y = 140.0 if profile.id == UiLayoutProfile.COMPACT else 220.0
@@ -248,7 +248,7 @@ func present(next_view: GameView) -> void:
 	if setup_overlay != null:
 		_creation.refresh_setup_options()
 		if setup_overlay.visible and not setup_inspection_character_id.is_empty():
-			_inspection._render_setup_character_inspection()
+			_inspection.render_setup_character_inspection()
 
 
 func set_presentation_settings(next_settings: PresentationSettings) -> void:

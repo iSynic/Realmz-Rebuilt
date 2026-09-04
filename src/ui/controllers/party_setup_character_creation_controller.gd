@@ -51,8 +51,8 @@ func refresh_setup_options() -> void:
 	if view == null or not view.party_setup_available:
 		_campaign_library.set_selected_campaign_summary(null)
 		campaign_overlay.tooltip_text = "Select an installed scenario to assemble a party."
-		_assembly._refresh_party_list()
-		_assembly._refresh_party_setup_options()
+		_assembly.refresh_party_list()
+		_assembly.refresh_party_setup_options()
 		render_creator_step()
 		return
 	var summary := view.campaign_summary
@@ -72,11 +72,11 @@ func refresh_setup_options() -> void:
 		campaign_overlay.tooltip_text = "%s\n%s\n%s" % [" • ".join(title_parts), restriction_text, limits]
 	else:
 		campaign_overlay.tooltip_text = "The selected scenario has no campaign summary metadata."
-	_assembly._refresh_party_list()
-	_assembly._refresh_party_setup_options()
+	_assembly.refresh_party_list()
+	_assembly.refresh_party_setup_options()
 	var setup_count := view.party_members.size()
 	_apply_availability(begin_button, &"begin_adventure")
-	begin_button.text = "Begin adventure (%d/%d)" % [setup_count, _assembly._maximum_party_size()]
+	begin_button.text = "Begin adventure (%d/%d)" % [setup_count, _assembly.maximum_party_size()]
 	render_creator_step()
 
 func render_creator_step() -> void:
@@ -84,7 +84,7 @@ func render_creator_step() -> void:
 		return
 	_state.apply_setup_mode_layout()
 	if setup_mode == &"assembly":
-		_assembly._render_party_assembly()
+		_assembly.render_party_assembly()
 		return
 	create_character_button.visible = false
 	begin_button.visible = false
@@ -388,8 +388,8 @@ func creator_next() -> void:
 				return
 			creator_step = 2
 		2:
-			if view != null and view.party_members.size() >= _assembly._maximum_party_size():
-				_show_creator_error("This campaign allows no more than %d characters." % _assembly._maximum_party_size())
+			if view != null and view.party_members.size() >= _assembly.maximum_party_size():
+				_show_creator_error("This campaign allows no more than %d characters." % _assembly.maximum_party_size())
 				return
 			var portrait_value := _selected_appearance(portrait_option, true)
 			var combat_icon_value := _selected_appearance(combat_icon_option, false)
@@ -430,7 +430,7 @@ func creator_back() -> void:
 	setup_message.text = _creator_step_message()
 	render_creator_step()
 
-func _cancel_creator() -> void:
+func cancel_creator() -> void:
 	var had_generated_draft := view != null and view.character_draft != null
 	reset_creator(true)
 	if had_generated_draft:
@@ -457,7 +457,7 @@ func reset_creator(return_to_assembly: bool = false) -> void:
 	if setup_message != null:
 		setup_message.text = "Choose stored characters or create a new one." if setup_mode == &"assembly" else "Enter a name to begin creating another character."
 
-func _reroll_character() -> void:
+func reroll_character() -> void:
 	if creator_step != 3 or view == null or view.character_draft == null:
 		return
 	awaiting_draft_generation = true
@@ -559,7 +559,7 @@ func _rebuild_caste_options() -> void:
 		selected_caste_id = caste_list.first_enabled_id()
 	caste_list.select_id(selected_caste_id)
 
-func _start_creator() -> void:
+func start_creator() -> void:
 	if view == null or not view.party_setup_available:
 		if standalone_character_creation_available:
 			_state.standalone_character_creation_requested.emit()
@@ -580,10 +580,7 @@ func _update_creator_review() -> void:
 	review_label.text = ""
 	review_label.visible = false
 
-func _apply_creator_layout(profile_id: StringName) -> void:
+func apply_creator_layout(profile_id: StringName) -> void:
 	if creator != null:
 		creator.vertical = profile_id == UiLayoutProfile.COMPACT
 	_state.apply_setup_mode_layout()
-
-func apply_creator_layout(profile_id: StringName) -> void:
-	_apply_creator_layout(profile_id)

@@ -14,35 +14,35 @@ const MUTED := Color("9aa0a8")
 const ERROR := Color("ef7770")
 const MAXIMUM_MODAL_Z_INDEX: int = CampaignLibraryController.MAXIMUM_MODAL_Z_INDEX
 
-var _campaign_library := CampaignLibraryController.new()
+var campaign_library := CampaignLibraryController.new()
 var campaign_overlay: PanelContainer:
 	get:
-		return _campaign_library.campaign_overlay
+		return campaign_library.campaign_overlay
 var setup_overlay: PanelContainer
 var splash_overlay: PanelContainer:
 	get:
-		return _campaign_library.splash_overlay
+		return campaign_library.splash_overlay
 var campaign_list: VBoxContainer:
 	get:
-		return _campaign_library.campaign_list
+		return campaign_library.campaign_list
 var campaign_scroll: ScrollContainer:
 	get:
-		return _campaign_library.campaign_scroll
+		return campaign_library.campaign_scroll
 var campaigns: Array[CampaignPackageView]:
 	get:
-		return _campaign_library.campaigns
+		return campaign_library.campaigns
 	set(value):
-		_campaign_library.set_campaigns(value)
+		campaign_library.set_campaigns(value)
 var package_operation_status: RefCounted:
 	get:
-		return _campaign_library.package_operation_status
+		return campaign_library.package_operation_status
 	set(value):
-		_campaign_library.set_package_operation(value)
+		campaign_library.set_package_operation(value)
 var campaign_layout_rect: Rect2:
 	get:
-		return _campaign_library.campaign_layout_rect
+		return campaign_library.campaign_layout_rect
 	set(value):
-		_campaign_library.campaign_layout_rect = value
+		campaign_library.campaign_layout_rect = value
 var setup_body: HBoxContainer
 var character_pane: PanelContainer
 var party_pane: PanelContainer
@@ -111,8 +111,8 @@ var standalone_character_creation_reason: String = "The Classic character librar
 var standalone_character_creation_active: bool = false
 var setup_layout_rect := Rect2(12.0, 36.0, 936.0, 556.0)
 
-var _host: Control
-var _appearance_textures: Dictionary = {}
+var host: Control
+var appearance_textures: Dictionary = {}
 
 func apply_setup_mode_layout() -> void:
 	if setup_body == null or character_pane == null or party_pane == null:
@@ -136,10 +136,10 @@ func apply_setup_mode_layout() -> void:
 	party_pane.size_flags_stretch_ratio = 1.0 if creator_active else 1.15
 
 func attach(host: Control) -> void:
-	_host = host
-	_campaign_library.attach(host)
+	self.host = host
+	campaign_library.attach(host)
 
-func _ensure_appearance_textures(requested_asset_ids: Array[String] = []) -> void:
+func ensure_appearance_textures(requested_asset_ids: Array[String] = []) -> void:
 	if media == null:
 		return
 	var asset_ids: Array[String] = requested_asset_ids.duplicate()
@@ -150,42 +150,42 @@ func _ensure_appearance_textures(requested_asset_ids: Array[String] = []) -> voi
 			if not character.combat_icon_id.is_empty() and not asset_ids.has(character.combat_icon_id):
 				asset_ids.append(character.combat_icon_id)
 	for asset_id: String in asset_ids:
-		if asset_id.is_empty() or _appearance_textures.has(asset_id):
+		if asset_id.is_empty() or appearance_textures.has(asset_id):
 			continue
 		var asset := media.asset_by_id(asset_id)
 		if asset == null:
 			continue
-		if _appearance_textures.has(asset.id):
+		if appearance_textures.has(asset.id):
 			continue
 		var texture := media.image_texture(asset)
 		if texture != null:
-			_appearance_textures[asset.id] = texture
+			appearance_textures[asset.id] = texture
 
-func _apply_availability(button: BaseButton, action_id: StringName) -> void:
+func apply_availability(button: BaseButton, action_id: StringName) -> void:
 	var availability := view.availability(action_id) if view != null else ActionAvailabilityView.new(action_id, false, "No active session.")
 	button.disabled = not availability.enabled
 	button.tooltip_text = availability.reason if not availability.enabled else ""
 
-static func _select_option_metadata(option: OptionButton, value: int) -> void:
+static func select_option_metadata(option: OptionButton, value: int) -> void:
 	for index: int in option.item_count:
 		if int(option.get_item_metadata(index)) == value:
 			option.select(index)
 			return
 
-func _focus_first(parent: Node) -> void:
+func focus_first(parent: Node) -> void:
 	for child: Node in parent.get_children():
 		if child is Control:
 			var control := child as Control
 			if control.is_inside_tree() and control.visible and control.focus_mode != Control.FOCUS_NONE and not (control is BaseButton and (control as BaseButton).disabled):
 				control.grab_focus()
 				return
-		_focus_first(child)
-		var viewport := _host.get_viewport() if _host != null else null
+		focus_first(child)
+		var viewport := host.get_viewport() if host != null else null
 		var focus_owner := viewport.gui_get_focus_owner() if viewport != null else null
 		if focus_owner != null and parent.is_ancestor_of(focus_owner):
 			return
 
-func _clear(parent: Node) -> void:
+func clear_children(parent: Node) -> void:
 	if parent == null:
 		return
 	for child: Node in parent.get_children():

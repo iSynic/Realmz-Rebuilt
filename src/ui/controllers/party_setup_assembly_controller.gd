@@ -20,21 +20,21 @@ func _init(state: RefCounted, inspection: RefCounted) -> void:
 	_inspection = inspection
 
 
-func _inspect_setup_character(character_id: String) -> void:
-	_inspection._inspect_setup_character(character_id)
+func inspect_setup_character(character_id: String) -> void:
+	_inspection.inspect_setup_character(character_id)
 
-func _refresh_party_list() -> void:
+func refresh_party_list() -> void:
 	if party_list == null:
 		return
 	_ensure_party_slots()
 	_ensure_appearance_textures()
-	var import_available: bool = view != null and view.availability(&"import_vault_character").enabled and view.party_members.size() < _maximum_party_size()
+	var import_available: bool = view != null and view.availability(&"import_vault_character").enabled and view.party_members.size() < maximum_party_size()
 	var import_reason := "" if import_available else "The party cannot accept another stored character right now."
 	party_list.configure_drop_target(import_available, import_reason)
 	var party_count := setup_overlay.find_child("PartyCount", true, false) as Label
 	if party_count != null:
-		party_count.text = "• %d / %d" % [view.party_members.size() if view != null else 0, _maximum_party_size()]
-	for slot_index: int in _maximum_party_size():
+		party_count.text = "• %d / %d" % [view.party_members.size() if view != null else 0, maximum_party_size()]
+	for slot_index: int in maximum_party_size():
 		var character: CharacterView = view.party_members[slot_index] if view != null and view.party_setup_available and slot_index < view.party_members.size() else null
 		var portrait: Texture2D = (_appearance_textures.get(character.portrait_id) as Texture2D) if character != null else null
 		var remove_availability := view.availability(&"remove_party_member") if view != null else ActionAvailabilityView.new(&"remove_party_member", false, "No active setup.")
@@ -42,27 +42,27 @@ func _refresh_party_list() -> void:
 
 
 func _ensure_party_slots() -> void:
-	if _party_slots_owner == party_list and _party_slots.size() == _maximum_party_size():
+	if _party_slots_owner == party_list and _party_slots.size() == maximum_party_size():
 		return
 	_clear(party_list)
 	_party_slots.clear()
 	_party_slots_owner = party_list
-	for slot_index: int in _maximum_party_size():
+	for slot_index: int in maximum_party_size():
 		var slot := (load(PARTY_SLOT_SCENE_PATH) as PackedScene).instantiate() as PartySetupPartySlot
 		slot.name = "PartySlot%d" % (slot_index + 1)
-		slot.inspect_requested.connect(_inspect_setup_character)
+		slot.inspect_requested.connect(inspect_setup_character)
 		slot.remove_requested.connect(_remove_setup_character)
 		party_list.add_child(slot)
 		_party_slots.append(slot)
 
-func _render_party_assembly() -> void:
+func render_party_assembly() -> void:
 	var campaign_setup := view != null and view.party_setup_available and not standalone_character_creation_active
-	var party_full := campaign_setup and view.party_members.size() >= _maximum_party_size()
+	var party_full := campaign_setup and view.party_members.size() >= maximum_party_size()
 	create_character_button.visible = true
 	begin_button.visible = true
 	create_character_button.disabled = party_full or (not campaign_setup and not standalone_character_creation_available)
 	if party_full:
-		create_character_button.tooltip_text = "This party already has %d characters." % _maximum_party_size()
+		create_character_button.tooltip_text = "This party already has %d characters." % maximum_party_size()
 	elif campaign_setup:
 		create_character_button.tooltip_text = "Create a character using this scenario's standard or custom race and class definitions."
 	elif standalone_character_creation_available:
@@ -108,7 +108,7 @@ func _render_party_assembly() -> void:
 		elif not global_available.enabled:
 			reason = global_available.reason
 		elif party_full:
-			reason = "This party already has %d characters." % _maximum_party_size()
+			reason = "This party already has %d characters." % maximum_party_size()
 		var row_scene := _assembly_browser.get("character_row_scene") as PackedScene
 		var row := row_scene.instantiate() as PartySetupCharacterRow
 		row.name = "StoredCharacter_%s" % revision.character_id.validate_node_name()
@@ -116,7 +116,7 @@ func _render_party_assembly() -> void:
 		var portrait_id := revision.character.portrait_id if revision.character != null else revision.portrait_id
 		var portrait := _appearance_textures.get(portrait_id) as Texture2D
 		row.configure(revision, campaign_setup and revision.eligible and global_available.enabled and not party_full, reason, portrait)
-		row.import_requested.connect(_import_stored_character)
+		row.import_requested.connect(import_stored_character)
 	_add_stored_character_pager(current_revisions.size())
 
 
@@ -139,7 +139,7 @@ func _refresh_stored_character_rows(current_revisions: Array[CharacterVaultRevis
 		elif not global_available.enabled:
 			reason = global_available.reason
 		elif party_full:
-			reason = "This party already has %d characters." % _maximum_party_size()
+			reason = "This party already has %d characters." % maximum_party_size()
 		var portrait_id := revision.character.portrait_id if revision.character != null else revision.portrait_id
 		row.configure(revision, campaign_setup and revision.eligible and global_available.enabled and not party_full, reason, _appearance_textures.get(portrait_id) as Texture2D)
 
@@ -180,7 +180,7 @@ func _add_stored_character_pager(item_count: int) -> void:
 func _change_stored_character_page(offset: int) -> void:
 	_stored_character_page += offset
 	_stored_revision_signature = ""
-	_render_party_assembly()
+	render_party_assembly()
 
 
 static func _vault_signature(revisions: Array[CharacterVaultRevisionView]) -> String:
@@ -189,10 +189,7 @@ static func _vault_signature(revisions: Array[CharacterVaultRevisionView]) -> St
 		parts.append("%s:%s" % [revision.character_id, revision.revision_hash])
 	return "|".join(parts)
 
-func render_party_assembly() -> void:
-	_render_party_assembly()
-
-func _refresh_party_setup_options() -> void:
+func refresh_party_setup_options() -> void:
 	if difficulty_option == null:
 		return
 	if view == null or not view.party_setup_available or view.party_setup == null:
@@ -223,15 +220,12 @@ func _refresh_party_setup_options() -> void:
 	if experience_ratio != null:
 		experience_ratio.text = "Experience gained at %s" % gained
 
-func _party_setup_option_changed(_index: int) -> void:
+func party_setup_option_changed(_index: int) -> void:
 	if view == null or view.party_setup == null:
 		return
 	var difficulty := int(difficulty_option.get_item_metadata(difficulty_option.selected))
 	var monster_set := int(monster_set_option.get_item_metadata(monster_set_option.selected))
 	_state.intent_submitted.emit(PlayerIntent.set_party_setup_options(difficulty, monster_set))
-
-func party_setup_option_changed(index: int) -> void:
-	_party_setup_option_changed(index)
 
 func _current_vault_revisions() -> Array[CharacterVaultRevisionView]:
 	var current_revisions: Array[CharacterVaultRevisionView] = []
@@ -241,7 +235,7 @@ func _current_vault_revisions() -> Array[CharacterVaultRevisionView]:
 	current_revisions.sort_custom(func(left: CharacterVaultRevisionView, right: CharacterVaultRevisionView) -> bool: return left.name.naturalnocasecmp_to(right.name) < 0)
 	return current_revisions
 
-func _import_stored_character(character_id: String, revision_hash: String) -> void:
+func import_stored_character(character_id: String, revision_hash: String) -> void:
 	_state.intent_submitted.emit(PlayerIntent.import_vault_character(character_id, revision_hash))
 
 func _remove_setup_character(character_id: String) -> void:
@@ -252,7 +246,7 @@ func submit_party() -> void:
 		return
 	_state.intent_submitted.emit(PlayerIntent.begin_adventure())
 
-func _maximum_party_size() -> int:
+func maximum_party_size() -> int:
 	if view == null or view.campaign_summary == null:
 		return 6
 	return clampi(view.campaign_summary.maximum_party_size, 1, 6)

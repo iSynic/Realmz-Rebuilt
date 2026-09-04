@@ -2334,7 +2334,7 @@
         "owners": [
           {
             "path": "src/ui/controllers/party_setup_inspection_controller.gd",
-            "symbol": "func _render_setup_character_inspection"
+            "symbol": "func render_setup_character_inspection"
           },
           {
             "path": "src/ui/controllers/character_screen_controller.gd",
