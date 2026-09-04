@@ -375,7 +375,7 @@ func _respond_session_friendly_collision(response: InteractionResponse) -> Sessi
 	if response.kind != InteractionRequest.YES_NO or body == null:
 		return _context.failed(&"invalid_interaction_response", "The Classic friendly-collision choice requires a yes/no response.")
 	var continuation = _context.session_continuation.combat()
-	if continuation == null or _context.state.combat == null or _context.state.combat.completed or _context.state.combat.battle_id != continuation.battle_id or _context.state.combat.active_actor_id() != continuation.actor_id or _context.rules.combat_flow.friendly_collision_target_id(_context.state, continuation.actor_id, continuation.destination).is_empty():
+	if continuation == null or _context.state.combat == null or _context.state.combat.completed or _context.state.combat.battle_id != continuation.battle_id or _context.state.combat.active_actor_id() != continuation.actor_id or _context.rules.combat_flow.reactions.friendly_collision_target_id(_context.state, continuation.actor_id, continuation.destination).is_empty():
 		return _context.failed(&"invalid_session_continuation", "The adjacent ally awaiting a collision choice is unavailable.")
 	_context.session_interaction = null
 	_context.session_continuation.clear()
@@ -471,7 +471,7 @@ func _respond_session_ally_selection(response: InteractionResponse) -> SessionCo
 	# Development saves from before the Castle body-count correction can retain an
 	# impossible empty selection boundary. Re-evaluate the source-backed candidate
 	# set and advance it exactly as a fresh terminal battle now does.
-	if _context.rules.combat_flow.ally_selection_payload(_context.state, _context.content).is_empty():
+	if _context.rules.combat_flow.rounds.ally_selection_payload(_context.state, _context.content).is_empty():
 		_context.session_interaction = null
 		_context.session_continuation.clear()
 		return _context.scenario().finish_direct_battle_recovery(_no_events())

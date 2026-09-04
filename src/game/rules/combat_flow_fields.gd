@@ -10,23 +10,17 @@ const COLLISION_DEATH_MACRO := 2
 const COLLISION_INVALID := 3
 const CLEARED_TARGET_QUEUE_SHAPE := 127
 
-var _flow_ref: WeakRef
-var _rules: CombatFlowContext
+var _context: CombatContext
 
 
-func _init(flow: RefCounted, rules: CombatFlowContext) -> void:
-	_flow_ref = weakref(flow)
-	_rules = rules
-
-
-func _flow() -> RefCounted:
-	return _flow_ref.get_ref() if _flow_ref != null else null
+func _init(context: CombatContext) -> void:
+	_context = context
 
 
 func queue_persistent_field(combat: CombatState, caster_id: String, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, center: Vector2i, rotation: int, shape: int) -> RefCounted:
 	if combat == null or caster_id.is_empty() or not ClassicSpellCapabilityCatalog.is_combat_persistent_field_spell(spell) or not combat.can_queue_persistent_field():
 		return null
-	var duration := _rules.magic.roll_persistent_field_duration(spell, power_level, rng, StringName("combat.field.%s.duration" % spell.id))
+	var duration := _context.magic.roll_persistent_field_duration(spell, power_level, rng, StringName("combat.field.%s.duration" % spell.id))
 	if duration <= 0:
 		return null
 	return combat.queue_persistent_field(spell.id, caster_id, center, rotation if spell.can_rotate else 0, shape, spell.queue_icon, power_level, cast_level, duration)
@@ -35,7 +29,7 @@ func queue_persistent_field(combat: CombatState, caster_id: String, spell: Spell
 func queue_single_actor_field(state: GameState, caster_id: String, target_id: String, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng) -> RefCounted:
 	if state == null or state.combat == null or not ClassicSpellCapabilityCatalog.is_combat_single_actor_field_spell(spell) or not state.combat.can_queue_persistent_field():
 		return null
-	var duration := _rules.magic.roll_persistent_field_duration(spell, power_level, rng, StringName("combat.actor-field.%s.duration" % spell.id))
+	var duration := _context.magic.roll_persistent_field_duration(spell, power_level, rng, StringName("combat.actor-field.%s.duration" % spell.id))
 	return state.combat.queue_persistent_field(spell.id, caster_id, _classic_target_selector(state, target_id), 0, 1, spell.queue_icon, power_level, cast_level, duration)
 
 
@@ -46,7 +40,7 @@ func repeated_field_callback(state: GameState, spell: SpellDefinition, caster_id
 	return func(index: int) -> void:
 		if not state.combat.can_queue_persistent_field():
 			return
-		var duration := _rules.magic.roll_persistent_field_duration(spell, power_level, rng, StringName("combat.repeated-field.%s.%d.duration" % [spell.id, index]))
+		var duration := _context.magic.roll_persistent_field_duration(spell, power_level, rng, StringName("combat.repeated-field.%s.%d.duration" % [spell.id, index]))
 		var center := first_center if index == 0 else Vector2i.ZERO
 		var shape := 1 if index == 0 else CLEARED_TARGET_QUEUE_SHAPE
 		var field := state.combat.queue_persistent_field(spell.id, caster_id, center, 0, shape, spell.queue_icon, power_level, cast_level, duration)
@@ -109,12 +103,12 @@ func resolve_actor_collisions(state: GameState, content: RealmzContent, actor_id
 			selections.append(SpellTargetSelection.for_monster(monster, definition))
 		var group: GroupSpellResolution
 		if character_caster != null:
-			group = _rules.magic.resolve_character_group_spell(character_caster, character_targets, monster_targets, monster_definitions, spell, field.power_level, field.cast_level, rng, false, false)
+			group = _context.magic.resolve_character_group_spell(character_caster, character_targets, monster_targets, monster_definitions, spell, field.power_level, field.cast_level, rng, false, false)
 		else:
 			var caster_definition := content.monster_by_id(monster_caster.definition_id)
 			if caster_definition == null:
 				return COLLISION_INVALID
-			group = _rules.magic.resolve_monster_group_spell(monster_caster, caster_definition, selections, spell, field.power_level, field.cast_level, rng, false, false)
+			group = _context.magic.resolve_monster_group_spell(monster_caster, caster_definition, selections, spell, field.power_level, field.cast_level, rng, false, false)
 		if group == null or not group.cast or group.resolutions.size() != 1:
 			return COLLISION_INVALID
 		var resolution: SpellResolution = group.resolutions[0]
@@ -130,11 +124,11 @@ func resolve_actor_collisions(state: GameState, content: RealmzContent, actor_id
 	if not defeated:
 		return COLLISION_COMPLETED
 	if character != null:
-		_flow()._remove_defeated_position(combat, actor_id, true)
+		_context.automation().remove_defeated_position(combat, actor_id, true)
 	else:
 		var definition := content.monster_by_id(monster.definition_id)
-		var queued: bool = _flow()._queue_spell_death_macro(combat, monster, definition)
-		_flow()._remove_defeated_position(combat, actor_id, not queued)
+		var queued: bool = _context.actions().events().queue_spell_death_macro(combat, monster, definition)
+		_context.automation().remove_defeated_position(combat, actor_id, not queued)
 	if begin_death_macros and not combat.pending_spell_death_macro_id().is_empty():
 		return COLLISION_DEATH_MACRO if begin_pending_death_macros(combat, content, events) else COLLISION_INVALID
 	return COLLISION_DEFEATED
@@ -145,12 +139,12 @@ func begin_pending_death_macros(combat: CombatState, content: RealmzContent, eve
 		return false
 	if not combat.spell_macro_actor_id().is_empty():
 		return true
-	return combat.begin_spell_death_macro_sequence(combat.active_actor_id(), false) and _flow()._request_next_spell_death_macro(combat, content, events)
+	return combat.begin_spell_death_macro_sequence(combat.active_actor_id(), false) and _context.actions().events().request_next_spell_death_macro(combat, content, events)
 
 
 func _field_intersects_footprint(field: PersistentCombatField, footprint: Array[Vector2i]) -> bool:
 	var covered: Dictionary = {}
-	for offset: Vector2i in _rules.spell_areas.pattern(field.shape):
+	for offset: Vector2i in _context.spell_areas.pattern(field.shape):
 		covered[field.center + offset] = true
 	return footprint.any(func(coordinate: Vector2i) -> bool: return covered.has(coordinate))
 

@@ -344,7 +344,7 @@ func finish_direct_battle(events: Array[DomainEvent]) -> SessionCoordinatorResul
 		return _context.failed(&"invalid_battle_continuation", "Post-battle completion requires a completed battle.", events)
 	if _context.state.combat.outcome == &"defeat":
 		return start_application_hook(ScenarioApplicationHooks.PARTY_DEATH, "party-defeat", "", events)
-	var payload = _context.rules.combat_flow.ally_selection_payload(_context.state, _context.content)
+	var payload = _context.rules.combat_flow.rounds.ally_selection_payload(_context.state, _context.content)
 	if not payload.is_empty():
 		var request_id = "session.ally-selection.%d" % _context.next_revision()
 		var combat = SessionContinuation.CombatBody.new()

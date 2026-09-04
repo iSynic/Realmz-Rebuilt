@@ -71,10 +71,10 @@ func _initialize() -> void:
 	var view := CombatView.new(state.combat, state.party.characters(), content, rules.inventory, rules.battlefield, rules.combat_flow, state)
 	var view_us := Time.get_ticks_usec() - view_started
 	var spell_options_started := Time.get_ticks_usec()
-	var spell_options := rules.combat_flow.character_spell_options(state, content, character_ids[0])
+	var spell_options := rules.combat_flow.magic.selection().character_spell_options(state, content, character_ids[0])
 	var spell_options_us := Time.get_ticks_usec() - spell_options_started
 	var spell_reason_started := Time.get_ticks_usec()
-	rules.combat_flow.character_spell_unavailable_reason(state, content, character_ids[0])
+	rules.combat_flow.magic.selection().character_spell_unavailable_reason(state, content, character_ids[0])
 	var spell_reason_us := Time.get_ticks_usec() - spell_reason_started
 	var checkpoint_started := Time.get_ticks_usec()
 	state.to_data()

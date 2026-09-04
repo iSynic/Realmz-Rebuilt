@@ -52,8 +52,8 @@
       "id": "combat",
       "boundary": "game",
       "guide": "docs/features/combat.md",
-      "entryPoints": ["src/game/rules/combat_flow.gd", "src/game/state/combat_state.gd"],
-      "publicInterfaces": ["CombatFlow", "CombatState", "CombatView"],
+      "entryPoints": ["src/game/rules/combat_flow.gd", "src/game/combat/combat_context.gd", "src/game/state/combat_state.gd"],
+      "publicInterfaces": ["CombatFlow", "CombatContext", "CombatState", "CombatView"],
       "tests": ["tests/core/test_combat_flow.gd", "tests/core/test_battlefield_navigation.gd"],
       "performanceProbes": ["tools/combat_performance_probe.gd", "tools/battlefield_navigation_benchmark.gd"]
     },
@@ -61,8 +61,8 @@
       "id": "session-transactions",
       "boundary": "playthrough",
       "guide": "docs/features/session-transactions.md",
-      "entryPoints": ["src/playthrough/game_session.gd", "src/playthrough/session_workflow_context.gd"],
-      "publicInterfaces": ["GameSession", "SessionStep", "SessionSnapshot"],
+      "entryPoints": ["src/playthrough/game_session.gd", "src/playthrough/session_context.gd"],
+      "publicInterfaces": ["GameSession", "SessionContext", "SessionStep", "SessionSnapshot"],
       "tests": ["tests/core/test_game_session.gd", "tests/integration/test_session_persistence.gd"],
       "performanceProbes": ["tools/movement_performance_probe.gd"]
     },

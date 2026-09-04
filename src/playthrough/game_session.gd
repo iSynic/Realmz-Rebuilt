@@ -464,7 +464,7 @@ func _cast_field_spell(payload: PlayerIntent.SpellPayload) -> SessionStep:
 func _combat_action(intent: PlayerIntent) -> SessionStep:
 	var payload := intent.payload as PlayerIntent.CombatActionPayload
 	if payload.action == &"retreat":
-		var retreat_probe: Variant = _context.rules.combat_flow.probe_character_retreat(_context.state.combat, _context.state.party.characters(), payload.actor_id)
+		var retreat_probe: Variant = _context.rules.combat_flow.reactions.probe_character_retreat(_context.state.combat, _context.state.party.characters(), payload.actor_id)
 		if not retreat_probe.allowed:
 			return SessionStep.failed(_context.current_revision(), retreat_probe.reason, retreat_probe.reason_text)
 		return _request_session_retreat(payload.actor_id, &"explicit", Vector2i(-100_000, -100_000))
@@ -500,7 +500,7 @@ func _set_combat_auto(intent: PlayerIntent) -> SessionStep:
 
 func _combat_move(intent: PlayerIntent) -> SessionStep:
 	var payload := intent.payload as PlayerIntent.CombatMovePayload
-	var edge_probe: Variant = _context.rules.combat_flow.probe_edge_retreat(_context.state.combat, payload.actor_id, payload.destination)
+	var edge_probe: Variant = _context.rules.combat_flow.reactions.probe_edge_retreat(_context.state.combat, payload.actor_id, payload.destination)
 	if edge_probe.allowed:
 		if not edge_probe.forced:
 			return _request_session_retreat(payload.actor_id, &"edge", payload.destination)
@@ -508,7 +508,7 @@ func _combat_move(intent: PlayerIntent) -> SessionStep:
 		return _finish_combat_result(forced_result)
 	var result := CombatRewardsWorkflow.move_character(_workflow_context(), payload, false)
 	if not result.ok and result.error_code == &"combat_friendly_collision_choice_required":
-		var target_id := _context.rules.combat_flow.friendly_collision_target_id(_context.state, payload.actor_id, payload.destination)
+		var target_id := _context.rules.combat_flow.reactions.friendly_collision_target_id(_context.state, payload.actor_id, payload.destination)
 		if target_id.is_empty():
 			return SessionStep.failed(_context.current_revision(), &"invalid_friendly_collision", "The adjacent ally is no longer available.")
 		var collision := SessionContinuation.CombatBody.new()

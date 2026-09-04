@@ -4484,7 +4484,7 @@
           },
           {
             "path": "src/game/rules/combat_flow_magic.gd",
-            "symbol": "func _commit_character_multi_spell"
+            "symbol": "func commit_character_multi_spell"
           }
         ]
       },
@@ -10146,7 +10146,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/game/rules/combat_flow.gd",
+            "path": "src/game/rules/combat_flow_automation.gd",
             "symbol": "func run_auto_turn("
           },
           {
@@ -10354,7 +10354,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/game/rules/combat_flow.gd",
+            "path": "src/game/rules/combat_flow_actions.gd",
             "symbol": "func probe_delay("
           },
           {
@@ -10459,7 +10459,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/game/rules/combat_flow.gd",
+            "path": "src/game/rules/combat_flow_actions.gd",
             "symbol": "func probe_bandage("
           },
           {
@@ -10564,8 +10564,8 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/game/rules/combat_flow.gd",
-            "symbol": "func _turn_undead("
+            "path": "src/game/rules/combat_flow_actions.gd",
+            "symbol": "func turn_undead("
           }
         ]
       },
@@ -10681,7 +10681,7 @@
             "symbol": "class_name CombatUndoState"
           },
           {
-            "path": "src/game/rules/combat_flow.gd",
+            "path": "src/game/rules/combat_flow_actions.gd",
             "symbol": "func probe_undo"
           }
         ]

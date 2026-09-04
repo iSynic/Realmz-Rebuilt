@@ -481,7 +481,7 @@ func _test_combat_and_reward_persistence(content: RealmzContent) -> void:
 			var legal_combat_spell: SpellDefinition = null
 			for spell: SpellDefinition in content.spell_definitions():
 				reward_character.set_known_spells([spell.id])
-				if not reward_session._context.rules.combat_flow.character_spell_options(reward_session._context.state, content, reward_character.id).is_empty():
+				if not reward_session._context.rules.combat_flow.magic.selection().character_spell_options(reward_session._context.state, content, reward_character.id).is_empty():
 					legal_combat_spell = spell
 					break
 			assert_not_null(legal_combat_spell, "the integration fixture contains at least one core-proven combat spell option")

@@ -73,7 +73,7 @@ static func populate_action_availability(context: SessionWorkflowContext, result
 		if member.items.any(func(item: ItemView) -> bool: return item.actions != null and item.actions.use.enabled):
 			field_item_available = true
 			break
-	var combat_item_available := battle_active and not rules.combat_flow.character_item_spell_options(state, content, result.combat_view.active_actor_id).is_empty()
+	var combat_item_available := battle_active and not rules.combat_flow.magic.character_item_spell_options(state, content, result.combat_view.active_actor_id).is_empty()
 	result.set_action_availability(&"move", ordinary_reason.is_empty() and not battle_active, ordinary_reason if not ordinary_reason.is_empty() else "Movement is unavailable during battle." if battle_active else "")
 	var search_reason := ordinary_reason if not ordinary_reason.is_empty() else "Search is unavailable during battle." if battle_active else "Search is replaced by scroll scribing while camped." if state.party_camping else ""
 	result.set_action_availability(&"search", search_reason.is_empty(), search_reason)
@@ -88,8 +88,8 @@ static func populate_action_availability(context: SessionWorkflowContext, result
 	result.set_action_availability(&"rest", ordinary_reason.is_empty() and not battle_active and state.party_camping, ordinary_reason if not ordinary_reason.is_empty() else "Rest is unavailable during battle." if battle_active else "Make camp before resting.")
 	var heal_reason := ordinary_reason if not ordinary_reason.is_empty() else "Heal is unavailable during battle." if battle_active else "The party is too fatigued to continue Heal." if state.party.fatigue > 134 else ""
 	result.set_action_availability(&"heal", heal_reason.is_empty(), heal_reason)
-	result.set_action_availability(&"use_item", not blocked_by_interaction and (combat_item_available or not battle_active and field_item_available), "Resolve the current interaction first." if blocked_by_interaction else rules.combat_flow.character_item_spell_unavailable_reason(state, content, result.combat_view.active_actor_id) if battle_active else "No carried item has a supported Classic field use.")
-	result.set_action_availability(&"use_item_on_target", not blocked_by_interaction and combat_item_available, "Resolve the current interaction first." if blocked_by_interaction else rules.combat_flow.character_item_spell_unavailable_reason(state, content, result.combat_view.active_actor_id) if battle_active else "Targeted combat item use is available only during battle.")
+	result.set_action_availability(&"use_item", not blocked_by_interaction and (combat_item_available or not battle_active and field_item_available), "Resolve the current interaction first." if blocked_by_interaction else rules.combat_flow.magic.character_item_spell_unavailable_reason(state, content, result.combat_view.active_actor_id) if battle_active else "No carried item has a supported Classic field use.")
+	result.set_action_availability(&"use_item_on_target", not blocked_by_interaction and combat_item_available, "Resolve the current interaction first." if blocked_by_interaction else rules.combat_flow.magic.character_item_spell_unavailable_reason(state, content, result.combat_view.active_actor_id) if battle_active else "Targeted combat item use is available only during battle.")
 	var field_spell_available := false
 	var field_spell_reason := "No known spell has a supported Classic field use."
 	for member: CharacterView in result.party_members:
@@ -101,11 +101,11 @@ static func populate_action_availability(context: SessionWorkflowContext, result
 				field_spell_reason = spell.field_cast.reason
 		if field_spell_available:
 			break
-	var combat_spell_available := battle_active and not rules.combat_flow.character_spell_options(state, content, result.combat_view.active_actor_id).is_empty()
+	var combat_spell_available := battle_active and not rules.combat_flow.magic.selection().character_spell_options(state, content, result.combat_view.active_actor_id).is_empty()
 	var cast_enabled := not blocked_by_interaction and (combat_spell_available or not battle_active and field_spell_available)
 	var cast_reason := ordinary_reason
 	if cast_reason.is_empty() and battle_active:
-		cast_reason = rules.combat_flow.character_spell_unavailable_reason(state, content, result.combat_view.active_actor_id)
+		cast_reason = rules.combat_flow.magic.selection().character_spell_unavailable_reason(state, content, result.combat_view.active_actor_id)
 		if cast_reason.is_empty():
 			cast_reason = "No legal Classic combat spell is available."
 	elif cast_reason.is_empty():
@@ -176,7 +176,7 @@ static func populate_spell_actions(context: SessionWorkflowContext, result: Game
 				var combat_reason := ""
 				var combat_enabled := false
 				for power: int in range(1, 8):
-					var combat_probe := rules.combat_flow.probe_character_spell_choice(state, content, character.id, spell_view.id, power)
+					var combat_probe := rules.combat_flow.magic.selection().probe_character_spell_choice(state, content, character.id, spell_view.id, power)
 					if combat_probe.allowed:
 						combat_enabled = true
 					elif combat_reason.is_empty():
@@ -221,7 +221,7 @@ static func populate_spell_actions(context: SessionWorkflowContext, result: Game
 				var combat_scroll := character.scroll_at(scroll_view.slot_index)
 				var combat_scroll_spell := content.spell_by_id(combat_scroll.spell_id) if combat_scroll != null and not combat_scroll.is_empty() else null
 				var combat_target_id := character.id if combat_scroll_spell != null and combat_scroll_spell.target_type == 5 else ""
-				var combat_probe := rules.combat_flow.probe_character_scroll_cast(state, content, character.id, scroll_view.slot_index, combat_target_id)
+				var combat_probe := rules.combat_flow.magic.probe_character_scroll_cast(state, content, character.id, scroll_view.slot_index, combat_target_id)
 				scroll_view.use = ActionAvailabilityView.new(&"cast_spell", combat_probe.allowed, combat_probe.reason_text)
 				continue
 			var scroll := character.scroll_at(scroll_view.slot_index)
@@ -239,7 +239,7 @@ static func populate_spell_actions(context: SessionWorkflowContext, result: Game
 				continue
 			if battle_active:
 				var option_available := false
-				for option: CombatSpellOptionView in rules.combat_flow.character_spell_options(state, content, character.id):
+				for option: CombatSpellOptionView in rules.combat_flow.magic.selection().character_spell_options(state, content, character.id):
 					if option.spell_id == bound_spell.id and option.power == fast_spell.power:
 						option_available = true
 						break

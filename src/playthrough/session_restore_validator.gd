@@ -432,7 +432,7 @@ static func _valid_combat_fumble_continuation(content: RealmzContent, state: Gam
 	var combat := continuation.combat()
 	if combat == null or vm_interaction != null or session_interaction == null or session_interaction.kind != InteractionRequest.TREASURE_DISTRIBUTION or state.combat == null or not state.combat.completed or state.combat.battle_id != combat.battle_id or state.combat.fumbled_items().is_empty():
 		return false
-	var expected_request := InteractionRequest.from_payload("validation.fumble-recovery", InteractionRequest.TREASURE_DISTRIBUTION, RealmzRules.new().combat_flow.fumble_recovery_payload(state, content))
+	var expected_request := InteractionRequest.from_payload("validation.fumble-recovery", InteractionRequest.TREASURE_DISTRIBUTION, RealmzRules.new().combat_flow.rounds.fumble_recovery_payload(state, content))
 	var actual_body := session_interaction.body as InteractionRequest.TreasureRequestBody
 	var expected_body: InteractionRequest.TreasureRequestBody = null if expected_request == null else expected_request.body as InteractionRequest.TreasureRequestBody
 	return actual_body != null and actual_body.same_fumble_values(expected_body)
@@ -454,7 +454,7 @@ static func _valid_friendly_collision(continuation: SessionContinuation, state: 
 		return false
 	if state.combat == null or state.combat.completed or state.combat.battle_id != combat.battle_id or state.combat.active_actor_id() != combat.actor_id:
 		return false
-	return not RealmzRules.new().combat_flow.friendly_collision_target_id(state, combat.actor_id, combat.destination).is_empty()
+	return not RealmzRules.new().combat_flow.reactions.friendly_collision_target_id(state, combat.actor_id, combat.destination).is_empty()
 
 
 static func _valid_combat_retreat(continuation: SessionContinuation, state: GameState, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
@@ -464,7 +464,7 @@ static func _valid_combat_retreat(continuation: SessionContinuation, state: Game
 	if state.combat == null or state.combat.completed or state.combat.battle_id != combat.battle_id or state.combat.active_actor_id() != combat.actor_id:
 		return false
 	var rules := RealmzRules.new()
-	var probe: Variant = rules.combat_flow.probe_character_retreat(state.combat, state.party.characters(), combat.actor_id) if combat.mode == &"explicit" else rules.combat_flow.probe_edge_retreat(state.combat, combat.actor_id, combat.destination)
+	var probe: Variant = rules.combat_flow.reactions.probe_character_retreat(state.combat, state.party.characters(), combat.actor_id) if combat.mode == &"explicit" else rules.combat_flow.reactions.probe_edge_retreat(state.combat, combat.actor_id, combat.destination)
 	return probe.allowed and not probe.forced
 
 

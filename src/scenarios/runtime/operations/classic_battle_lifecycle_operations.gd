@@ -199,13 +199,13 @@ func _resume_battle(continuation: ScenarioRuntimeContinuation, response: Interac
 			combined_events.append_array(result.events)
 			result.events = combined_events
 	elif body.action == &"retreat":
-		var retreat_probe: Variant = _rules.combat_flow.probe_character_retreat(_game_state.combat, _game_state.party.characters(), body.actor_id)
+		var retreat_probe: Variant = _rules.combat_flow.reactions.probe_character_retreat(_game_state.combat, _game_state.party.characters(), body.actor_id)
 		if not retreat_probe.allowed:
 			return ScenarioRuntimeOperationResult.failed(retreat_probe.reason, retreat_probe.reason_text)
 		return _wait_for_battle_retreat(continuation, body.actor_id, &"explicit", Vector2i(-100_000, -100_000), request_id)
 	elif body.action == &"retreat_edge":
 		var edge_destination := body.destination if body.has_destination else CombatFlow.INVALID_COORDINATE
-		var edge_probe: Variant = _rules.combat_flow.probe_edge_retreat(_game_state.combat, body.actor_id, edge_destination)
+		var edge_probe: Variant = _rules.combat_flow.reactions.probe_edge_retreat(_game_state.combat, body.actor_id, edge_destination)
 		if not edge_probe.allowed:
 			return ScenarioRuntimeOperationResult.failed(edge_probe.reason, edge_probe.reason_text)
 		if not edge_probe.forced:
@@ -275,7 +275,7 @@ func _resume_battle_retreat(continuation: ScenarioRuntimeContinuation, response:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "The pending retreat lost its originating battle caller.")
 	var mode := combat_continuation.mode
 	var destination := combat_continuation.destination
-	var probe: Variant = _rules.combat_flow.probe_character_retreat(_game_state.combat, _game_state.party.characters(), combat_continuation.actor_id) if mode == &"explicit" else _rules.combat_flow.probe_edge_retreat(_game_state.combat, combat_continuation.actor_id, destination) if mode == &"edge" else null
+	var probe: Variant = _rules.combat_flow.reactions.probe_character_retreat(_game_state.combat, _game_state.party.characters(), combat_continuation.actor_id) if mode == &"explicit" else _rules.combat_flow.reactions.probe_edge_retreat(_game_state.combat, combat_continuation.actor_id, destination) if mode == &"edge" else null
 	if probe == null or not probe.allowed or probe.forced:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "The saved Escape confirmation no longer represents a promptable Classic action.")
 	if not body.accepted:
@@ -319,7 +319,7 @@ func _finish_battle_with_allies(source_kind: StringName, caller: ScenarioBattleC
 			_game_state.combat = null
 			return ScenarioRuntimeOperationResult.completed(battle_id, defeat_events)
 		return ScenarioRuntimeOperationResult.suspended(ScenarioRuntimeHandoff.party_defeat(combat.battle_id, source_kind, caller), events)
-	var payload := _rules.combat_flow.ally_selection_payload(_game_state, _content)
+	var payload := _rules.combat_flow.rounds.ally_selection_payload(_game_state, _content)
 	if not payload.is_empty():
 		var ally_kind := ScenarioRuntimeContinuation.SAFE_COMBAT_ALLY if source_kind == ScenarioRuntimeContinuation.SAFE_COMBAT else ScenarioRuntimeContinuation.CLASSIC_COMBAT_ALLY
 		return ScenarioRuntimeOperationResult.waiting(InteractionRequest.from_payload(request_id, &"ally_selection", payload), ScenarioRuntimeContinuation.combat_terminal(ally_kind, source_kind, combat.battle_id, caller), events)
@@ -342,7 +342,7 @@ func _resume_ally_selection(continuation: ScenarioRuntimeContinuation, response:
 	var combat_continuation := continuation.body as ScenarioRuntimeContinuation.CombatBody
 	if _game_state.combat == null or not _game_state.combat.completed or _game_state.combat.battle_id != combat_continuation.battle_id:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "The completed battle is unavailable for ally selection.")
-	if _rules.combat_flow.ally_selection_payload(_game_state, _content).is_empty():
+	if _rules.combat_flow.rounds.ally_selection_payload(_game_state, _content).is_empty():
 		return _finish_battle_with_fumbles(combat_continuation.source_kind, combat_continuation.caller, String(response.request_id), [])
 	var selected := _rules.combat_flow.apply_ally_selection(_game_state, _content, body.selected_ids)
 	if not selected.ok:
@@ -608,16 +608,16 @@ func _combat_request(request_id: String) -> InteractionRequest:
 	var spell_casts := _combat_spell_cast_payloads(combat_view.active_actor_id)
 	if not spell_casts.is_empty():
 		actions.append("cast_spell")
-	var spell_cast_reason := _rules.combat_flow.character_spell_unavailable_reason(_game_state, _content, combat_view.active_actor_id)
+	var spell_cast_reason := _rules.combat_flow.magic.selection().character_spell_unavailable_reason(_game_state, _content, combat_view.active_actor_id)
 	var fast_spells := _fast_spell_payloads(combat_view.active_actor_id, spell_casts)
 	var item_casts := _combat_item_cast_payloads(combat_view.active_actor_id)
 	if not item_casts.is_empty():
 		actions.append("use_item")
-	var item_cast_reason := _rules.combat_flow.character_item_spell_unavailable_reason(_game_state, _content, combat_view.active_actor_id)
+	var item_cast_reason := _rules.combat_flow.magic.character_item_spell_unavailable_reason(_game_state, _content, combat_view.active_actor_id)
 	var scroll_casts := _combat_scroll_cast_payloads(combat_view.active_actor_id)
 	if not scroll_casts.is_empty():
 		actions.append("use_scroll")
-	var scroll_cast_reason := _rules.combat_flow.character_scroll_unavailable_reason(_game_state, _content, combat_view.active_actor_id)
+	var scroll_cast_reason := _rules.combat_flow.magic.selection().character_scroll_unavailable_reason(_game_state, _content, combat_view.active_actor_id)
 	var retreat := {"enabled": combat_view.retreat_available, "reason": combat_view.retreat_unavailable_reason, "nearestEnemyRange": combat_view.nearest_enemy_range}
 	var enemies_remaining := combat_view.hostile_actor_ids.size()
 	var bandage_targets: Array[Dictionary] = []
@@ -634,7 +634,7 @@ func _combat_request(request_id: String) -> InteractionRequest:
 
 func _combat_spell_cast_payloads(actor_id: String) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
-	for option: CombatSpellOptionView in _rules.combat_flow.character_spell_options(_game_state, _content, actor_id):
+	for option: CombatSpellOptionView in _rules.combat_flow.magic.selection().character_spell_options(_game_state, _content, actor_id):
 		var payload := {"spellId": option.spell_id, "spellName": option.spell_name, "power": option.power, "cost": option.cost, "targetId": option.target_id, "targetName": option.target_name, "targetCurrentHealth": option.target_current_health, "targetMaximumHealth": option.target_maximum_health, "targetMode": String(option.target_mode)}
 		_append_spell_target_payload(payload, option)
 		result.append(payload)
@@ -643,7 +643,7 @@ func _combat_spell_cast_payloads(actor_id: String) -> Array[Dictionary]:
 
 func _combat_item_cast_payloads(actor_id: String) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
-	for option: CombatItemOptionView in _rules.combat_flow.character_item_spell_options(_game_state, _content, actor_id):
+	for option: CombatItemOptionView in _rules.combat_flow.magic.character_item_spell_options(_game_state, _content, actor_id):
 		var payload := {"itemInstanceId": option.item_instance_id, "itemId": option.item_definition_id, "itemName": option.item_name, "charges": option.charges, "powerStaged": option.power_staged, "spellId": option.spell_id, "spellName": option.spell_name, "power": option.power, "targetId": option.target_id, "targetName": option.target_name, "targetCurrentHealth": option.target_current_health, "targetMaximumHealth": option.target_maximum_health, "targetMode": String(option.target_mode)}
 		_append_spell_target_payload(payload, option)
 		result.append(payload)
@@ -652,7 +652,7 @@ func _combat_item_cast_payloads(actor_id: String) -> Array[Dictionary]:
 
 func _combat_scroll_cast_payloads(actor_id: String) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
-	for option: Variant in _rules.combat_flow.character_scroll_options(_game_state, _content, actor_id):
+	for option: Variant in _rules.combat_flow.magic.selection().character_scroll_options(_game_state, _content, actor_id):
 		var payload := {"scrollSlot": option.scroll_slot, "spellId": option.spell_id, "spellName": option.spell_name, "power": option.power, "targetId": option.target_id, "targetName": option.target_name, "targetCurrentHealth": option.target_current_health, "targetMaximumHealth": option.target_maximum_health, "targetMode": String(option.target_mode)}
 		_append_spell_target_payload(payload, option)
 		result.append(payload)

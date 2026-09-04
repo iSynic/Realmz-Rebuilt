@@ -5,17 +5,11 @@ extends RefCounted
 
 const INVALID_COORDINATE := Vector2i(-100_000, -100_000)
 
-var _flow_ref: WeakRef
-var _rules: CombatFlowContext
+var _context: CombatContext
 
 
-func _init(flow: RefCounted, rules: CombatFlowContext) -> void:
-	_flow_ref = weakref(flow)
-	_rules = rules
-
-
-func _flow() -> RefCounted:
-	return _flow_ref.get_ref() if _flow_ref != null else null
+func _init(context: CombatContext) -> void:
+	_context = context
 
 
 func cast_character_phase(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, destination: Vector2i, spend_spell_points: bool = true, event_source: String = "classic", count_spell_cast: bool = true) -> CombatFlowResult:
@@ -43,23 +37,23 @@ func probe_destination(state: GameState, content: RealmzContent, caster_id: Stri
 	var map := content.world.map_by_id(combat.battlefield.map_id)
 	var terrain_set := content.world.battle_terrain_set_for_map(map, state.world) if map != null else null
 	var maximum_range := absi(spell.range_min + spell.range_max * power_level)
-	if terrain_set == null or not _rules.battlefield.coordinate_target_is_valid(combat.battlefield, terrain_set, caster_id, destination, maximum_range, spell.range_min + spell.range_max > 0):
+	if terrain_set == null or not _context.battlefield.coordinate_target_is_valid(combat.battlefield, terrain_set, caster_id, destination, maximum_range, spell.range_min + spell.range_max > 0):
 		return CombatSpellCastProbe.blocked(&"spell_target_unavailable", "The Phase destination is outside the Classic spell range or line of sight.")
 	return CombatSpellCastProbe.permitted()
 
 
 func _resolve_character_phase(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, destination: Vector2i, spend_spell_points: bool, event_source: String, count_spell_cast: bool) -> CombatFlowResult:
 	var combat := state.combat
-	_flow()._prepare_character_turn(combat, caster)
+	_context.actions().prepare_character_turn(combat, caster)
 	if not checkpoint_available(combat, caster.id):
 		return CombatFlowResult.failed(&"phase_checkpoint_unavailable", "Phase is available only while this activation can still be undone.")
-	var phase := _rules.magic.resolve_character_group_spell(caster, [], [], [], spell, power_level, cast_level, rng, true, spend_spell_points)
+	var phase := _context.magic.resolve_character_group_spell(caster, [], [], [], spell, power_level, cast_level, rng, true, spend_spell_points)
 	if phase == null or not phase.cast:
 		return CombatFlowResult.failed(&"spell_cast_failed", "Phase could not be cast with the available spell points.")
 	if count_spell_cast:
 		combat.active_turn.spell_cast_count += 1
 		caster.lifetime_record.record_spell_cast()
-	caster.attacks_remaining = _rules.arithmetic.signed_16(caster.attacks_remaining - 2)
+	caster.attacks_remaining = _context.arithmetic.signed_16(caster.attacks_remaining - 2)
 	caster.movement = maxi(0, caster.movement - 12)
 	combat.invalidate_undo()
 	var origin := combat.battlefield.actor_position(caster.id)
@@ -72,8 +66,8 @@ func _resolve_character_phase(state: GameState, content: RealmzContent, caster: 
 	]
 	if defeated:
 		caster.current_health = -10
-		_flow()._mark_character_bleeding(state, caster, true)
-		_flow()._remove_defeated_position(combat, caster.id, true)
+		_context.actions().mark_character_bleeding(state, caster, true)
+		_context.automation().remove_defeated_position(combat, caster.id, true)
 	else:
 		if not combat.battlefield.move_actor(caster.id, destination):
 			return CombatFlowResult.failed(&"phase_destination_unavailable", "The Phase destination could not receive the caster.")
@@ -85,14 +79,14 @@ func _resolve_character_phase(state: GameState, content: RealmzContent, caster: 
 	if defeated:
 		events.append(DomainEvent.new(&"sound_requested", {"soundId": 631, "waitForCompletion": false, "source": "classic-combat-phase-death"}))
 	events.append(DomainEvent.new(&"combat_spell_resolved", {"actorId": caster.id, "targetId": caster.id, "spellId": spell.id, "targetType": spell.target_type, "power": power_level, "classicTier": cast_level, "targetCoordinate": [destination.x, destination.y], "phased": true, "collisionActorId": collision_actor_id, "solidCollision": phased_into_solid, "defeated": defeated, "source": event_source}))
-	var advances_turn: bool = not _flow()._character_can_continue(caster)
+	var advances_turn: bool = not _context.actions().character_can_continue(caster)
 	if advances_turn and not defeated:
-		_flow()._advance_turn(state, content, rng, events)
-	if _flow()._finish_if_resolved(state, content, events):
+		_context.rounds().advance_turn(state, content, rng, events)
+	if _context.rounds().finish_if_resolved(state, content, events):
 		return CombatFlowResult.succeeded(events, true)
 	if defeated and combat.active_actor_id() == caster.id:
-		_flow()._advance_turn(state, content, rng, events)
-	_flow()._process_monster_turns(state, content, rng, events)
+		_context.rounds().advance_turn(state, content, rng, events)
+	_context.automation().process_monster_turns(state, content, rng, events)
 	return CombatFlowResult.succeeded(events, state.combat.completed)
 
 
