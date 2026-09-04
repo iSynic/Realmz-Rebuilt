@@ -8389,7 +8389,7 @@
             "symbol": "func complete_party_defeat_handoff"
           },
           {
-            "path": "src/scenarios/runtime/operations/classic_reward_operations.gd",
+            "path": "src/scenarios/runtime/operations/classic_battle_reward_builder.gd",
             "symbol": "func begin_completed_battle_reward"
           }
         ]
@@ -8549,8 +8549,8 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/scenarios/runtime/operations/classic_reward_operations.gd",
-            "symbol": "func _begin_reward"
+            "path": "src/scenarios/runtime/operations/classic_reward_workflow.gd",
+            "symbol": "func begin_reward"
           }
         ]
       },
@@ -8672,7 +8672,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/scenarios/runtime/operations/classic_reward_operations.gd",
+            "path": "src/scenarios/runtime/operations/classic_reward_workflow.gd",
             "symbol": "func _apply_reward_detection"
           }
         ]
@@ -8989,7 +8989,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/scenarios/runtime/operations/classic_reward_operations.gd",
+            "path": "src/scenarios/runtime/operations/classic_reward_workflow.gd",
             "symbol": "func _begin_reward_progression"
           }
         ]
