@@ -16,6 +16,7 @@ const ENCOUNTER_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/e
 const SHOP_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/shop_interaction.tscn"
 const TREASURE_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/treasure_distribution_interaction.tscn"
 const BATTLE_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/battle_interaction.tscn"
+const SELECTION_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/selection_interaction.tscn"
 const LayoutPolicy := preload("res://src/ui/interaction_layout_policy.gd")
 
 
@@ -47,7 +48,7 @@ static func create(
 			age_update.configure(media)
 			return age_update
 		&"character_selection", &"ally_selection":
-			var selection := SelectionInteraction.new()
+			var selection := (load(SELECTION_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as SelectionInteraction
 			selection.configure(media, game_view)
 			return selection
 		&"treasure_distribution":
