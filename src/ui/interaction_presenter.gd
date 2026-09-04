@@ -52,18 +52,20 @@ var _playback_status_label: Label
 var _autojournal_enabled: bool = false
 var _treasure_recipient_id: String = ""
 var _treasure_slot_order: Array[String] = []
-var _side_workspace_panel: PanelContainer
-var _encounter_dock_panel: PanelContainer
-var _application_workspace_panel: PanelContainer
-var _modal_shield: ColorRect
-var _nested_modal: Control
+var _overlays: InteractionOverlayHost
 var _combat_spellbook_open: bool = false
 var _fast_spell_dock: Control
-var _classic_flash_queue: Array[Dictionary] = []
-var _classic_flash_layer: Control
-var _classic_flash_panel: PanelContainer
-var _classic_flash_shield: ColorRect
-var _classic_flash_label: Label
+var _flash: InteractionFlashController
+
+
+func _ready() -> void:
+	_overlays = InteractionOverlayHost.new()
+	_overlays.configure(self, modal_shield_scene, treasure_completion_modal_scene, side_workspace_scene, encounter_dock_scene, application_workspace_scene)
+	_overlays.set_regions(_application_rect, _stage_rect, _textbox_rect, _side_workspace_rect)
+	_flash = InteractionFlashController.new()
+	_flash.configure(self, classic_flash_overlay_scene)
+	_flash.set_regions(_application_rect, _textbox_rect)
+	_flash.sound_requested.connect(func(sound_id: int) -> void: presentation_sound_requested.emit(sound_id))
 
 
 func _notification(what: int) -> void:
@@ -86,7 +88,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	var key_event := event as InputEventKey
 	if key_event == null or not key_event.pressed or key_event.echo or key_event.keycode not in [KEY_ENTER, KEY_KP_ENTER, KEY_SPACE]:
 		return
-	if _dismiss_classic_flash():
+	if _flash.dismiss():
 		get_viewport().set_input_as_handled()
 		return
 	if _submit_classic_acknowledgement():
@@ -99,25 +101,35 @@ func _submit_classic_acknowledgement() -> bool:
 
 func _exit_tree() -> void:
 	_set_classic_acknowledgement_cursor(false)
-	_close_side_workspace()
-	_close_encounter_dock()
-	_close_application_workspace()
-	_close_modal_shield()
+	if _overlays != null:
+		_overlays.close_all()
 	_close_fast_spell_dock()
-	_close_classic_flash()
+	if _flash != null:
+		_flash.close()
 
 
 func present(request: InteractionRequest, classic_text_context: String = "", game_view: GameView = null, media: ClassicMediaCatalog = null) -> void:
 	if _can_present_nested_treasure_confirmation(request):
-		_request = request
-		_passive_text = false
-		_playback_masked = false
-		visible = true
-		_claim_modal_layer()
+		_begin_nested_request(request)
 		_present_nested_treasure_confirmation(request, game_view, media)
 		_apply_classic_region()
 		call_deferred("_prepare_interaction_focus")
 		return
+	if not _begin_request(request):
+		return
+	_present_request_text(request, classic_text_context)
+	_mount_request_component(request, game_view, media)
+
+
+func _begin_nested_request(request: InteractionRequest) -> void:
+	_request = request
+	_passive_text = false
+	_playback_masked = false
+	visible = true
+	_claim_modal_layer()
+
+
+func _begin_request(request: InteractionRequest) -> bool:
 	if request == null or request.kind != InteractionRequest.TREASURE_DISTRIBUTION:
 		_treasure_recipient_id = ""
 		_treasure_slot_order.clear()
@@ -139,7 +151,11 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 		_set_heading("")
 		_prompt.text = ""
 		_prompt.visible = false
-		return
+		return false
+	return true
+
+
+func _present_request_text(request: InteractionRequest, classic_text_context: String) -> void:
 	_set_heading(ComponentFactory.heading_for_kind(request.kind))
 	if request.kind == InteractionRequest.SESSION_LIFECYCLE:
 		_set_heading("")
@@ -163,6 +179,9 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 		_set_heading("")
 		_prompt.text = ""
 		_prompt.visible = false
+
+
+func _mount_request_component(request: InteractionRequest, game_view: GameView, media: ClassicMediaCatalog) -> void:
 	_component = _create_component(request, game_view, media)
 	if _component == null:
 		_set_heading("Unsupported Interaction")
@@ -182,12 +201,12 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 	_component.presentation_status_requested.connect(func(text: String, is_error: bool) -> void: presentation_status_requested.emit(text, is_error))
 	_component.combat_spellbook_requested.connect(func(actor_id: String, options: Array[InteractionRequestValue.CastOption]) -> void: combat_spellbook_requested.emit(actor_id, options))
 	_component.combat_spellbook_closed.connect(func() -> void: combat_spellbook_closed.emit())
-	_component.side_workspace_requested.connect(_show_side_workspace)
-	_component.side_workspace_closed.connect(_close_side_workspace)
-	_component.encounter_dock_requested.connect(_show_encounter_dock)
-	_component.encounter_dock_closed.connect(_close_encounter_dock)
-	_component.application_workspace_requested.connect(_show_application_workspace)
-	_component.application_workspace_closed.connect(_close_application_workspace)
+	_component.side_workspace_requested.connect(_overlays.show_side_workspace)
+	_component.side_workspace_closed.connect(_overlays.close_side_workspace)
+	_component.encounter_dock_requested.connect(_overlays.show_encounter_dock)
+	_component.encounter_dock_closed.connect(_overlays.close_encounter_dock)
+	_component.application_workspace_requested.connect(_overlays.show_application_workspace)
+	_component.application_workspace_closed.connect(_overlays.close_application_workspace)
 	if _component is TreasureDistributionInteraction:
 		var treasure := _component as TreasureDistributionInteraction
 		treasure.recipient_selected.connect(func(character_id: String) -> void: _treasure_recipient_id = character_id)
@@ -248,11 +267,12 @@ func set_classic_regions(stage_rect: Rect2, textbox_rect: Rect2, combat_rect: Re
 		maxf(stage_rect.end.y, _combat_rect.end.y) - application_top
 	)
 	_side_workspace_rect = Rect2(outer_stage.end.x, outer_stage.position.y, maxf(0.0, _combat_rect.end.x - outer_stage.end.x), maxf(0.0, _application_rect.end.y - outer_stage.position.y))
+	_overlays.set_regions(_application_rect, _stage_rect, _textbox_rect, _side_workspace_rect)
+	_flash.set_regions(_application_rect, _textbox_rect)
 	if _component is BattleInteraction:
 		(_component as BattleInteraction).set_command_scale(LayoutPolicy.combat_command_scale(_combat_rect))
 	_apply_classic_region()
 	_apply_fast_spell_dock_layout()
-	_apply_classic_flash_layout()
 
 
 func dismiss_passive_text() -> bool:
@@ -280,85 +300,11 @@ func present_passive_classic_text(text: String) -> void:
 
 
 func queue_classic_flash_messages(messages: Array[Dictionary]) -> void:
-	for message: Dictionary in messages:
-		var text := String(message.get("text", "")).strip_edges()
-		if not text.is_empty():
-			_classic_flash_queue.append({"text": text, "soundId": int(message.get("soundId", 0))})
-	_show_next_classic_flash()
-
-
-func _show_next_classic_flash() -> void:
-	if _classic_flash_panel != null or _classic_flash_queue.is_empty() or get_parent() == null:
-		return
-	_classic_flash_layer = classic_flash_overlay_scene.instantiate() as Control
-	_classic_flash_layer.z_index = z_index + 20
-	get_parent().add_child(_classic_flash_layer)
-	_classic_flash_shield = _classic_flash_layer.get_node("ClassicFlashShield") as ColorRect
-	_classic_flash_panel = _classic_flash_layer.get_node("ClassicFlashMessage") as PanelContainer
-	_classic_flash_label = _classic_flash_panel.get_node("ClassicFlashContent/ClassicFlashText") as Label
-	var acknowledge := _classic_flash_panel.get_node("ClassicFlashContent/ClassicFlashContinue") as Button
-	acknowledge.pressed.connect(_dismiss_classic_flash)
-	_classic_flash_panel.gui_input.connect(func(event: InputEvent) -> void:
-		var click := event as InputEventMouseButton
-		if click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT:
-			_dismiss_classic_flash()
-	)
-	_apply_classic_flash_layout()
-	_present_next_classic_flash()
-
-
-func _present_next_classic_flash() -> void:
-	if _classic_flash_panel == null or _classic_flash_label == null or _classic_flash_queue.is_empty():
-		return
-	var message: Dictionary = _classic_flash_queue.pop_front()
-	_classic_flash_label.text = String(message["text"])
-	var sound_id := int(message.get("soundId", 0))
-	if sound_id > 0:
-		presentation_sound_requested.emit(sound_id)
-
-
-func _dismiss_classic_flash() -> bool:
-	if _classic_flash_panel == null:
-		return false
-	if _classic_flash_queue.is_empty():
-		_close_classic_flash(false)
-	else:
-		_present_next_classic_flash()
-	return true
-
-
-func _close_classic_flash(clear_queue: bool = true) -> void:
-	if _classic_flash_layer != null:
-		var parent := _classic_flash_layer.get_parent()
-		if parent != null:
-			parent.remove_child(_classic_flash_layer)
-		_classic_flash_layer.queue_free()
-	_classic_flash_layer = null
-	_classic_flash_panel = null
-	_classic_flash_shield = null
-	_classic_flash_label = null
-	if clear_queue:
-		_classic_flash_queue.clear()
-
-
-func _apply_classic_flash_layout() -> void:
-	if _classic_flash_layer == null or _classic_flash_panel == null or _classic_flash_shield == null:
-		return
-	_classic_flash_layer.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
-	_classic_flash_layer.position = Vector2.ZERO
-	_classic_flash_layer.size = (get_parent() as Control).size if get_parent() is Control else _application_rect.end
-	_classic_flash_shield.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
-	_classic_flash_shield.position = _application_rect.position
-	_classic_flash_shield.size = _application_rect.size
-	var region := LayoutPolicy.classic_flash_modal_rect(_application_rect, _textbox_rect)
-	_classic_flash_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
-	_classic_flash_panel.custom_minimum_size = region.size
-	_classic_flash_panel.position = region.position
-	_classic_flash_panel.size = region.size
+	_flash.queue_messages(messages)
 
 
 func has_blocking_request() -> bool:
-	return _request != null or _playback_masked or _classic_flash_panel != null
+	return _request != null or _playback_masked or _flash.is_open()
 
 
 func handle_back_request() -> bool:
@@ -480,10 +426,10 @@ func _apply_fast_spell_dock_layout() -> void:
 func _submit_body(body: InteractionResponse.Body) -> void:
 	if _request == null:
 		return
-	_close_side_workspace()
-	_close_encounter_dock()
-	_close_application_workspace()
-	_close_modal_shield()
+	_overlays.close_side_workspace()
+	_overlays.close_encounter_dock()
+	_overlays.close_application_workspace()
+	_overlays.close_modal_shield()
 	var response := InteractionPresenter.response_for(_request, body)
 	var preserve_treasure_workspace := _component is TreasureDistributionInteraction and body is InteractionResponse.TreasureBody and (body as InteractionResponse.TreasureBody).action in [&"assign", &"done"]
 	_request = null
@@ -567,10 +513,10 @@ static func response_for(request: InteractionRequest, body: InteractionResponse.
 func _clear_options() -> void:
 	_combat_spellbook_open = false
 	combat_spellbook_closed.emit()
-	_close_side_workspace()
-	_close_encounter_dock()
-	_close_application_workspace()
-	_close_nested_modal()
+	_overlays.close_side_workspace()
+	_overlays.close_encounter_dock()
+	_overlays.close_application_workspace()
+	_overlays.close_nested_modal()
 	_close_fast_spell_dock()
 	_component = null
 	_playback_status_label = null
@@ -624,47 +570,9 @@ func _apply_classic_region() -> void:
 		position = modal_region.position + (modal_region.size - desired) * 0.5
 		size = desired
 	var encounter_surface := _request != null and _request.kind in [InteractionRequest.WORD_AND_ACTION, InteractionRequest.THIEF_ENCOUNTER]
-	_update_modal_shield(not _playback_masked and _request != null and (encounter_surface or not LayoutPolicy.uses_textbox_region(_request)) and not LayoutPolicy.uses_full_stage_region(_request), not encounter_surface)
+	_overlays.update_modal_shield(not _playback_masked and _request != null and (encounter_surface or not LayoutPolicy.uses_textbox_region(_request)) and not LayoutPolicy.uses_full_stage_region(_request), not encounter_surface)
 	_apply_content_layout()
-	_apply_side_workspace_layout()
-	_apply_encounter_dock_layout()
-	_apply_application_workspace_layout()
-	_apply_nested_modal_layout()
-
-
-func _update_modal_shield(needed: bool, dim_background: bool = true) -> void:
-	if not needed:
-		_close_modal_shield()
-		return
-	if _modal_shield == null:
-		_modal_shield = modal_shield_scene.instantiate() as ColorRect
-		_modal_shield.z_index = z_index - 1
-		get_parent().add_child(_modal_shield)
-	_modal_shield.color = Color(0.01, 0.015, 0.02, 0.62) if dim_background else Color.TRANSPARENT
-	_modal_shield.position = _application_rect.position
-	_modal_shield.size = _application_rect.size
-	var parent := get_parent()
-	parent.move_child(_modal_shield, modal_shield_target_index(_modal_shield.get_index(), get_index()))
-
-
-static func modal_shield_target_index(shield_index: int, presenter_index: int) -> int:
-	# Moving an existing shield to the presenter's index swaps their order when
-	# the shield is already before it. Keep the shield immediately behind the
-	# presenter across every rerender so it can never own modal button clicks.
-	return maxi(0, presenter_index - 1 if shield_index < presenter_index else presenter_index)
-
-
-func _close_modal_shield() -> void:
-	if _modal_shield == null:
-		return
-	var shield_parent := _modal_shield.get_parent()
-	if shield_parent != null and shield_parent.is_queued_for_deletion():
-		_modal_shield = null
-		return
-	if shield_parent != null:
-		shield_parent.remove_child(_modal_shield)
-	_modal_shield.queue_free()
-	_modal_shield = null
+	_overlays.apply_layout()
 
 
 func _can_present_nested_treasure_confirmation(request: InteractionRequest) -> bool:
@@ -675,128 +583,11 @@ func _can_present_nested_treasure_confirmation(request: InteractionRequest) -> b
 
 
 func _present_nested_treasure_confirmation(request: InteractionRequest, game_view: GameView, media: ClassicMediaCatalog) -> void:
-	_close_nested_modal()
-	_nested_modal = treasure_completion_modal_scene.instantiate() as Control
-	_nested_modal.z_index = z_index + 1
-	add_child(_nested_modal)
-	var frame := _nested_modal.get_node("TreasureCompletionCenter/TreasureCompletionModal") as PanelContainer
 	var component := _create_component(request, game_view, media)
 	_component = component
 	component.response_body_submitted.connect(_submit_body)
-	frame.add_child(component)
+	_overlays.show_treasure_confirmation(component)
 	component.build(request)
-
-
-func _close_nested_modal() -> void:
-	if _nested_modal == null:
-		return
-	remove_child(_nested_modal)
-	_nested_modal.queue_free()
-	_nested_modal = null
-
-
-func _apply_nested_modal_layout() -> void:
-	if _nested_modal == null:
-		return
-	_nested_modal.position = Vector2.ZERO
-	_nested_modal.size = size
-
-
-func _show_side_workspace(workspace: Control) -> void:
-	_close_side_workspace()
-	if workspace == null:
-		return
-	_side_workspace_panel = side_workspace_scene.instantiate() as PanelContainer
-	_side_workspace_panel.z_index = z_index + 1
-	get_parent().add_child(_side_workspace_panel)
-	var scroll := _side_workspace_panel.get_node("InteractionSideWorkspaceScroll") as ScrollContainer
-	workspace.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	workspace.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.add_child(workspace)
-	_apply_side_workspace_layout()
-
-
-func _close_side_workspace() -> void:
-	if _side_workspace_panel == null:
-		return
-	var workspace_parent := _side_workspace_panel.get_parent()
-	if workspace_parent != null:
-		workspace_parent.remove_child(_side_workspace_panel)
-	_side_workspace_panel.queue_free()
-	_side_workspace_panel = null
-
-
-func _apply_side_workspace_layout() -> void:
-	if _side_workspace_panel == null:
-		return
-	_side_workspace_panel.position = _side_workspace_rect.position
-	_side_workspace_panel.size = _side_workspace_rect.size
-
-
-func _show_encounter_dock(workspace: Control) -> void:
-	_close_encounter_dock()
-	if workspace == null:
-		return
-	_encounter_dock_panel = encounter_dock_scene.instantiate() as PanelContainer
-	_encounter_dock_panel.z_index = z_index + 1
-	get_parent().add_child(_encounter_dock_panel)
-	workspace.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	workspace.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	workspace.reparent(_encounter_dock_panel)
-	_apply_encounter_dock_layout()
-
-
-func _close_encounter_dock() -> void:
-	if _encounter_dock_panel == null:
-		return
-	var dock_parent := _encounter_dock_panel.get_parent()
-	if dock_parent != null and dock_parent.is_queued_for_deletion():
-		_encounter_dock_panel = null
-		return
-	if dock_parent != null:
-		dock_parent.remove_child(_encounter_dock_panel)
-	_encounter_dock_panel.queue_free()
-	_encounter_dock_panel = null
-
-
-func _apply_encounter_dock_layout() -> void:
-	if _encounter_dock_panel == null:
-		return
-	var required_height := _encounter_dock_panel.get_combined_minimum_size().y
-	var dock_height := clampf(required_height, 58.0, minf(84.0, _stage_rect.size.y * 0.22))
-	_encounter_dock_panel.position = Vector2(_textbox_rect.position.x, maxf(_stage_rect.position.y, _textbox_rect.position.y - dock_height - 6.0))
-	_encounter_dock_panel.size = Vector2(_textbox_rect.size.x, dock_height)
-
-
-func _show_application_workspace(workspace: Control) -> void:
-	_close_application_workspace()
-	if workspace == null:
-		return
-	_application_workspace_panel = application_workspace_scene.instantiate() as PanelContainer
-	_application_workspace_panel.z_index = z_index + 2
-	get_parent().add_child(_application_workspace_panel)
-	workspace.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	workspace.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_application_workspace_panel.add_child(workspace)
-	_apply_application_workspace_layout()
-
-
-func _close_application_workspace() -> void:
-	if _application_workspace_panel == null:
-		return
-	var workspace_parent := _application_workspace_panel.get_parent()
-	if workspace_parent != null and workspace_parent.is_queued_for_deletion():
-		_application_workspace_panel = null
-		return
-	_application_workspace_panel.queue_free()
-	_application_workspace_panel = null
-
-
-func _apply_application_workspace_layout() -> void:
-	if _application_workspace_panel == null:
-		return
-	_application_workspace_panel.position = _application_rect.position
-	_application_workspace_panel.size = _application_rect.size
 
 
 func _apply_content_layout() -> void:
