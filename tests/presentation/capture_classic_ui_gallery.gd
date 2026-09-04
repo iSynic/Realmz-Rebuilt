@@ -122,7 +122,7 @@ func _capture_gallery() -> void:
 	await _resize(Vector2i(1280, 720))
 	_interaction.present(null)
 	var gallery_view: Variant = _application.session_controller.view()
-	var gallery_media := _application.presentation_coordinator.get("_media") as ClassicMediaCatalog
+	var gallery_media := _application.presentation_media.catalog()
 	var scrolling_gallery_text := "<<< Click & Drag Mouse To Move About >>>\n<<< Double Click To End This Message >>>\n\nYou can edit this text via a Resource editor.\n\nInside the scenario is an authored TEXT resource. Opcode 62 displays that exact text as a scrolling message instead of a normal map.\n\nThis passage continues so the stage visibly advances over Castle's tiled background. ".repeat(5)
 	_interaction.present(InteractionRequest.from_payload("gallery-scrolling-text", InteractionRequest.ACKNOWLEDGE, {"prompt": scrolling_gallery_text, "messageId": 1, "presentation": "classic-scrolling-text"}), "", gallery_view, gallery_media)
 	await _settle()
@@ -463,7 +463,7 @@ func _capture_gallery() -> void:
 	_router.open_screen(&"combat")
 	_application._battlefield_presenter.present(gallery_view)
 	_application._battlefield_presenter.visible = true
-	var combat_media := _application.presentation_coordinator.package_media()
+	var combat_media := _application.presentation_media.catalog()
 	var combat_request := ClassicUiFixtureGallery.request_for(InteractionRequest.COMBAT)
 	var combat_body := combat_request.body as CombatRequestBody
 	var gallery_hero_id: String = gallery_view.party_members[0].id

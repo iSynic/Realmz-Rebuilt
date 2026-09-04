@@ -9,6 +9,7 @@ const LIBRARY_HASH := "c7e093f46bcca49d2382d68c2995ae5ff90c0e706dbd538682b613af9
 var _package_host: PackageHostController
 var _session: GameSessionController
 var _presentation: PresentationCoordinator
+var _presentation_media: PresentationMediaController
 var _shell: GameShell
 var _vault := CharacterVaultController.new()
 var _creator := CharacterCreationHostController.new()
@@ -17,10 +18,17 @@ var _library_media: MediaSource
 var _library_load_complete := false
 
 
-func _init(package_host: PackageHostController, session: GameSessionController, presentation: PresentationCoordinator, shell: GameShell) -> void:
+func _init(
+	package_host: PackageHostController,
+	session: GameSessionController,
+	presentation: PresentationCoordinator,
+	presentation_media: PresentationMediaController,
+	shell: GameShell
+) -> void:
 	_package_host = package_host
 	_session = session
 	_presentation = presentation
+	_presentation_media = presentation_media
 	_shell = shell
 
 
@@ -45,8 +53,8 @@ func poll_library_load(active_content: RealmzContent) -> bool:
 	_library_content = prepared.content
 	_library_media = prepared.media
 	_package_host.set_application_content(_library_content, _library_media.assets())
-	_presentation.set_application_character_media(_library_media)
-	_presentation.set_package_media(_library_media)
+	_presentation_media.set_application_character_media(_library_media)
+	_presentation_media.set_package_media(_library_media)
 	_vault.seed_classic_starters_if_empty()
 	_shell.navigator.setup_controller.set_standalone_character_creation_available(true)
 	refresh_vault_views(active_content)
@@ -90,7 +98,7 @@ func begin_creation(active_content: RealmzContent) -> void:
 	if step.state == SessionStep.State.FAILED:
 		_shell.status.set_status("Character Files creation failed • %s" % step.error_message, true)
 		return
-	_presentation.set_package_media(_library_media)
+	_presentation_media.set_package_media(_library_media)
 	_presentation.present_host_workflow(_creator.view(), step)
 	_shell.navigator.setup_controller.begin_standalone_character_creation()
 	_shell.status.set_status("Create a reusable character with the built-in Realmz races and classes.")
@@ -167,7 +175,7 @@ func _publish_standalone_character() -> void:
 func _finish_creation(active_content: RealmzContent, status: String) -> void:
 	_creator.finish()
 	_shell.navigator.setup_controller.finish_standalone_character_creation()
-	_presentation.set_package_media(_library_media)
+	_presentation_media.set_package_media(_library_media)
 	_presentation.refresh()
 	refresh_vault_views(active_content)
 	_shell.show_campaign_selection()

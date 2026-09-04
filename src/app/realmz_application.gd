@@ -16,6 +16,7 @@ extends Control
 
 var session_controller: GameSessionController
 var presentation_coordinator: PresentationCoordinator
+var presentation_media: PresentationMediaController
 var settings_repository: SettingsRepository
 var _active_content: RealmzContent
 var _presentation_settings: PresentationSettings
@@ -62,6 +63,7 @@ func _build_dependencies() -> void:
 	_presentation_settings = settings_repository.load_settings()
 	session_controller = GameSessionController.new()
 	presentation_coordinator = PresentationCoordinator.new()
+	presentation_media = PresentationMediaController.new()
 	_dungeon_presenter = DungeonMap3DPresenter.new()
 	_held_movement = HeldMovementController.new()
 	_input_router = ApplicationInputRouter.new(self)
@@ -72,7 +74,13 @@ func _build_dependencies() -> void:
 	_debug_tools = DebugToolsHost.new()
 	add_child(_debug_tools)
 	_debug_tools.bind(session_controller, self, func() -> RealmzContent: return _active_content)
-	character_files = ApplicationCharacterFilesHost.new(_package_host, session_controller, presentation_coordinator, _game_shell)
+	character_files = ApplicationCharacterFilesHost.new(
+		_package_host,
+		session_controller,
+		presentation_coordinator,
+		presentation_media,
+		_game_shell
+	)
 	adventure_storage = ApplicationAdventureStorageHost.new(_save_host, session_controller, _game_shell, func() -> void: _queued_combat_auto_changes.clear())
 	_spatial_layout = ApplicationSpatialLayout.new(_map_presenter, _battlefield_presenter, _dungeon_presenter, _interaction_presenter, _shell_presenter, session_controller, presentation_coordinator)
 	lifecycle_host.bind(session_controller, presentation_coordinator, _shell_presenter, _held_movement, func(slot_id: String) -> bool: return adventure_storage.save(_active_content, slot_id), func() -> void: adventure_storage.refresh(_active_content), _present_step_status, _complete_closed_session, _quit_application)
@@ -107,7 +115,16 @@ func _bind_debug_and_movement() -> void:
 
 
 func _bind_combat_and_interactions() -> void:
-	presentation_coordinator.bind(session_controller, _map_presenter, _battlefield_presenter, _dungeon_presenter, _interaction_presenter, _shell_presenter, _audio_presenter)
+	presentation_coordinator.bind(
+		session_controller,
+		_map_presenter,
+		_battlefield_presenter,
+		_dungeon_presenter,
+		_interaction_presenter,
+		_shell_presenter,
+		_audio_presenter,
+		presentation_media
+	)
 	presentation_coordinator.playback_step_settled.connect(_on_playback_step_settled)
 	_interaction_presenter.response_submitted.connect(_on_interaction_response_submitted)
 	_interaction_presenter.combat_targeting_requested.connect(_on_combat_targeting_requested)
@@ -272,7 +289,7 @@ func _complete_package_install(prepared: PreparedPackage, initial_seed: int) -> 
 	_package_host.promote(prepared)
 	if _presentation_settings.last_campaign_id != _active_content.campaign_id: _presentation_settings.last_campaign_id = _active_content.campaign_id
 	settings_repository.save_settings(_presentation_settings)
-	presentation_coordinator.set_package_media(prepared.media)
+	presentation_media.set_package_media(prepared.media)
 	presentation_coordinator.refresh()
 	adventure_storage.refresh(_active_content)
 	character_files.refresh_vault_views(_active_content)
@@ -310,16 +327,16 @@ func handle_field_fast_spell(slot_index: int, use_spell: bool) -> void:
 	var binding := _shell_presenter.commands.selected_fast_spell(slot_index)
 	if binding.is_empty() or String(binding.get("spellId", "")).is_empty():
 		_shell_presenter.status.set_status("Fast Spell %s • Undefined Spell" % ("0" if slot_index == 9 else str(slot_index + 1)))
-		_audio_presenter.present_sound(143, presentation_coordinator.package_media())
+		_audio_presenter.present_sound(143, presentation_media.catalog())
 		return
 	var summary := "Fast Spell %s • %s P%d • %s" % ["0" if slot_index == 9 else str(slot_index + 1), binding["spellName"], binding["power"], binding["characterName"]]
 	if not use_spell:
 		_shell_presenter.status.set_status(summary)
-		_audio_presenter.present_sound(145, presentation_coordinator.package_media())
+		_audio_presenter.present_sound(145, presentation_media.catalog())
 		return
 	if not bool(binding.get("enabled", false)):
 		_shell_presenter.status.set_status("%s • %s" % [summary, binding.get("reason", "Unavailable")], true)
-		_audio_presenter.present_sound(143, presentation_coordinator.package_media())
+		_audio_presenter.present_sound(143, presentation_media.catalog())
 		return
 	submit_intent(MagicIntents.cast(binding["spellId"], binding["characterId"], "", binding["power"]))
 
@@ -347,17 +364,17 @@ func _on_combatant_focus_requested(combatant_id: String, play_sound: bool) -> vo
 	_battlefield_presenter.focus_combatant(combatant_id)
 	_interaction_presenter.inspect_combatant(combatant_id)
 	if play_sound:
-		_audio_presenter.present_sound(147, presentation_coordinator.package_media())
+		_audio_presenter.present_sound(147, presentation_media.catalog())
 
 
 func _on_reveal_friends_requested() -> void:
 	_battlefield_presenter.toggle_reveal_friends()
-	_audio_presenter.present_sound(137, presentation_coordinator.package_media())
+	_audio_presenter.present_sound(137, presentation_media.catalog())
 
 
 func _on_interaction_sound_requested(sound_id: int) -> void:
 	if sound_id > 0:
-		_audio_presenter.present_sound(sound_id, presentation_coordinator.package_media())
+		_audio_presenter.present_sound(sound_id, presentation_media.catalog())
 
 
 func _submit_movement(direction: Vector2i) -> bool:
@@ -457,7 +474,7 @@ func _quit_application() -> void:
 func _complete_closed_session() -> void:
 	_queued_combat_auto_changes.clear()
 	_active_content = null
-	presentation_coordinator.set_package_media(character_files.library_media())
+	presentation_media.set_package_media(character_files.library_media())
 	adventure_storage.refresh(_active_content)
 	character_files.refresh_vault_views(_active_content)
 	_refresh_campaigns()

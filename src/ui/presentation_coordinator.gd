@@ -13,11 +13,7 @@ var _dungeon_presenter: DungeonMap3DPresenter
 var _interaction_presenter: InteractionPresenter
 var _shell_presenter: GameShell
 var _audio_presenter: ClassicAudioPresenter
-var _media: ClassicMediaCatalog
-var _package_media: MediaSource
-var _character_media: MediaSource
-var _application_media := ApplicationMediaCatalog.new()
-var _stock_music := ClassicMusicCatalog.new()
+var _media_controller: PresentationMediaController
 var _active_route: StringName = &"exploration"
 var _play_stage_visible := false
 var _combat_playback: CombatPlaybackController
@@ -28,7 +24,16 @@ var _reduced_motion: bool = false
 var _dungeon_3d_enabled: bool = true
 
 
-func bind(session_controller: GameSessionController, map_presenter: ClassicMapPresenter, battlefield_presenter: ClassicBattlefieldPresenter, dungeon_presenter: DungeonMap3DPresenter, interaction_presenter: InteractionPresenter, shell_presenter: GameShell, audio_presenter: ClassicAudioPresenter) -> void:
+func bind(
+	session_controller: GameSessionController,
+	map_presenter: ClassicMapPresenter,
+	battlefield_presenter: ClassicBattlefieldPresenter,
+	dungeon_presenter: DungeonMap3DPresenter,
+	interaction_presenter: InteractionPresenter,
+	shell_presenter: GameShell,
+	audio_presenter: ClassicAudioPresenter,
+	media_controller: PresentationMediaController
+) -> void:
 	assert(session_controller != null, "Presentation requires a session controller")
 	assert(map_presenter != null, "Presentation requires an explicit map presenter")
 	assert(battlefield_presenter != null, "Presentation requires an explicit battlefield presenter")
@@ -36,6 +41,7 @@ func bind(session_controller: GameSessionController, map_presenter: ClassicMapPr
 	assert(interaction_presenter != null, "Presentation requires an explicit interaction presenter")
 	assert(shell_presenter != null, "Presentation requires an explicit Classic shell presenter")
 	assert(audio_presenter != null, "Presentation requires an explicit audio presenter")
+	assert(media_controller != null, "Presentation requires an explicit media controller")
 	_session_controller = session_controller
 	_map_presenter = map_presenter
 	_battlefield_presenter = battlefield_presenter
@@ -43,6 +49,8 @@ func bind(session_controller: GameSessionController, map_presenter: ClassicMapPr
 	_interaction_presenter = interaction_presenter
 	_shell_presenter = shell_presenter
 	_audio_presenter = audio_presenter
+	_media_controller = media_controller
+	_media_controller.bind(_map_presenter, _battlefield_presenter, _shell_presenter, _audio_presenter)
 	_combat_playback = CombatPlaybackController.new()
 	_combat_playback.frame_changed.connect(_on_combat_playback_frame_changed)
 	_combat_playback.sound_requested.connect(_on_combat_playback_sound_requested)
@@ -62,7 +70,7 @@ func bind(session_controller: GameSessionController, map_presenter: ClassicMapPr
 	)
 	_shell_presenter.combat_spell_cast_requested.connect(func(option: InteractionRequestValue.CastOption) -> void: _interaction_presenter.cast_combat_spell(option))
 	_shell_presenter.combat_spellbook_back_requested.connect(func() -> void: _interaction_presenter.close_combat_spellbook())
-	set_package_media(null)
+	_media_controller.set_package_media(null)
 	_present_current_view()
 	set_process(false)
 
@@ -97,9 +105,9 @@ static func _has_event(events: Array[DomainEvent], kind: StringName) -> bool:
 func _present_committed_step(step: SessionStep, game_view: GameView, include_audio: bool) -> void:
 	_present_view(game_view, false, false)
 	_shell_presenter.status.present_step(step, game_view, _shell_presenter.picture_stage)
-	_shell_presenter.present_media_events(step.events, _media)
+	_shell_presenter.present_media_events(step.events, _media_controller.catalog())
 	if include_audio:
-		_audio_presenter.present_events(step.events, _media)
+		_audio_presenter.present_events(step.events, _media_controller.catalog())
 	var passive_classic_text := ""
 	var classic_flash_messages: Array[Dictionary] = []
 	for event: DomainEvent in step.events:
@@ -123,7 +131,7 @@ func _on_combat_playback_frame_changed(frame: CombatPlaybackFrame) -> void:
 
 
 func _on_combat_playback_sound_requested(event: DomainEvent) -> void:
-	_audio_presenter.present_events([event], _media)
+	_audio_presenter.present_events([event], _media_controller.catalog())
 
 
 func _on_combat_playback_finished() -> void:
@@ -139,25 +147,7 @@ func _on_combat_playback_finished() -> void:
 
 
 func _on_presentation_sound_requested(sound_id: int, wait_for_completion: bool, stop_existing: bool, reduced_sound_eligible: bool) -> void:
-	_audio_presenter.present_sound(sound_id, _media, wait_for_completion, stop_existing, reduced_sound_eligible)
-
-
-func set_package_media(media: MediaSource) -> void:
-	_package_media = media
-	_media = ClassicMediaCatalog.new(media, _application_media, _character_media)
-	_map_presenter.set_media_catalog(_media)
-	_battlefield_presenter.set_media_catalog(_media)
-	_shell_presenter.set_package_media(_media)
-	refresh_music()
-
-
-func set_application_character_media(media: MediaSource) -> void:
-	_character_media = media
-	set_package_media(_package_media)
-
-
-func package_media() -> ClassicMediaCatalog:
-	return _media
+	_audio_presenter.present_sound(sound_id, _media_controller.catalog(), wait_for_completion, stop_existing, reduced_sound_eligible)
 
 
 func set_active_route(route_id: StringName) -> void:
@@ -171,10 +161,10 @@ func set_active_route(route_id: StringName) -> void:
 
 
 func refresh_music() -> void:
-	if _audio_presenter == null or _shell_presenter == null:
+	if _media_controller == null:
 		return
 	var view := _session_controller.view() if _session_controller != null else _presented_view
-	_audio_presenter.present_music_context(ClassicMusicContext.playlist_for(_active_route, view), _shell_presenter.settings, _media, _stock_music)
+	_media_controller.present_music_context(_active_route, view)
 
 
 func set_play_stage_visible(visible: bool) -> void:
@@ -331,7 +321,7 @@ func _present_request(request: InteractionRequest, game_view: GameView, characte
 		_map_presenter.set_movement_cursor_enabled(false)
 		_dungeon_presenter.set_navigation_cursor_enabled(false)
 	_shell_presenter.roster.present_character_selection(character_selection_request)
-	_interaction_presenter.present(request, _shell_presenter.status.latest_classic_text(), game_view, _media)
+	_interaction_presenter.present(request, _shell_presenter.status.latest_classic_text(), game_view, _media_controller.catalog())
 	if enables_spatial_cursor:
 		_map_presenter.set_movement_cursor_enabled(true)
 		_dungeon_presenter.set_navigation_cursor_enabled(true)
