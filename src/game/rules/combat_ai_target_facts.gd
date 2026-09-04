@@ -7,7 +7,7 @@ extends RefCounted
 
 
 static func expected_spell_effect(spell: SpellDefinition, power: int) -> int:
-	if ClassicSpellCapabilityCatalog.is_combat_death_spell(spell):
+	if ClassicSpellSpecialEffectRules.is_combat_death_spell(spell):
 		return 128
 	if absi(spell.special) == 28:
 		var duration := maxi(spell.duration_min, spell.duration_max) + power * maxi(spell.power_duration_min, spell.power_duration_max)

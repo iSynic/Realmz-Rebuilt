@@ -6,7 +6,7 @@ Known spells, scroll slots, charges, selected power, targets, and continuations 
 
 Outside combat, `FieldMagicWorkflow` owns Fast Spell binding, scroll scribing and use, and learned spell casting. `FieldItemWorkflow` owns magic carried-item use. Both share `FieldMagicTargetRequestBuilder` for the exact saveable character-selection contract, `FieldMagicResolver` for stable party/allied target order and committed effects, and the top-level `MagicTransitionResult` returned to session coordination.
 
-Do not classify spells by their names or duplicate lists of special IDs. The application capability catalog and the owning rules decide what a spell can do. Field behavior belongs to `test_field_spell_workflow.gd`; scroll and camp behavior belongs to `test_scroll_camp_workflow.gd`; combat timing is sampled by `combat_performance_probe.gd`.
+Do not classify spells by their names or duplicate lists of special IDs. `ClassicSpellIdentityCatalog` owns packed application identity, `ClassicSpellClassificationRules` owns mechanical family and behavior signatures, and `ClassicSpellDispositionRules` decides which casting sources can execute a record. `ClassicSpellSourceRules`, `ClassicSpellConditionRules`, and `ClassicSpellSpecialEffectRules` recognize the exact source-backed record structures used by those decisions. Field behavior belongs to `test_field_spell_workflow.gd`; scroll and camp behavior belongs to `test_scroll_camp_workflow.gd`; combat timing is sampled by `combat_performance_probe.gd`.
 
 ## Where to start
 

@@ -44,29 +44,29 @@ func _best_party_spell(state: GameState, content: RealmzContent, actor: Characte
 			continue
 		if CombatFlowSummoning.is_summon_spell(spell):
 			best = _prefer(best, _best_summon(state, content, actor, spell, option.power, summon_coordinate_cache))
-		elif ClassicSpellCapabilityCatalog.is_combat_charm_spell(spell):
+		elif ClassicSpellSpecialEffectRules.is_combat_charm_spell(spell):
 			best = _prefer(best, _best_charm(state, content, actor, spell, option.power))
-		elif ClassicSpellCapabilityCatalog.is_combat_polymorph_spell(spell):
+		elif ClassicSpellSpecialEffectRules.is_combat_polymorph_spell(spell):
 			best = _prefer(best, _best_polymorph(state, content, actor, spell, option, actors_by_cell, area_placement_cache, area_center_cache))
-		elif ClassicSpellCapabilityCatalog.is_combat_destroy_turn_undead_spell(spell):
+		elif ClassicSpellSpecialEffectRules.is_combat_destroy_turn_undead_spell(spell):
 			best = _prefer(best, _best_destroy_turn_undead(state, content, actor, spell, option.power))
-		elif ClassicSpellCapabilityCatalog.is_combat_destroy_magic_spell(spell):
+		elif ClassicSpellSpecialEffectRules.is_combat_destroy_magic_spell(spell):
 			best = _prefer(best, _best_destroy_magic(state, content, actor, spell, option.power))
-		elif ClassicSpellCapabilityCatalog.is_combat_magic_detection_spell(spell):
+		elif ClassicSpellSpecialEffectRules.is_combat_magic_detection_spell(spell):
 			continue
 		elif MagicRules.is_condition_cure_spell(spell):
 			best = _prefer(best, _best_condition_cure(state, content, actor, spell, option.power))
 		elif spell.target_type == 7 and state.party.conditions.value(absi(spell.special)) < _maximum_condition_duration(spell, option.power):
 			best = _prefer(best, {"action": &"cast_spell", "spellId": spell.id, "power": option.power, "score": 520 + (_maximum_condition_duration(spell, option.power) - state.party.conditions.value(absi(spell.special))) * 8 - absi(spell.cost * option.power) * 3})
-		elif ClassicSpellCapabilityCatalog.combat_condition_effect_index(spell) >= 0 and spell.target_type in [3, 4]:
+		elif ClassicSpellConditionRules.combat_condition_effect_index(spell) >= 0 and spell.target_type in [3, 4]:
 			best = _prefer(best, _best_damage_spell(state, content, actor, spell, option, actors_by_cell, area_placement_cache, area_center_cache, ray_actor_cache))
-		elif ClassicSpellCapabilityCatalog.combat_condition_effect_index(spell) >= 0 or spell.target_type == 5 and ClassicSpellCapabilityCatalog.combat_persistent_field_condition_index(spell) >= 0:
+		elif ClassicSpellConditionRules.combat_condition_effect_index(spell) >= 0 or spell.target_type == 5 and ClassicSpellConditionRules.combat_persistent_field_condition_index(spell) >= 0:
 			best = _prefer(best, _best_condition_effect(state, content, actor, spell, option.power))
 		elif _context.automation().is_source_backed_combat_healing_spell(spell):
 			best = _prefer(best, _best_heal(state, content, actor, spell, option.power))
-		elif ClassicSpellCapabilityCatalog.is_combat_spell_point_restore_spell(spell):
+		elif ClassicSpellSpecialEffectRules.is_combat_spell_point_restore_spell(spell):
 			best = _prefer(best, _best_spell_point_restore(state, content, actor, spell, option.power))
-		elif ClassicSpellCapabilityCatalog.is_combat_spell_point_drain_spell(spell):
+		elif ClassicSpellSpecialEffectRules.is_combat_spell_point_drain_spell(spell):
 			best = _prefer(best, _best_spell_point_drain(state, content, actor, spell, option.power, ray_actor_cache))
 		elif spell.target_type in [0, 1, 3, 4, 6, 9, 10, 12]:
 			best = _prefer(best, _best_damage_spell(state, content, actor, spell, option, actors_by_cell, area_placement_cache, area_center_cache, ray_actor_cache))
@@ -183,9 +183,9 @@ func _best_condition_cure(state: GameState, content: RealmzContent, actor: Chara
 
 
 func _best_condition_effect(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, power: int) -> Dictionary:
-	var condition_index := ClassicSpellCapabilityCatalog.combat_condition_effect_index(spell)
+	var condition_index := ClassicSpellConditionRules.combat_condition_effect_index(spell)
 	if condition_index < 0:
-		condition_index = ClassicSpellCapabilityCatalog.combat_persistent_field_condition_index(spell)
+		condition_index = ClassicSpellConditionRules.combat_persistent_field_condition_index(spell)
 	var friendly := spell.target_type == 5 or spell.cannot == 4
 	var candidate_ids: Array[String] = [actor.id]
 	if spell.target_type != 5:
@@ -289,9 +289,9 @@ func _best_party_spell_point_drain_ray(state: GameState, content: RealmzContent,
 
 func _best_damage_spell(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, option: CombatSpellOptionView, actors_by_cell: Dictionary, area_placement_cache: Dictionary, area_center_cache: Dictionary, ray_actor_cache: Dictionary) -> Dictionary:
 	var expected := expected_spell_effect(spell, option.power)
-	var condition_index := ClassicSpellCapabilityCatalog.combat_persistent_field_condition_index(spell)
+	var condition_index := ClassicSpellConditionRules.combat_persistent_field_condition_index(spell)
 	if absi(spell.special) == 28:
-		condition_index = ClassicSpellCapabilityCatalog.combat_condition_effect_index(spell)
+		condition_index = ClassicSpellConditionRules.combat_condition_effect_index(spell)
 		expected = absi(_maximum_condition_duration(spell, option.power))
 	if expected <= 0 and condition_index < 0:
 		return {}

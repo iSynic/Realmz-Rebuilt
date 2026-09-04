@@ -36,9 +36,9 @@ func best_monster_spell_plan(state: GameState, content: RealmzContent, monster: 
 			continue
 		if spell.target_type != 12 and not _auto_group_target_is_safe(spell):
 			continue
-		if ClassicSpellCapabilityCatalog.is_combat_persistent_field_spell(spell) and not state.combat.can_queue_persistent_field():
+		if ClassicSpellConditionRules.is_combat_persistent_field_spell(spell) and not state.combat.can_queue_persistent_field():
 			continue
-		var maximum_power := 1 if ClassicSpellCapabilityCatalog.is_combat_application_elemental_attack(spell) else 7 if spell.cost == 0 else mini(7, monster.spell_points / spell.cost)
+		var maximum_power := 1 if ClassicSpellSourceRules.is_combat_application_elemental_attack(spell) else 7 if spell.cost == 0 else mini(7, monster.spell_points / spell.cost)
 		for power: int in range(1, maximum_power + 1):
 			var plan := _monster_spell_power_plan(state, content, monster, definition, spell, slot, power, actors_by_cell, area_placement_cache, area_center_cache)
 			best = _prefer(best, plan)
@@ -46,15 +46,15 @@ func best_monster_spell_plan(state: GameState, content: RealmzContent, monster: 
 
 
 func _monster_spell_power_plan(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, spell: SpellDefinition, slot: int, power: int, actors_by_cell: Dictionary, area_placement_cache: Dictionary, area_center_cache: Dictionary) -> Dictionary:
-	if ClassicSpellCapabilityCatalog.is_inert_self_duration_effect(spell):
+	if ClassicSpellSourceRules.is_inert_self_duration_effect(spell):
 		return {}
 	if CombatFlowSummoning.is_summon_spell(spell):
 		return _monster_summon_spell_power_plan(state, content, monster, spell, slot, power)
-	if ClassicSpellCapabilityCatalog.is_combat_destroy_magic_spell(spell):
+	if ClassicSpellSpecialEffectRules.is_combat_destroy_magic_spell(spell):
 		return _monster_destroy_magic_plan(state, content, monster, spell, slot, power)
-	if ClassicSpellCapabilityCatalog.is_combat_magic_detection_spell(spell):
+	if ClassicSpellSpecialEffectRules.is_combat_magic_detection_spell(spell):
 		return {}
-	if ClassicSpellCapabilityCatalog.is_combat_polymorph_spell(spell) and spell.target_type == 1:
+	if ClassicSpellSpecialEffectRules.is_combat_polymorph_spell(spell) and spell.target_type == 1:
 		return _monster_polymorph_plan(state, content, monster, spell, slot, power)
 	if spell.target_type in [3, 4]:
 		return _monster_area_spell_power_plan(state, content, monster, definition, spell, slot, power, actors_by_cell, area_placement_cache, area_center_cache)
@@ -63,11 +63,11 @@ func _monster_spell_power_plan(state: GameState, content: RealmzContent, monster
 	if spell.target_type in [9, 10, 12]:
 		return _monster_group_spell_power_plan(state, content, monster, spell, slot, power, spell.target_type == 9)
 	var cure_index := MagicRules.condition_cure_index(spell) if MagicRules.is_condition_cure_spell(spell) else -1
-	var effect_index := ClassicSpellCapabilityCatalog.combat_condition_effect_index(spell)
+	var effect_index := ClassicSpellConditionRules.combat_condition_effect_index(spell)
 	if effect_index < 0:
-		effect_index = ClassicSpellCapabilityCatalog.combat_persistent_field_condition_index(spell)
-	var spell_point_restore := ClassicSpellCapabilityCatalog.is_combat_spell_point_restore_spell(spell)
-	var spell_point_drain := ClassicSpellCapabilityCatalog.is_combat_spell_point_drain_spell(spell)
+		effect_index = ClassicSpellConditionRules.combat_persistent_field_condition_index(spell)
+	var spell_point_restore := ClassicSpellSpecialEffectRules.is_combat_spell_point_restore_spell(spell)
+	var spell_point_drain := ClassicSpellSpecialEffectRules.is_combat_spell_point_drain_spell(spell)
 	var friendly := spell.target_type == 5 or spell.cannot == 4 or cure_index >= 0 or spell_point_restore
 	var candidates: Array[String] = []
 	for character: CharacterState in state.party.characters():
@@ -147,7 +147,7 @@ func _monster_polymorph_plan(state: GameState, content: RealmzContent, monster: 
 
 func _monster_group_spell_power_plan(state: GameState, content: RealmzContent, monster: MonsterState, spell: SpellDefinition, slot: int, power: int, friendly: bool) -> Dictionary:
 	var target_ids := _everybody_actor_ids(state) if spell.target_type == 12 else _friendly_actor_ids_for_monster(state, monster) if friendly else _opposed_actor_ids_for_monster(state, monster)
-	var condition_index := ClassicSpellCapabilityCatalog.combat_condition_effect_index(spell)
+	var condition_index := ClassicSpellConditionRules.combat_condition_effect_index(spell)
 	var effective_target_count := 0
 	var effective_target_balance := 0
 	for target_id: String in target_ids:
@@ -164,11 +164,11 @@ func _monster_group_spell_power_plan(state: GameState, content: RealmzContent, m
 
 
 func _monster_area_spell_power_plan(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, spell: SpellDefinition, slot: int, power: int, actors_by_cell: Dictionary, area_placement_cache: Dictionary, area_center_cache: Dictionary) -> Dictionary:
-	if ClassicSpellCapabilityCatalog.is_combat_persistent_field_spell(spell) and not state.combat.can_queue_persistent_field():
+	if ClassicSpellConditionRules.is_combat_persistent_field_spell(spell) and not state.combat.can_queue_persistent_field():
 		return {}
 	var expected := expected_spell_effect(spell, power)
-	var condition_index := ClassicSpellCapabilityCatalog.combat_persistent_field_condition_index(spell)
-	var monster_targets_only := ClassicSpellCapabilityCatalog.is_combat_polymorph_spell(spell)
+	var condition_index := ClassicSpellConditionRules.combat_persistent_field_condition_index(spell)
+	var monster_targets_only := ClassicSpellSpecialEffectRules.is_combat_polymorph_spell(spell)
 	if monster_targets_only: expected = 10
 	if expected <= 0 and condition_index < 0:
 		return {}
@@ -240,7 +240,7 @@ func _monster_ray_spell_power_plan(state: GameState, content: RealmzContent, mon
 		var ray_ids: Array[String] = _context.magic_flow().ray_spell_actor_ids(state, content, monster.id, endpoint_id, spell)
 		if ray_ids.is_empty() or ray_ids.any(func(target_id: String) -> bool: return _actor_is_friendly_to_monster(state, monster, target_id) or _target_hard_immune(state, content, target_id, spell)):
 			continue
-		var drain := ClassicSpellCapabilityCatalog.is_combat_spell_point_drain_spell(spell)
+		var drain := ClassicSpellSpecialEffectRules.is_combat_spell_point_drain_spell(spell)
 		var score := 340 - spell.cost * power * 3
 		for target_id: String in ray_ids:
 			score += mini(_target_spell_points(state, target_id), expected) * 6 if drain else expected * 6 + _lethal_bonus(state, target_id, expected)
@@ -252,9 +252,9 @@ func _monster_ray_spell_power_plan(state: GameState, content: RealmzContent, mon
 
 func _monster_target_score(state: GameState, target_id: String, spell: SpellDefinition, power: int, healing: bool, cure_index: int = -1, effect_index: int = -1) -> int:
 	var expected := expected_spell_effect(spell, power)
-	if ClassicSpellCapabilityCatalog.is_combat_spell_point_restore_spell(spell):
+	if ClassicSpellSpecialEffectRules.is_combat_spell_point_restore_spell(spell):
 		return 620 + mini(_target_missing_spell_points(state, target_id), expected) * 5 + _target_missing_spell_points(state, target_id)
-	if ClassicSpellCapabilityCatalog.is_combat_spell_point_drain_spell(spell):
+	if ClassicSpellSpecialEffectRules.is_combat_spell_point_drain_spell(spell):
 		return 540 + mini(_target_spell_points(state, target_id), expected) * 6 + _target_spell_points(state, target_id)
 	if cure_index >= 0:
 		return _condition_cure_score(state, target_id, cure_index)

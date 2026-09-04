@@ -40,9 +40,9 @@ func probe_character_spell_choice(state: GameState, content: RealmzContent, cast
 	if not spell.in_combat:
 		return CombatSpellCastProbe.blocked(&"spell_not_available_in_combat", "The selected spell is not available in combat.")
 	var summon_spell: bool = CombatFlowSummoning.is_summon_spell(spell)
-	if ClassicSpellCapabilityCatalog.combat_character_disposition(spell) != ClassicSpellCapabilityCatalog.DISPOSITION_EXECUTABLE:
-		return CombatSpellCastProbe.blocked(&"unsupported_combat_spell", ClassicSpellCapabilityCatalog.unsupported_reason(spell, &"combat-character"))
-	if ClassicSpellCapabilityCatalog.is_combat_persistent_field_spell(spell) and not combat.can_queue_persistent_field():
+	if ClassicSpellDispositionRules.combat_character_disposition(spell) != ClassicSpellDispositionRules.DISPOSITION_EXECUTABLE:
+		return CombatSpellCastProbe.blocked(&"unsupported_combat_spell", ClassicSpellDispositionRules.unsupported_reason(spell, &"combat-character"))
+	if ClassicSpellConditionRules.is_combat_persistent_field_spell(spell) and not combat.can_queue_persistent_field():
 		return CombatSpellCastProbe.blocked(&"persistent_field_queue_limit", "Castle's persistent battlefield-field queue is full.")
 	if repeated_target and spell.size != 0 and not summon_spell:
 		return CombatSpellCastProbe.blocked(&"repeated_open_space_spell_unresolved", "Classic target type 0 with nonzero size selects open-space footprints for summoning or special behavior, not ordinary actors.")
@@ -69,7 +69,7 @@ func probe_character_spell_cast(state: GameState, content: RealmzContent, caster
 	var spell := content.spell_by_id(spell_id)
 	var repeated_target := spell.target_type == 0
 	var summon_spell: bool = CombatFlowSummoning.is_summon_spell(spell)
-	var phase_spell := ClassicSpellCapabilityCatalog.is_combat_phase_spell(spell)
+	var phase_spell := ClassicSpellSpecialEffectRules.is_combat_phase_spell(spell)
 	var group_target := spell.target_type in [9, 10, 12]
 	var area_target := spell.target_type in [3, 4]
 	if area_target and invalid_area_rotation(spell, rotation):
@@ -124,7 +124,7 @@ func character_spell_options(state: GameState, content: RealmzContent, caster_id
 				if CombatFlowSummoning.is_summon_spell(spell): result.append(CombatSpellOptionView.new(spell, power_level, null, "Choose up to %d open spaces" % power_level, &"coordinate_sequence", 0, state.combat.battlefield.actor_position(caster_id), [], power_level))
 				else: result.append(CombatSpellOptionView.new(spell, power_level, null, "Choose up to %d actors" % power_level, &"sequence", 0, INVALID_COORDINATE, [], power_level))
 				continue
-			if ClassicSpellCapabilityCatalog.is_combat_phase_spell(spell):
+			if ClassicSpellSpecialEffectRules.is_combat_phase_spell(spell):
 				result.append(CombatSpellOptionView.new(spell, power_level, null, "Choose battlefield destination", &"area", 0, state.combat.battlefield.actor_position(caster_id), [Vector2i.ZERO]))
 				continue
 			if spell.target_type in [9, 10, 12]:
@@ -156,7 +156,7 @@ func character_scroll_options(state: GameState, content: RealmzContent, caster_i
 				if CombatFlowSummoning.is_summon_spell(spell): result.append(CombatScrollOptionView.new(scroll_slot, spell, scroll.power, null, "Choose up to %d open spaces" % scroll.power, &"coordinate_sequence", 0, state.combat.battlefield.actor_position(caster_id), [], scroll.power))
 				else: result.append(CombatScrollOptionView.new(scroll_slot, spell, scroll.power, null, "Choose up to %d actors" % scroll.power, &"sequence", 0, INVALID_COORDINATE, [], scroll.power, character_actor_spell_candidates(state, content, caster, spell, scroll.power)))
 			continue
-		if ClassicSpellCapabilityCatalog.is_combat_phase_spell(spell):
+		if ClassicSpellSpecialEffectRules.is_combat_phase_spell(spell):
 			if _context.magic_flow().probe_character_scroll_cast(state, content, caster_id, scroll_slot).allowed: result.append(CombatScrollOptionView.new(scroll_slot, spell, scroll.power, null, "Choose battlefield destination", &"area", 0, state.combat.battlefield.actor_position(caster_id), [Vector2i.ZERO]))
 			continue
 		if spell.target_type in [9, 10, 12]:
@@ -233,7 +233,7 @@ static func spell_target_view(state: GameState, content: RealmzContent, target_i
 
 
 func spell_actor_target_is_valid(state: GameState, content: RealmzContent, caster_id: String, target_id: String, spell: SpellDefinition, power_level: int) -> bool:
-	if ClassicSpellCapabilityCatalog.is_combat_remove_curse_spell(spell) and state.party.character_by_id(target_id) == null: return false
+	if ClassicSpellSpecialEffectRules.is_combat_remove_curse_spell(spell) and state.party.character_by_id(target_id) == null: return false
 	var maximum_range := absi(spell.range_min + spell.range_max * power_level)
 	if caster_id == target_id:
 		var map := content.world.map_by_id(state.combat.battlefield.map_id)

@@ -42,7 +42,7 @@ static func combat_staged_item_is_valid(content: RealmzContent, state: GameState
 	if item == null or spell == null or absi(item.special_1) != 8:
 		return false
 	var use_probe := rules.inventory.classic_spell_item_probe(character, instance, item, spell, content.race_by_id(character.race_id), content.caste_by_id(character.caste_id), true)
-	if not use_probe.allowed or ClassicSpellCapabilityCatalog.combat_item_disposition(spell) != ClassicSpellCapabilityCatalog.DISPOSITION_EXECUTABLE:
+	if not use_probe.allowed or ClassicSpellDispositionRules.combat_item_disposition(spell) != ClassicSpellDispositionRules.DISPOSITION_EXECUTABLE:
 		return false
 	return true
 

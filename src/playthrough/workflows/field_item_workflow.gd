@@ -74,8 +74,8 @@ static func field_spell_item_probe(context: SessionWorkflowContext, character: C
 	var probe := context.rules.inventory.classic_spell_item_probe(character, instance, item, spell, context.content.race_by_id(character.race_id) if character != null else null, context.content.caste_by_id(character.caste_id) if character != null else null, false)
 	if not probe.allowed:
 		return probe
-	if ClassicSpellCapabilityCatalog.field_character_disposition(spell) != ClassicSpellCapabilityCatalog.DISPOSITION_EXECUTABLE:
-		return InventoryActionProbe.block(ClassicSpellCapabilityCatalog.unsupported_reason(spell, &"field-item"))
+	if ClassicSpellDispositionRules.field_character_disposition(spell) != ClassicSpellDispositionRules.DISPOSITION_EXECUTABLE:
+		return InventoryActionProbe.block(ClassicSpellDispositionRules.unsupported_reason(spell, &"field-item"))
 	if spell.target_type < 0 or spell.target_type > 12:
 		return InventoryActionProbe.block("This item's Classic field target type is invalid.")
 	return InventoryActionProbe.permit()

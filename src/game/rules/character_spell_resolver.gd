@@ -59,7 +59,7 @@ func resolve_character_group_spell(caster: CharacterState, character_targets: Ar
 
 
 func resolve_character_area_projectile_item(caster: CharacterState, caste: CasteDefinition, projectile_item: ItemDefinition, character_targets: Array[CharacterState], monster_targets: Array[MonsterState], monster_definitions: Array[MonsterDefinition], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng) -> GroupSpellResolution:
-	if caster == null or projectile_item == null or spell == null or rng == null or power_level < 1 or monster_targets.size() != monster_definitions.size() or not ClassicSpellCapabilityCatalog.is_application_area_projectile_item_profile(spell):
+	if caster == null or projectile_item == null or spell == null or rng == null or power_level < 1 or monster_targets.size() != monster_definitions.size() or not ClassicSpellSourceRules.is_application_area_projectile_item_profile(spell):
 		return null
 	for target: CharacterState in character_targets:
 		if target == null:

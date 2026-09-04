@@ -78,7 +78,7 @@ static func scroll_use_probe(context: SessionWorkflowContext, character: Charact
 	if spell.target_type < 0 or spell.target_type > 12:
 		return InventoryActionProbe.block("This scroll has an invalid Classic field target type.")
 	if not field_spell_effect_supported(spell):
-		return InventoryActionProbe.block(ClassicSpellCapabilityCatalog.unsupported_reason(spell, &"field-scroll"))
+		return InventoryActionProbe.block(ClassicSpellDispositionRules.unsupported_reason(spell, &"field-scroll"))
 	return InventoryActionProbe.permit()
 
 
@@ -205,12 +205,12 @@ static func field_spell_probe(context: SessionWorkflowContext, character: Charac
 	if spell.target_type < 0 or spell.target_type > 12:
 		return InventoryActionProbe.block("This spell has an invalid Classic field target type.")
 	if not field_spell_effect_supported(spell):
-		return InventoryActionProbe.block(ClassicSpellCapabilityCatalog.unsupported_reason(spell, &"field-character"))
+		return InventoryActionProbe.block(ClassicSpellDispositionRules.unsupported_reason(spell, &"field-character"))
 	return InventoryActionProbe.permit()
 
 
 static func field_spell_effect_supported(spell: SpellDefinition) -> bool:
-	return ClassicSpellCapabilityCatalog.field_character_disposition(spell) == ClassicSpellCapabilityCatalog.DISPOSITION_EXECUTABLE
+	return ClassicSpellDispositionRules.field_character_disposition(spell) == ClassicSpellDispositionRules.DISPOSITION_EXECUTABLE
 
 
 static func field_spell_target_ids(context: SessionWorkflowContext, character: CharacterState, spell: SpellDefinition, requested_targets: Array[String], requested_target: String) -> Array[String]:

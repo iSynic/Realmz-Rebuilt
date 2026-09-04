@@ -6580,8 +6580,8 @@
             "symbol": "class_name CombatFlowSummoning"
           },
           {
-            "path": "src/game/rules/classic_spell_capability_catalog.gd",
-            "symbol": "class_name ClassicSpellCapabilityCatalog"
+            "path": "src/game/rules/classic_spell_disposition_rules.gd",
+            "symbol": "class_name ClassicSpellDispositionRules"
           }
         ]
       },

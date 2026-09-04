@@ -234,12 +234,12 @@ func _prepare_monster_spell_targets(state: GameState, content: RealmzContent, mo
 func _execute_monster_spell(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, spell: SpellDefinition, cost_power: int, range_power: int, cast_level: int, target_plan: MonsterSpellTargetPlan, rng: RealmzRng, events: Array[DomainEvent]) -> bool:
 	var created_fields: Array[RefCounted] = []
 	var persistent_field: RefCounted = null
-	if ClassicSpellCapabilityCatalog.is_combat_persistent_field_spell(spell):
+	if ClassicSpellConditionRules.is_combat_persistent_field_spell(spell):
 		persistent_field = _context.fields().queue_persistent_field(state.combat, monster.id, spell, cost_power, cast_level, rng, target_plan.area_center, target_plan.area_rotation, target_plan.area_shape)
 		if persistent_field == null:
 			events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "cast", "spellId": spell.id, "reason": "persistent-field-queue-limit"}))
 			return false
-	if ClassicSpellCapabilityCatalog.is_combat_single_actor_field_spell(spell):
+	if ClassicSpellConditionRules.is_combat_single_actor_field_spell(spell):
 		var actor_field: RefCounted = _context.fields().queue_single_actor_field(state, monster.id, target_plan.target_ids[0], spell, cost_power, cast_level, rng)
 		if actor_field != null:
 			created_fields.append(actor_field)
@@ -284,7 +284,7 @@ func _append_monster_spell_resolution_events(state: GameState, content: RealmzCo
 		CombatSpellEventBuilder.append_projectile(events, monster.id, resolved_target_id, spell, "classic-monster")
 		CombatSpellEventBuilder.append_sound(events, spell.sound_end, "classic-monster-spell-result")
 		var payload := {"actorId": monster.id, "targetId": resolved_target_id, "selectedTargetId": selected_target_id, "targetKind": String(target_kind), "spellId": spell.id, "targetType": spell.target_type, "power": cost_power, "rangePower": range_power, "classicTier": cast_level, "reflected": reflected, "resisted": resolution.resisted, "saved": resolution.saved, "damage": resolution.damage, "healing": maxi(0, -resolution.damage), "duration": resolution.duration, "defeated": resolution.target_defeated, "source": "classic-monster", "detectedMagicItemCount": resolution.detected_magic_item_count}
-		if resolution.spell_point_delta != 0 or ClassicSpellCapabilityCatalog.is_combat_spell_point_restore_spell(spell) or ClassicSpellCapabilityCatalog.is_combat_spell_point_drain_spell(spell):
+		if resolution.spell_point_delta != 0 or ClassicSpellSpecialEffectRules.is_combat_spell_point_restore_spell(spell) or ClassicSpellSpecialEffectRules.is_combat_spell_point_drain_spell(spell):
 			payload["spellPointDelta"] = resolution.spell_point_delta
 		if resolution.cleared_condition >= 0:
 			payload["clearedCondition"] = resolution.cleared_condition
@@ -365,21 +365,21 @@ static func monster_can_retry_cast(state: GameState, monster: MonsterState, defi
 
 
 static func monster_spell_unavailable_reason(spell: SpellDefinition) -> String:
-	if ClassicSpellCapabilityCatalog.combat_monster_disposition(spell) != ClassicSpellCapabilityCatalog.DISPOSITION_EXECUTABLE:
-		return ClassicSpellCapabilityCatalog.unsupported_reason(spell, &"combat-monster")
-	var healing_spell := ClassicSpellCapabilityCatalog.is_combat_healing_spell(spell)
-	var condition_cure := ClassicSpellCapabilityCatalog.is_combat_condition_cure_spell(spell)
-	var condition_effect := ClassicSpellCapabilityCatalog.is_combat_condition_effect_spell(spell)
-	var spell_point_restore := ClassicSpellCapabilityCatalog.is_combat_spell_point_restore_spell(spell)
-	var destroy_magic := ClassicSpellCapabilityCatalog.is_combat_destroy_magic_spell(spell)
-	var charm_spell := ClassicSpellCapabilityCatalog.is_combat_charm_spell(spell)
+	if ClassicSpellDispositionRules.combat_monster_disposition(spell) != ClassicSpellDispositionRules.DISPOSITION_EXECUTABLE:
+		return ClassicSpellDispositionRules.unsupported_reason(spell, &"combat-monster")
+	var healing_spell := ClassicSpellConditionRules.is_combat_healing_spell(spell)
+	var condition_cure := ClassicSpellConditionRules.is_combat_condition_cure_spell(spell)
+	var condition_effect := ClassicSpellConditionRules.is_combat_condition_effect_spell(spell)
+	var spell_point_restore := ClassicSpellSpecialEffectRules.is_combat_spell_point_restore_spell(spell)
+	var destroy_magic := ClassicSpellSpecialEffectRules.is_combat_destroy_magic_spell(spell)
+	var charm_spell := ClassicSpellSpecialEffectRules.is_combat_charm_spell(spell)
 	if spell.cannot == 4 and not healing_spell and not condition_cure and not condition_effect and not spell_point_restore and not destroy_magic and not charm_spell:
 		return "monster-spell-friendly-target-unresolved"
 	return ""
 
 
 static func is_source_backed_combat_healing_spell(spell: SpellDefinition) -> bool:
-	return ClassicSpellCapabilityCatalog.is_combat_healing_spell(spell)
+	return ClassicSpellConditionRules.is_combat_healing_spell(spell)
 
 
 func process_monster_advance(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, active_turn: CombatTurnState, rng: RealmzRng, events: Array[DomainEvent]) -> int:

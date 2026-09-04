@@ -376,7 +376,7 @@ func _test_public_vm_repeated_combat_item(content: RealmzContent) -> void:
 	assert_true(selected_race != null and selected_caste != null, "VM repeated-item fixture has a race/caste pair with a shared Classic item category"); assert_not_null(flask_spell, "VM item fixture has AOGM's exact application-owned Flask of Oil spell"); if selected_race == null or selected_caste == null or flask_spell == null: return
 	var spell: SpellDefinition = null
 	for candidate_spell: SpellDefinition in content.spell_definitions():
-		if candidate_spell.target_type == 0 and candidate_spell.size == 0 and ClassicSpellCapabilityCatalog.combat_item_disposition(candidate_spell) == ClassicSpellCapabilityCatalog.DISPOSITION_EXECUTABLE:
+		if candidate_spell.target_type == 0 and candidate_spell.size == 0 and ClassicSpellDispositionRules.combat_item_disposition(candidate_spell) == ClassicSpellDispositionRules.DISPOSITION_EXECUTABLE:
 			spell = candidate_spell; break
 	assert_not_null(spell, "VM repeated-item fixture has a stock executable repeated-target spell"); if spell == null: return
 	var item := ItemDefinition.new("item.vm-repeated-wand", 991, "Wild Forked Wand"); item.item_type = 21; item.initial_charges = 2; item.item_category_mask_low = usable_low; item.item_category_mask_high = usable_high; item.special_1 = 8; item.special_2 = spell.classic_id; var flask := ItemDefinition.new("classic.item.881", 881, "Flask of Oil"); flask.item_type = 15; flask.initial_charges = 5; flask.item_category_mask_low = usable_low; flask.item_category_mask_high = usable_high; flask.special_1 = -1; flask.special_2 = flask_spell.classic_id

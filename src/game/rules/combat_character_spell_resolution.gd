@@ -155,7 +155,7 @@ func _append_resolution(state: GameState, content: RealmzContent, caster: Charac
 
 static func _resolution_payload(caster: CharacterState, spell: SpellDefinition, power_level: int, cast_level: int, resolution: SpellResolution, resolved_target_id: String, selected_target_id: String, target_kind: StringName, reflected: bool, event_source: String) -> Dictionary:
 	var payload := {"actorId": caster.id, "targetId": resolved_target_id, "selectedTargetId": selected_target_id, "targetKind": String(target_kind), "spellId": spell.id, "targetType": spell.target_type, "power": power_level, "classicTier": cast_level, "reflected": reflected, "resisted": resolution.resisted, "saved": resolution.saved, "damage": resolution.damage, "healing": maxi(0, -resolution.damage), "duration": resolution.duration, "defeated": resolution.target_defeated, "source": event_source, "clearedConditionCount": resolution.cleared_condition_count, "detectedMagicItemCount": resolution.detected_magic_item_count}
-	if resolution.spell_point_delta != 0 or ClassicSpellCapabilityCatalog.is_combat_spell_point_restore_spell(spell) or ClassicSpellCapabilityCatalog.is_combat_spell_point_drain_spell(spell):
+	if resolution.spell_point_delta != 0 or ClassicSpellSpecialEffectRules.is_combat_spell_point_restore_spell(spell) or ClassicSpellSpecialEffectRules.is_combat_spell_point_drain_spell(spell):
 		payload["spellPointDelta"] = resolution.spell_point_delta
 	if resolution.cleared_condition >= 0:
 		payload["clearedCondition"] = resolution.cleared_condition

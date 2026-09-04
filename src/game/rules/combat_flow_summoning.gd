@@ -15,7 +15,7 @@ func _init(context: CombatContext) -> void:
 
 
 static func is_summon_spell(spell: SpellDefinition) -> bool:
-	return ClassicSpellCapabilityCatalog.is_combat_summon_spell(spell)
+	return ClassicSpellSpecialEffectRules.is_combat_summon_spell(spell)
 
 
 func probe_choice(state: GameState, content: RealmzContent, caster_id: String, spell: SpellDefinition, power_level: int) -> CombatSpellCastProbe:

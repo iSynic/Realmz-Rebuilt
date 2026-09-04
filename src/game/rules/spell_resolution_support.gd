@@ -26,9 +26,9 @@ func _resolve_character_spell_monster_target(caster: CharacterState, target: Mon
 	var cured_condition := condition_cure_index(spell)
 	if cured_condition >= 0:
 		return _clear_condition(target.conditions, cured_condition, spell_cost, duration)
-	if ClassicSpellCapabilityCatalog.is_combat_destroy_magic_spell(spell):
+	if ClassicSpellSpecialEffectRules.is_combat_destroy_magic_spell(spell):
 		return _destroy_magic_monster(target, spell_cost, duration)
-	if ClassicSpellCapabilityCatalog.is_combat_magic_detection_spell(spell):
+	if ClassicSpellSpecialEffectRules.is_combat_magic_detection_spell(spell):
 		return _detect_monster_magic(target, spell_cost, duration)
 	var saved := false
 	var damage_type := absi(spell.damage_type)
@@ -45,9 +45,9 @@ func _resolve_character_spell_monster_target(caster: CharacterState, target: Mon
 	var save_modifier := (target.save_value(damage_type - 1) if target.has_runtime_saves() else target_definition.save_value(damage_type - 1)) if damage_type > 0 and damage_type < 8 else 0
 	if save_modifier < 0:
 		damage = int(float(damage) * (1.0 + float(absi(save_modifier)) / 100.0))
-	if ClassicSpellCapabilityCatalog.is_combat_polymorph_spell(spell):
+	if ClassicSpellSpecialEffectRules.is_combat_polymorph_spell(spell):
 		return _polymorph_monster(target, target_definition, spell_cost, duration, polymorph_context, rng)
-	if ClassicSpellCapabilityCatalog.is_combat_destroy_turn_undead_spell(spell):
+	if ClassicSpellSpecialEffectRules.is_combat_destroy_turn_undead_spell(spell):
 		return _destroy_or_turn_undead(caster, target, target_definition, spell_cost, duration, power_level, rng)
 	if absi(spell.special) == 28:
 		damage = duration
@@ -58,7 +58,7 @@ func _resolve_character_spell_monster_target(caster: CharacterState, target: Mon
 	if absi(spell.special) == 60:
 		return _drain_monster_spell_points(target, damage, duration, spell_cost, saved)
 	var traitor_before := target.traitor
-	if ClassicSpellCapabilityCatalog.is_combat_charm_spell(spell):
+	if ClassicSpellSpecialEffectRules.is_combat_charm_spell(spell):
 		target.traitor = caster.traitor
 		target.target_id = ""
 	if rolled_damage != 0 and damage == 0:
@@ -81,9 +81,9 @@ func _resolve_character_spell_character_target(caster: CharacterState, target: C
 	var cured_condition := condition_cure_index(spell)
 	if cured_condition >= 0:
 		return _clear_condition(target.conditions, cured_condition, 0, duration)
-	if ClassicSpellCapabilityCatalog.is_combat_destroy_magic_spell(spell):
+	if ClassicSpellSpecialEffectRules.is_combat_destroy_magic_spell(spell):
 		return _destroy_magic_character(target, 0, duration)
-	if ClassicSpellCapabilityCatalog.is_combat_remove_curse_spell(spell):
+	if ClassicSpellSpecialEffectRules.is_combat_remove_curse_spell(spell):
 		return _remove_curse_character(target, 0, duration, item_definitions)
 	var saved := false
 	var damage_type := absi(spell.damage_type)
@@ -105,7 +105,7 @@ func _resolve_character_spell_character_target(caster: CharacterState, target: C
 	if absi(spell.special) == 60:
 		return _drain_character_spell_points(target, damage, duration, 0, saved)
 	var traitor_before := target.traitor
-	if ClassicSpellCapabilityCatalog.is_combat_charm_spell(spell):
+	if ClassicSpellSpecialEffectRules.is_combat_charm_spell(spell):
 		target.traitor = caster.traitor
 	if rolled_damage != 0 and damage == 0:
 		damage = 1
@@ -164,7 +164,7 @@ func _resolve_monster_spell_character_target(caster: MonsterState, target: Chara
 	var cured_condition := condition_cure_index(spell)
 	if cured_condition >= 0:
 		return _clear_condition(target.conditions, cured_condition, spell_cost, duration)
-	if ClassicSpellCapabilityCatalog.is_combat_destroy_magic_spell(spell):
+	if ClassicSpellSpecialEffectRules.is_combat_destroy_magic_spell(spell):
 		return _destroy_magic_character(target, spell_cost, duration)
 	var saved := false
 	var damage_type := absi(spell.damage_type)
@@ -186,7 +186,7 @@ func _resolve_monster_spell_character_target(caster: MonsterState, target: Chara
 	if absi(spell.special) == 60:
 		return _drain_character_spell_points(target, damage, duration, spell_cost, saved)
 	var traitor_before := target.traitor
-	if ClassicSpellCapabilityCatalog.is_combat_charm_spell(spell):
+	if ClassicSpellSpecialEffectRules.is_combat_charm_spell(spell):
 		target.traitor = caster.traitor
 	if rolled_damage != 0 and damage == 0:
 		damage = 1
@@ -211,9 +211,9 @@ func _resolve_monster_spell_monster_target(caster: MonsterState, target: Monster
 	var cured_condition := condition_cure_index(spell)
 	if cured_condition >= 0:
 		return _clear_condition(target.conditions, cured_condition, spell_cost, duration)
-	if ClassicSpellCapabilityCatalog.is_combat_destroy_magic_spell(spell):
+	if ClassicSpellSpecialEffectRules.is_combat_destroy_magic_spell(spell):
 		return _destroy_magic_monster(target, spell_cost, duration)
-	if ClassicSpellCapabilityCatalog.is_combat_magic_detection_spell(spell):
+	if ClassicSpellSpecialEffectRules.is_combat_magic_detection_spell(spell):
 		return _detect_monster_magic(target, spell_cost, duration)
 	var saved := false
 	var damage_type := absi(spell.damage_type)
@@ -229,7 +229,7 @@ func _resolve_monster_spell_monster_target(caster: MonsterState, target: Monster
 	var save_modifier := (target.save_value(damage_type - 1) if target.has_runtime_saves() else target_definition.save_value(damage_type - 1)) if damage_type > 0 and damage_type < 8 else 0
 	if save_modifier < 0:
 		damage = int(float(damage) * (1.0 + float(absi(save_modifier)) / 100.0))
-	if ClassicSpellCapabilityCatalog.is_combat_polymorph_spell(spell):
+	if ClassicSpellSpecialEffectRules.is_combat_polymorph_spell(spell):
 		return _polymorph_monster(target, target_definition, spell_cost, duration, polymorph_context, rng)
 	if absi(spell.special) == 28:
 		damage = duration
@@ -240,7 +240,7 @@ func _resolve_monster_spell_monster_target(caster: MonsterState, target: Monster
 	if absi(spell.special) == 60:
 		return _drain_monster_spell_points(target, damage, duration, spell_cost, saved)
 	var traitor_before := target.traitor
-	if ClassicSpellCapabilityCatalog.is_combat_charm_spell(spell):
+	if ClassicSpellSpecialEffectRules.is_combat_charm_spell(spell):
 		target.traitor = caster.traitor
 		target.target_id = ""
 	if rolled_damage != 0 and damage == 0:
@@ -348,7 +348,7 @@ static func condition_cure_index(spell: SpellDefinition) -> int:
 
 
 static func is_condition_cure_spell(spell: SpellDefinition) -> bool:
-	return ClassicSpellCapabilityCatalog.is_combat_condition_cure_spell(spell)
+	return ClassicSpellConditionRules.is_combat_condition_cure_spell(spell)
 
 
 static func _clear_condition(conditions: ConditionSet, condition_index: int, spell_cost: int, duration: int) -> SpellResolution:
@@ -399,7 +399,7 @@ static func _apply_combat_condition(conditions: ConditionSet, spell: SpellDefini
 	if special in [53, 54] and duration > 0:
 		conditions.add(ConditionRules.HELPLESS, duration)
 		return ConditionRules.HELPLESS
-	var condition_index := ClassicSpellCapabilityCatalog.resolved_combat_condition_index(spell)
+	var condition_index := ClassicSpellConditionRules.resolved_combat_condition_index(spell)
 	if condition_index < 0 or duration == 0 and special != 28:
 		return -1
 	var current := conditions.value(condition_index)
@@ -411,7 +411,7 @@ static func _apply_combat_condition(conditions: ConditionSet, spell: SpellDefini
 
 
 static func _apply_combat_movement_effect(target: CharacterState, spell: SpellDefinition) -> void:
-	match ClassicSpellCapabilityCatalog.resolved_combat_condition_index(spell):
+	match ClassicSpellConditionRules.resolved_combat_condition_index(spell):
 		ConditionRules.HELPLESS:
 			target.movement = 0
 		ConditionRules.TANGLED, ConditionRules.SLOW:

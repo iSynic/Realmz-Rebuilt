@@ -2,9 +2,6 @@ extends SceneTree
 
 const PERFORMANCE_PACKAGE_LOADER := preload("res://tools/performance_package_loader.gd")
 
-const SpellCapabilities = preload("res://src/game/rules/classic_spell_capability_catalog.gd")
-
-
 func _initialize() -> void:
 	var arguments := OS.get_cmdline_user_args()
 	if arguments.size() != 1:
@@ -26,17 +23,17 @@ func _capability_report(content: RealmzContent) -> Dictionary:
 	var context_counts: Dictionary = {}
 	var scenario_signatures: Dictionary = {}
 	for spell: SpellDefinition in content.spell_definitions():
-		var role := String(SpellCapabilities.application_role(spell))
-		var family := String(SpellCapabilities.mechanical_family(spell))
-		var contexts: Dictionary = SpellCapabilities.runtime_contexts(spell)
+		var role := String(ClassicSpellIdentityCatalog.application_role(spell))
+		var family := String(ClassicSpellClassificationRules.mechanical_family(spell))
+		var contexts: Dictionary = ClassicSpellDispositionRules.runtime_contexts(spell)
 		role_counts[role] = int(role_counts.get(role, 0)) + 1
 		family_counts[family] = int(family_counts.get(family, 0)) + 1
 		for context_name: String in contexts:
 			var disposition := "%s:%s" % [context_name, contexts[context_name]]
 			context_counts[disposition] = int(context_counts.get(disposition, 0)) + 1
-		if role != String(SpellCapabilities.ROLE_UNKNOWN):
+		if role != String(ClassicSpellIdentityCatalog.ROLE_UNKNOWN):
 			continue
-		var behavior := SpellCapabilities.behavior_signature(spell)
+		var behavior := ClassicSpellClassificationRules.behavior_signature(spell)
 		var signature_id := CanonicalJson.encode(behavior).sha256_text().substr(0, 16)
 		var record: Dictionary = scenario_signatures.get(signature_id, {
 			"behavior": behavior,
@@ -53,7 +50,7 @@ func _capability_report(content: RealmzContent) -> Dictionary:
 	var pending_signatures := 0
 	for signature_id: String in signature_ids:
 		var record: Dictionary = scenario_signatures[signature_id]
-		if record["runtimeContexts"].values().has(String(SpellCapabilities.DISPOSITION_PENDING)):
+		if record["runtimeContexts"].values().has(String(ClassicSpellDispositionRules.DISPOSITION_PENDING)):
 			pending_signatures += 1
 		signatures.append(record)
 	return {

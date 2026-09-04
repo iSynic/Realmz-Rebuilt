@@ -5,7 +5,7 @@ extends RefCounted
 
 
 static func field_spell_effect_supported(spell: SpellDefinition) -> bool:
-	return ClassicSpellCapabilityCatalog.field_character_disposition(spell) == ClassicSpellCapabilityCatalog.DISPOSITION_EXECUTABLE
+	return ClassicSpellDispositionRules.field_character_disposition(spell) == ClassicSpellDispositionRules.DISPOSITION_EXECUTABLE
 
 
 static func first_empty_scroll_slot(character: CharacterState) -> int:

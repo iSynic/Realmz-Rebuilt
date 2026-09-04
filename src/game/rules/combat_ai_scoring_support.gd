@@ -84,8 +84,8 @@ func _auto_group_target_is_safe(spell: SpellDefinition) -> bool:
 		return true
 	if spell.target_type == 12:
 		return false
-	var condition_effect := ClassicSpellCapabilityCatalog.combat_condition_effect_index(spell) >= 0 or ClassicSpellCapabilityCatalog.combat_persistent_field_condition_index(spell) >= 0
-	var friendly_effect: bool = MagicRules.is_condition_cure_spell(spell) or _context.automation().is_source_backed_combat_healing_spell(spell) or ClassicSpellCapabilityCatalog.is_combat_spell_point_restore_spell(spell) or condition_effect and (spell.cannot == 4 or spell.target_type == 9)
+	var condition_effect := ClassicSpellConditionRules.combat_condition_effect_index(spell) >= 0 or ClassicSpellConditionRules.combat_persistent_field_condition_index(spell) >= 0
+	var friendly_effect: bool = MagicRules.is_condition_cure_spell(spell) or _context.automation().is_source_backed_combat_healing_spell(spell) or ClassicSpellSpecialEffectRules.is_combat_spell_point_restore_spell(spell) or condition_effect and (spell.cannot == 4 or spell.target_type == 9)
 	return spell.target_type == 9 if friendly_effect else spell.target_type == 10
 
 
