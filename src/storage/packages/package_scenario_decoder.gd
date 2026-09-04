@@ -225,30 +225,38 @@ func _construct_safe_instruction(value: Variant, node_count: Array) -> SafeInstr
 		_reject("Safe instruction is malformed.")
 		return null
 	match value["kind"]:
-		"operation":
-			if not _exact_fields(value, ["kind", "capability", "arguments", "result"]) or not value["capability"] is String or not SUPPORTED_SAFE_CAPABILITIES.has(value["capability"]) or not value["arguments"] is Dictionary or value["result"] != null and not value["result"] is String:
-				_reject("Safe operation instruction is malformed or unavailable.")
-				return null
-			var instruction := SafeInstructionDefinition.new(SafeInstructionDefinition.Kind.OPERATION)
-			instruction.capability = value["capability"]
-			instruction.result_target = "" if value["result"] == null else value["result"]
-			var arguments: Variant = _construct_safe_arguments(value["arguments"], node_count)
-			if arguments == null:
-				return null
-			instruction.set_arguments(arguments)
-			return instruction
-		"callScenarioAction":
-			if not _exact_fields(value, ["kind", "actionId", "arguments", "result"]) or not value["actionId"] is String or value["actionId"].is_empty() or not value["arguments"] is Dictionary or value["result"] != null and not value["result"] is String:
-				_reject("Safe Scenario Action call is malformed.")
-				return null
-			var instruction := SafeInstructionDefinition.new(SafeInstructionDefinition.Kind.CALL_ACTION)
-			instruction.action_id = value["actionId"]
-			instruction.result_target = "" if value["result"] == null else value["result"]
-			var arguments: Variant = _construct_safe_arguments(value["arguments"], node_count)
-			if arguments == null:
-				return null
-			instruction.set_arguments(arguments)
-			return instruction
+		"operation", "callScenarioAction":
+			return _construct_safe_call_instruction(value, node_count)
+		"setValue", "jumpIfFalse", "jump", "beginForEach", "nextForEach":
+			return _construct_safe_control_instruction(value, node_count)
+		"return", "halt":
+			return _construct_safe_terminal_instruction(value, node_count)
+	_reject("Safe program contains unknown instruction kind '%s'." % value["kind"])
+	return null
+
+func _construct_safe_call_instruction(value: Dictionary, node_count: Array) -> SafeInstructionDefinition:
+	var instruction: SafeInstructionDefinition
+	if value["kind"] == "operation":
+		if not _exact_fields(value, ["kind", "capability", "arguments", "result"]) or not value["capability"] is String or not SUPPORTED_SAFE_CAPABILITIES.has(value["capability"]) or not value["arguments"] is Dictionary or value["result"] != null and not value["result"] is String:
+			_reject("Safe operation instruction is malformed or unavailable.")
+			return null
+		instruction = SafeInstructionDefinition.new(SafeInstructionDefinition.Kind.OPERATION)
+		instruction.capability = value["capability"]
+	else:
+		if not _exact_fields(value, ["kind", "actionId", "arguments", "result"]) or not value["actionId"] is String or value["actionId"].is_empty() or not value["arguments"] is Dictionary or value["result"] != null and not value["result"] is String:
+			_reject("Safe Scenario Action call is malformed.")
+			return null
+		instruction = SafeInstructionDefinition.new(SafeInstructionDefinition.Kind.CALL_ACTION)
+		instruction.action_id = value["actionId"]
+	instruction.result_target = "" if value["result"] == null else value["result"]
+	var arguments: Variant = _construct_safe_arguments(value["arguments"], node_count)
+	if arguments == null:
+		return null
+	instruction.set_arguments(arguments)
+	return instruction
+
+func _construct_safe_control_instruction(value: Dictionary, node_count: Array) -> SafeInstructionDefinition:
+	match value["kind"]:
 		"setValue":
 			if not _exact_fields(value, ["kind", "scope", "stateScope", "ownerId", "name", "value"]) or value["scope"] not in ["local", "persistent"] or value["stateScope"] != null and not value["stateScope"] is String or value["ownerId"] != null and not value["ownerId"] is String or not value["name"] is String or value["name"].is_empty():
 				_reject("Safe value assignment is malformed.")
@@ -291,25 +299,25 @@ func _construct_safe_instruction(value: Variant, node_count: Array) -> SafeInstr
 			var instruction := SafeInstructionDefinition.new(SafeInstructionDefinition.Kind.NEXT_FOR_EACH)
 			instruction.target = _integer(value["beginTarget"])
 			return instruction
-		"return":
-			if not _exact_fields(value, ["kind", "value"]):
-				_reject("Safe return instruction is malformed.")
-				return null
-			var instruction := SafeInstructionDefinition.new(SafeInstructionDefinition.Kind.RETURN)
-			if value["value"] != null:
-				instruction.value = _construct_safe_expression(value["value"], node_count, 0)
-				if instruction.value == null:
-					return null
-			return instruction
-		"halt":
-			if not _exact_fields(value, ["kind", "outcome"]):
-				_reject("Safe halt instruction is malformed.")
-				return null
-			var instruction := SafeInstructionDefinition.new(SafeInstructionDefinition.Kind.HALT)
-			instruction.outcome = value["outcome"]
-			return instruction
-	_reject("Safe program contains unknown instruction kind '%s'." % value["kind"])
 	return null
+
+func _construct_safe_terminal_instruction(value: Dictionary, node_count: Array) -> SafeInstructionDefinition:
+	if value["kind"] == "return":
+		if not _exact_fields(value, ["kind", "value"]):
+			_reject("Safe return instruction is malformed.")
+			return null
+		var instruction := SafeInstructionDefinition.new(SafeInstructionDefinition.Kind.RETURN)
+		if value["value"] != null:
+			instruction.value = _construct_safe_expression(value["value"], node_count, 0)
+			if instruction.value == null:
+				return null
+		return instruction
+	if not _exact_fields(value, ["kind", "outcome"]):
+		_reject("Safe halt instruction is malformed.")
+		return null
+	var instruction := SafeInstructionDefinition.new(SafeInstructionDefinition.Kind.HALT)
+	instruction.outcome = value["outcome"]
+	return instruction
 
 func _construct_safe_arguments(value: Dictionary, node_count: Array) -> Variant:
 	var result: Dictionary = {}
@@ -329,52 +337,67 @@ func _construct_safe_expression(value: Variant, node_count: Array, depth: int) -
 		_reject("Safe expression is malformed or exceeds its complexity limit.")
 		return null
 	match value["kind"]:
-		"literal":
-			if not _exact_fields(value, ["kind", "value"]) or not _json_safe(value["value"], depth + 1):
-				_reject("Safe literal expression is malformed.")
+		"literal", "variable":
+			return _construct_safe_value_expression(value, depth)
+		"array", "record":
+			return _construct_safe_container_expression(value, node_count, depth)
+		"unary", "binary", "member":
+			return _construct_safe_operator_expression(value, node_count, depth)
+		"collection":
+			return _construct_safe_collection_expression(value, node_count, depth)
+	_reject("Safe program contains unknown expression kind '%s'." % value["kind"])
+	return null
+
+func _construct_safe_value_expression(value: Dictionary, depth: int) -> SafeExpressionDefinition:
+	if value["kind"] == "literal":
+		if not _exact_fields(value, ["kind", "value"]) or not _json_safe(value["value"], depth + 1):
+			_reject("Safe literal expression is malformed.")
+			return null
+		var expression := SafeExpressionDefinition.new(SafeExpressionDefinition.Kind.LITERAL)
+		expression.value = value["value"]
+		return expression
+	if not _exact_fields(value, ["kind", "scope", "stateScope", "ownerId", "name"]) or value["scope"] not in ["parameter", "local", "persistent", "context"] or value["stateScope"] != null and not value["stateScope"] is String or value["ownerId"] != null and not value["ownerId"] is String or not value["name"] is String or value["name"].is_empty():
+		_reject("Safe variable expression is malformed.")
+		return null
+	var expression := SafeExpressionDefinition.new(SafeExpressionDefinition.Kind.VARIABLE)
+	expression.scope = StringName(value["scope"])
+	expression.state_scope = "" if value["stateScope"] == null else value["stateScope"]
+	expression.owner_id = "" if value["ownerId"] == null else value["ownerId"]
+	expression.name = value["name"]
+	return expression
+
+func _construct_safe_container_expression(value: Dictionary, node_count: Array, depth: int) -> SafeExpressionDefinition:
+	if value["kind"] == "array":
+		if not _exact_fields(value, ["kind", "values"]) or not value["values"] is Array or value["values"].size() > 256:
+			_reject("Safe array expression is malformed or exceeds 256 entries.")
+			return null
+		var entries: Array[SafeExpressionDefinition] = []
+		for child: Variant in value["values"]:
+			var entry := _construct_safe_expression(child, node_count, depth + 1)
+			if entry == null:
 				return null
-			var expression := SafeExpressionDefinition.new(SafeExpressionDefinition.Kind.LITERAL)
-			expression.value = value["value"]
-			return expression
-		"variable":
-			if not _exact_fields(value, ["kind", "scope", "stateScope", "ownerId", "name"]) or value["scope"] not in ["parameter", "local", "persistent", "context"] or value["stateScope"] != null and not value["stateScope"] is String or value["ownerId"] != null and not value["ownerId"] is String or not value["name"] is String or value["name"].is_empty():
-				_reject("Safe variable expression is malformed.")
-				return null
-			var expression := SafeExpressionDefinition.new(SafeExpressionDefinition.Kind.VARIABLE)
-			expression.scope = StringName(value["scope"])
-			expression.state_scope = "" if value["stateScope"] == null else value["stateScope"]
-			expression.owner_id = "" if value["ownerId"] == null else value["ownerId"]
-			expression.name = value["name"]
-			return expression
-		"array":
-			if not _exact_fields(value, ["kind", "values"]) or not value["values"] is Array or value["values"].size() > 256:
-				_reject("Safe array expression is malformed or exceeds 256 entries.")
-				return null
-			var entries: Array[SafeExpressionDefinition] = []
-			for child: Variant in value["values"]:
-				var entry := _construct_safe_expression(child, node_count, depth + 1)
-				if entry == null:
-					return null
-				entries.append(entry)
-			var expression := SafeExpressionDefinition.new(SafeExpressionDefinition.Kind.ARRAY)
-			expression.set_values(entries)
-			return expression
-		"record":
-			if not _exact_fields(value, ["kind", "fields"]) or not value["fields"] is Dictionary or value["fields"].size() > 256:
-				_reject("Safe record expression is malformed or oversized.")
-				return null
-			var fields: Dictionary = {}
-			for field_name: Variant in value["fields"].keys():
-				if not field_name is String:
-					_reject("Safe record field name is malformed.")
-					return null
-				var field := _construct_safe_expression(value["fields"][field_name], node_count, depth + 1)
-				if field == null:
-					return null
-				fields[field_name] = field
-			var expression := SafeExpressionDefinition.new(SafeExpressionDefinition.Kind.RECORD)
-			expression.set_fields(fields)
-			return expression
+			entries.append(entry)
+		var expression := SafeExpressionDefinition.new(SafeExpressionDefinition.Kind.ARRAY)
+		expression.set_values(entries)
+		return expression
+	if not _exact_fields(value, ["kind", "fields"]) or not value["fields"] is Dictionary or value["fields"].size() > 256:
+		_reject("Safe record expression is malformed or oversized.")
+		return null
+	var fields: Dictionary = {}
+	for field_name: Variant in value["fields"].keys():
+		if not field_name is String:
+			_reject("Safe record field name is malformed.")
+			return null
+		var field := _construct_safe_expression(value["fields"][field_name], node_count, depth + 1)
+		if field == null:
+			return null
+		fields[field_name] = field
+	var expression := SafeExpressionDefinition.new(SafeExpressionDefinition.Kind.RECORD)
+	expression.set_fields(fields)
+	return expression
+
+func _construct_safe_operator_expression(value: Dictionary, node_count: Array, depth: int) -> SafeExpressionDefinition:
+	match value["kind"]:
 		"unary":
 			if not _exact_fields(value, ["kind", "operator", "operand"]) or value["operator"] not in ["not", "-"]:
 				_reject("Safe unary expression is malformed.")
@@ -392,27 +415,25 @@ func _construct_safe_expression(value: Variant, node_count: Array, depth: int) -
 			expression.left = _construct_safe_expression(value["left"], node_count, depth + 1)
 			expression.right = _construct_safe_expression(value["right"], node_count, depth + 1)
 			return expression if expression.left != null and expression.right != null else null
-		"member":
-			if not _exact_fields(value, ["kind", "object", "member"]) or not value["member"] is String or value["member"].is_empty():
-				_reject("Safe member expression is malformed.")
-				return null
-			var expression := SafeExpressionDefinition.new(SafeExpressionDefinition.Kind.MEMBER)
-			expression.object = _construct_safe_expression(value["object"], node_count, depth + 1)
-			expression.member = value["member"]
-			return expression if expression.object != null else null
-		"collection":
-			if not _exact_fields(value, ["kind", "operation", "collection", "itemName", "predicate"]) or value["operation"] not in ["count", "any", "all", "first"] or value["itemName"] != null and not value["itemName"] is String:
-				_reject("Safe collection expression is malformed.")
-				return null
-			var expression := SafeExpressionDefinition.new(SafeExpressionDefinition.Kind.COLLECTION)
-			expression.operator = StringName(value["operation"])
-			expression.collection = _construct_safe_expression(value["collection"], node_count, depth + 1)
-			expression.item_name = "" if value["itemName"] == null else value["itemName"]
-			if value["operation"] == "count" and (value["itemName"] != null or value["predicate"] != null) or value["operation"] in ["any", "all"] and (expression.item_name.is_empty() or value["predicate"] == null) or value["operation"] == "first" and ((value["predicate"] == null) != expression.item_name.is_empty()):
-				_reject("Safe collection expression has an inconsistent predicate contract.")
-				return null
-			if value["predicate"] != null:
-				expression.predicate = _construct_safe_expression(value["predicate"], node_count, depth + 1)
-			return expression if expression.collection != null and (value["predicate"] == null or expression.predicate != null) else null
-	_reject("Safe program contains unknown expression kind '%s'." % value["kind"])
-	return null
+	if not _exact_fields(value, ["kind", "object", "member"]) or not value["member"] is String or value["member"].is_empty():
+		_reject("Safe member expression is malformed.")
+		return null
+	var expression := SafeExpressionDefinition.new(SafeExpressionDefinition.Kind.MEMBER)
+	expression.object = _construct_safe_expression(value["object"], node_count, depth + 1)
+	expression.member = value["member"]
+	return expression if expression.object != null else null
+
+func _construct_safe_collection_expression(value: Dictionary, node_count: Array, depth: int) -> SafeExpressionDefinition:
+	if not _exact_fields(value, ["kind", "operation", "collection", "itemName", "predicate"]) or value["operation"] not in ["count", "any", "all", "first"] or value["itemName"] != null and not value["itemName"] is String:
+		_reject("Safe collection expression is malformed.")
+		return null
+	var expression := SafeExpressionDefinition.new(SafeExpressionDefinition.Kind.COLLECTION)
+	expression.operator = StringName(value["operation"])
+	expression.collection = _construct_safe_expression(value["collection"], node_count, depth + 1)
+	expression.item_name = "" if value["itemName"] == null else value["itemName"]
+	if value["operation"] == "count" and (value["itemName"] != null or value["predicate"] != null) or value["operation"] in ["any", "all"] and (expression.item_name.is_empty() or value["predicate"] == null) or value["operation"] == "first" and ((value["predicate"] == null) != expression.item_name.is_empty()):
+		_reject("Safe collection expression has an inconsistent predicate contract.")
+		return null
+	if value["predicate"] != null:
+		expression.predicate = _construct_safe_expression(value["predicate"], node_count, depth + 1)
+	return expression if expression.collection != null and (value["predicate"] == null or expression.predicate != null) else null
