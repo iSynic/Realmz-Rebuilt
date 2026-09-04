@@ -7,8 +7,8 @@
     "publicMethodsPerClass": 20
   },
   "migrationCeilings": {
-    "oversizedProductionFiles": 3,
-    "oversizedFunctions": 65,
+    "oversizedProductionFiles": 2,
+    "oversizedFunctions": 64,
     "oversizedTopLevelClasses": 27,
     "crossObjectPrivateCalls": 0,
     "genericPreloadAliases": 0,

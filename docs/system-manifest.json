@@ -61,8 +61,8 @@
       "id": "combat",
       "boundary": "game",
       "guide": "docs/features/combat.md",
-      "entryPoints": ["src/game/rules/combat_flow.gd", "src/game/rules/combat_ai_scoring.gd", "src/game/combat/combat_context.gd", "src/game/state/combat_state.gd"],
-      "publicInterfaces": ["CombatFlow", "CombatAiScoring", "CombatContext", "CombatState", "CombatView"],
+      "entryPoints": ["src/game/rules/combat_flow.gd", "src/game/rules/combat_flow_magic.gd", "src/game/rules/combat_character_spell_resolution.gd", "src/game/rules/combat_ai_scoring.gd", "src/game/combat/combat_context.gd", "src/game/state/combat_state.gd"],
+      "publicInterfaces": ["CombatFlow", "CombatFlowMagic", "CombatCharacterSpellResolution", "CombatAiScoring", "CombatContext", "CombatState", "CombatView"],
       "tests": ["tests/core/test_combat_flow.gd", "tests/core/test_battlefield_navigation.gd"],
       "performanceProbes": ["tools/combat_performance_probe.gd", "tools/battlefield_navigation_benchmark.gd"]
     },

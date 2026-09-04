@@ -26,11 +26,13 @@ const MONSTER_FUMBLE_SOUNDS: Array[Dictionary] = [
 
 var _context: CombatContext
 var _selection: CombatSpellSelection
+var _resolution: CombatCharacterSpellResolution
 
 
 func _init(context: CombatContext) -> void:
 	_context = context
 	_selection = CombatSpellSelection.new(context)
+	_resolution = CombatCharacterSpellResolution.new(context, _selection)
 
 
 func selection() -> CombatSpellSelection:
@@ -184,13 +186,13 @@ func _resolve_spell_item(state: GameState, content: RealmzContent, caster: Chara
 			var actor_id := state.combat.battlefield.actor_at(target_coordinate + offset)
 			if not actor_id.is_empty():
 				selected_ids[actor_id] = true
-		var area_targets := combat_spell_group_targets(state, content, caster, spell, selected_ids, true)
+		var area_targets := _resolution.group_targets(state, content, caster, spell, selected_ids, true)
 		if not bool(area_targets.get("ok", false)):
 			return CombatFlowSpellRollback.item(state, rng, state_checkpoint, rng_checkpoint, &"item_target_unavailable", String(area_targets.get("error", "An item target is unavailable.")))
 		var area := _context.magic.resolve_character_area_projectile_item(caster, content.caste_by_id(caster.caste_id), item, area_targets.get("characters", []), area_targets.get("monsters", []), area_targets.get("definitions", []), spell, power_level, cast_level, rng) if ClassicSpellCapabilityCatalog.is_application_area_projectile_item_profile(spell) else _context.magic.resolve_character_group_spell(caster, area_targets.get("characters", []), area_targets.get("monsters", []), area_targets.get("definitions", []), spell, power_level, cast_level, rng, true, false, MonsterPolymorphContext.new(content, state.monster_set, state.difficulty, state.clock.day()))
 		if area == null or not area.cast:
 			return CombatFlowSpellRollback.item(state, rng, state_checkpoint, rng_checkpoint, &"item_spell_failed", "The area item spell could not be resolved.")
-		result = commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, area, rng, target_coordinate, shape, "classic-item", instance.id, false, [persistent_field])
+		result = _resolution.commit(state, content, caster, spell, power_level, cast_level, area, rng, target_coordinate, shape, "classic-item", instance.id, false, [persistent_field])
 	elif spell.target_type == 0:
 		var selections: Array[SpellTargetSelection] = []
 		for selected_id: String in target_ids:
@@ -202,16 +204,16 @@ func _resolve_spell_item(state: GameState, content: RealmzContent, caster: Chara
 		var repeated := _context.magic.resolve_character_repeated_spell(caster, selections, spell, power_level, cast_level, rng, false, _context.fields().repeated_field_callback(state, spell, caster.id, target_ids, power_level, cast_level, rng, repeated_fields), content.item_definitions())
 		if repeated == null or not repeated.cast:
 			return CombatFlowSpellRollback.item(state, rng, state_checkpoint, rng_checkpoint, &"item_spell_failed", "The repeated item spell could not be resolved.")
-		result = commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, repeated, rng, INVALID_COORDINATE, 0, "classic-item", instance.id, false, repeated_fields)
+		result = _resolution.commit(state, content, caster, spell, power_level, cast_level, repeated, rng, INVALID_COORDINATE, 0, "classic-item", instance.id, false, repeated_fields)
 	elif spell.target_type == 6:
-		var ray_selections := _ray_spell_selections(state, content, caster.id, target_id, spell)
+		var ray_selections := _resolution.ray_selections(state, content, caster.id, target_id, spell)
 		var ray := _context.magic.resolve_character_ray_spell(caster, ray_selections, spell, power_level, cast_level, rng, false)
 		if ray == null or not ray.cast:
 			return CombatFlowSpellRollback.item(state, rng, state_checkpoint, rng_checkpoint, &"item_spell_failed", "The item ray spell could not be resolved.")
-		result = commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, ray, rng, INVALID_COORDINATE, 0, "classic-item", instance.id, false)
+		result = _resolution.commit(state, content, caster, spell, power_level, cast_level, ray, rng, INVALID_COORDINATE, 0, "classic-item", instance.id, false)
 	elif spell.target_type == 7:
 		var party := _context.magic.resolve_character_group_spell(caster, [], [], [], spell, power_level, cast_level, rng, true, false)
-		result = CombatFlowSpellRollback.item(state, rng, state_checkpoint, rng_checkpoint, &"item_spell_failed", "The party item spell could not be resolved.") if party == null or not party.cast else commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, party, rng, INVALID_COORDINATE, 0, "classic-item", instance.id, false)
+		result = CombatFlowSpellRollback.item(state, rng, state_checkpoint, rng_checkpoint, &"item_spell_failed", "The party item spell could not be resolved.") if party == null or not party.cast else _resolution.commit(state, content, caster, spell, power_level, cast_level, party, rng, INVALID_COORDINATE, 0, "classic-item", instance.id, false)
 	elif spell.target_type in [9, 10, 12]:
 		var character_targets: Array[CharacterState] = []
 		var monster_targets: Array[MonsterState] = []
@@ -230,7 +232,7 @@ func _resolve_spell_item(state: GameState, content: RealmzContent, caster: Chara
 		var group := _context.magic.resolve_character_group_spell(caster, character_targets, monster_targets, monster_definitions, spell, power_level, cast_level, rng, false, false, MonsterPolymorphContext.new(content, state.monster_set, state.difficulty, state.clock.day()))
 		if group == null or not group.cast:
 			return CombatFlowSpellRollback.item(state, rng, state_checkpoint, rng_checkpoint, &"item_spell_failed", "The item spell could not be resolved.")
-		result = commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, group, rng, INVALID_COORDINATE, 0, "classic-item", instance.id, false)
+		result = _resolution.commit(state, content, caster, spell, power_level, cast_level, group, rng, INVALID_COORDINATE, 0, "classic-item", instance.id, false)
 	else:
 		var effective_target_id := caster.id if spell.target_type == 5 else target_id
 		var selection := _selection.spell_target_selection(state, content, effective_target_id)
@@ -241,7 +243,7 @@ func _resolve_spell_item(state: GameState, content: RealmzContent, caster: Chara
 		var targeted := _context.magic.resolve_character_targeted_spell(caster, selection, spell, power_level, cast_level, rng, false, MonsterPolymorphContext.new(content, state.monster_set, state.difficulty, state.clock.day()))
 		if targeted == null or not targeted.cast:
 			return CombatFlowSpellRollback.item(state, rng, state_checkpoint, rng_checkpoint, &"item_spell_failed", "The item spell could not be resolved.")
-		result = commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, targeted, rng, field_center, 1 if spell.target_type == 5 and persistent_field != null else 0, "classic-item", instance.id, false, [persistent_field] if persistent_field != null else [])
+		result = _resolution.commit(state, content, caster, spell, power_level, cast_level, targeted, rng, field_center, 1 if spell.target_type == 5 and persistent_field != null else 0, "classic-item", instance.id, false, [persistent_field] if persistent_field != null else [])
 	return result
 
 
@@ -376,17 +378,17 @@ func cast_spell(state: GameState, content: RealmzContent, caster_id: String, tar
 		var rng_checkpoint := rng.checkpoint()
 		_context.actions().prepare_character_turn(combat, caster)
 		combat.invalidate_undo()
-		var area_result := cast_character_area_spell(state, content, caster, spell, power_level, cast_level, rng, target_coordinate, rotation)
+		var area_result := _resolution.cast_area(state, content, caster, spell, power_level, cast_level, rng, target_coordinate, rotation)
 		return area_result if area_result.ok else CombatFlowSpellRollback.character_area(state, rng, state_checkpoint, rng_checkpoint, area_result.error_code, area_result.error_message)
 	var targeted_state_checkpoint := state.to_data() if spell.target_type == 5 and ClassicSpellCapabilityCatalog.is_combat_persistent_field_spell(spell) or ClassicSpellCapabilityCatalog.is_combat_single_actor_field_spell(spell) else {}
 	var targeted_rng_checkpoint := rng.checkpoint() if not targeted_state_checkpoint.is_empty() else {}
 	_context.actions().prepare_character_turn(combat, caster)
 	combat.invalidate_undo()
 	if spell.target_type in [9, 10, 12]:
-		return cast_character_group_spell(state, content, caster, spell, power_level, cast_level, rng)
+		return _resolution.cast_group(state, content, caster, spell, power_level, cast_level, rng)
 	if spell.target_type == 7:
 		var party := _context.magic.resolve_character_group_spell(caster, [], [], [], spell, power_level, cast_level, rng, true, true)
-		return CombatFlowResult.failed(&"spell_cast_failed", "The party spell could not be cast with the available spell points.") if party == null or not party.cast else commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, party, rng)
+		return CombatFlowResult.failed(&"spell_cast_failed", "The party spell could not be cast with the available spell points.") if party == null or not party.cast else _resolution.commit(state, content, caster, spell, power_level, cast_level, party, rng)
 	if spell.target_type == 0:
 		var selections: Array[SpellTargetSelection] = []
 		for selected_id: String in target_ids:
@@ -398,13 +400,13 @@ func cast_spell(state: GameState, content: RealmzContent, caster_id: String, tar
 		var repeated := _context.magic.resolve_character_repeated_spell(caster, selections, spell, power_level, cast_level, rng, true, _context.fields().repeated_field_callback(state, spell, caster.id, target_ids, power_level, cast_level, rng, repeated_fields), content.item_definitions())
 		if repeated == null or not repeated.cast:
 			return CombatFlowResult.failed(&"spell_cast_failed", "The repeated-target spell could not be cast with the available spell points.")
-		return commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, repeated, rng, INVALID_COORDINATE, 0, "classic", "", true, repeated_fields)
+		return _resolution.commit(state, content, caster, spell, power_level, cast_level, repeated, rng, INVALID_COORDINATE, 0, "classic", "", true, repeated_fields)
 	if spell.target_type == 6:
-		var ray_selections := _ray_spell_selections(state, content, caster.id, target_id, spell)
+		var ray_selections := _resolution.ray_selections(state, content, caster.id, target_id, spell)
 		var ray := _context.magic.resolve_character_ray_spell(caster, ray_selections, spell, power_level, cast_level, rng)
 		if ray == null or not ray.cast:
 			return CombatFlowResult.failed(&"spell_cast_failed", "The ray spell could not be cast with the available spell points.")
-		return commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, ray, rng)
+		return _resolution.commit(state, content, caster, spell, power_level, cast_level, ray, rng)
 	var selection := _selection.spell_target_selection(state, content, effective_target_id)
 	if selection == null:
 		return CombatFlowResult.failed(&"spell_target_unavailable", "The selected combatant is unavailable.")
@@ -415,26 +417,11 @@ func cast_spell(state: GameState, content: RealmzContent, caster_id: String, tar
 	var targeted := _context.magic.resolve_character_targeted_spell(caster, selection, spell, power_level, cast_level, rng, true, MonsterPolymorphContext.new(content, state.monster_set, state.difficulty, state.clock.day()))
 	if targeted == null or not targeted.cast:
 		return CombatFlowSpellRollback.character_targeted(state, rng, targeted_state_checkpoint, targeted_rng_checkpoint, &"spell_cast_failed", "The spell could not be cast with the available spell points.") if not targeted_state_checkpoint.is_empty() else CombatFlowResult.failed(&"spell_cast_failed", "The spell could not be cast with the available spell points.")
-	return commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, targeted, rng, field_center, 1 if spell.target_type == 5 and persistent_field != null else 0, "classic", "", true, [persistent_field] if persistent_field != null else [])
-
-
-func _ray_spell_selections(state: GameState, content: RealmzContent, caster_id: String, target_id: String, spell: SpellDefinition) -> Array[SpellTargetSelection]:
-	var result: Array[SpellTargetSelection] = []
-	for actor_id: String in ray_spell_actor_ids(state, content, caster_id, target_id, spell):
-		var selection := _selection.spell_target_selection(state, content, actor_id)
-		if selection != null:
-			result.append(selection)
-	return result
+	return _resolution.commit(state, content, caster, spell, power_level, cast_level, targeted, rng, field_center, 1 if spell.target_type == 5 and persistent_field != null else 0, "classic", "", true, [persistent_field] if persistent_field != null else [])
 
 
 func ray_spell_actor_ids(state: GameState, content: RealmzContent, caster_id: String, target_id: String, spell: SpellDefinition) -> Array[String]:
-	var result: Array[String] = []
-	var map := content.world.map_by_id(state.combat.battlefield.map_id)
-	var terrain_set := content.world.battle_terrain_set_for_map(map, state.world) if map != null else null
-	if terrain_set == null or not state.combat.battlefield.has_actor(target_id):
-		return result
-	var stop_at_blocker := spell.range_min + spell.range_max > 0
-	return _context.battlefield.ray_actor_ids(state.combat.battlefield, terrain_set, caster_id, state.combat.battlefield.actor_position(target_id), stop_at_blocker)
+	return _resolution.ray_actor_ids(state, content, caster_id, target_id, spell)
 
 
 func probe_character_scroll_cast(state: GameState, content: RealmzContent, caster_id: String, scroll_slot: int, target_id: String = "", target_coordinate: Vector2i = INVALID_COORDINATE, rotation: int = 0, target_ids: Array[String] = [], target_coordinates: Array[Vector2i] = []) -> CombatSpellCastProbe:
@@ -550,7 +537,7 @@ func use_combat_scroll(state: GameState, content: RealmzContent, caster_id: Stri
 			var actor_id := state.combat.battlefield.actor_at(target_coordinate + offset)
 			if not actor_id.is_empty():
 				selected_ids[actor_id] = true
-		var area_targets := combat_spell_group_targets(state, content, caster, spell, selected_ids, true)
+		var area_targets := _resolution.group_targets(state, content, caster, spell, selected_ids, true)
 		if not bool(area_targets.get("ok", false)):
 			return CombatFlowSpellRollback.scroll(state, rng, state_checkpoint, rng_checkpoint, &"scroll_target_unavailable", String(area_targets.get("error", "A scroll target is unavailable.")))
 		var area_characters: Array[CharacterState] = area_targets.get("characters", [])
@@ -559,12 +546,12 @@ func use_combat_scroll(state: GameState, content: RealmzContent, caster_id: Stri
 		var area := _context.magic.resolve_character_group_spell(caster, area_characters, area_monsters, area_definitions, spell, power_level, cast_level, rng, true, false, MonsterPolymorphContext.new(content, state.monster_set, state.difficulty, state.clock.day()))
 		if area == null or not area.cast:
 			return CombatFlowSpellRollback.scroll(state, rng, state_checkpoint, rng_checkpoint, &"scroll_spell_failed", "The area scroll could not be resolved.")
-		result = commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, area, rng, target_coordinate, shape, "classic-scroll", "", false, [persistent_field])
+		result = _resolution.commit(state, content, caster, spell, power_level, cast_level, area, rng, target_coordinate, shape, "classic-scroll", "", false, [persistent_field])
 	elif not CombatFlowSummoning.is_summon_spell(spell) and not ClassicSpellCapabilityCatalog.is_combat_phase_spell(spell) and spell.target_type == 7:
 		var party := _context.magic.resolve_character_group_spell(caster, [], [], [], spell, power_level, cast_level, rng, true, false)
-		result = CombatFlowSpellRollback.scroll(state, rng, state_checkpoint, rng_checkpoint, &"scroll_spell_failed", "The party scroll could not be resolved.") if party == null or not party.cast else commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, party, rng, INVALID_COORDINATE, 0, "classic-scroll", "", false)
+		result = CombatFlowSpellRollback.scroll(state, rng, state_checkpoint, rng_checkpoint, &"scroll_spell_failed", "The party scroll could not be resolved.") if party == null or not party.cast else _resolution.commit(state, content, caster, spell, power_level, cast_level, party, rng, INVALID_COORDINATE, 0, "classic-scroll", "", false)
 	elif not CombatFlowSummoning.is_summon_spell(spell) and not ClassicSpellCapabilityCatalog.is_combat_phase_spell(spell) and spell.target_type in [9, 10, 12]:
-		var group_targets := combat_spell_group_targets(state, content, caster, spell)
+		var group_targets := _resolution.group_targets(state, content, caster, spell)
 		if not bool(group_targets.get("ok", false)):
 			return CombatFlowSpellRollback.scroll(state, rng, state_checkpoint, rng_checkpoint, &"scroll_target_unavailable", String(group_targets.get("error", "A scroll target is unavailable.")))
 		var group_characters: Array[CharacterState] = group_targets.get("characters", [])
@@ -573,7 +560,7 @@ func use_combat_scroll(state: GameState, content: RealmzContent, caster_id: Stri
 		var group := _context.magic.resolve_character_group_spell(caster, group_characters, group_monsters, group_definitions, spell, power_level, cast_level, rng, false, false, MonsterPolymorphContext.new(content, state.monster_set, state.difficulty, state.clock.day()))
 		if group == null or not group.cast:
 			return CombatFlowSpellRollback.scroll(state, rng, state_checkpoint, rng_checkpoint, &"scroll_spell_failed", "The group scroll could not be resolved.")
-		result = commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, group, rng, INVALID_COORDINATE, 0, "classic-scroll", "", false)
+		result = _resolution.commit(state, content, caster, spell, power_level, cast_level, group, rng, INVALID_COORDINATE, 0, "classic-scroll", "", false)
 	elif not CombatFlowSummoning.is_summon_spell(spell) and not ClassicSpellCapabilityCatalog.is_combat_phase_spell(spell) and spell.target_type == 0:
 		var selections: Array[SpellTargetSelection] = []
 		for selected_id: String in target_ids:
@@ -585,13 +572,13 @@ func use_combat_scroll(state: GameState, content: RealmzContent, caster_id: Stri
 		var repeated := _context.magic.resolve_character_repeated_spell(caster, selections, spell, power_level, cast_level, rng, false, _context.fields().repeated_field_callback(state, spell, caster.id, target_ids, power_level, cast_level, rng, repeated_fields), content.item_definitions())
 		if repeated == null or not repeated.cast:
 			return CombatFlowSpellRollback.scroll(state, rng, state_checkpoint, rng_checkpoint, &"scroll_spell_failed", "The repeated scroll could not be resolved.")
-		result = commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, repeated, rng, INVALID_COORDINATE, 0, "classic-scroll", "", false, repeated_fields)
+		result = _resolution.commit(state, content, caster, spell, power_level, cast_level, repeated, rng, INVALID_COORDINATE, 0, "classic-scroll", "", false, repeated_fields)
 	elif not CombatFlowSummoning.is_summon_spell(spell) and not ClassicSpellCapabilityCatalog.is_combat_phase_spell(spell) and spell.target_type == 6:
-		var ray_selections := _ray_spell_selections(state, content, caster.id, target_id, spell)
+		var ray_selections := _resolution.ray_selections(state, content, caster.id, target_id, spell)
 		var ray := _context.magic.resolve_character_ray_spell(caster, ray_selections, spell, power_level, cast_level, rng, false)
 		if ray == null or not ray.cast:
 			return CombatFlowSpellRollback.scroll(state, rng, state_checkpoint, rng_checkpoint, &"scroll_spell_failed", "The ray scroll could not be resolved.")
-		result = commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, ray, rng, INVALID_COORDINATE, 0, "classic-scroll", "", false)
+		result = _resolution.commit(state, content, caster, spell, power_level, cast_level, ray, rng, INVALID_COORDINATE, 0, "classic-scroll", "", false)
 	elif not CombatFlowSummoning.is_summon_spell(spell) and not ClassicSpellCapabilityCatalog.is_combat_phase_spell(spell):
 		var effective_target_id := caster_id if spell.target_type == 5 else target_id
 		var selection := _selection.spell_target_selection(state, content, effective_target_id)
@@ -602,7 +589,7 @@ func use_combat_scroll(state: GameState, content: RealmzContent, caster_id: Stri
 		var targeted := _context.magic.resolve_character_targeted_spell(caster, selection, spell, power_level, cast_level, rng, false, MonsterPolymorphContext.new(content, state.monster_set, state.difficulty, state.clock.day()))
 		if targeted == null or not targeted.cast:
 			return CombatFlowSpellRollback.scroll(state, rng, state_checkpoint, rng_checkpoint, &"scroll_spell_failed", "The targeted scroll could not be resolved.")
-		result = commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, targeted, rng, field_center, 1 if spell.target_type == 5 and persistent_field != null else 0, "classic-scroll", "", false, [persistent_field] if persistent_field != null else [])
+		result = _resolution.commit(state, content, caster, spell, power_level, cast_level, targeted, rng, field_center, 1 if spell.target_type == 5 and persistent_field != null else 0, "classic-scroll", "", false, [persistent_field] if persistent_field != null else [])
 	if not result.ok:
 		return CombatFlowSpellRollback.scroll(state, rng, state_checkpoint, rng_checkpoint, result.error_code, result.error_message)
 	var committed_caster := state.party.character_by_id(caster_id)
@@ -612,174 +599,3 @@ func use_combat_scroll(state: GameState, content: RealmzContent, caster_id: Stri
 	events.append_array(result.events)
 	result.events = events
 	return result
-
-
-func combat_spell_group_targets(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition, selected_ids: Dictionary = {}, area_target: bool = false) -> Dictionary:
-	var character_targets: Array[CharacterState] = []
-	var monster_targets: Array[MonsterState] = []
-	var monster_definitions: Array[MonsterDefinition] = []
-	for character: CharacterState in state.party.characters():
-		if character.current_health <= 0 or not state.combat.battlefield.has_actor(character.id):
-			continue
-		if area_target:
-			if not selected_ids.has(character.id):
-				continue
-			if character.conditions.is_active(ConditionRules.REFLECTING_SPELLS):
-				return {"ok": false, "error": "This area intersects a spell-reflecting character; Classic reflection targeting remains unresolved."}
-		elif not _selection.group_target_matches(spell.target_type, character.traitor, caster.traitor):
-			continue
-		character_targets.append(character)
-	for monster: MonsterState in state.combat.monsters():
-		if monster.current_health <= 0 or not state.combat.battlefield.has_actor(monster.id):
-			continue
-		if area_target:
-			if not selected_ids.has(monster.id):
-				continue
-			if monster.conditions.is_active(ConditionRules.REFLECTING_SPELLS):
-				return {"ok": false, "error": "This area intersects a spell-reflecting monster; Classic reflection targeting remains unresolved."}
-			if monster.magic_resistance > 100:
-				continue
-		elif not _selection.group_target_matches(spell.target_type, monster.traitor, caster.traitor):
-			continue
-		var definition := content.monster_by_id(monster.definition_id)
-		if definition == null:
-			return {"ok": false, "error": "A scroll target has no immutable monster definition."}
-		monster_targets.append(monster)
-		monster_definitions.append(definition)
-	return {"ok": true, "characters": character_targets, "monsters": monster_targets, "definitions": monster_definitions}
-
-
-func cast_character_group_spell(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng) -> CombatFlowResult:
-	var combat := state.combat
-	var character_targets: Array[CharacterState] = []
-	var monster_targets: Array[MonsterState] = []
-	var monster_definitions: Array[MonsterDefinition] = []
-	for character: CharacterState in state.party.characters():
-		if character.current_health > 0 and combat.battlefield.has_actor(character.id) and _selection.group_target_matches(spell.target_type, character.traitor, caster.traitor):
-			character_targets.append(character)
-	for monster: MonsterState in combat.monsters():
-		if monster.current_health <= 0 or not combat.battlefield.has_actor(monster.id):
-			continue
-		if not _selection.group_target_matches(spell.target_type, monster.traitor, caster.traitor):
-			continue
-		var definition := content.monster_by_id(monster.definition_id)
-		if definition == null:
-			return CombatFlowResult.failed(&"spell_target_unavailable", "A group spell target has no immutable monster definition.")
-		monster_targets.append(monster)
-		monster_definitions.append(definition)
-	var group := _context.magic.resolve_character_group_spell(caster, character_targets, monster_targets, monster_definitions, spell, power_level, cast_level, rng, false, true, MonsterPolymorphContext.new(content, state.monster_set, state.difficulty, state.clock.day()))
-	if group == null or not group.cast:
-		return CombatFlowResult.failed(&"spell_cast_failed", "The group spell could not be cast with the available spell points.")
-	return commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, group, rng)
-
-
-func cast_character_area_spell(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, center: Vector2i, rotation: int) -> CombatFlowResult:
-	var combat := state.combat
-	var shape := _context.spell_areas.shape_for(spell, power_level, rotation)
-	var persistent_field: RefCounted = _context.fields().queue_persistent_field(combat, caster.id, spell, power_level, cast_level, rng, center, rotation, shape)
-	var selected_ids: Dictionary = {}
-	for offset: Vector2i in _context.spell_areas.pattern(shape):
-		var actor_id := combat.battlefield.actor_at(center + offset)
-		if not actor_id.is_empty():
-			selected_ids[actor_id] = true
-	var character_targets: Array[CharacterState] = []
-	var monster_targets: Array[MonsterState] = []
-	var monster_definitions: Array[MonsterDefinition] = []
-	for character: CharacterState in state.party.characters():
-		if not selected_ids.has(character.id) or character.current_health <= 0 or not combat.battlefield.has_actor(character.id):
-			continue
-		if character.conditions.is_active(ConditionRules.REFLECTING_SPELLS):
-			return CombatFlowResult.failed(&"area_spell_reflection_unresolved", "This area intersects a spell-reflecting character; Classic reflection targeting remains unresolved.")
-		character_targets.append(character)
-	for monster: MonsterState in combat.monsters():
-		if not selected_ids.has(monster.id) or monster.current_health <= 0 or not combat.battlefield.has_actor(monster.id):
-			continue
-		if monster.conditions.is_active(ConditionRules.REFLECTING_SPELLS):
-			return CombatFlowResult.failed(&"area_spell_reflection_unresolved", "This area intersects a spell-reflecting monster; Classic reflection targeting remains unresolved.")
-		# spelltargets.c removes over-100 magic resistance before resolvespell.
-		if monster.magic_resistance > 100:
-			continue
-		var definition := content.monster_by_id(monster.definition_id)
-		if definition == null:
-			return CombatFlowResult.failed(&"spell_target_unavailable", "An area spell target has no immutable monster definition.")
-		monster_targets.append(monster)
-		monster_definitions.append(definition)
-	_context.actions().prepare_character_turn(combat, caster)
-	var area := _context.magic.resolve_character_group_spell(caster, character_targets, monster_targets, monster_definitions, spell, power_level, cast_level, rng, true, true, MonsterPolymorphContext.new(content, state.monster_set, state.difficulty, state.clock.day()))
-	if area == null or not area.cast:
-		return CombatFlowResult.failed(&"spell_cast_failed", "The area spell could not be cast with the available spell points.")
-	return commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, area, rng, center, shape, "classic", "", true, [persistent_field])
-
-
-func commit_character_multi_spell(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition, power_level: int, cast_level: int, group: GroupSpellResolution, rng: RealmzRng, center: Vector2i = Vector2i(-100_000, -100_000), shape: int = 0, event_source: String = "classic", item_instance_id: String = "", count_spell_cast: bool = true, persistent_fields: Array = []) -> CombatFlowResult:
-	var combat := state.combat
-	if count_spell_cast:
-		combat.active_turn.spell_cast_count += 1
-		caster.lifetime_record.record_spell_cast()
-	caster.attacks_remaining = _context.arithmetic.signed_16(caster.attacks_remaining - 2)
-	caster.movement = maxi(0, caster.movement - 12)
-	var events: Array[DomainEvent] = []
-	_context.fields().append_created_events(events, persistent_fields, event_source)
-	CombatSpellEventBuilder.append_sound(events, spell.sound_start, "classic-combat-spell-start")
-	CombatSpellEventBuilder.append_cast(events, caster.id, spell, group, center, shape, event_source)
-	if spell.target_type == 7:
-		var party_condition := absi(spell.special)
-		state.party.conditions.set_value(party_condition, maxi(state.party.conditions.value(party_condition), group.duration))
-		events.append(DomainEvent.new(&"combat_spell_resolved", {"actorId": caster.id, "targetKind": "party", "spellId": spell.id, "targetType": spell.target_type, "power": power_level, "classicTier": cast_level, "duration": group.duration, "partyCondition": party_condition, "partyConditionValue": state.party.conditions.value(party_condition), "source": event_source}))
-	for index: int in group.resolutions.size():
-		var resolution := group.resolutions[index]
-		var resolved_target_id := group.target_ids[index]
-		var selected_target_id := group.selected_target_ids[index]
-		var target_kind := group.target_kinds[index]
-		var reflected := group.reflected_targets[index]
-		if target_kind == &"monster":
-			var missile_spell := absi(spell.spell_class) == 9
-			caster.lifetime_record.add_spell_damage(resolution.damage, missile_spell and not resolution.resisted, missile_spell and resolution.resisted, resolution.target_defeated)
-		if resolution.damage > 0 or (resolution.damage < 0 and target_kind == &"monster"): combat.mark_attacked(resolved_target_id)
-		CombatSpellEventBuilder.append_projectile(events, caster.id, resolved_target_id, spell, event_source)
-		if resolution.special_result == &"turned": events.append(DomainEvent.new(&"sound_requested", {"soundId": 630, "waitForCompletion": false, "source": "classic-combat-destroy-turn-undead"}))
-		CombatSpellEventBuilder.append_sound(events, spell.sound_end, "classic-combat-spell-result")
-		var payload := {"actorId": caster.id, "targetId": resolved_target_id, "selectedTargetId": selected_target_id, "targetKind": String(target_kind), "spellId": spell.id, "targetType": spell.target_type, "power": power_level, "classicTier": cast_level, "reflected": reflected, "resisted": resolution.resisted, "saved": resolution.saved, "damage": resolution.damage, "healing": maxi(0, -resolution.damage), "duration": resolution.duration, "defeated": resolution.target_defeated, "source": event_source, "clearedConditionCount": resolution.cleared_condition_count, "detectedMagicItemCount": resolution.detected_magic_item_count}
-		if resolution.spell_point_delta != 0 or ClassicSpellCapabilityCatalog.is_combat_spell_point_restore_spell(spell) or ClassicSpellCapabilityCatalog.is_combat_spell_point_drain_spell(spell):
-			payload["spellPointDelta"] = resolution.spell_point_delta
-		if resolution.cleared_condition >= 0: payload["clearedCondition"] = resolution.cleared_condition
-		if not resolution.unequipped_item_ids.is_empty(): payload["unequippedItemIds"] = resolution.unequipped_item_ids.duplicate()
-		if resolution.applied_condition >= 0: payload["appliedCondition"] = resolution.applied_condition
-		if not resolution.transformed_definition_after.is_empty():
-			payload["transformedDefinitionBefore"] = resolution.transformed_definition_before
-			payload["transformedDefinitionAfter"] = resolution.transformed_definition_after
-		if not resolution.special_result.is_empty():
-			payload["specialResult"] = String(resolution.special_result)
-			payload["specialRoll"] = resolution.special_roll
-			payload["specialThreshold"] = resolution.special_threshold
-		if resolution.allegiance_changed:
-			payload["traitorBefore"] = resolution.target_traitor_before
-			payload["traitorAfter"] = resolution.target_traitor_after
-		CombatSpellEventBuilder.append_resolution_effect(payload, spell, index, group.resolutions.size(), resolution.target_defeated)
-		if not item_instance_id.is_empty():
-			payload["itemInstanceId"] = item_instance_id
-		if shape > 0:
-			payload["areaCenter"] = [center.x, center.y]
-			payload["areaShape"] = shape
-		events.append(DomainEvent.new(&"combat_spell_resolved", payload))
-		if not resolution.target_defeated:
-			continue
-		if target_kind == &"character":
-			_context.actions().mark_character_bleeding(state, state.party.character_by_id(resolved_target_id), true)
-			_context.automation().remove_defeated_position(combat, resolved_target_id, true)
-		else:
-			var defeated_monster := combat.monster_by_id(resolved_target_id)
-			var defeated_definition := content.monster_by_id(defeated_monster.definition_id) if defeated_monster != null else null
-			var queued = _context.actions().events().queue_spell_death_macro(combat, defeated_monster, defeated_definition)
-			_context.automation().remove_defeated_position(combat, resolved_target_id, not queued)
-	var advances_turn = not _context.actions().character_can_continue(caster)
-	if not combat.pending_spell_death_macro_id().is_empty():
-		if not combat.begin_spell_death_macro_sequence(caster.id, advances_turn) or not _context.actions().events().request_next_spell_death_macro(combat, content, events):
-			return CombatFlowResult.failed(&"invalid_spell_death_macro_queue", "The multi-target spell death-macro queue could not retain its caster and source order.")
-		return CombatFlowResult.succeeded(events)
-	if advances_turn:
-		_context.rounds().advance_turn(state, content, rng, events)
-	if _context.rounds().finish_if_resolved(state, content, events):
-		return CombatFlowResult.succeeded(events, true)
-	_context.automation().process_monster_turns(state, content, rng, events)
-	return CombatFlowResult.succeeded(events, state.combat.completed)

@@ -4483,8 +4483,8 @@
             "symbol": "func resolve_character_attack"
           },
           {
-            "path": "src/game/rules/combat_flow_magic.gd",
-            "symbol": "func commit_character_multi_spell"
+            "path": "src/game/rules/combat_character_spell_resolution.gd",
+            "symbol": "func commit"
           }
         ]
       },
