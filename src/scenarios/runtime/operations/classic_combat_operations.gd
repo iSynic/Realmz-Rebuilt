@@ -55,7 +55,7 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 
 
 func resume_opcode_death_macro(continuation: ScenarioRuntimeContinuation, response: InteractionResponse) -> ScenarioRuntimeOperationResult:
-	var body := continuation.body as ScenarioRuntimeContinuation.OpcodeDeathBody
+	var body := continuation.body as ScenarioOpcodeDeathContinuationBody
 	var runtime_api := _runtime_api()
 	if body == null or runtime_api == null or _game_state.combat == null or _game_state.combat.completed or _game_state.combat.battle_id != body.battle_id:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_death_macro_continuation", "Classic opcode 125 lost its saved battle or death-macro state.")
@@ -69,7 +69,7 @@ func resume_opcode_death_macro(continuation: ScenarioRuntimeContinuation, respon
 	if result.state == ScenarioVmResult.State.SUSPENDED:
 		return ScenarioRuntimeOperationResult.failed(&"nested_host_handoff", "A monster death macro cannot suspend a second battle into the application host.")
 	if result.state == ScenarioVmResult.State.WAITING:
-		return ScenarioRuntimeOperationResult.waiting(result.interaction, ScenarioRuntimeContinuation.opcode_death_macro(body.battle_id, body.combatant_id, body.program_id, body.remaining_combatant_ids, vm.snapshot()), result.events)
+		return ScenarioRuntimeOperationResult.waiting(result.interaction, ScenarioCombatContinuations.opcode_death_macro(body.battle_id, body.combatant_id, body.program_id, body.remaining_combatant_ids, vm.snapshot()), result.events)
 	var events: Array[DomainEvent] = []
 	events.assign(result.events)
 	_complete_opcode_death_macro(body.combatant_id, body.program_id, events)
@@ -134,7 +134,7 @@ func _run_opcode_death_macros(combatant_ids: Array[String], preceding_events: Ar
 	if result.state == ScenarioVmResult.State.SUSPENDED:
 		return ScenarioRuntimeOperationResult.failed(&"nested_host_handoff", "A monster death macro cannot suspend a second battle into the application host.")
 	if result.state == ScenarioVmResult.State.WAITING:
-		return ScenarioRuntimeOperationResult.waiting(result.interaction, ScenarioRuntimeContinuation.opcode_death_macro(_game_state.combat.battle_id, monster.id, program_id, remaining, vm.snapshot()), events)
+		return ScenarioRuntimeOperationResult.waiting(result.interaction, ScenarioCombatContinuations.opcode_death_macro(_game_state.combat.battle_id, monster.id, program_id, remaining, vm.snapshot()), events)
 	_complete_opcode_death_macro(monster.id, program_id, events)
 	return _run_opcode_death_macros(remaining, events)
 

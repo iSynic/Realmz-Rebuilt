@@ -70,7 +70,7 @@ func request_encounter(kind: StringName, encounter_id: int, gosub: bool, request
 	if options.is_empty():
 		return ScenarioRuntimeOperationResult.failed(&"encounter_has_no_options", "Simple Encounter %d has no remaining responses." % encounter.id)
 	var request := InteractionRequest.from_payload(request_id, &"encounter_choice", {"encounterKind": "simple", "encounterId": encounter.id, "prompt": prompt.text, "options": options, "canBackOut": encounter.can_back_out})
-	return ScenarioRuntimeOperationResult.waiting(request, ScenarioRuntimeContinuation.encounter(ScenarioRuntimeContinuation.CLASSIC_SIMPLE_ENCOUNTER, encounter.id, gosub, option_indexes, _encounter_attempt(context, &"simple", encounter.id)), [_encounter_open_sound(&"simple", encounter.id)])
+	return ScenarioRuntimeOperationResult.waiting(request, ScenarioInteractionContinuations.encounter(ScenarioRuntimeContinuation.CLASSIC_SIMPLE_ENCOUNTER, encounter.id, gosub, option_indexes, _encounter_attempt(context, &"simple", encounter.id)), [_encounter_open_sound(&"simple", encounter.id)])
 
 
 func _request_complex_encounter(encounter_id: int, gosub: bool, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
@@ -80,7 +80,7 @@ func _request_complex_encounter(encounter_id: int, gosub: bool, request_id: Stri
 	var request := complex_encounter_request(encounter, request_id)
 	if request == null:
 		return ScenarioRuntimeOperationResult.failed(&"encounter_has_no_options", "Complex Encounter %d has no available responses." % encounter.id)
-	return ScenarioRuntimeOperationResult.waiting(request, ScenarioRuntimeContinuation.encounter(ScenarioRuntimeContinuation.CLASSIC_COMPLEX_ENCOUNTER, encounter.id, gosub, [], _encounter_attempt(context, &"complex", encounter.id)), [_encounter_open_sound(&"complex", encounter.id)])
+	return ScenarioRuntimeOperationResult.waiting(request, ScenarioInteractionContinuations.encounter(ScenarioRuntimeContinuation.CLASSIC_COMPLEX_ENCOUNTER, encounter.id, gosub, [], _encounter_attempt(context, &"complex", encounter.id)), [_encounter_open_sound(&"complex", encounter.id)])
 
 
 static func _encounter_open_sound(kind: StringName, encounter_id: int) -> DomainEvent:
@@ -156,7 +156,7 @@ func _request_classic_choice(action: ClassicActionDefinition, request_id: String
 	if yes_label_value == null or no_label_value == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_option_label", "Classic opcode 3 references an unavailable option label.")
 	var request := InteractionRequest.from_payload(request_id, &"yes_no", {"yesId": yes_id, "yesLabel": yes_label_value, "noId": no_id, "noLabel": no_label_value})
-	return ScenarioRuntimeOperationResult.waiting(request, ScenarioRuntimeContinuation.classic_choice(action.extra_code, action.gosub))
+	return ScenarioRuntimeOperationResult.waiting(request, ScenarioInteractionContinuations.classic_choice(action.extra_code, action.gosub))
 
 
 func _classic_choice_label(label_id: int) -> Variant:

@@ -180,7 +180,7 @@ func _acquire_player_map(action: ClassicActionDefinition, request_id: String) ->
 	if action.operand_id >= 0:
 		return ScenarioRuntimeOperationResult.completed(definition.id, events)
 	var request := InteractionRequest.from_payload(request_id, &"acknowledge", {"prompt": definition.name, "presentation": "player-map", "playerMapId": definition.id})
-	return ScenarioRuntimeOperationResult.waiting(request, ScenarioRuntimeContinuation.player_map(definition.id), events)
+	return ScenarioRuntimeOperationResult.waiting(request, ScenarioInteractionContinuations.player_map(definition.id), events)
 
 
 func _move_between_maps(action: ClassicActionDefinition, dungeon_move: bool, activate_destination: bool = false) -> ScenarioRuntimeOperationResult:

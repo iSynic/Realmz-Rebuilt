@@ -9,7 +9,7 @@ Own the single session-constructed VM runtime API and explicit Classic opcode ha
 - Runtime dispatch and VM resume coordination.
 - Duplicate-safe Classic opcode registration.
 - Domain handler groups for control flow, world/time, character, inventory/economy, encounters, combat/rewards, and presentation-producing operations.
-- Typed battle-caller, runtime-continuation, runtime-handoff, and VM-handoff records used at every wait, nested macro, and party-defeat boundary.
+- Typed battle-caller, runtime-continuation, runtime-handoff, and VM-handoff records used at every wait, nested macro, and party-defeat boundary. Runtime continuation payloads, feature factories, and strict decoding live under `continuations/`.
 - `ScenarioExecutionContext`, the closed typed provenance passed through VM frames, directives, opcode handlers, and saved frame serialization.
 
 ## Local Contracts
@@ -66,4 +66,5 @@ Own the single session-constructed VM runtime API and explicit Classic opcode ha
 
 ## Child DOX Index
 
+- `continuations/AGENTS.md` owns typed suspended-operation payloads, feature factories, and their strict saved codec.
 - `handlers/` and `operations/` are implementation groupings under this shared runtime contract and do not require separate contracts.

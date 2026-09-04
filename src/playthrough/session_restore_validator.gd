@@ -213,7 +213,7 @@ static func _valid_service_continuation(content: RealmzContent, state: GameState
 	var runtime := service.runtime_continuation
 	if runtime == null:
 		return false
-	var runtime_body := runtime.body as ScenarioRuntimeContinuation.ServiceBody
+	var runtime_body := runtime.body as ScenarioServiceContinuationBody
 	var selected_temple_character := "" if runtime_body == null else runtime_body.selected_character_id
 	match runtime.kind:
 		&"classic-shop":
@@ -307,7 +307,7 @@ static func _valid_combat_reward_continuation(content: RealmzContent, state: Gam
 	if reward_body == null or vm_interaction != null:
 		return false
 	var runtime := reward_body.runtime_continuation
-	var runtime_body := runtime.body as ScenarioRuntimeContinuation.RewardBody if runtime != null and runtime.kind == ScenarioRuntimeContinuation.CLASSIC_REWARD else null
+	var runtime_body := runtime.body as ScenarioRewardContinuationBody if runtime != null and runtime.kind == ScenarioRuntimeContinuation.CLASSIC_REWARD else null
 	var reward := runtime_body.state if runtime_body != null else null
 	return reward != null and reward.origin == &"battle" and reward.source_id == reward_body.battle_id and SessionScenarioRestoreValidator.reward_continuation_is_valid(content, state, reward, session_interaction)
 

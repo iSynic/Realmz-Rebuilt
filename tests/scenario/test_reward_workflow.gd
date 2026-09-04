@@ -55,7 +55,7 @@ func _test_ordinary_distribution_and_restore(content: RealmzContent) -> void:
 	var saved_continuation_data: Dictionary = JSON.parse_string(JSON.stringify(detected.continuation.to_data()))
 	var saved_continuation := ScenarioRuntimeContinuation.from_data(saved_continuation_data)
 	assert_not_null(saved_state, "treasure detection state serializes through the central game-state boundary")
-	var saved_reward_body := saved_continuation.body as ScenarioRuntimeContinuation.RewardBody
+	var saved_reward_body := saved_continuation.body as ScenarioRewardContinuationBody
 	assert_not_null(saved_reward_body, "the exact treasure continuation survives canonical JSON")
 	assert_not_null(saved_reward_body.state, "the typed reward state survives canonical JSON")
 	var pre_sequence_reward: Dictionary = saved_continuation_data.duplicate(true)
@@ -170,13 +170,13 @@ func _test_terminal_battle_rewards_once(content: RealmzContent) -> void:
 	var reward := api.begin_completed_battle_reward("battle.reward")
 	assert_true(reward.state in [ScenarioRuntimeOperationResult.State.WAITING, ScenarioRuntimeOperationResult.State.COMPLETED], "victory transitions into the typed reward pipeline")
 	assert_equal(reward.interaction.body.to_data()["items"].filter(func(row: Dictionary) -> bool: return row["definitionId"] == magical_loot.id and row["magical"]).size(), 1, "battle Discover Magic carries only the detected magical loot item into the Treasure presentation")
-	var detected_continuation := ScenarioRuntimeContinuation.from_data(JSON.parse_string(JSON.stringify(reward.continuation.to_data()))); var detected_body := detected_continuation.body as ScenarioRuntimeContinuation.RewardBody; assert_equal(detected_body.state.magic_detected_item_ids().size(), 1, "per-item battle magic detection survives the terminal reward continuation boundary")
+	var detected_continuation := ScenarioRuntimeContinuation.from_data(JSON.parse_string(JSON.stringify(reward.continuation.to_data()))); var detected_body := detected_continuation.body as ScenarioRewardContinuationBody; assert_equal(detected_body.state.magic_detected_item_ids().size(), 1, "per-item battle magic detection survives the terminal reward continuation boundary")
 	var guard := 2_000
 	while reward.state == ScenarioRuntimeOperationResult.State.WAITING and guard > 0:
 		var response := _reward_response(reward.interaction)
 		var serialized_data: Dictionary = JSON.parse_string(JSON.stringify(reward.continuation.to_data()))
 		var serialized := ScenarioRuntimeContinuation.from_data(serialized_data)
-		var serialized_body := serialized.body as ScenarioRuntimeContinuation.RewardBody if serialized != null else null
+		var serialized_body := serialized.body as ScenarioRewardContinuationBody if serialized != null else null
 		assert_not_null(serialized_body, "every terminal reward interaction retains a valid serialized continuation")
 		assert_not_null(serialized_body.state, "every terminal reward interaction retains typed reward state")
 		reward = api.resume_classic(serialized, response, reward.interaction.request_id + ".next")
@@ -257,7 +257,7 @@ func _test_terminal_battle_rewards_once(content: RealmzContent) -> void:
 
 
 func _test_battle_mode_five_and_incidental_rewards(content: RealmzContent) -> void:
-	var source_battle := content.battle_by_id("classic.battle.0"); var opening_state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [_character(content, "reward.mode-five-opening", "Opening", 5_000, -100_000)]), RealmzClock.new()); var opening := RealmzRuntimeApi.new(content, opening_state, RealmzRng.new(47), ScenarioActionState.new(), RealmzRules.new()).execute_classic(ClassicActionDefinition.new(0, 2, 2, source_battle.classic_id, false, [source_battle.classic_id, 0, 0, 0, 5]), "battle.mode-five.open"); var opening_body := opening.continuation.body as ScenarioRuntimeContinuation.CombatBody if opening.continuation != null else null; assert_equal(opening_body.caller.mode if opening_body != null else -1, 5, "opcode 2 preserves AOGM's fifth Extra Code word as the public battle caller mode")
+	var source_battle := content.battle_by_id("classic.battle.0"); var opening_state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [_character(content, "reward.mode-five-opening", "Opening", 5_000, -100_000)]), RealmzClock.new()); var opening := RealmzRuntimeApi.new(content, opening_state, RealmzRng.new(47), ScenarioActionState.new(), RealmzRules.new()).execute_classic(ClassicActionDefinition.new(0, 2, 2, source_battle.classic_id, false, [source_battle.classic_id, 0, 0, 0, 5]), "battle.mode-five.open"); var opening_body := opening.continuation.body as ScenarioCombatContinuationBody if opening.continuation != null else null; assert_equal(opening_body.caller.mode if opening_body != null else -1, 5, "opcode 2 preserves AOGM's fifth Extra Code word as the public battle caller mode")
 	var loot := content.treasure_by_classic_id(0).item_ids()[0]; var flags: Array[int] = [1, 0, 0, 0, 0, 0, 0, 0]; var definition := MonsterDefinition.new("reward.incidental.monster", 9_001, "Incidental", 2, 0, 10, 0, 0, flags, [], [], [9, 8, 7], [], [loot], [], []); definition.can_summon = 0; definition.experience = 25; definition.traitor = true; definition.size = 0
 	var battle := BattleDefinition.new("reward.incidental.battle", 9_001, [], 0, 0, 0, 0); var reward_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, content.start_map_id, content.start_coordinate, content.world, content.scenario, [], [], [], content.race_definitions(), content.caste_definitions(), content.item_definitions(), content.spell_definitions(), [definition], [battle], [content.treasure_by_classic_id(0)], [], [], [], [], [], content.campaign_definition()); var results: Dictionary = {}
 	for mode: int in [0, 5]:
@@ -281,7 +281,7 @@ func _test_opcode_48_bonus_reward_chain(content: RealmzContent) -> void:
 	var bonus_content := _content_with_bonus_treasure(content, source_battle); var battle := bonus_content.battle_by_id(source_battle.id); var bonus_treasure := bonus_content.treasure_by_classic_id(1); var opening_state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [_character(content, "reward.opcode-48-opening", "Opening", 5_000, -100_000)]), RealmzClock.new()); opening_state.scenario_progress.set_selected_character_ids([opening_state.party.characters()[0].id]); var opening_api := RealmzRuntimeApi.new(bonus_content, opening_state, RealmzRng.new(47), ScenarioActionState.new(), RealmzRules.new())
 	var action := ClassicActionDefinition.new(0, 48, 48, battle.classic_id, false, [battle.classic_id, 0, 0, 0, bonus_treasure.classic_id])
 	var opened := opening_api.execute_classic(action, "battle.opcode-48.open")
-	var combat_body := opened.continuation.body as ScenarioRuntimeContinuation.CombatBody if opened.continuation != null else null
+	var combat_body := opened.continuation.body as ScenarioCombatContinuationBody if opened.continuation != null else null
 	assert_not_null(combat_body, "opcode 48 starts through the ordinary typed combat continuation")
 	assert_equal(combat_body.caller.mode if combat_body != null else -1, bonus_treasure.classic_id, "opcode 48 preserves Extra Code word five as its post-battle treasure identity")
 

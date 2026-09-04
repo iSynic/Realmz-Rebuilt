@@ -54,7 +54,7 @@ static func _decode_reward(data: Dictionary) -> SessionContinuation:
 	if not _has_exact_fields(data, ["battleId", "runtimeContinuation"]) or not data.get("battleId") is String or data["battleId"].is_empty():
 		return null
 	var runtime := ScenarioRuntimeContinuation.from_data(data.get("runtimeContinuation"))
-	var state := runtime.body as ScenarioRuntimeContinuation.RewardBody if runtime != null and runtime.kind == ScenarioRuntimeContinuation.CLASSIC_REWARD else null
+	var state := runtime.body as ScenarioRewardContinuationBody if runtime != null and runtime.kind == ScenarioRuntimeContinuation.CLASSIC_REWARD else null
 	if state == null or state.state == null or state.state.origin != &"battle" or state.state.source_id != data["battleId"]:
 		return null
 	return CombatContinuations.reward(data["battleId"], runtime)

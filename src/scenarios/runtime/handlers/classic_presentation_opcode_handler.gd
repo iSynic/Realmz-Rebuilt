@@ -33,7 +33,7 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 		26:
 			return ScenarioRuntimeOperationResult.waiting(
 				InteractionRequest.from_payload(request_id, &"acknowledge", {"prompt": "Continue", "presentation": "classic-click-modal"}),
-				ScenarioRuntimeContinuation.empty(ScenarioRuntimeContinuation.CLASSIC_ACKNOWLEDGE),
+				ScenarioInteractionContinuations.acknowledge(),
 				[DomainEvent.new(&"sound_requested", {"soundId": 30005, "waitForCompletion": false, "source": "classic-opcode-26"})]
 			)
 		27:
@@ -49,7 +49,7 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 				"presentation": "classic-scrolling-text",
 				"resourceType": "TEXT",
 				"resourceId": action.operand_id,
-			}), ScenarioRuntimeContinuation.empty(ScenarioRuntimeContinuation.CLASSIC_ACKNOWLEDGE), [DomainEvent.new(&"scrolling_text_requested", {
+			}), ScenarioInteractionContinuations.acknowledge(), [DomainEvent.new(&"scrolling_text_requested", {
 				"resourceType": "TEXT",
 				"resourceId": action.operand_id,
 				"source": "classic",
@@ -91,7 +91,7 @@ func _show_message(action: ClassicActionDefinition, request_id: String) -> Scena
 		"journalEligible": journal_eligible,
 		"journalRecorded": journal_eligible and _game_state.scenario_progress.journal_message_is_recorded(message_id),
 	})
-	return ScenarioRuntimeOperationResult.waiting(request, ScenarioRuntimeContinuation.textbox(message_id), [event])
+	return ScenarioRuntimeOperationResult.waiting(request, ScenarioInteractionContinuations.textbox(message_id), [event])
 
 
 func _show_random_message(action: ClassicActionDefinition, request_id: String) -> ScenarioRuntimeOperationResult:
@@ -119,4 +119,4 @@ func _show_random_message(action: ClassicActionDefinition, request_id: String) -
 		"presentation": "classic-textbox",
 		"journalEligible": journal_eligible,
 		"journalRecorded": journal_eligible and _game_state.scenario_progress.journal_message_is_recorded(message_id),
-	}), ScenarioRuntimeContinuation.textbox(message_id), [event])
+	}), ScenarioInteractionContinuations.textbox(message_id), [event])

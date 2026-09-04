@@ -25,11 +25,11 @@ func begin(encounter: ComplexEncounterDefinition, gosub: bool, request_id: Strin
 	var request := _thief_request(encounter, request_id, true)
 	if request == null:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_thief_encounter", "The Thief Encounter has no available living character or prompt.")
-	return ScenarioRuntimeOperationResult.waiting(request, ScenarioRuntimeContinuation.thief_encounter(encounter.id, gosub, encounter_attempt), [DomainEvent.new(&"thief_encounter_opened", {"encounterId": encounter.id})])
+	return ScenarioRuntimeOperationResult.waiting(request, ScenarioInteractionContinuations.thief_encounter(encounter.id, gosub, encounter_attempt), [DomainEvent.new(&"thief_encounter_opened", {"encounterId": encounter.id})])
 
 
 func resume_thief(continuation: ScenarioRuntimeContinuation, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
-	var owner := continuation.body as ScenarioRuntimeContinuation.ThiefBody
+	var owner := continuation.body as ScenarioThiefContinuationBody
 	var selection := response.body as InteractionResponse.ThiefEncounterBody
 	var encounter := _content.complex_encounter_by_id(owner.encounter_id) if owner != null else null
 	if response.kind != InteractionRequest.THIEF_ENCOUNTER or selection == null or encounter == null:
@@ -38,12 +38,12 @@ func resume_thief(continuation: ScenarioRuntimeContinuation, response: Interacti
 		var complex_request := _encounters.complex_encounter_request(encounter, request_id)
 		if complex_request == null:
 			return ScenarioRuntimeOperationResult.failed(&"encounter_has_no_options", "Complex Encounter has no available responses after leaving its Thief actions.")
-		return ScenarioRuntimeOperationResult.waiting(complex_request, ScenarioRuntimeContinuation.encounter(ScenarioRuntimeContinuation.CLASSIC_COMPLEX_ENCOUNTER, encounter.id, owner.gosub, [], owner.encounter_attempt))
+		return ScenarioRuntimeOperationResult.waiting(complex_request, ScenarioInteractionContinuations.encounter(ScenarioRuntimeContinuation.CLASSIC_COMPLEX_ENCOUNTER, encounter.id, owner.gosub, [], owner.encounter_attempt))
 	return _attempt(encounter, owner.gosub, selection, request_id, owner.encounter_attempt)
 
 
 func resume_pick_lock(continuation: ScenarioRuntimeContinuation, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
-	var owner := continuation.body as ScenarioRuntimeContinuation.ThiefBody
+	var owner := continuation.body as ScenarioThiefContinuationBody
 	var selection := response.body as InteractionResponse.PickLockBody
 	var encounter := _content.complex_encounter_by_id(owner.encounter_id) if owner != null else null
 	var thief := _thief_definition(encounter)
@@ -65,7 +65,7 @@ func resume_pick_lock(continuation: ScenarioRuntimeContinuation, response: Inter
 
 
 func resume_resolution(continuation: ScenarioRuntimeContinuation, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
-	var owner := continuation.body as ScenarioRuntimeContinuation.ThiefBody
+	var owner := continuation.body as ScenarioThiefContinuationBody
 	var acknowledgement := response.body as InteractionResponse.AcknowledgeBody
 	var encounter := _content.complex_encounter_by_id(owner.encounter_id) if owner != null else null
 	var thief := _thief_definition(encounter)
@@ -122,7 +122,7 @@ func _start_pick_lock(encounter: ComplexEncounterDefinition, thief: ThiefEncount
 	})
 	if request == null:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_pick_lock_state", "Pick Lock generated an invalid typed interaction.")
-	return ScenarioRuntimeOperationResult.waiting(request, ScenarioRuntimeContinuation.pick_lock(encounter.id, gosub, action_index, character.id, encounter_attempt), [DomainEvent.new(&"pick_lock_started", {"encounterId": encounter.id, "characterId": character.id, "actionIndex": action_index, "chancePercent": chance, "tumblers": ClassicPickLockRules.tumbler_count(thief.tumblers)})])
+	return ScenarioRuntimeOperationResult.waiting(request, ScenarioInteractionContinuations.pick_lock(encounter.id, gosub, action_index, character.id, encounter_attempt), [DomainEvent.new(&"pick_lock_started", {"encounterId": encounter.id, "characterId": character.id, "actionIndex": action_index, "chancePercent": chance, "tumblers": ClassicPickLockRules.tumbler_count(thief.tumblers)})])
 
 
 func _finish_action(encounter: ComplexEncounterDefinition, thief: ThiefEncounterDefinition, gosub: bool, character: CharacterState, action_index: int, succeeded: bool, request_id: String, events: Array[DomainEvent], encounter_attempt: int) -> ScenarioRuntimeOperationResult:
@@ -162,7 +162,7 @@ func _present_action_result(encounter: ComplexEncounterDefinition, thief: ThiefE
 			return _wait_for_trap_message(encounter, gosub, character, action_index, succeeded, request_id, events, encounter_attempt)
 		return _finish_action(encounter, thief, gosub, character, action_index, succeeded, request_id, events, encounter_attempt)
 	var request := InteractionRequest.from_payload(request_id, InteractionRequest.ACKNOWLEDGE, {"prompt": message.text if message != null else "", "messageId": message_id, "presentation": "classic-textbox", "soundId": sound_ids[action_index]})
-	return ScenarioRuntimeOperationResult.waiting(request, ScenarioRuntimeContinuation.thief_resolution(encounter.id, gosub, action_index, character.id, &"action-message", succeeded, trap_pending, encounter_attempt), events) if request != null else ScenarioRuntimeOperationResult.failed(&"invalid_thief_encounter", "Thief Encounter result could not create its textbox stage.")
+	return ScenarioRuntimeOperationResult.waiting(request, ScenarioInteractionContinuations.thief_resolution(encounter.id, gosub, action_index, character.id, &"action-message", succeeded, trap_pending, encounter_attempt), events) if request != null else ScenarioRuntimeOperationResult.failed(&"invalid_thief_encounter", "Thief Encounter result could not create its textbox stage.")
 
 
 func _wait_for_trap_message(encounter: ComplexEncounterDefinition, gosub: bool, character: CharacterState, action_index: int, succeeded: bool, request_id: String, events: Array[DomainEvent] = [], encounter_attempt: int = 0) -> ScenarioRuntimeOperationResult:
@@ -170,7 +170,7 @@ func _wait_for_trap_message(encounter: ComplexEncounterDefinition, gosub: bool, 
 	# Rebuilt preserves that identity while using concise modern host wording.
 	var request := InteractionRequest.from_payload(request_id, InteractionRequest.ACKNOWLEDGE, {"prompt": "A trap is sprung.", "presentation": "classic-textbox"})
 	events.append(DomainEvent.new(&"thief_trap_warning", {"resourceStringClass": 3, "resourceStringId": 55}))
-	return ScenarioRuntimeOperationResult.waiting(request, ScenarioRuntimeContinuation.thief_resolution(encounter.id, gosub, action_index, character.id, &"trap-message", succeeded, true, encounter_attempt), events) if request != null else ScenarioRuntimeOperationResult.failed(&"invalid_thief_encounter", "Thief Encounter trap could not create its textbox stage.")
+	return ScenarioRuntimeOperationResult.waiting(request, ScenarioInteractionContinuations.thief_resolution(encounter.id, gosub, action_index, character.id, &"trap-message", succeeded, true, encounter_attempt), events) if request != null else ScenarioRuntimeOperationResult.failed(&"invalid_thief_encounter", "Thief Encounter trap could not create its textbox stage.")
 
 
 func _apply_trap(encounter: ComplexEncounterDefinition, thief: ThiefEncounterDefinition, gosub: bool, selected: CharacterState, request_id: String, encounter_attempt: int) -> ScenarioRuntimeOperationResult:
@@ -210,7 +210,7 @@ func _wait_for_thief(encounter: ComplexEncounterDefinition, gosub: bool, request
 	var request := _thief_request(encounter, request_id, false)
 	if request == null:
 		return ScenarioRuntimeOperationResult.failed(&"party_defeated", "No living party character remains for the Thief Encounter.")
-	return ScenarioRuntimeOperationResult.waiting(request, ScenarioRuntimeContinuation.thief_encounter(encounter.id, gosub, encounter_attempt), events)
+	return ScenarioRuntimeOperationResult.waiting(request, ScenarioInteractionContinuations.thief_encounter(encounter.id, gosub, encounter_attempt), events)
 
 
 func _thief_request(encounter: ComplexEncounterDefinition, request_id: String, play_opening_sound: bool) -> InteractionRequest:

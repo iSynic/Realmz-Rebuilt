@@ -92,7 +92,7 @@ func _wait_for_reward(reward: ClassicRewardState, request_id: String, events: Ar
 	var request := _reward_request(reward, request_id)
 	if request == null:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_reward_continuation", "The reward has no valid interaction for its current phase.")
-	return ScenarioRuntimeOperationResult.waiting(request, ScenarioRuntimeContinuation.reward(reward), events)
+	return ScenarioRuntimeOperationResult.waiting(request, ScenarioRewardContinuations.reward(reward), events)
 
 
 func _reward_request(reward: ClassicRewardState, request_id: String) -> InteractionRequest:
@@ -223,7 +223,7 @@ static func _append_nonzero_item_fact(facts: Array[Dictionary], label: String, v
 func _resume_reward(continuation: ScenarioRuntimeContinuation, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
 	if continuation == null or continuation.kind != ScenarioRuntimeContinuation.CLASSIC_REWARD:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_reward_continuation", "The reward continuation is malformed.")
-	var reward_body := continuation.body as ScenarioRuntimeContinuation.RewardBody
+	var reward_body := continuation.body as ScenarioRewardContinuationBody
 	var reward := ClassicRewardState.from_data(reward_body.state.to_data()) if reward_body != null and reward_body.state != null else null
 	if reward == null or not _reward_state_is_valid(reward):
 		return ScenarioRuntimeOperationResult.failed(&"invalid_reward_continuation", "The saved reward state is invalid.")

@@ -464,7 +464,7 @@ func _condition_effect_spell(spell_id: String, classic_id: int) -> SpellDefiniti
 	var result := SpellDefinition.new(spell_id, classic_id, "Enchanted Blade"); result.in_combat = true; result.target_type = 1; result.spell_class = 8; result.damage_type = 8; result.cannot = 4; result.cost = 2; result.range_min = 15; result.special = 33; result.power_duration_min = 1; result.power_duration_max = 1; return result
 
 
-func _classic_battle_continuation(battle_id: String) -> ScenarioRuntimeContinuation: return ScenarioRuntimeContinuation.combat(ScenarioRuntimeContinuation.CLASSIC_COMBAT, battle_id, ScenarioBattleCaller.classic(2, false, 0, 0))
+func _classic_battle_continuation(battle_id: String) -> ScenarioRuntimeContinuation: return ScenarioCombatContinuations.battle(ScenarioRuntimeContinuation.CLASSIC_COMBAT, battle_id, ScenarioBattleCaller.classic(2, false, 0, 0))
 
 
 func _state(character: CharacterState, monster: MonsterState, battle_id: String) -> GameState:

@@ -180,7 +180,7 @@ func _request_character_selection(action: ClassicActionDefinition, request_id: S
 	if eligible.is_empty():
 		return ScenarioRuntimeOperationResult.failed(&"no_eligible_characters", "Classic character picker has no eligible party members.")
 	count = mini(count, eligible.size())
-	return ScenarioRuntimeOperationResult.waiting(InteractionRequest.from_payload(request_id, &"character_selection", {"count": count, "eligible": eligible, "allowDead": action.operand_id < 0}), ScenarioRuntimeContinuation.character_selection(count, action.operand_id < 0, invert))
+	return ScenarioRuntimeOperationResult.waiting(InteractionRequest.from_payload(request_id, &"character_selection", {"count": count, "eligible": eligible, "allowDead": action.operand_id < 0}), ScenarioInteractionContinuations.character_selection(count, action.operand_id < 0, invert))
 
 
 func _request_character_ability(action: ClassicActionDefinition, request_id: String) -> ScenarioRuntimeOperationResult:
@@ -196,7 +196,7 @@ func _request_character_ability(action: ClassicActionDefinition, request_id: Str
 			eligible.append({"id": character.id, "name": character.name, "currentHealth": character.current_health, "maximumHealth": character.maximum_health})
 	if eligible.is_empty():
 		return ScenarioRuntimeOperationResult.failed(&"no_eligible_characters", "Classic ability check has no living party member.")
-	return ScenarioRuntimeOperationResult.waiting(InteractionRequest.from_payload(request_id, &"character_selection", {"count": 1, "eligible": eligible, "allowDead": false}), ScenarioRuntimeContinuation.character_ability(action.extra_code, action.gosub))
+	return ScenarioRuntimeOperationResult.waiting(InteractionRequest.from_payload(request_id, &"character_selection", {"count": 1, "eligible": eligible, "allowDead": false}), ScenarioInteractionContinuations.character_ability(action.extra_code, action.gosub))
 
 
 func _apply_health(action: ClassicActionDefinition, whole_party: bool) -> ScenarioRuntimeOperationResult:
@@ -616,7 +616,7 @@ func _with_age_update_interactions(operation: ScenarioRuntimeOperationResult, re
 	var updates := CharacterAgingResult.update_bodies(operation.events)
 	if updates.is_empty():
 		return operation
-	var continuation := ScenarioRuntimeContinuation.age_updates(ScenarioRuntimeContinuation.CLASSIC_AGE_UPDATES, updates, 1, operation.value, operation.directive)
+	var continuation := ScenarioAgeContinuations.updates(ScenarioRuntimeContinuation.CLASSIC_AGE_UPDATES, updates, 1, operation.value, operation.directive)
 	var events: Array[DomainEvent] = []
 	events.assign(operation.events)
 	events.append(CharacterAgingResult.sound_event_for_update(updates[0]))

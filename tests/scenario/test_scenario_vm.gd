@@ -31,6 +31,7 @@ func run() -> void:
 
 
 func _test_scenario_wire_contracts() -> void:
+	_test_scenario_runtime_continuation_contracts()
 	_test_session_continuation_contracts()
 	var branch := ScenarioVmDirective.branch_program_at("xap:7", true, ScenarioExecutionContext.trigger(&"", "ap.fixture"), 3); var restored := ScenarioVmDirective.from_data(JSON.parse_string(JSON.stringify(branch.to_data())))
 	assert_not_null(restored, "VM directive round-trips through its typed wire contract"); assert_equal([restored.kind, restored.program_id, restored.gosub, restored.entry_cursor, restored.context.to_data()], [ScenarioVmDirective.BRANCH_PROGRAM, "xap:7", true, 3, {"triggerId": "ap.fixture"}], "VM directive preserves branch cursor and trigger state")
@@ -49,9 +50,9 @@ func _test_scenario_wire_contracts() -> void:
 	var caller := ScenarioBattleCaller.classic(2, false, 0, 0); var handoff := ScenarioRuntimeHandoff.party_defeat("classic.battle.0", ScenarioRuntimeHandoff.CLASSIC_COMBAT, caller); var body := CombatContinuationBody.new(); body.battle_id = "classic.battle.0"; body.actor_id = "character.1"; body.mode = &"explicit"; body.destination = Vector2i(-100_000, -100_000); var collision_body := CombatContinuationBody.new(); collision_body.battle_id = body.battle_id; collision_body.actor_id = body.actor_id; collision_body.mode = &"friendly"; collision_body.destination = Vector2i(46, 45)
 	var contracts: Array[Dictionary] = [
 		{"name": "battle caller", "value": caller, "decode": ScenarioBattleCaller.from_data},
-		{"name": "encounter continuation", "value": ScenarioRuntimeContinuation.encounter(ScenarioRuntimeContinuation.CLASSIC_SIMPLE_ENCOUNTER, 0, false, [0]), "decode": ScenarioRuntimeContinuation.from_data},
-		{"name": "retreat continuation", "value": ScenarioRuntimeContinuation.combat_retreat(ScenarioRuntimeContinuation.CLASSIC_COMBAT_RETREAT, ScenarioRuntimeContinuation.CLASSIC_COMBAT, "classic.battle.0", caller, "character.1", &"explicit", Vector2i(-100_000, -100_000)), "decode": ScenarioRuntimeContinuation.from_data},
-		{"name": "VM pending continuation", "value": ScenarioVmPendingContinuation.classic(ScenarioRuntimeContinuation.encounter(ScenarioRuntimeContinuation.CLASSIC_SIMPLE_ENCOUNTER, 0, false, [0])), "decode": ScenarioVmPendingContinuation.from_data},
+		{"name": "encounter continuation", "value": ScenarioInteractionContinuations.encounter(ScenarioRuntimeContinuation.CLASSIC_SIMPLE_ENCOUNTER, 0, false, [0]), "decode": ScenarioRuntimeContinuation.from_data},
+		{"name": "retreat continuation", "value": ScenarioCombatContinuations.retreat(ScenarioRuntimeContinuation.CLASSIC_COMBAT_RETREAT, ScenarioRuntimeContinuation.CLASSIC_COMBAT, "classic.battle.0", caller, "character.1", &"explicit", Vector2i(-100_000, -100_000)), "decode": ScenarioRuntimeContinuation.from_data},
+		{"name": "VM pending continuation", "value": ScenarioVmPendingContinuation.classic(ScenarioInteractionContinuations.encounter(ScenarioRuntimeContinuation.CLASSIC_SIMPLE_ENCOUNTER, 0, false, [0])), "decode": ScenarioVmPendingContinuation.from_data},
 		{"name": "runtime handoff", "value": handoff, "decode": ScenarioRuntimeHandoff.from_data},
 		{"name": "VM handoff", "value": ScenarioVmHandoff.classic(handoff), "decode": ScenarioVmHandoff.from_data},
 		{"name": "session retreat", "value": CombatContinuations.retreat_confirmation(body), "decode": SessionContinuation.from_data}, {"name": "session friendly collision", "value": CombatContinuations.friendly_collision(collision_body), "decode": SessionContinuation.from_data},
@@ -66,6 +67,64 @@ func _test_scenario_wire_contracts() -> void:
 	assert_equal((combat_response.body as InteractionResponse.CombatBody).target_coordinates, [Vector2i(44, 46), Vector2i(43, 46)], "typed combat responses preserve ordered summon-space coordinates"); var ambiguous_combat: Dictionary = combat_wire.duplicate(true); ambiguous_combat["targetIds"] = ["monster.0"]; assert_equal(InteractionResponse.from_data("combat.ambiguous", InteractionRequest.COMBAT, ambiguous_combat).body, null, "typed combat responses reject mixed actor and coordinate target sequences")
 	var snapshot := ScenarioVmSnapshot.new().to_data(); snapshot["unexpected"] = true
 	assert_equal(ScenarioVmSnapshot.from_data(snapshot), null, "VM snapshots reject unknown fields")
+
+
+func _test_scenario_runtime_continuation_contracts() -> void:
+	var classic_caller := ScenarioBattleCaller.classic(2, false, 0, 0)
+	var safe_caller := ScenarioBattleCaller.safe_continue()
+	var age_update := AgeUpdateRequestBody.new()
+	age_update.character_id = "character.1"; age_update.character_name = "Ari"; age_update.portrait_id = "portrait.1"; age_update.combat_icon_id = "icon.1"; age_update.race_id = "race.1"; age_update.race_name = "Human"; age_update.age_group_name = "Adult"; age_update.age_minimum_years = 18; age_update.age_maximum_years = 60; age_update.transition = 1; age_update.applied_age_group = 1; age_update.prompt = "Ari grows older."; age_update.presentation = &"classic-textbox"; age_update.sound_id = 1; age_update.source = &"test"
+	var updates: Array[AgeUpdateRequestBody] = [age_update]
+	var macro_vm := ScenarioVmSnapshot.new()
+	var reward_state := ClassicRewardState.new(&"battle", "classic.battle.1", 0, WealthState.new())
+	reward_state.battle_stage = ClassicRewardState.ORDINARY_BATTLE_STAGE
+	var continuations: Array[ScenarioRuntimeContinuation] = [
+		ScenarioInteractionContinuations.textbox(1),
+		ScenarioInteractionContinuations.acknowledge(),
+		ScenarioInteractionContinuations.player_map("classic.player-map.1"),
+		ScenarioInteractionContinuations.safe_choice(2),
+		ScenarioInteractionContinuations.classic_choice([1, 2, 3, 4, 5], false),
+		ScenarioInteractionContinuations.encounter(ScenarioRuntimeContinuation.CLASSIC_SIMPLE_ENCOUNTER, 0, false, [0]),
+		ScenarioInteractionContinuations.encounter(ScenarioRuntimeContinuation.CLASSIC_COMPLEX_ENCOUNTER, 0, true),
+		ScenarioInteractionContinuations.thief_encounter(0, false),
+		ScenarioInteractionContinuations.pick_lock(0, false, 2, "character.1"),
+		ScenarioInteractionContinuations.thief_resolution(0, false, 2, "character.1", &"action-message", true, false),
+		ScenarioInteractionContinuations.character_selection(1, false, false),
+		ScenarioInteractionContinuations.character_ability([1, 2, 3, 4, 5], false),
+		ScenarioAgeContinuations.updates(ScenarioRuntimeContinuation.CLASSIC_AGE_UPDATES, updates, 1, {"accepted": true}, ScenarioVmDirective.finish_timeline()),
+		ScenarioAgeContinuations.updates(ScenarioRuntimeContinuation.SAFE_AGE_UPDATES, updates, 1, null, null),
+		ScenarioServiceContinuations.shop("classic.shop.1", [1, 2, 3, 4]),
+		ScenarioServiceContinuations.temple(ScenarioRuntimeContinuation.CLASSIC_TEMPLE, 100, true, "character.1"),
+		ScenarioServiceContinuations.temple(ScenarioRuntimeContinuation.CLASSIC_TEMPLE_EXIT, 100, false, "character.1"),
+		ScenarioServiceContinuations.banking(),
+		ScenarioCombatContinuations.battle(ScenarioRuntimeContinuation.CLASSIC_COMBAT, "classic.battle.1", classic_caller),
+		ScenarioCombatContinuations.battle(ScenarioRuntimeContinuation.SAFE_COMBAT, "safe.battle.1", safe_caller),
+		ScenarioCombatContinuations.retreat(ScenarioRuntimeContinuation.CLASSIC_COMBAT_RETREAT, ScenarioRuntimeContinuation.CLASSIC_COMBAT, "classic.battle.1", classic_caller, "character.1", &"explicit", Vector2i(-100_000, -100_000)),
+		ScenarioCombatContinuations.retreat(ScenarioRuntimeContinuation.SAFE_COMBAT_RETREAT, ScenarioRuntimeContinuation.SAFE_COMBAT, "safe.battle.1", safe_caller, "character.1", &"edge", Vector2i(4, 5)),
+		ScenarioCombatContinuations.age_updates(ScenarioRuntimeContinuation.CLASSIC_COMBAT_AGE, ScenarioRuntimeContinuation.CLASSIC_COMBAT, "classic.battle.1", classic_caller, updates, 1, 1),
+		ScenarioCombatContinuations.age_updates(ScenarioRuntimeContinuation.SAFE_COMBAT_AGE, ScenarioRuntimeContinuation.SAFE_COMBAT, "safe.battle.1", safe_caller, updates, 1, 1),
+		ScenarioCombatContinuations.macro(ScenarioRuntimeContinuation.CLASSIC_COMBAT_MACRO, ScenarioRuntimeContinuation.CLASSIC_COMBAT, "classic.battle.1", classic_caller, "xap:1", macro_vm),
+		ScenarioCombatContinuations.macro(ScenarioRuntimeContinuation.SAFE_COMBAT_MACRO, ScenarioRuntimeContinuation.SAFE_COMBAT, "safe.battle.1", safe_caller, "scenario.action.1", macro_vm),
+		ScenarioCombatContinuations.macro(ScenarioRuntimeContinuation.CLASSIC_COMBAT_DEATH_MACRO, ScenarioRuntimeContinuation.CLASSIC_COMBAT, "classic.battle.1", classic_caller, "xap:1", macro_vm, "monster.1", false),
+		ScenarioCombatContinuations.macro(ScenarioRuntimeContinuation.SAFE_COMBAT_DEATH_MACRO, ScenarioRuntimeContinuation.SAFE_COMBAT, "safe.battle.1", safe_caller, "scenario.action.1", macro_vm, "monster.1"),
+		ScenarioCombatContinuations.opcode_death_macro("classic.battle.1", "monster.1", "xap:1", ["monster.2"], macro_vm),
+		ScenarioCombatContinuations.terminal(ScenarioRuntimeContinuation.CLASSIC_COMBAT_ALLY, ScenarioRuntimeContinuation.CLASSIC_COMBAT, "classic.battle.1", classic_caller),
+		ScenarioCombatContinuations.terminal(ScenarioRuntimeContinuation.SAFE_COMBAT_ALLY, ScenarioRuntimeContinuation.SAFE_COMBAT, "safe.battle.1", safe_caller),
+		ScenarioCombatContinuations.terminal(ScenarioRuntimeContinuation.CLASSIC_COMBAT_FUMBLE, ScenarioRuntimeContinuation.CLASSIC_COMBAT, "classic.battle.1", classic_caller),
+		ScenarioCombatContinuations.terminal(ScenarioRuntimeContinuation.SAFE_COMBAT_FUMBLE, ScenarioRuntimeContinuation.SAFE_COMBAT, "safe.battle.1", safe_caller),
+		ScenarioRewardContinuations.reward(reward_state),
+	]
+	var kinds: Dictionary = {}
+	for continuation: ScenarioRuntimeContinuation in continuations:
+		var wire: Dictionary = JSON.parse_string(JSON.stringify(continuation.to_data()))
+		var restored := ScenarioRuntimeContinuation.from_data(wire)
+		assert_not_null(restored, "%s runtime continuation round-trips" % continuation.kind)
+		assert_equal(JSON.parse_string(JSON.stringify(restored.to_data())), wire, "%s runtime continuation preserves its exact wire payload" % continuation.kind)
+		kinds[continuation.kind] = true
+		var unknown_data := wire.duplicate(true); unknown_data["data"]["unexpected"] = true
+		assert_equal(ScenarioRuntimeContinuation.from_data(unknown_data), null, "%s runtime continuation rejects unknown payload fields" % continuation.kind)
+	assert_equal([continuations.size(), kinds.size()], [34, 34], "the scenario runtime continuation contract covers every stable kind exactly once")
+	assert_equal(ScenarioRuntimeContinuation.from_data(ScenarioRuntimeContinuation.new(ScenarioRuntimeContinuation.CLASSIC_TEXTBOX, ScenarioServiceContinuations.banking().body).to_data()), null, "runtime continuation decoding rejects a mismatched payload family")
 
 
 func _test_session_continuation_contracts() -> void:
@@ -101,12 +160,12 @@ func _test_session_continuation_contracts() -> void:
 	death_macro.combatant_id = "monster.1"; death_macro.program_id = "xap:2"
 	var reward_state := ClassicRewardState.new(&"battle", "classic.battle.1", 0, WealthState.new())
 	reward_state.battle_stage = ClassicRewardState.ORDINARY_BATTLE_STAGE
-	var reward_runtime := ScenarioRuntimeContinuation.reward(reward_state)
+	var reward_runtime := ScenarioRewardContinuations.reward(reward_state)
 	var continuations: Array[SessionContinuation] = [
 		ExplorationContinuations.post_clock(post_clock), ExplorationContinuations.post_move(post_move), ExplorationContinuations.boat_choice(boat), ApplicationContinuations.hook(application),
 		ApplicationContinuations.character_spell_confirmation("character.1", 3), ApplicationContinuations.character_vault_publication("character.1"),
 		InventoryContinuations.item_target(item_target), MagicContinuations.field_spell_target(spell_target), MagicContinuations.scroll_target(scroll_target), MagicContinuations.scroll_discard(scroll_discard), InventoryContinuations.drop_confirmation(drop_item),
-		InventoryContinuations.item_xap(item_xap), ServiceContinuations.interaction("bank.1", ScenarioRuntimeContinuation.banking()), ServiceContinuations.pooled_wealth_departure(&"warning", Vector2i.RIGHT), ApplicationContinuations.age_updates(age),
+		InventoryContinuations.item_xap(item_xap), ServiceContinuations.interaction("bank.1", ScenarioServiceContinuations.banking()), ServiceContinuations.pooled_wealth_departure(&"warning", Vector2i.RIGHT), ApplicationContinuations.age_updates(age),
 		CombatContinuations.retreat_confirmation(retreat), CombatContinuations.friendly_collision(collision), CombatContinuations.death_macro(death_macro), CombatContinuations.ally_selection(_session_combat_body("classic.battle.1")), CombatContinuations.fumble_recovery(_session_combat_body("classic.battle.1")), CombatContinuations.reward("classic.battle.1", reward_runtime),
 	]
 	var kinds: Dictionary = {}

@@ -16,7 +16,7 @@ func _init(game_state: GameState, rules: RealmzRules, money: ClassicMoneyTransfe
 
 func request(request_id: String) -> ScenarioRuntimeOperationResult:
 	_rules.economy.bank_to_pool(_game_state.party)
-	return ScenarioRuntimeOperationResult.waiting(_interaction_request(request_id), ScenarioRuntimeContinuation.banking(), [
+	return ScenarioRuntimeOperationResult.waiting(_interaction_request(request_id), ScenarioServiceContinuations.banking(), [
 		DomainEvent.new(&"bank_opened", {"pooledWealth": _game_state.party.pooled_wealth.to_data()}),
 		DomainEvent.new(&"sound_requested", {"soundId": 141, "waitForCompletion": false, "source": "classic-bank-swap-button"}),
 		DomainEvent.new(&"sound_requested", {"soundId": 3003, "waitForCompletion": false, "stopExisting": true, "source": "classic-bank-swap-open"}),

@@ -10,7 +10,7 @@ static func vm_reward_continuation_is_valid(content: RealmzContent, state: GameS
 	var runtime := snapshot.pending_continuation.runtime
 	if runtime == null or runtime.kind != ScenarioRuntimeContinuation.CLASSIC_REWARD:
 		return true
-	var runtime_body := runtime.body as ScenarioRuntimeContinuation.RewardBody
+	var runtime_body := runtime.body as ScenarioRewardContinuationBody
 	var reward := runtime_body.state if runtime_body != null else null
 	return reward != null and reward_continuation_is_valid(content, state, reward, vm.pending_request())
 
@@ -23,7 +23,7 @@ static func player_map_vm_continuation_is_valid(content: RealmzContent, state: G
 	if runtime == null or runtime.kind != ScenarioRuntimeContinuation.CLASSIC_PLAYER_MAP:
 		return true
 	var request := vm.pending_request()
-	var runtime_body := runtime.body as ScenarioRuntimeContinuation.TextBody
+	var runtime_body := runtime.body as ScenarioTextContinuationBody
 	var player_map_id := "" if runtime_body == null else runtime_body.player_map_id
 	var body: AcknowledgeRequestBody = null
 	if request != null:
@@ -38,7 +38,7 @@ static func thief_vm_continuation_is_valid(content: RealmzContent, state: GameSt
 	var runtime := snapshot.pending_continuation.runtime
 	if runtime == null or runtime.kind not in [ScenarioRuntimeContinuation.CLASSIC_THIEF_ENCOUNTER, ScenarioRuntimeContinuation.CLASSIC_PICK_LOCK, ScenarioRuntimeContinuation.CLASSIC_THIEF_RESOLUTION]:
 		return true
-	var owner := runtime.body as ScenarioRuntimeContinuation.ThiefBody
+	var owner := runtime.body as ScenarioThiefContinuationBody
 	var encounter := content.complex_encounter_by_id(owner.encounter_id) if owner != null else null
 	var thief := content.thief_encounter_by_id(encounter.thief_success) if encounter != null and encounter.thief else null
 	var request := vm.pending_request()
@@ -90,7 +90,7 @@ static func _valid_thief_request(content: RealmzContent, state: GameState, thief
 	return true
 
 
-static func _valid_thief_resolution_request(content: RealmzContent, state: GameState, thief: ThiefEncounterDefinition, owner: ScenarioRuntimeContinuation.ThiefBody, request: InteractionRequest) -> bool:
+static func _valid_thief_resolution_request(content: RealmzContent, state: GameState, thief: ThiefEncounterDefinition, owner: ScenarioThiefContinuationBody, request: InteractionRequest) -> bool:
 	var body := request.body as AcknowledgeRequestBody
 	var character := state.party.character_by_id(owner.character_id)
 	if request.kind != InteractionRequest.ACKNOWLEDGE or body == null or character == null or owner.action_index < 0 or owner.action_index > 7 or body.presentation != &"classic-textbox" or not body.has_presentation or body.has_journal_state or body.has_player_map_id:

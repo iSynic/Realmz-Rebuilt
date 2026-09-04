@@ -116,7 +116,7 @@ func execute_safe(capability: String, arguments: Dictionary, request_id: String)
 					return ScenarioRuntimeOperationResult.failed(&"invalid_action_arguments", "Choice option %d is not a string." % index)
 				options.append({"id": "choice:%d" % index, "label": label})
 			var request := InteractionRequest.from_payload(request_id, &"scenario_choice", {"prompt": arguments["prompt"], "options": options})
-			return ScenarioRuntimeOperationResult.waiting(request, ScenarioRuntimeContinuation.safe_choice(options.size()))
+			return ScenarioRuntimeOperationResult.waiting(request, ScenarioInteractionContinuations.safe_choice(options.size()))
 		"core.state.read":
 			var state_identity := _state_identity(arguments)
 			if state_identity.is_empty():
@@ -140,7 +140,7 @@ func resume_safe(continuation: ScenarioRuntimeContinuation, response: Interactio
 		ScenarioRuntimeContinuation.SAFE_AGE_UPDATES:
 			return _resume_age_update_interactions(continuation, response, request_id if not request_id.is_empty() else String(response.request_id))
 		ScenarioRuntimeContinuation.SAFE_CHOICE:
-			var choice_continuation := continuation.body as ScenarioRuntimeContinuation.ChoiceBody
+			var choice_continuation := continuation.body as ScenarioChoiceContinuationBody
 			var option_count: int = choice_continuation.option_count
 			var choice := response.body as InteractionResponse.ChoiceBody
 			if response.kind != &"scenario_choice" or choice == null or choice.index < 0 or choice.index >= option_count:
@@ -231,7 +231,7 @@ func resume_classic(continuation: ScenarioRuntimeContinuation, response: Interac
 				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Classic textbox response must acknowledge the displayed message.")
 			if not acknowledgement.take_note:
 				return ScenarioRuntimeOperationResult.completed(true)
-			var message_id := (continuation.body as ScenarioRuntimeContinuation.TextBody).message_id
+			var message_id := (continuation.body as ScenarioTextContinuationBody).message_id
 			if not ScenarioProgressState.journal_message_id_is_valid(message_id):
 				return ScenarioRuntimeOperationResult.failed(&"journal_message_unrepresentable", "Classic message %d cannot be stored in the 3,000-entry journal flag table." % message_id)
 			var already_recorded := _game_state.scenario_progress.journal_message_is_recorded(message_id)
@@ -245,7 +245,7 @@ func resume_classic(continuation: ScenarioRuntimeContinuation, response: Interac
 			var map_acknowledgement := response.body as InteractionResponse.AcknowledgeBody
 			if response.kind != &"acknowledge" or map_acknowledgement == null or map_acknowledgement.take_note:
 				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Classic player-map display requires an empty acknowledgement response.")
-			var player_map_id := (continuation.body as ScenarioRuntimeContinuation.TextBody).player_map_id
+			var player_map_id := (continuation.body as ScenarioTextContinuationBody).player_map_id
 			if _content.world.player_map_by_id(player_map_id) == null or not _game_state.world.has_map(player_map_id):
 				return ScenarioRuntimeOperationResult.failed(&"invalid_vm_continuation", "Classic player-map continuation references unavailable acquired content.")
 			return ScenarioRuntimeOperationResult.completed(true)
@@ -271,7 +271,7 @@ func _with_age_update_interactions(operation: ScenarioRuntimeOperationResult, re
 	var updates := CharacterAgingResult.update_bodies(operation.events)
 	if updates.is_empty():
 		return operation
-	var continuation := ScenarioRuntimeContinuation.age_updates(continuation_kind, updates, 1, operation.value, operation.directive)
+	var continuation := ScenarioAgeContinuations.updates(continuation_kind, updates, 1, operation.value, operation.directive)
 	var events: Array[DomainEvent] = []
 	events.assign(operation.events)
 	events.append(CharacterAgingResult.sound_event_for_update(updates[0]))
@@ -281,7 +281,7 @@ func _with_age_update_interactions(operation: ScenarioRuntimeOperationResult, re
 func _resume_age_update_interactions(continuation: ScenarioRuntimeContinuation, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
 	if response.kind != InteractionRequest.AGE_UPDATE or not response.body is InteractionResponse.EmptyBody:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Classic age updates require an empty age-update acknowledgement.")
-	var age := continuation.body as ScenarioRuntimeContinuation.AgeBody
+	var age := continuation.body as ScenarioAgeContinuationBody
 	var updates := age.updates
 	var index := age.index
 	if updates.is_empty() or index < 1 or index > updates.size():
@@ -290,14 +290,14 @@ func _resume_age_update_interactions(continuation: ScenarioRuntimeContinuation, 
 	var events: Array[DomainEvent] = [DomainEvent.new(&"character_age_update_acknowledged", {"characterId": acknowledged.character_id})]
 	if index < updates.size():
 		var next_payload: AgeUpdateRequestBody = updates[index]
-		var next_continuation := ScenarioRuntimeContinuation.age_updates(continuation.kind, updates, index + 1, age.value, age.directive)
+		var next_continuation := ScenarioAgeContinuations.updates(continuation.kind, updates, index + 1, age.value, age.directive)
 		events.append(CharacterAgingResult.sound_event_for_update(next_payload))
 		return ScenarioRuntimeOperationResult.waiting(InteractionRequest.age_update_body(request_id, next_payload), next_continuation, events)
 	return ScenarioRuntimeOperationResult.completed(age.value, events, age.directive)
 
 
 func _resume_simple_encounter(continuation: ScenarioRuntimeContinuation, response: InteractionResponse) -> ScenarioRuntimeOperationResult:
-	var choice_continuation := continuation.body as ScenarioRuntimeContinuation.ChoiceBody
+	var choice_continuation := continuation.body as ScenarioChoiceContinuationBody
 	var encounter := _content.simple_encounter_by_id(choice_continuation.encounter_id)
 	if encounter == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_encounter", "The pending Simple Encounter is unavailable.")
@@ -325,7 +325,7 @@ func _resume_simple_encounter(continuation: ScenarioRuntimeContinuation, respons
 
 
 func _resume_complex_encounter(continuation: ScenarioRuntimeContinuation, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
-	var choice_continuation := continuation.body as ScenarioRuntimeContinuation.ChoiceBody
+	var choice_continuation := continuation.body as ScenarioChoiceContinuationBody
 	var encounter := _content.complex_encounter_by_id(choice_continuation.encounter_id)
 	if encounter == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_encounter", "The pending Complex Encounter is unavailable.")
@@ -428,7 +428,7 @@ func _resume_classic_choice(continuation: ScenarioRuntimeContinuation, response:
 	var body := response.body as InteractionResponse.YesNoBody
 	if response.kind != &"yes_no" or body == null:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Classic choice response requires an accepted bool.")
-	var choice_continuation := continuation.body as ScenarioRuntimeContinuation.ChoiceBody
+	var choice_continuation := continuation.body as ScenarioChoiceContinuationBody
 	var values := choice_continuation.values
 	if values.size() < 5:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_vm_continuation", "Classic choice continuation is malformed.")
@@ -449,7 +449,7 @@ func _resume_character_selection(continuation: ScenarioRuntimeContinuation, resp
 	var body := response.body as InteractionResponse.SelectionBody
 	if response.kind != &"character_selection" or body == null:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Character selection response requires characterIds.")
-	var character_continuation := continuation.body as ScenarioRuntimeContinuation.CharacterBody
+	var character_continuation := continuation.body as ScenarioCharacterContinuationBody
 	var requested: Array[String] = body.character_ids
 	if requested.size() != character_continuation.count:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Character selection returned the wrong number of characters.")
@@ -477,7 +477,7 @@ func _resume_character_ability(continuation: ScenarioRuntimeContinuation, respon
 	if response.kind != &"character_selection" or body == null or body.character_ids.size() != 1:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Classic ability check requires one selected character.")
 	var character := _game_state.party.character_by_id(body.character_ids[0])
-	var character_continuation := continuation.body as ScenarioRuntimeContinuation.CharacterBody
+	var character_continuation := continuation.body as ScenarioCharacterContinuationBody
 	var values := character_continuation.values
 	if character == null or character.current_health <= 0 or values.size() < 5:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Classic ability check selected an unavailable character.")
