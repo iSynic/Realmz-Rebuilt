@@ -372,104 +372,21 @@ func _execute_program_frame(frame: ScenarioFrame, runtime_api: RealmzRuntimeApi)
 
 
 func _apply_classic_directive(directive: ScenarioVmDirective, inherited_context: ScenarioExecutionContext = null, runtime_api: RealmzRuntimeApi = null) -> ScenarioVmResult:
-	if directive == null:
-		return ScenarioVmResult.completed()
-	match directive.kind:
-		ScenarioVmDirective.FINISH:
+	var transition := ScenarioClassicControlFlow.apply(directive, _definition, _frames, inherited_context, runtime_api != null)
+	if transition.is_failed():
+		return ScenarioVmResult.failed(transition.error_code, transition.error_message)
+	for entry: Dictionary in transition.trace_entries:
+		_append_trace(entry)
+	match transition.action:
+		ScenarioDirectiveTransition.Action.RETURN_FRAME:
 			_return_from_frame(null)
-			return ScenarioVmResult.completed()
-		ScenarioVmDirective.FINISH_TIMELINE:
+		ScenarioDirectiveTransition.Action.FINISH_TIMELINE:
 			_frames.clear()
 			_halted = true
 			_last_outcome = null
-			_append_trace({"event": "classic-finish-timeline"})
-			return ScenarioVmResult.completed()
-		ScenarioVmDirective.RESUME_AFTER_ENCOUNTER:
-			return _resume_after_classic_encounter()
-		ScenarioVmDirective.RESTART_CURRENT_PROGRAM:
-			if _frames.is_empty() or _frames.back().kind != ScenarioFrame.PROGRAM:
-				return ScenarioVmResult.failed(&"invalid_program_restart", "Classic battle restart has no issuing program frame.")
-			_frames.back().cursor = 0
-			_append_trace({"event": "classic-program-restart", "programId": _frames.back().definition_id})
-			return ScenarioVmResult.completed()
-		ScenarioVmDirective.BRANCH_XAP:
-			var program_id := "xap:%d" % directive.target_id
-			if _definition.program_by_id(program_id) == null:
-				return ScenarioVmResult.failed(&"unknown_scenario_program", "Classic branch references unavailable XAP %d." % directive.target_id)
-			var target_frame := ScenarioFrame.new(ScenarioFrame.PROGRAM, program_id)
-			target_frame.set_context(ScenarioExecutionContext.empty() if inherited_context == null else inherited_context)
-			if directive.gosub:
-				if _classic_call_depth() >= CLASSIC_CALL_LIMIT:
-					return ScenarioVmResult.failed(&"classic_gosub_limit", "Classic GOSUB stack exceeded 20 frames.")
-				target_frame.counts_as_classic_call = true
-				_frames.append(target_frame)
-			else:
-				_frames[_frames.size() - 1] = target_frame
-			_append_trace({"event": "classic-branch", "programId": program_id, "gosub": directive.gosub})
-			return ScenarioVmResult.completed()
-		ScenarioVmDirective.BRANCH_PROGRAM:
-			var program_id: String = directive.program_id
-			if _definition.program_by_id(program_id) == null:
-				return ScenarioVmResult.failed(&"unknown_scenario_program", "Classic branch references unavailable program '%s'." % program_id)
-			var target_frame := ScenarioFrame.new(ScenarioFrame.PROGRAM, program_id)
-			target_frame.counts_as_classic_call = directive.gosub
-			target_frame.cursor = directive.entry_cursor
-			var base_context := ScenarioExecutionContext.empty() if inherited_context == null else inherited_context
-			var merged_context: ScenarioExecutionContext = base_context.merged(directive.context)
-			target_frame.set_context(merged_context)
-			if target_frame.counts_as_classic_call:
-				if _classic_call_depth() >= CLASSIC_CALL_LIMIT:
-					return ScenarioVmResult.failed(&"classic_gosub_limit", "Classic GOSUB stack exceeded 20 frames.")
-				_frames.append(target_frame)
-			else:
-				_frames[_frames.size() - 1] = target_frame
-			_append_trace({"event": "classic-branch", "programId": program_id, "gosub": target_frame.counts_as_classic_call})
-			return ScenarioVmResult.completed()
-		ScenarioVmDirective.ENTER_ENCOUNTER:
-			if runtime_api == null or directive.encounter_kind not in [&"simple", &"complex"] or directive.target_id < 0:
-				return ScenarioVmResult.failed(&"invalid_encounter_branch", "Classic encounter transition is unavailable.")
-			if directive.gosub and _classic_call_depth() >= CLASSIC_CALL_LIMIT:
-				return ScenarioVmResult.failed(&"classic_gosub_limit", "Classic GOSUB stack exceeded 20 frames.")
-			var encounter_context := (ScenarioExecutionContext.empty() if inherited_context == null else inherited_context.copy()).merged(ScenarioExecutionContext.encounter(directive.encounter_kind, directive.target_id).set_encounter_attempt(0))
-			var encounter_frame := ScenarioFrame.new(ScenarioFrame.ENCOUNTER, "%s:%d" % [directive.encounter_kind, directive.target_id])
-			encounter_frame.counts_as_classic_call = directive.gosub
-			encounter_frame.set_context(encounter_context)
-			if directive.gosub:
-				_frames.append(encounter_frame)
-			else:
-				_frames[_frames.size() - 1] = encounter_frame
-			_append_trace({"event": "classic-encounter-branch", "encounterKind": String(directive.encounter_kind), "encounterId": directive.target_id, "gosub": directive.gosub})
-			return ScenarioVmResult.completed()
-		ScenarioVmDirective.BRANCH_ENCOUNTER_RESULT:
-			var program_id: String = directive.program_id
-			if _definition.program_by_id(program_id) == null:
-				return ScenarioVmResult.failed(&"unknown_scenario_program", "Classic encounter result references unavailable program '%s'." % program_id)
-			if not _frames.is_empty() and _frames.back().kind == ScenarioFrame.ENCOUNTER:
-				var encounter_frame: ScenarioFrame = _frames.back()
-				var encounter_context := encounter_frame.context().merged(directive.context)
-				encounter_frame.set_context(encounter_context)
-				encounter_frame.cursor = 0 if directive.repeat_encounter else 1
-				var result_frame := ScenarioFrame.new(ScenarioFrame.PROGRAM, program_id)
-				result_frame.set_context(encounter_context)
-				_frames.append(result_frame)
-				_append_trace({"event": "classic-encounter-repeat" if directive.repeat_encounter else "classic-encounter-result", "programId": program_id, "attempt": encounter_context.encounter_attempt})
-				return ScenarioVmResult.completed()
-			if not directive.repeat_encounter:
-				return _apply_classic_directive(ScenarioVmDirective.branch_program(program_id, directive.gosub, directive.context), inherited_context, runtime_api)
-			if _frames.is_empty() or _frames.back().kind != ScenarioFrame.PROGRAM or _frames.back().cursor < 1:
-				return ScenarioVmResult.failed(&"invalid_encounter_loop", "Classic encounter repetition has no issuing program frame.")
-			var source_frame: ScenarioFrame = _frames.back()
-			var base_context := source_frame.context() if inherited_context == null else inherited_context.copy()
-			var loop_context := base_context.merged(directive.context)
-			source_frame.cursor -= 1
-			source_frame.set_context(loop_context)
-			var result_frame := ScenarioFrame.new(ScenarioFrame.PROGRAM, program_id)
-			result_frame.set_context(loop_context)
-			_frames.append(result_frame)
-			_append_trace({"event": "classic-encounter-repeat", "programId": program_id, "attempt": loop_context.encounter_attempt})
-			return ScenarioVmResult.completed()
-		_:
-			return ScenarioVmResult.failed(&"unknown_vm_directive", "Realmz Runtime API returned an unknown VM directive.")
+		ScenarioDirectiveTransition.Action.HALT:
+			_halted = true
+	return ScenarioVmResult.completed()
 
 
 func _execute_encounter_frame(frame: ScenarioFrame, runtime_api: RealmzRuntimeApi) -> ScenarioVmResult:
@@ -490,40 +407,6 @@ func _execute_encounter_frame(frame: ScenarioFrame, runtime_api: RealmzRuntimeAp
 	_pending_continuation = ScenarioVmPendingContinuation.classic(operation.continuation)
 	_append_trace({"event": "yield", "requestId": request_id, "kind": String(operation.interaction.kind), "encounterKind": String(context.encounter_kind), "encounterId": context.encounter_id})
 	return ScenarioVmResult.waiting(operation.interaction, operation.events)
-
-
-func _resume_after_classic_encounter() -> ScenarioVmResult:
-	if _frames.size() < 2:
-		return ScenarioVmResult.failed(&"invalid_encounter_loop", "Classic encounter exit has no issuing program frame.")
-	var encounter_context: ScenarioExecutionContext = _frames.back().context()
-	for frame_index: int in range(_frames.size() - 2, -1, -1):
-		var source_frame: ScenarioFrame = _frames[frame_index]
-		if source_frame.kind == ScenarioFrame.ENCOUNTER:
-			var source_context := source_frame.context()
-			if source_context.encounter_kind != encounter_context.encounter_kind or source_context.encounter_id != encounter_context.encounter_id:
-				continue
-			var returns_to_source := source_frame.counts_as_classic_call
-			_frames.resize(frame_index)
-			if _frames.is_empty():
-				_halted = true
-			_append_trace({"event": "classic-encounter-exit", "programId": source_frame.definition_id, "encounterKind": String(encounter_context.encounter_kind), "encounterId": encounter_context.encounter_id, "returnsToSource": returns_to_source})
-			return ScenarioVmResult.completed()
-		if source_frame.kind != ScenarioFrame.PROGRAM:
-			continue
-		var program := _definition.program_by_id(source_frame.definition_id)
-		var instruction: Variant = program.instruction_at(source_frame.cursor) if program != null else null
-		if not instruction is ClassicActionDefinition or not _is_issuing_encounter(instruction, encounter_context):
-			continue
-		_frames.resize(frame_index + 1)
-		source_frame.cursor += 1
-		source_frame.set_context(source_frame.context().without_encounter())
-		_append_trace({"event": "classic-encounter-exit", "programId": source_frame.definition_id, "encounterKind": String(encounter_context.encounter_kind), "encounterId": encounter_context.encounter_id})
-		return ScenarioVmResult.completed()
-	return ScenarioVmResult.failed(&"invalid_encounter_loop", "Classic encounter exit cannot find its issuing encounter instruction.")
-
-
-static func _is_issuing_encounter(instruction: ClassicActionDefinition, context: ScenarioExecutionContext) -> bool:
-	return context != null and ((context.encounter_kind == &"simple" and instruction.opcode == 4) or (context.encounter_kind == &"complex" and instruction.opcode == 5)) and instruction.operand_id == context.encounter_id
 
 
 func _execute_action_frame(frame: ScenarioFrame, runtime_api: RealmzRuntimeApi) -> ScenarioVmResult:
