@@ -56,7 +56,7 @@ func _test_startup_party_setup_composition() -> void:
 	router.initialize()
 	var profile := UiLayoutProfile.for_viewport(Vector2(1280, 720), PresentationSettings.UI_SCALE_AUTO)
 	router.set_layout_profile(profile, Vector2(1280, 720))
-	router.set_standalone_character_creation_available(true)
+	router.setup_controller.set_standalone_character_creation_available(true)
 	router.show_campaign_selection()
 
 	var workspace := router.find_child("ScenarioPartyWorkspace", true, false) as Control
@@ -91,14 +91,14 @@ func _test_package_operation_presentation() -> void:
 	router.initialize()
 	var canceled := [0]
 	router.cancel_package_requested.connect(func() -> void: canceled[0] += 1)
-	router.set_package_operation(PackageOperationStatusScript.new(&"running", &"loading", 2, 4, "Loading package 2 of 4"))
+	router.setup_controller.set_package_operation(PackageOperationStatusScript.new(&"running", &"loading", 2, 4, "Loading package 2 of 4"))
 	var progress := router.find_child("PackageOperationProgress", true, false) as ProgressBar
 	var cancel := router.find_child("CancelPackageOperation", true, false) as Button
 	assert_equal([progress.value, progress.max_value], [2.0, 4.0], "package work exposes bounded detached progress"); assert_true(router.find_child("PackageOperationPhase", true, false) != null and (router.find_child("PackageOperationHost", true, false) as Control).visible and not router.setup_controller.campaign_scroll.is_ancestor_of(progress) and (router.find_child("InstallPackage", true, false) as Button).disabled and (router.find_child("RefreshScenarios", true, false) as Button).disabled, "package work owns one fixed status host and suppresses competing library actions")
 	assert_not_null(cancel, "package work exposes cancellation")
 	cancel.pressed.emit()
 	assert_equal(canceled[0], 1, "cancellation remains a host signal")
-	router.set_package_operation(PackageOperationStatusScript.new())
+	router.setup_controller.set_package_operation(PackageOperationStatusScript.new())
 	assert_true(not (router.find_child("PackageOperationHost", true, false) as Control).visible and not (router.find_child("InstallPackage", true, false) as Button).disabled and not (router.find_child("RefreshScenarios", true, false) as Button).disabled, "completed package work hides its authored status and restores library actions")
 	router.free()
 
@@ -110,7 +110,7 @@ func _test_primary_workspace_lifecycle() -> void:
 	view.campaign_id = "workspace-fixture"
 	view.rules_version = "realmz-classic-1"
 	view.party_summary = PartySummaryView.new(); view.party_members = [CharacterView.new(CharacterState.new("hero", "Hero", 8, 10)), CharacterView.new(CharacterState.new("mage", "Mage", 6, 9))]
-	router.present(view); assert_true(router.select_character("mage"), "the persistent Party current-member identity can seed the Character workspace")
+	router.present(view); assert_true(router.content_presenter.select_character("mage"), "the persistent Party current-member identity can seed the Character workspace")
 	var entered: Array[StringName] = []
 	router.screen_changed.connect(func(route_id: StringName) -> void: entered.append(route_id))
 	for route_id: StringName in [&"character", &"allies", &"bestiary", &"inventory", &"spells", &"services", &"journal", &"system", &"vault", &"exploration", &"combat"]:

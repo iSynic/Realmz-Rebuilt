@@ -32,10 +32,10 @@ func _capture_gallery() -> void:
 	await _settle()
 	await _capture("canonical-campaign-menu-hover-1280x720")
 	_router.show_campaign_selection()
-	_router.set_package_operation(PACKAGE_OPERATION_VIEW_SCRIPT.new(&"running", &"validating_media", 7, 12, "Validating packaged media 7 of 12"))
+	_router.setup_controller.set_package_operation(PACKAGE_OPERATION_VIEW_SCRIPT.new(&"running", &"validating_media", 7, 12, "Validating packaged media 7 of 12"))
 	await _settle()
 	await _capture("canonical-package-install-progress-1280x720")
-	_router.set_package_operation(PACKAGE_OPERATION_VIEW_SCRIPT.new())
+	_router.setup_controller.set_package_operation(PACKAGE_OPERATION_VIEW_SCRIPT.new())
 	await _resize(Vector2i(800, 600))
 	_application.start_package(FIXTURE_PATH, 1)
 	await _settle()
@@ -509,7 +509,7 @@ func _capture_gallery() -> void:
 	var current_save := SAVE_SLOT_PREVIEW_SCRIPT.new("quick", SAVE_SLOT_PREVIEW_SCRIPT.PRIMARY, SAVE_SLOT_PREVIEW_SCRIPT.VALID); current_save.rules_version = gallery_view.rules_version; current_save.package_hash = "1".repeat(64); current_save.realmz_day = 5; current_save.realmz_hour = 15; current_save.realmz_minute = 55; current_save.map_id = "land:0"; current_save.coordinate = Vector2i(49, 15); current_save.character_names = ["Ari", "Bryn", "Corin", "Dara", "Elian", "Fara"]; current_save.can_load = true
 	var backup_save := SAVE_SLOT_PREVIEW_SCRIPT.new("quick", SAVE_SLOT_PREVIEW_SCRIPT.BACKUP, SAVE_SLOT_PREVIEW_SCRIPT.VALID); backup_save.rules_version = gallery_view.rules_version; backup_save.character_names = ["Ari", "Bryn", "Corin", "Dara", "Elian", "Fara"]; backup_save.can_load = true
 	var corrupt_save := SAVE_SLOT_PREVIEW_SCRIPT.new("broken", SAVE_SLOT_PREVIEW_SCRIPT.PRIMARY, SAVE_SLOT_PREVIEW_SCRIPT.CORRUPT); corrupt_save.error_message = "This save is corrupt or uses an unsupported schema. The active session is unchanged."
-	_router.set_save_previews([current_save, backup_save, corrupt_save])
+	_router.content_presenter.set_save_previews([current_save, backup_save, corrupt_save])
 	_router.open_screen(&"system")
 	await _settle()
 	await _capture("canonical-system-1280x720")
@@ -534,7 +534,7 @@ func _capture_gallery() -> void:
 	_interaction.present(APPLICATION_LIFECYCLE_SCRIPT.end_adventure_request(false), "", gallery_view, gallery_media); await _settle(); await _capture("canonical-end-adventure-1280x720")
 	await _resize(Vector2i(800, 600)); await _capture("classic-end-adventure-800x600")
 	await _resize(Vector2i(1280, 720)); _interaction.present(APPLICATION_LIFECYCLE_SCRIPT.quit_application_request(true, false), "", gallery_view, gallery_media); await _settle(); await _capture("canonical-quit-1280x720"); await _resize(Vector2i(800, 600)); await _capture("classic-quit-800x600")
-	_interaction.present(null); _router.set_save_and_quit_mode(true); await _resize(Vector2i(1280, 720)); _router.open_screen(&"system"); await _settle(); await _capture("canonical-save-and-quit-1280x720"); await _resize(Vector2i(800, 600)); await _capture("classic-save-and-quit-800x600"); _router.set_save_and_quit_mode(false); _router.open_screen(&"exploration"); _shell.present(gallery_view); await _resize(Vector2i(1920, 1080)); await _capture("fit-explore-1920x1080"); await _resize(Vector2i(3440, 1440)); await _capture("fit-explore-ultrawide-3440x1440"); await _resize(Vector2i(3840, 2160)); await _capture("fit-explore-4k-3840x2160")
+	_interaction.present(null); _router.content_presenter.set_save_and_quit_mode(true); await _resize(Vector2i(1280, 720)); _router.open_screen(&"system"); await _settle(); await _capture("canonical-save-and-quit-1280x720"); await _resize(Vector2i(800, 600)); await _capture("classic-save-and-quit-800x600"); _router.content_presenter.set_save_and_quit_mode(false); _router.open_screen(&"exploration"); _shell.present(gallery_view); await _resize(Vector2i(1920, 1080)); await _capture("fit-explore-1920x1080"); await _resize(Vector2i(3440, 1440)); await _capture("fit-explore-ultrawide-3440x1440"); await _resize(Vector2i(3840, 2160)); await _capture("fit-explore-4k-3840x2160")
 	_application.queue_free()
 	await process_frame
 	quit(0)

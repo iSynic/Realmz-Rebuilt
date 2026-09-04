@@ -225,7 +225,7 @@ func present(game_view: GameView) -> void:
 	if not game_view.party_setup_available:
 		_party_roster.present(game_view, _selected_character_id)
 	_navigator.present(game_view)
-	var play_regions_visible := not _navigator.full_stage_overlay_visible()
+	var play_regions_visible := not _navigator.full_stage_overlay_visible
 	_set_play_regions_visible(play_regions_visible)
 	var automatic_route := automatic_workflow_route(_navigator.current_screen(), game_view, contextual_service_closed)
 	if automatic_route != _navigator.current_screen():
@@ -260,16 +260,20 @@ static func location_fact_text(game_view: GameView) -> String:
 
 
 func set_save_previews(previews: Array[SaveSlotPreview]) -> void:
-	_navigator.set_save_previews(previews)
+	_navigator.content_presenter.set_save_previews(previews)
+	if _navigator.current_screen() == &"system" and _current_view != null and _current_view.session_started:
+		_navigator.refresh_current_workspace()
 
 
 func show_save_and_quit_workspace() -> void:
-	_navigator.set_save_and_quit_mode(true)
+	_navigator.content_presenter.set_save_and_quit_mode(true)
 	_navigator.open_screen(&"system")
 
 
 func set_save_and_quit_mode(enabled: bool) -> void:
-	_navigator.set_save_and_quit_mode(enabled)
+	_navigator.content_presenter.set_save_and_quit_mode(enabled)
+	if _navigator.current_screen() == &"system" and _current_view != null and _current_view.session_started:
+		_navigator.refresh_current_workspace()
 
 
 func show_activity_indicator(kind: StringName) -> void:
@@ -407,7 +411,7 @@ func handle_back() -> bool:
 		return true
 	var handled := _navigator.handle_back()
 	if handled:
-		var play_regions_visible := _current_view != null and _current_view.session_started and not _navigator.full_stage_overlay_visible()
+		var play_regions_visible := _current_view != null and _current_view.session_started and not _navigator.full_stage_overlay_visible
 		_set_play_regions_visible(play_regions_visible)
 	return handled
 
@@ -451,15 +455,15 @@ func selected_fast_spell(slot_index: int) -> Dictionary:
 func set_status(text: String, is_error: bool = false) -> void:
 	_status_label.text = text
 	_status_label.modulate = ERROR if is_error else TEXT
-	_navigator.present_party_setup_status(text, is_error)
+	_navigator.setup_controller.present_party_setup_status(text, is_error)
 
 
 func set_campaigns(campaigns: Array[CampaignPackageView]) -> void:
-	_navigator.set_campaigns(campaigns)
+	_navigator.setup_controller.set_campaigns(campaigns)
 
 
 func set_package_operation(status: RefCounted) -> void:
-	_navigator.set_package_operation(status)
+	_navigator.setup_controller.set_package_operation(status)
 
 
 func set_vault_revisions(revisions: Array[CharacterVaultRevisionView]) -> void:
@@ -467,15 +471,15 @@ func set_vault_revisions(revisions: Array[CharacterVaultRevisionView]) -> void:
 
 
 func set_standalone_character_creation_available(enabled: bool, reason: String = "") -> void:
-	_navigator.set_standalone_character_creation_available(enabled, reason)
+	_navigator.setup_controller.set_standalone_character_creation_available(enabled, reason)
 
 
 func begin_standalone_character_creation() -> void:
-	_navigator.begin_standalone_character_creation()
+	_navigator.setup_controller.begin_standalone_character_creation()
 
 
 func finish_standalone_character_creation() -> void:
-	_navigator.finish_standalone_character_creation()
+	_navigator.setup_controller.finish_standalone_character_creation()
 
 
 func show_campaign_selection(load_after_selection: bool = false) -> void:
@@ -576,7 +580,7 @@ func _notification(what: int) -> void:
 
 
 func _on_screen_changed(screen_id: StringName) -> void:
-	var play_regions_visible := _current_view != null and _current_view.session_started and not _navigator.full_stage_overlay_visible()
+	var play_regions_visible := _current_view != null and _current_view.session_started and not _navigator.full_stage_overlay_visible
 	_set_play_regions_visible(play_regions_visible)
 	_apply_layout()
 	set_status(String(screen_id).replace("_", " ").capitalize())
@@ -631,12 +635,14 @@ func _on_presentation_setting_changed(setting_id: StringName, value: Variant) ->
 
 func _on_character_selected(character_id: String) -> void:
 	_selected_character_id = character_id
-	_navigator.select_character(character_id)
+	if _navigator.content_presenter.select_character(character_id) and _navigator.current_screen() == &"character":
+		_navigator.refresh_current_workspace()
 
 
 func _on_character_activated(character_id: String) -> void:
 	_on_character_selected(character_id)
-	if _navigator.current_screen() == &"inventory" and _navigator.select_inventory_character(character_id):
+	if _navigator.current_screen() == &"inventory" and _navigator.content_presenter.select_inventory_character(character_id):
+		_navigator.refresh_current_workspace()
 		return
 	_navigator.open_screen(&"character")
 

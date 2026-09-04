@@ -54,7 +54,7 @@ func _test_startup_shell() -> void:
 	router.show_splash()
 	var profile := UiLayoutProfile.for_viewport(Vector2(1280, 720), PresentationSettings.UI_SCALE_AUTO)
 	router.set_layout_profile(profile, Vector2(1280, 720))
-	router.set_standalone_character_creation_available(true)
+	router.setup_controller.set_standalone_character_creation_available(true)
 	var splash := router.find_child("SplashScreen", true, false) as Control
 	assert_true(splash != null and splash.visible, "Realmz Rebuilt opens on its application splash instead of dropping directly into package selection")
 	assert_false(router.setup_controller.campaign_overlay.visible, "the campaign library waits for an explicit splash action")
@@ -69,7 +69,7 @@ func _test_startup_shell() -> void:
 		scenario_picker = router.find_child("CampaignLibrary", true, false) as Control
 	assert_true(setup_workspace != null and setup_workspace.visible and not splash.visible and intro_animation.resources_prepared() and not intro_animation.playback_active() and intro_animation.preparation_count() == 1 and intro_soundtrack.stream is AudioStreamMP3 and intro_soundtrack.stream_paused, "scenario selection suspends the retained intro resources without creating another decoder")
 	assert_true(scenario_picker != null and setup_workspace != null and scenario_picker.visible and setup_workspace.is_ancestor_of(scenario_picker), "scenario selection is a left-column picker inside the integrated workspace, not an obsolete separate campaign modal")
-	router.set_campaigns([
+	router.setup_controller.set_campaigns([
 		CampaignPackageView.new("res://tests/fixtures/packages/realmz2-synthetic-fixture.realmz2", true, "installed-scenario", "", "", "", "Installed Scenario"),
 		CampaignPackageView.new("user://packages/stale.realmz2", false, "stale-scenario", "", "", "Package schema hash does not match the runtime contract mirror.", "Stale Scenario"),
 	])
@@ -107,7 +107,7 @@ func _test_startup_shell() -> void:
 	router.screen_changed.connect(func(screen_id: StringName) -> void: route_changes.append(screen_id))
 	character_files.pressed.emit()
 	assert_equal(router.current_screen(), &"vault", "Character Files opens the advanced reusable-character workspace")
-	assert_true(router.full_stage_overlay_visible(), "Character Files owns the complete stage instead of sharing it with the persistent roster")
+	assert_true(router.full_stage_overlay_visible, "Character Files owns the complete stage instead of sharing it with the persistent roster")
 	assert_equal(route_changes[-1], &"vault", "opening Character Files notifies the shell so it can suppress persistent play regions")
 	assert_true(router.handle_back(), "Back closes the startup Character Files workspace through the public route lifecycle")
 	assert_true(splash.visible and intro_animation.resources_prepared() and intro_animation.playback_active(), "closing startup Character Files restores the retained splash decoder and resumes playback"); var load_view := GameView.new(1, true, null); load_view.party_setup_available = true; load_view.campaign_id = "load-fixture"; load_view.rules_version = "realmz-classic-1"; load_view.campaign_summary = CampaignSummaryView.new(); load_adventure.pressed.emit(); router.present(load_view); assert_true(router.current_screen() == &"system" and router.find_child("LoadSelectedSave", true, false) != null and not _buttons_in(router).any(func(button: Button) -> bool: return button.text == "Quick Save"), "Load saved adventure selects a scenario and then opens package-validated restore records without offering a blocked setup save"); assert_true(router.handle_back() and router.setup_controller.setup_overlay.visible, "Back from pre-adventure saves returns to Begin Adventure"); (router.find_child("LoadSavedAdventure", true, false) as Button).pressed.emit(); assert_equal(router.current_screen(), &"system", "Begin Adventure exposes the same package-bound Save and Load workspace")
@@ -1028,7 +1028,7 @@ func _test_character_vault_workspace() -> void:
 	router.set_vault_revisions([revision])
 	router.present(view)
 	router.open_screen(&"vault")
-	assert_true(router.full_stage_overlay_visible(), "Character Files owns the complete stage")
+	assert_true(router.full_stage_overlay_visible, "Character Files owns the complete stage")
 	var buttons := _buttons_in(router); var file_list := router.find_child("CharacterFileList", true, false) as GridContainer; assert_true(buttons.any(func(button: Button) -> bool: return button.text == "Add to party") and file_list != null and file_list.columns == 2 and router.find_child("StoredAppearancePair", true, false) != null and router.find_child("CharacterFileActions", true, false) != null, "Character Files foregrounds reusable character cards, exact appearance roles, and current actions while revision history stays secondary")
 	var inspect := buttons.filter(func(button: Button) -> bool: return button.text == "Inspect")[0] as Button; inspect.pressed.emit(); assert_true(router.find_child("VaultCharacterSheet", true, false) != null and router.find_child("CharacterIdentity", true, false) != null and router.find_child("PortraitMedia", true, false) != null and router.find_child("CombatIconMedia", true, false) != null and _buttons_in(router).any(func(button: Button) -> bool: return button.text == "Back to character vault"), "stored-character inspection replaces the library with one opaque complete sheet, stable tabs, exact appearance roles, and one Back action")
 	router.free(); var review_router := instantiate_ui_scene("res://src/ui/screen_navigator.tscn") as ScreenNavigator; (Engine.get_main_loop() as SceneTree).root.add_child(review_router); review_router.initialize(); var review_setup := review_router.setup_controller; var review_view := GameView.new(2, true, null); review_view.party_setup_available = true; review_view.campaign_summary = CampaignSummaryView.new(); review_view.character_draft = CharacterView.new(CharacterState.new("creator.review", "Ari", 12, 12)); review_setup.setup_mode = &"creator"; review_setup.creator_step = 3; review_setup.layout_profile = UiLayoutProfile.COMPACT; review_router.present(review_view); var review_picker := review_setup.creator_page.find_child("CharacterPicker", true, false) as Control; assert_true(review_setup.creator_page.find_child("CreatorReviewSheet", true, false) != null and review_picker != null and not review_picker.visible and review_setup.creator_page.find_child("CharacterSheetWorkspace", true, false) != null and ["OverviewAttributes", "OverviewCombat", "OverviewStatus"].all(func(node_name: String) -> bool: return review_setup.creator_page.find_child(node_name, true, false) != null), "Review reuses the complete detached character sheet with its authored party picker hidden so rerolls expose their full overview facts"); review_router.free()

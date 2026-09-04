@@ -10972,7 +10972,7 @@
             "symbol": "func _begin_package_start"
           },
           {
-            "path": "src/ui/screen_navigator.gd",
+            "path": "src/ui/controllers/campaign_party_setup_controller.gd",
             "symbol": "func set_package_operation"
           }
         ]
