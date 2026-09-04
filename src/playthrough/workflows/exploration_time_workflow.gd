@@ -188,7 +188,7 @@ static func search(context: SessionWorkflowContext) -> ClockTransitionResult:
 		return ClockTransitionResult.failed(&"search_while_camped", "Search is replaced by scroll scribing while camped.")
 	if context.state.party.fatigue > 134:
 		return ClockTransitionResult.failed(&"area_search_exhausted", "The party is too fatigued to continue Area Search.")
-	context.state.mark_searched(context.state.party.map_id, context.state.party.coordinate)
+	context.state.scenario_progress.mark_searched(context.state.party.map_id, context.state.party.coordinate)
 	var current_map := context.content.world.map_by_id(context.state.party.map_id)
 	if current_map == null:
 		return ClockTransitionResult.failed(&"unknown_map", "The current map is unavailable for Area Search.")
@@ -529,7 +529,7 @@ static func apply_pending_midnight_recovery(context: SessionWorkflowContext, exp
 static func timed_encounter_requirements_met(context: SessionWorkflowContext, encounter: TimedEncounterDefinition, map: MapDefinition, exploration: SessionContinuation.ExplorationBody) -> bool:
 	if encounter.required_item_id > 0 and not party_has_classic_item(context, encounter.required_item_id):
 		return false
-	if encounter.required_quest_id > -1 and not context.state.quest_is_set(encounter.required_quest_id):
+	if encounter.required_quest_id > -1 and not context.state.scenario_progress.quest_is_set(encounter.required_quest_id):
 		return false
 	if encounter.location_kind == TimedEncounterDefinition.LocationKind.ANY:
 		return true

@@ -505,7 +505,7 @@ func _validate_completion(anchor: Variant) -> void:
 		return
 	var expected: Dictionary = anchor["runtime"]
 	for quest_id: Variant in expected.get("questFlags", []):
-		if not _session._state.quest_is_set(int(quest_id)):
+		if not _session._state.scenario_progress.quest_is_set(int(quest_id)):
 			_fail("completion quest %d is not set" % int(quest_id))
 	for override: Variant in expected.get("tileOverrides", []):
 		if not override is Dictionary:
@@ -555,7 +555,7 @@ func _final_state() -> Dictionary:
 func _set_quest_ids() -> Array[int]:
 	var result: Array[int] = []
 	for quest_id: int in 100:
-		if _session._state.quest_is_set(quest_id):
+		if _session._state.scenario_progress.quest_is_set(quest_id):
 			result.append(quest_id)
 	return result
 

@@ -232,10 +232,10 @@ func resume_classic(continuation: ScenarioRuntimeContinuation, response: Interac
 			if not acknowledgement.take_note:
 				return ScenarioRuntimeOperationResult.completed(true)
 			var message_id := (continuation.body as ScenarioRuntimeContinuation.TextBody).message_id
-			if not GameState.journal_message_id_is_valid(message_id):
+			if not ScenarioProgressState.journal_message_id_is_valid(message_id):
 				return ScenarioRuntimeOperationResult.failed(&"journal_message_unrepresentable", "Classic message %d cannot be stored in the 3,000-entry journal flag table." % message_id)
-			var already_recorded := _game_state.journal_message_is_recorded(message_id)
-			if not _game_state.record_journal_message(message_id):
+			var already_recorded := _game_state.scenario_progress.journal_message_is_recorded(message_id)
+			if not _game_state.scenario_progress.record_journal_message(message_id):
 				return ScenarioRuntimeOperationResult.failed(&"journal_record_failed", "Classic message %d could not be recorded in the journal." % message_id)
 			var events: Array[DomainEvent] = []
 			if not already_recorded:
@@ -317,7 +317,7 @@ func _resume_simple_encounter(continuation: ScenarioRuntimeContinuation, respons
 	var selected := encounter.response_at(selected_index)
 	if selected == null:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Simple Encounter response index is outside the authored choices.")
-	_game_state.record_encounter_attempt(&"simple", encounter.id)
+	_game_state.scenario_progress.encounters.record_attempt(&"simple", encounter.id)
 	var attempt := choice_continuation.encounter_attempt + 1
 	var context := ScenarioExecutionContext.encounter(&"simple", encounter.id, selected.id, selected_index).set_encounter_attempt(attempt)
 	var repeat := attempt < encounter.max_times
@@ -382,7 +382,7 @@ func _resume_complex_encounter(continuation: ScenarioRuntimeContinuation, respon
 		outcome = 3
 	if outcome < 1 or outcome > 4:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_encounter_outcome", "Complex Encounter produced invalid result %d." % outcome)
-	_game_state.record_encounter_attempt(&"complex", encounter.id)
+	_game_state.scenario_progress.encounters.record_attempt(&"complex", encounter.id)
 	var repeat := attempt < encounter.max_times
 	events.append(DomainEvent.new(&"encounter_response_selected", {"encounterKind": "complex", "encounterId": encounter.id, "responseKind": action, "outcome": outcome, "attempt": attempt, "willRepeat": repeat}))
 	return _complex_outcome(encounter, outcome, choice_continuation.gosub, context, events, repeat)
@@ -392,7 +392,7 @@ func _complex_outcome(encounter: ComplexEncounterDefinition, outcome: int, gosub
 	var program_id := encounter.result_program_id(outcome)
 	if program_id.is_empty():
 		return ScenarioRuntimeOperationResult.failed(&"invalid_encounter_outcome", "Complex Encounter result is outside 1 through 4.")
-	if _game_state.complex_result_is_eliminated(encounter.id, outcome - 1):
+	if _game_state.scenario_progress.encounters.complex_result_is_eliminated(encounter.id, outcome - 1):
 		events.append(DomainEvent.new(&"action_point_kept", {"triggerId": context.trigger_id, "source": "classic-opcode-44"}))
 		return ScenarioRuntimeOperationResult.completed(outcome, events, ScenarioVmDirective.finish_timeline())
 	return ScenarioRuntimeOperationResult.completed(outcome, events, ScenarioVmDirective.branch_encounter_result(program_id, gosub, context, repeat))
@@ -467,7 +467,7 @@ func _resume_character_selection(continuation: ScenarioRuntimeContinuation, resp
 		for character: CharacterState in _game_state.party.characters():
 			if not picked.has(character.id):
 				selected.append(character.id)
-	if not _game_state.set_selected_character_ids(selected):
+	if not _game_state.scenario_progress.set_selected_character_ids(selected):
 		return ScenarioRuntimeOperationResult.failed(&"invalid_character_selection", "Selected character state rejected the response.")
 	return ScenarioRuntimeOperationResult.completed(selected, [DomainEvent.new(&"characters_selected", {"characterIds": selected, "inverted": character_continuation.invert})])
 
@@ -481,7 +481,7 @@ func _resume_character_ability(continuation: ScenarioRuntimeContinuation, respon
 	var values := character_continuation.values
 	if character == null or character.current_health <= 0 or values.size() < 5:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Classic ability check selected an unavailable character.")
-	_game_state.set_selected_character_ids([character.id])
+	_game_state.scenario_progress.set_selected_character_ids([character.id])
 	var check_index := int(values[0])
 	var modifier := int(values[1])
 	var attribute_check := int(values[2]) != 0

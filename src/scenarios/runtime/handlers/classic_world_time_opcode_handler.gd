@@ -39,9 +39,9 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 			return _move_between_maps(action, false, false)
 		47:
 			var quest_id := absi(action.operand_id)
-			if not _game_state.set_quest_value(quest_id, 0 if action.operand_id < 0 else 1):
+			if not _game_state.scenario_progress.set_quest_value(quest_id, 0 if action.operand_id < 0 else 1):
 				return ScenarioRuntimeOperationResult.failed(&"invalid_quest", "Classic opcode 47 references quest %d outside 0 through 99." % quest_id)
-			return ScenarioRuntimeOperationResult.completed(_game_state.quest_value(quest_id), [DomainEvent.new(&"quest_changed", {"questId": quest_id, "value": _game_state.quest_value(quest_id)})])
+			return ScenarioRuntimeOperationResult.completed(_game_state.scenario_progress.quest_value(quest_id), [DomainEvent.new(&"quest_changed", {"questId": quest_id, "value": _game_state.scenario_progress.quest_value(quest_id)})])
 		57:
 			return _change_land_look(action)
 		61:
@@ -367,8 +367,8 @@ func _adjust_quest_value(action: ClassicActionDefinition) -> ScenarioRuntimeOper
 	var quest_id := action.extra_code[0]
 	if quest_id < 0 or quest_id >= 100:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_quest", "Classic opcode 76 references quest %d outside 0 through 99." % quest_id)
-	var value := clampi(_game_state.quest_value(quest_id) + action.extra_code[1], -127, 127)
-	_game_state.set_quest_value(quest_id, value)
+	var value := clampi(_game_state.scenario_progress.quest_value(quest_id) + action.extra_code[1], -127, 127)
+	_game_state.scenario_progress.set_quest_value(quest_id, value)
 	var event := DomainEvent.new(&"quest_value_changed", {"questId": quest_id, "value": value, "delta": action.extra_code[1], "source": "classic"})
 	if action.extra_code[3] == 0 or value < action.extra_code[3]:
 		return ScenarioRuntimeOperationResult.completed(value, [event])

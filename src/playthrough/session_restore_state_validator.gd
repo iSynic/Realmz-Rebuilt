@@ -142,8 +142,8 @@ static func boat_overlays_are_valid(content: RealmzContent, state: GameState) ->
 
 
 static func journal_messages_are_valid(content: RealmzContent, state: GameState) -> bool:
-	for message_id: int in state.journal_message_ids():
-		if not GameState.journal_message_id_is_valid(message_id) or content.message_by_id(message_id) == null:
+	for message_id: int in state.scenario_progress.journal_message_ids():
+		if not ScenarioProgressState.journal_message_id_is_valid(message_id) or content.message_by_id(message_id) == null:
 			return false
 	return true
 

@@ -9473,7 +9473,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/game/state/game_state.gd",
+            "path": "src/game/scenario/scenario_progress_state.gd",
             "symbol": "func record_journal_message"
           },
           {

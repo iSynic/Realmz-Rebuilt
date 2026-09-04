@@ -148,7 +148,7 @@ static func _dungeon_heading_vector(heading: int) -> Vector2i:
 func _branch_on_quest(action: ClassicActionDefinition, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	if action.extra_code.size() < 5:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 46 requires a five-value Extra Code row.")
-	var is_set := _game_state.quest_is_set(action.extra_code[0])
+	var is_set := _game_state.scenario_progress.quest_is_set(action.extra_code[0])
 	var condition := action.extra_code[1]
 	var should_branch := condition == 2 or condition == 1 and is_set or condition == 0 and not is_set
 	return _branch_from_values(action.extra_code, action.gosub, context) if should_branch else ScenarioRuntimeOperationResult.completed(false)
@@ -177,7 +177,7 @@ func _branch_on_quest_range(action: ClassicActionDefinition) -> ScenarioRuntimeO
 		return ScenarioRuntimeOperationResult.failed(&"invalid_quest_range", "Classic opcode 72 references quests outside 0 through 99.")
 	var all_set := true
 	for quest_id: int in range(first, last + 1):
-		if not _game_state.quest_is_set(quest_id):
+		if not _game_state.scenario_progress.quest_is_set(quest_id):
 			all_set = false
 	var event := DomainEvent.new(&"quest_range_branch_checked", {"firstQuestId": first, "lastQuestId": last, "allSet": all_set, "targetMode": action.extra_code[3], "targetId": action.extra_code[4], "source": "classic"})
 	if not all_set:
@@ -216,9 +216,9 @@ func _branch_on_quest_value(action: ClassicActionDefinition) -> ScenarioRuntimeO
 	var quest_id := action.extra_code[0]
 	if quest_id < 0 or quest_id >= 100:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_quest", "Classic opcode 77 references quest %d outside 0 through 99." % quest_id)
-	var matched := _game_state.quest_value(quest_id) >= action.extra_code[1]
+	var matched := _game_state.scenario_progress.quest_value(quest_id) >= action.extra_code[1]
 	var target_id := action.extra_code[4] if matched else action.extra_code[3]
-	var event := DomainEvent.new(&"quest_value_branch_checked", {"questId": quest_id, "value": _game_state.quest_value(quest_id), "minimum": action.extra_code[1], "matched": matched, "targetId": target_id})
+	var event := DomainEvent.new(&"quest_value_branch_checked", {"questId": quest_id, "value": _game_state.scenario_progress.quest_value(quest_id), "minimum": action.extra_code[1], "matched": matched, "targetId": target_id})
 	if target_id == 0:
 		return ScenarioRuntimeOperationResult.completed(matched, [event])
 	var branch := _branch_target_mode(action.extra_code[2], target_id, action.gosub)
@@ -265,7 +265,7 @@ func _branch_on_misc(action: ClassicActionDefinition) -> ScenarioRuntimeOperatio
 	var test_kind := action.extra_code[0]
 	var expected := action.extra_code[1]
 	var selected_only := expected < 0 and test_kind in [0, 1, 2, 5, 6]
-	var characters := _game_state.selected_characters() if selected_only else _game_state.party.characters()
+	var characters := _game_state.scenario_progress.selected_characters() if selected_only else _game_state.party.characters()
 	var matched := false
 	match test_kind:
 		0:
@@ -311,7 +311,7 @@ func _branch_on_misc(action: ClassicActionDefinition) -> ScenarioRuntimeOperatio
 			matched = total_level > expected
 		8:
 			var selected_level := 0
-			for character: CharacterState in _game_state.selected_characters():
+			for character: CharacterState in _game_state.scenario_progress.selected_characters():
 				selected_level += character.level
 			matched = selected_level > expected
 		_:
@@ -377,7 +377,7 @@ func _opcode_25_trigger_id(context: ScenarioExecutionContext) -> String:
 
 
 func resolve_program_id(program_id: String) -> String:
-	return _game_state.scenario_program_id(program_id)
+	return _game_state.scenario_progress.encounters.program_id(program_id)
 
 
 func replace_scenario_program(action: ClassicActionDefinition, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
@@ -416,7 +416,7 @@ func replace_scenario_program(action: ClassicActionDefinition, context: Scenario
 		return ScenarioRuntimeOperationResult.failed(&"unknown_scenario_program", "Classic opcode 7 references unavailable source XAP %d." % int(values[2]))
 	if _content.scenario.program_by_id(target_program_id) == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_scenario_program", "Classic opcode 7 references unavailable target program '%s'." % target_program_id)
-	_game_state.set_scenario_program_override(target_program_id, source_program_id)
+	_game_state.scenario_progress.encounters.set_program_override(target_program_id, source_program_id)
 	return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"scenario_program_replaced", {"sourceProgramId": target_program_id, "targetProgramId": source_program_id, "source": "classic"})])
 
 

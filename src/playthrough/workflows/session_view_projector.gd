@@ -114,7 +114,7 @@ func _project_complete(context: SessionWorkflowContext, pending_interaction: Int
 		_reuse_static_map_projections(result, _cached_view)
 	else:
 		_populate_movement_map_views(context, result)
-	for message_id: int in state.journal_message_ids():
+	for message_id: int in state.scenario_progress.journal_message_ids():
 		var journal_message := content.message_by_id(message_id)
 		if journal_message != null:
 			result.journal_entries.append(JournalEntryView.new(message_id, journal_message.text))

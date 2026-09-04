@@ -179,13 +179,13 @@ func continue_timed_encounters(events: Array[DomainEvent]) -> SessionCoordinator
 		var index = exploration.timed_encounter_index
 		var encounter = encounters[index]
 		exploration.timed_encounter_index = index + 1
-		var effective = _context.state.timed_encounter_override(encounter.id)
+		var effective = _context.state.scenario_progress.encounters.timed_override(encounter.id)
 		var effective_day = int(effective.get("day", encounter.day))
 		if effective_day != timed_day:
 			continue
 		var increment = int(effective.get("increment", encounter.increment))
 		effective["day"] = effective_day + increment
-		_context.state.set_timed_encounter_override(encounter.id, effective)
+		_context.state.scenario_progress.encounters.set_timed_override(encounter.id, effective)
 		events.append(DomainEvent.new(&"timed_encounter_advanced", {"encounterId": encounter.id, "day": effective_day, "nextDay": effective["day"], "source": "classic-midnight"}))
 		var chance = int(effective.get("percent", encounter.chance_percent))
 		var roll = _context.rng.draw(100, StringName("timed-encounter.%d" % encounter.id))

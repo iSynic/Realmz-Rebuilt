@@ -235,7 +235,7 @@ func _clear_character_money(action: ClassicActionDefinition) -> ScenarioRuntimeO
 	if classic_kind < 1 or classic_kind > 3:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_wealth_kind", "Classic opcode 60 references wealth kind %d outside 1 through 3." % classic_kind)
 	var kind := (classic_kind - 1) as WealthState.Kind
-	var targets := _game_state.party.characters() if action.extra_code[1] == 0 else _game_state.selected_characters()
+	var targets := _game_state.party.characters() if action.extra_code[1] == 0 else _game_state.scenario_progress.selected_characters()
 	var removed := 0
 	for character: CharacterState in targets:
 		var amount := character.money.amount(kind)

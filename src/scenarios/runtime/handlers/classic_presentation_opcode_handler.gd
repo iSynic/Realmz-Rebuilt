@@ -83,13 +83,13 @@ func _show_message(action: ClassicActionDefinition, request_id: String) -> Scena
 	var event := DomainEvent.new(&"message_shown", {"messageId": message_id, "text": message.text, "source": "classic", "classicClick": action.operand_id > 0})
 	if action.operand_id <= 0:
 		return ScenarioRuntimeOperationResult.completed(null, [event])
-	var journal_eligible := GameState.journal_message_id_is_valid(message_id)
+	var journal_eligible := ScenarioProgressState.journal_message_id_is_valid(message_id)
 	var request := InteractionRequest.from_payload(request_id, &"acknowledge", {
 		"prompt": message.text,
 		"messageId": message_id,
 		"presentation": "classic-textbox",
 		"journalEligible": journal_eligible,
-		"journalRecorded": journal_eligible and _game_state.journal_message_is_recorded(message_id),
+		"journalRecorded": journal_eligible and _game_state.scenario_progress.journal_message_is_recorded(message_id),
 	})
 	return ScenarioRuntimeOperationResult.waiting(request, ScenarioRuntimeContinuation.textbox(message_id), [event])
 
@@ -112,11 +112,11 @@ func _show_random_message(action: ClassicActionDefinition, request_id: String) -
 	})
 	if selected_id < 0:
 		return ScenarioRuntimeOperationResult.completed(selected_id, [event])
-	var journal_eligible := GameState.journal_message_id_is_valid(message_id)
+	var journal_eligible := ScenarioProgressState.journal_message_id_is_valid(message_id)
 	return ScenarioRuntimeOperationResult.waiting(InteractionRequest.from_payload(request_id, InteractionRequest.ACKNOWLEDGE, {
 		"prompt": message.text,
 		"messageId": message_id,
 		"presentation": "classic-textbox",
 		"journalEligible": journal_eligible,
-		"journalRecorded": journal_eligible and _game_state.journal_message_is_recorded(message_id),
+		"journalRecorded": journal_eligible and _game_state.scenario_progress.journal_message_is_recorded(message_id),
 	}), ScenarioRuntimeContinuation.textbox(message_id), [event])

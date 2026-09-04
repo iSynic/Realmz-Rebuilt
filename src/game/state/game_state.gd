@@ -3,12 +3,11 @@
 class_name GameState
 extends RefCounted
 
-const JOURNAL_MESSAGE_CAPACITY: int = 3000
-
 var party: PartyState
 var clock: RealmzClock
 var world: WorldState
 var combat: CombatState
+var scenario_progress: ScenarioProgressState
 var random_encounters_enabled: bool = true
 var camping_allowed: bool = true
 var party_in_boat: bool = false
@@ -38,21 +37,11 @@ var difficulty: int = 0
 var monster_set: int = 0
 var experience_multiplier: float = -1.0
 var character_draft: CharacterDraft
-var _searched_cells: Dictionary = {}
-var _quest_values: Dictionary = {}
-var _selected_character_ids: Array[String] = []
-var _timed_encounter_overrides: Dictionary = {}
 var _instance_counter: int = 0
-var _eliminated_simple_options: Dictionary = {}
-var _eliminated_complex_results: Dictionary = {}
 var _shop_overrides: Dictionary = {}
 var _shop_inflation_overrides: Dictionary = {}
 var _shop_buyback_overrides: Dictionary = {}
 var _shop_buyback_slots: Dictionary = {}
-var _encounter_attempts: Dictionary = {}
-var _thief_encounter_type_flags: Dictionary = {}
-var _scenario_program_overrides: Dictionary = {}
-var _journal_message_ids: Dictionary = {}
 var _combat_auto_character_ids: Dictionary = {}
 
 
@@ -60,6 +49,7 @@ func _init(party_state: PartyState, realmz_clock: RealmzClock, world_state: Worl
 	party = party_state
 	clock = realmz_clock
 	world = world_state if world_state != null else WorldState.new()
+	scenario_progress = ScenarioProgressState.new(party)
 
 
 func save_party_position(map: MapDefinition) -> bool:
@@ -73,92 +63,6 @@ func save_party_position(map: MapDefinition) -> bool:
 
 func has_saved_party_position() -> bool:
 	return not saved_party_map_id.is_empty() and saved_party_coordinate.x >= 0 and saved_party_coordinate.y >= 0 and saved_party_level_type in [&"land", &"dungeon"]
-
-
-func mark_searched(map_id: String, coordinate: Vector2i) -> void:
-	_searched_cells[_cell_key(map_id, coordinate)] = true
-
-
-func was_searched(map_id: String, coordinate: Vector2i) -> bool:
-	return _searched_cells.has(_cell_key(map_id, coordinate))
-
-
-func quest_value(quest_id: int) -> int:
-	return int(_quest_values.get(quest_id, 0))
-
-
-func quest_is_set(quest_id: int) -> bool:
-	return quest_value(quest_id) != 0
-
-
-func set_quest_value(quest_id: int, value: int) -> bool:
-	if quest_id < 0 or quest_id >= 100:
-		return false
-	_quest_values[quest_id] = clampi(value, -32_768, 32_767)
-	return true
-
-
-func adjust_quest_value(quest_id: int, amount: int) -> int:
-	if not set_quest_value(quest_id, quest_value(quest_id) + amount):
-		return 0
-	return quest_value(quest_id)
-
-
-func record_journal_message(message_id: int) -> bool:
-	if not journal_message_id_is_valid(message_id):
-		return false
-	_journal_message_ids[message_id] = true
-	return true
-
-
-func journal_message_is_recorded(message_id: int) -> bool:
-	return _journal_message_ids.has(message_id)
-
-
-func journal_message_ids() -> Array[int]:
-	var result: Array[int] = []
-	for value: Variant in _journal_message_ids.keys():
-		result.append(int(value))
-	result.sort()
-	return result
-
-
-static func journal_message_id_is_valid(message_id: int) -> bool:
-	return message_id >= 0 and message_id < JOURNAL_MESSAGE_CAPACITY
-
-
-func selected_character_ids() -> Array[String]:
-	return _selected_character_ids.duplicate()
-
-
-func set_selected_character_ids(ids: Array[String]) -> bool:
-	var known: Dictionary = {}
-	for character: CharacterState in party.characters():
-		known[character.id] = true
-	var unique: Array[String] = []
-	for id: String in ids:
-		if not known.has(id) or unique.has(id):
-			return false
-		unique.append(id)
-	_selected_character_ids = unique
-	return true
-
-
-func selected_characters(living_only: bool = false) -> Array[CharacterState]:
-	var result: Array[CharacterState] = []
-	for id: String in _selected_character_ids:
-		var character := party.character_by_id(id)
-		if character != null and (not living_only or character.current_health > 0):
-			result.append(character)
-	return result
-
-
-func set_timed_encounter_override(encounter_id: int, value: Dictionary) -> void:
-	_timed_encounter_overrides[encounter_id] = value.duplicate(true)
-
-
-func timed_encounter_override(encounter_id: int) -> Dictionary:
-	return (_timed_encounter_overrides.get(encounter_id, {}) as Dictionary).duplicate(true)
 
 
 func next_instance_id(prefix: String) -> String:
@@ -175,67 +79,6 @@ func rollback_instance_ids(checkpoint: int) -> bool:
 		return false
 	_instance_counter = checkpoint
 	return true
-
-
-func eliminate_simple_option(encounter_id: int, option_index: int) -> bool:
-	if encounter_id < 0 or option_index < 0 or option_index > 3:
-		return false
-	_eliminated_simple_options["%d:%d" % [encounter_id, option_index]] = true
-	return true
-
-
-func simple_option_is_eliminated(encounter_id: int, option_index: int) -> bool:
-	return _eliminated_simple_options.has("%d:%d" % [encounter_id, option_index])
-
-
-func eliminate_complex_result(encounter_id: int, result_index: int) -> bool:
-	if encounter_id < 0 or result_index < 0 or result_index > 3:
-		return false
-	_eliminated_complex_results["%d:%d" % [encounter_id, result_index]] = true
-	return true
-
-
-func complex_result_is_eliminated(encounter_id: int, result_index: int) -> bool:
-	return _eliminated_complex_results.has("%d:%d" % [encounter_id, result_index])
-
-
-func encounter_attempts(kind: StringName, encounter_id: int) -> int:
-	return int(_encounter_attempts.get("%s:%d" % [String(kind), encounter_id], 0))
-
-
-func record_encounter_attempt(kind: StringName, encounter_id: int) -> int:
-	var key := "%s:%d" % [String(kind), encounter_id]
-	var next := mini(32_767, int(_encounter_attempts.get(key, 0)) + 1)
-	_encounter_attempts[key] = next
-	return next
-
-
-func thief_encounter_type_flags(encounter: ThiefEncounterDefinition) -> Array[bool]:
-	var key := str(encounter.id)
-	if not _thief_encounter_type_flags.has(key):
-		return encounter.type_flags()
-	var result: Array[bool] = []
-	for value: Variant in _thief_encounter_type_flags[key]:
-		result.append(bool(value))
-	return result
-
-
-func set_thief_encounter_type_flags(encounter: ThiefEncounterDefinition, flags: Array[bool]) -> bool:
-	if encounter == null or flags.size() != 10:
-		return false
-	_thief_encounter_type_flags[str(encounter.id)] = flags.duplicate()
-	return true
-
-
-func set_scenario_program_override(source_program_id: String, target_program_id: String) -> bool:
-	if source_program_id.is_empty() or target_program_id.is_empty():
-		return false
-	_scenario_program_overrides[source_program_id] = target_program_id
-	return true
-
-
-func scenario_program_id(source_program_id: String) -> String:
-	return str(_scenario_program_overrides.get(source_program_id, source_program_id))
 
 
 func shop_quantity(shop: ShopDefinition, stock_index: int) -> int:
@@ -400,47 +243,23 @@ func restore_from_data(data: Dictionary) -> bool:
 	monster_set = loaded.monster_set
 	experience_multiplier = loaded.experience_multiplier
 	character_draft = loaded.character_draft
-	_searched_cells = loaded._searched_cells
-	_quest_values = loaded._quest_values
-	_selected_character_ids = loaded._selected_character_ids
-	_timed_encounter_overrides = loaded._timed_encounter_overrides
+	scenario_progress = loaded.scenario_progress
 	_instance_counter = loaded._instance_counter
-	_eliminated_simple_options = loaded._eliminated_simple_options
-	_eliminated_complex_results = loaded._eliminated_complex_results
 	_shop_overrides = loaded._shop_overrides
 	_shop_inflation_overrides = loaded._shop_inflation_overrides
 	_shop_buyback_overrides = loaded._shop_buyback_overrides
 	_shop_buyback_slots = loaded._shop_buyback_slots
-	_encounter_attempts = loaded._encounter_attempts
-	_thief_encounter_type_flags = loaded._thief_encounter_type_flags
-	_scenario_program_overrides = loaded._scenario_program_overrides
-	_journal_message_ids = loaded._journal_message_ids
 	_combat_auto_character_ids = loaded._combat_auto_character_ids
 	return true
 
 
 func to_data() -> Dictionary:
-	var searched: Array[String] = []
-	for key: Variant in _searched_cells.keys():
-		searched.append(String(key))
-	searched.sort()
-	var quests: Dictionary = {}
-	var quest_ids: Array = _quest_values.keys()
-	quest_ids.sort()
-	for quest_id: Variant in quest_ids:
-		quests[str(quest_id)] = _quest_values[quest_id]
-	var timed: Dictionary = {}
-	var timed_ids: Array = _timed_encounter_overrides.keys()
-	timed_ids.sort()
-	for encounter_id: Variant in timed_ids:
-		timed[str(encounter_id)] = (_timed_encounter_overrides[encounter_id] as Dictionary).duplicate(true)
 	var combat_data: Variant = null
 	if combat != null:
 		combat_data = combat.to_data()
-	return {
+	var data: Dictionary = {
 		"party": party.to_data(),
 		"clock": clock.to_data(),
-		"searchedCells": searched,
 		"worldOverlays": world.to_data(),
 		"combat": combat_data,
 		"randomEncountersEnabled": random_encounters_enabled,
@@ -473,22 +292,15 @@ func to_data() -> Dictionary:
 		"monsterSet": monster_set,
 		"experienceMultiplier": experience_multiplier,
 		"characterDraft": null if character_draft == null else character_draft.to_data(),
-		"questValues": quests,
-		"selectedCharacterIds": _selected_character_ids.duplicate(),
-		"timedEncounterOverrides": timed,
 		"instanceCounter": _instance_counter,
-		"eliminatedSimpleOptions": _sorted_string_keys(_eliminated_simple_options),
-		"eliminatedComplexResults": _sorted_string_keys(_eliminated_complex_results),
 		"shopOverrides": _sorted_dictionary(_shop_overrides),
 		"shopInflationOverrides": _sorted_dictionary(_shop_inflation_overrides),
 		"shopBuybackOverrides": _sorted_nested_dictionary(_shop_buyback_overrides),
 		"shopBuybackSlots": _sorted_nested_dictionary(_shop_buyback_slots),
-		"encounterAttempts": _sorted_dictionary(_encounter_attempts),
-		"thiefEncounterTypeFlags": _sorted_dictionary(_thief_encounter_type_flags),
-		"scenarioProgramOverrides": _sorted_dictionary(_scenario_program_overrides),
-		"journalMessageIds": journal_message_ids(),
 		"combatAutoCharacterIds": combat_auto_character_ids(),
 	}
+	scenario_progress.write_to(data)
+	return data
 
 
 static func from_data(data: Variant) -> GameState:
@@ -505,10 +317,8 @@ static func from_data(data: Variant) -> GameState:
 	var state := GameState.new(party_state, realmz_clock, world_state)
 	if not _restore_combat_state(state, party_state, data):
 		return null
-	for key: Variant in data["searchedCells"]:
-		if not key is String or key.is_empty():
-			return null
-		state._searched_cells[key] = true
+	if not state.scenario_progress.restore_searched_cells(data["searchedCells"]):
+		return null
 	if data.has("randomEncountersEnabled") and (not _restore_session_settings(state, data) or not _restore_session_collections(state, data)):
 		return null
 	if state.party.characters().is_empty() and (not data.has("partySetupCompleted") or state.party_setup_completed):
@@ -581,10 +391,10 @@ static func _combat_reaction_is_valid(combat: CombatState, party_state: PartySta
 
 
 static func _restore_session_settings(state: GameState, data: Dictionary) -> bool:
-	var required := ["randomEncountersEnabled", "campingAllowed", "lastBattleOutcome", "questValues", "selectedCharacterIds", "timedEncounterOverrides", "instanceCounter", "eliminatedSimpleOptions", "shopOverrides", "shopInflationOverrides", "encounterAttempts", "thiefEncounterTypeFlags", "scenarioProgramOverrides"]
+	var required := ["randomEncountersEnabled", "campingAllowed", "lastBattleOutcome", "instanceCounter", "shopOverrides", "shopInflationOverrides"]
 	for field: String in required:
 		if not data.has(field): return false
-	if not data["randomEncountersEnabled"] is bool or not data["campingAllowed"] is bool or not data["lastBattleOutcome"] is String or not data["questValues"] is Dictionary or not data["selectedCharacterIds"] is Array or not data["timedEncounterOverrides"] is Dictionary: return false
+	if not data["randomEncountersEnabled"] is bool or not data["campingAllowed"] is bool or not data["lastBattleOutcome"] is String: return false
 	if data.has("partySetupCompleted") and not data["partySetupCompleted"] is bool: return false
 	state._instance_counter = _integer(data["instanceCounter"])
 	if state._instance_counter < 0: return false
@@ -667,35 +477,11 @@ static func _restore_location_settings(state: GameState, data: Dictionary) -> bo
 
 
 static func _restore_session_collections(state: GameState, data: Dictionary) -> bool:
-	for key: Variant in data["questValues"]:
-		if not key is String or not key.is_valid_int(): return false
-		var quest_id: int = String(key).to_int()
-		var value := _signed_integer(data["questValues"][key])
-		if quest_id < 0 or quest_id >= 100 or value < -32_768 or value > 32_767: return false
-		state._quest_values[quest_id] = value
-	var selected: Array[String] = []
-	for id: Variant in data["selectedCharacterIds"]:
-		if not id is String: return false
-		selected.append(id)
-	if not state.set_selected_character_ids(selected): return false
-	for key: Variant in data["timedEncounterOverrides"]:
-		if not key is String or not key.is_valid_int() or not data["timedEncounterOverrides"][key] is Dictionary: return false
-		state._timed_encounter_overrides[String(key).to_int()] = data["timedEncounterOverrides"][key].duplicate(true)
-	return _restore_override_collections(state, data) and _restore_optional_collections(state, data)
+	return state.scenario_progress.restore_collections(data) and _restore_override_collections(state, data) and _restore_optional_collections(state, data)
 
 
 static func _restore_override_collections(state: GameState, data: Dictionary) -> bool:
-	if not data["eliminatedSimpleOptions"] is Array or not data["shopOverrides"] is Dictionary or not data["shopInflationOverrides"] is Dictionary: return false
-	for key: Variant in data["eliminatedSimpleOptions"]:
-		if not key is String or key.is_empty(): return false
-		state._eliminated_simple_options[key] = true
-	if data.has("eliminatedComplexResults"):
-		if not data["eliminatedComplexResults"] is Array: return false
-		for key: Variant in data["eliminatedComplexResults"]:
-			if not key is String or key.is_empty(): return false
-			var parts := String(key).split(":")
-			if parts.size() != 2 or not parts[0].is_valid_int() or not parts[1].is_valid_int() or parts[0].to_int() < 0 or parts[1].to_int() < 0 or parts[1].to_int() > 3: return false
-			state._eliminated_complex_results[key] = true
+	if not data["shopOverrides"] is Dictionary or not data["shopInflationOverrides"] is Dictionary: return false
 	for key: Variant in data["shopOverrides"]:
 		var quantity := _integer(data["shopOverrides"][key])
 		if not key is String or key.is_empty() or quantity < 0 or quantity > 32_767: return false
@@ -720,38 +506,11 @@ static func _restore_override_collections(state: GameState, data: Dictionary) ->
 
 
 static func _restore_optional_collections(state: GameState, data: Dictionary) -> bool:
-	if not data["encounterAttempts"] is Dictionary or not data["thiefEncounterTypeFlags"] is Dictionary or not data["scenarioProgramOverrides"] is Dictionary: return false
-	for key: Variant in data["encounterAttempts"]:
-		var count := _integer(data["encounterAttempts"][key])
-		if not key is String or key.is_empty() or count < 0 or count > 32_767: return false
-		state._encounter_attempts[key] = count
-	for key: Variant in data["thiefEncounterTypeFlags"]:
-		var flags: Variant = data["thiefEncounterTypeFlags"][key]
-		if not key is String or not String(key).is_valid_int() or not flags is Array or flags.size() != 10: return false
-		var copied: Array[bool] = []
-		for flag: Variant in flags:
-			if not flag is bool: return false
-			copied.append(flag)
-		state._thief_encounter_type_flags[key] = copied
-	for key: Variant in data["scenarioProgramOverrides"]:
-		var target: Variant = data["scenarioProgramOverrides"][key]
-		if not key is String or key.is_empty() or not target is String or target.is_empty(): return false
-		state._scenario_program_overrides[key] = target
-	if data.has("journalMessageIds"):
-		if not data["journalMessageIds"] is Array: return false
-		for value: Variant in data["journalMessageIds"]:
-			var message_id := _integer(value)
-			if not journal_message_id_is_valid(message_id) or state.journal_message_is_recorded(message_id): return false
-			state._journal_message_ids[message_id] = true
 	if data.has("combatAutoCharacterIds"):
 		if not data["combatAutoCharacterIds"] is Array or data["combatAutoCharacterIds"].size() > 6: return false
 		for character_id: Variant in data["combatAutoCharacterIds"]:
 			if not character_id is String or state._combat_auto_character_ids.has(character_id) or not state.set_combat_auto(character_id, true): return false
 	return true
-
-
-static func _cell_key(map_id: String, coordinate: Vector2i) -> String:
-	return "%s:%d,%d" % [map_id, coordinate.x, coordinate.y]
 
 
 static func _integer(value: Variant) -> int:

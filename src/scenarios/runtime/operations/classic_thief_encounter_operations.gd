@@ -54,13 +54,13 @@ func resume_pick_lock(continuation: ScenarioRuntimeContinuation, response: Inter
 	var resolved := ClassicPickLockRules.resolve(_rng, thief.tumblers, chance, selection.frame_index)
 	if resolved.is_empty():
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Pick Lock response selected a frame outside the source timer.")
-	var flags := _state.thief_encounter_type_flags(thief)
+	var flags := _state.scenario_progress.encounters.thief_type_flags(thief)
 	var succeeded: bool = resolved["succeeded"]
 	var event := _action_event(encounter, thief, character, owner.action_index, chance, succeeded)
 	event.payload.merge({"frameIndex": selection.frame_index, "positions": resolved["positions"]}, true)
 	if succeeded and owner.action_index == 2:
 		flags[9] = false
-	_state.set_thief_encounter_type_flags(thief, flags)
+	_state.scenario_progress.encounters.set_thief_type_flags(thief, flags)
 	return _present_action_result(encounter, thief, owner.gosub, character, owner.action_index, succeeded, not succeeded and flags[9], request_id, [event], owner.encounter_attempt)
 
 
@@ -85,7 +85,7 @@ func _attempt(encounter: ComplexEncounterDefinition, gosub: bool, selection: Int
 	var thief := _thief_definition(encounter)
 	var character := _state.party.character_by_id(selection.character_id)
 	var action_index := selection.action_index
-	var flags := _state.thief_encounter_type_flags(thief) if thief != null else []
+	var flags := _state.scenario_progress.encounters.thief_type_flags(thief) if thief != null else []
 	if thief == null or character == null or not _character_eligible(character) or not _action_available(character, thief, flags, action_index):
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Thief Encounter action or character is unavailable.")
 	flags[action_index] = false
@@ -93,16 +93,16 @@ func _attempt(encounter: ComplexEncounterDefinition, gosub: bool, selection: Int
 	if trap_armed and action_index in [4, 6, 7]:
 		if action_index == 4:
 			flags[4] = true
-		_state.set_thief_encounter_type_flags(thief, flags)
+		_state.scenario_progress.encounters.set_thief_type_flags(thief, flags)
 		return _wait_for_trap_message(encounter, gosub, character, action_index, false, request_id, [], encounter_attempt)
-	_state.set_thief_encounter_type_flags(thief, flags)
+	_state.scenario_progress.encounters.set_thief_type_flags(thief, flags)
 	if action_index in LOCK_ACTIONS:
 		return _start_pick_lock(encounter, thief, gosub, character, action_index, request_id, encounter_attempt)
 	var chance := character.ability_value(ClassicPickLockRules.ability_index(action_index)) + thief.modifiers()[action_index]
 	var succeeded := _rng.draw(100, &"classic.thief-encounter") <= chance
 	if succeeded and action_index == 1 and trap_armed:
 		flags[2] = true
-	_state.set_thief_encounter_type_flags(thief, flags)
+	_state.scenario_progress.encounters.set_thief_type_flags(thief, flags)
 	var event := _action_event(encounter, thief, character, action_index, chance, succeeded)
 	return _present_action_result(encounter, thief, gosub, character, action_index, succeeded, not succeeded and trap_armed and action_index != 1, request_id, [event], encounter_attempt)
 
@@ -139,7 +139,7 @@ func _finish_action(encounter: ComplexEncounterDefinition, thief: ThiefEncounter
 		outcome = 3
 	if outcome < 1 or outcome > 4:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_encounter_outcome", "Thief Encounter produced invalid result %d." % outcome)
-	_state.record_encounter_attempt(&"complex", encounter.id)
+	_state.scenario_progress.encounters.record_attempt(&"complex", encounter.id)
 	var context := ScenarioExecutionContext.encounter(&"complex", encounter.id, "", -1, &"thief").set_thief_action(action_index, character.id).set_encounter_attempt(attempt)
 	var program_id := encounter.result_program_id(outcome)
 	return ScenarioRuntimeOperationResult.completed(outcome, events, ScenarioVmDirective.branch_encounter_result(program_id, gosub, context, attempt < encounter.max_times))
@@ -174,11 +174,11 @@ func _wait_for_trap_message(encounter: ComplexEncounterDefinition, gosub: bool, 
 
 
 func _apply_trap(encounter: ComplexEncounterDefinition, thief: ThiefEncounterDefinition, gosub: bool, selected: CharacterState, request_id: String, encounter_attempt: int) -> ScenarioRuntimeOperationResult:
-	var flags := _state.thief_encounter_type_flags(thief)
+	var flags := _state.scenario_progress.encounters.thief_type_flags(thief)
 	flags[9] = false
 	flags[1] = false
 	flags[6] = true
-	_state.set_thief_encounter_type_flags(thief, flags)
+	_state.scenario_progress.encounters.set_thief_type_flags(thief, flags)
 	var targets: Array[CharacterState] = [selected] if flags[8] else _state.party.characters()
 	var damage_by_character: Dictionary = {}
 	if thief.low_damage != 0 and thief.high_damage >= thief.low_damage:
@@ -219,7 +219,7 @@ func _thief_request(encounter: ComplexEncounterDefinition, request_id: String, p
 		return null
 	var prompt_id := absi(thief.prompts()[0]) if not thief.prompts().is_empty() else 0
 	var message := _content.message_by_id(prompt_id)
-	var flags := _state.thief_encounter_type_flags(thief)
+	var flags := _state.scenario_progress.encounters.thief_type_flags(thief)
 	var characters: Array[Dictionary] = []
 	for character: CharacterState in _state.party.characters():
 		if not _character_eligible(character):

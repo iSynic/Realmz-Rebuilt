@@ -49,6 +49,15 @@
       "performanceProbes": ["tools/movement_performance_probe.gd", "tools/runtime_performance_probe.gd", "tools/dungeon_transition_performance_probe.gd"]
     },
     {
+      "id": "scenario-state",
+      "boundary": "game",
+      "guide": "docs/features/scenario-runtime.md",
+      "entryPoints": ["src/game/scenario/scenario_progress_state.gd", "src/game/scenario/scenario_encounter_state.gd", "src/game/scenario/README.md"],
+      "publicInterfaces": ["ScenarioProgressState", "ScenarioEncounterState"],
+      "tests": ["tests/scenario/test_scenario_vm.gd", "tests/integration/test_session_persistence.gd", "tests/integration/test_exploration_session.gd"],
+      "performanceProbes": []
+    },
+    {
       "id": "combat",
       "boundary": "game",
       "guide": "docs/features/combat.md",

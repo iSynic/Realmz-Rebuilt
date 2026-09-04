@@ -159,7 +159,7 @@ func run() -> void:
 	timed_session._context.rng = ScriptedRng.new([0])
 	var timed := timed_session.submit_intent(PlayerIntent.rest())
 	assert_equal([timed.state, timed.interaction.kind], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.ACKNOWLEDGE], "crossing midnight dispatches the eligible timed XAP before returning to camp")
-	assert_equal(timed_session._context.state.timed_encounter_override(0).get("day"), 5, "the timed record advances by its increment before its interaction yields")
+	assert_equal(timed_session._context.state.scenario_progress.encounters.timed_override(0).get("day"), 5, "the timed record advances by its increment before its interaction yields")
 	assert_true(_has_event(timed, &"timed_encounter_triggered"), "the timed dispatch has an explicit domain trace")
 	assert_equal(_events(timed, &"timed_encounter_triggered")[0].payload.get("programId"), "xap:7", "the timed record invokes its Data ED3 XAP identity directly")
 	assert_true(_event_position(timed, &"timed_encounter_checked") < _event_position(timed, &"rest_ration_consumed"), "midnight eligibility is settled before Castle's half-day recovery")
@@ -174,8 +174,8 @@ func run() -> void:
 	assert_equal(timed_restored.view().party_coordinate, Vector2i(2, 0), "the resumed XAP commits its explicit Classic teleport before the remaining timed scan")
 	assert_equal(_events(timed_completed, &"timed_encounter_triggered").map(func(event: DomainEvent) -> Variant: return event.payload.get("programId")), ["xap:8"], "the remaining scan advances to the next timed XAP exactly once")
 	assert_true(_events(timed_completed, &"message_shown").any(func(event: DomainEvent) -> bool: return event.payload.get("messageId") == 778), "the relocated coordinate satisfies the next timed record")
-	assert_equal(timed_restored._context.state.timed_encounter_override(0).get("day"), 5, "save/resume does not advance the same timed record twice")
-	assert_equal(timed_restored._context.state.timed_encounter_override(1).get("day"), 5, "the remaining timed record advances once after relocation")
+	assert_equal(timed_restored._context.state.scenario_progress.encounters.timed_override(0).get("day"), 5, "save/resume does not advance the same timed record twice")
+	assert_equal(timed_restored._context.state.scenario_progress.encounters.timed_override(1).get("day"), 5, "the remaining timed record advances once after relocation")
 	assert_equal([timed_restored._context.state.party.character_by_id(caster.id).current_health, timed_restored._context.state.party.character_by_id(caster.id).inventory()[-1].charges], [7, 1], "save/resume does not repeat midnight recovery")
 	assert_equal(timed_restored.snapshot().continuation, null, "the completed timed scan leaves no stale continuation")
 
@@ -204,12 +204,12 @@ func run() -> void:
 	ineligible_caster.level = 6
 	ineligible_caster.maximum_health = 20
 	ineligible_caster.current_health = 5
-	ineligible_timed._context.state.set_timed_encounter_override(0, {"day": 2, "percent": 0})
+	ineligible_timed._context.state.scenario_progress.encounters.set_timed_override(0, {"day": 2, "percent": 0})
 	ineligible_timed._context.state.clock.set_total_minutes(RealmzClock.MINUTES_PER_DAY - 10)
 	ineligible_timed._context.rng = ScriptedRng.new([0, 0])
 	var ineligible_result := ineligible_timed.submit_intent(PlayerIntent.rest())
 	assert_equal(ineligible_result.state, SessionStep.State.COMPLETED, "an ineligible timed event does not invent an interaction")
-	assert_equal(ineligible_timed._context.state.timed_encounter_override(0).get("day"), 5, "a failed chance still advances the timed record before continuing the scan")
+	assert_equal(ineligible_timed._context.state.scenario_progress.encounters.timed_override(0).get("day"), 5, "a failed chance still advances the timed record before continuing the scan")
 	assert_equal(ineligible_caster.current_health, 6, "midnight recovery still runs once after a scan with no eligible dispatch")
 	assert_true(_event_position(ineligible_result, &"timed_encounter_checked") < _event_position(ineligible_result, &"health_recovered"), "an ineligible timed scan still precedes midnight recovery")
 

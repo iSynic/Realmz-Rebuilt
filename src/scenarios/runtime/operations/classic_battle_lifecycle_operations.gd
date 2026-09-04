@@ -91,7 +91,7 @@ func _start_classic_battle(action: ClassicActionDefinition, request_id: String) 
 		return ScenarioRuntimeOperationResult.failed(&"unknown_battle", "Classic opcode %d references unavailable battle %d." % [action.opcode, battle_id])
 	var participants: Array[String] = []
 	if action.opcode == 48:
-		participants = _game_state.selected_character_ids()
+		participants = _game_state.scenario_progress.selected_character_ids()
 		if participants.is_empty():
 			return ScenarioRuntimeOperationResult.failed(&"no_selected_characters", "Classic opcode 48 requires at least one selected party member.")
 	var operation := start_battle_definition(battle, request_id, "classic", caller, participants)

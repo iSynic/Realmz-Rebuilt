@@ -297,7 +297,7 @@ static func remove_party_member(context: SessionWorkflowContext, pending: bool, 
 	context.state.set_combat_auto(character_id, false)
 	if character_id.is_empty() or not context.state.party.remove_character(character_id):
 		return SessionWorkflowResult.failed(&"unknown_party_member", "The selected character is not in the setup party.")
-	context.state.set_selected_character_ids([])
+	context.state.scenario_progress.set_selected_character_ids([])
 	return SessionWorkflowResult.completed([DomainEvent.new(&"party_member_removed", {"characterId": character_id})])
 
 

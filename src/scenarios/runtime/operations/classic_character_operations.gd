@@ -90,7 +90,7 @@ func _alter_selected_spell_points(action: ClassicActionDefinition) -> ScenarioRu
 	if action.extra_code[4] != 0 and message == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic opcode 74 references unavailable message %d." % action.extra_code[4])
 	var changes: Array[Dictionary] = []
-	for character: CharacterState in _game_state.selected_characters():
+	for character: CharacterState in _game_state.scenario_progress.selected_characters():
 		if character.maximum_spell_points == 0:
 			continue
 		var rolled := 0
@@ -113,7 +113,7 @@ func _branch_on_spell_points(action: ClassicActionDefinition, context: ScenarioE
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 75 requires a five-value Extra Code row.")
 	var candidates: Array[CharacterState] = []
 	match action.extra_code[0]:
-		1: candidates = _game_state.selected_characters()
+		1: candidates = _game_state.scenario_progress.selected_characters()
 		2:
 			for character: CharacterState in _game_state.party.characters():
 				if character.current_health > 0 and not character.conditions.is_active(ConditionRules.ANIMATED):
@@ -140,7 +140,7 @@ func _take_experience(action: ClassicActionDefinition) -> ScenarioRuntimeOperati
 	var targets: Array[CharacterState] = []
 	match mode:
 		1:
-			targets = _game_state.selected_characters()
+			targets = _game_state.scenario_progress.selected_characters()
 		2:
 			targets = _game_state.party.characters()
 			if not targets.is_empty():
@@ -155,7 +155,7 @@ func _take_experience(action: ClassicActionDefinition) -> ScenarioRuntimeOperati
 func _level_selected_characters() -> ScenarioRuntimeOperationResult:
 	var leveled: Array[String] = []
 	var balances: Dictionary = {}
-	for character: CharacterState in _game_state.selected_characters():
+	for character: CharacterState in _game_state.scenario_progress.selected_characters():
 		var race := _content.race_by_id(character.race_id)
 		var caste := _content.caste_by_id(character.caste_id)
 		if race == null or caste == null:
@@ -207,7 +207,7 @@ func _apply_health(action: ClassicActionDefinition, whole_party: bool) -> Scenar
 		message = _content.message_by_id(absi(action.extra_code[4]))
 		if message == null:
 			return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic opcode 15 references unavailable message %d." % action.extra_code[4])
-	var targets := _game_state.party.characters() if whole_party else _game_state.selected_characters()
+	var targets := _game_state.party.characters() if whole_party else _game_state.scenario_progress.selected_characters()
 	var hits: Array[Dictionary] = []
 	var events: Array[DomainEvent] = []
 	for character: CharacterState in targets:
@@ -229,7 +229,7 @@ func _filter_character_selection(action: ClassicActionDefinition) -> ScenarioRun
 	if action.extra_code.size() < 4:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 30 requires a five-value Extra Code row.")
 	var values := action.extra_code
-	var candidates := _game_state.selected_characters()
+	var candidates := _game_state.scenario_progress.selected_characters()
 	if int(values[2]) in [1, 2]:
 		candidates = []
 		for character: CharacterState in _game_state.party.characters():
@@ -246,7 +246,7 @@ func _filter_character_selection(action: ClassicActionDefinition) -> ScenarioRun
 		if passed != (int(values[0]) < 0):
 			selected.append(character.id)
 		checks.append({"characterId": character.id, "roll": roll, "value": check_value, "passed": passed})
-	_game_state.set_selected_character_ids(selected)
+	_game_state.scenario_progress.set_selected_character_ids(selected)
 	return ScenarioRuntimeOperationResult.completed(selected, [DomainEvent.new(&"character_selection_filtered", {"characterIds": selected, "checks": checks})])
 
 
@@ -273,7 +273,7 @@ func _apply_classic_condition(action: ClassicActionDefinition) -> ScenarioRuntim
 		return ScenarioRuntimeOperationResult.failed(&"invalid_condition", "Classic opcode 43 has an invalid target or condition index.")
 	var targets: Array[CharacterState] = []
 	if target_mode == 1:
-		targets = _game_state.selected_characters()
+		targets = _game_state.scenario_progress.selected_characters()
 	else:
 		for character: CharacterState in _game_state.party.characters():
 			if target_mode == 0 or character.current_health > 0:
@@ -318,7 +318,7 @@ func _select_characters_by_identity(action: ClassicActionDefinition) -> Scenario
 				matches = caste != null and caste.caste_class == action.extra_code[2]
 		if matches:
 			selected.append(character.id)
-	_game_state.set_selected_character_ids(selected)
+	_game_state.scenario_progress.set_selected_character_ids(selected)
 	return ScenarioRuntimeOperationResult.completed(selected, [DomainEvent.new(&"characters_selected_by_identity", {"selector": selector, "characterIds": selected, "livingOnly": action.extra_code[4] != 0, "source": "classic"})])
 
 
@@ -330,7 +330,7 @@ func _select_characters_by_misc(action: ClassicActionDefinition) -> ScenarioRunt
 	var source_mode := action.extra_code[2]
 	if selector < 0 or selector > 8 or source_mode < 0 or source_mode > 2:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_character_selector", "Classic miscellaneous character selector is invalid.")
-	var candidates := _game_state.selected_characters()
+	var candidates := _game_state.scenario_progress.selected_characters()
 	if source_mode != 2:
 		candidates = []
 		for character: CharacterState in _game_state.party.characters():
@@ -354,14 +354,14 @@ func _select_characters_by_misc(action: ClassicActionDefinition) -> ScenarioRunt
 			5:
 				matches = _rng.draw(100, &"classic.misc-character-save") > character.save_value(absi(value))
 			6:
-				matches = not _game_state.selected_character_ids().is_empty() and _game_state.selected_character_ids()[0] == character.id
+				matches = not _game_state.scenario_progress.selected_character_ids().is_empty() and _game_state.scenario_progress.selected_character_ids()[0] == character.id
 			7:
 				matches = _character_has_classic_item(character, absi(value), true)
 			8:
 				matches = party.find(character) == value
 		if matches:
 			selected.append(character.id)
-	_game_state.set_selected_character_ids(selected)
+	_game_state.scenario_progress.set_selected_character_ids(selected)
 	return ScenarioRuntimeOperationResult.completed(selected, [DomainEvent.new(&"characters_selected_by_rule", {"selector": selector, "value": value, "characterIds": selected})])
 
 
@@ -390,7 +390,7 @@ func _select_characters_by_caste(action: ClassicActionDefinition) -> ScenarioRun
 				matches = matches or caste.classic_id in [2, 5]
 			if matches:
 				selected.append(character.id)
-	_game_state.set_selected_character_ids(selected)
+	_game_state.scenario_progress.set_selected_character_ids(selected)
 	return ScenarioRuntimeOperationResult.completed(selected, [DomainEvent.new(&"characters_selected_by_caste", {"exactCaste": exact_caste, "casteGroup": caste_group, "sourceMode": source_mode, "characterIds": selected, "source": "classic"})])
 
 
@@ -401,7 +401,7 @@ func _branch_on_picked_characters(action: ClassicActionDefinition) -> ScenarioRu
 	var failure_behavior := action.extra_code[1]
 	if failure_behavior < 0 or failure_behavior > 2:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_picked_branch", "Classic opcode 55 has an invalid failure behavior.")
-	var selected_ids := _game_state.selected_character_ids()
+	var selected_ids := _game_state.scenario_progress.selected_character_ids()
 	var matched := not selected_ids.is_empty() if selector == 0 else selected_ids.size() == absi(selector)
 	if selector >= 1 and selector <= 6:
 		var party := _game_state.party.characters()
@@ -446,7 +446,7 @@ func _branch_on_character_condition(action: ClassicActionDefinition) -> Scenario
 	if candidate_mode == 0:
 		candidates = _game_state.party.characters()
 	elif candidate_mode == -1:
-		candidates = _game_state.selected_characters()
+		candidates = _game_state.scenario_progress.selected_characters()
 	else:
 		var party := _game_state.party.characters()
 		if candidate_mode < 0 or candidate_mode >= party.size():
@@ -533,7 +533,7 @@ func _alter_selected_characters(action: ClassicActionDefinition) -> ScenarioRunt
 	var amount := action.extra_code[1]
 	if alteration < 1 or alteration > 12:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_character_alteration", "Classic opcode 108 references alteration %d outside 1 through 12." % alteration)
-	var targets := _game_state.selected_characters()
+	var targets := _game_state.scenario_progress.selected_characters()
 	for character: CharacterState in targets:
 		match alteration:
 			1:
@@ -629,7 +629,7 @@ func apply_scenario_spell(action: ClassicActionDefinition, entire_party: bool) -
 	var spell := _content.spell_by_classic_id(int(action.extra_code[0]))
 	if spell == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_spell", "Classic opcode %d references unavailable packed spell %d." % [action.opcode, int(action.extra_code[0])])
-	var targets := _game_state.party.characters() if entire_party else _game_state.selected_characters()
+	var targets := _game_state.party.characters() if entire_party else _game_state.scenario_progress.selected_characters()
 	if targets.is_empty():
 		return ScenarioRuntimeOperationResult.failed(&"no_selected_characters", "Classic opcode %d has no selected character targets." % action.opcode)
 	var events: Array[DomainEvent] = []

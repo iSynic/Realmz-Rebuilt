@@ -258,7 +258,7 @@ func _place_party(session: GameSession, content: RealmzContent, map_id: String, 
 	# conditions, fatigue, search, and movement transactions; this preparation
 	# prevents an unrelated modal timeline from replacing a measured travel step.
 	for encounter: TimedEncounterDefinition in content.timed_encounters():
-		snapshot.game_state.set_timed_encounter_override(encounter.id, {"day": snapshot.game_state.clock.day() + 10_000, "percent": encounter.chance_percent})
+		snapshot.game_state.scenario_progress.encounters.set_timed_override(encounter.id, {"day": snapshot.game_state.clock.day() + 10_000, "percent": encounter.chance_percent})
 	var map := content.world.map_by_id(map_id); var seeded := 0
 	if map != null:
 		for region: RandomEncounterRegion in map.random_regions():

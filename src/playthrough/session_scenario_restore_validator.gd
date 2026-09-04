@@ -53,7 +53,7 @@ static func thief_vm_continuation_is_valid(content: RealmzContent, state: GameSt
 	var character := state.party.character_by_id(owner.character_id)
 	if request.kind != InteractionRequest.PICK_LOCK or body == null or owner.action_index not in [2, 4, 6, 7] or body.encounter_id != encounter.id or body.action_index != owner.action_index or body.character_id != owner.character_id or character == null or character.current_health <= 0 or character.conditions.is_active(ConditionRules.ANIMATED):
 		return false
-	var flags := state.thief_encounter_type_flags(thief)
+	var flags := state.scenario_progress.encounters.thief_type_flags(thief)
 	var chance := ClassicPickLockRules.chance(character.ability_value(ClassicPickLockRules.ability_index(owner.action_index)), thief.modifiers()[owner.action_index])
 	var expected_frames := ClassicPickLockRules.preview(rng_state, thief.tumblers, chance)
 	return flags.size() == 10 and not flags[owner.action_index] and chance > 0 and body.action_label == ClassicPickLockRules.action_label(owner.action_index) and body.character_name == character.name and body.portrait_id == character.portrait_id and body.chance_percent == chance and body.yellow_threshold == ClassicPickLockRules.yellow_threshold(chance) and body.green_threshold == ClassicPickLockRules.green_threshold(chance) and body.frame_rate == ClassicPickLockRules.FRAME_RATE and body.time_limit_frames == ClassicPickLockRules.time_limit_frames(thief.tumblers) and body.frames == expected_frames
@@ -67,7 +67,7 @@ static func _valid_thief_request(content: RealmzContent, state: GameState, thief
 	var opening_sounds := thief.prompt_sounds()
 	if body.sound_id not in [0, opening_sounds[0] if not opening_sounds.is_empty() else 0]:
 		return false
-	var flags := state.thief_encounter_type_flags(thief)
+	var flags := state.scenario_progress.encounters.thief_type_flags(thief)
 	var eligible: Array[CharacterState] = []
 	for character: CharacterState in state.party.characters():
 		if character.current_health > 0 and not character.conditions.is_active(ConditionRules.ANIMATED):
@@ -95,7 +95,7 @@ static func _valid_thief_resolution_request(content: RealmzContent, state: GameS
 	var character := state.party.character_by_id(owner.character_id)
 	if request.kind != InteractionRequest.ACKNOWLEDGE or body == null or character == null or owner.action_index < 0 or owner.action_index > 7 or body.presentation != &"classic-textbox" or not body.has_presentation or body.has_journal_state or body.has_player_map_id:
 		return false
-	var flags := state.thief_encounter_type_flags(thief)
+	var flags := state.scenario_progress.encounters.thief_type_flags(thief)
 	if flags.size() != 10:
 		return false
 	if owner.phase == &"trap-message":
