@@ -4,6 +4,8 @@
 
 Automated decisions enter through the deliberately small `CombatAiScoring` facade. Follow party Auto choices into `CombatPartyActionPlanner`, monster choices and spell plans into `CombatMonsterActionPlanner`, shared deterministic weighting into `CombatAiScoringSupport`, and read-only health, allegiance, immunity, and reflection questions into `CombatAiTargetFacts`. These planners consume the session RNG supplied by the combat transaction; they do not own randomness or presentation state.
 
+After a category is selected, `CombatFlowAutomation` routes it to `CombatPartyAutomation` for party Auto or `CombatMonsterAutomation` for monster phases and charmed turns. `CombatOccupancyRules` is the one owner for hostility queries and defeated-actor battlefield cleanup. This keeps choice policy separate from the commands that mutate battle state.
+
 Physical attacks enter through the equally small `CombatRules` facade. Character attacks and weapon effects live in `CombatCharacterAttackResolver`; monster attacks and authored attack specials live in `CombatMonsterAttackResolver`; common weapon-effect and monster-save calculations live in `CombatAttackResolutionSupport`; initiative lives in `CombatInitiativeRules`. `CombatAttackPolicy` remains the pure admission, modifier, fumble, and weapon-dice policy shared by those resolvers.
 
 The battlefield is authoritative state, while `CombatView` is detached presentation data. The UI submits typed commands and targets and plays already-committed events. Begin rules work in `test_combat_flow.gd`, navigation work in `test_battlefield_navigation.gd`, and measure sensitive changes with both combat performance probes.

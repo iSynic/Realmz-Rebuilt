@@ -13,3 +13,5 @@ Important invariants:
 - Collaborators call named public contracts, never another object's private implementation.
 
 Combat navigation and automation are performance-sensitive. Preserve the retained occupancy, route, and projection structures; do not add per-cell actor scans or rebuild presentation during a command. Start behavioral changes in `tests/core/test_combat_flow.gd`, spatial changes in `tests/core/test_battlefield_navigation.gd`, and measure them with `tools/combat_performance_probe.gd` and `tools/battlefield_navigation_benchmark.gd`.
+
+For automatic turns, enter through `CombatFlowAutomation`. Party Auto activation and pursuit live in `CombatPartyAutomation`; monster phases, spellcasting, movement, attacks, retreats, and charmed-character turns live in `CombatMonsterAutomation`; hostility and defeated-position cleanup live in `CombatOccupancyRules`. `CombatAiScoring` chooses a legal category, while these automation collaborators commit it through the ordinary combat command owners.

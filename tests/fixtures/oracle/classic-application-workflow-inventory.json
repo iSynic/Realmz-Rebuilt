@@ -10146,7 +10146,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/game/rules/combat_flow_automation.gd",
+            "path": "src/game/rules/combat_party_automation.gd",
             "symbol": "func run_auto_turn("
           },
           {
