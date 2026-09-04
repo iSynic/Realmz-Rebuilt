@@ -10150,7 +10150,7 @@
             "symbol": "func run_auto_turn("
           },
           {
-            "path": "src/game/rules/combat_ai_scoring.gd",
+            "path": "src/game/rules/combat_party_action_planner.gd",
             "symbol": "func _best_summon("
           }
         ]
