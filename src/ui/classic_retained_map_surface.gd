@@ -247,7 +247,7 @@ func _transparent_marker_source(tile_id: int) -> int:
 
 
 static func transparent_marker_tile(atlas: MediaAsset, texture: Texture2D, tile_id: int) -> ImageTexture:
-	return ClassicMapPresenter.transparent_atlas_tile(atlas, texture, tile_id)
+	return MapTextureCache.transparent_atlas_tile(atlas, texture, tile_id)
 
 
 func _atlas_source(asset_id: String) -> Array:

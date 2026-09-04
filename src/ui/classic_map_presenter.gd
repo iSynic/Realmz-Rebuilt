@@ -8,7 +8,6 @@ signal movement_hold_updated(direction: Vector2i)
 signal movement_hold_stopped
 const CLASSIC_VIEW_CELLS: Vector2i = Vector2i(15, 13)
 const RETAINED_PROJECTION_MARGIN_CELLS: Vector2i = Vector2i.ONE
-const CLASSIC_BATTLE_ATLAS_ID := "classic-battle-tiles-302"
 const SECRET_LAND_MARKER_TILE_ID := 251
 const PATH_LAND_MARKER_TILE_ID := 253
 const PARTY_MARKER_LEFT_ASSET_ID: StringName = &"map.party.left"
@@ -32,12 +31,7 @@ const DEBUG_RANDOM_RECT_COLOR := Color(0.96, 0.75, 0.36, 0.78)
 
 var _view: GameView
 var _media: ClassicMediaCatalog
-var _atlas_assets: Dictionary = {}
-var _atlas_textures: Dictionary = {}
-var _overlay_textures: Dictionary = {}
-var _darkness_mask_textures: Dictionary = {}
-var _land_marker_textures: Dictionary = {}
-var _missing_image_assets: Dictionary = {}
+var _textures := MapTextureCache.new()
 var _party_rect: Rect2
 var _minimap_rect: Rect2
 var _held_direction: Vector2i = Vector2i.ZERO
@@ -228,12 +222,7 @@ func _update_visible_cell_cache(map_view: MapView) -> void:
 
 func set_media_catalog(media: ClassicMediaCatalog) -> void:
 	_media = media
-	_atlas_assets.clear()
-	_atlas_textures.clear()
-	_overlay_textures.clear()
-	_darkness_mask_textures.clear()
-	_land_marker_textures.clear()
-	_missing_image_assets.clear()
+	_textures.set_media_catalog(media)
 	if _retained_surface != null:
 		_retained_surface.set_media_catalog(media)
 	if _media == null:
@@ -382,23 +371,11 @@ func _draw_darkness_mask(map_rect: Rect2, party_rect: Rect2, level: int) -> void
 		draw_rect(Rect2(Vector2(map_rect.position.x, clipped.position.y), Vector2(clipped.position.x - map_rect.position.x, clipped.size.y)), Color.BLACK, true)
 	if clipped.end.x < map_rect.end.x:
 		draw_rect(Rect2(Vector2(clipped.end.x, clipped.position.y), Vector2(map_rect.end.x - clipped.end.x, clipped.size.y)), Color.BLACK, true)
-	var texture := _darkness_mask_texture(level)
+	var texture := _textures.darkness_mask_texture(level)
 	if texture == null:
 		draw_rect(clipped, Color.BLACK, true)
 		return
 	draw_texture_rect_region(texture, clipped, Rect2(clipped.position - mask_rect.position, clipped.size))
-
-
-static func _darkness_overlay_texture(texture: Texture2D) -> ImageTexture:
-	var source := texture.get_image()
-	if source == null:
-		return null
-	source.convert(Image.FORMAT_RGBA8)
-	for y: int in source.get_height():
-		for x: int in source.get_width():
-			var alpha := source.get_pixel(x, y).get_luminance()
-			source.set_pixel(x, y, Color(0.0, 0.0, 0.0, alpha))
-	return ImageTexture.create_from_image(source)
 
 
 static func land_marker_tile_ids(cell: MapCellView) -> Array[int]:
@@ -412,26 +389,13 @@ static func land_marker_tile_ids(cell: MapCellView) -> Array[int]:
 
 func _draw_land_markers(cell: MapCellView, rect: Rect2) -> void:
 	for tile_id: int in land_marker_tile_ids(cell):
-		var texture := _land_marker_texture(tile_id)
+		var texture := _textures.land_marker_texture(tile_id)
 		if texture != null:
 			draw_texture_rect(texture, rect, false)
 
 
 static func transparent_atlas_tile(atlas: MediaAsset, texture: Texture2D, tile_id: int) -> ImageTexture:
-	if atlas == null or texture == null:
-		return null
-	var region := atlas.region_for(tile_id)
-	var source := texture.get_image()
-	if source == null or not region.has_area() or not Rect2i(Vector2i.ZERO, source.get_size()).encloses(region):
-		return null
-	var marker := source.get_region(region)
-	marker.convert(Image.FORMAT_RGBA8)
-	for y: int in marker.get_height():
-		for x: int in marker.get_width():
-			var pixel := marker.get_pixel(x, y)
-			if pixel.r > 0.95 and pixel.g > 0.95 and pixel.b > 0.95:
-				marker.set_pixel(x, y, Color(pixel.r, pixel.g, pixel.b, 0.0))
-	return ImageTexture.create_from_image(marker)
+	return MapTextureCache.transparent_atlas_tile(atlas, texture, tile_id)
 
 
 func _draw_party_marker(party_rect: Rect2) -> void:
@@ -561,9 +525,8 @@ func _draw_cell(cell: MapCellView, rect: Rect2, level_type: StringName, dark: bo
 	if not cell.visible and not recalled:
 		draw_rect(rect, _cell_color(cell, level_type, dark), true)
 		return
-	_ensure_atlas(cell.tileset_id)
-	var atlas_asset: MediaAsset = _atlas_assets.get(cell.tileset_id) as MediaAsset
-	var atlas_texture: Texture2D = _atlas_textures.get(cell.tileset_id) as Texture2D
+	var atlas_asset := _textures.atlas_asset(cell.tileset_id)
+	var atlas_texture := _textures.atlas_texture(cell.tileset_id)
 	if level_type == &"dungeon" and atlas_asset != null and atlas_texture != null and atlas_asset.id == "dungeon-top-down-302":
 		_draw_dungeon_atlas_cell(cell, rect, atlas_asset, atlas_texture)
 		if dark:
@@ -574,7 +537,7 @@ func _draw_cell(cell: MapCellView, rect: Rect2, level_type: StringName, dark: bo
 		draw_rect(rect, _cell_color(cell, level_type, false), true)
 	else:
 		draw_texture_rect_region(atlas_texture, rect, Rect2(region))
-	var overlay_texture := _image_texture_by_id(cell.overlay_asset_id)
+	var overlay_texture := _textures.image_texture(cell.overlay_asset_id)
 	if overlay_texture != null:
 		draw_texture_rect(overlay_texture, rect, false)
 	if dark:
@@ -628,67 +591,6 @@ func _draw_atlas_region(rect: Rect2, atlas_asset: MediaAsset, atlas_texture: Tex
 	var region := atlas_asset.region_for(tile_id)
 	if region.has_area():
 		draw_texture_rect_region(atlas_texture, rect, Rect2(region))
-
-
-func _load_image_texture(asset: MediaAsset) -> Texture2D:
-	return _media.image_texture(asset) if _media != null else null
-
-
-func _ensure_atlas(asset_id: String) -> void:
-	if asset_id.is_empty() or _atlas_assets.has(asset_id) or _missing_image_assets.has(asset_id) or _media == null:
-		return
-	var asset := _media.asset_by_id(asset_id)
-	if asset == null or not asset.is_tileset() and not asset.is_battle_tileset():
-		_missing_image_assets[asset_id] = true
-		return
-	var texture := _load_image_texture(asset)
-	if texture == null:
-		_missing_image_assets[asset_id] = true
-		return
-	_atlas_assets[asset_id] = asset
-	_atlas_textures[asset_id] = texture
-
-
-func _image_texture_by_id(asset_id: String) -> Texture2D:
-	if asset_id.is_empty() or _media == null:
-		return null
-	if _overlay_textures.has(asset_id):
-		return _overlay_textures[asset_id] as Texture2D
-	if _missing_image_assets.has(asset_id):
-		return null
-	var asset := _media.asset_by_id(asset_id)
-	var texture := _load_image_texture(asset)
-	if texture == null:
-		_missing_image_assets[asset_id] = true
-		return null
-	_overlay_textures[asset_id] = texture
-	return texture
-
-
-func _darkness_mask_texture(level: int) -> Texture2D:
-	var bounded_level := clampi(level, 0, 6)
-	if _darkness_mask_textures.has(bounded_level):
-		return _darkness_mask_textures[bounded_level] as Texture2D
-	var asset_id := darkness_mask_asset_id(bounded_level)
-	if _missing_image_assets.has(asset_id) or _media == null:
-		return null
-	var source := _image_texture_by_id(asset_id)
-	var texture := _darkness_overlay_texture(source) if source != null else null
-	if texture == null:
-		_missing_image_assets[asset_id] = true
-		return null
-	_darkness_mask_textures[bounded_level] = texture
-	return texture
-
-
-func _land_marker_texture(tile_id: int) -> Texture2D:
-	if _land_marker_textures.has(tile_id):
-		return _land_marker_textures[tile_id] as Texture2D
-	_ensure_atlas(CLASSIC_BATTLE_ATLAS_ID)
-	var texture := transparent_atlas_tile(_atlas_assets.get(CLASSIC_BATTLE_ATLAS_ID) as MediaAsset, _atlas_textures.get(CLASSIC_BATTLE_ATLAS_ID) as Texture2D, tile_id)
-	if texture != null:
-		_land_marker_textures[tile_id] = texture
-	return texture
 
 
 func _cell_color(cell: MapCellView, level_type: StringName, dark: bool = false) -> Color:
