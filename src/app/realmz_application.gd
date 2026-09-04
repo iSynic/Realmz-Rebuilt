@@ -309,7 +309,7 @@ func accepts_route_input() -> bool:
 		return false
 	if presentation_coordinator.is_combat_playback_active() or _interaction_presenter.has_blocking_request():
 		return false
-	return GameShell.route_change_reason(session_controller.view()).is_empty()
+	return GameShellAvailability.route_change_reason(session_controller.view()).is_empty()
 
 
 func accepts_exploration_input() -> bool:

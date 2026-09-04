@@ -91,7 +91,7 @@ func update_availability() -> void:
 		elif String(command_id).begins_with("encounter_"):
 			reason = "Choose from the active encounter response controls."
 		elif not availability_id.is_empty():
-			reason = owner.availability_reason(availability_id)
+			reason = GameShellAvailability.action_reason(owner._current_view, availability_id)
 		if bool(button.get_meta("search_animation", false)):
 			var summary: PartySummaryView = owner._current_view.party_summary if owner._current_view != null else null
 			button.call("sync_status", false if summary == null else summary.searching, reason.is_empty(), reason)

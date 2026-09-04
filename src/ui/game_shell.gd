@@ -65,8 +65,6 @@ const JOURNAL_STATUS_TEXTURE_PATH := "res://src/ui/assets/ui/status/journal-stat
 @onready var _package_status: Label = %PackageStatus
 @onready var _stage_frame: NinePatchRect = %StageFrame
 @onready var _picture_stage: Control = %PictureStage
-@onready var _picture: TextureRect = %Picture
-@onready var _picture_caption: Label = %PictureCaption
 @onready var _party_roster: ClassicPartyRoster = %PartyRoster
 @onready var _bottom_region: PanelContainer = %BottomRegion
 @onready var _bottom_row: BoxContainer = %BottomRow
@@ -104,6 +102,8 @@ var _selected_character_id: String = ""
 var _latest_classic_text: String = ""
 var _command_controller: GameShellCommandController
 var _menu_controller: GameShellMenuController
+var _picture_presenter: GameShellPicturePresenter
+var _layout_controller: GameShellLayoutController
 var _effect_frame_timer: Timer
 var _effect_frame_index: int = 0
 var _effect_slots: Array[TextureRect] = []
@@ -126,7 +126,10 @@ func _ready() -> void:
 	_command_controller = COMMAND_CONTROLLER_SCRIPT.new(self)
 	_command_controller.initialize()
 	_menu_controller = MENU_CONTROLLER_SCRIPT.new(self)
+	_picture_presenter = GameShellPicturePresenter.new(self)
+	_layout_controller = GameShellLayoutController.new(self)
 	_effect_slots = ClassicPartyEffects.build_slots(_effects_grid, party_effect_slot_scene)
+	_layout_controller.set_effect_slots(_effect_slots)
 	_effect_frame_timer = Timer.new()
 	_effect_frame_timer.wait_time = 0.12
 	_effect_frame_timer.autostart = true
@@ -361,25 +364,8 @@ func present_media_events(events: Array[DomainEvent], media: ClassicMediaCatalog
 	for event: DomainEvent in events:
 		if event.kind == &"character_effect_requested":
 			_party_roster.play_character_effect(String(event.payload.get("characterId", "")), int(event.payload.get("firstResourceId", 0)), int(event.payload.get("frameCount", 0)))
-			continue
-		if event.kind != &"picture_requested":
-			continue
-		var picture_id := int(event.payload.get("pictureId", 0))
-		var asset := media.asset_by_resource("PICT", picture_id)
-		if asset == null:
-			last_picture_media_diagnostic = media.resolution_diagnostic("PICT", picture_id, "classic-picture")
-			_picture.texture = null
-			_picture.tooltip_text = "Scenario picture unavailable"
-			_picture_caption.text = ""
-			_picture_stage.visible = true
-			continue
-		var image := _decode_image(asset, media.read_bytes(asset))
-		last_picture_media_diagnostic = media.resolution_diagnostic("PICT", picture_id, "classic-picture", "decoded" if image != null else "decode-failed")
-		_picture.texture = ImageTexture.create_from_image(image) if image != null else null
-		_picture.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		_picture.tooltip_text = "Scenario picture" if image != null else "Scenario picture unavailable"
-		_picture_caption.text = ""
-		_picture_stage.visible = true
+	_picture_presenter.present(events, media)
+	last_picture_media_diagnostic = _picture_presenter.last_media_diagnostic
 
 
 func apply_settings(settings: PresentationSettings) -> void:
@@ -430,7 +416,7 @@ func handle_route_shortcut(event: InputEvent) -> bool:
 	for definition: UiRouteDefinition in UiRouteCatalog.routes():
 		var shortcut := definition.shortcut
 		if not shortcut.is_empty() and event.is_action_pressed(shortcut):
-			if not route_change_reason(_current_view).is_empty():
+			if not GameShellAvailability.route_change_reason(_current_view).is_empty():
 				return true
 			_navigator.open_screen(definition.route_id)
 			return true
@@ -460,18 +446,6 @@ func selected_fast_spell(slot_index: int) -> Dictionary:
 		"enabled": binding.activation.enabled,
 		"reason": binding.activation.reason,
 	}
-
-
-static func route_change_reason(game_view: GameView) -> String:
-	if game_view == null or not game_view.session_started:
-		return "Choose a campaign first."
-	if game_view.party_setup_available:
-		return "Begin the adventure first."
-	if game_view != null and game_view.pending_interaction != null:
-		return "Resolve the current interaction first."
-	if game_view.combat_view != null and game_view.combat_view.outcome == &"active":
-		return "Finish the current battle first."
-	return ""
 
 
 func set_status(text: String, is_error: bool = false) -> void:
@@ -525,87 +499,10 @@ func show_splash() -> void:
 func _apply_layout() -> void:
 	if not is_node_ready():
 		return
-	# The root Control can differ from the viewport's logical size when a gallery,
-	# embedded window, or stretch transform supplies the final presentation area.
-	# Lay out siblings in their shared Control coordinate space.
-	var window_size := size
-	_profile = UiLayoutProfile.for_viewport(window_size, _presentation_settings.ui_scale_mode)
-	var canvas_rect := _profile.application_rect
-	var viewport_size := canvas_rect.size
-	var origin := canvas_rect.position
-	_menu_row.visible = _profile.id != UiLayoutProfile.COMPACT
-	_compact_menu.visible = _profile.id == UiLayoutProfile.COMPACT
-	# Classic typography can require more height than the historical 28-pixel
-	# menu. Keep every play region below the menu's actual themed minimum.
-	_profile.menu_height = maxf(_profile.menu_height, ceilf(_menu_strip.get_combined_minimum_size().y))
-	var stage_width := maxf(320.0, viewport_size.x - _profile.party_width)
-	var stage_height := maxf(220.0, viewport_size.y - _profile.menu_height - _profile.bottom_height)
-	var stage_rect := Rect2(0.0, _profile.menu_height, stage_width, stage_height)
-	_menu_strip.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	_menu_strip.position = origin
-	_menu_strip.size = Vector2(viewport_size.x, _profile.menu_height)
-	stage_rect.position += origin
-	_stage_frame.position = stage_rect.position
-	_stage_frame.size = stage_rect.size
-	_activity_indicator.position = stage_rect.position + Vector2(10.0, 10.0)
-	_activity_indicator.size = Vector2(40.0, 40.0)
-	var roster_width := combat_spellbook_roster_width(viewport_size.x, _profile.party_width, _profile.ui_scale, _party_roster.combat_spellbook_active())
-	var footer_width := exploration_footer_width(viewport_size, _profile, _navigator.current_screen())
-	_party_roster.position = origin + Vector2(viewport_size.x - roster_width, _profile.menu_height)
-	_party_roster.size = Vector2(roster_width, party_roster_height(viewport_size.y, _profile.menu_height, stage_height, _party_roster.combat_spellbook_active()))
-	_party_roster.z_index = party_roster_z_index(_party_roster.combat_spellbook_active())
-	_bottom_row.vertical = false
-	_facts.columns = 3 if _profile.id == UiLayoutProfile.COMPACT else 6
-	var command_width := minf(_profile.command_width, viewport_size.x * 0.26)
-	_world_command_panel.visible = _profile.id != UiLayoutProfile.COMPACT
-	_apply_exploration_mode()
-	var side_command_width := maxf(300.0 * _profile.ui_scale, command_width)
-	_world_command_panel.custom_minimum_size.x = side_command_width if _world_command_panel.visible else 0.0
-	_world_command_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL if _world_command_panel.visible else Control.SIZE_SHRINK_BEGIN
-	_world_command_panel.size_flags_stretch_ratio = 1.0
-	_command_panel.visible = _navigator.current_screen() != &"spells"
-	_effects_panel.visible = _command_panel.visible and _current_view != null and _current_view.session_started
-	_command_panel.custom_minimum_size.x = side_command_width if _world_command_panel.visible else command_width
-	_command_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL if _world_command_panel.visible else Control.SIZE_SHRINK_END
-	_command_panel.size_flags_stretch_ratio = 1.0
-	_command_panel.custom_minimum_size.y = 0.0
-	_narrative_well.custom_minimum_size.x = minf(620.0 * _profile.ui_scale, maxf(360.0, footer_width - _world_command_panel.custom_minimum_size.x - _command_panel.custom_minimum_size.x - 12.0)) if _world_command_panel.visible else maxf(360.0, footer_width - (command_width if _command_panel.visible else 0.0) - 12.0)
-	_narrative_well.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_narrative_well.size_flags_stretch_ratio = 1.45 if _world_command_panel.visible else 1.0
-	_world_command_column.alignment = BoxContainer.ALIGNMENT_CENTER
-	_party_effects_row.vertical = not _world_command_panel.visible
-	_party_effects_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	_party_command_column.alignment = BoxContainer.ALIGNMENT_CENTER
-	_world_command_grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	_world_command_grid.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_command_grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	_command_grid.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_world_command_grid.columns = 4
-	_command_grid.columns = 2 if _world_command_panel.visible else maxi(2, floori(command_width / (108.0 if _profile.bitmap_scale == 2 else 58.0)))
-	var effect_icon_size := party_effect_icon_size(_profile.bitmap_scale)
-	var effect_slot_size := party_effect_slot_size(_profile.bitmap_scale)
-	for icon: TextureRect in _effect_slots:
-		icon.custom_minimum_size = Vector2(effect_icon_size, effect_icon_size)
-		(icon.get_parent().get_parent() as Control).custom_minimum_size = Vector2(effect_slot_size, effect_slot_size)
-	# Orientation and child minima must settle before shrinking the outer panel;
-	# otherwise Control retains the previous wider profile's minimum-clamped size.
-	_bottom_region.position = origin + Vector2(0.0, viewport_size.y - _profile.bottom_height)
-	_bottom_region.size = Vector2(footer_width, _profile.bottom_height)
-	var picture_size := Vector2(minf(560.0 * _profile.ui_scale, stage_rect.size.x - 48.0), minf(360.0 * _profile.ui_scale, stage_rect.size.y - 48.0))
-	_picture_stage.position = stage_rect.position + (stage_rect.size - picture_size) * 0.5
-	_picture_stage.size = picture_size
-	_navigator.set_layout_profile(_profile, viewport_size, origin)
+	_profile = _layout_controller.apply(size, _presentation_settings, _current_view)
 	_build_menus()
 	_rebuild_command_deck()
-	layout_changed.emit(Rect2(stage_rect.position, Vector2(combat_spellbook_stage_width(stage_rect.size.x, viewport_size.x, roster_width), stage_rect.size.y)), _profile)
-
-
-static func party_effect_icon_size(bitmap_scale: int) -> float:
-	return ClassicPartyEffects.icon_size(bitmap_scale)
-
-
-static func party_effect_slot_size(bitmap_scale: int) -> float:
-	return ClassicPartyEffects.slot_size(bitmap_scale)
+	layout_changed.emit(_layout_controller.workspace_rect, _profile)
 
 
 func _advance_effect_frame() -> void:
@@ -632,26 +529,6 @@ static func party_effect_resource_id(condition_index: int, frame_index: int) -> 
 	return ClassicPartyEffects.resource_id(condition_index, frame_index)
 
 
-static func party_roster_height(viewport_height: float, menu_height: float, stage_height: float, combat_spellbook_active: bool) -> float:
-	return viewport_height - menu_height if combat_spellbook_active else stage_height
-
-
-static func party_roster_z_index(combat_spellbook_active: bool) -> int:
-	return 81 if combat_spellbook_active else 14
-
-
-static func combat_spellbook_roster_width(viewport_width: float, party_width: float, ui_scale: float, combat_spellbook_active: bool) -> float:
-	return maxf(party_width, minf(352.0 * ui_scale, viewport_width - 320.0 * ui_scale)) if combat_spellbook_active else party_width
-
-
-static func combat_spellbook_stage_width(stage_width: float, viewport_width: float, roster_width: float) -> float:
-	return minf(stage_width, viewport_width - roster_width)
-
-
-static func exploration_footer_width(viewport_size: Vector2, profile: UiLayoutProfile, route_id: StringName) -> float:
-	return ScreenNavigator.spell_screen_rect_for(profile, viewport_size).position.x if route_id == &"spells" else viewport_size.x
-
-
 func _apply_exploration_mode() -> void:
 	if not is_node_ready():
 		return
@@ -662,89 +539,7 @@ func _apply_exploration_mode() -> void:
 func _build_menus() -> void:
 	if not is_node_ready():
 		return
-	var contextual_definition := _presentation_command_definition(ClassicCommandCatalog.command(&"contextual"))
-	var contextual_label := String(contextual_definition.get("label", "Encounter"))
-	var contextual_availability := StringName(contextual_definition.get("availability", &"contextual_encounter"))
-	_fill_menu($MenuStrip/MenuRow/InfoMenu, [
-		{"label": "About Realmz Rebuilt", "route": &"system"},
-		{"label": "Package identity and readiness", "route": &"system"},
-		{"label": "Diagnostics", "route": &"system"},
-	])
-	_fill_menu($MenuStrip/MenuRow/GameMenu, [
-		{"label": "Campaigns…", "system": &"campaigns", "disabled_reason": _campaign_library_reason()},
-		{"label": "Save & Load…", "route": &"system", "disabled_reason": _save_reason()}, {"label": "Quick Save 1", "system": &"save", "value": "quick", "disabled_reason": _save_reason()}, {"label": "Quick Save 2", "system": &"save", "value": "quick-2", "disabled_reason": _save_reason()},
-		{"label": "Quick Load 1", "system": &"load", "value": "quick", "disabled_reason": _load_reason()}, {"label": "Quick Load 2", "system": &"load", "value": "quick-2", "disabled_reason": _load_reason()},
-		{"label": "Main Menu…", "system": &"end_adventure", "disabled_reason": _end_adventure_reason()},
-		{"label": "Quit", "system": &"quit"},
-	])
-	_fill_menu($MenuStrip/MenuRow/AdventureMenu, [
-		{"label": "Explore", "route": &"exploration"},
-		{"label": "Search", "command": &"search_mode", "disabled_reason": availability_reason(&"toggle_search")},
-		{"label": "Area Search", "command": &"area_search", "disabled_reason": availability_reason(&"area_search")},
-		{"label": "Torch", "command": &"torch", "disabled_reason": availability_reason(&"use_torch")},
-		{"label": "Camp", "command": &"camp", "disabled_reason": availability_reason(&"camp")},
-		{"label": "Rest", "command": &"rest", "disabled_reason": availability_reason(&"rest")},
-		{"label": "Heal", "command": &"heal", "disabled_reason": availability_reason(&"heal")},
-		{"label": contextual_label, "command": &"contextual", "disabled_reason": availability_reason(contextual_availability)},
-		{"label": "Money", "command": &"money", "disabled_reason": availability_reason(&"money_action")},
-	])
-	_fill_menu($MenuStrip/MenuRow/CharacterMenu, [
-		{"label": "Party Order", "route": &"character"},
-		{"label": "Character Sheets", "route": &"character"},
-		{"label": "Inventory", "route": &"inventory"},
-		{"label": "Spells", "route": &"spells"},
-		{"label": "Vault", "route": &"vault"},
-	])
-	_fill_menu($MenuStrip/MenuRow/AlliesMenu, [
-		{"label": "Current Allies", "route": &"allies", "disabled_reason": _allies_reason()},
-		{"label": "Bestiary", "route": &"bestiary"},
-	])
-	_fill_menu($MenuStrip/MenuRow/MapsMenu, [
-		{"label": "Maps and Notes", "route": &"journal"},
-		{"label": "Acquired Maps", "route": &"journal"},
-	])
-	_fill_menu($MenuStrip/MenuRow/PreferencesMenu, [
-		{"label": "Display, Audio, and Access", "route": &"system"},
-		{"label": "Save, Load, and Package Diagnostics", "route": &"system"},
-	])
-	_fill_menu($MenuStrip/MenuRow/MusicMenu, [
-		{"label": "Now Playing: %s" % (_music_title if _music_playing else "Nothing"), "disabled_reason": "Current music title"},
-		{"label": "Stop Music" if _presentation_settings.music_enabled else "Play Music", "system": &"music_toggle"},
-		{"label": "Playlist…", "system": &"music_playlist"},
-	])
-	var compact_entries: Array[Dictionary] = [
-		{"label": "Adventure — Explore", "route": &"exploration"},
-		{"label": "Adventure — Search", "command": &"search_mode", "disabled_reason": availability_reason(&"toggle_search")},
-		{"label": "Adventure — Area Search", "command": &"area_search", "disabled_reason": availability_reason(&"area_search")},
-		{"label": "Adventure — Torch", "command": &"torch", "disabled_reason": availability_reason(&"use_torch")},
-		{"label": "Adventure — Camp", "command": &"camp", "disabled_reason": availability_reason(&"camp")},
-		{"label": "Adventure — Rest", "command": &"rest", "disabled_reason": availability_reason(&"rest")},
-		{"label": "Adventure — Heal", "command": &"heal", "disabled_reason": availability_reason(&"heal")},
-		{"label": "Adventure — %s" % contextual_label, "command": &"contextual", "disabled_reason": availability_reason(contextual_availability)},
-		{"label": "Adventure — Money", "command": &"money", "disabled_reason": availability_reason(&"money_action")},
-		{"label": "Character — Party Order", "route": &"character"},
-		{"label": "Character — Character Sheets", "route": &"character"},
-		{"label": "Character — Inventory", "route": &"inventory"},
-		{"label": "Character — Spells", "route": &"spells"},
-		{"label": "Character — Vault", "route": &"vault"},
-		{"label": "Allies — Current Allies", "route": &"allies", "disabled_reason": _allies_reason()},
-		{"label": "Allies — Bestiary", "route": &"bestiary"},
-		{"label": "Maps / Notes", "route": &"journal"},
-		{"label": "Game — Save & Load…", "route": &"system", "disabled_reason": _save_reason()}, {"label": "Game — Quick Save 1", "system": &"save", "value": "quick", "disabled_reason": _save_reason()}, {"label": "Game — Quick Save 2", "system": &"save", "value": "quick-2", "disabled_reason": _save_reason()},
-		{"label": "Game — Quick Load 1", "system": &"load", "value": "quick", "disabled_reason": _load_reason()}, {"label": "Game — Quick Load 2", "system": &"load", "value": "quick-2", "disabled_reason": _load_reason()},
-		{"label": "Game — Main Menu", "system": &"end_adventure", "disabled_reason": _end_adventure_reason()},
-		{"label": "Game — Campaigns", "system": &"campaigns", "disabled_reason": _campaign_library_reason()},
-		{"label": "Preferences", "route": &"system"},
-		{"label": "Music — %s" % ("Stop" if _presentation_settings.music_enabled else "Play"), "system": &"music_toggle"},
-		{"label": "Music — Playlist…", "system": &"music_playlist"},
-		{"label": "Info / Diagnostics", "route": &"system"},
-		{"label": "Quit", "system": &"quit"},
-	]
-	_fill_menu(_compact_menu, compact_entries)
-
-
-func _fill_menu(menu: MenuButton, entries: Array[Dictionary]) -> void:
-	_menu_controller.fill(menu, entries)
+	_menu_controller.rebuild(_current_view, _presentation_settings, _music_title, _music_playing)
 
 
 func _rebuild_command_deck() -> void:
@@ -894,76 +689,3 @@ func _append_narrative(text: String) -> void:
 	else:
 		_narrative.append_text("\n\n%s" % text)
 	_narrative.scroll_to_line(_narrative.get_line_count())
-
-
-func availability_reason(action_id: StringName) -> String:
-	if _current_view == null or not _current_view.session_started:
-		return "Begin a campaign first."
-	var availability := _current_view.availability(action_id)
-	return "" if availability.enabled else availability.reason
-
-
-func _session_reason() -> String:
-	if _current_view == null or not _current_view.session_started:
-		return "Choose a campaign first."
-	if _current_view.party_setup_available:
-		return "Begin the adventure first."
-	return ""
-
-
-func _save_reason() -> String:
-	var session_reason := _session_reason()
-	if not session_reason.is_empty():
-		return session_reason
-	if _current_view.combat_view != null and _current_view.combat_view.outcome == &"active":
-		return "Saving is unavailable during battle."
-	return ""
-
-
-func _load_reason() -> String:
-	var session_reason := _session_reason()
-	if not session_reason.is_empty():
-		return session_reason
-	if _current_view.pending_interaction != null:
-		return "Resolve the current interaction first."
-	if _current_view.combat_view != null and _current_view.combat_view.outcome == &"active":
-		return "Loading is unavailable during battle."
-	return ""
-
-
-func _campaign_library_reason() -> String:
-	if _current_view == null or not _current_view.session_started:
-		return ""
-	return "Return to the Main Menu before choosing another campaign."
-
-
-func _allies_reason() -> String:
-	var reason := route_change_reason(_current_view)
-	if not reason.is_empty():
-		return reason
-	if _current_view.party_allies.is_empty():
-		return "No allies are currently traveling with the party."
-	return ""
-
-
-func _end_adventure_reason() -> String:
-	if _current_view == null or not _current_view.session_started:
-		return "Choose a campaign first."
-	if _current_view.pending_interaction != null and _current_view.pending_interaction.kind != InteractionRequest.COMBAT:
-		return "Resolve the current interaction first."
-	return ""
-
-
-func _decode_image(asset: MediaAsset, bytes: PackedByteArray) -> Image:
-	if bytes.is_empty():
-		return null
-	var image := Image.new()
-	var extension := asset.path.get_extension().to_lower()
-	var error := ERR_UNAVAILABLE
-	if asset.mime_type.to_lower() == "image/png" or extension == "png":
-		error = image.load_png_from_buffer(bytes)
-	elif asset.mime_type.to_lower() in ["image/jpeg", "image/jpg"] or extension in ["jpg", "jpeg"]:
-		error = image.load_jpg_from_buffer(bytes)
-	elif asset.mime_type.to_lower() == "image/webp" or extension == "webp":
-		error = image.load_webp_from_buffer(bytes)
-	return image if error == OK else null
