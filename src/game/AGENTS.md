@@ -8,7 +8,7 @@ Own the pure Realmz model, fixed Classic rules, topology, game clock, randomness
 
 - Direct Realmz definitions and mutable playthrough state, including characters, equipment, wealth, conditions, encounters, battles, shops, treasures, spells, monsters, races, castes, and immutable compiled scenario programs.
 - Combat spell mechanics remain in `CombatFlowMagic`; `CombatSpellEventBuilder` owns only the detached presentation-event shapes emitted after those mechanics resolve.
-- `InteractionRequest` owns the public typed request family and wire-facing factory. `InteractionRequestValue` owns its nested typed values, `InteractionRequestValueDecoder` owns their strict wire decoding, and `InteractionRequestServiceDecoder` owns validation and population of lifecycle, Shop, Temple, Bank, and Combat request bodies.
+- `InteractionRequest` owns the stable request-kind registry, wire envelope, and decoder dispatch. Top-level payload values live under `session/requests`; `InteractionRequestValue` owns their nested record values, `InteractionRequestValueDecoder` owns strict record decoding, and `InteractionRequestServiceDecoder` owns validation and population of lifecycle, Shop, Temple, Bank, and Combat request bodies.
 - `SpellRolls` owns the shared base-and-power dice pattern; spell resolvers supply the authoritative ranges and serialized RNG tags.
 - `MagicRules` is the narrow spell-resolution entry point. `CharacterSpellResolver`, `MonsterSpellResolver`, `SpellProjectileResolver`, and `FieldScenarioSpellResolver` own their named cast families; `SpellResolutionSupport` owns shared targeting, resistance, effects, and scaling mechanics.
 - `CombatAiScoring` is the narrow Auto/monster-AI entry point. `CombatPartyActionPlanner` owns party Auto tactics, `CombatMonsterActionPlanner` owns monster tactics and spell plans, `CombatAiScoringSupport` owns their shared deterministic weighting and actor queries, and `CombatAiTargetFacts` owns read-only target facts.
@@ -186,3 +186,4 @@ Own the pure Realmz model, fixed Classic rules, topology, game clock, randomness
 ## Child DOX Index
 
 - `combat/AGENTS.md` owns the explicit combat collaborator context, combat-owned event construction, and the public maintainer guide for that feature seam.
+- `session/requests/AGENTS.md` owns feature-level typed interaction request payloads and their exact wire representation.

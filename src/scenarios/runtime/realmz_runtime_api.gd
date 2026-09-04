@@ -286,10 +286,10 @@ func _resume_age_update_interactions(continuation: ScenarioRuntimeContinuation, 
 	var index := age.index
 	if updates.is_empty() or index < 1 or index > updates.size():
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_continuation", "Classic age-update continuation is invalid.")
-	var acknowledged: InteractionRequest.AgeUpdateBody = updates[index - 1]
+	var acknowledged: AgeUpdateRequestBody = updates[index - 1]
 	var events: Array[DomainEvent] = [DomainEvent.new(&"character_age_update_acknowledged", {"characterId": acknowledged.character_id})]
 	if index < updates.size():
-		var next_payload: InteractionRequest.AgeUpdateBody = updates[index]
+		var next_payload: AgeUpdateRequestBody = updates[index]
 		var next_continuation := ScenarioRuntimeContinuation.age_updates(continuation.kind, updates, index + 1, age.value, age.directive)
 		events.append(CharacterAgingResult.sound_event_for_update(next_payload))
 		return ScenarioRuntimeOperationResult.waiting(InteractionRequest.age_update_body(request_id, next_payload), next_continuation, events)

@@ -13,7 +13,7 @@ extends InteractionComponent
 var _media: ClassicMediaCatalog
 var _game_view: GameView
 var _compact: bool
-var _body: InteractionRequest.ComplexEncounterRequestBody
+var _body: ComplexEncounterRequestBody
 var _context: VBoxContainer
 var _choice_actions: Array[InteractionRequestValue.EncounterAction] = []
 var _word_action: InteractionRequestValue.EncounterAction
@@ -53,7 +53,7 @@ func _notification(what: int) -> void:
 
 
 func build(request: InteractionRequest) -> void:
-	_body = request.body as InteractionRequest.ComplexEncounterRequestBody
+	_body = request.body as ComplexEncounterRequestBody
 	if _body == null:
 		return
 	_classify_actions()

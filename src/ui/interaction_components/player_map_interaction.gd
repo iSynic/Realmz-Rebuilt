@@ -14,7 +14,7 @@ func configure(game_view: GameView, media: ClassicMediaCatalog) -> void:
 
 
 func build(request: InteractionRequest) -> void:
-	var body := request.body as InteractionRequest.AcknowledgeBody
+	var body := request.body as AcknowledgeRequestBody
 	var player_map_id := "" if body == null else body.player_map_id
 	var selected: PlayerMapView
 	if _view != null:

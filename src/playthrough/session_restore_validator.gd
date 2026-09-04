@@ -255,13 +255,13 @@ static func _valid_age_continuation(content: RealmzContent, state: GameState, co
 	var age := continuation.age()
 	if age == null or vm_interaction != null or session_interaction == null or session_interaction.kind != InteractionRequest.AGE_UPDATE or age.updates.is_empty() or age.index < 1 or age.index > age.updates.size():
 		return false
-	for update: InteractionRequest.AgeUpdateBody in age.updates:
+	for update: AgeUpdateRequestBody in age.updates:
 		if not SessionScenarioRestoreValidator.age_update_payload_is_valid(state, update):
 			return false
-	var current_update: InteractionRequest.AgeUpdateBody = age.updates[age.index - 1]
+	var current_update: AgeUpdateRequestBody = age.updates[age.index - 1]
 	var expected_age_request := InteractionRequest.age_update_body("validation.age-update", current_update)
-	var actual_age_body := session_interaction.body as InteractionRequest.AgeUpdateBody
-	var expected_age_body: InteractionRequest.AgeUpdateBody = null if expected_age_request == null else expected_age_request.body as InteractionRequest.AgeUpdateBody
+	var actual_age_body := session_interaction.body as AgeUpdateRequestBody
+	var expected_age_body: AgeUpdateRequestBody = null if expected_age_request == null else expected_age_request.body as AgeUpdateRequestBody
 	if actual_age_body == null or not actual_age_body.same_values(expected_age_body):
 		return false
 	if age.resume_kind == &"completed":
@@ -344,9 +344,9 @@ static func _valid_item_xap_continuation(content: RealmzContent, state: GameStat
 
 static func _valid_boat_continuation(content: RealmzContent, state: GameState, continuation: SessionContinuation, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
 	var boat := continuation.boat()
-	var prompt: InteractionRequest.YesNoRequestBody = null
+	var prompt: YesNoRequestBody = null
 	if session_interaction != null:
-		prompt = session_interaction.body as InteractionRequest.YesNoRequestBody
+		prompt = session_interaction.body as YesNoRequestBody
 	if boat == null or vm_interaction != null or session_interaction == null or session_interaction.kind != InteractionRequest.YES_NO or prompt == null or state.party.map_id != boat.source_map_id or state.party.coordinate != boat.source_coordinate:
 		return false
 	var movement := content.world.probe_movement(boat.source_map_id, boat.source_coordinate, boat.direction, state.world, state.party_in_boat)

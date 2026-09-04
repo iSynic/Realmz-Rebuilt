@@ -17,7 +17,7 @@ func build(request: InteractionRequest) -> void:
 	_acknowledgement_body = null
 	match request.kind:
 		&"encounter_choice", &"scenario_choice":
-			var body := request.body as InteractionRequest.ChoiceRequestBody
+			var body := request.body as ChoiceRequestBody
 			if body == null: return
 			var grid := _choice_grid(1, true)
 			for index: int in body.options.size():
@@ -27,13 +27,13 @@ func build(request: InteractionRequest) -> void:
 			if request.kind == &"encounter_choice" and body.can_back_out:
 				_add_choice(grid, "Back out", InteractionResponse.ChoiceBody.new(-1, true), "ChoiceBackOut")
 		&"yes_no":
-			var body := request.body as InteractionRequest.YesNoRequestBody
+			var body := request.body as YesNoRequestBody
 			if body == null: return
 			var grid := _choice_grid(2, true)
 			_add_choice(grid, body.yes_label, InteractionResponse.YesNoBody.new(true), "ChoiceYes")
 			_add_choice(grid, body.no_label, InteractionResponse.YesNoBody.new(false), "ChoiceNo")
 		&"acknowledge":
-			var body := request.body as InteractionRequest.AcknowledgeBody
+			var body := request.body as AcknowledgeRequestBody
 			if body == null: return
 			var take_note_on_continue := body.journal_eligible and not body.journal_recorded and _autojournal_enabled
 			_acknowledgement_body = InteractionResponse.AcknowledgeBody.new(take_note_on_continue)

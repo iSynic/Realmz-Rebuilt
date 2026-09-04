@@ -24,7 +24,7 @@ static func for_event(event: DomainEvent) -> String:
 
 
 static func for_interaction(request: InteractionRequest) -> String:
-	var acknowledge := request.body as InteractionRequest.AcknowledgeBody
+	var acknowledge := request.body as AcknowledgeRequestBody
 	if request.kind == InteractionRequest.ACKNOWLEDGE and acknowledge != null and acknowledge.presentation == &"classic-textbox":
 		return "Scenario text • continue when ready"
 	var prompt := request.body.prompt_text()

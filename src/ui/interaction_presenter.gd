@@ -143,7 +143,7 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 	_set_heading(ComponentFactory.heading_for_kind(request.kind))
 	if request.kind == InteractionRequest.SESSION_LIFECYCLE:
 		_set_heading("")
-	if request.kind == InteractionRequest.CHARACTER_SELECTION and (request.body as InteractionRequest.CharacterSelectionRequestBody).spell_context != null:
+	if request.kind == InteractionRequest.CHARACTER_SELECTION and (request.body as CharacterSelectionRequestBody).spell_context != null:
 		_set_heading("Spell Target")
 	_prompt.text = _prompt_for(request, classic_text_context)
 	_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER if LayoutPolicy.uses_classic_click_modal(request) else HORIZONTAL_ALIGNMENT_LEFT
@@ -375,7 +375,7 @@ func submit_active_body(body: InteractionResponse.CombatBody) -> bool:
 func submit_character_selection(character_ids: Array[String]) -> bool:
 	if _playback_masked or _request == null or _request.kind != InteractionRequest.CHARACTER_SELECTION:
 		return false
-	var body := _request.body as InteractionRequest.CharacterSelectionRequestBody
+	var body := _request.body as CharacterSelectionRequestBody
 	if body == null or character_ids.size() != body.count:
 		return false
 	_submit_body(InteractionResponse.SelectionBody.new(character_ids))
@@ -497,7 +497,7 @@ func _submit_body(body: InteractionResponse.Body) -> void:
 func _uses_global_classic_acknowledgement() -> bool:
 	if _request == null or _request.kind != InteractionRequest.ACKNOWLEDGE:
 		return false
-	var body := _request.body as InteractionRequest.AcknowledgeBody
+	var body := _request.body as AcknowledgeRequestBody
 	return body != null and body.presentation in [&"classic-textbox", &"classic-click-modal"]
 
 

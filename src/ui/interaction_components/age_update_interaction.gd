@@ -31,7 +31,7 @@ func configure(media: ClassicMediaCatalog) -> void:
 
 
 func build(request: InteractionRequest) -> void:
-	var body := request.body as InteractionRequest.AgeUpdateBody
+	var body := request.body as AgeUpdateRequestBody
 	if body == null:
 		add_hint("The age update is unavailable.")
 		return
@@ -54,7 +54,7 @@ func build(request: InteractionRequest) -> void:
 	)
 
 
-func _bind_identity(body: InteractionRequest.AgeUpdateBody) -> void:
+func _bind_identity(body: AgeUpdateRequestBody) -> void:
 	_bind_exact_art(%Portrait as TextureRect, body.portrait_id)
 	(%Identity as Label).text = "%s • %s" % [body.character_name, body.race_name]
 	(%AgeBand as Label).text = "%s • ages %d–%d" % [

@@ -25,9 +25,9 @@ static func player_map_vm_continuation_is_valid(content: RealmzContent, state: G
 	var request := vm.pending_request()
 	var runtime_body := runtime.body as ScenarioRuntimeContinuation.TextBody
 	var player_map_id := "" if runtime_body == null else runtime_body.player_map_id
-	var body: InteractionRequest.AcknowledgeBody = null
+	var body: AcknowledgeRequestBody = null
 	if request != null:
-		body = request.body as InteractionRequest.AcknowledgeBody
+		body = request.body as AcknowledgeRequestBody
 	return request != null and request.kind == InteractionRequest.ACKNOWLEDGE and body != null and body.presentation == &"player-map" and body.player_map_id == player_map_id and body.has_presentation and body.has_player_map_id and not body.has_message_id and not body.has_journal_state and not body.has_sound_id and content.world.player_map_by_id(player_map_id) != null and state.world.has_map(player_map_id)
 
 
@@ -45,11 +45,11 @@ static func thief_vm_continuation_is_valid(content: RealmzContent, state: GameSt
 	if owner == null or encounter == null or thief == null or request == null:
 		return false
 	if runtime.kind == ScenarioRuntimeContinuation.CLASSIC_THIEF_ENCOUNTER:
-		var body := request.body as InteractionRequest.ThiefEncounterRequestBody
+		var body := request.body as ThiefEncounterRequestBody
 		return request.kind == InteractionRequest.THIEF_ENCOUNTER and body != null and body.encounter_id == encounter.id and _valid_thief_request(content, state, thief, body)
 	if runtime.kind == ScenarioRuntimeContinuation.CLASSIC_THIEF_RESOLUTION:
 		return _valid_thief_resolution_request(content, state, thief, owner, request)
-	var body := request.body as InteractionRequest.PickLockRequestBody
+	var body := request.body as PickLockRequestBody
 	var character := state.party.character_by_id(owner.character_id)
 	if request.kind != InteractionRequest.PICK_LOCK or body == null or owner.action_index not in [2, 4, 6, 7] or body.encounter_id != encounter.id or body.action_index != owner.action_index or body.character_id != owner.character_id or character == null or character.current_health <= 0 or character.conditions.is_active(ConditionRules.ANIMATED):
 		return false
@@ -59,7 +59,7 @@ static func thief_vm_continuation_is_valid(content: RealmzContent, state: GameSt
 	return flags.size() == 10 and not flags[owner.action_index] and chance > 0 and body.action_label == ClassicPickLockRules.action_label(owner.action_index) and body.character_name == character.name and body.portrait_id == character.portrait_id and body.chance_percent == chance and body.yellow_threshold == ClassicPickLockRules.yellow_threshold(chance) and body.green_threshold == ClassicPickLockRules.green_threshold(chance) and body.frame_rate == ClassicPickLockRules.FRAME_RATE and body.time_limit_frames == ClassicPickLockRules.time_limit_frames(thief.tumblers) and body.frames == expected_frames
 
 
-static func _valid_thief_request(content: RealmzContent, state: GameState, thief: ThiefEncounterDefinition, body: InteractionRequest.ThiefEncounterRequestBody) -> bool:
+static func _valid_thief_request(content: RealmzContent, state: GameState, thief: ThiefEncounterDefinition, body: ThiefEncounterRequestBody) -> bool:
 	var prompt_id := absi(thief.prompts()[0]) if not thief.prompts().is_empty() else 0
 	var message := content.message_by_id(prompt_id)
 	if body.prompt != (message.text if message != null else "Choose a thief action."):
@@ -91,7 +91,7 @@ static func _valid_thief_request(content: RealmzContent, state: GameState, thief
 
 
 static func _valid_thief_resolution_request(content: RealmzContent, state: GameState, thief: ThiefEncounterDefinition, owner: ScenarioRuntimeContinuation.ThiefBody, request: InteractionRequest) -> bool:
-	var body := request.body as InteractionRequest.AcknowledgeBody
+	var body := request.body as AcknowledgeRequestBody
 	var character := state.party.character_by_id(owner.character_id)
 	if request.kind != InteractionRequest.ACKNOWLEDGE or body == null or character == null or owner.action_index < 0 or owner.action_index > 7 or body.presentation != &"classic-textbox" or not body.has_presentation or body.has_journal_state or body.has_player_map_id:
 		return false
@@ -160,7 +160,7 @@ static func reward_continuation_is_valid(content: RealmzContent, state: GameStat
 	return false
 
 
-static func age_update_payload_is_valid(state: GameState, update: InteractionRequest.AgeUpdateBody) -> bool:
+static func age_update_payload_is_valid(state: GameState, update: AgeUpdateRequestBody) -> bool:
 	return update != null and not update.character_id.is_empty() and state.party.character_by_id(update.character_id) != null \
 		and update.presentation == &"classic-age-update" \
 		and update.age_group >= 1 and update.age_group <= 5 \

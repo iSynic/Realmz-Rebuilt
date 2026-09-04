@@ -268,13 +268,13 @@ func _capture_gallery() -> void:
 	]:
 		var interaction_request := ClassicUiFixtureGallery.request_for(interaction_kind)
 		if interaction_kind == InteractionRequest.AGE_UPDATE and not gallery_view.party_members.is_empty():
-			var age_body := interaction_request.body as InteractionRequest.AgeUpdateBody
+			var age_body := interaction_request.body as AgeUpdateRequestBody
 			age_body.character_id = gallery_view.party_members[0].id; age_body.character_name = gallery_view.party_members[0].name; age_body.portrait_id = gallery_view.party_members[0].portrait_id; age_body.combat_icon_id = gallery_view.party_members[0].combat_icon_id
 		if interaction_kind == InteractionRequest.PICK_LOCK and not gallery_view.party_members.is_empty():
-			var lock_body := interaction_request.body as InteractionRequest.PickLockRequestBody
+			var lock_body := interaction_request.body as PickLockRequestBody
 			lock_body.character_id = gallery_view.party_members[0].id; lock_body.character_name = gallery_view.party_members[0].name; lock_body.portrait_id = gallery_view.party_members[0].portrait_id
 		if interaction_kind == InteractionRequest.CHARACTER_SELECTION and not gallery_view.party_members.is_empty():
-			var selection_body := interaction_request.body as InteractionRequest.CharacterSelectionRequestBody
+			var selection_body := interaction_request.body as CharacterSelectionRequestBody
 			selection_body.eligible[0].id = gallery_view.party_members[0].id; selection_body.eligible[0].name = gallery_view.party_members[0].name
 			_shell.present_character_selection(interaction_request)
 		_interaction.present(interaction_request, "", gallery_view, gallery_media)

@@ -228,7 +228,7 @@ func present_character_selection(request: InteractionRequest) -> void:
 	if request == null or request.kind != InteractionRequest.CHARACTER_SELECTION:
 		clear_character_selection()
 		return
-	var body := request.body as InteractionRequest.CharacterSelectionRequestBody
+	var body := request.body as CharacterSelectionRequestBody
 	if body == null:
 		clear_character_selection()
 		return

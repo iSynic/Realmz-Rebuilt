@@ -36,7 +36,7 @@ func build(request: InteractionRequest) -> void:
 
 
 func _build_character_selection(request: InteractionRequest) -> void:
-	var body := request.body as InteractionRequest.CharacterSelectionRequestBody
+	var body := request.body as CharacterSelectionRequestBody
 	if body == null:
 		return
 	var context_panel := %SpellTargetContext as PanelContainer
@@ -77,7 +77,7 @@ static func _target_label(target_type: int) -> String:
 
 
 func _build_ally_selection(request: InteractionRequest) -> void:
-	var body := request.body as InteractionRequest.SelectionRequestBody
+	var body := request.body as SelectionRequestBody
 	if body == null:
 		return
 	_ally_maximum = body.maximum

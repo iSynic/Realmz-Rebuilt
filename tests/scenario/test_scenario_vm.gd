@@ -190,7 +190,7 @@ func _test_public_thief_encounter(content: RealmzContent) -> void:
 	var pick_lock := vm.resume(InteractionResponse.from_data(thief.interaction.request_id, InteractionRequest.THIEF_ENCOUNTER, {"action": "attempt", "characterId": character.id, "actionIndex": 2}), api)
 	assert_equal([pick_lock.state, pick_lock.interaction.kind if pick_lock.interaction != null else &"", rng.snapshot().draw_count], [ScenarioVmResult.State.WAITING, InteractionRequest.PICK_LOCK, 0], "Pick Lock previews its timed tumbler sequence without advancing gameplay RNG")
 	if pick_lock.interaction == null: return
-	var lock_body := pick_lock.interaction.body as InteractionRequest.PickLockRequestBody
+	var lock_body := pick_lock.interaction.body as PickLockRequestBody
 	assert_not_null(lock_body, "Pick Lock request uses its strict typed body")
 	if lock_body == null: return
 	assert_equal([lock_body.chance_percent, lock_body.time_limit_frames], [90, 210], "Disarm Trap reads Castle spec[7] and retains the final static countdown second")

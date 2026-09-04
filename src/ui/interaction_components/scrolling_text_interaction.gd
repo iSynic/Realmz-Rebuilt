@@ -14,7 +14,7 @@ func configure(media: ClassicMediaCatalog) -> void:
 
 
 func build(request: InteractionRequest) -> void:
-	var body := request.body as InteractionRequest.AcknowledgeBody
+	var body := request.body as AcknowledgeRequestBody
 	if body == null or body.presentation != &"classic-scrolling-text":
 		return
 	_surface = %ClassicScrollingTextWell as ClassicScrollingTextSurface

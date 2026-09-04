@@ -126,14 +126,14 @@ class ThiefBody:
 
 class AgeBody:
 	extends Body
-	var updates: Array[InteractionRequest.AgeUpdateBody]
+	var updates: Array[AgeUpdateRequestBody]
 	var index: int
 	var value: Variant
 	var directive: ScenarioVmDirective
 
 	func to_data() -> Dictionary:
 		var serialized: Array[Dictionary] = []
-		for update: InteractionRequest.AgeUpdateBody in updates:
+		for update: AgeUpdateRequestBody in updates:
 			serialized.append(update.to_data())
 		return {"updates": serialized, "index": index, "value": value.duplicate(true) if value is Array or value is Dictionary else value, "directive": {} if directive == null else directive.to_data()}
 
@@ -160,7 +160,7 @@ class CombatBody:
 	var actor_id: String
 	var mode: StringName
 	var destination: Vector2i
-	var updates: Array[InteractionRequest.AgeUpdateBody]
+	var updates: Array[AgeUpdateRequestBody]
 	var index: int
 	var round_before: int
 	var program_id: String
@@ -176,7 +176,7 @@ class CombatBody:
 			data["destination"] = [destination.x, destination.y]
 		elif not updates.is_empty():
 			var serialized: Array[Dictionary] = []
-			for update: InteractionRequest.AgeUpdateBody in updates:
+			for update: AgeUpdateRequestBody in updates:
 				serialized.append(update.to_data())
 			data["updates"] = serialized
 			data["index"] = index
@@ -305,10 +305,10 @@ static func character_ability(values: Array[int], gosub: bool) -> ScenarioRuntim
 	return ScenarioRuntimeContinuation.new(CLASSIC_CHARACTER_ABILITY, typed)
 
 
-static func age_updates(continuation_kind: StringName, updates: Array[InteractionRequest.AgeUpdateBody], index: int, result_value: Variant, directive: ScenarioVmDirective) -> ScenarioRuntimeContinuation:
+static func age_updates(continuation_kind: StringName, updates: Array[AgeUpdateRequestBody], index: int, result_value: Variant, directive: ScenarioVmDirective) -> ScenarioRuntimeContinuation:
 	assert(continuation_kind in [CLASSIC_AGE_UPDATES, SAFE_AGE_UPDATES])
 	var typed := AgeBody.new()
-	for update: InteractionRequest.AgeUpdateBody in updates:
+	for update: AgeUpdateRequestBody in updates:
 		typed.updates.append(_copy_age_update(update))
 	typed.index = index
 	typed.value = _detached(result_value)
@@ -357,13 +357,13 @@ static func combat_retreat(continuation_kind: StringName, source_kind: StringNam
 	return ScenarioRuntimeContinuation.new(continuation_kind, typed)
 
 
-static func combat_age(continuation_kind: StringName, source_kind: StringName, battle_id: String, caller: ScenarioBattleCaller, updates: Array[InteractionRequest.AgeUpdateBody], index: int, round_before: int) -> ScenarioRuntimeContinuation:
+static func combat_age(continuation_kind: StringName, source_kind: StringName, battle_id: String, caller: ScenarioBattleCaller, updates: Array[AgeUpdateRequestBody], index: int, round_before: int) -> ScenarioRuntimeContinuation:
 	assert(continuation_kind in [CLASSIC_COMBAT_AGE, SAFE_COMBAT_AGE])
 	var typed := CombatBody.new()
 	typed.source_kind = source_kind
 	typed.battle_id = battle_id
 	typed.caller = caller.copy()
-	for update: InteractionRequest.AgeUpdateBody in updates:
+	for update: AgeUpdateRequestBody in updates:
 		typed.updates.append(_copy_age_update(update))
 	typed.index = index
 	typed.round_before = round_before
@@ -511,7 +511,7 @@ static func _decode_age(continuation_kind: StringName, data: Dictionary) -> Scen
 	var index := _integer(data.get("index"))
 	if index < 1 or index > data["updates"].size() or not _json_safe(data.get("value"), 0):
 		return null
-	var updates: Array[InteractionRequest.AgeUpdateBody] = []
+	var updates: Array[AgeUpdateRequestBody] = []
 	for update: Variant in data["updates"]:
 		var typed_update := _age_update_from_data(update)
 		if typed_update == null:
@@ -553,7 +553,7 @@ static func _decode_combat(continuation_kind: StringName, data: Dictionary) -> S
 		var round_before := _integer(data.get("roundBefore"))
 		if index < 1 or index > data["updates"].size() or round_before < 1:
 			return null
-		var updates: Array[InteractionRequest.AgeUpdateBody] = []
+		var updates: Array[AgeUpdateRequestBody] = []
 		for update: Variant in data["updates"]:
 			var typed_update := _age_update_from_data(update)
 			if typed_update == null:
@@ -655,12 +655,12 @@ static func _detached(value: Variant) -> Variant:
 	return value.duplicate(true) if value is Array or value is Dictionary else value
 
 
-static func _age_update_from_data(value: Variant) -> InteractionRequest.AgeUpdateBody:
+static func _age_update_from_data(value: Variant) -> AgeUpdateRequestBody:
 	if not value is Dictionary:
 		return null
 	var request := InteractionRequest.age_update("continuation.age", value)
-	return null if request == null else request.body as InteractionRequest.AgeUpdateBody
+	return null if request == null else request.body as AgeUpdateRequestBody
 
 
-static func _copy_age_update(update: InteractionRequest.AgeUpdateBody) -> InteractionRequest.AgeUpdateBody:
+static func _copy_age_update(update: AgeUpdateRequestBody) -> AgeUpdateRequestBody:
 	return _age_update_from_data(update.to_data()) if update != null else null

@@ -525,10 +525,10 @@ func _resume_combat_age_updates(continuation: ScenarioRuntimeContinuation, respo
 	var index := combat_continuation.index
 	if updates.is_empty() or index < 1 or index > updates.size():
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_continuation", "The combat age-update queue is invalid.")
-	var acknowledged: InteractionRequest.AgeUpdateBody = updates[index - 1]
+	var acknowledged: AgeUpdateRequestBody = updates[index - 1]
 	var events: Array[DomainEvent] = [DomainEvent.new(&"character_age_update_acknowledged", {"characterId": acknowledged.character_id})]
 	if index < updates.size():
-		var next_payload: InteractionRequest.AgeUpdateBody = updates[index]
+		var next_payload: AgeUpdateRequestBody = updates[index]
 		var next_continuation := ScenarioRuntimeContinuation.combat_age(continuation.kind, combat_continuation.source_kind, combat_continuation.battle_id, combat_continuation.caller, updates, index + 1, combat_continuation.round_before)
 		events.append(CharacterAgingResult.sound_event_for_update(next_payload))
 		return ScenarioRuntimeOperationResult.waiting(InteractionRequest.age_update_body(request_id, next_payload), next_continuation, events)

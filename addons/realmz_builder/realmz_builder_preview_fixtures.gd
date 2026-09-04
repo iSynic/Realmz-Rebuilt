@@ -142,8 +142,8 @@ static func _transfers(profile: String) -> Array[InteractionRequestValue.Transfe
 	return result
 
 
-static func _pick_lock_body(profile: String) -> InteractionRequest.PickLockRequestBody:
-	var body := InteractionRequest.PickLockRequestBody.new()
+static func _pick_lock_body(profile: String) -> PickLockRequestBody:
+	var body := PickLockRequestBody.new()
 	body.encounter_id = 19
 	body.action_index = 6
 	body.action_label = "Pick Lock" if profile != "Error" else "Mechanism unavailable"
@@ -177,8 +177,8 @@ static func _lifecycle_body(profile: String) -> InteractionRequest.LifecycleRequ
 	return body
 
 
-static func _scrolling_text_body(profile: String) -> InteractionRequest.AcknowledgeBody:
-	var body := InteractionRequest.AcknowledgeBody.new()
+static func _scrolling_text_body(profile: String) -> AcknowledgeRequestBody:
+	var body := AcknowledgeRequestBody.new()
 	body.presentation = &"classic-scrolling-text"
 	body.has_presentation = true
 	body.prompt = "" if profile == "Empty" else (
@@ -205,8 +205,8 @@ static func _level_up_body(profile: String) -> InteractionRequest.LevelUpRequest
 	return body
 
 
-static func _encounter_body(profile: String) -> InteractionRequest.ComplexEncounterRequestBody:
-	var body := InteractionRequest.ComplexEncounterRequestBody.new()
+static func _encounter_body(profile: String) -> ComplexEncounterRequestBody:
+	var body := ComplexEncounterRequestBody.new()
 	body.encounter_kind = &"complex"
 	body.encounter_id = 42
 	body.prompt = "A wary gatekeeper bars the road and awaits the company's answer."

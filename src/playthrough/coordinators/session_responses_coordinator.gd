@@ -397,8 +397,8 @@ func finish_with_age_updates(events: Array[DomainEvent], resume_kind: StringName
 			return _continue_after_session_combat_age_update(events)
 		return _context.completed(events)
 	var age = SessionContinuation.AgeBody.new()
-	for update: InteractionRequest.AgeUpdateBody in updates:
-		age.updates.append(InteractionRequest.age_update_body("session.age-copy", update).body as InteractionRequest.AgeUpdateBody)
+	for update: AgeUpdateRequestBody in updates:
+		age.updates.append(InteractionRequest.age_update_body("session.age-copy", update).body as AgeUpdateRequestBody)
 	age.index = 1
 	age.resume_kind = resume_kind
 	age.resume_continuation = null if resume_continuation == null else resume_continuation.copy()
@@ -418,10 +418,10 @@ func _respond_session_age_update(response: InteractionResponse) -> SessionCoordi
 	var index = age.index
 	if updates.is_empty() or index < 1 or index > updates.size():
 		return _context.failed(&"invalid_session_continuation", "The age-update queue is unavailable.")
-	var acknowledged: InteractionRequest.AgeUpdateBody = updates[index - 1]
+	var acknowledged: AgeUpdateRequestBody = updates[index - 1]
 	var events: Array[DomainEvent] = [DomainEvent.new(&"character_age_update_acknowledged", {"characterId": acknowledged.character_id})]
 	if index < updates.size():
-		var next_payload: InteractionRequest.AgeUpdateBody = updates[index]
+		var next_payload: AgeUpdateRequestBody = updates[index]
 		age.index = index + 1
 		_context.session_interaction = InteractionRequest.age_update_body(_session_age_update_request_id(next_payload, index), next_payload)
 		events.append(CharacterAgingResult.sound_event_for_update(next_payload))
@@ -457,7 +457,7 @@ func _continue_after_session_combat_age_update(events: Array[DomainEvent]) -> Se
 	return _context.completed(events)
 
 
-func _session_age_update_request_id(update: InteractionRequest.AgeUpdateBody, index: int) -> String:
+func _session_age_update_request_id(update: AgeUpdateRequestBody, index: int) -> String:
 	return "session.age-update:%s:%d:%d" % [update.character_id, _context.next_revision(), index]
 
 

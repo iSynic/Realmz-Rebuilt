@@ -121,14 +121,14 @@ class ServiceBody:
 
 class AgeBody:
 	extends Body
-	var updates: Array[InteractionRequest.AgeUpdateBody]
+	var updates: Array[AgeUpdateRequestBody]
 	var index: int
 	var resume_kind: StringName
 	var resume_continuation: SessionContinuation
 
 	func wire_payload(kind: StringName) -> Dictionary:
 		var serialized_updates: Array[Dictionary] = []
-		for update: InteractionRequest.AgeUpdateBody in updates:
+		for update: AgeUpdateRequestBody in updates:
 			serialized_updates.append(update.to_data())
 		return {"kind": String(kind), "updates": serialized_updates, "index": index, "resumeKind": String(resume_kind), "resumeContinuation": {} if resume_continuation == null else resume_continuation.to_data()}
 
@@ -665,8 +665,8 @@ static func _json_safe(value: Variant, depth: int) -> bool:
 	return false
 
 
-static func _age_update_from_data(value: Variant) -> InteractionRequest.AgeUpdateBody:
+static func _age_update_from_data(value: Variant) -> AgeUpdateRequestBody:
 	if not value is Dictionary:
 		return null
 	var request := InteractionRequest.age_update("continuation.age", value)
-	return null if request == null else request.body as InteractionRequest.AgeUpdateBody
+	return null if request == null else request.body as AgeUpdateRequestBody

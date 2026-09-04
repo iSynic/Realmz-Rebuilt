@@ -131,7 +131,7 @@ func _test_snapshot_rng_and_age_persistence(content: RealmzContent) -> void:
 	assert_true(first_age_update.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 3002), "opening the age dialog requests Castle sound 3002")
 	var age_boundary_save := save_round_trip(age_session.snapshot())
 	assert_not_null(age_boundary_save, "the first age-update click boundary is centrally saveable")
-	assert_true(age_boundary_save.continuation.age().updates[0] is InteractionRequest.AgeUpdateBody, "save restoration keeps live age-update continuation entries typed")
+	assert_true(age_boundary_save.continuation.age().updates[0] is AgeUpdateRequestBody, "save restoration keeps live age-update continuation entries typed")
 	var pending_close_session := GameSession.new()
 	assert_equal(pending_close_session.restore(content, age_boundary_save).state, SessionStep.State.COMPLETED, "a pending interaction restores for lifecycle closure")
 	var pending_close_snapshot := save_data(pending_close_session.snapshot())

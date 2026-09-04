@@ -56,7 +56,7 @@ static func uses_textbox_region(request: InteractionRequest, passive_text: bool 
 static func uses_classic_click_modal(request: InteractionRequest) -> bool:
 	if request == null or request.kind != InteractionRequest.ACKNOWLEDGE:
 		return false
-	var body := request.body as InteractionRequest.AcknowledgeBody
+	var body := request.body as AcknowledgeRequestBody
 	return body != null and body.presentation == &"classic-click-modal"
 
 
@@ -122,12 +122,12 @@ static func interaction_region(request: InteractionRequest, textbox_rect: Rect2,
 static func is_player_map_request(request: InteractionRequest) -> bool:
 	if request == null or request.kind != InteractionRequest.ACKNOWLEDGE:
 		return false
-	var body := request.body as InteractionRequest.AcknowledgeBody
+	var body := request.body as AcknowledgeRequestBody
 	return body != null and body.presentation == &"player-map"
 
 
 static func is_scrolling_text_request(request: InteractionRequest) -> bool:
 	if request == null or request.kind != InteractionRequest.ACKNOWLEDGE:
 		return false
-	var body := request.body as InteractionRequest.AcknowledgeBody
+	var body := request.body as AcknowledgeRequestBody
 	return body != null and body.presentation == &"classic-scrolling-text"

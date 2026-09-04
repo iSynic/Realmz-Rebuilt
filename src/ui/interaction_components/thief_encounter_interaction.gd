@@ -6,7 +6,7 @@ extends InteractionComponent
 const THIEF_ACTION_BUTTON_SCENE_PATH := "res://src/ui/interaction_components/thief_action_button.tscn"
 
 var _media: ClassicMediaCatalog
-var _body: InteractionRequest.ThiefEncounterRequestBody
+var _body: ThiefEncounterRequestBody
 var _selected_character_index: int = 0
 var _portrait: TextureRect
 var _character_name: Label
@@ -18,7 +18,7 @@ func configure(media: ClassicMediaCatalog) -> void:
 
 
 func build(request: InteractionRequest) -> void:
-	_body = request.body as InteractionRequest.ThiefEncounterRequestBody
+	_body = request.body as ThiefEncounterRequestBody
 	if _body == null:
 		return
 	_portrait = %ThiefCharacterPortrait

@@ -339,7 +339,7 @@ func _scripted_response(request: InteractionRequest, responses: Array, cursor: D
 		return null
 	var data: Dictionary = _normalize_route_response_data(definition["data"])
 	if request.kind == InteractionRequest.PICK_LOCK and data.get("frameIndex") == "first-success":
-		var body := request.body as InteractionRequest.PickLockRequestBody
+		var body := request.body as PickLockRequestBody
 		if body == null:
 			return null
 		data["frameIndex"] = _first_successful_pick_lock_frame(body)
@@ -372,7 +372,7 @@ func _normalize_route_response_data(value: Variant) -> Variant:
 	return value
 
 
-func _first_successful_pick_lock_frame(body: InteractionRequest.PickLockRequestBody) -> int:
+func _first_successful_pick_lock_frame(body: PickLockRequestBody) -> int:
 	for frame_index: int in body.frames.size():
 		var succeeded := true
 		for position: int in body.frames[frame_index]:
@@ -407,7 +407,7 @@ func _default_response(request: InteractionRequest, step_id: String) -> Interact
 		&"bank_action":
 			return InteractionResponse.from_data(request.request_id, request.kind, {"action": "leave", "amount": 0})
 		&"ally_selection":
-			var ally_body := request.body as InteractionRequest.SelectionRequestBody
+			var ally_body := request.body as SelectionRequestBody
 			if ally_body == null:
 				return null
 			return InteractionResponse.from_data(request.request_id, request.kind, {"selectedIds": ally_body.selected_ids.duplicate()})

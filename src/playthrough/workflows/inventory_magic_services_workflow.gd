@@ -695,7 +695,7 @@ static func field_spell_target_request(request_id: String, character: CharacterS
 
 
 static func _character_selection_request(request_id: String, character: CharacterState, prompt: String, required_count: int, party: Array[CharacterState], mode: StringName, instance_id: String, spell: SpellDefinition, power: int, scroll_slot: int = -1) -> InteractionRequest:
-	var body := InteractionRequest.CharacterSelectionRequestBody.new()
+	var body := CharacterSelectionRequestBody.new()
 	body.prompt = prompt
 	body.count = required_count
 	body.eligible = _eligible_party_candidates(party)

@@ -27,236 +27,8 @@ const COMBAT: StringName = &"combat_action"
 const SESSION_LIFECYCLE: StringName = &"session_lifecycle"
 
 
-class Body:
-	extends RefCounted
-
-	func to_data() -> Dictionary:
-		return {}
-
-	func prompt_text() -> String:
-		return ""
-
-
-class AcknowledgeBody:
-	extends Body
-	var prompt: String
-	var message_id: int
-	var presentation: StringName
-	var journal_eligible: bool
-	var journal_recorded: bool
-	var sound_id: int
-	var player_map_id: String
-	var resource_type: String
-	var resource_id: int
-	var has_message_id: bool
-	var has_presentation: bool
-	var has_journal_state: bool
-	var has_sound_id: bool
-	var has_player_map_id: bool
-	var has_resource: bool
-
-	func to_data() -> Dictionary:
-		var data := {"prompt": prompt}
-		if has_message_id: data["messageId"] = message_id
-		if has_presentation: data["presentation"] = String(presentation)
-		if has_journal_state:
-			data["journalEligible"] = journal_eligible
-			data["journalRecorded"] = journal_recorded
-		if has_sound_id: data["soundId"] = sound_id
-		if has_player_map_id: data["playerMapId"] = player_map_id
-		if has_resource:
-			data["resourceType"] = resource_type
-			data["resourceId"] = resource_id
-		return data
-
-	func prompt_text() -> String: return prompt
-
-
-class AgeUpdateBody:
-	extends Body
-	var character_id: String
-	var character_name: String
-	var portrait_id: String
-	var combat_icon_id: String
-	var race_id: String
-	var race_name: String
-	var previous_age_days: int
-	var age_days: int
-	var previous_age_group: int
-	var age_group: int
-	var age_group_name: String
-	var age_minimum_years: int
-	var age_maximum_years: int
-	var transition: int
-	var applied_age_group: int
-	var changes: Array[int] = []
-	var prompt: String
-	var presentation: StringName
-	var sound_id: int
-	var source: StringName
-
-	func to_data() -> Dictionary:
-		return {"characterId": character_id, "characterName": character_name, "portraitId": portrait_id, "combatIconId": combat_icon_id, "raceId": race_id, "raceName": race_name, "previousAgeDays": previous_age_days, "ageDays": age_days, "previousAgeGroup": previous_age_group, "ageGroup": age_group, "ageGroupName": age_group_name, "ageMinimumYears": age_minimum_years, "ageMaximumYears": age_maximum_years, "transition": transition, "appliedAgeGroup": applied_age_group, "changes": changes.duplicate(), "prompt": prompt, "presentation": String(presentation), "soundId": sound_id, "source": String(source)}
-
-	func prompt_text() -> String: return prompt
-
-	func same_values(other: AgeUpdateBody) -> bool:
-		return other != null \
-			and character_id == other.character_id and character_name == other.character_name \
-			and portrait_id == other.portrait_id and combat_icon_id == other.combat_icon_id \
-			and race_id == other.race_id and race_name == other.race_name \
-			and previous_age_days == other.previous_age_days and age_days == other.age_days \
-			and previous_age_group == other.previous_age_group and age_group == other.age_group \
-			and age_group_name == other.age_group_name \
-			and age_minimum_years == other.age_minimum_years and age_maximum_years == other.age_maximum_years \
-			and transition == other.transition and applied_age_group == other.applied_age_group \
-			and changes == other.changes and prompt == other.prompt and presentation == other.presentation \
-			and sound_id == other.sound_id and source == other.source
-
-
-class YesNoRequestBody:
-	extends Body
-	var prompt: String
-	var yes_id: int
-	var yes_label: String
-	var no_id: int
-	var no_label: String
-	var region_id: String
-	var has_prompt: bool
-	var has_ids: bool
-	var has_region_id: bool
-
-	func to_data() -> Dictionary:
-		var data := {"yesLabel": yes_label, "noLabel": no_label}
-		if has_prompt: data["prompt"] = prompt
-		if has_ids:
-			data["yesId"] = yes_id
-			data["noId"] = no_id
-		if has_region_id: data["regionId"] = region_id
-		return data
-
-	func prompt_text() -> String: return prompt
-
-
-class ChoiceRequestBody:
-	extends Body
-	var prompt: String
-	var options: Array[InteractionRequestValue.ChoiceOption] = []
-	var can_back_out: bool
-	var encounter_kind: StringName
-	var encounter_id: int
-	var has_can_back_out: bool
-	var has_encounter: bool
-
-	func to_data() -> Dictionary:
-		var data := {"prompt": prompt, "options": options.map(func(value: InteractionRequestValue.ChoiceOption) -> Dictionary: return value.to_data())}
-		if has_can_back_out: data["canBackOut"] = can_back_out
-		if has_encounter:
-			data["encounterKind"] = String(encounter_kind)
-			data["encounterId"] = encounter_id
-		return data
-
-	func prompt_text() -> String: return prompt
-
-
-class CharacterSelectionRequestBody:
-	extends Body
-	var prompt: String
-	var count: int = 1
-	var eligible: Array[InteractionRequestValue.SelectionCandidate] = []
-	var allow_dead: bool
-	var mode: StringName
-	var item_instance_id: String
-	var spell_id: String
-	var scroll_slot: int = -1
-	var spell_context: InteractionRequestValue.SpellTargetContext
-
-	func to_data() -> Dictionary:
-		var data := {"count": count, "eligible": eligible.map(func(value: InteractionRequestValue.SelectionCandidate) -> Dictionary: return value.to_data())}
-		if not prompt.is_empty(): data["prompt"] = prompt
-		if allow_dead: data["allowDead"] = true
-		if not mode.is_empty(): data["mode"] = String(mode)
-		if not item_instance_id.is_empty(): data["itemInstanceId"] = item_instance_id
-		if not spell_id.is_empty(): data["spellId"] = spell_id
-		if scroll_slot >= 0: data["scrollSlot"] = scroll_slot
-		if spell_context != null: data["spellContext"] = spell_context.to_data()
-		return data
-
-	func prompt_text() -> String: return prompt
-
-
-class SelectionRequestBody:
-	extends Body
-	var prompt: String
-	var maximum: int
-	var selected_ids: Array[String] = []
-	var required_ids: Array[String] = []
-	var candidates: Array[InteractionRequestValue.SelectionCandidate] = []
-
-	func to_data() -> Dictionary:
-		return {"prompt": prompt, "maximum": maximum, "selectedIds": selected_ids.duplicate(), "requiredIds": required_ids.duplicate(), "candidates": candidates.map(func(value: InteractionRequestValue.SelectionCandidate) -> Dictionary: return value.to_data())}
-
-	func prompt_text() -> String: return prompt
-
-
-class ComplexEncounterRequestBody:
-	extends Body
-	var encounter_kind: StringName
-	var encounter_id: int
-	var prompt: String
-	var actions: Array[InteractionRequestValue.EncounterAction] = []
-	var characters: Array[InteractionRequestValue.NamedCharacter] = []
-	var items: Array[InteractionRequestValue.EncounterCatalogEntry] = []
-	var spells: Array[InteractionRequestValue.EncounterCatalogEntry] = []
-	var can_back_out: bool
-	var action_selection_count: int
-
-	func to_data() -> Dictionary:
-		return {"encounterKind": String(encounter_kind), "encounterId": encounter_id, "prompt": prompt, "actions": actions.map(func(value: InteractionRequestValue.EncounterAction) -> Dictionary: return value.to_data()), "characters": characters.map(func(value: InteractionRequestValue.NamedCharacter) -> Dictionary: return value.to_data()), "items": items.map(func(value: InteractionRequestValue.EncounterCatalogEntry) -> Dictionary: return value.to_data()), "spells": spells.map(func(value: InteractionRequestValue.EncounterCatalogEntry) -> Dictionary: return value.to_data()), "canBackOut": can_back_out, "actionSelectionCount": action_selection_count}
-
-	func prompt_text() -> String: return prompt
-
-
-class ThiefEncounterRequestBody:
-	extends Body
-	var encounter_id: int
-	var prompt: String
-	var sound_id: int
-	var characters: Array[InteractionRequestValue.ThiefCharacter] = []
-
-	func to_data() -> Dictionary:
-		return {"encounterId": encounter_id, "prompt": prompt, "soundId": sound_id, "characters": characters.map(func(value: InteractionRequestValue.ThiefCharacter) -> Dictionary: return value.to_data())}
-
-	func prompt_text() -> String: return prompt
-
-
-class PickLockRequestBody:
-	extends Body
-	var encounter_id: int
-	var action_index: int
-	var action_label: String
-	var character_id: String
-	var character_name: String
-	var portrait_id: String
-	var chance_percent: int
-	var yellow_threshold: int
-	var green_threshold: int
-	var frame_rate: int
-	var time_limit_frames: int
-	var frames: Array[Array] = []
-
-	func to_data() -> Dictionary:
-		var serialized: Array[Array] = []
-		for frame: Array in frames:
-			serialized.append(frame.duplicate())
-		return {"encounterId": encounter_id, "actionIndex": action_index, "actionLabel": action_label, "characterId": character_id, "characterName": character_name, "portraitId": portrait_id, "chancePercent": chance_percent, "yellowThreshold": yellow_threshold, "greenThreshold": green_threshold, "frameRate": frame_rate, "timeLimitFrames": time_limit_frames, "frames": serialized}
-
-	func prompt_text() -> String:
-		return "Stop the tumblers when every marker reaches the gold zone."
-
-
 class ServiceRequestBody:
-	extends Body
+	extends InteractionRequestBody
 	var characters: Array[InteractionRequestValue.ServiceCharacter] = []
 	var actions: Array[String] = []
 
@@ -303,7 +75,7 @@ class BankRequestBody:
 		return data
 
 class TreasureRequestBody:
-	extends Body
+	extends InteractionRequestBody
 	var mode: StringName
 	var prompt: String
 	var item: InteractionRequestValue.RewardItem
@@ -366,7 +138,7 @@ class TreasureRequestBody:
 
 
 class LevelUpRequestBody:
-	extends Body
+	extends InteractionRequestBody
 	var mode: StringName
 	var prompt: String
 	var character_id: String
@@ -390,7 +162,7 @@ class LevelUpRequestBody:
 
 
 class CombatRequestBody:
-	extends Body
+	extends InteractionRequestBody
 	var battle_id: String
 	var round_number: int
 	var actor_id: String
@@ -431,7 +203,7 @@ class CombatRequestBody:
 
 
 class LifecycleRequestBody:
-	extends Body
+	extends InteractionRequestBody
 	var operation: StringName
 	var prompt: String
 	var has_active_session: bool
@@ -449,7 +221,7 @@ class LifecycleRequestBody:
 
 var request_id: String
 var kind: StringName
-var body: Body
+var body: InteractionRequestBody
 # Revision-local detached projection prepared while constructing a combat
 # request. It is deliberately excluded from to_data(); restored requests rebuild
 # it from authoritative state, while live commits can avoid projecting combat
@@ -457,7 +229,7 @@ var body: Body
 var transient_combat_view: CombatView
 
 
-func _init(id: String, request_kind: StringName, request_body: Body) -> void:
+func _init(id: String, request_kind: StringName, request_body: InteractionRequestBody) -> void:
 	request_id = id
 	kind = request_kind
 	body = request_body
@@ -471,8 +243,8 @@ func is_supported_kind() -> bool:
 	if request_id.is_empty() or body == null:
 		return false
 	match kind:
-		ACKNOWLEDGE: return body is AcknowledgeBody
-		AGE_UPDATE: return body is AgeUpdateBody
+		ACKNOWLEDGE: return body is AcknowledgeRequestBody
+		AGE_UPDATE: return body is AgeUpdateRequestBody
 		YES_NO: return body is YesNoRequestBody
 		INDEXED_CHOICE, ENCOUNTER_CHOICE: return body is ChoiceRequestBody
 		CHARACTER_SELECTION: return body is CharacterSelectionRequestBody
@@ -495,7 +267,7 @@ static func kind_is_supported(request_kind: StringName) -> bool:
 
 
 static func acknowledge(id: String, prompt: String, message_id: int = 0) -> InteractionRequest:
-	var value := AcknowledgeBody.new()
+	var value := AcknowledgeRequestBody.new()
 	value.prompt = prompt
 	value.message_id = message_id
 	value.presentation = &"classic-textbox"
@@ -508,7 +280,7 @@ static func age_update(id: String, update_payload: Dictionary) -> InteractionReq
 	return _from_payload(id, AGE_UPDATE, update_payload)
 
 
-static func age_update_body(id: String, update: AgeUpdateBody) -> InteractionRequest:
+static func age_update_body(id: String, update: AgeUpdateRequestBody) -> InteractionRequest:
 	if update == null:
 		return null
 	return _from_payload(id, AGE_UPDATE, update.to_data())
@@ -549,7 +321,7 @@ static func from_data(data: Variant) -> InteractionRequest:
 
 
 static func _from_payload(id: String, request_kind: StringName, payload: Dictionary) -> InteractionRequest:
-	var parsed: Body = null
+	var parsed: InteractionRequestBody = null
 	match request_kind:
 		ACKNOWLEDGE, AGE_UPDATE, YES_NO:
 			parsed = _parse_dialog_body(request_kind, payload)
@@ -573,12 +345,12 @@ static func _from_payload(id: String, request_kind: StringName, payload: Diction
 	return InteractionRequest.new(id, request_kind, parsed)
 
 
-static func _parse_dialog_body(request_kind: StringName, payload: Dictionary) -> Body:
+static func _parse_dialog_body(request_kind: StringName, payload: Dictionary) -> InteractionRequestBody:
 	if request_kind == ACKNOWLEDGE:
 		if not _fields_are_exact(payload, ["prompt", "messageId", "presentation", "journalEligible", "journalRecorded", "soundId", "playerMapId", "resourceType", "resourceId"], ["prompt"]) or not payload["prompt"] is String or not _optional_ints(payload, ["messageId", "soundId", "resourceId"]) or not _optional_strings(payload, ["presentation", "playerMapId", "resourceType"]) or not _optional_bools(payload, ["journalEligible", "journalRecorded"]): return null
 		if payload.has("journalEligible") != payload.has("journalRecorded"): return null
 		if payload.has("resourceType") != payload.has("resourceId") or (payload.has("resourceType") and String(payload["resourceType"]).is_empty()): return null
-		var acknowledge_body := AcknowledgeBody.new()
+		var acknowledge_body := AcknowledgeRequestBody.new()
 		acknowledge_body.prompt = payload["prompt"]
 		acknowledge_body.message_id = int(payload.get("messageId", 0))
 		acknowledge_body.presentation = StringName(payload.get("presentation", ""))
@@ -611,7 +383,7 @@ static func _parse_dialog_body(request_kind: StringName, payload: Dictionary) ->
 		return yes_no_body
 	var fields: Array[String] = ["characterId", "characterName", "portraitId", "combatIconId", "raceId", "raceName", "previousAgeDays", "ageDays", "previousAgeGroup", "ageGroup", "ageGroupName", "ageMinimumYears", "ageMaximumYears", "transition", "appliedAgeGroup", "changes", "prompt", "presentation", "soundId", "source"]
 	if request_kind != AGE_UPDATE or not _fields_are_exact(payload, fields, fields) or not _required_strings(payload, ["characterId", "characterName", "portraitId", "combatIconId", "raceId", "raceName", "ageGroupName", "prompt", "presentation", "source"]) or not _required_ints(payload, ["previousAgeDays", "ageDays", "previousAgeGroup", "ageGroup", "ageMinimumYears", "ageMaximumYears", "transition", "appliedAgeGroup", "soundId"]) or not payload["changes"] is Array: return null
-	var age_body := AgeUpdateBody.new()
+	var age_body := AgeUpdateRequestBody.new()
 	age_body.character_id = payload["characterId"]
 	age_body.character_name = payload["characterName"]
 	age_body.portrait_id = payload["portraitId"]
@@ -637,7 +409,7 @@ static func _parse_dialog_body(request_kind: StringName, payload: Dictionary) ->
 	return age_body
 
 
-static func _parse_selection_body(request_kind: StringName, payload: Dictionary) -> Body:
+static func _parse_selection_body(request_kind: StringName, payload: Dictionary) -> InteractionRequestBody:
 	if request_kind in [INDEXED_CHOICE, ENCOUNTER_CHOICE]:
 		if not _fields_are_exact(payload, ["prompt", "options", "canBackOut", "encounterKind", "encounterId"], ["prompt", "options"]) or not payload["prompt"] is String or not payload["options"] is Array or not _optional_bools(payload, ["canBackOut"]) or not _optional_strings(payload, ["encounterKind"]) or not _optional_ints(payload, ["encounterId"]): return null
 		var choice := ChoiceRequestBody.new()
@@ -710,7 +482,7 @@ static func _parse_selection_body(request_kind: StringName, payload: Dictionary)
 	return complex if complex.action_selection_count >= 0 and complex.action_selection_count <= 8 else null
 
 
-static func _parse_thief_body(request_kind: StringName, payload: Dictionary) -> Body:
+static func _parse_thief_body(request_kind: StringName, payload: Dictionary) -> InteractionRequestBody:
 	if request_kind == THIEF_ENCOUNTER:
 		var fields: Array[String] = ["encounterId", "prompt", "soundId", "characters"]
 		if not _fields_are_exact(payload, fields, fields) or not _required_ints(payload, ["encounterId", "soundId"]) or not _required_strings(payload, ["prompt"]) or not payload["characters"] is Array:
@@ -759,7 +531,7 @@ static func _parse_thief_body(request_kind: StringName, payload: Dictionary) -> 
 	return lock if lock.time_limit_frames == lock.frames.size() - 1 + lock.frame_rate else null
 
 
-static func _parse_reward_body(request_kind: StringName, payload: Dictionary) -> Body:
+static func _parse_reward_body(request_kind: StringName, payload: Dictionary) -> InteractionRequestBody:
 	if request_kind == LEVEL_UP:
 		if not _fields_are_exact(payload, ["mode", "prompt", "characterId", "characterName", "level", "gains", "pointTotal", "spells"], ["mode", "prompt", "characterId", "characterName"]) or not _required_strings(payload, ["mode", "prompt", "characterId", "characterName"]): return null
 		var level_up := LevelUpRequestBody.new()

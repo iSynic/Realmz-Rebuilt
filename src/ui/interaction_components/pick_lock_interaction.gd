@@ -6,7 +6,7 @@ extends InteractionComponent
 const TUMBLER_ROW_SCENE_PATH := "res://src/ui/interaction_components/pick_lock_tumbler_row.tscn"
 
 var _media: ClassicMediaCatalog
-var _body: InteractionRequest.PickLockRequestBody
+var _body: PickLockRequestBody
 var _frame_index: int
 var _elapsed_frames: int
 var _tumblers: Array[Control] = []
@@ -21,7 +21,7 @@ func configure(media: ClassicMediaCatalog) -> void:
 
 
 func build(request: InteractionRequest) -> void:
-	_body = request.body as InteractionRequest.PickLockRequestBody
+	_body = request.body as PickLockRequestBody
 	if _body == null:
 		return
 	var portrait := %Portrait as TextureRect
