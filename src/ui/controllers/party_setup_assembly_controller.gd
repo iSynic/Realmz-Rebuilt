@@ -225,7 +225,7 @@ func party_setup_option_changed(_index: int) -> void:
 		return
 	var difficulty := int(difficulty_option.get_item_metadata(difficulty_option.selected))
 	var monster_set := int(monster_set_option.get_item_metadata(monster_set_option.selected))
-	_state.intent_submitted.emit(PlayerIntent.set_party_setup_options(difficulty, monster_set))
+	_state.intent_submitted.emit(PartyIntents.configure_setup(difficulty, monster_set))
 
 func _current_vault_revisions() -> Array[CharacterVaultRevisionView]:
 	var current_revisions: Array[CharacterVaultRevisionView] = []
@@ -236,15 +236,15 @@ func _current_vault_revisions() -> Array[CharacterVaultRevisionView]:
 	return current_revisions
 
 func import_stored_character(character_id: String, revision_hash: String) -> void:
-	_state.intent_submitted.emit(PlayerIntent.import_vault_character(character_id, revision_hash))
+	_state.intent_submitted.emit(PartyIntents.import_vault_character(character_id, revision_hash))
 
 func _remove_setup_character(character_id: String) -> void:
-	_state.intent_submitted.emit(PlayerIntent.remove_party_member(character_id))
+	_state.intent_submitted.emit(PartyIntents.remove_member(character_id))
 
 func submit_party() -> void:
 	if view == null or view.party_members.is_empty():
 		return
-	_state.intent_submitted.emit(PlayerIntent.begin_adventure())
+	_state.intent_submitted.emit(PartyIntents.begin_adventure())
 
 func maximum_party_size() -> int:
 	if view == null or view.campaign_summary == null:

@@ -52,7 +52,7 @@ func _initialize() -> void:
 	# Warm enough rendered movement frames to compile drivers, allocate retained
 	# layer pages, and exercise several hourly status/magic refresh boundaries.
 	for index: int in 80:
-		var warm_step := session.submit_intent(PlayerIntent.move(directions[index % directions.size()])); view = session.view(warm_step.events); map_presenter.present(view); shell.present(view); await _after_draw()
+		var warm_step := session.submit_intent(ExplorationIntents.move(directions[index % directions.size()])); view = session.view(warm_step.events); map_presenter.present(view); shell.present(view); await _after_draw()
 	session.restore(loaded.content, benchmark_start); view = session.view(); map_presenter.present(view); shell.present(view); await _after_draw()
 	var transaction_samples: Array[int] = []; var projection_samples: Array[int] = []; var shell_samples: Array[int] = []; var map_samples: Array[int] = []; var post_draw_samples: Array[int] = []; var frame_samples: Array[int] = []
 	var ordinary_frames: Array[int] = []; var hourly_frames: Array[int] = []; var ordinary_domains: Dictionary = {}; var hourly_domains: Dictionary = {}
@@ -70,7 +70,7 @@ func _initialize() -> void:
 			skipped_intervals += int((now - next_movement_at) / interval_us); next_movement_at = now
 		var frame_started := Time.get_ticks_usec()
 		var direction: Vector2i = directions[route_index % directions.size()]
-		var step := session.submit_intent(PlayerIntent.move(direction)); var transaction_done := Time.get_ticks_usec()
+		var step := session.submit_intent(ExplorationIntents.move(direction)); var transaction_done := Time.get_ticks_usec()
 		view = session.view(step.events); var projection_done := Time.get_ticks_usec()
 		if step.state != SessionStep.State.COMPLETED or view.pending_interaction != null or view.map_view.presentation_delta == null:
 			if step.state == SessionStep.State.FAILED or session.restore(loaded.content, benchmark_start).state == SessionStep.State.FAILED:
@@ -144,8 +144,8 @@ func _assemble_party(session: GameSession, content: RealmzContent) -> bool:
 			if known_spells.size() >= 4: break
 	for index: int in 6:
 		var character := CharacterState.new("runtime-performance-%d" % index, "Probe %d" % index, 20, 20); character.race_id = race.id; character.caste_id = caste.id; character.level = 10; character.spellcaster_type = caster_type; character.maximum_spell_points = 100; character.spell_points = 0; character.set_known_spells(known_spells)
-		if session.submit_intent(PlayerIntent.import_vault_character(character.id, "%064d" % (index + 1), character, "runtime-performance", content.package_hash)).state == SessionStep.State.FAILED: return false
-	var started := session.submit_intent(PlayerIntent.begin_adventure())
+		if session.submit_intent(PartyIntents.import_vault_character(character.id, "%064d" % (index + 1), character, "runtime-performance", content.package_hash)).state == SessionStep.State.FAILED: return false
+	var started := session.submit_intent(PartyIntents.begin_adventure())
 	while started.state == SessionStep.State.WAITING_FOR_INTERACTION and started.interaction != null and started.interaction.kind == InteractionRequest.ACKNOWLEDGE: started = session.respond(InteractionResponse.acknowledge(started.interaction))
 	return started.state == SessionStep.State.COMPLETED
 

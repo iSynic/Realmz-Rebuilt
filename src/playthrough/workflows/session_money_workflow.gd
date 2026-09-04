@@ -3,7 +3,7 @@ class_name SessionMoneyWorkflow
 extends RefCounted
 
 
-static func perform(context: SessionWorkflowContext, payload: PlayerIntent.MoneyPayload) -> SessionWorkflowResult:
+static func perform(context: SessionWorkflowContext, payload: EconomyIntentPayloads.Money) -> SessionWorkflowResult:
 	var movement_error := _movement_context_error(context)
 	if not movement_error.is_empty():
 		return SessionWorkflowResult.failed(&"invalid_money_context", movement_error)

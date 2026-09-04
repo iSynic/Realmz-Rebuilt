@@ -80,13 +80,13 @@ func _bind_pool(view: GameView, money: MoneyWorkspaceView) -> void:
 		root.get_node("MoneyPoolActions/Pool") as Button,
 		view,
 		money.pool,
-		PlayerIntent.money_action(&"pool")
+		EconomyIntents.money(&"pool")
 	)
 	_bind_money_action(
 		root.get_node("MoneyPoolActions/Share") as Button,
 		view,
 		money.share,
-		PlayerIntent.money_action(&"share")
+		EconomyIntents.money(&"share")
 	)
 
 
@@ -151,13 +151,13 @@ func _bind_transfer(view: GameView, selected: MoneyCharacterView, transfer: Mone
 		row.to_pool_button(),
 		view,
 		transfer.to_pool,
-		PlayerIntent.money_action(&"to-pool", selected.character_id, String(transfer.denomination), transfer.amount)
+		EconomyIntents.money(&"to-pool", selected.character_id, String(transfer.denomination), transfer.amount)
 	)
 	_bind_money_action(
 		row.to_character_button(),
 		view,
 		transfer.to_character,
-		PlayerIntent.money_action(&"to-character", selected.character_id, String(transfer.denomination), transfer.amount)
+		EconomyIntents.money(&"to-character", selected.character_id, String(transfer.denomination), transfer.amount)
 	)
 	_workspace.transfer_rows().add_child(row)
 
@@ -208,7 +208,7 @@ func _select_money_character(character_id: String) -> void:
 
 
 func _submit_service_action(service_id: String, action: StringName) -> void:
-	intent_submitted.emit(PlayerIntent.service_action(service_id, action))
+	intent_submitted.emit(EconomyIntents.service(service_id, action))
 
 
 static func wealth_resource_id(denomination: StringName) -> int:

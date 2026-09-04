@@ -103,7 +103,7 @@ func _capture_gallery() -> void:
 	setup.reset_creator(true)
 	await _settle()
 	var member := CharacterCreationSpec.new("Ari", setup_view.race_options[0].id, setup_view.caste_options[0].id, 1)
-	_application.session_controller.submit_intent(PlayerIntent.create_party([member]))
+	_application.session_controller.submit_intent(PartyIntents.create([member]))
 	await _settle()
 	await _resize(Vector2i(1280, 720))
 	_router.open_screen(&"exploration"); await _settle(); await _capture("canonical-explore-1280x720")

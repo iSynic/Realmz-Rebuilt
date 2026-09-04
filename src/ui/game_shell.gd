@@ -419,7 +419,7 @@ func _on_character_activated(character_id: String) -> void:
 func _on_combat_auto_changed(character_id: String, enabled: bool) -> void:
 	if _current_view == null or _current_view.combat_view == null or _current_view.combat_view.outcome != &"active":
 		return
-	intent_submitted.emit(PlayerIntent.set_combat_auto(character_id, enabled))
+	intent_submitted.emit(CombatIntents.set_auto(character_id, enabled))
 
 
 func _on_smoke_pressed() -> void:
@@ -427,4 +427,4 @@ func _on_smoke_pressed() -> void:
 	if _current_view == null or not _current_view.session_started:
 		_status_controller.set_status("Input verified • no package loaded")
 		return
-	intent_submitted.emit(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
+	intent_submitted.emit(ExplorationIntents.search())

@@ -41,7 +41,7 @@ func _initialize() -> void:
 	for index: int in 60:
 		var previous_view := session.view()
 		var started_at := Time.get_ticks_usec()
-		step = session.submit_intent(PlayerIntent.move(direction))
+		step = session.submit_intent(ExplorationIntents.move(direction))
 		var transaction_done := Time.get_ticks_usec()
 		var view := session.view(step.events)
 		var projection_done := Time.get_ticks_usec()
@@ -140,10 +140,10 @@ func _assemble_six_character_party(session: GameSession, content: RealmzContent)
 		character.set_known_spells(known_spells)
 		character.race_id = race.id
 		character.caste_id = caste.id
-		var imported := session.submit_intent(PlayerIntent.import_vault_character(character.id, "%064d" % (index + 1), character, "movement-probe", content.package_hash))
+		var imported := session.submit_intent(PartyIntents.import_vault_character(character.id, "%064d" % (index + 1), character, "movement-probe", content.package_hash))
 		if imported.state == SessionStep.State.FAILED:
 			return false
-	var started := session.submit_intent(PlayerIntent.begin_adventure())
+	var started := session.submit_intent(PartyIntents.begin_adventure())
 	for ignored: int in 16:
 		if started.state != SessionStep.State.WAITING_FOR_INTERACTION:
 			break

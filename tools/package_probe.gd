@@ -77,7 +77,7 @@ func _initialize() -> void:
 		session.view()
 	var ten_repeat_views_ms := Time.get_ticks_msec() - repeat_views_started_at
 	var blocked_move_started_at := Time.get_ticks_msec()
-	var blocked_move := session.submit_intent(PlayerIntent.move(Vector2i.LEFT))
+	var blocked_move := session.submit_intent(ExplorationIntents.move(Vector2i.LEFT))
 	var blocked_move_ms := Time.get_ticks_msec() - blocked_move_started_at
 	var post_move_view_started_at := Time.get_ticks_msec()
 	session.view()

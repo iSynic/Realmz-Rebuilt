@@ -158,7 +158,7 @@ func _bind_location_note_editor(workspace: MapsNotesWorkspace, view: GameView) -
 		save.tooltip_text = availability.reason if not availability.enabled else "Change the note before saving." if editor.text == current.text else "Classic location notes are limited to 255 encoded bytes." if byte_count > LocationNoteState.MAX_TEXT_BYTES else ""
 		revert.disabled = editor.text == current.text
 	editor.text_changed.connect(refresh)
-	save.pressed.connect(func() -> void: intent_submitted.emit(PlayerIntent.set_location_note(editor.text)))
+	save.pressed.connect(func() -> void: intent_submitted.emit(ExplorationIntents.set_location_note(editor.text)))
 	revert.pressed.connect(func() -> void:
 		editor.text = current.text
 		refresh.call()

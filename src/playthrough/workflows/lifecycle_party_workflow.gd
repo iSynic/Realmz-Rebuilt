@@ -50,7 +50,7 @@ static func begin_adventure(context: SessionWorkflowContext, pending: bool) -> S
 	return SessionWorkflowResult.completed([DomainEvent.new(&"party_created", {"characterIds": character_ids})])
 
 
-static func import_vault_character(context: SessionWorkflowContext, pending: bool, payload: PlayerIntent.VaultImportPayload) -> SessionWorkflowResult:
+static func import_vault_character(context: SessionWorkflowContext, pending: bool, payload: PartyIntentPayloads.VaultImport) -> SessionWorkflowResult:
 	if context.state.party_setup_completed or pending:
 		return SessionWorkflowResult.failed(&"party_setup_closed", "Vault import is available only during party setup.")
 	if context.state.character_draft != null:
@@ -120,7 +120,7 @@ static func import_vault_character(context: SessionWorkflowContext, pending: boo
 	return SessionWorkflowResult.completed([DomainEvent.new(&"vault_character_imported", {"characterId": imported.id, "revisionHash": payload.revision_hash, "sourceCampaignId": payload.source_campaign_id})])
 
 
-static func generate_character_draft(context: SessionWorkflowContext, pending: bool, payload: PlayerIntent.CharacterDraftPayload) -> SessionWorkflowResult:
+static func generate_character_draft(context: SessionWorkflowContext, pending: bool, payload: PartyIntentPayloads.Draft) -> SessionWorkflowResult:
 	if context.state.party_setup_completed or pending:
 		return SessionWorkflowResult.failed(&"party_setup_closed", "Character creation is available only during party setup.")
 	if payload == null or payload.spec == null:
@@ -313,7 +313,7 @@ static func reorder_party(context: SessionWorkflowContext, character_ids: Array[
 	return SessionWorkflowResult.completed([DomainEvent.new(&"party_reordered", {"previousCharacterIds": previous_ids, "characterIds": character_ids.duplicate(), "source": "classic"})])
 
 
-static func change_character_appearance(context: SessionWorkflowContext, payload: PlayerIntent.AppearancePayload) -> SessionWorkflowResult:
+static func change_character_appearance(context: SessionWorkflowContext, payload: PartyIntentPayloads.Appearance) -> SessionWorkflowResult:
 	if not context.state.party_setup_completed:
 		return SessionWorkflowResult.failed(&"appearance_change_unavailable", "Begin the adventure before changing appearance.")
 	if context.state.combat != null and not context.state.combat.completed:

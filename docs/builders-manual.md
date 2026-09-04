@@ -59,12 +59,12 @@ Dependencies point inward. `game` knows none of the other halls. `scenarios` bui
 
 ## Following one command
 
-Suppose the player presses an arrow key. `realmz_application.gd` translates input into a typed `PlayerIntent`. `GameSession.submit_intent` routes it to an exploration coordinator. Pure movement and topology rules decide whether the step is legal, scenario execution handles any reached trigger, and the playthrough commits ordered events. The application then requests a fresh `GameView`. `GameShell`, `ScreenNavigator`, and the map presenter render that view; they never decide whether the move was legal.
+Suppose the player presses an arrow key. `realmz_application.gd` asks `ExplorationIntents` for a typed `PlayerIntent`. `GameSession.submit_intent` routes it to an exploration coordinator. Pure movement and topology rules decide whether the step is legal, scenario execution handles any reached trigger, and the playthrough commits ordered events. The application then requests a fresh `GameView`. `GameShell`, `ScreenNavigator`, and the map presenter render that view; they never decide whether the move was legal.
 
 The same trail applies elsewhere:
 
 ```text
-input -> PlayerIntent -> GameSession -> coordinator/workflow -> rules or ScenarioVm
+input -> feature intent factory -> PlayerIntent -> GameSession -> coordinator/workflow -> rules or ScenarioVm
       -> committed SessionStep -> GameView -> screen/controller/renderer
 ```
 

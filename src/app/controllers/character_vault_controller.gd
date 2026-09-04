@@ -25,7 +25,7 @@ func import_intent(character_id: String, revision_hash: String) -> PlayerIntent:
 	if record == null:
 		return null
 	var detached_state := CharacterState.from_data(record.state.to_data())
-	return PlayerIntent.import_vault_character(record.character_id, record.revision_hash, detached_state, record.source_campaign_id, record.source_package_hash) if detached_state != null else null
+	return PartyIntents.import_vault_character(record.character_id, record.revision_hash, detached_state, record.source_campaign_id, record.source_package_hash) if detached_state != null else null
 
 
 func publish(character: CharacterState, rules_version: String, source_campaign_id: String, source_package_hash: String, publication_source: String) -> bool:

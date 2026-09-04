@@ -183,7 +183,7 @@ func scenario_trace() -> Array[Dictionary]:
 
 
 func _set_combat_auto(intent: PlayerIntent) -> SessionStep:
-	var payload := intent.payload as PlayerIntent.CombatAutoPayload
+	var payload := intent.payload as CombatIntentPayloads.Auto
 	if _context.state == null or _context.state.combat == null or _context.state.combat.completed:
 		return SessionStep.failed(_context.current_revision(), &"combat_auto_unavailable", "Persistent Auto can be changed only during an active battle.")
 	var character := _context.state.party.character_by_id(payload.character_id)

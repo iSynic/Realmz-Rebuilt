@@ -90,7 +90,7 @@ func _bind_debug_and_movement() -> void:
 	_map_presenter.movement_hold_stopped.connect(func() -> void: _held_movement.stop(&"mouse"))
 	_dungeon_presenter.turn_requested.connect(
 		func(delta: int) -> void:
-			submit_intent(PlayerIntent.dungeon_turn(delta))
+			submit_intent(ExplorationIntents.dungeon_turn(delta))
 	)
 	_dungeon_presenter.movement_requested.connect(
 		func(direction: Vector2i) -> void:
@@ -206,7 +206,7 @@ func _on_smoke_action_pressed() -> void:
 	if not session_controller.view().session_started:
 		_status_label.text = "MCP input verified • no package loaded"
 		return
-	var step := submit_intent(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
+	var step := submit_intent(ExplorationIntents.search())
 	if step.state == SessionStep.State.FAILED:
 		return
 	var roll: int = step.events[0].payload.get("roll", 0)
@@ -321,7 +321,7 @@ func handle_field_fast_spell(slot_index: int, use_spell: bool) -> void:
 		_shell_presenter.status.set_status("%s • %s" % [summary, binding.get("reason", "Unavailable")], true)
 		_audio_presenter.present_sound(143, presentation_coordinator.package_media())
 		return
-	submit_intent(PlayerIntent.cast_spell(binding["spellId"], binding["characterId"], "", binding["power"]))
+	submit_intent(MagicIntents.cast(binding["spellId"], binding["characterId"], "", binding["power"]))
 
 
 func _on_held_movement_requested(direction: Vector2i) -> void:
@@ -367,7 +367,7 @@ func _submit_movement(direction: Vector2i) -> bool:
 	if MapTopology.is_diagonal_direction(direction) and (map_view == null or map_view.level_type != &"land"):
 		return false
 	var before := session_controller.view()
-	var step := submit_intent(PlayerIntent.overhead_dungeon_move(direction) if map_view != null and map_view.level_type == &"dungeon" and (_dungeon_presenter == null or not _dungeon_presenter.is_active()) else PlayerIntent.move(direction))
+	var step := submit_intent(ExplorationIntents.overhead_dungeon_move(direction) if map_view != null and map_view.level_type == &"dungeon" and (_dungeon_presenter == null or not _dungeon_presenter.is_active()) else ExplorationIntents.move(direction))
 	var after := session_controller.view()
 	if step.state == SessionStep.State.FAILED or after == null or after.pending_interaction != null or after.combat_view != null:
 		return false
@@ -389,7 +389,7 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 			presentation_coordinator.skip_combat_playback()
 		return SessionStep.completed(session_controller.view().revision)
 	if intent != null and intent.kind == PlayerIntent.Kind.IMPORT_VAULT_CHARACTER:
-		var vault_import := intent.payload as PlayerIntent.VaultImportPayload
+		var vault_import := intent.payload as PartyIntentPayloads.VaultImport
 		var import_intent := character_files.vault_import_intent(vault_import.character_id, vault_import.revision_hash)
 		if import_intent == null:
 			var message := character_files.vault_error() if not character_files.vault_error().is_empty() else "The requested vault revision is unavailable."
@@ -482,7 +482,7 @@ func _flush_queued_combat_auto_changes() -> void:
 	character_ids.assign(changes.keys())
 	character_ids.sort()
 	for character_id: String in character_ids:
-		submit_intent(PlayerIntent.set_combat_auto(character_id, bool(changes[character_id])))
+		submit_intent(CombatIntents.set_auto(character_id, bool(changes[character_id])))
 
 
 func _continue_persistent_auto_after_playback() -> void:

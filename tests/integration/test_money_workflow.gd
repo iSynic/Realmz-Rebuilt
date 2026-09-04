@@ -68,8 +68,8 @@ func _test_session_money_workflow(content: RealmzContent) -> void:
 	var caste := pair[1] as CasteDefinition
 	var first := _character("money.first", "Alis", race, caste, WealthState.new(10, 2, 1))
 	var second := _character("money.second", "Borin", race, caste, WealthState.new(5, 0, 0))
-	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(first.id, "1".repeat(64), first, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "first money character enters party setup")
-	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(second.id, "2".repeat(64), second, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "second money character enters party setup")
+	assert_equal(session.submit_intent(PartyIntents.import_vault_character(first.id, "1".repeat(64), first, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "first money character enters party setup")
+	assert_equal(session.submit_intent(PartyIntents.import_vault_character(second.id, "2".repeat(64), second, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "second money character enters party setup")
 	_begin_with_start_hook(session, "money fixture begins the adventure")
 	var initial_view := session.view()
 	assert_not_null(initial_view.money_workspace, "detached view exposes the ordinary money workspace")
@@ -78,26 +78,26 @@ func _test_session_money_workflow(content: RealmzContent) -> void:
 	assert_false(initial_view.money_workspace.share.enabled, "Share is unavailable while the pool is empty")
 	assert_equal([initial_view.money_workspace.characters[0].gold, initial_view.money_workspace.characters[0].gems, initial_view.money_workspace.characters[0].jewelry], [10, 2, 1], "detached character wealth includes every Classic denomination")
 
-	var invalid := session.submit_intent(PlayerIntent.money_action(&"to-pool", first.id, "gold", 1))
+	var invalid := session.submit_intent(EconomyIntents.money(&"to-pool", first.id, "gold", 1))
 	assert_equal(invalid.error_code, &"invalid_money_increment", "forged non-Classic gold increments fail explicitly")
 	assert_equal(session._context.state.party.character_by_id(first.id).money.gold, 10, "rejected money action mutates no wealth")
-	var pooled := session.submit_intent(PlayerIntent.money_action(&"pool"))
+	var pooled := session.submit_intent(EconomyIntents.money(&"pool"))
 	assert_equal(pooled.state, SessionStep.State.COMPLETED, "typed Pool commits synchronously")
 	assert_equal(session._context.state.party.pooled_wealth.to_data(), {"gold": 15, "gems": 2, "jewelry": 1}, "Pool collects all denominations in party order without loss")
 	assert_equal([session._context.state.party.character_by_id(first.id).carried_load, session._context.state.party.character_by_id(second.id).carried_load], [0, 0], "Pool removes denomination load from every character")
 	assert_true(pooled.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 128), "Pool requests Castle sound 128")
 	assert_true(session._context.state.party.character_by_id(first.id).maximum_movement < 99, "Pool recalculates Classic movement instead of leaving a stale value")
-	var duplicate_pool := session.submit_intent(PlayerIntent.money_action(&"pool"))
+	var duplicate_pool := session.submit_intent(EconomyIntents.money(&"pool"))
 	assert_equal(duplicate_pool.error_code, &"money_action_unavailable", "a no-op Pool intent fails transactionally")
 
 	var restored := GameSession.new()
 	assert_equal(restored.restore(content, save_round_trip(session.snapshot())).state, SessionStep.State.COMPLETED, "pooled wealth restores through the central save aggregate")
 	assert_equal(restored.view().money_workspace.pooled_jewelry, 1, "restored detached money facts retain non-gold denominations")
-	var to_character := restored.submit_intent(PlayerIntent.money_action(&"to-character", first.id, "gold", 5))
+	var to_character := restored.submit_intent(EconomyIntents.money(&"to-character", first.id, "gold", 5))
 	assert_equal(to_character.state, SessionStep.State.COMPLETED, "Swap moves one Classic gold increment from pool to character")
 	assert_equal([restored._context.state.party.pooled_wealth.gold, restored._context.state.party.character_by_id(first.id).money.gold], [10, 5], "gold Swap preserves exact denomination totals")
 	assert_true(to_character.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 10051), "pool-to-character Swap requests Castle sound 10051")
-	var to_pool := restored.submit_intent(PlayerIntent.money_action(&"to-pool", first.id, "gold", 5))
+	var to_pool := restored.submit_intent(EconomyIntents.money(&"to-pool", first.id, "gold", 5))
 	assert_equal(to_pool.state, SessionStep.State.COMPLETED, "Swap returns one Classic gold increment to the pool")
 	assert_true(to_pool.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 663), "character-to-pool Swap requests Castle sound 663")
 
@@ -105,12 +105,12 @@ func _test_session_money_workflow(content: RealmzContent) -> void:
 	carried_first.maximum_load = 10
 	var capacity_view := restored.view().money_workspace.character(first.id).transfer(&"jewelry")
 	assert_false(capacity_view.to_character.enabled, "detached Swap availability blocks jewelry that does not fully fit")
-	var blocked_jewelry := restored.submit_intent(PlayerIntent.money_action(&"to-character", first.id, "jewelry", 1))
+	var blocked_jewelry := restored.submit_intent(EconomyIntents.money(&"to-character", first.id, "jewelry", 1))
 	assert_equal(blocked_jewelry.error_code, &"money_action_unavailable", "a forged capacity-blocked jewelry transfer fails transactionally")
 	assert_equal(restored._context.state.party.pooled_wealth.jewelry, 1, "blocked Swap preserves pooled jewelry")
 	carried_first.maximum_load = 500
 
-	var shared := restored.submit_intent(PlayerIntent.money_action(&"share"))
+	var shared := restored.submit_intent(EconomyIntents.money(&"share"))
 	assert_equal(shared.state, SessionStep.State.COMPLETED, "typed Share commits synchronously")
 	assert_equal(restored._context.state.party.pooled_wealth.to_data(), {"gold": 0, "gems": 0, "jewelry": 0}, "Share drains every denomination that can fit")
 	assert_equal([carried_first.money.gold, carried_first.money.gems, carried_first.money.jewelry], [8, 1, 1], "Share assigns jewelry, gems, then gold in party order")
@@ -118,7 +118,7 @@ func _test_session_money_workflow(content: RealmzContent) -> void:
 	assert_equal([carried_second.money.gold, carried_second.money.gems, carried_second.money.jewelry], [7, 1, 0], "Share continues round-robin assignment across the party")
 	assert_true(carried_first.carried_load <= carried_first.maximum_load and carried_second.carried_load <= carried_second.maximum_load, "corrected Share never overloads a recipient")
 	assert_true(shared.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 128), "Share requests Castle sound 128")
-	var duplicate_share := restored.submit_intent(PlayerIntent.money_action(&"share"))
+	var duplicate_share := restored.submit_intent(EconomyIntents.money(&"share"))
 	assert_equal(duplicate_share.error_code, &"money_action_unavailable", "a no-op Share intent fails transactionally")
 	var final_restore := GameSession.new()
 	assert_equal(final_restore.restore(content, save_round_trip(restored.snapshot())).state, SessionStep.State.COMPLETED, "shared personal wealth restores transactionally")
@@ -129,10 +129,10 @@ func _test_pooled_wealth_departure(content: RealmzContent) -> void:
 	var blocked_session := _departure_session(content, 109)
 	if blocked_session == null: return
 	assert_equal(blocked_session.apply_debug_command(SessionDebugCommand.warp("dungeon:0", Vector2i(1, 0))).state, SessionStep.State.COMPLETED, "the blocked-departure fixture uses an authored dungeon wall destination")
-	var invalid := blocked_session.submit_intent(PlayerIntent.move(Vector2i(2, 0)))
+	var invalid := blocked_session.submit_intent(ExplorationIntents.move(Vector2i(2, 0)))
 	assert_equal(invalid.error_code, &"invalid_direction", "an invalid direction fails before the pooled-wealth warning")
 	assert_equal(blocked_session._context.state.party.pooled_wealth.gold, 10, "invalid movement preserves pooled wealth")
-	var blocked_warning := blocked_session.submit_intent(PlayerIntent.move(Vector2i.LEFT))
+	var blocked_warning := blocked_session.submit_intent(ExplorationIntents.move(Vector2i.LEFT))
 	assert_equal([blocked_warning.state, blocked_warning.interaction.kind], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.YES_NO], "a no-bank movement attempt warns before resolving a blocked destination")
 	assert_equal(blocked_session.view().party_coordinate, Vector2i(1, 0), "the warning commits no movement")
 	assert_equal(blocked_session._context.state.party.pooled_wealth.gold, 10, "the warning commits no wealth loss")
@@ -158,7 +158,7 @@ func _test_pooled_wealth_departure(content: RealmzContent) -> void:
 	var distribute_session := _departure_session(content, 110)
 	if distribute_session == null:
 		return
-	var distribution_warning := distribute_session.submit_intent(PlayerIntent.move(Vector2i(-1, -1)))
+	var distribution_warning := distribute_session.submit_intent(ExplorationIntents.move(Vector2i(-1, -1)))
 	var warning_restored := GameSession.new()
 	assert_equal(warning_restored.restore(content, save_round_trip(distribute_session.snapshot())).state, SessionStep.State.COMPLETED, "an allowed movement warning restores before its response")
 	var distribution := warning_restored.respond(InteractionResponse.yes_no(warning_restored.view().pending_interaction, true))
@@ -195,7 +195,7 @@ func _test_pooled_wealth_departure(content: RealmzContent) -> void:
 	var continue_session := _departure_session(content, 111)
 	if continue_session == null:
 		return
-	var continue_warning := continue_session.submit_intent(PlayerIntent.move(Vector2i(-1, -1)))
+	var continue_warning := continue_session.submit_intent(ExplorationIntents.move(Vector2i(-1, -1)))
 	var continued := continue_session.respond(InteractionResponse.yes_no(continue_warning.interaction, false))
 	assert_equal(continued.state, SessionStep.State.COMPLETED, "declining distribution resolves the original allowed movement")
 	assert_equal(continue_session.view().party_coordinate, Vector2i.ZERO, "declining continues through the saved diagonal direction exactly once")
@@ -205,7 +205,7 @@ func _test_pooled_wealth_departure(content: RealmzContent) -> void:
 	if bank_session == null: return
 	assert_equal(bank_session.apply_debug_command(SessionDebugCommand.warp("dungeon:0", Vector2i(1, 0))).state, SessionStep.State.COMPLETED, "the bank-before-movement fixture uses the same authored dungeon wall destination")
 	bank_session._context.state.bank_available = true
-	var banked_block := bank_session.submit_intent(PlayerIntent.move(Vector2i.LEFT))
+	var banked_block := bank_session.submit_intent(ExplorationIntents.move(Vector2i.LEFT))
 	assert_equal(banked_block.state, SessionStep.State.COMPLETED, "bank-backed pooled wealth resolves without a question before a blocked attempt")
 	assert_equal(bank_session._context.state.party.pooled_wealth.to_data(), {"gold": 0, "gems": 0, "jewelry": 0}, "pre-movement banking clears every pooled denomination")
 	assert_equal(bank_session._context.state.party.banked_wealth.to_data(), {"gold": 10, "gems": 1, "jewelry": 1}, "pre-movement banking preserves all denominations")
@@ -215,9 +215,9 @@ func _test_pooled_wealth_departure(content: RealmzContent) -> void:
 	var camp_session := _departure_session(content, 113)
 	if camp_session == null:
 		return
-	assert_equal(camp_session.submit_intent(PlayerIntent.camp()).state, SessionStep.State.COMPLETED, "departure ordering fixture enters camp")
+	assert_equal(camp_session.submit_intent(ExplorationIntents.camp()).state, SessionStep.State.COMPLETED, "departure ordering fixture enters camp")
 	var camp_clock := [camp_session.view().realmz_day, camp_session.view().realmz_hour, camp_session.view().realmz_minute]
-	var camp_warning := camp_session.submit_intent(PlayerIntent.move(Vector2i(-1, -1)))
+	var camp_warning := camp_session.submit_intent(ExplorationIntents.move(Vector2i(-1, -1)))
 	assert_equal(camp_warning.state, SessionStep.State.WAITING_FOR_INTERACTION, "camp movement resolves pooled wealth before camp departure")
 	assert_true(camp_session._context.state.party_camping, "the pooled warning has not yet cleared camp state")
 	assert_equal([camp_session.view().realmz_day, camp_session.view().realmz_hour, camp_session.view().realmz_minute], camp_clock, "the pooled warning has not yet advanced camp-departure time")
@@ -237,9 +237,9 @@ func _departure_session(content: RealmzContent, seed: int) -> GameSession:
 	var session := GameSession.new()
 	assert_equal(session.start(content, seed).state, SessionStep.State.COMPLETED, "pooled-wealth departure session starts")
 	var character := _character("money.departure.%d" % seed, "Traveler", pair[0] as RaceDefinition, pair[1] as CasteDefinition, WealthState.new(10, 1, 1))
-	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(character.id, "d".repeat(64), character, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "departure character enters party setup")
+	assert_equal(session.submit_intent(PartyIntents.import_vault_character(character.id, "d".repeat(64), character, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "departure character enters party setup")
 	_begin_with_start_hook(session, "departure fixture begins the adventure")
-	assert_equal(session.submit_intent(PlayerIntent.money_action(&"pool")).state, SessionStep.State.COMPLETED, "departure fixture enters movement with pooled wealth")
+	assert_equal(session.submit_intent(EconomyIntents.money(&"pool")).state, SessionStep.State.COMPLETED, "departure fixture enters movement with pooled wealth")
 	return session
 
 
@@ -255,7 +255,7 @@ func _playable_pair(content: RealmzContent) -> Array:
 
 
 func _begin_with_start_hook(session: GameSession, label: String) -> void:
-	var started := session.submit_intent(PlayerIntent.begin_adventure())
+	var started := session.submit_intent(PartyIntents.begin_adventure())
 	if started.state == SessionStep.State.WAITING_FOR_INTERACTION:
 		assert_equal(session.respond(InteractionResponse.acknowledge(started.interaction)).state, SessionStep.State.COMPLETED, label)
 	else:

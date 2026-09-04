@@ -8,7 +8,7 @@
       "boundary": "game",
       "guide": "docs/features/characters.md",
       "entryPoints": ["src/game/state/character_state.gd", "src/game/rules/character_rules.gd"],
-      "publicInterfaces": ["CharacterState", "CharacterRules", "CharacterView"],
+      "publicInterfaces": ["CharacterState", "CharacterRules", "CharacterView", "PartyIntents", "PartyIntentPayloads"],
       "tests": ["tests/core/test_realmz_rules.gd", "tests/integration/test_character_appearance_workflow.gd"],
       "performanceProbes": []
     },
@@ -17,7 +17,7 @@
       "boundary": "game",
       "guide": "docs/features/inventory.md",
       "entryPoints": ["src/game/rules/inventory_rules.gd", "src/playthrough/workflows/inventory_workflow.gd", "src/playthrough/workflows/field_item_workflow.gd"],
-      "publicInterfaces": ["InventoryRules", "InventoryWorkflow", "FieldItemWorkflow", "ItemDefinition", "ItemInstance"],
+      "publicInterfaces": ["InventoryRules", "InventoryWorkflow", "FieldItemWorkflow", "InventoryIntents", "InventoryIntentPayloads", "ItemDefinition", "ItemInstance"],
       "tests": ["tests/integration/test_inventory_session.gd"],
       "performanceProbes": []
     },
@@ -26,7 +26,7 @@
       "boundary": "game",
       "guide": "docs/features/magic.md",
       "entryPoints": ["src/game/rules/magic_rules.gd", "src/game/rules/classic_spell_identity_catalog.gd", "src/game/rules/classic_spell_classification_rules.gd", "src/game/rules/classic_spell_disposition_rules.gd", "src/game/rules/classic_spell_source_rules.gd", "src/game/rules/classic_spell_condition_rules.gd", "src/game/rules/classic_spell_special_effect_rules.gd", "src/game/content/spell_definition.gd", "src/playthrough/workflows/field_magic_workflow.gd"],
-      "publicInterfaces": ["MagicRules", "ClassicSpellIdentityCatalog", "ClassicSpellClassificationRules", "ClassicSpellDispositionRules", "ClassicSpellSourceRules", "ClassicSpellConditionRules", "ClassicSpellSpecialEffectRules", "FieldMagicWorkflow", "MagicTransitionResult", "SpellDefinition", "SpellView"],
+      "publicInterfaces": ["MagicRules", "ClassicSpellIdentityCatalog", "ClassicSpellClassificationRules", "ClassicSpellDispositionRules", "ClassicSpellSourceRules", "ClassicSpellConditionRules", "ClassicSpellSpecialEffectRules", "FieldMagicWorkflow", "MagicTransitionResult", "MagicIntents", "SpellIntentPayload", "SpellDefinition", "SpellView"],
       "tests": ["tests/integration/test_field_spell_workflow.gd", "tests/integration/test_scroll_camp_workflow.gd"],
       "performanceProbes": ["tools/combat_performance_probe.gd"]
     },
@@ -35,7 +35,7 @@
       "boundary": "game",
       "guide": "docs/features/economy-and-services.md",
       "entryPoints": ["src/game/rules/economy_rules.gd", "src/game/rules/temple_rules.gd"],
-      "publicInterfaces": ["EconomyRules", "TempleRules"],
+      "publicInterfaces": ["EconomyRules", "TempleRules", "EconomyIntents", "EconomyIntentPayloads"],
       "tests": ["tests/integration/test_money_workflow.gd"],
       "performanceProbes": []
     },
@@ -44,7 +44,7 @@
       "boundary": "game",
       "guide": "docs/features/world-and-exploration.md",
       "entryPoints": ["src/game/world/map_topology.gd", "src/playthrough/workflows/exploration_time_workflow.gd"],
-      "publicInterfaces": ["MapTopology", "WorldState", "ExplorationTimeWorkflow"],
+      "publicInterfaces": ["MapTopology", "WorldState", "ExplorationTimeWorkflow", "ExplorationIntents", "ExplorationIntentPayloads"],
       "tests": ["tests/core/test_map_topology.gd", "tests/integration/test_exploration_session.gd"],
       "performanceProbes": ["tools/movement_performance_probe.gd", "tools/runtime_performance_probe.gd", "tools/dungeon_transition_performance_probe.gd"]
     },
@@ -62,7 +62,7 @@
       "boundary": "game",
       "guide": "docs/features/combat.md",
       "entryPoints": ["src/game/rules/combat_flow.gd", "src/game/rules/combat_flow_magic.gd", "src/game/rules/combat_character_spell_resolution.gd", "src/game/rules/combat_ai_scoring.gd", "src/game/combat/combat_context.gd", "src/game/state/combat_state.gd", "src/game/state/combat_state_codec.gd"],
-      "publicInterfaces": ["CombatFlow", "CombatFlowMagic", "CombatCharacterSpellResolution", "CombatAiScoring", "CombatContext", "CombatState", "CombatRosterState", "CombatTurnSequenceState", "CombatActorStatusState", "CombatDroppedItemState", "CombatSpellRuntimeState", "CombatStateCodec", "CombatView"],
+      "publicInterfaces": ["CombatFlow", "CombatFlowMagic", "CombatCharacterSpellResolution", "CombatAiScoring", "CombatContext", "CombatState", "CombatRosterState", "CombatTurnSequenceState", "CombatActorStatusState", "CombatDroppedItemState", "CombatSpellRuntimeState", "CombatStateCodec", "CombatIntents", "CombatIntentPayloads", "CombatView"],
       "tests": ["tests/core/test_combat_flow.gd", "tests/core/test_battlefield_navigation.gd"],
       "performanceProbes": ["tools/combat_performance_probe.gd", "tools/battlefield_navigation_benchmark.gd"]
     },
@@ -70,8 +70,8 @@
       "id": "session-transactions",
       "boundary": "playthrough",
       "guide": "docs/features/session-transactions.md",
-      "entryPoints": ["src/playthrough/game_session.gd", "src/playthrough/session_context.gd", "src/playthrough/coordinators/session_intent_coordinator.gd", "src/game/session/interaction_request.gd"],
-      "publicInterfaces": ["GameSession", "SessionContext", "SessionStep", "SessionSnapshot", "InteractionRequest", "InteractionRequestBody", "InteractionResponse"],
+      "entryPoints": ["src/playthrough/game_session.gd", "src/playthrough/session_context.gd", "src/playthrough/coordinators/session_intent_coordinator.gd", "src/game/session/player_intent.gd", "src/game/session/intents", "src/game/session/interaction_request.gd"],
+      "publicInterfaces": ["GameSession", "SessionContext", "SessionStep", "SessionSnapshot", "PlayerIntent", "PlayerIntentPayload", "PlayerIntentRegistry", "InteractionRequest", "InteractionRequestBody", "InteractionResponse"],
       "tests": ["tests/core/test_game_session.gd", "tests/integration/test_session_persistence.gd"],
       "performanceProbes": ["tools/movement_performance_probe.gd"]
     },

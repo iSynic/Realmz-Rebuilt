@@ -53,7 +53,7 @@ static func inventory_identify_probe(context: SessionWorkflowContext, target_id:
 	return InventoryActionProbe.permit()
 
 
-static func identify_inventory(context: SessionWorkflowContext, payload: PlayerIntent.SpellPayload) -> SessionWorkflowResult:
+static func identify_inventory(context: SessionWorkflowContext, payload: SpellIntentPayload) -> SessionWorkflowResult:
 	var probe := inventory_identify_probe(context, payload.target_id, payload.caster_id, payload.spell_id)
 	if not probe.allowed:
 		return SessionWorkflowResult.failed(&"inventory_identification_unavailable", probe.reason)

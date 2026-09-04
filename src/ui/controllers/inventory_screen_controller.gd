@@ -340,15 +340,15 @@ func _render_item_actions(panel: InventoryActionPanel, view: GameView, item: Ite
 		return
 	panel.show_actions(false, _layout_profile == UiLayoutProfile.COMPACT)
 	if item.equipped:
-		_bind_item_intent_action(panel.action_button("EquippedAction"), &"inventory.action.equipped", "Unequip", item.actions.unequip, PlayerIntent.item_action(PlayerIntent.Kind.UNEQUIP_ITEM, item.instance_id, character.id), item, character)
+		_bind_item_intent_action(panel.action_button("EquippedAction"), &"inventory.action.equipped", "Unequip", item.actions.unequip, InventoryIntents.unequip(item.instance_id, character.id), item, character)
 	else:
-		_bind_item_intent_action(panel.action_button("EquippedAction"), &"inventory.action.equipped", "Equip", item.actions.equip, PlayerIntent.item_action(PlayerIntent.Kind.EQUIP_ITEM, item.instance_id, character.id), item, character)
-	_bind_item_intent_action(panel.action_button("UseAction"), &"inventory.action.use", "Use", item.actions.use, PlayerIntent.use_item(item.instance_id, character.id), item, character)
-	_bind_item_intent_action(panel.action_button("IdentifyAction"), &"inventory.action.identify", "Identify", item.actions.identify, PlayerIntent.identify_carried_items(item.actions.identify_spell_id, item.actions.identify_caster_id, character.id), item, character)
+		_bind_item_intent_action(panel.action_button("EquippedAction"), &"inventory.action.equipped", "Equip", item.actions.equip, InventoryIntents.equip(item.instance_id, character.id), item, character)
+	_bind_item_intent_action(panel.action_button("UseAction"), &"inventory.action.use", "Use", item.actions.use, InventoryIntents.use(item.instance_id, character.id), item, character)
+	_bind_item_intent_action(panel.action_button("IdentifyAction"), &"inventory.action.identify", "Identify", item.actions.identify, MagicIntents.identify_carried_items(item.actions.identify_spell_id, item.actions.identify_caster_id, character.id), item, character)
 	_bind_trade_action(panel.action_button("TradeAction"), item)
-	_bind_item_intent_action(panel.action_button("JoinAction"), &"inventory.action.join", "Join", item.actions.join, PlayerIntent.item_action(PlayerIntent.Kind.JOIN_ITEM, item.instance_id, character.id), item, character)
-	_bind_item_intent_action(panel.action_button("SplitAction"), &"inventory.action.split", "Split", item.actions.split, PlayerIntent.item_action(PlayerIntent.Kind.SPLIT_ITEM, item.instance_id, character.id), item, character)
-	_bind_item_intent_action(panel.action_button("DropAction"), &"inventory.action.drop", "Drop", item.actions.drop, PlayerIntent.item_action(PlayerIntent.Kind.DROP_ITEM, item.instance_id, character.id), item, character)
+	_bind_item_intent_action(panel.action_button("JoinAction"), &"inventory.action.join", "Join", item.actions.join, InventoryIntents.join(item.instance_id, character.id), item, character)
+	_bind_item_intent_action(panel.action_button("SplitAction"), &"inventory.action.split", "Split", item.actions.split, InventoryIntents.split(item.instance_id, character.id), item, character)
+	_bind_item_intent_action(panel.action_button("DropAction"), &"inventory.action.drop", "Drop", item.actions.drop, InventoryIntents.drop(item.instance_id, character.id), item, character)
 	panel.trade_status().visible = not _trade_status.is_empty()
 	_bind_label(panel.trade_status(), _trade_status, WARNING, 13)
 
@@ -501,7 +501,7 @@ func _drop_trade_item(view: GameView, payload: Dictionary, target_id: String) ->
 
 func _submit_trade(instance_id: String, source_id: String, target_id: String) -> void:
 	_trade_status = "Transferring item…"
-	intent_submitted.emit(PlayerIntent.trade_item(instance_id, source_id, target_id))
+	intent_submitted.emit(InventoryIntents.trade(instance_id, source_id, target_id))
 
 
 func _submit_encounter_item(character_id: String, instance_id: String) -> void:

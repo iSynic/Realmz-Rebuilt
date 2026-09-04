@@ -4,7 +4,7 @@ class_name FieldMagicWorkflow
 extends RefCounted
 
 
-static func set_fast_spell(context: SessionWorkflowContext, payload: PlayerIntent.SpellPayload) -> SessionWorkflowResult:
+static func set_fast_spell(context: SessionWorkflowContext, payload: SpellIntentPayload) -> SessionWorkflowResult:
 	if context.state.combat != null and not context.state.combat.completed:
 		return SessionWorkflowResult.failed(&"fast_spell_binding_in_battle", "Fast Spell bindings cannot be changed during battle.")
 	var character := context.state.party.character_by_id(payload.caster_id)
@@ -25,7 +25,7 @@ static func set_fast_spell(context: SessionWorkflowContext, payload: PlayerInten
 
 
 
-static func make_scroll(context: SessionWorkflowContext, payload: PlayerIntent.SpellPayload) -> SessionWorkflowResult:
+static func make_scroll(context: SessionWorkflowContext, payload: SpellIntentPayload) -> SessionWorkflowResult:
 	if context.state.combat != null and not context.state.combat.completed:
 		return SessionWorkflowResult.failed(&"scroll_scribing_in_battle", "Classic scroll scribing is available only while camped.")
 	var character := context.state.party.character_by_id(payload.caster_id)
@@ -95,7 +95,7 @@ static func scroll_slot_probe(context: SessionWorkflowContext, character: Charac
 	return InventoryActionProbe.permit()
 
 
-static func begin_field_scroll(context: SessionWorkflowContext, payload: PlayerIntent.SpellPayload, request_revision: int) -> MagicTransitionResult:
+static func begin_field_scroll(context: SessionWorkflowContext, payload: SpellIntentPayload, request_revision: int) -> MagicTransitionResult:
 	var character := context.state.party.character_by_id(payload.caster_id)
 	var scroll := character.scroll_at(payload.scroll_slot) if character != null else null
 	var spell := context.content.spell_by_id(scroll.spell_id) if scroll != null and not scroll.is_empty() else null
@@ -236,7 +236,7 @@ static func field_spell_target_count(context: SessionWorkflowContext, spell: Spe
 	return mini(power, context.state.party.characters().size()) if spell.target_type == 0 else 1
 
 
-static func begin_field_spell(context: SessionWorkflowContext, payload: PlayerIntent.SpellPayload, request_revision: int) -> MagicTransitionResult:
+static func begin_field_spell(context: SessionWorkflowContext, payload: SpellIntentPayload, request_revision: int) -> MagicTransitionResult:
 	var character := context.state.party.character_by_id(payload.caster_id)
 	var spell := context.content.spell_by_id(payload.spell_id)
 	var probe := field_spell_probe(context, character, spell, payload.power)

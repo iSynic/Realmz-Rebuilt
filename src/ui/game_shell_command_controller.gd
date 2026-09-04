@@ -152,18 +152,18 @@ func activate(command_id: StringName, held_repeat: bool = false) -> void:
 	if start_sound_id > 0:
 		owner.presentation_sound_requested.emit(start_sound_id, false, false, false)
 	match command_id:
-		&"search_mode": owner.intent_submitted.emit(PlayerIntent.toggle_search())
-		&"area_search": owner.intent_submitted.emit(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
-		&"torch": owner.intent_submitted.emit(PlayerIntent.use_torch())
-		&"camp": owner.intent_submitted.emit(PlayerIntent.camp())
-		&"rest": owner.intent_submitted.emit(PlayerIntent.rest())
-		&"heal": owner.intent_submitted.emit(PlayerIntent.heal())
+		&"search_mode": owner.intent_submitted.emit(ExplorationIntents.toggle_search())
+		&"area_search": owner.intent_submitted.emit(ExplorationIntents.search())
+		&"torch": owner.intent_submitted.emit(ExplorationIntents.use_torch())
+		&"camp": owner.intent_submitted.emit(ExplorationIntents.camp())
+		&"rest": owner.intent_submitted.emit(ExplorationIntents.rest())
+		&"heal": owner.intent_submitted.emit(ExplorationIntents.heal())
 		&"contextual":
 			var service := contextual_service()
 			if service != null and not service.actions.is_empty():
-				owner.intent_submitted.emit(PlayerIntent.service_action(service.service_id, service.actions[0]))
+				owner.intent_submitted.emit(EconomyIntents.service(service.service_id, service.actions[0]))
 			else:
-				owner.intent_submitted.emit(PlayerIntent.contextual_encounter())
+				owner.intent_submitted.emit(ExplorationIntents.contextual_encounter())
 		&"money": owner._navigator.open_screen(&"services")
 		&"inventory": owner._navigator.open_screen(&"inventory")
 		&"spells": owner._navigator.open_screen(&"spells")

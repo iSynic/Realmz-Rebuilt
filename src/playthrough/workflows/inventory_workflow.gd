@@ -4,7 +4,7 @@ class_name InventoryWorkflow
 extends RefCounted
 
 
-static func equip_item(context: SessionWorkflowContext, payload: PlayerIntent.ItemActionPayload) -> SessionWorkflowResult:
+static func equip_item(context: SessionWorkflowContext, payload: InventoryIntentPayloads.Action) -> SessionWorkflowResult:
 	var character := context.state.party.character_by_id(payload.actor_id)
 	var instance := item_instance(character, payload.item_id)
 	var definition: ItemDefinition = null if instance == null else context.content.item_by_id(instance.definition_id)
@@ -16,7 +16,7 @@ static func equip_item(context: SessionWorkflowContext, payload: PlayerIntent.It
 	return SessionWorkflowResult.completed([DomainEvent.new(&"item_equipped", {"characterId": character.id, "instanceId": instance.id, "itemId": definition.id, "identified": instance.identified})])
 
 
-static func unequip_item(context: SessionWorkflowContext, payload: PlayerIntent.ItemActionPayload) -> SessionWorkflowResult:
+static func unequip_item(context: SessionWorkflowContext, payload: InventoryIntentPayloads.Action) -> SessionWorkflowResult:
 	var character := context.state.party.character_by_id(payload.actor_id)
 	var instance := item_instance(character, payload.item_id)
 	var definition: ItemDefinition = null if instance == null else context.content.item_by_id(instance.definition_id)
@@ -28,7 +28,7 @@ static func unequip_item(context: SessionWorkflowContext, payload: PlayerIntent.
 	return SessionWorkflowResult.completed([DomainEvent.new(&"item_unequipped", {"characterId": character.id, "instanceId": instance.id, "itemId": definition.id})])
 
 
-static func trade_item(context: SessionWorkflowContext, payload: PlayerIntent.ItemActionPayload) -> SessionWorkflowResult:
+static func trade_item(context: SessionWorkflowContext, payload: InventoryIntentPayloads.Action) -> SessionWorkflowResult:
 	var source := context.state.party.character_by_id(payload.actor_id)
 	var destination := context.state.party.character_by_id(payload.destination_character_id)
 	var instance := item_instance(source, payload.item_id)
@@ -77,7 +77,7 @@ static func trade_item_probe(context: SessionWorkflowContext, source: CharacterS
 	return probe
 
 
-static func split_item(context: SessionWorkflowContext, payload: PlayerIntent.ItemActionPayload) -> SessionWorkflowResult:
+static func split_item(context: SessionWorkflowContext, payload: InventoryIntentPayloads.Action) -> SessionWorkflowResult:
 	var character := context.state.party.character_by_id(payload.actor_id)
 	var instance := item_instance(character, payload.item_id)
 	var definition: ItemDefinition = null if instance == null else context.content.item_by_id(instance.definition_id)
@@ -100,7 +100,7 @@ static func split_item(context: SessionWorkflowContext, payload: PlayerIntent.It
 	])
 
 
-static func join_item(context: SessionWorkflowContext, payload: PlayerIntent.ItemActionPayload) -> SessionWorkflowResult:
+static func join_item(context: SessionWorkflowContext, payload: InventoryIntentPayloads.Action) -> SessionWorkflowResult:
 	var character := context.state.party.character_by_id(payload.actor_id)
 	var instance := item_instance(character, payload.item_id)
 	var definition: ItemDefinition = null if instance == null else context.content.item_by_id(instance.definition_id)

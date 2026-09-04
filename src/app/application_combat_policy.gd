@@ -14,33 +14,33 @@ static func direct_intent(body: InteractionResponse.CombatBody) -> PlayerIntent:
 	if body == null or not body.is_valid(): return null
 	match body.action:
 		&"set_auto":
-			return PlayerIntent.set_combat_auto(body.actor_id, body.enabled)
+			return CombatIntents.set_auto(body.actor_id, body.enabled)
 		&"move", &"retreat_edge":
 			if not body.has_destination: return null
-			return PlayerIntent.combat_move(body.actor_id, body.destination, body.auto_switch_to_melee)
+			return CombatIntents.move(body.actor_id, body.destination, body.auto_switch_to_melee)
 		&"cast_spell":
 			if body.spell_id.is_empty(): return null
 			if not body.target_coordinates.is_empty():
-				return PlayerIntent.cast_spell_at_coordinates(body.spell_id, body.actor_id, body.target_coordinates, body.power)
+				return MagicIntents.cast_at_coordinates(body.spell_id, body.actor_id, body.target_coordinates, body.power)
 			if body.has_target_coordinate:
-				return PlayerIntent.cast_spell_at(body.spell_id, body.actor_id, body.target_coordinate, body.power, body.rotation)
+				return MagicIntents.cast_at(body.spell_id, body.actor_id, body.target_coordinate, body.power, body.rotation)
 			if not body.target_ids.is_empty():
-				return PlayerIntent.cast_spell_at_targets(body.spell_id, body.actor_id, body.target_ids, body.power)
-			return PlayerIntent.cast_spell(body.spell_id, body.actor_id, body.target_id, body.power)
+				return MagicIntents.cast_at_targets(body.spell_id, body.actor_id, body.target_ids, body.power)
+			return MagicIntents.cast(body.spell_id, body.actor_id, body.target_id, body.power)
 		&"use_item":
 			if body.item_instance_id.is_empty(): return null
-			return PlayerIntent.use_item_on_target(body.item_instance_id, body.actor_id, body.target_id, body.target_ids, body.target_coordinate if body.has_target_coordinate else CombatFlow.INVALID_COORDINATE, body.rotation, body.target_coordinates)
+			return InventoryIntents.use_on_target(body.item_instance_id, body.actor_id, body.target_id, body.target_ids, body.target_coordinate if body.has_target_coordinate else CombatFlow.INVALID_COORDINATE, body.rotation, body.target_coordinates)
 		&"use_scroll":
 			if body.scroll_slot < 0: return null
 			if not body.target_coordinates.is_empty():
-				return PlayerIntent.use_scroll_at_coordinates(body.actor_id, body.scroll_slot, body.target_coordinates)
-			return PlayerIntent.use_scroll_on_target(body.actor_id, body.scroll_slot, body.target_id, body.target_ids, body.target_coordinate if body.has_target_coordinate else CombatFlow.INVALID_COORDINATE, body.rotation)
-	return PlayerIntent.combat_action(body.action, body.actor_id, body.target_id)
+				return MagicIntents.use_scroll_at_coordinates(body.actor_id, body.scroll_slot, body.target_coordinates)
+			return MagicIntents.use_scroll_on_target(body.actor_id, body.scroll_slot, body.target_id, body.target_ids, body.target_coordinate if body.has_target_coordinate else CombatFlow.INVALID_COORDINATE, body.rotation)
+	return CombatIntents.choose_action(body.action, body.actor_id, body.target_id)
 
 
 static func auto_change_to_queue(intent: PlayerIntent, playback_active: bool) -> Dictionary:
-	if not playback_active or intent == null or intent.kind != PlayerIntent.Kind.SET_COMBAT_AUTO or not intent.payload is PlayerIntent.CombatAutoPayload: return {}
-	var payload := intent.payload as PlayerIntent.CombatAutoPayload
+	if not playback_active or intent == null or intent.kind != PlayerIntent.Kind.SET_COMBAT_AUTO or not intent.payload is CombatIntentPayloads.Auto: return {}
+	var payload := intent.payload as CombatIntentPayloads.Auto
 	return {"characterId": payload.character_id, "enabled": payload.enabled}
 
 

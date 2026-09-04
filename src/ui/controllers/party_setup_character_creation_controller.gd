@@ -400,7 +400,7 @@ func creator_next() -> void:
 			draft_combat_icon_id = combat_icon_value.id
 			creator_step = 3
 			awaiting_draft_generation = true
-			_state.intent_submitted.emit(PlayerIntent.generate_character_draft(_character_creation_spec()))
+			_state.intent_submitted.emit(PartyIntents.generate_character_draft(_character_creation_spec()))
 			return
 		3:
 			if view == null or view.character_draft == null:
@@ -414,7 +414,7 @@ func creator_next() -> void:
 				_show_creator_error("Starting spells are unavailable in this package, so this caster cannot be finalized safely.")
 				return
 			awaiting_draft_finalization = true
-			_state.intent_submitted.emit(PlayerIntent.finalize_character())
+			_state.intent_submitted.emit(PartyIntents.finalize_character())
 			return
 	setup_message.text = _creator_step_message()
 	render_creator_step()
@@ -424,7 +424,7 @@ func creator_back() -> void:
 		return
 	if creator_step == 3 and view != null and view.character_draft != null:
 		creator_step = 2
-		_state.intent_submitted.emit(PlayerIntent.cancel_character_draft())
+		_state.intent_submitted.emit(PartyIntents.cancel_character_draft())
 		return
 	creator_step -= 1
 	setup_message.text = _creator_step_message()
@@ -434,7 +434,7 @@ func cancel_creator() -> void:
 	var had_generated_draft := view != null and view.character_draft != null
 	reset_creator(true)
 	if had_generated_draft:
-		_state.intent_submitted.emit(PlayerIntent.cancel_character_draft())
+		_state.intent_submitted.emit(PartyIntents.cancel_character_draft())
 	if standalone_character_creation_active:
 		_state.standalone_character_creation_cancelled.emit()
 	elif not had_generated_draft:
@@ -461,7 +461,7 @@ func reroll_character() -> void:
 	if creator_step != 3 or view == null or view.character_draft == null:
 		return
 	awaiting_draft_generation = true
-	_state.intent_submitted.emit(PlayerIntent.generate_character_draft(_character_creation_spec()))
+	_state.intent_submitted.emit(PartyIntents.generate_character_draft(_character_creation_spec()))
 
 func _draft_spell_toggled(option_id: String, selected: bool) -> void:
 	_starting_spell_id = option_id
@@ -472,7 +472,7 @@ func _draft_spell_toggled(option_id: String, selected: bool) -> void:
 				selected_ids.append(option.id)
 		elif option.selected:
 			selected_ids.append(option.id)
-	_state.intent_submitted.emit(PlayerIntent.set_character_draft_spells(selected_ids))
+	_state.intent_submitted.emit(PartyIntents.set_character_draft_spells(selected_ids))
 
 func _character_creation_spec() -> CharacterCreationSpec:
 	return CharacterCreationSpec.new(draft_name, selected_race_id, selected_caste_id, draft_gender, draft_portrait_id, draft_combat_icon_id, draft_starting_level)

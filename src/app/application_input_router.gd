@@ -141,19 +141,19 @@ func _handle_exploration_input(event: InputEvent, key_event: InputEventKey) -> v
 		_mark_handled()
 		return
 	if event.is_action_pressed(&"realmz_search"):
-		_application.submit_intent(PlayerIntent.toggle_search())
+		_application.submit_intent(ExplorationIntents.toggle_search())
 		_mark_handled()
 		return
 	if event.is_action_pressed(&"realmz_camp"):
-		_application.submit_intent(PlayerIntent.camp())
+		_application.submit_intent(ExplorationIntents.camp())
 		_mark_handled()
 		return
 	if event.is_action_pressed(&"realmz_rest"):
-		_application.submit_intent(PlayerIntent.rest())
+		_application.submit_intent(ExplorationIntents.rest())
 		_mark_handled()
 		return
 	if event.is_action_pressed(&"realmz_heal"):
-		_application.submit_intent(PlayerIntent.heal())
+		_application.submit_intent(ExplorationIntents.heal())
 		_mark_handled()
 		return
 	var direction := UiInputActions.movement_direction(event)

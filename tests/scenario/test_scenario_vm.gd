@@ -264,7 +264,7 @@ func _test_public_session_resume(content: RealmzContent) -> void:
 	session.start(content, 1)
 	_begin_fixture_adventure(session, content)
 	_restore_fixture_position(session, content, "land:1", Vector2i(0, 1))
-	var waiting := session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
+	var waiting := session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT))
 	assert_equal([waiting.state, session.view().party_coordinate], [SessionStep.State.WAITING_FOR_INTERACTION, Vector2i(1, 1)], "movement commits before the public interaction response")
 	var held := session.snapshot()
 	assert_not_null(held.scenario_vm.pending_request, "the save aggregate owns the pending VM request")
@@ -309,7 +309,7 @@ func _test_public_vm_combat_auto(content: RealmzContent) -> void:
 		return
 	assert_equal([inactive_session.view().combat_view.active_actor_id == sixth_id, active_session.view().combat_view.active_actor_id == sixth_id], [false, true], "fixed fixture seeds cover inactive and active sixth-member turns")
 	for member: CharacterView in active_session.view().party_members:
-		if member.id != sixth_id: active_session.submit_intent(PlayerIntent.set_combat_auto(member.id, true))
+		if member.id != sixth_id: active_session.submit_intent(CombatIntents.set_auto(member.id, true))
 	_assert_vm_combat_auto_round_trip(content, inactive_session, sixth_id, "inactive")
 	_assert_vm_combat_auto_round_trip(content, active_session, sixth_id, "active")
 	content.scenario = original_scenario
@@ -394,9 +394,9 @@ func _test_public_vm_repeated_combat_item(content: RealmzContent) -> void:
 		var candidate := GameSession.new(); candidate.start(fixture, seed)
 		var caster := CharacterState.new("fixture.vm-item.caster", "VM Item Caster", 30, 30); caster.race_id = selected_race.id; caster.caste_id = selected_caste.id; caster.normal_attacks = 4; caster.maximum_movement = 12; caster.movement = 12; caster.maximum_spell_points = 17; caster.spell_points = 17; caster.set_inventory([ItemInstance.new("instance.vm-repeated-wand.caster", item.id, 2, false, true), ItemInstance.new("instance.flask-oil.caster", flask.id, 5, false, true)])
 		var ally := CharacterState.new("fixture.vm-item.ally", "VM Item Ally", 30, 30); ally.race_id = selected_race.id; ally.caste_id = selected_caste.id; ally.normal_attacks = 4; ally.maximum_movement = 12; ally.movement = 12; ally.maximum_spell_points = 17; ally.spell_points = 17; ally.set_inventory([ItemInstance.new("instance.vm-repeated-wand.ally", item.id, 2, false, true), ItemInstance.new("instance.flask-oil.ally", flask.id, 5, false, true)])
-		var caster_import := candidate.submit_intent(PlayerIntent.import_vault_character(caster.id, "1".repeat(64), caster, "fixture", fixture.package_hash)); if caster_import.state != SessionStep.State.COMPLETED: continue
-		var ally_import := candidate.submit_intent(PlayerIntent.import_vault_character(ally.id, "2".repeat(64), ally, "fixture", fixture.package_hash)); if ally_import.state != SessionStep.State.COMPLETED: continue
-		var entered := candidate.submit_intent(PlayerIntent.begin_adventure())
+		var caster_import := candidate.submit_intent(PartyIntents.import_vault_character(caster.id, "1".repeat(64), caster, "fixture", fixture.package_hash)); if caster_import.state != SessionStep.State.COMPLETED: continue
+		var ally_import := candidate.submit_intent(PartyIntents.import_vault_character(ally.id, "2".repeat(64), ally, "fixture", fixture.package_hash)); if ally_import.state != SessionStep.State.COMPLETED: continue
+		var entered := candidate.submit_intent(PartyIntents.begin_adventure())
 		if entered.state == SessionStep.State.WAITING_FOR_INTERACTION and entered.interaction != null and entered.interaction.kind == InteractionRequest.COMBAT:
 			var combat_body := entered.interaction.body as CombatRequestBody
 			if combat_body != null and combat_body.item_casts.any(func(cast: InteractionRequestValue.CastOption) -> bool: return cast.item_id == item.id):
@@ -436,7 +436,7 @@ func _test_public_continuation_matrix(content: RealmzContent) -> void:
 	age_boundary.game_state.clock.advance_minutes(RealmzClock.MINUTES_PER_DAY - 1 - age_boundary.game_state.clock.total_minutes())
 	var aged := GameSession.new()
 	assert_equal(aged.restore(content, age_boundary).state, SessionStep.State.COMPLETED, "age boundary restores through public validation")
-	var moved := aged.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
+	var moved := aged.submit_intent(ExplorationIntents.move(Vector2i.RIGHT))
 	assert_equal(moved.interaction.kind, InteractionRequest.AGE_UPDATE, "age update yields before destination AP work")
 	var held := save_round_trip(aged.snapshot())
 	assert_not_null(held, "nested age and post-move continuation is saveable")
@@ -609,9 +609,9 @@ func _begin_fixture_adventure(session: GameSession, content: RealmzContent) -> v
 	var character := CharacterState.new("fixture.party.member", "Fixture Hero", 10, 10)
 	character.race_id = races[0].id
 	character.caste_id = castes[0].id
-	var imported := session.submit_intent(PlayerIntent.import_vault_character(character.id, "1".repeat(64), character, "fixture", content.package_hash))
+	var imported := session.submit_intent(PartyIntents.import_vault_character(character.id, "1".repeat(64), character, "fixture", content.package_hash))
 	assert_equal(imported.state, SessionStep.State.COMPLETED, "fixture imports a deterministic party member")
-	var started := session.submit_intent(PlayerIntent.begin_adventure())
+	var started := session.submit_intent(PartyIntents.begin_adventure())
 	if content.scenario.application_hook_program_id(ScenarioApplicationHooks.START_GAME).is_empty():
 		assert_equal(started.state, SessionStep.State.COMPLETED, "fixture begins without a Start Game interaction")
 	else:
@@ -625,9 +625,9 @@ func _vm_combat_auto_session(content: RealmzContent, seed: int) -> GameSession:
 	var session := GameSession.new(); session.start(content, seed)
 	for character_index: int in 6:
 		var character := CharacterState.new("fixture.vm-auto.%d" % (character_index + 1), "VM Auto Hero %d" % (character_index + 1), 100, 100); character.race_id = races[0].id; character.caste_id = castes[0].id
-		var imported := session.submit_intent(PlayerIntent.import_vault_character(character.id, "1".repeat(64), character, "fixture", content.package_hash))
+		var imported := session.submit_intent(PartyIntents.import_vault_character(character.id, "1".repeat(64), character, "fixture", content.package_hash))
 		if imported.state != SessionStep.State.COMPLETED: return null
-	var entered := session.submit_intent(PlayerIntent.begin_adventure())
+	var entered := session.submit_intent(PartyIntents.begin_adventure())
 	if entered.state != SessionStep.State.WAITING_FOR_INTERACTION or entered.interaction == null or entered.interaction.kind != InteractionRequest.COMBAT:
 		return null
 	if session.view().party_members.size() != 6 or session.view().combat_view == null:
@@ -636,7 +636,7 @@ func _vm_combat_auto_session(content: RealmzContent, seed: int) -> GameSession:
 
 
 func _assert_vm_combat_auto_round_trip(content: RealmzContent, session: GameSession, character_id: String, phase: String) -> void:
-	var enabled := session.submit_intent(PlayerIntent.set_combat_auto(character_id, true))
+	var enabled := session.submit_intent(CombatIntents.set_auto(character_id, true))
 	assert_equal([enabled.state, enabled.error_code, enabled.interaction.kind], [SessionStep.State.WAITING_FOR_INTERACTION, &"", InteractionRequest.COMBAT], "the %s sixth member enables persistent Auto through VM combat" % phase)
 	assert_true(_event_has(enabled.events, &"combat_auto_changed"), "%s VM Auto publishes the committed change" % phase)
 	var body := enabled.interaction.body as CombatRequestBody
@@ -649,7 +649,7 @@ func _assert_vm_combat_auto_round_trip(content: RealmzContent, session: GameSess
 	assert_equal(restored.restore(content, saved).state, SessionStep.State.COMPLETED, "%s sixth-member Auto restores with its VM continuation" % phase)
 	assert_true(restored.view().combat_view.auto_character_ids.has(character_id), "restored %s VM combat retains sixth-member Auto" % phase)
 	var disabled_id := restored.view().combat_view.active_actor_id if phase == "active" else character_id
-	var disabled := restored.submit_intent(PlayerIntent.set_combat_auto(disabled_id, false))
+	var disabled := restored.submit_intent(CombatIntents.set_auto(disabled_id, false))
 	assert_equal([disabled.state, disabled.error_code, disabled.interaction.kind, restored.view().combat_view.auto_character_ids.has(disabled_id)], [SessionStep.State.WAITING_FOR_INTERACTION, &"", InteractionRequest.COMBAT, false], "restored %s VM combat disables Auto at the next activation boundary" % phase)
 
 

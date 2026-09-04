@@ -68,7 +68,7 @@ func _test_snapshot_rng_and_age_persistence(content: RealmzContent) -> void:
 	_begin_fixture_adventure(session, content)
 	assert_false(session.view().availability(&"cast_spell").enabled, "the spell workspace does not expose an incomplete targetless cast intent")
 	assert_equal(session.view().availability(&"cast_spell").reason, "No known spell has a supported Classic field use.", "the disabled cast control states the exact package-backed field-spell boundary")
-	var first_search := session.submit_intent(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
+	var first_search := session.submit_intent(ExplorationIntents.search())
 	assert_equal(first_search.state, SessionStep.State.COMPLETED, "search commits at one session boundary")
 	assert_equal(first_search.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"search_completed")[0].payload["roll"], 52, "the committed event records the first deterministic draw")
 	assert_equal(session.snapshot().rng_state.draw_count, 9, "the save aggregate owns the secret roll and both source-ordered random-region scans")
@@ -82,7 +82,7 @@ func _test_snapshot_rng_and_age_persistence(content: RealmzContent) -> void:
 	constructor_vm.trace.append({"event": "mutated-after-construction"})
 	assert_equal(constructor_copy.game_state.clock.total_minutes(), 25, "SessionSnapshot detaches constructor-owned game state")
 	assert_equal(constructor_copy.scenario_vm.trace.size(), constructor_trace_size, "SessionSnapshot detaches constructor-owned VM state")
-	session.submit_intent(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
+	session.submit_intent(ExplorationIntents.search())
 	assert_equal(held_snapshot.rng_state.draw_count, 9, "a snapshot is detached from later session RNG mutations")
 	assert_equal(held_snapshot.game_state.clock.total_minutes(), 25, "a snapshot is detached from later game-state mutations")
 
@@ -95,13 +95,13 @@ func _test_snapshot_rng_and_age_persistence(content: RealmzContent) -> void:
 	var restored := GameSession.new()
 	assert_equal(restored.restore(content, loaded_save).state, SessionStep.State.COMPLETED, "transactional restore constructs a replacement session")
 	assert_equal(restored.snapshot().rng_state.to_data(), held_snapshot.rng_state.to_data(), "restore retains the exact RNG state and draw index")
-	var restored_search := restored.submit_intent(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
+	var restored_search := restored.submit_intent(ExplorationIntents.search())
 
 	var control := GameSession.new()
 	control.start(content, 1)
 	_begin_fixture_adventure(control, content)
-	control.submit_intent(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
-	var control_search := control.submit_intent(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
+	control.submit_intent(ExplorationIntents.search())
+	var control_search := control.submit_intent(ExplorationIntents.search())
 	assert_equal(restored_search.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"search_completed")[0].payload["roll"], control_search.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"search_completed")[0].payload["roll"], "save/reload resumes the exact RNG branch")
 	assert_equal(restored.snapshot().rng_state.draw_count, 17, "an already discovered Area Search skips secret rolls but retains both source-ordered random-region scans")
 	assert_equal(restored.snapshot().game_state.clock.total_minutes(), 50, "restored Area Search advances the persisted clock by another five outdoor timeclicks")
@@ -123,7 +123,7 @@ func _test_snapshot_rng_and_age_persistence(content: RealmzContent) -> void:
 	age_save.game_state.clock.advance_minutes(RealmzClock.MINUTES_PER_DAY - 1)
 	var age_session := GameSession.new()
 	assert_equal(age_session.restore(content, age_save).state, SessionStep.State.COMPLETED, "the pre-midnight aging fixture restores")
-	var first_age_update := age_session.submit_intent(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
+	var first_age_update := age_session.submit_intent(ExplorationIntents.search())
 	assert_equal(first_age_update.state, SessionStep.State.WAITING_FOR_INTERACTION, "crossing midnight blocks at the first Classic age-update dialog")
 	assert_equal(first_age_update.interaction.kind, InteractionRequest.AGE_UPDATE, "midnight exposes a dedicated typed age-update request")
 	assert_equal(first_age_update.interaction.body.to_data()["characterId"], first_aging_character.id, "party order determines the first Castle age-update dialog")
@@ -163,12 +163,12 @@ func _test_party_and_creator_persistence(content: RealmzContent) -> void:
 	var setup_view := party_session.view()
 	assert_true(setup_view.party_setup_available, "fresh campaigns expose party creation through the detached view")
 	assert_equal([setup_view.party_setup.difficulty, setup_view.party_setup.monster_set, setup_view.party_setup.available_monster_sets, setup_view.party_setup.current_party_levels, setup_view.party_setup.experience_percent, setup_view.campaign_summary.maximum_party_levels], [0, 0, [0, -1, 1], 0, 0, 0], "fresh setup exposes source-backed defaults and registered Castle's uncapped aggregate party guidance")
-	assert_equal(party_session.submit_intent(PlayerIntent.set_party_setup_options(1, -1)).state, SessionStep.State.COMPLETED, "difficulty and Monster Set commit through one typed setup intent")
+	assert_equal(party_session.submit_intent(PartyIntents.configure_setup(1, -1)).state, SessionStep.State.COMPLETED, "difficulty and Monster Set commit through one typed setup intent")
 	assert_equal([party_session.snapshot().game_state.difficulty, party_session.snapshot().game_state.monster_set], [1, -1], "the central save owns selected setup options")
-	assert_equal(party_session.submit_intent(PlayerIntent.set_party_setup_options(3, 0)).error_code, &"invalid_difficulty", "difficulty outside Castle's five choices fails explicitly")
+	assert_equal(party_session.submit_intent(PartyIntents.configure_setup(3, 0)).error_code, &"invalid_difficulty", "difficulty outside Castle's five choices fails explicitly")
 	assert_true(not setup_view.race_options.is_empty() and not setup_view.caste_options.is_empty(), "party creation options come from validated package definitions"); var member := CharacterCreationSpec.new("Ari", setup_view.race_options[0].id, setup_view.caste_options[0].id, 1)
-	var uncapped_session := GameSession.new(); uncapped_session.start(content, 6); assert_equal(uncapped_session.submit_intent(PlayerIntent.create_party([CharacterCreationSpec.new("One", member.race_id, member.caste_id, 1, "", "", 3), CharacterCreationSpec.new("Two", member.race_id, member.caste_id, 1, "", "", 3), CharacterCreationSpec.new("Three", member.race_id, member.caste_id, 1, "", "", 3), CharacterCreationSpec.new("Four", member.race_id, member.caste_id, 1, "", "", 3), CharacterCreationSpec.new("Five", member.race_id, member.caste_id, 1, "", "", 3), CharacterCreationSpec.new("Six", member.race_id, member.caste_id, 1, "", "", 3)])).state, SessionStep.State.COMPLETED, "registered Castle ignores the Data SC aggregate maximum while retaining its recommended-level experience guidance")
-	var party_step := party_session.submit_intent(PlayerIntent.create_party([member]))
+	var uncapped_session := GameSession.new(); uncapped_session.start(content, 6); assert_equal(uncapped_session.submit_intent(PartyIntents.create([CharacterCreationSpec.new("One", member.race_id, member.caste_id, 1, "", "", 3), CharacterCreationSpec.new("Two", member.race_id, member.caste_id, 1, "", "", 3), CharacterCreationSpec.new("Three", member.race_id, member.caste_id, 1, "", "", 3), CharacterCreationSpec.new("Four", member.race_id, member.caste_id, 1, "", "", 3), CharacterCreationSpec.new("Five", member.race_id, member.caste_id, 1, "", "", 3), CharacterCreationSpec.new("Six", member.race_id, member.caste_id, 1, "", "", 3)])).state, SessionStep.State.COMPLETED, "registered Castle ignores the Data SC aggregate maximum while retaining its recommended-level experience guidance")
+	var party_step := party_session.submit_intent(PartyIntents.create([member]))
 	assert_equal(party_step.state, SessionStep.State.COMPLETED, "typed party creation commits through GameSession")
 	assert_equal(party_session.view().party_members[0].name, "Ari", "presentation sees the rule-created party member")
 	assert_equal(party_session.view().party_setup.experience_percent, 250, "selected Hard difficulty and a low-level party produce Castle's clamped experience guidance")
@@ -187,7 +187,7 @@ func _test_party_and_creator_persistence(content: RealmzContent) -> void:
 	var invalid_multiplier_data := party_save.game_state.to_data()
 	invalid_multiplier_data["experienceMultiplier"] = -0.5
 	assert_equal(GameState.from_data(invalid_multiplier_data), null, "save restoration rejects experience ratios between the legacy migration sentinel and Castle's minimum twenty percent")
-	assert_equal(restored_party.submit_intent(PlayerIntent.create_party([member])).error_code, &"party_setup_closed", "party setup cannot be replayed after restore")
+	assert_equal(restored_party.submit_intent(PartyIntents.create([member])).error_code, &"party_setup_closed", "party setup cannot be replayed after restore")
 	var corrupt_load_save := SaveEnvelope.from_data(save_data(party_save))
 	corrupt_load_save.game_state.party.characters()[0].carried_load += 1
 	var before_corrupt_load_restore := save_data(restored_party.snapshot())
@@ -206,7 +206,7 @@ func _test_party_and_creator_persistence(content: RealmzContent) -> void:
 	var restored_setup := GameSession.new()
 	assert_equal(restored_setup.restore(content, empty_setup_save).state, SessionStep.State.COMPLETED, "empty party setup restores without inventing a member")
 	var before_generation_draws := restored_setup.snapshot().rng_state.draw_count
-	var generated := restored_setup.submit_intent(PlayerIntent.generate_character_draft(member))
+	var generated := restored_setup.submit_intent(PartyIntents.generate_character_draft(member))
 	assert_equal(generated.state, SessionStep.State.COMPLETED, "one typed specification generates a session-owned Classic character draft")
 	assert_not_null(restored_setup.view().character_draft, "the detached setup view exposes the generated character before acceptance")
 	assert_equal([restored_setup.view().portrait_options.size(), restored_setup.view().combat_icon_options.size()], [120, 120], "the detached setup view exposes both validated package appearance catalogs")
@@ -223,9 +223,9 @@ func _test_party_and_creator_persistence(content: RealmzContent) -> void:
 	var invalid_appearance_session := GameSession.new()
 	invalid_appearance_session.start(content, 11)
 	var invalid_appearance_spec := CharacterCreationSpec.new("Wrong Kind", member.race_id, member.caste_id, member.gender, "realmz-combat-icon-9000", "realmz-combat-icon-9000")
-	assert_equal(invalid_appearance_session.submit_intent(PlayerIntent.generate_character_draft(invalid_appearance_spec)).error_code, &"invalid_character_appearance", "a combat icon cannot cross the typed portrait boundary")
+	assert_equal(invalid_appearance_session.submit_intent(PartyIntents.generate_character_draft(invalid_appearance_spec)).error_code, &"invalid_character_appearance", "a combat icon cannot cross the typed portrait boundary")
 	var before_finalization_draws := restored_draft.snapshot().rng_state.draw_count
-	var finalized := restored_draft.submit_intent(PlayerIntent.finalize_character())
+	var finalized := restored_draft.submit_intent(PartyIntents.finalize_character())
 	assert_equal(finalized.state, SessionStep.State.WAITING_FOR_INTERACTION, "accepting the reviewed draft adds it and reaches Castle's explicit reusable-character decision")
 	assert_equal(finalized.interaction.kind, InteractionRequest.YES_NO, "vault publication is a typed yes/no interaction rather than a presentation-owned filesystem shortcut")
 	var publication_save := save_round_trip(restored_draft.snapshot())
@@ -252,11 +252,11 @@ func _test_party_and_creator_persistence(content: RealmzContent) -> void:
 	var advanced_session := GameSession.new()
 	advanced_session.start(content, 37)
 	var advanced_spec := CharacterCreationSpec.new("Veteran", member.race_id, member.caste_id, member.gender, "", "", 3)
-	var advanced_generation := advanced_session.submit_intent(PlayerIntent.generate_character_draft(advanced_spec))
+	var advanced_generation := advanced_session.submit_intent(PartyIntents.generate_character_draft(advanced_spec))
 	assert_equal(advanced_generation.state, SessionStep.State.COMPLETED, "a fixed higher starting level reaches the ordinary saveable Review boundary")
 	assert_equal([advanced_session.view().character_draft.level, advanced_session.view().character_draft.experience], [3, -content.caste_by_id(member.caste_id).victory_threshold(2)], "the session exposes the target level and matching caste victory threshold without a shortcut profile")
 	var invalid_level_spec := CharacterCreationSpec.new("Invalid Veteran", member.race_id, member.caste_id, member.gender, "", "", 2)
-	assert_equal(advanced_session.submit_intent(PlayerIntent.generate_character_draft(invalid_level_spec)).error_code, &"invalid_starting_level", "non-Classic starting levels fail before consuming another character roll")
+	assert_equal(advanced_session.submit_intent(PartyIntents.generate_character_draft(invalid_level_spec)).error_code, &"invalid_starting_level", "non-Classic starting levels fail before consuming another character roll")
 	var staged_setup_save := restored_setup.snapshot()
 	var resumed_setup := GameSession.new()
 	assert_equal(resumed_setup.restore(content, staged_setup_save).state, SessionStep.State.COMPLETED, "an in-progress assembled party restores at the setup boundary")
@@ -271,8 +271,8 @@ func _test_party_and_creator_persistence(content: RealmzContent) -> void:
 	imported.carried_load = 0
 	var wrong_kind_import := CharacterState.from_data(imported.to_data())
 	wrong_kind_import.portrait_id = "realmz-combat-icon-9000"
-	assert_equal(resumed_setup.submit_intent(PlayerIntent.import_vault_character(wrong_kind_import.id, "c".repeat(64), wrong_kind_import, "fixture-source", "b".repeat(64))).error_code, &"vault_character_ineligible", "vault import rejects a package asset used in the wrong appearance role")
-	var import_step := resumed_setup.submit_intent(PlayerIntent.import_vault_character(imported.id, "a".repeat(64), imported, "fixture-source", "b".repeat(64)))
+	assert_equal(resumed_setup.submit_intent(PartyIntents.import_vault_character(wrong_kind_import.id, "c".repeat(64), wrong_kind_import, "fixture-source", "b".repeat(64))).error_code, &"vault_character_ineligible", "vault import rejects a package asset used in the wrong appearance role")
+	var import_step := resumed_setup.submit_intent(PartyIntents.import_vault_character(imported.id, "a".repeat(64), imported, "fixture-source", "b".repeat(64)))
 	assert_equal(import_step.state, SessionStep.State.COMPLETED, "vault import adds another member without completing party setup")
 	assert_equal(resumed_setup.view().party_members.size(), 2, "created and vault characters may share one setup party")
 	assert_equal(resumed_setup._context.state.party.character_by_id(imported.id).carried_load, 7 + imported_definition.instance_weight(imported_definition.initial_charges), "vault import derives carried load from target-package definitions instead of trusting a stale local total")
@@ -280,7 +280,7 @@ func _test_party_and_creator_persistence(content: RealmzContent) -> void:
 	conflicting_import.id = "vault.character.conflicting"
 	conflicting_import.name = "Conflicting Hero"
 	var party_before_conflict := resumed_setup.view().party_members.size()
-	assert_equal(resumed_setup.submit_intent(PlayerIntent.import_vault_character(conflicting_import.id, "d".repeat(64), conflicting_import, "fixture-source", "b".repeat(64))).error_code, &"duplicate_item_ownership", "vault import rejects a second character revision that claims an exact item instance already owned by the party")
+	assert_equal(resumed_setup.submit_intent(PartyIntents.import_vault_character(conflicting_import.id, "d".repeat(64), conflicting_import, "fixture-source", "b".repeat(64))).error_code, &"duplicate_item_ownership", "vault import rejects a second character revision that claims an exact item instance already owned by the party")
 	assert_equal(resumed_setup.view().party_members.size(), party_before_conflict, "rejected duplicate item ownership leaves the assembled party unchanged")
 	var duplicate_save_data := resumed_setup.snapshot().game_state.to_data()
 	var duplicate_character_data: Dictionary = duplicate_save_data["party"]["characters"][1].duplicate(true)
@@ -290,24 +290,24 @@ func _test_party_and_creator_persistence(content: RealmzContent) -> void:
 	assert_equal(GameState.from_data(duplicate_save_data), null, "state restoration rejects duplicate exact-item ownership even when no combat is active")
 	assert_true(resumed_setup.view().party_setup_available, "multiple committed setup edits remain available until Begin")
 	var created_id := resumed_setup.view().party_members[0].id
-	assert_equal(resumed_setup.submit_intent(PlayerIntent.remove_party_member(created_id)).state, SessionStep.State.COMPLETED, "typed removal updates the setup party")
+	assert_equal(resumed_setup.submit_intent(PartyIntents.remove_member(created_id)).state, SessionStep.State.COMPLETED, "typed removal updates the setup party")
 	assert_equal(resumed_setup.view().party_members.size(), 1, "removal leaves the remaining vault character in setup")
 	assert_true(resumed_setup.view().party_setup_available, "removing a member does not begin the adventure")
-	var resumed_begin := resumed_setup.submit_intent(PlayerIntent.begin_adventure())
+	var resumed_begin := resumed_setup.submit_intent(PartyIntents.begin_adventure())
 	assert_equal(resumed_begin.state, SessionStep.State.WAITING_FOR_INTERACTION, "Begin commits the party before yielding to the Start Game hook")
 	assert_equal(resumed_setup.respond(InteractionResponse.acknowledge(resumed_begin.interaction)).state, SessionStep.State.COMPLETED, "acknowledging Start Game enters ordinary exploration")
 	assert_false(resumed_setup.view().party_setup_available, "party setup closes only after Begin")
-	assert_equal(resumed_setup.submit_intent(PlayerIntent.remove_party_member(imported.id)).error_code, &"party_setup_closed", "party composition cannot change after Begin")
+	assert_equal(resumed_setup.submit_intent(PartyIntents.remove_member(imported.id)).error_code, &"party_setup_closed", "party composition cannot change after Begin")
 
 	var reroll_session := GameSession.new()
 	reroll_session.start(content, 31)
-	assert_equal(reroll_session.submit_intent(PlayerIntent.generate_character_draft(member)).state, SessionStep.State.COMPLETED, "the first Classic roll reaches Review")
+	assert_equal(reroll_session.submit_intent(PartyIntents.generate_character_draft(member)).state, SessionStep.State.COMPLETED, "the first Classic roll reaches Review")
 	var first_roll_data := reroll_session.view().character_draft
 	var first_roll_draws := reroll_session.snapshot().rng_state.draw_count
-	assert_equal(reroll_session.submit_intent(PlayerIntent.generate_character_draft(member)).state, SessionStep.State.COMPLETED, "Reroll replaces the provisional character")
+	assert_equal(reroll_session.submit_intent(PartyIntents.generate_character_draft(member)).state, SessionStep.State.COMPLETED, "Reroll replaces the provisional character")
 	assert_true(reroll_session.snapshot().rng_state.draw_count > first_roll_draws, "Reroll advances rather than rewinds the session RNG")
 	assert_equal(reroll_session.view().character_draft.id, first_roll_data.id, "Reroll retains one provisional character identity")
-	assert_equal(reroll_session.submit_intent(PlayerIntent.cancel_character_draft()).state, SessionStep.State.COMPLETED, "Cancel discards the provisional character")
+	assert_equal(reroll_session.submit_intent(PartyIntents.cancel_character_draft()).state, SessionStep.State.COMPLETED, "Cancel discards the provisional character")
 	assert_equal(reroll_session.view().character_draft, null, "cancelled creation does not leak into party setup")
 	assert_equal(reroll_session.snapshot().rng_state.draw_count > first_roll_draws, true, "Cancel does not roll back Classic creation draws")
 
@@ -316,7 +316,7 @@ func _test_party_and_creator_persistence(content: RealmzContent) -> void:
 	if spellcaster_spec != null:
 		var spell_session := GameSession.new()
 		spell_session.start(content, 41)
-		assert_equal(spell_session.submit_intent(PlayerIntent.generate_character_draft(spellcaster_spec)).state, SessionStep.State.COMPLETED, "a spellcaster reaches the saveable Review boundary")
+		assert_equal(spell_session.submit_intent(PartyIntents.generate_character_draft(spellcaster_spec)).state, SessionStep.State.COMPLETED, "a spellcaster reaches the saveable Review boundary")
 		var spell_view := spell_session.view()
 		assert_true(spell_view.character_draft_spell_points_total > 0, "Castle's getnumspells formula provides starting selection points")
 		assert_false(spell_view.character_draft_spell_options.is_empty(), "the package supplies the caster's eligible Classic spell records")
@@ -326,14 +326,14 @@ func _test_party_and_creator_persistence(content: RealmzContent) -> void:
 		if not spell_view.character_draft_spell_options.is_empty():
 			var selected_spell := spell_view.character_draft_spell_options[0]
 			assert_true(selected_spell.selection_cost <= spell_view.character_draft_spell_points_total, "the first available spell fits the deterministic starting budget")
-			var spell_change := spell_session.submit_intent(PlayerIntent.set_character_draft_spells([selected_spell.id]))
+			var spell_change := spell_session.submit_intent(PartyIntents.set_character_draft_spells([selected_spell.id]))
 			assert_equal(spell_change.state, SessionStep.State.COMPLETED, "typed starting-spell selection mutates only the generated draft")
 			assert_equal(spell_session.view().character_draft.spells[0].id, selected_spell.id, "the detached Review view exposes the chosen spell")
 			var spell_save := spell_session.snapshot()
 			var restored_spell_session := GameSession.new()
 			assert_equal(restored_spell_session.restore(content, spell_save).state, SessionStep.State.COMPLETED, "starting-spell selection restores at the same creator boundary")
 			assert_equal(restored_spell_session.view().character_draft.spells[0].id, selected_spell.id, "restore preserves the exact selected spell")
-			var confirmation := restored_spell_session.submit_intent(PlayerIntent.finalize_character())
+			var confirmation := restored_spell_session.submit_intent(PartyIntents.finalize_character())
 			assert_equal(confirmation.state, SessionStep.State.WAITING_FOR_INTERACTION, "unspent Classic spell points require the source confirmation boundary")
 			assert_equal(confirmation.interaction.kind, InteractionRequest.YES_NO, "the unspent-point decision is a typed yes/no interaction")
 			assert_true(restored_spell_session.view().party_setup_available, "the creator remains mounted while its confirmation is pending")
@@ -348,7 +348,7 @@ func _test_party_and_creator_persistence(content: RealmzContent) -> void:
 			var declined := confirmation_session.respond(InteractionResponse.from_data(confirmation.interaction.request_id, InteractionRequest.YES_NO, {"accepted": false}))
 			assert_equal(declined.state, SessionStep.State.COMPLETED, "declining returns to starting-spell selection without discarding the draft")
 			assert_not_null(confirmation_session.view().character_draft, "the declined character remains available for another spell choice")
-			confirmation = confirmation_session.submit_intent(PlayerIntent.finalize_character())
+			confirmation = confirmation_session.submit_intent(PartyIntents.finalize_character())
 			var accepted := confirmation_session.respond(InteractionResponse.from_data(confirmation.interaction.request_id, InteractionRequest.YES_NO, {"accepted": true}))
 			assert_equal(accepted.state, SessionStep.State.WAITING_FOR_INTERACTION, "accepting unspent points commits the reviewed character before the reusable-vault decision")
 			assert_equal(confirmation_session.view().party_members.size(), 1, "the accepted caster enters party setup exactly once")
@@ -502,7 +502,7 @@ func _test_combat_and_reward_persistence(content: RealmzContent) -> void:
 			reward_session._context.state.combat.turns.active_turn = null
 			reward_session._context.state.combat.pending_monster_attack = null
 			reward_session._context.state.combat.pending_reaction = null
-			var terminal := reward_session.submit_intent(PlayerIntent.combat_action(&"finish", reward_character.id))
+			var terminal := reward_session.submit_intent(CombatIntents.choose_action(&"finish", reward_character.id))
 			assert_false(terminal.events.any(func(event: DomainEvent) -> bool: return event.kind == &"allies_selected"), "terminal victory skips body-count when no eligible ally survived")
 			assert_equal([terminal.state, terminal.interaction.kind], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.TREASURE_DISTRIBUTION], "victory enters the ordinary typed booty workspace")
 			var initial_boundary := reward_session.snapshot()
@@ -574,7 +574,7 @@ func _complete_public_defeat(session: GameSession, content: RealmzContent, chara
 	scripted_values.resize(512)
 	scripted_values.fill(0)
 	session._context.rng = ScriptedRng.new(scripted_values)
-	return session.submit_intent(PlayerIntent.combat_action(&"finish", character.id))
+	return session.submit_intent(CombatIntents.choose_action(&"finish", character.id))
 
 
 func _begin_fixture_adventure(session: GameSession, content: RealmzContent) -> void:
@@ -586,8 +586,8 @@ func _begin_fixture_adventure(session: GameSession, content: RealmzContent) -> v
 	var character := CharacterState.new("fixture.party.member", "Fixture Hero", 10, 10)
 	character.race_id = races[0].id
 	character.caste_id = castes[0].id
-	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(character.id, "1".repeat(64), character, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "fixture vault member enters party setup without consuming RNG")
-	var begin_step := session.submit_intent(PlayerIntent.begin_adventure())
+	assert_equal(session.submit_intent(PartyIntents.import_vault_character(character.id, "1".repeat(64), character, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "fixture vault member enters party setup without consuming RNG")
+	var begin_step := session.submit_intent(PartyIntents.begin_adventure())
 	assert_equal([begin_step.state, begin_step.interaction.body.to_data().get("prompt")], [SessionStep.State.WAITING_FOR_INTERACTION, "The Start Game application hook runs."], "fixture party commits before the Start Game hook")
 	var begin_boundary := save_round_trip(session.snapshot())
 	var restored := GameSession.new()

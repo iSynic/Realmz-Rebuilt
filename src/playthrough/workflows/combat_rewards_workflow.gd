@@ -4,7 +4,7 @@ class_name CombatRewardsWorkflow
 extends RefCounted
 
 
-static func submit_action(context: SessionWorkflowContext, payload: PlayerIntent.CombatActionPayload) -> CombatFlowResult:
+static func submit_action(context: SessionWorkflowContext, payload: CombatIntentPayloads.Action) -> CombatFlowResult:
 	return context.rules.combat_flow.submit_action(
 		context.state,
 		context.content,
@@ -15,7 +15,7 @@ static func submit_action(context: SessionWorkflowContext, payload: PlayerIntent
 	)
 
 
-static func set_persistent_auto(context: SessionWorkflowContext, payload: PlayerIntent.CombatAutoPayload) -> CombatFlowResult:
+static func set_persistent_auto(context: SessionWorkflowContext, payload: CombatIntentPayloads.Auto) -> CombatFlowResult:
 	if context.state == null or context.state.combat == null or context.state.combat.completed:
 		return CombatFlowResult.failed(&"combat_auto_unavailable", "Persistent Auto can be changed only during an active battle.")
 	var character := context.state.party.character_by_id(payload.character_id)
@@ -42,7 +42,7 @@ static func set_persistent_auto(context: SessionWorkflowContext, payload: Player
 	return CombatFlowResult.succeeded(events)
 
 
-static func move_character(context: SessionWorkflowContext, payload: PlayerIntent.CombatMovePayload, forced_retreat: bool) -> CombatFlowResult:
+static func move_character(context: SessionWorkflowContext, payload: CombatIntentPayloads.Move, forced_retreat: bool) -> CombatFlowResult:
 	if forced_retreat:
 		return context.rules.combat_flow.retreat_character(
 			context.state,

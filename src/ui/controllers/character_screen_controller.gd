@@ -186,7 +186,7 @@ func _bind_vault_import_button(button: Button, revision: CharacterVaultRevisionV
 		elif revision.archived:
 			button.tooltip_text = "Restore an archived revision before importing it."
 	if not button.disabled:
-		button.pressed.connect(func() -> void: intent_submitted.emit(PlayerIntent.import_vault_character(revision.character_id, revision.revision_hash)))
+		button.pressed.connect(func() -> void: intent_submitted.emit(PartyIntents.import_vault_character(revision.character_id, revision.revision_hash)))
 
 
 func _render_vault_history(parent: Container, current_revisions: Array[CharacterVaultRevisionView]) -> void:
@@ -343,7 +343,7 @@ func _render_party_order_summary(screen: CharacterScreen, view: GameView) -> voi
 func _submit_character_appearance(character_id: String, appearance_kind: StringName, appearance_id: String) -> void:
 	_selected_character_id = character_id
 	_selected_tab = &"appearance"
-	intent_submitted.emit(PlayerIntent.change_character_appearance(character_id, appearance_kind, appearance_id))
+	intent_submitted.emit(PartyIntents.change_appearance(character_id, appearance_kind, appearance_id))
 
 
 func _render_party_order(screen: CharacterScreen, view: GameView) -> void:
@@ -385,7 +385,7 @@ func _render_party_order(screen: CharacterScreen, view: GameView) -> void:
 	apply.tooltip_text = availability.reason if not availability.enabled else "Choose a different order first." if _draft_order_ids == current_ids else "Commit this complete party permutation."
 	_clear_pressed_connections(apply)
 	if not apply.disabled:
-		apply.pressed.connect(func() -> void: intent_submitted.emit(PlayerIntent.reorder_party(_draft_order_ids)))
+		apply.pressed.connect(func() -> void: intent_submitted.emit(PartyIntents.reorder(_draft_order_ids)))
 	var cancel := editor.get_node("EditorContent/Actions/Cancel") as Button
 	cancel.disabled = _draft_order_ids == current_ids
 	cancel.tooltip_text = "The displayed order already matches the session." if cancel.disabled else "Discard the staged order without changing the party."

@@ -78,7 +78,7 @@ func noclip_step(intent: PlayerIntent) -> SessionStep:
 	var view := _controller.view()
 	if view == null or view.party_setup_available or view.pending_interaction != null or view.combat_view != null:
 		return null
-	var direction := (intent.payload as PlayerIntent.MovePayload).direction
+	var direction := (intent.payload as ExplorationIntentPayloads.Move).direction
 	# Held no-clip movement is a quiet adjacent debug transaction. Repainting a
 	# success message on every square made the presentation scheduler stutter.
 	return _controller.apply_debug_command(SessionDebugCommand.noclip_step(direction))

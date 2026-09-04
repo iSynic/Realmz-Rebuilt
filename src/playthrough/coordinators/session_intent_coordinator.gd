@@ -29,10 +29,10 @@ func submit(intent: PlayerIntent) -> SessionCoordinatorResult:
 func _submit_exploration_intent(intent: PlayerIntent) -> SessionCoordinatorResult:
 	match intent.kind:
 		PlayerIntent.Kind.MOVE:
-			var payload := intent.payload as PlayerIntent.MovePayload
+			var payload := intent.payload as ExplorationIntentPayloads.Move
 			return _move(payload.direction, payload.aligns_dungeon_heading)
 		PlayerIntent.Kind.DUNGEON_TURN:
-			return _workflow(ExplorationTimeWorkflow.turn_dungeon(_context.workflow_context(), (intent.payload as PlayerIntent.DungeonTurnPayload).delta))
+			return _workflow(ExplorationTimeWorkflow.turn_dungeon(_context.workflow_context(), (intent.payload as ExplorationIntentPayloads.DungeonTurn).delta))
 		PlayerIntent.Kind.SEARCH:
 			return _search()
 		PlayerIntent.Kind.TOGGLE_SEARCH:
@@ -48,7 +48,7 @@ func _submit_exploration_intent(intent: PlayerIntent) -> SessionCoordinatorResul
 		PlayerIntent.Kind.HEAL:
 			return _heal()
 		PlayerIntent.Kind.SET_LOCATION_NOTE:
-			return _workflow(ExplorationTimeWorkflow.set_location_note(_context.workflow_context(), (intent.payload as PlayerIntent.LocationNotePayload).text))
+			return _workflow(ExplorationTimeWorkflow.set_location_note(_context.workflow_context(), (intent.payload as ExplorationIntentPayloads.LocationNote).text))
 	return null
 
 
@@ -57,13 +57,13 @@ func _submit_magic_or_combat_intent(intent: PlayerIntent) -> SessionCoordinatorR
 		PlayerIntent.Kind.USE_ITEM, PlayerIntent.Kind.USE_ITEM_ON_TARGET:
 			return _use_item(intent)
 		PlayerIntent.Kind.CAST_SPELL:
-			return _cast_spell(intent.payload as PlayerIntent.SpellPayload)
+			return _cast_spell(intent.payload as SpellIntentPayload)
 		PlayerIntent.Kind.SET_FAST_SPELL:
-			return _workflow(FieldMagicWorkflow.set_fast_spell(_context.workflow_context(), intent.payload as PlayerIntent.SpellPayload))
+			return _workflow(FieldMagicWorkflow.set_fast_spell(_context.workflow_context(), intent.payload as SpellIntentPayload))
 		PlayerIntent.Kind.CHOOSE_COMBAT_ACTION:
-			return _combat_action(intent.payload as PlayerIntent.CombatActionPayload)
+			return _combat_action(intent.payload as CombatIntentPayloads.Action)
 		PlayerIntent.Kind.COMBAT_MOVE:
-			return _combat_move(intent.payload as PlayerIntent.CombatMovePayload)
+			return _combat_move(intent.payload as CombatIntentPayloads.Move)
 	return null
 
 
@@ -71,49 +71,49 @@ func _submit_party_intent(intent: PlayerIntent) -> SessionCoordinatorResult:
 	var pending := _pending_interaction() != null
 	match intent.kind:
 		PlayerIntent.Kind.CREATE_PARTY:
-			return _workflow(LifecyclePartyWorkflow.create_party(_context.workflow_context(), pending, (intent.payload as PlayerIntent.PartyPayload).members))
+			return _workflow(LifecyclePartyWorkflow.create_party(_context.workflow_context(), pending, (intent.payload as PartyIntentPayloads.Party).members))
 		PlayerIntent.Kind.BEGIN_ADVENTURE:
 			return _begin_adventure()
 		PlayerIntent.Kind.IMPORT_VAULT_CHARACTER:
-			return _workflow(LifecyclePartyWorkflow.import_vault_character(_context.workflow_context(), pending, intent.payload as PlayerIntent.VaultImportPayload))
+			return _workflow(LifecyclePartyWorkflow.import_vault_character(_context.workflow_context(), pending, intent.payload as PartyIntentPayloads.VaultImport))
 		PlayerIntent.Kind.GENERATE_CHARACTER_DRAFT:
-			return _workflow(LifecyclePartyWorkflow.generate_character_draft(_context.workflow_context(), pending, intent.payload as PlayerIntent.CharacterDraftPayload))
+			return _workflow(LifecyclePartyWorkflow.generate_character_draft(_context.workflow_context(), pending, intent.payload as PartyIntentPayloads.Draft))
 		PlayerIntent.Kind.CANCEL_CHARACTER_DRAFT:
 			return _workflow(LifecyclePartyWorkflow.cancel_character_draft(_context.workflow_context(), pending))
 		PlayerIntent.Kind.SET_CHARACTER_DRAFT_SPELLS:
-			return _workflow(LifecyclePartyWorkflow.set_character_draft_spells(_context.workflow_context(), pending, (intent.payload as PlayerIntent.StringListPayload).values))
+			return _workflow(LifecyclePartyWorkflow.set_character_draft_spells(_context.workflow_context(), pending, (intent.payload as PartyIntentPayloads.StringList).values))
 		PlayerIntent.Kind.FINALIZE_CHARACTER:
 			return _finalize_character()
 		PlayerIntent.Kind.REMOVE_PARTY_MEMBER:
-			return _workflow(LifecyclePartyWorkflow.remove_party_member(_context.workflow_context(), pending, (intent.payload as PlayerIntent.CharacterPayload).character_id))
+			return _workflow(LifecyclePartyWorkflow.remove_party_member(_context.workflow_context(), pending, (intent.payload as PartyIntentPayloads.Character).character_id))
 		PlayerIntent.Kind.SET_PARTY_SETUP_OPTIONS:
-			var setup := intent.payload as PlayerIntent.PartySetupOptionsPayload
+			var setup := intent.payload as PartyIntentPayloads.SetupOptions
 			return _workflow(LifecyclePartyWorkflow.set_party_setup_options(_context.workflow_context(), pending, setup.difficulty, setup.monster_set))
 		PlayerIntent.Kind.REORDER_PARTY:
-			return _workflow(LifecyclePartyWorkflow.reorder_party(_context.workflow_context(), (intent.payload as PlayerIntent.StringListPayload).values))
+			return _workflow(LifecyclePartyWorkflow.reorder_party(_context.workflow_context(), (intent.payload as PartyIntentPayloads.StringList).values))
 		PlayerIntent.Kind.CHANGE_CHARACTER_APPEARANCE:
-			return _workflow(LifecyclePartyWorkflow.change_character_appearance(_context.workflow_context(), intent.payload as PlayerIntent.AppearancePayload))
+			return _workflow(LifecyclePartyWorkflow.change_character_appearance(_context.workflow_context(), intent.payload as PartyIntentPayloads.Appearance))
 	return null
 
 
 func _submit_inventory_or_service_intent(intent: PlayerIntent) -> SessionCoordinatorResult:
 	match intent.kind:
 		PlayerIntent.Kind.EQUIP_ITEM:
-			return _workflow(InventoryWorkflow.equip_item(_context.workflow_context(), intent.payload as PlayerIntent.ItemActionPayload))
+			return _workflow(InventoryWorkflow.equip_item(_context.workflow_context(), intent.payload as InventoryIntentPayloads.Action))
 		PlayerIntent.Kind.UNEQUIP_ITEM:
-			return _workflow(InventoryWorkflow.unequip_item(_context.workflow_context(), intent.payload as PlayerIntent.ItemActionPayload))
+			return _workflow(InventoryWorkflow.unequip_item(_context.workflow_context(), intent.payload as InventoryIntentPayloads.Action))
 		PlayerIntent.Kind.SPLIT_ITEM:
-			return _workflow(InventoryWorkflow.split_item(_context.workflow_context(), intent.payload as PlayerIntent.ItemActionPayload))
+			return _workflow(InventoryWorkflow.split_item(_context.workflow_context(), intent.payload as InventoryIntentPayloads.Action))
 		PlayerIntent.Kind.JOIN_ITEM:
-			return _workflow(InventoryWorkflow.join_item(_context.workflow_context(), intent.payload as PlayerIntent.ItemActionPayload))
+			return _workflow(InventoryWorkflow.join_item(_context.workflow_context(), intent.payload as InventoryIntentPayloads.Action))
 		PlayerIntent.Kind.DROP_ITEM:
-			return _request_drop_item(intent.payload as PlayerIntent.ItemActionPayload)
+			return _request_drop_item(intent.payload as InventoryIntentPayloads.Action)
 		PlayerIntent.Kind.TRADE_ITEM:
-			return _workflow(InventoryWorkflow.trade_item(_context.workflow_context(), intent.payload as PlayerIntent.ItemActionPayload))
+			return _workflow(InventoryWorkflow.trade_item(_context.workflow_context(), intent.payload as InventoryIntentPayloads.Action))
 		PlayerIntent.Kind.MONEY_ACTION:
-			return _workflow(SessionMoneyWorkflow.perform(_context.workflow_context(), intent.payload as PlayerIntent.MoneyPayload))
+			return _workflow(SessionMoneyWorkflow.perform(_context.workflow_context(), intent.payload as EconomyIntentPayloads.Money))
 		PlayerIntent.Kind.SERVICE_ACTION:
-			return _service_action(intent.payload as PlayerIntent.ServicePayload)
+			return _service_action(intent.payload as EconomyIntentPayloads.Service)
 	return null
 
 
@@ -189,11 +189,11 @@ func _use_item(intent: PlayerIntent) -> SessionCoordinatorResult:
 	var target_coordinates: Array[Vector2i] = []
 	var coordinate := CombatFlow.INVALID_COORDINATE
 	var rotation := 0
-	if intent.payload is PlayerIntent.ItemUsePayload:
-		actor_id = (intent.payload as PlayerIntent.ItemUsePayload).actor_id
-		item_id = (intent.payload as PlayerIntent.ItemUsePayload).item_id
+	if intent.payload is InventoryIntentPayloads.Use:
+		actor_id = (intent.payload as InventoryIntentPayloads.Use).actor_id
+		item_id = (intent.payload as InventoryIntentPayloads.Use).item_id
 	else:
-		var target := intent.payload as PlayerIntent.ItemTargetPayload
+		var target := intent.payload as InventoryIntentPayloads.Target
 		actor_id = target.actor_id
 		item_id = target.item_id
 		target_id = target.target_id
@@ -215,7 +215,7 @@ func _use_item(intent: PlayerIntent) -> SessionCoordinatorResult:
 	return _magic_transition(FieldItemWorkflow.begin_field_spell_item(_context.workflow_context(), actor_id, item_id, target_id, target_ids, _context.next_revision()))
 
 
-func _request_drop_item(payload: PlayerIntent.ItemActionPayload) -> SessionCoordinatorResult:
+func _request_drop_item(payload: InventoryIntentPayloads.Action) -> SessionCoordinatorResult:
 	var character := _context.state.party.character_by_id(payload.actor_id)
 	var instance := _context.item_instance(character, payload.item_id)
 	var definition: ItemDefinition = null if instance == null else _context.content.item_by_id(instance.definition_id)
@@ -233,7 +233,7 @@ func _request_drop_item(payload: PlayerIntent.ItemActionPayload) -> SessionCoord
 	return _context.waiting(_context.session_interaction, [DomainEvent.new(&"item_drop_requested", {"characterId": character.id, "instanceId": instance.id})])
 
 
-func _cast_spell(payload: PlayerIntent.SpellPayload) -> SessionCoordinatorResult:
+func _cast_spell(payload: SpellIntentPayload) -> SessionCoordinatorResult:
 	if payload.operation == &"identify-inventory":
 		return _workflow(FieldItemWorkflow.identify_inventory(_context.workflow_context(), payload))
 	if payload.operation == &"make-scroll":
@@ -245,13 +245,13 @@ func _cast_spell(payload: PlayerIntent.SpellPayload) -> SessionCoordinatorResult
 	return _combat_result(_context.rules.combat_flow.cast_spell(_context.state, _context.content, payload.caster_id, payload.target_id, payload.spell_id, payload.power, _context.rng, payload.coordinate, payload.rotation, payload.target_ids, payload.target_coordinates))
 
 
-func _use_scroll(payload: PlayerIntent.SpellPayload) -> SessionCoordinatorResult:
+func _use_scroll(payload: SpellIntentPayload) -> SessionCoordinatorResult:
 	if _active_combat():
 		return _combat_result(_context.rules.combat_flow.use_combat_scroll(_context.state, _context.content, payload.caster_id, payload.scroll_slot, payload.target_id, _context.rng, payload.coordinate, payload.rotation, payload.target_ids, payload.target_coordinates))
 	return _magic_transition(FieldMagicWorkflow.begin_field_scroll(_context.workflow_context(), payload, _context.next_revision()))
 
 
-func _combat_action(payload: PlayerIntent.CombatActionPayload) -> SessionCoordinatorResult:
+func _combat_action(payload: CombatIntentPayloads.Action) -> SessionCoordinatorResult:
 	if payload.action == &"retreat":
 		var probe: Variant = _context.rules.combat_flow.reactions.probe_character_retreat(_context.state.combat, _context.state.party.characters(), payload.actor_id)
 		if not probe.allowed:
@@ -260,7 +260,7 @@ func _combat_action(payload: PlayerIntent.CombatActionPayload) -> SessionCoordin
 	return _combat_result(CombatRewardsWorkflow.submit_action(_context.workflow_context(), payload))
 
 
-func _combat_move(payload: PlayerIntent.CombatMovePayload) -> SessionCoordinatorResult:
+func _combat_move(payload: CombatIntentPayloads.Move) -> SessionCoordinatorResult:
 	var edge_probe: Variant = _context.rules.combat_flow.reactions.probe_edge_retreat(_context.state.combat, payload.actor_id, payload.destination)
 	if edge_probe.allowed:
 		if not edge_probe.forced:
@@ -285,7 +285,7 @@ func _request_retreat(actor_id: String, mode: StringName, destination: Vector2i)
 	return _context.waiting(_context.session_interaction, [])
 
 
-func _request_friendly_collision(payload: PlayerIntent.CombatMovePayload) -> SessionCoordinatorResult:
+func _request_friendly_collision(payload: CombatIntentPayloads.Move) -> SessionCoordinatorResult:
 	var target_id := _context.rules.combat_flow.reactions.friendly_collision_target_id(_context.state, payload.actor_id, payload.destination)
 	if target_id.is_empty():
 		return _context.rejected(&"invalid_friendly_collision", "The adjacent ally is no longer available.")
@@ -328,7 +328,7 @@ func _commit_character_draft(events: Array[DomainEvent] = []) -> SessionCoordina
 	return _context.waiting(_context.session_interaction, events)
 
 
-func _service_action(payload: PlayerIntent.ServicePayload) -> SessionCoordinatorResult:
+func _service_action(payload: EconomyIntentPayloads.Service) -> SessionCoordinatorResult:
 	if payload.action != &"enter":
 		return _context.rejected(&"unknown_service_action", "Only entering an available service is implemented through this intent.")
 	if payload.service_id == "realmz.service.temple":

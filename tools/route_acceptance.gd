@@ -186,7 +186,7 @@ func _run_travel_proof(proof: Dictionary) -> void:
 			_fail("%s contains a malformed movement vector" % proof_id)
 			break
 		var direction := Vector2i(int(move[0]), int(move[1]))
-		var result := _session.submit_intent(PlayerIntent.move(direction))
+		var result := _session.submit_intent(ExplorationIntents.move(direction))
 		result = _drain_interactions(result, events, proof_id)
 		movement_steps += 1
 		if result.state == SessionStep.State.FAILED:
@@ -248,7 +248,7 @@ func _run_topology_step(step_id: String, step_definition: Dictionary, trigger: T
 	for path_index: int in path.size():
 		var origin := _session._state.party.coordinate
 		var destination := path[path_index]
-		var result := _session.submit_intent(PlayerIntent.move(destination - origin))
+		var result := _session.submit_intent(ExplorationIntents.move(destination - origin))
 		result = _drain_interactions(result, events, step_id, scripted_responses, response_cursor)
 		if result.state == SessionStep.State.FAILED:
 			_fail("%s topology traversal failed with %s: %s" % [step_id, result.error_code, result.error_message])

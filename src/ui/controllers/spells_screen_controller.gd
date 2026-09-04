@@ -277,14 +277,14 @@ func _bind_spell_action_dock(workspace: SpellsWorkspace, character: CharacterVie
 		row.get_node("MakeScrollAction").visible = false
 		return row
 	_bind_bitmap_action(cast, &"spells.action.cast", "Cast %s at power %d" % [spell.name, _selected_power], spell.field_cast, func() -> void:
-		intent_submitted.emit(PlayerIntent.cast_spell(spell.id, character.id, "", _selected_power))
+		intent_submitted.emit(MagicIntents.cast(spell.id, character.id, "", _selected_power))
 	)
 	var make_scroll := row.get_node("MakeScrollAction") as Button
 	make_scroll.disabled = spell.make_scroll == null or not spell.make_scroll.enabled or not _available_scroll_powers(spell).has(_selected_power)
 	make_scroll.tooltip_text = "Unavailable at this power" if make_scroll.disabled and spell.make_scroll != null and spell.make_scroll.enabled else "Unavailable" if spell.make_scroll == null else spell.make_scroll.reason if make_scroll.disabled else "Scribe at power %d for %d SP" % [_selected_power, absi(spell.cost * 2 * _selected_power)]
 	_clear_pressed_connections(make_scroll)
 	if not make_scroll.disabled:
-		make_scroll.pressed.connect(func() -> void: intent_submitted.emit(PlayerIntent.make_scroll(spell.id, character.id, _selected_power)))
+		make_scroll.pressed.connect(func() -> void: intent_submitted.emit(MagicIntents.make_scroll(spell.id, character.id, _selected_power)))
 	return row
 
 
@@ -460,10 +460,10 @@ func _bind_scrolls(workspace: SpellsWorkspace, character: CharacterView) -> void
 		_bind_label(row.get_node("Record") as Label, text, MUTED if scroll.power == 0 else TEXT, 14)
 		var use := row.get_node("Use") as Button
 		use.name = "UseScroll%d" % scroll.slot_index
-		_bind_button(use, "Use", scroll.use, func() -> void: intent_submitted.emit(PlayerIntent.use_scroll(character.id, scroll.slot_index)))
+		_bind_button(use, "Use", scroll.use, func() -> void: intent_submitted.emit(MagicIntents.use_scroll(character.id, scroll.slot_index)))
 		var discard := row.get_node("Discard") as Button
 		discard.name = "DiscardScroll%d" % scroll.slot_index
-		_bind_button(discard, "Discard", scroll.discard, func() -> void: intent_submitted.emit(PlayerIntent.use_scroll(character.id, scroll.slot_index)))
+		_bind_button(discard, "Discard", scroll.discard, func() -> void: intent_submitted.emit(MagicIntents.use_scroll(character.id, scroll.slot_index)))
 		workspace.scroll_rows().add_child(panel)
 
 
@@ -509,12 +509,12 @@ func _assign_fast_spell(character_id: String, slot_index: int, selected: Variant
 	if not selected is Dictionary or selected.is_empty():
 		return
 	sound_requested.emit(144, false, false)
-	intent_submitted.emit(PlayerIntent.set_fast_spell(character_id, slot_index, String(selected.get("spellId", "")), int(selected.get("power", 0))))
+	intent_submitted.emit(MagicIntents.set_fast_spell(character_id, slot_index, String(selected.get("spellId", "")), int(selected.get("power", 0))))
 
 
 func _clear_fast_spell(character_id: String, slot_index: int) -> void:
 	sound_requested.emit(144, false, false)
-	intent_submitted.emit(PlayerIntent.set_fast_spell(character_id, slot_index))
+	intent_submitted.emit(MagicIntents.set_fast_spell(character_id, slot_index))
 
 
 func _bind_button(button: Button, label: String, availability: ActionAvailabilityView, callback: Callable) -> void:
