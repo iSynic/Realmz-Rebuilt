@@ -1,7 +1,14 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://src/ui/interaction_presenter.gd" id="1_presenter"]
 [ext_resource type="Texture2D" path="res://src/ui/assets/ui/classic-charcoal-slate-tile.png" id="2_stone"]
+[ext_resource type="PackedScene" path="res://src/ui/interaction_components/classic_flash_overlay.tscn" id="3_flash"]
+[ext_resource type="PackedScene" path="res://src/ui/interaction_components/locked_modal_shield.tscn" id="4_shield"]
+[ext_resource type="PackedScene" path="res://src/ui/interaction_components/treasure_completion_modal_layer.tscn" id="5_treasure_modal"]
+[ext_resource type="PackedScene" path="res://src/ui/interaction_components/interaction_side_workspace.tscn" id="6_side"]
+[ext_resource type="PackedScene" path="res://src/ui/interaction_components/encounter_command_dock_host.tscn" id="7_dock"]
+[ext_resource type="PackedScene" path="res://src/ui/interaction_components/interaction_application_workspace.tscn" id="8_application"]
+[ext_resource type="PackedScene" path="res://src/ui/interaction_components/interaction_hint.tscn" id="9_hint"]
 
 [node name="InteractionPanel" type="PanelContainer"]
 unique_name_in_owner = true
@@ -10,6 +17,13 @@ z_index = 80
 mouse_filter = 0
 theme_type_variation = &"ClassicInset"
 script = ExtResource("1_presenter")
+classic_flash_overlay_scene = ExtResource("3_flash")
+modal_shield_scene = ExtResource("4_shield")
+treasure_completion_modal_scene = ExtResource("5_treasure_modal")
+side_workspace_scene = ExtResource("6_side")
+encounter_dock_scene = ExtResource("7_dock")
+application_workspace_scene = ExtResource("8_application")
+hint_scene = ExtResource("9_hint")
 
 [node name="StageOpaqueBacking" type="ColorRect" parent="."]
 visible = false

@@ -9,6 +9,14 @@ const FAST_SPELL_DOCK_SCENE_PATH := "res://src/ui/interaction_components/fast_sp
 const LayoutPolicy := preload("res://src/ui/interaction_layout_policy.gd")
 const ComponentFactory := preload("res://src/ui/interaction_component_factory.gd")
 
+@export var classic_flash_overlay_scene: PackedScene
+@export var modal_shield_scene: PackedScene
+@export var treasure_completion_modal_scene: PackedScene
+@export var side_workspace_scene: PackedScene
+@export var encounter_dock_scene: PackedScene
+@export var application_workspace_scene: PackedScene
+@export var hint_scene: PackedScene
+
 signal response_submitted(response: InteractionResponse)
 signal combat_targeting_requested(request: CombatTargetingRequest)
 signal combat_targeting_confirm_requested
@@ -283,42 +291,14 @@ func queue_classic_flash_messages(messages: Array[Dictionary]) -> void:
 func _show_next_classic_flash() -> void:
 	if _classic_flash_panel != null or _classic_flash_queue.is_empty() or get_parent() == null:
 		return
-	_classic_flash_layer = Control.new()
-	_classic_flash_layer.name = "ClassicFlashLayer"
-	_classic_flash_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_classic_flash_layer = classic_flash_overlay_scene.instantiate() as Control
 	_classic_flash_layer.z_index = z_index + 20
 	get_parent().add_child(_classic_flash_layer)
-	_classic_flash_layer.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
-	_classic_flash_shield = ColorRect.new()
-	_classic_flash_shield.name = "ClassicFlashShield"
-	_classic_flash_shield.color = Color(0.01, 0.015, 0.02, 0.42)
-	_classic_flash_shield.mouse_filter = Control.MOUSE_FILTER_STOP
-	_classic_flash_layer.add_child(_classic_flash_shield)
-	_classic_flash_shield.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
-	_classic_flash_panel = PanelContainer.new()
-	_classic_flash_panel.name = "ClassicFlashMessage"
-	_classic_flash_panel.theme_type_variation = &"ClassicInset"
-	_classic_flash_panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	_classic_flash_panel.z_index = 1
-	_classic_flash_layer.add_child(_classic_flash_panel)
-	_classic_flash_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
-	var content := VBoxContainer.new()
-	content.add_theme_constant_override("separation", 8)
-	content.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_classic_flash_panel.add_child(content)
-	var label := Label.new()
-	label.name = "ClassicFlashText"
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.add_theme_color_override("font_color", Color("f0d05b"))
-	content.add_child(label)
-	_classic_flash_label = label
-	var acknowledge := Button.new()
-	acknowledge.name = "ClassicFlashContinue"
-	acknowledge.text = "Continue"
-	acknowledge.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_classic_flash_shield = _classic_flash_layer.get_node("ClassicFlashShield") as ColorRect
+	_classic_flash_panel = _classic_flash_layer.get_node("ClassicFlashMessage") as PanelContainer
+	_classic_flash_label = _classic_flash_panel.get_node("ClassicFlashContent/ClassicFlashText") as Label
+	var acknowledge := _classic_flash_panel.get_node("ClassicFlashContent/ClassicFlashContinue") as Button
 	acknowledge.pressed.connect(_dismiss_classic_flash)
-	content.add_child(acknowledge)
 	_classic_flash_panel.gui_input.connect(func(event: InputEvent) -> void:
 		var click := event as InputEventMouseButton
 		if click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT:
@@ -658,9 +638,7 @@ func _update_modal_shield(needed: bool, dim_background: bool = true) -> void:
 		_close_modal_shield()
 		return
 	if _modal_shield == null:
-		_modal_shield = ColorRect.new()
-		_modal_shield.name = "LockedModalShield"
-		_modal_shield.mouse_filter = Control.MOUSE_FILTER_STOP
+		_modal_shield = modal_shield_scene.instantiate() as ColorRect
 		_modal_shield.z_index = z_index - 1
 		get_parent().add_child(_modal_shield)
 	_modal_shield.color = Color(0.01, 0.015, 0.02, 0.62) if dim_background else Color.TRANSPARENT
@@ -699,25 +677,10 @@ func _can_present_nested_treasure_confirmation(request: InteractionRequest) -> b
 
 func _present_nested_treasure_confirmation(request: InteractionRequest, game_view: GameView, media: ClassicMediaCatalog) -> void:
 	_close_nested_modal()
-	_nested_modal = Control.new()
-	_nested_modal.name = "TreasureCompletionModalLayer"
-	_nested_modal.mouse_filter = Control.MOUSE_FILTER_STOP
+	_nested_modal = treasure_completion_modal_scene.instantiate() as Control
 	_nested_modal.z_index = z_index + 1
 	add_child(_nested_modal)
-	var shade := ColorRect.new()
-	shade.name = "TreasureCompletionShield"
-	shade.color = Color(0.01, 0.015, 0.02, 0.68)
-	shade.mouse_filter = Control.MOUSE_FILTER_STOP
-	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_nested_modal.add_child(shade)
-	var center := CenterContainer.new()
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_nested_modal.add_child(center)
-	var frame := PanelContainer.new()
-	frame.name = "TreasureCompletionModal"
-	frame.theme_type_variation = &"ClassicInset"
-	frame.custom_minimum_size = Vector2(560.0, 210.0)
-	center.add_child(frame)
+	var frame := _nested_modal.get_node("TreasureCompletionCenter/TreasureCompletionModal") as PanelContainer
 	var component := _create_component(request, game_view, media)
 	_component = component
 	component.response_body_submitted.connect(_submit_body)
@@ -744,18 +707,10 @@ func _show_side_workspace(workspace: Control) -> void:
 	_close_side_workspace()
 	if workspace == null:
 		return
-	_side_workspace_panel = PanelContainer.new()
-	_side_workspace_panel.name = "InteractionSideWorkspace"
-	_side_workspace_panel.theme_type_variation = &"ClassicInset"
-	_side_workspace_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_side_workspace_panel = side_workspace_scene.instantiate() as PanelContainer
 	_side_workspace_panel.z_index = z_index + 1
 	get_parent().add_child(_side_workspace_panel)
-	var scroll := ScrollContainer.new()
-	scroll.name = "InteractionSideWorkspaceScroll"
-	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_side_workspace_panel.add_child(scroll)
+	var scroll := _side_workspace_panel.get_node("InteractionSideWorkspaceScroll") as ScrollContainer
 	workspace.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	workspace.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.add_child(workspace)
@@ -783,10 +738,7 @@ func _show_encounter_dock(workspace: Control) -> void:
 	_close_encounter_dock()
 	if workspace == null:
 		return
-	_encounter_dock_panel = PanelContainer.new()
-	_encounter_dock_panel.name = "EncounterCommandDock"
-	_encounter_dock_panel.theme_type_variation = &"ClassicInset"
-	_encounter_dock_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_encounter_dock_panel = encounter_dock_scene.instantiate() as PanelContainer
 	_encounter_dock_panel.z_index = z_index + 1
 	get_parent().add_child(_encounter_dock_panel)
 	workspace.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -821,10 +773,7 @@ func _show_application_workspace(workspace: Control) -> void:
 	_close_application_workspace()
 	if workspace == null:
 		return
-	_application_workspace_panel = PanelContainer.new()
-	_application_workspace_panel.name = "InteractionApplicationWorkspace"
-	_application_workspace_panel.theme_type_variation = &"ClassicInset"
-	_application_workspace_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_application_workspace_panel = application_workspace_scene.instantiate() as PanelContainer
 	_application_workspace_panel.z_index = z_index + 2
 	get_parent().add_child(_application_workspace_panel)
 	workspace.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -884,10 +833,8 @@ func _apply_content_layout() -> void:
 
 func _add_hint(text: String) -> Label:
 	_options.visible = true
-	var label := Label.new()
+	var label := hint_scene.instantiate() as Label
 	label.text = text
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.add_theme_color_override("font_color", Color("d5b45d"))
 	_options.add_child(label)
 	return label
 

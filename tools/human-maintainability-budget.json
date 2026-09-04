@@ -73,13 +73,6 @@
       "functions": ["add_hint", "character_option"]
     },
     {
-      "path": "src/ui/interaction_presenter.gd",
-      "kind": "conditional-chrome",
-      "reason": "The presenter creates short-lived modal shields, media flashes, and side-workspace hosts only for the active request.",
-      "currentMaximum": 15,
-      "functions": ["_add_hint", "_present_nested_treasure_confirmation", "_show_application_workspace", "_show_encounter_dock", "_show_next_classic_flash", "_show_side_workspace", "_update_modal_shield"]
-    },
-    {
       "path": "src/ui/screen_navigator.gd",
       "kind": "conditional-chrome",
       "reason": "The navigator supplies mount hosts only when embedded without the application shell's authored host nodes.",

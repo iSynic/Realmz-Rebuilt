@@ -6,7 +6,7 @@ Own the Godot user interface: scenes, controls, screen presenters, topology-deri
 
 ## Ownership
 
-- `InteractionPresenter` owns modal lifecycle and mounting. `InteractionComponentFactory` selects/configures the request-specific component, resolves its display heading, and gathers detached media needed by those components.
+- `InteractionPresenter` owns modal lifecycle and mounting. `interaction_presenter.tscn` exports the scene-authored flash, modal shield, nested Treasure confirmation, side workspace, Encounter dock, application workspace, and hint components; the presenter may position, retain, and release those conditional surfaces but does not reconstruct their stable control trees. `InteractionComponentFactory` selects/configures the request-specific component, resolves its display heading, and gathers detached media needed by those components.
 
 - `InteractionLayoutPolicy` owns stateless request classification, sizing, scrolling, click-region, and modal-region calculations; actual `Control` ownership and mutation remain in `InteractionPresenter`.
 - Scene consumers keep editable `.tscn` resource paths as constants and load their `PackedScene` at the construction boundary. Do not script-preload scene files from the same application graph: root-script type dependencies can turn that eager load into a clean-import compilation cycle even when a warmed editor cache appears healthy.
