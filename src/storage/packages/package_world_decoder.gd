@@ -141,64 +141,70 @@ func decode_maps(value: Variant, trigger_ids: Dictionary, battle_terrain_sets: D
 		if land_terrain_set != null and land_terrain_set.landlook >= 0:
 			land_terrain_sets_by_landlook[land_terrain_set.landlook] = land_terrain_set
 	for record: Variant in value:
-		if not record is Dictionary or not record.get("id") is String or record["id"].is_empty() or not record.get("name") is String:
-			_reject("Map definition is malformed.")
+		var map := _decode_map_record(record, trigger_ids, battle_terrain_sets, land_terrain_sets_by_landlook, map_ids, require_battle_terrain, validate_compact_rows)
+		if map == null:
 			return null
-		if map_ids.has(record["id"]):
-			_reject("Map ID '%s' is duplicated." % record["id"])
-			return null
-		map_ids[record["id"]] = true
-		var width := _integer(record.get("width"))
-		var height := _integer(record.get("height"))
-		if width < 1 or height < 1 or width > 256 or height > 256 or record.get("topologyFormat") != "realmz2.compact-cell-rows.v2" or not record.get("cells") is Array or record["cells"].size() != width * height:
-			_reject("Map '%s' dimensions do not match its topology cells." % record["id"])
-			return null
-		var level_index := _integer(record.get("levelIndex"))
-		var level_type: Variant = record.get("levelType")
-		if level_index < 0 or not level_type is String or level_type not in ["land", "dungeon"]:
-			_reject("Map '%s' has an invalid Classic level index." % record["id"])
-			return null
-		var regions_value: Variant = _construct_random_regions(record.get("randomRectangles"), width, height, record["id"])
-		if regions_value == null:
-			return null
-		var regions: Array[RandomEncounterRegion] = regions_value
-		var region_ids: Dictionary = {}
-		for region: RandomEncounterRegion in regions:
-			region_ids[region.id] = true
-		if validate_compact_rows:
-			for cell_index: int in record["cells"].size():
-				if not _validate_compact_cell(record["cells"][cell_index], record["id"], cell_index, trigger_ids, region_ids, StringName(level_type)):
-					return null
-		var metadata: Variant = record.get("metadata")
-		if not metadata is Dictionary or not _exact_fields(metadata, ["dark", "usesLos", "landlook", "baseScale", "battleTerrainSetId"]) or not metadata.get("dark") is bool or not metadata.get("usesLos") is bool or metadata.get("landlook") != null and not _is_integer(metadata.get("landlook")) or metadata.get("baseScale") != null and not _is_integer(metadata.get("baseScale")):
-			_reject("Map '%s' metadata is malformed." % record["id"])
-			return null
-		var landlook := -1 if metadata["landlook"] == null else _integer(metadata["landlook"])
-		var base_scale := -1 if metadata["baseScale"] == null else _integer(metadata["baseScale"])
-		if level_type == "dungeon" and metadata["baseScale"] != null:
-			_reject("Dungeon map '%s' contains land-only base-scale metadata." % record["id"])
-			return null
-		if metadata["battleTerrainSetId"] != null and (not metadata["battleTerrainSetId"] is String or metadata["battleTerrainSetId"].is_empty()):
-			_reject("Map '%s' battle terrain set identity is malformed." % record["id"])
-			return null
-		var terrain_set_id: String = "" if metadata["battleTerrainSetId"] == null else metadata["battleTerrainSetId"]
-		var terrain_set := battle_terrain_sets.get(terrain_set_id) as BattleTerrainSetDefinition
-		if require_battle_terrain and terrain_set == null:
-			_reject("Map '%s' does not reference a complete battle terrain set." % record["id"])
-			return null
-		if not terrain_set_id.is_empty() and terrain_set == null:
-			_reject("Map '%s' references unknown battle terrain set '%s'." % [record["id"], terrain_set_id])
-			return null
-		if terrain_set != null and ((level_type == "land" and terrain_set.landlook != landlook) or (level_type == "dungeon" and terrain_set.landlook != -1)):
-			_reject("Map '%s' references a battle terrain set for the wrong level type or landlook." % record["id"])
-			return null
-		var boat_profiles_value: Variant = _construct_boat_replacement_profiles(record.get("boatReplacementProfiles"), StringName(level_type), record["id"])
-		if boat_profiles_value == null:
-			return null
-		var boat_profiles: Array = boat_profiles_value
-		var topology := MapTopology.from_compact_rows(record["id"], width, height, record["cells"], boat_profiles[0] as LandTileProfile, boat_profiles[1] as LandTileProfile, landlook, land_terrain_sets_by_landlook)
-		maps.append(MapDefinition.new(record["id"], record["name"], StringName(level_type), level_index, topology, metadata["dark"], metadata["usesLos"], landlook, regions, terrain_set_id, base_scale))
+		maps.append(map)
 	return maps
+
+func _decode_map_record(record: Variant, trigger_ids: Dictionary, battle_terrain_sets: Dictionary, land_terrain_sets_by_landlook: Dictionary, map_ids: Dictionary, require_battle_terrain: bool, validate_compact_rows: bool) -> MapDefinition:
+	if not record is Dictionary or not record.get("id") is String or record["id"].is_empty() or not record.get("name") is String:
+		_reject("Map definition is malformed.")
+		return null
+	if map_ids.has(record["id"]):
+		_reject("Map ID '%s' is duplicated." % record["id"])
+		return null
+	map_ids[record["id"]] = true
+	var width := _integer(record.get("width"))
+	var height := _integer(record.get("height"))
+	if width < 1 or height < 1 or width > 256 or height > 256 or record.get("topologyFormat") != "realmz2.compact-cell-rows.v2" or not record.get("cells") is Array or record["cells"].size() != width * height:
+		_reject("Map '%s' dimensions do not match its topology cells." % record["id"])
+		return null
+	var level_index := _integer(record.get("levelIndex"))
+	var level_type: Variant = record.get("levelType")
+	if level_index < 0 or not level_type is String or level_type not in ["land", "dungeon"]:
+		_reject("Map '%s' has an invalid Classic level index." % record["id"])
+		return null
+	var regions_value: Variant = _construct_random_regions(record.get("randomRectangles"), width, height, record["id"])
+	if regions_value == null:
+		return null
+	var regions: Array[RandomEncounterRegion] = regions_value
+	var region_ids: Dictionary = {}
+	for region: RandomEncounterRegion in regions:
+		region_ids[region.id] = true
+	if validate_compact_rows:
+		for cell_index: int in record["cells"].size():
+			if not _validate_compact_cell(record["cells"][cell_index], record["id"], cell_index, trigger_ids, region_ids, StringName(level_type)):
+				return null
+	var metadata: Variant = record.get("metadata")
+	if not metadata is Dictionary or not _exact_fields(metadata, ["dark", "usesLos", "landlook", "baseScale", "battleTerrainSetId"]) or not metadata.get("dark") is bool or not metadata.get("usesLos") is bool or metadata.get("landlook") != null and not _is_integer(metadata.get("landlook")) or metadata.get("baseScale") != null and not _is_integer(metadata.get("baseScale")):
+		_reject("Map '%s' metadata is malformed." % record["id"])
+		return null
+	var landlook := -1 if metadata["landlook"] == null else _integer(metadata["landlook"])
+	var base_scale := -1 if metadata["baseScale"] == null else _integer(metadata["baseScale"])
+	if level_type == "dungeon" and metadata["baseScale"] != null:
+		_reject("Dungeon map '%s' contains land-only base-scale metadata." % record["id"])
+		return null
+	if metadata["battleTerrainSetId"] != null and (not metadata["battleTerrainSetId"] is String or metadata["battleTerrainSetId"].is_empty()):
+		_reject("Map '%s' battle terrain set identity is malformed." % record["id"])
+		return null
+	var terrain_set_id: String = "" if metadata["battleTerrainSetId"] == null else metadata["battleTerrainSetId"]
+	var terrain_set := battle_terrain_sets.get(terrain_set_id) as BattleTerrainSetDefinition
+	if require_battle_terrain and terrain_set == null:
+		_reject("Map '%s' does not reference a complete battle terrain set." % record["id"])
+		return null
+	if not terrain_set_id.is_empty() and terrain_set == null:
+		_reject("Map '%s' references unknown battle terrain set '%s'." % [record["id"], terrain_set_id])
+		return null
+	if terrain_set != null and ((level_type == "land" and terrain_set.landlook != landlook) or (level_type == "dungeon" and terrain_set.landlook != -1)):
+		_reject("Map '%s' references a battle terrain set for the wrong level type or landlook." % record["id"])
+		return null
+	var boat_profiles_value: Variant = _construct_boat_replacement_profiles(record.get("boatReplacementProfiles"), StringName(level_type), record["id"])
+	if boat_profiles_value == null:
+		return null
+	var boat_profiles: Array = boat_profiles_value
+	var topology := MapTopology.from_compact_rows(record["id"], width, height, record["cells"], boat_profiles[0] as LandTileProfile, boat_profiles[1] as LandTileProfile, landlook, land_terrain_sets_by_landlook)
+	return MapDefinition.new(record["id"], record["name"], StringName(level_type), level_index, topology, metadata["dark"], metadata["usesLos"], landlook, regions, terrain_set_id, base_scale)
 
 
 func _construct_boat_replacement_profiles(value: Variant, level_type: StringName, map_id: String) -> Variant:
@@ -312,75 +318,86 @@ func decode_player_maps(value: Variant, maps: Array[MapDefinition], media_assets
 	var fields: Array[String] = ["id", "classicId", "name", "unavailableName", "mode", "mapId", "start", "iconSize", "pictureAssetId", "scrollingTextAssetId", "partyMarkerAssetId", "pictureRect", "markers", "note"]
 	var modes: Array[String] = ["scrolling-text", "picture", "land-crop", "dungeon-crop"]
 	for value_record: Variant in value:
-		if not value_record is Dictionary:
-			_reject("Player-map definition is not an object.")
+		var player_map := _decode_player_map_record(value_record, fields, modes, maps_by_id, assets_by_id, ids, classic_ids)
+		if player_map == null:
 			return null
-		var record: Dictionary = value_record
-		if not _exact_fields(record, fields) or not record["id"] is String or record["id"].is_empty() or ids.has(record["id"]) or not _is_integer(record["classicId"]) or not record["name"] is String or record["name"].is_empty() or not record["unavailableName"] is String or not record["mode"] is String or record["mode"] not in modes or not _is_integer(record["iconSize"]) or _integer(record["iconSize"]) <= 0 or not record["note"] is String:
-			_reject("Player-map definition is malformed or duplicated.")
-			return null
-		var classic_id := _integer(record["classicId"])
-		if classic_id < 0 or classic_id > 19 or classic_ids.has(classic_id):
-			_reject("Player-map Classic ID must be unique and between 0 and 19.")
-			return null
-		if not record["start"] is Dictionary or not _exact_fields(record["start"], ["x", "y"]) or not _is_integer(record["start"]["x"]) or not _is_integer(record["start"]["y"]):
-			_reject("Player-map start coordinate is malformed.")
-			return null
-		if not record["pictureRect"] is Dictionary or not _exact_fields(record["pictureRect"], ["top", "left", "bottom", "right"]):
-			_reject("Player-map picture rectangle is malformed.")
-			return null
-		for field: String in ["top", "left", "bottom", "right"]:
-			if not _is_integer(record["pictureRect"][field]):
-				_reject("Player-map picture rectangle is malformed.")
-				return null
-		var mode := StringName(record["mode"])
-		var map_id := "" if record["mapId"] == null else String(record["mapId"])
-		var picture_asset_id := "" if record["pictureAssetId"] == null else String(record["pictureAssetId"])
-		var scrolling_text_asset_id := "" if record["scrollingTextAssetId"] == null else String(record["scrollingTextAssetId"])
-		var party_marker_asset_id := "" if record["partyMarkerAssetId"] == null else String(record["partyMarkerAssetId"])
-		var party_marker_asset := assets_by_id.get(party_marker_asset_id) as MediaAsset
-		if record["mapId"] != null and (not record["mapId"] is String or map_id.is_empty()) or record["pictureAssetId"] != null and (not record["pictureAssetId"] is String or picture_asset_id.is_empty()) or record["scrollingTextAssetId"] != null and (not record["scrollingTextAssetId"] is String or scrolling_text_asset_id.is_empty()) or record["partyMarkerAssetId"] != null and (not record["partyMarkerAssetId"] is String or party_marker_asset_id.is_empty()):
-			_reject("Player-map content references are malformed.")
-			return null
-		var crop := mode in [PlayerMapDefinition.LAND_CROP, PlayerMapDefinition.DUNGEON_CROP]
-		if crop:
-			var source_map := maps_by_id.get(map_id) as MapDefinition
-			var expected_type := &"dungeon" if mode == PlayerMapDefinition.DUNGEON_CROP else &"land"
-			if source_map == null or source_map.level_type != expected_type or not picture_asset_id.is_empty() or not scrolling_text_asset_id.is_empty():
-				_reject("Player-map crop references an unavailable or wrong-kind topology map.")
-				return null
-		if mode == PlayerMapDefinition.PICTURE:
-			var picture_map := maps_by_id.get(map_id) as MapDefinition
-			if picture_map == null or not _player_map_asset_matches(assets_by_id.get(picture_asset_id), "PICT") or not _player_map_asset_matches(party_marker_asset, "cicn") or party_marker_asset.resource_id != 138 or not scrolling_text_asset_id.is_empty():
-				_reject("Picture-backed player map references unavailable PICT media.")
-				return null
-		elif mode == PlayerMapDefinition.SCROLLING_TEXT:
-			if not map_id.is_empty() or not _player_map_asset_matches(assets_by_id.get(scrolling_text_asset_id), "TEXT") or not picture_asset_id.is_empty() or not party_marker_asset_id.is_empty():
-				_reject("Scrolling player map references unavailable TEXT media.")
-				return null
-		elif not _player_map_asset_matches(party_marker_asset, "cicn") or party_marker_asset.resource_id != 138:
-			_reject("Player-map crop references unavailable current-party cicn media.")
-			return null
-		var markers_value: Variant = record["markers"]
-		if not markers_value is Array or markers_value.size() > 10 or not crop and not markers_value.is_empty():
-			_reject("Player-map markers are malformed or attached outside a crop map.")
-			return null
-		var markers: Array[PlayerMapMarkerDefinition] = []
-		for marker_value: Variant in markers_value:
-			if not marker_value is Dictionary or not _exact_fields(marker_value, ["classicIconId", "iconAssetId", "x", "y"]) or not _is_integer(marker_value["classicIconId"]) or not marker_value["iconAssetId"] is String or marker_value["iconAssetId"].is_empty() or not _is_integer(marker_value["x"]) or not _is_integer(marker_value["y"]):
-				_reject("Player-map marker is malformed.")
-				return null
-			var marker_asset := assets_by_id.get(marker_value["iconAssetId"]) as MediaAsset
-			if not _player_map_asset_matches(marker_asset, "cicn") or marker_asset.resource_id != _integer(marker_value["classicIconId"]):
-				_reject("Player-map marker does not match its exact cicn resource identity.")
-				return null
-			markers.append(PlayerMapMarkerDefinition.new(_integer(marker_value["classicIconId"]), marker_value["iconAssetId"], Vector2i(_integer(marker_value["x"]), _integer(marker_value["y"]))))
-		ids[record["id"]] = true
-		classic_ids[classic_id] = true
-		var rect: Dictionary = record["pictureRect"]
-		result.append(PlayerMapDefinition.new(record["id"], classic_id, record["name"], record["unavailableName"], mode, map_id, Vector2i(_integer(record["start"]["x"]), _integer(record["start"]["y"])), _integer(record["iconSize"]), picture_asset_id, scrolling_text_asset_id, party_marker_asset_id, Rect2i(_integer(rect["left"]), _integer(rect["top"]), _integer(rect["right"]) - _integer(rect["left"]), _integer(rect["bottom"]) - _integer(rect["top"])), markers, record["note"]))
+		result.append(player_map)
 	result.sort_custom(func(left: PlayerMapDefinition, right: PlayerMapDefinition) -> bool: return left.classic_id < right.classic_id)
 	return result
+
+func _decode_player_map_record(value_record: Variant, fields: Array[String], modes: Array[String], maps_by_id: Dictionary, assets_by_id: Dictionary, ids: Dictionary, classic_ids: Dictionary) -> PlayerMapDefinition:
+	if not value_record is Dictionary:
+		_reject("Player-map definition is not an object.")
+		return null
+	var record: Dictionary = value_record
+	if not _exact_fields(record, fields) or not record["id"] is String or record["id"].is_empty() or ids.has(record["id"]) or not _is_integer(record["classicId"]) or not record["name"] is String or record["name"].is_empty() or not record["unavailableName"] is String or not record["mode"] is String or record["mode"] not in modes or not _is_integer(record["iconSize"]) or _integer(record["iconSize"]) <= 0 or not record["note"] is String:
+		_reject("Player-map definition is malformed or duplicated.")
+		return null
+	var classic_id := _integer(record["classicId"])
+	if classic_id < 0 or classic_id > 19 or classic_ids.has(classic_id):
+		_reject("Player-map Classic ID must be unique and between 0 and 19.")
+		return null
+	if not record["start"] is Dictionary or not _exact_fields(record["start"], ["x", "y"]) or not _is_integer(record["start"]["x"]) or not _is_integer(record["start"]["y"]):
+		_reject("Player-map start coordinate is malformed.")
+		return null
+	if not record["pictureRect"] is Dictionary or not _exact_fields(record["pictureRect"], ["top", "left", "bottom", "right"]):
+		_reject("Player-map picture rectangle is malformed.")
+		return null
+	for field: String in ["top", "left", "bottom", "right"]:
+		if not _is_integer(record["pictureRect"][field]):
+			_reject("Player-map picture rectangle is malformed.")
+			return null
+	var mode := StringName(record["mode"])
+	var map_id := "" if record["mapId"] == null else String(record["mapId"])
+	var picture_asset_id := "" if record["pictureAssetId"] == null else String(record["pictureAssetId"])
+	var scrolling_text_asset_id := "" if record["scrollingTextAssetId"] == null else String(record["scrollingTextAssetId"])
+	var party_marker_asset_id := "" if record["partyMarkerAssetId"] == null else String(record["partyMarkerAssetId"])
+	var party_marker_asset := assets_by_id.get(party_marker_asset_id) as MediaAsset
+	if record["mapId"] != null and (not record["mapId"] is String or map_id.is_empty()) or record["pictureAssetId"] != null and (not record["pictureAssetId"] is String or picture_asset_id.is_empty()) or record["scrollingTextAssetId"] != null and (not record["scrollingTextAssetId"] is String or scrolling_text_asset_id.is_empty()) or record["partyMarkerAssetId"] != null and (not record["partyMarkerAssetId"] is String or party_marker_asset_id.is_empty()):
+		_reject("Player-map content references are malformed.")
+		return null
+	var crop := mode in [PlayerMapDefinition.LAND_CROP, PlayerMapDefinition.DUNGEON_CROP]
+	if crop:
+		var source_map := maps_by_id.get(map_id) as MapDefinition
+		var expected_type := &"dungeon" if mode == PlayerMapDefinition.DUNGEON_CROP else &"land"
+		if source_map == null or source_map.level_type != expected_type or not picture_asset_id.is_empty() or not scrolling_text_asset_id.is_empty():
+			_reject("Player-map crop references an unavailable or wrong-kind topology map.")
+			return null
+	if mode == PlayerMapDefinition.PICTURE:
+		var picture_map := maps_by_id.get(map_id) as MapDefinition
+		if picture_map == null or not _player_map_asset_matches(assets_by_id.get(picture_asset_id), "PICT") or not _player_map_asset_matches(party_marker_asset, "cicn") or party_marker_asset.resource_id != 138 or not scrolling_text_asset_id.is_empty():
+			_reject("Picture-backed player map references unavailable PICT media.")
+			return null
+	elif mode == PlayerMapDefinition.SCROLLING_TEXT:
+		if not map_id.is_empty() or not _player_map_asset_matches(assets_by_id.get(scrolling_text_asset_id), "TEXT") or not picture_asset_id.is_empty() or not party_marker_asset_id.is_empty():
+			_reject("Scrolling player map references unavailable TEXT media.")
+			return null
+	elif not _player_map_asset_matches(party_marker_asset, "cicn") or party_marker_asset.resource_id != 138:
+		_reject("Player-map crop references unavailable current-party cicn media.")
+		return null
+	var markers_value: Variant = _decode_player_map_markers(record["markers"], crop, assets_by_id)
+	if markers_value == null:
+		return null
+	ids[record["id"]] = true
+	classic_ids[classic_id] = true
+	var rect: Dictionary = record["pictureRect"]
+	return PlayerMapDefinition.new(record["id"], classic_id, record["name"], record["unavailableName"], mode, map_id, Vector2i(_integer(record["start"]["x"]), _integer(record["start"]["y"])), _integer(record["iconSize"]), picture_asset_id, scrolling_text_asset_id, party_marker_asset_id, Rect2i(_integer(rect["left"]), _integer(rect["top"]), _integer(rect["right"]) - _integer(rect["left"]), _integer(rect["bottom"]) - _integer(rect["top"])), markers_value, record["note"])
+
+func _decode_player_map_markers(value: Variant, crop: bool, assets_by_id: Dictionary) -> Variant:
+	if not value is Array or value.size() > 10 or not crop and not value.is_empty():
+		_reject("Player-map markers are malformed or attached outside a crop map.")
+		return null
+	var markers: Array[PlayerMapMarkerDefinition] = []
+	for marker_value: Variant in value:
+		if not marker_value is Dictionary or not _exact_fields(marker_value, ["classicIconId", "iconAssetId", "x", "y"]) or not _is_integer(marker_value["classicIconId"]) or not marker_value["iconAssetId"] is String or marker_value["iconAssetId"].is_empty() or not _is_integer(marker_value["x"]) or not _is_integer(marker_value["y"]):
+			_reject("Player-map marker is malformed.")
+			return null
+		var marker_asset := assets_by_id.get(marker_value["iconAssetId"]) as MediaAsset
+		if not _player_map_asset_matches(marker_asset, "cicn") or marker_asset.resource_id != _integer(marker_value["classicIconId"]):
+			_reject("Player-map marker does not match its exact cicn resource identity.")
+			return null
+		markers.append(PlayerMapMarkerDefinition.new(_integer(marker_value["classicIconId"]), marker_value["iconAssetId"], Vector2i(_integer(marker_value["x"]), _integer(marker_value["y"]))))
+	return markers
 
 func _player_map_asset_matches(value: Variant, resource_type: String) -> bool:
 	return value is MediaAsset and value.resource_type == resource_type
