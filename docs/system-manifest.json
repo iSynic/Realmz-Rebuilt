@@ -61,7 +61,7 @@
       "id": "session-transactions",
       "boundary": "playthrough",
       "guide": "docs/features/session-transactions.md",
-      "entryPoints": ["src/playthrough/game_session.gd", "src/playthrough/session_context.gd", "src/game/session/interaction_request.gd"],
+      "entryPoints": ["src/playthrough/game_session.gd", "src/playthrough/session_context.gd", "src/playthrough/coordinators/session_intent_coordinator.gd", "src/game/session/interaction_request.gd"],
       "publicInterfaces": ["GameSession", "SessionContext", "SessionStep", "SessionSnapshot", "InteractionRequest", "InteractionRequestBody", "InteractionResponse"],
       "tests": ["tests/core/test_game_session.gd", "tests/integration/test_session_persistence.gd"],
       "performanceProbes": ["tools/movement_performance_probe.gd"]

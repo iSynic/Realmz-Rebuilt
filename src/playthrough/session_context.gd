@@ -45,6 +45,73 @@ func _init(
 	_view_revision = value_revision
 
 
+func begin(content_library: RealmzContent, initial_seed: int) -> void:
+	content = content_library
+	state = GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, []), RealmzClock.new())
+	state.world.mark_visited(content.start_map_id, content.start_coordinate)
+	rng = RealmzRng.new(initial_seed)
+	rules = RealmzRules.new()
+	scenario_action_state = ScenarioActionState.new()
+	scenario_vm = ScenarioVm.new()
+	scenario_vm.configure(content.scenario)
+	runtime_api = RealmzRuntimeApi.new(content, state, rng, scenario_action_state, rules)
+	session_continuation.clear()
+	battle_return_continuation.clear()
+	session_interaction = null
+	set_revision(1)
+
+
+func restore(content_library: RealmzContent, candidate: SessionRestoreCandidate) -> void:
+	content = content_library
+	state = candidate.state
+	rng = candidate.rng
+	rules = candidate.rules
+	scenario_action_state = candidate.scenario_action_state
+	scenario_vm = candidate.scenario_vm
+	runtime_api = RealmzRuntimeApi.new(content, state, rng, scenario_action_state, rules)
+	session_continuation = candidate.continuation
+	battle_return_continuation = candidate.battle_return_continuation
+	session_interaction = candidate.session_interaction
+	set_revision(candidate.view_revision)
+
+
+func reset_scenario_execution() -> void:
+	session_continuation.clear()
+	battle_return_continuation.clear()
+	session_interaction = null
+	scenario_vm = ScenarioVm.new()
+	scenario_vm.configure(content.scenario)
+	runtime_api = RealmzRuntimeApi.new(content, state, rng, scenario_action_state, rules)
+
+
+func clear() -> void:
+	release_coordinators()
+	session_continuation.clear()
+	battle_return_continuation.clear()
+	session_interaction = null
+	runtime_api = null
+	scenario_vm = null
+	scenario_action_state = null
+	rules = null
+	rng = null
+	state = null
+	content = null
+
+
+func create_snapshot() -> SessionSnapshot:
+	var saved_state := GameState.from_data(state.to_data())
+	var saved_vm := ScenarioVmSnapshot.from_data(scenario_vm.snapshot().to_data())
+	var saved_actions := ScenarioActionState.from_data(scenario_action_state.to_data())
+	var saved_interaction: InteractionRequest = null
+	if session_interaction != null:
+		saved_interaction = InteractionRequest.from_data(session_interaction.to_data())
+	if saved_state == null or saved_vm == null or saved_actions == null or session_interaction != null and saved_interaction == null:
+		return null
+	var continuation := null if session_continuation.is_empty() else SessionContinuation.from_data(session_continuation.to_data())
+	var battle_return := null if battle_return_continuation.is_empty() else SessionContinuation.from_data(battle_return_continuation.to_data())
+	return SessionSnapshot.new(content.campaign_id, content.package_hash, content.rules_version, current_revision(), saved_state, rng.snapshot(), saved_vm, saved_actions, continuation, battle_return, saved_interaction)
+
+
 func current_revision() -> int:
 	return _view_revision
 
@@ -102,6 +169,10 @@ func waiting(request: InteractionRequest, events: Array[DomainEvent]) -> Session
 
 func failed(code: StringName, message: String, events: Array[DomainEvent] = []) -> SessionCoordinatorResult:
 	return SessionCoordinatorResult.failed(code, message, events)
+
+
+func rejected(code: StringName, message: String) -> SessionCoordinatorResult:
+	return SessionCoordinatorResult.rejected(code, message)
 
 
 func closed(events: Array[DomainEvent], reason: String) -> SessionCoordinatorResult:

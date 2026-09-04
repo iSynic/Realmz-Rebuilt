@@ -16,6 +16,7 @@ var interaction: InteractionRequest
 var error_code: StringName
 var error_message: String
 var close_reason: String
+var commit_failure: bool = true
 
 
 func _init(value: State) -> void:
@@ -40,6 +41,12 @@ static func failed(code: StringName, message: String, value_events: Array[Domain
 	result.error_code = code
 	result.error_message = message
 	result.events.assign(value_events)
+	return result
+
+
+static func rejected(code: StringName, message: String) -> SessionCoordinatorResult:
+	var result := failed(code, message)
+	result.commit_failure = false
 	return result
 
 

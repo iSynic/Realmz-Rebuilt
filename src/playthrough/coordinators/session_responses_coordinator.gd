@@ -211,7 +211,7 @@ func _respond_item_use_target(response: InteractionResponse) -> SessionCoordinat
 	var saved_interaction = _context.session_interaction
 	_context.session_continuation.clear()
 	_context.session_interaction = null
-	var completed = _finish_magic_transition(FieldItemWorkflow.resume_field_spell_item(_context.workflow_context(), targeting, target_ids))
+	var completed = finish_magic_transition(FieldItemWorkflow.resume_field_spell_item(_context.workflow_context(), targeting, target_ids))
 	if completed.state == SessionCoordinatorResult.State.FAILED:
 		_context.set_continuation(saved_continuation)
 		_context.session_interaction = saved_interaction
@@ -228,7 +228,7 @@ func _respond_field_spell_target(response: InteractionResponse) -> SessionCoordi
 	var saved_interaction = _context.session_interaction
 	_context.session_continuation.clear()
 	_context.session_interaction = null
-	var completed = _finish_magic_transition(FieldMagicWorkflow.resume_field_spell(_context.workflow_context(), targeting, target_ids))
+	var completed = finish_magic_transition(FieldMagicWorkflow.resume_field_spell(_context.workflow_context(), targeting, target_ids))
 	if completed.state == SessionCoordinatorResult.State.FAILED:
 		_context.set_continuation(saved_continuation)
 		_context.session_interaction = saved_interaction
@@ -245,7 +245,7 @@ func _respond_scroll_target(response: InteractionResponse) -> SessionCoordinator
 	var saved_interaction = _context.session_interaction
 	_context.session_continuation.clear()
 	_context.session_interaction = null
-	var completed = _finish_magic_transition(FieldMagicWorkflow.resume_field_scroll(_context.workflow_context(), targeting, target_ids))
+	var completed = finish_magic_transition(FieldMagicWorkflow.resume_field_scroll(_context.workflow_context(), targeting, target_ids))
 	if completed.state == SessionCoordinatorResult.State.FAILED:
 		_context.set_continuation(saved_continuation)
 		_context.session_interaction = saved_interaction
@@ -367,7 +367,7 @@ func _respond_session_retreat(response: InteractionResponse) -> SessionCoordinat
 	if not body.accepted:
 		return _context.completed(_single_event(DomainEvent.new(&"combat_retreat_declined", {"actorId": continuation.actor_id, "mode": String(continuation.mode), "source": "classic"})))
 	var result = _context.rules.combat_flow.retreat_character(_context.state, _context.content, continuation.actor_id, continuation.mode, continuation.destination, _context.rng)
-	return _finish_combat_result(result)
+	return finish_combat_result(result)
 
 
 func _respond_session_friendly_collision(response: InteractionResponse) -> SessionCoordinatorResult:
@@ -381,7 +381,7 @@ func _respond_session_friendly_collision(response: InteractionResponse) -> Sessi
 	_context.session_continuation.clear()
 	var action := &"swap" if body.accepted else &"attack"
 	var result = _context.rules.combat_flow.move_character(_context.state, _context.content, continuation.actor_id, continuation.destination, _context.rng, false, action)
-	return _finish_combat_result(result)
+	return finish_combat_result(result)
 
 
 func finish_with_age_updates(events: Array[DomainEvent], resume_kind: StringName, resume_continuation: SessionContinuation = null) -> SessionCoordinatorResult:
@@ -522,7 +522,7 @@ func _respond_session_battle_reward(response: InteractionResponse) -> SessionCoo
 	return _context.scenario().finish_after_direct_battle(result.events, return_continuation, battle_outcome)
 
 
-func _finish_magic_transition(result: MagicTransitionResult) -> SessionCoordinatorResult:
+func finish_magic_transition(result: MagicTransitionResult) -> SessionCoordinatorResult:
 	if result == null:
 		return _context.failed(&"invalid_workflow_result", "The magic workflow returned no result.")
 	if not result.ok:
@@ -560,7 +560,7 @@ func _commit_character_draft(events: Array[DomainEvent] = []) -> SessionCoordina
 	return _context.waiting(_context.session_interaction, events)
 
 
-func _finish_combat_result(result: CombatFlowResult) -> SessionCoordinatorResult:
+func finish_combat_result(result: CombatFlowResult) -> SessionCoordinatorResult:
 	if not result.ok:
 		return _context.failed(result.error_code, result.error_message)
 	if not CharacterAgingResult.update_payloads(result.events).is_empty():

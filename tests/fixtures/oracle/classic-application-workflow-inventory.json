@@ -2521,7 +2521,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/playthrough/game_session.gd",
+            "path": "src/playthrough/coordinators/session_intent_coordinator.gd",
             "symbol": "func _begin_adventure"
           }
         ]
@@ -2809,7 +2809,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/playthrough/game_session.gd",
+            "path": "src/playthrough/coordinators/session_intent_coordinator.gd",
             "symbol": "func _move"
           },
           {
@@ -2972,7 +2972,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/playthrough/game_session.gd",
+            "path": "src/playthrough/coordinators/session_intent_coordinator.gd",
             "symbol": "func _search"
           }
         ]
@@ -3124,15 +3124,15 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/playthrough/game_session.gd",
+            "path": "src/playthrough/coordinators/session_intent_coordinator.gd",
             "symbol": "func _camp"
           },
           {
-            "path": "src/playthrough/game_session.gd",
+            "path": "src/playthrough/coordinators/session_intent_coordinator.gd",
             "symbol": "func _rest"
           },
           {
-            "path": "src/playthrough/game_session.gd",
+            "path": "src/playthrough/coordinators/session_intent_coordinator.gd",
             "symbol": "func _heal"
           },
           {
@@ -3560,7 +3560,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/playthrough/game_session.gd",
+            "path": "src/playthrough/coordinators/session_intent_coordinator.gd",
             "symbol": "func _service_action"
           },
           {
@@ -5622,11 +5622,11 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/playthrough/game_session.gd",
+            "path": "src/playthrough/coordinators/session_intent_coordinator.gd",
             "symbol": "func _use_item"
           },
           {
-            "path": "src/playthrough/game_session.gd",
+            "path": "src/playthrough/coordinators/session_intent_coordinator.gd",
             "symbol": "func _use_scroll"
           },
           {
@@ -5996,7 +5996,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/playthrough/game_session.gd",
+            "path": "src/playthrough/coordinators/session_intent_coordinator.gd",
             "symbol": "func _service_action"
           },
           {
@@ -6224,7 +6224,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/playthrough/game_session.gd",
+            "path": "src/playthrough/coordinators/session_intent_coordinator.gd",
             "symbol": "func _cast_spell"
           }
         ]
@@ -6379,15 +6379,15 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/playthrough/game_session.gd",
-            "symbol": "func _cast_field_spell"
+            "path": "src/playthrough/coordinators/session_intent_coordinator.gd",
+            "symbol": "func _cast_spell"
           },
           {
             "path": "src/playthrough/workflows/field_magic_workflow.gd",
             "symbol": "static func make_scroll"
           },
           {
-            "path": "src/playthrough/game_session.gd",
+            "path": "src/playthrough/coordinators/session_intent_coordinator.gd",
             "symbol": "func _use_scroll"
           },
           {
@@ -6734,8 +6734,8 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/playthrough/game_session.gd",
-            "symbol": "func _money_action(intent: PlayerIntent)"
+            "path": "src/playthrough/workflows/session_money_workflow.gd",
+            "symbol": "func perform"
           },
           {
             "path": "src/playthrough/coordinators/session_responses_coordinator.gd",
@@ -6874,8 +6874,8 @@
             "symbol": "func share_pooled_wealth("
           },
           {
-            "path": "src/playthrough/game_session.gd",
-            "symbol": "func _money_action(intent: PlayerIntent)"
+            "path": "src/playthrough/workflows/session_money_workflow.gd",
+            "symbol": "func perform"
           }
         ]
       },
@@ -8373,8 +8373,8 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/playthrough/game_session.gd",
-            "symbol": "func _finish_direct_battle"
+            "path": "src/playthrough/coordinators/session_scenario_coordinator.gd",
+            "symbol": "func finish_direct_battle"
           },
           {
             "path": "src/playthrough/coordinators/session_scenario_coordinator.gd",
