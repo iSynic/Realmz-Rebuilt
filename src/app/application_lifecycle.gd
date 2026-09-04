@@ -1,5 +1,6 @@
 ## Coordinates application lifecycle within application startup and host integration.
 
+class_name ApplicationLifecycle
 extends RefCounted
 
 const END_ADVENTURE_REQUEST_ID := "host.lifecycle.end-adventure"

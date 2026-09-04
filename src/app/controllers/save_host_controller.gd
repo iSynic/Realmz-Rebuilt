@@ -3,13 +3,11 @@
 class_name SaveHostController
 extends RefCounted
 
-const SaveRepositoryScript := preload("res://src/storage/saves/save_repository.gd")
-
 var _repository: SaveRepository
 
 
 func _init(repository: SaveRepository = null) -> void:
-	_repository = repository if repository != null else SaveRepositoryScript.new()
+	_repository = repository if repository != null else SaveRepository.new()
 
 
 func save(content: RealmzContent, slot_id: String, snapshot: SessionSnapshot) -> bool:

@@ -3,15 +3,13 @@
 class_name CharacterCreationHostController
 extends RefCounted
 
-const CharacterCreationSessionScript := preload("res://src/playthrough/character_creation_session.gd")
-
 var _session: CharacterCreationSession
 
 
 func start(content: RealmzContent, identity: CharacterFileIdentity) -> SessionStep:
 	if content == null or identity == null or _session != null:
 		return SessionStep.failed(0, &"character_creation_unavailable", "Character creation is already active or its definitions are unavailable.")
-	_session = CharacterCreationSessionScript.new()
+	_session = CharacterCreationSession.new()
 	var step := _session.start(content, identity.seed, identity.character_id)
 	if step.state == SessionStep.State.FAILED:
 		_session = null

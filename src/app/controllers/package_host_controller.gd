@@ -3,9 +3,6 @@
 class_name PackageHostController
 extends RefCounted
 
-const PackageRepositoryScript := preload("res://src/storage/packages/package_repository.gd")
-const PackageInstallTaskScript := preload("res://src/storage/packages/package_install_task.gd")
-const BundledPackageLoadTaskScript := preload("res://src/storage/packages/bundled_package_load_task.gd")
 const BUNDLED_CAMPAIGN_ROOT: String = "res://src/storage/campaigns"
 const USER_CAMPAIGN_ROOT: String = "user://packages"
 
@@ -25,10 +22,10 @@ var _foreground_operation := PackageOperationView.new()
 
 
 func _init(repository: PackageRepository = null, install_root: String = USER_CAMPAIGN_ROOT) -> void:
-	_repository = repository if repository != null else PackageRepositoryScript.new()
+	_repository = repository if repository != null else PackageRepository.new()
 	_install_root = install_root
-	_task = PackageInstallTaskScript.new(_repository)
-	_bundled_task = BundledPackageLoadTaskScript.new()
+	_task = PackageInstallTask.new(_repository)
+	_bundled_task = BundledPackageLoadTask.new()
 
 
 func start_install(package_path: String) -> bool:

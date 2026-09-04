@@ -5,21 +5,6 @@ extends Control
 
 ## Composes the application and translates host input into typed game operations.
 
-const GameSessionControllerScript := preload("res://src/app/game_session_controller.gd")
-const PresentationCoordinatorScript := preload("res://src/ui/presentation_coordinator.gd")
-const PackageHostControllerScript := preload("res://src/app/controllers/package_host_controller.gd")
-const SaveHostControllerScript := preload("res://src/app/controllers/save_host_controller.gd")
-const CharacterVaultControllerScript := preload("res://src/app/controllers/character_vault_controller.gd")
-const CharacterCreationHostControllerScript := preload("res://src/app/controllers/character_creation_host_controller.gd")
-const SettingsRepositoryScript := preload("res://src/storage/settings/settings_repository.gd")
-const DungeonMap3DPresenterScript := preload("res://src/ui/dungeon_map_3d_presenter.gd")
-const ApplicationLifecycleScript := preload("res://src/app/application_lifecycle.gd")
-const HeldMovementControllerScript := preload("res://src/ui/held_movement_controller.gd")
-const DebugToolsHostScript := preload("res://src/app/debug_tools_host.gd")
-const ApplicationInputRouterScript := preload("res://src/app/application_input_router.gd")
-const ApplicationCombatPolicyScript := preload("res://src/app/application_combat_policy.gd")
-const ApplicationStepStatusTextScript := preload("res://src/app/application_step_status_text.gd")
-const ApplicationSettingsControllerScript := preload("res://src/app/controllers/application_settings_controller.gd")
 const CLASSIC_CHARACTER_LIBRARY_PATH := "res://src/storage/characters/realmz-classic-character-library.realmz2"
 const CLASSIC_CHARACTER_LIBRARY_ID := "realmz-classic-character-library"
 const CLASSIC_CHARACTER_LIBRARY_HASH := "c7e093f46bcca49d2382d68c2995ae5ff90c0e706dbd538682b613af9b80e0bd"
@@ -51,7 +36,7 @@ var _character_library_load_complete: bool = false
 var _pending_prepared_package: PreparedPackage
 var _character_creation_host: CharacterCreationHostController
 var _session_close_waits_for_playback: bool = false
-var _held_movement: HeldMovementControllerScript
+var _held_movement: HeldMovementController
 var _queued_combat_auto_changes: Dictionary = {}
 var _save_and_quit_pending: bool = false
 var _quit_operation: Callable
@@ -71,22 +56,22 @@ func configure_lifecycle_host(save_host: SaveHostController, quit_operation: Cal
 func _ready() -> void:
 	get_tree().set_auto_accept_quit(false)
 	UiInputActions.ensure_defaults()
-	_package_host = PackageHostControllerScript.new()
-	if _save_host == null: _save_host = SaveHostControllerScript.new()
-	_vault_host = CharacterVaultControllerScript.new()
-	_character_creation_host = CharacterCreationHostControllerScript.new()
-	settings_repository = SettingsRepositoryScript.new()
+	_package_host = PackageHostController.new()
+	if _save_host == null: _save_host = SaveHostController.new()
+	_vault_host = CharacterVaultController.new()
+	_character_creation_host = CharacterCreationHostController.new()
+	settings_repository = SettingsRepository.new()
 	_presentation_settings = settings_repository.load_settings()
-	session_controller = GameSessionControllerScript.new()
-	presentation_coordinator = PresentationCoordinatorScript.new()
-	_dungeon_presenter = DungeonMap3DPresenterScript.new()
-	_held_movement = HeldMovementControllerScript.new()
-	_input_router = ApplicationInputRouterScript.new(self)
+	session_controller = GameSessionController.new()
+	presentation_coordinator = PresentationCoordinator.new()
+	_dungeon_presenter = DungeonMap3DPresenter.new()
+	_held_movement = HeldMovementController.new()
+	_input_router = ApplicationInputRouter.new(self)
 	add_child(session_controller)
 	add_child(presentation_coordinator)
 	add_child(_dungeon_presenter)
 	add_child(_held_movement)
-	_debug_tools = DebugToolsHostScript.new()
+	_debug_tools = DebugToolsHost.new()
 	add_child(_debug_tools)
 	_debug_tools.bind(session_controller, self, func() -> RealmzContent: return _active_content)
 	_debug_tools.status_changed.connect(
@@ -149,7 +134,7 @@ func _ready() -> void:
 	_shell_presenter.standalone_character_creation_cancelled.connect(_cancel_standalone_character_creation)
 	_shell_presenter.character_selection_completed.connect(_interaction_presenter.submit_character_selection)
 	_audio_presenter.music_state_changed.connect(_shell_presenter.set_music_playback_state)
-	_settings_controller = ApplicationSettingsControllerScript.new(self, _presentation_settings, settings_repository, _shell_presenter, _map_presenter, _interaction_presenter, _audio_presenter, presentation_coordinator, _dungeon_presenter, _held_movement, _debug_tools)
+	_settings_controller = ApplicationSettingsController.new(self, _presentation_settings, settings_repository, _shell_presenter, _map_presenter, _interaction_presenter, _audio_presenter, presentation_coordinator, _dungeon_presenter, _held_movement, _debug_tools)
 	_settings_controller.bind()
 	_settings_controller.apply_initial_settings()
 	_game_shell.set_standalone_character_creation_available(false, "Loading the built-in Classic definitions…")
@@ -231,7 +216,7 @@ func _on_quit_requested() -> void:
 	var current_view := session_controller.view()
 	var combat_view := current_view.combat_view
 	var in_combat := combat_view != null and combat_view.outcome == &"active"
-	_host_interaction = ApplicationLifecycleScript.quit_application_request(current_view.session_started, in_combat)
+	_host_interaction = ApplicationLifecycle.quit_application_request(current_view.session_started, in_combat)
 	presentation_coordinator.present_host_interaction(_host_interaction)
 	_shell_presenter.set_status("Confirm whether to quit Realmz Rebuilt.")
 
@@ -249,7 +234,7 @@ func _on_end_adventure_requested() -> void:
 		return
 	var combat_view := session_controller.view().combat_view
 	var in_combat := combat_view != null and combat_view.outcome == &"active"
-	_host_interaction = ApplicationLifecycleScript.end_adventure_request(in_combat)
+	_host_interaction = ApplicationLifecycle.end_adventure_request(in_combat)
 	presentation_coordinator.present_host_interaction(_host_interaction)
 	_shell_presenter.set_status("Choose how to return to the main menu.")
 
@@ -408,7 +393,7 @@ func _submit_movement(direction: Vector2i) -> bool:
 	var after := session_controller.view()
 	if step.state == SessionStep.State.FAILED or after == null or after.pending_interaction != null or after.combat_view != null:
 		return false
-	return HeldMovementControllerScript.continues_after_step(direction, before.party_map_id, before.party_coordinate, after.party_map_id, after.party_coordinate, step.events, accepts_exploration_input())
+	return HeldMovementController.continues_after_step(direction, before.party_map_id, before.party_coordinate, after.party_map_id, after.party_coordinate, step.events, accepts_exploration_input())
 
 
 func _submit_intent(intent: PlayerIntent) -> SessionStep:
@@ -481,15 +466,15 @@ static func interaction_response_owner(has_host_interaction: bool, standalone_cr
 
 
 static func direct_combat_intent(body: InteractionResponse.CombatBody) -> PlayerIntent:
-	return ApplicationCombatPolicyScript.direct_intent(body)
+	return ApplicationCombatPolicy.direct_intent(body)
 
 
 static func combat_auto_change_to_queue(intent: PlayerIntent, playback_active: bool) -> Dictionary:
-	return ApplicationCombatPolicyScript.auto_change_to_queue(intent, playback_active)
+	return ApplicationCombatPolicy.auto_change_to_queue(intent, playback_active)
 
 
 static func combat_auto_abort_ids(view: GameView, queued_changes: Dictionary = {}) -> Array[String]:
-	return ApplicationCombatPolicyScript.auto_abort_ids(view, queued_changes)
+	return ApplicationCombatPolicy.auto_abort_ids(view, queued_changes)
 
 
 func _abort_full_party_auto(skip_playback: bool) -> bool:
@@ -507,11 +492,11 @@ func _abort_full_party_auto(skip_playback: bool) -> bool:
 
 
 static func persistent_auto_response(view: GameView) -> InteractionResponse:
-	return ApplicationCombatPolicyScript.persistent_auto_response(view)
+	return ApplicationCombatPolicy.persistent_auto_response(view)
 
 
 func _respond_host_interaction(response: InteractionResponse) -> void:
-	var action := ApplicationLifecycleScript.response_action(_host_interaction, response)
+	var action := ApplicationLifecycle.response_action(_host_interaction, response)
 	if action.is_empty():
 		_shell_presenter.set_status("The lifecycle response was invalid.", true)
 		presentation_coordinator.present_host_interaction(_host_interaction)
@@ -525,7 +510,7 @@ func _respond_host_interaction(response: InteractionResponse) -> void:
 		_shell_presenter.set_status("The lifecycle operation was invalid.", true)
 		presentation_coordinator.present_host_interaction(_host_interaction)
 		return
-	var result := ApplicationLifecycleScript.execute_end_adventure(
+	var result := ApplicationLifecycle.execute_end_adventure(
 		action,
 		func() -> bool: return save_active_session("quick"),
 		func() -> SessionStep: return session_controller.close()
@@ -558,7 +543,7 @@ func _respond_host_interaction(response: InteractionResponse) -> void:
 
 
 func _respond_quit_interaction(action: StringName) -> void:
-	if action == ApplicationLifecycleScript.SAVE_AND_QUIT:
+	if action == ApplicationLifecycle.SAVE_AND_QUIT:
 		_host_interaction = null
 		presentation_coordinator.dismiss_host_interaction()
 		_save_and_quit_pending = true
@@ -567,7 +552,7 @@ func _respond_quit_interaction(action: StringName) -> void:
 		_shell_presenter.set_status("Choose a save slot, then Save and Quit.")
 		return
 	var has_active_session := session_controller.view().session_started
-	var result_state := ApplicationLifecycleScript.execute_quit(
+	var result_state := ApplicationLifecycle.execute_quit(
 		action,
 		func() -> bool: return save_active_session("quick") if has_active_session else false,
 		_quit_application
@@ -652,11 +637,11 @@ func _continue_persistent_auto_after_playback() -> void:
 
 
 static func should_defer_session_close(step: SessionStep, playback_active: bool) -> bool:
-	return ApplicationCombatPolicyScript.should_defer_session_close(step, playback_active)
+	return ApplicationCombatPolicy.should_defer_session_close(step, playback_active)
 
 
 static func step_ends_session(step: SessionStep) -> bool:
-	return ApplicationCombatPolicyScript.step_ends_session(step)
+	return ApplicationCombatPolicy.step_ends_session(step)
 
 
 func _present_step_status(step: SessionStep) -> void:
@@ -674,10 +659,10 @@ func _present_step_status(step: SessionStep) -> void:
 		if event.kind == &"character_publication_requested":
 			_publish_character_revision(String(event.payload.get("characterId", "")))
 		else:
-			var status_text := ApplicationStepStatusTextScript.for_event(event)
+			var status_text := ApplicationStepStatusText.for_event(event)
 			if not status_text.is_empty(): _status_label.text = status_text
 	if step.state == SessionStep.State.WAITING_FOR_INTERACTION:
-		_status_label.text = ApplicationStepStatusTextScript.for_interaction(step.interaction)
+		_status_label.text = ApplicationStepStatusText.for_interaction(step.interaction)
 
 
 func _publish_character_revision(character_id: String) -> bool:

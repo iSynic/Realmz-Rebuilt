@@ -3,8 +3,6 @@
 class_name CharacterVaultController
 extends RefCounted
 
-const CharacterVaultRepositoryScript := preload("res://src/storage/characters/character_vault_repository.gd")
-const ClassicStarterCharacterCatalogScript := preload("res://src/storage/characters/classic_starter_character_catalog.gd")
 const CLASSIC_STARTER_CATALOG_PATH := "res://src/storage/characters/realmz-classic-starter-characters.json"
 const CLASSIC_CHARACTER_LIBRARY_HASH := "c7e093f46bcca49d2382d68c2995ae5ff90c0e706dbd538682b613af9b80e0bd"
 
@@ -14,7 +12,7 @@ var _operation_error: String = ""
 
 
 func _init(repository: CharacterVaultRepository = null) -> void:
-	_repository = repository if repository != null else CharacterVaultRepositoryScript.new()
+	_repository = repository if repository != null else CharacterVaultRepository.new()
 
 
 func import_intent(character_id: String, revision_hash: String) -> PlayerIntent:
@@ -72,7 +70,7 @@ func seed_if_empty(records: Array[CharacterVaultRecord]) -> bool:
 
 
 func seed_classic_starters_if_empty(catalog_path: String = CLASSIC_STARTER_CATALOG_PATH, application_library_hash: String = CLASSIC_CHARACTER_LIBRARY_HASH) -> bool:
-	var catalog := ClassicStarterCharacterCatalogScript.new()
+	var catalog := ClassicStarterCharacterCatalog.new()
 	var records := catalog.load_records(catalog_path, application_library_hash)
 	if records.is_empty():
 		_operation_error = catalog.last_error

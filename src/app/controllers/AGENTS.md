@@ -7,6 +7,7 @@ Own host-side package, save, vault, and creator workflows behind detached app va
 ## Local Contracts
 
 - Controllers may depend on storage repositories; presentation may not.
+- Host controllers construct registered repository and task classes by their public names; generic preload aliases are not part of this boundary.
 - Package and save controllers return detached app/core values and never replace `GameSession` themselves.
 - A failed or cancelled operation leaves the active session, media catalog, and current package unchanged.
 - Controllers own repository/task lifecycle and release retained resources on close.
