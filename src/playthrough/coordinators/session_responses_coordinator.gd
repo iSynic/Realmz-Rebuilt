@@ -3,10 +3,10 @@
 class_name SessionResponsesCoordinator
 extends RefCounted
 
-var _context: SessionCoordinatorContext
+var _context: SessionContext
 
 
-func _init(context: SessionCoordinatorContext) -> void:
+func _init(context: SessionContext) -> void:
 	_context = context
 
 
@@ -17,7 +17,7 @@ static func _single_event(event: DomainEvent) -> Array[DomainEvent]:
 static func _no_events() -> Array[DomainEvent]:
 	return []
 
-func _respond_session_interaction(response: InteractionResponse) -> SessionCoordinatorResult:
+func respond_session_interaction(response: InteractionResponse) -> SessionCoordinatorResult:
 	match _context.session_continuation.kind:
 		&"boat-choice":
 			return _respond_boat_choice(response)
@@ -67,18 +67,18 @@ func _respond_session_interaction(response: InteractionResponse) -> SessionCoord
 	exploration.random_battle_stage = &""
 	var events: Array[DomainEvent] = [DomainEvent.new(&"random_surprise_chosen", {"regionId": region.id, "accepted": surprise_body.accepted})]
 	if surprise_body.accepted:
-		return _context.exploration()._start_random_battle(region, 1, events)
+		return _context.exploration().start_random_battle(region, 1, events)
 	exploration.random_region_index -= 1
 	if region.only:
 		if _context.session_continuation.kind == &"post-clock":
-			return _context.exploration()._complete_post_time(events)
+			return _context.exploration().complete_post_time(events)
 		_context.session_continuation.clear()
 		return _context.completed(events)
-	var next_step = _context.exploration()._continue_random_regions(map, events)
+	var next_step = _context.exploration().continue_random_regions(map, events)
 	if next_step != null:
 		return next_step
 	if _context.session_continuation.kind == &"post-clock":
-		return _context.exploration()._complete_post_time(events)
+		return _context.exploration().complete_post_time(events)
 	_context.session_continuation.clear()
 	return _context.completed(events)
 
@@ -105,12 +105,12 @@ func _respond_boat_choice(response: InteractionResponse) -> SessionCoordinatorRe
 		_context.state.world.set_boat_present(choice.target_map_id, choice.target_coordinate, false)
 		_context.state.party_in_boat = true
 		events.append(DomainEvent.new(&"boat_boarded", {"mapId": choice.target_map_id, "x": choice.target_coordinate.x, "y": choice.target_coordinate.y}))
-		return _context.exploration()._finish_exploration_movement(ExplorationTimeWorkflow.commit_permitted_move(_context.workflow_context(), boarded_movement, choice.direction, events))
+		return _context.exploration().finish_exploration_movement(ExplorationTimeWorkflow.commit_permitted_move(_context.workflow_context(), boarded_movement, choice.direction, events))
 	if choice.action == &"disembark" and answer.accepted:
 		_context.state.world.set_boat_present(choice.source_map_id, choice.source_coordinate, true)
 		_context.state.party_in_boat = false
 		events.append(DomainEvent.new(&"boat_disembarked", {"mapId": choice.source_map_id, "x": choice.source_coordinate.x, "y": choice.source_coordinate.y}))
-	return _context.exploration()._finish_exploration_movement(ExplorationTimeWorkflow.commit_blocked_attempt(_context.workflow_context(), movement, events, false))
+	return _context.exploration().finish_exploration_movement(ExplorationTimeWorkflow.commit_blocked_attempt(_context.workflow_context(), movement, events, false))
 
 
 func _respond_pooled_wealth_departure(response: InteractionResponse) -> SessionCoordinatorResult:
@@ -135,7 +135,7 @@ func _respond_pooled_wealth_departure(response: InteractionResponse) -> SessionC
 		_context.state.party.pooled_wealth = WealthState.new()
 		_context.session_interaction = null
 		_context.session_continuation.clear()
-		return _context.exploration()._move_after_pooled_wealth(direction, _single_event(DomainEvent.new(&"pooled_wealth_left_behind", {"wealth": discarded, "movementContinues": true})))
+		return _context.exploration().move_after_pooled_wealth(direction, _single_event(DomainEvent.new(&"pooled_wealth_left_behind", {"wealth": discarded, "movementContinues": true})))
 	var body = response.body as InteractionResponse.BankBody
 	if stage != &"distribution" or response.kind != InteractionRequest.POOLED_WEALTH_DEPARTURE or body == null:
 		return _context.failed(&"invalid_interaction_response", "Pooled-wealth distribution requires a typed money action.")
@@ -153,7 +153,7 @@ func _respond_pooled_wealth_departure(response: InteractionResponse) -> SessionC
 			DomainEvent.new(&"pooled_wealth_left_behind", {"wealth": discarded, "movementContinues": true}),
 			DomainEvent.new(&"sound_requested", {"soundId": 141, "waitForCompletion": false, "source": "classic-pooled-wealth-departure-done"}),
 		]
-		return _context.exploration()._move_after_pooled_wealth(direction, departure_events)
+		return _context.exploration().move_after_pooled_wealth(direction, departure_events)
 	match action:
 		"pool":
 			var probe = _context.rules.economy.pool_probe(_context.state.party)
@@ -265,7 +265,7 @@ func _respond_scroll_discard(response: InteractionResponse) -> SessionCoordinato
 	return _context.completed(result.events)
 
 
-func _begin_runtime_service(service_id: String, operation: ScenarioRuntimeOperationResult) -> SessionCoordinatorResult:
+func begin_runtime_service(service_id: String, operation: ScenarioRuntimeOperationResult) -> SessionCoordinatorResult:
 	if operation == null:
 		return _context.failed(&"service_failed", "The selected service returned no operation result.", _no_events())
 	if operation.state == ScenarioRuntimeOperationResult.State.FAILED:
@@ -384,15 +384,15 @@ func _respond_session_friendly_collision(response: InteractionResponse) -> Sessi
 	return _finish_combat_result(result)
 
 
-func _finish_with_age_updates(events: Array[DomainEvent], resume_kind: StringName, resume_continuation: SessionContinuation = null) -> SessionCoordinatorResult:
+func finish_with_age_updates(events: Array[DomainEvent], resume_kind: StringName, resume_continuation: SessionContinuation = null) -> SessionCoordinatorResult:
 	var updates = CharacterAgingResult.update_bodies(events)
 	if updates.is_empty():
 		if resume_kind == &"post-move":
 			_context.set_continuation(resume_continuation.copy())
-			return _context.exploration()._continue_post_move(events)
+			return _context.exploration().continue_post_move(events)
 		if resume_kind == &"post-clock":
 			_context.set_continuation(resume_continuation.copy())
-			return _context.exploration()._continue_post_time(events)
+			return _context.exploration().continue_post_time(events)
 		if resume_kind == &"combat-monster-turns":
 			return _continue_after_session_combat_age_update(events)
 		return _context.completed(events)
@@ -432,10 +432,10 @@ func _respond_session_age_update(response: InteractionResponse) -> SessionCoordi
 	_context.session_continuation.clear()
 	if resume_kind == &"post-move":
 		_context.set_continuation(resume_continuation.copy())
-		return _context.exploration()._continue_post_move(events)
+		return _context.exploration().continue_post_move(events)
 	if resume_kind == &"post-clock":
 		_context.set_continuation(resume_continuation.copy())
-		return _context.exploration()._continue_post_time(events)
+		return _context.exploration().continue_post_time(events)
 	if resume_kind == &"combat-monster-turns":
 		return _continue_after_session_combat_age_update(events)
 	if resume_kind == &"completed":
@@ -449,11 +449,11 @@ func _continue_after_session_combat_age_update(events: Array[DomainEvent]) -> Se
 		return _context.failed(continued.error_code, continued.error_message, events)
 	events.append_array(continued.events)
 	if not CharacterAgingResult.update_payloads(continued.events).is_empty():
-		return _finish_with_age_updates(events, "combat-monster-turns")
+		return finish_with_age_updates(events, "combat-monster-turns")
 	if not _context.event_payload(continued.events, &"monster_death_macro_requested").is_empty():
-		return _context.scenario()._start_session_death_macro(events)
+		return _context.scenario().start_session_death_macro(events)
 	if continued.completed:
-		return _context.scenario()._finish_direct_battle(events)
+		return _context.scenario().finish_direct_battle(events)
 	return _context.completed(events)
 
 
@@ -474,7 +474,7 @@ func _respond_session_ally_selection(response: InteractionResponse) -> SessionCo
 	if _context.rules.combat_flow.ally_selection_payload(_context.state, _context.content).is_empty():
 		_context.session_interaction = null
 		_context.session_continuation.clear()
-		return _context.scenario()._finish_direct_battle_recovery(_no_events())
+		return _context.scenario().finish_direct_battle_recovery(_no_events())
 	var result = _context.rules.combat_flow.apply_ally_selection(_context.state, _context.content, body.selected_ids)
 	if not result.ok:
 		return _context.failed(result.error_code, result.error_message)
@@ -482,7 +482,7 @@ func _respond_session_ally_selection(response: InteractionResponse) -> SessionCo
 	_context.session_continuation.clear()
 	var events: Array[DomainEvent] = []
 	events.assign(result.events)
-	return _context.scenario()._finish_direct_battle_recovery(events)
+	return _context.scenario().finish_direct_battle_recovery(events)
 
 
 func _respond_session_fumble_recovery(response: InteractionResponse) -> SessionCoordinatorResult:
@@ -499,7 +499,7 @@ func _respond_session_fumble_recovery(response: InteractionResponse) -> SessionC
 	_context.session_continuation.clear()
 	var events: Array[DomainEvent] = []
 	events.assign(result.events)
-	return _context.scenario()._finish_direct_battle_recovery(events)
+	return _context.scenario().finish_direct_battle_recovery(events)
 
 
 func _respond_session_battle_reward(response: InteractionResponse) -> SessionCoordinatorResult:
@@ -519,7 +519,7 @@ func _respond_session_battle_reward(response: InteractionResponse) -> SessionCoo
 		return _context.waiting(_context.session_interaction, result.events)
 	_context.session_interaction = null
 	_context.session_continuation.clear()
-	return _context.scenario()._finish_after_direct_battle(result.events, return_continuation, battle_outcome)
+	return _context.scenario().finish_after_direct_battle(result.events, return_continuation, battle_outcome)
 
 
 func _finish_magic_transition(result: InventoryMagicServicesWorkflow.MagicTransitionResult) -> SessionCoordinatorResult:
@@ -544,7 +544,7 @@ func _finish_magic_workflow(result: SessionWorkflowResult) -> SessionCoordinator
 	if not result.ok:
 		return _context.failed(result.error_code, result.error_message)
 	if not CharacterAgingResult.update_payloads(result.events).is_empty():
-		return _finish_with_age_updates(result.events, &"completed")
+		return finish_with_age_updates(result.events, &"completed")
 	return _context.completed(result.events)
 
 
@@ -564,15 +564,15 @@ func _finish_combat_result(result: CombatFlowResult) -> SessionCoordinatorResult
 	if not result.ok:
 		return _context.failed(result.error_code, result.error_message)
 	if not CharacterAgingResult.update_payloads(result.events).is_empty():
-		return _finish_with_age_updates(result.events, &"combat-monster-turns")
+		return finish_with_age_updates(result.events, &"combat-monster-turns")
 	if not _context.event_payload(result.events, &"monster_death_macro_requested").is_empty():
-		return _context.scenario()._start_session_death_macro(result.events)
+		return _context.scenario().start_session_death_macro(result.events)
 	if result.completed:
-		return _context.scenario()._finish_direct_battle(result.events)
+		return _context.scenario().finish_direct_battle(result.events)
 	return _context.completed(result.events)
 
 
-func _open_contextual_service(service_id: String, preceding_events: Array[DomainEvent]) -> SessionCoordinatorResult:
+func open_contextual_service(service_id: String, preceding_events: Array[DomainEvent]) -> SessionCoordinatorResult:
 	var request_id := "service:%s:%d" % [service_id, _context.current_revision()]
 	var operation: ScenarioRuntimeOperationResult
 	if service_id == "realmz.service.temple":
@@ -584,4 +584,4 @@ func _open_contextual_service(service_id: String, preceding_events: Array[Domain
 	else:
 		return _context.failed(&"service_unavailable", "The selected service is not available at this location.", preceding_events)
 	operation.events = preceding_events + operation.events
-	return _begin_runtime_service(service_id, operation)
+	return begin_runtime_service(service_id, operation)

@@ -1,6 +1,6 @@
-## Coordinates session coordinator context responsibilities behind the public session boundary.
+## Owns the mutable collaborators and continuation state of one game session.
 
-class_name SessionCoordinatorContext
+class_name SessionContext
 extends RefCounted
 
 var content: RealmzContent
@@ -20,17 +20,17 @@ var _responses_coordinator: RefCounted
 
 
 func _init(
-	value_content: RealmzContent,
-	value_state: GameState,
-	value_rng: RealmzRng,
-	value_rules: RealmzRules,
-	value_scenario_vm: ScenarioVm,
-	value_action_state: ScenarioActionState,
-	value_runtime_api: RealmzRuntimeApi,
-	value_continuation: SessionContinuation,
-	value_battle_return: SessionContinuation,
-	value_interaction: InteractionRequest,
-	value_revision: int
+	value_content: RealmzContent = null,
+	value_state: GameState = null,
+	value_rng: RealmzRng = null,
+	value_rules: RealmzRules = null,
+	value_scenario_vm: ScenarioVm = null,
+	value_action_state: ScenarioActionState = null,
+	value_runtime_api: RealmzRuntimeApi = null,
+	value_continuation: SessionContinuation = null,
+	value_battle_return: SessionContinuation = null,
+	value_interaction: InteractionRequest = null,
+	value_revision: int = 0
 ) -> void:
 	content = value_content
 	state = value_state
@@ -39,8 +39,8 @@ func _init(
 	scenario_vm = value_scenario_vm
 	scenario_action_state = value_action_state
 	runtime_api = value_runtime_api
-	session_continuation = value_continuation
-	battle_return_continuation = value_battle_return
+	session_continuation = value_continuation if value_continuation != null else SessionContinuation.new()
+	battle_return_continuation = value_battle_return if value_battle_return != null else SessionContinuation.new()
 	session_interaction = value_interaction
 	_view_revision = value_revision
 
@@ -51,6 +51,11 @@ func current_revision() -> int:
 
 func next_revision() -> int:
 	return _view_revision + 1
+
+
+func set_revision(value: int) -> void:
+	assert(value >= 0, "A session revision cannot be negative")
+	_view_revision = value
 
 
 func bind_coordinators(exploration: RefCounted, scenario: RefCounted, responses: RefCounted) -> void:

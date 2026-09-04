@@ -3145,7 +3145,7 @@
           },
           {
             "path": "src/playthrough/coordinators/session_exploration_coordinator.gd",
-            "symbol": "func _continue_timed_encounters"
+            "symbol": "func continue_timed_encounters"
           }
         ]
       },
@@ -3323,7 +3323,7 @@
           },
           {
             "path": "src/playthrough/coordinators/session_exploration_coordinator.gd",
-            "symbol": "func _continue_timed_encounters"
+            "symbol": "func continue_timed_encounters"
           }
         ]
       },
@@ -4304,11 +4304,11 @@
         "owners": [
           {
             "path": "src/playthrough/coordinators/session_exploration_coordinator.gd",
-            "symbol": "func _continue_random_regions"
+            "symbol": "func continue_random_regions"
           },
           {
             "path": "src/playthrough/coordinators/session_exploration_coordinator.gd",
-            "symbol": "func _continue_timed_encounters"
+            "symbol": "func continue_timed_encounters"
           },
           {
             "path": "src/game/rules/time_rules.gd",
@@ -8378,11 +8378,11 @@
           },
           {
             "path": "src/playthrough/coordinators/session_scenario_coordinator.gd",
-            "symbol": "func _begin_scenario_handoff"
+            "symbol": "func begin_scenario_handoff"
           },
           {
             "path": "src/playthrough/coordinators/session_scenario_coordinator.gd",
-            "symbol": "func _resume_scenario_party_defeat"
+            "symbol": "func resume_scenario_party_defeat"
           },
           {
             "path": "src/scenarios/runtime/realmz_runtime_api.gd",

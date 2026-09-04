@@ -275,7 +275,7 @@ func _test_party_and_creator_persistence(content: RealmzContent) -> void:
 	var import_step := resumed_setup.submit_intent(PlayerIntent.import_vault_character(imported.id, "a".repeat(64), imported, "fixture-source", "b".repeat(64)))
 	assert_equal(import_step.state, SessionStep.State.COMPLETED, "vault import adds another member without completing party setup")
 	assert_equal(resumed_setup.view().party_members.size(), 2, "created and vault characters may share one setup party")
-	assert_equal(resumed_setup._state.party.character_by_id(imported.id).carried_load, 7 + imported_definition.instance_weight(imported_definition.initial_charges), "vault import derives carried load from target-package definitions instead of trusting a stale local total")
+	assert_equal(resumed_setup._context.state.party.character_by_id(imported.id).carried_load, 7 + imported_definition.instance_weight(imported_definition.initial_charges), "vault import derives carried load from target-package definitions instead of trusting a stale local total")
 	var conflicting_import := CharacterState.from_data(imported.to_data())
 	conflicting_import.id = "vault.character.conflicting"
 	conflicting_import.name = "Conflicting Hero"
@@ -367,21 +367,21 @@ func _test_combat_and_reward_persistence(content: RealmzContent) -> void:
 		fumble_session.start(content, 23)
 		var recovery_character := CharacterState.new("fixture.fumble-recipient", "Recovery Hero", 10, 10)
 		recovery_character.maximum_load = 500
-		fumble_session._state.party = PartyState.new(content.start_map_id, content.start_coordinate, [recovery_character])
-		fumble_session._state.party_setup_completed = true
-		fumble_session._state.combat = CombatState.new("classic.battle.0")
-		fumble_session._state.combat.completed = true
-		fumble_session._state.combat.outcome = &"retreated"
-		fumble_session._state.last_battle_outcome = &"retreated"
+		fumble_session._context.state.party = PartyState.new(content.start_map_id, content.start_coordinate, [recovery_character])
+		fumble_session._context.state.party_setup_completed = true
+		fumble_session._context.state.combat = CombatState.new("classic.battle.0")
+		fumble_session._context.state.combat.completed = true
+		fumble_session._context.state.combat.outcome = &"retreated"
+		fumble_session._context.state.last_battle_outcome = &"retreated"
 		var dropped := ItemInstance.new("fixture.fumbled-item", fumble_item.id, 7, false, true)
-		assert_true(fumble_session._state.combat.queue_fumbled_item(dropped), "a completed retreat retains its battle-local fumbled weapon")
+		assert_true(fumble_session._context.state.combat.queue_fumbled_item(dropped), "a completed retreat retains its battle-local fumbled weapon")
 		# Simulate a save or live session created before empty Castle body-count
 		# boundaries were removed. Continue must heal it into the next real stage.
 		var stale_ally_request := InteractionRequest.from_payload("fixture.stale-empty-ally", InteractionRequest.ALLY_SELECTION, {"prompt": "Choose the allies who will continue with the party.", "candidates": [], "maximum": 4, "selectedIds": [], "requiredIds": []})
-		fumble_session._session_interaction = stale_ally_request
+		fumble_session._context.session_interaction = stale_ally_request
 		var combat_body := SessionContinuation.CombatBody.new()
-		combat_body.battle_id = fumble_session._state.combat.battle_id
-		fumble_session._session_continuation = SessionContinuation.combat_state(&"combat-ally-selection", combat_body)
+		combat_body.battle_id = fumble_session._context.state.combat.battle_id
+		fumble_session._context.session_continuation = SessionContinuation.combat_state(&"combat-ally-selection", combat_body)
 		var recovery_step := fumble_session.respond(InteractionResponse.from_data(stale_ally_request.request_id, stale_ally_request.kind, {"selectedIds": []}))
 		assert_equal(recovery_step.state, SessionStep.State.WAITING_FOR_INTERACTION, "retreat opens one typed treasure boundary containing the fumbled weapon")
 		assert_false(recovery_step.events.any(func(event: DomainEvent) -> bool: return event.kind == &"allies_selected"), "a stale empty body-count stage is bypassed rather than manufactured")
@@ -400,11 +400,11 @@ func _test_combat_and_reward_persistence(content: RealmzContent) -> void:
 		assert_equal(recovered_step.state, SessionStep.State.WAITING_FOR_INTERACTION, "assigning the final fumbled weapon returns to Castle's shared booty workspace")
 		var done_step := recovered_session.respond(InteractionResponse.from_data(recovered_step.interaction.request_id, InteractionRequest.TREASURE_DISTRIBUTION, {"action": "done"}))
 		assert_equal(done_step.state, SessionStep.State.COMPLETED, "Done completes the combined post-battle treasure workspace")
-		var recovered_inventory := recovered_session._state.party.character_by_id(recovery_character.id).inventory()
+		var recovered_inventory := recovered_session._context.state.party.character_by_id(recovery_character.id).inventory()
 		assert_equal(recovered_inventory.size(), 1, "the selected recipient owns one recovered item")
 		if not recovered_inventory.is_empty():
 			assert_equal(recovered_inventory[0].to_data(), dropped.to_data(), "save/resume retains the exact recovered instance and charge count")
-		assert_equal(recovered_session._state.combat, null, "save/resume releases the completed battle after the combined reward closes")
+		assert_equal(recovered_session._context.state.combat, null, "save/resume releases the completed battle after the combined reward closes")
 
 	var original_scenario := content.scenario
 	var party_death_program := ScenarioProgramDefinition.new("fixture.party-death-revival", &"extra-action-point", "fixture.party-death-revival", [
@@ -420,8 +420,8 @@ func _test_combat_and_reward_persistence(content: RealmzContent) -> void:
 	revived_defeat.start(content, 24)
 	var defeated_character := CharacterState.new("fixture.party-death-revival", "Revived Hero", 0, 10)
 	defeated_character.conditions.set_value(ConditionRules.ANIMATED, -1)
-	revived_defeat._state.party = PartyState.new(content.start_map_id, content.start_coordinate, [defeated_character])
-	revived_defeat._state.party_setup_completed = true
+	revived_defeat._context.state.party = PartyState.new(content.start_map_id, content.start_coordinate, [defeated_character])
+	revived_defeat._context.state.party_setup_completed = true
 	var defeat_hook := _complete_public_defeat(revived_defeat, content, defeated_character)
 	assert_equal([defeat_hook.state, defeat_hook.interaction.body.to_data().get("prompt")], [SessionStep.State.WAITING_FOR_INTERACTION, "The Party Death application hook runs."], "total defeat enters the Party Death program before releasing the party")
 	var defeat_boundary := save_round_trip(revived_defeat.snapshot())
@@ -432,14 +432,14 @@ func _test_combat_and_reward_persistence(content: RealmzContent) -> void:
 	assert_true(revived.events.any(func(event: DomainEvent) -> bool: return event.kind == &"party_defeat_revived"), "the resumed hook records the source-backed defeat revival boundary")
 	assert_equal(revived.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"battle_returned").size(), 1, "revival publishes one terminal no-reward battle return")
 	assert_false(revived.events.any(func(event: DomainEvent) -> bool: return event.kind in [&"reward_opened", &"reward_completed"]), "the direct no-reward return skips treasure, experience, and after-message reward processing")
-	assert_equal([restored_defeat.view().session_started, restored_defeat._state.party.character_by_id(defeated_character.id).current_health, restored_defeat._state.combat, restored_defeat._state.last_battle_outcome], [true, 1, null, &"retreated"], "revival retains the session, restores one stamina, records retreat, and releases combat exactly once")
+	assert_equal([restored_defeat.view().session_started, restored_defeat._context.state.party.character_by_id(defeated_character.id).current_health, restored_defeat._context.state.combat, restored_defeat._context.state.last_battle_outcome], [true, 1, null, &"retreated"], "revival retains the session, restores one stamina, records retreat, and releases combat exactly once")
 
 	content.scenario = original_scenario
 	var ordinary_defeat := GameSession.new()
 	ordinary_defeat.start(content, 25)
 	var lost_character := CharacterState.new("fixture.party-defeat", "Lost Hero", 0, 10)
-	ordinary_defeat._state.party = PartyState.new(content.start_map_id, content.start_coordinate, [lost_character])
-	ordinary_defeat._state.party_setup_completed = true
+	ordinary_defeat._context.state.party = PartyState.new(content.start_map_id, content.start_coordinate, [lost_character])
+	ordinary_defeat._context.state.party_setup_completed = true
 	var ordinary_death_hook := _complete_public_defeat(ordinary_defeat, content, lost_character)
 	assert_equal(ordinary_death_hook.interaction.body.to_data().get("prompt"), "The Party Death application hook runs.", "ordinary total defeat runs the package Party Death hook")
 	var released := ordinary_defeat.respond(InteractionResponse.acknowledge(ordinary_death_hook.interaction))
@@ -456,20 +456,20 @@ func _test_combat_and_reward_persistence(content: RealmzContent) -> void:
 		reward_character.caste_id = content.caste_definitions()[0].id
 		reward_character.experience = -10_000_000
 		reward_character.maximum_load = 5_000
-		reward_session._state.party = PartyState.new(content.start_map_id, content.start_coordinate, [reward_character])
-		reward_session._state.party_setup_completed = true
-		reward_session._state.monster_set = -1
-		var setup: CombatFlowResult = reward_session._rules.combat_flow.start_battle(reward_session._state, content, battle, reward_session._rng)
+		reward_session._context.state.party = PartyState.new(content.start_map_id, content.start_coordinate, [reward_character])
+		reward_session._context.state.party_setup_completed = true
+		reward_session._context.state.monster_set = -1
+		var setup: CombatFlowResult = reward_session._context.rules.combat_flow.start_battle(reward_session._context.state, content, battle, reward_session._context.rng)
 		assert_true(setup.ok, "the terminal reward integration starts through the source-backed battle builder")
 		if setup.ok:
-			assert_true(reward_session._state.combat.monsters().all(func(monster: MonsterState) -> bool: return monster.definition_id.begins_with("classic.monster-set.-1.")), "battle construction resolves every authored slot through the selected Classic Monster Set")
+			assert_true(reward_session._context.state.combat.monsters().all(func(monster: MonsterState) -> bool: return monster.definition_id.begins_with("classic.monster-set.-1.")), "battle construction resolves every authored slot through the selected Classic Monster Set")
 			var reordered_turns: Array[String] = [reward_character.id]
-			for actor_id: String in reward_session._state.combat.turn_order():
+			for actor_id: String in reward_session._context.state.combat.turn_order():
 				if actor_id != reward_character.id:
 					reordered_turns.append(actor_id)
-			reward_session._state.combat.set_turn_order(reordered_turns)
-			reward_session._state.combat.turn_index = 0
-			reward_session._state.combat.active_turn = null
+			reward_session._context.state.combat.set_turn_order(reordered_turns)
+			reward_session._context.state.combat.turn_index = 0
+			reward_session._context.state.combat.active_turn = null
 			var tactical_view := reward_session.view()
 			assert_true(tactical_view.combat_view.movement_options.any(func(option: CombatMoveOptionView) -> bool: return option.enabled), "the active fixture character has at least one core-probed tactical step")
 			assert_true(tactical_view.availability(&"combat_move").enabled, "the public combat-move action derives from the active battle view instead of the stale global fallback: %s" % tactical_view.availability(&"combat_move").reason)
@@ -481,7 +481,7 @@ func _test_combat_and_reward_persistence(content: RealmzContent) -> void:
 			var legal_combat_spell: SpellDefinition = null
 			for spell: SpellDefinition in content.spell_definitions():
 				reward_character.set_known_spells([spell.id])
-				if not reward_session._rules.combat_flow.character_spell_options(reward_session._state, content, reward_character.id).is_empty():
+				if not reward_session._context.rules.combat_flow.character_spell_options(reward_session._context.state, content, reward_character.id).is_empty():
 					legal_combat_spell = spell
 					break
 			assert_not_null(legal_combat_spell, "the integration fixture contains at least one core-proven combat spell option")
@@ -493,15 +493,15 @@ func _test_combat_and_reward_persistence(content: RealmzContent) -> void:
 				assert_true(spell_ready_view.availability(&"cast_spell").enabled, "the public combat spell action is enabled only when core supplies at least one legal spell, power, and target option: %s" % spell_ready_view.availability(&"cast_spell").reason)
 			assert_false(tactical_view.availability(&"move").enabled, "an active battle cannot advertise exploration movement through the detached application view")
 			assert_false(tactical_view.availability(&"search").enabled, "an active battle cannot advertise exploration Search through the detached application view")
-			reward_session._session_interaction = InteractionRequest.from_payload("fixture.combat-action", InteractionRequest.COMBAT, {})
+			reward_session._context.session_interaction = InteractionRequest.from_payload("fixture.combat-action", InteractionRequest.COMBAT, {})
 			assert_true(reward_session.view().availability(&"combat_move").enabled, "the typed battle interaction keeps its legal movement action available: %s" % reward_session.view().availability(&"combat_move").reason)
-			reward_session._session_interaction = null
-			for monster: MonsterState in reward_session._state.combat.monsters():
+			reward_session._context.session_interaction = null
+			for monster: MonsterState in reward_session._context.state.combat.monsters():
 				if monster.traitor:
 					monster.current_health = 0
-			reward_session._state.combat.active_turn = null
-			reward_session._state.combat.pending_monster_attack = null
-			reward_session._state.combat.pending_reaction = null
+			reward_session._context.state.combat.active_turn = null
+			reward_session._context.state.combat.pending_monster_attack = null
+			reward_session._context.state.combat.pending_reaction = null
 			var terminal := reward_session.submit_intent(PlayerIntent.combat_action(&"finish", reward_character.id))
 			assert_false(terminal.events.any(func(event: DomainEvent) -> bool: return event.kind == &"allies_selected"), "terminal victory skips body-count when no eligible ally survived")
 			assert_equal([terminal.state, terminal.interaction.kind], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.TREASURE_DISTRIBUTION], "victory enters the ordinary typed booty workspace")
@@ -544,7 +544,7 @@ func _test_combat_and_reward_persistence(content: RealmzContent) -> void:
 				reward_completed = reward_completed or terminal.events.any(func(event: DomainEvent) -> bool: return event.kind == &"reward_completed")
 				boundary_count += 1
 			assert_true(boundary_count < 64, "terminal reward return is bounded")
-			assert_equal([terminal.state, reward_session._state.combat, reward_session._state.last_battle_outcome], [SessionStep.State.COMPLETED, null, &"victory"], "restored victory completes and releases the battle-owned reward chain exactly once")
+			assert_equal([terminal.state, reward_session._context.state.combat, reward_session._context.state.last_battle_outcome], [SessionStep.State.COMPLETED, null, &"victory"], "restored victory completes and releases the battle-owned reward chain exactly once")
 			assert_true(reward_completed, "ordinary session completion publishes the reward return event")
 			assert_equal(terminal.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"battle_returned").size(), 1, "restored victory publishes one terminal battle-return event")
 
@@ -554,11 +554,11 @@ func _complete_public_defeat(session: GameSession, content: RealmzContent, chara
 	if battle == null:
 		return SessionStep.failed(session.view().revision, &"missing_fixture_battle", "The fixture battle is unavailable.")
 	character.current_health = 1
-	var setup := session._rules.combat_flow.start_battle(session._state, content, battle, session._rng)
-	if not setup.ok or session._state.combat == null:
+	var setup := session._context.rules.combat_flow.start_battle(session._context.state, content, battle, session._context.rng)
+	if not setup.ok or session._context.state.combat == null:
 		return SessionStep.failed(session.view().revision, setup.error_code, setup.error_message)
 	var attacker: MonsterState = null
-	for monster: MonsterState in session._state.combat.monsters():
+	for monster: MonsterState in session._context.state.combat.monsters():
 		if monster.traitor and attacker == null:
 			attacker = monster
 		elif monster.traitor:
@@ -567,13 +567,13 @@ func _complete_public_defeat(session: GameSession, content: RealmzContent, chara
 		return SessionStep.failed(session.view().revision, &"missing_fixture_attacker", "The fixture battle has no hostile monster.")
 	attacker.target_id = character.id
 	var turn_order: Array[String] = [character.id, attacker.id]
-	session._state.combat.set_turn_order(turn_order)
-	session._state.combat.turn_index = 0
-	session._state.combat.active_turn = null
+	session._context.state.combat.set_turn_order(turn_order)
+	session._context.state.combat.turn_index = 0
+	session._context.state.combat.active_turn = null
 	var scripted_values: Array[int] = []
 	scripted_values.resize(512)
 	scripted_values.fill(0)
-	session._rng = ScriptedRng.new(scripted_values)
+	session._context.rng = ScriptedRng.new(scripted_values)
 	return session.submit_intent(PlayerIntent.combat_action(&"finish", character.id))
 
 

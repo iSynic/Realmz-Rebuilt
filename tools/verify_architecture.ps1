@@ -334,11 +334,11 @@ foreach ($file in Get-ChildItem $sessionCoordinatorRoot -Filter "session_*_coord
         }
     }
 }
-$coordinatorContextPath = Join-Path $sessionCoordinatorRoot "session_coordinator_context.gd"
+$coordinatorContextPath = Join-Path $repoRoot "src\playthrough\session_context.gd"
 if (Test-Path -LiteralPath $coordinatorContextPath) {
     $contextContent = [IO.File]::ReadAllText($coordinatorContextPath)
     if ($contextContent -match '(?m)^var\s+view_revision\b') {
-        $violations += "src/playthrough/coordinators/session_coordinator_context.gd request identity must use named revision capabilities instead of a writable revision field"
+        $violations += "src/playthrough/session_context.gd request identity must use named revision capabilities instead of a writable revision field"
     }
 }
 

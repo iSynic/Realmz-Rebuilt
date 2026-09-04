@@ -2,11 +2,11 @@
 class_name SessionDebugCoordinator
 extends RefCounted
 
-var _context: SessionCoordinatorContext
+var _context: SessionContext
 var started_ephemeral_operation: bool = false
 
 
-func _init(context: SessionCoordinatorContext) -> void:
+func _init(context: SessionContext) -> void:
 	_context = context
 
 
@@ -69,8 +69,8 @@ func _win_battle() -> SessionCoordinatorResult:
 			if not _context.state.restore_from_data(state_checkpoint) or not _context.rng.rollback(rng_checkpoint) or not _context.scenario_vm.restore(vm_checkpoint):
 				return _context.failed(&"debug_victory_rollback_failed", "Debug victory failed and could not restore its combat continuation.")
 			return _context.failed(result.error_code, result.error_message)
-		return _context.scenario()._finish_resumed_vm_result(result, result.events)
-	return _context.scenario()._finish_direct_battle(events)
+		return _context.scenario().finish_resumed_vm_result(result, result.events)
+	return _context.scenario().finish_direct_battle(events)
 
 
 func _start_encounter(kind: StringName, classic_id: int) -> SessionCoordinatorResult:
