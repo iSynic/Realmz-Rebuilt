@@ -161,7 +161,7 @@ func _apply_window_mode(value: String) -> void:
 
 
 func _apply_application_theme() -> void:
-	var base_theme := load("res://src/ui/classic_ui_theme.tres") as Theme
+	var base_theme := load("res://src/ui/shared/style/classic_ui_theme.tres") as Theme
 	_application.theme = ClassicTypography.themed_copy(base_theme, _settings)
 
 

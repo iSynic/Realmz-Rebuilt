@@ -240,7 +240,7 @@ func apply_settings(settings: PresentationSettings) -> void:
 	if settings == null:
 		return
 	_presentation_settings = settings
-	var base_theme := load("res://src/ui/classic_ui_theme.tres") as Theme
+	var base_theme := load("res://src/ui/shared/style/classic_ui_theme.tres") as Theme
 	theme = ClassicTypography.themed_copy(base_theme, settings)
 	_narrative.add_theme_font_size_override("normal_font_size", int(round(17.0 * settings.text_scale)))
 	_navigator.set_presentation_settings(settings)

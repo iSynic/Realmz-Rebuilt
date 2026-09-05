@@ -48,7 +48,7 @@ func _visible_control_texts(root: Node) -> Array[String]:
 
 
 func _test_shared_scrollbar_controls() -> void:
-	var theme := load("res://src/ui/classic_ui_theme.tres") as Theme
+	var theme := load("res://src/ui/shared/style/classic_ui_theme.tres") as Theme
 	assert_true(theme != null and theme.has_icon(&"decrement", &"VScrollBar") and theme.has_icon(&"increment", &"VScrollBar") and theme.has_icon(&"decrement", &"HScrollBar") and theme.has_icon(&"increment", &"HScrollBar"), "the shared Classic theme gives every native vertical and horizontal scrollbar dedicated step buttons")
 	if theme != null: assert_true([theme.get_icon(&"decrement", &"VScrollBar"), theme.get_icon(&"increment", &"VScrollBar"), theme.get_icon(&"decrement", &"HScrollBar"), theme.get_icon(&"increment", &"HScrollBar")].all(func(icon: Texture2D) -> bool: return icon != null and icon.get_size() == Vector2(12, 12)), "the four native scrollbar step regions use compact direction-specific glyphs")
 	var scroll := ScrollContainer.new(); ClassicScrollArrowController.configure(scroll, 32.0); assert_equal([scroll.scroll_vertical_custom_step, scroll.scroll_horizontal_custom_step], [32.0, 32.0], "the application-wide native scrollbar arrows move by one useful shared step instead of the engine's zero-step default")

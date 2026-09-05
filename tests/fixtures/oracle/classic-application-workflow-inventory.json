@@ -3820,7 +3820,7 @@
             "symbol": "class_name InteractionPresenter"
           },
           {
-            "path": "src/ui/classic_audio_presenter.gd",
+            "path": "src/ui/shared/media/classic_audio_presenter.gd",
             "symbol": "class_name ClassicAudioPresenter"
           }
         ]
@@ -9928,15 +9928,15 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/classic_music_context.gd",
+            "path": "src/ui/shared/media/classic_music_context.gd",
             "symbol": "static func playlist_for"
           },
           {
-            "path": "src/ui/classic_audio_presenter.gd",
+            "path": "src/ui/shared/media/classic_audio_presenter.gd",
             "symbol": "func present_music_context"
           },
           {
-            "path": "src/ui/classic_media_catalog.gd",
+            "path": "src/ui/shared/media/classic_media_catalog.gd",
             "symbol": "func scenario_music_asset"
           },
           {

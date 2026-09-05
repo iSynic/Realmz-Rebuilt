@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3]
 
-[ext_resource type="Script" path="res://src/ui/classic_content_icon.gd" id="1_icon"]
+[ext_resource type="Script" path="res://src/ui/shared/style/classic_content_icon.gd" id="1_icon"]
 
 [node name="ClassicContentIcon" type="CenterContainer"]
 script = ExtResource("1_icon")

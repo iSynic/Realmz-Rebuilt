@@ -1,7 +1,7 @@
 [gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://src/ui/inventory/inventory_selected_item_record.gd" id="1_record"]
-[ext_resource type="PackedScene" path="res://src/ui/classic_content_icon.tscn" id="2_icon"]
+[ext_resource type="PackedScene" path="res://src/ui/shared/style/classic_content_icon.tscn" id="2_icon"]
 [ext_resource type="PackedScene" path="res://src/ui/inventory/inventory_fact_row.tscn" id="3_fact"]
 [ext_resource type="PackedScene" path="res://src/ui/inventory/inventory_text_row.tscn" id="4_text"]
 

@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://src/ui/services/shop_interaction.gd" id="1_interaction"]
 [ext_resource type="Script" path="res://src/ui/shared/exchange/classic_exchange_ledger.gd" id="2_ledger"]
-[ext_resource type="Script" path="res://src/ui/classic_bitmap_button.gd" id="3_bitmap_button"]
+[ext_resource type="Script" path="res://src/ui/shared/style/classic_bitmap_button.gd" id="3_bitmap_button"]
 [ext_resource type="PackedScene" path="res://src/ui/services/shop_item_row.tscn" id="4_item_row"]
 [ext_resource type="PackedScene" path="res://src/ui/services/shop_character_button.tscn" id="5_character_button"]
 [ext_resource type="PackedScene" path="res://src/ui/services/shop_empty_label.tscn" id="6_empty_label"]

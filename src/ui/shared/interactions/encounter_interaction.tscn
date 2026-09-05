@@ -1,7 +1,7 @@
 [gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://src/ui/shared/interactions/encounter_interaction.gd" id="1_interaction"]
-[ext_resource type="Script" path="res://src/ui/classic_bitmap_button.gd" id="2_bitmap_button"]
+[ext_resource type="Script" path="res://src/ui/shared/style/classic_bitmap_button.gd" id="2_bitmap_button"]
 [ext_resource type="PackedScene" path="res://src/ui/shared/interactions/encounter_action_workspace.tscn" id="3_action"]
 [ext_resource type="PackedScene" path="res://src/ui/shared/interactions/encounter_item_workspace.tscn" id="4_item"]
 [ext_resource type="PackedScene" path="res://src/ui/shared/interactions/encounter_spell_workspace.tscn" id="5_spell"]

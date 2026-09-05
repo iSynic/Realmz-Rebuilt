@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3]
 
-[ext_resource type="PackedScene" path="res://src/ui/classic_content_icon.tscn" id="1_icon"]
+[ext_resource type="PackedScene" path="res://src/ui/shared/style/classic_content_icon.tscn" id="1_icon"]
 
 [node name="ClassicItemDetailHeader" type="HBoxContainer"]
 mouse_filter = 2

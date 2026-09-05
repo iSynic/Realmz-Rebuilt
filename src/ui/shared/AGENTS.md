@@ -11,6 +11,8 @@ Own reusable scene components, presentation policies, and interaction hosting us
 - `InteractionComponentFactory` selects typed components; `InteractionLayoutPolicy` calculates request placement; `InteractionOverlayHost` and `InteractionFlashController` own reusable overlay behavior.
 - `screen_frame.tscn`, `screen_message_label.tscn`, and `screen_summary_card.tscn` own the reusable workspace frame and generic detached-record components used across feature routes.
 - `assets/` owns application-wide presentation media and exact provenance shared by shell, workspace, and renderer features.
+- `media/` owns application and effective Classic catalogs, presentation audio, and route-aware music context.
+- `style/` owns reusable Classic controls, typography, theme resources, scroll-arrow binding, content icons, and responsive layout profiles.
 
 ## Local Contracts
 
@@ -33,3 +35,5 @@ Own reusable scene components, presentation policies, and interaction hosting us
 - `interactions/AGENTS.md` owns typed request surfaces, modal chrome, exact response payload emission, and the generic interaction host.
 - `exchange/AGENTS.md` owns reusable Trade and Shop ledger drag/drop presentation.
 - `assets/AGENTS.md` owns application-wide chrome, Classic media, fonts, sounds, music, shaders, and their provenance catalogs.
+- `media/AGENTS.md` owns media lookup, audio playback, and music context.
+- `style/AGENTS.md` owns reusable visual controls, typography, themes, and layout profiles.

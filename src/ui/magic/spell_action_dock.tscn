@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3]
 
-[ext_resource type="Script" path="res://src/ui/classic_bitmap_button.gd" id="1_button"]
+[ext_resource type="Script" path="res://src/ui/shared/style/classic_bitmap_button.gd" id="1_button"]
 
 [node name="SpellActionDock" type="HBoxContainer"]
 theme_override_constants/separation = 5

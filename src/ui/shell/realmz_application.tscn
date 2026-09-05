@@ -4,9 +4,9 @@
 [ext_resource type="Script" uid="uid://cx16ce4so2bne" path="res://src/ui/exploration/classic_map_presenter.gd" id="2_gxxd3"]
 [ext_resource type="PackedScene" path="res://src/ui/shared/interactions/interaction_presenter.tscn" id="3_uarpi"]
 [ext_resource type="PackedScene" path="res://src/ui/shell/game_shell.tscn" id="4_shell"]
-[ext_resource type="Script" uid="uid://3njyl4c48r3i" path="res://src/ui/classic_audio_presenter.gd" id="5_lvslj"]
+[ext_resource type="Script" uid="uid://3njyl4c48r3i" path="res://src/ui/shared/media/classic_audio_presenter.gd" id="5_lvslj"]
 [ext_resource type="Texture2D" path="res://src/ui/shared/assets/ui/classic-charcoal-slate-tile.png" id="6_stone"]
-[ext_resource type="Theme" path="res://src/ui/classic_ui_theme.tres" id="7_theme"]
+[ext_resource type="Theme" path="res://src/ui/shared/style/classic_ui_theme.tres" id="7_theme"]
 [ext_resource type="Script" path="res://src/ui/combat/classic_battlefield_presenter.gd" id="8_p3gde"]
 [ext_resource type="Script" path="res://src/app/startup/startup_route_bridge.gd" id="9_startup"]
 
