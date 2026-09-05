@@ -105,12 +105,12 @@ func _respond_boat_choice(response: InteractionResponse) -> SessionCoordinatorRe
 		_context.state.world.topology.set_boat_present(choice.target_map_id, choice.target_coordinate, false)
 		_context.state.party_in_boat = true
 		events.append(DomainEvent.new(&"boat_boarded", {"mapId": choice.target_map_id, "x": choice.target_coordinate.x, "y": choice.target_coordinate.y}))
-		return _context.exploration().finish_exploration_movement(ExplorationTimeWorkflow.commit_permitted_move(_context.workflow_context(), boarded_movement, choice.direction, events))
+		return _context.exploration().finish_exploration_movement(ExplorationMovementWorkflow.commit_permitted(_context.workflow_context(), boarded_movement, choice.direction, events))
 	if choice.action == &"disembark" and answer.accepted:
 		_context.state.world.topology.set_boat_present(choice.source_map_id, choice.source_coordinate, true)
 		_context.state.party_in_boat = false
 		events.append(DomainEvent.new(&"boat_disembarked", {"mapId": choice.source_map_id, "x": choice.source_coordinate.x, "y": choice.source_coordinate.y}))
-	return _context.exploration().finish_exploration_movement(ExplorationTimeWorkflow.commit_blocked_attempt(_context.workflow_context(), movement, events, false))
+	return _context.exploration().finish_exploration_movement(ExplorationMovementWorkflow.commit_blocked(_context.workflow_context(), movement, events, false))
 
 
 func _respond_pooled_wealth_departure(response: InteractionResponse) -> SessionCoordinatorResult:

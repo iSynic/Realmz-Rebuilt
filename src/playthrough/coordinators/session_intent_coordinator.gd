@@ -32,11 +32,11 @@ func _submit_exploration_intent(intent: PlayerIntent) -> SessionCoordinatorResul
 			var payload := intent.payload as ExplorationIntentPayloads.Move
 			return _move(payload.direction, payload.aligns_dungeon_heading)
 		PlayerIntent.Kind.DUNGEON_TURN:
-			return _workflow(ExplorationTimeWorkflow.turn_dungeon(_context.workflow_context(), (intent.payload as ExplorationIntentPayloads.DungeonTurn).delta))
+			return _workflow(ExplorationMovementWorkflow.turn_dungeon(_context.workflow_context(), (intent.payload as ExplorationIntentPayloads.DungeonTurn).delta))
 		PlayerIntent.Kind.SEARCH:
 			return _search()
 		PlayerIntent.Kind.TOGGLE_SEARCH:
-			return _workflow(ExplorationTimeWorkflow.toggle_search(_context.workflow_context()))
+			return _workflow(ExplorationSearchWorkflow.toggle_search(_context.workflow_context()))
 		PlayerIntent.Kind.USE_TORCH:
 			return _magic_transition(FieldItemWorkflow.begin_classic_torch(_context.workflow_context(), _context.next_revision()))
 		PlayerIntent.Kind.CONTEXTUAL_ENCOUNTER:
@@ -48,7 +48,7 @@ func _submit_exploration_intent(intent: PlayerIntent) -> SessionCoordinatorResul
 		PlayerIntent.Kind.HEAL:
 			return _heal()
 		PlayerIntent.Kind.SET_LOCATION_NOTE:
-			return _workflow(ExplorationTimeWorkflow.set_location_note(_context.workflow_context(), (intent.payload as ExplorationIntentPayloads.LocationNote).text))
+			return _workflow(LocationNoteWorkflow.set_note(_context.workflow_context(), (intent.payload as ExplorationIntentPayloads.LocationNote).text))
 	return null
 
 
@@ -146,7 +146,7 @@ func _heal() -> SessionCoordinatorResult:
 
 
 func _search() -> SessionCoordinatorResult:
-	var result := ExplorationTimeWorkflow.search(_context.workflow_context())
+	var result := ExplorationSearchWorkflow.search(_context.workflow_context())
 	if not result.ok:
 		return SessionCoordinatorResult.failed(result.error_code, result.error_message, result.events)
 	_context.exploration().set_post_time_continuation(result.map, "area-search-second", Vector2i.ZERO, result.check_random, result.timed_day, _context.state.party.coordinate)
@@ -157,12 +157,12 @@ func _move(direction: Vector2i, aligns_dungeon_heading: bool) -> SessionCoordina
 	var movement := _context.content.world.probe_movement(_context.state.party.map_id, _context.state.party.coordinate, direction, _context.state.world, _context.state.party_in_boat)
 	if not movement.allowed and movement.reason == &"invalid_direction":
 		return SessionCoordinatorResult.rejected(&"invalid_direction", "Movement requires a cardinal direction, or a diagonal direction on a land map.")
-	var fatigue_warning := ExplorationTimeWorkflow.movement_fatigue_warning(_context.workflow_context())
+	var fatigue_warning := ExplorationMovementWorkflow.fatigue_warning(_context.workflow_context())
 	if fatigue_warning != null:
 		return SessionCoordinatorResult.completed([fatigue_warning])
 	var events: Array[DomainEvent] = []
 	if aligns_dungeon_heading:
-		var heading := ExplorationTimeWorkflow.align_dungeon_heading_for_overhead_move(_context.workflow_context(), direction)
+		var heading := ExplorationMovementWorkflow.align_dungeon_heading(_context.workflow_context(), direction)
 		if not heading.ok:
 			return SessionCoordinatorResult.failed(heading.error_code, heading.error_message, heading.events)
 		events.append_array(heading.events)

@@ -177,6 +177,6 @@ static func ready_post_move_continuation_is_valid(content: RealmzContent, state:
 	var map := content.world.map_by_id(exploration.map_id)
 	var cell: MapCell = null if map == null else map.topology.cell_at(exploration.coordinate)
 	return cell != null and state.party.map_id == map.id and state.party.coordinate == exploration.coordinate \
-		and exploration.trigger_ids == ExplorationTimeWorkflow.selected_placed_trigger_ids(content, cell, state.world) \
+		and exploration.trigger_ids == ExplorationContinuationWorkflow.selected_placed_trigger_ids(content, cell, state.world) \
 		and exploration.random_region_ids == state.world.triggers.random_region_ids_at(map, exploration.coordinate) \
 		and exploration.random_region_index == exploration.random_region_ids.size() - 1

@@ -56,7 +56,7 @@ func begin_contextual_encounter() -> SessionCoordinatorResult:
 			events.append(DomainEvent.new(&"contextual_encounter_unavailable", {"mapId": map.id, "coordinate": encounter_coordinate, "programId": selected_program_id}))
 			return SessionCoordinatorResult.completed(events)
 		return SessionCoordinatorResult.failed(&"unknown_random_door_program", "Encounter selected unavailable program '%s'." % selected_program_id, events)
-	_context.set_continuation(ExplorationTimeWorkflow.post_move_continuation(_context.workflow_context(), map, _context.state.party.coordinate))
+	_context.set_continuation(ExplorationContinuationWorkflow.post_move(_context.workflow_context(), map, _context.state.party.coordinate))
 	_context.session_continuation.exploration().active_random_program_id = selected_program_id
 	events.append(DomainEvent.new(&"contextual_encounter_triggered", {"regionId": selected_region_id, "programId": selected_program_id, "coordinate": encounter_coordinate, "defaultProgram": used_default_program}))
 	var execution_context := ScenarioExecutionContext.trigger(&"action", "", map.id, encounter_coordinate, true).set_random_region(selected_region_id)
@@ -77,7 +77,7 @@ func begin_contextual_encounter() -> SessionCoordinatorResult:
 	return SessionCoordinatorResult.completed(events)
 
 func set_post_time_continuation(map: MapDefinition, resume_kind: String, direction: Vector2i = Vector2i.ZERO, check_random: bool = true, timed_day: int = 0, timed_coordinate: Vector2i = Vector2i(-1, -1)) -> void:
-	_context.set_continuation(ExplorationTimeWorkflow.post_time_continuation(_context.workflow_context(), map, StringName(resume_kind), direction, check_random, timed_day, timed_coordinate))
+	_context.set_continuation(ExplorationContinuationWorkflow.post_time(_context.workflow_context(), map, StringName(resume_kind), direction, check_random, timed_day, timed_coordinate))
 
 
 func continue_post_time(events: Array[DomainEvent]) -> SessionCoordinatorResult:
@@ -122,15 +122,15 @@ func complete_post_time(events: Array[DomainEvent]) -> SessionCoordinatorResult:
 	var direction = exploration.direction
 	_context.session_continuation.clear()
 	if resume_kind == &"move":
-		return finish_exploration_movement(ExplorationTimeWorkflow.commit_move(_context.workflow_context(), direction, events))
+		return finish_exploration_movement(ExplorationMovementWorkflow.commit(_context.workflow_context(), direction, events))
 	if resume_kind == &"camp-departure-second":
-		return finish_exploration_movement(ExplorationTimeWorkflow.complete_land_camp_departure(_context.workflow_context(), direction, events))
+		return finish_exploration_movement(ExplorationMovementWorkflow.complete_land_camp_departure(_context.workflow_context(), direction, events))
 	if resume_kind == &"post-move":
 		var map = _context.content.world.map_by_id(_context.state.party.map_id)
 		set_post_move_continuation(map, _context.state.party.coordinate)
 		return continue_post_move(events)
 	if resume_kind in [&"attempt-search-completed", &"attempt-search-post-move"]:
-		var search_result := ExplorationTimeWorkflow.search_after_land_movement_attempt(_context.workflow_context(), events)
+		var search_result := ExplorationSearchWorkflow.search_after_land_movement_attempt(_context.workflow_context(), events)
 		if not search_result.ok:
 			return SessionCoordinatorResult.failed(search_result.error_code, search_result.error_message, search_result.events)
 		var final_resume_kind := &"post-move" if resume_kind == &"attempt-search-post-move" else &"completed"
@@ -142,7 +142,7 @@ func complete_post_time(events: Array[DomainEvent]) -> SessionCoordinatorResult:
 			return continue_post_move(search_result.events)
 		return SessionCoordinatorResult.completed(search_result.events)
 	if resume_kind == &"area-search-second":
-		var result := ExplorationTimeWorkflow.complete_area_search(_context.workflow_context(), events)
+		var result := ExplorationSearchWorkflow.complete_area_search(_context.workflow_context(), events)
 		if not result.ok:
 			return SessionCoordinatorResult.failed(result.error_code, result.error_message, result.events)
 		set_post_time_continuation(result.map, "completed", Vector2i.ZERO, result.check_random, result.timed_day, _context.state.party.coordinate)
@@ -230,19 +230,19 @@ func continue_timed_encounters(events: Array[DomainEvent]) -> SessionCoordinator
 
 
 func apply_pending_midnight_recovery(events: Array[DomainEvent]) -> void:
-	ExplorationTimeWorkflow.apply_pending_midnight_recovery(_context.workflow_context(), _context.session_continuation.exploration(), events)
+	ExplorationContinuationWorkflow.apply_pending_midnight_recovery(_context.workflow_context(), _context.session_continuation.exploration(), events)
 
 
 func rebase_post_time_location() -> bool:
-	return ExplorationTimeWorkflow.rebase_post_time_location(_context.workflow_context(), _context.session_continuation)
+	return ExplorationContinuationWorkflow.rebase_post_time_location(_context.workflow_context(), _context.session_continuation)
 
 
 func timed_encounter_requirements_met(encounter: TimedEncounterDefinition, map: MapDefinition) -> bool:
-	return ExplorationTimeWorkflow.timed_encounter_requirements_met(_context.workflow_context(), encounter, map, _context.session_continuation.exploration())
+	return ExplorationContinuationWorkflow.timed_encounter_requirements_met(_context.workflow_context(), encounter, map, _context.session_continuation.exploration())
 
 
 func set_post_move_continuation(map: MapDefinition, coordinate: Vector2i, destination_depth: int = 0) -> void:
-	_context.set_continuation(ExplorationTimeWorkflow.post_move_continuation(_context.workflow_context(), map, coordinate, destination_depth))
+	_context.set_continuation(ExplorationContinuationWorkflow.post_move(_context.workflow_context(), map, coordinate, destination_depth))
 
 
 func continue_post_move(events: Array[DomainEvent]) -> SessionCoordinatorResult:
@@ -447,11 +447,11 @@ func complete_random_program(events: Array[DomainEvent]) -> SessionCoordinatorRe
 
 
 func move_after_pooled_wealth(direction: Vector2i, preceding_events: Array[DomainEvent] = []) -> SessionCoordinatorResult:
-	var result := ExplorationTimeWorkflow.depart_camp_for_movement(_context.workflow_context(), direction, preceding_events) if _context.state.party_camping else ExplorationTimeWorkflow.commit_move(_context.workflow_context(), direction, preceding_events)
+	var result := ExplorationMovementWorkflow.depart_camp(_context.workflow_context(), direction, preceding_events) if _context.state.party_camping else ExplorationMovementWorkflow.commit(_context.workflow_context(), direction, preceding_events)
 	return finish_exploration_movement(result)
 
 
-func finish_exploration_movement(result: ExplorationTimeWorkflow.MovementTransitionResult) -> SessionCoordinatorResult:
+func finish_exploration_movement(result: ExplorationMovementWorkflow.MovementTransitionResult) -> SessionCoordinatorResult:
 	if not result.ok:
 		return SessionCoordinatorResult.failed(result.error_code, result.error_message, result.events)
 	if not result.choice_kind.is_empty():
@@ -462,7 +462,7 @@ func finish_exploration_movement(result: ExplorationTimeWorkflow.MovementTransit
 	return _context.responses().finish_with_age_updates(result.events, &"post-clock", _context.session_continuation.copy())
 
 
-func _begin_boat_choice(result: ExplorationTimeWorkflow.MovementTransitionResult) -> SessionCoordinatorResult:
+func _begin_boat_choice(result: ExplorationMovementWorkflow.MovementTransitionResult) -> SessionCoordinatorResult:
 	var movement := result.choice_movement
 	if movement == null or movement.source_map == null or movement.target_map == null or movement.topology_result == null or movement.topology_result.target_cell == null or result.choice_kind not in [&"board", &"disembark"]:
 		return SessionCoordinatorResult.failed(&"invalid_boat_choice", "The Classic boat movement choice is unavailable.", result.events)
@@ -482,7 +482,7 @@ func _begin_boat_choice(result: ExplorationTimeWorkflow.MovementTransitionResult
 	_context.session_interaction = InteractionRequest.from_payload("boat-choice:%s:%d" % [String(body.action), _context.next_revision()], &"yes_no", {"prompt": prompt, "yesLabel": yes_label, "noLabel": no_label})
 	var events := result.events.duplicate()
 	if body.action == &"disembark":
-		events.append(ExplorationTimeWorkflow.sound_event(-148, "classic-boat-shore"))
+		events.append(ExplorationMovementWorkflow.sound_event(-148, "classic-boat-shore"))
 	return SessionCoordinatorResult.waiting(_context.session_interaction, events)
 
 

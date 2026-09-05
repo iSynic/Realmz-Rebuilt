@@ -43,8 +43,8 @@
       "id": "world-exploration",
       "boundary": "game",
       "guide": "docs/features/world-and-exploration.md",
-      "entryPoints": ["src/game/world/map_topology.gd", "src/game/world/classic_land_tile_rules.gd", "src/game/state/world_state.gd", "src/game/state/world_topology_state.gd", "src/game/state/world_trigger_state.gd", "src/game/state/world_exploration_state.gd", "src/playthrough/workflows/exploration_time_workflow.gd"],
-      "publicInterfaces": ["MapTopology", "ClassicLandTileRules", "WorldState", "WorldTopologyState", "WorldTriggerState", "WorldExplorationState", "ExplorationTimeWorkflow", "ExplorationIntents", "ExplorationIntentPayloads"],
+      "entryPoints": ["src/game/world/map_topology.gd", "src/game/world/classic_land_tile_rules.gd", "src/game/state/world_state.gd", "src/game/state/world_topology_state.gd", "src/game/state/world_trigger_state.gd", "src/game/state/world_exploration_state.gd", "src/playthrough/workflows/exploration_movement_workflow.gd", "src/playthrough/workflows/exploration_search_workflow.gd", "src/playthrough/workflows/exploration_time_workflow.gd", "src/playthrough/workflows/exploration_continuation_workflow.gd", "src/playthrough/workflows/location_note_workflow.gd"],
+      "publicInterfaces": ["MapTopology", "ClassicLandTileRules", "WorldState", "WorldTopologyState", "WorldTriggerState", "WorldExplorationState", "ExplorationMovementWorkflow", "ExplorationSearchWorkflow", "ExplorationTimeWorkflow", "ExplorationContinuationWorkflow", "LocationNoteWorkflow", "ExplorationIntents", "ExplorationIntentPayloads"],
       "tests": ["tests/core/test_map_topology.gd", "tests/integration/test_exploration_session.gd"],
       "performanceProbes": ["tools/movement_performance_probe.gd", "tools/runtime_performance_probe.gd", "tools/dungeon_transition_performance_probe.gd"]
     },
