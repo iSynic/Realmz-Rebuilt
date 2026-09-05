@@ -142,6 +142,12 @@ foreach ($layout in @($manifest.sourceLayout)) {
     $existingDirectories = @(Get-ChildItem -LiteralPath $rootPath -Directory | ForEach-Object { $_.Name })
     $missingFeatureDirectories += @($features | Where-Object { $existingDirectories -notcontains $_ }).Count
     $unexpectedFeatureDirectories += @($existingDirectories | Where-Object { $features -notcontains $_ }).Count
+    foreach ($feature in $features) {
+        $featureReadme = Join-Path (Join-Path $rootPath $feature) "README.md"
+        if (-not (Test-Path -LiteralPath $featureReadme -PathType Leaf)) {
+            $failures.Add("Source feature '$relativeRoot/$feature' is missing its public README.md.")
+        }
+    }
     $misplacedRootProductionFiles += @(Get-ChildItem -LiteralPath $rootPath -File | Where-Object {
         $_.Extension -in @(".gd", ".tscn", ".tres", ".gdshader")
     }).Count

@@ -28,8 +28,8 @@ If you seek a particular thing, begin here:
 
 | You wish to change | First place to look |
 |---|---|
-| A character, economy, inventory, magic, combat, or world record | Its named feature root under `src/game`, then the remaining shared `state`, `content`, or `view` folder |
-| A fixed calculation such as fatigue, movement, combat, equipment, or spell effects | Its named feature root under `src/game`, then `src/game/rules` while that feature is still being gathered |
+| A character, economy, inventory, magic, combat, or world record | Its named feature root under `src/game`; use `src/game/shared` only for a genuinely cross-feature contract |
+| A fixed calculation such as fatigue, movement, combat, equipment, or spell effects | The named feature root under `src/game` that owns the concept |
 | What happens after a player command | `src/playthrough/session/game_session.gd`, then the named coordinator or workflow |
 | A Classic opcode, AP/XAP, encounter, or Safe Scenario Action | `src/scenarios` |
 | Package loading, saves, Character Files, or settings | `src/storage` |
@@ -61,7 +61,7 @@ Dependencies point inward. `game` knows none of the other halls. `scenarios` bui
 
 ## Following one command
 
-Suppose the player presses an arrow key. `realmz_application.gd` asks `ExplorationIntents` for a typed `PlayerIntent`. `GameSession.submit_intent` routes it to an exploration coordinator. Pure movement and topology rules decide whether the step is legal, scenario execution handles any reached trigger, and the playthrough commits ordered events. The application then requests a fresh `GameView`. `GameShell`, `ScreenNavigator`, and the map presenter render that view; they never decide whether the move was legal.
+Suppose the player presses an arrow key. `src/app/composition/realmz_application.gd` asks `ExplorationIntents` for a typed `PlayerIntent`. `GameSession.submit_intent` routes it to the world workflow. Pure movement and topology rules decide whether the step is legal, scenario execution handles any reached trigger, and the playthrough commits ordered events. The application then requests a fresh `GameView`. `GameShell`, `ScreenNavigator`, and the map presenter render that view; they never decide whether the move was legal.
 
 The same trail applies elsewhere:
 
@@ -105,7 +105,7 @@ Classic land presentation uses the package atlas at its native 32×32 cell size.
 
 Classic instructions retain raw/normalized opcode identity, slot, ID, and provenance. Triggers reference ordinary programs whose instructions are either preserved `ClassicAction` records or typed `CallScenarioAction` records. Negative Classic opcodes retain GOSUB intent; CODE 111 returns through the saved Classic frame, CODE 112 discards one, and opcode 39 replaces execution with an XAP program.
 
-Scenario rules are deliberately divided. Compiled scenario-owned facts enter through `src/storage/packages`; runtime programs and opcode meanings live under `src/scenarios`; reusable gameplay consequences are requested through the narrow runtime API and committed by `src/playthrough`; universal calculations remain in `src/game/rules`. A scenario package may supply data and invoke supported behavior, but it may not smuggle arbitrary GDScript into the simulation.
+Scenario rules are deliberately divided. Compiled scenario-owned facts enter through `src/storage/packages`; runtime programs and opcode meanings live under `src/scenarios`; reusable gameplay consequences are requested through the narrow runtime API and committed by `src/playthrough`; universal calculations live with the feature they govern under `src/game`. A scenario package may supply data and invoke supported behavior, but it may not smuggle arbitrary GDScript into the simulation.
 
 Every running VM frame carries a typed `ScenarioExecutionContext` describing only its trigger, encounter, application, combat, and program-transfer provenance. Follow that value when you need to know why an opcode is executing. Its sparse save dictionary is handled only by `ScenarioExecutionContextCodec`; runtime code never fishes provenance out of an arbitrary dictionary.
 
@@ -119,9 +119,9 @@ Every gameplay draw uses `RealmzRng`. It owns the QuickDraw `randSeed = randSeed
 
 ## Godot's visible rooms
 
-The application uses one scene-backed `GameShell` and `ScreenNavigator` while the session protocol above remains unchanged. Open `src/ui/shell/game_shell.tscn` to see the persistent menu, map/picture stage, six-character roster, narrative/status well, and contextual command regions. Route scenes live in `src/ui/screens`; stable panels belong in those `.tscn` files, while their controllers bind detached data and create only genuinely variable rows or records.
+The application uses one scene-backed `GameShell` and `ScreenNavigator` while the session protocol above remains unchanged. Open `src/ui/shell/game_shell.tscn` to see the persistent menu, map/picture stage, six-character roster, narrative/status well, and contextual command regions. Workspace scenes live with their feature under `src/ui`; stable panels belong in those `.tscn` files, while their controllers bind detached data and create only genuinely variable rows or records.
 
-The scenes under `src/ui/screens` expose the complete stable hierarchy for Inventory, Character, Allies, Bestiary, Maps/Notes, Money and services, Spells, System, and Character Files. Open the Realmz Builder dock to bind the same production controllers to Wide, Compact, Empty, Long Content, Unavailable, or Error preview data without saving preview children into the scene. Exploration and Combat are typed modes of the persistent shell rather than misleading one-node workspace scenes.
+The scenes under `src/ui/characters`, `inventory`, `magic`, `services`, `journal`, `setup`, and `shell` expose the complete stable hierarchy for Inventory, Character, Allies, Bestiary, Maps/Notes, Money and services, Spells, System, Character Files, and campaign setup. Open the Realmz Builder dock to bind the same production controllers to Wide, Compact, Empty, Long Content, Unavailable, or Error preview data without saving preview children into the scene. Exploration and Combat are typed modes of the persistent shell rather than misleading one-node workspace scenes.
 
 The persistent shell follows the same rule at a larger scale. `game_shell.tscn` owns the visible stage, roster, narrative well, and command regions; `GameShell` coordinates them; `GameShellMenuController` owns menu population and dispatch; and `GameShellCommandController` owns contextual command availability and held-button presentation. Above the shell, `PresentationCoordinator` applies detached views and playback while `PresentationMediaController` composes the effective Classic media and music context. None of those classes decides whether a command is legal in Realmz—the detached view reports that fact, and `GameSession` remains the mutation boundary.
 
