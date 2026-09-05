@@ -257,7 +257,7 @@ func _combat_action(payload: CombatIntentPayloads.Action) -> SessionCoordinatorR
 		if not probe.allowed:
 			return SessionCoordinatorResult.rejected(probe.reason, probe.reason_text)
 		return _request_retreat(payload.actor_id, &"explicit", Vector2i(-100_000, -100_000))
-	return _combat_result(CombatRewardsWorkflow.submit_action(_context.workflow_context(), payload))
+	return _combat_result(CombatCommandWorkflow.submit_action(_context.workflow_context(), payload))
 
 
 func _combat_move(payload: CombatIntentPayloads.Move) -> SessionCoordinatorResult:
@@ -265,8 +265,8 @@ func _combat_move(payload: CombatIntentPayloads.Move) -> SessionCoordinatorResul
 	if edge_probe.allowed:
 		if not edge_probe.forced:
 			return _request_retreat(payload.actor_id, &"edge", payload.destination)
-		return _combat_result(CombatRewardsWorkflow.move_character(_context.workflow_context(), payload, true))
-	var result := CombatRewardsWorkflow.move_character(_context.workflow_context(), payload, false)
+		return _combat_result(CombatCommandWorkflow.move_character(_context.workflow_context(), payload, true))
+	var result := CombatCommandWorkflow.move_character(_context.workflow_context(), payload, false)
 	if not result.ok and result.error_code == &"combat_friendly_collision_choice_required":
 		return _request_friendly_collision(payload)
 	return _combat_result(result)

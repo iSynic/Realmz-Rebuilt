@@ -6,8 +6,8 @@ Own the feature-named typed payloads and factories that resume an interrupted pl
 
 ## Ownership
 
-- The application, combat, and reward payloads that have not yet moved to their feature roots.
-- `ApplicationContinuations` and `CombatContinuations` as live construction entry points.
+- The application payload that has not yet moved to its feature root.
+- `ApplicationContinuations` as its live construction entry point.
 
 ## Local Contracts
 

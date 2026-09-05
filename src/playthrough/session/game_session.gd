@@ -197,7 +197,7 @@ func _set_combat_auto(intent: PlayerIntent) -> SessionStep:
 			var response_body := InteractionResponse.CombatBody.new(&"set_auto", payload.character_id)
 			response_body.enabled = payload.enabled
 			return respond(InteractionResponse.new(pending.request_id, pending.kind, response_body))
-	var result := CombatRewardsWorkflow.set_persistent_auto(_context.workflow_context(), payload)
+	var result := CombatCommandWorkflow.set_persistent_auto(_context.workflow_context(), payload)
 	if not result.ok:
 		return SessionStep.failed(_context.current_revision(), result.error_code, result.error_message)
 	_ensure_coordinators()

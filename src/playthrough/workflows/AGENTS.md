@@ -6,7 +6,6 @@ Own feature workflows that have not yet moved from this migration directory into
 
 ## Ownership
 
-- Combat rewards.
 - Scenario application hooks.
 
 ## Local Contracts

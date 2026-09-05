@@ -62,5 +62,6 @@ Own the pure transaction coordinator that joins Realmz game state and rules to t
 - `inventory/AGENTS.md` owns carried-item transactions, field-item use, and item-owned continuations.
 - `magic/AGENTS.md` owns field casting, scrolls, Fast Spells, magic targeting, and magic-owned continuations.
 - `economy/AGENTS.md` owns money transactions and resumable service or pooled-wealth departures.
+- `combat/AGENTS.md` owns public combat command transactions and battle-owned continuation handoffs.
 - `continuations/AGENTS.md` owns typed resumable transaction payloads, feature factories, and their wire-value contracts.
-- `workflows/AGENTS.md` owns the remaining combat-reward and application-hook workflows until each moves to its feature.
+- `workflows/AGENTS.md` owns the remaining application-hook workflow until it moves to its feature.

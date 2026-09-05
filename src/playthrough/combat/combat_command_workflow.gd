@@ -1,6 +1,6 @@
 ## Coordinates the combat rewards workflow against committed session state.
 
-class_name CombatRewardsWorkflow
+class_name CombatCommandWorkflow
 extends RefCounted
 
 
