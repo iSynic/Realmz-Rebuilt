@@ -554,7 +554,7 @@ foreach ($protocolRoot in $protocolRoots) {
             if ($line -notmatch '\bbody\.to_data\(\)') {
                 continue
             }
-            $isWireSerializer = ($relativePath -eq "src/game/session/interaction_request.gd" -and $line -match '"payload": body\.to_data\(\)') -or
+            $isWireSerializer = ($relativePath -eq "src/game/shared/interactions/interaction_request.gd" -and $line -match '"payload": body\.to_data\(\)') -or
                 ($relativePath -eq "src/scenarios/runtime/scenario_runtime_continuation.gd" -and $line -match 'continuation_data\s*:=\s*body\.to_data\(\)')
             $isDetachedEvent = $relativePath -eq "src/scenarios/classic/operations/classic_battle_reward_operations.gd" -and $line -match 'DomainEvent\.new\(&"reward_wealth_transferred", body\.to_data\(\)\)'
             if (-not $isWireSerializer -and -not $isDetachedEvent) {

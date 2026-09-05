@@ -949,7 +949,7 @@
         ],
         "exclusionId": "",
         "evidence": {
-          "path": "src/game/session/player_intent.gd",
+          "path": "src/playthrough/session/player_intent.gd",
           "symbol": "MOVE,"
         }
       },
@@ -961,7 +961,7 @@
         ],
         "exclusionId": "",
         "evidence": {
-          "path": "src/game/session/player_intent.gd",
+          "path": "src/playthrough/session/player_intent.gd",
           "symbol": "DUNGEON_TURN,"
         }
       },
@@ -973,7 +973,7 @@
         ],
         "exclusionId": "",
         "evidence": {
-          "path": "src/game/session/player_intent.gd",
+          "path": "src/playthrough/session/player_intent.gd",
           "symbol": "SEARCH,"
         }
       },
@@ -985,7 +985,7 @@
         ],
         "exclusionId": "",
         "evidence": {
-          "path": "src/game/session/player_intent.gd",
+          "path": "src/playthrough/session/player_intent.gd",
           "symbol": "TOGGLE_SEARCH,"
         }
       },
@@ -997,7 +997,7 @@
         ],
         "exclusionId": "",
         "evidence": {
-          "path": "src/game/session/player_intent.gd",
+          "path": "src/playthrough/session/player_intent.gd",
           "symbol": "USE_TORCH,"
         }
       },
@@ -1009,7 +1009,7 @@
         ],
         "exclusionId": "",
         "evidence": {
-          "path": "src/game/session/player_intent.gd",
+          "path": "src/playthrough/session/player_intent.gd",
           "symbol": "CONTEXTUAL_ENCOUNTER,"
         }
       },
@@ -1021,7 +1021,7 @@
         ],
         "exclusionId": "",
         "evidence": {
-          "path": "src/game/session/player_intent.gd",
+          "path": "src/playthrough/session/player_intent.gd",
           "symbol": "CAMP,"
         }
       },
@@ -1033,7 +1033,7 @@
         ],
         "exclusionId": "",
         "evidence": {
-          "path": "src/game/session/player_intent.gd",
+          "path": "src/playthrough/session/player_intent.gd",
           "symbol": "REST,"
         }
       },
@@ -1045,7 +1045,7 @@
         ],
         "exclusionId": "",
         "evidence": {
-          "path": "src/game/session/player_intent.gd",
+          "path": "src/playthrough/session/player_intent.gd",
           "symbol": "HEAL,"
         }
       },
@@ -1057,7 +1057,7 @@
         ],
         "exclusionId": "",
         "evidence": {
-          "path": "src/game/session/player_intent.gd",
+          "path": "src/playthrough/session/player_intent.gd",
           "symbol": "USE_ITEM,"
         }
       },
@@ -1070,7 +1070,7 @@
         ],
         "exclusionId": "",
         "evidence": {
-          "path": "src/game/session/player_intent.gd",
+          "path": "src/playthrough/session/player_intent.gd",
           "symbol": "CAST_SPELL,"
         }
       },
@@ -1092,7 +1092,7 @@
         ],
         "exclusionId": "",
         "evidence": {
-          "path": "src/game/session/player_intent.gd",
+          "path": "src/playthrough/session/player_intent.gd",
           "symbol": "CHOOSE_COMBAT_ACTION,"
         }
       },
@@ -1104,7 +1104,7 @@
         ],
         "exclusionId": "",
         "evidence": {
-          "path": "src/game/session/player_intent.gd",
+          "path": "src/playthrough/session/player_intent.gd",
           "symbol": "CREATE_PARTY,"
         }
       },
@@ -1116,7 +1116,7 @@
         ],
         "exclusionId": "",
         "evidence": {
-          "path": "src/game/session/player_intent.gd",
+          "path": "src/playthrough/session/player_intent.gd",
           "symbol": "BEGIN_ADVENTURE,"
         }
       },
@@ -1129,7 +1129,7 @@
         ],
         "exclusionId": "",
         "evidence": {
-          "path": "src/game/session/player_intent.gd",
+          "path": "src/playthrough/session/player_intent.gd",
           "symbol": "IMPORT_VAULT_CHARACTER,"
         }
       },
@@ -1141,7 +1141,7 @@
         ],
         "exclusionId": "",
         "evidence": {
-          "path": "src/game/session/player_intent.gd",
+          "path": "src/playthrough/session/player_intent.gd",
           "symbol": "GENERATE_CHARACTER_DRAFT,"
         }
       },
@@ -1153,7 +1153,7 @@
         ],
         "exclusionId": "",
         "evidence": {
-          "path": "src/game/session/player_intent.gd",
+          "path": "src/playthrough/session/player_intent.gd",
           "symbol": "CANCEL_CHARACTER_DRAFT,"
         }
       },
@@ -1165,7 +1165,7 @@
         ],
         "exclusionId": "",
         "evidence": {
-          "path": "src/game/session/player_intent.gd",
+          "path": "src/playthrough/session/player_intent.gd",
           "symbol": "SET_CHARACTER_DRAFT_SPELLS,"
         }
       },
@@ -1177,7 +1177,7 @@
         ],
         "exclusionId": "",
         "evidence": {
-          "path": "src/game/session/player_intent.gd",
+          "path": "src/playthrough/session/player_intent.gd",
           "symbol": "FINALIZE_CHARACTER,"
         }
       },
@@ -1189,7 +1189,7 @@
         ],
         "exclusionId": "",
         "evidence": {
-          "path": "src/game/session/player_intent.gd",
+          "path": "src/playthrough/session/player_intent.gd",
           "symbol": "REMOVE_PARTY_MEMBER,"
         }
       },
@@ -1201,7 +1201,7 @@
         ],
         "exclusionId": "",
         "evidence": {
-          "path": "src/game/session/player_intent.gd",
+          "path": "src/playthrough/session/player_intent.gd",
           "symbol": "REORDER_PARTY,"
         }
       },
@@ -1213,7 +1213,7 @@
         ],
         "exclusionId": "",
         "evidence": {
-          "path": "src/game/session/player_intent.gd",
+          "path": "src/playthrough/session/player_intent.gd",
           "symbol": "CHANGE_CHARACTER_APPEARANCE,"
         }
       },
@@ -1225,7 +1225,7 @@
         ],
         "exclusionId": "",
         "evidence": {
-          "path": "src/game/session/player_intent.gd",
+          "path": "src/playthrough/session/player_intent.gd",
           "symbol": "EQUIP_ITEM,"
         }
       },
@@ -1237,7 +1237,7 @@
         ],
         "exclusionId": "",
         "evidence": {
-          "path": "src/game/session/player_intent.gd",
+          "path": "src/playthrough/session/player_intent.gd",
           "symbol": "UNEQUIP_ITEM,"
         }
       },
@@ -1249,7 +1249,7 @@
         ],
         "exclusionId": "",
         "evidence": {
-          "path": "src/game/session/player_intent.gd",
+          "path": "src/playthrough/session/player_intent.gd",
           "symbol": "USE_ITEM_ON_TARGET,"
         }
       },
@@ -1261,7 +1261,7 @@
         ],
         "exclusionId": "",
         "evidence": {
-          "path": "src/game/session/player_intent.gd",
+          "path": "src/playthrough/session/player_intent.gd",
           "symbol": "DROP_ITEM,"
         }
       },
@@ -1273,7 +1273,7 @@
         ],
         "exclusionId": "",
         "evidence": {
-          "path": "src/game/session/player_intent.gd",
+          "path": "src/playthrough/session/player_intent.gd",
           "symbol": "SPLIT_ITEM,"
         }
       },
@@ -1285,7 +1285,7 @@
         ],
         "exclusionId": "",
         "evidence": {
-          "path": "src/game/session/player_intent.gd",
+          "path": "src/playthrough/session/player_intent.gd",
           "symbol": "JOIN_ITEM,"
         }
       },
@@ -1297,7 +1297,7 @@
         ],
         "exclusionId": "",
         "evidence": {
-          "path": "src/game/session/player_intent.gd",
+          "path": "src/playthrough/session/player_intent.gd",
           "symbol": "TRADE_ITEM,"
         }
       },
@@ -1310,7 +1310,7 @@
         ],
         "exclusionId": "",
         "evidence": {
-          "path": "src/game/session/player_intent.gd",
+          "path": "src/playthrough/session/player_intent.gd",
           "symbol": "MONEY_ACTION,"
         }
       },
@@ -1324,7 +1324,7 @@
         ],
         "exclusionId": "",
         "evidence": {
-          "path": "src/game/session/player_intent.gd",
+          "path": "src/playthrough/session/player_intent.gd",
           "symbol": "SERVICE_ACTION,"
         }
       },
@@ -1336,7 +1336,7 @@
         ],
         "exclusionId": "",
         "evidence": {
-          "path": "src/game/session/player_intent.gd",
+          "path": "src/playthrough/session/player_intent.gd",
           "symbol": "COMBAT_MOVE,"
         }
       },
@@ -1348,7 +1348,7 @@
         ],
         "exclusionId": "",
         "evidence": {
-          "path": "src/game/session/player_intent.gd",
+          "path": "src/playthrough/session/player_intent.gd",
           "symbol": "SET_LOCATION_NOTE,"
         }
       },
@@ -1361,7 +1361,7 @@
         ],
         "exclusionId": "",
         "evidence": {
-          "path": "src/game/session/player_intent.gd",
+          "path": "src/playthrough/session/player_intent.gd",
           "symbol": "SET_PARTY_SETUP_OPTIONS,"
         }
       },
@@ -1373,7 +1373,7 @@
         ],
         "exclusionId": "",
         "evidence": {
-          "path": "src/game/session/player_intent.gd",
+          "path": "src/playthrough/session/player_intent.gd",
           "symbol": "SET_COMBAT_AUTO,"
         }
       },
@@ -1385,7 +1385,7 @@
         ],
         "exclusionId": "",
         "evidence": {
-          "path": "src/game/session/player_intent.gd",
+          "path": "src/playthrough/session/player_intent.gd",
           "symbol": "SET_FAST_SPELL,"
         }
       }
@@ -1397,7 +1397,7 @@
           "classic.scenario.present-message-media"
         ],
         "evidence": {
-          "path": "src/game/session/interaction_request.gd",
+          "path": "src/game/shared/interactions/interaction_request.gd",
           "symbol": "const ACKNOWLEDGE"
         }
       },
@@ -1407,7 +1407,7 @@
           "classic.character.age-update"
         ],
         "evidence": {
-          "path": "src/game/session/interaction_request.gd",
+          "path": "src/game/shared/interactions/interaction_request.gd",
           "symbol": "const AGE_UPDATE"
         }
       },
@@ -1421,7 +1421,7 @@
           "classic.services.swap"
         ],
         "evidence": {
-          "path": "src/game/session/interaction_request.gd",
+          "path": "src/game/shared/interactions/interaction_request.gd",
           "symbol": "const YES_NO"
         }
       },
@@ -1431,7 +1431,7 @@
           "classic.scenario.choose-response"
         ],
         "evidence": {
-          "path": "src/game/session/interaction_request.gd",
+          "path": "src/game/shared/interactions/interaction_request.gd",
           "symbol": "const INDEXED_CHOICE"
         }
       },
@@ -1441,7 +1441,7 @@
           "classic.scenario.choose-response"
         ],
         "evidence": {
-          "path": "src/game/session/interaction_request.gd",
+          "path": "src/game/shared/interactions/interaction_request.gd",
           "symbol": "const ENCOUNTER_CHOICE"
         }
       },
@@ -1453,7 +1453,7 @@
           "classic.spellcasting.choose-power-target"
         ],
         "evidence": {
-          "path": "src/game/session/interaction_request.gd",
+          "path": "src/game/shared/interactions/interaction_request.gd",
           "symbol": "const CHARACTER_SELECTION"
         }
       },
@@ -1463,7 +1463,7 @@
           "classic.rewards.post-battle-allies"
         ],
         "evidence": {
-          "path": "src/game/session/interaction_request.gd",
+          "path": "src/game/shared/interactions/interaction_request.gd",
           "symbol": "const ALLY_SELECTION"
         }
       },
@@ -1474,7 +1474,7 @@
           "classic.rewards.treasure-distribution"
         ],
         "evidence": {
-          "path": "src/game/session/interaction_request.gd",
+          "path": "src/game/shared/interactions/interaction_request.gd",
           "symbol": "const TREASURE_DISTRIBUTION"
         }
       },
@@ -1484,7 +1484,7 @@
           "classic.rewards.experience-level-up"
         ],
         "evidence": {
-          "path": "src/game/session/interaction_request.gd",
+          "path": "src/game/shared/interactions/interaction_request.gd",
           "symbol": "const LEVEL_UP"
         }
       },
@@ -1494,7 +1494,7 @@
           "classic.scenario.complex-interaction"
         ],
         "evidence": {
-          "path": "src/game/session/interaction_request.gd",
+          "path": "src/game/shared/interactions/interaction_request.gd",
           "symbol": "const WORD_AND_ACTION"
         }
       },
@@ -1504,7 +1504,7 @@
           "classic.services.shop"
         ],
         "evidence": {
-          "path": "src/game/session/interaction_request.gd",
+          "path": "src/game/shared/interactions/interaction_request.gd",
           "symbol": "const SHOP"
         }
       },
@@ -1514,7 +1514,7 @@
           "classic.services.temple"
         ],
         "evidence": {
-          "path": "src/game/session/interaction_request.gd",
+          "path": "src/game/shared/interactions/interaction_request.gd",
           "symbol": "const TEMPLE"
         }
       },
@@ -1524,7 +1524,7 @@
           "classic.services.bank"
         ],
         "evidence": {
-          "path": "src/game/session/interaction_request.gd",
+          "path": "src/game/shared/interactions/interaction_request.gd",
           "symbol": "const BANK"
         }
       },
@@ -1535,7 +1535,7 @@
           "classic.services.swap"
         ],
         "evidence": {
-          "path": "src/game/session/interaction_request.gd",
+          "path": "src/game/shared/interactions/interaction_request.gd",
           "symbol": "const POOLED_WEALTH_DEPARTURE"
         }
       },
@@ -1556,7 +1556,7 @@
           "classic.combat.turn-undead"
         ],
         "evidence": {
-          "path": "src/game/session/interaction_request.gd",
+          "path": "src/game/shared/interactions/interaction_request.gd",
           "symbol": "const COMBAT"
         }
       },
@@ -1566,7 +1566,7 @@
           "classic.startup.end-adventure"
         ],
         "evidence": {
-          "path": "src/game/session/interaction_request.gd",
+          "path": "src/game/shared/interactions/interaction_request.gd",
           "symbol": "const SESSION_LIFECYCLE"
         }
       },
@@ -1576,7 +1576,7 @@
           "classic.scenario.complex-interaction"
         ],
         "evidence": {
-          "path": "src/game/session/interaction_request.gd",
+          "path": "src/game/shared/interactions/interaction_request.gd",
           "symbol": "const THIEF_ENCOUNTER"
         }
       },
@@ -1586,7 +1586,7 @@
           "classic.scenario.complex-interaction"
         ],
         "evidence": {
-          "path": "src/game/session/interaction_request.gd",
+          "path": "src/game/shared/interactions/interaction_request.gd",
           "symbol": "const PICK_LOCK"
         }
       }
@@ -4987,7 +4987,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/game/session/game_view.gd",
+            "path": "src/playthrough/session/game_view.gd",
             "symbol": "var bestiary_entries"
           },
           {
@@ -9170,7 +9170,7 @@
             "symbol": "static func build_player_map_view"
           },
           {
-            "path": "src/game/session/game_view.gd",
+            "path": "src/playthrough/session/game_view.gd",
             "symbol": "class_name GameView"
           }
         ]

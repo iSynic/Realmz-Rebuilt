@@ -1,6 +1,6 @@
-## Carries typed character draft data across the gameplay transaction boundary.
+## Stores the saveable character-creation draft owned by the active game state.
 
-class_name CharacterDraft
+class_name CharacterDraftState
 extends RefCounted
 
 var name: String = ""
@@ -12,10 +12,6 @@ var portrait_id: String = ""
 var combat_icon_id: String = ""
 var finalized: bool = false
 var generated_character: CharacterState
-
-
-func to_creation_spec() -> CharacterCreationSpec:
-	return CharacterCreationSpec.new(name, race_id, caste_id, gender, portrait_id, combat_icon_id, starting_level)
 
 
 func is_ready() -> bool:
@@ -40,7 +36,7 @@ func to_data() -> Dictionary:
 	}
 
 
-static func from_data(value: Variant) -> CharacterDraft:
+static func from_data(value: Variant) -> CharacterDraftState:
 	if not value is Dictionary:
 		return null
 	for field: String in ["name", "gender", "raceId", "casteId", "portraitId", "combatIconId", "finalized"]:
@@ -50,7 +46,7 @@ static func from_data(value: Variant) -> CharacterDraft:
 		return null
 	if not value["gender"] is int or int(value["gender"]) not in [1, 2]:
 		return null
-	var result := CharacterDraft.new()
+	var result := CharacterDraftState.new()
 	result.name = value["name"]
 	result.gender = value["gender"]
 	var starting_level_value: Variant = value.get("startingLevel", 1)

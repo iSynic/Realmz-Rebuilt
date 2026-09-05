@@ -3,11 +3,11 @@
 class_name InteractionRequest
 extends RefCounted
 
-const DialogRequestDecoder = preload("res://src/game/session/requests/interaction_dialog_request_decoder.gd")
-const SelectionRequestDecoder = preload("res://src/game/session/requests/interaction_selection_request_decoder.gd")
-const ThiefRequestDecoder = preload("res://src/game/session/requests/interaction_thief_request_decoder.gd")
-const ServiceRequestDecoder = preload("res://src/game/session/requests/interaction_service_request_decoder.gd")
-const RewardRequestDecoder = preload("res://src/game/session/requests/interaction_reward_request_decoder.gd")
+const DialogRequestDecoder = preload("res://src/game/shared/interactions/interaction_dialog_request_decoder.gd")
+const SelectionRequestDecoder = preload("res://src/game/shared/interactions/interaction_selection_request_decoder.gd")
+const ThiefRequestDecoder = preload("res://src/game/shared/interactions/interaction_thief_request_decoder.gd")
+const ServiceRequestDecoder = preload("res://src/game/shared/interactions/interaction_service_request_decoder.gd")
+const RewardRequestDecoder = preload("res://src/game/shared/interactions/interaction_reward_request_decoder.gd")
 
 const VERSION: int = 1
 

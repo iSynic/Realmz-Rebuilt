@@ -14,6 +14,7 @@ Own the small pure values that genuinely cross several game features or form a s
 - `media/` owns immutable media descriptors and the read-only media-source port; adapters still own bytes and I/O.
 - `presentation/` owns host presentation settings that never enter an adventure save.
 - `view/` owns only the general detached `ActionAvailabilityView`, `DefinitionOptionView`, and `ViewChangeSet` atoms.
+- `interactions/` owns the stable pure request/response envelopes, neutral bodies, and strict decoder registry consumed across runtime boundaries.
 
 ## Local Contracts
 
@@ -38,3 +39,5 @@ Own the small pure values that genuinely cross several game features or form a s
 - `tests/presentation/test_classic_ui_system.gd` protects presentation-setting persistence and use.
 
 ## Child DOX Index
+
+- `interactions/AGENTS.md` owns shared interaction envelopes, neutral bodies, and strict decoding.

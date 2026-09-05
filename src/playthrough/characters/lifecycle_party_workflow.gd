@@ -161,7 +161,7 @@ static func generate_character_draft(context: SessionWorkflowContext, pending: b
 	var character := _create_character_from_spec(context, payload.spec, character_id)
 	if character == null:
 		return SessionWorkflowResult.failed(&"character_creation_failed", "Realmz rules rejected the character draft.")
-	var draft := CharacterDraft.new()
+	var draft := CharacterDraftState.new()
 	draft.name = payload.spec.name
 	draft.gender = payload.spec.gender
 	draft.starting_level = payload.spec.starting_level
@@ -221,7 +221,8 @@ static func prepare_character_finalize(context: SessionWorkflowContext, pending:
 	var names: Dictionary = {}
 	for current: CharacterState in current_characters:
 		names[current.name.to_lower()] = true
-	var validation := _character_creation_error(context, draft.to_creation_spec(), names)
+	var spec := CharacterCreationSpec.new(draft.name, draft.race_id, draft.caste_id, draft.gender, draft.portrait_id, draft.combat_icon_id, draft.starting_level)
+	var validation := _character_creation_error(context, spec, names)
 	if not validation.is_empty():
 		return CharacterFinalizeWorkflowResult.failed(StringName(validation["code"]), String(validation["message"]))
 	var caste := context.content.characters.caste_by_id(draft.generated_character.caste_id)

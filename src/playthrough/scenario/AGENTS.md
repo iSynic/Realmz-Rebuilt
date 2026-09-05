@@ -10,6 +10,7 @@ Own application-hook transactions and scenario handoff coordination above the sc
 - `ScenarioApplicationHookWorkflow` resolves authored hook programs, constructs execution context, and publishes completion events.
 - `ScenarioContinuations` constructs the application-hook continuation.
 - `ScenarioApplicationContinuationBody` carries hook, program, service, revival, and suspended scenario handoff facts.
+- Scenario transactions consume the detached Complex Encounter, Thief Encounter, and Pick Lock bodies owned by `src/game/scenario`.
 
 ## Local Contracts
 

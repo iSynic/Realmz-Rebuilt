@@ -6,6 +6,8 @@ Compiled authored content remains beside this state under `content`, `instructio
 
 `CampaignSummaryView` is the small detached selection record derived after package preparation. It carries visible title, author, version, restrictions, guidance, and splash identity without exposing the compiled content aggregate to the UI.
 
+`requests/` contains the detached Complex Encounter, Thief Encounter, and Pick Lock bodies carried through the shared interaction envelope. They expose only the choice and timing facts required by presentation and resumption; they do not contain live VM frames.
+
 ```text
 compiled package definitions
           |

@@ -14,6 +14,8 @@ Own the public, deterministic, all-or-nothing transaction boundary around one ac
 - `SessionContinuation`, its body protocol, and codec own the stable saved continuation envelope.
 - View projectors own read-only detached `GameView` assembly and conservative revision reuse.
 - `SaveSlotPreview` is the neutral detached browse contract constructed by storage and consumed by the host and UI.
+- `PlayerIntent` is the stable public command envelope. Session transactions consume the lower-level `InteractionRequest` and `InteractionResponse` contracts from `src/game/shared/interactions` without owning their wire codec.
+- `GameView`, `ViewDomainRevisions`, and `SessionStep` are the detached read model and transaction result returned to callers.
 
 ## Local Contracts
 

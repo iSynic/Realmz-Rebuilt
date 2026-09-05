@@ -8,5 +8,6 @@ This feature owns the rules and mutable facts for money, shops, temples, and ban
 - `LocationServiceStateCodec` preserves those facts in the established flat `GameState` save dictionary.
 - `EconomyContentCatalog` resolves neighboring immutable `TreasureDefinition` and `ShopDefinition` records through `RealmzContent.economy`.
 - `WealthState` and the detached money/service views carry the feature's mutable and presentation-facing records.
+- `requests/` contains the detached Bank, service, Shop, Temple, and Treasure bodies carried by `InteractionRequest`.
 
 Scenario operations may open a service, but they call these owners rather than maintaining a second shop, temple, bank, or wealth model. `GameState.location_services` is the live entry point. Save and restore tests protect the unchanged wire keys, while `test_money_workflow.gd` protects the public transactions.

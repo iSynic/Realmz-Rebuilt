@@ -13,6 +13,7 @@ Own money rules, service rules, location service state, shop state, and detached
 - `EconomyContentCatalog` indexes immutable Shop and Treasure definitions for the active campaign.
 - `LocationServiceState` owns current shop, temple, and bank availability plus save-owned shop quantity, inflation, buyback, and slot overrides.
 - `LocationServiceStateCodec` owns the established flat service fields inside the `GameState` save dictionary.
+- Bank, service, Shop, Temple, and Treasure request bodies carry detached economy workspaces through the shared interaction envelope.
 
 ## Local Contracts
 
@@ -20,6 +21,7 @@ Own money rules, service rules, location service state, shop state, and detached
 - Immutable `ShopDefinition` stock is never mutated. Scenario stock changes live only in `LocationServiceState`.
 - Buyback quantity and native slot assignments restore together and remain deterministic.
 - The codec preserves existing save keys and legacy optional-field behavior; it does not introduce a nested economy payload.
+- Economy request bodies contain already-projected records and availability, never live service or inventory state.
 
 ## Work Guidance
 

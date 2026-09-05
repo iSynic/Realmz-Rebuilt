@@ -32,7 +32,7 @@ var party_setup_completed: bool = false
 var difficulty: int = 0
 var monster_set: int = 0
 var experience_multiplier: float = -1.0
-var character_draft: CharacterDraft
+var character_draft: CharacterDraftState
 var _instance_counter: int = 0
 var _combat_auto_character_ids: Dictionary = {}
 
@@ -308,7 +308,7 @@ static func _restore_session_settings(state: GameState, data: Dictionary) -> boo
 	var multiplier_valid := is_equal_approx(state.experience_multiplier, -1.0) or (state.experience_multiplier >= 0.20 and state.experience_multiplier <= 2.50)
 	if state.difficulty < -2 or state.difficulty > 2 or state.monster_set not in [-1, 0, 1] or is_nan(state.experience_multiplier) or is_inf(state.experience_multiplier) or not multiplier_valid: return false
 	if data.has("characterDraft") and data["characterDraft"] != null:
-		state.character_draft = CharacterDraft.from_data(data["characterDraft"])
+		state.character_draft = CharacterDraftState.from_data(data["characterDraft"])
 		if state.character_draft == null: return false
 	return true
 

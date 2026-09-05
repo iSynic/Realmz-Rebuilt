@@ -6,4 +6,6 @@ Use `session_money_workflow.gd` for Party Wealth Pool, Share, and denomination-t
 
 Player commands enter through `intents/economy_intents.gd`; its payload family carries only the selected denomination, source, target, quantity, and service operation.
 
+The bodies under `src/game/economy/requests` describe Bank, Shop, Temple, service, and Treasure interactions. These workflows resume their selected actions; the bodies themselves contain already-projected records and availability, never live service or inventory state.
+
 Begin verification with `tests/integration/test_money_workflow.gd`. Use the session-persistence and scenario-VM suites for interrupted services and pooled-wealth departure restoration; UI layout remains under `src/ui/services`.

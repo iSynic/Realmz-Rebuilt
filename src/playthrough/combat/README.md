@@ -6,4 +6,6 @@ Use `combat_command_workflow.gd` for session-level battle commands: ordinary act
 
 Player commands enter through `intents/combat_intents.gd`; `CombatIntentPayloads` names the action, target, destination, item, spell, and Auto values admitted by the command workflow.
 
+`src/game/combat/requests/combat_request_body.gd` is the detached command deck handed to presentation. It reports calculated actions and targets; this workflow submits the selected command but does not reimplement its legality.
+
 Begin verification with `tests/core/test_combat_flow.gd`. Use the reward, persistence, and scenario-VM suites for terminal battles and interrupted continuation paths; tactical presentation remains under `src/ui/combat`.

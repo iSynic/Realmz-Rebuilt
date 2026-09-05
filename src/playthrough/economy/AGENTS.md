@@ -10,6 +10,7 @@ Own player money transactions and the resumable handoffs that keep services and 
 - `ServiceContinuations` constructs service-interaction and pooled-wealth-departure continuations.
 - `ServiceContinuationBody` carries the exact service handoff or departure stage and direction.
 - `EconomyIntents` and `EconomyIntentPayloads` define typed Pool, Share, denomination-transfer, and service commands.
+- Economy transactions consume the detached Bank, service, Shop, Temple, and Treasure request bodies owned by `src/game/economy`.
 
 ## Local Contracts
 

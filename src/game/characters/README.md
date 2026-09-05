@@ -4,6 +4,7 @@ This folder is the starting point for the data and rules belonging to one advent
 
 - `character_state.gd` is the mutable character carried by an active playthrough.
 - `character_state_codec.gd` translates that state to and from the stable save and Character Files representation.
+- `character_draft_state.gd` stores the generated character and current party-setup selections until the draft is finalized or cancelled.
 - `character_rules.gd` contains pure creation, aging, advancement, and derived-stat calculations.
 - `character_view.gd` builds the detached read-only record shown by the interface.
 - The neighboring `*_view.gd` files describe character metrics, age bands, appearance choices, spell choices, party summaries, and setup without exposing mutable state.
@@ -11,6 +12,7 @@ This folder is the starting point for the data and rules belonging to one advent
 - `party_state.gd` owns the ordered active party without taking over character creation or admission workflows.
 - `race_definition.gd`, `caste_definition.gd`, and `character_appearance_definition.gd` are the immutable authored records.
 - `character_catalog.gd` resolves those Race, Caste, portrait, and combat-icon definitions for the active campaign.
+- `requests/` contains the detached age-update and level-up bodies carried by the shared interaction envelope.
 
 The normal flow is:
 

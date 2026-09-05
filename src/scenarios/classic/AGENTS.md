@@ -11,6 +11,7 @@ Own the source-backed Castle opcode adapter from preserved instruction identity 
 - `ScenarioClassicControlFlow` and `ClassicControlFlowOperations` for frame-safe branches, GOSUB, encounters, and timeline completion.
 - Domain handler groups for control flow, world/time, character, inventory/economy, encounters, combat/rewards, and presentation-producing operations.
 - Source-backed Classic banking, battle, character, combat, inventory, reward, service, and thief operations under `operations/`.
+- `ClassicRewardState` owns the bounded saveable progress of a Classic Treasure, battle reward, level, and spell-selection sequence.
 
 ## Local Contracts
 

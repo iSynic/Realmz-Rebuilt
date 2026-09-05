@@ -11,6 +11,7 @@ Own the public session transactions that submit combat commands and the typed ha
 - `CombatContinuationBody` carries battle command and death-macro facts.
 - `CombatRewardContinuationBody` carries a completed battle's reward workflow and scenario return point.
 - `CombatIntents` and `CombatIntentPayloads` define typed battle actions, movement, targeting, and persistent Auto commands.
+- Combat transactions consume the detached `CombatRequestBody` owned by `src/game/combat`.
 
 ## Local Contracts
 
