@@ -15,9 +15,9 @@
     "majorSurfacesWithoutScene": 0,
     "majorSurfacesWithoutPreview": 0,
     "shellModeMarkerScenes": 0,
-    "missingFeatureDirectories": 17,
+    "missingFeatureDirectories": 16,
     "unexpectedFeatureDirectories": 23,
-    "misplacedRootProductionFiles": 78
+    "misplacedRootProductionFiles": 77
   },
   "finalTargets": {
     "oversizedProductionFiles": 0,

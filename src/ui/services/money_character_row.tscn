@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3]
 
-[ext_resource type="Script" path="res://src/ui/screens/money_character_row.gd" id="1_script"]
+[ext_resource type="Script" path="res://src/ui/services/money_character_row.gd" id="1_script"]
 
 [node name="MoneyCharacterRow" type="Button"]
 custom_minimum_size = Vector2(0, 48)

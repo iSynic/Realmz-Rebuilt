@@ -1,11 +1,11 @@
 [gd_scene load_steps=7 format=3]
 
-[ext_resource type="Script" path="res://src/ui/screens/services_workspace.gd" id="1_script"]
-[ext_resource type="PackedScene" path="res://src/ui/screens/wealth_chip.tscn" id="2_chip"]
-[ext_resource type="PackedScene" path="res://src/ui/screens/money_character_row.tscn" id="3_character"]
-[ext_resource type="PackedScene" path="res://src/ui/screens/money_transfer_row.tscn" id="4_transfer"]
-[ext_resource type="PackedScene" path="res://src/ui/screens/location_service_row.tscn" id="5_service"]
-[ext_resource type="PackedScene" path="res://src/ui/screens/service_action_button.tscn" id="6_action"]
+[ext_resource type="Script" path="res://src/ui/services/services_workspace.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://src/ui/services/wealth_chip.tscn" id="2_chip"]
+[ext_resource type="PackedScene" path="res://src/ui/services/money_character_row.tscn" id="3_character"]
+[ext_resource type="PackedScene" path="res://src/ui/services/money_transfer_row.tscn" id="4_transfer"]
+[ext_resource type="PackedScene" path="res://src/ui/services/location_service_row.tscn" id="5_service"]
+[ext_resource type="PackedScene" path="res://src/ui/services/service_action_button.tscn" id="6_action"]
 
 [node name="ServicesWorkspace" type="VBoxContainer"]
 size_flags_horizontal = 3

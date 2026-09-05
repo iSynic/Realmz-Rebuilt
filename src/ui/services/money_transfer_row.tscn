@@ -1,6 +1,6 @@
 [gd_scene load_steps=3 format=3]
 
-[ext_resource type="Script" path="res://src/ui/screens/money_transfer_row.gd" id="1_script"]
+[ext_resource type="Script" path="res://src/ui/services/money_transfer_row.gd" id="1_script"]
 [ext_resource type="PackedScene" path="res://src/ui/classic_content_icon.tscn" id="2_icon"]
 
 [node name="MoneyTransferRow" type="PanelContainer"]

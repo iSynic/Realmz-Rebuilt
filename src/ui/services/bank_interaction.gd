@@ -3,8 +3,8 @@
 class_name BankInteraction
 extends InteractionComponent
 
-const BANK_CHARACTER_ROW_SCENE_PATH := "res://src/ui/interaction_components/bank_character_row.tscn"
-const BANK_TRANSFER_ROW_SCENE_PATH := "res://src/ui/interaction_components/bank_transfer_row.tscn"
+const BANK_CHARACTER_ROW_SCENE_PATH := "res://src/ui/services/bank_character_row.tscn"
+const BANK_TRANSFER_ROW_SCENE_PATH := "res://src/ui/services/bank_transfer_row.tscn"
 
 var _compact := false
 var _body: BankRequestBody

@@ -2853,7 +2853,7 @@
             "symbol": "class_name DungeonMap3DPresenter"
           },
           {
-            "path": "src/ui/interaction_components/bank_interaction.gd",
+            "path": "src/ui/services/bank_interaction.gd",
             "symbol": "class_name BankInteraction"
           }
         ]
@@ -6012,7 +6012,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/interaction_components/shop_interaction.gd",
+            "path": "src/ui/services/shop_interaction.gd",
             "symbol": "class_name ShopInteraction"
           },
           {
@@ -6750,7 +6750,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/controllers/services_screen_controller.gd",
+            "path": "src/ui/services/services_screen_controller.gd",
             "symbol": "func _bind_money_workspace("
           },
           {
@@ -6758,7 +6758,7 @@
             "symbol": "func sync_route_audio"
           },
           {
-            "path": "src/ui/interaction_components/bank_interaction.gd",
+            "path": "src/ui/services/bank_interaction.gd",
             "symbol": "class_name BankInteraction"
           }
         ]
@@ -6886,7 +6886,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/controllers/services_screen_controller.gd",
+            "path": "src/ui/services/services_screen_controller.gd",
             "symbol": "func _bind_money_workspace("
           }
         ]
@@ -7018,7 +7018,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/interaction_components/shop_interaction.gd",
+            "path": "src/ui/services/shop_interaction.gd",
             "symbol": "class_name ShopInteraction"
           }
         ]
@@ -7143,7 +7143,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/interaction_components/temple_interaction.gd",
+            "path": "src/ui/services/temple_interaction.gd",
             "symbol": "class_name TempleInteraction"
           }
         ]
@@ -7280,7 +7280,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/interaction_components/bank_interaction.gd",
+            "path": "src/ui/services/bank_interaction.gd",
             "symbol": "class_name BankInteraction"
           }
         ]
@@ -8561,7 +8561,7 @@
         "status": "accepted",
         "owners": [
           {
-            "path": "src/ui/interaction_components/treasure_distribution_interaction.gd",
+            "path": "src/ui/services/treasure_distribution_interaction.gd",
             "symbol": "class_name TreasureDistributionInteraction"
           }
         ]
@@ -8684,7 +8684,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/interaction_components/treasure_distribution_interaction.gd",
+            "path": "src/ui/services/treasure_distribution_interaction.gd",
             "symbol": "class_name TreasureDistributionInteraction"
           }
         ]
@@ -8781,7 +8781,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/interaction_components/treasure_distribution_interaction.gd",
+            "path": "src/ui/services/treasure_distribution_interaction.gd",
             "symbol": "class_name TreasureDistributionInteraction"
           }
         ]

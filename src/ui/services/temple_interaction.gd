@@ -3,8 +3,8 @@
 class_name TempleInteraction
 extends InteractionComponent
 
-const TEMPLE_CHARACTER_ROW_SCENE_PATH := "res://src/ui/interaction_components/temple_character_row.tscn"
-const TEMPLE_SERVICE_ROW_SCENE_PATH := "res://src/ui/interaction_components/temple_service_row.tscn"
+const TEMPLE_CHARACTER_ROW_SCENE_PATH := "res://src/ui/services/temple_character_row.tscn"
+const TEMPLE_SERVICE_ROW_SCENE_PATH := "res://src/ui/services/temple_service_row.tscn"
 
 var _media: ClassicMediaCatalog
 var _compact := false

@@ -149,3 +149,4 @@ Own the Godot user interface: scenes, controls, screen presenters, topology-deri
 - `combat/AGENTS.md` owns the retained tactical battlefield, combat playback, targeting presentation, and tactical media caches.
 - `characters/AGENTS.md` owns the Character, Allies, Bestiary, and Character Files workspaces plus their shared character sheet and detached-view binding.
 - `journal/AGENTS.md` owns Places, acquired Maps, Journal, immediate player-map requests, and shared Classic scrolling-text presentation.
+- `services/AGENTS.md` owns Party Wealth, Shop, Temple, Bank, Treasure, and their typed scene-backed presentation.

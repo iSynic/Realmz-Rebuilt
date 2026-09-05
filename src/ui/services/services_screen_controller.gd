@@ -9,7 +9,7 @@ signal refresh_requested
 const GOLD := Color("d5b45d")
 const TEXT := Color("e0e2e5")
 const MUTED := Color("9aa0a8")
-const WORKSPACE_SCENE_PATH := "res://src/ui/screens/services_workspace.tscn"
+const WORKSPACE_SCENE_PATH := "res://src/ui/services/services_workspace.tscn"
 
 var _money_character_id: String = ""
 var _text_scale: float = 1.0
