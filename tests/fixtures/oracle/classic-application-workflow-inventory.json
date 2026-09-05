@@ -5195,7 +5195,7 @@
             "symbol": "func split_classic"
           },
           {
-            "path": "src/playthrough/workflows/inventory_workflow.gd",
+            "path": "src/playthrough/inventory/inventory_workflow.gd",
             "symbol": "static func split_item"
           }
         ]
@@ -5313,7 +5313,7 @@
             "symbol": "func join_classic"
           },
           {
-            "path": "src/playthrough/workflows/inventory_workflow.gd",
+            "path": "src/playthrough/inventory/inventory_workflow.gd",
             "symbol": "static func join_item"
           }
         ]
@@ -6000,7 +6000,7 @@
             "symbol": "func _service_action"
           },
           {
-            "path": "src/playthrough/workflows/field_item_workflow.gd",
+            "path": "src/playthrough/inventory/field_item_workflow.gd",
             "symbol": "static func identify_inventory"
           }
         ]
