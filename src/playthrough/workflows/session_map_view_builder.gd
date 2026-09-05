@@ -5,65 +5,20 @@ extends RefCounted
 
 const LOCATION_NOTE_VIEW_SIZE := Vector2i(15, 13)
 
+class MapWindowProjection:
+	extends RefCounted
+
+	var window: MapWindowView
+	var cells: Array[MapCellView] = []
+
 
 static func build_map_view(context: SessionWorkflowContext, projection_size: Vector2i, prepared_map_id: String, prepared_coordinate: Vector2i, prepared_visible: Dictionary, window_cache: Dictionary, cell_cache: Dictionary, previous_map_view: MapView = null, presentation_delta: RefCounted = null) -> MapView:
 	var state := context.state
 	var map := context.content.world.map_by_id(state.party.map_id)
 	_ensure_cell_cache(context, map, cell_cache)
-	var visible: Dictionary = {}
-	if map.uses_los:
-		if prepared_map_id == map.id and prepared_coordinate == state.party.coordinate:
-			visible = prepared_visible
-		else:
-			var wizard_eye := state.party.conditions.is_active(ConditionRules.PARTY_WIZARDS_EYE)
-			for coordinate: Vector2i in map.topology.exploration_visible_cells(state.party.coordinate, state.world, true, wizard_eye):
-				visible[coordinate] = true
-	var width := mini(map.topology.width, projection_size.x)
-	var height := mini(map.topology.height, projection_size.y)
-	var first_x := clampi(state.party.coordinate.x - width / 2, 0, map.topology.width - width)
-	var first_y := clampi(state.party.coordinate.y - height / 2, 0, map.topology.height - height)
-	var bounds := Rect2i(first_x, first_y, width, height)
-	var cells: Array[MapCellView] = []
-	var window: RefCounted
-	var cache_key := "%s:%d:%d:%d,%d:%d,%d,%d,%d:%d" % [map.id, state.world.topology.revision(), state.world.exploration.revision(), state.party.coordinate.x, state.party.coordinate.y, bounds.position.x, bounds.position.y, bounds.size.x, bounds.size.y, int(state.party.conditions.is_active(ConditionRules.PARTY_WIZARDS_EYE))]
-	if window_cache.has(cache_key):
-		window = window_cache[cache_key]
-	elif previous_map_view != null and previous_map_view.map_window != null and presentation_delta != null:
-		var previous_bounds: Rect2i = previous_map_view.map_window.bounds
-		presentation_delta.entered = _entered_coordinates(previous_bounds, bounds)
-		presentation_delta.exited = _entered_coordinates(bounds, previous_bounds)
-		var changed_membership: Dictionary = {}
-		for coordinate: Vector2i in presentation_delta.entered + presentation_delta.changed:
-			if bounds.has_point(coordinate): changed_membership[coordinate] = true
-		var replacements: Dictionary = {}
-		for coordinate: Vector2i in changed_membership:
-			var cell := map.topology.cell_at(coordinate)
-			if cell != null:
-				var reusable := previous_map_view.map_window.retained_cell_at(coordinate) as MapCellView
-				var is_visible := not map.uses_los or visible.has(coordinate)
-				var was_visited := state.world.exploration.was_visited(map.id, coordinate)
-				if reusable != null and cell.is_path and reusable.visited != was_visited:
-					reusable = null
-				replacements[coordinate] = reusable.detached_with_visibility(is_visible, was_visited) if reusable != null else _cached_cell_view(context, map, cell, is_visible, cell_cache)
-		window = previous_map_view.map_window.patched(bounds, replacements)
-	else:
-		for y: int in range(bounds.position.y, bounds.end.y):
-			for x: int in range(bounds.position.x, bounds.end.x):
-				var cell := map.topology.cell_at(Vector2i(x, y))
-				if cell != null:
-					cells.append(_cached_cell_view(context, map, cell, not map.uses_los or visible.has(cell.coordinate), cell_cache))
-		window = MapWindowView.new(bounds, {}, cells)
-		if presentation_delta != null:
-			presentation_delta.complete_window_rebuild = true
-	if not window_cache.has(cache_key):
-		if window_cache.size() >= 32:
-			window_cache.clear()
-		window_cache[cache_key] = window
-	var movement_options: Dictionary = {}
-	var directions := MapTopology.land_directions() if map.level_type == &"land" else MapTopology.cardinal_directions()
-	for direction: Vector2i in directions:
-		var probe := context.content.world.probe_movement(state.party.map_id, state.party.coordinate, direction, state.world, state.party_in_boat)
-		movement_options[MapTopology.direction_name(direction)] = {"allowed": probe.allowed, "reason": String(probe.reason)}
+	var visible := _visible_map_cells(context, map, prepared_map_id, prepared_coordinate, prepared_visible)
+	var bounds := _projection_bounds(map, state.party.coordinate, projection_size)
+	var projection := _project_map_window(context, map, bounds, visible, window_cache, cell_cache, previous_map_view, presentation_delta)
 	var dark := state.world.topology.map_is_dark(map)
 	var darkness_level := SessionViewProjectionPolicy.classic_darkness_level(state.party.conditions.value(ConditionRules.PARTY_TORCH_LIT)) if dark else -1
 	var visited: Array[Vector2i] = []
@@ -71,9 +26,90 @@ static func build_map_view(context: SessionWorkflowContext, projection_size: Vec
 	if presentation_delta == null:
 		visited = state.world.exploration.visited_coordinates(map.id)
 		seen = state.world.exploration.seen_coordinates(map.id)
-	var result := MapView.new(map.id, map.name, map.level_type, map.topology.width, map.topology.height, state.party.coordinate, cells, dark, visited, movement_options, state.last_move_direction, state.world.topology.map_landlook(map), state.dungeon_heading, state.dungeon_multiview, state.party.conditions.is_active(ConditionRules.PARTY_WIZARDS_EYE), map.base_scale, state.xy_display_hidden, state.compass_enabled, darkness_level, map.uses_los, seen, presentation_delta, window, _effective_random_region_bounds(context, map))
+	var result := MapView.new(map.id, map.name, map.level_type, map.topology.width, map.topology.height, state.party.coordinate, projection.cells, dark, visited, _movement_options(context, map), state.last_move_direction, state.world.topology.map_landlook(map), state.dungeon_heading, state.dungeon_multiview, state.party.conditions.is_active(ConditionRules.PARTY_WIZARDS_EYE), map.base_scale, state.xy_display_hidden, state.compass_enabled, darkness_level, map.uses_los, seen, presentation_delta, projection.window, _effective_random_region_bounds(context, map))
 	result.inherit_visibility(previous_map_view)
 	return result
+
+
+static func _visible_map_cells(context: SessionWorkflowContext, map: MapDefinition, prepared_map_id: String, prepared_coordinate: Vector2i, prepared_visible: Dictionary) -> Dictionary:
+	if not map.uses_los:
+		return {}
+	if prepared_map_id == map.id and prepared_coordinate == context.state.party.coordinate:
+		return prepared_visible
+	var visible: Dictionary = {}
+	var wizard_eye := context.state.party.conditions.is_active(ConditionRules.PARTY_WIZARDS_EYE)
+	for coordinate: Vector2i in map.topology.exploration_visible_cells(context.state.party.coordinate, context.state.world, true, wizard_eye):
+		visible[coordinate] = true
+	return visible
+
+
+static func _projection_bounds(map: MapDefinition, coordinate: Vector2i, projection_size: Vector2i) -> Rect2i:
+	var width := mini(map.topology.width, projection_size.x)
+	var height := mini(map.topology.height, projection_size.y)
+	var first_x := clampi(coordinate.x - width / 2, 0, map.topology.width - width)
+	var first_y := clampi(coordinate.y - height / 2, 0, map.topology.height - height)
+	return Rect2i(first_x, first_y, width, height)
+
+
+static func _project_map_window(context: SessionWorkflowContext, map: MapDefinition, bounds: Rect2i, visible: Dictionary, window_cache: Dictionary, cell_cache: Dictionary, previous_map_view: MapView, presentation_delta: RefCounted) -> MapWindowProjection:
+	var projection := MapWindowProjection.new()
+	var state := context.state
+	var cache_key := "%s:%d:%d:%d,%d:%d,%d,%d,%d:%d" % [map.id, state.world.topology.revision(), state.world.exploration.revision(), state.party.coordinate.x, state.party.coordinate.y, bounds.position.x, bounds.position.y, bounds.size.x, bounds.size.y, int(state.party.conditions.is_active(ConditionRules.PARTY_WIZARDS_EYE))]
+	if window_cache.has(cache_key):
+		projection.window = window_cache[cache_key]
+	elif previous_map_view != null and previous_map_view.map_window != null and presentation_delta != null:
+		projection.window = _patch_map_window(context, map, bounds, visible, cell_cache, previous_map_view, presentation_delta)
+	else:
+		projection.cells = _complete_window_cells(context, map, bounds, visible, cell_cache)
+		projection.window = MapWindowView.new(bounds, {}, projection.cells)
+		if presentation_delta != null:
+			presentation_delta.complete_window_rebuild = true
+	if not window_cache.has(cache_key):
+		if window_cache.size() >= 32:
+			window_cache.clear()
+		window_cache[cache_key] = projection.window
+	return projection
+
+
+static func _patch_map_window(context: SessionWorkflowContext, map: MapDefinition, bounds: Rect2i, visible: Dictionary, cell_cache: Dictionary, previous_map_view: MapView, presentation_delta: RefCounted) -> MapWindowView:
+	var previous_bounds: Rect2i = previous_map_view.map_window.bounds
+	presentation_delta.entered = _entered_coordinates(previous_bounds, bounds)
+	presentation_delta.exited = _entered_coordinates(bounds, previous_bounds)
+	var changed_membership: Dictionary = {}
+	for coordinate: Vector2i in presentation_delta.entered + presentation_delta.changed:
+		if bounds.has_point(coordinate):
+			changed_membership[coordinate] = true
+	var replacements: Dictionary = {}
+	for coordinate: Vector2i in changed_membership:
+		var cell := map.topology.cell_at(coordinate)
+		if cell == null:
+			continue
+		var reusable := previous_map_view.map_window.retained_cell_at(coordinate) as MapCellView
+		var is_visible := not map.uses_los or visible.has(coordinate)
+		var was_visited := context.state.world.exploration.was_visited(map.id, coordinate)
+		if reusable != null and cell.is_path and reusable.visited != was_visited:
+			reusable = null
+		replacements[coordinate] = reusable.detached_with_visibility(is_visible, was_visited) if reusable != null else _cached_cell_view(context, map, cell, is_visible, cell_cache)
+	return previous_map_view.map_window.patched(bounds, replacements)
+
+
+static func _complete_window_cells(context: SessionWorkflowContext, map: MapDefinition, bounds: Rect2i, visible: Dictionary, cell_cache: Dictionary) -> Array[MapCellView]:
+	var cells: Array[MapCellView] = []
+	for y: int in range(bounds.position.y, bounds.end.y):
+		for x: int in range(bounds.position.x, bounds.end.x):
+			var cell := map.topology.cell_at(Vector2i(x, y))
+			if cell != null:
+				cells.append(_cached_cell_view(context, map, cell, not map.uses_los or visible.has(cell.coordinate), cell_cache))
+	return cells
+
+
+static func _movement_options(context: SessionWorkflowContext, map: MapDefinition) -> Dictionary:
+	var movement_options: Dictionary = {}
+	var directions := MapTopology.land_directions() if map.level_type == &"land" else MapTopology.cardinal_directions()
+	for direction: Vector2i in directions:
+		var probe := context.content.world.probe_movement(context.state.party.map_id, context.state.party.coordinate, direction, context.state.world, context.state.party_in_boat)
+		movement_options[MapTopology.direction_name(direction)] = {"allowed": probe.allowed, "reason": String(probe.reason)}
+	return movement_options
 
 
 static func _effective_random_region_bounds(context: SessionWorkflowContext, map: MapDefinition) -> Array[Rect2i]:
