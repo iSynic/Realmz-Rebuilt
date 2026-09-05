@@ -1,0 +1,16 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="PackedScene" path="res://src/ui/shared/screen_frame.tscn" id="1_base"]
+[ext_resource type="Script" path="res://src/ui/inventory/inventory_screen.gd" id="2_screen"]
+[ext_resource type="PackedScene" path="res://src/ui/inventory/inventory_workspace.tscn" id="3_workspace"]
+
+[node name="InventoryScreen" instance=ExtResource("1_base")]
+route_id = &"inventory"
+title = "Inventory"
+description = ""
+script = ExtResource("2_screen")
+
+[node name="InventoryWorkspace" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody" instance=ExtResource("3_workspace")]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3

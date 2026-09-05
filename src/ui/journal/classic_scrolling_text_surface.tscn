@@ -1,0 +1,52 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/ui/journal/classic_scrolling_text_surface.gd" id="1_surface"]
+
+[node name="ClassicScrollingTextSurface" type="PanelContainer"]
+clip_contents = true
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_type_variation = &"ClassicTextWell"
+script = ExtResource("1_surface")
+
+[node name="ClassicScrollingTextStack" type="Control" parent="."]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="ClassicScrollingTextBackground" type="TextureRect" parent="ClassicScrollingTextStack"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture_filter = 1
+texture_repeat = 2
+expand_mode = 1
+stretch_mode = 1
+
+[node name="ClassicScrollingTextMargin" type="MarginContainer" parent="ClassicScrollingTextStack"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 6
+
+[node name="ClassicScrollingText" type="RichTextLabel" parent="ClassicScrollingTextStack/ClassicScrollingTextMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 1
+theme_type_variation = &"ClassicNarrative"
+theme_override_colors/default_color = Color(0, 0, 0, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0)
+theme_override_constants/outline_size = 0
+autowrap_mode = 2
+scroll_active = true
+tab_size = 1

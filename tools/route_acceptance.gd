@@ -71,8 +71,8 @@ func _initialize() -> void:
 
 func _prepare_party() -> void:
 	if _session._state.party.characters().is_empty():
-		var races := _content.race_definitions()
-		var castes := _content.caste_definitions()
+		var races := _content.characters.race_definitions()
+		var castes := _content.characters.caste_definitions()
 		if races.is_empty() or castes.is_empty():
 			_fail("route package has no application character definitions")
 			return
@@ -94,7 +94,7 @@ func _prepare_party() -> void:
 		for ability_index: int in range(5, 13):
 			character.set_ability_value(ability_index, 32_767)
 		for save_index: int in 8:
-			character.set_save_value_raw(save_index, 32_767)
+			character.set_save_value(save_index, 32_767, false)
 	_session._state.party_setup_completed = true
 
 
@@ -120,7 +120,7 @@ func _run_step(step_definition: Dictionary) -> void:
 	var failure_count := _failures.size()
 	var step_id := String(step_definition.get("id", "unnamed-step"))
 	var trigger_id := String(step_definition.get("triggerId", ""))
-	var trigger := _content.trigger_by_id(trigger_id)
+	var trigger := _content.scenario_records.trigger_by_id(trigger_id)
 	var scripted_responses: Array = step_definition.get("responses", [])
 	var response_cursor := {"index": 0}
 	if trigger == null:
@@ -137,8 +137,8 @@ func _run_step(step_definition: Dictionary) -> void:
 		return
 	_session._state.party.map_id = trigger.map_id
 	_session._state.party.coordinate = trigger.coordinate
-	_session._state.world.mark_visited(trigger.map_id, trigger.coordinate)
-	var continuation_body := SessionContinuation.ExplorationBody.new()
+	_session._state.world.exploration.mark_visited(trigger.map_id, trigger.coordinate)
+	var continuation_body := ExplorationContinuationBody.new()
 	continuation_body.map_id = trigger.map_id
 	continuation_body.coordinate = trigger.coordinate
 	continuation_body.trigger_ids = [trigger.id]
@@ -147,7 +147,7 @@ func _run_step(step_definition: Dictionary) -> void:
 	continuation_body.random_region_index = -1
 	continuation_body.random_battle_stage = &""
 	continuation_body.action_point_destination_depth = 0
-	_session._session_continuation = SessionContinuation.post_move(continuation_body)
+	_session._session_continuation = ExplorationContinuations.post_move(continuation_body)
 	if _session._session_continuation == null:
 		_fail("%s could not construct its typed post-move continuation" % step_id)
 		_stage(step_id, failure_count)
@@ -178,7 +178,7 @@ func _run_travel_proof(proof: Dictionary) -> void:
 		return
 	_session._state.party.map_id = map.id
 	_session._state.party.coordinate = coordinate
-	_session._state.world.mark_visited(map.id, coordinate)
+	_session._state.world.exploration.mark_visited(map.id, coordinate)
 	var events: Array[DomainEvent] = []
 	var movement_steps := 0
 	for move: Variant in proof["moves"]:
@@ -186,7 +186,7 @@ func _run_travel_proof(proof: Dictionary) -> void:
 			_fail("%s contains a malformed movement vector" % proof_id)
 			break
 		var direction := Vector2i(int(move[0]), int(move[1]))
-		var result := _session.submit_intent(PlayerIntent.move(direction))
+		var result := _session.submit_intent(ExplorationIntents.move(direction))
 		result = _drain_interactions(result, events, proof_id)
 		movement_steps += 1
 		if result.state == SessionStep.State.FAILED:
@@ -248,7 +248,7 @@ func _run_topology_step(step_id: String, step_definition: Dictionary, trigger: T
 	for path_index: int in path.size():
 		var origin := _session._state.party.coordinate
 		var destination := path[path_index]
-		var result := _session.submit_intent(PlayerIntent.move(destination - origin))
+		var result := _session.submit_intent(ExplorationIntents.move(destination - origin))
 		result = _drain_interactions(result, events, step_id, scripted_responses, response_cursor)
 		if result.state == SessionStep.State.FAILED:
 			_fail("%s topology traversal failed with %s: %s" % [step_id, result.error_code, result.error_message])
@@ -284,7 +284,7 @@ func _run_program_step(step_id: String, step_definition: Dictionary, trigger: Tr
 		return
 	_session._state.party.map_id = map.id
 	_session._state.party.coordinate = coordinate
-	_session._state.world.mark_visited(map.id, coordinate)
+	_session._state.world.exploration.mark_visited(map.id, coordinate)
 	var events: Array[DomainEvent] = [DomainEvent.new(&"trigger_fired", {"triggerId": trigger.id, "source": "route-program"})]
 	var execution_context := ScenarioExecutionContext.trigger(&"action", trigger.id, map.id, coordinate, true)
 	var started := _session._scenario_vm.start_program(trigger.program_id, execution_context)
@@ -339,7 +339,7 @@ func _scripted_response(request: InteractionRequest, responses: Array, cursor: D
 		return null
 	var data: Dictionary = _normalize_route_response_data(definition["data"])
 	if request.kind == InteractionRequest.PICK_LOCK and data.get("frameIndex") == "first-success":
-		var body := request.body as InteractionRequest.PickLockRequestBody
+		var body := request.body as PickLockRequestBody
 		if body == null:
 			return null
 		data["frameIndex"] = _first_successful_pick_lock_frame(body)
@@ -372,7 +372,7 @@ func _normalize_route_response_data(value: Variant) -> Variant:
 	return value
 
 
-func _first_successful_pick_lock_frame(body: InteractionRequest.PickLockRequestBody) -> int:
+func _first_successful_pick_lock_frame(body: PickLockRequestBody) -> int:
 	for frame_index: int in body.frames.size():
 		var succeeded := true
 		for position: int in body.frames[frame_index]:
@@ -390,7 +390,7 @@ func _default_response(request: InteractionRequest, step_id: String) -> Interact
 	match request.kind:
 		&"combat_action":
 			_force_victory()
-			var combat_body := request.body as InteractionRequest.CombatRequestBody
+			var combat_body := request.body as CombatRequestBody
 			if combat_body == null:
 				return null
 			return InteractionResponse.from_data(request.request_id, request.kind, {"actorId": combat_body.actor_id, "action": "defend", "targetId": ""})
@@ -407,12 +407,12 @@ func _default_response(request: InteractionRequest, step_id: String) -> Interact
 		&"bank_action":
 			return InteractionResponse.from_data(request.request_id, request.kind, {"action": "leave", "amount": 0})
 		&"ally_selection":
-			var ally_body := request.body as InteractionRequest.SelectionRequestBody
+			var ally_body := request.body as SelectionRequestBody
 			if ally_body == null:
 				return null
 			return InteractionResponse.from_data(request.request_id, request.kind, {"selectedIds": ally_body.selected_ids.duplicate()})
 		&"treasure_distribution":
-			var treasure_body := request.body as InteractionRequest.TreasureRequestBody
+			var treasure_body := request.body as TreasureRequestBody
 			if treasure_body == null:
 				return null
 			if treasure_body.mode == &"completion-confirmation":
@@ -421,7 +421,7 @@ func _default_response(request: InteractionRequest, step_id: String) -> Interact
 				return InteractionResponse.from_data(request.request_id, request.kind, {"action": "discard", "instanceId": treasure_body.item.instance_id})
 			return InteractionResponse.from_data(request.request_id, request.kind, {"action": "done"})
 		&"level_up":
-			var level_body := request.body as InteractionRequest.LevelUpRequestBody
+			var level_body := request.body as LevelUpRequestBody
 			if level_body == null:
 				return null
 			return InteractionResponse.from_data(request.request_id, request.kind, {
@@ -437,7 +437,7 @@ func _force_victory() -> void:
 	var combat := _session._state.combat
 	if combat == null:
 		return
-	for monster: MonsterState in combat.monsters():
+	for monster: MonsterState in combat.roster.monsters():
 		if monster.traitor:
 			monster.current_health = 0
 
@@ -505,7 +505,7 @@ func _validate_completion(anchor: Variant) -> void:
 		return
 	var expected: Dictionary = anchor["runtime"]
 	for quest_id: Variant in expected.get("questFlags", []):
-		if not _session._state.quest_is_set(int(quest_id)):
+		if not _session._state.scenario_progress.quest_is_set(int(quest_id)):
 			_fail("completion quest %d is not set" % int(quest_id))
 	for override: Variant in expected.get("tileOverrides", []):
 		if not override is Dictionary:
@@ -514,7 +514,7 @@ func _validate_completion(anchor: Variant) -> void:
 		var map := _content.world.map_by_type_and_index(StringName(override.get("levelType", "")), int(override.get("levelIndex", -1)))
 		var coordinate := Vector2i(int(override.get("x", -1)), int(override.get("y", -1)))
 		var cell: MapCell = null if map == null else map.topology.cell_at(coordinate)
-		var terrain := "" if cell == null else _session._state.world.terrain_for(map.id, cell)
+		var terrain := "" if cell == null else _session._state.world.topology.terrain_for(map.id, cell)
 		if terrain != "classic.terrain.%d" % int(override.get("value", -1)):
 			_fail("completion tile %s %s has terrain %s" % [map.id if map != null else "unknown", coordinate, terrain])
 	var item_ids := _party_classic_item_ids()
@@ -534,7 +534,7 @@ func _party_classic_item_ids() -> Array[int]:
 	var result: Array[int] = []
 	for character: CharacterState in _session._state.party.characters():
 		for instance: ItemInstance in character.inventory():
-			var definition := _content.item_by_id(instance.definition_id)
+			var definition := _content.items.item_by_id(instance.definition_id)
 			if definition != null and not result.has(definition.classic_id):
 				result.append(definition.classic_id)
 	result.sort()
@@ -555,7 +555,7 @@ func _final_state() -> Dictionary:
 func _set_quest_ids() -> Array[int]:
 	var result: Array[int] = []
 	for quest_id: int in 100:
-		if _session._state.quest_is_set(quest_id):
+		if _session._state.scenario_progress.quest_is_set(quest_id):
 			result.append(quest_id)
 	return result
 

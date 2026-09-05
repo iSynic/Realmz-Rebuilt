@@ -1,0 +1,63 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://src/ui/inventory/inventory_trade_workspace.gd" id="1_workspace"]
+[ext_resource type="PackedScene" path="res://src/ui/inventory/inventory_trade_ledger.tscn" id="2_ledger"]
+[ext_resource type="PackedScene" path="res://src/ui/inventory/inventory_trade_divider.tscn" id="3_divider"]
+[ext_resource type="PackedScene" path="res://src/ui/inventory/inventory_selected_item_record.tscn" id="4_record"]
+
+[node name="InventoryTradeWorkspace" type="PanelContainer"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_type_variation = &"ClassicInset"
+script = ExtResource("1_workspace")
+
+[node name="Content" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Header" type="HBoxContainer" parent="Content"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Content/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.835294, 0.705882, 0.364706, 1)
+theme_override_font_sizes/font_size = 17
+text = "Trade"
+
+[node name="Detail" type="Label" parent="Content/Header"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.603922, 0.627451, 0.658824, 1)
+theme_override_font_sizes/font_size = 12
+text = "Drag an item from one pack to the other"
+horizontal_alignment = 2
+
+[node name="InventoryTradeLedgers" type="BoxContainer" parent="Content"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="SourceLedger" parent="Content/InventoryTradeLedgers" instance=ExtResource("2_ledger")]
+layout_mode = 2
+
+[node name="InventoryTradeDivider" parent="Content/InventoryTradeLedgers" instance=ExtResource("3_divider")]
+layout_mode = 2
+
+[node name="TargetLedger" parent="Content/InventoryTradeLedgers" instance=ExtResource("2_ledger")]
+layout_mode = 2
+
+[node name="TradeStatus" type="Label" parent="Content"]
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.862745, 0.662745, 0.662745, 1)
+theme_override_font_sizes/font_size = 12
+text = "Trade status"
+autowrap_mode = 2
+
+[node name="TradeItemInspector" type="PanelContainer" parent="Content"]
+custom_minimum_size = Vector2(0, 92)
+layout_mode = 2
+theme_type_variation = &"ClassicInset"
+
+[node name="InventorySelectedItemRecord" parent="Content/TradeItemInspector" instance=ExtResource("4_record")]
+layout_mode = 2

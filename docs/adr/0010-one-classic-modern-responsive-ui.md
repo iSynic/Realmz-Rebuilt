@@ -12,7 +12,7 @@ The earlier Remake contains tracked bitmap controls and useful wide-layout evide
 
 ## Decision
 
-Use one scene-based Classic-wide presentation system. `ClassicApplicationShell` owns the menu strip, stage boundary, right roster, bottom textbox/status region, and contextual command deck. The canonical/default composition is 1280x720. `UiLayoutProfile` also provides one optional 800x600 Classic 4:3 composition with a square gameplay viewport; intermediate and larger sizes may reflow or scale but are not separately designed targets. Interface density and text scale remain independent. `UiRouteCatalog` owns one scene per route, and named input actions isolate screens from physical bindings.
+Use one scene-based Classic-wide presentation system. `GameShell` owns the menu strip, stage boundary, right roster, bottom textbox/status region, and contextual command deck. The canonical/default composition is 1280x720. `UiLayoutProfile` also provides one optional 800x600 Classic 4:3 composition with a square gameplay viewport; intermediate and larger sizes may reflow or scale but are not separately designed targets. Interface density and text scale remain independent. `UiRouteCatalog` owns one scene per route, and named input actions isolate screens from physical bindings.
 
 Import only catalogued bitmap controls from Remake commit `86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61`. Record exact paths, hashes, dimensions, semantic scene-use evidence, and integer scaling rules. Keep original pixels intact and draw interaction states externally. Generated app chrome uses one selected SpriteCook charcoal surface plus deterministic matching frame derivations. Package content media remains separate and resolves by exact type and ID.
 

@@ -1,0 +1,27 @@
+[gd_scene format=3]
+
+[node name="TreasureCompletionModalLayer" type="Control"]
+mouse_filter = 0
+
+[node name="TreasureCompletionShield" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+color = Color(0.01, 0.015, 0.02, 0.68)
+
+[node name="TreasureCompletionCenter" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="TreasureCompletionModal" type="PanelContainer" parent="TreasureCompletionCenter"]
+custom_minimum_size = Vector2(560, 210)
+layout_mode = 2
+theme_type_variation = &"ClassicInset"

@@ -21,11 +21,11 @@ func run() -> void:
 	assert_equal(session.start(content, 41).state, SessionStep.State.COMPLETED, "inventory session starts")
 	var source := _character("inventory.source", "Alis", content)
 	var destination := _character("inventory.destination", "Borin", content)
-	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(source.id, "1".repeat(64), source, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "source character enters party setup")
-	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(destination.id, "2".repeat(64), destination, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "trade recipient enters party setup")
-	assert_equal(session.submit_intent(PlayerIntent.begin_adventure()).state, SessionStep.State.COMPLETED, "inventory fixture begins the adventure")
-	var carried_source := session._state.party.character_by_id(source.id)
-	var item := content.item_by_id("classic.item.inventory-sword")
+	assert_equal(session.submit_intent(PartyIntents.import_vault_character(source.id, "1".repeat(64), source, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "source character enters party setup")
+	assert_equal(session.submit_intent(PartyIntents.import_vault_character(destination.id, "2".repeat(64), destination, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "trade recipient enters party setup")
+	assert_equal(session.submit_intent(PartyIntents.begin_adventure()).state, SessionStep.State.COMPLETED, "inventory fixture begins the adventure")
+	var carried_source := session._context.state.party.character_by_id(source.id)
+	var item := content.items.item_by_id("classic.item.inventory-sword")
 	var instance := RealmzRules.new().inventory.add_item(carried_source, item, "inventory.instance.sword", true)
 	assert_not_null(instance, "source-backed carried item enters the source character inventory")
 	var item_view := session.view().party_members[0].items[0]
@@ -33,19 +33,19 @@ func run() -> void:
 	assert_true(item_view.actions.trade.enabled, "detached item actions expose a legal recipient")
 	assert_equal([item_view.actions.trade_targets[0].character_id, item_view.actions.trade_targets[0].current_load, item_view.actions.trade_targets[0].resulting_load, item_view.actions.trade_targets[0].maximum_load], [destination.id, destination.carried_load, destination.carried_load + item.instance_weight(instance.charges), destination.maximum_load], "the detached trade target carries stable identity and source-projected current, resulting, and maximum load")
 
-	var equipped := session.submit_intent(PlayerIntent.item_action(PlayerIntent.Kind.EQUIP_ITEM, instance.id, source.id))
+	var equipped := session.submit_intent(InventoryIntents.equip(instance.id, source.id))
 	assert_equal(equipped.state, SessionStep.State.COMPLETED, "typed Equip commits synchronously")
 	assert_true(carried_source.inventory()[0].equipped, "Equip changes only session-owned item state")
 	assert_equal(equipped.events[0].kind, &"item_equipped", "Equip publishes a presentation event")
-	var equipped_trade := session.submit_intent(PlayerIntent.trade_item(instance.id, source.id, destination.id))
+	var equipped_trade := session.submit_intent(InventoryIntents.trade(instance.id, source.id, destination.id))
 	assert_equal(equipped_trade.state, SessionStep.State.COMPLETED, "Classic trade accepts an equipped ordinary item")
-	var carried_destination := session._state.party.character_by_id(destination.id)
+	var carried_destination := session._context.state.party.character_by_id(destination.id)
 	assert_false(carried_destination.inventory()[0].equipped, "the transferred record becomes unequipped on its recipient")
-	assert_equal(session.submit_intent(PlayerIntent.trade_item(instance.id, destination.id, source.id)).state, SessionStep.State.COMPLETED, "the exact item can be traded back")
-	assert_equal(session.submit_intent(PlayerIntent.item_action(PlayerIntent.Kind.EQUIP_ITEM, instance.id, source.id)).state, SessionStep.State.COMPLETED, "the returned item can be equipped again")
-	var unequipped := session.submit_intent(PlayerIntent.item_action(PlayerIntent.Kind.UNEQUIP_ITEM, instance.id, source.id))
+	assert_equal(session.submit_intent(InventoryIntents.trade(instance.id, destination.id, source.id)).state, SessionStep.State.COMPLETED, "the exact item can be traded back")
+	assert_equal(session.submit_intent(InventoryIntents.equip(instance.id, source.id)).state, SessionStep.State.COMPLETED, "the returned item can be equipped again")
+	var unequipped := session.submit_intent(InventoryIntents.unequip(instance.id, source.id))
 	assert_equal(unequipped.state, SessionStep.State.COMPLETED, "typed Unequip commits synchronously")
-	var traded := session.submit_intent(PlayerIntent.trade_item(instance.id, source.id, destination.id))
+	var traded := session.submit_intent(InventoryIntents.trade(instance.id, source.id, destination.id))
 	assert_equal(traded.state, SessionStep.State.COMPLETED, "typed trade moves one exact item instance")
 	assert_equal(carried_source.inventory().size(), 0, "trade removes the source item")
 	assert_equal(carried_destination.inventory()[0].id, instance.id, "trade preserves stable instance identity")
@@ -53,15 +53,15 @@ func run() -> void:
 	assert_equal(carried_destination.carried_load, item.instance_weight(instance.charges), "trade adds the exact item load to the destination")
 
 	var before_use_charges := carried_destination.inventory()[0].charges
-	var rejected_use := session.submit_intent(PlayerIntent.use_item(instance.id, destination.id))
+	var rejected_use := session.submit_intent(InventoryIntents.use(instance.id, destination.id))
 	assert_equal(rejected_use.error_code, &"item_has_no_spell_effect", "ordinary equipment does not masquerade as a charged spell item")
 	assert_equal(carried_destination.inventory()[0].charges, before_use_charges, "rejected ordinary item use preserves charges")
 
-	var drop_wait := session.submit_intent(PlayerIntent.item_action(PlayerIntent.Kind.DROP_ITEM, instance.id, destination.id))
+	var drop_wait := session.submit_intent(InventoryIntents.drop(instance.id, destination.id))
 	assert_equal(drop_wait.state, SessionStep.State.WAITING_FOR_INTERACTION, "Drop opens a typed irreversible-action confirmation")
 	assert_equal(drop_wait.interaction.kind, InteractionRequest.YES_NO, "Drop uses the ordinary serializable yes/no interaction")
-	assert_false(session._scenario_vm.is_active(), "a session-owned Drop does not create a VM continuation")
-	assert_equal(session._scenario_vm.pending_request(), null, "a session-owned Drop does not create a VM request")
+	assert_false(session._context.scenario_vm.is_active(), "a session-owned Drop does not create a VM continuation")
+	assert_equal(session._context.scenario_vm.pending_request(), null, "a session-owned Drop does not create a VM request")
 	var pending_snapshot := session.snapshot()
 	assert_not_null(pending_snapshot, "Drop confirmation is a saveable committed boundary")
 	if pending_snapshot == null:
@@ -75,39 +75,39 @@ func run() -> void:
 	assert_equal(restored.view().pending_interaction.to_data(), drop_wait.interaction.to_data(), "restored Drop retains its exact request and labels")
 	var declined := restored.respond(InteractionResponse.yes_no(restored.view().pending_interaction, false))
 	assert_equal(declined.state, SessionStep.State.COMPLETED, "declining Drop resumes at a committed boundary")
-	assert_equal(restored._state.party.character_by_id(destination.id).inventory().size(), 1, "declining Drop preserves the item")
-	var second_wait := restored.submit_intent(PlayerIntent.item_action(PlayerIntent.Kind.DROP_ITEM, instance.id, destination.id))
+	assert_equal(restored._context.state.party.character_by_id(destination.id).inventory().size(), 1, "declining Drop preserves the item")
+	var second_wait := restored.submit_intent(InventoryIntents.drop(instance.id, destination.id))
 	var accepted := restored.respond(InteractionResponse.yes_no(second_wait.interaction, true))
 	assert_equal(accepted.state, SessionStep.State.COMPLETED, "accepting Drop commits the irreversible action")
-	assert_equal(restored._state.party.character_by_id(destination.id).inventory().size(), 0, "accepted Drop removes the exact item")
+	assert_equal(restored._context.state.party.character_by_id(destination.id).inventory().size(), 0, "accepted Drop removes the exact item")
 	assert_equal(accepted.events[0].kind, &"item_dropped", "accepted Drop publishes its committed result")
 
-	var cursed := content.item_by_id("classic.item.inventory-curse")
-	var cursed_instance := RealmzRules.new().inventory.add_item(restored._state.party.character_by_id(source.id), cursed, "inventory.instance.curse", false)
-	var cursed_equip := restored.submit_intent(PlayerIntent.item_action(PlayerIntent.Kind.EQUIP_ITEM, cursed_instance.id, source.id))
+	var cursed := content.items.item_by_id("classic.item.inventory-curse")
+	var cursed_instance := RealmzRules.new().inventory.add_item(restored._context.state.party.character_by_id(source.id), cursed, "inventory.instance.curse", false)
+	var cursed_equip := restored.submit_intent(InventoryIntents.equip(cursed_instance.id, source.id))
 	assert_equal(cursed_equip.state, SessionStep.State.COMPLETED, "a source-backed cursed item can be equipped")
 	assert_true(cursed_instance.identified, "equipping a curse reveals it as Castle wear.c does")
-	var cursed_remove := restored.submit_intent(PlayerIntent.item_action(PlayerIntent.Kind.UNEQUIP_ITEM, cursed_instance.id, source.id))
+	var cursed_remove := restored.submit_intent(InventoryIntents.unequip(cursed_instance.id, source.id))
 	assert_equal(cursed_remove.error_code, &"item_cannot_unequip", "a cursed item cannot be removed through ordinary Unequip")
-	var cursed_trade := restored.submit_intent(PlayerIntent.trade_item(cursed_instance.id, source.id, destination.id))
+	var cursed_trade := restored.submit_intent(InventoryIntents.trade(cursed_instance.id, source.id, destination.id))
 	assert_equal(cursed_trade.error_code, &"item_cannot_trade", "FD-INVENTORY-001 prevents Castle's trade path from bypassing an equipped curse")
 	_test_equipment_probes(content)
 
 
 func _test_split_join(content: RealmzContent) -> void:
-	var stack := content.item_by_id("classic.item.inventory-stack")
+	var stack := content.items.item_by_id("classic.item.inventory-stack")
 	var owner := _character("inventory.stack-owner", "Cora", content)
 	owner.maximum_load = 100_000
 	owner.set_inventory([ItemInstance.new("inventory.instance.stack", stack.id, 5, false, true)])
 	owner.carried_load = stack.instance_weight(5)
 	var session := GameSession.new()
 	assert_equal(session.start(content, 97).state, SessionStep.State.COMPLETED, "stack inventory session starts")
-	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(owner.id, "5".repeat(64), owner, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "stack owner enters party setup")
-	assert_equal(session.submit_intent(PlayerIntent.begin_adventure()).state, SessionStep.State.COMPLETED, "stack inventory fixture begins")
+	assert_equal(session.submit_intent(PartyIntents.import_vault_character(owner.id, "5".repeat(64), owner, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "stack owner enters party setup")
+	assert_equal(session.submit_intent(PartyIntents.begin_adventure()).state, SessionStep.State.COMPLETED, "stack inventory fixture begins")
 	assert_true(session.view().party_members[0].items[0].actions.split.enabled, "a finite per-charge stack exposes Split")
 	assert_false(session.view().party_members[0].items[0].actions.join.enabled, "a lone stack does not expose a meaningless Join")
-	assert_equal(session.submit_intent(PlayerIntent.item_action(PlayerIntent.Kind.EQUIP_ITEM, "inventory.instance.stack", owner.id)).state, SessionStep.State.COMPLETED, "the source stack can be equipped before splitting")
-	var split := session.submit_intent(PlayerIntent.item_action(PlayerIntent.Kind.SPLIT_ITEM, "inventory.instance.stack", owner.id))
+	assert_equal(session.submit_intent(InventoryIntents.equip("inventory.instance.stack", owner.id)).state, SessionStep.State.COMPLETED, "the source stack can be equipped before splitting")
+	var split := session.submit_intent(InventoryIntents.split("inventory.instance.stack", owner.id))
 	assert_equal(split.state, SessionStep.State.COMPLETED, "typed Split commits synchronously")
 	var split_owner := session.snapshot().game_state.party.character_by_id(owner.id)
 	assert_equal([split_owner.inventory().size(), split_owner.inventory()[0].charges, split_owner.inventory()[1].charges], [2, 3, 2], "Split keeps the ceiling on the source and creates a floor half")
@@ -118,7 +118,7 @@ func _test_split_join(content: RealmzContent) -> void:
 	assert_equal(restored.restore(content, save_round_trip(session.snapshot())).state, SessionStep.State.COMPLETED, "a split stack and its deterministic identity restore transactionally")
 	var sibling_id := restored.view().party_members[0].items[1].instance_id
 	assert_true(restored.view().party_members[0].items[1].actions.join.enabled, "matching stacks expose Join on either exact instance")
-	var joined := restored.submit_intent(PlayerIntent.item_action(PlayerIntent.Kind.JOIN_ITEM, sibling_id, owner.id))
+	var joined := restored.submit_intent(InventoryIntents.join(sibling_id, owner.id))
 	assert_equal(joined.state, SessionStep.State.COMPLETED, "typed Join commits synchronously")
 	var joined_owner := restored.snapshot().game_state.party.character_by_id(owner.id)
 	assert_equal([joined_owner.inventory().size(), joined_owner.inventory()[0].id, joined_owner.inventory()[0].charges], [1, sibling_id, 5], "Join keeps the selected stable instance and absorbs every matching stack")
@@ -132,10 +132,10 @@ func _test_split_join(content: RealmzContent) -> void:
 	overflow_owner.carried_load = stack.instance_weight(20_000) * 2
 	var overflow_session := GameSession.new()
 	assert_equal(overflow_session.start(content, 101).state, SessionStep.State.COMPLETED, "overflow inventory session starts")
-	assert_equal(overflow_session.submit_intent(PlayerIntent.import_vault_character(overflow_owner.id, "6".repeat(64), overflow_owner, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "large finite stacks enter the bounded fixture")
-	assert_equal(overflow_session.submit_intent(PlayerIntent.begin_adventure()).state, SessionStep.State.COMPLETED, "overflow inventory fixture begins")
+	assert_equal(overflow_session.submit_intent(PartyIntents.import_vault_character(overflow_owner.id, "6".repeat(64), overflow_owner, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "large finite stacks enter the bounded fixture")
+	assert_equal(overflow_session.submit_intent(PartyIntents.begin_adventure()).state, SessionStep.State.COMPLETED, "overflow inventory fixture begins")
 	assert_false(overflow_session.view().party_members[0].items[0].actions.join.enabled, "a Join that would overflow Classic's signed charge field is unavailable")
-	var rejected := overflow_session.submit_intent(PlayerIntent.item_action(PlayerIntent.Kind.JOIN_ITEM, "inventory.instance.large-a", overflow_owner.id))
+	var rejected := overflow_session.submit_intent(InventoryIntents.join("inventory.instance.large-a", overflow_owner.id))
 	assert_equal(rejected.error_code, &"item_cannot_join", "overflowing Join fails explicitly")
 	assert_equal(overflow_session.snapshot().game_state.party.character_by_id(overflow_owner.id).inventory().map(func(item: ItemInstance) -> int: return item.charges), [20_000, 20_000], "rejected overflow preserves both exact stacks")
 
@@ -143,7 +143,7 @@ func _test_split_join(content: RealmzContent) -> void:
 func _test_inventory_identification(content: RealmzContent) -> void:
 	var target := _character("inventory.identify-target", "Galen", content)
 	var caster := _character("inventory.identify-caster", "Iria", content)
-	var spell := content.spell_by_id("classic.spell.inventory-identify")
+	var spell := content.magic.spell_by_id("classic.spell.inventory-identify")
 	caster.spellcaster_type = 1
 	caster.spell_points = 30
 	caster.maximum_spell_points = 30
@@ -152,16 +152,16 @@ func _test_inventory_identification(content: RealmzContent) -> void:
 		ItemInstance.new("inventory.identify.unknown", "classic.item.inventory-sword", 2, false, false),
 		ItemInstance.new("inventory.identify.known", "classic.item.inventory-stack", 5, false, true),
 	])
-	target.carried_load = content.item_by_id("classic.item.inventory-sword").instance_weight(2) + content.item_by_id("classic.item.inventory-stack").instance_weight(5)
+	target.carried_load = content.items.item_by_id("classic.item.inventory-sword").instance_weight(2) + content.items.item_by_id("classic.item.inventory-stack").instance_weight(5)
 	var session := GameSession.new()
 	assert_equal(session.start(content, 109).state, SessionStep.State.COMPLETED, "inventory identification session starts")
-	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(target.id, "7".repeat(64), target, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "identification target enters party setup")
-	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(caster.id, "8".repeat(64), caster, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "Identify caster enters party setup")
-	assert_equal(session.submit_intent(PlayerIntent.begin_adventure()).state, SessionStep.State.COMPLETED, "identification fixture begins")
+	assert_equal(session.submit_intent(PartyIntents.import_vault_character(target.id, "7".repeat(64), target, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "identification target enters party setup")
+	assert_equal(session.submit_intent(PartyIntents.import_vault_character(caster.id, "8".repeat(64), caster, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "Identify caster enters party setup")
+	assert_equal(session.submit_intent(PartyIntents.begin_adventure()).state, SessionStep.State.COMPLETED, "identification fixture begins")
 	var action := session.view().party_members[0].items[0].actions
 	assert_true(action.identify.enabled, "an inventory with items exposes Castle's Cast Identify action")
 	assert_equal([action.identify_caster_id, action.identify_spell_id], [caster.id, spell.id], "the detached action selects the first eligible party caster and exact Identify spell")
-	var identified := session.submit_intent(PlayerIntent.identify_carried_items(action.identify_spell_id, action.identify_caster_id, target.id))
+	var identified := session.submit_intent(MagicIntents.identify_carried_items(action.identify_spell_id, action.identify_caster_id, target.id))
 	assert_equal(identified.state, SessionStep.State.COMPLETED, "Cast Identify commits synchronously from the inventory workspace")
 	var snapshot := session.snapshot()
 	assert_equal(snapshot.game_state.party.character_by_id(caster.id).spell_points, 5, "Cast Identify spends Castle's fixed twenty-five spell points rather than the spell record cost")
@@ -179,18 +179,18 @@ func _test_field_spell_item_use(content: RealmzContent) -> void:
 	var target := _character("inventory.item-target", "Fenn", content)
 	user.current_health = 4
 	target.current_health = 5
-	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(user.id, "3".repeat(64), user, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "item user enters party setup")
-	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(target.id, "4".repeat(64), target, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "item target enters party setup")
-	assert_equal(session.submit_intent(PlayerIntent.begin_adventure()).state, SessionStep.State.COMPLETED, "field item-use fixture begins")
-	var carried_user := session._state.party.character_by_id(user.id)
-	var carried_target := session._state.party.character_by_id(target.id)
-	var wand := content.item_by_id("classic.item.inventory-healing-wand")
+	assert_equal(session.submit_intent(PartyIntents.import_vault_character(user.id, "3".repeat(64), user, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "item user enters party setup")
+	assert_equal(session.submit_intent(PartyIntents.import_vault_character(target.id, "4".repeat(64), target, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "item target enters party setup")
+	assert_equal(session.submit_intent(PartyIntents.begin_adventure()).state, SessionStep.State.COMPLETED, "field item-use fixture begins")
+	var carried_user := session._context.state.party.character_by_id(user.id)
+	var carried_target := session._context.state.party.character_by_id(target.id)
+	var wand := content.items.item_by_id("classic.item.inventory-healing-wand")
 	var wand_instance := RealmzRules.new().inventory.add_item(carried_user, wand, "inventory.instance.healing-wand", true)
 	assert_not_null(wand_instance, "charged field spell item enters inventory")
 	wand_instance.identified = false
 	assert_true(session.view().party_members[0].items[0].actions.use.enabled, "detached inventory actions expose a source-backed field item use")
 	var load_before := carried_user.carried_load
-	var requested := session.submit_intent(PlayerIntent.use_item(wand_instance.id, carried_user.id))
+	var requested := session.submit_intent(InventoryIntents.use(wand_instance.id, carried_user.id))
 	assert_equal([requested.state, requested.interaction.kind, requested.interaction.body.to_data().get("count")], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.CHARACTER_SELECTION, 1], "party-target item use yields one typed character selection")
 	assert_true(String(requested.interaction.body.to_data().get("prompt", "")).contains(wand.unidentified_name) and not String(requested.interaction.body.to_data().get("prompt", "")).contains(wand.name), "field item targeting does not reveal an unidentified item's true name")
 	assert_equal(wand_instance.charges, 2, "opening target selection does not spend a charge before a valid target commits")
@@ -206,59 +206,59 @@ func _test_field_spell_item_use(content: RealmzContent) -> void:
 	var pending := restored.view().pending_interaction
 	var rejected := restored.respond(InteractionResponse.from_data(pending.request_id, InteractionRequest.CHARACTER_SELECTION, {"characterIds": ["missing.character"]}))
 	assert_equal(rejected.error_code, &"invalid_item_use_target", "a stale or invented item target is rejected explicitly")
-	assert_equal(restored._state.party.character_by_id(carried_user.id).inventory()[0].charges, 2, "corrupt item target response spends no charge")
+	assert_equal(restored._context.state.party.character_by_id(carried_user.id).inventory()[0].charges, 2, "corrupt item target response spends no charge")
 	var completed := restored.respond(InteractionResponse.from_data(pending.request_id, InteractionRequest.CHARACTER_SELECTION, {"characterIds": [carried_target.id]}))
 	assert_equal(completed.state, SessionStep.State.COMPLETED, "valid item target commits the effect")
-	assert_equal(restored._state.party.character_by_id(carried_target.id).current_health, 8, "fixed-power healing item applies its source spell to the selected party member")
-	assert_equal(restored._state.party.character_by_id(carried_user.id).inventory()[0].charges, 1, "committed field item use spends exactly one positive charge")
-	assert_equal(restored._state.party.character_by_id(carried_user.id).carried_load, load_before - wand.weight_per_charge, "spent charge removes its authored per-charge load")
+	assert_equal(restored._context.state.party.character_by_id(carried_target.id).current_health, 8, "fixed-power healing item applies its source spell to the selected party member")
+	assert_equal(restored._context.state.party.character_by_id(carried_user.id).inventory()[0].charges, 1, "committed field item use spends exactly one positive charge")
+	assert_equal(restored._context.state.party.character_by_id(carried_user.id).carried_load, load_before - wand.weight_per_charge, "spent charge removes its authored per-charge load")
 	assert_true(completed.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 649), "field item use requests Castle item sound plus 600")
 	assert_true(completed.events.any(func(event: DomainEvent) -> bool: return event.kind == &"item_spell_resolved" and event.payload.get("targetId") == carried_target.id), "field item use publishes its exact committed target")
 	wand.special_1 = 8
-	restored._rng = ScriptedRng.new([32_767, 0, 0, 32_767])
-	var invalid_random_target := restored.submit_intent(PlayerIntent.use_item_on_target(wand_instance.id, carried_user.id, "missing.character"))
+	restored._context.rng = ScriptedRng.new([32_767, 0, 0, 32_767])
+	var invalid_random_target := restored.submit_intent(InventoryIntents.use_on_target(wand_instance.id, carried_user.id, "missing.character"))
 	assert_equal(invalid_random_target.error_code, &"invalid_item_use_target", "an invented direct target rejects a random-power item before commit")
-	assert_equal([restored._rng.snapshot().draw_count, restored._state.party.character_by_id(carried_user.id).inventory()[0].charges], [0, 1], "rejected direct random-power targeting rolls back its staged draw and preserves the charge")
-	var random_requested := restored.submit_intent(PlayerIntent.use_item(wand_instance.id, carried_user.id))
-	assert_equal([random_requested.state, restored._session_continuation.targeting().power, restored._rng.trace()[0].get("tag")], [SessionStep.State.WAITING_FOR_INTERACTION, 7, "item.use.power.inventory.instance.healing-wand"], "random-power field item rolls Castle Rand(7) once before staging its target")
-	assert_equal(restored._state.party.character_by_id(carried_user.id).inventory()[0].charges, 1, "random power selection still cannot consume the charge before a target commits")
+	assert_equal([restored._context.rng.snapshot().draw_count, restored._context.state.party.character_by_id(carried_user.id).inventory()[0].charges], [0, 1], "rejected direct random-power targeting rolls back its staged draw and preserves the charge")
+	var random_requested := restored.submit_intent(InventoryIntents.use(wand_instance.id, carried_user.id))
+	assert_equal([random_requested.state, restored._context.session_continuation.targeting().power, restored._context.rng.trace()[0].get("tag")], [SessionStep.State.WAITING_FOR_INTERACTION, 7, "item.use.power.inventory.instance.healing-wand"], "random-power field item rolls Castle Rand(7) once before staging its target")
+	assert_equal(restored._context.state.party.character_by_id(carried_user.id).inventory()[0].charges, 1, "random power selection still cannot consume the charge before a target commits")
 	var random_completed := restored.respond(InteractionResponse.from_data(random_requested.interaction.request_id, InteractionRequest.CHARACTER_SELECTION, {"characterIds": [carried_target.id]}))
 	assert_equal(random_completed.state, SessionStep.State.COMPLETED, "the staged random power survives through the target response")
 	assert_true(random_completed.events.any(func(event: DomainEvent) -> bool: return event.kind == &"item_used" and event.payload.get("power") == 7), "the committed item event retains its one rolled power")
 	wand.special_1 = 1
-	restored._rng = RealmzRng.new(73)
+	restored._context.rng = RealmzRng.new(73)
 
-	var self_item := content.item_by_id("classic.item.inventory-self-tonic")
-	var self_instance := RealmzRules.new().inventory.add_item(restored._state.party.character_by_id(carried_user.id), self_item, "inventory.instance.self-tonic", true)
-	var self_completed := restored.submit_intent(PlayerIntent.use_item(self_instance.id, carried_user.id))
+	var self_item := content.items.item_by_id("classic.item.inventory-self-tonic")
+	var self_instance := RealmzRules.new().inventory.add_item(restored._context.state.party.character_by_id(carried_user.id), self_item, "inventory.instance.self-tonic", true)
+	var self_completed := restored.submit_intent(InventoryIntents.use(self_instance.id, carried_user.id))
 	assert_equal(self_completed.state, SessionStep.State.COMPLETED, "target-type-five item applies immediately to its user")
-	assert_equal(restored._state.party.character_by_id(carried_user.id).current_health, 7, "self-target item heals only its user")
+	assert_equal(restored._context.state.party.character_by_id(carried_user.id).current_health, 7, "self-target item heals only its user")
 	assert_equal(self_instance.charges, -1, "an authored infinite-charge item remains infinite after use")
-	var torch := content.item_by_id("classic.item.inventory-torch")
-	var torch_instance := RealmzRules.new().inventory.add_item(restored._state.party.character_by_id(carried_user.id), torch, "inventory.instance.torch", true)
-	var torch_load_before := restored._state.party.character_by_id(carried_user.id).carried_load
+	var torch := content.items.item_by_id("classic.item.inventory-torch")
+	var torch_instance := RealmzRules.new().inventory.add_item(restored._context.state.party.character_by_id(carried_user.id), torch, "inventory.instance.torch", true)
+	var torch_load_before := restored._context.state.party.character_by_id(carried_user.id).carried_load
 	assert_true(restored.view().party_members[0].items.any(func(item: ItemView) -> bool: return item.instance_id == torch_instance.id and item.actions.use.enabled), "detached inventory actions expose Castle's targetless Torch item effect")
 	assert_true(restored.view().availability(&"use_torch").enabled, "the exploration command surface exposes Torch when Classic item 805 is carried and usable")
-	var torch_completed := restored.submit_intent(PlayerIntent.use_torch())
+	var torch_completed := restored.submit_intent(ExplorationIntents.use_torch())
 	assert_equal(torch_completed.state, SessionStep.State.COMPLETED, "the Torch shortcut resolves Classic item 805 through the ordinary targetless item workflow")
-	assert_equal(restored._state.party.conditions.value(ConditionRules.PARTY_TORCH_LIT), 119, "Torch applies Shine power four as Castle's 30-times-power minus one party condition")
-	assert_equal([torch_instance.charges, restored._state.party.character_by_id(carried_user.id).carried_load], [5, torch_load_before - torch.weight_per_charge], "Torch spends exactly one charge and its authored per-charge load")
+	assert_equal(restored._context.state.party.conditions.value(ConditionRules.PARTY_TORCH_LIT), 119, "Torch applies Shine power four as Castle's 30-times-power minus one party condition")
+	assert_equal([torch_instance.charges, restored._context.state.party.character_by_id(carried_user.id).carried_load], [5, torch_load_before - torch.weight_per_charge], "Torch spends exactly one charge and its authored per-charge load")
 	assert_equal(torch_completed.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested").map(func(event: DomainEvent) -> int: return int(event.payload.get("soundId", 0))), [606, 601], "Torch orders its integrated item sound before Shine's resolution sound")
 	assert_true(torch_completed.events.any(func(event: DomainEvent) -> bool: return event.kind == &"party_condition_changed" and event.payload.get("condition") == ConditionRules.PARTY_TORCH_LIT), "Torch publishes the committed party-state change")
 	self_instance.charges = 0
-	var empty := restored.submit_intent(PlayerIntent.use_item(self_instance.id, carried_user.id))
+	var empty := restored.submit_intent(InventoryIntents.use(self_instance.id, carried_user.id))
 	assert_equal(empty.error_code, &"item_has_no_charges", "a depleted item fails before effect or randomness")
 
 
 func _test_door_item_xap(content: RealmzContent) -> void:
 	var session := GameSession.new(); assert_equal(session.start(content, 79).state, SessionStep.State.COMPLETED, "door-item session starts")
-	var user := _character("inventory.door-user", "Ena", content); assert_equal(session.submit_intent(PlayerIntent.import_vault_character(user.id, "9".repeat(64), user, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "door-item user enters party setup"); assert_equal(session.submit_intent(PlayerIntent.begin_adventure()).state, SessionStep.State.COMPLETED, "door-item fixture begins")
-	var carried := session._state.party.character_by_id(user.id); var door := content.item_by_id("classic.item.inventory-door"); var instance := RealmzRules.new().inventory.add_item(carried, door, "inventory.instance.door", true); assert_true(session.view().party_members[0].items[0].actions.use.enabled, "type-23 item exposes its authored field XAP")
-	var waiting := session.submit_intent(PlayerIntent.use_item(instance.id, carried.id)); assert_equal([waiting.state, waiting.interaction.kind, instance.charges, session._session_continuation.kind], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.ACKNOWLEDGE, 1, &"item-xap"], "field door item spends one charge and waits inside its typed XAP owner")
+	var user := _character("inventory.door-user", "Ena", content); assert_equal(session.submit_intent(PartyIntents.import_vault_character(user.id, "9".repeat(64), user, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "door-item user enters party setup"); assert_equal(session.submit_intent(PartyIntents.begin_adventure()).state, SessionStep.State.COMPLETED, "door-item fixture begins")
+	var carried := session._context.state.party.character_by_id(user.id); var door := content.items.item_by_id("classic.item.inventory-door"); var instance := RealmzRules.new().inventory.add_item(carried, door, "inventory.instance.door", true); assert_true(session.view().party_members[0].items[0].actions.use.enabled, "type-23 item exposes its authored field XAP")
+	var waiting := session.submit_intent(InventoryIntents.use(instance.id, carried.id)); assert_equal([waiting.state, waiting.interaction.kind, instance.charges, session._context.session_continuation.kind], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.ACKNOWLEDGE, 1, &"item-xap"], "field door item spends one charge and waits inside its typed XAP owner")
 	var restored := GameSession.new(); assert_equal(restored.restore(content, save_round_trip(session.snapshot())).state, SessionStep.State.COMPLETED, "pending door-item XAP restores transactionally"); var completed := restored.respond(InteractionResponse.acknowledge(restored.view().pending_interaction)); assert_true(completed.state == SessionStep.State.COMPLETED and completed.events.any(func(event: DomainEvent) -> bool: return event.kind == &"item_xap_completed"), "restored field door XAP completes exactly once")
-	carried = restored._state.party.character_by_id(user.id); instance = carried.inventory()[0]; door.special_1 = -23; var tiles: Array[int] = []; tiles.resize(BattlefieldState.CELL_COUNT); tiles.fill(0); var field := BattlefieldState.new(content.start_map_id, tiles); field.place_character(carried.id, Vector2i(45, 45)); restored._state.combat = CombatState.new("inventory.door-battle", [], 0, field); restored._state.combat.set_turn_order([carried.id])
-	var option := restored._rules.combat_flow.character_item_spell_options(restored._state, content, carried.id)[0]; assert_equal([option.item_instance_id, option.spell_id, option.target_mode], [instance.id, "", &"automatic"], "negative Special 1 door item is an automatic combat item action without a fabricated spell")
-	waiting = restored.submit_intent(PlayerIntent.use_item(instance.id, carried.id)); assert_equal([waiting.state, waiting.interaction.kind, carried.inventory().size(), restored._state.combat.battle_id], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.ACKNOWLEDGE, 0, "inventory.door-battle"], "combat door item drops on its final charge while retaining the active battle"); completed = restored.respond(InteractionResponse.acknowledge(waiting.interaction)); assert_equal([completed.state, restored._state.combat.battle_id, restored._session_continuation.is_empty()], [SessionStep.State.COMPLETED, "inventory.door-battle", true], "combat door XAP returns to the same battle without a second dispatch")
+	carried = restored._context.state.party.character_by_id(user.id); instance = carried.inventory()[0]; door.special_1 = -23; var tiles: Array[int] = []; tiles.resize(BattlefieldGrid.CELL_COUNT); tiles.fill(0); var field := BattlefieldState.new(content.start_map_id, tiles); field.actors.place_character(carried.id, Vector2i(45, 45)); restored._context.state.combat = CombatState.new("inventory.door-battle", [], 0, field); restored._context.state.combat.set_turn_order([carried.id])
+	var option := restored._context.rules.combat_flow.magic.character_item_spell_options(restored._context.state, content, carried.id)[0]; assert_equal([option.item_instance_id, option.spell_id, option.target_mode], [instance.id, "", &"automatic"], "negative Special 1 door item is an automatic combat item action without a fabricated spell")
+	waiting = restored.submit_intent(InventoryIntents.use(instance.id, carried.id)); assert_equal([waiting.state, waiting.interaction.kind, carried.inventory().size(), restored._context.state.combat.battle_id], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.ACKNOWLEDGE, 0, "inventory.door-battle"], "combat door item drops on its final charge while retaining the active battle"); completed = restored.respond(InteractionResponse.acknowledge(waiting.interaction)); assert_equal([completed.state, restored._context.state.combat.battle_id, restored._context.session_continuation.is_empty()], [SessionStep.State.COMPLETED, "inventory.door-battle", true], "combat door XAP returns to the same battle without a second dispatch")
 
 
 func _test_equipment_probes(content: RealmzContent) -> void:
@@ -266,8 +266,8 @@ func _test_equipment_probes(content: RealmzContent) -> void:
 	var character := _character("inventory.probes", "Probe", content)
 	character.maximum_load = 2_000
 	var party: Array[CharacterState] = [character]
-	var race := content.race_by_id(character.race_id)
-	var caste := content.caste_by_id(character.caste_id)
+	var race := content.characters.race_by_id(character.race_id)
+	var caste := content.characters.caste_by_id(character.caste_id)
 	var category_mask := 1 << 5
 	var missile_mask := 1 << 12
 	var greatsword := ItemDefinition.new("classic.item.probe-greatsword", 20, "Greatsword")
@@ -295,14 +295,14 @@ func _test_equipment_probes(content: RealmzContent) -> void:
 	var quiver_instance := rules.inventory.add_item(character, quiver, "probe.quiver", true)
 	var bow_instance := rules.inventory.add_item(character, bow, "probe.bow", true)
 	var unsupported_instance := rules.inventory.add_item(character, unsupported, "probe.speed", true)
-	assert_true(rules.inventory.equip_classic(character, greatsword_instance, greatsword, race, caste, party, definitions).allowed, "Classic equipment probe accepts a legal two-handed weapon")
-	assert_false(rules.inventory.classic_equip_probe(character, shield_instance, shield, race, caste, party, definitions).allowed, "Classic equipment probe rejects a shield when both hands are occupied")
-	assert_true(rules.inventory.unequip_classic(character, greatsword_instance, greatsword, definitions).allowed, "the two-handed weapon can be removed")
-	assert_false(rules.inventory.classic_equip_probe(character, bow_instance, bow, race, caste, party, definitions).allowed, "a normal bow requires an equipped quiver")
-	assert_true(rules.inventory.equip_classic(character, quiver_instance, quiver, race, caste, party, definitions).allowed, "the Classic quiver slot can be equipped")
-	assert_true(rules.inventory.equip_classic(character, bow_instance, bow, race, caste, party, definitions).allowed, "the bow becomes legal after its quiver is equipped")
-	assert_false(rules.inventory.classic_unequip_probe(character, quiver_instance, quiver, definitions).allowed, "the quiver cannot be removed while a missile weapon is equipped")
-	assert_false(rules.inventory.classic_equip_probe(character, unsupported_instance, unsupported, race, caste, party, definitions).allowed, "unimplemented passive item effects stay explicitly unavailable")
+	assert_true(rules.equipment.equip_classic(character, greatsword_instance, greatsword, race, caste, party, definitions).allowed, "Classic equipment probe accepts a legal two-handed weapon")
+	assert_false(rules.equipment.classic_equip_probe(character, shield_instance, shield, race, caste, party, definitions).allowed, "Classic equipment probe rejects a shield when both hands are occupied")
+	assert_true(rules.equipment.unequip_classic(character, greatsword_instance, greatsword, definitions).allowed, "the two-handed weapon can be removed")
+	assert_false(rules.equipment.classic_equip_probe(character, bow_instance, bow, race, caste, party, definitions).allowed, "a normal bow requires an equipped quiver")
+	assert_true(rules.equipment.equip_classic(character, quiver_instance, quiver, race, caste, party, definitions).allowed, "the Classic quiver slot can be equipped")
+	assert_true(rules.equipment.equip_classic(character, bow_instance, bow, race, caste, party, definitions).allowed, "the bow becomes legal after its quiver is equipped")
+	assert_false(rules.equipment.classic_unequip_probe(character, quiver_instance, quiver, definitions).allowed, "the quiver cannot be removed while a missile weapon is equipped")
+	assert_false(rules.equipment.classic_equip_probe(character, unsupported_instance, unsupported, race, caste, party, definitions).allowed, "unimplemented passive item effects stay explicitly unavailable")
 	character.money = WealthState.new(7, 2, 1)
 	var expected_load := 7 + 2 + 15
 	for carried: ItemInstance in character.inventory():
@@ -323,7 +323,9 @@ func _inventory_content(source: RealmzContent) -> RealmzContent:
 		age_changes.append(PackedInt32Array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))
 	var category_mask := (1 << 5) | (1 << 12)
 	var race := RaceDefinition.new("classic.race.inventory", 1, "Human", empty_ints, empty_ints, empty_ints, empty_ints, empty_ints, empty_ranges, age_changes, 0, false, 10, 0, 0, 0, 1, 1, false, 0, category_mask, 0)
-	var caste := CasteDefinition.new("classic.caste.inventory", 1, "Fighter", empty_ints, empty_ints, empty_ints, empty_ints, Vector2i(8, 8), Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO, [], [], [], 1, 1, 0, 1, 0, 0, 0, 1, 0, true, false, 0, category_mask, 0)
+	var caste := CasteDefinition.new("classic.caste.inventory", 1, "Fighter", CasteDefinition.AttributeDefinition.new(empty_ints, empty_ints, empty_ints, empty_ints), CasteDefinition.ProgressionDefinition.new(Vector2i(8, 8), Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO))
+	caste.caste_class = 1
+	caste.item_category_mask_low = category_mask
 	var sword := ItemDefinition.new("classic.item.inventory-sword", 10, "Longsword", "Sword", "A balanced one-handed sword."); sword.item_type = 2; sword.hands = 1; sword.weight = 12; sword.initial_charges = 2; sword.item_category_mask_low = 1 << 5; sword.damage_bonus = 2
 	var cursed := ItemDefinition.new("classic.item.inventory-curse", 11, "Cursed Longsword", "Sword", "A blade that refuses to leave its bearer."); cursed.item_type = 2; cursed.hands = 1; cursed.weight = 10; cursed.item_category_mask_low = 1 << 5; cursed.cursed_item_id = cursed.id
 	var healing_spell := SpellDefinition.new("classic.spell.inventory-heal", 1101, "Mending")
@@ -391,7 +393,7 @@ func _inventory_content(source: RealmzContent) -> RealmzContent:
 
 func _character(character_id: String, display_name: String, content: RealmzContent) -> CharacterState:
 	var result := CharacterState.new(character_id, display_name, 12, 12)
-	result.race_id = content.race_definitions()[0].id
-	result.caste_id = content.caste_definitions()[0].id
+	result.race_id = content.characters.race_definitions()[0].id
+	result.caste_id = content.characters.caste_definitions()[0].id
 	result.maximum_load = 100
 	return result

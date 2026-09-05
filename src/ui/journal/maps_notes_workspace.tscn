@@ -1,0 +1,412 @@
+[gd_scene load_steps=11 format=3]
+
+[ext_resource type="Script" path="res://src/ui/journal/maps_notes_workspace.gd" id="1_workspace"]
+[ext_resource type="PackedScene" path="res://src/ui/journal/location_note_row.tscn" id="2_location"]
+[ext_resource type="PackedScene" path="res://src/ui/journal/player_map_menu_row.tscn" id="3_map"]
+[ext_resource type="PackedScene" path="res://src/ui/journal/journal_entry_row.tscn" id="4_journal"]
+[ext_resource type="Script" path="res://src/ui/exploration/classic_map_presenter.gd" id="5_historical"]
+[ext_resource type="Script" path="res://src/ui/journal/player_map_cartographic_stage.gd" id="6_stage"]
+[ext_resource type="Script" path="res://src/ui/journal/player_map_parchment_mat.gd" id="7_parchment"]
+[ext_resource type="Script" path="res://src/ui/journal/player_map_presenter.gd" id="8_presenter"]
+
+[sub_resource type="StyleBoxFlat" id="JournalPane"]
+bg_color = Color(0.827451, 0.741176, 0.52549, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.294118, 0.156863, 0.133333, 1)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
+content_margin_left = 8.0
+content_margin_top = 6.0
+content_margin_right = 8.0
+content_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxFlat" id="JournalSearch"]
+bg_color = Color(0.87451, 0.8, 0.627451, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.537255, 0.45098, 0.298039, 1)
+
+[node name="MapsNotesWorkspace" type="VBoxContainer"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 5
+script = ExtResource("1_workspace")
+location_note_row_scene = ExtResource("2_location")
+player_map_row_scene = ExtResource("3_map")
+journal_entry_row_scene = ExtResource("4_journal")
+
+[node name="MapsNotesSummary" type="VBoxContainer" parent="."]
+layout_mode = 2
+[node name="MapsNotesHeader" type="HBoxContainer" parent="MapsNotesSummary"]
+layout_mode = 2
+[node name="Facts" type="Label" parent="MapsNotesSummary/MapsNotesHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.560784, 0.811765, 0.819608, 1)
+theme_override_font_sizes/font_size = 13
+text = "0 places • 0 maps • 0 journal entries"
+horizontal_alignment = 2
+
+[node name="MapsNotesTabs" type="TabContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="Places" type="VBoxContainer" parent="MapsNotesTabs"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 5
+[node name="LocationNotesWorkspace" type="BoxContainer" parent="MapsNotesTabs/Places"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+[node name="SavedLocationNotes" type="PanelContainer" parent="MapsNotesTabs/Places/LocationNotesWorkspace"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.8
+theme_type_variation = &"ClassicInset"
+[node name="Content" type="VBoxContainer" parent="MapsNotesTabs/Places/LocationNotesWorkspace/SavedLocationNotes"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 5
+[node name="Heading" type="Label" parent="MapsNotesTabs/Places/LocationNotesWorkspace/SavedLocationNotes/Content"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+text = "Saved Places"
+[node name="SavedLocationNoteScroll" type="ScrollContainer" parent="MapsNotesTabs/Places/LocationNotesWorkspace/SavedLocationNotes/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+[node name="SavedLocationNoteRows" type="VBoxContainer" parent="MapsNotesTabs/Places/LocationNotesWorkspace/SavedLocationNotes/Content/SavedLocationNoteScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+[node name="Empty" type="PanelContainer" parent="MapsNotesTabs/Places/LocationNotesWorkspace/SavedLocationNotes/Content"]
+visible = false
+layout_mode = 2
+theme_type_variation = &"ClassicInset"
+[node name="Text" type="Label" parent="MapsNotesTabs/Places/LocationNotesWorkspace/SavedLocationNotes/Content/Empty"]
+layout_mode = 2
+text = "No saved places\nWrite a note at the current location to create the first record."
+autowrap_mode = 2
+
+[node name="CurrentLocationNotePane" type="PanelContainer" parent="MapsNotesTabs/Places/LocationNotesWorkspace"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.25
+theme_type_variation = &"ClassicInset"
+[node name="Content" type="VBoxContainer" parent="MapsNotesTabs/Places/LocationNotesWorkspace/CurrentLocationNotePane"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 5
+[node name="Heading" type="Label" parent="MapsNotesTabs/Places/LocationNotesWorkspace/CurrentLocationNotePane/Content"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+text = "Selected Place & Current Note"
+[node name="LocationNotePreview" type="VBoxContainer" parent="MapsNotesTabs/Places/LocationNotesWorkspace/CurrentLocationNotePane/Content"]
+layout_mode = 2
+size_flags_vertical = 3
+[node name="Facts" type="VBoxContainer" parent="MapsNotesTabs/Places/LocationNotesWorkspace/CurrentLocationNotePane/Content/LocationNotePreview"]
+layout_mode = 2
+[node name="Location" type="Label" parent="MapsNotesTabs/Places/LocationNotesWorkspace/CurrentLocationNotePane/Content/LocationNotePreview/Facts"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.560784, 0.811765, 0.819608, 1)
+text = "Map • Land • 0,0"
+[node name="Darkness" type="Label" parent="MapsNotesTabs/Places/LocationNotesWorkspace/CurrentLocationNotePane/Content/LocationNotePreview/Facts"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.603922, 0.627451, 0.658824, 1)
+text = "No saved darkness mask"
+[node name="Empty" type="PanelContainer" parent="MapsNotesTabs/Places/LocationNotesWorkspace/CurrentLocationNotePane/Content/LocationNotePreview"]
+visible = false
+layout_mode = 2
+theme_type_variation = &"ClassicInset"
+[node name="Text" type="Label" parent="MapsNotesTabs/Places/LocationNotesWorkspace/CurrentLocationNotePane/Content/LocationNotePreview/Empty"]
+layout_mode = 2
+text = "No selected place\nChoose a saved note to recenter its detached map view."
+autowrap_mode = 2
+[node name="HistoricalLocationMap" type="Control" parent="MapsNotesTabs/Places/LocationNotesWorkspace/CurrentLocationNotePane/Content/LocationNotePreview"]
+visible = false
+custom_minimum_size = Vector2(0, 260)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 2
+script = ExtResource("5_historical")
+cell_size = 20.0
+classic_exploration_visibility = false
+[node name="LocationNoteDivider" type="HSeparator" parent="MapsNotesTabs/Places/LocationNotesWorkspace/CurrentLocationNotePane/Content"]
+layout_mode = 2
+[node name="LocationNoteEditor" type="VBoxContainer" parent="MapsNotesTabs/Places/LocationNotesWorkspace/CurrentLocationNotePane/Content"]
+layout_mode = 2
+size_flags_vertical = 3
+[node name="Editor" type="VBoxContainer" parent="MapsNotesTabs/Places/LocationNotesWorkspace/CurrentLocationNotePane/Content/LocationNoteEditor"]
+layout_mode = 2
+size_flags_vertical = 3
+[node name="CurrentLocation" type="Label" parent="MapsNotesTabs/Places/LocationNotesWorkspace/CurrentLocationNotePane/Content/LocationNoteEditor/Editor"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.560784, 0.811765, 0.819608, 1)
+text = "Map • 0,0"
+[node name="CurrentLocationNoteText" type="TextEdit" parent="MapsNotesTabs/Places/LocationNotesWorkspace/CurrentLocationNotePane/Content/LocationNoteEditor/Editor"]
+custom_minimum_size = Vector2(0, 180)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+placeholder_text = "Write a location note…"
+[node name="LocationNoteByteCount" type="Label" parent="MapsNotesTabs/Places/LocationNotesWorkspace/CurrentLocationNotePane/Content/LocationNoteEditor/Editor"]
+layout_mode = 2
+text = "0 / 255 encoded bytes"
+[node name="Actions" type="HBoxContainer" parent="MapsNotesTabs/Places/LocationNotesWorkspace/CurrentLocationNotePane/Content/LocationNoteEditor/Editor"]
+layout_mode = 2
+[node name="SaveLocationNote" type="Button" parent="MapsNotesTabs/Places/LocationNotesWorkspace/CurrentLocationNotePane/Content/LocationNoteEditor/Editor/Actions"]
+layout_mode = 2
+text = "Save Note"
+[node name="CancelLocationNoteEdit" type="Button" parent="MapsNotesTabs/Places/LocationNotesWorkspace/CurrentLocationNotePane/Content/LocationNoteEditor/Editor/Actions"]
+layout_mode = 2
+text = "Revert Draft"
+[node name="Unavailable" type="PanelContainer" parent="MapsNotesTabs/Places/LocationNotesWorkspace/CurrentLocationNotePane/Content/LocationNoteEditor"]
+visible = false
+layout_mode = 2
+theme_type_variation = &"ClassicInset"
+[node name="Text" type="Label" parent="MapsNotesTabs/Places/LocationNotesWorkspace/CurrentLocationNotePane/Content/LocationNoteEditor/Unavailable"]
+layout_mode = 2
+text = "No mapped location\nA note can be edited only while the party occupies a validated map cell."
+autowrap_mode = 2
+
+[node name="Maps" type="VBoxContainer" parent="MapsNotesTabs"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+[node name="AcquiredMapsWorkspace" type="BoxContainer" parent="MapsNotesTabs/Maps"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+[node name="PlayerMapBrowser" type="PanelContainer" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.5
+theme_type_variation = &"ClassicInset"
+[node name="Content" type="VBoxContainer" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapBrowser"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+[node name="Heading" type="Label" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapBrowser/Content"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+text = "Acquired Maps"
+[node name="AcquiredMapChooser" type="VBoxContainer" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapBrowser/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+[node name="Empty" type="PanelContainer" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapBrowser/Content"]
+visible = false
+layout_mode = 2
+theme_type_variation = &"ClassicInset"
+[node name="Text" type="Label" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapBrowser/Content/Empty"]
+layout_mode = 2
+text = "No player-map records\nThis campaign supplies no Maps/Notes entries."
+autowrap_mode = 2
+[node name="PlayerMapDisplay" type="VBoxContainer" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 2.5
+[node name="Empty" type="PanelContainer" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapDisplay"]
+visible = false
+layout_mode = 2
+theme_type_variation = &"ClassicInset"
+[node name="Text" type="Label" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapDisplay/Empty"]
+layout_mode = 2
+text = "No selected map\nThere is no authored map record to display."
+autowrap_mode = 2
+[node name="PlayerMapCartographicStage" type="MarginContainer" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapDisplay"]
+visible = false
+layout_mode = 2
+script = ExtResource("6_stage")
+[node name="PlayerMapStageBody" type="VBoxContainer" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapDisplay/PlayerMapCartographicStage"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 2
+[node name="PlayerMapStageHeader" type="PanelContainer" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapDisplay/PlayerMapCartographicStage/PlayerMapStageBody"]
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+theme_type_variation = &"ClassicInset"
+[node name="Header" type="HBoxContainer" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapDisplay/PlayerMapCartographicStage/PlayerMapStageBody/PlayerMapStageHeader"]
+layout_mode = 2
+theme_override_constants/separation = 4
+[node name="PlayerMapTitle" type="Label" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapDisplay/PlayerMapCartographicStage/PlayerMapStageBody/PlayerMapStageHeader/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.835294, 0.705882, 0.364706, 1)
+theme_override_font_sizes/font_size = 19
+text = "Selected map"
+[node name="PlayerMapZoomToolbar" type="HBoxContainer" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapDisplay/PlayerMapCartographicStage/PlayerMapStageBody/PlayerMapStageHeader/Header"]
+layout_mode = 2
+alignment = 2
+[node name="PlayerMapZoomOut" type="Button" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapDisplay/PlayerMapCartographicStage/PlayerMapStageBody/PlayerMapStageHeader/Header/PlayerMapZoomToolbar"]
+custom_minimum_size = Vector2(46, 26)
+layout_mode = 2
+text = "−"
+[node name="PlayerMapZoomLabel" type="Label" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapDisplay/PlayerMapCartographicStage/PlayerMapStageBody/PlayerMapStageHeader/Header/PlayerMapZoomToolbar"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.560784, 0.811765, 0.819608, 1)
+theme_override_font_sizes/font_size = 14
+text = "100%"
+[node name="PlayerMapZoomFit" type="Button" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapDisplay/PlayerMapCartographicStage/PlayerMapStageBody/PlayerMapStageHeader/Header/PlayerMapZoomToolbar"]
+custom_minimum_size = Vector2(46, 26)
+layout_mode = 2
+text = "Fit"
+[node name="PlayerMapZoomIn" type="Button" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapDisplay/PlayerMapCartographicStage/PlayerMapStageBody/PlayerMapStageHeader/Header/PlayerMapZoomToolbar"]
+custom_minimum_size = Vector2(46, 26)
+layout_mode = 2
+text = "+"
+[node name="PlayerMapNote" type="Label" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapDisplay/PlayerMapCartographicStage/PlayerMapStageBody"]
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.878431, 0.886275, 0.898039, 1)
+theme_override_font_sizes/font_size = 14
+text = "Map note"
+horizontal_alignment = 1
+autowrap_mode = 2
+[node name="AcquiredScrollingPlayerMap" type="VBoxContainer" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapDisplay/PlayerMapCartographicStage/PlayerMapStageBody"]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("8_presenter")
+[node name="PlayerMapScroll" type="ScrollContainer" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapDisplay/PlayerMapCartographicStage/PlayerMapStageBody"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+[node name="Center" type="CenterContainer" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapDisplay/PlayerMapCartographicStage/PlayerMapStageBody/PlayerMapScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 0
+[node name="PlayerMapParchmentMat" type="PanelContainer" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapDisplay/PlayerMapCartographicStage/PlayerMapStageBody/PlayerMapScroll/Center"]
+layout_mode = 2
+script = ExtResource("7_parchment")
+[node name="AcquiredPlayerMap" type="VBoxContainer" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapDisplay/PlayerMapCartographicStage/PlayerMapStageBody/PlayerMapScroll/Center/PlayerMapParchmentMat"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("8_presenter")
+
+[node name="Journal" type="VBoxContainer" parent="MapsNotesTabs"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+[node name="JournalWorkspace" type="BoxContainer" parent="MapsNotesTabs/Journal"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+[node name="JournalEntryBrowser" type="PanelContainer" parent="MapsNotesTabs/Journal/JournalWorkspace"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("JournalPane")
+[node name="Content" type="VBoxContainer" parent="MapsNotesTabs/Journal/JournalWorkspace/JournalEntryBrowser"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 5
+[node name="Heading" type="Label" parent="MapsNotesTabs/Journal/JournalWorkspace/JournalEntryBrowser/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.588235, 0.235294, 0.192157, 1)
+theme_override_font_sizes/font_size = 18
+text = "Journal Entries"
+[node name="JournalSearch" type="LineEdit" parent="MapsNotesTabs/Journal/JournalWorkspace/JournalEntryBrowser/Content"]
+layout_mode = 2
+theme_type_variation = &"ClassicTheldrowLineEdit"
+theme_override_colors/font_color = Color(0.188235, 0.14902, 0.109804, 1)
+theme_override_colors/font_placeholder_color = Color(0.403922, 0.333333, 0.227451, 1)
+theme_override_styles/normal = SubResource("JournalSearch")
+placeholder_text = "Search journal…"
+clear_button_enabled = true
+[node name="JournalEntryScroll" type="ScrollContainer" parent="MapsNotesTabs/Journal/JournalWorkspace/JournalEntryBrowser/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+[node name="JournalEntryRows" type="VBoxContainer" parent="MapsNotesTabs/Journal/JournalWorkspace/JournalEntryBrowser/Content/JournalEntryScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+[node name="Empty" type="PanelContainer" parent="MapsNotesTabs/Journal/JournalWorkspace/JournalEntryBrowser/Content"]
+visible = false
+layout_mode = 2
+theme_type_variation = &"ClassicInset"
+[node name="Text" type="Label" parent="MapsNotesTabs/Journal/JournalWorkspace/JournalEntryBrowser/Content/Empty"]
+layout_mode = 2
+text = "The journal is empty\nNo journal records were supplied by the current session."
+autowrap_mode = 2
+[node name="JournalBookSpine" type="ColorRect" parent="MapsNotesTabs/Journal/JournalWorkspace"]
+custom_minimum_size = Vector2(12, 0)
+layout_mode = 2
+mouse_filter = 2
+color = Color(0.294118, 0.156863, 0.133333, 1)
+[node name="JournalEntryDetail" type="PanelContainer" parent="MapsNotesTabs/Journal/JournalWorkspace"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("JournalPane")
+[node name="Content" type="VBoxContainer" parent="MapsNotesTabs/Journal/JournalWorkspace/JournalEntryDetail"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+[node name="Heading" type="Label" parent="MapsNotesTabs/Journal/JournalWorkspace/JournalEntryDetail/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.588235, 0.235294, 0.192157, 1)
+theme_override_font_sizes/font_size = 18
+text = "Selected Entry"
+[node name="JournalEntryDetailScroll" type="ScrollContainer" parent="MapsNotesTabs/Journal/JournalWorkspace/JournalEntryDetail/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+[node name="JournalEntryDetailBody" type="VBoxContainer" parent="MapsNotesTabs/Journal/JournalWorkspace/JournalEntryDetail/Content/JournalEntryDetailScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 5
+[node name="Record" type="VBoxContainer" parent="MapsNotesTabs/Journal/JournalWorkspace/JournalEntryDetail/Content/JournalEntryDetailScroll/JournalEntryDetailBody"]
+layout_mode = 2
+[node name="Title" type="Label" parent="MapsNotesTabs/Journal/JournalWorkspace/JournalEntryDetail/Content/JournalEntryDetailScroll/JournalEntryDetailBody/Record"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.588235, 0.235294, 0.192157, 1)
+theme_override_font_sizes/font_size = 20
+text = "Journal entry 0"
+[node name="Divider" type="HSeparator" parent="MapsNotesTabs/Journal/JournalWorkspace/JournalEntryDetail/Content/JournalEntryDetailScroll/JournalEntryDetailBody/Record"]
+layout_mode = 2
+[node name="JournalEntryText" type="Label" parent="MapsNotesTabs/Journal/JournalWorkspace/JournalEntryDetail/Content/JournalEntryDetailScroll/JournalEntryDetailBody/Record"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.188235, 0.14902, 0.109804, 1)
+theme_override_font_sizes/font_size = 17
+text = "Authored journal text"
+autowrap_mode = 2
+[node name="Empty" type="PanelContainer" parent="MapsNotesTabs/Journal/JournalWorkspace/JournalEntryDetail/Content/JournalEntryDetailScroll/JournalEntryDetailBody"]
+visible = false
+layout_mode = 2
+theme_type_variation = &"ClassicInset"
+[node name="Text" type="Label" parent="MapsNotesTabs/Journal/JournalWorkspace/JournalEntryDetail/Content/JournalEntryDetailScroll/JournalEntryDetailBody/Empty"]
+layout_mode = 2
+text = "No selected entry\nAuthored journal text will appear here."
+autowrap_mode = 2

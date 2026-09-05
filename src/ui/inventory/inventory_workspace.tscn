@@ -1,0 +1,66 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://src/ui/inventory/inventory_workspace.gd" id="1_workspace"]
+[ext_resource type="PackedScene" path="res://src/ui/inventory/inventory_item_browser.tscn" id="2_browser"]
+[ext_resource type="PackedScene" path="res://src/ui/inventory/inventory_command_rail.tscn" id="3_rail"]
+[ext_resource type="PackedScene" path="res://src/ui/inventory/inventory_item_inspector.tscn" id="4_inspector"]
+[ext_resource type="PackedScene" path="res://src/ui/inventory/inventory_empty_state.tscn" id="5_empty"]
+[ext_resource type="PackedScene" path="res://src/ui/inventory/inventory_trade_workspace.tscn" id="6_trade"]
+
+[node name="InventoryWorkspace" type="VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+script = ExtResource("1_workspace")
+empty_state_scene = ExtResource("5_empty")
+trade_workspace_scene = ExtResource("6_trade")
+
+[node name="InventoryMainSplit" type="BoxContainer" parent="."]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 410)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="InventoryItemBrowser" type="PanelContainer" parent="InventoryMainSplit"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(620, 330)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.45
+theme_type_variation = &"ClassicItemLedger"
+
+[node name="InventoryItemBrowserContent" parent="InventoryMainSplit/InventoryItemBrowser" instance=ExtResource("2_browser")]
+layout_mode = 2
+
+[node name="InventoryCharacterCommandRail" type="PanelContainer" parent="InventoryMainSplit"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(285, 330)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.75
+theme_type_variation = &"ClassicInset"
+
+[node name="InventoryCommandRailContent" parent="InventoryMainSplit/InventoryCharacterCommandRail" instance=ExtResource("3_rail")]
+layout_mode = 2
+
+[node name="InventoryItemInspector" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 150)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInset"
+
+[node name="InventoryItemInspectorContent" parent="InventoryItemInspector" instance=ExtResource("4_inspector")]
+layout_mode = 2
+
+[node name="InventoryAlternateContent" type="VBoxContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3

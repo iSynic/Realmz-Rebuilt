@@ -1,0 +1,16 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://src/ui/inventory/inventory_item_inspector.gd" id="1_inspector"]
+[ext_resource type="PackedScene" path="res://src/ui/inventory/inventory_done_column.tscn" id="2_done"]
+[ext_resource type="PackedScene" path="res://src/ui/inventory/inventory_selected_item_record.tscn" id="3_record"]
+
+[node name="InventoryItemInspectorContent" type="HBoxContainer"]
+theme_override_constants/separation = 8
+script = ExtResource("1_inspector")
+
+[node name="InventorySelectedItemRecord" parent="." instance=ExtResource("3_record")]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="InventoryDoneColumn" parent="." instance=ExtResource("2_done")]
+layout_mode = 2

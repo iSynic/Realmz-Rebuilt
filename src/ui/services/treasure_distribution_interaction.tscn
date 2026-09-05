@@ -1,0 +1,236 @@
+[gd_scene load_steps=11 format=3]
+
+[ext_resource type="Script" path="res://src/ui/services/treasure_distribution_interaction.gd" id="1_interaction"]
+[ext_resource type="PackedScene" path="res://src/ui/services/treasure_loot_cell.tscn" id="2_loot_cell"]
+[ext_resource type="PackedScene" path="res://src/ui/services/treasure_vacant_slot.tscn" id="3_vacant_slot"]
+[ext_resource type="PackedScene" path="res://src/ui/services/treasure_recipient_button.tscn" id="4_recipient"]
+[ext_resource type="PackedScene" path="res://src/ui/services/treasure_fact_label.tscn" id="5_fact"]
+[ext_resource type="PackedScene" path="res://src/ui/services/treasure_caster_row.tscn" id="6_caster"]
+[ext_resource type="PackedScene" path="res://src/ui/inventory/classic_item_detail_popover.tscn" id="7_popover"]
+[ext_resource type="PackedScene" path="res://src/ui/services/treasure_recovery_workspace.tscn" id="8_recovery"]
+[ext_resource type="PackedScene" path="res://src/ui/services/treasure_completion_confirmation.tscn" id="9_confirmation"]
+[ext_resource type="PackedScene" path="res://src/ui/services/treasure_swap_controls.tscn" id="10_swap"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_loot"]
+bg_color = Color(0.969, 0.965, 0.941, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.443, 0.467, 0.482, 1)
+
+[node name="TreasureDistributionInteraction" type="VBoxContainer"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+script = ExtResource("1_interaction")
+loot_cell_scene = ExtResource("2_loot_cell")
+vacant_slot_scene = ExtResource("3_vacant_slot")
+recipient_button_scene = ExtResource("4_recipient")
+fact_label_scene = ExtResource("5_fact")
+caster_row_scene = ExtResource("6_caster")
+recovery_workspace_scene = ExtResource("8_recovery")
+completion_confirmation_scene = ExtResource("9_confirmation")
+swap_controls_scene = ExtResource("10_swap")
+
+[node name="OrdinaryTreasure" type="VBoxContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="TreasureWorkspaceHeader" type="HBoxContainer" parent="OrdinaryTreasure"]
+layout_mode = 2
+size_flags_horizontal = 3
+[node name="TreasureWorkspaceTitle" type="Label" parent="OrdinaryTreasure/TreasureWorkspaceHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicHeading"
+text = "Treasure"
+[node name="TreasureWorkspaceSummary" type="Label" parent="OrdinaryTreasure/TreasureWorkspaceHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.561, 0.812, 0.82, 1)
+horizontal_alignment = 2
+
+[node name="ClassicTreasureWorkspace" type="HBoxContainer" parent="OrdinaryTreasure"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="TreasureLootColumn" type="VBoxContainer" parent="OrdinaryTreasure/ClassicTreasureWorkspace"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 2.3
+theme_override_constants/separation = 6
+[node name="TreasureLootField" type="PanelContainer" parent="OrdinaryTreasure/ClassicTreasureWorkspace/TreasureLootColumn"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBox_loot")
+[node name="Margin" type="MarginContainer" parent="OrdinaryTreasure/ClassicTreasureWorkspace/TreasureLootColumn/TreasureLootField"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+[node name="TreasureItemScroll" type="ScrollContainer" parent="OrdinaryTreasure/ClassicTreasureWorkspace/TreasureLootColumn/TreasureLootField/Margin"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+[node name="TreasureItemGrid" type="GridContainer" parent="OrdinaryTreasure/ClassicTreasureWorkspace/TreasureLootColumn/TreasureLootField/Margin/TreasureItemScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 0
+columns = 16
+
+[node name="TreasurePartyPanel" type="PanelContainer" parent="OrdinaryTreasure/ClassicTreasureWorkspace"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(330, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.95
+theme_type_variation = &"ClassicInset"
+[node name="TreasurePartyContent" type="VBoxContainer" parent="OrdinaryTreasure/ClassicTreasureWorkspace/TreasurePartyPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 2
+[node name="TreasureRecipientHeading" type="Label" parent="OrdinaryTreasure/ClassicTreasureWorkspace/TreasurePartyPanel/TreasurePartyContent"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+text = "Choose Recipient"
+[node name="TreasureRecipientRows" type="VBoxContainer" parent="OrdinaryTreasure/ClassicTreasureWorkspace/TreasurePartyPanel/TreasurePartyContent"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 2
+[node name="TreasureMessagePanel" type="PanelContainer" parent="OrdinaryTreasure/ClassicTreasureWorkspace/TreasurePartyPanel/TreasurePartyContent"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+theme_type_variation = &"ClassicInset"
+[node name="TreasureMessageScroll" type="ScrollContainer" parent="OrdinaryTreasure/ClassicTreasureWorkspace/TreasurePartyPanel/TreasurePartyContent/TreasureMessagePanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+[node name="TreasureNarrative" type="Label" parent="OrdinaryTreasure/ClassicTreasureWorkspace/TreasurePartyPanel/TreasurePartyContent/TreasureMessagePanel/TreasureMessageScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.682, 0.714, 0.729, 1)
+autowrap_mode = 2
+
+[node name="TreasureItemRecord" type="BoxContainer" parent="OrdinaryTreasure"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 260)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="TreasureItemIdentity" type="PanelContainer" parent="OrdinaryTreasure/TreasureItemRecord"]
+custom_minimum_size = Vector2(360, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.05
+theme_type_variation = &"ClassicInset"
+[node name="Row" type="HBoxContainer" parent="OrdinaryTreasure/TreasureItemRecord/TreasureItemIdentity"]
+layout_mode = 2
+theme_override_constants/separation = 10
+[node name="TreasureRecordIcon" type="TextureRect" parent="OrdinaryTreasure/TreasureItemRecord/TreasureItemIdentity/Row"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(76, 76)
+layout_mode = 2
+texture_filter = 1
+expand_mode = 1
+stretch_mode = 5
+[node name="Identity" type="VBoxContainer" parent="OrdinaryTreasure/TreasureItemRecord/TreasureItemIdentity/Row"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 3
+[node name="TreasureSelectedItemName" type="Label" parent="OrdinaryTreasure/TreasureItemRecord/TreasureItemIdentity/Row/Identity"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+[node name="TreasureSelectedItemState" type="Label" parent="OrdinaryTreasure/TreasureItemRecord/TreasureItemIdentity/Row/Identity"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.561, 0.812, 0.82, 1)
+[node name="TreasureSelectedItemDescription" type="Label" parent="OrdinaryTreasure/TreasureItemRecord/TreasureItemIdentity/Row/Identity"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.682, 0.714, 0.729, 1)
+autowrap_mode = 2
+
+[node name="TreasureItemProperties" type="PanelContainer" parent="OrdinaryTreasure/TreasureItemRecord"]
+custom_minimum_size = Vector2(360, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.15
+theme_type_variation = &"ClassicInset"
+[node name="Properties" type="VBoxContainer" parent="OrdinaryTreasure/TreasureItemRecord/TreasureItemProperties"]
+layout_mode = 2
+theme_override_constants/separation = 4
+[node name="TreasurePropertyHeading" type="Label" parent="OrdinaryTreasure/TreasureItemRecord/TreasureItemProperties/Properties"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+text = "Item Properties"
+[node name="TreasureSelectedItemFacts" type="GridContainer" parent="OrdinaryTreasure/TreasureItemRecord/TreasureItemProperties/Properties"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 3
+columns = 4
+
+[node name="TreasureCommandPanel" type="PanelContainer" parent="OrdinaryTreasure/TreasureItemRecord"]
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.8
+theme_type_variation = &"ClassicInset"
+[node name="TreasureCommands" type="VBoxContainer" parent="OrdinaryTreasure/TreasureItemRecord/TreasureCommandPanel"]
+layout_mode = 2
+theme_override_constants/separation = 2
+[node name="TreasurePooledWealth" type="Label" parent="OrdinaryTreasure/TreasureItemRecord/TreasureCommandPanel/TreasureCommands"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.898, 0.769, 0.361, 1)
+[node name="TreasureWealthActions" type="HBoxContainer" parent="OrdinaryTreasure/TreasureItemRecord/TreasureCommandPanel/TreasureCommands"]
+layout_mode = 2
+theme_override_constants/separation = 4
+[node name="TreasurePool" type="Button" parent="OrdinaryTreasure/TreasureItemRecord/TreasureCommandPanel/TreasureCommands/TreasureWealthActions"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Pool"
+[node name="TreasureShare" type="Button" parent="OrdinaryTreasure/TreasureItemRecord/TreasureCommandPanel/TreasureCommands/TreasureWealthActions"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Share"
+[node name="TreasureDynamicCommandScroll" type="ScrollContainer" parent="OrdinaryTreasure/TreasureItemRecord/TreasureCommandPanel/TreasureCommands"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="TreasureDynamicCommands" type="VBoxContainer" parent="OrdinaryTreasure/TreasureItemRecord/TreasureCommandPanel/TreasureCommands/TreasureDynamicCommandScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+[node name="TreasureDone" type="Button" parent="OrdinaryTreasure/TreasureItemRecord/TreasureCommandPanel/TreasureCommands"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Done"
+
+[node name="ClassicItemDetailPopover" parent="." instance=ExtResource("7_popover")]

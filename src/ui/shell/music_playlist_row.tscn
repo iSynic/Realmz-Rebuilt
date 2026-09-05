@@ -1,0 +1,38 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/ui/shell/music_playlist_row.gd" id="1_row"]
+
+[sub_resource type="ButtonGroup" id="ButtonGroup_modes"]
+allow_unpress = true
+
+[node name="MusicPlaylistRow" type="HBoxContainer"]
+custom_minimum_size = Vector2(0, 28)
+theme_override_constants/separation = 3
+script = ExtResource("1_row")
+
+[node name="ContextLabel" type="Label" parent="."]
+custom_minimum_size = Vector2(116, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 13
+
+[node name="Play" type="Button" parent="."]
+custom_minimum_size = Vector2(45, 26)
+layout_mode = 2
+toggle_mode = true
+button_group = SubResource("ButtonGroup_modes")
+text = "Play"
+
+[node name="Continue" type="Button" parent="."]
+custom_minimum_size = Vector2(68, 26)
+layout_mode = 2
+toggle_mode = true
+button_group = SubResource("ButtonGroup_modes")
+text = "Continue"
+
+[node name="Off" type="Button" parent="."]
+custom_minimum_size = Vector2(38, 26)
+layout_mode = 2
+toggle_mode = true
+button_group = SubResource("ButtonGroup_modes")
+text = "Off"

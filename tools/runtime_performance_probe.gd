@@ -1,9 +1,9 @@
 extends SceneTree
 
-const PackageRepositoryScript := preload("res://src/infrastructure/packages/package_repository.gd")
-const CharacterVaultRepositoryScript := preload("res://src/infrastructure/characters/character_vault_repository.gd")
-const CharacterVaultControllerScript := preload("res://src/app/controllers/character_vault_controller.gd")
-const ShellScene := preload("res://src/presentation/classic_application_shell.tscn")
+const PERFORMANCE_PACKAGE_LOADER := preload("res://tools/performance_package_loader.gd")
+const CHARACTER_VAULT_REPOSITORY := preload("res://src/storage/characters/character_vault_repository.gd")
+const CHARACTER_VAULT_CONTROLLER := preload("res://src/app/session/character_vault_controller.gd")
+const SHELL_SCENE := preload("res://src/ui/shell/game_shell.tscn")
 const VAULT_PATH := "user://realmz2-tests/runtime-performance-vault"
 
 
@@ -24,7 +24,7 @@ func _initialize() -> void:
 	if viewport_size.x < 800 or viewport_size.y < 600:
 		viewport_size = Vector2i(1280, 720)
 	var package_started := Time.get_ticks_usec()
-	var loaded := PackageRepositoryScript.new().load_package(arguments[0])
+	var loaded := PERFORMANCE_PACKAGE_LOADER.load_scenario(arguments[0])
 	var package_us := Time.get_ticks_usec() - package_started
 	if not loaded.is_ok():
 		printerr("PACKAGE_REJECTED %s: %s" % [loaded.error_code, loaded.error_message]); call_deferred("_quit_cleanly", 1); return
@@ -36,12 +36,12 @@ func _initialize() -> void:
 	if route.is_empty() or not _place_party(session, loaded.content, map.id, route["coordinates"][0], 4096):
 		printerr("MOVEMENT_ROUTE_REJECTED"); call_deferred("_quit_cleanly", 1); return
 	var vault_result := _measure_vault_import(loaded.content)
-	var shell := ShellScene.instantiate() as ClassicApplicationShell
+	var shell := SHELL_SCENE.instantiate() as GameShell
 	var map_presenter := ClassicMapPresenter.new()
 	root.size = viewport_size; root.add_child(shell); root.add_child(map_presenter)
 	var viewport_scale := Vector2(viewport_size) / Vector2(1280, 720)
 	map_presenter.position = Vector2(2, 72) * viewport_scale; map_presenter.size = Vector2(926, 488) * viewport_scale
-	session.set_map_projection_size(ClassicMapPresenter.projection_cells_for(map_presenter.size, map_presenter.map_origin.y, map_presenter.cell_size))
+	session.set_map_projection_size(MapPresentationGeometry.projection_cells_for(map_presenter.size, map_presenter.map_origin.y, map_presenter.cell_size))
 	var media := ClassicMediaCatalog.new(loaded.media, ApplicationMediaCatalog.new())
 	map_presenter.set_media_catalog(media)
 	await process_frame
@@ -52,7 +52,7 @@ func _initialize() -> void:
 	# Warm enough rendered movement frames to compile drivers, allocate retained
 	# layer pages, and exercise several hourly status/magic refresh boundaries.
 	for index: int in 80:
-		var warm_step := session.submit_intent(PlayerIntent.move(directions[index % directions.size()])); view = session.view(warm_step.events); map_presenter.present(view); shell.present(view); await _after_draw()
+		var warm_step := session.submit_intent(ExplorationIntents.move(directions[index % directions.size()])); view = session.view(warm_step.events); map_presenter.present(view); shell.present(view); await _after_draw()
 	session.restore(loaded.content, benchmark_start); view = session.view(); map_presenter.present(view); shell.present(view); await _after_draw()
 	var transaction_samples: Array[int] = []; var projection_samples: Array[int] = []; var shell_samples: Array[int] = []; var map_samples: Array[int] = []; var post_draw_samples: Array[int] = []; var frame_samples: Array[int] = []
 	var ordinary_frames: Array[int] = []; var hourly_frames: Array[int] = []; var ordinary_domains: Dictionary = {}; var hourly_domains: Dictionary = {}
@@ -70,7 +70,7 @@ func _initialize() -> void:
 			skipped_intervals += int((now - next_movement_at) / interval_us); next_movement_at = now
 		var frame_started := Time.get_ticks_usec()
 		var direction: Vector2i = directions[route_index % directions.size()]
-		var step := session.submit_intent(PlayerIntent.move(direction)); var transaction_done := Time.get_ticks_usec()
+		var step := session.submit_intent(ExplorationIntents.move(direction)); var transaction_done := Time.get_ticks_usec()
 		view = session.view(step.events); var projection_done := Time.get_ticks_usec()
 		if step.state != SessionStep.State.COMPLETED or view.pending_interaction != null or view.map_view.presentation_delta == null:
 			if step.state == SessionStep.State.FAILED or session.restore(loaded.content, benchmark_start).state == SessionStep.State.FAILED:
@@ -93,7 +93,7 @@ func _initialize() -> void:
 		next_movement_at += interval_us
 	var output := {
 		"campaignId": loaded.content.campaign_id, "mapId": map.id, "mapName": map.name, "mapSize": [map.topology.width, map.topology.height], "mapCellCount": map.topology.cells().size(), "usesLos": map.uses_los, "renderingMethod": RenderingServer.get_current_rendering_method(), "renderingDriver": RenderingServer.get_current_rendering_driver_name(),
-		"presentationMode": "ordinary-rules-movement", "vsyncDuringMeasurement": "disabled", "drawCompletion": "process-frame-plus-forced-render-without-buffer-swap", "mapProjectionMode": "los-visibility-delta" if map.uses_los else "incremental", "projectionGuardCellsPerEdge": ClassicMapPresenter.RETAINED_PROJECTION_MARGIN_CELLS.x, "routeLengthTiles": directions.size(), "routeUniqueCells": route["uniqueCells"], "routeBounds": route["bounds"], "uniqueCellsTraversed": traversed.size(), "distanceTiles": movement_count, "directionCounts": direction_counts, "tilesets": _tileset_evidence(map, media), "overlayAssetCount": route["overlayAssetCount"], "randomEncounterChanceDuringMeasurement": 0,
+		"presentationMode": "ordinary-rules-movement", "vsyncDuringMeasurement": "disabled", "drawCompletion": "process-frame-plus-forced-render-without-buffer-swap", "mapProjectionMode": "los-visibility-delta" if map.uses_los else "incremental", "projectionGuardCellsPerEdge": MapPresentationGeometry.RETAINED_PROJECTION_MARGIN_CELLS.x, "routeLengthTiles": directions.size(), "routeUniqueCells": route["uniqueCells"], "routeBounds": route["bounds"], "uniqueCellsTraversed": traversed.size(), "distanceTiles": movement_count, "directionCounts": direction_counts, "tilesets": _tileset_evidence(map, media), "overlayAssetCount": route["overlayAssetCount"], "randomEncounterChanceDuringMeasurement": 0,
 		"viewport": "%dx%d" % [viewport_size.x, viewport_size.y], "speedPercent": speed_percent, "scheduledStepsPerSecond": 20.0 * float(speed_percent) / 100.0, "actualStepsPerSecond": snappedf(float(movement_count) * 1_000_000.0 / float(Time.get_ticks_usec() - measured_started), 0.001), "durationSeconds": snappedf(float(Time.get_ticks_usec() - measured_started) / 1_000_000.0, 0.001), "movementFrames": movement_count, "ordinarySamples": ordinary_frames.size(), "hourlySamples": hourly_frames.size(), "segmentRestartsAtGameplayBoundaries": segment_restarts, "queuedCatchUpBursts": 0, "skippedIntervals": skipped_intervals,
 		"packagePreparationMs": snappedf(float(package_us) / 1000.0, 0.001), "vaultCachedImportP95Ms": vault_result["p95Ms"], "vaultCacheSize": vault_result["cacheSize"],
 		"transactionP95Ms": _percentile_ms(transaction_samples, 0.95), "sessionProjectionP95Ms": _percentile_ms(projection_samples, 0.95), "mapPresentationP95Ms": _percentile_ms(map_samples, 0.95), "shellPresentationP95Ms": _percentile_ms(shell_samples, 0.95), "postDrawP95Ms": _percentile_ms(post_draw_samples, 0.95),
@@ -111,12 +111,12 @@ func _initialize() -> void:
 
 func _measure_vault_import(content: RealmzContent) -> Dictionary:
 	_remove_tree(ProjectSettings.globalize_path(VAULT_PATH))
-	var repository := CharacterVaultRepositoryScript.new(VAULT_PATH)
-	var race := content.race_definitions()[0]; var caste := content.caste_definitions()[0]
+	var repository := CHARACTER_VAULT_REPOSITORY.new(VAULT_PATH)
+	var race := content.characters.race_definitions()[0]; var caste := content.characters.caste_definitions()[0]
 	var character := CharacterState.new("runtime-performance-character", "Performance", 20, 20); character.race_id = race.id; character.caste_id = caste.id
 	var record := CharacterVaultRecord.new(character.id, content.rules_version, content.campaign_id, content.package_hash, character)
 	if not repository.publish_revision(record): return {"p95Ms": -1.0, "cacheSize": 0}
-	var controller := CharacterVaultControllerScript.new(repository); controller.revisions(content)
+	var controller := CHARACTER_VAULT_CONTROLLER.new(repository); controller.revisions(content)
 	var samples: Array[int] = []
 	for ignored: int in 100:
 		var started := Time.get_ticks_usec(); controller.import_intent(record.character_id, record.revision_hash); samples.append(Time.get_ticks_usec() - started)
@@ -124,13 +124,13 @@ func _measure_vault_import(content: RealmzContent) -> Dictionary:
 
 
 func _assemble_party(session: GameSession, content: RealmzContent) -> bool:
-	var races := content.race_definitions(); var castes := content.caste_definitions()
+	var races := content.characters.race_definitions(); var castes := content.characters.caste_definitions()
 	if races.is_empty() or castes.is_empty(): return false
 	var race: RaceDefinition; var caste: CasteDefinition; var caster_type := 0
 	for race_candidate: RaceDefinition in races:
 		for caste_candidate: CasteDefinition in castes:
 			if not race_candidate.eligible_caste_ids.is_empty() and not race_candidate.eligible_caste_ids.has(caste_candidate.id): continue
-			var rows := caste_candidate.spellcaster_rows()
+			var rows := caste_candidate.progression.spellcaster_rows()
 			for row_index: int in mini(3, rows.size()):
 				if rows[row_index].y > 0:
 					race = race_candidate; caste = caste_candidate; caster_type = row_index + 1; break
@@ -138,14 +138,14 @@ func _assemble_party(session: GameSession, content: RealmzContent) -> bool:
 		if caste != null: break
 	if race == null or caste == null: return false
 	var known_spells: Array[String] = []
-	for spell: SpellDefinition in content.spell_definitions():
+	for spell: SpellDefinition in content.magic.definitions():
 		if int(spell.classic_id / 1000) == caster_type and spell.classic_tier() >= 0:
 			known_spells.append(spell.id)
 			if known_spells.size() >= 4: break
 	for index: int in 6:
 		var character := CharacterState.new("runtime-performance-%d" % index, "Probe %d" % index, 20, 20); character.race_id = race.id; character.caste_id = caste.id; character.level = 10; character.spellcaster_type = caster_type; character.maximum_spell_points = 100; character.spell_points = 0; character.set_known_spells(known_spells)
-		if session.submit_intent(PlayerIntent.import_vault_character(character.id, "%064d" % (index + 1), character, "runtime-performance", content.package_hash)).state == SessionStep.State.FAILED: return false
-	var started := session.submit_intent(PlayerIntent.begin_adventure())
+		if session.submit_intent(PartyIntents.import_vault_character(character.id, "%064d" % (index + 1), character, "runtime-performance", content.package_hash)).state == SessionStep.State.FAILED: return false
+	var started := session.submit_intent(PartyIntents.begin_adventure())
 	while started.state == SessionStep.State.WAITING_FOR_INTERACTION and started.interaction != null and started.interaction.kind == InteractionRequest.ACKNOWLEDGE: started = session.respond(InteractionResponse.acknowledge(started.interaction))
 	return started.state == SessionStep.State.COMPLETED
 
@@ -257,18 +257,18 @@ func _place_party(session: GameSession, content: RealmzContent, map_id: String, 
 	# The benchmark still advances the real five-minute clock, hour recovery,
 	# conditions, fatigue, search, and movement transactions; this preparation
 	# prevents an unrelated modal timeline from replacing a measured travel step.
-	for encounter: TimedEncounterDefinition in content.timed_encounters():
-		snapshot.game_state.set_timed_encounter_override(encounter.id, {"day": snapshot.game_state.clock.day() + 10_000, "percent": encounter.chance_percent})
+	for encounter: TimedEncounterDefinition in content.scenario_records.timed_encounters():
+		snapshot.game_state.scenario_progress.encounters.set_timed_override(encounter.id, {"day": snapshot.game_state.clock.day() + 10_000, "percent": encounter.chance_percent})
 	var map := content.world.map_by_id(map_id); var seeded := 0
 	if map != null:
 		for region: RandomEncounterRegion in map.random_regions():
-			var effective := snapshot.game_state.world.random_region(region)
+			var effective := snapshot.game_state.world.triggers.random_region(region)
 			effective.chance_ten_thousand = 0
-			snapshot.game_state.world.set_random_region(effective)
+			snapshot.game_state.world.triggers.set_random_region(effective)
 		for cell: MapCell in map.topology.cells():
-			snapshot.game_state.world.mark_visited(map_id, cell.coordinate); seeded += 1
+			snapshot.game_state.world.exploration.mark_visited(map_id, cell.coordinate); seeded += 1
 			if seeded >= visited_history_target: break
-	snapshot.game_state.world.mark_visited(map_id, coordinate)
+	snapshot.game_state.world.exploration.mark_visited(map_id, coordinate)
 	return session.restore(content, snapshot).state == SessionStep.State.COMPLETED
 
 

@@ -1,0 +1,38 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/ui/services/money_transfer_row.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://src/ui/shared/style/classic_content_icon.tscn" id="2_icon"]
+
+[node name="MoneyTransferRow" type="PanelContainer"]
+theme_type_variation = &"ClassicInset"
+script = ExtResource("1_script")
+
+[node name="Content" type="HBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Icon" parent="Content" instance=ExtResource("2_icon")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="Denomination" type="Label" parent="Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(104, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.878431, 0.886275, 0.898039, 1)
+theme_override_font_sizes/font_size = 13
+text = "Gold  ×1"
+vertical_alignment = 1
+
+[node name="ToPool" type="Button" parent="Content"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "To pool"
+
+[node name="ToCharacter" type="Button" parent="Content"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "To Adventurer"

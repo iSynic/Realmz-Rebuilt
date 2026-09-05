@@ -1,0 +1,77 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/ui/shell/debug_action_console.gd" id="1_console"]
+
+[sub_resource type="StyleBoxFlat" id="ConsolePanel"]
+content_margin_left = 16.0
+content_margin_top = 12.0
+content_margin_right = 16.0
+content_margin_bottom = 12.0
+bg_color = Color(0.0627451, 0.0745098, 0.0901961, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.741176, 0.611765, 0.333333, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[node name="DebugActionConsole" type="PanelContainer"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 24.0
+offset_top = 24.0
+offset_right = -24.0
+offset_bottom = -24.0
+grow_horizontal = 2
+grow_vertical = 2
+z_index = 510
+theme_override_styles/panel = SubResource("ConsolePanel")
+script = ExtResource("1_console")
+
+[node name="Content" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Toolbar" type="HBoxContainer" parent="Content"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Content/Toolbar"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 22
+text = "GAME-ACTION CONSOLE · DEBUG"
+
+[node name="Count" type="Label" parent="Content/Toolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="Clear" type="Button" parent="Content/Toolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Clear"
+
+[node name="CopyAll" type="Button" parent="Content/Toolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Copy all"
+
+[node name="Close" type="Button" parent="Content/Toolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Close · ` / ~"
+
+[node name="GameActionLog" type="RichTextLabel" parent="Content"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/default_color = Color(0.933333, 0.94902, 0.956863, 1)
+theme_override_font_sizes/normal_font_size = 15
+selection_enabled = true
+context_menu_enabled = true
+scroll_following = true

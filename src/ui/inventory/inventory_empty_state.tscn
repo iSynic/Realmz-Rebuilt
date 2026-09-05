@@ -1,0 +1,37 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/ui/inventory/inventory_empty_state.gd" id="1_empty"]
+[ext_resource type="PackedScene" path="res://src/ui/inventory/inventory_done_column.tscn" id="2_done"]
+
+[node name="InventoryEmptyState" type="VBoxContainer"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("1_empty")
+
+[node name="Message" type="PanelContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInset"
+
+[node name="Content" type="VBoxContainer" parent="Message"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Message/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.835294, 0.705882, 0.364706, 1)
+theme_override_font_sizes/font_size = 16
+text = "No party inventory"
+
+[node name="Detail" type="Label" parent="Message/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.603922, 0.627451, 0.658824, 1)
+theme_override_font_sizes/font_size = 13
+text = "The party has no characters."
+autowrap_mode = 2
+
+[node name="Actions" type="HBoxContainer" parent="."]
+layout_mode = 2
+alignment = 2
+
+[node name="InventoryDoneColumn" parent="Actions" instance=ExtResource("2_done")]
+layout_mode = 2

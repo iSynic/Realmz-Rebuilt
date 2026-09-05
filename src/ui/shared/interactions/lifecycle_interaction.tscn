@@ -1,0 +1,26 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/ui/shared/interactions/lifecycle_interaction.gd" id="1_interaction"]
+
+[node name="LifecycleInteraction" type="VBoxContainer"]
+theme_override_constants/separation = 8
+script = ExtResource("1_interaction")
+
+[node name="LifecycleConsequence" type="Label" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+autowrap_mode = 2
+
+[node name="LifecycleVerticalActions" type="VBoxContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="LifecycleActions" type="HBoxContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 1

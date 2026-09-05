@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[node name="InventoryTradePortrait" type="Button"]
+custom_minimum_size = Vector2(58, 44)
+toggle_mode = true
+expand_icon = true

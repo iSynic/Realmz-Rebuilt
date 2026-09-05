@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="UiRouteDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/ui/shell/routes/ui_route_definition.gd" id="1_route"]
+
+[resource]
+script = ExtResource("1_route")
+route_id = &"combat"
+label = "Battle"
+shortcut = &"ui_screen_battle"
+description = "Choose actors, targets, and legal combat actions."
+presentation = 0

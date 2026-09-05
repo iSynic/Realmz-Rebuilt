@@ -1,0 +1,308 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/ui/characters/level_up_interaction.gd" id="1_script"]
+
+[node name="LevelUpInteraction" type="VBoxContainer"]
+custom_minimum_size = Vector2(0, 320)
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+script = ExtResource("1_script")
+
+[node name="LevelHeader" type="HBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Heading" type="Label" parent="LevelHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicHeading"
+theme_override_colors/font_color = Color(0.898, 0.769, 0.361, 1)
+theme_override_font_sizes/font_size = 20
+text = "Level Gained"
+
+[node name="Context" type="Label" parent="LevelHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.561, 0.812, 0.82, 1)
+theme_override_font_sizes/font_size = 15
+text = "Adventurer"
+horizontal_alignment = 2
+
+[node name="LevelResultColumns" type="HBoxContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="LevelIdentity" type="PanelContainer" parent="LevelResultColumns"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.8
+theme_type_variation = &"ClassicTextWell"
+
+[node name="Content" type="VBoxContainer" parent="LevelResultColumns/LevelIdentity"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 5
+
+[node name="PaneHeading" type="Label" parent="LevelResultColumns/LevelIdentity/Content"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+theme_override_colors/font_color = Color(0.898, 0.769, 0.361, 1)
+theme_override_font_sizes/font_size = 16
+text = "Adventurer"
+
+[node name="LevelPortrait" type="TextureRect" parent="LevelResultColumns/LevelIdentity/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(160, 220)
+layout_mode = 2
+size_flags_vertical = 3
+texture_filter = 1
+expand_mode = 1
+stretch_mode = 5
+
+[node name="CharacterName" type="Label" parent="LevelResultColumns/LevelIdentity/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.898, 0.769, 0.361, 1)
+theme_override_font_sizes/font_size = 18
+text = "Adventurer"
+
+[node name="CharacterLevel" type="Label" parent="LevelResultColumns/LevelIdentity/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.561, 0.812, 0.82, 1)
+theme_override_font_sizes/font_size = 16
+text = "Level 1"
+
+[node name="PortraitUnavailable" type="Label" parent="LevelResultColumns/LevelIdentity/Content"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+text = "No exact portrait is available."
+
+[node name="LevelGains" type="PanelContainer" parent="LevelResultColumns"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.25
+theme_type_variation = &"ClassicTextWell"
+
+[node name="Content" type="VBoxContainer" parent="LevelResultColumns/LevelGains"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 5
+
+[node name="PaneHeading" type="Label" parent="LevelResultColumns/LevelGains/Content"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+text = "Committed Gains"
+
+[node name="LevelGainGrid" type="GridContainer" parent="LevelResultColumns/LevelGains/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
+columns = 2
+
+[node name="Stamina" type="PanelContainer" parent="LevelResultColumns/LevelGains/Content/LevelGainGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_type_variation = &"ClassicInset"
+[node name="Facts" type="VBoxContainer" parent="LevelResultColumns/LevelGains/Content/LevelGainGrid/Stamina"]
+layout_mode = 2
+alignment = 1
+[node name="Label" type="Label" parent="LevelResultColumns/LevelGains/Content/LevelGainGrid/Stamina/Facts"]
+layout_mode = 2
+text = "Stamina"
+[node name="StaminaValue" type="Label" parent="LevelResultColumns/LevelGains/Content/LevelGainGrid/Stamina/Facts"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "+0"
+theme_override_font_sizes/font_size = 24
+
+[node name="SpellPoints" type="PanelContainer" parent="LevelResultColumns/LevelGains/Content/LevelGainGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_type_variation = &"ClassicInset"
+[node name="Facts" type="VBoxContainer" parent="LevelResultColumns/LevelGains/Content/LevelGainGrid/SpellPoints"]
+layout_mode = 2
+alignment = 1
+[node name="Label" type="Label" parent="LevelResultColumns/LevelGains/Content/LevelGainGrid/SpellPoints/Facts"]
+layout_mode = 2
+text = "Spell Points"
+[node name="SpellPointsValue" type="Label" parent="LevelResultColumns/LevelGains/Content/LevelGainGrid/SpellPoints/Facts"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "+0"
+theme_override_font_sizes/font_size = 24
+
+[node name="ToHit" type="PanelContainer" parent="LevelResultColumns/LevelGains/Content/LevelGainGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_type_variation = &"ClassicInset"
+[node name="Facts" type="VBoxContainer" parent="LevelResultColumns/LevelGains/Content/LevelGainGrid/ToHit"]
+layout_mode = 2
+alignment = 1
+[node name="Label" type="Label" parent="LevelResultColumns/LevelGains/Content/LevelGainGrid/ToHit/Facts"]
+layout_mode = 2
+text = "To Hit"
+[node name="ToHitValue" type="Label" parent="LevelResultColumns/LevelGains/Content/LevelGainGrid/ToHit/Facts"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "+0"
+theme_override_font_sizes/font_size = 24
+
+[node name="MagicResistance" type="PanelContainer" parent="LevelResultColumns/LevelGains/Content/LevelGainGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_type_variation = &"ClassicInset"
+[node name="Facts" type="VBoxContainer" parent="LevelResultColumns/LevelGains/Content/LevelGainGrid/MagicResistance"]
+layout_mode = 2
+alignment = 1
+[node name="Label" type="Label" parent="LevelResultColumns/LevelGains/Content/LevelGainGrid/MagicResistance/Facts"]
+layout_mode = 2
+text = "Magic Resistance"
+[node name="MagicResistanceValue" type="Label" parent="LevelResultColumns/LevelGains/Content/LevelGainGrid/MagicResistance/Facts"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "+0"
+theme_override_font_sizes/font_size = 24
+
+[node name="LevelContinuation" type="PanelContainer" parent="LevelResultColumns"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.85
+theme_type_variation = &"ClassicTextWell"
+
+[node name="Content" type="VBoxContainer" parent="LevelResultColumns/LevelContinuation"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="PaneHeading" type="Label" parent="LevelResultColumns/LevelContinuation/Content"]
+layout_mode = 2
+text = "Adventure"
+
+[node name="CommittedNotice" type="Label" parent="LevelResultColumns/LevelContinuation/Content"]
+layout_mode = 2
+text = "These gains are already committed to the adventure."
+autowrap_mode = 2
+
+[node name="Spacer" type="Control" parent="LevelResultColumns/LevelContinuation/Content"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="LevelContinue" type="Button" parent="LevelResultColumns/LevelContinuation/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+text = "Continue"
+
+[node name="LevelSpellColumns" type="HBoxContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="LevelSpellLevelRail" type="PanelContainer" parent="LevelSpellColumns"]
+layout_mode = 2
+custom_minimum_size = Vector2(112, 0)
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.45
+theme_type_variation = &"ClassicTextWell"
+[node name="Rail" type="VBoxContainer" parent="LevelSpellColumns/LevelSpellLevelRail"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="LevelSpellCandidates" type="PanelContainer" parent="LevelSpellColumns"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.45
+theme_type_variation = &"ClassicTextWell"
+[node name="Content" type="VBoxContainer" parent="LevelSpellColumns/LevelSpellCandidates"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+[node name="LevelSpellListHeading" type="Label" parent="LevelSpellColumns/LevelSpellCandidates/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+text = "Level 1 — Available Spells"
+[node name="LevelSpellScroll" type="ScrollContainer" parent="LevelSpellColumns/LevelSpellCandidates/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+[node name="LevelSpellList" type="VBoxContainer" parent="LevelSpellColumns/LevelSpellCandidates/Content/LevelSpellScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 3
+
+[node name="LevelSpellAllowance" type="PanelContainer" parent="LevelSpellColumns"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.9
+theme_type_variation = &"ClassicTextWell"
+[node name="Content" type="VBoxContainer" parent="LevelSpellColumns/LevelSpellAllowance"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 5
+[node name="PaneHeading" type="Label" parent="LevelSpellColumns/LevelSpellAllowance/Content"]
+layout_mode = 2
+text = "Spell Record"
+[node name="SelectionSummary" type="Label" parent="LevelSpellColumns/LevelSpellAllowance/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+[node name="LevelSpellBudgetNotice" type="Label" parent="LevelSpellColumns/LevelSpellAllowance/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+[node name="LevelSelectedSpellRecord" type="PanelContainer" parent="LevelSpellColumns/LevelSpellAllowance/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_type_variation = &"ClassicInset"
+[node name="Record" type="VBoxContainer" parent="LevelSpellColumns/LevelSpellAllowance/Content/LevelSelectedSpellRecord"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+[node name="Title" type="Label" parent="LevelSpellColumns/LevelSpellAllowance/Content/LevelSelectedSpellRecord/Record"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+[node name="Cost" type="Label" parent="LevelSpellColumns/LevelSpellAllowance/Content/LevelSelectedSpellRecord/Record"]
+unique_name_in_owner = true
+layout_mode = 2
+[node name="State" type="Label" parent="LevelSpellColumns/LevelSpellAllowance/Content/LevelSelectedSpellRecord/Record"]
+unique_name_in_owner = true
+layout_mode = 2
+[node name="LevelSpellDescription" type="Label" parent="LevelSpellColumns/LevelSpellAllowance/Content/LevelSelectedSpellRecord/Record"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+autowrap_mode = 2
+[node name="LevelSpellConfirm" type="Button" parent="LevelSpellColumns/LevelSpellAllowance/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicTheldrowButton"
+text = "Confirm spell selection"

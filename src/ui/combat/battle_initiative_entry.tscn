@@ -1,0 +1,9 @@
+[gd_scene format=3]
+
+[node name="BattleInitiativeEntry" type="Button"]
+custom_minimum_size = Vector2(0, 28)
+size_flags_horizontal = 3
+texture_filter = 1
+theme_type_variation = &"BattleCommandButton"
+theme_override_constants/icon_max_width = 22
+expand_icon = true

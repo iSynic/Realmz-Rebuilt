@@ -1,7 +1,7 @@
 extends SceneTree
 
-const MapWindowViewScript := preload("res://src/core/view/map_window_view.gd")
-const PresenterScript := preload("res://src/presentation/dungeon_map_3d_presenter.gd")
+const MapWindowViewScript := preload("res://src/game/world/map_window_view.gd")
+const PresenterScript := preload("res://src/ui/exploration/dungeon/dungeon_map_3d_presenter.gd")
 
 
 func _initialize() -> void:

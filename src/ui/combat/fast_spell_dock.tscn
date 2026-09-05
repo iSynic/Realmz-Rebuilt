@@ -1,0 +1,15 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/ui/combat/fast_spell_dock.gd" id="1_dock"]
+
+[node name="FastSpellDock" type="PanelContainer"]
+visible = false
+mouse_filter = 0
+theme_type_variation = &"ClassicInset"
+z_index = 90
+script = ExtResource("1_dock")
+
+[node name="FastSpellDockSlots" type="HBoxContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 4

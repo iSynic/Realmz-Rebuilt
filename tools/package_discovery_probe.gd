@@ -1,6 +1,6 @@
 extends SceneTree
 
-const PACKAGE_REPOSITORY_SCRIPT := preload("res://src/infrastructure/packages/package_repository.gd")
+const PACKAGE_REPOSITORY_SCRIPT := preload("res://src/storage/packages/package_repository.gd")
 
 
 func _initialize() -> void:

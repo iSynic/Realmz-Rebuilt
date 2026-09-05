@@ -1,0 +1,147 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://src/ui/setup/classic_intro_animation.gd" id="1_intro"]
+[ext_resource type="Texture2D" path="res://src/ui/shared/assets/ui/classic-intro-frame.png" id="2_frame"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_transparent"]
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.294, 0.318, 0.341, 1)
+content_margin_left = 24.0
+content_margin_top = 20.0
+content_margin_right = 24.0
+content_margin_bottom = 20.0
+
+[node name="SplashScreen" type="PanelContainer"]
+mouse_filter = 0
+theme_override_styles/panel = SubResource("StyleBox_transparent")
+
+[node name="SplashComposition" type="BoxContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 18
+
+[node name="SplashIdentityPanel" type="PanelContainer" parent="SplashComposition"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.65
+theme_type_variation = &"ClassicInset"
+
+[node name="IdentityCenter" type="CenterContainer" parent="SplashComposition/SplashIdentityPanel"]
+layout_mode = 2
+
+[node name="Identity" type="VBoxContainer" parent="SplashComposition/SplashIdentityPanel/IdentityCenter"]
+custom_minimum_size = Vector2(360, 0)
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="SplashTitle" type="Label" parent="SplashComposition/SplashIdentityPanel/IdentityCenter/Identity"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+theme_override_font_sizes/font_size = 42
+text = "Realmz Rebuilt"
+horizontal_alignment = 1
+
+[node name="RealmzIntroOrnament" type="NinePatchRect" parent="SplashComposition/SplashIdentityPanel/IdentityCenter/Identity"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(630, 410)
+layout_mode = 2
+size_flags_horizontal = 4
+mouse_filter = 2
+texture_filter = 1
+texture = ExtResource("2_frame")
+patch_margin_left = 90
+patch_margin_top = 90
+patch_margin_right = 90
+patch_margin_bottom = 90
+
+[node name="RealmzIntroAnimation" type="VideoStreamPlayer" parent="SplashComposition/SplashIdentityPanel/IdentityCenter/Identity/RealmzIntroOrnament"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 55.0
+offset_top = 55.0
+offset_right = -55.0
+offset_bottom = -55.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_intro")
+
+[node name="RealmzIntroSoundtrack" type="AudioStreamPlayer" parent="SplashComposition/SplashIdentityPanel/IdentityCenter/Identity/RealmzIntroOrnament/RealmzIntroAnimation"]
+unique_name_in_owner = true
+volume_db = -80.0
+
+[node name="SplashSubtitle" type="Label" parent="SplashComposition/SplashIdentityPanel/IdentityCenter/Identity"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+theme_override_colors/font_color = Color(0.878, 0.886, 0.898, 1)
+theme_override_font_sizes/font_size = 20
+text = "Classic Adventures Reconstructed"
+horizontal_alignment = 1
+
+[node name="SplashCommandPanel" type="PanelContainer" parent="SplashComposition"]
+custom_minimum_size = Vector2(320, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.75
+theme_type_variation = &"ClassicInset"
+
+[node name="CommandCenter" type="CenterContainer" parent="SplashComposition/SplashCommandPanel"]
+layout_mode = 2
+
+[node name="Commands" type="VBoxContainer" parent="SplashComposition/SplashCommandPanel/CommandCenter"]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="BeginHeading" type="Label" parent="SplashComposition/SplashCommandPanel/CommandCenter/Commands"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+theme_override_font_sizes/font_size = 24
+text = "Begin"
+
+[node name="BeginDescription" type="Label" parent="SplashComposition/SplashCommandPanel/CommandCenter/Commands"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+theme_override_font_sizes/font_size = 15
+text = "Choose an installed adventure or manage reusable adventurers."
+autowrap_mode = 2
+
+[node name="ChooseScenario" type="Button" parent="SplashComposition/SplashCommandPanel/CommandCenter/Commands"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+text = "Choose a scenario"
+
+[node name="LoadAdventure" type="Button" parent="SplashComposition/SplashCommandPanel/CommandCenter/Commands"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+text = "Load saved adventure"
+
+[node name="CharacterFiles" type="Button" parent="SplashComposition/SplashCommandPanel/CommandCenter/Commands"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+tooltip_text = "Review reusable Character Files. Stock Realmz characters can be created without selecting a scenario; scenario-specific races and classes require that scenario."
+text = "Character files"
+
+[node name="Quit" type="Button" parent="SplashComposition/SplashCommandPanel/CommandCenter/Commands"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+text = "Quit"

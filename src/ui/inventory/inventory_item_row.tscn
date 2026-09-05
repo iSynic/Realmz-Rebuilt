@@ -1,0 +1,42 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://src/ui/shared/style/classic_content_icon.tscn" id="1_icon"]
+
+[node name="InventoryItemRow" type="PanelContainer"]
+theme_type_variation = &"ClassicItemLedgerRow"
+
+[node name="Row" type="HBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="ContentIcon" parent="Row" instance=ExtResource("1_icon")]
+layout_mode = 2
+
+[node name="ItemText" type="VBoxContainer" parent="Row"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = -2
+
+[node name="SelectItem" type="Button" parent="Row/ItemText"]
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicItemLedgerButton"
+toggle_mode = true
+text = "Item"
+alignment = 0
+
+[node name="InventoryItemLineFact" type="Label" parent="Row/ItemText"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.141176, 0.341176, 0.741176, 1)
+theme_override_font_sizes/font_size = 11
+text = "Damage 1–4"
+
+[node name="State" type="Label" parent="Row"]
+custom_minimum_size = Vector2(112, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.313726, 0.341176, 0.356863, 1)
+theme_override_font_sizes/font_size = 12
+horizontal_alignment = 2
+vertical_alignment = 1

@@ -1,0 +1,17 @@
+[gd_scene format=3]
+
+[node name="PartyOrderRow" type="HBoxContainer"]
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="CharacterSummary" type="Label" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="MoveUp" type="Button" parent="."]
+layout_mode = 2
+text = "Move Up"
+
+[node name="MoveDown" type="Button" parent="."]
+layout_mode = 2
+text = "Move Down"

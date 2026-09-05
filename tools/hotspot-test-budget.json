@@ -7,11 +7,11 @@
     "testLines": 11807
   },
   "limits": {
-    "productionFileLines": 1000,
-    "functionLines": 150,
+    "productionFileLines": 800,
+    "functionLines": 100,
     "testSuiteLines": 1200,
-    "currentTestLines": 8556,
-    "finalTestLines": 8556,
+    "currentTestLines": 8951,
+    "finalTestLines": 8951,
     "testToProductionPercent": 20.0
   },
   "productionGrandfather": [],

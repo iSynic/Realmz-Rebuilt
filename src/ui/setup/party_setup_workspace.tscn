@@ -1,0 +1,276 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://src/ui/setup/party_setup_workspace.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/classic_character_sheet.tscn" id="2_sheet"]
+[ext_resource type="PackedScene" path="res://src/ui/setup/character_creation_appearance_step.tscn" id="3_appearance"]
+
+[sub_resource type="StyleBoxFlat" id="SetupSurface"]
+content_margin_left = 10.0
+content_margin_top = 10.0
+content_margin_right = 10.0
+content_margin_bottom = 10.0
+bg_color = Color(0, 0, 0, 0)
+
+[node name="PartySetup" type="PanelContainer"]
+offset_left = -440.0
+offset_top = -238.0
+offset_right = 440.0
+offset_bottom = 238.0
+mouse_filter = 0
+theme_override_styles/panel = SubResource("SetupSurface")
+script = ExtResource("1_script")
+character_sheet_scene = ExtResource("2_sheet")
+identity_step_scene_path = "res://src/ui/setup/character_creation_identity_step.tscn"
+race_caste_step_scene_path = "res://src/ui/setup/character_creation_race_caste_step.tscn"
+appearance_step_scene = ExtResource("3_appearance")
+review_step_scene_path = "res://src/ui/setup/character_creation_review_step.tscn"
+spells_step_scene_path = "res://src/ui/setup/character_creation_spells_step.tscn"
+
+[node name="ScenarioPartyWorkspace" type="HBoxContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+
+[node name="CharacterFilesPane" type="PanelContainer" parent="ScenarioPartyWorkspace"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(286, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.15
+theme_type_variation = &"ClassicInset"
+
+[node name="CharacterFilesPaneContent" type="VBoxContainer" parent="ScenarioPartyWorkspace/CharacterFilesPane"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="CreatorSteps" type="HBoxContainer" parent="ScenarioPartyWorkspace/CharacterFilesPane/CharacterFilesPaneContent"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="IdentityStep" type="Label" parent="ScenarioPartyWorkspace/CharacterFilesPane/CharacterFilesPaneContent/CreatorSteps"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "1 Identity"
+horizontal_alignment = 1
+
+[node name="RaceCasteStep" type="Label" parent="ScenarioPartyWorkspace/CharacterFilesPane/CharacterFilesPaneContent/CreatorSteps"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "2 Race & Caste"
+horizontal_alignment = 1
+
+[node name="AppearanceStep" type="Label" parent="ScenarioPartyWorkspace/CharacterFilesPane/CharacterFilesPaneContent/CreatorSteps"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "3 Appearance"
+horizontal_alignment = 1
+
+[node name="ReviewStep" type="Label" parent="ScenarioPartyWorkspace/CharacterFilesPane/CharacterFilesPaneContent/CreatorSteps"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "4 Review"
+horizontal_alignment = 1
+
+[node name="SpellsStep" type="Label" parent="ScenarioPartyWorkspace/CharacterFilesPane/CharacterFilesPaneContent/CreatorSteps"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "5 Spells"
+horizontal_alignment = 1
+
+[node name="CreatorScroll" type="ScrollContainer" parent="ScenarioPartyWorkspace/CharacterFilesPane/CharacterFilesPaneContent"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 220)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+follow_focus = true
+
+[node name="Creator" type="BoxContainer" parent="ScenarioPartyWorkspace/CharacterFilesPane/CharacterFilesPaneContent/CreatorScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="CreatorPage" type="VBoxContainer" parent="ScenarioPartyWorkspace/CharacterFilesPane/CharacterFilesPaneContent/CreatorScroll/Creator"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="EditorHint" type="Label" parent="ScenarioPartyWorkspace/CharacterFilesPane/CharacterFilesPaneContent/CreatorScroll/Creator/CreatorPage"]
+layout_mode = 2
+text = "Character Files or the active creation step"
+horizontal_alignment = 1
+
+[node name="SetupMessage" type="Label" parent="ScenarioPartyWorkspace/CharacterFilesPane/CharacterFilesPaneContent"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+text = "Enter a name to begin creating a character."
+autowrap_mode = 2
+
+[node name="CreatorActionBar" type="HBoxContainer" parent="ScenarioPartyWorkspace/CharacterFilesPane/CharacterFilesPaneContent"]
+unique_name_in_owner = true
+layout_mode = 2
+alignment = 1
+
+[node name="CreatorCancel" type="Button" parent="ScenarioPartyWorkspace/CharacterFilesPane/CharacterFilesPaneContent/CreatorActionBar"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"ClassicTheldrowButton"
+text = "Cancel character"
+
+[node name="Spacer" type="Control" parent="ScenarioPartyWorkspace/CharacterFilesPane/CharacterFilesPaneContent/CreatorActionBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="CreatorBack" type="Button" parent="ScenarioPartyWorkspace/CharacterFilesPane/CharacterFilesPaneContent/CreatorActionBar"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"ClassicTheldrowButton"
+text = "Back"
+
+[node name="RerollCharacter" type="Button" parent="ScenarioPartyWorkspace/CharacterFilesPane/CharacterFilesPaneContent/CreatorActionBar"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"ClassicTheldrowButton"
+text = "Reroll"
+
+[node name="CreatorNext" type="Button" parent="ScenarioPartyWorkspace/CharacterFilesPane/CharacterFilesPaneContent/CreatorActionBar"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"ClassicTheldrowButton"
+text = "Continue"
+
+[node name="CharacterFooter" type="HBoxContainer" parent="ScenarioPartyWorkspace/CharacterFilesPane/CharacterFilesPaneContent"]
+layout_mode = 2
+
+[node name="CreateCharacter" type="Button" parent="ScenarioPartyWorkspace/CharacterFilesPane/CharacterFilesPaneContent/CharacterFooter"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Create character"
+
+[node name="CurrentPartyPane" type="PanelContainer" parent="ScenarioPartyWorkspace"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(286, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.15
+theme_type_variation = &"ClassicInset"
+
+[node name="PartyColumn" type="VBoxContainer" parent="ScenarioPartyWorkspace/CurrentPartyPane"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="PartyHeading" type="CenterContainer" parent="ScenarioPartyWorkspace/CurrentPartyPane/PartyColumn"]
+custom_minimum_size = Vector2(0, 28)
+layout_mode = 2
+
+[node name="PartyHeadingContent" type="HBoxContainer" parent="ScenarioPartyWorkspace/CurrentPartyPane/PartyColumn/PartyHeading"]
+layout_mode = 2
+
+[node name="Heading" type="Label" parent="ScenarioPartyWorkspace/CurrentPartyPane/PartyColumn/PartyHeading/PartyHeadingContent"]
+layout_mode = 2
+text = "Current Party"
+theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+theme_override_font_sizes/font_size = 20
+
+[node name="PartyCount" type="Label" parent="ScenarioPartyWorkspace/CurrentPartyPane/PartyColumn/PartyHeading/PartyHeadingContent"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "• 0 / 6"
+
+[node name="PartySlotScroll" type="ScrollContainer" parent="ScenarioPartyWorkspace/CurrentPartyPane/PartyColumn"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 0
+follow_focus = true
+
+[node name="PartySlots" type="VBoxContainer" parent="ScenarioPartyWorkspace/CurrentPartyPane/PartyColumn/PartySlotScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 2
+
+[node name="PartySetupOptions" type="VBoxContainer" parent="ScenarioPartyWorkspace/CurrentPartyPane/PartyColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="PartyLevelGuidance" type="Label" parent="ScenarioPartyWorkspace/CurrentPartyPane/PartyColumn/PartySetupOptions"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 2
+
+[node name="ExperienceRatio" type="Label" parent="ScenarioPartyWorkspace/CurrentPartyPane/PartyColumn/PartySetupOptions"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Experience gained at —"
+
+[node name="Selectors" type="HBoxContainer" parent="ScenarioPartyWorkspace/CurrentPartyPane/PartyColumn/PartySetupOptions"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="MonsterColumn" type="VBoxContainer" parent="ScenarioPartyWorkspace/CurrentPartyPane/PartyColumn/PartySetupOptions/Selectors"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Label" type="Label" parent="ScenarioPartyWorkspace/CurrentPartyPane/PartyColumn/PartySetupOptions/Selectors/MonsterColumn"]
+layout_mode = 2
+text = "Monster Set"
+
+[node name="MonsterSetOption" type="OptionButton" parent="ScenarioPartyWorkspace/CurrentPartyPane/PartyColumn/PartySetupOptions/Selectors/MonsterColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicTheldrowOptionButton"
+
+[node name="DifficultyColumn" type="VBoxContainer" parent="ScenarioPartyWorkspace/CurrentPartyPane/PartyColumn/PartySetupOptions/Selectors"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Label" type="Label" parent="ScenarioPartyWorkspace/CurrentPartyPane/PartyColumn/PartySetupOptions/Selectors/DifficultyColumn"]
+layout_mode = 2
+text = "Difficulty"
+
+[node name="DifficultyOption" type="OptionButton" parent="ScenarioPartyWorkspace/CurrentPartyPane/PartyColumn/PartySetupOptions/Selectors/DifficultyColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicTheldrowOptionButton"
+
+[node name="PartyFooter" type="HBoxContainer" parent="ScenarioPartyWorkspace/CurrentPartyPane/PartyColumn"]
+layout_mode = 2
+
+[node name="LoadSavedAdventure" type="Button" parent="ScenarioPartyWorkspace/CurrentPartyPane/PartyColumn/PartyFooter"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Load saved adventure"
+
+[node name="BeginAdventure" type="Button" parent="ScenarioPartyWorkspace/CurrentPartyPane/PartyColumn/PartyFooter"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Begin adventure"
+disabled = true

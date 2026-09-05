@@ -9,7 +9,7 @@ $ErrorActionPreference = "Stop"
 Add-Type -AssemblyName System.Drawing
 $toolRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = Split-Path -Parent (Split-Path -Parent $toolRoot)
-$outputRoot = Join-Path $repoRoot "src/presentation/assets/ui"
+$outputRoot = Join-Path $repoRoot "src/ui/shared/assets/ui"
 $committedSurfacePath = Join-Path $outputRoot "classic-charcoal-slate.png"
 $committedManifestPath = Join-Path $outputRoot "spritecook-assets.json"
 $stagingRoot = Join-Path ([IO.Path]::GetTempPath()) ("realmz2-ui-surfaces-" + [Guid]::NewGuid().ToString("N"))
@@ -197,7 +197,7 @@ try {
         $bitmap = [Drawing.Bitmap]::new([string]$path)
         try {
             $records += [ordered]@{
-                path = "res://src/presentation/assets/ui/$name"
+                path = "res://src/ui/shared/assets/ui/$name"
                 width = $bitmap.Width
                 height = $bitmap.Height
                 sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $path).Hash.ToLowerInvariant()

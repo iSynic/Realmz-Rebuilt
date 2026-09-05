@@ -1,0 +1,97 @@
+[gd_scene load_steps=11 format=3]
+
+[ext_resource type="Script" path="res://src/ui/shared/interactions/interaction_presenter.gd" id="1_presenter"]
+[ext_resource type="Texture2D" path="res://src/ui/shared/assets/ui/classic-charcoal-slate-tile.png" id="2_stone"]
+[ext_resource type="PackedScene" path="res://src/ui/shared/interactions/classic_flash_overlay.tscn" id="3_flash"]
+[ext_resource type="PackedScene" path="res://src/ui/shared/interactions/locked_modal_shield.tscn" id="4_shield"]
+[ext_resource type="PackedScene" path="res://src/ui/services/treasure_completion_modal_layer.tscn" id="5_treasure_modal"]
+[ext_resource type="PackedScene" path="res://src/ui/shared/interactions/interaction_side_workspace.tscn" id="6_side"]
+[ext_resource type="PackedScene" path="res://src/ui/shared/interactions/encounter_command_dock_host.tscn" id="7_dock"]
+[ext_resource type="PackedScene" path="res://src/ui/shared/interactions/interaction_application_workspace.tscn" id="8_application"]
+[ext_resource type="PackedScene" path="res://src/ui/shared/interactions/interaction_hint.tscn" id="9_hint"]
+[ext_resource type="PackedScene" path="res://src/ui/combat/fast_spell_dock.tscn" id="10_fast_spell"]
+
+[node name="InteractionPanel" type="PanelContainer"]
+unique_name_in_owner = true
+visible = false
+z_index = 80
+mouse_filter = 0
+theme_type_variation = &"ClassicInset"
+script = ExtResource("1_presenter")
+classic_flash_overlay_scene = ExtResource("3_flash")
+modal_shield_scene = ExtResource("4_shield")
+treasure_completion_modal_scene = ExtResource("5_treasure_modal")
+side_workspace_scene = ExtResource("6_side")
+encounter_dock_scene = ExtResource("7_dock")
+application_workspace_scene = ExtResource("8_application")
+hint_scene = ExtResource("9_hint")
+fast_spell_dock_scene = ExtResource("10_fast_spell")
+
+[node name="StageOpaqueBacking" type="ColorRect" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.105882, 0.109804, 0.105882, 1)
+
+[node name="StageBacking" type="TextureRect" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture_repeat = 2
+texture = ExtResource("2_stone")
+expand_mode = 1
+stretch_mode = 1
+
+[node name="InteractionScroll" type="ScrollContainer" parent="."]
+layout_mode = 2
+mouse_filter = 1
+horizontal_scroll_mode = 0
+follow_focus = true
+
+[node name="InteractionContent" type="BoxContainer" parent="InteractionScroll"]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+mouse_filter = 1
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="PromptColumn" type="VBoxContainer" parent="InteractionScroll/InteractionContent"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 1
+theme_override_constants/separation = 4
+
+[node name="InteractionHeading" type="Label" parent="InteractionScroll/InteractionContent/PromptColumn"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+mouse_filter = 1
+theme_type_variation = &"ClassicHeading"
+
+[node name="InteractionPrompt" type="Label" parent="InteractionScroll/InteractionContent/PromptColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 1
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.95, 0.93, 0.83, 1)
+theme_override_font_sizes/font_size = 18
+text = "Choose an option"
+autowrap_mode = 2
+
+[node name="InteractionOptions" type="VBoxContainer" parent="InteractionScroll/InteractionContent"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 1
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8

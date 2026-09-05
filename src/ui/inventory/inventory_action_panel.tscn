@@ -1,0 +1,119 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/ui/inventory/inventory_action_panel.gd" id="1_panel"]
+[ext_resource type="Script" path="res://src/ui/shared/style/classic_bitmap_button.gd" id="2_button"]
+
+[node name="InventoryActionPanel" type="VBoxContainer"]
+theme_override_constants/separation = 4
+script = ExtResource("1_panel")
+
+[node name="SelectionHint" type="Label" parent="."]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.603922, 0.627451, 0.658824, 1)
+text = "Select an item to see its commands."
+autowrap_mode = 2
+
+[node name="InventoryActionDock" type="GridContainer" parent="."]
+visible = false
+layout_mode = 2
+theme_override_constants/h_separation = 5
+theme_override_constants/v_separation = 5
+columns = 4
+
+[node name="EquippedAction" type="TextureButton" parent="InventoryActionDock"]
+layout_mode = 2
+script = ExtResource("2_button")
+
+[node name="UseAction" type="TextureButton" parent="InventoryActionDock"]
+layout_mode = 2
+script = ExtResource("2_button")
+
+[node name="IdentifyAction" type="TextureButton" parent="InventoryActionDock"]
+layout_mode = 2
+script = ExtResource("2_button")
+
+[node name="TradeAction" type="TextureButton" parent="InventoryActionDock"]
+layout_mode = 2
+script = ExtResource("2_button")
+
+[node name="JoinAction" type="TextureButton" parent="InventoryActionDock"]
+layout_mode = 2
+script = ExtResource("2_button")
+
+[node name="SplitAction" type="TextureButton" parent="InventoryActionDock"]
+layout_mode = 2
+script = ExtResource("2_button")
+
+[node name="DropAction" type="TextureButton" parent="InventoryActionDock"]
+layout_mode = 2
+script = ExtResource("2_button")
+
+[node name="EncounterActionDock" type="GridContainer" parent="."]
+visible = false
+layout_mode = 2
+columns = 1
+
+[node name="EncounterItemChoose" type="TextureButton" parent="EncounterActionDock"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+script = ExtResource("2_button")
+
+[node name="InventoryOperationStage" type="PanelContainer" parent="."]
+visible = false
+layout_mode = 2
+theme_type_variation = &"ClassicInset"
+
+[node name="Content" type="VBoxContainer" parent="InventoryOperationStage"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="Header" type="HBoxContainer" parent="InventoryOperationStage/Content"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="InventoryOperationStage/Content/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.835294, 0.705882, 0.364706, 1)
+theme_override_font_sizes/font_size = 17
+text = "Action · Item"
+
+[node name="Detail" type="Label" parent="InventoryOperationStage/Content/Header"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.603922, 0.627451, 0.658824, 1)
+theme_override_font_sizes/font_size = 12
+text = "Character · Carried"
+horizontal_alignment = 2
+
+[node name="Facts" type="Label" parent="InventoryOperationStage/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.603922, 0.627451, 0.658824, 1)
+theme_override_font_sizes/font_size = 13
+text = "Weight 0 • 0 charges"
+
+[node name="Description" type="Label" parent="InventoryOperationStage/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.878431, 0.886275, 0.898039, 1)
+theme_override_font_sizes/font_size = 13
+text = "Review the operation before committing it."
+autowrap_mode = 2
+
+[node name="InventoryOperationActions" type="HBoxContainer" parent="InventoryOperationStage/Content"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Confirm" type="Button" parent="InventoryOperationStage/Content/InventoryOperationActions"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Confirm"
+
+[node name="Cancel" type="Button" parent="InventoryOperationStage/Content/InventoryOperationActions"]
+layout_mode = 2
+text = "Cancel"
+
+[node name="TradeStatus" type="Label" parent="."]
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.862745, 0.662745, 0.662745, 1)
+theme_override_font_sizes/font_size = 13
+text = "Trade status"
+autowrap_mode = 2

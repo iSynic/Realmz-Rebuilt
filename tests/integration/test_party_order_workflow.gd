@@ -18,29 +18,29 @@ func run() -> void:
 		CharacterCreationSpec.new("Borin", race.id, caste_id, 1),
 		CharacterCreationSpec.new("Cerys", race.id, caste_id, 1),
 	]
-	assert_equal(session.submit_intent(PlayerIntent.create_party(specs)).state, SessionStep.State.COMPLETED, "the three-member fixture begins the adventure")
+	assert_equal(session.submit_intent(PartyIntents.create(specs)).state, SessionStep.State.COMPLETED, "the three-member fixture begins the adventure")
 	var initial_ids: Array[String] = []
 	var initial_state_by_id: Dictionary = {}
 	for character: CharacterState in session.snapshot().game_state.party.characters():
 		initial_ids.append(character.id)
-		initial_state_by_id[character.id] = character.to_data()
+		initial_state_by_id[character.id] = CharacterStateCodec.encode(character)
 	assert_true(session.view().availability(&"reorder_party").enabled, "a noncombat party with at least two members may open Party Order")
 	var requested_order: Array[String] = [initial_ids[2], initial_ids[0], initial_ids[1]]
 	var rng_before := session.snapshot().rng_state.to_data()
-	var reorder := session.submit_intent(PlayerIntent.reorder_party(requested_order))
+	var reorder := session.submit_intent(PartyIntents.reorder(requested_order))
 	assert_equal(reorder.state, SessionStep.State.COMPLETED, "a complete stable-ID permutation commits synchronously")
 	assert_equal(reorder.events.size(), 1, "Party Order emits one committed domain event")
 	assert_equal([reorder.events[0].kind, reorder.events[0].payload["previousCharacterIds"], reorder.events[0].payload["characterIds"]], [&"party_reordered", initial_ids, requested_order], "the event records both complete slot orders")
 	assert_equal(session.view().party_members.map(func(character: CharacterView) -> String: return character.id), requested_order, "the detached view follows committed party order")
 	for character: CharacterState in session.snapshot().game_state.party.characters():
-		assert_equal(character.to_data(), initial_state_by_id[character.id], "reordering preserves every field owned by %s" % character.id)
+		assert_equal(CharacterStateCodec.encode(character), initial_state_by_id[character.id], "reordering preserves every field owned by %s" % character.id)
 	assert_equal(session.snapshot().rng_state.to_data(), rng_before, "Party Order consumes no gameplay randomness")
 
 	var committed_state := save_data(session.snapshot())
-	var duplicate := session.submit_intent(PlayerIntent.reorder_party([requested_order[0], requested_order[0], requested_order[2]]))
+	var duplicate := session.submit_intent(PartyIntents.reorder([requested_order[0], requested_order[0], requested_order[2]]))
 	assert_equal([duplicate.state, duplicate.error_code], [SessionStep.State.FAILED, &"invalid_party_order"], "a duplicate character cannot fabricate a party slot")
 	assert_equal(save_data(session.snapshot()), committed_state, "duplicate rejection is transactional")
-	var unknown := session.submit_intent(PlayerIntent.reorder_party([requested_order[0], requested_order[1], "character.unknown"]))
+	var unknown := session.submit_intent(PartyIntents.reorder([requested_order[0], requested_order[1], "character.unknown"]))
 	assert_equal([unknown.state, unknown.error_code], [SessionStep.State.FAILED, &"invalid_party_order"], "an unknown identity cannot replace a current member")
 	assert_equal(save_data(session.snapshot()), committed_state, "unknown-member rejection is transactional")
 
@@ -52,8 +52,8 @@ func run() -> void:
 
 	var solo := GameSession.new()
 	solo.start(content, 32)
-	assert_equal(solo.submit_intent(PlayerIntent.create_party([CharacterCreationSpec.new("Solo", race.id, caste_id, 1)])).state, SessionStep.State.COMPLETED, "the one-member control party starts")
+	assert_equal(solo.submit_intent(PartyIntents.create([CharacterCreationSpec.new("Solo", race.id, caste_id, 1)])).state, SessionStep.State.COMPLETED, "the one-member control party starts")
 	assert_false(solo.view().availability(&"reorder_party").enabled, "a one-member party exposes an exact unavailable state")
 	var solo_id := solo.view().party_members[0].id
-	var solo_order := solo.submit_intent(PlayerIntent.reorder_party([solo_id]))
+	var solo_order := solo.submit_intent(PartyIntents.reorder([solo_id]))
 	assert_equal([solo_order.state, solo_order.error_code], [SessionStep.State.FAILED, &"party_order_unavailable"], "one-member direct submission cannot bypass availability")

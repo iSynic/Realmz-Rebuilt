@@ -118,7 +118,9 @@ func _test_character_creation_and_leveling() -> void:
 	caste_conditions[5] = 1
 	caste_conditions[6] = 2
 	var defense_race := RaceDefinition.new("race.defense", 2, "Defense Race", _ints_size(8, 0), _ints([100, -200, 0, 0, 0, 0, 0, 100]), _ints_size(6, 0), _attribute_limits(), race_conditions, [Vector2i(18, 18)], _age_changes(), 100)
-	var defense_caste := CasteDefinition.new("caste.defense", 2, "Defense Caste", _ints([100, 0, 0, 0, 0, 0, 0, 100]), _ints_size(6, 0), _attribute_limits(), caste_conditions, Vector2i(8, 8), Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO)
+	var defense_attributes := CasteDefinition.AttributeDefinition.new(_ints([100, 0, 0, 0, 0, 0, 0, 100]), _ints_size(6, 0), _attribute_limits(), caste_conditions)
+	var defense_progression := CasteDefinition.ProgressionDefinition.new(Vector2i(8, 8), Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO)
+	var defense_caste := CasteDefinition.new("caste.defense", 2, "Defense Caste", defense_attributes, defense_progression)
 	var defended := rules.characters.create_character("character.defense", "Defender", defense_race, defense_caste, 1, ScriptedRng.new([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))
 	assert_equal([defended.save_value(0), defended.save_value(1), defended.save_value(7)], [120, -99, 120], "creation saves combine race and caste values within Castle's bounds")
 	assert_equal(defended.conditions.value(4), 2, "racial starting conditions retain their authored duration")
@@ -180,8 +182,8 @@ func _test_live_aging_and_maximum_age() -> void:
 	character.damage_bonus = 2
 	character.magic_resistance = 20
 	character.maximum_movement = 12
-	character.set_save_value_raw(0, 100)
-	character.set_save_value_raw(1, -50)
+	character.set_save_value(0, 100, false)
+	character.set_save_value(1, -50, false)
 	var advanced := rules.characters.advance_age_days(character, race, caste, 1)
 	assert_equal(advanced.transition, 1, "crossing an authored birthday boundary advances one Classic age band")
 	assert_equal(character.age_group, 2, "the independent current age group advances by one")
@@ -190,7 +192,7 @@ func _test_live_aging_and_maximum_age() -> void:
 	assert_equal([character.magic_resistance, character.maximum_movement], [27, 2], "live aging applies magic resistance and floors maximum movement at two")
 	assert_equal([character.save_value(0), character.save_value(1), character.save_value(7)], [200, -250, 50], "live aging changes seven saves without creation-time clamping")
 
-	var skipped := CharacterState.from_data(character.to_data())
+	var skipped := CharacterStateCodec.copy(character)
 	assert_not_null(skipped, "the current age group survives the central character serialization boundary")
 	skipped.age_days = 45 * 365
 	skipped.age_group = 1
@@ -297,7 +299,7 @@ func _test_monster_ordinary_attacks() -> void:
 	weapon.special_1 = 121
 	var weapon_target := CharacterState.new("character.ordinary.weapon-target", "Weapon Target", 30, 30)
 	weapon_target.armor = 7
-	weapon_target.set_save_value_raw(1, 100)
+	weapon_target.set_save_value(1, 100, false)
 	weapon_target.conditions.set_value(ConditionRules.FIRE_PROTECTION, 1)
 	var weapon_result := rules.combat.resolve_monster_attack(MonsterState.new("monster.ordinary.weapon", definition.id, definition.name, 20, 20, 2), definition, 0, weapon_target, null, null, ScriptedRng.new([0, 0, 32_767, 32_767, 0]), 0, MonsterAttackContext.new(weapon, 140, false, 5, true))
 	assert_equal(weapon_result.chance, 89, "monster weapons contribute magic plus and double-to-hit metadata to accuracy")
@@ -336,7 +338,7 @@ func _test_monster_aging_attack() -> void:
 	defender.caste_id = caste.id
 	defender.age_days = 19 * 365 + 364
 	defender.age_group = 1
-	defender.set_save_value_raw(7, 50)
+	defender.set_save_value(7, 50, false)
 	var rng := ScriptedRng.new([0, 0, 0, 0, 32_767])
 	var resolution := rules.combat.resolve_monster_attack(attacker, definition, 0, defender, race, caste, rng)
 	assert_true(resolution.hit, "Castle special 17 is evaluated only after the ordinary monster attack hits")
@@ -354,7 +356,7 @@ func _test_monster_aging_attack() -> void:
 	saved_target.caste_id = caste.id
 	saved_target.age_days = 19 * 365 + 364
 	saved_target.age_group = 1
-	saved_target.set_save_value_raw(7, 50)
+	saved_target.set_save_value(7, 50, false)
 	var saved := rules.combat.resolve_monster_attack(attacker, definition, 0, saved_target, race, caste, ScriptedRng.new([0, 0, 0, 0, 0]))
 	assert_true(saved.special_saved, "an inclusive save-slot-seven success negates Classic monster aging")
 	assert_equal([saved_target.age_days, saved_target.age_group], [19 * 365 + 364, 1], "a successful aging save leaves age state unchanged")
@@ -365,7 +367,7 @@ func _test_monster_aging_attack() -> void:
 	same_band_target.caste_id = caste.id
 	same_band_target.age_days = 15 * 365
 	same_band_target.age_group = 1
-	same_band_target.set_save_value_raw(7, 50)
+	same_band_target.set_save_value(7, 50, false)
 	var same_band := rules.combat.resolve_monster_attack(attacker, definition, 0, same_band_target, race, caste, ScriptedRng.new([0, 0, 0, 0, 32_767]))
 	assert_true(same_band.special_applied and not same_band.damage_deferred, "failed aging that remains in the same band does not invent a dialog boundary")
 	assert_equal([same_band_target.age_days, same_band_target.age_group, same_band_target.current_health], [15 * 365 + 2, 1, 19], "same-band aging and physical damage commit in the original attack call")
@@ -394,7 +396,7 @@ func _test_monster_status_attacks() -> void:
 		var definition := MonsterDefinition.new("monster.status.%d" % special_code, special_code, "Status Monster", 4, 0, 10, 0, 0, _ints_size(8, 0), _ints_size(8, 0), _ints_size(6, 0), _ints_size(3, 0), [], [], attacks)
 		var attacker := MonsterState.new("monster.status.%d.instance" % special_code, definition.id, definition.name, 10, 10, 4, 10)
 		var defender := CharacterState.new("character.status.%d" % special_code, "Status Target", 20, 20)
-		defender.set_save_value_raw(status_cases[special_code][1], 50)
+		defender.set_save_value(status_cases[special_code][1], 50, false)
 		var resolution := rules.combat.resolve_monster_attack(attacker, definition, 0, defender, null, null, ScriptedRng.new([0, 0, 0, 32_767, 32_767]))
 		assert_true(resolution.special_applied, "failed save applies Classic monster status special %d" % special_code)
 		assert_equal(defender.conditions.value(status_cases[special_code][0]), 4, "status special %d mutates its exact Classic condition slot" % special_code)
@@ -404,26 +406,26 @@ func _test_monster_status_attacks() -> void:
 	var poison_definition := MonsterDefinition.new("monster.status.poison", 906, "Poison Monster", 4, 0, 10, 0, 0, _ints_size(8, 0), _ints_size(8, 0), _ints_size(6, 0), _ints_size(3, 0), [], [], poison_attack)
 	var poisoner := MonsterState.new("monster.status.poison.instance", poison_definition.id, poison_definition.name, 10, 10, 4, 10)
 	var saved_target := CharacterState.new("character.status.saved", "Saved Target", 20, 20)
-	saved_target.set_save_value_raw(4, 50)
+	saved_target.set_save_value(4, 50, false)
 	var saved_rng := ScriptedRng.new([0, 0, 0, 32_767, 0])
 	var saved := rules.combat.resolve_monster_attack(poisoner, poison_definition, 0, saved_target, null, null, saved_rng)
 	assert_true(saved.special_handled and saved.special_saved and not saved.special_applied, "a successful party save handles but negates the status special")
 	assert_equal(saved_rng.trace().map(func(entry: Dictionary) -> String: return entry["tag"]), ["combat.monster-attack.defender-luck", "combat.monster-attack.hit", "combat.monster-attack.damage", "combat.monster-attack.special-potency", "combat.monster-attack.special-save"], "party status attacks draw defender luck, damage, and generic potency before the save")
 
 	var permanent_target := CharacterState.new("character.status.permanent", "Permanent Target", 20, 20)
-	permanent_target.set_save_value_raw(4, 0)
+	permanent_target.set_save_value(4, 0, false)
 	permanent_target.conditions.set_value(ConditionRules.POISONED, -1)
 	var permanent := rules.combat.resolve_monster_attack(poisoner, poison_definition, 0, permanent_target, null, null, ScriptedRng.new([0, 0, 0, 32_767, 32_767]))
 	assert_equal([permanent.special_saved, permanent.special_blocked, permanent.special_block_reason, permanent.special_announced], [false, true, &"permanent_condition", false], "a failed save is still consumed before Castle's permanent-condition sentinel blocks the status")
 	assert_equal([permanent_target.conditions.value(ConditionRules.POISONED), permanent_target.current_health], [-1, 19], "a permanent status remains unchanged while ordinary physical damage still commits")
 
 	var near_cap := CharacterState.new("character.status.near-cap", "Near Cap", 20, 20)
-	near_cap.set_save_value_raw(4, 0)
+	near_cap.set_save_value(4, 0, false)
 	near_cap.conditions.set_value(ConditionRules.POISONED, 29)
 	var exceeded := rules.combat.resolve_monster_attack(poisoner, poison_definition, 0, near_cap, null, null, ScriptedRng.new([0, 0, 0, 32_767, 32_767]))
 	assert_equal([near_cap.conditions.value(ConditionRules.POISONED), exceeded.special_condition_before, exceeded.special_condition_after], [33, 29, 33], "Castle's corrected party gate checks the starting duration rather than capping the result at thirty")
 	var capped := CharacterState.new("character.status.capped", "Capped", 20, 20)
-	capped.set_save_value_raw(4, 0)
+	capped.set_save_value(4, 0, false)
 	capped.conditions.set_value(ConditionRules.POISONED, 30)
 	var capped_result := rules.combat.resolve_monster_attack(poisoner, poison_definition, 0, capped, null, null, ScriptedRng.new([0, 0, 0, 32_767, 32_767]))
 	assert_equal([capped.conditions.value(ConditionRules.POISONED), capped_result.special_applied, capped_result.special_announced, capped_result.special_block_reason], [30, false, true, &"party_condition_cap"], "a party duration already at thirty does not stack but still announces the failed special")
@@ -482,7 +484,7 @@ func _test_monster_status_attacks() -> void:
 	assert_equal([resisted.hit, resisted.damage, resisted.special_condition_index, resisted.special_blocked, resisted.special_block_reason, resistant_target.current_health], [false, 0, ConditionRules.POISONED, true, &"magic_resistance", 20], "a monster target above 100 magic resistance turns the entire special attack into Castle's whiff while retaining diagnostic identity")
 	assert_equal(resistant_rng.trace().map(func(entry: Dictionary) -> String: return entry["tag"]), ["combat.monster-attack.hit", "combat.monster-attack.damage", "combat.monster-attack.special-potency"], "the resistance whiff occurs after potency but before the monster save draw")
 
-	var restored_target := CharacterState.from_data(near_cap.to_data())
+	var restored_target := CharacterStateCodec.copy(near_cap)
 	assert_not_null(restored_target, "a status-mutated character survives the central state serialization boundary")
 	assert_equal(restored_target.conditions.value(ConditionRules.POISONED), 33, "save restoration preserves the exact status duration")
 
@@ -498,7 +500,7 @@ func _test_monster_resource_drains() -> void:
 	var spell_target := CharacterState.new("character.resource.spell", "Spell Target", 20, 20)
 	spell_target.maximum_spell_points = 20
 	spell_target.spell_points = 20
-	spell_target.set_save_value_raw(6, 0)
+	spell_target.set_save_value(6, 0, false)
 	var spell_rng := ScriptedRng.new([0, 0, 0, 32_767, 32_767])
 	var spell_result := rules.combat.resolve_monster_attack(spell_attacker, spell_definition, 0, spell_target, null, null, spell_rng)
 	assert_equal([spell_result.special_code, spell_result.special_save_index, spell_result.special_saved, spell_result.special_resource], [8, 6, false, &"spell_points"], "Classic spell drain uses save slot six and identifies spell energy")
@@ -513,12 +515,12 @@ func _test_monster_resource_drains() -> void:
 	var saved_spell_target := CharacterState.new("character.resource.spell-saved", "Saved Spell Target", 20, 20)
 	saved_spell_target.maximum_spell_points = 20
 	saved_spell_target.spell_points = 20
-	saved_spell_target.set_save_value_raw(6, 100)
+	saved_spell_target.set_save_value(6, 100, false)
 	var saved_spell := rules.combat.resolve_monster_attack(spell_attacker, spell_definition, 0, saved_spell_target, null, null, ScriptedRng.new([0, 0, 0, 32_767, 0]))
 	assert_true(saved_spell.special_saved and not saved_spell.special_applied, "an inclusive slot-six save negates spell drain")
 	assert_equal(saved_spell_target.spell_points, 20, "saved spell drain leaves the target balance unchanged")
 	var empty_spell_target := CharacterState.new("character.resource.spell-empty", "Empty Spell Target", 20, 20)
-	empty_spell_target.set_save_value_raw(6, 0)
+	empty_spell_target.set_save_value(6, 0, false)
 	var empty_spell_rng := ScriptedRng.new([0, 0, 0, 32_767, 32_767])
 	var empty_spell := rules.combat.resolve_monster_attack(spell_attacker, spell_definition, 0, empty_spell_target, null, null, empty_spell_rng)
 	assert_true(not empty_spell.special_saved and not empty_spell.special_applied and not empty_spell.special_announced, "a failed spell-drain save against an empty balance produces no false result announcement")
@@ -536,17 +538,17 @@ func _test_monster_resource_drains() -> void:
 	var experience_attacker := MonsterState.new("monster.resource.experience.instance", experience_definition.id, experience_definition.name, 20, 20, 4, 10)
 	var experience_target := CharacterState.new("character.resource.experience", "Experience Target", 20, 20)
 	experience_target.experience = 100
-	experience_target.set_save_value_raw(5, 0)
+	experience_target.set_save_value(5, 0, false)
 	var experience_result := rules.combat.resolve_monster_attack(experience_attacker, experience_definition, 0, experience_target, null, null, ScriptedRng.new([0, 0, 0, 32_767, 32_767]))
 	assert_equal([experience_result.special_save_index, experience_result.special_resource, experience_result.special_amount], [5, &"experience", 400], "Classic experience drain removes twenty points per attacker maximum stamina after save five")
 	assert_equal([experience_result.special_target_before, experience_result.special_target_after, experience_target.experience], [100, -300, -300], "experience drain subtracts from earned experience without a zero floor")
 	assert_equal([experience_result.special_announced, experience_result.special_sound_id], [true, 630], "a failed experience drain requests Castle result sound 630")
-	var restored_experience := CharacterState.from_data(experience_target.to_data())
+	var restored_experience := CharacterStateCodec.copy(experience_target)
 	assert_not_null(restored_experience, "negative drained experience survives the central character-state boundary")
 	assert_equal(restored_experience.experience, -300, "restoration preserves the exact drained experience value")
 	var saved_experience_target := CharacterState.new("character.resource.experience-saved", "Saved Experience Target", 20, 20)
 	saved_experience_target.experience = 100
-	saved_experience_target.set_save_value_raw(5, 100)
+	saved_experience_target.set_save_value(5, 100, false)
 	var saved_experience := rules.combat.resolve_monster_attack(experience_attacker, experience_definition, 0, saved_experience_target, null, null, ScriptedRng.new([0, 0, 0, 32_767, 0]))
 	assert_true(saved_experience.special_saved and not saved_experience.special_applied, "an inclusive slot-five save negates experience drain")
 	assert_equal([saved_experience_target.experience, saved_experience.special_sound_id], [100, 0], "saved experience drain changes no experience and requests no result sound")
@@ -567,18 +569,18 @@ func _test_monster_charm_attacks() -> void:
 	var definition := MonsterDefinition.new("monster.charm", 910, "Charmer", 4, 0, 10, 0, 0, empty8, empty8, empty6, empty3, [], [], attacks)
 	var hostile := MonsterState.new("monster.charm.hostile", definition.id, definition.name, 20, 20, 4, 10, 0, 0, 0, true)
 	var character := CharacterState.new("character.charm", "Charm Target", 20, 20)
-	character.set_save_value_raw(0, 0)
+	character.set_save_value(0, 0, false)
 	var charm_rng := ScriptedRng.new([0, 0, 0, 0, 0])
 	var charmed := rules.combat.resolve_monster_attack(hostile, definition, 0, character, null, null, charm_rng)
 	assert_true(character.traitor and charmed.special_applied, "failed save zero makes a loyal party character adopt the hostile attacker's allegiance")
 	assert_equal([charmed.special_save_index, charmed.special_allegiance_before, charmed.special_allegiance_after, charmed.special_announced], [0, false, true, true], "party charm exposes Castle's allegiance transition and first-charm feedback")
 	assert_equal(charm_rng.trace().map(func(entry: Dictionary) -> String: return entry["tag"]), ["combat.monster-attack.defender-luck", "combat.monster-attack.hit", "combat.monster-attack.damage", "combat.monster-attack.special-potency", "combat.monster-attack.special-save"], "charm retains defender luck and the shared potency draw before its save")
-	var restored := CharacterState.from_data(character.to_data())
+	var restored := CharacterStateCodec.copy(character)
 	assert_not_null(restored, "battle allegiance survives the central character serialization boundary")
 	assert_true(restored.traitor, "save restoration preserves an in-progress charmed character")
 
 	var protected := CharacterState.new("character.charm-protected", "Protected Target", 20, 20)
-	protected.set_save_value_raw(0, 0)
+	protected.set_save_value(0, 0, false)
 	var saved := rules.combat.resolve_monster_attack(hostile, definition, 0, protected, null, null, ScriptedRng.new([0, 0, 0, 0, 0]), 50)
 	assert_true(saved.special_saved and not protected.traitor, "party charm resistance adds fifty to save zero before the inclusive roll")
 
@@ -613,7 +615,7 @@ func _test_monster_elemental_attacks() -> void:
 		var definition := MonsterDefinition.new("monster.element.%d" % special_code, 900 + special_code, "Elemental Monster", 4, 0, 10, 0, 0, _ints_size(8, 0), _ints_size(8, 0), _ints_size(6, 0), _ints_size(3, 0), [], [], attacks)
 		var attacker := MonsterState.new("monster.element.%d.instance" % special_code, definition.id, definition.name, 20, 20, 4, 10)
 		var defender := CharacterState.new("character.element.%d" % special_code, "Element Target", 20, 20)
-		defender.set_save_value_raw(special_code - 10, 100)
+		defender.set_save_value(special_code - 10, 100, false)
 		defender.conditions.set_value(element_cases[special_code][0], 1)
 		var rng := ScriptedRng.new([0, 0, 0, 0, 32_767, 0])
 		var result := rules.combat.resolve_monster_attack(attacker, definition, 0, defender, null, null, rng)
@@ -641,7 +643,7 @@ func _test_monster_permanent_afflictions() -> void:
 	var blind_definition := MonsterDefinition.new("monster.blind", 918, "Blinder", 4, 0, 10, 0, 0, empty8, empty8, empty6, empty3, [], [], blind_attacks)
 	var blinder := MonsterState.new("monster.blind.instance", blind_definition.id, blind_definition.name, 20, 20, 4, 10)
 	var blind_target := CharacterState.new("character.blind", "Blind Target", 20, 20)
-	blind_target.set_save_value_raw(7, 0)
+	blind_target.set_save_value(7, 0, false)
 	var blinded := rules.combat.resolve_monster_attack(blinder, blind_definition, 0, blind_target, null, null, ScriptedRng.new([0, 0, 0, 0, 32_767]))
 	assert_equal([blinded.special_condition_index, blinded.special_condition_after, blind_target.conditions.value(ConditionRules.BLIND), blind_target.current_health], [ConditionRules.BLIND, -1, -1, 19], "failed special save permanently blinds a party target before ordinary damage")
 	assert_true(blinded.special_announced and blinded.special_sound_id == 0, "blindness reports its result without inventing a sound")
@@ -650,7 +652,7 @@ func _test_monster_permanent_afflictions() -> void:
 	var stone_definition := MonsterDefinition.new("monster.stone", 919, "Petrifier", 4, 0, 10, 0, 0, empty8, empty8, empty6, empty3, [], [], stone_attacks)
 	var petrifier := MonsterState.new("monster.stone.instance", stone_definition.id, stone_definition.name, 20, 20, 4, 10)
 	var stone_target := CharacterState.new("character.stone", "Stone Target", 20, 20)
-	stone_target.set_save_value_raw(7, 0)
+	stone_target.set_save_value(7, 0, false)
 	var petrified := rules.combat.resolve_monster_attack(petrifier, stone_definition, 0, stone_target, null, null, ScriptedRng.new([0, 0, 0, 0, 32_767]))
 	assert_equal([stone_target.current_health, stone_target.conditions.value(ConditionRules.TURNED_TO_STONE), petrified.killed, petrified.physical_damage_skipped, petrified.total_damage()], [0, -1, true, true, 0], "party petrification force-kills with Castle's permanent sentinel and skips the rolled physical damage")
 
@@ -719,8 +721,8 @@ func _test_inventory_economy_and_treasure() -> void:
 	var instance := rules.inventory.add_item(character, item, "item-instance.wand", true)
 	assert_not_null(instance, "inventory accepts a definition-backed item within capacity")
 	assert_equal(character.carried_load, 16, "item load includes charge weight")
-	assert_true(rules.inventory.equip(character, instance.id, item), "equipment mutation is owned by inventory rules")
-	assert_equal(rules.inventory.combat_equipment(character, _items([item])).equipped_damage_bonus, 4, "equipped item damage is summed as Castle attack.c does")
+	assert_true(rules.equipment.equip(character, instance.id, item), "equipment mutation is owned by equipment rules")
+	assert_equal(rules.equipment.combat_equipment(character, _items([item])).equipped_damage_bonus, 4, "equipped item damage is summed as Castle attack.c does")
 	assert_true(rules.inventory.use_charge(character, instance.id, item), "a charged item can be used")
 	assert_equal(character.carried_load, 13, "spent charges reduce load")
 	assert_true(rules.inventory.use_charge(character, instance.id, item), "the final charge can be used")
@@ -802,8 +804,8 @@ func _test_combat_magic_and_monsters() -> void:
 	sword.damage_bonus = 2
 	sword.vs_small = 1
 	var sword_instance := rules.inventory.add_item(attacker, sword, "item-instance.sword", true)
-	assert_true(rules.inventory.equip(attacker, sword_instance.id, sword), "the melee fixture occupies Castle's weapon type")
-	var equipment := rules.inventory.combat_equipment(attacker, _items([sword]))
+	assert_true(rules.equipment.equip(attacker, sword_instance.id, sword), "the melee fixture occupies Castle's weapon type")
+	var equipment := rules.equipment.combat_equipment(attacker, _items([sword]))
 	var attack := rules.combat.resolve_character_attack(attacker, equipment, defender, definition, ScriptedRng.new([0, 0, 0, 0, 0]))
 	assert_true(attack.hit, "inclusive Realmz attack roll hits at the computed chance")
 	assert_equal(attack.chance, 56, "attack chance combines base, equipment, luck, and armor")
@@ -828,7 +830,7 @@ func _test_combat_magic_and_monsters() -> void:
 	sword_instance.equipped = false
 	defender.current_health = 5
 	var unarmed_rng := ScriptedRng.new([0, 0, 1609, 0, 0, 0])
-	var unarmed_fumble_roll := rules.combat.resolve_character_attack(attacker, rules.inventory.combat_equipment(attacker, _items([sword])), defender, definition, unarmed_rng, 0, false, true, true)
+	var unarmed_fumble_roll := rules.combat.resolve_character_attack(attacker, rules.equipment.combat_equipment(attacker, _items([sword])), defender, definition, unarmed_rng, 0, false, true, true)
 	assert_false(unarmed_fumble_roll.fumbled, "an unarmed character cannot fumble despite a source-range roll")
 	assert_equal([unarmed_fumble_roll.fumble_roll, unarmed_rng.snapshot().draw_count], [55, 6], "an unarmed character still consumes the fumble draw before ordinary damage")
 	sword_instance.equipped = true
@@ -886,9 +888,9 @@ func _test_combat_magic_and_monsters() -> void:
 	armed.luck = 1
 	armed.hand_to_hand = 20
 	var zero_instance := rules.inventory.add_item(armed, zero_blade, "item-instance.zero-blade", true)
-	rules.inventory.equip(armed, zero_instance.id, zero_blade)
+	rules.equipment.equip(armed, zero_instance.id, zero_blade)
 	var armed_target := MonsterState.new("monster.armed-target", definition.id, definition.name, 20, 20, 1, 8, 0)
-	var armed_attack := rules.combat.resolve_character_attack(armed, rules.inventory.combat_equipment(armed, _items([zero_blade])), armed_target, definition, ScriptedRng.new([0, 0, 0, 0, 0]))
+	var armed_attack := rules.combat.resolve_character_attack(armed, rules.equipment.combat_equipment(armed, _items([zero_blade])), armed_target, definition, ScriptedRng.new([0, 0, 0, 0, 0]))
 	assert_equal(armed_attack.damage, 1, "a real zero-plus melee weapon does not accidentally invoke hand-to-hand damage")
 
 	var ring := ItemDefinition.new("item.damage-ring", 601, "Damage Ring")
@@ -898,12 +900,12 @@ func _test_combat_magic_and_monsters() -> void:
 	unarmed.luck = 1
 	unarmed.hand_to_hand = 4
 	var ring_instance := rules.inventory.add_item(unarmed, ring, "item-instance.damage-ring", true)
-	rules.inventory.equip(unarmed, ring_instance.id, ring)
+	rules.equipment.equip(unarmed, ring_instance.id, ring)
 	var unarmed_target := MonsterState.new("monster.unarmed-target", definition.id, definition.name, 20, 20, 1, 8, 0)
-	var unarmed_attack := rules.combat.resolve_character_attack(unarmed, rules.inventory.combat_equipment(unarmed, _items([ring])), unarmed_target, definition, ScriptedRng.new([0, 0, 32_767, 0, 0]))
+	var unarmed_attack := rules.combat.resolve_character_attack(unarmed, rules.equipment.combat_equipment(unarmed, _items([ring])), unarmed_target, definition, ScriptedRng.new([0, 0, 32_767, 0, 0]))
 	assert_equal(unarmed_attack.damage, 7, "a nonweapon damage item contributes its bonus without suppressing the hand-to-hand roll")
 	definition.required_weapon = -2
-	var unarmed_requirement := rules.combat.resolve_character_attack(unarmed, rules.inventory.combat_equipment(unarmed, _items([ring])), unarmed_target, definition, ScriptedRng.new([0, 0]))
+	var unarmed_requirement := rules.combat.resolve_character_attack(unarmed, rules.equipment.combat_equipment(unarmed, _items([ring])), unarmed_target, definition, ScriptedRng.new([0, 0]))
 	assert_equal(unarmed_requirement.block_reason, &"classic_sharp_weapon_required", "FD-COMBAT-003 does not let an unarmed attack bypass a bladed-weapon requirement")
 	definition.required_weapon = 0
 	var armor := ItemDefinition.new("item.target-armor", 201, "Target Armor")
@@ -912,15 +914,15 @@ func _test_combat_magic_and_monsters() -> void:
 	var character_target := CharacterState.new("character.armored-target", "Armored", 20, 20)
 	character_target.conditions.set_value(ConditionRules.PROTECTION_FROM_EVIL, 1)
 	var armor_instance := rules.inventory.add_item(character_target, armor, "item-instance.target-armor", true)
-	rules.inventory.equip(character_target, armor_instance.id, armor)
-	var versus_character := rules.combat.resolve_character_attack_character(unarmed, rules.inventory.combat_equipment(unarmed, _items([ring, armor])), character_target, rules.inventory.combat_equipment(character_target, _items([ring, armor])), ScriptedRng.new([0, 0, 0, 0, 0]))
+	rules.equipment.equip(character_target, armor_instance.id, armor)
+	var versus_character := rules.combat.resolve_character_attack_character(unarmed, rules.equipment.combat_equipment(unarmed, _items([ring, armor])), character_target, rules.equipment.combat_equipment(character_target, _items([ring, armor])), ScriptedRng.new([0, 0, 0, 0, 0]))
 	assert_equal(versus_character.chance, 61, "character defense derives equipped armor without applying Castle's monster-only protection-from-evil penalty")
 
 	var second_blade := ItemDefinition.new("item.second-blade", 27, "Second Blade")
 	second_blade.item_type = 2
 	var second_instance := rules.inventory.add_item(armed, second_blade, "item-instance.second-blade", true)
-	rules.inventory.equip(armed, second_instance.id, second_blade)
-	var conflicting_equipment := rules.inventory.combat_equipment(armed, _items([zero_blade, second_blade]))
+	rules.equipment.equip(armed, second_instance.id, second_blade)
+	var conflicting_equipment := rules.equipment.combat_equipment(armed, _items([zero_blade, second_blade]))
 	assert_false(conflicting_equipment.valid, "multiple equipped type-2 items fail instead of selecting a weapon by inventory accident")
 	assert_equal(conflicting_equipment.error_code, &"multiple_melee_weapons", "conflicting Classic melee slots have a stable failure identity")
 
@@ -929,7 +931,7 @@ func _test_combat_magic_and_monsters() -> void:
 	elemental_target.conditions.set_value(ConditionRules.FIRE_PROTECTION, 1)
 	second_instance.equipped = false
 	zero_blade.heat = 8
-	var record_damage_before := armed.lifetime_record.damage_given; var record_hits_before := armed.lifetime_record.hits_given; var elemental_attack := rules.combat.resolve_character_attack(armed, rules.inventory.combat_equipment(armed, _items([zero_blade])), elemental_target, elemental_definition, ScriptedRng.new([0, 0, 32_767, 0, 0, 0, 0]))
+	var record_damage_before := armed.lifetime_record.damage_given; var record_hits_before := armed.lifetime_record.hits_given; var elemental_attack := rules.combat.resolve_character_attack(armed, rules.equipment.combat_equipment(armed, _items([zero_blade])), elemental_target, elemental_definition, ScriptedRng.new([0, 0, 32_767, 0, 0, 0, 0]))
 	assert_equal(elemental_attack.weapon_effects[0].get("amount"), 2, "FD-COMBAT-002 applies the monster defender's fire save after protection")
 	assert_equal([elemental_attack.damage, armed.lifetime_record.damage_given - record_damage_before, armed.lifetime_record.hits_given - record_hits_before], [3, 3, 1], "corrected elemental mitigation commits the same damage and hit once to the source-owned lifetime record")
 
@@ -1035,7 +1037,14 @@ func _race() -> RaceDefinition:
 
 func _caste(minimum_age_group: int = 1) -> CasteDefinition:
 	var spellcasters: Array[Vector3i] = []
-	return CasteDefinition.new("caste.test", 1, "Test Caste", _ints_size(8, 0), _ints_size(6, 0), _attribute_limits(), _ints_size(40, 0), Vector2i(8, 8), Vector2i(10, 2), Vector2i(0, 1), Vector2i(2, 6), Vector2i(4, 1), spellcasters, _ints([2]), _strings(["item.start"]), 0, minimum_age_group, 0, 1, 0, 3, 0, 3, 12, true, false, 0, 0, 0, Vector2i(0, 5))
+	var attributes := CasteDefinition.AttributeDefinition.new(_ints_size(8, 0), _ints_size(6, 0), _attribute_limits(), _ints_size(40, 0), Vector2i(0, 5))
+	var progression := CasteDefinition.ProgressionDefinition.new(Vector2i(8, 8), Vector2i(10, 2), Vector2i(0, 1), Vector2i(2, 6), Vector2i(4, 1), spellcasters, _ints([2]))
+	var result := CasteDefinition.new("caste.test", 1, "Test Caste", attributes, progression, _strings(["item.start"]))
+	result.minimum_age_group = minimum_age_group
+	result.maximum_stamina_bonus = 3
+	result.maximum_attacks = 3
+	result.start_money = 12
+	return result
 
 
 func _progression_race() -> RaceDefinition:
@@ -1063,7 +1072,12 @@ func _progression_caste() -> CasteDefinition:
 	level_abilities[0] = 4
 	var victory := _ints_size(30, 0)
 	victory[2] = 12_345
-	return CasteDefinition.new("caste.progression", 2, "Progression Caste", _ints_size(8, 0), _ints_size(6, 0), _attribute_limits(), conditions, Vector2i(1, 1), Vector2i(0, 1), Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO, [], [], [], 0, 1, 0, 1, 50, 0, 0, 3, 0, true, false, 0, 0, 0, Vector2i(0, 8), "", [], initial_abilities, level_abilities, victory)
+	var attributes := CasteDefinition.AttributeDefinition.new(_ints_size(8, 0), _ints_size(6, 0), _attribute_limits(), conditions, Vector2i(0, 8))
+	var progression := CasteDefinition.ProgressionDefinition.new(Vector2i(1, 1), Vector2i(0, 1), Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO, [], [], initial_abilities, level_abilities, victory)
+	var result := CasteDefinition.new("caste.progression", 2, "Progression Caste", attributes, progression)
+	result.two_hand_bonus = 50
+	result.maximum_attacks = 3
+	return result
 
 
 func _age_changes() -> Array[PackedInt32Array]:

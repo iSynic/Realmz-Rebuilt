@@ -2,7 +2,7 @@ extends RealmzTestCase
 
 const FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-fixture.realmz2"
 const TEST_ROOT: String = "user://realmz2-tests/save-preview-index"
-const SaveSlotPreviewScript := preload("res://src/core/view/save_slot_preview.gd")
+const SaveSlotPreviewScript := preload("res://src/playthrough/session/save_slot_preview.gd")
 
 
 func run() -> void:

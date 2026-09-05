@@ -18,31 +18,31 @@ func _test_land_source_window_and_overlay() -> void:
 	var asymmetric_build := [[31, 32, 33], [34, 35, 36], [37, 38, 39]]
 	var terrain := _terrain_set("terrain.land", 1, 1, {}, {3: asymmetric_build})
 	var world := WorldState.new()
-	world.replace_terrain(map.id, Vector2i.ZERO, "classic.terrain.2"); world.replace_terrain(map.id, Vector2i(1, 0), "classic.terrain.-1018")
+	world.topology.replace_terrain(map.id, Vector2i.ZERO, "classic.terrain.2"); world.topology.replace_terrain(map.id, Vector2i(1, 0), "classic.terrain.-1018")
 	var rng := ScriptedRng.new([])
 	var built := BattlefieldBuilder.new().build_terrain(map, world, terrain, Vector2i.ZERO, rng)
 	assert_true(built.is_ok(), "a normalized land map builds Castle's 30 by 30 source window")
 	if not built.is_ok():
 		return
 	assert_equal([built.battlefield.source_origin, built.battlefield.map_shift, built.battlefield.party_anchor], [Vector2i.ZERO, Vector2i(-45, -45), Vector2i.ZERO], "a corner battle preserves Castle's source clamp and negative map shift")
-	assert_equal(built.battlefield.terrain_at(Vector2i.ZERO), 2, "battle terrain reads the live tile-replacement overlay")
-	assert_equal(built.battlefield.terrain_at(Vector2i(3, 0)), 1, "a negative special-land replacement keeps the landlook base inside the next combat block")
-	assert_equal(built.battlefield.terrain_at(Vector2i(9, 0)), 1, "an untouched negative special-land icon also becomes the active landlook base instead of leaking its absolute tile build into combat")
+	assert_equal(built.battlefield.terrain.tile_at(Vector2i.ZERO), 2, "battle terrain reads the live tile-replacement overlay")
+	assert_equal(built.battlefield.terrain.tile_at(Vector2i(3, 0)), 1, "a negative special-land replacement keeps the landlook base inside the next combat block")
+	assert_equal(built.battlefield.terrain.tile_at(Vector2i(9, 0)), 1, "an untouched negative special-land icon also becomes the active landlook base instead of leaking its absolute tile build into combat")
 	var expanded_build: Array[int] = []
 	for sub_y: int in 3:
 		for sub_x: int in 3:
-			expanded_build.append(built.battlefield.terrain_at(Vector2i(6 + sub_x, sub_y)))
+			expanded_build.append(built.battlefield.terrain.tile_at(Vector2i(6 + sub_x, sub_y)))
 	assert_equal(expanded_build, [31, 32, 33, 34, 35, 36, 37, 38, 39], "an asymmetric authored combat build preserves Castle's row and column order")
 	assert_equal(rng.snapshot().draw_count, 0, "a non-rubble landlook with no forest consumes no decoration draws")
-	var restored := BattlefieldState.from_data(JSON.parse_string(JSON.stringify(built.battlefield.to_data())))
+	var restored := BattlefieldStateCodec.from_data(JSON.parse_string(JSON.stringify(BattlefieldStateCodec.to_data(built.battlefield))))
 	assert_not_null(restored, "the complete generated field is centrally serializable")
 	if restored != null:
-		assert_equal(restored.to_data(), built.battlefield.to_data(), "battlefield terrain, shifts, and placements round-trip exactly")
-	var conflicting_data := built.battlefield.to_data()
+		assert_equal(BattlefieldStateCodec.to_data(restored), BattlefieldStateCodec.to_data(built.battlefield), "battlefield terrain, shifts, and placements round-trip exactly")
+	var conflicting_data := BattlefieldStateCodec.to_data(built.battlefield)
 	conflicting_data["characterPositions"] = {"shared.actor": [45, 45]}
 	conflicting_data["monsterPositions"] = {"shared.actor": [50, 50]}
 	conflicting_data["monsterSizes"] = {"shared.actor": 0}
-	assert_equal(BattlefieldState.from_data(conflicting_data), null, "serialized battlefield rejects one actor identity crossing party and monster ownership")
+	assert_equal(BattlefieldStateCodec.from_data(conflicting_data), null, "serialized battlefield rejects one actor identity crossing party and monster ownership")
 
 
 func _test_dungeon_hole_normalization_and_rng() -> void:
@@ -65,14 +65,14 @@ func _test_dungeon_hole_normalization_and_rng() -> void:
 	assert_true(built.is_ok(), "dungeon packed semantics provide every fact required by combatmap")
 	if not built.is_ok():
 		return
-	assert_equal([built.battlefield.terrain_at(Vector2i.ZERO), built.battlefield.terrain_at(Vector2i(3, 0)), built.battlefield.terrain_at(Vector2i(6, 0))], [234, 232, 232], "walls remain walls while doors and no-wall-in-battle cells become Castle floor blocks")
+	assert_equal([built.battlefield.terrain.tile_at(Vector2i.ZERO), built.battlefield.terrain.tile_at(Vector2i(3, 0)), built.battlefield.terrain.tile_at(Vector2i(6, 0))], [234, 232, 232], "walls remain walls while doors and no-wall-in-battle cells become Castle floor blocks")
 	assert_equal(rng.snapshot().draw_count, 86 * 86, "dungeon rubble consumes one chance draw for every interior field cell before testing solidity")
 
 
 func _test_formation_and_footprints() -> void:
 	var terrain := _terrain_set("terrain.flat", 1, 1)
 	var tiles: Array[int] = []
-	tiles.resize(BattlefieldState.CELL_COUNT)
+	tiles.resize(BattlefieldGrid.CELL_COUNT)
 	tiles.fill(1)
 	var field := BattlefieldState.new("land.flat", tiles)
 	var formation_rng := ScriptedRng.new([0, 0])
@@ -81,12 +81,12 @@ func _test_formation_and_footprints() -> void:
 	assert_equal(formation["monsterOrigin"], Vector2i(-4, -4), "direction and distance use Castle's degree conversion and C truncation")
 	var builder := BattlefieldBuilder.new()
 	assert_true(builder.place_character(field, terrain, "character.0", 0, formation), "the first party member receives a legal non-solid cell")
-	assert_equal(field.character_position("character.0"), Vector2i(44, 44), "character search begins at Castle's negative-one offsets")
-	field.remove_character("character.0")
+	assert_equal(field.actors.character_position("character.0"), Vector2i(44, 44), "character search begins at Castle's negative-one offsets")
+	field.actors.remove_character("character.0")
 	assert_true(builder.place_monster(field, terrain, "monster.large", Vector2i.ZERO, 3), "a two-by-two Classic monster footprint is placed around its lower-right anchor")
-	assert_equal(BattlefieldState.footprint_cells(field.monster_position("monster.large"), 3), [Vector2i(44, 44), Vector2i(44, 43), Vector2i(43, 44), Vector2i(43, 43)], "size three uses Castle's first negative-offset anchor, top, left, and top-left cells")
+	assert_equal(BattlefieldGrid.footprint_cells(field.actors.monster_position("monster.large"), 3), [Vector2i(44, 44), Vector2i(44, 43), Vector2i(43, 44), Vector2i(43, 43)], "size three uses Castle's first negative-offset anchor, top, left, and top-left cells")
 	var blocked_tiles: Array[int] = []
-	blocked_tiles.resize(BattlefieldState.CELL_COUNT)
+	blocked_tiles.resize(BattlefieldGrid.CELL_COUNT)
 	blocked_tiles.fill(2)
 	var blocked := BattlefieldState.new("land.blocked", blocked_tiles)
 	assert_equal(builder.find_monster_position(blocked, _terrain_set("terrain.blocked", 1, 1, {2: 2}), Vector2i.ZERO, 0), Vector2i(-1, -1), "an impossible placement fails explicitly instead of reproducing Castle's unbounded search")

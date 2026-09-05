@@ -106,7 +106,8 @@ jobs:
         run: |
           $log = Join-Path (Resolve-Path -LiteralPath '${{ matrix.artifactPath }}').Path 'smoke.log'
           if ('${{ runner.os }}' -eq 'Windows') {
-            $process = Start-Process -FilePath '${{ matrix.output }}' -ArgumentList @('--headless', '--quit-after', '2', '--log-file', $log) -WindowStyle Hidden -Wait -PassThru
+            $quotedLog = '"' + $log + '"'
+            $process = Start-Process -FilePath '${{ matrix.output }}' -ArgumentList "--headless --quit-after 2 --log-file $quotedLog" -WindowStyle Hidden -Wait -PassThru
             if ($process.ExitCode -ne 0) { throw "Windows startup failed: $($process.ExitCode)" }
             Compress-Archive -Path '${{ matrix.artifactPath }}/*' -DestinationPath '${{ matrix.package }}'
           } elseif ('${{ runner.os }}' -eq 'Linux') {

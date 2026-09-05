@@ -1,0 +1,455 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://src/ui/combat/battle_interaction.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://src/ui/combat/battle_targeting_controls.tscn" id="2_targeting"]
+[ext_resource type="PackedScene" path="res://src/ui/combat/battle_initiative_entry.tscn" id="3_initiative"]
+
+[node name="BattleInteraction" type="VBoxContainer"]
+size_flags_horizontal = 3
+theme_override_constants/separation = 3
+script = ExtResource("1_script")
+targeting_controls_scene = ExtResource("2_targeting")
+initiative_entry_scene = ExtResource("3_initiative")
+
+[node name="BattleOverview" type="VBoxContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 3
+
+[node name="BattleTurnSummary" type="HBoxContainer" parent="BattleOverview"]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+[node name="ActiveCombatant" type="PanelContainer" parent="BattleOverview/BattleTurnSummary"]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.8
+clip_contents = true
+theme_type_variation = &"BattleSummaryInset"
+[node name="Content" type="HBoxContainer" parent="BattleOverview/BattleTurnSummary/ActiveCombatant"]
+layout_mode = 2
+theme_override_constants/separation = 5
+[node name="ActiveCombatantIcon" type="TextureRect" parent="BattleOverview/BattleTurnSummary/ActiveCombatant/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+texture_filter = 1
+expand_mode = 1
+stretch_mode = 5
+[node name="ActiveCombatantLabel" type="Label" parent="BattleOverview/BattleTurnSummary/ActiveCombatant/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.973, 0.863, 0.322, 1)
+theme_override_font_sizes/font_size = 12
+autowrap_mode = 2
+max_lines_visible = 2
+text_overrun_behavior = 3
+[node name="BattleInitiativeHost" type="MarginContainer" parent="BattleOverview/BattleTurnSummary"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+[node name="InspectedCombatant" type="PanelContainer" parent="BattleOverview/BattleTurnSummary"]
+custom_minimum_size = Vector2(250, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.95
+clip_contents = true
+theme_type_variation = &"BattleSummaryInset"
+[node name="Content" type="HBoxContainer" parent="BattleOverview/BattleTurnSummary/InspectedCombatant"]
+layout_mode = 2
+theme_override_constants/separation = 5
+[node name="InspectedCombatantIcon" type="TextureRect" parent="BattleOverview/BattleTurnSummary/InspectedCombatant/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+texture_filter = 1
+expand_mode = 1
+stretch_mode = 5
+[node name="InspectedCombatantLabel" type="Label" parent="BattleOverview/BattleTurnSummary/InspectedCombatant/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
+autowrap_mode = 2
+max_lines_visible = 2
+text_overrun_behavior = 3
+
+[node name="BattleCommandShelfCenter" type="CenterContainer" parent="BattleOverview"]
+layout_mode = 2
+size_flags_horizontal = 3
+[node name="BattleCommandShelf" type="HBoxContainer" parent="BattleOverview/BattleCommandShelfCenter"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/separation = 10
+
+[node name="BattleInspectionCommandsInset" type="PanelContainer" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf"]
+custom_minimum_size = Vector2(0, 100)
+layout_mode = 2
+size_flags_horizontal = 4
+clip_contents = true
+theme_type_variation = &"BattleSummaryInset"
+[node name="BattleInspectionCommands" type="VBoxContainer" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattleInspectionCommandsInset"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+[node name="Heading" type="Label" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattleInspectionCommandsInset/BattleInspectionCommands"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.388, 0.847, 0.906, 1)
+theme_override_font_sizes/font_size = 14
+text = "VIEW"
+horizontal_alignment = 1
+[node name="Divider" type="HSeparator" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattleInspectionCommandsInset/BattleInspectionCommands"]
+layout_mode = 2
+[node name="PrimaryCenter" type="CenterContainer" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattleInspectionCommandsInset/BattleInspectionCommands"]
+layout_mode = 2
+size_flags_horizontal = 3
+[node name="BattleInspectionPrimary" type="HBoxContainer" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattleInspectionCommandsInset/BattleInspectionCommands/PrimaryCenter"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/separation = 5
+[node name="Previous" type="Button" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattleInspectionCommandsInset/BattleInspectionCommands/PrimaryCenter/BattleInspectionPrimary"]
+layout_mode = 2
+theme_type_variation = &"BattleCommandButton"
+text = "Previous"
+[node name="Center" type="Button" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattleInspectionCommandsInset/BattleInspectionCommands/PrimaryCenter/BattleInspectionPrimary"]
+layout_mode = 2
+theme_type_variation = &"BattleCommandButton"
+text = "Center"
+[node name="Next" type="Button" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattleInspectionCommandsInset/BattleInspectionCommands/PrimaryCenter/BattleInspectionPrimary"]
+layout_mode = 2
+theme_type_variation = &"BattleCommandButton"
+text = "Next"
+[node name="SecondaryCenter" type="CenterContainer" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattleInspectionCommandsInset/BattleInspectionCommands"]
+layout_mode = 2
+size_flags_horizontal = 3
+[node name="BattleInspectionSecondary" type="HBoxContainer" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattleInspectionCommandsInset/BattleInspectionCommands/SecondaryCenter"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/separation = 5
+[node name="RevealFriends" type="Button" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattleInspectionCommandsInset/BattleInspectionCommands/SecondaryCenter/BattleInspectionSecondary"]
+layout_mode = 2
+theme_type_variation = &"BattleCommandButton"
+text = "Reveal Friends"
+
+[node name="BattlePrimaryCommandsInset" type="PanelContainer" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 100)
+layout_mode = 2
+size_flags_horizontal = 4
+clip_contents = true
+theme_type_variation = &"BattleSummaryInset"
+[node name="BattlePrimaryCommands" type="VBoxContainer" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattlePrimaryCommandsInset"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+[node name="Heading" type="Label" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattlePrimaryCommandsInset/BattlePrimaryCommands"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.941, 0.808, 0.349, 1)
+theme_override_font_sizes/font_size = 14
+text = "ACTION"
+horizontal_alignment = 1
+[node name="Divider" type="HSeparator" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattlePrimaryCommandsInset/BattlePrimaryCommands"]
+layout_mode = 2
+[node name="PrimaryCenter" type="CenterContainer" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattlePrimaryCommandsInset/BattlePrimaryCommands"]
+layout_mode = 2
+size_flags_horizontal = 3
+[node name="BattlePrimaryPrimary" type="HBoxContainer" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattlePrimaryCommandsInset/BattlePrimaryCommands/PrimaryCenter"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/separation = 5
+[node name="Weapon" type="Button" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattlePrimaryCommandsInset/BattlePrimaryCommands/PrimaryCenter/BattlePrimaryPrimary"]
+layout_mode = 2
+theme_type_variation = &"BattleCommandButton"
+[node name="Guard" type="Button" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattlePrimaryCommandsInset/BattlePrimaryCommands/PrimaryCenter/BattlePrimaryPrimary"]
+layout_mode = 2
+theme_type_variation = &"BattleCommandButton"
+text = "Guard"
+[node name="Attack" type="Button" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattlePrimaryCommandsInset/BattlePrimaryCommands/PrimaryCenter/BattlePrimaryPrimary"]
+layout_mode = 2
+theme_type_variation = &"BattleCommandButton"
+text = "Attack"
+[node name="Finish" type="Button" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattlePrimaryCommandsInset/BattlePrimaryCommands/PrimaryCenter/BattlePrimaryPrimary"]
+layout_mode = 2
+theme_type_variation = &"BattleCommandButton"
+text = "Finish"
+[node name="SecondaryCenter" type="CenterContainer" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattlePrimaryCommandsInset/BattlePrimaryCommands"]
+layout_mode = 2
+size_flags_horizontal = 3
+[node name="BattlePrimarySecondary" type="HBoxContainer" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattlePrimaryCommandsInset/BattlePrimaryCommands/SecondaryCenter"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/separation = 5
+[node name="Spells" type="Button" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattlePrimaryCommandsInset/BattlePrimaryCommands/SecondaryCenter/BattlePrimarySecondary"]
+layout_mode = 2
+theme_type_variation = &"BattleCommandButton"
+text = "Spells"
+[node name="Scrolls" type="Button" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattlePrimaryCommandsInset/BattlePrimaryCommands/SecondaryCenter/BattlePrimarySecondary"]
+layout_mode = 2
+theme_type_variation = &"BattleCommandButton"
+text = "Scrolls"
+[node name="Items" type="Button" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattlePrimaryCommandsInset/BattlePrimaryCommands/SecondaryCenter/BattlePrimarySecondary"]
+layout_mode = 2
+theme_type_variation = &"BattleCommandButton"
+text = "Items"
+
+[node name="BattleTurnCommandsInset" type="PanelContainer" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf"]
+custom_minimum_size = Vector2(0, 100)
+layout_mode = 2
+size_flags_horizontal = 4
+clip_contents = true
+theme_type_variation = &"BattleSummaryInset"
+[node name="BattleTurnCommands" type="VBoxContainer" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattleTurnCommandsInset"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+[node name="Heading" type="Label" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattleTurnCommandsInset/BattleTurnCommands"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.561, 0.878, 0.502, 1)
+theme_override_font_sizes/font_size = 14
+text = "TACTICS"
+horizontal_alignment = 1
+[node name="Divider" type="HSeparator" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattleTurnCommandsInset/BattleTurnCommands"]
+layout_mode = 2
+[node name="PrimaryCenter" type="CenterContainer" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattleTurnCommandsInset/BattleTurnCommands"]
+layout_mode = 2
+size_flags_horizontal = 3
+[node name="BattleTurnPrimary" type="HBoxContainer" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattleTurnCommandsInset/BattleTurnCommands/PrimaryCenter"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/separation = 5
+[node name="AutoTurn" type="Button" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattleTurnCommandsInset/BattleTurnCommands/PrimaryCenter/BattleTurnPrimary"]
+layout_mode = 2
+theme_type_variation = &"BattleCommandButton"
+text = "Auto Turn"
+[node name="Delay" type="Button" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattleTurnCommandsInset/BattleTurnCommands/PrimaryCenter/BattleTurnPrimary"]
+layout_mode = 2
+theme_type_variation = &"BattleCommandButton"
+text = "Delay"
+[node name="Bandage" type="Button" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattleTurnCommandsInset/BattleTurnCommands/PrimaryCenter/BattleTurnPrimary"]
+layout_mode = 2
+theme_type_variation = &"BattleCommandButton"
+text = "Bandage"
+[node name="SecondaryCenter" type="CenterContainer" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattleTurnCommandsInset/BattleTurnCommands"]
+layout_mode = 2
+size_flags_horizontal = 3
+[node name="BattleTurnSecondary" type="HBoxContainer" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattleTurnCommandsInset/BattleTurnCommands/SecondaryCenter"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/separation = 5
+[node name="TurnUndead" type="Button" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattleTurnCommandsInset/BattleTurnCommands/SecondaryCenter/BattleTurnSecondary"]
+layout_mode = 2
+theme_type_variation = &"BattleCommandButton"
+text = "Turn Undead"
+[node name="Undo" type="Button" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattleTurnCommandsInset/BattleTurnCommands/SecondaryCenter/BattleTurnSecondary"]
+layout_mode = 2
+theme_type_variation = &"BattleCommandButton"
+text = "Undo"
+[node name="Escape" type="Button" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattleTurnCommandsInset/BattleTurnCommands/SecondaryCenter/BattleTurnSecondary"]
+layout_mode = 2
+theme_type_variation = &"BattleCommandButton"
+text = "Escape"
+
+[node name="BattleTargetPanel" type="VBoxContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+[node name="Back" type="Button" parent="BattleTargetPanel"]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_type_variation = &"BattleCommandButton"
+text = "Back to battle"
+[node name="AttackStatus" type="Label" parent="BattleTargetPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+autowrap_mode = 2
+[node name="ChooseAttackTarget" type="Button" parent="BattleTargetPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"BattleCommandButton"
+
+[node name="BattleSpellPanel" type="VBoxContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+[node name="Back" type="Button" parent="BattleSpellPanel"]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_type_variation = &"BattleCommandButton"
+text = "Back to battle"
+[node name="CombatSpellbookStatus" type="Label" parent="BattleSpellPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+text = "Choose a spell, power, and target from the spellbook at right."
+horizontal_alignment = 1
+autowrap_mode = 2
+[node name="SpellUnavailable" type="Button" parent="BattleSpellPanel"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Cast unavailable"
+disabled = true
+
+[node name="BattleScrollPanel" type="VBoxContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+[node name="Back" type="Button" parent="BattleScrollPanel"]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_type_variation = &"BattleCommandButton"
+text = "Back to battle"
+[node name="CombatScrollPicker" type="OptionButton" parent="BattleScrollPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+[node name="ChooseScrollTarget" type="Button" parent="BattleScrollPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+[node name="ScrollUnavailable" type="Button" parent="BattleScrollPanel"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Use scroll unavailable"
+disabled = true
+
+[node name="BattleItemPanel" type="VBoxContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+[node name="Back" type="Button" parent="BattleItemPanel"]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_type_variation = &"BattleCommandButton"
+text = "Back to battle"
+[node name="ItemRow" type="HBoxContainer" parent="BattleItemPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+[node name="CombatItemPicker" type="OptionButton" parent="BattleItemPanel/ItemRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+[node name="ChooseItemTarget" type="Button" parent="BattleItemPanel/ItemRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Use selected item"
+[node name="ItemUnavailable" type="Button" parent="BattleItemPanel"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Use item unavailable"
+disabled = true
+
+[node name="BattleBandagePanel" type="VBoxContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+[node name="Back" type="Button" parent="BattleBandagePanel"]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_type_variation = &"BattleCommandButton"
+text = "Back to battle"
+[node name="Hint" type="Label" parent="BattleBandagePanel"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+text = "Choose one bleeding party member."
+autowrap_mode = 2
+[node name="BandageRecipient" type="OptionButton" parent="BattleBandagePanel"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Choose one supplied legal Bandage recipient."
+[node name="Bandage" type="Button" parent="BattleBandagePanel"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Bandage selected character"
+tooltip_text = "Bandage the selected party member."
+
+[node name="BattleCombatantInspection" type="VBoxContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+[node name="Back" type="Button" parent="BattleCombatantInspection"]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_type_variation = &"BattleCommandButton"
+text = "Back to battle"
+[node name="BattleInspectionHeading" type="HBoxContainer" parent="BattleCombatantInspection"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+[node name="BattleInspectionTitle" type="Label" parent="BattleCombatantInspection/BattleInspectionHeading"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.388, 0.847, 0.906, 1)
+[node name="BattleInspectionItems" type="Button" parent="BattleCombatantInspection/BattleInspectionHeading"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"BattleCommandButton"
+text = "Items"
+toggle_mode = true
+[node name="BattleInspectionConditions" type="Button" parent="BattleCombatantInspection/BattleInspectionHeading"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"BattleCommandButton"
+text = "Conditions"
+toggle_mode = true
+[node name="BattleInspectionAttacks" type="Button" parent="BattleCombatantInspection/BattleInspectionHeading"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"BattleCommandButton"
+text = "Attacks"
+toggle_mode = true
+[node name="BattleInspectionRecord" type="PanelContainer" parent="BattleCombatantInspection"]
+custom_minimum_size = Vector2(0, 58)
+layout_mode = 2
+size_flags_horizontal = 3
+clip_contents = true
+theme_type_variation = &"BattleSummaryInset"
+[node name="BattleInspectionScroll" type="ScrollContainer" parent="BattleCombatantInspection/BattleInspectionRecord"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+[node name="BattleInspectionContent" type="Label" parent="BattleCombatantInspection/BattleInspectionRecord/BattleInspectionScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
+autowrap_mode = 2

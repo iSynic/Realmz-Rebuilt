@@ -1,0 +1,238 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/ui/services/bank_interaction.gd" id="1_interaction"]
+
+[node name="BankInteraction" type="VBoxContainer"]
+custom_minimum_size = Vector2(0, 500)
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+script = ExtResource("1_interaction")
+
+[node name="BankHeader" type="HBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Title" type="Label" parent="BankHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.898039, 0.768627, 0.360784, 1)
+theme_type_variation = &"ClassicHeading"
+
+[node name="TransferNote" type="Label" parent="BankHeader"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.560784, 0.811765, 0.819608, 1)
+text = "Exact denomination transfers"
+horizontal_alignment = 2
+
+[node name="BankCharacterPicker" type="OptionButton" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="BankWorkspaceColumns" type="HBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="BankAccount" type="PanelContainer" parent="BankWorkspaceColumns"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.8
+theme_type_variation = &"ClassicTextWell"
+
+[node name="Content" type="VBoxContainer" parent="BankWorkspaceColumns/BankAccount"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+
+[node name="Heading" type="Label" parent="BankWorkspaceColumns/BankAccount/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.898039, 0.768627, 0.360784, 1)
+theme_type_variation = &"ClassicHeading"
+text = "Party Wealth"
+
+[node name="PartyPoolCard" type="PanelContainer" parent="BankWorkspaceColumns/BankAccount/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInset"
+
+[node name="Facts" type="VBoxContainer" parent="BankWorkspaceColumns/BankAccount/Content/PartyPoolCard"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="BankWorkspaceColumns/BankAccount/Content/PartyPoolCard/Facts"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.898039, 0.768627, 0.360784, 1)
+text = "Party Pool"
+
+[node name="Value" type="Label" parent="BankWorkspaceColumns/BankAccount/Content/PartyPoolCard/Facts"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.560784, 0.811765, 0.819608, 1)
+
+[node name="BankedCard" type="PanelContainer" parent="BankWorkspaceColumns/BankAccount/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInset"
+
+[node name="Facts" type="VBoxContainer" parent="BankWorkspaceColumns/BankAccount/Content/BankedCard"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="BankWorkspaceColumns/BankAccount/Content/BankedCard/Facts"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.898039, 0.768627, 0.360784, 1)
+text = "Banked until departure"
+
+[node name="Value" type="Label" parent="BankWorkspaceColumns/BankAccount/Content/BankedCard/Facts"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.560784, 0.811765, 0.819608, 1)
+
+[node name="Explanation" type="Label" parent="BankWorkspaceColumns/BankAccount/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.682353, 0.713726, 0.729412, 1)
+autowrap_mode = 2
+
+[node name="Spacer" type="Control" parent="BankWorkspaceColumns/BankAccount/Content"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="BankCharacters" type="PanelContainer" parent="BankWorkspaceColumns"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.95
+theme_type_variation = &"ClassicTextWell"
+
+[node name="Content" type="VBoxContainer" parent="BankWorkspaceColumns/BankCharacters"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+
+[node name="Heading" type="Label" parent="BankWorkspaceColumns/BankCharacters/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.898039, 0.768627, 0.360784, 1)
+theme_type_variation = &"ClassicHeading"
+text = "Adventurers"
+
+[node name="BankCharacterScroll" type="ScrollContainer" parent="BankWorkspaceColumns/BankCharacters/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="BankCharacterRows" type="VBoxContainer" parent="BankWorkspaceColumns/BankCharacters/Content/BankCharacterScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 3
+
+[node name="CharacterEmpty" type="Label" parent="BankWorkspaceColumns/BankCharacters/Content/BankCharacterScroll/BankCharacterRows"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.682353, 0.713726, 0.729412, 1)
+text = "No eligible adventurer was supplied."
+autowrap_mode = 2
+
+[node name="BankSwap" type="PanelContainer" parent="BankWorkspaceColumns"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.25
+theme_type_variation = &"ClassicTextWell"
+
+[node name="Content" type="VBoxContainer" parent="BankWorkspaceColumns/BankSwap"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+
+[node name="Heading" type="Label" parent="BankWorkspaceColumns/BankSwap/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.898039, 0.768627, 0.360784, 1)
+theme_type_variation = &"ClassicHeading"
+text = "Selected Adventurer"
+
+[node name="BankSelectedSummary" type="VBoxContainer" parent="BankWorkspaceColumns/BankSwap/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 5
+
+[node name="Unavailable" type="Label" parent="BankWorkspaceColumns/BankSwap/Content/BankSelectedSummary"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.682353, 0.713726, 0.729412, 1)
+text = "No selected adventurer is available."
+autowrap_mode = 2
+
+[node name="CharacterName" type="Label" parent="BankWorkspaceColumns/BankSwap/Content/BankSelectedSummary"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.898039, 0.768627, 0.360784, 1)
+
+[node name="CharacterWealth" type="Label" parent="BankWorkspaceColumns/BankSwap/Content/BankSelectedSummary"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.560784, 0.811765, 0.819608, 1)
+
+[node name="CharacterLoad" type="Label" parent="BankWorkspaceColumns/BankSwap/Content/BankSelectedSummary"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.682353, 0.713726, 0.729412, 1)
+
+[node name="SummarySeparator" type="HSeparator" parent="BankWorkspaceColumns/BankSwap/Content/BankSelectedSummary"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="TransferEmpty" type="Label" parent="BankWorkspaceColumns/BankSwap/Content/BankSelectedSummary"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.682353, 0.713726, 0.729412, 1)
+text = "No exact transfer increment was supplied."
+autowrap_mode = 2
+
+[node name="TransferRows" type="VBoxContainer" parent="BankWorkspaceColumns/BankSwap/Content/BankSelectedSummary"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="BankFooter" type="HBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 5
+
+[node name="BankPool" type="Button" parent="BankFooter"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 36)
+layout_mode = 2
+text = "Pool party wealth"
+
+[node name="BankShare" type="Button" parent="BankFooter"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 36)
+layout_mode = 2
+text = "Share pooled wealth"
+
+[node name="Spacer" type="Control" parent="BankFooter"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="BankDone" type="Button" parent="BankFooter"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(160, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Done"

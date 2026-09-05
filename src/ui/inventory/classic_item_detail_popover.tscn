@@ -1,0 +1,24 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://src/ui/inventory/classic_item_detail_popover.gd" id="1_popover"]
+[ext_resource type="PackedScene" path="res://src/ui/inventory/classic_item_detail_label.tscn" id="2_label"]
+[ext_resource type="PackedScene" path="res://src/ui/inventory/classic_item_detail_fact_grid.tscn" id="3_facts"]
+
+[node name="ClassicItemDetailPopover" type="CanvasLayer"]
+layer = 90
+script = ExtResource("1_popover")
+detail_label_scene = ExtResource("2_label")
+fact_grid_scene = ExtResource("3_facts")
+
+[node name="ClassicItemDetailPanel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(360, 0)
+mouse_filter = 2
+theme_type_variation = &"ClassicTextWell"
+
+[node name="ClassicItemDetailContent" type="VBoxContainer" parent="ClassicItemDetailPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 4

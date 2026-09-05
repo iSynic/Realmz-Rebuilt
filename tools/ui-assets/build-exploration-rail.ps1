@@ -9,7 +9,7 @@ $ErrorActionPreference = "Stop"
 Add-Type -AssemblyName System.Drawing
 $toolRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = Split-Path -Parent (Split-Path -Parent $toolRoot)
-$outputPath = Join-Path $repoRoot "src/presentation/assets/ui/classic-exploration-rail.png"
+$outputPath = Join-Path $repoRoot "src/ui/shared/assets/ui/classic-exploration-rail.png"
 $sourcePath = (Resolve-Path -LiteralPath $SourcePng).Path
 $stagingPath = Join-Path ([IO.Path]::GetTempPath()) ("realmz2-exploration-rail-" + [Guid]::NewGuid().ToString("N") + ".png")
 

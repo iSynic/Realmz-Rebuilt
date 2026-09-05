@@ -1,0 +1,50 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/ui/setup/party_setup_party_slot.gd" id="1_slot"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_slot"]
+bg_color = Color(0.101961, 0.117647, 0.133333, 1)
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+
+[node name="PartySetupPartySlot" type="PanelContainer"]
+custom_minimum_size = Vector2(0, 44)
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBox_slot")
+script = ExtResource("1_slot")
+
+[node name="Row" type="HBoxContainer" parent="."]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 6
+
+[node name="Portrait" type="TextureRect" parent="Row"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+mouse_filter = 2
+texture_filter = 1
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Summary" type="Label" parent="Row"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_font_sizes/font_size = 12
+vertical_alignment = 1
+text_overrun_behavior = 3
+
+[node name="InspectPartyCharacter" type="Button" parent="Row"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="RemovePartyCharacter" type="Button" parent="Row"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[connection signal="pressed" from="Row/InspectPartyCharacter" to="." method="_request_inspection"]
+[connection signal="pressed" from="Row/RemovePartyCharacter" to="." method="_request_removal"]

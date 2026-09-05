@@ -1,0 +1,9 @@
+[gd_scene format=3]
+
+[node name="CombatSpellPower" type="Button"]
+custom_minimum_size = Vector2(20, 22)
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
+toggle_mode = true
+text = "1"
+accessibility_name = "Power 1"

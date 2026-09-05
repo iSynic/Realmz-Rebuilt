@@ -1,6 +1,6 @@
 extends SceneTree
 
-const MAIN_SCENE := "res://src/presentation/startup_front_door.tscn"
+const MAIN_SCENE := "res://src/ui/setup/startup_front_door.tscn"
 
 var _started_at: int
 var _loaded_at: int

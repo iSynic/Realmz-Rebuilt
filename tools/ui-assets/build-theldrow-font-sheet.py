@@ -310,7 +310,7 @@ def draw_text(
 def build_specimen(output_dir: Path, repo_root: Path, font_dir: Path) -> None:
     width, height = 1920, 1200
     canvas = tile_background(
-        (width, height), repo_root / "src/presentation/assets/ui/classic-charcoal-slate-tile.png"
+        (width, height), repo_root / "src/ui/shared/assets/ui/classic-charcoal-slate-tile.png"
     )
     draw = ImageDraw.Draw(canvas, "RGBA")
     gold = (224, 184, 76)
@@ -370,7 +370,7 @@ def main() -> None:
     args = parser.parse_args()
 
     repo_root = Path(__file__).resolve().parents[2]
-    font_dir = repo_root / "src/presentation/assets/fonts"
+    font_dir = repo_root / "src/ui/shared/assets/fonts"
     output_dir = args.output_dir or repo_root / "artifacts/font-sheets/theldrow-classic"
     output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)

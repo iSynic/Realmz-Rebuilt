@@ -1,6 +1,6 @@
 extends SceneTree
 
-const PACKAGE_REPOSITORY_SCRIPT := preload("res://src/infrastructure/packages/package_repository.gd")
+const PERFORMANCE_PACKAGE_LOADER := preload("res://tools/performance_package_loader.gd")
 
 
 func _initialize() -> void:
@@ -9,7 +9,7 @@ func _initialize() -> void:
 		printerr("Usage: godot --headless --path <project> --script res://tools/movement_performance_probe.gd -- <package.realmz2>")
 		call_deferred("_quit_cleanly", 2)
 		return
-	var loaded := PACKAGE_REPOSITORY_SCRIPT.new().load_package(arguments[0])
+	var loaded := PERFORMANCE_PACKAGE_LOADER.load_scenario(arguments[0])
 	if not loaded.is_ok():
 		printerr("PACKAGE_REJECTED %s: %s" % [loaded.error_code, loaded.error_message])
 		call_deferred("_quit_cleanly", 1)
@@ -41,7 +41,7 @@ func _initialize() -> void:
 	for index: int in 60:
 		var previous_view := session.view()
 		var started_at := Time.get_ticks_usec()
-		step = session.submit_intent(PlayerIntent.move(direction))
+		step = session.submit_intent(ExplorationIntents.move(direction))
 		var transaction_done := Time.get_ticks_usec()
 		var view := session.view(step.events)
 		var projection_done := Time.get_ticks_usec()
@@ -106,8 +106,8 @@ func _initialize() -> void:
 
 
 func _assemble_six_character_party(session: GameSession, content: RealmzContent) -> bool:
-	var races := content.race_definitions()
-	var castes := content.caste_definitions()
+	var races := content.characters.race_definitions()
+	var castes := content.characters.caste_definitions()
 	if races.is_empty() or castes.is_empty():
 		return false
 	var race: RaceDefinition
@@ -117,7 +117,7 @@ func _assemble_six_character_party(session: GameSession, content: RealmzContent)
 		for caste_candidate: CasteDefinition in castes:
 			if not race_candidate.eligible_caste_ids.is_empty() and not race_candidate.eligible_caste_ids.has(caste_candidate.id):
 				continue
-			var rows := caste_candidate.spellcaster_rows()
+			var rows := caste_candidate.progression.spellcaster_rows()
 			for row_index: int in mini(3, rows.size()):
 				if rows[row_index].y > 0:
 					race = race_candidate; caste = caste_candidate; caster_type = row_index + 1
@@ -127,7 +127,7 @@ func _assemble_six_character_party(session: GameSession, content: RealmzContent)
 	if race == null or caste == null:
 		return false
 	var known_spells: Array[String] = []
-	for spell: SpellDefinition in content.spell_definitions():
+	for spell: SpellDefinition in content.magic.definitions():
 		if int(spell.classic_id / 1000) == caster_type and spell.classic_tier() >= 0:
 			known_spells.append(spell.id)
 			if known_spells.size() >= 4: break
@@ -140,10 +140,10 @@ func _assemble_six_character_party(session: GameSession, content: RealmzContent)
 		character.set_known_spells(known_spells)
 		character.race_id = race.id
 		character.caste_id = caste.id
-		var imported := session.submit_intent(PlayerIntent.import_vault_character(character.id, "%064d" % (index + 1), character, "movement-probe", content.package_hash))
+		var imported := session.submit_intent(PartyIntents.import_vault_character(character.id, "%064d" % (index + 1), character, "movement-probe", content.package_hash))
 		if imported.state == SessionStep.State.FAILED:
 			return false
-	var started := session.submit_intent(PlayerIntent.begin_adventure())
+	var started := session.submit_intent(PartyIntents.begin_adventure())
 	for ignored: int in 16:
 		if started.state != SessionStep.State.WAITING_FOR_INTERACTION:
 			break
@@ -180,9 +180,9 @@ func _place_party(session: GameSession, content: RealmzContent, coordinate: Vect
 	if map != null:
 		var seeded := 0
 		for cell: MapCell in map.topology.cells():
-			snapshot.game_state.world.mark_visited(map.id, cell.coordinate); seeded += 1
+			snapshot.game_state.world.exploration.mark_visited(map.id, cell.coordinate); seeded += 1
 			if seeded >= visited_history_target: break
-	snapshot.game_state.world.mark_visited(snapshot.game_state.party.map_id, coordinate)
+	snapshot.game_state.world.exploration.mark_visited(snapshot.game_state.party.map_id, coordinate)
 	return session.restore(content, snapshot).state == SessionStep.State.COMPLETED
 
 

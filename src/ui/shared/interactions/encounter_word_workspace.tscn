@@ -1,0 +1,43 @@
+[gd_scene format=3]
+
+[node name="EncounterContextDeck" type="PanelContainer"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_type_variation = &"ClassicInset"
+
+[node name="EncounterContextPane" type="VBoxContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 5
+
+[node name="EncounterWordWorkspace" type="VBoxContainer" parent="EncounterContextPane"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 3
+
+[node name="EncounterWordActions" type="HBoxContainer" parent="EncounterContextPane/EncounterWordWorkspace"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="ResponseLabel" type="Label" parent="EncounterContextPane/EncounterWordWorkspace/EncounterWordActions"]
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+text = "Response"
+
+[node name="EncounterWord" type="LineEdit" parent="EncounterContextPane/EncounterWordWorkspace/EncounterWordActions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(300, 34)
+layout_mode = 2
+size_flags_horizontal = 1
+theme_type_variation = &"ClassicTheldrowLineEdit"
+placeholder_text = "Word or phrase"
+max_length = 39
+
+[node name="EncounterWordSubmit" type="Button" parent="EncounterContextPane/EncounterWordWorkspace/EncounterWordActions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(68, 32)
+layout_mode = 2
+theme_type_variation = &"ClassicTheldrowButton"
+text = "Speak"

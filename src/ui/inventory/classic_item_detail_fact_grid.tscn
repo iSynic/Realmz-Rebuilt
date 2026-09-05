@@ -1,0 +1,7 @@
+[gd_scene format=3]
+
+[node name="ClassicItemDetailFacts" type="GridContainer"]
+mouse_filter = 2
+columns = 2
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 2

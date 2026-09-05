@@ -1,0 +1,11 @@
+[gd_scene format=3]
+
+[node name="InteractionSideWorkspace" type="PanelContainer"]
+mouse_filter = 0
+theme_type_variation = &"ClassicInset"
+
+[node name="InteractionSideWorkspaceScroll" type="ScrollContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0

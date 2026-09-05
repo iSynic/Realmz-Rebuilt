@@ -1,0 +1,95 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/ui/shared/interactions/pick_lock_interaction.gd" id="1_interaction"]
+
+[node name="PickLockInteraction" type="VBoxContainer"]
+theme_override_constants/separation = 8
+script = ExtResource("1_interaction")
+
+[node name="PickLockIdentity" type="PanelContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInset"
+
+[node name="Header" type="HBoxContainer" parent="PickLockIdentity"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Portrait" type="TextureRect" parent="PickLockIdentity/Header"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+texture_filter = 1
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Identity" type="VBoxContainer" parent="PickLockIdentity/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ActionTitle" type="Label" parent="PickLockIdentity/Header/Identity"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+text = "Pick Lock"
+
+[node name="CharacterFact" type="Label" parent="PickLockIdentity/Header/Identity"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Character • Ability"
+
+[node name="Instruction" type="Label" parent="PickLockIdentity/Header/Identity"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.835294, 0.705882, 0.364706, 1)
+text = "Stop the tumblers at the right moment."
+autowrap_mode = 2
+
+[node name="PickLockCountdown" type="Label" parent="PickLockIdentity/Header"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(90, 0)
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="PickLockMechanism" type="PanelContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicTextWell"
+
+[node name="Mechanism" type="VBoxContainer" parent="PickLockMechanism"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="TumblerRows" type="VBoxContainer" parent="PickLockMechanism/Mechanism"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="PickLockLegend" type="HBoxContainer" parent="PickLockMechanism/Mechanism"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="Red" type="Label" parent="PickLockMechanism/Mechanism/PickLockLegend"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.843137, 0.482353, 0.482353, 1)
+text = "Red • not aligned"
+
+[node name="Gold" type="Label" parent="PickLockMechanism/Mechanism/PickLockLegend"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.878431, 0.737255, 0.32549, 1)
+text = "Gold • within range"
+
+[node name="Green" type="Label" parent="PickLockMechanism/Mechanism/PickLockLegend"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.482353, 0.862745, 0.545098, 1)
+text = "Green • set"
+
+[node name="PickLockStop" type="Button" parent="."]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Stop tumblers"
+
+[node name="Timer" type="Timer" parent="."]
+unique_name_in_owner = true

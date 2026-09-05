@@ -1,0 +1,45 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://src/ui/inventory/inventory_trade_ledger.gd" id="1_ledger"]
+[ext_resource type="PackedScene" path="res://src/ui/inventory/inventory_trade_item_row.tscn" id="2_row"]
+[ext_resource type="PackedScene" path="res://src/ui/inventory/inventory_text_row.tscn" id="3_empty"]
+
+[node name="InventoryTradeLedger" type="PanelContainer"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_type_variation = &"ClassicItemLedger"
+script = ExtResource("1_ledger")
+item_row_scene = ExtResource("2_row")
+empty_row_scene = ExtResource("3_empty")
+
+[node name="Content" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="Header" type="HBoxContainer" parent="Content"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Content/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.0823529, 0.0823529, 0.0705882, 1)
+theme_override_font_sizes/font_size = 17
+text = "Character's items"
+
+[node name="Load" type="Label" parent="Content/Header"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.313726, 0.341176, 0.356863, 1)
+theme_override_font_sizes/font_size = 12
+text = "Load 0/0"
+horizontal_alignment = 2
+
+[node name="ItemScroll" type="ScrollContainer" parent="Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Items" type="VBoxContainer" parent="Content/ItemScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 0

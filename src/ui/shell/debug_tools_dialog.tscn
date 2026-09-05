@@ -1,0 +1,201 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/ui/shell/debug_tools_dialog.gd" id="1_dialog"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_dialog"]
+bg_color = Color(0.12549, 0.14902, 0.168627, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.741176, 0.611765, 0.333333, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+content_margin_left = 18.0
+content_margin_top = 14.0
+content_margin_right = 18.0
+content_margin_bottom = 14.0
+
+[node name="DebugToolsDialog" type="PanelContainer"]
+visible = false
+layout_mode = 0
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -260.0
+offset_top = -270.0
+offset_right = 260.0
+offset_bottom = 270.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBox_dialog")
+z_index = 500
+script = ExtResource("1_dialog")
+
+[node name="Scroll" type="ScrollContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Content" type="VBoxContainer" parent="Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="Title" type="Label" parent="Scroll/Content"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "DEBUG TOOLS · F12"
+horizontal_alignment = 1
+
+[node name="Status" type="Label" parent="Scroll/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Debug commands do not enter adventure saves."
+autowrap_mode = 2
+
+[node name="ExplorationHeading" type="Label" parent="Scroll/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.937255, 0.847059, 0.545098, 1)
+text = "Exploration"
+
+[node name="MapRow" type="HBoxContainer" parent="Scroll/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Label" type="Label" parent="Scroll/Content/MapRow"]
+layout_mode = 2
+text = "Map"
+
+[node name="MapSelect" type="OptionButton" parent="Scroll/Content/MapRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Coordinates" type="HBoxContainer" parent="Scroll/Content"]
+layout_mode = 2
+
+[node name="XLabel" type="Label" parent="Scroll/Content/Coordinates"]
+layout_mode = 2
+text = "X"
+
+[node name="WarpX" type="SpinBox" parent="Scroll/Content/Coordinates"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 255.0
+update_on_text_changed = true
+
+[node name="YLabel" type="Label" parent="Scroll/Content/Coordinates"]
+layout_mode = 2
+text = "Y"
+
+[node name="WarpY" type="SpinBox" parent="Scroll/Content/Coordinates"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 255.0
+update_on_text_changed = true
+
+[node name="Warp" type="Button" parent="Scroll/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Warp to map / X,Y"
+
+[node name="Noclip" type="CheckButton" parent="Scroll/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "No clip movement"
+
+[node name="TopologyDebug" type="CheckButton" parent="Scroll/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Gold diamonds mark placed Action Points; gold outlines show effective random encounter rectangles."
+text = "Show APs and random rectangles on map"
+
+[node name="PartyHeading" type="Label" parent="Scroll/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.937255, 0.847059, 0.545098, 1)
+text = "Party and scenarios"
+
+[node name="Restore" type="Button" parent="Scroll/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Restore party HP / SP and bad conditions"
+
+[node name="EncounterRow" type="HBoxContainer" parent="Scroll/Content"]
+layout_mode = 2
+
+[node name="EncounterKind" type="OptionButton" parent="Scroll/Content/EncounterRow"]
+unique_name_in_owner = true
+layout_mode = 2
+item_count = 2
+popup/item_0/text = "Simple Encounter"
+popup/item_0/id = 0
+popup/item_1/text = "Complex Encounter"
+popup/item_1/id = 1
+
+[node name="IdLabel" type="Label" parent="Scroll/Content/EncounterRow"]
+layout_mode = 2
+text = "ID"
+
+[node name="EncounterId" type="SpinBox" parent="Scroll/Content/EncounterRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 32767.0
+update_on_text_changed = true
+
+[node name="TriggerEncounter" type="Button" parent="Scroll/Content/EncounterRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Trigger encounter"
+
+[node name="BattleRow" type="HBoxContainer" parent="Scroll/Content"]
+layout_mode = 2
+
+[node name="BattleLabel" type="Label" parent="Scroll/Content/BattleRow"]
+layout_mode = 2
+text = "Battle ID"
+
+[node name="BattleId" type="SpinBox" parent="Scroll/Content/BattleRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 32767.0
+update_on_text_changed = true
+
+[node name="TriggerBattle" type="Button" parent="Scroll/Content/BattleRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Trigger battle"
+
+[node name="WinBattle" type="Button" parent="Scroll/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Win current battle"
+
+[node name="RecentAutoActions" type="MenuButton" parent="Scroll/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="OpenConsole" type="Button" parent="Scroll/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Open game-action console · ` / ~"
+
+[node name="ConsoleShortcut" type="CheckButton" parent="Scroll/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+button_pressed = true
+text = "Enable ` / ~ console shortcut"
+
+[node name="Close" type="Button" parent="Scroll/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Close"

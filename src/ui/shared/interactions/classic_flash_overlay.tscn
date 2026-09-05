@@ -1,0 +1,30 @@
+[gd_scene format=3]
+
+[node name="ClassicFlashLayer" type="Control"]
+mouse_filter = 2
+
+[node name="ClassicFlashShield" type="ColorRect" parent="."]
+mouse_filter = 0
+color = Color(0.01, 0.015, 0.02, 0.42)
+
+[node name="ClassicFlashMessage" type="PanelContainer" parent="."]
+z_index = 1
+mouse_filter = 0
+theme_type_variation = &"ClassicInset"
+
+[node name="ClassicFlashContent" type="VBoxContainer" parent="ClassicFlashMessage"]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_constants/separation = 8
+
+[node name="ClassicFlashText" type="Label" parent="ClassicFlashMessage/ClassicFlashContent"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.941176, 0.815686, 0.356863, 1)
+text = "A Classic message appears."
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="ClassicFlashContinue" type="Button" parent="ClassicFlashMessage/ClassicFlashContent"]
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Continue"

@@ -1,0 +1,133 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/ui/setup/character_creation_identity_step.gd" id="1_step"]
+
+[node name="CharacterCreationIdentityStep" type="VBoxContainer"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+script = ExtResource("1_step")
+
+[node name="IdentityHeading" type="Label" parent="."]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+theme_override_font_sizes/font_size = 20
+text = "Identity"
+
+[node name="CreatorIdentityStage" type="HBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="IdentityPreview" type="PanelContainer" parent="CreatorIdentityStage"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.65
+theme_type_variation = &"ClassicInset"
+
+[node name="PreviewContent" type="VBoxContainer" parent="CreatorIdentityStage/IdentityPreview"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="Heading" type="Label" parent="CreatorIdentityStage/IdentityPreview/PreviewContent"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+theme_override_font_sizes/font_size = 15
+text = "Character File"
+
+[node name="IdentityPreviewName" type="Label" parent="CreatorIdentityStage/IdentityPreview/PreviewContent"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+theme_override_font_sizes/font_size = 18
+text = "Unnamed adventurer"
+
+[node name="IdentityPreviewGender" type="Label" parent="CreatorIdentityStage/IdentityPreview/PreviewContent"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.878, 0.886, 0.898, 1)
+theme_override_font_sizes/font_size = 14
+text = "Male"
+
+[node name="IdentityPreviewLevel" type="Label" parent="CreatorIdentityStage/IdentityPreview/PreviewContent"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.878, 0.886, 0.898, 1)
+theme_override_font_sizes/font_size = 14
+text = "Starting level 1"
+
+[node name="AppearanceHint" type="Label" parent="CreatorIdentityStage/IdentityPreview/PreviewContent"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+theme_override_font_sizes/font_size = 12
+text = "Portrait and battle icon are chosen in Appearance."
+autowrap_mode = 2
+
+[node name="IdentityFields" type="PanelContainer" parent="CreatorIdentityStage"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.35
+theme_type_variation = &"ClassicInset"
+
+[node name="Form" type="VBoxContainer" parent="CreatorIdentityStage/IdentityFields"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="Heading" type="Label" parent="CreatorIdentityStage/IdentityFields/Form"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+theme_override_font_sizes/font_size = 15
+text = "Identity Record"
+
+[node name="NameLabel" type="Label" parent="CreatorIdentityStage/IdentityFields/Form"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+theme_override_font_sizes/font_size = 12
+text = "Name"
+
+[node name="CharacterName" type="LineEdit" parent="CreatorIdentityStage/IdentityFields/Form"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"ClassicTheldrowLineEdit"
+placeholder_text = "Character name"
+max_length = 24
+
+[node name="GenderLabel" type="Label" parent="CreatorIdentityStage/IdentityFields/Form"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+theme_override_font_sizes/font_size = 12
+text = "Gender"
+
+[node name="CharacterGender" type="OptionButton" parent="CreatorIdentityStage/IdentityFields/Form"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"ClassicTheldrowOptionButton"
+
+[node name="StartingLevelLabel" type="Label" parent="CreatorIdentityStage/IdentityFields/Form"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+theme_override_font_sizes/font_size = 12
+text = "Starting Level"
+
+[node name="StartingLevel" type="OptionButton" parent="CreatorIdentityStage/IdentityFields/Form"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"ClassicTheldrowOptionButton"
+tooltip_text = "Castle offers fixed starting levels and runs every intervening ordinary level-up roll. Campaign level restrictions remove unavailable choices."
+
+[node name="IdentityCampaignContext" type="Label" parent="CreatorIdentityStage/IdentityFields/Form"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+theme_override_font_sizes/font_size = 12
+text = "Classic Character Files"
+autowrap_mode = 2

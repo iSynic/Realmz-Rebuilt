@@ -1,0 +1,21 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://src/ui/shared/style/classic_content_icon.tscn" id="1_icon"]
+[ext_resource type="PackedScene" path="res://src/ui/shared/exchange/classic_exchange_item_button.tscn" id="2_button"]
+
+[node name="ShopItemRow" type="HBoxContainer"]
+theme_override_constants/separation = 5
+
+[node name="ItemIcon" parent="." instance=ExtResource("1_icon")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="ItemButton" parent="." instance=ExtResource("2_button")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicItemLedgerButton"
+alignment = 0
+clip_text = true
+focus_mode = 0
+toggle_mode = true

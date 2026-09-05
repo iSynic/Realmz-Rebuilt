@@ -18,10 +18,15 @@ $forbiddenNames = @("AGENTS.md", ".mcp.json")
 foreach ($path in $tracked) {
     $normalized = $path.Replace('\', '/')
     if ($forbiddenNames -contains ($normalized.Split('/')[-1])) { throw "Forbidden internal file is tracked: $normalized" }
-    foreach ($prefix in @(".godot/", ".references/", ".ua/", ".understand/", "artifacts/", "dist/", "docs/codemap/", "release-evidence/", "test-results/")) {
+    foreach ($prefix in @(".godot/", ".references/", ".ua/", ".understand/", "addons/godot_mcp/", "artifacts/", "dist/", "docs/codemap/", "release-evidence/", "test-results/")) {
         if ($normalized.StartsWith($prefix, [System.StringComparison]::OrdinalIgnoreCase)) { throw "Forbidden generated/internal path is tracked: $normalized" }
     }
-    if ($normalized -in @("docs/development.md", "docs/roadmap.md")) { throw "Internal process document is tracked: $normalized" }
+    if ($normalized -in @("docs/architecture-migration.md", "docs/development.md", "docs/human-centered-architecture.md", "docs/roadmap.md")) { throw "Internal process document is tracked: $normalized" }
+}
+
+$projectSettings = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "project.godot")
+if ($projectSettings.Contains("res://addons/godot_mcp/plugin.cfg")) {
+    throw "Public project settings still enable the local Godot MCP editor plugin."
 }
 
 $textExtensions = @(".cfg", ".gd", ".gitattributes", ".gitignore", ".json", ".md", ".ps1", ".py", ".txt", ".yml", ".yaml")

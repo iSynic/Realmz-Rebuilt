@@ -1,6 +1,6 @@
 extends SceneTree
 
-const PACKAGE_REPOSITORY_SCRIPT := preload("res://src/infrastructure/packages/package_repository.gd")
+const PERFORMANCE_PACKAGE_LOADER := preload("res://tools/performance_package_loader.gd")
 const DEFAULT_BATTLE_ID := 46
 
 
@@ -10,7 +10,7 @@ func _initialize() -> void:
 		printerr("Usage: godot --headless --path <project> --script res://tools/combat_performance_probe.gd -- <package.realmz2> [classic-battle-id]")
 		call_deferred("_quit_cleanly", 2)
 		return
-	var loaded := PACKAGE_REPOSITORY_SCRIPT.new().load_package(arguments[0])
+	var loaded := PERFORMANCE_PACKAGE_LOADER.load_scenario(arguments[0])
 	if not loaded.is_ok():
 		printerr("PACKAGE_REJECTED %s: %s" % [loaded.error_code, loaded.error_message])
 		call_deferred("_quit_cleanly", 1)
@@ -18,7 +18,7 @@ func _initialize() -> void:
 	var content: RealmzContent = loaded.content
 	var package_media: PackageMediaCatalog = loaded.media
 	var battle_id := int(arguments[1]) if arguments.size() == 2 else DEFAULT_BATTLE_ID
-	var battle := content.battle_by_classic_id(battle_id)
+	var battle := content.combat.battle_by_classic_id(battle_id)
 	if battle == null:
 		printerr("BATTLE_REJECTED: Classic battle %d is unavailable" % battle_id)
 		call_deferred("_quit_cleanly", 1)
@@ -39,11 +39,11 @@ func _initialize() -> void:
 		return
 	var character_ids: Array[String] = []
 	for character: CharacterState in state.party.characters():
-		if character.current_health > 0 and state.combat.battlefield.has_actor(character.id):
+		if character.current_health > 0 and state.combat.battlefield.actors.has_actor(character.id):
 			character_ids.append(character.id)
 	var monster_ids: Array[String] = []
-	for monster: MonsterState in state.combat.monsters():
-		if monster.current_health > 0 and state.combat.battlefield.has_actor(monster.id):
+	for monster: MonsterState in state.combat.roster.monsters():
+		if monster.current_health > 0 and state.combat.battlefield.actors.has_actor(monster.id):
 			monster_ids.append(monster.id)
 	if character_ids.is_empty() or monster_ids.is_empty():
 		printerr("BATTLE_REJECTED: probe requires living party and monster actors")
@@ -68,13 +68,13 @@ func _initialize() -> void:
 	warm_monster_phase_rng.restore(monster_phase_rng_start)
 	var previous_view := _combat_view(state, content, rules, 1)
 	var view_started := Time.get_ticks_usec()
-	var view := CombatView.new(state.combat, state.party.characters(), content, rules.inventory, rules.battlefield, rules.combat_flow, state)
+	var view := CombatView.new(state.combat, state.party.characters(), content, rules.equipment, rules.battlefield, rules.combat_flow, state)
 	var view_us := Time.get_ticks_usec() - view_started
 	var spell_options_started := Time.get_ticks_usec()
-	var spell_options := rules.combat_flow.character_spell_options(state, content, character_ids[0])
+	var spell_options := rules.combat_flow.magic.selection().character_spell_options(state, content, character_ids[0])
 	var spell_options_us := Time.get_ticks_usec() - spell_options_started
 	var spell_reason_started := Time.get_ticks_usec()
-	rules.combat_flow.character_spell_unavailable_reason(state, content, character_ids[0])
+	rules.combat_flow.magic.selection().character_spell_unavailable_reason(state, content, character_ids[0])
 	var spell_reason_us := Time.get_ticks_usec() - spell_reason_started
 	var checkpoint_started := Time.get_ticks_usec()
 	state.to_data()
@@ -123,8 +123,8 @@ func _initialize() -> void:
 	var setup_view := _combat_view(state, content, rules, 3)
 	var setup_playback := _playback_metrics(null, setup.events, setup_view)
 	var combat_assets: Array[MediaAsset] = []
-	for monster: MonsterState in state.combat.monsters():
-		var definition := content.monster_by_id(monster.definition_id)
+	for monster: MonsterState in state.combat.roster.monsters():
+		var definition := content.combat.monster_by_id(monster.definition_id)
 		if definition == null:
 			continue
 		var asset := package_media.asset_by_resource("cicn", definition.icon_id)
@@ -176,9 +176,9 @@ func _combat_view(state: GameState, content: RealmzContent, rules: RealmzRules, 
 	var members: Array[CharacterView] = []
 	for character: CharacterState in state.party.characters():
 		var member := CharacterView.new(character, content)
-		member.apply_equipment(rules.inventory.combat_equipment(character, content.item_definitions()))
+		member.apply_equipment(rules.equipment.combat_equipment(character, content.items.definitions()))
 		members.append(member)
-	var combat := CombatView.new(state.combat, state.party.characters(), content, rules.inventory, rules.battlefield, rules.combat_flow, state) if state.combat != null else null
+	var combat := CombatView.new(state.combat, state.party.characters(), content, rules.equipment, rules.battlefield, rules.combat_flow, state) if state.combat != null else null
 	return GameView.new(revision, true, null, state.party.map_id, state.party.coordinate, state.clock.day(), state.clock.hour(), state.clock.minute(), null, members, state.party.fatigue, state.party.pooled_wealth.gold, combat)
 
 
@@ -199,8 +199,8 @@ func _playback_metrics(previous: GameView, events: Array[DomainEvent], final: Ga
 
 
 func _fresh_state(content: RealmzContent) -> GameState:
-	var races := content.race_definitions()
-	var castes := content.caste_definitions()
+	var races := content.characters.race_definitions()
+	var castes := content.characters.caste_definitions()
 	if races.is_empty() or castes.is_empty():
 		return null
 	var race := races[0]
@@ -213,7 +213,7 @@ func _fresh_state(content: RealmzContent) -> GameState:
 		return null
 	var characters: Array[CharacterState] = []
 	var combat_spell_ids: Array[String] = []
-	for spell: SpellDefinition in content.spell_definitions():
+	for spell: SpellDefinition in content.magic.definitions():
 		if spell.in_combat:
 			combat_spell_ids.append(spell.id)
 			if combat_spell_ids.size() == 12:
@@ -233,7 +233,7 @@ func _fresh_state(content: RealmzContent) -> GameState:
 		characters.append(character)
 	var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, characters), RealmzClock.new())
 	state.party_setup_completed = true
-	state.world.mark_visited(content.start_map_id, content.start_coordinate)
+	state.world.exploration.mark_visited(content.start_map_id, content.start_coordinate)
 	return state
 
 

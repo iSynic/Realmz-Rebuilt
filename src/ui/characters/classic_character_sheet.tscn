@@ -1,0 +1,123 @@
+[gd_scene load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://src/ui/characters/classic_character_sheet.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/character_sheet_selector_button.tscn" id="2_selector"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/character_sheet_stat_tabs.tscn" id="3_stat_tabs"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/character_metric_row.tscn" id="4_metric"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/character_record_card.tscn" id="5_record"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/character_sheet_inventory_magic_tabs.tscn" id="6_inventory_magic"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/character_item_card.tscn" id="7_item"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/character_spell_card.tscn" id="8_spell"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/character_sheet_identity_tabs.tscn" id="9_identity_tabs"]
+
+[node name="ClassicCharacterSheet" type="VBoxContainer"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+script = ExtResource("1_script")
+selector_button_scene = ExtResource("2_selector")
+metric_row_scene = ExtResource("4_metric")
+record_card_scene = ExtResource("5_record")
+item_card_scene = ExtResource("7_item")
+spell_card_scene = ExtResource("8_spell")
+
+[node name="CharacterEmptyState" type="Label" parent="."]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+text = "No characters are available for inspection."
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
+
+[node name="CharacterPicker" type="HFlowContainer" parent="."]
+layout_mode = 2
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
+
+[node name="CharacterIdentity" type="PanelContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInset"
+[node name="IdentityRow" type="HBoxContainer" parent="CharacterIdentity"]
+layout_mode = 2
+theme_override_constants/separation = 10
+[node name="PortraitMedia" type="PanelContainer" parent="CharacterIdentity/IdentityRow"]
+custom_minimum_size = Vector2(80, 80)
+layout_mode = 2
+[node name="PortraitImage" type="TextureRect" parent="CharacterIdentity/IdentityRow/PortraitMedia"]
+visible = false
+layout_mode = 2
+texture_filter = 1
+expand_mode = 1
+stretch_mode = 5
+[node name="PortraitFallback" type="Label" parent="CharacterIdentity/IdentityRow/PortraitMedia"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+text = "?"
+horizontal_alignment = 1
+vertical_alignment = 1
+[node name="IdentityText" type="VBoxContainer" parent="CharacterIdentity/IdentityRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+[node name="CharacterName" type="Label" parent="CharacterIdentity/IdentityRow/IdentityText"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+text = "Character Name"
+[node name="CharacterRole" type="Label" parent="CharacterIdentity/IdentityRow/IdentityText"]
+layout_mode = 2
+text = "Level, race, caste, gender, and age"
+[node name="CharacterSummary" type="Label" parent="CharacterIdentity/IdentityRow/IdentityText"]
+layout_mode = 2
+text = "Stamina, spell points, armor, attacks, and load"
+autowrap_mode = 2
+[node name="CombatIconMedia" type="PanelContainer" parent="CharacterIdentity/IdentityRow"]
+custom_minimum_size = Vector2(80, 80)
+layout_mode = 2
+[node name="CombatIconImage" type="TextureRect" parent="CharacterIdentity/IdentityRow/CombatIconMedia"]
+visible = false
+layout_mode = 2
+texture_filter = 1
+expand_mode = 1
+stretch_mode = 5
+[node name="CombatIconFallback" type="Label" parent="CharacterIdentity/IdentityRow/CombatIconMedia"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+text = "⚔"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="CharacterSheetTabs" type="HFlowContainer" parent="."]
+layout_mode = 2
+theme_override_constants/h_separation = 4
+theme_override_constants/v_separation = 4
+
+[node name="CharacterSheetWorkspace" type="PanelContainer" parent="."]
+custom_minimum_size = Vector2(0, 300)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_type_variation = &"ClassicInset"
+[node name="CharacterSheetContent" type="VBoxContainer" parent="CharacterSheetWorkspace"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="CharacterSheetStatTabs" parent="CharacterSheetWorkspace/CharacterSheetContent" instance=ExtResource("3_stat_tabs")]
+layout_mode = 2
+
+[node name="CharacterSheetInventoryMagicTabs" parent="CharacterSheetWorkspace/CharacterSheetContent" instance=ExtResource("6_inventory_magic")]
+layout_mode = 2
+
+[node name="CharacterSheetIdentityTabs" parent="CharacterSheetWorkspace/CharacterSheetContent" instance=ExtResource("9_identity_tabs")]
+layout_mode = 2
+
+[node name="DynamicTabContent" type="VBoxContainer" parent="CharacterSheetWorkspace/CharacterSheetContent"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8

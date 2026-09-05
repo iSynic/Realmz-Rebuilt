@@ -33,12 +33,12 @@ foreach ($expected in $expectedPresets.GetEnumerator()) {
     if ($body -notmatch ('(?m)^platform="' + [regex]::Escape($expected.Value) + '"$') -or $body -notmatch '(?m)^script_export_mode=2$') {
         throw "Release preset $($expected.Key) must target $($expected.Value) with compiled script export."
     }
-    foreach ($requiredExclusion in @("addons/godot_mcp/**", "tests/**", "tools/**", "docs/**", "contracts/**", "artifacts/**", ".references/**", ".github/**", ".mcp.json", "**/AGENTS.md", "README.md", "CONTRIBUTING.md")) {
+    foreach ($requiredExclusion in @("addons/godot_mcp/**", "addons/realmz_builder/**", "tests/**", "tools/**", "docs/**", "contracts/**", "artifacts/**", ".references/**", ".github/**", ".mcp.json", "**/AGENTS.md", "README.md", "CONTRIBUTING.md")) {
         if (-not $body.Contains($requiredExclusion)) {
             throw "Release preset $($expected.Key) must exclude $requiredExclusion"
         }
     }
-    foreach ($requiredBundledFile in @("LICENSE", "THIRD_PARTY_NOTICES.txt", "src/presentation/assets/classic-application-media.json", "src/presentation/assets/classic-media/**", "src/infrastructure/characters/realmz-classic-starter-characters.json")) {
+    foreach ($requiredBundledFile in @("LICENSE", "THIRD_PARTY_NOTICES.txt", "src/ui/shared/assets/classic-application-media.json", "src/ui/shared/assets/classic-media/**", "src/storage/characters/realmz-classic-starter-characters.json")) {
         if ($body -notmatch ('(?m)^include_filter="[^"]*' + [regex]::Escape($requiredBundledFile) + '[^"]*"$')) {
             throw "Release preset $($expected.Key) must include $requiredBundledFile"
         }
@@ -93,6 +93,11 @@ if (-not (Test-Path -LiteralPath $releaseWorkflowPath -PathType Leaf)) { throw "
 $releaseWorkflow = Get-Content -Raw -LiteralPath $releaseWorkflowPath
 foreach ($requiredReleaseContract in @('tags:', '"v*"', "draft: true", "prerelease: true", "SHA256SUMS", "realmz-rebuilt-windows-x86_64.zip", "realmz-rebuilt-linux-x86_64.tar.gz", "realmz-rebuilt-macos-universal.zip")) {
     if (-not $releaseWorkflow.Contains($requiredReleaseContract)) { throw "Tag workflow is missing required draft-prerelease contract: $requiredReleaseContract" }
+}
+foreach ($workflow in @($ci, $releaseWorkflow)) {
+    foreach ($windowsSmokeContract in @('$quotedLog =', '-ArgumentList "--headless --quit-after 2 --log-file $quotedLog"')) {
+        if (-not $workflow.Contains($windowsSmokeContract)) { throw "Windows native smoke must preserve an absolute log path as one quoted argument: $windowsSmokeContract" }
+    }
 }
 
 Write-Host "Windows, Linux, and macOS release export contracts verified."

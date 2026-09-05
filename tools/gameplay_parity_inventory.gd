@@ -1,6 +1,6 @@
 extends SceneTree
 
-const APPLICATION_PACKAGE_PATH := "res://src/infrastructure/characters/realmz-classic-character-library.realmz2"
+const APPLICATION_PACKAGE_PATH := "res://src/storage/characters/realmz-classic-character-library.realmz2"
 const APPLICATION_PACKAGE_ID := "realmz-classic-character-library"
 const APPLICATION_PACKAGE_HASH := "c7e093f46bcca49d2382d68c2995ae5ff90c0e706dbd538682b613af9b80e0bd"
 const FEATURE_REPORT_FORMAT_VERSION := 2
@@ -8,8 +8,6 @@ const FEATURE_REPORT_PROVIDENCE_COMMIT := "8ae731e851544575d6687059b9c84a2535f89
 const FEATURE_REPORT_SCHEMA_HASH := "be4fa175ebfc8ed756a0db2b0c6073108bd9f635e8c23321d1258cfcf4e73ee4"
 const INVENTORY_PATH := "res://tests/fixtures/oracle/classic-gameplay-parity-inventory.json"
 const REPORT_PATH := "res://docs/classic-gameplay-parity-status.md"
-const SpellCapabilities = preload("res://src/core/rules/classic_spell_capability_catalog.gd")
-
 var _write := false
 
 
@@ -55,18 +53,18 @@ func _build_inventory(content: RealmzContent) -> Dictionary:
 	var spells: Array[Dictionary] = []
 	var signature_groups: Dictionary = {}
 	var role_counts := {
-		String(SpellCapabilities.ROLE_APPLICATION_EFFECT): 0,
-		String(SpellCapabilities.ROLE_RESERVED_STANDARD): 0,
-		String(SpellCapabilities.ROLE_STOCK_PLAYER): 0,
-		String(SpellCapabilities.ROLE_UNKNOWN): 0,
+		String(ClassicSpellIdentityCatalog.ROLE_APPLICATION_EFFECT): 0,
+		String(ClassicSpellIdentityCatalog.ROLE_RESERVED_STANDARD): 0,
+		String(ClassicSpellIdentityCatalog.ROLE_STOCK_PLAYER): 0,
+		String(ClassicSpellIdentityCatalog.ROLE_UNKNOWN): 0,
 	}
 	var family_counts: Dictionary = {}
 	var context_counts: Dictionary = {}
-	for spell: SpellDefinition in content.spell_definitions():
-		var role := String(SpellCapabilities.application_role(spell))
-		var behavior_signature: Dictionary = SpellCapabilities.behavior_signature(spell)
-		var mechanical_family := String(SpellCapabilities.mechanical_family(spell))
-		var runtime_contexts: Dictionary = SpellCapabilities.runtime_contexts(spell)
+	for spell: SpellDefinition in content.magic.definitions():
+		var role := String(ClassicSpellIdentityCatalog.application_role(spell))
+		var behavior_signature: Dictionary = ClassicSpellClassificationRules.behavior_signature(spell)
+		var mechanical_family := String(ClassicSpellClassificationRules.mechanical_family(spell))
+		var runtime_contexts: Dictionary = ClassicSpellDispositionRules.runtime_contexts(spell)
 		var signature_id := CanonicalJson.encode(behavior_signature).sha256_text().substr(0, 16)
 		role_counts[role] = int(role_counts.get(role, 0)) + 1
 		family_counts[mechanical_family] = int(family_counts.get(mechanical_family, 0)) + 1
@@ -83,9 +81,9 @@ func _build_inventory(content: RealmzContent) -> Dictionary:
 			"id": spell.id,
 			"mechanicalFamily": mechanical_family,
 			"name": spell.name,
-			"packedFamily": SpellCapabilities.packed_family(spell),
-			"packedLevel": SpellCapabilities.packed_level(spell),
-			"packedSlot": SpellCapabilities.packed_slot(spell),
+			"packedFamily": ClassicSpellIdentityCatalog.packed_family(spell),
+			"packedLevel": ClassicSpellIdentityCatalog.packed_level(spell),
+			"packedSlot": ClassicSpellIdentityCatalog.packed_slot(spell),
 			"presentationSignature": {
 				"lookEnd": spell.look_end,
 				"lookStart": spell.look_start,
@@ -133,12 +131,12 @@ func _build_inventory(content: RealmzContent) -> Dictionary:
 			"signatureMeaning": "mechanical fields only; presentation art and sound remain separately inventoried",
 		},
 		"spellSummary": {
-			"applicationEffects": role_counts[String(SpellCapabilities.ROLE_APPLICATION_EFFECT)],
+			"applicationEffects": role_counts[String(ClassicSpellIdentityCatalog.ROLE_APPLICATION_EFFECT)],
 			"behaviorSignatures": signatures.size(),
-			"reservedStandardSlots": role_counts[String(SpellCapabilities.ROLE_RESERVED_STANDARD)],
-			"stockPlayer": role_counts[String(SpellCapabilities.ROLE_STOCK_PLAYER)],
+			"reservedStandardSlots": role_counts[String(ClassicSpellIdentityCatalog.ROLE_RESERVED_STANDARD)],
+			"stockPlayer": role_counts[String(ClassicSpellIdentityCatalog.ROLE_STOCK_PLAYER)],
 			"totalDefinitions": spells.size(),
-			"unknown": role_counts[String(SpellCapabilities.ROLE_UNKNOWN)],
+			"unknown": role_counts[String(ClassicSpellIdentityCatalog.ROLE_UNKNOWN)],
 			"mechanicalFamilies": family_counts,
 			"runtimeContexts": context_counts,
 		},
@@ -188,7 +186,7 @@ func _opcode_evidence(disposition: String, reference: String) -> Dictionary:
 
 
 func _spell_evidence(role: String) -> Dictionary:
-	var reserved := role == String(SpellCapabilities.ROLE_RESERVED_STANDARD)
+	var reserved := role == String(ClassicSpellIdentityCatalog.ROLE_RESERVED_STANDARD)
 	return {
 		"compilerPreserved": {"evidence": "pinned-application-package", "status": "verified"},
 		"discovered": {"evidence": "pinned-application-package", "status": "verified"},
