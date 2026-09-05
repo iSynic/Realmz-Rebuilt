@@ -1,6 +1,6 @@
 # Runtime performance evidence
 
-Measured through 2026-09-03 with Godot 4.7.1 on Windows and an NVIDIA GeForce RTX 3080 at the canonical 1280x720 and native 3440x1440 profiles. Machine timings are evidence for this pass, not portable guarantees.
+Measured through 2026-09-05 with Godot 4.7.1 on Windows and an NVIDIA GeForce RTX 3080 at the canonical 1280x720 and native 3440x1440 profiles. Machine timings are evidence for this pass, not portable guarantees.
 
 ## Scope and boundaries
 
@@ -54,6 +54,8 @@ The map read model is an 8x8 copy-on-write `MapWindowView`. Adjacent movement sh
 Normal rendering no longer redraws every terrain cell through `Control._draw()`. One clipped SubViewport retains base, six ordered feature, marker, and fog `TileMapLayer` surfaces, pooled CICN `Sprite2D` overlays, and a `Camera2D`. The host projects one guard cell beyond each clipped visible edge, and the presenter applies only `MapPresentationDelta` coordinates on ordinary travel. Debug facts, cursors/selections, and the minimap remain custom Control drawing.
 
 The original rules-enabled baseline was 135.804 ms combined p95 when an hourly recovery forced a complete `GameView`. The final isolated probe uses six depleted level-10 casters with four spells each and at least 4,096 explored cells. Its latest run reports 0.500 ms transaction p95, 0.697 ms projection p95, and 1.175 ms combined p95; hourly transaction and projection p95 are 0.616 and 0.885 ms. No-clip is not part of either acceptance probe.
+
+The 2026-09-05 detached-projector ownership pass used three immediate-parent and three changed AOGM samples. Median transaction-plus-projection p95 changed from 1.294 ms to 1.282 ms, overall projection p95 from 0.808 ms to 0.834 ms, ordinary projection p95 from 0.470 ms to 0.519 ms, and hourly projection p95 from 1.066 ms to 0.945 ms. The 0.049 ms ordinary-path increase is below the 0.20 ms absolute rejection floor; all six runs admitted all sixty steps through the incremental path and produced identical event-sequence counts.
 
 The rendered probe uses normal `ExplorationIntents.move`, real AOGM map media, five-minute Classic timeclicks, repeated hourly recovery, and separate ordinary/hourly samples. It now derives a long cardinal route between farthest reachable cells, reports its bounds and unique-cell count, and crosses retained 8x8 chunk boundaries; the former two-cell loop is explicitly insufficient. A benchmark-only snapshot moves authored timed encounters beyond the measurement window and zeroes random-region chance so a modal timeline cannot replace a travel sample. Eighty warm frames allocate retained layers and driver resources before measurement. Vsync is disabled; native GPU completion uses an unswapped forced draw so the 120 Hz engine-work measurement is not capped by the physical monitor.
 

@@ -5,6 +5,7 @@ extends RefCounted
 const DEFAULT_MAP_VIEW_SIZE: Vector2i = Vector2i(25, 25)
 const ProjectionPolicy := preload("res://src/playthrough/workflows/session_view_projection_policy.gd")
 const ActionViewProjector := preload("res://src/playthrough/workflows/session_action_view_projector.gd")
+const OrdinaryProjectionPolicy := preload("res://src/playthrough/workflows/session_ordinary_projection_policy.gd")
 
 var _cached_map_revision: int = -1
 var _cached_map_id: String = ""
@@ -30,7 +31,7 @@ func project(context: SessionWorkflowContext, pending_interaction: InteractionRe
 	if not started:
 		_cached_view = GameView.new(revision, false, null)
 		return _cached_view
-	if _can_project_ordinary_movement(context, pending_interaction, events):
+	if OrdinaryProjectionPolicy.can_reuse(_cached_view, context, pending_interaction, events):
 		_cached_view = _project_ordinary_movement(context, revision, events)
 		return _cached_view
 	_cached_view = _project_complete(context, pending_interaction, revision)
@@ -38,41 +39,57 @@ func project(context: SessionWorkflowContext, pending_interaction: InteractionRe
 
 
 func _project_complete(context: SessionWorkflowContext, pending_interaction: InteractionRequest, revision: int) -> GameView:
-	var content := context.content
-	var state := context.state
-	var rules := context.rules
-	var members: Array[CharacterView] = []
-	var item_definitions := content.items.definitions()
 	_equipment_by_character_id.clear()
 	_map_window_cache.clear()
-	for character: CharacterState in state.party.characters():
-		var member_view := CharacterView.new(character, content)
-		var equipment := rules.equipment.combat_equipment(character, item_definitions)
+	var state := context.state
+	var members := _complete_party_members(context)
+	var current_combat := _complete_combat_view(context, pending_interaction)
+	var result := GameView.new(revision, true, pending_interaction, state.party.map_id, state.party.coordinate, state.clock.day(), state.clock.hour(), state.clock.minute(), _map_view(context, revision, false, state.combat != null), members, state.party.fatigue, state.party.pooled_wealth.gold, current_combat)
+	_populate_complete_identity(context, result)
+	_populate_complete_campaign(context, result)
+	_populate_complete_party(context, result)
+	_populate_complete_collections(context, result)
+	_populate_complete_actions(context, result)
+	result.domain_revisions = ViewDomainRevisions.new(revision)
+	return result
+
+
+func _complete_party_members(context: SessionWorkflowContext) -> Array[CharacterView]:
+	var members: Array[CharacterView] = []
+	var item_definitions := context.content.items.definitions()
+	for character: CharacterState in context.state.party.characters():
+		var member_view := CharacterView.new(character, context.content)
+		var equipment := context.rules.equipment.combat_equipment(character, item_definitions)
 		_equipment_by_character_id[character.id] = equipment
 		member_view.apply_equipment(equipment)
 		members.append(member_view)
+	return members
+
+
+static func _complete_combat_view(context: SessionWorkflowContext, pending_interaction: InteractionRequest) -> CombatView:
+	var state := context.state
 	var current_combat: CombatView
 	if state.combat != null:
 		var prepared := pending_interaction.transient_combat_view if pending_interaction != null and pending_interaction.kind == InteractionRequest.COMBAT else null
 		if prepared != null and prepared.battle_id == state.combat.battle_id:
 			current_combat = prepared
 		else:
-			current_combat = CombatView.new(state.combat, state.party.characters(), content, rules.equipment, rules.battlefield, rules.combat_flow, state)
-	var result := GameView.new(revision, true, pending_interaction, state.party.map_id, state.party.coordinate, state.clock.day(), state.clock.hour(), state.clock.minute(), _map_view(context, revision, false, state.combat != null), members, state.party.fatigue, state.party.pooled_wealth.gold, current_combat)
-	for ally: MonsterState in state.party.allies():
-		result.party_allies.append(MonsterView.new(ally, content.combat.monster_by_id(ally.definition_id), content))
-	for definition: MonsterDefinition in content.combat.bestiary_definitions_for_set(state.monster_set):
-		result.bestiary_entries.append(MonsterCatalogEntryView.new(definition, content))
-	result.campaign_id = content.campaign_id
-	result.rules_version = content.rules_version
-	result.character_spellcasting_blocked = state.character_spellcasting_blocked
-	result.party_setup_available = not state.party_setup_completed
-	if state.character_draft != null and state.character_draft.generated_character != null:
-		result.character_draft = CharacterView.new(state.character_draft.generated_character, content)
-		ActionViewProjector.populate_character_draft_spells(context, result)
+			current_combat = CombatView.new(state.combat, state.party.characters(), context.content, context.rules.equipment, context.rules.battlefield, context.rules.combat_flow, state)
+	return current_combat
+
+
+static func _populate_complete_identity(context: SessionWorkflowContext, result: GameView) -> void:
+	result.campaign_id = context.content.campaign_id
+	result.rules_version = context.content.rules_version
+	result.character_spellcasting_blocked = context.state.character_spellcasting_blocked
+	result.party_setup_available = not context.state.party_setup_completed
+
+
+static func _populate_complete_campaign(context: SessionWorkflowContext, result: GameView) -> void:
+	var content := context.content
+	var campaign := content.campaign
 	result.campaign_summary = CampaignSummaryView.new()
 	result.campaign_summary.campaign_id = content.campaign_id
-	var campaign := content.campaign
 	result.campaign_summary.title = campaign.title if not campaign.title.is_empty() else content.campaign_id.replace("-", " ").capitalize()
 	result.campaign_summary.version = campaign.version if not campaign.version.is_empty() else content.rules_version
 	result.campaign_summary.author = campaign.author
@@ -88,13 +105,20 @@ func _project_complete(context: SessionWorkflowContext, pending_interaction: Int
 	result.campaign_summary.banned_races = campaign.restrictions.banned_races.duplicate()
 	result.campaign_summary.banned_castes = campaign.restrictions.banned_castes.duplicate()
 	result.campaign_summary.package_hash = content.package_hash
+
+
+static func _populate_complete_party(context: SessionWorkflowContext, result: GameView) -> void:
+	var state := context.state
+	if state.character_draft != null and state.character_draft.generated_character != null:
+		result.character_draft = CharacterView.new(state.character_draft.generated_character, context.content)
+		ActionViewProjector.populate_character_draft_spells(context, result)
 	result.party_setup = PartySetupView.new()
 	result.party_setup.difficulty = state.difficulty
 	result.party_setup.monster_set = state.monster_set
-	result.party_setup.available_monster_sets = content.combat.available_monster_sets()
+	result.party_setup.available_monster_sets = context.content.combat.available_monster_sets()
 	for character: CharacterState in state.party.characters():
 		result.party_setup.current_party_levels += character.level
-	result.party_setup.experience_percent = PartySetupRules.experience_percent(campaign.recommended_party_levels, result.party_setup.current_party_levels, state.difficulty)
+	result.party_setup.experience_percent = PartySetupRules.experience_percent(context.content.campaign.recommended_party_levels, result.party_setup.current_party_levels, state.difficulty)
 	result.party_summary = PartySummaryView.new()
 	for character: CharacterState in state.party.characters():
 		result.party_summary.character_ids.append(character.id)
@@ -110,6 +134,15 @@ func _project_complete(context: SessionWorkflowContext, pending_interaction: Int
 	result.party_summary.searching = state.party.conditions.is_active(ConditionRules.PARTY_SEARCHING)
 	result.party_summary.in_boat = state.party_in_boat
 	result.party_summary.acquired_map_ids = state.world.exploration.acquired_map_ids()
+
+
+func _populate_complete_collections(context: SessionWorkflowContext, result: GameView) -> void:
+	var state := context.state
+	var content := context.content
+	for ally: MonsterState in state.party.allies():
+		result.party_allies.append(MonsterView.new(ally, content.combat.monster_by_id(ally.definition_id), content))
+	for definition: MonsterDefinition in content.combat.bestiary_definitions_for_set(state.monster_set):
+		result.bestiary_entries.append(MonsterCatalogEntryView.new(definition, content))
 	if state.combat != null and _can_reuse_static_map_projections(state):
 		_reuse_static_map_projections(result, _cached_view)
 	else:
@@ -127,13 +160,14 @@ func _project_complete(context: SessionWorkflowContext, pending_interaction: Int
 		result.portrait_options.append(CharacterAppearanceOptionView.new(portrait))
 	for icon: CharacterAppearanceDefinition in content.characters.appearance_definitions(CharacterAppearanceDefinition.COMBAT_ICON):
 		result.combat_icon_options.append(CharacterAppearanceOptionView.new(icon))
+
+
+static func _populate_complete_actions(context: SessionWorkflowContext, result: GameView) -> void:
 	ActionViewProjector.populate_inventory_item_actions(context, result)
 	ActionViewProjector.populate_spell_actions(context, result)
 	ActionViewProjector.populate_money_screen(context, result)
 	ActionViewProjector.populate_services(context, result)
 	ActionViewProjector.populate_action_availability(context, result)
-	result.domain_revisions = ViewDomainRevisions.new(revision)
-	return result
 
 
 func clear() -> void:
@@ -179,107 +213,6 @@ func record_visibility(map_id: String, coordinate: Vector2i, visible_coordinates
 	_prepared_visible_coordinates = membership
 
 
-func _can_project_ordinary_movement(context: SessionWorkflowContext, pending_interaction: InteractionRequest, events: Array[DomainEvent]) -> bool:
-	if _cached_view == null or pending_interaction != null or _cached_view.pending_interaction != null or _cached_view.combat_view != null or events.is_empty():
-		return false
-	if _cached_view.party_map_id != context.state.party.map_id:
-		return false
-	var current_map := context.content.world.map_by_id(context.state.party.map_id)
-	if current_map == null:
-		return false
-	var moved_count := 0
-	var heading_change_count := 0
-	for event: DomainEvent in events:
-		match event.kind:
-			&"party_moved", &"debug_party_noclip_moved":
-				if event.payload.has("source"):
-					return false
-				if String(event.payload.get("fromMapId", "")) != _cached_view.party_map_id or String(event.payload.get("mapId", "")) != context.state.party.map_id:
-					return false
-				var origin := Vector2i(int(event.payload.get("fromX", -100000)), int(event.payload.get("fromY", -100000)))
-				var destination := Vector2i(int(event.payload.get("x", -100000)), int(event.payload.get("y", -100000)))
-				var delta := destination - origin
-				if origin != _cached_view.party_coordinate or destination != context.state.party.coordinate or delta == Vector2i.ZERO or absi(delta.x) > 1 or absi(delta.y) > 1:
-					return false
-				moved_count += 1
-			&"dungeon_heading_changed":
-				if current_map.level_type != &"dungeon":
-					return false
-				var source := String(event.payload.get("source", ""))
-				if source == "classic":
-					if int(event.payload.get("heading", 0)) != context.state.dungeon_heading or int(event.payload.get("delta", 0)) not in [-1, 1]:
-						return false
-				elif source == "classic-overhead-movement":
-					if int(event.payload.get("current", 0)) != context.state.dungeon_heading:
-						return false
-				else:
-					return false
-				heading_change_count += 1
-				if heading_change_count > 1:
-					return false
-			&"time_advanced": pass
-			&"sound_requested":
-				if String(event.payload.get("source", "")) != "classic-map-movement" or bool(event.payload.get("waitForCompletion", true)) or event.payload.has("stopExisting"):
-					return false
-			&"fatigue_changed":
-				if String(event.payload.get("source", "")) != "classic" or String(event.payload.get("reason", "")) != "hour-boundary" or int(event.payload.get("current", -1)) != context.state.party.fatigue:
-					return false
-			&"spell_points_recovered":
-				var character := context.state.party.character_by_id(String(event.payload.get("characterId", "")))
-				if String(event.payload.get("source", "")) != "classic-hour" or character == null or int(event.payload.get("amount", 0)) <= 0:
-					return false
-			&"ally_spell_points_recovered":
-				var ally := _ally_by_id(context.state.party, String(event.payload.get("allyId", "")))
-				if String(event.payload.get("source", "")) != "classic-hour" or ally == null or int(event.payload.get("amount", 0)) <= 0:
-					return false
-			&"condition_expired":
-				var character := context.state.party.character_by_id(String(event.payload.get("characterId", "")))
-				var condition := int(event.payload.get("condition", -1))
-				if character == null or condition < 0 or condition >= ConditionSet.CHARACTER_COUNT or character.conditions.value(condition) != 0:
-					return false
-			&"condition_healed", &"condition_damaged":
-				var character := context.state.party.character_by_id(String(event.payload.get("characterId", "")))
-				var condition := int(event.payload.get("condition", -1))
-				if character == null or condition < 0 or condition >= ConditionSet.CHARACTER_COUNT or int(event.payload.get("amount", 0)) <= 0:
-					return false
-			&"party_condition_expired":
-				var condition := int(event.payload.get("condition", -1))
-				if condition < 0 or condition >= ConditionSet.PARTY_COUNT or context.state.party.conditions.value(condition) != 0:
-					return false
-			&"ally_condition_expired":
-				var ally := _ally_by_id(context.state.party, String(event.payload.get("allyId", "")))
-				var condition := int(event.payload.get("condition", -1))
-				if ally == null or condition < 0 or condition >= ConditionSet.CHARACTER_COUNT or ally.conditions.value(condition) != 0:
-					return false
-			&"health_recovered":
-				var character := context.state.party.character_by_id(String(event.payload.get("characterId", "")))
-				if String(event.payload.get("source", "")) != "classic-half-day" or character == null or int(event.payload.get("amount", 0)) <= 0:
-					return false
-			&"ally_health_recovered":
-				var ally := _ally_by_id(context.state.party, String(event.payload.get("allyId", "")))
-				if String(event.payload.get("source", "")) != "classic-half-day" or ally == null or int(event.payload.get("amount", 0)) <= 0:
-					return false
-			&"rest_ration_consumed":
-				if String(event.payload.get("source", "")) != "classic-half-day" or String(event.payload.get("characterId", "")).is_empty() or String(event.payload.get("instanceId", "")).is_empty():
-					return false
-			&"random_encounter_checked":
-				if bool(event.payload.get("triggered", false)):
-					return false
-			&"movement_secret_search_completed":
-				if String(event.payload.get("mapId", "")) != context.state.party.map_id or Vector2i(int(event.payload.get("x", -100000)), int(event.payload.get("y", -100000))) != context.state.party.coordinate or not (event.payload.get("discoveredSecrets", []) as Array).is_empty():
-					return false
-			_:
-				return false
-	return moved_count == 1 or moved_count == 0 and heading_change_count == 1 and _cached_view.party_coordinate == context.state.party.coordinate
-
-
-static func _ally_by_id(party: PartyState, ally_id: String) -> MonsterState:
-	for ally: MonsterState in party.allies():
-		if ally.id == ally_id:
-			return ally
-	return null
-
-
 func _project_ordinary_movement(context: SessionWorkflowContext, revision: int, events: Array[DomainEvent]) -> GameView:
 	var projection_started := Time.get_ticks_usec()
 	var state := context.state
@@ -294,25 +227,7 @@ func _project_ordinary_movement(context: SessionWorkflowContext, revision: int, 
 	var structural_magic_refresh := _ordinary_magic_requires_structural_refresh(events)
 	var inventory_refresh := _ordinary_inventory_refresh(context, events)
 	var status_character_ids: Dictionary = {}
-	var members: Array[CharacterView] = []
-	if refresh_party:
-		var characters := state.party.characters()
-		for character_index: int in characters.size():
-			var character: CharacterState = characters[character_index]
-			var previous_member := _cached_view.party_members[character_index] if character_index < _cached_view.party_members.size() and _cached_view.party_members[character_index].id == character.id else _character_view_by_id(_cached_view.party_members, character.id)
-			var magic_changed := magic_affordability_ids.has(character.id)
-			if not magic_changed and not inventory_refresh and not _character_status_changed(character, previous_member):
-				members.append(previous_member)
-				continue
-			status_character_ids[character.id] = true
-			var equipment := _equipment_by_character_id.get(character.id) as CharacterCombatEquipment
-			if equipment == null:
-				equipment = context.rules.equipment.combat_equipment(character, context.content.items.definitions())
-				_equipment_by_character_id[character.id] = equipment
-			members.append(CharacterView.new(character, context.content, previous_member, true, magic_changed) if inventory_refresh else CharacterView.refreshed_status(character, context.content, previous_member, equipment, magic_changed, structural_magic_refresh))
-			if inventory_refresh: members[-1].apply_equipment(equipment)
-	else:
-		members.assign(_cached_view.party_members)
+	var members := _ordinary_party_members(context, refresh_party, magic_affordability_ids, structural_magic_refresh, inventory_refresh, status_character_ids)
 	var party_done := Time.get_ticks_usec()
 	var projected_map := _map_view(context, revision, true)
 	var map_done := Time.get_ticks_usec()
@@ -345,6 +260,44 @@ func _project_ordinary_movement(context: SessionWorkflowContext, revision: int, 
 		_populate_ordinary_action_availability(result, _cached_view, inventory_refresh, not magic_affordability_ids.is_empty())
 	else:
 		result.action_availability = _cached_view.action_availability.duplicate()
+	result.domain_revisions = _ordinary_domain_revisions(revision, refresh_party, inventory_refresh, magic_character_ids)
+	result.change_set = _ordinary_change_set(refresh_party, inventory_refresh, magic_character_ids, status_character_ids)
+	result.projection_timings_usec = {
+		"partyStatus": party_done - projection_started,
+		"mapWindow": map_done - party_done,
+		"explorationShell": shell_done - map_done,
+		"inventory": inventory_done - shell_done,
+		"magic": magic_done - inventory_done,
+		"finalize": Time.get_ticks_usec() - magic_done,
+	}
+	return result
+
+
+func _ordinary_party_members(context: SessionWorkflowContext, refresh_party: bool, magic_affordability_ids: Dictionary, structural_magic_refresh: bool, inventory_refresh: bool, status_character_ids: Dictionary) -> Array[CharacterView]:
+	var members: Array[CharacterView] = []
+	if not refresh_party:
+		members.assign(_cached_view.party_members)
+		return members
+	var characters := context.state.party.characters()
+	for character_index: int in characters.size():
+		var character: CharacterState = characters[character_index]
+		var previous_member := _cached_view.party_members[character_index] if character_index < _cached_view.party_members.size() and _cached_view.party_members[character_index].id == character.id else _character_view_by_id(_cached_view.party_members, character.id)
+		var magic_changed := magic_affordability_ids.has(character.id)
+		if not magic_changed and not inventory_refresh and not _character_status_changed(character, previous_member):
+			members.append(previous_member)
+			continue
+		status_character_ids[character.id] = true
+		var equipment := _equipment_by_character_id.get(character.id) as CharacterCombatEquipment
+		if equipment == null:
+			equipment = context.rules.equipment.combat_equipment(character, context.content.items.definitions())
+			_equipment_by_character_id[character.id] = equipment
+		members.append(CharacterView.new(character, context.content, previous_member, true, magic_changed) if inventory_refresh else CharacterView.refreshed_status(character, context.content, previous_member, equipment, magic_changed, structural_magic_refresh))
+		if inventory_refresh:
+			members[-1].apply_equipment(equipment)
+	return members
+
+
+func _ordinary_domain_revisions(revision: int, refresh_party: bool, inventory_refresh: bool, magic_character_ids: Dictionary) -> ViewDomainRevisions:
 	var revisions := ViewDomainRevisions.new()
 	revisions.party_roster = _cached_view.domain_revisions.party_roster
 	revisions.party_status = revision if refresh_party else _cached_view.domain_revisions.party_status
@@ -356,26 +309,24 @@ func _project_ordinary_movement(context: SessionWorkflowContext, revision: int, 
 	revisions.combat = _cached_view.domain_revisions.combat
 	revisions.system = revision
 	revisions.synchronize_legacy_aggregates()
-	result.domain_revisions = revisions
+	return revisions
+
+
+static func _ordinary_change_set(refresh_party: bool, inventory_refresh: bool, magic_character_ids: Dictionary, status_character_ids: Dictionary) -> ViewChangeSet:
 	var changes := ViewChangeSet.new()
 	changes.mark_domain(ViewChangeSet.EXPLORATION)
 	if refresh_party:
 		changes.mark_domain(ViewChangeSet.PARTY_STATUS)
-		for character_id: String in status_character_ids: changes.mark_character(character_id)
-	if inventory_refresh: changes.mark_domain(ViewChangeSet.INVENTORY)
-	if not magic_character_ids.is_empty(): changes.mark_domain(ViewChangeSet.MAGIC)
+		for character_id: String in status_character_ids:
+			changes.mark_character(character_id)
+	if inventory_refresh:
+		changes.mark_domain(ViewChangeSet.INVENTORY)
+	if not magic_character_ids.is_empty():
+		changes.mark_domain(ViewChangeSet.MAGIC)
 	changes.mark_domain(ViewChangeSet.SYSTEM)
-	for character_id: String in magic_character_ids: changes.mark_character(character_id)
-	result.change_set = changes
-	result.projection_timings_usec = {
-		"partyStatus": party_done - projection_started,
-		"mapWindow": map_done - party_done,
-		"explorationShell": shell_done - map_done,
-		"inventory": inventory_done - shell_done,
-		"magic": magic_done - inventory_done,
-		"finalize": Time.get_ticks_usec() - magic_done,
-	}
-	return result
+	for character_id: String in magic_character_ids:
+		changes.mark_character(character_id)
+	return changes
 
 
 func _ordinary_game_view(context: SessionWorkflowContext, revision: int, projected_map: MapView, members: Array[CharacterView]) -> GameView:
