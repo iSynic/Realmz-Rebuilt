@@ -2,8 +2,9 @@
 class_name SpellsScreenController
 extends RefCounted
 
-const SpellSelectionChrome := preload("res://src/ui/controllers/classic_spell_selection_chrome.gd")
-const WORKSPACE_SCENE_PATH := "res://src/ui/screens/spells_workspace.tscn"
+const SpellSelectionChrome := preload("res://src/ui/magic/classic_spell_selection_chrome.gd")
+const DetailFormatter := preload("res://src/ui/magic/spell_detail_formatter.gd")
+const WORKSPACE_SCENE_PATH := "res://src/ui/magic/spells_workspace.tscn"
 
 signal intent_submitted(intent: PlayerIntent)
 signal route_requested(route_id: StringName)
@@ -154,8 +155,8 @@ func _bind_known_spells(workspace: SpellsWorkspace, character: CharacterView, fi
 	var spell := _selected_spell(character)
 	var available_levels := _available_levels(character)
 	if not available_levels.has(_selected_level):
-		_selected_level = _spell_level(spell)
-	if _spell_level(spell) != _selected_level:
+		_selected_level = DetailFormatter.level(spell)
+	if DetailFormatter.level(spell) != _selected_level:
 		spell = _first_spell_at_level(character, _selected_level)
 		_selected_spell_id = spell.id
 	_bind_level_rail(workspace, available_levels, spell)
@@ -226,12 +227,12 @@ func _selected_spell(character: CharacterView) -> SpellView:
 	var eligible := _eligible_spells(character)
 	for spell: SpellView in eligible:
 		if spell.id == _selected_spell_id:
-			_selected_power = _valid_power(spell, _selected_power)
+			_selected_power = DetailFormatter.valid_power(spell, _selected_power)
 			return spell
 	var fallback: SpellView = eligible[0]
 	_selected_spell_id = fallback.id
-	_selected_level = _spell_level(fallback)
-	_selected_power = _valid_power(fallback, 1)
+	_selected_level = DetailFormatter.level(fallback)
+	_selected_power = DetailFormatter.valid_power(fallback, 1)
 	return fallback
 
 
@@ -239,13 +240,21 @@ func _bind_spell_detail(workspace: SpellsWorkspace, character: CharacterView, sp
 	var panel := workspace.selected_spell_record()
 	var column := panel.get_node("Content") as VBoxContainer
 	_bind_label(column.get_node("Name") as Label, spell.name, Color("e7d078"), 16)
-	_bind_label(column.get_node("Resource") as Label, "Level %d  •  SP %d/%d" % [_spell_level(spell), character.spell_points, character.maximum_spell_points], MUTED, 12)
+	_bind_label(column.get_node("Resource") as Label, "Level %d  •  SP %d/%d" % [DetailFormatter.level(spell), character.spell_points, character.maximum_spell_points], MUTED, 12)
 	var description := column.get_node("Description") as Label
 	_bind_label(description, spell.description, TEXT, 12)
 	description.tooltip_text = spell.description
 	var target_badge := column.get_node("TargetAndFacts/ClassicSpellTargetBadge") as ClassicSpellTargetBadge
-	target_badge.visible = not _compact and target_badge.present(spell.target_type, spell.target_size, _target_label(spell), Vector2(48.0, 48.0))
-	var values := {"TargetValue": _target_label(spell), "RangeValue": str(absi(spell.range_min + spell.range_max * _selected_power)), "DamageValue": _scaled_pair(spell.damage_min, spell.damage_max, spell.power_damage_min, spell.power_damage_max), "DurationValue": _scaled_pair(spell.duration_min, spell.duration_max, spell.power_duration_min, spell.power_duration_max, true), "MagicResistValue": _magic_resistance_label(spell), "SavingThrowValue": _saving_throw_label(spell)}
+	var target_label := DetailFormatter.target_label(spell)
+	target_badge.visible = not _compact and target_badge.present(spell.target_type, spell.target_size, target_label, Vector2(48.0, 48.0))
+	var values := {
+		"TargetValue": target_label,
+		"RangeValue": str(absi(spell.range_min + spell.range_max * _selected_power)),
+		"DamageValue": DetailFormatter.scaled_pair(spell.damage_min, spell.damage_max, spell.power_damage_min, spell.power_damage_max, _selected_power),
+		"DurationValue": DetailFormatter.scaled_pair(spell.duration_min, spell.duration_max, spell.power_duration_min, spell.power_duration_max, _selected_power, true),
+		"MagicResistValue": DetailFormatter.magic_resistance_label(spell, _selected_power),
+		"SavingThrowValue": DetailFormatter.saving_throw_label(spell, _selected_power),
+	}
 	var facts := column.get_node("TargetAndFacts/Facts") as GridContainer
 	for node_name: String in values:
 		var value_label := facts.get_node(node_name) as Label
@@ -258,7 +267,7 @@ func _bind_spell_detail(workspace: SpellsWorkspace, character: CharacterView, sp
 func _bind_power_rail(column: VBoxContainer, spell: SpellView) -> void:
 	(column.get_node("PowerLabel") as TextureRect).texture = ClassicUiAssetCatalog.texture(&"spells.label.power")
 	_bind_label(column.get_node("Cost") as Label, "Cost %d SP" % absi(spell.cost * _selected_power), GOLD, 12)
-	var available_powers := _available_powers(spell)
+	var available_powers := DetailFormatter.available_powers(spell)
 	for power: int in range(1, 8):
 		var button := column.get_node("PowerButtons/SpellPower%d" % power) as Button
 		button.button_pressed = power == _selected_power
@@ -280,7 +289,7 @@ func _bind_spell_action_dock(workspace: SpellsWorkspace, character: CharacterVie
 		intent_submitted.emit(MagicIntents.cast(spell.id, character.id, "", _selected_power))
 	)
 	var make_scroll := row.get_node("MakeScrollAction") as Button
-	make_scroll.disabled = spell.make_scroll == null or not spell.make_scroll.enabled or not _available_scroll_powers(spell).has(_selected_power)
+	make_scroll.disabled = spell.make_scroll == null or not spell.make_scroll.enabled or not DetailFormatter.available_scroll_powers(spell).has(_selected_power)
 	make_scroll.tooltip_text = "Unavailable at this power" if make_scroll.disabled and spell.make_scroll != null and spell.make_scroll.enabled else "Unavailable" if spell.make_scroll == null else spell.make_scroll.reason if make_scroll.disabled else "Scribe at power %d for %d SP" % [_selected_power, absi(spell.cost * 2 * _selected_power)]
 	_clear_pressed_connections(make_scroll)
 	if not make_scroll.disabled:
@@ -291,7 +300,7 @@ func _bind_spell_action_dock(workspace: SpellsWorkspace, character: CharacterVie
 func _available_levels(character: CharacterView) -> Array[int]:
 	var result: Array[int] = []
 	for spell: SpellView in _eligible_spells(character):
-		var level := _spell_level(spell)
+		var level := DetailFormatter.level(spell)
 		if not result.has(level):
 			result.append(level)
 	result.sort()
@@ -301,7 +310,7 @@ func _available_levels(character: CharacterView) -> Array[int]:
 func _spells_at_level(character: CharacterView, level: int) -> Array[SpellView]:
 	var result: Array[SpellView] = []
 	for spell: SpellView in _eligible_spells(character):
-		if _spell_level(spell) == level:
+		if DetailFormatter.level(spell) == level:
 			result.append(spell)
 	result.sort_custom(func(left: SpellView, right: SpellView) -> bool: return left.name.naturalnocasecmp_to(right.name) < 0)
 	return result
@@ -324,74 +333,6 @@ func _first_spell_at_level(character: CharacterView, level: int) -> SpellView:
 		return spells[0]
 	var eligible := _eligible_spells(character)
 	return eligible[0] if not eligible.is_empty() else null
-
-
-static func _spell_level(spell: SpellView) -> int:
-	return ClassicSpellLevel.from_classic_id(spell.classic_id)
-
-
-static func _available_powers(spell: SpellView) -> Array[int]:
-	if not spell.power_levels.is_empty():
-		return spell.power_levels
-	var result: Array[int] = [1]
-	return result
-
-
-static func _available_scroll_powers(spell: SpellView) -> Array[int]:
-	if not spell.scroll_power_levels.is_empty():
-		return spell.scroll_power_levels
-	var result: Array[int] = [1]
-	return result
-
-
-static func _valid_power(spell: SpellView, preferred: int) -> int:
-	var powers := _available_powers(spell)
-	return preferred if powers.has(preferred) else powers[0]
-
-
-func _scaled_pair(base_min: int, base_max: int, per_power_min: int, per_power_max: int, absolute_values: bool = false) -> String:
-	var low := base_min + per_power_min * _selected_power
-	var high := base_max + per_power_max * _selected_power
-	if absolute_values:
-		low = absi(low)
-		high = absi(high)
-	if low == 0 and high == 0:
-		return "—"
-	return str(low) if low == high else "%d–%d" % [low, high]
-
-
-func _magic_resistance_label(spell: SpellView) -> String:
-	if spell.damage_type < 1:
-		return "Versus"
-	if spell.cannot == 1 or spell.cannot > 2:
-		return "No"
-	if spell.resistance_adjust == 0:
-		return "Yes"
-	return "%+d" % (_selected_power * spell.resistance_adjust)
-
-
-func _saving_throw_label(spell: SpellView) -> String:
-	if spell.cannot > 1:
-		return "No"
-	if spell.save_adjust == 0 and spell.save_bonus == 0:
-		return "Yes"
-	return "%+d" % (spell.save_bonus + _selected_power * spell.save_adjust)
-
-
-static func _target_label(spell: SpellView) -> String:
-	return {
-		0: "Up to power targets",
-		1: "One party member",
-		3: "Fixed battlefield area",
-		4: "Power-sized battlefield area",
-		5: "Caster",
-		6: "Classic target type 6",
-		7: "Party state",
-		9: "All friendly",
-		10: "All enemies",
-		11: "Classic target type 11",
-		12: "Everybody",
-	}.get(spell.target_type, "Classic target type %d" % spell.target_type)
 
 
 func _bind_fast_spells(workspace: SpellsWorkspace, character: CharacterView) -> void:
@@ -485,8 +426,8 @@ func _select_spell(spell_id: String) -> void:
 	var character := _selected_character()
 	if character != null:
 		var spell := _selected_spell(character)
-		_selected_level = _spell_level(spell)
-		_selected_power = _valid_power(spell, 1)
+		_selected_level = DetailFormatter.level(spell)
+		_selected_power = DetailFormatter.valid_power(spell, 1)
 	refresh_requested.emit()
 
 
@@ -496,7 +437,7 @@ func _select_level(level: int) -> void:
 	if character != null:
 		var spell := _first_spell_at_level(character, level)
 		_selected_spell_id = spell.id
-		_selected_power = _valid_power(spell, 1)
+		_selected_power = DetailFormatter.valid_power(spell, 1)
 	refresh_requested.emit()
 
 

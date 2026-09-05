@@ -3,7 +3,7 @@
 class_name LevelUpInteraction
 extends InteractionComponent
 
-const SpellSelectionChrome := preload("res://src/ui/controllers/classic_spell_selection_chrome.gd")
+const SpellSelectionChrome := preload("res://src/ui/magic/classic_spell_selection_chrome.gd")
 const GOLD := Color("e5c45c")
 const CYAN := Color("8fcfd1")
 const MUTED := Color("aeb6ba")

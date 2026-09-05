@@ -1,10 +1,10 @@
 [gd_scene load_steps=8 format=3]
 
-[ext_resource type="Script" path="res://src/ui/screens/spells_workspace.gd" id="1_workspace"]
+[ext_resource type="Script" path="res://src/ui/magic/spells_workspace.gd" id="1_workspace"]
 [ext_resource type="PackedScene" path="res://src/ui/classic_spell_selection_button.tscn" id="2_spell_button"]
-[ext_resource type="PackedScene" path="res://src/ui/screens/spell_action_dock.tscn" id="3_actions"]
-[ext_resource type="PackedScene" path="res://src/ui/screens/fast_spell_row.tscn" id="4_fast"]
-[ext_resource type="PackedScene" path="res://src/ui/screens/spell_scroll_slot_row.tscn" id="5_scroll"]
+[ext_resource type="PackedScene" path="res://src/ui/magic/spell_action_dock.tscn" id="3_actions"]
+[ext_resource type="PackedScene" path="res://src/ui/magic/fast_spell_row.tscn" id="4_fast"]
+[ext_resource type="PackedScene" path="res://src/ui/magic/spell_scroll_slot_row.tscn" id="5_scroll"]
 [ext_resource type="PackedScene" path="res://src/ui/classic_spell_level_heading.tscn" id="6_level_heading"]
 [ext_resource type="PackedScene" path="res://src/ui/classic_spell_target_badge.tscn" id="7_target"]
 

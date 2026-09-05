@@ -12,9 +12,9 @@ Do not classify spells by their names or duplicate lists of special IDs. `Classi
 
 ## Where to start
 
-- Edit the ordinary and Encounter spellbook layout in `src/ui/screens/spells_workspace.tscn`; `spells_screen.tscn` embeds it for the route.
+- Open `src/ui/magic` for the complete player-facing spellbook feature. Edit ordinary and Encounter layout in `spells_workspace.tscn`; `spells_screen.tscn` embeds it for the route.
 - Edit the reusable action, Fast Spell, and scroll records in their neighboring `spell_action_dock.tscn`, `fast_spell_row.tscn`, and `spell_scroll_slot_row.tscn` scenes.
-- Follow screen binding and presentation-local selection through `SpellsScreenController`. It formats detached facts, reuses the authored workspace, and instantiates only the exported variable record scenes.
+- Follow screen binding and presentation-local selection through `SpellsScreenController`; `SpellDetailFormatter` owns the display-only target, power, resistance, save, and scaled-range text. The controller reuses the authored workspace and instantiates only its exported variable record scenes.
 - Follow a submitted `MagicIntents` command through `PlayerIntent`, `GameSession`, and the field or combat workflow. Rules, target legality, costs, effects, RNG, and saved state never live in the UI.
 
 The spellbook is retained for a route presentation; it is not rebuilt per movement step or frame. When changing its layout, exercise both Wide and Compact profiles plus Encounter selection, Fast Spell assignment, Scroll Case confirmation, field casting, and combat magic.

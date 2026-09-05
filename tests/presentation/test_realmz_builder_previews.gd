@@ -16,7 +16,7 @@ const SURFACES := {
 	"combat-command-deck": preload("res://src/ui/interaction_components/battle_interaction.tscn"),
 	"character-sheet": preload("res://src/ui/screens/character_screen.tscn"),
 	"inventory": preload("res://src/ui/screens/inventory_screen.tscn"),
-	"spells": preload("res://src/ui/screens/spells_screen.tscn"),
+	"spells": preload("res://src/ui/magic/spells_screen.tscn"),
 	"services": preload("res://src/ui/screens/services_screen.tscn"),
 	"roster-spellbook": preload("res://src/ui/screens/classic_party_roster.tscn"),
 	"character-files": preload("res://src/ui/screens/vault_screen.tscn"),

@@ -5,7 +5,7 @@ extends ScrollContainer
 
 signal option_selected(option_id: String)
 
-const SpellSelectionChrome := preload("res://src/ui/controllers/classic_spell_selection_chrome.gd")
+const SpellSelectionChrome := preload("res://src/ui/magic/classic_spell_selection_chrome.gd")
 
 var _buttons: Dictionary = {}
 var _order: Array[String] = []

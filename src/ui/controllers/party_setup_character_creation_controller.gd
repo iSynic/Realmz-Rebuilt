@@ -2,7 +2,7 @@
 class_name PartySetupCharacterCreationController
 extends "res://src/ui/controllers/party_setup_controller_component.gd"
 
-const SpellSelectionChrome := preload("res://src/ui/controllers/classic_spell_selection_chrome.gd")
+const SpellSelectionChrome := preload("res://src/ui/magic/classic_spell_selection_chrome.gd")
 
 var _assembly: RefCounted
 var _starting_spell_level: int = 0
