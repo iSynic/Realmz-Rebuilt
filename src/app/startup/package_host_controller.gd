@@ -3,7 +3,7 @@
 class_name PackageHostController
 extends RefCounted
 
-const BUNDLED_CAMPAIGN_ROOT: String = "res://src/storage/campaigns"
+const BUNDLED_CAMPAIGN_ROOT: String = "res://src/storage/packages/bundled_campaigns"
 const USER_CAMPAIGN_ROOT: String = "user://packages"
 
 var _repository: PackageRepository

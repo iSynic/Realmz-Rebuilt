@@ -48,4 +48,4 @@ Install, discover, decode, validate, cache, and release immutable Providence pac
 
 ## Child DOX Index
 
-- No child AGENTS.md files are currently required.
+- `bundled_campaigns/AGENTS.md` owns the 13-scenario bundled archives, default Castle provenance, and the project-owner-designated City of Bywater source snapshot.

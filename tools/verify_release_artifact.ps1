@@ -10,7 +10,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-$catalogPath = Join-Path $repoRoot "src\storage\campaigns\castle-bundled-scenarios.provenance.json"
+$catalogPath = Join-Path $repoRoot "src\storage\packages\bundled_campaigns\castle-bundled-scenarios.provenance.json"
 $catalog = Get-Content -Raw -LiteralPath $catalogPath | ConvertFrom-Json
 & (Join-Path $PSScriptRoot "verify_bundled_scenarios.ps1")
 $outputPath = (Resolve-Path -LiteralPath $Output).Path
@@ -28,7 +28,7 @@ if ($plainLogText -match $forbidden) {
 }
 $packagePaths = @([regex]::Matches($plainLogText, 'Storing File:\s+(res://[^\r\n]+\.realmz2)') | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
 $expectedPackagePaths = @('res://src/storage/characters/realmz-classic-character-library.realmz2')
-$expectedPackagePaths += @($catalog.scenarios | ForEach-Object { "res://src/storage/campaigns/$($_.file)" })
+$expectedPackagePaths += @($catalog.scenarios | ForEach-Object { "res://src/storage/packages/bundled_campaigns/$($_.file)" })
 $expectedPackagePaths = @($expectedPackagePaths | Sort-Object)
 if (($packagePaths -join '|') -ne ($expectedPackagePaths -join '|')) {
     throw "Release export contains an unexpected Realmz package set: $($packagePaths -join ', ')"

@@ -69,5 +69,5 @@ Own package loading, schema/hash validation, strict save persistence, and extern
 ## Child DOX Index
 
 - `packages/AGENTS.md` owns package-v3 installation, discovery, decoding, validation, receipts, and bounded cache responsibilities.
-- `campaigns/AGENTS.md` owns the 13-scenario bundled archives, default Castle provenance, and the project-owner-designated City of Bywater source snapshot.
+- `packages/AGENTS.md` also indexes the bundled campaign release inputs stored beneath its package boundary.
 - `saves/AGENTS.md` owns the strict save envelope, repository, backup rotation, and construction of the detached session-owned save-slot preview.

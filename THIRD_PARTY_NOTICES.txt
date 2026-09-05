@@ -52,9 +52,9 @@ Modifications: Realmz Providence commit
 badcd91486f6a0ad2c042520e3f9c699c603956d compiles the native scenario data
 and resources into deterministic schema-v3 Realmz 2 packages. Exact source,
 compiler, package, and archive identities are recorded in
-src/storage/campaigns/castle-bundled-scenarios.provenance.json. The exact
+src/storage/packages/bundled_campaigns/castle-bundled-scenarios.provenance.json. The exact
 designated City of Bywater source-file identities are recorded in
-src/storage/campaigns/city-of-bywater.source.json.
+src/storage/packages/bundled_campaigns/city-of-bywater.source.json.
 
 Integrated Classic Realmz media
 Realmz copyright 1994 by Tim Phillips.
