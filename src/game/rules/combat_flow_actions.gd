@@ -38,95 +38,122 @@ func submit_action(state: GameState, content: RealmzContent, actor_id: String, a
 	var actor := state.party.character_by_id(actor_id)
 	if actor == null or actor.current_health <= 0 or actor.traitor or combat.battlefield == null or not combat.battlefield.actors.has_actor(actor.id):
 		return CombatFlowResult.failed(&"invalid_combat_actor", "The current combat actor is unavailable.")
-	var events: Array[DomainEvent] = []
-	match action:
-		&"attack":
-			var attack_result := _submit_character_attack(state, content, actor, target_id, rng, allow_friendly_contact)
-			if not attack_result.ok: return attack_result
-			events.append_array(attack_result.events)
-			if _events_include(events, &"monster_death_macro_requested"):
-				return CombatFlowResult.succeeded(events)
-		&"switch_weapon":
-			var switch_result := _switch_character_weapon(combat, content, actor)
-			if not switch_result.ok:
-				return switch_result
-			events.append_array(switch_result.events)
-		&"defend":
-			prepare_character_turn(combat, actor)
-			var guard_roll := rng.draw(100, &"combat.guard-sound")
-			var guard_sound := 10121 if guard_roll < 50 else 10123
-			combat.actor_statuses.set_guarding(actor.id, true)
-			events.append(DomainEvent.new(&"sound_requested", {"soundId": guard_sound, "waitForCompletion": false, "source": "classic-combat-guard"}))
-			events.append(DomainEvent.new(&"combatant_guarded", {"actorId": actor.id, "roll": guard_roll, "soundId": guard_sound, "source": "classic"}))
-			_context.rounds().advance_turn(state, content, rng, events)
-		&"delay":
-			var delay_probe := probe_delay(state, actor.id)
-			if not delay_probe.allowed:
-				return CombatFlowResult.failed(&"combat_delay_unavailable", delay_probe.reason_text)
-			prepare_character_turn(combat, actor)
-			actor.attacks_remaining = _context.arithmetic.signed_16(actor.attacks_remaining - actor.normal_attacks - actor.attack_bonus)
-			var round_advanced := combat.delay_active_actor()
-			if round_advanced:
-				_context.rounds().process_bleeding_round(state, rng, events)
-			events.append(DomainEvent.new(&"combat_turn_delayed", {"actorId": actor.id, "roundAdvanced": round_advanced, "source": "classic-corrected", "fidelityDecision": "FD-COMBAT-012"}))
-		&"bandage":
-			var bandage_probe := probe_bandage(state, actor.id, target_id)
-			if not bandage_probe.allowed:
-				return CombatFlowResult.failed(&"combat_bandage_unavailable", bandage_probe.reason_text)
-			prepare_character_turn(combat, actor)
-			if not combat.actor_statuses.set_character_bleeding(target_id, false):
-				return CombatFlowResult.failed(&"invalid_bandage_target", "The selected bleeding state could not be cleared.")
-			actor.attacks_remaining = 0
-			actor.movement = 0
-			events.append(DomainEvent.new(&"sound_requested", {"soundId": 10105, "waitForCompletion": false, "source": "classic-combat-bandage"}))
-			if _context.processing_auto:
-				var bandage_roll := rng.draw(100, StringName("combat.auto.%s.bandage-sound" % actor.id))
-				var bandage_sound := 10121 if bandage_roll < 50 else 10123
-				events.append(DomainEvent.new(&"sound_requested", {"soundId": bandage_sound, "waitForCompletion": false, "source": "classic-combat-auto-bandage"}))
-			events.append(DomainEvent.new(&"combatant_bandaged", {"actorId": actor.id, "targetId": target_id, "source": "classic-corrected", "fidelityDecision": "FD-COMBAT-013"}))
-			_context.rounds().advance_turn(state, content, rng, events)
-		&"turn_undead":
-			var turn_result := turn_undead(state, content, actor, rng)
-			if not turn_result.ok:
-				return turn_result
-			events.append_array(turn_result.events)
-			if not combat.spell_runtime.pending_death_macro_id().is_empty():
-				return CombatFlowResult.succeeded(events)
-		&"undo":
-			var undo_probe := probe_undo(state, actor.id)
-			if not undo_probe.allowed:
-				return CombatFlowResult.failed(&"combat_undo_unavailable", undo_probe.reason_text)
-			var from_position := combat.battlefield.actors.actor_position(actor.id)
-			var start_position := combat.turns.undo_state.start_position
-			if from_position != start_position and not combat.battlefield.actors.move_actor(actor.id, start_position):
-				return CombatFlowResult.failed(&"combat_undo_position_blocked", "The activation-start position is no longer available.")
-			actor.attacks_remaining = _context.arithmetic.signed_16(actor.attacks_remaining - actor.normal_attacks - actor.attack_bonus)
-			combat.turns.restart_active_turn_after_undo()
-			prepare_character_turn(combat, actor)
-			events.append(DomainEvent.new(&"sound_requested", {"soundId": 664, "waitForCompletion": false, "source": "classic-combat-undo"}))
-			if not actor.conditions.is_active(ConditionRules.ANIMATED):
-				events.append(DomainEvent.new(&"sound_requested", {"soundId": 138, "waitForCompletion": false, "source": "classic-combat-activation"}))
-			events.append(DomainEvent.new(&"combat_turn_undone", {"actorId": actor.id, "from": [from_position.x, from_position.y], "to": [start_position.x, start_position.y], "attacksRemaining": actor.attacks_remaining, "movementRemaining": actor.movement, "source": "classic"}))
-		&"auto":
-			var auto_result = _context.automation().run_auto_activation_chain(state, content, actor.id, rng)
-			if not auto_result.ok:
-				return auto_result
-			auto_result.events.push_front(DomainEvent.new(&"sound_requested", {"soundId": 141, "waitForCompletion": false, "source": "classic-combat-auto-button"}))
-			return auto_result
-		&"finish", &"pass":
-			prepare_character_turn(combat, actor)
-			actor.movement = 0
-			combat.actor_statuses.set_guarding(actor.id, false)
-			events.append(DomainEvent.new(&"combat_turn_passed", {"actorId": actor.id, "action": String(action)}))
-			_context.rounds().advance_turn(state, content, rng, events)
-		&"retreat":
-			return _context.reactions().retreat_character(state, content, actor_id, &"explicit", Vector2i(-100_000, -100_000), rng)
-		_:
-			return CombatFlowResult.failed(&"unknown_combat_action", "Combat action '%s' is not available." % action)
+	if action == &"auto":
+		return _submit_auto(state, content, actor, rng)
+	if action == &"retreat":
+		return _context.reactions().retreat_character(state, content, actor_id, &"explicit", INVALID_COORDINATE, rng)
+	var action_result := _submit_standard_action(state, content, actor, action, target_id, rng, allow_friendly_contact)
+	if not action_result.ok or _action_waits_for_continuation(combat, action, action_result.events):
+		return action_result
+	var events := action_result.events
 	if _context.rounds().finish_if_resolved(state, content, events):
 		return CombatFlowResult.succeeded(events, true)
 	_context.automation().process_monster_turns(state, content, rng, events)
 	return CombatFlowResult.succeeded(events, state.combat.completed)
+
+
+func _submit_standard_action(state: GameState, content: RealmzContent, actor: CharacterState, action: StringName, target_id: String, rng: RealmzRng, allow_friendly_contact: bool) -> CombatFlowResult:
+	match action:
+		&"attack":
+			return _submit_character_attack(state, content, actor, target_id, rng, allow_friendly_contact)
+		&"switch_weapon":
+			return _switch_character_weapon(state.combat, content, actor)
+		&"defend":
+			return _submit_guard(state, content, actor, rng)
+		&"delay":
+			return _submit_delay(state, content, actor, rng)
+		&"bandage":
+			return _submit_bandage(state, content, actor, target_id, rng)
+		&"turn_undead":
+			return turn_undead(state, content, actor, rng)
+		&"undo":
+			return _submit_undo(state, actor)
+		&"finish", &"pass":
+			return _submit_pass(state, content, actor, action, rng)
+		_:
+			return CombatFlowResult.failed(&"unknown_combat_action", "Combat action '%s' is not available." % action)
+
+
+func _submit_guard(state: GameState, content: RealmzContent, actor: CharacterState, rng: RealmzRng) -> CombatFlowResult:
+	prepare_character_turn(state.combat, actor)
+	var guard_roll := rng.draw(100, &"combat.guard-sound")
+	var guard_sound := 10121 if guard_roll < 50 else 10123
+	state.combat.actor_statuses.set_guarding(actor.id, true)
+	var events: Array[DomainEvent] = [DomainEvent.new(&"sound_requested", {"soundId": guard_sound, "waitForCompletion": false, "source": "classic-combat-guard"}), DomainEvent.new(&"combatant_guarded", {"actorId": actor.id, "roll": guard_roll, "soundId": guard_sound, "source": "classic"})]
+	_context.rounds().advance_turn(state, content, rng, events)
+	return CombatFlowResult.succeeded(events)
+
+
+func _submit_delay(state: GameState, content: RealmzContent, actor: CharacterState, rng: RealmzRng) -> CombatFlowResult:
+	var probe := probe_delay(state, actor.id)
+	if not probe.allowed:
+		return CombatFlowResult.failed(&"combat_delay_unavailable", probe.reason_text)
+	prepare_character_turn(state.combat, actor)
+	actor.attacks_remaining = _context.arithmetic.signed_16(actor.attacks_remaining - actor.normal_attacks - actor.attack_bonus)
+	var round_advanced := state.combat.delay_active_actor()
+	var events: Array[DomainEvent] = []
+	if round_advanced:
+		_context.rounds().process_bleeding_round(state, rng, events)
+	events.append(DomainEvent.new(&"combat_turn_delayed", {"actorId": actor.id, "roundAdvanced": round_advanced, "source": "classic-corrected", "fidelityDecision": "FD-COMBAT-012"}))
+	return CombatFlowResult.succeeded(events)
+
+
+func _submit_bandage(state: GameState, content: RealmzContent, actor: CharacterState, target_id: String, rng: RealmzRng) -> CombatFlowResult:
+	var probe := probe_bandage(state, actor.id, target_id)
+	if not probe.allowed:
+		return CombatFlowResult.failed(&"combat_bandage_unavailable", probe.reason_text)
+	prepare_character_turn(state.combat, actor)
+	if not state.combat.actor_statuses.set_character_bleeding(target_id, false):
+		return CombatFlowResult.failed(&"invalid_bandage_target", "The selected bleeding state could not be cleared.")
+	actor.attacks_remaining = 0
+	actor.movement = 0
+	var events: Array[DomainEvent] = [DomainEvent.new(&"sound_requested", {"soundId": 10105, "waitForCompletion": false, "source": "classic-combat-bandage"})]
+	if _context.processing_auto:
+		var bandage_roll := rng.draw(100, StringName("combat.auto.%s.bandage-sound" % actor.id))
+		var bandage_sound := 10121 if bandage_roll < 50 else 10123
+		events.append(DomainEvent.new(&"sound_requested", {"soundId": bandage_sound, "waitForCompletion": false, "source": "classic-combat-auto-bandage"}))
+	events.append(DomainEvent.new(&"combatant_bandaged", {"actorId": actor.id, "targetId": target_id, "source": "classic-corrected", "fidelityDecision": "FD-COMBAT-013"}))
+	_context.rounds().advance_turn(state, content, rng, events)
+	return CombatFlowResult.succeeded(events)
+
+
+func _submit_undo(state: GameState, actor: CharacterState) -> CombatFlowResult:
+	var probe := probe_undo(state, actor.id)
+	if not probe.allowed:
+		return CombatFlowResult.failed(&"combat_undo_unavailable", probe.reason_text)
+	var combat := state.combat
+	var from_position := combat.battlefield.actors.actor_position(actor.id)
+	var start_position := combat.turns.undo_state.start_position
+	if from_position != start_position and not combat.battlefield.actors.move_actor(actor.id, start_position):
+		return CombatFlowResult.failed(&"combat_undo_position_blocked", "The activation-start position is no longer available.")
+	actor.attacks_remaining = _context.arithmetic.signed_16(actor.attacks_remaining - actor.normal_attacks - actor.attack_bonus)
+	combat.turns.restart_active_turn_after_undo()
+	prepare_character_turn(combat, actor)
+	var events: Array[DomainEvent] = [DomainEvent.new(&"sound_requested", {"soundId": 664, "waitForCompletion": false, "source": "classic-combat-undo"})]
+	if not actor.conditions.is_active(ConditionRules.ANIMATED):
+		events.append(DomainEvent.new(&"sound_requested", {"soundId": 138, "waitForCompletion": false, "source": "classic-combat-activation"}))
+	events.append(DomainEvent.new(&"combat_turn_undone", {"actorId": actor.id, "from": [from_position.x, from_position.y], "to": [start_position.x, start_position.y], "attacksRemaining": actor.attacks_remaining, "movementRemaining": actor.movement, "source": "classic"}))
+	return CombatFlowResult.succeeded(events)
+
+
+func _submit_pass(state: GameState, content: RealmzContent, actor: CharacterState, action: StringName, rng: RealmzRng) -> CombatFlowResult:
+	prepare_character_turn(state.combat, actor)
+	actor.movement = 0
+	state.combat.actor_statuses.set_guarding(actor.id, false)
+	var events: Array[DomainEvent] = [DomainEvent.new(&"combat_turn_passed", {"actorId": actor.id, "action": String(action)})]
+	_context.rounds().advance_turn(state, content, rng, events)
+	return CombatFlowResult.succeeded(events)
+
+
+func _submit_auto(state: GameState, content: RealmzContent, actor: CharacterState, rng: RealmzRng) -> CombatFlowResult:
+	var result: CombatFlowResult = _context.automation().run_auto_activation_chain(state, content, actor.id, rng)
+	if result.ok:
+		result.events.push_front(DomainEvent.new(&"sound_requested", {"soundId": 141, "waitForCompletion": false, "source": "classic-combat-auto-button"}))
+	return result
+
+
+func _action_waits_for_continuation(combat: CombatState, action: StringName, events: Array[DomainEvent]) -> bool:
+	return action == &"attack" and _events_include(events, &"monster_death_macro_requested") or action == &"turn_undead" and not combat.spell_runtime.pending_death_macro_id().is_empty()
 
 
 func _switch_character_weapon(combat: CombatState, content: RealmzContent, actor: CharacterState) -> CombatFlowResult:
@@ -278,56 +305,70 @@ func turn_undead(state: GameState, content: RealmzContent, actor: CharacterState
 	var combat := state.combat
 	combat.turns.invalidate_undo()
 	var target_ids := turn_undead_target_ids(state, content)
-	var macro_count := 0
-	for target_id: String in target_ids:
-		var target := combat.roster.monster_by_id(target_id)
-		var definition := content.combat.monster_by_id(target.definition_id) if target != null else null
-		if definition != null and definition.death_macro > 0:
-			macro_count += 1
+	var macro_count := _turn_undead_macro_count(combat, content, target_ids)
 	if macro_count > CombatSpellRuntimeState.MAX_DEATH_MACROS - combat.spell_runtime.death_macro_queue().size():
 		return CombatFlowResult.failed(&"combat_turn_undead_macro_limit", "Turn Undead would exceed the bounded death-macro queue.")
 	var events: Array[DomainEvent] = [DomainEvent.new(&"sound_requested", {"soundId": 659, "waitForCompletion": false, "source": "classic-combat-turn-undead"})]
 	combat.actor_statuses.mark_turn_undead_used(actor.id)
 	events.append(DomainEvent.new(&"combat_turn_undead_attempted", {"actorId": actor.id, "ability": actor.ability_value(13), "targetIds": target_ids.duplicate(), "source": "classic"}))
 	for target_id: String in target_ids:
-		var target := combat.roster.monster_by_id(target_id)
-		var definition := content.combat.monster_by_id(target.definition_id)
-		var threshold := maxi(25, 100 - actor.ability_value(13) + 5 * target.hit_dice) + target.magic_resistance
-		var roll := rng.draw(100, StringName("combat.turn-undead.%s" % target.id))
-		var margin := roll - threshold
-		var result_kind := "resisted"
-		var experience_award := 0
-		if margin > 0 and margin < 30:
-			result_kind = "destroyed"
-			actor.lifetime_record.record_turn_undead(true)
-			experience_award = 25 * target.hit_dice
-			target.current_health = 0
-			events.append(DomainEvent.new(&"sound_requested", {"soundId": 132, "waitForCompletion": false, "source": "classic-combat-turn-undead"}))
-			if not _events.queue_spell_death_macro(combat, target, definition):
-				_context.automation().remove_defeated_position(combat, target.id, true)
-		elif margin >= 30:
-			result_kind = "turned"
-			actor.lifetime_record.record_turn_undead(false)
-			experience_award = 50 * target.hit_dice
-			target.traitor = actor.traitor
-			target.target_id = ""
-			combat.actor_statuses.set_guarding(target.id, false)
-			events.append(DomainEvent.new(&"sound_requested", {"soundId": 630, "waitForCompletion": false, "source": "classic-combat-turn-undead"}))
-		actor.experience = _context.arithmetic.signed_32(actor.experience + experience_award)
-		events.append(DomainEvent.new(&"combat_turn_undead_resolved", {
-			"actorId": actor.id,
-			"targetId": target.id,
-			"result": result_kind,
-			"threshold": threshold,
-			"roll": roll,
-			"margin": margin,
-			"experience": experience_award,
-			"effectResourceType": "CIcon" if result_kind == "turned" else "",
-			"effectResourceId": 12056 if result_kind == "turned" else 0,
-			"effectFrameCount": 8 if result_kind == "turned" else 0,
-			"source": "classic",
-		}))
+		_resolve_turn_undead_target(combat, content, actor, target_id, rng, events)
 	actor.attacks_remaining = _context.arithmetic.signed_16(actor.attacks_remaining - 2)
+	return _finish_turn_undead(state, content, actor, rng, events)
+
+
+func _turn_undead_macro_count(combat: CombatState, content: RealmzContent, target_ids: Array[String]) -> int:
+	var result := 0
+	for target_id: String in target_ids:
+		var target := combat.roster.monster_by_id(target_id)
+		var definition := content.combat.monster_by_id(target.definition_id) if target != null else null
+		if definition != null and definition.death_macro > 0:
+			result += 1
+	return result
+
+
+func _resolve_turn_undead_target(combat: CombatState, content: RealmzContent, actor: CharacterState, target_id: String, rng: RealmzRng, events: Array[DomainEvent]) -> void:
+	var target := combat.roster.monster_by_id(target_id)
+	var definition := content.combat.monster_by_id(target.definition_id)
+	var threshold := maxi(25, 100 - actor.ability_value(13) + 5 * target.hit_dice) + target.magic_resistance
+	var roll := rng.draw(100, StringName("combat.turn-undead.%s" % target.id))
+	var margin := roll - threshold
+	var result_kind := "resisted"
+	var experience_award := 0
+	if margin > 0 and margin < 30:
+		result_kind = "destroyed"
+		actor.lifetime_record.record_turn_undead(true)
+		experience_award = 25 * target.hit_dice
+		target.current_health = 0
+		events.append(DomainEvent.new(&"sound_requested", {"soundId": 132, "waitForCompletion": false, "source": "classic-combat-turn-undead"}))
+		if not _events.queue_spell_death_macro(combat, target, definition):
+			_context.automation().remove_defeated_position(combat, target.id, true)
+	elif margin >= 30:
+		result_kind = "turned"
+		actor.lifetime_record.record_turn_undead(false)
+		experience_award = 50 * target.hit_dice
+		target.traitor = actor.traitor
+		target.target_id = ""
+		combat.actor_statuses.set_guarding(target.id, false)
+		events.append(DomainEvent.new(&"sound_requested", {"soundId": 630, "waitForCompletion": false, "source": "classic-combat-turn-undead"}))
+	actor.experience = _context.arithmetic.signed_32(actor.experience + experience_award)
+	events.append(DomainEvent.new(&"combat_turn_undead_resolved", {
+		"actorId": actor.id,
+		"targetId": target.id,
+		"result": result_kind,
+		"threshold": threshold,
+		"roll": roll,
+		"margin": margin,
+		"experience": experience_award,
+		"effectResourceType": "CIcon" if result_kind == "turned" else "",
+		"effectResourceId": 12056 if result_kind == "turned" else 0,
+		"effectFrameCount": 8 if result_kind == "turned" else 0,
+		"source": "classic",
+	}))
+
+
+func _finish_turn_undead(state: GameState, content: RealmzContent, actor: CharacterState, rng: RealmzRng, events: Array[DomainEvent]) -> CombatFlowResult:
+	var combat := state.combat
 	var advances_turn := not character_can_continue(actor)
 	if not combat.spell_runtime.pending_death_macro_id().is_empty():
 		if not combat.spell_runtime.begin_death_macro_sequence(actor.id, advances_turn) or not _events.request_next_spell_death_macro(combat, content, events):

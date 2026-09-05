@@ -6,6 +6,8 @@ The battlefield follows the same ownership model. `BattlefieldState` keeps map i
 
 `CombatFlow` is the stable command surface over battle setup, round, action, reaction, magic, field, navigation, and automation collaborators. `CombatBattleSetup` owns the complete transactional construction sequence before handing the committed battle to the lifecycle and automation owners. All collaborators share one explicit combat context and return typed results; callers must not reach into collaborator-private methods.
 
+Inside the character-action owner, command admission, the command-specific mutation, interruption detection, battle completion, and automatic monster continuation are separate readable phases. Character and monster physical resolvers likewise prepare one typed attempt, roll physical and elemental damage in source order, apply authored specials, and then commit condition and health changes. Keep the ordering of weapon-condition, luck, hit, fumble, damage, special, and lifetime-record operations intact when changing these phases.
+
 Player battle input begins at `CombatIntents`: `choose_action`, `move`, and `set_auto` construct the stable command kinds with `CombatIntentPayloads.Action`, `Move`, and `Auto`. They carry player choice only; action admission and mutation remain in the combat collaborators below.
 
 Battle confirmation, friendly collision, death macro, ally selection, fumble recovery, and reward handoffs are created by `CombatContinuations`. `CombatContinuationBody` and `CombatRewardContinuationBody` retain only the facts needed to resume; `SessionContinuationCodec` preserves their established save representation.
