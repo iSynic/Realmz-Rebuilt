@@ -17,7 +17,7 @@ func probe_character_spell_choice(state: GameState, content: RealmzContent, cast
 		return turn_probe
 	var combat := state.combat
 	var caster := state.party.character_by_id(caster_id)
-	var spell := content.spell_by_id(spell_id)
+	var spell := content.magic.spell_by_id(spell_id)
 	if caster == null or caster.current_health <= 0 or caster.traitor or spell == null or power_level < 1 or power_level > 7:
 		return CombatSpellCastProbe.blocked(&"invalid_spell_target", "The spell, caster, or power is unavailable.")
 	if not caster.known_spells().has(spell.id):
@@ -83,7 +83,7 @@ func probe_character_spell_cast(state: GameState, content: RealmzContent, caster
 	if not choice_probe.allowed: return choice_probe
 	var combat := state.combat
 	var caster := state.party.character_by_id(caster_id)
-	var spell := content.spell_by_id(spell_id)
+	var spell := content.magic.spell_by_id(spell_id)
 	var repeated_target := spell.target_type == 0
 	var summon_spell: bool = CombatFlowSummoning.is_summon_spell(spell)
 	var phase_spell := ClassicSpellSpecialEffectRules.is_combat_phase_spell(spell)
@@ -136,7 +136,7 @@ func character_spell_options(state: GameState, content: RealmzContent, caster_id
 	var combat := state.combat
 	if not _probe_caster_casting(state, combat, caster).allowed: return result
 	for spell_id: String in caster.known_spells():
-		var spell := content.spell_by_id(spell_id)
+		var spell := content.magic.spell_by_id(spell_id)
 		if spell == null: continue
 		for power_level: int in range(1, 8):
 			if not _probe_spell_rules(state, content, combat, caster, spell, power_level).allowed: continue
@@ -169,7 +169,7 @@ func character_scroll_options(state: GameState, content: RealmzContent, caster_i
 	if caster == null: return result
 	for scroll_slot: int in caster.scroll_case().size():
 		var scroll := caster.scroll_at(scroll_slot)
-		var spell := content.spell_by_id(scroll.spell_id) if scroll != null and not scroll.is_empty() else null
+		var spell := content.magic.spell_by_id(scroll.spell_id) if scroll != null and not scroll.is_empty() else null
 		if spell == null: continue
 		if spell.target_type == 0:
 			if _context.magic_flow().probe_character_scroll_cast(state, content, caster_id, scroll_slot).allowed:
@@ -205,7 +205,7 @@ func character_scroll_unavailable_reason(state: GameState, content: RealmzConten
 	for scroll_slot: int in caster.scroll_case().size():
 		var scroll := caster.scroll_at(scroll_slot)
 		if scroll == null or scroll.is_empty(): continue
-		var spell := content.spell_by_id(scroll.spell_id)
+		var spell := content.magic.spell_by_id(scroll.spell_id)
 		if spell == null: return "A stored scroll references an unavailable spell."
 		var target_id := caster_id if spell.target_type in [5, 7] else ""
 		var probe: CombatSpellCastProbe = _context.magic_flow().probe_character_scroll_cast(state, content, caster_id, scroll_slot, target_id)
@@ -248,7 +248,7 @@ static func spell_target_view(state: GameState, content: RealmzContent, target_i
 	var character := state.party.character_by_id(target_id)
 	if character != null: return CombatSpellTargetView.new(character.id, &"character", character.name, character.current_health, character.maximum_health)
 	var monster := state.combat.roster.monster_by_id(target_id) if state.combat != null else null
-	if monster != null and content.monster_by_id(monster.definition_id) != null: return CombatSpellTargetView.new(monster.id, &"monster", monster.name, monster.current_health, monster.maximum_health)
+	if monster != null and content.combat.monster_by_id(monster.definition_id) != null: return CombatSpellTargetView.new(monster.id, &"monster", monster.name, monster.current_health, monster.maximum_health)
 	return null
 
 
@@ -267,7 +267,7 @@ static func spell_target_selection(state: GameState, content: RealmzContent, tar
 	if character != null and character.current_health > 0 and state.combat.battlefield.has_actor(character.id): return SpellTargetSelection.for_character(character)
 	var monster := state.combat.roster.monster_by_id(target_id)
 	if monster == null or monster.current_health <= 0 or not state.combat.battlefield.has_actor(monster.id): return null
-	var definition := content.monster_by_id(monster.definition_id)
+	var definition := content.combat.monster_by_id(monster.definition_id)
 	return SpellTargetSelection.for_monster(monster, definition) if definition != null else null
 
 

@@ -243,10 +243,10 @@ func _compose_catalogs(races_value: Variant, castes_value: Variant, items_value:
 	var items: Array[ItemDefinition] = []
 	var spells: Array[SpellDefinition] = []
 	if application_content != null:
-		races.assign(application_content.race_definitions())
-		castes.assign(application_content.caste_definitions())
-		items.assign(application_content.item_definitions())
-		spells.assign(application_content.spell_definitions())
+		races.assign(application_content.characters.race_definitions())
+		castes.assign(application_content.characters.caste_definitions())
+		items.assign(application_content.items.definitions())
+		spells.assign(application_content.magic.definitions())
 	_overlay_definitions(races, races_value)
 	_overlay_definitions(castes, castes_value)
 	_overlay_definitions(items, items_value)

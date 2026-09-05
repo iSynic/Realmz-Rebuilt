@@ -39,6 +39,8 @@ If you seek a particular thing, begin here:
 
 The names are part of the map. `Definition` means immutable authored content. `State` means mutable playthrough truth. `View` means a detached, read-only presentation record. `Rules` perform pure calculations. A `Repository` persists data; a `Loader` or `Decoder` admits external input; a `Controller` binds a screen; a `Renderer` draws custom visuals. `Classic` is reserved for something demonstrably inherited from Castle Realmz, not used as a synonym for “old” or “important.”
 
+The active `RealmzContent` is a directory, not a universal catalog clerk. Its `scenario_records`, `characters`, `items`, `magic`, `combat`, and `economy` properties lead to the feature catalog that owns the lookup. Thus a portable item resolves as `content.items.item_by_id(...)`, while a battle resolves as `content.combat.battle_by_id(...)`. Package assembly has already applied the legal scenario overlay before these immutable catalogs are built; gameplay never guesses whether an application or scenario supplied the winning definition.
+
 ## The six halls
 
 `src/game` owns direct Realmz models, fixed Classic rules, topology, clock, RNG, and detached read-model contracts. It is pure typed GDScript: no Nodes, scenes, autoloads, time, files, audio, OS calls, or Godot RNG.

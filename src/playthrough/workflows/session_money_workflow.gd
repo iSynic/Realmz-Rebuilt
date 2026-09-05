@@ -50,15 +50,15 @@ static func perform(context: SessionWorkflowContext, payload: EconomyIntentPaylo
 
 static func _movement_context_error(context: SessionWorkflowContext) -> String:
 	for character: CharacterState in context.state.party.characters():
-		if context.content.race_by_id(character.race_id) == null or context.content.caste_by_id(character.caste_id) == null:
+		if context.content.characters.race_by_id(character.race_id) == null or context.content.characters.caste_by_id(character.caste_id) == null:
 			return "Character '%s' has no package-backed race or class for Classic movement recalculation." % character.id
 	return ""
 
 
 static func _recalculate_party_movement(context: SessionWorkflowContext) -> void:
 	for character: CharacterState in context.state.party.characters():
-		var race := context.content.race_by_id(character.race_id)
-		var caste := context.content.caste_by_id(character.caste_id)
+		var race := context.content.characters.race_by_id(character.race_id)
+		var caste := context.content.characters.caste_by_id(character.caste_id)
 		context.rules.characters.recalculate_movement(character, race, caste.movement_bonus)
 
 

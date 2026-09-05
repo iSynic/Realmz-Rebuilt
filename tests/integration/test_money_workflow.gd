@@ -244,8 +244,8 @@ func _departure_session(content: RealmzContent, seed: int) -> GameSession:
 
 
 func _playable_pair(content: RealmzContent) -> Array:
-	for caste: CasteDefinition in content.caste_definitions():
-		for race: RaceDefinition in content.race_definitions():
+	for caste: CasteDefinition in content.characters.caste_definitions():
+		for race: RaceDefinition in content.characters.race_definitions():
 			if not race.eligible_caste_ids.is_empty() and not race.eligible_caste_ids.has(caste.id):
 				continue
 			if not caste.eligible_race_ids.is_empty() and not caste.eligible_race_ids.has(race.id):

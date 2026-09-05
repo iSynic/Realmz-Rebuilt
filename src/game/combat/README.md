@@ -1,6 +1,6 @@
 # Combat rules
 
-Start with `CombatFlow` when you need to submit a battle command. It is intentionally small: it accepts mutations such as moving, casting, using an item, or completing a battle. For a read-only question, go directly to the collaborator that owns the answer—`actions`, `reactions`, `magic`, `rounds`, `fields`, `summoning`, `phase`, or `automation`.
+Start with `CombatFlow` when you need to submit a battle command. It is intentionally small: it accepts mutations such as moving, casting, using an item, or completing a battle. For immutable monster, monster-set, or battle definitions, use `RealmzContent.combat`, whose `CombatCatalog` owns those indexes. For a read-only rules question, go directly to the collaborator that owns the answer—`actions`, `reactions`, `magic`, `rounds`, `fields`, `summoning`, `phase`, or `automation`.
 
 All collaborators share one `CombatContext`. The context supplies the pure rule services and public collaborator references; it does not copy battle state or hide a second combat model. The command receives `GameState`, immutable content, and the serialized session RNG, performs one transaction, and returns a `CombatFlowResult` with already-committed domain events. `CombatState` remains the saved aggregate, its roster/turn/status/dropped-item/spell-runtime collaborators own their respective battle facts, and its few aggregate commands synchronize cross-owner initiative and turn-boundary invariants. `CombatStateCodec` preserves the flat save shape, and `CombatView` remains detached presentation data.
 

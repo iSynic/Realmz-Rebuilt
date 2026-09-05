@@ -1,6 +1,6 @@
 # Economy and services
 
-Start in `src/game/economy`. `EconomyRules` owns denominations, carrying weight, valuation, Pool, Share, and Swap. `TempleRules` owns the nine temple services. `LocationServiceState` owns the current shop, temple, and bank plus mutable shop stock; `LocationServiceStateCodec` keeps that state in the existing flat `GameState` save dictionary. Shops, temples, and banks may arrive either as scenario interactions or contextual services, but their mutations converge through these owners and the public session boundary.
+Start in `src/game/economy`. `RealmzContent.economy` exposes the immutable `EconomyContentCatalog` for Shop and Treasure definitions. `EconomyRules` owns denominations, carrying weight, valuation, Pool, Share, and Swap. `TempleRules` owns the nine temple services. `LocationServiceState` owns the current shop, temple, and bank plus mutable shop stock; `LocationServiceStateCodec` keeps that state in the existing flat `GameState` save dictionary. Shops, temples, and banks may arrive either as scenario interactions or contextual services, but their mutations converge through these owners and the public session boundary.
 
 `EconomyIntents.money` and `EconomyIntents.service` are the player-command entry points. Their typed payloads carry only the selected operation, character, denomination, service, and amount; affordability and mutation remain in the owning workflow and rules.
 

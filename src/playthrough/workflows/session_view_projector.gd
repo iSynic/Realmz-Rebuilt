@@ -42,7 +42,7 @@ func _project_complete(context: SessionWorkflowContext, pending_interaction: Int
 	var state := context.state
 	var rules := context.rules
 	var members: Array[CharacterView] = []
-	var item_definitions := content.item_definitions()
+	var item_definitions := content.items.definitions()
 	_equipment_by_character_id.clear()
 	_map_window_cache.clear()
 	for character: CharacterState in state.party.characters():
@@ -60,8 +60,8 @@ func _project_complete(context: SessionWorkflowContext, pending_interaction: Int
 			current_combat = CombatView.new(state.combat, state.party.characters(), content, rules.equipment, rules.battlefield, rules.combat_flow, state)
 	var result := GameView.new(revision, true, pending_interaction, state.party.map_id, state.party.coordinate, state.clock.day(), state.clock.hour(), state.clock.minute(), _map_view(context, revision, false, state.combat != null), members, state.party.fatigue, state.party.pooled_wealth.gold, current_combat)
 	for ally: MonsterState in state.party.allies():
-		result.party_allies.append(MonsterView.new(ally, content.monster_by_id(ally.definition_id), content))
-	for definition: MonsterDefinition in content.bestiary_definitions_for_set(state.monster_set):
+		result.party_allies.append(MonsterView.new(ally, content.combat.monster_by_id(ally.definition_id), content))
+	for definition: MonsterDefinition in content.combat.bestiary_definitions_for_set(state.monster_set):
 		result.bestiary_entries.append(MonsterCatalogEntryView.new(definition, content))
 	result.campaign_id = content.campaign_id
 	result.rules_version = content.rules_version
@@ -72,7 +72,7 @@ func _project_complete(context: SessionWorkflowContext, pending_interaction: Int
 		ActionViewProjector.populate_character_draft_spells(context, result)
 	result.campaign_summary = CampaignSummaryView.new()
 	result.campaign_summary.campaign_id = content.campaign_id
-	var campaign := content.campaign_definition()
+	var campaign := content.campaign
 	result.campaign_summary.title = campaign.title if not campaign.title.is_empty() else content.campaign_id.replace("-", " ").capitalize()
 	result.campaign_summary.version = campaign.version if not campaign.version.is_empty() else content.rules_version
 	result.campaign_summary.author = campaign.author
@@ -91,7 +91,7 @@ func _project_complete(context: SessionWorkflowContext, pending_interaction: Int
 	result.party_setup = PartySetupView.new()
 	result.party_setup.difficulty = state.difficulty
 	result.party_setup.monster_set = state.monster_set
-	result.party_setup.available_monster_sets = content.available_monster_sets()
+	result.party_setup.available_monster_sets = content.combat.available_monster_sets()
 	for character: CharacterState in state.party.characters():
 		result.party_setup.current_party_levels += character.level
 	result.party_setup.experience_percent = PartySetupRules.experience_percent(campaign.recommended_party_levels, result.party_setup.current_party_levels, state.difficulty)
@@ -115,17 +115,17 @@ func _project_complete(context: SessionWorkflowContext, pending_interaction: Int
 	else:
 		_populate_movement_map_views(context, result)
 	for message_id: int in state.scenario_progress.journal_message_ids():
-		var journal_message := content.message_by_id(message_id)
+		var journal_message := content.scenario_records.message_by_id(message_id)
 		if journal_message != null:
 			result.journal_entries.append(JournalEntryView.new(message_id, journal_message.text))
 	if result.party_setup_available:
-		for race: RaceDefinition in content.race_definitions():
+		for race: RaceDefinition in content.characters.race_definitions():
 			result.race_options.append(DefinitionOptionView.from_race(race))
-		for caste: CasteDefinition in content.caste_definitions():
+		for caste: CasteDefinition in content.characters.caste_definitions():
 			result.caste_options.append(DefinitionOptionView.from_caste(caste))
-	for portrait: CharacterAppearanceDefinition in content.appearance_definitions(CharacterAppearanceDefinition.PORTRAIT):
+	for portrait: CharacterAppearanceDefinition in content.characters.appearance_definitions(CharacterAppearanceDefinition.PORTRAIT):
 		result.portrait_options.append(CharacterAppearanceOptionView.new(portrait))
-	for icon: CharacterAppearanceDefinition in content.appearance_definitions(CharacterAppearanceDefinition.COMBAT_ICON):
+	for icon: CharacterAppearanceDefinition in content.characters.appearance_definitions(CharacterAppearanceDefinition.COMBAT_ICON):
 		result.combat_icon_options.append(CharacterAppearanceOptionView.new(icon))
 	ActionViewProjector.populate_inventory_item_actions(context, result)
 	ActionViewProjector.populate_spell_actions(context, result)
@@ -307,7 +307,7 @@ func _project_ordinary_movement(context: SessionWorkflowContext, revision: int, 
 			status_character_ids[character.id] = true
 			var equipment := _equipment_by_character_id.get(character.id) as CharacterCombatEquipment
 			if equipment == null:
-				equipment = context.rules.equipment.combat_equipment(character, context.content.item_definitions())
+				equipment = context.rules.equipment.combat_equipment(character, context.content.items.definitions())
 				_equipment_by_character_id[character.id] = equipment
 			members.append(CharacterView.new(character, context.content, previous_member, true, magic_changed) if inventory_refresh else CharacterView.refreshed_status(character, context.content, previous_member, equipment, magic_changed, structural_magic_refresh))
 			if inventory_refresh: members[-1].apply_equipment(equipment)
@@ -319,7 +319,7 @@ func _project_ordinary_movement(context: SessionWorkflowContext, revision: int, 
 	var result := _ordinary_game_view(context, revision, projected_map, members)
 	if refresh_party:
 		for ally: MonsterState in state.party.allies():
-			result.party_allies.append(MonsterView.new(ally, context.content.monster_by_id(ally.definition_id), context.content))
+			result.party_allies.append(MonsterView.new(ally, context.content.combat.monster_by_id(ally.definition_id), context.content))
 	else:
 		result.party_allies.assign(_cached_view.party_allies)
 	result.bestiary_entries = _cached_view.bestiary_entries
@@ -465,7 +465,7 @@ func _spell_affordability_crossed(context: SessionWorkflowContext, character_id:
 	var before := previous.spell_points
 	var after := character.spell_points
 	for spell_view: SpellView in previous.spells:
-		var spell := context.content.spell_by_id(spell_view.id)
+		var spell := context.content.magic.spell_by_id(spell_view.id)
 		if spell == null:
 			continue
 		for power: int in spell_view.structural_power_levels:
@@ -477,7 +477,7 @@ func _spell_affordability_crossed(context: SessionWorkflowContext, character_id:
 	for binding: FastSpellBindingView in previous.fast_spells:
 		if binding.spell_id.is_empty():
 			continue
-		var spell := context.content.spell_by_id(binding.spell_id)
+		var spell := context.content.magic.spell_by_id(binding.spell_id)
 		if spell != null and before < absi(spell.cost * binding.power) and after >= absi(spell.cost * binding.power):
 			return true
 	return false
@@ -499,7 +499,7 @@ func _ordinary_inventory_refresh(context: SessionWorkflowContext, events: Array[
 		if current == null or previous == null or previous.spell_points >= 25 or current.spell_points < 25:
 			continue
 		for spell_id: String in current.known_spells():
-			var spell := context.content.spell_by_id(spell_id)
+			var spell := context.content.magic.spell_by_id(spell_id)
 			if spell != null and absi(spell.special) == 48:
 				return true
 	return false

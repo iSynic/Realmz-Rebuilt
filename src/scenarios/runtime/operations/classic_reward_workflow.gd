@@ -14,7 +14,7 @@ func begin_reward(origin: StringName, source_id: String, total_experience: int, 
 		return ScenarioRuntimeOperationResult.failed(&"invalid_reward", "The reward exceeds the supported Classic reward bounds.")
 	var experience_multiplier := _game_state.experience_multiplier
 	if experience_multiplier < 0.0:
-		var campaign := _content.campaign_definition()
+		var campaign := _content.campaign
 		var current_levels := 0
 		for party_character: CharacterState in _game_state.party.characters():
 			current_levels += party_character.level
@@ -33,7 +33,7 @@ func begin_reward(origin: StringName, source_id: String, total_experience: int, 
 			unique_owned[carried.definition_id] = true
 	for index: int in item_ids.size():
 		var item_id: String = item_ids[index]
-		var definition := _content.item_by_id(item_id)
+		var definition := _content.items.item_by_id(item_id)
 		if definition == null:
 			return ScenarioRuntimeOperationResult.failed(&"unknown_item", "Reward '%s' references unavailable item '%s'." % [source_id, item_id])
 		if definition.cost < 0 and unique_owned.has(definition.id):
@@ -61,7 +61,7 @@ func begin_reward(origin: StringName, source_id: String, total_experience: int, 
 	var share := 0 if recipients.is_empty() else int(float(reward.experience_pool) / float(recipients.size()))
 	reward.experience_share = share
 	for character: CharacterState in recipients:
-		var race := _content.race_by_id(character.race_id)
+		var race := _content.characters.race_by_id(character.race_id)
 		var awarded := _rules.characters.battle_experience(character, race, share)
 		awards[character.id] = awarded
 	if not reward.set_experience_awards(awards):
@@ -114,7 +114,7 @@ func _reward_request(reward: ClassicRewardState, request_id: String) -> Interact
 	var has_share_capacity := false
 	for character: CharacterState in _game_state.party.characters():
 		var enabled := pending_items.any(func(item: ItemInstance) -> bool:
-			var definition := _content.item_by_id(item.definition_id)
+			var definition := _content.items.item_by_id(item.definition_id)
 			return definition != null and _rules.inventory.can_restore_item(character, item, definition)
 		)
 		var reason := "" if enabled or pending_items.is_empty() else "This character cannot receive any remaining item."
@@ -157,7 +157,7 @@ func _reward_request(reward: ClassicRewardState, request_id: String) -> Interact
 
 
 func _reward_item_payload(reward: ClassicRewardState, item: ItemInstance) -> Dictionary:
-	var definition := _content.item_by_id(item.definition_id)
+	var definition := _content.items.item_by_id(item.definition_id)
 	if definition == null:
 		return {}
 	var assignments: Array[Dictionary] = []
@@ -313,7 +313,7 @@ func _assign_reward_item(reward: ClassicRewardState, body: InteractionResponse.T
 			pending = item
 			break
 	var character := _game_state.party.character_by_id(body.character_id)
-	var definition: ItemDefinition = null if pending == null else _content.item_by_id(pending.definition_id)
+	var definition: ItemDefinition = null if pending == null else _content.items.item_by_id(pending.definition_id)
 	if pending == null or character == null or definition == null or not _rules.inventory.can_restore_item(character, pending, definition):
 		return {"code": "reward_assignment_unavailable", "message": "The selected character cannot receive the selected item."}
 	if not _rules.inventory.restore_item(character, pending, definition):
@@ -371,7 +371,7 @@ func _reward_caster_rows(special: int, cost: int) -> Array[Dictionary]:
 			continue
 		var knows := false
 		for spell_id: String in character.known_spells():
-			var spell := _content.spell_by_id(spell_id)
+			var spell := _content.magic.spell_by_id(spell_id)
 			if spell != null and spell.special == special:
 				knows = true
 				break
@@ -399,8 +399,8 @@ func _advance_reward_levels(reward: ClassicRewardState, request_id: String, even
 	var ids := reward.level_character_ids()
 	while reward.level_index < ids.size():
 		var character := _game_state.party.character_by_id(ids[reward.level_index])
-		var race: RaceDefinition = null if character == null else _content.race_by_id(character.race_id)
-		var caste: CasteDefinition = null if character == null else _content.caste_by_id(character.caste_id)
+		var race: RaceDefinition = null if character == null else _content.characters.race_by_id(character.race_id)
+		var caste: CasteDefinition = null if character == null else _content.characters.caste_by_id(character.caste_id)
 		if character == null or race == null or caste == null or character.current_health <= 0 or character.experience <= 0:
 			return ScenarioRuntimeOperationResult.failed(&"invalid_reward_progression", "A character in the level-up queue is no longer eligible.")
 		var threshold_index := clampi(character.level, 1, 30) - 1
@@ -461,7 +461,7 @@ func _reward_spell_request(reward: ClassicRewardState, request_id: String) -> In
 	if reward.spell_index < 0 or reward.spell_index >= ids.size():
 		return null
 	var character := _game_state.party.character_by_id(ids[reward.spell_index])
-	var caste: CasteDefinition = null if character == null else _content.caste_by_id(character.caste_id)
+	var caste: CasteDefinition = null if character == null else _content.characters.caste_by_id(character.caste_id)
 	if character == null or caste == null:
 		return null
 	var spells: Array[Dictionary] = []
@@ -476,7 +476,7 @@ func _resume_reward_spells(reward: ClassicRewardState, response: InteractionResp
 	if response.kind != InteractionRequest.LEVEL_UP or body == null or body.action != &"confirm-spells" or reward.spell_index < 0 or reward.spell_index >= ids.size() or body.character_id != ids[reward.spell_index]:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Spell selection requires the pending character and spell IDs.")
 	var character := _game_state.party.character_by_id(ids[reward.spell_index])
-	var caste: CasteDefinition = null if character == null else _content.caste_by_id(character.caste_id)
+	var caste: CasteDefinition = null if character == null else _content.characters.caste_by_id(character.caste_id)
 	if character == null or caste == null:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_reward_progression", "The spell-selection character is unavailable.")
 	var candidates: Dictionary = {}
@@ -500,7 +500,7 @@ func _resume_reward_spells(reward: ClassicRewardState, response: InteractionResp
 func _reward_spell_candidates(character: CharacterState, caste: CasteDefinition) -> Array[SpellDefinition]:
 	var result: Array[SpellDefinition] = []
 	var maximum_level := _rules.characters.maximum_spell_selection_level(caste)
-	for spell: SpellDefinition in _content.spell_definitions():
+	for spell: SpellDefinition in _content.magic.definitions():
 		if int(float(spell.classic_id) / 1000.0) == character.spellcaster_type and spell.classic_tier() >= 0 and spell.classic_tier() < maximum_level and spell.classic_slot() >= 1 and spell.classic_slot() <= 12:
 			result.append(spell)
 	result.sort_custom(func(left: SpellDefinition, right: SpellDefinition) -> bool: return left.classic_id < right.classic_id)
@@ -516,7 +516,7 @@ func _complete_reward(reward: ClassicRewardState, request_id: String, events: Ar
 			return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "The battle reward no longer matches its completed battle.")
 		var combat := _game_state.combat
 		if reward.battle_stage == ClassicRewardState.ORDINARY_BATTLE_STAGE and reward.bonus_treasure_classic_id != 0:
-			var bonus_treasure := _content.treasure_by_classic_id(reward.bonus_treasure_classic_id)
+			var bonus_treasure := _content.economy.treasure_by_classic_id(reward.bonus_treasure_classic_id)
 			if bonus_treasure == null:
 				return ScenarioRuntimeOperationResult.failed(&"unknown_treasure", "The pending opcode 48 bonus treasure is unavailable.")
 			var bonus_roll := _rules.economy.roll_treasure(bonus_treasure, _rng)
@@ -526,7 +526,7 @@ func _complete_reward(reward: ClassicRewardState, request_id: String, events: Ar
 			return bonus
 		combat.rewards_completed = true
 		var outcome := combat.outcome
-		var battle := _content.battle_by_id(reward.source_id)
+		var battle := _content.combat.battle_by_id(reward.source_id)
 		if battle != null:
 			_append_battle_after_message(battle, completed_events)
 		completed_events.append(DomainEvent.new(&"battle_returned", {"battleId": reward.source_id, "outcome": String(outcome)}))
@@ -546,10 +546,10 @@ func _reward_state_is_valid(reward: ClassicRewardState) -> bool:
 		return false
 	if (reward.origin == &"battle" and reward.battle_stage not in [ClassicRewardState.ORDINARY_BATTLE_STAGE, ClassicRewardState.BONUS_BATTLE_STAGE]) or (reward.origin != &"battle" and (reward.battle_stage != ClassicRewardState.NO_BATTLE_STAGE or reward.bonus_treasure_classic_id != 0)) or (reward.battle_stage == ClassicRewardState.BONUS_BATTLE_STAGE and reward.bonus_treasure_classic_id != 0):
 		return false
-	if reward.bonus_treasure_classic_id != 0 and _content.treasure_by_classic_id(reward.bonus_treasure_classic_id) == null:
+	if reward.bonus_treasure_classic_id != 0 and _content.economy.treasure_by_classic_id(reward.bonus_treasure_classic_id) == null:
 		return false
 	for item: ItemInstance in reward.items():
-		if _content.item_by_id(item.definition_id) == null:
+		if _content.items.item_by_id(item.definition_id) == null:
 			return false
 	for character_id: Variant in reward.experience_awards():
 		if _game_state.party.character_by_id(String(character_id)) == null:
@@ -579,21 +579,21 @@ static func _wealth_kind(value: String) -> int:
 
 func _money_movement_context_error() -> String:
 	for character: CharacterState in _game_state.party.characters():
-		if _content.race_by_id(character.race_id) == null or _content.caste_by_id(character.caste_id) == null:
+		if _content.characters.race_by_id(character.race_id) == null or _content.characters.caste_by_id(character.caste_id) == null:
 			return "Character '%s' has no package-backed race or class for Classic movement recalculation." % character.id
 	return ""
 
 
 func _recalculate_party_movement() -> void:
 	for character: CharacterState in _game_state.party.characters():
-		var race := _content.race_by_id(character.race_id)
-		var caste := _content.caste_by_id(character.caste_id)
+		var race := _content.characters.race_by_id(character.race_id)
+		var caste := _content.characters.caste_by_id(character.caste_id)
 		_rules.characters.recalculate_movement(character, race, caste.movement_bonus)
 
 
 func grant_item(character_id: String, item_id: String, identified: bool) -> ScenarioRuntimeOperationResult:
 	var character := _game_state.party.character_by_id(character_id)
-	var item := _content.item_by_id(item_id)
+	var item := _content.items.item_by_id(item_id)
 	if character == null or item == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_item_target", "Grant Item references an unavailable character or item.")
 	var instance := _rules.inventory.add_item(character, item, _game_state.next_instance_id("scenario.item"), identified)

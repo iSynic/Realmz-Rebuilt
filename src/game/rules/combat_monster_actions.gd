@@ -15,8 +15,8 @@ func _init(context: CombatContext) -> void:
 func process_projectile(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, active_turn: CombatTurnState, rng: RealmzRng, events: Array[DomainEvent]) -> int:
 	var combat := state.combat
 	var projectile_item_id := definition.item_id_at(1)
-	var projectile_item := content.item_by_id(projectile_item_id) if not projectile_item_id.is_empty() else null
-	var projectile_spell := content.spell_by_classic_id(absi(projectile_item.special_2)) if projectile_item != null else null
+	var projectile_item := content.items.item_by_id(projectile_item_id) if not projectile_item_id.is_empty() else null
+	var projectile_spell := content.magic.spell_by_classic_id(absi(projectile_item.special_2)) if projectile_item != null else null
 	var unavailable := "Monster missile slot 1 is empty or references an unavailable item."
 	if projectile_item != null and projectile_spell == null:
 		unavailable = "Monster missile item '%s' references an unavailable Classic spell." % projectile_item.id
@@ -92,8 +92,8 @@ func projectile_target_ids(state: GameState, monster: MonsterState, terrain_set:
 
 static func prepare_melee_weapon(monster: MonsterState, definition: MonsterDefinition, content: RealmzContent) -> void:
 	if monster == null or definition == null or content == null or monster.weapon_id.is_empty(): return
-	var active_item := content.item_by_id(monster.weapon_id)
-	var active_spell := content.spell_by_classic_id(absi(active_item.special_2)) if active_item != null and active_item.special_2 != 0 else null
+	var active_item := content.items.item_by_id(monster.weapon_id)
+	var active_spell := content.magic.spell_by_classic_id(absi(active_item.special_2)) if active_item != null and active_item.special_2 != 0 else null
 	if active_spell != null and active_spell.damage_type == 9:
 		# FD-COMBAT-010 applies Castle's intended slot-zero replacement to the actor.
 		monster.weapon_id = definition.item_id_at(0)
@@ -173,7 +173,7 @@ static func attack_limit(definition: MonsterDefinition) -> int:
 static func retreat_reached_edge(state: GameState, content: RealmzContent, monster_id: String, destination: Vector2i, events: Array[DomainEvent]) -> bool:
 	if destination.x >= 2 and destination.y >= 2 and destination.x <= 87 and destination.y <= 87: return false
 	var monster := state.combat.roster.monster_by_id(monster_id)
-	var definition := content.monster_by_id(monster.definition_id) if monster != null else null
+	var definition := content.combat.monster_by_id(monster.definition_id) if monster != null else null
 	if monster == null or definition == null: return false
 	state.combat.actor_statuses.set_guarding(monster.id, false)
 	state.combat.turns.active_turn.movement_remaining = 0

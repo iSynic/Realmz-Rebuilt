@@ -177,7 +177,7 @@ static func _eligible_field_healer(context: SessionWorkflowContext, character: C
 		if character.conditions.is_active(condition_index):
 			return false
 	for spell_id: String in character.known_spells():
-		var spell := context.content.spell_by_id(spell_id)
+		var spell := context.content.magic.spell_by_id(spell_id)
 		if spell != null and absi(spell.special) == 57:
 			return true
 	return false
@@ -550,7 +550,7 @@ static func timed_encounter_requirements_met(context: SessionWorkflowContext, en
 
 
 static func party_has_classic_item(context: SessionWorkflowContext, classic_item_id: int) -> bool:
-	var definition := context.content.item_by_classic_id(classic_item_id)
+	var definition := context.content.items.item_by_classic_id(classic_item_id)
 	if definition == null:
 		return false
 	for character: CharacterState in context.state.party.characters():
@@ -571,7 +571,7 @@ static func selected_placed_trigger_ids(content: RealmzContent, cell: MapCell, w
 	var selected_id := ""
 	var selected_record_index := 2_147_483_647
 	for trigger_id: String in cell.trigger_ids():
-		var trigger := content.trigger_by_id(trigger_id)
+		var trigger := content.scenario_records.trigger_by_id(trigger_id)
 		if trigger != null and trigger.classic_record_index < selected_record_index:
 			selected_id = trigger.id
 			selected_record_index = trigger.classic_record_index

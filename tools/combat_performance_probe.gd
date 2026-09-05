@@ -18,7 +18,7 @@ func _initialize() -> void:
 	var content: RealmzContent = loaded.content
 	var package_media: PackageMediaCatalog = loaded.media
 	var battle_id := int(arguments[1]) if arguments.size() == 2 else DEFAULT_BATTLE_ID
-	var battle := content.battle_by_classic_id(battle_id)
+	var battle := content.combat.battle_by_classic_id(battle_id)
 	if battle == null:
 		printerr("BATTLE_REJECTED: Classic battle %d is unavailable" % battle_id)
 		call_deferred("_quit_cleanly", 1)
@@ -124,7 +124,7 @@ func _initialize() -> void:
 	var setup_playback := _playback_metrics(null, setup.events, setup_view)
 	var combat_assets: Array[MediaAsset] = []
 	for monster: MonsterState in state.combat.roster.monsters():
-		var definition := content.monster_by_id(monster.definition_id)
+		var definition := content.combat.monster_by_id(monster.definition_id)
 		if definition == null:
 			continue
 		var asset := package_media.asset_by_resource("cicn", definition.icon_id)
@@ -176,7 +176,7 @@ func _combat_view(state: GameState, content: RealmzContent, rules: RealmzRules, 
 	var members: Array[CharacterView] = []
 	for character: CharacterState in state.party.characters():
 		var member := CharacterView.new(character, content)
-		member.apply_equipment(rules.equipment.combat_equipment(character, content.item_definitions()))
+		member.apply_equipment(rules.equipment.combat_equipment(character, content.items.definitions()))
 		members.append(member)
 	var combat := CombatView.new(state.combat, state.party.characters(), content, rules.equipment, rules.battlefield, rules.combat_flow, state) if state.combat != null else null
 	return GameView.new(revision, true, null, state.party.map_id, state.party.coordinate, state.clock.day(), state.clock.hour(), state.clock.minute(), null, members, state.party.fatigue, state.party.pooled_wealth.gold, combat)
@@ -199,8 +199,8 @@ func _playback_metrics(previous: GameView, events: Array[DomainEvent], final: Ga
 
 
 func _fresh_state(content: RealmzContent) -> GameState:
-	var races := content.race_definitions()
-	var castes := content.caste_definitions()
+	var races := content.characters.race_definitions()
+	var castes := content.characters.caste_definitions()
 	if races.is_empty() or castes.is_empty():
 		return null
 	var race := races[0]
@@ -213,7 +213,7 @@ func _fresh_state(content: RealmzContent) -> GameState:
 		return null
 	var characters: Array[CharacterState] = []
 	var combat_spell_ids: Array[String] = []
-	for spell: SpellDefinition in content.spell_definitions():
+	for spell: SpellDefinition in content.magic.definitions():
 		if spell.in_combat:
 			combat_spell_ids.append(spell.id)
 			if combat_spell_ids.size() == 12:

@@ -9,10 +9,10 @@ static func create_party(context: SessionWorkflowContext, pending: bool, specs: 
 		return SessionWorkflowResult.failed(&"party_setup_closed", "Party creation is available only during party setup.")
 	if context.state.character_draft != null:
 		return SessionWorkflowResult.failed(&"character_draft_active", "Finish or cancel the character currently being created.")
-	var maximum_party_size := clampi(context.content.campaign_definition().restrictions.maximum_party_size, 1, 6)
+	var maximum_party_size := clampi(context.content.campaign.restrictions.maximum_party_size, 1, 6)
 	if specs.is_empty() or specs.size() > maximum_party_size:
 		return SessionWorkflowResult.failed(&"invalid_party_size", "This campaign allows one through %d characters." % maximum_party_size)
-	var campaign := context.content.campaign_definition()
+	var campaign := context.content.campaign
 	var created: Array[CharacterState] = []
 	var names: Dictionary = {}
 	for index: int in specs.size():
@@ -42,7 +42,7 @@ static func begin_adventure(context: SessionWorkflowContext, pending: bool) -> S
 	var characters := context.state.party.characters()
 	if characters.is_empty():
 		return SessionWorkflowResult.failed(&"empty_party", "Add or import at least one character before beginning.")
-	context.state.experience_multiplier = party_experience_multiplier(characters, context.state.difficulty, context.content.campaign_definition())
+	context.state.experience_multiplier = party_experience_multiplier(characters, context.state.difficulty, context.content.campaign)
 	context.state.party_setup_completed = true
 	var character_ids: Array[String] = []
 	for character: CharacterState in characters:
@@ -60,19 +60,19 @@ static func import_vault_character(context: SessionWorkflowContext, pending: boo
 	var imported := CharacterStateCodec.copy(payload.character_state)
 	if imported == null or imported.id != payload.character_id:
 		return SessionWorkflowResult.failed(&"invalid_vault_import", "The vault character state is malformed.")
-	var restrictions := context.content.campaign_definition().restrictions
+	var restrictions := context.content.campaign.restrictions
 	var maximum_party_size := clampi(restrictions.maximum_party_size, 1, 6)
 	var current_characters := context.state.party.characters()
 	if current_characters.size() >= maximum_party_size:
 		return SessionWorkflowResult.failed(&"invalid_party_size", "This campaign allows no more than %d characters." % maximum_party_size)
-	if context.content.race_by_id(imported.race_id) == null or context.content.caste_by_id(imported.caste_id) == null:
+	if context.content.characters.race_by_id(imported.race_id) == null or context.content.characters.caste_by_id(imported.caste_id) == null:
 		return SessionWorkflowResult.failed(&"vault_character_ineligible", "The vault character's race or class is not defined by this campaign.")
 	if restrictions.banned_races.has(imported.race_id) or restrictions.banned_castes.has(imported.caste_id):
 		return SessionWorkflowResult.failed(&"vault_character_ineligible", "The campaign restrictions reject this vault character.")
 	if restrictions.maximum_level > 0 and imported.level > restrictions.maximum_level:
 		return SessionWorkflowResult.failed(&"vault_character_ineligible", "The vault character exceeds this campaign's maximum level.")
-	var race := context.content.race_by_id(imported.race_id)
-	var caste := context.content.caste_by_id(imported.caste_id)
+	var race := context.content.characters.race_by_id(imported.race_id)
+	var caste := context.content.characters.caste_by_id(imported.caste_id)
 	context.rules.characters.ensure_age_group(imported, race, caste)
 	if not race.eligible_caste_ids.is_empty() and not race.eligible_caste_ids.has(caste.id):
 		return SessionWorkflowResult.failed(&"vault_character_ineligible", "The vault character's race cannot use that class.")
@@ -80,36 +80,36 @@ static func import_vault_character(context: SessionWorkflowContext, pending: boo
 		return SessionWorkflowResult.failed(&"vault_character_ineligible", "The vault character's class is not available to that race.")
 	var imported_item_ids: Dictionary = {}
 	for item: ItemInstance in imported.inventory():
-		if context.content.item_by_id(item.definition_id) == null:
+		if context.content.items.item_by_id(item.definition_id) == null:
 			return SessionWorkflowResult.failed(&"vault_character_ineligible", "The vault character carries an item unavailable in this campaign.")
 		if imported_item_ids.has(item.id) or context.state.party.owns_item_instance(item.id):
 			return SessionWorkflowResult.failed(&"duplicate_item_ownership", "That character revision does not uniquely own every exact item instance.")
 		imported_item_ids[item.id] = true
-	var imported_load := context.rules.inventory.calculated_load(imported, context.content.item_definitions())
+	var imported_load := context.rules.inventory.calculated_load(imported, context.content.items.definitions())
 	if imported_load < 0 or imported_load > imported.maximum_load:
 		return SessionWorkflowResult.failed(&"vault_character_ineligible", "The vault character's carried wealth and items exceed this character's load limit.")
 	# Vault revisions preserve item identity and equipment state, but load is derived
 	# again from the target package so stale local revisions cannot bypass capacity.
 	imported.carried_load = imported_load
 	for spell_id: String in imported.known_spells():
-		if context.content.spell_by_id(spell_id) == null:
+		if context.content.magic.spell_by_id(spell_id) == null:
 			return SessionWorkflowResult.failed(&"vault_character_ineligible", "The vault character knows a spell unavailable in this campaign.")
 	for scroll: SpellScrollState in imported.scroll_case():
-		if not scroll.is_empty() and context.content.spell_by_id(scroll.spell_id) == null:
+		if not scroll.is_empty() and context.content.magic.spell_by_id(scroll.spell_id) == null:
 			return SessionWorkflowResult.failed(&"vault_character_ineligible", "The vault character's scroll case contains a spell unavailable in this campaign.")
 	for binding: FastSpellBindingState in imported.fast_spells():
 		if binding.is_empty():
 			continue
-		var bound_spell := context.content.spell_by_id(binding.spell_id)
+		var bound_spell := context.content.magic.spell_by_id(binding.spell_id)
 		if bound_spell == null or not imported.known_spells().has(binding.spell_id):
 			return SessionWorkflowResult.failed(&"vault_character_ineligible", "The vault character's Fast Spell bindings reference an unavailable or unknown spell.")
 		if binding.power < 1 or binding.power > 7 or bound_spell.cost < 0 and binding.power != 1:
 			return SessionWorkflowResult.failed(&"vault_character_ineligible", "The vault character's Fast Spell bindings contain an invalid power.")
-	if context.content.has_character_appearance_catalog():
-		var portrait := context.content.appearance_by_id(imported.portrait_id) if not imported.portrait_id.is_empty() else null
+	if context.content.characters.has_complete_appearance_catalog():
+		var portrait := context.content.characters.appearance_by_id(imported.portrait_id) if not imported.portrait_id.is_empty() else null
 		if (portrait != null and portrait.kind != CharacterAppearanceDefinition.PORTRAIT) or (not imported.portrait_id.is_empty() and portrait == null):
 			return SessionWorkflowResult.failed(&"vault_character_ineligible", "The vault character uses a portrait unavailable in this campaign package.")
-		var combat_icon := context.content.appearance_by_id(imported.combat_icon_id) if not imported.combat_icon_id.is_empty() else null
+		var combat_icon := context.content.characters.appearance_by_id(imported.combat_icon_id) if not imported.combat_icon_id.is_empty() else null
 		if (combat_icon != null and combat_icon.kind != CharacterAppearanceDefinition.COMBAT_ICON) or (not imported.combat_icon_id.is_empty() and combat_icon == null):
 			return SessionWorkflowResult.failed(&"vault_character_ineligible", "The vault character uses a combat icon unavailable in this campaign package.")
 	for current: CharacterState in current_characters:
@@ -125,7 +125,7 @@ static func generate_character_draft(context: SessionWorkflowContext, pending: b
 		return SessionWorkflowResult.failed(&"party_setup_closed", "Character creation is available only during party setup.")
 	if payload == null or payload.spec == null:
 		return SessionWorkflowResult.failed(&"invalid_character_spec", "Generate Character requires exactly one typed specification.")
-	var maximum_party_size := clampi(context.content.campaign_definition().restrictions.maximum_party_size, 1, 6)
+	var maximum_party_size := clampi(context.content.campaign.restrictions.maximum_party_size, 1, 6)
 	var current_characters := context.state.party.characters()
 	if current_characters.size() >= maximum_party_size:
 		return SessionWorkflowResult.failed(&"invalid_party_size", "This campaign allows no more than %d characters." % maximum_party_size)
@@ -168,7 +168,7 @@ static func set_character_draft_spells(context: SessionWorkflowContext, pending:
 	if context.state.character_draft == null or context.state.character_draft.generated_character == null:
 		return SessionWorkflowResult.failed(&"no_character_draft", "Generate the character before choosing spells.")
 	var character := context.state.character_draft.generated_character
-	var caste := context.content.caste_by_id(character.caste_id)
+	var caste := context.content.characters.caste_by_id(character.caste_id)
 	var candidate_ids: Dictionary = {}
 	for spell: SpellDefinition in _character_spell_candidates(context, character, caste):
 		candidate_ids[spell.id] = spell
@@ -191,7 +191,7 @@ static func prepare_character_finalize(context: SessionWorkflowContext, pending:
 		return CharacterFinalizeWorkflowResult.failed(&"party_setup_closed", "Character creation is available only during party setup.")
 	if context.state.character_draft == null or context.state.character_draft.generated_character == null:
 		return CharacterFinalizeWorkflowResult.failed(&"no_character_draft", "Generate and review the character before finalizing it.")
-	var maximum_party_size := clampi(context.content.campaign_definition().restrictions.maximum_party_size, 1, 6)
+	var maximum_party_size := clampi(context.content.campaign.restrictions.maximum_party_size, 1, 6)
 	var current_characters := context.state.party.characters()
 	if current_characters.size() >= maximum_party_size:
 		return CharacterFinalizeWorkflowResult.failed(&"invalid_party_size", "This campaign allows no more than %d characters." % maximum_party_size)
@@ -202,18 +202,18 @@ static func prepare_character_finalize(context: SessionWorkflowContext, pending:
 	var validation := _character_creation_error(context, draft.to_creation_spec(), names)
 	if not validation.is_empty():
 		return CharacterFinalizeWorkflowResult.failed(StringName(validation["code"]), String(validation["message"]))
-	var caste := context.content.caste_by_id(draft.generated_character.caste_id)
+	var caste := context.content.characters.caste_by_id(draft.generated_character.caste_id)
 	var total := context.rules.characters.spell_selection_total(draft.generated_character, caste)
 	var spent := 0
 	for spell_id: String in draft.generated_character.known_spells():
-		spent += context.rules.characters.spell_selection_cost(context.content.spell_by_id(spell_id))
+		spent += context.rules.characters.spell_selection_cost(context.content.magic.spell_by_id(spell_id))
 	return CharacterFinalizeWorkflowResult.ready(draft.generated_character.id, draft.generated_character.name, maxi(0, total - spent))
 
 
 static func commit_character_draft(context: SessionWorkflowContext) -> CharacterFinalizeWorkflowResult:
 	if context.state.character_draft == null or context.state.character_draft.generated_character == null:
 		return CharacterFinalizeWorkflowResult.failed(&"no_character_draft", "The generated character is no longer available.")
-	var maximum_party_size := clampi(context.content.campaign_definition().restrictions.maximum_party_size, 1, 6)
+	var maximum_party_size := clampi(context.content.campaign.restrictions.maximum_party_size, 1, 6)
 	if context.state.party.characters().size() >= maximum_party_size:
 		return CharacterFinalizeWorkflowResult.failed(&"invalid_party_size", "This campaign allows no more than %d characters." % maximum_party_size)
 	var character := CharacterStateCodec.copy(context.state.character_draft.generated_character)
@@ -221,7 +221,7 @@ static func commit_character_draft(context: SessionWorkflowContext) -> Character
 		return CharacterFinalizeWorkflowResult.failed(&"character_creation_failed", "Realmz rules rejected the generated character.")
 	var party_context := context.state.party.characters()
 	party_context.append(character)
-	if not _materialize_initial_inventory(context, character, context.content.caste_by_id(character.caste_id), party_context) or not context.state.party.add_character(character):
+	if not _materialize_initial_inventory(context, character, context.content.characters.caste_by_id(character.caste_id), party_context) or not context.state.party.add_character(character):
 		return CharacterFinalizeWorkflowResult.failed(&"character_creation_failed", "Realmz rules rejected the generated character.")
 	context.state.character_draft = null
 	return CharacterFinalizeWorkflowResult.committed(character.id, character.name, [DomainEvent.new(&"character_finalized", {"characterId": character.id})])
@@ -236,11 +236,11 @@ static func character_draft_is_valid(content: RealmzContent, state: GameState, r
 	var character := draft.generated_character
 	if character.name != draft.name or character.gender != draft.gender or character.race_id != draft.race_id or character.caste_id != draft.caste_id or character.portrait_id != draft.portrait_id or character.combat_icon_id != draft.combat_icon_id:
 		return false
-	var race := content.race_by_id(character.race_id)
-	var caste := content.caste_by_id(character.caste_id)
+	var race := content.characters.race_by_id(character.race_id)
+	var caste := content.characters.caste_by_id(character.caste_id)
 	if race == null or caste == null:
 		return false
-	var restrictions := content.campaign_definition().restrictions
+	var restrictions := content.campaign.restrictions
 	if restrictions.banned_races.has(race.id) or restrictions.banned_castes.has(caste.id):
 		return false
 	if not race.eligible_caste_ids.is_empty() and not race.eligible_caste_ids.has(caste.id):
@@ -251,7 +251,7 @@ static func character_draft_is_valid(content: RealmzContent, state: GameState, r
 		if current.id == character.id or current.name.to_lower() == character.name.to_lower():
 			return false
 	var candidate_ids: Dictionary = {}
-	for spell: SpellDefinition in content.spell_definitions():
+	for spell: SpellDefinition in content.magic.definitions():
 		if int(spell.classic_id / 1000) == character.spellcaster_type:
 			var tier := spell.classic_tier()
 			if tier >= 0 and tier < rules.characters.maximum_spell_selection_level(caste):
@@ -264,7 +264,7 @@ static func character_draft_is_valid(content: RealmzContent, state: GameState, r
 	if spent > rules.characters.spell_selection_total(character, caste):
 		return false
 	for item: ItemInstance in character.inventory():
-		if content.item_by_id(item.definition_id) == null:
+		if content.items.item_by_id(item.definition_id) == null:
 			return false
 	return true
 
@@ -284,7 +284,7 @@ static func set_party_setup_options(context: SessionWorkflowContext, pending: bo
 		return SessionWorkflowResult.failed(&"party_setup_closed", "Party setup options are no longer available.")
 	if difficulty < -2 or difficulty > 2:
 		return SessionWorkflowResult.failed(&"invalid_difficulty", "Classic difficulty must be between Novice and Veteran.")
-	if not context.content.available_monster_sets().has(monster_set):
+	if not context.content.combat.available_monster_sets().has(monster_set):
 		return SessionWorkflowResult.failed(&"unavailable_monster_set", "That Classic monster set is not present in this campaign package.")
 	context.state.difficulty = difficulty
 	context.state.monster_set = monster_set
@@ -318,14 +318,14 @@ static func change_character_appearance(context: SessionWorkflowContext, payload
 		return SessionWorkflowResult.failed(&"appearance_change_unavailable", "Begin the adventure before changing appearance.")
 	if context.state.combat != null and not context.state.combat.completed:
 		return SessionWorkflowResult.failed(&"appearance_change_unavailable", "Appearance changes are unavailable during battle.")
-	if not context.content.has_character_appearance_catalog():
+	if not context.content.characters.has_complete_appearance_catalog():
 		return SessionWorkflowResult.failed(&"appearance_change_unavailable", "This package does not contain the complete Classic portrait and combat-icon catalogs.")
 	var character := context.state.party.character_by_id(payload.character_id)
 	if character == null:
 		return SessionWorkflowResult.failed(&"unknown_party_member", "The selected character is not in the active party.")
 	if payload.appearance_kind not in [CharacterAppearanceDefinition.PORTRAIT, CharacterAppearanceDefinition.COMBAT_ICON]:
 		return SessionWorkflowResult.failed(&"invalid_appearance_kind", "Choose either a portrait or a combat icon.")
-	var appearance := context.content.appearance_by_id(payload.appearance_id)
+	var appearance := context.content.characters.appearance_by_id(payload.appearance_id)
 	if appearance == null or appearance.kind != payload.appearance_kind:
 		return SessionWorkflowResult.failed(&"invalid_character_appearance", "The selected appearance is unavailable for that role.")
 	var previous_id := character.portrait_id if payload.appearance_kind == CharacterAppearanceDefinition.PORTRAIT else character.combat_icon_id
@@ -353,11 +353,11 @@ static func _character_creation_error(context: SessionWorkflowContext, spec: Cha
 		return {"code": &"invalid_starting_level", "message": "Starting level must be one of Castle's fixed character-creation choices."}
 	if existing_names.has(spec.name.to_lower()):
 		return {"code": &"duplicate_character_name", "message": "Party member names must be unique."}
-	var race := context.content.race_by_id(spec.race_id)
-	var caste := context.content.caste_by_id(spec.caste_id)
+	var race := context.content.characters.race_by_id(spec.race_id)
+	var caste := context.content.characters.caste_by_id(spec.caste_id)
 	if race == null or caste == null:
 		return {"code": &"unknown_character_definition", "message": "Party creation references an unavailable race or caste."}
-	var restrictions := context.content.campaign_definition().restrictions
+	var restrictions := context.content.campaign.restrictions
 	if restrictions.banned_races.has(race.id):
 		return {"code": &"restricted_race", "message": "This campaign does not allow the selected race."}
 	if restrictions.banned_castes.has(caste.id):
@@ -368,14 +368,14 @@ static func _character_creation_error(context: SessionWorkflowContext, spec: Cha
 		return {"code": &"incompatible_race_class", "message": "The selected race cannot use that class."}
 	if not caste.eligible_race_ids.is_empty() and not caste.eligible_race_ids.has(race.id):
 		return {"code": &"incompatible_class_race", "message": "The selected class is not available to that race."}
-	if context.content.has_character_appearance_catalog() and _resolved_character_appearance(context, spec, race).is_empty():
+	if context.content.characters.has_complete_appearance_catalog() and _resolved_character_appearance(context, spec, race).is_empty():
 		return {"code": &"invalid_character_appearance", "message": "The selected portrait or combat icon is unavailable in this campaign package."}
 	return {}
 
 
 static func _create_character_from_spec(context: SessionWorkflowContext, spec: CharacterCreationSpec, character_id: String, add_starting_items: bool = false, party_context: Array[CharacterState] = []) -> CharacterState:
-	var race := context.content.race_by_id(spec.race_id)
-	var character := context.rules.characters.create_character(character_id, spec.name, race, context.content.caste_by_id(spec.caste_id), spec.gender, context.rng, false, spec.starting_level)
+	var race := context.content.characters.race_by_id(spec.race_id)
+	var character := context.rules.characters.create_character(character_id, spec.name, race, context.content.characters.caste_by_id(spec.caste_id), spec.gender, context.rng, false, spec.starting_level)
 	if character == null:
 		return null
 	var appearance := _resolved_character_appearance(context, spec, race)
@@ -384,7 +384,7 @@ static func _create_character_from_spec(context: SessionWorkflowContext, spec: C
 	if add_starting_items:
 		var equipment_context := party_context.duplicate()
 		equipment_context.append(character)
-		if not _materialize_initial_inventory(context, character, context.content.caste_by_id(spec.caste_id), equipment_context):
+		if not _materialize_initial_inventory(context, character, context.content.characters.caste_by_id(spec.caste_id), equipment_context):
 			return null
 	return character
 
@@ -392,13 +392,13 @@ static func _create_character_from_spec(context: SessionWorkflowContext, spec: C
 static func _materialize_initial_inventory(context: SessionWorkflowContext, character: CharacterState, caste: CasteDefinition, party_context: Array[CharacterState]) -> bool:
 	if character == null or caste == null or not character.inventory().is_empty():
 		return false
-	var definitions := context.content.item_definitions()
+	var definitions := context.content.items.definitions()
 	character.carried_load = context.rules.inventory.calculated_load(character, definitions)
 	if character.carried_load < 0 or character.carried_load > character.maximum_load:
 		return false
 	var added: Array[ItemInstance] = []
 	for index: int in caste.start_items().size():
-		var definition := context.content.item_by_id(caste.start_items()[index])
+		var definition := context.content.items.item_by_id(caste.start_items()[index])
 		if definition == null:
 			return false
 		var instance := context.rules.inventory.add_item(character, definition, "%s.item.%d" % [character.id, index], true)
@@ -406,21 +406,21 @@ static func _materialize_initial_inventory(context: SessionWorkflowContext, char
 		# counter advances too early; the direct model keeps only records that fit.
 		if instance != null:
 			added.append(instance)
-	var race := context.content.race_by_id(character.race_id)
+	var race := context.content.characters.race_by_id(character.race_id)
 	for instance: ItemInstance in added:
-		var definition := context.content.item_by_id(instance.definition_id)
+		var definition := context.content.items.item_by_id(instance.definition_id)
 		context.rules.equipment.equip_classic(character, instance, definition, race, caste, party_context, definitions)
 	return context.rules.inventory.calculated_load(character, definitions) == character.carried_load
 
 
 static func _resolved_character_appearance(context: SessionWorkflowContext, spec: CharacterCreationSpec, race: RaceDefinition) -> Dictionary:
-	if not context.content.has_character_appearance_catalog():
+	if not context.content.characters.has_complete_appearance_catalog():
 		return {"portraitId": spec.portrait_id, "combatIconId": spec.combat_icon_id}
 	var default_portrait_resource := 257 if race.default_icon_set == 0 else 251 + race.default_icon_set * 6
-	var portrait := context.content.appearance_by_id(spec.portrait_id) if not spec.portrait_id.is_empty() else context.content.appearance_by_resource(CharacterAppearanceDefinition.PORTRAIT, default_portrait_resource)
+	var portrait := context.content.characters.appearance_by_id(spec.portrait_id) if not spec.portrait_id.is_empty() else context.content.characters.appearance_by_resource(CharacterAppearanceDefinition.PORTRAIT, default_portrait_resource)
 	if portrait == null or portrait.kind != CharacterAppearanceDefinition.PORTRAIT:
 		return {}
-	var icon := context.content.appearance_by_id(spec.combat_icon_id) if not spec.combat_icon_id.is_empty() else context.content.appearance_by_resource(CharacterAppearanceDefinition.COMBAT_ICON, 9000 - 257 + portrait.classic_resource_id)
+	var icon := context.content.characters.appearance_by_id(spec.combat_icon_id) if not spec.combat_icon_id.is_empty() else context.content.characters.appearance_by_resource(CharacterAppearanceDefinition.COMBAT_ICON, 9000 - 257 + portrait.classic_resource_id)
 	if icon == null or icon.kind != CharacterAppearanceDefinition.COMBAT_ICON:
 		return {}
 	return {"portraitId": portrait.id, "combatIconId": icon.id}
@@ -438,7 +438,7 @@ static func _character_spell_candidates(context: SessionWorkflowContext, charact
 	if character == null or caste == null or character.spellcaster_type < 1:
 		return result
 	var maximum_level := context.rules.characters.maximum_spell_selection_level(caste)
-	for spell: SpellDefinition in context.content.spell_definitions():
+	for spell: SpellDefinition in context.content.magic.definitions():
 		if int(spell.classic_id / 1000) != character.spellcaster_type:
 			continue
 		var tier := spell.classic_tier()

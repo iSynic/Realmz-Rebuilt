@@ -111,7 +111,7 @@ static func hard_immune(state: GameState, content: RealmzContent, target_id: Str
 	if character != null:
 		return character.magic_resistance > 100
 	var monster := state.combat.roster.monster_by_id(target_id)
-	var definition := content.monster_by_id(monster.definition_id) if monster != null else null
+	var definition := content.combat.monster_by_id(monster.definition_id) if monster != null else null
 	return monster != null and (monster.magic_resistance > 100 or definition != null and definition.spell_immune(spell.spell_class))
 
 

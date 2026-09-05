@@ -25,7 +25,7 @@ func has_equipped_scroll_case(character: CharacterState, content: RealmzContent)
 	if character == null or content == null:
 		return false
 	for instance: ItemInstance in character.inventory():
-		var definition := content.item_by_id(instance.definition_id)
+		var definition := content.items.item_by_id(instance.definition_id)
 		if instance.equipped and definition != null and absi(definition.item_type) == 13:
 			return true
 	return false

@@ -85,7 +85,7 @@ func process_monster_turns(state: GameState, content: RealmzContent, rng: Realmz
 			_context.rounds().advance_turn(state, content, rng, events)
 			guard -= 1
 			continue
-		var definition := content.monster_by_id(monster.definition_id)
+		var definition := content.combat.monster_by_id(monster.definition_id)
 		if definition == null:
 			events.append(DomainEvent.new(&"combat_monster_action", {"actorId": monster.id, "action": "unavailable_definition"}))
 			_context.rounds().advance_turn(state, content, rng, events)
@@ -171,7 +171,7 @@ func process_monster_cast(state: GameState, content: RealmzContent, monster: Mon
 		var ai_plan: Dictionary = _ai_scoring.best_monster_spell_plan(state, content, monster, definition)
 		if ai_plan.is_empty():
 			break
-		var spell := content.spell_by_id(String(ai_plan["spellId"]))
+		var spell := content.magic.spell_by_id(String(ai_plan["spellId"]))
 		var range_power := int(ai_plan["power"])
 		var cost_power := range_power
 		var summon_spell: bool = CombatFlowSummoning.is_summon_spell(spell)
@@ -316,7 +316,7 @@ func _append_monster_spell_resolution_events(state: GameState, content: RealmzCo
 
 func _handle_monster_spell_defeat(state: GameState, content: RealmzContent, caster: MonsterState, target_id: String, events: Array[DomainEvent]) -> void:
 	var defeated_monster := state.combat.roster.monster_by_id(target_id)
-	var defeated_definition := content.monster_by_id(defeated_monster.definition_id) if defeated_monster != null else null
+	var defeated_definition := content.combat.monster_by_id(defeated_monster.definition_id) if defeated_monster != null else null
 	var queued = _context.actions().events().queue_spell_death_macro(state.combat, defeated_monster, defeated_definition)
 	if not queued and defeated_definition != null and defeated_definition.death_macro > 0:
 		events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": caster.id, "action": "cast", "targetId": target_id, "reason": "spell-death-macro-queue-limit"}))
@@ -349,7 +349,7 @@ func _monster_area_spell_selections(state: GameState, content: RealmzContent, ce
 	for monster: MonsterState in state.combat.roster.monsters():
 		if not selected_ids.has(monster.id) or monster.current_health <= 0 or not state.combat.battlefield.has_actor(monster.id) or monster.magic_resistance > 100:
 			continue
-		var definition := content.monster_by_id(monster.definition_id)
+		var definition := content.combat.monster_by_id(monster.definition_id)
 		if definition != null:
 			result.append(SpellTargetSelection.for_monster(monster, definition))
 	return result
@@ -360,7 +360,7 @@ static func _monster_spell_target_selection(state: GameState, content: RealmzCon
 	if character != null:
 		return SpellTargetSelection.for_character(character)
 	var monster := state.combat.roster.monster_by_id(target_id)
-	var definition := content.monster_by_id(monster.definition_id) if monster != null else null
+	var definition := content.combat.monster_by_id(monster.definition_id) if monster != null else null
 	return SpellTargetSelection.for_monster(monster, definition) if definition != null else null
 
 
@@ -544,11 +544,11 @@ func resolve_monster_attack_row(state: GameState, content: RealmzContent, monste
 
 
 func _resolve_attack_against_character(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, attack_index: int, active_turn: CombatTurnState, target: CharacterState, rng: RealmzRng, events: Array[DomainEvent]) -> int:
-	var race := content.race_by_id(target.race_id)
-	var caste := content.caste_by_id(target.caste_id)
-	var equipment := _context.equipment.combat_equipment(target, content.item_definitions())
+	var race := content.characters.race_by_id(target.race_id)
+	var caste := content.characters.caste_by_id(target.caste_id)
+	var equipment := _context.equipment.combat_equipment(target, content.items.definitions())
 	var defender_luck := equipment.effective_luck if equipment.valid else target.luck
-	var weapon := content.item_by_id(monster.weapon_id) if not monster.weapon_id.is_empty() else null
+	var weapon := content.items.item_by_id(monster.weapon_id) if not monster.weapon_id.is_empty() else null
 	var defender_armor := equipment.effective_armor if equipment.valid else target.armor
 	var charm_bonus := 50 if state.party.conditions.is_active(ConditionRules.PARTY_CHARM_RESISTANCE) else 0
 	var attack_context := MonsterAttackContext.new(weapon, state.clock.day(), false, defender_luck, state.party.conditions.is_active(ConditionRules.PARTY_DRAGON_HIDE), defender_armor)
@@ -577,8 +577,8 @@ func _resolve_attack_against_character(state: GameState, content: RealmzContent,
 
 
 func _resolve_attack_against_monster(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, attack_index: int, active_turn: CombatTurnState, target: MonsterState, rng: RealmzRng, events: Array[DomainEvent]) -> int:
-	var target_definition := content.monster_by_id(target.definition_id)
-	var weapon := content.item_by_id(monster.weapon_id) if not monster.weapon_id.is_empty() else null
+	var target_definition := content.combat.monster_by_id(target.definition_id)
+	var weapon := content.items.item_by_id(monster.weapon_id) if not monster.weapon_id.is_empty() else null
 	var attack_context := MonsterAttackContext.new(weapon, state.clock.day())
 	var resolution := _context.combat.resolve_monster_attack_monster(monster, definition, attack_index, target, target_definition, rng, attack_context, true)
 	if resolution.total_damage() > 0:
@@ -618,7 +618,7 @@ func process_charmed_character_turn(state: GameState, content: RealmzContent, ac
 		events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": actor.id, "action": "advance", "reason": "tactical-movement-not-implemented"}))
 		return false
 	var target_index := rng.draw_between(0, target_count - 1, &"combat.charmed-target")
-	var equipment := _context.equipment.combat_equipment(actor, content.item_definitions())
+	var equipment := _context.equipment.combat_equipment(actor, content.items.definitions())
 	if not equipment.valid:
 		events.append(DomainEvent.new(&"combat_attack_blocked", {"actorId": actor.id, "reason": String(equipment.error_code), "message": equipment.error_message}))
 		return false
@@ -627,7 +627,7 @@ func process_charmed_character_turn(state: GameState, content: RealmzContent, ac
 		return false
 	if target_index < character_targets.size():
 		var character_target := character_targets[target_index]
-		var target_equipment := _context.equipment.combat_equipment(character_target, content.item_definitions())
+		var target_equipment := _context.equipment.combat_equipment(character_target, content.items.definitions())
 		if not target_equipment.valid:
 			events.append(DomainEvent.new(&"combat_attack_blocked", {"actorId": actor.id, "targetId": character_target.id, "reason": String(target_equipment.error_code), "message": target_equipment.error_message}))
 			return false
@@ -646,7 +646,7 @@ func process_charmed_character_turn(state: GameState, content: RealmzContent, ac
 		remove_defeated_position(state.combat, character_target.id, character_resolution.killed)
 		return false
 	var monster_target := monster_targets[target_index - character_targets.size()]
-	var target_definition := content.monster_by_id(monster_target.definition_id)
+	var target_definition := content.combat.monster_by_id(monster_target.definition_id)
 	active_turn.physical_action_committed = true
 	var resolution := _context.combat.resolve_character_attack(actor, equipment, monster_target, target_definition, rng, state.clock.day(), false, true, state.combat.dropped_items.can_queue())
 	if resolution.total_damage() > 0:

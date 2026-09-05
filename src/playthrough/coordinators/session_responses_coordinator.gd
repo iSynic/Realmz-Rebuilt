@@ -304,7 +304,7 @@ func _respond_drop_item(response: InteractionResponse) -> SessionCoordinatorResu
 	var instance_id = targeting.instance_id
 	var character = _context.state.party.character_by_id(character_id)
 	var instance = _context.item_instance(character, instance_id)
-	var definition: ItemDefinition = null if instance == null else _context.content.item_by_id(instance.definition_id)
+	var definition: ItemDefinition = null if instance == null else _context.content.items.item_by_id(instance.definition_id)
 	if character == null or instance == null or definition == null:
 		return SessionCoordinatorResult.failed(&"invalid_session_continuation", "The item awaiting drop confirmation is unavailable.")
 	var probe = _context.rules.inventory.classic_drop_probe(character, instance)

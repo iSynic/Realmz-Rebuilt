@@ -127,8 +127,8 @@ func _populate_identity(character: CharacterState, content: RealmzContent, reusa
 		caste_traits.assign(reusable.caste_traits)
 		age_bands.assign(reusable.age_bands)
 	elif content != null:
-		var race := content.race_by_id(race_id)
-		var caste := content.caste_by_id(caste_id)
+		var race := content.characters.race_by_id(race_id)
+		var caste := content.characters.caste_by_id(caste_id)
 		if race != null:
 			race_name = race.name
 			race_description = race.description
@@ -207,10 +207,10 @@ func _populate_items_and_magic(character: CharacterState, content: RealmzContent
 		items.assign(reusable.items)
 	else:
 		for item: ItemInstance in character.inventory():
-			var definition := null if content == null else content.item_by_id(item.definition_id)
+			var definition := null if content == null else content.items.item_by_id(item.definition_id)
 			var presentation_definition: ItemDefinition = definition
 			if definition != null and not item.equipped and not definition.cursed_item_id.is_empty():
-				presentation_definition = content.item_by_id(definition.cursed_item_id)
+				presentation_definition = content.items.item_by_id(definition.cursed_item_id)
 			items.append(ItemView.new(item, definition, presentation_definition, content))
 	if can_reuse_static and not rebuild_magic:
 		spells.assign(reusable.spells)
@@ -353,18 +353,18 @@ func copy_from(source: CharacterView) -> void:
 
 func populate_magic(character: CharacterState, content: RealmzContent, reusable: CharacterView = null) -> void:
 	for spell_id: String in character.known_spells():
-		var definition := content.spell_by_id(spell_id)
+		var definition := content.magic.spell_by_id(spell_id)
 		if definition != null:
 			var previous_spell := _spell_view_by_id(reusable.spells, spell_id) if reusable != null else null
 			spells.append(SpellView.new(definition, previous_spell))
 	for index: int in character.scroll_case().size():
 		var scroll := character.scroll_at(index)
 		if reusable != null and (scroll == null or scroll.is_empty()) and index < reusable.scrolls.size(): scrolls.append(reusable.scrolls[index])
-		else: scrolls.append(SpellScrollView.new(index, scroll, content.spell_by_id(scroll.spell_id) if scroll != null and not scroll.is_empty() else null))
+		else: scrolls.append(SpellScrollView.new(index, scroll, content.magic.spell_by_id(scroll.spell_id) if scroll != null and not scroll.is_empty() else null))
 	for index: int in character.fast_spells().size():
 		var binding := character.fast_spell_at(index)
 		if reusable != null and (binding == null or binding.is_empty()) and index < reusable.fast_spells.size(): fast_spells.append(reusable.fast_spells[index])
-		else: fast_spells.append(FastSpellBindingView.new(index, binding, content.spell_by_id(binding.spell_id) if binding != null and not binding.is_empty() else null))
+		else: fast_spells.append(FastSpellBindingView.new(index, binding, content.magic.spell_by_id(binding.spell_id) if binding != null and not binding.is_empty() else null))
 
 
 func apply_equipment(equipment: CharacterCombatEquipment) -> void:

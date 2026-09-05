@@ -331,10 +331,10 @@ func continue_session_death_macro(events: Array[DomainEvent]) -> SessionCoordina
 
 
 func append_session_battle_after_message(battle_id: String, events: Array[DomainEvent]) -> void:
-	var battle = _context.content.battle_by_id(battle_id)
+	var battle = _context.content.combat.battle_by_id(battle_id)
 	if battle == null or battle.message_after_id == 0:
 		return
-	var message = _context.content.message_by_id(absi(battle.message_after_id))
+	var message = _context.content.scenario_records.message_by_id(absi(battle.message_after_id))
 	if message != null:
 		events.append(DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-battle-definition"}))
 

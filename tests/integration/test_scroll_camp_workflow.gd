@@ -34,7 +34,7 @@ func run() -> void:
 	var scroll_case := ItemInstance.new("scroll.case.instance", "classic.item.scroll-case", 0, true, true)
 	var parchment := ItemInstance.new("scroll.parchment.instance", "classic.item.parchment", 3, false, true)
 	caster.set_inventory([scroll_case, parchment])
-	caster.carried_load = content.item_by_id(scroll_case.definition_id).instance_weight(0) + content.item_by_id(parchment.definition_id).instance_weight(3)
+	caster.carried_load = content.items.item_by_id(scroll_case.definition_id).instance_weight(0) + content.items.item_by_id(parchment.definition_id).instance_weight(3)
 	assert_equal(session.submit_intent(PartyIntents.import_vault_character(caster.id, "1".repeat(64), caster, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "scroll user enters party setup with an equipped case and parchment")
 	assert_equal(session.submit_intent(PartyIntents.import_vault_character(target.id, "2".repeat(64), target, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "scroll target enters party setup")
 	var invalid := _character("scroll.invalid", "Invalid", content)
@@ -109,7 +109,7 @@ func run() -> void:
 	var ration_items := rest_caster.inventory()
 	ration_items.append(ration)
 	rest_caster.set_inventory(ration_items)
-	rest_caster.carried_load += content.item_by_id(ration.definition_id).instance_weight(ration.charges)
+	rest_caster.carried_load += content.items.item_by_id(ration.definition_id).instance_weight(ration.charges)
 	rest_caster.current_health = 5
 	rest_session._context.state.clock.set_total_minutes(710)
 	var noon_rest := rest_session.submit_intent(ExplorationIntents.rest())
@@ -154,7 +154,7 @@ func run() -> void:
 	var timed_items := timed_caster.inventory()
 	timed_items.append(midnight_ration)
 	timed_caster.set_inventory(timed_items)
-	timed_caster.carried_load += content.item_by_id(midnight_ration.definition_id).instance_weight(midnight_ration.charges)
+	timed_caster.carried_load += content.items.item_by_id(midnight_ration.definition_id).instance_weight(midnight_ration.charges)
 	timed_session._context.state.clock.set_total_minutes(RealmzClock.MINUTES_PER_DAY - 10)
 	timed_session._context.rng = ScriptedRng.new([0])
 	var timed := timed_session.submit_intent(ExplorationIntents.rest())
@@ -320,7 +320,7 @@ func run() -> void:
 
 func _test_scroll_case_management(content: RealmzContent) -> void:
 	var source := _character("scroll.case-source", "Cora", content); var destination := _character("scroll.case-destination", "Dain", content); var occupied := _character("scroll.case-occupied", "Eryn", content)
-	var case_definition := content.item_by_id("classic.item.scroll-case"); var source_case := ItemInstance.new("scroll.case.transfer", case_definition.id, 0, true, true); var occupied_case := ItemInstance.new("scroll.case.occupied", case_definition.id, 0, true, true)
+	var case_definition := content.items.item_by_id("classic.item.scroll-case"); var source_case := ItemInstance.new("scroll.case.transfer", case_definition.id, 0, true, true); var occupied_case := ItemInstance.new("scroll.case.occupied", case_definition.id, 0, true, true)
 	source.set_inventory([source_case]); source.carried_load = case_definition.instance_weight(0); occupied.set_inventory([occupied_case]); occupied.carried_load = case_definition.instance_weight(0)
 	var scrolls: Array[SpellScrollState] = [SpellScrollState.new("classic.spell.scroll-fixed", 1), SpellScrollState.new("classic.spell.scroll-heal", 2), SpellScrollState.new(), SpellScrollState.new("classic.spell.scroll-fixed", 4), SpellScrollState.new("classic.spell.scroll-heal", 7)]
 	assert_true(source.set_scroll_case(scrolls), "the case-management fixture starts with five source-shaped slots"); var session := GameSession.new(); assert_equal(session.start(content, 719).state, SessionStep.State.COMPLETED, "scroll-case management session starts")
@@ -355,13 +355,13 @@ func _scroll_content(source: RealmzContent) -> RealmzContent:
 	var races: Array[RaceDefinition] = [race]
 	var castes: Array[CasteDefinition] = [caste]
 	var items: Array[ItemDefinition] = []
-	for source_item: ItemDefinition in source.item_definitions():
+	for source_item: ItemDefinition in source.items.definitions():
 		if source_item.classic_id not in [800, 806, 877]:
 			items.append(source_item)
 	items.append_array([scroll_case, parchment, rations])
 	var spells: Array[SpellDefinition] = [healing, fixed]
-	var monsters: Array[MonsterDefinition] = [source.monster_by_classic_id(1)]
-	var battles: Array[BattleDefinition] = [source.battle_by_classic_id(0), source.battle_by_classic_id(1)]
+	var monsters: Array[MonsterDefinition] = [source.combat.monster_by_classic_id(1)]
+	var battles: Array[BattleDefinition] = [source.combat.battle_by_classic_id(0), source.combat.battle_by_classic_id(1)]
 	var timed_program := ScenarioProgramDefinition.new("xap:7", &"extra-action-point", "xap.fixture.timed-midnight", [ClassicActionDefinition.new(0, 1, 1, 777, false, []), ClassicActionDefinition.new(1, 45, 45, 0, false, [-1, 2, 0, 0, 0])])
 	var relocated_program := ScenarioProgramDefinition.new("xap:8", &"extra-action-point", "xap.fixture.timed-relocated", [ClassicActionDefinition.new(0, 1, 1, -778, false, [])])
 	var timed_encounter := TimedEncounterDefinition.new(0, 2, 3, 100, 7, timed_program.id, -1, -1, -1, -1, 0, -1, TimedEncounterDefinition.LocationKind.ANY)
@@ -374,8 +374,8 @@ func _scroll_content(source: RealmzContent) -> RealmzContent:
 
 func _character(character_id: String, display_name: String, content: RealmzContent) -> CharacterState:
 	var result := CharacterState.new(character_id, display_name, 12, 12)
-	result.race_id = content.race_definitions()[0].id
-	result.caste_id = content.caste_definitions()[0].id
+	result.race_id = content.characters.race_definitions()[0].id
+	result.caste_id = content.characters.caste_definitions()[0].id
 	result.spellcaster_type = 1
 	result.spell_points = 50
 	result.maximum_spell_points = 50

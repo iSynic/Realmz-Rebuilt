@@ -29,7 +29,7 @@ func grant_random_items(action: ClassicActionDefinition, request_id: String) -> 
 	var item_ids: Array[String] = []
 	for index: int in count:
 		var classic_item_id := _rng.draw_between(action.extra_code[1], action.extra_code[2], StringName("classic.random-item.%d" % index))
-		var definition := _content.item_by_classic_id(classic_item_id)
+		var definition := _content.items.item_by_classic_id(classic_item_id)
 		if definition == null:
 			return ScenarioRuntimeOperationResult.failed(&"unknown_item", "Classic opcode 65 generated unavailable item %d." % classic_item_id)
 		item_ids.append(definition.id)
@@ -42,7 +42,7 @@ func begin_experience_reward(experience: int, request_id: String) -> ScenarioRun
 
 
 func grant_treasure(classic_treasure_id: int, request_id: String) -> ScenarioRuntimeOperationResult:
-	var treasure := _content.treasure_by_classic_id(absi(classic_treasure_id))
+	var treasure := _content.economy.treasure_by_classic_id(absi(classic_treasure_id))
 	if treasure == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_treasure", "Classic opcode 10 references unavailable treasure %d." % classic_treasure_id)
 	return grant_treasure_definition(treasure, request_id)

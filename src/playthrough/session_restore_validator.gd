@@ -57,17 +57,17 @@ static func _restore_core(content: RealmzContent, snapshot: SessionSnapshot) -> 
 
 
 static func _validate_restored_state(content: RealmzContent, replacement_state: GameState, replacement_rules: RealmzRules) -> SessionRestoreResult:
-	if not content.available_monster_sets().has(replacement_state.monster_set):
+	if not content.combat.available_monster_sets().has(replacement_state.monster_set):
 		return SessionRestoreResult.failed(&"invalid_game_state", "The saved game selects a monster set unavailable in this package.")
 	if replacement_state.party_setup_completed and replacement_state.experience_multiplier < 0.0:
-		replacement_state.experience_multiplier = LifecyclePartyWorkflow.party_experience_multiplier(replacement_state.party.characters(), replacement_state.difficulty, content.campaign_definition())
+		replacement_state.experience_multiplier = LifecyclePartyWorkflow.party_experience_multiplier(replacement_state.party.characters(), replacement_state.difficulty, content.campaign)
 	if replacement_state.combat != null:
 		for item: ItemInstance in replacement_state.combat.dropped_items.items():
-			if content.item_by_id(item.definition_id) == null:
+			if content.items.item_by_id(item.definition_id) == null:
 				return SessionRestoreResult.failed(&"invalid_game_state", "The saved fumble queue references unavailable item content.")
 		for monster: MonsterState in replacement_state.combat.roster.monsters():
 			for item_id: String in monster.loot_item_ids():
-				if not item_id.is_empty() and content.item_by_id(item_id) == null:
+				if not item_id.is_empty() and content.items.item_by_id(item_id) == null:
 					return SessionRestoreResult.failed(&"invalid_game_state", "The saved monster loot references unavailable item content.")
 	SessionRestoreStateValidator.normalize_age_groups(replacement_state, content, replacement_rules)
 	if not SessionRestoreStateValidator.party_inventory_is_valid(content, replacement_state, replacement_rules):
@@ -176,7 +176,7 @@ static func _valid_application_continuation(content: RealmzContent, state: GameS
 		&"begin-adventure":
 			return application.hook == ScenarioApplicationHooks.START_GAME and application.service_id.is_empty() and state.party_setup_completed and not state.party.characters().is_empty()
 		&"service":
-			return application.hook in [ScenarioApplicationHooks.SHOP, ScenarioApplicationHooks.TEMPLE] and not application.service_id.is_empty() and ((application.service_id == state.location_services.active_shop_id and content.shop_by_id(application.service_id) != null) or (application.service_id == "realmz.service.temple" and state.location_services.temple_available))
+			return application.hook in [ScenarioApplicationHooks.SHOP, ScenarioApplicationHooks.TEMPLE] and not application.service_id.is_empty() and ((application.service_id == state.location_services.active_shop_id and content.economy.shop_by_id(application.service_id) != null) or (application.service_id == "realmz.service.temple" and state.location_services.temple_available))
 		&"end-adventure":
 			return application.hook == ScenarioApplicationHooks.END_ADVENTURE and application.service_id.is_empty()
 		&"end-adventure-close":
@@ -217,7 +217,7 @@ static func _valid_service_continuation(content: RealmzContent, state: GameState
 	var selected_temple_character := "" if runtime_body == null else runtime_body.selected_character_id
 	match runtime.kind:
 		&"classic-shop":
-			return service.service_id == state.location_services.active_shop_id and not service.service_id.is_empty() and content.shop_by_id(service.service_id) != null and session_interaction.kind == InteractionRequest.SHOP
+			return service.service_id == state.location_services.active_shop_id and not service.service_id.is_empty() and content.economy.shop_by_id(service.service_id) != null and session_interaction.kind == InteractionRequest.SHOP
 		&"classic-temple":
 			var temple_body := session_interaction.body as TempleRequestBody
 			return runtime_body != null and service.service_id == "realmz.service.temple" and state.location_services.temple_available and runtime_body.cost_percent == state.location_services.temple_cost_percent and runtime_body.bank_available == state.location_services.bank_available and state.party.character_by_id(selected_temple_character) != null and session_interaction.kind == InteractionRequest.TEMPLE and temple_body != null and temple_body.selected_character_id == selected_temple_character
@@ -238,8 +238,8 @@ static func _valid_character_spell_continuation(content: RealmzContent, state: G
 	var rules := RealmzRules.new()
 	var spent := 0
 	for spell_id: String in character.known_spells():
-		spent += rules.characters.spell_selection_cost(content.spell_by_id(spell_id))
-	var remaining := maxi(0, rules.characters.spell_selection_total(character, content.caste_by_id(character.caste_id)) - spent)
+		spent += rules.characters.spell_selection_cost(content.magic.spell_by_id(spell_id))
+	var remaining := maxi(0, rules.characters.spell_selection_total(character, content.characters.caste_by_id(character.caste_id)) - spent)
 	return remaining == application.remaining and session_interaction.to_data() == SessionInteractionFactory.character_spell_confirmation(session_interaction.request_id, remaining).to_data()
 
 
@@ -282,7 +282,7 @@ static func _valid_combat_death_continuation(content: RealmzContent, state: Game
 		return false
 	var queued_id := state.combat.spell_runtime.pending_death_macro_id()
 	if not queued_id.is_empty():
-		var definition := content.monster_by_id(death_monster.definition_id)
+		var definition := content.combat.monster_by_id(death_monster.definition_id)
 		return queued_id == combat.combatant_id and not combat.reset_traitor_on_complete and definition != null and combat.program_id == "xap:%d" % definition.death_macro
 	return combat.reset_traitor_on_complete
 
@@ -336,7 +336,7 @@ static func _valid_item_xap_continuation(content: RealmzContent, state: GameStat
 	var item_body := continuation.item_xap_body()
 	if item_body == null or vm_interaction == null or session_interaction != null or state.party.character_by_id(item_body.character_id) == null:
 		return false
-	var item := content.item_by_id(item_body.item_id)
+	var item := content.items.item_by_id(item_body.item_id)
 	if item == null or item_body.program_id != "xap:%d" % item.special_5 or content.scenario.program_by_id(item_body.program_id) == null or absi(item.item_type) != 23 and item.special_1 != -23:
 		return false
 	return item_body.source_battle_id.is_empty() or state.combat != null and state.combat.battle_id == item_body.source_battle_id
@@ -366,36 +366,36 @@ static func _valid_targeting_continuation(content: RealmzContent, state: GameSta
 	var character := state.party.character_by_id(targeting.character_id)
 	if continuation.kind == &"scroll-discard-confirmation":
 		var scroll := character.scroll_at(targeting.scroll_slot) if character != null else null
-		var discard_spell := content.spell_by_id(targeting.spell_id)
+		var discard_spell := content.magic.spell_by_id(targeting.spell_id)
 		if scroll == null or discard_spell == null or scroll.spell_id != discard_spell.id or scroll.power != targeting.power or discard_spell.in_camp or character.current_health < 1 or character.conditions.is_active(ConditionRules.ANIMATED):
 			return false
 		var equipped_case := false
 		for carried: ItemInstance in character.inventory():
-			var carried_definition := content.item_by_id(carried.definition_id)
+			var carried_definition := content.items.item_by_id(carried.definition_id)
 			if carried.equipped and carried_definition != null and absi(carried_definition.item_type) == 13:
 				equipped_case = true
 				break
 		return equipped_case and session_interaction.to_data() == FieldMagicWorkflow.scroll_discard_request(session_interaction.request_id, discard_spell.name).to_data()
 	if continuation.kind == &"drop-item-confirmation":
 		var instance := _item_instance_for_state(character, targeting.instance_id)
-		var definition: ItemDefinition = null if instance == null else content.item_by_id(instance.definition_id)
+		var definition: ItemDefinition = null if instance == null else content.items.item_by_id(instance.definition_id)
 		if character == null or instance == null or definition == null or not RealmzRules.new().inventory.classic_drop_probe(character, instance).allowed:
 			return false
 		var display_name := definition.name if instance.identified else definition.unidentified_name
 		return session_interaction.to_data() == SessionInteractionFactory.drop_item_confirmation(session_interaction.request_id, display_name).to_data()
 	if session_interaction.kind != InteractionRequest.CHARACTER_SELECTION or state.combat != null or character == null:
 		return false
-	var spell := content.spell_by_id(targeting.spell_id)
+	var spell := content.magic.spell_by_id(targeting.spell_id)
 	if spell == null or targeting.power < 1 or targeting.power > 7:
 		return false
 	if continuation.kind == &"item-use-target-selection":
 		var instance := _item_instance_for_state(character, targeting.instance_id)
-		var definition: ItemDefinition = null if instance == null else content.item_by_id(instance.definition_id)
+		var definition: ItemDefinition = null if instance == null else content.items.item_by_id(instance.definition_id)
 		if instance == null or definition == null or definition.special_2 != spell.classic_id or instance.charges != targeting.starting_charges:
 			return false
 		var authored_power := absi(definition.special_1)
 		var expected_count := state.party.characters().size() if spell.target_type > 2 else mini(targeting.power, state.party.characters().size()) if spell.target_type == 0 else 1
-		var probe := RealmzRules.new().inventory.classic_spell_item_probe(character, instance, definition, spell, content.race_by_id(character.race_id), content.caste_by_id(character.caste_id), false)
+		var probe := RealmzRules.new().inventory.classic_spell_item_probe(character, instance, definition, spell, content.characters.race_by_id(character.race_id), content.characters.caste_by_id(character.caste_id), false)
 		var supported := spell.special == 0 and absi(spell.damage_type) >= 1 and absi(spell.damage_type) <= 6 and absi(spell.spell_class) != 9 or absi(spell.special) == 57
 		return (authored_power == 8 or targeting.power == authored_power) and targeting.target_count == expected_count and spell.target_type not in [5, 7] and spell.target_type >= 0 and spell.target_type <= 12 and probe.allowed and supported and session_interaction.to_data() == FieldMagicTargetRequestBuilder.item_target_request(session_interaction.request_id, character, instance.id, definition, spell, targeting.power, expected_count, state.party.characters()).to_data()
 	if continuation.kind == &"field-spell-target-selection":
@@ -410,7 +410,7 @@ static func _valid_targeting_continuation(content: RealmzContent, state: GameSta
 			return false
 		var has_case := false
 		for carried: ItemInstance in character.inventory():
-			var carried_definition := content.item_by_id(carried.definition_id)
+			var carried_definition := content.items.item_by_id(carried.definition_id)
 			if carried.equipped and carried_definition != null and absi(carried_definition.item_type) == 13:
 				has_case = true
 				break
@@ -448,7 +448,7 @@ static func _valid_post_move_continuation(content: RealmzContent, state: GameSta
 		return false
 	if not exploration.active_random_program_id.is_empty():
 		return exploration.active_trigger_id.is_empty() and content.scenario.program_by_id(exploration.active_random_program_id) != null
-	return exploration.trigger_index >= 0 and exploration.trigger_index < exploration.trigger_ids.size() and not exploration.active_trigger_id.is_empty() and exploration.trigger_ids[exploration.trigger_index] == exploration.active_trigger_id and content.trigger_by_id(exploration.active_trigger_id) != null
+	return exploration.trigger_index >= 0 and exploration.trigger_index < exploration.trigger_ids.size() and not exploration.active_trigger_id.is_empty() and exploration.trigger_ids[exploration.trigger_index] == exploration.active_trigger_id and content.scenario_records.trigger_by_id(exploration.active_trigger_id) != null
 
 
 static func suspended_scenario_owner_is_valid(content: RealmzContent, state: GameState, owner: SessionContinuation, saved: ScenarioVmSnapshot) -> bool:
@@ -466,7 +466,7 @@ static func _valid_post_time_continuation(content: RealmzContent, state: GameSta
 	if continuation == null or continuation.kind != &"post-clock":
 		return false
 	var exploration := continuation.exploration()
-	if exploration == null or exploration.timed_day < 0 or exploration.timed_encounter_index < 0 or exploration.timed_encounter_index > content.timed_encounters().size() or exploration.resume_kind not in [&"completed", &"move", &"post-move", &"attempt-search-completed", &"attempt-search-post-move", &"area-search-second", &"camp-entry-second", &"rest-second", &"camp-departure-second", &"heal"]:
+	if exploration == null or exploration.timed_day < 0 or exploration.timed_encounter_index < 0 or exploration.timed_encounter_index > content.scenario_records.timed_encounters().size() or exploration.resume_kind not in [&"completed", &"move", &"post-move", &"attempt-search-completed", &"attempt-search-post-move", &"area-search-second", &"camp-entry-second", &"rest-second", &"camp-departure-second", &"heal"]:
 		return false
 	var map := content.world.map_by_id(exploration.map_id)
 	var cell: MapCell = null if map == null else map.topology.cell_at(exploration.coordinate)

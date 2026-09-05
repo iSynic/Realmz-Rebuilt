@@ -68,7 +68,7 @@ func _branch_on_item(action: ClassicActionDefinition) -> ScenarioRuntimeOperatio
 		1:
 			return ScenarioRuntimeOperationResult.completed(false)
 		2:
-			var message := _content.message_by_id(values[4])
+			var message := _content.scenario_records.message_by_id(values[4])
 			if message == null:
 				return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic item branch references unavailable message %d." % values[4])
 			return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-item-check"})], ScenarioVmDirective.finish())
@@ -90,7 +90,7 @@ func _branch_on_item_result(action: ClassicActionDefinition, context: ScenarioEx
 func _branch_on_item_charges(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
 	if action.extra_code.size() < 5:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 67 requires a five-value Extra Code row.")
-	var definition := _content.item_by_classic_id(action.extra_code[0])
+	var definition := _content.items.item_by_classic_id(action.extra_code[0])
 	var total_charges := 0
 	if definition != null:
 		for character: CharacterState in _game_state.party.characters():
@@ -108,14 +108,14 @@ func _branch_on_item_charges(action: ClassicActionDefinition) -> ScenarioRuntime
 func _mutate_items(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
 	if action.extra_code.size() < 5:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 22 requires a five-value Extra Code row.")
-	var source := _content.item_by_classic_id(absi(action.extra_code[0]))
+	var source := _content.items.item_by_classic_id(absi(action.extra_code[0]))
 	if source == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_item", "Classic item mutation references unavailable item %d." % action.extra_code[0])
 	var operation := action.extra_code[2]
 	var maximum := action.extra_code[1]
 	if maximum < 0 or operation not in [1, 2, 3]:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_item_mutation", "Classic item mutation has an invalid count or operation.")
-	var replacement := _content.item_by_classic_id(absi(action.extra_code[4])) if operation == 3 else null
+	var replacement := _content.items.item_by_classic_id(absi(action.extra_code[4])) if operation == 3 else null
 	if operation == 3 and replacement == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_item", "Classic item replacement is unavailable.")
 	var changed := 0
@@ -149,7 +149,7 @@ func _mutate_items(action: ClassicActionDefinition) -> ScenarioRuntimeOperationR
 
 
 func _party_has_classic_item(classic_item_id: int, minimum_charges: int = -1, equipped_only: bool = false) -> bool:
-	var definition := _content.item_by_classic_id(classic_item_id)
+	var definition := _content.items.item_by_classic_id(classic_item_id)
 	if definition == null:
 		return false
 	for character: CharacterState in _game_state.party.characters():
@@ -211,14 +211,14 @@ func _configure_banking() -> ScenarioRuntimeOperationResult:
 func _mutate_shop(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
 	if action.extra_code.size() < 4:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 51 requires a five-value Extra Code row.")
-	var shop := _content.shop_by_classic_id(absi(action.extra_code[0]))
+	var shop := _content.economy.shop_by_classic_id(absi(action.extra_code[0]))
 	if shop == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_shop", "Classic shop mutation references unavailable shop %d." % action.extra_code[0])
 	var inflation := maxi(0, _game_state.location_services.shop_inflation(shop) + action.extra_code[1])
 	_game_state.location_services.set_shop_inflation(shop, inflation)
 	var stock_index := -1
 	if action.extra_code[2] != 0:
-		var item := _content.item_by_classic_id(absi(action.extra_code[2]))
+		var item := _content.items.item_by_classic_id(absi(action.extra_code[2]))
 		if item == null:
 			return ScenarioRuntimeOperationResult.failed(&"unknown_item", "Classic shop mutation references unavailable item %d." % action.extra_code[2])
 		stock_index = shop.item_ids().find(item.id)
@@ -272,7 +272,7 @@ func _recalculate_party_loads() -> void:
 	for character: CharacterState in _game_state.party.characters():
 		var total := character.money.gold + character.money.gems + character.money.jewelry * 15
 		for instance: ItemInstance in character.inventory():
-			var definition := _content.item_by_id(instance.definition_id)
+			var definition := _content.items.item_by_id(instance.definition_id)
 			if definition != null:
 				total += definition.instance_weight(instance.charges)
 		character.carried_load = maxi(0, total)

@@ -22,7 +22,7 @@ func _capability_report(content: RealmzContent) -> Dictionary:
 	var family_counts: Dictionary = {}
 	var context_counts: Dictionary = {}
 	var scenario_signatures: Dictionary = {}
-	for spell: SpellDefinition in content.spell_definitions():
+	for spell: SpellDefinition in content.magic.definitions():
 		var role := String(ClassicSpellIdentityCatalog.application_role(spell))
 		var family := String(ClassicSpellClassificationRules.mechanical_family(spell))
 		var contexts: Dictionary = ClassicSpellDispositionRules.runtime_contexts(spell)
@@ -54,7 +54,7 @@ func _capability_report(content: RealmzContent) -> Dictionary:
 			pending_signatures += 1
 		signatures.append(record)
 	return {
-		"definitionCount": content.spell_definitions().size(),
+		"definitionCount": content.magic.definitions().size(),
 		"familyCounts": family_counts,
 		"packageHash": content.package_hash,
 		"pendingScenarioSignatureCount": pending_signatures,

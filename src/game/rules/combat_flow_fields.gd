@@ -80,7 +80,7 @@ func resolve_actor_collisions(state: GameState, content: RealmzContent, actor_id
 	for field: PersistentCombatField in combat.spell_runtime.persistent_fields():
 		if retain_turn_collisions and combat.spell_runtime.has_field_collision(field.slot):
 			continue
-		var spell := content.spell_by_id(field.spell_id)
+		var spell := content.magic.spell_by_id(field.spell_id)
 		var character_caster := state.party.character_by_id(field.caster_id)
 		var monster_caster := combat.roster.monster_by_id(field.caster_id)
 		if spell == null or character_caster == null and monster_caster == null:
@@ -95,7 +95,7 @@ func resolve_actor_collisions(state: GameState, content: RealmzContent, actor_id
 			character_targets.append(character)
 			selections.append(SpellTargetSelection.for_character(character))
 		else:
-			var definition := content.monster_by_id(monster.definition_id)
+			var definition := content.combat.monster_by_id(monster.definition_id)
 			if definition == null:
 				return COLLISION_INVALID
 			monster_targets.append(monster)
@@ -105,7 +105,7 @@ func resolve_actor_collisions(state: GameState, content: RealmzContent, actor_id
 		if character_caster != null:
 			group = _context.magic.resolve_character_group_spell(character_caster, character_targets, monster_targets, monster_definitions, spell, field.power_level, field.cast_level, rng, false, false)
 		else:
-			var caster_definition := content.monster_by_id(monster_caster.definition_id)
+			var caster_definition := content.combat.monster_by_id(monster_caster.definition_id)
 			if caster_definition == null:
 				return COLLISION_INVALID
 			group = _context.magic.resolve_monster_group_spell(monster_caster, caster_definition, selections, spell, field.power_level, field.cast_level, rng, false, false)
@@ -126,7 +126,7 @@ func resolve_actor_collisions(state: GameState, content: RealmzContent, actor_id
 	if character != null:
 		_context.automation().remove_defeated_position(combat, actor_id, true)
 	else:
-		var definition := content.monster_by_id(monster.definition_id)
+		var definition := content.combat.monster_by_id(monster.definition_id)
 		var queued: bool = _context.actions().events().queue_spell_death_macro(combat, monster, definition)
 		_context.automation().remove_defeated_position(combat, actor_id, not queued)
 	if begin_death_macros and not combat.spell_runtime.pending_death_macro_id().is_empty():

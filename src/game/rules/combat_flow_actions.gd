@@ -130,7 +130,7 @@ func submit_action(state: GameState, content: RealmzContent, actor_id: String, a
 
 
 func _switch_character_weapon(combat: CombatState, content: RealmzContent, actor: CharacterState) -> CombatFlowResult:
-	var equipment := _context.equipment.combat_equipment(actor, content.item_definitions())
+	var equipment := _context.equipment.combat_equipment(actor, content.items.definitions())
 	if not equipment.valid:
 		return CombatFlowResult.failed(equipment.error_code, equipment.error_message)
 	var current_mode := combat.actor_statuses.character_weapon_mode(actor.id)
@@ -146,14 +146,14 @@ func _switch_character_weapon(combat: CombatState, content: RealmzContent, actor
 func _submit_character_attack(state: GameState, content: RealmzContent, actor: CharacterState, target_id: String, rng: RealmzRng, allow_friendly_contact: bool = false) -> CombatFlowResult:
 	var combat := state.combat
 	var events: Array[DomainEvent] = []
-	var equipment := _context.equipment.combat_equipment(actor, content.item_definitions())
+	var equipment := _context.equipment.combat_equipment(actor, content.items.definitions())
 	if not equipment.valid: return CombatFlowResult.failed(equipment.error_code, equipment.error_message)
 	if combat.actor_statuses.character_weapon_mode(actor.id) == &"missile": return fire_character_projectile(state, content, actor, equipment, target_id, rng)
 	if combat.battlefield == null: return CombatFlowResult.failed(&"missing_battlefield", "Melee requires the session-owned Classic battlefield.")
 	if not _context.battlefield.are_adjacent(combat.battlefield, actor.id, target_id): return CombatFlowResult.failed(&"combat_target_not_adjacent", "Classic melee can target only an enemy in an adjacent battlefield footprint.")
 	var monster_target := combat.roster.monster_by_id(target_id)
 	if monster_target != null and monster_target.current_health > 0 and (monster_target.traitor != actor.traitor or allow_friendly_contact):
-		var definition := content.monster_by_id(monster_target.definition_id)
+		var definition := content.combat.monster_by_id(monster_target.definition_id)
 		if definition == null: return CombatFlowResult.failed(&"unknown_monster_definition", "The selected monster has no immutable definition.")
 		prepare_character_turn(combat, actor)
 		combat.turns.invalidate_undo()
@@ -168,7 +168,7 @@ func _submit_character_attack(state: GameState, content: RealmzContent, actor: C
 	else:
 		var character_target := state.party.character_by_id(target_id)
 		if character_target == null or character_target.id == actor.id or character_target.current_health <= 0 or (character_target.traitor == actor.traitor and not allow_friendly_contact): return CombatFlowResult.failed(&"invalid_combat_target", "The selected combatant is unavailable to this allegiance.")
-		var target_equipment := _context.equipment.combat_equipment(character_target, content.item_definitions())
+		var target_equipment := _context.equipment.combat_equipment(character_target, content.items.definitions())
 		if not target_equipment.valid: return CombatFlowResult.failed(target_equipment.error_code, target_equipment.error_message)
 		prepare_character_turn(combat, actor)
 		combat.turns.invalidate_undo()
@@ -245,7 +245,7 @@ func turn_undead_target_ids(state: GameState, content: RealmzContent) -> Array[S
 	if state == null or state.combat == null or content == null or state.combat.battlefield == null:
 		return result
 	for monster: MonsterState in state.combat.roster.monsters():
-		var definition := content.monster_by_id(monster.definition_id)
+		var definition := content.combat.monster_by_id(monster.definition_id)
 		# Providence normalizes Castle's unsigned byte sentinel 255 to signed -1.
 		if monster.current_health > 0 and monster.traitor and state.combat.battlefield.has_actor(monster.id) and definition != null and definition.can_summon != -1 and (definition.type_flag(1) or definition.type_flag(2)):
 			result.append(monster.id)
@@ -281,7 +281,7 @@ func turn_undead(state: GameState, content: RealmzContent, actor: CharacterState
 	var macro_count := 0
 	for target_id: String in target_ids:
 		var target := combat.roster.monster_by_id(target_id)
-		var definition := content.monster_by_id(target.definition_id) if target != null else null
+		var definition := content.combat.monster_by_id(target.definition_id) if target != null else null
 		if definition != null and definition.death_macro > 0:
 			macro_count += 1
 	if macro_count > CombatSpellRuntimeState.MAX_DEATH_MACROS - combat.spell_runtime.death_macro_queue().size():
@@ -291,7 +291,7 @@ func turn_undead(state: GameState, content: RealmzContent, actor: CharacterState
 	events.append(DomainEvent.new(&"combat_turn_undead_attempted", {"actorId": actor.id, "ability": actor.ability_value(13), "targetIds": target_ids.duplicate(), "source": "classic"}))
 	for target_id: String in target_ids:
 		var target := combat.roster.monster_by_id(target_id)
-		var definition := content.monster_by_id(target.definition_id)
+		var definition := content.combat.monster_by_id(target.definition_id)
 		var threshold := maxi(25, 100 - actor.ability_value(13) + 5 * target.hit_dice) + target.magic_resistance
 		var roll := rng.draw(100, StringName("combat.turn-undead.%s" % target.id))
 		var margin := roll - threshold
@@ -370,7 +370,7 @@ func cause_active_fumble(state: GameState, content: RealmzContent, actor_id: Str
 	# The monster branch nested below that guard is therefore unreachable.
 	if character == null:
 		return CombatFlowResult.succeeded([DomainEvent.new(&"combat_fumble_skipped", {"combatantId": actor_id, "reason": "not-party-actor", "source": "classic"})])
-	var equipment := _context.equipment.combat_equipment(character, content.item_definitions())
+	var equipment := _context.equipment.combat_equipment(character, content.items.definitions())
 	if not equipment.valid:
 		return CombatFlowResult.failed(equipment.error_code, equipment.error_message)
 	if not equipment.is_armed():
@@ -394,8 +394,8 @@ func fire_character_projectile(state: GameState, content: RealmzContent, actor: 
 		return CombatFlowResult.failed(&"invalid_projectile_target", "This source-backed projectile slice can target only a living hostile monster.")
 	if not _context.reactions().projectile_target_is_valid(combat, content, actor.id, target.id, profile.maximum_range, profile.spell.range_min + profile.spell.range_max > 0):
 		return CombatFlowResult.failed(&"projectile_target_unavailable", "The target is outside the Classic projectile range or line of sight.")
-	var definition := content.monster_by_id(target.definition_id)
-	var caste := content.caste_by_id(actor.caste_id)
+	var definition := content.combat.monster_by_id(target.definition_id)
+	var caste := content.characters.caste_by_id(actor.caste_id)
 	if definition == null or caste == null:
 		return CombatFlowResult.failed(&"projectile_target_unavailable", "Projectile resolution requires the target monster and caster caste definitions.")
 	prepare_character_turn(combat, actor)

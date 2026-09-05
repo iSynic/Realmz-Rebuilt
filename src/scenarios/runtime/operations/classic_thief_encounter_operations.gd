@@ -31,7 +31,7 @@ func begin(encounter: ComplexEncounterDefinition, gosub: bool, request_id: Strin
 func resume_thief(continuation: ScenarioRuntimeContinuation, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
 	var owner := continuation.body as ScenarioThiefContinuationBody
 	var selection := response.body as InteractionResponse.ThiefEncounterBody
-	var encounter := _content.complex_encounter_by_id(owner.encounter_id) if owner != null else null
+	var encounter := _content.scenario_records.complex_encounter_by_id(owner.encounter_id) if owner != null else null
 	if response.kind != InteractionRequest.THIEF_ENCOUNTER or selection == null or encounter == null:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Thief Encounter response does not match its source encounter.")
 	if selection.action == &"back":
@@ -45,7 +45,7 @@ func resume_thief(continuation: ScenarioRuntimeContinuation, response: Interacti
 func resume_pick_lock(continuation: ScenarioRuntimeContinuation, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
 	var owner := continuation.body as ScenarioThiefContinuationBody
 	var selection := response.body as InteractionResponse.PickLockBody
-	var encounter := _content.complex_encounter_by_id(owner.encounter_id) if owner != null else null
+	var encounter := _content.scenario_records.complex_encounter_by_id(owner.encounter_id) if owner != null else null
 	var thief := _thief_definition(encounter)
 	var character := _state.party.character_by_id(owner.character_id) if owner != null else null
 	if response.kind != InteractionRequest.PICK_LOCK or selection == null or encounter == null or thief == null or character == null or character.current_health <= 0:
@@ -67,7 +67,7 @@ func resume_pick_lock(continuation: ScenarioRuntimeContinuation, response: Inter
 func resume_resolution(continuation: ScenarioRuntimeContinuation, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
 	var owner := continuation.body as ScenarioThiefContinuationBody
 	var acknowledgement := response.body as InteractionResponse.AcknowledgeBody
-	var encounter := _content.complex_encounter_by_id(owner.encounter_id) if owner != null else null
+	var encounter := _content.scenario_records.complex_encounter_by_id(owner.encounter_id) if owner != null else null
 	var thief := _thief_definition(encounter)
 	var character := _state.party.character_by_id(owner.character_id) if owner != null else null
 	if response.kind != InteractionRequest.ACKNOWLEDGE or acknowledgement == null or acknowledgement.take_note or owner == null or encounter == null or thief == null or character == null:
@@ -150,7 +150,7 @@ func _present_action_result(encounter: ComplexEncounterDefinition, thief: ThiefE
 	var sound_ids := thief.success_sounds() if succeeded else thief.failure_sounds()
 	var signed_message_id := text_ids[action_index]
 	var message_id := absi(signed_message_id)
-	var message := _content.message_by_id(message_id)
+	var message := _content.scenario_records.message_by_id(message_id)
 	if message_id != 0 and message == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Thief Encounter references unavailable message %d." % signed_message_id)
 	if message != null:
@@ -191,12 +191,12 @@ func _apply_trap(encounter: ComplexEncounterDefinition, thief: ThiefEncounterDef
 	var spell_power := prompts[2] if prompts.size() > 2 else 0
 	var events: Array[DomainEvent] = [DomainEvent.new(&"thief_trap_sprung", {"encounterId": encounter.id, "thiefEncounterId": thief.id, "characterId": selected.id, "targetIds": targets.map(func(value: CharacterState) -> String: return value.id), "damageByCharacter": damage_by_character, "spellId": thief.spell_id, "spellPower": spell_power, "soundId": trap_sound})]
 	if thief.spell_id != 0:
-		var spell := _content.spell_by_classic_id(thief.spell_id)
+		var spell := _content.magic.spell_by_classic_id(thief.spell_id)
 		var castes: Array[CasteDefinition] = []
 		var races: Array[RaceDefinition] = []
 		for target: CharacterState in targets:
-			castes.append(_content.caste_by_id(target.caste_id))
-			races.append(_content.race_by_id(target.race_id))
+			castes.append(_content.characters.caste_by_id(target.caste_id))
+			races.append(_content.characters.race_by_id(target.race_id))
 		var spell_result := _rules.magic.resolve_scenario_group_spell(targets, spell, spell_power, 0, false, _rng, castes, races)
 		if spell_result == null:
 			return ScenarioRuntimeOperationResult.failed(&"invalid_thief_trap_spell", "Thief Encounter references an unavailable or invalid trap spell.")
@@ -218,7 +218,7 @@ func _thief_request(encounter: ComplexEncounterDefinition, request_id: String, p
 	if thief == null:
 		return null
 	var prompt_id := absi(thief.prompts()[0]) if not thief.prompts().is_empty() else 0
-	var message := _content.message_by_id(prompt_id)
+	var message := _content.scenario_records.message_by_id(prompt_id)
 	var flags := _state.scenario_progress.encounters.thief_type_flags(thief)
 	var characters: Array[Dictionary] = []
 	for character: CharacterState in _state.party.characters():
@@ -238,7 +238,7 @@ func _thief_request(encounter: ComplexEncounterDefinition, request_id: String, p
 
 
 func _thief_definition(encounter: ComplexEncounterDefinition) -> ThiefEncounterDefinition:
-	return _content.thief_encounter_by_id(encounter.thief_success) if encounter != null and encounter.thief else null
+	return _content.scenario_records.thief_encounter_by_id(encounter.thief_success) if encounter != null and encounter.thief else null
 
 
 static func _character_eligible(character: CharacterState) -> bool:

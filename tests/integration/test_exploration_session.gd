@@ -67,7 +67,7 @@ func run() -> void:
 	assert_equal(restored_diagonal.view().map_view.last_move_direction, Vector2i(-1, -1), "the restored detached map view preserves the movement vector used by presentation")
 	var layout_maps: Array[MapDefinition] = [content.world.map_by_id("land:0"), content.world.map_by_id("land:1")]
 	var layout_transitions: Array[MapTransition] = [MapTransition.new("layout:land:0:northwest:land:1", "land:0", &"northwest", "land:1", &"southeast")]
-	var diagonal_layout_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, "land:0", Vector2i.ZERO, WorldDefinition.new(layout_maps, layout_transitions), ScenarioDefinition.new([], []), [], [], [], content.race_definitions(), content.caste_definitions())
+	var diagonal_layout_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, "land:0", Vector2i.ZERO, WorldDefinition.new(layout_maps, layout_transitions), ScenarioDefinition.new([], []), [], [], [], content.characters.race_definitions(), content.characters.caste_definitions())
 	var diagonal_layout_session := GameSession.new()
 	assert_equal(diagonal_layout_session.start(diagonal_layout_content, 1).state, SessionStep.State.COMPLETED, "a diagonal Layout transition session starts")
 	_begin_fixture_adventure(diagonal_layout_session, diagonal_layout_content)
@@ -132,11 +132,11 @@ func run() -> void:
 	assert_equal(restored.snapshot().game_state.world.topology.terrain_for("land:0", replacement_cell), "classic.terrain.2", "restored session retains world overlays")
 	assert_true(restored.snapshot().game_state.world.triggers.trigger_is_disabled(north_trigger_id), "save/reload preserves default one-shot Action Point state")
 
-	var keep_source := content.trigger_by_id("ap.fixture.destination-source"); var keep_program := ScenarioProgramDefinition.new(keep_source.program_id, &"trigger", keep_source.id, [ClassicActionDefinition.new(0, 24, 24, 0, false, [])]); var keep_trigger := TriggerDefinition.new(keep_source.id, keep_program.id, keep_source.map_id, keep_source.coordinate, keep_source.active, keep_source.chance_percent, keep_source.post_action_location, keep_source.classic_record_index); var keep_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, "land:1", Vector2i(0, 1), content.world, ScenarioDefinition.new([keep_program], []), [], [keep_trigger], [], content.race_definitions(), content.caste_definitions())
+	var keep_source := content.scenario_records.trigger_by_id("ap.fixture.destination-source"); var keep_program := ScenarioProgramDefinition.new(keep_source.program_id, &"trigger", keep_source.id, [ClassicActionDefinition.new(0, 24, 24, 0, false, [])]); var keep_trigger := TriggerDefinition.new(keep_source.id, keep_program.id, keep_source.map_id, keep_source.coordinate, keep_source.active, keep_source.chance_percent, keep_source.post_action_location, keep_source.classic_record_index); var keep_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, "land:1", Vector2i(0, 1), content.world, ScenarioDefinition.new([keep_program], []), [], [keep_trigger], [], content.characters.race_definitions(), content.characters.caste_definitions())
 	var keep_session := GameSession.new(); keep_session.start(keep_content, 1); _begin_fixture_adventure(keep_session, keep_content); var kept := keep_session.submit_intent(ExplorationIntents.move(Vector2i.UP))
 	assert_true(_has_event(kept, &"action_point_kept"), "Classic opcode 24 marks the issuing placed Action Point as Keep Codes"); assert_false(keep_session.snapshot().game_state.world.triggers.trigger_is_disabled(keep_trigger.id), "Keep Codes is the explicit exception to default one-shot Action Points")
 	var self_program := ScenarioProgramDefinition.new(keep_source.program_id, &"trigger", keep_source.id, [ClassicActionDefinition.new(0, 3, 3, 0, false, [1, 0, 0, 0, 0]), ClassicActionDefinition.new(1, 45, 45, 0, false, [-1, 1, 0, 0, 0])]); var self_trigger := TriggerDefinition.new(keep_source.id, self_program.id, keep_source.map_id, keep_source.coordinate, true, 100, TriggerDestinationDefinition.new(keep_source.map_id, keep_source.coordinate), keep_source.classic_record_index)
-	var self_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, "land:1", Vector2i(0, 1), content.world, ScenarioDefinition.new([self_program], []), [], [self_trigger], [], content.race_definitions(), content.caste_definitions()); var self_session := GameSession.new(); self_session.start(self_content, 1); _begin_fixture_adventure(self_session, self_content); var self_wait := self_session.submit_intent(ExplorationIntents.move(Vector2i.UP)); var self_completed := self_session.respond(InteractionResponse.from_data(self_wait.interaction.request_id, &"yes_no", {"accepted": true}))
+	var self_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, "land:1", Vector2i(0, 1), content.world, ScenarioDefinition.new([self_program], []), [], [self_trigger], [], content.characters.race_definitions(), content.characters.caste_definitions()); var self_session := GameSession.new(); self_session.start(self_content, 1); _begin_fixture_adventure(self_session, self_content); var self_wait := self_session.submit_intent(ExplorationIntents.move(Vector2i.UP)); var self_completed := self_session.respond(InteractionResponse.from_data(self_wait.interaction.request_id, &"yes_no", {"accepted": true}))
 	assert_equal([self_completed.state, self_session.view().party_coordinate], [SessionStep.State.COMPLETED, Vector2i(1, 0)], "an AP header pointing to its own source cell cannot undo its resumed program teleport")
 	assert_true(_has_event(self_completed, &"party_teleported") and not _has_event(self_completed, &"trigger_fired"), "the VM teleport completes once without re-firing the source AP")
 	_test_classic_backout(content)
@@ -393,7 +393,7 @@ func _test_contextual_encounter_command(source_content: RealmzContent) -> void:
 	var map := MapDefinition.new("contextual", "Land level 0", &"land", 0, MapTopology.new(2, 1, [origin, faced]), false, false, -1, regions, "fixture.tileset")
 	var maps: Array[MapDefinition] = [map]
 	var programs: Array[ScenarioProgramDefinition] = [ScenarioProgramDefinition.new("xap:42", &"extra-action-point", region_id, []), ScenarioProgramDefinition.new("xap:0", &"extra-action-point", "0", [])]
-	var content := RealmzContent.new("contextual-command", source_content.package_hash, "contextual-command-content", source_content.rules_version, map.id, Vector2i.ZERO, WorldDefinition.new(maps), ScenarioDefinition.new(programs, []), [], [], [], source_content.race_definitions(), source_content.caste_definitions())
+	var content := RealmzContent.new("contextual-command", source_content.package_hash, "contextual-command-content", source_content.rules_version, map.id, Vector2i.ZERO, WorldDefinition.new(maps), ScenarioDefinition.new(programs, []), [], [], [], source_content.characters.race_definitions(), source_content.characters.caste_definitions())
 	var session := GameSession.new()
 	assert_equal(session.start(content, 1).state, SessionStep.State.COMPLETED, "the seamless Encounter command fixture starts")
 	_begin_fixture_adventure(session, content); var facing := session.snapshot(); facing.game_state.last_move_direction = Vector2i.RIGHT; assert_equal(session.restore(content, facing).state, SessionStep.State.COMPLETED, "the fixture faces the neighboring land cell through the save boundary")
@@ -523,8 +523,8 @@ func _test_special_dungeon_bits(source_content: RealmzContent) -> void:
 
 
 func _begin_fixture_adventure(session: GameSession, content: RealmzContent, party_size: int = 1) -> void:
-	var races := content.race_definitions()
-	var castes := content.caste_definitions()
+	var races := content.characters.race_definitions()
+	var castes := content.characters.caste_definitions()
 	assert_false(races.is_empty() or castes.is_empty(), "playable exploration fixture provides one race and caste")
 	if races.is_empty() or castes.is_empty():
 		return
@@ -606,7 +606,7 @@ func _boat_movement_content(source_content: RealmzContent) -> RealmzContent:
 	var placed := LandTileProfile.new("classic.terrain.147", 3, 69, 33, 147, 1, 3)
 	var map := MapDefinition.new("boat-land", "Boat Land", &"land", 0, MapTopology.from_compact_rows("boat-land", 4, 1, rows, removed, placed))
 	var maps: Array[MapDefinition] = [map]
-	return RealmzContent.new("boat-movement", "0".repeat(64), "boat-movement-content", "realmz-classic-1", map.id, Vector2i.ZERO, WorldDefinition.new(maps), ScenarioDefinition.new([], []), [], [], [], source_content.race_definitions(), source_content.caste_definitions())
+	return RealmzContent.new("boat-movement", "0".repeat(64), "boat-movement-content", "realmz-classic-1", map.id, Vector2i.ZERO, WorldDefinition.new(maps), ScenarioDefinition.new([], []), [], [], [], source_content.characters.race_definitions(), source_content.characters.caste_definitions())
 
 
 func _boat_action_point_content(source_content: RealmzContent) -> RealmzContent:
@@ -621,7 +621,7 @@ func _boat_action_point_content(source_content: RealmzContent) -> RealmzContent:
 	var map := MapDefinition.new("boat-action-point", "Boat Action Point", &"land", 1, MapTopology.from_compact_rows("boat-action-point", 3, 1, rows))
 	var program := ScenarioProgramDefinition.new("program.boat-action-point", &"trigger", trigger_id, [])
 	var trigger := TriggerDefinition.new(trigger_id, program.id, map.id, Vector2i(1, 0), true, 100, null, 6)
-	return RealmzContent.new("boat-action-point", "0".repeat(64), "boat-action-point-content", "realmz-classic-1", map.id, Vector2i.ZERO, WorldDefinition.new([map]), ScenarioDefinition.new([program], []), [], [trigger], [], source_content.race_definitions(), source_content.caste_definitions())
+	return RealmzContent.new("boat-action-point", "0".repeat(64), "boat-action-point-content", "realmz-classic-1", map.id, Vector2i.ZERO, WorldDefinition.new([map]), ScenarioDefinition.new([program], []), [], [trigger], [], source_content.characters.race_definitions(), source_content.characters.caste_definitions())
 
 
 func _compact_land_row(tile: int, movement_cost: int, sound_id: int, boat_requirement: int, shore: bool) -> Array:
@@ -653,7 +653,7 @@ func _duplicate_placed_ap_content(first_chance: int, source_content: RealmzConte
 		ScenarioProgramDefinition.new(first.program_id, &"trigger", first.id, []),
 		ScenarioProgramDefinition.new(later.program_id, &"trigger", later.id, []),
 	]
-	return RealmzContent.new("ap-order", "0".repeat(64), "ap-order-content", "realmz-classic-1", map.id, Vector2i.ZERO, WorldDefinition.new(maps), ScenarioDefinition.new(programs, []), [], triggers, [], source_content.race_definitions(), source_content.caste_definitions())
+	return RealmzContent.new("ap-order", "0".repeat(64), "ap-order-content", "realmz-classic-1", map.id, Vector2i.ZERO, WorldDefinition.new(maps), ScenarioDefinition.new(programs, []), [], triggers, [], source_content.characters.race_definitions(), source_content.characters.caste_definitions())
 
 
 func _inactive_placed_ap_content(source_content: RealmzContent) -> RealmzContent:
@@ -661,14 +661,14 @@ func _inactive_placed_ap_content(source_content: RealmzContent) -> RealmzContent
 	var cells: Array[MapCell] = [MapCell.new("inactive-ap:cell:0,0", Vector2i.ZERO, "classic.terrain.1", true, 1, false, true, false, false, false, false, false, 0, 1, "fixture.tileset", empty_ids, empty_ids, {}, empty_features), MapCell.new("inactive-ap:cell:1,0", Vector2i(1, 0), "classic.terrain.1", true, 1, false, true, false, false, false, false, false, 0, 1, "fixture.tileset", ["ap.enable-inactive"], empty_ids, {}, empty_features), MapCell.new("inactive-ap:cell:2,0", Vector2i(2, 0), "classic.terrain.1", true, 1, false, true, false, false, false, false, false, 0, 1, "fixture.tileset", ["ap.inactive-placed"], empty_ids, {}, empty_features)]
 	var map := MapDefinition.new("inactive-ap", "Inactive AP", &"land", 0, MapTopology.new(3, 1, cells)); var enable := TriggerDefinition.new("ap.enable-inactive", "program.enable-inactive", map.id, Vector2i(1, 0), true, 100, null, 1); var inactive := TriggerDefinition.new("ap.inactive-placed", "program.inactive-placed", map.id, Vector2i(2, 0), false, 0, null, 57)
 	var programs: Array[ScenarioProgramDefinition] = [ScenarioProgramDefinition.new(enable.program_id, &"trigger", enable.id, [ClassicActionDefinition.new(0, 13, 13, 0, false, [0, 57, 100, 59, 59])]), ScenarioProgramDefinition.new(inactive.program_id, &"trigger", inactive.id, [])]
-	return RealmzContent.new("inactive-ap", "0".repeat(64), "inactive-ap-content", "realmz-classic-1", map.id, Vector2i.ZERO, WorldDefinition.new([map]), ScenarioDefinition.new(programs, []), [], [enable, inactive], [], source_content.race_definitions(), source_content.caste_definitions())
+	return RealmzContent.new("inactive-ap", "0".repeat(64), "inactive-ap-content", "realmz-classic-1", map.id, Vector2i.ZERO, WorldDefinition.new([map]), ScenarioDefinition.new(programs, []), [], [enable, inactive], [], source_content.characters.race_definitions(), source_content.characters.caste_definitions())
 
 
 func _classic_backout_content(source_content: RealmzContent, encounter_kind: StringName = &"choice") -> RealmzContent:
 	var empty_ids: Array[String] = []; var empty_features: Array[MapFeature] = []; var open_edges := {&"north": MapEdge.new(&"open", true, false), &"east": MapEdge.new(&"open", true, false), &"south": MapEdge.new(&"open", true, false), &"west": MapEdge.new(&"open", true, false)}; var trigger_id := "ap.%s-backout" % encounter_kind; var cells: Array[MapCell] = [MapCell.new("backout:cell:0,0", Vector2i.ZERO, "classic.terrain.1", true, 1, false, true, false, false, false, false, false, 0, 1, "fixture.tileset", empty_ids, empty_ids, open_edges, empty_features), MapCell.new("backout:cell:1,0", Vector2i(1, 0), "classic.terrain.1", true, 1, false, true, false, false, false, false, false, 0, 1, "fixture.tileset", [trigger_id], empty_ids, open_edges, empty_features), MapCell.new("backout:cell:2,0", Vector2i(2, 0), "classic.terrain.1", true, 1, false, true, false, false, false, false, false, 0, 1, "fixture.tileset", empty_ids, empty_ids, open_edges, empty_features)]
 	var opcode := 3 if encounter_kind == &"choice" else 4 if encounter_kind == &"simple" else 5; var extra_code: Array[int] = [0, 0, 0, 0, 0]; var actions: Array[Variant] = [ClassicActionDefinition.new(0, opcode, opcode, 0, false, extra_code), ClassicActionDefinition.new(1, 24, 24, 0, false, [])] if encounter_kind == &"choice" else [ClassicActionDefinition.new(0, opcode, opcode, 0, false, extra_code)]; var messages: Array[MessageDefinition] = [MessageDefinition.new(1, "Back out?")]; var simple: Array[SimpleEncounterDefinition] = [SimpleEncounterDefinition.new(0, 1, [SimpleEncounterResponse.new("continue", "Continue", "unused")], true, 1, 0)]; var complex: Array[ComplexEncounterDefinition] = [ComplexEncounterDefinition.new(0, 1, 4, 0, [1, 0, 0, 0, 0, 0, 0, 0], [], [], [], [], true, false, 1, 0, 0, 0, ["Try", "", "", "", "", "", "", "", ""])]
 	var map := MapDefinition.new("backout", "Classic Backout", &"land", 0, MapTopology.new(3, 1, cells)); var program := ScenarioProgramDefinition.new("program.%s-backout" % encounter_kind, &"trigger", trigger_id, actions); var destination := TriggerDestinationDefinition.new(map.id, Vector2i(2, 0)); var trigger := TriggerDefinition.new(trigger_id, program.id, map.id, Vector2i(1, 0), true, 100, destination, 0)
-	return RealmzContent.new("classic-backout", "0".repeat(64), "classic-backout-content", "realmz-classic-1", map.id, Vector2i.ZERO, WorldDefinition.new([map]), ScenarioDefinition.new([program], []), messages, [trigger], simple, source_content.race_definitions(), source_content.caste_definitions(), [], [], [], [], [], [], complex)
+	return RealmzContent.new("classic-backout", "0".repeat(64), "classic-backout-content", "realmz-classic-1", map.id, Vector2i.ZERO, WorldDefinition.new([map]), ScenarioDefinition.new([program], []), messages, [trigger], simple, source_content.characters.race_definitions(), source_content.characters.caste_definitions(), [], [], [], [], [], [], complex)
 
 
 func _open_movement_content(source_content: RealmzContent, uses_los: bool = false) -> RealmzContent:
@@ -687,7 +687,7 @@ func _open_movement_content(source_content: RealmzContent, uses_los: bool = fals
 			cells.append(MapCell.new("open:cell:%d,%d" % [x, y], coordinate, "classic.terrain.1", true, 1, false, true, false, false, true, false, false, 151, 1, "fixture.tileset", empty_ids, empty_ids, open_edges, empty_features))
 	var map := MapDefinition.new("open", "Open movement", &"land", 0, MapTopology.new(3, 3, cells), false, uses_los)
 	var maps: Array[MapDefinition] = [map]
-	return RealmzContent.new("open-movement", "0".repeat(64), "open-movement-content", "realmz-classic-1", map.id, Vector2i(1, 1), WorldDefinition.new(maps), ScenarioDefinition.new([], []), [], [], [], source_content.race_definitions(), source_content.caste_definitions())
+	return RealmzContent.new("open-movement", "0".repeat(64), "open-movement-content", "realmz-classic-1", map.id, Vector2i(1, 1), WorldDefinition.new(maps), ScenarioDefinition.new([], []), [], [], [], source_content.characters.race_definitions(), source_content.characters.caste_definitions())
 
 
 func _test_attempted_land_move_search(source_content: RealmzContent) -> void:
@@ -710,7 +710,7 @@ func _attempted_land_move_content(source_content: RealmzContent) -> RealmzConten
 		MapCell.new("attempted-search:cell:1,0", Vector2i(1, 0), "classic.terrain.1", true, 1, false, true, false, false, false, false, false, 0, 1, "fixture.tileset", empty_ids, empty_ids, open_edges, no_features),
 	]
 	var map := MapDefinition.new("attempted-search", "Attempted Search", &"land", 0, MapTopology.new(2, 1, cells))
-	return RealmzContent.new("attempted-search", "0".repeat(64), "attempted-search-content", "realmz-classic-1", map.id, Vector2i(1, 0), WorldDefinition.new([map]), ScenarioDefinition.new([], []), [], [], [], source_content.race_definitions(), source_content.caste_definitions())
+	return RealmzContent.new("attempted-search", "0".repeat(64), "attempted-search-content", "realmz-classic-1", map.id, Vector2i(1, 0), WorldDefinition.new([map]), ScenarioDefinition.new([], []), [], [], [], source_content.characters.race_definitions(), source_content.characters.caste_definitions())
 
 
 func _dungeon_special_content(source_content: RealmzContent, dungeon_case: Dictionary) -> RealmzContent:
@@ -744,4 +744,4 @@ func _dungeon_special_content(source_content: RealmzContent, dungeon_case: Dicti
 	var cells: Array[MapCell] = [origin, target]
 	var map := MapDefinition.new("dungeon-special", "Dungeon level 0", &"dungeon", 0, MapTopology.new(2, 1, cells))
 	var maps: Array[MapDefinition] = [map]
-	return RealmzContent.new("dungeon-special", "0".repeat(64), "dungeon-special-content", "realmz-classic-1", map.id, Vector2i.ZERO, WorldDefinition.new(maps), ScenarioDefinition.new([], []), [], [], [], source_content.race_definitions(), source_content.caste_definitions())
+	return RealmzContent.new("dungeon-special", "0".repeat(64), "dungeon-special-content", "realmz-classic-1", map.id, Vector2i.ZERO, WorldDefinition.new(maps), ScenarioDefinition.new([], []), [], [], [], source_content.characters.race_definitions(), source_content.characters.caste_definitions())

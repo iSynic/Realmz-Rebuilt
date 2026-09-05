@@ -85,7 +85,7 @@ func execute_safe(capability: String, arguments: Dictionary, request_id: String)
 		"core.economy.grant-treasure":
 			if not arguments.get("treasureId") is String:
 				return ScenarioRuntimeOperationResult.failed(&"invalid_action_arguments", "Grant Treasure requires a stable treasureId.")
-			var treasure := _content.treasure_by_id(arguments["treasureId"])
+			var treasure := _content.economy.treasure_by_id(arguments["treasureId"])
 			if treasure == null:
 				return ScenarioRuntimeOperationResult.failed(&"unknown_treasure", "Treasure '%s' is unavailable." % arguments["treasureId"])
 			return _battle_reward_operations.grant_treasure_definition(treasure, request_id)
@@ -98,7 +98,7 @@ func execute_safe(capability: String, arguments: Dictionary, request_id: String)
 		"core.combat.start":
 			if not arguments.get("battleId") is String:
 				return ScenarioRuntimeOperationResult.failed(&"invalid_action_arguments", "Start Battle requires a stable battleId.")
-			var battle := _content.battle_by_id(arguments["battleId"])
+			var battle := _content.combat.battle_by_id(arguments["battleId"])
 			if battle == null:
 				return ScenarioRuntimeOperationResult.failed(&"unknown_battle", "Battle '%s' is unavailable." % arguments["battleId"])
 			return _battle_reward_operations.start_battle_definition(battle, request_id, "scenario-action", ScenarioBattleCaller.safe_continue())
@@ -153,7 +153,7 @@ func resume_safe(continuation: ScenarioRuntimeContinuation, response: Interactio
 
 
 func simple_encounter_by_id(encounter_id: int) -> SimpleEncounterDefinition:
-	return _content.simple_encounter_by_id(encounter_id)
+	return _content.scenario_records.simple_encounter_by_id(encounter_id)
 
 
 func request_classic_encounter(kind: StringName, encounter_id: int, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
@@ -169,7 +169,7 @@ func read_action_state(state_scope: String, owner_id: String, name: String, defa
 
 
 func request_available_shop(request_id: String) -> ScenarioRuntimeOperationResult:
-	var shop := _content.shop_by_id(_game_state.location_services.active_shop_id)
+	var shop := _content.economy.shop_by_id(_game_state.location_services.active_shop_id)
 	if shop == null:
 		return ScenarioRuntimeOperationResult.failed(&"shop_unavailable", "No configured Classic shop is available at this location.")
 	return _service_operations.request_shop_definition(shop, request_id, _game_state.location_services.shop_accept_ranges())
@@ -298,7 +298,7 @@ func _resume_age_update_interactions(continuation: ScenarioRuntimeContinuation, 
 
 func _resume_simple_encounter(continuation: ScenarioRuntimeContinuation, response: InteractionResponse) -> ScenarioRuntimeOperationResult:
 	var choice_continuation := continuation.body as ScenarioChoiceContinuationBody
-	var encounter := _content.simple_encounter_by_id(choice_continuation.encounter_id)
+	var encounter := _content.scenario_records.simple_encounter_by_id(choice_continuation.encounter_id)
 	if encounter == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_encounter", "The pending Simple Encounter is unavailable.")
 	var choice := response.body as InteractionResponse.ChoiceBody
@@ -326,7 +326,7 @@ func _resume_simple_encounter(continuation: ScenarioRuntimeContinuation, respons
 
 func _resume_complex_encounter(continuation: ScenarioRuntimeContinuation, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
 	var choice_continuation := continuation.body as ScenarioChoiceContinuationBody
-	var encounter := _content.complex_encounter_by_id(choice_continuation.encounter_id)
+	var encounter := _content.scenario_records.complex_encounter_by_id(choice_continuation.encounter_id)
 	if encounter == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_encounter", "The pending Complex Encounter is unavailable.")
 	var selection := response.body as InteractionResponse.ComplexEncounterBody
@@ -499,7 +499,7 @@ func _resume_character_ability(continuation: ScenarioRuntimeContinuation, respon
 
 
 func _party_has_classic_item(classic_item_id: int, minimum_charges: int = -1, equipped_only: bool = false) -> bool:
-	var definition := _content.item_by_classic_id(classic_item_id)
+	var definition := _content.items.item_by_classic_id(classic_item_id)
 	if definition == null:
 		return false
 	for character: CharacterState in _game_state.party.characters():
@@ -511,7 +511,7 @@ func _party_has_classic_item(classic_item_id: int, minimum_charges: int = -1, eq
 
 func _character_owns_classic_item(character_id: String, instance_id: String, classic_item_id: int) -> bool:
 	var character := _game_state.party.character_by_id(character_id)
-	var definition := _content.item_by_classic_id(absi(classic_item_id))
+	var definition := _content.items.item_by_classic_id(absi(classic_item_id))
 	if character == null or character.current_health <= 0 or definition == null or instance_id.is_empty():
 		return false
 	for instance: ItemInstance in character.inventory():
@@ -522,7 +522,7 @@ func _character_owns_classic_item(character_id: String, instance_id: String, cla
 
 func _character_knows_classic_spell(character_id: String, classic_spell_id: int) -> bool:
 	var character := _game_state.party.character_by_id(character_id)
-	var definition := _content.spell_by_classic_id(absi(classic_spell_id))
+	var definition := _content.magic.spell_by_classic_id(absi(classic_spell_id))
 	return character != null and character.current_health > 0 and definition != null and character.known_spells().has(definition.id)
 
 

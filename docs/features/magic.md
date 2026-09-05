@@ -1,6 +1,6 @@
 # Magic
 
-`SpellDefinition` is authored content and `MagicRules` is the stable spell-resolution entry point used by gameplay. Follow character casts into `CharacterSpellResolver`, monster casts into `MonsterSpellResolver`, missile and thrown spell attacks into `SpellProjectileResolver`, and field or scenario effects into `FieldScenarioSpellResolver`. `SpellResolutionSupport` holds only the targeting, resistance, effect, and scaling mechanics shared by those resolvers. Combat orchestration still enters through `CombatFlow`.
+`SpellDefinition` is authored content, `RealmzContent.magic` exposes its effective `SpellCatalog`, and `MagicRules` is the stable spell-resolution entry point used by gameplay. Package assembly applies scenario exact-ID overlays before the catalog is indexed, so every casting source resolves the same immutable definition. Follow character casts into `CharacterSpellResolver`, monster casts into `MonsterSpellResolver`, missile and thrown spell attacks into `SpellProjectileResolver`, and field or scenario effects into `FieldScenarioSpellResolver`. `SpellResolutionSupport` holds only the targeting, resistance, effect, and scaling mechanics shared by those resolvers. Combat orchestration still enters through `CombatFlow`.
 
 Known spells, scroll slots, charges, selected power, targets, and continuations remain typed and saveable. Every casting surface receives detached `SpellView` records with current-context availability.
 
@@ -12,7 +12,7 @@ Do not classify spells by their names or duplicate lists of special IDs. `Classi
 
 ## Where to start
 
-- Open `src/ui/magic` for the complete player-facing spellbook feature. Edit ordinary and Encounter layout in `spells_workspace.tscn`; `spells_screen.tscn` embeds it for the route.
+- Open `src/game/magic` for immutable spell lookup and `src/ui/magic` for the complete player-facing spellbook feature. Edit ordinary and Encounter layout in `spells_workspace.tscn`; `spells_screen.tscn` embeds it for the route.
 - Edit the reusable action, Fast Spell, and scroll records in their neighboring `spell_action_dock.tscn`, `fast_spell_row.tscn`, and `spell_scroll_slot_row.tscn` scenes.
 - Follow screen binding and presentation-local selection through `SpellsScreenController`; `SpellDetailFormatter` owns the display-only target, power, resistance, save, and scaled-range text. The controller reuses the authored workspace and instantiates only its exported variable record scenes.
 - Follow a submitted `MagicIntents` command through `PlayerIntent`, `GameSession`, and the field or combat workflow. Rules, target legality, costs, effects, RNG, and saved state never live in the UI.

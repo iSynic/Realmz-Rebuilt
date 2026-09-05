@@ -152,7 +152,7 @@ func _prepare_battle_inputs(state: GameState, content: RealmzContent, battle: Ba
 	for character: CharacterState in result.party_characters:
 		if character.current_health <= 0:
 			continue
-		var equipment := _context.equipment.combat_equipment(character, content.item_definitions())
+		var equipment := _context.equipment.combat_equipment(character, content.items.definitions())
 		if not equipment.valid:
 			return CombatFlowResult.failed(equipment.error_code, equipment.error_message)
 		result.initial_weapon_modes[character.id] = &"missile" if equipment.melee_weapon == null and equipment.missile_weapon != null else &"melee"
@@ -161,7 +161,7 @@ func _prepare_battle_inputs(state: GameState, content: RealmzContent, battle: Ba
 		for ally: MonsterState in state.party.allies():
 			if ally.current_health <= 0:
 				continue
-			var ally_definition := content.monster_by_id(ally.definition_id)
+			var ally_definition := content.combat.monster_by_id(ally.definition_id)
 			if ally_definition == null:
 				return CombatFlowResult.failed(&"unknown_ally", "Held-over ally '%s' references unavailable monster '%s'." % [ally.id, ally.definition_id])
 			result.ally_definitions[ally.id] = ally_definition
@@ -173,7 +173,7 @@ func _prepare_battle_inputs(state: GameState, content: RealmzContent, battle: Ba
 	)
 	result.authored_definitions = {}
 	for slot: BattleMonsterSlotDefinition in result.authored_slots:
-		var definition := content.monster_by_id_for_set(slot.monster_id, state.monster_set)
+		var definition := content.combat.monster_by_id_for_set(slot.monster_id, state.monster_set)
 		if definition == null:
 			return CombatFlowResult.failed(&"unknown_monster", "Battle '%s' references unavailable monster '%s'." % [battle.id, slot.monster_id])
 		result.authored_definitions[slot.monster_id] = definition
@@ -328,8 +328,8 @@ func continue_after_age_update(state: GameState, content: RealmzContent, rng: Re
 	_context.automation().remove_defeated_position(combat, target.id, defeated)
 	var pending_attack_index := maxi(0, combat.turns.active_turn.attack_index - 1) if combat.turns.active_turn != null and combat.pending_reaction == null else 0
 	var pending_attacker := combat.roster.monster_by_id(pending.actor_id)
-	var pending_definition := content.monster_by_id(pending_attacker.definition_id) if pending_attacker != null else null
-	var pending_weapon := content.item_by_id(pending_attacker.weapon_id) if pending_attacker != null and not pending_attacker.weapon_id.is_empty() else null
+	var pending_definition := content.combat.monster_by_id(pending_attacker.definition_id) if pending_attacker != null else null
+	var pending_weapon := content.items.item_by_id(pending_attacker.weapon_id) if pending_attacker != null and not pending_attacker.weapon_id.is_empty() else null
 	var pending_resolution := AttackResolution.new(true, defeated, pending.chance, pending.roll, pending.damage)
 	_context.actions().events().append_monster_attack_audio(events, pending_attacker, pending_definition, pending_attack_index, pending_weapon, pending_resolution, rng)
 	var attack_event := DomainEvent.new(&"combat_attack_resolved", {"actorId": pending.actor_id, "targetId": pending.target_id, "action": String(pending.action), "attackIndex": pending_attack_index, "hit": true, "damage": pending.damage, "defeated": defeated, "chance": pending.chance, "roll": pending.roll})
@@ -360,7 +360,7 @@ func continue_after_age_update(state: GameState, content: RealmzContent, rng: Re
 	if finish_if_resolved(state, content, events):
 		return CombatFlowResult.succeeded(events, true)
 	var monster := combat.roster.monster_by_id(pending.actor_id)
-	var definition := content.monster_by_id(monster.definition_id) if monster != null else null
+	var definition := content.combat.monster_by_id(monster.definition_id) if monster != null else null
 	if combat.turns.active_turn == null or combat.turns.active_turn.actor_id != pending.actor_id or pending.action != &"advance" or definition == null or combat.turns.active_turn.attack_index >= _context.automation().monster_actions().attack_limit(definition):
 		advance_turn(state, content, rng, events)
 	elif defeated:
@@ -376,7 +376,7 @@ func ally_selection_payload(state: GameState, content: RealmzContent) -> Diction
 	for monster: MonsterState in state.combat.roster.monsters():
 		if candidates.size() >= 32 or monster.current_health <= 0 or monster.traitor:
 			continue
-		var definition := content.monster_by_id(monster.definition_id)
+		var definition := content.combat.monster_by_id(monster.definition_id)
 		if definition == null or definition.can_summon == 0:
 			continue
 		candidates.append({
@@ -457,7 +457,7 @@ func fumble_recovery_payload(state: GameState, content: RealmzContent) -> Dictio
 	if queued.is_empty():
 		return {}
 	var item: ItemInstance = queued[0]
-	var definition := content.item_by_id(item.definition_id)
+	var definition := content.items.item_by_id(item.definition_id)
 	if definition == null:
 		return {}
 	var candidates: Array[Dictionary] = []
@@ -550,7 +550,7 @@ func apply_fumble_recovery(state: GameState, content: RealmzContent, action: Str
 		return CombatFlowResult.failed(&"invalid_fumble_recovery", "The selected character cannot receive the fumbled weapon.")
 	var character := state.party.character_by_id(character_id)
 	var queued: ItemInstance = state.combat.dropped_items.items()[0]
-	var definition := content.item_by_id(queued.definition_id)
+	var definition := content.items.item_by_id(queued.definition_id)
 	if character == null or definition == null or not _context.inventory.can_restore_item(character, queued, definition):
 		return CombatFlowResult.failed(&"invalid_fumble_recovery", "The selected character can no longer receive the fumbled weapon.")
 	var recovered := state.combat.dropped_items.remove(instance_id)

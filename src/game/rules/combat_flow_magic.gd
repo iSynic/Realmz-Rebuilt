@@ -48,9 +48,9 @@ func probe_character_item_spell(state: GameState, content: RealmzContent, caster
 		return CombatSpellCastProbe.blocked(&"spell_death_macro_pending", "A spell-triggered monster death macro must complete before another combat action.")
 	var caster := state.party.character_by_id(caster_id)
 	var instance := inventory_instance(caster, instance_id)
-	var item: ItemDefinition = null if instance == null else content.item_by_id(instance.definition_id)
-	var spell: SpellDefinition = null if item == null else content.spell_by_classic_id(item.special_2)
-	var use_probe := _context.inventory.classic_spell_item_probe(caster, instance, item, spell, content.race_by_id(caster.race_id) if caster != null else null, content.caste_by_id(caster.caste_id) if caster != null else null, true)
+	var item: ItemDefinition = null if instance == null else content.items.item_by_id(instance.definition_id)
+	var spell: SpellDefinition = null if item == null else content.magic.spell_by_classic_id(item.special_2)
+	var use_probe := _context.inventory.classic_spell_item_probe(caster, instance, item, spell, content.characters.race_by_id(caster.race_id) if caster != null else null, content.characters.caste_by_id(caster.caste_id) if caster != null else null, true)
 	if not use_probe.allowed:
 		return CombatSpellCastProbe.blocked(item_use_reason_code(instance, item, spell), use_probe.reason)
 	if ClassicSpellDispositionRules.combat_item_disposition(spell) != ClassicSpellDispositionRules.DISPOSITION_EXECUTABLE:
@@ -110,7 +110,7 @@ func probe_character_item_spell(state: GameState, content: RealmzContent, caster
 		for monster: MonsterState in combat.roster.monsters():
 			if monster.current_health <= 0 or not combat.battlefield.has_actor(monster.id) or not _selection.group_target_matches(spell.target_type, monster.traitor, caster.traitor):
 				continue
-			if content.monster_by_id(monster.definition_id) == null:
+			if content.combat.monster_by_id(monster.definition_id) == null:
 				return CombatSpellCastProbe.blocked(&"spell_target_unavailable", "An item spell target has no immutable monster definition.")
 			group_target_count += 1
 		if group_target_count == 0:
@@ -130,8 +130,8 @@ func use_spell_item(state: GameState, content: RealmzContent, caster_id: String,
 		return CombatFlowResult.failed(probe.reason, probe.reason_text)
 	var caster := state.party.character_by_id(caster_id)
 	var instance := inventory_instance(caster, instance_id)
-	var item := content.item_by_id(instance.definition_id)
-	var spell := content.spell_by_classic_id(item.special_2)
+	var item := content.items.item_by_id(instance.definition_id)
+	var spell := content.magic.spell_by_classic_id(item.special_2)
 	var authored_power := absi(item.special_1)
 	var power_level := state.combat.turns.staged_random_item_power(caster_id, instance.id) if authored_power == 8 else authored_power
 	var summon_spell: bool = CombatFlowSummoning.is_summon_spell(spell)
@@ -189,7 +189,7 @@ func _resolve_spell_item(state: GameState, content: RealmzContent, caster: Chara
 		var area_targets := _resolution.group_targets(state, content, caster, spell, selected_ids, true)
 		if not bool(area_targets.get("ok", false)):
 			return CombatFlowSpellRollback.item(state, rng, state_checkpoint, rng_checkpoint, &"item_target_unavailable", String(area_targets.get("error", "An item target is unavailable.")))
-		var area := _context.magic.resolve_character_area_projectile_item(caster, content.caste_by_id(caster.caste_id), item, area_targets.get("characters", []), area_targets.get("monsters", []), area_targets.get("definitions", []), spell, power_level, cast_level, rng) if ClassicSpellSourceRules.is_application_area_projectile_item_profile(spell) else _context.magic.resolve_character_group_spell(caster, area_targets.get("characters", []), area_targets.get("monsters", []), area_targets.get("definitions", []), spell, power_level, cast_level, rng, true, false, MonsterPolymorphContext.new(content, state.monster_set, state.difficulty, state.clock.day()))
+		var area := _context.magic.resolve_character_area_projectile_item(caster, content.characters.caste_by_id(caster.caste_id), item, area_targets.get("characters", []), area_targets.get("monsters", []), area_targets.get("definitions", []), spell, power_level, cast_level, rng) if ClassicSpellSourceRules.is_application_area_projectile_item_profile(spell) else _context.magic.resolve_character_group_spell(caster, area_targets.get("characters", []), area_targets.get("monsters", []), area_targets.get("definitions", []), spell, power_level, cast_level, rng, true, false, MonsterPolymorphContext.new(content, state.monster_set, state.difficulty, state.clock.day()))
 		if area == null or not area.cast:
 			return CombatFlowSpellRollback.item(state, rng, state_checkpoint, rng_checkpoint, &"item_spell_failed", "The area item spell could not be resolved.")
 		result = _resolution.commit(state, content, caster, spell, power_level, cast_level, area, rng, target_coordinate, shape, "classic-item", instance.id, false, [persistent_field])
@@ -201,7 +201,7 @@ func _resolve_spell_item(state: GameState, content: RealmzContent, caster: Chara
 				return CombatFlowSpellRollback.item(state, rng, state_checkpoint, rng_checkpoint, &"item_target_unavailable", "A repeated-item target became unavailable.")
 			selections.append(repeated_selection)
 		var repeated_fields: Array[RefCounted] = []
-		var repeated := _context.magic.resolve_character_repeated_spell(caster, selections, spell, power_level, cast_level, rng, false, _context.fields().repeated_field_callback(state, spell, caster.id, target_ids, power_level, cast_level, rng, repeated_fields), content.item_definitions())
+		var repeated := _context.magic.resolve_character_repeated_spell(caster, selections, spell, power_level, cast_level, rng, false, _context.fields().repeated_field_callback(state, spell, caster.id, target_ids, power_level, cast_level, rng, repeated_fields), content.items.definitions())
 		if repeated == null or not repeated.cast:
 			return CombatFlowSpellRollback.item(state, rng, state_checkpoint, rng_checkpoint, &"item_spell_failed", "The repeated item spell could not be resolved.")
 		result = _resolution.commit(state, content, caster, spell, power_level, cast_level, repeated, rng, INVALID_COORDINATE, 0, "classic-item", instance.id, false, repeated_fields)
@@ -224,7 +224,7 @@ func _resolve_spell_item(state: GameState, content: RealmzContent, caster: Chara
 		for monster: MonsterState in state.combat.roster.monsters():
 			if monster.current_health <= 0 or not state.combat.battlefield.has_actor(monster.id) or not _selection.group_target_matches(spell.target_type, monster.traitor, caster.traitor):
 				continue
-			var definition := content.monster_by_id(monster.definition_id)
+			var definition := content.combat.monster_by_id(monster.definition_id)
 			if definition == null:
 				return CombatFlowSpellRollback.item(state, rng, state_checkpoint, rng_checkpoint, &"spell_target_unavailable", "An item spell target has no immutable monster definition.")
 			monster_targets.append(monster)
@@ -256,8 +256,8 @@ func character_item_spell_options(state: GameState, content: RealmzContent, cast
 		return result
 	var staged_instance_id := state.combat.turns.staged_random_item_instance_id()
 	for instance: ItemInstance in caster.inventory():
-		var item := content.item_by_id(instance.definition_id)
-		var spell := content.spell_by_classic_id(item.special_2) if item != null else null
+		var item := content.items.item_by_id(instance.definition_id)
+		var spell := content.magic.spell_by_classic_id(item.special_2) if item != null else null
 		if item == null or spell == null or not staged_instance_id.is_empty() and staged_instance_id != instance.id:
 			continue
 		var authored_power := absi(item.special_1)
@@ -271,10 +271,10 @@ func character_item_spell_options(state: GameState, content: RealmzContent, cast
 			option.power_staged = authored_power == 8
 		result.append_array(power_options)
 	for instance: ItemInstance in caster.inventory():
-		var item := content.item_by_id(instance.definition_id)
+		var item := content.items.item_by_id(instance.definition_id)
 		if item == null or item.special_1 != -23 or not staged_instance_id.is_empty() and staged_instance_id != instance.id:
 			continue
-		var probe := _context.inventory.classic_door_item_probe(caster, instance, item, content.race_by_id(caster.race_id), content.caste_by_id(caster.caste_id), true, content.scenario.program_by_id("xap:%d" % item.special_5) != null)
+		var probe := _context.inventory.classic_door_item_probe(caster, instance, item, content.characters.race_by_id(caster.race_id), content.characters.caste_by_id(caster.caste_id), true, content.scenario.program_by_id("xap:%d" % item.special_5) != null)
 		if probe.allowed:
 			result.append(CombatItemOptionView.new(instance, item, null, 0, null, "Scenario action", &"automatic"))
 	return result
@@ -316,8 +316,8 @@ func character_item_spell_unavailable_reason(state: GameState, content: RealmzCo
 	if caster == null or caster.inventory().is_empty():
 		return "The active character carries no items."
 	for instance: ItemInstance in caster.inventory():
-		var item := content.item_by_id(instance.definition_id)
-		var spell := content.spell_by_classic_id(item.special_2) if item != null else null
+		var item := content.items.item_by_id(instance.definition_id)
+		var spell := content.magic.spell_by_classic_id(item.special_2) if item != null else null
 		if item != null and spell != null:
 			var probe := probe_character_item_spell(state, content, caster_id, caster_id if spell.target_type in [5, 7] else "", instance.id)
 			if not probe.allowed:
@@ -358,14 +358,14 @@ static func item_used_event(caster_id: String, instance_id: String, item: ItemDe
 
 
 func cast_spell(state: GameState, content: RealmzContent, caster_id: String, target_id: String, spell_id: String, power_level: int, rng: RealmzRng, target_coordinate: Vector2i = Vector2i(-100_000, -100_000), rotation: int = 0, target_ids: Array[String] = [], target_coordinates: Array[Vector2i] = []) -> CombatFlowResult:
-	var spell := content.spell_by_id(spell_id) if content != null else null
+	var spell := content.magic.spell_by_id(spell_id) if content != null else null
 	var effective_target_id := caster_id if spell != null and spell.target_type == 5 else target_id
 	var probe := _selection.probe_character_spell_cast(state, content, caster_id, effective_target_id, spell_id, power_level, target_coordinate, rotation, target_ids, target_coordinates)
 	if not probe.allowed:
 		return CombatFlowResult.failed(probe.reason, probe.reason_text)
 	var combat := state.combat
 	var caster := state.party.character_by_id(caster_id)
-	spell = content.spell_by_id(spell_id)
+	spell = content.magic.spell_by_id(spell_id)
 	var cast_level := spell.classic_tier()
 	if CombatFlowSummoning.is_summon_spell(spell):
 		return _context.summoning().cast_character_summon(state, content, caster, spell, power_level, rng, target_coordinates)
@@ -397,7 +397,7 @@ func cast_spell(state: GameState, content: RealmzContent, caster_id: String, tar
 				return CombatFlowResult.failed(&"spell_target_unavailable", "A selected repeated-spell target is unavailable.")
 			selections.append(repeated_selection)
 		var repeated_fields: Array[RefCounted] = []
-		var repeated := _context.magic.resolve_character_repeated_spell(caster, selections, spell, power_level, cast_level, rng, true, _context.fields().repeated_field_callback(state, spell, caster.id, target_ids, power_level, cast_level, rng, repeated_fields), content.item_definitions())
+		var repeated := _context.magic.resolve_character_repeated_spell(caster, selections, spell, power_level, cast_level, rng, true, _context.fields().repeated_field_callback(state, spell, caster.id, target_ids, power_level, cast_level, rng, repeated_fields), content.items.definitions())
 		if repeated == null or not repeated.cast:
 			return CombatFlowResult.failed(&"spell_cast_failed", "The repeated-target spell could not be cast with the available spell points.")
 		return _resolution.commit(state, content, caster, spell, power_level, cast_level, repeated, rng, INVALID_COORDINATE, 0, "classic", "", true, repeated_fields)
@@ -438,7 +438,7 @@ func probe_character_scroll_cast(state: GameState, content: RealmzContent, caste
 	if not _context.equipment.has_equipped_scroll_case(caster, content):
 		return CombatSpellCastProbe.blocked(&"scroll_case_not_equipped", "Equip a scroll case before using its spells.")
 	var scroll := caster.scroll_at(scroll_slot)
-	var spell := content.spell_by_id(scroll.spell_id) if scroll != null and not scroll.is_empty() else null
+	var spell := content.magic.spell_by_id(scroll.spell_id) if scroll != null and not scroll.is_empty() else null
 	if scroll_slot < 0 or scroll_slot >= 5 or scroll == null or scroll.is_empty() or spell == null or scroll.power < 1 or scroll.power > 7:
 		return CombatSpellCastProbe.blocked(&"invalid_scroll_slot", "This scroll slot is empty or invalid.")
 	if not spell.in_combat:
@@ -516,7 +516,7 @@ func use_combat_scroll(state: GameState, content: RealmzContent, caster_id: Stri
 	var rng_checkpoint := rng.checkpoint()
 	var caster := state.party.character_by_id(caster_id)
 	var scroll := caster.scroll_at(scroll_slot)
-	var spell := content.spell_by_id(scroll.spell_id)
+	var spell := content.magic.spell_by_id(scroll.spell_id)
 	if ClassicSpellSpecialEffectRules.is_combat_phase_spell(spell) and target_coordinate == INVALID_COORDINATE: return CombatFlowResult.failed(&"scroll_area_target_required", "Choose a battlefield destination for Phase.")
 	var power_level := scroll.power
 	var cast_level := spell.classic_tier()
@@ -569,7 +569,7 @@ func use_combat_scroll(state: GameState, content: RealmzContent, caster_id: Stri
 				return CombatFlowSpellRollback.scroll(state, rng, state_checkpoint, rng_checkpoint, &"scroll_target_unavailable", "A repeated-scroll target became unavailable.")
 			selections.append(selection)
 		var repeated_fields: Array[RefCounted] = []
-		var repeated := _context.magic.resolve_character_repeated_spell(caster, selections, spell, power_level, cast_level, rng, false, _context.fields().repeated_field_callback(state, spell, caster.id, target_ids, power_level, cast_level, rng, repeated_fields), content.item_definitions())
+		var repeated := _context.magic.resolve_character_repeated_spell(caster, selections, spell, power_level, cast_level, rng, false, _context.fields().repeated_field_callback(state, spell, caster.id, target_ids, power_level, cast_level, rng, repeated_fields), content.items.definitions())
 		if repeated == null or not repeated.cast:
 			return CombatFlowSpellRollback.scroll(state, rng, state_checkpoint, rng_checkpoint, &"scroll_spell_failed", "The repeated scroll could not be resolved.")
 		result = _resolution.commit(state, content, caster, spell, power_level, cast_level, repeated, rng, INVALID_COORDINATE, 0, "classic-scroll", "", false, repeated_fields)

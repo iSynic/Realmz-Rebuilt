@@ -39,8 +39,8 @@ static func thief_vm_continuation_is_valid(content: RealmzContent, state: GameSt
 	if runtime == null or runtime.kind not in [ScenarioRuntimeContinuation.CLASSIC_THIEF_ENCOUNTER, ScenarioRuntimeContinuation.CLASSIC_PICK_LOCK, ScenarioRuntimeContinuation.CLASSIC_THIEF_RESOLUTION]:
 		return true
 	var owner := runtime.body as ScenarioThiefContinuationBody
-	var encounter := content.complex_encounter_by_id(owner.encounter_id) if owner != null else null
-	var thief := content.thief_encounter_by_id(encounter.thief_success) if encounter != null and encounter.thief else null
+	var encounter := content.scenario_records.complex_encounter_by_id(owner.encounter_id) if owner != null else null
+	var thief := content.scenario_records.thief_encounter_by_id(encounter.thief_success) if encounter != null and encounter.thief else null
 	var request := vm.pending_request()
 	if owner == null or encounter == null or thief == null or request == null:
 		return false
@@ -61,7 +61,7 @@ static func thief_vm_continuation_is_valid(content: RealmzContent, state: GameSt
 
 static func _valid_thief_request(content: RealmzContent, state: GameState, thief: ThiefEncounterDefinition, body: ThiefEncounterRequestBody) -> bool:
 	var prompt_id := absi(thief.prompts()[0]) if not thief.prompts().is_empty() else 0
-	var message := content.message_by_id(prompt_id)
+	var message := content.scenario_records.message_by_id(prompt_id)
 	if body.prompt != (message.text if message != null else "Choose a thief action."):
 		return false
 	var opening_sounds := thief.prompt_sounds()
@@ -106,7 +106,7 @@ static func _valid_thief_resolution_request(content: RealmzContent, state: GameS
 	var sound_ids := thief.success_sounds() if owner.succeeded else thief.failure_sounds()
 	var signed_message_id := text_ids[owner.action_index]
 	var message_id := absi(signed_message_id)
-	var message := content.message_by_id(message_id)
+	var message := content.scenario_records.message_by_id(message_id)
 	return signed_message_id > 0 and message != null and body.has_message_id and body.message_id == message_id and body.prompt == message.text and body.has_sound_id and body.sound_id == sound_ids[owner.action_index] and (not owner.trap_pending or not owner.succeeded and flags[9])
 
 
@@ -117,10 +117,10 @@ static func reward_continuation_is_valid(content: RealmzContent, state: GameStat
 		return false
 	if (reward.origin == &"battle" and reward.battle_stage not in [ClassicRewardState.ORDINARY_BATTLE_STAGE, ClassicRewardState.BONUS_BATTLE_STAGE]) or (reward.origin != &"battle" and (reward.battle_stage != ClassicRewardState.NO_BATTLE_STAGE or reward.bonus_treasure_classic_id != 0)) or (reward.battle_stage == ClassicRewardState.BONUS_BATTLE_STAGE and reward.bonus_treasure_classic_id != 0):
 		return false
-	if reward.bonus_treasure_classic_id != 0 and content.treasure_by_classic_id(reward.bonus_treasure_classic_id) == null:
+	if reward.bonus_treasure_classic_id != 0 and content.economy.treasure_by_classic_id(reward.bonus_treasure_classic_id) == null:
 		return false
 	for item: ItemInstance in reward.items():
-		if content.item_by_id(item.definition_id) == null:
+		if content.items.item_by_id(item.definition_id) == null:
 			return false
 	var character_ids: Dictionary = {}
 	for character_id: Variant in reward.experience_awards():

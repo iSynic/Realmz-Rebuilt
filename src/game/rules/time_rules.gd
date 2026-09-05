@@ -26,8 +26,8 @@ func advance_minutes(state: GameState, content: RealmzContent, minutes: int, con
 	var events: Array[DomainEvent] = [DomainEvent.new(&"time_advanced", {"minutes": elapsed, "day": state.clock.day(), "hour": state.clock.hour(), "minute": state.clock.minute()})]
 	for day_index: int in state.clock.day() - previous_day:
 		for character: CharacterState in state.party.characters():
-			var race := content.race_by_id(character.race_id) if content != null else null
-			var caste := content.caste_by_id(character.caste_id) if content != null else null
+			var race := content.characters.race_by_id(character.race_id) if content != null else null
+			var caste := content.characters.caste_by_id(character.caste_id) if content != null else null
 			if race == null or caste == null:
 				continue
 			var aging := _characters.advance_age_days(character, race, caste, 1)
@@ -116,7 +116,7 @@ func _restore_half_day_health(party: PartyState, content: RealmzContent) -> Arra
 
 
 func _consume_iron_ration(party: PartyState, content: RealmzContent) -> Dictionary:
-	var definition := content.item_by_classic_id(877)
+	var definition := content.items.item_by_classic_id(877)
 	if definition == null:
 		return {}
 	for character: CharacterState in party.characters():

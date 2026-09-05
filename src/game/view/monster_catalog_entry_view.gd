@@ -35,7 +35,7 @@ func _init(definition: MonsterDefinition, content: RealmzContent = null) -> void
 	attack_count = definition.attack_count
 	magic_attack_count = definition.magic_attack_count
 	if content != null and not definition.weapon_id.is_empty():
-		var weapon := content.item_by_id(definition.weapon_id)
+		var weapon := content.items.item_by_id(definition.weapon_id)
 		if weapon != null:
 			weapon_name = weapon.name
 	for index: int in 6:

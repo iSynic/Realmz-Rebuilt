@@ -80,13 +80,13 @@ func _start_classic_battle(action: ClassicActionDefinition, request_id: String) 
 		if sound_id != 0:
 			prelude.append(DomainEvent.new(&"sound_requested", {"soundId": sound_id, "source": "classic-battle"}))
 		if message_id != 0:
-			var message := _content.message_by_id(absi(message_id))
+			var message := _content.scenario_records.message_by_id(absi(message_id))
 			if message == null:
 				return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic opcode %d references unavailable battle message %d." % [action.opcode, message_id])
 			prelude.append(DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-battle"}))
 	var caller_mode := action.extra_code[4] if action.opcode in [2, 48] and action.extra_code.size() > 4 else 0
 	var caller := ScenarioBattleCaller.classic(action.opcode, action.gosub, caller_mode, action.extra_code[4] if action.opcode == 107 and action.extra_code.size() > 4 else action.extra_code[2] if action.opcode == 56 and action.extra_code.size() > 2 else 0)
-	var battle := _content.battle_by_classic_id(absi(battle_id))
+	var battle := _content.combat.battle_by_classic_id(absi(battle_id))
 	if battle == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_battle", "Classic opcode %d references unavailable battle %d." % [action.opcode, battle_id])
 	var participants: Array[String] = []
@@ -152,7 +152,7 @@ func start_battle_definition(battle: BattleDefinition, request_id: String, sourc
 		return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message)
 	var events: Array[DomainEvent] = []
 	if battle.message_before_id != 0:
-		var before := _content.message_by_id(absi(battle.message_before_id))
+		var before := _content.scenario_records.message_by_id(absi(battle.message_before_id))
 		if before == null:
 			return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Battle '%s' references unavailable before-message %d." % [battle.id, battle.message_before_id])
 		events.append(DomainEvent.new(&"message_shown", {"messageId": before.id, "text": before.text, "source": "classic-battle-definition"}))

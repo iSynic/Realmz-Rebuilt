@@ -114,7 +114,7 @@ func _combatant_payloads(combat_view: CombatView) -> Array[Dictionary]:
 		if _game_state.combat.battlefield == null or not _game_state.combat.battlefield.has_actor(character_state.id):
 			continue
 		var character := CharacterView.new(character_state, _content)
-		var equipment := _rules.equipment.combat_equipment(character_state, _content.item_definitions())
+		var equipment := _rules.equipment.combat_equipment(character_state, _content.items.definitions())
 		character.apply_equipment(equipment)
 		var payload := _character_combatant_payload(character, equipment)
 		_append_combatant_position_facts(payload, combat_view.active_actor_id, character.id, terrain_set)
@@ -123,7 +123,7 @@ func _combatant_payloads(combat_view: CombatView) -> Array[Dictionary]:
 	for monster: MonsterView in combat_view.monsters:
 		if _game_state.combat.battlefield == null or not _game_state.combat.battlefield.has_actor(monster.id):
 			continue
-		var payload := _monster_combatant_payload(monster, _content.monster_by_id(monster.definition_id))
+		var payload := _monster_combatant_payload(monster, _content.combat.monster_by_id(monster.definition_id))
 		_append_combatant_position_facts(payload, combat_view.active_actor_id, monster.id, terrain_set)
 		combatants_by_id[monster.id] = payload
 	return _ordered_combatants(combat_view.turn_order, combatants_by_id)
@@ -197,7 +197,7 @@ func _fast_spell_payloads(actor_id: String, spell_casts: Array[Dictionary]) -> A
 		return result
 	for index: int in character.fast_spells().size():
 		var binding := character.fast_spell_at(index)
-		var spell := _content.spell_by_id(binding.spell_id) if binding != null and not binding.is_empty() else null
+		var spell := _content.magic.spell_by_id(binding.spell_id) if binding != null and not binding.is_empty() else null
 		var enabled := _fast_spell_is_available(binding, spell, spell_casts)
 		var reason := "This Fast Spell slot is undefined." if binding == null or binding.is_empty() else "The stored spell is unavailable to this character." if spell == null or not character.known_spells().has(binding.spell_id) else "No legal target or casting action is currently available."
 		result.append({"slot": index, "spellId": binding.spell_id if binding != null else "", "spellName": spell.name if spell != null else "Undefined Spell", "power": binding.power if binding != null else 0, "enabled": enabled, "reason": "" if enabled else reason})

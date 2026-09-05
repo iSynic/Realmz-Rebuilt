@@ -199,7 +199,7 @@ func _branch_to_random_destination(action: ClassicActionDefinition) -> ScenarioR
 	if action.extra_code[3] != 0:
 		events.append(DomainEvent.new(&"sound_requested", {"soundId": absi(action.extra_code[3]), "waitForCompletion": action.extra_code[3] < 0, "source": "classic-opcode-85"}))
 	if action.extra_code[4] != 0:
-		var message := _content.message_by_id(absi(action.extra_code[4]))
+		var message := _content.scenario_records.message_by_id(absi(action.extra_code[4]))
 		if message == null:
 			return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic opcode 85 references unavailable message %d." % action.extra_code[4])
 		events.append(DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-opcode-85"}))
@@ -270,13 +270,13 @@ func _branch_on_misc(action: ClassicActionDefinition) -> ScenarioRuntimeOperatio
 	match test_kind:
 		0:
 			for character: CharacterState in characters:
-				var caste := _content.caste_by_id(character.caste_id)
+				var caste := _content.characters.caste_by_id(character.caste_id)
 				if caste != null and caste.classic_id == absi(expected):
 					matched = true
 					break
 		1:
 			for character: CharacterState in characters:
-				var race := _content.race_by_id(character.race_id)
+				var race := _content.characters.race_by_id(character.race_id)
 				if race != null and race.classic_id == absi(expected):
 					matched = true
 					break
@@ -291,7 +291,7 @@ func _branch_on_misc(action: ClassicActionDefinition) -> ScenarioRuntimeOperatio
 			matched = _game_state.party_camping
 		5:
 			for character: CharacterState in characters:
-				var caste := _content.caste_by_id(character.caste_id)
+				var caste := _content.characters.caste_by_id(character.caste_id)
 				if caste != null and caste.caste_class == absi(expected):
 					matched = true
 					break
@@ -300,7 +300,7 @@ func _branch_on_misc(action: ClassicActionDefinition) -> ScenarioRuntimeOperatio
 				return ScenarioRuntimeOperationResult.failed(&"invalid_race_descriptor", "Classic opcode 86 race descriptor is outside 1 through 32.")
 			var descriptor_mask := 1 << (absi(expected) - 1)
 			for character: CharacterState in characters:
-				var race := _content.race_by_id(character.race_id)
+				var race := _content.characters.race_by_id(character.race_id)
 				if race != null and (race.descriptor_flags & descriptor_mask) != 0:
 					matched = true
 					break
@@ -370,7 +370,7 @@ func _opcode_25_trigger_id(context: ScenarioExecutionContext) -> String:
 	for program_id: String in [context.origin_program_id, context.original_program_id]:
 		if program_id.begins_with("trigger:"):
 			var trigger_id := program_id.trim_prefix("trigger:")
-			var trigger := _content.trigger_by_id(trigger_id)
+			var trigger := _content.scenario_records.trigger_by_id(trigger_id)
 			if trigger != null and trigger.program_id == program_id:
 				return trigger.id
 	return ""
@@ -392,7 +392,7 @@ func replace_scenario_program(action: ClassicActionDefinition, context: Scenario
 		-2:
 			target_program_id = "complex:%d:result:%d" % [int(values[1]), int(values[4])]
 		_:
-			var current_trigger := _content.trigger_by_id(context.trigger_id)
+			var current_trigger := _content.scenario_records.trigger_by_id(context.trigger_id)
 			var current_map: MapDefinition = null
 			if current_trigger != null and not current_trigger.map_id.is_empty():
 				current_map = _content.world.map_by_id(current_trigger.map_id)
@@ -408,7 +408,7 @@ func replace_scenario_program(action: ClassicActionDefinition, context: Scenario
 			var target_map := _content.world.map_by_type_and_index(level_type, int(values[0]))
 			if target_map == null:
 				return ScenarioRuntimeOperationResult.failed(&"unknown_map", "Classic opcode 7 references unavailable %s map %d." % [String(level_type), int(values[0])])
-			var target_trigger := _content.trigger_by_map_record(target_map.id, int(values[1]))
+			var target_trigger := _content.scenario_records.trigger_by_map_record(target_map.id, int(values[1]))
 			if target_trigger == null:
 				return ScenarioRuntimeOperationResult.failed(&"unknown_trigger", "Classic opcode 7 references unavailable Action Point record %d on map '%s'." % [int(values[1]), target_map.id])
 			target_program_id = target_trigger.program_id
@@ -421,10 +421,10 @@ func replace_scenario_program(action: ClassicActionDefinition, context: Scenario
 
 
 func branch_to_trigger_program(action: ClassicActionDefinition, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
-	var current_trigger := _content.trigger_by_id(context.trigger_id)
+	var current_trigger := _content.scenario_records.trigger_by_id(context.trigger_id)
 	if current_trigger == null:
 		return ScenarioRuntimeOperationResult.failed(&"missing_trigger_context", "Classic opcode 8 requires an Action Point origin.")
-	var target_trigger := _content.trigger_by_map_record(current_trigger.map_id, action.operand_id)
+	var target_trigger := _content.scenario_records.trigger_by_map_record(current_trigger.map_id, action.operand_id)
 	if target_trigger == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_trigger", "Classic opcode 8 references unavailable Action Point record %d on map '%s'." % [action.operand_id, current_trigger.map_id])
 	return ScenarioRuntimeOperationResult.completed(target_trigger.program_id, [DomainEvent.new(&"scenario_program_redirected", {"triggerId": current_trigger.id, "targetTriggerId": target_trigger.id, "source": "classic"})], ScenarioVmDirective.branch_program(target_trigger.program_id, false, context))

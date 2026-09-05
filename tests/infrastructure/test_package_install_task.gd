@@ -84,7 +84,7 @@ func _test_bundled_load_task() -> void:
 	assert_true(task.start("res://src/storage/characters/realmz-classic-character-library.realmz2", "realmz-classic-character-library", "c7e093f46bcca49d2382d68c2995ae5ff90c0e706dbd538682b613af9b80e0bd"), "the built-in library starts outside the first-frame boundary")
 	while task.is_running() and Time.get_ticks_msec() < deadline: OS.delay_msec(POLL_DELAY_MILLISECONDS)
 	var result: PackageLoadResult = task.take_result()
-	assert_true(result != null and result.is_ok() and result.content.race_definitions().size() == 30, "the asynchronous built-in load returns the complete trusted Classic library"); assert_true(task.take_result() == null, "the built-in result is consumed exactly once"); task.shutdown()
+	assert_true(result != null and result.is_ok() and result.content.characters.race_definitions().size() == 30, "the asynchronous built-in load returns the complete trusted Classic library"); assert_true(task.take_result() == null, "the built-in result is consumed exactly once"); task.shutdown()
 
 
 func _test_package_host_prewarm(campaign_id: String, package_hash: String) -> void:

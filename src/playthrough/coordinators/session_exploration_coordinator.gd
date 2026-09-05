@@ -174,7 +174,7 @@ func continue_timed_encounters(events: Array[DomainEvent]) -> SessionCoordinator
 	var timed_day = exploration.timed_day
 	if timed_day <= 0:
 		return null
-	var encounters = _context.content.timed_encounters()
+	var encounters = _context.content.scenario_records.timed_encounters()
 	while exploration.timed_encounter_index < encounters.size():
 		var index = exploration.timed_encounter_index
 		var encounter = encounters[index]
@@ -269,7 +269,7 @@ func continue_post_move(events: Array[DomainEvent]) -> SessionCoordinatorResult:
 		return SessionCoordinatorResult.completed(events)
 	var active_trigger_id = exploration.active_trigger_id
 	if not active_trigger_id.is_empty():
-		var completed_trigger = _context.content.trigger_by_id(active_trigger_id)
+		var completed_trigger = _context.content.scenario_records.trigger_by_id(active_trigger_id)
 		if completed_trigger == null:
 			_context.session_continuation.clear()
 			return SessionCoordinatorResult.failed(&"invalid_session_continuation", "Completed trigger continuation is unavailable.", events)
@@ -287,7 +287,7 @@ func continue_post_move(events: Array[DomainEvent]) -> SessionCoordinatorResult:
 	while exploration.trigger_index < trigger_ids.size():
 		var trigger_index = exploration.trigger_index
 		var trigger_id: String = String(trigger_ids[trigger_index])
-		var trigger = _context.content.trigger_by_id(trigger_id)
+		var trigger = _context.content.scenario_records.trigger_by_id(trigger_id)
 		if trigger == null or _context.state.world.triggers.trigger_is_disabled(trigger_id):
 			exploration.trigger_index = trigger_ids.size()
 			break
@@ -420,7 +420,7 @@ func continue_random_regions(map: MapDefinition, events: Array[DomainEvent]) -> 
 			if effective.battle_minimum != 0 and not _context.state.party.conditions.is_active(7):
 				var good_surprise_roll = _context.rng.draw(100, StringName("random-region.%s.good-surprise" % region.id))
 				if good_surprise_roll < region.option:
-					var message = _context.content.message_by_id(absi(region.text_id))
+					var message = _context.content.scenario_records.message_by_id(absi(region.text_id))
 					var prompt = message.text if message != null else "Take the advantage and enter battle?"
 					exploration.active_random_region_id = region.id
 					exploration.random_battle_stage = &"surprise-choice"
@@ -489,7 +489,7 @@ func _begin_boat_choice(result: ExplorationTimeWorkflow.MovementTransitionResult
 func start_random_battle(region: RandomEncounterRegion, surprise: int, events: Array[DomainEvent]) -> SessionCoordinatorResult:
 	var effective := _context.state.world.triggers.random_region(region)
 	var battle_id := _context.rng.draw_between_classic(effective.battle_minimum, effective.battle_maximum, StringName("random-region.%s.battle" % region.id))
-	var battle := _context.content.battle_by_classic_id(absi(battle_id))
+	var battle := _context.content.combat.battle_by_classic_id(absi(battle_id))
 	if battle == null:
 		_context.session_interaction = null
 		_context.session_continuation.clear()

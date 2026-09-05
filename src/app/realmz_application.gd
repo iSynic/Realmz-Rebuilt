@@ -278,7 +278,7 @@ func _complete_package_install(prepared: PreparedPackage, initial_seed: int) -> 
 		_status_label.text = "Package rejected • %s" % prepared.error_message
 		_shell_presenter.status.set_status(_status_label.text, true)
 		return SessionStep.failed(0, prepared.error_code, prepared.error_message)
-	prepared.content.set_application_appearance_catalog(character_files.library_content())
+	prepared.content.characters.install_application_catalog(character_files.library_content().characters)
 	var step := session_controller.start(prepared.content, initial_seed)
 	if step.state == SessionStep.State.FAILED:
 		_status_label.text = "Session start failed • %s" % step.error_message

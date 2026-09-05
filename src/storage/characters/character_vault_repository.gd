@@ -235,13 +235,13 @@ func campaign_eligibility(record: CharacterVaultRecord, content: RealmzContent) 
 	if record == null or record.state == null or content == null:
 		result.reasons.append("Character or campaign content is unavailable.")
 		return result
-	var race := content.race_by_id(record.state.race_id)
-	var caste := content.caste_by_id(record.state.caste_id)
+	var race := content.characters.race_by_id(record.state.race_id)
+	var caste := content.characters.caste_by_id(record.state.caste_id)
 	if race == null:
 		result.reasons.append("Race '%s' is not defined by this campaign." % record.state.race_id)
 	if caste == null:
 		result.reasons.append("Class '%s' is not defined by this campaign." % record.state.caste_id)
-	var restrictions := content.campaign_definition().restrictions
+	var restrictions := content.campaign.restrictions
 	if restrictions.banned_races.has(record.state.race_id):
 		result.reasons.append("This campaign does not allow race '%s'." % record.state.race_id)
 	if restrictions.banned_castes.has(record.state.caste_id):
@@ -253,26 +253,26 @@ func campaign_eligibility(record: CharacterVaultRecord, content: RealmzContent) 
 	if caste != null and not caste.eligible_race_ids.is_empty() and not caste.eligible_race_ids.has(record.state.race_id):
 		result.reasons.append("Class '%s' is not available to race '%s'." % [caste.name, race.name if race != null else record.state.race_id])
 	for item: ItemInstance in record.state.inventory():
-		if content.item_by_id(item.definition_id) == null:
+		if content.items.item_by_id(item.definition_id) == null:
 			result.reasons.append("Item '%s' is not defined by this campaign." % item.definition_id)
 	for spell_id: String in record.state.known_spells():
-		if content.spell_by_id(spell_id) == null:
+		if content.magic.spell_by_id(spell_id) == null:
 			result.reasons.append("Spell '%s' is not defined by this campaign." % spell_id)
 	for binding: FastSpellBindingState in record.state.fast_spells():
 		if binding.is_empty():
 			continue
-		var bound_spell := content.spell_by_id(binding.spell_id)
+		var bound_spell := content.magic.spell_by_id(binding.spell_id)
 		if bound_spell == null:
 			result.reasons.append("Fast Spell '%s' is not defined by this campaign." % binding.spell_id)
 		elif not record.state.known_spells().has(binding.spell_id):
 			result.reasons.append("Fast Spell '%s' is no longer known by this character." % binding.spell_id)
 		elif binding.power < 1 or binding.power > 7 or bound_spell.cost < 0 and binding.power != 1:
 			result.reasons.append("Fast Spell '%s' uses an invalid power." % binding.spell_id)
-	if content.has_character_appearance_catalog():
-		var portrait := content.appearance_by_id(record.state.portrait_id) if not record.state.portrait_id.is_empty() else null
+	if content.characters.has_complete_appearance_catalog():
+		var portrait := content.characters.appearance_by_id(record.state.portrait_id) if not record.state.portrait_id.is_empty() else null
 		if not record.state.portrait_id.is_empty() and (portrait == null or portrait.kind != CharacterAppearanceDefinition.PORTRAIT):
 			result.reasons.append("Portrait '%s' is not defined by this campaign package." % record.state.portrait_id)
-		var combat_icon := content.appearance_by_id(record.state.combat_icon_id) if not record.state.combat_icon_id.is_empty() else null
+		var combat_icon := content.characters.appearance_by_id(record.state.combat_icon_id) if not record.state.combat_icon_id.is_empty() else null
 		if not record.state.combat_icon_id.is_empty() and (combat_icon == null or combat_icon.kind != CharacterAppearanceDefinition.COMBAT_ICON):
 			result.reasons.append("Combat icon '%s' is not defined by this campaign package." % record.state.combat_icon_id)
 	if record.state.level < 1:

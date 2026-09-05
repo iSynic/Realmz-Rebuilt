@@ -240,13 +240,13 @@ func _test_party_and_creator_persistence(content: RealmzContent) -> void:
 	assert_equal(restored_setup.view().character_draft, null, "acceptance clears the provisional character")
 	assert_true(restored_setup.view().party_setup_available, "finalizing a character does not implicitly leave party setup")
 	assert_equal(restored_setup.view().party_members.size(), 1, "the finalized character appears in the detached setup view")
-	assert_equal(restored_setup.view().party_members[0].items.size(), content.caste_by_id(member.caste_id).start_items().size(), "acceptance adds the caste's initial items after the spell-selection stage")
+	assert_equal(restored_setup.view().party_members[0].items.size(), content.characters.caste_by_id(member.caste_id).start_items().size(), "acceptance adds the caste's initial items after the spell-selection stage")
 	var finalized_character := restored_setup.snapshot().game_state.party.characters()[0]
-	var finalized_caste := content.caste_by_id(finalized_character.caste_id)
-	var first_start_item := content.item_by_id(finalized_caste.start_items()[0])
+	var finalized_caste := content.characters.caste_by_id(finalized_character.caste_id)
+	var first_start_item := content.items.item_by_id(finalized_caste.start_items()[0])
 	assert_true(finalized_character.inventory()[0].identified, "Castle starting equipment enters the finalized character already identified")
 	assert_equal(finalized_character.inventory()[0].charges, first_start_item.initial_charges, "starting equipment preserves the authored initial charge count")
-	assert_equal(finalized_character.carried_load, RealmzRules.new().inventory.calculated_load(finalized_character, content.item_definitions()), "finalization materializes exact wealth and item weight into carried load")
+	assert_equal(finalized_character.carried_load, RealmzRules.new().inventory.calculated_load(finalized_character, content.items.definitions()), "finalization materializes exact wealth and item weight into carried load")
 	assert_true(restored_setup.view().availability(&"begin_adventure").enabled, "a nonempty setup may explicitly begin")
 
 	var advanced_session := GameSession.new()
@@ -254,7 +254,7 @@ func _test_party_and_creator_persistence(content: RealmzContent) -> void:
 	var advanced_spec := CharacterCreationSpec.new("Veteran", member.race_id, member.caste_id, member.gender, "", "", 3)
 	var advanced_generation := advanced_session.submit_intent(PartyIntents.generate_character_draft(advanced_spec))
 	assert_equal(advanced_generation.state, SessionStep.State.COMPLETED, "a fixed higher starting level reaches the ordinary saveable Review boundary")
-	assert_equal([advanced_session.view().character_draft.level, advanced_session.view().character_draft.experience], [3, -content.caste_by_id(member.caste_id).progression.victory_threshold(2)], "the session exposes the target level and matching caste victory threshold without a shortcut profile")
+	assert_equal([advanced_session.view().character_draft.level, advanced_session.view().character_draft.experience], [3, -content.characters.caste_by_id(member.caste_id).progression.victory_threshold(2)], "the session exposes the target level and matching caste victory threshold without a shortcut profile")
 	var invalid_level_spec := CharacterCreationSpec.new("Invalid Veteran", member.race_id, member.caste_id, member.gender, "", "", 2)
 	assert_equal(advanced_session.submit_intent(PartyIntents.generate_character_draft(invalid_level_spec)).error_code, &"invalid_starting_level", "non-Classic starting levels fail before consuming another character roll")
 	var staged_setup_save := restored_setup.snapshot()
@@ -266,7 +266,7 @@ func _test_party_and_creator_persistence(content: RealmzContent) -> void:
 	imported.caste_id = setup_view.caste_options[0].id
 	imported.maximum_load = 100_000
 	imported.money.gold = 7
-	var imported_definition := content.item_definitions()[0]
+	var imported_definition := content.items.definitions()[0]
 	imported.set_inventory([ItemInstance.new("vault.character.one.item.0", imported_definition.id, imported_definition.initial_charges, false, true)])
 	imported.carried_load = 0
 	var wrong_kind_import := CharacterStateCodec.copy(imported)
@@ -360,7 +360,7 @@ func _test_party_and_creator_persistence(content: RealmzContent) -> void:
 
 
 func _test_combat_and_reward_persistence(content: RealmzContent) -> void:
-	var fumble_item := content.item_by_id("classic.item.6")
+	var fumble_item := content.items.item_by_id("classic.item.6")
 	assert_not_null(fumble_item, "the integration fixture contains a charged Classic melee weapon")
 	if fumble_item != null:
 		var fumble_session := GameSession.new()
@@ -446,14 +446,14 @@ func _test_combat_and_reward_persistence(content: RealmzContent) -> void:
 	assert_true(released.events.any(func(event: DomainEvent) -> bool: return event.kind == &"session_ended" and event.payload.get("reason") == "party-defeat"), "a Party Death hook without revival releases the defeated session")
 	assert_false(ordinary_defeat.view().session_started, "ordinary total defeat does not return to exploration")
 
-	var battle: BattleDefinition = content.battle_by_id("classic.battle.0")
+	var battle: BattleDefinition = content.combat.battle_by_id("classic.battle.0")
 	assert_not_null(battle, "the integration fixture exposes a terminal reward battle")
 	if battle != null:
 		var reward_session := GameSession.new()
 		reward_session.start(content, 71)
 		var reward_character := CharacterState.new("fixture.reward-recipient", "Reward Hero", 20, 20)
-		reward_character.race_id = content.race_definitions()[0].id
-		reward_character.caste_id = content.caste_definitions()[0].id
+		reward_character.race_id = content.characters.race_definitions()[0].id
+		reward_character.caste_id = content.characters.caste_definitions()[0].id
 		reward_character.experience = -10_000_000
 		reward_character.maximum_load = 5_000
 		reward_session._context.state.party = PartyState.new(content.start_map_id, content.start_coordinate, [reward_character])
@@ -479,7 +479,7 @@ func _test_combat_and_reward_persistence(content: RealmzContent) -> void:
 			reward_character.maximum_spell_points = 100
 			reward_character.spell_points = 100
 			var legal_combat_spell: SpellDefinition = null
-			for spell: SpellDefinition in content.spell_definitions():
+			for spell: SpellDefinition in content.magic.definitions():
 				reward_character.set_known_spells([spell.id])
 				if not reward_session._context.rules.combat_flow.magic.selection().character_spell_options(reward_session._context.state, content, reward_character.id).is_empty():
 					legal_combat_spell = spell
@@ -550,7 +550,7 @@ func _test_combat_and_reward_persistence(content: RealmzContent) -> void:
 
 
 func _complete_public_defeat(session: GameSession, content: RealmzContent, character: CharacterState) -> SessionStep:
-	var battle := content.battle_by_id("classic.battle.0")
+	var battle := content.combat.battle_by_id("classic.battle.0")
 	if battle == null:
 		return SessionStep.failed(session.view().revision, &"missing_fixture_battle", "The fixture battle is unavailable.")
 	character.current_health = 1
@@ -578,8 +578,8 @@ func _complete_public_defeat(session: GameSession, content: RealmzContent, chara
 
 
 func _begin_fixture_adventure(session: GameSession, content: RealmzContent) -> void:
-	var races := content.race_definitions()
-	var castes := content.caste_definitions()
+	var races := content.characters.race_definitions()
+	var castes := content.characters.caste_definitions()
 	assert_false(races.is_empty() or castes.is_empty(), "playable fixture provides one race and class for setup")
 	if races.is_empty() or castes.is_empty():
 		return
@@ -599,7 +599,7 @@ func _begin_fixture_adventure(session: GameSession, content: RealmzContent) -> v
 
 
 func _spellcaster_creation_spec(content: RealmzContent) -> CharacterCreationSpec:
-	for caste: CasteDefinition in content.caste_definitions():
+	for caste: CasteDefinition in content.characters.caste_definitions():
 		var caster_at_level_one := false
 		var maximum_spell_level := 0
 		for row: Vector3i in caste.progression.spellcaster_rows():
@@ -607,7 +607,7 @@ func _spellcaster_creation_spec(content: RealmzContent) -> CharacterCreationSpec
 			maximum_spell_level += row.z
 		if not caster_at_level_one or maximum_spell_level < 1:
 			continue
-		for race: RaceDefinition in content.race_definitions():
+		for race: RaceDefinition in content.characters.race_definitions():
 			if not race.eligible_caste_ids.is_empty() and not race.eligible_caste_ids.has(caste.id):
 				continue
 			if not caste.eligible_race_ids.is_empty() and not caste.eligible_race_ids.has(race.id):
@@ -617,7 +617,7 @@ func _spellcaster_creation_spec(content: RealmzContent) -> CharacterCreationSpec
 
 
 func _aging_race(content: RealmzContent) -> RaceDefinition:
-	for race: RaceDefinition in content.race_definitions():
+	for race: RaceDefinition in content.characters.race_definitions():
 		if race.max_age > 0 and race.age_range(1).x == race.age_range(0).y + 1:
 			return race
 	return null

@@ -16,10 +16,10 @@ func run() -> void:
 	var view: GameView = creator.view()
 	assert_true(view.party_setup_available and view.party_members.is_empty(), "the stock workshop reuses the typed five-step creator view without assembling a campaign party")
 	assert_true([view.race_options.size(), view.caste_options.size(), view.portrait_options.size(), view.combat_icon_options.size()] == [30, 30, 120, 120] and not view.race_options[0].facts.is_empty() and not view.caste_options[0].facts.is_empty(), "the workshop exposes the complete stock creation catalog with detached source-backed Race and Caste facts")
-	var human := loaded.content.race_by_id("classic.race.1")
-	var fighter := loaded.content.caste_by_id("classic.caste.1")
-	var portrait := loaded.content.appearance_definitions(CharacterAppearanceDefinition.PORTRAIT)[0]
-	var icon := loaded.content.appearance_definitions(CharacterAppearanceDefinition.COMBAT_ICON)[0]
+	var human := loaded.content.characters.race_by_id("classic.race.1")
+	var fighter := loaded.content.characters.caste_by_id("classic.caste.1")
+	var portrait := loaded.content.characters.appearance_definitions(CharacterAppearanceDefinition.PORTRAIT)[0]
+	var icon := loaded.content.characters.appearance_definitions(CharacterAppearanceDefinition.COMBAT_ICON)[0]
 	var spec := CharacterCreationSpec.new("Standalone", human.id, fighter.id, 1, portrait.id, icon.id, 1)
 	var generated: SessionStep = creator.submit_intent(PartyIntents.generate_character_draft(spec))
 	assert_equal(generated.state, SessionStep.State.COMPLETED, "a stock Race and Class generate through the same source-backed GameSession transaction")

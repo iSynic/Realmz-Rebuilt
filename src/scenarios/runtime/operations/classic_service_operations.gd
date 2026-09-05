@@ -97,7 +97,7 @@ func shop_request(shop: ShopDefinition, request_id: String, accept_ranges: Array
 	var characters: Array[Dictionary] = []
 	var item_ids := shop.item_ids()
 	for index: int in item_ids.size():
-		var item := _content.item_by_id(item_ids[index])
+		var item := _content.items.item_by_id(item_ids[index])
 		var quantity := _game_state.location_services.shop_quantity(shop, index)
 		if item != null and quantity > 0:
 			var slot := shop.stock_slot(index)
@@ -108,7 +108,7 @@ func shop_request(shop: ShopDefinition, request_id: String, accept_ranges: Array
 		return _game_state.location_services.shop_buyback_slot(shop.id, String(left)) < _game_state.location_services.shop_buyback_slot(shop.id, String(right))
 	)
 	for item_id: Variant in buyback_ids:
-		var item := _content.item_by_id(String(item_id))
+		var item := _content.items.item_by_id(String(item_id))
 		if item != null:
 			var slot := _game_state.location_services.shop_buyback_slot(shop.id, item.id)
 			stock.append(_shop_stock_view(item, "buyback:%s" % item.id, slot, int(buyback_items[item_id]), shop))
@@ -117,7 +117,7 @@ func shop_request(shop: ShopDefinition, request_id: String, accept_ranges: Array
 	for character: CharacterState in _game_state.party.characters():
 		var inventory: Array[Dictionary] = []
 		for instance: ItemInstance in character.inventory():
-			var definition := _content.item_by_id(instance.definition_id)
+			var definition := _content.items.item_by_id(instance.definition_id)
 			if definition == null:
 				continue
 			var can_sell := not instance.equipped and shop_accepts_item(definition, accept_ranges)
@@ -134,7 +134,7 @@ func shop_request(shop: ShopDefinition, request_id: String, accept_ranges: Array
 				identify_reason = "Identification costs 20 gold."
 			var presentation_definition: ItemDefinition = definition
 			if not instance.equipped and not definition.cursed_item_id.is_empty():
-				presentation_definition = _content.item_by_id(definition.cursed_item_id)
+				presentation_definition = _content.items.item_by_id(definition.cursed_item_id)
 			var public_view := ItemView.new(instance, definition, presentation_definition, _content)
 			var item_view := {
 				"instanceId": instance.id,
@@ -179,13 +179,13 @@ func resolve_shop_stock(shop: ShopDefinition, stock_key: String) -> ShopStockRes
 		var item_ids := shop.item_ids()
 		if index < 0 or index >= item_ids.size():
 			return null
-		return ShopStockResolution.new(&"base", index, _content.item_by_id(item_ids[index]), _game_state.location_services.shop_quantity(shop, index))
+		return ShopStockResolution.new(&"base", index, _content.items.item_by_id(item_ids[index]), _game_state.location_services.shop_quantity(shop, index))
 	if stock_key.begins_with("buyback:"):
 		var item_id := stock_key.trim_prefix("buyback:")
 		var quantity := _game_state.location_services.shop_buyback_quantity(shop.id, item_id)
 		if quantity < 1:
 			return null
-		return ShopStockResolution.new(&"buyback", -1, _content.item_by_id(item_id), quantity)
+		return ShopStockResolution.new(&"buyback", -1, _content.items.item_by_id(item_id), quantity)
 	return null
 
 
@@ -222,14 +222,14 @@ func temple_request(cost_percent: int, request_id: String, selected_character_id
 
 
 func _request_shop(classic_shop_id: int, request_id: String, accept_ranges: Array[int] = []) -> ScenarioRuntimeOperationResult:
-	var shop := _content.shop_by_classic_id(absi(classic_shop_id))
+	var shop := _content.economy.shop_by_classic_id(absi(classic_shop_id))
 	if shop == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_shop", "Classic opcode 6 references unavailable shop %d." % classic_shop_id)
 	return request_shop_definition(shop, request_id, accept_ranges)
 
 
 func _configure_classic_shop(classic_shop_id: int, request_id: String) -> ScenarioRuntimeOperationResult:
-	var shop := _content.shop_by_classic_id(absi(classic_shop_id))
+	var shop := _content.economy.shop_by_classic_id(absi(classic_shop_id))
 	if shop == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_shop", "Classic opcode 6 references unavailable shop %d." % classic_shop_id)
 	var accept_ranges: Array[int] = [0, 0, 0, 0]
@@ -243,7 +243,7 @@ func _configure_classic_shop(classic_shop_id: int, request_id: String) -> Scenar
 func _configure_shop(action: ClassicActionDefinition, request_id: String) -> ScenarioRuntimeOperationResult:
 	if action.extra_code.size() < 5:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 73 requires a five-value Extra Code row.")
-	var shop := _content.shop_by_classic_id(absi(action.extra_code[0]))
+	var shop := _content.economy.shop_by_classic_id(absi(action.extra_code[0]))
 	if shop == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_shop", "Classic opcode 73 references unavailable shop %d." % action.extra_code[0])
 	var accept_ranges: Array[int] = [action.extra_code[1], action.extra_code[2], action.extra_code[3], action.extra_code[4]]
@@ -268,7 +268,7 @@ func _resume_shop(continuation: ScenarioRuntimeContinuation, response: Interacti
 	if response.kind != &"shop_action" or body == null:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Shop response requires an action string.")
 	var service := continuation.body as ScenarioServiceContinuationBody
-	var shop := _content.shop_by_id(service.shop_id)
+	var shop := _content.economy.shop_by_id(service.shop_id)
 	if shop == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_shop", "The pending shop is unavailable.")
 	var operation := String(body.action)
@@ -314,7 +314,7 @@ func _resume_shop(continuation: ScenarioRuntimeContinuation, response: Interacti
 					break
 			if instance == null:
 				return ScenarioRuntimeOperationResult.failed(&"unknown_item_instance", "The sold item instance is unavailable.")
-			var item := _content.item_by_id(instance.definition_id)
+			var item := _content.items.item_by_id(instance.definition_id)
 			if item == null:
 				return ScenarioRuntimeOperationResult.failed(&"unknown_item", "The sold item definition is unavailable.")
 			if instance.equipped:
@@ -434,7 +434,7 @@ func _apply_temple_service(continuation: ScenarioRuntimeContinuation, body: Inte
 		return ScenarioRuntimeOperationResult.waiting(temple_request(service.cost_percent, request_id, character.id), next_continuation, events)
 	if not _rules.economy.take_from_pool_and_character(_game_state.party, character, cost, WealthState.Kind.GOLD):
 		return ScenarioRuntimeOperationResult.failed(&"temple_payment_failed", "Temple payment could not be committed after affordability validation.")
-	var result := _rules.temple.apply_service(character, service_id, _rng, _content.item_definitions())
+	var result := _rules.temple.apply_service(character, service_id, _rng, _content.items.definitions())
 	if result == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_temple_service", "Temple service '%s' is unavailable." % service_id)
 	events.append(DomainEvent.new(&"temple_service_completed", result.to_event_data(character.id, cost)))

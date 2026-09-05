@@ -7,6 +7,7 @@ Own immutable compiled scenario definitions and the mutable scenario-progress st
 ## Ownership
 
 - Authored scenario programs, instructions, encounters, rewards, services, and safe-action definitions.
+- `ScenarioContentCatalog` indexes campaign narration, option labels, triggers, and direct encounter definitions.
 - `ScenarioProgressState` for searched cells, quests, journal discovery, and the current selected-character set.
 - `ScenarioEncounterState` for timed encounter records, eliminated results, attempt counts, thief flags, and program redirects.
 
@@ -16,6 +17,7 @@ Own immutable compiled scenario definitions and the mutable scenario-progress st
 - Progress state preserves the established flat save fields; its in-memory feature boundaries do not create a save migration.
 - Character selection resolves through the owning `PartyState` and may not retain duplicate or unknown identities.
 - Scenario execution and VM frames remain under `src/scenarios`; this folder contains only pure game definitions and state.
+- `RealmzContent.scenario_records` is the direct immutable lookup surface; `RealmzContent.scenario` remains the compiled program graph.
 
 ## Work Guidance
 
@@ -28,4 +30,3 @@ Own immutable compiled scenario definitions and the mutable scenario-progress st
 - `tests/integration/test_session_persistence.gd` protects the complete persisted aggregate.
 
 ## Child DOX Index
-

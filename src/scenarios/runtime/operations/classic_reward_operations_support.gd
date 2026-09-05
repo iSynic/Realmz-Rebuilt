@@ -17,7 +17,7 @@ func _init(content: RealmzContent, game_state: GameState, rng: RealmzRng, rules:
 func _append_battle_after_message(battle: BattleDefinition, events: Array[DomainEvent]) -> void:
 	if battle.message_after_id == 0:
 		return
-	var after := _content.message_by_id(absi(battle.message_after_id))
+	var after := _content.scenario_records.message_by_id(absi(battle.message_after_id))
 	if after != null:
 		events.append(DomainEvent.new(&"message_shown", {"messageId": after.id, "text": after.text, "source": "classic-battle-definition"}))
 

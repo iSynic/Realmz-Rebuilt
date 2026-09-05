@@ -5,8 +5,8 @@ extends RefCounted
 
 static func normalize_age_groups(state: GameState, content: RealmzContent, rules: RealmzRules) -> void:
 	for character: CharacterState in state.party.characters():
-		var race := content.race_by_id(character.race_id)
-		var caste := content.caste_by_id(character.caste_id)
+		var race := content.characters.race_by_id(character.race_id)
+		var caste := content.characters.caste_by_id(character.caste_id)
 		if race != null and caste != null:
 			rules.characters.ensure_age_group(character, race, caste)
 
@@ -14,12 +14,12 @@ static func normalize_age_groups(state: GameState, content: RealmzContent, rules
 static func party_inventory_is_valid(content: RealmzContent, state: GameState, rules: RealmzRules) -> bool:
 	if content == null or state == null or rules == null:
 		return false
-	var definitions := content.item_definitions()
+	var definitions := content.items.definitions()
 	for character: CharacterState in state.party.characters():
 		if rules.inventory.calculated_load(character, definitions) != character.carried_load:
 			return false
 		for scroll: SpellScrollState in character.scroll_case():
-			if not scroll.is_empty() and content.spell_by_id(scroll.spell_id) == null:
+			if not scroll.is_empty() and content.magic.spell_by_id(scroll.spell_id) == null:
 				return false
 	return true
 
@@ -37,11 +37,11 @@ static func combat_staged_item_is_valid(content: RealmzContent, state: GameState
 		if candidate.id == instance_id:
 			instance = candidate
 			break
-	var item := content.item_by_id(instance.definition_id) if instance != null else null
-	var spell := content.spell_by_classic_id(item.special_2) if item != null else null
+	var item := content.items.item_by_id(instance.definition_id) if instance != null else null
+	var spell := content.magic.spell_by_classic_id(item.special_2) if item != null else null
 	if item == null or spell == null or absi(item.special_1) != 8:
 		return false
-	var use_probe := rules.inventory.classic_spell_item_probe(character, instance, item, spell, content.race_by_id(character.race_id), content.caste_by_id(character.caste_id), true)
+	var use_probe := rules.inventory.classic_spell_item_probe(character, instance, item, spell, content.characters.race_by_id(character.race_id), content.characters.caste_by_id(character.caste_id), true)
 	if not use_probe.allowed or ClassicSpellDispositionRules.combat_item_disposition(spell) != ClassicSpellDispositionRules.DISPOSITION_EXECUTABLE:
 		return false
 	return true
@@ -63,7 +63,7 @@ static func party_fast_spells_are_valid(content: RealmzContent, state: GameState
 		for binding: FastSpellBindingState in character.fast_spells():
 			if binding.is_empty():
 				continue
-			var spell := content.spell_by_id(binding.spell_id)
+			var spell := content.magic.spell_by_id(binding.spell_id)
 			if spell == null or not character.known_spells().has(binding.spell_id) or binding.power < 1 or binding.power > 7 or spell.cost < 0 and binding.power != 1:
 				return false
 	return true
@@ -72,15 +72,15 @@ static func party_fast_spells_are_valid(content: RealmzContent, state: GameState
 static func party_appearance_is_valid(content: RealmzContent, state: GameState) -> bool:
 	if content == null or state == null:
 		return false
-	if not content.has_character_appearance_catalog():
+	if not content.characters.has_complete_appearance_catalog():
 		return true
 	for character: CharacterState in state.party.characters():
 		if not character.portrait_id.is_empty():
-			var portrait := content.appearance_by_id(character.portrait_id)
+			var portrait := content.characters.appearance_by_id(character.portrait_id)
 			if portrait == null or portrait.kind != CharacterAppearanceDefinition.PORTRAIT:
 				return false
 		if not character.combat_icon_id.is_empty():
-			var icon := content.appearance_by_id(character.combat_icon_id)
+			var icon := content.characters.appearance_by_id(character.combat_icon_id)
 			if icon == null or icon.kind != CharacterAppearanceDefinition.COMBAT_ICON:
 				return false
 	return true
@@ -89,17 +89,17 @@ static func party_appearance_is_valid(content: RealmzContent, state: GameState) 
 static func shop_state_is_valid(content: RealmzContent, state: GameState) -> bool:
 	if content == null or state == null:
 		return false
-	if not state.location_services.active_shop_id.is_empty() and content.shop_by_id(state.location_services.active_shop_id) == null:
+	if not state.location_services.active_shop_id.is_empty() and content.economy.shop_by_id(state.location_services.active_shop_id) == null:
 		return false
 	for shop_id: Variant in state.location_services.shop_buyback_overrides():
-		var shop := content.shop_by_id(String(shop_id))
+		var shop := content.economy.shop_by_id(String(shop_id))
 		if shop == null:
 			return false
 		var occupied_slots: Dictionary = {}
 		for index: int in shop.item_ids().size():
 			if state.location_services.shop_quantity(shop, index) > 0: occupied_slots[shop.stock_slot(index)] = true
 		for item_id: Variant in state.location_services.shop_buyback_overrides()[shop_id]:
-			var item := content.item_by_id(String(item_id))
+			var item := content.items.item_by_id(String(item_id))
 			var slot := state.location_services.shop_buyback_slot(String(shop_id), String(item_id))
 			if item == null or slot < 0 or slot > 999 or slot / 200 != item.classic_id / 200 or occupied_slots.has(slot):
 				return false
@@ -143,7 +143,7 @@ static func boat_overlays_are_valid(content: RealmzContent, state: GameState) ->
 
 static func journal_messages_are_valid(content: RealmzContent, state: GameState) -> bool:
 	for message_id: int in state.scenario_progress.journal_message_ids():
-		if not ScenarioProgressState.journal_message_id_is_valid(message_id) or content.message_by_id(message_id) == null:
+		if not ScenarioProgressState.journal_message_id_is_valid(message_id) or content.scenario_records.message_by_id(message_id) == null:
 			return false
 	return true
 

@@ -52,10 +52,10 @@ func request_encounter(kind: StringName, encounter_id: int, gosub: bool, request
 		return _request_complex_encounter(encounter_id, gosub, request_id, context)
 	if kind != &"simple":
 		return ScenarioRuntimeOperationResult.failed(&"unknown_encounter_kind", "Classic encounter kind '%s' is unavailable." % kind)
-	var encounter := _content.simple_encounter_by_id(encounter_id)
+	var encounter := _content.scenario_records.simple_encounter_by_id(encounter_id)
 	if encounter == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_encounter", "Classic branch references unavailable Simple Encounter %d." % encounter_id)
-	var prompt := _content.message_by_id(absi(encounter.prompt_message_id))
+	var prompt := _content.scenario_records.message_by_id(absi(encounter.prompt_message_id))
 	if prompt == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Simple Encounter %d references unavailable prompt message %d." % [encounter.id, encounter.prompt_message_id])
 	var options: Array[Dictionary] = []
@@ -74,7 +74,7 @@ func request_encounter(kind: StringName, encounter_id: int, gosub: bool, request
 
 
 func _request_complex_encounter(encounter_id: int, gosub: bool, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
-	var encounter := _content.complex_encounter_by_id(encounter_id)
+	var encounter := _content.scenario_records.complex_encounter_by_id(encounter_id)
 	if encounter == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_encounter", "Classic branch references unavailable Complex Encounter %d." % encounter_id)
 	var request := complex_encounter_request(encounter, request_id)
@@ -94,7 +94,7 @@ static func _encounter_attempt(context: ScenarioExecutionContext, kind: StringNa
 
 
 func complex_encounter_request(encounter: ComplexEncounterDefinition, request_id: String) -> InteractionRequest:
-	var prompt := _content.message_by_id(absi(encounter.prompt_message_id))
+	var prompt := _content.scenario_records.message_by_id(absi(encounter.prompt_message_id))
 	if prompt == null:
 		return null
 	var actions: Array[Dictionary] = []
@@ -115,7 +115,7 @@ func complex_encounter_request(encounter: ComplexEncounterDefinition, request_id
 			actions.append({"id": "item", "kind": "item", "label": "Use an item"})
 			break
 	if encounter.thief:
-		var thief_encounter := _content.thief_encounter_by_id(encounter.thief_success)
+		var thief_encounter := _content.scenario_records.thief_encounter_by_id(encounter.thief_success)
 		if thief_encounter != null:
 			actions.append({"id": "thief", "kind": "thief", "label": "Thief action"})
 	if encounter.can_back_out:
@@ -130,11 +130,11 @@ func complex_encounter_request(encounter: ComplexEncounterDefinition, request_id
 			continue
 		characters.append({"id": character.id, "name": character.name, "portraitId": character.portrait_id})
 		for instance: ItemInstance in character.inventory():
-			var item := _content.item_by_id(instance.definition_id)
+			var item := _content.items.item_by_id(instance.definition_id)
 			if item != null:
 				items.append({"classicItemId": item.classic_id, "name": item.name if instance.identified else item.unidentified_name, "characterId": character.id, "instanceId": instance.id, "iconResourceType": "cicn", "iconId": item.visible_icon_id(instance.identified), "charges": instance.charges, "equipped": instance.equipped})
 		for spell_id: String in character.known_spells():
-			var spell := _content.spell_by_id(spell_id)
+			var spell := _content.magic.spell_by_id(spell_id)
 			if spell != null:
 				spells.append({"classicSpellId": spell.classic_id, "name": spell.name, "characterId": character.id})
 	return InteractionRequest.from_payload(request_id, &"complex_encounter", {"encounterKind": "complex", "encounterId": encounter.id, "prompt": prompt.text, "actions": actions, "characters": characters, "items": items, "spells": spells, "canBackOut": encounter.can_back_out, "actionSelectionCount": encounter.groups().filter(func(value: int) -> bool: return value != 0).size()})
@@ -160,12 +160,12 @@ func _request_classic_choice(action: ClassicActionDefinition, request_id: String
 
 
 func _classic_choice_label(label_id: int) -> Variant:
-	if _content.has_option_labels():
-		var option_label := _content.option_label_by_id(absi(label_id))
+	if _content.scenario_records.has_option_labels():
+		var option_label := _content.scenario_records.option_label_by_id(absi(label_id))
 		if option_label == null:
 			return null
 		return option_label.text
-	var message := _content.message_by_id(absi(label_id))
+	var message := _content.scenario_records.message_by_id(absi(label_id))
 	if message == null:
 		return null
 	return message.text
@@ -191,7 +191,7 @@ func _mutate_timed_encounter(action: ClassicActionDefinition) -> ScenarioRuntime
 func _eliminate_simple_option(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
 	if action.extra_code.size() < 2:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 41 requires a five-value Extra Code row.")
-	var encounter := _content.simple_encounter_by_id(action.extra_code[0])
+	var encounter := _content.scenario_records.simple_encounter_by_id(action.extra_code[0])
 	var option_index := action.extra_code[1] - 1
 	if encounter == null or encounter.response_at(option_index) == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_encounter_option", "Classic opcode 41 references an unavailable Simple Encounter option.")

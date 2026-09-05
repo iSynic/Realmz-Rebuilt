@@ -6,7 +6,7 @@ const ProjectionPolicy := preload("res://src/playthrough/workflows/session_view_
 
 static func populate_services(context: SessionWorkflowContext, result: GameView) -> void:
 	if not context.state.location_services.active_shop_id.is_empty():
-		var shop := context.content.shop_by_id(context.state.location_services.active_shop_id)
+		var shop := context.content.economy.shop_by_id(context.state.location_services.active_shop_id)
 		if shop != null:
 			var shop_view := ServiceView.new()
 			shop_view.service_id = shop.id
@@ -64,7 +64,7 @@ static func populate_action_availability(context: SessionWorkflowContext, result
 	var blocked_by_interaction := result.pending_interaction != null
 	var party_setup := result.party_setup_available
 	var setup_member_count := state.party.characters().size()
-	var setup_member_limit := clampi(content.campaign_definition().restrictions.maximum_party_size, 1, 6)
+	var setup_member_limit := clampi(content.campaign.restrictions.maximum_party_size, 1, 6)
 	var draft_active := state.character_draft != null and state.character_draft.generated_character != null
 	var battle_active := result.combat_view != null and result.combat_view.outcome == &"active"
 	var ordinary_reason := "Resolve the current interaction first." if blocked_by_interaction else "Complete party setup first." if party_setup else ""
@@ -122,8 +122,8 @@ static func populate_action_availability(context: SessionWorkflowContext, result
 	result.set_action_availability(&"finalize_character", party_setup and not blocked_by_interaction and setup_member_count < setup_member_limit and draft_active, "Resolve the current interaction first." if blocked_by_interaction else "Character creation is available only during party setup." if not party_setup else "Generate and review the character first." if not draft_active else "The party is full.")
 	result.set_action_availability(&"remove_party_member", party_setup and not blocked_by_interaction and setup_member_count > 0, "Resolve the current interaction first." if blocked_by_interaction else "Party members can be removed only during party setup." if not party_setup else "The party is empty.")
 	result.set_action_availability(&"reorder_party", not party_setup and not blocked_by_interaction and not battle_active and setup_member_count > 1, "Resolve the current interaction first." if blocked_by_interaction else "Begin the adventure before changing party order." if party_setup else "Party order is unavailable during battle." if battle_active else "At least two party members are required.")
-	var appearance_available := not party_setup and not blocked_by_interaction and not battle_active and setup_member_count > 0 and content.has_character_appearance_catalog()
-	var appearance_reason := "Resolve the current interaction first." if blocked_by_interaction else "Begin the adventure before changing appearance." if party_setup else "Appearance changes are unavailable during battle." if battle_active else "No party member is available." if setup_member_count == 0 else "This package does not contain the complete Classic portrait and combat-icon catalogs." if not content.has_character_appearance_catalog() else ""
+	var appearance_available := not party_setup and not blocked_by_interaction and not battle_active and setup_member_count > 0 and content.characters.has_complete_appearance_catalog()
+	var appearance_reason := "Resolve the current interaction first." if blocked_by_interaction else "Begin the adventure before changing appearance." if party_setup else "Appearance changes are unavailable during battle." if battle_active else "No party member is available." if setup_member_count == 0 else "This package does not contain the complete Classic portrait and combat-icon catalogs." if not content.characters.has_complete_appearance_catalog() else ""
 	result.set_action_availability(&"change_character_appearance", appearance_available, appearance_reason)
 	for action_id: StringName in [&"equip_item", &"unequip_item", &"drop_item", &"trade_item"]:
 		result.set_action_availability(action_id, ordinary_reason.is_empty() and not battle_active, ordinary_reason if not ordinary_reason.is_empty() else "Inventory changes are unavailable during battle." if battle_active else "")
@@ -162,7 +162,7 @@ static func populate_spell_actions(context: SessionWorkflowContext, result: Game
 			continue
 		var character := state.party.character_by_id(member_view.id)
 		for spell_view: SpellView in member_view.spells:
-			var spell := content.spell_by_id(spell_view.id)
+			var spell := content.magic.spell_by_id(spell_view.id)
 			spell_view.power_levels.clear()
 			spell_view.structural_power_levels.clear()
 			spell_view.scroll_power_levels.clear()
@@ -219,13 +219,13 @@ static func populate_spell_actions(context: SessionWorkflowContext, result: Game
 				continue
 			if battle_active:
 				var combat_scroll := character.scroll_at(scroll_view.slot_index)
-				var combat_scroll_spell := content.spell_by_id(combat_scroll.spell_id) if combat_scroll != null and not combat_scroll.is_empty() else null
+				var combat_scroll_spell := content.magic.spell_by_id(combat_scroll.spell_id) if combat_scroll != null and not combat_scroll.is_empty() else null
 				var combat_target_id := character.id if combat_scroll_spell != null and combat_scroll_spell.target_type == 5 else ""
 				var combat_probe := rules.combat_flow.magic.probe_character_scroll_cast(state, content, character.id, scroll_view.slot_index, combat_target_id)
 				scroll_view.use = ActionAvailabilityView.new(&"cast_spell", combat_probe.allowed, combat_probe.reason_text)
 				continue
 			var scroll := character.scroll_at(scroll_view.slot_index)
-			var scroll_spell := content.spell_by_id(scroll.spell_id) if scroll != null and not scroll.is_empty() else null
+			var scroll_spell := content.magic.spell_by_id(scroll.spell_id) if scroll != null and not scroll.is_empty() else null
 			var scroll_probe := _scroll_use_probe(context, character, scroll_view.slot_index, scroll_spell)
 			scroll_view.use = ActionAvailabilityView.new(&"cast_spell", scroll_probe.allowed, scroll_probe.reason)
 			var discard_probe := _scroll_discard_probe(context, character, scroll_view.slot_index, scroll_spell)
@@ -233,7 +233,7 @@ static func populate_spell_actions(context: SessionWorkflowContext, result: Game
 		for fast_spell: FastSpellBindingView in member_view.fast_spells:
 			if fast_spell.spell_id.is_empty():
 				continue
-			var bound_spell := content.spell_by_id(fast_spell.spell_id)
+			var bound_spell := content.magic.spell_by_id(fast_spell.spell_id)
 			if bound_spell == null or not character.known_spells().has(fast_spell.spell_id):
 				fast_spell.activation = ActionAvailabilityView.new(&"cast_spell", false, "The stored spell is unavailable to this character.")
 				continue
@@ -256,7 +256,7 @@ static func populate_spell_affordability(context: SessionWorkflowContext, result
 		var character := context.state.party.character_by_id(member_view.id)
 		for spell_index: int in member_view.spells.size():
 			var spell_view: SpellView = member_view.spells[spell_index]
-			var spell := context.content.spell_by_id(spell_view.id)
+			var spell := context.content.magic.spell_by_id(spell_view.id)
 			if spell == null:
 				continue
 			var affordable: Array[int] = []
@@ -277,7 +277,7 @@ static func populate_spell_affordability(context: SessionWorkflowContext, result
 			var fast_spell: FastSpellBindingView = member_view.fast_spells[fast_index]
 			if fast_spell.spell_id.is_empty():
 				continue
-			var bound_spell := context.content.spell_by_id(fast_spell.spell_id)
+			var bound_spell := context.content.magic.spell_by_id(fast_spell.spell_id)
 			var field_probe := _field_spell_probe(context, character, bound_spell, fast_spell.power)
 			if fast_spell.activation.enabled != field_probe.allowed or fast_spell.activation.reason != field_probe.reason:
 				var replacement := FastSpellBindingView.new(fast_index, character.fast_spell_at(fast_index), bound_spell)
@@ -297,17 +297,17 @@ static func populate_inventory_item_actions(context: SessionWorkflowContext, res
 	elif result.combat_view != null and result.combat_view.outcome == &"active":
 		context_reason = "Use the battle action flow during combat."
 	var party := state.party.characters()
-	var definitions := content.item_definitions()
+	var definitions := content.items.definitions()
 	for member_view: CharacterView in result.party_members:
 		var character := state.party.character_by_id(member_view.id)
 		if character == null:
 			continue
-		var race := content.race_by_id(character.race_id)
-		var caste := content.caste_by_id(character.caste_id)
+		var race := content.characters.race_by_id(character.race_id)
+		var caste := content.characters.caste_by_id(character.caste_id)
 		var identify_cast := _inventory_identify_cast(context, character)
 		for item_view: ItemView in member_view.items:
 			var instance := ProjectionPolicy.item_instance(character, item_view.instance_id)
-			var definition: ItemDefinition = null if instance == null else content.item_by_id(instance.definition_id)
+			var definition: ItemDefinition = null if instance == null else content.items.item_by_id(instance.definition_id)
 			var actions := InventoryItemActionsView.new()
 			if not context_reason.is_empty():
 				actions.block_all(context_reason)
@@ -346,7 +346,7 @@ static func _inventory_identify_cast(context: SessionWorkflowContext, target: Ch
 	for caster: CharacterState in context.state.party.characters():
 		var spells: Array[SpellDefinition] = []
 		for spell_id: String in caster.known_spells():
-			var spell := context.content.spell_by_id(spell_id)
+			var spell := context.content.magic.spell_by_id(spell_id)
 			if spell != null and absi(spell.special) == 48:
 				spells.append(spell)
 		spells.sort_custom(func(left: SpellDefinition, right: SpellDefinition) -> bool: return left.classic_id < right.classic_id)
@@ -358,13 +358,13 @@ static func _inventory_identify_cast(context: SessionWorkflowContext, target: Ch
 
 static func populate_character_draft_spells(context: SessionWorkflowContext, result: GameView) -> void:
 	var character := context.state.character_draft.generated_character
-	var caste := context.content.caste_by_id(character.caste_id)
+	var caste := context.content.characters.caste_by_id(character.caste_id)
 	result.character_draft_spell_points_total = context.rules.characters.spell_selection_total(character, caste)
 	var spent := 0
 	for spell: SpellDefinition in _character_spell_candidates(context, character, caste):
 		result.character_draft_spell_options.append(CharacterSpellOptionView.new(spell, context.rules.characters.spell_selection_cost(spell), character.known_spells().has(spell.id)))
 	for spell_id: String in character.known_spells():
-		spent += context.rules.characters.spell_selection_cost(context.content.spell_by_id(spell_id))
+		spent += context.rules.characters.spell_selection_cost(context.content.magic.spell_by_id(spell_id))
 	result.character_draft_spell_points_remaining = maxi(0, result.character_draft_spell_points_total - spent)
 
 
@@ -373,7 +373,7 @@ static func _character_spell_candidates(context: SessionWorkflowContext, charact
 	if character == null or caste == null or character.spellcaster_type < 1:
 		return result
 	var maximum_level := context.rules.characters.maximum_spell_selection_level(caste)
-	for spell: SpellDefinition in context.content.spell_definitions():
+	for spell: SpellDefinition in context.content.magic.definitions():
 		if int(spell.classic_id / 1000) != character.spellcaster_type:
 			continue
 		var tier := spell.classic_tier()
@@ -463,7 +463,7 @@ static func _parchment_instance(context: SessionWorkflowContext, character: Char
 	if character == null:
 		return null
 	for instance: ItemInstance in character.inventory():
-		var definition := context.content.item_by_id(instance.definition_id)
+		var definition := context.content.items.item_by_id(instance.definition_id)
 		if definition != null and definition.classic_id == 806 and instance.charges != 0:
 			return instance
 	return null

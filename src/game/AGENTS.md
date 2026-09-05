@@ -7,6 +7,7 @@ Own the pure Realmz model, fixed Classic rules, topology, game clock, randomness
 ## Ownership
 
 - Direct Realmz definitions and mutable playthrough state, including characters, equipment, wealth, conditions, encounters, battles, shops, treasures, spells, monsters, races, castes, and immutable compiled scenario programs.
+- `RealmzContent` is the small campaign aggregate. Feature callers resolve immutable records through `scenario_records`, `characters`, `items`, `magic`, `combat`, or `economy`; it does not forward their lookup APIs.
 - `characters/` owns mutable character truth, lifetime history, pure character rules, detached character views, and the stable character-state codec. Save, vault, draft, and clone boundaries address `CharacterStateCodec` directly rather than asking state to serialize itself.
 - `economy/` owns money and temple rules, immutable shop definitions, wealth state, detached service views, and `LocationServiceState`. Shop, temple, and bank callers address `GameState.location_services` directly; its codec preserves the established flat save fields.
 - `InventoryRules` owns carried-item capacity, transfer, stack, charge, and item-use admission. `EquipmentRules` owns wearable admission, equip/unequip mutation, scroll-case presence, and combat loadout projection. `RealmzRules` exposes them as sibling collaborators, and callers address the actual owner instead of using forwarding methods.
@@ -194,6 +195,8 @@ Own the pure Realmz model, fixed Classic rules, topology, game clock, randomness
 - `characters/AGENTS.md` owns mutable character truth, its save codec, character rules, lifetime history, and detached character views.
 - `combat/AGENTS.md` owns the explicit combat collaborator context, combat-owned event construction, and the public maintainer guide for that feature seam.
 - `economy/AGENTS.md` owns money and temple rules, mutable location services, shop state, wealth records, and detached service views.
+- `inventory/AGENTS.md` owns immutable item lookup and the inventory feature's migration boundary.
+- `magic/AGENTS.md` owns immutable spell lookup and the magic feature's migration boundary.
 - `scenario/AGENTS.md` owns immutable scenario definitions and pure mutable scenario-progress state.
 - `session/intents/AGENTS.md` owns feature-named player commands, their typed payload values, and the stable kind registry.
 - `session/requests/AGENTS.md` owns feature-level typed interaction request payloads and their exact wire representation.

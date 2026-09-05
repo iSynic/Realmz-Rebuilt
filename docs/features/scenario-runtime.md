@@ -1,6 +1,6 @@
 # Scenario runtime
 
-Compiled scenario definitions are immutable game content. `ScenarioVm` executes their instruction timelines, while `RealmzRuntimeApi` adapts Classic instructions and safe scenario operations to public rules and playthrough collaborators. Scenario Actions are reusable callable programs; call sites do not contain executable gap behavior.
+Compiled scenario definitions are immutable game content. `RealmzContent.scenario` is the program graph, while `RealmzContent.scenario_records` exposes `ScenarioContentCatalog` for messages, option labels, triggers, and direct encounter definitions. `ScenarioVm` executes instruction timelines, while `RealmzRuntimeApi` adapts Classic instructions and safe scenario operations to public rules and playthrough collaborators. Scenario Actions are reusable callable programs; call sites do not contain executable gap behavior.
 
 `ScenarioClassicControlFlow` is the readable directory for Classic frame changes: XAP/program branches, GOSUB installation, Simple/Complex Encounter entry, result/repeat loops, and encounter exit. It mutates the VM's typed frame array and returns a `ScenarioDirectiveTransition`; `ScenarioVm` remains the owner of pacing, interaction suspension, trace limits, frame return, halt, and snapshots. This keeps Classic control flow out of the central execution loop without introducing a second VM state.
 

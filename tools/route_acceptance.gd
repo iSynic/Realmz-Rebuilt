@@ -71,8 +71,8 @@ func _initialize() -> void:
 
 func _prepare_party() -> void:
 	if _session._state.party.characters().is_empty():
-		var races := _content.race_definitions()
-		var castes := _content.caste_definitions()
+		var races := _content.characters.race_definitions()
+		var castes := _content.characters.caste_definitions()
 		if races.is_empty() or castes.is_empty():
 			_fail("route package has no application character definitions")
 			return
@@ -120,7 +120,7 @@ func _run_step(step_definition: Dictionary) -> void:
 	var failure_count := _failures.size()
 	var step_id := String(step_definition.get("id", "unnamed-step"))
 	var trigger_id := String(step_definition.get("triggerId", ""))
-	var trigger := _content.trigger_by_id(trigger_id)
+	var trigger := _content.scenario_records.trigger_by_id(trigger_id)
 	var scripted_responses: Array = step_definition.get("responses", [])
 	var response_cursor := {"index": 0}
 	if trigger == null:
@@ -534,7 +534,7 @@ func _party_classic_item_ids() -> Array[int]:
 	var result: Array[int] = []
 	for character: CharacterState in _session._state.party.characters():
 		for instance: ItemInstance in character.inventory():
-			var definition := _content.item_by_id(instance.definition_id)
+			var definition := _content.items.item_by_id(instance.definition_id)
 			if definition != null and not result.has(definition.classic_id):
 				result.append(definition.classic_id)
 	result.sort()

@@ -184,8 +184,8 @@ func item_instance(character: CharacterState, instance_id: String) -> ItemInstan
 
 func recalculate_party_movement() -> void:
 	for character: CharacterState in state.party.characters():
-		var race := content.race_by_id(character.race_id)
-		var caste := content.caste_by_id(character.caste_id)
+		var race := content.characters.race_by_id(character.race_id)
+		var caste := content.characters.caste_by_id(character.caste_id)
 		rules.characters.recalculate_movement(character, race, caste.movement_bonus)
 
 

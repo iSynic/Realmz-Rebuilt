@@ -60,7 +60,7 @@ func probe_character_retreat(combat: CombatState, characters: Array[CharacterSta
 func character_projectile_profile(character: CharacterState, content: RealmzContent, equipment: CharacterCombatEquipment = null) -> ProjectileAttackProfile:
 	if character == null or content == null:
 		return ProjectileAttackProfile.blocked(&"invalid_combat_actor", "A projectile requires an available character and content package.")
-	var resolved_equipment := equipment if equipment != null else _context.equipment.combat_equipment(character, content.item_definitions())
+	var resolved_equipment := equipment if equipment != null else _context.equipment.combat_equipment(character, content.items.definitions())
 	if not resolved_equipment.valid:
 		return ProjectileAttackProfile.blocked(resolved_equipment.error_code, resolved_equipment.error_message)
 	if resolved_equipment.missile_weapon == null:
@@ -77,7 +77,7 @@ func character_projectile_profile(character: CharacterState, content: RealmzCont
 			break
 	if instance == null or instance.charges == 0:
 		return ProjectileAttackProfile.blocked(&"projectile_charge_unavailable", "The selected Classic projectile has no remaining charge.")
-	var spell := content.spell_by_classic_id(absi(projectile_item.special_2))
+	var spell := content.magic.spell_by_classic_id(absi(projectile_item.special_2))
 	if spell == null:
 		return ProjectileAttackProfile.blocked(&"projectile_spell_unavailable", "Projectile item '%s' references unavailable Classic spell %d." % [projectile_item.id, absi(projectile_item.special_2)])
 	var unsupported = _context.actions().projectile_spell_unavailable_reason(spell)
@@ -176,7 +176,7 @@ func move_character(state: GameState, content: RealmzContent, actor_id: String, 
 	if not probe.allowed and contact_target_id.is_empty() and friendly_target_id.is_empty():
 		return CombatFlowResult.failed(probe.reason, _movement_failure_message(probe))
 	if not contact_target_id.is_empty() or friendly_collision_action == &"attack":
-		var equipment := _context.equipment.combat_equipment(actor, content.item_definitions())
+		var equipment := _context.equipment.combat_equipment(actor, content.items.definitions())
 		if not equipment.valid:
 			return CombatFlowResult.failed(equipment.error_code, equipment.error_message)
 	_context.actions().prepare_character_turn(combat, actor)
@@ -220,13 +220,13 @@ func friendly_collision_target_id(state: GameState, actor_id: String, destinatio
 
 
 func classic_projectile_uses_point_blank_auto_switch(actor: CharacterState, content: RealmzContent) -> bool:
-	var equipment := _context.equipment.combat_equipment(actor, content.item_definitions())
+	var equipment := _context.equipment.combat_equipment(actor, content.items.definitions())
 	if not equipment.valid or equipment.missile_weapon == null:
 		return false
 	var projectile_item := equipment.missile_weapon
 	if projectile_item.special_2 <= 1100:
 		return false
-	var spell := content.spell_by_classic_id(absi(projectile_item.special_2))
+	var spell := content.magic.spell_by_classic_id(absi(projectile_item.special_2))
 	return spell != null and spell.spell_class == 9 and spell.damage_type == 9
 
 
@@ -382,13 +382,13 @@ func resolve_reaction_attack(state: GameState, content: RealmzContent, attacker_
 func resolve_character_reaction(state: GameState, content: RealmzContent, attacker: CharacterState, target_id: String, action: StringName, behind: bool, rng: RealmzRng, events: Array[DomainEvent]) -> int:
 	var combat := state.combat
 	combat.turns.invalidate_undo()
-	var equipment := _context.equipment.combat_equipment(attacker, content.item_definitions())
+	var equipment := _context.equipment.combat_equipment(attacker, content.items.definitions())
 	if not equipment.valid:
 		events.append(DomainEvent.new(&"combat_reaction_failed", {"actorId": attacker.id, "targetId": target_id, "reason": String(equipment.error_code)}))
 		return REACTION_COMPLETED
 	var monster_target := combat.roster.monster_by_id(target_id)
 	if monster_target != null:
-		var definition := content.monster_by_id(monster_target.definition_id)
+		var definition := content.combat.monster_by_id(monster_target.definition_id)
 		var reaction_resolution := _context.combat.resolve_character_attack(attacker, equipment, monster_target, definition, rng, state.clock.day(), behind, true, combat.dropped_items.can_queue())
 		if reaction_resolution.total_damage() > 0:
 			combat.actor_statuses.mark_attacked(monster_target.id)
@@ -407,7 +407,7 @@ func resolve_character_reaction(state: GameState, content: RealmzContent, attack
 	var character_target := state.party.character_by_id(target_id)
 	if character_target == null:
 		return REACTION_COMPLETED
-	var target_equipment := _context.equipment.combat_equipment(character_target, content.item_definitions())
+	var target_equipment := _context.equipment.combat_equipment(character_target, content.items.definitions())
 	if not target_equipment.valid:
 		events.append(DomainEvent.new(&"combat_reaction_failed", {"actorId": attacker.id, "targetId": target_id, "reason": String(target_equipment.error_code)}))
 		return REACTION_COMPLETED
@@ -431,17 +431,17 @@ func resolve_character_reaction(state: GameState, content: RealmzContent, attack
 func resolve_monster_reaction(state: GameState, content: RealmzContent, attacker: MonsterState, target_id: String, action: StringName, behind: bool, rng: RealmzRng, events: Array[DomainEvent]) -> int:
 	var combat := state.combat
 	combat.turns.invalidate_undo()
-	var definition := content.monster_by_id(attacker.definition_id)
+	var definition := content.combat.monster_by_id(attacker.definition_id)
 	if definition == null:
 		return REACTION_COMPLETED
 	_context.automation().monster_actions().prepare_melee_weapon(attacker, definition, content)
-	var weapon := content.item_by_id(attacker.weapon_id) if not attacker.weapon_id.is_empty() else null
+	var weapon := content.items.item_by_id(attacker.weapon_id) if not attacker.weapon_id.is_empty() else null
 	var character_target := state.party.character_by_id(target_id)
 	if character_target != null:
-		var race := content.race_by_id(character_target.race_id)
-		var caste := content.caste_by_id(character_target.caste_id)
+		var race := content.characters.race_by_id(character_target.race_id)
+		var caste := content.characters.caste_by_id(character_target.caste_id)
 		var charm_bonus := 50 if state.party.conditions.is_active(ConditionRules.PARTY_CHARM_RESISTANCE) else 0
-		var defender_equipment := _context.equipment.combat_equipment(character_target, content.item_definitions())
+		var defender_equipment := _context.equipment.combat_equipment(character_target, content.items.definitions())
 		var defender_luck := defender_equipment.effective_luck if defender_equipment.valid else character_target.luck
 		var defender_armor := defender_equipment.effective_armor if defender_equipment.valid else character_target.armor
 		var reaction_context := MonsterAttackContext.new(weapon, state.clock.day(), behind, defender_luck, state.party.conditions.is_active(ConditionRules.PARTY_DRAGON_HIDE), defender_armor)
@@ -471,7 +471,7 @@ func resolve_monster_reaction(state: GameState, content: RealmzContent, attacker
 	var monster_target := combat.roster.monster_by_id(target_id)
 	if monster_target == null:
 		return REACTION_COMPLETED
-	var target_definition := content.monster_by_id(monster_target.definition_id)
+	var target_definition := content.combat.monster_by_id(monster_target.definition_id)
 	var context := MonsterAttackContext.new(weapon, state.clock.day(), behind)
 	var resolution := _context.combat.resolve_monster_attack_monster(attacker, definition, 0, monster_target, target_definition, rng, context, true)
 	if resolution.total_damage() > 0:

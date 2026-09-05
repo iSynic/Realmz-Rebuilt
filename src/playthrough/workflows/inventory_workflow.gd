@@ -7,10 +7,10 @@ extends RefCounted
 static func equip_item(context: SessionWorkflowContext, payload: InventoryIntentPayloads.Action) -> SessionWorkflowResult:
 	var character := context.state.party.character_by_id(payload.actor_id)
 	var instance := item_instance(character, payload.item_id)
-	var definition: ItemDefinition = null if instance == null else context.content.item_by_id(instance.definition_id)
+	var definition: ItemDefinition = null if instance == null else context.content.items.item_by_id(instance.definition_id)
 	if character == null or instance == null or definition == null:
 		return SessionWorkflowResult.failed(&"unknown_item_instance", "The selected character does not carry that item instance.")
-	var probe := context.rules.equipment.equip_classic(character, instance, definition, context.content.race_by_id(character.race_id), context.content.caste_by_id(character.caste_id), context.state.party.characters(), context.content.item_definitions())
+	var probe := context.rules.equipment.equip_classic(character, instance, definition, context.content.characters.race_by_id(character.race_id), context.content.characters.caste_by_id(character.caste_id), context.state.party.characters(), context.content.items.definitions())
 	if not probe.allowed:
 		return SessionWorkflowResult.failed(&"item_cannot_equip", probe.reason)
 	return SessionWorkflowResult.completed([DomainEvent.new(&"item_equipped", {"characterId": character.id, "instanceId": instance.id, "itemId": definition.id, "identified": instance.identified})])
@@ -19,10 +19,10 @@ static func equip_item(context: SessionWorkflowContext, payload: InventoryIntent
 static func unequip_item(context: SessionWorkflowContext, payload: InventoryIntentPayloads.Action) -> SessionWorkflowResult:
 	var character := context.state.party.character_by_id(payload.actor_id)
 	var instance := item_instance(character, payload.item_id)
-	var definition: ItemDefinition = null if instance == null else context.content.item_by_id(instance.definition_id)
+	var definition: ItemDefinition = null if instance == null else context.content.items.item_by_id(instance.definition_id)
 	if character == null or instance == null or definition == null:
 		return SessionWorkflowResult.failed(&"unknown_item_instance", "The selected character does not carry that item instance.")
-	var probe := context.rules.equipment.unequip_classic(character, instance, definition, context.content.item_definitions())
+	var probe := context.rules.equipment.unequip_classic(character, instance, definition, context.content.items.definitions())
 	if not probe.allowed:
 		return SessionWorkflowResult.failed(&"item_cannot_unequip", probe.reason)
 	return SessionWorkflowResult.completed([DomainEvent.new(&"item_unequipped", {"characterId": character.id, "instanceId": instance.id, "itemId": definition.id})])
@@ -32,7 +32,7 @@ static func trade_item(context: SessionWorkflowContext, payload: InventoryIntent
 	var source := context.state.party.character_by_id(payload.actor_id)
 	var destination := context.state.party.character_by_id(payload.destination_character_id)
 	var instance := item_instance(source, payload.item_id)
-	var definition: ItemDefinition = null if instance == null else context.content.item_by_id(instance.definition_id)
+	var definition: ItemDefinition = null if instance == null else context.content.items.item_by_id(instance.definition_id)
 	if source == null or destination == null or instance == null or definition == null:
 		return SessionWorkflowResult.failed(&"invalid_item_trade", "Trade requires a carried item and two current party members.")
 	var probe := trade_item_probe(context, source, destination, instance, definition)
@@ -68,7 +68,7 @@ static func trade_item_probe(context: SessionWorkflowContext, source: CharacterS
 	if not probe.allowed or definition == null or absi(definition.item_type) != 13:
 		return probe
 	for carried: ItemInstance in destination.inventory():
-		var carried_definition := context.content.item_by_id(carried.definition_id)
+		var carried_definition := context.content.items.item_by_id(carried.definition_id)
 		if carried_definition != null and absi(carried_definition.item_type) == 13:
 			return InventoryActionProbe.block("%s already carries a scroll case." % destination.name)
 	for scroll: SpellScrollState in destination.scroll_case():
@@ -80,7 +80,7 @@ static func trade_item_probe(context: SessionWorkflowContext, source: CharacterS
 static func split_item(context: SessionWorkflowContext, payload: InventoryIntentPayloads.Action) -> SessionWorkflowResult:
 	var character := context.state.party.character_by_id(payload.actor_id)
 	var instance := item_instance(character, payload.item_id)
-	var definition: ItemDefinition = null if instance == null else context.content.item_by_id(instance.definition_id)
+	var definition: ItemDefinition = null if instance == null else context.content.items.item_by_id(instance.definition_id)
 	if character == null or instance == null or definition == null:
 		return SessionWorkflowResult.failed(&"unknown_item_instance", "The selected character does not carry that item instance.")
 	var probe := context.rules.inventory.classic_split_probe(character, instance, definition)
@@ -103,7 +103,7 @@ static func split_item(context: SessionWorkflowContext, payload: InventoryIntent
 static func join_item(context: SessionWorkflowContext, payload: InventoryIntentPayloads.Action) -> SessionWorkflowResult:
 	var character := context.state.party.character_by_id(payload.actor_id)
 	var instance := item_instance(character, payload.item_id)
-	var definition: ItemDefinition = null if instance == null else context.content.item_by_id(instance.definition_id)
+	var definition: ItemDefinition = null if instance == null else context.content.items.item_by_id(instance.definition_id)
 	if character == null or instance == null or definition == null:
 		return SessionWorkflowResult.failed(&"unknown_item_instance", "The selected character does not carry that item instance.")
 	var probe := context.rules.inventory.classic_join_probe(character, instance, definition)

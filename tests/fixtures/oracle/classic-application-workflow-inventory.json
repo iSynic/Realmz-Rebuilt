@@ -4991,7 +4991,7 @@
             "symbol": "var bestiary_entries"
           },
           {
-            "path": "src/game/content/realmz_content.gd",
+            "path": "src/game/combat/combat_catalog.gd",
             "symbol": "func bestiary_definitions_for_set"
           },
           {

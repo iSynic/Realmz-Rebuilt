@@ -212,7 +212,7 @@ func _move_between_maps(action: ClassicActionDefinition, dungeon_move: bool, act
 	if sound_id != 0:
 		events.append(DomainEvent.new(&"sound_requested", {"soundId": sound_id, "source": "classic-teleport"}))
 	if message_id != 0:
-		var message := _content.message_by_id(absi(message_id))
+		var message := _content.scenario_records.message_by_id(absi(message_id))
 		if message == null:
 			return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic teleport references unavailable message %d." % message_id)
 		events.append(DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-teleport"}))
@@ -277,7 +277,7 @@ func _mutate_triggers(action: ClassicActionDefinition) -> ScenarioRuntimeOperati
 				record_indexes.append(record_index)
 	var changed: Array[String] = []
 	for record_index: int in record_indexes:
-		var trigger := _content.trigger_by_map_record(map.id, record_index)
+		var trigger := _content.scenario_records.trigger_by_map_record(map.id, record_index)
 		if trigger == null:
 			continue
 		_game_state.world.triggers.set_trigger_chance(trigger.id, action.extra_code[2])

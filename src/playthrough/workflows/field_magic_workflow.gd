@@ -14,7 +14,7 @@ static func set_fast_spell(context: SessionWorkflowContext, payload: SpellIntent
 		if not character.clear_fast_spell(payload.scroll_slot):
 			return SessionWorkflowResult.failed(&"fast_spell_binding_failed", "The Fast Spell slot could not be cleared.")
 		return SessionWorkflowResult.completed([DomainEvent.new(&"fast_spell_changed", {"characterId": character.id, "slot": payload.scroll_slot, "spellId": "", "power": 0, "source": "classic"})])
-	var spell := context.content.spell_by_id(payload.spell_id)
+	var spell := context.content.magic.spell_by_id(payload.spell_id)
 	if spell == null or not character.known_spells().has(spell.id):
 		return SessionWorkflowResult.failed(&"invalid_fast_spell", "Fast Spells must reference a spell known by this character.")
 	if payload.power < 1 or payload.power > 7 or spell.cost < 0 and payload.power != 1:
@@ -29,13 +29,13 @@ static func make_scroll(context: SessionWorkflowContext, payload: SpellIntentPay
 	if context.state.combat != null and not context.state.combat.completed:
 		return SessionWorkflowResult.failed(&"scroll_scribing_in_battle", "Classic scroll scribing is available only while camped.")
 	var character := context.state.party.character_by_id(payload.caster_id)
-	var spell := context.content.spell_by_id(payload.spell_id)
+	var spell := context.content.magic.spell_by_id(payload.spell_id)
 	var probe := make_scroll_probe(context, character, spell, payload.power)
 	if not probe.allowed:
 		return SessionWorkflowResult.failed(&"scroll_scribing_unavailable", probe.reason)
 	var slot_index := _first_empty_scroll_slot(character)
 	var parchment := _parchment_instance(context, character)
-	var parchment_definition: ItemDefinition = null if parchment == null else context.content.item_by_id(parchment.definition_id)
+	var parchment_definition: ItemDefinition = null if parchment == null else context.content.items.item_by_id(parchment.definition_id)
 	if slot_index < 0 or parchment == null or parchment_definition == null or not context.rules.inventory.use_charge(character, parchment.id, parchment_definition):
 		return SessionWorkflowResult.failed(&"scroll_scribing_commit_failed", "The validated scroll materials could not be committed.")
 	var cost := absi(spell.cost * payload.power * 2)
@@ -98,7 +98,7 @@ static func scroll_slot_probe(context: SessionWorkflowContext, character: Charac
 static func begin_field_scroll(context: SessionWorkflowContext, payload: SpellIntentPayload, request_revision: int) -> MagicTransitionResult:
 	var character := context.state.party.character_by_id(payload.caster_id)
 	var scroll := character.scroll_at(payload.scroll_slot) if character != null else null
-	var spell := context.content.spell_by_id(scroll.spell_id) if scroll != null and not scroll.is_empty() else null
+	var spell := context.content.magic.spell_by_id(scroll.spell_id) if scroll != null and not scroll.is_empty() else null
 	var slot_probe := scroll_slot_probe(context, character, payload.scroll_slot, spell)
 	if not slot_probe.allowed:
 		return MagicTransitionResult.failed(&"scroll_unavailable", slot_probe.reason)
@@ -136,7 +136,7 @@ static func discard_field_scroll(context: SessionWorkflowContext, targeting: Tar
 		return SessionWorkflowResult.failed(&"invalid_session_continuation", "The scroll awaiting discard confirmation is unavailable.")
 	var character := context.state.party.character_by_id(targeting.character_id)
 	var scroll := character.scroll_at(targeting.scroll_slot) if character != null else null
-	var spell := context.content.spell_by_id(targeting.spell_id)
+	var spell := context.content.magic.spell_by_id(targeting.spell_id)
 	var probe := scroll_slot_probe(context, character, targeting.scroll_slot, spell)
 	if not probe.allowed or scroll.spell_id != targeting.spell_id or scroll.power != targeting.power or spell.in_camp:
 		return SessionWorkflowResult.failed(&"invalid_session_continuation", "The scroll awaiting discard confirmation no longer matches its committed state.")
@@ -165,7 +165,7 @@ static func resume_field_scroll(context: SessionWorkflowContext, targeting: Targ
 
 static func commit_field_scroll(context: SessionWorkflowContext, character_id: String, slot_index: int, spell_id: String, power: int, requested_target_ids: Array[String]) -> SessionWorkflowResult:
 	var character := context.state.party.character_by_id(character_id)
-	var spell := context.content.spell_by_id(spell_id)
+	var spell := context.content.magic.spell_by_id(spell_id)
 	var probe := scroll_use_probe(context, character, slot_index, spell)
 	if not probe.allowed:
 		return SessionWorkflowResult.failed(&"scroll_unavailable", probe.reason)
@@ -238,7 +238,7 @@ static func field_spell_target_count(context: SessionWorkflowContext, spell: Spe
 
 static func begin_field_spell(context: SessionWorkflowContext, payload: SpellIntentPayload, request_revision: int) -> MagicTransitionResult:
 	var character := context.state.party.character_by_id(payload.caster_id)
-	var spell := context.content.spell_by_id(payload.spell_id)
+	var spell := context.content.magic.spell_by_id(payload.spell_id)
 	var probe := field_spell_probe(context, character, spell, payload.power)
 	if not probe.allowed:
 		return MagicTransitionResult.failed(&"field_spell_unavailable", probe.reason)
@@ -272,7 +272,7 @@ static func resume_field_spell(context: SessionWorkflowContext, targeting: Targe
 
 static func commit_field_spell(context: SessionWorkflowContext, character_id: String, spell_id: String, power: int, requested_target_ids: Array[String]) -> SessionWorkflowResult:
 	var character := context.state.party.character_by_id(character_id)
-	var spell := context.content.spell_by_id(spell_id)
+	var spell := context.content.magic.spell_by_id(spell_id)
 	var probe := field_spell_probe(context, character, spell, power)
 	if not probe.allowed:
 		return SessionWorkflowResult.failed(&"field_spell_unavailable", probe.reason)
@@ -297,7 +297,7 @@ static func _parchment_instance(context: SessionWorkflowContext, character: Char
 	if character == null:
 		return null
 	for instance: ItemInstance in character.inventory():
-		var definition := context.content.item_by_id(instance.definition_id)
+		var definition := context.content.items.item_by_id(instance.definition_id)
 		if definition != null and definition.classic_id == 806 and instance.charges != 0:
 			return instance
 	return null

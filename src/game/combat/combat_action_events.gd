@@ -217,7 +217,7 @@ static func queue_spell_death_macro(combat: CombatState, monster: MonsterState, 
 static func request_next_spell_death_macro(combat: CombatState, content: RealmzContent, events: Array[DomainEvent]) -> bool:
 	var combatant_id := combat.spell_runtime.pending_death_macro_id() if combat != null else ""
 	var monster := combat.roster.monster_by_id(combatant_id) if combat != null else null
-	var definition := content.monster_by_id(monster.definition_id) if monster != null and content != null else null
+	var definition := content.combat.monster_by_id(monster.definition_id) if monster != null and content != null else null
 	if monster == null or definition == null or definition.death_macro <= 0:
 		return false
 	append_monster_death_macro_request(monster, definition, events, true)

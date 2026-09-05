@@ -93,7 +93,7 @@ func _populate_properties(definition: ItemDefinition, content: RealmzContent) ->
 		var attacks: String = attack_labels[definition.special_2 - 1]
 		properties.append("Gives the character %s extra attack%s per combat round." % [attacks, "" if definition.special_2 == 2 else "s"])
 	if definition.special_2 > 1100:
-		var spell := content.spell_by_classic_id(definition.special_2) if content != null else null
+		var spell := content.magic.spell_by_classic_id(definition.special_2) if content != null else null
 		properties.append("Stores the spell %s." % (spell.name if spell != null else "Classic spell %d" % definition.special_2))
 	if definition.special_3 < 0:
 		properties.append("%+d to hit Classic monster type %d." % [definition.special_5, absi(definition.special_3)])
@@ -105,10 +105,10 @@ func _populate_properties(definition: ItemDefinition, content: RealmzContent) ->
 
 func _populate_restrictions(definition: ItemDefinition, content: RealmzContent) -> void:
 	if not definition.specific_caste_id.is_empty():
-		var caste := content.caste_by_id(definition.specific_caste_id) if content != null else null
+		var caste := content.characters.caste_by_id(definition.specific_caste_id) if content != null else null
 		restrictions.append("Usable only by %s." % (caste.name if caste != null else _display_id(definition.specific_caste_id)))
 	if not definition.specific_race_id.is_empty():
-		var race := content.race_by_id(definition.specific_race_id) if content != null else null
+		var race := content.characters.race_by_id(definition.specific_race_id) if content != null else null
 		restrictions.append("Usable only by %s." % (race.name if race != null else _display_id(definition.specific_race_id)))
 	if content == null:
 		if definition.caste_restrictions != 0:
@@ -122,7 +122,7 @@ func _populate_restrictions(definition: ItemDefinition, content: RealmzContent) 
 		return
 	var excluded_castes: Array[String] = []
 	var allowed_castes: Array[String] = []
-	for caste: CasteDefinition in content.caste_definitions():
+	for caste: CasteDefinition in content.characters.caste_definitions():
 		var bit := 1 << (caste.caste_class - 1) if caste.caste_class > 0 else 0
 		if bit != 0 and (definition.caste_restrictions & bit) != 0:
 			excluded_castes.append(caste.name)
@@ -132,7 +132,7 @@ func _populate_restrictions(definition: ItemDefinition, content: RealmzContent) 
 	_add_name_restriction("Usable only by", allowed_castes)
 	var excluded_races: Array[String] = []
 	var allowed_races: Array[String] = []
-	for race: RaceDefinition in content.race_definitions():
+	for race: RaceDefinition in content.characters.race_definitions():
 		if (definition.race_restrictions & race.descriptor_flags) != 0:
 			excluded_races.append(race.name)
 		if definition.race_class_only != 0 and (definition.race_class_only & race.descriptor_flags) == definition.race_class_only:

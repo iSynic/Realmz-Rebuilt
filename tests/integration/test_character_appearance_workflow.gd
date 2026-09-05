@@ -8,8 +8,8 @@ func run() -> void:
 	if not package_result.is_ok():
 		return
 	var content := package_result.content
-	var portraits := content.appearance_definitions(CharacterAppearanceDefinition.PORTRAIT)
-	var icons := content.appearance_definitions(CharacterAppearanceDefinition.COMBAT_ICON)
+	var portraits := content.characters.appearance_definitions(CharacterAppearanceDefinition.PORTRAIT)
+	var icons := content.characters.appearance_definitions(CharacterAppearanceDefinition.COMBAT_ICON)
 	assert_equal([portraits.size(), icons.size()], [120, 120], "Providence supplies both complete Classic appearance catalogs")
 	if portraits.size() < 2 or icons.size() < 2:
 		return

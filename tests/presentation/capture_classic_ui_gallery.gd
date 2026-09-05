@@ -133,7 +133,7 @@ func _capture_gallery() -> void:
 	_interaction.present(null)
 	if not gallery_view.party_members.is_empty():
 		var active_content: Variant = _application.get("_active_content")
-		var definition: Variant = active_content.item_by_id("classic.item.901")
+		var definition: Variant = active_content.items.item_by_id("classic.item.901")
 		if definition != null:
 			for index: int in 18:
 				var gallery_item := ItemView.new(ItemInstance.new("gallery-item-%d" % index, definition.id, maxi(1, definition.initial_charges), index < 6, index % 3 != 0), definition)
@@ -392,7 +392,7 @@ func _capture_gallery() -> void:
 	_router.open_screen(&"allies")
 	await _settle()
 	await _capture("canonical-allies-empty-1280x720")
-	var ally_definition: Variant = _application.get("_active_content").monster_by_classic_id(1)
+	var ally_definition: Variant = _application.get("_active_content").combat.monster_by_classic_id(1)
 	if ally_definition != null:
 		var ally := MonsterState.new("gallery-ally", ally_definition.id, "Rook, Northgate Scout", 12, 15, ally_definition.hit_dice, ally_definition.agility, ally_definition.armor, ally_definition.magic_resistance, ally_definition.spell_points, false)
 		ally.icon_id = ally_definition.icon_id

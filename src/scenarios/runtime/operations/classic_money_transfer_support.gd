@@ -16,15 +16,15 @@ func _init(content: RealmzContent, game_state: GameState, rules: RealmzRules) ->
 
 func movement_context_error() -> String:
 	for character: CharacterState in _game_state.party.characters():
-		if _content.race_by_id(character.race_id) == null or _content.caste_by_id(character.caste_id) == null:
+		if _content.characters.race_by_id(character.race_id) == null or _content.characters.caste_by_id(character.caste_id) == null:
 			return "Character '%s' has no package-backed race or class for Classic movement recalculation." % character.id
 	return ""
 
 
 func recalculate_party_movement() -> void:
 	for character: CharacterState in _game_state.party.characters():
-		var race := _content.race_by_id(character.race_id)
-		var caste := _content.caste_by_id(character.caste_id)
+		var race := _content.characters.race_by_id(character.race_id)
+		var caste := _content.characters.caste_by_id(character.caste_id)
 		_rules.characters.recalculate_movement(character, race, caste.movement_bonus)
 
 

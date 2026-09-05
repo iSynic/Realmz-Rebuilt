@@ -11,6 +11,7 @@ Own one adventurer's mutable truth, derived character rules, detached presentati
 - `CharacterRules` owns creation, aging, derived statistics, advancement, and character-level legality.
 - `CharacterView` is the detached read-only record consumed by presentation.
 - `CharacterLifetimeRecord` owns cumulative character achievements and their nested value representation.
+- `CharacterCatalog` indexes immutable Race, Caste, and appearance definitions, including the application appearance fallback installed for a scenario.
 
 ## Local Contracts
 
@@ -18,7 +19,7 @@ Own one adventurer's mutable truth, derived character rules, detached presentati
 - Save, vault, draft, and clone boundaries use `CharacterStateCodec` directly. `CharacterState` does not forward codec operations.
 - Encoding preserves the existing field names, defaults, collection order, and legacy optional fields exactly.
 - Default save and Classic-array setters retain their gameplay clamps. The codec may bypass those clamps only after strict integer validation so historical state round-trips without reinterpretation.
-- Character definitions remain immutable content outside this folder. Party membership, persistence, and UI remain owned by their respective boundaries.
+- `RealmzContent.characters` is the authoritative definition lookup. Party membership, persistence, and UI remain owned by their respective boundaries.
 
 ## Work Guidance
 

@@ -60,7 +60,7 @@ func _build_inventory(content: RealmzContent) -> Dictionary:
 	}
 	var family_counts: Dictionary = {}
 	var context_counts: Dictionary = {}
-	for spell: SpellDefinition in content.spell_definitions():
+	for spell: SpellDefinition in content.magic.definitions():
 		var role := String(ClassicSpellIdentityCatalog.application_role(spell))
 		var behavior_signature: Dictionary = ClassicSpellClassificationRules.behavior_signature(spell)
 		var mechanical_family := String(ClassicSpellClassificationRules.mechanical_family(spell))

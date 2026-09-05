@@ -36,7 +36,7 @@ func run(command: SessionDebugCommand) -> SessionCoordinatorResult:
 func _start_battle(classic_id: int) -> SessionCoordinatorResult:
 	if _context.state.combat != null:
 		return SessionCoordinatorResult.failed(&"debug_battle_active", "A battle is already active.")
-	var battle := _context.content.battle_by_classic_id(classic_id)
+	var battle := _context.content.combat.battle_by_classic_id(classic_id)
 	if battle == null:
 		return SessionCoordinatorResult.failed(&"debug_battle_unknown", "Battle %d is unavailable." % classic_id)
 	var result := _context.rules.combat_flow.start_battle(_context.state, _context.content, battle, _context.rng)
@@ -76,7 +76,7 @@ func _win_battle() -> SessionCoordinatorResult:
 func _start_encounter(kind: StringName, classic_id: int) -> SessionCoordinatorResult:
 	if _context.state.combat != null or kind not in [&"simple", &"complex"]:
 		return SessionCoordinatorResult.failed(&"debug_encounter_unavailable", "A Simple or Complex Encounter requires exploration.")
-	var available := _context.content.simple_encounter_by_id(classic_id) != null if kind == &"simple" else _context.content.complex_encounter_by_id(classic_id) != null
+	var available := _context.content.scenario_records.simple_encounter_by_id(classic_id) != null if kind == &"simple" else _context.content.scenario_records.complex_encounter_by_id(classic_id) != null
 	if not available:
 		return SessionCoordinatorResult.failed(&"debug_encounter_unknown", "%s Encounter %d is unavailable." % [String(kind).capitalize(), classic_id])
 	var opcode := 4 if kind == &"simple" else 5

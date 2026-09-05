@@ -80,7 +80,7 @@ func _populate_battlefield(combat: CombatState, content: RealmzContent, game_sta
 				var terrain := terrain_set.tile_by_id(combat.battlefield.terrain_at(coordinate)) if terrain_set != null else null
 				if terrain == null or terrain.solid == 0:
 					coordinates.append(coordinate)
-			var spell := content.spell_by_id(field.spell_id) if content != null else null
+			var spell := content.magic.spell_by_id(field.spell_id) if content != null else null
 			persistent_fields.append(PersistentCombatFieldView.new(field, spell.name if spell != null else field.spell_id, coordinates))
 
 
@@ -93,7 +93,7 @@ func _adjacent_actor_ids(combat: CombatState, battlefield_rules: BattlefieldRule
 
 func _populate_combatants(combat: CombatState, characters: Array[CharacterState], content: RealmzContent, adjacent_ids: Array[String]) -> void:
 	for monster: MonsterState in combat.roster.monsters():
-		var definition := content.monster_by_id(monster.definition_id) if content != null else null
+		var definition := content.combat.monster_by_id(monster.definition_id) if content != null else null
 		var view := MonsterView.new(monster, definition, content)
 		monsters.append(view)
 		if monster.current_health > 0 and monster.traitor and adjacent_ids.has(monster.id):
@@ -116,7 +116,7 @@ func _active_character(characters: Array[CharacterState]) -> CharacterState:
 func _populate_character_actions(combat: CombatState, characters: Array[CharacterState], content: RealmzContent, equipment_rules: EquipmentRules, battlefield_rules: BattlefieldRules, combat_flow: CombatFlow, game_state: GameState, active_character: CharacterState) -> void:
 	if combat_flow != null:
 		_populate_command_probes(combat, characters, content, combat_flow, game_state, active_character)
-	var equipment := equipment_rules.combat_equipment(active_character, content.item_definitions())
+	var equipment := equipment_rules.combat_equipment(active_character, content.items.definitions())
 	_populate_weapon_actions(combat, content, combat_flow, game_state, active_character, equipment)
 	_populate_movement_actions(combat, characters, content, battlefield_rules, combat_flow, game_state, active_character)
 
@@ -142,7 +142,7 @@ func _populate_command_probes(combat: CombatState, characters: Array[CharacterSt
 	for target_id: String in combat_flow.actions.turn_undead_target_ids(game_state, content):
 		var target := combat.roster.monster_by_id(target_id)
 		if target != null:
-			turn_undead_targets.append(MonsterView.new(target, content.monster_by_id(target.definition_id), content))
+			turn_undead_targets.append(MonsterView.new(target, content.combat.monster_by_id(target.definition_id), content))
 
 
 func _populate_weapon_actions(combat: CombatState, content: RealmzContent, combat_flow: CombatFlow, game_state: GameState, active_character: CharacterState, equipment: CharacterCombatEquipment) -> void:
@@ -171,7 +171,7 @@ func _populate_projectile_targets(combat: CombatState, content: RealmzContent, c
 		return
 	for monster: MonsterState in combat.roster.monsters():
 		if monster.current_health > 0 and monster.traitor != active_character.traitor and combat_flow.reactions.projectile_target_is_valid(combat, content, active_character.id, monster.id, profile.maximum_range, profile.spell.range_min + profile.spell.range_max > 0):
-			targets.append(MonsterView.new(monster, content.monster_by_id(monster.definition_id), content))
+			targets.append(MonsterView.new(monster, content.combat.monster_by_id(monster.definition_id), content))
 	if targets.is_empty():
 		ranged_attack_unavailable_reason = "No hostile monster is within the projectile's Classic range and line of sight."
 	else:

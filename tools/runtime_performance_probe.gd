@@ -112,7 +112,7 @@ func _initialize() -> void:
 func _measure_vault_import(content: RealmzContent) -> Dictionary:
 	_remove_tree(ProjectSettings.globalize_path(VAULT_PATH))
 	var repository := CHARACTER_VAULT_REPOSITORY.new(VAULT_PATH)
-	var race := content.race_definitions()[0]; var caste := content.caste_definitions()[0]
+	var race := content.characters.race_definitions()[0]; var caste := content.characters.caste_definitions()[0]
 	var character := CharacterState.new("runtime-performance-character", "Performance", 20, 20); character.race_id = race.id; character.caste_id = caste.id
 	var record := CharacterVaultRecord.new(character.id, content.rules_version, content.campaign_id, content.package_hash, character)
 	if not repository.publish_revision(record): return {"p95Ms": -1.0, "cacheSize": 0}
@@ -124,7 +124,7 @@ func _measure_vault_import(content: RealmzContent) -> Dictionary:
 
 
 func _assemble_party(session: GameSession, content: RealmzContent) -> bool:
-	var races := content.race_definitions(); var castes := content.caste_definitions()
+	var races := content.characters.race_definitions(); var castes := content.characters.caste_definitions()
 	if races.is_empty() or castes.is_empty(): return false
 	var race: RaceDefinition; var caste: CasteDefinition; var caster_type := 0
 	for race_candidate: RaceDefinition in races:
@@ -138,7 +138,7 @@ func _assemble_party(session: GameSession, content: RealmzContent) -> bool:
 		if caste != null: break
 	if race == null or caste == null: return false
 	var known_spells: Array[String] = []
-	for spell: SpellDefinition in content.spell_definitions():
+	for spell: SpellDefinition in content.magic.definitions():
 		if int(spell.classic_id / 1000) == caster_type and spell.classic_tier() >= 0:
 			known_spells.append(spell.id)
 			if known_spells.size() >= 4: break
@@ -257,7 +257,7 @@ func _place_party(session: GameSession, content: RealmzContent, map_id: String, 
 	# The benchmark still advances the real five-minute clock, hour recovery,
 	# conditions, fatigue, search, and movement transactions; this preparation
 	# prevents an unrelated modal timeline from replacing a measured travel step.
-	for encounter: TimedEncounterDefinition in content.timed_encounters():
+	for encounter: TimedEncounterDefinition in content.scenario_records.timed_encounters():
 		snapshot.game_state.scenario_progress.encounters.set_timed_override(encounter.id, {"day": snapshot.game_state.clock.day() + 10_000, "percent": encounter.chance_percent})
 	var map := content.world.map_by_id(map_id); var seeded := 0
 	if map != null:

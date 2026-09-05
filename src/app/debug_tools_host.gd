@@ -161,11 +161,11 @@ static func _readable_event_line(event: DomainEvent, view: GameView, content: Re
 			var defeat := " — defeated" if bool(event.payload.get("defeated", false)) else ""
 			return "[COMBAT] %s used %s on %s — %d damage%s." % [actor_name, action, target_name, int(event.payload.get("damage", 0)), defeat]
 		&"combat_spell_cast":
-			var spell := content.spell_by_id(String(event.payload.get("spellId", ""))) if content != null else null
+			var spell := content.magic.spell_by_id(String(event.payload.get("spellId", ""))) if content != null else null
 			var spell_name := spell.name if spell != null else String(event.payload.get("spellName", event.payload.get("spellId", "Unknown spell")))
 			return "[COMBAT] %s cast %s on %s." % [actor_name, spell_name, _spell_target_text(event, spell, view, actor_id)]
 		&"combat_spell_resolved":
-			var spell := content.spell_by_id(String(event.payload.get("spellId", ""))) if content != null else null
+			var spell := content.magic.spell_by_id(String(event.payload.get("spellId", ""))) if content != null else null
 			var spell_name := spell.name if spell != null else String(event.payload.get("spellName", event.payload.get("spellId", "Spell")))
 			var outcome := _spell_resolution_outcome(event.payload)
 			return "[COMBAT] %s → %s: %s." % [spell_name, target_name if not target_id.is_empty() else _spell_target_text(event, spell, view, actor_id), outcome]
@@ -220,7 +220,7 @@ static func auto_action_lines(events: Array[DomainEvent], view: GameView, conten
 		var actor_name := _actor_name(view, actor_id)
 		match event.kind:
 			&"combat_spell_cast":
-				var spell := content.spell_by_id(String(event.payload.get("spellId", ""))) if content != null else null
+				var spell := content.magic.spell_by_id(String(event.payload.get("spellId", ""))) if content != null else null
 				var spell_name := spell.name if spell != null else String(event.payload.get("spellId", "Unknown spell"))
 				result.append("%s cast %s on %s." % [actor_name, spell_name, _spell_target_text(event, spell, view, actor_id)])
 			&"combat_attack_resolved":

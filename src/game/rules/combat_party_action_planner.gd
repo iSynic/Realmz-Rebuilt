@@ -39,7 +39,7 @@ func _best_party_spell(state: GameState, content: RealmzContent, actor: Characte
 	var summon_coordinate_cache: Dictionary = {}
 	var ray_actor_cache: Dictionary = {}
 	for option: CombatSpellOptionView in _context.magic_flow().selection().character_spell_options(state, content, actor.id):
-		var spell := content.spell_by_id(option.spell_id)
+		var spell := content.magic.spell_by_id(option.spell_id)
 		if spell == null or not _auto_group_target_is_safe(spell):
 			continue
 		if CombatFlowSummoning.is_summon_spell(spell):
@@ -97,7 +97,7 @@ func _best_polymorph(state: GameState, content: RealmzContent, actor: CharacterS
 func _best_destroy_turn_undead(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, power: int) -> Dictionary:
 	var eligible := 0
 	for target: MonsterState in state.combat.roster.monsters():
-		var definition := content.monster_by_id(target.definition_id)
+		var definition := content.combat.monster_by_id(target.definition_id)
 		if target.current_health > 0 and target.traitor and state.combat.battlefield.has_actor(target.id) and definition != null and definition.can_summon != -1 and (definition.type_flag(1) or definition.type_flag(2)):
 			eligible += 1
 	if eligible == 0 or not _context.magic_flow().selection().probe_character_spell_cast(state, content, actor.id, "", spell.id, power).allowed:
@@ -411,7 +411,7 @@ func _hostile_spell_targets(state: GameState, content: RealmzContent, actor: Cha
 func _best_projectile(state: GameState, content: RealmzContent, actor: CharacterState) -> Dictionary:
 	if state.combat.actor_statuses.character_weapon_mode(actor.id) != &"missile":
 		return {}
-	var profile = _context.reactions().character_projectile_profile(actor, content, _context.equipment.combat_equipment(actor, content.item_definitions()))
+	var profile = _context.reactions().character_projectile_profile(actor, content, _context.equipment.combat_equipment(actor, content.items.definitions()))
 	if profile == null or not profile.available:
 		return {"action": &"switch_weapon", "score": 110}
 	var best: Dictionary = {}

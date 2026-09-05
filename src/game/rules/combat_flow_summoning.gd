@@ -214,9 +214,9 @@ func _select_classic_summon_definition(state: GameState, content: RealmzContent,
 		var classic_id := rng.draw_between(0, 200, StringName("combat.summon.%s.selection.%d" % [spell.id, attempt]))
 		if spell.spell_class != 0:
 			classic_id = absi(spell.spell_class)
-		var definition := content.monster_by_classic_id_for_set(classic_id, state.monster_set)
+		var definition := content.combat.monster_by_classic_id_for_set(classic_id, state.monster_set)
 		if definition == null:
-			definition = content.monster_by_classic_id(classic_id)
+			definition = content.combat.monster_by_classic_id(classic_id)
 		if definition == null:
 			continue
 		if spell.spell_class != 0:

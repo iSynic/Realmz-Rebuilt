@@ -88,7 +88,7 @@ func _destroy_related_monsters(action: ClassicActionDefinition) -> ScenarioRunti
 	for monster: MonsterState in _game_state.combat.roster.monsters():
 		if destroyed.size() >= limit:
 			break
-		var definition := _content.monster_by_id(monster.definition_id)
+		var definition := _content.combat.monster_by_id(monster.definition_id)
 		if monster.current_health <= 0 or definition == null or definition.classic_name_id != action.extra_code[0] or not monster.traitor and not include_loyal:
 			continue
 		monster.current_health = 0
@@ -113,7 +113,7 @@ func _run_opcode_death_macros(combatant_ids: Array[String], preceding_events: Ar
 	var remaining := combatant_ids.duplicate()
 	var combatant_id: String = remaining.pop_front()
 	var monster := _game_state.combat.roster.monster_by_id(combatant_id)
-	var definition := _content.monster_by_id(monster.definition_id) if monster != null else null
+	var definition := _content.combat.monster_by_id(monster.definition_id) if monster != null else null
 	if monster == null or definition == null or definition.death_macro <= 0:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_death_macro_request", "Classic opcode 125 references unavailable monster death-macro content.")
 	var program_id := "xap:%d" % definition.death_macro
@@ -170,7 +170,7 @@ func cause_fumble(action: ClassicActionDefinition, context: ScenarioExecutionCon
 	if int(action.extra_code[1]) != 0:
 		events.append(DomainEvent.new(&"sound_requested", {"soundId": absi(int(action.extra_code[1])), "waitForCompletion": int(action.extra_code[1]) < 0, "source": "classic"}))
 	if int(action.extra_code[0]) != 0:
-		var message := _content.message_by_id(absi(int(action.extra_code[0])))
+		var message := _content.scenario_records.message_by_id(absi(int(action.extra_code[0])))
 		if message != null:
 			events.append(DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic"}))
 	events.append_array(result.events)
@@ -211,7 +211,7 @@ func _alter_combat_monsters(action: ClassicActionDefinition) -> ScenarioRuntimeO
 	if action.extra_code.size() < 5:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 120 requires a five-value Extra Code row.")
 	var target_kind := action.extra_code[0]
-	var definition := _content.monster_by_classic_id_for_set(absi(action.extra_code[1]), _game_state.monster_set)
+	var definition := _content.combat.monster_by_classic_id_for_set(absi(action.extra_code[1]), _game_state.monster_set)
 	var remaining := maxi(0, action.extra_code[2])
 	if target_kind < 1 or target_kind > 2 or definition == null:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_combat_monster_target", "Classic opcode 120 references an unavailable monster kind or identity.")
@@ -220,7 +220,7 @@ func _alter_combat_monsters(action: ClassicActionDefinition) -> ScenarioRuntimeO
 	for monster: MonsterState in candidates:
 		if remaining <= 0:
 			break
-		var candidate_definition := _content.monster_by_id(monster.definition_id)
+		var candidate_definition := _content.combat.monster_by_id(monster.definition_id)
 		if candidate_definition == null or candidate_definition.classic_id != definition.classic_id:
 			continue
 		if action.extra_code[3] != -1:
@@ -239,7 +239,7 @@ func _deanimate_lower_undead() -> ScenarioRuntimeOperationResult:
 		return ScenarioRuntimeOperationResult.failed(&"no_active_battle", "Classic opcode 121 requires an active battle.")
 	var affected: Array[String] = []
 	for monster: MonsterState in _game_state.combat.roster.monsters():
-		var definition := _content.monster_by_id(monster.definition_id)
+		var definition := _content.combat.monster_by_id(monster.definition_id)
 		if definition != null and definition.type_flag(1) and not definition.type_flag(5) and monster.current_health > 0:
 			monster.current_health = 0
 			affected.append(monster.id)
@@ -260,13 +260,13 @@ func _cause_monsters_to_route(action: ClassicActionDefinition, context: Scenario
 	for classic_id: int in action.extra_code:
 		if classic_id == 0:
 			continue
-		var definition := _content.monster_by_classic_id_for_set(absi(classic_id), _game_state.monster_set)
+		var definition := _content.combat.monster_by_classic_id_for_set(absi(classic_id), _game_state.monster_set)
 		if definition == null:
 			return ScenarioRuntimeOperationResult.failed(&"unknown_monster", "Classic opcode 123 references unavailable monster %d." % classic_id)
 		definition_ids[definition.classic_id] = true
 	var routed: Array[String] = []
 	for monster: MonsterState in _game_state.combat.roster.monsters():
-		var routed_definition := _content.monster_by_id(monster.definition_id)
+		var routed_definition := _content.combat.monster_by_id(monster.definition_id)
 		if routed_definition != null and monster.current_health > 0 and monster.traitor == source_traitor and definition_ids.has(routed_definition.classic_id):
 			monster.conditions.set_value(ConditionRules.RUNS_AWAY, -1)
 			monster.surrender_percent = 50
@@ -279,7 +279,7 @@ func _spawn_classic_monsters(action: ClassicActionDefinition, context: ScenarioE
 		return ScenarioRuntimeOperationResult.failed(&"no_active_battle", "Classic opcode 124 requires an active battle.")
 	if action.extra_code.size() < 5:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 124 requires a five-value Extra Code row.")
-	var definition := _content.monster_by_classic_id_for_set(absi(action.extra_code[1]), _game_state.monster_set)
+	var definition := _content.combat.monster_by_classic_id_for_set(absi(action.extra_code[1]), _game_state.monster_set)
 	if definition == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_monster", "Classic opcode 124 references unavailable monster %d." % action.extra_code[1])
 	var battlefield := _game_state.combat.battlefield
@@ -371,12 +371,12 @@ func _branch_battle_round_macro(action: ClassicActionDefinition) -> ScenarioRunt
 func _continue_if_monster_present(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
 	if _game_state.combat == null or _game_state.combat.completed:
 		return ScenarioRuntimeOperationResult.failed(&"monster_test_outside_combat", "Classic opcode 127 requires an active battle macro.")
-	var definition := _content.monster_by_classic_id_for_set(absi(action.operand_id), _game_state.monster_set)
+	var definition := _content.combat.monster_by_classic_id_for_set(absi(action.operand_id), _game_state.monster_set)
 	if definition == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_monster", "Classic opcode 127 references unavailable monster %d." % action.operand_id)
 	var present := false
 	for monster: MonsterState in _game_state.combat.roster.monsters():
-		var present_definition := _content.monster_by_id(monster.definition_id)
+		var present_definition := _content.combat.monster_by_id(monster.definition_id)
 		if present_definition != null and present_definition.classic_id == definition.classic_id and monster.current_health > 0:
 			present = true
 			break

@@ -205,7 +205,7 @@ func _use_item(intent: PlayerIntent) -> SessionCoordinatorResult:
 	if character == null:
 		character = FieldItemWorkflow.item_owner(_context.workflow_context(), item_id)
 	var instance := _context.item_instance(character, item_id)
-	var item: ItemDefinition = null if instance == null else _context.content.item_by_id(instance.definition_id)
+	var item: ItemDefinition = null if instance == null else _context.content.items.item_by_id(instance.definition_id)
 	if character == null or instance == null or item == null:
 		return SessionCoordinatorResult.rejected(&"unknown_item_instance", "The selected character does not carry that item instance.")
 	if FieldItemWorkflow.is_classic_door_item(item):
@@ -218,7 +218,7 @@ func _use_item(intent: PlayerIntent) -> SessionCoordinatorResult:
 func _request_drop_item(payload: InventoryIntentPayloads.Action) -> SessionCoordinatorResult:
 	var character := _context.state.party.character_by_id(payload.actor_id)
 	var instance := _context.item_instance(character, payload.item_id)
-	var definition: ItemDefinition = null if instance == null else _context.content.item_by_id(instance.definition_id)
+	var definition: ItemDefinition = null if instance == null else _context.content.items.item_by_id(instance.definition_id)
 	if character == null or instance == null or definition == null:
 		return SessionCoordinatorResult.rejected(&"unknown_item_instance", "The selected character does not carry that item instance.")
 	var probe := _context.rules.inventory.classic_drop_probe(character, instance)
@@ -338,7 +338,7 @@ func _service_action(payload: EconomyIntentPayloads.Service) -> SessionCoordinat
 	if payload.service_id == "realmz.service.bank":
 		return _open_contextual_service(payload.service_id)
 	if payload.service_id == _context.state.location_services.active_shop_id:
-		if payload.service_id.is_empty() or _context.content.shop_by_id(payload.service_id) == null:
+		if payload.service_id.is_empty() or _context.content.economy.shop_by_id(payload.service_id) == null:
 			return SessionCoordinatorResult.rejected(&"service_unavailable", "The selected shop is not available at this location.")
 		return _context.scenario().start_application_hook(ScenarioApplicationHooks.SHOP, &"service", payload.service_id, [])
 	return SessionCoordinatorResult.rejected(&"service_unavailable", "The selected service is not available at this location.")

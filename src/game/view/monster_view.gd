@@ -54,6 +54,6 @@ func _init(monster: MonsterState, definition: MonsterDefinition = null, content:
 			if definition.save_value(index) < 0:
 				vulnerabilities.append(CharacterView.SAVE_NAMES[index])
 	if content != null and not monster.weapon_id.is_empty():
-		var weapon := content.item_by_id(monster.weapon_id)
+		var weapon := content.items.item_by_id(monster.weapon_id)
 		if weapon != null:
 			weapon_name = weapon.name

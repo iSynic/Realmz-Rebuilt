@@ -77,7 +77,7 @@ func _set_compass_enabled(enabled: bool) -> ScenarioRuntimeOperationResult:
 
 func _show_message(action: ClassicActionDefinition, request_id: String) -> ScenarioRuntimeOperationResult:
 	var message_id := absi(action.operand_id)
-	var message := _content.message_by_id(message_id)
+	var message := _content.scenario_records.message_by_id(message_id)
 	if message == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic opcode 1 references unavailable message %d." % action.operand_id)
 	var event := DomainEvent.new(&"message_shown", {"messageId": message_id, "text": message.text, "source": "classic", "classicClick": action.operand_id > 0})
@@ -101,7 +101,7 @@ func _show_random_message(action: ClassicActionDefinition, request_id: String) -
 	if selected_id == 0:
 		return ScenarioRuntimeOperationResult.completed(selected_id)
 	var message_id := absi(selected_id)
-	var message := _content.message_by_id(message_id)
+	var message := _content.scenario_records.message_by_id(message_id)
 	if message == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic opcode 19 has no available message.")
 	var event := DomainEvent.new(&"message_shown", {

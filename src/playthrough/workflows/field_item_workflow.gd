@@ -5,7 +5,7 @@ extends RefCounted
 
 
 static func classic_torch_item(context: SessionWorkflowContext) -> Array[String]:
-	var torch := context.content.item_by_classic_id(805)
+	var torch := context.content.items.item_by_classic_id(805)
 	if torch == null:
 		return []
 	for character: CharacterState in context.state.party.characters():
@@ -21,8 +21,8 @@ static func classic_torch_probe(context: SessionWorkflowContext) -> InventoryAct
 		return InventoryActionProbe.block("The party carries no usable torch.")
 	var character := context.state.party.character_by_id(identity[0])
 	var instance := InventoryWorkflow.item_instance(character, identity[1])
-	var item: ItemDefinition = null if instance == null else context.content.item_by_id(instance.definition_id)
-	var spell: SpellDefinition = null if item == null else context.content.spell_by_classic_id(item.special_2)
+	var item: ItemDefinition = null if instance == null else context.content.items.item_by_id(instance.definition_id)
+	var spell: SpellDefinition = null if item == null else context.content.magic.spell_by_classic_id(item.special_2)
 	return field_spell_item_probe(context, character, instance, item, spell)
 
 
@@ -36,7 +36,7 @@ static func begin_classic_torch(context: SessionWorkflowContext, request_revisio
 static func inventory_identify_probe(context: SessionWorkflowContext, target_id: String, caster_id: String, spell_id: String) -> InventoryActionProbe:
 	var target := context.state.party.character_by_id(target_id)
 	var caster := context.state.party.character_by_id(caster_id)
-	var spell := context.content.spell_by_id(spell_id)
+	var spell := context.content.magic.spell_by_id(spell_id)
 	if context.state.combat != null and not context.state.combat.completed:
 		return InventoryActionProbe.block("Cast Identify is unavailable during battle.")
 	if target == null or target.inventory().is_empty():
@@ -71,7 +71,7 @@ static func identify_inventory(context: SessionWorkflowContext, payload: SpellIn
 
 
 static func field_spell_item_probe(context: SessionWorkflowContext, character: CharacterState, instance: ItemInstance, item: ItemDefinition, spell: SpellDefinition) -> InventoryActionProbe:
-	var probe := context.rules.inventory.classic_spell_item_probe(character, instance, item, spell, context.content.race_by_id(character.race_id) if character != null else null, context.content.caste_by_id(character.caste_id) if character != null else null, false)
+	var probe := context.rules.inventory.classic_spell_item_probe(character, instance, item, spell, context.content.characters.race_by_id(character.race_id) if character != null else null, context.content.characters.caste_by_id(character.caste_id) if character != null else null, false)
 	if not probe.allowed:
 		return probe
 	if ClassicSpellDispositionRules.field_character_disposition(spell) != ClassicSpellDispositionRules.DISPOSITION_EXECUTABLE:
@@ -87,7 +87,7 @@ static func is_classic_door_item(item: ItemDefinition) -> bool:
 
 static func door_item_probe(context: SessionWorkflowContext, character: CharacterState, instance: ItemInstance, item: ItemDefinition, in_combat: bool) -> InventoryActionProbe:
 	var program_available := item != null and context.content.scenario.program_by_id("xap:%d" % item.special_5) != null
-	var probe := context.rules.inventory.classic_door_item_probe(character, instance, item, context.content.race_by_id(character.race_id) if character != null else null, context.content.caste_by_id(character.caste_id) if character != null else null, in_combat, program_available)
+	var probe := context.rules.inventory.classic_door_item_probe(character, instance, item, context.content.characters.race_by_id(character.race_id) if character != null else null, context.content.characters.caste_by_id(character.caste_id) if character != null else null, in_combat, program_available)
 	if not probe.allowed:
 		return probe
 	if in_combat and (context.state.combat == null or context.state.combat.completed or context.state.combat.turns.active_actor_id() != character.id):
@@ -98,7 +98,7 @@ static func door_item_probe(context: SessionWorkflowContext, character: Characte
 static func field_item_use_probe(context: SessionWorkflowContext, character: CharacterState, instance: ItemInstance, item: ItemDefinition) -> InventoryActionProbe:
 	if is_classic_door_item(item):
 		return door_item_probe(context, character, instance, item, false)
-	return field_spell_item_probe(context, character, instance, item, context.content.spell_by_classic_id(item.special_2) if item != null else null)
+	return field_spell_item_probe(context, character, instance, item, context.content.magic.spell_by_classic_id(item.special_2) if item != null else null)
 
 
 static func field_item_target_ids(context: SessionWorkflowContext, character: CharacterState, spell: SpellDefinition, requested_targets: Array[String], requested_target: String) -> Array[String]:
@@ -129,8 +129,8 @@ static func begin_field_spell_item(context: SessionWorkflowContext, actor_id: St
 	if character == null:
 		character = item_owner(context, instance_id)
 	var instance := InventoryWorkflow.item_instance(character, instance_id)
-	var item: ItemDefinition = null if instance == null else context.content.item_by_id(instance.definition_id)
-	var spell: SpellDefinition = null if item == null else context.content.spell_by_classic_id(item.special_2)
+	var item: ItemDefinition = null if instance == null else context.content.items.item_by_id(instance.definition_id)
+	var spell: SpellDefinition = null if item == null else context.content.magic.spell_by_classic_id(item.special_2)
 	var probe := field_spell_item_probe(context, character, instance, item, spell)
 	if not probe.allowed:
 		return MagicTransitionResult.failed(item_use_error_code(instance, item, spell), probe.reason)
@@ -177,8 +177,8 @@ static func resume_field_spell_item(context: SessionWorkflowContext, targeting: 
 static func commit_field_spell_item(context: SessionWorkflowContext, character_id: String, instance_id: String, spell_id: String, power: int, requested_target_ids: Array[String]) -> SessionWorkflowResult:
 	var character := context.state.party.character_by_id(character_id)
 	var instance := InventoryWorkflow.item_instance(character, instance_id)
-	var item: ItemDefinition = null if instance == null else context.content.item_by_id(instance.definition_id)
-	var spell := context.content.spell_by_id(spell_id)
+	var item: ItemDefinition = null if instance == null else context.content.items.item_by_id(instance.definition_id)
+	var spell := context.content.magic.spell_by_id(spell_id)
 	var probe := field_spell_item_probe(context, character, instance, item, spell)
 	if not probe.allowed:
 		return SessionWorkflowResult.failed(item_use_error_code(instance, item, spell), probe.reason)

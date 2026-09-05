@@ -31,15 +31,15 @@ static func resolve(context: SessionWorkflowContext, caster: CharacterState, sel
 	var castes: Array[CasteDefinition] = []
 	var races: Array[RaceDefinition] = []
 	for target: CharacterState in targets:
-		castes.append(context.content.caste_by_id(target.caste_id))
-		races.append(context.content.race_by_id(target.race_id))
+		castes.append(context.content.characters.caste_by_id(target.caste_id))
+		races.append(context.content.characters.race_by_id(target.race_id))
 	var definitions: Array[MonsterDefinition] = []
 	for ally: MonsterState in allies:
-		var definition := context.content.monster_by_id(ally.definition_id)
+		var definition := context.content.combat.monster_by_id(ally.definition_id)
 		if definition == null:
 			return null
 		definitions.append(definition)
-	return context.rules.magic.resolve_field_spell(caster, targets, spell, power, context.rng, castes, races, spend_spell_points, allow_empty, context.content.item_definitions(), allies, definitions)
+	return context.rules.magic.resolve_field_spell(caster, targets, spell, power, context.rng, castes, races, spend_spell_points, allow_empty, context.content.items.definitions(), allies, definitions)
 
 
 static func append_events(context: SessionWorkflowContext, events: Array[DomainEvent], character: CharacterState, spell: SpellDefinition, power: int, resolution: GroupSpellResolution, sound_source: StringName, state_source: StringName, event_kind: StringName, event_context: Dictionary = {}) -> void:
@@ -67,7 +67,7 @@ static func append_events(context: SessionWorkflowContext, events: Array[DomainE
 		events.append(DomainEvent.new(event_kind, payload))
 		if target_resolution.aging != null and target_resolution.aging.changed_group():
 			var target := context.state.party.character_by_id(resolution.target_ids[index])
-			events.append(DomainEvent.new(&"character_age_changed", target_resolution.aging.event_payload(target, context.content.race_by_id(target.race_id))))
+			events.append(DomainEvent.new(&"character_age_changed", target_resolution.aging.event_payload(target, context.content.characters.race_by_id(target.race_id))))
 	if spell.target_type == 11 and spell.sound_end + 600 != 0:
 		events.append(DomainEvent.new(&"sound_requested", {"soundId": absi(spell.sound_end + 600), "waitForCompletion": false, "source": String(sound_source)}))
 

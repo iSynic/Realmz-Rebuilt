@@ -59,7 +59,7 @@ func group_targets(state: GameState, content: RealmzContent, caster: CharacterSt
 				continue
 		elif not _selection.group_target_matches(spell.target_type, monster.traitor, caster.traitor):
 			continue
-		var definition := content.monster_by_id(monster.definition_id)
+		var definition := content.combat.monster_by_id(monster.definition_id)
 		if definition == null:
 			return {"ok": false, "errorCode": &"spell_target_unavailable", "error": missing_definition_message}
 		monster_targets.append(monster)
@@ -182,6 +182,6 @@ func _remove_defeated_target(state: GameState, content: RealmzContent, target_id
 		_context.automation().remove_defeated_position(state.combat, target_id, true)
 		return
 	var defeated_monster := state.combat.roster.monster_by_id(target_id)
-	var defeated_definition := content.monster_by_id(defeated_monster.definition_id) if defeated_monster != null else null
+	var defeated_definition := content.combat.monster_by_id(defeated_monster.definition_id) if defeated_monster != null else null
 	var queued = _context.actions().events().queue_spell_death_macro(state.combat, defeated_monster, defeated_definition)
 	_context.automation().remove_defeated_position(state.combat, target_id, not queued)

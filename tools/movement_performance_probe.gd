@@ -106,8 +106,8 @@ func _initialize() -> void:
 
 
 func _assemble_six_character_party(session: GameSession, content: RealmzContent) -> bool:
-	var races := content.race_definitions()
-	var castes := content.caste_definitions()
+	var races := content.characters.race_definitions()
+	var castes := content.characters.caste_definitions()
 	if races.is_empty() or castes.is_empty():
 		return false
 	var race: RaceDefinition
@@ -127,7 +127,7 @@ func _assemble_six_character_party(session: GameSession, content: RealmzContent)
 	if race == null or caste == null:
 		return false
 	var known_spells: Array[String] = []
-	for spell: SpellDefinition in content.spell_definitions():
+	for spell: SpellDefinition in content.magic.definitions():
 		if int(spell.classic_id / 1000) == caster_type and spell.classic_tier() >= 0:
 			known_spells.append(spell.id)
 			if known_spells.size() >= 4: break

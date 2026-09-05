@@ -16,7 +16,7 @@ func begin_completed_battle_reward(request_id: String, caller: ScenarioBattleCal
 	if early_result != null:
 		return early_result
 	var bonus_treasure_id := caller.mode if combat.outcome == &"victory" and caller != null and caller.kind == ScenarioBattleCaller.CLASSIC and caller.opcode == 48 else 0
-	if bonus_treasure_id != 0 and _content.treasure_by_classic_id(absi(bonus_treasure_id)) == null:
+	if bonus_treasure_id != 0 and _content.economy.treasure_by_classic_id(absi(bonus_treasure_id)) == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_treasure", "Classic opcode 48 references unavailable bonus treasure %d." % bonus_treasure_id)
 	var experience_only := combat.outcome == &"victory" and (combat.classic_post_battle_sentinel == 8 or caller != null and caller.kind == ScenarioBattleCaller.CLASSIC and caller.opcode == 2 and caller.mode == 5)
 	var defeated_monsters: Array[Dictionary] = []
@@ -32,7 +32,7 @@ func begin_completed_battle_reward(request_id: String, caller: ScenarioBattleCal
 		for monster: MonsterState in combat.roster.monsters():
 			if monster.summoned:
 				continue
-			var definition := _content.monster_by_id(monster.definition_id)
+			var definition := _content.combat.monster_by_id(monster.definition_id)
 			if definition == null:
 				return ScenarioRuntimeOperationResult.failed(&"unknown_monster", "Battle reward references unavailable monster content.")
 			var parchment_eligible := definition.can_summon != -1 and definition.type_flag(0) and not definition.type_flag(7)
@@ -40,7 +40,7 @@ func begin_completed_battle_reward(request_id: String, caller: ScenarioBattleCal
 			for incidental_classic_id: int in [806 if parchment_eligible else 0, 877 if rations_eligible else 0]:
 				if incidental_classic_id == 0:
 					continue
-				if _content.item_by_classic_id(incidental_classic_id) == null:
+				if _content.items.item_by_classic_id(incidental_classic_id) == null:
 					return ScenarioRuntimeOperationResult.failed(&"unknown_item", "Battle reward can generate unavailable Classic item %d." % incidental_classic_id)
 				pending_item_count += 1
 				if pending_item_count > ClassicRewardState.MAX_PENDING_ITEMS:
@@ -60,7 +60,7 @@ func begin_completed_battle_reward(request_id: String, caller: ScenarioBattleCal
 				for item_id: String in loot:
 					if item_id.is_empty():
 						continue
-					if _content.item_by_id(item_id) == null:
+					if _content.items.item_by_id(item_id) == null:
 						return ScenarioRuntimeOperationResult.failed(&"unknown_item", "Battle reward references unavailable item '%s'." % item_id)
 					pending_item_count += 1
 					if pending_item_count > ClassicRewardState.MAX_PENDING_ITEMS:
@@ -101,10 +101,10 @@ func begin_completed_battle_reward(request_id: String, caller: ScenarioBattleCal
 		for row: Dictionary in reward_monsters:
 			var monster: MonsterState = row["monster"]
 			if row["parchmentEligible"] and _rng.draw_classic(100, StringName("battle.reward.%s.parchment" % monster.id)) < 10:
-				item_ids.append(_content.item_by_classic_id(806).id)
+				item_ids.append(_content.items.item_by_classic_id(806).id)
 				item_magic_detected.append(false)
 			if row["rationsEligible"] and _rng.draw_classic(100, StringName("battle.reward.%s.rations" % monster.id)) < 10:
-				item_ids.append(_content.item_by_classic_id(877).id)
+				item_ids.append(_content.items.item_by_classic_id(877).id)
 				item_magic_detected.append(false)
 		events.append(DomainEvent.new(&"battle_reward_constructed", {"battleId": combat.battle_id, "experience": experience, "experienceOnly": experience_only, "wealth": wealth.to_data(), "itemCount": recovered_fumbles.size() + item_ids.size()}))
 	var operation := _workflow.begin_reward(&"battle", combat.battle_id, experience, wealth, item_ids, request_id, ClassicRewardState.ORDINARY_BATTLE_STAGE, absi(bonus_treasure_id), recovered_fumbles, item_magic_detected)
@@ -130,7 +130,7 @@ func _early_battle_reward_result(combat: CombatState, caller: ScenarioBattleCall
 func _recovered_fumble_items(combat: CombatState) -> Variant:
 	var result: Array[ItemInstance] = []
 	for fumbled: ItemInstance in combat.dropped_items.items():
-		var definition := _content.item_by_id(fumbled.definition_id)
+		var definition := _content.items.item_by_id(fumbled.definition_id)
 		if definition == null:
 			return ScenarioRuntimeOperationResult.failed(&"unknown_item", "Battle recovery references unavailable item '%s'." % fumbled.definition_id)
 		var recovered := ItemInstance.from_data(fumbled.to_data())
@@ -162,10 +162,10 @@ func _complete_mode_ten_battle(combat: CombatState) -> ScenarioRuntimeOperationR
 		var restored := _game_state.party.restore_equipment()
 		if restored:
 			for character: CharacterState in _game_state.party.characters():
-				character.carried_load = _rules.inventory.calculated_load(character, _content.item_definitions())
+				character.carried_load = _rules.inventory.calculated_load(character, _content.items.definitions())
 		events.append(DomainEvent.new(&"equipment_restored", {"changed": restored, "source": "classic-mode-10"}))
 		events.append(DomainEvent.new(&"reward_completed", {"origin": "battle", "sourceId": battle_id, "experienceByCharacter": {}}))
-		var battle := _content.battle_by_id(battle_id)
+		var battle := _content.combat.battle_by_id(battle_id)
 		if battle != null:
 			_append_battle_after_message(battle, events)
 		events.append(DomainEvent.new(&"battle_returned", {"battleId": battle_id, "outcome": "victory"}))
