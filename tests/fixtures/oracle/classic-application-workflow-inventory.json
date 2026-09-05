@@ -6734,7 +6734,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/playthrough/workflows/session_money_workflow.gd",
+            "path": "src/playthrough/economy/session_money_workflow.gd",
             "symbol": "func perform"
           },
           {
@@ -6874,7 +6874,7 @@
             "symbol": "func share_pooled_wealth("
           },
           {
-            "path": "src/playthrough/workflows/session_money_workflow.gd",
+            "path": "src/playthrough/economy/session_money_workflow.gd",
             "symbol": "func perform"
           }
         ]

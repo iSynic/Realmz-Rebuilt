@@ -13,7 +13,7 @@ The project uses `application/config/use_custom_user_dir` with the stable name `
 
 ## Risk-tiered delivery
 
-Normal player-visible work is planned as a coherent batch of 3–5 related workflows. Each workflow has one focused-verified commit. In the roadmap, a rolling pass means this workflow batch; the roadmap does not create a new rolling pass for a tiny edit, and a tiny edit does not pay the batch closeout gate by itself.
+Normal player-visible work is planned as a coherent batch of 3–5 related workflows. Each workflow has one focused-verified commit, while Tier 2 and Tier 3 run once at the coherent batch boundary rather than after every small commit. A low-risk path or ownership move receives a stale-reference scan, architecture ratchet, Godot import, and directly affected existing suites before commit; related moves then share one Tier 2 and aggregate closeout. In the roadmap, a rolling pass means this workflow batch; the roadmap does not create a new rolling pass for a tiny edit, and a tiny edit does not pay the batch closeout gate by itself.
 
 The architecture-hardening tranche was a bounded maintenance exception rather than a player-workflow batch. Its inventory pause held workflow counts and the selected parity batch steady while public wire contracts, ownership boundaries, package startup, and owning tests were hardened. The pause closed only after the full aggregate gate and an ordinary AOGM regression; parity delivery now follows the audit-guided batch cadence below.
 
@@ -29,7 +29,7 @@ Use the lowest tier that covers the changed boundary:
 - **Tier 2 — focused workflow:** run the affected suites, the architecture check when product source changed, the differential and application-workflow inventory validators, scope/local-path checks, `git diff --check`, and the applicable DOX review. Regenerate `docs/classic-application-workflow-status.md` only when its authoritative inventory changed. Do not run the aggregate gate or MCP by default.
 - **Tier 3 — batch closeout:** once per batch, run the full `tools/verify.ps1` gate, clean-reference evidence validation, relevant Providence full checks, and one coherent MCP walkthrough.
 
-Move directly to Tier 3 for package or schema changes; save, migration, or continuation changes; RNG or VM changes; topology changes; terminal combat or reward sequencing; and composition-root ownership changes. CI remains comprehensive regardless of the local tier.
+Move directly to Tier 3 for package or schema changes; semantic save, migration, or continuation-contract changes; RNG or VM changes; topology changes; terminal combat or reward sequencing; and composition-root ownership changes. Relocating an unchanged continuation with its UID and exact paths is an ownership move, not a continuation-contract change. CI remains comprehensive regardless of the local tier.
 
 At batch start, the maintainer identifies the critical path, high-risk boundaries, required reference evidence, and any work that can be reviewed independently. Contributors receive a bounded objective, explicit read and write scope, settled interfaces, non-goals, required verification, and an ambiguity-escalation rule. Contributors do not broaden scope, change pinned references, make unresolved fidelity decisions, commit, or push unless the maintainer explicitly authorizes those actions. The maintainer owns cross-cutting integration, final review, verification, commits, and release conclusions.
 

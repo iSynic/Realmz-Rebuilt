@@ -42,7 +42,7 @@
       "id": "economy-services",
       "boundary": "game",
       "guide": "docs/features/economy-and-services.md",
-      "entryPoints": ["src/game/economy", "src/playthrough/workflows/session_money_workflow.gd", "src/scenarios/runtime/operations/classic_service_operations.gd"],
+      "entryPoints": ["src/game/economy", "src/playthrough/economy", "src/playthrough/economy/session_money_workflow.gd", "src/scenarios/runtime/operations/classic_service_operations.gd"],
       "publicInterfaces": ["EconomyContentCatalog", "EconomyRules", "EconomyActionProbe", "TempleRules", "TempleServiceResult", "LocationServiceState", "LocationServiceStateCodec", "ShopDefinition", "WealthState", "MoneyWorkspaceView", "MoneyTransferView", "MoneyCharacterView", "ServiceView", "EconomyIntents", "EconomyIntentPayloads"],
       "tests": ["tests/integration/test_money_workflow.gd", "tests/integration/test_session_persistence.gd", "tests/scenario/test_scenario_vm.gd"],
       "performanceProbes": ["tools/combat_performance_probe.gd"]
