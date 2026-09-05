@@ -202,5 +202,6 @@ Own the pure Realmz model, fixed Classic rules, topology, game clock, randomness
 - `magic/AGENTS.md` owns immutable spell lookup and the magic feature's migration boundary.
 - `scenario/AGENTS.md` owns immutable scenario definitions and pure mutable scenario-progress state.
 - `shared/AGENTS.md` owns narrowly reusable pure game values and stable host-facing value contracts.
+- `world/AGENTS.md` owns immutable topology definitions plus the pure game clock and clock/fatigue rules.
 - `session/intents/AGENTS.md` owns feature-named player commands, their typed payload values, and the stable kind registry.
 - `session/requests/AGENTS.md` owns feature-level typed interaction request payloads and their exact wire representation.

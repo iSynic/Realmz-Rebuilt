@@ -30,12 +30,7 @@
   },
   "legacyRouteScenes": [],
   "routeMarkerScenes": [],
-  "classNameExceptions": [
-    {
-      "path": "src/game/rules/time_rules.gd",
-      "className": "ClockRules"
-    }
-  ],
+  "classNameExceptions": [],
   "finalLimits": {
     "productionFileLines": 800,
     "functionLines": 100

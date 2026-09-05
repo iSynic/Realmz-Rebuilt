@@ -3310,11 +3310,11 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/game/time/realmz_clock.gd",
+            "path": "src/game/world/realmz_clock.gd",
             "symbol": "class_name RealmzClock"
           },
           {
-            "path": "src/game/rules/time_rules.gd",
+            "path": "src/game/world/clock_rules.gd",
             "symbol": "func advance_classic_field_time"
           },
           {
@@ -4311,7 +4311,7 @@
             "symbol": "func continue_timed_encounters"
           },
           {
-            "path": "src/game/rules/time_rules.gd",
+            "path": "src/game/world/clock_rules.gd",
             "symbol": "func advance_classic_field_time"
           }
         ]
