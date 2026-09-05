@@ -333,7 +333,7 @@ func _resolve_program_frame(frame: ScenarioFrame, runtime_api: RealmzRuntimeApi)
 func _execute_program_instruction(frame: ScenarioFrame, program: ScenarioProgramDefinition, instruction: Variant, runtime_api: RealmzRuntimeApi) -> ScenarioVmResult:
 	if instruction is CallScenarioActionInstruction:
 		var action_call: CallScenarioActionInstruction = instruction
-		var arguments_result := _evaluate_call_arguments(action_call, frame, runtime_api)
+		var arguments_result := SafeExpressionEvaluator.evaluate_call_arguments(action_call, frame, runtime_api)
 		if not arguments_result["ok"]:
 			return ScenarioVmResult.failed(&"safe_expression_failed", arguments_result["error"])
 		frame.cursor += 1
@@ -432,49 +432,13 @@ func _execute_action_frame(frame: ScenarioFrame, runtime_api: RealmzRuntimeApi) 
 	_append_trace({"event": "execute-action", "actionId": action.id, "cursor": frame.cursor, "instructionKind": instruction.kind})
 	match instruction.kind:
 		SafeInstructionDefinition.Kind.OPERATION:
-			var arguments_result := _evaluate_safe_arguments(instruction, frame, runtime_api)
-			if not arguments_result["ok"]:
-				return ScenarioVmResult.failed(&"safe_expression_failed", arguments_result["error"])
-			var request_id := _next_request_id()
-			var operation := runtime_api.execute_safe(instruction.capability, arguments_result["value"], request_id)
-			frame.cursor += 1
-			if operation.state == ScenarioRuntimeOperationResult.State.FAILED:
-				return ScenarioVmResult.failed(operation.error_code, operation.error_message)
-			if operation.state == ScenarioRuntimeOperationResult.State.WAITING:
-				_pending_request = operation.interaction
-				_pending_continuation = ScenarioVmPendingContinuation.safe(operation.continuation, _frames.size() - 1, instruction.result_target)
-				_append_trace({"event": "yield", "requestId": request_id, "kind": String(operation.interaction.kind), "actionId": action.id})
-				return ScenarioVmResult.waiting(operation.interaction, operation.events)
-			if operation.state == ScenarioRuntimeOperationResult.State.SUSPENDED:
-				return _suspend_operation(ScenarioVmHandoff.SAFE_OPERATION, operation, _frames.size() - 1, instruction.result_target)
-			if not instruction.result_target.is_empty():
-				frame.set_local(instruction.result_target, operation.value)
-			return ScenarioVmResult.completed(operation.events)
+			return _execute_action_operation(action, frame, instruction, runtime_api)
 		SafeInstructionDefinition.Kind.CALL_ACTION:
-			var arguments_result := _evaluate_safe_arguments(instruction, frame, runtime_api)
-			if not arguments_result["ok"]:
-				return ScenarioVmResult.failed(&"safe_expression_failed", arguments_result["error"])
-			frame.cursor += 1
-			return _push_action(instruction.action_id, arguments_result["value"], instruction.result_target, StringName(frame.context_value("callingContext")), frame.context(), false)
+			return _execute_action_call(frame, instruction, runtime_api)
 		SafeInstructionDefinition.Kind.SET_VALUE:
-			var evaluated := _evaluate(instruction.value, frame, runtime_api)
-			if not evaluated["ok"]:
-				return ScenarioVmResult.failed(&"safe_expression_failed", evaluated["error"])
-			if instruction.scope == &"local":
-				frame.set_local(instruction.name, evaluated["value"])
-			else:
-				var state_scope := instruction.state_scope if not instruction.state_scope.is_empty() else "campaign"
-				var owner_id := instruction.owner_id if not instruction.owner_id.is_empty() else frame.definition_id
-				if not runtime_api.write_action_state(state_scope, owner_id, instruction.name, evaluated["value"]):
-					return ScenarioVmResult.failed(&"scenario_state_limit", "Scenario Action state rejected an unsafe or oversized value.")
-			frame.cursor += 1
-			return ScenarioVmResult.completed()
+			return _execute_action_set(frame, instruction, runtime_api)
 		SafeInstructionDefinition.Kind.JUMP_IF_FALSE:
-			var evaluated := _evaluate(instruction.condition, frame, runtime_api)
-			if not evaluated["ok"] or not evaluated["value"] is bool:
-				return ScenarioVmResult.failed(&"safe_expression_failed", evaluated.get("error", "Safe condition did not evaluate to bool."))
-			frame.cursor = frame.cursor + 1 if evaluated["value"] else instruction.target
-			return ScenarioVmResult.completed()
+			return _execute_action_condition(frame, instruction, runtime_api)
 		SafeInstructionDefinition.Kind.JUMP:
 			frame.cursor = instruction.target
 			return ScenarioVmResult.completed()
@@ -483,22 +447,78 @@ func _execute_action_frame(frame: ScenarioFrame, runtime_api: RealmzRuntimeApi) 
 		SafeInstructionDefinition.Kind.NEXT_FOR_EACH:
 			return _next_for_each(frame, instruction)
 		SafeInstructionDefinition.Kind.RETURN:
-			var return_value: Variant = null
-			if instruction.value != null:
-				var evaluated := _evaluate(instruction.value, frame, runtime_api)
-				if not evaluated["ok"]:
-					return ScenarioVmResult.failed(&"safe_expression_failed", evaluated["error"])
-				return_value = evaluated["value"]
-			if not _value_matches_type(return_value, action.return_type):
-				return ScenarioVmResult.failed(&"scenario_action_return_type", "Scenario Action '%s' returned a value outside its declared type." % action.id)
-			_return_from_frame(return_value)
-			return ScenarioVmResult.completed()
+			return _execute_action_return(action, instruction, frame, runtime_api)
 		SafeInstructionDefinition.Kind.HALT:
 			_frames.clear()
 			_halted = true
 			_last_outcome = instruction.outcome
 			return ScenarioVmResult.completed([], instruction.outcome)
 	return ScenarioVmResult.failed(&"unknown_scenario_instruction", "Scenario Action contains an unavailable instruction kind.")
+
+
+func _execute_action_operation(action: ScenarioActionDefinition, frame: ScenarioFrame, instruction: SafeInstructionDefinition, runtime_api: RealmzRuntimeApi) -> ScenarioVmResult:
+	var arguments_result := SafeExpressionEvaluator.evaluate_instruction_arguments(instruction, frame, runtime_api)
+	if not arguments_result["ok"]:
+		return ScenarioVmResult.failed(&"safe_expression_failed", arguments_result["error"])
+	var request_id := _next_request_id()
+	var operation := runtime_api.execute_safe(instruction.capability, arguments_result["value"], request_id)
+	frame.cursor += 1
+	if operation.state == ScenarioRuntimeOperationResult.State.FAILED:
+		return ScenarioVmResult.failed(operation.error_code, operation.error_message)
+	if operation.state == ScenarioRuntimeOperationResult.State.WAITING:
+		_pending_request = operation.interaction
+		_pending_continuation = ScenarioVmPendingContinuation.safe(operation.continuation, _frames.size() - 1, instruction.result_target)
+		_append_trace({"event": "yield", "requestId": request_id, "kind": String(operation.interaction.kind), "actionId": action.id})
+		return ScenarioVmResult.waiting(operation.interaction, operation.events)
+	if operation.state == ScenarioRuntimeOperationResult.State.SUSPENDED:
+		return _suspend_operation(ScenarioVmHandoff.SAFE_OPERATION, operation, _frames.size() - 1, instruction.result_target)
+	if not instruction.result_target.is_empty():
+		frame.set_local(instruction.result_target, operation.value)
+	return ScenarioVmResult.completed(operation.events)
+
+
+func _execute_action_call(frame: ScenarioFrame, instruction: SafeInstructionDefinition, runtime_api: RealmzRuntimeApi) -> ScenarioVmResult:
+	var arguments_result := SafeExpressionEvaluator.evaluate_instruction_arguments(instruction, frame, runtime_api)
+	if not arguments_result["ok"]:
+		return ScenarioVmResult.failed(&"safe_expression_failed", arguments_result["error"])
+	frame.cursor += 1
+	return _push_action(instruction.action_id, arguments_result["value"], instruction.result_target, StringName(frame.context_value("callingContext")), frame.context(), false)
+
+
+func _execute_action_set(frame: ScenarioFrame, instruction: SafeInstructionDefinition, runtime_api: RealmzRuntimeApi) -> ScenarioVmResult:
+	var evaluated := SafeExpressionEvaluator.evaluate(instruction.value, frame, runtime_api)
+	if not evaluated["ok"]:
+		return ScenarioVmResult.failed(&"safe_expression_failed", evaluated["error"])
+	if instruction.scope == &"local":
+		frame.set_local(instruction.name, evaluated["value"])
+	else:
+		var state_scope := instruction.state_scope if not instruction.state_scope.is_empty() else "campaign"
+		var owner_id := instruction.owner_id if not instruction.owner_id.is_empty() else frame.definition_id
+		if not runtime_api.write_action_state(state_scope, owner_id, instruction.name, evaluated["value"]):
+			return ScenarioVmResult.failed(&"scenario_state_limit", "Scenario Action state rejected an unsafe or oversized value.")
+	frame.cursor += 1
+	return ScenarioVmResult.completed()
+
+
+func _execute_action_condition(frame: ScenarioFrame, instruction: SafeInstructionDefinition, runtime_api: RealmzRuntimeApi) -> ScenarioVmResult:
+	var evaluated := SafeExpressionEvaluator.evaluate(instruction.condition, frame, runtime_api)
+	if not evaluated["ok"] or not evaluated["value"] is bool:
+		return ScenarioVmResult.failed(&"safe_expression_failed", evaluated.get("error", "Safe condition did not evaluate to bool."))
+	frame.cursor = frame.cursor + 1 if evaluated["value"] else instruction.target
+	return ScenarioVmResult.completed()
+
+
+func _execute_action_return(action: ScenarioActionDefinition, instruction: SafeInstructionDefinition, frame: ScenarioFrame, runtime_api: RealmzRuntimeApi) -> ScenarioVmResult:
+	var return_value: Variant = null
+	if instruction.value != null:
+		var evaluated := SafeExpressionEvaluator.evaluate(instruction.value, frame, runtime_api)
+		if not evaluated["ok"]:
+			return ScenarioVmResult.failed(&"safe_expression_failed", evaluated["error"])
+		return_value = evaluated["value"]
+	if not _value_matches_type(return_value, action.return_type):
+		return ScenarioVmResult.failed(&"scenario_action_return_type", "Scenario Action '%s' returned a value outside its declared type." % action.id)
+	_return_from_frame(return_value)
+	return ScenarioVmResult.completed()
 
 
 func _suspend_operation(kind: StringName, operation: ScenarioRuntimeOperationResult, frame_index: int = -1, result_target: String = "", preceding_events: Array[DomainEvent] = []) -> ScenarioVmResult:
@@ -553,7 +573,7 @@ func _return_from_frame(value: Variant) -> void:
 
 
 func _begin_for_each(frame: ScenarioFrame, instruction: SafeInstructionDefinition, runtime_api: RealmzRuntimeApi) -> ScenarioVmResult:
-	var evaluated := _evaluate(instruction.collection, frame, runtime_api)
+	var evaluated := SafeExpressionEvaluator.evaluate(instruction.collection, frame, runtime_api)
 	if not evaluated["ok"] or not evaluated["value"] is Array:
 		return ScenarioVmResult.failed(&"safe_expression_failed", evaluated.get("error", "For-each input is not an array."))
 	var values: Array = evaluated["value"]
@@ -587,30 +607,6 @@ func _next_for_each(frame: ScenarioFrame, instruction: SafeInstructionDefinition
 		frame.erase_local(iterator["itemName"])
 	frame.cursor += 1
 	return ScenarioVmResult.completed()
-
-
-func _evaluate_call_arguments(action_call: CallScenarioActionInstruction, frame: ScenarioFrame, runtime_api: RealmzRuntimeApi) -> Dictionary:
-	var result: Dictionary = {}
-	for name: String in action_call.argument_names():
-		var evaluated := _evaluate(action_call.argument(name), frame, runtime_api)
-		if not evaluated["ok"]:
-			return evaluated
-		result[name] = evaluated["value"]
-	return {"ok": true, "value": result}
-
-
-func _evaluate_safe_arguments(instruction: SafeInstructionDefinition, frame: ScenarioFrame, runtime_api: RealmzRuntimeApi) -> Dictionary:
-	var result: Dictionary = {}
-	for name: String in instruction.argument_names():
-		var evaluated := _evaluate(instruction.argument(name), frame, runtime_api)
-		if not evaluated["ok"]:
-			return evaluated
-		result[name] = evaluated["value"]
-	return {"ok": true, "value": result}
-
-
-func _evaluate(expression: SafeExpressionDefinition, frame: ScenarioFrame, runtime_api: RealmzRuntimeApi) -> Dictionary:
-	return SafeExpressionEvaluator.evaluate(expression, frame, runtime_api)
 
 
 func _pop_classic_caller_below_top() -> void:

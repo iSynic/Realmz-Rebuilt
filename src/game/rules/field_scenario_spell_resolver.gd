@@ -3,6 +3,19 @@
 class_name FieldScenarioSpellResolver
 extends SpellResolutionSupport
 
+
+class NoncombatEffectRoll:
+	extends RefCounted
+
+	var damage: int
+	var saved: bool
+	var terminal_resolution: SpellResolution
+
+	func _init(next_damage: int, did_save: bool = false, terminal: SpellResolution = null) -> void:
+		damage = next_damage
+		saved = did_save
+		terminal_resolution = terminal
+
 func resolve_field_spell(caster: CharacterState, targets: Array[CharacterState], spell: SpellDefinition, power_level: int, rng: RealmzRng, castes: Array[CasteDefinition] = [], races: Array[RaceDefinition] = [], spend_spell_points: bool = true, allow_empty: bool = false, item_definitions: Array[ItemDefinition] = [], ally_targets: Array[MonsterState] = [], ally_definitions: Array[MonsterDefinition] = []) -> GroupSpellResolution:
 	if caster == null or spell == null or rng == null or power_level < 1 or ally_targets.size() != ally_definitions.size() or not allow_empty and targets.is_empty() and ally_targets.is_empty():
 		return null
@@ -68,6 +81,21 @@ func _resolve_noncombat_character_effect(target: CharacterState, spell: SpellDef
 	var special := absi(spell.special)
 	if special == 62:
 		return _remove_curse_character(target, 0, duration, item_definitions)
+	var roll := _apply_noncombat_save_and_protection(target, spell, power_level, extra_save_adjust, force_affect, rng, duration, damage, tag_prefix)
+	if roll.terminal_resolution != null:
+		return roll.terminal_resolution
+	damage = roll.damage
+	_apply_noncombat_condition(target, spell, duration)
+	damage = _apply_noncombat_special(target, spell, caste, rng, tag_prefix, duration, damage)
+	var aging := _resolve_noncombat_aging(target, spell, power_level, duration, race, caste, rng, tag_prefix)
+	_apply_noncombat_health(target, damage)
+	var result := SpellResolution.new(true, false, roll.saved, 0, damage, duration, target.current_health <= -10)
+	result.cleared_condition = condition_cure_index(spell) if special > 99 else -1
+	result.aging = aging
+	return result
+
+
+func _apply_noncombat_save_and_protection(target: CharacterState, spell: SpellDefinition, power_level: int, extra_save_adjust: int, force_affect: bool, rng: RealmzRng, duration: int, damage: int, tag_prefix: String) -> NoncombatEffectRoll:
 	var damage_type := absi(spell.damage_type)
 	var saved := false
 	if damage_type > 0 and damage_type < 8 and not force_affect and spell.cannot < 2:
@@ -75,13 +103,16 @@ func _resolve_noncombat_character_effect(target: CharacterState, spell: SpellDef
 		saved = rng.draw(100, StringName("%s.save" % tag_prefix)) <= save_target
 		if saved:
 			if damage == 0:
-				return SpellResolution.new(true, false, true, 0, 0, duration)
+				return NoncombatEffectRoll.new(0, true, SpellResolution.new(true, false, true, 0, 0, duration))
 			damage /= 2
 	if damage != 0 and damage_type > 0 and damage_type <= 6 and target.conditions.is_active(ConditionRules.FIRE_PROTECTION + damage_type - 1):
 		damage /= 2
+	return NoncombatEffectRoll.new(damage, saved)
+
+
+func _apply_noncombat_condition(target: CharacterState, spell: SpellDefinition, duration: int) -> void:
+	var special := absi(spell.special)
 	if special > 0 and special < 41:
-		if special == 28:
-			damage = duration
 		var condition_index := special - 1
 		var current_condition := target.conditions.value(condition_index)
 		if current_condition > -1 and current_condition + duration < 100:
@@ -90,6 +121,12 @@ func _resolve_noncombat_character_effect(target: CharacterState, spell: SpellDef
 		var cured_condition := condition_cure_index(spell)
 		if cured_condition >= 0:
 			target.conditions.set_value(cured_condition, 0)
+
+
+func _apply_noncombat_special(target: CharacterState, spell: SpellDefinition, caste: CasteDefinition, rng: RealmzRng, tag_prefix: String, duration: int, damage: int) -> int:
+	var special := absi(spell.special)
+	if special == 28:
+		damage = duration
 	match special:
 		2:
 			target.movement = 0
@@ -125,11 +162,15 @@ func _resolve_noncombat_character_effect(target: CharacterState, spell: SpellDef
 				target.current_health = -9
 		66:
 			_apply_attribute_increase(target, spell.size, caste, rng, tag_prefix)
-	var aging: CharacterAgingResult = null
+	return damage
+
+
+func _resolve_noncombat_aging(target: CharacterState, spell: SpellDefinition, power_level: int, duration: int, race: RaceDefinition, caste: CasteDefinition, rng: RealmzRng, tag_prefix: String) -> CharacterAgingResult:
+	var special := absi(spell.special)
 	if race != null and caste != null and special in [24, 91]:
 		var age_percent_months := power_level * 30 if special == 24 else duration * 30
 		var added_days := int(float(race.max_age) * 0.01 * float(age_percent_months))
-		aging = _characters.advance_age_days(target, race, caste, added_days)
+		return _characters.advance_age_days(target, race, caste, added_days)
 	elif race != null and caste != null and special == 92:
 		var youth_months := duration * 30
 		var removed_days := int(float(race.max_age) * 0.01 * float(youth_months))
@@ -137,14 +178,14 @@ func _resolve_noncombat_character_effect(target: CharacterState, spell: SpellDef
 		var stamina_loss := rng.draw(3, StringName("%s.youth-stamina" % tag_prefix))
 		target.maximum_health = maxi(1, target.maximum_health - stamina_loss)
 		target.current_health = maxi(1, target.current_health - stamina_loss)
-		aging = _characters.advance_age_days(target, race, caste, next_age - target.age_days)
+		return _characters.advance_age_days(target, race, caste, next_age - target.age_days)
+	return null
+
+
+func _apply_noncombat_health(target: CharacterState, damage: int) -> void:
 	if damage < 0:
 		target.current_health = mini(target.maximum_health, target.current_health - damage)
 	elif damage > 0 and target.current_health >= 0 and target.current_health > -10:
 		target.current_health -= damage
-	var result := SpellResolution.new(true, false, saved, 0, damage, duration, target.current_health <= -10)
-	result.cleared_condition = condition_cure_index(spell) if special > 99 else -1
-	result.aging = aging
-	return result
 
 

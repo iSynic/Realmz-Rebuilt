@@ -365,40 +365,51 @@ static func _valid_targeting_continuation(content: RealmzContent, state: GameSta
 		return false
 	var character := state.party.character_by_id(targeting.character_id)
 	if continuation.kind == &"scroll-discard-confirmation":
-		var scroll := character.scroll_at(targeting.scroll_slot) if character != null else null
-		var discard_spell := content.magic.spell_by_id(targeting.spell_id)
-		if scroll == null or discard_spell == null or scroll.spell_id != discard_spell.id or scroll.power != targeting.power or discard_spell.in_camp or character.current_health < 1 or character.conditions.is_active(ConditionRules.ANIMATED):
-			return false
-		var equipped_case := false
-		for carried: ItemInstance in character.inventory():
-			var carried_definition := content.items.item_by_id(carried.definition_id)
-			if carried.equipped and carried_definition != null and absi(carried_definition.item_type) == 13:
-				equipped_case = true
-				break
-		return equipped_case and session_interaction.to_data() == FieldMagicWorkflow.scroll_discard_request(session_interaction.request_id, discard_spell.name).to_data()
+		return _valid_scroll_discard_confirmation(content, character, targeting, session_interaction)
 	if continuation.kind == &"drop-item-confirmation":
-		var instance := _item_instance_for_state(character, targeting.instance_id)
-		var definition: ItemDefinition = null if instance == null else content.items.item_by_id(instance.definition_id)
-		if character == null or instance == null or definition == null or not RealmzRules.new().inventory.classic_drop_probe(character, instance).allowed:
-			return false
-		var display_name := definition.name if instance.identified else definition.unidentified_name
-		return session_interaction.to_data() == SessionInteractionFactory.drop_item_confirmation(session_interaction.request_id, display_name).to_data()
+		return _valid_drop_item_confirmation(content, character, targeting, session_interaction)
 	if session_interaction.kind != InteractionRequest.CHARACTER_SELECTION or state.combat != null or character == null:
 		return false
 	var spell := content.magic.spell_by_id(targeting.spell_id)
 	if spell == null or targeting.power < 1 or targeting.power > 7:
 		return false
 	if continuation.kind == &"item-use-target-selection":
-		var instance := _item_instance_for_state(character, targeting.instance_id)
-		var definition: ItemDefinition = null if instance == null else content.items.item_by_id(instance.definition_id)
-		if instance == null or definition == null or definition.special_2 != spell.classic_id or instance.charges != targeting.starting_charges:
-			return false
-		var authored_power := absi(definition.special_1)
-		var expected_count := state.party.characters().size() if spell.target_type > 2 else mini(targeting.power, state.party.characters().size()) if spell.target_type == 0 else 1
-		var probe := RealmzRules.new().inventory.classic_spell_item_probe(character, instance, definition, spell, content.characters.race_by_id(character.race_id), content.characters.caste_by_id(character.caste_id), false)
-		var supported := spell.special == 0 and absi(spell.damage_type) >= 1 and absi(spell.damage_type) <= 6 and absi(spell.spell_class) != 9 or absi(spell.special) == 57
-		return (authored_power == 8 or targeting.power == authored_power) and targeting.target_count == expected_count and spell.target_type not in [5, 7] and spell.target_type >= 0 and spell.target_type <= 12 and probe.allowed and supported and session_interaction.to_data() == FieldMagicTargetRequestBuilder.item_target_request(session_interaction.request_id, character, instance.id, definition, spell, targeting.power, expected_count, state.party.characters()).to_data()
-	if continuation.kind == &"field-spell-target-selection":
+		return _valid_item_target_selection(content, state, character, targeting, spell, session_interaction)
+	return _valid_field_magic_target_selection(content, state, character, targeting, spell, continuation.kind, session_interaction)
+
+
+static func _valid_scroll_discard_confirmation(content: RealmzContent, character: CharacterState, targeting: TargetingContinuationBody, session_interaction: InteractionRequest) -> bool:
+	var scroll := character.scroll_at(targeting.scroll_slot) if character != null else null
+	var spell := content.magic.spell_by_id(targeting.spell_id)
+	if scroll == null or spell == null or scroll.spell_id != spell.id or scroll.power != targeting.power or spell.in_camp or character.current_health < 1 or character.conditions.is_active(ConditionRules.ANIMATED):
+		return false
+	return _has_equipped_scroll_case(content, character) and session_interaction.to_data() == FieldMagicWorkflow.scroll_discard_request(session_interaction.request_id, spell.name).to_data()
+
+
+static func _valid_drop_item_confirmation(content: RealmzContent, character: CharacterState, targeting: TargetingContinuationBody, session_interaction: InteractionRequest) -> bool:
+	var instance := _item_instance_for_state(character, targeting.instance_id)
+	var definition: ItemDefinition = null if instance == null else content.items.item_by_id(instance.definition_id)
+	if character == null or instance == null or definition == null or not RealmzRules.new().inventory.classic_drop_probe(character, instance).allowed:
+		return false
+	var display_name := definition.name if instance.identified else definition.unidentified_name
+	return session_interaction.to_data() == SessionInteractionFactory.drop_item_confirmation(session_interaction.request_id, display_name).to_data()
+
+
+static func _valid_item_target_selection(content: RealmzContent, state: GameState, character: CharacterState, targeting: TargetingContinuationBody, spell: SpellDefinition, session_interaction: InteractionRequest) -> bool:
+	var instance := _item_instance_for_state(character, targeting.instance_id)
+	var definition: ItemDefinition = null if instance == null else content.items.item_by_id(instance.definition_id)
+	if instance == null or definition == null or definition.special_2 != spell.classic_id or instance.charges != targeting.starting_charges:
+		return false
+	var authored_power := absi(definition.special_1)
+	var expected_count := state.party.characters().size() if spell.target_type > 2 else mini(targeting.power, state.party.characters().size()) if spell.target_type == 0 else 1
+	var probe := RealmzRules.new().inventory.classic_spell_item_probe(character, instance, definition, spell, content.characters.race_by_id(character.race_id), content.characters.caste_by_id(character.caste_id), false)
+	var supported := spell.special == 0 and absi(spell.damage_type) >= 1 and absi(spell.damage_type) <= 6 and absi(spell.spell_class) != 9 or absi(spell.special) == 57
+	return (authored_power == 8 or targeting.power == authored_power) and targeting.target_count == expected_count and spell.target_type not in [5, 7] and spell.target_type >= 0 and spell.target_type <= 12 and probe.allowed and supported and session_interaction.to_data() == FieldMagicTargetRequestBuilder.item_target_request(session_interaction.request_id, character, instance.id, definition, spell, targeting.power, expected_count, state.party.characters()).to_data()
+
+
+static func _valid_field_magic_target_selection(content: RealmzContent, state: GameState, character: CharacterState, targeting: TargetingContinuationBody, spell: SpellDefinition, continuation_kind: StringName, session_interaction: InteractionRequest) -> bool:
+	var learned_spell := continuation_kind == &"field-spell-target-selection"
+	if learned_spell:
 		if not character.known_spells().has(spell.id) or character.spell_points != targeting.starting_spell_points or state.character_spellcasting_blocked or character.current_health < 1 or character.spell_points < absi(spell.cost * targeting.power) or not spell.in_camp or spell.cost < 0 and targeting.power != 1:
 			return false
 		for condition: int in [ConditionRules.CONFUSED, ConditionRules.SILENCED, ConditionRules.HELPLESS, ConditionRules.STUPID, ConditionRules.ANIMATED]:
@@ -408,19 +419,21 @@ static func _valid_targeting_continuation(content: RealmzContent, state: GameSta
 		var scroll := character.scroll_at(targeting.scroll_slot)
 		if scroll == null or scroll.spell_id != spell.id or scroll.power != targeting.power or character.current_health < 1 or character.conditions.is_active(ConditionRules.ANIMATED) or not spell.in_camp:
 			return false
-		var has_case := false
-		for carried: ItemInstance in character.inventory():
-			var carried_definition := content.items.item_by_id(carried.definition_id)
-			if carried.equipped and carried_definition != null and absi(carried_definition.item_type) == 13:
-				has_case = true
-				break
-		if not has_case:
+		if not _has_equipped_scroll_case(content, character):
 			return false
 	var supported := ClassicSpellDispositionRules.field_character_disposition(spell) == ClassicSpellDispositionRules.DISPOSITION_EXECUTABLE
 	var expected_count := mini(targeting.power, state.party.characters().size()) if spell.target_type == 0 else 1
 	if targeting.target_count != expected_count or spell.target_type < 0 or spell.target_type > 2 or not supported:
 		return false
-	return session_interaction.to_data() == (FieldMagicTargetRequestBuilder.spell_target_request(session_interaction.request_id, character, spell, targeting.power, expected_count, state.party.characters()).to_data() if continuation.kind == &"field-spell-target-selection" else FieldMagicTargetRequestBuilder.scroll_target_request(session_interaction.request_id, character, targeting.scroll_slot, spell, targeting.power, expected_count, state.party.characters()).to_data())
+	return session_interaction.to_data() == (FieldMagicTargetRequestBuilder.spell_target_request(session_interaction.request_id, character, spell, targeting.power, expected_count, state.party.characters()).to_data() if learned_spell else FieldMagicTargetRequestBuilder.scroll_target_request(session_interaction.request_id, character, targeting.scroll_slot, spell, targeting.power, expected_count, state.party.characters()).to_data())
+
+
+static func _has_equipped_scroll_case(content: RealmzContent, character: CharacterState) -> bool:
+	for carried: ItemInstance in character.inventory():
+		var definition := content.items.item_by_id(carried.definition_id)
+		if carried.equipped and definition != null and absi(definition.item_type) == 13:
+			return true
+	return false
 
 
 static func _item_instance_for_state(character: CharacterState, instance_id: String) -> ItemInstance:

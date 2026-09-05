@@ -52,6 +52,26 @@ static func evaluate(expression: SafeExpressionDefinition, frame: ScenarioFrame,
 	return {"ok": false, "error": "Safe expression kind is unavailable."}
 
 
+static func evaluate_call_arguments(action_call: CallScenarioActionInstruction, frame: ScenarioFrame, runtime_api: RealmzRuntimeApi) -> Dictionary:
+	var result: Dictionary = {}
+	for name: String in action_call.argument_names():
+		var evaluated := evaluate(action_call.argument(name), frame, runtime_api)
+		if not evaluated["ok"]:
+			return evaluated
+		result[name] = evaluated["value"]
+	return {"ok": true, "value": result}
+
+
+static func evaluate_instruction_arguments(instruction: SafeInstructionDefinition, frame: ScenarioFrame, runtime_api: RealmzRuntimeApi) -> Dictionary:
+	var result: Dictionary = {}
+	for name: String in instruction.argument_names():
+		var evaluated := evaluate(instruction.argument(name), frame, runtime_api)
+		if not evaluated["ok"]:
+			return evaluated
+		result[name] = evaluated["value"]
+	return {"ok": true, "value": result}
+
+
 static func value_matches_type(value: Variant, value_type: StringName, max_length: int = -1) -> bool:
 	match value_type:
 		&"void":
