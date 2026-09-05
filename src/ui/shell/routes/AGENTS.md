@@ -4,13 +4,13 @@
 
 # Ownership
 
-- Each `.tres` file owns one stable route identity, label, shortcut, presentation kind, and optional workspace scene.
+- Each `.tres` file owns one stable route identity, label, shortcut, presentation kind, and optional Inspector-selected workspace scene path.
 - `UiRouteCatalog` owns registration and lookup; route resources do not own navigation behavior.
 
 # Local Contracts
 
 - Exploration and Combat are `SHELL_MODE` routes and must not reference placeholder workspace scenes.
-- Every `WORKSPACE` route must reference a recognizable major scene.
+- Every `WORKSPACE` route must name a recognizable major scene. The catalog reads route metadata without loading that scene; the route definition loads it on first use and relies on Godot's ordinary resource cache for reuse.
 - Preserve route IDs because menus, tests, and saved presentation settings use them as stable identities.
 
 # Work Guidance
@@ -24,4 +24,3 @@
 - Run `tools/verify_architecture_overhaul.ps1` to enforce the shell-mode and workspace-scene boundary.
 
 # Child DOX Index
-

@@ -413,7 +413,7 @@ func _test_route_catalog() -> void:
 		primary_count += 1 if route.primary else 0
 		shell_mode_count += 0 if route.is_workspace() else 1
 		assert_false(route.description.is_empty(), "every route has presentation guidance")
-		assert_true(not route.is_workspace() or route.workspace_scene != null, "every workspace route owns an editor-authored scene")
+		assert_true(not route.is_workspace() or (route.has_workspace_scene() and ResourceLoader.exists(route.workspace_scene_path, "PackedScene")), "every workspace route names a resolvable editor-authored scene")
 	assert_equal(ids.size(), 11, "route identifiers are unique")
 	assert_equal(shortcuts.size(), 10, "route shortcuts are unique except for the two intentionally shortcut-free Allies menu workspaces")
 	assert_equal(primary_count, 6, "both supported layout compositions keep six primary workspaces")

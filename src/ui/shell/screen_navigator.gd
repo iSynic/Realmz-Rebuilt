@@ -408,10 +408,14 @@ func _mount_workspace(screen_id: StringName) -> void:
 		return
 	if not definition.is_workspace():
 		return
-	if definition.workspace_scene == null:
+	if not definition.has_workspace_scene():
 		push_error("Missing workspace scene for %s" % screen_id)
 		return
-	_workspace_view = definition.workspace_scene.instantiate() as ScreenFrame
+	var workspace_scene := definition.load_workspace_scene()
+	if workspace_scene == null:
+		push_error("Workspace scene could not be loaded for %s" % screen_id)
+		return
+	_workspace_view = workspace_scene.instantiate() as ScreenFrame
 	_workspace_view.name = "WorkspaceFrame"
 	_workspace_view.back_requested.connect(func() -> void: handle_back())
 	_workspace_host.add_child(_workspace_view)
