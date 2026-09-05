@@ -14,7 +14,10 @@
     "genericPreloadAliases": 0,
     "majorSurfacesWithoutScene": 0,
     "majorSurfacesWithoutPreview": 0,
-    "shellModeMarkerScenes": 0
+    "shellModeMarkerScenes": 0,
+    "missingFeatureDirectories": 21,
+    "unexpectedFeatureDirectories": 23,
+    "misplacedRootProductionFiles": 94
   },
   "finalTargets": {
     "oversizedProductionFiles": 0,
@@ -24,7 +27,10 @@
     "genericPreloadAliases": 0,
     "majorSurfacesWithoutScene": 0,
     "majorSurfacesWithoutPreview": 0,
-    "shellModeMarkerScenes": 0
+    "shellModeMarkerScenes": 0,
+    "missingFeatureDirectories": 0,
+    "unexpectedFeatureDirectories": 0,
+    "misplacedRootProductionFiles": 0
   },
   "manifestPath": "docs/system-manifest.json",
   "previewRegistryPath": "addons/realmz_builder/scene_previews.json"

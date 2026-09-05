@@ -4,8 +4,8 @@ class_name InteractionPresenter
 extends PanelContainer
 
 
-const LayoutPolicy := preload("res://src/ui/interaction_layout_policy.gd")
-const ComponentFactory := preload("res://src/ui/interaction_component_factory.gd")
+const LayoutPolicy := preload("res://src/ui/shared/interactions/interaction_layout_policy.gd")
+const ComponentFactory := preload("res://src/ui/shared/interactions/interaction_component_factory.gd")
 
 @export var classic_flash_overlay_scene: PackedScene
 @export var modal_shield_scene: PackedScene

@@ -2,6 +2,14 @@
   "schemaVersion": 1,
   "betaBlocked": true,
   "boundaries": ["app", "game", "playthrough", "scenarios", "storage", "ui"],
+  "sourceLayout": [
+    {"root": "src/app", "featureDirectories": ["startup", "navigation", "session", "platform", "composition"]},
+    {"root": "src/game", "featureDirectories": ["characters", "inventory", "magic", "economy", "world", "combat", "scenario", "shared"]},
+    {"root": "src/playthrough", "featureDirectories": ["characters", "inventory", "magic", "economy", "world", "combat", "scenario", "session"]},
+    {"root": "src/scenarios", "featureDirectories": ["classic", "actions", "runtime", "vm"]},
+    {"root": "src/storage", "featureDirectories": ["packages", "saves", "characters", "settings"]},
+    {"root": "src/ui", "featureDirectories": ["shell", "exploration", "combat", "characters", "inventory", "magic", "services", "journal", "setup", "shared"]}
+  ],
   "systems": [
     {
       "id": "characters",
@@ -115,7 +123,7 @@
       "id": "shell-and-routing",
       "boundary": "ui",
       "guide": "docs/features/shell-and-routing.md",
-        "entryPoints": ["src/ui/game_shell.tscn", "src/ui/game_shell.gd", "src/ui/presentation_coordinator.gd", "src/ui/presentation_media_controller.gd", "src/ui/game_shell_status_controller.gd", "src/ui/game_shell_party_effects_presenter.gd", "src/ui/game_shell_route_policy.gd", "src/ui/game_shell_layout_controller.gd", "src/ui/game_shell_menu_controller.gd", "src/ui/game_shell_availability.gd", "src/ui/game_shell_picture_presenter.gd", "src/ui/screen_navigator.gd", "src/ui/workspace_focus_controller.gd", "src/ui/ui_route_definition.gd", "src/ui/ui_route_catalog.gd", "src/ui/routes", "addons/realmz_builder/scene_previews.json"],
+        "entryPoints": ["src/ui/shell/game_shell.tscn", "src/ui/shell/game_shell.gd", "src/ui/shell/presentation_coordinator.gd", "src/ui/shell/presentation_media_controller.gd", "src/ui/shell/game_shell_status_controller.gd", "src/ui/shell/game_shell_party_effects_presenter.gd", "src/ui/shell/game_shell_route_policy.gd", "src/ui/shell/game_shell_layout_controller.gd", "src/ui/shell/game_shell_menu_controller.gd", "src/ui/shell/game_shell_availability.gd", "src/ui/shell/game_shell_picture_presenter.gd", "src/ui/shell/screen_navigator.gd", "src/ui/shell/workspace_focus_controller.gd", "src/ui/ui_route_definition.gd", "src/ui/ui_route_catalog.gd", "src/ui/routes", "addons/realmz_builder/scene_previews.json"],
         "publicInterfaces": ["GameShell", "PresentationCoordinator", "PresentationMediaController", "GameShellStatusController", "GameShellPartyEffectsPresenter", "GameShellRoutePolicy", "GameShellLayoutController", "GameShellLayoutPolicy", "GameShellAvailability", "GameShellPicturePresenter", "ScreenNavigator", "WorkspaceFocusController", "UiRouteDefinition", "UiRouteCatalog", "Realmz Builder"],
       "tests": ["tests/presentation/test_classic_ui_shell.gd", "tests/presentation/test_classic_ui_system.gd"],
       "performanceProbes": ["tools/runtime_performance_probe.gd"]
@@ -124,7 +132,7 @@
       "id": "workspace-ui",
       "boundary": "ui",
       "guide": "docs/features/workspaces.md",
-      "entryPoints": ["src/ui/screens", "src/ui/controllers", "src/ui/interaction_components", "src/ui/interaction_presenter.gd", "src/ui/interaction_overlay_host.gd", "src/ui/interaction_flash_controller.gd"],
+      "entryPoints": ["src/ui/screens", "src/ui/controllers", "src/ui/interaction_components", "src/ui/shared/interactions/interaction_presenter.gd", "src/ui/shared/interactions/interaction_overlay_host.gd", "src/ui/shared/interactions/interaction_flash_controller.gd"],
       "publicInterfaces": ["ScreenNavigator", "ScreenContentPresenter", "CampaignPartySetupController", "CampaignLibraryController", "PartySetupCharacterCreationController", "PartySetupRaceCasteBinding", "ClassicCharacterSheet", "CharacterSheetSceneBinding", "InteractionPresenter", "CombatInteractionController", "InteractionOverlayHost", "InteractionFlashController", "InteractionComponent"],
       "tests": ["tests/presentation/test_classic_ui_system.gd", "tests/presentation/test_allies_workspace.gd"],
       "performanceProbes": []
@@ -140,7 +148,7 @@
     }
   ],
   "majorUiSurfaces": [
-    {"id": "application-shell", "scene": "src/ui/game_shell.tscn"},
+    {"id": "application-shell", "scene": "src/ui/shell/game_shell.tscn"},
     {"id": "character-sheet", "scene": "src/ui/screens/character_screen.tscn"},
     {"id": "character-files", "scene": "src/ui/screens/vault_screen.tscn"},
     {"id": "allies", "scene": "src/ui/screens/allies_screen.tscn"},

@@ -1,6 +1,6 @@
 # Human-maintainability architecture record
 
-The source reorganization, major-scene authoring pass, and machine-enforced structural migration are complete, but the human-centered architecture overhaul is not yet fully certified. Realmz Rebuilt has six sound source areas, recognizable production-backed scene previews, and a verified behavioral baseline. No production file, function, or top-level class exceeds its final limit, and the private-call, generic-alias, missing-scene, missing-preview, and obsolete shell-marker debts are all zero. Gallery-wide visual review and repository-local clean-clone onboarding have passed; Beta 1 remains blocked on the independent maintainer exercise, ordinary-play walkthroughs, and final native-platform evidence.
+The boundary foundation and major-scene authoring pass are complete, but the human-centered architecture overhaul is not yet fully certified. Realmz Rebuilt has six sound source areas, recognizable production-backed scene previews, and a verified behavioral baseline. No production file, function, or top-level class exceeds its final limit, and the private-call, generic-alias, missing-scene, missing-preview, and obsolete shell-marker debts are all zero. A later audit correctly added physical feature-layout ratchets: missing target directories, undeclared legacy directories, and production files left loose at boundary roots must also reach zero. Gallery-wide visual review and repository-local clean-clone onboarding have passed; Beta 1 remains blocked on that physical migration, the independent maintainer exercise, ordinary-play walkthroughs, and final native-platform evidence.
 
 This record describes the foundation inherited by the active migration. Current ownership is machine-checked in [the system manifest](system-manifest.json), and the newcomer tour remains [The Realmz Rebuilt Builder's Manual](builders-manual.md).
 
@@ -157,7 +157,7 @@ The repository rejects growth from the verified baseline and is converging on st
 - any runtime-created ordinary control outside an exact reviewed function classification, any stale classification, or any per-owner count change that has not been reviewed;
 - class/file-name mismatches and unapproved one-node route scenes.
 
-The former 800/100 caps and 664-call construction inventory remain useful no-growth guards during migration, but they are not final acceptance. `verify_architecture_overhaul.ps1` separately ratchets the 600/60/method limits, cross-object private calls, generic preload aliases, missing major scenes, missing preview registrations, and one-node shell-mode markers toward zero. A converted UI collection instantiates an exported row scene; only named algorithmic renderers retain code-created rendering nodes.
+The former 800/100 caps and 664-call construction inventory remain useful no-growth guards during migration, but they are not final acceptance. `verify_architecture_overhaul.ps1` separately ratchets the 600/60/method limits, cross-object private calls, generic preload aliases, missing major scenes, missing preview registrations, one-node shell-mode markers, missing or undeclared feature directories, and misplaced boundary-root production files toward zero. A converted UI collection instantiates an exported row scene; only named algorithmic renderers retain code-created rendering nodes.
 
 ## Acceptance trail
 

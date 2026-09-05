@@ -119,7 +119,7 @@ Every gameplay draw uses `RealmzRng`. It owns the QuickDraw `randSeed = randSeed
 
 ## Godot's visible rooms
 
-The application uses one scene-backed `GameShell` and `ScreenNavigator` while the session protocol above remains unchanged. Open `src/ui/game_shell.tscn` to see the persistent menu, map/picture stage, six-character roster, narrative/status well, and contextual command regions. Route scenes live in `src/ui/screens`; stable panels belong in those `.tscn` files, while their controllers bind detached data and create only genuinely variable rows or records.
+The application uses one scene-backed `GameShell` and `ScreenNavigator` while the session protocol above remains unchanged. Open `src/ui/shell/game_shell.tscn` to see the persistent menu, map/picture stage, six-character roster, narrative/status well, and contextual command regions. Route scenes live in `src/ui/screens`; stable panels belong in those `.tscn` files, while their controllers bind detached data and create only genuinely variable rows or records.
 
 The scenes under `src/ui/screens` expose the complete stable hierarchy for Inventory, Character, Allies, Bestiary, Maps/Notes, Money and services, Spells, System, and Character Files. Open the Realmz Builder dock to bind the same production controllers to Wide, Compact, Empty, Long Content, Unavailable, or Error preview data without saving preview children into the scene. Exploration and Combat are typed modes of the persistent shell rather than misleading one-node workspace scenes.
 

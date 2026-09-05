@@ -1,7 +1,7 @@
 [gd_scene load_steps=11 format=3]
 
-[ext_resource type="Script" path="res://src/ui/game_shell.gd" id="1_shell"]
-[ext_resource type="PackedScene" path="res://src/ui/screen_navigator.tscn" id="2_navigator"]
+[ext_resource type="Script" path="res://src/ui/shell/game_shell.gd" id="1_shell"]
+[ext_resource type="PackedScene" path="res://src/ui/shell/screen_navigator.tscn" id="2_navigator"]
 [ext_resource type="Theme" path="res://src/ui/classic_ui_theme.tres" id="3_theme"]
 [ext_resource type="Texture2D" path="res://src/ui/assets/ui/classic-raised-frame.png" id="4_frame"]
 [ext_resource type="PackedScene" path="res://src/ui/screens/classic_party_roster.tscn" id="5_roster"]

@@ -502,7 +502,7 @@ if (Test-Path -LiteralPath $preparedPackagePath) {
     }
 }
 
-$screenNavigatorPath = Join-Path $repoRoot "src\ui\screen_navigator.gd"
+$screenNavigatorPath = Join-Path $repoRoot "src\ui\shell\screen_navigator.gd"
 if (Test-Path -LiteralPath $screenNavigatorPath) {
     $navigatorLines = Get-SanitizedGdscriptLines -Content ([IO.File]::ReadAllText($screenNavigatorPath))
     $routeControllerPattern = '\b(?:Character|Inventory|Services|MapsJournal|Spells|System)ScreenController\b'
@@ -510,34 +510,34 @@ if (Test-Path -LiteralPath $screenNavigatorPath) {
         $code = $navigatorLines[$index]
         $lineNumber = $index + 1
         if ($code -match $routeControllerPattern) {
-            $violations += "src/ui/screen_navigator.gd:$lineNumber ScreenNavigator must not construct or call route-domain workspace controllers"
+            $violations += "src/ui/shell/screen_navigator.gd:$lineNumber ScreenNavigator must not construct or call route-domain workspace controllers"
         }
         if ($code -match '^\s*func\s+_render_(?:characters|vault|inventory|spells|services|journal|system)\s*\(') {
-            $violations += "src/ui/screen_navigator.gd:$lineNumber ScreenNavigator must not render route-domain content"
+            $violations += "src/ui/shell/screen_navigator.gd:$lineNumber ScreenNavigator must not render route-domain content"
         }
         if ($code -match '\bsetup_controller\.attach\s*\(\s*self\s*\)') {
-            $violations += "src/ui/screen_navigator.gd:$lineNumber setup overlays must attach to the shell-owned OverlayHost, not the router"
+            $violations += "src/ui/shell/screen_navigator.gd:$lineNumber setup overlays must attach to the shell-owned OverlayHost, not the router"
         }
     }
 }
 
-$gameShellScenePath = Join-Path $repoRoot "src\ui\game_shell.tscn"
-$screenNavigatorScenePath = Join-Path $repoRoot "src\ui\screen_navigator.tscn"
+$gameShellScenePath = Join-Path $repoRoot "src\ui\shell\game_shell.tscn"
+$screenNavigatorScenePath = Join-Path $repoRoot "src\ui\shell\screen_navigator.tscn"
 if (Test-Path -LiteralPath $gameShellScenePath) {
     $gameShellScene = [IO.File]::ReadAllText($gameShellScenePath)
-    if ($gameShellScene -notmatch '\[ext_resource\s+type="PackedScene"\s+path="res://src/ui/screen_navigator\.tscn"') {
-        $violations += "src/ui/game_shell.tscn must instance the authored src/ui/screen_navigator.tscn presentation host"
+    if ($gameShellScene -notmatch '\[ext_resource\s+type="PackedScene"\s+path="res://src/ui/shell/screen_navigator\.tscn"') {
+        $violations += "src/ui/shell/game_shell.tscn must instance the authored src/ui/shell/screen_navigator.tscn presentation host"
     }
 }
 if (Test-Path -LiteralPath $screenNavigatorScenePath) {
     $screenNavigatorScene = [IO.File]::ReadAllText($screenNavigatorScenePath)
     foreach ($requiredHost in @('WorkspaceHost', 'OverlayHost')) {
         if ($screenNavigatorScene -notmatch ('\[node\s+name="' + [regex]::Escape($requiredHost) + '"\s+type="Control"\s+parent="\."\]')) {
-            $violations += "src/ui/screen_navigator.tscn must provide $requiredHost as an explicit scene-owned presentation host"
+            $violations += "src/ui/shell/screen_navigator.tscn must provide $requiredHost as an explicit scene-owned presentation host"
         }
     }
 } else {
-    $violations += "src/ui/screen_navigator.tscn must own the navigation presentation hosts"
+    $violations += "src/ui/shell/screen_navigator.tscn must own the navigation presentation hosts"
 }
 
 # Typed request bodies may become dictionaries only at their wire serializer or

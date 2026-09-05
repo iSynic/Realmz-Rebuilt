@@ -119,6 +119,34 @@ if (($actualBoundaries -join ',') -ne (($expectedBoundaries | Sort-Object) -join
     $failures.Add("System manifest must name exactly the six public architecture boundaries.")
 }
 
+$expectedLayoutRoots = @($expectedBoundaries | ForEach-Object { "src/$_" } | Sort-Object)
+$actualLayoutRoots = @($manifest.sourceLayout | ForEach-Object { [string]$_.root } | Sort-Object)
+if (($actualLayoutRoots -join ',') -ne ($expectedLayoutRoots -join ',')) {
+    $failures.Add("System manifest sourceLayout must name each public source boundary exactly once.")
+}
+$missingFeatureDirectories = 0
+$unexpectedFeatureDirectories = 0
+$misplacedRootProductionFiles = 0
+foreach ($layout in @($manifest.sourceLayout)) {
+    $relativeRoot = [string]$layout.root
+    $rootPath = Join-Path $repoRoot $relativeRoot
+    if (-not (Test-Path -LiteralPath $rootPath -PathType Container)) {
+        $failures.Add("Source-layout root is missing: $relativeRoot")
+        continue
+    }
+    $features = @($layout.featureDirectories | ForEach-Object { [string]$_ })
+    if ($features.Count -eq 0 -or @($features | Sort-Object -Unique).Count -ne $features.Count) {
+        $failures.Add("Source-layout root '$relativeRoot' must name unique feature directories.")
+        continue
+    }
+    $existingDirectories = @(Get-ChildItem -LiteralPath $rootPath -Directory | ForEach-Object { $_.Name })
+    $missingFeatureDirectories += @($features | Where-Object { $existingDirectories -notcontains $_ }).Count
+    $unexpectedFeatureDirectories += @($existingDirectories | Where-Object { $features -notcontains $_ }).Count
+    $misplacedRootProductionFiles += @(Get-ChildItem -LiteralPath $rootPath -File | Where-Object {
+        $_.Extension -in @(".gd", ".tscn", ".tres", ".gdshader")
+    }).Count
+}
+
 $systemIds = @{}
 foreach ($system in @($manifest.systems)) {
     $id = [string]$system.id
@@ -233,8 +261,11 @@ Add-MigrationCeilingFailure "genericPreloadAliases" $genericPreloadAliases
 Add-MigrationCeilingFailure "majorSurfacesWithoutScene" $surfacesWithoutScene
 Add-MigrationCeilingFailure "majorSurfacesWithoutPreview" $surfacesWithoutPreview
 Add-MigrationCeilingFailure "shellModeMarkerScenes" $shellModeMarkerScenes
+Add-MigrationCeilingFailure "missingFeatureDirectories" $missingFeatureDirectories
+Add-MigrationCeilingFailure "unexpectedFeatureDirectories" $unexpectedFeatureDirectories
+Add-MigrationCeilingFailure "misplacedRootProductionFiles" $misplacedRootProductionFiles
 
-Write-Host "Architecture overhaul: files=$oversizedFiles/$($budget.migrationCeilings.oversizedProductionFiles)->0, functions=$oversizedFunctions/$($budget.migrationCeilings.oversizedFunctions)->0, classes=$oversizedClasses/$($budget.migrationCeilings.oversizedTopLevelClasses)->0, cross-private=$crossObjectPrivateCalls/$($budget.migrationCeilings.crossObjectPrivateCalls)->0, generic-aliases=$genericPreloadAliases/$($budget.migrationCeilings.genericPreloadAliases)->0, missing-scenes=$surfacesWithoutScene/$($budget.migrationCeilings.majorSurfacesWithoutScene)->0, missing-previews=$surfacesWithoutPreview/$($budget.migrationCeilings.majorSurfacesWithoutPreview)->0, shell-markers=$shellModeMarkerScenes/$($budget.migrationCeilings.shellModeMarkerScenes)->0."
+Write-Host "Architecture overhaul: files=$oversizedFiles/$($budget.migrationCeilings.oversizedProductionFiles)->0, functions=$oversizedFunctions/$($budget.migrationCeilings.oversizedFunctions)->0, classes=$oversizedClasses/$($budget.migrationCeilings.oversizedTopLevelClasses)->0, cross-private=$crossObjectPrivateCalls/$($budget.migrationCeilings.crossObjectPrivateCalls)->0, generic-aliases=$genericPreloadAliases/$($budget.migrationCeilings.genericPreloadAliases)->0, missing-scenes=$surfacesWithoutScene/$($budget.migrationCeilings.majorSurfacesWithoutScene)->0, missing-previews=$surfacesWithoutPreview/$($budget.migrationCeilings.majorSurfacesWithoutPreview)->0, shell-markers=$shellModeMarkerScenes/$($budget.migrationCeilings.shellModeMarkerScenes)->0, missing-feature-dirs=$missingFeatureDirectories/$($budget.migrationCeilings.missingFeatureDirectories)->0, unexpected-feature-dirs=$unexpectedFeatureDirectories/$($budget.migrationCeilings.unexpectedFeatureDirectories)->0, misplaced-root-files=$misplacedRootProductionFiles/$($budget.migrationCeilings.misplacedRootProductionFiles)->0."
 if ($failures.Count -gt 0) {
     foreach ($failure in $failures) { Write-Error $failure }
     exit 1

@@ -47,8 +47,8 @@ signal combat_spellbook_back_requested
 const SCROLL_ARROW_STEP := 32.0
 const SCROLL_ARROW_INITIAL_DELAY := 0.34
 const SCROLL_ARROW_REPEAT_INTERVAL := 0.065
-const COMMAND_CONTROLLER_SCRIPT := preload("res://src/ui/game_shell_command_controller.gd")
-const MENU_CONTROLLER_SCRIPT := preload("res://src/ui/game_shell_menu_controller.gd")
+const COMMAND_CONTROLLER_SCRIPT := preload("res://src/ui/shell/game_shell_command_controller.gd")
+const MENU_CONTROLLER_SCRIPT := preload("res://src/ui/shell/game_shell_menu_controller.gd")
 
 @export var party_effect_slot_scene: PackedScene
 

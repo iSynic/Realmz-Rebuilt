@@ -24,7 +24,7 @@ const SURFACES := {
 	"bestiary": preload("res://src/ui/screens/bestiary_screen.tscn"),
 	"maps-journal": preload("res://src/ui/screens/journal_screen.tscn"),
 	"system": preload("res://src/ui/screens/system_screen.tscn"),
-	"application-shell": preload("res://src/ui/game_shell.tscn"),
+	"application-shell": preload("res://src/ui/shell/game_shell.tscn"),
 	"campaign-selection": preload("res://src/ui/setup/campaign_selection_panel.tscn"),
 	"party-assembly": preload("res://src/ui/setup/party_setup_workspace.tscn"),
 	"character-creation": preload("res://src/ui/setup/party_setup_workspace.tscn"),

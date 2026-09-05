@@ -1862,7 +1862,7 @@
         "status": "accepted",
         "owners": [
           {
-            "path": "src/ui/screen_navigator.gd",
+            "path": "src/ui/shell/screen_navigator.gd",
             "symbol": "class_name ScreenNavigator"
           }
         ]
@@ -1955,7 +1955,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/screen_navigator.gd",
+            "path": "src/ui/shell/screen_navigator.gd",
             "symbol": "class_name ScreenNavigator"
           }
         ]
@@ -2430,7 +2430,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/screen_navigator.gd",
+            "path": "src/ui/shell/screen_navigator.gd",
             "symbol": "class_name ScreenNavigator"
           }
         ]
@@ -2533,7 +2533,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/screen_navigator.gd",
+            "path": "src/ui/shell/screen_navigator.gd",
             "symbol": "class_name ScreenNavigator"
           }
         ]
@@ -2661,7 +2661,7 @@
             "symbol": "func build"
           },
           {
-            "path": "src/ui/game_shell.gd",
+            "path": "src/ui/shell/game_shell.gd",
             "symbol": "class_name GameShell"
           }
         ]
@@ -2984,7 +2984,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/game_shell.gd",
+            "path": "src/ui/shell/game_shell.gd",
             "symbol": "class_name GameShell"
           }
         ]
@@ -3156,7 +3156,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/game_shell.gd",
+            "path": "src/ui/shell/game_shell.gd",
             "symbol": "class_name GameShell"
           }
         ]
@@ -3334,7 +3334,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/game_shell.gd",
+            "path": "src/ui/shell/game_shell.gd",
             "symbol": "class_name GameShell"
           }
         ]
@@ -3580,7 +3580,7 @@
             "symbol": "func present"
           },
           {
-            "path": "src/ui/game_shell.gd",
+            "path": "src/ui/shell/game_shell.gd",
             "symbol": "func _presentation_command_definition"
           }
         ]
@@ -3705,7 +3705,7 @@
         "status": "accepted",
         "owners": [
           {
-            "path": "src/ui/interaction_presenter.gd",
+            "path": "src/ui/shared/interactions/interaction_presenter.gd",
             "symbol": "class_name InteractionPresenter"
           }
         ]
@@ -3816,7 +3816,7 @@
         "status": "accepted",
         "owners": [
           {
-            "path": "src/ui/interaction_presenter.gd",
+            "path": "src/ui/shared/interactions/interaction_presenter.gd",
             "symbol": "class_name InteractionPresenter"
           },
           {
@@ -4192,7 +4192,7 @@
             "symbol": "func present_character_selection"
           },
           {
-            "path": "src/ui/interaction_presenter.gd",
+            "path": "src/ui/shared/interactions/interaction_presenter.gd",
             "symbol": "func submit_character_selection"
           }
         ]
@@ -4323,7 +4323,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/interaction_presenter.gd",
+            "path": "src/ui/shared/interactions/interaction_presenter.gd",
             "symbol": "class_name InteractionPresenter"
           }
         ]
@@ -6124,7 +6124,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/interaction_presenter.gd",
+            "path": "src/ui/shared/interactions/interaction_presenter.gd",
             "symbol": "class_name InteractionPresenter"
           }
         ]
@@ -10056,7 +10056,7 @@
             "symbol": "static func quit_application_request"
           },
           {
-            "path": "src/ui/game_shell.gd",
+            "path": "src/ui/shell/game_shell.gd",
             "symbol": "class_name GameShell"
           }
         ]
@@ -10796,7 +10796,7 @@
             "symbol": "func discover_campaigns"
           },
           {
-            "path": "src/ui/screen_navigator.gd",
+            "path": "src/ui/shell/screen_navigator.gd",
             "symbol": "class_name ScreenNavigator"
           }
         ]
@@ -10889,7 +10889,7 @@
             "symbol": "class_name PackageDiscoveryResult"
           },
           {
-            "path": "src/ui/screen_navigator.gd",
+            "path": "src/ui/shell/screen_navigator.gd",
             "symbol": "class_name ScreenNavigator"
           }
         ]

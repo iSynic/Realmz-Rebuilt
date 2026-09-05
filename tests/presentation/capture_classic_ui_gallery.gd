@@ -18,7 +18,7 @@ func _initialize() -> void:
 
 func _capture_gallery() -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUTPUT_ROOT))
-	_application = load("res://src/ui/realmz_application.tscn").instantiate() as RealmzApplication
+	_application = load("res://src/ui/shell/realmz_application.tscn").instantiate() as RealmzApplication
 	root.add_child(_application)
 	_shell = _application.get_node("GameShell") as GameShell
 	_router = _shell.get_node("ScreenNavigator") as ScreenNavigator

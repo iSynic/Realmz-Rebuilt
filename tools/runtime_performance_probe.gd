@@ -3,7 +3,7 @@ extends SceneTree
 const PERFORMANCE_PACKAGE_LOADER := preload("res://tools/performance_package_loader.gd")
 const CHARACTER_VAULT_REPOSITORY := preload("res://src/storage/characters/character_vault_repository.gd")
 const CHARACTER_VAULT_CONTROLLER := preload("res://src/app/controllers/character_vault_controller.gd")
-const SHELL_SCENE := preload("res://src/ui/game_shell.tscn")
+const SHELL_SCENE := preload("res://src/ui/shell/game_shell.tscn")
 const VAULT_PATH := "user://realmz2-tests/runtime-performance-vault"
 
 

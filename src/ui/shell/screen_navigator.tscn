@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3]
 
-[ext_resource type="Script" path="res://src/ui/screen_navigator.gd" id="1_navigator"]
+[ext_resource type="Script" path="res://src/ui/shell/screen_navigator.gd" id="1_navigator"]
 
 [node name="ScreenNavigator" type="Control"]
 layout_mode = 3

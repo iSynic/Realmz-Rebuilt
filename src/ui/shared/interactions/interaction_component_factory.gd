@@ -17,7 +17,7 @@ const SHOP_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/shop_i
 const TREASURE_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/treasure_distribution_interaction.tscn"
 const BATTLE_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/battle_interaction.tscn"
 const SELECTION_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/selection_interaction.tscn"
-const LayoutPolicy := preload("res://src/ui/interaction_layout_policy.gd")
+const LayoutPolicy := preload("res://src/ui/shared/interactions/interaction_layout_policy.gd")
 
 
 static func create(
