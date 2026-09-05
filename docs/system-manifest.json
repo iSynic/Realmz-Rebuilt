@@ -33,7 +33,7 @@
       "id": "magic",
       "boundary": "game",
       "guide": "docs/features/magic.md",
-      "entryPoints": ["src/game/magic", "src/game/rules/magic_rules.gd", "src/game/rules/classic_spell_identity_catalog.gd", "src/game/rules/classic_spell_classification_rules.gd", "src/game/rules/classic_spell_disposition_rules.gd", "src/game/rules/classic_spell_source_rules.gd", "src/game/rules/classic_spell_condition_rules.gd", "src/game/rules/classic_spell_special_effect_rules.gd", "src/game/content/spell_definition.gd", "src/playthrough/workflows/field_magic_workflow.gd", "src/ui/magic"],
+      "entryPoints": ["src/game/magic", "src/game/rules/magic_rules.gd", "src/game/rules/classic_spell_identity_catalog.gd", "src/game/rules/classic_spell_classification_rules.gd", "src/game/rules/classic_spell_disposition_rules.gd", "src/game/rules/classic_spell_source_rules.gd", "src/game/rules/classic_spell_condition_rules.gd", "src/game/rules/classic_spell_special_effect_rules.gd", "src/game/content/spell_definition.gd", "src/playthrough/magic", "src/playthrough/magic/field_magic_workflow.gd", "src/ui/magic"],
       "publicInterfaces": ["SpellCatalog", "MagicRules", "ClassicSpellIdentityCatalog", "ClassicSpellClassificationRules", "ClassicSpellDispositionRules", "ClassicSpellSourceRules", "ClassicSpellConditionRules", "ClassicSpellSpecialEffectRules", "FieldMagicWorkflow", "MagicTransitionResult", "MagicIntents", "SpellIntentPayload", "SpellDefinition", "SpellView", "SpellsScreen", "SpellsWorkspace", "SpellsScreenController", "SpellDetailFormatter"],
       "tests": ["tests/integration/test_field_spell_workflow.gd", "tests/integration/test_scroll_camp_workflow.gd"],
       "performanceProbes": ["tools/combat_performance_probe.gd"]

@@ -8,12 +8,13 @@ Own carried-item transactions and field item use above pure item definitions, in
 
 - `InventoryWorkflow` owns equip, unequip, trade, Drop, Split, and Join transactions.
 - `FieldItemWorkflow` owns Identify, Torch, door items, and charged field spell items.
-- `InventoryContinuations` constructs saveable item targeting, confirmation, and item-XAP continuations.
+- `InventoryContinuations` constructs saveable item targeting, confirmation, and item-XAP continuations using the sibling magic feature's shared targeting payload.
 - `ItemXapContinuationBody` retains the exact item-owned scenario program handoff.
 
 ## Local Contracts
 
 - Portable `ItemInstance` records resolve through the active application catalog plus scenario-owned exact-ID overlay.
+- Item targeting shares `TargetingContinuationBody` from `src/playthrough/magic`; inventory owns the item continuation kinds while magic owns the common target and spell fields.
 - Inventory and field-item mutations use `InventoryRules`, `EquipmentRules`, and shared magic resolution; they do not duplicate item legality.
 - A failed, cancelled, or rejected operation leaves inventory, charges, equipment, load, clock, RNG, and session revision according to the existing transaction result.
 - Item-XAP and target continuations preserve stable instance, definition, actor, program, power, and source-battle identities across save/restore.

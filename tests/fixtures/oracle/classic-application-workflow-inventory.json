@@ -3434,7 +3434,7 @@
             "symbol": "class_name CharacterState"
           },
           {
-            "path": "src/playthrough/workflows/field_magic_workflow.gd",
+            "path": "src/playthrough/magic/field_magic_workflow.gd",
             "symbol": "static func set_fast_spell"
           }
         ]
@@ -6383,7 +6383,7 @@
             "symbol": "func _cast_spell"
           },
           {
-            "path": "src/playthrough/workflows/field_magic_workflow.gd",
+            "path": "src/playthrough/magic/field_magic_workflow.gd",
             "symbol": "static func make_scroll"
           },
           {

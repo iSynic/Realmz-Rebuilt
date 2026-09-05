@@ -60,5 +60,6 @@ Own the pure transaction coordinator that joins Realmz game state and rules to t
 - `world/AGENTS.md` owns movement, Search, time, exploration continuation, location-note, and map-view workflows.
 - `characters/AGENTS.md` owns standalone creation, party admission/finalization, lifecycle aging, and age continuation.
 - `inventory/AGENTS.md` owns carried-item transactions, field-item use, and item-owned continuations.
+- `magic/AGENTS.md` owns field casting, scrolls, Fast Spells, magic targeting, and magic-owned continuations.
 - `continuations/AGENTS.md` owns typed resumable transaction payloads, feature factories, and their wire-value contracts.
-- `workflows/AGENTS.md` owns the remaining magic, economy, combat-reward, and application-hook workflows until each moves to its feature.
+- `workflows/AGENTS.md` owns the remaining economy, combat-reward, and application-hook workflows until each moves to its feature.
