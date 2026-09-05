@@ -8,6 +8,8 @@ Compiled authored content remains beside this state under `content`, `instructio
 
 `requests/` contains the detached Complex Encounter, Thief Encounter, and Pick Lock bodies carried through the shared interaction envelope. They expose only the choice and timing facts required by presentation and resumption; they do not contain live VM frames.
 
+`classic_pick_lock_rules.gd` contains the deterministic Castle tumbler timing and chance calculations. Scenario execution owns the attempt and RNG transaction; presentation only animates the detached preview described by the request body.
+
 ```text
 compiled package definitions
           |

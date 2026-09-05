@@ -2,17 +2,19 @@
 
 ## Purpose
 
-Own immutable item definitions and lookup, plus the inventory feature's migration boundary for its pure rules.
+Own immutable item definitions and lookup, carried-item rules, wearable equipment rules, and their typed calculation results.
 
 ## Ownership
 
 - `ItemDefinition` is the immutable authored item record resolved by every carried instance.
 - `ItemInstance` is the portable mutable carried-item record stored by a character.
 - `ItemCatalog` indexes the effective application-plus-scenario item definitions by stable and Classic identity.
+- `InventoryRules` owns carried-item capacity, use, transfer, stack, charge, and custody admission; `InventoryActionProbe` carries a detached admission result.
+- `EquipmentRules` owns wearable admission, equip and unequip mutation, scroll-case presence, and combat loadout projection; `CharacterCombatEquipment` carries that projection.
 - `ItemView`, `ItemFactView`, `InventoryItemActionsView`, and `ItemTransferTargetView` carry detached item presentation facts and already-calculated availability.
 - `README.md` is the public maintainer entry point for item-definition resolution.
 
-Inventory rules remain under `src/game/rules` until their production files, tests, UIDs, and references move here as one coherent batch. Characters retain custody of their `ItemInstance` collections while the instance type lives with the inventory feature that defines it.
+Characters retain custody of their `ItemInstance` collections while the instance type and the rules that interpret it live with the inventory feature.
 
 ## Local Contracts
 

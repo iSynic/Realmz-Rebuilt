@@ -14,6 +14,7 @@ Own immutable compiled scenario definitions and the mutable scenario-progress st
 - `ScenarioEncounterState` for timed encounter records, eliminated results, attempt counts, thief flags, and program redirects.
 - `CampaignSummaryView` carries the detached campaign facts shown during selection without making discovery load the complete package.
 - Complex Encounter, Thief Encounter, and Pick Lock request bodies carry detached scenario decisions without exposing VM frames.
+- `ClassicPickLockRules` owns the pure source-backed tumbler timing, chance, and frame calculations used by the Pick Lock interaction.
 
 ## Local Contracts
 

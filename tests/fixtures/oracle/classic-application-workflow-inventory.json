@@ -4052,7 +4052,7 @@
             "symbol": "class_name ClassicThiefEncounterOperations"
           },
           {
-            "path": "src/game/rules/classic_pick_lock_rules.gd",
+            "path": "src/game/scenario/classic_pick_lock_rules.gd",
             "symbol": "class_name ClassicPickLockRules"
           }
         ]
@@ -5099,7 +5099,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/game/rules/inventory_rules.gd",
+            "path": "src/game/inventory/inventory_rules.gd",
             "symbol": "class_name InventoryRules"
           }
         ]
@@ -5191,7 +5191,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/game/rules/inventory_rules.gd",
+            "path": "src/game/inventory/inventory_rules.gd",
             "symbol": "func split_classic"
           },
           {
@@ -5309,7 +5309,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/game/rules/inventory_rules.gd",
+            "path": "src/game/inventory/inventory_rules.gd",
             "symbol": "func join_classic"
           },
           {
@@ -5772,7 +5772,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/game/rules/inventory_rules.gd",
+            "path": "src/game/inventory/inventory_rules.gd",
             "symbol": "class_name InventoryRules"
           }
         ]

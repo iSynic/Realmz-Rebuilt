@@ -18,4 +18,4 @@ Package assembly performs the application/scenario composition once. `ItemCatalo
 
 The detached `ItemView` sits beside the item model it describes. `ItemFactView`, `InventoryItemActionsView`, and `ItemTransferTargetView` carry only visible facts and precomputed action availability; UI code never resolves a hidden definition or recalculates item legality.
 
-Item transactions currently enter through `InventoryRules`, `EquipmentRules`, `InventoryWorkflow`, and `FieldItemWorkflow`. Begin verification with `test_package_repository.gd` for catalog composition and `test_inventory_session.gd` for gameplay.
+`inventory_rules.gd` owns carried-item admission and mutation. `equipment_rules.gd` owns wearable admission and combat loadout projection; its result is `CharacterCombatEquipment`. Item transactions enter through `InventoryRules`, `EquipmentRules`, `InventoryWorkflow`, and `FieldItemWorkflow`. Begin verification with `test_package_repository.gd` for catalog composition and `test_inventory_session.gd` for gameplay.
