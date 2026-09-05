@@ -1,9 +1,9 @@
 ## Binds detached party setup assembly data to scene-owned controls.
 
 class_name PartySetupAssemblyController
-extends "res://src/ui/controllers/party_setup_controller_component.gd"
+extends "res://src/ui/setup/party_setup_controller_component.gd"
 
-const PARTY_SLOT_SCENE_PATH := "res://src/ui/party_setup_party_slot.tscn"
+const PARTY_SLOT_SCENE_PATH := "res://src/ui/setup/party_setup_party_slot.tscn"
 const ASSEMBLY_BROWSER_SCENE_PATH := "res://src/ui/setup/party_assembly_browser.tscn"
 
 var _inspection: RefCounted

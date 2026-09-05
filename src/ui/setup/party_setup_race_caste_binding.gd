@@ -1,6 +1,6 @@
 ## Binds the character creator's authored Race and Caste step.
 class_name PartySetupRaceCasteBinding
-extends "res://src/ui/controllers/party_setup_controller_component.gd"
+extends "res://src/ui/setup/party_setup_controller_component.gd"
 
 var _appearance_editor: PartySetupAppearanceEditor
 var _step_scene: PackedScene

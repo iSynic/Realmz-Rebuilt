@@ -1,6 +1,6 @@
 ## Coordinates the character-creation wizard and submits typed draft decisions.
 class_name PartySetupCharacterCreationController
-extends "res://src/ui/controllers/party_setup_controller_component.gd"
+extends "res://src/ui/setup/party_setup_controller_component.gd"
 
 const SpellSelectionChrome := preload("res://src/ui/magic/classic_spell_selection_chrome.gd")
 

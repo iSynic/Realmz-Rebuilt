@@ -6,7 +6,7 @@ extends PanelContainer
 signal inspect_requested(character_id: String)
 signal remove_requested(character_id: String)
 
-const CharacterRow := preload("res://src/ui/party_setup_character_row.gd")
+const CharacterRow := preload("res://src/ui/setup/party_setup_character_row.gd")
 
 var _character_id: String = ""
 var _portrait: TextureRect

@@ -2054,15 +2054,15 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/controllers/party_setup_assembly_controller.gd",
+            "path": "src/ui/setup/party_setup_assembly_controller.gd",
             "symbol": "func render_party_assembly"
           },
           {
-            "path": "src/ui/party_setup_character_row.gd",
+            "path": "src/ui/setup/party_setup_character_row.gd",
             "symbol": "class_name PartySetupCharacterRow"
           },
           {
-            "path": "src/ui/party_setup_party_list.gd",
+            "path": "src/ui/setup/party_setup_party_list.gd",
             "symbol": "class_name PartySetupPartyList"
           }
         ]
@@ -2218,7 +2218,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/controllers/party_setup_character_creation_controller.gd",
+            "path": "src/ui/setup/party_setup_character_creation_controller.gd",
             "symbol": "func render_creator_step"
           }
         ]
@@ -2333,7 +2333,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/controllers/party_setup_inspection_controller.gd",
+            "path": "src/ui/setup/party_setup_inspection_controller.gd",
             "symbol": "func render_setup_character_inspection"
           },
           {
@@ -10972,7 +10972,7 @@
             "symbol": "func _begin_package_start"
           },
           {
-            "path": "src/ui/controllers/campaign_library_controller.gd",
+            "path": "src/ui/setup/campaign_library_controller.gd",
             "symbol": "func set_package_operation"
           }
         ]

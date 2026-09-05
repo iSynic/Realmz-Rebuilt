@@ -1,7 +1,7 @@
 [gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://src/ui/setup/character_creation_race_caste_step.gd" id="1_step"]
-[ext_resource type="PackedScene" path="res://src/ui/controllers/classic_definition_toggle_list.tscn" id="2_list"]
+[ext_resource type="PackedScene" path="res://src/ui/setup/classic_definition_toggle_list.tscn" id="2_list"]
 
 [node name="CharacterCreationRaceCasteStep" type="VBoxContainer"]
 size_flags_horizontal = 3

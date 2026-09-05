@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3]
 
-[ext_resource type="Script" path="res://src/ui/controllers/classic_definition_toggle_list.gd" id="1_list"]
+[ext_resource type="Script" path="res://src/ui/setup/classic_definition_toggle_list.gd" id="1_list"]
 
 [node name="ClassicDefinitionToggleList" type="ScrollContainer"]
 horizontal_scroll_mode = 0

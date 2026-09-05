@@ -1,7 +1,7 @@
 ## Binds detached campaign party setup data to scene-owned controls.
 
 class_name CampaignPartySetupController
-extends "res://src/ui/controllers/party_setup_controller_component.gd"
+extends "res://src/ui/setup/party_setup_controller_component.gd"
 
 const PARTY_SETUP_WORKSPACE_PATH := "res://src/ui/setup/party_setup_workspace.tscn"
 

@@ -6,6 +6,10 @@
 
 - Scenes own stable panels, headings, scroll regions, options, and actions.
 - Controllers bind detached campaign, vault, party, and draft data and populate only variable records.
+- `CampaignLibraryController` binds the front door and campaign selector. `CampaignPartySetupController` composes retained campaign, party assembly, inspection, and creation collaborators around one explicit `CampaignPartySetupState`.
+- `PartySetupAssemblyController` binds the reusable-character browser and retained six-slot party list; `PartySetupInspectionController` mounts the shared character sheet; `PartySetupCharacterCreationController` owns the five-step draft lifecycle.
+- `PartySetupRaceCasteBinding` and `PartySetupAppearanceEditor` bind their narrow authored steps. `PartySetupControllerComponent` supplies only shared controller lifecycle, and `ClassicDefinitionToggleList` owns the exported variable definition buttons used by creation.
+- `party_setup_character_row.tscn` and `party_setup_party_slot.tscn` own reusable Character Files and party-slot records; `PartySetupPartyList` coordinates only the retained record instances.
 
 # Local Contracts
 
