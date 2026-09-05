@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3]
 
-[ext_resource type="Script" path="res://src/ui/interaction_components/thief_encounter_interaction.gd" id="1_interaction"]
+[ext_resource type="Script" path="res://src/ui/shared/interactions/thief_encounter_interaction.gd" id="1_interaction"]
 
 [node name="ThiefEncounterInteraction" type="VBoxContainer"]
 script = ExtResource("1_interaction")

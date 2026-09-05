@@ -136,7 +136,6 @@ Own the Godot user interface: scenes, controls, screen presenters, topology-deri
 ## Child DOX Index
 
 - `assets/AGENTS.md` owns presentation-owned chrome assets and provenance.
-- `interaction_components/AGENTS.md` owns typed request-kind control surfaces and exact payload emission.
 - `inventory/AGENTS.md` owns the editable Inventory route, reusable Encounter workspace, item records, and Trade composition.
 - `magic/AGENTS.md` owns the editable field-spellbook route, reusable workspace, selection chrome, and display formatting.
 - `setup/AGENTS.md` owns campaign selection, party assembly, and character-creation scene composition.

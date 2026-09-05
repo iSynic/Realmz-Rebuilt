@@ -2657,7 +2657,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/interaction_components/lifecycle_interaction.gd",
+            "path": "src/ui/shared/interactions/lifecycle_interaction.gd",
             "symbol": "func build"
           },
           {
@@ -3936,7 +3936,7 @@
         "status": "accepted",
         "owners": [
           {
-            "path": "src/ui/interaction_components/text_choice_interaction.gd",
+            "path": "src/ui/shared/interactions/text_choice_interaction.gd",
             "symbol": "class_name TextChoiceInteraction"
           }
         ]
@@ -4064,15 +4064,15 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/interaction_components/encounter_interaction.gd",
+            "path": "src/ui/shared/interactions/encounter_interaction.gd",
             "symbol": "class_name EncounterInteraction"
           },
           {
-            "path": "src/ui/interaction_components/thief_encounter_interaction.gd",
+            "path": "src/ui/shared/interactions/thief_encounter_interaction.gd",
             "symbol": "class_name ThiefEncounterInteraction"
           },
           {
-            "path": "src/ui/interaction_components/pick_lock_interaction.gd",
+            "path": "src/ui/shared/interactions/pick_lock_interaction.gd",
             "symbol": "class_name PickLockInteraction"
           }
         ]
@@ -4880,7 +4880,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/interaction_components/age_update_interaction.gd",
+            "path": "src/ui/characters/age_update_interaction.gd",
             "symbol": "class_name AgeUpdateInteraction"
           }
         ]
@@ -5887,7 +5887,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/interaction_components/text_choice_interaction.gd",
+            "path": "src/ui/shared/interactions/text_choice_interaction.gd",
             "symbol": "class_name TextChoiceInteraction"
           }
         ]
@@ -8405,7 +8405,7 @@
             "symbol": "class_name BattleInteraction"
           },
           {
-            "path": "src/ui/interaction_components/level_up_interaction.gd",
+            "path": "src/ui/characters/level_up_interaction.gd",
             "symbol": "class_name LevelUpInteraction"
           }
         ]
@@ -8881,7 +8881,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/interaction_components/selection_interaction.gd",
+            "path": "src/ui/shared/interactions/selection_interaction.gd",
             "symbol": "class_name SelectionInteraction"
           }
         ]
@@ -9001,7 +9001,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/interaction_components/level_up_interaction.gd",
+            "path": "src/ui/characters/level_up_interaction.gd",
             "symbol": "class_name LevelUpInteraction"
           }
         ]
@@ -9493,7 +9493,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/interaction_components/text_choice_interaction.gd",
+            "path": "src/ui/shared/interactions/text_choice_interaction.gd",
             "symbol": "func build"
           },
           {

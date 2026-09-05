@@ -3,7 +3,7 @@
 class_name ThiefEncounterInteraction
 extends InteractionComponent
 
-const THIEF_ACTION_BUTTON_SCENE_PATH := "res://src/ui/interaction_components/thief_action_button.tscn"
+const THIEF_ACTION_BUTTON_SCENE_PATH := "res://src/ui/shared/interactions/thief_action_button.tscn"
 
 var _media: ClassicMediaCatalog
 var _body: ThiefEncounterRequestBody

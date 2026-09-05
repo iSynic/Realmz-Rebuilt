@@ -3,10 +3,10 @@
 class_name InteractionComponent
 extends VBoxContainer
 
-const RESPONSE_BUTTON_SCENE_PATH := "res://src/ui/interaction_components/interaction_response_button.tscn"
+const RESPONSE_BUTTON_SCENE_PATH := "res://src/ui/shared/interactions/interaction_response_button.tscn"
 
-@export_file("*.tscn") var hint_scene_path := "res://src/ui/interaction_components/interaction_hint.tscn"
-@export_file("*.tscn") var character_option_scene_path := "res://src/ui/interaction_components/interaction_character_option.tscn"
+@export_file("*.tscn") var hint_scene_path := "res://src/ui/shared/interactions/interaction_hint.tscn"
+@export_file("*.tscn") var character_option_scene_path := "res://src/ui/shared/interactions/interaction_character_option.tscn"
 
 signal response_body_submitted(body: InteractionResponse.Body)
 @warning_ignore("unused_signal")

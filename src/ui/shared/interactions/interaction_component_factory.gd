@@ -2,21 +2,21 @@
 class_name InteractionComponentFactory
 extends RefCounted
 
-const PICK_LOCK_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/pick_lock_interaction.tscn"
-const AGE_UPDATE_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/age_update_interaction.tscn"
-const TEXT_CHOICE_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/text_choice_interaction.tscn"
+const PICK_LOCK_INTERACTION_SCENE_PATH := "res://src/ui/shared/interactions/pick_lock_interaction.tscn"
+const AGE_UPDATE_INTERACTION_SCENE_PATH := "res://src/ui/characters/age_update_interaction.tscn"
+const TEXT_CHOICE_INTERACTION_SCENE_PATH := "res://src/ui/shared/interactions/text_choice_interaction.tscn"
 const PLAYER_MAP_INTERACTION_SCENE_PATH := "res://src/ui/journal/player_map_interaction.tscn"
 const SCROLLING_TEXT_INTERACTION_SCENE_PATH := "res://src/ui/journal/scrolling_text_interaction.tscn"
-const LIFECYCLE_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/lifecycle_interaction.tscn"
+const LIFECYCLE_INTERACTION_SCENE_PATH := "res://src/ui/shared/interactions/lifecycle_interaction.tscn"
 const BANK_INTERACTION_SCENE_PATH := "res://src/ui/services/bank_interaction.tscn"
 const TEMPLE_INTERACTION_SCENE_PATH := "res://src/ui/services/temple_interaction.tscn"
-const THIEF_ENCOUNTER_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/thief_encounter_interaction.tscn"
-const LEVEL_UP_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/level_up_interaction.tscn"
-const ENCOUNTER_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/encounter_interaction.tscn"
+const THIEF_ENCOUNTER_INTERACTION_SCENE_PATH := "res://src/ui/shared/interactions/thief_encounter_interaction.tscn"
+const LEVEL_UP_INTERACTION_SCENE_PATH := "res://src/ui/characters/level_up_interaction.tscn"
+const ENCOUNTER_INTERACTION_SCENE_PATH := "res://src/ui/shared/interactions/encounter_interaction.tscn"
 const SHOP_INTERACTION_SCENE_PATH := "res://src/ui/services/shop_interaction.tscn"
 const TREASURE_INTERACTION_SCENE_PATH := "res://src/ui/services/treasure_distribution_interaction.tscn"
 const BATTLE_INTERACTION_SCENE_PATH := "res://src/ui/combat/battle_interaction.tscn"
-const SELECTION_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/selection_interaction.tscn"
+const SELECTION_INTERACTION_SCENE_PATH := "res://src/ui/shared/interactions/selection_interaction.tscn"
 const LayoutPolicy := preload("res://src/ui/shared/interactions/interaction_layout_policy.gd")
 
 

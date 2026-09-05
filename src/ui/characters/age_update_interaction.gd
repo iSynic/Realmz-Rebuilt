@@ -3,7 +3,7 @@
 class_name AgeUpdateInteraction
 extends InteractionComponent
 
-const AGE_CHANGE_ROW_SCENE_PATH := "res://src/ui/interaction_components/age_change_row.tscn"
+const AGE_CHANGE_ROW_SCENE_PATH := "res://src/ui/characters/age_change_row.tscn"
 
 const CHANGE_LABELS: Array[String] = [
 	"Brawn",

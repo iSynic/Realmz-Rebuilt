@@ -3,7 +3,7 @@
 class_name PickLockInteraction
 extends InteractionComponent
 
-const TUMBLER_ROW_SCENE_PATH := "res://src/ui/interaction_components/pick_lock_tumbler_row.tscn"
+const TUMBLER_ROW_SCENE_PATH := "res://src/ui/shared/interactions/pick_lock_tumbler_row.tscn"
 
 var _media: ClassicMediaCatalog
 var _body: PickLockRequestBody

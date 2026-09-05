@@ -28,3 +28,6 @@ Own reusable scene components, presentation policies, and interaction hosting us
 - Run the presentation shell/system suites and Realmz Builder preview suite after interaction-host changes.
 
 ## Child DOX Index
+
+- `interactions/AGENTS.md` owns typed request surfaces, modal chrome, exact response payload emission, and the generic interaction host.
+- `exchange/AGENTS.md` owns reusable Trade and Shop ledger drag/drop presentation.

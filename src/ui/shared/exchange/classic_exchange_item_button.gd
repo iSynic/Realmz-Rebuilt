@@ -3,7 +3,7 @@
 class_name ClassicExchangeItemButton
 extends Button
 
-const DRAG_PREVIEW_SCENE_PATH := "res://src/ui/interaction_components/classic_exchange_drag_preview.tscn"
+const DRAG_PREVIEW_SCENE_PATH := "res://src/ui/shared/exchange/classic_exchange_drag_preview.tscn"
 
 var drag_payload: Dictionary = {}
 

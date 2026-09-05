@@ -10,6 +10,8 @@ Own the editable Character, Allies, Bestiary, and Character Files workspaces and
 - `classic_character_sheet.tscn` owns the complete eight-tab character composition. Its stat, inventory/magic, and identity tab scenes own stable layout; `ClassicCharacterSheet` coordinates selection while `CharacterSheetSceneBinding` binds detached records through exported row and card scenes.
 - `creature_library_workspace.tscn` is the shared read-only Allies and Bestiary composition. `CreatureLibraryScreenController` binds detached creature records, exact media identities, empty states, and compact reflow; only the exported creature-row scene may be instantiated dynamically.
 - `vault_screen.tscn` owns the Character Files list, revision history, eligibility state, and immutable inspection regions. Starter installation, archival, recovery, and persistence remain outside UI.
+- `age_update_interaction.tscn` owns the editable age-transition identity, artwork, change rows, empty state, and Continue action. `AgeUpdateInteraction` binds exact typed media and emits only the age-update acknowledgement.
+- `level_up_interaction.tscn` owns committed level results and mandatory spell learning. `LevelUpInteraction` binds supplied gains, application descriptions, exact spell media, source-owned point accounting, and stable spell IDs without applying character rules.
 - Character, creature, party-order, vault, metric, item, spell, and record collections instantiate their exported row/card scenes. Binding scripts may not construct or replace stable screen hierarchy.
 
 ## Local Contracts
@@ -28,7 +30,7 @@ Own the editable Character, Allies, Bestiary, and Character Files workspaces and
 ## Verification
 
 - Run the Character, Allies/Bestiary, Character Files, Classic UI system, and Realmz Builder preview suites.
+- Include age-update and level-up interaction fixtures when their scenes or binders change.
 - Run the architecture-overhaul and dependency verifiers after changing paths or ownership.
 
 ## Child DOX Index
-

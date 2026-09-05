@@ -1,7 +1,7 @@
 [gd_scene load_steps=4 format=3]
 
-[ext_resource type="Script" path="res://src/ui/interaction_components/selection_interaction.gd" id="1_selection"]
-[ext_resource type="PackedScene" path="res://src/ui/interaction_components/ally_selection_candidate.tscn" id="2_candidate"]
+[ext_resource type="Script" path="res://src/ui/shared/interactions/selection_interaction.gd" id="1_selection"]
+[ext_resource type="PackedScene" path="res://src/ui/shared/interactions/ally_selection_candidate.tscn" id="2_candidate"]
 [ext_resource type="PackedScene" path="res://src/ui/classic_spell_target_badge.tscn" id="3_badge"]
 
 [node name="SelectionInteraction" type="VBoxContainer"]
