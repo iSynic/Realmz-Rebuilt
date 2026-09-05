@@ -168,7 +168,7 @@ func _bind_shell_and_settings() -> void:
 
 
 func _finish_startup() -> void:
-	_game_shell.navigator.setup_controller.set_standalone_character_creation_available(false, "Loading the built-in Classic definitions…")
+	_game_shell.navigator.setup_controller.character_creation.set_standalone_character_creation_available(false, "Loading the built-in Classic definitions…")
 	Callable(character_files, "begin_library_load").call_deferred()
 	_status_label.text = "Pure session boundary online"
 	_refresh_campaigns()
@@ -194,12 +194,12 @@ func _process(_delta: float) -> void:
 	var operation_key := "%s:%s:%d:%d:%s" % [operation.state, operation.phase, operation.completed, operation.total, operation.message]
 	if operation_key != _last_package_operation_key:
 		_last_package_operation_key = operation_key
-		_shell_presenter.navigator.setup_controller.set_package_operation(operation)
+		_shell_presenter.navigator.setup_controller.campaign_library.set_package_operation(operation)
 		_shell_presenter.status.set_status(operation.message, operation.state == PackageOperationView.FAILED)
 	if operation.is_running() or operation.state == PackageOperationView.IDLE:
 		return
 	var prepared := _package_host.take_prepared_package()
-	_shell_presenter.navigator.setup_controller.set_package_operation(PackageOperationView.new())
+	_shell_presenter.navigator.setup_controller.campaign_library.set_package_operation(PackageOperationView.new())
 	_last_package_operation_key = ""
 	if operation.state == PackageOperationView.CANCELLED:
 		_shell_presenter.status.set_status("Campaign preparation cancelled.")
@@ -260,7 +260,7 @@ func _begin_package_start(package_path: String, initial_seed: int) -> void:
 	if not _package_host.start_install(package_path):
 		_shell_presenter.status.set_status(_package_host.operation_view().message, true)
 		return
-	_shell_presenter.navigator.setup_controller.set_package_operation(_package_host.operation_view())
+	_shell_presenter.navigator.setup_controller.campaign_library.set_package_operation(_package_host.operation_view())
 	_shell_presenter.status.set_status("Preparing campaign…")
 
 
@@ -534,7 +534,7 @@ func _refresh_campaigns() -> void:
 	if _package_host != null and _package_host.operation_view().is_running():
 		return
 	_campaigns = _package_host.discover_available_campaigns()
-	_shell_presenter.navigator.setup_controller.set_campaigns(_campaigns)
+	_shell_presenter.navigator.setup_controller.campaign_library.set_campaigns(_campaigns)
 	_try_prewarm_last_campaign()
 
 

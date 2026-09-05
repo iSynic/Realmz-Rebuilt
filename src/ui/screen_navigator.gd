@@ -63,17 +63,17 @@ var full_stage_overlay_visible: bool:
 
 
 func _init() -> void:
-	setup_controller.start_requested.connect(func(package_path: String, seed: int) -> void: start_requested.emit(package_path, seed))
-	setup_controller.cancel_package_requested.connect(func() -> void: cancel_package_requested.emit())
-	setup_controller.refresh_requested.connect(func() -> void: refresh_requested.emit())
+	setup_controller.campaign_library.start_requested.connect(func(package_path: String, seed: int) -> void: start_requested.emit(package_path, seed))
+	setup_controller.campaign_library.cancel_package_requested.connect(func() -> void: cancel_package_requested.emit())
+	setup_controller.campaign_library.refresh_requested.connect(func() -> void: refresh_requested.emit())
 	setup_controller.intent_submitted.connect(func(intent: PlayerIntent) -> void: intent_submitted.emit(intent))
 	setup_controller.standalone_character_creation_requested.connect(func() -> void: standalone_character_creation_requested.emit())
 	setup_controller.standalone_character_creation_cancelled.connect(func() -> void: standalone_character_creation_cancelled.emit())
-	setup_controller.campaign_selection_requested.connect(func() -> void: show_campaign_selection())
-	setup_controller.load_adventure_requested.connect(func() -> void: show_campaign_selection(true))
+	setup_controller.campaign_library.campaign_selection_requested.connect(func() -> void: show_campaign_selection())
+	setup_controller.campaign_library.load_adventure_requested.connect(func() -> void: show_campaign_selection(true))
 	setup_controller.load_saved_adventure_requested.connect(_show_load_workspace)
-	setup_controller.vault_requested.connect(show_vault_from_splash)
-	setup_controller.quit_requested.connect(func() -> void: system_action_requested.emit(&"quit", null))
+	setup_controller.campaign_library.vault_requested.connect(show_vault_from_splash)
+	setup_controller.campaign_library.quit_requested.connect(func() -> void: system_action_requested.emit(&"quit", null))
 	content_presenter.intent_submitted.connect(func(intent: PlayerIntent) -> void: intent_submitted.emit(intent))
 	content_presenter.system_action_requested.connect(func(action_id: StringName, value: Variant) -> void: system_action_requested.emit(action_id, value))
 	content_presenter.presentation_setting_changed.connect(func(setting_id: StringName, value: Variant) -> void: presentation_setting_changed.emit(setting_id, value))
@@ -101,8 +101,8 @@ func initialize() -> void:
 	_ensure_hosts()
 	setup_controller.attach(_overlay_host)
 	_build_body()
-	setup_controller.build_splash_overlay()
-	setup_controller.build_campaign_overlay()
+	setup_controller.campaign_library.build_splash_overlay()
+	setup_controller.campaign_library.build_campaign_overlay()
 	setup_controller.build_setup_overlay()
 	if _startup_splash_enabled:
 		show_splash()
@@ -130,7 +130,7 @@ func present(view: GameView) -> void:
 		_set_workspace_visible(false)
 		return
 	if not _presented_campaign_id.is_empty() and _presented_campaign_id != view.campaign_id:
-		setup_controller.reset_creator(true)
+		setup_controller.character_creation.reset_creator(true)
 		content_presenter.reset_campaign()
 	_presented_campaign_id = view.campaign_id
 	setup_controller.present(view)
@@ -179,7 +179,7 @@ func set_vault_revisions(revisions: Array[CharacterVaultRevisionView]) -> void:
 	if _screen_id == &"vault":
 		refresh_current_workspace()
 	elif setup_controller.setup_overlay != null and setup_controller.setup_overlay.visible:
-		setup_controller.refresh_setup_options()
+		setup_controller.character_creation.refresh_setup_options()
 
 
 func set_media_catalog(media: ClassicMediaCatalog) -> void:
@@ -196,7 +196,7 @@ func set_presentation_settings(settings: PresentationSettings) -> void:
 	if settings == null:
 		return
 	content_presenter.set_presentation_settings(settings)
-	setup_controller.set_presentation_settings(settings)
+	setup_controller.character_creation.set_presentation_settings(settings)
 	if _screen_id == &"system":
 		refresh_current_workspace()
 
@@ -335,7 +335,7 @@ func handle_back() -> bool:
 			return true
 		show_splash()
 		return true
-	if setup_controller.splash_visible():
+	if setup_controller.campaign_library.splash_visible():
 		return false
 	if setup_controller.setup_overlay.visible:
 		return false
@@ -454,10 +454,10 @@ func refresh_current_workspace(notify_route_change: bool = false) -> void:
 	var transition_revision := _route_transition_revision
 	_set_workspace_visible(not setup_controller.full_stage_overlay_visible())
 	if _screen_id in [&"character", &"vault"]:
-		setup_controller.ensure_appearance_textures()
+		setup_controller.character_creation.ensure_appearance_textures()
 	var vault_back_label := "Back to party setup" if _vault_return_to_setup else "Back to campaigns" if _vault_return_to_campaign else "Back"
 	var context_actions := _workspace_view.context_action_control() if _workspace_view != null and _screen_id == &"spells" else null
-	content_presenter.present(_screen_id, _workspace_view, setup_controller.appearance_textures(), vault_back_label, context_actions)
+	content_presenter.present(_screen_id, _workspace_view, setup_controller.character_creation.appearance_textures(), vault_back_label, context_actions)
 	if _workspace_view != null:
 		_workspace_view.apply_route_chrome()
 	if _screen_id in [&"exploration", &"combat"]:

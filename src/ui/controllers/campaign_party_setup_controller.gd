@@ -5,32 +5,23 @@ extends "res://src/ui/controllers/party_setup_controller_component.gd"
 
 const PARTY_SETUP_WORKSPACE_PATH := "res://src/ui/setup/party_setup_workspace.tscn"
 
-var start_requested: Signal:
-	get: return _campaign_library.start_requested
-var cancel_package_requested: Signal:
-	get: return _campaign_library.cancel_package_requested
-var refresh_requested: Signal:
-	get: return _campaign_library.refresh_requested
 var intent_submitted: Signal:
 	get: return _state.intent_submitted
 var standalone_character_creation_requested: Signal:
 	get: return _state.standalone_character_creation_requested
 var standalone_character_creation_cancelled: Signal:
 	get: return _state.standalone_character_creation_cancelled
-var campaign_selection_requested: Signal:
-	get: return _campaign_library.campaign_selection_requested
-var load_adventure_requested: Signal:
-	get: return _campaign_library.load_adventure_requested
 var load_saved_adventure_requested: Signal:
 	get: return _state.load_saved_adventure_requested
-var vault_requested: Signal:
-	get: return _campaign_library.vault_requested
-var quit_requested: Signal:
-	get: return _campaign_library.quit_requested
 
-var _inspection: RefCounted
-var _assembly: RefCounted
-var _creation: RefCounted
+var campaign_library: CampaignLibraryController:
+	get: return _campaign_library
+var character_creation: PartySetupCharacterCreationController:
+	get: return _creation
+
+var _inspection: PartySetupInspectionController
+var _assembly: PartySetupAssemblyController
+var _creation: PartySetupCharacterCreationController
 
 
 func _init() -> void:
@@ -40,17 +31,11 @@ func _init() -> void:
 	_assembly = PartySetupAssemblyController.new(state, _inspection)
 	_creation = PartySetupCharacterCreationController.new(state, _assembly)
 
-func build_splash_overlay() -> void:
-	_campaign_library.build_splash_overlay()
-
-func build_campaign_overlay() -> void:
-	_campaign_library.build_campaign_overlay()
-
 func build_setup_overlay() -> void:
 	if setup_overlay != null:
 		return
 	if campaign_overlay == null:
-		build_campaign_overlay()
+		_campaign_library.build_campaign_overlay()
 	var workspace_scene := load(PARTY_SETUP_WORKSPACE_PATH) as PackedScene
 	assert(workspace_scene != null, "Party setup workspace scene is unavailable.")
 	var workspace := workspace_scene.instantiate() as PartySetupWorkspace
@@ -126,15 +111,6 @@ func set_view(next_view: GameView) -> void:
 	view = next_view
 	if setup_overlay != null and setup_overlay.visible:
 		_creation.refresh_setup_options()
-
-func set_campaigns(next_campaigns: Array[CampaignPackageView]) -> void:
-	_campaign_library.set_campaigns(next_campaigns)
-
-func set_package_operation(status: RefCounted) -> void:
-	_campaign_library.set_package_operation(status)
-
-func render_campaign_list() -> void:
-	_campaign_library.render_campaign_list()
 
 func set_vault_revisions(revisions: Array[CharacterVaultRevisionView]) -> void:
 	vault_revisions = revisions.duplicate()
@@ -212,16 +188,10 @@ func hide_overlays() -> void:
 func full_stage_overlay_visible() -> bool:
 	return _campaign_library.full_stage_overlay_visible() or setup_overlay != null and setup_overlay.visible
 
-func accepts_exploration_input() -> bool:
-	return not full_stage_overlay_visible()
-
 func show_splash() -> void:
 	_campaign_library.show_splash()
 	if setup_overlay != null:
 		setup_overlay.visible = false
-
-func splash_visible() -> bool:
-	return _campaign_library.splash_visible()
 
 func finish_party_setup_navigation() -> void:
 	setup_inspection_character_id = ""
@@ -256,71 +226,3 @@ func present(next_view: GameView) -> void:
 		_creation.refresh_setup_options()
 		if setup_overlay.visible and not setup_inspection_character_id.is_empty():
 			_inspection.render_setup_character_inspection()
-
-
-func set_presentation_settings(next_settings: PresentationSettings) -> void:
-	_creation.set_presentation_settings(next_settings)
-
-
-func set_standalone_character_creation_available(enabled: bool, reason: String = "") -> void:
-	_creation.set_standalone_character_creation_available(enabled, reason)
-
-
-func begin_standalone_character_creation() -> void:
-	_creation.begin_standalone_character_creation()
-
-
-func finish_standalone_character_creation() -> void:
-	_creation.finish_standalone_character_creation()
-
-
-func refresh_setup_options() -> void:
-	_creation.refresh_setup_options()
-
-
-func reset_creator(return_to_assembly: bool = false) -> void:
-	_creation.reset_creator(return_to_assembly)
-
-
-func render_creator_step() -> void:
-	_creation.render_creator_step()
-
-
-func creator_next() -> void:
-	_creation.creator_next()
-
-
-func creator_back() -> void:
-	_creation.creator_back()
-
-
-func apply_creator_layout(profile_id: StringName) -> void:
-	_creation.apply_creator_layout(profile_id)
-
-
-func ensure_appearance_textures() -> void:
-	_creation.ensure_appearance_textures()
-
-
-func appearance_textures() -> Dictionary:
-	return _creation.appearance_textures()
-
-
-func set_appearance_texture(asset_id: String, texture: Texture2D) -> void:
-	_creation.set_appearance_texture(asset_id, texture)
-
-
-func render_party_assembly() -> void:
-	_assembly.render_party_assembly()
-
-
-func party_setup_option_changed(index: int) -> void:
-	_assembly.party_setup_option_changed(index)
-
-
-func submit_party() -> void:
-	_assembly.submit_party()
-
-
-func close_setup_character_inspection() -> void:
-	_inspection.close_setup_character_inspection()

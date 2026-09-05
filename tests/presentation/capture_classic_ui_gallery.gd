@@ -32,10 +32,10 @@ func _capture_gallery() -> void:
 	await _settle()
 	await _capture("canonical-campaign-menu-hover-1280x720")
 	_router.show_campaign_selection()
-	_router.setup_controller.set_package_operation(PACKAGE_OPERATION_VIEW_SCRIPT.new(&"running", &"validating_media", 7, 12, "Validating packaged media 7 of 12"))
+	_router.setup_controller.campaign_library.set_package_operation(PACKAGE_OPERATION_VIEW_SCRIPT.new(&"running", &"validating_media", 7, 12, "Validating packaged media 7 of 12"))
 	await _settle()
 	await _capture("canonical-package-install-progress-1280x720")
-	_router.setup_controller.set_package_operation(PACKAGE_OPERATION_VIEW_SCRIPT.new())
+	_router.setup_controller.campaign_library.set_package_operation(PACKAGE_OPERATION_VIEW_SCRIPT.new())
 	await _resize(Vector2i(800, 600))
 	_application.start_package(FIXTURE_PATH, 1)
 	await _settle()
@@ -68,13 +68,13 @@ func _capture_gallery() -> void:
 	setup.selected_race_id = setup_view.race_options[0].id
 	setup.selected_caste_id = setup_view.caste_options[0].id
 	setup.creator_step = 1
-	setup.render_creator_step()
+	setup.character_creation.render_creator_step()
 	await _capture("canonical-character-creator-race-class-1280x720")
 	await _resize(Vector2i(800, 600))
 	await _capture("compact-character-creator-race-class-800x600")
 	await _resize(Vector2i(1280, 720))
 	setup.creator_step = 2
-	setup.render_creator_step()
+	setup.character_creation.render_creator_step()
 	await _settle()
 	await _capture("canonical-character-creator-appearance-1280x720")
 	await _resize(Vector2i(800, 600)); await _capture("compact-character-creator-appearance-800x600"); await _resize(Vector2i(1280, 720))
@@ -85,7 +85,7 @@ func _capture_gallery() -> void:
 	review_state.combat_icon_id = setup_view.combat_icon_options[0].id if not setup_view.combat_icon_options.is_empty() else ""
 	setup_view.character_draft = CharacterView.new(review_state)
 	setup.creator_step = 3
-	setup.render_creator_step()
+	setup.character_creation.render_creator_step()
 	await _capture("canonical-character-creator-review-1280x720")
 	await _resize(Vector2i(800, 600))
 	await _capture("compact-character-creator-review-800x600")
@@ -95,12 +95,12 @@ func _capture_gallery() -> void:
 	setup_view.character_draft_spell_points_remaining = 3
 	setup_view.character_draft_spell_options = [CharacterSpellOptionView.new(SpellDefinition.new("classic.spell.1101", 1101, "Discover Magic", "Reveals magical influences affecting the caster."), 1, true), CharacterSpellOptionView.new(SpellDefinition.new("classic.spell.1107", 1107, "Magic Darts", "A compact bolt of magical force."), 1, false), CharacterSpellOptionView.new(SpellDefinition.new("classic.spell.1201", 1201, "Flame Hands", "Calls a brief fan of flame."), 2, false)]
 	setup.creator_step = 4
-	setup.render_creator_step()
+	setup.character_creation.render_creator_step()
 	await _resize(Vector2i(1280, 720))
 	await _capture("canonical-character-creator-spells-1280x720")
 	await _resize(Vector2i(800, 600))
 	await _capture("compact-character-creator-spells-800x600")
-	setup.reset_creator(true)
+	setup.character_creation.reset_creator(true)
 	await _settle()
 	var member := CharacterCreationSpec.new("Ari", setup_view.race_options[0].id, setup_view.caste_options[0].id, 1)
 	_application.session_controller.submit_intent(PartyIntents.create([member]))

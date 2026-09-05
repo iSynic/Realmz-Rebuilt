@@ -36,7 +36,7 @@ func begin_library_load() -> void:
 	if _package_host.start_bundled_load(LIBRARY_PATH, LIBRARY_ID, LIBRARY_HASH):
 		return
 	_library_load_complete = true
-	_shell.navigator.setup_controller.set_standalone_character_creation_available(false, "The built-in Classic definitions could not start loading.")
+	_shell.navigator.setup_controller.character_creation.set_standalone_character_creation_available(false, "The built-in Classic definitions could not start loading.")
 
 
 func poll_library_load(active_content: RealmzContent) -> bool:
@@ -47,7 +47,7 @@ func poll_library_load(active_content: RealmzContent) -> bool:
 		return false
 	_library_load_complete = true
 	if not prepared.is_ok():
-		_shell.navigator.setup_controller.set_standalone_character_creation_available(false, prepared.error_message)
+		_shell.navigator.setup_controller.character_creation.set_standalone_character_creation_available(false, prepared.error_message)
 		_shell.status.set_status("Character Files creation unavailable • %s" % prepared.error_message, true)
 		return true
 	_library_content = prepared.content
@@ -56,7 +56,7 @@ func poll_library_load(active_content: RealmzContent) -> bool:
 	_presentation_media.set_application_character_media(_library_media)
 	_presentation_media.set_package_media(_library_media)
 	_vault.seed_classic_starters_if_empty()
-	_shell.navigator.setup_controller.set_standalone_character_creation_available(true)
+	_shell.navigator.setup_controller.character_creation.set_standalone_character_creation_available(true)
 	refresh_vault_views(active_content)
 	return true
 
@@ -100,7 +100,7 @@ func begin_creation(active_content: RealmzContent) -> void:
 		return
 	_presentation_media.set_package_media(_library_media)
 	_presentation.present_host_workflow(_creator.view(), step)
-	_shell.navigator.setup_controller.begin_standalone_character_creation()
+	_shell.navigator.setup_controller.character_creation.begin_standalone_character_creation()
 	_shell.status.set_status("Create a reusable character with the built-in Realmz races and classes.")
 
 
@@ -174,7 +174,7 @@ func _publish_standalone_character() -> void:
 
 func _finish_creation(active_content: RealmzContent, status: String) -> void:
 	_creator.finish()
-	_shell.navigator.setup_controller.finish_standalone_character_creation()
+	_shell.navigator.setup_controller.character_creation.finish_standalone_character_creation()
 	_presentation_media.set_package_media(_library_media)
 	_presentation.refresh()
 	refresh_vault_views(active_content)

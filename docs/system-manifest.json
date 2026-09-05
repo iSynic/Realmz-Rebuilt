@@ -125,7 +125,7 @@
       "boundary": "ui",
       "guide": "docs/features/workspaces.md",
       "entryPoints": ["src/ui/screens", "src/ui/controllers", "src/ui/interaction_components", "src/ui/interaction_presenter.gd", "src/ui/interaction_overlay_host.gd", "src/ui/interaction_flash_controller.gd"],
-      "publicInterfaces": ["ScreenNavigator", "ScreenContentPresenter", "CampaignPartySetupController", "ClassicCharacterSheet", "CharacterSheetSceneBinding", "InteractionPresenter", "InteractionOverlayHost", "InteractionFlashController", "InteractionComponent"],
+      "publicInterfaces": ["ScreenNavigator", "ScreenContentPresenter", "CampaignPartySetupController", "CampaignLibraryController", "PartySetupCharacterCreationController", "ClassicCharacterSheet", "CharacterSheetSceneBinding", "InteractionPresenter", "InteractionOverlayHost", "InteractionFlashController", "InteractionComponent"],
       "tests": ["tests/presentation/test_classic_ui_system.gd", "tests/presentation/test_allies_workspace.gd"],
       "performanceProbes": []
     },
