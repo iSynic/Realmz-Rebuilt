@@ -2813,11 +2813,11 @@
             "symbol": "func _move"
           },
           {
-            "path": "src/playthrough/workflows/exploration_movement_workflow.gd",
+            "path": "src/playthrough/world/exploration_movement_workflow.gd",
             "symbol": "static func _blocked_land_attempt_cost"
           },
           {
-            "path": "src/playthrough/workflows/exploration_movement_workflow.gd",
+            "path": "src/playthrough/world/exploration_movement_workflow.gd",
             "symbol": "func turn_dungeon"
           },
           {
@@ -2829,7 +2829,7 @@
             "symbol": "func effective_cell_at"
           },
           {
-            "path": "src/playthrough/coordinators/session_exploration_coordinator.gd",
+            "path": "src/playthrough/world/session_exploration_coordinator.gd",
             "symbol": "func _begin_boat_choice"
           },
           {
@@ -3136,15 +3136,15 @@
             "symbol": "func _heal"
           },
           {
-            "path": "src/playthrough/workflows/exploration_time_workflow.gd",
+            "path": "src/playthrough/world/exploration_time_workflow.gd",
             "symbol": "static func heal"
           },
           {
-            "path": "src/playthrough/workflows/exploration_movement_workflow.gd",
+            "path": "src/playthrough/world/exploration_movement_workflow.gd",
             "symbol": "static func depart_camp"
           },
           {
-            "path": "src/playthrough/coordinators/session_exploration_coordinator.gd",
+            "path": "src/playthrough/world/session_exploration_coordinator.gd",
             "symbol": "func continue_timed_encounters"
           }
         ]
@@ -3322,7 +3322,7 @@
             "symbol": "func tick_party"
           },
           {
-            "path": "src/playthrough/coordinators/session_exploration_coordinator.gd",
+            "path": "src/playthrough/world/session_exploration_coordinator.gd",
             "symbol": "func continue_timed_encounters"
           }
         ]
@@ -3564,7 +3564,7 @@
             "symbol": "func _service_action"
           },
           {
-            "path": "src/playthrough/coordinators/session_exploration_coordinator.gd",
+            "path": "src/playthrough/world/session_exploration_coordinator.gd",
             "symbol": "func begin_contextual_encounter"
           }
         ]
@@ -4303,11 +4303,11 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/playthrough/coordinators/session_exploration_coordinator.gd",
+            "path": "src/playthrough/world/session_exploration_coordinator.gd",
             "symbol": "func continue_random_regions"
           },
           {
-            "path": "src/playthrough/coordinators/session_exploration_coordinator.gd",
+            "path": "src/playthrough/world/session_exploration_coordinator.gd",
             "symbol": "func continue_timed_encounters"
           },
           {
@@ -7268,7 +7268,7 @@
             "symbol": "func resume"
           },
           {
-            "path": "src/playthrough/workflows/exploration_movement_workflow.gd",
+            "path": "src/playthrough/world/exploration_movement_workflow.gd",
             "symbol": "static func commit"
           }
         ]
@@ -9166,7 +9166,7 @@
             "symbol": "func _acquire_player_map"
           },
           {
-            "path": "src/playthrough/workflows/session_map_view_builder.gd",
+            "path": "src/playthrough/world/session_map_view_builder.gd",
             "symbol": "static func build_player_map_view"
           },
           {
@@ -9323,7 +9323,7 @@
             "symbol": "class_name LocationNoteState"
           },
           {
-            "path": "src/playthrough/workflows/location_note_workflow.gd",
+            "path": "src/playthrough/world/location_note_workflow.gd",
             "symbol": "static func set_note"
           }
         ]
@@ -9335,7 +9335,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/playthrough/workflows/session_map_view_builder.gd",
+            "path": "src/playthrough/world/session_map_view_builder.gd",
             "symbol": "static func build_location_note_map_view"
           },
           {

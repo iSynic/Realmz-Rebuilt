@@ -57,5 +57,6 @@ Own the pure transaction coordinator that joins Realmz game state and rules to t
 ## Child DOX Index
 
 - `session/AGENTS.md` owns the central transaction boundary, restore, response dispatch, debug commands, and detached projection.
+- `world/AGENTS.md` owns movement, Search, time, exploration continuation, location-note, and map-view workflows.
 - `continuations/AGENTS.md` owns typed resumable transaction payloads, feature factories, and their wire-value contracts.
-- `workflows/AGENTS.md` owns the remaining domain workflows and topology-derived map-view construction until each moves to its feature.
+- `workflows/AGENTS.md` owns the remaining character, inventory, magic, economy, combat-reward, and application-hook workflows until each moves to its feature.
