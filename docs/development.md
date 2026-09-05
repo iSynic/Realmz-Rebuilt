@@ -1,145 +1,119 @@
 # Development and verification
 
-## Required tools
+Realmz Rebuilt targets Godot 4.7.1. Install Git LFS before cloning so bundled `.realmz2` packages materialize as real ZIP archives rather than pointer files.
 
-- Godot 4.7.1 stable, typed GDScript runtime.
-- PowerShell for local automation.
-- Godot MCP Pro addon 1.16.0 from the vendored `addons/godot_mcp` directory.
-- The Godot MCP Pro Node server kept externally; configure its machine-specific absolute path through the untracked MCP configuration.
+```powershell
+git lfs install
+git clone https://github.com/iSynic/Realmz-Rebuilt.git
+cd Realmz-Rebuilt
+git lfs pull
+```
 
-The project-local `.mcp.json` contains machine-specific absolute paths and stays untracked. Do not set a fixed WebSocket port; use automatic discovery.
+Open `project.godot` in Godot 4.7.1 and run the main scene. Mobile is the default renderer. Use `--rendering-method gl_compatibility` to exercise the supported OpenGL fallback.
 
-The project uses `application/config/use_custom_user_dir` with the stable name `RealmzRemake2`. This keeps Godot 4.7.1 and MCP Pro 1.16.0 on the same file-IPC `user://` path and gives save repositories a predictable root.
+## Find the owner first
 
-## Risk-tiered delivery
+Read [the Builder's Manual](builders-manual.md), the nearest feature `README.md`, and the system's entry in [the machine-checked manifest](system-manifest.json).
 
-Normal player-visible work is planned as a coherent batch of 3–5 related workflows. Each workflow has one focused-verified commit, while Tier 2 and Tier 3 run once at the coherent batch boundary rather than after every small commit. A low-risk path or ownership move receives a stale-reference scan, architecture ratchet, Godot import, and directly affected existing suites before commit; related moves then share one Tier 2 and aggregate closeout. In the roadmap, a rolling pass means this workflow batch; the roadmap does not create a new rolling pass for a tiny edit, and a tiny edit does not pay the batch closeout gate by itself.
+- `src/game`: definitions, mutable state, pure rules, topology, RNG, detached views
+- `src/playthrough`: `GameSession`, typed commands, workflows, continuations, projection
+- `src/scenarios`: Classic instructions, Safe Scenario Actions, runtime operations, VM frames
+- `src/storage`: package, save, Character Files, and settings repositories
+- `src/ui`: scenes, controllers, renderers, audio, animation, editor previews
+- `src/app`: startup, navigation, session hosting, platform lifecycle, composition
 
-The architecture-hardening tranche was a bounded maintenance exception rather than a player-workflow batch. Its inventory pause held workflow counts and the selected parity batch steady while public wire contracts, ownership boundaries, package startup, and owning tests were hardened. The pause closed only after the full aggregate gate and an ordinary AOGM regression; parity delivery now follows the audit-guided batch cadence below.
+Change a fact in the lowest boundary that owns its meaning. Do not add a forwarding facade, cross-object private call, dictionary command bus, generic source bucket, or second copy of saved truth to avoid following the existing interface.
 
-The `rebuilt-hotspot-test-performance` maintenance pause and its human-maintainability follow-up are complete. The current pass measures 64,250 substantive production lines and 8,596 substantive test lines (13.38 percent). Every handwritten product file is at or below 800 substantive lines, every function is at or below 100, every test suite is at or below 1,200, both grandfather lists are empty, and tests no longer call private product methods. Production statement separators, missing purpose headers, legacy empty route scenes, and unclassified runtime control construction are all at zero. The measured test ratchet is 8,596 lines; future growth remains prohibited. These maintenance results do not upgrade workflow delivery states.
+## Stable contracts
 
-The immediate boundary follow-up replaced session coordinators' owner `WeakRef` backchannel with an operation-scoped typed context/result protocol and replaced party setup's five-level behavior inheritance with a facade that composes shared state, inspection, assembly, and creation controllers. The architecture gate now prevents either shortcut from returning. This is responsibility hardening only; it does not change saves, packages, gameplay traces, UI workflows, or audit completion counts.
+- Preserve package, save, Character Files, opcode, resource, and user-directory identities unless an explicit migration is designed.
+- Keep simulation deterministic and independent of Nodes, wall-clock time, filesystem APIs, and Godot randomness.
+- Keep Providence as the scenario authoring/compiler boundary. Runtime packages are immutable compiled inputs.
+- Resolve application and scenario content by exact resource type and ID, with a scenario-owned exact-key overlay before application fallback.
+- Keep gameplay state out of scenes and presentation state out of saves.
+- Move paired `.uid` files and rewrite resource paths atomically when renaming Godot files.
 
-A post-hardening AOGM performance investigation found two costs outside the original core-only movement probe. Hour-boundary `fatigue_changed` events forced complete detached-view projection, and the shell destroyed and recreated its entire command deck after every otherwise ordinary square. The conservative movement path now recognizes only the source-owned fatigue payload, reuses overlapping land cells and static map projections, preserves command controls, and charges synchronous work against the current repeat interval. Across 60 alternating six-character AOGM steps, all 60 now use the incremental projection path; warm transaction-plus-projection p95 fell from approximately 26.3 ms during diagnosis to approximately 1.7 ms. Party setup and combat also share decoded image textures, unchanged Character File rows update in place, route changes no longer trigger a nested second presentation, and a live combat request lends its already-detached `CombatView` to the same committed revision without adding save data. Restored requests still rebuild entirely from authoritative state.
+## UI changes
 
-Use the lowest tier that covers the changed boundary:
+Stable panels, splits, headings, buttons, details, alternate states, and command regions belong in `.tscn` scenes. Controllers bind detached values, connect signals, toggle modes, and populate exported row or card scenes for variable collections. They do not reconstruct the screen hierarchy.
 
-- **Tier 1 — focused behavior:** run only the affected named test cases, or a genuinely narrow suite when its cases require shared arguments. Do not run the aggregate gate, MCP, or unrelated routes. Every meaningful change still receives a DOX review; update a contract only when its durable behavior or ownership changed.
-- **Tier 2 — focused workflow:** run the affected suites, the architecture check when product source changed, the differential and application-workflow inventory validators, scope/local-path checks, `git diff --check`, and the applicable DOX review. Regenerate `docs/classic-application-workflow-status.md` only when its authoritative inventory changed. Do not run the aggregate gate or MCP by default.
-- **Tier 3 — batch closeout:** once per batch, run the full `tools/verify.ps1` gate, clean-reference evidence validation, relevant Providence full checks, and one coherent MCP walkthrough.
+Map, battlefield, dungeon, animation, and effect geometry may remain algorithmic when a node tree would obscure the calculation. Their viewport, camera, layers, materials, masks, and surrounding controls remain scene-authored.
 
-Move directly to Tier 3 for package or schema changes; semantic save, migration, or continuation-contract changes; RNG or VM changes; topology changes; terminal combat or reward sequencing; and composition-root ownership changes. Relocating an unchanged continuation with its UID and exact paths is an ownership move, not a continuation-contract change. CI remains comprehensive regardless of the local tier.
+Use Realmz Builder to inspect registered scenes with Wide, Compact, Empty, Long Content, Unavailable, and Error data. Verify the canonical 1280x720 composition and optional 800x600 Compact composition. Editor readability complements runtime play; it does not replace it.
 
-At batch start, the maintainer identifies the critical path, high-risk boundaries, required reference evidence, and any work that can be reviewed independently. Contributors receive a bounded objective, explicit read and write scope, settled interfaces, non-goals, required verification, and an ambiguity-escalation rule. Contributors do not broaden scope, change pinned references, make unresolved fidelity decisions, commit, or push unless the maintainer explicitly authorizes those actions. The maintainer owns cross-cutting integration, final review, verification, commits, and release conclusions.
+## Classic fidelity
 
-### Parity convergence
+Castle source and controlled Castle runtime fixtures adjudicate Classic-visible differences. Keep source control flow, fixture observation, runtime tests, and ordinary-play evidence distinct. Record a deliberate correction in the fidelity ledger rather than silently changing behavior.
 
-The workflow inventory schedules parity work; the differential ledger adjudicates only the behavior a scheduled workflow needs. Each batch records 3–5 workflow targets, its baseline commit and delivery-state counts, the gaps it owns, and at least one ordinary-play certification target. Batch closeout reports changes in missing, partial, functional, and certified counts. Assertion totals and differential-case totals are supporting evidence, not delivery progress by themselves.
+Use targeted archaeology only when a reproduced discrepancy, release blocker, high-risk save/RNG/VM/topology boundary, suspected compiler loss, or certification-campaign ambiguity depends on the answer. Stop when the ordinary behavior is established and the owning public workflow is covered.
 
-### Regression admission
+The generated [Classic workflow status](classic-application-workflow-status.md) and [gameplay parity status](classic-gameplay-parity-status.md) own their denominators. Edit their source inventories and regenerate them; do not hand-edit generated status.
 
-Every automated check must own one of five proof responsibilities: an architectural or wire-contract invariant, a non-obvious source-backed rule, a complete public session workflow, a general presentation lifecycle/layout invariant, or an ordinary campaign certification route. A reported defect maps to an existing invariant first; generalize that proof instead of adding a one-off regression whenever the failure responsibility is the same.
+## Risk-tiered verification
 
-Do not test private methods of `GameSession`, `RealmzRuntimeApi`, `PackageRepository`, or `ScreenNavigator`. Do not repeat one behavior at rule, session, save, UI, and route layers unless each layer protects a distinct failure boundary. Prefer table-driven cases, public workflow ownership, and one linked automated proof per differential case. Wording, helper text, and isolated spacing normally receive manual or gallery acceptance rather than a bespoke test. RNG, VM, save, topology, package integrity, and exact-once terminal-combat evidence remain high-value and are not pruned merely to reduce line counts.
+Group normal work into three to five related workflows. Give each workflow a focused, verified commit, then run Tier 2 and the aggregate gate once at batch closeout.
 
-Typed live protocols are architecture invariants rather than per-defect tests. Intent payloads, interactions, continuations, and scenario execution context remain typed through runtime code; only their strict package/save/event codecs may materialize dictionaries.
+### Tier 1: focused behavior
 
-Restore behavior has one public ownership proof: `GameSession.restore` asks `SessionRestoreValidator` to construct and validate detached replacement state, then commits the candidate only after every save, content, RNG, VM, continuation, interaction, and battle-return check succeeds. Tests should exercise transactional restore through that public operation rather than calling validator helpers or asserting their incidental order.
+Run the affected suite or named cases while iterating:
 
-Test and assertion totals are diagnostic measurements, never completion targets. Hardening should reduce duplicated setup and incidental assertions without deleting unique source-backed evidence.
+```powershell
+./tools/run_tests.ps1 -Suite @("tests/integration/test_inventory_session.gd")
+./tools/run_tests.ps1 -Suite @("tests/integration/test_exploration_session.gd") -Case @("fatigue")
+```
 
-The hotspot/test-performance tranche established enforceable ratchets. Handwritten production GDScript is limited to 800 substantive lines per file and 100 per function, with no grandfathered files. Test GDScript may not grow beyond the checked-in exact ratchet, currently 8,951 substantive lines after the reviewed Player Intent, Session Continuation, Scenario Runtime Continuation, nested interaction-value decoder, named Caste attribute/progression public-interface characterizations, and compact workspace layout invariants, 20 percent of production, or 1,200 lines in any suite. A budget is not permission to delete unique proof: every removed duplicate must name the surviving public owner, while RNG, VM, save, topology, package, and exact-once reward evidence remain protected.
+Every filter must match. Named cases require an owning suite. A timeout is a diagnostic: narrow or investigate the slow case rather than immediately repeating the same command.
 
-Performance probes must measure the boundary they claim. The headless movement probe owns deterministic transaction/projection latency and incremental-event classification; it does not claim frame or draw latency. The native rendered runtime probe owns actual 1280×720 map/shell/post-draw timing only when its report names the package map, resolved atlas/overlays, route bounds, unique-cell coverage, cadence, and debug no-clip boundary. MCP ordinary play still owns end-to-end input feel and perceived cadence. Neither a two-cell loop nor a fast core probe can close a user-visible performance report when presentation does not traverse changing real map art.
+Low-risk path and ownership moves additionally require a stale-path scan, `git diff --check`, the architecture ratchet, a complete Godot editor import, and directly affected suites. They do not require a performance run when no hot loop or runtime construction changes.
 
-Measure rationalization with the same method on both revisions. At hardening baseline `a918a6a`, the 27 test GDScript files contain 13,000 raw lines and 12,094 nonblank, non-comment lines across 175 named `_test_` cases. After consolidation and the final dead-scaffolding cleanup through `0c9ec43`, the same files contain 12,754 raw lines and 11,807 substantive lines across 176 named cases: reductions of 1.9 and 2.4 percent respectively. The one additional named case is the required package-v3 integrity proof; no unique behavioral case was deleted. A delegated ownership audit found no direct private calls into the four decomposed coordinators and only a handful of unused or redundant helper lines safe to remove. The earlier 8.2-percent figure compared raw baseline lines with a filtered current count and is invalid. The original 25–35-percent estimate remains directional rather than a deletion quota; further pruning must name the surviving owning proof before deletion, and unique RNG, VM, save, topology, reward, and Castle-differential evidence stays intact.
+### Tier 2: workflow boundary
 
-Use this priority order:
+Run the affected suites plus architecture, evidence, inventory, scope, and whitespace checks:
 
-1. AOGM blocker or ordinary-play certification gap.
-2. Missing Classic workflow.
-3. Major partial workflow reachable in AOGM.
-4. War prerequisite.
-5. Broader Classic parity gap.
-6. Rare or unreachable Castle edge case.
+```powershell
+./tools/verify_workflow.ps1 -Suite @("tests/presentation/test_classic_ui_system.gd")
+```
 
-Plan effort at approximately 60 percent ordinary-play acceptance and presentation, 25 percent missing or partial workflow implementation, and 15 percent targeted archaeology. This is a planning allocation, not a machine-derived time or commit metric. Prefer closing a missing or partial workflow over adding another edge case to one already functional.
+Regenerate a status report only when its authoritative inventory changed.
 
-Archaeology begins or continues only when at least one trigger applies:
+### Tier 3: batch closeout
 
-- Ordinary play reproduces a discrepancy.
-- A reachable campaign or release blocker depends on the answer.
-- Save, RNG, VM, authoritative topology, terminal combat, or another named high-risk boundary is involved.
-- Providence may be dropping or changing authored data.
-- Source ambiguity affects a target certification campaign.
-
-Stop once complete source flow establishes the ordinary behavior and focused tests pass. Use a controlled Castle runtime fixture only when source remains ambiguous at one of those triggers. Record rare, unreachable, malformed-data, and non-blocking quirks as deferred parity gaps; do not investigate them merely because they exist. A functional workflow may receive further archaeology only when certification or a target campaign depends on it.
-
-At batch start, update `currentBatch` in the authoritative workflow inventory and regenerate its status report. At batch closeout, update workflow evidence and gaps, regenerate the report, and state both the functional and certified count deltas. If a prerequisite changes the selected batch, record the new rationale and baseline rather than silently drifting into another domain.
-
-### Scenario and gameplay parity program
-
-Parity delivery certifies AOGM first, War in the Sword Lands second, and each remaining legally available scenario in recomputed coverage-gain order. Coverage scoring counts newly exposed opcode/operand variants, spell behavior signatures, battle and monster macros, pending-response types, and world, inventory, economy, ally, and reward structures; high-risk boundaries, suspected compiler loss, player priority, and reliable completion routes break ties.
-
-The committed gameplay parity inventory owns the full `0-127`, `-14`, and `-23` opcode denominator plus every definition in the pinned application spell library. Providence feature reports and commercial-corpus additions remain local and untracked unless their schemas, normalized signatures, or synthetic fixtures contain no scenario payload. Validate and rank local reports with `tools/analyze_gameplay_feature_reports.ps1`, supplying the gameplay-parity inventory, certified reports as the baseline set, and optional hash-keyed local metadata for player priority and reliable-route availability. The inventory comparison requires exact agreement for all application spell signatures and executable dispositions for every package opcode identity. The deterministic score is recomputed after each certification; ties resolve by high-risk boundaries, compiler-loss diagnostics, player priority, reliable route, then campaign hash. Output contains only hashes, counts, scores, normalized feature gains, capability counts, and tie-break values. Discovery, compiler preservation, semantic runtime testing, deterministic route proof, and ordinary-play certification are separate evidence axes. Handler presence and successful package decoding cannot upgrade semantic parity.
-
-A scenario is certified only when its current Providence package has deterministic compiler/report proof, each used opcode and spell signature has public-runtime branch evidence, typed pending states round-trip through save/restore, a deterministic completion route and selected optional routes pass, and a fresh ordinary party completes the supplied manual-play checklist without stale saves or debug warps. Automated gameplay remains a bounded inspection; longer ordinary play uses an explicit human checklist.
-
-After every available scenario is certified, synthetic fixtures close signatures and workflows that the corpus never uses. Saturation requires every opcode to be executable, source-reserved, or explicitly malformed and rejected; every stock and discovered custom spell signature to have a legal-context disposition; and every gameplay-semantic workflow to be complete. Pure visual refinements may remain in the visual audit only when they do not block or alter play.
-
-## Local gate
+Run the aggregate gate once after the complete batch is assembled:
 
 ```powershell
 ./tools/verify.ps1
 ```
 
-The aggregate gate imports the project headlessly, validates all scripts, runs typed GDScript tests, checks forbidden core dependencies, verifies the mirrored schema and synthetic package hashes/provenance, checks the differential ledger and application workflow inventory, and runs `git diff --check`.
+The aggregate gate imports the project, launches the main scene, runs every typed suite, checks teardown, validates architecture and test budgets, verifies packages, media, exports, schemas, fixtures, bundled scenarios, differential evidence, workflow inventories, gameplay parity, local-path hygiene, and `git diff --check`.
 
-Regenerate the deterministic application-completeness report with `./tools/verify_application_workflow_inventory.ps1 -Write`; normal verification uses `-Check` and fails if the report is stale. Clean Castle, Remake, and Providence roots may be supplied to validate every external path and symbol against the pinned commits.
+Move directly to Tier 3 for package/schema changes; semantic save, migration, or continuation changes; RNG or VM changes; topology changes; terminal combat/reward sequencing; and application composition-root changes.
 
-For Tier 1, use `./tools/run_tests.ps1 -Suite <path-fragment> -Case <test-name-fragment>`. Pass arrays such as `-Suite @("<suite-a>", "<suite-b>") -Case @("<case-a>", "<case-b>")` to select a union in one Godot process. Named cases require an owning suite filter so unrelated suites are never instantiated. Every supplied filter must match, case execution is reported and timed individually, and suites with shared fixture arguments prepare them once through the test-case contract. Focused processes have a 120-second default budget and are terminated as a process tree on timeout. Do not rerun an unchanged timed-out command: narrow its case filters or investigate the named slow case first. For Tier 2, use `./tools/verify_workflow.ps1 -Suite @("<fragment-a>") -Case @("<case-a>", "<case-b>")`; it uses the same streaming/budgeted runner, then performs the conditional architecture check, differential/inventory checks, scope checks, and whitespace check. Clean-reference roots are a Tier 3 input. Release and Tier 3 closeout evidence uses the complete suite directly and is not constrained by the focused timeout.
+## Test admission
 
-The Tier 2 helper is not a substitute for the batch closeout gate. Do not add unrelated suites or invoke MCP merely to make a focused workflow appear comprehensive.
+A durable automated check should protect one of these responsibilities:
 
-## UI verification
+- architecture or wire-contract invariant;
+- non-obvious source-backed rule;
+- complete public session workflow;
+- general presentation lifecycle/layout invariant;
+- ordinary campaign certification route.
 
-The canonical UI contract is `docs/ui-strategy.md`. `tests/presentation/classic_ui_fixture_gallery.gd` supplies nominal, empty, loading, error, unavailable, and oversized cases for all routes and interaction kinds. Verify the canonical 1280x720 composition and optional 800x600 Classic composition, then repeat dense screens with the supported text and interface-density settings. Other sizes are smoke checks rather than independent acceptance targets. Check map dominance, square 4:3 gameplay-stage composition, roster visibility, textbox/action reachability, menu overflow, wrapping, scroll reachability, focus order/restoration, Back order, exact integer-sampled control art, and that a pending interaction blocks both map and route input.
+Map a defect to an existing invariant first. Add a regression test when it protects a distinct durable boundary, not merely because a defect was reported. Do not test private helpers or repeat the same fact at every layer. The enforced test-source ceiling is 20 percent of production source, with at most 1,200 substantive lines per suite.
 
-Content images must be inspected with nearest-neighbor filtering. Missing media must show its neutral diagnostic fallback rather than a guessed file. Item checks must include unidentified content to prove that identified names, descriptions, values, and curse relationships remain hidden.
+## Performance
 
-The committed Classic control corpus is reproducible from tracked source commits with `./tools/ui-assets/sync-classic-ui-assets.ps1 -SourceRepository <clean-remake-checkout> -CastleRepository <clean-castle-checkout> -PictDecoderPath <pinned-PICT-decoder>`. The importer reads Git object data, not donor working files; Remake controls copy exact PNG bytes, built-in CICNs are decoded from their pinned Castle resource fork, and catalogued PICTs use the explicit decoder path. Every source and output hash is validated. `./tools/ui-assets/sync-fonts.ps1 -RemakeRepository <clean-pinned-remake-checkout>` downloads pinned readable and Castle font bytes, validates all hashes, converts Castle `FONT` 1601 into an exact Godot BMFont/atlas, and deterministically applies those advances to Samuel's scalable CC0 Theldrow outlines. `build-classic-surfaces.ps1` imports a selected SpriteCook source image; `./tools/ui-assets/build-classic-surfaces.ps1 -RebuildFromCommittedSurface` deterministically rebuilds its seamless runtime tile and tiled frame kit offline while preserving source provenance. Normal verification is offline and validates committed hashes; it does not rerun network or donor imports.
+Measure the boundary that changed with the existing startup, package, movement, rendered-runtime, dungeon-transition, combat, or navigation probe. Use three warmed before-and-after samples on the same machine and compare medians.
 
-## Godot MCP Pro workflow
+Reject a core transaction/projection regression exceeding both 5 percent and 0.20 ms, a rendered-frame regression exceeding both 5 percent and 0.50 ms, or a startup/package regression exceeding both 5 percent and 100 ms. Existing absolute budgets also remain binding. Explain or remove export-size or peak-memory growth above 5 percent.
 
-After the initial bootstrap, change project settings through MCP/editor project-setting operations rather than editing `project.godot` directly. For each playable slice:
+Core timing does not prove draw latency, a two-cell loop does not prove traversal, and automated input does not prove perceived responsiveness. Match the evidence to the user-visible claim.
 
-1. Open or build the scene using editor tools.
-2. Inspect editor errors.
-3. Call `play_scene`.
-4. Simulate input or run a test scenario.
-5. Inspect runtime state and screen text.
-6. Capture screenshots.
-7. Call `stop_scene`.
+## Before requesting review
 
-For interaction slices, inspect the pending request ID before responding, save while the request is pending, resume it once, restore that save, and resume it again. This proves that presentation is returning typed responses and that the issuing VM frame—not a UI callback—is the continuation authority.
+- Re-read the nearest feature guidance and update it when ownership or contracts changed.
+- Ensure scenes, controllers, model types, tests, and `system-manifest.json` agree.
+- Keep the worktree free of `.godot`, `dist`, logs, captures, saves, local paths, personal configuration, and unlicensed content.
+- Report the exact checks run and distinguish automated, visual, ordinary-play, and native-platform evidence.
+- Note every required platform or campaign check that remains outstanding.
 
-Runtime operations before `play_scene` are invalid. Use CLI discovery with `node <server>/build/cli.js --help` when MCP tools are not exposed in the current client.
-
-The vendored MCP plugin does not initialize in a headless editor process. This keeps headless verification from claiming and removing the live editor's temporary runtime-service autoloads, so focused and aggregate checks may run while the MCP editor remains open. The MCP scene-save command can still emit Godot progress-dialog errors while handling its deferred request; restart the editor before the final clean error inspection after MCP-authored scene changes.
-
-Release presets exclude `addons/godot_mcp`, the editor-only `addons/realmz_builder`, `.mcp.json`, tests, tools, docs, contract mirrors, local artifacts, and ignored reference worktrees, while tracked project settings retain no MCP runtime autoloads. `tools/verify_export_contract.ps1` enforces those boundaries and the ETC2/ASTC import required by the universal macOS preset; `tools/verify_release_artifact.ps1` checks the actual export inventory, permits only the application-owned Classic library plus the exact provenance-pinned 13-scenario Castle bundle, requires the platform PCK, and writes its hash manifest without referencing the synthetic fixture. Godot's generated export metadata remains part of a valid pack.
-
-The repository defines `Windows Desktop`, `Linux`, and `macOS` release presets. CI runs the same import, typed test, architecture, contract, artifact-integrity, and native exported-runtime smoke gates on native runners, then uploads the complete platform directory so a separate Windows/Linux PCK cannot be omitted. A configured matrix is not cross-platform evidence until those jobs pass.
-
-`tools/corpus_acceptance.ps1` accepts caller-supplied package/route/report descriptors so commercial campaign locations remain external. `tools/route_acceptance.gd` may execute a named compiled macro directly for an unplaced ED3/XAP checkpoint; that proves the macro path and never upgrades it to placed-map reachability.
-
-## Reference repositories
-
-Reference repositories are read-only inputs unless work is explicitly assigned there. Never copy a dirty worktree. The pinned identities are recorded in `docs/references.lock.json`; create clean isolated worktrees before porting source or fixtures.
-
-## Evidence and copyright
-
-Each Classic fidelity test identifies whether its evidence is source/control-flow, Castle runtime, runtime unit/integration, or a live certified route. Synthetic fixtures are preferred. Commercial scenario data, extracted assets, user saves, and generated oracle installations remain local and untracked.
-
-Packages declaring `realmz.scenario.gdscript-actions-v1` are rejected until a platform has an independently confined process host with passing abuse, timeout, memory, filesystem, network, process, reflection, and state-size tests. Safe Scenario Actions require no such host.
+See [CONTRIBUTING.md](../CONTRIBUTING.md) for the short public contribution checklist and [the Beta 1 plan](beta-1.md) for release acceptance.
