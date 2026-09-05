@@ -1,26 +1,57 @@
-# Human-centered architecture overhaul
+# Human-centered architecture
 
-Realmz Rebuilt is behaviorally mature, but its source still exposes too much of its construction history to a new maintainer. Beta 1 is blocked while the repository is reorganized into an editor-readable, feature-oriented form. The working game remains the behavioral reference during this migration.
+Realmz Rebuilt is organized so a contributor can begin with a visible feature, locate its scene and controller, follow its typed command into the playthrough, find the owning rules and state, and reach the relevant tests without private project history. Structural implementation is complete. Beta 1 remains blocked until unfamiliar-maintainer, ordinary-play, performance, native-platform, and hosted-release acceptance also pass.
 
-## Starting point
+Use [the Builder's Manual](builders-manual.md) for the newcomer tour, [the system manifest](system-manifest.json) for machine-checked ownership, [the architecture record](architecture-migration.md) for current boundaries, and [the roadmap](roadmap.md) for remaining release work.
 
-The migration branch begins at commit `55292533` with Godot 4.7.1. The complete local verification gate passed at that commit with 3,532 assertions across 27 suites, 101 differential cases, all 13 bundled scenarios, and every package, schema, export, media, and workflow check.
+## Design principles
 
-The initial structural audit found:
+- Organize code by the game concept a maintainer recognizes, not by framework-shaped buckets or the order in which the prototype was built.
+- Use `app`, `game`, `playthrough`, `scenarios`, `storage`, and `ui` as the stable top-level boundaries.
+- Keep immutable definitions, mutable state, pure rules, detached views, workflows, scene controllers, renderers, repositories, codecs, and catalogs distinguishable by name and responsibility.
+- Keep deterministic simulation in pure objects. Use Godot Nodes for scenes, lifecycle, signals, timers, input, audio, and rendering.
+- Author stable UI hierarchy in `.tscn` scenes. Instantiate exported row or card scenes for variable collections. Keep genuinely algorithmic map, battlefield, dungeon, and effect geometry in named presenters.
+- Preserve public package, save, Character Files, opcode, resource, RNG, and user-directory contracts during internal reorganization.
+- Prefer direct public collaborators over facade chains and cross-object private calls.
+- Make the repository explain itself through local READMEs, feature guides, scene previews, the system manifest, and owning tests.
 
-- 64,250 substantive production lines and 8,596 substantive test lines.
-- 664 `Control.new()` calls, all admitted by the former reviewed-classification budget.
-- 28 production files above the new 600-line limit and 103 functions above the new 60-line limit.
-- 38 top-level scripts above the new method-count limits.
-- 203 production calls into another object's underscore-prefixed method.
-- 133 generic `Type` or `Script` preload aliases.
-- Two one-node shell-mode marker scenes and no registered editor-preview profiles.
+## Structural acceptance
 
-These numbers are migration debt, not the desired architecture. The overhaul gate prevents any category from growing and requires each ceiling to move downward as its owning workflow is converted. The final ceilings are zero except for the ordinary numeric size limits and explicitly named algorithmic renderers.
+The architecture-overhaul verifier currently reports zero for every final target:
+
+- production files over 600 substantive lines;
+- functions over 60 substantive lines;
+- top-level classes over 40 total methods or 20 public methods;
+- cross-object private calls;
+- generic preload aliases;
+- major UI surfaces without editable scenes or production-bound previews;
+- placeholder shell-mode scenes;
+- missing or undeclared feature directories;
+- production files loose at a source-boundary root.
+
+Every declared feature directory contains a public `README.md`. The system manifest names each system's guide, entry points, public interfaces, tests, and performance probes. The maintainability gate separately rejects compressed statements, missing purpose headers, stale or unclassified runtime control construction, class/file naming mismatches, and obsolete route scenes.
+
+## Scene acceptance
+
+The application shell, Character, Character Files, Allies, Bestiary, Inventory, Spells, Maps and Journal, System, party setup, character creation, Shop, Temple, Bank, Treasure, Encounter, Level Up, Pick Lock, lifecycle prompts, scrolling text, combat deck, and roster spellbook expose their stable composition through scenes.
+
+Realmz Builder binds those production scenes and controllers to Wide, Compact, Empty, Long Content, Unavailable, and Error profiles without saving preview children. The current preview suite passes 313 assertions, and the latest 148-frame Wide/Compact gallery has passed manual layout review. Exploration and Combat remain modes of the persistent shell; their topology-derived surfaces are not duplicated as fake workspace scenes.
+
+## Runtime acceptance
+
+The latest local aggregate gate passes:
+
+- Godot 4.7.1 import and main-scene smoke;
+- 4,030 assertions across 28 suites;
+- package, save, media, music, export, schema, provenance, bundled-scenario, differential, workflow-inventory, and gameplay-parity checks;
+- all thirteen bundled scenarios and six generated Classic starter characters;
+- the fixed 20-percent test-source limit, currently 14.06 percent.
+
+A tracked-files-only clean checkout has completed first import, startup, the complete test suite, architecture verification, scenario validation, and every Builder preview. A local sanitized single-root Git/LFS rehearsal and a separate no-local clone have also passed. These prove the local construction and acquisition paths, not the actual GitHub archive behavior.
 
 ## Performance baseline
 
-Three warmed samples were taken on the same Windows machine before structural work. Medians are used for comparison.
+The pre-migration Windows baseline uses three warmed samples and median values:
 
 | Probe | Baseline median |
 |---|---:|
@@ -37,29 +68,21 @@ Three warmed samples were taken on the same Windows machine before structural wo
 | Auto activation | 30.311 ms |
 | Warm monster phase | 9.798 ms |
 
-The performance probes now load scenario packages through the pinned application catalog before measuring them. This is required by the separated application-catalog and scenario-overlay contract.
+Path and ownership moves add no simulation, save, RNG, package-loading, rendering, or per-frame work. Final acceptance nevertheless repeats the relevant warmed probes against the completed tree and applies the absolute and relative limits in the roadmap.
 
-## Working rules
+## Remaining certification
 
-- Unrelated feature work remains paused. Defects, fidelity blockers, and migration-required polish may proceed.
-- Each batch starts with characterization evidence and ends with focused tests, the architecture gates, and three comparable performance samples when it touches a sensitive path.
-- Stable layout moves into scenes. Scripts bind data, coordinate behavior, and instantiate exported scenes for genuinely variable records.
-- Simulation remains pure and deterministic. The migration does not move rules or saved truth into Nodes.
-- Renames are decisive. Serialized identifiers, packages, saves, Character Files, and the existing user-data directory do not change.
-- A system is finished only when its source, scene, guide, tests, and manifest entry agree.
+| Gate | Status | Required evidence |
+|---|---|---|
+| Structural architecture | Complete | All final architecture and maintainability targets green |
+| Automated behavior | Complete locally | Full suite and deterministic validators green |
+| Editor readability | Complete locally | Production-bound previews and visual gallery accepted |
+| Clean local onboarding | Complete locally | Tracked-files-only checkout imports, runs, and verifies |
+| Independent maintainer trial | Open | Six hint-free journeys completed without folklore |
+| Ordinary-play candidate | Open | AOGM, War, and City of Bywater walkthroughs accepted |
+| Final performance | Open | Three warmed samples within relative and absolute limits |
+| Native platforms | Partial | Windows pre-certified; exact Windows/Linux/macOS candidate still required |
+| Hosted acquisition | Open | Real Git/LFS clone and GitHub Download ZIP contain valid packages |
+| Beta publication | Open | Green exact tag, reviewed draft assets, manual prerelease publication |
 
-Current ownership and navigation are recorded in `system-manifest.json`. That manifest changes atomically with every move, rename, new public interface, scene conversion, or test transfer.
-
-## Current certification status
-
-The size, interface, and scene-ownership migration is complete: those architecture-overhaul ceilings are zero, the complete automated suite is green, and the 148-frame graphical Mobile/Vulkan gallery runs through every registered route and interaction family without a script error. The gallery waits for the public application library and follows the live scene-owned Encounter dock, so it exercises the retained production composition rather than an obsolete test hierarchy. The field-Spells footer is now an in-flow scene-authored region, and the regenerated 1280x720 and 800x600 frames keep the level rail, spell records, contextual actions, and persistent Back legible and reachable. Inventory now retains its horizontal browser and command rail at 800x600, fits the four-column action deck and horizontal item record inside the initial viewport, and keeps its integrated Done visible. Party Wealth scrolls only its exchange body, keeps its task-owned Done fixed in both profiles, and no longer duplicates the generic route Back action. Compact combat now retains its tactical board through live resizes, fits the complete two-row View/Action/Tactics deck without an outer scrollbar, and preserves the board through spellbook targeting at both supported profiles. A complete gallery-wide visual audit then found one retained Encounter Items workspace preserving wide minimums after a compact resize; the corrected production-bound fixture now shows its populated ledger, bound character, inspector, command rail, and Back action without clipping in both profiles. The final regenerated gallery completed cleanly and the affected Encounter and ordinary Inventory frames passed manual comparison.
-
-A subsequent physical-layout audit found that the earlier gate did not enforce the plan's feature-folder topology. The manifest now names the exact final directories under all six source boundaries, and the verifier exposes three additional ratchets. The corrective batches have moved persistent shell/navigation composition into `src/ui/shell`, the generic request host and reusable typed request surfaces into `src/ui/shared/interactions`, the complete retained battlefield/command deck/targeting/playback stack into `src/ui/combat`, retained exploration maps and dungeons into `src/ui/exploration`, Character/Allies/Bestiary/Character Files/Age Update/Level Up into `src/ui/characters`, Places/acquired Maps/Journal/scrolling text into `src/ui/journal`, Party Wealth/Shop/Temple/Bank/Treasure into `src/ui/services`, campaign selection/party assembly/character creation into `src/ui/setup`, and cross-feature exchange records into `src/ui/shared/exchange`. Shared media and style foundations now live under `src/ui/shared/media` and `src/ui/shared/style`; reusable item details and spell-selection visuals live under their Inventory and Magic owners; shell commands, effects, music, and developer dialogs live under `src/ui/shell`; held field controls live under `src/ui/exploration`; and the launch card plus retained intro live under `src/ui/setup`. The persistent roster, System workspace, route-content coordinator, reusable screen records, and typed route resources now live with their shell or shared owners, eliminating the generic UI buckets. Application hosting is likewise separated into `startup`, `navigation`, `session`, `platform`, and `composition`, eliminating its generic controller and detached-view buckets while keeping each value next to the workflow that owns it. The central playthrough transaction, restore, continuation codec, response dispatch, debug commands, and detached projection now share `src/playthrough/session`; movement, Search, time, exploration resumption, location notes, and map-view construction share `src/playthrough/world`; creation, party admission/finalization, lifecycle aging, and feature-owned setup continuations share `src/playthrough/characters`; carried-item plus field-item transactions share `src/playthrough/inventory`; field casting, scrolls, Fast Spells, targeting, and committed field effects share `src/playthrough/magic`; money plus resumable service/departure transactions share `src/playthrough/economy`; combat commands plus battle-owned handoffs share `src/playthrough/combat`; and application hooks plus scenario handoff coordination share `src/playthrough/scenario`. The generic playthrough `coordinators`, `continuations`, and `workflows` buckets are gone. Classic opcode identity, handlers, frame control, and source-backed domain operations now share `src/scenarios/classic`; Safe expression evaluation and mutable Scenario Action state share `src/scenarios/actions`; the generic runtime retains only its API, execution records, combat request projection, and typed continuations; and `src/scenarios/vm` now documents its exclusive frame-scheduling role. The final `src/game/shared` root now gives deterministic RNG, Classic arithmetic, domain events, media descriptors, presentation settings, general detached view atoms, the condition vocabulary, and the feature-rule composition object one narrow home instead of scattering them across generic directories. The game clock and its clock/fatigue rules now live with world state and topology under `src/game/world`, removing the old generic time directory and its filename/class exception. Immutable definitions from the generic content bucket now sit beside the character, inventory, magic, economy, combat, or scenario catalog that owns their meaning. Mutable state from the generic state bucket now sits with the characters, inventory, magic, world, combat, or narrowly shared owner that defines it. Detached read models now sit beside the feature or storage adapter whose facts they describe rather than in a generic view bucket. Feature-owned player intents now sit with their playthrough workflows; request bodies sit with their game models; and the neutral bodies, strict decoders, and stable interaction envelopes share `src/game/shared/interactions`. Character progression results, party-setup scaling, inventory/equipment rules, Pick Lock calculations, rolled Treasure results, all spell mechanics, and the complete combat rule family now live with their character, inventory, scenario, economy, magic, or combat owner. The repository now has no missing or undeclared feature directory and no production file loose at a boundary root. All physical-layout ratchets are at their final zero targets.
-
-Clean-clone onboarding is also proven at commit `aa4f5dc5`. A temporary fresh checkout containing only tracked files and no prior Godot import state completed first editor import, main-scene smoke launch, all 4,030 assertions, all 313 production-bound Realmz Builder preview assertions, architecture checks, package checks, and scenario validation. The checkout remained clean and was removed after verification. This proves repository-local onboarding; the later sanitized Git LFS clone remains a separate public-release gate.
-
-Local Windows release preparation is proven at commit `6f31513f`. The release preset produced `Realmz Rebuilt.exe` (109,071,360 bytes; SHA-256 `001d1cc9ff639529548151f628a27ee1084edce04162110f6ff40bd62d661827`) and its adjacent PCK (152,974,600 bytes; SHA-256 `48ff6a8ac3e68a613d8edd5f740f64a3a74873141862b9aadc30963c8bfe9c65`). Artifact verification found the exact application library, starter catalog, licenses, and thirteen bundled scenarios with no development resources; the exported executable then completed the CI-equivalent hidden headless smoke with exit code zero and no error record. Final release acceptance still rebuilds and launches the exact tag on all three native runners.
-
-Sanitized-source rehearsal is proven at internal commit `bf986c15`. The manifest-built public repository has root commit `d408512ffd77e21608e87b2cc62aeb5fb2b3f1de`, exactly one reachable commit, a clean tree, and sixteen Git LFS package objects. Public-source verification, Git connectivity, Git LFS integrity, and the complete project gate passed in that repository. A separate `git clone --no-local` checkout then materialized all sixteen `.realmz2` files as valid ZIP archives, completed first Godot import in 22,864 ms, launched the main scene in 6,969 ms, and passed all 4,030 assertions, all 313 production-bound preview assertions, architecture checks, package checks, scenario validation, and parity inventories. This proves the local sanitized Git/LFS acquisition path; the actual GitHub clone and Download ZIP paths remain release gates because they depend on the public host and its archive setting.
-
-Automated size/interface acceptance, physical feature-folder migration, gallery-wide visual sign-off, repository-local clean-clone onboarding, local sanitized Git/LFS clone acceptance, and local Windows native pre-certification are complete. The independent maintainer exercise, ordinary-play campaign walkthroughs, final Linux/macOS native certification, and hosted GitHub acquisition checks remain open.
+No open acceptance gate permits weakening the completed architecture. A failure is repaired in its owning feature, scene, guide, workflow, or release boundary and then reverified at the appropriate risk tier.
