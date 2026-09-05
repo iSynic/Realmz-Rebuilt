@@ -246,7 +246,7 @@ func set_classic_regions(stage_rect: Rect2, textbox_rect: Rect2, combat_rect: Re
 	_side_workspace_rect = Rect2(outer_stage.end.x, outer_stage.position.y, maxf(0.0, _combat_rect.end.x - outer_stage.end.x), maxf(0.0, _application_rect.end.y - outer_stage.position.y))
 	_overlays.set_regions(_application_rect, _stage_rect, _textbox_rect, _side_workspace_rect)
 	_flash.set_regions(_application_rect, _textbox_rect)
-	_combat.set_command_scale(LayoutPolicy.combat_command_scale(_combat_rect))
+	_combat.set_command_layout(LayoutPolicy.combat_command_scale(_combat_rect), _application_rect.size.x < 1000.0)
 	_apply_classic_region()
 	_combat.set_stage_rect(_stage_rect)
 

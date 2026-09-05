@@ -58,9 +58,9 @@ func set_stage_rect(stage_rect: Rect2) -> void:
 		_dock.set_stage_rect(stage_rect)
 
 
-func set_command_scale(scale: float) -> void:
+func set_command_layout(scale: float, compact: bool) -> void:
 	if _component != null:
-		_component.set_command_scale(scale)
+		_component.set_command_layout(scale, compact)
 
 
 func submit_body(body: InteractionResponse.CombatBody) -> bool:

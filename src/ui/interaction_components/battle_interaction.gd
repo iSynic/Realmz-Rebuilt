@@ -41,15 +41,20 @@ var _inspection_content: Label
 var _inspection_section: StringName = &"attacks"
 var _inspection_buttons: Dictionary = {}
 var _command_scaling := BattleCommandScaleController.new()
+var _compact := false
 
 
-func configure(combatant_icons: Dictionary, command_scale: float = 1.0) -> void:
+func configure(combatant_icons: Dictionary, command_scale: float = 1.0, compact: bool = false) -> void:
 	_combatant_icons = combatant_icons.duplicate()
-	set_command_scale(command_scale)
+	set_command_layout(command_scale, compact)
 
 
-func set_command_scale(command_scale: float) -> void:
-	_command_scaling.set_scale(command_scale)
+func set_command_layout(command_scale: float, compact: bool) -> void:
+	_compact = compact
+	var initiative := find_child("BattleInitiative", true, false)
+	if initiative != null:
+		(initiative.get_node("%Heading") as Label).visible = not compact
+	_command_scaling.set_layout(command_scale, compact)
 
 
 func build(request: InteractionRequest) -> void:
@@ -583,7 +588,9 @@ func _add_classic_turn_commands(first_row: Container, second_row: Container, bod
 
 
 func _build_initiative_panel(round_number: int) -> PanelContainer:
-	return InitiativePanelBuilder.build(round_number, _combatants, _actor_id, _combatant_icons, _select_initiative_combatant, MAX_VISIBLE_TURNS, initiative_entry_scene)
+	var panel := InitiativePanelBuilder.build(round_number, _combatants, _actor_id, _combatant_icons, _select_initiative_combatant, MAX_VISIBLE_TURNS, initiative_entry_scene)
+	(panel.get_node("%Heading") as Label).visible = not _compact
+	return panel
 
 
 func _select_initiative_combatant(combatant_id: String) -> void:

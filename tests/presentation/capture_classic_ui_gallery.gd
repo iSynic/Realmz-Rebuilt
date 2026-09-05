@@ -482,20 +482,19 @@ func _capture_gallery() -> void:
 	await _settle()
 	await _capture("canonical-combat-movement-aid-1280x720")
 	_application._battlefield_presenter.interaction.set_movement_costs_visible(false)
-	await _resize(Vector2i(800, 600))
+	await _resize(Vector2i(800, 600)); _application._battlefield_presenter.visible = true
 	await _settle()
 	await _capture("classic-combat-tactical-workspace-800x600")
 	var spells_button := _interaction.find_child("CombatCommandSpells", true, false) as Button
 	if spells_button != null and not spells_button.disabled:
-		spells_button.pressed.emit()
-		await _settle()
+		spells_button.pressed.emit(); await _settle(); _application._battlefield_presenter.visible = true; await _settle()
 		await _capture("classic-combat-spellbook-800x600")
-		await _resize(Vector2i(1280, 720))
+		await _resize(Vector2i(1280, 720)); _application._battlefield_presenter.visible = true; await _settle()
 		await _capture("canonical-combat-spellbook-1280x720")
 		var aim_button := _shell.find_child("CombatSpellAim", true, false) as Button
 		if aim_button != null and not aim_button.disabled:
-			aim_button.pressed.emit(); await _settle(); await _capture("canonical-combat-targeting-1280x720")
-			await _resize(Vector2i(800, 600)); await _capture("classic-combat-targeting-800x600"); await _resize(Vector2i(1280, 720))
+			aim_button.pressed.emit(); await _settle(); _application._battlefield_presenter.visible = true; await _settle(); await _capture("canonical-combat-targeting-1280x720")
+			await _resize(Vector2i(800, 600)); _application._battlefield_presenter.visible = true; await _settle(); await _capture("classic-combat-targeting-800x600"); await _resize(Vector2i(1280, 720)); _application._battlefield_presenter.visible = true; await _settle()
 			_application._battlefield_presenter.interaction.cancel_targeting()
 	_interaction.present(combat_request, "", gallery_view, combat_media)
 	var battle_entry := CombatPlaybackFrame.new(&"battle_cue", 0.28); battle_entry.display_text = "Battle begins"

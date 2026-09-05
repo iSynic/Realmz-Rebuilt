@@ -85,7 +85,7 @@ static func classic_flash_modal_rect(application_rect: Rect2, textbox_rect: Rect
 
 
 static func interaction_vertical_scroll_mode(request: InteractionRequest) -> int:
-	return ScrollContainer.SCROLL_MODE_DISABLED if request != null and request.kind in [InteractionRequest.SHOP, InteractionRequest.SESSION_LIFECYCLE] else ScrollContainer.SCROLL_MODE_AUTO
+	return ScrollContainer.SCROLL_MODE_DISABLED if request != null and request.kind in [InteractionRequest.SHOP, InteractionRequest.SESSION_LIFECYCLE, InteractionRequest.COMBAT] else ScrollContainer.SCROLL_MODE_AUTO
 
 
 static func combat_command_scale(combat_rect: Rect2) -> float:
