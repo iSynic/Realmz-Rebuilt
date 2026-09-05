@@ -17,8 +17,8 @@ const ROOM_HEIGHT := 1.5
 const ARCHWAY_OPENING_WIDTH := 0.64
 const ARCHWAY_HEADER_HEIGHT := 0.24
 const ARCHWAY_FRAME_DEPTH := 0.12
-const WALL_TEXTURE_PATH := "res://src/ui/assets/classic-dungeon/wall-sand-bricks.jpg"
-const FLOOR_TEXTURE_PATH := "res://src/ui/assets/classic-dungeon/floor-sand.jpg"
+const WALL_TEXTURE_PATH := "res://src/ui/shared/assets/classic-dungeon/wall-sand-bricks.jpg"
+const FLOOR_TEXTURE_PATH := "res://src/ui/shared/assets/classic-dungeon/floor-sand.jpg"
 
 static var _shared_material: ShaderMaterial
 static var _shared_atlas_id := 0

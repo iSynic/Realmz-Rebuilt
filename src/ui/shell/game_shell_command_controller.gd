@@ -194,7 +194,7 @@ func presentation_definition(definition: Dictionary) -> Dictionary:
 		result.erase("art_mask")
 	elif service.service_kind == &"shop":
 		result["asset_id"] = &""
-		result["asset_path"] = "res://src/ui/assets/ui/commands/shop.png"
+		result["asset_path"] = "res://src/ui/shared/assets/ui/commands/shop.png"
 		result.erase("art_region")
 		result.erase("art_mask")
 	else:

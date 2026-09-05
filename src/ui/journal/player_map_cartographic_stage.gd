@@ -3,7 +3,7 @@
 class_name PlayerMapCartographicStage
 extends MarginContainer
 
-const SLATE_TEXTURE_PATH := "res://src/ui/assets/ui/classic-charcoal-slate-tile.png"
+const SLATE_TEXTURE_PATH := "res://src/ui/shared/assets/ui/classic-charcoal-slate-tile.png"
 const MAP_EDGE := Color("59666a")
 
 var _slate_texture: Texture2D

@@ -3,7 +3,7 @@
 class_name ClassicRetainedMapSurface
 extends Control
 
-const SURROUND_TEXTURE_PATH := "res://src/ui/assets/ui/classic-exploration-surround-tile.png"
+const SURROUND_TEXTURE_PATH := "res://src/ui/shared/assets/ui/classic-exploration-surround-tile.png"
 const BATTLE_ATLAS_ID := "classic-battle-tiles-302"
 const SECRET_TILE_ID := 251
 const PATH_TILE_ID := 253

@@ -3,7 +3,7 @@
 class_name ClassicUiAssetCatalog
 extends RefCounted
 
-const MANIFEST_PATH := "res://src/ui/assets/classic-ui-assets.json"
+const MANIFEST_PATH := "res://src/ui/shared/assets/classic-ui-assets.json"
 
 static var _definitions: Dictionary = {}
 

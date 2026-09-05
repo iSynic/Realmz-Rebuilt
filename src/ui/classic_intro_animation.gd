@@ -3,8 +3,8 @@
 class_name ClassicIntroAnimation
 extends VideoStreamPlayer
 
-const INTRO_STREAM_PATH := "res://src/ui/assets/ui/intro/rebuilt-intro.ogv"
-const INTRO_SOUNDTRACK_PATH := "res://src/ui/assets/ui/intro/rebuilt-intro-soundtrack.mp3"
+const INTRO_STREAM_PATH := "res://src/ui/shared/assets/ui/intro/rebuilt-intro.ogv"
+const INTRO_SOUNDTRACK_PATH := "res://src/ui/shared/assets/ui/intro/rebuilt-intro-soundtrack.mp3"
 
 var audio_enabled: bool = false
 var _master_volume: float = 1.0

@@ -3,7 +3,7 @@
 class_name PlayerMapParchmentMat
 extends PanelContainer
 
-const PARCHMENT_TEXTURE_PATH := "res://src/ui/assets/ui/map-parchment-tile.png"
+const PARCHMENT_TEXTURE_PATH := "res://src/ui/shared/assets/ui/map-parchment-tile.png"
 const BASE_MAP_SIZE := 320.0
 const BORDER_RATIO := 0.125
 

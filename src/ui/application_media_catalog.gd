@@ -3,7 +3,7 @@
 class_name ApplicationMediaCatalog
 extends MediaSource
 
-const MANIFEST_PATH := "res://src/ui/assets/classic-application-media.json"
+const MANIFEST_PATH := "res://src/ui/shared/assets/classic-application-media.json"
 const CASTLE_SOURCE_COMMIT := "491816ad60037394f92c428e99c004494d3c28b3"
 
 var source_commit: String = ""

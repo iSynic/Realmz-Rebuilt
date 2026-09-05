@@ -38,7 +38,7 @@ foreach ($expected in $expectedPresets.GetEnumerator()) {
             throw "Release preset $($expected.Key) must exclude $requiredExclusion"
         }
     }
-    foreach ($requiredBundledFile in @("LICENSE", "THIRD_PARTY_NOTICES.txt", "src/ui/assets/classic-application-media.json", "src/ui/assets/classic-media/**", "src/storage/characters/realmz-classic-starter-characters.json")) {
+    foreach ($requiredBundledFile in @("LICENSE", "THIRD_PARTY_NOTICES.txt", "src/ui/shared/assets/classic-application-media.json", "src/ui/shared/assets/classic-media/**", "src/storage/characters/realmz-classic-starter-characters.json")) {
         if ($body -notmatch ('(?m)^include_filter="[^"]*' + [regex]::Escape($requiredBundledFile) + '[^"]*"$')) {
             throw "Release preset $($expected.Key) must include $requiredBundledFile"
         }

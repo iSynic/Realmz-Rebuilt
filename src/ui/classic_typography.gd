@@ -3,14 +3,14 @@
 class_name ClassicTypography
 extends RefCounted
 
-const BLACK_CHANCERY_PATH := "res://src/ui/assets/fonts/BlackChancery-Realmz.ttf"
-const THELDROW_BITMAP_PATH := "res://src/ui/assets/fonts/Theldrow-Classic.fnt"
-const THELDROW_PATH := "res://src/ui/assets/fonts/Theldrow-Rebuilt.ttf"
-const CHICAGO_PATH := "res://src/ui/assets/fonts/ChicagoFLF.ttf"
-const CLASSIC_UTILITY_PATH := "res://src/ui/assets/fonts/InterVariable-Castle.ttf"
-const READABLE_UI_PATH := "res://src/ui/assets/fonts/AlegreyaSans-Regular.ttf"
-const READABLE_BOLD_PATH := "res://src/ui/assets/fonts/AlegreyaSans-Bold.ttf"
-const READABLE_NARRATIVE_PATH := "res://src/ui/assets/fonts/Alegreya-Variable.ttf"
+const BLACK_CHANCERY_PATH := "res://src/ui/shared/assets/fonts/BlackChancery-Realmz.ttf"
+const THELDROW_BITMAP_PATH := "res://src/ui/shared/assets/fonts/Theldrow-Classic.fnt"
+const THELDROW_PATH := "res://src/ui/shared/assets/fonts/Theldrow-Rebuilt.ttf"
+const CHICAGO_PATH := "res://src/ui/shared/assets/fonts/ChicagoFLF.ttf"
+const CLASSIC_UTILITY_PATH := "res://src/ui/shared/assets/fonts/InterVariable-Castle.ttf"
+const READABLE_UI_PATH := "res://src/ui/shared/assets/fonts/AlegreyaSans-Regular.ttf"
+const READABLE_BOLD_PATH := "res://src/ui/shared/assets/fonts/AlegreyaSans-Bold.ttf"
+const READABLE_NARRATIVE_PATH := "res://src/ui/shared/assets/fonts/Alegreya-Variable.ttf"
 
 
 static func themed_copy(base_theme: Theme, settings: PresentationSettings) -> Theme:

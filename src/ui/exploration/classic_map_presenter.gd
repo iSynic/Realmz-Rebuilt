@@ -6,7 +6,7 @@ extends Control
 signal movement_hold_started(direction: Vector2i)
 signal movement_hold_updated(direction: Vector2i)
 signal movement_hold_stopped
-const SURROUND_TEXTURE_PATH := "res://src/ui/assets/ui/classic-exploration-surround-tile.png"
+const SURROUND_TEXTURE_PATH := "res://src/ui/shared/assets/ui/classic-exploration-surround-tile.png"
 const DEBUG_AP_COLOR := Color(0.95, 0.72, 0.26, 0.88)
 const DEBUG_RANDOM_RECT_COLOR := Color(0.96, 0.75, 0.36, 0.78)
 

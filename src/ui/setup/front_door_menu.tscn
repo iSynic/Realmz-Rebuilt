@@ -1,7 +1,7 @@
 [gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://src/ui/classic_intro_animation.gd" id="1_intro"]
-[ext_resource type="Texture2D" path="res://src/ui/assets/ui/classic-intro-frame.png" id="2_frame"]
+[ext_resource type="Texture2D" path="res://src/ui/shared/assets/ui/classic-intro-frame.png" id="2_frame"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_transparent"]
 bg_color = Color(0, 0, 0, 0)

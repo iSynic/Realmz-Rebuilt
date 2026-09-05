@@ -3,7 +3,7 @@
 class_name ClassicSpellTargetBadge
 extends PanelContainer
 
-const TARGET_TEXT_SHADER_PATH := "res://src/ui/assets/shaders/classic_spell_target_text.gdshader"
+const TARGET_TEXT_SHADER_PATH := "res://src/ui/shared/assets/shaders/classic_spell_target_text.gdshader"
 
 var _target_text_shader: Shader = load(TARGET_TEXT_SHADER_PATH) as Shader
 

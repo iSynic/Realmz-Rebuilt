@@ -9,11 +9,11 @@ signal movement_hold_started(direction: Vector2i)
 signal movement_hold_stopped
 
 const MeshBuilder := preload("res://src/ui/exploration/dungeon/dungeon_scene_mesh_builder.gd")
-const ATLAS_PATH := "res://src/ui/assets/classic-dungeon/classic-dungeon-atlas.png"
-const CURSOR_FORWARD_PATH := "res://src/ui/assets/classic-dungeon/cursor-forward.png"
-const CURSOR_REVERSE_PATH := "res://src/ui/assets/classic-dungeon/cursor-reverse.png"
-const CURSOR_LEFT_PATH := "res://src/ui/assets/classic-dungeon/cursor-left.png"
-const CURSOR_RIGHT_PATH := "res://src/ui/assets/classic-dungeon/cursor-right.png"
+const ATLAS_PATH := "res://src/ui/shared/assets/classic-dungeon/classic-dungeon-atlas.png"
+const CURSOR_FORWARD_PATH := "res://src/ui/shared/assets/classic-dungeon/cursor-forward.png"
+const CURSOR_REVERSE_PATH := "res://src/ui/shared/assets/classic-dungeon/cursor-reverse.png"
+const CURSOR_LEFT_PATH := "res://src/ui/shared/assets/classic-dungeon/cursor-left.png"
+const CURSOR_RIGHT_PATH := "res://src/ui/shared/assets/classic-dungeon/cursor-right.png"
 const INTERNAL_SIZE := Vector2i(400, 225)
 const MOVE_TWEEN_SECONDS := 0.045
 const TURN_TWEEN_SECONDS := 0.0

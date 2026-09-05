@@ -13,7 +13,7 @@ const CLASSIC_TYPOGRAPHY_PATH := "res://src/ui/classic_typography.gd"
 const UI_LAYOUT_PROFILE_PATH := "res://src/ui/ui_layout_profile.gd"
 const PRESENTATION_SETTINGS_PATH := "res://src/game/shared/presentation/presentation_settings.gd"
 const BASE_THEME_PATH := "res://src/ui/classic_ui_theme.tres"
-const STONE_TEXTURE_PATH := "res://src/ui/assets/ui/classic-charcoal-slate-tile.png"
+const STONE_TEXTURE_PATH := "res://src/ui/shared/assets/ui/classic-charcoal-slate-tile.png"
 
 const SPLASH_HOLD_SECONDS: float = 3.0
 const EXIT_CUE_SECONDS: float = 1.513

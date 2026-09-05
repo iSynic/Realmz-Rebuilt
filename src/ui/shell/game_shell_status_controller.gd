@@ -4,8 +4,8 @@ extends RefCounted
 
 const ERROR := Color("ef7770")
 const TEXT := Color("d8d9d2")
-const SAVE_STATUS_TEXTURE_PATH := "res://src/ui/assets/ui/status/save-status.png"
-const JOURNAL_STATUS_TEXTURE_PATH := "res://src/ui/assets/ui/status/journal-status.png"
+const SAVE_STATUS_TEXTURE_PATH := "res://src/ui/shared/assets/ui/status/save-status.png"
+const JOURNAL_STATUS_TEXTURE_PATH := "res://src/ui/shared/assets/ui/status/journal-status.png"
 
 var _host: Control
 var _status_label: Label

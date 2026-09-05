@@ -6,7 +6,7 @@ extends Control
 
 const NATIVE_CELL_SIZE: float = BattlefieldPresentationGeometry.NATIVE_CELL_SIZE
 const HEADER_HEIGHT: float = BattlefieldPresentationGeometry.HEADER_HEIGHT
-const SURROUND_TEXTURE_PATH := "res://src/ui/assets/ui/classic-exploration-surround-tile.png"
+const SURROUND_TEXTURE_PATH := "res://src/ui/shared/assets/ui/classic-exploration-surround-tile.png"
 
 var _view: GameView
 var _media: ClassicMediaCatalog

@@ -177,7 +177,7 @@ func _bind_footer() -> void:
 	_sell_button.pressed.connect(_submit_sell)
 	_identify_button.pressed.connect(_submit_identify)
 	%ShopDone.pressed.connect(_submit_leave)
-	_configure_route_button(%ShopKeeperRestore, "Shop Keeper", &"command.shop_original", _restore_shopkeeper, {"asset_path": "res://src/ui/assets/ui/commands/shop.png"})
+	_configure_route_button(%ShopKeeperRestore, "Shop Keeper", &"command.shop_original", _restore_shopkeeper, {"asset_path": "res://src/ui/shared/assets/ui/commands/shop.png"})
 	_configure_route_button(%ShopItems, "Items", &"command.inventory", _show_items, {"art_region": [5, 2, 36, 34], "art_clear_regions": [[0, 4, 4, 8]]})
 	_configure_route_button(%ShopMoney, "Money", &"command.money", _show_money, {"art_region": [5, 5, 35, 31], "art_clear_regions": [[0, 0, 8, 8]]})
 	_apply_profile_sizes()

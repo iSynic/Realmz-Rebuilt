@@ -3,7 +3,7 @@
 class_name ClassicMusicCatalog
 extends RefCounted
 
-const MANIFEST_PATH := "res://src/ui/assets/classic-application-music.json"
+const MANIFEST_PATH := "res://src/ui/shared/assets/classic-application-music.json"
 
 var last_error: String = ""
 var _tracks: Dictionary = {}
