@@ -4,7 +4,6 @@ class_name InteractionPresenter
 extends PanelContainer
 
 
-const FAST_SPELL_DOCK_SCENE_PATH := "res://src/ui/interaction_components/fast_spell_dock.tscn"
 const LayoutPolicy := preload("res://src/ui/interaction_layout_policy.gd")
 const ComponentFactory := preload("res://src/ui/interaction_component_factory.gd")
 
@@ -15,18 +14,14 @@ const ComponentFactory := preload("res://src/ui/interaction_component_factory.gd
 @export var encounter_dock_scene: PackedScene
 @export var application_workspace_scene: PackedScene
 @export var hint_scene: PackedScene
+@export var fast_spell_dock_scene: PackedScene
 
 signal response_submitted(response: InteractionResponse)
-signal combat_targeting_requested(request: CombatTargetingRequest)
-signal combat_targeting_confirm_requested
-signal combat_targeting_cancel_requested
-signal combat_targeting_rotate_requested
-signal combatant_focus_requested(combatant_id: String, play_sound: bool)
-signal reveal_friends_requested
 signal presentation_sound_requested(sound_id: int)
 signal presentation_status_requested(text: String, is_error: bool)
-signal combat_spellbook_requested(actor_id: String, options: Array[InteractionRequestValue.CastOption])
-signal combat_spellbook_closed
+
+var combat: CombatInteractionController:
+	get: return _combat
 
 @onready var _prompt: Label = %InteractionPrompt
 @onready var _heading: Label = %InteractionHeading
@@ -53,12 +48,15 @@ var _autojournal_enabled: bool = false
 var _treasure_recipient_id: String = ""
 var _treasure_slot_order: Array[String] = []
 var _overlays: InteractionOverlayHost
-var _combat_spellbook_open: bool = false
-var _fast_spell_dock: Control
+var _combat: CombatInteractionController
 var _flash: InteractionFlashController
 
 
 func _ready() -> void:
+	_combat = CombatInteractionController.new()
+	_combat.configure(get_parent(), fast_spell_dock_scene)
+	_combat.response_body_submitted.connect(_submit_body)
+	_combat.layout_changed.connect(_apply_classic_region)
 	_overlays = InteractionOverlayHost.new()
 	_overlays.configure(self, modal_shield_scene, treasure_completion_modal_scene, side_workspace_scene, encounter_dock_scene, application_workspace_scene)
 	_overlays.set_regions(_application_rect, _stage_rect, _textbox_rect, _side_workspace_rect)
@@ -103,14 +101,19 @@ func _exit_tree() -> void:
 	_set_classic_acknowledgement_cursor(false)
 	if _overlays != null:
 		_overlays.close_all()
-	_close_fast_spell_dock()
+	if _combat != null:
+		_combat.clear()
 	if _flash != null:
 		_flash.close()
 
 
 func present(request: InteractionRequest, classic_text_context: String = "", game_view: GameView = null, media: ClassicMediaCatalog = null) -> void:
 	if _can_present_nested_treasure_confirmation(request):
-		_begin_nested_request(request)
+		_request = request
+		_passive_text = false
+		_playback_masked = false
+		visible = true
+		_claim_modal_layer()
 		_present_nested_treasure_confirmation(request, game_view, media)
 		_apply_classic_region()
 		call_deferred("_prepare_interaction_focus")
@@ -119,14 +122,6 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 		return
 	_present_request_text(request, classic_text_context)
 	_mount_request_component(request, game_view, media)
-
-
-func _begin_nested_request(request: InteractionRequest) -> void:
-	_request = request
-	_passive_text = false
-	_playback_masked = false
-	visible = true
-	_claim_modal_layer()
 
 
 func _begin_request(request: InteractionRequest) -> bool:
@@ -161,7 +156,7 @@ func _present_request_text(request: InteractionRequest, classic_text_context: St
 		_set_heading("")
 	if request.kind == InteractionRequest.CHARACTER_SELECTION and (request.body as CharacterSelectionRequestBody).spell_context != null:
 		_set_heading("Spell Target")
-	_prompt.text = _prompt_for(request, classic_text_context)
+	_prompt.text = ComponentFactory.prompt_for(request, classic_text_context)
 	_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER if LayoutPolicy.uses_classic_click_modal(request) else HORIZONTAL_ALIGNMENT_LEFT
 	_prompt.visible = not _prompt.text.is_empty()
 	if LayoutPolicy.uses_application_workspace(request):
@@ -191,16 +186,8 @@ func _mount_request_component(request: InteractionRequest, game_view: GameView, 
 	_component.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_component.add_theme_constant_override("separation", 8)
 	_component.response_body_submitted.connect(_submit_body)
-	_component.combat_targeting_requested.connect(func(targeting_request: CombatTargetingRequest) -> void: combat_targeting_requested.emit(targeting_request))
-	_component.combat_targeting_confirm_requested.connect(func() -> void: combat_targeting_confirm_requested.emit())
-	_component.combat_targeting_cancel_requested.connect(func() -> void: combat_targeting_cancel_requested.emit())
-	_component.combat_targeting_rotate_requested.connect(func() -> void: combat_targeting_rotate_requested.emit())
-	_component.combatant_focus_requested.connect(func(combatant_id: String, play_sound: bool) -> void: combatant_focus_requested.emit(combatant_id, play_sound))
-	_component.reveal_friends_requested.connect(func() -> void: reveal_friends_requested.emit())
 	_component.presentation_sound_requested.connect(func(sound_id: int) -> void: presentation_sound_requested.emit(sound_id))
 	_component.presentation_status_requested.connect(func(text: String, is_error: bool) -> void: presentation_status_requested.emit(text, is_error))
-	_component.combat_spellbook_requested.connect(func(actor_id: String, options: Array[InteractionRequestValue.CastOption]) -> void: combat_spellbook_requested.emit(actor_id, options))
-	_component.combat_spellbook_closed.connect(func() -> void: combat_spellbook_closed.emit())
 	_component.side_workspace_requested.connect(_overlays.show_side_workspace)
 	_component.side_workspace_closed.connect(_overlays.close_side_workspace)
 	_component.encounter_dock_requested.connect(_overlays.show_encounter_dock)
@@ -213,8 +200,8 @@ func _mount_request_component(request: InteractionRequest, game_view: GameView, 
 	_options.add_child(_component)
 	_options.visible = true
 	_component.build(request)
-	if request.kind == InteractionRequest.COMBAT:
-		_mount_fast_spell_dock(request.body as CombatRequestBody, game_view, media)
+	if _component is BattleInteraction:
+		_combat.bind(_component as BattleInteraction, request.body as CombatRequestBody, game_view, media)
 	_apply_classic_region()
 	call_deferred("_prepare_interaction_focus")
 
@@ -231,7 +218,7 @@ func present_combat_playback_mask(frame: CombatPlaybackFrame = null) -> void:
 	_prompt.visible = false
 	_stage_opaque_backing.visible = false
 	_stage_backing.visible = false
-	_playback_status_label = _add_hint(playback_status_text(frame))
+	_playback_status_label = _add_hint(CombatPlaybackController.status_text(frame))
 	_playback_status_label.name = "CombatPlaybackStatus"
 	visible = true
 	_claim_modal_layer()
@@ -240,17 +227,7 @@ func present_combat_playback_mask(frame: CombatPlaybackFrame = null) -> void:
 
 func update_combat_playback_frame(frame: CombatPlaybackFrame) -> void:
 	if _playback_masked and _playback_status_label != null:
-		_playback_status_label.text = playback_status_text(frame)
-
-
-static func playback_status_text(frame: CombatPlaybackFrame) -> String:
-	if frame == null:
-		return "Resolving combat…  •  Space skips visual playback"
-	var action := frame.display_text
-	if action.is_empty():
-		action = String(frame.kind).replace("_", " ").capitalize()
-	var controls := "Esc cancels Party Auto  •  Space skips visual playback" if frame.automatic else "Space skips visual playback"
-	return "%s%s  •  %s" % ["Auto Turn • " if frame.automatic else "", action, controls]
+		_playback_status_label.text = CombatPlaybackController.status_text(frame)
 
 
 func set_classic_regions(stage_rect: Rect2, textbox_rect: Rect2, combat_rect: Rect2 = Rect2()) -> void:
@@ -269,10 +246,9 @@ func set_classic_regions(stage_rect: Rect2, textbox_rect: Rect2, combat_rect: Re
 	_side_workspace_rect = Rect2(outer_stage.end.x, outer_stage.position.y, maxf(0.0, _combat_rect.end.x - outer_stage.end.x), maxf(0.0, _application_rect.end.y - outer_stage.position.y))
 	_overlays.set_regions(_application_rect, _stage_rect, _textbox_rect, _side_workspace_rect)
 	_flash.set_regions(_application_rect, _textbox_rect)
-	if _component is BattleInteraction:
-		(_component as BattleInteraction).set_command_scale(LayoutPolicy.combat_command_scale(_combat_rect))
+	_combat.set_command_scale(LayoutPolicy.combat_command_scale(_combat_rect))
 	_apply_classic_region()
-	_apply_fast_spell_dock_layout()
+	_combat.set_stage_rect(_stage_rect)
 
 
 func dismiss_passive_text() -> bool:
@@ -311,13 +287,6 @@ func handle_back_request() -> bool:
 	return not _playback_masked and _request != null and _component != null and _component.handle_back()
 
 
-func submit_active_body(body: InteractionResponse.CombatBody) -> bool:
-	if _playback_masked or _request == null or _request.kind != InteractionRequest.COMBAT:
-		return false
-	_submit_body(body)
-	return true
-
-
 func submit_character_selection(character_ids: Array[String]) -> bool:
 	if _playback_masked or _request == null or _request.kind != InteractionRequest.CHARACTER_SELECTION:
 		return false
@@ -326,62 +295,6 @@ func submit_character_selection(character_ids: Array[String]) -> bool:
 		return false
 	_submit_body(InteractionResponse.SelectionBody.new(character_ids))
 	return true
-
-
-func accepts_combat_spatial_input() -> bool:
-	return not _playback_masked and _request != null and _request.kind == InteractionRequest.COMBAT and _component is BattleInteraction and (_component as BattleInteraction).accepts_spatial_input()
-
-
-func handle_fast_spell(slot_index: int, use_spell: bool) -> bool:
-	return not _playback_masked and _request != null and _request.kind == InteractionRequest.COMBAT and _component is BattleInteraction and (_component as BattleInteraction).handle_fast_spell(slot_index, use_spell)
-
-
-func set_fast_spell_dock_held(held: bool) -> bool:
-	if _playback_masked or _request == null or _request.kind != InteractionRequest.COMBAT or _fast_spell_dock == null:
-		return false
-	return _fast_spell_dock.set_held(held)
-
-
-func activate_fast_spell_from_dock(slot_index: int) -> bool:
-	if _fast_spell_dock != null:
-		_fast_spell_dock.set_held(false)
-	return handle_fast_spell(slot_index, true)
-
-
-func inspect_combatant(combatant_id: String) -> void:
-	if _request != null and _request.kind == InteractionRequest.COMBAT and _component is BattleInteraction:
-		(_component as BattleInteraction).inspect_combatant(combatant_id)
-
-
-func open_combatant_inspection(combatant_id: String) -> bool:
-	return _request != null and _request.kind == InteractionRequest.COMBAT and _component is BattleInteraction and (_component as BattleInteraction).open_combatant_inspection(combatant_id)
-
-
-func update_combat_targeting(selection: CombatTargetingState) -> void:
-	if _request != null and _request.kind == InteractionRequest.COMBAT and _component is BattleInteraction:
-		(_component as BattleInteraction).update_battlefield_targeting(selection)
-
-
-func combat_targeting_cancelled() -> void:
-	if _request != null and _request.kind == InteractionRequest.COMBAT and _component is BattleInteraction:
-		(_component as BattleInteraction).battlefield_targeting_cancelled()
-
-
-func cast_combat_spell(option: InteractionRequestValue.CastOption) -> void:
-	if _request != null and _request.kind == InteractionRequest.COMBAT and _component is BattleInteraction:
-		(_component as BattleInteraction).cast_spell_option(option)
-
-
-func close_combat_spellbook() -> void:
-	if _request != null and _request.kind == InteractionRequest.COMBAT and _component is BattleInteraction:
-		(_component as BattleInteraction).close_spellbook()
-
-
-func set_combat_spellbook_open(open: bool) -> void:
-	if _combat_spellbook_open == open:
-		return
-	_combat_spellbook_open = open
-	_apply_classic_region()
 
 
 func set_text_scale(value: float) -> void:
@@ -397,32 +310,6 @@ func _create_component(request: InteractionRequest, game_view: GameView, media: 
 	return ComponentFactory.create(request, game_view, media, _application_rect.size.x < 1000.0, _autojournal_enabled, _treasure_recipient_id, _treasure_slot_order, _combat_rect)
 
 
-func _mount_fast_spell_dock(body: CombatRequestBody, game_view: GameView, media: ClassicMediaCatalog) -> void:
-	_close_fast_spell_dock()
-	if body == null:
-		return
-	_fast_spell_dock = (load(FAST_SPELL_DOCK_SCENE_PATH) as PackedScene).instantiate() as FastSpellDock
-	get_parent().add_child(_fast_spell_dock)
-	_fast_spell_dock.configure(body.fast_spells, ComponentFactory.fast_spell_animation_frames(game_view, media, body.fast_spells))
-	_fast_spell_dock.slot_activated.connect(func(slot_index: int) -> void: activate_fast_spell_from_dock(slot_index))
-	_apply_fast_spell_dock_layout()
-
-
-func _close_fast_spell_dock() -> void:
-	if _fast_spell_dock == null:
-		return
-	var dock_parent: Node = _fast_spell_dock.get_parent()
-	if dock_parent != null:
-		dock_parent.remove_child(_fast_spell_dock)
-	_fast_spell_dock.queue_free()
-	_fast_spell_dock = null
-
-
-func _apply_fast_spell_dock_layout() -> void:
-	if _fast_spell_dock != null:
-		_fast_spell_dock.set_stage_rect(_stage_rect)
-
-
 func _submit_body(body: InteractionResponse.Body) -> void:
 	if _request == null:
 		return
@@ -430,11 +317,11 @@ func _submit_body(body: InteractionResponse.Body) -> void:
 	_overlays.close_encounter_dock()
 	_overlays.close_application_workspace()
 	_overlays.close_modal_shield()
-	var response := InteractionPresenter.response_for(_request, body)
+	var response := InteractionResponse.new(_request.request_id, _request.kind, body)
 	var preserve_treasure_workspace := _component is TreasureDistributionInteraction and body is InteractionResponse.TreasureBody and (body as InteractionResponse.TreasureBody).action in [&"assign", &"done"]
 	_request = null
 	_set_classic_acknowledgement_cursor(false)
-	_close_fast_spell_dock()
+	_combat.clear()
 	if not preserve_treasure_workspace:
 		visible = false
 	response_submitted.emit(response)
@@ -505,19 +392,12 @@ func _update_treasure_slot_order(request: InteractionRequest) -> void:
 			_treasure_slot_order.append(item.instance_id)
 
 
-static func response_for(request: InteractionRequest, body: InteractionResponse.Body) -> InteractionResponse:
-	assert(request != null, "An interaction response requires its originating request")
-	return InteractionResponse.new(request.request_id, request.kind, body)
-
-
 func _clear_options() -> void:
-	_combat_spellbook_open = false
-	combat_spellbook_closed.emit()
+	_combat.clear()
 	_overlays.close_side_workspace()
 	_overlays.close_encounter_dock()
 	_overlays.close_application_workspace()
 	_overlays.close_nested_modal()
-	_close_fast_spell_dock()
 	_component = null
 	_playback_status_label = null
 	_options.visible = false
@@ -552,7 +432,7 @@ func _apply_classic_region() -> void:
 	elif LayoutPolicy.uses_textbox_region(_request, _passive_text):
 		theme_type_variation = LayoutPolicy.textbox_theme_variation(_request)
 		var region := LayoutPolicy.interaction_region(_request, _textbox_rect, _combat_rect)
-		if _combat_spellbook_open and _request != null and _request.kind == InteractionRequest.COMBAT:
+		if _combat.is_spellbook_open() and _request != null and _request.kind == InteractionRequest.COMBAT:
 			region.size.x = minf(region.size.x, maxf(0.0, _side_workspace_rect.position.x - region.position.x))
 		position = region.position
 		size = region.size
@@ -629,16 +509,12 @@ func _add_hint(text: String) -> Label:
 	return label
 
 
-func _focus_first_control() -> void:
+func _prepare_interaction_focus() -> void:
+	_reset_interaction_scroll()
 	var preferred := _component.preferred_initial_focus() if _component != null else null
 	var first := preferred if preferred != null else _first_focusable(_options)
 	if first != null:
 		first.grab_focus()
-
-
-func _prepare_interaction_focus() -> void:
-	_reset_interaction_scroll()
-	_focus_first_control()
 	_reset_interaction_scroll()
 
 
@@ -651,20 +527,6 @@ func _claim_modal_layer() -> void:
 	var parent := get_parent()
 	if parent != null and get_index() != parent.get_child_count() - 1:
 		parent.move_child(self, parent.get_child_count() - 1)
-
-
-static func _prompt_for(request: InteractionRequest, classic_text_context: String) -> String:
-	var explicit_prompt := request.body.prompt_text().strip_edges()
-	if not explicit_prompt.is_empty():
-		return explicit_prompt
-	if request.kind == InteractionRequest.ACKNOWLEDGE:
-		return ""
-	if request.kind == InteractionRequest.YES_NO:
-		var authored_context := classic_text_context.strip_edges()
-		if not authored_context.is_empty():
-			return authored_context
-		return "Choose Yes or No to continue."
-	return ComponentFactory.title_for_kind(request.kind)
 
 
 func _set_heading(value: String) -> void:

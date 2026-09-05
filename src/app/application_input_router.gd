@@ -71,7 +71,7 @@ func _handle_playback_or_combat_modifier_input(event: InputEvent, key_event: Inp
 	var pending: InteractionRequest = _application.session_controller.view().active_interaction_request()
 	var combat_pending := pending != null and pending.kind == InteractionRequest.COMBAT
 	if combat_pending and key_event != null and not key_event.echo and (key_event.keycode == KEY_ALT or key_event.physical_keycode == KEY_ALT):
-		var dock_available: bool = _application._interaction_presenter.set_fast_spell_dock_held(key_event.pressed)
+		var dock_available: bool = _application._interaction_presenter.combat.set_fast_spell_dock_held(key_event.pressed)
 		if dock_available or not key_event.pressed:
 			_mark_handled()
 		return true
@@ -123,11 +123,11 @@ func _handle_pending_interaction_input(event: InputEvent, key_event: InputEventK
 		return
 	var combat_fast_spell := UiInputActions.fast_spell_slot(event, true)
 	var use_fast_spell := UiInputActions.combat_fast_spell_use_requested(event)
-	if combat_fast_spell >= 0 and (_application._interaction_presenter.activate_fast_spell_from_dock(combat_fast_spell) if use_fast_spell and key_event.alt_pressed else _application._interaction_presenter.handle_fast_spell(combat_fast_spell, use_fast_spell)):
+	if combat_fast_spell >= 0 and (_application._interaction_presenter.combat.activate_fast_spell_from_dock(combat_fast_spell) if use_fast_spell and key_event.alt_pressed else _application._interaction_presenter.combat.handle_fast_spell(combat_fast_spell, use_fast_spell)):
 		_mark_handled()
 		return
 	var combat_direction := UiInputActions.movement_direction(event)
-	if combat_direction != Vector2i.ZERO and _application._interaction_presenter.accepts_combat_spatial_input() and _application._battlefield_presenter.submit_movement_direction(combat_direction):
+	if combat_direction != Vector2i.ZERO and _application._interaction_presenter.combat.accepts_spatial_input() and _application._battlefield_presenter.submit_movement_direction(combat_direction):
 		_mark_handled()
 
 

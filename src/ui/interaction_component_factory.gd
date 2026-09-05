@@ -134,6 +134,18 @@ static func title_for_kind(kind: StringName) -> String:
 	return String(kind).replace("_", " ").capitalize()
 
 
+static func prompt_for(request: InteractionRequest, classic_text_context: String) -> String:
+	var explicit_prompt := request.body.prompt_text().strip_edges()
+	if not explicit_prompt.is_empty():
+		return explicit_prompt
+	if request.kind == InteractionRequest.ACKNOWLEDGE:
+		return ""
+	if request.kind == InteractionRequest.YES_NO:
+		var authored_context := classic_text_context.strip_edges()
+		return authored_context if not authored_context.is_empty() else "Choose Yes or No to continue."
+	return title_for_kind(request.kind)
+
+
 static func _combatant_icon_textures(game_view: GameView, media: ClassicMediaCatalog) -> Dictionary:
 	var result: Dictionary = {}
 	if game_view == null or game_view.combat_view == null or media == null: return result

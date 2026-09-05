@@ -99,6 +99,16 @@ func current_frame() -> CombatPlaybackFrame:
 	return _frames[_frame_index]
 
 
+static func status_text(frame: CombatPlaybackFrame) -> String:
+	if frame == null:
+		return "Resolving combat…  •  Space skips visual playback"
+	var action := frame.display_text
+	if action.is_empty():
+		action = String(frame.kind).replace("_", " ").capitalize()
+	var controls := "Esc cancels Party Auto  •  Space skips visual playback" if frame.automatic else "Space skips visual playback"
+	return "%s%s  •  %s" % ["Auto Turn • " if frame.automatic else "", action, controls]
+
+
 func frame_count() -> int:
 	return _frames.size()
 

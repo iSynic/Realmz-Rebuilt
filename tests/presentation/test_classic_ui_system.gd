@@ -367,7 +367,7 @@ func _test_bank_component() -> void:
 	var departure_done := departure_component.find_children("*", "Button", true, false).filter(func(button: Node) -> bool: return (button as Button).text == "Done")[0] as Button
 	departure_done.pressed.emit()
 	assert_equal(departure_payloads, [{"action": "leave"}], "pooled departure emits the same exact typed Done payload as Swap")
-	var typed_response := InteractionPresenter.response_for(departure_request, InteractionResponse.BankBody.new(&"leave"))
+	var typed_response := InteractionResponse.new(departure_request.request_id, departure_request.kind, InteractionResponse.BankBody.new(&"leave"))
 	assert_equal([typed_response.request_id, typed_response.kind, typed_response.body.to_data()], ["departure.fixture", InteractionRequest.POOLED_WEALTH_DEPARTURE, {"action": "leave"}], "pooled departure preserves request identity through the typed presenter boundary")
 	departure_component.free()
 
@@ -708,7 +708,7 @@ func _test_lifecycle_interaction() -> void:
 	var buttons := _buttons_in(component)
 	assert_equal(buttons.map(func(button: Button) -> String: return button.text), ["Save and return", "Return without saving", "Cancel"], "the dedicated presenter does not reinterpret lifecycle choices as scenario options"); assert_true(component.get_combined_minimum_size().y <= 170.0, "the complete Main Menu choice component fits inside its non-scrolling modal allocation")
 	assert_true(component.handle_back(), "Escape invokes the declared lifecycle Cancel action"); assert_equal(submitted, [{"action": "cancel"}], "Cancel emits one typed host response")
-	assert_equal(ApplicationLifecycleScript.response_action(request, InteractionPresenter.response_for(request, InteractionResponse.LifecycleBody.new(&"cancel"))), &"cancel", "the host accepts only an action declared by its request"); assert_equal(ApplicationLifecycleScript.response_action(request, InteractionResponse.from_data(request.request_id, request.kind, {"action": "invented"})), &"", "undeclared lifecycle actions fail explicitly")
+	assert_equal(ApplicationLifecycleScript.response_action(request, InteractionResponse.new(request.request_id, request.kind, InteractionResponse.LifecycleBody.new(&"cancel"))), &"cancel", "the host accepts only an action declared by its request"); assert_equal(ApplicationLifecycleScript.response_action(request, InteractionResponse.from_data(request.request_id, request.kind, {"action": "invented"})), &"", "undeclared lifecycle actions fail explicitly")
 	assert_false(ApplicationLifecycleScript.allows_close(&"save-and-end", false), "a rejected save cannot close the active session"); assert_true(ApplicationLifecycleScript.allows_close(&"save-and-end", true), "a validated save permits the requested close")
 	assert_true(ApplicationLifecycleScript.allows_close(&"end-without-saving"), "explicit discard permits close without a repository write"); assert_false(ApplicationLifecycleScript.allows_close(&"cancel"), "Cancel never closes the active session")
 	var operation_order: Array[String] = []
@@ -951,7 +951,7 @@ func _test_combat_playback_controller() -> void:
 	var kinds: Array[StringName] = []
 	for frame: CombatPlaybackFrame in frames:
 		kinds.append(frame.kind)
-	assert_true(kinds.has(&"move_start") and kinds.has(&"melee_attack") and is_equal_approx(frames[0].duration_seconds, 0.18) and frames.any(func(frame: CombatPlaybackFrame) -> bool: return frame.kind == &"move_start" and frame.automatic and InteractionPresenter.playback_status_text(frame).begins_with("Auto Turn") and InteractionPresenter.playback_status_text(frame).contains("Esc cancels Party Auto")), "the persisted 50-percent combat speed keeps automatic movement readable while retaining distinct frames and the full-party safety hatch")
+	assert_true(kinds.has(&"move_start") and kinds.has(&"melee_attack") and is_equal_approx(frames[0].duration_seconds, 0.18) and frames.any(func(frame: CombatPlaybackFrame) -> bool: return frame.kind == &"move_start" and frame.automatic and CombatPlaybackController.status_text(frame).begins_with("Auto Turn") and CombatPlaybackController.status_text(frame).contains("Esc cancels Party Auto")), "the persisted 50-percent combat speed keeps automatic movement readable while retaining distinct frames and the full-party safety hatch")
 	assert_equal(kinds.count(&"spell_effect"), 8, "source-backed spell resolution retains its eight-frame family")
 	assert_true(frames.any(func(frame: CombatPlaybackFrame) -> bool: return frame.kind == &"spell_cast" and frame.display_text == "Cast Magic Darts") and frames.any(func(frame: CombatPlaybackFrame) -> bool: return frame.kind == &"spell_effect" and frame.display_text == "Magic Darts"), "spell playback identifies the source-backed effect instead of presenting anonymous art")
 	assert_true(frames.any(func(frame: CombatPlaybackFrame) -> bool: return frame.kind == &"result" and frame.display_text == "8"), "damage is shown once over the target")

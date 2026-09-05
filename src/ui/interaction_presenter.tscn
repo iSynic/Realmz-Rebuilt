@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://src/ui/interaction_presenter.gd" id="1_presenter"]
 [ext_resource type="Texture2D" path="res://src/ui/assets/ui/classic-charcoal-slate-tile.png" id="2_stone"]
@@ -9,6 +9,7 @@
 [ext_resource type="PackedScene" path="res://src/ui/interaction_components/encounter_command_dock_host.tscn" id="7_dock"]
 [ext_resource type="PackedScene" path="res://src/ui/interaction_components/interaction_application_workspace.tscn" id="8_application"]
 [ext_resource type="PackedScene" path="res://src/ui/interaction_components/interaction_hint.tscn" id="9_hint"]
+[ext_resource type="PackedScene" path="res://src/ui/interaction_components/fast_spell_dock.tscn" id="10_fast_spell"]
 
 [node name="InteractionPanel" type="PanelContainer"]
 unique_name_in_owner = true
@@ -24,6 +25,7 @@ side_workspace_scene = ExtResource("6_side")
 encounter_dock_scene = ExtResource("7_dock")
 application_workspace_scene = ExtResource("8_application")
 hint_scene = ExtResource("9_hint")
+fast_spell_dock_scene = ExtResource("10_fast_spell")
 
 [node name="StageOpaqueBacking" type="ColorRect" parent="."]
 visible = false
