@@ -2,7 +2,7 @@
 
 `SpellDefinition` is authored content, `RealmzContent.magic` exposes its effective `SpellCatalog`, and `MagicRules` is the stable spell-resolution entry point used by gameplay. Package assembly applies scenario exact-ID overlays before the catalog is indexed, so every casting source resolves the same immutable definition. Follow character casts into `CharacterSpellResolver`, monster casts into `MonsterSpellResolver`, missile and thrown spell attacks into `SpellProjectileResolver`, and field or scenario effects into `FieldScenarioSpellResolver`. `SpellResolutionSupport` holds only the targeting, resistance, effect, and scaling mechanics shared by those resolvers. Combat orchestration still enters through `CombatFlow`.
 
-Known spells, scroll slots, charges, selected power, targets, and continuations remain typed and saveable. Every casting surface receives detached `SpellView` records with current-context availability.
+Known spells, scroll slots, charges, selected power, targets, and continuations remain typed and saveable. Every casting surface receives detached `SpellView` records with current-context availability. Its constructor either populates immutable authored facts or copies a reusable revision-local view, making that allocation policy explicit without changing the detached contract.
 
 Outside combat, `FieldMagicWorkflow` owns Fast Spell binding, scroll scribing and use, and learned spell casting. `FieldItemWorkflow` owns magic carried-item use. Both share `FieldMagicTargetRequestBuilder` for the exact saveable character-selection contract, `FieldMagicResolver` for stable party/allied target order and committed effects, and the top-level `MagicTransitionResult` returned to session coordination.
 

@@ -202,10 +202,7 @@ func probe_step(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefi
 func probe_path_step_toward_actors(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, actor_id: String, target_ids: Array[String], movement_available: int, swappable_actor_ids: Array[String] = [], forbidden_anchors: Array[Vector2i] = []) -> BattlefieldStepResult:
 	if battlefield == null or terrain_set == null or not battlefield.actors.has_actor(actor_id):
 		return BattlefieldStepResult.blocked(&"invalid_actor")
-	var valid_targets: Array[String] = []
-	for target_id: String in target_ids:
-		if target_id != actor_id and battlefield.actors.has_actor(target_id) and not valid_targets.has(target_id):
-			valid_targets.append(target_id)
+	var valid_targets := _valid_route_target_ids(battlefield, actor_id, target_ids)
 	if valid_targets.is_empty():
 		return BattlefieldStepResult.blocked(&"invalid_actor")
 	var origin := battlefield.actors.actor_position(actor_id)
@@ -214,29 +211,16 @@ func probe_path_step_toward_actors(battlefield: BattlefieldState, terrain_set: B
 	if profile == null:
 		return BattlefieldStepResult.blocked(&"invalid_actor", origin)
 	var generation := _route_workspace.begin_search()
-	var target_cells: Dictionary = {}
-	for target_id: String in valid_targets:
-		for coordinate: Vector2i in battlefield.actors.actor_footprint(target_id):
-			target_cells[coordinate] = true
+	var target_cells := _route_target_cells(battlefield, valid_targets)
 	var goal_count := _mark_route_goal_anchors(target_cells, actor_size, profile, generation)
 	if goal_count == 0:
 		return BattlefieldStepResult.blocked(&"path_not_found", origin)
 	var origin_index := _route_index(origin)
 	if _route_workspace.goal_generations[origin_index] == generation:
 		return BattlefieldStepResult.blocked(&"already_adjacent", origin)
-	for candidate_id: String in battlefield.actors.actor_ids():
-		if candidate_id == actor_id:
-			continue
-		for coordinate: Vector2i in battlefield.actors.actor_footprint(candidate_id):
-			_route_workspace.occupied_cells[coordinate] = true
-			if swappable_actor_ids.has(candidate_id):
-				_route_workspace.swappable_cells[coordinate] = true
-	_route_workspace.distances[origin_index] = 0
-	_route_workspace.distance_generations[origin_index] = generation
-	_route_workspace.first_steps[origin_index] = -1
+	_mark_route_occupancy(battlefield, actor_id, swappable_actor_ids)
+	_seed_route_search(origin_index, generation, goal_count)
 	var sequence := 0
-	var origin_heuristic := _route_heuristic(origin_index, generation, goal_count)
-	_route_heap_push(_route_workspace.heap, Vector4i(origin_heuristic, origin_heuristic, sequence, origin_index))
 	while not _route_workspace.heap.is_empty():
 		var current := _route_heap_pop(_route_workspace.heap)
 		var current_index := current.w
@@ -276,6 +260,40 @@ func probe_path_step_toward_actors(battlefield: BattlefieldState, terrain_set: B
 			var heuristic := _route_heuristic(destination_index, generation, goal_count)
 			_route_heap_push(_route_workspace.heap, Vector4i(next_distance + heuristic, heuristic, sequence, destination_index))
 	return BattlefieldStepResult.blocked(&"path_not_found", origin)
+
+
+func _seed_route_search(origin_index: int, generation: int, goal_count: int) -> void:
+	_route_workspace.distances[origin_index] = 0
+	_route_workspace.distance_generations[origin_index] = generation
+	_route_workspace.first_steps[origin_index] = -1
+	var origin_heuristic := _route_heuristic(origin_index, generation, goal_count)
+	_route_heap_push(_route_workspace.heap, Vector4i(origin_heuristic, origin_heuristic, 0, origin_index))
+
+
+static func _valid_route_target_ids(battlefield: BattlefieldState, actor_id: String, target_ids: Array[String]) -> Array[String]:
+	var valid_targets: Array[String] = []
+	for target_id: String in target_ids:
+		if target_id != actor_id and battlefield.actors.has_actor(target_id) and not valid_targets.has(target_id):
+			valid_targets.append(target_id)
+	return valid_targets
+
+
+static func _route_target_cells(battlefield: BattlefieldState, target_ids: Array[String]) -> Dictionary:
+	var target_cells: Dictionary = {}
+	for target_id: String in target_ids:
+		for coordinate: Vector2i in battlefield.actors.actor_footprint(target_id):
+			target_cells[coordinate] = true
+	return target_cells
+
+
+func _mark_route_occupancy(battlefield: BattlefieldState, actor_id: String, swappable_actor_ids: Array[String]) -> void:
+	for candidate_id: String in battlefield.actors.actor_ids():
+		if candidate_id == actor_id:
+			continue
+		for coordinate: Vector2i in battlefield.actors.actor_footprint(candidate_id):
+			_route_workspace.occupied_cells[coordinate] = true
+			if swappable_actor_ids.has(candidate_id):
+				_route_workspace.swappable_cells[coordinate] = true
 
 
 static func _route_footprint_is_passable(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, actor_size: int, footprint: Array[Vector2i], occupied_cells: Dictionary, respect_occupants: bool) -> bool:
