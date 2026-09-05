@@ -8,6 +8,7 @@ Own immutable spell definitions and lookup, plus the magic feature's migration b
 
 - `SpellDefinition` is the immutable authored spell record shared by every casting source.
 - `SpellCatalog` indexes the effective application-plus-scenario spell definitions by stable and packed Classic identity.
+- `FastSpellBindingState` and `SpellScrollState` own the mutable noncombat spell shortcuts and scroll facts stored by a playthrough.
 - `README.md` is the public maintainer entry point for spell-definition resolution.
 
 Magic rules remain under `src/game/rules` until their production files, tests, UIDs, and references move here as one coherent batch.
@@ -16,7 +17,7 @@ Magic rules remain under `src/game/rules` until their production files, tests, U
 
 - `RealmzContent.magic` is the authoritative spell-definition lookup for field, combat, item, scroll, and scenario callers.
 - Package assembly applies the scenario exact-ID overlay before constructing `SpellCatalog`; no casting source owns a parallel definition table.
-- Learned spell IDs and scroll spell IDs remain mutable playthrough facts. Catalog definitions remain immutable.
+- Learned spell IDs, Fast Spell bindings, and scroll spell IDs remain mutable playthrough facts. Catalog definitions remain immutable.
 
 ## Work Guidance
 

@@ -2,7 +2,7 @@
 
 Start with `MapTopology` when you need to understand where the party can move or what it can see. It is the one immutable spatial truth used by movement, pathfinding, line of sight, Search, Action Point lookup, and detached map views. Cells, directional edges, secrets, transitions, land profiles, and battle-terrain definitions live beside it because they describe authored world space.
 
-Mutable playthrough truth is intentionally separate. `WorldState` and its topology, trigger, and exploration collaborators live under `src/game/state` while that migration is still in progress; they record opened doors, revealed secrets, altered tiles, effective random regions, walked and seen cells, acquired maps, and player notes without mutating the installed package.
+Mutable playthrough truth sits beside the definitions whose meaning it preserves. `WorldState` gathers its topology, trigger, and exploration collaborators; together with `RandomRegionState` and `LocationNoteState`, they record opened doors, revealed secrets, altered tiles, effective random regions, walked and seen cells, acquired maps, and player notes without mutating the installed package.
 
 `RealmzClock` owns the saveable minute count. `ClockRules` interprets elapsed time as Castle gameplay: fatigue, condition decay, spell-point recovery, aging, ration use, and half-day healing. World workflows decide when an action advances time and pass each source-ordered timeclick through those rules.
 

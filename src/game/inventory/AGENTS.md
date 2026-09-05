@@ -7,10 +7,11 @@ Own immutable item definitions and lookup, plus the inventory feature's migratio
 ## Ownership
 
 - `ItemDefinition` is the immutable authored item record resolved by every carried instance.
+- `ItemInstance` is the portable mutable carried-item record stored by a character.
 - `ItemCatalog` indexes the effective application-plus-scenario item definitions by stable and Classic identity.
 - `README.md` is the public maintainer entry point for item-definition resolution.
 
-Inventory rules remain under `src/game/rules` until their production files, tests, UIDs, and references move here as one coherent batch. Mutable carried items remain on `CharacterState`.
+Inventory rules remain under `src/game/rules` until their production files, tests, UIDs, and references move here as one coherent batch. Characters retain custody of their `ItemInstance` collections while the instance type lives with the inventory feature that defines it.
 
 ## Local Contracts
 

@@ -4765,7 +4765,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/game/state/party_state.gd",
+            "path": "src/game/characters/party_state.gd",
             "symbol": "func reorder_characters"
           },
           {
@@ -6112,7 +6112,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/game/state/party_state.gd",
+            "path": "src/game/characters/party_state.gd",
             "symbol": "func restore_equipment"
           }
         ]
@@ -9319,7 +9319,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/game/state/location_note_state.gd",
+            "path": "src/game/world/location_note_state.gd",
             "symbol": "class_name LocationNoteState"
           },
           {
@@ -10256,7 +10256,7 @@
             "symbol": "func _set_combat_auto("
           },
           {
-            "path": "src/game/state/game_state.gd",
+            "path": "src/game/shared/game_state.gd",
             "symbol": "func set_combat_auto("
           }
         ]
@@ -10358,7 +10358,7 @@
             "symbol": "func probe_delay("
           },
           {
-            "path": "src/game/state/combat_state.gd",
+            "path": "src/game/combat/combat_state.gd",
             "symbol": "func delay_active_actor("
           }
         ]
@@ -10463,7 +10463,7 @@
             "symbol": "func probe_bandage("
           },
           {
-            "path": "src/game/state/combat_actor_status_state.gd",
+            "path": "src/game/combat/combat_actor_status_state.gd",
             "symbol": "func set_character_bleeding("
           }
         ]
@@ -10673,11 +10673,11 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/game/state/combat_state.gd",
+            "path": "src/game/combat/combat_state.gd",
             "symbol": "class_name CombatState"
           },
           {
-            "path": "src/game/state/combat_undo_state.gd",
+            "path": "src/game/combat/combat_undo_state.gd",
             "symbol": "class_name CombatUndoState"
           },
           {

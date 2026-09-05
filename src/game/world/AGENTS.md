@@ -11,6 +11,8 @@ Own immutable world topology definitions, the authoritative game clock, and pure
 - `ClassicLandTileRules` for signed Castle land-tile identities and effective presentation profiles.
 - `RealmzClock` for the save-owned minute count and deterministic day, hour, and minute projection.
 - `ClockRules` for fatigue, condition ticks, spell recovery, aging, ration use, and half-day health recovery.
+- `WorldState` gathers mutable world truth while `WorldTopologyState`, `WorldTriggerState`, and `WorldExplorationState` own altered topology, trigger state, and discovery history.
+- `RandomRegionState` and `LocationNoteState` retain mutable random-region and player-note facts.
 
 ## Local Contracts
 

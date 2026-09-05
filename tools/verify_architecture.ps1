@@ -378,11 +378,11 @@ foreach ($rootPath in @("src\game", "src\playthrough", "src\scenarios", "src\sto
 
 # WorldState is a save aggregate, not a broad forwarding API. Physical map
 # changes, encounter triggers, and exploration memory have direct state owners.
-$worldStatePath = Join-Path $repoRoot "src\game\state\world_state.gd"
+$worldStatePath = Join-Path $repoRoot "src\game\world\world_state.gd"
 $worldCollaboratorPaths = @(
-    "src\game\state\world_topology_state.gd",
-    "src\game\state\world_trigger_state.gd",
-    "src\game\state\world_exploration_state.gd",
+    "src\game\world\world_topology_state.gd",
+    "src\game\world\world_trigger_state.gd",
+    "src\game\world\world_exploration_state.gd",
     "src\game\world\classic_land_tile_rules.gd"
 )
 foreach ($relativePath in $worldCollaboratorPaths) {
@@ -394,7 +394,7 @@ $worldAggregateMethodPattern = '(?:terrain_for|replace_terrain|has_terrain_overr
 if (Test-Path -LiteralPath $worldStatePath) {
     $worldStateContent = [IO.File]::ReadAllText($worldStatePath)
     if ($worldStateContent -match ('(?m)^(?:static\s+)?func\s+' + $worldAggregateMethodPattern + '\s*\(')) {
-        $violations += "src/game/state/world_state.gd must not forward or re-own topology, trigger, or exploration behavior"
+        $violations += "src/game/world/world_state.gd must not forward or re-own topology, trigger, or exploration behavior"
     }
 }
 foreach ($rootPath in @("src\game", "src\playthrough", "src\scenarios", "src\storage", "src\ui", "src\app")) {
