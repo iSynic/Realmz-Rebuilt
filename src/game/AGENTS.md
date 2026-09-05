@@ -198,7 +198,7 @@ Own the pure Realmz model, fixed Classic rules, topology, game clock, randomness
 - `characters/AGENTS.md` owns mutable character truth, its save codec, character rules, lifetime history, and detached character views.
 - `combat/AGENTS.md` owns the explicit combat collaborator context, combat-owned event construction, and the public maintainer guide for that feature seam.
 - `economy/AGENTS.md` owns money and temple rules, mutable location services, shop state, wealth records, and detached service views.
-- `inventory/AGENTS.md` owns immutable item lookup and the inventory feature's migration boundary.
+- `inventory/AGENTS.md` owns immutable item lookup, carried-item rules, wearable equipment rules, and their typed results.
 - `magic/AGENTS.md` owns immutable spell lookup and the magic feature's migration boundary.
 - `scenario/AGENTS.md` owns immutable scenario definitions and pure mutable scenario-progress state.
 - `shared/AGENTS.md` owns narrowly reusable pure game values and stable host-facing value contracts.
