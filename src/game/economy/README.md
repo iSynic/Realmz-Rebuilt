@@ -7,6 +7,7 @@ This feature owns the rules and mutable facts for money, shops, temples, and ban
 - `LocationServiceState` stores the current location's service availability and mutable shop stock.
 - `LocationServiceStateCodec` preserves those facts in the established flat `GameState` save dictionary.
 - `EconomyContentCatalog` resolves neighboring immutable `TreasureDefinition` and `ShopDefinition` records through `RealmzContent.economy`.
+- `TreasureRoll` is the typed deterministic result produced from an immutable Treasure definition before distribution.
 - `WealthState` and the detached money/service views carry the feature's mutable and presentation-facing records.
 - `requests/` contains the detached Bank, service, Shop, Temple, and Treasure bodies carried by `InteractionRequest`.
 

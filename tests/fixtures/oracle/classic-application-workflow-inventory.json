@@ -3318,7 +3318,7 @@
             "symbol": "func advance_classic_field_time"
           },
           {
-            "path": "src/game/rules/condition_rules.gd",
+            "path": "src/game/shared/condition_rules.gd",
             "symbol": "func tick_party"
           },
           {

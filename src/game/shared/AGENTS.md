@@ -11,6 +11,8 @@ Own the small pure values that genuinely cross several game features or form a s
 - `DomainEvent` carries detached committed-event data across the playthrough boundary.
 - `GameState` is the thin save-owned aggregate that gathers feature state without re-owning feature behavior.
 - `ConditionSet` is the reusable mutable condition value shared by characters and monsters.
+- `ConditionRules` names the shared Classic condition slots and calculations interpreted by character, monster, combat, and magic features.
+- `RealmzRules` is the narrow composition object that constructs and exposes the feature rule collaborators used by one session; behavior remains with those collaborators.
 - `media/` owns immutable media descriptors and the read-only media-source port; adapters still own bytes and I/O.
 - `presentation/` owns host presentation settings that never enter an adventure save.
 - `view/` owns only the general detached `ActionAvailabilityView`, `DefinitionOptionView`, and `ViewChangeSet` atoms.
