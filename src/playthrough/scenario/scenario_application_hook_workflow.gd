@@ -13,10 +13,10 @@ const RESUME_KINDS: Array[StringName] = [
 ]
 
 
-static func continuation(content: RealmzContent, hook: StringName, resume_kind: StringName, service_id: String, suspended: ApplicationContinuationBody = null) -> SessionContinuation:
+static func continuation(content: RealmzContent, hook: StringName, resume_kind: StringName, service_id: String, suspended: ScenarioApplicationContinuationBody = null) -> SessionContinuation:
 	if resume_kind not in RESUME_KINDS:
 		return null
-	var body := suspended if suspended != null else ApplicationContinuationBody.new()
+	var body := suspended if suspended != null else ScenarioApplicationContinuationBody.new()
 	body.hook = hook
 	body.program_id = content.scenario.application_hook_program_id(hook)
 	body.resume_kind = resume_kind
@@ -28,5 +28,5 @@ static func start_context(hook: StringName, service_id: String) -> ScenarioExecu
 	return ScenarioExecutionContext.calling(&"lifecycle").set_application_hook(hook, service_id)
 
 
-static func completion_event(body: ApplicationContinuationBody) -> DomainEvent:
+static func completion_event(body: ScenarioApplicationContinuationBody) -> DomainEvent:
 	return DomainEvent.new(&"application_hook_completed", {"hook": String(body.hook), "programId": body.program_id})

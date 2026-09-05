@@ -15,12 +15,12 @@ static func _decode_payload(kind: StringName, data: Dictionary) -> SessionContin
 		&"post-clock": return _decode_post_clock(data)
 		&"post-move": return _decode_post_move(data)
 		&"boat-choice": return _decode_boat(data)
-		&"application-hook": return _decode_application(data)
+		&"application-hook": return _decode_application_hook(data)
 		&"character-spell-confirmation":
 			var remaining := _integer(data.get("remaining"))
-			return ApplicationContinuations.character_spell_confirmation(data["characterId"], remaining) if _has_exact_fields(data, ["characterId", "remaining"]) and data.get("characterId") is String and not data["characterId"].is_empty() and remaining >= 1 else null
+			return CharacterContinuations.spell_confirmation(data["characterId"], remaining) if _has_exact_fields(data, ["characterId", "remaining"]) and data.get("characterId") is String and not data["characterId"].is_empty() and remaining >= 1 else null
 		&"character-vault-publication":
-			return ApplicationContinuations.character_vault_publication(data["characterId"]) if _has_exact_fields(data, ["characterId"]) and data.get("characterId") is String and not data["characterId"].is_empty() else null
+			return CharacterContinuations.vault_publication(data["characterId"]) if _has_exact_fields(data, ["characterId"]) and data.get("characterId") is String and not data["characterId"].is_empty() else null
 		&"item-use-target-selection", &"field-spell-target-selection", &"scroll-target-selection", &"scroll-discard-confirmation", &"drop-item-confirmation":
 			return _decode_targeting(kind, data)
 		&"item-xap": return _decode_item_xap(data)
@@ -89,14 +89,14 @@ static func _decode_boat(data: Dictionary) -> SessionContinuation:
 	return ExplorationContinuations.boat_choice(body)
 
 
-static func _decode_application(data: Dictionary) -> SessionContinuation:
+static func _decode_application_hook(data: Dictionary) -> SessionContinuation:
 	var scenario_defeat: bool = data.get("resumeKind") == "scenario-party-defeat"
 	var fields: Array[String] = ["hook", "programId", "resumeKind", "serviceId", "partyRevived"]
 	if scenario_defeat:
 		fields.append_array(["suspendedVm", "suspendedOwner", "vmHandoff"])
 	if not _has_exact_fields(data, fields) or not data.get("hook") is String or not data.get("programId") is String or data["programId"].is_empty() or not data.get("resumeKind") is String or not data.get("serviceId") is String or not data.get("partyRevived") is bool:
 		return null
-	var body := ApplicationContinuationBody.new()
+	var body := ScenarioApplicationContinuationBody.new()
 	body.hook = StringName(data["hook"])
 	body.program_id = data["programId"]
 	body.resume_kind = StringName(data["resumeKind"])
@@ -110,10 +110,10 @@ static func _decode_application(data: Dictionary) -> SessionContinuation:
 		body.vm_handoff = ScenarioVmHandoff.from_data(data["vmHandoff"])
 		if body.suspended_vm == null or body.suspended_owner == null or body.suspended_owner.kind not in [&"post-clock", &"post-move"] or body.vm_handoff == null:
 			return null
-	return ApplicationContinuations.hook(body)
+	return ScenarioContinuations.application_hook(body)
 
 
-static func _valid_application_hook(body: ApplicationContinuationBody) -> bool:
+static func _valid_application_hook(body: ScenarioApplicationContinuationBody) -> bool:
 	match body.resume_kind:
 		&"begin-adventure": return body.hook == ScenarioApplicationHooks.START_GAME and body.service_id.is_empty()
 		&"service": return body.hook in [ScenarioApplicationHooks.SHOP, ScenarioApplicationHooks.TEMPLE] and not body.service_id.is_empty()
@@ -208,7 +208,7 @@ static func _decode_age(data: Dictionary) -> SessionContinuation:
 			return null
 	else:
 		return null
-	return ApplicationContinuations.age_updates(body)
+	return CharacterContinuations.age_updates(body)
 
 
 static func _decode_combat(kind: StringName, data: Dictionary) -> SessionContinuation:

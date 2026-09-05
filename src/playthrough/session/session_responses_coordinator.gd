@@ -354,7 +354,7 @@ func _respond_character_spell_confirmation(response: InteractionResponse) -> Ses
 	var body = response.body as InteractionResponse.YesNoBody
 	if response.kind != InteractionRequest.YES_NO or body == null:
 		return SessionCoordinatorResult.failed(&"invalid_interaction_response", "Starting-spell confirmation requires a yes/no response.")
-	var application = _context.session_continuation.application()
+	var application = _context.session_continuation.character_spell_confirmation()
 	if application == null:
 		return SessionCoordinatorResult.failed(&"invalid_session_continuation", "The character awaiting starting-spell confirmation is unavailable.")
 	var character_id = application.character_id
@@ -371,7 +371,7 @@ func _respond_character_vault_publication(response: InteractionResponse) -> Sess
 	var body = response.body as InteractionResponse.YesNoBody
 	if response.kind != InteractionRequest.YES_NO or body == null:
 		return SessionCoordinatorResult.failed(&"invalid_interaction_response", "Character-vault publication requires a yes/no response.")
-	var application = _context.session_continuation.application()
+	var application = _context.session_continuation.character_vault_publication()
 	if application == null:
 		return SessionCoordinatorResult.failed(&"invalid_session_continuation", "The character awaiting vault publication is unavailable.")
 	var character_id = application.character_id
@@ -432,7 +432,7 @@ func finish_with_age_updates(events: Array[DomainEvent], resume_kind: StringName
 	age.index = 1
 	age.resume_kind = resume_kind
 	age.resume_continuation = null if resume_continuation == null else resume_continuation.copy()
-	_context.set_continuation(ApplicationContinuations.age_updates(age))
+	_context.set_continuation(CharacterContinuations.age_updates(age))
 	_context.session_interaction = InteractionRequest.age_update_body(_session_age_update_request_id(updates[0], 0), updates[0])
 	events.append(CharacterAgingResult.sound_event_for_update(updates[0]))
 	return SessionCoordinatorResult.waiting(_context.session_interaction, events)
@@ -584,7 +584,7 @@ func _commit_character_draft(events: Array[DomainEvent] = []) -> SessionCoordina
 		return SessionCoordinatorResult.failed(result.error_code, result.error_message, events)
 	events.append_array(result.events)
 	var request_id := "character-vault:%s:%d" % [result.character_id, _context.next_revision()]
-	_context.set_continuation(ApplicationContinuations.character_vault_publication(result.character_id))
+	_context.set_continuation(CharacterContinuations.vault_publication(result.character_id))
 	_context.session_interaction = SessionInteractionFactory.character_vault_confirmation(request_id, result.character_name)
 	events.append(DomainEvent.new(&"character_vault_confirmation_requested", {"characterId": result.character_id}))
 	return SessionCoordinatorResult.waiting(_context.session_interaction, events)

@@ -10,7 +10,7 @@ Read `CharacterRules.create_character` from top to bottom as the creation ledger
 
 `LifecyclePartyWorkflow.import_vault_character` is the campaign-admission ledger for a detached Character Files revision. Read its helpers in order: definition eligibility checks race, class, restrictions, exact item ownership, and campaign-derived load; magic eligibility checks known spells, Scroll Case, and Fast Spell bindings; appearance eligibility checks portrait and tactical-icon roles. Only after those phases does the workflow reject a duplicate party identity or insert the copied character. This keeps portable character data independent while resolving its authored references through the active campaign catalogs.
 
-Character spell-point confirmation, Character Files publication, and source-ordered age acknowledgements resume through `ApplicationContinuations` and their typed application or age payload. They share the versioned session envelope without making character state responsible for save decoding.
+Character spell-point confirmation, Character Files publication, and source-ordered age acknowledgements resume through `CharacterContinuations` beside their distinct typed payloads in `src/playthrough/characters`. They share the versioned session envelope without making character state responsible for save decoding.
 
 Preserve stable character, race, caste, portrait, combat-icon, item-instance, and spell identities. Character Files are immutable revisions managed by storage, while an active adventure owns a detached imported copy. Tests are concentrated in the character cases of `test_realmz_rules.gd` and the public appearance and party-order workflows.
 

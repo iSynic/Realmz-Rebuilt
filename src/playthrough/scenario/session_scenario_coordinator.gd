@@ -9,12 +9,12 @@ var _context: SessionContext
 func _init(context: SessionContext) -> void:
 	_context = context
 
-func start_application_hook(hook: StringName, resume_kind: StringName, service_id: String, preceding_events: Array[DomainEvent], suspended: ApplicationContinuationBody = null) -> SessionCoordinatorResult:
+func start_application_hook(hook: StringName, resume_kind: StringName, service_id: String, preceding_events: Array[DomainEvent], suspended: ScenarioApplicationContinuationBody = null) -> SessionCoordinatorResult:
 	var continuation = ScenarioApplicationHookWorkflow.continuation(_context.content, hook, resume_kind, service_id, suspended)
 	if continuation == null:
 		return SessionCoordinatorResult.failed(&"invalid_application_hook_resume", "The application hook has an unsupported resume path.", preceding_events)
 	_context.session_continuation = continuation
-	var body = _context.session_continuation.body as ApplicationContinuationBody
+	var body = _context.session_continuation.body as ScenarioApplicationContinuationBody
 	var program_id = body.program_id
 	if program_id.is_empty():
 		return continue_application_hook(preceding_events)
@@ -40,7 +40,7 @@ func start_application_hook(hook: StringName, resume_kind: StringName, service_i
 
 
 func continue_application_hook(events: Array[DomainEvent]) -> SessionCoordinatorResult:
-	var body = _context.session_continuation.body as ApplicationContinuationBody
+	var body = _context.session_continuation.body as ScenarioApplicationContinuationBody
 	if body == null:
 		return SessionCoordinatorResult.failed(&"invalid_session_continuation", "Application-hook continuation body is unavailable.", events)
 	var hook = body.hook
@@ -94,7 +94,7 @@ func begin_scenario_handoff(result: ScenarioVmResult, events: Array[DomainEvent]
 	if not ScenarioVm.handoff_is_valid(result.handoff, saved) or not RealmzRuntimeApi.party_defeat_handoff_is_valid(_context.content, _context.state, result.handoff.runtime):
 		_context.session_continuation.clear()
 		return SessionCoordinatorResult.failed(&"invalid_party_defeat_handoff", "The Scenario VM total-party defeat handoff is invalid.", events)
-	var suspended = ApplicationContinuationBody.new()
+	var suspended = ScenarioApplicationContinuationBody.new()
 	suspended.suspended_vm = ScenarioVmSnapshot.from_data(saved.to_data())
 	suspended.suspended_owner = _context.session_continuation.copy()
 	suspended.vm_handoff = result.handoff.copy()

@@ -10,6 +10,8 @@ Own character creation, party admission, finalization, and lifecycle transaction
 - `LifecyclePartyWorkflow` owns reusable-character admission, party insertion, Begin Adventure, age checks, and lifecycle party operations.
 - `CharacterFinalizeWorkflowResult` carries typed finalization outcomes back to the session boundary.
 - `AgeContinuationBody` retains the source-ordered age acknowledgement needed to resume a saveable transaction.
+- `CharacterContinuations` constructs starting-spell, Character Files publication, and age-update continuations from their feature-owned payloads.
+- `CharacterSpellConfirmationContinuationBody` and `CharacterVaultPublicationContinuationBody` carry only their distinct character-setup facts.
 
 ## Local Contracts
 
@@ -17,6 +19,7 @@ Own character creation, party admission, finalization, and lifecycle transaction
 - Character Files import validates active-campaign race, caste, item, load, spell, scroll, Fast Spell, portrait, and combat-icon identities before one insertion.
 - Every failed admission leaves the party and reusable Character Files revision unchanged.
 - Creation and aging preserve Castle RNG order, stable identities, continuation fields, and save representation.
+- Character continuation kinds remain distinct typed payloads even though their saved field names are unchanged.
 - `GameSession` alone commits, rolls back, changes revision, and constructs the public step.
 
 ## Work Guidance

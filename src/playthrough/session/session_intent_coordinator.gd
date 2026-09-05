@@ -311,7 +311,7 @@ func _finalize_character() -> SessionCoordinatorResult:
 	if not result.ok:
 		return SessionCoordinatorResult.failed(result.error_code, result.error_message, result.events)
 	if result.remaining_spell_points > 0:
-		_context.set_continuation(ApplicationContinuations.character_spell_confirmation(result.character_id, result.remaining_spell_points))
+		_context.set_continuation(CharacterContinuations.spell_confirmation(result.character_id, result.remaining_spell_points))
 		_context.session_interaction = SessionInteractionFactory.character_spell_confirmation("character-spells:%s:%d" % [result.character_id, _context.next_revision()], result.remaining_spell_points)
 		return SessionCoordinatorResult.waiting(_context.session_interaction, [DomainEvent.new(&"character_spell_confirmation_requested", {"characterId": result.character_id, "remaining": result.remaining_spell_points})])
 	return _commit_character_draft()
@@ -322,7 +322,7 @@ func _commit_character_draft(events: Array[DomainEvent] = []) -> SessionCoordina
 	if not result.ok:
 		return SessionCoordinatorResult.failed(result.error_code, result.error_message, events)
 	events.append_array(result.events)
-	_context.set_continuation(ApplicationContinuations.character_vault_publication(result.character_id))
+	_context.set_continuation(CharacterContinuations.vault_publication(result.character_id))
 	_context.session_interaction = SessionInteractionFactory.character_vault_confirmation("character-vault:%s:%d" % [result.character_id, _context.next_revision()], result.character_name)
 	events.append(DomainEvent.new(&"character_vault_confirmation_requested", {"characterId": result.character_id}))
 	return SessionCoordinatorResult.waiting(_context.session_interaction, events)

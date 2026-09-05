@@ -27,8 +27,16 @@ func exploration() -> ExplorationContinuationBody:
 	return body as ExplorationContinuationBody
 
 
-func application() -> ApplicationContinuationBody:
-	return body as ApplicationContinuationBody
+func application_hook() -> ScenarioApplicationContinuationBody:
+	return body as ScenarioApplicationContinuationBody
+
+
+func character_spell_confirmation() -> CharacterSpellConfirmationContinuationBody:
+	return body as CharacterSpellConfirmationContinuationBody
+
+
+func character_vault_publication() -> CharacterVaultPublicationContinuationBody:
+	return body as CharacterVaultPublicationContinuationBody
 
 
 func targeting() -> TargetingContinuationBody:

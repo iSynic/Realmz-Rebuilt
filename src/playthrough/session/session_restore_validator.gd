@@ -167,7 +167,7 @@ static func _valid_session_continuation(content: RealmzContent, state: GameState
 
 
 static func _valid_application_continuation(content: RealmzContent, state: GameState, continuation: SessionContinuation, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
-	var application := continuation.application()
+	var application := continuation.application_hook()
 	if application == null or vm_interaction == null or session_interaction != null or application.program_id.is_empty():
 		return false
 	if content.scenario.application_hook_program_id(application.hook) != application.program_id or content.scenario.program_by_id(application.program_id) == null:
@@ -229,7 +229,7 @@ static func _valid_service_continuation(content: RealmzContent, state: GameState
 
 
 static func _valid_character_spell_continuation(content: RealmzContent, state: GameState, continuation: SessionContinuation, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
-	var application := continuation.application()
+	var application := continuation.character_spell_confirmation()
 	if application == null or vm_interaction != null or session_interaction == null or state.party_setup_completed or state.character_draft == null or state.character_draft.generated_character == null:
 		return false
 	var character := state.character_draft.generated_character
@@ -244,7 +244,7 @@ static func _valid_character_spell_continuation(content: RealmzContent, state: G
 
 
 static func _valid_character_vault_continuation(state: GameState, continuation: SessionContinuation, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
-	var application := continuation.application()
+	var application := continuation.character_vault_publication()
 	if application == null or vm_interaction != null or session_interaction == null or state.party_setup_completed:
 		return false
 	var character := state.party.character_by_id(application.character_id)

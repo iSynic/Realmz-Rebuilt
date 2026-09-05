@@ -1,6 +1,6 @@
-## Carries application hooks and character-library lifecycle handoffs.
+## Carries application hooks and suspended scenario handoffs.
 
-class_name ApplicationContinuationBody
+class_name ScenarioApplicationContinuationBody
 extends SessionContinuationBody
 
 var hook: StringName
@@ -11,15 +11,9 @@ var party_revived: bool
 var suspended_vm: ScenarioVmSnapshot
 var suspended_owner: SessionContinuation
 var vm_handoff: ScenarioVmHandoff
-var character_id: String
-var remaining: int
 
 
 func wire_payload(kind: StringName) -> Dictionary:
-	if kind == &"character-spell-confirmation":
-		return {"kind": String(kind), "characterId": character_id, "remaining": remaining}
-	if kind == &"character-vault-publication":
-		return {"kind": String(kind), "characterId": character_id}
 	var data := {"kind": String(kind), "hook": String(hook), "programId": program_id, "resumeKind": String(resume_kind), "serviceId": service_id, "partyRevived": party_revived}
 	if resume_kind == &"scenario-party-defeat":
 		data["suspendedVm"] = {} if suspended_vm == null else suspended_vm.to_data()

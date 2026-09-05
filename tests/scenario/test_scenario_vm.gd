@@ -134,7 +134,7 @@ func _test_session_continuation_contracts() -> void:
 	post_move.map_id = "land:0"; post_move.coordinate = Vector2i(13, 34); post_move.trigger_index = 0; post_move.random_region_index = -1
 	var boat := BoatContinuationBody.new()
 	boat.action = &"board"; boat.source_map_id = "land:0"; boat.source_coordinate = Vector2i(12, 34); boat.target_map_id = "land:0"; boat.target_coordinate = Vector2i(13, 34); boat.direction = Vector2i.RIGHT
-	var application := ApplicationContinuationBody.new()
+	var application := ScenarioApplicationContinuationBody.new()
 	application.hook = ScenarioApplicationHooks.START_GAME; application.program_id = "xap:1"; application.resume_kind = &"begin-adventure"
 	var item_target := TargetingContinuationBody.new()
 	item_target.character_id = "character.1"; item_target.instance_id = "item.1"; item_target.spell_id = "classic.spell.1"; item_target.power = 1; item_target.target_count = 1; item_target.starting_charges = 2
@@ -162,10 +162,10 @@ func _test_session_continuation_contracts() -> void:
 	reward_state.battle_stage = ClassicRewardState.ORDINARY_BATTLE_STAGE
 	var reward_runtime := ScenarioRewardContinuations.reward(reward_state)
 	var continuations: Array[SessionContinuation] = [
-		ExplorationContinuations.post_clock(post_clock), ExplorationContinuations.post_move(post_move), ExplorationContinuations.boat_choice(boat), ApplicationContinuations.hook(application),
-		ApplicationContinuations.character_spell_confirmation("character.1", 3), ApplicationContinuations.character_vault_publication("character.1"),
+		ExplorationContinuations.post_clock(post_clock), ExplorationContinuations.post_move(post_move), ExplorationContinuations.boat_choice(boat), ScenarioContinuations.application_hook(application),
+		CharacterContinuations.spell_confirmation("character.1", 3), CharacterContinuations.vault_publication("character.1"),
 		InventoryContinuations.item_target(item_target), MagicContinuations.field_spell_target(spell_target), MagicContinuations.scroll_target(scroll_target), MagicContinuations.scroll_discard(scroll_discard), InventoryContinuations.drop_confirmation(drop_item),
-		InventoryContinuations.item_xap(item_xap), ServiceContinuations.interaction("bank.1", ScenarioServiceContinuations.banking()), ServiceContinuations.pooled_wealth_departure(&"warning", Vector2i.RIGHT), ApplicationContinuations.age_updates(age),
+		InventoryContinuations.item_xap(item_xap), ServiceContinuations.interaction("bank.1", ScenarioServiceContinuations.banking()), ServiceContinuations.pooled_wealth_departure(&"warning", Vector2i.RIGHT), CharacterContinuations.age_updates(age),
 		CombatContinuations.retreat_confirmation(retreat), CombatContinuations.friendly_collision(collision), CombatContinuations.death_macro(death_macro), CombatContinuations.ally_selection(_session_combat_body("classic.battle.1")), CombatContinuations.fumble_recovery(_session_combat_body("classic.battle.1")), CombatContinuations.reward("classic.battle.1", reward_runtime),
 	]
 	var kinds: Dictionary = {}

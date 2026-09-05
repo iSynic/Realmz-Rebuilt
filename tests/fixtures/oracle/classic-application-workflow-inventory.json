@@ -8373,15 +8373,15 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/playthrough/coordinators/session_scenario_coordinator.gd",
+            "path": "src/playthrough/scenario/session_scenario_coordinator.gd",
             "symbol": "func finish_direct_battle"
           },
           {
-            "path": "src/playthrough/coordinators/session_scenario_coordinator.gd",
+            "path": "src/playthrough/scenario/session_scenario_coordinator.gd",
             "symbol": "func begin_scenario_handoff"
           },
           {
-            "path": "src/playthrough/coordinators/session_scenario_coordinator.gd",
+            "path": "src/playthrough/scenario/session_scenario_coordinator.gd",
             "symbol": "func resume_scenario_party_defeat"
           },
           {
