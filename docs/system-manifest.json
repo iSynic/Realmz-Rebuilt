@@ -42,7 +42,7 @@
       "id": "economy-services",
       "boundary": "game",
       "guide": "docs/features/economy-and-services.md",
-      "entryPoints": ["src/game/economy", "src/playthrough/economy", "src/playthrough/economy/session_money_workflow.gd", "src/scenarios/runtime/operations/classic_service_operations.gd"],
+      "entryPoints": ["src/game/economy", "src/playthrough/economy", "src/playthrough/economy/session_money_workflow.gd", "src/scenarios/classic/operations/classic_service_operations.gd"],
       "publicInterfaces": ["EconomyContentCatalog", "EconomyRules", "EconomyActionProbe", "TempleRules", "TempleServiceResult", "LocationServiceState", "LocationServiceStateCodec", "ShopDefinition", "WealthState", "MoneyWorkspaceView", "MoneyTransferView", "MoneyCharacterView", "ServiceView", "EconomyIntents", "EconomyIntentPayloads"],
       "tests": ["tests/integration/test_money_workflow.gd", "tests/integration/test_session_persistence.gd", "tests/scenario/test_scenario_vm.gd"],
       "performanceProbes": ["tools/combat_performance_probe.gd"]
@@ -87,8 +87,8 @@
       "id": "scenario-runtime",
       "boundary": "scenarios",
       "guide": "docs/features/scenario-runtime.md",
-      "entryPoints": ["src/scenarios/vm/scenario_vm.gd", "src/scenarios/vm/scenario_classic_control_flow.gd", "src/scenarios/runtime/realmz_runtime_api.gd", "src/scenarios/runtime/operations/classic_control_flow_operations.gd", "src/scenarios/runtime/scenario_execution_context.gd", "src/scenarios/runtime/scenario_execution_context_codec.gd", "src/scenarios/runtime/scenario_runtime_continuation.gd", "src/scenarios/runtime/continuations"],
-      "publicInterfaces": ["ScenarioVm", "RealmzRuntimeApi", "ScenarioExecutionContext", "ScenarioExecutionContextCodec", "ScenarioRuntimeContinuation", "ScenarioRuntimeContinuationBody", "ScenarioRuntimeContinuationCodec", "ScenarioInteractionContinuations", "ScenarioAgeContinuations", "ScenarioServiceContinuations", "ScenarioCombatContinuations", "ScenarioRewardContinuations"],
+      "entryPoints": ["src/scenarios/classic", "src/scenarios/classic/classic_opcode_catalog.gd", "src/scenarios/classic/classic_opcode_handler_registry.gd", "src/scenarios/classic/scenario_classic_control_flow.gd", "src/scenarios/classic/operations/classic_control_flow_operations.gd", "src/scenarios/runtime/realmz_runtime_api.gd", "src/scenarios/runtime/scenario_execution_context.gd", "src/scenarios/runtime/scenario_execution_context_codec.gd", "src/scenarios/runtime/scenario_runtime_continuation.gd", "src/scenarios/runtime/continuations", "src/scenarios/vm/scenario_vm.gd"],
+      "publicInterfaces": ["ClassicOpcodeCatalog", "ClassicOpcodeHandler", "ClassicOpcodeHandlerRegistry", "ScenarioClassicControlFlow", "ClassicControlFlowOperations", "ScenarioVm", "RealmzRuntimeApi", "ScenarioExecutionContext", "ScenarioExecutionContextCodec", "ScenarioRuntimeContinuation", "ScenarioRuntimeContinuationBody", "ScenarioRuntimeContinuationCodec", "ScenarioInteractionContinuations", "ScenarioAgeContinuations", "ScenarioServiceContinuations", "ScenarioCombatContinuations", "ScenarioRewardContinuations"],
       "tests": ["tests/scenario/test_scenario_vm.gd", "tests/scenario/test_reward_workflow.gd"],
       "performanceProbes": ["tools/combat_performance_probe.gd"]
     },

@@ -6,7 +6,10 @@ Own the serializable Scenario VM, Classic instructions, Safe Scenario Actions, c
 
 ## Ownership
 
-- VM instruction/frame/trace/limit models and execution.
+- `classic/` owns Castle opcode identity, registration, handlers, control-flow transitions, and source-backed domain operations.
+- `actions/` owns Safe Scenario Action evaluation and mutable action state; immutable compiled definitions remain in `src/game/scenario`.
+- `runtime/` owns the session-constructed API, execution context, result/handoff records, and strict suspended-operation continuations.
+- `vm/` owns instruction/frame/trace/limit models and execution pacing.
 - `SafeExpressionEvaluator` owns bounded expression, declared-value-type, and ordered call/instruction argument evaluation. `ScenarioVm` owns frames, action operation/call/set/condition/return phases, suspension, and transaction pacing.
 - `ScenarioClassicControlFlow` owns Classic AP/XAP program transfer, encounter-result/repeat, GOSUB-depth, and encounter-exit frame mutations. It returns a typed `ScenarioDirectiveTransition`; `ScenarioVm` alone applies halt, timeline completion, frame return, and trace publication.
 - Classic AP, XAP, encounter, GOSUB, return, and result semantics.
@@ -18,7 +21,7 @@ Own the serializable Scenario VM, Classic instructions, Safe Scenario Actions, c
 - The VM is presentation-independent and serializable at every interaction yield.
 - Scenario execution depends only on game models/contracts; immutable instruction and program records cross inward from `src/game/scenario` without importing executor behavior back into core.
 - Domain mutations execute through one session-owned `RealmzRuntimeApi`; there are no Godot ports or dynamic GDScript fallbacks.
-- `RealmzRuntimeApi` is the single VM boundary and delegates source-backed work to typed domain executors under `runtime/operations`; those executors cannot bypass `GameState`, `RealmzRules`, or the session RNG.
+- `RealmzRuntimeApi` is the single VM boundary and delegates source-backed Classic work to typed domain executors under `classic/operations`; those executors cannot bypass `GameState`, `RealmzRules`, or the session RNG.
 - Classic GOSUB depth is 20. Safe Action call depth is 32, program size 4,096 nodes, arrays 256 entries, and execution 65,536 steps.
 - Unknown instructions, IDs, capabilities, actions, and response shapes fail explicitly.
 - Safe Scenario Actions may request explicit elapsed minutes through the time capability, but they do not expose the player-facing Camp/Rest workflow as a capability. Camp mode, held Rest pulses, random interruption, and movement departure remain session-owned typed intents and continuations.
@@ -92,4 +95,5 @@ Own the serializable Scenario VM, Classic instructions, Safe Scenario Actions, c
 
 ## Child DOX Index
 
-- `runtime/AGENTS.md` owns runtime dispatch, resume coordination, and Classic opcode handler registration.
+- `classic/AGENTS.md` owns Castle opcode dispatch, control flow, and source-backed runtime operations.
+- `runtime/AGENTS.md` owns the shared VM runtime API, execution records, and suspended-operation continuations.

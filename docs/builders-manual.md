@@ -45,7 +45,7 @@ The active `RealmzContent` is a directory, not a universal catalog clerk. Its `s
 
 `src/game` owns direct Realmz models, fixed Classic rules, topology, clock, RNG, and detached read-model contracts. It is pure typed GDScript: no Nodes, scenes, autoloads, time, files, audio, OS calls, or Godot RNG.
 
-`src/scenarios` owns the serializable VM and Scenario Action language. It asks a session-owned `RealmzRuntimeApi` for domain operations. The VM cannot discover Godot or call arbitrary scripts.
+`src/scenarios` owns four recognizable execution systems: `classic` for Castle opcodes and their source-backed operations, `actions` for Safe Scenario Action evaluation and state, `runtime` for the session-owned operation API and continuations, and `vm` for scheduling and serializable frames. The VM cannot discover Godot or call arbitrary scripts.
 
 `src/storage` owns untrusted package/save bytes, schema and hash validation, typed construction, persistence, migrations, and installed-content discovery.
 

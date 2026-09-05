@@ -1598,7 +1598,7 @@
           "classic.scenario.present-message-media"
         ],
         "evidence": {
-          "path": "src/scenarios/runtime/handlers/classic_presentation_opcode_handler.gd",
+          "path": "src/scenarios/classic/handlers/classic_presentation_opcode_handler.gd",
           "symbol": "1:"
         }
       },
@@ -1608,7 +1608,7 @@
           "classic.combat.enter-battle"
         ],
         "evidence": {
-          "path": "src/scenarios/runtime/operations/classic_battle_reward_operations.gd",
+          "path": "src/scenarios/classic/operations/classic_battle_reward_operations.gd",
           "symbol": "2, 48, 56, 107:"
         }
       },
@@ -1618,7 +1618,7 @@
           "classic.scenario.choose-response"
         ],
         "evidence": {
-          "path": "src/scenarios/runtime/handlers/classic_encounter_opcode_handler.gd",
+          "path": "src/scenarios/classic/handlers/classic_encounter_opcode_handler.gd",
           "symbol": "3:"
         }
       },
@@ -1628,7 +1628,7 @@
           "classic.scenario.choose-response"
         ],
         "evidence": {
-          "path": "src/scenarios/runtime/handlers/classic_encounter_opcode_handler.gd",
+          "path": "src/scenarios/classic/handlers/classic_encounter_opcode_handler.gd",
           "symbol": "4:"
         }
       },
@@ -1638,7 +1638,7 @@
           "classic.scenario.complex-interaction"
         ],
         "evidence": {
-          "path": "src/scenarios/runtime/handlers/classic_encounter_opcode_handler.gd",
+          "path": "src/scenarios/classic/handlers/classic_encounter_opcode_handler.gd",
           "symbol": "5:"
         }
       },
@@ -1648,7 +1648,7 @@
           "classic.services.shop"
         ],
         "evidence": {
-          "path": "src/scenarios/runtime/operations/classic_service_operations.gd",
+          "path": "src/scenarios/classic/operations/classic_service_operations.gd",
           "symbol": "6:"
         }
       },
@@ -1658,7 +1658,7 @@
           "classic.rewards.treasure-distribution"
         ],
         "evidence": {
-          "path": "src/scenarios/runtime/operations/classic_battle_reward_operations.gd",
+          "path": "src/scenarios/classic/operations/classic_battle_reward_operations.gd",
           "symbol": "10:"
         }
       },
@@ -1668,7 +1668,7 @@
           "classic.rewards.experience-level-up"
         ],
         "evidence": {
-          "path": "src/scenarios/runtime/operations/classic_battle_reward_operations.gd",
+          "path": "src/scenarios/classic/operations/classic_battle_reward_operations.gd",
           "symbol": "11:"
         }
       },
@@ -1678,7 +1678,7 @@
           "classic.scenario.present-message-media"
         ],
         "evidence": {
-          "path": "src/scenarios/runtime/handlers/classic_presentation_opcode_handler.gd",
+          "path": "src/scenarios/classic/handlers/classic_presentation_opcode_handler.gd",
           "symbol": "26:"
         }
       },
@@ -1688,7 +1688,7 @@
           "classic.scenario.present-message-media"
         ],
         "evidence": {
-          "path": "src/scenarios/runtime/handlers/classic_presentation_opcode_handler.gd",
+          "path": "src/scenarios/classic/handlers/classic_presentation_opcode_handler.gd",
           "symbol": "27:"
         }
       },
@@ -1698,7 +1698,7 @@
           "classic.maps.view-acquired"
         ],
         "evidence": {
-          "path": "src/scenarios/runtime/handlers/classic_world_time_opcode_handler.gd",
+          "path": "src/scenarios/classic/handlers/classic_world_time_opcode_handler.gd",
           "symbol": "29:"
         }
       },
@@ -1708,7 +1708,7 @@
           "classic.scenario.select-subject"
         ],
         "evidence": {
-          "path": "src/scenarios/runtime/operations/classic_character_operations.gd",
+          "path": "src/scenarios/classic/operations/classic_character_operations.gd",
           "symbol": "30:"
         }
       },
@@ -1718,7 +1718,7 @@
           "classic.scenario.select-subject"
         ],
         "evidence": {
-          "path": "src/scenarios/runtime/operations/classic_character_operations.gd",
+          "path": "src/scenarios/classic/operations/classic_character_operations.gd",
           "symbol": "31:"
         }
       },
@@ -1728,7 +1728,7 @@
           "classic.services.temple"
         ],
         "evidence": {
-          "path": "src/scenarios/runtime/operations/classic_service_operations.gd",
+          "path": "src/scenarios/classic/operations/classic_service_operations.gd",
           "symbol": "32:"
         }
       },
@@ -1738,7 +1738,7 @@
           "classic.inventory.scenario-escrow"
         ],
         "evidence": {
-          "path": "src/scenarios/runtime/operations/classic_inventory_operations.gd",
+          "path": "src/scenarios/classic/operations/classic_inventory_operations.gd",
           "symbol": "36:"
         }
       },
@@ -1748,7 +1748,7 @@
           "classic.combat.enter-battle"
         ],
         "evidence": {
-          "path": "src/scenarios/runtime/operations/classic_battle_reward_operations.gd",
+          "path": "src/scenarios/classic/operations/classic_battle_reward_operations.gd",
           "symbol": "2, 48, 56, 107:"
         }
       },
@@ -1758,7 +1758,7 @@
           "classic.services.bank"
         ],
         "evidence": {
-          "path": "src/scenarios/runtime/operations/classic_inventory_operations.gd",
+          "path": "src/scenarios/classic/operations/classic_inventory_operations.gd",
           "symbol": "49:"
         }
       },
@@ -1768,7 +1768,7 @@
           "classic.combat.enter-battle"
         ],
         "evidence": {
-          "path": "src/scenarios/runtime/operations/classic_battle_reward_operations.gd",
+          "path": "src/scenarios/classic/operations/classic_battle_reward_operations.gd",
           "symbol": "2, 48, 56, 107:"
         }
       },
@@ -1778,7 +1778,7 @@
           "classic.scenario.present-message-media"
         ],
         "evidence": {
-          "path": "src/scenarios/runtime/handlers/classic_presentation_opcode_handler.gd",
+          "path": "src/scenarios/classic/handlers/classic_presentation_opcode_handler.gd",
           "symbol": "62:"
         }
       },
@@ -1788,7 +1788,7 @@
           "classic.rewards.treasure-distribution"
         ],
         "evidence": {
-          "path": "src/scenarios/runtime/operations/classic_battle_reward_operations.gd",
+          "path": "src/scenarios/classic/operations/classic_battle_reward_operations.gd",
           "symbol": "65:"
         }
       },
@@ -1798,7 +1798,7 @@
           "classic.combat.enter-battle"
         ],
         "evidence": {
-          "path": "src/scenarios/runtime/operations/classic_battle_reward_operations.gd",
+          "path": "src/scenarios/classic/operations/classic_battle_reward_operations.gd",
           "symbol": "2, 48, 56, 107:"
         }
       }
@@ -3804,7 +3804,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/scenarios/runtime/handlers/classic_presentation_opcode_handler.gd",
+            "path": "src/scenarios/classic/handlers/classic_presentation_opcode_handler.gd",
             "symbol": "class_name ClassicPresentationOpcodeHandler"
           }
         ]
@@ -4048,7 +4048,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/scenarios/runtime/operations/classic_thief_encounter_operations.gd",
+            "path": "src/scenarios/classic/operations/classic_thief_encounter_operations.gd",
             "symbol": "class_name ClassicThiefEncounterOperations"
           },
           {
@@ -4176,7 +4176,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/scenarios/runtime/operations/classic_character_operations.gd",
+            "path": "src/scenarios/classic/operations/classic_character_operations.gd",
             "symbol": "class_name ClassicCharacterOperations"
           }
         ]
@@ -7264,7 +7264,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/scenarios/runtime/operations/classic_banking_operations.gd",
+            "path": "src/scenarios/classic/operations/classic_banking_operations.gd",
             "symbol": "func resume"
           },
           {
@@ -8389,7 +8389,7 @@
             "symbol": "func complete_party_defeat_handoff"
           },
           {
-            "path": "src/scenarios/runtime/operations/classic_battle_reward_builder.gd",
+            "path": "src/scenarios/classic/operations/classic_battle_reward_builder.gd",
             "symbol": "func begin_completed_battle_reward"
           }
         ]
@@ -8549,7 +8549,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/scenarios/runtime/operations/classic_reward_workflow.gd",
+            "path": "src/scenarios/classic/operations/classic_reward_workflow.gd",
             "symbol": "func begin_reward"
           }
         ]
@@ -8672,7 +8672,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/scenarios/runtime/operations/classic_reward_workflow.gd",
+            "path": "src/scenarios/classic/operations/classic_reward_workflow.gd",
             "symbol": "func _apply_reward_detection"
           }
         ]
@@ -8989,7 +8989,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/scenarios/runtime/operations/classic_reward_workflow.gd",
+            "path": "src/scenarios/classic/operations/classic_reward_workflow.gd",
             "symbol": "func _begin_reward_progression"
           }
         ]
@@ -9162,7 +9162,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/scenarios/runtime/handlers/classic_world_time_opcode_handler.gd",
+            "path": "src/scenarios/classic/handlers/classic_world_time_opcode_handler.gd",
             "symbol": "func _acquire_player_map"
           },
           {
