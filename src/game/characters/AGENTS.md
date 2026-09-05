@@ -20,6 +20,9 @@ Own one adventurer's mutable truth, derived character rules, detached presentati
 - Encoding preserves the existing field names, defaults, collection order, and legacy optional fields exactly.
 - Default save and Classic-array setters retain their gameplay clamps. The codec may bypass those clamps only after strict integer validation so historical state round-trips without reinterpretation.
 - `RealmzContent.characters` is the authoritative definition lookup. Party membership, persistence, and UI remain owned by their respective boundaries.
+- Character creation preserves Castle's exact draw order across attributes, the discarded seventh attribute roll, rare special bonuses, stamina, age, spellcaster setup, and requested starting-level advancement. Its named phases may reorganize calculations but may not reorder RNG or state mutation.
+- Classic strength bonuses live as the explicit brawn chart in `CharacterRules`; values outside the authored entries retain the established fallback and damage remains capped by the Caste maximum.
+- `CharacterView.copy_from` groups fields by identity, statistics, and immutable detached components. A new detached field must be added to the matching copy phase so cached status projections cannot silently lose it.
 
 ## Work Guidance
 

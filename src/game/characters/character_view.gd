@@ -279,6 +279,12 @@ static func _equipment_sensitive_status_changed(previous: Array[int], current: A
 
 
 func copy_from(source: CharacterView) -> void:
+	_copy_identity_from(source)
+	_copy_statistics_from(source)
+	_copy_components_from(source)
+
+
+func _copy_identity_from(source: CharacterView) -> void:
 	id = source.id
 	name = source.name
 	current_health = source.current_health
@@ -301,6 +307,9 @@ func copy_from(source: CharacterView) -> void:
 	gender_name = source.gender_name
 	portrait_id = source.portrait_id
 	combat_icon_id = source.combat_icon_id
+
+
+func _copy_statistics_from(source: CharacterView) -> void:
 	brawn = source.brawn
 	knowledge = source.knowledge
 	judgment = source.judgment
@@ -332,6 +341,9 @@ func copy_from(source: CharacterView) -> void:
 	prestige_penalty = source.prestige_penalty
 	lifetime_record = source.lifetime_record
 	record_available = source.record_available
+
+
+func _copy_components_from(source: CharacterView) -> void:
 	# These detached component arrays are immutable after publication. Sharing the
 	# unchanged arrays is the cheap aggregate boundary; a refresh replaces an
 	# affected array before writing to it, so earlier GameView snapshots remain

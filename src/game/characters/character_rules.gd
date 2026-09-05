@@ -19,74 +19,59 @@ const AGILITY_ABILITY_MODIFIERS := {
 	7: [-25, -20, -15, -10, -5, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70],
 	11: [-25, -20, -15, -10, -5, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70],
 }
+const STRENGTH_BONUSES_BY_BRAWN := {
+	4: Vector2i(-15, -1),
+	5: Vector2i(-10, -1),
+	6: Vector2i(-5, 0),
+	16: Vector2i(5, 1),
+	17: Vector2i(5, 2),
+	18: Vector2i(10, 2),
+	19: Vector2i(10, 3),
+	20: Vector2i(15, 3),
+	21: Vector2i(15, 4),
+	22: Vector2i(20, 4),
+	23: Vector2i(20, 5),
+	24: Vector2i(25, 5),
+	25: Vector2i(25, 6),
+	26: Vector2i(30, 6),
+	27: Vector2i(30, 7),
+	28: Vector2i(35, 7),
+	29: Vector2i(35, 8),
+	30: Vector2i(40, 8),
+}
 
 
 func strength_bonuses(brawn: int, maximum_damage_bonus: int) -> StrengthResult:
-	var hit := 0
-	var damage := 0
-	if brawn < 4:
-		hit = -20
-	else:
-		match brawn:
-			4:
-				hit = -15
-				damage = -1
-			5:
-				hit = -10
-				damage = -1
-			6: hit = -5
-			16:
-				hit = 5
-				damage = 1
-			17:
-				hit = 5
-				damage = 2
-			18:
-				hit = 10
-				damage = 2
-			19:
-				hit = 10
-				damage = 3
-			20:
-				hit = 15
-				damage = 3
-			21:
-				hit = 15
-				damage = 4
-			22:
-				hit = 20
-				damage = 4
-			23:
-				hit = 20
-				damage = 5
-			24:
-				hit = 25
-				damage = 5
-			25:
-				hit = 25
-				damage = 6
-			26:
-				hit = 30
-				damage = 6
-			27:
-				hit = 30
-				damage = 7
-			28:
-				hit = 35
-				damage = 7
-			29:
-				hit = 35
-				damage = 8
-			30:
-				hit = 40
-				damage = 8
-	damage = mini(damage, maximum_damage_bonus)
-	return StrengthResult.new(hit, damage)
+	var bonuses: Vector2i = Vector2i(-20, 0) if brawn < 4 else STRENGTH_BONUSES_BY_BRAWN.get(brawn, Vector2i.ZERO)
+	return StrengthResult.new(bonuses.x, mini(bonuses.y, maximum_damage_bonus))
 
 
 func create_character(character_id: String, character_name: String, race: RaceDefinition, caste: CasteDefinition, gender: int, rng: RealmzRng, include_initial_items: bool = true, starting_level: int = 1) -> CharacterState:
 	if race == null or caste == null or rng == null or not STARTING_LEVELS.has(starting_level):
 		return null
+	var attributes := _roll_creation_attributes(race, caste, gender, rng)
+	var save_values := _creation_save_values(race, caste)
+	var special_values := _creation_special_values(race)
+	_apply_creation_age_profile(attributes, save_values, race, caste)
+	_apply_creation_special_bonuses(special_values, rng)
+	var vitality_bonus := mini(maxi(0, attributes[4] - 16), caste.maximum_stamina_bonus)
+	var maximum_health := rng.draw(maxi(1, caste.progression.initial_stamina_die()), &"character.create.stamina") + vitality_bonus
+	var result := CharacterState.new(character_id, character_name, maximum_health, maximum_health)
+	_populate_created_character(result, attributes, save_values, special_values, race, caste, gender, starting_level)
+	var selected_age_range := race.age_range(clampi(caste.minimum_age_group - 1, 0, 4))
+	if selected_age_range.y >= selected_age_range.x and selected_age_range.y > 0:
+		result.age_days = rng.draw_between(selected_age_range.x, selected_age_range.y, &"character.create.age") * 365
+	_configure_spellcaster(result, caste, rng, starting_level)
+	_initialize_abilities(result, race, caste)
+	for _index: int in starting_level - 1:
+		if level_up(result, race, caste, rng) == null:
+			return null
+	if include_initial_items:
+		add_initial_items(result, caste)
+	return result
+
+
+func _roll_creation_attributes(race: RaceDefinition, caste: CasteDefinition, gender: int, rng: RealmzRng) -> Array[int]:
 	var attributes: Array[int] = []
 	for index: int in ATTRIBUTE_COUNT:
 		var rolled := rng.draw_between(1, 18, StringName("character.create.attribute.%d" % index)) + race.attribute_bonus(index) + caste.attributes.attribute_bonus(index)
@@ -104,11 +89,24 @@ func create_character(character_id: String, character_name: String, race: RaceDe
 	else:
 		attributes[0] += 1
 		attributes[3] -= 1
+	return attributes
+
+
+func _creation_save_values(race: RaceDefinition, caste: CasteDefinition) -> Array[int]:
 	var save_values: Array[int] = []
-	var special_values: Array[int] = []
 	for index: int in 8:
 		save_values.append(50 + race.save_bonus(index) + caste.attributes.save_bonus(index))
+	return save_values
+
+
+func _creation_special_values(race: RaceDefinition) -> Array[int]:
+	var special_values: Array[int] = []
+	for index: int in 8:
 		special_values.append(race.hit_modifier(index))
+	return special_values
+
+
+func _apply_creation_age_profile(attributes: Array[int], save_values: Array[int], race: RaceDefinition, caste: CasteDefinition) -> void:
 	var age_group_count := clampi(caste.minimum_age_group, 1, 5)
 	for age_index: int in age_group_count:
 		var age_change := race.age_change(age_index)
@@ -119,14 +117,17 @@ func create_character(character_id: String, character_name: String, race: RaceDe
 	for index: int in ATTRIBUTE_COUNT:
 		attributes[index] = clampi(attributes[index], caste.attributes.attribute_minimum(index), caste.attributes.attribute_maximum(index))
 		attributes[index] = clampi(attributes[index], race.attribute_minimum(index), race.attribute_maximum(index))
+
+
+func _apply_creation_special_bonuses(special_values: Array[int], rng: RealmzRng) -> void:
 	for threshold: int in [80, 90, 95]:
 		if rng.draw(100, StringName("character.create.special-bonus.%d.roll" % threshold)) > threshold:
 			var special_index := rng.draw_between(0, 7, StringName("character.create.special-bonus.%d.index" % threshold))
 			special_values[special_index] += 1
-	var vitality_bonus := maxi(0, attributes[4] - 16)
-	vitality_bonus = mini(vitality_bonus, caste.maximum_stamina_bonus)
-	var maximum_health := rng.draw(maxi(1, caste.progression.initial_stamina_die()), &"character.create.stamina") + vitality_bonus
-	var result := CharacterState.new(character_id, character_name, maximum_health, maximum_health)
+
+
+func _populate_created_character(result: CharacterState, attributes: Array[int], save_values: Array[int], special_values: Array[int], race: RaceDefinition, caste: CasteDefinition, gender: int, starting_level: int) -> void:
+	var age_group_count := clampi(caste.minimum_age_group, 1, 5)
 	result.race_id = race.id
 	result.caste_id = caste.id
 	result.gender = gender
@@ -156,9 +157,6 @@ func create_character(character_id: String, character_name: String, race: RaceDe
 	result.attacks_remaining = result.normal_attacks
 	result.maximum_load = maxi(500, result.brawn * result.brawn * 20)
 	result.money.gold = maxi(0, caste.start_money)
-	var selected_age_range := race.age_range(clampi(caste.minimum_age_group - 1, 0, 4))
-	if selected_age_range.y >= selected_age_range.x and selected_age_range.y > 0:
-		result.age_days = rng.draw_between(selected_age_range.x, selected_age_range.y, &"character.create.age") * 365
 	for index: int in 8:
 		result.set_save_value(index, save_values[index])
 		result.set_special_value(index, special_values[index])
@@ -167,14 +165,6 @@ func create_character(character_id: String, character_name: String, race: RaceDe
 		if caste.attributes.condition_level(index) == 1:
 			starting_condition = -1
 		result.conditions.set_value(index, starting_condition)
-	_configure_spellcaster(result, caste, rng, starting_level)
-	_initialize_abilities(result, race, caste)
-	for _index: int in starting_level - 1:
-		if level_up(result, race, caste, rng) == null:
-			return null
-	if include_initial_items:
-		add_initial_items(result, caste)
-	return result
 
 
 func add_initial_items(character: CharacterState, caste: CasteDefinition) -> bool:
