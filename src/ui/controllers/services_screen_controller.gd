@@ -71,7 +71,7 @@ func _bind_pool(view: GameView, money: MoneyWorkspaceView) -> void:
 		12
 	)
 	_bind_wealth_chips(
-		"MoneyColumn/MoneyPoolPane/Content/MoneyPoolSummary/MoneyPoolValues",
+		root.get_node("MoneyPoolValues"),
 		money.pooled_gold,
 		money.pooled_gems,
 		money.pooled_jewelry
@@ -109,7 +109,7 @@ func _bind_exchange(view: GameView, money: MoneyWorkspaceView) -> void:
 	_bind_label(pane.get_node("Content/Header/SelectedName") as Label, selected.name, MUTED, 13)
 	_bind_character_picker(money)
 	_bind_wealth_chips(
-		"MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneySelectedSummary",
+		_workspace.selected_summary(),
 		selected.gold,
 		selected.gems,
 		selected.jewelry
@@ -137,10 +137,10 @@ func _bind_character_picker(money: MoneyWorkspaceView) -> void:
 	picker.item_selected.connect(func(index: int) -> void: _select_money_character(String(picker.get_item_metadata(index))))
 
 
-func _bind_wealth_chips(root_path: String, gold: int, gems: int, jewelry: int) -> void:
+func _bind_wealth_chips(root: Node, gold: int, gems: int, jewelry: int) -> void:
 	var values := {&"gold": gold, &"gems": gems, &"jewelry": jewelry}
 	for denomination: StringName in values:
-		var chip := _workspace.wealth_chip("%s/%s" % [root_path, String(denomination).capitalize()])
+		var chip := root.get_node(String(denomination).capitalize()) as WealthChip
 		chip.bind(denomination, int(values[denomination]), _media)
 
 

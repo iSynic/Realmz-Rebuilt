@@ -4,9 +4,7 @@ extends PanelContainer
 
 
 func bind(denomination: StringName, value: int, media: ClassicMediaCatalog) -> void:
-	name = "Money%sChip" % String(denomination).capitalize()
 	var icon := $Content/Icon as ClassicContentIcon
-	icon.name = "Money%sIcon" % String(denomination).capitalize()
 	($Content/Text/Heading as Label).text = String(denomination).capitalize()
 	($Content/Text/Amount as Label).text = str(value)
 	icon.configure(

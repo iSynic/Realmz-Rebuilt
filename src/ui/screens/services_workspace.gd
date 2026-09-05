@@ -82,10 +82,6 @@ func alternate_state() -> PanelContainer:
 	return get_node("ServicesAlternateState") as PanelContainer
 
 
-func wealth_chip(path: String) -> WealthChip:
-	return get_node(path) as WealthChip
-
-
 func _clear(parent: Node) -> void:
 	for child: Node in parent.get_children():
 		parent.remove_child(child)

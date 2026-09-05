@@ -6,7 +6,6 @@ const CHARACTER_VIEW_SCRIPT := preload("res://src/game/characters/character_view
 const PACKAGE_OPERATION_VIEW_SCRIPT := preload("res://src/app/package_operation_view.gd")
 const SAVE_SLOT_PREVIEW_SCRIPT := preload("res://src/game/view/save_slot_preview.gd")
 const APPLICATION_LIFECYCLE_SCRIPT := preload("res://src/app/application_lifecycle.gd")
-
 var _application: RealmzApplication
 var _shell: GameShell
 var _router: ScreenNavigator
@@ -24,6 +23,9 @@ func _capture_gallery() -> void:
 	_shell = _application.get_node("GameShell") as GameShell
 	_router = _shell.get_node("ScreenNavigator") as ScreenNavigator
 	_interaction = _application.get_node("InteractionPanel") as InteractionPresenter
+	var application_deadline := Time.get_ticks_msec() + 30000
+	while not _application.character_files.library_ready() and Time.get_ticks_msec() < application_deadline: await process_frame
+	assert(_application.character_files.library_ready() and _application.character_files.library_content() != null, "UI gallery could not load the built-in Classic definitions.")
 	await _settle()
 	await _resize(Vector2i(800, 600))
 	await _capture("compact-campaign-800x600")
@@ -37,7 +39,7 @@ func _capture_gallery() -> void:
 	await _capture("canonical-package-install-progress-1280x720")
 	_router.setup_controller.campaign_library.set_package_operation(PACKAGE_OPERATION_VIEW_SCRIPT.new())
 	await _resize(Vector2i(800, 600))
-	_application.start_package(FIXTURE_PATH, 1)
+	var package_step := _application.start_package(FIXTURE_PATH, 1); assert(package_step.state != SessionStep.State.FAILED, "Unable to start the UI gallery fixture: %s" % package_step.error_message)
 	await _settle()
 	await _capture("compact-party-setup-800x600")
 	await _resize(Vector2i(1280, 720))
@@ -240,17 +242,17 @@ func _capture_gallery() -> void:
 	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.WORD_AND_ACTION))
 	await _settle()
 	await _capture("wide-encounter-1280x720")
-	var word_command := _interaction.find_child("EncounterCommandWord", true, false) as ClassicBitmapButton
+	var word_command := _application.find_child("EncounterCommandWord", true, false) as ClassicBitmapButton
 	word_command.command_requested.emit(&"word"); await _settle(); await _capture("wide-encounter-word-entry-1280x720")
-	var item_command := _interaction.find_child("EncounterCommandItem", true, false) as ClassicBitmapButton
+	var item_command := _application.find_child("EncounterCommandItem", true, false) as ClassicBitmapButton
 	item_command.command_requested.emit(&"item"); await _settle(); await _capture("wide-encounter-item-picker-1280x720")
-	var spell_command := _interaction.find_child("EncounterCommandSpell", true, false) as ClassicBitmapButton
+	var spell_command := _application.find_child("EncounterCommandSpell", true, false) as ClassicBitmapButton
 	spell_command.command_requested.emit(&"spell"); await _settle(); await _capture("wide-encounter-spell-picker-1280x720")
 	await _resize(Vector2i(800, 600))
 	await _capture("classic-encounter-spell-picker-800x600")
-	word_command = _interaction.find_child("EncounterCommandWord", true, false) as ClassicBitmapButton
+	word_command = _application.find_child("EncounterCommandWord", true, false) as ClassicBitmapButton
 	word_command.command_requested.emit(&"word"); await _settle(); await _capture("classic-encounter-word-entry-800x600")
-	item_command = _interaction.find_child("EncounterCommandItem", true, false) as ClassicBitmapButton
+	item_command = _application.find_child("EncounterCommandItem", true, false) as ClassicBitmapButton
 	item_command.command_requested.emit(&"item"); await _settle(); await _capture("classic-encounter-item-picker-800x600")
 	await _resize(Vector2i(1280, 720))
 	for interaction_kind: StringName in [
@@ -553,13 +555,10 @@ func _settle() -> void:
 
 
 func _capture(label: String) -> void:
-	var image := root.get_texture().get_image()
-	var path := "%s/%s.png" % [OUTPUT_ROOT, label]
-	var error := image.save_png(ProjectSettings.globalize_path(path))
-	if error != OK:
-		printerr("Unable to save UI gallery frame %s: %s" % [label, error_string(error)])
-	else:
-		print("CAPTURED: %s" % path)
+	var viewport_texture := root.get_texture(); assert(viewport_texture != null, "UI gallery requires a graphical display driver."); var image := viewport_texture.get_image(); assert(image != null and not image.is_empty(), "UI gallery could not capture rendered frame %s." % label)
+	var path := "%s/%s.png" % [OUTPUT_ROOT, label]; var error := image.save_png(ProjectSettings.globalize_path(path))
+	assert(error == OK, "Unable to save UI gallery frame %s: %s" % [label, error_string(error)])
+	print("CAPTURED: %s" % path)
 
 
 func _button_named(parent: Node, text: String) -> Button:
