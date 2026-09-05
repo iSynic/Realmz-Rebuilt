@@ -264,58 +264,13 @@ func _branch_on_misc(action: ClassicActionDefinition) -> ScenarioRuntimeOperatio
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 86 requires a five-value Extra Code row.")
 	var test_kind := action.extra_code[0]
 	var expected := action.extra_code[1]
+	if test_kind < 0 or test_kind > 8:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_misc_branch", "Classic opcode 86 test kind is unavailable.")
+	if test_kind == 6 and (absi(expected) < 1 or absi(expected) > 32):
+		return ScenarioRuntimeOperationResult.failed(&"invalid_race_descriptor", "Classic opcode 86 race descriptor is outside 1 through 32.")
 	var selected_only := expected < 0 and test_kind in [0, 1, 2, 5, 6]
 	var characters := _game_state.scenario_progress.selected_characters() if selected_only else _game_state.party.characters()
-	var matched := false
-	match test_kind:
-		0:
-			for character: CharacterState in characters:
-				var caste := _content.characters.caste_by_id(character.caste_id)
-				if caste != null and caste.classic_id == absi(expected):
-					matched = true
-					break
-		1:
-			for character: CharacterState in characters:
-				var race := _content.characters.race_by_id(character.race_id)
-				if race != null and race.classic_id == absi(expected):
-					matched = true
-					break
-		2:
-			for character: CharacterState in characters:
-				if character.gender == absi(expected):
-					matched = true
-					break
-		3:
-			matched = _game_state.party_in_boat
-		4:
-			matched = _game_state.party_camping
-		5:
-			for character: CharacterState in characters:
-				var caste := _content.characters.caste_by_id(character.caste_id)
-				if caste != null and caste.caste_class == absi(expected):
-					matched = true
-					break
-		6:
-			if absi(expected) < 1 or absi(expected) > 32:
-				return ScenarioRuntimeOperationResult.failed(&"invalid_race_descriptor", "Classic opcode 86 race descriptor is outside 1 through 32.")
-			var descriptor_mask := 1 << (absi(expected) - 1)
-			for character: CharacterState in characters:
-				var race := _content.characters.race_by_id(character.race_id)
-				if race != null and (race.descriptor_flags & descriptor_mask) != 0:
-					matched = true
-					break
-		7:
-			var total_level := 0
-			for character: CharacterState in _game_state.party.characters():
-				total_level += character.level
-			matched = total_level > expected
-		8:
-			var selected_level := 0
-			for character: CharacterState in _game_state.scenario_progress.selected_characters():
-				selected_level += character.level
-			matched = selected_level > expected
-		_:
-			return ScenarioRuntimeOperationResult.failed(&"invalid_misc_branch", "Classic opcode 86 test kind is unavailable.")
+	var matched := _misc_branch_matches(test_kind, expected, characters)
 	var target_id := action.extra_code[3] if matched else action.extra_code[4]
 	var event := DomainEvent.new(&"misc_branch_checked", {"testKind": test_kind, "expected": expected, "matched": matched, "targetId": target_id})
 	if target_id == 0:
@@ -323,6 +278,50 @@ func _branch_on_misc(action: ClassicActionDefinition) -> ScenarioRuntimeOperatio
 	var branch := _branch_target_mode(action.extra_code[2], target_id, action.gosub)
 	branch.events.append(event)
 	return branch
+
+
+func _misc_branch_matches(test_kind: int, expected: int, characters: Array[CharacterState]) -> bool:
+	match test_kind:
+		0:
+			for character: CharacterState in characters:
+				var caste := _content.characters.caste_by_id(character.caste_id)
+				if caste != null and caste.classic_id == absi(expected):
+					return true
+		1:
+			for character: CharacterState in characters:
+				var race := _content.characters.race_by_id(character.race_id)
+				if race != null and race.classic_id == absi(expected):
+					return true
+		2:
+			for character: CharacterState in characters:
+				if character.gender == absi(expected):
+					return true
+		3:
+			return _game_state.party_in_boat
+		4:
+			return _game_state.party_camping
+		5:
+			for character: CharacterState in characters:
+				var caste := _content.characters.caste_by_id(character.caste_id)
+				if caste != null and caste.caste_class == absi(expected):
+					return true
+		6:
+			var descriptor_mask := 1 << (absi(expected) - 1)
+			for character: CharacterState in characters:
+				var race := _content.characters.race_by_id(character.race_id)
+				if race != null and (race.descriptor_flags & descriptor_mask) != 0:
+					return true
+		7:
+			var total_level := 0
+			for character: CharacterState in _game_state.party.characters():
+				total_level += character.level
+			return total_level > expected
+		8:
+			var selected_level := 0
+			for character: CharacterState in _game_state.scenario_progress.selected_characters():
+				selected_level += character.level
+			return selected_level > expected
+	return false
 
 
 func _branch_from_values(values: Array[int], gosub: bool, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:

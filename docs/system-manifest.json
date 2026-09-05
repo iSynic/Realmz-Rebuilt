@@ -79,7 +79,7 @@
       "id": "scenario-runtime",
       "boundary": "scenarios",
       "guide": "docs/features/scenario-runtime.md",
-      "entryPoints": ["src/scenarios/vm/scenario_vm.gd", "src/scenarios/vm/scenario_classic_control_flow.gd", "src/scenarios/runtime/realmz_runtime_api.gd", "src/scenarios/runtime/scenario_execution_context.gd", "src/scenarios/runtime/scenario_execution_context_codec.gd", "src/scenarios/runtime/scenario_runtime_continuation.gd", "src/scenarios/runtime/continuations"],
+      "entryPoints": ["src/scenarios/vm/scenario_vm.gd", "src/scenarios/vm/scenario_classic_control_flow.gd", "src/scenarios/runtime/realmz_runtime_api.gd", "src/scenarios/runtime/operations/classic_control_flow_operations.gd", "src/scenarios/runtime/scenario_execution_context.gd", "src/scenarios/runtime/scenario_execution_context_codec.gd", "src/scenarios/runtime/scenario_runtime_continuation.gd", "src/scenarios/runtime/continuations"],
       "publicInterfaces": ["ScenarioVm", "RealmzRuntimeApi", "ScenarioExecutionContext", "ScenarioExecutionContextCodec", "ScenarioRuntimeContinuation", "ScenarioRuntimeContinuationBody", "ScenarioRuntimeContinuationCodec", "ScenarioInteractionContinuations", "ScenarioAgeContinuations", "ScenarioServiceContinuations", "ScenarioCombatContinuations", "ScenarioRewardContinuations"],
       "tests": ["tests/scenario/test_scenario_vm.gd", "tests/scenario/test_reward_workflow.gd"],
       "performanceProbes": ["tools/combat_performance_probe.gd"]

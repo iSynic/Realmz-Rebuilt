@@ -303,6 +303,19 @@ static func handoff_is_valid(handoff: ScenarioVmHandoff, saved: ScenarioVmSnapsh
 
 
 func _execute_program_frame(frame: ScenarioFrame, runtime_api: RealmzRuntimeApi) -> ScenarioVmResult:
+	var resolution_failure := _resolve_program_frame(frame, runtime_api)
+	if resolution_failure != null:
+		return resolution_failure
+	var program := _debug_program if frame.definition_id == DEBUG_PROGRAM_ID else _definition.program_by_id(frame.definition_id)
+	if program == null:
+		return ScenarioVmResult.failed(&"unknown_scenario_program", "Scenario program '%s' disappeared during execution." % frame.definition_id)
+	if frame.cursor >= program.instruction_count():
+		_return_from_frame(null)
+		return ScenarioVmResult.completed()
+	return _execute_program_instruction(frame, program, program.instruction_at(frame.cursor), runtime_api)
+
+
+func _resolve_program_frame(frame: ScenarioFrame, runtime_api: RealmzRuntimeApi) -> ScenarioVmResult:
 	if frame.definition_id != DEBUG_PROGRAM_ID and frame.cursor == 0 and frame.context_value("_programResolved") != true:
 		var original_program_id := frame.definition_id
 		var resolved_program_id := runtime_api.resolve_program_id(original_program_id)
@@ -314,13 +327,10 @@ func _execute_program_frame(frame: ScenarioFrame, runtime_api: RealmzRuntimeApi)
 		frame.definition_id = resolved_program_id
 		if resolved_program_id != original_program_id:
 			_append_trace({"event": "program-override", "sourceProgramId": original_program_id, "targetProgramId": resolved_program_id})
-	var program := _debug_program if frame.definition_id == DEBUG_PROGRAM_ID else _definition.program_by_id(frame.definition_id)
-	if program == null:
-		return ScenarioVmResult.failed(&"unknown_scenario_program", "Scenario program '%s' disappeared during execution." % frame.definition_id)
-	if frame.cursor >= program.instruction_count():
-		_return_from_frame(null)
-		return ScenarioVmResult.completed()
-	var instruction: Variant = program.instruction_at(frame.cursor)
+	return null
+
+
+func _execute_program_instruction(frame: ScenarioFrame, program: ScenarioProgramDefinition, instruction: Variant, runtime_api: RealmzRuntimeApi) -> ScenarioVmResult:
 	if instruction is CallScenarioActionInstruction:
 		var action_call: CallScenarioActionInstruction = instruction
 		var arguments_result := _evaluate_call_arguments(action_call, frame, runtime_api)

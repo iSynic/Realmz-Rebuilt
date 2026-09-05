@@ -346,18 +346,10 @@ func _resume_complex_encounter(continuation: ScenarioRuntimeContinuation, respon
 			var selected_slots := selection.selected_slots.duplicate()
 			if selected_slots.is_empty() and selection.slot >= 0:
 				selected_slots.append(selection.slot)
-			var labels := encounter.action_labels()
-			for slot: int in selected_slots:
-				if slot < 0 or slot >= labels.size() or labels[slot].strip_edges() in ["", "*"]:
-					return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Complex action slot is unavailable.")
-			var required := encounter.groups()
-			if selected_slots.size() != required.filter(func(value: int) -> bool: return value != 0).size():
-				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Complex action response must select the authored number of actions.")
-			var exact_match := true
-			for slot: int in labels.size():
-				if selected_slots.has(slot) != (slot < required.size() and required[slot] != 0):
-					exact_match = false
-					break
+			var validation_error := _complex_choice_validation_error(encounter, selected_slots)
+			if not validation_error.is_empty():
+				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", validation_error)
+			var exact_match := _complex_choice_is_exact(encounter, selected_slots)
 			outcome = encounter.action_result if exact_match else 4
 			context.option_slot = selected_slots[0] if selected_slots.size() == 1 else -1
 			events.append(DomainEvent.new(&"complex_action_set_selected", {"encounterId": encounter.id, "selectedSlots": selected_slots, "exactMatch": exact_match}))
@@ -386,6 +378,25 @@ func _resume_complex_encounter(continuation: ScenarioRuntimeContinuation, respon
 	var repeat := attempt < encounter.max_times
 	events.append(DomainEvent.new(&"encounter_response_selected", {"encounterKind": "complex", "encounterId": encounter.id, "responseKind": action, "outcome": outcome, "attempt": attempt, "willRepeat": repeat}))
 	return _complex_outcome(encounter, outcome, choice_continuation.gosub, context, events, repeat)
+
+
+static func _complex_choice_validation_error(encounter: ComplexEncounterDefinition, selected_slots: Array[int]) -> String:
+	var labels := encounter.action_labels()
+	for slot: int in selected_slots:
+		if slot < 0 or slot >= labels.size() or labels[slot].strip_edges() in ["", "*"]:
+			return "Complex action slot is unavailable."
+	var required_count := encounter.groups().filter(func(value: int) -> bool: return value != 0).size()
+	if selected_slots.size() != required_count:
+		return "Complex action response must select the authored number of actions."
+	return ""
+
+
+static func _complex_choice_is_exact(encounter: ComplexEncounterDefinition, selected_slots: Array[int]) -> bool:
+	var required := encounter.groups()
+	for slot: int in encounter.action_labels().size():
+		if selected_slots.has(slot) != (slot < required.size() and required[slot] != 0):
+			return false
+	return true
 
 
 func _complex_outcome(encounter: ComplexEncounterDefinition, outcome: int, gosub: bool, context: ScenarioExecutionContext, events: Array[DomainEvent] = [], repeat: bool = false) -> ScenarioRuntimeOperationResult:
