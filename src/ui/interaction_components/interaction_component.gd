@@ -51,6 +51,10 @@ func handle_back() -> bool:
 	return false
 
 
+func set_layout_profile(_compact: bool) -> void:
+	pass
+
+
 func preferred_initial_focus() -> Control:
 	return null
 

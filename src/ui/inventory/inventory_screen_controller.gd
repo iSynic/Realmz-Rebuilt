@@ -162,6 +162,7 @@ func _bind_character_selector(selector: InventoryCharacterSelector, view: GameVi
 	for character: CharacterView in characters:
 		var button := selector.character_button_scene.instantiate() as Button
 		button.name = "InventoryCharacter_%s" % character.id
+		button.text = character.name if characters.size() == 1 else ""
 		button.icon = _scene_binding.appearance_texture(character.portrait_id, media)
 		button.button_pressed = character.id == selected.id
 		button.tooltip_text = "%s • %s / %s • Load %d/%d" % [character.name, character.race_name, character.caste_name, character.carried_load, character.maximum_load]

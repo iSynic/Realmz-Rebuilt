@@ -239,7 +239,7 @@ func _capture_gallery() -> void:
 	await _settle()
 	await _capture("wide-classic-choice-context-1280x720")
 	await _resize(Vector2i(800, 600)); await _capture("classic-choice-context-800x600"); await _resize(Vector2i(1280, 720))
-	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.WORD_AND_ACTION))
+	var encounter_request := ClassicUiFixtureGallery.request_for(InteractionRequest.WORD_AND_ACTION); var encounter_body := encounter_request.body as ComplexEncounterRequestBody; var gallery_encounter_item: ItemView = gallery_view.party_members[0].items[0]; encounter_body.items[0].character_id = gallery_view.party_members[0].id; encounter_body.items[0].instance_id = gallery_encounter_item.instance_id; encounter_body.items[0].classic_id = gallery_encounter_item.classic_id; encounter_body.items[0].name = gallery_encounter_item.name; encounter_body.items[0].icon_resource_type = gallery_encounter_item.icon_resource_type; encounter_body.items[0].icon_id = gallery_encounter_item.icon_id; encounter_body.items[0].charges = gallery_encounter_item.charges; encounter_body.items[0].equipped = gallery_encounter_item.equipped; _interaction.present(encounter_request, "", gallery_view, gallery_media)
 	await _settle()
 	await _capture("wide-encounter-1280x720")
 	var word_command := _application.find_child("EncounterCommandWord", true, false) as ClassicBitmapButton

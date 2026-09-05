@@ -35,6 +35,16 @@ func configure(media: ClassicMediaCatalog, game_view: GameView = null, compact: 
 	_compact = compact
 
 
+func set_layout_profile(compact: bool) -> void:
+	if _compact == compact:
+		return
+	_compact = compact
+	if _inventory_screen_controller != null:
+		_inventory_screen_controller.set_layout_profile(UiLayoutProfile.COMPACT if compact else UiLayoutProfile.WIDE)
+		if _catalog_kind == &"item":
+			_render_standard_item_workspace()
+
+
 func _notification(what: int) -> void:
 	if what != NOTIFICATION_PREDELETE:
 		return
@@ -118,9 +128,9 @@ func _show_standard_item_workspace() -> void:
 	(workspace.get_node("%EncounterItemsBack") as Button).pressed.connect(_cancel_catalog)
 	if _inventory_screen_controller == null:
 		_inventory_screen_controller = InventoryScreenController.new()
-		_inventory_screen_controller.set_layout_profile(UiLayoutProfile.COMPACT if _compact else UiLayoutProfile.WIDE)
 		_inventory_screen_controller.refresh_requested.connect(_render_standard_item_workspace, CONNECT_DEFERRED)
 		_inventory_screen_controller.encounter_item_selected.connect(_submit_standard_encounter_item)
+	_inventory_screen_controller.set_layout_profile(UiLayoutProfile.COMPACT if _compact else UiLayoutProfile.WIDE)
 	application_workspace_requested.emit(workspace)
 	_render_standard_item_workspace()
 
