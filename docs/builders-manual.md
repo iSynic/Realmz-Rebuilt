@@ -152,3 +152,5 @@ The verification gates are ratchets, not scores to game. The older maintainabili
 ## Before leaving the workshop
 
 A newcomer should be able to answer five questions from names and nearby documentation alone: Who owns this truth? Is it immutable content or mutable state? Which typed command changes it? Which detached view displays it? Which test proves the contract? If any answer requires folklore, improve the name, the boundary, or this manual before adding another passageway.
+
+The public [New Builder's Trial](maintainer-acceptance.md) turns that promise into six reproducible journeys through movement fatigue, character state, portable items, scenario instructions, Inventory authoring, and combat Auto. Run it against a clean candidate checkout with a contributor who has not learned the answers privately; treat every misleading turn as a repair request, not as a failing of the traveller.

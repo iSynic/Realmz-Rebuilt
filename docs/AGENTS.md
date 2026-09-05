@@ -48,6 +48,7 @@ Own current architecture, ADRs, package/save contracts, fidelity decisions, orac
 - `ui-visual-audit.md` owns the complete player-visible screen/state inventory, Castle/Remake design leads, target composition decisions, media opportunities, and phased visual-remediation queue.
 - `runtime-performance.md` owns the current startup, package-prewarm, vault-insertion, and rendered-overworld performance evidence, acceptance boundaries, and machine-specific measured results.
 - `builders-manual.md` is the public, newcomer-facing map of repository ownership, command flow, Godot scene practice, and maintainer workflow.
+- `maintainer-acceptance.md` owns the public, hint-free newcomer exercise and its evidence ledger for the six required architecture journeys.
 - `architecture-migration.md` records the completed boundary foundation and distinguishes it from the active human-centered overhaul.
 - `human-centered-architecture.md` owns the active Beta-blocking migration charter, verified structural baseline, performance baseline, and working rules.
 - `system-manifest.json` is the machine-checked index of systems, entry points, public interfaces, owning tests, performance probes, and major UI surfaces.
