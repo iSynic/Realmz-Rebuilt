@@ -1,11 +1,11 @@
 [gd_scene load_steps=8 format=3]
 
-[ext_resource type="Script" path="res://src/ui/screens/inventory_workspace.gd" id="1_workspace"]
-[ext_resource type="PackedScene" path="res://src/ui/screens/inventory_item_browser.tscn" id="2_browser"]
-[ext_resource type="PackedScene" path="res://src/ui/screens/inventory_command_rail.tscn" id="3_rail"]
-[ext_resource type="PackedScene" path="res://src/ui/screens/inventory_item_inspector.tscn" id="4_inspector"]
-[ext_resource type="PackedScene" path="res://src/ui/screens/inventory_empty_state.tscn" id="5_empty"]
-[ext_resource type="PackedScene" path="res://src/ui/screens/inventory_trade_workspace.tscn" id="6_trade"]
+[ext_resource type="Script" path="res://src/ui/inventory/inventory_workspace.gd" id="1_workspace"]
+[ext_resource type="PackedScene" path="res://src/ui/inventory/inventory_item_browser.tscn" id="2_browser"]
+[ext_resource type="PackedScene" path="res://src/ui/inventory/inventory_command_rail.tscn" id="3_rail"]
+[ext_resource type="PackedScene" path="res://src/ui/inventory/inventory_item_inspector.tscn" id="4_inspector"]
+[ext_resource type="PackedScene" path="res://src/ui/inventory/inventory_empty_state.tscn" id="5_empty"]
+[ext_resource type="PackedScene" path="res://src/ui/inventory/inventory_trade_workspace.tscn" id="6_trade"]
 
 [node name="InventoryWorkspace" type="VBoxContainer"]
 layout_mode = 2

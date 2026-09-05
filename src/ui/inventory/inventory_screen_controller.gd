@@ -17,8 +17,9 @@ const LEDGER_MUTED := Color("50575b")
 const LEDGER_BLUE := Color("2457bd")
 const LEDGER_RED := Color("ad2721")
 const ITEM_DETAIL_POPOVER_SCENE_PATH := "res://src/ui/classic_item_detail_popover.tscn"
-const WORKSPACE_SCENE_PATH := "res://src/ui/screens/inventory_workspace.tscn"
+const WORKSPACE_SCENE_PATH := "res://src/ui/inventory/inventory_workspace.tscn"
 
+var _scene_binding := InventorySceneBinding.new()
 var _selected_character_id: String = ""
 var _selected_item_instance_id: String = ""
 var _trade_mode: bool = false
@@ -81,16 +82,17 @@ func present_encounter(parent: VBoxContainer, view: GameView, media: ClassicMedi
 func _present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog, text_scale: float, screen: InventoryScreen = null) -> void:
 	if parent == null:
 		return
-	_capture_item_scroll(parent)
+	_item_scroll_position = _scene_binding.capture_item_scroll(parent, _rendered_character_id, _selected_character_id, _item_scroll_position)
 	var workspace: InventoryWorkspace
 	if screen != null:
 		workspace = screen.workspace()
 		workspace.clear_rendered_content()
 	else:
-		_clear(parent)
+		_scene_binding.clear_children(parent)
 		workspace = (load(WORKSPACE_SCENE_PATH) as PackedScene).instantiate() as InventoryWorkspace
 		parent.add_child(workspace)
 	_text_scale = maxf(text_scale, 0.1)
+	_scene_binding.text_scale = _text_scale
 	if view == null:
 		return
 	if view.party_members.is_empty():
@@ -146,7 +148,7 @@ func _present_empty(workspace: InventoryWorkspace, title: String, detail: String
 	var host := workspace.prepare_alternate_layout()
 	var empty := workspace.empty_state_scene.instantiate() as InventoryEmptyState
 	empty.bind(title, detail, show_done)
-	_clear_pressed_connections(empty.done_button())
+	_scene_binding.clear_pressed_connections(empty.done_button())
 	if show_done:
 		empty.done_button().pressed.connect(_request_inventory_back)
 	host.add_child(empty)
@@ -160,7 +162,7 @@ func _bind_character_selector(selector: InventoryCharacterSelector, view: GameVi
 	for character: CharacterView in characters:
 		var button := selector.character_button_scene.instantiate() as Button
 		button.name = "InventoryCharacter_%s" % character.id
-		button.icon = _appearance_texture(character.portrait_id, media)
+		button.icon = _scene_binding.appearance_texture(character.portrait_id, media)
 		button.button_pressed = character.id == selected.id
 		button.tooltip_text = "%s • %s / %s • Load %d/%d" % [character.name, character.race_name, character.caste_name, character.carried_load, character.maximum_load]
 		button.accessibility_name = "Select %s" % character.name
@@ -214,7 +216,7 @@ func _bind_item_browser(content: InventoryItemBrowser, character: CharacterView,
 	content.count_label().text = "%d carried" % items.size()
 	var scroll := content.item_scroll()
 	var list := content.item_list()
-	_bind_item_scroll(scroll)
+	_scene_binding.restore_item_scroll(scroll, _item_scroll_position)
 	if items.is_empty():
 		content.empty_label().visible = true
 		return
@@ -234,7 +236,7 @@ func _bind_item_browser(content: InventoryItemBrowser, character: CharacterView,
 		var fact_label := row_panel.get_node("Row/ItemText/InventoryItemLineFact") as Label
 		fact_label.visible = line_fact != null
 		if line_fact != null:
-			_bind_label(fact_label, "%s %s" % [line_fact.label, line_fact.value], LEDGER_RED if line_fact.id == &"damage-range" else LEDGER_BLUE, 11)
+			_scene_binding.bind_label(fact_label, "%s %s" % [line_fact.label, line_fact.value], LEDGER_RED if line_fact.id == &"damage-range" else LEDGER_BLUE, 11)
 		detail_popover.bind_hover(icon, InventoryItemText.detail(item))
 		detail_popover.bind_hover(button, InventoryItemText.detail(item))
 		var state_parts: Array[String] = []
@@ -243,7 +245,7 @@ func _bind_item_browser(content: InventoryItemBrowser, character: CharacterView,
 		if item.charges > 0:
 			state_parts.append("%d charge%s" % [item.charges, "" if item.charges == 1 else "s"])
 		var state := row_panel.get_node("Row/State") as Label
-		_bind_label(state, " · ".join(state_parts), LEDGER_BLUE if item.equipped else LEDGER_RED if item.charges > 0 else LEDGER_MUTED, 12)
+		_scene_binding.bind_label(state, " · ".join(state_parts), LEDGER_BLUE if item.equipped else LEDGER_RED if item.charges > 0 else LEDGER_MUTED, 12)
 		state.tooltip_text = button.tooltip_text
 		list.add_child(row_panel)
 
@@ -260,20 +262,20 @@ func _bind_character_command_rail(content: InventoryCommandRail, view: GameView,
 
 
 func _render_character_record(parent: VBoxContainer, character: CharacterView, media: ClassicMediaCatalog) -> void:
-	(parent.get_node("InventoryCharacterIdentity/Portrait") as TextureRect).texture = _appearance_texture(character.portrait_id, media)
-	_bind_label(parent.get_node("InventoryCharacterIdentity/IdentityText/Name") as Label, character.name, GOLD, 19)
-	_bind_label(parent.get_node("InventoryCharacterIdentity/IdentityText/Role") as Label, "%s / %s • Level %d" % [character.race_name, character.caste_name, character.level], TEXT, 12)
+	(parent.get_node("InventoryCharacterIdentity/Portrait") as TextureRect).texture = _scene_binding.appearance_texture(character.portrait_id, media)
+	_scene_binding.bind_label(parent.get_node("InventoryCharacterIdentity/IdentityText/Name") as Label, character.name, GOLD, 19)
+	_scene_binding.bind_label(parent.get_node("InventoryCharacterIdentity/IdentityText/Role") as Label, "%s / %s • Level %d" % [character.race_name, character.caste_name, character.level], TEXT, 12)
 	var facts := parent.get_node("InventoryCharacterFacts") as GridContainer
 	var values: Array[String] = ["ST %d/%d" % [character.current_health, character.maximum_health], "SP %d/%d" % [character.spell_points, character.maximum_spell_points], "AR %d" % character.armor, "Attacks %s" % character.attacks_per_round, "Movement %d/%d" % [character.movement, character.maximum_movement], "Load %d/%d" % [character.carried_load, character.maximum_load]]
 	for index: int in values.size():
-		_bind_label(facts.get_child(index) as Label, values[index], TEXT, 12)
+		_scene_binding.bind_label(facts.get_child(index) as Label, values[index], TEXT, 12)
 	var condition_text := "Conditions: None"
 	if not character.conditions.is_empty():
 		var names: Array[String] = []
 		for condition: CharacterMetricView in character.conditions:
 			names.append(condition.name)
 		condition_text = "Conditions: %s" % ", ".join(names)
-	_bind_label(parent.get_node("Conditions") as Label, condition_text, WARNING if not character.conditions.is_empty() else MUTED, 11)
+	_scene_binding.bind_label(parent.get_node("Conditions") as Label, condition_text, WARNING if not character.conditions.is_empty() else MUTED, 11)
 
 
 func _bind_item_record(content: InventoryItemInspector, character: CharacterView, item: ItemView, media: ClassicMediaCatalog) -> void:
@@ -282,7 +284,7 @@ func _bind_item_record(content: InventoryItemInspector, character: CharacterView
 	record.set_compact(_layout_profile == UiLayoutProfile.COMPACT)
 	content.done_column().visible = not _encounter_mode
 	var done := content.done_column().done_button()
-	_clear_pressed_connections(done)
+	_scene_binding.clear_pressed_connections(done)
 	if not _encounter_mode:
 		done.pressed.connect(_request_inventory_back)
 	if item == null:
@@ -309,23 +311,23 @@ func _bind_trade_item_record(record: InventorySelectedItemRecord, character: Cha
 
 func _render_item_detail(record: InventorySelectedItemRecord, item: ItemView, character: CharacterView, media: ClassicMediaCatalog) -> void:
 	record.item_icon().configure(item.icon_resource_type, item.icon_id, media, 58.0, item.name)
-	_bind_label(record.get_node("Narrative/TitleRow/TitleText/Name") as Label, item.name, GOLD, 20)
-	_bind_label(record.get_node("Narrative/TitleRow/TitleText/Summary") as Label, "%s · Weight %d · Charges %d" % ["Equipped" if item.equipped else "Carried", item.weight, item.charges], MUTED, 13)
-	_bind_label(record.get_node("Narrative/Description") as Label, item.description, TEXT, 15)
-	_bind_label(record.get_node("Narrative/CharacterLoad") as Label, "%s • Load %d/%d" % [character.name, character.carried_load, character.maximum_load], MUTED, 12)
+	_scene_binding.bind_label(record.get_node("Narrative/TitleRow/TitleText/Name") as Label, item.name, GOLD, 20)
+	_scene_binding.bind_label(record.get_node("Narrative/TitleRow/TitleText/Summary") as Label, "%s · Weight %d · Charges %d" % ["Equipped" if item.equipped else "Carried", item.weight, item.charges], MUTED, 13)
+	_scene_binding.bind_label(record.get_node("Narrative/Description") as Label, item.description, TEXT, 15)
+	_scene_binding.bind_label(record.get_node("Narrative/CharacterLoad") as Label, "%s • Load %d/%d" % [character.name, character.carried_load, character.maximum_load], MUTED, 12)
 
 
 func _render_item_facts(record: InventorySelectedItemRecord, item: ItemView) -> void:
-	_bind_label(record.get_node("Facts/Header/Value") as Label, "Value %s" % [str(item.value) if item.identified else "unknown"], MUTED, 12)
+	_scene_binding.bind_label(record.get_node("Facts/Header/Value") as Label, "Value %s" % [str(item.value) if item.identified else "unknown"], MUTED, 12)
 	for fact: ItemFactView in item.facts:
 		var row := record.fact_row_scene.instantiate() as HBoxContainer
-		_bind_label(row.get_node("Name") as Label, fact.label, MUTED, 13)
-		_bind_label(row.get_node("Value") as Label, fact.value, TEXT, 13)
+		_scene_binding.bind_label(row.get_node("Name") as Label, fact.label, MUTED, 13)
+		_scene_binding.bind_label(row.get_node("Value") as Label, fact.value, TEXT, 13)
 		record.fact_rows().add_child(row)
 	for property: String in item.properties:
-		_add_text_row(record.properties(), record.text_row_scene, "• %s" % property, TEXT)
+		_scene_binding.add_text_row(record.properties(), record.text_row_scene, "• %s" % property, TEXT)
 	for restriction: String in item.restrictions:
-		_add_text_row(record.restrictions(), record.text_row_scene, restriction, WARNING)
+		_scene_binding.add_text_row(record.restrictions(), record.text_row_scene, restriction, WARNING)
 
 
 func _render_item_actions(panel: InventoryActionPanel, view: GameView, item: ItemView, character: CharacterView, _media: ClassicMediaCatalog) -> void:
@@ -350,24 +352,24 @@ func _render_item_actions(panel: InventoryActionPanel, view: GameView, item: Ite
 	_bind_item_intent_action(panel.action_button("SplitAction"), &"inventory.action.split", "Split", item.actions.split, InventoryIntents.split(item.instance_id, character.id), item, character)
 	_bind_item_intent_action(panel.action_button("DropAction"), &"inventory.action.drop", "Drop", item.actions.drop, InventoryIntents.drop(item.instance_id, character.id), item, character)
 	panel.trade_status().visible = not _trade_status.is_empty()
-	_bind_label(panel.trade_status(), _trade_status, WARNING, 13)
+	_scene_binding.bind_label(panel.trade_status(), _trade_status, WARNING, 13)
 
 
 func _render_operation_stage(panel: InventoryActionPanel, item: ItemView, character: CharacterView) -> void:
 	panel.show_operation()
 	var column := panel.operation_stage().get_node("Content") as VBoxContainer
-	_bind_label(column.get_node("Header/Title") as Label, "%s · %s" % [_pending_item_action_label, item.name], GOLD, 17)
-	_bind_label(column.get_node("Header/Detail") as Label, "%s · %s" % [character.name, "Equipped" if item.equipped else "Carried"], MUTED, 12)
+	_scene_binding.bind_label(column.get_node("Header/Title") as Label, "%s · %s" % [_pending_item_action_label, item.name], GOLD, 17)
+	_scene_binding.bind_label(column.get_node("Header/Detail") as Label, "%s · %s" % [character.name, "Equipped" if item.equipped else "Carried"], MUTED, 12)
 	var facts: Array[String] = ["Weight %d" % item.weight]
 	facts.append("Unlimited charges" if item.charges < 0 else "%d charge%s" % [item.charges, "" if item.charges == 1 else "s"])
-	_bind_label(column.get_node("Facts") as Label, " • ".join(facts), MUTED, 13)
-	_bind_label(column.get_node("Description") as Label, InventoryItemText.operation_description(_pending_item_action, item, character), TEXT, 13)
+	_scene_binding.bind_label(column.get_node("Facts") as Label, " • ".join(facts), MUTED, 13)
+	_scene_binding.bind_label(column.get_node("Description") as Label, InventoryItemText.operation_description(_pending_item_action, item, character), TEXT, 13)
 	var confirm := column.get_node("InventoryOperationActions/Confirm") as Button
 	confirm.text = _pending_item_action_label
-	_clear_pressed_connections(confirm)
+	_scene_binding.clear_pressed_connections(confirm)
 	confirm.pressed.connect(_confirm_item_action)
 	var cancel := column.get_node("InventoryOperationActions/Cancel") as Button
-	_clear_pressed_connections(cancel)
+	_scene_binding.clear_pressed_connections(cancel)
 	cancel.pressed.connect(_cancel_item_action)
 
 
@@ -405,7 +407,7 @@ func _bind_trade_workspace(workspace: InventoryTradeWorkspace, view: GameView, s
 	_bind_trade_control_spine(workspace.divider(), view, source, target, media)
 	_bind_trade_ledger(workspace.target_ledger(), view, target, source.id, media, detail_popover)
 	workspace.status_label().visible = not _trade_status.is_empty()
-	_bind_label(workspace.status_label(), _trade_status, WARNING, 12)
+	_scene_binding.bind_label(workspace.status_label(), _trade_status, WARNING, 12)
 	_bind_trade_item_record(workspace.item_record(), source, selected_item, media)
 
 
@@ -413,8 +415,8 @@ func _bind_trade_ledger(ledger: InventoryTradeLedger, view: GameView, character:
 	ledger.name = "InventoryTradeLedger_%s" % character.id
 	ledger.configure_drop(&"inventory-trade-item", character.id)
 	ledger.item_dropped.connect(func(payload: Dictionary, target_id: String) -> void: _drop_trade_item(view, payload, target_id))
-	_bind_label(ledger.title_label(), "%s's items" % character.name, LEDGER_INK, 17)
-	_bind_label(ledger.load_label(), "Load %d/%d" % [character.carried_load, character.maximum_load], LEDGER_MUTED, 12)
+	_scene_binding.bind_label(ledger.title_label(), "%s's items" % character.name, LEDGER_INK, 17)
+	_scene_binding.bind_label(ledger.load_label(), "Load %d/%d" % [character.carried_load, character.maximum_load], LEDGER_MUTED, 12)
 	ledger.clear_rows()
 	var rows := ledger.rows()
 	for item: ItemView in character.items:
@@ -430,7 +432,7 @@ func _bind_trade_ledger(ledger: InventoryTradeLedger, view: GameView, character:
 		detail_popover.bind_hover(button, InventoryItemText.detail(item))
 		rows.add_child(row)
 	if character.items.is_empty():
-		_add_text_row(rows, ledger.empty_row_scene, "No carried items.", LEDGER_MUTED, 12)
+		_scene_binding.add_text_row(rows, ledger.empty_row_scene, "No carried items.", LEDGER_MUTED, 12)
 
 
 func _bind_trade_control_spine(divider: InventoryTradeDivider, view: GameView, source: CharacterView, target: CharacterView, media: ClassicMediaCatalog) -> void:
@@ -438,18 +440,18 @@ func _bind_trade_control_spine(divider: InventoryTradeDivider, view: GameView, s
 	for character: CharacterView in view.party_members:
 		divider.portraits().add_child(_trade_portrait(divider, character, true, character.id == source.id, media))
 		divider.portraits().add_child(_trade_portrait(divider, character, false, character.id == target.id, media))
-	_clear_pressed_connections(divider.money_button())
+	_scene_binding.clear_pressed_connections(divider.money_button())
 	divider.money_button().pressed.connect(func() -> void: route_requested.emit(&"services"))
-	_clear_pressed_connections(divider.items_button())
+	_scene_binding.clear_pressed_connections(divider.items_button())
 	divider.items_button().pressed.connect(_cancel_trade)
-	_clear_pressed_connections(divider.done_button())
+	_scene_binding.clear_pressed_connections(divider.done_button())
 	divider.done_button().pressed.connect(func() -> void: back_requested.emit())
 
 
 func _trade_portrait(divider: InventoryTradeDivider, character: CharacterView, left_side: bool, selected: bool, media: ClassicMediaCatalog) -> Button:
 	var button := divider.portrait_button_scene.instantiate() as Button
 	button.name = "InventoryTrade%s_%s" % ["Left" if left_side else "Right", character.id]
-	button.icon = _appearance_texture(character.portrait_id, media)
+	button.icon = _scene_binding.appearance_texture(character.portrait_id, media)
 	button.button_pressed = selected
 	button.tooltip_text = "%s pack: %s" % ["Left" if left_side else "Right", character.name]
 	button.pressed.connect(_select_trade_character.bind(character.id, left_side))
@@ -554,12 +556,6 @@ func _bind_trade_action(button: ClassicBitmapButton, item: ItemView) -> void:
 		button.command_requested.connect(func(_command_id: StringName) -> void: _begin_trade(item))
 
 
-func _appearance_texture(asset_id: String, media: ClassicMediaCatalog) -> Texture2D:
-	if media == null or asset_id.is_empty():
-		return null
-	return media.image_texture(media.asset_by_id(asset_id))
-
-
 func _bind_item_intent_action(button: ClassicBitmapButton, asset_id: StringName, label: String, availability: ActionAvailabilityView, intent: PlayerIntent, item: ItemView, character: CharacterView) -> void:
 	_bind_bitmap_button(button, asset_id, label)
 	button.disabled = availability == null or not availability.enabled
@@ -569,58 +565,7 @@ func _bind_item_intent_action(button: ClassicBitmapButton, asset_id: StringName,
 
 
 func _bind_bitmap_button(button: ClassicBitmapButton, asset_id: StringName, label: String) -> void:
-	_clear_command_connections(button)
+	_scene_binding.clear_command_connections(button)
 	# Castle inventory artwork baked each word into a different legacy slab.
 	# Rebuilt retains the command identity but renders one consistent slate control.
 	button.configure({"id": asset_id, "asset_id": &"", "label": label, "tooltip": label, "accelerator": ""}, 1)
-
-
-func _bind_label(label: Label, text: String, color: Color = Color.WHITE, size: int = 15) -> void:
-	label.text = text
-	label.add_theme_color_override("font_color", color)
-	label.add_theme_font_size_override("font_size", int(round(float(size) * _text_scale)))
-
-
-func _add_text_row(parent: Container, scene: PackedScene, text: String, color: Color, size: int = 13) -> Label:
-	var row := scene.instantiate() as Label
-	_bind_label(row, text, color, size)
-	parent.add_child(row)
-	return row
-
-
-func _clear_pressed_connections(button: Button) -> void:
-	for connection: Dictionary in button.pressed.get_connections():
-		button.pressed.disconnect(connection["callable"] as Callable)
-
-
-func _clear_command_connections(button: ClassicBitmapButton) -> void:
-	for connection: Dictionary in button.command_requested.get_connections():
-		button.command_requested.disconnect(connection["callable"] as Callable)
-
-
-func _clear(parent: Container) -> void:
-	for child: Node in parent.get_children():
-		parent.remove_child(child)
-		child.queue_free()
-
-
-func _capture_item_scroll(parent: Container) -> void:
-	if _rendered_character_id != _selected_character_id:
-		return
-	var scroll := parent.find_child("InventoryItemScroll", true, false) as ScrollContainer
-	if scroll != null:
-		_item_scroll_position = scroll.scroll_vertical
-
-
-func _bind_item_scroll(scroll: ScrollContainer) -> void:
-	var scroll_ref: WeakRef = weakref(scroll)
-	var desired_position := _item_scroll_position
-	var tree := Engine.get_main_loop() as SceneTree
-	tree.process_frame.connect(func() -> void:
-		var current_scroll := scroll_ref.get_ref() as ScrollContainer
-		if current_scroll == null or not current_scroll.is_inside_tree():
-			return
-		var current_bar := current_scroll.get_v_scroll_bar()
-		var maximum := maxi(0, int(current_bar.max_value - current_bar.page))
-		current_scroll.scroll_vertical = clampi(desired_position, 0, maximum)
-	, CONNECT_ONE_SHOT)

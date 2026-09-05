@@ -1,7 +1,7 @@
 [gd_scene load_steps=3 format=3]
 
-[ext_resource type="Script" path="res://src/ui/screens/inventory_character_selector.gd" id="1_selector"]
-[ext_resource type="PackedScene" path="res://src/ui/screens/inventory_character_button.tscn" id="2_button"]
+[ext_resource type="Script" path="res://src/ui/inventory/inventory_character_selector.gd" id="1_selector"]
+[ext_resource type="PackedScene" path="res://src/ui/inventory/inventory_character_button.tscn" id="2_button"]
 
 [node name="InventoryCharacterSelector" type="PanelContainer"]
 theme_type_variation = &"ClassicInset"

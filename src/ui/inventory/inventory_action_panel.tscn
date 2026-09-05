@@ -1,6 +1,6 @@
 [gd_scene load_steps=3 format=3]
 
-[ext_resource type="Script" path="res://src/ui/screens/inventory_action_panel.gd" id="1_panel"]
+[ext_resource type="Script" path="res://src/ui/inventory/inventory_action_panel.gd" id="1_panel"]
 [ext_resource type="Script" path="res://src/ui/classic_bitmap_button.gd" id="2_button"]
 
 [node name="InventoryActionPanel" type="VBoxContainer"]

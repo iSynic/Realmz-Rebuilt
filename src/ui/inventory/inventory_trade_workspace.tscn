@@ -1,9 +1,9 @@
 [gd_scene load_steps=5 format=3]
 
-[ext_resource type="Script" path="res://src/ui/screens/inventory_trade_workspace.gd" id="1_workspace"]
-[ext_resource type="PackedScene" path="res://src/ui/screens/inventory_trade_ledger.tscn" id="2_ledger"]
-[ext_resource type="PackedScene" path="res://src/ui/screens/inventory_trade_divider.tscn" id="3_divider"]
-[ext_resource type="PackedScene" path="res://src/ui/screens/inventory_selected_item_record.tscn" id="4_record"]
+[ext_resource type="Script" path="res://src/ui/inventory/inventory_trade_workspace.gd" id="1_workspace"]
+[ext_resource type="PackedScene" path="res://src/ui/inventory/inventory_trade_ledger.tscn" id="2_ledger"]
+[ext_resource type="PackedScene" path="res://src/ui/inventory/inventory_trade_divider.tscn" id="3_divider"]
+[ext_resource type="PackedScene" path="res://src/ui/inventory/inventory_selected_item_record.tscn" id="4_record"]
 
 [node name="InventoryTradeWorkspace" type="PanelContainer"]
 size_flags_horizontal = 3

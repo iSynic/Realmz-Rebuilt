@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3]
 
-[ext_resource type="Script" path="res://src/ui/screens/inventory_done_column.gd" id="1_done"]
+[ext_resource type="Script" path="res://src/ui/inventory/inventory_done_column.gd" id="1_done"]
 
 [node name="InventoryDoneColumn" type="VBoxContainer"]
 custom_minimum_size = Vector2(56, 0)

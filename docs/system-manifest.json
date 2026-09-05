@@ -16,9 +16,9 @@
       "id": "inventory",
       "boundary": "game",
       "guide": "docs/features/inventory.md",
-      "entryPoints": ["src/game/rules/inventory_rules.gd", "src/game/rules/equipment_rules.gd", "src/playthrough/workflows/inventory_workflow.gd", "src/playthrough/workflows/field_item_workflow.gd"],
-      "publicInterfaces": ["InventoryRules", "EquipmentRules", "InventoryWorkflow", "FieldItemWorkflow", "InventoryIntents", "InventoryIntentPayloads", "ItemDefinition", "ItemInstance"],
-      "tests": ["tests/integration/test_inventory_session.gd"],
+      "entryPoints": ["src/game/rules/inventory_rules.gd", "src/game/rules/equipment_rules.gd", "src/playthrough/workflows/inventory_workflow.gd", "src/playthrough/workflows/field_item_workflow.gd", "src/ui/inventory"],
+      "publicInterfaces": ["InventoryRules", "EquipmentRules", "InventoryWorkflow", "FieldItemWorkflow", "InventoryIntents", "InventoryIntentPayloads", "ItemDefinition", "ItemInstance", "InventoryScreen", "InventoryWorkspace", "InventoryScreenController"],
+      "tests": ["tests/integration/test_inventory_session.gd", "tests/presentation/test_classic_ui_system.gd", "tests/presentation/test_realmz_builder_previews.gd"],
       "performanceProbes": []
     },
     {
@@ -145,7 +145,7 @@
     {"id": "character-files", "scene": "src/ui/screens/vault_screen.tscn"},
     {"id": "allies", "scene": "src/ui/screens/allies_screen.tscn"},
     {"id": "bestiary", "scene": "src/ui/screens/bestiary_screen.tscn"},
-    {"id": "inventory", "scene": "src/ui/screens/inventory_screen.tscn"},
+    {"id": "inventory", "scene": "src/ui/inventory/inventory_screen.tscn"},
     {"id": "spells", "scene": "src/ui/magic/spells_screen.tscn"},
     {"id": "services", "scene": "src/ui/screens/services_screen.tscn"},
     {"id": "maps-journal", "scene": "src/ui/screens/journal_screen.tscn"},

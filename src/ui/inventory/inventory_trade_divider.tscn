@@ -1,7 +1,7 @@
 [gd_scene load_steps=3 format=3]
 
-[ext_resource type="Script" path="res://src/ui/screens/inventory_trade_divider.gd" id="1_divider"]
-[ext_resource type="PackedScene" path="res://src/ui/screens/inventory_trade_portrait_button.tscn" id="2_portrait"]
+[ext_resource type="Script" path="res://src/ui/inventory/inventory_trade_divider.gd" id="1_divider"]
+[ext_resource type="PackedScene" path="res://src/ui/inventory/inventory_trade_portrait_button.tscn" id="2_portrait"]
 
 [node name="InventoryTradeDivider" type="PanelContainer"]
 custom_minimum_size = Vector2(150, 0)

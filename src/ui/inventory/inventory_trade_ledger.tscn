@@ -1,8 +1,8 @@
 [gd_scene load_steps=4 format=3]
 
-[ext_resource type="Script" path="res://src/ui/screens/inventory_trade_ledger.gd" id="1_ledger"]
-[ext_resource type="PackedScene" path="res://src/ui/screens/inventory_trade_item_row.tscn" id="2_row"]
-[ext_resource type="PackedScene" path="res://src/ui/screens/inventory_text_row.tscn" id="3_empty"]
+[ext_resource type="Script" path="res://src/ui/inventory/inventory_trade_ledger.gd" id="1_ledger"]
+[ext_resource type="PackedScene" path="res://src/ui/inventory/inventory_trade_item_row.tscn" id="2_row"]
+[ext_resource type="PackedScene" path="res://src/ui/inventory/inventory_text_row.tscn" id="3_empty"]
 
 [node name="InventoryTradeLedger" type="PanelContainer"]
 size_flags_horizontal = 3

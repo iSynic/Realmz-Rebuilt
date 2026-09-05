@@ -3446,7 +3446,7 @@
         "status": "accepted",
         "owners": [
           {
-            "path": "src/ui/controllers/inventory_screen_controller.gd",
+            "path": "src/ui/inventory/inventory_screen_controller.gd",
             "symbol": "func present"
           },
           {
@@ -5207,7 +5207,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/controllers/inventory_screen_controller.gd",
+            "path": "src/ui/inventory/inventory_screen_controller.gd",
             "symbol": "func _render_item_detail"
           }
         ]
@@ -5325,7 +5325,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/controllers/inventory_screen_controller.gd",
+            "path": "src/ui/inventory/inventory_screen_controller.gd",
             "symbol": "func _render_item_detail"
           }
         ]
@@ -6016,7 +6016,7 @@
             "symbol": "class_name ShopInteraction"
           },
           {
-            "path": "src/ui/controllers/inventory_screen_controller.gd",
+            "path": "src/ui/inventory/inventory_screen_controller.gd",
             "symbol": "func _render_item_detail"
           }
         ]
