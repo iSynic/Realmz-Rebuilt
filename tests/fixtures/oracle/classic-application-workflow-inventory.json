@@ -2645,7 +2645,7 @@
             "symbol": "func close"
           },
           {
-            "path": "src/app/application_lifecycle_host.gd",
+            "path": "src/app/platform/application_lifecycle_host.gd",
             "symbol": "func request_end_adventure"
           }
         ]
@@ -3450,7 +3450,7 @@
             "symbol": "func present"
           },
           {
-            "path": "src/app/realmz_application.gd",
+            "path": "src/app/composition/realmz_application.gd",
             "symbol": "func handle_field_fast_spell"
           },
           {
@@ -10048,11 +10048,11 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/app/realmz_application.gd",
+            "path": "src/app/composition/realmz_application.gd",
             "symbol": "func _notification"
           },
           {
-            "path": "src/app/application_lifecycle.gd",
+            "path": "src/app/platform/application_lifecycle.gd",
             "symbol": "static func quit_application_request"
           },
           {
@@ -10968,7 +10968,7 @@
             "symbol": "class_name PackageInstallTask"
           },
           {
-            "path": "src/app/realmz_application.gd",
+            "path": "src/app/composition/realmz_application.gd",
             "symbol": "func _begin_package_start"
           },
           {

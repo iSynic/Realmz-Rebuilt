@@ -1,6 +1,6 @@
 [gd_scene load_steps=5 format=3]
 
-[ext_resource type="Script" path="res://src/app/startup_front_door.gd" id="1_front_door"]
+[ext_resource type="Script" path="res://src/app/startup/startup_front_door.gd" id="1_front_door"]
 [ext_resource type="Texture2D" path="res://src/ui/assets/ui/intro/rebuilt-launch-splash.jpg" id="4_splash"]
 [ext_resource type="AudioStream" path="res://src/ui/assets/classic-media/sounds/snd-624.wav" id="5_transition"]
 [ext_resource type="AudioStream" path="res://src/ui/assets/classic-media/sounds/snd-20.wav" id="6_music"]

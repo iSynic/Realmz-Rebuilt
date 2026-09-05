@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://c6inglyqe3c6v"]
 
-[ext_resource type="Script" uid="uid://c4lmfeiqvh15e" path="res://src/app/realmz_application.gd" id="1_application"]
+[ext_resource type="Script" uid="uid://c4lmfeiqvh15e" path="res://src/app/composition/realmz_application.gd" id="1_application"]
 [ext_resource type="Script" uid="uid://cx16ce4so2bne" path="res://src/ui/exploration/classic_map_presenter.gd" id="2_gxxd3"]
 [ext_resource type="PackedScene" path="res://src/ui/shared/interactions/interaction_presenter.tscn" id="3_uarpi"]
 [ext_resource type="PackedScene" path="res://src/ui/shell/game_shell.tscn" id="4_shell"]
@@ -8,7 +8,7 @@
 [ext_resource type="Texture2D" path="res://src/ui/assets/ui/classic-charcoal-slate-tile.png" id="6_stone"]
 [ext_resource type="Theme" path="res://src/ui/classic_ui_theme.tres" id="7_theme"]
 [ext_resource type="Script" path="res://src/ui/combat/classic_battlefield_presenter.gd" id="8_p3gde"]
-[ext_resource type="Script" path="res://src/app/startup_route_bridge.gd" id="9_startup"]
+[ext_resource type="Script" path="res://src/app/startup/startup_route_bridge.gd" id="9_startup"]
 
 [sub_resource type="StyleBoxFlat" id="InteractionStyle"]
 bg_color = Color(0.055, 0.063, 0.078, 0.985)

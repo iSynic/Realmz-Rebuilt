@@ -494,11 +494,11 @@ if (Test-Path -LiteralPath $packageRepositoryPath) {
 # similarly narrow responsibility: it may mount workspaces and navigate among
 # them, while route-local controllers and rendering belong to the workspace
 # presenter mounted beneath the scene's explicit hosts.
-$preparedPackagePath = Join-Path $repoRoot "src\app\view\prepared_package.gd"
+$preparedPackagePath = Join-Path $repoRoot "src\app\startup\prepared_package.gd"
 if (Test-Path -LiteralPath $preparedPackagePath) {
     $preparedPackageContent = [IO.File]::ReadAllText($preparedPackagePath)
     if ($preparedPackageContent -match '\bPackageMediaCatalog\b') {
-        $violations += "src/app/view/prepared_package.gd app view models must expose MediaSource instead of the storage PackageMediaCatalog"
+        $violations += "src/app/startup/prepared_package.gd app view models must expose MediaSource instead of the storage PackageMediaCatalog"
     }
 }
 

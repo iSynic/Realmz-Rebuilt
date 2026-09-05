@@ -1,7 +1,7 @@
 extends "res://tests/presentation/classic_ui_test_support.gd"
 
-const PackageOperationStatusScript := preload("res://src/app/package_operation_view.gd")
-const ApplicationLifecycleScript := preload("res://src/app/application_lifecycle.gd")
+const PackageOperationStatusScript := preload("res://src/app/startup/package_operation_view.gd")
+const ApplicationLifecycleScript := preload("res://src/app/platform/application_lifecycle.gd")
 const InteractionLayoutPolicyScript := preload("res://src/ui/shared/interactions/interaction_layout_policy.gd")
 
 

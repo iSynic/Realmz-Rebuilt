@@ -6,16 +6,19 @@ Own the Godot composition root and translate host input/output into the pure ses
 
 ## Ownership
 
-- `RealmzApplication` remains the scene composition root. `ApplicationInputRouter` owns host input dispatch, `ApplicationCombatPolicy` owns the pure translation between combat UI responses, Auto playback state, and typed session commands, `ApplicationStepStatusText` owns short shell-status wording, and `ApplicationSettingsController` binds, applies, and persists presentation-only preferences. Application and host collaborators address `GameShellStatusController`, `GameShellCommandController`, the persistent roster, and the navigator's setup/content controllers as their actual public owners; `GameShell` does not forward those APIs.
-- `ApplicationLifecycleHost` owns process-quit, End Adventure, Save and Quit, and deferred close interaction state. `ApplicationCharacterFilesHost` owns the built-in application library, vault publication/import, and standalone creator. `ApplicationSpatialLayout` aligns algorithmic presenters with the authored shell stage. `RealmzApplication` constructs and connects these collaborators plus the distinct `PresentationCoordinator` and `PresentationMediaController`; it does not duplicate their state or route media operations through the view coordinator.
-- `CharacterVaultController` owns repository-facing immutable character operations; `ApplicationCharacterFilesHost` supplies committed snapshots and refreshes the visible vault after success.
+- `composition` owns the visible composition root, explicit dependency graph, spatial alignment, and short host-status wording.
+- `startup` owns the first-frame boundary, campaign package preparation, cancellable package work, and detached package-operation views.
+- `navigation` owns named host input routing and the complete application input-action vocabulary.
+- `session` owns the replaceable `GameSession`, adventure persistence coordination, Character Files and vault workflows, and combat-response translation.
+- `platform` owns process and adventure lifecycle, presentation settings, and debug-build tooling.
+- Application and host collaborators address `GameShellStatusController`, `GameShellCommandController`, the persistent roster, and the navigator's setup/content controllers as their actual public owners; `GameShell` does not forward those APIs.
 
 - `StartupFrontDoor` owns immediate process entry and background construction of `RealmzApplication`; `RealmzApplication` constructs the gameplay dependency graph explicitly.
 - `GameSessionController` owns the replaceable `GameSession` instance and publishes committed steps.
 - `ApplicationInputRouter` owns keyboard and pointer routing policy; `RealmzApplication` constructs it and remains the Godot input entry point.
 - `ApplicationInputRouter` may invoke only the composition root's public input, availability, and lifecycle-query operations; it must not reach into private host fields or methods.
 - `GameSessionController` materializes one detached `GameView` per committed revision and shares it with host input checks and presenters; host code must not rebuild the same revision repeatedly. It also retains the presentation-requested map-cell span across session replacement and may rebuild that read model at the same gameplay revision when responsive layout changes.
-- Detached campaign, vault, and host view models live under `src/app/view`; `CharacterVaultRevisionView` is app-owned while remaining `class_name`-compatible. Prepared package views expose the core `MediaSource` abstraction and never leak an storage package catalog into presentation.
+- Detached campaign and package-operation views live with `startup`; detached Character Files identities and revisions live with `session`. `CharacterVaultRevisionView` is app-owned while remaining `class_name`-compatible. Prepared package views expose the core `MediaSource` abstraction and never leak a storage package catalog into presentation.
 - This boundary coordinates repositories and presenters but contains no Realmz rules.
 - After the application character library validates, `ApplicationCharacterFilesHost` asks the vault controller to install the trusted six-record starter catalog only when the vault is absent or completely empty; catalog or staging failure is a nonfatal startup diagnostic and ordinary character creation remains available.
 
@@ -61,4 +64,8 @@ Own the Godot composition root and translate host input/output into the pure ses
 
 ## Child DOX Index
 
-- `controllers/AGENTS.md` owns host package, save, vault, and creator controller boundaries.
+- `composition/AGENTS.md` owns the explicit application dependency graph and shell alignment.
+- `startup/AGENTS.md` owns first-frame startup and package preparation.
+- `navigation/AGENTS.md` owns host input routing.
+- `session/AGENTS.md` owns active-session, save, Character Files, vault, and combat host workflows.
+- `platform/AGENTS.md` owns lifecycle, settings, and debug-build host behavior.

@@ -1,7 +1,7 @@
 extends "res://tests/presentation/classic_ui_test_support.gd"
 
 const SaveSlotPreviewScript := preload("res://src/game/view/save_slot_preview.gd")
-const ApplicationLifecycleScript := preload("res://src/app/application_lifecycle.gd")
+const ApplicationLifecycleScript := preload("res://src/app/platform/application_lifecycle.gd")
 const HeldMovementControllerScript := preload("res://src/ui/exploration/held_movement_controller.gd")
 const RetainedMapSurfaceScript := preload("res://src/ui/exploration/classic_retained_map_surface.gd")
 const FAST_SPELL_DOCK_SCENE := preload("res://src/ui/combat/fast_spell_dock.tscn"); const ScrollingTextInteractionScript := preload("res://src/ui/journal/scrolling_text_interaction.gd")

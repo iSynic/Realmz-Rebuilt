@@ -6,7 +6,7 @@ extends Control
 signal application_loaded(elapsed_ms: float)
 
 const APPLICATION_SCENE_PATH := "res://src/ui/shell/realmz_application.tscn"
-const APPLICATION_SCRIPT_PATH := "res://src/app/realmz_application.gd"
+const APPLICATION_SCRIPT_PATH := "res://src/app/composition/realmz_application.gd"
 const CAMPAIGN_LIBRARY_CONTROLLER_PATH := "res://src/ui/setup/campaign_library_controller.gd"
 const SETTINGS_REPOSITORY_PATH := "res://src/storage/settings/settings_repository.gd"
 const CLASSIC_TYPOGRAPHY_PATH := "res://src/ui/classic_typography.gd"
