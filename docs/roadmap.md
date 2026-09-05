@@ -1,6 +1,6 @@
 # Realmz Rebuilt roadmap
 
-Realmz Rebuilt is a working deterministic Realmz runtime in Godot 4.7.1. The current priority is Beta 1 certification, not feature expansion. Structural architecture work is complete; release remains blocked until the repository is proven approachable by an unfamiliar maintainer and the exact candidate is exercised through ordinary play and native builds.
+Realmz Rebuilt is a working deterministic Realmz runtime in Godot 4.7.1. Beta 1 is public; the current priority is certifying the human-centered architecture update, not feature expansion. Structural architecture work is complete; the update remains blocked until the repository is proven approachable by an unfamiliar maintainer and the exact candidate is exercised through ordinary play and protected native builds.
 
 This page records current state and next work only. Detailed parity counts come from the generated [Classic workflow status](classic-application-workflow-status.md) and [gameplay parity status](classic-gameplay-parity-status.md). Architecture ownership comes from [the system manifest](system-manifest.json). Historical preparation remains in private Git recovery archives rather than the public roadmap.
 
@@ -18,7 +18,7 @@ This page records current state and next work only. Detailed parity counts come 
 - A Windows export was built, inspected, and smoke-launched. The exact final candidate must still be rebuilt and launched on Windows, Linux, and macOS.
 - Three warmed completed-tree samples pass the local startup, movement, dungeon, combat, package, canonical-frame, and native-frame limits against the same-machine pre-migration baseline. The exact Windows candidate also passes native smoke, export-size, and peak-memory comparison.
 
-## Beta 1 blockers
+## Architecture-update blockers
 
 ### Maintainer acceptance
 
@@ -62,16 +62,16 @@ This page records current state and next work only. Detailed parity counts come 
 - Add no runtime legacy importer or arbitrary in-process GDScript scenario fallback.
 - Keep application-owned Realmz content in the application library and scenario-owned content in package overlays with exact-key replacement only where Castle proves it.
 
-## Release sequence
+## Update sequence
 
 1. Finish the maintainer, ordinary-play, and native-platform gates above.
-2. Create and verify the final private `git bundle --all` outside the repository.
-3. Build a fresh sanitized staging repository from the public-source manifest and create one root commit on `main` with Git LFS already configured.
-4. Run the complete gate and a separate clean LFS clone from that staging repository.
-5. Push `main`, make the repository public, configure archives and branch protection, and wait for green public CI.
-6. Tag the exact green commit as `v0.1.0-beta.1`.
-7. Let the tag workflow build Windows ZIP, Linux `tar.gz`, macOS ZIP, and `SHA256SUMS` into a draft prerelease.
+2. Create and verify a new final private `git bundle --all` outside the repository without replacing the retained Beta 1 archives.
+3. Synchronize the existing public staging checkout from the explicit source manifest on a review branch; preserve its sanitized root and published history.
+4. Run the complete gate and a separate clean LFS clone from that synchronized branch.
+5. Push the review branch, wait for every protected Windows, Linux, and macOS verification/export check, and merge with linear history only after review.
+6. Select the next prerelease version with the project owner; never move or reuse `v0.1.0-beta.1`.
+7. Let the new exact tag workflow build Windows ZIP, Linux `tar.gz`, macOS ZIP, and `SHA256SUMS` into a draft prerelease.
 8. Review every asset, launch record, license, scenario, starter character, checksum, known limitation, and save-compatibility warning.
 9. Publish manually as a prerelease, download every published asset, and repeat checksum and native-startup verification.
 
-Beta 1 is complete only after every blocker above has direct evidence. A passing local suite or a plausible release artifact is not a substitute for the remaining human, gameplay, platform, and hosted checks.
+The architecture update is complete only after every blocker above has direct evidence. A passing local suite or a plausible release artifact is not a substitute for the remaining human, gameplay, platform, and hosted checks.

@@ -1,6 +1,6 @@
 # Human-centered architecture
 
-Realmz Rebuilt is organized so a contributor can begin with a visible feature, locate its scene and controller, follow its typed command into the playthrough, find the owning rules and state, and reach the relevant tests without private project history. Structural implementation and local performance certification are complete. Beta 1 remains blocked until unfamiliar-maintainer, ordinary-play, native-platform, and hosted-release acceptance also pass.
+Realmz Rebuilt is organized so a contributor can begin with a visible feature, locate its scene and controller, follow its typed command into the playthrough, find the owning rules and state, and reach the relevant tests without private project history. Structural implementation and local performance certification are complete. The published Beta 1 predates this overhaul; the architecture update remains blocked until unfamiliar-maintainer, ordinary-play, native-platform, and hosted-update acceptance also pass.
 
 Use [the Builder's Manual](builders-manual.md) for the newcomer tour, [the system manifest](system-manifest.json) for machine-checked ownership, [the architecture record](architecture-migration.md) for current boundaries, and [the roadmap](roadmap.md) for remaining release work.
 
@@ -67,7 +67,7 @@ The completed tree has passed the local core-performance gate against the archiv
 | Ordinary-play candidate | Open | AOGM, War, and City of Bywater walkthroughs accepted |
 | Final performance | Complete locally | Core probes, exact Windows export size, and peak memory pass the relative and absolute limits |
 | Native platforms | Partial | Windows pre-certified; exact Windows/Linux/macOS candidate still required |
-| Hosted acquisition | Open | Real Git/LFS clone and GitHub Download ZIP contain valid packages |
-| Beta publication | Open | Green exact tag, reviewed draft assets, manual prerelease publication |
+| Hosted update | Open | Manifest-synchronized review branch and all protected GitHub checks green |
+| Next publication | Open | Owner-selected prerelease version, green exact tag, reviewed draft assets, and manual publication |
 
 No open acceptance gate permits weakening the completed architecture. A failure is repaired in its owning feature, scene, guide, workflow, or release boundary and then reverified at the appropriate risk tier.
