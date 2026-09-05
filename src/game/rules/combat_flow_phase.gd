@@ -56,8 +56,8 @@ func _resolve_character_phase(state: GameState, content: RealmzContent, caster: 
 	caster.attacks_remaining = _context.arithmetic.signed_16(caster.attacks_remaining - 2)
 	caster.movement = maxi(0, caster.movement - 12)
 	combat.turns.invalidate_undo()
-	var origin := combat.battlefield.actor_position(caster.id)
-	var collision_actor_id := combat.battlefield.actor_at(destination, caster.id)
+	var origin := combat.battlefield.actors.actor_position(caster.id)
+	var collision_actor_id := combat.battlefield.actors.actor_at(destination, caster.id)
 	var phased_into_solid := _destination_is_solid(state, content, combat, destination)
 	var defeated := not collision_actor_id.is_empty() or phased_into_solid
 	var events: Array[DomainEvent] = [
@@ -69,7 +69,7 @@ func _resolve_character_phase(state: GameState, content: RealmzContent, caster: 
 		_context.actions().mark_character_bleeding(state, caster, true)
 		_context.automation().remove_defeated_position(combat, caster.id, true)
 	else:
-		if not combat.battlefield.move_actor(caster.id, destination):
+		if not combat.battlefield.actors.move_actor(caster.id, destination):
 			return CombatFlowResult.failed(&"phase_destination_unavailable", "The Phase destination could not receive the caster.")
 		events.append(DomainEvent.new(&"combatant_moved", {"actorId": caster.id, "from": [origin.x, origin.y], "to": [destination.x, destination.y], "cost": 12, "movementRemaining": caster.movement, "automatic": false, "source": "classic-combat-phase"}))
 		if spell.size == 0:
@@ -93,5 +93,5 @@ func _resolve_character_phase(state: GameState, content: RealmzContent, caster: 
 static func _destination_is_solid(state: GameState, content: RealmzContent, combat: CombatState, destination: Vector2i) -> bool:
 	var map := content.world.map_by_id(combat.battlefield.map_id) if content != null and combat != null and combat.battlefield != null else null
 	var terrain_set := content.world.battle_terrain_set_for_map(map, state.world) if map != null and state != null else null
-	var terrain := terrain_set.tile_by_id(combat.battlefield.terrain_at(destination)) if terrain_set != null else null
+	var terrain := terrain_set.tile_by_id(combat.battlefield.terrain.tile_at(destination)) if terrain_set != null else null
 	return terrain == null or terrain.solid != 0

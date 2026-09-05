@@ -126,7 +126,7 @@ func run() -> void:
 		assert_equal(battle_atlas.region_for(400), Rect2i(608, 608, 32, 32), "Classic battle tile 400 maps to the final PICT 302 cell")
 		assert_false(battle_atlas.region_for(401).has_area(), "battle terrain cannot address beyond Castle's 400 artwork cells")
 	var battle_tiles: Array[int] = []
-	battle_tiles.resize(BattlefieldState.CELL_COUNT)
+	battle_tiles.resize(BattlefieldGrid.CELL_COUNT)
 	battle_tiles.fill(232)
 	var battle_view := CombatView.new(CombatState.new("classic.battle.presentation-contract", [], 0, BattlefieldState.new("land:0", battle_tiles)), [], loaded.content)
 	assert_equal(battle_view.battlefield.upper_tileset_id, "landlook-0", "land combat identifies the active landlook atlas that Castle copies over PICT 302's upper half")

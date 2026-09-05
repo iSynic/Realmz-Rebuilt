@@ -59,13 +59,13 @@ static func click_direction_for_point(active_cell: Rect2, point: Vector2) -> Vec
 
 static func viewport_cells_for(control_size: Vector2) -> Vector2i:
 	return Vector2i(
-		mini(BattlefieldState.SIZE, maxi(1, floori(control_size.x / NATIVE_CELL_SIZE))),
-		mini(BattlefieldState.SIZE, maxi(1, floori((control_size.y - HEADER_HEIGHT) / NATIVE_CELL_SIZE)))
+		mini(BattlefieldGrid.SIZE, maxi(1, floori(control_size.x / NATIVE_CELL_SIZE))),
+		mini(BattlefieldGrid.SIZE, maxi(1, floori((control_size.y - HEADER_HEIGHT) / NATIVE_CELL_SIZE)))
 	)
 
 
 static func camera_top_left(active_position: Vector2i, visible_cells: Vector2i) -> Vector2i:
-	var maximum := Vector2i(BattlefieldState.SIZE, BattlefieldState.SIZE) - visible_cells
+	var maximum := Vector2i(BattlefieldGrid.SIZE, BattlefieldGrid.SIZE) - visible_cells
 	return Vector2i(
 		clampi(active_position.x - floori(float(visible_cells.x) / 2.0), 0, maximum.x),
 		clampi(active_position.y - floori(float(visible_cells.y) / 2.0), 0, maximum.y)

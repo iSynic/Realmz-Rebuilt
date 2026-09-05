@@ -99,9 +99,9 @@ func clear_staged_random_item_power() -> void:
 
 
 func begin_character_undo(actor_id: String, battlefield: BattlefieldState) -> bool:
-	if active_turn == null or active_turn.actor_id != actor_id or active_actor_id() != actor_id or battlefield == null or not battlefield.has_actor(actor_id) or _roster.monster_by_id(actor_id) != null:
+	if active_turn == null or active_turn.actor_id != actor_id or active_actor_id() != actor_id or battlefield == null or not battlefield.actors.has_actor(actor_id) or _roster.monster_by_id(actor_id) != null:
 		return false
-	undo_state = CombatUndoState.new(actor_id, battlefield.actor_position(actor_id), round_number, turn_index)
+	undo_state = CombatUndoState.new(actor_id, battlefield.actors.actor_position(actor_id), round_number, turn_index)
 	return true
 
 

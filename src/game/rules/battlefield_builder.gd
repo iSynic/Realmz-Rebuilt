@@ -26,7 +26,7 @@ func build_terrain(map: MapDefinition, world_state: WorldState, terrain_set: Bat
 	)
 	var map_shift := (requested_origin - source_origin) * SCALE
 	var tiles: Array[int] = []
-	tiles.resize(BattlefieldState.CELL_COUNT)
+	tiles.resize(BattlefieldGrid.CELL_COUNT)
 	tiles.fill(terrain_set.base_tile if map.level_type == &"land" else DUNGEON_FLOOR_TILE)
 	var battlefield := BattlefieldState.new(map.id, tiles, source_origin, map_shift)
 	for source_y: int in SOURCE_SIZE:
@@ -39,7 +39,7 @@ func build_terrain(map: MapDefinition, world_state: WorldState, terrain_set: Bat
 				return BattlefieldBuildResult.failed(&"battlefield_missing_build", "Map '%s' cannot resolve battle terrain for cell %s." % [map.id, cell.coordinate])
 			for sub_y: int in SCALE:
 				for sub_x: int in SCALE:
-					battlefield.set_terrain(Vector2i(source_x * SCALE + sub_x, source_y * SCALE + sub_y), int(build[sub_y][sub_x]))
+					battlefield.terrain.set_tile(Vector2i(source_x * SCALE + sub_x, source_y * SCALE + sub_y), int(build[sub_y][sub_x]))
 	var decoration_error := _decorate_dungeon(battlefield, terrain_set, rng) if map.level_type == &"dungeon" else _decorate_land(battlefield, terrain_set, rng)
 	if not decoration_error.is_empty():
 		return BattlefieldBuildResult.failed(&"battlefield_decoration_failed", decoration_error)
@@ -78,7 +78,7 @@ func place_character(battlefield: BattlefieldState, terrain_set: BattleTerrainSe
 	else:
 		base = Vector2i(party_index - 3 * absi(quotient) + absi(quotient) * horizontal_sign, quotient * vertical_sign)
 	var coordinate := _find_character_cell(battlefield, terrain_set, base)
-	return coordinate.x >= 0 and battlefield.place_character(actor_id, coordinate)
+	return coordinate.x >= 0 and battlefield.actors.place_character(actor_id, coordinate)
 
 
 func find_monster_position(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, desired_local: Vector2i, size: int) -> Vector2i:
@@ -102,7 +102,7 @@ func find_monster_position(battlefield: BattlefieldState, terrain_set: BattleTer
 
 func place_monster(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, actor_id: String, desired_local: Vector2i, size: int) -> bool:
 	var coordinate := find_monster_position(battlefield, terrain_set, desired_local, size)
-	return coordinate.x >= 0 and battlefield.place_monster(actor_id, coordinate, size)
+	return coordinate.x >= 0 and battlefield.actors.place_monster(actor_id, coordinate, size)
 
 
 func _find_character_cell(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, base_local: Vector2i) -> Vector2i:
@@ -113,9 +113,9 @@ func _find_character_cell(battlefield: BattlefieldState, terrain_set: BattleTerr
 				if not _is_new_radius_edge(horizontal_offset, vertical_offset, radius):
 					continue
 				var candidate := center + Vector2i(horizontal_offset, vertical_offset)
-				if not _inside_good_rect(candidate) or battlefield.is_occupied(candidate):
+				if not _inside_good_rect(candidate) or battlefield.actors.is_occupied(candidate):
 					continue
-				var terrain := terrain_set.tile_by_id(battlefield.terrain_at(candidate))
+				var terrain := terrain_set.tile_by_id(battlefield.terrain.tile_at(candidate))
 				if terrain != null and terrain.solid == 0:
 					return candidate
 	return Vector2i(-1, -1)
@@ -124,11 +124,11 @@ func _find_character_cell(battlefield: BattlefieldState, terrain_set: BattleTerr
 func _monster_position_is_legal(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, anchor: Vector2i, size: int) -> bool:
 	if not _inside_good_rect(anchor):
 		return false
-	var footprint := BattlefieldState.footprint_cells(anchor, size)
+	var footprint := BattlefieldGrid.footprint_cells(anchor, size)
 	for coordinate: Vector2i in footprint:
-		if not BattlefieldState.contains(coordinate) or battlefield.is_occupied(coordinate):
+		if not BattlefieldGrid.contains(coordinate) or battlefield.actors.is_occupied(coordinate):
 			return false
-		var terrain := terrain_set.tile_by_id(battlefield.terrain_at(coordinate))
+		var terrain := terrain_set.tile_by_id(battlefield.terrain.tile_at(coordinate))
 		if terrain == null:
 			return false
 		if coordinate == anchor:
@@ -164,11 +164,11 @@ func _decorate_dungeon(battlefield: BattlefieldState, terrain_set: BattleTerrain
 		for x: int in range(2, 88):
 			var coordinate := Vector2i(x, y)
 			var roll := rng.draw(100, &"battle.terrain.dungeon-rubble-chance")
-			var definition := terrain_set.tile_by_id(battlefield.terrain_at(coordinate))
+			var definition := terrain_set.tile_by_id(battlefield.terrain.tile_at(coordinate))
 			if definition == null:
 				return "Dungeon battle terrain references an unavailable Combat Data BD tile."
 			if roll < 10 and definition.solid == 0:
-				battlefield.set_terrain(coordinate, 200 + rng.draw_between(141, 158, &"battle.terrain.dungeon-rubble-tile"))
+				battlefield.terrain.set_tile(coordinate, 200 + rng.draw_between(141, 158, &"battle.terrain.dungeon-rubble-tile"))
 	return ""
 
 
@@ -176,8 +176,8 @@ func _decorate_land(battlefield: BattlefieldState, terrain_set: BattleTerrainSet
 	for y: int in range(2, 88):
 		for x: int in range(2, 88):
 			var coordinate := Vector2i(x, y)
-			var bottom := terrain_set.tile_by_id(battlefield.terrain_at(coordinate))
-			var top := terrain_set.tile_by_id(battlefield.terrain_at(coordinate + Vector2i.UP))
+			var bottom := terrain_set.tile_by_id(battlefield.terrain.tile_at(coordinate))
+			var top := terrain_set.tile_by_id(battlefield.terrain.tile_at(coordinate + Vector2i.UP))
 			if bottom == null or top == null:
 				return "Land battle terrain references an unavailable effective mapstats tile."
 			if bottom.forest != 0:
@@ -188,8 +188,8 @@ func _decorate_land(battlefield: BattlefieldState, terrain_set: BattleTerrainSet
 				if bottom_blocked == 0 and top_blocked == 0:
 					_decorate_forest_cell(battlefield, coordinate, bottom.forest, terrain_set.base_tile, rng)
 				else:
-					battlefield.set_terrain(coordinate, terrain_set.base_tile)
-			elif battlefield.terrain_at(coordinate) == terrain_set.base_tile:
+					battlefield.terrain.set_tile(coordinate, terrain_set.base_tile)
+			elif battlefield.terrain.tile_at(coordinate) == terrain_set.base_tile:
 				_decorate_rubble_cell(battlefield, coordinate, terrain_set.landlook, rng)
 	return ""
 
@@ -200,49 +200,49 @@ func _decorate_forest_cell(battlefield: BattlefieldState, coordinate: Vector2i, 
 		1:
 			if rng.draw(100, &"battle.terrain.forest-primary") < 20:
 				var bottom_tile := 200 + rng.draw_between(67, 71, &"battle.terrain.forest-tile")
-				battlefield.set_terrain(coordinate, bottom_tile)
-				battlefield.set_terrain(top_coordinate, bottom_tile - 6 if not _between(battlefield.terrain_at(top_coordinate), 267, 271) else 266)
+				battlefield.terrain.set_tile(coordinate, bottom_tile)
+				battlefield.terrain.set_tile(top_coordinate, bottom_tile - 6 if not _between(battlefield.terrain.tile_at(top_coordinate), 267, 271) else 266)
 			elif rng.draw(100, &"battle.terrain.forest-secondary") < 10:
-				battlefield.set_terrain(coordinate, 200 + rng.draw_between(81, 91, &"battle.terrain.forest-rubble"))
+				battlefield.terrain.set_tile(coordinate, 200 + rng.draw_between(81, 91, &"battle.terrain.forest-rubble"))
 			else:
-				battlefield.set_terrain(coordinate, base_tile)
+				battlefield.terrain.set_tile(coordinate, base_tile)
 		2:
 			if rng.draw(100, &"battle.terrain.forest-primary") < 20:
-				battlefield.set_terrain(coordinate, 200 + rng.draw_between(107, 111, &"battle.terrain.forest-tile"))
-				battlefield.set_terrain(top_coordinate, 200 + rng.draw_between(101, 105, &"battle.terrain.forest-top") if not _between(battlefield.terrain_at(top_coordinate), 307, 311) else 306)
+				battlefield.terrain.set_tile(coordinate, 200 + rng.draw_between(107, 111, &"battle.terrain.forest-tile"))
+				battlefield.terrain.set_tile(top_coordinate, 200 + rng.draw_between(101, 105, &"battle.terrain.forest-top") if not _between(battlefield.terrain.tile_at(top_coordinate), 307, 311) else 306)
 			elif rng.draw(100, &"battle.terrain.forest-secondary") < 10:
-				battlefield.set_terrain(coordinate, 200 + rng.draw_between(121, 131, &"battle.terrain.forest-rubble"))
+				battlefield.terrain.set_tile(coordinate, 200 + rng.draw_between(121, 131, &"battle.terrain.forest-rubble"))
 			else:
-				battlefield.set_terrain(coordinate, base_tile)
+				battlefield.terrain.set_tile(coordinate, base_tile)
 		3:
-			if rng.draw(100, &"battle.terrain.forest-primary") < 20 and not _between(battlefield.terrain_at(top_coordinate), 273, 280):
+			if rng.draw(100, &"battle.terrain.forest-primary") < 20 and not _between(battlefield.terrain.tile_at(top_coordinate), 273, 280):
 				var bottom_tile := 200 + rng.draw_between(77, 80, &"battle.terrain.forest-tile")
-				battlefield.set_terrain(coordinate, bottom_tile)
-				battlefield.set_terrain(top_coordinate, bottom_tile - 4)
+				battlefield.terrain.set_tile(coordinate, bottom_tile)
+				battlefield.terrain.set_tile(top_coordinate, bottom_tile - 4)
 			elif rng.draw(100, &"battle.terrain.forest-secondary") < 10:
-				battlefield.set_terrain(coordinate, 200 + rng.draw_between(92, 100, &"battle.terrain.forest-rubble"))
+				battlefield.terrain.set_tile(coordinate, 200 + rng.draw_between(92, 100, &"battle.terrain.forest-rubble"))
 			else:
-				battlefield.set_terrain(coordinate, base_tile)
+				battlefield.terrain.set_tile(coordinate, base_tile)
 		4:
-			if rng.draw(100, &"battle.terrain.forest-primary") < 20 and not _between(battlefield.terrain_at(top_coordinate), 381, 391):
+			if rng.draw(100, &"battle.terrain.forest-primary") < 20 and not _between(battlefield.terrain.tile_at(top_coordinate), 381, 391):
 				var bottom_tile := 200 + rng.draw_between(186, 190, &"battle.terrain.forest-tile")
-				battlefield.set_terrain(coordinate, bottom_tile)
-				if not _between(battlefield.terrain_at(top_coordinate), 307, 311):
-					battlefield.set_terrain(top_coordinate, bottom_tile - 5)
+				battlefield.terrain.set_tile(coordinate, bottom_tile)
+				if not _between(battlefield.terrain.tile_at(top_coordinate), 307, 311):
+					battlefield.terrain.set_tile(top_coordinate, bottom_tile - 5)
 			elif rng.draw(100, &"battle.terrain.forest-secondary") < 10:
-				battlefield.set_terrain(coordinate, 200 + rng.draw_between(159, 171, &"battle.terrain.forest-rubble"))
+				battlefield.terrain.set_tile(coordinate, 200 + rng.draw_between(159, 171, &"battle.terrain.forest-rubble"))
 			else:
-				battlefield.set_terrain(coordinate, base_tile)
+				battlefield.terrain.set_tile(coordinate, base_tile)
 		5:
-			if rng.draw(100, &"battle.terrain.forest-primary") < 20 and not _between(battlefield.terrain_at(top_coordinate), 391, 400):
+			if rng.draw(100, &"battle.terrain.forest-primary") < 20 and not _between(battlefield.terrain.tile_at(top_coordinate), 391, 400):
 				var bottom_tile := 200 + rng.draw_between(196, 200, &"battle.terrain.forest-tile")
-				battlefield.set_terrain(coordinate, bottom_tile)
-				if not _between(battlefield.terrain_at(top_coordinate), 317, 321):
-					battlefield.set_terrain(top_coordinate, bottom_tile - 5)
+				battlefield.terrain.set_tile(coordinate, bottom_tile)
+				if not _between(battlefield.terrain.tile_at(top_coordinate), 317, 321):
+					battlefield.terrain.set_tile(top_coordinate, bottom_tile - 5)
 			elif rng.draw(100, &"battle.terrain.forest-secondary") < 10:
-				battlefield.set_terrain(coordinate, 200 + rng.draw_between(172, 180, &"battle.terrain.forest-rubble"))
+				battlefield.terrain.set_tile(coordinate, 200 + rng.draw_between(172, 180, &"battle.terrain.forest-rubble"))
 			else:
-				battlefield.set_terrain(coordinate, base_tile)
+				battlefield.terrain.set_tile(coordinate, base_tile)
 
 
 func _decorate_rubble_cell(battlefield: BattlefieldState, coordinate: Vector2i, landlook: int, rng: RealmzRng) -> void:
@@ -261,7 +261,7 @@ func _decorate_rubble_cell(battlefield: BattlefieldState, coordinate: Vector2i, 
 		_:
 			return
 	if rng.draw(100, &"battle.terrain.rubble-chance") < 20:
-		battlefield.set_terrain(coordinate, 200 + rng.draw_between(range_limits.x, range_limits.y, &"battle.terrain.rubble-tile"))
+		battlefield.terrain.set_tile(coordinate, 200 + rng.draw_between(range_limits.x, range_limits.y, &"battle.terrain.rubble-tile"))
 
 
 static func _effective_land_tile(map_id: String, cell: MapCell, world_state: WorldState, base_tile: int) -> int:

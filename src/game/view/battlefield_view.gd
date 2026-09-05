@@ -24,11 +24,11 @@ func _init(battlefield: BattlefieldState, terrain_upper_tileset_id: String = "")
 	party_anchor = battlefield.party_anchor
 	direction_degrees = battlefield.direction_degrees
 	rolled_distance = battlefield.rolled_distance
-	_terrain_tiles = battlefield.terrain_tiles()
-	_character_positions = battlefield.character_positions()
-	_monster_positions = battlefield.monster_positions()
+	_terrain_tiles = battlefield.terrain.tiles()
+	_character_positions = battlefield.actors.character_positions()
+	_monster_positions = battlefield.actors.monster_positions()
 	for actor_id: Variant in _monster_positions:
-		_monster_sizes[actor_id] = battlefield.monster_size(String(actor_id))
+		_monster_sizes[actor_id] = battlefield.actors.actor_size(String(actor_id))
 
 
 func terrain_tiles() -> Array[int]:
@@ -36,7 +36,7 @@ func terrain_tiles() -> Array[int]:
 
 
 func terrain_at(coordinate: Vector2i) -> int:
-	return -1 if not BattlefieldState.contains(coordinate) else _terrain_tiles[coordinate.y * BattlefieldState.SIZE + coordinate.x]
+	return -1 if not BattlefieldGrid.contains(coordinate) else _terrain_tiles[coordinate.y * BattlefieldGrid.SIZE + coordinate.x]
 
 
 func character_position(actor_id: String) -> Vector2i:
@@ -57,4 +57,4 @@ func monster_footprint(actor_id: String) -> Array[Vector2i]:
 	var footprint: Array[Vector2i] = []
 	if anchor.x < 0 or size < 0:
 		return footprint
-	return BattlefieldState.footprint_cells(anchor, size)
+	return BattlefieldGrid.footprint_cells(anchor, size)

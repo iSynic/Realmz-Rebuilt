@@ -105,10 +105,10 @@ func probe_character_item_spell(state: GameState, content: RealmzContent, caster
 	if spell.target_type in [9, 10, 12]:
 		var group_target_count := 0
 		for character: CharacterState in state.party.characters():
-			if character.current_health > 0 and combat.battlefield.has_actor(character.id) and _selection.group_target_matches(spell.target_type, character.traitor, caster.traitor):
+			if character.current_health > 0 and combat.battlefield.actors.has_actor(character.id) and _selection.group_target_matches(spell.target_type, character.traitor, caster.traitor):
 				group_target_count += 1
 		for monster: MonsterState in combat.roster.monsters():
-			if monster.current_health <= 0 or not combat.battlefield.has_actor(monster.id) or not _selection.group_target_matches(spell.target_type, monster.traitor, caster.traitor):
+			if monster.current_health <= 0 or not combat.battlefield.actors.has_actor(monster.id) or not _selection.group_target_matches(spell.target_type, monster.traitor, caster.traitor):
 				continue
 			if content.combat.monster_by_id(monster.definition_id) == null:
 				return CombatSpellCastProbe.blocked(&"spell_target_unavailable", "An item spell target has no immutable monster definition.")
@@ -183,7 +183,7 @@ func _resolve_spell_item(state: GameState, content: RealmzContent, caster: Chara
 		var persistent_field: RefCounted = _context.fields().queue_persistent_field(state.combat, caster.id, spell, power_level, cast_level, rng, target_coordinate, rotation, shape)
 		var selected_ids: Dictionary = {}
 		for offset: Vector2i in _context.spell_areas.pattern(shape):
-			var actor_id := state.combat.battlefield.actor_at(target_coordinate + offset)
+			var actor_id := state.combat.battlefield.actors.actor_at(target_coordinate + offset)
 			if not actor_id.is_empty():
 				selected_ids[actor_id] = true
 		var area_targets := _resolution.group_targets(state, content, caster, spell, selected_ids, true)
@@ -219,10 +219,10 @@ func _resolve_spell_item(state: GameState, content: RealmzContent, caster: Chara
 		var monster_targets: Array[MonsterState] = []
 		var monster_definitions: Array[MonsterDefinition] = []
 		for character: CharacterState in state.party.characters():
-			if character.current_health > 0 and state.combat.battlefield.has_actor(character.id) and _selection.group_target_matches(spell.target_type, character.traitor, caster.traitor):
+			if character.current_health > 0 and state.combat.battlefield.actors.has_actor(character.id) and _selection.group_target_matches(spell.target_type, character.traitor, caster.traitor):
 				character_targets.append(character)
 		for monster: MonsterState in state.combat.roster.monsters():
-			if monster.current_health <= 0 or not state.combat.battlefield.has_actor(monster.id) or not _selection.group_target_matches(spell.target_type, monster.traitor, caster.traitor):
+			if monster.current_health <= 0 or not state.combat.battlefield.actors.has_actor(monster.id) or not _selection.group_target_matches(spell.target_type, monster.traitor, caster.traitor):
 				continue
 			var definition := content.combat.monster_by_id(monster.definition_id)
 			if definition == null:
@@ -236,7 +236,7 @@ func _resolve_spell_item(state: GameState, content: RealmzContent, caster: Chara
 	else:
 		var effective_target_id := caster.id if spell.target_type == 5 else target_id
 		var selection := _selection.spell_target_selection(state, content, effective_target_id)
-		var field_center := state.combat.battlefield.actor_position(caster.id) if spell.target_type == 5 else INVALID_COORDINATE
+		var field_center := state.combat.battlefield.actors.actor_position(caster.id) if spell.target_type == 5 else INVALID_COORDINATE
 		var persistent_field: RefCounted = _context.fields().queue_persistent_field(state.combat, caster.id, spell, power_level, cast_level, rng, field_center, 0, 1) if spell.target_type == 5 else _context.fields().queue_single_actor_field(state, caster.id, effective_target_id, spell, power_level, cast_level, rng) if spell.target_type == 1 else null
 		if ClassicSpellConditionRules.is_combat_persistent_field_spell(spell) and persistent_field == null:
 			return CombatFlowSpellRollback.item(state, rng, state_checkpoint, rng_checkpoint, &"persistent_field_queue_failed", "The self-centered item field could not be queued.")
@@ -283,15 +283,15 @@ func character_item_spell_options(state: GameState, content: RealmzContent, cast
 func _character_item_spell_options_for_power(state: GameState, content: RealmzContent, caster: CharacterState, instance: ItemInstance, item: ItemDefinition, spell: SpellDefinition, power_level: int) -> Array[CombatItemOptionView]:
 	var result: Array[CombatItemOptionView] = []
 	if spell.target_type == 0:
-		if probe_character_item_spell(state, content, caster.id, "", instance.id).allowed: result.append(CombatItemOptionView.new(instance, item, spell, power_level, null, "Choose up to %d open spaces" % power_level, &"coordinate_sequence", 0, state.combat.battlefield.actor_position(caster.id), [], [], [], power_level) if CombatFlowSummoning.is_summon_spell(spell) else CombatItemOptionView.new(instance, item, spell, power_level, null, "Choose up to %d actors" % power_level, &"sequence", 0, INVALID_COORDINATE, [], [], [], power_level, _selection.character_actor_spell_candidates(state, content, caster, spell, power_level)))
+		if probe_character_item_spell(state, content, caster.id, "", instance.id).allowed: result.append(CombatItemOptionView.new(instance, item, spell, power_level, null, "Choose up to %d open spaces" % power_level, &"coordinate_sequence", 0, state.combat.battlefield.actors.actor_position(caster.id), [], [], [], power_level) if CombatFlowSummoning.is_summon_spell(spell) else CombatItemOptionView.new(instance, item, spell, power_level, null, "Choose up to %d actors" % power_level, &"sequence", 0, INVALID_COORDINATE, [], [], [], power_level, _selection.character_actor_spell_candidates(state, content, caster, spell, power_level)))
 		return result
 	if ClassicSpellSpecialEffectRules.is_combat_phase_spell(spell) or ClassicSpellSourceRules.is_application_transport_projectile_item_profile(spell):
-		if probe_character_item_spell(state, content, caster.id, "", instance.id).allowed: result.append(CombatItemOptionView.new(instance, item, spell, power_level, null, "Choose battlefield destination", &"area", 0, state.combat.battlefield.actor_position(caster.id), [Vector2i.ZERO]))
+		if probe_character_item_spell(state, content, caster.id, "", instance.id).allowed: result.append(CombatItemOptionView.new(instance, item, spell, power_level, null, "Choose battlefield destination", &"area", 0, state.combat.battlefield.actors.actor_position(caster.id), [Vector2i.ZERO]))
 		return result
 	if spell.target_type in [3, 4]:
 		if probe_character_item_spell(state, content, caster.id, "", instance.id).allowed:
 			var shape := _context.spell_areas.shape_for(spell, power_level)
-			result.append(CombatItemOptionView.new(instance, item, spell, power_level, null, "Choose battlefield point", &"area", shape, state.combat.battlefield.actor_position(caster.id), _context.spell_areas.pattern(shape), _selection.legal_area_spell_target_coordinates(state, content, caster.id, spell, power_level, shape), _context.spell_areas.rotation_patterns(spell, power_level)))
+			result.append(CombatItemOptionView.new(instance, item, spell, power_level, null, "Choose battlefield point", &"area", shape, state.combat.battlefield.actors.actor_position(caster.id), _context.spell_areas.pattern(shape), _selection.legal_area_spell_target_coordinates(state, content, caster.id, spell, power_level, shape), _context.spell_areas.rotation_patterns(spell, power_level)))
 		return result
 	if spell.target_type in [9, 10, 12]:
 		if probe_character_item_spell(state, content, caster.id, "", instance.id).allowed:
@@ -410,7 +410,7 @@ func cast_spell(state: GameState, content: RealmzContent, caster_id: String, tar
 	var selection := _selection.spell_target_selection(state, content, effective_target_id)
 	if selection == null:
 		return CombatFlowResult.failed(&"spell_target_unavailable", "The selected combatant is unavailable.")
-	var field_center := combat.battlefield.actor_position(caster.id) if spell.target_type == 5 else INVALID_COORDINATE
+	var field_center := combat.battlefield.actors.actor_position(caster.id) if spell.target_type == 5 else INVALID_COORDINATE
 	var persistent_field: RefCounted = _context.fields().queue_persistent_field(combat, caster.id, spell, power_level, cast_level, rng, field_center, 0, 1) if spell.target_type == 5 else _context.fields().queue_single_actor_field(state, caster.id, effective_target_id, spell, power_level, cast_level, rng) if spell.target_type == 1 else null
 	if ClassicSpellConditionRules.is_combat_persistent_field_spell(spell) and persistent_field == null:
 		return CombatFlowSpellRollback.character_targeted(state, rng, targeted_state_checkpoint, targeted_rng_checkpoint, &"persistent_field_queue_failed", "The self-centered spell field could not be queued.")
@@ -496,10 +496,10 @@ func probe_character_scroll_cast(state: GameState, content: RealmzContent, caste
 	elif group_target:
 		var group_count := 0
 		for character: CharacterState in state.party.characters():
-			if character.current_health > 0 and combat.battlefield.has_actor(character.id) and _selection.group_target_matches(spell.target_type, character.traitor, caster.traitor):
+			if character.current_health > 0 and combat.battlefield.actors.has_actor(character.id) and _selection.group_target_matches(spell.target_type, character.traitor, caster.traitor):
 				group_count += 1
 		for monster: MonsterState in combat.roster.monsters():
-			if monster.current_health > 0 and combat.battlefield.has_actor(monster.id) and _selection.group_target_matches(spell.target_type, monster.traitor, caster.traitor):
+			if monster.current_health > 0 and combat.battlefield.actors.has_actor(monster.id) and _selection.group_target_matches(spell.target_type, monster.traitor, caster.traitor):
 				group_count += 1
 		if group_count == 0:
 			return CombatSpellCastProbe.blocked(&"scroll_target_unavailable", "The scroll has no available group target.")
@@ -534,7 +534,7 @@ func use_combat_scroll(state: GameState, content: RealmzContent, caster_id: Stri
 		var persistent_field: RefCounted = _context.fields().queue_persistent_field(state.combat, caster.id, spell, power_level, cast_level, rng, target_coordinate, rotation, shape)
 		var selected_ids: Dictionary = {}
 		for offset: Vector2i in _context.spell_areas.pattern(shape):
-			var actor_id := state.combat.battlefield.actor_at(target_coordinate + offset)
+			var actor_id := state.combat.battlefield.actors.actor_at(target_coordinate + offset)
 			if not actor_id.is_empty():
 				selected_ids[actor_id] = true
 		var area_targets := _resolution.group_targets(state, content, caster, spell, selected_ids, true)
@@ -582,7 +582,7 @@ func use_combat_scroll(state: GameState, content: RealmzContent, caster_id: Stri
 	elif not CombatFlowSummoning.is_summon_spell(spell) and not ClassicSpellSpecialEffectRules.is_combat_phase_spell(spell):
 		var effective_target_id := caster_id if spell.target_type == 5 else target_id
 		var selection := _selection.spell_target_selection(state, content, effective_target_id)
-		var field_center := state.combat.battlefield.actor_position(caster.id) if spell.target_type == 5 else INVALID_COORDINATE
+		var field_center := state.combat.battlefield.actors.actor_position(caster.id) if spell.target_type == 5 else INVALID_COORDINATE
 		var persistent_field: RefCounted = _context.fields().queue_persistent_field(state.combat, caster.id, spell, power_level, cast_level, rng, field_center, 0, 1) if spell.target_type == 5 else _context.fields().queue_single_actor_field(state, caster.id, effective_target_id, spell, power_level, cast_level, rng) if spell.target_type == 1 else null
 		if ClassicSpellConditionRules.is_combat_persistent_field_spell(spell) and persistent_field == null:
 			return CombatFlowSpellRollback.scroll(state, rng, state_checkpoint, rng_checkpoint, &"persistent_field_queue_failed", "The self-centered scroll field could not be queued.")

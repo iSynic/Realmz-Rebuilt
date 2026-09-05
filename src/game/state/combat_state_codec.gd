@@ -33,7 +33,7 @@ static func encode(combat: CombatState) -> Dictionary:
 		"spellMacroAdvancesTurn": combat.spell_runtime.macro_advances_turn(),
 		"persistentFields": combat.spell_runtime.persistent_fields().map(func(field: PersistentCombatField) -> Dictionary: return field.to_data()),
 		"persistentFieldCollisionSlots": combat.spell_runtime.field_collision_slots(),
-		"battlefield": null if combat.battlefield == null else combat.battlefield.to_data(),
+		"battlefield": null if combat.battlefield == null else BattlefieldStateCodec.to_data(combat.battlefield),
 	}
 
 
@@ -90,7 +90,7 @@ static func _decode_monsters(data: Array) -> Variant:
 
 
 static func _decode_battlefield(data: Variant) -> BattlefieldState:
-	return null if data == null else BattlefieldState.from_data(data)
+	return null if data == null else BattlefieldStateCodec.from_data(data)
 
 
 static func _decode_turn_order(data: Array) -> Variant:
@@ -251,7 +251,7 @@ static func _loaded_state_is_consistent(result: CombatState) -> bool:
 static func _undo_is_consistent(result: CombatState) -> bool:
 	var undo := result.turns.undo_state
 	if undo == null: return true
-	return not result.completed and result.turns.active_turn != null and result.battlefield != null and undo.actor_id == result.turns.active_actor_id() and undo.actor_id == result.turns.active_turn.actor_id and undo.round_number == result.turns.round_number and undo.turn_index == result.turns.turn_index and result.battlefield.has_actor(undo.actor_id)
+	return not result.completed and result.turns.active_turn != null and result.battlefield != null and undo.actor_id == result.turns.active_actor_id() and undo.actor_id == result.turns.active_turn.actor_id and undo.round_number == result.turns.round_number and undo.turn_index == result.turns.turn_index and result.battlefield.actors.has_actor(undo.actor_id)
 
 
 static func _spell_sequence_is_consistent(result: CombatState) -> bool:
@@ -295,7 +295,7 @@ static func _undo_from_data(data: Variant) -> CombatUndoState:
 	var position := Vector2i(_signed_integer(start_data[0]), _signed_integer(start_data[1]))
 	var loaded_round := _integer(data["round"])
 	var loaded_turn := _integer(data["turnIndex"])
-	if position.x == -100_000 or position.y == -100_000 or not BattlefieldState.contains(position) or loaded_round < 1 or loaded_turn < 0: return null
+	if position.x == -100_000 or position.y == -100_000 or not BattlefieldGrid.contains(position) or loaded_round < 1 or loaded_turn < 0: return null
 	var undo := CombatUndoState.new(data["actorId"], position, loaded_round, loaded_turn)
 	undo.available = data["available"]
 	return undo

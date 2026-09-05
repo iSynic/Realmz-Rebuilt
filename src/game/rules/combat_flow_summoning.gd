@@ -27,7 +27,7 @@ func probe_choice(state: GameState, content: RealmzContent, caster_id: String, s
 		return CombatSpellCastProbe.blocked(&"summon_capacity_reached", "The Classic battlefield already contains its maximum 100 monster instances.")
 	var map := content.world.map_by_id(state.combat.battlefield.map_id)
 	var terrain_set := content.world.battle_terrain_set_for_map(map, state.world) if map != null else null
-	if terrain_set == null or not state.combat.battlefield.has_actor(caster_id):
+	if terrain_set == null or not state.combat.battlefield.actors.has_actor(caster_id):
 		return CombatSpellCastProbe.blocked(&"summon_battlefield_unavailable", "The summon battlefield has no validated terrain or caster position.")
 	var maximum_range := absi(spell.range_min + spell.range_max * power_level)
 	var require_line_of_sight := spell.range_min + spell.range_max > 0
@@ -82,7 +82,7 @@ func cast_character_summon(state: GameState, content: RealmzContent, caster: Cha
 	for coordinate: Vector2i in target_coordinates:
 		if not _context.battlefield.monster_footprint_is_open(battlefield, terrain_set, coordinate, definition.size, planned_cells):
 			return _rollback_failed_summon(state, rng, state_checkpoint, rng_checkpoint, &"summon_footprint_unavailable", "The selected space cannot hold the source-selected summon footprint.")
-		for cell: Vector2i in BattlefieldState.footprint_cells(coordinate, definition.size):
+		for cell: Vector2i in BattlefieldGrid.footprint_cells(coordinate, definition.size):
 			planned_cells[cell] = true
 	_context.actions().prepare_character_turn(state.combat, caster)
 	state.combat.turns.invalidate_undo()
@@ -105,7 +105,7 @@ func cast_character_summon(state: GameState, content: RealmzContent, caster: Cha
 		if summoned == null:
 			return _rollback_failed_summon(state, rng, state_checkpoint, rng_checkpoint, &"summon_construction_failed", "The selected Classic monster could not be constructed.")
 		summoned.summoned = true
-		if not state.combat.roster.add_monster(summoned) or not battlefield.place_monster(summoned.id, target_coordinates[index], definition.size):
+		if not state.combat.roster.add_monster(summoned) or not battlefield.actors.place_monster(summoned.id, target_coordinates[index], definition.size):
 			return _rollback_failed_summon(state, rng, state_checkpoint, rng_checkpoint, &"summon_placement_failed", "The selected Classic monster could not enter the battlefield.")
 		state.combat.append_turn_actor(summoned.id)
 		summoned_ids.append(summoned.id)
@@ -140,7 +140,7 @@ func cast_monster_summon(state: GameState, content: RealmzContent, caster: Monst
 	for coordinate: Vector2i in target_coordinates:
 		if not _context.battlefield.monster_footprint_is_open(battlefield, terrain_set, coordinate, definition.size, planned_cells):
 			return _rollback_failed_summon(state, rng, state_checkpoint, rng_checkpoint, &"summon_footprint_unavailable", "The selected space cannot hold the source-selected monster summon footprint.")
-		for cell: Vector2i in BattlefieldState.footprint_cells(coordinate, definition.size):
+		for cell: Vector2i in BattlefieldGrid.footprint_cells(coordinate, definition.size):
 			planned_cells[cell] = true
 	var cost := spell.cost * power_level
 	if cost < 0 or caster.spell_points < cost:
@@ -156,7 +156,7 @@ func cast_monster_summon(state: GameState, content: RealmzContent, caster: Monst
 		if summoned == null:
 			return _rollback_failed_summon(state, rng, state_checkpoint, rng_checkpoint, &"summon_construction_failed", "The selected Classic monster could not be constructed.")
 		summoned.summoned = true
-		if not state.combat.roster.add_monster(summoned) or not battlefield.place_monster(summoned.id, target_coordinates[index], definition.size):
+		if not state.combat.roster.add_monster(summoned) or not battlefield.actors.place_monster(summoned.id, target_coordinates[index], definition.size):
 			return _rollback_failed_summon(state, rng, state_checkpoint, rng_checkpoint, &"summon_placement_failed", "The selected Classic monster could not enter the battlefield.")
 		state.combat.append_turn_actor(summoned.id)
 		summoned_ids.append(summoned.id)
@@ -193,11 +193,11 @@ func _automatic_coordinate(state: GameState, content: RealmzContent, caster_id: 
 		return INVALID_COORDINATE
 	var hostile_positions: Array[Vector2i] = []
 	for monster: MonsterState in state.combat.roster.monsters():
-		if monster.current_health > 0 and monster.traitor != caster_traitor and state.combat.battlefield.has_actor(monster.id):
-			hostile_positions.append(state.combat.battlefield.actor_position(monster.id))
+		if monster.current_health > 0 and monster.traitor != caster_traitor and state.combat.battlefield.actors.has_actor(monster.id):
+			hostile_positions.append(state.combat.battlefield.actors.actor_position(monster.id))
 	for character: CharacterState in state.party.characters():
-		if character.current_health > 0 and character.traitor != caster_traitor and state.combat.battlefield.has_actor(character.id):
-			hostile_positions.append(state.combat.battlefield.actor_position(character.id))
+		if character.current_health > 0 and character.traitor != caster_traitor and state.combat.battlefield.actors.has_actor(character.id):
+			hostile_positions.append(state.combat.battlefield.actors.actor_position(character.id))
 	candidates.sort_custom(func(left: Vector2i, right: Vector2i) -> bool:
 		var left_distance := _nearest_distance(left, hostile_positions)
 		var right_distance := _nearest_distance(right, hostile_positions)
@@ -242,7 +242,7 @@ static func _nearest_distance(coordinate: Vector2i, targets: Array[Vector2i]) ->
 
 
 static func _candidate_bounds(battlefield: BattlefieldState, caster_id: String, maximum_range: int) -> Rect2i:
-	var origin := battlefield.actor_position(caster_id)
+	var origin := battlefield.actors.actor_position(caster_id)
 	var minimum := Vector2i(maxi(0, origin.x - maximum_range), maxi(0, origin.y - maximum_range))
-	var maximum_exclusive := Vector2i(mini(BattlefieldState.SIZE, origin.x + maximum_range + 1), mini(BattlefieldState.SIZE, origin.y + maximum_range + 1))
+	var maximum_exclusive := Vector2i(mini(BattlefieldGrid.SIZE, origin.x + maximum_range + 1), mini(BattlefieldGrid.SIZE, origin.y + maximum_range + 1))
 	return Rect2i(minimum, maximum_exclusive - minimum)

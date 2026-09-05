@@ -147,9 +147,9 @@ func _has_available_target(state: GameState, monster: MonsterState, characters: 
 static func target_is_available(state: GameState, monster: MonsterState, target_id: String) -> bool:
 	if target_id.is_empty(): return false
 	var character := state.party.character_by_id(target_id)
-	if character != null: return character.current_health > 0 and character.traitor != monster.traitor and state.combat.battlefield.has_actor(character.id)
+	if character != null: return character.current_health > 0 and character.traitor != monster.traitor and state.combat.battlefield.actors.has_actor(character.id)
 	var candidate := state.combat.roster.monster_by_id(target_id)
-	return candidate != null and candidate.id != monster.id and candidate.current_health > 0 and candidate.traitor != monster.traitor and state.combat.battlefield.has_actor(candidate.id)
+	return candidate != null and candidate.id != monster.id and candidate.current_health > 0 and candidate.traitor != monster.traitor and state.combat.battlefield.actors.has_actor(candidate.id)
 
 
 static func battle_terrain_set(content: RealmzContent, battlefield: BattlefieldState) -> BattleTerrainSetDefinition:
@@ -181,6 +181,6 @@ static func retreat_reached_edge(state: GameState, content: RealmzContent, monst
 		events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "retreat", "reason": "mandatory-ally-edge-retreat-unresolved"}))
 		return false
 	monster.current_health = 0
-	state.combat.battlefield.remove_monster(monster.id)
+	state.combat.battlefield.actors.remove_monster(monster.id)
 	events.append(DomainEvent.new(&"combatant_retreated", {"actorId": monster.id, "mode": "battlefield-edge", "forced": true, "source": "classic-monster"}))
 	return true

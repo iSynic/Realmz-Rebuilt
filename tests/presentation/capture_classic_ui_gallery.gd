@@ -578,21 +578,21 @@ func _base_button_with_tooltip(parent: Node, tooltip: String) -> BaseButton:
 
 func _combat_view(game_view: Variant) -> CombatView:
 	var tiles: Array[int] = []
-	tiles.resize(BattlefieldState.CELL_COUNT)
+	tiles.resize(BattlefieldGrid.CELL_COUNT)
 	tiles.fill(232)
 	for y: int in range(38, 53):
 		for x: int in range(36, 55):
-			tiles[y * BattlefieldState.SIZE + x] = 1 + posmod(x * 7 + y * 11, 200)
+			tiles[y * BattlefieldGrid.SIZE + x] = 1 + posmod(x * 7 + y * 11, 200)
 	var battlefield := BattlefieldState.new("land:0", tiles)
 	var hero_view: Variant = game_view.party_members[0]
 	var hero := CharacterState.new(hero_view.id, hero_view.name, hero_view.current_health, hero_view.maximum_health)
 	hero.combat_icon_id = hero_view.combat_icon_id
 	hero.movement = 8
 	hero.maximum_movement = 10
-	battlefield.place_character(hero.id, Vector2i(45, 45))
+	battlefield.actors.place_character(hero.id, Vector2i(45, 45))
 	var monster := MonsterState.new("gallery.goblin", "classic.monster.1", "Goblin Raider", 8, 10)
 	monster.icon_id = 9001
-	battlefield.place_monster(monster.id, Vector2i(47, 45), 0)
+	battlefield.actors.place_monster(monster.id, Vector2i(47, 45), 0)
 	var combat := CombatState.new("classic.battle.gallery", [monster], 0, battlefield)
 	combat.set_turn_order([hero.id, monster.id]); combat.spell_runtime.queue_persistent_field("classic.spell.1309", hero.id, Vector2i(49, 45), 0, 10, 15, 1, 3, 2)
 	var result := CombatView.new(combat, [hero], _application.get("_active_content"))

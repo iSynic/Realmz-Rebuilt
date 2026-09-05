@@ -141,11 +141,11 @@ func character_spell_options(state: GameState, content: RealmzContent, caster_id
 		for power_level: int in range(1, 8):
 			if not _probe_spell_rules(state, content, combat, caster, spell, power_level).allowed: continue
 			if spell.target_type == 0:
-				if CombatFlowSummoning.is_summon_spell(spell): result.append(CombatSpellOptionView.new(spell, power_level, null, "Choose up to %d open spaces" % power_level, &"coordinate_sequence", 0, state.combat.battlefield.actor_position(caster_id), [], power_level))
+				if CombatFlowSummoning.is_summon_spell(spell): result.append(CombatSpellOptionView.new(spell, power_level, null, "Choose up to %d open spaces" % power_level, &"coordinate_sequence", 0, state.combat.battlefield.actors.actor_position(caster_id), [], power_level))
 				else: result.append(CombatSpellOptionView.new(spell, power_level, null, "Choose up to %d actors" % power_level, &"sequence", 0, INVALID_COORDINATE, [], power_level))
 				continue
 			if ClassicSpellSpecialEffectRules.is_combat_phase_spell(spell):
-				result.append(CombatSpellOptionView.new(spell, power_level, null, "Choose battlefield destination", &"area", 0, state.combat.battlefield.actor_position(caster_id), [Vector2i.ZERO]))
+				result.append(CombatSpellOptionView.new(spell, power_level, null, "Choose battlefield destination", &"area", 0, state.combat.battlefield.actors.actor_position(caster_id), [Vector2i.ZERO]))
 				continue
 			if spell.target_type in [9, 10, 12]:
 				result.append(CombatSpellOptionView.new(spell, power_level, null, group_spell_target_label(spell.target_type), &"automatic"))
@@ -153,7 +153,7 @@ func character_spell_options(state: GameState, content: RealmzContent, caster_id
 			if spell.target_type in [3, 4]:
 				var shape := _context.spell_areas.shape_for(spell, power_level)
 				var offsets := _context.spell_areas.pattern(shape)
-				result.append(CombatSpellOptionView.new(spell, power_level, null, "Choose battlefield point", &"area", shape, state.combat.battlefield.actor_position(caster_id), offsets, 1, [], [], _context.spell_areas.rotation_patterns(spell, power_level)))
+				result.append(CombatSpellOptionView.new(spell, power_level, null, "Choose battlefield point", &"area", shape, state.combat.battlefield.actors.actor_position(caster_id), offsets, 1, [], [], _context.spell_areas.rotation_patterns(spell, power_level)))
 				continue
 			if spell.target_type in [5, 7]:
 				result.append(CombatSpellOptionView.new(spell, power_level, spell_target_view(state, content, caster_id), "Party" if spell.target_type == 7 else "Self", &"automatic"))
@@ -173,11 +173,11 @@ func character_scroll_options(state: GameState, content: RealmzContent, caster_i
 		if spell == null: continue
 		if spell.target_type == 0:
 			if _context.magic_flow().probe_character_scroll_cast(state, content, caster_id, scroll_slot).allowed:
-				if CombatFlowSummoning.is_summon_spell(spell): result.append(CombatScrollOptionView.new(scroll_slot, spell, scroll.power, null, "Choose up to %d open spaces" % scroll.power, &"coordinate_sequence", 0, state.combat.battlefield.actor_position(caster_id), [], scroll.power))
+				if CombatFlowSummoning.is_summon_spell(spell): result.append(CombatScrollOptionView.new(scroll_slot, spell, scroll.power, null, "Choose up to %d open spaces" % scroll.power, &"coordinate_sequence", 0, state.combat.battlefield.actors.actor_position(caster_id), [], scroll.power))
 				else: result.append(CombatScrollOptionView.new(scroll_slot, spell, scroll.power, null, "Choose up to %d actors" % scroll.power, &"sequence", 0, INVALID_COORDINATE, [], scroll.power, character_actor_spell_candidates(state, content, caster, spell, scroll.power)))
 			continue
 		if ClassicSpellSpecialEffectRules.is_combat_phase_spell(spell):
-			if _context.magic_flow().probe_character_scroll_cast(state, content, caster_id, scroll_slot).allowed: result.append(CombatScrollOptionView.new(scroll_slot, spell, scroll.power, null, "Choose battlefield destination", &"area", 0, state.combat.battlefield.actor_position(caster_id), [Vector2i.ZERO]))
+			if _context.magic_flow().probe_character_scroll_cast(state, content, caster_id, scroll_slot).allowed: result.append(CombatScrollOptionView.new(scroll_slot, spell, scroll.power, null, "Choose battlefield destination", &"area", 0, state.combat.battlefield.actors.actor_position(caster_id), [Vector2i.ZERO]))
 			continue
 		if spell.target_type in [9, 10, 12]:
 			if _context.magic_flow().probe_character_scroll_cast(state, content, caster_id, scroll_slot).allowed: result.append(CombatScrollOptionView.new(scroll_slot, spell, scroll.power, null, group_spell_target_label(spell.target_type), &"automatic"))
@@ -187,7 +187,7 @@ func character_scroll_options(state: GameState, content: RealmzContent, caster_i
 				var shape := _context.spell_areas.shape_for(spell, scroll.power)
 				var offsets := _context.spell_areas.pattern(shape)
 				var legal_coordinates := legal_area_spell_target_coordinates(state, content, caster_id, spell, scroll.power, shape)
-				result.append(CombatScrollOptionView.new(scroll_slot, spell, scroll.power, null, "Choose battlefield point", &"area", shape, state.combat.battlefield.actor_position(caster_id), offsets, 1, [], legal_coordinates, _context.spell_areas.rotation_patterns(spell, scroll.power)))
+				result.append(CombatScrollOptionView.new(scroll_slot, spell, scroll.power, null, "Choose battlefield point", &"area", shape, state.combat.battlefield.actors.actor_position(caster_id), offsets, 1, [], legal_coordinates, _context.spell_areas.rotation_patterns(spell, scroll.power)))
 			continue
 		if spell.target_type in [5, 7]:
 			if _context.magic_flow().probe_character_scroll_cast(state, content, caster_id, scroll_slot, caster_id).allowed: result.append(CombatScrollOptionView.new(scroll_slot, spell, scroll.power, spell_target_view(state, content, caster_id), "Party" if spell.target_type == 7 else "Self", &"automatic"))
@@ -223,10 +223,10 @@ func legal_area_spell_target_coordinates(state: GameState, content: RealmzConten
 	var map := content.world.map_by_id(state.combat.battlefield.map_id)
 	var terrain_set := content.world.battle_terrain_set_for_map(map, state.world) if map != null else null
 	if terrain_set == null: return result
-	var origin := state.combat.battlefield.actor_position(caster_id)
+	var origin := state.combat.battlefield.actors.actor_position(caster_id)
 	var maximum_range := absi(spell.range_min + spell.range_max * power_level)
 	var minimum := Vector2i(maxi(0, origin.x - maximum_range - 1), maxi(0, origin.y - maximum_range - 1))
-	var maximum := Vector2i(mini(BattlefieldState.SIZE - 1, origin.x + maximum_range + 1), mini(BattlefieldState.SIZE - 1, origin.y + maximum_range + 1))
+	var maximum := Vector2i(mini(BattlefieldGrid.SIZE - 1, origin.x + maximum_range + 1), mini(BattlefieldGrid.SIZE - 1, origin.y + maximum_range + 1))
 	var require_line_of_sight := spell.range_min + spell.range_max > 0
 	for y: int in range(minimum.y, maximum.y + 1):
 		for x: int in range(minimum.x, maximum.x + 1):
@@ -238,9 +238,9 @@ func legal_area_spell_target_coordinates(state: GameState, content: RealmzConten
 func character_actor_spell_candidates(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition, power_level: int) -> Array[CombatSpellTargetView]:
 	var result: Array[CombatSpellTargetView] = []
 	for character: CharacterState in state.party.characters():
-		if character.current_health > 0 and state.combat.battlefield.has_actor(character.id) and spell_actor_target_is_valid(state, content, caster.id, character.id, spell, power_level): result.append(CombatSpellTargetView.new(character.id, &"character", character.name, character.current_health, character.maximum_health))
+		if character.current_health > 0 and state.combat.battlefield.actors.has_actor(character.id) and spell_actor_target_is_valid(state, content, caster.id, character.id, spell, power_level): result.append(CombatSpellTargetView.new(character.id, &"character", character.name, character.current_health, character.maximum_health))
 	for monster: MonsterState in state.combat.roster.monsters():
-		if monster.current_health > 0 and state.combat.battlefield.has_actor(monster.id) and spell_actor_target_is_valid(state, content, caster.id, monster.id, spell, power_level): result.append(CombatSpellTargetView.new(monster.id, &"monster", monster.name, monster.current_health, monster.maximum_health))
+		if monster.current_health > 0 and state.combat.battlefield.actors.has_actor(monster.id) and spell_actor_target_is_valid(state, content, caster.id, monster.id, spell, power_level): result.append(CombatSpellTargetView.new(monster.id, &"monster", monster.name, monster.current_health, monster.maximum_health))
 	return result
 
 
@@ -258,15 +258,15 @@ func spell_actor_target_is_valid(state: GameState, content: RealmzContent, caste
 	if caster_id == target_id:
 		var map := content.world.map_by_id(state.combat.battlefield.map_id)
 		var terrain_set := content.world.battle_terrain_set_for_map(map, state.world) if map != null else null
-		return terrain_set != null and _context.battlefield.coordinate_target_is_valid(state.combat.battlefield, terrain_set, caster_id, state.combat.battlefield.actor_position(caster_id), maximum_range, spell.range_min + spell.range_max > 0)
+		return terrain_set != null and _context.battlefield.coordinate_target_is_valid(state.combat.battlefield, terrain_set, caster_id, state.combat.battlefield.actors.actor_position(caster_id), maximum_range, spell.range_min + spell.range_max > 0)
 	return _context.reactions().projectile_target_is_valid(state.combat, content, caster_id, target_id, maximum_range, spell.range_min + spell.range_max > 0)
 
 
 static func spell_target_selection(state: GameState, content: RealmzContent, target_id: String) -> SpellTargetSelection:
 	var character := state.party.character_by_id(target_id)
-	if character != null and character.current_health > 0 and state.combat.battlefield.has_actor(character.id): return SpellTargetSelection.for_character(character)
+	if character != null and character.current_health > 0 and state.combat.battlefield.actors.has_actor(character.id): return SpellTargetSelection.for_character(character)
 	var monster := state.combat.roster.monster_by_id(target_id)
-	if monster == null or monster.current_health <= 0 or not state.combat.battlefield.has_actor(monster.id): return null
+	if monster == null or monster.current_health <= 0 or not state.combat.battlefield.actors.has_actor(monster.id): return null
 	var definition := content.combat.monster_by_id(monster.definition_id)
 	return SpellTargetSelection.for_monster(monster, definition) if definition != null else null
 

@@ -4,6 +4,8 @@ Start with `CombatFlow` when you need to submit a battle command. It is intentio
 
 All collaborators share one `CombatContext`. The context supplies the pure rule services and public collaborator references; it does not copy battle state or hide a second combat model. The command receives `GameState`, immutable content, and the serialized session RNG, performs one transaction, and returns a `CombatFlowResult` with already-committed domain events. `CombatState` remains the saved aggregate, its roster/turn/status/dropped-item/spell-runtime collaborators own their respective battle facts, and its few aggregate commands synchronize cross-owner initiative and turn-boundary invariants. `CombatStateCodec` preserves the flat save shape, and `CombatView` remains detached presentation data.
 
+Within that aggregate, `BattlefieldState` identifies the constructed battle map and directly exposes two owners. `battlefield.terrain` stores the fixed grid plus its navigation-cache revision; `battlefield.actors` stores character and monster anchors, sizes, footprints, occupancy, and placement mutations. `BattlefieldGrid` owns the fixed 90-by-90 dimensions and footprint geometry. Save and restore go through `BattlefieldStateCodec`, which retains the existing flat battlefield keys without turning the aggregate into a forwarding facade.
+
 Important invariants:
 
 - Simulation uses only the supplied serialized RNG.

@@ -44,7 +44,7 @@ func _run_auto_turn_unchecked(state: GameState, content: RealmzContent, actor_id
 	# until the active-turn record is prepared.
 	_context.actions().prepare_character_turn(state.combat, actor)
 	var events: Array[DomainEvent] = [DomainEvent.new(&"combat_auto_started", {"actorId": actor.id, "persistent": state.combat_auto_enabled(actor.id), "source": "classic"})]
-	var visited_anchors: Array[Vector2i] = [state.combat.battlefield.actor_position(actor.id)]
+	var visited_anchors: Array[Vector2i] = [state.combat.battlefield.actors.actor_position(actor.id)]
 	var starting_round := state.combat.turns.round_number
 	var operation_count := 0
 	var previous_processing = _context.processing_auto
@@ -66,8 +66,8 @@ func _run_auto_turn_unchecked(state: GameState, content: RealmzContent, actor_id
 			_context.processing_auto = previous_processing
 			return CombatFlowResult.failed(&"combat_auto_failed", "Automatic combat could not choose a legal source-backed action.")
 		events.append_array(result.events)
-		if state.combat != null and state.combat.battlefield.has_actor(actor.id):
-			var current_anchor := state.combat.battlefield.actor_position(actor.id)
+		if state.combat != null and state.combat.battlefield.actors.has_actor(actor.id):
+			var current_anchor := state.combat.battlefield.actors.actor_position(actor.id)
 			if not visited_anchors.has(current_anchor):
 				visited_anchors.append(current_anchor)
 		if result.completed or _events_include(result.events, &"monster_death_macro_requested") or state.combat.pending_monster_attack != null:
@@ -135,10 +135,10 @@ func auto_move_toward_target(state: GameState, content: RealmzContent, actor: Ch
 		return CombatFlowResult.failed(&"combat_auto_no_movement", "The automatic character cannot move toward a target.")
 	var candidates: Array[String] = []
 	for character: CharacterState in state.party.characters():
-		if character.id != actor.id and character.current_health > 0 and character.traitor != actor.traitor and combat.battlefield.has_actor(character.id):
+		if character.id != actor.id and character.current_health > 0 and character.traitor != actor.traitor and combat.battlefield.actors.has_actor(character.id):
 			candidates.append(character.id)
 	for monster: MonsterState in combat.roster.monsters():
-		if monster.current_health > 0 and monster.traitor != actor.traitor and combat.battlefield.has_actor(monster.id):
+		if monster.current_health > 0 and monster.traitor != actor.traitor and combat.battlefield.actors.has_actor(monster.id):
 			candidates.append(monster.id)
 	if candidates.is_empty():
 		return CombatFlowResult.failed(&"combat_auto_no_target", "No opposed battlefield combatant remains.")
@@ -146,15 +146,15 @@ func auto_move_toward_target(state: GameState, content: RealmzContent, actor: Ch
 	if not candidates.has(target_id):
 		target_id = candidates[rng.draw_between(0, candidates.size() - 1, StringName("combat.auto.%s.target" % actor.id))]
 		combat.turns.active_turn.target_id = target_id
-	var origin := combat.battlefield.actor_position(actor.id)
+	var origin := combat.battlefield.actors.actor_position(actor.id)
 	var terrain_set := _monster_actions.battle_terrain_set(content, combat.battlefield)
 	var swappable_ids: Array[String] = []
-	if combat.battlefield.actor_size(actor.id) == 0:
+	if combat.battlefield.actors.actor_size(actor.id) == 0:
 		for character: CharacterState in state.party.characters():
-			if character.id != actor.id and character.current_health > 0 and character.traitor == actor.traitor and combat.battlefield.has_actor(character.id) and combat.battlefield.actor_size(character.id) == 0:
+			if character.id != actor.id and character.current_health > 0 and character.traitor == actor.traitor and combat.battlefield.actors.has_actor(character.id) and combat.battlefield.actors.actor_size(character.id) == 0:
 				swappable_ids.append(character.id)
 		for monster: MonsterState in combat.roster.monsters():
-			if monster.current_health > 0 and monster.traitor == actor.traitor and combat.battlefield.has_actor(monster.id) and combat.battlefield.actor_size(monster.id) == 0:
+			if monster.current_health > 0 and monster.traitor == actor.traitor and combat.battlefield.actors.has_actor(monster.id) and combat.battlefield.actors.actor_size(monster.id) == 0:
 				swappable_ids.append(monster.id)
 	var path_probe := _direct_auto_swap_probe(combat.battlefield, actor.id, target_id, actor.movement, swappable_ids, visited_anchors)
 	if path_probe == null:
@@ -174,12 +174,12 @@ func auto_move_toward_target(state: GameState, content: RealmzContent, actor: Ch
 
 
 static func _direct_auto_swap_probe(battlefield: BattlefieldState, actor_id: String, target_id: String, movement: int, swappable_ids: Array[String], visited_anchors: Array[Vector2i]) -> BattlefieldStepResult:
-	if battlefield == null or movement < 5 or not battlefield.has_actor(actor_id) or not battlefield.has_actor(target_id):
+	if battlefield == null or movement < 5 or not battlefield.actors.has_actor(actor_id) or not battlefield.actors.has_actor(target_id):
 		return null
-	var origin := battlefield.actor_position(actor_id)
-	var target := battlefield.actor_position(target_id)
+	var origin := battlefield.actors.actor_position(actor_id)
+	var target := battlefield.actors.actor_position(target_id)
 	var destination := origin + Vector2i(signi(target.x - origin.x), signi(target.y - origin.y))
-	if visited_anchors.has(destination) or not swappable_ids.has(battlefield.actor_at(destination, actor_id)):
+	if visited_anchors.has(destination) or not swappable_ids.has(battlefield.actors.actor_at(destination, actor_id)):
 		return null
 	return BattlefieldStepResult.permitted(destination, 5)
 

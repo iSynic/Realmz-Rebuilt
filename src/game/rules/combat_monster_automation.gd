@@ -58,7 +58,7 @@ func process_monster_turns(state: GameState, content: RealmzContent, rng: Realmz
 		var monster := roster.monster_by_id(actor_id)
 		if monster == null:
 			var charmed_actor := state.party.character_by_id(actor_id)
-			if charmed_actor != null and (combat.battlefield == null or not combat.battlefield.has_actor(charmed_actor.id)):
+			if charmed_actor != null and (combat.battlefield == null or not combat.battlefield.actors.has_actor(charmed_actor.id)):
 				_context.rounds().advance_turn(state, content, rng, events)
 				guard -= 1
 				continue
@@ -222,7 +222,7 @@ func _prepare_monster_spell_targets(state: GameState, content: RealmzContent, mo
 		plan.selections = _monster_area_spell_selections(state, content, plan.area_center, plan.area_shape)
 		return plan
 	if spell.target_type == 5:
-		plan.area_center = state.combat.battlefield.actor_position(monster.id)
+		plan.area_center = state.combat.battlefield.actors.actor_position(monster.id)
 		plan.area_shape = 1
 	for target_id: String in ai_plan["targetIds"]:
 		plan.target_ids.append(target_id)
@@ -339,15 +339,15 @@ func _finish_monster_cast(state: GameState, content: RealmzContent, monster: Mon
 func _monster_area_spell_selections(state: GameState, content: RealmzContent, center: Vector2i, shape: int) -> Array[SpellTargetSelection]:
 	var selected_ids: Dictionary = {}
 	for offset: Vector2i in _context.spell_areas.pattern(shape):
-		var actor_id := state.combat.battlefield.actor_at(center + offset)
+		var actor_id := state.combat.battlefield.actors.actor_at(center + offset)
 		if not actor_id.is_empty():
 			selected_ids[actor_id] = true
 	var result: Array[SpellTargetSelection] = []
 	for character: CharacterState in state.party.characters():
-		if selected_ids.has(character.id) and character.current_health > 0 and state.combat.battlefield.has_actor(character.id):
+		if selected_ids.has(character.id) and character.current_health > 0 and state.combat.battlefield.actors.has_actor(character.id):
 			result.append(SpellTargetSelection.for_character(character))
 	for monster: MonsterState in state.combat.roster.monsters():
-		if not selected_ids.has(monster.id) or monster.current_health <= 0 or not state.combat.battlefield.has_actor(monster.id) or monster.magic_resistance > 100:
+		if not selected_ids.has(monster.id) or monster.current_health <= 0 or not state.combat.battlefield.actors.has_actor(monster.id) or monster.magic_resistance > 100:
 			continue
 		var definition := content.combat.monster_by_id(monster.definition_id)
 		if definition != null:
@@ -418,7 +418,7 @@ func process_monster_advance(state: GameState, content: RealmzContent, monster: 
 			active_turn.movement_remaining = 0
 			events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "advance", "reason": "no-visible-target"}))
 			return MONSTER_ATTACK_COMPLETED
-		var origin := combat.battlefield.actor_position(monster.id)
+		var origin := combat.battlefield.actors.actor_position(monster.id)
 		var probe := _probe_monster_advance_step(state, monster, terrain_set, active_turn, rng)
 		if not probe.allowed:
 			active_turn.target_id = ""
@@ -443,7 +443,7 @@ func process_monster_advance(state: GameState, content: RealmzContent, monster: 
 
 
 func _begin_monster_contact(state: GameState, content: RealmzContent, monster: MonsterState, rng: RealmzRng, events: Array[DomainEvent]) -> int:
-	var origin := state.combat.battlefield.actor_position(monster.id)
+	var origin := state.combat.battlefield.actors.actor_position(monster.id)
 	state.combat.pending_reaction = CombatReactionState.new(CombatReactionState.MONSTER_CONTACT, monster.id, origin, origin, 0)
 	state.combat.pending_reaction.set_phase(CombatReactionState.GUARD_AFTER, _context.reactions().guarding_hostiles(state, monster.id))
 	return _context.reactions().continue_pending_reaction(state, content, rng, events)
@@ -470,7 +470,7 @@ func _probe_monster_advance_step(state: GameState, monster: MonsterState, terrai
 	var probe := _context.battlefield.probe_path_step_toward_actors(state.combat.battlefield, terrain_set, monster.id, route_targets, active_turn.movement_remaining)
 	if probe.allowed:
 		return probe
-	var target_coordinate := state.combat.battlefield.actor_position(active_turn.target_id)
+	var target_coordinate := state.combat.battlefield.actors.actor_position(active_turn.target_id)
 	return _context.battlefield.probe_monster_step_toward(state.combat.battlefield, terrain_set, monster.id, target_coordinate, active_turn.movement_remaining, rng)
 
 
@@ -493,8 +493,8 @@ func process_monster_retreat(state: GameState, content: RealmzContent, monster: 
 		return MONSTER_ATTACK_COMPLETED
 	var operation_guard := 512
 	while operation_guard > 0 and active_turn.movement_remaining > 0 and monster.current_health > 0:
-		var origin := combat.battlefield.actor_position(monster.id)
-		var target_coordinate := combat.battlefield.actor_position(active_turn.target_id)
+		var origin := combat.battlefield.actors.actor_position(monster.id)
+		var target_coordinate := combat.battlefield.actors.actor_position(active_turn.target_id)
 		var probe := _context.battlefield.probe_monster_step_away(combat.battlefield, terrain_set, monster.id, target_coordinate, active_turn.movement_remaining, rng)
 		if not probe.allowed:
 			active_turn.movement_remaining = 0

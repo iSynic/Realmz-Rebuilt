@@ -82,7 +82,7 @@ func _reward_experience_recipients(origin: StringName) -> Array[CharacterState]:
 	for character: CharacterState in _game_state.party.characters():
 		if character.current_health <= 0 or character.conditions.value(ConditionRules.ANIMATED) < 0:
 			continue
-		if origin == &"battle" and (_game_state.combat == null or _game_state.combat.battlefield == null or not _game_state.combat.battlefield.has_actor(character.id)):
+		if origin == &"battle" and (_game_state.combat == null or _game_state.combat.battlefield == null or not _game_state.combat.battlefield.actors.has_actor(character.id)):
 			continue
 		result.append(character)
 	return result

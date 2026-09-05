@@ -36,7 +36,7 @@ func submit_action(state: GameState, content: RealmzContent, actor_id: String, a
 	if combat.turns.active_actor_id() != actor_id:
 		return CombatFlowResult.failed(&"wrong_combat_actor", "Combat action actor '%s' does not own the current turn." % actor_id)
 	var actor := state.party.character_by_id(actor_id)
-	if actor == null or actor.current_health <= 0 or actor.traitor or combat.battlefield == null or not combat.battlefield.has_actor(actor.id):
+	if actor == null or actor.current_health <= 0 or actor.traitor or combat.battlefield == null or not combat.battlefield.actors.has_actor(actor.id):
 		return CombatFlowResult.failed(&"invalid_combat_actor", "The current combat actor is unavailable.")
 	var events: Array[DomainEvent] = []
 	match action:
@@ -96,9 +96,9 @@ func submit_action(state: GameState, content: RealmzContent, actor_id: String, a
 			var undo_probe := probe_undo(state, actor.id)
 			if not undo_probe.allowed:
 				return CombatFlowResult.failed(&"combat_undo_unavailable", undo_probe.reason_text)
-			var from_position := combat.battlefield.actor_position(actor.id)
+			var from_position := combat.battlefield.actors.actor_position(actor.id)
 			var start_position := combat.turns.undo_state.start_position
-			if from_position != start_position and not combat.battlefield.move_actor(actor.id, start_position):
+			if from_position != start_position and not combat.battlefield.actors.move_actor(actor.id, start_position):
 				return CombatFlowResult.failed(&"combat_undo_position_blocked", "The activation-start position is no longer available.")
 			actor.attacks_remaining = _context.arithmetic.signed_16(actor.attacks_remaining - actor.normal_attacks - actor.attack_bonus)
 			combat.turns.restart_active_turn_after_undo()
@@ -207,9 +207,9 @@ func probe_undo(state: GameState, actor_id: String) -> CombatCommandProbe:
 	var undo := combat.turns.undo_state
 	if combat.turns.active_turn == null or undo == null or not undo.available or undo.actor_id != actor_id or undo.round_number != combat.turns.round_number or undo.turn_index != combat.turns.turn_index:
 		return CombatCommandProbe.new(false, "Undo is unavailable after a combat result.")
-	if combat.battlefield == null or not combat.battlefield.has_actor(actor_id):
+	if combat.battlefield == null or not combat.battlefield.actors.has_actor(actor_id):
 		return CombatCommandProbe.new(false, "The active character has no battlefield position to restore.")
-	var occupant := combat.battlefield.actor_at(undo.start_position, actor_id)
+	var occupant := combat.battlefield.actors.actor_at(undo.start_position, actor_id)
 	if not occupant.is_empty():
 		return CombatCommandProbe.new(false, "The activation-start position is occupied.")
 	return CombatCommandProbe.new(true)
@@ -247,7 +247,7 @@ func turn_undead_target_ids(state: GameState, content: RealmzContent) -> Array[S
 	for monster: MonsterState in state.combat.roster.monsters():
 		var definition := content.combat.monster_by_id(monster.definition_id)
 		# Providence normalizes Castle's unsigned byte sentinel 255 to signed -1.
-		if monster.current_health > 0 and monster.traitor and state.combat.battlefield.has_actor(monster.id) and definition != null and definition.can_summon != -1 and (definition.type_flag(1) or definition.type_flag(2)):
+		if monster.current_health > 0 and monster.traitor and state.combat.battlefield.actors.has_actor(monster.id) and definition != null and definition.can_summon != -1 and (definition.type_flag(1) or definition.type_flag(2)):
 			result.append(monster.id)
 	return result
 

@@ -88,7 +88,7 @@ func _best_polymorph(state: GameState, content: RealmzContent, actor: CharacterS
 		return _best_area(state, content, actor, spell, option, 10, actors_by_cell, area_placement_cache, area_center_cache, -1, true)
 	var best: Dictionary = {}
 	for target: MonsterState in state.combat.roster.monsters():
-		if target.current_health <= 0 or target.traitor == actor.traitor or not state.combat.battlefield.has_actor(target.id) or _target_reflects(state, target.id) or _target_hard_immune(state, content, target.id, spell) or not _context.magic_flow().selection().spell_actor_target_is_valid(state, content, actor.id, target.id, spell, option.power):
+		if target.current_health <= 0 or target.traitor == actor.traitor or not state.combat.battlefield.actors.has_actor(target.id) or _target_reflects(state, target.id) or _target_hard_immune(state, content, target.id, spell) or not _context.magic_flow().selection().spell_actor_target_is_valid(state, content, actor.id, target.id, spell, option.power):
 			continue
 		best = _prefer(best, {"action": &"cast_spell", "spellId": spell.id, "power": option.power, "targetId": target.id, "score": 440 + target.hit_dice * 20 + target.current_health - option.cost * 3})
 	return best
@@ -98,7 +98,7 @@ func _best_destroy_turn_undead(state: GameState, content: RealmzContent, actor: 
 	var eligible := 0
 	for target: MonsterState in state.combat.roster.monsters():
 		var definition := content.combat.monster_by_id(target.definition_id)
-		if target.current_health > 0 and target.traitor and state.combat.battlefield.has_actor(target.id) and definition != null and definition.can_summon != -1 and (definition.type_flag(1) or definition.type_flag(2)):
+		if target.current_health > 0 and target.traitor and state.combat.battlefield.actors.has_actor(target.id) and definition != null and definition.can_summon != -1 and (definition.type_flag(1) or definition.type_flag(2)):
 			eligible += 1
 	if eligible == 0 or not _context.magic_flow().selection().probe_character_spell_cast(state, content, actor.id, "", spell.id, power).allowed:
 		return {}
@@ -132,11 +132,11 @@ func _best_summon(state: GameState, content: RealmzContent, actor: CharacterStat
 	var hostile_count := 0
 	var allied_summon_count := 0
 	for character: CharacterState in state.party.characters():
-		if character.current_health > 0 and state.combat.battlefield.has_actor(character.id):
+		if character.current_health > 0 and state.combat.battlefield.actors.has_actor(character.id):
 			if character.traitor == actor.traitor: friendly_count += 1
 			else: hostile_count += 1
 	for monster: MonsterState in state.combat.roster.monsters():
-		if monster.current_health <= 0 or not state.combat.battlefield.has_actor(monster.id):
+		if monster.current_health <= 0 or not state.combat.battlefield.actors.has_actor(monster.id):
 			continue
 		if monster.traitor == actor.traitor:
 			friendly_count += 1
@@ -152,10 +152,10 @@ func _best_condition_cure(state: GameState, content: RealmzContent, actor: Chara
 	var condition_index := MagicRules.condition_cure_index(spell)
 	var candidates: Array[String] = []
 	for character: CharacterState in state.party.characters():
-		if character.current_health > 0 and character.traitor == actor.traitor and character.conditions.is_active(condition_index) and state.combat.battlefield.has_actor(character.id):
+		if character.current_health > 0 and character.traitor == actor.traitor and character.conditions.is_active(condition_index) and state.combat.battlefield.actors.has_actor(character.id):
 			candidates.append(character.id)
 	for monster: MonsterState in state.combat.roster.monsters():
-		if monster.current_health > 0 and monster.traitor == actor.traitor and monster.conditions.is_active(condition_index) and state.combat.battlefield.has_actor(monster.id):
+		if monster.current_health > 0 and monster.traitor == actor.traitor and monster.conditions.is_active(condition_index) and state.combat.battlefield.actors.has_actor(monster.id):
 			candidates.append(monster.id)
 	candidates.sort_custom(func(left: String, right: String) -> bool: return _condition_cure_score(state, left, condition_index) > _condition_cure_score(state, right, condition_index) or (_condition_cure_score(state, left, condition_index) == _condition_cure_score(state, right, condition_index) and left < right))
 	if spell.target_type == 5:
@@ -379,7 +379,7 @@ func _best_area(state: GameState, content: RealmzContent, actor: CharacterState,
 func _area_candidate_centers(state: GameState, content: RealmzContent, actor: CharacterState, shape: int, offsets: Array[Vector2i], maximum_range: int, require_line_of_sight: bool) -> Array[Vector2i]:
 	var unique: Dictionary = {}
 	for target_id: String in _opposed_actor_ids(state, actor):
-		for target_cell: Vector2i in state.combat.battlefield.actor_footprint(target_id):
+		for target_cell: Vector2i in state.combat.battlefield.actors.actor_footprint(target_id):
 			for offset: Vector2i in offsets:
 				unique[target_cell - offset] = true
 	var map := content.world.map_by_id(state.combat.battlefield.map_id)

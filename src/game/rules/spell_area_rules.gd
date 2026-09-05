@@ -118,6 +118,6 @@ func pattern_fits(center: Vector2i, shape: int) -> bool:
 	if offsets.is_empty():
 		return false
 	for offset: Vector2i in offsets:
-		if not BattlefieldState.contains(center + offset):
+		if not BattlefieldGrid.contains(center + offset):
 			return false
 	return true

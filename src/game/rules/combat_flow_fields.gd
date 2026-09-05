@@ -74,9 +74,9 @@ func resolve_actor_collisions(state: GameState, content: RealmzContent, actor_id
 	var monster := combat.roster.monster_by_id(actor_id)
 	if character == null and monster == null:
 		return COLLISION_INVALID
-	if not combat.battlefield.has_actor(actor_id):
+	if not combat.battlefield.actors.has_actor(actor_id):
 		return COLLISION_COMPLETED
-	var footprint := combat.battlefield.actor_footprint(actor_id)
+	var footprint := combat.battlefield.actors.actor_footprint(actor_id)
 	for field: PersistentCombatField in combat.spell_runtime.persistent_fields():
 		if retain_turn_collisions and combat.spell_runtime.has_field_collision(field.slot):
 			continue

@@ -56,11 +56,11 @@ func _win_battle() -> SessionCoordinatorResult:
 	for monster: MonsterState in _context.state.combat.roster.monsters():
 		if monster.traitor:
 			monster.current_health = 0
-			_context.state.combat.battlefield.remove_monster(monster.id)
+			_context.state.combat.battlefield.actors.remove_monster(monster.id)
 	for character: CharacterState in _context.state.party.characters():
 		if character.traitor:
 			character.current_health = 0
-			_context.state.combat.battlefield.remove_character(character.id)
+			_context.state.combat.battlefield.actors.remove_character(character.id)
 	if not _context.rules.combat_flow.finish_debug_victory(_context.state, _context.content, events):
 		return SessionCoordinatorResult.failed(&"debug_victory_failed", "The active battle could not resolve as a victory.")
 	if vm_checkpoint != null:

@@ -39,11 +39,11 @@ func _initialize() -> void:
 		return
 	var character_ids: Array[String] = []
 	for character: CharacterState in state.party.characters():
-		if character.current_health > 0 and state.combat.battlefield.has_actor(character.id):
+		if character.current_health > 0 and state.combat.battlefield.actors.has_actor(character.id):
 			character_ids.append(character.id)
 	var monster_ids: Array[String] = []
 	for monster: MonsterState in state.combat.roster.monsters():
-		if monster.current_health > 0 and state.combat.battlefield.has_actor(monster.id):
+		if monster.current_health > 0 and state.combat.battlefield.actors.has_actor(monster.id):
 			monster_ids.append(monster.id)
 	if character_ids.is_empty() or monster_ids.is_empty():
 		printerr("BATTLE_REJECTED: probe requires living party and monster actors")

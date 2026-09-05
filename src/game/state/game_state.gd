@@ -233,18 +233,18 @@ static func _combat_references_are_valid(state: GameState, party_state: PartySta
 	if combat.battlefield != null:
 		var battlefield := combat.battlefield
 		if battlefield.map_id != party_state.map_id: return false
-		for actor_id: Variant in battlefield.character_positions():
+		for actor_id: Variant in battlefield.actors.character_positions():
 			if not actor_id is String or party_state.character_by_id(actor_id) == null: return false
-		for actor_id: Variant in battlefield.monster_positions():
+		for actor_id: Variant in battlefield.actors.monster_positions():
 			if not actor_id is String or combat.roster.monster_by_id(actor_id) == null: return false
 		for actor_id: String in combat.actor_statuses.retreated_character_ids():
 			if party_state.character_by_id(actor_id) == null: return false
 		for character: CharacterState in party_state.characters():
-			var on_field := battlefield.character_position(character.id).x >= 0
+			var on_field := battlefield.actors.character_position(character.id).x >= 0
 			if character.current_health > 0 and not on_field and not combat.actor_statuses.has_character_retreated(character.id): return false
 			if combat.actor_statuses.has_character_retreated(character.id) and (character.current_health <= 0 or on_field): return false
 		for monster: MonsterState in combat.roster.monsters():
-			if monster.current_health > 0 and battlefield.monster_position(monster.id).x < 0: return false
+			if monster.current_health > 0 and battlefield.actors.monster_position(monster.id).x < 0: return false
 	for monster: MonsterState in combat.roster.monsters():
 		if not monster.target_id.is_empty() and party_state.character_by_id(monster.target_id) == null and combat.roster.monster_by_id(monster.target_id) == null: return false
 	for character_id: String in combat.actor_statuses.bleeding_character_ids():
@@ -269,7 +269,7 @@ static func _combat_reaction_is_valid(combat: CombatState, party_state: PartySta
 		if party_state.character_by_id(hostile_id) == null and combat.roster.monster_by_id(hostile_id) == null: return false
 	if combat.battlefield == null: return false
 	var expected_position := reaction.destination if reaction.phase == CombatReactionState.GUARD_AFTER and reaction.kind != CombatReactionState.MONSTER_CONTACT else reaction.origin
-	return combat.battlefield.actor_position(reaction.mover_id) == expected_position
+	return combat.battlefield.actors.actor_position(reaction.mover_id) == expected_position
 
 
 static func _restore_session_settings(state: GameState, data: Dictionary) -> bool:

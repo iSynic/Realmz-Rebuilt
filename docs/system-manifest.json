@@ -61,8 +61,8 @@
       "id": "combat",
       "boundary": "game",
       "guide": "docs/features/combat.md",
-      "entryPoints": ["src/game/rules/combat_flow.gd", "src/game/rules/combat_flow_magic.gd", "src/game/rules/combat_character_spell_resolution.gd", "src/game/rules/combat_ai_scoring.gd", "src/game/combat/combat_catalog.gd", "src/game/combat/combat_context.gd", "src/game/state/combat_state.gd", "src/game/state/combat_state_codec.gd"],
-      "publicInterfaces": ["CombatCatalog", "CombatFlow", "CombatFlowMagic", "CombatCharacterSpellResolution", "CombatAiScoring", "CombatContext", "CombatState", "CombatRosterState", "CombatTurnSequenceState", "CombatActorStatusState", "CombatDroppedItemState", "CombatSpellRuntimeState", "CombatStateCodec", "CombatIntents", "CombatIntentPayloads", "CombatView"],
+      "entryPoints": ["src/game/rules/combat_flow.gd", "src/game/rules/combat_flow_magic.gd", "src/game/rules/combat_character_spell_resolution.gd", "src/game/rules/combat_ai_scoring.gd", "src/game/combat/combat_catalog.gd", "src/game/combat/combat_context.gd", "src/game/combat/battlefield_state.gd", "src/game/combat/battlefield_state_codec.gd", "src/game/state/combat_state.gd", "src/game/state/combat_state_codec.gd"],
+      "publicInterfaces": ["CombatCatalog", "CombatFlow", "CombatFlowMagic", "CombatCharacterSpellResolution", "CombatAiScoring", "CombatContext", "BattlefieldState", "BattlefieldTerrainState", "BattlefieldActorState", "BattlefieldGrid", "BattlefieldStateCodec", "CombatState", "CombatRosterState", "CombatTurnSequenceState", "CombatActorStatusState", "CombatDroppedItemState", "CombatSpellRuntimeState", "CombatStateCodec", "CombatIntents", "CombatIntentPayloads", "CombatView"],
       "tests": ["tests/core/test_combat_flow.gd", "tests/core/test_battlefield_navigation.gd"],
       "performanceProbes": ["tools/combat_performance_probe.gd", "tools/battlefield_navigation_benchmark.gd"]
     },

@@ -26,10 +26,10 @@ func ray_actor_ids(state: GameState, content: RealmzContent, caster_id: String, 
 	var result: Array[String] = []
 	var map := content.world.map_by_id(state.combat.battlefield.map_id)
 	var terrain_set := content.world.battle_terrain_set_for_map(map, state.world) if map != null else null
-	if terrain_set == null or not state.combat.battlefield.has_actor(target_id):
+	if terrain_set == null or not state.combat.battlefield.actors.has_actor(target_id):
 		return result
 	var stop_at_blocker := spell.range_min + spell.range_max > 0
-	return _context.battlefield.ray_actor_ids(state.combat.battlefield, terrain_set, caster_id, state.combat.battlefield.actor_position(target_id), stop_at_blocker)
+	return _context.battlefield.ray_actor_ids(state.combat.battlefield, terrain_set, caster_id, state.combat.battlefield.actors.actor_position(target_id), stop_at_blocker)
 
 
 func group_targets(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition, selected_ids: Dictionary = {}, area_target: bool = false, missing_definition_message: String = "A scroll target has no immutable monster definition.") -> Dictionary:
@@ -37,7 +37,7 @@ func group_targets(state: GameState, content: RealmzContent, caster: CharacterSt
 	var monster_targets: Array[MonsterState] = []
 	var monster_definitions: Array[MonsterDefinition] = []
 	for character: CharacterState in state.party.characters():
-		if character.current_health <= 0 or not state.combat.battlefield.has_actor(character.id):
+		if character.current_health <= 0 or not state.combat.battlefield.actors.has_actor(character.id):
 			continue
 		if area_target:
 			if not selected_ids.has(character.id):
@@ -48,7 +48,7 @@ func group_targets(state: GameState, content: RealmzContent, caster: CharacterSt
 			continue
 		character_targets.append(character)
 	for monster: MonsterState in state.combat.roster.monsters():
-		if monster.current_health <= 0 or not state.combat.battlefield.has_actor(monster.id):
+		if monster.current_health <= 0 or not state.combat.battlefield.actors.has_actor(monster.id):
 			continue
 		if area_target:
 			if not selected_ids.has(monster.id):
@@ -83,7 +83,7 @@ func cast_area(state: GameState, content: RealmzContent, caster: CharacterState,
 	var persistent_field: RefCounted = _context.fields().queue_persistent_field(combat, caster.id, spell, power_level, cast_level, rng, center, rotation, shape)
 	var selected_ids: Dictionary = {}
 	for offset: Vector2i in _context.spell_areas.pattern(shape):
-		var actor_id := combat.battlefield.actor_at(center + offset)
+		var actor_id := combat.battlefield.actors.actor_at(center + offset)
 		if not actor_id.is_empty():
 			selected_ids[actor_id] = true
 	var targets := group_targets(state, content, caster, spell, selected_ids, true, "An area spell target has no immutable monster definition.")

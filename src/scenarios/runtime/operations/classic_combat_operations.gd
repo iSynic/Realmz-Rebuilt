@@ -96,7 +96,7 @@ func _destroy_related_monsters(action: ClassicActionDefinition) -> ScenarioRunti
 		if definition.death_macro > 0:
 			death_macros.append(monster.id)
 		elif _game_state.combat.battlefield != null:
-			_game_state.combat.battlefield.remove_monster(monster.id)
+			_game_state.combat.battlefield.actors.remove_monster(monster.id)
 	var events: Array[DomainEvent] = [DomainEvent.new(&"combat_related_monsters_destroyed", {"count": destroyed.size(), "monsterIds": destroyed, "classicNameId": action.extra_code[0], "limit": limit, "includeLoyal": include_loyal, "source": "classic"})]
 	return _run_opcode_death_macros(death_macros, events)
 
@@ -144,7 +144,7 @@ func _complete_opcode_death_macro(combatant_id: String, program_id: String, even
 	if monster != null:
 		monster.traitor = false
 		if monster.current_health <= 0 and _game_state.combat.battlefield != null:
-			_game_state.combat.battlefield.remove_monster(monster.id)
+			_game_state.combat.battlefield.actors.remove_monster(monster.id)
 	events.append(DomainEvent.new(&"monster_death_macro_completed", {"battleId": _game_state.combat.battle_id, "combatantId": combatant_id, "programId": program_id, "revived": monster != null and monster.current_health > 0}))
 
 
@@ -288,7 +288,7 @@ func _spawn_classic_monsters(action: ClassicActionDefinition, context: ScenarioE
 	if battlefield == null or terrain_set == null:
 		return ScenarioRuntimeOperationResult.failed(&"missing_battlefield", "Classic opcode 124 cannot place its monster without the active battlefield terrain.")
 	var source_coordinate := _classic_spawn_source_coordinate(context)
-	if not BattlefieldState.contains(source_coordinate):
+	if not BattlefieldGrid.contains(source_coordinate):
 		return ScenarioRuntimeOperationResult.failed(&"missing_spawn_source", "Classic opcode 124 cannot resolve the combatant position used to place its monster.")
 	var authored_count := action.extra_code[2]
 	var count := _rng.draw(absi(authored_count), &"classic.combat.spawn-count") if authored_count < 0 else authored_count
@@ -302,10 +302,10 @@ func _spawn_classic_monsters(action: ClassicActionDefinition, context: ScenarioE
 			continue
 		var desired_local := source_coordinate - battlefield.party_anchor
 		var coordinate := builder.find_monster_position(battlefield, terrain_set, desired_local, definition.size)
-		if coordinate.x < 0 or not battlefield.place_monster(monster.id, coordinate, definition.size):
+		if coordinate.x < 0 or not battlefield.actors.place_monster(monster.id, coordinate, definition.size):
 			continue
 		if not _game_state.combat.roster.add_monster(monster):
-			battlefield.remove_monster(monster.id)
+			battlefield.actors.remove_monster(monster.id)
 			continue
 		_game_state.combat.append_turn_actor(monster.id)
 		spawned.append(monster.id)
@@ -319,13 +319,13 @@ func _spawn_classic_monsters(action: ClassicActionDefinition, context: ScenarioE
 
 func _classic_spawn_source_coordinate(context: ScenarioExecutionContext) -> Vector2i:
 	var battlefield := _game_state.combat.battlefield
-	if context != null and not context.combatant_id.is_empty() and battlefield.has_actor(context.combatant_id):
-		return battlefield.actor_position(context.combatant_id)
+	if context != null and not context.combatant_id.is_empty() and battlefield.actors.has_actor(context.combatant_id):
+		return battlefield.actors.actor_position(context.combatant_id)
 	# Castle's battle-round macro path leaves macromonster at its default slot
 	# zero, so source-order monster zero is the placement center.
 	for monster: MonsterState in _game_state.combat.roster.monsters():
-		if battlefield.has_actor(monster.id):
-			return battlefield.actor_position(monster.id)
+		if battlefield.actors.has_actor(monster.id):
+			return battlefield.actors.actor_position(monster.id)
 	return Vector2i(-1, -1)
 
 

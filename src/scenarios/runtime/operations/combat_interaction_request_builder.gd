@@ -111,7 +111,7 @@ func _combatant_payloads(combat_view: CombatView) -> Array[Dictionary]:
 	var combatants_by_id: Dictionary = {}
 	var terrain_set := _combat_terrain_set()
 	for character_state: CharacterState in _game_state.party.characters():
-		if _game_state.combat.battlefield == null or not _game_state.combat.battlefield.has_actor(character_state.id):
+		if _game_state.combat.battlefield == null or not _game_state.combat.battlefield.actors.has_actor(character_state.id):
 			continue
 		var character := CharacterView.new(character_state, _content)
 		var equipment := _rules.equipment.combat_equipment(character_state, _content.items.definitions())
@@ -121,7 +121,7 @@ func _combatant_payloads(combat_view: CombatView) -> Array[Dictionary]:
 		_append_character_weapon_facts(payload, character_state, equipment, combat_view.weapon_mode if character.id == combat_view.active_actor_id else &"melee")
 		combatants_by_id[character.id] = payload
 	for monster: MonsterView in combat_view.monsters:
-		if _game_state.combat.battlefield == null or not _game_state.combat.battlefield.has_actor(monster.id):
+		if _game_state.combat.battlefield == null or not _game_state.combat.battlefield.actors.has_actor(monster.id):
 			continue
 		var payload := _monster_combatant_payload(monster, _content.combat.monster_by_id(monster.definition_id))
 		_append_combatant_position_facts(payload, combat_view.active_actor_id, monster.id, terrain_set)

@@ -97,11 +97,11 @@ func start_battle(state: GameState, content: RealmzContent, battle: BattleDefini
 		pending_authored.append({"placeholderId": pending_id, "monster": pending_monster})
 	for character: CharacterState in inputs.party_characters:
 		if character.current_health <= 0:
-			battlefield.remove_character(character.id)
+			battlefield.actors.remove_character(character.id)
 	for pending: Dictionary in pending_authored:
 		var monster: MonsterState = pending["monster"]
 		var instance_id := state.next_instance_id("combat.monster")
-		if not battlefield.replace_monster_id(pending["placeholderId"], instance_id):
+		if not battlefield.actors.replace_monster_id(pending["placeholderId"], instance_id):
 			return battle_setup_failure(state, instance_checkpoint, rng, rng_checkpoint, &"invalid_battlefield_identity", "Battle '%s' could not commit a stable monster identity." % battle.id)
 		monster.id = instance_id
 		monsters.append(monster)
@@ -203,10 +203,10 @@ func _process_persistent_field_round_collisions(state: GameState, content: Realm
 		return
 	var actor_ids: Array[String] = []
 	for character: CharacterState in state.party.characters():
-		if character.current_health > 0 and combat.battlefield.has_actor(character.id):
+		if character.current_health > 0 and combat.battlefield.actors.has_actor(character.id):
 			actor_ids.append(character.id)
 	for monster: MonsterState in combat.roster.monsters():
-		if monster.current_health > 0 and combat.battlefield.has_actor(monster.id):
+		if monster.current_health > 0 and combat.battlefield.actors.has_actor(monster.id):
 			actor_ids.append(monster.id)
 	for actor_id: String in actor_ids:
 		var result: int = _context.fields().resolve_actor_collisions(state, content, actor_id, rng, events, false, false)
@@ -568,11 +568,11 @@ func finish_if_resolved(state: GameState, content: RealmzContent, events: Array[
 		return false
 	var enemies_alive := false
 	for character: CharacterState in state.party.characters():
-		if character.current_health > 0 and character.traitor and combat.battlefield != null and combat.battlefield.has_actor(character.id):
+		if character.current_health > 0 and character.traitor and combat.battlefield != null and combat.battlefield.actors.has_actor(character.id):
 			enemies_alive = true
 			break
 	for monster: MonsterState in combat.roster.monsters():
-		if monster.current_health > 0 and monster.traitor and combat.battlefield != null and combat.battlefield.has_actor(monster.id):
+		if monster.current_health > 0 and monster.traitor and combat.battlefield != null and combat.battlefield.actors.has_actor(monster.id):
 			enemies_alive = true
 			break
 	var party_alive := has_loyal_battlefield_character(state)
@@ -590,7 +590,7 @@ func finish_classic_macro_victory(state: GameState, content: RealmzContent) -> C
 	for monster: MonsterState in state.combat.roster.monsters():
 		if monster.current_health > 0 and monster.traitor:
 			monster.current_health = 0
-			state.combat.battlefield.remove_monster(monster.id)
+			state.combat.battlefield.actors.remove_monster(monster.id)
 			defeated.append(monster.id)
 	state.combat.classic_post_battle_sentinel = 8
 	var events: Array[DomainEvent] = [DomainEvent.new(&"classic_battle_forced_victory", {"battleId": state.combat.battle_id, "monsterIds": defeated, "rewardMode": 5, "postBattleSentinel": 8})]
@@ -612,7 +612,7 @@ static func has_loyal_battlefield_character(state: GameState) -> bool:
 	if state.combat == null or state.combat.battlefield == null:
 		return false
 	for character: CharacterState in state.party.characters():
-		if character.current_health > 0 and not character.traitor and state.combat.battlefield.has_actor(character.id):
+		if character.current_health > 0 and not character.traitor and state.combat.battlefield.actors.has_actor(character.id):
 			return true
 	return false
 

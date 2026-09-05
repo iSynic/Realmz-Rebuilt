@@ -98,10 +98,10 @@ static func destroy_magic_score(state: GameState, caster_traitor: bool, target_i
 static func all_actor_ids(state: GameState) -> Array[String]:
 	var result: Array[String] = []
 	for character: CharacterState in state.party.characters():
-		if character.current_health > 0 and state.combat.battlefield.has_actor(character.id):
+		if character.current_health > 0 and state.combat.battlefield.actors.has_actor(character.id):
 			result.append(character.id)
 	for monster: MonsterState in state.combat.roster.monsters():
-		if monster.current_health > 0 and state.combat.battlefield.has_actor(monster.id):
+		if monster.current_health > 0 and state.combat.battlefield.actors.has_actor(monster.id):
 			result.append(monster.id)
 	return result
 

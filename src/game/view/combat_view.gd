@@ -75,9 +75,9 @@ func _populate_battlefield(combat: CombatState, content: RealmzContent, game_sta
 			var coordinates: Array[Vector2i] = []
 			for offset: Vector2i in area_rules.pattern(field.shape):
 				var coordinate := field.center + offset
-				if not BattlefieldState.contains(coordinate):
+				if not BattlefieldGrid.contains(coordinate):
 					continue
-				var terrain := terrain_set.tile_by_id(combat.battlefield.terrain_at(coordinate)) if terrain_set != null else null
+				var terrain := terrain_set.tile_by_id(combat.battlefield.terrain.tile_at(coordinate)) if terrain_set != null else null
 				if terrain == null or terrain.solid == 0:
 					coordinates.append(coordinate)
 			var spell := content.magic.spell_by_id(field.spell_id) if content != null else null
@@ -188,7 +188,7 @@ func _populate_movement_actions(combat: CombatState, characters: Array[Character
 	var contact_attack_available := false
 	var movement_allowance := active_character.maximum_movement if combat.turns.active_turn == null else active_character.movement
 	for direction: Vector2i in BattlefieldRules.DIRECTIONS:
-		var destination := combat.battlefield.actor_position(active_character.id) + direction
+		var destination := combat.battlefield.actors.actor_position(active_character.id) + direction
 		var edge_retreat: Variant = combat_flow.reactions.probe_edge_retreat(combat, active_character.id, destination) if combat_flow != null else null
 		var probe := battlefield_rules.probe_step(combat.battlefield, terrain_set, active_character.id, direction, movement_allowance)
 		var contact_target_id := ""
@@ -234,11 +234,11 @@ func _populate_active_relationships(combat: CombatState, characters: Array[Chara
 	if combat.battlefield == null:
 		return
 	for character: CharacterState in characters:
-		if character.current_health <= 0 or not combat.battlefield.has_actor(character.id):
+		if character.current_health <= 0 or not combat.battlefield.actors.has_actor(character.id):
 			continue
 		(friendly_actor_ids if not character.traitor else hostile_actor_ids).append(character.id)
 	for monster: MonsterState in combat.roster.monsters():
-		if monster.current_health <= 0 or not combat.battlefield.has_actor(monster.id):
+		if monster.current_health <= 0 or not combat.battlefield.actors.has_actor(monster.id):
 			continue
 		(friendly_actor_ids if not monster.traitor else hostile_actor_ids).append(monster.id)
 

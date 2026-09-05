@@ -42,7 +42,7 @@ func hostile_contact_target_id(state: GameState, actor_id: String, destination_o
 	if destination_or_target is String:
 		candidate_id = destination_or_target
 	elif destination_or_target is Vector2i:
-		candidate_id = state.combat.battlefield.actor_at(destination_or_target, actor_id)
+		candidate_id = state.combat.battlefield.actors.actor_at(destination_or_target, actor_id)
 	if candidate_id.is_empty():
 		return ""
 	var actor := state.party.character_by_id(actor_id)
@@ -59,9 +59,9 @@ static func remove_defeated_position(combat: CombatState, actor_id: String, defe
 	if not defeated or combat == null or combat.battlefield == null:
 		return
 	if combat.roster.monster_by_id(actor_id) != null:
-		combat.battlefield.remove_monster(actor_id)
+		combat.battlefield.actors.remove_monster(actor_id)
 	else:
-		combat.battlefield.remove_character(actor_id)
+		combat.battlefield.actors.remove_character(actor_id)
 
 
 static func remove_all_defeated_positions(state: GameState) -> void:

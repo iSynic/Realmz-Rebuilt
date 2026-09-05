@@ -147,7 +147,7 @@ static func _coordinate(value: Variant) -> Vector2i:
 		return Vector2i(-1, -1)
 	var x := _integer(value[0])
 	var y := _integer(value[1])
-	if x < 0 or x >= BattlefieldState.SIZE or y < 0 or y >= BattlefieldState.SIZE:
+	if x < 0 or x >= BattlefieldGrid.SIZE or y < 0 or y >= BattlefieldGrid.SIZE:
 		return Vector2i(-1, -1)
 	return Vector2i(x, y)
 
