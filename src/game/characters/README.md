@@ -6,6 +6,8 @@ This folder is the starting point for the data and rules belonging to one advent
 - `character_state_codec.gd` translates that state to and from the stable save and Character Files representation.
 - `character_draft_state.gd` stores the generated character and current party-setup selections until the draft is finalized or cancelled.
 - `character_rules.gd` contains pure creation, aging, advancement, and derived-stat calculations.
+- `character_aging_result.gd`, `level_up_result.gd`, and `strength_result.gd` are the named results returned by those calculations.
+- `party_setup_rules.gd` contains the deterministic difficulty and recommended-level scaling used before a playthrough begins.
 - `character_view.gd` builds the detached read-only record shown by the interface.
 - The neighboring `*_view.gd` files describe character metrics, age bands, appearance choices, spell choices, party summaries, and setup without exposing mutable state.
 - `character_lifetime_record.gd` stores cumulative achievements such as battles, kills, spells, and scenario service.
