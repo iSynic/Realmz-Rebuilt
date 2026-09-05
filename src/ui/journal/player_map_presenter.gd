@@ -5,7 +5,7 @@ extends VBoxContainer
 
 signal scrolling_text_finished
 
-const CLASSIC_SCROLLING_TEXT_SURFACE_SCENE_PATH := "res://src/ui/screens/classic_scrolling_text_surface.tscn"
+const CLASSIC_SCROLLING_TEXT_SURFACE_SCENE_PATH := "res://src/ui/journal/classic_scrolling_text_surface.tscn"
 
 var _canvas: PlayerMapCanvas
 

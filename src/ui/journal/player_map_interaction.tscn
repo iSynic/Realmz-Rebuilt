@@ -1,7 +1,7 @@
 [gd_scene load_steps=3 format=3]
 
-[ext_resource type="Script" path="res://src/ui/interaction_components/player_map_interaction.gd" id="1_interaction"]
-[ext_resource type="Script" path="res://src/ui/screens/player_map_presenter.gd" id="2_presenter"]
+[ext_resource type="Script" path="res://src/ui/journal/player_map_interaction.gd" id="1_interaction"]
+[ext_resource type="Script" path="res://src/ui/journal/player_map_presenter.gd" id="2_presenter"]
 
 [node name="PlayerMapInteraction" type="VBoxContainer"]
 size_flags_horizontal = 3

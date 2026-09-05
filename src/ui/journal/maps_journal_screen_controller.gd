@@ -2,7 +2,7 @@
 class_name MapsJournalScreenController
 extends RefCounted
 
-const WORKSPACE_SCENE_PATH := "res://src/ui/screens/maps_notes_workspace.tscn"
+const WORKSPACE_SCENE_PATH := "res://src/ui/journal/maps_notes_workspace.tscn"
 
 signal intent_submitted(intent: PlayerIntent)
 

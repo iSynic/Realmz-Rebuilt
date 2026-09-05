@@ -4,7 +4,7 @@ const SaveSlotPreviewScript := preload("res://src/game/view/save_slot_preview.gd
 const ApplicationLifecycleScript := preload("res://src/app/application_lifecycle.gd")
 const HeldMovementControllerScript := preload("res://src/ui/exploration/held_movement_controller.gd")
 const RetainedMapSurfaceScript := preload("res://src/ui/exploration/classic_retained_map_surface.gd")
-const FAST_SPELL_DOCK_SCENE := preload("res://src/ui/interaction_components/fast_spell_dock.tscn"); const ScrollingTextInteractionScript := preload("res://src/ui/interaction_components/scrolling_text_interaction.gd")
+const FAST_SPELL_DOCK_SCENE := preload("res://src/ui/interaction_components/fast_spell_dock.tscn"); const ScrollingTextInteractionScript := preload("res://src/ui/journal/scrolling_text_interaction.gd")
 const InteractionLayoutPolicyScript := preload("res://src/ui/shared/interactions/interaction_layout_policy.gd")
 
 class RejectingSaveRepository extends SaveRepository:
@@ -781,7 +781,7 @@ func _test_classic_choice_context() -> void:
 	var scrolling_request := InteractionRequest.from_payload("scrolling-text", InteractionRequest.ACKNOWLEDGE, {"prompt": scrolling_prompt, "messageId": 1, "presentation": "classic-scrolling-text"})
 	var scrolling_loaded := load_test_package(FIXTURE_PATH)
 	var scrolling_resource_request := InteractionRequest.from_payload("scrolling-resource", InteractionRequest.ACKNOWLEDGE, {"prompt": "", "presentation": "classic-scrolling-text", "resourceType": "TEXT", "resourceId": -200})
-	var scrolling_component := instantiate_ui_scene("res://src/ui/interaction_components/scrolling_text_interaction.tscn") as ScrollingTextInteraction
+	var scrolling_component := instantiate_ui_scene("res://src/ui/journal/scrolling_text_interaction.tscn") as ScrollingTextInteraction
 	scrolling_component.theme = load("res://src/ui/classic_ui_theme.tres") as Theme
 	var scrolling_media := ClassicMediaCatalog.new(scrolling_loaded.media, ApplicationMediaCatalog.new())
 	scrolling_component.configure(scrolling_media)

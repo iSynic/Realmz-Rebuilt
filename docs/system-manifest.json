@@ -156,7 +156,7 @@
     {"id": "inventory", "scene": "src/ui/inventory/inventory_screen.tscn"},
     {"id": "spells", "scene": "src/ui/magic/spells_screen.tscn"},
     {"id": "services", "scene": "src/ui/screens/services_screen.tscn"},
-    {"id": "maps-journal", "scene": "src/ui/screens/journal_screen.tscn"},
+    {"id": "maps-journal", "scene": "src/ui/journal/journal_screen.tscn"},
     {"id": "system", "scene": "src/ui/screens/system_screen.tscn"},
     {"id": "campaign-selection", "scene": "src/ui/setup/campaign_selection_panel.tscn"},
     {"id": "party-assembly", "scene": "src/ui/setup/party_setup_workspace.tscn"},
@@ -169,7 +169,7 @@
     {"id": "level-up", "scene": "src/ui/interaction_components/level_up_interaction.tscn"},
     {"id": "pick-lock", "scene": "src/ui/interaction_components/pick_lock_interaction.tscn"},
     {"id": "lifecycle-prompts", "scene": "src/ui/interaction_components/lifecycle_interaction.tscn"},
-    {"id": "scrolling-text", "scene": "src/ui/interaction_components/scrolling_text_interaction.tscn"},
+    {"id": "scrolling-text", "scene": "src/ui/journal/scrolling_text_interaction.tscn"},
     {"id": "combat-command-deck", "scene": "src/ui/interaction_components/battle_interaction.tscn"},
     {"id": "roster-spellbook", "scene": "src/ui/screens/classic_party_roster.tscn"}
   ]

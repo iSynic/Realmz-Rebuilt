@@ -1,7 +1,7 @@
 [gd_scene load_steps=3 format=3]
 
-[ext_resource type="Script" path="res://src/ui/interaction_components/scrolling_text_interaction.gd" id="1_interaction"]
-[ext_resource type="PackedScene" path="res://src/ui/screens/classic_scrolling_text_surface.tscn" id="2_surface"]
+[ext_resource type="Script" path="res://src/ui/journal/scrolling_text_interaction.gd" id="1_interaction"]
+[ext_resource type="PackedScene" path="res://src/ui/journal/classic_scrolling_text_surface.tscn" id="2_surface"]
 
 [node name="ScrollingTextInteraction" type="VBoxContainer"]
 size_flags_horizontal = 3

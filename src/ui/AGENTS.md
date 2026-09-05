@@ -148,3 +148,4 @@ Own the Godot user interface: scenes, controls, screen presenters, topology-deri
 - `exploration/AGENTS.md` owns retained 2D maps, first-person dungeon projection, held movement presentation, and spatial media caches.
 - `combat/AGENTS.md` owns the retained tactical battlefield, combat playback, targeting presentation, and tactical media caches.
 - `characters/AGENTS.md` owns the Character, Allies, Bestiary, and Character Files workspaces plus their shared character sheet and detached-view binding.
+- `journal/AGENTS.md` owns Places, acquired Maps, Journal, immediate player-map requests, and shared Classic scrolling-text presentation.

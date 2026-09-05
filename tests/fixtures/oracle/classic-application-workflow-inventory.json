@@ -9186,11 +9186,11 @@
             "symbol": "func present"
           },
           {
-            "path": "src/ui/screens/player_map_presenter.gd",
+            "path": "src/ui/journal/player_map_presenter.gd",
             "symbol": "class_name PlayerMapPresenter"
           },
           {
-            "path": "src/ui/interaction_components/player_map_interaction.gd",
+            "path": "src/ui/journal/player_map_interaction.gd",
             "symbol": "class_name PlayerMapInteraction"
           }
         ]
@@ -9339,7 +9339,7 @@
             "symbol": "static func build_location_note_map_view"
           },
           {
-            "path": "src/ui/controllers/maps_journal_screen_controller.gd",
+            "path": "src/ui/journal/maps_journal_screen_controller.gd",
             "symbol": "func _bind_location_note_preview"
           },
           {
