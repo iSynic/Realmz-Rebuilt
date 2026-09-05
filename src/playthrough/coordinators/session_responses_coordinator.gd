@@ -51,6 +51,10 @@ func respond_session_interaction(response: InteractionResponse) -> SessionCoordi
 			return _respond_session_retreat(response)
 		&"combat-friendly-collision":
 			return _respond_session_friendly_collision(response)
+	return _respond_random_surprise_choice(response)
+
+
+func _respond_random_surprise_choice(response: InteractionResponse) -> SessionCoordinatorResult:
 	var surprise_body = response.body as InteractionResponse.YesNoBody
 	if response.kind != &"yes_no" or surprise_body == null:
 		return SessionCoordinatorResult.failed(&"invalid_interaction_response", "The random encounter response must be a yes/no choice.")
@@ -117,82 +121,108 @@ func _respond_pooled_wealth_departure(response: InteractionResponse) -> SessionC
 	var service = _context.session_continuation.service()
 	if service == null:
 		return SessionCoordinatorResult.failed(&"invalid_session_continuation", "The pooled-wealth departure continuation is unavailable.")
-	var stage = service.stage
-	var direction = service.direction
-	if stage == &"warning":
-		var warning_body = response.body as InteractionResponse.YesNoBody
-		if response.kind != InteractionRequest.YES_NO or warning_body == null:
-			return SessionCoordinatorResult.failed(&"invalid_interaction_response", "Pooled-wealth departure requires a yes/no response.")
-		if warning_body.accepted:
-			service.stage = &"distribution"
-			_context.session_interaction = _pooled_wealth_departure_distribution_request("pooled-wealth-departure:%d" % _context.next_revision())
-			var opened_events: Array[DomainEvent] = [
-				DomainEvent.new(&"pooled_wealth_distribution_opened", {"wealth": _context.state.party.pooled_wealth.to_data()}),
-				DomainEvent.new(&"sound_requested", {"soundId": 3003, "waitForCompletion": false, "stopExisting": true, "reducedSoundEligible": true, "source": "classic-pooled-wealth-departure"}),
-			]
-			return SessionCoordinatorResult.waiting(_context.session_interaction, opened_events)
-		var discarded = _context.state.party.pooled_wealth.to_data()
-		_context.state.party.pooled_wealth = WealthState.new()
-		_context.session_interaction = null
-		_context.session_continuation.clear()
-		return _context.exploration().move_after_pooled_wealth(direction, _single_event(DomainEvent.new(&"pooled_wealth_left_behind", {"wealth": discarded, "movementContinues": true})))
+	if service.stage == &"warning":
+		return _respond_pooled_wealth_warning(response, service)
+	if service.stage == &"distribution":
+		return _respond_pooled_wealth_distribution(response, service)
+	return SessionCoordinatorResult.failed(&"invalid_interaction_response", "Pooled-wealth distribution requires a typed money action.")
+
+
+func _respond_pooled_wealth_warning(response: InteractionResponse, service: ServiceContinuationBody) -> SessionCoordinatorResult:
+	var warning_body = response.body as InteractionResponse.YesNoBody
+	if response.kind != InteractionRequest.YES_NO or warning_body == null:
+		return SessionCoordinatorResult.failed(&"invalid_interaction_response", "Pooled-wealth departure requires a yes/no response.")
+	if warning_body.accepted:
+		service.stage = &"distribution"
+		_context.session_interaction = _pooled_wealth_departure_distribution_request("pooled-wealth-departure:%d" % _context.next_revision())
+		return SessionCoordinatorResult.waiting(_context.session_interaction, [
+			DomainEvent.new(&"pooled_wealth_distribution_opened", {"wealth": _context.state.party.pooled_wealth.to_data()}),
+			DomainEvent.new(&"sound_requested", {"soundId": 3003, "waitForCompletion": false, "stopExisting": true, "reducedSoundEligible": true, "source": "classic-pooled-wealth-departure"}),
+		])
+	return _leave_pooled_wealth_behind(service.direction, false)
+
+
+func _respond_pooled_wealth_distribution(response: InteractionResponse, service: ServiceContinuationBody) -> SessionCoordinatorResult:
 	var body = response.body as InteractionResponse.BankBody
-	if stage != &"distribution" or response.kind != InteractionRequest.POOLED_WEALTH_DEPARTURE or body == null:
+	if response.kind != InteractionRequest.POOLED_WEALTH_DEPARTURE or body == null:
 		return SessionCoordinatorResult.failed(&"invalid_interaction_response", "Pooled-wealth distribution requires a typed money action.")
 	var action = String(body.action)
 	var selected_character_id = body.character_id
 	if not selected_character_id.is_empty() and _context.state.party.character_by_id(selected_character_id) == null:
 		return SessionCoordinatorResult.failed(&"unknown_money_target", "The selected pooled-wealth character is unavailable.")
-	var events: Array[DomainEvent] = []
-	if action == "leave":
-		var discarded = _context.state.party.pooled_wealth.to_data()
-		_context.state.party.pooled_wealth = WealthState.new()
-		_context.session_interaction = null
-		_context.session_continuation.clear()
-		var departure_events: Array[DomainEvent] = [
-			DomainEvent.new(&"pooled_wealth_left_behind", {"wealth": discarded, "movementContinues": true}),
-			DomainEvent.new(&"sound_requested", {"soundId": 141, "waitForCompletion": false, "source": "classic-pooled-wealth-departure-done"}),
-		]
-		return _context.exploration().move_after_pooled_wealth(direction, departure_events)
 	match action:
+		"leave":
+			return _leave_pooled_wealth_behind(service.direction, true)
 		"pool":
-			var probe = _context.rules.economy.pool_probe(_context.state.party)
-			if not probe.allowed:
-				return SessionCoordinatorResult.failed(&"money_action_unavailable", probe.reason)
-			_context.rules.economy.pool_party_wealth(_context.state.party)
-			_context.recalculate_party_movement()
-			events.append(DomainEvent.new(&"wealth_pooled", {"source": "classic-pooled-wealth-departure", "wealth": _context.state.party.pooled_wealth.to_data()}))
-			events.append(DomainEvent.new(&"sound_requested", {"soundId": 128, "waitForCompletion": false, "source": "classic-pooled-wealth-departure-pool"}))
+			return _pool_departure_wealth(selected_character_id)
 		"share":
-			var probe = _context.rules.economy.share_probe(_context.state.party)
-			if not probe.allowed:
-				return SessionCoordinatorResult.failed(&"money_action_unavailable", probe.reason)
-			_context.rules.economy.share_pooled_wealth(_context.state.party)
-			_context.recalculate_party_movement()
-			events.append(DomainEvent.new(&"wealth_shared", {"source": "classic-pooled-wealth-departure", "remaining": _context.state.party.pooled_wealth.to_data()}))
-			events.append(DomainEvent.new(&"sound_requested", {"soundId": 128, "waitForCompletion": false, "source": "classic-pooled-wealth-departure-share"}))
+			return _share_departure_wealth(selected_character_id)
 		"to-pool", "to-character":
-			if body.character_id.is_empty() or body.denomination.is_empty() or body.amount < 1:
-				return SessionCoordinatorResult.failed(&"invalid_interaction_response", "Pooled-wealth Swap requires character, denomination, and amount.")
-			var character = _context.state.party.character_by_id(body.character_id)
-			var kind = _context.money_kind(body.denomination)
-			var amount = body.amount
-			if character == null or kind < 0:
-				return SessionCoordinatorResult.failed(&"unknown_money_target", "The selected pooled-wealth transfer is unavailable.")
-			if amount != EconomyRules.classic_transfer_increment(kind as WealthState.Kind):
-				return SessionCoordinatorResult.failed(&"invalid_money_increment", "Classic Swap moves five gold or one gem or jewelry per action.")
-			var to_character = action == "to-character"
-			var probe = _context.rules.economy.transfer_probe(_context.state.party, character, kind as WealthState.Kind, amount, to_character)
-			if not probe.allowed:
-				return SessionCoordinatorResult.failed(&"money_action_unavailable", probe.reason)
-			var transferred = _context.rules.economy.transfer_pool_to_character(_context.state.party, character, kind as WealthState.Kind, amount) if to_character else _context.rules.economy.transfer_character_to_pool(_context.state.party, character, kind as WealthState.Kind, amount)
-			if not transferred:
-				return SessionCoordinatorResult.failed(&"money_action_unavailable", "The selected pooled-wealth transfer is no longer available.")
-			_context.recalculate_party_movement()
-			events.append(DomainEvent.new(&"wealth_transferred", {"source": "classic-pooled-wealth-departure", "characterId": character.id, "direction": action, "kind": body.denomination, "amount": amount}))
-			events.append(DomainEvent.new(&"sound_requested", {"soundId": 10051 if to_character else 663, "waitForCompletion": false, "source": "classic-pooled-wealth-departure-swap"}))
+			return _transfer_departure_wealth(body, action)
 		_:
 			return SessionCoordinatorResult.failed(&"unknown_money_action", "Pooled-wealth action '%s' is unavailable." % action)
+
+
+func _leave_pooled_wealth_behind(direction: Vector2i, with_done_sound: bool) -> SessionCoordinatorResult:
+	var discarded = _context.state.party.pooled_wealth.to_data()
+	_context.state.party.pooled_wealth = WealthState.new()
+	_context.session_interaction = null
+	_context.session_continuation.clear()
+	var events: Array[DomainEvent] = [DomainEvent.new(&"pooled_wealth_left_behind", {"wealth": discarded, "movementContinues": true})]
+	if with_done_sound:
+		events.append(DomainEvent.new(&"sound_requested", {"soundId": 141, "waitForCompletion": false, "source": "classic-pooled-wealth-departure-done"}))
+	return _context.exploration().move_after_pooled_wealth(direction, events)
+
+
+func _pool_departure_wealth(selected_character_id: String) -> SessionCoordinatorResult:
+	var probe = _context.rules.economy.pool_probe(_context.state.party)
+	if not probe.allowed:
+		return SessionCoordinatorResult.failed(&"money_action_unavailable", probe.reason)
+	_context.rules.economy.pool_party_wealth(_context.state.party)
+	_context.recalculate_party_movement()
+	return _continue_pooled_wealth_distribution(selected_character_id, [
+		DomainEvent.new(&"wealth_pooled", {"source": "classic-pooled-wealth-departure", "wealth": _context.state.party.pooled_wealth.to_data()}),
+		DomainEvent.new(&"sound_requested", {"soundId": 128, "waitForCompletion": false, "source": "classic-pooled-wealth-departure-pool"}),
+	])
+
+
+func _share_departure_wealth(selected_character_id: String) -> SessionCoordinatorResult:
+	var probe = _context.rules.economy.share_probe(_context.state.party)
+	if not probe.allowed:
+		return SessionCoordinatorResult.failed(&"money_action_unavailable", probe.reason)
+	_context.rules.economy.share_pooled_wealth(_context.state.party)
+	_context.recalculate_party_movement()
+	return _continue_pooled_wealth_distribution(selected_character_id, [
+		DomainEvent.new(&"wealth_shared", {"source": "classic-pooled-wealth-departure", "remaining": _context.state.party.pooled_wealth.to_data()}),
+		DomainEvent.new(&"sound_requested", {"soundId": 128, "waitForCompletion": false, "source": "classic-pooled-wealth-departure-share"}),
+	])
+
+
+func _transfer_departure_wealth(body: InteractionResponse.BankBody, action: String) -> SessionCoordinatorResult:
+	if body.character_id.is_empty() or body.denomination.is_empty() or body.amount < 1:
+		return SessionCoordinatorResult.failed(&"invalid_interaction_response", "Pooled-wealth Swap requires character, denomination, and amount.")
+	var character = _context.state.party.character_by_id(body.character_id)
+	var kind = _context.money_kind(body.denomination)
+	var amount = body.amount
+	if character == null or kind < 0:
+		return SessionCoordinatorResult.failed(&"unknown_money_target", "The selected pooled-wealth transfer is unavailable.")
+	if amount != EconomyRules.classic_transfer_increment(kind as WealthState.Kind):
+		return SessionCoordinatorResult.failed(&"invalid_money_increment", "Classic Swap moves five gold or one gem or jewelry per action.")
+	var to_character = action == "to-character"
+	var probe = _context.rules.economy.transfer_probe(_context.state.party, character, kind as WealthState.Kind, amount, to_character)
+	if not probe.allowed:
+		return SessionCoordinatorResult.failed(&"money_action_unavailable", probe.reason)
+	var transferred = _context.rules.economy.transfer_pool_to_character(_context.state.party, character, kind as WealthState.Kind, amount) if to_character else _context.rules.economy.transfer_character_to_pool(_context.state.party, character, kind as WealthState.Kind, amount)
+	if not transferred:
+		return SessionCoordinatorResult.failed(&"money_action_unavailable", "The selected pooled-wealth transfer is no longer available.")
+	_context.recalculate_party_movement()
+	return _continue_pooled_wealth_distribution(body.character_id, [
+		DomainEvent.new(&"wealth_transferred", {"source": "classic-pooled-wealth-departure", "characterId": character.id, "direction": action, "kind": body.denomination, "amount": amount}),
+		DomainEvent.new(&"sound_requested", {"soundId": 10051 if to_character else 663, "waitForCompletion": false, "source": "classic-pooled-wealth-departure-swap"}),
+	])
+
+
+func _continue_pooled_wealth_distribution(selected_character_id: String, events: Array[DomainEvent]) -> SessionCoordinatorResult:
 	_context.session_interaction = _pooled_wealth_departure_distribution_request("pooled-wealth-departure:%d" % _context.next_revision(), selected_character_id)
 	return SessionCoordinatorResult.waiting(_context.session_interaction, events)
 
