@@ -7,10 +7,10 @@ Own the pure transaction coordinator that joins Realmz game state and rules to t
 ## Ownership
 
 - `GameSession` public operations, transaction checkpoints, exact-once commit, request identity, revision, and aggregate lifetime.
-- `SessionSnapshot`, the small `SessionContinuation` envelope, and the separate battle-return continuation that include game state, RNG, scenario VM/action state, and pending typed interactions. Feature-owned payloads, factories, and strict decoding live under `continuations/`.
+- `session/` owns `SessionSnapshot`, the small `SessionContinuation` envelope, strict decoding, transaction result vocabulary, restore admission, and detached view projection. Feature-owned continuation payloads and factories remain under `continuations/` until their owning feature migration.
 - `SessionRestoreValidator` is the restore transaction entry point and validates session continuations through named confirmation, item-target, learned-spell-target, and scroll-target families. `SessionRestoreStateValidator` validates detached game truth, and `SessionScenarioRestoreValidator` validates pending VM workflows. Together they construct one detached typed restore candidate; `GameSession.restore` alone commits it to the live aggregate, so every failed validation leaves the current session untouched.
 - `SessionInteractionFactory` is the single owner of session-level request reconstruction shared by live orchestration and restore validation.
-- Session workflow contexts and services for lifecycle, exploration, inventory/magic/services, combat/rewards, application hooks, and detached view projection.
+- Session workflow contexts and feature services for lifecycle, exploration, inventory/magic/services, combat/rewards, and application hooks.
 - `SessionContext` owns initialization, restore assignment, snapshot construction, and the current content, state, deterministic RNG, rules, VM, Scenario Action state, runtime API, continuations, pending session interaction, and revision. Internal intent, exploration, scenario, response, and debug coordinators share that one context while leaving transaction commit and rollback in `GameSession`.
 - `SessionIntentCoordinator` dispatches each already-validated player intent to its named workflow or coordinator. Coordinators construct rejected, committed-failure, waiting, completed, and close outcomes through `SessionCoordinatorResult`, which owns that result vocabulary; `SessionContext` does not forward those constructors. Coordinators never advance the session revision themselves.
 - `SessionDebugCoordinator` routes developer commands across workflow, combat, and scenario owners while `GameSession` retains the final transaction commit and unsaveable-operation flag.
@@ -56,5 +56,6 @@ Own the pure transaction coordinator that joins Realmz game state and rules to t
 
 ## Child DOX Index
 
-- `continuations/AGENTS.md` owns typed resumable transaction payloads, feature factories, and their strict saved codec.
-- `workflows/AGENTS.md` owns the domain workflow and detached projection contracts.
+- `session/AGENTS.md` owns the central transaction boundary, restore, response dispatch, debug commands, and detached projection.
+- `continuations/AGENTS.md` owns typed resumable transaction payloads, feature factories, and their wire-value contracts.
+- `workflows/AGENTS.md` owns the remaining domain workflows and topology-derived map-view construction until each moves to its feature.

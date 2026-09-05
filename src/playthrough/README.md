@@ -9,7 +9,7 @@ Restore is deliberately staged. `SessionRestoreValidator` checks package identit
 For a common change, follow this path:
 
 1. Find the typed intent or response at the `GameSession` boundary.
-2. Follow `SessionIntentCoordinator` or `SessionResponsesCoordinator` into the named feature workflow under `workflows/`.
+2. Follow `SessionIntentCoordinator` or `SessionResponsesCoordinator` in `session/` into the named feature workflow.
 3. Keep rules and saved truth in `src/game`, and scenario instruction behavior in `src/scenarios`.
 4. Add characterization to the matching core, scenario, or integration suite before changing transaction order.
 

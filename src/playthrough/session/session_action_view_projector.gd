@@ -2,7 +2,7 @@
 class_name SessionActionViewProjector
 extends RefCounted
 
-const ProjectionPolicy := preload("res://src/playthrough/workflows/session_view_projection_policy.gd")
+const ProjectionPolicy := preload("res://src/playthrough/session/session_view_projection_policy.gd")
 
 static func populate_services(context: SessionWorkflowContext, result: GameView) -> void:
 	if not context.state.location_services.active_shop_id.is_empty():

@@ -1,7 +1,7 @@
 extends SceneTree
 
 const PACKAGE_REPOSITORY_SCRIPT := preload("res://src/storage/packages/package_repository.gd")
-const GAME_SESSION_SCRIPT := preload("res://src/playthrough/game_session.gd")
+const GAME_SESSION_SCRIPT := preload("res://src/playthrough/session/game_session.gd")
 const APPLICATION_PACKAGE_PATH := "res://src/storage/characters/realmz-classic-character-library.realmz2"
 const APPLICATION_PACKAGE_ID := "realmz-classic-character-library"
 const APPLICATION_PACKAGE_HASH := "c7e093f46bcca49d2382d68c2995ae5ff90c0e706dbd538682b613af9b80e0bd"

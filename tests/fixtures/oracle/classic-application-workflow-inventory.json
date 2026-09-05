@@ -1850,7 +1850,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/playthrough/game_session.gd",
+            "path": "src/playthrough/session/game_session.gd",
             "symbol": "func start"
           }
         ]
@@ -1943,7 +1943,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/playthrough/game_session.gd",
+            "path": "src/playthrough/session/game_session.gd",
             "symbol": "func view"
           }
         ]
@@ -2321,7 +2321,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/playthrough/game_session.gd",
+            "path": "src/playthrough/session/game_session.gd",
             "symbol": "func view"
           }
         ]
@@ -2418,7 +2418,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/playthrough/game_session.gd",
+            "path": "src/playthrough/session/game_session.gd",
             "symbol": "func submit_intent"
           }
         ]
@@ -2521,7 +2521,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/playthrough/coordinators/session_intent_coordinator.gd",
+            "path": "src/playthrough/session/session_intent_coordinator.gd",
             "symbol": "func _begin_adventure"
           }
         ]
@@ -2641,7 +2641,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/playthrough/game_session.gd",
+            "path": "src/playthrough/session/game_session.gd",
             "symbol": "func close"
           },
           {
@@ -2809,7 +2809,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/playthrough/coordinators/session_intent_coordinator.gd",
+            "path": "src/playthrough/session/session_intent_coordinator.gd",
             "symbol": "func _move"
           },
           {
@@ -2821,7 +2821,7 @@
             "symbol": "func turn_dungeon"
           },
           {
-            "path": "src/playthrough/coordinators/session_responses_coordinator.gd",
+            "path": "src/playthrough/session/session_responses_coordinator.gd",
             "symbol": "func _respond_pooled_wealth_departure(response: InteractionResponse)"
           },
           {
@@ -2833,7 +2833,7 @@
             "symbol": "func _begin_boat_choice"
           },
           {
-            "path": "src/playthrough/coordinators/session_responses_coordinator.gd",
+            "path": "src/playthrough/session/session_responses_coordinator.gd",
             "symbol": "func _respond_boat_choice"
           }
         ]
@@ -2972,7 +2972,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/playthrough/coordinators/session_intent_coordinator.gd",
+            "path": "src/playthrough/session/session_intent_coordinator.gd",
             "symbol": "func _search"
           }
         ]
@@ -3124,15 +3124,15 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/playthrough/coordinators/session_intent_coordinator.gd",
+            "path": "src/playthrough/session/session_intent_coordinator.gd",
             "symbol": "func _camp"
           },
           {
-            "path": "src/playthrough/coordinators/session_intent_coordinator.gd",
+            "path": "src/playthrough/session/session_intent_coordinator.gd",
             "symbol": "func _rest"
           },
           {
-            "path": "src/playthrough/coordinators/session_intent_coordinator.gd",
+            "path": "src/playthrough/session/session_intent_coordinator.gd",
             "symbol": "func _heal"
           },
           {
@@ -3560,7 +3560,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/playthrough/coordinators/session_intent_coordinator.gd",
+            "path": "src/playthrough/session/session_intent_coordinator.gd",
             "symbol": "func _service_action"
           },
           {
@@ -4868,7 +4868,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/playthrough/coordinators/session_responses_coordinator.gd",
+            "path": "src/playthrough/session/session_responses_coordinator.gd",
             "symbol": "func _respond_session_age_update"
           }
         ]
@@ -4995,7 +4995,7 @@
             "symbol": "func bestiary_definitions_for_set"
           },
           {
-            "path": "src/playthrough/workflows/session_view_projector.gd",
+            "path": "src/playthrough/session/session_view_projector.gd",
             "symbol": "func _project_complete"
           }
         ]
@@ -5622,11 +5622,11 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/playthrough/coordinators/session_intent_coordinator.gd",
+            "path": "src/playthrough/session/session_intent_coordinator.gd",
             "symbol": "func _use_item"
           },
           {
-            "path": "src/playthrough/coordinators/session_intent_coordinator.gd",
+            "path": "src/playthrough/session/session_intent_coordinator.gd",
             "symbol": "func _use_scroll"
           },
           {
@@ -5875,7 +5875,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/playthrough/coordinators/session_responses_coordinator.gd",
+            "path": "src/playthrough/session/session_responses_coordinator.gd",
             "symbol": "func _respond_drop_item"
           }
         ]
@@ -5996,7 +5996,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/playthrough/coordinators/session_intent_coordinator.gd",
+            "path": "src/playthrough/session/session_intent_coordinator.gd",
             "symbol": "func _service_action"
           },
           {
@@ -6224,7 +6224,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/playthrough/coordinators/session_intent_coordinator.gd",
+            "path": "src/playthrough/session/session_intent_coordinator.gd",
             "symbol": "func _cast_spell"
           }
         ]
@@ -6379,7 +6379,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/playthrough/coordinators/session_intent_coordinator.gd",
+            "path": "src/playthrough/session/session_intent_coordinator.gd",
             "symbol": "func _cast_spell"
           },
           {
@@ -6387,7 +6387,7 @@
             "symbol": "static func make_scroll"
           },
           {
-            "path": "src/playthrough/coordinators/session_intent_coordinator.gd",
+            "path": "src/playthrough/session/session_intent_coordinator.gd",
             "symbol": "func _use_scroll"
           },
           {
@@ -6738,7 +6738,7 @@
             "symbol": "func perform"
           },
           {
-            "path": "src/playthrough/coordinators/session_responses_coordinator.gd",
+            "path": "src/playthrough/session/session_responses_coordinator.gd",
             "symbol": "func _respond_pooled_wealth_departure(response: InteractionResponse)"
           }
         ]
@@ -7006,7 +7006,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/playthrough/coordinators/session_responses_coordinator.gd",
+            "path": "src/playthrough/session/session_responses_coordinator.gd",
             "symbol": "func _respond_runtime_service"
           }
         ]
@@ -7131,7 +7131,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/playthrough/coordinators/session_responses_coordinator.gd",
+            "path": "src/playthrough/session/session_responses_coordinator.gd",
             "symbol": "func _respond_runtime_service"
           }
         ]
@@ -8769,7 +8769,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/playthrough/coordinators/session_responses_coordinator.gd",
+            "path": "src/playthrough/session/session_responses_coordinator.gd",
             "symbol": "func _respond_session_fumble_recovery"
           }
         ]
@@ -8869,7 +8869,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/playthrough/coordinators/session_responses_coordinator.gd",
+            "path": "src/playthrough/session/session_responses_coordinator.gd",
             "symbol": "func _respond_session_ally_selection"
           }
         ]
@@ -9481,7 +9481,7 @@
             "symbol": "func resume_classic"
           },
           {
-            "path": "src/playthrough/game_session.gd",
+            "path": "src/playthrough/session/game_session.gd",
             "symbol": "func view"
           }
         ]
@@ -9594,7 +9594,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/playthrough/game_session.gd",
+            "path": "src/playthrough/session/game_session.gd",
             "symbol": "func snapshot"
           }
         ]
@@ -9699,7 +9699,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/playthrough/game_session.gd",
+            "path": "src/playthrough/session/game_session.gd",
             "symbol": "func restore"
           }
         ]
@@ -10252,7 +10252,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/playthrough/game_session.gd",
+            "path": "src/playthrough/session/game_session.gd",
             "symbol": "func _set_combat_auto("
           },
           {
@@ -11147,7 +11147,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/playthrough/game_session.gd",
+            "path": "src/playthrough/session/game_session.gd",
             "symbol": "func submit_intent"
           }
         ]

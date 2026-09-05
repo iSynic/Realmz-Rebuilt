@@ -2,17 +2,16 @@
 
 ## Purpose
 
-Own the feature-named, typed payloads and strict codec that resume an interrupted playthrough transaction.
+Own the feature-named typed payloads and factories that resume an interrupted playthrough transaction.
 
 ## Ownership
 
-- `SessionContinuationBody` and the exploration, application, targeting, item-XAP, service, age, combat, reward, and boat payloads.
+- The exploration, application, targeting, item-XAP, service, age, combat, reward, and boat payloads.
 - `ExplorationContinuations`, `ApplicationContinuations`, `InventoryContinuations`, `MagicContinuations`, `ServiceContinuations`, and `CombatContinuations` as live construction entry points.
-- `SessionContinuationCodec` as the only saved-envelope decoder and payload validator.
 
 ## Local Contracts
 
-- `SessionContinuation` remains the stable versioned envelope. Feature factories fix its kind; callers never pair an arbitrary string with a payload.
+- `SessionContinuation` and `SessionContinuationCodec` live in the sibling `session` feature as the stable versioned envelope and only saved-envelope decoder. Feature factories fix its kind; callers never pair an arbitrary string with a payload.
 - Preserve every existing continuation kind, field name, version, validation rule, and save representation exactly.
 - Payloads contain detached values only. They never retain Nodes, repositories, presenters, or an owning session.
 - Dictionaries exist only inside `wire_payload` and `SessionContinuationCodec`. Live workflows receive typed payloads.

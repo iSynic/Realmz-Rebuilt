@@ -30,7 +30,7 @@ If you seek a particular thing, begin here:
 |---|---|
 | A character, economy, inventory, magic, combat, or world record | Its named feature root under `src/game`, then the remaining shared `state`, `content`, or `view` folder |
 | A fixed calculation such as fatigue, movement, combat, equipment, or spell effects | Its named feature root under `src/game`, then `src/game/rules` while that feature is still being gathered |
-| What happens after a player command | `src/playthrough/game_session.gd`, then the named coordinator or workflow |
+| What happens after a player command | `src/playthrough/session/game_session.gd`, then the named coordinator or workflow |
 | A Classic opcode, AP/XAP, encounter, or Safe Scenario Action | `src/scenarios` |
 | Package loading, saves, Character Files, or settings | `src/storage` |
 | Startup, dependency wiring, and host input | `src/app` |

@@ -3,9 +3,9 @@ class_name SessionViewProjector
 extends RefCounted
 
 const DEFAULT_MAP_VIEW_SIZE: Vector2i = Vector2i(25, 25)
-const ProjectionPolicy := preload("res://src/playthrough/workflows/session_view_projection_policy.gd")
-const ActionViewProjector := preload("res://src/playthrough/workflows/session_action_view_projector.gd")
-const OrdinaryProjectionPolicy := preload("res://src/playthrough/workflows/session_ordinary_projection_policy.gd")
+const ProjectionPolicy := preload("res://src/playthrough/session/session_view_projection_policy.gd")
+const ActionViewProjector := preload("res://src/playthrough/session/session_action_view_projector.gd")
+const OrdinaryProjectionPolicy := preload("res://src/playthrough/session/session_ordinary_projection_policy.gd")
 
 var _cached_map_revision: int = -1
 var _cached_map_id: String = ""

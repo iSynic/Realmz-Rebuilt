@@ -305,17 +305,17 @@ foreach ($symbolName in $classNameSymbols.Keys) {
 # GameSession owns public dispatch and the final all-or-nothing restore commit;
 # construction and validation of a detached restore candidate belong to the
 # typed validator. This guards responsibility rather than imposing a line cap.
-$gameSessionPath = Join-Path $repoRoot "src\playthrough\game_session.gd"
+$gameSessionPath = Join-Path $repoRoot "src\playthrough\session\game_session.gd"
 if (Test-Path -LiteralPath $gameSessionPath) {
     $gameSessionContent = [IO.File]::ReadAllText($gameSessionPath)
     if ($gameSessionContent -notmatch '\bSessionRestoreValidator\.validate\s*\(') {
-        $violations += "src/playthrough/game_session.gd GameSession.restore must delegate candidate validation to SessionRestoreValidator"
+        $violations += "src/playthrough/session/game_session.gd GameSession.restore must delegate candidate validation to SessionRestoreValidator"
     }
     $lineNumber = 0
     foreach ($line in Get-SanitizedGdscriptLines -Content $gameSessionContent) {
         $lineNumber++
         if ($line -match '^\s*(?:static\s+)?func\s+_(?:valid_|party_.*_is_valid|shop_state_is_valid|location_notes_are_valid|journal_messages_are_valid|acquired_player_maps_are_valid)') {
-            $violations += "src/playthrough/game_session.gd:$lineNumber GameSession must not own restore-validation helpers"
+            $violations += "src/playthrough/session/game_session.gd:$lineNumber GameSession must not own restore-validation helpers"
         }
     }
 }
@@ -337,14 +337,14 @@ foreach ($file in Get-ChildItem $sessionCoordinatorRoot -Filter "session_*_coord
         }
     }
 }
-$coordinatorContextPath = Join-Path $repoRoot "src\playthrough\session_context.gd"
+$coordinatorContextPath = Join-Path $repoRoot "src\playthrough\session\session_context.gd"
 if (Test-Path -LiteralPath $coordinatorContextPath) {
     $contextContent = [IO.File]::ReadAllText($coordinatorContextPath)
     if ($contextContent -match '(?m)^var\s+view_revision\b') {
-        $violations += "src/playthrough/session_context.gd request identity must use named revision capabilities instead of a writable revision field"
+        $violations += "src/playthrough/session/session_context.gd request identity must use named revision capabilities instead of a writable revision field"
     }
     if ($contextContent -match '(?m)^(?:static\s+)?func\s+(?:completed|waiting|failed|rejected|closed)\s*\(') {
-        $violations += "src/playthrough/session_context.gd SessionCoordinatorResult must own the coordinator outcome vocabulary"
+        $violations += "src/playthrough/session/session_context.gd SessionCoordinatorResult must own the coordinator outcome vocabulary"
     }
 }
 
