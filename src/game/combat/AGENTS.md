@@ -14,9 +14,10 @@ Own the explicit collaboration boundary shared by deterministic battle rules.
 - `CombatState` and its roster, turn, status, reaction, dropped-item, spell-runtime, field, monster, and undo collaborators own all mutable battle truth. `CombatStateCodec` preserves their stable flat save boundary.
 - `CombatView`, `BattlefieldView`, actor/catalog views, action-option views, and persistent-field views carry the detached battle read model.
 - `CombatRequestBody` carries the detached active-actor command surface through the shared interaction envelope.
+- Battlefield construction, physical attack policy and resolution, initiative, command/retreat probes, monster rules, and their typed results live beside the state they interpret.
 - `README.md` is the public maintainer entry point for combat rules.
 
-`RealmzContent.combat` owns immutable definition lookup. The established rule collaborators remain under `src/game/rules` until a complete feature migration moves each file, test, UID, and reference atomically.
+`RealmzContent.combat` owns immutable definition lookup. The remaining command-flow, spell, field, lifecycle, automation, and AI collaborators remain under `src/game/rules` only until the next coherent combat ownership workflow moves them here with their UIDs and references.
 
 ## Local Contracts
 

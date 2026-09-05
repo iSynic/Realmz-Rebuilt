@@ -3,7 +3,7 @@
 class_name CombatMonsterAttackResolver
 extends CombatAttackResolutionSupport
 
-const AttackPolicy := preload("res://src/game/rules/combat_attack_policy.gd")
+const AttackPolicy := preload("res://src/game/combat/combat_attack_policy.gd")
 
 var _characters: CharacterRules
 

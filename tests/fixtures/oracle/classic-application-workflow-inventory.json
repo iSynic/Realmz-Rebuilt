@@ -4479,7 +4479,7 @@
             "symbol": "class_name CharacterLifetimeRecord"
           },
           {
-            "path": "src/game/rules/combat_rules.gd",
+            "path": "src/game/combat/combat_rules.gd",
             "symbol": "func resolve_character_attack"
           },
           {
@@ -7406,7 +7406,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/game/rules/battlefield_builder.gd",
+            "path": "src/game/combat/battlefield_builder.gd",
             "symbol": "class_name BattlefieldBuilder"
           }
         ]

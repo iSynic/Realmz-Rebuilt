@@ -8,6 +8,8 @@ All collaborators share one `CombatContext`. The context supplies the pure rule 
 
 Within that aggregate, `BattlefieldState` identifies the constructed battle map and directly exposes two owners. `battlefield.terrain` stores the fixed grid plus its navigation-cache revision; `battlefield.actors` stores character and monster anchors, sizes, footprints, occupancy, and placement mutations. `BattlefieldGrid` owns the fixed 90-by-90 dimensions and footprint geometry. Save and restore go through `BattlefieldStateCodec`, which retains the existing flat battlefield keys without turning the aggregate into a forwarding facade.
 
+Battlefield construction, physical attack policy and resolution, initiative, monster rules, and their typed command, retreat, attack, build, step, and projectile records are colocated here. These are pure collaborators rather than Nodes; the visible battlefield scene remains under `src/ui/combat`.
+
 Important invariants:
 
 - Simulation uses only the supplied serialized RNG.
