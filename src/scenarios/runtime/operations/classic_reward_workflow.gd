@@ -3,6 +3,22 @@
 class_name ClassicRewardWorkflow
 extends ClassicRewardOperationsSupport
 
+class RewardItemSelection:
+	extends RefCounted
+
+	var definitions: Array[ItemDefinition] = []
+	var magic_detected: Array[bool] = []
+	var error: ScenarioRuntimeOperationResult
+
+
+class RewardExperienceAwards:
+	extends RefCounted
+
+	var recipients: Array[CharacterState] = []
+	var awards: Dictionary = {}
+	var error: ScenarioRuntimeOperationResult
+
+
 func resume_reward(continuation: ScenarioRuntimeContinuation, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
 	var state_checkpoint := _game_state.to_data()
 	var rng_checkpoint := _rng.checkpoint()
@@ -12,21 +28,48 @@ func resume_reward(continuation: ScenarioRuntimeContinuation, response: Interact
 func begin_reward(origin: StringName, source_id: String, total_experience: int, wealth: WealthState, item_ids: Array[String], request_id: String, battle_stage: StringName = ClassicRewardState.NO_BATTLE_STAGE, bonus_treasure_classic_id: int = 0, leading_items: Array[ItemInstance] = [], item_magic_detected: Array[bool] = []) -> ScenarioRuntimeOperationResult:
 	if wealth == null or item_ids.size() + leading_items.size() > ClassicRewardState.MAX_PENDING_ITEMS or not item_magic_detected.is_empty() and item_magic_detected.size() != item_ids.size():
 		return ScenarioRuntimeOperationResult.failed(&"invalid_reward", "The reward exceeds the supported Classic reward bounds.")
-	var experience_multiplier := _game_state.experience_multiplier
-	if experience_multiplier < 0.0:
-		var campaign := _content.campaign
-		var current_levels := 0
-		for party_character: CharacterState in _game_state.party.characters():
-			current_levels += party_character.level
-		experience_multiplier = PartySetupRules.experience_multiplier(campaign.recommended_party_levels, current_levels, _game_state.difficulty) if campaign != null and campaign.guidance_authored and campaign.recommended_party_levels > 0 else 1.0
+	var experience_multiplier := _reward_experience_multiplier()
 	var scaled_experience := PartySetupRules.scale_experience_by_multiplier(total_experience, experience_multiplier)
 	var scaled_wealth := WealthState.new(
 		PartySetupRules.scale_money(wealth.gold, _game_state.difficulty),
 		PartySetupRules.scale_money(wealth.gems, _game_state.difficulty),
 		PartySetupRules.scale_money(wealth.jewelry, _game_state.difficulty),
 	)
-	var reward_definitions: Array[ItemDefinition] = []
-	var reward_detection: Array[bool] = []
+	var item_selection := _select_reward_items(source_id, item_ids, item_magic_detected)
+	if item_selection.error != null:
+		return item_selection.error
+	var reward := ClassicRewardState.new(origin, source_id, scaled_experience, scaled_wealth)
+	reward.battle_stage = battle_stage
+	reward.bonus_treasure_classic_id = bonus_treasure_classic_id
+	var item_error := _create_reward_items(reward, leading_items, item_selection)
+	if item_error != null:
+		return item_error
+	var experience_awards := _prepare_experience_awards(reward, origin)
+	if experience_awards.error != null:
+		return experience_awards.error
+	_game_state.party.pooled_wealth.gold += scaled_wealth.gold
+	_game_state.party.pooled_wealth.gems += scaled_wealth.gems
+	_game_state.party.pooled_wealth.jewelry += scaled_wealth.jewelry
+	for character: CharacterState in experience_awards.recipients:
+		character.experience += int(experience_awards.awards[character.id])
+	var events: Array[DomainEvent] = [DomainEvent.new(&"reward_opened", {"origin": String(origin), "sourceId": source_id, "experiencePool": reward.experience_pool, "experienceShare": reward.experience_share, "experienceByCharacter": experience_awards.awards, "wealth": scaled_wealth.to_data(), "itemCount": reward.items().size()})]
+	if reward.items().is_empty() and scaled_wealth.gold == 0 and scaled_wealth.gems == 0 and scaled_wealth.jewelry == 0 and scaled_experience == 0:
+		return _complete_reward(reward, request_id, events)
+	return _wait_for_reward(reward, request_id, events)
+
+
+func _reward_experience_multiplier() -> float:
+	if _game_state.experience_multiplier >= 0.0:
+		return _game_state.experience_multiplier
+	var campaign := _content.campaign
+	var current_levels := 0
+	for party_character: CharacterState in _game_state.party.characters():
+		current_levels += party_character.level
+	return PartySetupRules.experience_multiplier(campaign.recommended_party_levels, current_levels, _game_state.difficulty) if campaign != null and campaign.guidance_authored and campaign.recommended_party_levels > 0 else 1.0
+
+
+func _select_reward_items(source_id: String, item_ids: Array[String], item_magic_detected: Array[bool]) -> RewardItemSelection:
+	var selection := RewardItemSelection.new()
 	var unique_owned: Dictionary = {}
 	for character: CharacterState in _game_state.party.characters():
 		for carried: ItemInstance in character.inventory():
@@ -35,46 +78,45 @@ func begin_reward(origin: StringName, source_id: String, total_experience: int, 
 		var item_id: String = item_ids[index]
 		var definition := _content.items.item_by_id(item_id)
 		if definition == null:
-			return ScenarioRuntimeOperationResult.failed(&"unknown_item", "Reward '%s' references unavailable item '%s'." % [source_id, item_id])
+			selection.error = ScenarioRuntimeOperationResult.failed(&"unknown_item", "Reward '%s' references unavailable item '%s'." % [source_id, item_id])
+			return selection
 		if definition.cost < 0 and unique_owned.has(definition.id):
 			continue
-		reward_definitions.append(definition)
-		reward_detection.append(not item_magic_detected.is_empty() and item_magic_detected[index] and definition.magical)
+		selection.definitions.append(definition)
+		selection.magic_detected.append(not item_magic_detected.is_empty() and item_magic_detected[index] and definition.magical)
 		if definition.cost < 0:
 			unique_owned[definition.id] = true
-	var reward := ClassicRewardState.new(origin, source_id, scaled_experience, scaled_wealth)
-	reward.battle_stage = battle_stage
-	reward.bonus_treasure_classic_id = bonus_treasure_classic_id
+	return selection
+
+
+func _create_reward_items(reward: ClassicRewardState, leading_items: Array[ItemInstance], selection: RewardItemSelection) -> ScenarioRuntimeOperationResult:
 	var items: Array[ItemInstance] = leading_items.duplicate()
 	var detected_instance_ids: Array[String] = []
-	for index: int in reward_definitions.size():
-		var definition: ItemDefinition = reward_definitions[index]
+	for index: int in selection.definitions.size():
+		var definition: ItemDefinition = selection.definitions[index]
 		var identified := absi(definition.item_type) == 24
 		var item := ItemInstance.new(_game_state.next_instance_id("reward.item"), definition.id, definition.initial_charges, false, identified)
 		items.append(item)
-		if reward_detection[index]:
+		if selection.magic_detected[index]:
 			detected_instance_ids.append(item.id)
 	if not reward.set_items(items) or not reward.set_magic_detected_item_ids(detected_instance_ids):
 		return ScenarioRuntimeOperationResult.failed(&"invalid_reward", "The reward contains invalid item instances.")
-	var awards: Dictionary = {}
-	var recipients := _reward_experience_recipients(origin)
+	return null
+
+
+func _prepare_experience_awards(reward: ClassicRewardState, origin: StringName) -> RewardExperienceAwards:
+	var result := RewardExperienceAwards.new()
+	result.recipients = _reward_experience_recipients(origin)
+	var recipients := result.recipients
 	var share := 0 if recipients.is_empty() else int(float(reward.experience_pool) / float(recipients.size()))
 	reward.experience_share = share
 	for character: CharacterState in recipients:
 		var race := _content.characters.race_by_id(character.race_id)
 		var awarded := _rules.characters.battle_experience(character, race, share)
-		awards[character.id] = awarded
-	if not reward.set_experience_awards(awards):
-		return ScenarioRuntimeOperationResult.failed(&"invalid_reward", "The reward experience recipients are invalid.")
-	_game_state.party.pooled_wealth.gold += scaled_wealth.gold
-	_game_state.party.pooled_wealth.gems += scaled_wealth.gems
-	_game_state.party.pooled_wealth.jewelry += scaled_wealth.jewelry
-	for character: CharacterState in recipients:
-		character.experience += int(awards[character.id])
-	var events: Array[DomainEvent] = [DomainEvent.new(&"reward_opened", {"origin": String(origin), "sourceId": source_id, "experiencePool": reward.experience_pool, "experienceShare": reward.experience_share, "experienceByCharacter": awards, "wealth": scaled_wealth.to_data(), "itemCount": items.size()})]
-	if items.is_empty() and scaled_wealth.gold == 0 and scaled_wealth.gems == 0 and scaled_wealth.jewelry == 0 and scaled_experience == 0:
-		return _complete_reward(reward, request_id, events)
-	return _wait_for_reward(reward, request_id, events)
+		result.awards[character.id] = awarded
+	if not reward.set_experience_awards(result.awards):
+		result.error = ScenarioRuntimeOperationResult.failed(&"invalid_reward", "The reward experience recipients are invalid.")
+	return result
 
 
 func _reward_experience_recipients(origin: StringName) -> Array[CharacterState]:
@@ -221,12 +263,10 @@ static func _append_nonzero_item_fact(facts: Array[Dictionary], label: String, v
 
 
 func _resume_reward(continuation: ScenarioRuntimeContinuation, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
-	if continuation == null or continuation.kind != ScenarioRuntimeContinuation.CLASSIC_REWARD:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_reward_continuation", "The reward continuation is malformed.")
-	var reward_body := continuation.body as ScenarioRewardContinuationBody
-	var reward := ClassicRewardState.from_data(reward_body.state.to_data()) if reward_body != null and reward_body.state != null else null
-	if reward == null or not _reward_state_is_valid(reward):
-		return ScenarioRuntimeOperationResult.failed(&"invalid_reward_continuation", "The saved reward state is invalid.")
+	var restored: Variant = _restore_reward_continuation(continuation)
+	if restored is ScenarioRuntimeOperationResult:
+		return restored
+	var reward: ClassicRewardState = restored
 	if reward.phase == ClassicRewardState.LEVEL_PHASE:
 		return _resume_reward_level(reward, response, request_id)
 	if reward.phase == ClassicRewardState.SPELL_PHASE:
@@ -235,21 +275,39 @@ func _resume_reward(continuation: ScenarioRuntimeContinuation, response: Interac
 	if response.kind != InteractionRequest.TREASURE_DISTRIBUTION or body == null:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Treasure distribution requires a typed action.")
 	var action := String(body.action)
-	var events: Array[DomainEvent] = []
 	if reward.completion_pending:
-		if action == "cancel-completion":
-			reward.completion_pending = false
-			return _wait_for_reward(reward, request_id)
-		if action != "confirm-completion":
-			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Treasure completion must be confirmed or cancelled.")
-		var abandoned := reward.items().size()
-		var no_items: Array[ItemInstance] = []
-		reward.set_items(no_items)
-		var forfeited := _game_state.party.pooled_wealth.to_data()
-		_game_state.party.pooled_wealth = WealthState.new()
+		return _resume_reward_completion(reward, action, request_id)
+	return _resume_treasure_action(reward, body, action, request_id)
+
+
+func _restore_reward_continuation(continuation: ScenarioRuntimeContinuation) -> Variant:
+	if continuation == null or continuation.kind != ScenarioRuntimeContinuation.CLASSIC_REWARD:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_reward_continuation", "The reward continuation is malformed.")
+	var reward_body := continuation.body as ScenarioRewardContinuationBody
+	var reward := ClassicRewardState.from_data(reward_body.state.to_data()) if reward_body != null and reward_body.state != null else null
+	if reward == null or not _reward_state_is_valid(reward):
+		return ScenarioRuntimeOperationResult.failed(&"invalid_reward_continuation", "The saved reward state is invalid.")
+	return reward
+
+
+func _resume_reward_completion(reward: ClassicRewardState, action: String, request_id: String) -> ScenarioRuntimeOperationResult:
+	if action == "cancel-completion":
 		reward.completion_pending = false
-		events.append(DomainEvent.new(&"reward_remainder_left", {"itemCount": abandoned, "wealth": forfeited}))
-		return _begin_reward_progression(reward, request_id, events)
+		return _wait_for_reward(reward, request_id)
+	if action != "confirm-completion":
+		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Treasure completion must be confirmed or cancelled.")
+	var abandoned := reward.items().size()
+	var no_items: Array[ItemInstance] = []
+	reward.set_items(no_items)
+	var forfeited := _game_state.party.pooled_wealth.to_data()
+	_game_state.party.pooled_wealth = WealthState.new()
+	reward.completion_pending = false
+	var events: Array[DomainEvent] = [DomainEvent.new(&"reward_remainder_left", {"itemCount": abandoned, "wealth": forfeited})]
+	return _begin_reward_progression(reward, request_id, events)
+
+
+func _resume_treasure_action(reward: ClassicRewardState, body: InteractionResponse.TreasureBody, action: String, request_id: String) -> ScenarioRuntimeOperationResult:
+	var events: Array[DomainEvent] = []
 	match action:
 		"assign":
 			var mutation := _assign_reward_item(reward, body)
@@ -261,28 +319,10 @@ func _resume_reward(continuation: ScenarioRuntimeContinuation, response: Interac
 			if discarded == null:
 				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "The item being left behind is not pending treasure.")
 			events.append(DomainEvent.new(&"reward_item_left", {"instanceId": discarded.id, "itemId": discarded.definition_id}))
-		"pool":
-			var movement_error := _money_movement_context_error()
-			if not movement_error.is_empty():
-				return ScenarioRuntimeOperationResult.failed(&"invalid_money_context", movement_error)
-			var pool_probe := _rules.economy.pool_probe(_game_state.party)
-			if not pool_probe.allowed:
-				return ScenarioRuntimeOperationResult.failed(&"money_action_unavailable", pool_probe.reason)
-			_rules.economy.pool_party_wealth(_game_state.party)
-			_recalculate_party_movement()
-			events.append(DomainEvent.new(&"reward_wealth_pooled", _game_state.party.pooled_wealth.to_data()))
-			events.append(DomainEvent.new(&"sound_requested", {"soundId": 128, "waitForCompletion": false, "source": "classic-reward-pool"}))
-		"share":
-			var movement_error := _money_movement_context_error()
-			if not movement_error.is_empty():
-				return ScenarioRuntimeOperationResult.failed(&"invalid_money_context", movement_error)
-			var share_probe := _rules.economy.share_probe(_game_state.party)
-			if not share_probe.allowed:
-				return ScenarioRuntimeOperationResult.failed(&"money_action_unavailable", share_probe.reason)
-			_rules.economy.share_pooled_wealth(_game_state.party)
-			_recalculate_party_movement()
-			events.append(DomainEvent.new(&"reward_wealth_shared", _game_state.party.pooled_wealth.to_data()))
-			events.append(DomainEvent.new(&"sound_requested", {"soundId": 128, "waitForCompletion": false, "source": "classic-reward-share"}))
+		"pool", "share":
+			var money_error := _apply_reward_wealth_action(action, events)
+			if not money_error.is_empty():
+				return ScenarioRuntimeOperationResult.failed(StringName(money_error["code"]), money_error["message"])
 		"transfer":
 			var transfer_error := _transfer_reward_wealth(body)
 			if not transfer_error.is_empty():
@@ -302,6 +342,24 @@ func _resume_reward(continuation: ScenarioRuntimeContinuation, response: Interac
 		_:
 			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "The treasure action is unavailable.")
 	return _wait_for_reward(reward, request_id, events)
+
+
+func _apply_reward_wealth_action(action: String, events: Array[DomainEvent]) -> Dictionary:
+	var movement_error := _money_movement_context_error()
+	if not movement_error.is_empty():
+		return {"code": "invalid_money_context", "message": movement_error}
+	var probe := _rules.economy.pool_probe(_game_state.party) if action == "pool" else _rules.economy.share_probe(_game_state.party)
+	if not probe.allowed:
+		return {"code": "money_action_unavailable", "message": probe.reason}
+	if action == "pool":
+		_rules.economy.pool_party_wealth(_game_state.party)
+	else:
+		_rules.economy.share_pooled_wealth(_game_state.party)
+	_recalculate_party_movement()
+	var event_kind: StringName = &"reward_wealth_pooled" if action == "pool" else &"reward_wealth_shared"
+	events.append(DomainEvent.new(event_kind, _game_state.party.pooled_wealth.to_data()))
+	events.append(DomainEvent.new(&"sound_requested", {"soundId": 128, "waitForCompletion": false, "source": "classic-reward-%s" % action}))
+	return {}
 
 
 func _assign_reward_item(reward: ClassicRewardState, body: InteractionResponse.TreasureBody) -> Dictionary:
