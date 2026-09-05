@@ -30,8 +30,8 @@ var _services_controller := ServicesScreenController.new()
 var _maps_journal_controller := MapsJournalScreenController.new()
 var _spells_controller := SpellsScreenController.new()
 var _creature_library_controller := CREATURE_LIBRARY_CONTROLLER.new()
-var _message_label_scene_path := "res://src/ui/screens/screen_message_label.tscn"
-var _summary_card_scene_path := "res://src/ui/screens/screen_summary_card.tscn"
+var _message_label_scene_path := "res://src/ui/shared/screen_message_label.tscn"
+var _summary_card_scene_path := "res://src/ui/shared/screen_summary_card.tscn"
 
 
 func set_component_scene_paths(message_label_path: String, summary_card_path: String) -> void:

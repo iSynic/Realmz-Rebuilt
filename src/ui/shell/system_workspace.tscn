@@ -1,7 +1,7 @@
 [gd_scene load_steps=3 format=3]
 
-[ext_resource type="Script" path="res://src/ui/screens/system_workspace.gd" id="1_workspace"]
-[ext_resource type="PackedScene" path="res://src/ui/screens/save_slot_row.tscn" id="2_save"]
+[ext_resource type="Script" path="res://src/ui/shell/system_workspace.gd" id="1_workspace"]
+[ext_resource type="PackedScene" path="res://src/ui/shell/save_slot_row.tscn" id="2_save"]
 
 [node name="SystemWorkspace" type="VBoxContainer"]
 size_flags_horizontal = 3

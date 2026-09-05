@@ -245,10 +245,9 @@ foreach ($surface in @($manifest.majorUiSurfaces)) {
 }
 
 $shellModeMarkerScenes = 0
-foreach ($relative in @("src/ui/screens/exploration_screen.tscn", "src/ui/screens/combat_screen.tscn")) {
-    $path = Join-Path $repoRoot $relative
-    if (Test-Path -LiteralPath $path -PathType Leaf) {
-        $nodeCount = [regex]::Matches([IO.File]::ReadAllText($path), '(?m)^\[node ').Count
+foreach ($sceneName in @("exploration_screen.tscn", "combat_screen.tscn")) {
+    foreach ($file in Get-ChildItem -LiteralPath (Join-Path $repoRoot "src/ui") -Recurse -File -Filter $sceneName) {
+        $nodeCount = [regex]::Matches([IO.File]::ReadAllText($file.FullName), '(?m)^\[node ').Count
         if ($nodeCount -eq 1) { $shellModeMarkerScenes++ }
     }
 }

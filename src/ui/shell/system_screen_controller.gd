@@ -2,7 +2,7 @@
 class_name SystemScreenController
 extends RefCounted
 
-const WORKSPACE_SCENE_PATH := "res://src/ui/screens/system_workspace.tscn"
+const WORKSPACE_SCENE_PATH := "res://src/ui/shell/system_workspace.tscn"
 
 signal action_requested(action_id: StringName, value: Variant)
 signal setting_changed(setting_id: StringName, value: Variant)

@@ -11,11 +11,15 @@ Own the persistent Godot composition that surrounds every Realmz playthrough and
 - `GameShell` coordinates scene-owned shell collaborators; its layout, menu, availability, status, picture, effects, commands, and automatic-route policies remain separate named owners.
 - `screen_navigator.tscn` owns persistent workspace and overlay mount points. `ScreenNavigator` owns typed route history and scene mounting; `WorkspaceFocusController` owns focus and scroll restoration.
 - `PresentationCoordinator` applies detached session results to the retained shell. `PresentationMediaController` supplies the composed application/scenario media context without exposing storage repositories to UI code.
+- `ClassicPartyRoster` owns the persistent six-slot party rail and its reusable member and empty rows, including current-character, mandatory-selection, combat Auto, and effect-presentation state.
+- `SystemScreen` and `SystemWorkspace` own the editable Save & Load, Display, Audio, Pacing, Accessibility, Controls, and Diagnostics composition. `SystemScreenController` binds detached save previews and presentation settings and instantiates only the exported save-slot row.
+- `ScreenContentPresenter` composes route-local binders against the scene-owned workspace body and generic shared record scenes; it owns detached route state and route-specific presentation audio, not navigation history.
 
 ## Local Contracts
 
 - Shell scripts bind, route, resize, and retain scene-owned controls. They do not construct route-specific layouts or decide gameplay legality.
 - Route-local controllers own workspace content. The navigator may mount them but must not call their private methods or absorb their rendering logic.
+- System preferences emit only host-owned presentation-setting changes and never alter Classic rules. Save and load actions remain typed application-host requests.
 - Adjacent movement and combat playback update retained presenters and controls; scene instantiation occurs only at application or route transitions.
 - All gameplay mutations continue through the typed application/session boundary.
 

@@ -123,8 +123,8 @@
       "id": "shell-and-routing",
       "boundary": "ui",
       "guide": "docs/features/shell-and-routing.md",
-        "entryPoints": ["src/ui/shell/game_shell.tscn", "src/ui/shell/game_shell.gd", "src/ui/shell/presentation_coordinator.gd", "src/ui/shell/presentation_media_controller.gd", "src/ui/shell/game_shell_status_controller.gd", "src/ui/shell/game_shell_party_effects_presenter.gd", "src/ui/shell/game_shell_route_policy.gd", "src/ui/shell/game_shell_layout_controller.gd", "src/ui/shell/game_shell_menu_controller.gd", "src/ui/shell/game_shell_availability.gd", "src/ui/shell/game_shell_picture_presenter.gd", "src/ui/shell/screen_navigator.gd", "src/ui/shell/workspace_focus_controller.gd", "src/ui/ui_route_definition.gd", "src/ui/ui_route_catalog.gd", "src/ui/routes", "addons/realmz_builder/scene_previews.json"],
-        "publicInterfaces": ["GameShell", "PresentationCoordinator", "PresentationMediaController", "GameShellStatusController", "GameShellPartyEffectsPresenter", "GameShellRoutePolicy", "GameShellLayoutController", "GameShellLayoutPolicy", "GameShellAvailability", "GameShellPicturePresenter", "ScreenNavigator", "WorkspaceFocusController", "UiRouteDefinition", "UiRouteCatalog", "Realmz Builder"],
+        "entryPoints": ["src/ui/shell/game_shell.tscn", "src/ui/shell/game_shell.gd", "src/ui/shell/presentation_coordinator.gd", "src/ui/shell/presentation_media_controller.gd", "src/ui/shell/game_shell_status_controller.gd", "src/ui/shell/game_shell_party_effects_presenter.gd", "src/ui/shell/game_shell_route_policy.gd", "src/ui/shell/game_shell_layout_controller.gd", "src/ui/shell/game_shell_menu_controller.gd", "src/ui/shell/game_shell_availability.gd", "src/ui/shell/game_shell_picture_presenter.gd", "src/ui/shell/classic_party_roster.tscn", "src/ui/shell/system_screen.tscn", "src/ui/shell/system_screen_controller.gd", "src/ui/shell/screen_content_presenter.gd", "src/ui/shell/screen_navigator.gd", "src/ui/shell/workspace_focus_controller.gd", "src/ui/ui_route_definition.gd", "src/ui/ui_route_catalog.gd", "src/ui/routes", "addons/realmz_builder/scene_previews.json"],
+        "publicInterfaces": ["GameShell", "PresentationCoordinator", "PresentationMediaController", "GameShellStatusController", "GameShellPartyEffectsPresenter", "GameShellRoutePolicy", "GameShellLayoutController", "GameShellLayoutPolicy", "GameShellAvailability", "GameShellPicturePresenter", "ClassicPartyRoster", "SystemScreen", "SystemWorkspace", "SystemScreenController", "ScreenContentPresenter", "ScreenNavigator", "WorkspaceFocusController", "UiRouteDefinition", "UiRouteCatalog", "Realmz Builder"],
       "tests": ["tests/presentation/test_classic_ui_shell.gd", "tests/presentation/test_classic_ui_system.gd"],
       "performanceProbes": ["tools/runtime_performance_probe.gd"]
     },
@@ -132,8 +132,8 @@
       "id": "workspace-ui",
       "boundary": "ui",
       "guide": "docs/features/workspaces.md",
-      "entryPoints": ["src/ui/screens", "src/ui/controllers", "src/ui/interaction_components", "src/ui/shared/interactions/interaction_presenter.gd", "src/ui/shared/interactions/interaction_overlay_host.gd", "src/ui/shared/interactions/interaction_flash_controller.gd"],
-      "publicInterfaces": ["ScreenNavigator", "ScreenContentPresenter", "CampaignPartySetupController", "CampaignLibraryController", "PartySetupCharacterCreationController", "PartySetupRaceCasteBinding", "ClassicCharacterSheet", "CharacterSheetSceneBinding", "InteractionPresenter", "CombatInteractionController", "InteractionOverlayHost", "InteractionFlashController", "InteractionComponent"],
+      "entryPoints": ["src/ui/setup", "src/ui/characters", "src/ui/inventory", "src/ui/magic", "src/ui/services", "src/ui/journal", "src/ui/interaction_components", "src/ui/shared/screen_frame.tscn", "src/ui/shared/screen_message_label.tscn", "src/ui/shared/screen_summary_card.tscn", "src/ui/shared/interactions/interaction_presenter.gd", "src/ui/shared/interactions/interaction_overlay_host.gd", "src/ui/shared/interactions/interaction_flash_controller.gd"],
+      "publicInterfaces": ["CampaignPartySetupController", "CampaignLibraryController", "PartySetupCharacterCreationController", "PartySetupRaceCasteBinding", "ClassicCharacterSheet", "CharacterSheetSceneBinding", "InteractionPresenter", "CombatInteractionController", "InteractionOverlayHost", "InteractionFlashController", "InteractionComponent"],
       "tests": ["tests/presentation/test_classic_ui_system.gd", "tests/presentation/test_allies_workspace.gd"],
       "performanceProbes": []
     },
@@ -157,7 +157,7 @@
     {"id": "spells", "scene": "src/ui/magic/spells_screen.tscn"},
     {"id": "services", "scene": "src/ui/services/services_screen.tscn"},
     {"id": "maps-journal", "scene": "src/ui/journal/journal_screen.tscn"},
-    {"id": "system", "scene": "src/ui/screens/system_screen.tscn"},
+    {"id": "system", "scene": "src/ui/shell/system_screen.tscn"},
     {"id": "campaign-selection", "scene": "src/ui/setup/campaign_selection_panel.tscn"},
     {"id": "party-assembly", "scene": "src/ui/setup/party_setup_workspace.tscn"},
     {"id": "character-creation", "scene": "src/ui/setup/party_setup_workspace.tscn"},
@@ -171,6 +171,6 @@
     {"id": "lifecycle-prompts", "scene": "src/ui/interaction_components/lifecycle_interaction.tscn"},
     {"id": "scrolling-text", "scene": "src/ui/journal/scrolling_text_interaction.tscn"},
     {"id": "combat-command-deck", "scene": "src/ui/combat/battle_interaction.tscn"},
-    {"id": "roster-spellbook", "scene": "src/ui/screens/classic_party_roster.tscn"}
+    {"id": "roster-spellbook", "scene": "src/ui/shell/classic_party_roster.tscn"}
   ]
 }

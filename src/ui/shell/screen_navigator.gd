@@ -18,14 +18,14 @@ signal presentation_sound_requested(sound_id: int, wait_for_completion: bool, st
 signal standalone_character_creation_requested
 signal standalone_character_creation_cancelled
 
-const SCREEN_CONTENT_PRESENTER := preload("res://src/ui/controllers/screen_content_presenter.gd")
+const SCREEN_CONTENT_PRESENTER := preload("res://src/ui/shell/screen_content_presenter.gd")
 const WORKSPACE_OPEN_SOUND_IDS: Dictionary = {
 	&"inventory": 20001,
 	&"spells": 20002,
 }
 
-@export_file("*.tscn") var message_label_scene_path := "res://src/ui/screens/screen_message_label.tscn"
-@export_file("*.tscn") var summary_card_scene_path := "res://src/ui/screens/screen_summary_card.tscn"
+@export_file("*.tscn") var message_label_scene_path := "res://src/ui/shared/screen_message_label.tscn"
+@export_file("*.tscn") var summary_card_scene_path := "res://src/ui/shared/screen_summary_card.tscn"
 
 var _view: GameView
 var _screen_id: StringName = &"exploration"

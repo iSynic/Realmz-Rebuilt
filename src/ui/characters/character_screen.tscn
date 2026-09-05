@@ -1,6 +1,6 @@
 [gd_scene load_steps=5 format=3]
 
-[ext_resource type="PackedScene" path="res://src/ui/screens/screen_frame.tscn" id="1_base"]
+[ext_resource type="PackedScene" path="res://src/ui/shared/screen_frame.tscn" id="1_base"]
 [ext_resource type="Script" path="res://src/ui/characters/character_screen.gd" id="2_screen"]
 [ext_resource type="PackedScene" path="res://src/ui/characters/classic_character_sheet.tscn" id="3_sheet"]
 [ext_resource type="PackedScene" path="res://src/ui/characters/party_order_row.tscn" id="4_order_row"]

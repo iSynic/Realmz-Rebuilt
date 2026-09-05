@@ -417,10 +417,10 @@ foreach ($rootPath in @("src\game", "src\playthrough", "src\scenarios", "src\sto
 # creation may share explicit setup state, but they may not inherit behavior
 # from one another or turn the public facade back into the old behavior chain.
 $partySetupControllerPaths = @(
-    "src\ui\controllers\party_setup_inspection_controller.gd",
-    "src\ui\controllers\party_setup_assembly_controller.gd",
-    "src\ui\controllers\party_setup_character_creation_controller.gd",
-    "src\ui\controllers\campaign_party_setup_controller.gd"
+    "src\ui\setup\party_setup_inspection_controller.gd",
+    "src\ui\setup\party_setup_assembly_controller.gd",
+    "src\ui\setup\party_setup_character_creation_controller.gd",
+    "src\ui\setup\campaign_party_setup_controller.gd"
 )
 foreach ($relativePath in $partySetupControllerPaths) {
     $path = Join-Path $repoRoot $relativePath
@@ -428,7 +428,7 @@ foreach ($relativePath in $partySetupControllerPaths) {
         continue
     }
     $content = [IO.File]::ReadAllText($path)
-    if ($content -match 'extends\s+"res://src/ui/controllers/(?:campaign_party_setup_state|party_setup_inspection_controller|party_setup_assembly_controller|party_setup_character_creation_controller)\.gd"') {
+    if ($content -match 'extends\s+"res://src/ui/setup/(?:campaign_party_setup_state|party_setup_inspection_controller|party_setup_assembly_controller|party_setup_character_creation_controller)\.gd"') {
         $violations += "$($relativePath -replace '\\','/') party setup controllers must compose responsibility collaborators instead of inheriting their behavior"
     }
 }

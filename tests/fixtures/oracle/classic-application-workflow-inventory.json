@@ -3576,7 +3576,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/controllers/screen_content_presenter.gd",
+            "path": "src/ui/shell/screen_content_presenter.gd",
             "symbol": "func present"
           },
           {
@@ -4188,7 +4188,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/screens/classic_party_roster.gd",
+            "path": "src/ui/shell/classic_party_roster.gd",
             "symbol": "func present_character_selection"
           },
           {
@@ -4505,7 +4505,7 @@
             "symbol": "class_name ClassicCharacterSheet"
           },
           {
-            "path": "src/ui/controllers/screen_content_presenter.gd",
+            "path": "src/ui/shell/screen_content_presenter.gd",
             "symbol": "func present"
           }
         ]
@@ -5111,7 +5111,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/controllers/screen_content_presenter.gd",
+            "path": "src/ui/shell/screen_content_presenter.gd",
             "symbol": "func present"
           }
         ]
@@ -5451,7 +5451,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/controllers/screen_content_presenter.gd",
+            "path": "src/ui/shell/screen_content_presenter.gd",
             "symbol": "func present"
           }
         ]
@@ -5646,11 +5646,11 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/controllers/screen_content_presenter.gd",
+            "path": "src/ui/shell/screen_content_presenter.gd",
             "symbol": "func present"
           },
           {
-            "path": "src/ui/controllers/screen_content_presenter.gd",
+            "path": "src/ui/shell/screen_content_presenter.gd",
             "symbol": "func present"
           },
           {
@@ -5784,7 +5784,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/controllers/screen_content_presenter.gd",
+            "path": "src/ui/shell/screen_content_presenter.gd",
             "symbol": "func present"
           }
         ]
@@ -6236,7 +6236,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/controllers/screen_content_presenter.gd",
+            "path": "src/ui/shell/screen_content_presenter.gd",
             "symbol": "func present"
           },
           {
@@ -6407,7 +6407,7 @@
         "status": "accepted",
         "owners": [
           {
-            "path": "src/ui/controllers/screen_content_presenter.gd",
+            "path": "src/ui/shell/screen_content_presenter.gd",
             "symbol": "func present"
           }
         ]
@@ -6754,7 +6754,7 @@
             "symbol": "func _bind_money_workspace("
           },
           {
-            "path": "src/ui/controllers/screen_content_presenter.gd",
+            "path": "src/ui/shell/screen_content_presenter.gd",
             "symbol": "func sync_route_audio"
           },
           {
@@ -9182,7 +9182,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/controllers/screen_content_presenter.gd",
+            "path": "src/ui/shell/screen_content_presenter.gd",
             "symbol": "func present"
           },
           {
@@ -9497,7 +9497,7 @@
             "symbol": "func build"
           },
           {
-            "path": "src/ui/controllers/screen_content_presenter.gd",
+            "path": "src/ui/shell/screen_content_presenter.gd",
             "symbol": "func present"
           }
         ]
@@ -9606,7 +9606,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/controllers/screen_content_presenter.gd",
+            "path": "src/ui/shell/screen_content_presenter.gd",
             "symbol": "func present"
           }
         ]
@@ -9711,7 +9711,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/controllers/screen_content_presenter.gd",
+            "path": "src/ui/shell/screen_content_presenter.gd",
             "symbol": "func present"
           }
         ]
@@ -10268,7 +10268,7 @@
         "status": "accepted",
         "owners": [
           {
-            "path": "src/ui/screens/classic_party_roster.gd",
+            "path": "src/ui/shell/classic_party_roster.gd",
             "symbol": "class_name ClassicPartyRoster"
           }
         ]
@@ -11067,7 +11067,7 @@
             "symbol": "class_name CharacterVaultRepository"
           },
           {
-            "path": "src/ui/controllers/screen_content_presenter.gd",
+            "path": "src/ui/shell/screen_content_presenter.gd",
             "symbol": "func present"
           }
         ]
@@ -11159,7 +11159,7 @@
         "status": "accepted",
         "owners": [
           {
-            "path": "src/ui/controllers/screen_content_presenter.gd",
+            "path": "src/ui/shell/screen_content_presenter.gd",
             "symbol": "func present"
           }
         ]
@@ -11261,7 +11261,7 @@
             "symbol": "class_name SettingsRepository"
           },
           {
-            "path": "src/ui/controllers/screen_content_presenter.gd",
+            "path": "src/ui/shell/screen_content_presenter.gd",
             "symbol": "func present"
           }
         ]
@@ -11353,7 +11353,7 @@
             "symbol": "func load_backup"
           },
           {
-            "path": "src/ui/controllers/screen_content_presenter.gd",
+            "path": "src/ui/shell/screen_content_presenter.gd",
             "symbol": "func present"
           }
         ]
