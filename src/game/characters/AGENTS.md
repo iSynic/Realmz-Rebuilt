@@ -11,7 +11,8 @@ Own one adventurer's mutable truth, derived character rules, detached presentati
 - `CharacterRules` owns creation, aging, derived statistics, advancement, and character-level legality.
 - `CharacterView` is the detached read-only record consumed by presentation.
 - `CharacterLifetimeRecord` owns cumulative character achievements and their nested value representation.
-- `CharacterCatalog` indexes immutable Race, Caste, and appearance definitions, including the application appearance fallback installed for a scenario.
+- `RaceDefinition`, `CasteDefinition`, and `CharacterAppearanceDefinition` are the immutable authored character records.
+- `CharacterCatalog` indexes those definitions, including the application appearance fallback installed for a scenario.
 
 ## Local Contracts
 

@@ -1,6 +1,6 @@
 # Magic definitions
 
-Start with `SpellCatalog` when you need to turn a stable or packed Classic spell identity into an immutable `SpellDefinition`. The active catalog is exposed as `RealmzContent.magic` and is shared by learned magic, scrolls, charged items, monsters, scenario instructions, and presentation projection.
+Start with `SpellCatalog` when you need to turn a stable or packed Classic spell identity into the neighboring immutable `SpellDefinition`. The active catalog is exposed as `RealmzContent.magic` and is shared by learned magic, scrolls, charged items, monsters, scenario instructions, and presentation projection.
 
 Package assembly overlays any legal scenario-owned exact identity on the stock application catalog before `SpellCatalog` is constructed. Casting sources therefore never carry their own copy of a spell definition and never guess which package owns it.
 

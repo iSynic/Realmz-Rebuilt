@@ -2,10 +2,11 @@
 
 ## Purpose
 
-Own immutable spell lookup and, as feature migration proceeds, the pure magic model and rules.
+Own immutable spell definitions and lookup, plus the magic feature's migration boundary for its pure rules.
 
 ## Ownership
 
+- `SpellDefinition` is the immutable authored spell record shared by every casting source.
 - `SpellCatalog` indexes the effective application-plus-scenario spell definitions by stable and packed Classic identity.
 - `README.md` is the public maintainer entry point for spell-definition resolution.
 

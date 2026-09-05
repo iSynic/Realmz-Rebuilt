@@ -9,6 +9,7 @@ Own money rules, service rules, location service state, shop state, and detached
 - `EconomyRules`, `EconomyActionProbe`, `WealthState`, and detached money views own denominations, carrying, valuation, and money transfers.
 - `TempleRules` and `TempleServiceResult` own the nine Classic temple operations.
 - `ShopDefinition` owns immutable authored stock.
+- `TreasureDefinition` owns immutable authored wealth and item rewards.
 - `EconomyContentCatalog` indexes immutable Shop and Treasure definitions for the active campaign.
 - `LocationServiceState` owns current shop, temple, and bank availability plus save-owned shop quantity, inflation, buyback, and slot overrides.
 - `LocationServiceStateCodec` owns the established flat service fields inside the `GameState` save dictionary.

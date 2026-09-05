@@ -2,7 +2,7 @@
 
 Start with `ScenarioProgressState` when you need to understand mutable scenario truth. It owns searched cells, quests, journal discovery, and the current source-ordered character selection. Encounter-specific bookkeeping lives one step deeper in `ScenarioEncounterState`: timed records, choice/result elimination, attempt counts, thief flags, and scenario-program redirects.
 
-Compiled authored content remains beside this state under `content`, `instructions`, and `safe`. `ScenarioContentCatalog` is the direct lookup for messages, labels, triggers, and encounters after package construction; the compiled program graph remains `RealmzContent.scenario`. The executing VM and Classic instruction adapters live in `src/scenarios`; `GameSession` and its workflows decide when those operations run.
+Compiled authored content remains beside this state under `content`, `instructions`, and `safe`. `content` holds the immutable campaign aggregate, restrictions, messages, labels, triggers, direct encounters, and program/action definitions. `ScenarioContentCatalog` is the direct lookup for those scenario records after package construction; the compiled program graph remains `RealmzContent.scenario`, while the same aggregate exposes the neighboring character, item, magic, combat, economy, and world catalogs directly. The executing VM and Classic instruction adapters live in `src/scenarios`; `GameSession` and its workflows decide when those operations run.
 
 ```text
 compiled package definitions

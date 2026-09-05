@@ -1,6 +1,6 @@
 # Inventory definitions
 
-Start with `ItemCatalog` when you need to resolve an item identity. A carried `ItemInstance` deliberately stores only its stable definition ID, charges, and mutable instance facts. The active campaign supplies the meaning of that ID through `RealmzContent.items`.
+Start with `ItemCatalog` when you need to resolve an item identity. Its neighboring `ItemDefinition` is the immutable authored record. A carried `ItemInstance` deliberately stores only its stable definition ID, charges, and mutable instance facts. The active campaign supplies the meaning of that ID through `RealmzContent.items`.
 
 ```text
 application item definitions

@@ -2,10 +2,11 @@
 
 ## Purpose
 
-Own immutable item lookup and, as feature migration proceeds, the pure inventory model and rules.
+Own immutable item definitions and lookup, plus the inventory feature's migration boundary for its pure rules.
 
 ## Ownership
 
+- `ItemDefinition` is the immutable authored item record resolved by every carried instance.
 - `ItemCatalog` indexes the effective application-plus-scenario item definitions by stable and Classic identity.
 - `README.md` is the public maintainer entry point for item-definition resolution.
 

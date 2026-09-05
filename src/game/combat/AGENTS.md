@@ -8,6 +8,7 @@ Own the explicit collaboration boundary shared by deterministic battle rules.
 
 - `CombatContext` holds the rule services and named combat collaborators used during one command transaction.
 - `CombatActionEvents` builds committed physical-action feedback and owns fumble and death-macro event transitions.
+- `BattleDefinition`, `BattleMonsterSlotDefinition`, `MonsterDefinition`, and `MonsterAttackDefinition` are the immutable authored battle records.
 - `CombatCatalog` indexes immutable monster sets and battles for the active campaign.
 - `BattlefieldState` aggregates battle-map identity, terrain, and actor placement. `BattlefieldTerrainState`, `BattlefieldActorState`, and `BattlefieldGrid` own their named mutable facts and geometry; `BattlefieldStateCodec` owns the stable flat save boundary.
 - `README.md` is the public maintainer entry point for combat rules.

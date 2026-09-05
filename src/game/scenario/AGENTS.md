@@ -7,6 +7,8 @@ Own immutable compiled scenario definitions and the mutable scenario-progress st
 ## Ownership
 
 - Authored scenario programs, instructions, encounters, rewards, services, and safe-action definitions.
+- `content/` owns the immutable campaign aggregate, restrictions, narration, labels, triggers, and direct encounter records.
+- `RealmzContent` composes the named character, item, magic, combat, economy, world, and scenario catalogs without forwarding their lookup APIs.
 - `ScenarioContentCatalog` indexes campaign narration, option labels, triggers, and direct encounter definitions.
 - `ScenarioProgressState` for searched cells, quests, journal discovery, and the current selected-character set.
 - `ScenarioEncounterState` for timed encounter records, eliminated results, attempt counts, thief flags, and program redirects.
