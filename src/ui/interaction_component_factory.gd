@@ -31,22 +31,45 @@ static func create(
 	combat_rect: Rect2
 ) -> InteractionComponent:
 	if LayoutPolicy.is_player_map_request(request):
-		var player_map := (load(PLAYER_MAP_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as PlayerMapInteraction
-		player_map.configure(game_view, media)
-		return player_map
+		return _create_player_map(game_view, media)
 	if LayoutPolicy.is_scrolling_text_request(request):
-		var scrolling_text := (load(SCROLLING_TEXT_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as ScrollingTextInteraction
-		scrolling_text.configure(media)
-		return scrolling_text
+		return _create_scrolling_text(media)
 	match request.kind:
-		&"acknowledge", &"yes_no", &"encounter_choice", &"scenario_choice":
-			var text_choice := (load(TEXT_CHOICE_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as TextChoiceInteraction
-			text_choice.configure(autojournal_enabled)
-			return text_choice
-		&"age_update":
-			var age_update := (load(AGE_UPDATE_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as AgeUpdateInteraction
-			age_update.configure(media)
-			return age_update
+		&"acknowledge", &"yes_no", &"encounter_choice", &"scenario_choice", &"age_update":
+			return _create_narrative_component(request.kind, media, autojournal_enabled)
+		&"character_selection", &"ally_selection", &"treasure_distribution", &"level_up":
+			return _create_party_component(request.kind, game_view, media, compact, treasure_recipient_id, treasure_slot_order)
+		&"complex_encounter", &"thief_encounter", &"pick_lock", &"shop_action", &"temple_action", &"bank_action", &"pooled_wealth_departure":
+			return _create_workspace_component(request.kind, game_view, media, compact)
+		&"combat_action": return _create_combat_component(game_view, media, combat_rect)
+		&"session_lifecycle": return (load(LIFECYCLE_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as InteractionComponent
+	return null
+
+
+static func _create_player_map(game_view: GameView, media: ClassicMediaCatalog) -> PlayerMapInteraction:
+	var component := (load(PLAYER_MAP_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as PlayerMapInteraction
+	component.configure(game_view, media)
+	return component
+
+
+static func _create_scrolling_text(media: ClassicMediaCatalog) -> ScrollingTextInteraction:
+	var component := (load(SCROLLING_TEXT_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as ScrollingTextInteraction
+	component.configure(media)
+	return component
+
+
+static func _create_narrative_component(kind: StringName, media: ClassicMediaCatalog, autojournal_enabled: bool) -> InteractionComponent:
+	if kind == &"age_update":
+		var age_update := (load(AGE_UPDATE_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as AgeUpdateInteraction
+		age_update.configure(media)
+		return age_update
+	var text_choice := (load(TEXT_CHOICE_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as TextChoiceInteraction
+	text_choice.configure(autojournal_enabled)
+	return text_choice
+
+
+static func _create_party_component(kind: StringName, game_view: GameView, media: ClassicMediaCatalog, compact: bool, treasure_recipient_id: String, treasure_slot_order: Array[String]) -> InteractionComponent:
+	match kind:
 		&"character_selection", &"ally_selection":
 			var selection := (load(SELECTION_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as SelectionInteraction
 			selection.configure(media, game_view)
@@ -59,6 +82,11 @@ static func create(
 			var level_up := (load(LEVEL_UP_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as LevelUpInteraction
 			level_up.configure(game_view, media)
 			return level_up
+	return null
+
+
+static func _create_workspace_component(kind: StringName, game_view: GameView, media: ClassicMediaCatalog, compact: bool) -> InteractionComponent:
+	match kind:
 		&"complex_encounter":
 			var encounter := (load(ENCOUNTER_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as EncounterInteraction
 			encounter.configure(media, game_view, compact)
@@ -71,25 +99,28 @@ static func create(
 			var pick_lock := (load(PICK_LOCK_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as PickLockInteraction
 			pick_lock.configure(media)
 			return pick_lock
-		&"shop_action":
-			var shop := (load(SHOP_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as ShopInteraction
-			shop.configure(media, compact)
-			return shop
-		&"temple_action":
-			var temple := (load(TEMPLE_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as TempleInteraction
-			temple.configure(media, compact)
-			return temple
+		&"shop_action", &"temple_action": return _create_service_component(kind, media, compact)
 		&"bank_action", &"pooled_wealth_departure":
 			var bank := (load(BANK_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as BankInteraction
 			bank.configure(compact)
 			return bank
-		&"combat_action":
-			var battle := (load(BATTLE_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as BattleInteraction
-			battle.configure(_combatant_icon_textures(game_view, media), LayoutPolicy.combat_command_scale(combat_rect))
-			return battle
-		&"session_lifecycle":
-			return (load(LIFECYCLE_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as InteractionComponent
 	return null
+
+
+static func _create_service_component(kind: StringName, media: ClassicMediaCatalog, compact: bool) -> InteractionComponent:
+	if kind == &"shop_action":
+		var shop := (load(SHOP_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as ShopInteraction
+		shop.configure(media, compact)
+		return shop
+	var temple := (load(TEMPLE_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as TempleInteraction
+	temple.configure(media, compact)
+	return temple
+
+
+static func _create_combat_component(game_view: GameView, media: ClassicMediaCatalog, combat_rect: Rect2) -> BattleInteraction:
+	var battle := (load(BATTLE_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as BattleInteraction
+	battle.configure(_combatant_icon_textures(game_view, media), LayoutPolicy.combat_command_scale(combat_rect))
+	return battle
 
 
 static func fast_spell_animation_frames(game_view: GameView, media: ClassicMediaCatalog, bindings: Array[InteractionRequestValue.FastSpell]) -> Dictionary:

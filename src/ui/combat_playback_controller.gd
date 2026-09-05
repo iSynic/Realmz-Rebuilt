@@ -197,63 +197,54 @@ func _build_frames(events: Array[DomainEvent]) -> Array[String]:
 		if event.kind == &"battle_started":
 			accelerated_sequence = true
 		var first_frame_index := _frames.size()
-		match event.kind:
-			&"sound_requested":
-				var sound_frame := _new_frame(&"sound", SOUND_FRAME_SECONDS, positions, hidden)
-				sound_frame.sound_event = event
-				_frames.append(sound_frame)
-			&"battle_started":
-				var started := _new_frame(&"battle_cue", CUE_SECONDS, positions, hidden)
-				started.display_text = "Battle begins"
-				_frames.append(started)
-			&"battle_completed":
-				var completed := _new_frame(&"battle_cue", CUE_SECONDS, positions, hidden)
-				completed.display_text = String(event.payload.get("outcome", "Battle complete")).replace("_", " ").capitalize()
-				_frames.append(completed)
-			&"combatant_moved":
-				_append_movement(event, positions, hidden)
-			&"combat_attack_resolved":
-				_append_attack(event, positions, hidden)
-			&"combat_projectile_resolved":
-				_append_projectile(event, positions, hidden)
-			&"combat_spell_cast":
-				_append_spell_cast(event, positions, hidden)
-			&"combat_spell_projectile":
-				_append_spell_projectile(event, positions, hidden)
-			&"combat_spell_resolved":
-				_append_spell_result(event, positions, hidden)
-			&"combat_turn_undead_resolved":
-				_append_turn_undead_result(event, positions, hidden)
-			&"combatant_bandaged":
-				_append_simple_result(event, positions, hidden, &"healing", "Bandaged")
-			&"combatant_bleeding_progressed":
-				_append_bleeding_result(event, positions, hidden, false)
-			&"combat_bleeding_warning":
-				_append_simple_result(event, positions, hidden, &"bleeding", "Bleeding wounds remain")
-			&"combatant_bled_to_death":
-				_append_bleeding_result(event, positions, hidden, true)
-			&"combat_turn_delayed":
-				_append_simple_result(event, positions, hidden, &"delay", "Delayed")
-			&"combat_turn_undone":
-				_append_movement(event, positions, hidden)
-			&"combatant_fumbled":
-				_append_simple_result(event, positions, hidden, &"fumble", "Fumble")
-			&"combat_attack_blocked":
-				_append_simple_result(event, positions, hidden, &"blocked", "Blocked")
-			&"combatant_retreated":
-				var actor_id := String(event.payload.get("actorId", event.payload.get("characterId", "")))
-				var retreat := _new_frame(&"retreat", RESULT_SECONDS, positions, hidden)
-				retreat.actor_id = actor_id
-				retreat.target_id = actor_id
-				retreat.display_text = "Escaped"
-				retreat.result_kind = &"retreat"
-				_frames.append(retreat)
-				if not actor_id.is_empty() and not hidden.has(actor_id):
-					hidden.append(actor_id)
+		_append_event_frames(event, positions, hidden)
 		var automatic_event := automatic_sequence or bool(event.payload.get("automatic", false))
 		if accelerated_sequence or automatic_event:
 			_accelerate_frames(first_frame_index, automatic_event)
 	return hidden
+
+
+func _append_event_frames(event: DomainEvent, positions: Dictionary, hidden: Array[String]) -> void:
+	match event.kind:
+		&"sound_requested":
+			var sound_frame := _new_frame(&"sound", SOUND_FRAME_SECONDS, positions, hidden)
+			sound_frame.sound_event = event
+			_frames.append(sound_frame)
+		&"battle_started", &"battle_completed":
+			_append_battle_cue(event, positions, hidden)
+		&"combatant_moved", &"combat_turn_undone":
+			_append_movement(event, positions, hidden)
+		&"combat_attack_resolved": _append_attack(event, positions, hidden)
+		&"combat_projectile_resolved": _append_projectile(event, positions, hidden)
+		&"combat_spell_cast": _append_spell_cast(event, positions, hidden)
+		&"combat_spell_projectile": _append_spell_projectile(event, positions, hidden)
+		&"combat_spell_resolved": _append_spell_result(event, positions, hidden)
+		&"combat_turn_undead_resolved": _append_turn_undead_result(event, positions, hidden)
+		&"combatant_bandaged": _append_simple_result(event, positions, hidden, &"healing", "Bandaged")
+		&"combatant_bleeding_progressed": _append_bleeding_result(event, positions, hidden, false)
+		&"combat_bleeding_warning": _append_simple_result(event, positions, hidden, &"bleeding", "Bleeding wounds remain")
+		&"combatant_bled_to_death": _append_bleeding_result(event, positions, hidden, true)
+		&"combat_turn_delayed": _append_simple_result(event, positions, hidden, &"delay", "Delayed")
+		&"combatant_fumbled": _append_simple_result(event, positions, hidden, &"fumble", "Fumble")
+		&"combat_attack_blocked": _append_simple_result(event, positions, hidden, &"blocked", "Blocked")
+		&"combatant_retreated": _append_retreat(event, positions, hidden)
+
+
+func _append_battle_cue(event: DomainEvent, positions: Dictionary, hidden: Array[String]) -> void:
+	var cue := _new_frame(&"battle_cue", CUE_SECONDS, positions, hidden)
+	cue.display_text = "Battle begins" if event.kind == &"battle_started" else String(event.payload.get("outcome", "Battle complete")).replace("_", " ").capitalize()
+	_frames.append(cue)
+
+
+func _append_retreat(event: DomainEvent, positions: Dictionary, hidden: Array[String]) -> void:
+	var actor_id := String(event.payload.get("actorId", event.payload.get("characterId", "")))
+	var retreat := _new_frame(&"retreat", RESULT_SECONDS, positions, hidden)
+	retreat.actor_id = actor_id
+	retreat.target_id = actor_id
+	retreat.display_text = "Escaped"
+	retreat.result_kind = &"retreat"
+	_frames.append(retreat)
+	_hide_combatant(actor_id, hidden)
 
 
 func _accelerate_frames(first_frame_index: int, automatic: bool) -> void:

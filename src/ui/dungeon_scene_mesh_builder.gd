@@ -49,48 +49,66 @@ static func _build(projection: DungeonGeometryProjection, atlas: Texture2D, coor
 	material.set_shader_parameter("scene_brightness", 0.70 if projection.dark else 1.0)
 	var cells := projection.source_cells()
 	for cell: MapCellView in cells:
-		if not cell.passable:
+		_append_cell_geometry(surface, projection, cell, coordinates, world_space, built_doorways)
+	_append_columns(surface, projection, cells, coordinates, world_space, pillar_corners)
+	return _mesh_from(surface, material)
+
+
+static func _append_cell_geometry(surface: MeshBuffers, projection: DungeonGeometryProjection, cell: MapCellView, coordinates: Dictionary, world_space: bool, built_doorways: Dictionary) -> void:
+	if not cell.passable:
+		return
+	var includes_cell := coordinates.is_empty() or coordinates.has(cell.coordinate)
+	if not includes_cell and not _completes_entering_boundary(projection, cell.coordinate, coordinates, world_space):
+		return
+	var offset := cell.coordinate - projection.party_coordinate
+	var center := Vector3(float(cell.coordinate.x), 0.0, float(cell.coordinate.y)) if world_space else Vector3(float(offset.x), 0.0, float(offset.y))
+	if includes_cell:
+		_append_cell_surfaces(surface, cell, center, offset)
+	_append_cell_boundaries(surface, projection, cell.coordinate, center, offset, includes_cell, coordinates, world_space, built_doorways)
+
+
+static func _completes_entering_boundary(projection: DungeonGeometryProjection, coordinate: Vector2i, coordinates: Dictionary, world_space: bool) -> bool:
+	if not world_space:
+		return false
+	for direction: StringName in DungeonGeometryProjection.DIRECTIONS:
+		if coordinates.has(coordinate + DungeonGeometryProjection.direction_vector(direction)) and projection.edge_kind_at(coordinate, direction) == &"open":
+			return true
+	return false
+
+
+static func _append_cell_surfaces(surface: MeshBuffers, cell: MapCellView, center: Vector3, offset: Vector2i) -> void:
+	var features := cell.features()
+	if features.has(&"stairs"):
+		_add_recessed_stair(surface, center, cell.coordinate, Color.WHITE)
+	else:
+		_add_floor_and_ceiling(surface, center, cell.coordinate, Color.WHITE)
+	if features.has(&"door") and offset != Vector2i.ZERO:
+		var vertical_door := cell.feature_orientation(&"door") == &"vertical"
+		_add_doorway(surface, cell_door_center(offset, vertical_door), vertical_door, false, Color.WHITE, false)
+
+
+static func _append_cell_boundaries(surface: MeshBuffers, projection: DungeonGeometryProjection, coordinate: Vector2i, center: Vector3, offset: Vector2i, includes_cell: bool, coordinates: Dictionary, world_space: bool, built_doorways: Dictionary) -> void:
+	for direction: StringName in DungeonGeometryProjection.DIRECTIONS:
+		var direction_vector := DungeonGeometryProjection.direction_vector(direction)
+		if not includes_cell and (not coordinates.has(coordinate + direction_vector) or projection.edge_kind_at(coordinate, direction) != &"open"):
 			continue
-		var includes_cell := coordinates.is_empty() or coordinates.has(cell.coordinate)
-		var completes_entering_boundary := false
-		if world_space and not includes_cell:
-			for direction: StringName in DungeonGeometryProjection.DIRECTIONS:
-				if coordinates.has(cell.coordinate + DungeonGeometryProjection.direction_vector(direction)) and projection.edge_kind_at(cell.coordinate, direction) == &"open":
-					completes_entering_boundary = true
-					break
-		if not includes_cell and not completes_entering_boundary:
+		var edge_kind := projection.edge_kind_at(coordinate, direction)
+		var neighbor := projection.source_cell_at(coordinate + direction_vector)
+		if world_space and neighbor == null and edge_kind == &"open":
 			continue
-		var offset := cell.coordinate - projection.party_coordinate
-		var center := Vector3(float(cell.coordinate.x), 0.0, float(cell.coordinate.y)) if world_space else Vector3(float(offset.x), 0.0, float(offset.y))
-		var color := Color.WHITE
-		var features := cell.features()
-		if includes_cell:
-			if features.has(&"stairs"):
-				_add_recessed_stair(surface, center, cell.coordinate, color)
-			else:
-				_add_floor_and_ceiling(surface, center, cell.coordinate, color)
-			if features.has(&"door") and offset != Vector2i.ZERO:
-				var vertical_door := cell.feature_orientation(&"door") == &"vertical"
-				_add_doorway(surface, cell_door_center(offset, vertical_door), vertical_door, false, color, false)
-		for direction: StringName in DungeonGeometryProjection.DIRECTIONS:
-			var direction_vector := DungeonGeometryProjection.direction_vector(direction)
-			if not includes_cell and (not coordinates.has(cell.coordinate + direction_vector) or projection.edge_kind_at(cell.coordinate, direction) != &"open"):
-				continue
-			var edge_kind := projection.edge_kind_at(cell.coordinate, direction)
-			var neighbor := projection.source_cell_at(cell.coordinate + direction_vector)
-			if world_space and neighbor == null and edge_kind == &"open":
-				continue
-			var entry_edge_kind := projection.edge_kind_at(neighbor.coordinate, direction) if neighbor != null else &""
-			var movement_allowed := boundary_allows_movement(projection, cell.coordinate, direction)
-			var edge_key := DungeonGeometryProjection.canonical_edge_key(cell.coordinate, direction)
-			var boundary_kind := entry_edge_kind if entry_edge_kind == &"archway" else edge_kind
-			if boundary_kind == &"archway":
-				if not built_doorways.has(edge_key):
-					built_doorways[edge_key] = true
-					_add_doorway(surface, center + _edge_offset(direction), direction in [&"east", &"west"], true, boundary_color(offset, direction_vector), true)
-				continue
-			if not movement_allowed:
-				_add_wall_boundary(surface, center, direction_vector, boundary_color(offset, direction_vector))
+		var entry_edge_kind := projection.edge_kind_at(neighbor.coordinate, direction) if neighbor != null else &""
+		var edge_key := DungeonGeometryProjection.canonical_edge_key(coordinate, direction)
+		var boundary_kind := entry_edge_kind if entry_edge_kind == &"archway" else edge_kind
+		if boundary_kind == &"archway":
+			if not built_doorways.has(edge_key):
+				built_doorways[edge_key] = true
+				_add_doorway(surface, center + _edge_offset(direction), direction in [&"east", &"west"], true, boundary_color(offset, direction_vector), true)
+			continue
+		if not boundary_allows_movement(projection, coordinate, direction):
+			_add_wall_boundary(surface, center, direction_vector, boundary_color(offset, direction_vector))
+
+
+static func _append_columns(surface: MeshBuffers, projection: DungeonGeometryProjection, cells: Array[MapCellView], coordinates: Dictionary, world_space: bool, pillar_corners: Dictionary) -> void:
 	for cell: MapCellView in cells:
 		if not cell.passable or not cell.features().has(&"column") or not coordinates.is_empty() and not coordinates.has(cell.coordinate):
 			continue
@@ -102,6 +120,9 @@ static func _build(projection: DungeonGeometryProjection, atlas: Texture2D, coor
 				continue
 			pillar_corners[corner_key] = true
 			_add_corner_pillar(surface, center + Vector3(float(corner.x), 0.0, float(corner.y)) * 0.44, Color.WHITE)
+
+
+static func _mesh_from(surface: MeshBuffers, material: Material) -> ArrayMesh:
 	var mesh := ArrayMesh.new()
 	if surface.vertices.is_empty():
 		return mesh

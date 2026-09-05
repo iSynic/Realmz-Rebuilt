@@ -86,6 +86,8 @@ The tool-only `battlefield_navigation_benchmark.gd` compared ten repeated decisi
 
 The route-readability extraction used three warmed immediate-parent and three changed ten-iteration samples of the same 24 fixture/footprint matrix. Custom-planner totals were 4.067, 4.036, and 4.068 seconds before the change and 4.005, 4.020, and 4.041 seconds after it, moving the median from 4.067 to 4.020 seconds. Every changed sample retained all 24 expected reachable first-step or unreachable outcome agreements. The extraction therefore introduces no measured route regression.
 
+The final presentation-function split used three committed-parent and three changed synthetic dungeon-transition samples. Median unique-step p95 changed from 4.326 to 4.590 ms, turn p95 from 0.018 to 0.016 ms, and backtrack p95 from 0.034 to 0.043 ms. Unique-step increased by 6.10 percent but only 0.264 ms, below the combined rendered-presentation rejection threshold of both five percent and 0.50 ms; the other absolute deltas were negligible. Every sample retained 32 geometry builds and 78 cache hits and remained well inside the 8.3 ms unique-step and 1 ms turn/backtracking budgets.
+
 ## Verification boundary
 
 Focused startup, package/prewarm, vault, session, presentation, architecture, and aggregate checks own deterministic correctness. The native rendered probe owns the frame measurements above. Godot MCP Pro was not available in the active tool surface for this run, so these results do not claim the separately required MCP-controlled playable walkthrough; that limitation remains explicit rather than treating headless or debug travel as ordinary-play certification.
