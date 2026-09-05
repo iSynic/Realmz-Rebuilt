@@ -22,7 +22,9 @@
   ],
   "excludePaths": [
     ".mcp.json",
+    "docs/architecture-migration.md",
     "docs/development.md",
+    "docs/human-centered-architecture.md",
     "docs/roadmap.md"
   ],
   "excludePrefixes": [
@@ -31,6 +33,7 @@
     ".references/",
     ".ua/",
     ".understand/",
+    "addons/godot_mcp/",
     "artifacts/",
     "dist/",
     "docs/codemap/",

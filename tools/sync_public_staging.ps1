@@ -70,6 +70,15 @@ foreach ($relativePath in $desiredPaths) {
     $copied += 1
 }
 
+$projectPath = Join-Path $destinationPath "project.godot"
+$projectSettings = Get-Content -Raw -LiteralPath $projectPath
+$localPluginEntry = '"res://addons/godot_mcp/plugin.cfg", '
+if (-not $projectSettings.Contains($localPluginEntry)) {
+    throw "Public staging synchronization could not locate the local Godot MCP plugin entry."
+}
+$projectSettings = $projectSettings.Replace($localPluginEntry, "")
+[System.IO.File]::WriteAllText($projectPath, $projectSettings, [System.Text.UTF8Encoding]::new($false))
+
 $attributesPath = Join-Path $destinationPath ".gitattributes"
 $attributes = Get-Content -Raw -LiteralPath $attributesPath
 if ($attributes.Contains("*.realmz2 binary")) {

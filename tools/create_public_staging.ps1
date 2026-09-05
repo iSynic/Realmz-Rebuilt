@@ -60,6 +60,14 @@ foreach ($required in @("LICENSE", "README.md", "project.godot", "src", "tests",
         throw "Public staging omitted required root: $required"
     }
 }
+$projectPath = Join-Path $destinationPath "project.godot"
+$projectSettings = Get-Content -Raw -LiteralPath $projectPath
+$localPluginEntry = '"res://addons/godot_mcp/plugin.cfg", '
+if (-not $projectSettings.Contains($localPluginEntry)) {
+    throw "Public staging could not locate the local Godot MCP plugin entry."
+}
+$projectSettings = $projectSettings.Replace($localPluginEntry, "")
+[System.IO.File]::WriteAllText($projectPath, $projectSettings, [System.Text.UTF8Encoding]::new($false))
 $attributesPath = Join-Path $destinationPath ".gitattributes"
 $attributes = Get-Content -Raw -LiteralPath $attributesPath
 if (-not $attributes.Contains("*.realmz2 binary")) { throw "Public staging could not locate the package attribute boundary." }

@@ -1,6 +1,6 @@
 # Human-centered architecture
 
-Realmz Rebuilt is organized so a contributor can begin with a visible feature, locate its scene and controller, follow its typed command into the playthrough, find the owning rules and state, and reach the relevant tests without private project history. Structural implementation and local performance certification are complete. The published Beta 1 predates this overhaul; the architecture update remains blocked until unfamiliar-maintainer, ordinary-play, native-platform, and hosted-update acceptance also pass.
+Realmz Rebuilt is organized so a contributor can begin with a visible feature, locate its scene and controller, follow its typed command into the playthrough, find the owning rules and state, and reach the relevant tests without private project history. Structural implementation, local performance certification, and the independent maintainer trial are complete. The published Beta 1 predates this overhaul; the architecture update remains blocked until ordinary-play, native-platform, and hosted-update acceptance also pass.
 
 Use [the Builder's Manual](builders-manual.md) for the newcomer tour, [the system manifest](system-manifest.json) for machine-checked ownership, [the architecture record](architecture-migration.md) for current boundaries, and [the roadmap](roadmap.md) for remaining release work.
 
@@ -63,7 +63,7 @@ The completed tree has passed the local core-performance gate against the archiv
 | Automated behavior | Complete locally | Full suite and deterministic validators green |
 | Editor readability | Complete locally | Production-bound previews and visual gallery accepted |
 | Clean local onboarding | Complete locally | Tracked-files-only checkout imports, runs, and verifies |
-| Independent maintainer trial | Open | Six hint-free journeys completed without folklore |
+| Independent maintainer trial | Complete | An unfamiliar Godot contributor completed all six hint-free journeys at `0ce58c57` without private guidance or a reported folklore dependency |
 | Ordinary-play candidate | Open | AOGM, War, and City of Bywater walkthroughs accepted |
 | Final performance | Complete locally | Core probes, exact Windows export size, and peak memory pass the relative and absolute limits |
 | Native platforms | Partial | Windows pre-certified; exact Windows/Linux/macOS candidate still required |
