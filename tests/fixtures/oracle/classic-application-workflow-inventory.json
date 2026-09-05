@@ -3454,7 +3454,7 @@
             "symbol": "func handle_field_fast_spell"
           },
           {
-            "path": "src/ui/interaction_components/battle_interaction.gd",
+            "path": "src/ui/combat/battle_interaction.gd",
             "symbol": "func handle_fast_spell"
           }
         ]
@@ -5654,7 +5654,7 @@
             "symbol": "func present"
           },
           {
-            "path": "src/ui/interaction_components/battle_interaction.gd",
+            "path": "src/ui/combat/battle_interaction.gd",
             "symbol": "class_name BattleInteraction"
           }
         ]
@@ -6240,7 +6240,7 @@
             "symbol": "func present"
           },
           {
-            "path": "src/ui/interaction_components/battle_interaction.gd",
+            "path": "src/ui/combat/battle_interaction.gd",
             "symbol": "class_name BattleInteraction"
           }
         ]
@@ -6592,7 +6592,7 @@
         "status": "accepted",
         "owners": [
           {
-            "path": "src/ui/interaction_components/battle_interaction.gd",
+            "path": "src/ui/combat/battle_interaction.gd",
             "symbol": "class_name BattleInteraction"
           },
           {
@@ -7418,7 +7418,7 @@
         "status": "accepted",
         "owners": [
           {
-            "path": "src/ui/interaction_components/battle_interaction.gd",
+            "path": "src/ui/combat/battle_interaction.gd",
             "symbol": "class_name BattleInteraction"
           },
           {
@@ -7552,7 +7552,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/interaction_components/battle_interaction.gd",
+            "path": "src/ui/combat/battle_interaction.gd",
             "symbol": "class_name BattleInteraction"
           },
           {
@@ -7732,7 +7732,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/interaction_components/battle_interaction.gd",
+            "path": "src/ui/combat/battle_interaction.gd",
             "symbol": "class_name BattleInteraction"
           },
           {
@@ -7903,7 +7903,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/interaction_components/battle_interaction.gd",
+            "path": "src/ui/combat/battle_interaction.gd",
             "symbol": "class_name BattleInteraction"
           },
           {
@@ -8036,7 +8036,7 @@
         "status": "accepted",
         "owners": [
           {
-            "path": "src/ui/interaction_components/battle_interaction.gd",
+            "path": "src/ui/combat/battle_interaction.gd",
             "symbol": "class_name BattleInteraction"
           }
         ]
@@ -8146,7 +8146,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/interaction_components/battle_interaction.gd",
+            "path": "src/ui/combat/battle_interaction.gd",
             "symbol": "class_name BattleInteraction"
           }
         ]
@@ -8243,7 +8243,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/interaction_components/battle_interaction.gd",
+            "path": "src/ui/combat/battle_interaction.gd",
             "symbol": "class_name BattleInteraction"
           }
         ]
@@ -8401,7 +8401,7 @@
         "status": "accepted",
         "owners": [
           {
-            "path": "src/ui/interaction_components/battle_interaction.gd",
+            "path": "src/ui/combat/battle_interaction.gd",
             "symbol": "class_name BattleInteraction"
           },
           {
@@ -10162,7 +10162,7 @@
         "status": "accepted",
         "owners": [
           {
-            "path": "src/ui/interaction_components/battle_interaction.gd",
+            "path": "src/ui/combat/battle_interaction.gd",
             "symbol": "func _add_classic_turn_commands("
           }
         ]
@@ -10370,7 +10370,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/interaction_components/battle_interaction.gd",
+            "path": "src/ui/combat/battle_interaction.gd",
             "symbol": "func _add_classic_turn_commands("
           }
         ]
@@ -10475,7 +10475,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/interaction_components/battle_interaction.gd",
+            "path": "src/ui/combat/battle_interaction.gd",
             "symbol": "func _add_bandage_panel("
           }
         ]
@@ -10576,7 +10576,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/interaction_components/battle_interaction.gd",
+            "path": "src/ui/combat/battle_interaction.gd",
             "symbol": "func _add_classic_turn_commands("
           }
         ]
@@ -10693,7 +10693,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/interaction_components/battle_interaction.gd",
+            "path": "src/ui/combat/battle_interaction.gd",
             "symbol": "class_name BattleInteraction"
           },
           {

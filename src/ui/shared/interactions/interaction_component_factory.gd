@@ -15,7 +15,7 @@ const LEVEL_UP_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/le
 const ENCOUNTER_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/encounter_interaction.tscn"
 const SHOP_INTERACTION_SCENE_PATH := "res://src/ui/services/shop_interaction.tscn"
 const TREASURE_INTERACTION_SCENE_PATH := "res://src/ui/services/treasure_distribution_interaction.tscn"
-const BATTLE_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/battle_interaction.tscn"
+const BATTLE_INTERACTION_SCENE_PATH := "res://src/ui/combat/battle_interaction.tscn"
 const SELECTION_INTERACTION_SCENE_PATH := "res://src/ui/interaction_components/selection_interaction.tscn"
 const LayoutPolicy := preload("res://src/ui/shared/interactions/interaction_layout_policy.gd")
 

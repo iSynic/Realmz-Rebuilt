@@ -10,7 +10,7 @@ const DOCK_HEIGHT := 76.0
 const MIN_SLOT_WIDTH := 44.0
 const MAX_SLOT_WIDTH := 68.0
 const SLOT_SEPARATION := 4.0
-const SLOT_SCENE_PATH := "res://src/ui/interaction_components/fast_spell_dock_slot.tscn"
+const SLOT_SCENE_PATH := "res://src/ui/combat/fast_spell_dock_slot.tscn"
 
 var _stage_rect := Rect2()
 var _row: HBoxContainer

@@ -13,7 +13,7 @@ const SURFACES := {
 	"encounter": preload("res://src/ui/interaction_components/encounter_interaction.tscn"),
 	"shop": preload("res://src/ui/services/shop_interaction.tscn"),
 	"treasure": preload("res://src/ui/services/treasure_distribution_interaction.tscn"),
-	"combat-command-deck": preload("res://src/ui/interaction_components/battle_interaction.tscn"),
+	"combat-command-deck": preload("res://src/ui/combat/battle_interaction.tscn"),
 	"character-sheet": preload("res://src/ui/characters/character_screen.tscn"),
 	"inventory": preload("res://src/ui/inventory/inventory_screen.tscn"),
 	"spells": preload("res://src/ui/magic/spells_screen.tscn"),

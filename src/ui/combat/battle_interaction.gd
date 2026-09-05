@@ -11,7 +11,7 @@ const PRESENTATION_COMMAND_HEIGHT := 24.0
 const PRIMARY_COMMAND_COLOR := Color("f0ce59")
 const VIEW_COMMAND_COLOR := Color("63d8e7")
 const TURN_COMMAND_COLOR := Color("8fe080")
-const InitiativePanelBuilder := preload("res://src/ui/interaction_components/battle_initiative_panel_builder.gd")
+const InitiativePanelBuilder := preload("res://src/ui/combat/battle_initiative_panel_builder.gd")
 
 @export var initiative_entry_scene: PackedScene
 

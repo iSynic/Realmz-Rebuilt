@@ -5,7 +5,7 @@ extends RefCounted
 
 ## Builds the dynamic current-and-upcoming combatant strip for the battle command deck.
 
-const PANEL_SCENE_PATH := "res://src/ui/interaction_components/battle_initiative_panel.tscn"
+const PANEL_SCENE_PATH := "res://src/ui/combat/battle_initiative_panel.tscn"
 
 static var _panel_scene: PackedScene
 

@@ -9,7 +9,7 @@
 [ext_resource type="PackedScene" path="res://src/ui/interaction_components/encounter_command_dock_host.tscn" id="7_dock"]
 [ext_resource type="PackedScene" path="res://src/ui/interaction_components/interaction_application_workspace.tscn" id="8_application"]
 [ext_resource type="PackedScene" path="res://src/ui/interaction_components/interaction_hint.tscn" id="9_hint"]
-[ext_resource type="PackedScene" path="res://src/ui/interaction_components/fast_spell_dock.tscn" id="10_fast_spell"]
+[ext_resource type="PackedScene" path="res://src/ui/combat/fast_spell_dock.tscn" id="10_fast_spell"]
 
 [node name="InteractionPanel" type="PanelContainer"]
 unique_name_in_owner = true
