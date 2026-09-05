@@ -34,3 +34,5 @@ Own the persistent Godot composition that surrounds every Realmz playthrough and
 - Run `tools/verify_architecture.ps1` after moving shell collaborators or changing route ownership.
 
 ## Child DOX Index
+
+- `routes/AGENTS.md` owns typed shell-mode and workspace route definitions plus their catalog.

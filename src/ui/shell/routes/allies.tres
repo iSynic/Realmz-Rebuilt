@@ -1,5 +1,5 @@
 [gd_resource type="Resource" script_class="UiRouteDefinition" load_steps=3 format=3]
-[ext_resource type="Script" path="res://src/ui/ui_route_definition.gd" id="1_route"]
+[ext_resource type="Script" path="res://src/ui/shell/routes/ui_route_definition.gd" id="1_route"]
 [ext_resource type="PackedScene" path="res://src/ui/characters/allies_screen.tscn" id="2_scene"]
 [resource]
 script = ExtResource("1_route")

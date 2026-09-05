@@ -139,7 +139,6 @@ Own the Godot user interface: scenes, controls, screen presenters, topology-deri
 - `interaction_components/AGENTS.md` owns typed request-kind control surfaces and exact payload emission.
 - `inventory/AGENTS.md` owns the editable Inventory route, reusable Encounter workspace, item records, and Trade composition.
 - `magic/AGENTS.md` owns the editable field-spellbook route, reusable workspace, selection chrome, and display formatting.
-- `routes/AGENTS.md` owns typed shell-mode and workspace route resources.
 - `setup/AGENTS.md` owns campaign selection, party assembly, and character-creation scene composition.
 - `shell/AGENTS.md` owns the persistent application composition, typed navigation host, presentation coordination, and shell-specific collaborators.
 - `shared/AGENTS.md` owns reusable presentation policies, components, and the generic typed-interaction host.

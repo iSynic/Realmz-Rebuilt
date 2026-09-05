@@ -4,17 +4,17 @@ class_name UiRouteCatalog
 extends RefCounted
 
 const ROUTE_RESOURCE_PATHS: PackedStringArray = [
-	"res://src/ui/routes/exploration.tres",
-	"res://src/ui/routes/character.tres",
-	"res://src/ui/routes/allies.tres",
-	"res://src/ui/routes/bestiary.tres",
-	"res://src/ui/routes/vault.tres",
-	"res://src/ui/routes/inventory.tres",
-	"res://src/ui/routes/spells.tres",
-	"res://src/ui/routes/services.tres",
-	"res://src/ui/routes/combat.tres",
-	"res://src/ui/routes/journal.tres",
-	"res://src/ui/routes/system.tres",
+	"res://src/ui/shell/routes/exploration.tres",
+	"res://src/ui/shell/routes/character.tres",
+	"res://src/ui/shell/routes/allies.tres",
+	"res://src/ui/shell/routes/bestiary.tres",
+	"res://src/ui/shell/routes/vault.tres",
+	"res://src/ui/shell/routes/inventory.tres",
+	"res://src/ui/shell/routes/spells.tres",
+	"res://src/ui/shell/routes/services.tres",
+	"res://src/ui/shell/routes/combat.tres",
+	"res://src/ui/shell/routes/journal.tres",
+	"res://src/ui/shell/routes/system.tres",
 ]
 
 static var _routes: Array[UiRouteDefinition] = []

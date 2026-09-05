@@ -112,7 +112,7 @@ function Get-InteractionKinds([string]$Path) {
 
 function Get-UiRoutes([string]$Path) {
     $text = Get-Content -LiteralPath $Path -Raw
-    $resourcePaths = @([regex]::Matches($text, '"res://(src/ui/routes/[a-z-]+\.tres)"') | ForEach-Object { $_.Groups[1].Value })
+    $resourcePaths = @([regex]::Matches($text, '"res://(src/ui/shell/routes/[a-z-]+\.tres)"') | ForEach-Object { $_.Groups[1].Value })
     Assert-Condition ($resourcePaths.Count -gt 0) "Could not find route resources in $Path."
     return @($resourcePaths | ForEach-Object {
         $resourcePath = Join-Path $repoRoot $_
@@ -590,7 +590,7 @@ $mappedInteractions = @($inventory.boundaryCoverage.interactions | ForEach-Objec
 Assert-Condition ((($expectedInteractions | Sort-Object) -join '|') -eq (($mappedInteractions | Sort-Object) -join '|')) "Interaction coverage differs from InteractionRequest constants."
 foreach ($record in $inventory.boundaryCoverage.interactions) { Assert-WorkflowLinks $record "interaction $($record.id)"; Assert-SourceReference $record.evidence "interaction $($record.id) evidence" $repoRoot }
 
-$expectedRoutes = Get-UiRoutes (Join-Path $repoRoot "src\ui\ui_route_catalog.gd")
+$expectedRoutes = Get-UiRoutes (Join-Path $repoRoot "src\ui\shell\routes\ui_route_catalog.gd")
 $mappedRoutes = @($inventory.boundaryCoverage.routes | ForEach-Object { [string]$_.id })
 Assert-Condition ((($expectedRoutes | Sort-Object) -join '|') -eq (($mappedRoutes | Sort-Object) -join '|')) "UI route coverage differs from UiRouteCatalog."
 foreach ($record in $inventory.boundaryCoverage.routes) { Assert-WorkflowLinks $record "route $($record.id)"; Assert-SourceReference $record.evidence "route $($record.id) evidence" $repoRoot }

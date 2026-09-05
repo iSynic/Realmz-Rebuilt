@@ -798,7 +798,7 @@
           "classic.scenario.present-message-media"
         ],
         "evidence": {
-          "path": "src/ui/routes/exploration.tres",
+          "path": "src/ui/shell/routes/exploration.tres",
           "symbol": "route_id = &\"exploration\""
         }
       },
@@ -811,7 +811,7 @@
           "classic.character.age-update"
         ],
         "evidence": {
-          "path": "src/ui/routes/character.tres",
+          "path": "src/ui/shell/routes/character.tres",
           "symbol": "route_id = &\"character\""
         }
       },
@@ -821,7 +821,7 @@
           "classic.character.allies-bestiary"
         ],
         "evidence": {
-          "path": "src/ui/routes/allies.tres",
+          "path": "src/ui/shell/routes/allies.tres",
           "symbol": "route_id = &\"allies\""
         }
       },
@@ -831,7 +831,7 @@
           "classic.character.allies-bestiary"
         ],
         "evidence": {
-          "path": "src/ui/routes/bestiary.tres",
+          "path": "src/ui/shell/routes/bestiary.tres",
           "symbol": "route_id = &\"bestiary\""
         }
       },
@@ -842,7 +842,7 @@
           "host.vault.import-publish"
         ],
         "evidence": {
-          "path": "src/ui/routes/vault.tres",
+          "path": "src/ui/shell/routes/vault.tres",
           "symbol": "route_id = &\"vault\""
         }
       },
@@ -857,7 +857,7 @@
           "classic.inventory.identify-item"
         ],
         "evidence": {
-          "path": "src/ui/routes/inventory.tres",
+          "path": "src/ui/shell/routes/inventory.tres",
           "symbol": "route_id = &\"inventory\""
         }
       },
@@ -870,7 +870,7 @@
           "classic.exploration.fast-spell"
         ],
         "evidence": {
-          "path": "src/ui/routes/spells.tres",
+          "path": "src/ui/shell/routes/spells.tres",
           "symbol": "route_id = &\"spells\""
         }
       },
@@ -884,7 +884,7 @@
           "classic.services.swap"
         ],
         "evidence": {
-          "path": "src/ui/routes/services.tres",
+          "path": "src/ui/shell/routes/services.tres",
           "symbol": "route_id = &\"services\""
         }
       },
@@ -908,7 +908,7 @@
           "classic.combat.undo"
         ],
         "evidence": {
-          "path": "src/ui/routes/combat.tres",
+          "path": "src/ui/shell/routes/combat.tres",
           "symbol": "route_id = &\"combat\""
         }
       },
@@ -920,7 +920,7 @@
           "classic.maps.authored-journal"
         ],
         "evidence": {
-          "path": "src/ui/routes/journal.tres",
+          "path": "src/ui/shell/routes/journal.tres",
           "symbol": "route_id = &\"journal\""
         }
       },
@@ -935,7 +935,7 @@
           "host.system.save-previews"
         ],
         "evidence": {
-          "path": "src/ui/routes/system.tres",
+          "path": "src/ui/shell/routes/system.tres",
           "symbol": "route_id = &\"system\""
         }
       }
