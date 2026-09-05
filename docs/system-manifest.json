@@ -15,7 +15,7 @@
       "id": "characters",
       "boundary": "game",
       "guide": "docs/features/characters.md",
-      "entryPoints": ["src/game/characters", "src/game/content/caste_definition.gd"],
+      "entryPoints": ["src/game/characters", "src/game/content/caste_definition.gd", "src/playthrough/characters"],
       "publicInterfaces": ["CharacterCatalog", "CharacterState", "CharacterStateCodec", "CharacterRules", "CharacterView", "CharacterLifetimeRecord", "CasteDefinition", "CasteDefinition.AttributeDefinition", "CasteDefinition.ProgressionDefinition", "PartyIntents", "PartyIntentPayloads"],
       "tests": ["tests/core/test_realmz_rules.gd", "tests/infrastructure/test_character_vault_repository.gd", "tests/integration/test_session_persistence.gd", "tests/integration/test_character_appearance_workflow.gd"],
       "performanceProbes": ["tools/combat_performance_probe.gd"]

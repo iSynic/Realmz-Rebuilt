@@ -6,7 +6,6 @@ Own feature workflows that have not yet moved from this migration directory into
 
 ## Ownership
 
-- Character finalization and party lifecycle.
 - Inventory and field-item transactions.
 - Field magic target construction, resolution, and transactions.
 - Money workflows.

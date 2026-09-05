@@ -6,7 +6,7 @@ Own the feature-named typed payloads and factories that resume an interrupted pl
 
 ## Ownership
 
-- The application, targeting, item-XAP, service, age, combat, and reward payloads that have not yet moved to their feature roots.
+- The application, targeting, item-XAP, service, combat, and reward payloads that have not yet moved to their feature roots.
 - `ApplicationContinuations`, `InventoryContinuations`, `MagicContinuations`, `ServiceContinuations`, and `CombatContinuations` as live construction entry points.
 
 ## Local Contracts

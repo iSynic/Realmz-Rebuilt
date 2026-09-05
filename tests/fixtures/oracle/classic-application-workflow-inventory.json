@@ -2042,7 +2042,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/playthrough/workflows/lifecycle_party_workflow.gd",
+            "path": "src/playthrough/characters/lifecycle_party_workflow.gd",
             "symbol": "static func create_party"
           }
         ]
@@ -2202,11 +2202,11 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/playthrough/workflows/lifecycle_party_workflow.gd",
+            "path": "src/playthrough/characters/lifecycle_party_workflow.gd",
             "symbol": "static func generate_character_draft"
           },
           {
-            "path": "src/playthrough/character_creation_session.gd",
+            "path": "src/playthrough/characters/character_creation_session.gd",
             "symbol": "func start"
           }
         ]
@@ -4649,7 +4649,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/playthrough/workflows/lifecycle_party_workflow.gd",
+            "path": "src/playthrough/characters/lifecycle_party_workflow.gd",
             "symbol": "static func change_character_appearance"
           }
         ]
@@ -4769,7 +4769,7 @@
             "symbol": "func reorder_characters"
           },
           {
-            "path": "src/playthrough/workflows/lifecycle_party_workflow.gd",
+            "path": "src/playthrough/characters/lifecycle_party_workflow.gd",
             "symbol": "static func reorder_party"
           }
         ]
