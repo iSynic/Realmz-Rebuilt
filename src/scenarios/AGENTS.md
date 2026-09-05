@@ -95,5 +95,7 @@ Own the serializable Scenario VM, Classic instructions, Safe Scenario Actions, c
 
 ## Child DOX Index
 
+- `actions/AGENTS.md` owns Safe Scenario Action evaluation and mutable action state.
 - `classic/AGENTS.md` owns Castle opcode dispatch, control flow, and source-backed runtime operations.
 - `runtime/AGENTS.md` owns the shared VM runtime API, execution records, and suspended-operation continuations.
+- `vm/AGENTS.md` owns deterministic frame scheduling, suspension, snapshots, and trace limits.
