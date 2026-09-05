@@ -145,3 +145,5 @@ Own the Godot user interface: scenes, controls, screen presenters, topology-deri
 - `setup/AGENTS.md` owns campaign selection, party assembly, and character-creation scene composition.
 - `shell/AGENTS.md` owns the persistent application composition, typed navigation host, presentation coordination, and shell-specific collaborators.
 - `shared/AGENTS.md` owns reusable presentation policies, components, and the generic typed-interaction host.
+- `exploration/AGENTS.md` owns retained 2D maps, first-person dungeon projection, held movement presentation, and spatial media caches.
+- `combat/AGENTS.md` owns the retained tactical battlefield, combat playback, targeting presentation, and tactical media caches.

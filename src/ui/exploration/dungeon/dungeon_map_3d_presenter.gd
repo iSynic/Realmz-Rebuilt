@@ -8,7 +8,7 @@ signal movement_requested(direction: Vector2i)
 signal movement_hold_started(direction: Vector2i)
 signal movement_hold_stopped
 
-const MeshBuilder := preload("res://src/ui/dungeon_scene_mesh_builder.gd")
+const MeshBuilder := preload("res://src/ui/exploration/dungeon/dungeon_scene_mesh_builder.gd")
 const ATLAS_PATH := "res://src/ui/assets/classic-dungeon/classic-dungeon-atlas.png"
 const CURSOR_FORWARD_PATH := "res://src/ui/assets/classic-dungeon/cursor-forward.png"
 const CURSOR_REVERSE_PATH := "res://src/ui/assets/classic-dungeon/cursor-reverse.png"

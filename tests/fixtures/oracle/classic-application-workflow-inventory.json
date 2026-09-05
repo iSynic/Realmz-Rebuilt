@@ -2845,11 +2845,11 @@
         "status": "accepted",
         "owners": [
           {
-            "path": "src/ui/classic_map_presenter.gd",
+            "path": "src/ui/exploration/classic_map_presenter.gd",
             "symbol": "class_name ClassicMapPresenter"
           },
           {
-            "path": "src/ui/dungeon_map_3d_presenter.gd",
+            "path": "src/ui/exploration/dungeon/dungeon_map_3d_presenter.gd",
             "symbol": "class_name DungeonMap3DPresenter"
           },
           {
@@ -6596,11 +6596,11 @@
             "symbol": "class_name BattleInteraction"
           },
           {
-            "path": "src/ui/combat_playback_controller.gd",
+            "path": "src/ui/combat/combat_playback_controller.gd",
             "symbol": "class_name CombatPlaybackController"
           },
           {
-            "path": "src/ui/combat_targeting_state.gd",
+            "path": "src/ui/combat/combat_targeting_state.gd",
             "symbol": "class_name CombatTargetingState"
           }
         ]
@@ -7422,7 +7422,7 @@
             "symbol": "class_name BattleInteraction"
           },
           {
-            "path": "src/ui/combat_playback_controller.gd",
+            "path": "src/ui/combat/combat_playback_controller.gd",
             "symbol": "class_name CombatPlaybackController"
           }
         ]
@@ -7556,7 +7556,7 @@
             "symbol": "class_name BattleInteraction"
           },
           {
-            "path": "src/ui/classic_battlefield_presenter.gd",
+            "path": "src/ui/combat/classic_battlefield_presenter.gd",
             "symbol": "class_name ClassicBattlefieldPresenter"
           }
         ]
@@ -7736,15 +7736,15 @@
             "symbol": "class_name BattleInteraction"
           },
           {
-            "path": "src/ui/classic_battlefield_presenter.gd",
+            "path": "src/ui/combat/classic_battlefield_presenter.gd",
             "symbol": "class_name ClassicBattlefieldPresenter"
           },
           {
-            "path": "src/ui/combat_playback_controller.gd",
+            "path": "src/ui/combat/combat_playback_controller.gd",
             "symbol": "class_name CombatPlaybackController"
           },
           {
-            "path": "src/ui/combat_targeting_state.gd",
+            "path": "src/ui/combat/combat_targeting_state.gd",
             "symbol": "class_name CombatTargetingState"
           }
         ]
@@ -7907,7 +7907,7 @@
             "symbol": "class_name BattleInteraction"
           },
           {
-            "path": "src/ui/combat_playback_controller.gd",
+            "path": "src/ui/combat/combat_playback_controller.gd",
             "symbol": "class_name CombatPlaybackController"
           }
         ]
@@ -9343,7 +9343,7 @@
             "symbol": "func _bind_location_note_preview"
           },
           {
-            "path": "src/ui/map_presentation_geometry.gd",
+            "path": "src/ui/exploration/map_presentation_geometry.gd",
             "symbol": "static func darkness_overlay_alpha"
           }
         ]
@@ -10697,7 +10697,7 @@
             "symbol": "class_name BattleInteraction"
           },
           {
-            "path": "src/ui/combat_playback_controller.gd",
+            "path": "src/ui/combat/combat_playback_controller.gd",
             "symbol": "class_name CombatPlaybackController"
           }
         ]
