@@ -9940,7 +9940,7 @@
             "symbol": "func scenario_music_asset"
           },
           {
-            "path": "src/ui/music_playlist_dialog.gd",
+            "path": "src/ui/shell/music_playlist_dialog.gd",
             "symbol": "class_name MusicPlaylistDialog"
           }
         ]

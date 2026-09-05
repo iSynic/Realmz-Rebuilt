@@ -5,6 +5,7 @@
 # Ownership
 
 - Scenes own stable panels, headings, scroll regions, options, and actions.
+- `startup_front_door.tscn` owns the first-frame launch-card composition, while `ClassicIntroAnimation` owns only the retained source-backed intro presentation used by the deferred menu.
 - Controllers bind detached campaign, vault, party, and draft data and populate only variable records.
 - `CampaignLibraryController` binds the front door and campaign selector. `CampaignPartySetupController` composes retained campaign, party assembly, inspection, and creation collaborators around one explicit `CampaignPartySetupState`.
 - `PartySetupAssemblyController` binds the reusable-character browser and retained six-slot party list; `PartySetupInspectionController` mounts the shared character sheet; `PartySetupCharacterCreationController` owns the five-step draft lifecycle.
@@ -14,7 +15,7 @@
 # Local Contracts
 
 - Setup scenes are full-stage application surfaces and never own simulation or repository access.
-- `front_door_menu.tscn` owns the recognizable menu composition but remains outside `startup_front_door.tscn` so imported menu media cannot delay the launch card's first frame. `StartupFrontDoor` instantiates it only after that frame draws; the same scene may be mounted beneath the loaded application shell without maintaining a second composition.
+- `front_door_menu.tscn` owns the recognizable menu composition but remains outside neighboring `startup_front_door.tscn` so imported menu media cannot delay the launch card's first frame. `StartupFrontDoor` instantiates it only after that frame draws; the same scene may be mounted beneath the loaded application shell without maintaining a second composition.
 - Party assembly and character creation are modes of one retained setup workspace.
 - `party_assembly_browser.tscn` owns the Character Files heading, record host, empty state, and pager; it exports the variable character-row scene. `party_setup_inspection_overlay.tscn` owns the complete Back/header/scroll composition and hosts the shared character sheet.
 - Campaign and character rows remain reusable scene instances with stable identities. The campaign selector owns authored empty, selected-summary, and package-operation states and exports its campaign row scene.
@@ -25,6 +26,7 @@
 # Work Guidance
 
 - Keep stable controls in scenes and expose them by unique node name.
+- Open `startup_front_door.tscn` for the lightweight launch card and `front_door_menu.tscn` for the deferred interactive entry menu.
 - Preserve focus names and signal identities used by startup and presentation tests.
 
 # Verification

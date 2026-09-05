@@ -1,6 +1,6 @@
 [gd_scene load_steps=3 format=3]
 
-[ext_resource type="Script" path="res://src/ui/music_playlist_row.gd" id="1_row"]
+[ext_resource type="Script" path="res://src/ui/shell/music_playlist_row.gd" id="1_row"]
 
 [sub_resource type="ButtonGroup" id="ButtonGroup_modes"]
 allow_unpress = true

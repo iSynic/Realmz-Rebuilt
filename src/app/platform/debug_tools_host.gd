@@ -3,8 +3,8 @@
 class_name DebugToolsHost
 extends Node
 
-const DEBUG_TOOLS_DIALOG_SCENE_PATH := "res://src/ui/debug_tools_dialog.tscn"
-const DEBUG_ACTION_CONSOLE_SCENE_PATH := "res://src/ui/debug_action_console.tscn"
+const DEBUG_TOOLS_DIALOG_SCENE_PATH := "res://src/ui/shell/debug_tools_dialog.tscn"
+const DEBUG_ACTION_CONSOLE_SCENE_PATH := "res://src/ui/shell/debug_action_console.tscn"
 
 signal status_changed(message: String, failed: bool)
 signal topology_debug_changed(enabled: bool)

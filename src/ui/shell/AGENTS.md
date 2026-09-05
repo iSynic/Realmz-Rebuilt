@@ -14,6 +14,7 @@ Own the persistent Godot composition that surrounds every Realmz playthrough and
 - `PresentationCoordinator` applies detached session results to the retained shell. `PresentationMediaController` supplies the composed application/scenario media context without exposing storage repositories to UI code.
 - `ClassicPartyRoster` owns the persistent six-slot party rail and its reusable member and empty rows, including current-character, mandatory-selection, combat Auto, and effect-presentation state.
 - `SystemScreen` and `SystemWorkspace` own the editable Save & Load, Display, Audio, Pacing, Accessibility, Controls, and Diagnostics composition. `SystemScreenController` binds detached save previews and presentation settings and instantiates only the exported save-slot row.
+- `MusicPlaylistDialog` and its reusable row scene own the twenty-slot Classic playlist editor. `DebugToolsDialog` and `DebugActionConsole` own the developer-only typed command surface and readable committed-event history.
 - `ScreenContentPresenter` composes route-local binders against the scene-owned workspace body and generic shared record scenes; it owns detached route state and route-specific presentation audio, not navigation history.
 
 ## Local Contracts
@@ -28,6 +29,7 @@ Own the persistent Godot composition that surrounds every Realmz playthrough and
 ## Work Guidance
 
 - Open `game_shell.tscn` for stable HUD layout and `screen_navigator.tscn` for workspace/overlay placement.
+- Open `music_playlist_dialog.tscn` for the player-facing playlist modal and `debug_tools_dialog.tscn` for the developer-only diagnostic surface.
 - Edit `classic_party_effect_slot.tscn` for the stable effect-cell composition; keep effect sequencing in `ClassicPartyEffects` and shell binding in `GameShellPartyEffectsPresenter`.
 - Keep responsive calculations in the named layout policy and controller rather than embedding them in unrelated presenters.
 

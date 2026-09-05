@@ -1,6 +1,6 @@
 [gd_scene load_steps=3 format=3]
 
-[ext_resource type="Script" path="res://src/ui/debug_tools_dialog.gd" id="1_dialog"]
+[ext_resource type="Script" path="res://src/ui/shell/debug_tools_dialog.gd" id="1_dialog"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_dialog"]
 bg_color = Color(0.12549, 0.14902, 0.168627, 1)

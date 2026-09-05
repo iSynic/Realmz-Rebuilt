@@ -8,7 +8,7 @@ signal music_enabled_changed(enabled: bool)
 signal music_volume_changed(value: float)
 signal playlist_mode_changed(playlist_id: int, mode: int)
 
-const PLAYLIST_ROW_SCENE_PATH := "res://src/ui/music_playlist_row.tscn"
+const PLAYLIST_ROW_SCENE_PATH := "res://src/ui/shell/music_playlist_row.tscn"
 
 var _panel: PanelContainer
 var _now_playing: Label
