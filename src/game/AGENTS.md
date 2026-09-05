@@ -24,6 +24,7 @@ Own the pure Realmz model, fixed Classic rules, topology, game clock, randomness
 - `CombatSpellSelection` owns combat spell admission, legal targets, and player-facing spell and scroll choices; `CombatFlowMagic` resolves choices already admitted through that policy and delegates only their shared target collection and ordered commit to `CombatCharacterSpellResolution`.
 - Detached party views include current held-over ally instances separately from hostile combatants. The active monster set's menu-visible immutable definitions project into a separate ordered Bestiary catalog with their authored descriptions; presentation may inspect either view but cannot mutate ally ownership or infer the catalog from current party state.
 - Typed intents/events/interactions/views and the core state carried by session snapshots.
+- `shared/` owns only pure values that cross several game features or one stable host boundary: deterministic RNG and its saved state, Classic integer arithmetic, detached domain events, immutable media descriptors/read ports, presentation settings, and the smallest general detached view atoms. Feature-specific rules, state, commands, and payloads remain with their named feature.
 - Pure host-facing value contracts shared across adapters and presentation, including immutable media descriptors/read ports and presentation settings. These records never enter `GameSession` or alter Classic rules. `PresentationSettings` schema 12 may retain an optional stable last-campaign identity used only for host prewarming; it never stores an install path or enters an adventure save. Auto Note defaults off from application PRFN 128; an explicit saved host preference may enable it without entering adventure state.
 - `RealmzRules`, `RealmzClock`, `RealmzRng`, topology queries, and world overlays.
 
@@ -200,5 +201,6 @@ Own the pure Realmz model, fixed Classic rules, topology, game clock, randomness
 - `inventory/AGENTS.md` owns immutable item lookup and the inventory feature's migration boundary.
 - `magic/AGENTS.md` owns immutable spell lookup and the magic feature's migration boundary.
 - `scenario/AGENTS.md` owns immutable scenario definitions and pure mutable scenario-progress state.
+- `shared/AGENTS.md` owns narrowly reusable pure game values and stable host-facing value contracts.
 - `session/intents/AGENTS.md` owns feature-named player commands, their typed payload values, and the stable kind registry.
 - `session/requests/AGENTS.md` owns feature-level typed interaction request payloads and their exact wire representation.

@@ -1,7 +1,7 @@
 extends RealmzTestCase
 
 const FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-fixture.realmz2"
-const ViewChangeSetScript := preload("res://src/game/view/view_change_set.gd")
+const ViewChangeSetScript := preload("res://src/game/shared/view/view_change_set.gd")
 
 
 func selected_case_arguments() -> Array:

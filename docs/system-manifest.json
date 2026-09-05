@@ -21,6 +21,15 @@
       "performanceProbes": ["tools/combat_performance_probe.gd"]
     },
     {
+      "id": "shared-game-contracts",
+      "boundary": "game",
+      "guide": "docs/features/shared-game-contracts.md",
+      "entryPoints": ["src/game/shared", "src/game/shared/random/realmz_rng.gd", "src/game/shared/realmz_arithmetic.gd", "src/game/shared/domain_event.gd", "src/game/shared/media/media_source.gd", "src/game/shared/presentation/presentation_settings.gd", "src/game/shared/view"],
+      "publicInterfaces": ["RealmzRng", "RealmzRngState", "ScriptedRng", "RealmzArithmetic", "DomainEvent", "MediaAsset", "MediaSource", "PresentationSettings", "ActionAvailabilityView", "DefinitionOptionView", "ViewChangeSet"],
+      "tests": ["tests/core/test_realmz_rng.gd", "tests/core/test_game_session.gd", "tests/infrastructure/test_package_repository.gd", "tests/integration/test_session_persistence.gd", "tests/presentation/test_classic_ui_system.gd"],
+      "performanceProbes": []
+    },
+    {
       "id": "inventory",
       "boundary": "game",
       "guide": "docs/features/inventory.md",
