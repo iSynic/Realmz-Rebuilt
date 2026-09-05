@@ -1,6 +1,6 @@
 # Human-centered architecture
 
-Realmz Rebuilt is organized so a contributor can begin with a visible feature, locate its scene and controller, follow its typed command into the playthrough, find the owning rules and state, and reach the relevant tests without private project history. Structural implementation is complete. Beta 1 remains blocked until unfamiliar-maintainer, ordinary-play, performance, native-platform, and hosted-release acceptance also pass.
+Realmz Rebuilt is organized so a contributor can begin with a visible feature, locate its scene and controller, follow its typed command into the playthrough, find the owning rules and state, and reach the relevant tests without private project history. Structural implementation and local performance certification are complete. Beta 1 remains blocked until unfamiliar-maintainer, ordinary-play, native-platform, and hosted-release acceptance also pass.
 
 Use [the Builder's Manual](builders-manual.md) for the newcomer tour, [the system manifest](system-manifest.json) for machine-checked ownership, [the architecture record](architecture-migration.md) for current boundaries, and [the roadmap](roadmap.md) for remaining release work.
 
@@ -53,7 +53,7 @@ A tracked-files-only clean checkout has completed first import, startup, the com
 
 The completed tree has passed the local core-performance gate against the archived pre-migration production tree using three warmed samples on the same Windows host. Application readiness improved from 9,847.479 to 9,203.296 ms; movement transaction-plus-projection p95 from 2.094 to 1.811 ms; 3D dungeon unique-step p95 from 8.365 to 5.602 ms; battle setup from 112.968 to 84.114 ms; native 3440x1440 frame p95 from 6.198 to 5.852 ms; and native transaction-plus-projection p95 from 2.457 to 2.345 ms. The canonical 1280x720 completed tree measured 5.319 ms frame p95 and 1.936 ms transaction-plus-projection p95. No rendered sample skipped or queued a movement interval.
 
-[Runtime performance evidence](runtime-performance.md) records the complete medians, probe boundaries, and absolute limits. Exact-candidate export size and peak memory remain coupled to native release certification.
+[Runtime performance evidence](runtime-performance.md) records the complete medians, probe boundaries, absolute limits, and exact Windows candidate footprint. The final PCK grew 0.31 percent, the combined export grew 0.18 percent, and median peak working set fell 1.94 percent against the same-workspace pre-migration export.
 
 ## Remaining certification
 
@@ -65,7 +65,7 @@ The completed tree has passed the local core-performance gate against the archiv
 | Clean local onboarding | Complete locally | Tracked-files-only checkout imports, runs, and verifies |
 | Independent maintainer trial | Open | Six hint-free journeys completed without folklore |
 | Ordinary-play candidate | Open | AOGM, War, and City of Bywater walkthroughs accepted |
-| Final performance | Partial | Core startup, movement, dungeon, combat, package, and rendered probes pass locally; exact-candidate export size and peak memory remain |
+| Final performance | Complete locally | Core probes, exact Windows export size, and peak memory pass the relative and absolute limits |
 | Native platforms | Partial | Windows pre-certified; exact Windows/Linux/macOS candidate still required |
 | Hosted acquisition | Open | Real Git/LFS clone and GitHub Download ZIP contain valid packages |
 | Beta publication | Open | Green exact tag, reviewed draft assets, manual prerelease publication |

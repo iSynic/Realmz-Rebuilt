@@ -42,7 +42,9 @@ The completed architecture tree was compared with the archived pre-migration pro
 | Native 3440x1440 frame p95 | 6.198 ms | 5.852 ms | 5.58% faster |
 | Native transaction plus projection p95 | 2.457 ms | 2.345 ms | 4.56% faster |
 
-The completed 1280x720 rendered samples additionally measured 5.319 ms median frame p95 and 1.936 ms median transaction-plus-projection p95. All six rendered samples retained the full 240-move route, approximately 79.4 admitted steps per second, zero skipped intervals, zero catch-up bursts, and the existing visible-cell and simulation cadence. The 52.81 MiB Wrath package measured 8,182 ms against the prior 8,075 ms reference; the 107 ms increase is 1.33 percent and therefore does not cross both package rejection thresholds. Exact-candidate export size and peak memory remain part of native release certification rather than being inferred from these runtime probes.
+The completed 1280x720 rendered samples additionally measured 5.319 ms median frame p95 and 1.936 ms median transaction-plus-projection p95. All six rendered samples retained the full 240-move route, approximately 79.4 admitted steps per second, zero skipped intervals, zero catch-up bursts, and the existing visible-cell and simulation cadence. The 52.81 MiB Wrath package measured 8,182 ms against the prior 8,075 ms reference; the 107 ms increase is 1.33 percent and therefore does not cross both package rejection thresholds.
+
+The exact local Windows candidate exports a 109,071,360-byte executable and 153,000,388-byte PCK. The same-workspace pre-migration export produced the identical executable size and a 152,531,636-byte PCK, so the PCK grew 0.31 percent and the combined artifact grew 0.18 percent. Three clean two-second headless smoke launches measured a 217,632,768-byte median peak working set against 221,937,664 bytes for the same three-run pre-migration export, a 1.94 percent reduction. The comparison created no second checkout, and its temporary baseline artifact was removed after measurement.
 
 ## Launch and menu video
 

@@ -16,7 +16,7 @@ This page records current state and next work only. Detailed parity counts come 
 - A tracked-files-only clean checkout completed first import, startup, the complete test suite, architecture checks, scenario validation, and every Builder preview.
 - A locally sanitized one-root Git/LFS rehearsal and a separate no-local clone both passed. This proves the construction workflow, not GitHub-hosted archives.
 - A Windows export was built, inspected, and smoke-launched. The exact final candidate must still be rebuilt and launched on Windows, Linux, and macOS.
-- Three warmed completed-tree samples pass the local startup, movement, dungeon, combat, package, canonical-frame, and native-frame limits against the same-machine pre-migration baseline. Exact-candidate export size and peak memory remain part of native release evidence.
+- Three warmed completed-tree samples pass the local startup, movement, dungeon, combat, package, canonical-frame, and native-frame limits against the same-machine pre-migration baseline. The exact Windows candidate also passes native smoke, export-size, and peak-memory comparison.
 
 ## Beta 1 blockers
 
@@ -33,11 +33,6 @@ This page records current state and next work only. Detailed parity counts come 
 - Cover Assault on Giant Mountain, War in the Sword Lands, and City of Bywater. Record scenario, location or battle, renderer, save/package identity, and any observed defect.
 - Smoke the Mobile renderer and the explicit `--rendering-method gl_compatibility` fallback.
 - No P0 or P1 startup, corruption, package, crash, progression, or platform-launch defect may remain.
-
-### Performance acceptance
-
-- Local core certification is complete: three warmed same-machine samples satisfy the relative and absolute transaction, projection, frame, startup, dungeon, combat, and package limits.
-- Record exact-candidate export size and peak memory with the native artifacts, and explain or remove growth above 5 percent before tagging.
 
 ### Native and hosted acceptance
 
@@ -69,7 +64,7 @@ This page records current state and next work only. Detailed parity counts come 
 
 ## Release sequence
 
-1. Finish the maintainer, ordinary-play, performance, and native-platform gates above.
+1. Finish the maintainer, ordinary-play, and native-platform gates above.
 2. Create and verify the final private `git bundle --all` outside the repository.
 3. Build a fresh sanitized staging repository from the public-source manifest and create one root commit on `main` with Git LFS already configured.
 4. Run the complete gate and a separate clean LFS clone from that staging repository.

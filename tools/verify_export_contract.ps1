@@ -94,6 +94,11 @@ $releaseWorkflow = Get-Content -Raw -LiteralPath $releaseWorkflowPath
 foreach ($requiredReleaseContract in @('tags:', '"v*"', "draft: true", "prerelease: true", "SHA256SUMS", "realmz-rebuilt-windows-x86_64.zip", "realmz-rebuilt-linux-x86_64.tar.gz", "realmz-rebuilt-macos-universal.zip")) {
     if (-not $releaseWorkflow.Contains($requiredReleaseContract)) { throw "Tag workflow is missing required draft-prerelease contract: $requiredReleaseContract" }
 }
+foreach ($workflow in @($ci, $releaseWorkflow)) {
+    foreach ($windowsSmokeContract in @('$quotedLog =', '-ArgumentList "--headless --quit-after 2 --log-file $quotedLog"')) {
+        if (-not $workflow.Contains($windowsSmokeContract)) { throw "Windows native smoke must preserve an absolute log path as one quoted argument: $windowsSmokeContract" }
+    }
+}
 
 Write-Host "Windows, Linux, and macOS release export contracts verified."
 
