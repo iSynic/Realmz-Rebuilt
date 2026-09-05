@@ -243,7 +243,7 @@ static func _treasure_payload(state: StringName, prompt: String) -> Dictionary:
 		}
 	var has_item := state not in [&"empty", &"loading", &"error"]
 	var unidentified := state == &"unidentified"
-	var item_count := 24 if state == &"oversized" else 1 if has_item else 0
+	var item_count := 35 if state == &"oversized" else 1 if has_item else 0
 	var items: Array[Dictionary] = []
 	for item_index: int in item_count:
 		var assignments: Array[Dictionary] = []

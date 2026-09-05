@@ -256,7 +256,7 @@ static func _treasure_body(profile: String) -> TreasureRequestBody:
 		return body
 	body.characters = _reward_characters(profile)
 	if profile != "Empty":
-		var item_count := 14 if profile == "Long Content" else 4
+		var item_count := 35 if profile == "Long Content" else 4
 		for index: int in item_count:
 			body.items.append(_reward_item(index, body.characters, profile == "Unavailable"))
 	body.has_items = true

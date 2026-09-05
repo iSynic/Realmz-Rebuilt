@@ -124,7 +124,7 @@ func _build_loot_side(body: TreasureRequestBody) -> void:
 func _build_item_inspector(body: TreasureRequestBody) -> void:
 	var inspector := %TreasureItemRecord as BoxContainer
 	inspector.vertical = _compact
-	inspector.custom_minimum_size.y = 390.0 if _compact else 142.0
+	inspector.custom_minimum_size.y = 390.0 if _compact else 260.0
 	find_child("TreasureItemIdentity", true, false).custom_minimum_size.x = 0.0 if _compact else 360.0
 	find_child("TreasureItemProperties", true, false).custom_minimum_size.x = 0.0 if _compact else 360.0
 	find_child("TreasureCommandPanel", true, false).custom_minimum_size.x = 0.0 if _compact else 300.0
@@ -143,8 +143,20 @@ func _build_item_inspector(body: TreasureRequestBody) -> void:
 func _update_loot_columns(scroll: ScrollContainer, grid: GridContainer) -> void:
 	if scroll == null or grid == null or _compact:
 		return
-	var available_width := maxf(50.0, scroll.size.x - 12.0)
-	grid.columns = maxi(1, floori(available_width / 50.0))
+	var host := get_parent() as Control
+	var viewport_width := get_viewport_rect().size.x
+	var assigned_width := minf(host.size.x, viewport_width) if host != null and host.size.x > 0.0 else viewport_width
+	var workspace := %ClassicTreasureWorkspace as HBoxContainer
+	var party_panel := %TreasurePartyPanel as PanelContainer
+	var loot_margin := %TreasureItemScroll.get_parent() as MarginContainer
+	var horizontal_chrome := (
+		loot_margin.get_theme_constant("margin_left")
+		+ loot_margin.get_theme_constant("margin_right")
+		+ scroll.get_v_scroll_bar().get_combined_minimum_size().x
+	)
+	var loot_width := maxf(50.0, assigned_width - party_panel.custom_minimum_size.x - workspace.get_theme_constant("separation") - horizontal_chrome)
+	var cell_pitch := 50.0 + grid.get_theme_constant("h_separation")
+	grid.columns = maxi(1, floori((loot_width + grid.get_theme_constant("h_separation")) / cell_pitch))
 
 
 func _add_loot_item(parent: GridContainer, item: InteractionRequestValue.RewardItem) -> void:
