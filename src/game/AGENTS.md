@@ -196,7 +196,7 @@ Own the pure Realmz model, fixed Classic rules, topology, game clock, randomness
 ## Child DOX Index
 
 - `characters/AGENTS.md` owns mutable character truth, its save codec, character rules, lifetime history, and detached character views.
-- `combat/AGENTS.md` owns the explicit combat collaborator context, combat-owned event construction, and the public maintainer guide for that feature seam.
+- `combat/AGENTS.md` owns combat definitions, mutable battle truth, detached views, rule collaborators, typed results, requests, and the public maintainer guide.
 - `economy/AGENTS.md` owns money and temple rules, mutable location services, shop state, wealth records, and detached service views.
 - `inventory/AGENTS.md` owns immutable item lookup, carried-item rules, wearable equipment rules, and their typed results.
 - `magic/AGENTS.md` owns immutable spell lookup, mutable spell shortcuts and scroll facts, and the pure casting rule family.

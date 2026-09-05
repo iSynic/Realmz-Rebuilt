@@ -3,7 +3,7 @@
 class_name CombatFlow
 extends RefCounted
 
-const CombatBattleSetup = preload("res://src/game/rules/combat_battle_setup.gd")
+const CombatBattleSetup = preload("res://src/game/combat/combat_battle_setup.gd")
 const INVALID_COORDINATE := Vector2i(-100_000, -100_000)
 
 var rounds: CombatFlowLifecycle

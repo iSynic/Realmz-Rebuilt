@@ -15,9 +15,11 @@ Own the explicit collaboration boundary shared by deterministic battle rules.
 - `CombatView`, `BattlefieldView`, actor/catalog views, action-option views, and persistent-field views carry the detached battle read model.
 - `CombatRequestBody` carries the detached active-actor command surface through the shared interaction envelope.
 - Battlefield construction, physical attack policy and resolution, initiative, command/retreat probes, monster rules, and their typed results live beside the state they interpret.
+- `CombatFlow` and its action, reaction, phase, lifecycle, magic, field, summoning, and rollback collaborators own command mutation. `CombatBattleSetup` owns validated construction and opening turns.
+- `CombatAiScoring`, party and monster planners, party and monster automation, target facts, monster actions, and occupancy rules own deterministic automatic decisions and battlefield cleanup.
 - `README.md` is the public maintainer entry point for combat rules.
 
-`RealmzContent.combat` owns immutable definition lookup. The remaining command-flow, spell, field, lifecycle, automation, and AI collaborators remain under `src/game/rules` only until the next coherent combat ownership workflow moves them here with their UIDs and references.
+`RealmzContent.combat` owns immutable definition lookup. Every combat state, definition, view, rule collaborator, typed result, and request body now lives in this feature root; playthrough command submission and UI rendering remain in their respective boundaries.
 
 ## Local Contracts
 
@@ -32,7 +34,7 @@ Own the explicit collaboration boundary shared by deterministic battle rules.
 - Keep serialized combat state, event identities, RNG order, and Castle-visible outcomes unchanged during structural work.
 - Address `battlefield.terrain` or `battlefield.actors` directly; do not restore aggregate forwarding methods. Use `BattlefieldGrid` for fixed dimensions and footprint geometry.
 - Split cohesive action/event policy before expanding a collaborator beyond the architecture limits.
-- Move remaining combat rules and views here only in coherent batches that preserve Godot UIDs and update tests, docs, and the system manifest together.
+- Keep combat rules, views, request bodies, tests, docs, and the system manifest synchronized when a collaborator moves or changes ownership.
 
 ## Verification
 

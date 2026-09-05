@@ -4483,7 +4483,7 @@
             "symbol": "func resolve_character_attack"
           },
           {
-            "path": "src/game/rules/combat_character_spell_resolution.gd",
+            "path": "src/game/combat/combat_character_spell_resolution.gd",
             "symbol": "func commit"
           }
         ]
@@ -5630,11 +5630,11 @@
             "symbol": "func _use_scroll"
           },
           {
-            "path": "src/game/rules/combat_flow.gd",
+            "path": "src/game/combat/combat_flow.gd",
             "symbol": "func use_spell_item"
           },
           {
-            "path": "src/game/rules/combat_flow.gd",
+            "path": "src/game/combat/combat_flow.gd",
             "symbol": "func use_combat_scroll"
           }
         ]
@@ -6395,7 +6395,7 @@
             "symbol": "func resolve_field_spell"
           },
           {
-            "path": "src/game/rules/combat_flow.gd",
+            "path": "src/game/combat/combat_flow.gd",
             "symbol": "func use_combat_scroll"
           }
         ]
@@ -6572,11 +6572,11 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/game/rules/combat_flow.gd",
+            "path": "src/game/combat/combat_flow.gd",
             "symbol": "class_name CombatFlow"
           },
           {
-            "path": "src/game/rules/combat_flow_summoning.gd",
+            "path": "src/game/combat/combat_flow_summoning.gd",
             "symbol": "class_name CombatFlowSummoning"
           },
           {
@@ -7540,7 +7540,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/game/rules/combat_flow.gd",
+            "path": "src/game/combat/combat_flow.gd",
             "symbol": "class_name CombatFlow"
           }
         ]
@@ -7720,7 +7720,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/game/rules/combat_flow.gd",
+            "path": "src/game/combat/combat_flow.gd",
             "symbol": "class_name CombatFlow"
           }
         ]
@@ -7891,7 +7891,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/game/rules/combat_flow.gd",
+            "path": "src/game/combat/combat_flow.gd",
             "symbol": "class_name CombatFlow"
           }
         ]
@@ -8024,7 +8024,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/game/rules/combat_flow.gd",
+            "path": "src/game/combat/combat_flow.gd",
             "symbol": "class_name CombatFlow"
           }
         ]
@@ -8134,7 +8134,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/game/rules/combat_flow.gd",
+            "path": "src/game/combat/combat_flow.gd",
             "symbol": "class_name CombatFlow"
           }
         ]
@@ -8231,7 +8231,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/game/rules/combat_flow.gd",
+            "path": "src/game/combat/combat_flow.gd",
             "symbol": "class_name CombatFlow"
           }
         ]
@@ -10146,11 +10146,11 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/game/rules/combat_party_automation.gd",
+            "path": "src/game/combat/combat_party_automation.gd",
             "symbol": "func run_auto_turn("
           },
           {
-            "path": "src/game/rules/combat_party_action_planner.gd",
+            "path": "src/game/combat/combat_party_action_planner.gd",
             "symbol": "func _best_summon("
           }
         ]
@@ -10354,7 +10354,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/game/rules/combat_flow_actions.gd",
+            "path": "src/game/combat/combat_flow_actions.gd",
             "symbol": "func probe_delay("
           },
           {
@@ -10459,7 +10459,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/game/rules/combat_flow_actions.gd",
+            "path": "src/game/combat/combat_flow_actions.gd",
             "symbol": "func probe_bandage("
           },
           {
@@ -10564,7 +10564,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/game/rules/combat_flow_actions.gd",
+            "path": "src/game/combat/combat_flow_actions.gd",
             "symbol": "func turn_undead("
           }
         ]
@@ -10681,7 +10681,7 @@
             "symbol": "class_name CombatUndoState"
           },
           {
-            "path": "src/game/rules/combat_flow_actions.gd",
+            "path": "src/game/combat/combat_flow_actions.gd",
             "symbol": "func probe_undo"
           }
         ]
