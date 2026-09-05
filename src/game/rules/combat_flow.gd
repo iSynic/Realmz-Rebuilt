@@ -3,6 +3,7 @@
 class_name CombatFlow
 extends RefCounted
 
+const CombatBattleSetup = preload("res://src/game/rules/combat_battle_setup.gd")
 const INVALID_COORDINATE := Vector2i(-100_000, -100_000)
 
 var rounds: CombatFlowLifecycle
@@ -13,6 +14,7 @@ var fields: CombatFlowFields
 var summoning: CombatFlowSummoning
 var phase: CombatFlowPhase
 var automation: CombatFlowAutomation
+var battle_setup: CombatBattleSetup
 var _context: CombatContext
 
 
@@ -26,11 +28,12 @@ func _init(rules: RealmzRules) -> void:
 	summoning = CombatFlowSummoning.new(_context)
 	phase = CombatFlowPhase.new(_context)
 	automation = CombatFlowAutomation.new(_context)
+	battle_setup = CombatBattleSetup.new(_context)
 	_context.bind_collaborators(rounds, actions, reactions, magic, fields, summoning, phase, automation)
 
 
 func start_battle(state: GameState, content: RealmzContent, battle: BattleDefinition, rng: RealmzRng, surprise: int = 0, participant_character_ids: Array[String] = []) -> CombatFlowResult:
-	return rounds.start_battle(state, content, battle, rng, surprise, participant_character_ids)
+	return battle_setup.start(state, content, battle, rng, surprise, participant_character_ids)
 
 
 func submit_action(state: GameState, content: RealmzContent, actor_id: String, action: StringName, target_id: String, rng: RealmzRng, allow_friendly_contact: bool = false) -> CombatFlowResult:

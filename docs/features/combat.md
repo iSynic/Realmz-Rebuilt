@@ -4,7 +4,7 @@
 
 The battlefield follows the same ownership model. `BattlefieldState` keeps map identity, source placement, facing, and the two real collaborators. `BattlefieldTerrainState` owns the 90-by-90 terrain cells and navigation revision; `BattlefieldActorState` owns actor anchors, monster sizes, footprints, occupancy, movement, and swaps. `BattlefieldGrid` owns the shared dimensions and footprint geometry. `BattlefieldStateCodec` is the only flat save encoder/decoder, so rules call `battlefield.terrain` or `battlefield.actors` rather than passing through aggregate proxy methods.
 
-`CombatFlow` is the stable command surface over round, action, reaction, magic, field, navigation, and automation collaborators. They share one explicit combat context and return typed results; callers must not reach into collaborator-private methods.
+`CombatFlow` is the stable command surface over battle setup, round, action, reaction, magic, field, navigation, and automation collaborators. `CombatBattleSetup` owns the complete transactional construction sequence before handing the committed battle to the lifecycle and automation owners. All collaborators share one explicit combat context and return typed results; callers must not reach into collaborator-private methods.
 
 Player battle input begins at `CombatIntents`: `choose_action`, `move`, and `set_auto` construct the stable command kinds with `CombatIntentPayloads.Action`, `Move`, and `Auto`. They carry player choice only; action admission and mutation remain in the combat collaborators below.
 

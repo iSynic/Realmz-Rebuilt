@@ -80,46 +80,11 @@ func resolve_actor_collisions(state: GameState, content: RealmzContent, actor_id
 	for field: PersistentCombatField in combat.spell_runtime.persistent_fields():
 		if retain_turn_collisions and combat.spell_runtime.has_field_collision(field.slot):
 			continue
-		var spell := content.magic.spell_by_id(field.spell_id)
-		var character_caster := state.party.character_by_id(field.caster_id)
-		var monster_caster := combat.roster.monster_by_id(field.caster_id)
-		if spell == null or character_caster == null and monster_caster == null:
-			return COLLISION_INVALID
 		if not _field_intersects_footprint(field, footprint):
 			continue
-		var character_targets: Array[CharacterState] = []
-		var monster_targets: Array[MonsterState] = []
-		var monster_definitions: Array[MonsterDefinition] = []
-		var selections: Array[SpellTargetSelection] = []
-		if character != null:
-			character_targets.append(character)
-			selections.append(SpellTargetSelection.for_character(character))
-		else:
-			var definition := content.combat.monster_by_id(monster.definition_id)
-			if definition == null:
-				return COLLISION_INVALID
-			monster_targets.append(monster)
-			monster_definitions.append(definition)
-			selections.append(SpellTargetSelection.for_monster(monster, definition))
-		var group: GroupSpellResolution
-		if character_caster != null:
-			group = _context.magic.resolve_character_group_spell(character_caster, character_targets, monster_targets, monster_definitions, spell, field.power_level, field.cast_level, rng, false, false)
-		else:
-			var caster_definition := content.combat.monster_by_id(monster_caster.definition_id)
-			if caster_definition == null:
-				return COLLISION_INVALID
-			group = _context.magic.resolve_monster_group_spell(monster_caster, caster_definition, selections, spell, field.power_level, field.cast_level, rng, false, false)
-		if group == null or not group.cast or group.resolutions.size() != 1:
-			return COLLISION_INVALID
-		var resolution: SpellResolution = group.resolutions[0]
-		if retain_turn_collisions and _collision_consumes_field(spell, group, resolution):
-			combat.spell_runtime.mark_field_collision(field.slot)
-		if resolution.damage > 0 or resolution.damage < 0 and monster != null:
-			combat.actor_statuses.mark_attacked(actor_id)
-		var payload := {"actorId": field.caster_id, "targetId": actor_id, "targetKind": "character" if character != null else "monster", "spellId": spell.id, "targetType": spell.target_type, "power": field.power_level, "classicTier": field.cast_level, "reflected": false, "resisted": resolution.resisted, "saved": resolution.saved, "damage": resolution.damage, "healing": maxi(0, -resolution.damage), "duration": resolution.duration, "defeated": resolution.target_defeated, "fieldSlot": field.slot, "areaCenter": [field.center.x, field.center.y], "areaShape": field.shape, "source": "classic-persistent-field", "detectedMagicItemCount": resolution.detected_magic_item_count}
-		if resolution.applied_condition >= 0:
-			payload["appliedCondition"] = resolution.applied_condition
-		events.append(DomainEvent.new(&"combat_spell_resolved", payload))
+		var field_result := _resolve_actor_field(state, content, field, character, monster, rng, events, retain_turn_collisions)
+		if field_result != COLLISION_COMPLETED:
+			return field_result
 	var defeated := character != null and character.current_health <= 0 or monster != null and monster.current_health <= 0
 	if not defeated:
 		return COLLISION_COMPLETED
@@ -132,6 +97,54 @@ func resolve_actor_collisions(state: GameState, content: RealmzContent, actor_id
 	if begin_death_macros and not combat.spell_runtime.pending_death_macro_id().is_empty():
 		return COLLISION_DEATH_MACRO if begin_pending_death_macros(combat, content, events) else COLLISION_INVALID
 	return COLLISION_DEFEATED
+
+
+func _resolve_actor_field(state: GameState, content: RealmzContent, field: PersistentCombatField, character: CharacterState, monster: MonsterState, rng: RealmzRng, events: Array[DomainEvent], retain_turn_collisions: bool) -> int:
+	var combat := state.combat
+	var spell := content.magic.spell_by_id(field.spell_id)
+	var character_caster := state.party.character_by_id(field.caster_id)
+	var monster_caster := combat.roster.monster_by_id(field.caster_id)
+	if spell == null or character_caster == null and monster_caster == null:
+		return COLLISION_INVALID
+	var character_targets: Array[CharacterState] = []
+	var monster_targets: Array[MonsterState] = []
+	var monster_definitions: Array[MonsterDefinition] = []
+	var selections: Array[SpellTargetSelection] = []
+	if character != null:
+		character_targets.append(character)
+		selections.append(SpellTargetSelection.for_character(character))
+	else:
+		var definition := content.combat.monster_by_id(monster.definition_id)
+		if definition == null:
+			return COLLISION_INVALID
+		monster_targets.append(monster)
+		monster_definitions.append(definition)
+		selections.append(SpellTargetSelection.for_monster(monster, definition))
+	var group: GroupSpellResolution
+	if character_caster != null:
+		group = _context.magic.resolve_character_group_spell(character_caster, character_targets, monster_targets, monster_definitions, spell, field.power_level, field.cast_level, rng, false, false)
+	else:
+		var caster_definition := content.combat.monster_by_id(monster_caster.definition_id)
+		if caster_definition == null:
+			return COLLISION_INVALID
+		group = _context.magic.resolve_monster_group_spell(monster_caster, caster_definition, selections, spell, field.power_level, field.cast_level, rng, false, false)
+	if group == null or not group.cast or group.resolutions.size() != 1:
+		return COLLISION_INVALID
+	var resolution: SpellResolution = group.resolutions[0]
+	if retain_turn_collisions and _collision_consumes_field(spell, group, resolution):
+		combat.spell_runtime.mark_field_collision(field.slot)
+	if resolution.damage > 0 or resolution.damage < 0 and monster != null:
+		combat.actor_statuses.mark_attacked(character.id if character != null else monster.id)
+	var target_id := character.id if character != null else monster.id
+	_append_field_collision_event(events, field, spell, target_id, character != null, resolution)
+	return COLLISION_COMPLETED
+
+
+static func _append_field_collision_event(events: Array[DomainEvent], field: PersistentCombatField, spell: SpellDefinition, target_id: String, target_is_character: bool, resolution: SpellResolution) -> void:
+	var payload := {"actorId": field.caster_id, "targetId": target_id, "targetKind": "character" if target_is_character else "monster", "spellId": spell.id, "targetType": spell.target_type, "power": field.power_level, "classicTier": field.cast_level, "reflected": false, "resisted": resolution.resisted, "saved": resolution.saved, "damage": resolution.damage, "healing": maxi(0, -resolution.damage), "duration": resolution.duration, "defeated": resolution.target_defeated, "fieldSlot": field.slot, "areaCenter": [field.center.x, field.center.y], "areaShape": field.shape, "source": "classic-persistent-field", "detectedMagicItemCount": resolution.detected_magic_item_count}
+	if resolution.applied_condition >= 0:
+		payload["appliedCondition"] = resolution.applied_condition
+	events.append(DomainEvent.new(&"combat_spell_resolved", payload))
 
 
 func begin_pending_death_macros(combat: CombatState, content: RealmzContent, events: Array[DomainEvent]) -> bool:

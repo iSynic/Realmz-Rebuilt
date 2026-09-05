@@ -250,46 +250,11 @@ func continue_pending_reaction(state: GameState, content: RealmzContent, rng: Re
 			continue
 		match reaction.phase:
 			CombatReactionState.GUARD_BEFORE:
-				if reaction.kind == CombatReactionState.CHARACTER_MOVE:
-					if reaction.friendly_collision_action == &"attack":
-						var target_monster := combat.roster.monster_by_id(reaction.friendly_collision_target_id)
-						var previous_traitor := false
-						if target_monster != null:
-							previous_traitor = target_monster.traitor
-							target_monster.traitor = not state.party.character_by_id(reaction.mover_id).traitor
+				var guard_result := _continue_guard_before(state, content, reaction, rng, events)
+				if guard_result != REACTION_COMPLETED or combat.pending_reaction == null:
+					if guard_result == REACTION_MOVER_DEFEATED:
 						combat.pending_reaction = null
-						var friendly_attack: CombatFlowResult = _context.actions().submit_action(state, content, reaction.mover_id, &"attack", reaction.friendly_collision_target_id, rng, true)
-						if not friendly_attack.ok:
-							if target_monster != null:
-								target_monster.traitor = previous_traitor
-							events.append(DomainEvent.new(&"combat_contact_attack_failed", {"actorId": reaction.mover_id, "targetId": reaction.friendly_collision_target_id, "reason": String(friendly_attack.error_code)}))
-							return REACTION_COMPLETED
-						events.append_array(friendly_attack.events)
-						return REACTION_COMPLETED
-					var contact_target_id = _context.automation().hostile_contact_target_id(state, reaction.mover_id, reaction.destination)
-					if not contact_target_id.is_empty():
-						if reaction.auto_switch_to_melee and combat.actor_statuses.character_weapon_mode(reaction.mover_id) != &"melee":
-							if not combat.actor_statuses.set_character_weapon_mode(reaction.mover_id, &"melee"):
-								combat.pending_reaction = null
-								events.append(DomainEvent.new(&"combat_contact_attack_failed", {"actorId": reaction.mover_id, "targetId": contact_target_id, "reason": "invalid_weapon_mode"}))
-								return REACTION_COMPLETED
-							events.append(DomainEvent.new(&"sound_requested", {"soundId": 141, "waitForCompletion": false, "source": "classic-auto-weapon-switch"}))
-							events.append(DomainEvent.new(&"combat_weapon_mode_changed", {"actorId": reaction.mover_id, "mode": "melee", "source": "classic-auto-weapon-switch"}))
-						combat.pending_reaction = null
-						var contact_result = _context.actions().submit_action(state, content, reaction.mover_id, &"attack", contact_target_id, rng)
-						if not contact_result.ok:
-							events.append(DomainEvent.new(&"combat_contact_attack_failed", {"actorId": reaction.mover_id, "targetId": contact_target_id, "reason": String(contact_result.error_code)}))
-							return REACTION_COMPLETED
-						events.append_array(contact_result.events)
-						return REACTION_COMPLETED
-					reaction.auto_switch_to_melee = false
-					reaction.set_phase(CombatReactionState.WITHDRAWAL, withdrawal_hostiles(state, reaction))
-				else:
-					var move_result := commit_reaction_move(state, content, reaction, rng, events)
-					if move_result != REACTION_COMPLETED:
-						if move_result == REACTION_MOVER_DEFEATED:
-							combat.pending_reaction = null
-						return move_result
+					return guard_result
 			CombatReactionState.WITHDRAWAL:
 				var move_result := commit_reaction_move(state, content, reaction, rng, events)
 				if move_result != REACTION_COMPLETED:
@@ -304,6 +269,55 @@ func continue_pending_reaction(state: GameState, content: RealmzContent, rng: Re
 		events.append(DomainEvent.new(&"combat_reaction_failed", {"reason": "reaction-budget-exhausted"}))
 		if combat != null:
 			combat.pending_reaction = null
+	return REACTION_COMPLETED
+
+
+func _continue_guard_before(state: GameState, content: RealmzContent, reaction: CombatReactionState, rng: RealmzRng, events: Array[DomainEvent]) -> int:
+	if reaction.kind != CombatReactionState.CHARACTER_MOVE:
+		return commit_reaction_move(state, content, reaction, rng, events)
+	if reaction.friendly_collision_action == &"attack":
+		return _submit_friendly_contact_attack(state, content, reaction, rng, events)
+	var contact_target_id = _context.automation().hostile_contact_target_id(state, reaction.mover_id, reaction.destination)
+	if not contact_target_id.is_empty():
+		return _submit_hostile_contact_attack(state, content, reaction, contact_target_id, rng, events)
+	reaction.auto_switch_to_melee = false
+	reaction.set_phase(CombatReactionState.WITHDRAWAL, withdrawal_hostiles(state, reaction))
+	return REACTION_COMPLETED
+
+
+func _submit_friendly_contact_attack(state: GameState, content: RealmzContent, reaction: CombatReactionState, rng: RealmzRng, events: Array[DomainEvent]) -> int:
+	var combat := state.combat
+	var target_monster := combat.roster.monster_by_id(reaction.friendly_collision_target_id)
+	var previous_traitor := false
+	if target_monster != null:
+		previous_traitor = target_monster.traitor
+		target_monster.traitor = not state.party.character_by_id(reaction.mover_id).traitor
+	combat.pending_reaction = null
+	var friendly_attack: CombatFlowResult = _context.actions().submit_action(state, content, reaction.mover_id, &"attack", reaction.friendly_collision_target_id, rng, true)
+	if not friendly_attack.ok:
+		if target_monster != null:
+			target_monster.traitor = previous_traitor
+		events.append(DomainEvent.new(&"combat_contact_attack_failed", {"actorId": reaction.mover_id, "targetId": reaction.friendly_collision_target_id, "reason": String(friendly_attack.error_code)}))
+		return REACTION_COMPLETED
+	events.append_array(friendly_attack.events)
+	return REACTION_COMPLETED
+
+
+func _submit_hostile_contact_attack(state: GameState, content: RealmzContent, reaction: CombatReactionState, target_id: String, rng: RealmzRng, events: Array[DomainEvent]) -> int:
+	var combat := state.combat
+	if reaction.auto_switch_to_melee and combat.actor_statuses.character_weapon_mode(reaction.mover_id) != &"melee":
+		if not combat.actor_statuses.set_character_weapon_mode(reaction.mover_id, &"melee"):
+			combat.pending_reaction = null
+			events.append(DomainEvent.new(&"combat_contact_attack_failed", {"actorId": reaction.mover_id, "targetId": target_id, "reason": "invalid_weapon_mode"}))
+			return REACTION_COMPLETED
+		events.append(DomainEvent.new(&"sound_requested", {"soundId": 141, "waitForCompletion": false, "source": "classic-auto-weapon-switch"}))
+		events.append(DomainEvent.new(&"combat_weapon_mode_changed", {"actorId": reaction.mover_id, "mode": "melee", "source": "classic-auto-weapon-switch"}))
+	combat.pending_reaction = null
+	var contact_result = _context.actions().submit_action(state, content, reaction.mover_id, &"attack", target_id, rng)
+	if not contact_result.ok:
+		events.append(DomainEvent.new(&"combat_contact_attack_failed", {"actorId": reaction.mover_id, "targetId": target_id, "reason": String(contact_result.error_code)}))
+		return REACTION_COMPLETED
+	events.append_array(contact_result.events)
 	return REACTION_COMPLETED
 
 
@@ -438,57 +452,67 @@ func resolve_monster_reaction(state: GameState, content: RealmzContent, attacker
 	var weapon := content.items.item_by_id(attacker.weapon_id) if not attacker.weapon_id.is_empty() else null
 	var character_target := state.party.character_by_id(target_id)
 	if character_target != null:
-		var race := content.characters.race_by_id(character_target.race_id)
-		var caste := content.characters.caste_by_id(character_target.caste_id)
-		var charm_bonus := 50 if state.party.conditions.is_active(ConditionRules.PARTY_CHARM_RESISTANCE) else 0
-		var defender_equipment := _context.equipment.combat_equipment(character_target, content.items.definitions())
-		var defender_luck := defender_equipment.effective_luck if defender_equipment.valid else character_target.luck
-		var defender_armor := defender_equipment.effective_armor if defender_equipment.valid else character_target.armor
-		var reaction_context := MonsterAttackContext.new(weapon, state.clock.day(), behind, defender_luck, state.party.conditions.is_active(ConditionRules.PARTY_DRAGON_HIDE), defender_armor)
-		var reaction_resolution := _context.combat.resolve_monster_attack(attacker, definition, 0, character_target, race, caste, rng, charm_bonus, reaction_context, true)
-		if reaction_resolution.total_damage() > 0:
-			combat.actor_statuses.mark_attacked(character_target.id)
-		if reaction_resolution.fumbled:
-			_context.actions().events().commit_monster_fumble(attacker, events)
-		if reaction_resolution.special_handled:
-			_context.actions().events().append_monster_special_events(events, attacker.id, character_target.id, &"character", reaction_resolution)
-			if reaction_resolution.aging != null and reaction_resolution.aging.changed_group():
-				events.append(DomainEvent.new(&"character_age_changed", reaction_resolution.aging.event_payload(character_target, race)))
-				combat.pending_monster_attack = PendingMonsterAttack.new(attacker.id, character_target.id, action, reaction_resolution.damage, reaction_resolution.chance, reaction_resolution.roll, reaction_resolution.weapon_condition_index, reaction_resolution.weapon_condition_before, reaction_resolution.weapon_condition_after, reaction_resolution.physical_feedback_sound_id)
-				return REACTION_WAITING
-		_context.actions().events().append_monster_physical_feedback(events, reaction_resolution.physical_feedback_sound_id)
-		_context.actions().events().append_monster_attack_audio(events, attacker, definition, 0, weapon, reaction_resolution, rng)
-		var reaction_event := DomainEvent.new(&"combat_attack_resolved", {"actorId": attacker.id, "targetId": character_target.id, "targetKind": "character", "action": String(action), "attackIndex": 0, "hit": reaction_resolution.hit, "damage": reaction_resolution.total_damage(), "defeated": reaction_resolution.killed, "chance": reaction_resolution.chance, "roll": reaction_resolution.roll})
-		_context.actions().events().append_physical_result_effect(reaction_event, reaction_resolution.hit, weapon != null)
-		append_reaction_identity(reaction_event, action, behind)
-		events.append(reaction_event)
-		if reaction_resolution.killed:
-			combat.pending_reaction.mover_killed = true
-			_context.actions().mark_character_bleeding(state, character_target, true)
-			_context.automation().remove_defeated_position(combat, character_target.id, true)
-			return REACTION_MOVER_DEFEATED
-		return REACTION_COMPLETED
+		return _resolve_monster_character_reaction(state, content, attacker, definition, weapon, character_target, action, behind, rng, events)
 	var monster_target := combat.roster.monster_by_id(target_id)
 	if monster_target == null:
 		return REACTION_COMPLETED
-	var target_definition := content.combat.monster_by_id(monster_target.definition_id)
-	var context := MonsterAttackContext.new(weapon, state.clock.day(), behind)
-	var resolution := _context.combat.resolve_monster_attack_monster(attacker, definition, 0, monster_target, target_definition, rng, context, true)
+	return _resolve_monster_monster_reaction(state, content, attacker, definition, weapon, monster_target, action, behind, rng, events)
+
+
+func _resolve_monster_character_reaction(state: GameState, content: RealmzContent, attacker: MonsterState, definition: MonsterDefinition, weapon: ItemDefinition, target: CharacterState, action: StringName, behind: bool, rng: RealmzRng, events: Array[DomainEvent]) -> int:
+	var combat := state.combat
+	var race := content.characters.race_by_id(target.race_id)
+	var caste := content.characters.caste_by_id(target.caste_id)
+	var charm_bonus := 50 if state.party.conditions.is_active(ConditionRules.PARTY_CHARM_RESISTANCE) else 0
+	var defender_equipment := _context.equipment.combat_equipment(target, content.items.definitions())
+	var defender_luck := defender_equipment.effective_luck if defender_equipment.valid else target.luck
+	var defender_armor := defender_equipment.effective_armor if defender_equipment.valid else target.armor
+	var reaction_context := MonsterAttackContext.new(weapon, state.clock.day(), behind, defender_luck, state.party.conditions.is_active(ConditionRules.PARTY_DRAGON_HIDE), defender_armor)
+	var resolution := _context.combat.resolve_monster_attack(attacker, definition, 0, target, race, caste, rng, charm_bonus, reaction_context, true)
 	if resolution.total_damage() > 0:
-		combat.actor_statuses.mark_attacked(monster_target.id)
+		combat.actor_statuses.mark_attacked(target.id)
 	if resolution.fumbled:
 		_context.actions().events().commit_monster_fumble(attacker, events)
 	if resolution.special_handled:
-		_context.actions().events().append_monster_special_events(events, attacker.id, monster_target.id, &"monster", resolution)
+		_context.actions().events().append_monster_special_events(events, attacker.id, target.id, &"character", resolution)
+		if resolution.aging != null and resolution.aging.changed_group():
+			events.append(DomainEvent.new(&"character_age_changed", resolution.aging.event_payload(target, race)))
+			combat.pending_monster_attack = PendingMonsterAttack.new(attacker.id, target.id, action, resolution.damage, resolution.chance, resolution.roll, resolution.weapon_condition_index, resolution.weapon_condition_before, resolution.weapon_condition_after, resolution.physical_feedback_sound_id)
+			return REACTION_WAITING
+	_context.actions().events().append_monster_physical_feedback(events, resolution.physical_feedback_sound_id)
 	_context.actions().events().append_monster_attack_audio(events, attacker, definition, 0, weapon, resolution, rng)
-	var event := DomainEvent.new(&"combat_attack_resolved", {"actorId": attacker.id, "targetId": monster_target.id, "targetKind": "monster", "action": String(action), "attackIndex": 0, "hit": resolution.hit, "damage": resolution.total_damage(), "defeated": resolution.killed, "chance": resolution.chance, "roll": resolution.roll})
+	var event := DomainEvent.new(&"combat_attack_resolved", {"actorId": attacker.id, "targetId": target.id, "targetKind": "character", "action": String(action), "attackIndex": 0, "hit": resolution.hit, "damage": resolution.total_damage(), "defeated": resolution.killed, "chance": resolution.chance, "roll": resolution.roll})
+	_context.actions().events().append_physical_result_effect(event, resolution.hit, weapon != null)
+	append_reaction_identity(event, action, behind)
+	events.append(event)
+	if not resolution.killed:
+		return REACTION_COMPLETED
+	combat.pending_reaction.mover_killed = true
+	_context.actions().mark_character_bleeding(state, target, true)
+	_context.automation().remove_defeated_position(combat, target.id, true)
+	return REACTION_MOVER_DEFEATED
+
+
+func _resolve_monster_monster_reaction(state: GameState, content: RealmzContent, attacker: MonsterState, definition: MonsterDefinition, weapon: ItemDefinition, target: MonsterState, action: StringName, behind: bool, rng: RealmzRng, events: Array[DomainEvent]) -> int:
+	var combat := state.combat
+	var target_definition := content.combat.monster_by_id(target.definition_id)
+	var context := MonsterAttackContext.new(weapon, state.clock.day(), behind)
+	var resolution := _context.combat.resolve_monster_attack_monster(attacker, definition, 0, target, target_definition, rng, context, true)
+	if resolution.total_damage() > 0:
+		combat.actor_statuses.mark_attacked(target.id)
+	if resolution.fumbled:
+		_context.actions().events().commit_monster_fumble(attacker, events)
+	if resolution.special_handled:
+		_context.actions().events().append_monster_special_events(events, attacker.id, target.id, &"monster", resolution)
+	_context.actions().events().append_monster_attack_audio(events, attacker, definition, 0, weapon, resolution, rng)
+	var event := DomainEvent.new(&"combat_attack_resolved", {"actorId": attacker.id, "targetId": target.id, "targetKind": "monster", "action": String(action), "attackIndex": 0, "hit": resolution.hit, "damage": resolution.total_damage(), "defeated": resolution.killed, "chance": resolution.chance, "roll": resolution.roll})
 	_context.actions().events().append_physical_result_effect(event, resolution.hit, weapon != null)
 	append_reaction_identity(event, action, behind)
 	events.append(event)
 	if resolution.killed:
 		combat.pending_reaction.mover_killed = true
-		var death_macro_requested = _context.actions().events().request_monster_death_macro(monster_target, target_definition, events)
-		_context.automation().remove_defeated_position(combat, monster_target.id, not death_macro_requested)
+		var death_macro_requested = _context.actions().events().request_monster_death_macro(target, target_definition, events)
+		_context.automation().remove_defeated_position(combat, target.id, not death_macro_requested)
 		return REACTION_DEATH_MACRO if death_macro_requested else REACTION_MOVER_DEFEATED
 	return REACTION_COMPLETED
 
