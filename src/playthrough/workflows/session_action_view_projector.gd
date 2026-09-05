@@ -5,8 +5,8 @@ extends RefCounted
 const ProjectionPolicy := preload("res://src/playthrough/workflows/session_view_projection_policy.gd")
 
 static func populate_services(context: SessionWorkflowContext, result: GameView) -> void:
-	if not context.state.active_shop_id.is_empty():
-		var shop := context.content.shop_by_id(context.state.active_shop_id)
+	if not context.state.location_services.active_shop_id.is_empty():
+		var shop := context.content.shop_by_id(context.state.location_services.active_shop_id)
 		if shop != null:
 			var shop_view := ServiceView.new()
 			shop_view.service_id = shop.id
@@ -14,14 +14,14 @@ static func populate_services(context: SessionWorkflowContext, result: GameView)
 			shop_view.title = "Shop"
 			shop_view.actions = [&"enter"]
 			result.services.append(shop_view)
-	if context.state.temple_available:
+	if context.state.location_services.temple_available:
 		var temple_view := ServiceView.new()
 		temple_view.service_id = "realmz.service.temple"
 		temple_view.service_kind = &"temple"
 		temple_view.title = "Temple"
 		temple_view.actions = [&"enter"]
 		result.services.append(temple_view)
-	if context.state.bank_available:
+	if context.state.location_services.bank_available:
 		var bank_view := ServiceView.new()
 		bank_view.service_id = "realmz.service.bank"
 		bank_view.service_kind = &"bank"

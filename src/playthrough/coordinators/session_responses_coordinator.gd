@@ -579,7 +579,7 @@ func open_contextual_service(service_id: String, preceding_events: Array[DomainE
 		operation = _context.runtime_api.request_available_temple(request_id)
 	elif service_id == "realmz.service.bank":
 		operation = _context.runtime_api.request_available_bank(request_id)
-	elif service_id == _context.state.active_shop_id:
+	elif service_id == _context.state.location_services.active_shop_id:
 		operation = _context.runtime_api.request_available_shop(request_id)
 	else:
 		return SessionCoordinatorResult.failed(&"service_unavailable", "The selected service is not available at this location.", preceding_events)

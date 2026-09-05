@@ -28,8 +28,8 @@ If you seek a particular thing, begin here:
 
 | You wish to change | First place to look |
 |---|---|
-| A character, party, item, spell, monster, or map record | `src/game/state`, `src/game/content`, then `src/game/view` |
-| A fixed calculation such as fatigue, movement, combat, equipment, or spell effects | `src/game/rules` |
+| A character, economy, inventory, magic, combat, or world record | Its named feature root under `src/game`, then the remaining shared `state`, `content`, or `view` folder |
+| A fixed calculation such as fatigue, movement, combat, equipment, or spell effects | Its named feature root under `src/game`, then `src/game/rules` while that feature is still being gathered |
 | What happens after a player command | `src/playthrough/game_session.gd`, then the named coordinator or workflow |
 | A Classic opcode, AP/XAP, encounter, or Safe Scenario Action | `src/scenarios` |
 | Package loading, saves, Character Files, or settings | `src/storage` |
@@ -87,7 +87,9 @@ Mutations are synchronous. A step contains committed ordered events, an optional
 
 The engine models Realmz concepts—party, characters, maps, APs/XAPs, Simple/Complex/Thief/Timed Encounters, battles, shops, treasures, spells, items, monsters, races, and castes—rather than translating them into generic RPG resources. Mutable state directly represents conditions, equipment and charges, pooled/banked wealth, allies, encounter attempts, shops, combatants, and program replacement. `RealmzRules` is always present and has no provider registry or compatibility selector. Its character, condition/time, inventory, equipment, economy, combat, magic, and monster modules are fixed collaborators, not swappable providers. `InventoryRules` owns carried-item and charge transactions; `EquipmentRules` owns wearable admission and combat loadouts. A narrow named legacy quirk exists only when authored content demonstrably needs it.
 
-There is no single “character class file” that defines a whole adventurer. Immutable records describe races, castes, spells, and items; `CharacterState` owns one character's changing stamina, spell points, inventory, conditions, appearance, and lifetime record; `CharacterView` is the detached copy presented to Godot. `CasteDefinition` names its attribute constraints and level progression separately, so a reader can follow either concern without decoding the flat Providence record or its old 35-argument constructor. Search by the concept and suffix together—such as `CharacterState`, `CasteDefinition`, or `CharacterView`—rather than looking for one generic character script.
+There is no single “character class file” that defines a whole adventurer. Immutable records describe races, castes, spells, and items; `CharacterState` owns one character's changing stamina, spell points, inventory, conditions, appearance, and lifetime record; `CharacterView` is the detached copy presented to Godot. Those character owners now live together in `src/game/characters`. `CasteDefinition` names its attribute constraints and level progression separately, so a reader can follow either concern without decoding the flat Providence record or its old 35-argument constructor. Search by the concept and suffix together—such as `CharacterState`, `CasteDefinition`, or `CharacterView`—rather than looking for one generic character script.
+
+Money and location services follow the same map. `src/game/economy` contains the authored shop record, mutable wealth and service state, pure Economy and Temple rules, detached service views, and the flat-save codec. Begin with `GameState.location_services` when tracing whether a Shop, Temple, or Bank is available; scenario operations and playthrough workflows call that owner directly instead of asking `GameState` to impersonate the whole feature.
 
 ## Topology
 

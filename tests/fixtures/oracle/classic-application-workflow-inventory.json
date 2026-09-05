@@ -6870,7 +6870,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/game/rules/economy_rules.gd",
+            "path": "src/game/economy/economy_rules.gd",
             "symbol": "func share_pooled_wealth("
           },
           {

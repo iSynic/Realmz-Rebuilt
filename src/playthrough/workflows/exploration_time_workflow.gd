@@ -89,7 +89,7 @@ static func toggle_camp(context: SessionWorkflowContext) -> ClockTransitionResul
 		DomainEvent.new(&"camp_mode_changed", {"camping": context.state.party_camping, "source": "classic"}),
 	]
 	if context.state.party_camping:
-		context.state.clear_location_services()
+		context.state.location_services.clear()
 	var map := context.content.world.map_by_id(context.state.party.map_id)
 	if map == null:
 		return ClockTransitionResult.failed(&"unknown_map", "The current map is unavailable for Camp.", events)
@@ -422,10 +422,10 @@ static func commit_permitted_move(context: SessionWorkflowContext, movement: Wor
 		events.append(DomainEvent.new(&"secret_discovered", {"secretId": probe.secret_id, "byMovement": true}))
 	var source_map_id := context.state.party.map_id
 	var source_coordinate := context.state.party.coordinate
-	var cleared_services := not context.state.active_shop_id.is_empty() or context.state.temple_available or context.state.bank_available
-	if context.state.bank_available:
+	var cleared_services := not context.state.location_services.active_shop_id.is_empty() or context.state.location_services.temple_available or context.state.location_services.bank_available
+	if context.state.location_services.bank_available:
 		context.rules.economy.pool_to_bank(context.state.party)
-	context.state.clear_location_services()
+	context.state.location_services.clear()
 	if cleared_services:
 		events.append(DomainEvent.new(&"location_services_cleared", {"mapId": source_map_id, "x": source_coordinate.x, "y": source_coordinate.y}))
 	context.state.party.map_id = target_map.id

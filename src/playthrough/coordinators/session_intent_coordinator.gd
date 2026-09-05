@@ -166,13 +166,13 @@ func _move(direction: Vector2i, aligns_dungeon_heading: bool) -> SessionCoordina
 		if not heading.ok:
 			return SessionCoordinatorResult.failed(heading.error_code, heading.error_message, heading.events)
 		events.append_array(heading.events)
-	if _context.state.bank_available and SessionInteractionFactory.has_pooled_wealth(_context.state.party):
+	if _context.state.location_services.bank_available and SessionInteractionFactory.has_pooled_wealth(_context.state.party):
 		var banked := _context.state.party.pooled_wealth.to_data()
 		_context.rules.economy.pool_to_bank(_context.state.party)
-		_context.state.bank_available = false
+		_context.state.location_services.bank_available = false
 		events.append(DomainEvent.new(&"pooled_wealth_banked_before_movement", {"wealth": banked, "direction": [direction.x, direction.y]}))
 		return _context.exploration().move_after_pooled_wealth(direction, events)
-	if not _context.state.bank_available and SessionInteractionFactory.has_pooled_wealth(_context.state.party):
+	if not _context.state.location_services.bank_available and SessionInteractionFactory.has_pooled_wealth(_context.state.party):
 		_context.set_continuation(ServiceContinuations.pooled_wealth_departure(&"warning", direction))
 		_context.session_interaction = SessionInteractionFactory.pooled_wealth_departure_warning("pooled-wealth-departure:%d" % _context.next_revision())
 		events.append(DomainEvent.new(&"pooled_wealth_departure_warning", {"wealth": _context.state.party.pooled_wealth.to_data(), "direction": [direction.x, direction.y]}))
@@ -332,12 +332,12 @@ func _service_action(payload: EconomyIntentPayloads.Service) -> SessionCoordinat
 	if payload.action != &"enter":
 		return SessionCoordinatorResult.rejected(&"unknown_service_action", "Only entering an available service is implemented through this intent.")
 	if payload.service_id == "realmz.service.temple":
-		if not _context.state.temple_available:
+		if not _context.state.location_services.temple_available:
 			return SessionCoordinatorResult.rejected(&"service_unavailable", "The selected temple is not available at this location.")
 		return _context.scenario().start_application_hook(ScenarioApplicationHooks.TEMPLE, &"service", payload.service_id, [])
 	if payload.service_id == "realmz.service.bank":
 		return _open_contextual_service(payload.service_id)
-	if payload.service_id == _context.state.active_shop_id:
+	if payload.service_id == _context.state.location_services.active_shop_id:
 		if payload.service_id.is_empty() or _context.content.shop_by_id(payload.service_id) == null:
 			return SessionCoordinatorResult.rejected(&"service_unavailable", "The selected shop is not available at this location.")
 		return _context.scenario().start_application_hook(ScenarioApplicationHooks.SHOP, &"service", payload.service_id, [])
@@ -351,7 +351,7 @@ func _open_contextual_service(service_id: String) -> SessionCoordinatorResult:
 		operation = _context.runtime_api.request_available_temple(request_id)
 	elif service_id == "realmz.service.bank":
 		operation = _context.runtime_api.request_available_bank(request_id)
-	elif service_id == _context.state.active_shop_id:
+	elif service_id == _context.state.location_services.active_shop_id:
 		operation = _context.runtime_api.request_available_shop(request_id)
 	else:
 		return SessionCoordinatorResult.failed(&"service_unavailable", "The selected service is not available at this location.")

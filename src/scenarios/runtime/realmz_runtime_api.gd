@@ -169,10 +169,10 @@ func read_action_state(state_scope: String, owner_id: String, name: String, defa
 
 
 func request_available_shop(request_id: String) -> ScenarioRuntimeOperationResult:
-	var shop := _content.shop_by_id(_game_state.active_shop_id)
+	var shop := _content.shop_by_id(_game_state.location_services.active_shop_id)
 	if shop == null:
 		return ScenarioRuntimeOperationResult.failed(&"shop_unavailable", "No configured Classic shop is available at this location.")
-	return _service_operations.request_shop_definition(shop, request_id, _game_state.shop_accept_ranges())
+	return _service_operations.request_shop_definition(shop, request_id, _game_state.location_services.shop_accept_ranges())
 
 
 func request_available_temple(request_id: String) -> ScenarioRuntimeOperationResult:
@@ -180,7 +180,7 @@ func request_available_temple(request_id: String) -> ScenarioRuntimeOperationRes
 
 
 func request_available_bank(request_id: String) -> ScenarioRuntimeOperationResult:
-	if not _game_state.bank_available:
+	if not _game_state.location_services.bank_available:
 		return ScenarioRuntimeOperationResult.failed(&"bank_unavailable", "No Classic bank is available at this location.")
 	return _service_operations.request_banking(request_id)
 

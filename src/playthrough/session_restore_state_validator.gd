@@ -89,18 +89,18 @@ static func party_appearance_is_valid(content: RealmzContent, state: GameState) 
 static func shop_state_is_valid(content: RealmzContent, state: GameState) -> bool:
 	if content == null or state == null:
 		return false
-	if not state.active_shop_id.is_empty() and content.shop_by_id(state.active_shop_id) == null:
+	if not state.location_services.active_shop_id.is_empty() and content.shop_by_id(state.location_services.active_shop_id) == null:
 		return false
-	for shop_id: Variant in state.shop_buyback_overrides():
+	for shop_id: Variant in state.location_services.shop_buyback_overrides():
 		var shop := content.shop_by_id(String(shop_id))
 		if shop == null:
 			return false
 		var occupied_slots: Dictionary = {}
 		for index: int in shop.item_ids().size():
-			if state.shop_quantity(shop, index) > 0: occupied_slots[shop.stock_slot(index)] = true
-		for item_id: Variant in state.shop_buyback_overrides()[shop_id]:
+			if state.location_services.shop_quantity(shop, index) > 0: occupied_slots[shop.stock_slot(index)] = true
+		for item_id: Variant in state.location_services.shop_buyback_overrides()[shop_id]:
 			var item := content.item_by_id(String(item_id))
-			var slot := state.shop_buyback_slot(String(shop_id), String(item_id))
+			var slot := state.location_services.shop_buyback_slot(String(shop_id), String(item_id))
 			if item == null or slot < 0 or slot > 999 or slot / 200 != item.classic_id / 200 or occupied_slots.has(slot):
 				return false
 			occupied_slots[slot] = true

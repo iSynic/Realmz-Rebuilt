@@ -204,12 +204,12 @@ func _test_pooled_wealth_departure(content: RealmzContent) -> void:
 	var bank_session := _departure_session(content, 112)
 	if bank_session == null: return
 	assert_equal(bank_session.apply_debug_command(SessionDebugCommand.warp("dungeon:0", Vector2i(1, 0))).state, SessionStep.State.COMPLETED, "the bank-before-movement fixture uses the same authored dungeon wall destination")
-	bank_session._context.state.bank_available = true
+	bank_session._context.state.location_services.bank_available = true
 	var banked_block := bank_session.submit_intent(ExplorationIntents.move(Vector2i.LEFT))
 	assert_equal(banked_block.state, SessionStep.State.COMPLETED, "bank-backed pooled wealth resolves without a question before a blocked attempt")
 	assert_equal(bank_session._context.state.party.pooled_wealth.to_data(), {"gold": 0, "gems": 0, "jewelry": 0}, "pre-movement banking clears every pooled denomination")
 	assert_equal(bank_session._context.state.party.banked_wealth.to_data(), {"gold": 10, "gems": 1, "jewelry": 1}, "pre-movement banking preserves all denominations")
-	assert_false(bank_session._context.state.bank_available, "pre-movement banking disables the location bank even when the destination is blocked")
+	assert_false(bank_session._context.state.location_services.bank_available, "pre-movement banking disables the location bank even when the destination is blocked")
 	assert_true(banked_block.events.any(func(event: DomainEvent) -> bool: return event.kind == &"movement_blocked"), "the blocked destination resolves after banking")
 
 	var camp_session := _departure_session(content, 113)

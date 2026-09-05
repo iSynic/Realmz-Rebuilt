@@ -68,25 +68,25 @@ func resume(continuation: ScenarioRuntimeContinuation, response: InteractionResp
 
 
 func request_shop_definition(shop: ShopDefinition, request_id: String, accept_ranges: Array[int] = []) -> ScenarioRuntimeOperationResult:
-	if _game_state.bank_available:
+	if _game_state.location_services.bank_available:
 		_rules.economy.bank_to_pool(_game_state.party)
 	return ScenarioRuntimeOperationResult.waiting(
 		shop_request(shop, request_id, accept_ranges),
 		ScenarioServiceContinuations.shop(shop.id, accept_ranges),
-		[DomainEvent.new(&"shop_opened", {"shopId": shop.id, "acceptRanges": accept_ranges.duplicate(), "bankAvailable": _game_state.bank_available})]
+		[DomainEvent.new(&"shop_opened", {"shopId": shop.id, "acceptRanges": accept_ranges.duplicate(), "bankAvailable": _game_state.location_services.bank_available})]
 	)
 
 
 func request_available_temple(request_id: String) -> ScenarioRuntimeOperationResult:
-	if not _game_state.temple_available:
+	if not _game_state.location_services.temple_available:
 		return ScenarioRuntimeOperationResult.failed(&"temple_unavailable", "No Classic temple is available at this location.")
-	if _game_state.bank_available:
+	if _game_state.location_services.bank_available:
 		_rules.economy.bank_to_pool(_game_state.party)
 	var characters := _game_state.party.characters()
 	var selected_character_id := "" if characters.is_empty() else characters[0].id
-	var continuation := ScenarioServiceContinuations.temple(ScenarioRuntimeContinuation.CLASSIC_TEMPLE, _game_state.temple_cost_percent, _game_state.bank_available, selected_character_id)
-	return ScenarioRuntimeOperationResult.waiting(temple_request(_game_state.temple_cost_percent, request_id, selected_character_id), continuation, [
-		DomainEvent.new(&"temple_opened", {"costPercent": _game_state.temple_cost_percent, "bankAvailable": _game_state.bank_available}),
+	var continuation := ScenarioServiceContinuations.temple(ScenarioRuntimeContinuation.CLASSIC_TEMPLE, _game_state.location_services.temple_cost_percent, _game_state.location_services.bank_available, selected_character_id)
+	return ScenarioRuntimeOperationResult.waiting(temple_request(_game_state.location_services.temple_cost_percent, request_id, selected_character_id), continuation, [
+		DomainEvent.new(&"temple_opened", {"costPercent": _game_state.location_services.temple_cost_percent, "bankAvailable": _game_state.location_services.bank_available}),
 		DomainEvent.new(&"music_requested", {"musicId": 10, "source": "classic-temple"}),
 		DomainEvent.new(&"sound_requested", {"soundId": 10105, "waitForCompletion": false, "source": "classic-temple-entry"}),
 	])
@@ -98,19 +98,19 @@ func shop_request(shop: ShopDefinition, request_id: String, accept_ranges: Array
 	var item_ids := shop.item_ids()
 	for index: int in item_ids.size():
 		var item := _content.item_by_id(item_ids[index])
-		var quantity := _game_state.shop_quantity(shop, index)
+		var quantity := _game_state.location_services.shop_quantity(shop, index)
 		if item != null and quantity > 0:
 			var slot := shop.stock_slot(index)
 			stock.append(_shop_stock_view(item, "base:%d" % slot, slot, quantity, shop))
-	var buyback_items := _game_state.shop_buyback_items(shop.id)
+	var buyback_items := _game_state.location_services.shop_buyback_items(shop.id)
 	var buyback_ids: Array = buyback_items.keys()
 	buyback_ids.sort_custom(func(left: Variant, right: Variant) -> bool:
-		return _game_state.shop_buyback_slot(shop.id, String(left)) < _game_state.shop_buyback_slot(shop.id, String(right))
+		return _game_state.location_services.shop_buyback_slot(shop.id, String(left)) < _game_state.location_services.shop_buyback_slot(shop.id, String(right))
 	)
 	for item_id: Variant in buyback_ids:
 		var item := _content.item_by_id(String(item_id))
 		if item != null:
-			var slot := _game_state.shop_buyback_slot(shop.id, item.id)
+			var slot := _game_state.location_services.shop_buyback_slot(shop.id, item.id)
 			stock.append(_shop_stock_view(item, "buyback:%s" % item.id, slot, int(buyback_items[item_id]), shop))
 	stock.sort_custom(func(left: Dictionary, right: Dictionary) -> bool: return int(left["index"]) < int(right["index"]))
 	var party_gold := _rules.economy.available(_game_state.party, WealthState.Kind.GOLD)
@@ -143,7 +143,7 @@ func shop_request(shop: ShopDefinition, request_id: String, accept_ranges: Array
 				"identified": instance.identified,
 				"equipped": instance.equipped,
 				"charges": instance.charges,
-				"sellPrice": _rules.economy.shop_sell_price(definition, instance, _game_state.shop_inflation(shop)),
+				"sellPrice": _rules.economy.shop_sell_price(definition, instance, _game_state.location_services.shop_inflation(shop)),
 				"canSell": can_sell,
 				"sellReason": sell_reason,
 				"canIdentify": can_identify,
@@ -160,7 +160,7 @@ func shop_request(shop: ShopDefinition, request_id: String, accept_ranges: Array
 		characters.append({"id": character.id, "name": character.name, "portraitId": character.portrait_id, "load": character.carried_load, "maximumLoad": character.maximum_load, "inventory": inventory})
 	return InteractionRequest.from_payload(request_id, &"shop_action", {
 		"shopId": shop.id,
-		"inflationPercent": _game_state.shop_inflation(shop),
+		"inflationPercent": _game_state.location_services.shop_inflation(shop),
 		"partyGold": party_gold,
 		"identifyPrice": 20,
 		"stock": stock,
@@ -179,10 +179,10 @@ func resolve_shop_stock(shop: ShopDefinition, stock_key: String) -> ShopStockRes
 		var item_ids := shop.item_ids()
 		if index < 0 or index >= item_ids.size():
 			return null
-		return ShopStockResolution.new(&"base", index, _content.item_by_id(item_ids[index]), _game_state.shop_quantity(shop, index))
+		return ShopStockResolution.new(&"base", index, _content.item_by_id(item_ids[index]), _game_state.location_services.shop_quantity(shop, index))
 	if stock_key.begins_with("buyback:"):
 		var item_id := stock_key.trim_prefix("buyback:")
-		var quantity := _game_state.shop_buyback_quantity(shop.id, item_id)
+		var quantity := _game_state.location_services.shop_buyback_quantity(shop.id, item_id)
 		if quantity < 1:
 			return null
 		return ShopStockResolution.new(&"buyback", -1, _content.item_by_id(item_id), quantity)
@@ -215,7 +215,7 @@ func temple_request(cost_percent: int, request_id: String, selected_character_id
 		"characters": characters,
 		"services": _rules.temple.service_rows(cost_percent),
 		"pooledWealth": _game_state.party.pooled_wealth.to_data(),
-		"bankAvailable": _game_state.bank_available,
+		"bankAvailable": _game_state.location_services.bank_available,
 		"selectedCharacterId": selected_character_id,
 		"actions": ["service", "pool", "share", "leave"],
 	})
@@ -233,7 +233,7 @@ func _configure_classic_shop(classic_shop_id: int, request_id: String) -> Scenar
 	if shop == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_shop", "Classic opcode 6 references unavailable shop %d." % classic_shop_id)
 	var accept_ranges: Array[int] = [0, 0, 0, 0]
-	if not _game_state.set_active_shop(shop.id, accept_ranges):
+	if not _game_state.location_services.set_active_shop(shop.id, accept_ranges):
 		return ScenarioRuntimeOperationResult.failed(&"invalid_shop_configuration", "Classic opcode 6 shop configuration is invalid.")
 	if classic_shop_id < 0:
 		return request_shop_definition(shop, request_id, accept_ranges)
@@ -247,7 +247,7 @@ func _configure_shop(action: ClassicActionDefinition, request_id: String) -> Sce
 	if shop == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_shop", "Classic opcode 73 references unavailable shop %d." % action.extra_code[0])
 	var accept_ranges: Array[int] = [action.extra_code[1], action.extra_code[2], action.extra_code[3], action.extra_code[4]]
-	if not _game_state.set_active_shop(shop.id, accept_ranges):
+	if not _game_state.location_services.set_active_shop(shop.id, accept_ranges):
 		return ScenarioRuntimeOperationResult.failed(&"invalid_shop_configuration", "Classic opcode 73 shop restrictions are invalid.")
 	if action.extra_code[0] < 0:
 		return _request_shop(action.extra_code[0], request_id, accept_ranges)
@@ -255,7 +255,7 @@ func _configure_shop(action: ClassicActionDefinition, request_id: String) -> Sce
 
 
 func _configure_temple(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
-	if not _game_state.set_active_temple(action.operand_id):
+	if not _game_state.location_services.set_active_temple(action.operand_id):
 		return ScenarioRuntimeOperationResult.failed(&"invalid_temple_cost", "Classic opcode 32 temple cost is outside signed 16-bit range.")
 	return ScenarioRuntimeOperationResult.completed(action.operand_id, [
 		DomainEvent.new(&"temple_available", {"costPercent": action.operand_id}),
@@ -273,9 +273,9 @@ func _resume_shop(continuation: ScenarioRuntimeContinuation, response: Interacti
 		return ScenarioRuntimeOperationResult.failed(&"unknown_shop", "The pending shop is unavailable.")
 	var operation := String(body.action)
 	if operation == "leave":
-		if _game_state.bank_available:
+		if _game_state.location_services.bank_available:
 			_rules.economy.pool_to_bank(_game_state.party)
-		return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"shop_closed", {"shopId": shop.id, "pooledWealthReturnedToBank": _game_state.bank_available})])
+		return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"shop_closed", {"shopId": shop.id, "pooledWealthReturnedToBank": _game_state.location_services.bank_available})])
 	var events: Array[DomainEvent] = []
 	match operation:
 		"buy":
@@ -288,7 +288,7 @@ func _resume_shop(continuation: ScenarioRuntimeContinuation, response: Interacti
 			var item := stock_entry.item
 			if character == null or item == null or character.inventory().size() >= InventoryRules.MAX_ITEMS or character.carried_load + item.instance_weight(item.initial_charges) > character.maximum_load:
 				return ScenarioRuntimeOperationResult.failed(&"inventory_full", "The selected character cannot carry this item.")
-			var price := _rules.economy.shop_buy_price(item, _game_state.shop_inflation(shop))
+			var price := _rules.economy.shop_buy_price(item, _game_state.location_services.shop_inflation(shop))
 			if not _rules.economy.take(_game_state.party, price, WealthState.Kind.GOLD):
 				return ScenarioRuntimeOperationResult.failed(&"insufficient_gold", "The party cannot afford this item.")
 			var instance := _rules.inventory.add_item(character, item, _game_state.next_instance_id("shop.item"), true)
@@ -297,9 +297,9 @@ func _resume_shop(continuation: ScenarioRuntimeContinuation, response: Interacti
 				return ScenarioRuntimeOperationResult.failed(&"inventory_full", "The item could not be added after purchase validation.")
 			if stock_entry.kind == &"base":
 				var stock_index := stock_entry.index
-				_game_state.set_shop_quantity(shop, stock_index, _game_state.shop_quantity(shop, stock_index) - 1)
+				_game_state.location_services.set_shop_quantity(shop, stock_index, _game_state.location_services.shop_quantity(shop, stock_index) - 1)
 			else:
-				_game_state.set_shop_buyback_quantity(shop.id, item.id, stock_entry.quantity - 1, _game_state.shop_buyback_slot(shop.id, item.id))
+				_game_state.location_services.set_shop_buyback_quantity(shop.id, item.id, stock_entry.quantity - 1, _game_state.location_services.shop_buyback_slot(shop.id, item.id))
 			events.append(DomainEvent.new(&"shop_item_bought", {"shopId": shop.id, "itemId": item.id, "instanceId": instance.id, "characterId": character.id, "price": price}))
 		"sell":
 			if body.character_id.is_empty() or body.instance_id.is_empty():
@@ -323,17 +323,17 @@ func _resume_shop(continuation: ScenarioRuntimeContinuation, response: Interacti
 			accept_ranges.assign(service.accept_ranges)
 			if not ClassicServiceOperations.shop_accepts_item(item, accept_ranges):
 				return ScenarioRuntimeOperationResult.failed(&"shop_rejects_item", "This shop does not accept the selected item.")
-			var price := _rules.economy.shop_sell_price(item, instance, _game_state.shop_inflation(shop))
+			var price := _rules.economy.shop_sell_price(item, instance, _game_state.location_services.shop_inflation(shop))
 			if _rules.inventory.remove_item(character, instance.id, item) == null:
 				return ScenarioRuntimeOperationResult.failed(&"shop_sale_failed", "The selected item could not be removed.")
 			_game_state.party.pooled_wealth.gold += price
 			var base_index := _matching_base_stock_index(shop, item.id)
 			if base_index >= 0:
-				_game_state.set_shop_quantity(shop, base_index, _game_state.shop_quantity(shop, base_index) + 1)
+				_game_state.location_services.set_shop_quantity(shop, base_index, _game_state.location_services.shop_quantity(shop, base_index) + 1)
 			else:
-				var buyback_quantity := _game_state.shop_buyback_quantity(shop.id, item.id)
-				var slot := _game_state.shop_buyback_slot(shop.id, item.id) if buyback_quantity > 0 else _first_empty_shop_slot(shop, item.classic_id)
-				if slot >= 0: _game_state.set_shop_buyback_quantity(shop.id, item.id, buyback_quantity + 1, slot)
+				var buyback_quantity := _game_state.location_services.shop_buyback_quantity(shop.id, item.id)
+				var slot := _game_state.location_services.shop_buyback_slot(shop.id, item.id) if buyback_quantity > 0 else _first_empty_shop_slot(shop, item.classic_id)
+				if slot >= 0: _game_state.location_services.set_shop_buyback_quantity(shop.id, item.id, buyback_quantity + 1, slot)
 			events.append(DomainEvent.new(&"shop_item_sold", {"shopId": shop.id, "itemId": item.id, "instanceId": instance.id, "characterId": character.id, "price": price}))
 		"identify":
 			if body.character_id.is_empty() or body.instance_id.is_empty():
@@ -469,7 +469,7 @@ func request_banking(request_id: String) -> ScenarioRuntimeOperationResult:
 
 
 func _shop_stock_view(item: ItemDefinition, stock_key: String, stock_index: int, quantity: int, shop: ShopDefinition) -> Dictionary:
-	var price := _rules.economy.shop_buy_price(item, _game_state.shop_inflation(shop))
+	var price := _rules.economy.shop_buy_price(item, _game_state.location_services.shop_inflation(shop))
 	var public_view := ItemView.new(ItemInstance.new("shop.preview", item.id, item.initial_charges, false, true), item, item, _content)
 	var result := {
 		"stockKey": stock_key,
@@ -502,7 +502,7 @@ func _shop_available_events(shop_id: String, accept_ranges: Array[int]) -> Array
 func _matching_base_stock_index(shop: ShopDefinition, item_id: String) -> int:
 	var item_ids := shop.item_ids()
 	for index: int in item_ids.size():
-		if item_ids[index] == item_id and _game_state.shop_quantity(shop, index) > 0:
+		if item_ids[index] == item_id and _game_state.location_services.shop_quantity(shop, index) > 0:
 			return index
 	return -1
 
@@ -513,8 +513,8 @@ func _first_empty_shop_slot(shop: ShopDefinition, classic_item_id: int) -> int:
 		return -1
 	var occupied: Dictionary = {}
 	for index: int in shop.item_ids().size():
-		if _game_state.shop_quantity(shop, index) > 0: occupied[shop.stock_slot(index)] = true
-	for item_id: Variant in _game_state.shop_buyback_items(shop.id): occupied[_game_state.shop_buyback_slot(shop.id, String(item_id))] = true
+		if _game_state.location_services.shop_quantity(shop, index) > 0: occupied[shop.stock_slot(index)] = true
+	for item_id: Variant in _game_state.location_services.shop_buyback_items(shop.id): occupied[_game_state.location_services.shop_buyback_slot(shop.id, String(item_id))] = true
 	for slot: int in range(start, start + 200):
 		if not occupied.has(slot): return slot
 	return -1

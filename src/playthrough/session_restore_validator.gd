@@ -176,7 +176,7 @@ static func _valid_application_continuation(content: RealmzContent, state: GameS
 		&"begin-adventure":
 			return application.hook == ScenarioApplicationHooks.START_GAME and application.service_id.is_empty() and state.party_setup_completed and not state.party.characters().is_empty()
 		&"service":
-			return application.hook in [ScenarioApplicationHooks.SHOP, ScenarioApplicationHooks.TEMPLE] and not application.service_id.is_empty() and ((application.service_id == state.active_shop_id and content.shop_by_id(application.service_id) != null) or (application.service_id == "realmz.service.temple" and state.temple_available))
+			return application.hook in [ScenarioApplicationHooks.SHOP, ScenarioApplicationHooks.TEMPLE] and not application.service_id.is_empty() and ((application.service_id == state.location_services.active_shop_id and content.shop_by_id(application.service_id) != null) or (application.service_id == "realmz.service.temple" and state.location_services.temple_available))
 		&"end-adventure":
 			return application.hook == ScenarioApplicationHooks.END_ADVENTURE and application.service_id.is_empty()
 		&"end-adventure-close":
@@ -193,7 +193,7 @@ static func _valid_application_continuation(content: RealmzContent, state: GameS
 
 static func _valid_pooled_wealth_continuation(content: RealmzContent, state: GameState, continuation: SessionContinuation, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
 	var service := continuation.service()
-	if service == null or vm_interaction != null or session_interaction == null or state.party == null or state.bank_available:
+	if service == null or vm_interaction != null or session_interaction == null or state.party == null or state.location_services.bank_available:
 		return false
 	var departure_probe := content.world.probe_movement(state.party.map_id, state.party.coordinate, service.direction, state.world, state.party_in_boat)
 	if not departure_probe.allowed and departure_probe.reason == &"invalid_direction":
@@ -217,14 +217,14 @@ static func _valid_service_continuation(content: RealmzContent, state: GameState
 	var selected_temple_character := "" if runtime_body == null else runtime_body.selected_character_id
 	match runtime.kind:
 		&"classic-shop":
-			return service.service_id == state.active_shop_id and not service.service_id.is_empty() and content.shop_by_id(service.service_id) != null and session_interaction.kind == InteractionRequest.SHOP
+			return service.service_id == state.location_services.active_shop_id and not service.service_id.is_empty() and content.shop_by_id(service.service_id) != null and session_interaction.kind == InteractionRequest.SHOP
 		&"classic-temple":
 			var temple_body := session_interaction.body as TempleRequestBody
-			return runtime_body != null and service.service_id == "realmz.service.temple" and state.temple_available and runtime_body.cost_percent == state.temple_cost_percent and runtime_body.bank_available == state.bank_available and state.party.character_by_id(selected_temple_character) != null and session_interaction.kind == InteractionRequest.TEMPLE and temple_body != null and temple_body.selected_character_id == selected_temple_character
+			return runtime_body != null and service.service_id == "realmz.service.temple" and state.location_services.temple_available and runtime_body.cost_percent == state.location_services.temple_cost_percent and runtime_body.bank_available == state.location_services.bank_available and state.party.character_by_id(selected_temple_character) != null and session_interaction.kind == InteractionRequest.TEMPLE and temple_body != null and temple_body.selected_character_id == selected_temple_character
 		&"classic-temple-exit":
-			return runtime_body != null and service.service_id == "realmz.service.temple" and state.temple_available and not state.bank_available and runtime_body.cost_percent == state.temple_cost_percent and not runtime_body.bank_available and state.party.character_by_id(selected_temple_character) != null and session_interaction.kind == InteractionRequest.YES_NO
+			return runtime_body != null and service.service_id == "realmz.service.temple" and state.location_services.temple_available and not state.location_services.bank_available and runtime_body.cost_percent == state.location_services.temple_cost_percent and not runtime_body.bank_available and state.party.character_by_id(selected_temple_character) != null and session_interaction.kind == InteractionRequest.YES_NO
 		&"classic-banking":
-			return service.service_id == "realmz.service.bank" and state.bank_available and session_interaction.kind == InteractionRequest.BANK
+			return service.service_id == "realmz.service.bank" and state.location_services.bank_available and session_interaction.kind == InteractionRequest.BANK
 	return false
 
 

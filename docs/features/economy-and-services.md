@@ -1,12 +1,12 @@
 # Economy and services
 
-`EconomyRules` owns denominations, carrying weight, valuation, Pool, Share, and Swap. `TempleRules` owns the nine temple services. Shops, temples, and banks may arrive either as scenario interactions or contextual services, but their mutations converge through playthrough workflows and the public session boundary.
+Start in `src/game/economy`. `EconomyRules` owns denominations, carrying weight, valuation, Pool, Share, and Swap. `TempleRules` owns the nine temple services. `LocationServiceState` owns the current shop, temple, and bank plus mutable shop stock; `LocationServiceStateCodec` keeps that state in the existing flat `GameState` save dictionary. Shops, temples, and banks may arrive either as scenario interactions or contextual services, but their mutations converge through these owners and the public session boundary.
 
 `EconomyIntents.money` and `EconomyIntents.service` are the player-command entry points. Their typed payloads carry only the selected operation, character, denomination, service, and amount; affordability and mutation remain in the owning workflow and rules.
 
 `ServiceContinuations` owns the resumable service and pooled-wealth departure handoffs. `ServiceContinuationBody` carries only the active service continuation or the exact departure stage and direction; the shared saved envelope does not implement economy behavior.
 
-Presentation renders detached prices, balances, load, and availability; it never recalculates affordability. The public regression owner is `tests/integration/test_money_workflow.gd`. Stable service layout belongs in the Services, Shop, Temple, and Bank scenes, with scripts limited to binding the supplied records.
+Presentation renders the detached records in `src/game/economy`—prices, balances, load, and availability—and never recalculates affordability. The public regression owner is `tests/integration/test_money_workflow.gd`; persistence and scenario restoration are covered by `test_session_persistence.gd` and `test_scenario_vm.gd`. Stable service layout belongs in the Services, Shop, Temple, and Bank scenes, with scripts limited to binding the supplied records.
 
 Scenario rewards enter through `ClassicRewardOperations`. Follow terminal combat settlement and recovered fumbles into `ClassicBattleRewardBuilder`; follow Treasure assignment, Detect/Identify, level gains, and spell learning into `ClassicRewardWorkflow`. Their shared rollback and battle-message policy lives in `ClassicRewardOperationsSupport`. Reward behavior is characterized by `tests/scenario/test_reward_workflow.gd` and persistence coverage in `tests/integration/test_session_persistence.gd`.
 

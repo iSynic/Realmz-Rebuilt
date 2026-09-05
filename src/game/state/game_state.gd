@@ -8,6 +8,7 @@ var clock: RealmzClock
 var world: WorldState
 var combat: CombatState
 var scenario_progress: ScenarioProgressState
+var location_services: LocationServiceState = LocationServiceState.new()
 var random_encounters_enabled: bool = true
 var camping_allowed: bool = true
 var party_in_boat: bool = false
@@ -26,11 +27,6 @@ var compass_enabled: bool = true
 var saved_party_map_id: String = ""
 var saved_party_coordinate: Vector2i = Vector2i(-1, -1)
 var saved_party_level_type: StringName = &""
-var active_shop_id: String = ""
-var _shop_accept_ranges: Array[int] = []
-var temple_available: bool = false
-var temple_cost_percent: int = 100
-var bank_available: bool = false
 var last_battle_outcome: StringName = &"none"
 var party_setup_completed: bool = false
 var difficulty: int = 0
@@ -38,10 +34,6 @@ var monster_set: int = 0
 var experience_multiplier: float = -1.0
 var character_draft: CharacterDraft
 var _instance_counter: int = 0
-var _shop_overrides: Dictionary = {}
-var _shop_inflation_overrides: Dictionary = {}
-var _shop_buyback_overrides: Dictionary = {}
-var _shop_buyback_slots: Dictionary = {}
 var _combat_auto_character_ids: Dictionary = {}
 
 
@@ -79,103 +71,6 @@ func rollback_instance_ids(checkpoint: int) -> bool:
 		return false
 	_instance_counter = checkpoint
 	return true
-
-
-func shop_quantity(shop: ShopDefinition, stock_index: int) -> int:
-	var key := "%s:%d" % [shop.id, stock_index]
-	return int(_shop_overrides.get(key, shop.quantity(stock_index)))
-
-
-func set_shop_quantity(shop: ShopDefinition, stock_index: int, quantity: int) -> bool:
-	if shop == null or stock_index < 0 or stock_index >= shop.item_ids().size():
-		return false
-	_shop_overrides["%s:%d" % [shop.id, stock_index]] = clampi(quantity, 0, 32_767)
-	return true
-
-
-func shop_buyback_quantity(shop_id: String, item_id: String) -> int:
-	var shop_items: Variant = _shop_buyback_overrides.get(shop_id, {})
-	return int(shop_items.get(item_id, 0)) if shop_items is Dictionary else 0
-
-
-func set_shop_buyback_quantity(shop_id: String, item_id: String, quantity: int, slot: int = -1) -> bool:
-	if shop_id.is_empty() or item_id.is_empty() or quantity < 0 or quantity > 32_767:
-		return false
-	var shop_items: Dictionary = (_shop_buyback_overrides.get(shop_id, {}) as Dictionary).duplicate()
-	var shop_slots: Dictionary = (_shop_buyback_slots.get(shop_id, {}) as Dictionary).duplicate()
-	if quantity == 0:
-		shop_items.erase(item_id)
-		shop_slots.erase(item_id)
-	else:
-		var retained_slot := slot if slot >= 0 else int(shop_slots.get(item_id, -1))
-		if retained_slot < 0 or retained_slot > 999:
-			return false
-		shop_items[item_id] = quantity
-		shop_slots[item_id] = retained_slot
-	if shop_items.is_empty():
-		_shop_buyback_overrides.erase(shop_id)
-		_shop_buyback_slots.erase(shop_id)
-	else:
-		_shop_buyback_overrides[shop_id] = shop_items
-		_shop_buyback_slots[shop_id] = shop_slots
-	return true
-
-
-func shop_buyback_items(shop_id: String) -> Dictionary:
-	var items: Variant = _shop_buyback_overrides.get(shop_id, {})
-	return items.duplicate() if items is Dictionary else {}
-
-
-func shop_buyback_slot(shop_id: String, item_id: String) -> int:
-	var slots: Variant = _shop_buyback_slots.get(shop_id, {})
-	return int(slots.get(item_id, -1)) if slots is Dictionary else -1
-
-
-func shop_buyback_overrides() -> Dictionary:
-	return _sorted_nested_dictionary(_shop_buyback_overrides)
-
-
-func shop_buyback_slot_overrides() -> Dictionary:
-	return _sorted_nested_dictionary(_shop_buyback_slots)
-
-
-func shop_inflation(shop: ShopDefinition) -> int:
-	return int(_shop_inflation_overrides.get(shop.id, shop.inflation_percent))
-
-
-func set_shop_inflation(shop: ShopDefinition, percent: int) -> bool:
-	if shop == null or percent < 0 or percent > 32_767:
-		return false
-	_shop_inflation_overrides[shop.id] = percent
-	return true
-
-
-func set_active_shop(shop_id: String, accept_ranges: Array[int]) -> bool:
-	if shop_id.is_empty() or accept_ranges.size() != 4:
-		return false
-	active_shop_id = shop_id
-	_shop_accept_ranges = accept_ranges.duplicate()
-	return true
-
-
-func shop_accept_ranges() -> Array[int]:
-	return _shop_accept_ranges.duplicate()
-
-
-func set_active_temple(cost_percent: int) -> bool:
-	if cost_percent < -32_768 or cost_percent > 32_767:
-		return false
-	temple_available = true
-	temple_cost_percent = cost_percent
-	return true
-
-
-func clear_location_services() -> void:
-	active_shop_id = ""
-	_shop_accept_ranges.clear()
-	temple_available = false
-	temple_cost_percent = 100
-	bank_available = false
 
 
 func combat_auto_character_ids() -> Array[String]:
@@ -232,11 +127,6 @@ func restore_from_data(data: Dictionary) -> bool:
 	saved_party_map_id = loaded.saved_party_map_id
 	saved_party_coordinate = loaded.saved_party_coordinate
 	saved_party_level_type = loaded.saved_party_level_type
-	active_shop_id = loaded.active_shop_id
-	_shop_accept_ranges = loaded._shop_accept_ranges
-	temple_available = loaded.temple_available
-	temple_cost_percent = loaded.temple_cost_percent
-	bank_available = loaded.bank_available
 	last_battle_outcome = loaded.last_battle_outcome
 	party_setup_completed = loaded.party_setup_completed
 	difficulty = loaded.difficulty
@@ -244,11 +134,8 @@ func restore_from_data(data: Dictionary) -> bool:
 	experience_multiplier = loaded.experience_multiplier
 	character_draft = loaded.character_draft
 	scenario_progress = loaded.scenario_progress
+	location_services = loaded.location_services
 	_instance_counter = loaded._instance_counter
-	_shop_overrides = loaded._shop_overrides
-	_shop_inflation_overrides = loaded._shop_inflation_overrides
-	_shop_buyback_overrides = loaded._shop_buyback_overrides
-	_shop_buyback_slots = loaded._shop_buyback_slots
 	_combat_auto_character_ids = loaded._combat_auto_character_ids
 	return true
 
@@ -281,11 +168,9 @@ func to_data() -> Dictionary:
 		"xyDisplayHidden": xy_display_hidden,
 		"compassEnabled": compass_enabled,
 		"partyPositionBookmark": null if not has_saved_party_position() else {"mapId": saved_party_map_id, "x": saved_party_coordinate.x, "y": saved_party_coordinate.y, "levelType": String(saved_party_level_type)},
-		"activeShopId": active_shop_id,
-		"shopAcceptRanges": _shop_accept_ranges.duplicate(),
-		"templeAvailable": temple_available,
-		"templeCostPercent": temple_cost_percent,
-		"bankAvailable": bank_available,
+	}
+	LocationServiceStateCodec.write_availability_to(location_services, data)
+	data.merge({
 		"lastBattleOutcome": String(last_battle_outcome),
 		"partySetupCompleted": party_setup_completed,
 		"difficulty": difficulty,
@@ -293,12 +178,9 @@ func to_data() -> Dictionary:
 		"experienceMultiplier": experience_multiplier,
 		"characterDraft": null if character_draft == null else character_draft.to_data(),
 		"instanceCounter": _instance_counter,
-		"shopOverrides": _sorted_dictionary(_shop_overrides),
-		"shopInflationOverrides": _sorted_dictionary(_shop_inflation_overrides),
-		"shopBuybackOverrides": _sorted_nested_dictionary(_shop_buyback_overrides),
-		"shopBuybackSlots": _sorted_nested_dictionary(_shop_buyback_slots),
-		"combatAutoCharacterIds": combat_auto_character_ids(),
-	}
+	})
+	LocationServiceStateCodec.write_collections_to(location_services, data)
+	data["combatAutoCharacterIds"] = combat_auto_character_ids()
 	scenario_progress.write_to(data)
 	return data
 
@@ -457,52 +339,11 @@ static func _restore_location_settings(state: GameState, data: Dictionary) -> bo
 		state.saved_party_map_id = bookmark["mapId"]
 		state.saved_party_coordinate = Vector2i(bookmark_x, bookmark_y)
 		state.saved_party_level_type = StringName(bookmark["levelType"])
-	if data.has("activeShopId") or data.has("shopAcceptRanges"):
-		if not data.get("activeShopId") is String or not data.get("shopAcceptRanges") is Array: return false
-		var ranges: Array[int] = []
-		for value: Variant in data["shopAcceptRanges"]:
-			var accepted := _signed_integer(value)
-			if accepted < -32_768 or accepted > 32_767: return false
-			ranges.append(accepted)
-		if not String(data["activeShopId"]).is_empty() and not state.set_active_shop(data["activeShopId"], ranges): return false
-		if String(data["activeShopId"]).is_empty() and not ranges.is_empty(): return false
-	if data.has("templeAvailable") or data.has("templeCostPercent") or data.has("bankAvailable"):
-		if not data.get("templeAvailable") is bool or not data.get("bankAvailable") is bool: return false
-		var percent := _signed_integer(data.get("templeCostPercent"))
-		if percent < -32_768 or percent > 32_767: return false
-		state.temple_available = data["templeAvailable"]
-		state.temple_cost_percent = percent
-		state.bank_available = data["bankAvailable"]
-	return true
+	return LocationServiceStateCodec.restore_availability(state.location_services, data)
 
 
 static func _restore_session_collections(state: GameState, data: Dictionary) -> bool:
-	return state.scenario_progress.restore_collections(data) and _restore_override_collections(state, data) and _restore_optional_collections(state, data)
-
-
-static func _restore_override_collections(state: GameState, data: Dictionary) -> bool:
-	if not data["shopOverrides"] is Dictionary or not data["shopInflationOverrides"] is Dictionary: return false
-	for key: Variant in data["shopOverrides"]:
-		var quantity := _integer(data["shopOverrides"][key])
-		if not key is String or key.is_empty() or quantity < 0 or quantity > 32_767: return false
-		state._shop_overrides[key] = quantity
-	for key: Variant in data["shopInflationOverrides"]:
-		var inflation := _integer(data["shopInflationOverrides"][key])
-		if not key is String or key.is_empty() or inflation < 0 or inflation > 32_767: return false
-		state._shop_inflation_overrides[key] = inflation
-	if data.has("shopBuybackOverrides"):
-		if not data["shopBuybackOverrides"] is Dictionary or not data.get("shopBuybackSlots") is Dictionary: return false
-		for shop_id: Variant in data["shopBuybackOverrides"]:
-			var items: Variant = data["shopBuybackOverrides"][shop_id]
-			var slots: Variant = data["shopBuybackSlots"].get(shop_id)
-			if not shop_id is String or shop_id.is_empty() or not items is Dictionary or not slots is Dictionary or items.size() != slots.size(): return false
-			for item_id: Variant in items:
-				var quantity := _integer(items[item_id])
-				var slot := _integer(slots.get(item_id))
-				if not item_id is String or item_id.is_empty() or not slots.has(item_id) or quantity < 1 or quantity > 32_767 or slot < 0 or slot > 999 or not state.set_shop_buyback_quantity(shop_id, item_id, quantity, slot): return false
-		if data["shopBuybackOverrides"].size() != data["shopBuybackSlots"].size(): return false
-	elif data.has("shopBuybackSlots") and (not data["shopBuybackSlots"] is Dictionary or not data["shopBuybackSlots"].is_empty()): return false
-	return true
+	return state.scenario_progress.restore_collections(data) and LocationServiceStateCodec.restore_collections(state.location_services, data) and _restore_optional_collections(state, data)
 
 
 static func _restore_optional_collections(state: GameState, data: Dictionary) -> bool:
@@ -534,23 +375,4 @@ static func _sorted_string_keys(source: Dictionary) -> Array[String]:
 	for key: Variant in source:
 		result.append(String(key))
 	result.sort()
-	return result
-
-
-static func _sorted_dictionary(source: Dictionary) -> Dictionary:
-	var result: Dictionary = {}
-	var keys: Array = source.keys()
-	keys.sort()
-	for key: Variant in keys:
-		result[key] = source[key]
-	return result
-
-
-static func _sorted_nested_dictionary(source: Dictionary) -> Dictionary:
-	var result: Dictionary = {}
-	var keys: Array = source.keys()
-	keys.sort()
-	for key: Variant in keys:
-		if source[key] is Dictionary:
-			result[key] = _sorted_dictionary(source[key])
 	return result
