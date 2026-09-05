@@ -6391,7 +6391,7 @@
             "symbol": "func _use_scroll"
           },
           {
-            "path": "src/game/rules/field_scenario_spell_resolver.gd",
+            "path": "src/game/magic/field_scenario_spell_resolver.gd",
             "symbol": "func resolve_field_spell"
           },
           {
@@ -6580,7 +6580,7 @@
             "symbol": "class_name CombatFlowSummoning"
           },
           {
-            "path": "src/game/rules/classic_spell_disposition_rules.gd",
+            "path": "src/game/magic/classic_spell_disposition_rules.gd",
             "symbol": "class_name ClassicSpellDispositionRules"
           }
         ]

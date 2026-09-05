@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Own immutable spell definitions and lookup, plus the magic feature's migration boundary for its pure rules.
+Own immutable spell definitions and lookup, mutable spell shortcuts and scroll facts, and the pure rules shared by field, scenario, and combat casting.
 
 ## Ownership
 
@@ -10,9 +10,9 @@ Own immutable spell definitions and lookup, plus the magic feature's migration b
 - `SpellCatalog` indexes the effective application-plus-scenario spell definitions by stable and packed Classic identity.
 - `FastSpellBindingState` and `SpellScrollState` own the mutable noncombat spell shortcuts and scroll facts stored by a playthrough.
 - `SpellView`, `SpellScrollView`, and `FastSpellBindingView` are the detached presentation records for learned magic, scrolls, and shortcuts.
+- `MagicRules` is the narrow resolution entry point. Character, monster, projectile, field/scenario, target, area, roll, classification, disposition, and special-effect collaborators own their named mechanics beside it.
+- `SpellResolution`, `GroupSpellResolution`, `RepeatedSpellResolution`, `ProjectileResolution`, `SpellTargetSelection`, and `MonsterPolymorphContext` are typed intermediate and result records used by those rules.
 - `README.md` is the public maintainer entry point for spell-definition resolution.
-
-Magic rules remain under `src/game/rules` until their production files, tests, UIDs, and references move here as one coherent batch.
 
 ## Local Contracts
 
