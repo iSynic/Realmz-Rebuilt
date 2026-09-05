@@ -69,10 +69,6 @@ func _configure_navigation() -> void:
 	var navigation_size := Vector2(82.0, 34.0)
 	action.custom_minimum_size = navigation_size
 	action.size_flags_horizontal = Control.SIZE_SHRINK_END
-	var body_scroll := scroll
-	if body_scroll == null:
-		body_scroll = get_node("WorkspaceColumn/BodyClip/ScreenBodyScroll") as ScrollContainer
-	body_scroll.offset_bottom = -navigation_size.y - 16.0
 
 
 func apply_route_chrome() -> void:
