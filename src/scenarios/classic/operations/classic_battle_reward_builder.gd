@@ -233,4 +233,3 @@ func _complete_mode_ten_battle(combat: CombatState) -> ScenarioRuntimeOperationR
 		events.append(DomainEvent.new(&"battle_returned", {"battleId": battle_id, "outcome": "victory"}))
 	_game_state.combat = null
 	return ScenarioRuntimeOperationResult.completed(battle_id, events, directive)
-

@@ -81,5 +81,3 @@ func _resolve_monster_selection_sequence(caster: MonsterState, caster_definition
 		var resolution := _resolve_monster_selection(caster, selection, spell, power_level, cast_level, damage, duration, 0, rng, save_tag)
 		result.append_target(selection.id, selection.kind, resolution, selection.original_target_id, selection.reflected)
 	return result
-
-

@@ -167,5 +167,3 @@ static func _blocked_character_attack(reason: StringName, chance: int = 0, roll:
 	resolution.blocked = true
 	resolution.block_reason = reason
 	return resolution
-
-

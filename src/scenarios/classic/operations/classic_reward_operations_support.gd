@@ -44,5 +44,3 @@ static func _monster_reward_experience(monster: MonsterState, definition: Monste
 	var base := base_values[index] if monster.hit_dice <= 20 else 6200
 	var increment := increment_values[index] if monster.hit_dice <= 20 else 80
 	return base + definition.experience + monster.maximum_health * increment
-
-

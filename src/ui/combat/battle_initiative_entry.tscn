@@ -7,4 +7,3 @@ texture_filter = 1
 theme_type_variation = &"BattleCommandButton"
 theme_override_constants/icon_max_width = 22
 expand_icon = true
-

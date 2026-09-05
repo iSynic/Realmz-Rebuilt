@@ -82,4 +82,3 @@ func decode_option_labels(value: Variant) -> Variant:
 		ids[id] = true
 		option_labels.append(OptionLabelDefinition.new(id, record["text"]))
 	return option_labels
-

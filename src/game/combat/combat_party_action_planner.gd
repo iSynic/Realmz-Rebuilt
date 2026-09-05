@@ -419,4 +419,3 @@ func _best_projectile(state: GameState, content: RealmzContent, actor: Character
 		if _context.reactions().projectile_target_is_valid(state.combat, content, actor.id, target_id, profile.maximum_range, profile.spell.range_min + profile.spell.range_max > 0):
 			best = _prefer(best, {"action": &"attack", "targetId": target_id, "score": 330 + _lethal_pressure(state, target_id)})
 	return best if not best.is_empty() else {"action": &"switch_weapon", "score": 110}
-

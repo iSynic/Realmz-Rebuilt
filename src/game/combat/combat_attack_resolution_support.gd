@@ -137,5 +137,3 @@ static func _roll_weapon_elements_character(weapon: ItemDefinition, defender: Ch
 		effects.append({"element": String(names[index]), "rolled": rolled, "saveIndex": save_indexes[index], "saveChance": save_chance, "saveRoll": save_roll, "saved": saved, "protected": protected, "amount": effective})
 		total += effective
 	return total
-
-

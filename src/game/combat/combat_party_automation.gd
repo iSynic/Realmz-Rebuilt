@@ -189,5 +189,3 @@ static func _events_include(events: Array[DomainEvent], kind: StringName) -> boo
 		if event.kind == kind:
 			return true
 	return false
-
-

@@ -659,5 +659,3 @@ static func _status_save_index(special_code: int) -> int:
 		6, 16:
 			return 4
 	return 5
-
-

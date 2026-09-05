@@ -119,5 +119,3 @@ func _resolve_character_selection_sequence(caster: CharacterState, selections: A
 		var resolution := _resolve_character_selection(caster, selection, spell, power_level, cast_level, damage, duration, 0, rng, item_definitions)
 		result.append_target(selection.id, selection.kind, resolution, selection.original_target_id, selection.reflected)
 	return result
-
-

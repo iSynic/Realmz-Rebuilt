@@ -48,5 +48,3 @@ func resolve_monster_projectile(caster: MonsterState, projectile_item: ItemDefin
 		return ProjectileResolution.new(true, 0, miss_count, 0, damage, duration, false)
 	target.current_health -= damage
 	return ProjectileResolution.new(true, 1, 0, damage, damage, duration, target.current_health <= 0)
-
-

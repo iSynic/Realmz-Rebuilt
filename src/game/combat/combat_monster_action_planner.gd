@@ -267,5 +267,3 @@ func _monster_target_score(state: GameState, target_id: String, spell: SpellDefi
 		var health_percent := 100 * _target_health(state, target_id) / maxi(1, _target_maximum_health(state, target_id))
 		return (950 if health_percent <= 35 else 650 if health_percent <= 65 else 180) + mini(missing, expected) * 5
 	return 340 + expected * 5 + _lethal_bonus(state, target_id, expected)
-
-

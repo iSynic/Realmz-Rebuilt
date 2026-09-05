@@ -187,5 +187,3 @@ func _apply_noncombat_health(target: CharacterState, damage: int) -> void:
 		target.current_health = mini(target.maximum_health, target.current_health - damage)
 	elif damage > 0 and target.current_health >= 0 and target.current_health > -10:
 		target.current_health -= damage
-
-

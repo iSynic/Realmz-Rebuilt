@@ -2,4 +2,3 @@
 
 [node name="InteractionCharacterOption" type="OptionButton"]
 size_flags_horizontal = 3
-

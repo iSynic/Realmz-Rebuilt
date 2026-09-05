@@ -329,4 +329,3 @@ func _decode_spell_record(value_record: Variant, fields: Array[String], integer_
 	spell.in_combat = record["inCombat"]
 	spell.in_camp = record["inCamp"]
 	return spell
-
