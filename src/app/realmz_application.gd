@@ -128,17 +128,17 @@ func _bind_combat_and_interactions() -> void:
 	presentation_coordinator.playback_step_settled.connect(_on_playback_step_settled)
 	_interaction_presenter.response_submitted.connect(_on_interaction_response_submitted)
 	_interaction_presenter.combat.targeting_requested.connect(_on_combat_targeting_requested)
-	_interaction_presenter.combat.targeting_confirm_requested.connect(_battlefield_presenter.confirm_targeting)
-	_interaction_presenter.combat.targeting_cancel_requested.connect(_battlefield_presenter.cancel_targeting)
-	_interaction_presenter.combat.targeting_rotate_requested.connect(_battlefield_presenter.rotate_targeting)
+	_interaction_presenter.combat.targeting_confirm_requested.connect(_battlefield_presenter.interaction.confirm_targeting)
+	_interaction_presenter.combat.targeting_cancel_requested.connect(_battlefield_presenter.interaction.cancel_targeting)
+	_interaction_presenter.combat.targeting_rotate_requested.connect(_battlefield_presenter.interaction.rotate_targeting)
 	_interaction_presenter.combat.combatant_focus_requested.connect(_on_combatant_focus_requested)
 	_interaction_presenter.combat.reveal_friends_requested.connect(_on_reveal_friends_requested)
 	_interaction_presenter.presentation_sound_requested.connect(_on_interaction_sound_requested)
 	_interaction_presenter.presentation_status_requested.connect(_shell_presenter.status.set_status)
-	_battlefield_presenter.combat_body_submitted.connect(_on_battlefield_action_requested)
-	_battlefield_presenter.combatant_inspected.connect(_on_battlefield_combatant_inspected)
-	_battlefield_presenter.targeting_changed.connect(_interaction_presenter.combat.update_targeting)
-	_battlefield_presenter.targeting_cancelled.connect(_interaction_presenter.combat.targeting_cancelled)
+	_battlefield_presenter.interaction.combat_body_submitted.connect(_on_battlefield_action_requested)
+	_battlefield_presenter.interaction.combatant_inspected.connect(_on_battlefield_combatant_inspected)
+	_battlefield_presenter.interaction.targeting_changed.connect(_interaction_presenter.combat.update_targeting)
+	_battlefield_presenter.interaction.targeting_cancelled.connect(_interaction_presenter.combat.targeting_cancelled)
 
 
 func _bind_shell_and_settings() -> void:
@@ -356,19 +356,19 @@ func _on_battlefield_combatant_inspected(combatant_id: String) -> void:
 
 
 func _on_combat_targeting_requested(request: CombatTargetingRequest) -> void:
-	if not _battlefield_presenter.begin_targeting(request):
+	if not _battlefield_presenter.interaction.begin_targeting(request):
 		_shell_presenter.status.set_status("Battlefield targeting is unavailable for this action.", true)
 
 
 func _on_combatant_focus_requested(combatant_id: String, play_sound: bool) -> void:
-	_battlefield_presenter.focus_combatant(combatant_id)
+	_battlefield_presenter.interaction.focus_combatant(combatant_id)
 	_interaction_presenter.combat.inspect_combatant(combatant_id)
 	if play_sound:
 		_audio_presenter.present_sound(147, presentation_media.catalog())
 
 
 func _on_reveal_friends_requested() -> void:
-	_battlefield_presenter.toggle_reveal_friends()
+	_battlefield_presenter.interaction.toggle_reveal_friends()
 	_audio_presenter.present_sound(137, presentation_media.catalog())
 
 

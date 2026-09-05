@@ -31,7 +31,7 @@ func handle_input(event: InputEvent) -> void:
 		_application._shell_presenter.commands.release()
 	if not event.is_pressed():
 		return
-	if combat_pending and _application._battlefield_presenter.dismiss_reveal_friends():
+	if combat_pending and _application._battlefield_presenter.interaction.dismiss_reveal_friends():
 		_mark_handled()
 		return
 	if _handle_back_input(event, combat_pending):
@@ -83,11 +83,11 @@ func _handle_playback_or_combat_modifier_input(event: InputEvent, key_event: Inp
 
 func _handle_combat_inspection_input(event: InputEvent, combat_pending: bool) -> bool:
 	if combat_pending and event.is_action_pressed(&"realmz_inspect_movement"):
-		_application._battlefield_presenter.set_movement_costs_visible(true)
+		_application._battlefield_presenter.interaction.set_movement_costs_visible(true)
 		_mark_handled()
 		return true
 	if combat_pending and event.is_action_released(&"realmz_inspect_movement"):
-		_application._battlefield_presenter.set_movement_costs_visible(false)
+		_application._battlefield_presenter.interaction.set_movement_costs_visible(false)
 		_mark_handled()
 		return true
 	return false
@@ -96,7 +96,7 @@ func _handle_combat_inspection_input(event: InputEvent, combat_pending: bool) ->
 func _handle_back_input(event: InputEvent, combat_pending: bool) -> bool:
 	if not event.is_action_pressed(&"realmz_back"):
 		return false
-	if combat_pending and _application._battlefield_presenter.cancel_targeting():
+	if combat_pending and _application._battlefield_presenter.interaction.cancel_targeting():
 		_mark_handled()
 		return true
 	if _application._interaction_presenter.handle_back_request():
@@ -115,10 +115,10 @@ func _handle_back_input(event: InputEvent, combat_pending: bool) -> bool:
 func _handle_pending_interaction_input(event: InputEvent, key_event: InputEventKey, pending: InteractionRequest) -> void:
 	if pending.kind != InteractionRequest.COMBAT:
 		return
-	if _application._battlefield_presenter.targeting_active() and event.is_action_pressed(&"realmz_target") and _application._battlefield_presenter.target_with_keyboard():
+	if _application._battlefield_presenter.interaction.targeting != null and event.is_action_pressed(&"realmz_target") and _application._battlefield_presenter.interaction.target_with_keyboard():
 		_mark_handled()
 		return
-	if _application._battlefield_presenter.targeting_active() and event.is_action_pressed(&"realmz_confirm_target") and _application._battlefield_presenter.confirm_targeting():
+	if _application._battlefield_presenter.interaction.targeting != null and event.is_action_pressed(&"realmz_confirm_target") and _application._battlefield_presenter.interaction.confirm_targeting():
 		_mark_handled()
 		return
 	var combat_fast_spell := UiInputActions.fast_spell_slot(event, true)
@@ -127,7 +127,7 @@ func _handle_pending_interaction_input(event: InputEvent, key_event: InputEventK
 		_mark_handled()
 		return
 	var combat_direction := UiInputActions.movement_direction(event)
-	if combat_direction != Vector2i.ZERO and _application._interaction_presenter.combat.accepts_spatial_input() and _application._battlefield_presenter.submit_movement_direction(combat_direction):
+	if combat_direction != Vector2i.ZERO and _application._interaction_presenter.combat.accepts_spatial_input() and _application._battlefield_presenter.interaction.submit_movement_direction(combat_direction):
 		_mark_handled()
 
 

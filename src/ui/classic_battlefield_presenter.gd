@@ -4,11 +4,6 @@ class_name ClassicBattlefieldPresenter
 extends Control
 
 
-signal combat_body_submitted(body: InteractionResponse.CombatBody)
-signal combatant_inspected(combatant_id: String)
-signal targeting_changed(selection: CombatTargetingState)
-signal targeting_cancelled
-
 const NATIVE_CELL_SIZE: float = BattlefieldPresentationGeometry.NATIVE_CELL_SIZE
 const HEADER_HEIGHT: float = BattlefieldPresentationGeometry.HEADER_HEIGHT
 const SURROUND_TEXTURE_PATH := "res://src/ui/assets/ui/classic-exploration-surround-tile.png"
@@ -16,48 +11,32 @@ const SURROUND_TEXTURE_PATH := "res://src/ui/assets/ui/classic-exploration-surro
 var _view: GameView
 var _media: ClassicMediaCatalog
 var _textures := BattlefieldTextureCache.new()
-var _movement_costs_visible: bool = false
-var _hovered_coordinate := Vector2i(-1, -1)
-var _camera_focus_id: String = ""
+var interaction: BattlefieldInteractionController = BattlefieldInteractionController.new()
 var _render_camera_top_left := Vector2i(-1, -1)
 var _render_camera_focus_id: String = ""
 var _render_camera_visible_cells := Vector2i.ZERO
-var _last_active_actor_id: String = ""
-var _reveal_friends: bool = false
 var _playback_frame: CombatPlaybackFrame
 var _monster_facing_right: Dictionary = {}
 var last_playback_media_diagnostic: Dictionary = {}
-var _targeting: CombatTargetingState
 var _surround_texture: Texture2D = load(SURROUND_TEXTURE_PATH) as Texture2D
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	resized.connect(queue_redraw)
+	interaction.redraw_requested.connect(queue_redraw)
 
 
 func present(game_view: GameView) -> void:
-	var next_active_actor_id := ""
-	if game_view != null and game_view.combat_view != null:
-		next_active_actor_id = game_view.combat_view.active_actor_id
-	if next_active_actor_id != _last_active_actor_id:
-		_camera_focus_id = ""
-		_render_camera_focus_id = ""
-	_last_active_actor_id = next_active_actor_id
 	_view = game_view
 	_playback_frame = null
+	if interaction.present(game_view):
+		_render_camera_focus_id = ""
 	_sync_monster_facings()
 	if _view == null or _view.combat_view == null:
-		_movement_costs_visible = false
-		_hovered_coordinate = Vector2i(-1, -1)
-		_camera_focus_id = ""
 		_render_camera_top_left = Vector2i(-1, -1)
 		_render_camera_focus_id = ""
 		_render_camera_visible_cells = Vector2i.ZERO
-		_last_active_actor_id = ""
-		_reveal_friends = false
-	elif not _camera_focus_id.is_empty() and BattlefieldPresentationGeometry.actor_position(_view.combat_view, _view.party_members, _camera_focus_id).x < 0:
-		_camera_focus_id = ""
 	var requested_upper_atlas_id := ""
 	if _view != null and _view.combat_view != null and _view.combat_view.battlefield != null:
 		requested_upper_atlas_id = _view.combat_view.battlefield.upper_tileset_id
@@ -66,9 +45,7 @@ func present(game_view: GameView) -> void:
 
 
 func present_playback_frame(frame: CombatPlaybackFrame) -> void:
-	if _playback_frame == null and frame != null:
-		_camera_focus_id = ""
-	if frame != _playback_frame and frame != null and frame.kind == &"actor_cue":
+	if interaction.playback_changed(_playback_frame, frame):
 		_render_camera_focus_id = ""
 	if frame != null and frame.kind == &"move_start" and not frame.actor_id.is_empty() and frame.from_coordinate.x >= 0 and frame.to_coordinate.x >= 0:
 		_monster_facing_right[frame.actor_id] = frame.to_coordinate.x > frame.from_coordinate.x
@@ -102,7 +79,7 @@ func _draw() -> void:
 	_draw_battle_stage()
 	var combat := _view.combat_view
 	var battlefield := combat.battlefield
-	var focus_id := BattlefieldPresentationGeometry.camera_focus_id_for(_playback_frame, _camera_focus_id, combat.active_actor_id)
+	var focus_id := BattlefieldPresentationGeometry.camera_focus_id_for(_playback_frame, interaction.focused_combatant_id, combat.active_actor_id)
 	var active_position := _effective_actor_position(combat, focus_id)
 	if active_position.x < 0:
 		active_position = battlefield.party_anchor
@@ -150,14 +127,14 @@ func _draw_header(combat: CombatView) -> void:
 
 
 func _draw_tactical_legend() -> void:
-	if _reveal_friends:
+	if interaction.reveal_friends:
 		var x := 8.0
 		for entry: Array in [["Hostile", Color(0.95, 0.22, 0.18)], ["Friendly", Color(0.18, 0.90, 0.38)], ["Helpless", Color(0.20, 0.42, 1.0)]]:
 			draw_line(Vector2(x, 29.0), Vector2(x + 18.0, 29.0), entry[1], 2.0)
 			draw_string(_ui_font(), Vector2(x + 23.0, 33.0), String(entry[0]), HORIZONTAL_ALIGNMENT_LEFT, 58.0, 10, Color(0.82, 0.84, 0.84))
 			x += 86.0
 		draw_string(_ui_font(), Vector2(x, 33.0), "Click board to dismiss", HORIZONTAL_ALIGNMENT_LEFT, 126.0, 10, Color(0.63, 0.67, 0.69))
-	elif _movement_costs_visible:
+	elif interaction.movement_costs_visible:
 		draw_string(_ui_font(), Vector2(8.0, 33.0), "Movement cost aid • release Shift to hide", HORIZONTAL_ALIGNMENT_LEFT, 250.0, 10, Color(0.94, 0.82, 0.38))
 
 
@@ -179,7 +156,7 @@ func _draw_movement_options(combat: CombatView, camera: Vector2i, visible_cells:
 	for option: CombatMoveOptionView in combat.movement_options:
 		if not BattlefieldPresentationGeometry.coordinate_is_visible(option.destination, camera, visible_cells):
 			continue
-		if not _movement_costs_visible and option.destination != _hovered_coordinate:
+		if not interaction.movement_costs_visible and option.destination != interaction.hovered_coordinate:
 			continue
 		var rect := BattlefieldPresentationGeometry.cell_rect(option.destination, camera, draw_origin).grow(-2.0)
 		if option.enabled:
@@ -193,224 +170,14 @@ func _draw_movement_options(combat: CombatView, camera: Vector2i, visible_cells:
 			draw_string(_ui_font(), rect.position + Vector2(2.0, 20.0), "—", HORIZONTAL_ALIGNMENT_CENTER, rect.size.x - 4.0, 12, Color(0.90, 0.62, 0.56))
 
 
-func set_movement_costs_visible(visible_costs: bool) -> void:
-	if _movement_costs_visible == visible_costs:
-		return
-	_movement_costs_visible = visible_costs
-	queue_redraw()
-
-
-func movement_costs_visible() -> bool:
-	return _movement_costs_visible
-
-
-func focus_combatant(combatant_id: String) -> void:
-	_camera_focus_id = combatant_id
-	_render_camera_focus_id = ""
-	queue_redraw()
-
-
-func toggle_reveal_friends() -> void:
-	_reveal_friends = not _reveal_friends
-	queue_redraw()
-
-
-func dismiss_reveal_friends() -> bool:
-	if not _reveal_friends:
-		return false
-	_reveal_friends = false
-	queue_redraw()
-	return true
-
-
-func reveal_friends_visible() -> bool:
-	return _reveal_friends
-
-
-func submit_movement_direction(direction: Vector2i) -> bool:
-	if _playback_frame != null or _targeting != null:
-		return false
-	var option := _movement_option_for_direction(direction)
-	return _submit_movement_option(option)
-
-
 func _gui_input(event: InputEvent) -> void:
-	if _playback_frame != null or _view == null or _view.combat_view == null or _view.combat_view.battlefield == null:
-		return
-	if _targeting != null:
-		_handle_targeting_input(event)
-		return
-	if event is InputEventMouseMotion:
-		var hover_option := _movement_option_toward_local_position((event as InputEventMouseMotion).position)
-		var next_hover := hover_option.destination if hover_option != null else Vector2i(-1, -1)
-		if next_hover != _hovered_coordinate:
-			_hovered_coordinate = next_hover
-			queue_redraw()
-		return
-	if event is InputEventMouseButton and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT and (event as InputEventMouseButton).pressed:
-		if dismiss_reveal_friends():
-			accept_event()
-			return
-		if (event as InputEventMouseButton).ctrl_pressed or (event as InputEventMouseButton).meta_pressed:
-			var inspected_id := BattlefieldPresentationGeometry.combatant_at(_view.combat_view, _view.party_members, _coordinate_at_local_position((event as InputEventMouseButton).position))
-			if not inspected_id.is_empty():
-				focus_combatant(inspected_id)
-				combatant_inspected.emit(inspected_id)
-				accept_event()
-			return
-		if _submit_movement_option(_movement_option_toward_local_position((event as InputEventMouseButton).position)):
-			accept_event()
+	if interaction.handle_input(event, size, _render_camera_top_left, _render_camera_visible_cells):
+		accept_event()
 
 
 func _notification(what: int) -> void:
-	if what != NOTIFICATION_MOUSE_EXIT:
-		return
-	var changed := false
-	if _hovered_coordinate != Vector2i(-1, -1):
-		_hovered_coordinate = Vector2i(-1, -1)
-		changed = true
-	if _targeting != null and _targeting.selected_coordinate.x < 0 and _targeting.hovered_coordinate != Vector2i(-1, -1):
-		_targeting.hovered_coordinate = Vector2i(-1, -1)
-		changed = true
-	if changed:
-		queue_redraw()
-
-
-func begin_targeting(configuration: CombatTargetingRequest) -> bool:
-	if _playback_frame != null or _view == null or _view.combat_view == null:
-		return false
-	if configuration == null or not configuration.is_valid():
-		return false
-	_targeting = CombatTargetingState.new(configuration)
-	_reveal_friends = false
-	targeting_changed.emit(_targeting)
-	queue_redraw()
-	return true
-
-
-func confirm_targeting() -> bool:
-	if _targeting == null:
-		return false
-	var body := _targeting.committed_body()
-	if body == null:
-		targeting_changed.emit(_targeting)
-		return false
-	_targeting = null
-	queue_redraw()
-	combat_body_submitted.emit(body)
-	return true
-
-
-func cancel_targeting() -> bool:
-	if _targeting == null:
-		return false
-	_targeting = null
-	queue_redraw()
-	targeting_cancelled.emit()
-	return true
-
-
-func targeting_active() -> bool:
-	return _targeting != null
-
-
-func target_with_keyboard() -> bool:
-	if _targeting == null or not _targeting.target_with_keyboard():
-		return false
-	if not _targeting.selected_ids.is_empty():
-		_camera_focus_id = _targeting.selected_ids[-1]
-	targeting_changed.emit(_targeting)
-	queue_redraw()
-	return true
-
-
-func rotate_targeting() -> bool:
-	if _targeting == null or not _targeting.rotate_area():
-		return false
-	targeting_changed.emit(_targeting)
-	queue_redraw()
-	return true
-
-
-func _handle_targeting_input(event: InputEvent) -> void:
-	if event is InputEventMouseMotion:
-		_targeting.hovered_coordinate = _coordinate_at_local_position((event as InputEventMouseMotion).position)
-		queue_redraw()
-		return
-	if not event is InputEventMouseButton or not (event as InputEventMouseButton).pressed:
-		return
-	if (event as InputEventMouseButton).button_index == MOUSE_BUTTON_RIGHT:
-		cancel_targeting()
-		accept_event()
-		return
-	if (event as InputEventMouseButton).button_index != MOUSE_BUTTON_LEFT:
-		return
-	var coordinate := _coordinate_at_local_position((event as InputEventMouseButton).position)
-	if coordinate.x < 0:
-		return
-	if _targeting.mode in [&"area", &"coordinate_sequence"]:
-		_targeting.select_coordinate(coordinate)
-	else:
-		var combatant_id := BattlefieldPresentationGeometry.combatant_at(_view.combat_view, _view.party_members, coordinate)
-		_targeting.select_combatant(combatant_id)
-	targeting_changed.emit(_targeting)
-	queue_redraw()
-	accept_event()
-
-
-func _coordinate_at_local_position(local_position: Vector2) -> Vector2i:
-	var combat := _view.combat_view
-	var battlefield := combat.battlefield
-	var active_position := BattlefieldPresentationGeometry.actor_position(combat, _view.party_members, combat.active_actor_id)
-	if active_position.x < 0:
-		active_position = battlefield.party_anchor
-	var visible_cells := BattlefieldPresentationGeometry.viewport_cells_for(size)
-	var camera := _camera_for_input(active_position, visible_cells)
-	return BattlefieldPresentationGeometry.coordinate_for_point(local_position, camera, visible_cells, size)
-
-
-func _movement_option_for_direction(direction: Vector2i) -> CombatMoveOptionView:
-	if _view == null or _view.combat_view == null:
-		return null
-	for option: CombatMoveOptionView in _view.combat_view.movement_options:
-		if option.direction == direction:
-			return option
-	return null
-
-
-func _movement_option_for_destination(destination: Vector2i) -> CombatMoveOptionView:
-	if _view == null or _view.combat_view == null:
-		return null
-	for option: CombatMoveOptionView in _view.combat_view.movement_options:
-		if option.destination == destination:
-			return option
-	return null
-
-
-func _movement_option_toward_local_position(local_position: Vector2) -> CombatMoveOptionView:
-	if _view == null or _view.combat_view == null or _view.combat_view.battlefield == null:
-		return null
-	var origin := BattlefieldPresentationGeometry.actor_position(_view.combat_view, _view.party_members, _view.combat_view.active_actor_id)
-	var visible_cells := BattlefieldPresentationGeometry.viewport_cells_for(size)
-	var camera := _camera_for_input(origin, visible_cells)
-	var draw_origin := BattlefieldPresentationGeometry.battlefield_draw_origin(size, visible_cells)
-	return _movement_option_for_direction(BattlefieldPresentationGeometry.click_direction_for_point(BattlefieldPresentationGeometry.cell_rect(origin, camera, draw_origin), local_position))
-
-
-func _camera_for_input(fallback_focus: Vector2i, visible_cells: Vector2i) -> Vector2i:
-	if _render_camera_top_left.x >= 0 and _render_camera_visible_cells == visible_cells:
-		return _render_camera_top_left
-	return BattlefieldPresentationGeometry.camera_top_left(fallback_focus, visible_cells)
-
-
-func _submit_movement_option(option: CombatMoveOptionView) -> bool:
-	if option == null or not option.enabled or _view == null or _view.combat_view == null:
-		return false
-	var body := InteractionResponse.CombatBody.new(&"retreat_edge" if option.retreats_from_battle else &"move", _view.combat_view.active_actor_id)
-	body.destination = option.destination
-	body.has_destination = true
-	combat_body_submitted.emit(body)
-	return true
+	if what == NOTIFICATION_MOUSE_EXIT:
+		interaction.handle_mouse_exit()
 
 
 func _draw_characters(combat: CombatView, camera: Vector2i, visible_cells: Vector2i, draw_origin: Vector2) -> void:
@@ -446,7 +213,7 @@ func _draw_persistent_fields(combat: CombatView, camera: Vector2i, visible_cells
 
 
 func _draw_revealed_relationships(combat: CombatView, camera: Vector2i, visible_cells: Vector2i, draw_origin: Vector2) -> void:
-	if not _reveal_friends:
+	if not interaction.reveal_friends:
 		return
 	var origin := BattlefieldPresentationGeometry.actor_position(combat, _view.party_members, combat.active_actor_id)
 	if not BattlefieldPresentationGeometry.coordinate_is_visible(origin, camera, visible_cells):
@@ -495,42 +262,43 @@ func _draw_monsters(combat: CombatView, camera: Vector2i, visible_cells: Vector2
 
 
 func _draw_targeting_preview(combat: CombatView, camera: Vector2i, visible_cells: Vector2i, draw_origin: Vector2) -> void:
-	if _targeting == null:
+	var targeting := interaction.targeting
+	if targeting == null:
 		return
-	if _targeting.mode == &"area":
-		var center := _targeting.selected_coordinate if _targeting.selected_coordinate.x >= 0 else _targeting.hovered_coordinate
+	if targeting.mode == &"area":
+		var center := targeting.selected_coordinate if targeting.selected_coordinate.x >= 0 else targeting.hovered_coordinate
 		if center.x < 0:
 			return
-		var legal := _targeting.validation_deferred or _targeting.legal_coordinates.has(center)
+		var legal := targeting.validation_deferred or targeting.legal_coordinates.has(center)
 		var outline := Color(0.96, 0.82, 0.30, 0.96) if legal else Color(0.62, 0.64, 0.68, 0.86)
-		for offset: Vector2i in _targeting.area_offsets:
+		for offset: Vector2i in targeting.area_offsets:
 			var coordinate := center + offset
 			if BattlefieldPresentationGeometry.coordinate_is_visible(coordinate, camera, visible_cells):
 				draw_rect(BattlefieldPresentationGeometry.cell_rect(coordinate, camera, draw_origin).grow(-2.0), outline, false, 2.0)
 		return
-	if _targeting.mode == &"coordinate_sequence":
-		for index: int in _targeting.selected_coordinates.size():
-			var coordinate := _targeting.selected_coordinates[index]
+	if targeting.mode == &"coordinate_sequence":
+		for index: int in targeting.selected_coordinates.size():
+			var coordinate := targeting.selected_coordinates[index]
 			if not BattlefieldPresentationGeometry.coordinate_is_visible(coordinate, camera, visible_cells):
 				continue
 			var rect := BattlefieldPresentationGeometry.cell_rect(coordinate, camera, draw_origin)
 			draw_rect(rect.grow(-2.0), Color(1.0, 0.86, 0.28, 0.98), false, 3.0)
 			draw_string(_ui_font(), rect.position + Vector2(4.0, 18.0), str(index + 1), HORIZONTAL_ALIGNMENT_LEFT, 24.0, 15, Color(1.0, 0.94, 0.72))
-		var hovered := _targeting.hovered_coordinate
-		if hovered.x >= 0 and not _targeting.selected_coordinates.has(hovered) and BattlefieldPresentationGeometry.coordinate_is_visible(hovered, camera, visible_cells):
+		var hovered := targeting.hovered_coordinate
+		if hovered.x >= 0 and not targeting.selected_coordinates.has(hovered) and BattlefieldPresentationGeometry.coordinate_is_visible(hovered, camera, visible_cells):
 			draw_rect(BattlefieldPresentationGeometry.cell_rect(hovered, camera, draw_origin).grow(-2.0), Color(0.86, 0.80, 0.62, 0.78), false, 2.0)
 		return
-	for candidate_id: String in _targeting.candidate_ids:
+	for candidate_id: String in targeting.candidate_ids:
 		var rect := _combatant_rect(combat, candidate_id, camera, visible_cells, draw_origin)
 		if rect.has_area():
 			draw_rect(rect.grow(2.0), Color(0.86, 0.80, 0.62, 0.78), false, 2.0)
-	for index: int in _targeting.selected_ids.size():
-		var selected_id := _targeting.selected_ids[index]
+	for index: int in targeting.selected_ids.size():
+		var selected_id := targeting.selected_ids[index]
 		var rect := _combatant_rect(combat, selected_id, camera, visible_cells, draw_origin)
 		if not rect.has_area():
 			continue
 		draw_rect(rect.grow(4.0), Color(1.0, 0.86, 0.28, 0.98), false, 4.0)
-		if _targeting.mode == &"sequence":
+		if targeting.mode == &"sequence":
 			draw_string(_ui_font(), rect.position + Vector2(4.0, 18.0), str(index + 1), HORIZONTAL_ALIGNMENT_LEFT, 24.0, 15, Color(1.0, 0.94, 0.72))
 
 
