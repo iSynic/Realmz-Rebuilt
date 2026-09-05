@@ -116,7 +116,7 @@ func _test_snapshot_rng_and_age_persistence(content: RealmzContent) -> void:
 	first_aging_character.race_id = aging_race.id
 	first_aging_character.age_group = 1
 	first_aging_character.age_days = aging_race.age_range(1).x * 365 - 1
-	var second_aging_character := CharacterState.from_data(first_aging_character.to_data())
+	var second_aging_character := CharacterStateCodec.copy(first_aging_character)
 	second_aging_character.id = "fixture.party.second-aging-member"
 	second_aging_character.name = "Second Aging Hero"
 	assert_true(age_save.game_state.party.add_character(second_aging_character), "the synthetic save carries a second ordered age update")
@@ -269,14 +269,14 @@ func _test_party_and_creator_persistence(content: RealmzContent) -> void:
 	var imported_definition := content.item_definitions()[0]
 	imported.set_inventory([ItemInstance.new("vault.character.one.item.0", imported_definition.id, imported_definition.initial_charges, false, true)])
 	imported.carried_load = 0
-	var wrong_kind_import := CharacterState.from_data(imported.to_data())
+	var wrong_kind_import := CharacterStateCodec.copy(imported)
 	wrong_kind_import.portrait_id = "realmz-combat-icon-9000"
 	assert_equal(resumed_setup.submit_intent(PartyIntents.import_vault_character(wrong_kind_import.id, "c".repeat(64), wrong_kind_import, "fixture-source", "b".repeat(64))).error_code, &"vault_character_ineligible", "vault import rejects a package asset used in the wrong appearance role")
 	var import_step := resumed_setup.submit_intent(PartyIntents.import_vault_character(imported.id, "a".repeat(64), imported, "fixture-source", "b".repeat(64)))
 	assert_equal(import_step.state, SessionStep.State.COMPLETED, "vault import adds another member without completing party setup")
 	assert_equal(resumed_setup.view().party_members.size(), 2, "created and vault characters may share one setup party")
 	assert_equal(resumed_setup._context.state.party.character_by_id(imported.id).carried_load, 7 + imported_definition.instance_weight(imported_definition.initial_charges), "vault import derives carried load from target-package definitions instead of trusting a stale local total")
-	var conflicting_import := CharacterState.from_data(imported.to_data())
+	var conflicting_import := CharacterStateCodec.copy(imported)
 	conflicting_import.id = "vault.character.conflicting"
 	conflicting_import.name = "Conflicting Hero"
 	var party_before_conflict := resumed_setup.view().party_members.size()

@@ -398,7 +398,7 @@ func _apply_age_change(character: CharacterState, race: RaceDefinition, caste: C
 	character.magic_resistance = _signed_16(character.magic_resistance + direction * change[6])
 	character.maximum_movement = maxi(2, _signed_16(character.maximum_movement + direction * change[7]))
 	for save_index: int in 7:
-		character.set_save_value_raw(save_index, _signed_16(character.save_value(save_index) + direction * change[8 + save_index]))
+		character.set_save_value(save_index, _signed_16(character.save_value(save_index) + direction * change[8 + save_index]), false)
 
 
 static func _signed_16(value: int) -> int:

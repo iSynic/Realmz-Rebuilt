@@ -175,7 +175,7 @@ func restore_equipment() -> bool:
 func to_data() -> Dictionary:
 	var character_data: Array[Dictionary] = []
 	for character: CharacterState in _characters:
-		character_data.append(character.to_data())
+		character_data.append(CharacterStateCodec.encode(character))
 	var ally_data: Array[Dictionary] = []
 	for ally: MonsterState in _allies:
 		ally_data.append(ally.to_data())
@@ -240,7 +240,7 @@ static func _base_fields_are_valid(data: Dictionary) -> bool:
 static func _characters_from_data(values: Array) -> Variant:
 	var result: Array[CharacterState] = []
 	for value: Variant in values:
-		var character := CharacterState.from_data(value)
+		var character := CharacterStateCodec.decode(value)
 		if character == null:
 			return null
 		result.append(character)

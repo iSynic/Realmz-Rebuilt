@@ -94,7 +94,7 @@ func _prepare_party() -> void:
 		for ability_index: int in range(5, 13):
 			character.set_ability_value(ability_index, 32_767)
 		for save_index: int in 8:
-			character.set_save_value_raw(save_index, 32_767)
+			character.set_save_value(save_index, 32_767, false)
 	_session._state.party_setup_completed = true
 
 

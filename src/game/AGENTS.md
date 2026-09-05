@@ -7,6 +7,7 @@ Own the pure Realmz model, fixed Classic rules, topology, game clock, randomness
 ## Ownership
 
 - Direct Realmz definitions and mutable playthrough state, including characters, equipment, wealth, conditions, encounters, battles, shops, treasures, spells, monsters, races, castes, and immutable compiled scenario programs.
+- `characters/` owns mutable character truth, lifetime history, pure character rules, detached character views, and the stable character-state codec. Save, vault, draft, and clone boundaries address `CharacterStateCodec` directly rather than asking state to serialize itself.
 - `InventoryRules` owns carried-item capacity, transfer, stack, charge, and item-use admission. `EquipmentRules` owns wearable admission, equip/unequip mutation, scroll-case presence, and combat loadout projection. `RealmzRules` exposes them as sibling collaborators, and callers address the actual owner instead of using forwarding methods.
 - `WorldState` is the small save aggregate around `WorldTopologyState`, `WorldTriggerState`, and `WorldExplorationState`. Callers address those collaborators directly: topology owns terrain, boats, doors, secrets, and map appearance; triggers own Action Point availability and random regions; exploration owns visited/seen cells, acquired maps, and location notes. Their codecs preserve the established flat `worldOverlays` save representation.
 - Combat spell source transactions remain in `CombatFlowMagic`; `CombatCharacterSpellResolution` owns shared ray/group/area target collection and the character multi-spell commit, while `CombatSpellEventBuilder` owns only the detached presentation-event shapes emitted after those mechanics resolve.
@@ -189,6 +190,7 @@ Own the pure Realmz model, fixed Classic rules, topology, game clock, randomness
 
 ## Child DOX Index
 
+- `characters/AGENTS.md` owns mutable character truth, its save codec, character rules, lifetime history, and detached character views.
 - `combat/AGENTS.md` owns the explicit combat collaborator context, combat-owned event construction, and the public maintainer guide for that feature seam.
 - `scenario/AGENTS.md` owns immutable scenario definitions and pure mutable scenario-progress state.
 - `session/intents/AGENTS.md` owns feature-named player commands, their typed payload values, and the stable kind registry.

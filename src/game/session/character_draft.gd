@@ -36,7 +36,7 @@ func to_data() -> Dictionary:
 		"portraitId": portrait_id,
 		"combatIconId": combat_icon_id,
 		"finalized": finalized,
-		"generatedCharacter": null if generated_character == null else generated_character.to_data(),
+		"generatedCharacter": null if generated_character == null else CharacterStateCodec.encode(generated_character),
 	}
 
 
@@ -65,7 +65,7 @@ static func from_data(value: Variant) -> CharacterDraft:
 	result.combat_icon_id = value["combatIconId"]
 	result.finalized = value["finalized"]
 	if value.has("generatedCharacter") and value["generatedCharacter"] != null:
-		result.generated_character = CharacterState.from_data(value["generatedCharacter"])
+		result.generated_character = CharacterStateCodec.decode(value["generatedCharacter"])
 		if result.generated_character == null:
 			return null
 	return result

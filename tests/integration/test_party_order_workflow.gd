@@ -23,7 +23,7 @@ func run() -> void:
 	var initial_state_by_id: Dictionary = {}
 	for character: CharacterState in session.snapshot().game_state.party.characters():
 		initial_ids.append(character.id)
-		initial_state_by_id[character.id] = character.to_data()
+		initial_state_by_id[character.id] = CharacterStateCodec.encode(character)
 	assert_true(session.view().availability(&"reorder_party").enabled, "a noncombat party with at least two members may open Party Order")
 	var requested_order: Array[String] = [initial_ids[2], initial_ids[0], initial_ids[1]]
 	var rng_before := session.snapshot().rng_state.to_data()
@@ -33,7 +33,7 @@ func run() -> void:
 	assert_equal([reorder.events[0].kind, reorder.events[0].payload["previousCharacterIds"], reorder.events[0].payload["characterIds"]], [&"party_reordered", initial_ids, requested_order], "the event records both complete slot orders")
 	assert_equal(session.view().party_members.map(func(character: CharacterView) -> String: return character.id), requested_order, "the detached view follows committed party order")
 	for character: CharacterState in session.snapshot().game_state.party.characters():
-		assert_equal(character.to_data(), initial_state_by_id[character.id], "reordering preserves every field owned by %s" % character.id)
+		assert_equal(CharacterStateCodec.encode(character), initial_state_by_id[character.id], "reordering preserves every field owned by %s" % character.id)
 	assert_equal(session.snapshot().rng_state.to_data(), rng_before, "Party Order consumes no gameplay randomness")
 
 	var committed_state := save_data(session.snapshot())

@@ -24,7 +24,7 @@ func run() -> void:
 		assert_equal([loaded.state.two_hand, loaded.state.ability_value(4)], [24, 63], "vault revisions preserve the source-owned combat statistic and trained abilities separately")
 		assert_equal(loaded.publication_metadata.get("label"), "Fixture vault character", "publication metadata remains separate from gameplay state")
 	assert_false(CharacterVaultRepository.new("user://realmz2-tests/character-vault-invalid").publish_revision(CharacterVaultRecord.new("..", "realmz-classic-1", "realmz2-synthetic-fixture", "0".repeat(64), CharacterState.new("..", "Invalid", 1, 1))), "portable dotted character IDs do not permit traversal components")
-	var charmed_state := CharacterState.from_data(character.to_data())
+	var charmed_state := CharacterStateCodec.copy(character)
 	charmed_state.traitor = true
 	var charmed_record := CharacterVaultRecord.new("vault-charmed-character", "realmz-classic-1", "realmz2-synthetic-fixture", "0000000000000000000000000000000000000000000000000000000000000000", charmed_state)
 	charmed_record.state.id = charmed_record.character_id

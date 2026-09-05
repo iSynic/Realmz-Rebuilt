@@ -1,6 +1,6 @@
 # Characters
 
-Start with `CharacterState` for one adventurer's mutable truth and `CharacterRules` for creation, aging, derived statistics, and character-level legality. `CharacterView` is the detached, read-only form used by the interface. Character creation and party membership are committed through `GameSession`; UI code never edits a character directly.
+Start in `src/game/characters`. `CharacterState` owns one adventurer's mutable truth, `CharacterRules` owns creation, aging, derived statistics, and character-level legality, and `CharacterView` is the detached, read-only form used by the interface. `CharacterStateCodec` is the only owner of the stable save and Character Files dictionary; state itself contains no persistence facade. Character creation and party membership are committed through `GameSession`, and UI code never edits a character directly.
 
 `CasteDefinition` keeps identity, eligibility, equipment policy, and starting items together. Its named `AttributeDefinition` record owns save bonuses, attribute limits, starting conditions, and strength bounds; its `ProgressionDefinition` record owns stamina dice, combat growth, spellcaster rows, abilities, and victory thresholds. Providence's flat package record is unchanged, but `PackageCharacterContentDecoder` constructs these three concepts explicitly so maintainers do not have to interpret a 35-argument constructor.
 

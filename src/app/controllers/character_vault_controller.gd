@@ -24,7 +24,7 @@ func import_intent(character_id: String, revision_hash: String) -> PlayerIntent:
 			_validated_records[cache_key] = record
 	if record == null:
 		return null
-	var detached_state := CharacterState.from_data(record.state.to_data())
+	var detached_state := CharacterStateCodec.copy(record.state)
 	return PartyIntents.import_vault_character(record.character_id, record.revision_hash, detached_state, record.source_campaign_id, record.source_package_hash) if detached_state != null else null
 
 
@@ -51,7 +51,7 @@ func publish_from_snapshot(snapshot: SessionSnapshot, content: RealmzContent, ch
 	if source_character == null:
 		_operation_error = "the character is unavailable"
 		return ""
-	var character := CharacterState.from_data(source_character.to_data())
+	var character := CharacterStateCodec.copy(source_character)
 	if character == null:
 		_operation_error = "the character state is invalid"
 		return ""

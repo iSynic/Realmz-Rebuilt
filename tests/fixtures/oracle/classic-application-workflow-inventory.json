@@ -3430,7 +3430,7 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/game/state/character_state.gd",
+            "path": "src/game/characters/character_state.gd",
             "symbol": "class_name CharacterState"
           },
           {
@@ -4471,11 +4471,11 @@
         "status": "complete",
         "owners": [
           {
-            "path": "src/game/view/character_view.gd",
+            "path": "src/game/characters/character_view.gd",
             "symbol": "class_name CharacterView"
           },
           {
-            "path": "src/game/state/character_lifetime_record.gd",
+            "path": "src/game/characters/character_lifetime_record.gd",
             "symbol": "class_name CharacterLifetimeRecord"
           },
           {
@@ -4492,7 +4492,7 @@
         "status": "verified",
         "owners": [
           {
-            "path": "src/game/state/character_state.gd",
+            "path": "src/game/characters/character_state.gd",
             "symbol": "func to_data"
           }
         ]

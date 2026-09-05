@@ -33,7 +33,7 @@ func run() -> void:
 	active_target.current_health = 20
 	active_target.maximum_health = 20
 	active_target.magic_resistance = 120
-	active_target.set_save_value_raw(1, -99)
+	active_target.set_save_value(1, -99, false)
 	var bound := session.submit_intent(MagicIntents.set_fast_spell(active_caster.id, 0, "classic.spell.field-bolt", 2))
 	assert_equal(bound.state, SessionStep.State.COMPLETED, "Fast Spell binding is a typed committed character mutation")
 	assert_true(bound.events.any(func(event: DomainEvent) -> bool: return event.kind == &"fast_spell_changed" and event.payload.get("slot") == 0), "binding publishes the exact detached slot change")

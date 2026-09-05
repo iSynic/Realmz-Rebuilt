@@ -57,7 +57,7 @@ static func import_vault_character(context: SessionWorkflowContext, pending: boo
 		return SessionWorkflowResult.failed(&"character_draft_active", "Finish or cancel the character currently being created before importing from the vault.")
 	if payload == null or payload.character_id.is_empty() or payload.revision_hash.is_empty() or payload.character_state == null:
 		return SessionWorkflowResult.failed(&"invalid_vault_import", "A validated vault character revision is required.")
-	var imported := CharacterState.from_data(payload.character_state.to_data())
+	var imported := CharacterStateCodec.copy(payload.character_state)
 	if imported == null or imported.id != payload.character_id:
 		return SessionWorkflowResult.failed(&"invalid_vault_import", "The vault character state is malformed.")
 	var restrictions := context.content.campaign_definition().restrictions
@@ -216,7 +216,7 @@ static func commit_character_draft(context: SessionWorkflowContext) -> Character
 	var maximum_party_size := clampi(context.content.campaign_definition().restrictions.maximum_party_size, 1, 6)
 	if context.state.party.characters().size() >= maximum_party_size:
 		return CharacterFinalizeWorkflowResult.failed(&"invalid_party_size", "This campaign allows no more than %d characters." % maximum_party_size)
-	var character := CharacterState.from_data(context.state.character_draft.generated_character.to_data())
+	var character := CharacterStateCodec.copy(context.state.character_draft.generated_character)
 	if character == null:
 		return CharacterFinalizeWorkflowResult.failed(&"character_creation_failed", "Realmz rules rejected the generated character.")
 	var party_context := context.state.party.characters()

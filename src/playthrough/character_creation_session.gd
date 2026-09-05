@@ -46,7 +46,7 @@ func completed_character() -> CharacterState:
 	var boundary := _session.snapshot()
 	if boundary == null or boundary.game_state.party.characters().size() != 1:
 		return null
-	var character := CharacterState.from_data(boundary.game_state.party.characters()[0].to_data())
+	var character := CharacterStateCodec.copy(boundary.game_state.party.characters()[0])
 	if character != null:
 		character.id = _published_character_id
 	return character
