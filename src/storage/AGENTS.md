@@ -70,3 +70,4 @@ Own package loading, schema/hash validation, strict save persistence, and extern
 
 - `packages/AGENTS.md` owns package-v3 installation, discovery, decoding, validation, receipts, and bounded cache responsibilities.
 - `campaigns/AGENTS.md` owns the 13-scenario bundled archives, default Castle provenance, and the project-owner-designated City of Bywater source snapshot.
+- `saves/AGENTS.md` owns the strict save envelope, repository, backup rotation, and construction of the detached session-owned save-slot preview.

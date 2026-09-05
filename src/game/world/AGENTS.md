@@ -13,6 +13,7 @@ Own immutable world topology definitions, the authoritative game clock, and pure
 - `ClockRules` for fatigue, condition ticks, spell recovery, aging, ration use, and half-day health recovery.
 - `WorldState` gathers mutable world truth while `WorldTopologyState`, `WorldTriggerState`, and `WorldExplorationState` own altered topology, trigger state, and discovery history.
 - `RandomRegionState` and `LocationNoteState` retain mutable random-region and player-note facts.
+- `MapView` and its cell, window, presentation-delta, player-map, location-note, and journal-entry records form the detached world read model.
 
 ## Local Contracts
 
@@ -21,6 +22,7 @@ Own immutable world topology definitions, the authoritative game clock, and pure
 - Clock changes are synchronous deterministic gameplay mutations. They use no wall-clock time, Godot timers, or presentation state.
 - `ClockRules` preserves individual Classic timeclick order and emits detached events only after each mutation commits.
 - World definitions, clock state, and rules are pure objects with no Node, filesystem, package, or UI dependency.
+- Detached map views may share immutable projection chunks, but never retain or mutate authoritative topology or world state.
 
 ## Work Guidance
 

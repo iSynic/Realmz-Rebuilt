@@ -9,6 +9,7 @@ Own immutable spell definitions and lookup, plus the magic feature's migration b
 - `SpellDefinition` is the immutable authored spell record shared by every casting source.
 - `SpellCatalog` indexes the effective application-plus-scenario spell definitions by stable and packed Classic identity.
 - `FastSpellBindingState` and `SpellScrollState` own the mutable noncombat spell shortcuts and scroll facts stored by a playthrough.
+- `SpellView`, `SpellScrollView`, and `FastSpellBindingView` are the detached presentation records for learned magic, scrolls, and shortcuts.
 - `README.md` is the public maintainer entry point for spell-definition resolution.
 
 Magic rules remain under `src/game/rules` until their production files, tests, UIDs, and references move here as one coherent batch.

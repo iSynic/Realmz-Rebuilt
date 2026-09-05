@@ -1,6 +1,6 @@
 extends "res://tests/presentation/classic_ui_test_support.gd"
 
-const SaveSlotPreviewScript := preload("res://src/game/view/save_slot_preview.gd")
+const SaveSlotPreviewScript := preload("res://src/playthrough/session/save_slot_preview.gd")
 const ApplicationLifecycleScript := preload("res://src/app/platform/application_lifecycle.gd")
 const HeldMovementControllerScript := preload("res://src/ui/exploration/held_movement_controller.gd")
 const RetainedMapSurfaceScript := preload("res://src/ui/exploration/classic_retained_map_surface.gd")

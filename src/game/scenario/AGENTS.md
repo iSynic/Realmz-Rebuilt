@@ -12,6 +12,7 @@ Own immutable compiled scenario definitions and the mutable scenario-progress st
 - `ScenarioContentCatalog` indexes campaign narration, option labels, triggers, and direct encounter definitions.
 - `ScenarioProgressState` for searched cells, quests, journal discovery, and the current selected-character set.
 - `ScenarioEncounterState` for timed encounter records, eliminated results, attempt counts, thief flags, and program redirects.
+- `CampaignSummaryView` carries the detached campaign facts shown during selection without making discovery load the complete package.
 
 ## Local Contracts
 

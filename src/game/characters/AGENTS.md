@@ -10,6 +10,7 @@ Own one adventurer's mutable truth, derived character rules, detached presentati
 - `CharacterStateCodec` alone owns the character save dictionary and strict restoration.
 - `CharacterRules` owns creation, aging, derived statistics, advancement, and character-level legality.
 - `CharacterView` is the detached read-only record consumed by presentation.
+- Character metric, age-band, appearance-option, spell-option, party-summary, and setup views are detached records for their named character surfaces.
 - `CharacterLifetimeRecord` owns cumulative character achievements and their nested value representation.
 - `PartyState` owns the ordered active adventurers and party-wide character facts.
 - `RaceDefinition`, `CasteDefinition`, and `CharacterAppearanceDefinition` are the immutable authored character records.

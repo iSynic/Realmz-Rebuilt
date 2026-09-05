@@ -4,4 +4,6 @@ This is the doorway into a running adventure. `game_session.gd` exposes the smal
 
 Restore is deliberately staged. `session_restore_validator.gd` coordinates state, scenario, continuation, and request checks against a detached candidate. Only a fully accepted candidate replaces the live context. `session_continuation.gd` and its codec preserve interrupted operations in saves, while the view projectors build read-only `GameView` records and reuse them only for recognized committed revisions.
 
+`SaveSlotPreview` is the neutral browse record shared by storage, the application host, and presentation. It reports visible adventure identity and validity without exposing a save path or mutable envelope, and it does not replace the full restore check.
+
 To trace a command, begin with `GameSession.submit`, continue through `SessionIntentCoordinator`, and then enter the named sibling feature workflow. To trace a response, begin with `GameSession.respond` and `SessionResponsesCoordinator`. The primary checks are `tests/core/test_game_session.gd`, `tests/integration/test_session_persistence.gd`, and `tests/scenario/test_scenario_vm.gd`; movement and projection changes also require the runtime performance probe.

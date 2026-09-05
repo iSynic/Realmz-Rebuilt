@@ -12,6 +12,7 @@ Own the public, deterministic, all-or-nothing transaction boundary around one ac
 - Restore validators build and verify one detached candidate before `GameSession` assigns it.
 - `SessionContinuation`, its body protocol, and codec own the stable saved continuation envelope.
 - View projectors own read-only detached `GameView` assembly and conservative revision reuse.
+- `SaveSlotPreview` is the neutral detached browse contract constructed by storage and consumed by the host and UI.
 
 ## Local Contracts
 

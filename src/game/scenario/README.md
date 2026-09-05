@@ -4,6 +4,8 @@ Start with `ScenarioProgressState` when you need to understand mutable scenario 
 
 Compiled authored content remains beside this state under `content`, `instructions`, and `safe`. `content` holds the immutable campaign aggregate, restrictions, messages, labels, triggers, direct encounters, and program/action definitions. `ScenarioContentCatalog` is the direct lookup for those scenario records after package construction; the compiled program graph remains `RealmzContent.scenario`, while the same aggregate exposes the neighboring character, item, magic, combat, economy, and world catalogs directly. The executing VM and Classic instruction adapters live in `src/scenarios`; `GameSession` and its workflows decide when those operations run.
 
+`CampaignSummaryView` is the small detached selection record derived after package preparation. It carries visible title, author, version, restrictions, guidance, and splash identity without exposing the compiled content aggregate to the UI.
+
 ```text
 compiled package definitions
           |

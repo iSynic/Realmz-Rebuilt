@@ -7,3 +7,5 @@ Package assembly overlays any legal scenario-owned exact identity on the stock a
 Spell lookup is intentionally separate from spell capability and resolution. The `ClassicSpell*Rules` classes explain source-backed spell structure, while `MagicRules` and its field/combat collaborators perform deterministic transactions using the session RNG. Begin with `test_package_repository.gd` for catalog construction, `test_field_spell_workflow.gd` for field magic, and `test_combat_flow.gd` for battle magic.
 
 `FastSpellBindingState` records a character's mutable shortcut assignment, while `SpellScrollState` records a carried scroll's spell identity and remaining facts. They live here because magic defines their meaning even when a character or inventory record owns their lifetime.
+
+Their detached counterparts—`SpellView`, `SpellScrollView`, and `FastSpellBindingView`—carry visible values and precomputed availability to presentation without exposing definitions or mutable character state.
