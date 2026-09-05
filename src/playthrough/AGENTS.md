@@ -7,7 +7,7 @@ Own the pure transaction coordinator that joins Realmz game state and rules to t
 ## Ownership
 
 - `GameSession` public operations, transaction checkpoints, exact-once commit, request identity, revision, and aggregate lifetime.
-- `session/` owns `SessionSnapshot`, the small `SessionContinuation` envelope, strict decoding, transaction result vocabulary, restore admission, and detached view projection. Feature-owned continuation payloads and factories live with their character, world, inventory, magic, economy, combat, or scenario owner.
+- `session/` owns `SessionSnapshot`, the small `SessionContinuation` and player-intent envelopes, strict decoding, transaction result vocabulary, restore admission, and detached view projection. Feature-owned intent factories, intent payloads, continuation payloads, and continuation factories live with their character, world, inventory, magic, economy, combat, or scenario owner.
 - `SessionRestoreValidator` is the restore transaction entry point and validates session continuations through named confirmation, item-target, learned-spell-target, and scroll-target families. `SessionRestoreStateValidator` validates detached game truth, and `SessionScenarioRestoreValidator` validates pending VM workflows. Together they construct one detached typed restore candidate; `GameSession.restore` alone commits it to the live aggregate, so every failed validation leaves the current session untouched.
 - `SessionInteractionFactory` is the single owner of session-level request reconstruction shared by live orchestration and restore validation.
 - Session workflow contexts and feature services for lifecycle, exploration, inventory/magic/services, combat/rewards, and application hooks.

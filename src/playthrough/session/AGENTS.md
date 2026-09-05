@@ -9,6 +9,7 @@ Own the public, deterministic, all-or-nothing transaction boundary around one ac
 - `GameSession` owns start, restore, intent submission, response, view, snapshot, close, revision, rollback, and exact-once commit.
 - `SessionContext` owns the current content, game state, RNG, VM, Scenario Action state, continuations, pending interaction, and disposable projection caches.
 - Intent, response, and debug coordinators dispatch validated operations and return `SessionCoordinatorResult`; they never commit independently.
+- `intents/` owns only the common payload protocol, empty payload, and stable kind-to-payload registry; feature factories and payloads live beside their workflows.
 - Restore validators build and verify one detached candidate before `GameSession` assigns it.
 - `SessionContinuation`, its body protocol, and codec own the stable saved continuation envelope.
 - View projectors own read-only detached `GameView` assembly and conservative revision reuse.
@@ -37,3 +38,5 @@ Own the public, deterministic, all-or-nothing transaction boundary around one ac
 - Run the affected feature workflow suite and `tools/verify.ps1` before completing a batch.
 
 ## Child DOX Index
+
+- `intents/AGENTS.md` owns the common player-intent payload protocol and registry.

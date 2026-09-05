@@ -12,6 +12,7 @@ Own character creation, party admission, finalization, and lifecycle transaction
 - `AgeContinuationBody` retains the source-ordered age acknowledgement needed to resume a saveable transaction.
 - `CharacterContinuations` constructs starting-spell, Character Files publication, and age-update continuations from their feature-owned payloads.
 - `CharacterSpellConfirmationContinuationBody` and `CharacterVaultPublicationContinuationBody` carry only their distinct character-setup facts.
+- `PartyIntents` and `PartyIntentPayloads` define the typed commands accepted for party assembly, Character Files, creation, and appearance work.
 
 ## Local Contracts
 

@@ -13,6 +13,7 @@ Own exploration transactions and the detached map read model that joins immutabl
 - `LocationNoteWorkflow` owns player-authored location notes.
 - `SessionMapViewBuilder` owns topology-derived cells, movement options, player-map records, location-note crops, and bounded map-window caching.
 - Exploration and boat continuation payloads/factories own the typed values needed to resume those operations.
+- `ExplorationIntents` and `ExplorationIntentPayloads` define typed travel, Search, time, contextual-service, and player-note commands.
 
 ## Local Contracts
 

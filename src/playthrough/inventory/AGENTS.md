@@ -10,6 +10,7 @@ Own carried-item transactions and field item use above pure item definitions, in
 - `FieldItemWorkflow` owns Identify, Torch, door items, and charged field spell items.
 - `InventoryContinuations` constructs saveable item targeting, confirmation, and item-XAP continuations using the sibling magic feature's shared targeting payload.
 - `ItemXapContinuationBody` retains the exact item-owned scenario program handoff.
+- `InventoryIntents` and `InventoryIntentPayloads` define typed commands for use, equipment, custody, stacks, Drop, and Trade.
 
 ## Local Contracts
 

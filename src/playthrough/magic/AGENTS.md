@@ -12,6 +12,7 @@ Own noncombat spell transactions, scrolls, Fast Spell bindings, typed magic targ
 - `MagicTransitionResult` reports committed or waiting magic transitions to session coordination.
 - `MagicContinuations` constructs field-spell, scroll-target, and scroll-discard continuations.
 - `TargetingContinuationBody` carries the shared spell, scroll, and magic-item target or confirmation facts.
+- `MagicIntents` and `SpellIntentPayload` define typed field, scroll, placement, and Fast Spell commands.
 
 ## Local Contracts
 

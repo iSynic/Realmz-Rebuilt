@@ -9,6 +9,7 @@ Own player money transactions and the resumable handoffs that keep services and 
 - `SessionMoneyWorkflow` owns Pool, Share, and denomination transfers plus their movement recalculation.
 - `ServiceContinuations` constructs service-interaction and pooled-wealth-departure continuations.
 - `ServiceContinuationBody` carries the exact service handoff or departure stage and direction.
+- `EconomyIntents` and `EconomyIntentPayloads` define typed Pool, Share, denomination-transfer, and service commands.
 
 ## Local Contracts
 
