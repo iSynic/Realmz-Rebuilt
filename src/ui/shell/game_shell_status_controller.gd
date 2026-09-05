@@ -87,6 +87,10 @@ func show_activity_indicator(kind: StringName) -> void:
 	_activity_tween.tween_callback(func() -> void: _activity_indicator.visible = false)
 
 
+func is_field_time_playback_active() -> bool:
+	return _field_time_playback.is_active()
+
+
 func present_step(step: SessionStep, current_view: GameView, picture_stage: Control) -> void:
 	if step == null:
 		return

@@ -20,6 +20,7 @@ Own the persistent Godot composition that surrounds every Realmz playthrough and
 - Shell scripts bind, route, resize, and retain scene-owned controls. They do not construct route-specific layouts or decide gameplay legality.
 - Route-local controllers own workspace content. The navigator may mount them but must not call their private methods or absorb their rendering logic.
 - System preferences emit only host-owned presentation-setting changes and never alter Classic rules. Save and load actions remain typed application-host requests.
+- Held Rest and Area Search cadence consults `GameShellStatusController.is_field_time_playback_active()` so command repetition waits for the authoritative intermediate clock presentation without reaching into shell-private state.
 - Adjacent movement and combat playback update retained presenters and controls; scene instantiation occurs only at application or route transitions.
 - All gameplay mutations continue through the typed application/session boundary.
 

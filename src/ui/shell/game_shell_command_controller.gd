@@ -257,6 +257,6 @@ func _on_timeout() -> void:
 	if owner._current_view == null or owner._current_view.pending_interaction != null or not owner._current_view.availability(_held_command).enabled:
 		_stop_held_command()
 		return
-	if owner._field_time_playback.is_active():
+	if owner.status.is_field_time_playback_active():
 		return
 	activate(_held_command, true)
