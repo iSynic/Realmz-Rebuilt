@@ -11,11 +11,12 @@ This page records current state and next work only. Detailed parity counts come 
 - Every declared feature root has a public `README.md`. The system manifest names its guide, entry points, public interfaces, tests, and performance probes.
 - Stable major UI hierarchy is authored in scenes. Realmz Builder exercises all registered surfaces with Wide, Compact, Empty, Long Content, Unavailable, and Error profiles through the production binders.
 - The latest complete visual gallery contains 148 Wide/Compact frames and has passed the current manual layout review.
-- Test source is 8,951 substantive lines against 63,675 production lines, or 14.06 percent against the fixed 20-percent ceiling.
+- Test source is 8,951 substantive lines against 63,668 production lines, or 14.06 percent against the fixed 20-percent ceiling.
 - The exact thirteen bundled scenarios, six generated Classic starter characters, application library, media, licenses, export exclusions, schemas, 101 differential cases, 69 Classic workflows, and eight host workflows pass their local validators.
 - A tracked-files-only clean checkout completed first import, startup, the complete test suite, architecture checks, scenario validation, and every Builder preview.
 - A locally sanitized one-root Git/LFS rehearsal and a separate no-local clone both passed. This proves the construction workflow, not GitHub-hosted archives.
 - A Windows export was built, inspected, and smoke-launched. The exact final candidate must still be rebuilt and launched on Windows, Linux, and macOS.
+- Three warmed completed-tree samples pass the local startup, movement, dungeon, combat, package, canonical-frame, and native-frame limits against the same-machine pre-migration baseline. Exact-candidate export size and peak memory remain part of native release evidence.
 
 ## Beta 1 blockers
 
@@ -35,10 +36,8 @@ This page records current state and next work only. Detailed parity counts come 
 
 ### Performance acceptance
 
-- Repeat three warmed samples for every affected core transaction, rendered frame, startup, and package-loading probe on the same machine as its recorded baseline.
-- Reject a transaction/projection regression exceeding both 5 percent and 0.20 ms, a frame regression exceeding both 5 percent and 0.50 ms, or a startup/package regression exceeding both 5 percent and 100 ms.
-- Keep existing absolute movement, frame, dungeon-turn, startup, and package budgets green.
-- Explain or remove any export-size or peak-memory increase above 5 percent.
+- Local core certification is complete: three warmed same-machine samples satisfy the relative and absolute transaction, projection, frame, startup, dungeon, combat, and package limits.
+- Record exact-candidate export size and peak memory with the native artifacts, and explain or remove growth above 5 percent before tagging.
 
 ### Native and hosted acceptance
 

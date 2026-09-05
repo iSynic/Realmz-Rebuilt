@@ -29,6 +29,7 @@ Own exploration transactions and the detached map read model that joins immutabl
 - Begin with the named command workflow, then follow `SessionExplorationCoordinator` only when the operation yields.
 - Keep world truth and pure calculations in `src/game/world`; this feature coordinates transactions and detached views.
 - Preserve incremental map projection and copy-on-write typed chunks on movement-sensitive changes.
+- Keep the ordinary adjacent-movement projection path allocation-light. It may coordinate visibility, bounds, cache lookup, movement options, and final view construction in one bounded method; extract cold full-window construction and copy-on-write patching only where the hot path remains measurably neutral.
 
 ## Verification
 

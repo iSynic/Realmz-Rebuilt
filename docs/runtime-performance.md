@@ -23,6 +23,27 @@ This supports Mobile as the default but does not reclassify CPU-side simulation 
 
 The user-provided diagnostic baseline was approximately 9.1 seconds to application readiness, 0.45 seconds for warm Tutorial preparation, 4.1 seconds cold and 1.95 seconds warm for the 52.8 MiB Wrath package, and 3.2 ms p95 for ordinary movement transaction plus projection. Those figures predate this checkout's final instrumentation and are retained as the comparison baseline rather than rewritten as current measurements.
 
+## Completed architecture certification
+
+The completed architecture tree was compared with the archived pre-migration production tree on the same Windows host. The baseline tree was run through the final probe contract without changing its production source. Each value below is the median of three warmed samples; lower is better.
+
+| Probe | Pre-migration | Completed tree | Result |
+|---|---:|---:|---|
+| Application ready | 9,847.479 ms | 9,203.296 ms | 6.54% faster |
+| First frame | 54.317 ms | 40.822 ms | 24.85% faster |
+| Movement transaction plus projection p95 | 2.094 ms | 1.811 ms | 13.52% faster |
+| Movement transaction p95 | 1.091 ms | 0.683 ms | 37.40% faster |
+| Movement projection p95 | 1.278 ms | 1.139 ms | 10.88% faster |
+| 3D dungeon unique-step p95 | 8.365 ms | 5.602 ms | 33.03% faster |
+| Battle setup | 112.968 ms | 84.114 ms | 25.54% faster |
+| Combat view | 2.026 ms | 1.242 ms | 38.70% faster |
+| Auto activation | 36.361 ms | 27.268 ms | 25.01% faster |
+| Warm monster phase | 9.938 ms | 8.165 ms | 17.84% faster |
+| Native 3440x1440 frame p95 | 6.198 ms | 5.852 ms | 5.58% faster |
+| Native transaction plus projection p95 | 2.457 ms | 2.345 ms | 4.56% faster |
+
+The completed 1280x720 rendered samples additionally measured 5.319 ms median frame p95 and 1.936 ms median transaction-plus-projection p95. All six rendered samples retained the full 240-move route, approximately 79.4 admitted steps per second, zero skipped intervals, zero catch-up bursts, and the existing visible-cell and simulation cadence. The 52.81 MiB Wrath package measured 8,182 ms against the prior 8,075 ms reference; the 107 ms increase is 1.33 percent and therefore does not cross both package rejection thresholds. Exact-candidate export size and peak memory remain part of native release certification rather than being inferred from these runtime probes.
+
 ## Launch and menu video
 
 The front door prepares one OGV decoder behind the opaque splash, starts it before reveal, retains it while covered, and reveals active playback. MP3 materialization remains demand-driven. Remaining construction stays on the existing threaded scene-loading boundary.
@@ -50,6 +71,8 @@ The rendered Tutorial runs measured cached vault-import p95 at 0.208 ms (400 per
 Ordinary movement now scales with changed state. `GameView` carries a nonserialized `ViewChangeSet` and independent roster, status, inventory, and magic revisions. Hourly SP recovery always advances status and magic revisions, but spell records are copied only when structural legality changes or an affordability threshold is crossed. Equipment facts remain cached by inventory revision. Previous detached snapshots retain their original scalar and component records.
 
 The map read model is an 8x8 copy-on-write `MapWindowView`. Adjacent movement shares unchanged chunks and creates only entering-strip, destination, overlay, discovery, and LOS-edge cells. A typed empty chunk is allocated before a patch crosses into a previously absent 8x8 region; the prior untyped empty-array expression failed at those boundaries and could leave the camera advanced against a stale retained edge. A nonserialized per-map cell cache derives reusable static detached facts once per map/topology/effective-region/landlook revision, so entering-strip cost no longer scales with repeated feature and edge reconstruction at native width. A bounded coordinate/revision cache reuses an already-detached LOS window. Resize, map/topology change, restore, Wizard's Eye expansion, and unknown events request a complete rebuild; topology, collision, visited, and visibility truth remain in simulation.
+
+The ordinary adjacent-movement builder keeps visibility, bounds, cache selection, movement options, and final `MapView` construction in one bounded hot path without allocating an intermediate projection wrapper. Cold complete-window construction and copy-on-write patching remain named helpers. This preserves the human-readable ownership boundary while avoiding a per-step abstraction cost at native resolution.
 
 Normal rendering no longer redraws every terrain cell through `Control._draw()`. One clipped SubViewport retains base, six ordered feature, marker, and fog `TileMapLayer` surfaces, pooled CICN `Sprite2D` overlays, and a `Camera2D`. The host projects one guard cell beyond each clipped visible edge, and the presenter applies only `MapPresentationDelta` coordinates on ordinary travel. Debug facts, cursors/selections, and the minimap remain custom Control drawing.
 

@@ -49,26 +49,11 @@ The latest local aggregate gate passes:
 
 A tracked-files-only clean checkout has completed first import, startup, the complete test suite, architecture verification, scenario validation, and every Builder preview. A local sanitized single-root Git/LFS rehearsal and a separate no-local clone have also passed. These prove the local construction and acquisition paths, not the actual GitHub archive behavior.
 
-## Performance baseline
+## Performance certification
 
-The pre-migration Windows baseline uses three warmed samples and median values:
+The completed tree has passed the local core-performance gate against the archived pre-migration production tree using three warmed samples on the same Windows host. Application readiness improved from 9,847.479 to 9,203.296 ms; movement transaction-plus-projection p95 from 2.094 to 1.811 ms; 3D dungeon unique-step p95 from 8.365 to 5.602 ms; battle setup from 112.968 to 84.114 ms; native 3440x1440 frame p95 from 6.198 to 5.852 ms; and native transaction-plus-projection p95 from 2.457 to 2.345 ms. The canonical 1280x720 completed tree measured 5.319 ms frame p95 and 1.936 ms transaction-plus-projection p95. No rendered sample skipped or queued a movement interval.
 
-| Probe | Baseline median |
-|---|---:|
-| Application ready | 6,734.890 ms |
-| First frame | 153.658 ms |
-| Movement transaction plus projection p95 | 1.781 ms |
-| Movement transaction p95 | 0.787 ms |
-| Movement projection p95 | 1.034 ms |
-| 3D dungeon unique-step p95 | 4.573 ms |
-| 3D dungeon turn p95 | 0.023 ms |
-| 3D dungeon backtrack p95 | 0.035 ms |
-| Battle setup | 93.719 ms |
-| Combat view | 1.532 ms |
-| Auto activation | 30.311 ms |
-| Warm monster phase | 9.798 ms |
-
-Path and ownership moves add no simulation, save, RNG, package-loading, rendering, or per-frame work. Final acceptance nevertheless repeats the relevant warmed probes against the completed tree and applies the absolute and relative limits in the roadmap.
+[Runtime performance evidence](runtime-performance.md) records the complete medians, probe boundaries, and absolute limits. Exact-candidate export size and peak memory remain coupled to native release certification.
 
 ## Remaining certification
 
@@ -80,7 +65,7 @@ Path and ownership moves add no simulation, save, RNG, package-loading, renderin
 | Clean local onboarding | Complete locally | Tracked-files-only checkout imports, runs, and verifies |
 | Independent maintainer trial | Open | Six hint-free journeys completed without folklore |
 | Ordinary-play candidate | Open | AOGM, War, and City of Bywater walkthroughs accepted |
-| Final performance | Open | Three warmed samples within relative and absolute limits |
+| Final performance | Partial | Core startup, movement, dungeon, combat, package, and rendered probes pass locally; exact-candidate export size and peak memory remain |
 | Native platforms | Partial | Windows pre-certified; exact Windows/Linux/macOS candidate still required |
 | Hosted acquisition | Open | Real Git/LFS clone and GitHub Download ZIP contain valid packages |
 | Beta publication | Open | Green exact tag, reviewed draft assets, manual prerelease publication |
