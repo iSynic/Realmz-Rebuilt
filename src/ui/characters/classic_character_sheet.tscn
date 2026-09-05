@@ -1,14 +1,14 @@
 [gd_scene load_steps=10 format=3]
 
-[ext_resource type="Script" path="res://src/ui/screens/classic_character_sheet.gd" id="1_script"]
-[ext_resource type="PackedScene" path="res://src/ui/screens/character_sheet_selector_button.tscn" id="2_selector"]
-[ext_resource type="PackedScene" path="res://src/ui/screens/character_sheet_stat_tabs.tscn" id="3_stat_tabs"]
-[ext_resource type="PackedScene" path="res://src/ui/screens/character_metric_row.tscn" id="4_metric"]
-[ext_resource type="PackedScene" path="res://src/ui/screens/character_record_card.tscn" id="5_record"]
-[ext_resource type="PackedScene" path="res://src/ui/screens/character_sheet_inventory_magic_tabs.tscn" id="6_inventory_magic"]
-[ext_resource type="PackedScene" path="res://src/ui/screens/character_item_card.tscn" id="7_item"]
-[ext_resource type="PackedScene" path="res://src/ui/screens/character_spell_card.tscn" id="8_spell"]
-[ext_resource type="PackedScene" path="res://src/ui/screens/character_sheet_identity_tabs.tscn" id="9_identity_tabs"]
+[ext_resource type="Script" path="res://src/ui/characters/classic_character_sheet.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/character_sheet_selector_button.tscn" id="2_selector"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/character_sheet_stat_tabs.tscn" id="3_stat_tabs"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/character_metric_row.tscn" id="4_metric"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/character_record_card.tscn" id="5_record"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/character_sheet_inventory_magic_tabs.tscn" id="6_inventory_magic"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/character_item_card.tscn" id="7_item"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/character_spell_card.tscn" id="8_spell"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/character_sheet_identity_tabs.tscn" id="9_identity_tabs"]
 
 [node name="ClassicCharacterSheet" type="VBoxContainer"]
 size_flags_horizontal = 3

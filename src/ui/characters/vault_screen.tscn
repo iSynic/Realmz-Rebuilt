@@ -1,10 +1,10 @@
 [gd_scene load_steps=6 format=3]
 
 [ext_resource type="PackedScene" path="res://src/ui/screens/screen_frame.tscn" id="1_base"]
-[ext_resource type="Script" path="res://src/ui/screens/vault_screen.gd" id="2_screen"]
-[ext_resource type="PackedScene" path="res://src/ui/screens/classic_character_sheet.tscn" id="3_sheet"]
-[ext_resource type="PackedScene" path="res://src/ui/screens/vault_character_card.tscn" id="4_card"]
-[ext_resource type="PackedScene" path="res://src/ui/screens/vault_history_row.tscn" id="5_history"]
+[ext_resource type="Script" path="res://src/ui/characters/vault_screen.gd" id="2_screen"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/classic_character_sheet.tscn" id="3_sheet"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/vault_character_card.tscn" id="4_card"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/vault_history_row.tscn" id="5_history"]
 
 [node name="VaultScreen" instance=ExtResource("1_base")]
 route_id = &"vault"

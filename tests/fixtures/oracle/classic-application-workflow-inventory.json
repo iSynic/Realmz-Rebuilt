@@ -2337,11 +2337,11 @@
             "symbol": "func render_setup_character_inspection"
           },
           {
-            "path": "src/ui/controllers/character_screen_controller.gd",
+            "path": "src/ui/characters/character_screen_controller.gd",
             "symbol": "func _render_vault_inspection"
           },
           {
-            "path": "src/ui/screens/classic_character_sheet.gd",
+            "path": "src/ui/characters/classic_character_sheet.gd",
             "symbol": "class_name ClassicCharacterSheet"
           }
         ]
@@ -4501,7 +4501,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/screens/classic_character_sheet.gd",
+            "path": "src/ui/characters/classic_character_sheet.gd",
             "symbol": "class_name ClassicCharacterSheet"
           },
           {
@@ -4661,11 +4661,11 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/screens/classic_character_sheet.gd",
+            "path": "src/ui/characters/classic_character_sheet.gd",
             "symbol": "func _build_appearance"
           },
           {
-            "path": "src/ui/controllers/character_screen_controller.gd",
+            "path": "src/ui/characters/character_screen_controller.gd",
             "symbol": "func _submit_character_appearance"
           }
         ]
@@ -4781,7 +4781,7 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/controllers/character_screen_controller.gd",
+            "path": "src/ui/characters/character_screen_controller.gd",
             "symbol": "func _render_party_order"
           }
         ]
@@ -5007,11 +5007,11 @@
         "status": "functional",
         "owners": [
           {
-            "path": "src/ui/controllers/creature_library_screen_controller.gd",
+            "path": "src/ui/characters/creature_library_screen_controller.gd",
             "symbol": "func present_bestiary"
           },
           {
-            "path": "src/ui/screens/bestiary_screen.tscn",
+            "path": "src/ui/characters/bestiary_screen.tscn",
             "symbol": "BestiaryScreen"
           }
         ]

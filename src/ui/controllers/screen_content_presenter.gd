@@ -2,7 +2,7 @@
 class_name ScreenContentPresenter
 extends RefCounted
 
-const CREATURE_LIBRARY_CONTROLLER := preload("res://src/ui/controllers/creature_library_screen_controller.gd")
+const CREATURE_LIBRARY_CONTROLLER := preload("res://src/ui/characters/creature_library_screen_controller.gd")
 
 signal intent_submitted(intent: PlayerIntent)
 signal system_action_requested(action_id: StringName, value: Variant)

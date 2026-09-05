@@ -1,8 +1,8 @@
 extends RealmzTestCase
 
-const Controller := preload("res://src/ui/controllers/creature_library_screen_controller.gd")
-const AlliesScreenScene := preload("res://src/ui/screens/allies_screen.tscn")
-const BestiaryScreenScene := preload("res://src/ui/screens/bestiary_screen.tscn")
+const Controller := preload("res://src/ui/characters/creature_library_screen_controller.gd")
+const AlliesScreenScene := preload("res://src/ui/characters/allies_screen.tscn")
+const BestiaryScreenScene := preload("res://src/ui/characters/bestiary_screen.tscn")
 
 
 func run() -> void:
