@@ -19,6 +19,7 @@
 - Inventory displays only detached `ItemView` facts and rules-owned availability. It never reconstructs hidden identity, curse, capacity, price, equipment, or transfer rules.
 - Selecting another item preserves the current ledger scroll position; selecting another character starts that character's ledger at the top.
 - Ordinary Done remains inside the lower item inspector. Trade retains its fixed Money, Items, and Done spine.
+- At 800x600, ordinary Inventory retains the horizontal browser/command split, four action columns, and a horizontal lower item record so the integrated Done remains in the initial viewport.
 - Encounter item selection reuses the complete workspace, admits only request-owned character and item identities, and returns the supplied Classic identity without revealing it.
 - Trade uses two independently selected ledgers and exact-instance cross-ledger drops. Presentation does not preselect or infer a destination.
 

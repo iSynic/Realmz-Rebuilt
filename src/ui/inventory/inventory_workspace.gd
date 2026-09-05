@@ -12,11 +12,12 @@ func prepare_normal_layout(compact: bool) -> void:
 	split.visible = true
 	item_inspector_panel().visible = true
 	alternate_content().visible = false
-	split.vertical = compact
+	split.vertical = false
 	split.custom_minimum_size.y = 300.0 if compact else 410.0
-	split.size_flags_vertical = Control.SIZE_FILL if compact else Control.SIZE_EXPAND_FILL
-	item_browser_panel().custom_minimum_size = Vector2(390.0 if compact else 620.0, 280.0 if compact else 330.0)
-	command_rail_panel().custom_minimum_size = Vector2(350.0 if compact else 285.0, 280.0 if compact else 330.0)
+	split.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	item_browser_panel().custom_minimum_size = Vector2(390.0 if compact else 620.0, 300.0 if compact else 330.0)
+	command_rail_panel().custom_minimum_size = Vector2(285.0, 300.0 if compact else 330.0)
+	item_inspector_panel().custom_minimum_size.y = 130.0 if compact else 150.0
 
 
 func prepare_alternate_layout() -> VBoxContainer:

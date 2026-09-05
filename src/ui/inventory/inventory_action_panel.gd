@@ -39,10 +39,10 @@ func show_selection_hint() -> void:
 	trade_status().visible = false
 
 
-func show_actions(encounter: bool, compact: bool) -> void:
+func show_actions(encounter: bool) -> void:
 	selection_hint().visible = false
 	action_dock().visible = not encounter
-	action_dock().columns = 3 if compact else 4
+	action_dock().columns = 4
 	encounter_dock().visible = encounter
 	operation_stage().visible = false
 	trade_status().visible = false

@@ -105,8 +105,9 @@ func _bind_party(money: MoneyWorkspaceView) -> void:
 func _bind_exchange(view: GameView, money: MoneyWorkspaceView) -> void:
 	var selected := money.character(_money_character_id)
 	var pane := _workspace.swap_pane()
-	_bind_label(pane.get_node("Content/Header/Heading") as Label, "Exchange", GOLD, 18)
-	_bind_label(pane.get_node("Content/Header/SelectedName") as Label, selected.name, MUTED, 13)
+	var exchange_body := pane.get_node("Content/MoneyExchangeScroll/MoneyExchangeBody")
+	_bind_label(exchange_body.get_node("Header/Heading") as Label, "Exchange", GOLD, 18)
+	_bind_label(exchange_body.get_node("Header/SelectedName") as Label, selected.name, MUTED, 13)
 	_bind_character_picker(money)
 	_bind_wealth_chips(
 		_workspace.selected_summary(),
@@ -115,7 +116,7 @@ func _bind_exchange(view: GameView, money: MoneyWorkspaceView) -> void:
 		selected.jewelry
 	)
 	_bind_label(
-		pane.get_node("Content/MoneySelectedSummary/Load") as Label,
+		exchange_body.get_node("MoneySelectedSummary/Load") as Label,
 		"Carried load\n%d / %d" % [selected.carried_load, selected.maximum_load],
 		MUTED,
 		12

@@ -45,7 +45,7 @@ func _update_back_visibility() -> void:
 	if action == null:
 		action = get_node_or_null("WorkspaceColumn/WorkspaceHeader/RouteBackAction") as Button
 	if action != null:
-		action.visible = route_id not in [&"exploration", &"combat", &"vault", &"inventory"]
+		action.visible = route_id not in [&"exploration", &"combat", &"vault", &"inventory", &"services"]
 		if not action.pressed.is_connected(_emit_back_requested):
 			action.pressed.connect(_emit_back_requested)
 

@@ -59,15 +59,15 @@ func swap_pane() -> PanelContainer:
 
 
 func character_picker() -> OptionButton:
-	return get_node("MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyCharacterPicker") as OptionButton
+	return get_node("MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody/MoneyCharacterPicker") as OptionButton
 
 
 func selected_summary() -> BoxContainer:
-	return get_node("MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneySelectedSummary") as BoxContainer
+	return get_node("MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody/MoneySelectedSummary") as BoxContainer
 
 
 func transfer_rows() -> VBoxContainer:
-	return get_node("MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyTransferGrid") as VBoxContainer
+	return get_node("MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody/MoneyTransferGrid") as VBoxContainer
 
 
 func location_services_pane() -> PanelContainer:

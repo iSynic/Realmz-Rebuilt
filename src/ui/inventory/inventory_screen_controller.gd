@@ -332,7 +332,7 @@ func _render_item_facts(record: InventorySelectedItemRecord, item: ItemView) -> 
 
 func _render_item_actions(panel: InventoryActionPanel, view: GameView, item: ItemView, character: CharacterView, _media: ClassicMediaCatalog) -> void:
 	if _encounter_mode:
-		panel.show_actions(true, _layout_profile == UiLayoutProfile.COMPACT)
+		panel.show_actions(true)
 		var choose := panel.encounter_button()
 		_bind_bitmap_button(choose, &"inventory.action.use", "Use in encounter")
 		choose.command_requested.connect(func(_command_id: StringName) -> void: _submit_encounter_item(character.id, item.instance_id))
@@ -340,7 +340,7 @@ func _render_item_actions(panel: InventoryActionPanel, view: GameView, item: Ite
 	if not _pending_item_action.is_empty():
 		_render_operation_stage(panel, item, character)
 		return
-	panel.show_actions(false, _layout_profile == UiLayoutProfile.COMPACT)
+	panel.show_actions(false)
 	if item.equipped:
 		_bind_item_intent_action(panel.action_button("EquippedAction"), &"inventory.action.equipped", "Unequip", item.actions.unequip, InventoryIntents.unequip(item.instance_id, character.id), item, character)
 	else:

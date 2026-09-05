@@ -141,42 +141,53 @@ theme_type_variation = &"ClassicInset"
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="Header" type="HBoxContainer" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content"]
+[node name="MoneyExchangeScroll" type="ScrollContainer" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="MoneyExchangeBody" type="VBoxContainer" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="Header" type="HBoxContainer" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody"]
 layout_mode = 2
 
-[node name="Heading" type="Label" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/Header"]
+[node name="Heading" type="Label" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody/Header"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.835294, 0.705882, 0.364706, 1)
 theme_override_font_sizes/font_size = 18
 text = "Exchange"
 
-[node name="SelectedName" type="Label" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/Header"]
+[node name="SelectedName" type="Label" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody/Header"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.603922, 0.627451, 0.658824, 1)
 theme_override_font_sizes/font_size = 13
 text = "Adventurer"
 horizontal_alignment = 2
 
-[node name="MoneyCharacterPicker" type="OptionButton" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content"]
+[node name="MoneyCharacterPicker" type="OptionButton" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody"]
 visible = false
 layout_mode = 2
 tooltip_text = "Choose the adventurer whose carried wealth will be exchanged with the party pool."
 
-[node name="MoneySelectedSummary" type="BoxContainer" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content"]
+[node name="MoneySelectedSummary" type="BoxContainer" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody"]
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="Gold" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneySelectedSummary" instance=ExtResource("2_chip")]
+[node name="Gold" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody/MoneySelectedSummary" instance=ExtResource("2_chip")]
 layout_mode = 2
 
-[node name="Gems" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneySelectedSummary" instance=ExtResource("2_chip")]
+[node name="Gems" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody/MoneySelectedSummary" instance=ExtResource("2_chip")]
 layout_mode = 2
 
-[node name="Jewelry" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneySelectedSummary" instance=ExtResource("2_chip")]
+[node name="Jewelry" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody/MoneySelectedSummary" instance=ExtResource("2_chip")]
 layout_mode = 2
 
-[node name="Load" type="Label" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneySelectedSummary"]
+[node name="Load" type="Label" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody/MoneySelectedSummary"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.603922, 0.627451, 0.658824, 1)
@@ -184,13 +195,9 @@ theme_override_font_sizes/font_size = 12
 text = "Carried load\n0 / 0"
 horizontal_alignment = 2
 
-[node name="MoneyTransferGrid" type="VBoxContainer" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content"]
+[node name="MoneyTransferGrid" type="VBoxContainer" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody"]
 layout_mode = 2
 theme_override_constants/separation = 6
-
-[node name="Spacer" type="Control" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content"]
-layout_mode = 2
-size_flags_vertical = 3
 
 [node name="MoneyDone" type="Button" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content"]
 custom_minimum_size = Vector2(0, 38)

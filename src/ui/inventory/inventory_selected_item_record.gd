@@ -7,8 +7,8 @@ extends BoxContainer
 
 
 func set_compact(compact: bool) -> void:
-	vertical = compact
-	(get_node("Narrative") as VBoxContainer).custom_minimum_size.x = 0.0 if compact else 470.0
+	vertical = false
+	(get_node("Narrative") as VBoxContainer).custom_minimum_size.x = 350.0 if compact else 470.0
 
 
 func empty_label() -> Label:
