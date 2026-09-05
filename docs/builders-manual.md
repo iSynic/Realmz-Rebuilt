@@ -139,7 +139,7 @@ Every route provides nominal and honest empty/unavailable surfaces in the Classi
 
 ## Working without waking the dragons
 
-Make one coherent change at a time. Read the nearest `AGENTS.md` contracts in the working repository, preserve serialized names unless a migration is explicitly designed, and keep the game runnable after every commit. Add behavior-focused tests at the boundary that owns the fact; do not test a private helper merely because it is nearby.
+Make one coherent change at a time. Read the feature's local `README.md`, its guide under `docs/features`, and its entry in `docs/system-manifest.json`; preserve serialized names unless a migration is explicitly designed, and keep the game runnable after every commit. Add behavior-focused tests at the boundary that owns the fact; do not test a private helper merely because it is nearby.
 
 For a normal source change, run the narrow affected suite while iterating and finish with:
 

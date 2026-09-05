@@ -1,6 +1,6 @@
 # Human-maintainability architecture record
 
-The source reorganization, major-scene authoring pass, and machine-enforced structural migration are complete, but the human-centered architecture overhaul is not yet certified. Realmz Rebuilt has six sound source areas, recognizable production-backed scene previews, and a verified behavioral baseline. No production file, function, or top-level class exceeds its final limit, and the private-call, generic-alias, missing-scene, missing-preview, and obsolete shell-marker debts are all zero. Beta 1 remains blocked until the independent maintainer, visual, clean-clone, ordinary-play, performance, and native-platform exercises pass.
+The source reorganization, major-scene authoring pass, and machine-enforced structural migration are complete, but the human-centered architecture overhaul is not yet fully certified. Realmz Rebuilt has six sound source areas, recognizable production-backed scene previews, and a verified behavioral baseline. No production file, function, or top-level class exceeds its final limit, and the private-call, generic-alias, missing-scene, missing-preview, and obsolete shell-marker debts are all zero. Gallery-wide visual review and repository-local clean-clone onboarding have passed; Beta 1 remains blocked on the independent maintainer exercise, ordinary-play walkthroughs, and final native-platform evidence.
 
 This record describes the foundation inherited by the active migration. Current ownership is machine-checked in [the system manifest](system-manifest.json), and the newcomer tour remains [The Realmz Rebuilt Builder's Manual](builders-manual.md).
 
@@ -23,7 +23,7 @@ game/playthrough/scenarios <- storage <- app
 game/playthrough <- ui <- app
 ```
 
-The architecture verifier enforces these directions and the typed boundaries between them. A later move includes its scripts, paired `.uid` files, resource paths, tests, verification rules, and DOX ownership contract in one coherent change.
+The architecture verifier enforces these directions and the typed boundaries between them. A later move includes its scripts, paired `.uid` files, resource paths, tests, verification rules, and public ownership documentation in one coherent change.
 
 ## Foundation already in place
 
