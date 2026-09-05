@@ -105,7 +105,7 @@
       "id": "packages",
       "boundary": "storage",
       "guide": "docs/features/packages.md",
-      "entryPoints": ["src/storage/packages/package_repository.gd", "src/storage/packages/bundled_campaigns"],
+      "entryPoints": ["src/storage/packages/package_repository.gd", "src/storage/packages/canonical_json.gd", "src/storage/packages/bundled_campaigns"],
       "publicInterfaces": ["PackageRepository", "PackageLoadResult"],
       "tests": ["tests/infrastructure/test_package_repository.gd", "tests/infrastructure/test_package_install_task.gd"],
       "performanceProbes": ["tools/package_probe.gd", "tools/package_discovery_probe.gd", "tools/package_document_cache_probe.gd"]

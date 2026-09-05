@@ -4,6 +4,8 @@ Begin with `PackageRepository` when following installation or discovery, and wit
 
 The thirteen release campaigns and their provenance records live in `bundled_campaigns/`. They are immutable package inputs discovered through the same validation and installation path as an external campaign; this directory does not grant them a runtime trust bypass.
 
+`CanonicalJson` is the one stable dictionary encoder used for package hashes and exact repository readback comparisons. Character Files and settings reuse this storage utility rather than maintaining subtly different canonical encodings.
+
 `PackageContentDecoder` is the stable content-record entry point. Campaign metadata, messages, and option labels belong to `PackageStoryContentDecoder`; items, Races, Castes, and spells belong to `PackageCharacterContentDecoder`; monsters, battles, treasures, shops, and encounters belong to `PackageEncounterContentDecoder`. Collection operations preserve authored order and duplicate tracking while focused record helpers validate and build one definition at a time. `PackageWorldDecoder` applies the same boundary to topology maps and Classic player maps, including exact media-backed marker validation. Scenario bytecode has its own neighboring decoder.
 
 The flat Providence Caste record becomes a `CasteDefinition` with named attribute and progression sub-definitions at this boundary. The attribute record owns save, attribute, condition, and strength arrays; the progression record owns stamina, combat, magic, ability, and victory arrays. The decoder assigns the remaining scalar policy fields explicitly after validation, and no transport dictionary crosses into the game model.
