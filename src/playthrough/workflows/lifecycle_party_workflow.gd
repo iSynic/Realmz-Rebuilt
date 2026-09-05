@@ -65,6 +65,25 @@ static func import_vault_character(context: SessionWorkflowContext, pending: boo
 	var current_characters := context.state.party.characters()
 	if current_characters.size() >= maximum_party_size:
 		return SessionWorkflowResult.failed(&"invalid_party_size", "This campaign allows no more than %d characters." % maximum_party_size)
+	var eligibility_error := _vault_definition_eligibility_error(context, imported)
+	if eligibility_error != null:
+		return eligibility_error
+	eligibility_error = _vault_magic_eligibility_error(context, imported)
+	if eligibility_error != null:
+		return eligibility_error
+	eligibility_error = _vault_appearance_eligibility_error(context, imported)
+	if eligibility_error != null:
+		return eligibility_error
+	for current: CharacterState in current_characters:
+		if current.id == imported.id or current.name.to_lower() == imported.name.to_lower():
+			return SessionWorkflowResult.failed(&"duplicate_party_member", "That vault character is already represented in the party.")
+	if not context.state.party.add_character(imported):
+		return SessionWorkflowResult.failed(&"vault_character_ineligible", "The validated vault character could not be added to the party.")
+	return SessionWorkflowResult.completed([DomainEvent.new(&"vault_character_imported", {"characterId": imported.id, "revisionHash": payload.revision_hash, "sourceCampaignId": payload.source_campaign_id})])
+
+
+static func _vault_definition_eligibility_error(context: SessionWorkflowContext, imported: CharacterState) -> SessionWorkflowResult:
+	var restrictions := context.content.campaign.restrictions
 	if context.content.characters.race_by_id(imported.race_id) == null or context.content.characters.caste_by_id(imported.caste_id) == null:
 		return SessionWorkflowResult.failed(&"vault_character_ineligible", "The vault character's race or class is not defined by this campaign.")
 	if restrictions.banned_races.has(imported.race_id) or restrictions.banned_castes.has(imported.caste_id):
@@ -91,6 +110,10 @@ static func import_vault_character(context: SessionWorkflowContext, pending: boo
 	# Vault revisions preserve item identity and equipment state, but load is derived
 	# again from the target package so stale local revisions cannot bypass capacity.
 	imported.carried_load = imported_load
+	return null
+
+
+static func _vault_magic_eligibility_error(context: SessionWorkflowContext, imported: CharacterState) -> SessionWorkflowResult:
 	for spell_id: String in imported.known_spells():
 		if context.content.magic.spell_by_id(spell_id) == null:
 			return SessionWorkflowResult.failed(&"vault_character_ineligible", "The vault character knows a spell unavailable in this campaign.")
@@ -105,6 +128,10 @@ static func import_vault_character(context: SessionWorkflowContext, pending: boo
 			return SessionWorkflowResult.failed(&"vault_character_ineligible", "The vault character's Fast Spell bindings reference an unavailable or unknown spell.")
 		if binding.power < 1 or binding.power > 7 or bound_spell.cost < 0 and binding.power != 1:
 			return SessionWorkflowResult.failed(&"vault_character_ineligible", "The vault character's Fast Spell bindings contain an invalid power.")
+	return null
+
+
+static func _vault_appearance_eligibility_error(context: SessionWorkflowContext, imported: CharacterState) -> SessionWorkflowResult:
 	if context.content.characters.has_complete_appearance_catalog():
 		var portrait := context.content.characters.appearance_by_id(imported.portrait_id) if not imported.portrait_id.is_empty() else null
 		if (portrait != null and portrait.kind != CharacterAppearanceDefinition.PORTRAIT) or (not imported.portrait_id.is_empty() and portrait == null):
@@ -112,12 +139,7 @@ static func import_vault_character(context: SessionWorkflowContext, pending: boo
 		var combat_icon := context.content.characters.appearance_by_id(imported.combat_icon_id) if not imported.combat_icon_id.is_empty() else null
 		if (combat_icon != null and combat_icon.kind != CharacterAppearanceDefinition.COMBAT_ICON) or (not imported.combat_icon_id.is_empty() and combat_icon == null):
 			return SessionWorkflowResult.failed(&"vault_character_ineligible", "The vault character uses a combat icon unavailable in this campaign package.")
-	for current: CharacterState in current_characters:
-		if current.id == imported.id or current.name.to_lower() == imported.name.to_lower():
-			return SessionWorkflowResult.failed(&"duplicate_party_member", "That vault character is already represented in the party.")
-	if not context.state.party.add_character(imported):
-		return SessionWorkflowResult.failed(&"vault_character_ineligible", "The validated vault character could not be added to the party.")
-	return SessionWorkflowResult.completed([DomainEvent.new(&"vault_character_imported", {"characterId": imported.id, "revisionHash": payload.revision_hash, "sourceCampaignId": payload.source_campaign_id})])
+	return null
 
 
 static func generate_character_draft(context: SessionWorkflowContext, pending: bool, payload: PartyIntentPayloads.Draft) -> SessionWorkflowResult:

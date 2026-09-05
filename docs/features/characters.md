@@ -8,6 +8,8 @@ Read `CharacterRules.create_character` from top to bottom as the creation ledger
 
 `PartyIntents` is the command entry point for party assembly, Character Files import, creation drafts, starting spells, appearance, party order, and Begin Adventure. Its `PartyIntentPayloads` values retain stable character and provenance identities without embedding session state or presentation objects.
 
+`LifecyclePartyWorkflow.import_vault_character` is the campaign-admission ledger for a detached Character Files revision. Read its helpers in order: definition eligibility checks race, class, restrictions, exact item ownership, and campaign-derived load; magic eligibility checks known spells, Scroll Case, and Fast Spell bindings; appearance eligibility checks portrait and tactical-icon roles. Only after those phases does the workflow reject a duplicate party identity or insert the copied character. This keeps portable character data independent while resolving its authored references through the active campaign catalogs.
+
 Character spell-point confirmation, Character Files publication, and source-ordered age acknowledgements resume through `ApplicationContinuations` and their typed application or age payload. They share the versioned session envelope without making character state responsible for save decoding.
 
 Preserve stable character, race, caste, portrait, combat-icon, item-instance, and spell identities. Character Files are immutable revisions managed by storage, while an active adventure owns a detached imported copy. Tests are concentrated in the character cases of `test_realmz_rules.gd` and the public appearance and party-order workflows.
@@ -19,6 +21,8 @@ The read-only Allies and Bestiary routes share `creature_library_workspace.tscn`
 `character_screen.tscn` directly contains that shared sheet plus the stable party-order summary, reorder editor, actions, and no-character state. Only one `party_order_row.tscn` instance is created per party member; the controller binds and reorders those detached records without rebuilding the route.
 
 `vault_screen.tscn` owns the Character Files header, availability summary, empty state, current-record grid, history controls, inspection identity, eligibility notice, and embedded shared sheet. Current revisions and earlier revisions instantiate `vault_character_card.tscn` and `vault_history_row.tscn`; no stable Character Files controls are built by the controller.
+
+Party assembly and creation live under `src/ui/setup`. `party_assembly_browser.tscn` owns the reusable-character browser and pager while `PartySetupAssemblyController` binds availability, retained rows, and prepared appearance assets. `character_creation_spells_step.tscn` owns the complete Starting Spells workspace; `CharacterCreationSpellsStep` exposes its authored level rail, variable spell-row host, selected-spell detail, effect preview, alternate states, and allowance to `PartySetupCharacterCreationController`. Neither controller constructs a stable hierarchy.
 
 `character_sheet_stat_tabs.tscn` owns the stable three-region Overview, paired Conditions/Saves, paired Modifiers/Abilities, and Lifetime Record compositions. `character_metric_row.tscn` and `character_record_card.tscn` carry variable detached values without hiding the tab hierarchy from the editor.
 

@@ -58,6 +58,18 @@ func _ensure_party_slots() -> void:
 func render_party_assembly() -> void:
 	var campaign_setup := view != null and view.party_setup_available and not standalone_character_creation_active
 	var party_full := campaign_setup and view.party_members.size() >= maximum_party_size()
+	_configure_assembly_actions(campaign_setup, party_full)
+	var current_revisions := _current_vault_revisions()
+	_clamp_stored_character_page(current_revisions.size())
+	_ensure_appearance_textures(_visible_revision_asset_ids(current_revisions))
+	var next_signature := "%s:%s:%d" % [_vault_signature(current_revisions), str(layout_profile), _stored_character_page]
+	if stored_character_list != null and is_instance_valid(stored_character_list) and stored_character_list.is_inside_tree() and next_signature == _stored_revision_signature:
+		_refresh_stored_character_rows(current_revisions, campaign_setup, party_full)
+		return
+	_rebuild_assembly_browser(current_revisions, campaign_setup, party_full, next_signature)
+
+
+func _configure_assembly_actions(campaign_setup: bool, party_full: bool) -> void:
 	create_character_button.visible = true
 	begin_button.visible = true
 	create_character_button.disabled = party_full or (not campaign_setup and not standalone_character_creation_available)
@@ -73,8 +85,9 @@ func render_party_assembly() -> void:
 	creator_action_bar.visible = false
 	party_setup_options.visible = view != null and view.party_setup_available
 	setup_message.visible = false
-	var current_revisions := _current_vault_revisions()
-	_clamp_stored_character_page(current_revisions.size())
+
+
+func _visible_revision_asset_ids(current_revisions: Array[CharacterVaultRevisionView]) -> Array[String]:
 	var visible_revision_asset_ids: Array[String] = []
 	for revision: CharacterVaultRevisionView in _stored_character_page_items(current_revisions):
 		var portrait_id := revision.character.portrait_id if revision.character != null else revision.portrait_id
@@ -82,11 +95,10 @@ func render_party_assembly() -> void:
 			visible_revision_asset_ids.append(portrait_id)
 		if revision.character != null and not revision.character.combat_icon_id.is_empty():
 			visible_revision_asset_ids.append(revision.character.combat_icon_id)
-	_ensure_appearance_textures(visible_revision_asset_ids)
-	var next_signature := "%s:%s:%d" % [_vault_signature(current_revisions), str(layout_profile), _stored_character_page]
-	if stored_character_list != null and is_instance_valid(stored_character_list) and stored_character_list.is_inside_tree() and next_signature == _stored_revision_signature:
-		_refresh_stored_character_rows(current_revisions, campaign_setup, party_full)
-		return
+	return visible_revision_asset_ids
+
+
+func _rebuild_assembly_browser(current_revisions: Array[CharacterVaultRevisionView], campaign_setup: bool, party_full: bool, next_signature: String) -> void:
 	_clear_creator_page()
 	if _assembly_browser_scene == null:
 		_assembly_browser_scene = load(ASSEMBLY_BROWSER_SCENE_PATH) as PackedScene

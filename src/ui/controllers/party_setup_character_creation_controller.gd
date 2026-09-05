@@ -188,7 +188,7 @@ func _build_creator_review() -> void:
 	step.sheet_host().add_child(sheet)
 
 func _build_creator_spells() -> void:
-	var step = _step_scene(spells_step_scene_path).instantiate()
+	var step := _step_scene(spells_step_scene_path).instantiate() as CharacterCreationSpellsStep
 	creator_page.add_child(step)
 	if view == null or view.character_draft == null:
 		spell_label = step.show_unavailable("Generate and review the character before choosing spells.")
@@ -201,6 +201,13 @@ func _build_creator_spells() -> void:
 		return
 	step.show_workspace()
 	_prepare_starting_spell_selection()
+	_bind_starting_spell_levels(step)
+	_populate_starting_spell_rows(step)
+	_present_starting_spell_detail(step)
+	(step.get_node("%StartingSpellAllowanceValue") as Label).text = "%d of %d points remain" % [view.character_draft_spell_points_remaining, view.character_draft_spell_points_total]
+
+
+func _bind_starting_spell_levels(step: CharacterCreationSpellsStep) -> void:
 	for level: int in range(1, 8):
 		var level_button := step.level_button(level) as Button
 		SpellSelectionChrome.bind_level_button(
@@ -212,6 +219,9 @@ func _build_creator_spells() -> void:
 			"No starting spells are available at this level."
 		)
 		level_button.name = "StartingSpellLevel%d" % level
+
+
+func _populate_starting_spell_rows(step: CharacterCreationSpellsStep) -> void:
 	spell_list = step.spell_rows()
 	for option: CharacterSpellOptionView in view.character_draft_spell_options:
 		if option.level != _starting_spell_level:
@@ -230,6 +240,9 @@ func _build_creator_spells() -> void:
 			ClassicUiAssetCatalog.texture(&"spells.button.available" if option.selected else &"spells.button.unavailable")
 		)
 		spell_list.add_child(button)
+
+
+func _present_starting_spell_detail(step: CharacterCreationSpellsStep) -> void:
 	var selected := _starting_spell_option(_starting_spell_id)
 	var prompt := step.get_node("%StartingSpellPrompt") as Label
 	var detail := step.get_node("%StartingSpellDetail") as VBoxContainer
@@ -256,7 +269,6 @@ func _build_creator_spells() -> void:
 		var selection_state := step.get_node("%StartingSpellSelectionState") as Label
 		selection_state.text = "Selected" if selected.selected else "Available"
 		selection_state.add_theme_color_override("font_color", GOLD if selected.selected else MUTED)
-	(step.get_node("%StartingSpellAllowanceValue") as Label).text = "%d of %d points remain" % [view.character_draft_spell_points_remaining, view.character_draft_spell_points_total]
 
 
 func _step_scene(path: String) -> PackedScene:

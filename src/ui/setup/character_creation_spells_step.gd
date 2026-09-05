@@ -1,5 +1,6 @@
 ## Exposes the authored starting-spell workspace and its variable record scenes.
 
+class_name CharacterCreationSpellsStep
 extends VBoxContainer
 
 @export var spell_button_scene: PackedScene
