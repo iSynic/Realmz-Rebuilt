@@ -5,8 +5,8 @@ extends RefCounted
 const HELD_COMMAND_INTERVAL := 1.0 / 60.0
 const HELD_COMMAND_START_SOUND_IDS: Dictionary = {&"area_search": 6001, &"rest": 6001}
 const CONTEXTUAL_CONTROL_SOUND_ID := 141
-const TORCH_BUTTON_SCRIPT := preload("res://src/ui/classic_torch_command_button.gd")
-const SEARCH_BUTTON_SCRIPT := preload("res://src/ui/classic_search_command_button.gd")
+const TORCH_BUTTON_SCRIPT := preload("res://src/ui/exploration/classic_torch_command_button.gd")
+const SEARCH_BUTTON_SCRIPT := preload("res://src/ui/exploration/classic_search_command_button.gd")
 
 var _owner_ref: WeakRef
 var _buttons: Dictionary = {}

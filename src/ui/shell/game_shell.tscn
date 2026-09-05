@@ -7,7 +7,7 @@
 [ext_resource type="PackedScene" path="res://src/ui/shell/classic_party_roster.tscn" id="5_roster"]
 [ext_resource type="Texture2D" path="res://src/ui/shared/assets/ui/classic-charcoal-slate-tile.png" id="6_tile"]
 [ext_resource type="PackedScene" path="res://src/ui/music_playlist_dialog.tscn" id="7_music"]
-[ext_resource type="PackedScene" path="res://src/ui/classic_party_effect_slot.tscn" id="8_effect_slot"]
+[ext_resource type="PackedScene" path="res://src/ui/shell/classic_party_effect_slot.tscn" id="8_effect_slot"]
 
 [sub_resource type="StyleBoxFlat" id="FatigueTrackStyle"]
 bg_color = Color(0.025, 0.035, 0.04, 1)

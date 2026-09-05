@@ -3,9 +3,9 @@
 class_name ClassicSpellSelectionChrome
 extends RefCounted
 
-const LEVEL_BUTTON_SCENE_PATH := "res://src/ui/classic_spell_level_button.tscn"
-const LEVEL_HEADING_SCENE_PATH := "res://src/ui/classic_spell_level_heading.tscn"
-const SPELL_BUTTON_SCENE_PATH := "res://src/ui/classic_spell_selection_button.tscn"
+const LEVEL_BUTTON_SCENE_PATH := "res://src/ui/magic/classic_spell_level_button.tscn"
+const LEVEL_HEADING_SCENE_PATH := "res://src/ui/magic/classic_spell_level_heading.tscn"
+const SPELL_BUTTON_SCENE_PATH := "res://src/ui/magic/classic_spell_selection_button.tscn"
 
 const LEVEL_COLORS: Array[Color] = [
 	Color("f4df58"), Color("efcf45"), Color("eabb3e"), Color("e59d39"),

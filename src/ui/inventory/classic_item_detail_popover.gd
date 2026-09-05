@@ -7,7 +7,7 @@ const GOLD := Color("e5c45c")
 const CYAN := Color("8fcfd1")
 const TEXT := Color("e0e2e5")
 const MUTED := Color("aeb6ba")
-const ITEM_DETAIL_HEADER_SCENE_PATH := "res://src/ui/classic_item_detail_header.tscn"
+const ITEM_DETAIL_HEADER_SCENE_PATH := "res://src/ui/inventory/classic_item_detail_header.tscn"
 
 @export var detail_label_scene: PackedScene
 @export var fact_grid_scene: PackedScene

@@ -9,6 +9,7 @@ Own the persistent Godot composition that surrounds every Realmz playthrough and
 - `realmz_application.tscn` is the complete application composition mounted by `project.godot`.
 - `game_shell.tscn` owns the stable map or battlefield stage, party roster, narrative/status well, command regions, menus, and overlay hosts.
 - `GameShell` coordinates scene-owned shell collaborators; its layout, menu, availability, status, picture, effects, commands, and automatic-route policies remain separate named owners.
+- `ClassicCommandCatalog` owns the shell-wide command identity, media, action, context, availability, and focus registry. `classic_party_effect_slot.tscn` and `ClassicPartyEffects` own the reusable condition-effect presentation consumed by the retained shell.
 - `screen_navigator.tscn` owns persistent workspace and overlay mount points. `ScreenNavigator` owns typed route history and scene mounting; `WorkspaceFocusController` owns focus and scroll restoration.
 - `PresentationCoordinator` applies detached session results to the retained shell. `PresentationMediaController` supplies the composed application/scenario media context without exposing storage repositories to UI code.
 - `ClassicPartyRoster` owns the persistent six-slot party rail and its reusable member and empty rows, including current-character, mandatory-selection, combat Auto, and effect-presentation state.
@@ -27,6 +28,7 @@ Own the persistent Godot composition that surrounds every Realmz playthrough and
 ## Work Guidance
 
 - Open `game_shell.tscn` for stable HUD layout and `screen_navigator.tscn` for workspace/overlay placement.
+- Edit `classic_party_effect_slot.tscn` for the stable effect-cell composition; keep effect sequencing in `ClassicPartyEffects` and shell binding in `GameShellPartyEffectsPresenter`.
 - Keep responsive calculations in the named layout policy and controller rather than embedding them in unrelated presenters.
 
 ## Verification

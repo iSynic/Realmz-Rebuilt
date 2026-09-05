@@ -12,7 +12,7 @@ const GOLD := Color("e5c45c")
 const CYAN := Color("8fcfd1")
 const MUTED := Color("aeb6ba")
 const INK := Color("111315")
-const ITEM_DETAIL_POPOVER_SCENE_PATH := "res://src/ui/classic_item_detail_popover.tscn"
+const ITEM_DETAIL_POPOVER_SCENE_PATH := "res://src/ui/inventory/classic_item_detail_popover.tscn"
 
 @export var loot_cell_scene: PackedScene
 @export var vacant_slot_scene: PackedScene

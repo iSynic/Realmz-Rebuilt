@@ -1,9 +1,9 @@
 [gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://src/ui/setup/character_creation_spells_step.gd" id="1_step"]
-[ext_resource type="PackedScene" path="res://src/ui/classic_spell_level_button.tscn" id="2_level"]
-[ext_resource type="PackedScene" path="res://src/ui/classic_spell_selection_button.tscn" id="3_spell"]
-[ext_resource type="PackedScene" path="res://src/ui/classic_spell_effect_preview.tscn" id="4_preview"]
+[ext_resource type="PackedScene" path="res://src/ui/magic/classic_spell_level_button.tscn" id="2_level"]
+[ext_resource type="PackedScene" path="res://src/ui/magic/classic_spell_selection_button.tscn" id="3_spell"]
+[ext_resource type="PackedScene" path="res://src/ui/magic/classic_spell_effect_preview.tscn" id="4_preview"]
 
 [node name="CharacterCreationSpellsStep" type="VBoxContainer"]
 size_flags_horizontal = 3

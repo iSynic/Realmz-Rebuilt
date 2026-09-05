@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3]
 
-[ext_resource type="Script" path="res://src/ui/classic_spell_target_badge.gd" id="1_badge"]
+[ext_resource type="Script" path="res://src/ui/magic/classic_spell_target_badge.gd" id="1_badge"]
 
 [node name="ClassicSpellTargetBadge" type="PanelContainer"]
 mouse_filter = 2

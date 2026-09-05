@@ -12,6 +12,7 @@
 - `SpellsScreenController` binds detached spell views and emits typed spell intents.
 - `SpellDetailFormatter` owns pure display text for supplied spell facts.
 - `ClassicSpellSelectionChrome` owns the reusable level rail, filtered list, and spell-selection binding shared with creation and Level Up.
+- The neighboring Classic level, heading, selection-button, target-badge, and effect-preview scenes own the stable reusable spell-selection visuals consumed by Magic, setup, combat, and shared request surfaces.
 
 ## Local Contracts
 

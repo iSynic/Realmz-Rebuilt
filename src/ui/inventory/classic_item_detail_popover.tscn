@@ -1,8 +1,8 @@
 [gd_scene load_steps=4 format=3]
 
-[ext_resource type="Script" path="res://src/ui/classic_item_detail_popover.gd" id="1_popover"]
-[ext_resource type="PackedScene" path="res://src/ui/classic_item_detail_label.tscn" id="2_label"]
-[ext_resource type="PackedScene" path="res://src/ui/classic_item_detail_fact_grid.tscn" id="3_facts"]
+[ext_resource type="Script" path="res://src/ui/inventory/classic_item_detail_popover.gd" id="1_popover"]
+[ext_resource type="PackedScene" path="res://src/ui/inventory/classic_item_detail_label.tscn" id="2_label"]
+[ext_resource type="PackedScene" path="res://src/ui/inventory/classic_item_detail_fact_grid.tscn" id="3_facts"]
 
 [node name="ClassicItemDetailPopover" type="CanvasLayer"]
 layer = 90

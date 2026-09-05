@@ -16,7 +16,7 @@ const LEDGER_INK := Color("151512")
 const LEDGER_MUTED := Color("50575b")
 const LEDGER_BLUE := Color("2457bd")
 const LEDGER_RED := Color("ad2721")
-const ITEM_DETAIL_POPOVER_SCENE_PATH := "res://src/ui/classic_item_detail_popover.tscn"
+const ITEM_DETAIL_POPOVER_SCENE_PATH := "res://src/ui/inventory/classic_item_detail_popover.tscn"
 const WORKSPACE_SCENE_PATH := "res://src/ui/inventory/inventory_workspace.tscn"
 
 var _scene_binding := InventorySceneBinding.new()

@@ -1,10 +1,10 @@
 [gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://src/ui/combat/combat_roster_spellbook.gd" id="1_script"]
-[ext_resource type="PackedScene" path="res://src/ui/classic_spell_level_heading.tscn" id="2_heading"]
-[ext_resource type="PackedScene" path="res://src/ui/classic_spell_level_button.tscn" id="3_level"]
-[ext_resource type="PackedScene" path="res://src/ui/classic_spell_target_badge.tscn" id="4_badge"]
-[ext_resource type="PackedScene" path="res://src/ui/classic_spell_selection_button.tscn" id="5_spell"]
+[ext_resource type="PackedScene" path="res://src/ui/magic/classic_spell_level_heading.tscn" id="2_heading"]
+[ext_resource type="PackedScene" path="res://src/ui/magic/classic_spell_level_button.tscn" id="3_level"]
+[ext_resource type="PackedScene" path="res://src/ui/magic/classic_spell_target_badge.tscn" id="4_badge"]
+[ext_resource type="PackedScene" path="res://src/ui/magic/classic_spell_selection_button.tscn" id="5_spell"]
 [ext_resource type="PackedScene" path="res://src/ui/combat/combat_spell_power_button.tscn" id="6_power"]
 
 [node name="CombatRosterSpellbook" type="VBoxContainer"]

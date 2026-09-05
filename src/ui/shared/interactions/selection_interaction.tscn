@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://src/ui/shared/interactions/selection_interaction.gd" id="1_selection"]
 [ext_resource type="PackedScene" path="res://src/ui/shared/interactions/ally_selection_candidate.tscn" id="2_candidate"]
-[ext_resource type="PackedScene" path="res://src/ui/classic_spell_target_badge.tscn" id="3_badge"]
+[ext_resource type="PackedScene" path="res://src/ui/magic/classic_spell_target_badge.tscn" id="3_badge"]
 
 [node name="SelectionInteraction" type="VBoxContainer"]
 size_flags_horizontal = 3

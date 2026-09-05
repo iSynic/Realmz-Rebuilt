@@ -9,6 +9,7 @@ Own the retained 2D map and optional first-person dungeon presentation for detac
 - `ClassicMapPresenter` draws the 2D world and dungeon map, overlays, party marker, darkness, LOS, discovery, and developer-only map diagnostics.
 - `ClassicRetainedMapSurface`, `MapPresentationGeometry`, and `MapTextureCache` own incremental retained layers, stateless projection geometry, and decoded media reuse respectively.
 - `HeldMovementController` translates held pointer or key cadence into independent typed movement submissions; `ClassicFieldTimePlayback` presents committed time changes.
+- `ClassicSearchCommandButton` and `ClassicTorchCommandButton` own the source-backed visual state of the retained exploration controls; the shell command controller owns their typed command binding and held cadence.
 - `dungeon/` owns `DungeonGeometryProjection`, `DungeonSceneMeshBuilder`, and `DungeonMap3DPresenter`, which derive first-person geometry from the same detached topology as the 2D map.
 
 ## Local Contracts
@@ -21,6 +22,7 @@ Own the retained 2D map and optional first-person dungeon presentation for detac
 ## Work Guidance
 
 - Keep map math in `MapPresentationGeometry`, media retention in `MapTextureCache`, drawing/input in `ClassicMapPresenter`, and first-person mesh construction under `dungeon/`.
+- Edit the Search and Torch control scripts here when changing their source-backed animation or bitmap composition; keep command admission and gameplay effects outside presentation.
 - Preserve native Classic pixels and the existing retained-update performance boundary when changing composition.
 
 ## Verification
