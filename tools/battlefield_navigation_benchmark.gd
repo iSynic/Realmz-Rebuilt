@@ -13,7 +13,7 @@ class ExactMovementGrid extends AStarGrid2D:
 
 	func _compute_cost(from_id: Vector2i, to_id: Vector2i) -> float:
 		var direction := to_id - from_id
-		return float(destination_movement_base[to_id.y * BattlefieldState.SIZE + to_id.x] + int(direction.x != 0) + int(direction.y != 0))
+		return float(destination_movement_base[to_id.y * BattlefieldGrid.SIZE + to_id.x] + int(direction.x != 0) + int(direction.y != 0))
 
 	func _estimate_cost(from_id: Vector2i, end_id: Vector2i) -> float:
 		var delta := end_id - from_id
@@ -56,7 +56,7 @@ func _initialize() -> void:
 			})
 	print(CanonicalJson.encode({
 		"toolOnly": true,
-		"grid": [BattlefieldState.SIZE, BattlefieldState.SIZE],
+		"grid": [BattlefieldGrid.SIZE, BattlefieldGrid.SIZE],
 		"routePolicy": "custom multi-goal exact-cost planner versus one exact-cost AStarGrid2D query per legal contact goal",
 		"iterationsPerCaseAndFootprint": iterations,
 		"customTotalUs": custom_total,
@@ -68,27 +68,27 @@ func _initialize() -> void:
 
 func _engine_grid(field: BattlefieldState, terrain: BattleTerrainSetDefinition, actor_size: int) -> ExactMovementGrid:
 	var grid := ExactMovementGrid.new()
-	grid.region = Rect2i(0, 0, BattlefieldState.SIZE, BattlefieldState.SIZE)
+	grid.region = Rect2i(0, 0, BattlefieldGrid.SIZE, BattlefieldGrid.SIZE)
 	grid.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ALWAYS
 	grid.default_compute_heuristic = AStarGrid2D.HEURISTIC_CHEBYSHEV
 	grid.default_estimate_heuristic = AStarGrid2D.HEURISTIC_CHEBYSHEV
-	grid.destination_movement_base.resize(BattlefieldState.CELL_COUNT)
+	grid.destination_movement_base.resize(BattlefieldGrid.CELL_COUNT)
 	grid.update()
-	for y: int in BattlefieldState.SIZE:
-		for x: int in BattlefieldState.SIZE:
+	for y: int in BattlefieldGrid.SIZE:
+		for x: int in BattlefieldGrid.SIZE:
 			var anchor := Vector2i(x, y)
 			var passable := true
 			var maximum_base := 0
-			for coordinate: Vector2i in BattlefieldState.footprint_cells(anchor, actor_size):
-				if not BattlefieldState.contains(coordinate):
+			for coordinate: Vector2i in BattlefieldGrid.footprint_cells(anchor, actor_size):
+				if not BattlefieldGrid.contains(coordinate):
 					passable = false
 					break
-				var tile := terrain.tile_by_id(field.terrain_at(coordinate))
+				var tile := terrain.tile_by_id(field.terrain.tile_at(coordinate))
 				if tile == null or actor_size == 0 and tile.solid != 0 or actor_size > 0 and tile.solid > 1:
 					passable = false
 					break
 				maximum_base = maxi(maximum_base, maxi(0, floori(float(tile.movement_time) / 2.0) - 1))
-			var index := y * BattlefieldState.SIZE + x
+			var index := y * BattlefieldGrid.SIZE + x
 			grid.destination_movement_base[index] = maximum_base
 			if not passable:
 				grid.set_point_solid(anchor, true)
@@ -96,11 +96,11 @@ func _engine_grid(field: BattlefieldState, terrain: BattleTerrainSetDefinition, 
 
 
 func _engine_first_step(grid: ExactMovementGrid, field: BattlefieldState, actor_size: int, goals: Array[Vector2i]) -> Vector2i:
-	var origin := field.actor_position("mover")
+	var origin := field.actors.actor_position("mover")
 	var temporarily_solid: Array[Vector2i] = []
 	for direction: Vector2i in DIRECTIONS:
 		var neighbor := origin + direction
-		if BattlefieldState.contains(neighbor) and not _footprint_is_unoccupied(field, neighbor, actor_size, "mover") and not grid.is_point_solid(neighbor):
+		if BattlefieldGrid.contains(neighbor) and not _footprint_is_unoccupied(field, neighbor, actor_size, "mover") and not grid.is_point_solid(neighbor):
 			grid.set_point_solid(neighbor, true)
 			temporarily_solid.append(neighbor)
 	var best_path := PackedVector2Array()
@@ -123,13 +123,13 @@ func _engine_first_step(grid: ExactMovementGrid, field: BattlefieldState, actor_
 func _contact_goals(field: BattlefieldState, actor_size: int, target_id: String, grid: ExactMovementGrid) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []
 	var target_cells: Dictionary = {}
-	for coordinate: Vector2i in field.actor_footprint(target_id):
+	for coordinate: Vector2i in field.actors.actor_footprint(target_id):
 		target_cells[coordinate] = true
 	for target_cell: Variant in target_cells:
 		for direction: Vector2i in DIRECTIONS:
-			for offset: Vector2i in BattlefieldState.footprint_cells(Vector2i.ZERO, actor_size):
+			for offset: Vector2i in BattlefieldGrid.footprint_cells(Vector2i.ZERO, actor_size):
 				var anchor: Vector2i = target_cell - direction - offset
-				if BattlefieldState.contains(anchor) and not grid.is_point_solid(anchor) and _legal_contact(anchor, actor_size, target_cells) and not result.has(anchor):
+				if BattlefieldGrid.contains(anchor) and not grid.is_point_solid(anchor) and _legal_contact(anchor, actor_size, target_cells) and not result.has(anchor):
 					result.append(anchor)
 	result.sort_custom(func(left: Vector2i, right: Vector2i) -> bool: return left.y < right.y or left.y == right.y and left.x < right.x)
 	return result
@@ -137,44 +137,44 @@ func _contact_goals(field: BattlefieldState, actor_size: int, target_id: String,
 
 func _fixture(case_name: StringName, actor_size: int) -> BattlefieldState:
 	var tiles: Array[int] = []
-	tiles.resize(BattlefieldState.CELL_COUNT)
+	tiles.resize(BattlefieldGrid.CELL_COUNT)
 	tiles.fill(1)
 	var field := BattlefieldState.new("benchmark.%s.%d" % [case_name, actor_size], tiles)
-	field.place_monster("mover", Vector2i(20, 45), actor_size)
-	field.place_character("target", Vector2i(70, 45))
+	field.actors.place_monster("mover", Vector2i(20, 45), actor_size)
+	field.actors.place_character("target", Vector2i(70, 45))
 	if case_name == &"u_obstruction":
 		for x: int in range(40, 61):
-			field.set_terrain(Vector2i(x, 35), 2)
-			field.set_terrain(Vector2i(x, 55), 2)
+			field.terrain.set_tile(Vector2i(x, 35), 2)
+			field.terrain.set_tile(Vector2i(x, 55), 2)
 		for y: int in range(35, 56):
-			field.set_terrain(Vector2i(40, y), 2)
+			field.terrain.set_tile(Vector2i(40, y), 2)
 	elif case_name == &"expensive":
 		for x: int in range(30, 61):
 			for y: int in range(42, 49):
-				field.set_terrain(Vector2i(x, y), 3)
+				field.terrain.set_tile(Vector2i(x, y), 3)
 	elif case_name == &"choke":
-		for y: int in BattlefieldState.SIZE:
+		for y: int in BattlefieldGrid.SIZE:
 			if y not in [44, 45, 46]:
-				field.set_terrain(Vector2i(45, y), 2)
+				field.terrain.set_tile(Vector2i(45, y), 2)
 	elif case_name == &"congestion":
-		field.place_character("traffic.1", Vector2i(21, 45))
-		field.place_character("traffic.2", Vector2i(28, 45))
-		field.place_character("traffic.3", Vector2i(29, 44))
+		field.actors.place_character("traffic.1", Vector2i(21, 45))
+		field.actors.place_character("traffic.2", Vector2i(28, 45))
+		field.actors.place_character("traffic.3", Vector2i(29, 44))
 	elif case_name == &"unreachable":
-		for y: int in BattlefieldState.SIZE:
-			field.set_terrain(Vector2i(45, y), 2)
+		for y: int in BattlefieldGrid.SIZE:
+			field.terrain.set_tile(Vector2i(45, y), 2)
 	return field
 
 
 func _footprint_is_unoccupied(field: BattlefieldState, anchor: Vector2i, actor_size: int, actor_id: String) -> bool:
-	for coordinate: Vector2i in BattlefieldState.footprint_cells(anchor, actor_size):
-		if not field.actor_at(coordinate, actor_id).is_empty():
+	for coordinate: Vector2i in BattlefieldGrid.footprint_cells(anchor, actor_size):
+		if not field.actors.actor_at(coordinate, actor_id).is_empty():
 			return false
 	return true
 
 
 func _legal_contact(anchor: Vector2i, actor_size: int, target_cells: Dictionary) -> bool:
-	var actor_cells := BattlefieldState.footprint_cells(anchor, actor_size)
+	var actor_cells := BattlefieldGrid.footprint_cells(anchor, actor_size)
 	for coordinate: Vector2i in actor_cells:
 		if target_cells.has(coordinate):
 			return false

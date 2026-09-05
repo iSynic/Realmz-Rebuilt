@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="UiRouteDefinition" load_steps=2 format=3]
+[ext_resource type="Script" path="res://src/ui/shell/routes/ui_route_definition.gd" id="1_route"]
+[resource]
+script = ExtResource("1_route")
+route_id = &"services"
+label = "Money"
+shortcut = &"ui_screen_services"
+description = "Pool, share, and exchange party wealth."
+presentation = 1
+workspace_scene_path = "res://src/ui/services/services_screen.tscn"

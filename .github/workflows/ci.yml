@@ -103,7 +103,8 @@ jobs:
         shell: pwsh
         run: |
           $log = Join-Path (Resolve-Path -LiteralPath '${{ matrix.artifactPath }}').Path 'smoke.log'
-          $process = Start-Process -FilePath '${{ matrix.output }}' -ArgumentList @('--headless', '--quit-after', '2', '--log-file', $log) -WindowStyle Hidden -Wait -PassThru
+          $quotedLog = '"' + $log + '"'
+          $process = Start-Process -FilePath '${{ matrix.output }}' -ArgumentList "--headless --quit-after 2 --log-file $quotedLog" -WindowStyle Hidden -Wait -PassThru
           if (-not (Test-Path -LiteralPath $log -PathType Leaf)) { throw 'Windows release smoke did not produce its required log.' }
           $content = Get-Content -Raw -LiteralPath $log
           if ($process.ExitCode -ne 0 -or $content -match '(?m)^(?:ERROR|SCRIPT ERROR):') { throw "Windows release smoke failed with exit code $($process.ExitCode)." }

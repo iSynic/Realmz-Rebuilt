@@ -1,0 +1,15 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/ui/inventory/inventory_character_selector.gd" id="1_selector"]
+[ext_resource type="PackedScene" path="res://src/ui/inventory/inventory_character_button.tscn" id="2_button"]
+
+[node name="InventoryCharacterSelector" type="PanelContainer"]
+theme_type_variation = &"ClassicInset"
+script = ExtResource("1_selector")
+character_button_scene = ExtResource("2_button")
+
+[node name="Characters" type="GridContainer" parent="."]
+layout_mode = 2
+theme_override_constants/h_separation = 3
+theme_override_constants/v_separation = 3
+columns = 6

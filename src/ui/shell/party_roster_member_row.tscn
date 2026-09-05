@@ -1,0 +1,42 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/ui/shell/party_roster_member_row.gd" id="1_script"]
+
+[node name="PartyRosterMemberRow" type="HBoxContainer"]
+custom_minimum_size = Vector2(0, 54)
+size_flags_horizontal = 3
+theme_override_constants/separation = 3
+script = ExtResource("1_script")
+
+[node name="CurrentCharacterMarker" type="ColorRect" parent="."]
+custom_minimum_size = Vector2(6, 0)
+layout_mode = 2
+mouse_filter = 2
+color = Color(0.878431, 0.737255, 0.32549, 1)
+
+[node name="Character" type="Button" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/icon_max_width = 50
+text = "Adventurer\nHP 0/0  •  Attacks 0  •  AR 0\nRace / Class"
+alignment = 0
+text_overrun_behavior = 3
+
+[node name="SelectionNumber" type="Label" parent="."]
+visible = false
+custom_minimum_size = Vector2(30, 30)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.878431, 0.737255, 0.32549, 1)
+theme_override_font_sizes/font_size = 20
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="CombatAuto" type="Button" parent="."]
+visible = false
+custom_minimum_size = Vector2(28, 0)
+layout_mode = 2
+size_flags_horizontal = 8
+theme_override_font_sizes/font_size = 16
+toggle_mode = true
+text = "A"
+accessibility_name = "Persistent Auto"

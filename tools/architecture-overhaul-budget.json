@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "limits": {
+    "productionFileLines": 600,
+    "functionLines": 60,
+    "methodsPerClass": 40,
+    "publicMethodsPerClass": 20
+  },
+  "migrationCeilings": {
+    "oversizedProductionFiles": 0,
+    "oversizedFunctions": 0,
+    "oversizedTopLevelClasses": 0,
+    "crossObjectPrivateCalls": 0,
+    "genericPreloadAliases": 0,
+    "majorSurfacesWithoutScene": 0,
+    "majorSurfacesWithoutPreview": 0,
+    "shellModeMarkerScenes": 0,
+    "missingFeatureDirectories": 0,
+    "unexpectedFeatureDirectories": 0,
+    "misplacedRootProductionFiles": 0
+  },
+  "finalTargets": {
+    "oversizedProductionFiles": 0,
+    "oversizedFunctions": 0,
+    "oversizedTopLevelClasses": 0,
+    "crossObjectPrivateCalls": 0,
+    "genericPreloadAliases": 0,
+    "majorSurfacesWithoutScene": 0,
+    "majorSurfacesWithoutPreview": 0,
+    "shellModeMarkerScenes": 0,
+    "missingFeatureDirectories": 0,
+    "unexpectedFeatureDirectories": 0,
+    "misplacedRootProductionFiles": 0
+  },
+  "manifestPath": "docs/system-manifest.json",
+  "previewRegistryPath": "addons/realmz_builder/scene_previews.json"
+}

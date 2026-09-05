@@ -1,0 +1,205 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/ui/setup/campaign_selection_panel.gd" id="1_panel"]
+[ext_resource type="PackedScene" path="res://src/ui/setup/campaign_package_row.tscn" id="2_campaign_row"]
+
+[node name="ScenarioColumn" type="PanelContainer"]
+custom_minimum_size = Vector2(210, 0)
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.72
+theme_type_variation = &"ClassicInset"
+script = ExtResource("1_panel")
+campaign_row_scene = ExtResource("2_campaign_row")
+
+[node name="ScenarioPaneContent" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="ScenarioHeading" type="Label" parent="ScenarioPaneContent"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+theme_override_font_sizes/font_size = 20
+text = "Scenarios"
+
+[node name="CampaignScroll" type="ScrollContainer" parent="ScenarioPaneContent"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+follow_focus = true
+
+[node name="CampaignList" type="VBoxContainer" parent="ScenarioPaneContent/CampaignScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="SelectedScenarioSummary" type="PanelContainer" parent="ScenarioPaneContent/CampaignScroll/CampaignList"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInset"
+
+[node name="SelectedScenarioBody" type="VBoxContainer" parent="ScenarioPaneContent/CampaignScroll/CampaignList/SelectedScenarioSummary"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="SelectedScenarioLabel" type="Label" parent="ScenarioPaneContent/CampaignScroll/CampaignList/SelectedScenarioSummary/SelectedScenarioBody"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+theme_override_font_sizes/font_size = 11
+text = "Selected Scenario"
+
+[node name="SelectedScenarioTitle" type="Label" parent="ScenarioPaneContent/CampaignScroll/CampaignList/SelectedScenarioSummary/SelectedScenarioBody"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+theme_override_font_sizes/font_size = 16
+text = "Scenario title"
+text_overrun_behavior = 3
+
+[node name="SelectedScenarioSplash" type="TextureRect" parent="ScenarioPaneContent/CampaignScroll/CampaignList/SelectedScenarioSummary/SelectedScenarioBody"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 92)
+layout_mode = 2
+texture_filter = 1
+expand_mode = 1
+stretch_mode = 5
+
+[node name="SelectedScenarioSplashUnavailable" type="Label" parent="ScenarioPaneContent/CampaignScroll/CampaignList/SelectedScenarioSummary/SelectedScenarioBody"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+theme_override_font_sizes/font_size = 11
+text = "Campaign picture unavailable"
+
+[node name="SelectedScenarioByline" type="Label" parent="ScenarioPaneContent/CampaignScroll/CampaignList/SelectedScenarioSummary/SelectedScenarioBody"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.878, 0.886, 0.898, 1)
+theme_override_font_sizes/font_size = 12
+text = "Version and author"
+autowrap_mode = 2
+
+[node name="SelectedScenarioRestrictions" type="Label" parent="ScenarioPaneContent/CampaignScroll/CampaignList/SelectedScenarioSummary/SelectedScenarioBody"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.878, 0.886, 0.898, 1)
+theme_override_font_sizes/font_size = 11
+text = "Party restrictions"
+autowrap_mode = 2
+text_overrun_behavior = 3
+max_lines_visible = 4
+
+[node name="SelectedScenarioLimits" type="Label" parent="ScenarioPaneContent/CampaignScroll/CampaignList/SelectedScenarioSummary/SelectedScenarioBody"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+theme_override_font_sizes/font_size = 11
+text = "Party size and level limits"
+autowrap_mode = 2
+
+[node name="SelectedScenarioGuidance" type="Label" parent="ScenarioPaneContent/CampaignScroll/CampaignList/SelectedScenarioSummary/SelectedScenarioBody"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+theme_override_font_sizes/font_size = 11
+text = "Recommended party guidance"
+autowrap_mode = 2
+
+[node name="NoCampaignsState" type="Label" parent="ScenarioPaneContent/CampaignScroll/CampaignList"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+text = "Installed scenarios appear here"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="PackageOperationHost" type="PanelContainer" parent="ScenarioPaneContent"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"ClassicInset"
+
+[node name="PackageOperationRow" type="VBoxContainer" parent="ScenarioPaneContent/PackageOperationHost"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="PackageOperationHeader" type="HBoxContainer" parent="ScenarioPaneContent/PackageOperationHost/PackageOperationRow"]
+layout_mode = 2
+
+[node name="PackageOperationPhase" type="Label" parent="ScenarioPaneContent/PackageOperationHost/PackageOperationRow/PackageOperationHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+theme_override_font_sizes/font_size = 12
+text = "Installing"
+
+[node name="PackageOperationPercentage" type="Label" parent="ScenarioPaneContent/PackageOperationHost/PackageOperationRow/PackageOperationHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+theme_override_font_sizes/font_size = 11
+text = "Working"
+
+[node name="PackageOperationControls" type="HBoxContainer" parent="ScenarioPaneContent/PackageOperationHost/PackageOperationRow"]
+layout_mode = 2
+
+[node name="PackageOperationProgress" type="ProgressBar" parent="ScenarioPaneContent/PackageOperationHost/PackageOperationRow/PackageOperationControls"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(72, 22)
+layout_mode = 2
+size_flags_horizontal = 3
+show_percentage = false
+
+[node name="CancelPackageOperation" type="Button" parent="ScenarioPaneContent/PackageOperationHost/PackageOperationRow/PackageOperationControls"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Cancel"
+
+[node name="PackageOperationStatus" type="Label" parent="ScenarioPaneContent/PackageOperationHost/PackageOperationRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+theme_override_font_sizes/font_size = 11
+text = "Package operation status"
+autowrap_mode = 2
+text_overrun_behavior = 3
+max_lines_visible = 2
+
+[node name="PackageInstallRow" type="BoxContainer" parent="ScenarioPaneContent"]
+unique_name_in_owner = true
+layout_mode = 2
+alignment = 1
+
+[node name="InstallPackage" type="Button" parent="ScenarioPaneContent/PackageInstallRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 34)
+layout_mode = 2
+text = "Install Scenario"
+
+[node name="LibraryActions" type="HBoxContainer" parent="ScenarioPaneContent"]
+layout_mode = 2
+
+[node name="RefreshScenarios" type="Button" parent="ScenarioPaneContent/LibraryActions"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Refresh scenarios"
+
+[node name="InstallScenarioDialog" type="FileDialog" parent="."]
+unique_name_in_owner = true
+title = "Install Realmz Rebuilt Scenario"
+initial_position = 2
+size = Vector2i(900, 620)
+ok_button_text = "Install"
+file_mode = 0
+access = 2
+filters = PackedStringArray("*.realmz2 ; Realmz Rebuilt Scenario")
+use_native_dialog = true

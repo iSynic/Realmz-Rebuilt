@@ -52,9 +52,9 @@ Modifications: Realmz Providence commit
 badcd91486f6a0ad2c042520e3f9c699c603956d compiles the native scenario data
 and resources into deterministic schema-v3 Realmz 2 packages. Exact source,
 compiler, package, and archive identities are recorded in
-src/infrastructure/campaigns/castle-bundled-scenarios.provenance.json. The exact
+src/storage/packages/bundled_campaigns/castle-bundled-scenarios.provenance.json. The exact
 designated City of Bywater source-file identities are recorded in
-src/infrastructure/campaigns/city-of-bywater.source.json.
+src/storage/packages/bundled_campaigns/city-of-bywater.source.json.
 
 Integrated Classic Realmz media
 Realmz copyright 1994 by Tim Phillips.
@@ -73,7 +73,7 @@ byte-identical, so Godot duplicates the single stored waveform only during
 playback.
 
 Per-resource source and output hashes are recorded in
-src/presentation/assets/classic-application-media.json.
+src/ui/shared/assets/classic-application-media.json.
 
 Integrated Classic Realmz music
 
@@ -94,7 +94,7 @@ BSD-3-Clause licensed: https://lib.openmpt.org/
 
 Per-track source and output hashes, durations, tool versions, and the Outdoor
 replacement record are stored in
-src/presentation/assets/classic-application-music.json.
+src/ui/shared/assets/classic-application-music.json.
 
 Classic typography
 
@@ -121,7 +121,7 @@ Geneva substitute selected by Realmz Castle. Its license is included beside
 the bundled fonts.
 
 Exact font hashes and accompanying notices are recorded in
-src/presentation/assets/fonts/font-assets.json and its licenses directory.
+src/ui/shared/assets/fonts/font-assets.json and its licenses directory.
 
 Realmz intro animation
 
@@ -130,4 +130,4 @@ Realmz intro GIF supplied by the project owner. The source GIF SHA-256 is
 2f3b7f6788c00bab329b924f0c6059aa20df31375a2e775e5dc48d59000695cb.
 It is used under this project's non-commercial Realmz artwork license.
 Per-frame hashes and preserved timing are recorded in
-src/presentation/assets/ui/intro/intro-animation.json.
+src/ui/shared/assets/ui/intro/intro-animation.json.

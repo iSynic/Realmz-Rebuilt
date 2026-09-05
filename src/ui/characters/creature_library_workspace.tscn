@@ -1,0 +1,199 @@
+[gd_scene format=3]
+
+[node name="CreatureColumns" type="BoxContainer"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+
+[node name="CreatureListPanel" type="PanelContainer" parent="."]
+custom_minimum_size = Vector2(248, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.72
+theme_type_variation = &"ClassicInset"
+[node name="ListContent" type="VBoxContainer" parent="CreatureListPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+[node name="CreatureListTitle" type="Label" parent="CreatureListPanel/ListContent"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+text = "Creature Library"
+[node name="CreatureListScroll" type="ScrollContainer" parent="CreatureListPanel/ListContent"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+[node name="CreatureListRows" type="VBoxContainer" parent="CreatureListPanel/ListContent/CreatureListScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="CreatureDetailPanel" type="PanelContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.78
+theme_type_variation = &"ClassicInset"
+[node name="DetailContent" type="VBoxContainer" parent="CreatureDetailPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="CreatureEmptyState" type="VBoxContainer" parent="CreatureDetailPanel/DetailContent"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+alignment = 1
+[node name="EmptyTitle" type="Label" parent="CreatureDetailPanel/DetailContent/CreatureEmptyState"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+text = "No creatures"
+[node name="EmptyDetail" type="Label" parent="CreatureDetailPanel/DetailContent/CreatureEmptyState"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+autowrap_mode = 2
+
+[node name="CreatureRecord" type="VBoxContainer" parent="CreatureDetailPanel/DetailContent"]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+[node name="Header" type="HBoxContainer" parent="CreatureDetailPanel/DetailContent/CreatureRecord"]
+layout_mode = 2
+theme_override_constants/separation = 10
+[node name="CreatureIcon" type="TextureRect" parent="CreatureDetailPanel/DetailContent/CreatureRecord/Header"]
+custom_minimum_size = Vector2(80, 80)
+layout_mode = 2
+texture_filter = 1
+expand_mode = 1
+stretch_mode = 5
+[node name="Identity" type="VBoxContainer" parent="CreatureDetailPanel/DetailContent/CreatureRecord/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+[node name="CreatureName" type="Label" parent="CreatureDetailPanel/DetailContent/CreatureRecord/Header/Identity"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+[node name="CreatureSource" type="Label" parent="CreatureDetailPanel/DetailContent/CreatureRecord/Header/Identity"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+[node name="CreatureHitDice" type="Label" parent="CreatureDetailPanel/DetailContent/CreatureRecord/Header/Identity"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.878, 0.886, 0.898, 1)
+[node name="Divider" type="HSeparator" parent="CreatureDetailPanel/DetailContent/CreatureRecord"]
+layout_mode = 2
+[node name="CreatureDescription" type="Label" parent="CreatureDetailPanel/DetailContent/CreatureRecord"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.878, 0.886, 0.898, 1)
+autowrap_mode = 2
+[node name="CreatureFacts" type="GridContainer" parent="CreatureDetailPanel/DetailContent/CreatureRecord"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 16
+theme_override_constants/v_separation = 4
+columns = 4
+
+[node name="Fact1Key" type="Label" parent="CreatureDetailPanel/DetailContent/CreatureRecord/CreatureFacts"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+[node name="Fact1Value" type="Label" parent="CreatureDetailPanel/DetailContent/CreatureRecord/CreatureFacts"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.878, 0.886, 0.898, 1)
+[node name="Fact2Key" type="Label" parent="CreatureDetailPanel/DetailContent/CreatureRecord/CreatureFacts"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+[node name="Fact2Value" type="Label" parent="CreatureDetailPanel/DetailContent/CreatureRecord/CreatureFacts"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.878, 0.886, 0.898, 1)
+[node name="Fact3Key" type="Label" parent="CreatureDetailPanel/DetailContent/CreatureRecord/CreatureFacts"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+[node name="Fact3Value" type="Label" parent="CreatureDetailPanel/DetailContent/CreatureRecord/CreatureFacts"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.878, 0.886, 0.898, 1)
+[node name="Fact4Key" type="Label" parent="CreatureDetailPanel/DetailContent/CreatureRecord/CreatureFacts"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+[node name="Fact4Value" type="Label" parent="CreatureDetailPanel/DetailContent/CreatureRecord/CreatureFacts"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.878, 0.886, 0.898, 1)
+[node name="Fact5Key" type="Label" parent="CreatureDetailPanel/DetailContent/CreatureRecord/CreatureFacts"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+[node name="Fact5Value" type="Label" parent="CreatureDetailPanel/DetailContent/CreatureRecord/CreatureFacts"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.878, 0.886, 0.898, 1)
+[node name="Fact6Key" type="Label" parent="CreatureDetailPanel/DetailContent/CreatureRecord/CreatureFacts"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+[node name="Fact6Value" type="Label" parent="CreatureDetailPanel/DetailContent/CreatureRecord/CreatureFacts"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.878, 0.886, 0.898, 1)
+[node name="Fact7Key" type="Label" parent="CreatureDetailPanel/DetailContent/CreatureRecord/CreatureFacts"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+[node name="Fact7Value" type="Label" parent="CreatureDetailPanel/DetailContent/CreatureRecord/CreatureFacts"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.878, 0.886, 0.898, 1)
+[node name="Fact8Key" type="Label" parent="CreatureDetailPanel/DetailContent/CreatureRecord/CreatureFacts"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+[node name="Fact8Value" type="Label" parent="CreatureDetailPanel/DetailContent/CreatureRecord/CreatureFacts"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.878, 0.886, 0.898, 1)
+
+[node name="CreatureStateCards" type="BoxContainer" parent="CreatureDetailPanel/DetailContent/CreatureRecord"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+[node name="State1" type="PanelContainer" parent="CreatureDetailPanel/DetailContent/CreatureRecord/CreatureStateCards"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInset"
+[node name="Content" type="VBoxContainer" parent="CreatureDetailPanel/DetailContent/CreatureRecord/CreatureStateCards/State1"]
+layout_mode = 2
+[node name="Title" type="Label" parent="CreatureDetailPanel/DetailContent/CreatureRecord/CreatureStateCards/State1/Content"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+[node name="Body" type="Label" parent="CreatureDetailPanel/DetailContent/CreatureRecord/CreatureStateCards/State1/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.878, 0.886, 0.898, 1)
+autowrap_mode = 2
+[node name="State2" type="PanelContainer" parent="CreatureDetailPanel/DetailContent/CreatureRecord/CreatureStateCards"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInset"
+[node name="Content" type="VBoxContainer" parent="CreatureDetailPanel/DetailContent/CreatureRecord/CreatureStateCards/State2"]
+layout_mode = 2
+[node name="Title" type="Label" parent="CreatureDetailPanel/DetailContent/CreatureRecord/CreatureStateCards/State2/Content"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+[node name="Body" type="Label" parent="CreatureDetailPanel/DetailContent/CreatureRecord/CreatureStateCards/State2/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.878, 0.886, 0.898, 1)
+autowrap_mode = 2
+[node name="State3" type="PanelContainer" parent="CreatureDetailPanel/DetailContent/CreatureRecord/CreatureStateCards"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInset"
+[node name="Content" type="VBoxContainer" parent="CreatureDetailPanel/DetailContent/CreatureRecord/CreatureStateCards/State3"]
+layout_mode = 2
+[node name="Title" type="Label" parent="CreatureDetailPanel/DetailContent/CreatureRecord/CreatureStateCards/State3/Content"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+[node name="Body" type="Label" parent="CreatureDetailPanel/DetailContent/CreatureRecord/CreatureStateCards/State3/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.878, 0.886, 0.898, 1)
+autowrap_mode = 2

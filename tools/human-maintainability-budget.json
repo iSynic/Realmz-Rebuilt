@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "statementSeparatorLines": {
+    "currentMaximum": 0,
+    "target": 0
+  },
+  "runtimeControlConstructions": {
+    "currentMaximum": 0,
+    "target": 0
+  },
+  "runtimeControlClassifications": [
+    {
+      "path": "src/ui/exploration/classic_retained_map_surface.gd",
+      "kind": "algorithmic-surface",
+      "reason": "The retained map allocates its viewport as part of an algorithmic canvas and texture pipeline.",
+      "currentMaximum": 1,
+      "functions": ["_build_viewport"]
+    },
+    {
+      "path": "src/ui/exploration/dungeon/dungeon_map_3d_presenter.gd",
+      "kind": "algorithmic-surface",
+      "reason": "The first-person dungeon creates a render-target display paired with its generated three-dimensional scene.",
+      "currentMaximum": 1,
+      "functions": ["_ready"]
+    }
+  ],
+  "missingPurposeHeaders": {
+    "currentMaximum": 0,
+    "target": 0
+  },
+  "legacyRouteScenes": [],
+  "routeMarkerScenes": [],
+  "classNameExceptions": [],
+  "finalLimits": {
+    "productionFileLines": 800,
+    "functionLines": 100
+  }
+}

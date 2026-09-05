@@ -1,0 +1,129 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/ui/shell/music_playlist_dialog.gd" id="1_dialog"]
+
+[node name="MusicPlaylistDialog" type="Control"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+z_index = 120
+script = ExtResource("1_dialog")
+
+[node name="MusicModalVeil" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+color = Color(0, 0, 0, 0.68)
+
+[node name="MusicModalCenter" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 28.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MusicPlaylistWindow" type="PanelContainer" parent="MusicModalCenter"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"ClassicTextWell"
+
+[node name="MusicPlaylistContent" type="VBoxContainer" parent="MusicModalCenter/MusicPlaylistWindow"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="MusicPlaylistHeader" type="HBoxContainer" parent="MusicModalCenter/MusicPlaylistWindow/MusicPlaylistContent"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="MusicModalCenter/MusicPlaylistWindow/MusicPlaylistContent/MusicPlaylistHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicHeading"
+theme_override_colors/font_color = Color(0.835294, 0.705882, 0.364706, 1)
+theme_override_font_sizes/font_size = 22
+text = "Music Playlist"
+
+[node name="MusicEnabled" type="CheckButton" parent="MusicModalCenter/MusicPlaylistWindow/MusicPlaylistContent/MusicPlaylistHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Music enabled"
+
+[node name="NowPlayingRow" type="HBoxContainer" parent="MusicModalCenter/MusicPlaylistWindow/MusicPlaylistContent"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="NowPlayingTitle" type="Label" parent="MusicModalCenter/MusicPlaylistWindow/MusicPlaylistContent/NowPlayingRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.560784, 0.811765, 0.819608, 1)
+theme_override_font_sizes/font_size = 15
+text = "No music is playing"
+
+[node name="VolumeLabel" type="Label" parent="MusicModalCenter/MusicPlaylistWindow/MusicPlaylistContent/NowPlayingRow"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.878431, 0.886275, 0.898039, 1)
+theme_override_font_sizes/font_size = 14
+text = "Music volume"
+
+[node name="MusicVolume" type="HSlider" parent="MusicModalCenter/MusicPlaylistWindow/MusicPlaylistContent/NowPlayingRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+max_value = 1.0
+step = 0.05
+
+[node name="Rule" type="HSeparator" parent="MusicModalCenter/MusicPlaylistWindow/MusicPlaylistContent"]
+layout_mode = 2
+
+[node name="PlaylistColumns" type="HBoxContainer" parent="MusicModalCenter/MusicPlaylistWindow/MusicPlaylistContent"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="PlaylistColumn1" type="VBoxContainer" parent="MusicModalCenter/MusicPlaylistWindow/MusicPlaylistContent/PlaylistColumns"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="PlaylistColumn2" type="VBoxContainer" parent="MusicModalCenter/MusicPlaylistWindow/MusicPlaylistContent/PlaylistColumns"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="MusicModeLegend" type="Label" parent="MusicModalCenter/MusicPlaylistWindow/MusicPlaylistContent"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.603922, 0.627451, 0.658824, 1)
+theme_override_font_sizes/font_size = 13
+text = "Play switches to this context • Continue keeps the current title • Off stops music on entry"
+autowrap_mode = 2
+
+[node name="MusicPlaylistFooter" type="HBoxContainer" parent="MusicModalCenter/MusicPlaylistWindow/MusicPlaylistContent"]
+layout_mode = 2
+
+[node name="Note" type="Label" parent="MusicModalCenter/MusicPlaylistWindow/MusicPlaylistContent/MusicPlaylistFooter"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.603922, 0.627451, 0.658824, 1)
+theme_override_font_sizes/font_size = 12
+text = "Saved with Rebuilt preferences, not the adventure save."
+
+[node name="MusicDone" type="Button" parent="MusicModalCenter/MusicPlaylistWindow/MusicPlaylistContent/MusicPlaylistFooter"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(110, 36)
+layout_mode = 2
+text = "Done"

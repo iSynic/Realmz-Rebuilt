@@ -7,7 +7,7 @@ $ErrorActionPreference = "Stop"
 
 $toolRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = Split-Path -Parent (Split-Path -Parent $toolRoot)
-$destinationRoot = Join-Path $repoRoot "src/presentation/assets/fonts"
+$destinationRoot = Join-Path $repoRoot "src/ui/shared/assets/fonts"
 $stagingRoot = Join-Path ([IO.Path]::GetTempPath()) ("realmz2-fonts-" + [Guid]::NewGuid().ToString("N"))
 $googleFontsCommit = "2d85e20401920891efb7cd6272d6339685df2820"
 $castleCommit = "491816ad60037394f92c428e99c004494d3c28b3"
@@ -186,7 +186,7 @@ try {
         if (-not (Test-Path -LiteralPath $target -PathType Leaf)) { throw "Staged font asset is missing: $($definition.Target)" }
         $record = [ordered]@{
             id = $definition.Id
-            path = "res://src/presentation/assets/fonts/$($definition.Target)"
+            path = "res://src/ui/shared/assets/fonts/$($definition.Target)"
             source_repository = $definition.Repository
             source_commit = $definition.Commit
         }

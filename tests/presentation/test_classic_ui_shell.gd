@@ -1,8 +1,8 @@
 extends "res://tests/presentation/classic_ui_test_support.gd"
 
-const PackageOperationStatusScript := preload("res://src/app/package_operation_view.gd")
-const ApplicationLifecycleScript := preload("res://src/app/application_lifecycle.gd")
-const InteractionLayoutPolicyScript := preload("res://src/presentation/interaction_layout_policy.gd")
+const PackageOperationStatusScript := preload("res://src/app/startup/package_operation_view.gd")
+const ApplicationLifecycleScript := preload("res://src/app/platform/application_lifecycle.gd")
+const InteractionLayoutPolicyScript := preload("res://src/ui/shared/interactions/interaction_layout_policy.gd")
 
 
 func run() -> void:
@@ -30,7 +30,7 @@ func _test_classic_click_modal() -> void:
 	var parent := Control.new()
 	parent.size = Vector2(1280.0, 720.0)
 	(Engine.get_main_loop() as SceneTree).root.add_child(parent)
-	var presenter := load("res://src/presentation/interaction_presenter.tscn").instantiate() as InteractionPresenter
+	var presenter := load("res://src/ui/shared/interactions/interaction_presenter.tscn").instantiate() as InteractionPresenter
 	parent.add_child(presenter)
 	await (Engine.get_main_loop() as SceneTree).process_frame
 	var stage_rect := Rect2(0.0, 28.0, 992.0, 502.0)
@@ -51,12 +51,12 @@ func _test_classic_click_modal() -> void:
 
 
 func _test_startup_party_setup_composition() -> void:
-	var router := ClassicScreenRouter.new()
+	var router := instantiate_ui_scene("res://src/ui/shell/screen_navigator.tscn") as ScreenNavigator
 	(Engine.get_main_loop() as SceneTree).root.add_child(router)
 	router.initialize()
 	var profile := UiLayoutProfile.for_viewport(Vector2(1280, 720), PresentationSettings.UI_SCALE_AUTO)
 	router.set_layout_profile(profile, Vector2(1280, 720))
-	router.set_standalone_character_creation_available(true)
+	router.setup_controller.character_creation.set_standalone_character_creation_available(true)
 	router.show_campaign_selection()
 
 	var workspace := router.find_child("ScenarioPartyWorkspace", true, false) as Control
@@ -86,40 +86,85 @@ func _test_startup_party_setup_composition() -> void:
 
 
 func _test_package_operation_presentation() -> void:
-	var router := ClassicScreenRouter.new()
+	var router := instantiate_ui_scene("res://src/ui/shell/screen_navigator.tscn") as ScreenNavigator
 	(Engine.get_main_loop() as SceneTree).root.add_child(router)
 	router.initialize()
 	var canceled := [0]
 	router.cancel_package_requested.connect(func() -> void: canceled[0] += 1)
-	router.set_package_operation(PackageOperationStatusScript.new(&"running", &"loading", 2, 4, "Loading package 2 of 4"))
+	router.setup_controller.campaign_library.set_package_operation(PackageOperationStatusScript.new(&"running", &"loading", 2, 4, "Loading package 2 of 4"))
 	var progress := router.find_child("PackageOperationProgress", true, false) as ProgressBar
 	var cancel := router.find_child("CancelPackageOperation", true, false) as Button
 	assert_equal([progress.value, progress.max_value], [2.0, 4.0], "package work exposes bounded detached progress"); assert_true(router.find_child("PackageOperationPhase", true, false) != null and (router.find_child("PackageOperationHost", true, false) as Control).visible and not router.setup_controller.campaign_scroll.is_ancestor_of(progress) and (router.find_child("InstallPackage", true, false) as Button).disabled and (router.find_child("RefreshScenarios", true, false) as Button).disabled, "package work owns one fixed status host and suppresses competing library actions")
 	assert_not_null(cancel, "package work exposes cancellation")
 	cancel.pressed.emit()
 	assert_equal(canceled[0], 1, "cancellation remains a host signal")
-	router.set_package_operation(PackageOperationStatusScript.new())
-	assert_true(router.find_child("CancelPackageOperation", true, false) == null, "completed package work removes transient controls")
+	router.setup_controller.campaign_library.set_package_operation(PackageOperationStatusScript.new())
+	assert_true(not (router.find_child("PackageOperationHost", true, false) as Control).visible and not (router.find_child("InstallPackage", true, false) as Button).disabled and not (router.find_child("RefreshScenarios", true, false) as Button).disabled, "completed package work hides its authored status and restores library actions")
 	router.free()
 
 
 func _test_primary_workspace_lifecycle() -> void:
-	var router := ClassicScreenRouter.new(); (Engine.get_main_loop() as SceneTree).root.add_child(router)
+	var router := instantiate_ui_scene("res://src/ui/shell/screen_navigator.tscn") as ScreenNavigator; (Engine.get_main_loop() as SceneTree).root.add_child(router)
 	router.initialize()
 	var view := GameView.new(1, true, null)
 	view.campaign_id = "workspace-fixture"
 	view.rules_version = "realmz-classic-1"
 	view.party_summary = PartySummaryView.new(); view.party_members = [CharacterView.new(CharacterState.new("hero", "Hero", 8, 10)), CharacterView.new(CharacterState.new("mage", "Mage", 6, 9))]
-	router.present(view); assert_true(router.select_character("mage"), "the persistent Party current-member identity can seed the Character workspace")
+	router.present(view); assert_true(router.content_presenter.select_character("mage"), "the persistent Party current-member identity can seed the Character workspace")
 	var entered: Array[StringName] = []
 	router.screen_changed.connect(func(route_id: StringName) -> void: entered.append(route_id))
-	for route_id: StringName in [&"character", &"inventory", &"spells", &"services", &"journal", &"system", &"vault", &"exploration", &"combat"]:
+	for route_id: StringName in [&"character", &"allies", &"bestiary", &"inventory", &"spells", &"services", &"journal", &"system", &"vault", &"exploration", &"combat"]:
 		router.open_screen(route_id)
 		assert_equal(router.current_screen(), route_id, "route selection commits the requested primary workspace")
-		assert_equal(router.primary_workspace_id(), route_id, "the mounted scene and route registry cannot diverge")
-		assert_equal(router.mounted_primary_workspace_count(), 1, "a route transition leaves exactly one primary workspace mounted")
-		assert_equal(router.primary_workspace_visible(), route_id not in [&"exploration", &"combat"], "only spatial play routes suppress their explanatory workspace body"); var route_back := router.find_child("RouteBackAction", true, false) as Button; var spell_screen := router.find_child("WorkspaceFrame", true, false) as ClassicRouteScreen if route_id == &"spells" else null; var context_actions := spell_screen.context_action_control() if spell_screen != null else null; var spell_title := spell_screen.find_child("ScreenTitle", true, false) as Control if spell_screen != null else null; var header_rule := spell_screen.find_child("HeaderRule", true, false) as Control if spell_screen != null else null; var inventory_done := router.find_child("InventoryDone", true, false) as Button if route_id == &"inventory" else null; var inventory_record := router.find_child("InventoryItemInspector", true, false) as Control if route_id == &"inventory" else null; assert_true(route_back != null and route_back.visible == (route_id not in [&"exploration", &"combat", &"vault", &"inventory"]) and (route_id != &"spells" or router.find_child("WorkspaceFooter", true, false) != null and context_actions != null and spell_title != null and not spell_title.visible and header_rule != null and not header_rule.visible) and (route_id != &"inventory" or inventory_done != null and inventory_done.visible and inventory_record != null and inventory_record.is_ancestor_of(inventory_done) and router.find_child("WorkspaceFooter", true, false) == null) and (route_id != &"character" or _buttons_in(router.find_child("CharacterPicker", true, false)).any(func(button: Button) -> bool: return button.text == "Mage" and button.button_pressed)), "route %s keeps one task-appropriate visible Done or Back action, integrates Inventory Done into its record, opens the current Character, and gives Spells a fixed action footer without a redundant route heading" % route_id)
-	assert_equal(entered, [&"character", &"inventory", &"spells", &"services", &"journal", &"system", &"vault", &"exploration", &"combat"], "each primary transition publishes exactly one entered route after replacing the prior workspace"); router.open_screen(&"system"); var media := ClassicMediaCatalog.new(null, ApplicationMediaCatalog.new()); router.set_media_catalog(media); var retained_system_tabs := router.find_child("SystemWorkspaceTabs", true, false); router.set_media_catalog(media); assert_true(retained_system_tabs != null and router.find_child("SystemWorkspaceTabs", true, false) == retained_system_tabs, "reusing one effective media catalog preserves the mounted route content instead of rebuilding it during ordinary movement events"); (router.find_child("RouteBackAction", true, false) as Button).pressed.emit(); assert_equal(router.current_screen(), &"combat", "the persistent route Back action follows the same history path as Escape")
+		var shell_mode := route_id in [&"exploration", &"combat"]
+		assert_equal(router.primary_workspace_id(), &"" if shell_mode else route_id, "only workspace routes mount a primary scene")
+		assert_equal(router.mounted_primary_workspace_count(), 0 if shell_mode else 1, "a route transition mounts exactly one workspace or no scene for a shell mode")
+		assert_equal(router.primary_workspace_visible(), not shell_mode, "shell modes reuse persistent HUD regions without a placeholder workspace")
+		if shell_mode:
+			assert_true(router.find_child("WorkspaceFrame", true, false) == null, "shell modes do not leave a hidden explanatory scene in the tree")
+			continue
+		var route_back := router.find_child("RouteBackAction", true, false) as Button; var spell_screen := router.find_child("WorkspaceFrame", true, false) as ScreenFrame if route_id == &"spells" else null; var context_actions := spell_screen.context_action_control() if spell_screen != null else null; var spell_footer := spell_screen.find_child("WorkspaceFooter", true, false) as Control if spell_screen != null else null; var spell_title := spell_screen.find_child("ScreenTitle", true, false) as Control if spell_screen != null else null; var header_rule := spell_screen.find_child("HeaderRule", true, false) as Control if spell_screen != null else null; var inventory_done := router.find_child("InventoryDone", true, false) as Button if route_id == &"inventory" else null; var inventory_record := router.find_child("InventoryItemInspector", true, false) as Control if route_id == &"inventory" else null; var services_done := router.find_child("MoneyDone", true, false) as Button if route_id == &"services" else null; assert_true(route_back != null and route_back.visible == (route_id not in [&"vault", &"inventory", &"services"]) and (route_id != &"spells" or spell_footer != null and spell_footer.get_parent().name == &"WorkspaceColumn" and spell_footer.custom_minimum_size.y == 50.0 and context_actions != null and spell_title != null and not spell_title.visible and header_rule != null and not header_rule.visible) and (route_id != &"inventory" or inventory_done != null and inventory_done.visible and inventory_record != null and inventory_record.is_ancestor_of(inventory_done) and router.find_child("WorkspaceFooter", true, false) == null) and (route_id != &"services" or services_done != null and services_done.visible and services_done.get_parent().name == &"Content") and (route_id != &"character" or _buttons_in(router.find_child("CharacterPicker", true, false)).any(func(button: Button) -> bool: return button.text == "Mage" and button.button_pressed)), "route %s keeps one task-appropriate visible Done or Back action, integrates Inventory and Party Wealth Done into fixed records, opens the current Character, and gives Spells a fixed in-flow action footer without a redundant route heading" % route_id)
+		if route_id == &"inventory":
+			var inventory_regions := [router.find_child("InventoryMainSplit", true, false), router.find_child("InventoryItemBrowser", true, false), router.find_child("InventoryCharacterCommandRail", true, false), router.find_child("InventoryItemInspector", true, false)]
+			var inventory_region_ids := inventory_regions.map(func(region: Node) -> int: return region.get_instance_id())
+			router.present(view)
+			assert_true(inventory_regions.all(func(region: Node) -> bool: return is_instance_valid(region)) and inventory_region_ids == inventory_regions.map(func(region: Node) -> int: return region.get_instance_id()), "Inventory rerenders records inside stable scene-authored regions")
+		if route_id == &"character":
+			var character_regions := [router.find_child("PartyOrderArea", true, false), router.find_child("CharacterSheetArea", true, false)]
+			var character_region_ids := character_regions.map(func(region: Node) -> int: return region.get_instance_id())
+			router.present(view)
+			assert_true(character_regions.all(func(region: Node) -> bool: return is_instance_valid(region)) and character_region_ids == character_regions.map(func(region: Node) -> int: return region.get_instance_id()), "Character rerenders records inside stable scene-authored regions")
+		if route_id in [&"allies", &"bestiary"]:
+			var creature_regions := [router.find_child("CreatureColumns", true, false), router.find_child("CreatureListPanel", true, false), router.find_child("CreatureDetailPanel", true, false)]
+			var creature_region_ids := creature_regions.map(func(region: Node) -> int: return region.get_instance_id())
+			router.present(view)
+			assert_true(creature_regions.all(func(region: Node) -> bool: return is_instance_valid(region)) and creature_region_ids == creature_regions.map(func(region: Node) -> int: return region.get_instance_id()), "%s rerenders records inside stable scene-authored regions" % route_id)
+		if route_id == &"services":
+			var money_regions := [router.find_child("MoneyColumn", true, false), router.find_child("MoneyPoolPane", true, false), router.find_child("MoneyPartyPane", true, false), router.find_child("MoneySwapPane", true, false)]
+			var money_region_ids := money_regions.map(func(region: Node) -> int: return region.get_instance_id())
+			router.present(view)
+			assert_true(money_regions.all(func(region: Node) -> bool: return is_instance_valid(region)) and money_region_ids == money_regions.map(func(region: Node) -> int: return region.get_instance_id()), "Party Wealth rerenders records inside stable scene-authored regions")
+		if route_id == &"journal":
+			var journal_regions := [router.find_child("MapsNotesSummary", true, false), router.find_child("MapsNotesTabs", true, false), router.find_child("Places", true, false), router.find_child("Maps", true, false), router.find_child("Journal", true, false)]
+			var journal_region_ids := journal_regions.map(func(region: Node) -> int: return region.get_instance_id())
+			router.present(view)
+			assert_true(journal_regions.all(func(region: Node) -> bool: return is_instance_valid(region)) and journal_region_ids == journal_regions.map(func(region: Node) -> int: return region.get_instance_id()), "Maps / Notes rerenders records inside stable scene-authored tab regions")
+		if route_id == &"spells":
+			var spell_regions := [router.find_child("Caster", true, false), router.find_child("Sections", true, false), router.find_child("SpellcastingBlockedNotice", true, false), router.find_child("ClassicSpellbookWorkspace", true, false)]
+			var spell_region_ids := spell_regions.map(func(region: Node) -> int: return region.get_instance_id())
+			router.present(view)
+			assert_true(spell_regions.all(func(region: Node) -> bool: return is_instance_valid(region)) and spell_region_ids == spell_regions.map(func(region: Node) -> int: return region.get_instance_id()), "Spells rerenders records inside stable scene-authored regions")
+		if route_id == &"system":
+			var system_regions := [router.find_child("SystemSummary", true, false), router.find_child("SystemWorkspaceTabs", true, false), router.find_child("Save & Load", true, false), router.find_child("Display", true, false), router.find_child("Audio", true, false), router.find_child("Pacing", true, false), router.find_child("Accessibility", true, false), router.find_child("Controls", true, false), router.find_child("Diagnostics", true, false)]
+			var system_region_ids := system_regions.map(func(region: Node) -> int: return region.get_instance_id())
+			router.present(view)
+			assert_true(system_regions.all(func(region: Node) -> bool: return is_instance_valid(region)) and system_region_ids == system_regions.map(func(region: Node) -> int: return region.get_instance_id()), "Preferences and Game rerenders records inside stable scene-authored tab regions")
+		if route_id == &"vault":
+			var vault_regions := [router.find_child("VaultHeaderArea", true, false), router.find_child("VaultListArea", true, false), router.find_child("VaultHistoryArea", true, false), router.find_child("VaultInspectionArea", true, false)]
+			var vault_region_ids := vault_regions.map(func(region: Node) -> int: return region.get_instance_id())
+			router.present(view)
+			assert_true(vault_regions.all(func(region: Node) -> bool: return is_instance_valid(region)) and vault_region_ids == vault_regions.map(func(region: Node) -> int: return region.get_instance_id()), "Character Files rerenders records inside stable scene-authored regions")
+	assert_equal(entered, [&"character", &"allies", &"bestiary", &"inventory", &"spells", &"services", &"journal", &"system", &"vault", &"exploration", &"combat"], "each primary transition publishes exactly one entered route after replacing the prior workspace"); router.open_screen(&"system"); var media := ClassicMediaCatalog.new(null, ApplicationMediaCatalog.new()); router.set_media_catalog(media); var retained_system_tabs := router.find_child("SystemWorkspaceTabs", true, false); router.set_media_catalog(media); assert_true(retained_system_tabs != null and router.find_child("SystemWorkspaceTabs", true, false) == retained_system_tabs, "reusing one effective media catalog preserves the mounted route content instead of rebuilding it during ordinary movement events"); (router.find_child("RouteBackAction", true, false) as Button).pressed.emit(); assert_equal(router.current_screen(), &"combat", "the persistent route Back action follows the same history path as Escape")
 	var setup_view := GameView.new(2, true, null); setup_view.campaign_summary = CampaignSummaryView.new(); setup_view.campaign_summary.campaign_id = "workspace-fixture"; setup_view.campaign_summary.title = "Workspace Scenario"; setup_view.campaign_summary.version = "6.0.0"; setup_view.campaign_summary.author = "Fantasoft"; setup_view.campaign_summary.restriction_description = "Up to six adventurers."; setup_view.campaign_summary.recommended_party_levels = 18; setup_view.campaign_summary.guidance_authored = true
 	setup_view.party_setup_available = true
 	setup_view.party_members = [CharacterView.new(CharacterState.new("closing.hero", "Closing Hero", 10, 10))]

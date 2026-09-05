@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-$campaignRoot = Join-Path $repoRoot "src\infrastructure\campaigns"
+$campaignRoot = Join-Path $repoRoot "src\storage\packages\bundled_campaigns"
 $catalogPath = Join-Path $campaignRoot "castle-bundled-scenarios.provenance.json"
 $citySourcePath = Join-Path $campaignRoot "city-of-bywater.source.json"
 $catalog = Get-Content -Raw -LiteralPath $catalogPath | ConvertFrom-Json
@@ -101,6 +101,11 @@ foreach ($scenario in $catalog.scenarios) {
         $worldReader = [System.IO.StreamReader]::new($worldEntry.Open())
         try { $world = $worldReader.ReadToEnd() | ConvertFrom-Json }
         finally { $worldReader.Dispose() }
+        foreach ($playerMap in @($world.playerMaps)) {
+            if ([string]::IsNullOrWhiteSpace([string]$playerMap.name) -or [string]$playerMap.name -match '^Map \d+$') {
+                throw "$($scenario.file) player-map record $($playerMap.classicId) lost its authored STR# Map Names title."
+            }
+        }
         $assetEntry = $archive.GetEntry("assets/index.json")
         if ($null -eq $assetEntry) { throw "$($scenario.file) has no assets/index.json." }
         $assetReader = [System.IO.StreamReader]::new($assetEntry.Open())
@@ -109,11 +114,14 @@ foreach ($scenario in $catalog.scenarios) {
         $assetIds = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
         $landCicnIds = [System.Collections.Generic.HashSet[int]]::new()
         $resourceKeys = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+        $assetsByResourceKey = @{}
         foreach ($asset in @($assetIndex.assets)) {
             if (-not [string]::IsNullOrWhiteSpace([string]$asset.id)) { [void]$assetIds.Add([string]$asset.id) }
             if ($asset.resourceType -eq "cicn" -and $null -ne $asset.resourceId) { [void]$landCicnIds.Add([int]$asset.resourceId) }
             if (-not [string]::IsNullOrWhiteSpace([string]$asset.resourceType) -and $null -ne $asset.resourceId) {
-                [void]$resourceKeys.Add("$($asset.resourceType):$([int]$asset.resourceId)")
+                $resourceKey = "$($asset.resourceType):$([int]$asset.resourceId)"
+                [void]$resourceKeys.Add($resourceKey)
+                $assetsByResourceKey[$resourceKey] = $asset
             }
         }
         $scenarioEntry = $archive.GetEntry("scenario.json")
@@ -132,6 +140,46 @@ foreach ($scenario in $catalog.scenarios) {
                 }
                 if (-not $resourceKeys.Contains("styl:$resourceId")) {
                     throw "$($scenario.file) program $($program.id) has no same-ID Classic styl $resourceId asset for scrolling text."
+                }
+                $textAsset = $assetsByResourceKey["TEXT:$resourceId"]
+                $styleAsset = $assetsByResourceKey["styl:$resourceId"]
+                $textEntry = $archive.GetEntry([string]$textAsset.path)
+                $styleEntry = $archive.GetEntry([string]$styleAsset.path)
+                if ($null -eq $textEntry -or $null -eq $styleEntry) {
+                    throw "$($scenario.file) scrolling-text resource $resourceId has a missing payload."
+                }
+                $textReader = [System.IO.StreamReader]::new($textEntry.Open(), [System.Text.UTF8Encoding]::new($false, $true))
+                try { $scrollingText = $textReader.ReadToEnd() }
+                finally { $textReader.Dispose() }
+                $styleStream = $styleEntry.Open()
+                $styleMemory = [System.IO.MemoryStream]::new()
+                try {
+                    $styleStream.CopyTo($styleMemory)
+                    $styleBytes = $styleMemory.ToArray()
+                } finally {
+                    $styleStream.Dispose()
+                    $styleMemory.Dispose()
+                }
+                if ($styleBytes.Length -lt 2) {
+                    throw "$($scenario.file) scrolling-text styl $resourceId is truncated."
+                }
+                $styleCount = ([int]$styleBytes[0] -shl 8) -bor [int]$styleBytes[1]
+                if ($styleCount -eq 0 -or $styleBytes.Length -lt 2 + ($styleCount * 20)) {
+                    throw "$($scenario.file) scrolling-text styl $resourceId has an invalid 20-byte run table."
+                }
+                $styleStarts = @()
+                for ($styleIndex = 0; $styleIndex -lt $styleCount; $styleIndex += 1) {
+                    $styleOffset = 2 + ($styleIndex * 20)
+                    $styleStart = ([int64]$styleBytes[$styleOffset] -shl 24) -bor ([int64]$styleBytes[$styleOffset + 1] -shl 16) -bor ([int64]$styleBytes[$styleOffset + 2] -shl 8) -bor [int64]$styleBytes[$styleOffset + 3]
+                    if ($styleStart -lt 0 -or $styleStart -gt $scrollingText.Length) {
+                        throw "$($scenario.file) scrolling-text styl $resourceId has run $styleIndex outside its offset-preserving TEXT payload."
+                    }
+                    $styleStarts += $styleStart
+                }
+                if ($scenario.campaignId -eq "scenario-city-of-bywater" -and $resourceId -eq -200) {
+                    if (-not $scrollingText.StartsWith("`n`n`n`n<<< Click & Drag") -or $styleStarts.Count -lt 2 -or $styleStarts[1] -ne 89) {
+                        throw "City of Bywater TEXT/styl -200 must preserve its four authored leading returns and raw style offset 89."
+                    }
                 }
             }
         }
@@ -160,6 +208,8 @@ foreach ($scenario in $catalog.scenarios) {
             $cryptDoorEncounter = @($contentDocument.complexEncounters | Where-Object { $_.id -eq 4 })
             $cryptDoorPrompt = @($contentDocument.messages | Where-Object { $_.id -eq 218 })
             $cobLandFive = @($world.maps | Where-Object { $_.id -eq "land:5" })
+            $cobSecretEntranceMap = @($world.playerMaps | Where-Object { $_.classicId -eq 1 -and $_.name -eq "Secret Castle Entrance" })
+            $cobLedgerMap = @($world.playerMaps | Where-Object { $_.classicId -eq 11 -and $_.name -eq "Ledger" })
             $cobSecretCell = if ($cobLandFive.Count -eq 1) { $cobLandFive[0].cells[(10 * [int]$cobLandFive[0].width) + 61] } else { $null }
             if ($ranthogTrigger.Count -ne 1 -or $ranthogTrigger[0].active -ne $false -or $ranthogTrigger[0].chancePercent -ne -100 -or $ranthogTrigger[0].mapId -ne "land:0" -or $ranthogTrigger[0].coordinate.x -ne 39 -or $ranthogTrigger[0].coordinate.y -ne 56) {
                 throw "City of Bywater must preserve dormant placed Action Point Data DD:0:39 at land:0 39,56."
@@ -169,6 +219,9 @@ foreach ($scenario in $catalog.scenarios) {
             }
             if ($cryptDoorEncounter.Count -ne 1 -or $cryptDoorEncounter[0].promptMessageId -ne 218 -or (@($cryptDoorEncounter[0].texts[0], $cryptDoorEncounter[0].texts[1]) -join "|") -ne "Bang on the door.|Try and force the door." -or $cryptDoorPrompt.Count -ne 1) {
                 throw "City of Bywater Complex Encounter 4 must retain prompt 218 and both authored door actions."
+            }
+            if ($cobSecretEntranceMap.Count -ne 1 -or $cobLedgerMap.Count -ne 1) {
+                throw "City of Bywater must retain the authored names for player-map records 1 and 11."
             }
             $secretFeatures = @()
             if ($null -ne $cobSecretCell) {
@@ -190,4 +243,4 @@ foreach ($scenario in $catalog.scenarios) {
     }
 }
 
-Write-Host "Verified the 13-scenario bundle, scrolling-text resources, and designated City of Bywater source snapshot."
+Write-Host "Verified the 13-scenario bundle, authored player-map names, scrolling-text resources, and designated City of Bywater source snapshot."

@@ -1,0 +1,72 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://addons/realmz_builder/realmz_builder_dock.gd" id="1_dock"]
+
+[node name="RealmzBuilderDock" type="VBoxContainer"]
+custom_minimum_size = Vector2(260, 0)
+theme_override_constants/separation = 8
+script = ExtResource("1_dock")
+
+[node name="Title" type="Label" parent="."]
+layout_mode = 2
+text = "Realmz Builder"
+theme_override_font_sizes/font_size = 18
+
+[node name="SceneName" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Unregistered scene"
+
+[node name="PreviewStatus" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Open a registered major scene."
+autowrap_mode = 2
+
+[node name="ProfileLabel" type="Label" parent="."]
+layout_mode = 2
+text = "Preview profile"
+
+[node name="Profile" type="OptionButton" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="PreviewActions" type="HBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="ApplyPreview" type="Button" parent="PreviewActions"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Preview"
+
+[node name="ClearPreview" type="Button" parent="PreviewActions"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Clear"
+
+[node name="Rule" type="HSeparator" parent="."]
+layout_mode = 2
+
+[node name="LinksLabel" type="Label" parent="."]
+layout_mode = 2
+text = "Maintainer links"
+
+[node name="Guide" type="Button" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Feature guide"
+
+[node name="Controller" type="Button" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Controller"
+
+[node name="View" type="Button" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Detached view"
+
+[node name="Tests" type="Button" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Owning test"

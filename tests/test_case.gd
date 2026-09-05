@@ -4,7 +4,7 @@ extends RefCounted
 var assertions: int = 0
 var failures: Array[String] = []
 
-const TEST_APPLICATION_LIBRARY_PATH := "res://src/infrastructure/characters/realmz-classic-character-library.realmz2"
+const TEST_APPLICATION_LIBRARY_PATH := "res://src/storage/characters/realmz-classic-character-library.realmz2"
 const TEST_APPLICATION_LIBRARY_ID := "realmz-classic-character-library"
 const TEST_APPLICATION_LIBRARY_HASH := "c7e093f46bcca49d2382d68c2995ae5ff90c0e706dbd538682b613af9b80e0bd"
 

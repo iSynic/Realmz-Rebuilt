@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="UiRouteDefinition" load_steps=2 format=3]
+[ext_resource type="Script" path="res://src/ui/shell/routes/ui_route_definition.gd" id="1_route"]
+[resource]
+script = ExtResource("1_route")
+route_id = &"inventory"
+label = "Inventory"
+shortcut = &"ui_screen_inventory"
+primary = true
+description = "Equip, identify, use, trade, and store items."
+presentation = 1
+workspace_scene_path = "res://src/ui/inventory/inventory_screen.tscn"

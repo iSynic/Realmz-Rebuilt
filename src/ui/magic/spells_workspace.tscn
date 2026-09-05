@@ -1,0 +1,477 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://src/ui/magic/spells_workspace.gd" id="1_workspace"]
+[ext_resource type="PackedScene" path="res://src/ui/magic/classic_spell_selection_button.tscn" id="2_spell_button"]
+[ext_resource type="PackedScene" path="res://src/ui/magic/spell_action_dock.tscn" id="3_actions"]
+[ext_resource type="PackedScene" path="res://src/ui/magic/fast_spell_row.tscn" id="4_fast"]
+[ext_resource type="PackedScene" path="res://src/ui/magic/spell_scroll_slot_row.tscn" id="5_scroll"]
+[ext_resource type="PackedScene" path="res://src/ui/magic/classic_spell_level_heading.tscn" id="6_level_heading"]
+[ext_resource type="PackedScene" path="res://src/ui/magic/classic_spell_target_badge.tscn" id="7_target"]
+
+[node name="SpellsWorkspace" type="VBoxContainer"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 5
+script = ExtResource("1_workspace")
+known_spell_button_scene = ExtResource("2_spell_button")
+action_dock_scene = ExtResource("3_actions")
+fast_spell_row_scene = ExtResource("4_fast")
+scroll_slot_row_scene = ExtResource("5_scroll")
+
+[node name="Caster" type="PanelContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInset"
+
+[node name="Content" type="HBoxContainer" parent="Caster"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Label" type="Label" parent="Caster/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.835294, 0.705882, 0.364706, 1)
+theme_override_font_sizes/font_size = 14
+text = "Caster"
+vertical_alignment = 1
+
+[node name="SpellCharacterSelector" type="OptionButton" parent="Caster/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicTheldrowOptionButton"
+
+[node name="Sections" type="VBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="WideSections" type="HBoxContainer" parent="Sections"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="Known" type="Button" parent="Sections/WideSections"]
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "Known Spells"
+tooltip_text = "Browse every spell this character knows."
+
+[node name="Fast" type="Button" parent="Sections/WideSections"]
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "Fast Spells (1–0)"
+tooltip_text = "Assign the ten Classic number-key quick-cast bindings."
+
+[node name="Scrolls" type="Button" parent="Sections/WideSections"]
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "Scroll Case"
+tooltip_text = "Use one of the five Classic scroll slots."
+
+[node name="SpellSectionSelector" type="OptionButton" parent="Sections"]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicTheldrowOptionButton"
+
+[node name="SpellcastingBlockedNotice" type="PanelContainer" parent="."]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInset"
+
+[node name="SpellcastingBlockedNoticeText" type="Label" parent="SpellcastingBlockedNotice"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.937255, 0.784314, 0.360784, 1)
+theme_override_font_sizes/font_size = 14
+text = "Spellcasting is disabled in this area."
+horizontal_alignment = 1
+tooltip_text = "You may inspect spellbooks, Fast Spells, and scrolls, but characters cannot cast while this effect is active."
+
+[node name="EmptyState" type="PanelContainer" parent="."]
+visible = false
+layout_mode = 2
+theme_type_variation = &"ClassicInset"
+
+[node name="Content" type="VBoxContainer" parent="EmptyState"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="EmptyState/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.835294, 0.705882, 0.364706, 1)
+theme_override_font_sizes/font_size = 16
+text = "No spellbooks"
+
+[node name="Detail" type="Label" parent="EmptyState/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.603922, 0.627451, 0.658824, 1)
+theme_override_font_sizes/font_size = 13
+text = "No party member can be selected."
+autowrap_mode = 2
+
+[node name="ClassicSpellbookWorkspace" type="PanelContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_type_variation = &"ClassicInset"
+
+[node name="Content" type="VBoxContainer" parent="ClassicSpellbookWorkspace"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="LevelStructuredSpellbook" type="HBoxContainer" parent="ClassicSpellbookWorkspace/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+
+[node name="SpellLevelRail" type="PanelContainer" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook"]
+custom_minimum_size = Vector2(92, 0)
+layout_mode = 2
+size_flags_vertical = 3
+theme_type_variation = &"ClassicInset"
+
+[node name="Content" type="VBoxContainer" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/SpellLevelRail"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="SpellLevelHeading" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/SpellLevelRail/Content" instance=ExtResource("6_level_heading")]
+layout_mode = 2
+
+[node name="LevelButtons" type="VBoxContainer" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/SpellLevelRail/Content"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="SpellLevel1" type="Button" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/SpellLevelRail/Content/LevelButtons"]
+custom_minimum_size = Vector2(88, 24)
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "Level 1"
+
+[node name="SpellLevel2" type="Button" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/SpellLevelRail/Content/LevelButtons"]
+custom_minimum_size = Vector2(88, 24)
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "Level 2"
+
+[node name="SpellLevel3" type="Button" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/SpellLevelRail/Content/LevelButtons"]
+custom_minimum_size = Vector2(88, 24)
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "Level 3"
+
+[node name="SpellLevel4" type="Button" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/SpellLevelRail/Content/LevelButtons"]
+custom_minimum_size = Vector2(88, 24)
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "Level 4"
+
+[node name="SpellLevel5" type="Button" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/SpellLevelRail/Content/LevelButtons"]
+custom_minimum_size = Vector2(88, 24)
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "Level 5"
+
+[node name="SpellLevel6" type="Button" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/SpellLevelRail/Content/LevelButtons"]
+custom_minimum_size = Vector2(88, 24)
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "Level 6"
+
+[node name="SpellLevel7" type="Button" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/SpellLevelRail/Content/LevelButtons"]
+custom_minimum_size = Vector2(88, 24)
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "Level 7"
+
+[node name="PowerDivider" type="HSeparator" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/SpellLevelRail/Content"]
+custom_minimum_size = Vector2(0, 4)
+layout_mode = 2
+
+[node name="SpellPowerRail" type="VBoxContainer" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/SpellLevelRail/Content"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="PowerLabel" type="TextureRect" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/SpellLevelRail/Content/SpellPowerRail"]
+custom_minimum_size = Vector2(68, 18)
+layout_mode = 2
+texture_filter = 1
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Cost" type="Label" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/SpellLevelRail/Content/SpellPowerRail"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.835294, 0.705882, 0.364706, 1)
+theme_override_font_sizes/font_size = 12
+text = "Cost 1 SP"
+horizontal_alignment = 1
+
+[node name="PowerButtons" type="VBoxContainer" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/SpellLevelRail/Content/SpellPowerRail"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="SpellPower1" type="Button" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/SpellLevelRail/Content/SpellPowerRail/PowerButtons"]
+custom_minimum_size = Vector2(0, 22)
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "1"
+
+[node name="SpellPower2" type="Button" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/SpellLevelRail/Content/SpellPowerRail/PowerButtons"]
+custom_minimum_size = Vector2(0, 22)
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "2"
+
+[node name="SpellPower3" type="Button" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/SpellLevelRail/Content/SpellPowerRail/PowerButtons"]
+custom_minimum_size = Vector2(0, 22)
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "3"
+
+[node name="SpellPower4" type="Button" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/SpellLevelRail/Content/SpellPowerRail/PowerButtons"]
+custom_minimum_size = Vector2(0, 22)
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "4"
+
+[node name="SpellPower5" type="Button" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/SpellLevelRail/Content/SpellPowerRail/PowerButtons"]
+custom_minimum_size = Vector2(0, 22)
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "5"
+
+[node name="SpellPower6" type="Button" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/SpellLevelRail/Content/SpellPowerRail/PowerButtons"]
+custom_minimum_size = Vector2(0, 22)
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "6"
+
+[node name="SpellPower7" type="Button" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/SpellLevelRail/Content/SpellPowerRail/PowerButtons"]
+custom_minimum_size = Vector2(0, 22)
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "7"
+
+[node name="LevelSpellRecords" type="VBoxContainer" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+
+[node name="KnownSpellList" type="PanelContainer" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/LevelSpellRecords"]
+custom_minimum_size = Vector2(0, 210)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 2.5
+theme_type_variation = &"ClassicInset"
+
+[node name="Content" type="VBoxContainer" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/LevelSpellRecords/KnownSpellList"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="Header" type="HBoxContainer" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/LevelSpellRecords/KnownSpellList/Content"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/LevelSpellRecords/KnownSpellList/Content/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.835294, 0.705882, 0.364706, 1)
+theme_override_font_sizes/font_size = 18
+text = "Level 1 spells"
+
+[node name="Count" type="Label" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/LevelSpellRecords/KnownSpellList/Content/Header"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.603922, 0.627451, 0.658824, 1)
+theme_override_font_sizes/font_size = 13
+text = "0 known"
+horizontal_alignment = 2
+
+[node name="SpellScroll" type="ScrollContainer" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/LevelSpellRecords/KnownSpellList/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Spells" type="VBoxContainer" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/LevelSpellRecords/KnownSpellList/Content/SpellScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 1
+
+[node name="SelectedSpellRecord" type="PanelContainer" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/LevelSpellRecords"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInset"
+
+[node name="Content" type="VBoxContainer" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/LevelSpellRecords/SelectedSpellRecord"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="Name" type="Label" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/LevelSpellRecords/SelectedSpellRecord/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.815686, 0.470588, 1)
+theme_override_font_sizes/font_size = 16
+text = "Selected spell"
+
+[node name="Resource" type="Label" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/LevelSpellRecords/SelectedSpellRecord/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.603922, 0.627451, 0.658824, 1)
+theme_override_font_sizes/font_size = 12
+text = "Level 1 • SP 0/0"
+
+[node name="Description" type="Label" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/LevelSpellRecords/SelectedSpellRecord/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.878431, 0.886275, 0.898039, 1)
+theme_override_font_sizes/font_size = 12
+text = "Spell description"
+text_overrun_behavior = 3
+autowrap_mode = 2
+max_lines_visible = 1
+
+[node name="TargetAndFacts" type="HBoxContainer" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/LevelSpellRecords/SelectedSpellRecord/Content"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="ClassicSpellTargetBadge" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/LevelSpellRecords/SelectedSpellRecord/Content/TargetAndFacts" instance=ExtResource("7_target")]
+layout_mode = 2
+
+[node name="Facts" type="GridContainer" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/LevelSpellRecords/SelectedSpellRecord/Content/TargetAndFacts"]
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 4
+
+[node name="TargetName" type="Label" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/LevelSpellRecords/SelectedSpellRecord/Content/TargetAndFacts/Facts"]
+layout_mode = 2
+text = "Target"
+[node name="TargetValue" type="Label" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/LevelSpellRecords/SelectedSpellRecord/Content/TargetAndFacts/Facts"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "One"
+[node name="RangeName" type="Label" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/LevelSpellRecords/SelectedSpellRecord/Content/TargetAndFacts/Facts"]
+layout_mode = 2
+text = "Range"
+[node name="RangeValue" type="Label" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/LevelSpellRecords/SelectedSpellRecord/Content/TargetAndFacts/Facts"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "0"
+[node name="DamageName" type="Label" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/LevelSpellRecords/SelectedSpellRecord/Content/TargetAndFacts/Facts"]
+layout_mode = 2
+text = "Damage"
+[node name="DamageValue" type="Label" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/LevelSpellRecords/SelectedSpellRecord/Content/TargetAndFacts/Facts"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "—"
+[node name="DurationName" type="Label" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/LevelSpellRecords/SelectedSpellRecord/Content/TargetAndFacts/Facts"]
+layout_mode = 2
+text = "Duration"
+[node name="DurationValue" type="Label" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/LevelSpellRecords/SelectedSpellRecord/Content/TargetAndFacts/Facts"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "—"
+[node name="MagicResistName" type="Label" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/LevelSpellRecords/SelectedSpellRecord/Content/TargetAndFacts/Facts"]
+layout_mode = 2
+text = "Magic resist"
+[node name="MagicResistValue" type="Label" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/LevelSpellRecords/SelectedSpellRecord/Content/TargetAndFacts/Facts"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Yes"
+[node name="SavingThrowName" type="Label" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/LevelSpellRecords/SelectedSpellRecord/Content/TargetAndFacts/Facts"]
+layout_mode = 2
+text = "Saving throw"
+[node name="SavingThrowValue" type="Label" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/LevelSpellRecords/SelectedSpellRecord/Content/TargetAndFacts/Facts"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Yes"
+
+[node name="SpellActionHost" type="HBoxContainer" parent="ClassicSpellbookWorkspace/Content"]
+layout_mode = 2
+
+[node name="FastSection" type="VBoxContainer" parent="."]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="Header" type="HBoxContainer" parent="FastSection"]
+layout_mode = 2
+[node name="Title" type="Label" parent="FastSection/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.835294, 0.705882, 0.364706, 1)
+theme_override_font_sizes/font_size = 18
+text = "Character's Fast Spell bindings"
+[node name="Detail" type="Label" parent="FastSection/Header"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.603922, 0.627451, 0.658824, 1)
+theme_override_font_sizes/font_size = 13
+text = "Top-row 1–0"
+horizontal_alignment = 2
+[node name="Explanation" type="Label" parent="FastSection"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.603922, 0.627451, 0.658824, 1)
+theme_override_font_sizes/font_size = 13
+text = "Choosing a spell assigns it immediately. Clear removes it; Back keeps every assigned slot."
+autowrap_mode = 2
+max_lines_visible = 2
+[node name="Empty" type="Label" parent="FastSection"]
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.603922, 0.627451, 0.658824, 1)
+text = "This character has no Fast Spell bindings."
+[node name="FastSpellGrid" type="PanelContainer" parent="FastSection"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_type_variation = &"ClassicInset"
+[node name="Rows" type="GridContainer" parent="FastSection/FastSpellGrid"]
+layout_mode = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 5
+columns = 1
+
+[node name="ScrollSection" type="VBoxContainer" parent="."]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+[node name="Header" type="HBoxContainer" parent="ScrollSection"]
+layout_mode = 2
+[node name="Title" type="Label" parent="ScrollSection/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.835294, 0.705882, 0.364706, 1)
+theme_override_font_sizes/font_size = 18
+text = "Character's Scroll Case"
+[node name="Detail" type="Label" parent="ScrollSection/Header"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.603922, 0.627451, 0.658824, 1)
+theme_override_font_sizes/font_size = 13
+text = "Five fixed Classic slots"
+horizontal_alignment = 2
+[node name="SpellScrollCase" type="PanelContainer" parent="ScrollSection"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_type_variation = &"ClassicInset"
+[node name="Rows" type="VBoxContainer" parent="ScrollSection/SpellScrollCase"]
+layout_mode = 2
+theme_override_constants/separation = 5
+[node name="Empty" type="Label" parent="ScrollSection"]
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.603922, 0.627451, 0.658824, 1)
+text = "This character has no Classic scroll slots."

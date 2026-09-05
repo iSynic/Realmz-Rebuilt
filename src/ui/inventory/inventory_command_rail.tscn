@@ -1,0 +1,20 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://src/ui/inventory/inventory_command_rail.gd" id="1_rail"]
+[ext_resource type="PackedScene" path="res://src/ui/inventory/inventory_character_record.tscn" id="2_record"]
+[ext_resource type="PackedScene" path="res://src/ui/inventory/inventory_action_panel.tscn" id="3_actions"]
+[ext_resource type="PackedScene" path="res://src/ui/inventory/inventory_character_selector.tscn" id="4_selector"]
+
+[node name="InventoryCommandRailContent" type="VBoxContainer"]
+theme_override_constants/separation = 6
+script = ExtResource("1_rail")
+
+[node name="InventoryCharacterRecord" parent="." instance=ExtResource("2_record")]
+layout_mode = 2
+
+[node name="InventoryActionPanel" parent="." instance=ExtResource("3_actions")]
+layout_mode = 2
+
+[node name="InventoryCharacterSelector" parent="." instance=ExtResource("4_selector")]
+layout_mode = 2
+size_flags_vertical = 3

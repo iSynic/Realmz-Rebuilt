@@ -1,7 +1,10 @@
 extends SceneTree
 
-const PACKAGE_REPOSITORY_SCRIPT := preload("res://src/infrastructure/packages/package_repository.gd")
-const GAME_SESSION_SCRIPT := preload("res://src/session/game_session.gd")
+const PACKAGE_REPOSITORY_SCRIPT := preload("res://src/storage/packages/package_repository.gd")
+const GAME_SESSION_SCRIPT := preload("res://src/playthrough/session/game_session.gd")
+const APPLICATION_PACKAGE_PATH := "res://src/storage/characters/realmz-classic-character-library.realmz2"
+const APPLICATION_PACKAGE_ID := "realmz-classic-character-library"
+const APPLICATION_PACKAGE_HASH := "c7e093f46bcca49d2382d68c2995ae5ff90c0e706dbd538682b613af9b80e0bd"
 
 
 func _initialize() -> void:
@@ -19,6 +22,12 @@ func _initialize() -> void:
 			return
 		install_root = arguments[2]
 	var repository := PACKAGE_REPOSITORY_SCRIPT.new()
+	var application := repository.load_bundled_package(APPLICATION_PACKAGE_PATH, APPLICATION_PACKAGE_ID, APPLICATION_PACKAGE_HASH)
+	if not application.is_ok():
+		printerr("APPLICATION_PACKAGE_REJECTED %s: %s" % [application.error_code, application.error_message])
+		call_deferred("_quit_cleanly", 1)
+		return
+	repository.set_application_content(application.content, application.media.assets())
 	var started_at := Time.get_ticks_msec()
 	var timing := {"active": &"" as StringName, "startedAt": started_at, "phaseMs": {}}
 	var record_progress := func(phase: StringName, _completed: int, _total: int) -> void:
@@ -68,7 +77,7 @@ func _initialize() -> void:
 		session.view()
 	var ten_repeat_views_ms := Time.get_ticks_msec() - repeat_views_started_at
 	var blocked_move_started_at := Time.get_ticks_msec()
-	var blocked_move := session.submit_intent(PlayerIntent.move(Vector2i.LEFT))
+	var blocked_move := session.submit_intent(ExplorationIntents.move(Vector2i.LEFT))
 	var blocked_move_ms := Time.get_ticks_msec() - blocked_move_started_at
 	var post_move_view_started_at := Time.get_ticks_msec()
 	session.view()

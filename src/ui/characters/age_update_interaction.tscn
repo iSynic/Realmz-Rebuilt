@@ -1,0 +1,81 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/ui/characters/age_update_interaction.gd" id="1_interaction"]
+
+[node name="AgeUpdateInteraction" type="VBoxContainer"]
+theme_override_constants/separation = 8
+script = ExtResource("1_interaction")
+
+[node name="AgeIdentityPanel" type="PanelContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInset"
+
+[node name="IdentityRow" type="HBoxContainer" parent="AgeIdentityPanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Portrait" type="TextureRect" parent="AgeIdentityPanel/IdentityRow"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(80, 80)
+layout_mode = 2
+texture_filter = 1
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Facts" type="VBoxContainer" parent="AgeIdentityPanel/IdentityRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Identity" type="Label" parent="AgeIdentityPanel/IdentityRow/Facts"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+text = "Character • Race"
+
+[node name="AgeBand" type="Label" parent="AgeIdentityPanel/IdentityRow/Facts"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.835294, 0.705882, 0.364706, 1)
+text = "Age band • ages 0–0"
+
+[node name="Prompt" type="Label" parent="AgeIdentityPanel/IdentityRow/Facts"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 2
+
+[node name="CombatIcon" type="TextureRect" parent="AgeIdentityPanel/IdentityRow"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+texture_filter = 1
+expand_mode = 1
+stretch_mode = 5
+
+[node name="AgeChangePanel" type="PanelContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicTextWell"
+
+[node name="AgeChangeGrid" type="VBoxContainer" parent="AgeChangePanel"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="NoChanges" type="Label" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.835294, 0.705882, 0.364706, 1)
+text = "This transition changes no listed statistics."
+autowrap_mode = 2
+
+[node name="AgeUpdateContinue" type="Button" parent="."]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicChoiceButton"
+text = "Continue"

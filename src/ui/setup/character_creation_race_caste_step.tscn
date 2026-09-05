@@ -1,0 +1,193 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/ui/setup/character_creation_race_caste_step.gd" id="1_step"]
+[ext_resource type="PackedScene" path="res://src/ui/setup/classic_definition_toggle_list.tscn" id="2_list"]
+
+[node name="CharacterCreationRaceCasteStep" type="VBoxContainer"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+script = ExtResource("1_step")
+
+[node name="RaceCasteHeading" type="Label" parent="."]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+theme_override_font_sizes/font_size = 20
+text = "Race & Caste"
+
+[node name="RaceCasteSelectors" type="HBoxContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="RaceSelectorPanel" type="PanelContainer" parent="RaceCasteSelectors"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_type_variation = &"ClassicInset"
+
+[node name="RacePanelContent" type="VBoxContainer" parent="RaceCasteSelectors/RaceSelectorPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="Heading" type="Label" parent="RaceCasteSelectors/RaceSelectorPanel/RacePanelContent"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+theme_override_font_sizes/font_size = 15
+text = "Race"
+
+[node name="RaceSelectorRecord" type="HBoxContainer" parent="RaceCasteSelectors/RaceSelectorPanel/RacePanelContent"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="RaceList" parent="RaceCasteSelectors/RaceSelectorPanel/RacePanelContent/RaceSelectorRecord" instance=ExtResource("2_list")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 300)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.0
+
+[node name="RaceDetailPanel" type="PanelContainer" parent="RaceCasteSelectors/RaceSelectorPanel/RacePanelContent/RaceSelectorRecord"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 2.0
+theme_type_variation = &"ClassicInset"
+
+[node name="RaceDetailContent" type="VBoxContainer" parent="RaceCasteSelectors/RaceSelectorPanel/RacePanelContent/RaceSelectorRecord/RaceDetailPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="Heading" type="Label" parent="RaceCasteSelectors/RaceSelectorPanel/RacePanelContent/RaceSelectorRecord/RaceDetailPanel/RaceDetailContent"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+theme_override_font_sizes/font_size = 15
+text = "Selected Race"
+
+[node name="RaceDetailName" type="Label" parent="RaceCasteSelectors/RaceSelectorPanel/RacePanelContent/RaceSelectorRecord/RaceDetailPanel/RaceDetailContent"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+theme_override_font_sizes/font_size = 18
+text = "No race selected"
+
+[node name="RaceDescription" type="Label" parent="RaceCasteSelectors/RaceSelectorPanel/RacePanelContent/RaceSelectorRecord/RaceDetailPanel/RaceDetailContent"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.878, 0.886, 0.898, 1)
+theme_override_font_sizes/font_size = 15
+text = "The authored race description appears here."
+autowrap_mode = 2
+
+[node name="RaceFacts" type="Label" parent="RaceCasteSelectors/RaceSelectorPanel/RacePanelContent/RaceSelectorRecord/RaceDetailPanel/RaceDetailContent"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.878, 0.886, 0.898, 1)
+theme_override_font_sizes/font_size = 13
+text = "Source-backed race facts"
+autowrap_mode = 2
+
+[node name="RaceRelations" type="Label" parent="RaceCasteSelectors/RaceSelectorPanel/RacePanelContent/RaceSelectorRecord/RaceDetailPanel/RaceDetailContent"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+theme_override_font_sizes/font_size = 13
+text = "Compatible Castes"
+autowrap_mode = 2
+
+[node name="CasteSelectorPanel" type="PanelContainer" parent="RaceCasteSelectors"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_type_variation = &"ClassicInset"
+
+[node name="CastePanelContent" type="VBoxContainer" parent="RaceCasteSelectors/CasteSelectorPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="Heading" type="Label" parent="RaceCasteSelectors/CasteSelectorPanel/CastePanelContent"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+theme_override_font_sizes/font_size = 15
+text = "Caste"
+
+[node name="CasteSelectorRecord" type="HBoxContainer" parent="RaceCasteSelectors/CasteSelectorPanel/CastePanelContent"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="CasteList" parent="RaceCasteSelectors/CasteSelectorPanel/CastePanelContent/CasteSelectorRecord" instance=ExtResource("2_list")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 300)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.0
+
+[node name="CasteDetailPanel" type="PanelContainer" parent="RaceCasteSelectors/CasteSelectorPanel/CastePanelContent/CasteSelectorRecord"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 2.0
+theme_type_variation = &"ClassicInset"
+
+[node name="CasteDetailContent" type="VBoxContainer" parent="RaceCasteSelectors/CasteSelectorPanel/CastePanelContent/CasteSelectorRecord/CasteDetailPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="Heading" type="Label" parent="RaceCasteSelectors/CasteSelectorPanel/CastePanelContent/CasteSelectorRecord/CasteDetailPanel/CasteDetailContent"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+theme_override_font_sizes/font_size = 15
+text = "Selected Caste"
+
+[node name="CasteDetailName" type="Label" parent="RaceCasteSelectors/CasteSelectorPanel/CastePanelContent/CasteSelectorRecord/CasteDetailPanel/CasteDetailContent"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+theme_override_font_sizes/font_size = 18
+text = "No caste selected"
+
+[node name="CasteDescription" type="Label" parent="RaceCasteSelectors/CasteSelectorPanel/CastePanelContent/CasteSelectorRecord/CasteDetailPanel/CasteDetailContent"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.878, 0.886, 0.898, 1)
+theme_override_font_sizes/font_size = 15
+text = "The authored caste description appears here."
+autowrap_mode = 2
+
+[node name="CasteFacts" type="Label" parent="RaceCasteSelectors/CasteSelectorPanel/CastePanelContent/CasteSelectorRecord/CasteDetailPanel/CasteDetailContent"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.878, 0.886, 0.898, 1)
+theme_override_font_sizes/font_size = 13
+text = "Source-backed caste facts"
+autowrap_mode = 2
+
+[node name="CasteRelations" type="Label" parent="RaceCasteSelectors/CasteSelectorPanel/CastePanelContent/CasteSelectorRecord/CasteDetailPanel/CasteDetailContent"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+theme_override_font_sizes/font_size = 13
+text = "Compatible Races"
+autowrap_mode = 2

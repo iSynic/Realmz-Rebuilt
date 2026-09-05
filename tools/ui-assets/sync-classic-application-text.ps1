@@ -7,7 +7,7 @@ $ErrorActionPreference = "Stop"
 $sourceCommit = "491816ad60037394f92c428e99c004494d3c28b3"
 $sourcePath = "base/Realmz/Data Files/The Family Jewels.rsrc"
 $sourceSha256 = "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c"
-$destination = Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) "src/infrastructure/packages/classic-application-spell-descriptions.json"
+$destination = Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) "src/storage/packages/classic-application-spell-descriptions.json"
 
 function Get-U16([byte[]]$Bytes, [int]$Offset) {
     return ([int]$Bytes[$Offset] -shl 8) -bor [int]$Bytes[$Offset + 1]

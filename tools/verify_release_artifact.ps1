@@ -10,7 +10,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-$catalogPath = Join-Path $repoRoot "src\infrastructure\campaigns\castle-bundled-scenarios.provenance.json"
+$catalogPath = Join-Path $repoRoot "src\storage\packages\bundled_campaigns\castle-bundled-scenarios.provenance.json"
 $catalog = Get-Content -Raw -LiteralPath $catalogPath | ConvertFrom-Json
 & (Join-Path $PSScriptRoot "verify_bundled_scenarios.ps1")
 $outputPath = (Resolve-Path -LiteralPath $Output).Path
@@ -22,18 +22,18 @@ $plainLogText = [regex]::Replace($logText, $ansiPattern, "")
 if ($plainLogText -match '(?m)^(?:WARNING|ERROR|SCRIPT ERROR):') {
     throw "Release export emitted a warning or error: $($Matches[0])"
 }
-$forbidden = 'Storing File:\s+res://(?:addons/godot_mcp(?:/|\\)|tests(?:/|\\)|tools(?:/|\\)|docs(?:/|\\)|contracts(?:/|\\)|artifacts(?:/|\\)|\.references(?:/|\\)|\.github(?:/|\\)|\.mcp\.json|(?:[^\r\n]+/)?AGENTS\.md|README\.md|CONTRIBUTING\.md)'
+$forbidden = 'Storing File:\s+res://(?:addons/(?:godot_mcp|realmz_builder)(?:/|\\)|tests(?:/|\\)|tools(?:/|\\)|docs(?:/|\\)|contracts(?:/|\\)|artifacts(?:/|\\)|\.references(?:/|\\)|\.github(?:/|\\)|\.mcp\.json|(?:[^\r\n]+/)?AGENTS\.md|README\.md|CONTRIBUTING\.md)'
 if ($plainLogText -match $forbidden) {
     throw "Release export contains an excluded development resource: $($Matches[0])"
 }
 $packagePaths = @([regex]::Matches($plainLogText, 'Storing File:\s+(res://[^\r\n]+\.realmz2)') | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
-$expectedPackagePaths = @('res://src/infrastructure/characters/realmz-classic-character-library.realmz2')
-$expectedPackagePaths += @($catalog.scenarios | ForEach-Object { "res://src/infrastructure/campaigns/$($_.file)" })
+$expectedPackagePaths = @('res://src/storage/characters/realmz-classic-character-library.realmz2')
+$expectedPackagePaths += @($catalog.scenarios | ForEach-Object { "res://src/storage/packages/bundled_campaigns/$($_.file)" })
 $expectedPackagePaths = @($expectedPackagePaths | Sort-Object)
 if (($packagePaths -join '|') -ne ($expectedPackagePaths -join '|')) {
     throw "Release export contains an unexpected Realmz package set: $($packagePaths -join ', ')"
 }
-foreach ($requiredRuntimeFile in @('res://LICENSE', 'res://THIRD_PARTY_NOTICES.txt', 'res://src/infrastructure/characters/realmz-classic-starter-characters.json')) {
+foreach ($requiredRuntimeFile in @('res://LICENSE', 'res://THIRD_PARTY_NOTICES.txt', 'res://src/storage/characters/realmz-classic-starter-characters.json')) {
     if ($plainLogText -notmatch ('Storing File:\s+' + [regex]::Escape($requiredRuntimeFile) + '(?:\r?\n|$)')) {
         throw "Release export is missing required runtime/license file: $requiredRuntimeFile"
     }
@@ -91,8 +91,8 @@ $manifest = [ordered]@{
         })
     }
     starterCharacterCatalog = [ordered]@{
-        file = "src/infrastructure/characters/realmz-classic-starter-characters.json"
-        sha256 = (Get-FileHash -LiteralPath (Join-Path $repoRoot "src\infrastructure\characters\realmz-classic-starter-characters.json") -Algorithm SHA256).Hash.ToLowerInvariant()
+        file = "src/storage/characters/realmz-classic-starter-characters.json"
+        sha256 = (Get-FileHash -LiteralPath (Join-Path $repoRoot "src\storage\characters\realmz-classic-starter-characters.json") -Algorithm SHA256).Hash.ToLowerInvariant()
         recordCount = 6
     }
 }

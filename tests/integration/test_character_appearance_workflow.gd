@@ -8,8 +8,8 @@ func run() -> void:
 	if not package_result.is_ok():
 		return
 	var content := package_result.content
-	var portraits := content.appearance_definitions(CharacterAppearanceDefinition.PORTRAIT)
-	var icons := content.appearance_definitions(CharacterAppearanceDefinition.COMBAT_ICON)
+	var portraits := content.characters.appearance_definitions(CharacterAppearanceDefinition.PORTRAIT)
+	var icons := content.characters.appearance_definitions(CharacterAppearanceDefinition.COMBAT_ICON)
 	assert_equal([portraits.size(), icons.size()], [120, 120], "Providence supplies both complete Classic appearance catalogs")
 	if portraits.size() < 2 or icons.size() < 2:
 		return
@@ -19,7 +19,7 @@ func run() -> void:
 	var setup := session.view()
 	var race := setup.race_options[0]
 	var caste_id := race.related_ids[0] if not race.related_ids.is_empty() else setup.caste_options[0].id
-	assert_equal(session.submit_intent(PlayerIntent.create_party([CharacterCreationSpec.new("Mira", race.id, caste_id, 1)])).state, SessionStep.State.COMPLETED, "the fixture party begins the adventure")
+	assert_equal(session.submit_intent(PartyIntents.create([CharacterCreationSpec.new("Mira", race.id, caste_id, 1)])).state, SessionStep.State.COMPLETED, "the fixture party begins the adventure")
 	var character_id := session.view().party_members[0].id
 	var initial_character := session.snapshot().game_state.party.character_by_id(character_id)
 	var initial_portrait := initial_character.portrait_id
@@ -31,7 +31,7 @@ func run() -> void:
 
 	var state_before := save_data(session.snapshot())
 	var rng_before := session.snapshot().rng_state.to_data()
-	var portrait_change := session.submit_intent(PlayerIntent.change_character_appearance(character_id, CharacterAppearanceDefinition.PORTRAIT, target_portrait.id))
+	var portrait_change := session.submit_intent(PartyIntents.change_appearance(character_id, CharacterAppearanceDefinition.PORTRAIT, target_portrait.id))
 	assert_equal(portrait_change.state, SessionStep.State.COMPLETED, "a valid portrait change commits synchronously")
 	assert_equal(portrait_change.events.size(), 1, "the portrait change emits one committed domain event")
 	assert_equal([portrait_change.events[0].kind, portrait_change.events[0].payload["appearanceKind"], portrait_change.events[0].payload["previousAppearanceId"], portrait_change.events[0].payload["appearanceId"]], [&"character_appearance_changed", "portrait", initial_portrait, target_portrait.id], "the portrait event records exact previous and current stable IDs")
@@ -40,19 +40,19 @@ func run() -> void:
 	assert_equal(session.snapshot().rng_state.to_data(), rng_before, "appearance changes consume no gameplay randomness")
 	assert_equal(session.snapshot().game_state.clock.to_data(), state_before["gameState"]["clock"], "appearance changes advance no game time")
 
-	var icon_change := session.submit_intent(PlayerIntent.change_character_appearance(character_id, CharacterAppearanceDefinition.COMBAT_ICON, target_icon.id))
+	var icon_change := session.submit_intent(PartyIntents.change_appearance(character_id, CharacterAppearanceDefinition.COMBAT_ICON, target_icon.id))
 	assert_equal(icon_change.state, SessionStep.State.COMPLETED, "a valid combat-icon change commits independently")
 	var after_icon := session.snapshot().game_state.party.character_by_id(character_id)
 	assert_equal([after_icon.portrait_id, after_icon.combat_icon_id], [target_portrait.id, target_icon.id], "the two active appearance roles remain independent")
 
 	var committed := save_data(session.snapshot())
-	var wrong_role := session.submit_intent(PlayerIntent.change_character_appearance(character_id, CharacterAppearanceDefinition.PORTRAIT, target_icon.id))
+	var wrong_role := session.submit_intent(PartyIntents.change_appearance(character_id, CharacterAppearanceDefinition.PORTRAIT, target_icon.id))
 	assert_equal([wrong_role.state, wrong_role.error_code], [SessionStep.State.FAILED, &"invalid_character_appearance"], "a tactical icon cannot be assigned as a portrait")
 	assert_equal(save_data(session.snapshot()), committed, "wrong-role rejection is transactional")
-	var unknown_member := session.submit_intent(PlayerIntent.change_character_appearance("character.unknown", CharacterAppearanceDefinition.PORTRAIT, target_portrait.id))
+	var unknown_member := session.submit_intent(PartyIntents.change_appearance("character.unknown", CharacterAppearanceDefinition.PORTRAIT, target_portrait.id))
 	assert_equal([unknown_member.state, unknown_member.error_code], [SessionStep.State.FAILED, &"unknown_party_member"], "an unknown character cannot receive an appearance")
 	assert_equal(save_data(session.snapshot()), committed, "unknown-character rejection is transactional")
-	var unchanged := session.submit_intent(PlayerIntent.change_character_appearance(character_id, CharacterAppearanceDefinition.COMBAT_ICON, target_icon.id))
+	var unchanged := session.submit_intent(PartyIntents.change_appearance(character_id, CharacterAppearanceDefinition.COMBAT_ICON, target_icon.id))
 	assert_equal([unchanged.state, unchanged.error_code], [SessionStep.State.FAILED, &"appearance_unchanged"], "an unchanged selection does not fabricate a mutation")
 	assert_equal(save_data(session.snapshot()), committed, "unchanged rejection is transactional")
 

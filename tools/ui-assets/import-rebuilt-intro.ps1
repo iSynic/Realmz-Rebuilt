@@ -14,7 +14,7 @@ $ErrorActionPreference = "Stop"
 
 $toolRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = Split-Path -Parent (Split-Path -Parent $toolRoot)
-$destinationRoot = Join-Path $repoRoot "src/presentation/assets/ui/intro"
+$destinationRoot = Join-Path $repoRoot "src/ui/shared/assets/ui/intro"
 $stagingRoot = Join-Path ([IO.Path]::GetTempPath()) ("rebuilt-intro-" + [Guid]::NewGuid().ToString("N"))
 $sourcePath = (Resolve-Path -LiteralPath $SourceOgvPath).Path
 $sourceHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $sourcePath).Hash.ToLowerInvariant()
@@ -59,7 +59,7 @@ try {
         source_role = "Realmz Rebuilt intro video supplied by the project owner"
         source_sha256 = $sourceHash
         license = "Project-Owner-Supplied"
-        path = "res://src/presentation/assets/ui/intro/$assetName"
+        path = "res://src/ui/shared/assets/ui/intro/$assetName"
         bytes = 1097782
         width = 832
         height = 480
@@ -75,7 +75,7 @@ try {
             source_role = "Realmz Rebuilt intro soundtrack supplied by the project owner"
             source_sha256 = $soundtrackSourceHash
             license = "Project-Owner-Supplied"
-            path = "res://src/presentation/assets/ui/intro/$soundtrackAssetName"
+            path = "res://src/ui/shared/assets/ui/intro/$soundtrackAssetName"
             bytes = 721197
             duration_ms = 30000
             codec = "mp3"

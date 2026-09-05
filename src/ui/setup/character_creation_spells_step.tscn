@@ -1,0 +1,276 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://src/ui/setup/character_creation_spells_step.gd" id="1_step"]
+[ext_resource type="PackedScene" path="res://src/ui/magic/classic_spell_level_button.tscn" id="2_level"]
+[ext_resource type="PackedScene" path="res://src/ui/magic/classic_spell_selection_button.tscn" id="3_spell"]
+[ext_resource type="PackedScene" path="res://src/ui/magic/classic_spell_effect_preview.tscn" id="4_preview"]
+
+[node name="CharacterCreationSpellsStep" type="VBoxContainer"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+script = ExtResource("1_step")
+spell_button_scene = ExtResource("3_spell")
+effect_preview_scene = ExtResource("4_preview")
+
+[node name="SpellsHeading" type="Label" parent="."]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+theme_override_font_sizes/font_size = 20
+text = "Starting Spells"
+
+[node name="StartingSpellUnavailable" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_type_variation = &"ClassicInset"
+
+[node name="Content" type="VBoxContainer" parent="StartingSpellUnavailable"]
+layout_mode = 2
+
+[node name="Heading" type="Label" parent="StartingSpellUnavailable/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+theme_override_font_sizes/font_size = 15
+text = "Spell Selection"
+
+[node name="StartingSpellUnavailableText" type="Label" parent="StartingSpellUnavailable/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+text = "Generate and review the character before choosing spells."
+autowrap_mode = 2
+
+[node name="StartingSpellNotApplicable" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_type_variation = &"ClassicInset"
+
+[node name="Content" type="VBoxContainer" parent="StartingSpellNotApplicable"]
+layout_mode = 2
+
+[node name="Heading" type="Label" parent="StartingSpellNotApplicable/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+theme_override_font_sizes/font_size = 15
+text = "No Starting Spells"
+
+[node name="StartingSpellNotApplicableText" type="Label" parent="StartingSpellNotApplicable/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+text = "This character receives no Classic starting-spell choices."
+autowrap_mode = 2
+
+[node name="StartingSpellMissing" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_type_variation = &"ClassicInset"
+
+[node name="Content" type="VBoxContainer" parent="StartingSpellMissing"]
+layout_mode = 2
+
+[node name="Heading" type="Label" parent="StartingSpellMissing/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+theme_override_font_sizes/font_size = 15
+text = "Starting Spells Unavailable"
+
+[node name="StartingSpellMissingText" type="Label" parent="StartingSpellMissing/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.937, 0.467, 0.439, 1)
+text = "This caster has selection points, but the package exposes no matching Classic spell records."
+autowrap_mode = 2
+
+[node name="StartingSpellWorkspace" type="HBoxContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="StartingSpellLevelRail" type="PanelContainer" parent="StartingSpellWorkspace"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.38
+theme_type_variation = &"ClassicInset"
+
+[node name="Content" type="VBoxContainer" parent="StartingSpellWorkspace/StartingSpellLevelRail"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="StartingSpellLevelHeading" type="TextureRect" parent="StartingSpellWorkspace/StartingSpellLevelRail/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(68, 18)
+layout_mode = 2
+texture_filter = 1
+expand_mode = 1
+stretch_mode = 5
+
+[node name="StartingSpellLevel1" parent="StartingSpellWorkspace/StartingSpellLevelRail/Content" instance=ExtResource("2_level")]
+unique_name_in_owner = true
+layout_mode = 2
+[node name="StartingSpellLevel2" parent="StartingSpellWorkspace/StartingSpellLevelRail/Content" instance=ExtResource("2_level")]
+unique_name_in_owner = true
+layout_mode = 2
+[node name="StartingSpellLevel3" parent="StartingSpellWorkspace/StartingSpellLevelRail/Content" instance=ExtResource("2_level")]
+unique_name_in_owner = true
+layout_mode = 2
+[node name="StartingSpellLevel4" parent="StartingSpellWorkspace/StartingSpellLevelRail/Content" instance=ExtResource("2_level")]
+unique_name_in_owner = true
+layout_mode = 2
+[node name="StartingSpellLevel5" parent="StartingSpellWorkspace/StartingSpellLevelRail/Content" instance=ExtResource("2_level")]
+unique_name_in_owner = true
+layout_mode = 2
+[node name="StartingSpellLevel6" parent="StartingSpellWorkspace/StartingSpellLevelRail/Content" instance=ExtResource("2_level")]
+unique_name_in_owner = true
+layout_mode = 2
+[node name="StartingSpellLevel7" parent="StartingSpellWorkspace/StartingSpellLevelRail/Content" instance=ExtResource("2_level")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="StartingSpellListPanel" type="PanelContainer" parent="StartingSpellWorkspace"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.05
+theme_type_variation = &"ClassicInset"
+
+[node name="Content" type="VBoxContainer" parent="StartingSpellWorkspace/StartingSpellListPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="Heading" type="Label" parent="StartingSpellWorkspace/StartingSpellListPanel/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+theme_override_font_sizes/font_size = 15
+text = "Available Spells"
+
+[node name="StartingSpellScroll" type="ScrollContainer" parent="StartingSpellWorkspace/StartingSpellListPanel/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(260, 300)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="StartingSpellList" type="VBoxContainer" parent="StartingSpellWorkspace/StartingSpellListPanel/Content/StartingSpellScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 3
+
+[node name="StartingSpellRecord" type="PanelContainer" parent="StartingSpellWorkspace"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.15
+theme_type_variation = &"ClassicInset"
+
+[node name="Content" type="VBoxContainer" parent="StartingSpellWorkspace/StartingSpellRecord"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="Heading" type="Label" parent="StartingSpellWorkspace/StartingSpellRecord/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+theme_override_font_sizes/font_size = 15
+text = "Selected Spell"
+
+[node name="StartingSpellPrompt" type="Label" parent="StartingSpellWorkspace/StartingSpellRecord/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+text = "Choose a spell from the selected level."
+autowrap_mode = 2
+
+[node name="StartingSpellDetail" type="VBoxContainer" parent="StartingSpellWorkspace/StartingSpellRecord/Content"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="StartingSpellName" type="Label" parent="StartingSpellWorkspace/StartingSpellRecord/Content/StartingSpellDetail"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+theme_override_font_sizes/font_size = 18
+text = "Selected spell"
+
+[node name="StartingSpellFacts" type="Label" parent="StartingSpellWorkspace/StartingSpellRecord/Content/StartingSpellDetail"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.878, 0.886, 0.898, 1)
+theme_override_font_sizes/font_size = 13
+text = "Level 1 • 1 selection point"
+
+[node name="StartingSpellEffectHost" type="VBoxContainer" parent="StartingSpellWorkspace/StartingSpellRecord/Content/StartingSpellDetail"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="DescriptionHeading" type="Label" parent="StartingSpellWorkspace/StartingSpellRecord/Content/StartingSpellDetail"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+theme_override_font_sizes/font_size = 13
+text = "Description"
+
+[node name="StartingSpellDescription" type="Label" parent="StartingSpellWorkspace/StartingSpellRecord/Content/StartingSpellDetail"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.878, 0.886, 0.898, 1)
+theme_override_font_sizes/font_size = 16
+text = "The application spell description appears here."
+autowrap_mode = 2
+
+[node name="StartingSpellSelectionState" type="Label" parent="StartingSpellWorkspace/StartingSpellRecord/Content/StartingSpellDetail"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+theme_override_font_sizes/font_size = 13
+text = "Available"
+
+[node name="StartingSpellAllowance" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInset"
+
+[node name="AllowanceRow" type="HBoxContainer" parent="StartingSpellAllowance"]
+layout_mode = 2
+
+[node name="Heading" type="Label" parent="StartingSpellAllowance/AllowanceRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+theme_override_font_sizes/font_size = 12
+text = "Spell allowance"
+
+[node name="StartingSpellAllowanceValue" type="Label" parent="StartingSpellAllowance/AllowanceRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+theme_override_font_sizes/font_size = 14
+text = "0 of 0 points remain"

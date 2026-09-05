@@ -37,9 +37,9 @@ class FixtureCase extends RefCounted:
 
 static func screen_cases() -> Array[FixtureCase]:
 	var result: Array[FixtureCase] = []
-	for route: Dictionary in UiRouteCatalog.ROUTES:
+	for route: UiRouteDefinition in UiRouteCatalog.routes():
 		for state: StringName in STATES:
-			result.append(FixtureCase.new("screen:%s:%s" % [route["id"], state], route["id"], state))
+			result.append(FixtureCase.new("screen:%s:%s" % [route.route_id, state], route.route_id, state))
 	return result
 
 

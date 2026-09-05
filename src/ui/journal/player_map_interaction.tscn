@@ -1,0 +1,31 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/ui/journal/player_map_interaction.gd" id="1_interaction"]
+[ext_resource type="Script" path="res://src/ui/journal/player_map_presenter.gd" id="2_presenter"]
+
+[node name="PlayerMapInteraction" type="VBoxContainer"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("1_interaction")
+
+[node name="ImmediatePlayerMap" type="VBoxContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("2_presenter")
+
+[node name="UnavailableHint" type="Label" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.835294, 0.705882, 0.364706, 1)
+text = "The acquired map is unavailable in the current detached view."
+autowrap_mode = 2
+
+[node name="Continue" type="Button" parent="."]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Continue"

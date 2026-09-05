@@ -224,8 +224,8 @@ $archivePath = Join-Path $stagingRoot "castle-source.zip"
 $extractRoot = Join-Path $stagingRoot "source"
 $outputRoot = Join-Path $stagingRoot "output"
 $sidecarRoot = Join-Path $stagingRoot "sidecars"
-$destinationRoot = Join-Path $repoRoot "src/presentation/assets/classic-media"
-$manifestPath = Join-Path $repoRoot "src/presentation/assets/classic-application-media.json"
+$destinationRoot = Join-Path $repoRoot "src/ui/shared/assets/classic-media"
+$manifestPath = Join-Path $repoRoot "src/ui/shared/assets/classic-application-media.json"
 $existingManifest = if ($SoundOnly -or $CicnOnly -or $PictOnly) { Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json } else { $null }
 $activeResourceSets = @($catalog.resource_sets | Where-Object {
     if ($SoundOnly) { return $_.resource_type -eq "snd " }
@@ -308,7 +308,7 @@ try {
                     mime_type = "image/png"
                     resource_type = $set.resource_type
                     resource_id = $entry.Id
-                    path = "res://src/presentation/assets/classic-media/$relativePath"
+                    path = "res://src/ui/shared/assets/classic-media/$relativePath"
                     bytes = $pngBytes.Length
                     sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $targetPath).Hash.ToLowerInvariant()
                     width = $width
@@ -375,7 +375,7 @@ try {
                     mime_type = "image/png"
                     resource_type = $set.resource_type
                     resource_id = $entry.Id
-                    path = "res://src/presentation/assets/classic-media/$relativePath"
+                    path = "res://src/ui/shared/assets/classic-media/$relativePath"
                     bytes = $pngBytes.Length
                     sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $targetPath).Hash.ToLowerInvariant()
                     width = $width
@@ -416,7 +416,7 @@ try {
                     mime_type = "audio/wav"
                     resource_type = $set.resource_type
                     resource_id = $entry.Id
-                    path = "res://src/presentation/assets/classic-media/$relativePath"
+                    path = "res://src/ui/shared/assets/classic-media/$relativePath"
                     bytes = $decoded.Bytes.Length
                     sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $targetPath).Hash.ToLowerInvariant()
                     sample_rate = $decoded.PlaybackRate
@@ -458,7 +458,7 @@ try {
                     mime_type = "image/png"
                     resource_type = $set.resource_type
                     resource_id = $entry.Id
-                    path = "res://src/presentation/assets/classic-media/$relativePath"
+                    path = "res://src/ui/shared/assets/classic-media/$relativePath"
                     bytes = $pngBytes.Length
                     sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $targetPath).Hash.ToLowerInvariant()
                     width = $width

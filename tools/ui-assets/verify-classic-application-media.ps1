@@ -54,7 +54,7 @@ function Get-ImageDimensions([string]$Path) {
 
 $toolRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = Split-Path -Parent (Split-Path -Parent $toolRoot)
-$manifestPath = Join-Path $repoRoot "src/presentation/assets/classic-application-media.json"
+$manifestPath = Join-Path $repoRoot "src/ui/shared/assets/classic-application-media.json"
 if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
     throw "Classic application media manifest is missing"
 }
@@ -147,7 +147,7 @@ foreach ($requiredWealthIcon in @(2002, 2011, 2012, 2014)) {
     }
 }
 
-$fontManifestPath = Join-Path $repoRoot "src/presentation/assets/fonts/font-assets.json"
+$fontManifestPath = Join-Path $repoRoot "src/ui/shared/assets/fonts/font-assets.json"
 if (-not (Test-Path -LiteralPath $fontManifestPath -PathType Leaf)) {
     throw "Font asset manifest is missing"
 }
@@ -199,14 +199,14 @@ foreach ($requiredFont in @("font.classic.black_chancery.regular", "font.classic
     if (-not $fontIds.ContainsKey($requiredFont)) { throw "Required Classic font asset is missing: $requiredFont" }
 }
 
-$introManifestPath = Join-Path $repoRoot "src/presentation/assets/ui/intro/intro-video.json"
+$introManifestPath = Join-Path $repoRoot "src/ui/shared/assets/ui/intro/intro-video.json"
 if (-not (Test-Path -LiteralPath $introManifestPath -PathType Leaf)) { throw "Realmz Rebuilt intro video manifest is missing" }
 $introManifest = Get-Content -Raw -LiteralPath $introManifestPath | ConvertFrom-Json
-if ($introManifest.schema_version -ne 4 -or $introManifest.source_sha256 -ne "2b30c6bca4a8d6ba6ee524c28630c4706944f327b5d8d304ce0253050fb53f40" -or $introManifest.license -ne "Project-Owner-Supplied" -or $introManifest.path -ne "res://src/presentation/assets/ui/intro/rebuilt-intro.ogv" -or $introManifest.bytes -ne 1097782 -or $introManifest.width -ne 832 -or $introManifest.height -ne 480 -or $introManifest.frames_per_second -ne 24 -or $introManifest.duration_ms -ne 5167 -or $introManifest.video_codec -ne "theora" -or $introManifest.audio_codec -ne "vorbis" -or $introManifest.audio_sample_rate -ne 48000 -or $introManifest.audio_channels -ne 2 -or -not $introManifest.loop -or $introManifest.playback_audio -ne $false) {
+if ($introManifest.schema_version -ne 4 -or $introManifest.source_sha256 -ne "2b30c6bca4a8d6ba6ee524c28630c4706944f327b5d8d304ce0253050fb53f40" -or $introManifest.license -ne "Project-Owner-Supplied" -or $introManifest.path -ne "res://src/ui/shared/assets/ui/intro/rebuilt-intro.ogv" -or $introManifest.bytes -ne 1097782 -or $introManifest.width -ne 832 -or $introManifest.height -ne 480 -or $introManifest.frames_per_second -ne 24 -or $introManifest.duration_ms -ne 5167 -or $introManifest.video_codec -ne "theora" -or $introManifest.audio_codec -ne "vorbis" -or $introManifest.audio_sample_rate -ne 48000 -or $introManifest.audio_channels -ne 2 -or -not $introManifest.loop -or $introManifest.playback_audio -ne $false) {
     throw "Realmz Rebuilt intro video provenance or media contract is invalid"
 }
 $launchSplash = $introManifest.launch_splash
-if ($null -eq $launchSplash -or $launchSplash.source_role -ne "Realmz Rebuilt launch splash supplied by the project owner" -or $launchSplash.source_name -ne "Rebuilt Splash.jpg" -or $launchSplash.source_sha256 -ne "de81e79e6cf5e92bac396f5c4aa90b6be21c3b16b33cb450879b08a9e655497a" -or $launchSplash.license -ne "Project-Owner-Supplied" -or $launchSplash.path -ne "res://src/presentation/assets/ui/intro/rebuilt-launch-splash.jpg" -or $launchSplash.bytes -ne 219118 -or $launchSplash.width -ne 1024 -or $launchSplash.height -ne 1024 -or $launchSplash.format -ne "jpeg" -or $launchSplash.minimum_duration_ms -ne 3000 -or $launchSplash.scaling -ne "keep-aspect-centered") {
+if ($null -eq $launchSplash -or $launchSplash.source_role -ne "Realmz Rebuilt launch splash supplied by the project owner" -or $launchSplash.source_name -ne "Rebuilt Splash.jpg" -or $launchSplash.source_sha256 -ne "de81e79e6cf5e92bac396f5c4aa90b6be21c3b16b33cb450879b08a9e655497a" -or $launchSplash.license -ne "Project-Owner-Supplied" -or $launchSplash.path -ne "res://src/ui/shared/assets/ui/intro/rebuilt-launch-splash.jpg" -or $launchSplash.bytes -ne 219118 -or $launchSplash.width -ne 1024 -or $launchSplash.height -ne 1024 -or $launchSplash.format -ne "jpeg" -or $launchSplash.minimum_duration_ms -ne 3000 -or $launchSplash.scaling -ne "keep-aspect-centered") {
     throw "Realmz Rebuilt launch splash provenance or presentation contract is invalid"
 }
 $launchSplashPath = Join-Path $repoRoot ($launchSplash.path.Substring("res://".Length) -replace "/", [IO.Path]::DirectorySeparatorChar)
@@ -224,7 +224,7 @@ if (-not (Test-Path -LiteralPath $introVideoPath -PathType Leaf)) { throw "Realm
 if ((Get-Item -LiteralPath $introVideoPath).Length -ne $introManifest.bytes) { throw "Realmz Rebuilt intro video byte length does not match" }
 if ((Get-FileHash -Algorithm SHA256 -LiteralPath $introVideoPath).Hash.ToLowerInvariant() -ne $introManifest.source_sha256) { throw "Realmz Rebuilt intro video hash does not match" }
 $introSoundtrack = $introManifest.soundtrack
-if ($null -eq $introSoundtrack -or $introSoundtrack.source_sha256 -ne "c64e2792eba92284896084c3d48af9d595fdd98cda5e7a3d90931b2a9a21f0e5" -or $introSoundtrack.license -ne "Project-Owner-Supplied" -or $introSoundtrack.path -ne "res://src/presentation/assets/ui/intro/rebuilt-intro-soundtrack.mp3" -or $introSoundtrack.bytes -ne 721197 -or $introSoundtrack.duration_ms -ne 30000 -or $introSoundtrack.codec -ne "mp3" -or $introSoundtrack.bit_rate -ne 192000 -or $introSoundtrack.sample_rate -ne 48000 -or $introSoundtrack.channels -ne 2 -or -not $introSoundtrack.loop -or -not $introSoundtrack.click_toggle -or -not $introSoundtrack.independent_from_video) {
+if ($null -eq $introSoundtrack -or $introSoundtrack.source_sha256 -ne "c64e2792eba92284896084c3d48af9d595fdd98cda5e7a3d90931b2a9a21f0e5" -or $introSoundtrack.license -ne "Project-Owner-Supplied" -or $introSoundtrack.path -ne "res://src/ui/shared/assets/ui/intro/rebuilt-intro-soundtrack.mp3" -or $introSoundtrack.bytes -ne 721197 -or $introSoundtrack.duration_ms -ne 30000 -or $introSoundtrack.codec -ne "mp3" -or $introSoundtrack.bit_rate -ne 192000 -or $introSoundtrack.sample_rate -ne 48000 -or $introSoundtrack.channels -ne 2 -or -not $introSoundtrack.loop -or -not $introSoundtrack.click_toggle -or -not $introSoundtrack.independent_from_video) {
     throw "Realmz Rebuilt intro soundtrack provenance or playback contract is invalid"
 }
 $introSoundtrackPath = Join-Path $repoRoot ($introSoundtrack.path.Substring("res://".Length) -replace "/", [IO.Path]::DirectorySeparatorChar)
@@ -236,7 +236,7 @@ if (-not (Test-Path -LiteralPath $introSoundtrackImportPath -PathType Leaf)) { t
 $introSoundtrackImport = Get-Content -Raw -LiteralPath $introSoundtrackImportPath
 if ($introSoundtrackImport -notmatch 'importer="mp3"' -or $introSoundtrackImport -notmatch '(?m)^loop=true\r?$') { throw "Realmz Rebuilt intro soundtrack import contract does not enable MP3 looping" }
 
-$chromeManifestPath = Join-Path $repoRoot "src/presentation/assets/ui/spritecook-assets.json"
+$chromeManifestPath = Join-Path $repoRoot "src/ui/shared/assets/ui/spritecook-assets.json"
 if (-not (Test-Path -LiteralPath $chromeManifestPath -PathType Leaf)) {
     throw "SpriteCook chrome manifest is missing"
 }

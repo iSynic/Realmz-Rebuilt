@@ -1,0 +1,61 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://src/ui/shared/interactions/encounter_interaction.gd" id="1_interaction"]
+[ext_resource type="Script" path="res://src/ui/shared/style/classic_bitmap_button.gd" id="2_bitmap_button"]
+[ext_resource type="PackedScene" path="res://src/ui/shared/interactions/encounter_action_workspace.tscn" id="3_action"]
+[ext_resource type="PackedScene" path="res://src/ui/shared/interactions/encounter_item_workspace.tscn" id="4_item"]
+[ext_resource type="PackedScene" path="res://src/ui/shared/interactions/encounter_spell_workspace.tscn" id="5_spell"]
+[ext_resource type="PackedScene" path="res://src/ui/shared/interactions/encounter_word_workspace.tscn" id="6_word"]
+[ext_resource type="PackedScene" path="res://src/ui/shared/interactions/interaction_response_button.tscn" id="7_choice_button"]
+
+[node name="EncounterInteraction" type="VBoxContainer"]
+size_flags_horizontal = 3
+script = ExtResource("1_interaction")
+action_workspace_scene = ExtResource("3_action")
+item_workspace_scene = ExtResource("4_item")
+spell_workspace_scene = ExtResource("5_spell")
+word_workspace_scene = ExtResource("6_word")
+choice_button_scene = ExtResource("7_choice_button")
+
+[node name="EncounterCommandDeck" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInset"
+
+[node name="EncounterCommandStrip" type="GridContainer" parent="EncounterCommandDeck"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 6
+columns = 6
+
+[node name="EncounterCommandAction" type="TextureButton" parent="EncounterCommandDeck/EncounterCommandStrip"]
+unique_name_in_owner = true
+layout_mode = 2
+script = ExtResource("2_bitmap_button")
+
+[node name="EncounterCommandItem" type="TextureButton" parent="EncounterCommandDeck/EncounterCommandStrip"]
+unique_name_in_owner = true
+layout_mode = 2
+script = ExtResource("2_bitmap_button")
+
+[node name="EncounterCommandThief" type="TextureButton" parent="EncounterCommandDeck/EncounterCommandStrip"]
+unique_name_in_owner = true
+layout_mode = 2
+script = ExtResource("2_bitmap_button")
+
+[node name="EncounterCommandWord" type="TextureButton" parent="EncounterCommandDeck/EncounterCommandStrip"]
+unique_name_in_owner = true
+layout_mode = 2
+script = ExtResource("2_bitmap_button")
+
+[node name="EncounterCommandSpell" type="TextureButton" parent="EncounterCommandDeck/EncounterCommandStrip"]
+unique_name_in_owner = true
+layout_mode = 2
+script = ExtResource("2_bitmap_button")
+
+[node name="EncounterCommandBack" type="TextureButton" parent="EncounterCommandDeck/EncounterCommandStrip"]
+unique_name_in_owner = true
+layout_mode = 2
+script = ExtResource("2_bitmap_button")

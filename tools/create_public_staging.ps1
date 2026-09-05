@@ -9,6 +9,11 @@ $manifestPath = Join-Path $PSScriptRoot "public-source-manifest.json"
 $manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
 $destinationPath = [System.IO.Path]::GetFullPath($Destination)
 
+& git -C $repoRoot diff --quiet --ignore-submodules --
+if ($LASTEXITCODE -ne 0) { throw "Public staging requires a clean tracked working tree." }
+& git -C $repoRoot diff --cached --quiet --ignore-submodules --
+if ($LASTEXITCODE -ne 0) { throw "Public staging requires a clean tracked index." }
+
 if ($destinationPath.StartsWith($repoRoot + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)) {
     throw "Public staging must be outside the source repository."
 }
@@ -34,7 +39,7 @@ function Test-ManifestPath {
     return @($manifest.includeRoots) -contains $root
 }
 
-$candidates = @(& git -C $repoRoot ls-files --cached --others --exclude-standard)
+$candidates = @(& git -C $repoRoot ls-files --cached)
 if ($LASTEXITCODE -ne 0) { throw "Could not enumerate source files." }
 $copied = 0
 foreach ($relativePath in $candidates | Sort-Object -Unique) {

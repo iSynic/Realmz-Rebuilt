@@ -1,0 +1,40 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/ui/inventory/inventory_trade_divider.gd" id="1_divider"]
+[ext_resource type="PackedScene" path="res://src/ui/inventory/inventory_trade_portrait_button.tscn" id="2_portrait"]
+
+[node name="InventoryTradeDivider" type="PanelContainer"]
+custom_minimum_size = Vector2(150, 0)
+theme_type_variation = &"ClassicInset"
+script = ExtResource("1_divider")
+portrait_button_scene = ExtResource("2_portrait")
+
+[node name="Content" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="InventoryTradePortraitMatrix" type="GridContainer" parent="Content"]
+layout_mode = 2
+theme_override_constants/h_separation = 4
+theme_override_constants/v_separation = 3
+columns = 2
+
+[node name="Spacer" type="Control" parent="Content"]
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+
+[node name="InventoryTradeMoney" type="Button" parent="Content"]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+text = "Money"
+
+[node name="InventoryTradeItems" type="Button" parent="Content"]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+text = "Items"
+
+[node name="InventoryTradeDone" type="Button" parent="Content"]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+text = "Done"

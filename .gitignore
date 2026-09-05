@@ -14,8 +14,8 @@ user-data/
 *.r2save.bak
 *.realmz2
 !tests/fixtures/packages/*.realmz2
-!src/infrastructure/characters/realmz-classic-character-library.realmz2
-!src/infrastructure/campaigns/*.realmz2
+!src/storage/characters/realmz-classic-character-library.realmz2
+!src/storage/packages/bundled_campaigns/*.realmz2
 
 # Local oracle/reference worktrees are never repository content.
 .references/

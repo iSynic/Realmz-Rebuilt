@@ -1,0 +1,95 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://src/ui/inventory/inventory_selected_item_record.gd" id="1_record"]
+[ext_resource type="PackedScene" path="res://src/ui/shared/style/classic_content_icon.tscn" id="2_icon"]
+[ext_resource type="PackedScene" path="res://src/ui/inventory/inventory_fact_row.tscn" id="3_fact"]
+[ext_resource type="PackedScene" path="res://src/ui/inventory/inventory_text_row.tscn" id="4_text"]
+
+[node name="InventorySelectedItemRecord" type="BoxContainer"]
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+script = ExtResource("1_record")
+fact_row_scene = ExtResource("3_fact")
+text_row_scene = ExtResource("4_text")
+
+[node name="Empty" type="Label" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.603922, 0.627451, 0.658824, 1)
+text = "Select an item to inspect it."
+autowrap_mode = 2
+
+[node name="Narrative" type="VBoxContainer" parent="."]
+visible = false
+custom_minimum_size = Vector2(470, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.1
+
+[node name="TitleRow" type="HBoxContainer" parent="Narrative"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="ContentIcon" parent="Narrative/TitleRow" instance=ExtResource("2_icon")]
+layout_mode = 2
+
+[node name="TitleText" type="VBoxContainer" parent="Narrative/TitleRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Name" type="Label" parent="Narrative/TitleRow/TitleText"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.835294, 0.705882, 0.364706, 1)
+theme_override_font_sizes/font_size = 20
+text = "Selected item"
+
+[node name="Summary" type="Label" parent="Narrative/TitleRow/TitleText"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.603922, 0.627451, 0.658824, 1)
+theme_override_font_sizes/font_size = 13
+text = "Carried · Weight 0 · Charges 0"
+
+[node name="Description" type="Label" parent="Narrative"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.878431, 0.886275, 0.898039, 1)
+text = "The selected item's description appears here."
+autowrap_mode = 2
+
+[node name="CharacterLoad" type="Label" parent="Narrative"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.603922, 0.627451, 0.658824, 1)
+theme_override_font_sizes/font_size = 12
+text = "Character • Load 0/0"
+
+[node name="Facts" type="VBoxContainer" parent="."]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.9
+
+[node name="Header" type="HBoxContainer" parent="Facts"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Facts/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.835294, 0.705882, 0.364706, 1)
+theme_override_font_sizes/font_size = 17
+text = "Item facts"
+
+[node name="Value" type="Label" parent="Facts/Header"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.603922, 0.627451, 0.658824, 1)
+theme_override_font_sizes/font_size = 12
+text = "Value unknown"
+horizontal_alignment = 2
+
+[node name="FactRows" type="VBoxContainer" parent="Facts"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="Properties" type="VBoxContainer" parent="Facts"]
+layout_mode = 2
+
+[node name="Restrictions" type="VBoxContainer" parent="Facts"]
+layout_mode = 2

@@ -1,0 +1,89 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="PackedScene" path="res://src/ui/shared/screen_frame.tscn" id="1_base"]
+[ext_resource type="Script" path="res://src/ui/characters/character_screen.gd" id="2_screen"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/classic_character_sheet.tscn" id="3_sheet"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/party_order_row.tscn" id="4_order_row"]
+
+[node name="CharacterScreen" instance=ExtResource("1_base")]
+route_id = &"character"
+title = "Characters"
+description = ""
+script = ExtResource("2_screen")
+party_order_row_scene = ExtResource("4_order_row")
+
+[node name="PartyOrderArea" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="PartyOrderSummary" type="PanelContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/PartyOrderArea"]
+layout_mode = 2
+theme_type_variation = &"ClassicInset"
+[node name="SummaryRow" type="BoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/PartyOrderArea/PartyOrderSummary"]
+layout_mode = 2
+theme_override_constants/separation = 8
+[node name="Summary" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/PartyOrderArea/PartyOrderSummary/SummaryRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+text = "Party order"
+text_overrun_behavior = 3
+[node name="Toggle" type="Button" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/PartyOrderArea/PartyOrderSummary/SummaryRow"]
+layout_mode = 2
+text = "Reorder Party"
+
+[node name="PartyOrderEditor" type="PanelContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/PartyOrderArea"]
+visible = false
+layout_mode = 2
+theme_type_variation = &"ClassicInset"
+[node name="EditorContent" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/PartyOrderArea/PartyOrderEditor"]
+layout_mode = 2
+theme_override_constants/separation = 6
+[node name="Heading" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/PartyOrderArea/PartyOrderEditor/EditorContent"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+text = "Reorder the party"
+[node name="PartyOrderRows" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/PartyOrderArea/PartyOrderEditor/EditorContent"]
+layout_mode = 2
+theme_override_constants/separation = 6
+[node name="Actions" type="HBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/PartyOrderArea/PartyOrderEditor/EditorContent"]
+layout_mode = 2
+theme_override_constants/separation = 6
+[node name="Apply" type="Button" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/PartyOrderArea/PartyOrderEditor/EditorContent/Actions"]
+layout_mode = 2
+text = "Apply Party Order"
+[node name="Cancel" type="Button" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/PartyOrderArea/PartyOrderEditor/EditorContent/Actions"]
+layout_mode = 2
+text = "Cancel Order Changes"
+[node name="Divider" type="HSeparator" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/PartyOrderArea/PartyOrderEditor/EditorContent"]
+layout_mode = 2
+
+[node name="CharacterSheetArea" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="CharacterEmptyState" type="PanelContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/CharacterSheetArea"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+[node name="Content" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/CharacterSheetArea/CharacterEmptyState"]
+layout_mode = 2
+[node name="Title" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/CharacterSheetArea/CharacterEmptyState/Content"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+text = "No characters"
+[node name="Detail" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/CharacterSheetArea/CharacterEmptyState/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+text = "Begin a campaign or import an eligible Character File."
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="ClassicCharacterSheet" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/CharacterSheetArea" instance=ExtResource("3_sheet")]
+unique_name_in_owner = true
+layout_mode = 2

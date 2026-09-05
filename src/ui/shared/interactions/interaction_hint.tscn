@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[node name="InteractionHint" type="Label"]
+theme_override_colors/font_color = Color(0.835294, 0.705882, 0.364706, 1)
+text = "Interaction guidance"
+autowrap_mode = 2

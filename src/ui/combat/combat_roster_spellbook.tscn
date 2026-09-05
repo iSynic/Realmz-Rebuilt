@@ -1,0 +1,300 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://src/ui/combat/combat_roster_spellbook.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://src/ui/magic/classic_spell_level_heading.tscn" id="2_heading"]
+[ext_resource type="PackedScene" path="res://src/ui/magic/classic_spell_level_button.tscn" id="3_level"]
+[ext_resource type="PackedScene" path="res://src/ui/magic/classic_spell_target_badge.tscn" id="4_badge"]
+[ext_resource type="PackedScene" path="res://src/ui/magic/classic_spell_selection_button.tscn" id="5_spell"]
+[ext_resource type="PackedScene" path="res://src/ui/combat/combat_spell_power_button.tscn" id="6_power"]
+
+[node name="CombatRosterSpellbook" type="VBoxContainer"]
+visible = false
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 3
+script = ExtResource("1_script")
+spell_button_scene = ExtResource("5_spell")
+power_button_scene = ExtResource("6_power")
+
+[node name="CombatSpellbookSelector" type="HBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+
+[node name="CombatSpellLevels" type="VBoxContainer" parent="CombatSpellbookSelector"]
+custom_minimum_size = Vector2(82, 0)
+layout_mode = 2
+theme_override_constants/separation = 1
+
+[node name="LevelHeading" parent="CombatSpellbookSelector/CombatSpellLevels" instance=ExtResource("2_heading")]
+layout_mode = 2
+
+[node name="SpellLevel1" parent="CombatSpellbookSelector/CombatSpellLevels" instance=ExtResource("3_level")]
+custom_minimum_size = Vector2(80, 24)
+layout_mode = 2
+
+[node name="SpellLevel2" parent="CombatSpellbookSelector/CombatSpellLevels" instance=ExtResource("3_level")]
+custom_minimum_size = Vector2(80, 24)
+layout_mode = 2
+
+[node name="SpellLevel3" parent="CombatSpellbookSelector/CombatSpellLevels" instance=ExtResource("3_level")]
+custom_minimum_size = Vector2(80, 24)
+layout_mode = 2
+
+[node name="SpellLevel4" parent="CombatSpellbookSelector/CombatSpellLevels" instance=ExtResource("3_level")]
+custom_minimum_size = Vector2(80, 24)
+layout_mode = 2
+
+[node name="SpellLevel5" parent="CombatSpellbookSelector/CombatSpellLevels" instance=ExtResource("3_level")]
+custom_minimum_size = Vector2(80, 24)
+layout_mode = 2
+
+[node name="SpellLevel6" parent="CombatSpellbookSelector/CombatSpellLevels" instance=ExtResource("3_level")]
+custom_minimum_size = Vector2(80, 24)
+layout_mode = 2
+
+[node name="SpellLevel7" parent="CombatSpellbookSelector/CombatSpellLevels" instance=ExtResource("3_level")]
+custom_minimum_size = Vector2(80, 24)
+layout_mode = 2
+
+[node name="CombatSpellRecords" type="VBoxContainer" parent="CombatSpellbookSelector"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 3
+
+[node name="CombatSpellListPanel" type="PanelContainer" parent="CombatSpellbookSelector/CombatSpellRecords"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_type_variation = &"ClassicInset"
+
+[node name="CombatSpellScroll" type="ScrollContainer" parent="CombatSpellbookSelector/CombatSpellRecords/CombatSpellListPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="CombatSpellList" type="VBoxContainer" parent="CombatSpellbookSelector/CombatSpellRecords/CombatSpellListPanel/CombatSpellScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 3
+
+[node name="CombatSpellDetails" type="PanelContainer" parent="CombatSpellbookSelector/CombatSpellRecords"]
+custom_minimum_size = Vector2(0, 112)
+layout_mode = 2
+theme_type_variation = &"ClassicInset"
+
+[node name="Content" type="VBoxContainer" parent="CombatSpellbookSelector/CombatSpellRecords/CombatSpellDetails"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="Identity" type="HBoxContainer" parent="CombatSpellbookSelector/CombatSpellRecords/CombatSpellDetails/Content"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="TitleBox" type="VBoxContainer" parent="CombatSpellbookSelector/CombatSpellRecords/CombatSpellDetails/Content/Identity"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Title" type="Label" parent="CombatSpellbookSelector/CombatSpellRecords/CombatSpellDetails/Content/Identity/TitleBox"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+text = "Spell"
+
+[node name="Resource" type="Label" parent="CombatSpellbookSelector/CombatSpellRecords/CombatSpellDetails/Content/Identity/TitleBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.615686, 0.658824, 0.666667, 1)
+theme_override_font_sizes/font_size = 12
+text = "Level 1  •  Power 1  •  Cost 0 SP"
+text_overrun_behavior = 3
+max_lines_visible = 1
+
+[node name="TargetBadge" parent="CombatSpellbookSelector/CombatSpellRecords/CombatSpellDetails/Content/Identity" instance=ExtResource("4_badge")]
+visible = false
+custom_minimum_size = Vector2(48, 48)
+layout_mode = 2
+
+[node name="Target" type="Label" parent="CombatSpellbookSelector/CombatSpellRecords/CombatSpellDetails/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.388235, 0.847059, 0.905882, 1)
+theme_override_font_sizes/font_size = 13
+text = "Target  •  Self"
+text_overrun_behavior = 3
+
+[node name="Facts" type="GridContainer" parent="CombatSpellbookSelector/CombatSpellRecords/CombatSpellDetails/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 4
+theme_override_constants/v_separation = 1
+columns = 4
+
+[node name="TargetsLabel" type="Label" parent="CombatSpellbookSelector/CombatSpellRecords/CombatSpellDetails/Content/Facts"]
+custom_minimum_size = Vector2(48, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.815686, 0.470588, 1)
+theme_override_font_sizes/font_size = 12
+text = "Targets"
+
+[node name="Targets" type="Label" parent="CombatSpellbookSelector/CombatSpellRecords/CombatSpellDetails/Content/Facts"]
+custom_minimum_size = Vector2(28, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.847059, 0.85098, 0.823529, 1)
+theme_override_font_sizes/font_size = 12
+text = "1"
+text_overrun_behavior = 3
+
+[node name="RangeLabel" type="Label" parent="CombatSpellbookSelector/CombatSpellRecords/CombatSpellDetails/Content/Facts"]
+custom_minimum_size = Vector2(48, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.815686, 0.470588, 1)
+theme_override_font_sizes/font_size = 12
+text = "Range"
+
+[node name="Range" type="Label" parent="CombatSpellbookSelector/CombatSpellRecords/CombatSpellDetails/Content/Facts"]
+custom_minimum_size = Vector2(28, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.847059, 0.85098, 0.823529, 1)
+theme_override_font_sizes/font_size = 12
+text = "0"
+text_overrun_behavior = 3
+
+[node name="DamageLabel" type="Label" parent="CombatSpellbookSelector/CombatSpellRecords/CombatSpellDetails/Content/Facts"]
+custom_minimum_size = Vector2(48, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.815686, 0.470588, 1)
+theme_override_font_sizes/font_size = 12
+text = "Damage"
+
+[node name="Damage" type="Label" parent="CombatSpellbookSelector/CombatSpellRecords/CombatSpellDetails/Content/Facts"]
+custom_minimum_size = Vector2(28, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.847059, 0.85098, 0.823529, 1)
+theme_override_font_sizes/font_size = 12
+text = "—"
+text_overrun_behavior = 3
+
+[node name="DurationLabel" type="Label" parent="CombatSpellbookSelector/CombatSpellRecords/CombatSpellDetails/Content/Facts"]
+custom_minimum_size = Vector2(48, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.815686, 0.470588, 1)
+theme_override_font_sizes/font_size = 12
+text = "Duration"
+
+[node name="Duration" type="Label" parent="CombatSpellbookSelector/CombatSpellRecords/CombatSpellDetails/Content/Facts"]
+custom_minimum_size = Vector2(28, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.847059, 0.85098, 0.823529, 1)
+theme_override_font_sizes/font_size = 12
+text = "—"
+text_overrun_behavior = 3
+
+[node name="MagicResistLabel" type="Label" parent="CombatSpellbookSelector/CombatSpellRecords/CombatSpellDetails/Content/Facts"]
+custom_minimum_size = Vector2(48, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.815686, 0.470588, 1)
+theme_override_font_sizes/font_size = 12
+text = "Magic resist"
+
+[node name="MagicResist" type="Label" parent="CombatSpellbookSelector/CombatSpellRecords/CombatSpellDetails/Content/Facts"]
+custom_minimum_size = Vector2(28, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.847059, 0.85098, 0.823529, 1)
+theme_override_font_sizes/font_size = 12
+text = "No"
+text_overrun_behavior = 3
+
+[node name="SavingThrowLabel" type="Label" parent="CombatSpellbookSelector/CombatSpellRecords/CombatSpellDetails/Content/Facts"]
+custom_minimum_size = Vector2(48, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.905882, 0.815686, 0.470588, 1)
+theme_override_font_sizes/font_size = 12
+text = "Saving throw"
+
+[node name="SavingThrow" type="Label" parent="CombatSpellbookSelector/CombatSpellRecords/CombatSpellDetails/Content/Facts"]
+custom_minimum_size = Vector2(28, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.847059, 0.85098, 0.823529, 1)
+theme_override_font_sizes/font_size = 12
+text = "Yes"
+text_overrun_behavior = 3
+
+[node name="DescriptionWell" type="PanelContainer" parent="CombatSpellbookSelector/CombatSpellRecords/CombatSpellDetails/Content"]
+layout_mode = 2
+theme_type_variation = &"ClassicTextWell"
+
+[node name="Description" type="Label" parent="CombatSpellbookSelector/CombatSpellRecords/CombatSpellDetails/Content/DescriptionWell"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.933333, 0.913725, 0.858824, 1)
+theme_override_font_sizes/font_size = 13
+text = "Spell description"
+autowrap_mode = 2
+text_overrun_behavior = 3
+max_lines_visible = 1
+
+[node name="Unavailable" type="Label" parent="CombatSpellbookSelector/CombatSpellRecords/CombatSpellDetails/Content"]
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.615686, 0.658824, 0.666667, 1)
+theme_override_font_sizes/font_size = 15
+text = "No rules-legal power or tactical target is available this activation."
+autowrap_mode = 2
+
+[node name="CombatSpellPowerChoices" type="HBoxContainer" parent="CombatSpellbookSelector/CombatSpellRecords"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="PowerLabel" type="TextureRect" parent="CombatSpellbookSelector/CombatSpellRecords/CombatSpellPowerChoices"]
+custom_minimum_size = Vector2(60, 22)
+layout_mode = 2
+texture_filter = 1
+expand_mode = 1
+stretch_mode = 5
+
+[node name="PowerButtons" type="HBoxContainer" parent="CombatSpellbookSelector/CombatSpellRecords/CombatSpellPowerChoices"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 3
+
+[node name="SpellbookEmpty" type="Label" parent="."]
+visible = false
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.615686, 0.658824, 0.666667, 1)
+text = "No combat spell is known."
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="SpellbookFooter" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="CombatSpellbookActions" type="HBoxContainer" parent="SpellbookFooter"]
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="CombatSpellAim" type="Button" parent="SpellbookFooter/CombatSpellbookActions"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"BattleCommandButton"
+tooltip_text = "Cast the selected spell."
+expand_icon = false
+theme_override_constants/icon_max_width = 128
+
+[node name="CombatSpellbookBack" type="Button" parent="SpellbookFooter/CombatSpellbookActions"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"BattleCommandButton"
+tooltip_text = "Return to the battle commands."
+expand_icon = false
+theme_override_constants/icon_max_width = 92

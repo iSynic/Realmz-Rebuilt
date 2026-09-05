@@ -49,6 +49,12 @@ if ($LASTEXITCODE -ne 0) { throw "Architecture boundary verification failed." }
 & "$PSScriptRoot\verify_hotspot_test_budget.ps1"
 if ($LASTEXITCODE -ne 0) { throw "Hotspot and test-budget verification failed." }
 
+& "$PSScriptRoot\verify_human_maintainability.ps1"
+if ($LASTEXITCODE -ne 0) { throw "Human-maintainability verification failed." }
+
+& "$PSScriptRoot\verify_architecture_overhaul.ps1"
+if ($LASTEXITCODE -ne 0) { throw "Architecture-overhaul verification failed." }
+
 & "$PSScriptRoot\verify_export_contract.ps1"
 if ($LASTEXITCODE -ne 0) { throw "Release export contract verification failed." }
 

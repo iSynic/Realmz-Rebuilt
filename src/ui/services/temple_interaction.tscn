@@ -1,0 +1,252 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/ui/services/temple_interaction.gd" id="1_interaction"]
+
+[node name="TempleInteraction" type="VBoxContainer"]
+custom_minimum_size = Vector2(0, 500)
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+script = ExtResource("1_interaction")
+
+[node name="TempleHeader" type="HBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Title" type="Label" parent="TempleHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.898039, 0.768627, 0.360784, 1)
+theme_type_variation = &"ClassicHeading"
+text = "Temple"
+
+[node name="Facts" type="Label" parent="TempleHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.560784, 0.811765, 0.819608, 1)
+horizontal_alignment = 2
+
+[node name="TempleCharacterPicker" type="OptionButton" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TempleWorkspaceColumns" type="HBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="TempleCharacters" type="PanelContainer" parent="TempleWorkspaceColumns"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.9
+theme_type_variation = &"ClassicTextWell"
+
+[node name="Content" type="VBoxContainer" parent="TempleWorkspaceColumns/TempleCharacters"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+
+[node name="Heading" type="Label" parent="TempleWorkspaceColumns/TempleCharacters/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.898039, 0.768627, 0.360784, 1)
+theme_type_variation = &"ClassicHeading"
+text = "Adventurers"
+
+[node name="TempleCharacterScroll" type="ScrollContainer" parent="TempleWorkspaceColumns/TempleCharacters/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="TempleCharacterRows" type="VBoxContainer" parent="TempleWorkspaceColumns/TempleCharacters/Content/TempleCharacterScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 3
+
+[node name="CharacterEmpty" type="Label" parent="TempleWorkspaceColumns/TempleCharacters/Content/TempleCharacterScroll/TempleCharacterRows"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.682353, 0.713726, 0.729412, 1)
+text = "No eligible adventurer was supplied."
+autowrap_mode = 2
+
+[node name="TempleServices" type="PanelContainer" parent="TempleWorkspaceColumns"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.05
+theme_type_variation = &"ClassicTextWell"
+
+[node name="Content" type="VBoxContainer" parent="TempleWorkspaceColumns/TempleServices"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+
+[node name="Heading" type="Label" parent="TempleWorkspaceColumns/TempleServices/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.898039, 0.768627, 0.360784, 1)
+theme_type_variation = &"ClassicHeading"
+text = "Services"
+
+[node name="TempleServiceScroll" type="ScrollContainer" parent="TempleWorkspaceColumns/TempleServices/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="TempleServiceRows" type="VBoxContainer" parent="TempleWorkspaceColumns/TempleServices/Content/TempleServiceScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 3
+
+[node name="ServiceEmpty" type="Label" parent="TempleWorkspaceColumns/TempleServices/Content/TempleServiceScroll/TempleServiceRows"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.682353, 0.713726, 0.729412, 1)
+text = "No temple services were supplied."
+autowrap_mode = 2
+
+[node name="TempleInspector" type="PanelContainer" parent="TempleWorkspaceColumns"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.15
+theme_type_variation = &"ClassicTextWell"
+
+[node name="Content" type="VBoxContainer" parent="TempleWorkspaceColumns/TempleInspector"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+
+[node name="Heading" type="Label" parent="TempleWorkspaceColumns/TempleInspector/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.898039, 0.768627, 0.360784, 1)
+theme_type_variation = &"ClassicHeading"
+text = "Selected Service"
+
+[node name="TempleInspectorFacts" type="VBoxContainer" parent="TempleWorkspaceColumns/TempleInspector/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 3
+
+[node name="NoCharacter" type="Label" parent="TempleWorkspaceColumns/TempleInspector/Content/TempleInspectorFacts"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.682353, 0.713726, 0.729412, 1)
+text = "No adventurer is selected."
+autowrap_mode = 2
+
+[node name="NoService" type="Label" parent="TempleWorkspaceColumns/TempleInspector/Content/TempleInspectorFacts"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.682353, 0.713726, 0.729412, 1)
+text = "No service is selected."
+autowrap_mode = 2
+
+[node name="TempleSelectedCharacter" type="HBoxContainer" parent="TempleWorkspaceColumns/TempleInspector/Content/TempleInspectorFacts"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="TempleSelectedPortrait" type="TextureRect" parent="TempleWorkspaceColumns/TempleInspector/Content/TempleInspectorFacts/TempleSelectedCharacter"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+texture_filter = 1
+expand_mode = 1
+stretch_mode = 5
+
+[node name="CharacterFacts" type="VBoxContainer" parent="TempleWorkspaceColumns/TempleInspector/Content/TempleInspectorFacts/TempleSelectedCharacter"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="CharacterName" type="Label" parent="TempleWorkspaceColumns/TempleInspector/Content/TempleInspectorFacts/TempleSelectedCharacter/CharacterFacts"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.898039, 0.768627, 0.360784, 1)
+
+[node name="CharacterHealth" type="Label" parent="TempleWorkspaceColumns/TempleInspector/Content/TempleInspectorFacts/TempleSelectedCharacter/CharacterFacts"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.560784, 0.811765, 0.819608, 1)
+
+[node name="CharacterWealth" type="Label" parent="TempleWorkspaceColumns/TempleInspector/Content/TempleInspectorFacts/TempleSelectedCharacter/CharacterFacts"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.682353, 0.713726, 0.729412, 1)
+
+[node name="ServiceName" type="Label" parent="TempleWorkspaceColumns/TempleInspector/Content/TempleInspectorFacts"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.898039, 0.768627, 0.360784, 1)
+
+[node name="ServiceDescription" type="Label" parent="TempleWorkspaceColumns/TempleInspector/Content/TempleInspectorFacts"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.682353, 0.713726, 0.729412, 1)
+autowrap_mode = 2
+
+[node name="ServiceCost" type="Label" parent="TempleWorkspaceColumns/TempleInspector/Content/TempleInspectorFacts"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.560784, 0.811765, 0.819608, 1)
+
+[node name="Conditions" type="Label" parent="TempleWorkspaceColumns/TempleInspector/Content/TempleInspectorFacts"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.682353, 0.713726, 0.729412, 1)
+autowrap_mode = 2
+
+[node name="UnavailableReason" type="Label" parent="TempleWorkspaceColumns/TempleInspector/Content/TempleInspectorFacts"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.831373, 0.541176, 0.470588, 1)
+autowrap_mode = 2
+
+[node name="TemplePurchase" type="Button" parent="TempleWorkspaceColumns/TempleInspector/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Purchase"
+
+[node name="TempleFooter" type="HBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 5
+
+[node name="TemplePool" type="Button" parent="TempleFooter"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 36)
+layout_mode = 2
+text = "Pool"
+
+[node name="TempleShare" type="Button" parent="TempleFooter"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 36)
+layout_mode = 2
+text = "Share"
+
+[node name="Spacer" type="Control" parent="TempleFooter"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TempleLeave" type="Button" parent="TempleFooter"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 36)
+layout_mode = 2
+text = "Leave Temple"

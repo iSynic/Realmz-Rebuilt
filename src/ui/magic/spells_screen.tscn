@@ -1,0 +1,38 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="PackedScene" path="res://src/ui/shared/screen_frame.tscn" id="1_base"]
+[ext_resource type="Script" path="res://src/ui/magic/spells_screen.gd" id="2_screen"]
+[ext_resource type="PackedScene" path="res://src/ui/magic/spells_workspace.tscn" id="3_workspace"]
+
+[node name="SpellsScreen" instance=ExtResource("1_base")]
+route_id = &"spells"
+title = "Spells"
+description = ""
+script = ExtResource("2_screen")
+
+[node name="SpellsWorkspace" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody" instance=ExtResource("3_workspace")]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="WorkspaceFooter" type="MarginContainer" parent="WorkspaceColumn"]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="WorkspaceFooterRow" type="HBoxContainer" parent="WorkspaceColumn/WorkspaceFooter"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="WorkspaceContextActions" type="HBoxContainer" parent="WorkspaceColumn/WorkspaceFooter/WorkspaceFooterRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 5
+
+[node name="SpellsBackHost" type="HBoxContainer" parent="WorkspaceColumn/WorkspaceFooter/WorkspaceFooterRow"]
+layout_mode = 2
+size_flags_horizontal = 10

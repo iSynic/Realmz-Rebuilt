@@ -59,7 +59,7 @@ Run the complete local verification lane from PowerShell 7:
 ./tools/verify.ps1
 ```
 
-Public architecture and fidelity contracts are documented in [docs/architecture.md](docs/architecture.md), [docs/package-and-save-contracts.md](docs/package-and-save-contracts.md), [docs/fidelity-ledger.md](docs/fidelity-ledger.md), and the ADRs under `docs/adr`. Contribution requirements are in [CONTRIBUTING.md](CONTRIBUTING.md).
+Begin with [The Realmz Rebuilt Builder's Manual](docs/builders-manual.md). A newcomer can validate that map with [The New Builder's Trial](docs/maintainer-acceptance.md). Package/save contracts, Classic fidelity decisions, and architectural records continue in [docs/package-and-save-contracts.md](docs/package-and-save-contracts.md), [docs/fidelity-ledger.md](docs/fidelity-ledger.md), and `docs/adr`. Contribution requirements are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Beta feedback
 

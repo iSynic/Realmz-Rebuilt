@@ -1,0 +1,119 @@
+[gd_scene format=3]
+
+[node name="CharacterSheetInventoryMagicTabs" type="VBoxContainer"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="EquipmentTab" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 8
+[node name="Header" type="HBoxContainer" parent="EquipmentTab"]
+layout_mode = 2
+[node name="Title" type="Label" parent="EquipmentTab/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicHeading"
+text = "Equipment"
+[node name="Detail" type="Label" parent="EquipmentTab/Header"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+text = "0 of 30 inventory slots"
+[node name="EquipmentEmpty" type="Label" parent="EquipmentTab"]
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+text = "This character carries no items."
+[node name="EquipmentRegions" type="BoxContainer" parent="EquipmentTab"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+[node name="EquippedItems" type="PanelContainer" parent="EquipmentTab/EquipmentRegions"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInset"
+[node name="Content" type="VBoxContainer" parent="EquipmentTab/EquipmentRegions/EquippedItems"]
+layout_mode = 2
+theme_override_constants/separation = 5
+[node name="Header" type="HBoxContainer" parent="EquipmentTab/EquipmentRegions/EquippedItems/Content"]
+layout_mode = 2
+[node name="Title" type="Label" parent="EquipmentTab/EquipmentRegions/EquippedItems/Content/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicHeading"
+text = "Equipped"
+[node name="Count" type="Label" parent="EquipmentTab/EquipmentRegions/EquippedItems/Content/Header"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+[node name="Items" type="VBoxContainer" parent="EquipmentTab/EquipmentRegions/EquippedItems/Content"]
+layout_mode = 2
+theme_override_constants/separation = 5
+[node name="CarriedItems" type="PanelContainer" parent="EquipmentTab/EquipmentRegions"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInset"
+[node name="Content" type="VBoxContainer" parent="EquipmentTab/EquipmentRegions/CarriedItems"]
+layout_mode = 2
+theme_override_constants/separation = 5
+[node name="Header" type="HBoxContainer" parent="EquipmentTab/EquipmentRegions/CarriedItems/Content"]
+layout_mode = 2
+[node name="Title" type="Label" parent="EquipmentTab/EquipmentRegions/CarriedItems/Content/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicHeading"
+text = "Carried"
+[node name="Count" type="Label" parent="EquipmentTab/EquipmentRegions/CarriedItems/Content/Header"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+[node name="Items" type="VBoxContainer" parent="EquipmentTab/EquipmentRegions/CarriedItems/Content"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="SpellsTab" type="VBoxContainer" parent="."]
+visible = false
+layout_mode = 2
+[node name="CharacterSpellRegions" type="BoxContainer" parent="SpellsTab"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+[node name="KnownSpellRegion" type="PanelContainer" parent="SpellsTab/CharacterSpellRegions"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.6
+theme_type_variation = &"ClassicInset"
+[node name="Content" type="VBoxContainer" parent="SpellsTab/CharacterSpellRegions/KnownSpellRegion"]
+layout_mode = 2
+theme_override_constants/separation = 5
+[node name="Header" type="HBoxContainer" parent="SpellsTab/CharacterSpellRegions/KnownSpellRegion/Content"]
+layout_mode = 2
+[node name="Title" type="Label" parent="SpellsTab/CharacterSpellRegions/KnownSpellRegion/Content/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicHeading"
+text = "Known spells"
+[node name="Detail" type="Label" parent="SpellsTab/CharacterSpellRegions/KnownSpellRegion/Content/Header"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+[node name="SpellCards" type="GridContainer" parent="SpellsTab/CharacterSpellRegions/KnownSpellRegion/Content"]
+layout_mode = 2
+columns = 2
+[node name="ScrollCaseRegion" type="PanelContainer" parent="SpellsTab/CharacterSpellRegions"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.8
+theme_type_variation = &"ClassicInset"
+[node name="Content" type="VBoxContainer" parent="SpellsTab/CharacterSpellRegions/ScrollCaseRegion"]
+layout_mode = 2
+theme_override_constants/separation = 5
+[node name="Header" type="HBoxContainer" parent="SpellsTab/CharacterSpellRegions/ScrollCaseRegion/Content"]
+layout_mode = 2
+[node name="Title" type="Label" parent="SpellsTab/CharacterSpellRegions/ScrollCaseRegion/Content/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicHeading"
+text = "Scroll case"
+[node name="Detail" type="Label" parent="SpellsTab/CharacterSpellRegions/ScrollCaseRegion/Content/Header"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+[node name="ScrollCards" type="VBoxContainer" parent="SpellsTab/CharacterSpellRegions/ScrollCaseRegion/Content"]
+layout_mode = 2
+theme_override_constants/separation = 5

@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="UiRouteDefinition" load_steps=2 format=3]
+[ext_resource type="Script" path="res://src/ui/shell/routes/ui_route_definition.gd" id="1_route"]
+[resource]
+script = ExtResource("1_route")
+route_id = &"spells"
+label = "Spells"
+shortcut = &"ui_screen_spells"
+primary = true
+description = "Review known spells, powers, costs, and targets."
+presentation = 1
+workspace_scene_path = "res://src/ui/magic/spells_screen.tscn"

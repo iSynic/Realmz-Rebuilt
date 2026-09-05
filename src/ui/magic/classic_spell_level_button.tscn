@@ -1,0 +1,7 @@
+[gd_scene format=3]
+
+[node name="SpellLevelButton" type="Button"]
+custom_minimum_size = Vector2(68, 31)
+layout_mode = 2
+theme_type_variation = &"ClassicChoiceButton"
+toggle_mode = true

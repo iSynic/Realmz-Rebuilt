@@ -17,8 +17,8 @@ $classicPictEntries = @($classicEntries | Where-Object { $_.source_kind -eq "cla
 $uiDonorEntries = @($catalog.assets | Where-Object { $_.source_kind -eq "licensed-ui-donor" })
 $castleRoot = ""
 $uiDonorRoot = ""
-$destinationRoot = Join-Path $repoRoot "src/presentation/assets/classic-controls"
-$manifestPath = Join-Path $repoRoot "src/presentation/assets/classic-ui-assets.json"
+$destinationRoot = Join-Path $repoRoot "src/ui/shared/assets/classic-controls"
+$manifestPath = Join-Path $repoRoot "src/ui/shared/assets/classic-ui-assets.json"
 $cicnExporterPath = Join-Path $toolRoot "export-classic-cicn.ps1"
 $pictExporterPath = Join-Path $toolRoot "export-classic-pict.ps1"
 $crsrExporterPath = Join-Path $toolRoot "export-classic-crsr.ps1"
@@ -176,7 +176,7 @@ try {
         }
         $record = [ordered]@{
             id = $entry.id
-            path = "res://src/presentation/assets/classic-controls/$($entry.target_path)"
+            path = "res://src/ui/shared/assets/classic-controls/$($entry.target_path)"
             source_repository = if ($entry.PSObject.Properties.Name -contains "source_repository") { $entry.source_repository } else { $catalog.source_repository }
             source_commit = if ($entry.PSObject.Properties.Name -contains "source_commit") { $entry.source_commit } else { $catalog.source_commit }
             source_path = $entry.source_path

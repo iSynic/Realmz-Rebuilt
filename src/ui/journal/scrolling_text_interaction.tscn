@@ -1,0 +1,24 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/ui/journal/scrolling_text_interaction.gd" id="1_interaction"]
+[ext_resource type="PackedScene" path="res://src/ui/journal/classic_scrolling_text_surface.tscn" id="2_surface"]
+
+[node name="ScrollingTextInteraction" type="VBoxContainer"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("1_interaction")
+
+[node name="ClassicScrollingTextWell" parent="." instance=ExtResource("2_surface")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="ClassicScrollingTextActions" type="HBoxContainer" parent="."]
+layout_mode = 2
+alignment = 1
+
+[node name="ClassicScrollingTextDone" type="Button" parent="ClassicScrollingTextActions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(140, 38)
+layout_mode = 2
+theme_type_variation = &"ClassicChoiceButton"
+text = "Done"

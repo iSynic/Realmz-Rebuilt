@@ -1,0 +1,193 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://src/ui/shared/interactions/selection_interaction.gd" id="1_selection"]
+[ext_resource type="PackedScene" path="res://src/ui/shared/interactions/ally_selection_candidate.tscn" id="2_candidate"]
+[ext_resource type="PackedScene" path="res://src/ui/magic/classic_spell_target_badge.tscn" id="3_badge"]
+
+[node name="SelectionInteraction" type="VBoxContainer"]
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+script = ExtResource("1_selection")
+ally_candidate_scene = ExtResource("2_candidate")
+spell_target_badge_scene = ExtResource("3_badge")
+
+[node name="CharacterSelectionMode" type="VBoxContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="SpellTargetContext" type="PanelContainer" parent="CharacterSelectionMode"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"ClassicInset"
+
+[node name="ContextRow" type="HBoxContainer" parent="CharacterSelectionMode/SpellTargetContext"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SpellContextIcon" type="TextureRect" parent="CharacterSelectionMode/SpellTargetContext/ContextRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(48, 48)
+layout_mode = 2
+texture_filter = 1
+expand_mode = 1
+stretch_mode = 5
+
+[node name="SpellContextFacts" type="VBoxContainer" parent="CharacterSelectionMode/SpellTargetContext/ContextRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 1
+
+[node name="SpellContextName" type="Label" parent="CharacterSelectionMode/SpellTargetContext/ContextRow/SpellContextFacts"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.878, 0.737, 0.325, 1)
+theme_override_font_sizes/font_size = 16
+text = "Spell"
+text_overrun_behavior = 3
+
+[node name="SpellContextSource" type="Label" parent="CharacterSelectionMode/SpellTargetContext/ContextRow/SpellContextFacts"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.843, 0.851, 0.863, 1)
+theme_override_font_sizes/font_size = 12
+text = "Memorized spell • Power 1"
+text_overrun_behavior = 3
+
+[node name="SpellContextTarget" type="Label" parent="CharacterSelectionMode/SpellTargetContext/ContextRow/SpellContextFacts"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.612, 0.639, 0.678, 1)
+theme_override_font_sizes/font_size = 12
+text = "Party member • 1 target"
+text_overrun_behavior = 3
+
+[node name="SpellTargetBadgeHost" type="HBoxContainer" parent="CharacterSelectionMode/SpellTargetContext/ContextRow"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="CharacterSelectionHint" type="Label" parent="CharacterSelectionMode"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+text = "Choose a party member from the Party roster."
+autowrap_mode = 2
+
+[node name="AllySelectionMode" type="VBoxContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(0, 320)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="AllySelectionHeader" type="HBoxContainer" parent="AllySelectionMode"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Heading" type="Label" parent="AllySelectionMode/AllySelectionHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicHeading"
+theme_override_colors/font_color = Color(0.878, 0.737, 0.325, 1)
+theme_override_font_sizes/font_size = 20
+text = "Surviving Allies"
+
+[node name="AllySelectionCapacity" type="Label" parent="AllySelectionMode/AllySelectionHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.843, 0.851, 0.863, 1)
+theme_override_font_sizes/font_size = 15
+text = "Keep up to 1"
+horizontal_alignment = 2
+
+[node name="AllySelectionColumns" type="HBoxContainer" parent="AllySelectionMode"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="AllyCandidates" type="PanelContainer" parent="AllySelectionMode/AllySelectionColumns"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.8
+theme_type_variation = &"ClassicTextWell"
+
+[node name="CandidateContent" type="VBoxContainer" parent="AllySelectionMode/AllySelectionColumns/AllyCandidates"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="Heading" type="Label" parent="AllySelectionMode/AllySelectionColumns/AllyCandidates/CandidateContent"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.878, 0.737, 0.325, 1)
+theme_override_font_sizes/font_size = 16
+text = "Choose who continues with the party"
+
+[node name="AllyCandidateScroll" type="ScrollContainer" parent="AllySelectionMode/AllySelectionColumns/AllyCandidates/CandidateContent"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="AllyCandidateGrid" type="GridContainer" parent="AllySelectionMode/AllySelectionColumns/AllyCandidates/CandidateContent/AllyCandidateScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 5
+theme_override_constants/v_separation = 5
+columns = 2
+
+[node name="AllySelectionEmpty" type="Label" parent="AllySelectionMode/AllySelectionColumns/AllyCandidates/CandidateContent"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.612, 0.639, 0.678, 1)
+theme_override_font_sizes/font_size = 14
+text = "No surviving allies were supplied. Continue returns to the adventure."
+autowrap_mode = 2
+
+[node name="AllyDecision" type="PanelContainer" parent="AllySelectionMode/AllySelectionColumns"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(260, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.8
+theme_type_variation = &"ClassicTextWell"
+
+[node name="DecisionContent" type="VBoxContainer" parent="AllySelectionMode/AllySelectionColumns/AllyDecision"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="Heading" type="Label" parent="AllySelectionMode/AllySelectionColumns/AllyDecision/DecisionContent"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.878, 0.737, 0.325, 1)
+theme_override_font_sizes/font_size = 16
+text = "Party Allies"
+
+[node name="AllySelectionSummary" type="Label" parent="AllySelectionMode/AllySelectionColumns/AllyDecision/DecisionContent"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.561, 0.812, 0.82, 1)
+theme_override_font_sizes/font_size = 15
+text = "0 of 1 selected"
+
+[node name="Spacer" type="Control" parent="AllySelectionMode/AllySelectionColumns/AllyDecision/DecisionContent"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="AllySelectionContinue" type="Button" parent="AllySelectionMode/AllySelectionColumns/AllyDecision/DecisionContent"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicTheldrowButton"
+text = "Continue"

@@ -1,0 +1,45 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/ui/inventory/inventory_item_browser.gd" id="1_browser"]
+[ext_resource type="PackedScene" path="res://src/ui/inventory/inventory_item_row.tscn" id="2_row"]
+
+[node name="InventoryItemBrowserContent" type="VBoxContainer"]
+theme_override_constants/separation = 3
+script = ExtResource("1_browser")
+item_row_scene = ExtResource("2_row")
+
+[node name="Heading" type="HBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Heading"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicHeading"
+theme_override_colors/font_color = Color(0.0823529, 0.0823529, 0.0705882, 1)
+theme_override_font_sizes/font_size = 17
+text = "Character's items"
+
+[node name="Count" type="Label" parent="Heading"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.313726, 0.341176, 0.356863, 1)
+theme_override_font_sizes/font_size = 12
+text = "0 carried"
+horizontal_alignment = 2
+
+[node name="Empty" type="Label" parent="."]
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.313726, 0.341176, 0.356863, 1)
+text = "No carried items."
+autowrap_mode = 2
+
+[node name="InventoryItemScroll" type="ScrollContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="ItemList" type="VBoxContainer" parent="InventoryItemScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 0

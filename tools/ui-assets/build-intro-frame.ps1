@@ -10,7 +10,7 @@ Add-Type -AssemblyName System.Drawing
 
 $toolRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = Split-Path -Parent (Split-Path -Parent $toolRoot)
-$outputPath = Join-Path $repoRoot "src/presentation/assets/ui/classic-intro-frame.png"
+$outputPath = Join-Path $repoRoot "src/ui/shared/assets/ui/classic-intro-frame.png"
 $sourcePath = (Resolve-Path -LiteralPath $SourcePng).Path
 $sourceHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $sourcePath).Hash.ToLowerInvariant()
 if ($sourceHash -ne $ExpectedSourceSha256.ToLowerInvariant()) {

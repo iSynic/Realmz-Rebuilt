@@ -1,0 +1,43 @@
+[gd_scene format=3]
+
+[node name="BattleTargetingControls" type="VBoxContainer"]
+size_flags_horizontal = 3
+theme_override_constants/separation = 3
+[node name="TargetingStatus" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+theme_override_font_sizes/font_size = 12
+text = "Targeting • Aim with the pointer; T marks or cycles a target; Space casts."
+horizontal_alignment = 1
+autowrap_mode = 2
+max_lines_visible = 1
+text_overrun_behavior = 3
+[node name="TargetActions" type="HBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 3
+[node name="ConfirmBattleTarget" type="Button" parent="TargetActions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"BattleCommandButton"
+text = "Confirm target"
+tooltip_text = "Press Space to confirm the selected target."
+disabled = true
+[node name="RotateBattleTarget" type="Button" parent="TargetActions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"BattleCommandButton"
+text = "Rotate area"
+tooltip_text = "Cycle the source-authored area orientations."
+[node name="CancelBattleTarget" type="Button" parent="TargetActions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"BattleCommandButton"
+text = "Cancel targeting"

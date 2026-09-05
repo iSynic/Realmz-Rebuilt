@@ -1,0 +1,455 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://src/ui/services/shop_interaction.gd" id="1_interaction"]
+[ext_resource type="Script" path="res://src/ui/shared/exchange/classic_exchange_ledger.gd" id="2_ledger"]
+[ext_resource type="Script" path="res://src/ui/shared/style/classic_bitmap_button.gd" id="3_bitmap_button"]
+[ext_resource type="PackedScene" path="res://src/ui/services/shop_item_row.tscn" id="4_item_row"]
+[ext_resource type="PackedScene" path="res://src/ui/services/shop_character_button.tscn" id="5_character_button"]
+[ext_resource type="PackedScene" path="res://src/ui/services/shop_empty_label.tscn" id="6_empty_label"]
+[ext_resource type="PackedScene" path="res://src/ui/inventory/classic_item_detail_popover.tscn" id="7_popover"]
+
+[node name="ShopInteraction" type="VBoxContainer"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+script = ExtResource("1_interaction")
+item_row_scene = ExtResource("4_item_row")
+character_button_scene = ExtResource("5_character_button")
+empty_label_scene = ExtResource("6_empty_label")
+
+[node name="ShopHeader" type="HBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Title" type="Label" parent="ShopHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicHeading"
+theme_override_colors/font_color = Color(0.898, 0.769, 0.361, 1)
+text = "Shop"
+
+[node name="ShopFacts" type="Label" parent="ShopHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.561, 0.812, 0.82, 1)
+text = "0 gold  •  prices 100%"
+horizontal_alignment = 2
+
+[node name="ShopColumns" type="HBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="ShopExchangeLedgers" type="HBoxContainer" parent="ShopColumns"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="SelectedInventoryColumn" type="PanelContainer" parent="ShopColumns/ShopExchangeLedgers"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_type_variation = &"ClassicItemLedger"
+script = ExtResource("2_ledger")
+
+[node name="Content" type="VBoxContainer" parent="ShopColumns/ShopExchangeLedgers/SelectedInventoryColumn"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+
+[node name="Heading" type="Label" parent="ShopColumns/ShopExchangeLedgers/SelectedInventoryColumn/Content"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+theme_override_colors/font_color = Color(0.082, 0.082, 0.071, 1)
+text = "Adventurer Pack"
+
+[node name="InventoryScroll" type="ScrollContainer" parent="ShopColumns/ShopExchangeLedgers/SelectedInventoryColumn/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="InventoryRows" type="VBoxContainer" parent="ShopColumns/ShopExchangeLedgers/SelectedInventoryColumn/Content/InventoryScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="ShopExchangeDivider" type="PanelContainer" parent="ShopColumns/ShopExchangeLedgers"]
+custom_minimum_size = Vector2(68, 0)
+layout_mode = 2
+size_flags_vertical = 3
+theme_type_variation = &"ClassicInset"
+
+[node name="ShopControlSpine" type="VBoxContainer" parent="ShopColumns/ShopExchangeLedgers/ShopExchangeDivider"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="ShopCategoryFilters" type="VBoxContainer" parent="ShopColumns/ShopExchangeLedgers/ShopExchangeDivider/ShopControlSpine"]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/separation = 2
+
+[node name="ShopFilter_weapons" type="TextureButton" parent="ShopColumns/ShopExchangeLedgers/ShopExchangeDivider/ShopControlSpine/ShopCategoryFilters"]
+custom_minimum_size = Vector2(62, 58)
+layout_mode = 2
+script = ExtResource("3_bitmap_button")
+[node name="ShopFilter_armor" type="TextureButton" parent="ShopColumns/ShopExchangeLedgers/ShopExchangeDivider/ShopControlSpine/ShopCategoryFilters"]
+custom_minimum_size = Vector2(62, 58)
+layout_mode = 2
+script = ExtResource("3_bitmap_button")
+[node name="ShopFilter_limb_armor" type="TextureButton" parent="ShopColumns/ShopExchangeLedgers/ShopExchangeDivider/ShopControlSpine/ShopCategoryFilters"]
+custom_minimum_size = Vector2(62, 58)
+layout_mode = 2
+script = ExtResource("3_bitmap_button")
+[node name="ShopFilter_magic" type="TextureButton" parent="ShopColumns/ShopExchangeLedgers/ShopExchangeDivider/ShopControlSpine/ShopCategoryFilters"]
+custom_minimum_size = Vector2(62, 58)
+layout_mode = 2
+script = ExtResource("3_bitmap_button")
+[node name="ShopFilter_supplies" type="TextureButton" parent="ShopColumns/ShopExchangeLedgers/ShopExchangeDivider/ShopControlSpine/ShopCategoryFilters"]
+custom_minimum_size = Vector2(62, 58)
+layout_mode = 2
+script = ExtResource("3_bitmap_button")
+[node name="Spacer" type="Control" parent="ShopColumns/ShopExchangeLedgers/ShopExchangeDivider/ShopControlSpine"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ShopStockColumn" type="PanelContainer" parent="ShopColumns/ShopExchangeLedgers"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_type_variation = &"ClassicItemLedger"
+script = ExtResource("2_ledger")
+
+[node name="Content" type="VBoxContainer" parent="ShopColumns/ShopExchangeLedgers/ShopStockColumn"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+[node name="ShopStockHeading" type="Label" parent="ShopColumns/ShopExchangeLedgers/ShopStockColumn/Content"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+theme_override_colors/font_color = Color(0.082, 0.082, 0.071, 1)
+text = "Shop Stock"
+[node name="ShopStockScroll" type="ScrollContainer" parent="ShopColumns/ShopExchangeLedgers/ShopStockColumn/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+[node name="ShopStockRows" type="VBoxContainer" parent="ShopColumns/ShopExchangeLedgers/ShopStockColumn/Content/ShopStockScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="ShopCompactBrowser" type="PanelContainer" parent="ShopColumns"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.15
+theme_type_variation = &"ClassicItemLedger"
+
+[node name="ShopBrowserTabs" type="TabContainer" parent="ShopColumns/ShopCompactBrowser"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="Pack" type="VBoxContainer" parent="ShopColumns/ShopCompactBrowser/ShopBrowserTabs"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="ShopperPortraitSelector" type="PanelContainer" parent="ShopColumns/ShopCompactBrowser/ShopBrowserTabs/Pack"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+theme_type_variation = &"ClassicInset"
+[node name="ShopCompactPortraits" type="GridContainer" parent="ShopColumns/ShopCompactBrowser/ShopBrowserTabs/Pack/ShopperPortraitSelector"]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/h_separation = 1
+theme_override_constants/v_separation = 1
+columns = 3
+
+[node name="InventoryScroll" type="ScrollContainer" parent="ShopColumns/ShopCompactBrowser/ShopBrowserTabs/Pack"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+[node name="InventoryRows" type="VBoxContainer" parent="ShopColumns/ShopCompactBrowser/ShopBrowserTabs/Pack/InventoryScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="Stock" type="VBoxContainer" parent="ShopColumns/ShopCompactBrowser/ShopBrowserTabs"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="ShopCategoryFilters" type="HBoxContainer" parent="ShopColumns/ShopCompactBrowser/ShopBrowserTabs/Stock"]
+layout_mode = 2
+theme_override_constants/separation = 3
+[node name="ShopFilter_weapons" type="TextureButton" parent="ShopColumns/ShopCompactBrowser/ShopBrowserTabs/Stock/ShopCategoryFilters"]
+custom_minimum_size = Vector2(62, 58)
+layout_mode = 2
+script = ExtResource("3_bitmap_button")
+[node name="ShopFilter_armor" type="TextureButton" parent="ShopColumns/ShopCompactBrowser/ShopBrowserTabs/Stock/ShopCategoryFilters"]
+custom_minimum_size = Vector2(62, 58)
+layout_mode = 2
+script = ExtResource("3_bitmap_button")
+[node name="ShopFilter_limb_armor" type="TextureButton" parent="ShopColumns/ShopCompactBrowser/ShopBrowserTabs/Stock/ShopCategoryFilters"]
+custom_minimum_size = Vector2(62, 58)
+layout_mode = 2
+script = ExtResource("3_bitmap_button")
+[node name="ShopFilter_magic" type="TextureButton" parent="ShopColumns/ShopCompactBrowser/ShopBrowserTabs/Stock/ShopCategoryFilters"]
+custom_minimum_size = Vector2(62, 58)
+layout_mode = 2
+script = ExtResource("3_bitmap_button")
+[node name="ShopFilter_supplies" type="TextureButton" parent="ShopColumns/ShopCompactBrowser/ShopBrowserTabs/Stock/ShopCategoryFilters"]
+custom_minimum_size = Vector2(62, 58)
+layout_mode = 2
+script = ExtResource("3_bitmap_button")
+[node name="ShopStockHeading" type="Label" parent="ShopColumns/ShopCompactBrowser/ShopBrowserTabs/Stock"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+text = "Shop Stock"
+[node name="ShopStockScroll" type="ScrollContainer" parent="ShopColumns/ShopCompactBrowser/ShopBrowserTabs/Stock"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+[node name="ShopStockRows" type="VBoxContainer" parent="ShopColumns/ShopCompactBrowser/ShopBrowserTabs/Stock/ShopStockScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="ShopLowerWorkspace" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 8
+theme_override_constants/separation = 4
+
+[node name="ShopControlStrip" type="PanelContainer" parent="ShopLowerWorkspace"]
+custom_minimum_size = Vector2(0, 68)
+layout_mode = 2
+theme_type_variation = &"ClassicInset"
+
+[node name="ShopControls" type="HBoxContainer" parent="ShopLowerWorkspace/ShopControlStrip"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="ShopLeftControls" type="HBoxContainer" parent="ShopLowerWorkspace/ShopControlStrip/ShopControls"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.0
+theme_override_constants/separation = 3
+alignment = 2
+
+[node name="ShopLeftLoadPanel" type="PanelContainer" parent="ShopLowerWorkspace/ShopControlStrip/ShopControls/ShopLeftControls"]
+custom_minimum_size = Vector2(86, 0)
+layout_mode = 2
+size_flags_vertical = 3
+theme_type_variation = &"ClassicInset"
+[node name="Content" type="HBoxContainer" parent="ShopLowerWorkspace/ShopControlStrip/ShopControls/ShopLeftControls/ShopLeftLoadPanel"]
+layout_mode = 2
+theme_override_constants/separation = 2
+alignment = 1
+[node name="ShopLeftLoad" type="Label" parent="ShopLowerWorkspace/ShopControlStrip/ShopControls/ShopLeftControls/ShopLeftLoadPanel/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(78, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.561, 0.812, 0.82, 1)
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ShopSelectedShopperPanel" type="PanelContainer" parent="ShopLowerWorkspace/ShopControlStrip/ShopControls/ShopLeftControls"]
+custom_minimum_size = Vector2(84, 0)
+layout_mode = 2
+size_flags_vertical = 3
+theme_type_variation = &"ClassicInset"
+[node name="ShopSelectedShopper" type="VBoxContainer" parent="ShopLowerWorkspace/ShopControlStrip/ShopControls/ShopLeftControls/ShopSelectedShopperPanel"]
+custom_minimum_size = Vector2(76, 0)
+layout_mode = 2
+size_flags_vertical = 4
+[node name="ShopSelectedPortrait" type="TextureRect" parent="ShopLowerWorkspace/ShopControlStrip/ShopControls/ShopLeftControls/ShopSelectedShopperPanel/ShopSelectedShopper"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(40, 38)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+[node name="ShopperName" type="Label" parent="ShopLowerWorkspace/ShopControlStrip/ShopControls/ShopLeftControls/ShopSelectedShopperPanel/ShopSelectedShopper"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.898, 0.769, 0.361, 1)
+horizontal_alignment = 1
+
+[node name="ShopTransactionContainer" type="PanelContainer" parent="ShopLowerWorkspace/ShopControlStrip/ShopControls/ShopLeftControls"]
+custom_minimum_size = Vector2(174, 0)
+layout_mode = 2
+size_flags_vertical = 3
+theme_type_variation = &"ClassicInset"
+[node name="ShopTransactionPanel" type="VBoxContainer" parent="ShopLowerWorkspace/ShopControlStrip/ShopControls/ShopLeftControls/ShopTransactionContainer"]
+custom_minimum_size = Vector2(166, 0)
+layout_mode = 2
+size_flags_vertical = 4
+[node name="ShopTransactionFacts" type="Label" parent="ShopLowerWorkspace/ShopControlStrip/ShopControls/ShopLeftControls/ShopTransactionContainer/ShopTransactionPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.561, 0.812, 0.82, 1)
+horizontal_alignment = 1
+vertical_alignment = 1
+[node name="Actions" type="HBoxContainer" parent="ShopLowerWorkspace/ShopControlStrip/ShopControls/ShopLeftControls/ShopTransactionContainer/ShopTransactionPanel"]
+layout_mode = 2
+theme_override_constants/separation = 3
+[node name="ShopBuy" type="Button" parent="ShopLowerWorkspace/ShopControlStrip/ShopControls/ShopLeftControls/ShopTransactionContainer/ShopTransactionPanel/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 24)
+layout_mode = 2
+size_flags_vertical = 4
+text = "Buy"
+[node name="ShopSellSelected" type="Button" parent="ShopLowerWorkspace/ShopControlStrip/ShopControls/ShopLeftControls/ShopTransactionContainer/ShopTransactionPanel/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 24)
+layout_mode = 2
+size_flags_vertical = 4
+text = "Sell"
+[node name="ShopIdentify" type="Button" parent="ShopLowerWorkspace/ShopControlStrip/ShopControls/ShopLeftControls/ShopTransactionContainer/ShopTransactionPanel/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 24)
+layout_mode = 2
+size_flags_vertical = 4
+text = "Identify"
+
+[node name="ShopperPortraitSelector" type="PanelContainer" parent="ShopLowerWorkspace/ShopControlStrip/ShopControls"]
+custom_minimum_size = Vector2(96, 0)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+theme_type_variation = &"ClassicInset"
+[node name="ShopPortraitMatrix" type="HBoxContainer" parent="ShopLowerWorkspace/ShopControlStrip/ShopControls/ShopperPortraitSelector"]
+layout_mode = 2
+theme_override_constants/separation = 2
+alignment = 1
+[node name="ShopBuyerPortraits" type="GridContainer" parent="ShopLowerWorkspace/ShopControlStrip/ShopControls/ShopperPortraitSelector/ShopPortraitMatrix"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 1
+theme_override_constants/v_separation = 1
+columns = 2
+[node name="ShopSellerPortraits" type="GridContainer" parent="ShopLowerWorkspace/ShopControlStrip/ShopControls/ShopperPortraitSelector/ShopPortraitMatrix"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 1
+theme_override_constants/v_separation = 1
+columns = 2
+
+[node name="ShopRightControls" type="HBoxContainer" parent="ShopLowerWorkspace/ShopControlStrip/ShopControls"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.0
+theme_override_constants/separation = 3
+
+[node name="ShopRouteControls" type="PanelContainer" parent="ShopLowerWorkspace/ShopControlStrip/ShopControls/ShopRightControls"]
+custom_minimum_size = Vector2(257, 0)
+layout_mode = 2
+size_flags_vertical = 3
+theme_type_variation = &"ClassicInset"
+[node name="Content" type="HBoxContainer" parent="ShopLowerWorkspace/ShopControlStrip/ShopControls/ShopRightControls/ShopRouteControls"]
+layout_mode = 2
+theme_override_constants/separation = 2
+alignment = 1
+[node name="ShopKeeperRestore" type="TextureButton" parent="ShopLowerWorkspace/ShopControlStrip/ShopControls/ShopRightControls/ShopRouteControls/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(54, 54)
+layout_mode = 2
+size_flags_vertical = 4
+script = ExtResource("3_bitmap_button")
+[node name="ShopItems" type="TextureButton" parent="ShopLowerWorkspace/ShopControlStrip/ShopControls/ShopRightControls/ShopRouteControls/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(54, 54)
+layout_mode = 2
+size_flags_vertical = 4
+script = ExtResource("3_bitmap_button")
+[node name="ShopMoney" type="TextureButton" parent="ShopLowerWorkspace/ShopControlStrip/ShopControls/ShopRightControls/ShopRouteControls/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(54, 54)
+layout_mode = 2
+size_flags_vertical = 4
+script = ExtResource("3_bitmap_button")
+[node name="ShopDone" type="Button" parent="ShopLowerWorkspace/ShopControlStrip/ShopControls/ShopRightControls/ShopRouteControls/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(54, 54)
+layout_mode = 2
+size_flags_vertical = 4
+text = "Done"
+
+[node name="ShopRightLoadPanel" type="PanelContainer" parent="ShopLowerWorkspace/ShopControlStrip/ShopControls/ShopRightControls"]
+custom_minimum_size = Vector2(86, 0)
+layout_mode = 2
+size_flags_vertical = 3
+theme_type_variation = &"ClassicInset"
+[node name="Content" type="HBoxContainer" parent="ShopLowerWorkspace/ShopControlStrip/ShopControls/ShopRightControls/ShopRightLoadPanel"]
+layout_mode = 2
+theme_override_constants/separation = 2
+alignment = 1
+[node name="ShopRightLoad" type="Label" parent="ShopLowerWorkspace/ShopControlStrip/ShopControls/ShopRightControls/ShopRightLoadPanel/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(78, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.561, 0.812, 0.82, 1)
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ShopDetailStrip" type="HBoxContainer" parent="ShopLowerWorkspace"]
+custom_minimum_size = Vector2(0, 82)
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="ShopItemDescriptionPane" type="PanelContainer" parent="ShopLowerWorkspace/ShopDetailStrip"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_type_variation = &"ClassicTextWell"
+[node name="Content" type="VBoxContainer" parent="ShopLowerWorkspace/ShopDetailStrip/ShopItemDescriptionPane"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+[node name="Heading" type="Label" parent="ShopLowerWorkspace/ShopDetailStrip/ShopItemDescriptionPane/Content"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+theme_override_colors/font_color = Color(0.898, 0.769, 0.361, 1)
+text = "Item Description"
+[node name="ShopItemDescription" type="Label" parent="ShopLowerWorkspace/ShopDetailStrip/ShopItemDescriptionPane/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.682, 0.714, 0.729, 1)
+text = "Choose an item to inspect."
+autowrap_mode = 2
+
+[node name="ShopItemStatsPane" type="PanelContainer" parent="ShopLowerWorkspace/ShopDetailStrip"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_type_variation = &"ClassicTextWell"
+[node name="Content" type="VBoxContainer" parent="ShopLowerWorkspace/ShopDetailStrip/ShopItemStatsPane"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+[node name="Heading" type="Label" parent="ShopLowerWorkspace/ShopDetailStrip/ShopItemStatsPane/Content"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+theme_override_colors/font_color = Color(0.898, 0.769, 0.361, 1)
+text = "Item Statistics"
+[node name="ShopItemStats" type="Label" parent="ShopLowerWorkspace/ShopDetailStrip/ShopItemStatsPane/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.561, 0.812, 0.82, 1)
+autowrap_mode = 2
+
+[node name="ClassicItemDetailPopover" parent="." instance=ExtResource("7_popover")]

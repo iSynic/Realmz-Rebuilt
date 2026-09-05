@@ -1,0 +1,79 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/ui/shared/interactions/thief_encounter_interaction.gd" id="1_interaction"]
+
+[node name="ThiefEncounterInteraction" type="VBoxContainer"]
+script = ExtResource("1_interaction")
+
+[node name="ThiefEncounterWorkspace" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 7
+
+[node name="ThiefCharacterNavigator" type="PanelContainer" parent="ThiefEncounterWorkspace"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInset"
+
+[node name="NavigatorContent" type="VBoxContainer" parent="ThiefEncounterWorkspace/ThiefCharacterNavigator"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="ThiefCharacterSelectorRow" type="HBoxContainer" parent="ThiefEncounterWorkspace/ThiefCharacterNavigator/NavigatorContent"]
+layout_mode = 2
+theme_override_constants/separation = 6
+alignment = 1
+
+[node name="ThiefPreviousCharacter" type="Button" parent="ThiefEncounterWorkspace/ThiefCharacterNavigator/NavigatorContent/ThiefCharacterSelectorRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(42, 42)
+layout_mode = 2
+text = "‹"
+
+[node name="ThiefCharacterPortrait" type="TextureRect" parent="ThiefEncounterWorkspace/ThiefCharacterNavigator/NavigatorContent/ThiefCharacterSelectorRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(54, 54)
+layout_mode = 2
+texture_filter = 1
+expand_mode = 1
+stretch_mode = 5
+
+[node name="ThiefNextCharacter" type="Button" parent="ThiefEncounterWorkspace/ThiefCharacterNavigator/NavigatorContent/ThiefCharacterSelectorRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(42, 42)
+layout_mode = 2
+text = "›"
+
+[node name="CharacterName" type="Label" parent="ThiefEncounterWorkspace/ThiefCharacterNavigator/NavigatorContent"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicHeading"
+horizontal_alignment = 1
+
+[node name="ThiefActionPane" type="PanelContainer" parent="ThiefEncounterWorkspace"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_type_variation = &"ClassicInset"
+
+[node name="ActionContent" type="VBoxContainer" parent="ThiefEncounterWorkspace/ThiefActionPane"]
+layout_mode = 2
+theme_override_constants/separation = 7
+
+[node name="ThiefActionGrid" type="GridContainer" parent="ThiefEncounterWorkspace/ThiefActionPane/ActionContent"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
+columns = 2
+
+[node name="Back" type="Button" parent="ThiefEncounterWorkspace/ThiefActionPane/ActionContent"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Back to encounter"

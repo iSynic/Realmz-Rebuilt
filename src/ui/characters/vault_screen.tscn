@@ -1,0 +1,108 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="PackedScene" path="res://src/ui/shared/screen_frame.tscn" id="1_base"]
+[ext_resource type="Script" path="res://src/ui/characters/vault_screen.gd" id="2_screen"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/classic_character_sheet.tscn" id="3_sheet"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/vault_character_card.tscn" id="4_card"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/vault_history_row.tscn" id="5_history"]
+
+[node name="VaultScreen" instance=ExtResource("1_base")]
+route_id = &"vault"
+title = "Character Files"
+description = "Reusable characters, revision history, and campaign eligibility."
+script = ExtResource("2_screen")
+character_card_scene = ExtResource("4_card")
+history_row_scene = ExtResource("5_history")
+
+[node name="VaultHeaderArea" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody"]
+unique_name_in_owner = true
+layout_mode = 2
+[node name="CharacterFilesHeader" type="HBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultHeaderArea"]
+layout_mode = 2
+theme_override_constants/separation = 8
+[node name="Back" type="Button" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultHeaderArea/CharacterFilesHeader"]
+layout_mode = 2
+text = "Back"
+[node name="Spacer" type="Control" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultHeaderArea/CharacterFilesHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+[node name="AvailableCount" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultHeaderArea/CharacterFilesHeader"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+text = "0 available"
+
+[node name="VaultListArea" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+[node name="VaultEmptyState" type="PanelContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultListArea"]
+visible = false
+layout_mode = 2
+theme_type_variation = &"ClassicInset"
+[node name="Content" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultListArea/VaultEmptyState"]
+layout_mode = 2
+[node name="Title" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultListArea/VaultEmptyState/Content"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+text = "Character vault is empty"
+[node name="Detail" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultListArea/VaultEmptyState/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+text = "No immutable .r2char revisions are installed. New characters can be published after they are added to a campaign party."
+autowrap_mode = 2
+[node name="CurrentTitle" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultListArea"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+text = "Current Character Files"
+[node name="EligibilityContext" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultListArea"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+[node name="CharacterFileList" type="GridContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultListArea"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+columns = 2
+
+[node name="VaultHistoryArea" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+[node name="HistoryToggle" type="Button" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultHistoryArea"]
+layout_mode = 2
+text = "Revision history and archives (0)"
+[node name="HistoryTitle" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultHistoryArea"]
+visible = false
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+text = "Earlier revisions"
+[node name="HistoryRows" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultHistoryArea"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="VaultInspectionArea" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+[node name="InspectionHeader" type="HBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultInspectionArea"]
+layout_mode = 2
+theme_override_constants/separation = 8
+[node name="Back" type="Button" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultInspectionArea/InspectionHeader"]
+layout_mode = 2
+text = "Back to character vault"
+[node name="Heading" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultInspectionArea/InspectionHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicHeading"
+text = "Inspect Character File"
+[node name="Eligibility" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultInspectionArea"]
+layout_mode = 2
+autowrap_mode = 2
+[node name="VaultCharacterSheet" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultInspectionArea" instance=ExtResource("3_sheet")]
+layout_mode = 2

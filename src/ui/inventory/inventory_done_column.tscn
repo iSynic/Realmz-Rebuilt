@@ -1,0 +1,19 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/ui/inventory/inventory_done_column.gd" id="1_done"]
+
+[node name="InventoryDoneColumn" type="VBoxContainer"]
+custom_minimum_size = Vector2(56, 0)
+size_flags_vertical = 3
+script = ExtResource("1_done")
+
+[node name="Spacer" type="Control" parent="."]
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+
+[node name="InventoryDone" type="Button" parent="."]
+custom_minimum_size = Vector2(56, 56)
+layout_mode = 2
+tooltip_text = "Return to the previous screen."
+text = "Done"

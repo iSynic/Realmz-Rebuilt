@@ -79,7 +79,7 @@ try {
         playlist_id = $playlistId
         context = [string]$track.context
         title = [string]$track.title
-        path = "res://src/presentation/assets/classic-media/music/$fileName"
+        path = "res://src/ui/shared/assets/classic-media/music/$fileName"
         mime_type = "audio/ogg"
         bytes = $oggBytes.Length
         sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $oggPath).Hash.ToLowerInvariant()
@@ -111,8 +111,8 @@ try {
     $stagedManifest = Join-Path $stagingRoot "classic-application-music.json"
     Set-Content -LiteralPath $stagedManifest -Value $manifestJson -Encoding utf8
 
-    $destinationRoot = Join-Path $repoRoot "src/presentation/assets/classic-media/music"
-    $manifestPath = Join-Path $repoRoot "src/presentation/assets/classic-application-music.json"
+    $destinationRoot = Join-Path $repoRoot "src/ui/shared/assets/classic-media/music"
+    $manifestPath = Join-Path $repoRoot "src/ui/shared/assets/classic-application-music.json"
     New-Item -ItemType Directory -Path $destinationRoot -Force | Out-Null
     foreach ($existing in @(Get-ChildItem -LiteralPath $destinationRoot -File -Filter "playlist-*.ogg")) {
         if ($existing.Name -notin @($records | ForEach-Object { [IO.Path]::GetFileName([string]$_.path) })) {

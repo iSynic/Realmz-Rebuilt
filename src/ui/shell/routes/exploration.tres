@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="UiRouteDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/ui/shell/routes/ui_route_definition.gd" id="1_route"]
+
+[resource]
+script = ExtResource("1_route")
+route_id = &"exploration"
+label = "Explore"
+shortcut = &"ui_screen_explore"
+primary = true
+description = "Move, search, camp, and follow the scenario."
+presentation = 0

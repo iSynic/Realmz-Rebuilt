@@ -112,9 +112,16 @@ function Get-InteractionKinds([string]$Path) {
 
 function Get-UiRoutes([string]$Path) {
     $text = Get-Content -LiteralPath $Path -Raw
-    $match = [regex]::Match($text, 'const\s+ROUTES:[\s\S]*?\n\]')
-    Assert-Condition $match.Success "Could not find ROUTES in $Path."
-    return @([regex]::Matches($match.Value, '"id":\s*&"([a-z-]+)"') | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
+    $resourcePaths = @([regex]::Matches($text, '"res://(src/ui/shell/routes/[a-z-]+\.tres)"') | ForEach-Object { $_.Groups[1].Value })
+    Assert-Condition ($resourcePaths.Count -gt 0) "Could not find route resources in $Path."
+    return @($resourcePaths | ForEach-Object {
+        $resourcePath = Join-Path $repoRoot $_
+        Assert-Condition (Test-Path -LiteralPath $resourcePath -PathType Leaf) "Missing route resource $resourcePath."
+        $resourceText = Get-Content -LiteralPath $resourcePath -Raw
+        $routeMatch = [regex]::Match($resourceText, '(?m)^route_id\s*=\s*&"([a-z-]+)"')
+        Assert-Condition $routeMatch.Success "Route resource does not declare route_id: $resourcePath"
+        $routeMatch.Groups[1].Value
+    } | Sort-Object -Unique)
 }
 
 function Add-CountTable([System.Text.StringBuilder]$Builder, [object[]]$Workflows, [string]$Axis, [string[]]$Values) {
@@ -568,7 +575,7 @@ foreach ($entrypoint in $inventory.castleEntrypoints) {
 }
 Assert-Condition (@($inventory.castleEntrypoints).Count -gt 0) "No Castle entrypoints were audited."
 
-$expectedIntents = Get-EnumNames (Join-Path $repoRoot "src\core\session\player_intent.gd") "Kind"
+$expectedIntents = Get-EnumNames (Join-Path $repoRoot "src\playthrough\session\player_intent.gd") "Kind"
 $mappedIntents = @($inventory.boundaryCoverage.intents | ForEach-Object { [string]$_.id })
 Assert-Condition ((($expectedIntents | Sort-Object) -join '|') -eq (($mappedIntents | Sort-Object) -join '|')) "Intent coverage differs from PlayerIntent.Kind."
 foreach ($record in $inventory.boundaryCoverage.intents) {
@@ -578,12 +585,12 @@ foreach ($record in $inventory.boundaryCoverage.intents) {
     Assert-SourceReference $record.evidence "intent $($record.id) evidence" $repoRoot
 }
 
-$expectedInteractions = Get-InteractionKinds (Join-Path $repoRoot "src\core\session\interaction_request.gd")
+$expectedInteractions = Get-InteractionKinds (Join-Path $repoRoot "src\game\shared\interactions\interaction_request.gd")
 $mappedInteractions = @($inventory.boundaryCoverage.interactions | ForEach-Object { [string]$_.id })
 Assert-Condition ((($expectedInteractions | Sort-Object) -join '|') -eq (($mappedInteractions | Sort-Object) -join '|')) "Interaction coverage differs from InteractionRequest constants."
 foreach ($record in $inventory.boundaryCoverage.interactions) { Assert-WorkflowLinks $record "interaction $($record.id)"; Assert-SourceReference $record.evidence "interaction $($record.id) evidence" $repoRoot }
 
-$expectedRoutes = Get-UiRoutes (Join-Path $repoRoot "src\presentation\ui_route_catalog.gd")
+$expectedRoutes = Get-UiRoutes (Join-Path $repoRoot "src\ui\shell\routes\ui_route_catalog.gd")
 $mappedRoutes = @($inventory.boundaryCoverage.routes | ForEach-Object { [string]$_.id })
 Assert-Condition ((($expectedRoutes | Sort-Object) -join '|') -eq (($mappedRoutes | Sort-Object) -join '|')) "UI route coverage differs from UiRouteCatalog."
 foreach ($record in $inventory.boundaryCoverage.routes) { Assert-WorkflowLinks $record "route $($record.id)"; Assert-SourceReference $record.evidence "route $($record.id) evidence" $repoRoot }

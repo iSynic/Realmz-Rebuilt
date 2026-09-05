@@ -1,0 +1,56 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://src/ui/shell/classic_party_roster.gd" id="1_roster"]
+[ext_resource type="PackedScene" path="res://src/ui/shell/party_roster_member_row.tscn" id="2_member"]
+[ext_resource type="PackedScene" path="res://src/ui/shell/party_roster_empty_row.tscn" id="3_empty"]
+[ext_resource type="PackedScene" path="res://src/ui/combat/combat_roster_spellbook.tscn" id="4_spellbook"]
+[ext_resource type="FontFile" path="res://src/ui/shared/assets/fonts/AlegreyaSans-Bold.ttf" id="5_cursor_font"]
+
+[node name="ClassicPartyRoster" type="PanelContainer"]
+theme_type_variation = &"ClassicInset"
+clip_contents = true
+script = ExtResource("1_roster")
+member_row_scene = ExtResource("2_member")
+empty_row_scene = ExtResource("3_empty")
+
+[node name="RosterColumn" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Heading" type="Label" parent="RosterColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+text = "Party"
+
+[node name="PartyScroll" type="ScrollContainer" parent="RosterColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 1
+follow_focus = true
+
+[node name="PartyList" type="VBoxContainer" parent="RosterColumn/PartyScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 3
+
+[node name="CombatRosterSpellbook" parent="RosterColumn" instance=ExtResource("4_spellbook")]
+layout_mode = 2
+
+[node name="CharacterSelectionCursorLayer" type="CanvasLayer" parent="."]
+layer = 600
+
+[node name="CharacterSelectionCursorCount" type="Label" parent="CharacterSelectionCursorLayer"]
+unique_name_in_owner = true
+visible = false
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.878431, 0.737255, 0.32549, 1)
+theme_override_colors/font_outline_color = Color(0.0862745, 0.0980392, 0.113725, 1)
+theme_override_constants/outline_size = 3
+theme_override_fonts/font = ExtResource("5_cursor_font")
+theme_override_font_sizes/font_size = 22
+text = "1"

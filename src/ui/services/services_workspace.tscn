@@ -1,0 +1,252 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://src/ui/services/services_workspace.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://src/ui/services/wealth_chip.tscn" id="2_chip"]
+[ext_resource type="PackedScene" path="res://src/ui/services/money_character_row.tscn" id="3_character"]
+[ext_resource type="PackedScene" path="res://src/ui/services/money_transfer_row.tscn" id="4_transfer"]
+[ext_resource type="PackedScene" path="res://src/ui/services/location_service_row.tscn" id="5_service"]
+[ext_resource type="PackedScene" path="res://src/ui/services/service_action_button.tscn" id="6_action"]
+
+[node name="ServicesWorkspace" type="VBoxContainer"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+script = ExtResource("1_script")
+money_character_row_scene = ExtResource("3_character")
+money_transfer_row_scene = ExtResource("4_transfer")
+location_service_row_scene = ExtResource("5_service")
+service_action_button_scene = ExtResource("6_action")
+
+[node name="MoneyColumn" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="MoneyPoolPane" type="PanelContainer" parent="MoneyColumn"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInset"
+
+[node name="Content" type="MarginContainer" parent="MoneyColumn/MoneyPoolPane"]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="MoneyPoolSummary" type="BoxContainer" parent="MoneyColumn/MoneyPoolPane/Content"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Identity" type="VBoxContainer" parent="MoneyColumn/MoneyPoolPane/Content/MoneyPoolSummary"]
+custom_minimum_size = Vector2(180, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Heading" type="Label" parent="MoneyColumn/MoneyPoolPane/Content/MoneyPoolSummary/Identity"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.835294, 0.705882, 0.364706, 1)
+theme_override_font_sizes/font_size = 18
+text = "Party Pool"
+
+[node name="Banked" type="Label" parent="MoneyColumn/MoneyPoolPane/Content/MoneyPoolSummary/Identity"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.603922, 0.627451, 0.658824, 1)
+theme_override_font_sizes/font_size = 12
+text = "Banked  0 gold  •  0 gems  •  0 jewelry"
+autowrap_mode = 2
+
+[node name="MoneyPoolValues" type="HBoxContainer" parent="MoneyColumn/MoneyPoolPane/Content/MoneyPoolSummary"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Gold" parent="MoneyColumn/MoneyPoolPane/Content/MoneyPoolSummary/MoneyPoolValues" instance=ExtResource("2_chip")]
+layout_mode = 2
+
+[node name="Gems" parent="MoneyColumn/MoneyPoolPane/Content/MoneyPoolSummary/MoneyPoolValues" instance=ExtResource("2_chip")]
+layout_mode = 2
+
+[node name="Jewelry" parent="MoneyColumn/MoneyPoolPane/Content/MoneyPoolSummary/MoneyPoolValues" instance=ExtResource("2_chip")]
+layout_mode = 2
+
+[node name="MoneyPoolActions" type="HBoxContainer" parent="MoneyColumn/MoneyPoolPane/Content/MoneyPoolSummary"]
+layout_mode = 2
+size_flags_horizontal = 8
+alignment = 2
+theme_override_constants/separation = 5
+
+[node name="Pool" type="Button" parent="MoneyColumn/MoneyPoolPane/Content/MoneyPoolSummary/MoneyPoolActions"]
+custom_minimum_size = Vector2(88, 38)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Pool"
+
+[node name="Share" type="Button" parent="MoneyColumn/MoneyPoolPane/Content/MoneyPoolSummary/MoneyPoolActions"]
+custom_minimum_size = Vector2(88, 38)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Share"
+
+[node name="MoneyExchangeWorkspace" type="BoxContainer" parent="MoneyColumn"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="MoneyPartyPane" type="PanelContainer" parent="MoneyColumn/MoneyExchangeWorkspace"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.12
+theme_type_variation = &"ClassicInset"
+
+[node name="Content" type="VBoxContainer" parent="MoneyColumn/MoneyExchangeWorkspace/MoneyPartyPane"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Header" type="HBoxContainer" parent="MoneyColumn/MoneyExchangeWorkspace/MoneyPartyPane/Content"]
+layout_mode = 2
+
+[node name="Heading" type="Label" parent="MoneyColumn/MoneyExchangeWorkspace/MoneyPartyPane/Content/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.835294, 0.705882, 0.364706, 1)
+theme_override_font_sizes/font_size = 18
+text = "Adventurers"
+
+[node name="Count" type="Label" parent="MoneyColumn/MoneyExchangeWorkspace/MoneyPartyPane/Content/Header"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.603922, 0.627451, 0.658824, 1)
+theme_override_font_sizes/font_size = 13
+text = "0"
+horizontal_alignment = 2
+
+[node name="MoneyCharacterScroll" type="ScrollContainer" parent="MoneyColumn/MoneyExchangeWorkspace/MoneyPartyPane/Content"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="MoneyCharacterRows" type="VBoxContainer" parent="MoneyColumn/MoneyExchangeWorkspace/MoneyPartyPane/Content/MoneyCharacterScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="MoneySwapPane" type="PanelContainer" parent="MoneyColumn/MoneyExchangeWorkspace"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_type_variation = &"ClassicInset"
+
+[node name="Content" type="VBoxContainer" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="MoneyExchangeScroll" type="ScrollContainer" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="MoneyExchangeBody" type="VBoxContainer" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="Header" type="HBoxContainer" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody"]
+layout_mode = 2
+
+[node name="Heading" type="Label" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.835294, 0.705882, 0.364706, 1)
+theme_override_font_sizes/font_size = 18
+text = "Exchange"
+
+[node name="SelectedName" type="Label" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody/Header"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.603922, 0.627451, 0.658824, 1)
+theme_override_font_sizes/font_size = 13
+text = "Adventurer"
+horizontal_alignment = 2
+
+[node name="MoneyCharacterPicker" type="OptionButton" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody"]
+visible = false
+layout_mode = 2
+tooltip_text = "Choose the adventurer whose carried wealth will be exchanged with the party pool."
+
+[node name="MoneySelectedSummary" type="BoxContainer" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Gold" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody/MoneySelectedSummary" instance=ExtResource("2_chip")]
+layout_mode = 2
+
+[node name="Gems" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody/MoneySelectedSummary" instance=ExtResource("2_chip")]
+layout_mode = 2
+
+[node name="Jewelry" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody/MoneySelectedSummary" instance=ExtResource("2_chip")]
+layout_mode = 2
+
+[node name="Load" type="Label" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody/MoneySelectedSummary"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.603922, 0.627451, 0.658824, 1)
+theme_override_font_sizes/font_size = 12
+text = "Carried load\n0 / 0"
+horizontal_alignment = 2
+
+[node name="MoneyTransferGrid" type="VBoxContainer" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="MoneyDone" type="Button" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content"]
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+tooltip_text = "Return to exploration without another money mutation."
+text = "Done"
+
+[node name="LocationServicePane" type="PanelContainer" parent="MoneyColumn"]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInset"
+
+[node name="Content" type="VBoxContainer" parent="MoneyColumn/LocationServicePane"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Heading" type="Label" parent="MoneyColumn/LocationServicePane/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.835294, 0.705882, 0.364706, 1)
+theme_override_font_sizes/font_size = 18
+text = "At this location"
+
+[node name="LocationServiceRows" type="VBoxContainer" parent="MoneyColumn/LocationServicePane/Content"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="ServicesAlternateState" type="PanelContainer" parent="."]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_type_variation = &"ClassicInset"
+
+[node name="Content" type="VBoxContainer" parent="ServicesAlternateState"]
+layout_mode = 2
+alignment = 1
+
+[node name="Title" type="Label" parent="ServicesAlternateState/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.835294, 0.705882, 0.364706, 1)
+theme_override_font_sizes/font_size = 16
+text = "Party wealth unavailable"
+horizontal_alignment = 1
+
+[node name="Detail" type="Label" parent="ServicesAlternateState/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.603922, 0.627451, 0.658824, 1)
+theme_override_font_sizes/font_size = 13
+text = "Begin the adventure before pooling or transferring wealth."
+horizontal_alignment = 1
+autowrap_mode = 2

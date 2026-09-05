@@ -1,0 +1,9 @@
+[gd_scene format=3]
+
+[node name="InventoryCharacter" type="Button"]
+custom_minimum_size = Vector2(46, 46)
+size_flags_horizontal = 3
+focus_mode = 1
+toggle_mode = true
+expand_icon = true
+text = "Hero"

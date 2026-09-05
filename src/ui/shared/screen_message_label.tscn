@@ -1,0 +1,8 @@
+[gd_scene format=3]
+
+[node name="ScreenMessage" type="Label"]
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.603922, 0.627451, 0.658824, 1)
+theme_override_font_sizes/font_size = 15
+text = "Screen message"
+autowrap_mode = 2
