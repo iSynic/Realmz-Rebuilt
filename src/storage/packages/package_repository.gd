@@ -4,7 +4,7 @@ class_name PackageRepository
 extends RefCounted
 
 const EXPECTED_SCHEMA_HASH: String = "05ced7b000683f53e6220b9ac8f7d41c801e7e2c78c874287c2ae694b585273d"
-const DECODER_VERSION: int = 6
+const DECODER_VERSION: int = 7
 const REQUIRED_DOCUMENTS: Array[String] = ["assets/index.json", "content.json", "scenario.json", "world.json"]
 const SUPPORTED_CAPABILITIES: Array[String] = [
 	"realmz.core.classic-rules-v1",
@@ -21,7 +21,7 @@ const DEFERRED_PACKAGE_CAPABILITIES: Array[String] = [
 
 var _last_error: String = ""
 var _package_cache := PackageGraphCache.new()
-var _receipt_store := PackageInstallReceiptStore.new(EXPECTED_SCHEMA_HASH, DECODER_VERSION)
+var _receipt_store := PackageInstallReceiptStore.new(EXPECTED_SCHEMA_HASH, DECODER_VERSION, ApplicationLibraryIdentity.PACKAGE_HASH)
 var _archive_reader := PackageArchiveReader.new()
 var _document_cache := PackageDocumentCache.new(EXPECTED_SCHEMA_HASH, DECODER_VERSION)
 var _manifest_discovery := PackageManifestDiscovery.new(EXPECTED_SCHEMA_HASH, SUPPORTED_CAPABILITIES, DEFERRED_PACKAGE_CAPABILITIES, _archive_reader)
@@ -36,6 +36,7 @@ func set_application_content(content: RealmzContent, media_assets: Array[MediaAs
 		return
 	_application_content = content
 	_application_media_assets.assign(media_assets)
+	_receipt_store.set_application_package_hash(content.package_hash if content != null else ApplicationLibraryIdentity.PACKAGE_HASH)
 	_package_cache.clear()
 
 

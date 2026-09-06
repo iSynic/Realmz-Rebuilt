@@ -4,16 +4,22 @@ class_name PackageInstallReceiptStore
 extends RefCounted
 
 const KIND: String = "realmz2.install-receipt"
-const FORMAT_VERSION: int = 2
+const FORMAT_VERSION: int = 3
 
 var schema_hash: String
 var decoder_version: int
+var application_package_hash: String
 var last_error: String = ""
 
 
-func _init(expected_schema_hash: String, expected_decoder_version: int) -> void:
+func _init(expected_schema_hash: String, expected_decoder_version: int, expected_application_package_hash: String) -> void:
 	schema_hash = expected_schema_hash
 	decoder_version = expected_decoder_version
+	application_package_hash = expected_application_package_hash
+
+
+func set_application_package_hash(package_hash: String) -> void:
+	application_package_hash = package_hash
 
 
 func read(package_path: String) -> Dictionary:
@@ -39,6 +45,7 @@ func write(package_path: String, content: RealmzContent, archive_sha256: String)
 		"formatVersion": FORMAT_VERSION,
 		"decoderVersion": decoder_version,
 		"schemaHash": schema_hash,
+		"applicationPackageHash": application_package_hash,
 		"campaignId": content.campaign_id,
 		"packageHash": content.package_hash,
 		"archiveSha256": archive_sha256,
@@ -71,11 +78,12 @@ func write(package_path: String, content: RealmzContent, archive_sha256: String)
 
 
 func cache_key(package_path: String, receipt: Dictionary) -> String:
-	return "%s:%s:%s:%s:%d" % [
+	return "%s:%s:%s:%s:%s:%d" % [
 		ProjectSettings.globalize_path(package_path).simplify_path().to_lower(),
 		receipt.get("packageHash", ""),
 		receipt.get("archiveSha256", ""),
 		receipt.get("schemaHash", ""),
+		receipt.get("applicationPackageHash", ""),
 		int(receipt.get("decoderVersion", -1)),
 	]
 
@@ -94,14 +102,14 @@ static func path_for(package_path: String) -> String:
 
 
 func _validate(receipt: Dictionary, package_path: String) -> bool:
-	var fields: Array[String] = ["kind", "formatVersion", "decoderVersion", "schemaHash", "campaignId", "packageHash", "archiveSha256", "archiveBytes", "archiveModifiedTime"]
+	var fields: Array[String] = ["kind", "formatVersion", "decoderVersion", "schemaHash", "applicationPackageHash", "campaignId", "packageHash", "archiveSha256", "archiveBytes", "archiveModifiedTime"]
 	if not _exact_fields(receipt, fields):
 		return _fail("Installed package receipt has an unsupported shape.")
 	if receipt["kind"] != KIND or _integer(receipt["formatVersion"]) != FORMAT_VERSION:
 		return _fail("Installed package receipt has an unsupported version.")
 	if _integer(receipt["decoderVersion"]) != decoder_version:
 		return _fail("Installed package receipt was created by an incompatible package decoder.")
-	if receipt["schemaHash"] != schema_hash or not _safe_path_component(receipt["campaignId"]):
+	if receipt["schemaHash"] != schema_hash or receipt["applicationPackageHash"] != application_package_hash or not _safe_path_component(receipt["campaignId"]):
 		return _fail("Installed package receipt does not match the runtime contract.")
 	if not _is_sha256(receipt["packageHash"]) or not _is_sha256(receipt["archiveSha256"]):
 		return _fail("Installed package receipt contains malformed identities.")

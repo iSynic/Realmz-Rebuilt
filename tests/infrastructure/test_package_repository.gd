@@ -186,7 +186,7 @@ func run() -> void:
 		var receipt_data: Variant = JSON.parse_string(FileAccess.get_file_as_string(installed.installed_path + ".receipt.json"))
 		assert_true(receipt_data is Dictionary, "the installation receipt is parseable JSON")
 		if receipt_data is Dictionary:
-			assert_equal([int(receipt_data["formatVersion"]), int(receipt_data["decoderVersion"]), receipt_data["schemaHash"]], [2, 6, PackageRepository.EXPECTED_SCHEMA_HASH], "the receipt records the v3 package and composed-catalog decoder contract")
+			assert_equal([int(receipt_data["formatVersion"]), int(receipt_data["decoderVersion"]), receipt_data["schemaHash"], receipt_data["applicationPackageHash"]], [3, 7, PackageRepository.EXPECTED_SCHEMA_HASH, ApplicationLibraryIdentity.PACKAGE_HASH], "the receipt records the v3 package, composed-catalog decoder, and exact application-library contract")
 		assert_contains(installed.installed_path, loaded.content.package_hash, "the installation path carries the package identity")
 		repository.promote_installed_package(installed.installed_path)
 		assert_equal(repository.retained_package_count(), 1, "promoting an installed package replaces the candidate without retaining an unbounded graph")
