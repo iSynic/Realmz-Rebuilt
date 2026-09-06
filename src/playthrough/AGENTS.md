@@ -13,7 +13,7 @@ Own the pure transaction coordinator that joins Realmz game state and rules to t
 - Session workflow contexts and feature services for lifecycle, exploration, inventory/magic/services, combat/rewards, and application hooks.
 - `SessionContext` owns initialization, restore assignment, snapshot construction, and the current content, state, deterministic RNG, rules, VM, Scenario Action state, runtime API, continuations, pending session interaction, and revision. Internal intent, exploration, scenario, response, and debug coordinators share that one context while leaving transaction commit and rollback in `GameSession`.
 - `SessionIntentCoordinator` dispatches each already-validated player intent to its named workflow or coordinator. Coordinators construct rejected, committed-failure, waiting, completed, and close outcomes through `SessionCoordinatorResult`, which owns that result vocabulary; `SessionContext` does not forward those constructors. Coordinators never advance the session revision themselves.
-- `SessionDebugCoordinator` routes developer commands across workflow, combat, and scenario owners while `GameSession` retains the final transaction commit and unsaveable-operation flag.
+- `SessionDebugCoordinator` routes developer commands across workflow, combat, and scenario owners while `GameSession` retains the final transaction commit and unsaveable-operation flag. Action Point preview targets use stable trigger identity, relocate only the isolated session, bypass placement chance so the requested authored program always opens, and then rejoin ordinary trigger completion and destination handling.
 - The standalone character-creation session adapter.
 
 ## Local Contracts

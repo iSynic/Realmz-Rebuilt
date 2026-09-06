@@ -108,6 +108,32 @@ Reject a core transaction/projection regression exceeding both 5 percent and 0.2
 
 Core timing does not prove draw latency, a two-cell loop does not prove traversal, and automated input does not prove perceived responsiveness. Match the evidence to the user-visible claim.
 
+## Providence preview requests
+
+Providence may compile an unsaved revision to a temporary `.realmz2` and ask a source checkout of Rebuilt to validate and enter one target without installing the package. The version-one request is strict JSON:
+
+```json
+{
+  "kind": "realmz2.preview-request",
+  "formatVersion": 1,
+  "packagePath": "C:\\absolute\\temporary\\scenario.realmz2",
+  "packageSha256": "64 lowercase hexadecimal characters",
+  "target": {"kind": "action-point", "id": "stable trigger id", "mapId": "land:0", "x": 1, "y": 2},
+  "partyFixture": "classic-six",
+  "rngSeed": 17,
+  "isolatedSession": true,
+  "resultPath": "C:\\absolute\\temporary\\preview-result.json"
+}
+```
+
+For a Simple Encounter, `target` is `{"kind":"simple-encounter","id":0}`. Unknown kinds, extra fields, stale coordinates, unsupported fixtures, package hash mismatches, and unavailable targets fail explicitly. Run the contract probe with:
+
+```powershell
+godot --headless --path . --script res://tools/development_preview_probe.gd -- C:\absolute\temporary\preview-request.json
+```
+
+The probe writes `realmz2.preview-result` format version 1 to `resultPath`. It loads the ordinary application-plus-scenario package boundary, creates a fresh deterministic in-memory party, and enters the requested target through `GameSession`. It never installs the temporary package or opens saves, settings, recent campaigns, or Character Files. The separate interactive host is responsible only for presenting that already-isolated session.
+
 ## Before requesting review
 
 - Re-read the nearest feature guidance and update it when ownership or contracts changed.

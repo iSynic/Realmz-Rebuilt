@@ -24,6 +24,8 @@ func run(command: SessionDebugCommand) -> SessionCoordinatorResult:
 			return _workflow(SessionDebugWorkflow.noclip_step(_context.workflow_context(), command.coordinate))
 		SessionDebugCommand.Kind.RESTORE_PARTY:
 			return _workflow(SessionDebugWorkflow.restore_party(_context.workflow_context()))
+		SessionDebugCommand.Kind.START_ACTION_POINT:
+			return _start_action_point(command.target_id)
 		SessionDebugCommand.Kind.START_BATTLE:
 			return _start_battle(command.classic_id)
 		SessionDebugCommand.Kind.WIN_BATTLE:
@@ -31,6 +33,13 @@ func run(command: SessionDebugCommand) -> SessionCoordinatorResult:
 		SessionDebugCommand.Kind.START_ENCOUNTER:
 			return _start_encounter(command.encounter_kind, command.classic_id)
 	return SessionCoordinatorResult.failed(&"debug_command_unknown", "The debug command is unknown.")
+
+
+func _start_action_point(trigger_id: String) -> SessionCoordinatorResult:
+	var result: SessionCoordinatorResult = _context.exploration().start_debug_action_point(trigger_id)
+	if result.state == SessionCoordinatorResult.State.WAITING:
+		started_ephemeral_operation = true
+	return result
 
 
 func _start_battle(classic_id: int) -> SessionCoordinatorResult:

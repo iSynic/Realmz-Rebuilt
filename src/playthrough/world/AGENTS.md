@@ -9,7 +9,8 @@ Own exploration transactions and the detached map read model that joins immutabl
 - `ExplorationMovementWorkflow` owns travel, dungeon heading, fatigue admission, camp departure, and boats.
 - `ExplorationSearchWorkflow` owns Search mode, Area Search, and secret discovery.
 - `ExplorationTimeWorkflow` owns Camp, Rest, and field Heal.
-- `ExplorationContinuationWorkflow` and `SessionExplorationCoordinator` own saveable post-clock, post-move, AP, random-region, timed, and contextual-Encounter resumption.
+- `ExplorationContinuationWorkflow` and `SessionExplorationCoordinator` own saveable post-clock, post-move, AP, random-region, timed, and contextual-Encounter resumption, plus isolated stable-ID Action Point preview entry that rejoins ordinary trigger completion.
+- `SessionActionPointCoordinator` owns execution of a selected Action Point and the isolated preview preparation that deliberately bypasses placement chance before rejoining that same completion path.
 - `LocationNoteWorkflow` owns player-authored location notes.
 - `SessionMapViewBuilder` owns topology-derived cells, movement options, player-map records, location-note crops, and bounded map-window caching.
 - Exploration and boat continuation payloads/factories own the typed values needed to resume those operations.
