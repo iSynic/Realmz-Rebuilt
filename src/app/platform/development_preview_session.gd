@@ -105,6 +105,16 @@ func _validate_target(package_content: RealmzContent, scenario_media: MediaSourc
 		if package_content.scenario_records.complex_encounter_by_id(_request.target_id) == null:
 			return ["preview_target_unknown", "Complex Encounter %d is unavailable." % _request.target_id]
 		return []
+	if _request.target_kind == DevelopmentPreviewRequest.THIEF_ENCOUNTER:
+		var thief := package_content.scenario_records.thief_encounter_by_id(_request.target_id)
+		var owner := package_content.scenario_records.complex_encounter_by_id(_request.target_complex_encounter_id)
+		if thief == null:
+			return ["preview_target_unknown", "Thief Encounter %d is unavailable." % _request.target_id]
+		if owner == null:
+			return ["preview_target_unknown", "Owning Complex Encounter %d is unavailable." % _request.target_complex_encounter_id]
+		if not owner.thief or owner.thief_success != thief.id:
+			return ["preview_target_mismatch", "Complex Encounter %d does not own Thief Encounter %d." % [_request.target_complex_encounter_id, _request.target_id]]
+		return []
 	if _request.target_kind == DevelopmentPreviewRequest.MAP_LOCATION:
 		var map := package_content.world.map_by_id(_request.target_map_id)
 		if map == null or map.topology.cell_at(_request.target_coordinate) == null:
@@ -140,6 +150,8 @@ func _start_target(runtime: Variant) -> SessionStep:
 		return runtime.apply_debug_command(SessionDebugCommand.start_encounter(&"simple", _request.target_id))
 	if _request.target_kind == DevelopmentPreviewRequest.COMPLEX_ENCOUNTER:
 		return runtime.apply_debug_command(SessionDebugCommand.start_encounter(&"complex", _request.target_id))
+	if _request.target_kind == DevelopmentPreviewRequest.THIEF_ENCOUNTER:
+		return _start_thief_target(runtime)
 	if _request.target_kind == DevelopmentPreviewRequest.MAP_LOCATION:
 		return runtime.apply_debug_command(SessionDebugCommand.warp(_request.target_map_id, _request.target_coordinate))
 	if _request.target_kind == DevelopmentPreviewRequest.SCROLLING_TEXT:
@@ -153,8 +165,18 @@ func _start_target(runtime: Variant) -> SessionStep:
 	return runtime.apply_debug_command(SessionDebugCommand.start_action_point(_request.target_id))
 
 
+func _start_thief_target(runtime: Variant) -> SessionStep:
+	var owner_step: SessionStep = runtime.apply_debug_command(SessionDebugCommand.start_encounter(&"complex", _request.target_complex_encounter_id))
+	if owner_step.state == SessionStep.State.FAILED:
+		return owner_step
+	var interaction: InteractionRequest = runtime.view().active_interaction_request()
+	if interaction == null or interaction.kind != InteractionRequest.WORD_AND_ACTION:
+		return SessionStep.failed(runtime.view().revision, &"preview_target_not_ready", "Owning Complex Encounter %d did not enter its ordinary interaction surface." % _request.target_complex_encounter_id, owner_step.events)
+	return runtime.respond(InteractionResponse.new(interaction.request_id, interaction.kind, InteractionResponse.ComplexEncounterBody.new(&"thief")))
+
+
 func _target_readiness_error(view: GameView) -> String:
-	if _request.target_kind not in [DevelopmentPreviewRequest.COMPLEX_ENCOUNTER, DevelopmentPreviewRequest.BATTLE, DevelopmentPreviewRequest.TREASURE, DevelopmentPreviewRequest.SHOP]:
+	if _request.target_kind not in [DevelopmentPreviewRequest.COMPLEX_ENCOUNTER, DevelopmentPreviewRequest.THIEF_ENCOUNTER, DevelopmentPreviewRequest.BATTLE, DevelopmentPreviewRequest.TREASURE, DevelopmentPreviewRequest.SHOP]:
 		return ""
 	var interaction := view.active_interaction_request()
 	if _request.target_kind == DevelopmentPreviewRequest.BATTLE:
@@ -169,6 +191,8 @@ func _expected_interaction_kind() -> StringName:
 	match _request.target_kind:
 		DevelopmentPreviewRequest.COMPLEX_ENCOUNTER:
 			return InteractionRequest.WORD_AND_ACTION
+		DevelopmentPreviewRequest.THIEF_ENCOUNTER:
+			return InteractionRequest.THIEF_ENCOUNTER
 		DevelopmentPreviewRequest.TREASURE:
 			return InteractionRequest.TREASURE_DISTRIBUTION
 	return InteractionRequest.SHOP

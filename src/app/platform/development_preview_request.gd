@@ -9,6 +9,7 @@ const PARTY_FIXTURE := "classic-six"
 const ACTION_POINT := &"action-point"
 const SIMPLE_ENCOUNTER := &"simple-encounter"
 const COMPLEX_ENCOUNTER := &"complex-encounter"
+const THIEF_ENCOUNTER := &"thief-encounter"
 const MAP_LOCATION := &"map-location"
 const SCROLLING_TEXT := &"scrolling-text"
 const BATTLE := &"battle"
@@ -19,6 +20,7 @@ var package_path: String
 var package_sha256: String
 var target_kind: StringName
 var target_id: Variant
+var target_complex_encounter_id: int = -1
 var target_map_id: String = ""
 var target_coordinate: Variant
 var party_fixture: String
@@ -45,6 +47,7 @@ static func decode(data: Variant) -> DevelopmentPreviewRequest:
 	request.package_sha256 = data["packageSha256"].to_lower()
 	request.target_kind = target["kind"]
 	request.target_id = target["id"]
+	request.target_complex_encounter_id = target.get("complexEncounterId", -1)
 	request.target_map_id = target.get("mapId", "")
 	request.target_coordinate = target.get("coordinate")
 	request.party_fixture = data["partyFixture"]
@@ -61,6 +64,10 @@ static func _decode_target(value: Variant) -> Dictionary:
 		if not _has_exact_fields(value, ["kind", "id"]) or not _is_integer(value["id"]) or int(value["id"]) < 0:
 			return {}
 		return {"kind": kind, "id": int(value["id"])}
+	if kind == THIEF_ENCOUNTER:
+		if not _has_exact_fields(value, ["kind", "id", "complexEncounterId"]) or not _is_integer(value["id"]) or int(value["id"]) < 0 or not _is_integer(value["complexEncounterId"]) or int(value["complexEncounterId"]) < 0:
+			return {}
+		return {"kind": kind, "id": int(value["id"]), "complexEncounterId": int(value["complexEncounterId"])}
 	if kind == SCROLLING_TEXT:
 		if not _has_exact_fields(value, ["kind", "id"]) or not _is_integer(value["id"]) or int(value["id"]) == 0:
 			return {}
