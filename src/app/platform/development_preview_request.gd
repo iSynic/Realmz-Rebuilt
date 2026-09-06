@@ -8,6 +8,8 @@ const FORMAT_VERSION := 1
 const PARTY_FIXTURE := "classic-six"
 const ACTION_POINT := &"action-point"
 const SIMPLE_ENCOUNTER := &"simple-encounter"
+const MAP_LOCATION := &"map-location"
+const SCROLLING_TEXT := &"scrolling-text"
 
 var package_path: String
 var package_sha256: String
@@ -55,9 +57,15 @@ static func _decode_target(value: Variant) -> Dictionary:
 		if not _has_exact_fields(value, ["kind", "id"]) or not _is_integer(value["id"]) or int(value["id"]) < 0:
 			return {}
 		return {"kind": kind, "id": int(value["id"])}
-	if kind != ACTION_POINT or not _has_exact_fields(value, ["kind", "id", "mapId", "x", "y"]):
+	if kind == SCROLLING_TEXT:
+		if not _has_exact_fields(value, ["kind", "id"]) or not _is_integer(value["id"]) or int(value["id"]) == 0:
+			return {}
+		return {"kind": kind, "id": int(value["id"])}
+	if kind not in [ACTION_POINT, MAP_LOCATION] or not _has_exact_fields(value, ["kind", "id", "mapId", "x", "y"]):
 		return {}
 	if not value["id"] is String or value["id"].is_empty() or not value["mapId"] is String or value["mapId"].is_empty() or not _is_integer(value["x"]) or not _is_integer(value["y"]):
+		return {}
+	if kind == MAP_LOCATION and value["id"] != value["mapId"]:
 		return {}
 	return {"kind": kind, "id": value["id"], "mapId": value["mapId"], "coordinate": Vector2i(int(value["x"]), int(value["y"]))}
 

@@ -32,7 +32,7 @@ func load_request(request: DevelopmentPreviewRequest) -> bool:
 	var package := _repository.load_package(request.package_path)
 	if not package.is_ok():
 		return _fail(package.error_code, package.error_message)
-	var target_failure := _validate_target(package.content)
+	var target_failure := _validate_target(package.content, package.media)
 	if not target_failure.is_empty():
 		return _fail(target_failure[0], target_failure[1])
 	package.content.characters.install_application_catalog(application.content.characters)
@@ -92,10 +92,20 @@ func _create_party(runtime: Variant) -> SessionStep:
 	return runtime.submit_intent(PartyIntents.create(members))
 
 
-func _validate_target(package_content: RealmzContent) -> Array[String]:
+func _validate_target(package_content: RealmzContent, scenario_media: MediaSource) -> Array[String]:
 	if _request.target_kind == DevelopmentPreviewRequest.SIMPLE_ENCOUNTER:
 		if package_content.scenario_records.simple_encounter_by_id(_request.target_id) == null:
 			return ["preview_target_unknown", "Simple Encounter %d is unavailable." % _request.target_id]
+		return []
+	if _request.target_kind == DevelopmentPreviewRequest.MAP_LOCATION:
+		var map := package_content.world.map_by_id(_request.target_map_id)
+		if map == null or map.topology.cell_at(_request.target_coordinate) == null:
+			return ["preview_target_unknown", "Map location '%s' at %d,%d is unavailable." % [_request.target_map_id, _request.target_coordinate.x, _request.target_coordinate.y]]
+		return []
+	if _request.target_kind == DevelopmentPreviewRequest.SCROLLING_TEXT:
+		var status := scenario_media.resource_status("TEXT", _request.target_id) if scenario_media != null else &"missing"
+		if status != &"resolved":
+			return ["preview_target_unknown", "Scenario scrolling TEXT resource %d is %s." % [_request.target_id, String(status)]]
 		return []
 	var trigger := package_content.scenario_records.trigger_by_id(_request.target_id)
 	if trigger == null:
@@ -108,6 +118,10 @@ func _validate_target(package_content: RealmzContent) -> Array[String]:
 func _start_target(runtime: Variant) -> SessionStep:
 	if _request.target_kind == DevelopmentPreviewRequest.SIMPLE_ENCOUNTER:
 		return runtime.apply_debug_command(SessionDebugCommand.start_encounter(&"simple", _request.target_id))
+	if _request.target_kind == DevelopmentPreviewRequest.MAP_LOCATION:
+		return runtime.apply_debug_command(SessionDebugCommand.warp(_request.target_map_id, _request.target_coordinate))
+	if _request.target_kind == DevelopmentPreviewRequest.SCROLLING_TEXT:
+		return runtime.apply_debug_command(SessionDebugCommand.start_scrolling_text(_request.target_id))
 	return runtime.apply_debug_command(SessionDebugCommand.start_action_point(_request.target_id))
 
 

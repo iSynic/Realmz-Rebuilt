@@ -126,7 +126,7 @@ Providence may compile an unsaved revision to a temporary `.realmz2` and ask a s
 }
 ```
 
-For a Simple Encounter, `target` is `{"kind":"simple-encounter","id":0}`. Unknown kinds, extra fields, stale coordinates, unsupported fixtures, package hash mismatches, and unavailable targets fail explicitly. Run the contract probe with:
+For a Simple Encounter, `target` is `{"kind":"simple-encounter","id":0}`. A map preview uses `{"kind":"map-location","id":"land:0","mapId":"land:0","x":1,"y":2}`; `id` and `mapId` must be the same canonical map identity, and coordinates are zero-based and map-local. A scrolling preview uses `{"kind":"scrolling-text","id":-200}`, where `id` is the signed identity of an exact scenario-owned `TEXT` resource. Unknown kinds, extra fields, stale coordinates, application-fallback text, unsupported fixtures, package hash mismatches, and unavailable targets fail explicitly. Run the contract probe with:
 
 ```powershell
 godot --headless --path . --script res://tools/development_preview_probe.gd -- C:\absolute\temporary\preview-request.json

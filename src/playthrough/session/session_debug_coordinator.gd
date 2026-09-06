@@ -32,6 +32,8 @@ func run(command: SessionDebugCommand) -> SessionCoordinatorResult:
 			return _win_battle()
 		SessionDebugCommand.Kind.START_ENCOUNTER:
 			return _start_encounter(command.encounter_kind, command.classic_id)
+		SessionDebugCommand.Kind.START_SCROLLING_TEXT:
+			return _start_scrolling_text(command.classic_id)
 	return SessionCoordinatorResult.failed(&"debug_command_unknown", "The debug command is unknown.")
 
 
@@ -100,6 +102,24 @@ func _start_encounter(kind: StringName, classic_id: int) -> SessionCoordinatorRe
 		events.append(DomainEvent.new(&"debug_encounter_started", {"kind": String(kind), "classicId": classic_id}))
 		return SessionCoordinatorResult.waiting(result.interaction, events)
 	return SessionCoordinatorResult.failed(result.error_code, result.error_message, events) if result.state == ScenarioVmResult.State.FAILED else SessionCoordinatorResult.completed(events)
+
+
+func _start_scrolling_text(resource_id: int) -> SessionCoordinatorResult:
+	if _context.state.combat != null or resource_id == 0:
+		return SessionCoordinatorResult.failed(&"debug_scrolling_text_unavailable", "Scrolling text preview requires exploration and an exact nonzero TEXT resource ID.")
+	var instruction := ClassicActionDefinition.new(0, 62, 62, resource_id, false, [])
+	var execution := ScenarioExecutionContext.trigger(&"debug", "", _context.state.party.map_id, _context.state.party.coordinate, true)
+	var started := _context.scenario_vm.start_debug_instruction(instruction, execution)
+	if started.state == ScenarioVmResult.State.FAILED:
+		return SessionCoordinatorResult.failed(started.error_code, started.error_message)
+	var result := _context.scenario_vm.run(_context.runtime_api)
+	var events: Array[DomainEvent] = []
+	events.assign(result.events)
+	if result.state != ScenarioVmResult.State.WAITING:
+		return SessionCoordinatorResult.failed(result.error_code if result.state == ScenarioVmResult.State.FAILED else &"debug_scrolling_text_failed", result.error_message if result.state == ScenarioVmResult.State.FAILED else "Scrolling text preview did not open its acknowledgement surface.", events)
+	started_ephemeral_operation = true
+	events.append(DomainEvent.new(&"debug_scrolling_text_started", {"resourceType": "TEXT", "resourceId": resource_id}))
+	return SessionCoordinatorResult.waiting(result.interaction, events)
 
 
 func _pending_interaction() -> InteractionRequest:
