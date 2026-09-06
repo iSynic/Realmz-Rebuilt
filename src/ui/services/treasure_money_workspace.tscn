@@ -1,0 +1,88 @@
+[gd_scene format=3]
+
+[node name="TreasureMoneyWorkspace" type="VBoxContainer"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="Header" type="HBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicHeading"
+text = "Money"
+
+[node name="TreasureMoneyBack" type="Button" parent="Header"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Back to Treasure"
+
+[node name="TreasureMoneyPane" type="PanelContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_type_variation = &"ClassicInset"
+
+[node name="Content" type="VBoxContainer" parent="TreasureMoneyPane"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="TreasureMoneyPoolSummary" type="Label" parent="TreasureMoneyPane/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.898, 0.769, 0.361, 1)
+
+[node name="TreasureMoneyHeading" type="Label" parent="TreasureMoneyPane/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.561, 0.812, 0.82, 1)
+text = "Choose Adventurer"
+
+[node name="TreasureMoneyCharacter" type="OptionButton" parent="TreasureMoneyPane/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TreasureMoneySummary" type="Label" parent="TreasureMoneyPane/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.682, 0.714, 0.729, 1)
+autowrap_mode = 2
+
+[node name="TreasureMoneyGrid" type="GridContainer" parent="TreasureMoneyPane/Content"]
+layout_mode = 2
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
+columns = 2
+
+[node name="GoldToCharacter" type="Button" parent="TreasureMoneyPane/Content/TreasureMoneyGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "+5 Gold"
+
+[node name="GoldToPool" type="Button" parent="TreasureMoneyPane/Content/TreasureMoneyGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "-5 Gold"
+
+[node name="GemsToCharacter" type="Button" parent="TreasureMoneyPane/Content/TreasureMoneyGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "+1 Gem"
+
+[node name="GemsToPool" type="Button" parent="TreasureMoneyPane/Content/TreasureMoneyGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "-1 Gem"
+
+[node name="JewelryToCharacter" type="Button" parent="TreasureMoneyPane/Content/TreasureMoneyGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "+1 Jewelry"
+
+[node name="JewelryToPool" type="Button" parent="TreasureMoneyPane/Content/TreasureMoneyGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "-1 Jewelry"

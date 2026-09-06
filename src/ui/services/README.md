@@ -10,7 +10,8 @@ This folder is the Godot-facing home of every place where the party exchanges we
 - `shop_interaction.tscn`: Shop stock/pack exchange and compact alternative.
 - `temple_interaction.tscn`: character and service selection with purchase actions.
 - `bank_interaction.tscn`: bank account, party pool, and personal denomination transfers.
-- `treasure_distribution_interaction.tscn`: loot field, recipients, item inspection, wealth, lore, and completion confirmation.
+- `treasure_distribution_interaction.tscn`: loot field, recipients, item inspection, Castle-shaped Money/Pool/Share actions, lore, and completion confirmation.
+- `treasure_money_workspace.tscn`: the Money-button workspace for personal denomination transfers; it stays out of the ordinary Treasure layout.
 
 The neighboring row, chip, button, and cell scenes define repeated records. Parent scenes export them as `PackedScene` properties so visual changes stay discoverable in Godot.
 
@@ -31,7 +32,7 @@ Selection, filters, hover, drag previews, compact tabs, and confirmation visibil
 - UI never recomputes prices, load, service results, denomination rules, or recipient eligibility.
 - Unidentified and unavailable records expose only the public facts and exact reasons supplied to them.
 - Treasure completion remains layered over the retained ordinary workspace.
-- Wide and Compact layouts expose the same required actions without relying on an outer-page scroll.
+- Wide and Compact layouts expose the same required actions without relying on an outer-page scroll. Treasure keeps personal transfer controls behind its Money button so its primary workspace remains compact.
 
 ## Performance
 
