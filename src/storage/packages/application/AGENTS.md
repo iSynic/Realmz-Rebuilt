@@ -1,0 +1,29 @@
+# Application library contract
+
+## Purpose
+
+Own the one Providence-built stock Realmz application package accepted by Rebuilt.
+
+## Ownership
+
+- `realmz-classic-application-library.realmz2` contains stock definitions and media exactly once.
+- `application-library.lock.json` records the Providence catalog/compiler revisions, source and catalog hashes, schema identity, counts, and exact package identity accepted by Rebuilt.
+
+## Local Contracts
+
+- The package contains no scenario payload.
+- Replace the package and lock together from one deterministic Providence build.
+- Scenario content may override application content only through the exact definition identity or exact `(resourceType, resourceId)` required by the runtime contract.
+- Rebuilt does not maintain or hand-edit the readable source catalogs; Providence owns them.
+
+## Work Guidance
+
+- Verify the shared compatibility fixtures before accepting a replacement.
+- Update `ApplicationLibraryIdentity`, starter-character output, release filters, and notices in the same change.
+
+## Verification
+
+- Run `tools/providence_alignment_probe.gd` through headless Godot.
+- Run the package repository and Character Files workflow suites.
+
+## Child DOX Index

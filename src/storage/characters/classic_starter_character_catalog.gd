@@ -32,7 +32,7 @@ func load_records(path: String, application_package_hash: String) -> Array[Chara
 	if parsed.get("format") != FORMAT or parsed.get("formatVersion") != FORMAT_VERSION or parsed.get("sourceVersion") != SOURCE_VERSION or parsed.get("castleSourceRevision") != CASTLE_SOURCE_REVISION:
 		return _fail("The built-in starter-character catalog identity is invalid.", result)
 	if application_package_hash.length() != 64 or parsed.get("applicationCharacterLibraryPackageHash") != application_package_hash:
-		return _fail("The starter characters do not match the built-in character library.", result)
+		return _fail("The starter characters do not match the built-in application library.", result)
 	if not _valid_sources(parsed.get("sources")) or not parsed.get("records") is Array or parsed["records"].size() != EXPECTED_SOURCE_HASHES.size():
 		return _fail("The built-in starter-character inventory is incomplete.", result)
 	var character_ids: Dictionary = {}

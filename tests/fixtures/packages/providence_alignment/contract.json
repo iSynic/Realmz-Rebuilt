@@ -1,0 +1,57 @@
+{
+  "kind": "providence.rebuilt-alignment-fixtures",
+  "formatVersion": 1,
+  "providenceCommit": "e7f862f0051c1ac6226c1d4def3b7da41cf51121",
+  "schemaSha256": "05ced7b000683f53e6220b9ac8f7d41c801e7e2c78c874287c2ae694b585273d",
+  "applicationPackageId": "realmz-classic-application-library",
+  "applicationPackageHash": "35dd24b24879e6e4aa8e3eb54672dfba99ba6c1538a3b6760898fcd4a91e8589",
+  "coverage": {
+    "applicationItem": "classic.item.1",
+    "applicationSpell": "classic.spell.1101",
+    "applicationPortrait": "cicn:257",
+    "applicationTacticalIcon": "cicn:9000",
+    "applicationTileset": "PICT:300",
+    "applicationSound": "snd :147",
+    "scenarioCustomItem": "classic.item.805",
+    "scenarioCustomSpell": "classic.spell.5101",
+    "exactMediaOverride": "cicn:257"
+  },
+  "cases": [
+    {
+      "id": "positive",
+      "path": "positive.realmz2",
+      "packageHash": "e893b1d8aac9ba5909d0cd9d8fd836718fab9b62f4b91046c5c4cba6aa7ae8af",
+      "archiveSha256": "a1ccbf3623ef6dc09c3d8774101cc86217d112ea088d8e9450e736b3d83d1bd4",
+      "expected": "accepted",
+      "expectedMessageFragment": "",
+      "scenarioItems": 1,
+      "scenarioSpells": 1,
+      "scenarioMedia": 1,
+      "applicationDefinitionsEmbedded": 0
+    },
+    {
+      "id": "missing-dependency",
+      "path": "missing-dependency.realmz2",
+      "packageHash": "a3271675a757d75919cb51bee2929c0ca6615adc10ae38a3c6935d5a2cb5b35b",
+      "archiveSha256": "aa748f656ac05a911b755c00e5aa6a53f5cb2643e1aa13e08d1853708bd353e6",
+      "expected": "rejected",
+      "expectedMessageFragment": "references unavailable cursed item",
+      "scenarioItems": 1,
+      "scenarioSpells": 1,
+      "scenarioMedia": 0,
+      "applicationDefinitionsEmbedded": 0
+    },
+    {
+      "id": "wrong-kind-dependency",
+      "path": "wrong-kind-dependency.realmz2",
+      "packageHash": "ec14b148b211215ee057ea8f1b50d4c9c04e03655f40845baad6146ea90f51b0",
+      "archiveSha256": "3a25627b2b63d8c610f63d5e52eb2ab5e2d2acab300fdc2933d527831a032a0e",
+      "expected": "rejected",
+      "expectedMessageFragment": "portrait cicn 257",
+      "scenarioItems": 1,
+      "scenarioSpells": 1,
+      "scenarioMedia": 1,
+      "applicationDefinitionsEmbedded": 0
+    }
+  ]
+}

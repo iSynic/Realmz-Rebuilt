@@ -3,10 +3,15 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $campaignRoot = Join-Path $repoRoot "src\storage\packages\bundled_campaigns"
 $catalogPath = Join-Path $campaignRoot "castle-bundled-scenarios.provenance.json"
 $citySourcePath = Join-Path $campaignRoot "city-of-bywater.source.json"
+$applicationRoot = Join-Path $repoRoot "src\storage\packages\application"
+$applicationLock = Get-Content -Raw -LiteralPath (Join-Path $applicationRoot "application-library.lock.json") | ConvertFrom-Json
 $catalog = Get-Content -Raw -LiteralPath $catalogPath | ConvertFrom-Json
 
-if ($catalog.formatVersion -ne 1 -or $catalog.source.license -ne "CC-BY-NC-SA-4.0" -or $catalog.source.defaultForScenariosWithoutOverride -ne $true) {
+if ($catalog.formatVersion -ne 2 -or $catalog.source.license -ne "CC-BY-NC-SA-4.0" -or $catalog.source.defaultForScenariosWithoutOverride -ne $true) {
     throw "Bundled scenario provenance header is invalid."
+}
+if ($catalog.compiler.packageSchemaVersion -ne 3 -or $catalog.compiler.applicationPackageHash -ne $applicationLock.packageHash -or $catalog.compiler.applicationPackageArchiveSha256 -ne $applicationLock.archiveSha256) {
+    throw "Bundled scenario provenance does not name the accepted application library."
 }
 if (@($catalog.scenarios).Count -ne 13) {
     throw "Bundled scenario catalog must contain exactly 13 Castle-distributed scenarios."
@@ -79,6 +84,22 @@ if (($expectedFiles -join "|") -ne ($actualFiles -join "|")) {
 }
 
 Add-Type -AssemblyName System.IO.Compression.FileSystem
+$applicationAssetIds = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+$applicationArchive = [System.IO.Compression.ZipFile]::OpenRead((Join-Path $applicationRoot "realmz-classic-application-library.realmz2"))
+try {
+    $applicationAssetEntry = $applicationArchive.GetEntry("assets/index.json")
+    if ($null -eq $applicationAssetEntry) { throw "The application library has no assets/index.json." }
+    $applicationAssetReader = [System.IO.StreamReader]::new($applicationAssetEntry.Open())
+    try { $applicationAssetIndex = $applicationAssetReader.ReadToEnd() | ConvertFrom-Json }
+    finally { $applicationAssetReader.Dispose() }
+    foreach ($asset in @($applicationAssetIndex.assets)) {
+        if (-not [string]::IsNullOrWhiteSpace([string]$asset.id)) { [void]$applicationAssetIds.Add([string]$asset.id) }
+    }
+} finally {
+    $applicationArchive.Dispose()
+}
+$scenarioArchiveBytes = [long]0
+$sourceArchiveBytes = [long]0
 foreach ($scenario in $catalog.scenarios) {
     $packagePath = Join-Path $campaignRoot $scenario.file
     $package = Get-Item -LiteralPath $packagePath
@@ -89,6 +110,11 @@ foreach ($scenario in $catalog.scenarios) {
     if ($archiveHash -ne $scenario.archiveSha256) {
         throw "$($scenario.file) archive SHA-256 does not match provenance."
     }
+    if ($scenario.sourceArchive.archiveSha256 -notmatch '^[0-9a-f]{64}$' -or [long]$scenario.sourceArchive.bytes -le 0 -or $scenario.classicScenarioResourcesSha256 -notmatch '^[0-9a-f]{64}$') {
+        throw "$($scenario.file) source or resource provenance is incomplete."
+    }
+    $scenarioArchiveBytes += [long]$scenario.bytes
+    $sourceArchiveBytes += [long]$scenario.sourceArchive.bytes
     $archive = [System.IO.Compression.ZipFile]::OpenRead($packagePath)
     try {
         $entry = $archive.GetEntry("manifest.json")
@@ -112,11 +138,13 @@ foreach ($scenario in $catalog.scenarios) {
         try { $assetIndex = $assetReader.ReadToEnd() | ConvertFrom-Json }
         finally { $assetReader.Dispose() }
         $assetIds = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+        $assetPaths = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
         $landCicnIds = [System.Collections.Generic.HashSet[int]]::new()
         $resourceKeys = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
         $assetsByResourceKey = @{}
         foreach ($asset in @($assetIndex.assets)) {
             if (-not [string]::IsNullOrWhiteSpace([string]$asset.id)) { [void]$assetIds.Add([string]$asset.id) }
+            if (-not [string]::IsNullOrWhiteSpace([string]$asset.path)) { [void]$assetPaths.Add([string]$asset.path) }
             if ($asset.resourceType -eq "cicn" -and $null -ne $asset.resourceId) { [void]$landCicnIds.Add([int]$asset.resourceId) }
             if (-not [string]::IsNullOrWhiteSpace([string]$asset.resourceType) -and $null -ne $asset.resourceId) {
                 $resourceKey = "$($asset.resourceType):$([int]$asset.resourceId)"
@@ -129,6 +157,20 @@ foreach ($scenario in $catalog.scenarios) {
         $scenarioReader = [System.IO.StreamReader]::new($scenarioEntry.Open())
         try { $scenarioDocument = $scenarioReader.ReadToEnd() | ConvertFrom-Json }
         finally { $scenarioReader.Dispose() }
+        $contentEntry = $archive.GetEntry("content.json")
+        if ($null -eq $contentEntry) { throw "$($scenario.file) has no content.json." }
+        $contentReader = [System.IO.StreamReader]::new($contentEntry.Open())
+        try { $contentDocument = $contentReader.ReadToEnd() | ConvertFrom-Json }
+        finally { $contentReader.Dispose() }
+        if (@($contentDocument.items).Count -ne [int]$scenario.retainedScenarioContent.items -or @($contentDocument.spells).Count -ne [int]$scenario.retainedScenarioContent.spells -or @($contentDocument.races).Count -ne [int]$scenario.retainedScenarioContent.races -or @($contentDocument.castes).Count -ne [int]$scenario.retainedScenarioContent.castes) {
+            throw "$($scenario.file) definition inventory does not match its scenario-ownership lock."
+        }
+        if (@($assetIndex.assets).Count -ne [int]$scenario.retainedScenarioContent.mediaDescriptors -or $assetPaths.Count -ne [int]$scenario.retainedScenarioContent.mediaPayloads) {
+            throw "$($scenario.file) media inventory does not match its scenario-ownership lock."
+        }
+        if (@($contentDocument.races).Count -ne 0 -or ($scenario.campaignId -ne "scenario-city-of-bywater" -and @($contentDocument.castes).Count -ne 0)) {
+            throw "$($scenario.file) duplicates application-owned Race or Caste definitions."
+        }
         foreach ($program in @($scenarioDocument.programs)) {
             foreach ($instruction in @($program.instructions | Where-Object { $_.kind -eq "classicAction" -and $_.opcode -eq 62 })) {
                 $resourceId = [int]$instruction.id
@@ -186,7 +228,7 @@ foreach ($scenario in $catalog.scenarios) {
         foreach ($map in @($world.maps | Where-Object { $_.levelType -eq "land" })) {
             foreach ($cell in $map.cells) {
                 $overlayId = [string]$cell[10]
-                if (-not [string]::IsNullOrWhiteSpace($overlayId) -and (-not $assetIds.Contains($overlayId) -or [int]$cell[8] -gt 200)) {
+                if (-not [string]::IsNullOrWhiteSpace($overlayId) -and ((-not $assetIds.Contains($overlayId) -and -not $applicationAssetIds.Contains($overlayId)) -or [int]$cell[8] -gt 200)) {
                     throw "$($scenario.file) map $($map.id) has an unresolved or unseparated land overlay '$overlayId'."
                 }
                 if ([string]$cell[0] -match '^classic\.terrain\.(-?\d+)$') {
@@ -198,11 +240,6 @@ foreach ($scenario in $catalog.scenarios) {
             }
         }
         if ($scenario.campaignId -eq "scenario-city-of-bywater") {
-            $contentEntry = $archive.GetEntry("content.json")
-            if ($null -eq $contentEntry) { throw "City of Bywater has no compiled content document." }
-            $contentReader = [System.IO.StreamReader]::new($contentEntry.Open())
-            try { $contentDocument = $contentReader.ReadToEnd() | ConvertFrom-Json }
-            finally { $contentReader.Dispose() }
             $ranthogTrigger = @($world.triggers | Where-Object { $_.id -eq "Data DD:0:39" })
             $ranthogReward = @($scenarioDocument.programs | Where-Object { $_.id -eq "xap:50" })
             $cryptDoorEncounter = @($contentDocument.complexEncounters | Where-Object { $_.id -eq 4 })
@@ -243,4 +280,9 @@ foreach ($scenario in $catalog.scenarios) {
     }
 }
 
-Write-Host "Verified the 13-scenario bundle, authored player-map names, scrolling-text resources, and designated City of Bywater source snapshot."
+$applicationArchiveBytes = [long](Get-Item -LiteralPath (Join-Path $applicationRoot "realmz-classic-application-library.realmz2")).Length
+if ($scenarioArchiveBytes -ge $sourceArchiveBytes -or ($scenarioArchiveBytes + $applicationArchiveBytes) -ge $sourceArchiveBytes) {
+    throw "The separated application-plus-scenario library did not reduce the previous bundled archive footprint."
+}
+
+Write-Host "Verified the lean 13-scenario bundle, application ownership, authored player-map names, scrolling-text resources, and designated City of Bywater source snapshot."

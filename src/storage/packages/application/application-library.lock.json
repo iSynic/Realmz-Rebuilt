@@ -1,0 +1,62 @@
+{
+  "kind": "realmz2.application-library-lock",
+  "formatVersion": 1,
+  "packageId": "realmz-classic-application-library",
+  "schemaVersion": 3,
+  "schemaSha256": "05ced7b000683f53e6220b9ac8f7d41c801e7e2c78c874287c2ae694b585273d",
+  "rulesVersion": "realmz-classic-1",
+  "compilerCommit": "e7f862f0051c1ac6226c1d4def3b7da41cf51121",
+  "sourceManifestSha256": "84a9f42386f3ec1e74949d96b9205d88d57e35960779778fc2619f64d216b0cc",
+  "catalogs": {
+    "castes.json": {
+      "bytes": 87270,
+      "sha256": "123ba1e614a36ac3dc5c6eef51fe8806ae1b866738984ec7fae92208a6d52433"
+    },
+    "items.json": {
+      "bytes": 866759,
+      "sha256": "78997d37401833286a5722f6432d2d5dfb32cf4391a38bfa378f392776c79c2a"
+    },
+    "media.json": {
+      "bytes": 1658120,
+      "sha256": "b1c7438d5a5fcdbf974fe01c5284a54db2228bc33a0e0f3ef0c93b018b24f0e5"
+    },
+    "races.json": {
+      "bytes": 84159,
+      "sha256": "60dd8ee0e83839457c6db46912cd53930a69cd50a5e9abf65c93aa75d1dff6bd"
+    },
+    "sources.json": {
+      "bytes": 4404,
+      "sha256": "a21d7babba427e6cc6d1a6dc59f8086e7e3abf3bf3a6feea56a0e2ad2a1d8487"
+    },
+    "spells.json": {
+      "bytes": 317820,
+      "sha256": "54be9a37bb08b903bafd54f794f287808a8864e05688465412512cb898cc332a"
+    }
+  },
+  "packageHash": "35dd24b24879e6e4aa8e3eb54672dfba99ba6c1538a3b6760898fcd4a91e8589",
+  "contentId": "03f00f420ef39643d2a6c777ab6edc34b21d37a9130139e986d7ead016c1d414",
+  "archiveBytes": 32680522,
+  "archiveSha256": "bb42608d0bf02b2c608f3e8d7c23fb94fdba566b5c0b862f886a303dce02156d",
+  "counts": {
+    "items": 802,
+    "stockItems": 799,
+    "portableItemPlaceholders": 3,
+    "spells": 420,
+    "certifiedCorrections": 1,
+    "races": 30,
+    "castes": 30,
+    "mediaDescriptors": 1604,
+    "mediaPayloads": 1568,
+    "mediaByKind": {
+      "combat-icon": 120,
+      "icon": 964,
+      "picture": 122,
+      "portrait": 120,
+      "sound": 142,
+      "special-land-tile": 129,
+      "tileset": 7
+    },
+    "ambiguousMediaResources": 0,
+    "mediaDecodeFailures": 0
+  }
+}

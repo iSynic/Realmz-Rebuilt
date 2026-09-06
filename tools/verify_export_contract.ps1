@@ -38,7 +38,7 @@ foreach ($expected in $expectedPresets.GetEnumerator()) {
             throw "Release preset $($expected.Key) must exclude $requiredExclusion"
         }
     }
-    foreach ($requiredBundledFile in @("LICENSE", "THIRD_PARTY_NOTICES.txt", "src/ui/shared/assets/classic-application-media.json", "src/ui/shared/assets/classic-media/**", "src/storage/characters/realmz-classic-starter-characters.json")) {
+    foreach ($requiredBundledFile in @("LICENSE", "THIRD_PARTY_NOTICES.txt", "src/ui/shared/assets/classic-application-media.json", "src/ui/shared/assets/classic-media/**", "src/storage/packages/application/realmz-classic-application-library.realmz2", "src/storage/characters/realmz-classic-starter-characters.json")) {
         if ($body -notmatch ('(?m)^include_filter="[^"]*' + [regex]::Escape($requiredBundledFile) + '[^"]*"$')) {
             throw "Release preset $($expected.Key) must include $requiredBundledFile"
         }
@@ -148,7 +148,13 @@ $negativeHash = (Get-FileHash -LiteralPath (Join-Path $fixtureRoot "realmz2-synt
 if ($packageHash -ne $fixtureManifest.package_sha256 -or $negativeHash -ne $fixtureManifest.negative_fixture_sha256) {
     throw "Synthetic Realmz 2.0 fixture bytes do not match their provenance record."
 }
-if ($fixtureManifest.schema_sha256 -ne $expectedSchemaHash -or $fixtureManifest.commercial_payload -ne $false) {
+$packageBytes = (Get-Item -LiteralPath (Join-Path $fixtureRoot "realmz2-synthetic-fixture.realmz2")).Length
+$negativeBytes = (Get-Item -LiteralPath (Join-Path $fixtureRoot "realmz2-synthetic-tampered.realmz2")).Length
+$assignment = @($fixtureManifest.resource_assignments)
+if ($fixtureManifest.schema_sha256 -ne $expectedSchemaHash -or $fixtureManifest.commercial_payload -ne $false -or $fixtureManifest.fixture_id -ne "realmz2-synthetic-compiler-preservation-v30") {
     throw "Synthetic fixture provenance does not match the runtime schema/copyright contract."
+}
+if ($packageBytes -ne [long]$fixtureManifest.package_bytes -or $negativeBytes -ne [long]$fixtureManifest.negative_fixture_bytes -or $assignment.Count -ne 1 -or $assignment[0].asset_id -ne "dungeon-top-down-302" -or $assignment[0].resource_type -ne "PICT" -or $assignment[0].resource_id -ne 302) {
+    throw "Synthetic fixture provenance does not preserve its explicit scenario resource-key migration."
 }
 Write-Host "Synthetic Realmz 2.0 fixture provenance verified."

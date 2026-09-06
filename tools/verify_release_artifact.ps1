@@ -27,7 +27,7 @@ if ($plainLogText -match $forbidden) {
     throw "Release export contains an excluded development resource: $($Matches[0])"
 }
 $packagePaths = @([regex]::Matches($plainLogText, 'Storing File:\s+(res://[^\r\n]+\.realmz2)') | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
-$expectedPackagePaths = @('res://src/storage/characters/realmz-classic-character-library.realmz2')
+$expectedPackagePaths = @('res://src/storage/packages/application/realmz-classic-application-library.realmz2')
 $expectedPackagePaths += @($catalog.scenarios | ForEach-Object { "res://src/storage/packages/bundled_campaigns/$($_.file)" })
 $expectedPackagePaths = @($expectedPackagePaths | Sort-Object)
 if (($packagePaths -join '|') -ne ($expectedPackagePaths -join '|')) {

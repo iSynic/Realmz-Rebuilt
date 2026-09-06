@@ -28,10 +28,29 @@ Vormale: 440e0b9cb675f7cc68553ab3414b830bb8d1889518e095ba4e16d00805f957f5
 Modifications: tools/convert_classic_starter_characters.py decodes the pinned
 Castle character structure and emits canonical CharacterVaultRecord payloads.
 The conversion behavior is pinned to Castle source revision
-491816ad60037394f92c428e99c004494d3c28b3 and application character-library
-package SHA-256
-c7e093f46bcca49d2382d68c2995ae5ff90c0e706dbd538682b613af9b80e0bd.
+491816ad60037394f92c428e99c004494d3c28b3 and application-library package
+SHA-256
+35dd24b24879e6e4aa8e3eb54672dfba99ba6c1538a3b6760898fcd4a91e8589.
 The original files remain converter fixtures and are excluded from exports.
+
+Classic Realmz application library
+
+Realmz copyright 1994 by Tim Phillips.
+Source: the stock Realmz 7.1.2 Data ID, Data S, Data Race, Data Caste, and
+application resource files identified by the adjacent application-library lock.
+License: Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
+SPDX identifier: CC-BY-NC-SA-4.0
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+Modifications: the readable stock catalogs originate at Realmz Providence
+commit ee47810b572aa9937e9c1ec239d3d8ad1f5eabb1 and compiler commit
+e7f862f0051c1ac6226c1d4def3b7da41cf51121 produces the canonical compressed
+schema-v3 application package. Its logical package
+SHA-256 is 35dd24b24879e6e4aa8e3eb54672dfba99ba6c1538a3b6760898fcd4a91e8589;
+the archive SHA-256 is
+bb42608d0bf02b2c608f3e8d7c23fb94fdba566b5c0b862f886a303dce02156d.
+The compiler also applies the source-attributed Castle correction for Priest
+Stun (Classic spell 2712) before emitting readable catalogs or packages.
 
 Castle-distributed Realmz scenarios
 
@@ -48,9 +67,10 @@ License: Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
 SPDX identifier: CC-BY-NC-SA-4.0
 https://creativecommons.org/licenses/by-nc-sa/4.0/
 
-Modifications: Realmz Providence commit
-badcd91486f6a0ad2c042520e3f9c699c603956d compiles the native scenario data
-and resources into deterministic schema-v3 Realmz 2 packages. Exact source,
+Modifications: Realmz Providence vNext commit
+e7f862f0051c1ac6226c1d4def3b7da41cf51121 separates application-owned content
+and compiles the native scenario data and resources into deterministic,
+compressed schema-v3 Realmz 2 packages. Exact source,
 compiler, package, and archive identities are recorded in
 src/storage/packages/bundled_campaigns/castle-bundled-scenarios.provenance.json. The exact
 designated City of Bywater source-file identities are recorded in
