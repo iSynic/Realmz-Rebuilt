@@ -289,16 +289,21 @@ func _load_open_archive(archive: ZIPReader, source_path: String, progress_callba
 		return _validation_failure()
 	if trusted_receipt.is_empty():
 		_media_validator.clear_error()
-		if not _media_validator.validate_assets(asset_document, manifest["files"]):
-			_last_error = _media_validator.error_message()
-			return _validation_failure()
-		if not _media_validator.validate_presentation_capabilities(manifest, asset_document):
-			_last_error = _media_validator.error_message()
-			return _validation_failure()
-		if not _media_validator.validate_render_references(asset_document, world_document):
+		if not _media_validator.validate_package_assets(asset_document, manifest["files"]):
 			_last_error = _media_validator.error_message()
 			return _validation_failure()
 	var runtime_assets := _media_validator.construct_assets(asset_document)
+	if trusted_receipt.is_empty():
+		var effective_assets := PackageMediaComposer.compose(runtime_assets, _application_media_assets)
+		if not _media_validator.validate_effective_assets(effective_assets):
+			_last_error = _media_validator.error_message()
+			return _validation_failure()
+		if not _media_validator.validate_presentation_capabilities(manifest, runtime_assets, effective_assets):
+			_last_error = _media_validator.error_message()
+			return _validation_failure()
+		if not _media_validator.validate_render_references(effective_assets, world_document):
+			_last_error = _media_validator.error_message()
+			return _validation_failure()
 	_report_progress(progress_callback, &"constructing-content", 0, 1)
 	var runtime_content := _domain_assembler.assemble(manifest, content_document, world_document, scenario_document, runtime_assets, not trusted_receipt.is_empty(), _application_content, _application_media_assets)
 	if runtime_content == null:
