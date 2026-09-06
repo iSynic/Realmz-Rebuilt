@@ -55,11 +55,17 @@ func start(runtime: Variant) -> bool:
 	last_step = _start_target(runtime)
 	if last_step.state == SessionStep.State.FAILED:
 		return _fail(last_step.error_code, last_step.error_message)
+	if _request.target_kind == DevelopmentPreviewRequest.BATTLE:
+		var view: GameView = runtime.view()
+		var interaction := view.active_interaction_request()
+		if view.combat_view == null or view.combat_view.outcome != &"active" or interaction == null or interaction.kind != InteractionRequest.COMBAT:
+			return _fail(&"preview_target_not_ready", "Battle %d did not enter an active combat command surface." % _request.target_id)
 	return true
 
 
 func ready_fields() -> Dictionary:
 	var view: GameView = _runtime.view()
+	var interaction := view.active_interaction_request()
 	return {
 		"status": "ready",
 		"campaignId": content.campaign_id,
@@ -68,7 +74,7 @@ func ready_fields() -> Dictionary:
 		"targetId": _request.target_id,
 		"rngSeed": _request.rng_seed,
 		"revision": view.revision,
-		"pendingInteractionKind": "" if view.pending_interaction == null else String(view.pending_interaction.kind),
+		"pendingInteractionKind": "" if interaction == null else String(interaction.kind),
 	}
 
 
@@ -107,6 +113,10 @@ func _validate_target(package_content: RealmzContent, scenario_media: MediaSourc
 		if status != &"resolved":
 			return ["preview_target_unknown", "Scenario scrolling TEXT resource %d is %s." % [_request.target_id, String(status)]]
 		return []
+	if _request.target_kind == DevelopmentPreviewRequest.BATTLE:
+		if package_content.combat.battle_by_classic_id(_request.target_id) == null:
+			return ["preview_target_unknown", "Battle %d is unavailable." % _request.target_id]
+		return []
 	var trigger := package_content.scenario_records.trigger_by_id(_request.target_id)
 	if trigger == null:
 		return ["preview_target_unknown", "Action Point '%s' is unavailable." % _request.target_id]
@@ -122,6 +132,8 @@ func _start_target(runtime: Variant) -> SessionStep:
 		return runtime.apply_debug_command(SessionDebugCommand.warp(_request.target_map_id, _request.target_coordinate))
 	if _request.target_kind == DevelopmentPreviewRequest.SCROLLING_TEXT:
 		return runtime.apply_debug_command(SessionDebugCommand.start_scrolling_text(_request.target_id))
+	if _request.target_kind == DevelopmentPreviewRequest.BATTLE:
+		return runtime.apply_debug_command(SessionDebugCommand.start_battle(_request.target_id))
 	return runtime.apply_debug_command(SessionDebugCommand.start_action_point(_request.target_id))
 
 
