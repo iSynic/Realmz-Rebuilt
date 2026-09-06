@@ -134,6 +134,14 @@ godot --headless --path . --script res://tools/development_preview_probe.gd -- C
 
 The probe writes `realmz2.preview-result` format version 1 to `resultPath`. It loads the ordinary application-plus-scenario package boundary, creates a fresh deterministic in-memory party, and enters the requested target through `GameSession`. It never installs the temporary package or opens saves, settings, recent campaigns, or Character Files. The separate interactive host is responsible only for presenting that already-isolated session.
 
+To open the same isolated target in the production Realmz shell, run the export-excluded developer scene:
+
+```powershell
+godot --path . --scene res://tools/development_preview_host.tscn -- C:\absolute\temporary\preview-request.json
+```
+
+The interactive host uses the same package validator, party fixture, target registry, and result envelope as the headless probe. It starts with default presentation settings and redirects any preview-time save or settings action to scratch paths beside `resultPath`; it does not discover or install campaigns, read Character Files, seed the vault, or change recent-campaign state. The tool scene and its host script are excluded from native exports.
+
 ## Before requesting review
 
 - Re-read the nearest feature guidance and update it when ownership or contracts changed.

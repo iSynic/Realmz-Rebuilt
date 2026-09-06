@@ -10,7 +10,7 @@ Own process lifecycle, presentation-only preferences, and debug-build host facil
 - `ApplicationLifecycle` is the pure option and decision policy for those host transitions.
 - `ApplicationSettingsController` binds and persists presentation settings.
 - `DebugToolsHost` exposes typed debug commands only in debug builds.
-- `DevelopmentPreviewRequest` owns the strict developer-only request vocabulary shared with Providence; execution stays outside public release startup and never enters package or save data.
+- `DevelopmentPreviewRequest` owns the strict developer-only request vocabulary shared with Providence. `DevelopmentPreviewSession` validates the temporary package through the ordinary application-plus-scenario boundary, creates the deterministic in-memory party, and enters the named target. `DevelopmentPreviewResultWriter` owns the strict result envelope. Export-excluded tools provide the headless and interactive hosts; public release startup never selects them.
 
 ## Local Contracts
 

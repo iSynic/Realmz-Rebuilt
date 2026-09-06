@@ -5,6 +5,8 @@ extends Control
 
 ## Composes the application and translates host input into typed game operations.
 
+const DEVELOPMENT_PREVIEW_HOST_PATH := "res://tools/development_preview_application_host.gd"
+
 @onready var _status_label: Label = $GameShell/BottomRegion/BottomRow/NarrativeWell/NarrativeColumn/Facts/Status
 @onready var _smoke_button: Button = $GameShell/SmokeAction
 @onready var _map_presenter: ClassicMapPresenter = %ExplorationMap
@@ -57,10 +59,13 @@ func _ready() -> void:
 
 
 func _build_dependencies() -> void:
+	var preview_request := get_meta(&"development_preview_request") as DevelopmentPreviewRequest if has_meta(&"development_preview_request") else null
+	var preview_state_root := preview_request.result_path.get_basename() + "-session" if preview_request != null else ""
 	_package_host = PackageHostController.new()
-	if _save_host == null: _save_host = SaveHostController.new()
-	settings_repository = SettingsRepository.new()
-	_presentation_settings = settings_repository.load_settings()
+	if _save_host == null:
+		_save_host = SaveHostController.new(SaveRepository.new(preview_state_root.path_join("saves"))) if preview_request != null else SaveHostController.new()
+	settings_repository = SettingsRepository.new(preview_state_root.path_join("settings.json")) if preview_request != null else SettingsRepository.new()
+	_presentation_settings = PresentationSettings.new() if preview_request != null else settings_repository.load_settings()
 	session_controller = GameSessionController.new()
 	presentation_coordinator = PresentationCoordinator.new()
 	presentation_media = PresentationMediaController.new()
@@ -163,11 +168,24 @@ func _bind_shell_and_settings() -> void:
 	_shell_presenter.character_selection_completed.connect(_interaction_presenter.submit_character_selection)
 	_audio_presenter.music_state_changed.connect(_shell_presenter.set_music_playback_state)
 	_settings_controller = ApplicationSettingsController.new(self, _presentation_settings, settings_repository, _shell_presenter, _map_presenter, _interaction_presenter, _audio_presenter, presentation_coordinator, _dungeon_presenter, _held_movement, _debug_tools)
-	_settings_controller.bind()
+	if not has_meta(&"development_preview_request"):
+		_settings_controller.bind()
 	_settings_controller.apply_initial_settings()
 
 
 func _finish_startup() -> void:
+	var preview_request := get_meta(&"development_preview_request") as DevelopmentPreviewRequest if has_meta(&"development_preview_request") else null
+	if preview_request != null:
+		_status_label.text = "Preparing isolated Providence preview"
+		var preview_host_script := load(DEVELOPMENT_PREVIEW_HOST_PATH) as Script
+		if preview_host_script == null:
+			_status_label.text = "Preview failed • developer host is unavailable"
+			_shell_presenter.status.set_status(_status_label.text, true)
+			return
+		var preview_host := preview_host_script.new() as Node
+		add_child(preview_host)
+		preview_host.call("launch", preview_request, session_controller, presentation_coordinator, presentation_media, _shell_presenter, func(content: RealmzContent) -> void: _active_content = content)
+		return
 	_game_shell.navigator.setup_controller.character_creation.set_standalone_character_creation_available(false, "Loading the built-in Classic definitions…")
 	Callable(character_files, "begin_library_load").call_deferred()
 	_status_label.text = "Pure session boundary online"

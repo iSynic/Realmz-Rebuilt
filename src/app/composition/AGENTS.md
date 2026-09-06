@@ -16,6 +16,7 @@ Own the visible application root, explicit dependency construction, and alignmen
 - The composition root coordinates public owners without forwarding or duplicating their state.
 - Spatial layout changes read detached geometry and mutate presentation only.
 - Scene instantiation occurs at startup or route changes, never per movement step or rendered frame.
+- A developer preview arrives only as a pre-tree request meta value from the export-excluded host. `RealmzApplication` selects scratch persistence collaborators and the preview session before ordinary startup work; it does not copy preview package/session logic into the composition root.
 
 ## Work Guidance
 
