@@ -157,7 +157,7 @@ jobs:
       - name: Create draft prerelease
         uses: softprops/action-gh-release@v2
         with:
-          name: Realmz Rebuilt 0.1.0 Beta 1
+          name: Realmz Rebuilt ${{ github.ref_name }}
           draft: true
           prerelease: true
           generate_release_notes: true
