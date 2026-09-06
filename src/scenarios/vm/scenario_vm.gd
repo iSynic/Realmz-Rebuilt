@@ -322,7 +322,7 @@ func _resolve_program_frame(frame: ScenarioFrame, runtime_api: RealmzRuntimeApi)
 		if _definition.program_by_id(resolved_program_id) == null:
 			return ScenarioVmResult.failed(&"unknown_scenario_program", "Scenario program override for '%s' references unavailable program '%s'." % [original_program_id, resolved_program_id])
 		var resolved_context := frame.context()
-		resolved_context.mark_program_resolved(original_program_id)
+		resolved_context.mark_program_resolved(original_program_id, resolved_program_id)
 		frame.set_context(resolved_context)
 		frame.definition_id = resolved_program_id
 		if resolved_program_id != original_program_id:
@@ -350,7 +350,7 @@ func _execute_program_instruction(frame: ScenarioFrame, program: ScenarioProgram
 			var replacement := ScenarioFrame.new(ScenarioFrame.PROGRAM, target_id)
 			replacement.counts_as_classic_call = frame.counts_as_classic_call
 			var transfer_context := frame.context()
-			transfer_context.mark_program_transfer(program.id)
+			transfer_context.mark_program_transfer(program.id, target_id)
 			replacement.set_context(transfer_context)
 			_frames[_frames.size() - 1] = replacement
 			_append_trace({"event": "classic-transfer", "programId": target_id})

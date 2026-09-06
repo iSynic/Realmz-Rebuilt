@@ -27,6 +27,7 @@ var character_id: String = ""
 var program_resolved: bool = false
 var original_program_id: String = ""
 var origin_program_id: String = ""
+var transferred_program_id: String = ""
 
 var has_coordinate: bool = false
 var has_service_id: bool = false
@@ -93,7 +94,6 @@ func for_new_program_frame() -> ScenarioExecutionContext:
 	var result := copy()
 	result.calling_context = &""
 	result.program_resolved = false
-	result.original_program_id = ""
 	result.origin_program_id = ""
 	return result
 
@@ -135,13 +135,17 @@ func set_combatant(value: String, monster_id: int = 0, monster_traitor: bool = f
 	return self
 
 
-func mark_program_resolved(original_id: String) -> void:
+func mark_program_resolved(original_id: String, resolved_id: String) -> void:
 	program_resolved = true
-	original_program_id = original_id
+	if original_program_id.is_empty():
+		original_program_id = original_id
+	if resolved_id != original_id:
+		transferred_program_id = resolved_id
 
 
-func mark_program_transfer(origin_id: String) -> void:
+func mark_program_transfer(origin_id: String, target_id: String) -> void:
 	origin_program_id = origin_id
+	transferred_program_id = target_id
 
 
 func merged(overlay: ScenarioExecutionContext) -> ScenarioExecutionContext:
@@ -180,6 +184,7 @@ func merged(overlay: ScenarioExecutionContext) -> ScenarioExecutionContext:
 	if overlay.program_resolved: result.program_resolved = true
 	if not overlay.original_program_id.is_empty(): result.original_program_id = overlay.original_program_id
 	if not overlay.origin_program_id.is_empty(): result.origin_program_id = overlay.origin_program_id
+	if not overlay.transferred_program_id.is_empty(): result.transferred_program_id = overlay.transferred_program_id
 	return result
 
 
@@ -210,6 +215,7 @@ func value(name: String) -> Variant:
 		"_programResolved": return program_resolved
 		"originalProgramId": return original_program_id
 		"originProgramId": return origin_program_id
+		"transferredProgramId": return transferred_program_id
 	return null
 
 
@@ -239,6 +245,7 @@ func copy() -> ScenarioExecutionContext:
 	result.program_resolved = program_resolved
 	result.original_program_id = original_program_id
 	result.origin_program_id = origin_program_id
+	result.transferred_program_id = transferred_program_id
 	result.has_coordinate = has_coordinate
 	result.has_service_id = has_service_id
 	result.has_classic_monster_id = has_classic_monster_id

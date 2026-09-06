@@ -26,6 +26,7 @@ const _FIELDS: Array[String] = [
 	"serviceId",
 	"timedEncounterId",
 	"traitor",
+	"transferredProgramId",
 	"triggerId",
 	"x",
 	"y",
@@ -60,6 +61,7 @@ static func encode(context: ScenarioExecutionContext) -> Dictionary:
 	if context.program_resolved: result["_programResolved"] = true
 	if not context.original_program_id.is_empty(): result["originalProgramId"] = context.original_program_id
 	if not context.origin_program_id.is_empty(): result["originProgramId"] = context.origin_program_id
+	if not context.transferred_program_id.is_empty(): result["transferredProgramId"] = context.transferred_program_id
 	return result
 
 
@@ -108,6 +110,7 @@ static func decode(value: Variant) -> ScenarioExecutionContext:
 		result.program_resolved = true
 	if not _read_string(value, "originalProgramId", result, "original_program_id"): return null
 	if not _read_string(value, "originProgramId", result, "origin_program_id"): return null
+	if not _read_string(value, "transferredProgramId", result, "transferred_program_id"): return null
 	return result
 
 
