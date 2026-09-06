@@ -4,7 +4,6 @@ class_name CharacterVaultController
 extends RefCounted
 
 const CLASSIC_STARTER_CATALOG_PATH := "res://src/storage/characters/realmz-classic-starter-characters.json"
-const CLASSIC_CHARACTER_LIBRARY_HASH := "c7e093f46bcca49d2382d68c2995ae5ff90c0e706dbd538682b613af9b80e0bd"
 
 var _repository: CharacterVaultRepository
 var _validated_records: Dictionary = {}
@@ -69,7 +68,7 @@ func seed_if_empty(records: Array[CharacterVaultRecord]) -> bool:
 	return seeded
 
 
-func seed_classic_starters_if_empty(catalog_path: String = CLASSIC_STARTER_CATALOG_PATH, application_library_hash: String = CLASSIC_CHARACTER_LIBRARY_HASH) -> bool:
+func seed_classic_starters_if_empty(catalog_path: String = CLASSIC_STARTER_CATALOG_PATH, application_library_hash: String = ApplicationLibraryIdentity.PACKAGE_HASH) -> bool:
 	var catalog := ClassicStarterCharacterCatalog.new()
 	var records := catalog.load_records(catalog_path, application_library_hash)
 	if records.is_empty():

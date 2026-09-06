@@ -2,9 +2,9 @@
 extends RefCounted
 
 const PACKAGE_REPOSITORY := preload("res://src/storage/packages/package_repository.gd")
-const APPLICATION_PACKAGE_PATH := "res://src/storage/characters/realmz-classic-character-library.realmz2"
-const APPLICATION_PACKAGE_ID := "realmz-classic-character-library"
-const APPLICATION_PACKAGE_HASH := "c7e093f46bcca49d2382d68c2995ae5ff90c0e706dbd538682b613af9b80e0bd"
+const APPLICATION_PACKAGE_PATH := ApplicationLibraryIdentity.PATH
+const APPLICATION_PACKAGE_ID := ApplicationLibraryIdentity.CAMPAIGN_ID
+const APPLICATION_PACKAGE_HASH := ApplicationLibraryIdentity.PACKAGE_HASH
 
 
 static func load_scenario(package_path: String) -> PackageLoadResult:

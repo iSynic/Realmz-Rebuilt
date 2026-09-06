@@ -2,6 +2,8 @@
 
 Begin with `PackageRepository` when following installation or discovery, and with `PackageDomainAssembler` when following the conversion of verified JSON documents into immutable game content. The assembler coordinates public decoders and validators; it does not parse record families itself.
 
+`ApplicationLibraryIdentity` names the one committed Providence-built stock library used by the application and ordinary developer probes. Change its path, campaign ID, and package hash together when accepting a newly compiled application library.
+
 The thirteen release campaigns and their provenance records live in `bundled_campaigns/`. They are immutable package inputs discovered through the same validation and installation path as an external campaign; this directory does not grant them a runtime trust bypass.
 
 `CanonicalJson` is the one stable dictionary encoder used for package hashes and exact repository readback comparisons. Character Files and settings reuse this storage utility rather than maintaining subtly different canonical encodings.

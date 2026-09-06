@@ -2,9 +2,9 @@ extends RealmzTestCase
 
 const FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-fixture.realmz2"
 const TAMPERED_FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-tampered.realmz2"
-const CLASSIC_CHARACTER_LIBRARY_PATH: String = "res://src/storage/characters/realmz-classic-character-library.realmz2"
-const CLASSIC_CHARACTER_LIBRARY_ID: String = "realmz-classic-character-library"
-const CLASSIC_CHARACTER_LIBRARY_HASH: String = "c7e093f46bcca49d2382d68c2995ae5ff90c0e706dbd538682b613af9b80e0bd"
+const CLASSIC_CHARACTER_LIBRARY_PATH: String = ApplicationLibraryIdentity.PATH
+const CLASSIC_CHARACTER_LIBRARY_ID: String = ApplicationLibraryIdentity.CAMPAIGN_ID
+const CLASSIC_CHARACTER_LIBRARY_HASH: String = ApplicationLibraryIdentity.PACKAGE_HASH
 const INSTALL_TEST_ROOT: String = "user://realmz2-tests/package-install-schema-v3"
 const SCHEMA_REJECTION_PATH: String = "user://realmz2-tests/realmz2-schema-v2.realmz2"
 
