@@ -141,7 +141,10 @@ func respond(response: InteractionResponse) -> SessionStep:
 	if not response.is_supported_kind():
 		return SessionStep.failed(_context.current_revision(), &"invalid_interaction_response", "The response payload does not match its interaction kind.")
 	if _context.session_interaction != null:
-		return _respond_session_interaction(response)
+		var session_result := _respond_session_interaction(response)
+		if _debug_operation_active and _context.session_interaction == null:
+			_debug_operation_active = false
+		return session_result
 	var result := _context.scenario_vm.resume(response, _context.runtime_api)
 	if _debug_operation_active and result.state != ScenarioVmResult.State.WAITING:
 		_debug_operation_active = false

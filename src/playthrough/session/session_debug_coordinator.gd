@@ -28,6 +28,10 @@ func run(command: SessionDebugCommand) -> SessionCoordinatorResult:
 			return _start_action_point(command.target_id)
 		SessionDebugCommand.Kind.START_BATTLE:
 			return _start_battle(command.classic_id)
+		SessionDebugCommand.Kind.START_TREASURE:
+			return _start_treasure(command.classic_id)
+		SessionDebugCommand.Kind.START_SHOP:
+			return _start_shop(command.classic_id)
 		SessionDebugCommand.Kind.WIN_BATTLE:
 			return _win_battle()
 		SessionDebugCommand.Kind.START_ENCOUNTER:
@@ -55,6 +59,47 @@ func _start_battle(classic_id: int) -> SessionCoordinatorResult:
 		return SessionCoordinatorResult.failed(result.error_code, result.error_message)
 	result.events.append(DomainEvent.new(&"debug_battle_started", {"battleId": battle.id, "classicId": classic_id}))
 	return SessionCoordinatorResult.completed(result.events)
+
+
+func _start_treasure(classic_id: int) -> SessionCoordinatorResult:
+	if _context.state.combat != null:
+		return SessionCoordinatorResult.failed(&"debug_treasure_unavailable", "Treasure preview requires exploration.")
+	if _context.content.economy.treasure_by_classic_id(classic_id) == null:
+		return SessionCoordinatorResult.failed(&"debug_treasure_unknown", "Treasure %d is unavailable." % classic_id)
+	var instruction := ClassicActionDefinition.new(0, 10, 10, classic_id, false, [])
+	var execution := ScenarioExecutionContext.trigger(&"debug", "", _context.state.party.map_id, _context.state.party.coordinate, true)
+	var started := _context.scenario_vm.start_debug_instruction(instruction, execution)
+	if started.state == ScenarioVmResult.State.FAILED:
+		return SessionCoordinatorResult.failed(started.error_code, started.error_message)
+	var result := _context.scenario_vm.run(_context.runtime_api)
+	var events: Array[DomainEvent] = []
+	events.assign(result.events)
+	if result.state == ScenarioVmResult.State.WAITING:
+		started_ephemeral_operation = true
+		events.append(DomainEvent.new(&"debug_treasure_started", {"classicId": classic_id}))
+		return SessionCoordinatorResult.waiting(result.interaction, events)
+	return SessionCoordinatorResult.failed(result.error_code, result.error_message, events) if result.state == ScenarioVmResult.State.FAILED else SessionCoordinatorResult.completed(events)
+
+
+func _start_shop(classic_id: int) -> SessionCoordinatorResult:
+	if _context.state.combat != null:
+		return SessionCoordinatorResult.failed(&"debug_shop_unavailable", "Shop preview requires exploration.")
+	var shop := _context.content.economy.shop_by_classic_id(classic_id)
+	if shop == null:
+		return SessionCoordinatorResult.failed(&"debug_shop_unknown", "Shop %d is unavailable." % classic_id)
+	var state_checkpoint := _context.state.to_data()
+	var accept_ranges: Array[int] = [0, 0, 0, 0]
+	if not _context.state.location_services.set_active_shop(shop.id, accept_ranges):
+		return SessionCoordinatorResult.failed(&"debug_shop_configuration_failed", "Shop %d could not be configured." % classic_id)
+	var operation := _context.runtime_api.request_available_shop("debug.shop:%d:%d" % [classic_id, _context.current_revision()])
+	var result: SessionCoordinatorResult = _context.responses().begin_runtime_service(shop.id, operation)
+	if result.state != SessionCoordinatorResult.State.WAITING:
+		if not _context.state.restore_from_data(state_checkpoint):
+			return SessionCoordinatorResult.failed(&"debug_shop_rollback_failed", "Shop preview failed and could not restore the isolated session.", result.events)
+		return result
+	started_ephemeral_operation = true
+	result.events.append(DomainEvent.new(&"debug_shop_started", {"shopId": shop.id, "classicId": classic_id, "acceptRanges": accept_ranges}))
+	return result
 
 
 func _win_battle() -> SessionCoordinatorResult:

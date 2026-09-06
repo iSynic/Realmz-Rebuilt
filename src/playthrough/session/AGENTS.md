@@ -9,6 +9,7 @@ Own the public, deterministic, all-or-nothing transaction boundary around one ac
 - `GameSession` owns start, restore, intent submission, response, view, snapshot, close, revision, rollback, and exact-once commit.
 - `SessionContext` owns the current content, game state, RNG, VM, Scenario Action state, continuations, pending interaction, and disposable projection caches.
 - Intent, response, and debug coordinators dispatch validated operations and return `SessionCoordinatorResult`; they never commit independently.
+- Developer preview commands enter exact Battle, Treasure, and Shop definitions through their ordinary combat, reward, and service interactions. Direct Shop preview uses unrestricted acceptance ranges because contextual ranges remain caller-owned; all resumable preview operations suppress snapshots until their final interaction closes.
 - `intents/` owns only the common payload protocol, empty payload, and stable kind-to-payload registry; feature factories and payloads live beside their workflows.
 - Restore validators build and verify one detached candidate before `GameSession` assigns it.
 - `SessionContinuation`, its body protocol, and codec own the stable saved continuation envelope.

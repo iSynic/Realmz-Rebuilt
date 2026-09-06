@@ -11,6 +11,8 @@ const SIMPLE_ENCOUNTER := &"simple-encounter"
 const MAP_LOCATION := &"map-location"
 const SCROLLING_TEXT := &"scrolling-text"
 const BATTLE := &"battle"
+const TREASURE := &"treasure"
+const SHOP := &"shop"
 
 var package_path: String
 var package_sha256: String
@@ -54,7 +56,7 @@ static func _decode_target(value: Variant) -> Dictionary:
 	if not value is Dictionary or not value.get("kind") is String:
 		return {}
 	var kind := StringName(value["kind"])
-	if kind in [SIMPLE_ENCOUNTER, BATTLE]:
+	if kind in [SIMPLE_ENCOUNTER, BATTLE, TREASURE, SHOP]:
 		if not _has_exact_fields(value, ["kind", "id"]) or not _is_integer(value["id"]) or int(value["id"]) < 0:
 			return {}
 		return {"kind": kind, "id": int(value["id"])}

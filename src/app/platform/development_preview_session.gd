@@ -55,11 +55,9 @@ func start(runtime: Variant) -> bool:
 	last_step = _start_target(runtime)
 	if last_step.state == SessionStep.State.FAILED:
 		return _fail(last_step.error_code, last_step.error_message)
-	if _request.target_kind == DevelopmentPreviewRequest.BATTLE:
-		var view: GameView = runtime.view()
-		var interaction := view.active_interaction_request()
-		if view.combat_view == null or view.combat_view.outcome != &"active" or interaction == null or interaction.kind != InteractionRequest.COMBAT:
-			return _fail(&"preview_target_not_ready", "Battle %d did not enter an active combat command surface." % _request.target_id)
+	var readiness_error := _target_readiness_error(runtime.view())
+	if not readiness_error.is_empty():
+		return _fail(&"preview_target_not_ready", readiness_error)
 	return true
 
 
@@ -117,6 +115,14 @@ func _validate_target(package_content: RealmzContent, scenario_media: MediaSourc
 		if package_content.combat.battle_by_classic_id(_request.target_id) == null:
 			return ["preview_target_unknown", "Battle %d is unavailable." % _request.target_id]
 		return []
+	if _request.target_kind == DevelopmentPreviewRequest.TREASURE:
+		if package_content.economy.treasure_by_classic_id(_request.target_id) == null:
+			return ["preview_target_unknown", "Treasure %d is unavailable." % _request.target_id]
+		return []
+	if _request.target_kind == DevelopmentPreviewRequest.SHOP:
+		if package_content.economy.shop_by_classic_id(_request.target_id) == null:
+			return ["preview_target_unknown", "Shop %d is unavailable." % _request.target_id]
+		return []
 	var trigger := package_content.scenario_records.trigger_by_id(_request.target_id)
 	if trigger == null:
 		return ["preview_target_unknown", "Action Point '%s' is unavailable." % _request.target_id]
@@ -134,7 +140,27 @@ func _start_target(runtime: Variant) -> SessionStep:
 		return runtime.apply_debug_command(SessionDebugCommand.start_scrolling_text(_request.target_id))
 	if _request.target_kind == DevelopmentPreviewRequest.BATTLE:
 		return runtime.apply_debug_command(SessionDebugCommand.start_battle(_request.target_id))
+	if _request.target_kind == DevelopmentPreviewRequest.TREASURE:
+		return runtime.apply_debug_command(SessionDebugCommand.start_treasure(_request.target_id))
+	if _request.target_kind == DevelopmentPreviewRequest.SHOP:
+		return runtime.apply_debug_command(SessionDebugCommand.start_shop(_request.target_id))
 	return runtime.apply_debug_command(SessionDebugCommand.start_action_point(_request.target_id))
+
+
+func _target_readiness_error(view: GameView) -> String:
+	if _request.target_kind not in [DevelopmentPreviewRequest.BATTLE, DevelopmentPreviewRequest.TREASURE, DevelopmentPreviewRequest.SHOP]:
+		return ""
+	var interaction := view.active_interaction_request()
+	if _request.target_kind == DevelopmentPreviewRequest.BATTLE:
+		if view.combat_view == null or view.combat_view.outcome != &"active" or interaction == null or interaction.kind != InteractionRequest.COMBAT:
+			return "Battle %d did not enter an active combat command surface." % _request.target_id
+	elif interaction == null or interaction.kind != _expected_interaction_kind():
+		return "%s %d did not enter its ordinary interaction surface." % [String(_request.target_kind).capitalize(), _request.target_id]
+	return ""
+
+
+func _expected_interaction_kind() -> StringName:
+	return InteractionRequest.TREASURE_DISTRIBUTION if _request.target_kind == DevelopmentPreviewRequest.TREASURE else InteractionRequest.SHOP
 
 
 func _fail(code: StringName, message: String) -> bool:
