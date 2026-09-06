@@ -19,6 +19,7 @@ Own immutable compiled scenario definitions and the mutable scenario-progress st
 ## Local Contracts
 
 - Compiled definitions remain immutable after package construction.
+- `ScenarioProgramDefinition.matches_extra_action_point` recognizes only exact current or preserved donor-provenance ownership for the same unsigned native identity; it never rewrites the package's owner identity.
 - Progress state preserves the established flat save fields; its in-memory feature boundaries do not create a save migration.
 - Character selection resolves through the owning `PartyState` and may not retain duplicate or unknown identities.
 - Scenario execution and VM frames remain under `src/scenarios`; this folder contains only pure game definitions and state.

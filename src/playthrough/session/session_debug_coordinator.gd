@@ -26,6 +26,8 @@ func run(command: SessionDebugCommand) -> SessionCoordinatorResult:
 			return _workflow(SessionDebugWorkflow.restore_party(_context.workflow_context()))
 		SessionDebugCommand.Kind.START_ACTION_POINT:
 			return _start_action_point(command.target_id)
+		SessionDebugCommand.Kind.START_EXTRA_ACTION_POINT_PROGRAM:
+			return _start_extra_action_point_program(command.classic_id)
 		SessionDebugCommand.Kind.START_BATTLE:
 			return _start_battle(command.classic_id)
 		SessionDebugCommand.Kind.START_TREASURE:
@@ -46,6 +48,34 @@ func _start_action_point(trigger_id: String) -> SessionCoordinatorResult:
 	if result.state == SessionCoordinatorResult.State.WAITING:
 		started_ephemeral_operation = true
 	return result
+
+
+func _start_extra_action_point_program(native_id: int) -> SessionCoordinatorResult:
+	if _context.state.combat != null:
+		return SessionCoordinatorResult.failed(&"debug_extra_action_point_unavailable", "Extra Action Point program preview requires exploration.")
+	var program := _context.content.scenario.program_by_id("xap:%d" % native_id)
+	if program == null:
+		return SessionCoordinatorResult.failed(&"debug_extra_action_point_unknown", "Extra Action Point program %d is unavailable." % native_id)
+	if not program.matches_extra_action_point(native_id):
+		return SessionCoordinatorResult.failed(&"debug_extra_action_point_mismatch", "Extra Action Point program %d has mismatched ownership." % native_id)
+	var map := _context.content.world.map_by_id(_context.state.party.map_id)
+	if map == null or map.topology.cell_at(_context.state.party.coordinate) == null:
+		return SessionCoordinatorResult.failed(&"debug_extra_action_point_unavailable", "Extra Action Point program preview requires a playable exploration location.")
+	var execution := ScenarioExecutionContext.trigger(&"action", program.owner_id, map.id, _context.state.party.coordinate, true)
+	var started := _context.scenario_vm.start_program(program.id, execution)
+	if started.state == ScenarioVmResult.State.FAILED:
+		return SessionCoordinatorResult.failed(started.error_code, started.error_message)
+	var result := _context.scenario_vm.run(_context.runtime_api)
+	var events: Array[DomainEvent] = [DomainEvent.new(&"debug_extra_action_point_program_started", {"classicId": native_id, "programId": program.id, "context": "standalone"})]
+	events.append_array(result.events)
+	if result.state == ScenarioVmResult.State.SUSPENDED:
+		return SessionCoordinatorResult.failed(&"debug_extra_action_point_handoff_unsupported", "Standalone Extra Action Point preview cannot suspend a total-party defeat.", events)
+	if result.state == ScenarioVmResult.State.FAILED:
+		return SessionCoordinatorResult.failed(result.error_code, result.error_message, events)
+	if result.state == ScenarioVmResult.State.WAITING:
+		started_ephemeral_operation = true
+		return SessionCoordinatorResult.waiting(result.interaction, events)
+	return SessionCoordinatorResult.completed(events)
 
 
 func _start_battle(classic_id: int) -> SessionCoordinatorResult:

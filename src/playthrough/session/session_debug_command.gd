@@ -3,7 +3,7 @@
 class_name SessionDebugCommand
 extends RefCounted
 
-enum Kind { WARP, NOCLIP_STEP, RESTORE_PARTY, START_ACTION_POINT, START_ENCOUNTER, START_SCROLLING_TEXT, START_BATTLE, START_TREASURE, START_SHOP, WIN_BATTLE }
+enum Kind { WARP, NOCLIP_STEP, RESTORE_PARTY, START_ACTION_POINT, START_EXTRA_ACTION_POINT_PROGRAM, START_ENCOUNTER, START_SCROLLING_TEXT, START_BATTLE, START_TREASURE, START_SHOP, WIN_BATTLE }
 
 var kind: Kind
 var map_id: String = ""
@@ -37,6 +37,12 @@ static func restore_party() -> SessionDebugCommand:
 static func start_action_point(trigger_id: String) -> SessionDebugCommand:
 	var command := SessionDebugCommand.new(Kind.START_ACTION_POINT)
 	command.target_id = trigger_id
+	return command
+
+
+static func start_extra_action_point_program(native_id: int) -> SessionDebugCommand:
+	var command := SessionDebugCommand.new(Kind.START_EXTRA_ACTION_POINT_PROGRAM)
+	command.classic_id = native_id
 	return command
 
 

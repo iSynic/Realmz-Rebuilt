@@ -115,6 +115,13 @@ func _validate_target(package_content: RealmzContent, scenario_media: MediaSourc
 		if not owner.thief or owner.thief_success != thief.id:
 			return ["preview_target_mismatch", "Complex Encounter %d does not own Thief Encounter %d." % [_request.target_complex_encounter_id, _request.target_id]]
 		return []
+	if _request.target_kind == DevelopmentPreviewRequest.EXTRA_ACTION_POINT_PROGRAM:
+		var program := package_content.scenario.program_by_id("xap:%d" % _request.target_id)
+		if program == null:
+			return ["preview_target_unknown", "Extra Action Point program %d is unavailable." % _request.target_id]
+		if not program.matches_extra_action_point(_request.target_id):
+			return ["preview_target_mismatch", "Extra Action Point program %d has mismatched ownership." % _request.target_id]
+		return []
 	if _request.target_kind == DevelopmentPreviewRequest.MAP_LOCATION:
 		var map := package_content.world.map_by_id(_request.target_map_id)
 		if map == null or map.topology.cell_at(_request.target_coordinate) == null:
@@ -152,6 +159,8 @@ func _start_target(runtime: Variant) -> SessionStep:
 		return runtime.apply_debug_command(SessionDebugCommand.start_encounter(&"complex", _request.target_id))
 	if _request.target_kind == DevelopmentPreviewRequest.THIEF_ENCOUNTER:
 		return _start_thief_target(runtime)
+	if _request.target_kind == DevelopmentPreviewRequest.EXTRA_ACTION_POINT_PROGRAM:
+		return runtime.apply_debug_command(SessionDebugCommand.start_extra_action_point_program(_request.target_id))
 	if _request.target_kind == DevelopmentPreviewRequest.MAP_LOCATION:
 		return runtime.apply_debug_command(SessionDebugCommand.warp(_request.target_map_id, _request.target_coordinate))
 	if _request.target_kind == DevelopmentPreviewRequest.SCROLLING_TEXT:

@@ -10,6 +10,7 @@ const ACTION_POINT := &"action-point"
 const SIMPLE_ENCOUNTER := &"simple-encounter"
 const COMPLEX_ENCOUNTER := &"complex-encounter"
 const THIEF_ENCOUNTER := &"thief-encounter"
+const EXTRA_ACTION_POINT_PROGRAM := &"extra-action-point-program"
 const MAP_LOCATION := &"map-location"
 const SCROLLING_TEXT := &"scrolling-text"
 const BATTLE := &"battle"
@@ -60,8 +61,10 @@ static func _decode_target(value: Variant) -> Dictionary:
 	if not value is Dictionary or not value.get("kind") is String:
 		return {}
 	var kind := StringName(value["kind"])
-	if kind in [SIMPLE_ENCOUNTER, COMPLEX_ENCOUNTER, BATTLE, TREASURE, SHOP]:
+	if kind in [SIMPLE_ENCOUNTER, COMPLEX_ENCOUNTER, EXTRA_ACTION_POINT_PROGRAM, BATTLE, TREASURE, SHOP]:
 		if not _has_exact_fields(value, ["kind", "id"]) or not _is_integer(value["id"]) or int(value["id"]) < 0:
+			return {}
+		if kind == EXTRA_ACTION_POINT_PROGRAM and int(value["id"]) > 4_294_967_295:
 			return {}
 		return {"kind": kind, "id": int(value["id"])}
 	if kind == THIEF_ENCOUNTER:
