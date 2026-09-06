@@ -101,6 +101,10 @@ func _validate_target(package_content: RealmzContent, scenario_media: MediaSourc
 		if package_content.scenario_records.simple_encounter_by_id(_request.target_id) == null:
 			return ["preview_target_unknown", "Simple Encounter %d is unavailable." % _request.target_id]
 		return []
+	if _request.target_kind == DevelopmentPreviewRequest.COMPLEX_ENCOUNTER:
+		if package_content.scenario_records.complex_encounter_by_id(_request.target_id) == null:
+			return ["preview_target_unknown", "Complex Encounter %d is unavailable." % _request.target_id]
+		return []
 	if _request.target_kind == DevelopmentPreviewRequest.MAP_LOCATION:
 		var map := package_content.world.map_by_id(_request.target_map_id)
 		if map == null or map.topology.cell_at(_request.target_coordinate) == null:
@@ -134,6 +138,8 @@ func _validate_target(package_content: RealmzContent, scenario_media: MediaSourc
 func _start_target(runtime: Variant) -> SessionStep:
 	if _request.target_kind == DevelopmentPreviewRequest.SIMPLE_ENCOUNTER:
 		return runtime.apply_debug_command(SessionDebugCommand.start_encounter(&"simple", _request.target_id))
+	if _request.target_kind == DevelopmentPreviewRequest.COMPLEX_ENCOUNTER:
+		return runtime.apply_debug_command(SessionDebugCommand.start_encounter(&"complex", _request.target_id))
 	if _request.target_kind == DevelopmentPreviewRequest.MAP_LOCATION:
 		return runtime.apply_debug_command(SessionDebugCommand.warp(_request.target_map_id, _request.target_coordinate))
 	if _request.target_kind == DevelopmentPreviewRequest.SCROLLING_TEXT:
@@ -148,7 +154,7 @@ func _start_target(runtime: Variant) -> SessionStep:
 
 
 func _target_readiness_error(view: GameView) -> String:
-	if _request.target_kind not in [DevelopmentPreviewRequest.BATTLE, DevelopmentPreviewRequest.TREASURE, DevelopmentPreviewRequest.SHOP]:
+	if _request.target_kind not in [DevelopmentPreviewRequest.COMPLEX_ENCOUNTER, DevelopmentPreviewRequest.BATTLE, DevelopmentPreviewRequest.TREASURE, DevelopmentPreviewRequest.SHOP]:
 		return ""
 	var interaction := view.active_interaction_request()
 	if _request.target_kind == DevelopmentPreviewRequest.BATTLE:
@@ -160,7 +166,12 @@ func _target_readiness_error(view: GameView) -> String:
 
 
 func _expected_interaction_kind() -> StringName:
-	return InteractionRequest.TREASURE_DISTRIBUTION if _request.target_kind == DevelopmentPreviewRequest.TREASURE else InteractionRequest.SHOP
+	match _request.target_kind:
+		DevelopmentPreviewRequest.COMPLEX_ENCOUNTER:
+			return InteractionRequest.WORD_AND_ACTION
+		DevelopmentPreviewRequest.TREASURE:
+			return InteractionRequest.TREASURE_DISTRIBUTION
+	return InteractionRequest.SHOP
 
 
 func _fail(code: StringName, message: String) -> bool:
