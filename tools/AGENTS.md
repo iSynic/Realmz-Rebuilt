@@ -7,6 +7,8 @@ Own reproducible local verification, contract checks, fixture tooling, and relea
 ## Ownership
 
 - Headless Godot verification and architecture boundary guards.
+- `runtime_testing` owns the local STDIO MCP/CLI service and engine-neutral testing contract. It discovers authenticated opt-in loopback endpoints without exposing credentials, rejects live mutation independently of the engine, and keeps fixture persistence and evidence outside ordinary player storage and Git. It never changes Providence's preview wire contract or injects tooling into an uninstrumented process.
+- `runtime_testing_probe.gd` starts the real read-only adapter with an empty session and no application persistence for headless transport diagnostics. It cannot establish gameplay or UI parity.
 - `verify_architecture.ps1` enforces the dependency matrix, including the playthrough layer, rejects live protocol dictionary rematerialization outside strict request/continuation/execution-context serializers and explicitly detached event serialization sites, rejects the retired dictionary interaction/targeting command bus, keeps restore validation out of `GameSession`, prevents playthrough coordinators from regaining an owner/private-result backchannel or routing result construction through `SessionContext`, keeps wearable equipment behavior in `EquipmentRules` instead of an `InventoryRules` forwarding surface, keeps topology, trigger, and exploration behavior in direct `WorldState` collaborators instead of aggregate forwarding methods, requires composed party-setup responsibilities, prevents storage media catalogs from crossing the app-view boundary, and keeps route-domain rendering/controllers out of `ScreenNavigator` behind the production `screen_navigator.tscn` workspace and overlay hosts.
 - Package determinism/schema mirror checks and oracle harness launchers as introduced.
 - `package_probe.gd` loads the committed application library before exercising the public application-plus-scenario package repository and session boundary for an arbitrary local `.realmz2` package without installing or committing it; optional application package, ID, and hash arguments let the Providence-Rebuilt compatibility lane verify a candidate application library without changing committed runtime identity. Its output separates repository progress phases, public package load, session start, view construction, and representative movement timings.
@@ -75,4 +77,5 @@ Own reproducible local verification, contract checks, fixture tooling, and relea
 
 ## Child DOX Index
 
+- `runtime_testing/AGENTS.md` owns the reusable developer testing service, locked Node dependencies, local client setup, transport, fixture/journey orchestration, and normalized comparison.
 - `ui-assets/AGENTS.md` owns exact-commit Classic control import, pinned font acquisition, deterministic slate derivation, and asset manifests.

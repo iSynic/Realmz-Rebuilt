@@ -47,6 +47,7 @@ Own current architecture, ADRs, package/save contracts, fidelity decisions, orac
 - `ui-strategy.md` owns the canonical visual language, responsive profiles, route/screen matrix, scaling, input, accessibility, media, and fidelity boundaries.
 - `ui-visual-audit.md` owns the complete player-visible screen/state inventory, Castle/Remake design leads, target composition decisions, media opportunities, and phased visual-remediation queue.
 - `runtime-performance.md` owns the current startup, package-prewarm, vault-insertion, and rendered-overworld performance evidence, acceptance boundaries, and machine-specific measured results.
+- `runtime-testing.md` owns the developer-only game-aware testing protocol, isolated-fixture/live-access boundary, proof modes, and normalized Castle comparison contract.
 - `builders-manual.md` is the public, newcomer-facing map of repository ownership, command flow, Godot scene practice, and maintainer workflow.
 - `maintainer-acceptance.md` owns the public, hint-free newcomer exercise and its evidence ledger for the six required architecture journeys.
 - `architecture-migration.md` records the completed current architecture, its enforced limits, verified baseline, and remaining acceptance without preserving a chronological implementation diary.

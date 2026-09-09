@@ -108,6 +108,10 @@ Reject a core transaction/projection regression exceeding both 5 percent and 0.2
 
 Core timing does not prove draw latency, a two-cell loop does not prove traversal, and automated input does not prove perceived responsiveness. Match the evidence to the user-visible claim.
 
+## Runtime testing
+
+Use the developer-only [Runtime Testing Bridge](runtime-testing.md) for game-aware observations, validated checkpoint export, and isolated fixture workflows. Live access is observation-only; automated control requires a fixture. Keep ordinary gameplay, actual UI input, and direct AP/XAP/encounter invocation as separate evidence modes. Local MCP registration and CLI commands belong to `tools/runtime_testing`; neither uses a hosted service or OpenAI API key. An uninstrumented running adventure cannot be attached to or restarted by the bridge.
+
 ## Providence preview requests
 
 Providence may compile an unsaved revision to a temporary `.realmz2` and ask a source checkout of Rebuilt to validate and enter one target without installing the package. The version-one request is strict JSON:

@@ -11,6 +11,7 @@ Own the Godot composition root and translate host input/output into the pure ses
 - `navigation` owns named host input routing and the complete application input-action vocabulary.
 - `session` owns the replaceable `GameSession`, adventure persistence coordination, Character Files and vault workflows, and combat-response translation.
 - `platform` owns process and adventure lifecycle, presentation settings, and debug-build tooling.
+- `RuntimeTestingHost` connects the explicitly opted-in developer loopback endpoint to injected application owners. Live endpoints reject mutation before dispatch and export only detached observations or the public validated snapshot contract. Network framing never executes gameplay outside the main-thread boundary; release startup cannot enable testing.
 - Application and host collaborators address `GameShellStatusController`, `GameShellCommandController`, the persistent roster, and the navigator's setup/content controllers as their actual public owners; `GameShell` does not forward those APIs.
 
 - `StartupFrontDoor` owns immediate process entry and background construction of `RealmzApplication`; `RealmzApplication` constructs the gameplay dependency graph explicitly.

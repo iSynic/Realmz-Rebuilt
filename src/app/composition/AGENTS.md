@@ -17,6 +17,7 @@ Own the visible application root, explicit dependency construction, and alignmen
 - Spatial layout changes read detached geometry and mutate presentation only.
 - Scene instantiation occurs at startup or route changes, never per movement step or rendered frame.
 - A developer preview arrives only as a pre-tree request meta value from the export-excluded host. `RealmzApplication` selects scratch persistence collaborators and the preview session before ordinary startup work; it does not copy preview package/session logic into the composition root.
+- The opt-in runtime testing host receives the active session controller, content identity accessor, and host readiness accessor explicitly after composition. Disabled and release starts create no listener; testing cannot discover private collaborators through a service locator.
 
 ## Work Guidance
 

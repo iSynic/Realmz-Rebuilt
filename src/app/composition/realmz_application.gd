@@ -55,6 +55,12 @@ func _ready() -> void:
 	_bind_debug_and_movement()
 	_bind_combat_and_interactions()
 	_bind_shell_and_settings()
+	if RuntimeTestingHost.live_requested():
+		var testing := RuntimeTestingHost.new()
+		add_child(testing)
+		var status := testing.bind(session_controller, func() -> RealmzContent: return _active_content, func() -> Dictionary: return {"explorationInput": accepts_exploration_input(), "routeInput": accepts_route_input(), "combatPlayback": presentation_coordinator.is_combat_playback_active(), "hostInteraction": lifecycle_host.has_active_interaction()})
+		if status != OK:
+			printerr("Runtime testing endpoint unavailable: %s" % error_string(status))
 	_finish_startup()
 
 

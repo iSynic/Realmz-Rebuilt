@@ -1,8 +1,10 @@
 .godot/
 .mcp.json
+.codex/
 *.log
 build/
 dist/
+node_modules/
 artifacts/
 test-results/
 release-evidence/
