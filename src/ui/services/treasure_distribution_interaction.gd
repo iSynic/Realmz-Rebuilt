@@ -146,7 +146,7 @@ func _build_item_inspector(body: TreasureRequestBody) -> void:
 
 
 func _update_loot_columns(scroll: ScrollContainer, grid: GridContainer) -> void:
-	if scroll == null or grid == null or _compact:
+	if scroll == null or grid == null or _compact or not is_inside_tree():
 		return
 	var host := get_parent() as Control
 	var viewport_width := get_viewport_rect().size.x
@@ -371,7 +371,7 @@ func _item_by_id(instance_id: String) -> InteractionRequestValue.RewardItem:
 
 
 func _item_texture(item: InteractionRequestValue.RewardItem) -> Texture2D:
-	if _media == null or item == null or item.icon_id <= 0:
+	if _media == null or item == null or item.icon_id == 0:
 		return null
 	return _media.image_texture(_media.asset_by_resource(item.icon_resource_type, item.icon_id))
 

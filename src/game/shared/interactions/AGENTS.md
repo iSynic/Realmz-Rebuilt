@@ -19,6 +19,7 @@ Feature-specific request bodies live under their character, economy, combat, or 
 - Bodies extend `InteractionRequestBody` and remain pure values.
 - Serialized kinds, fields, versions, and optional-field presence remain unchanged.
 - Request decoding remains strict and rejects unknown or mixed fields.
+- Optional item icon keys are paired exact resource type and signed nonzero ID values. Inventory, Shop stock, and Treasure records preserve both fields through decoding and serialization; zero denotes an absent key, never a positive-only admission rule.
 - Bodies never retain session state, Nodes, repositories, media bytes, or live continuations.
 - New callers use the top-level body class directly; do not add nested compatibility aliases to `InteractionRequest`.
 - Callers address the feature decoder that owns a nested record. Do not reintroduce a central forwarding value decoder.

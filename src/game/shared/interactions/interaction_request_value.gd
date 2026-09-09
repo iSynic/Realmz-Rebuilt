@@ -68,7 +68,7 @@ class InventoryItem:
 
 	func to_data() -> Dictionary:
 		var data := {"instanceId": instance_id, "itemId": item_id, "name": name, "identified": identified, "equipped": equipped, "charges": charges, "sellPrice": sell_price, "canSell": can_sell, "sellReason": sell_reason, "canIdentify": can_identify, "identifyReason": identify_reason, "description": description, "weight": weight, "facts": facts.map(func(value: ItemDetailFact) -> Dictionary: return value.to_data())}
-		if icon_id > 0:
+		if icon_id != 0:
 			data["iconResourceType"] = icon_resource_type
 			data["iconId"] = icon_id
 		return data
@@ -133,7 +133,7 @@ class ShopStock:
 	func to_data() -> Dictionary:
 		var data := {"stockKey": stock_key, "index": index, "itemId": item_id, "name": name, "quantity": quantity, "buyPrice": buy_price, "canBuy": can_buy, "buyReason": buy_reason, "description": description, "weight": weight, "facts": facts.map(func(value: ItemDetailFact) -> Dictionary: return value.to_data())}
 		if not category.is_empty(): data["category"] = String(category)
-		if icon_id > 0:
+		if icon_id != 0:
 			data["iconResourceType"] = icon_resource_type
 			data["iconId"] = icon_id
 		return data
@@ -329,7 +329,7 @@ class RewardItem:
 	func to_data() -> Dictionary:
 		var data := {"instanceId": instance_id, "definitionId": definition_id, "name": name, "charges": charges, "identified": identified}
 		if has_magical: data["magical"] = magical
-		if icon_id > 0:
+		if icon_id != 0:
 			data["iconResourceType"] = icon_resource_type
 			data["iconId"] = icon_id
 		data["description"] = description
