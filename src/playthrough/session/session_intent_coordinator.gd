@@ -331,16 +331,17 @@ func _commit_character_draft(events: Array[DomainEvent] = []) -> SessionCoordina
 func _service_action(payload: EconomyIntentPayloads.Service) -> SessionCoordinatorResult:
 	if payload.action != &"enter":
 		return SessionCoordinatorResult.rejected(&"unknown_service_action", "Only entering an available service is implemented through this intent.")
+	var events: Array[DomainEvent] = []
 	if payload.service_id == "realmz.service.temple":
 		if not _context.state.location_services.temple_available:
 			return SessionCoordinatorResult.rejected(&"service_unavailable", "The selected temple is not available at this location.")
-		return _context.scenario().start_application_hook(ScenarioApplicationHooks.TEMPLE, &"service", payload.service_id, [])
+		return _context.scenario().start_application_hook(ScenarioApplicationHooks.TEMPLE, &"service", payload.service_id, events)
 	if payload.service_id == "realmz.service.bank":
 		return _open_contextual_service(payload.service_id)
 	if payload.service_id == _context.state.location_services.active_shop_id:
 		if payload.service_id.is_empty() or _context.content.economy.shop_by_id(payload.service_id) == null:
 			return SessionCoordinatorResult.rejected(&"service_unavailable", "The selected shop is not available at this location.")
-		return _context.scenario().start_application_hook(ScenarioApplicationHooks.SHOP, &"service", payload.service_id, [])
+		return _context.scenario().start_application_hook(ScenarioApplicationHooks.SHOP, &"service", payload.service_id, events)
 	return SessionCoordinatorResult.rejected(&"service_unavailable", "The selected service is not available at this location.")
 
 
