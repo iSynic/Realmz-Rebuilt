@@ -38,6 +38,441 @@
   ],
   "recipes": [
     {
+      "id": "wrath-chest-unarmed-lock-failure",
+      "application": {
+        "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
+        "packageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad",
+        "archiveSha256": "bf1ff5de1d6fc5bd1d5ffff8d582797dfab885acfd9b20b4e02ce9040421e150",
+        "starterCatalog": "src/storage/characters/realmz-classic-starter-characters.json"
+      },
+      "package": {
+        "campaignId": "scenario-wrath-of-the-mind-lords",
+        "path": "src/storage/packages/bundled_campaigns/scenario-wrath-of-the-mind-lords.realmz2",
+        "packageHash": "1328d8a443d979b38ba2c5ecdeea9342a03153fed0c079d761df8ee53c53a894",
+        "archiveSha256": "a032141f8d22fe2aa81cd416b8cf9a6509e3ae7d01d5640fdfb8a7d67041187b"
+      },
+      "baselineLocation": {
+        "mapId": "dungeon:1",
+        "x": 33,
+        "y": 14
+      },
+      "baselineCheckpoint": {
+        "path": "fixtures/b50e0685ccb0ee547430a40804e5cb0a/checkpoints/2a980a00-523b-4daf-b5ae-8f6644799d85.r2save",
+        "fileSha256": "a6d47c9931c433bc34449d588aded5534df0a51fd0350bb839a54ea0fcd73a68",
+        "preparation": "Successful detection/disarm and ordinary replacement reentry from wrath-chest-detect-disarm-replacement. Complex 29 pending through AP 44 -> XAP 927; uninjured named starters, Silver Leaf has already gained 1800 disarm XP, four minutes, RNG 853/state 1302711690. No chest treasure yet."
+      },
+      "target": {
+        "actionPoint": "Data DDD:1:44",
+        "location": {
+          "mapId": "dungeon:1",
+          "x": 33,
+          "y": 14
+        },
+        "replacementXap": 927,
+        "complexEncounter": 29,
+        "thiefEncounter": 19,
+        "treasureId": 53
+      },
+      "proofModes": [
+        "live-route",
+        "actual-ui-control",
+        "typed-interaction",
+        "restored-continuation"
+      ],
+      "workflowIds": [
+        "classic.scenario.choose-response",
+        "classic.scenario.trigger-action-point",
+        "classic.system.save-game"
+      ],
+      "expected": [
+        "Actual Skills, two Next controls and Pick Lock 47 retain the owning Complex 29/Thief 19 boundary. Typed frame 0 leaves all six positions at 61, below yellow 106, and consumes no tumbler draw.",
+        "With no trap armed, authored failure code 4 selects Complex 29 result 3 instead of the trap-warning interception. Its random message 3..6 consumes one draw and shows message 5; acknowledgement reaches Keep Codes and returns to dungeon 1 (33,14).",
+        "Pick Lock becomes unavailable for Thief 19; no XP, damage, spell, reward, chance 0 mutation or new AP replacement occurs. The previously disarmed Thief 18 flags and XAP 927 replacement remain unchanged.",
+        "Final clock remains 4 minutes, RNG 854/state 1079592665, and one completed Complex 29 attempt is recorded. Repeated complete six-input routes match from equivalent saved caller baselines."
+      ],
+      "result": "passed",
+      "evidence": "jobs/f04b6444abd29df845c93ddad4e371cf/evidence.json",
+      "otherEvidence": [
+        "jobs/5f5c64e3ec1a4f89a4e4f6e226449553/evidence.json: equivalent baseline and equal complete six-input repeat"
+      ],
+      "remaining": [
+        "Source-adjudicated Rebuilt outcome, not native Castle Wrath or campaign certification. This unarmed failure follows authored failure code 4; the armed-trap interception has its own recipe. Pending-tumbler restore, later retries with other abilities and alternative reward methods remain separate."
+      ],
+      "steps": [
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlId": "7a34172f161a9ef4d647fb96"
+          },
+          "expect": {
+            "interactionKind": "thief_encounter"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlId": "feb8d61886f66aba88f4a445"
+          },
+          "expect": {
+            "interactionKind": "thief_encounter"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlId": "feb8d61886f66aba88f4a445"
+          },
+          "expect": {
+            "interactionKind": "thief_encounter"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "Pick Lock  47"
+          },
+          "expect": {
+            "interactionKind": "pick_lock"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "pick_lock",
+              "body": {
+                "frameIndex": 0
+              }
+            }
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": null,
+            "location": {
+              "mapId": "dungeon:1",
+              "x": 33,
+              "y": 14
+            }
+          },
+          "capture": true
+        }
+      ]
+    },
+    {
+      "id": "wrath-chest-lock-reward-and-reentry",
+      "application": {
+        "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
+        "packageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad",
+        "archiveSha256": "bf1ff5de1d6fc5bd1d5ffff8d582797dfab885acfd9b20b4e02ce9040421e150",
+        "starterCatalog": "src/storage/characters/realmz-classic-starter-characters.json"
+      },
+      "package": {
+        "campaignId": "scenario-wrath-of-the-mind-lords",
+        "path": "src/storage/packages/bundled_campaigns/scenario-wrath-of-the-mind-lords.realmz2",
+        "packageHash": "1328d8a443d979b38ba2c5ecdeea9342a03153fed0c079d761df8ee53c53a894",
+        "archiveSha256": "a032141f8d22fe2aa81cd416b8cf9a6509e3ae7d01d5640fdfb8a7d67041187b"
+      },
+      "baselineLocation": {
+        "mapId": "dungeon:1",
+        "x": 33,
+        "y": 14
+      },
+      "baselineCheckpoint": {
+        "path": "fixtures/b50e0685ccb0ee547430a40804e5cb0a/checkpoints/2a980a00-523b-4daf-b5ae-8f6644799d85.r2save",
+        "fileSha256": "a6d47c9931c433bc34449d588aded5534df0a51fd0350bb839a54ea0fcd73a68",
+        "preparation": "Successful detection/disarm and ordinary replacement reentry from wrath-chest-detect-disarm-replacement. Complex 29 pending through AP 44 -> XAP 927; uninjured named starters, Silver Leaf has already gained 1800 disarm XP, four minutes, RNG 853/state 1302711690. No chest treasure yet."
+      },
+      "target": {
+        "actionPoint": "Data DDD:1:44",
+        "location": {
+          "mapId": "dungeon:1",
+          "x": 33,
+          "y": 14
+        },
+        "replacementXap": 927,
+        "complexEncounter": 29,
+        "thiefEncounter": 19,
+        "treasureId": 53
+      },
+      "proofModes": [
+        "live-route",
+        "actual-ui-control",
+        "typed-interaction",
+        "restored-continuation"
+      ],
+      "workflowIds": [
+        "classic.scenario.choose-response",
+        "classic.scenario.trigger-action-point",
+        "classic.system.save-game",
+        "classic.rewards.treasure-distribution"
+      ],
+      "expected": [
+        "Actual Skills and two Next controls select Silver Leaf. Actual Pick Lock 47 opens six tumblers, yellow 106/green 153, without a preview RNG draw. Typed frame 61 produces [159,153,168,111,146,166], consumes 486 draws and awards 1800 XP only to Silver Leaf.",
+        "Thief 19 success code 2 enters the owning Complex 29 result 1, shows message 804, then opens Treasure 53 after acknowledgement. The eight authored item definitions are 996,989,602,611,608,610,680,917 with charges [-1,-1,3,3,6,4,-1,-1]; zero reward XP and denominations.",
+        "Actual Kevlar recipient selection followed by each item control assigns all eight unique reward instances once. Health, SP, existing inventory and wealth remain unchanged; unknown item facts remain hidden.",
+        "AP 44 chance remains unchanged while Treasure is pending. Actual Done alone commits chance 0 and Keep Codes. West/east ordinary reentry produces no interaction or duplicate treasure; replacement XAP 927 remains recorded.",
+        "Clock boundaries remain 4 minutes through Done, then 6 and 7 after west/east movement. RNG remains 1339/state 1013196414 from successful lock resolution onward. Silver Leaf finishes at -3629 XP; Kevlar retains 14 items.",
+        "All eighteen repeated route outcomes compare equal from equivalent baselines. Restoring pending Treasure reproduces all twelve suffix gameplay/RNG checkpoints exactly."
+      ],
+      "result": "passed",
+      "evidence": "jobs/288ec00215c202043bc2fe04b46db190/evidence.json",
+      "otherEvidence": [
+        "jobs/fc9caf27fe90b68991a1373afdad1336/evidence.json: equivalent baseline and equal eighteen-input repeat",
+        "jobs/e5ce87b3db9245d46353add83a153aa7/evidence.json: twelve-input suffix from checkpoints/693cfe0d-319a-493f-8040-fa8dd25bc221.r2save in the same fixture, SHA256 f246c9f0810dfc771f7b0c7cc571e1533d0018ed48ae69bd293bd11bf9f10cbc; every suffix game/RNG state equals the full route",
+        "jobs/3e8e1f12b9c01fdf1ff530baa72cba96/evidence.json: exploratory typed response arrived after automatic timer resolution; retained as recipe timing failure, not a runtime defect",
+        "jobs/2c4a4989cdb5c748a0ed7d342f61aa8f/evidence.json: exploratory redundant recipient click after the last item was unavailable; cancelled, then replaced by explicit recipient-first recipe"
+      ],
+      "remaining": [
+        "Source-adjudicated Rebuilt evidence, not native Castle Wrath or campaign certification. Typed frame 61 is not timed mouse input. Successful spell/item alternatives, unavailable Open Lock UI selection and pending-tumbler restoration remain distinct; no mana recovery or fixture state edit was used."
+      ],
+      "steps": [
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlId": "7a34172f161a9ef4d647fb96"
+          },
+          "expect": {
+            "interactionKind": "thief_encounter"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlId": "feb8d61886f66aba88f4a445"
+          },
+          "expect": {
+            "interactionKind": "thief_encounter"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlId": "feb8d61886f66aba88f4a445"
+          },
+          "expect": {
+            "interactionKind": "thief_encounter"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "Pick Lock  47"
+          },
+          "expect": {
+            "interactionKind": "pick_lock"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "pick_lock",
+              "body": {
+                "frameIndex": 61
+              }
+            }
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "treasure_distribution"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlId": "1b1f1723fffcc9375f93016f"
+          },
+          "expect": {
+            "interactionKind": "treasure_distribution"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlId": "61bca31495067520377e494e"
+          },
+          "expect": {
+            "interactionKind": "treasure_distribution"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlId": "63e2b92eed99d892ea75ec1d"
+          },
+          "expect": {
+            "interactionKind": "treasure_distribution"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlId": "da4adaa6f7bdfd1bf22b61aa"
+          },
+          "expect": {
+            "interactionKind": "treasure_distribution"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlId": "8622d395176ef15dc3993167"
+          },
+          "expect": {
+            "interactionKind": "treasure_distribution"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlId": "7d147e5e82971b6ad3ffcf1a"
+          },
+          "expect": {
+            "interactionKind": "treasure_distribution"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlId": "2421d31c4446476c9481c1b0"
+          },
+          "expect": {
+            "interactionKind": "treasure_distribution"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlId": "d380b606387378d0e28cc310"
+          },
+          "expect": {
+            "interactionKind": "treasure_distribution"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlId": "8c7a3b596e13da7605d9b355"
+          },
+          "expect": {
+            "interactionKind": "treasure_distribution"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "Done"
+          },
+          "expect": {
+            "interactionKind": null
+          },
+          "capture": true
+        },
+        {
+          "command": "act",
+          "params": {
+            "action": "move",
+            "arguments": {
+              "dx": -1,
+              "dy": 0
+            }
+          },
+          "expect": {
+            "interactionKind": null,
+            "location": {
+              "mapId": "dungeon:1",
+              "x": 32,
+              "y": 14
+            }
+          },
+          "capture": true
+        },
+        {
+          "command": "act",
+          "params": {
+            "action": "move",
+            "arguments": {
+              "dx": 1,
+              "dy": 0
+            }
+          },
+          "expect": {
+            "interactionKind": null,
+            "location": {
+              "mapId": "dungeon:1",
+              "x": 33,
+              "y": 14
+            }
+          },
+          "capture": true
+        }
+      ]
+    },
+    {
       "id": "wrath-chest-failed-disarm-trap-and-back",
       "application": {
         "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
@@ -7001,14 +7436,14 @@
   ],
   "nextSelection": [
     {
-      "priority": "untested-high-risk",
-      "family": "remaining-bundled-scenario-representatives",
+      "priority": "meaningful-variant",
+      "family": "owner-bound-pending-tumbler-restoration",
       "candidateOnly": true,
       "campaignId": "scenario-wrath-of-the-mind-lords",
       "packageHash": "1328d8a443d979b38ba2c5ecdeea9342a03153fed0c079d761df8ee53c53a894",
       "archiveSha256": "a032141f8d22fe2aa81cd416b8cf9a6509e3ae7d01d5640fdfb8a7d67041187b",
-      "expected": "Wrath AP44 detection/disarm, replacement XAP927/Complex29 reentry and armed-trap failure with warning save/resume are accepted. Next exercise the lock/reward outcomes from the saved uninjured caller baseline; Trevor's starter spell points are below Open Lock's cost, so unavailable casting and any recovery preparation must remain explicit. AOGM contextual outcomes are accepted; reported failures still take priority.",
-      "remaining": "Recipes represent all thirteen bundled scenarios under their recorded package/library identities, not corpus certification. Wrath chest reward and unarmed failure-code dispatch remain untested, as do pooled-payment edges, present-ally outcomes and other caller contexts. Native CPU/dungeon performance, complete combat replay and full AOGM/War certification remain separate."
+      "expected": "Wrath AP44 detection/disarm, replaced XAP927/Complex29, armed-trap failure, unarmed failureCode4, eight-item reward and ordinary zero-chance reentry are accepted. Next restore the retained pending-tumbler checkpoint in this same owner-bound caller and compare the timer/selected-frame continuation; then prioritize War AP33 pooled-payment edges over new numeric-only variants. Both reuse existing source analysis and baselines. Reported failures still take priority.",
+      "remaining": "Recipes represent all thirteen bundled scenarios under their recorded package/library identities, not corpus certification. Pending-tumbler restore, successful spell/item alternatives, unavailable Open Lock UI selection, pooled-payment edges and present-ally outcomes remain distinct future coverage. Native CPU/dungeon performance, complete combat replay and full AOGM/War certification remain separate."
     }
   ]
 }
