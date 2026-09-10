@@ -38,6 +38,186 @@
   ],
   "recipes": [
     {
+      "id": "trouble-door-saved-skill-results",
+      "application": {
+        "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
+        "packageHash": "45298c295fc784b528f4219d6ceb0454cb482d894b66440e529d7763e7cb0036",
+        "archiveSha256": "e85ae0aca72fa6642ef66af8745ceb24446459598efcb1075cd8f5a4cce36012",
+        "starterCatalog": "src/storage/characters/realmz-classic-starter-characters.json"
+      },
+      "package": {
+        "campaignId": "scenario-trouble-in-the-sword-lands",
+        "path": "src/storage/packages/bundled_campaigns/scenario-trouble-in-the-sword-lands.realmz2",
+        "packageHash": "2912667314a7700d74b2a517253a31d3b610cba99507275fc0f8542eaaf803a7",
+        "archiveSha256": "aef55f89f413e95d7710b138d4a399e3dcd9fca3a8de49451761ce8da5969b7d"
+      },
+      "baselineLocation": {
+        "mapId": "land:1",
+        "x": 61,
+        "y": 43
+      },
+      "target": {
+        "actionPoint": "Data DD:1:7",
+        "location": {
+          "mapId": "land:1",
+          "x": 62,
+          "y": 43
+        },
+        "complexEncounterId": 25,
+        "thiefEncounterId": 23
+      },
+      "proofModes": [
+        "live-route",
+        "ordinary-movement",
+        "actual-ui-control",
+        "typed-interaction",
+        "restored-continuation"
+      ],
+      "workflowIds": [
+        "classic.system.save-game"
+      ],
+      "expected": [
+        "Two complete eight-step routes approach AP 7, use actual Skills and Force Lock, submit typed frame zero, acknowledge the failed owner result, and re-enter the retained door from the east. Initial/per-step complete gameplay and RNG states, pending requests and VM/RNG trace deltas match exactly.",
+        "Frame zero fails with all four positions at 56 and commits no minigame draw. Thief 23's failure text zero adds no empty acknowledgement; owner result 2 requests sound 30005 and immediately shows positive message 259. Its acknowledgement executes fixed opcode-61 shift (+1,0) to land:1 (63,43), then Keep, without additional time or RNG. No AP chance override or disablement is created.",
+        "The validated saved message-259 checkpoint restores its issuing AP and owner-result frame. Its single acknowledgement exactly matches fresh gameplay/RNG state, request and traces; shift/Keep happen once. Actual west re-entry consumes the next AP chance draw, reaches minute 20 / drawCount 2 / generatorState 507111939, and presents message 251 then the original Complex 25 choices.",
+        "The independently saved successful thief acknowledgement 260 restores before owner result 1. Its five-step suffix through messages 265/467, explicit AP disablement, Keep and inactive west/east re-entry exactly matches the fresh success suffix. The already committed 378 minigame draws do not repeat."
+      ],
+      "result": "passed",
+      "evidence": "jobs/75fbe3c25c61e236a47fdc8f047fbfcb/evidence.json",
+      "otherEvidence": [
+        "jobs/31db884cfeb7eea6b8a3f1f0cfb2cf59/evidence.json: exact eight-step failure/re-entry repeat",
+        "jobs/009c121500c1a2ab31ca4440067396cf/evidence.json: fresh failure result continuation",
+        "jobs/ae0b95a6e4dfa9044d215394c0ed0aa3/evidence.json: restored failure result equals fresh state/request/traces",
+        "jobs/e8b55eb0115c5034e8f734a6b59e9846/evidence.json: restored success acknowledgement, five suffix steps equal fresh success route",
+        "fixtures/97b53d72e12c6decbd523d07e3a5fb04/checkpoints/ded6b406-2402-4fa2-93cb-f29f677b4be6.r2save: pending failure owner result; file SHA256 aaa930a3b5fe73feb7e30ab48765d2ea44f2e533b6a3b7849d511d9faa436d30",
+        "fixtures/97b53d72e12c6decbd523d07e3a5fb04/checkpoints/70c357fd-7901-48c9-a6c0-9c195cb8e579.r2save: pending thief success acknowledgement; file SHA256 cfe9ba98048a2f50e63ab5aa24e0568bc6c9dd438f72f415a93c7776aa9c3424"
+      ],
+      "remaining": [
+        "These restored boundaries are thief-success and failed-owner-result messages, not every transient minigame frame, full campaign completion, or a physical Save-menu interaction.",
+        "The recipe ends at the re-entered Complex request; the separate cancellation/AP lifecycle recipe owns its Stop outcome."
+      ],
+      "steps": [
+        {
+          "command": "act",
+          "params": {
+            "action": "move",
+            "arguments": {
+              "dx": 1,
+              "dy": 0
+            }
+          },
+          "expect": {
+            "interactionKind": "acknowledge",
+            "location": {
+              "mapId": "land:1",
+              "x": 62,
+              "y": 43
+            }
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "complex_encounter"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlId": "7a34172f161a9ef4d647fb96"
+          },
+          "expect": {
+            "interactionKind": "thief_encounter"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "Force Lock  52"
+          },
+          "expect": {
+            "interactionKind": "pick_lock"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "pick_lock",
+              "body": {
+                "frameIndex": 0
+              }
+            }
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": null
+          },
+          "capture": true
+        },
+        {
+          "command": "act",
+          "params": {
+            "action": "move",
+            "arguments": {
+              "dx": -1,
+              "dy": 0
+            }
+          },
+          "expect": {
+            "interactionKind": "acknowledge",
+            "location": {
+              "mapId": "land:1",
+              "x": 62,
+              "y": 43
+            }
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "complex_encounter"
+          },
+          "capture": true
+        }
+      ]
+    },
+    {
       "id": "trouble-door-four-tumbler-force-success",
       "application": {
         "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
