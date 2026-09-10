@@ -65,6 +65,9 @@ func execute(trigger_context: Variant, trigger: TriggerDefinition, events: Array
 	if result.state == ScenarioVmResult.State.FAILED:
 		_context.session_continuation.clear()
 		return SessionCoordinatorResult.failed(result.error_code, result.error_message, events)
+	if _context.events_have(result.events, &"party_backed_up"):
+		_context.session_continuation.clear()
+		return SessionCoordinatorResult.completed(events)
 	_context.scenario().finalize_completed_trigger(trigger, events)
 	if _context.events_have(result.events, &"destination_trigger_recheck_requested"):
 		var requested_map := _context.content.world.map_by_id(_context.state.party.map_id)

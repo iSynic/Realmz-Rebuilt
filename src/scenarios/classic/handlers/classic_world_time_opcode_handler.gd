@@ -402,7 +402,7 @@ func _back_up_party() -> ScenarioRuntimeOperationResult:
 		"directionX": _game_state.last_move_direction.x,
 		"directionY": _game_state.last_move_direction.y,
 		"source": "classic",
-	})])
+	})], ScenarioVmDirective.finish_timeline())
 
 
 func _set_map_darkness(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:

@@ -60,11 +60,10 @@
       },
       {
         "workflowId": "classic.scenario.trigger-action-point",
-        "mode": "implementation",
+        "mode": "verification",
         "priority": "known-failure",
-        "gapIds": [
-          "GAP-BACKUP-001"
-        ],
+        "expectedEvidence": "live-route",
+        "gapIds": [],
         "archaeologyTriggers": []
       },
       {
@@ -3627,7 +3626,7 @@
         },
         {
           "id": "keep-remove",
-          "status": "unresolved"
+          "status": "implemented"
         },
         {
           "id": "xap-return",
@@ -3667,7 +3666,7 @@
         ]
       },
       "simulation": {
-        "status": "partial",
+        "status": "complete",
         "owners": [
           {
             "path": "src/scenarios/vm/scenario_vm.gd",
@@ -3722,17 +3721,7 @@
         "war": "not-observed",
         "classic": "observed"
       },
-      "gaps": [
-        {
-          "id": "GAP-BACKUP-001",
-          "category": "simulation",
-          "severity": "major",
-          "queue": "parity",
-          "summary": "Land opcode 101 backs up the party but does not terminate its VM invocation before ordinary AP removal.",
-          "evidence": "Half Truth AP 36 / Simple Encounter 3 Leave result: jobs/96655e9bfbe867c0c5bbd710e160aebc/evidence.json returns to land:0 (54,74) but records Data DD:0:36 disabled. Castle newland.c:778-787 returns directly on land, before the removal/repetition epilogue.",
-          "nextAction": "Terminate the land opcode-101 invocation and suppress normal post-move AP finalization without reversing movement twice; replay Leave, save/resume and ordinary re-entry. Keep the dungeon no-op separate."
-        }
-      ]
+      "gaps": []
     },
     {
       "id": "classic.scenario.present-message-media",

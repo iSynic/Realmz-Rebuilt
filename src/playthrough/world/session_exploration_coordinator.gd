@@ -334,6 +334,9 @@ func _resume_completed_post_move_trigger(post_move: PostMoveContext, events: Arr
 		var backout_kind: StringName = &"choice" if _context.events_have(events, &"classic_choice_backout_requested") else &"encounter" if _context.events_have(events, &"encounter_cancelled") else &""
 		if not backout_kind.is_empty():
 			return _complete_classic_backout(post_move.map, post_move.coordinate, active_trigger_id, events, backout_kind)
+		if _context.events_have(events, &"party_backed_up"):
+			_context.session_continuation.clear()
+			return SessionCoordinatorResult.completed(events)
 		_context.scenario().finalize_completed_trigger(completed_trigger, events)
 		if _context.scenario().apply_trigger_destination(completed_trigger, events, exploration.action_point_destination_depth == 0 and not _context.events_have(events, &"party_position_restored")):
 			var destination_map = _context.content.world.map_by_id(_context.state.party.map_id)
