@@ -38,6 +38,151 @@
   ],
   "recipes": [
     {
+      "id": "white-dragon-successive-choice-refusal",
+      "application": {
+        "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
+        "packageHash": "45298c295fc784b528f4219d6ceb0454cb482d894b66440e529d7763e7cb0036",
+        "archiveSha256": "e85ae0aca72fa6642ef66af8745ceb24446459598efcb1075cd8f5a4cce36012",
+        "starterCatalog": "src/storage/characters/realmz-classic-starter-characters.json"
+      },
+      "package": {
+        "campaignId": "scenario-white-dragon",
+        "path": "src/storage/packages/bundled_campaigns/scenario-white-dragon.realmz2",
+        "packageHash": "78a52bfec683a7166aad4976b199460e26d7f23deb04aa9fb170da86948442f0",
+        "archiveSha256": "7be72ac76ca88f5b7f20ab79b742301006efa313af5dec3a0349c033d316f0f4"
+      },
+      "baselineLocation": {
+        "mapId": "land:6",
+        "x": 7,
+        "y": 27
+      },
+      "target": {
+        "actionPoint": "Data DD:6:52",
+        "location": {
+          "mapId": "land:6",
+          "x": 7,
+          "y": 28
+        },
+        "extraActionPoint": 168
+      },
+      "proofModes": [
+        "live-route",
+        "ordinary-movement",
+        "actual-ui-control"
+      ],
+      "workflowIds": [
+        "classic.scenario.choose-response"
+      ],
+      "expected": [
+        "Prepared north adjacency has no competing trigger or random rectangle; ordinary south entry reaches the active 100-percent AP. Opcode 3 extra [1,0,0,0,0] means No cancels and Yes continues, matching Castle newland.c:1530-1570.",
+        "Actual No at the first, second, and third choice returns to land:6 (7,27), preserves the AP without program overrides, and leaves all six characters unchanged. All three refusal endpoints have identical complete gameplay/RNG state: minute 25, one draw, generator state 285719.",
+        "Ordinary south re-entry requests the first choice again at minute 50, draw count 2, generator state 507111939. Each depth repeats from the same saved baseline with identical initial and every subsequent gameplay/RNG checkpoint.",
+        "The deepest refusal includes the intervening positive-message-391 acknowledgement. Negative messages 390,389,392 precede their choices without separate acknowledgements; neither deeper choices nor acknowledgement adds time or RNG."
+      ],
+      "remaining": [
+        "Prepared adjacency is not campaign-start travel or full campaign certification. No native Castle execution or ordinary save-menu activation is claimed."
+      ],
+      "result": "passed",
+      "evidence": "jobs/de440125aa22ceaae13f9163c9f0e2af/evidence.json",
+      "otherEvidence": [
+        "jobs/704c99b970507e366dee13bf5f28fe3d3/evidence.json: repeated third-depth refusal",
+        "jobs/74cb95f7348386d12cfa84fef39c8b511/evidence.json and jobs/556c33af3020fa6e537f1c0c050ca784/evidence.json: first-depth refusal and repeat",
+        "jobs/8dc2de0ff020e0b5028ba0e525ec8a7d/evidence.json and jobs/bd8c4a960628cd69c8280e69302325f6/evidence.json: second-depth refusal and repeat"
+      ],
+      "steps": [
+        {
+          "command": "act",
+          "params": {
+            "action": "move",
+            "arguments": {
+              "dx": 0,
+              "dy": 1
+            }
+          },
+          "expect": {
+            "interactionKind": "yes_no",
+            "location": {
+              "mapId": "land:6",
+              "x": 7,
+              "y": 28
+            }
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "Yes"
+          },
+          "expect": {
+            "interactionKind": "yes_no"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "Yes"
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "yes_no"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "No"
+          },
+          "expect": {
+            "interactionKind": null,
+            "location": {
+              "mapId": "land:6",
+              "x": 7,
+              "y": 27
+            }
+          },
+          "capture": true
+        },
+        {
+          "command": "act",
+          "params": {
+            "action": "move",
+            "arguments": {
+              "dx": 0,
+              "dy": 1
+            }
+          },
+          "expect": {
+            "interactionKind": "yes_no",
+            "location": {
+              "mapId": "land:6",
+              "x": 7,
+              "y": 28
+            }
+          },
+          "capture": true
+        }
+      ]
+    },
+    {
       "id": "griloch-shop-and-ap-chance",
       "workflowIds": [
         "classic.services.shop",
