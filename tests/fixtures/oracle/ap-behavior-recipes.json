@@ -38,6 +38,88 @@
   ],
   "recipes": [
     {
+      "id": "wrath-chest-detect-disarm-replacement",
+      "application": {
+        "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
+        "packageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad",
+        "archiveSha256": "bf1ff5de1d6fc5bd1d5ffff8d582797dfab885acfd9b20b4e02ce9040421e150",
+        "starterCatalog": "src/storage/characters/realmz-classic-starter-characters.json"
+      },
+      "package": {
+        "campaignId": "scenario-wrath-of-the-mind-lords",
+        "path": "src/storage/packages/bundled_campaigns/scenario-wrath-of-the-mind-lords.realmz2",
+        "packageHash": "1328d8a443d979b38ba2c5ecdeea9342a03153fed0c079d761df8ee53c53a894",
+        "archiveSha256": "a032141f8d22fe2aa81cd416b8cf9a6509e3ae7d01d5640fdfb8a7d67041187b"
+      },
+      "baselineLocation": {
+        "mapId": "dungeon:1",
+        "x": 32,
+        "y": 14
+      },
+      "baselineCheckpoint": {
+        "path": "fixtures/b50e0685ccb0ee547430a40804e5cb0a/checkpoints/f77a5e79-55c3-405b-8065-a2666fe97f95.r2save",
+        "fileSha256": "74f99fcb9f3eda11f711a10a7cbf12a34a74df6357a34d90ce62c7e9478eb917",
+        "preparation": "Six named starters, seed 17, quest 0=-1. Prepared adjacent to the chest without ordinary import or campaign-start hooks; no prior detection, damage, replacement or reward."
+      },
+      "target": {
+        "actionPoint": "Data DDD:1:44",
+        "location": {
+          "mapId": "dungeon:1",
+          "x": 33,
+          "y": 14
+        },
+        "complexEncounter": 28,
+        "thiefEncounter": 18,
+        "replacementXap": 927,
+        "replacementEncounter": 29
+      },
+      "proofModes": [
+        "live-route",
+        "actual-ui-control",
+        "typed-interaction",
+        "restored-continuation"
+      ],
+      "workflowIds": [
+        "classic.scenario.choose-response",
+        "classic.scenario.trigger-action-point",
+        "classic.system.save-game"
+      ],
+      "expected": [
+        "Ordinary east entry consumes the 100-percent AP chance draw (raw 23575, result 72), advances one minute and opens Complex 28. Actual Skills enters its Thief 18; Disarm Trap is initially unavailable.",
+        "Two actual character-next controls select Silver Leaf. Actual Detect Trap 27 consumes raw -5629/result 18, displays message 802 and enables Disarm Trap. Acknowledgement returns to the Thief request with detection consumed and the trap still armed.",
+        "Select Silver Leaf again and activate Disarm Trap 49. The six-tumbler preview has yellow=102, green=151 and limit 450 frames without consuming RNG. Typed frame 101 consumes exactly 850 resolution draws and yields positions [167,153,138,106,161,126], disarms the trap and awards 1800 XP only to Silver Leaf before message 804.",
+        "Acknowledgement replaces trigger:Data DDD:1:44 with XAP 927, applies exact displacement (-1,+1) to (32,15), and keeps the AP. No trap damage or treasure is granted.",
+        "North then east ordinary movement re-enters the same AP but now opens Complex 29. Actual Back preserves the replacement and leaves the dungeon party at (33,14). Final clock is four minutes, RNG 853 draws/state 1302711690.",
+        "Both complete fourteen-input runs compare equal from equivalent baselines. Restoring the separate detected-trap checkpoint and replaying the eight-input suffix gives identical complete final game/RNG state without rerunning detection."
+      ],
+      "result": "passed",
+      "evidence": "jobs/18a50deab6ff5066c3b97ff6a246ccff/evidence.json",
+      "otherEvidence": [
+        "jobs/ce60bb8c5d195e63792cbff83e5dbcde/evidence.json: equivalent baseline and equal full fourteen-input repeat",
+        "jobs/161cc57b186ad3656e6ce2734de3be6e/evidence.json: eight-input suffix from fixtures/b50e0685ccb0ee547430a40804e5cb0a/checkpoints/1ed12f58-4847-4254-a877-22c011d109a9.r2save, SHA256 1b9371c1d93e80b144e5a123b725fd600191916e37572988cf464df614ba5fb9; final game/RNG equals full route",
+        "jobs/c9e3e8b215db56e0908deef08308a8d5/evidence.json: exploratory expectation incorrectly omitted the authored -1 X displacement; runtime moved correctly to (32,15)"
+      ],
+      "remaining": [
+        "Source-adjudicated Rebuilt route, not native Castle Wrath execution or full campaign certification. Frame selection is typed deterministic input, not timed mouse skill. Failure/trap, pending-tumbler save and lock/reward outcomes are separate."
+      ],
+      "steps": [
+        {"command":"act","params":{"action":"move","arguments":{"dx":1,"dy":0}},"expect":{"interactionKind":"complex_encounter","location":{"mapId":"dungeon:1","x":33,"y":14}},"capture":true},
+        {"command":"ui","params":{"action":"click","controlId":"7a34172f161a9ef4d647fb96"},"expect":{"interactionKind":"thief_encounter"},"capture":true},
+        {"command":"ui","params":{"action":"click","controlId":"feb8d61886f66aba88f4a445"},"expect":{"interactionKind":"thief_encounter"},"capture":true},
+        {"command":"ui","params":{"action":"click","controlId":"feb8d61886f66aba88f4a445"},"expect":{"interactionKind":"thief_encounter"},"capture":true},
+        {"command":"ui","params":{"action":"click","controlLabel":"Detect Trap  27"},"expect":{"interactionKind":"acknowledge"},"capture":true},
+        {"command":"respond","params":{"response":{"requestId":"$pending","kind":"acknowledge","body":{}}},"expect":{"interactionKind":"thief_encounter"},"capture":true},
+        {"command":"ui","params":{"action":"click","controlId":"feb8d61886f66aba88f4a445"},"expect":{"interactionKind":"thief_encounter"},"capture":true},
+        {"command":"ui","params":{"action":"click","controlId":"feb8d61886f66aba88f4a445"},"expect":{"interactionKind":"thief_encounter"},"capture":true},
+        {"command":"ui","params":{"action":"click","controlLabel":"Disarm Trap  49"},"expect":{"interactionKind":"pick_lock"},"capture":true},
+        {"command":"respond","params":{"response":{"requestId":"$pending","kind":"pick_lock","body":{"frameIndex":101}}},"expect":{"interactionKind":"acknowledge"},"capture":true},
+        {"command":"respond","params":{"response":{"requestId":"$pending","kind":"acknowledge","body":{}}},"expect":{"interactionKind":null,"location":{"mapId":"dungeon:1","x":32,"y":15}},"capture":true},
+        {"command":"act","params":{"action":"move","arguments":{"dx":0,"dy":-1}},"expect":{"interactionKind":null,"location":{"mapId":"dungeon:1","x":32,"y":14}},"capture":true},
+        {"command":"act","params":{"action":"move","arguments":{"dx":1,"dy":0}},"expect":{"interactionKind":"complex_encounter","location":{"mapId":"dungeon:1","x":33,"y":14}},"capture":true},
+        {"command":"ui","params":{"action":"click","controlId":"136edae4e94270190bde2d24"},"expect":{"interactionKind":null,"location":{"mapId":"dungeon:1","x":33,"y":14}},"capture":true}
+      ]
+    },
+    {
       "id": "aogm-pond-contextual-entry",
       "application": {
         "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
@@ -6853,8 +6935,8 @@
       "campaignId": "scenario-wrath-of-the-mind-lords",
       "packageHash": "1328d8a443d979b38ba2c5ecdeea9342a03153fed0c079d761df8ee53c53a894",
       "archiveSha256": "a032141f8d22fe2aa81cd416b8cf9a6509e3ae7d01d5640fdfb8a7d67041187b",
-      "expected": "Wrath dungeon:1 AP 44 at (33,14) opens Complex 28; its successful disarm result replaces the AP with XAP 927, whose Complex 29 owns the lock/reward branch. Select ordinary entry, owner-bound Disarm Trap and Open Lock spell outcomes from the authored nested records. Static selection only: no Wrath execution credit yet. AOGM contextual entry, wrong-set repetition and exact reward/disable/reentry are accepted in this batch; reported failures still take priority.",
-      "remaining": "Recipes represent twelve bundled scenarios under their recorded package/library identities, not corpus certification. Wrath remains unexecuted. Pooled-payment edges, present-ally outcomes and other caller contexts remain untested. Native CPU/dungeon performance, complete combat replay and full AOGM/War certification remain separate."
+      "expected": "Wrath AP 44/Complex 28 owner-bound detection/disarm and replacement XAP 927/Complex 29 reentry are accepted. Next exercise the armed-trap failure and lock/reward outcomes from their saved caller baselines; Trevor's starter spell points are below Open Lock's cost, so unavailable casting and any recovery preparation must remain explicit. AOGM contextual outcomes are accepted; reported failures still take priority.",
+      "remaining": "Recipes represent all thirteen bundled scenarios under their recorded package/library identities, not corpus certification. Wrath trap failure and chest reward remain untested, as do pooled-payment edges, present-ally outcomes and other caller contexts. Native CPU/dungeon performance, complete combat replay and full AOGM/War certification remain separate."
     }
   ]
 }
