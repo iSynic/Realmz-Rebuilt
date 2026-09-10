@@ -8,6 +8,7 @@ var values: Array[int]
 var gosub: bool
 var encounter_id: int = -1
 var encounter_attempt: int = 0
+var reopen_result: bool = false
 var option_indexes: Array[int]
 
 
@@ -18,6 +19,8 @@ func wire_payload() -> Dictionary:
 		var data := {"encounterId": encounter_id, "gosub": gosub}
 		if encounter_attempt > 0:
 			data["encounterAttempt"] = encounter_attempt
+		if reopen_result:
+			data["reopenResult"] = true
 		if not option_indexes.is_empty():
 			data["optionIndexes"] = option_indexes.duplicate()
 		return data

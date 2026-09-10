@@ -6,33 +6,33 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| classic | 69 | 0 | 0 | 55 | 14 |
+| classic | 69 | 0 | 1 | 55 | 13 |
 | host | 8 | 0 | 1 | 5 | 2 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
 
 ## Current parity-convergence batch
 
-**Twin Sands random-message loop, saved choice and AP replacement** (`ap-twin-sands-random-loop-replacement`)
+**Half Truth Simple choice reopening, saved indices and Leave lifecycle** (`ap-half-truth-simple-reopen-and-backup`)
 
-After White Dragon choice-depth and saved XAP narration, Twin Sands AP 41 adds an eighth scenario with opcode-19 random messages, XAP 348 self-transfer, No branch-out to XAP 346, and replacement of the same placed AP with XAP 347. Castle opcode 7 loads its own Extra Code row, matching the compiled [1,41,347,0,0] target. Preserve the overlapping low-chance random region, assert draw ownership, test saved loop choices and ordinary replaced-AP re-entry. Static references alone earn no credit. Full campaign certification remains separate, and no new testing capability is needed.
+Half Truth AP 36 adds a ninth scenario and reproduces two shared misfires: opcode 35 closes a nonrepeating Simple Encounter instead of immediately reopening its remaining options, and land opcode 101 backs out but incorrectly permits ordinary AP removal. Preserve both failures, correct their owning boundaries, verify reduced authored indices and saved result replacement, then ordinary Leave/re-entry. Whole-party capped-health draws retain their source order and the overlapping random region stays enabled. Static presence is not coverage; full campaign certification and the Touch combat branch remain separate. No new testing capability is needed.
 
 AP batches use failure-first priorities: known failures, untested high-risk behavior, meaningful variants, and broader representatives. Verification mode records existing functional behavior without claiming full campaign certification; implementation, verification, and certification remain distinct modes.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.scenario.choose-response` | verification | meaningful-variant | live-route |  |
-| `classic.scenario.present-message-media` | verification | meaningful-variant | live-route |  |
-| `classic.scenario.trigger-action-point` | verification | meaningful-variant | live-route |  |
+| `classic.scenario.choose-response` | verification | known-failure | live-route |  |
+| `classic.system.save-game` | verification | meaningful-variant | live-route |  |
+| `classic.scenario.trigger-action-point` | implementation | known-failure | - | GAP-BACKUP-001 |
 
 ### Batch count delta
 
 | Scope | State | Baseline | Current | Delta |
 | --- | --- | ---: | ---: | ---: |
 | classic | missing | 0 | 0 | 0 |
-| classic | partial | 0 | 0 | 0 |
+| classic | partial | 0 | 1 | +1 |
 | classic | functional | 55 | 55 | 0 |
-| classic | certified | 14 | 14 | 0 |
+| classic | certified | 14 | 13 | -1 |
 | host | missing | 0 | 0 | 0 |
 | host | partial | 1 | 1 | 0 |
 | host | functional | 5 | 5 | 0 |
@@ -44,7 +44,7 @@ AP batches use failure-first priorities: known failures, untested high-risk beha
 | --- | ---: | ---: | ---: | ---: | ---: |
 | Startup and party | 8 | 0 | 0 | 7 | 1 |
 | Exploration | 6 | 0 | 0 | 4 | 2 |
-| Scenario interaction | 6 | 0 | 0 | 3 | 3 |
+| Scenario interaction | 6 | 0 | 1 | 3 | 2 |
 | Character management | 5 | 0 | 0 | 5 | 0 |
 | Inventory and equipment | 9 | 0 | 0 | 9 | 0 |
 | Spellcasting | 3 | 0 | 0 | 1 | 2 |
@@ -83,8 +83,8 @@ AP batches use failure-first priorities: known failures, untested high-risk beha
 | --- | ---: |
 | not-applicable | 3 |
 | absent | 0 |
-| partial | 0 |
-| complete | 66 |
+| partial | 1 |
+| complete | 65 |
 
 | persistence | Count |
 | --- | ---: |
@@ -142,9 +142,10 @@ AP batches use failure-first priorities: known failures, untested high-risk beha
 
 ## Release blockers and major gaps
 
-Blockers: **1**. Major gaps: **0**.
+Blockers: **1**. Major gaps: **1**.
 
 - **blocker** `host.release.platform-certification` - Windows and Linux have native release evidence, but macOS remains unexecuted on an Apple runner. Next: Run the current commit's macOS verify/export job on an actual Apple runner, launch the exported application, and retain its release manifest and clean native log.
+- **major** `classic.scenario.trigger-action-point` - Land opcode 101 backs up the party but does not terminate its VM invocation before ordinary AP removal. Next: Terminate the land opcode-101 invocation and suppress normal post-move AP finalization without reversing movement twice; replay Leave, save/resume and ordinary re-entry. Keep the dungeon no-op separate.
 
 ## Oracle-required unknowns
 
@@ -163,6 +164,7 @@ Blockers: **1**. Major gaps: **0**.
 
 ### parity
 
+- `classic.scenario.trigger-action-point` - Land opcode 101 backs up the party but does not terminate its VM invocation before ordinary AP removal.
 - `classic.character.view-sheet` - Several nonzero Classic ability slots lack verified display names.
 - `classic.maps.view-acquired` - Classic scrolling TEXT encoding and style resources remain only partially represented.
 - `classic.maps.view-acquired` - Malformed crop starts and authored picture rectangles lack boundary observations.

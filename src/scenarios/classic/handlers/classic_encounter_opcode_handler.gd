@@ -27,10 +27,7 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 		34:
 			return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"encounter_loop_finished", {"source": "classic"})], ScenarioVmDirective.resume_after_encounter())
 		35:
-			var encounter_id := context.encounter_id
-			if context.encounter_kind != &"simple" or not _game_state.scenario_progress.encounters.eliminate_simple_option(encounter_id, action.operand_id - 1):
-				return ScenarioRuntimeOperationResult.failed(&"invalid_encounter_context", "Classic opcode 35 requires a Simple Encounter response context.")
-			return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"encounter_option_eliminated", {"encounterId": encounter_id, "optionIndex": action.operand_id - 1})])
+			return _reopen_simple_encounter(action, request_id, context)
 		41:
 			return _eliminate_simple_option(action)
 		44:
@@ -47,7 +44,7 @@ func _eliminate_complex_result(action: ClassicActionDefinition, context: Scenari
 	return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"complex_encounter_result_eliminated", {"encounterId": context.encounter_id, "resultIndex": result_index, "source": "classic"})])
 
 
-func request_encounter(kind: StringName, encounter_id: int, gosub: bool, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
+func request_encounter(kind: StringName, encounter_id: int, gosub: bool, request_id: String, context: ScenarioExecutionContext, reopen_result: bool = false) -> ScenarioRuntimeOperationResult:
 	if kind == &"complex":
 		return _request_complex_encounter(encounter_id, gosub, request_id, context)
 	if kind != &"simple":
@@ -70,7 +67,21 @@ func request_encounter(kind: StringName, encounter_id: int, gosub: bool, request
 	if options.is_empty():
 		return ScenarioRuntimeOperationResult.failed(&"encounter_has_no_options", "Simple Encounter %d has no remaining responses." % encounter.id)
 	var request := InteractionRequest.from_payload(request_id, &"encounter_choice", {"encounterKind": "simple", "encounterId": encounter.id, "prompt": prompt.text if prompt != null else "", "options": options, "canBackOut": encounter.can_back_out})
-	return ScenarioRuntimeOperationResult.waiting(request, ScenarioInteractionContinuations.encounter(ScenarioRuntimeContinuation.CLASSIC_SIMPLE_ENCOUNTER, encounter.id, gosub, option_indexes, _encounter_attempt(context, &"simple", encounter.id)), [_encounter_open_sound(&"simple", encounter.id)])
+	var events: Array[DomainEvent] = []
+	if not reopen_result:
+		events.append(_encounter_open_sound(&"simple", encounter.id))
+	return ScenarioRuntimeOperationResult.waiting(request, ScenarioInteractionContinuations.encounter(ScenarioRuntimeContinuation.CLASSIC_SIMPLE_ENCOUNTER, encounter.id, gosub, option_indexes, _encounter_attempt(context, &"simple", encounter.id), reopen_result), events)
+
+
+func _reopen_simple_encounter(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
+	var encounter_id := context.encounter_id
+	var encounter := _content.scenario_records.simple_encounter_by_id(encounter_id)
+	if context.encounter_kind != &"simple" or encounter == null or encounter.response_at(action.operand_id - 1) == null:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_encounter_context", "Classic opcode 35 requires an authored Simple Encounter option in its response context.")
+	_game_state.scenario_progress.encounters.eliminate_simple_option(encounter_id, action.operand_id - 1)
+	var result := request_encounter(&"simple", encounter_id, false, request_id, context, true)
+	result.events.push_front(DomainEvent.new(&"encounter_option_eliminated", {"encounterId": encounter_id, "optionIndex": action.operand_id - 1}))
+	return result
 
 
 func _request_complex_encounter(encounter_id: int, gosub: bool, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:

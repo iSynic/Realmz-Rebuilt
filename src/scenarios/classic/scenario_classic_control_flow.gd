@@ -79,7 +79,7 @@ static func _install_program_frame(target: ScenarioFrame, gosub: bool, frames: A
 		return ScenarioDirectiveTransition.failed(&"invalid_program_restart", "Classic branch has no issuing program frame.")
 	if gosub and _classic_call_depth(frames) >= CLASSIC_CALL_LIMIT:
 		return ScenarioDirectiveTransition.failed(&"classic_gosub_limit", "Classic GOSUB stack exceeded 20 frames.")
-	target.counts_as_classic_call = gosub
+	target.counts_as_classic_call = gosub or frames.back().counts_as_classic_call
 	if gosub:
 		frames.append(target)
 	else:

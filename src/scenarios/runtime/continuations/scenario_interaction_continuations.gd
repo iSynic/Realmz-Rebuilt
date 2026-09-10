@@ -33,11 +33,13 @@ static func classic_choice(values: Array[int], gosub: bool) -> ScenarioRuntimeCo
 	return ScenarioRuntimeContinuation.new(ScenarioRuntimeContinuation.CLASSIC_CHOICE, body)
 
 
-static func encounter(kind: StringName, encounter_id: int, gosub: bool, option_indexes: Array[int] = [], encounter_attempt: int = 0) -> ScenarioRuntimeContinuation:
+static func encounter(kind: StringName, encounter_id: int, gosub: bool, option_indexes: Array[int] = [], encounter_attempt: int = 0, reopen_result: bool = false) -> ScenarioRuntimeContinuation:
 	assert(kind in [ScenarioRuntimeContinuation.CLASSIC_SIMPLE_ENCOUNTER, ScenarioRuntimeContinuation.CLASSIC_COMPLEX_ENCOUNTER])
+	assert(not reopen_result or kind == ScenarioRuntimeContinuation.CLASSIC_SIMPLE_ENCOUNTER and not gosub)
 	var body := ScenarioChoiceContinuationBody.new()
 	body.encounter_id = encounter_id
 	body.encounter_attempt = encounter_attempt
+	body.reopen_result = reopen_result
 	body.gosub = gosub
 	body.option_indexes.assign(option_indexes)
 	return ScenarioRuntimeContinuation.new(kind, body)

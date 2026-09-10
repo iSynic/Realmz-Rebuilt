@@ -23,9 +23,9 @@
     ]
   },
   "currentBatch": {
-    "id": "ap-twin-sands-random-loop-replacement",
-    "name": "Twin Sands random-message loop, saved choice and AP replacement",
-    "baselineCommit": "4d567c281e2d92995f9348e1a6aa262b8696dcb5",
+    "id": "ap-half-truth-simple-reopen-and-backup",
+    "name": "Half Truth Simple choice reopening, saved indices and Leave lifecycle",
+    "baselineCommit": "30aaa03f9c1de97a8ca0e10405fddea5b8d60e9a",
     "baselineCounts": {
       "classic": {
         "missing": 0,
@@ -40,18 +40,18 @@
         "certified": 2
       }
     },
-    "selectionRationale": "After White Dragon choice-depth and saved XAP narration, Twin Sands AP 41 adds an eighth scenario with opcode-19 random messages, XAP 348 self-transfer, No branch-out to XAP 346, and replacement of the same placed AP with XAP 347. Castle opcode 7 loads its own Extra Code row, matching the compiled [1,41,347,0,0] target. Preserve the overlapping low-chance random region, assert draw ownership, test saved loop choices and ordinary replaced-AP re-entry. Static references alone earn no credit. Full campaign certification remains separate, and no new testing capability is needed.",
+    "selectionRationale": "Half Truth AP 36 adds a ninth scenario and reproduces two shared misfires: opcode 35 closes a nonrepeating Simple Encounter instead of immediately reopening its remaining options, and land opcode 101 backs out but incorrectly permits ordinary AP removal. Preserve both failures, correct their owning boundaries, verify reduced authored indices and saved result replacement, then ordinary Leave/re-entry. Whole-party capped-health draws retain their source order and the overlapping random region stays enabled. Static presence is not coverage; full campaign certification and the Touch combat branch remain separate. No new testing capability is needed.",
     "targets": [
       {
         "workflowId": "classic.scenario.choose-response",
         "mode": "verification",
-        "priority": "meaningful-variant",
+        "priority": "known-failure",
         "expectedEvidence": "live-route",
         "gapIds": [],
         "archaeologyTriggers": []
       },
       {
-        "workflowId": "classic.scenario.present-message-media",
+        "workflowId": "classic.system.save-game",
         "mode": "verification",
         "priority": "meaningful-variant",
         "expectedEvidence": "live-route",
@@ -60,10 +60,11 @@
       },
       {
         "workflowId": "classic.scenario.trigger-action-point",
-        "mode": "verification",
-        "priority": "meaningful-variant",
-        "expectedEvidence": "live-route",
-        "gapIds": [],
+        "mode": "implementation",
+        "priority": "known-failure",
+        "gapIds": [
+          "GAP-BACKUP-001"
+        ],
         "archaeologyTriggers": []
       }
     ]
@@ -3618,7 +3619,7 @@
         },
         {
           "id": "keep-remove",
-          "status": "implemented"
+          "status": "unresolved"
         },
         {
           "id": "xap-return",
@@ -3658,7 +3659,7 @@
         ]
       },
       "simulation": {
-        "status": "complete",
+        "status": "partial",
         "owners": [
           {
             "path": "src/scenarios/vm/scenario_vm.gd",
@@ -3713,7 +3714,17 @@
         "war": "not-observed",
         "classic": "observed"
       },
-      "gaps": []
+      "gaps": [
+        {
+          "id": "GAP-BACKUP-001",
+          "category": "simulation",
+          "severity": "major",
+          "queue": "parity",
+          "summary": "Land opcode 101 backs up the party but does not terminate its VM invocation before ordinary AP removal.",
+          "evidence": "Half Truth AP 36 / Simple Encounter 3 Leave result: jobs/96655e9bfbe867c0c5bbd710e160aebc/evidence.json returns to land:0 (54,74) but records Data DD:0:36 disabled. Castle newland.c:778-787 returns directly on land, before the removal/repetition epilogue.",
+          "nextAction": "Terminate the land opcode-101 invocation and suppress normal post-move AP finalization without reversing movement twice; replay Leave, save/resume and ordinary re-entry. Keep the dungeon no-op separate."
+        }
+      ]
     },
     {
       "id": "classic.scenario.present-message-media",
