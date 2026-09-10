@@ -28,7 +28,7 @@
     "mutatedPlayerFiles": false
   },
   "replayInstructions": [
-    "Create one isolated fixture at the recipe's baselineLocation using the pinned package; retain its checkpoint before input. Close superseded owned fixtures before replacement.",
+    "Create one isolated fixture at the recipe's baselineLocation using recipe.package when supplied, otherwise the default package; retain its checkpoint before input. Close superseded owned fixtures before replacement.",
     "Pass {name: recipe.id, sessionId: the current observed fixture session ID, steps: recipe.steps} to journey-start. $pending is resolved by the existing journey runner.",
     "The Shop Done ID identifies the current ShopRouteControls/Content/ShopDone control; re-resolve that exact visible control from observe if a later UI build changes its ID. Do not select another Done behind the modal.",
     "Compare repeated runs only after restoring the same validated baseline outside the journey; never reseed or restore between its steps.",
@@ -320,6 +320,77 @@
         {"command":"respond","params":{"response":{"requestId":"$pending","kind":"acknowledge","body":{}}},"expect":{"interactionKind":"complex_encounter","location":{"mapId":"land:0","x":7,"y":7}},"capture":true},
         {"command":"respond","params":{"response":{"requestId":"$pending","kind":"complex_encounter","body":{"action":"back"}}},"expect":{"interactionKind":null,"location":{"mapId":"land:0","x":7,"y":6}},"capture":true}
       ]
+    },
+    {
+      "id": "clouds-hidden-ap-word-response",
+      "workflowIds": [
+        "classic.exploration.search",
+        "classic.scenario.trigger-action-point",
+        "classic.scenario.complex-interaction"
+      ],
+      "package": {
+        "campaignId": "scenario-castle-in-the-clouds",
+        "path": "src/storage/packages/bundled_campaigns/scenario-castle-in-the-clouds.realmz2",
+        "packageHash": "94881a4c1c25a7eaef12b93dbd88d8975c510fb6c3e959152c46bca57d3bbe23",
+        "archiveSha256": "f1f999f62fc9b89ac98c98ce98340dee006a4eae9bdec8be2e71b342e2f31197"
+      },
+      "baselineLocation": {
+        "mapId": "land:0",
+        "x": 49,
+        "y": 81
+      },
+      "target": {
+        "actionPoint": "Data DD:0:32",
+        "location": {
+          "mapId": "land:0",
+          "x": 50,
+          "y": 81
+        },
+        "encounter": "complex:3",
+        "secret": "land:0:cell:50,81:secret"
+      },
+      "proofModes": [
+        "live-route",
+        "ordinary-movement",
+        "typed-response"
+      ],
+      "expected": [
+        "Hidden solid terrain blocks the first entry, consumes the secret-search draw and suppresses the colocated AP. Search toggles without time/RNG; the second blocked attempt discovers the secret and adds four five-minute Search ticks.",
+        "With Search off, the next ordinary east step fires AP 32 once and waits at message 69, then opens Complex 3.",
+        "Wrong word closed selects fallback result four and blocks at message 71; acknowledgement follows authored opcode 5 into the repeated Complex.",
+        "Uppercase OPEN SESAME selects result two, publishes nonblocking message 72 and waiting sound 624, then opcode 25 removes AP 32 and terminates every nested repeat.",
+        "Departure and re-entry do not fire the removed AP or consume another chance draw. Complete route uses three RNG draws: secret 72, secret 18, AP chance 96.",
+        "Restoring the wrong-word acknowledgement also permits mixed-case OpEn alone: Castle compares only the authored prefix before its first space. It selects the same result/removal without further RNG."
+      ],
+      "sourceEvidence": [
+        "Castle newland.c:1573-1699 and 3734-3737: encounter result/repetition",
+        "Castle encounters.c:443-472: entered-character case folding and authored first-space termination",
+        "tests/integration/test_exploration_session.gd: _test_attempted_land_move_search: blocked-attempt Search; tests/core/test_map_topology.gd: concealed and discovered solid/AP entry"
+      ],
+      "remaining": [
+        "No Thief, spell, item, full campaign-start route or full campaign certification is claimed by this word-response recipe."
+      ],
+      "otherEvidence": [
+        "jobs/5131ebb66acec00a7cc1c089ac39167f/evidence.json: complete same-baseline semantic/RNG repeat equal",
+        "jobs/596ae0b3f67ee319438ccfe72c179605/evidence.json: restore two-frame wrong-word acknowledgement and accept OpEn; setup prefix jobs/76f13fa3ebe8a7d83960224fa184ad35/evidence.json",
+        "jobs/da836fdade0b82db52f31d8ae7792473/evidence.json: separately asserted ordinary hidden-cell rejection"
+      ],
+      "result": "passed",
+      "evidence": "jobs/33333d37a242234784ab21617ec4a317/evidence.json",
+      "measuredReplayMs": 7423,
+      "steps": [
+        {"command":"act","params":{"action":"move","arguments":{"dx":1,"dy":0}},"expect":{"interactionKind":null,"location":{"mapId":"land:0","x":49,"y":81}},"capture":true},
+        {"command":"act","params":{"action":"toggle-search","arguments":{}},"expect":{"interactionKind":null,"location":{"mapId":"land:0","x":49,"y":81}},"capture":true},
+        {"command":"act","params":{"action":"move","arguments":{"dx":1,"dy":0}},"expect":{"interactionKind":null,"location":{"mapId":"land:0","x":49,"y":81}},"capture":true},
+        {"command":"act","params":{"action":"toggle-search","arguments":{}},"expect":{"interactionKind":null,"location":{"mapId":"land:0","x":49,"y":81}},"capture":true},
+        {"command":"act","params":{"action":"move","arguments":{"dx":1,"dy":0}},"expect":{"interactionKind":"acknowledge","location":{"mapId":"land:0","x":50,"y":81}},"capture":true},
+        {"command":"respond","params":{"response":{"requestId":"$pending","kind":"acknowledge","body":{}}},"expect":{"interactionKind":"complex_encounter"},"capture":true},
+        {"command":"respond","params":{"response":{"requestId":"$pending","kind":"complex_encounter","body":{"action":"word","word":"closed"}}},"expect":{"interactionKind":"acknowledge"},"capture":true},
+        {"command":"respond","params":{"response":{"requestId":"$pending","kind":"acknowledge","body":{}}},"expect":{"interactionKind":"complex_encounter"},"capture":true},
+        {"command":"respond","params":{"response":{"requestId":"$pending","kind":"complex_encounter","body":{"action":"word","word":"OPEN SESAME"}}},"expect":{"interactionKind":null},"capture":true},
+        {"command":"act","params":{"action":"move","arguments":{"dx":-1,"dy":0}},"expect":{"interactionKind":null,"location":{"mapId":"land:0","x":49,"y":81}},"capture":true},
+        {"command":"act","params":{"action":"move","arguments":{"dx":1,"dy":0}},"expect":{"interactionKind":null,"location":{"mapId":"land:0","x":50,"y":81}},"capture":true}
+      ]
     }
   ],
   "siblingAndContinuationEvidence": [
@@ -352,24 +423,6 @@
     }
   ],
   "nextSelection": [
-    {
-      "priority": "meaningful-variant",
-      "campaignId": "scenario-castle-in-the-clouds",
-      "archiveSha256": "f1f999f62fc9b89ac98c98ce98340dee006a4eae9bdec8be2e71b342e2f31197",
-      "packageHash": "94881a4c1c25a7eaef12b93dbd88d8975c510fb6c3e959152c46bca57d3bbe23",
-      "actionPoint": "Data DD:0:32",
-      "location": {
-        "mapId": "land:0",
-        "x": 50,
-        "y": 81
-      },
-      "encounter": "complex:3",
-      "expectedWord": "open sesame",
-      "wordResult": 2,
-      "candidateOnly": true,
-      "expected": "Positive message 69 precedes Complex 3; correct word chooses result 1 (zero-based): nonblocking message 72, waiting sound -624, AP removal. Wrong word repeats through a positive message. Thief record 3 offers separate nonzero-text success/failure neighbors.",
-      "remaining": "Validate a traversable adjacent starting cell and ordinary eligibility; do not treat action groups or item alternatives as prerequisites for word input. No live outcome is claimed."
-    },
     {
       "priority": "meaningful-variant",
       "campaignId": "scenario-mithril-vault",
