@@ -19,6 +19,7 @@ Own immutable world topology definitions, the authoritative game clock, and pure
 
 - Topology definitions are immutable after package construction; playthrough changes belong to the world state collaborators.
 - `MapTopology` remains the only source of collision, edge, secret, and line-of-sight facts.
+- Revealing an unoriented land secret changes entry/marker eligibility but preserves the underlying terrain's LOS, as Castle `cansee2` strips every marker band before reading mapstats. Directional dungeon discovery remains edge-owned.
 - Clock changes are synchronous deterministic gameplay mutations. They use no wall-clock time, Godot timers, or presentation state.
 - `ClockRules` preserves individual Classic timeclick order and emits detached events only after each mutation commits.
 - World definitions, clock state, and rules are pure objects with no Node, filesystem, package, or UI dependency.
