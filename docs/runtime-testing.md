@@ -63,6 +63,16 @@ The reported Griloch Shop misfire was a typed-array argument failure in the cont
 
 Deferred bridge acceptance includes broader native capabilities/profiles, exhaustive cancellation/limit/platform certification, and cross-engine UI-selector equivalence. Existing mock protocol checks and rendered MCP proofs retain their narrower scope. Windows 1280x720 Mobile is the current rendered evidence target; Linux/macOS acceptance remains open.
 
+## AP replay recipes and current boundary
+
+The [package-pinned AP recipes](../tests/fixtures/oracle/ap-behavior-recipes.json) contain ordinary Griloch Shop entry, Simple 8 Leave, Complex 3 mismatch/repetition, and owner-bound Thief 2 Force Lock success/failure. Their named starter setup is explicit fixture preparation, not campaign-start certification. Resolve local evidence references below `REALMZ_TESTING_HOME`; retain their accepted inputs and checkpoint hashes when replaying. A recipe's journey steps use the existing `journey-start` vocabulary with the newly observed fixture session ID.
+
+Thief result text zero now suppresses narrative lookup even when Data SD2 contains record zero, matching Castle `textbox-time.c:12-13`. Griloch Force Lock success retains sound 638, 1,500 experience, authored message 203, replacement of AP 77 with XAP 379, and Keep Codes. Its failure retains the no-reward fallback and repeated Complex interaction. Both pass without the unrelated record-zero narrative.
+
+Nested Complex Back remains a reproduced failure (`GAP-SCEN-001`), not a passed cancellation or campaign claim. The runtime emits cancellation but returns only one nested frame and opens an enclosing encounter again. Its owning workflow is reopened to partial; flat backout, valid GOSUB-return, and other previously verified branches retain their narrower evidence. Repair that boundary before the next static word-response candidates, Castle in the Clouds AP 32 and Mithril Vault AP 8.
+
+Measured repeated execution, including captures, is 2.07 seconds for Shop, 1.16 seconds for Simple Leave, 4.96 seconds for Thief success, and 5.03 seconds for Thief failure/repetition. Initial rendered fixture preparation and source diagnosis are separate costs: the Shop/RNG repair span was approximately 15 minutes; encounter selection, diagnosis and replays approximately 20 minutes, including the zero-text repair. Incremental tooling work was approximately three minutes to reproduce and stabilize a 250-millisecond timeout test plus recipe/evidence collation; earlier bridge construction was predecessor work and has no reliable comparable timing. No new runtime capability or orchestration framework was added for these AP cases.
+
 ## Evidence boundaries
 
 Ordinary gameplay must route through application commands and respect modal and playback gates. Actual UI execution must deliver input to visible controls through normal routing. Direct AP/XAP/encounter invocation uses the separate debug boundary and cannot certify movement, trigger eligibility, caller context, or one-shot semantics. Automated commands belong only to isolated fixture instances; a live checkpoint may be cloned without taking control of its source.

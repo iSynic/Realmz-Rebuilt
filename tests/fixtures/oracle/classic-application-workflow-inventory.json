@@ -49,13 +49,13 @@
         "certified": 14
       },
       "host": {
-        "missing": 1,
-        "partial": 0,
+        "missing": 0,
+        "partial": 1,
         "functional": 5,
         "certified": 2
       }
     },
-    "selectionRationale": "Failure-first AP verification starts with the Griloch Shop repair, separately tracks the AP-chance RNG discrepancy, then exercises representative authored encounter branches. These targets record expected verification evidence only; they make no claim that the current behavior passes. Full campaign certification remains separate and retains the AOGM, War, then gain-based order.",
+    "selectionRationale": "Failure-first AP verification repairs the Griloch Shop hook, separately corrects AP-chance RNG ordering, and exercises authored Simple/Complex and owner-bound Thief outcomes. Package-pinned recipes and observed results are in tests/fixtures/oracle/ap-behavior-recipes.json. Nested Complex Back now reproduces GAP-SCEN-001 and takes first priority before the selected word-response candidates. Full campaign certification remains separate and retains the AOGM, War, then gain-based order.",
     "targets": [
       {
         "workflowId": "classic.services.shop",
@@ -84,9 +84,9 @@
       {
         "workflowId": "classic.scenario.complex-interaction",
         "mode": "verification",
-        "priority": "meaningful-variant",
+        "priority": "known-failure",
         "expectedEvidence": "live-route",
-        "gapIds": [],
+        "gapIds": ["GAP-SCEN-001"],
         "archaeologyTriggers": []
       }
     ]
@@ -4036,7 +4036,7 @@
         ]
       },
       "simulation": {
-        "status": "complete",
+        "status": "partial",
         "owners": [
           {
             "path": "src/scenarios/classic/operations/classic_thief_encounter_operations.gd",
@@ -4102,9 +4102,19 @@
       "reachability": {
         "aogm": "known-reachable",
         "war": "unknown",
-        "classic": "known-reachable"
+        "classic": "observed"
       },
-      "gaps": []
+      "gaps": [
+        {
+          "id": "GAP-SCEN-001",
+          "category": "simulation",
+          "severity": "major",
+          "queue": "parity",
+          "summary": "Back reopens an enclosing Complex Encounter after nested authored repetition instead of completing the original backout.",
+          "evidence": "Griloch Data DD:0:77 -> Complex 3 mismatch -> repeated Complex 3 -> owner-bound Thief 2 failure -> repeated Complex 3 -> Back emits encounter_cancelled and immediately opens Complex 3 again. Retained job e3b5248baff62a35005698401d5ef9b5 and ap-behavior-recipes.json preserve the accepted inputs. Existing flat-backout and signed-GOSUB tests still pass; they do not cover this nested caller.",
+          "nextAction": "Repair the encounter-cancellation frame boundary in ScenarioClassicControlFlow/RealmzRuntimeApi, preserving valid GOSUB returns and the session-owned no-extra-time/RNG movement reversal. Replay this failure, Simple and flat Complex cancellation, and saved nested continuations before closing the gap. Do not discard valid Thief success/failure evidence."
+        }
+      ]
     },
     {
       "id": "classic.scenario.select-subject",

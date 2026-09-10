@@ -6,7 +6,7 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| classic | 69 | 0 | 0 | 55 | 14 |
+| classic | 69 | 0 | 1 | 54 | 14 |
 | host | 8 | 0 | 1 | 5 | 2 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
@@ -15,7 +15,7 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 **AP failure-first verification** (`ap-failure-first`)
 
-Failure-first AP verification starts with the Griloch Shop repair, separately tracks the AP-chance RNG discrepancy, then exercises representative authored encounter branches. These targets record expected verification evidence only; they make no claim that the current behavior passes. Full campaign certification remains separate and retains the AOGM, War, then gain-based order.
+Failure-first AP verification repairs the Griloch Shop hook, separately corrects AP-chance RNG ordering, and exercises authored Simple/Complex and owner-bound Thief outcomes. Package-pinned recipes and observed results are in tests/fixtures/oracle/ap-behavior-recipes.json. Nested Complex Back now reproduces GAP-SCEN-001 and takes first priority before the selected word-response candidates. Full campaign certification remains separate and retains the AOGM, War, then gain-based order.
 
 AP batches use failure-first priorities: known failures, untested high-risk behavior, meaningful variants, and broader representatives. Verification mode records existing functional behavior without claiming full campaign certification; implementation, verification, and certification remain distinct modes.
 
@@ -24,18 +24,18 @@ AP batches use failure-first priorities: known failures, untested high-risk beha
 | `classic.services.shop` | verification | known-failure | live-route |  |
 | `classic.scenario.trigger-action-point` | verification | known-failure | live-route |  |
 | `classic.scenario.choose-response` | verification | untested-high-risk | live-route |  |
-| `classic.scenario.complex-interaction` | verification | meaningful-variant | live-route |  |
+| `classic.scenario.complex-interaction` | verification | known-failure | live-route | GAP-SCEN-001 |
 
 ### Batch count delta
 
 | Scope | State | Baseline | Current | Delta |
 | --- | --- | ---: | ---: | ---: |
 | classic | missing | 0 | 0 | 0 |
-| classic | partial | 0 | 0 | 0 |
-| classic | functional | 55 | 55 | 0 |
+| classic | partial | 0 | 1 | +1 |
+| classic | functional | 55 | 54 | -1 |
 | classic | certified | 14 | 14 | 0 |
-| host | missing | 1 | 0 | -1 |
-| host | partial | 0 | 1 | +1 |
+| host | missing | 0 | 0 | 0 |
+| host | partial | 1 | 1 | 0 |
 | host | functional | 5 | 5 | 0 |
 | host | certified | 2 | 2 | 0 |
 
@@ -45,7 +45,7 @@ AP batches use failure-first priorities: known failures, untested high-risk beha
 | --- | ---: | ---: | ---: | ---: | ---: |
 | Startup and party | 8 | 0 | 0 | 7 | 1 |
 | Exploration | 6 | 0 | 0 | 4 | 2 |
-| Scenario interaction | 6 | 0 | 0 | 3 | 3 |
+| Scenario interaction | 6 | 0 | 1 | 2 | 3 |
 | Character management | 5 | 0 | 0 | 5 | 0 |
 | Inventory and equipment | 9 | 0 | 0 | 9 | 0 |
 | Spellcasting | 3 | 0 | 0 | 1 | 2 |
@@ -84,8 +84,8 @@ AP batches use failure-first priorities: known failures, untested high-risk beha
 | --- | ---: |
 | not-applicable | 3 |
 | absent | 0 |
-| partial | 0 |
-| complete | 66 |
+| partial | 1 |
+| complete | 65 |
 
 | persistence | Count |
 | --- | ---: |
@@ -143,9 +143,10 @@ AP batches use failure-first priorities: known failures, untested high-risk beha
 
 ## Release blockers and major gaps
 
-Blockers: **1**. Major gaps: **0**.
+Blockers: **1**. Major gaps: **1**.
 
 - **blocker** `host.release.platform-certification` - Windows and Linux have native release evidence, but macOS remains unexecuted on an Apple runner. Next: Run the current commit's macOS verify/export job on an actual Apple runner, launch the exported application, and retain its release manifest and clean native log.
+- **major** `classic.scenario.complex-interaction` - Back reopens an enclosing Complex Encounter after nested authored repetition instead of completing the original backout. Next: Repair the encounter-cancellation frame boundary in ScenarioClassicControlFlow/RealmzRuntimeApi, preserving valid GOSUB returns and the session-owned no-extra-time/RNG movement reversal. Replay this failure, Simple and flat Complex cancellation, and saved nested continuations before closing the gap. Do not discard valid Thief success/failure evidence.
 
 ## Oracle-required unknowns
 
@@ -164,6 +165,7 @@ Blockers: **1**. Major gaps: **0**.
 
 ### parity
 
+- `classic.scenario.complex-interaction` - Back reopens an enclosing Complex Encounter after nested authored repetition instead of completing the original backout.
 - `classic.character.view-sheet` - Several nonzero Classic ability slots lack verified display names.
 - `classic.maps.view-acquired` - Classic scrolling TEXT encoding and style resources remain only partially represented.
 - `classic.maps.view-acquired` - Malformed crop starts and authored picture rectangles lack boundary observations.

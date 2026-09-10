@@ -1,0 +1,393 @@
+{
+  "formatVersion": 1,
+  "purpose": "Reusable AP replays and evidence references; existing workflow and gameplay inventories remain the only completeness denominators.",
+  "evidenceRoot": "REALMZ_TESTING_HOME",
+  "proofBoundary": "Named classic-starters preparation positions six pinned characters before the baseline. Movement, typed responses and actual UI controls afterward use ordinary application routing; this is not campaign-start or full campaign certification. Evidence job files retain the exact build/dirty fingerprint, accepted inputs and private checkpoint hashes.",
+  "application": {
+    "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
+    "packageHash": "35dd24b24879e6e4aa8e3eb54672dfba99ba6c1538a3b6760898fcd4a91e8589",
+    "archiveSha256": "bb42608d0bf02b2c608f3e8d7c23fb94fdba566b5c0b862f886a303dce02156d",
+    "starterCatalog": "src/storage/characters/realmz-classic-starter-characters.json"
+  },
+  "package": {
+    "campaignId": "scenario-grilochs-revenge",
+    "path": "src/storage/packages/bundled_campaigns/scenario-grilochs-revenge.realmz2",
+    "packageHash": "bfd9f8a1fb60bd18dbd3bb5475e9c316ce356f7d2846bcdcd26629fd80e28867",
+    "archiveSha256": "79be3eda0e635ea623425af25c9fc9e047bf79386d7c76e0a7d24c4a46723c62",
+    "provenance": "src/storage/packages/bundled_campaigns/castle-bundled-scenarios.provenance.json"
+  },
+  "baseline": {
+    "recipe": "classic-starters",
+    "seed": 17,
+    "questValues": {
+      "0": -1
+    },
+    "otherQuestValues": 0,
+    "partySetupCompleted": true,
+    "randomEncountersEnabled": true,
+    "mutatedPlayerFiles": false
+  },
+  "replayInstructions": [
+    "Create one isolated fixture at the recipe's baselineLocation using the pinned package; retain its checkpoint before input. Close superseded owned fixtures before replacement.",
+    "Pass {name: recipe.id, sessionId: the current observed fixture session ID, steps: recipe.steps} to journey-start. $pending is resolved by the existing journey runner.",
+    "The Shop Done ID identifies the current ShopRouteControls/Content/ShopDone control; re-resolve that exact visible control from observe if a later UI build changes its ID. Do not select another Done behind the modal.",
+    "Compare repeated runs only after restoring the same validated baseline outside the journey; never reseed or restore between its steps.",
+    "Assert the semantic outcomes below in retained observations/events, not just completed status. A failed ending does not invalidate an explicitly asserted earlier prefix, but the full recipe remains failed.",
+    "Pick Lock frame selection is typed input at its ordinary request, not wall-clock waiting. Submit the next step before the presentation timer resolves it."
+  ],
+  "recipes": [
+    {
+      "id": "griloch-shop-and-ap-chance",
+      "workflowIds": [
+        "classic.services.shop",
+        "classic.scenario.trigger-action-point"
+      ],
+      "baselineLocation": {
+        "mapId": "land:0",
+        "x": 7,
+        "y": 20
+      },
+      "target": {
+        "actionPoint": "Data DD:0:52",
+        "location": {
+          "mapId": "land:0",
+          "x": 8,
+          "y": 20
+        },
+        "program": "trigger:Data DD:0:52",
+        "opcodes": [
+          1,
+          6,
+          24
+        ]
+      },
+      "proofModes": [
+        "live-route",
+        "ordinary-movement",
+        "ui-control-execution"
+      ],
+      "expected": [
+        "Movement commits day 1 00:15 at 8,20 and contextual shop 1; actual Shop opens shop_action; actual Shop Done closes it.",
+        "Positive 100-percent placed-AP chance still consumes a draw after the time-owned rectangle checks; tuples raw/range/result: 23575/10000/7195, -5629/10000/1718, 31349/10000/9567, -12591/100/39.",
+        "AP 52 Keep Codes survives. Shop and Done consume no additional gameplay RNG."
+      ],
+      "fixedBy": [
+        "e34361c21bd7d9733ce13df2c233471147ce2392",
+        "4840187c"
+      ],
+      "remaining": [
+        "Shop inventory transactions are outside this recipe.",
+        "Native entry and Shop match; differing Done selectors prevent full cross-engine input equality."
+      ],
+      "otherEvidence": [
+        "jobs/f1decda60dbfce30d8567e7fdcfe89fd/evidence.json",
+        "jobs/840e6cf4a5c1aea5b97fb0791fc63887/evidence.json",
+        "jobs/e67ce3d11f7418699f978a59f2c92fed/evidence.json",
+        "jobs/3ead7aaa44a8211a24859cd6533e8a39/evidence.json"
+      ],
+      "result": "passed",
+      "evidence": "jobs/694f81c64709d30569919ae369a6dc39/evidence.json",
+      "measuredReplayMs": 2000,
+      "steps": [
+        {"command":"act","params":{"action":"move","arguments":{"dx":1,"dy":0}},"expect":{"interactionKind":null,"location":{"mapId":"land:0","x":8,"y":20}},"capture":true},
+        {"command":"ui","params":{"controlLabel":"Shop","action":"click"},"expect":{"interactionKind":"shop_action"},"capture":true},
+        {"command":"ui","params":{"controlId":"80aeb6b7edd07ae2504ea191","action":"click"},"expect":{"interactionKind":null},"capture":true}
+      ]
+    },
+    {
+      "id": "griloch-simple8-indexed-leave",
+      "workflowIds": [
+        "classic.scenario.choose-response"
+      ],
+      "baselineLocation": {
+        "mapId": "land:0",
+        "x": 6,
+        "y": 12
+      },
+      "target": {
+        "actionPoint": "Data DD:0:20",
+        "location": {
+          "mapId": "land:0",
+          "x": 6,
+          "y": 13
+        },
+        "encounter": "simple:8",
+        "result": "simple:8:result:3",
+        "opcodes": [
+          4,
+          1,
+          24
+        ]
+      },
+      "proofModes": [
+        "live-route",
+        "ordinary-movement",
+        "typed-response"
+      ],
+      "expected": [
+        "Simple 8 has four indexed options and disallows Back; index 3 selects Leave once.",
+        "Result message 210 is nonblocking, AP 20 is kept, no additional response RNG is consumed, and the party remains 6,13.",
+        "The two complete runs compare equal from the same saved baseline."
+      ],
+      "remaining": [
+        "Other indexed branches and rejected cancellation have not been exercised by this recipe."
+      ],
+      "otherEvidence": [
+        "jobs/3a1c2228990c2e0a80b7db5ec113acfd/evidence.json"
+      ],
+      "result": "passed",
+      "evidence": "jobs/039dc877ea8513af68537f066242d856/evidence.json",
+      "measuredReplayMs": 1000,
+      "steps": [
+        {"command":"act","params":{"arguments":{"dy":1,"dx":0},"action":"move"},"expect":{"interactionKind":"encounter_choice","location":{"mapId":"land:0","x":6,"y":13}},"capture":true},
+        {"command":"respond","params":{"response":{"body":{"index":3},"kind":"encounter_choice","requestId":"$pending"}},"expect":{"interactionKind":null,"location":{"mapId":"land:0","x":6,"y":13}},"capture":true}
+      ]
+    },
+    {
+      "id": "griloch-complex3-thief2-force-success",
+      "workflowIds": [
+        "classic.scenario.complex-interaction"
+      ],
+      "baselineLocation": {
+        "mapId": "land:0",
+        "x": 7,
+        "y": 6
+      },
+      "target": {
+        "actionPoint": "Data DD:0:77",
+        "location": {
+          "mapId": "land:0",
+          "x": 7,
+          "y": 7
+        },
+        "encounter": "complex:3",
+        "thiefEncounter": 2,
+        "result": "complex:3:result:1",
+        "programReplacement": "xap:379",
+        "opcodes": [
+          38,
+          1,
+          5,
+          19,
+          7,
+          24
+        ]
+      },
+      "proofModes": [
+        "live-route",
+        "ordinary-movement",
+        "typed-response"
+      ],
+      "expected": [
+        "AP entry acknowledges message 192. A same-sized wrong action set [0,1] (authored exact set [0,2]) selects outcome 4, random message 171 and a saveable acknowledgement, then repeats Complex 3.",
+        "Thief action enters owner Complex 3 / Thief 2. Kevlar may Force Lock (index 4, chance 62); his Pick Lock is unavailable for lack of the ability.",
+        "Frame 360 resolves success with positions [150,141,141,140,142], sound 638 and 1500 experience; no message_shown event references text zero.",
+        "Authored message 203 and opcode 7 replace AP 77 with xap:379; opcode 24 keeps it. The party remains 7,7 with no pending interaction.",
+        "Two complete runs have equal baseline and semantic/RNG results; the complete trace contains 852 draws."
+      ],
+      "fixedBy": [
+        "158bf958"
+      ],
+      "remaining": [
+        "This is not Castle RNG equivalence for the Thief workflow.",
+        "Exact Action-set success and other Thief actions/trap variants remain outside this recipe."
+      ],
+      "otherEvidence": [
+        "jobs/d054c2ee137caaac43bf8efcb1cb9868/evidence.json",
+        "jobs/c5af8dc29c5a1c39626ff5a3ab13e47f/evidence.json"
+      ],
+      "result": "passed",
+      "evidence": "jobs/3845053455b9b2b5687e005e353d6064/evidence.json",
+      "measuredReplayMs": 5000,
+      "steps": [
+        {"command":"act","params":{"action":"move","arguments":{"dx":0,"dy":1}},"expect":{"interactionKind":"acknowledge","location":{"mapId":"land:0","x":7,"y":7}},"capture":true},
+        {"command":"respond","params":{"response":{"requestId":"$pending","kind":"acknowledge","body":{}}},"expect":{"interactionKind":"complex_encounter","location":{"mapId":"land:0","x":7,"y":7}},"capture":true},
+        {"command":"respond","params":{"response":{"requestId":"$pending","kind":"complex_encounter","body":{"action":"choice","slots":[0,1]}}},"expect":{"interactionKind":"acknowledge","location":{"mapId":"land:0","x":7,"y":7}},"capture":true},
+        {"command":"respond","params":{"response":{"requestId":"$pending","kind":"acknowledge","body":{}}},"expect":{"interactionKind":"complex_encounter","location":{"mapId":"land:0","x":7,"y":7}},"capture":true},
+        {"command":"respond","params":{"response":{"requestId":"$pending","kind":"complex_encounter","body":{"action":"thief"}}},"expect":{"interactionKind":"thief_encounter","location":{"mapId":"land:0","x":7,"y":7}},"capture":true},
+        {"command":"respond","params":{"response":{"requestId":"$pending","kind":"thief_encounter","body":{"action":"attempt","characterId":"classic.starter.kevlar","actionIndex":4}}},"expect":{"interactionKind":"pick_lock","location":{"mapId":"land:0","x":7,"y":7}},"capture":true},
+        {"command":"respond","params":{"response":{"requestId":"$pending","kind":"pick_lock","body":{"frameIndex":360}}},"expect":{"interactionKind":null,"location":{"mapId":"land:0","x":7,"y":7}},"capture":true}
+      ]
+    },
+    {
+      "id": "griloch-complex3-thief2-force-failure",
+      "workflowIds": [
+        "classic.scenario.complex-interaction"
+      ],
+      "baselineLocation": {
+        "mapId": "land:0",
+        "x": 7,
+        "y": 6
+      },
+      "target": {
+        "actionPoint": "Data DD:0:77",
+        "location": {
+          "mapId": "land:0",
+          "x": 7,
+          "y": 7
+        },
+        "encounter": "complex:3",
+        "thiefEncounter": 2,
+        "result": "complex:3:result:3",
+        "opcodes": [
+          38,
+          1,
+          5,
+          19
+        ]
+      },
+      "proofModes": [
+        "live-route",
+        "ordinary-movement",
+        "typed-response"
+      ],
+      "expected": [
+        "The same ordinary approach and wrong Action set enter the same owner-bound Thief request.",
+        "Frame 0 fails Force Lock, awards no experience and displays no text-zero narrative. The authored fallback message is acknowledged and Complex 3 repeats.",
+        "The completed recipe ends at the repeated Complex request; it does not claim successful Back."
+      ],
+      "fixedBy": [
+        "158bf958"
+      ],
+      "remaining": [
+        "Nested Back is GAP-SCEN-001 and must not count as passed."
+      ],
+      "otherEvidence": [],
+      "result": "passed",
+      "evidence": "jobs/1c0f90934ef514f94bcef7ef560af00b/evidence.json",
+      "measuredReplayMs": 5000,
+      "steps": [
+        {"command":"act","params":{"action":"move","arguments":{"dx":0,"dy":1}},"expect":{"interactionKind":"acknowledge","location":{"mapId":"land:0","x":7,"y":7}},"capture":true},
+        {"command":"respond","params":{"response":{"requestId":"$pending","kind":"acknowledge","body":{}}},"expect":{"interactionKind":"complex_encounter","location":{"mapId":"land:0","x":7,"y":7}},"capture":true},
+        {"command":"respond","params":{"response":{"requestId":"$pending","kind":"complex_encounter","body":{"action":"choice","slots":[0,1]}}},"expect":{"interactionKind":"acknowledge","location":{"mapId":"land:0","x":7,"y":7}},"capture":true},
+        {"command":"respond","params":{"response":{"requestId":"$pending","kind":"acknowledge","body":{}}},"expect":{"interactionKind":"complex_encounter","location":{"mapId":"land:0","x":7,"y":7}},"capture":true},
+        {"command":"respond","params":{"response":{"requestId":"$pending","kind":"complex_encounter","body":{"action":"thief"}}},"expect":{"interactionKind":"thief_encounter","location":{"mapId":"land:0","x":7,"y":7}},"capture":true},
+        {"command":"respond","params":{"response":{"requestId":"$pending","kind":"thief_encounter","body":{"action":"attempt","characterId":"classic.starter.kevlar","actionIndex":4}}},"expect":{"interactionKind":"pick_lock","location":{"mapId":"land:0","x":7,"y":7}},"capture":true},
+        {"command":"respond","params":{"response":{"requestId":"$pending","kind":"pick_lock","body":{"frameIndex":0}}},"expect":{"interactionKind":"acknowledge","location":{"mapId":"land:0","x":7,"y":7}},"capture":true},
+        {"command":"respond","params":{"response":{"requestId":"$pending","kind":"acknowledge","body":{}}},"expect":{"interactionKind":"complex_encounter","location":{"mapId":"land:0","x":7,"y":7}},"capture":true}
+      ]
+    },
+    {
+      "id": "griloch-nested-complex-back-failure",
+      "workflowIds": [
+        "classic.scenario.complex-interaction"
+      ],
+      "baselineLocation": {
+        "mapId": "land:0",
+        "x": 7,
+        "y": 6
+      },
+      "target": {
+        "actionPoint": "Data DD:0:77",
+        "location": {
+          "mapId": "land:0",
+          "x": 7,
+          "y": 7
+        },
+        "encounter": "complex:3",
+        "thiefEncounter": 2
+      },
+      "proofModes": [
+        "live-route",
+        "ordinary-movement",
+        "typed-response"
+      ],
+      "expected": [
+        "After the same failed Thief branch and repeated Complex, Back must finish the current native encounter invocation, preserve AP 77 and return the ordinary land step to 7,6 without extra time or RNG.",
+        "Observed failure: encounter_cancelled is followed by a fresh complex_encounter request at 7,7 because only one nested VM frame returns."
+      ],
+      "gapId": "GAP-SCEN-001",
+      "remaining": [
+        "Repair nested cancellation while retaining legitimate signed-GOSUB caller returns; include Simple, flat Complex and saved nested continuation checks.",
+        "The original failed job expected 7,7 after Back; this recipe corrects the expected backout location to 7,6 from Castle newland.c cancellation flow. The independently observed wrong interaction remains the original failure."
+      ],
+      "otherEvidence": [],
+      "result": "failed",
+      "evidence": "jobs/e3b5248baff62a35005698401d5ef9b5/evidence.json",
+      "measuredReplayMs": 6000,
+      "steps": [
+        {"command":"act","params":{"action":"move","arguments":{"dx":0,"dy":1}},"expect":{"interactionKind":"acknowledge","location":{"mapId":"land:0","x":7,"y":7}},"capture":true},
+        {"command":"respond","params":{"response":{"requestId":"$pending","kind":"acknowledge","body":{}}},"expect":{"interactionKind":"complex_encounter","location":{"mapId":"land:0","x":7,"y":7}},"capture":true},
+        {"command":"respond","params":{"response":{"requestId":"$pending","kind":"complex_encounter","body":{"action":"choice","slots":[0,1]}}},"expect":{"interactionKind":"acknowledge","location":{"mapId":"land:0","x":7,"y":7}},"capture":true},
+        {"command":"respond","params":{"response":{"requestId":"$pending","kind":"acknowledge","body":{}}},"expect":{"interactionKind":"complex_encounter","location":{"mapId":"land:0","x":7,"y":7}},"capture":true},
+        {"command":"respond","params":{"response":{"requestId":"$pending","kind":"complex_encounter","body":{"action":"thief"}}},"expect":{"interactionKind":"thief_encounter","location":{"mapId":"land:0","x":7,"y":7}},"capture":true},
+        {"command":"respond","params":{"response":{"requestId":"$pending","kind":"thief_encounter","body":{"action":"attempt","characterId":"classic.starter.kevlar","actionIndex":4}}},"expect":{"interactionKind":"pick_lock","location":{"mapId":"land:0","x":7,"y":7}},"capture":true},
+        {"command":"respond","params":{"response":{"requestId":"$pending","kind":"pick_lock","body":{"frameIndex":0}}},"expect":{"interactionKind":"acknowledge","location":{"mapId":"land:0","x":7,"y":7}},"capture":true},
+        {"command":"respond","params":{"response":{"requestId":"$pending","kind":"acknowledge","body":{}}},"expect":{"interactionKind":"complex_encounter","location":{"mapId":"land:0","x":7,"y":7}},"capture":true},
+        {"command":"respond","params":{"response":{"requestId":"$pending","kind":"complex_encounter","body":{"action":"back"}}},"expect":{"interactionKind":null,"location":{"mapId":"land:0","x":7,"y":6}},"capture":true}
+      ]
+    }
+  ],
+  "siblingAndContinuationEvidence": [
+    {
+      "workflowId": "classic.services.temple",
+      "actionPoint": "Data DD:0:35",
+      "location": {
+        "mapId": "land:0",
+        "x": 19,
+        "y": 11
+      },
+      "setup": "Direct AP setup, followed by public service {serviceId:'realmz.service.temple',action:'enter'} and temple_action {action:'leave'}. This is not an ordinary Temple approach or actual Temple-button claim.",
+      "result": "passed",
+      "evidence": "jobs/0ea8676b71602f54293d222d8da444ac/evidence.json",
+      "remaining": "The leave response followed the recorded entry job and was observed directly; replay a complete ordinary Temple approach separately."
+    },
+    {
+      "workflowId": "classic.scenario.complex-interaction",
+      "setup": "Restore the validated checkpoint at the wrong-choice acknowledgement before responding and entering the owner-bound Thief menu.",
+      "result": "passed",
+      "evidence": "jobs/3ee9835b2e38c3d75c568e0d165f1f86/evidence.json",
+      "remaining": "This restores the nested acknowledgement, not every possible encounter continuation."
+    },
+    {
+      "workflowId": "classic.scenario.complex-interaction",
+      "setup": "Restore the validated checkpoint at the Thief menu and submit thief_encounter {action:'back'} to return to its owning Complex request.",
+      "result": "passed",
+      "evidence": "jobs/cfee2a668e06f4e7727267ce806cfd27/evidence.json",
+      "remaining": "Back from that Complex remains the separate nested-cancellation failure."
+    }
+  ],
+  "nextSelection": [
+    {
+      "priority": "known-failure",
+      "gapId": "GAP-SCEN-001",
+      "recipeId": "griloch-nested-complex-back-failure"
+    },
+    {
+      "priority": "meaningful-variant",
+      "campaignId": "scenario-castle-in-the-clouds",
+      "archiveSha256": "f1f999f62fc9b89ac98c98ce98340dee006a4eae9bdec8be2e71b342e2f31197",
+      "packageHash": "94881a4c1c25a7eaef12b93dbd88d8975c510fb6c3e959152c46bca57d3bbe23",
+      "actionPoint": "Data DD:0:32",
+      "location": {
+        "mapId": "land:0",
+        "x": 50,
+        "y": 81
+      },
+      "encounter": "complex:3",
+      "expectedWord": "open sesame",
+      "wordResult": 2,
+      "candidateOnly": true,
+      "expected": "Positive message 69 precedes Complex 3; correct word chooses result 1 (zero-based): nonblocking message 72, waiting sound -624, AP removal. Wrong word repeats through a positive message. Thief record 3 offers separate nonzero-text success/failure neighbors.",
+      "remaining": "Validate a traversable adjacent starting cell and ordinary eligibility; do not treat action groups or item alternatives as prerequisites for word input. No live outcome is claimed."
+    },
+    {
+      "priority": "meaningful-variant",
+      "campaignId": "scenario-mithril-vault",
+      "archiveSha256": "c2812ed33cd305fd012b33283832bfceab1a51bb2fe0244cd503d67c3a3d7bdf",
+      "packageHash": "c401fa2170e6e380edaf16943e6d5cf2da1152ac87b417cf5c3b5a3f728fc9b5",
+      "actionPoint": "Data DD:1:8",
+      "location": {
+        "mapId": "land:1",
+        "x": 34,
+        "y": 17
+      },
+      "encounter": "complex:3",
+      "expectedWord": "cheezehead",
+      "wordResult": 1,
+      "candidateOnly": true,
+      "expected": "Correct word selects positive message 71 then AP removal; wrong-word path selects positive message 114. Inspect restored continuation, caller eligibility and any AP header effects before credit.",
+      "remaining": "Static selection only; no live outcome is claimed."
+    }
+  ]
+}
