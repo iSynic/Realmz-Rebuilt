@@ -38,6 +38,185 @@
   ],
   "recipes": [
     {
+      "id": "white-dragon-xap-message-saved-continuation",
+      "application": {
+        "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
+        "packageHash": "45298c295fc784b528f4219d6ceb0454cb482d894b66440e529d7763e7cb0036",
+        "archiveSha256": "e85ae0aca72fa6642ef66af8745ceb24446459598efcb1075cd8f5a4cce36012",
+        "starterCatalog": "src/storage/characters/realmz-classic-starter-characters.json"
+      },
+      "package": {
+        "campaignId": "scenario-white-dragon",
+        "path": "src/storage/packages/bundled_campaigns/scenario-white-dragon.realmz2",
+        "packageHash": "78a52bfec683a7166aad4976b199460e26d7f23deb04aa9fb170da86948442f0",
+        "archiveSha256": "7be72ac76ca88f5b7f20ab79b742301006efa313af5dec3a0349c033d316f0f4"
+      },
+      "baselineLocation": {
+        "mapId": "land:6",
+        "x": 7,
+        "y": 27
+      },
+      "target": {
+        "actionPoint": "Data DD:6:52",
+        "location": {
+          "mapId": "land:6",
+          "x": 7,
+          "y": 28
+        },
+        "extraActionPoint": 168
+      },
+      "proofModes": [
+        "live-route",
+        "ordinary-movement",
+        "actual-ui-control",
+        "restored-continuation"
+      ],
+      "workflowIds": [
+        "classic.scenario.present-message-media",
+        "classic.system.save-game"
+      ],
+      "expected": [
+        "Three actual Yes controls accept the successive choices. Positive message 391 requires acknowledgement before the third choice; negative messages 390,389,392 do not create separate acknowledgement requests.",
+        "The third Yes transfers the placed AP timeline to XAP 168. Positive messages 393,394,395,396 each yield one distinct acknowledgement in that exact order. The AP remains enabled until the final acknowledgement; the full chain retains minute 25, draw count 1 and generator state 285719.",
+        "Capture and restore the actual pending third-choice checkpoint, then separately the pending XAP message-393 checkpoint. Every resumed gameplay/RNG state and pending request matches its corresponding fresh-route boundary, through completion and ordinary exit/re-entry.",
+        "A complete eleven-input replay from the same initial checkpoint matches every gameplay/RNG boundary. No character, item, wealth or reward mutation occurs. Canonical 1280x720 first-choice and first-XAP-message captures were inspected."
+      ],
+      "remaining": [
+        "Checkpoint export/restore is the validated fixture boundary, not an ordinary save-menu control claim. Prepared adjacency and targeted XAP continuation do not certify campaign travel or other XAP callers."
+      ],
+      "result": "passed",
+      "evidence": "jobs/d678e3885bf651676b5da7fda6d1c47c/evidence.json",
+      "otherEvidence": [
+        "jobs/b558e8412fb4199db50a36604763f1a8/evidence.json: complete deterministic repeat",
+        "jobs/670dd7d5242b70744f0f26fd678120a5/evidence.json and jobs/b670bbd26d479ce2eef1ca079658e5dc/evidence.json: third-choice capture and restored suffix",
+        "jobs/667dbbf1f247aae23973b555683965b7/evidence.json and jobs/7f3391279907bbb209bdebfca3e50aee/evidence.json: XAP first-ack capture and restored suffix"
+      ],
+      "steps": [
+        {
+          "command": "act",
+          "params": {
+            "action": "move",
+            "arguments": {
+              "dx": 0,
+              "dy": 1
+            }
+          },
+          "expect": {
+            "interactionKind": "yes_no",
+            "location": {
+              "mapId": "land:6",
+              "x": 7,
+              "y": 28
+            }
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "Yes"
+          },
+          "expect": {
+            "interactionKind": "yes_no"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "Yes"
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "yes_no"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "Yes"
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": null
+          },
+          "capture": true
+        }
+      ]
+    },
+    {
       "id": "white-dragon-successive-choice-refusal",
       "application": {
         "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
