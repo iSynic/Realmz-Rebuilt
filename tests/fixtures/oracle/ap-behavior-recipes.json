@@ -38,6 +38,215 @@
   ],
   "recipes": [
     {
+      "id": "twin-sands-saved-loop-choice",
+      "application": {
+        "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
+        "packageHash": "45298c295fc784b528f4219d6ceb0454cb482d894b66440e529d7763e7cb0036",
+        "archiveSha256": "e85ae0aca72fa6642ef66af8745ceb24446459598efcb1075cd8f5a4cce36012",
+        "starterCatalog": "src/storage/characters/realmz-classic-starter-characters.json"
+      },
+      "package": {
+        "campaignId": "scenario-twin-sands-of-time",
+        "path": "src/storage/packages/bundled_campaigns/scenario-twin-sands-of-time.realmz2",
+        "packageHash": "9fd04d22eefd86eb2fd6f5adb6f44493b0fa16a0f77ba56a5eb5760a542f76b0",
+        "archiveSha256": "2abb86a1ad1156fa8567b89f1e03d52496c9105b88b9684acd15185e076bd9f3"
+      },
+      "baselineLocation": {
+        "mapId": "land:1",
+        "x": 46,
+        "y": 38
+      },
+      "target": {
+        "actionPoint": "Data DD:1:41",
+        "location": {
+          "mapId": "land:1",
+          "x": 46,
+          "y": 39
+        },
+        "extraActionPoints": [
+          348,
+          346,
+          347
+        ]
+      },
+      "proofModes": [
+        "live-route",
+        "ordinary-movement",
+        "actual-ui-control",
+        "restored-continuation"
+      ],
+      "workflowIds": [
+        "classic.scenario.choose-response",
+        "classic.system.save-game"
+      ],
+      "expected": [
+        "Capture the actual choice after two XAP 348 self-transfers: one program frame at cursor 2, originalProgramId trigger:Data DD:1:41, triggerId Data DD:1:41 and definitionId xap:348. The loop does not accumulate call frames.",
+        "Restore that checkpoint and click No. Both the message-869 acknowledgement and final replacement/keep state match the fresh nine-step ending, including every complete gameplay/RNG checkpoint and pending request.",
+        "Restore the same saved choice and click Yes instead. The next random-message acknowledgement, repeated choice, No branch and completion match the corresponding four boundaries of a fresh three-loop route.",
+        "Both legal choices preserve minute 25 and AP ownership. No consumes no draw; Yes advances the random-message draw count from 5 to 6 exactly once. No save-path reseeding, duplicated preface or altered pending request occurs."
+      ],
+      "remaining": [
+        "Validated fixture checkpoint restoration is not ordinary save-menu activation. This bounded loop and its two choices do not prove arbitrary recursion depth or unrelated encounter callers."
+      ],
+      "result": "passed",
+      "evidence": "jobs/8c65a3d97bcc1e5dd35456c618a204a0/evidence.json",
+      "otherEvidence": [
+        "jobs/43e1a2e0481c6325f2fa5c28bec1ae9b/evidence.json: captured second-loop choice",
+        "jobs/cbaf4696f2003a3a9a917750059722bc/evidence.json: restored No matches fresh ending",
+        "jobs/98536ea9cc89df95ed683e0b1f03e3ec/evidence.json: restored Yes matches fresh third loop",
+        "jobs/4d2928e9efdb6b84c4f50a45490cbced/evidence.json: fresh two-loop No comparator"
+      ],
+      "steps": [
+        {
+          "command": "act",
+          "params": {
+            "action": "move",
+            "arguments": {
+              "dx": 0,
+              "dy": 1
+            }
+          },
+          "expect": {
+            "interactionKind": "acknowledge",
+            "location": {
+              "mapId": "land:1",
+              "x": 46,
+              "y": 39
+            }
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "yes_no"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "Yes"
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "yes_no"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "Yes"
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "yes_no"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "Yes"
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "yes_no"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "No"
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": null
+          },
+          "capture": true
+        }
+      ]
+    },
+    {
       "id": "twin-sands-random-message-self-transfer",
       "application": {
         "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
