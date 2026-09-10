@@ -38,6 +38,78 @@
   ],
   "recipes": [
     {
+      "id": "wrath-chest-failed-disarm-trap-and-back",
+      "application": {
+        "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
+        "packageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad",
+        "archiveSha256": "bf1ff5de1d6fc5bd1d5ffff8d582797dfab885acfd9b20b4e02ce9040421e150",
+        "starterCatalog": "src/storage/characters/realmz-classic-starter-characters.json"
+      },
+      "package": {
+        "campaignId": "scenario-wrath-of-the-mind-lords",
+        "path": "src/storage/packages/bundled_campaigns/scenario-wrath-of-the-mind-lords.realmz2",
+        "packageHash": "1328d8a443d979b38ba2c5ecdeea9342a03153fed0c079d761df8ee53c53a894",
+        "archiveSha256": "a032141f8d22fe2aa81cd416b8cf9a6509e3ae7d01d5640fdfb8a7d67041187b"
+      },
+      "baselineLocation": {
+        "mapId": "dungeon:1",
+        "x": 33,
+        "y": 14
+      },
+      "baselineCheckpoint": {
+        "path": "fixtures/b50e0685ccb0ee547430a40804e5cb0a/checkpoints/1ed12f58-4847-4254-a877-22c011d109a9.r2save",
+        "fileSha256": "1b9371c1d93e80b144e5a123b725fd600191916e37572988cf464df614ba5fb9",
+        "preparation": "Ordinary AP44 entry and actual Silver Leaf detection from wrath-chest-detect-disarm-replacement. Thief18 pending with Disarm Trap enabled, trap armed, two draws/state507111939, one minute, no XP, replacement or damage."
+      },
+      "target": {
+        "actionPoint": "Data DDD:1:44",
+        "location": {
+          "mapId": "dungeon:1",
+          "x": 33,
+          "y": 14
+        },
+        "complexEncounter": 28,
+        "thiefEncounter": 18,
+        "replacementXap": 927,
+        "replacementEncounter": 29
+      },
+      "proofModes": [
+        "live-route",
+        "actual-ui-control",
+        "typed-interaction",
+        "restored-continuation"
+      ],
+      "workflowIds": [
+        "classic.scenario.choose-response",
+        "classic.scenario.trigger-action-point",
+        "classic.system.save-game"
+      ],
+      "expected": [
+        "Actual Silver Leaf Disarm Trap 49 opens its owned six-tumbler request. Typed frame0 fails with [59,59,59,59,59,59] and no resolution draw. The application trap warning suspends before damage; no result-code branch or XP has executed.",
+        "Acknowledgement springs Thief18's armed all-party Lightning Strike3105 at power6. Its shared damage is 26 (six power rolls 3,6,6,5,2,4); ordered save rolls [27,2,47,80,25,66] yield damage [13,13,13,26,13,26]. Final ordered health is [17,3,12,-5,-3,-14]. No spell points, wealth, inventory or experience are spent or awarded.",
+        "Trap handling consumes the armed flag and enables Pick Lock, then returns to Thief actions rather than dispatching failure code4. Actual Back to encounter returns to Complex28; actual Back preserves unreplaced AP44 and dungeon position(33,14). Final clock remains one minute and RNG16/state10529728.",
+        "Both complete seven-input saved-baseline runs compare equal. Restoring the pending trap-warning save and replaying only acknowledgement/Back/Back yields identical full final game/RNG state, applying damage once."
+      ],
+      "result": "passed",
+      "evidence": "jobs/812b8fa7c0901f1bc12a113ca4579ff6/evidence.json",
+      "otherEvidence": [
+        "jobs/6419a12dd6afbd1e28ce52be9523e23f/evidence.json: equivalent baseline and equal full seven-input repeat",
+        "jobs/47b874f669ce3a9b8661f63511fcf3a9/evidence.json: three-input suffix from fixtures/b50e0685ccb0ee547430a40804e5cb0a/checkpoints/bfbe148a-fada-4e04-8786-ebf3ca703b22.r2save, SHA256 a75fd257dc1e9f783488563f91721b1c15320e1dc895287f0edf94512d895f1a; final game/RNG equals complete failure route"
+      ],
+      "remaining": [
+        "Source-adjudicated Rebuilt evidence, not native Castle Wrath or campaign certification. The armed-trap branch intercepts the authored failure code; unarmed failure-code dispatch remains distinct. Typed frame0 is not timed mouse input; pending-tumbler save and lock/reward are separate."
+      ],
+      "steps": [
+        {"command":"ui","params":{"action":"click","controlId":"feb8d61886f66aba88f4a445"},"expect":{"interactionKind":"thief_encounter"},"capture":true},
+        {"command":"ui","params":{"action":"click","controlId":"feb8d61886f66aba88f4a445"},"expect":{"interactionKind":"thief_encounter"},"capture":true},
+        {"command":"ui","params":{"action":"click","controlLabel":"Disarm Trap  49"},"expect":{"interactionKind":"pick_lock"},"capture":true},
+        {"command":"respond","params":{"response":{"requestId":"$pending","kind":"pick_lock","body":{"frameIndex":0}}},"expect":{"interactionKind":"acknowledge"},"capture":true},
+        {"command":"respond","params":{"response":{"requestId":"$pending","kind":"acknowledge","body":{}}},"expect":{"interactionKind":"thief_encounter"},"capture":true},
+        {"command":"ui","params":{"action":"click","controlLabel":"Back to encounter"},"expect":{"interactionKind":"complex_encounter"},"capture":true},
+        {"command":"ui","params":{"action":"click","controlId":"136edae4e94270190bde2d24"},"expect":{"interactionKind":null,"location":{"mapId":"dungeon:1","x":33,"y":14}},"capture":true}
+      ]
+    },
+    {
       "id": "wrath-chest-detect-disarm-replacement",
       "application": {
         "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
@@ -6935,8 +7007,8 @@
       "campaignId": "scenario-wrath-of-the-mind-lords",
       "packageHash": "1328d8a443d979b38ba2c5ecdeea9342a03153fed0c079d761df8ee53c53a894",
       "archiveSha256": "a032141f8d22fe2aa81cd416b8cf9a6509e3ae7d01d5640fdfb8a7d67041187b",
-      "expected": "Wrath AP 44/Complex 28 owner-bound detection/disarm and replacement XAP 927/Complex 29 reentry are accepted. Next exercise the armed-trap failure and lock/reward outcomes from their saved caller baselines; Trevor's starter spell points are below Open Lock's cost, so unavailable casting and any recovery preparation must remain explicit. AOGM contextual outcomes are accepted; reported failures still take priority.",
-      "remaining": "Recipes represent all thirteen bundled scenarios under their recorded package/library identities, not corpus certification. Wrath trap failure and chest reward remain untested, as do pooled-payment edges, present-ally outcomes and other caller contexts. Native CPU/dungeon performance, complete combat replay and full AOGM/War certification remain separate."
+      "expected": "Wrath AP44 detection/disarm, replacement XAP927/Complex29 reentry and armed-trap failure with warning save/resume are accepted. Next exercise the lock/reward outcomes from the saved uninjured caller baseline; Trevor's starter spell points are below Open Lock's cost, so unavailable casting and any recovery preparation must remain explicit. AOGM contextual outcomes are accepted; reported failures still take priority.",
+      "remaining": "Recipes represent all thirteen bundled scenarios under their recorded package/library identities, not corpus certification. Wrath chest reward and unarmed failure-code dispatch remain untested, as do pooled-payment edges, present-ally outcomes and other caller contexts. Native CPU/dungeon performance, complete combat replay and full AOGM/War certification remain separate."
     }
   ]
 }
