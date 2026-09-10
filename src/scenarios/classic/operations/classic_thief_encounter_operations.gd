@@ -150,7 +150,7 @@ func _present_action_result(encounter: ComplexEncounterDefinition, thief: ThiefE
 	var sound_ids := thief.success_sounds() if succeeded else thief.failure_sounds()
 	var signed_message_id := text_ids[action_index]
 	var message_id := absi(signed_message_id)
-	var message := _content.scenario_records.message_by_id(message_id)
+	var message := _content.scenario_records.message_by_id(message_id) if message_id != 0 else null
 	if message_id != 0 and message == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Thief Encounter references unavailable message %d." % signed_message_id)
 	if message != null:
