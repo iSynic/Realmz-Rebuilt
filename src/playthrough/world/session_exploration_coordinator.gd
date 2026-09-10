@@ -72,8 +72,6 @@ func _select_contextual_encounter(map: MapDefinition, encounter_coordinate: Vect
 		for door_index: int in mini(door_ids.size(), door_percents.size()):
 			var door_id := door_ids[door_index]
 			var percent := door_percents[door_index]
-			if door_id == 0 or percent == 0:
-				continue
 			var roll := _context.rng.draw(100, StringName("contextual-encounter.%s.door.%d" % [region.id, door_index]))
 			var fired := roll <= absi(percent)
 			events.append(DomainEvent.new(&"contextual_encounter_checked", {"regionId": region.id, "doorIndex": door_index, "programId": "xap:%d" % door_id, "roll": roll, "chancePercent": percent, "triggered": fired}))

@@ -38,6 +38,471 @@
   ],
   "recipes": [
     {
+      "id": "aogm-pond-contextual-entry",
+      "application": {
+        "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
+        "packageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad",
+        "archiveSha256": "bf1ff5de1d6fc5bd1d5ffff8d582797dfab885acfd9b20b4e02ce9040421e150",
+        "starterCatalog": "src/storage/characters/realmz-classic-starter-characters.json"
+      },
+      "package": {
+        "campaignId": "scenario-assault-on-giant-mountain",
+        "path": "src/storage/packages/bundled_campaigns/scenario-assault-on-giant-mountain.realmz2",
+        "packageHash": "7f1b90989e2c9decd8f0326d86d8069c64081c1076440ee896687e3f7fdf8454",
+        "archiveSha256": "c4429e9a1f1cc4b0e255e2640947291ec5467d586420f6ee865b36a730de1892"
+      },
+      "target": {
+        "randomRegion": "land:0:randlevel:rect:18",
+        "caller": "Actual Encounter scans the faced land cell (42,8), not placed-AP or automatic random entry.",
+        "xap": 25,
+        "complexEncounter": 5
+      },
+      "proofModes": [
+        "live-route",
+        "actual-ui-control",
+        "restored-continuation"
+      ],
+      "workflowIds": [
+        "classic.scenario.choose-response",
+        "classic.system.save-game"
+      ],
+      "remaining": [
+        "Source-adjudicated Rebuilt fixture evidence, not paired native Castle AOGM execution or full campaign certification."
+      ],
+      "baselineLocation": {
+        "mapId": "land:0",
+        "x": 44,
+        "y": 8
+      },
+      "baselineCheckpoint": {
+        "path": "fixtures/932437a47f0b0b6b5426d6b2a6a72858/checkpoints/71127481-376f-4d8e-bcb8-88f9193af967.r2save",
+        "fileSha256": "293519331bfec9472ad829883018a6a758a84bd9971a6f85d531ed885ec7646a",
+        "preparation": "Six named starters, seed 17 and quest 0=-1 at land:0 (44,8); no ordinary import or campaign-start hook. Movement is the first accepted input."
+      },
+      "expected": [
+        "West movement to (43,8) advances six five-minute timeclicks and checks regions 18 and 3 with rolls 7195 and 1718; neither automatic encounter fires.",
+        "Actual Encounter scans faced (42,8). Region 18 chances [-100,0,0] consume source-ordered rolls [96,39,38], select XAP 25 and open Complex 5. Final RNG is drawCount=5, generatorState=122498987; the command itself advances no time.",
+        "Castle 491816ad60037394f92c428e99c004494d3c28b3 buttonchoice.c:442-485 draws all three slots. Both repaired baselines and complete two-input outcomes compare equal."
+      ],
+      "result": "passed",
+      "evidence": "jobs/a0c83420b483c7f51a17ced2a906830f/evidence.json",
+      "otherEvidence": [
+        "jobs/42ae38e5582eae0f16615bba64ae927b/evidence.json: equivalent baseline and equal full repeat"
+      ],
+      "steps": [
+        {
+          "command": "act",
+          "params": {
+            "action": "move",
+            "arguments": {
+              "dx": -1,
+              "dy": 0
+            }
+          },
+          "expect": {
+            "interactionKind": null,
+            "location": {
+              "mapId": "land:0",
+              "x": 43,
+              "y": 8
+            }
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "Encounter"
+          },
+          "expect": {
+            "interactionKind": "complex_encounter",
+            "location": {
+              "mapId": "land:0",
+              "x": 43,
+              "y": 8
+            }
+          },
+          "capture": true
+        }
+      ]
+    },
+    {
+      "id": "aogm-pond-contextual-entry-before-rng-fix",
+      "application": {
+        "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
+        "packageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad",
+        "archiveSha256": "bf1ff5de1d6fc5bd1d5ffff8d582797dfab885acfd9b20b4e02ce9040421e150",
+        "starterCatalog": "src/storage/characters/realmz-classic-starter-characters.json"
+      },
+      "package": {
+        "campaignId": "scenario-assault-on-giant-mountain",
+        "path": "src/storage/packages/bundled_campaigns/scenario-assault-on-giant-mountain.realmz2",
+        "packageHash": "7f1b90989e2c9decd8f0326d86d8069c64081c1076440ee896687e3f7fdf8454",
+        "archiveSha256": "c4429e9a1f1cc4b0e255e2640947291ec5467d586420f6ee865b36a730de1892"
+      },
+      "target": {
+        "randomRegion": "land:0:randlevel:rect:18",
+        "caller": "Actual Encounter scans the faced land cell (42,8), not placed-AP or automatic random entry.",
+        "xap": 25,
+        "complexEncounter": 5
+      },
+      "proofModes": [
+        "live-route",
+        "actual-ui-control",
+        "restored-continuation"
+      ],
+      "workflowIds": [
+        "classic.scenario.choose-response",
+        "classic.system.save-game"
+      ],
+      "remaining": [
+        "Historical failure retained under its exact running build; repaired acceptance is aogm-pond-contextual-entry."
+      ],
+      "baselineLocation": {
+        "mapId": "land:0",
+        "x": 44,
+        "y": 8
+      },
+      "baselineCheckpoint": {
+        "path": "fixtures/932437a47f0b0b6b5426d6b2a6a72858/checkpoints/71127481-376f-4d8e-bcb8-88f9193af967.r2save",
+        "fileSha256": "293519331bfec9472ad829883018a6a758a84bd9971a6f85d531ed885ec7646a",
+        "preparation": "Six named starters, seed 17 and quest 0=-1 at land:0 (44,8); no ordinary import or campaign-start hook. Movement is the first accepted input."
+      },
+      "expected": [
+        "Historical build aad7f677;dirty:39b29aed85f127ff3fb46fdd8b3e661b34c2722e3298e349b7a379b4cc336ec1 completes the route but incorrectly skips the two zero slots, ending at three draws/state 1815247477 instead of five/state 122498987. A completed journey is not a semantic pass."
+      ],
+      "result": "failed",
+      "evidence": "jobs/ff5d8be468d878a32673db0d8ad23912/evidence.json",
+      "otherEvidence": [
+        "jobs/38c9a63a4af2f9d28896e7804274b400/evidence.json: identical baseline and repeated incorrect three-draw outcome"
+      ],
+      "steps": [
+        {
+          "command": "act",
+          "params": {
+            "action": "move",
+            "arguments": {
+              "dx": -1,
+              "dy": 0
+            }
+          },
+          "expect": {
+            "interactionKind": null,
+            "location": {
+              "mapId": "land:0",
+              "x": 43,
+              "y": 8
+            }
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "Encounter"
+          },
+          "expect": {
+            "interactionKind": "complex_encounter",
+            "location": {
+              "mapId": "land:0",
+              "x": 43,
+              "y": 8
+            }
+          },
+          "capture": true
+        }
+      ]
+    },
+    {
+      "id": "aogm-pond-wrong-action-set",
+      "application": {
+        "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
+        "packageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad",
+        "archiveSha256": "bf1ff5de1d6fc5bd1d5ffff8d582797dfab885acfd9b20b4e02ce9040421e150",
+        "starterCatalog": "src/storage/characters/realmz-classic-starter-characters.json"
+      },
+      "package": {
+        "campaignId": "scenario-assault-on-giant-mountain",
+        "path": "src/storage/packages/bundled_campaigns/scenario-assault-on-giant-mountain.realmz2",
+        "packageHash": "7f1b90989e2c9decd8f0326d86d8069c64081c1076440ee896687e3f7fdf8454",
+        "archiveSha256": "c4429e9a1f1cc4b0e255e2640947291ec5467d586420f6ee865b36a730de1892"
+      },
+      "target": {
+        "randomRegion": "land:0:randlevel:rect:18",
+        "caller": "Actual Encounter scans the faced land cell (42,8), not placed-AP or automatic random entry.",
+        "xap": 25,
+        "complexEncounter": 5
+      },
+      "proofModes": [
+        "live-route",
+        "actual-ui-control",
+        "restored-continuation"
+      ],
+      "workflowIds": [
+        "classic.scenario.choose-response",
+        "classic.system.save-game"
+      ],
+      "remaining": [
+        "Source-adjudicated Rebuilt fixture evidence, not paired native Castle AOGM execution or full campaign certification."
+      ],
+      "baselineLocation": {
+        "mapId": "land:0",
+        "x": 43,
+        "y": 8
+      },
+      "baselineCheckpoint": {
+        "path": "fixtures/adde23f1fb96f4a24c7fb37cbdb9c3f0/checkpoints/e417200b-1474-49e8-8274-4cfc910fca64.r2save",
+        "fileSha256": "b6978f3e9285d7a4e99c60a9b13f9f2720aa37a8d519394f09cf8e1340af3e28",
+        "preparation": "Restore the exact repaired contextual entry prompt from aogm-pond-contextual-entry: land:0 (43,8), faced (42,8), 30 minutes, five draws/state 122498987, Complex 5 pending in XAP 25. No choice or reward has run."
+      },
+      "expected": [
+        "Actual Action, Wade In and Close Eyes select slots [0,2]. Done reports exactMatch=false/outcome 4 and draws random message 252 from [249,252] with raw -30901 at draw index 5.",
+        "Acknowledgement reopens Complex 5 without reward, region disable, movement or time. The only game-state change is encounterAttempts[complex:5]=1; party state remains unchanged and final drawCount=6. Both complete five-input saved-baseline replays compare equal."
+      ],
+      "result": "passed",
+      "evidence": "jobs/b3e89bb8e082682ece72d119305f63a7/evidence.json",
+      "otherEvidence": [
+        "jobs/9aa4f0168a25de9a2c228f652ee92162/evidence.json: equivalent baseline and equal full repeat"
+      ],
+      "steps": [
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlId": "d12ef85a6930edb9bb6bdfd3"
+          },
+          "expect": {
+            "interactionKind": "complex_encounter"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "1 · Wade In"
+          },
+          "expect": {
+            "interactionKind": "complex_encounter"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "3 · Close Eyes"
+          },
+          "expect": {
+            "interactionKind": "complex_encounter"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "Done"
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "complex_encounter",
+            "location": {
+              "mapId": "land:0",
+              "x": 43,
+              "y": 8
+            }
+          },
+          "capture": true
+        }
+      ]
+    },
+    {
+      "id": "aogm-pond-exact-action-reward-and-reentry",
+      "application": {
+        "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
+        "packageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad",
+        "archiveSha256": "bf1ff5de1d6fc5bd1d5ffff8d582797dfab885acfd9b20b4e02ce9040421e150",
+        "starterCatalog": "src/storage/characters/realmz-classic-starter-characters.json"
+      },
+      "package": {
+        "campaignId": "scenario-assault-on-giant-mountain",
+        "path": "src/storage/packages/bundled_campaigns/scenario-assault-on-giant-mountain.realmz2",
+        "packageHash": "7f1b90989e2c9decd8f0326d86d8069c64081c1076440ee896687e3f7fdf8454",
+        "archiveSha256": "c4429e9a1f1cc4b0e255e2640947291ec5467d586420f6ee865b36a730de1892"
+      },
+      "target": {
+        "randomRegion": "land:0:randlevel:rect:18",
+        "caller": "Actual Encounter scans the faced land cell (42,8), not placed-AP or automatic random entry.",
+        "xap": 25,
+        "complexEncounter": 5
+      },
+      "proofModes": [
+        "live-route",
+        "actual-ui-control",
+        "restored-continuation"
+      ],
+      "workflowIds": [
+        "classic.scenario.choose-response",
+        "classic.system.save-game"
+      ],
+      "remaining": [
+        "Source-adjudicated Rebuilt fixture evidence, not paired native Castle AOGM execution or full campaign certification."
+      ],
+      "baselineLocation": {
+        "mapId": "land:0",
+        "x": 43,
+        "y": 8
+      },
+      "baselineCheckpoint": {
+        "path": "fixtures/adde23f1fb96f4a24c7fb37cbdb9c3f0/checkpoints/e417200b-1474-49e8-8274-4cfc910fca64.r2save",
+        "fileSha256": "b6978f3e9285d7a4e99c60a9b13f9f2720aa37a8d519394f09cf8e1340af3e28",
+        "preparation": "Restore the exact repaired contextual entry prompt from aogm-pond-contextual-entry: land:0 (43,8), faced (42,8), 30 minutes, five draws/state 122498987, Complex 5 pending in XAP 25. No choice or reward has run."
+      },
+      "expected": [
+        "Actual Action, Dive In and Hold breath select [1,3], exactMatch=true/outcome 1; message 253 precedes Treasure 80.",
+        "Actual loot-cell activation assigns one unidentified, unequipped Skeleton Key (item 664, charges -1) to Kevlar. Done commits 4000 experience once per starter and opcode 23 sets region 18 chance to zero; opcode 25 stops repetition.",
+        "Actual Encounter now takes XAP 0/Complex 0 fallback without another door draw or reward. Actual Back returns to (43,8), not the prior movement origin. Final time remains 30 minutes and RNG remains five draws/state 122498987.",
+        "Both complete nine-input saved-baseline replays compare equal. Failed exploratory expectations used treasure instead of treasure_distribution or expected no default interaction; those are recipe errors, not runtime failures."
+      ],
+      "result": "passed",
+      "evidence": "jobs/5ab11bc982a0b4fc302091c652b01b25/evidence.json",
+      "otherEvidence": [
+        "jobs/914a5ef267b940284101486b7f505f7c/evidence.json: equivalent baseline and equal full repeat",
+        "jobs/522b3cf38f81b72e82253cfe263aab14/evidence.json: incorrect expected interaction label; accepted acknowledgement correctly opened treasure_distribution",
+        "jobs/ef572753c076daac0537a3c90cec206e/evidence.json: incorrect final expectation; XAP 0 correctly opened Complex 0"
+      ],
+      "steps": [
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlId": "d12ef85a6930edb9bb6bdfd3"
+          },
+          "expect": {
+            "interactionKind": "complex_encounter"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "2 · Dive In"
+          },
+          "expect": {
+            "interactionKind": "complex_encounter"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "4 · Hold breath"
+          },
+          "expect": {
+            "interactionKind": "complex_encounter"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "Done"
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "treasure_distribution"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlId": "61bca31495067520377e494e"
+          },
+          "expect": {
+            "interactionKind": "treasure_distribution"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "Done"
+          },
+          "expect": {
+            "interactionKind": null
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "Encounter"
+          },
+          "expect": {
+            "interactionKind": "complex_encounter",
+            "location": {
+              "mapId": "land:0",
+              "x": 43,
+              "y": 8
+            }
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlId": "136edae4e94270190bde2d24"
+          },
+          "expect": {
+            "interactionKind": null,
+            "location": {
+              "mapId": "land:0",
+              "x": 43,
+              "y": 8
+            }
+          },
+          "capture": true
+        }
+      ]
+    },
+    {
       "id": "war-current-map-merchant-unpaid",
       "application": {
         "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
@@ -6388,8 +6853,8 @@
       "campaignId": "scenario-wrath-of-the-mind-lords",
       "packageHash": "1328d8a443d979b38ba2c5ecdeea9342a03153fed0c079d761df8ee53c53a894",
       "archiveSha256": "a032141f8d22fe2aa81cd416b8cf9a6509e3ae7d01d5640fdfb8a7d67041187b",
-      "expected": "At the next batch, inspect Wrath's authored caller contexts and select a bounded high-risk representative, alongside an AOGM representative absent from this recipe collection. Existing AOGM evidence remains in the authoritative inventory. No specific AP has yet been selected or executed; reported failures still take priority.",
-      "remaining": "Recipes represent eleven bundled scenarios under their recorded package/library identities, not corpus certification. Current-package merchant outcomes and approved Simple 52, Rhum and dart-trap corrections are accepted separately. Pooled-payment edges, present-ally outcomes and other caller contexts remain untested. Native CPU/dungeon performance, complete combat replay and full AOGM/War certification remain separate."
+      "expected": "Wrath dungeon:1 AP 44 at (33,14) opens Complex 28; its successful disarm result replaces the AP with XAP 927, whose Complex 29 owns the lock/reward branch. Select ordinary entry, owner-bound Disarm Trap and Open Lock spell outcomes from the authored nested records. Static selection only: no Wrath execution credit yet. AOGM contextual entry, wrong-set repetition and exact reward/disable/reentry are accepted in this batch; reported failures still take priority.",
+      "remaining": "Recipes represent twelve bundled scenarios under their recorded package/library identities, not corpus certification. Wrath remains unexecuted. Pooled-payment edges, present-ally outcomes and other caller contexts remain untested. Native CPU/dungeon performance, complete combat replay and full AOGM/War certification remain separate."
     }
   ]
 }
