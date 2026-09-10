@@ -3,7 +3,6 @@
 class_name MapTextureCache
 extends RefCounted
 
-const CLASSIC_BATTLE_ATLAS_ID := "classic-battle-tiles-302"
 const SECRET_LAND_MARKER_TILE_ID := 251
 const PATH_LAND_MARKER_TILE_ID := 253
 const PARTY_MARKER_LEFT_ASSET_ID: StringName = &"map.party.left"
@@ -32,9 +31,9 @@ func set_media_catalog(media: ClassicMediaCatalog) -> void:
 	_missing_assets.clear()
 
 
-func atlas_asset(asset_id: String) -> MediaAsset:
+func atlas_asset(asset_id: String) -> ClassicMapAtlas:
 	_ensure_atlas(asset_id)
-	return _atlas_assets.get(asset_id) as MediaAsset
+	return _atlas_assets.get(asset_id) as ClassicMapAtlas
 
 
 func atlas_texture(asset_id: String) -> Texture2D:
@@ -76,7 +75,8 @@ func darkness_mask_texture(level: int) -> Texture2D:
 func land_marker_texture(tile_id: int) -> Texture2D:
 	if _land_marker_textures.has(tile_id):
 		return _land_marker_textures[tile_id] as Texture2D
-	var texture := transparent_atlas_tile(atlas_asset(CLASSIC_BATTLE_ATLAS_ID), atlas_texture(CLASSIC_BATTLE_ATLAS_ID), tile_id)
+	var asset := _media.battle_tileset() if _media != null else null
+	var texture := transparent_atlas_tile(asset, _media.image_texture(asset) if asset != null else null, tile_id)
 	if texture != null:
 		_land_marker_textures[tile_id] = texture
 	return texture
@@ -163,16 +163,12 @@ static func dungeon_tile_ids(cell: MapCellView) -> Array[int]:
 func _ensure_atlas(asset_id: String) -> void:
 	if asset_id.is_empty() or _atlas_assets.has(asset_id) or _missing_assets.has(asset_id) or _media == null:
 		return
-	var asset := _media.asset_by_id(asset_id)
-	if asset == null or not asset.is_tileset() and not asset.is_battle_tileset():
+	var atlas := _media.map_atlas(asset_id)
+	if atlas == null:
 		_missing_assets[asset_id] = true
 		return
-	var texture := _load_image_texture(asset)
-	if texture == null:
-		_missing_assets[asset_id] = true
-		return
-	_atlas_assets[asset_id] = asset
-	_atlas_textures[asset_id] = texture
+	_atlas_assets[asset_id] = atlas
+	_atlas_textures[asset_id] = atlas.texture
 
 
 func _load_image_texture(asset: MediaAsset) -> Texture2D:

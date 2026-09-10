@@ -4,7 +4,7 @@
   "providenceCommit": "e8546ba76472f790a449437db0fbb116bdfee2a2",
   "schemaSha256": "05ced7b000683f53e6220b9ac8f7d41c801e7e2c78c874287c2ae694b585273d",
   "applicationPackageId": "realmz-classic-application-library",
-  "applicationPackageHash": "45298c295fc784b528f4219d6ceb0454cb482d894b66440e529d7763e7cb0036",
+  "applicationPackageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad",
   "coverage": {
     "applicationItem": "classic.item.1",
     "applicationSpell": "classic.spell.1101",

@@ -369,7 +369,7 @@ func _draw_cell(cell: MapCellView, rect: Rect2, level_type: StringName, dark: bo
 		return
 	var atlas_asset := _textures.atlas_asset(cell.tileset_id)
 	var atlas_texture := _textures.atlas_texture(cell.tileset_id)
-	if level_type == &"dungeon" and atlas_asset != null and atlas_texture != null and atlas_asset.id == "dungeon-top-down-302":
+	if level_type == &"dungeon" and atlas_asset != null and atlas_texture != null and atlas_asset.dungeon:
 		_draw_dungeon_atlas_cell(cell, rect, atlas_asset, atlas_texture)
 		if dark:
 			draw_rect(rect, Color(0.0, 0.0, 0.0, MapPresentationGeometry.darkness_overlay_alpha(saved_darkness_level)), true)
@@ -386,12 +386,12 @@ func _draw_cell(cell: MapCellView, rect: Rect2, level_type: StringName, dark: bo
 		draw_rect(rect, Color(0.0, 0.0, 0.0, MapPresentationGeometry.darkness_overlay_alpha(saved_darkness_level)), true)
 
 
-func _draw_dungeon_atlas_cell(cell: MapCellView, rect: Rect2, atlas_asset: MediaAsset, atlas_texture: Texture2D) -> void:
+func _draw_dungeon_atlas_cell(cell: MapCellView, rect: Rect2, atlas_asset: ClassicMapAtlas, atlas_texture: Texture2D) -> void:
 	for tile_id: int in MapTextureCache.dungeon_tile_ids(cell):
 		_draw_atlas_region(rect, atlas_asset, atlas_texture, tile_id)
 
 
-func _draw_atlas_region(rect: Rect2, atlas_asset: MediaAsset, atlas_texture: Texture2D, tile_id: int) -> void:
+func _draw_atlas_region(rect: Rect2, atlas_asset: ClassicMapAtlas, atlas_texture: Texture2D, tile_id: int) -> void:
 	var region := atlas_asset.region_for(tile_id)
 	if region.has_area():
 		draw_texture_rect_region(atlas_texture, rect, Rect2(region))

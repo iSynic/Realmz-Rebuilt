@@ -70,11 +70,6 @@ func tileset_by_id(tileset_id: String) -> MediaAsset:
 	return asset if asset != null and asset.is_tileset() else null
 
 
-func battle_tileset() -> MediaAsset:
-	var asset := asset_by_id("classic-battle-tiles-302")
-	return asset if asset != null and asset.is_battle_tileset() else null
-
-
 func resolution_diagnostic(resource_type: String, resource_id: int, presentation_role: String, decode_result: String = "not-attempted") -> Dictionary:
 	var key := _resource_key(resource_type, resource_id)
 	var diagnostic := {

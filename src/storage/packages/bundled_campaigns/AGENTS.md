@@ -24,8 +24,10 @@ Own the Castle-distributed scenario packages that ship with Realmz Rebuilt.
 ## Work Guidance
 
 - Regenerate packages through Providence from their pinned source manifests; never hand-edit archives or substitute the Oracle Castle copy for the designated City of Bywater snapshot.
+- Owner-approved War branch corrections are recorded in `war-in-the-sword-lands.corrections.json`. Apply its revision-guarded Providence commands only after checking the pinned source hashes and original values; preserve the imported raw sources and shared settings 1153. The fidelity ledger distinguishes contextual intent from observed Castle execution.
 - Update the provenance catalog and release verifier atomically with any package change.
 - Keep original scenario compilation inputs in `compiler`; `acceptedApplicationLibrary` names the current runtime library verified against the unchanged scenario archives. A library-only rules correction must not rewrite scenario compiler provenance or recompile their authored content.
+- The shared-atlas migration records each unchanged campaign's prior archive identity separately from its original compilation inputs. It removes only the legacy application-owned `PICT:302` copy after native ownership checks; authored documents and retained payloads remain byte-identical. War's corrected native rebuild instead records its own raw compiler output and corrections catalog. All 13 packages resolve the complete shared atlas from the application library.
 
 ## Verification
 

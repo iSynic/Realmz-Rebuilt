@@ -16,6 +16,7 @@ Own the one Providence-built stock Realmz application package accepted by Rebuil
 - Scenario content may override application content only through the exact definition identity or exact `(resourceType, resourceId)` required by the runtime contract.
 - Rebuilt does not maintain or hand-edit the readable source catalogs; Providence owns them.
 - Stock Race rules come from Castle's first 30 native 408-byte `Data Race` records. Library replacement verifies every decoded native field, reciprocal Caste eligibility, unchanged unrelated catalogs/media, and deterministic archive output before runtime acceptance.
+- Exact `PICT:302` retains the complete 640x640 source image with a 20x20 grid of 32-pixel tiles. Dungeon and battle presentation derive their regions from that one resource; library replacement must preserve its native decoded pixels and leave unrelated catalogs and media unchanged.
 
 ## Work Guidance
 

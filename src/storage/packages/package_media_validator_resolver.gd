@@ -91,14 +91,23 @@ func validate_effective_assets(assets: Array[MediaAsset]) -> bool:
 	return true
 
 
-func validate_presentation_capabilities(manifest: Dictionary, scenario_assets: Array[MediaAsset], effective_assets: Array[MediaAsset]) -> bool:
+func validate_presentation_capabilities(manifest: Dictionary, content: Dictionary, effective_assets: Array[MediaAsset]) -> bool:
+	if not content.get("battles") is Array:
+		return _reject("Content battles must be available for presentation validation.")
 	var declares_battle_atlas: bool = manifest["capabilities"].has("realmz.presentation.battle-atlas-v1")
-	var local_count := _kind_count(scenario_assets, "battle-tileset")
-	var effective_count := _kind_count(effective_assets, "battle-tileset")
-	if declares_battle_atlas and effective_count != 1:
-		return _reject("Battle-atlas capability requires exactly one effective battle atlas.")
-	if not declares_battle_atlas and local_count != 0:
-		return _reject("Scenario-owned battle artwork requires the battle-atlas capability.")
+	if not content["battles"].is_empty() and not declares_battle_atlas:
+		return _reject("Retained battles require the battle-atlas capability.")
+	if not declares_battle_atlas:
+		return true
+	var atlases: Array[MediaAsset] = []
+	for asset: MediaAsset in effective_assets:
+		if asset.resource_type == "PICT" and asset.resource_id == 302:
+			atlases.append(asset)
+	if atlases.size() != 1:
+		return _reject("Battle-atlas capability requires exactly one effective PICT 302 resource.")
+	var atlas := atlases[0]
+	if not atlas.is_tileset() or atlas.mime_type != "image/png" or atlas.width != 640 or atlas.height != 640 or atlas.tile_width != 32 or atlas.tile_height != 32 or atlas.columns != 20 or atlas.rows != 20:
+		return _reject("Battle-atlas capability requires the complete 640 by 640 PICT 302 grid of 32-pixel tiles.")
 	return true
 
 
@@ -125,13 +134,6 @@ func validate_render_references(assets: Array[MediaAsset], world: Dictionary) ->
 				return _reject("Topology references missing image overlay asset '%s'." % overlay_asset_id)
 	return true
 
-
-func _kind_count(assets: Array[MediaAsset], kind: String) -> int:
-	var count := 0
-	for asset: MediaAsset in assets:
-		if asset.kind == kind:
-			count += 1
-	return count
 
 func construct_assets(document: Dictionary) -> Array[MediaAsset]:
 	var assets: Array[MediaAsset] = []

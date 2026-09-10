@@ -92,6 +92,10 @@ try {
     $applicationAssetReader = [System.IO.StreamReader]::new($applicationAssetEntry.Open())
     try { $applicationAssetIndex = $applicationAssetReader.ReadToEnd() | ConvertFrom-Json }
     finally { $applicationAssetReader.Dispose() }
+    $sharedBattleAtlas = @($applicationAssetIndex.assets | Where-Object { $_.resourceType -ceq "PICT" -and $_.resourceId -eq 302 })
+    if ($sharedBattleAtlas.Count -ne 1 -or $sharedBattleAtlas[0].kind -ne "tileset" -or $sharedBattleAtlas[0].width -ne 640 -or $sharedBattleAtlas[0].height -ne 640 -or $sharedBattleAtlas[0].tileWidth -ne 32 -or $sharedBattleAtlas[0].tileHeight -ne 32 -or $sharedBattleAtlas[0].columns -ne 20 -or $sharedBattleAtlas[0].rows -ne 20) {
+        throw "The application library must own one complete exact PICT:302 atlas."
+    }
     foreach ($asset in @($applicationAssetIndex.assets)) {
         if (-not [string]::IsNullOrWhiteSpace([string]$asset.id)) { [void]$applicationAssetIds.Add([string]$asset.id) }
     }
@@ -112,6 +116,12 @@ foreach ($scenario in $catalog.scenarios) {
     }
     if ($scenario.sourceArchive.archiveSha256 -notmatch '^[0-9a-f]{64}$' -or [long]$scenario.sourceArchive.bytes -le 0 -or $scenario.classicScenarioResourcesSha256 -notmatch '^[0-9a-f]{64}$') {
         throw "$($scenario.file) source or resource provenance is incomplete."
+    }
+    if ($scenario.campaignId -ne "scenario-war-in-the-sword-lands") {
+        $migration = $scenario.mediaOwnershipMigration
+        if ($null -eq $migration -or $migration.operation -ne "slim-scenarios" -or $migration.compilerRevision -ne $scenario.compilerRevision -or $migration.applicationPackageHash -ne $applicationLock.packageHash -or $migration.applicationMediaCatalogSha256 -ne $applicationLock.catalogs.'media.json'.sha256 -or $migration.sourcePackageHash -notmatch '^[0-9a-f]{64}$' -or $migration.sourceArchiveSha256 -notmatch '^[0-9a-f]{64}$' -or [long]$migration.sourceArchiveBytes -le [long]$scenario.bytes -or $migration.removedResourceKey -cne "PICT:302" -or $migration.removedMediaDescriptors -ne 1 -or $migration.removedMediaPayloads -ne 1 -or $migration.rewrittenAssetReferences -ne 0) {
+            throw "$($scenario.file) has invalid shared-atlas ownership migration provenance."
+        }
     }
     $scenarioArchiveBytes += [long]$scenario.bytes
     $sourceArchiveBytes += [long]$scenario.sourceArchive.bytes
@@ -162,6 +172,12 @@ foreach ($scenario in $catalog.scenarios) {
         $contentReader = [System.IO.StreamReader]::new($contentEntry.Open())
         try { $contentDocument = $contentReader.ReadToEnd() | ConvertFrom-Json }
         finally { $contentReader.Dispose() }
+        if (@($assetIndex.assets | Where-Object { $_.kind -eq "battle-tileset" -or $_.id -eq "classic-battle-tiles-302" -or ($_.resourceType -ceq "PICT" -and $_.resourceId -eq 302) }).Count -ne 0) {
+            throw "$($scenario.file) duplicates the application-owned PICT:302 resource."
+        }
+        if (@($contentDocument.battles).Count -gt 0 -and -not (@($manifest.capabilities) -contains "realmz.presentation.battle-atlas-v1")) {
+            throw "$($scenario.file) retains battles without the shared-atlas capability."
+        }
         if (@($contentDocument.items).Count -ne [int]$scenario.retainedScenarioContent.items -or @($contentDocument.spells).Count -ne [int]$scenario.retainedScenarioContent.spells -or @($contentDocument.races).Count -ne [int]$scenario.retainedScenarioContent.races -or @($contentDocument.castes).Count -ne [int]$scenario.retainedScenarioContent.castes) {
             throw "$($scenario.file) definition inventory does not match its scenario-ownership lock."
         }

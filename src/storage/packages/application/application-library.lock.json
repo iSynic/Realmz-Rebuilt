@@ -5,7 +5,7 @@
   "schemaVersion": 3,
   "schemaSha256": "05ced7b000683f53e6220b9ac8f7d41c801e7e2c78c874287c2ae694b585273d",
   "rulesVersion": "realmz-classic-1",
-  "compilerCommit": "e8546ba76472f790a449437db0fbb116bdfee2a2",
+  "compilerCommit": "1704ef6b1663eee578bb683b4994cba5cd8c2d88",
   "sourceManifestSha256": "84a9f42386f3ec1e74949d96b9205d88d57e35960779778fc2619f64d216b0cc",
   "catalogs": {
     "castes.json": {
@@ -17,8 +17,8 @@
       "sha256": "78997d37401833286a5722f6432d2d5dfb32cf4391a38bfa378f392776c79c2a"
     },
     "media.json": {
-      "bytes": 1658120,
-      "sha256": "b1c7438d5a5fcdbf974fe01c5284a54db2228bc33a0e0f3ef0c93b018b24f0e5"
+      "bytes": 1658126,
+      "sha256": "9b54a3936924a1dd49c4545f780afdf9c3cf0feb2b56c5329f5b8012d94cce11"
     },
     "races.json": {
       "bytes": 96395,
@@ -33,10 +33,10 @@
       "sha256": "54be9a37bb08b903bafd54f794f287808a8864e05688465412512cb898cc332a"
     }
   },
-  "packageHash": "45298c295fc784b528f4219d6ceb0454cb482d894b66440e529d7763e7cb0036",
-  "contentId": "6faed8e94cc4341106c928277bdc82ee1349c222e64542dc36189b43182f9e03",
-  "archiveBytes": 32680749,
-  "archiveSha256": "e85ae0aca72fa6642ef66af8745ceb24446459598efcb1075cd8f5a4cce36012",
+  "packageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad",
+  "contentId": "dd788b892492f8e0dae0248939705faa23012dbd8ce7a660a76e44fee12d3d1b",
+  "archiveBytes": 34303450,
+  "archiveSha256": "bf1ff5de1d6fc5bd1d5ffff8d582797dfab885acfd9b20b4e02ce9040421e150",
   "counts": {
     "items": 802,
     "stockItems": 799,

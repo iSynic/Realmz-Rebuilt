@@ -3,7 +3,7 @@
   "evidence_label": "runtime-integration",
   "authoring": "synthetic Providence-authored data",
   "commercial_payload": false,
-  "providence_commit": "8bc2380da4175a6ae82b37a2f8405609cd312948",
+  "providence_commit": "b68057504bd9b79010f36713145f2405a04416fb",
   "schema_sha256": "05ced7b000683f53e6220b9ac8f7d41c801e7e2c78c874287c2ae694b585273d",
   "castle_correction_commit": "ef95fcff40d81f14ac668d5e13466da4a51de6f4",
   "application_data_s_sha256": "f47776aadc0f4ebf42320e0aaedd39dd7b5a2c76c125a44e99ea461d962860e7",
@@ -13,7 +13,13 @@
     "bytes": 1445798,
     "sha256": "880d6516a546dd31994677c43ed0ca0cff94f943664f1ba3a773fbf7189a9833"
   },
-  "migration_contract_sha256": "11c9b3f2c2e2116dba756704642b99f14495540c37c00f7fb3ab2e9b333b94da",
+  "migration_contract_sha256": "7c2970199db5b7803a1053c1ee82d897299f8c2f90281bbd73a2598b1570b33e",
+  "shared_atlas": {
+    "sha256": "026047d0b80f5af6be4647a554e39a2bfecae9e95d04240aff01b49c308edbc8",
+    "dungeon_source_sha256": "a3040ea166bccedff24a63d70df9e6b799ea7fac4e2b6486a7b2c10147b27918",
+    "battle_source_sha256": "d09be511b42031e51be860779e0cd6916fc8ec8ac2f38ac8a0e8e049b876a719",
+    "modification": "One deliberate synthetic PICT 302: preserve all 4096 authored dungeon pixels at (576,320) and all 405504 pixels outside that region of the existing full sheet; retire the separate battle-role asset and orphaned source PNGs. Not an unmodified Castle resource."
+  },
   "resource_assignments": [
     {
       "asset_id": "dungeon-top-down-302",
@@ -21,12 +27,12 @@
       "resource_id": 302
     }
   ],
-  "package_bytes": 1445800,
-  "package_sha256": "2166c46ebf75ab1cdfbf41ec6b39f16dec9704b923671b79c5c1e3cdd750dcf1",
-  "package_hash": "476fbebd3d946f15092fa6446c00fc74e835f7c2875d8358204faa9ef8c7379a",
-  "content_id": "32aff636a0130ca093c714e0b245d06e390ebc11ec2089721468d624a035fc2c",
-  "negative_fixture_bytes": 1445806,
-  "negative_fixture_sha256": "41a1f80ddabe355015531bc93e04902c8699e293659e3b04fe7c9608480782be",
+  "package_bytes": 2665130,
+  "package_sha256": "c58fd9bc149d3dbcfc9077ee100aec043bbddda8d5a543e8c96459561a1334c3",
+  "package_hash": "bb98ee3c5a07aa9324091c000243532d72ca1c56461f3a2fc27abe9ce86f1709",
+  "content_id": "3f4394314719d3863734be04439c2827563ebaf3e85f3072619687aa055d3900",
+  "negative_fixture_bytes": 2665136,
+  "negative_fixture_sha256": "83dbea05d2296121d3b6c183d42e444b85d63bd82eca2d4963aa477fb243c830",
   "negative_fixture_mutation": "content.json changes both synthetic Fixture Wand names without updating manifest integrity",
   "generator": "cargo run --release -p providence-application-library -- migrate-synthetic-fixture"
 }

@@ -303,7 +303,7 @@ func _load_open_archive(archive: ZIPReader, source_path: String, progress_callba
 		if not _media_validator.validate_effective_assets(effective_assets):
 			_last_error = _media_validator.error_message()
 			return _validation_failure()
-		if not _media_validator.validate_presentation_capabilities(manifest, runtime_assets, effective_assets):
+		if not _media_validator.validate_presentation_capabilities(manifest, content_document, effective_assets):
 			_last_error = _media_validator.error_message()
 			return _validation_failure()
 		if not _media_validator.validate_render_references(effective_assets, world_document):

@@ -4,7 +4,7 @@ extends SceneTree
 
 const CONTRACT_PATH := "res://tests/fixtures/packages/providence_alignment/contract.json"
 const EXPECTED_FIXTURE_COMMIT := "e8546ba76472f790a449437db0fbb116bdfee2a2"
-const EXPECTED_APPLICATION_COMPILER_COMMIT := "e8546ba76472f790a449437db0fbb116bdfee2a2"
+const EXPECTED_APPLICATION_COMPILER_COMMIT := "1704ef6b1663eee578bb683b4994cba5cd8c2d88"
 
 
 func _initialize() -> void:
