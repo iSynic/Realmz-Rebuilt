@@ -38,6 +38,292 @@
   ],
   "recipes": [
     {
+      "id": "twin-sands-ap-replacement-and-reentry",
+      "application": {
+        "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
+        "packageHash": "45298c295fc784b528f4219d6ceb0454cb482d894b66440e529d7763e7cb0036",
+        "archiveSha256": "e85ae0aca72fa6642ef66af8745ceb24446459598efcb1075cd8f5a4cce36012",
+        "starterCatalog": "src/storage/characters/realmz-classic-starter-characters.json"
+      },
+      "package": {
+        "campaignId": "scenario-twin-sands-of-time",
+        "path": "src/storage/packages/bundled_campaigns/scenario-twin-sands-of-time.realmz2",
+        "packageHash": "9fd04d22eefd86eb2fd6f5adb6f44493b0fa16a0f77ba56a5eb5760a542f76b0",
+        "archiveSha256": "2abb86a1ad1156fa8567b89f1e03d52496c9105b88b9684acd15185e076bd9f3"
+      },
+      "baselineLocation": {
+        "mapId": "land:1",
+        "x": 46,
+        "y": 38
+      },
+      "target": {
+        "actionPoint": "Data DD:1:41",
+        "location": {
+          "mapId": "land:1",
+          "x": 46,
+          "y": 39
+        },
+        "extraActionPoints": [
+          348,
+          346,
+          347
+        ]
+      },
+      "proofModes": [
+        "live-route",
+        "ordinary-movement",
+        "actual-ui-control",
+        "restored-continuation"
+      ],
+      "workflowIds": [
+        "classic.scenario.trigger-action-point"
+      ],
+      "expected": [
+        "After No and message 869 acknowledgement, opcode 7 uses its own [1,41,347,0,0] Extra Code row to replace trigger:Data DD:1:41 with xap:347. Castle newland.c:1736-1815 loads this operation's row before selecting the target; the preceding message's extra row does not select another map.",
+        "Only that program override changes. Opcode 24 keeps the AP enabled and disabledTriggers remains empty. Before message 869 is acknowledged, no replacement has been committed.",
+        "Ordinary north exit advances minute 25 to 40; south re-entry reaches minute 65. Region 17 checks remain enabled and fail with rolls 9431 and 9715. Re-entry then consumes AP chance roll 68 and resolves the override to XAP 347, displaying negative message 870 with a Yes/No choice rather than replaying the original preface.",
+        "Actual Yes acknowledges message 871, then draws random message 864 and transfers back to XAP 348. No branches through message 869, reassigns the same override and keeps the AP. The seven re-entry draw counts are [6,8,8,9,9,9,9]; final generator state is 1176904574.",
+        "Restoring the completed override and repeating all seven re-entry boundaries yields identical complete gameplay/RNG state. Fresh and restored No from the replaced-AP choice both reach message 869 and finish with draw count 8, no random-message draw and the same retained override.",
+        "The hour crossing changes fatigue from 4 to 5 and recovers one spell point for Lothlorian and Trevor only. It is ordinary clock behavior, not AP reward. The continuous sixteen-input route matches every asserted component gameplay/RNG checkpoint and pending request."
+      ],
+      "remaining": [
+        "No cross-map AP replacement is claimed; this target replaces its own placed AP. Other opcode-7 target kinds remain separate coverage. Prepared adjacency, validated checkpoint restoration and targeted 1280x720 inspection are not full campaign or ordinary save-menu certification."
+      ],
+      "result": "passed",
+      "evidence": "jobs/7248ebf30d1de52dd7568c405355cf1b/evidence.json",
+      "otherEvidence": [
+        "jobs/e175a7c3a5588a5f949943e92b5568b5/evidence.json and jobs/4925652ecd46a4e4e57be728026d7668/evidence.json: ordinary and restored-completed-override re-entry",
+        "jobs/d4a8fbee407aec48f91e2544fee4cabe/evidence.json: captured replaced-AP choice",
+        "jobs/be6c6226b0e3ca60a26d2219e0342456/evidence.json and jobs/8ae36f7301b4c1bd9bfd0ecb23981b11/evidence.json: fresh and restored No without another random message"
+      ],
+      "steps": [
+        {
+          "command": "act",
+          "params": {
+            "action": "move",
+            "arguments": {
+              "dx": 0,
+              "dy": 1
+            }
+          },
+          "expect": {
+            "interactionKind": "acknowledge",
+            "location": {
+              "mapId": "land:1",
+              "x": 46,
+              "y": 39
+            }
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "yes_no"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "Yes"
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "yes_no"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "Yes"
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "yes_no"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "No"
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": null
+          },
+          "capture": true
+        },
+        {
+          "command": "act",
+          "params": {
+            "action": "move",
+            "arguments": {
+              "dx": 0,
+              "dy": -1
+            }
+          },
+          "expect": {
+            "interactionKind": null,
+            "location": {
+              "mapId": "land:1",
+              "x": 46,
+              "y": 38
+            }
+          },
+          "capture": true
+        },
+        {
+          "command": "act",
+          "params": {
+            "action": "move",
+            "arguments": {
+              "dx": 0,
+              "dy": 1
+            }
+          },
+          "expect": {
+            "interactionKind": "yes_no",
+            "location": {
+              "mapId": "land:1",
+              "x": 46,
+              "y": 39
+            }
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "Yes"
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "yes_no"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "No"
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": null
+          },
+          "capture": true
+        }
+      ]
+    },
+    {
       "id": "twin-sands-saved-loop-choice",
       "application": {
         "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
@@ -2279,15 +2565,15 @@
   "nextSelection": [
     {
       "priority": "missing-meaningful-variant",
-      "family": "random-message-self-transfer-and-ap-replacement",
+      "family": "simple-response-elimination-and-health-rng",
       "candidateOnly": true,
-      "campaignId": "scenario-twin-sands-of-time",
-      "packageHash": "9fd04d22eefd86eb2fd6f5adb6f44493b0fa16a0f77ba56a5eb5760a542f76b0",
-      "archiveSha256": "2abb86a1ad1156fa8567b89f1e03d52496c9105b88b9684acd15185e076bd9f3",
-      "actionPoint": "Data DD:1:41",
-      "location": {"mapId":"land:1","x":46,"y":39},
-      "expected": "Revalidate adjacency and exact trigger eligibility. AP 41 contains opcode-19 random messages 863..868 and transfers to XAP 348; that XAP's [1,1,346,0,0] choice uses No to branch to XAP 346 and Yes to repeat its random-message/self-transfer path. Adjudicate the effective opcode-7 target in XAP 346, including preceding extra-code ownership, before claiming current-AP or cross-map replacement. Verify bounded repetition, branch-out, save/resume, exact RNG and the affected AP's subsequent ordinary route. Static package inspection earns no runtime credit.",
-      "remaining": "Sixteen asserted recipes span seven of 13 scenarios; breadth and meaningful high-risk caller/outcome gaps remain. Full AOGM/War certification remains separate. Prelude map selection/rendering is deferred because the bridge does not expose tabs. The older Griloch native comparison retains its earlier application identity."
+      "campaignId": "scenario-half-truth",
+      "packageHash": "48805df3e1ba85321da8935c46c64e14704cb670e6decb57f6ab3b41488d0a82",
+      "archiveSha256": "8ac2422ea9244e31aa6ae4051d824503a146d2d6f0c20611cf8b80af0d120c81",
+      "actionPoint": "Data DD:0:36",
+      "location": {"mapId":"land:0","x":55,"y":74},
+      "expected": "Revalidate west adjacency (54,74), retained region 12 and active 100-percent AP 36. Positive message 184 precedes opcode 4 Simple Encounter 3. Prioritize its Study, fish and Leave results: whole-party health/RNG, selected-option elimination, Keep and opcode-101 closure, saved acknowledgement/selection and ordinary re-entry. Adjudicate health direction, maxTimes=0 and caller termination before credit. The Touch result contains battle 248, positive messages 174 and 175, opcode 47 and removal; keep that combat path separately pending. Each opcode owns its own operand/Extra Code row. Static references earn no runtime credit. This authored Simple family adds more uncovered gain than another Complex variant; Trouble AP 7 Complex 25 remains a later owner-bound Thief/action-set candidate.",
+      "remaining": "Nineteen asserted recipes span eight of 13 scenarios; representative breadth and meaningful high-risk caller/outcome gaps remain. Full AOGM/War certification stays separate. Prelude map selection/rendering is deferred because the bridge does not expose tabs. The older Griloch native comparison retains its earlier application identity."
     }
   ]
 }
