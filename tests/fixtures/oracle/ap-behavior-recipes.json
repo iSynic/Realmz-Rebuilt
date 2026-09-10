@@ -640,7 +640,11 @@
       "priority": "untested-high-risk",
       "family": "authored-caller-response-and-destination-variants",
       "candidateOnly": true,
-      "expected": "Recompute bounded Prelude, AOGM and Bywater candidates for uncovered caller, response and destination-recheck outcomes after the shared stock-library repair. Prefer authored branches with reusable nearby checkpoints; only observed asserted execution earns coverage.",
+      "campaignId": "scenario-prelude-to-pestilence",
+      "packageHash": "f89edcdde9a5db51f73a8f9fbb7f27d984bab875188547c1e5ac38276dfc8f",
+      "actionPoint": "Data DD:0:67",
+      "location": {"mapId":"land:0","x":60,"y":55},
+      "expected": "Inspect and exercise Prelude AP 67's response/caller, reward and map continuation from a nearby starter baseline, then recompute AOGM and Bywater candidates for uncovered caller, response and destination-recheck outcomes. Only observed asserted execution earns coverage.",
       "remaining": "Nine recipes span four scenarios; representative coverage across all 13, additional Simple responses, cancellation and caller-specific outcomes remain incomplete. The older Griloch native comparison is pinned to the previous application identity and has not been renewed after the library correction."
     }
   ]
