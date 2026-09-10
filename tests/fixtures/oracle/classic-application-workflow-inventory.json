@@ -8,18 +8,11 @@
     "realmz2": "cff7174399212c1256c52fc6b10d4a766af4174e"
   },
   "convergencePolicy": {
-    "effortTargets": {
-      "ordinaryPlayAndPresentationPercent": 60,
-      "missingAndPartialImplementationPercent": 25,
-      "targetedArchaeologyPercent": 15
-    },
     "priorityOrder": [
-      "aogm-certification",
-      "classic-missing",
-      "aogm-major-partial",
-      "war-prerequisite",
-      "broader-parity",
-      "rare-or-unreachable"
+      "known-failure",
+      "untested-high-risk",
+      "meaningful-variant",
+      "broader-representative"
     ],
     "archaeologyTriggers": [
       "observed-discrepancy",
@@ -33,7 +26,7 @@
     "id": "rebuilt-hotspot-test-performance",
     "status": "complete",
     "baselineCommit": "7e91e06bf6ff70d575c362afef26169f83a155e3",
-    "resumeBatchId": "release-saturation-closure",
+    "resumeBatchId": "ap-failure-first",
     "reason": "Parity delivery is paused for one bounded tranche that restores exploration cadence, decomposes the remaining product hotspots, rationalizes duplicated tests, and installs permanent architecture and test-budget ratchets without changing workflow delivery states.",
     "exitGate": [
       "exploration-performance-targets",
@@ -45,9 +38,9 @@
     ]
   },
   "currentBatch": {
-    "id": "release-saturation-closure",
-    "name": "Release saturation closure",
-    "baselineCommit": "5db81af7847f0fd0772cd236af515c9999d0789f",
+    "id": "ap-failure-first",
+    "name": "AP failure-first verification",
+    "baselineCommit": "90927e1c0ff8924d504629e7ebbdb862a057daa2",
     "baselineCounts": {
       "classic": {
         "missing": 0,
@@ -62,39 +55,37 @@
         "certified": 2
       }
     },
-    "selectionRationale": "Compiler, opcode, spell, application semantic-data, preferences, host settings, equipment, Shop, authored Journal, and Quit behavior are saturated. Every Classic workflow is functional or certified. The sole implementation target is the cross-platform release blocker; the three certification targets preserve ordinary-play acceptance opportunities without reopening completed behavior. Existing AOGM, War, and Lachis acceptance remains valid unless a later owner directly invalidates it.",
+    "selectionRationale": "Failure-first AP verification starts with the Griloch Shop repair, separately tracks the AP-chance RNG discrepancy, then exercises representative authored encounter branches. These targets record expected verification evidence only; they make no claim that the current behavior passes. Full campaign certification remains separate and retains the AOGM, War, then gain-based order.",
     "targets": [
       {
-        "workflowId": "host.release.platform-certification",
-        "mode": "implementation",
-        "priority": "rare-or-unreachable",
-        "expectedEvidence": "",
-        "gapIds": [
-          "GAP-HOST-006"
-        ],
-        "archaeologyTriggers": []
-      },
-      {
-        "workflowId": "classic.spellcasting.field-camp-cast",
-        "mode": "certification",
-        "priority": "broader-parity",
-        "expectedEvidence": "aogm-ordinary",
+        "workflowId": "classic.services.shop",
+        "mode": "verification",
+        "priority": "known-failure",
+        "expectedEvidence": "live-route",
         "gapIds": [],
         "archaeologyTriggers": []
       },
       {
-        "workflowId": "classic.maps.authored-journal",
-        "mode": "certification",
-        "priority": "broader-parity",
-        "expectedEvidence": "other-ordinary",
+        "workflowId": "classic.scenario.trigger-action-point",
+        "mode": "verification",
+        "priority": "known-failure",
+        "expectedEvidence": "live-route",
         "gapIds": [],
         "archaeologyTriggers": []
       },
       {
-        "workflowId": "classic.system.quit",
-        "mode": "certification",
-        "priority": "broader-parity",
-        "expectedEvidence": "other-ordinary",
+        "workflowId": "classic.scenario.choose-response",
+        "mode": "verification",
+        "priority": "untested-high-risk",
+        "expectedEvidence": "live-route",
+        "gapIds": [],
+        "archaeologyTriggers": []
+      },
+      {
+        "workflowId": "classic.scenario.complex-interaction",
+        "mode": "verification",
+        "priority": "meaningful-variant",
+        "expectedEvidence": "live-route",
         "gapIds": [],
         "archaeologyTriggers": []
       }

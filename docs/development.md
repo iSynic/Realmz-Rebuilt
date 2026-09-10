@@ -49,6 +49,14 @@ Use targeted archaeology only when a reproduced discrepancy, release blocker, hi
 
 The generated [Classic workflow status](classic-application-workflow-status.md) and [gameplay parity status](classic-gameplay-parity-status.md) own their denominators. Edit their source inventories and regenerate them; do not hand-edit generated status.
 
+### Failure-first AP testing
+
+Prioritize AP testing in this order: reported misfires and shared defects; untested high-risk behavior; then meaningful variants across caller contexts and outcomes. Expand representatives across all 13 pinned bundled scenarios. Existing workflow and gameplay inventories remain authoritative denominators; static opcode presence is not runtime coverage.
+
+Full campaign certification is a separate track: certify AOGM, then War in the Sword Lands, then select each legally available scenario by recomputed unique-feature coverage gain. That order does not gate cross-scenario AP testing. After corpus certification, close unused stock opcodes, spell signatures, and gameplay workflows with synthetic fixtures until every denominator entry has a final disposition.
+
+Use tooling or MCP only for an immediate blocker or credible cumulative savings across identified upcoming cases. Record the expected implementation and verification effort and the expected savings, and prefer existing CLI recipes and checkpoints. Capability-matrix completion is never a bug-closure gate. Preserve read-only live access and use visibly identified isolated fixtures for automated input or direct invocation.
+
 ## Risk-tiered verification
 
 Group normal work into three to five related workflows. Give each workflow a focused, verified commit, then run Tier 2 and the aggregate gate once at batch closeout.

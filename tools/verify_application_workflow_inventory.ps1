@@ -191,7 +191,7 @@ function New-StatusReport([object]$Inventory) {
     [void]$builder.AppendLine()
     [void]$builder.AppendLine($batch.selectionRationale)
     [void]$builder.AppendLine()
-    [void]$builder.AppendLine("Planning target: **$($Inventory.convergencePolicy.effortTargets.ordinaryPlayAndPresentationPercent)%** ordinary-play acceptance and presentation, **$($Inventory.convergencePolicy.effortTargets.missingAndPartialImplementationPercent)%** missing or partial workflow implementation, and **$($Inventory.convergencePolicy.effortTargets.targetedArchaeologyPercent)%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.")
+    [void]$builder.AppendLine("AP batches use failure-first priorities: known failures, untested high-risk behavior, meaningful variants, and broader representatives. Verification mode records existing functional behavior without claiming full campaign certification; implementation, verification, and certification remain distinct modes.")
     [void]$builder.AppendLine()
     [void]$builder.AppendLine("| Workflow | Mode | Priority | Expected evidence | Owned gaps |")
     [void]$builder.AppendLine("| --- | --- | --- | --- | --- |")
@@ -366,8 +366,8 @@ $allowedGapCategory = @("source", "compiler", "simulation", "persistence", "pres
 $allowedSeverity = @("blocker", "major", "minor")
 $allowedQueue = @("aogm", "other-campaign", "parity", "polish")
 $allowedIntentClassification = @("implemented", "presentation-owned", "intentionally-rejected", "redundant-dead", "missing")
-$allowedBatchModes = @("certification", "implementation", "archaeology")
-$requiredPriorityOrder = @("aogm-certification", "classic-missing", "aogm-major-partial", "war-prerequisite", "broader-parity", "rare-or-unreachable")
+$allowedBatchModes = @("certification", "implementation", "verification", "archaeology")
+$requiredPriorityOrder = @("known-failure", "untested-high-risk", "meaningful-variant", "broader-representative")
 $allowedArchaeologyTriggers = @("observed-discrepancy", "reachable-blocker", "high-risk-boundary", "providence-data-loss", "source-ambiguity-for-target-campaign")
 
 $scopeIds = @{}
@@ -473,9 +473,6 @@ foreach ($workflow in $inventory.workflows) {
 
 $policy = $inventory.convergencePolicy
 Assert-Condition ($null -ne $policy) "Parity convergence policy is missing."
-Assert-Condition ([int]$policy.effortTargets.ordinaryPlayAndPresentationPercent -eq 60) "Ordinary-play and presentation effort target must remain 60 percent."
-Assert-Condition ([int]$policy.effortTargets.missingAndPartialImplementationPercent -eq 25) "Missing and partial implementation effort target must remain 25 percent."
-Assert-Condition ([int]$policy.effortTargets.targetedArchaeologyPercent -eq 15) "Targeted archaeology effort target must remain 15 percent."
 Assert-Condition (((@($policy.priorityOrder) | ForEach-Object { [string]$_ }) -join '|') -eq ($requiredPriorityOrder -join '|')) "Parity convergence priority order differs from the approved policy."
 $policyTriggers = @($policy.archaeologyTriggers | ForEach-Object { [string]$_ } | Sort-Object -Unique)
 Assert-Condition (($policyTriggers -join '|') -eq (($allowedArchaeologyTriggers | Sort-Object) -join '|')) "Parity convergence archaeology triggers differ from the approved policy."
@@ -498,7 +495,7 @@ if ($hasLfsPackageBoundary) {
 Assert-Condition (-not [string]::IsNullOrWhiteSpace([string]$batch.selectionRationale)) "Current batch has no selection rationale."
 $batchTargets = @($batch.targets)
 Assert-Condition ($batchTargets.Count -ge 3 -and $batchTargets.Count -le 5) "Current batch must contain 3 to 5 workflows."
-Assert-Condition (@($batchTargets | Where-Object { $_.mode -eq 'certification' }).Count -gt 0) "Current batch must contain at least one ordinary-play certification target."
+Assert-Condition (@($batchTargets | Where-Object { $_.mode -in @('implementation', 'verification', 'certification') }).Count -gt 0) "Current batch must contain implementation, verification, or certification work; archaeology alone is not sufficient."
 $batchWorkflowIds = @{}
 foreach ($target in $batchTargets) {
     $workflowId = [string]$target.workflowId
@@ -519,6 +516,8 @@ foreach ($target in $batchTargets) {
     if ($target.mode -eq "certification") {
         Assert-Condition ($derivedState -in @("functional", "certified")) "$workflowId is not ready for a certification target."
         Assert-Condition ([string]$target.expectedEvidence -in @("aogm-ordinary", "other-ordinary")) "$workflowId certification target has no ordinary-play evidence goal."
+    } elseif ($target.mode -eq "verification") {
+        Assert-Condition ([string]$target.expectedEvidence -in @("runtime-integration", "live-route")) "$workflowId verification target must name runtime-integration or live-route evidence."
     } else {
         Assert-Condition ([string]::IsNullOrWhiteSpace([string]$target.expectedEvidence)) "$workflowId declares ordinary-play evidence outside a certification target."
     }
@@ -527,9 +526,6 @@ foreach ($target in $batchTargets) {
     }
     if ($derivedState -in @("functional", "certified") -and $target.mode -eq "archaeology") {
         Assert-Condition ($targetTriggers.Count -gt 0) "$workflowId cannot deepen a functional workflow without an approved archaeology trigger."
-    }
-    if ($target.priority -eq "aogm-certification") {
-        Assert-Condition ($workflow.scope -eq "classic" -and $workflow.reachability.aogm -in @("known-reachable", "observed")) "$workflowId is not an evidenced AOGM certification candidate."
     }
     foreach ($gapId in @($target.gapIds)) {
         Assert-Condition (@($workflow.gaps | ForEach-Object { [string]$_.id }) -contains [string]$gapId) "$workflowId batch target references gap $gapId owned by another workflow."

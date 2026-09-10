@@ -22,7 +22,7 @@ Own current architecture, ADRs, package/save contracts, fidelity decisions, orac
 - Classic media documentation distinguishes application-owned resource families, scenario-owned exact overrides, and Castle's effective compositing steps; the battle viewport contract records both the active landlook and shared PICT 302 inputs.
 - Roadmap phases remain tied to their approved exit gates.
 - `docs/development.md` is the public operational source of truth for risk tiers, workflow batches, contributor checks, and delivery evidence; internal delegation rules remain in the root contract. `roadmap.md` contains only current evidence, remaining work, and release order. Historical commit-by-commit narration belongs in private Git recovery history, not the public roadmap.
-- Parity-convergence status is generated from the workflow inventory's current batch, baseline counts, certification targets, and owned gaps. The 60/25/15 effort allocation is planning guidance, not a derived productivity claim.
+- Parity-convergence status is generated from the workflow inventory's current batch, baseline counts, certification targets, and owned gaps. AP testing follows the failure-first order in `development.md`; the 13 pinned bundled scenarios are the representative breadth target, while inventory denominators remain authoritative and static opcode presence is not runtime coverage. Full campaign certification is separate from, and does not gate, cross-scenario AP testing.
 - The risk-tiered delivery policy is an operating contract, not an ADR. Add an ADR only when a separate non-local architectural boundary changes.
 
 ## Work Guidance

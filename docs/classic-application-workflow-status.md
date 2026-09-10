@@ -13,18 +13,18 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Current parity-convergence batch
 
-**Release saturation closure** (`release-saturation-closure`)
+**AP failure-first verification** (`ap-failure-first`)
 
-Compiler, opcode, spell, application semantic-data, preferences, host settings, equipment, Shop, authored Journal, and Quit behavior are saturated. Every Classic workflow is functional or certified. The sole implementation target is the cross-platform release blocker; the three certification targets preserve ordinary-play acceptance opportunities without reopening completed behavior. Existing AOGM, War, and Lachis acceptance remains valid unless a later owner directly invalidates it.
+Failure-first AP verification starts with the Griloch Shop repair, separately tracks the AP-chance RNG discrepancy, then exercises representative authored encounter branches. These targets record expected verification evidence only; they make no claim that the current behavior passes. Full campaign certification remains separate and retains the AOGM, War, then gain-based order.
 
-Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
+AP batches use failure-first priorities: known failures, untested high-risk behavior, meaningful variants, and broader representatives. Verification mode records existing functional behavior without claiming full campaign certification; implementation, verification, and certification remain distinct modes.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `host.release.platform-certification` | implementation | rare-or-unreachable | - | GAP-HOST-006 |
-| `classic.spellcasting.field-camp-cast` | certification | broader-parity | aogm-ordinary |  |
-| `classic.maps.authored-journal` | certification | broader-parity | other-ordinary |  |
-| `classic.system.quit` | certification | broader-parity | other-ordinary |  |
+| `classic.services.shop` | verification | known-failure | live-route |  |
+| `classic.scenario.trigger-action-point` | verification | known-failure | live-route |  |
+| `classic.scenario.choose-response` | verification | untested-high-risk | live-route |  |
+| `classic.scenario.complex-interaction` | verification | meaningful-variant | live-route |  |
 
 ### Batch count delta
 
