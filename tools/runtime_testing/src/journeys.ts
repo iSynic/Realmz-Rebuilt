@@ -13,7 +13,6 @@ const PER_STEP_EVIDENCE_RESERVE_BYTES = 64 * 1024 * 1024;
 const MAX_CAPTURE_RESERVE_BYTES = 32 * 1024 * 1024;
 const DEFAULT_POLL_MS = 100;
 const JOB_ID = /^[a-f0-9]{32}$/;
-const SUPPORTED_ENGINES = new Set(["rebuilt"]);
 const IGNORED_COMPARE_KEYS = new Set(["requestId", "revision", "gameRevision", "expectedRevision", "startedAt", "finishedAt", "pid", "port", "token", "build", "fixtureRoot", "configPath", "checkpointPath", "timingMs", "durationMs", "capture", "path", "sha256", "bytes", "width", "height"]);
 
 export class JourneyError extends Error {
@@ -303,30 +302,6 @@ function diffValues(left: unknown, right: unknown, at = "$"): { path: string; le
   return { path: at, left, right };
 }
 
-function semanticInitial(value: Record<string, unknown>): unknown {
-  // The checkpoint proves that the run was isolated; the complete initial
-  // observation carries the named gameplay state used for equivalence.
-  return normalizedObservation(value.initialObservation);
-}
-
-function validEvidence(value: Record<string, unknown>): { ok: true; engine: string; steps: Record<string, unknown>[] } | { ok: false; reason: string } {
-  if (value.format !== "realmz-journey/1" || value.completed !== true || value.failure !== null) return { ok: false, reason: "evidence_incomplete" };
-  const baseline = recordOf(value.baseline);
-  const initial = recordOf(value.initialObservation);
-  if (baseline === null || initial === null || recordOf(baseline.checkpoint) === null) return { ok: false, reason: "evidence_baseline_missing" };
-  if (baseline.engine === "castle") return { ok: false, reason: "castle_normalization_unsupported" };
-  if (typeof baseline.engine !== "string" || !SUPPORTED_ENGINES.has(baseline.engine)) return { ok: false, reason: "engine_normalization_unsupported" };
-  const required = ["campaignId", "packageHash", "rulesVersion", "location", "clock", "party", "pooledGold", "rngTrace", "scenarioTrace"];
-  if (required.some((key) => !(key in initial))) return { ok: false, reason: "initial_semantics_missing" };
-  const steps = value.steps;
-  if (!Array.isArray(steps) || steps.length === 0 || steps.some((step) => {
-    const entry = recordOf(step);
-    const reply = entry === null ? null : recordOf(entry.reply);
-    return entry === null || typeof entry.index !== "number" || !Number.isFinite(entry.index) || !Number.isInteger(entry.index) || typeof entry.command !== "string" || !["act", "respond", "ui", "invoke"].includes(entry.command) || reply === null || typeof reply.ok !== "boolean" || recordOf(entry.before) === null || recordOf(entry.after) === null;
-  })) return { ok: false, reason: "steps_missing_or_incomplete" };
-  return { ok: true, engine: baseline.engine, steps: steps as Record<string, unknown>[] };
-}
-
 function normalizedObservation(value: unknown): unknown {
   if (value === null || typeof value !== "object" || Array.isArray(value)) return value;
   const observation = value as Record<string, unknown>;
@@ -347,49 +322,6 @@ function normalizedObservation(value: unknown): unknown {
     scenarioTrace: observation.scenarioTrace,
     traceLimitReached: observation.traceLimitReached
   });
-}
-
-function normalizedStep(value: unknown): unknown {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) return normalize(value);
-  const step = value as Record<string, unknown>;
-  const reply = step.reply;
-  const normalizedReply = reply !== null && typeof reply === "object" && !Array.isArray(reply)
-    ? { ok: (reply as Record<string, unknown>).ok, error: (reply as Record<string, unknown>).error, result: normalizedObservation((reply as Record<string, unknown>).result) }
-    : reply;
-  return normalize({ index: step.index, command: step.command, mode: step.mode, params: step.params, expectedRevision: step.expectedRevision, beforeRevision: step.beforeRevision, afterRevision: step.afterRevision, before: normalizedObservation(step.before), reply: normalizedReply, after: normalizedObservation(step.after), diff: step.diff, error: step.error, traceDelta: step.traceDelta });
-}
-
-export async function compareJourneyRuns(leftPath: string, rightPath: string): Promise<Record<string, unknown>> {
-  let left: Record<string, unknown>;
-  let right: Record<string, unknown>;
-  try {
-    const leftValue = recordOf(JSON.parse(await fs.readFile(leftPath, "utf8")));
-    const rightValue = recordOf(JSON.parse(await fs.readFile(rightPath, "utf8")));
-    if (leftValue === null || rightValue === null) return { initialEquivalenceVerified: false, reason: "invalid_evidence_schema", equal: false, firstDifference: null };
-    left = leftValue;
-    right = rightValue;
-  } catch (error) {
-    return { initialEquivalenceVerified: false, reason: "invalid_evidence", equal: false, firstDifference: { path: "$", left: null, right: null }, error: error instanceof Error ? error.message : "evidence could not be read" };
-  }
-  const leftValidity = validEvidence(left);
-  const rightValidity = validEvidence(right);
-  if (!leftValidity.ok) return { initialEquivalenceVerified: false, reason: leftValidity.reason, equal: false, firstDifference: null };
-  if (!rightValidity.ok) return { initialEquivalenceVerified: false, reason: rightValidity.reason, equal: false, firstDifference: null };
-  if (leftValidity.engine !== rightValidity.engine) return { initialEquivalenceVerified: false, reason: "engine_mismatch", equal: false, firstDifference: null };
-  const leftInitial = semanticInitial(left);
-  const rightInitial = semanticInitial(right);
-  const initialDifference = diffValues(leftInitial, rightInitial);
-  const initialEquivalenceVerified = initialDifference === null && leftInitial !== undefined && rightInitial !== undefined;
-  if (!initialEquivalenceVerified) return { initialEquivalenceVerified: false, reason: "initial_equivalence_failed_or_unsupported", firstDifference: initialDifference, equal: false };
-  const leftSteps = leftValidity.steps;
-  const rightSteps = rightValidity.steps;
-  const count = Math.min(leftSteps.length, rightSteps.length);
-  for (let index = 0; index < count; index += 1) {
-    const difference = diffValues(normalizedStep(leftSteps[index]), normalizedStep(rightSteps[index]), `$[steps][${index}]`);
-    if (difference) return { initialEquivalenceVerified: true, equal: false, firstDifference: difference, stepIndex: index };
-  }
-  if (leftSteps.length !== rightSteps.length) return { initialEquivalenceVerified: true, equal: false, firstDifference: { path: "$.steps.length", left: leftSteps.length, right: rightSteps.length } };
-  return { initialEquivalenceVerified: true, equal: true, firstDifference: null, steps: count };
 }
 
 async function waitSemantic(sessionId: string, home: string, step: JourneyStep, stepIndex: number, deadline: number, cancelPath: string, onObservation?: (observation: Observation) => void): Promise<Observation> {

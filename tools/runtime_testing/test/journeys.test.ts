@@ -6,7 +6,8 @@ import { randomBytes } from "node:crypto";
 import { afterEach, test } from "node:test";
 import { startFakeTestingService, type FakeTestingService } from "./support/fake-engine.js";
 import { writeDescriptor, type SessionDescriptor } from "../src/discovery.js";
-import { compareJourneyRuns, runJourneyJob } from "../src/journeys.js";
+import { runJourneyJob } from "../src/journeys.js";
+import { compareJourneyRuns } from "../src/comparison.js";
 import { JourneySpecSchema, JourneyStatusSchema, PROTOCOL } from "../src/schemas.js";
 
 const services: FakeTestingService[] = [];
@@ -28,6 +29,7 @@ function observation(options: { pending?: Record<string, unknown> | null; contro
     fatigue: 0,
     pooledGold: 10,
     party: [],
+    checkpointState: { rng: { generatorState: 1, drawCount: 0 }, gameState: { party: { characters: [] } } },
     pendingInteraction: options.pending ?? null,
     actions: [],
     controls: options.controls ?? [],
@@ -49,7 +51,7 @@ async function setupFakeSession(options: { pending?: Record<string, unknown> | n
   const service = await startFakeTestingService(descriptor, {
     describe: () => ({ ...descriptor }),
     handle: async (command) => {
-      if (command === "checkpoint") return { revision: 0, result: { checkpoint: { format: "test-checkpoint", state: "baseline" }, sha256: "canonical-checkpoint", mode: "observation" } };
+      if (command === "checkpoint") return { revision: 0, result: { checkpoint: { format: "realmz2-save", formatVersion: 4, rng: { generatorState: 1, drawCount: 0 }, gameState: { party: { characters: [] } } }, sha256: "canonical-checkpoint", mode: "observation" } };
       if (command === "observe") {
         const semanticReady = options.semanticReadySequence?.[Math.min(observations++, options.semanticReadySequence.length - 1)] ?? options.semanticReady;
         const failure = actions > 0 ? options.executionFailure ?? undefined : undefined;
@@ -108,7 +110,7 @@ test("journey waits for an asynchronously queued command to become semantically 
 
 test("journey retains an accepted reply when post-command readiness times out", async () => {
   const setup = await setupFakeSession({ semanticReadySequence: [true, true, false] });
-  const job = await makeJob(setup.home, setup.descriptor.sessionId, { name: "queued-timeout", sessionId: setup.descriptor.sessionId, steps: [actStep], limits: { timeoutMs: 250, maxActions: 1 } });
+  const job = await makeJob(setup.home, setup.descriptor.sessionId, { name: "queued-timeout", sessionId: setup.descriptor.sessionId, steps: [actStep], limits: { timeoutMs: 2_000, maxActions: 1 } });
   await runJourneyJob(job.id, setup.home);
   const status = JourneyStatusSchema.parse(JSON.parse(await fs.readFile(job.statusPath, "utf8")));
   assert.equal(status.failure?.code, "timeout");

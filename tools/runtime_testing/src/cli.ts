@@ -3,7 +3,8 @@ import { randomUUID } from "node:crypto";
 import { discoverSessions, requestSession } from "./client.js";
 import { CastleFixtureManager, castleFixtureEnvironment } from "./castle-fixtures.js";
 import { checkpointFixture, FixtureManager, fixtureEnvironment, restoreFixture } from "./fixtures.js";
-import { cancelJourney, compactJourneyStatus, compareJourneyRuns, readStatus, startJourney } from "./journeys.js";
+import { cancelJourney, compactJourneyStatus, readStatus, startJourney } from "./journeys.js";
+import { compareJourneyRuns } from "./comparison.js";
 import { ALLOWED_COMMANDS, isMutatingCommand, type AllowedCommand } from "./schemas.js";
 
 function usage(): never {

@@ -7,7 +7,8 @@ import * as z from "zod/v4";
 import { discoverSessions, requestSession } from "./client.js";
 import { CastleFixtureManager, castleFixtureEnvironment } from "./castle-fixtures.js";
 import { checkpointFixture, FixtureManager, fixtureEnvironment, restoreFixture } from "./fixtures.js";
-import { cancelJourney, compactJourneyStatus, compareJourneyRuns, readStatus, startJourney } from "./journeys.js";
+import { cancelJourney, compactJourneyStatus, readStatus, startJourney } from "./journeys.js";
+import { compareJourneyRuns } from "./comparison.js";
 import { FixtureClassicSourceSchema, JourneySpecSchema, SessionIdSchema } from "./schemas.js";
 
 const EmptyArgs = z.object({}).strict();

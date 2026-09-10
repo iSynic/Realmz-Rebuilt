@@ -97,6 +97,7 @@ export const CastleFixtureConfigSchema = z.object({
     baseCommit: z.literal("491816ad60037394f92c428e99c004494d3c28b3"),
     instrumentationCommit: GitCommitSchema,
     sourceFingerprint: NonEmptyString,
+    executableSha256: Sha256Schema,
     characters: z.array(FixtureFileIdentitySchema).length(6),
     scenarioFiles: z.array(FixtureFileIdentitySchema).min(1).max(4096)
   }).strict()

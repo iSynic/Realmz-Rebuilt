@@ -286,6 +286,7 @@ export class CastleFixtureManager {
     await directory(this.env.rebuiltRoot, "REALMZ_REBUILT_ROOT");
     const instrumentationCommit = await assertBaseCommit(this.env.castleRoot);
     const sourceFingerprintValue = await sourceFingerprint(this.env.castleRoot, instrumentationCommit);
+    const executableSha256 = await sha256File(this.env.castlePath);
     const fixtureId = randomBytes(16).toString("hex");
     const root = await prepareRoot(this.env.testingHome, fixtureId);
     const configPath = path.join(root, "config.json");
@@ -301,7 +302,7 @@ export class CastleFixtureManager {
         build: `castle:${sourceFingerprintValue}`,
         seed: input.source.seed,
         location: { mapId: MAP_ID, x: input.source.location.x, y: DEFAULT_Y },
-        identity: { baseCommit: BASE_COMMIT, instrumentationCommit, sourceFingerprint: sourceFingerprintValue, characters, scenarioFiles }
+        identity: { baseCommit: BASE_COMMIT, instrumentationCommit, sourceFingerprint: sourceFingerprintValue, executableSha256, characters, scenarioFiles }
       };
       CastleFixtureConfigSchema.parse(config);
       await fs.writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });

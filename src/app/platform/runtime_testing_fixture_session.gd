@@ -65,6 +65,7 @@ func _start_named(request: RuntimeTestingFixtureRequest, session: GameSessionCon
 			return _fail("starter_state_rejected", "The pinned starter records do not form a uniquely owned party.")
 		characters.append({"characterId": record.character_id, "revisionHash": record.revision_hash, "name": record.state.name, "sourceLoad": record.state.carried_load, "derivedLoad": state.carried_load})
 	snapshot.game_state.party_setup_completed = true
+	snapshot.game_state.scenario_progress.set_quest_value(0, -1)
 	if not _step_ok(session.restore(content, snapshot)):
 		return false
 	var location: Dictionary = request.source["location"]
@@ -72,6 +73,7 @@ func _start_named(request: RuntimeTestingFixtureRequest, session: GameSessionCon
 		return false
 	identity["characters"] = characters
 	identity["seed"] = request.source["seed"]
+	identity["questZeroSentinel"] = -1
 	identity["preparation"] = "validated-starter-snapshot-and-debug-position; derived inventory load; no ordinary import or campaign-start hook"
 	return true
 
