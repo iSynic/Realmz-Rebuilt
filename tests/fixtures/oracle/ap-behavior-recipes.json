@@ -456,6 +456,69 @@
         {"command":"act","params":{"action":"move","arguments":{"dx":-1,"dy":0}},"expect":{"interactionKind":null,"location":{"mapId":"land:1","x":33,"y":17}},"capture":true},
         {"command":"act","params":{"action":"move","arguments":{"dx":1,"dy":0}},"expect":{"interactionKind":null,"location":{"mapId":"land:1","x":34,"y":17}},"capture":true}
       ]
+    },
+    {
+      "id": "griloch-contextual-temple-bank-close",
+      "workflowIds": [
+        "classic.services.temple",
+        "classic.services.bank",
+        "classic.scenario.trigger-action-point"
+      ],
+      "baselineLocation": {
+        "mapId": "land:0",
+        "x": 18,
+        "y": 11
+      },
+      "target": {
+        "actionPoint": "Data DD:0:35",
+        "location": {
+          "mapId": "land:0",
+          "x": 19,
+          "y": 11
+        },
+        "program": "trigger:Data DD:0:35",
+        "opcodes": [
+          49,
+          1,
+          32,
+          24
+        ]
+      },
+      "proofModes": [
+        "live-route",
+        "ordinary-movement",
+        "ui-control-execution"
+      ],
+      "expected": [
+        "Ordinary east movement advances fifteen minutes, offers Bank and Temple at cost 100 percent, publishes nonblocking message 296 and keeps AP 35. It does not enter the Temple until its visible control is clicked.",
+        "Entry draws four time-owned rectangle checks followed by AP chance: 7195, 1718, 9567, 3843, 38. Temple, Pool and Leave Temple consume no additional time or gameplay RNG.",
+        "Before pooling, Purchase is visibly disabled: selected Kevlar has 10 gold and Heal Small Wounds costs 250.",
+        "Actual Pool transfers all 760 carried gold into pooled wealth. Actual Leave Temple returns the pool to the bank exactly once, leaving zero carried/pool gold and 760 banked gold.",
+        "Ordinary west departure clears contextual services, preserves banked wealth and the kept AP, reaches day 1 00:25 and completes nine total RNG draws.",
+        "Restoring the pending Temple after Pool retains the 760 pooled gold and zero bank balance. Visible Leave Temple banks it once; departure cannot duplicate it."
+      ],
+      "sourceEvidence": [
+        "Castle temple.c:208-244: pooled wealth returns to available bank on exit; Pool and Share commands",
+        "tests/scenario/test_scenario_vm.gd: typed service continuation wire contract; tests/integration/test_money_workflow.gd: banked and pooled wealth"
+      ],
+      "remaining": [
+        "Application hook IDs are absent in this campaign: the corrected shared hook dispatch is exercised without claiming execution of an authored hook program.",
+        "Paid services, no-bank departure, Share and full campaign-start travel/certification are outside this recipe."
+      ],
+      "otherEvidence": [
+        "jobs/43b8e93b3dec4cb0b88af6e5060b0acb/evidence.json: complete identical-baseline semantic/RNG repeat equal",
+        "jobs/35192b756c2e70ecbbb8a9a43ab53d19/evidence.json: restored pooled Temple, exact-once bank close and departure; setup prefix jobs/1506efebaf20ac56db18a989bd3b484c/evidence.json"
+      ],
+      "result": "passed",
+      "evidence": "jobs/72521b06b454e5edf2f9e0af3ca788c5/evidence.json",
+      "measuredReplayMs": 2799,
+      "steps": [
+        {"command":"act","params":{"action":"move","arguments":{"dx":1,"dy":0}},"expect":{"interactionKind":null,"location":{"mapId":"land:0","x":19,"y":11}},"capture":true},
+        {"command":"ui","params":{"action":"click","controlLabel":"Temple"},"expect":{"interactionKind":"temple_action","location":{"mapId":"land:0","x":19,"y":11}},"capture":true},
+        {"command":"ui","params":{"action":"click","controlLabel":"Pool"},"expect":{"interactionKind":"temple_action","location":{"mapId":"land:0","x":19,"y":11}},"capture":true},
+        {"command":"ui","params":{"action":"click","controlLabel":"Leave Temple"},"expect":{"interactionKind":null,"location":{"mapId":"land:0","x":19,"y":11}},"capture":true},
+        {"command":"act","params":{"action":"move","arguments":{"dx":-1,"dy":0}},"expect":{"interactionKind":null,"location":{"mapId":"land:0","x":18,"y":11}},"capture":true}
+      ]
     }
   ],
   "siblingAndContinuationEvidence": [
@@ -470,7 +533,7 @@
       "setup": "Direct AP setup, followed by public service {serviceId:'realmz.service.temple',action:'enter'} and temple_action {action:'leave'}. This is not an ordinary Temple approach or actual Temple-button claim.",
       "result": "passed",
       "evidence": "jobs/0ea8676b71602f54293d222d8da444ac/evidence.json",
-      "remaining": "The leave response followed the recorded entry job and was observed directly; replay a complete ordinary Temple approach separately."
+      "remaining": "This evidence remains direct setup and typed entry only; griloch-contextual-temple-bank-close separately proves ordinary movement, actual controls and restored pooled-wealth exit."
     },
     {
       "workflowId": "classic.scenario.complex-interaction",
@@ -489,17 +552,18 @@
   ],
   "nextSelection": [
     {
-      "priority": "meaningful-variant",
-      "campaignId": "scenario-grilochs-revenge",
-      "actionPoint": "Data DD:0:35",
+      "priority": "uncovered-behavior-and-caller-context",
+      "campaignId": "scenario-destroy-the-necronomicon",
+      "packageHash": "13c747c8c3c2959bc3ffe33d51e6e53deff9716c40382116aaf571b71022788e",
+      "actionPoint": "Data DD:1:3",
       "location": {
-        "mapId": "land:0",
-        "x": 19,
-        "y": 11
+        "mapId": "land:1",
+        "x": 9,
+        "y": 0
       },
       "candidateOnly": true,
-      "expected": "Ordinary entry from land:0 18,11 configures Bank and Temple, publishes nonblocking message 296 and keeps AP 35. The visible Temple control enters the shared service-hook path; Done returns to the ordinary map.",
-      "remaining": "Earlier direct AP plus typed service evidence does not certify this ordinary approach or its visible controls."
+      "expected": "Active placed AP offers Ambush Them or Try to Talk. The non-battle Talk transfer calls XAP 35 and forced Simple 3; indexed hidden-treasure response runs messages 276/336, Treasure 24 and explicit opcode 25.",
+      "remaining": "Candidate only: prove ordinary entry from land:1 9,1, forced Simple response availability, reward/inventory accounting, continuation and removal. Inspect the complete reward boundary before assigning runtime credit."
     }
   ]
 }
