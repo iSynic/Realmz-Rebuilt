@@ -194,7 +194,7 @@ static func commit_permitted(context: SessionWorkflowContext, movement: WorldMov
 	if transition != null:
 		events.append(DomainEvent.new(&"map_transitioned", {"transitionId": transition.id, "sourceMapId": source_map_id, "targetMapId": target_map.id}))
 	var resume_kind := &"attempt-search-post-move" if target_map.level_type == &"land" else &"post-move"
-	return MovementTransitionResult.after_clock(target_map, events, resume_kind, Vector2i.ZERO, false, context.state.clock.day() if context.state.clock.day() != previous_day else 0, target_coordinate)
+	return MovementTransitionResult.after_clock(target_map, events, resume_kind, Vector2i.ZERO, true, context.state.clock.day() if context.state.clock.day() != previous_day else 0, target_coordinate)
 
 
 static func sound_event(sound_id: int, source: String) -> DomainEvent:

@@ -20,6 +20,8 @@ Own exploration transactions and the detached map read model that joins immutabl
 
 - Workflows receive an ephemeral `SessionWorkflowContext`; `GameSession` alone commits, rolls back, changes revision, and constructs steps.
 - Movement uses one authoritative `MapTopology`, preserves exact RNG/event/time order, and applies fatigue admission before any side effect.
+- Ordinary placed-AP selection consumes one Castle-scaled `Rand(100)` draw for every eligible positive chance, including 100 percent. Disabled, inactive-without-override, and nonpositive records consume no chance draw; direct AP preview retains its explicit chance bypass.
+- Movement's time-owned random-rectangle checks settle before the land secret check and placed AP. Post-AP completion and destination rechecks never repeat those time-owned checks; suspended random encounters resume through the existing post-clock continuation.
 - Search and time workflows never hide extra movement, time, RNG, or AP processing outside their documented continuation.
 - Continuation payloads preserve existing kinds, fields, versions, and strict save representation.
 - Map projection is read-only. Its caches are nonserialized, bounded, revision-keyed, and disposable across restore, replacement, or close.

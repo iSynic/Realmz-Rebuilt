@@ -91,7 +91,7 @@ func run() -> void:
 	assert_equal(north_restored.restore(content, north_snapshot).state, SessionStep.State.COMPLETED, "the Classic textbox boundary restores transactionally")
 	var north_completed := north_restored.respond(InteractionResponse.from_data(north_restored.view().pending_interaction.request_id, &"acknowledge", {}))
 	assert_true(_has_event(north_completed, &"tile_replaced"), "Classic opcode 12 mutates the world overlay after acknowledgement")
-	assert_true(_has_event(north_completed, &"random_region_triggered"), "random rectangle gates after the moved-to AP finishes")
+	assert_true(_has_event(north, &"random_region_triggered") and not _has_event(north_completed, &"random_encounter_checked"), "movement's time-owned random rectangle settles before the AP and is not repeated after acknowledgement")
 	var north_trigger_id := content.world.map_by_id("land:0").topology.cell_at(Vector2i(1, 0)).trigger_ids()[0]
 	assert_true(north_restored.snapshot().game_state.world.triggers.trigger_is_disabled(north_trigger_id), "an ordinary placed Action Point becomes one-shot after its complete resumed timeline")
 	session = north_restored
@@ -109,7 +109,7 @@ func run() -> void:
 	assert_false(session.view().map_view.cell_at(hidden_destination.coordinate).has_feature(&"secret"), "walking onto a land secret does not discover its marker")
 	assert_equal(session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT)).state, SessionStep.State.COMPLETED, "ordinary movement leaves the still-concealed square")
 	var search := session.submit_intent(ExplorationIntents.search())
-	assert_equal(_event(search, &"search_completed").payload["roll"], 37, "search follows the centralized RNG after ordinary movement attempts consume their secret-check draws")
+	assert_equal(_event(search, &"search_completed").payload["roll"], 34, "search follows the centralized RNG after ordinary secret checks and guaranteed placed-AP chance draws")
 	assert_true(_has_event(search, &"secret_discovered"), "search commits secret discovery")
 	assert_true(session.view().map_view.can_move(Vector2i.LEFT) and session.view().map_view.cell_at(hidden_destination.coordinate).has_feature(&"secret"), "search reveals the Classic S marker without changing collision")
 	var revealed_entry := session.submit_intent(ExplorationIntents.move(Vector2i.LEFT)); assert_true(revealed_entry.state == SessionStep.State.WAITING_FOR_INTERACTION and _has_event(revealed_entry, &"message_shown"), "the colocated AP activates when the discovered secret square is entered")
@@ -143,7 +143,7 @@ func run() -> void:
 
 	var ordered_ap_content := _duplicate_placed_ap_content(100, content); var ordered_ap_session := GameSession.new(); ordered_ap_session.start(ordered_ap_content, 1); _begin_fixture_adventure(ordered_ap_session, ordered_ap_content)
 	var ordered_ap_step := ordered_ap_session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT))
-	assert_equal(_event_count(ordered_ap_step, &"trigger_fired"), 1, "one coordinate selects only one placed Action Point"); assert_equal(_event(ordered_ap_step, &"trigger_fired").payload["triggerId"], "ap.first-native", "the lowest Classic record index wins even when cell references are reversed"); assert_false(ordered_ap_session.snapshot().game_state.world.triggers.trigger_is_disabled("ap.later-native"), "a later same-cell Action Point is not executed or consumed")
+	assert_equal([_event_count(ordered_ap_step, &"trigger_fired"), ordered_ap_session.rng_trace().size(), ordered_ap_session.rng_trace()[0]["range"]], [1, 1, 100], "the first eligible placed Action Point consumes Castle's chance draw even at 100 percent"); assert_equal(_event(ordered_ap_step, &"trigger_fired").payload["triggerId"], "ap.first-native", "the lowest Classic record index wins even when cell references are reversed"); assert_false(ordered_ap_session.snapshot().game_state.world.triggers.trigger_is_disabled("ap.later-native"), "a later same-cell Action Point is not executed or consumed")
 
 	var chance_ap_content := _duplicate_placed_ap_content(1, content); var chance_ap_session := GameSession.new(); chance_ap_session.start(chance_ap_content, 1); _begin_fixture_adventure(chance_ap_session, chance_ap_content)
 	var chance_ap_step := chance_ap_session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT))

@@ -290,9 +290,6 @@ func continue_post_move(events: Array[DomainEvent]) -> SessionCoordinatorResult:
 	var trigger_step := _run_next_post_move_trigger(post_move, events)
 	if trigger_step != null:
 		return trigger_step
-	var random_step = continue_random_regions(post_move.map, events)
-	if random_step != null:
-		return random_step
 	_context.session_continuation.clear()
 	return SessionCoordinatorResult.completed(events)
 
@@ -361,11 +358,10 @@ func _run_next_post_move_trigger(post_move: PostMoveContext, events: Array[Domai
 		if (not trigger.active and not _context.state.world.triggers.trigger_chance_is_overridden(trigger_id)) or trigger_chance < 1:
 			exploration.trigger_index = trigger_ids.size()
 			break
-		if trigger_chance < 100:
-			var chance_roll = _context.rng.draw(100, StringName("trigger.%s" % trigger.id))
-			if chance_roll > trigger_chance:
-				exploration.trigger_index = trigger_ids.size()
-				break
+		var chance_roll = _context.rng.draw(100, StringName("trigger.%s" % trigger.id))
+		if chance_roll > trigger_chance:
+			exploration.trigger_index = trigger_ids.size()
+			break
 		events.append(DomainEvent.new("trigger_fired", {"triggerId": trigger.id}))
 		var step = SessionActionPointCoordinator.new(_context, self).execute(post_move, trigger, events)
 		if step != null:
