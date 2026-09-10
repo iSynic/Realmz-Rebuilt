@@ -38,6 +38,273 @@
   ],
   "recipes": [
     {
+      "id": "trouble-door-cancellation-and-retained-reentry",
+      "application": {
+        "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
+        "packageHash": "45298c295fc784b528f4219d6ceb0454cb482d894b66440e529d7763e7cb0036",
+        "archiveSha256": "e85ae0aca72fa6642ef66af8745ceb24446459598efcb1075cd8f5a4cce36012",
+        "starterCatalog": "src/storage/characters/realmz-classic-starter-characters.json"
+      },
+      "package": {
+        "campaignId": "scenario-trouble-in-the-sword-lands",
+        "path": "src/storage/packages/bundled_campaigns/scenario-trouble-in-the-sword-lands.realmz2",
+        "packageHash": "2912667314a7700d74b2a517253a31d3b610cba99507275fc0f8542eaaf803a7",
+        "archiveSha256": "aef55f89f413e95d7710b138d4a399e3dcd9fca3a8de49451761ce8da5969b7d"
+      },
+      "baselineLocation": {
+        "mapId": "land:1",
+        "x": 61,
+        "y": 43
+      },
+      "target": {
+        "actionPoint": "Data DD:1:7",
+        "location": {
+          "mapId": "land:1",
+          "x": 62,
+          "y": 43
+        },
+        "complexEncounterId": 25,
+        "thiefEncounterId": 23
+      },
+      "proofModes": [
+        "live-route",
+        "ordinary-movement",
+        "actual-ui-control",
+        "typed-interaction"
+      ],
+      "workflowIds": [
+        "classic.scenario.trigger-action-point"
+      ],
+      "expected": [
+        "The continuous fourteen-step route enters the door from the west, opens Skills, uses actual Back to encounter, and uses the actual Stop command to reverse to land:1 (61,43). Nested Thief Back preserves Complex 25 and changes no game/RNG state; Stop cancels the complete invocation without disabling AP 7, charging time, or rolling again.",
+        "Ordinary east re-entry repeats positive message 251 and original Complex 25, then actual Skills/Force Lock with typed frame zero follows failure result 2. Its fixed east shift reaches (63,43), Keep leaves the door active, and ordinary west re-entry repeats the AP. Actual Stop now returns east to (63,43), respecting the most recent approach rather than a fixed fallback coordinate.",
+        "Only the three ordinary approaches consume AP chance draws and ten minutes each. Final state is minute 30, drawCount 3 / generatorState 1815247477, empty trigger-chance overrides and disabled-trigger list, and no pending interaction. A validated final checkpoint has empty VM frames and session continuation.",
+        "Two complete fourteen-step runs have exactly equal initial/per-step game and RNG states, pending requests and VM/RNG trace deltas. A separate repeat interrupted by an EPERM evidence-file rename remains failed evidence and is not counted as a passing run.",
+        "The success neighbor independently proves explicit negative AP chance is not re-enabled by Keep; this cancellation/failure recipe never applies that mutation. No action-set, word, item, or spell selection is inferred from displaying its button."
+      ],
+      "result": "passed",
+      "evidence": "jobs/47faa4bcc2cc90852b3e60c58c1be347/evidence.json",
+      "otherEvidence": [
+        "jobs/55484530f208e32af347a517db236ad0/evidence.json: exact fourteen-step repeat after the interrupted evidence write",
+        "jobs/0b7566135ec6431287c27ff9de0be413/evidence.json: failed evidence-file rename; retained as failed orchestration evidence, not gameplay parity",
+        "jobs/c42c4e9045a72dfe192c2add682848bc/evidence.json: actual nested Thief Back returns to owner",
+        "jobs/742880ce660deb13c427726470842931/evidence.json: actual west-approach Stop",
+        "jobs/c0537d740bd2b7f7f69f1df9e856006c/evidence.json: actual east-approach Stop after failed Force Lock re-entry",
+        "fixtures/97b53d72e12c6decbd523d07e3a5fb04/checkpoints/edf346ca-38e7-4de1-81ca-d575031d1ec2.r2save: final no-pending state and empty continuations; file SHA256 a0e29fd291880b688a59bd0c539d401490218a026bec1f1aafd8ececaf688b84"
+      ],
+      "remaining": [
+        "The door's exact action-set, item/spell matches, other characters' skills, automatic timed resolution and full campaign certification remain untested by these three recipes.",
+        "This is Rebuilt ordinary-route evidence with deterministic typed minigame input. No native Castle runtime comparison or broader tooling acceptance is claimed."
+      ],
+      "steps": [
+        {
+          "command": "act",
+          "params": {
+            "action": "move",
+            "arguments": {
+              "dx": 1,
+              "dy": 0
+            }
+          },
+          "expect": {
+            "interactionKind": "acknowledge",
+            "location": {
+              "mapId": "land:1",
+              "x": 62,
+              "y": 43
+            }
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "complex_encounter"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlId": "7a34172f161a9ef4d647fb96"
+          },
+          "expect": {
+            "interactionKind": "thief_encounter"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "Back to encounter"
+          },
+          "expect": {
+            "interactionKind": "complex_encounter"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlId": "136edae4e94270190bde2d24"
+          },
+          "expect": {
+            "interactionKind": null,
+            "location": {
+              "mapId": "land:1",
+              "x": 61,
+              "y": 43
+            }
+          },
+          "capture": true
+        },
+        {
+          "command": "act",
+          "params": {
+            "action": "move",
+            "arguments": {
+              "dx": 1,
+              "dy": 0
+            }
+          },
+          "expect": {
+            "interactionKind": "acknowledge",
+            "location": {
+              "mapId": "land:1",
+              "x": 62,
+              "y": 43
+            }
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "complex_encounter"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlId": "7a34172f161a9ef4d647fb96"
+          },
+          "expect": {
+            "interactionKind": "thief_encounter"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "Force Lock  52"
+          },
+          "expect": {
+            "interactionKind": "pick_lock"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "pick_lock",
+              "body": {
+                "frameIndex": 0
+              }
+            }
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": null
+          },
+          "capture": true
+        },
+        {
+          "command": "act",
+          "params": {
+            "action": "move",
+            "arguments": {
+              "dx": -1,
+              "dy": 0
+            }
+          },
+          "expect": {
+            "interactionKind": "acknowledge",
+            "location": {
+              "mapId": "land:1",
+              "x": 62,
+              "y": 43
+            }
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "complex_encounter"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlId": "136edae4e94270190bde2d24"
+          },
+          "expect": {
+            "interactionKind": null,
+            "location": {
+              "mapId": "land:1",
+              "x": 63,
+              "y": 43
+            }
+          },
+          "capture": true
+        }
+      ]
+    },
+    {
       "id": "trouble-door-saved-skill-results",
       "application": {
         "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
@@ -3435,15 +3702,15 @@
   "nextSelection": [
     {
       "priority": "missing-meaningful-variant",
-      "family": "complex-owner-bound-thief-result-and-ap-chance",
+      "family": "simple-paid-character-branch-and-caller-lifecycle",
       "candidateOnly": true,
-      "campaignId": "scenario-trouble-in-the-sword-lands",
-      "packageHash": "2912667314a7700d74b2a517253a31d3b610cba99507275fc0f8542eaaf803a7",
-      "archiveSha256": "aef55f89f413e95d7710b138d4a399e3dcd9fca3a8de49451761ce8da5969b7d",
-      "actionPoint": "Data DD:1:7",
-      "location": {"mapId":"land:1","x":62,"y":43},
-      "expected": "Revalidate west adjacency (61,43), LOS/baseScale-one map, no overlapping random rectangle, and active 100-percent AP 7. Positive message 251 and negative 252 precede opcode 5 operand 25. Complex 25 permits Back and owns Thief record 23 with four tumblers, distinct action modifiers and source-owned result mapping. Prioritize actual owner-bound thief success/failure or cancellation, saved result-message continuation, action-set result and ordinary re-entry after result-specific opcode-13 chance mutation or opcode-61 eastward shift. Every result 0-3 ends with opcode 24: maxTimes=10 alone does not establish a reachable repetition or final-timeout route. Item/spell mappings remain preparation-dependent alternatives; no static reference earns runtime credit.",
-      "remaining": "Twenty-two asserted recipes span nine of 13 scenarios. Trouble adds a new authored Complex/Thief caller beyond the earlier Griloch Complex 3 / Thief 2 evidence, with low-cost local approach and result-specific AP lifecycle outcomes; Half Truth Touch combat and nonzero injured-party healing remain pending. Full AOGM/War certification stays separate. Prelude map tab interaction, broader native/MCP capability acceptance and the older Griloch application-identity comparison remain deferred."
+      "campaignId": "scenario-war-in-the-sword-lands",
+      "packageHash": "c4c43a39ee9265af68a8582fab0c61b2caca1f512ac43e144d33873cffd5251e",
+      "archiveSha256": "e954333f10283ad631ae9117611380eb5ce5b6df0fc50b3ecddd46ec77248c19",
+      "actionPoint": "Data DD:9:33",
+      "location": {"mapId":"land:9","x":40,"y":25},
+      "expected": "Use east adjacency (41,25), open baseScale-one/LOS land with no colocated AP or random rectangle; target terrain costs three and AP 33 is active at 100 percent. Entry sound -1100, positive random message 200..202 and negative 203 precede Simple Encounter 36. Prioritize Food's actual selection, character-selection boundary, six-gold debit, saved acknowledgement and XAP 771 transfer to (34,22); then Rumors' Yes/No, selected-character payment, XAP 791 random narration, AP 33/34/35 replacement and fixed west shift. Inspect actual failure XAP 772 and replacement XAP 775 before claiming their outcomes. Opcode 39 takes its XAP from the operand, not incidental Extra Code. Non-GOSUB XAP terminal Keep may preempt the result's opcode 34: do not claim unwind/repetition from static maxTimes=99.",
+      "remaining": "Twenty-five asserted recipes span ten of 13 scenarios. War adds paid selected-character branches and nested decision/caller-lifecycle variants, not credit for different gold amounts alone. Drinks reaches nested Simple 37 through XAP 773; Food-and-drinks XAP 790 includes AP rewrites, teleport and signed opcode 87, so those are separate higher-preparation candidates. Trouble action-set/item/spell alternatives and Half Truth Touch/injured-party healing remain open. Full AOGM/War certification, Prelude map-tab interaction, broader native/MCP acceptance and older Griloch library-identity comparison remain separate."
     }
   ]
 }
