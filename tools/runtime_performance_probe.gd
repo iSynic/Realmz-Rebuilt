@@ -10,21 +10,27 @@ const VAULT_PATH := "user://realmz2-tests/runtime-performance-vault"
 func _initialize() -> void:
 	if DisplayServer.get_name() != "headless":
 		DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
+		DisplayServer.window_set_title("Realmz Movement Performance Fixture")
 	var arguments := OS.get_cmdline_user_args()
-	if arguments.is_empty() or arguments.size() > 5:
-		printerr("Usage: godot --path <project> --script res://tools/runtime_performance_probe.gd -- <package.realmz2> [seconds] [speed-percent] [map-id] [1280x720|native]")
+	if arguments.is_empty() or arguments.size() > 6:
+		printerr("Usage: godot --path <project> --script res://tools/runtime_performance_probe.gd -- <package.realmz2> [seconds] [speed-percent] [map-id] [1280x720|native] [movement-frames]")
 		call_deferred("_quit_cleanly", 2); return
+	if arguments.size() == 6 and (not arguments[5].is_valid_int() or int(arguments[5]) < 1 or int(arguments[5]) > 9600):
+		printerr("MOVEMENT_FRAMES_REJECTED: expected an integer from 1 through 9600")
+		call_deferred("_quit_cleanly", 2); return
+	var requested_movement_frames := int(arguments[5]) if arguments.size() == 6 else 0
 	var duration_seconds := clampf(float(arguments[1]) if arguments.size() >= 2 else 30.0, 0.25, 120.0)
 	var speed_percent := clampi(snappedi(int(arguments[2]) if arguments.size() >= 3 else 400, 25), 25, 400)
 	var requested_map_id := ""
 	if arguments.size() >= 4:
 		requested_map_id = String(arguments[3])
-	var viewport_name := String(arguments[4]).to_lower() if arguments.size() == 5 else "1280x720"
+	var viewport_name := String(arguments[4]).to_lower() if arguments.size() >= 5 else "1280x720"
 	var viewport_size := DisplayServer.screen_get_size() if viewport_name == "native" else Vector2i(1280, 720)
 	if viewport_size.x < 800 or viewport_size.y < 600:
 		viewport_size = Vector2i(1280, 720)
 	var package_started := Time.get_ticks_usec()
-	var loaded := PERFORMANCE_PACKAGE_LOADER.load_scenario(arguments[0])
+	var application := PERFORMANCE_PACKAGE_LOADER.load_application()
+	var loaded := PERFORMANCE_PACKAGE_LOADER.load_scenario(arguments[0], application)
 	var package_us := Time.get_ticks_usec() - package_started
 	if not loaded.is_ok():
 		printerr("PACKAGE_REJECTED %s: %s" % [loaded.error_code, loaded.error_message]); call_deferred("_quit_cleanly", 1); return
@@ -35,6 +41,12 @@ func _initialize() -> void:
 	var route := _ordinary_route_pair(loaded.content, state, map)
 	if route.is_empty() or not _place_party(session, loaded.content, map.id, route["coordinates"][0], 4096):
 		printerr("MOVEMENT_ROUTE_REJECTED"); call_deferred("_quit_cleanly", 1); return
+	var media := ClassicMediaCatalog.new(loaded.media, ApplicationMediaCatalog.new(), application.media)
+	var tileset_evidence := _tileset_evidence(map, media)
+	if tileset_evidence.is_empty() or tileset_evidence.any(func(entry: Dictionary) -> bool: return not entry["resolved"] or not entry["decoded"]):
+		printerr("MAP_ART_REJECTED %s" % CanonicalJson.encode(tileset_evidence))
+		call_deferred("_quit_cleanly", 1)
+		return
 	var vault_result := _measure_vault_import(loaded.content)
 	var shell := SHELL_SCENE.instantiate() as GameShell
 	var map_presenter := ClassicMapPresenter.new()
@@ -42,7 +54,6 @@ func _initialize() -> void:
 	var viewport_scale := Vector2(viewport_size) / Vector2(1280, 720)
 	map_presenter.position = Vector2(2, 72) * viewport_scale; map_presenter.size = Vector2(926, 488) * viewport_scale
 	session.set_map_projection_size(MapPresentationGeometry.projection_cells_for(map_presenter.size, map_presenter.map_origin.y, map_presenter.cell_size))
-	var media := ClassicMediaCatalog.new(loaded.media, ApplicationMediaCatalog.new())
 	map_presenter.set_media_catalog(media)
 	await process_frame
 	var view := session.view(); map_presenter.present(view); shell.present(view)
@@ -60,14 +71,17 @@ func _initialize() -> void:
 	var ordinary_map: Array[int] = []; var hourly_map: Array[int] = []; var ordinary_shell: Array[int] = []; var hourly_shell: Array[int] = []; var ordinary_post_draw: Array[int] = []; var hourly_post_draw: Array[int] = []
 	var measured_started := Time.get_ticks_usec(); var movement_count := 0; var route_index := 0; var skipped_intervals := 0
 	var segment_restarts := 0
+	var maximum_frame_usec := 0
+	var maximum_frame_context: Dictionary = {}
 	var interval_us := int(50_000.0 * 100.0 / float(speed_percent)); var next_movement_at := measured_started
 	var traversed: Dictionary = {view.party_coordinate: true}; var direction_counts: Dictionary = {}
-	while Time.get_ticks_usec() - measured_started < int(duration_seconds * 1_000_000.0):
+	while Time.get_ticks_usec() - measured_started < int(duration_seconds * 1_000_000.0) and (requested_movement_frames == 0 or movement_count < requested_movement_frames):
 		var now := Time.get_ticks_usec()
 		if now < next_movement_at:
 			await _after_draw(); continue
 		if now - next_movement_at >= interval_us:
 			skipped_intervals += int((now - next_movement_at) / interval_us); next_movement_at = now
+		var previous_view := view
 		var frame_started := Time.get_ticks_usec()
 		var direction: Vector2i = directions[route_index % directions.size()]
 		var step := session.submit_intent(ExplorationIntents.move(direction)); var transaction_done := Time.get_ticks_usec()
@@ -80,6 +94,9 @@ func _initialize() -> void:
 		shell.present(view); var shell_done := Time.get_ticks_usec()
 		await _after_draw()
 		var frame_done := Time.get_ticks_usec()
+		if frame_done - frame_started > maximum_frame_usec:
+			maximum_frame_usec = frame_done - frame_started
+			maximum_frame_context = {"sampleIndex": movement_count, "coordinate": [view.party_coordinate.x, view.party_coordinate.y], "clock": [view.realmz_day, view.realmz_hour, view.realmz_minute], "fatigue": view.party_fatigue, "domains": view.change_set.domains().map(func(domain: StringName) -> String: return String(domain)), "completeRefresh": view.change_set.complete_refresh, "ordinaryShellUpdate": not view.change_set.complete_refresh and view.domain_revisions.is_ordinary_exploration_update_from(previous_view.domain_revisions), "events": step.events.map(func(event: DomainEvent) -> String: return String(event.kind))}
 		transaction_samples.append(transaction_done - frame_started); projection_samples.append(projection_done - transaction_done); map_samples.append(map_done - projection_done); shell_samples.append(shell_done - map_done); post_draw_samples.append(frame_done - shell_done); frame_samples.append(frame_done - frame_started)
 		var hourly := step.events.any(func(event: DomainEvent) -> bool: return event.kind == &"fatigue_changed" and String(event.payload.get("reason", "")) == "hour-boundary")
 		(hourly_frames if hourly else ordinary_frames).append(frame_done - frame_started)
@@ -91,18 +108,26 @@ func _initialize() -> void:
 		movement_count += 1; route_index += 1; traversed[view.party_coordinate] = true
 		var direction_name := String(MapTopology.direction_name(direction)); direction_counts[direction_name] = int(direction_counts.get(direction_name, 0)) + 1
 		next_movement_at += interval_us
+	var measured_usec := Time.get_ticks_usec() - measured_started
 	var output := {
+		"packageHash": loaded.content.package_hash, "applicationPackageHash": application.content.package_hash,
 		"campaignId": loaded.content.campaign_id, "mapId": map.id, "mapName": map.name, "mapSize": [map.topology.width, map.topology.height], "mapCellCount": map.topology.cells().size(), "usesLos": map.uses_los, "renderingMethod": RenderingServer.get_current_rendering_method(), "renderingDriver": RenderingServer.get_current_rendering_driver_name(),
-		"presentationMode": "ordinary-rules-movement", "vsyncDuringMeasurement": "disabled", "drawCompletion": "process-frame-plus-forced-render-without-buffer-swap", "mapProjectionMode": "los-visibility-delta" if map.uses_los else "incremental", "projectionGuardCellsPerEdge": MapPresentationGeometry.RETAINED_PROJECTION_MARGIN_CELLS.x, "routeLengthTiles": directions.size(), "routeUniqueCells": route["uniqueCells"], "routeBounds": route["bounds"], "uniqueCellsTraversed": traversed.size(), "distanceTiles": movement_count, "directionCounts": direction_counts, "tilesets": _tileset_evidence(map, media), "overlayAssetCount": route["overlayAssetCount"], "randomEncounterChanceDuringMeasurement": 0,
-		"viewport": "%dx%d" % [viewport_size.x, viewport_size.y], "speedPercent": speed_percent, "scheduledStepsPerSecond": 20.0 * float(speed_percent) / 100.0, "actualStepsPerSecond": snappedf(float(movement_count) * 1_000_000.0 / float(Time.get_ticks_usec() - measured_started), 0.001), "durationSeconds": snappedf(float(Time.get_ticks_usec() - measured_started) / 1_000_000.0, 0.001), "movementFrames": movement_count, "ordinarySamples": ordinary_frames.size(), "hourlySamples": hourly_frames.size(), "segmentRestartsAtGameplayBoundaries": segment_restarts, "queuedCatchUpBursts": 0, "skippedIntervals": skipped_intervals,
+		"presentationMode": "ordinary-rules-movement", "vsyncDuringMeasurement": "disabled", "drawCompletion": "process-frame-plus-forced-render-without-buffer-swap", "mapProjectionMode": "los-visibility-delta" if map.uses_los else "incremental", "projectionGuardCellsPerEdge": MapPresentationGeometry.RETAINED_PROJECTION_MARGIN_CELLS.x, "routeLengthTiles": directions.size(), "routeUniqueCells": route["uniqueCells"], "routeBounds": route["bounds"], "uniqueCellsTraversed": traversed.size(), "distanceTiles": movement_count, "directionCounts": direction_counts, "tilesets": tileset_evidence, "overlayAssetCount": route["overlayAssetCount"], "randomEncounterChanceDuringMeasurement": 0,
+		"viewport": "%dx%d" % [viewport_size.x, viewport_size.y], "speedPercent": speed_percent, "scheduledStepsPerSecond": 20.0 * float(speed_percent) / 100.0, "actualStepsPerSecond": snappedf(float(movement_count) * 1_000_000.0 / float(measured_usec), 0.001), "durationSeconds": snappedf(float(measured_usec) / 1_000_000.0, 0.001), "movementFrames": movement_count, "requestedMovementFrames": requested_movement_frames, "ordinarySamples": ordinary_frames.size(), "hourlySamples": hourly_frames.size(), "segmentRestartsAtGameplayBoundaries": segment_restarts, "queuedCatchUpBursts": 0, "skippedIntervals": skipped_intervals,
+		"initialSnapshotSha256": CanonicalJson.encode(SaveEnvelope.from_snapshot(benchmark_start).to_data()).sha256_text(), "finalSnapshotSha256": CanonicalJson.encode(SaveEnvelope.from_snapshot(session.snapshot()).to_data()).sha256_text(),
 		"packagePreparationMs": snappedf(float(package_us) / 1000.0, 0.001), "vaultCachedImportP95Ms": vault_result["p95Ms"], "vaultCacheSize": vault_result["cacheSize"],
 		"transactionP95Ms": _percentile_ms(transaction_samples, 0.95), "sessionProjectionP95Ms": _percentile_ms(projection_samples, 0.95), "mapPresentationP95Ms": _percentile_ms(map_samples, 0.95), "shellPresentationP95Ms": _percentile_ms(shell_samples, 0.95), "postDrawP95Ms": _percentile_ms(post_draw_samples, 0.95),
 		"frameP95Ms": _percentile_ms(frame_samples, 0.95), "frameP99Ms": _percentile_ms(frame_samples, 0.99), "frameMaxMs": _maximum_ms(frame_samples), "framesAbove8_3Ms": _above_ms(frame_samples, 8.3), "framesAbove12_5Ms": _above_ms(frame_samples, 12.5), "framesAbove16_7Ms": _above_ms(frame_samples, 16.7), "framesAbove20Ms": _above_ms(frame_samples, 20.0), "framesAbove33_3Ms": _above_ms(frame_samples, 33.3),
+		"maximumFrame": _maximum_frame(frame_samples, {"transaction": transaction_samples, "projection": projection_samples, "map": map_samples, "shell": shell_samples, "postDraw": post_draw_samples}),
+		"maximumFrameContext": maximum_frame_context,
 		"transactionPlusProjectionP95Ms": _combined_percentile_ms(transaction_samples, projection_samples, 0.95), "ordinaryTransactionPlusProjectionP95Ms": _percentile_ms(ordinary_combined, 0.95), "hourlyTransactionPlusProjectionP95Ms": _percentile_ms(hourly_combined, 0.95),
 		"ordinaryFrameP95Ms": _percentile_ms(ordinary_frames, 0.95), "hourlyFrameP95Ms": _percentile_ms(hourly_frames, 0.95), "ordinaryRetainedMapP95Ms": _percentile_ms(ordinary_map, 0.95), "hourlyRetainedMapP95Ms": _percentile_ms(hourly_map, 0.95), "ordinaryShellP95Ms": _percentile_ms(ordinary_shell, 0.95), "hourlyShellP95Ms": _percentile_ms(hourly_shell, 0.95), "ordinaryPostDrawP95Ms": _percentile_ms(ordinary_post_draw, 0.95), "hourlyPostDrawP95Ms": _percentile_ms(hourly_post_draw, 0.95), "ordinaryProjectionDomainsP95Ms": _domain_p95_milliseconds(ordinary_domains), "hourlyProjectionDomainsP95Ms": _domain_p95_milliseconds(hourly_domains),
 	}
 	print(CanonicalJson.encode(output))
 	var failed := float(output["transactionPlusProjectionP95Ms"]) > 3.0 or float(output["frameP95Ms"]) > 8.3 or float(output["frameP99Ms"]) > 12.5 or float(output["frameMaxMs"]) > 16.7 or skipped_intervals != 0
+	if requested_movement_frames > 0 and movement_count != requested_movement_frames:
+		printerr("MOVEMENT_FRAME_COUNT_INCOMPLETE expected=%d actual=%d" % [requested_movement_frames, movement_count])
+		failed = true
 	if not ordinary_combined.is_empty(): failed = failed or float(output["ordinaryTransactionPlusProjectionP95Ms"]) > 3.0 or float(output["ordinaryFrameP95Ms"]) > 8.3
 	if hourly_combined.size() >= 5: failed = failed or float(output["hourlyTransactionPlusProjectionP95Ms"]) > 3.0 or float(output["hourlyFrameP95Ms"]) > 8.3
 	if failed: printerr("RUNTIME_MOVEMENT_BUDGET_EXCEEDED")
@@ -246,8 +271,9 @@ static func _tileset_evidence(map: MapDefinition, media: ClassicMediaCatalog) ->
 		if not cell.tileset_id.is_empty(): ids[cell.tileset_id] = true
 	var result: Array[Dictionary] = []
 	for id: String in ids:
-		var asset := media.tileset_by_id(id)
-		result.append({"id": id, "resolved": asset != null, "bytes": asset.byte_count if asset != null else 0, "width": asset.width if asset != null else 0, "height": asset.height if asset != null else 0, "tileWidth": asset.tile_width if asset != null else 0, "tileHeight": asset.tile_height if asset != null else 0})
+		var atlas := media.map_atlas(id)
+		var asset := atlas.source if atlas != null else null
+		result.append({"id": id, "resolved": asset != null, "decoded": atlas != null and atlas.texture != null, "bytes": asset.byte_count if asset != null else 0, "width": asset.width if asset != null else 0, "height": asset.height if asset != null else 0, "tileWidth": atlas.tile_width if atlas != null else 0, "tileHeight": atlas.tile_height if atlas != null else 0})
 	return result
 
 
@@ -287,6 +313,17 @@ static func _combined_percentile_ms(first: Array[int], second: Array[int], perce
 
 static func _maximum_ms(samples: Array[int]) -> float:
 	return snappedf(float(samples.max() if not samples.is_empty() else 0) / 1000.0, 0.001)
+
+
+static func _maximum_frame(frames: Array[int], phases: Dictionary) -> Dictionary:
+	if frames.is_empty():
+		return {}
+	var index := frames.find(frames.max())
+	var phase_ms: Dictionary = {}
+	for phase: String in phases:
+		var samples: Array[int] = phases[phase]
+		phase_ms[phase] = snappedf(float(samples[index]) / 1000.0, 0.001)
+	return {"sampleIndex": index, "frameMs": snappedf(float(frames[index]) / 1000.0, 0.001), "phaseMs": phase_ms}
 
 
 static func _above_ms(samples: Array[int], threshold: float) -> int:

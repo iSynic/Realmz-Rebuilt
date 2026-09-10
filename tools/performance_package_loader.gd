@@ -7,14 +7,19 @@ const APPLICATION_PACKAGE_ID := ApplicationLibraryIdentity.CAMPAIGN_ID
 const APPLICATION_PACKAGE_HASH := ApplicationLibraryIdentity.PACKAGE_HASH
 
 
-static func load_scenario(package_path: String) -> PackageLoadResult:
-	var repository := PACKAGE_REPOSITORY.new()
-	var application := repository.load_bundled_package(
+static func load_application() -> PackageLoadResult:
+	return PACKAGE_REPOSITORY.new().load_bundled_package(
 		APPLICATION_PACKAGE_PATH,
 		APPLICATION_PACKAGE_ID,
 		APPLICATION_PACKAGE_HASH
 	)
+
+
+static func load_scenario(package_path: String, application: PackageLoadResult = null) -> PackageLoadResult:
+	if application == null:
+		application = load_application()
 	if not application.is_ok():
 		return application
+	var repository := PACKAGE_REPOSITORY.new()
 	repository.set_application_content(application.content, application.media.assets())
 	return repository.load_package(package_path)
