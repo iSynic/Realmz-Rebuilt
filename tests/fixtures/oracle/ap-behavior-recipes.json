@@ -38,6 +38,216 @@
   ],
   "recipes": [
     {
+      "id": "trouble-door-four-tumbler-force-success",
+      "application": {
+        "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
+        "packageHash": "45298c295fc784b528f4219d6ceb0454cb482d894b66440e529d7763e7cb0036",
+        "archiveSha256": "e85ae0aca72fa6642ef66af8745ceb24446459598efcb1075cd8f5a4cce36012",
+        "starterCatalog": "src/storage/characters/realmz-classic-starter-characters.json"
+      },
+      "package": {
+        "campaignId": "scenario-trouble-in-the-sword-lands",
+        "path": "src/storage/packages/bundled_campaigns/scenario-trouble-in-the-sword-lands.realmz2",
+        "packageHash": "2912667314a7700d74b2a517253a31d3b610cba99507275fc0f8542eaaf803a7",
+        "archiveSha256": "aef55f89f413e95d7710b138d4a399e3dcd9fca3a8de49451761ce8da5969b7d"
+      },
+      "baselineLocation": {
+        "mapId": "land:1",
+        "x": 61,
+        "y": 43
+      },
+      "target": {
+        "actionPoint": "Data DD:1:7",
+        "location": {
+          "mapId": "land:1",
+          "x": 62,
+          "y": 43
+        },
+        "complexEncounterId": 25,
+        "thiefEncounterId": 23
+      },
+      "proofModes": [
+        "live-route",
+        "ordinary-movement",
+        "actual-ui-control",
+        "typed-interaction"
+      ],
+      "workflowIds": [
+        "classic.scenario.complex-interaction"
+      ],
+      "expected": [
+        "The seed-17 named starters approach east from land:1 (61,43), enter AP 7 at minute 10 with one chance draw, acknowledge message 251 and reach Complex 25. The actual Skills command opens owner-bound Thief 23. Kevlar's Force Lock control is enabled at 52; unavailable Pick Lock and Detect Trap controls remain disabled.",
+        "The actual Force Lock control opens four tumblers. Typed frame 74 is the first all-green preview frame, with positions [151,149,150,161]; its accepted response commits 378 minigame draws after the one AP draw, reaching drawCount 379 / generatorState 1935224185. Preview itself commits no draw. This is typed frame selection, not physical timing proof.",
+        "Success acknowledgement 260 returns to owner result 1, requests sound -10129, shows 265, applies opcode 13's -100 chance mutation to AP 7, and shows 467. Saved world state normalizes that negative chance to -1 and disables the AP. Terminal Keep does not undo the explicit disablement.",
+        "West exit then east re-entry returns to the door at minute 25 without an interaction, trigger firing or additional RNG. Two complete ten-step routes have exactly equal initial/per-step game and RNG states, pending requests and VM/RNG trace deltas."
+      ],
+      "result": "passed",
+      "evidence": "jobs/ef28754aa8596df09e3ed18224cdd99d/evidence.json",
+      "otherEvidence": [
+        "jobs/a7ebbe79d1510e60aef0e92666fb0e3a/evidence.json: exact deterministic ten-step repeat",
+        "jobs/85ea67c510aa05e422d700df1a98a6e4/evidence.json: actual Force Lock and controlled frame-74 success",
+        "fixtures/97b53d72e12c6decbd523d07e3a5fb04/checkpoints/bfe7ca90-c0cb-41a5-8317-ff487343159e.r2save: original west-adjacency baseline; file SHA256 a15c12bb85569e64ff83160e8747358205f7df1d5967ddfeb0c220c03a3fcfc9",
+        "jobs/2302b4bbcc655c9704449b6626ef8673/evidence.json: exploratory recipe expected acknowledgement but the correct next request was pick_lock; not a gameplay defect"
+      ],
+      "remaining": [
+        "This is one Force Lock character/action and explicit frame outcome, not every skill or a native Castle timing comparison. Four result programs contain terminal Keep, so maxTimes=10 alone earns no repeated-encounter or final-timeout coverage.",
+        "Full campaign certification, item/spell alternatives and other door callers remain separate."
+      ],
+      "steps": [
+        {
+          "command": "act",
+          "params": {
+            "action": "move",
+            "arguments": {
+              "dx": 1,
+              "dy": 0
+            }
+          },
+          "expect": {
+            "interactionKind": "acknowledge",
+            "location": {
+              "mapId": "land:1",
+              "x": 62,
+              "y": 43
+            }
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "complex_encounter"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlId": "7a34172f161a9ef4d647fb96"
+          },
+          "expect": {
+            "interactionKind": "thief_encounter"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "Force Lock  52"
+          },
+          "expect": {
+            "interactionKind": "pick_lock"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "pick_lock",
+              "body": {
+                "frameIndex": 74
+              }
+            }
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": null
+          },
+          "capture": true
+        },
+        {
+          "command": "act",
+          "params": {
+            "action": "move",
+            "arguments": {
+              "dx": -1,
+              "dy": 0
+            }
+          },
+          "expect": {
+            "interactionKind": null,
+            "location": {
+              "mapId": "land:1",
+              "x": 61,
+              "y": 43
+            }
+          },
+          "capture": true
+        },
+        {
+          "command": "act",
+          "params": {
+            "action": "move",
+            "arguments": {
+              "dx": 1,
+              "dy": 0
+            }
+          },
+          "expect": {
+            "interactionKind": null,
+            "location": {
+              "mapId": "land:1",
+              "x": 62,
+              "y": 43
+            }
+          },
+          "capture": true
+        }
+      ]
+    },
+    {
       "id": "half-truth-leave-preserves-ap-and-reentry",
       "application": {
         "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",

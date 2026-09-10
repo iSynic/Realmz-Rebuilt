@@ -13,18 +13,17 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Current parity-convergence batch
 
-**Half Truth Simple choice reopening, saved indices and Leave lifecycle** (`ap-half-truth-simple-reopen-and-backup`)
+**Trouble owner-bound Thief outcomes, saved results and door lifecycle** (`ap-trouble-owner-thief-and-door-lifecycle`)
 
-Half Truth AP 36 adds a ninth scenario and reproduces two shared misfires: opcode 35 closes a nonrepeating Simple Encounter instead of immediately reopening its remaining options, and land opcode 101 backs out but incorrectly permits ordinary AP removal. Preserve both failures, correct their owning boundaries, verify reduced authored indices and saved result replacement, then ordinary Leave/re-entry. Whole-party capped-health draws retain their source order and the overlapping random region stays enabled. Static presence is not coverage; full campaign certification and the Touch combat branch remain separate. No new testing capability is needed.
+Trouble AP 7 adds a tenth scenario through a short ordinary approach to Complex 25 / Thief 23. Verify four-tumbler Force Lock success and failure, owner-result continuation, legal nested cancellation, saved acknowledgements, and result-specific explicit AP disablement versus retained-AP east shift and re-entry. Existing checkpoints and journeys suffice; static maxTimes or item/spell references do not earn runtime credit. Full campaign certification remains separate.
 
 AP batches use failure-first priorities: known failures, untested high-risk behavior, meaningful variants, and broader representatives. Verification mode records existing functional behavior without claiming full campaign certification; implementation, verification, and certification remain distinct modes.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.scenario.choose-response` | verification | known-failure | live-route |  |
+| `classic.scenario.complex-interaction` | verification | meaningful-variant | live-route |  |
 | `classic.system.save-game` | verification | meaningful-variant | live-route |  |
-| `classic.scenario.trigger-action-point` | verification | known-failure | live-route |  |
-| `classic.scenario.present-message-media` | verification | known-failure | live-route |  |
+| `classic.scenario.trigger-action-point` | verification | meaningful-variant | live-route |  |
 
 ### Batch count delta
 

@@ -23,9 +23,9 @@
     ]
   },
   "currentBatch": {
-    "id": "ap-half-truth-simple-reopen-and-backup",
-    "name": "Half Truth Simple choice reopening, saved indices and Leave lifecycle",
-    "baselineCommit": "30aaa03f9c1de97a8ca0e10405fddea5b8d60e9a",
+    "id": "ap-trouble-owner-thief-and-door-lifecycle",
+    "name": "Trouble owner-bound Thief outcomes, saved results and door lifecycle",
+    "baselineCommit": "2094b9e3689aedd42b6e7c1828db29fd1c62575c",
     "baselineCounts": {
       "classic": {
         "missing": 0,
@@ -40,12 +40,12 @@
         "certified": 2
       }
     },
-    "selectionRationale": "Half Truth AP 36 adds a ninth scenario and reproduces two shared misfires: opcode 35 closes a nonrepeating Simple Encounter instead of immediately reopening its remaining options, and land opcode 101 backs out but incorrectly permits ordinary AP removal. Preserve both failures, correct their owning boundaries, verify reduced authored indices and saved result replacement, then ordinary Leave/re-entry. Whole-party capped-health draws retain their source order and the overlapping random region stays enabled. Static presence is not coverage; full campaign certification and the Touch combat branch remain separate. No new testing capability is needed.",
+    "selectionRationale": "Trouble AP 7 adds a tenth scenario through a short ordinary approach to Complex 25 / Thief 23. Verify four-tumbler Force Lock success and failure, owner-result continuation, legal nested cancellation, saved acknowledgements, and result-specific explicit AP disablement versus retained-AP east shift and re-entry. Existing checkpoints and journeys suffice; static maxTimes or item/spell references do not earn runtime credit. Full campaign certification remains separate.",
     "targets": [
       {
-        "workflowId": "classic.scenario.choose-response",
+        "workflowId": "classic.scenario.complex-interaction",
         "mode": "verification",
-        "priority": "known-failure",
+        "priority": "meaningful-variant",
         "expectedEvidence": "live-route",
         "gapIds": [],
         "archaeologyTriggers": []
@@ -61,15 +61,7 @@
       {
         "workflowId": "classic.scenario.trigger-action-point",
         "mode": "verification",
-        "priority": "known-failure",
-        "expectedEvidence": "live-route",
-        "gapIds": [],
-        "archaeologyTriggers": []
-      },
-      {
-        "workflowId": "classic.scenario.present-message-media",
-        "mode": "verification",
-        "priority": "known-failure",
+        "priority": "meaningful-variant",
         "expectedEvidence": "live-route",
         "gapIds": [],
         "archaeologyTriggers": []
