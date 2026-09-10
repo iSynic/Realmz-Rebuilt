@@ -42,7 +42,7 @@ func poll(handler: Callable) -> void:
 	var parser := JSON.new()
 	var valid := newline == input.size() - 1 and parser.parse(input.slice(0, newline).get_string_from_utf8()) == OK
 	var reply: Dictionary = handler.call(parser.data if valid else null)
-	output = (JSON.stringify(reply) + "\n").to_utf8_buffer()
+	output = (JSON.stringify(reply, "", true, true) + "\n").to_utf8_buffer()
 	input.clear()
 	handled = true
 	deadline_msec = Time.get_ticks_msec() + 30_000

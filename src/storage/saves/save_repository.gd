@@ -31,7 +31,7 @@ func save(campaign_id: String, slot_id: String, snapshot: SessionSnapshot) -> bo
 	var file := FileAccess.open(temp_path, FileAccess.WRITE)
 	if file == null:
 		return _fail("Could not open the temporary save file.")
-	file.store_string(JSON.stringify(envelope.to_data()))
+	file.store_string(JSON.stringify(envelope.to_data(), "", true, true))
 	file.flush()
 	file.close()
 	var verified := _read_envelope(temp_path)

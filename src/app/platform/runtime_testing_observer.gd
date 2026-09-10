@@ -65,7 +65,7 @@ func checkpoint(params: Dictionary) -> Dictionary:
 	if snapshot == null:
 		return rejected("snapshot_unavailable", "There is no safely snapshotable adventure at this boundary; observation remains available.")
 	var envelope := SaveEnvelope.from_snapshot(snapshot).to_data()
-	return accepted({"checkpoint": envelope, "sha256": CanonicalJson.encode(envelope).sha256_text(), "mode": "observation"})
+	return accepted({"checkpoint": envelope, "sha256": JSON.stringify(envelope, "", true, true).sha256_text(), "mode": "observation"})
 
 
 func accepted(result: Dictionary) -> Dictionary:

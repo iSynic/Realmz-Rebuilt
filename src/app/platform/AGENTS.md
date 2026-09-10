@@ -23,6 +23,7 @@ Own process lifecycle, presentation-only preferences, and debug-build host facil
 - Bridge revisions never rewind on checkpoint restore. Recent diagnostics remain bounded; complete diagnostic requests expose the existing trace-capacity limit explicitly rather than silently certifying incomplete traces. Fixture close waits for queued replies to drain before process termination.
 - Complete observations may include detached snapshot-derived RNG and gameplay state only while the public snapshot boundary permits it; unavailable continuations remain explicit null values. Party observations preserve current/max spell points, derived load, conditions, and inventory for fixture comparison.
 - The testing wire adapter restores JSON integer types before strict interaction-body decoding, with a bounded nesting depth. It does not relax the gameplay interaction codecs.
+- Testing replies, checkpoint hashes, retry fingerprints, and byte-limit accounting use the same sorted full-precision JSON encoding. Checkpoint transport must not round gameplay values; package canonical hashing remains separate and unchanged.
 - Named Classic starter preparation uses Castle `setupnewgame`'s quest-zero sentinel `-1` before the baseline checkpoint. This is explicit fixture context, not an ordinary campaign-start claim; checkpoint clones never rewrite it.
 - Cancelled or failed lifecycle operations leave both process and session active.
 

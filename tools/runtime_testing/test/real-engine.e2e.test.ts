@@ -101,6 +101,11 @@ test("real engine transport proof (opt-in)", { skip }, async () => {
   assert.ok(["stale_revision", "revision_conflict", "expected_revision"].includes(staleRead.error?.code ?? ""));
   const conflict = await sendRequest(descriptor.port, { ...base, requestId: "e2e-replay", params: { changed: true } });
   assert.equal(conflict.error?.code, "request_id_conflict");
+  const fractional = { ...base, requestId: "e2e-fractional-replay", params: { value: 1 / 3 } };
+  const fractionalFirst = await sendRequest(descriptor.port, fractional);
+  assert.deepEqual(await sendRequest(descriptor.port, fractional), fractionalFirst);
+  const fractionalConflict = await sendRequest(descriptor.port, { ...fractional, params: { value: 0.333333333333333 } });
+  assert.equal(fractionalConflict.error?.code, "request_id_conflict");
   const mutation = await sendRequest(descriptor.port, { ...base, requestId: "e2e-rejected-mutation", command: "restore", expectedRevision: first.revision });
   assert.equal(mutation.ok, false);
   assert.ok(["access_denied", "live_read_only"].includes(mutation.error?.code ?? ""));

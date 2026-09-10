@@ -20,9 +20,7 @@ func run() -> void:
 		return
 	var valid_root := save_data(first)
 	var malformed_roots: Array[Dictionary] = []
-	var unknown_field := valid_root.duplicate(true)
-	unknown_field["unexpected"] = true
-	malformed_roots.append({"name": "unknown field", "data": unknown_field})
+	malformed_roots.append({"name": "unknown field", "data": valid_root.merged({"unexpected": true})})
 	var missing_field := valid_root.duplicate(true)
 	missing_field.erase("rulesVersion")
 	malformed_roots.append({"name": "missing required field", "data": missing_field})
@@ -32,6 +30,7 @@ func run() -> void:
 	for malformed: Dictionary in malformed_roots:
 		assert_equal(SaveEnvelope.from_data(malformed["data"]), null, "save v4 root rejects %s" % malformed["name"])
 	first.game_state.party.add_character(CharacterState.new("preview.hero", "Mira", 10, 10))
+	first.game_state.experience_multiplier = 1.0 / 3.0
 	var repository := SaveRepository.new(TEST_ROOT)
 	assert_true(repository.save(campaign_id, "quick", first), "the first preview save is installed")
 	var second := save_round_trip(first)
@@ -78,7 +77,7 @@ func run() -> void:
 	var loaded_backup := repository.load_backup(campaign_id, "quick", loaded.content.package_hash)
 	assert_not_null(loaded_backup, "a validated backup can be restored without rewriting the save pair")
 	if loaded_backup != null:
-		assert_equal(loaded_backup.game_state.clock.total_minutes(), 0, "backup loading returns the exact previous boundary")
+		assert_equal([loaded_backup.game_state.clock.total_minutes(), var_to_bytes(loaded_backup.game_state.experience_multiplier), PartySetupRules.scale_experience_by_multiplier(600, loaded_backup.game_state.experience_multiplier)], [0, var_to_bytes(first.game_state.experience_multiplier), 200], "backup loading preserves the previous boundary and exact fractional reward multiplier")
 	assert_true(repository.load(campaign_id, "mismatch", loaded.content.package_hash) == null and repository.last_error.contains("identity"), "ordinary load continues to reject mismatched immutable content")
 	assert_true(repository.load(campaign_id, "legacy", loaded.content.package_hash) == null and repository.last_error == "Save format v3 is incompatible with Realmz Rebuilt save v4.", "ordinary load reports the intentional save compatibility cut")
 

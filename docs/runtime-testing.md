@@ -22,6 +22,10 @@ Replies contain exactly `protocol`, `sessionId`, `requestId`, `revision`, `ok`, 
 
 The bounded retry ledger retains up to 10,000 replies within a 256 MiB reservation budget. At capacity it rejects further commands instead of forgetting a previously executed mutation. Recent observations explicitly label bounded diagnostic history; they are not a complete journey recording.
 
+Rebuilt replies preserve full floating-point precision, including checkpoint state. Retry fingerprints and byte-limit accounting use that same sorted encoding. The checkpoint hash covers sorted full-precision JSON, separately from the retained file hash; package canonical hashing is unchanged. Previously exported rounded checkpoints retain their recorded values and are not silently repaired.
+
+Bywater grave AP 50 exposed `GAP-SAVEFLOAT-001`: fresh reward journey `823a71aa757ff68cd1504d1daf2f57e7` produced a 200-XP pool, but restored-choice journey `42ed6d2ca3bf27c41b168eb2d9e24b41` produced 199 with unchanged RNG. The ordinary SaveRepository backup proof independently reproduced lost multiplier bits. Full-precision save and transport encoding repairs that boundary without changing the save-v4 schema or reward arithmetic. Fresh replay `4e6e24d7c74959d612dcd9bf357723f2`, its six-step repeat `406fb005f3a770737740f598666c6f15`, restored Choice `5497b86d08c7444ea3eba58786589160`, and restored Treasure `b60801815ef1178639af296b09a01455` now preserve every compared gameplay/RNG checkpoint and the 200-XP pool. These are prepared ordinary-input and pending-continuation proofs, not an ordinary save-menu or campaign-start certification.
+
 ## Fixture preparation and commands
 
 See [the tooling README](../tools/runtime_testing/README.md) for dependencies, environment variables, and local registration. The service exposes `realmz_sessions`, `realmz_observe`, `realmz_fixture`, `realmz_act`, `realmz_respond`, `realmz_ui`, `realmz_invoke`, `realmz_journey`, `realmz_capture`, and `realmz_compare`.

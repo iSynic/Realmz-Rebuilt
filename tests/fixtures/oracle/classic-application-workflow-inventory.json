@@ -40,7 +40,7 @@
         "certified": 2
       }
     },
-    "selectionRationale": "After repairing shared Keep Codes, exercise Bywater grave AP 50 from a validated adjacent starter baseline. Its Data OD choice labels, reward with experience but no distributable items or money, and explicit opcode-25 removal add a sixth scenario and distinct response/reward/continuation outcomes. Verify both choices, saved interaction boundaries and ordinary re-entry before crediting behavior. Static package inspection is selection evidence only; no new tooling or full campaign certification is required.",
+    "selectionRationale": "After repairing shared Keep Codes, exercise Bywater grave AP 50 from a validated adjacent starter baseline. Its Data OD choice labels, reward with experience but no distributable items or money, and explicit opcode-25 removal add a sixth scenario and distinct response/reward/continuation outcomes. Verify both choices, saved interaction boundaries and ordinary re-entry before crediting behavior. Static package inspection is selection evidence only; no new tooling or full campaign certification is required. Bywater exposed fractional multiplier loss at JSON persistence: the fresh 200-XP pool becomes 199 after restoring the preceding Choice. Ordinary save-file round trip independently reproduces the same loss, so that shared boundary repair takes priority over further coverage.",
     "targets": [
       {
         "workflowId": "classic.scenario.choose-response",
@@ -63,6 +63,14 @@
         "mode": "verification",
         "priority": "meaningful-variant",
         "expectedEvidence": "live-route",
+        "gapIds": [],
+        "archaeologyTriggers": []
+      },
+      {
+        "workflowId": "classic.system.save-game",
+        "mode": "verification",
+        "priority": "known-failure",
+        "expectedEvidence": "runtime-integration",
         "gapIds": [],
         "archaeologyTriggers": []
       }
@@ -9599,6 +9607,10 @@
         },
         {
           "path": "tests/integration/test_session_persistence.gd",
+          "symbol": "func run"
+        },
+        {
+          "path": "tests/infrastructure/test_save_repository.gd",
           "symbol": "func run"
         }
       ],

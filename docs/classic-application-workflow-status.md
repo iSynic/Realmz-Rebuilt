@@ -15,7 +15,7 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 **Bywater authored choices, XP-only reward and explicit removal** (`ap-bywater-choice-xp-removal`)
 
-After repairing shared Keep Codes, exercise Bywater grave AP 50 from a validated adjacent starter baseline. Its Data OD choice labels, reward with experience but no distributable items or money, and explicit opcode-25 removal add a sixth scenario and distinct response/reward/continuation outcomes. Verify both choices, saved interaction boundaries and ordinary re-entry before crediting behavior. Static package inspection is selection evidence only; no new tooling or full campaign certification is required.
+After repairing shared Keep Codes, exercise Bywater grave AP 50 from a validated adjacent starter baseline. Its Data OD choice labels, reward with experience but no distributable items or money, and explicit opcode-25 removal add a sixth scenario and distinct response/reward/continuation outcomes. Verify both choices, saved interaction boundaries and ordinary re-entry before crediting behavior. Static package inspection is selection evidence only; no new tooling or full campaign certification is required. Bywater exposed fractional multiplier loss at JSON persistence: the fresh 200-XP pool becomes 199 after restoring the preceding Choice. Ordinary save-file round trip independently reproduces the same loss, so that shared boundary repair takes priority over further coverage.
 
 AP batches use failure-first priorities: known failures, untested high-risk behavior, meaningful variants, and broader representatives. Verification mode records existing functional behavior without claiming full campaign certification; implementation, verification, and certification remain distinct modes.
 
@@ -24,6 +24,7 @@ AP batches use failure-first priorities: known failures, untested high-risk beha
 | `classic.scenario.choose-response` | verification | meaningful-variant | live-route |  |
 | `classic.rewards.treasure-distribution` | verification | untested-high-risk | live-route |  |
 | `classic.scenario.trigger-action-point` | verification | meaningful-variant | live-route |  |
+| `classic.system.save-game` | verification | known-failure | runtime-integration |  |
 
 ### Batch count delta
 

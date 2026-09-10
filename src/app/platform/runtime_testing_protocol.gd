@@ -29,7 +29,7 @@ func execute(value: Variant, revision: int, dispatch: Callable) -> Dictionary:
 	if not invalid.is_empty():
 		return failure(request_id, revision, invalid, "The testing request failed envelope validation.")
 	var request: Dictionary = value
-	var fingerprint := JSON.stringify(request, "", true).sha256_text()
+	var fingerprint := JSON.stringify(request, "", true, true).sha256_text()
 	if _records.has(request_id):
 		var previous: Dictionary = _records[request_id]
 		if previous["fingerprint"] != fingerprint:
@@ -48,10 +48,10 @@ func execute(value: Variant, revision: int, dispatch: Callable) -> Dictionary:
 			reply = failure(request_id, revision, "adapter_failure", "The adapter did not return a valid result; inspect runtime diagnostics.")
 		else:
 			reply = _reply(request_id, int(result.get("revision", revision)), result.get("result"), result.get("error"))
-	var encoded := JSON.stringify(reply).to_utf8_buffer()
+	var encoded := JSON.stringify(reply, "", true, true).to_utf8_buffer()
 	if encoded.size() + 1 > MAX_MESSAGE_BYTES:
 		reply = failure(request_id, int(reply["revision"]), "message_limit", "The result exceeds the protocol bound; no evidence was silently truncated.")
-	_record_bytes += JSON.stringify(reply).to_utf8_buffer().size()
+	_record_bytes += JSON.stringify(reply, "", true, true).to_utf8_buffer().size()
 	_records[request_id] = {"fingerprint": fingerprint, "reply": reply.duplicate(true)}
 	return reply
 

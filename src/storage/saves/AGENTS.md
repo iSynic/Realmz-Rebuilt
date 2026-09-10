@@ -16,6 +16,7 @@ Own strict adventure-save encoding, transactional persistence, backup recovery, 
 - Write and read back a temporary file before rotating one backup and atomically replacing the primary.
 - Browsing may classify corruption or identity mismatch, but only replacement-session restore proves that an enabled record can become active.
 - Preserve schema version, stable fields, primary/backup identity, explicit incompatibility, and unchanged-current-session failure behavior.
+- Save JSON retains full floating-point precision so a restored gameplay multiplier produces the same subsequent result as the unsaved boundary. Existing truncated values remain historical save state; do not infer a replacement value.
 
 ## Work Guidance
 
