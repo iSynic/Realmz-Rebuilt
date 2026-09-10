@@ -38,6 +38,221 @@
   ],
   "recipes": [
     {
+      "id": "white-dragon-terminal-removal-and-reentry",
+      "application": {
+        "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
+        "packageHash": "45298c295fc784b528f4219d6ceb0454cb482d894b66440e529d7763e7cb0036",
+        "archiveSha256": "e85ae0aca72fa6642ef66af8745ceb24446459598efcb1075cd8f5a4cce36012",
+        "starterCatalog": "src/storage/characters/realmz-classic-starter-characters.json"
+      },
+      "package": {
+        "campaignId": "scenario-white-dragon",
+        "path": "src/storage/packages/bundled_campaigns/scenario-white-dragon.realmz2",
+        "packageHash": "78a52bfec683a7166aad4976b199460e26d7f23deb04aa9fb170da86948442f0",
+        "archiveSha256": "7be72ac76ca88f5b7f20ab79b742301006efa313af5dec3a0349c033d316f0f4"
+      },
+      "baselineLocation": {
+        "mapId": "land:6",
+        "x": 7,
+        "y": 27
+      },
+      "target": {
+        "actionPoint": "Data DD:6:52",
+        "location": {
+          "mapId": "land:6",
+          "x": 7,
+          "y": 28
+        },
+        "extraActionPoint": 168
+      },
+      "proofModes": [
+        "live-route",
+        "ordinary-movement",
+        "actual-ui-control",
+        "restored-continuation"
+      ],
+      "workflowIds": [
+        "classic.scenario.trigger-action-point"
+      ],
+      "expected": [
+        "AP 52 remains enabled through every successive choice and message acknowledgement. Only the acknowledgement of XAP 168 message 396 reaches opcode 25, recording exactly Data DD:6:52 as disabled with no program override.",
+        "The complete route has minutes [25,25,25,25,25,25,25,25,25,30,55], draw count 1 and generator state 285719 throughout. Ordinary north exit and south re-entry after removal produce no new interaction or AP chance draw.",
+        "Save the completed minute-55 state, restore it, then move north and south again. The AP remains disabled with no new interaction, and RNG remains unchanged at minute 60 and 85. Repeat from the same completed checkpoint for identical complete gameplay/RNG boundaries.",
+        "The minute-60 hourly boundary recovers exactly one spell point for Lothlorian and Trevor; all other character fields remain unchanged. This clock effect is not an AP reward or repeated narration."
+      ],
+      "remaining": [
+        "The active 100-percent and explicitly removed AP outcomes are covered; other chance values, eligibility conditions and caller contexts remain separate targets. No full campaign certification or ordinary save-menu activation is claimed."
+      ],
+      "result": "passed",
+      "evidence": "jobs/d678e3885bf651676b5da7fda6d1c47c/evidence.json",
+      "otherEvidence": [
+        "jobs/b558e8412fb4199db50a36604763f1a8/evidence.json: full route repeat",
+        "jobs/1746ccd0da721ab4738e082aab185d46/evidence.json and jobs/901c21188bd26b151a1b0046394b7437/evidence.json: saved completed-removal re-entry and exact repeat"
+      ],
+      "steps": [
+        {
+          "command": "act",
+          "params": {
+            "action": "move",
+            "arguments": {
+              "dx": 0,
+              "dy": 1
+            }
+          },
+          "expect": {
+            "interactionKind": "yes_no",
+            "location": {
+              "mapId": "land:6",
+              "x": 7,
+              "y": 28
+            }
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "Yes"
+          },
+          "expect": {
+            "interactionKind": "yes_no"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "Yes"
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "yes_no"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "Yes"
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": null
+          },
+          "capture": true
+        },
+        {
+          "command": "act",
+          "params": {
+            "action": "move",
+            "arguments": {
+              "dx": 0,
+              "dy": -1
+            }
+          },
+          "expect": {
+            "interactionKind": null,
+            "location": {
+              "mapId": "land:6",
+              "x": 7,
+              "y": 27
+            }
+          },
+          "capture": true
+        },
+        {
+          "command": "act",
+          "params": {
+            "action": "move",
+            "arguments": {
+              "dx": 0,
+              "dy": 1
+            }
+          },
+          "expect": {
+            "interactionKind": null,
+            "location": {
+              "mapId": "land:6",
+              "x": 7,
+              "y": 28
+            }
+          },
+          "capture": true
+        }
+      ]
+    },
+    {
       "id": "white-dragon-xap-message-saved-continuation",
       "application": {
         "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
@@ -1674,15 +1889,15 @@
   "nextSelection": [
     {
       "priority": "missing-meaningful-variant",
-      "family": "successive-choice-depth-and-xap-continuation",
+      "family": "random-message-self-transfer-and-ap-replacement",
       "candidateOnly": true,
-      "campaignId": "scenario-white-dragon",
-      "packageHash": "78a52bfec683a7166aad4976b199460e26d7f23deb04aa9fb170da86948442f0",
-      "archiveSha256": "7be72ac76ca88f5b7f20ab79b742301006efa313af5dec3a0349c033d316f0f4",
-      "actionPoint": "Data DD:6:52",
-      "location": {"mapId":"land:6","x":7,"y":28},
-      "expected": "Revalidate north adjacency (7,27) and trigger eligibility. Exact compiled [1,0,0,0,0] uses No for reversed-step cancellation; Yes continues. Exercise No at successive choice depths, the three-Yes path into XAP 168 and its four acknowledgements, then explicit opcode-25 removal and ordinary re-entry. Restore an inner choice to verify continuation. Static package/source inspection identifies this seventh-scenario candidate but earns no runtime credit. Twin Sands AP 41 random self-transfer and cross-map replacement is the following candidate after its exact target and polarity are adjudicated.",
-      "remaining": "Thirteen recipes span six scenarios, not all 13. Full AOGM/War certification remains separate. Caller-specific eligibility, Simple outcomes, deeper cancellation and destination rechecks remain open. Prelude map selection/rendering is deferred because the bridge does not expose tabs. The older Griloch native comparison retains its earlier application identity."
+      "campaignId": "scenario-twin-sands-of-time",
+      "packageHash": "9fd04d22eefd86eb2fd6f5adb6f44493b0fa16a0f77ba56a5eb5760a542f76b0",
+      "archiveSha256": "2abb86a1ad1156fa8567b89f1e03d52496c9105b88b9684acd15185e076bd9f3",
+      "actionPoint": "Data DD:1:41",
+      "location": {"mapId":"land:1","x":46,"y":39},
+      "expected": "Revalidate adjacency and exact trigger eligibility. AP 41 contains opcode-19 random messages 863..868 and transfers to XAP 348; that XAP's [1,1,346,0,0] choice uses No to branch to XAP 346 and Yes to repeat its random-message/self-transfer path. Adjudicate the effective opcode-7 target in XAP 346, including preceding extra-code ownership, before claiming current-AP or cross-map replacement. Verify bounded repetition, branch-out, save/resume, exact RNG and the affected AP's subsequent ordinary route. Static package inspection earns no runtime credit.",
+      "remaining": "Sixteen asserted recipes span seven of 13 scenarios; breadth and meaningful high-risk caller/outcome gaps remain. Full AOGM/War certification remains separate. Prelude map selection/rendering is deferred because the bridge does not expose tabs. The older Griloch native comparison retains its earlier application identity."
     }
   ]
 }
