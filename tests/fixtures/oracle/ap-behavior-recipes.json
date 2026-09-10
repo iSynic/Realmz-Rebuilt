@@ -250,7 +250,7 @@
         "158bf958"
       ],
       "remaining": [
-        "Nested Back is GAP-SCEN-001 and must not count as passed."
+        "Nested Back is verified separately by the griloch-nested-complex-back-failure recipe; this shorter recipe ends before cancellation."
       ],
       "otherEvidence": [],
       "result": "passed",
@@ -294,17 +294,21 @@
       ],
       "expected": [
         "After the same failed Thief branch and repeated Complex, Back must finish the current native encounter invocation, preserve AP 77 and return the ordinary land step to 7,6 without extra time or RNG.",
-        "Observed failure: encounter_cancelled is followed by a fresh complex_encounter request at 7,7 because only one nested VM frame returns."
+        "Cancellation clears every nested result/repeat and signed-GOSUB frame. Opcode 111 remains the separate normal caller-return operation."
       ],
-      "gapId": "GAP-SCEN-001",
+      "resolvedGapId": "GAP-SCEN-001",
       "remaining": [
-        "Repair nested cancellation while retaining legitimate signed-GOSUB caller returns; include Simple, flat Complex and saved nested continuation checks.",
-        "The original failed job expected 7,7 after Back; this recipe corrects the expected backout location to 7,6 from Castle newland.c cancellation flow. The independently observed wrong interaction remains the original failure."
+        "The focused VM, exploration and persistence proofs cover restored nested, flat Simple/Complex and signed-GOSUB cancellation; normal opcode-111 returns remain distinct. This is not full campaign certification."
       ],
-      "otherEvidence": [],
-      "result": "failed",
-      "evidence": "jobs/e3b5248baff62a35005698401d5ef9b5/evidence.json",
-      "measuredReplayMs": 6000,
+      "otherEvidence": [
+        "jobs/e3b5248baff62a35005698401d5ef9b5/evidence.json: original failure; its final-location expectation was subsequently corrected from 7,7 to source-backed 7,6",
+        "jobs/a4582133dc66b7ffd88d3f76c2e1ca0a/evidence.json: fresh pre-fix nine-action reproduction with the corrected expectation",
+        "jobs/9ac49ec08966feac1db67433863245b8/evidence.json: identical-baseline repeat, complete semantic/RNG comparison equal",
+        "jobs/0eddf6dfdd466a9357a8854cc23cebee/evidence.json: restore all three pending frames, Back without time/RNG, re-enter preserved AP, acknowledge 192 and reopen Complex 3"
+      ],
+      "result": "passed",
+      "evidence": "jobs/69b9dbe5046b8e24229d3f48b07e069a/evidence.json",
+      "measuredReplayMs": 5436,
       "steps": [
         {"command":"act","params":{"action":"move","arguments":{"dx":0,"dy":1}},"expect":{"interactionKind":"acknowledge","location":{"mapId":"land:0","x":7,"y":7}},"capture":true},
         {"command":"respond","params":{"response":{"requestId":"$pending","kind":"acknowledge","body":{}}},"expect":{"interactionKind":"complex_encounter","location":{"mapId":"land:0","x":7,"y":7}},"capture":true},
@@ -344,15 +348,10 @@
       "setup": "Restore the validated checkpoint at the Thief menu and submit thief_encounter {action:'back'} to return to its owning Complex request.",
       "result": "passed",
       "evidence": "jobs/cfee2a668e06f4e7727267ce806cfd27/evidence.json",
-      "remaining": "Back from that Complex remains the separate nested-cancellation failure."
+      "remaining": "Back from Complex is now independently verified by the repaired nested-cancellation recipe; this evidence still proves only Thief Back."
     }
   ],
   "nextSelection": [
-    {
-      "priority": "known-failure",
-      "gapId": "GAP-SCEN-001",
-      "recipeId": "griloch-nested-complex-back-failure"
-    },
     {
       "priority": "meaningful-variant",
       "campaignId": "scenario-castle-in-the-clouds",

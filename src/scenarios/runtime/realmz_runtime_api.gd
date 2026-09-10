@@ -307,7 +307,7 @@ func _resume_simple_encounter(continuation: ScenarioRuntimeContinuation, respons
 	if choice.cancelled:
 		if not encounter.can_back_out:
 			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "This Simple Encounter cannot be cancelled.")
-		return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"encounter_cancelled", {"encounterKind": "simple", "encounterId": encounter.id})], ScenarioVmDirective.finish())
+		return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"encounter_cancelled", {"encounterKind": "simple", "encounterId": encounter.id})], ScenarioVmDirective.finish_timeline())
 	var selected_index := choice.index
 	var option_indexes := choice_continuation.option_indexes
 	if not option_indexes.is_empty():
@@ -341,7 +341,7 @@ func _resume_complex_encounter(continuation: ScenarioRuntimeContinuation, respon
 		"back":
 			if not encounter.can_back_out:
 				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "This Complex Encounter cannot be cancelled.")
-			return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"encounter_cancelled", {"encounterKind": "complex", "encounterId": encounter.id})], ScenarioVmDirective.finish())
+			return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"encounter_cancelled", {"encounterKind": "complex", "encounterId": encounter.id})], ScenarioVmDirective.finish_timeline())
 		"choice":
 			var selected_slots := selection.selected_slots.duplicate()
 			if selected_slots.is_empty() and selection.slot >= 0:
