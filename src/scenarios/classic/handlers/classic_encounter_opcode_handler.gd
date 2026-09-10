@@ -55,8 +55,8 @@ func request_encounter(kind: StringName, encounter_id: int, gosub: bool, request
 	var encounter := _content.scenario_records.simple_encounter_by_id(encounter_id)
 	if encounter == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_encounter", "Classic branch references unavailable Simple Encounter %d." % encounter_id)
-	var prompt := _content.scenario_records.message_by_id(absi(encounter.prompt_message_id))
-	if prompt == null:
+	var prompt := _content.scenario_records.message_by_id(absi(encounter.prompt_message_id)) if encounter.prompt_message_id != 0 else null
+	if prompt == null and encounter.prompt_message_id != 0:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Simple Encounter %d references unavailable prompt message %d." % [encounter.id, encounter.prompt_message_id])
 	var options: Array[Dictionary] = []
 	var option_indexes: Array[int] = []
@@ -69,7 +69,7 @@ func request_encounter(kind: StringName, encounter_id: int, gosub: bool, request
 		option_indexes.append(option_index)
 	if options.is_empty():
 		return ScenarioRuntimeOperationResult.failed(&"encounter_has_no_options", "Simple Encounter %d has no remaining responses." % encounter.id)
-	var request := InteractionRequest.from_payload(request_id, &"encounter_choice", {"encounterKind": "simple", "encounterId": encounter.id, "prompt": prompt.text, "options": options, "canBackOut": encounter.can_back_out})
+	var request := InteractionRequest.from_payload(request_id, &"encounter_choice", {"encounterKind": "simple", "encounterId": encounter.id, "prompt": prompt.text if prompt != null else "", "options": options, "canBackOut": encounter.can_back_out})
 	return ScenarioRuntimeOperationResult.waiting(request, ScenarioInteractionContinuations.encounter(ScenarioRuntimeContinuation.CLASSIC_SIMPLE_ENCOUNTER, encounter.id, gosub, option_indexes, _encounter_attempt(context, &"simple", encounter.id)), [_encounter_open_sound(&"simple", encounter.id)])
 
 
@@ -94,8 +94,8 @@ static func _encounter_attempt(context: ScenarioExecutionContext, kind: StringNa
 
 
 func complex_encounter_request(encounter: ComplexEncounterDefinition, request_id: String) -> InteractionRequest:
-	var prompt := _content.scenario_records.message_by_id(absi(encounter.prompt_message_id))
-	if prompt == null:
+	var prompt := _content.scenario_records.message_by_id(absi(encounter.prompt_message_id)) if encounter.prompt_message_id != 0 else null
+	if prompt == null and encounter.prompt_message_id != 0:
 		return null
 	var actions: Array[Dictionary] = []
 	if encounter.action_result != 0:
@@ -137,7 +137,7 @@ func complex_encounter_request(encounter: ComplexEncounterDefinition, request_id
 			var spell := _content.magic.spell_by_id(spell_id)
 			if spell != null:
 				spells.append({"classicSpellId": spell.classic_id, "name": spell.name, "characterId": character.id})
-	return InteractionRequest.from_payload(request_id, &"complex_encounter", {"encounterKind": "complex", "encounterId": encounter.id, "prompt": prompt.text, "actions": actions, "characters": characters, "items": items, "spells": spells, "canBackOut": encounter.can_back_out, "actionSelectionCount": encounter.groups().filter(func(value: int) -> bool: return value != 0).size()})
+	return InteractionRequest.from_payload(request_id, &"complex_encounter", {"encounterKind": "complex", "encounterId": encounter.id, "prompt": prompt.text if prompt != null else "", "actions": actions, "characters": characters, "items": items, "spells": spells, "canBackOut": encounter.can_back_out, "actionSelectionCount": encounter.groups().filter(func(value: int) -> bool: return value != 0).size()})
 
 
 func _request_classic_choice(action: ClassicActionDefinition, request_id: String) -> ScenarioRuntimeOperationResult:

@@ -6,35 +6,34 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| classic | 69 | 0 | 0 | 55 | 14 |
+| classic | 69 | 0 | 3 | 53 | 13 |
 | host | 8 | 0 | 1 | 5 | 2 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
 
 ## Current parity-convergence batch
 
-**Encounter cancellation, cross-scenario responses and UI lifecycle** (`ap-cancellation-and-word-response`)
+**Encounter prompts, stock rule geometry and reward continuation** (`ap-stock-rules-and-rewards`)
 
-Repair the reproduced Griloch nested Back failure first, then verify missing word-response outcomes and caller continuations at Castle in the Clouds AP 32 and Mithril Vault AP 8, plus the ordinary Griloch Temple approach. The final fixture-log audit reopened UI acceptance: finish stale route focus, pending-encounter teardown, and the interaction layout failures exposed by awaited presentation cases before expanding AP coverage. Retain pre-fix failures, deterministic repaired repeats, restored continuation and AP re-entry. Existing inventories remain the denominators; recipes add evidence, not a second tracker. Full campaign certification remains separate and retains the AOGM, War, then gain-based order.
+Repair the reproduced Necronomicon AP 3 zero-prompt failure, then prioritize the stock Race decoding defect exposed by its XP award over additional campaign variants. Castle reads 408-byte Race records, while the canonical application extractor currently advances 960 bytes and corrupts later Race fields. Reopen stock character creation, progression and reward acceptance; correct the canonical library, verify native fields, then replay those player workflows and the retained Treasure continuation. Prelude, AOGM and Bywater AP candidates remain queued until this shared defect is resolved. Existing inventories remain the denominators and full campaign certification stays separate.
 
 AP batches use failure-first priorities: known failures, untested high-risk behavior, meaningful variants, and broader representatives. Verification mode records existing functional behavior without claiming full campaign certification; implementation, verification, and certification remain distinct modes.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.services.temple` | verification | meaningful-variant | live-route |  |
-| `classic.scenario.trigger-action-point` | verification | known-failure | live-route |  |
-| `classic.scenario.choose-response` | verification | untested-high-risk | live-route |  |
-| `classic.scenario.complex-interaction` | verification | known-failure | live-route |  |
-| `classic.system.quit` | verification | known-failure | runtime-integration |  |
+| `classic.scenario.choose-response` | verification | known-failure | live-route |  |
+| `classic.startup.create-character` | implementation | known-failure | - | GAP-RULES-001 |
+| `classic.rewards.experience-level-up` | implementation | known-failure | - | GAP-RULES-002 |
+| `classic.rewards.treasure-distribution` | implementation | known-failure | - | GAP-RULES-003 |
 
 ### Batch count delta
 
 | Scope | State | Baseline | Current | Delta |
 | --- | --- | ---: | ---: | ---: |
 | classic | missing | 0 | 0 | 0 |
-| classic | partial | 1 | 0 | -1 |
-| classic | functional | 54 | 55 | +1 |
-| classic | certified | 14 | 14 | 0 |
+| classic | partial | 0 | 3 | +3 |
+| classic | functional | 55 | 53 | -2 |
+| classic | certified | 14 | 13 | -1 |
 | host | missing | 0 | 0 | 0 |
 | host | partial | 1 | 1 | 0 |
 | host | functional | 5 | 5 | 0 |
@@ -44,7 +43,7 @@ AP batches use failure-first priorities: known failures, untested high-risk beha
 
 | Domain | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Startup and party | 8 | 0 | 0 | 7 | 1 |
+| Startup and party | 8 | 0 | 1 | 6 | 1 |
 | Exploration | 6 | 0 | 0 | 4 | 2 |
 | Scenario interaction | 6 | 0 | 0 | 3 | 3 |
 | Character management | 5 | 0 | 0 | 5 | 0 |
@@ -52,7 +51,7 @@ AP batches use failure-first priorities: known failures, untested high-risk beha
 | Spellcasting | 3 | 0 | 0 | 1 | 2 |
 | Services and economy | 5 | 0 | 0 | 5 | 0 |
 | Combat | 14 | 0 | 0 | 9 | 5 |
-| Rewards and progression | 5 | 0 | 0 | 4 | 1 |
+| Rewards and progression | 5 | 0 | 2 | 3 | 0 |
 | Maps and journal | 3 | 0 | 0 | 3 | 0 |
 | Save and system | 5 | 0 | 0 | 5 | 0 |
 
@@ -78,8 +77,8 @@ AP batches use failure-first priorities: known failures, untested high-risk beha
 | --- | ---: |
 | not-required | 19 |
 | missing | 0 |
-| partial | 0 |
-| complete | 50 |
+| partial | 3 |
+| complete | 47 |
 
 | simulation | Count |
 | --- | ---: |
@@ -144,8 +143,11 @@ AP batches use failure-first priorities: known failures, untested high-risk beha
 
 ## Release blockers and major gaps
 
-Blockers: **1**. Major gaps: **0**.
+Blockers: **4**. Major gaps: **0**.
 
+- **blocker** `classic.rewards.experience-level-up` - Stock progression consumes misaligned Race base attacks and movement from the current application catalog. Next: After canonical catalog repair, verify a real stock level-up and its saved continuation against source-decoded Race facts.
+- **blocker** `classic.rewards.treasure-distribution` - Necronomicon AP 3 awards every starter the maximum-age reduced XP share because the current stock Race catalog is misaligned. Next: Repair canonical Race geometry, revalidate the application package, and replay the retained ordinary reward route plus save/resume with source-correct XP expectations.
+- **blocker** `classic.startup.create-character` - Stock character creation consumes misaligned Race attributes, limits, base stats and eligibility from the current application catalog. Next: Verify all 30 native Race records against Castle geometry, regenerate the canonical library, and exercise ordinary stock character creation through its public workflow.
 - **blocker** `host.release.platform-certification` - Windows and Linux have native release evidence, but macOS remains unexecuted on an Apple runner. Next: Run the current commit's macOS verify/export job on an actual Apple runner, launch the exported application, and retain its release manifest and clean native log.
 
 ## Oracle-required unknowns
@@ -165,6 +167,9 @@ Blockers: **1**. Major gaps: **0**.
 
 ### parity
 
+- `classic.rewards.experience-level-up` - Stock progression consumes misaligned Race base attacks and movement from the current application catalog.
+- `classic.rewards.treasure-distribution` - Necronomicon AP 3 awards every starter the maximum-age reduced XP share because the current stock Race catalog is misaligned.
+- `classic.startup.create-character` - Stock character creation consumes misaligned Race attributes, limits, base stats and eligibility from the current application catalog.
 - `classic.character.view-sheet` - Several nonzero Classic ability slots lack verified display names.
 - `classic.maps.view-acquired` - Classic scrolling TEXT encoding and style resources remain only partially represented.
 - `classic.maps.view-acquired` - Malformed crop starts and authored picture rectangles lack boundary observations.

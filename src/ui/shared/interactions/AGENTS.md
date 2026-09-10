@@ -31,6 +31,7 @@
 - Floating Yes/No and indexed choices retain their own locked input shield even though their text uses narrative context. Flash geometry is measured after binding the first actual message, never the scene placeholder.
 - Side workspaces remain right-aligned when their natural minimum exceeds the compact roster width; minimum-size changes reapply that alignment. Shared spellbook facts wrap and reflow instead of forcing off-window controls.
 - Never add gameplay facts, targets, prices, eligibility, or service availability that are absent from the request.
+- An empty Simple, Complex, or Thief prompt remains empty; do not replace it with an internal interaction-family title or helper sentence.
 - Disabled controls require a specific player-facing reason.
 - Every pointer action must also be keyboard focusable.
 

@@ -526,6 +526,77 @@
         {"command":"ui","params":{"action":"click","controlLabel":"Leave Temple"},"expect":{"interactionKind":null,"location":{"mapId":"land:0","x":19,"y":11}},"capture":true},
         {"command":"act","params":{"action":"move","arguments":{"dx":-1,"dy":0}},"expect":{"interactionKind":null,"location":{"mapId":"land:0","x":18,"y":11}},"capture":true}
       ]
+    },
+    {
+      "id": "necronomicon-forced-simple-treasure",
+      "workflowIds": [
+        "classic.scenario.choose-response",
+        "classic.rewards.treasure-distribution",
+        "classic.scenario.trigger-action-point"
+      ],
+      "package": {
+        "campaignId": "scenario-destroy-the-necronomicon",
+        "path": "src/storage/packages/bundled_campaigns/scenario-destroy-the-necronomicon.realmz2",
+        "packageHash": "13c747c8c3c2959bc3ffe33d51e6e53deff9716c40382116aaf571b71022788e",
+        "archiveSha256": "4d0b97104baf085f341a0f32729497d65a61b37ab1bb83e099c5c5f0935ae0c7"
+      },
+      "baselineLocation": {
+        "mapId": "land:1",
+        "x": 9,
+        "y": 1
+      },
+      "target": {
+        "actionPoint": "Data DD:1:3",
+        "location": {
+          "mapId": "land:1",
+          "x": 9,
+          "y": 0
+        },
+        "encounter": "simple:3",
+        "promptMessageId": 0
+      },
+      "proofModes": [
+        "live-route",
+        "ordinary-movement",
+        "actual-ui-control",
+        "typed-response"
+      ],
+      "expected": [
+        "Ordinary north entry advances 25 minutes and draws random-region chance then AP chance. Try to Talk transfers through XAP 35 to forced Simple 3 with four options and no Back.",
+        "Simple prompt zero stays empty even when Data SD2 has message zero. Actual indexed hidden-treasure choice waits at message 276, then opens Treasure 24 after acknowledgement.",
+        "Treasure 24 has authored 10000 experience and item 908. This prepared party uses multiplier 2.5 and a 4166 base share. The retained pre-catalog-repair run incorrectly awards 2777 per character because the application Race catalog has corrupt maximum ages; this amount is failure evidence, not Classic acceptance.",
+        "Typed assignment gives Kevlar exactly one unidentified, unequipped item 908 with three charges. Actual Treasure Done waits at message 336; the AP stays enabled until that acknowledgement.",
+        "Final acknowledgement removes the AP exactly once. South/north re-entry has no interaction or AP-chance draw and does not duplicate rewards. Interaction steps consume no time/RNG; the complete route ends at 70 minutes and four draws.",
+        "Restoring the pending Treasure retains already-awarded XP and the unassigned item, then completes the same five-step suffix without duplication. This proves continuation mechanics, not correctness of the corrupt stock-catalog award."
+      ],
+      "sourceEvidence": [
+        "Castle encounters.c:43,300,426 and textbox-time.c:12-13: zero encounter prompts suppress text lookup",
+        "Castle booty.c:400-410: maximum-age XP reduction; misc.c:1651-1657 and structs.h:58-75: native Race record loading"
+      ],
+      "remaining": [
+        "Prompt repair and exact-once item/continuation outcomes passed; stock Race geometry is a separate confirmed compiler defect. Re-run this recipe and correct XP expectations after canonical application-library repair before marking the complete reward route passed.",
+        "Ambush battle, other Simple responses, physical item assignment, ordinary campaign-start travel and full campaign certification remain untested."
+      ],
+      "otherEvidence": [
+        "jobs/d27d6ca16ee2af633fd752aff20064ca/evidence.json: pre-fix incorrect Simple heading; all nine saved game/RNG boundaries equal after prompt repair",
+        "jobs/d90b54cfe2380057356e311f783b834e/evidence.json: complete identical-baseline repeat equal, including RNG",
+        "jobs/0cdccda5a9ab1fc47de45de25ad74c71/evidence.json: restored Treasure suffix; all five game/RNG boundaries equal to the unreloaded route",
+        "fixtures/18c7828f84bd478c2748c1e7b4df1ebc/engine.log: clean through replays, restore and graceful fixture shutdown"
+      ],
+      "result": "partial",
+      "evidence": "jobs/b32aa21d6bc28a5ac52b071cc475dc83/evidence.json",
+      "measuredReplayMs": 5726,
+      "steps": [
+        {"command":"act","params":{"action":"move","arguments":{"dx":0,"dy":-1}},"expect":{"interactionKind":"yes_no","location":{"mapId":"land:1","x":9,"y":0}},"capture":true},
+        {"command":"ui","params":{"controlLabel":"Try to Talk","action":"click"},"expect":{"interactionKind":"encounter_choice"},"capture":true},
+        {"command":"ui","params":{"controlId":"fb8c5b2f95a5fd4a2fe971d2","action":"click"},"expect":{"interactionKind":"acknowledge"},"capture":true},
+        {"command":"respond","params":{"response":{"requestId":"$pending","kind":"acknowledge","body":{}}},"expect":{"interactionKind":"treasure_distribution"},"capture":true},
+        {"command":"respond","params":{"response":{"requestId":"$pending","kind":"treasure_distribution","body":{"action":"assign","instanceId":"reward.item.1","characterId":"classic.starter.kevlar"}}},"expect":{"interactionKind":"treasure_distribution"},"capture":true},
+        {"command":"ui","params":{"controlId":"6632f362f755a50708d7bb0f","action":"click"},"expect":{"interactionKind":"acknowledge"},"capture":true},
+        {"command":"respond","params":{"response":{"requestId":"$pending","kind":"acknowledge","body":{}}},"expect":{"interactionKind":null,"location":{"mapId":"land:1","x":9,"y":0}},"capture":true},
+        {"command":"act","params":{"action":"move","arguments":{"dx":0,"dy":1}},"expect":{"interactionKind":null,"location":{"mapId":"land:1","x":9,"y":1}},"capture":true},
+        {"command":"act","params":{"action":"move","arguments":{"dx":0,"dy":-1}},"expect":{"interactionKind":null,"location":{"mapId":"land:1","x":9,"y":0}},"capture":true}
+      ]
     }
   ],
   "siblingAndContinuationEvidence": [
@@ -559,18 +630,11 @@
   ],
   "nextSelection": [
     {
-      "priority": "uncovered-behavior-and-caller-context",
-      "campaignId": "scenario-destroy-the-necronomicon",
-      "packageHash": "13c747c8c3c2959bc3ffe33d51e6e53deff9716c40382116aaf571b71022788e",
-      "actionPoint": "Data DD:1:3",
-      "location": {
-        "mapId": "land:1",
-        "x": 9,
-        "y": 0
-      },
-      "candidateOnly": true,
-      "expected": "Active placed AP offers Ambush Them or Try to Talk. The non-battle Talk transfer calls XAP 35 and forced Simple 3; indexed hidden-treasure response runs messages 276/336, Treasure 24 and explicit opcode 25.",
-      "remaining": "Candidate only: prove ordinary entry from land:1 9,1, forced Simple response availability, reward/inventory accounting, continuation and removal. Inspect the complete reward boundary before assigning runtime credit."
+      "priority": "known-failure",
+      "family": "application-stock-race-catalog",
+      "candidateOnly": false,
+      "expected": "Correct the canonical Race decoder to Castle native record geometry, regenerate the stock application library through Providence, and verify all native fields before repeating reward and character workflows.",
+      "remaining": "Current catalog extraction uses a 960-byte stride although Castle loadprofile reads 408-byte records. The first Race matches accidentally; later Race fields are misaligned. Preserve raw source bytes and do not hand-edit compiled package records."
     }
   ]
 }

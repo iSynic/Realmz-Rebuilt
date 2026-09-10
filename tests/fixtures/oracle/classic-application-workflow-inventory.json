@@ -23,14 +23,14 @@
     ]
   },
   "currentBatch": {
-    "id": "ap-cancellation-and-word-response",
-    "name": "Encounter cancellation, cross-scenario responses and UI lifecycle",
-    "baselineCommit": "a128ef66aa376919dbf8a100e6091d833e97c595",
+    "id": "ap-stock-rules-and-rewards",
+    "name": "Encounter prompts, stock rule geometry and reward continuation",
+    "baselineCommit": "e328f978f3a5b98a2e9921eb903dfbfb40712c23",
     "baselineCounts": {
       "classic": {
         "missing": 0,
-        "partial": 1,
-        "functional": 54,
+        "partial": 0,
+        "functional": 55,
         "certified": 14
       },
       "host": {
@@ -40,46 +40,41 @@
         "certified": 2
       }
     },
-    "selectionRationale": "Repair the reproduced Griloch nested Back failure first, then verify missing word-response outcomes and caller continuations at Castle in the Clouds AP 32 and Mithril Vault AP 8, plus the ordinary Griloch Temple approach. The final fixture-log audit reopened UI acceptance: finish stale route focus, pending-encounter teardown, and the interaction layout failures exposed by awaited presentation cases before expanding AP coverage. Retain pre-fix failures, deterministic repaired repeats, restored continuation and AP re-entry. Existing inventories remain the denominators; recipes add evidence, not a second tracker. Full campaign certification remains separate and retains the AOGM, War, then gain-based order.",
+    "selectionRationale": "Repair the reproduced Necronomicon AP 3 zero-prompt failure, then prioritize the stock Race decoding defect exposed by its XP award over additional campaign variants. Castle reads 408-byte Race records, while the canonical application extractor currently advances 960 bytes and corrupts later Race fields. Reopen stock character creation, progression and reward acceptance; correct the canonical library, verify native fields, then replay those player workflows and the retained Treasure continuation. Prelude, AOGM and Bywater AP candidates remain queued until this shared defect is resolved. Existing inventories remain the denominators and full campaign certification stays separate.",
     "targets": [
-      {
-        "workflowId": "classic.services.temple",
-        "mode": "verification",
-        "priority": "meaningful-variant",
-        "expectedEvidence": "live-route",
-        "gapIds": [],
-        "archaeologyTriggers": []
-      },
-      {
-        "workflowId": "classic.scenario.trigger-action-point",
-        "mode": "verification",
-        "priority": "known-failure",
-        "expectedEvidence": "live-route",
-        "gapIds": [],
-        "archaeologyTriggers": []
-      },
       {
         "workflowId": "classic.scenario.choose-response",
         "mode": "verification",
-        "priority": "untested-high-risk",
-        "expectedEvidence": "live-route",
-        "gapIds": [],
-        "archaeologyTriggers": []
-      },
-      {
-        "workflowId": "classic.scenario.complex-interaction",
-        "mode": "verification",
         "priority": "known-failure",
         "expectedEvidence": "live-route",
         "gapIds": [],
         "archaeologyTriggers": []
       },
       {
-        "workflowId": "classic.system.quit",
-        "mode": "verification",
+        "workflowId": "classic.startup.create-character",
+        "mode": "implementation",
         "priority": "known-failure",
-        "expectedEvidence": "runtime-integration",
-        "gapIds": [],
+        "gapIds": [
+          "GAP-RULES-001"
+        ],
+        "archaeologyTriggers": []
+      },
+      {
+        "workflowId": "classic.rewards.experience-level-up",
+        "mode": "implementation",
+        "priority": "known-failure",
+        "gapIds": [
+          "GAP-RULES-002"
+        ],
+        "archaeologyTriggers": []
+      },
+      {
+        "workflowId": "classic.rewards.treasure-distribution",
+        "mode": "implementation",
+        "priority": "known-failure",
+        "gapIds": [
+          "GAP-RULES-003"
+        ],
         "archaeologyTriggers": []
       }
     ]
@@ -2174,7 +2169,7 @@
         "tests": []
       },
       "providence": {
-        "status": "complete",
+        "status": "partial",
         "sources": [
           {
             "path": "src-tauri/src/realmz2_exporter.rs",
@@ -2258,7 +2253,17 @@
         "war": "known-reachable",
         "classic": "observed"
       },
-      "gaps": []
+      "gaps": [
+        {
+          "id": "GAP-RULES-001",
+          "category": "compiler",
+          "severity": "blocker",
+          "queue": "parity",
+          "summary": "Stock character creation consumes misaligned Race attributes, limits, base stats and eligibility from the current application catalog.",
+          "evidence": "Castle structs.h:58-75 and misc.c:1651-1657 establish 408-byte Race records; the current application catalog uses 960-byte stepping. Native Orc maximum age 55 and base movement 14 become 0 and 257 in Rebuilt. See runtime-testing.md for the preserved reward failure.",
+          "nextAction": "Verify all 30 native Race records against Castle geometry, regenerate the canonical library, and exercise ordinary stock character creation through its public workflow."
+        }
+      ]
     },
     {
       "id": "classic.startup.inspect-character",
@@ -8521,7 +8526,7 @@
         "tests": []
       },
       "providence": {
-        "status": "complete",
+        "status": "partial",
         "sources": [
           {
             "path": "src-tauri/src/realmz2_exporter.rs",
@@ -8596,7 +8601,17 @@
         "war": "known-reachable",
         "classic": "observed"
       },
-      "gaps": []
+      "gaps": [
+        {
+          "id": "GAP-RULES-003",
+          "category": "compiler",
+          "severity": "blocker",
+          "queue": "parity",
+          "summary": "Necronomicon AP 3 awards every starter the maximum-age reduced XP share because the current stock Race catalog is misaligned.",
+          "evidence": "Castle structs.h:58-75 and misc.c:1651-1657 establish 408-byte Race records; the current application catalog uses 960-byte stepping. Native Orc maximum age 55 and base movement 14 become 0 and 257 in Rebuilt. See runtime-testing.md for the preserved reward failure.",
+          "nextAction": "Repair canonical Race geometry, revalidate the application package, and replay the retained ordinary reward route plus save/resume with source-correct XP expectations."
+        }
+      ]
     },
     {
       "id": "classic.rewards.detect-identify-loot",
@@ -8961,7 +8976,7 @@
         "tests": []
       },
       "providence": {
-        "status": "complete",
+        "status": "partial",
         "sources": [
           {
             "path": "src-tauri/src/realmz2_exporter.rs",
@@ -9029,7 +9044,17 @@
         "war": "known-reachable",
         "classic": "observed"
       },
-      "gaps": []
+      "gaps": [
+        {
+          "id": "GAP-RULES-002",
+          "category": "compiler",
+          "severity": "blocker",
+          "queue": "parity",
+          "summary": "Stock progression consumes misaligned Race base attacks and movement from the current application catalog.",
+          "evidence": "Castle structs.h:58-75 and misc.c:1651-1657 establish 408-byte Race records; the current application catalog uses 960-byte stepping. Native Orc maximum age 55 and base movement 14 become 0 and 257 in Rebuilt. See runtime-testing.md for the preserved reward failure.",
+          "nextAction": "After canonical catalog repair, verify a real stock level-up and its saved continuation against source-decoded Race facts."
+        }
+      ]
     },
     {
       "id": "classic.maps.view-acquired",
