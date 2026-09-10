@@ -13,9 +13,9 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Current parity-convergence batch
 
-**White Dragon successive choices, XAP narration and AP removal** (`ap-white-dragon-choice-depth-xap`)
+**Twin Sands random-message loop, saved choice and AP replacement** (`ap-twin-sands-random-loop-replacement`)
 
-With Bywater save precision and XP-only reward repaired, White Dragon AP 52 adds a seventh scenario and successive cancellation depths through three authored choices. North adjacency and exact trigger/program/package identity are inspected before input. Compare early and inner No backout, three-Yes XAP 168 narration, saved Choice/acknowledgement continuations and explicit removal/re-entry. Static references alone earn no credit. Full campaign certification remains separate, and no new testing capability is needed.
+After White Dragon choice-depth and saved XAP narration, Twin Sands AP 41 adds an eighth scenario with opcode-19 random messages, XAP 348 self-transfer, No branch-out to XAP 346, and replacement of the same placed AP with XAP 347. Castle opcode 7 loads its own Extra Code row, matching the compiled [1,41,347,0,0] target. Preserve the overlapping low-chance random region, assert draw ownership, test saved loop choices and ordinary replaced-AP re-entry. Static references alone earn no credit. Full campaign certification remains separate, and no new testing capability is needed.
 
 AP batches use failure-first priorities: known failures, untested high-risk behavior, meaningful variants, and broader representatives. Verification mode records existing functional behavior without claiming full campaign certification; implementation, verification, and certification remain distinct modes.
 

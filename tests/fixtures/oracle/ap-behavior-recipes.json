@@ -38,6 +38,187 @@
   ],
   "recipes": [
     {
+      "id": "twin-sands-random-message-self-transfer",
+      "application": {
+        "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
+        "packageHash": "45298c295fc784b528f4219d6ceb0454cb482d894b66440e529d7763e7cb0036",
+        "archiveSha256": "e85ae0aca72fa6642ef66af8745ceb24446459598efcb1075cd8f5a4cce36012",
+        "starterCatalog": "src/storage/characters/realmz-classic-starter-characters.json"
+      },
+      "package": {
+        "campaignId": "scenario-twin-sands-of-time",
+        "path": "src/storage/packages/bundled_campaigns/scenario-twin-sands-of-time.realmz2",
+        "packageHash": "9fd04d22eefd86eb2fd6f5adb6f44493b0fa16a0f77ba56a5eb5760a542f76b0",
+        "archiveSha256": "2abb86a1ad1156fa8567b89f1e03d52496c9105b88b9684acd15185e076bd9f3"
+      },
+      "baselineLocation": {
+        "mapId": "land:1",
+        "x": 46,
+        "y": 38
+      },
+      "target": {
+        "actionPoint": "Data DD:1:41",
+        "location": {
+          "mapId": "land:1",
+          "x": 46,
+          "y": 39
+        },
+        "extraActionPoints": [
+          348,
+          346,
+          347
+        ]
+      },
+      "proofModes": [
+        "live-route",
+        "ordinary-movement",
+        "actual-ui-control"
+      ],
+      "workflowIds": [
+        "classic.scenario.present-message-media"
+      ],
+      "expected": [
+        "Ordinary south entry reaches active 100-percent AP 41 at minute 25. The retained map-wide region 17 consumes a 10/10000 chance draw first (7195, not triggered), then the AP chance draw (18). No region suppression or reseed occurs.",
+        "Acknowledge message 862, then opcode 19 draws inclusively from 863..868. The initial draw yields 868; two actual Yes controls each draw 865 and return through XAP 348's self-transfer to its choice. Repeating a resource ID is a legitimate outcome, not a suppressed draw.",
+        "Random-message draws occupy indices 2,3,4. The nine boundaries have draw counts [2,3,3,4,4,5,5,5,5] and generator states [507111939,1815247477,1815247477,1711656657,1711656657,122498987,122498987,122498987,122498987]. All remain at minute 25 with the six character records unchanged.",
+        "Each selected positive message requires one acknowledgement. Negative message 872 immediately supplies the next choice, without a separate acknowledgement. Two self-transfers retain one saved program frame and the original AP context.",
+        "Actual No branches to XAP 346 message 869 without another random-message draw. Its acknowledgement commits the AP replacement and keep instruction. Every initial and subsequent complete gameplay/RNG checkpoint matches a repeated nine-input route."
+      ],
+      "remaining": [
+        "Prepared adjacency is not campaign-start travel. Random-region triggering, every random resource ID and unrelated callers are not certified by these observations. Replacement and restored-choice outcomes have separate recipes."
+      ],
+      "result": "passed",
+      "evidence": "jobs/4d2928e9efdb6b84c4f50a45490cbced/evidence.json",
+      "otherEvidence": [
+        "jobs/3a72f3b1efc5e6c7479bca81e992ee5d/evidence.json: exact nine-input repeat",
+        "jobs/43e1a2e0481c6325f2fa5c28bec1ae9b/evidence.json: saved single-frame loop boundary"
+      ],
+      "steps": [
+        {
+          "command": "act",
+          "params": {
+            "action": "move",
+            "arguments": {
+              "dx": 0,
+              "dy": 1
+            }
+          },
+          "expect": {
+            "interactionKind": "acknowledge",
+            "location": {
+              "mapId": "land:1",
+              "x": 46,
+              "y": 39
+            }
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "yes_no"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "Yes"
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "yes_no"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "Yes"
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "yes_no"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "No"
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": null
+          },
+          "capture": true
+        }
+      ]
+    },
+    {
       "id": "white-dragon-terminal-removal-and-reentry",
       "application": {
         "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
