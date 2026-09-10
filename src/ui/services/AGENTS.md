@@ -17,6 +17,7 @@ Own the editable Party Wealth, Shop, Temple, Bank, and Treasure workspaces and t
 - Prices, affordability, capacity, service effects, transfer increments, item facts, recipient eligibility, and disabled reasons come from detached views or typed requests. UI never recalculates them.
 - All mutations emit existing stable character, item-instance, stock, service, denomination, caster, or action identities. Dragging is an alternate presentation gesture over the same response boundary.
 - Treasure retains its exact ordinary workspace beneath completion confirmation and never exposes hidden item facts.
+- Treasure's scene-owned empty-field message uses the full loot width outside the item grid; previously occupied item slots still remain vacant in their original positions after assignment.
 - Treasure resolves item artwork by its exact resource type and signed ID through the effective media catalog; only zero denotes an absent icon. Loot cells, inspection, and pickup effects preserve the same identity.
 - Party Wealth is always available after setup; location services appear only from explicit detached availability.
 - Stable hierarchy and responsive layout belong in scenes. Selection, filtering, hover, local drafts, and request-sized records remain presentation-owned.

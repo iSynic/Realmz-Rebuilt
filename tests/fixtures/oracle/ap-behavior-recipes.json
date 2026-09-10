@@ -1152,6 +1152,165 @@
           "capture": true
         }
       ]
+    },
+    {
+      "id": "bywater-grave-xp-only-reward",
+      "application": {
+        "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
+        "packageHash": "45298c295fc784b528f4219d6ceb0454cb482d894b66440e529d7763e7cb0036",
+        "archiveSha256": "e85ae0aca72fa6642ef66af8745ceb24446459598efcb1075cd8f5a4cce36012",
+        "starterCatalog": "src/storage/characters/realmz-classic-starter-characters.json"
+      },
+      "workflowIds": [
+        "classic.reward.treasure",
+        "classic.system.save-game"
+      ],
+      "package": {
+        "campaignId": "scenario-city-of-bywater",
+        "path": "src/storage/packages/bundled_campaigns/scenario-city-of-bywater.realmz2",
+        "packageHash": "a893ee5af9cb315477098d269e3c5b1bf2f8eb0137a5bb89a0876bb543125f53",
+        "archiveSha256": "35d1c5f7edc2eb1906da332aa8e0e18a0fad2d7addcb866e59917d062c9928e4"
+      },
+      "baselineLocation": {
+        "mapId": "land:0",
+        "x": 52,
+        "y": 39
+      },
+      "target": {
+        "actionPoint": "Data DD:0:50",
+        "location": {
+          "mapId": "land:0",
+          "x": 52,
+          "y": 38
+        },
+        "treasureId": 37
+      },
+      "proofModes": [
+        "live-route",
+        "ordinary-movement",
+        "actual-ui-control",
+        "restored-continuation"
+      ],
+      "expected": [
+        "North entry exposes the exact Bury the bones / Leave them be labels. Actual Bury the bones retains the twenty-minute entry boundary and requests acknowledgement of message 488 before Treasure 37.",
+        "The authored 600 XP scales by the exact starter multiplier 1/3 to a 200-XP pool with a displayed 33-XP share. There are no reward items or denominations, and all recipient take actions are unavailable.",
+        "Actual Done assigns exactly 33 XP to each of the six starters once. Character wealth and item instances remain unchanged. The empty-field message uses the full loot width rather than one item-grid column.",
+        "Restoring the pending choice retains the exact multiplier and 200-XP pool; restoring Treasure retains the subsequent reward result. Both continuations match every corresponding complete gameplay/RNG checkpoint of the fresh six-step route."
+      ],
+      "remaining": [
+        "Explicit AP removal and post-removal ordinary re-entry are recorded separately in the same reusable route. No ordinary save-menu activation, campaign-start travel or complete campaign certification is claimed.",
+        "Old rounded checkpoints retain their recorded values. Current replays require a newly captured full-precision baseline, not a guessed correction of historical saves."
+      ],
+      "result": "passed",
+      "evidence": "jobs/4b887e384d767d9ade6844878abcd36a/evidence.json",
+      "otherEvidence": [
+        "jobs/823a71aa757ff68cd1504d1daf2f57e7/evidence.json: preserved pre-fix fresh 200-XP pool",
+        "jobs/42ed6d2ca3bf27c41b168eb2d9e24b41/evidence.json: preserved pre-fix restored-choice 199-XP pool, GAP-SAVEFLOAT-001",
+        "jobs/4e6e24d7c74959d612dcd9bf357723f2/evidence.json and jobs/406fb005f3a770737740f598666c6f15/evidence.json: six exact repeated full-precision gameplay/RNG boundaries",
+        "jobs/5497b86d08c7444ea3eba58786589160/evidence.json: restored choice retains the 200-XP pool",
+        "jobs/b60801815ef1178639af296b09a01455/evidence.json: restored Treasure matches all three ending boundaries",
+        "jobs/390dfb4b9194252cdf0d6be0c41d4739/evidence.json: scene repair retains the same restored ending; canonical empty-field capture inspected"
+      ],
+      "steps": [
+        {
+          "command": "act",
+          "params": {
+            "action": "move",
+            "arguments": {
+              "dx": 0,
+              "dy": -1
+            }
+          },
+          "expect": {
+            "interactionKind": "yes_no",
+            "location": {
+              "mapId": "land:0",
+              "x": 52,
+              "y": 38
+            }
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "Bury the bones"
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "treasure_distribution"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "Done"
+          },
+          "expect": {
+            "interactionKind": null,
+            "location": {
+              "mapId": "land:0",
+              "x": 52,
+              "y": 38
+            }
+          },
+          "capture": true
+        },
+        {
+          "command": "act",
+          "params": {
+            "action": "move",
+            "arguments": {
+              "dx": 0,
+              "dy": 1
+            }
+          },
+          "expect": {
+            "interactionKind": null,
+            "location": {
+              "mapId": "land:0",
+              "x": 52,
+              "y": 39
+            }
+          },
+          "capture": true
+        },
+        {
+          "command": "act",
+          "params": {
+            "action": "move",
+            "arguments": {
+              "dx": 0,
+              "dy": -1
+            }
+          },
+          "expect": {
+            "interactionKind": null,
+            "location": {
+              "mapId": "land:0",
+              "x": 52,
+              "y": 38
+            }
+          },
+          "capture": true
+        }
+      ]
     }
   ],
   "siblingAndContinuationEvidence": [

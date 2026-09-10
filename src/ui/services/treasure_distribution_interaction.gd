@@ -110,13 +110,9 @@ func _build_loot_side(body: TreasureRequestBody) -> void:
 		items_by_id[item.instance_id] = item
 		if not _loot_slot_order.has(item.instance_id):
 			_loot_slot_order.append(item.instance_id)
-	if _loot_slot_order.is_empty():
-		var empty := fact_label_scene.instantiate() as Label
-		empty.name = "TreasureEmptyField"
-		empty.text = "No items remain."
-		empty.add_theme_color_override("font_color", INK)
-		grid.add_child(empty)
-	else:
+	%TreasureEmptyField.visible = _loot_slot_order.is_empty()
+	grid.visible = not _loot_slot_order.is_empty()
+	if not _loot_slot_order.is_empty():
 		_selected_item = body.items[0] if not body.items.is_empty() else null
 		for slot_id: String in _loot_slot_order:
 			var item := items_by_id.get(slot_id) as InteractionRequestValue.RewardItem
