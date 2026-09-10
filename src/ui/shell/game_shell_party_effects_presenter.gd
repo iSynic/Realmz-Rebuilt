@@ -31,7 +31,7 @@ func set_media(media: ClassicMediaCatalog) -> void:
 
 
 func present(game_view: GameView) -> void:
-	_condition_values.clear()
+	_condition_values = []
 	if game_view != null and game_view.party_summary != null:
 		_condition_values = game_view.party_summary.condition_values
 	_panel.visible = game_view != null and game_view.session_started
