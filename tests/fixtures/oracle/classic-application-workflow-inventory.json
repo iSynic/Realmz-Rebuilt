@@ -23,9 +23,9 @@
     ]
   },
   "currentBatch": {
-    "id": "ap-stock-rules-and-rewards",
-    "name": "Encounter prompts, stock rule geometry and reward continuation",
-    "baselineCommit": "e328f978f3a5b98a2e9921eb903dfbfb40712c23",
+    "id": "ap-prelude-response-reward-map",
+    "name": "Prelude response, reward and acquired-map continuation",
+    "baselineCommit": "6e4c0760a071543036dd0892bc1c3159bafbca0f",
     "baselineCounts": {
       "classic": {
         "missing": 0,
@@ -40,10 +40,18 @@
         "certified": 2
       }
     },
-    "selectionRationale": "Close the reproduced Necronomicon zero-prompt failure and the shared stock Race geometry defect before expanding campaign variants. Providence now reads Castle's 408-byte records; all 30 native Race records and reciprocal Caste eligibility are verified. Stock creation and level-up pass source-backed public integration checks, and the retained ordinary Treasure route passes exact XP, deterministic replay and saved continuation. These restore functional acceptance, not campaign certification. Next select high-risk caller/response variants from Prelude, AOGM and Bywater; existing inventories remain the denominators.",
+    "selectionRationale": "After closing the shared stock-rule failures, exercise Prelude to Pestilence AP 67 from an adjacent isolated starter checkpoint. Verify negative-response reversal and re-entry, affirmative transfer through XAP 233, treasure and acquired-map save/resume, and persistent AP replacement through ordinary entry. This adds a fifth scenario and distinct response/caller/outcome coverage with one reusable baseline and existing journey controls; package validity alone earns no gameplay credit. Broader AOGM and Bywater caller/destination candidates remain queued, and full campaign certification remains separate.",
     "targets": [
       {
         "workflowId": "classic.scenario.choose-response",
+        "mode": "verification",
+        "priority": "untested-high-risk",
+        "expectedEvidence": "live-route",
+        "gapIds": [],
+        "archaeologyTriggers": []
+      },
+      {
+        "workflowId": "classic.rewards.treasure-distribution",
         "mode": "verification",
         "priority": "known-failure",
         "expectedEvidence": "live-route",
@@ -51,28 +59,22 @@
         "archaeologyTriggers": []
       },
       {
-        "workflowId": "classic.startup.create-character",
+        "workflowId": "classic.maps.view-acquired",
         "mode": "verification",
-        "priority": "known-failure",
+        "priority": "untested-high-risk",
+        "expectedEvidence": "live-route",
         "gapIds": [],
-        "archaeologyTriggers": [],
-        "expectedEvidence": "runtime-integration"
+        "archaeologyTriggers": []
       },
       {
-        "workflowId": "classic.rewards.experience-level-up",
+        "workflowId": "classic.scenario.trigger-action-point",
         "mode": "verification",
         "priority": "known-failure",
-        "gapIds": [],
-        "archaeologyTriggers": [],
-        "expectedEvidence": "runtime-integration"
-      },
-      {
-        "workflowId": "classic.rewards.treasure-distribution",
-        "mode": "verification",
-        "priority": "known-failure",
-        "gapIds": [],
-        "archaeologyTriggers": [],
-        "expectedEvidence": "live-route"
+        "expectedEvidence": "live-route",
+        "gapIds": [
+          "GAP-APKEEP-001"
+        ],
+        "archaeologyTriggers": []
       }
     ]
   },
@@ -3626,7 +3628,7 @@
         },
         {
           "id": "keep-remove",
-          "status": "implemented"
+          "status": "unresolved"
         },
         {
           "id": "xap-return",
@@ -3666,7 +3668,7 @@
         ]
       },
       "simulation": {
-        "status": "complete",
+        "status": "partial",
         "owners": [
           {
             "path": "src/scenarios/vm/scenario_vm.gd",
@@ -3721,7 +3723,17 @@
         "war": "not-observed",
         "classic": "observed"
       },
-      "gaps": []
+      "gaps": [
+        {
+          "id": "GAP-APKEEP-001",
+          "category": "simulation",
+          "severity": "major",
+          "queue": "parity",
+          "summary": "Keep Codes overwrites an explicit AP replacement and repeats Prelude Treasure 32 on re-entry.",
+          "evidence": "Retained Prelude AP 67 fixture df831d21f3af4d79dfeb816d444fe8af, failing journey 0ce2ed6da6658871426f62d643889c40: opcode 7 maps AP 67 to XAP 229, then opcode 24 incorrectly replaces it with transient XAP 233; ordinary re-entry grants the same reward again. Earlier unrelated AP proof remains valid.",
+          "nextAction": "Remove the Keep Codes program rewrite, replay the authored reward and re-entry from the retained baseline twice, and verify restored continuations plus neighboring encounter exits."
+        }
+      ]
     },
     {
       "id": "classic.scenario.present-message-media",

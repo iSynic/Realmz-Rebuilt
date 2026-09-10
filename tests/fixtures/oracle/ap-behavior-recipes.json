@@ -604,6 +604,147 @@
         {"command":"act","params":{"action":"move","arguments":{"dx":0,"dy":1}},"expect":{"interactionKind":null,"location":{"mapId":"land:1","x":9,"y":1}},"capture":true},
         {"command":"act","params":{"action":"move","arguments":{"dx":0,"dy":-1}},"expect":{"interactionKind":null,"location":{"mapId":"land:1","x":9,"y":0}},"capture":true}
       ]
+    },
+    {
+      "id": "prelude-decline-and-reenter",
+      "application": {
+        "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
+        "packageHash": "45298c295fc784b528f4219d6ceb0454cb482d894b66440e529d7763e7cb0036",
+        "archiveSha256": "e85ae0aca72fa6642ef66af8745ceb24446459598efcb1075cd8f5a4cce36012",
+        "starterCatalog": "src/storage/characters/realmz-classic-starter-characters.json"
+      },
+      "workflowIds": [
+        "classic.scenario.choose-response"
+      ],
+      "package": {
+        "campaignId": "scenario-prelude-to-pestilence",
+        "path": "src/storage/packages/bundled_campaigns/scenario-prelude-to-pestilence.realmz2",
+        "packageHash": "f89edcdde9a5db51f73a8a4f9fbb7f27d984bab875188547c1e5ac38276dfc8f",
+        "archiveSha256": "e60716fd00737755fe1006cb7056a1303125002c40378e6636e59d07e63c4f5a"
+      },
+      "baselineLocation": {
+        "mapId": "land:0",
+        "x": 59,
+        "y": 55
+      },
+      "target": {
+        "actionPoint": "Data DD:0:67",
+        "location": {
+          "mapId": "land:0",
+          "x": 60,
+          "y": 55
+        },
+        "choiceOpcode": 3
+      },
+      "proofModes": [
+        "live-route",
+        "ordinary-movement",
+        "actual-ui-control",
+        "typed-response"
+      ],
+      "expected": [
+        "East entry waits at positive message 537. Acknowledgement executes opcode 42, whose disposition zero continues for either chance outcome, then negative message 538 and the default Yes/No question.",
+        "Actual No selects opcode 3 mode zero: reverse only the entered land step, keep the AP and original program, and consume no response-time clock or RNG. No wealth, items or experience change.",
+        "Ordinary east re-entry waits at the same message and question. Five boundaries have minutes [15,15,15,30,30] and RNG draw counts [3,4,4,7,8]; both observed opcode-42 rolls fail. Repeat and repaired-build replay have identical complete semantic/RNG state."
+      ],
+      "sourceEvidence": [
+        "Castle newland.c:1530-1570: mode-zero negative response calls moveparty(-1) and returns before AP finalization",
+        "Castle newland.c opcode 42: Extra Code disposition zero does not transfer for either chance outcome"
+      ],
+      "remaining": [
+        "Affirmative reward and AP replacement belong to the separate Keep Codes repair recipe. Opcode 42 success is not observed by this seed; authored operand 228 is not executed."
+      ],
+      "otherEvidence": [
+        "jobs/52d4d062bfeab21f77b2e26eedaf4b7e/evidence.json: exact five-boundary repeat",
+        "jobs/796f5beed1e2d5ab6a3d0a40400706d1/evidence.json: repaired-build neighboring replay, all five complete semantic/RNG boundaries unchanged"
+      ],
+      "result": "passed",
+      "evidence": "jobs/a65279ed779718aef26a773e3127c63b/evidence.json",
+      "measuredReplayMs": 2720,
+      "steps": [
+        {
+          "command": "act",
+          "params": {
+            "action": "move",
+            "arguments": {
+              "dx": 1,
+              "dy": 0
+            }
+          },
+          "expect": {
+            "interactionKind": "acknowledge",
+            "location": {
+              "mapId": "land:0",
+              "x": 60,
+              "y": 55
+            }
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "yes_no"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "No"
+          },
+          "expect": {
+            "interactionKind": null,
+            "location": {
+              "mapId": "land:0",
+              "x": 59,
+              "y": 55
+            }
+          },
+          "capture": true
+        },
+        {
+          "command": "act",
+          "params": {
+            "action": "move",
+            "arguments": {
+              "dx": 1,
+              "dy": 0
+            }
+          },
+          "expect": {
+            "interactionKind": "acknowledge",
+            "location": {
+              "mapId": "land:0",
+              "x": 60,
+              "y": 55
+            }
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "yes_no"
+          },
+          "capture": true
+        }
+      ]
     }
   ],
   "siblingAndContinuationEvidence": [
@@ -641,7 +782,7 @@
       "family": "authored-caller-response-and-destination-variants",
       "candidateOnly": true,
       "campaignId": "scenario-prelude-to-pestilence",
-      "packageHash": "f89edcdde9a5db51f73a8f9fbb7f27d984bab875188547c1e5ac38276dfc8f",
+      "packageHash": "f89edcdde9a5db51f73a8a4f9fbb7f27d984bab875188547c1e5ac38276dfc8f",
       "actionPoint": "Data DD:0:67",
       "location": {"mapId":"land:0","x":60,"y":55},
       "expected": "Inspect and exercise Prelude AP 67's response/caller, reward and map continuation from a nearby starter baseline, then recompute AOGM and Bywater candidates for uncovered caller, response and destination-recheck outcomes. Only observed asserted execution earns coverage.",

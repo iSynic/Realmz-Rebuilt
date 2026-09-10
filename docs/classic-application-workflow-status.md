@@ -6,34 +6,34 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| classic | 69 | 0 | 0 | 55 | 14 |
+| classic | 69 | 0 | 1 | 55 | 13 |
 | host | 8 | 0 | 1 | 5 | 2 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
 
 ## Current parity-convergence batch
 
-**Encounter prompts, stock rule geometry and reward continuation** (`ap-stock-rules-and-rewards`)
+**Prelude response, reward and acquired-map continuation** (`ap-prelude-response-reward-map`)
 
-Close the reproduced Necronomicon zero-prompt failure and the shared stock Race geometry defect before expanding campaign variants. Providence now reads Castle's 408-byte records; all 30 native Race records and reciprocal Caste eligibility are verified. Stock creation and level-up pass source-backed public integration checks, and the retained ordinary Treasure route passes exact XP, deterministic replay and saved continuation. These restore functional acceptance, not campaign certification. Next select high-risk caller/response variants from Prelude, AOGM and Bywater; existing inventories remain the denominators.
+After closing the shared stock-rule failures, exercise Prelude to Pestilence AP 67 from an adjacent isolated starter checkpoint. Verify negative-response reversal and re-entry, affirmative transfer through XAP 233, treasure and acquired-map save/resume, and persistent AP replacement through ordinary entry. This adds a fifth scenario and distinct response/caller/outcome coverage with one reusable baseline and existing journey controls; package validity alone earns no gameplay credit. Broader AOGM and Bywater caller/destination candidates remain queued, and full campaign certification remains separate.
 
 AP batches use failure-first priorities: known failures, untested high-risk behavior, meaningful variants, and broader representatives. Verification mode records existing functional behavior without claiming full campaign certification; implementation, verification, and certification remain distinct modes.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.scenario.choose-response` | verification | known-failure | live-route |  |
-| `classic.startup.create-character` | verification | known-failure | runtime-integration |  |
-| `classic.rewards.experience-level-up` | verification | known-failure | runtime-integration |  |
+| `classic.scenario.choose-response` | verification | untested-high-risk | live-route |  |
 | `classic.rewards.treasure-distribution` | verification | known-failure | live-route |  |
+| `classic.maps.view-acquired` | verification | untested-high-risk | live-route |  |
+| `classic.scenario.trigger-action-point` | verification | known-failure | live-route | GAP-APKEEP-001 |
 
 ### Batch count delta
 
 | Scope | State | Baseline | Current | Delta |
 | --- | --- | ---: | ---: | ---: |
 | classic | missing | 0 | 0 | 0 |
-| classic | partial | 0 | 0 | 0 |
+| classic | partial | 0 | 1 | +1 |
 | classic | functional | 55 | 55 | 0 |
-| classic | certified | 14 | 14 | 0 |
+| classic | certified | 14 | 13 | -1 |
 | host | missing | 0 | 0 | 0 |
 | host | partial | 1 | 1 | 0 |
 | host | functional | 5 | 5 | 0 |
@@ -45,7 +45,7 @@ AP batches use failure-first priorities: known failures, untested high-risk beha
 | --- | ---: | ---: | ---: | ---: | ---: |
 | Startup and party | 8 | 0 | 0 | 7 | 1 |
 | Exploration | 6 | 0 | 0 | 4 | 2 |
-| Scenario interaction | 6 | 0 | 0 | 3 | 3 |
+| Scenario interaction | 6 | 0 | 1 | 3 | 2 |
 | Character management | 5 | 0 | 0 | 5 | 0 |
 | Inventory and equipment | 9 | 0 | 0 | 9 | 0 |
 | Spellcasting | 3 | 0 | 0 | 1 | 2 |
@@ -84,8 +84,8 @@ AP batches use failure-first priorities: known failures, untested high-risk beha
 | --- | ---: |
 | not-applicable | 3 |
 | absent | 0 |
-| partial | 0 |
-| complete | 66 |
+| partial | 1 |
+| complete | 65 |
 
 | persistence | Count |
 | --- | ---: |
@@ -143,9 +143,10 @@ AP batches use failure-first priorities: known failures, untested high-risk beha
 
 ## Release blockers and major gaps
 
-Blockers: **1**. Major gaps: **0**.
+Blockers: **1**. Major gaps: **1**.
 
 - **blocker** `host.release.platform-certification` - Windows and Linux have native release evidence, but macOS remains unexecuted on an Apple runner. Next: Run the current commit's macOS verify/export job on an actual Apple runner, launch the exported application, and retain its release manifest and clean native log.
+- **major** `classic.scenario.trigger-action-point` - Keep Codes overwrites an explicit AP replacement and repeats Prelude Treasure 32 on re-entry. Next: Remove the Keep Codes program rewrite, replay the authored reward and re-entry from the retained baseline twice, and verify restored continuations plus neighboring encounter exits.
 
 ## Oracle-required unknowns
 
@@ -164,6 +165,7 @@ Blockers: **1**. Major gaps: **0**.
 
 ### parity
 
+- `classic.scenario.trigger-action-point` - Keep Codes overwrites an explicit AP replacement and repeats Prelude Treasure 32 on re-entry.
 - `classic.character.view-sheet` - Several nonzero Classic ability slots lack verified display names.
 - `classic.maps.view-acquired` - Classic scrolling TEXT encoding and style resources remain only partially represented.
 - `classic.maps.view-acquired` - Malformed crop starts and authored picture rectangles lack boundary observations.
