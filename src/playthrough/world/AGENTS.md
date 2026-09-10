@@ -24,6 +24,7 @@ Own exploration transactions and the detached map read model that joins immutabl
 - Movement's time-owned random-rectangle checks settle before the land secret check and placed AP. Post-AP completion and destination rechecks never repeat those time-owned checks; suspended random encounters resume through the existing post-clock continuation.
 - A committed land opcode-101 backup ends immediate and resumed AP coordination before automatic removal or header relocation. The opcode already reversed the step; coordination neither moves again nor consumes additional time or RNG.
 - Search and time workflows never hide extra movement, time, RNG, or AP processing outside their documented continuation.
+- Every exploration timeclick uses the map's authored base scale: zero advances five minutes and nonzero advances one, including indoor land maps. Only absent scale metadata falls back to one minute for dungeons and five for land.
 - Continuation payloads preserve existing kinds, fields, versions, and strict save representation.
 - Map projection is read-only. Its caches are nonserialized, bounded, revision-keyed, and disposable across restore, replacement, or close.
 - The 2D and 3D presenters consume the same detached topology facts and never create their own collision, LOS, heading, discovery, or secret rules.
