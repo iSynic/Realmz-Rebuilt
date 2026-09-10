@@ -28,7 +28,7 @@
     "mutatedPlayerFiles": false
   },
   "replayInstructions": [
-    "Create one isolated fixture at the recipe's baselineLocation using recipe.package and recipe.application when supplied, otherwise their defaults; retain its checkpoint before input. Earlier library identities require their recorded build and do not certify a replacement library. Close superseded owned fixtures before replacement.",
+    "Create one isolated fixture using recipe.package and recipe.application when supplied, otherwise their defaults. When baselineCheckpoint exists, restore its exact validated artifact after checking fileSha256, or reconstruct every documented preparation effect; baselineLocation alone is insufficient. Otherwise use the shared named-starter baseline at baselineLocation. Retain the checkpoint before input. Earlier library identities require their recorded build and do not certify a replacement library. Close superseded owned fixtures before replacement.",
     "Pass {name: recipe.id, sessionId: the current observed fixture session ID, steps: recipe.steps} to journey-start. $pending is resolved by the existing journey runner.",
     "The Shop Done ID identifies the current ShopRouteControls/Content/ShopDone control; re-resolve that exact visible control from observe if a later UI build changes its ID. Do not select another Done behind the modal.",
     "Compare repeated runs only after restoring the same validated baseline outside the journey; never reseed or restore between its steps.",
@@ -37,6 +37,833 @@
     "After replays and owned-fixture shutdown, inspect that fixture's engine log. Correct semantic outcomes do not excuse presentation/runtime errors. Bitmap Encounter commands may expose a generic label; resolve their exact visible path/tooltip to the current control ID."
   ],
   "recipes": [
+    {
+      "id": "war-current-map-merchant-unpaid",
+      "application": {
+        "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
+        "packageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad",
+        "archiveSha256": "bf1ff5de1d6fc5bd1d5ffff8d582797dfab885acfd9b20b4e02ce9040421e150",
+        "starterCatalog": "src/storage/characters/realmz-classic-starter-characters.json"
+      },
+      "package": {
+        "campaignId": "scenario-war-in-the-sword-lands",
+        "path": "src/storage/packages/bundled_campaigns/scenario-war-in-the-sword-lands.realmz2",
+        "packageHash": "19234678a99a5c1cb05c83da702aebe2372b41877cf1e1637f31d29d16b39d9e",
+        "archiveSha256": "3a9b1f5769acbdb69bc2a19e9b1ce8a4d05a3104e98319ba9d8650aa3c2f84e5"
+      },
+      "baselineLocation": {
+        "mapId": "land:16",
+        "x": 7,
+        "y": 10
+      },
+      "baselineCheckpoint": {
+        "path": "fixtures/3bd6813d1ab585bd9394f5f12941d685/checkpoints/786df091-3aeb-4483-b561-9c686cb361cb.r2save",
+        "fileSha256": "b9479dc3e536bf00f6544461361f62c48ce6fefb5e24bb97f5e7bdb87e4bf650",
+        "preparation": "Six pinned starters and seed 17 begin at land:16 (8,10). Ordinary west entry plus fifteen narrative acknowledgements in job 410e3eab092227e964952bb5dc3ff122 resolve the regional story and reach this actual Yes/No choice; one minute elapsed and Naryl joined. Clone the exact choice save, not merely the coordinate."
+      },
+      "target": {
+        "actionPoint": "Data DD:16:81",
+        "location": {
+          "mapId": "land:16",
+          "x": 7,
+          "y": 10
+        },
+        "failureXap": 3682,
+        "successXap": 3683
+      },
+      "proofModes": [
+        "live-route",
+        "actual-ui-control",
+        "typed-interaction",
+        "restored-continuation"
+      ],
+      "workflowIds": [
+        "classic.scenario.choose-response",
+        "classic.system.save-game"
+      ],
+      "expected": [
+        "Actual YEA and Kevlar request five gems from a party with no carried or pooled gems. Opcode 33 publishes paid=false, leaves the complete party and RNG unchanged and enters non-GOSUB XAP 3682/message 4152.",
+        "Actual warning Continue must leave the covered refusal narrative pending. Its acknowledgement runs opcode 101 once, backs to (8,10) and grants no map.",
+        "Both complete four-input saved baselines/outcomes compare equal under rebuilt-save-v4; original failed-package evidence remains separate."
+      ],
+      "result": "passed",
+      "evidence": "jobs/f1332e665c0b4a17108e6acb7f7a57b3/evidence.json",
+      "otherEvidence": [
+        "jobs/40856259eca51db3560ac4349e1e9483/evidence.json: equivalent saved baseline and equal complete four-input repeat",
+        "jobs/410e3eab092227e964952bb5dc3ff122/evidence.json: ordinary sixteen-input entry/story prefix under this exact package and application"
+      ],
+      "remaining": [
+        "Not paired native Castle War execution or full campaign certification."
+      ],
+      "steps": [
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "YEA"
+          },
+          "expect": {
+            "interactionKind": "character_selection"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlId": "2bbd2c4e14ee484d4a84aad1"
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlId": "542e347e1880fe25abb1c75a"
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": null,
+            "location": {
+              "mapId": "land:16",
+              "x": 8,
+              "y": 10
+            }
+          },
+          "capture": true
+        }
+      ]
+    },
+    {
+      "id": "war-current-map-merchant-paid",
+      "application": {
+        "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
+        "packageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad",
+        "archiveSha256": "bf1ff5de1d6fc5bd1d5ffff8d582797dfab885acfd9b20b4e02ce9040421e150",
+        "starterCatalog": "src/storage/characters/realmz-classic-starter-characters.json"
+      },
+      "package": {
+        "campaignId": "scenario-war-in-the-sword-lands",
+        "path": "src/storage/packages/bundled_campaigns/scenario-war-in-the-sword-lands.realmz2",
+        "packageHash": "19234678a99a5c1cb05c83da702aebe2372b41877cf1e1637f31d29d16b39d9e",
+        "archiveSha256": "3a9b1f5769acbdb69bc2a19e9b1ce8a4d05a3104e98319ba9d8650aa3c2f84e5"
+      },
+      "baselineLocation": {
+        "mapId": "land:16",
+        "x": 8,
+        "y": 10
+      },
+      "baselineCheckpoint": {
+        "path": "fixtures/3bd6813d1ab585bd9394f5f12941d685/checkpoints/ba698fc3-62dc-4a9b-98cf-2be8c889df64.r2save",
+        "fileSha256": "7708f5d3b29b54f96b8bf5ec44552870b512cf0667c49a01f2a78450f0574e7e",
+        "preparation": "After the ordinary story/refusal, direct fixture-only XAP 2983 opens Treasure 81. Actual Share, Done and Leave it behind distribute five gems, 1000 gold and three jewelry, discard unclaimed item 908 and retain the unrelated dungeon:2 AP 38 replacement by XAP 1179. No save bytes are edited."
+      },
+      "target": {
+        "actionPoint": "Data DD:16:81",
+        "location": {
+          "mapId": "land:16",
+          "x": 7,
+          "y": 10
+        },
+        "failureXap": 3682,
+        "successXap": 3683
+      },
+      "proofModes": [
+        "live-route",
+        "ordinary-movement",
+        "actual-ui-control",
+        "typed-interaction",
+        "restored-continuation"
+      ],
+      "workflowIds": [
+        "classic.scenario.choose-response",
+        "classic.system.save-game"
+      ],
+      "expected": [
+        "Ordinary west movement, actual YEA/Kevlar and narrative acknowledgement pay exactly five distributed gems [1,1,1,1,1,0] -> zero and grant map 19 once through XAP 3683.",
+        "Every other character field remains unchanged except each payer's load decreases by one; the payment has no RNG. AP 81 stores disabled chance -1, backs to (8,10), and actual Continue dismisses the map notice.",
+        "Complete five-input restored baselines/outcomes compare equal under rebuilt-save-v4."
+      ],
+      "result": "passed",
+      "evidence": "jobs/bc3f6a6526a19bb2ed7d73ca42b4bcc0/evidence.json",
+      "otherEvidence": [
+        "jobs/de24702f8df98945a7c2b921a8aa5c32/evidence.json: equivalent saved baseline and equal complete five-input repeat",
+        "jobs/86d92a51eb4c1f1411dae20e0fd4f74b/evidence.json: explicit authored XAP 2983 treasure preparation"
+      ],
+      "remaining": [
+        "Preparation is not ordinary treasure acquisition; pooled-payment and other opcode-33 modes are not certified."
+      ],
+      "steps": [
+        {
+          "command": "act",
+          "params": {
+            "action": "move",
+            "arguments": {
+              "dx": -1,
+              "dy": 0
+            }
+          },
+          "expect": {
+            "interactionKind": "yes_no",
+            "location": {
+              "mapId": "land:16",
+              "x": 7,
+              "y": 10
+            }
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "YEA"
+          },
+          "expect": {
+            "interactionKind": "character_selection"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlId": "2bbd2c4e14ee484d4a84aad1"
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": null,
+            "location": {
+              "mapId": "land:16",
+              "x": 8,
+              "y": 10
+            }
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlId": "542e347e1880fe25abb1c75a"
+          },
+          "expect": {
+            "interactionKind": null,
+            "location": {
+              "mapId": "land:16",
+              "x": 8,
+              "y": 10
+            }
+          },
+          "capture": true
+        }
+      ]
+    },
+    {
+      "id": "war-current-map-merchant-decline",
+      "application": {
+        "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
+        "packageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad",
+        "archiveSha256": "bf1ff5de1d6fc5bd1d5ffff8d582797dfab885acfd9b20b4e02ce9040421e150",
+        "starterCatalog": "src/storage/characters/realmz-classic-starter-characters.json"
+      },
+      "package": {
+        "campaignId": "scenario-war-in-the-sword-lands",
+        "path": "src/storage/packages/bundled_campaigns/scenario-war-in-the-sword-lands.realmz2",
+        "packageHash": "19234678a99a5c1cb05c83da702aebe2372b41877cf1e1637f31d29d16b39d9e",
+        "archiveSha256": "3a9b1f5769acbdb69bc2a19e9b1ce8a4d05a3104e98319ba9d8650aa3c2f84e5"
+      },
+      "baselineLocation": {
+        "mapId": "land:16",
+        "x": 7,
+        "y": 10
+      },
+      "baselineCheckpoint": {
+        "path": "fixtures/3bd6813d1ab585bd9394f5f12941d685/checkpoints/786df091-3aeb-4483-b561-9c686cb361cb.r2save",
+        "fileSha256": "b9479dc3e536bf00f6544461361f62c48ce6fefb5e24bb97f5e7bdb87e4bf650",
+        "preparation": "Six pinned starters and seed 17 begin at land:16 (8,10). Ordinary west entry plus fifteen narrative acknowledgements in job 410e3eab092227e964952bb5dc3ff122 resolve the regional story and reach this actual Yes/No choice; one minute elapsed and Naryl joined. Clone the exact choice save, not merely the coordinate."
+      },
+      "target": {
+        "actionPoint": "Data DD:16:81",
+        "location": {
+          "mapId": "land:16",
+          "x": 7,
+          "y": 10
+        },
+        "failureXap": 3682,
+        "successXap": 3683
+      },
+      "proofModes": [
+        "live-route",
+        "actual-ui-control",
+        "restored-continuation"
+      ],
+      "workflowIds": [
+        "classic.scenario.choose-response"
+      ],
+      "expected": [
+        "Actual NAY backs to (8,10), leaves the complete party unchanged and executes no payment or reward. The choice consumes no RNG.",
+        "Both one-input saved baselines/outcomes compare equal under rebuilt-save-v4."
+      ],
+      "result": "passed",
+      "evidence": "jobs/780aa5e065832b11ae4c490df113cf4e/evidence.json",
+      "otherEvidence": [
+        "jobs/ca53e833901d66370961556d8ba47174/evidence.json: equivalent saved baseline and equal complete repeat"
+      ],
+      "remaining": [
+        "This is the AP 81 decline branch, not generic Encounter Back coverage."
+      ],
+      "steps": [
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlId": "021b4f4827fafdf7dcb74e34"
+          },
+          "expect": {
+            "interactionKind": null,
+            "location": {
+              "mapId": "land:16",
+              "x": 8,
+              "y": 10
+            }
+          },
+          "capture": true
+        }
+      ]
+    },
+    {
+      "id": "war-current-map-merchant-purchased-reentry",
+      "application": {
+        "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
+        "packageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad",
+        "archiveSha256": "bf1ff5de1d6fc5bd1d5ffff8d582797dfab885acfd9b20b4e02ce9040421e150",
+        "starterCatalog": "src/storage/characters/realmz-classic-starter-characters.json"
+      },
+      "package": {
+        "campaignId": "scenario-war-in-the-sword-lands",
+        "path": "src/storage/packages/bundled_campaigns/scenario-war-in-the-sword-lands.realmz2",
+        "packageHash": "19234678a99a5c1cb05c83da702aebe2372b41877cf1e1637f31d29d16b39d9e",
+        "archiveSha256": "3a9b1f5769acbdb69bc2a19e9b1ce8a4d05a3104e98319ba9d8650aa3c2f84e5"
+      },
+      "baselineLocation": {
+        "mapId": "land:16",
+        "x": 8,
+        "y": 10
+      },
+      "baselineCheckpoint": {
+        "path": "fixtures/3bd6813d1ab585bd9394f5f12941d685/checkpoints/67fdd748-c66a-4f8f-84a1-def9050eb214.r2save",
+        "fileSha256": "32bf8eb3f12ec1af59bc38ec270dae67385a352b7cf33cf24d83463a3956a6cf",
+        "preparation": "Validated completed five-gem purchase from the separate current merchant-paid recipe. Map 19 is acquired and AP 81 has disabled chance -1."
+      },
+      "target": {
+        "actionPoint": "Data DD:16:81",
+        "location": {
+          "mapId": "land:16",
+          "x": 7,
+          "y": 10
+        },
+        "failureXap": 3682,
+        "successXap": 3683
+      },
+      "proofModes": [
+        "live-route",
+        "ordinary-movement",
+        "restored-continuation"
+      ],
+      "workflowIds": [
+        "classic.scenario.trigger-action-point",
+        "classic.system.save-game"
+      ],
+      "expected": [
+        "Restore the completed purchase and move west. The party reaches (7,10) with no pending interaction; disabled AP 81 does not execute, debit wealth or grant another map.",
+        "Only ordinary movement, time and regional checks run; the complete characters remain unchanged."
+      ],
+      "result": "passed",
+      "evidence": "jobs/78f51f9724b8398608e599f1992401c0/evidence.json",
+      "otherEvidence": [],
+      "remaining": [
+        "This is one saved reentry, not general AP lifecycle certification."
+      ],
+      "steps": [
+        {
+          "command": "act",
+          "params": {
+            "action": "move",
+            "arguments": {
+              "dx": -1,
+              "dy": 0
+            }
+          },
+          "expect": {
+            "interactionKind": null,
+            "location": {
+              "mapId": "land:16",
+              "x": 7,
+              "y": 10
+            }
+          },
+          "capture": true
+        }
+      ]
+    },
+    {
+      "id": "war-corrected-rhum-ap60-quest-set",
+      "application": {
+        "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
+        "packageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad",
+        "archiveSha256": "bf1ff5de1d6fc5bd1d5ffff8d582797dfab885acfd9b20b4e02ce9040421e150",
+        "starterCatalog": "src/storage/characters/realmz-classic-starter-characters.json"
+      },
+      "package": {
+        "campaignId": "scenario-war-in-the-sword-lands",
+        "path": "src/storage/packages/bundled_campaigns/scenario-war-in-the-sword-lands.realmz2",
+        "packageHash": "19234678a99a5c1cb05c83da702aebe2372b41877cf1e1637f31d29d16b39d9e",
+        "archiveSha256": "3a9b1f5769acbdb69bc2a19e9b1ce8a4d05a3104e98319ba9d8650aa3c2f84e5"
+      },
+      "baselineLocation": {
+        "mapId": "land:16",
+        "x": 84,
+        "y": 4
+      },
+      "baselineCheckpoint": {
+        "path": "fixtures/00d554f77487988cc1d3576676733623/checkpoints/9d27b66c-1942-431e-9f7a-53a1b02513e0.r2save",
+        "fileSha256": "093f1b293e95f2a954f382e6b8b06f0d244cdd92632ee92869541893699bb2fb",
+        "preparation": "Clone the current AP 60 starter adjacency. Fixture-only XAP 485 sets quest 29, replaces unrelated land:1 AP 30/31 with XAP 488 and subtracts 10000 from each stored experience field. Absent-ally checks complete without RNG. Preserve these setup effects."
+      },
+      "target": {
+        "actionPoint": "Data DD:16:60",
+        "location": {
+          "mapId": "land:16",
+          "x": 83,
+          "y": 4
+        },
+        "simpleEncounterId": 123
+      },
+      "proofModes": [
+        "live-route",
+        "ordinary-movement",
+        "actual-ui-control",
+        "typed-interaction",
+        "restored-continuation"
+      ],
+      "workflowIds": [
+        "classic.scenario.choose-response",
+        "classic.scenario.trigger-action-point",
+        "classic.system.save-game"
+      ],
+      "expected": [
+        "Ordinary AP 60 entry and actual drink choices charge 180 carried gold, replace the AP, teleport to (76,9) and acknowledge message 670. Corrected signed -46 with quest 29 set calls XAP 782/message 676.",
+        "With ally 248 absent, acknowledgement executes opcode 111 and returns to XAP 3367's Keep with no frames or pending interaction. All four RNG draws occur at entry; final state is 1711656657.",
+        "Both complete nine-input saved baselines/outcomes compare equal under rebuilt-save-v4. The exact nested save formerly rejected after teleport now restores and returns; its final save is byte-identical to uninterrupted completion."
+      ],
+      "result": "passed",
+      "evidence": "jobs/b94b3181eff00a4d1c43c549d7980e6f/evidence.json",
+      "otherEvidence": [
+        "jobs/58643d05da4c021fa78851929e16929d/evidence.json: equivalent saved baseline and equal complete nine-input repeat",
+        "jobs/3f3a2f501a22af4cf0c13e6bbc2e056b/evidence.json and jobs/e286f1f2ef25225b409dc280e7aaf884/evidence.json: equal saved nested GOSUB returns; completed file SHA256 e6064200eb6a58e7ffb6c9b1200f3ac55b9e6602f9e1871fba7124129a1b3282 matches uninterrupted completion",
+        "war-payment-branch/current-package-closeout.md: exact rejected snapshot, repair, fail-before/pass-after synthetic proof and explicit setup side effects"
+      ],
+      "remaining": [
+        "No ordinary quest-acquisition, present-ally, paired Castle War or full campaign certification claim."
+      ],
+      "steps": [
+        {
+          "command": "act",
+          "params": {
+            "action": "move",
+            "arguments": {
+              "dx": -1,
+              "dy": 0
+            }
+          },
+          "expect": {
+            "interactionKind": "acknowledge",
+            "location": {
+              "mapId": "land:16",
+              "x": 83,
+              "y": 4
+            }
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "encounter_choice"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "2 · \"Drinks, please.\""
+          },
+          "expect": {
+            "interactionKind": "encounter_choice"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "4 · More choices."
+          },
+          "expect": {
+            "interactionKind": "encounter_choice"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "2 · Wailsrond Rhum (30 gp per goblet)"
+          },
+          "expect": {
+            "interactionKind": "character_selection"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlId": "2bbd2c4e14ee484d4a84aad1"
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": null,
+            "location": {
+              "mapId": "land:16",
+              "x": 76,
+              "y": 9
+            }
+          },
+          "capture": true
+        }
+      ]
+    },
+    {
+      "id": "war-corrected-simple52-refusal",
+      "application": {
+        "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
+        "packageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad",
+        "archiveSha256": "bf1ff5de1d6fc5bd1d5ffff8d582797dfab885acfd9b20b4e02ce9040421e150",
+        "starterCatalog": "src/storage/characters/realmz-classic-starter-characters.json"
+      },
+      "package": {
+        "campaignId": "scenario-war-in-the-sword-lands",
+        "path": "src/storage/packages/bundled_campaigns/scenario-war-in-the-sword-lands.realmz2",
+        "packageHash": "19234678a99a5c1cb05c83da702aebe2372b41877cf1e1637f31d29d16b39d9e",
+        "archiveSha256": "3a9b1f5769acbdb69bc2a19e9b1ce8a4d05a3104e98319ba9d8650aa3c2f84e5"
+      },
+      "baselineLocation": {
+        "mapId": "land:0",
+        "x": 62,
+        "y": 58
+      },
+      "target": {
+        "extraActionPoint": 1221,
+        "simpleEncounterId": 52,
+        "resultIndex": 1,
+        "failureXap": 1224
+      },
+      "proofModes": [
+        "direct-invocation",
+        "actual-ui-control",
+        "typed-interaction"
+      ],
+      "workflowIds": [
+        "classic.scenario.choose-response"
+      ],
+      "expected": [
+        "Direct isolated XAP 1221 opens Simple 52. Actual second map choice, message 1291 acknowledgement and Kevlar selection reach corrected settings 1854 [-500,0,0,1224,0].",
+        "The unpaid 500-gem request preserves all character fields and RNG, enters non-GOSUB XAP 1224/message 1292, grants no map and never executes the old result's map-9 or reopen instructions.",
+        "Warning Continue leaves narrative pending; acknowledgement replaces land:0 AP 6 by XAP 1223 and shifts X +1 to (63,58). Complete six-input baseline replays compare equal under rebuilt-save-v4."
+      ],
+      "result": "passed",
+      "evidence": "jobs/c1df1cb1a4b80b4292229f3816a60e26/evidence.json",
+      "otherEvidence": [
+        "jobs/218588a71d2f62dea63eb93396fefdc3/evidence.json: equivalent baseline and equal complete six-input repeat",
+        "jobs/b69f24572ad5b579847b08f41b9e51db/evidence.json: retained failed expectation transposed X displacement into Y; not an engine failure"
+      ],
+      "remaining": [
+        "Direct invocation does not prove AP 6 hour/quest eligibility. Mid-preview snapshots remain explicitly unavailable; only the pre-invocation baseline is restored."
+      ],
+      "steps": [
+        {
+          "command": "invoke",
+          "params": {
+            "target": {
+              "kind": "extra-action-point-program",
+              "id": 1221
+            }
+          },
+          "expect": {
+            "interactionKind": "encounter_choice",
+            "location": {
+              "mapId": "land:0",
+              "x": 62,
+              "y": 58
+            }
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlId": "fb8c5b2f95a5fd4a2fe971d2"
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "character_selection"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlId": "2bbd2c4e14ee484d4a84aad1"
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlId": "542e347e1880fe25abb1c75a"
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": null,
+            "location": {
+              "mapId": "land:0",
+              "x": 63,
+              "y": 58
+            }
+          },
+          "capture": true
+        }
+      ]
+    },
+    {
+      "id": "war-corrected-dart-trap-ap88",
+      "application": {
+        "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
+        "packageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad",
+        "archiveSha256": "bf1ff5de1d6fc5bd1d5ffff8d582797dfab885acfd9b20b4e02ce9040421e150",
+        "starterCatalog": "src/storage/characters/realmz-classic-starter-characters.json"
+      },
+      "package": {
+        "campaignId": "scenario-war-in-the-sword-lands",
+        "path": "src/storage/packages/bundled_campaigns/scenario-war-in-the-sword-lands.realmz2",
+        "packageHash": "19234678a99a5c1cb05c83da702aebe2372b41877cf1e1637f31d29d16b39d9e",
+        "archiveSha256": "3a9b1f5769acbdb69bc2a19e9b1ce8a4d05a3104e98319ba9d8650aa3c2f84e5"
+      },
+      "baselineLocation": {
+        "mapId": "land:10",
+        "x": 13,
+        "y": 34
+      },
+      "target": {
+        "actionPoint": "Data DD:10:88",
+        "location": {
+          "mapId": "land:10",
+          "x": 13,
+          "y": 35
+        },
+        "spellId": "classic.spell.1108"
+      },
+      "proofModes": [
+        "live-route",
+        "ordinary-movement",
+        "typed-interaction",
+        "restored-continuation"
+      ],
+      "workflowIds": [
+        "classic.scenario.trigger-action-point",
+        "classic.system.save-game"
+      ],
+      "expected": [
+        "Ordinary south entry with ally 7 absent and party condition 5 inactive reaches message 3381. Acknowledgement executes corrected opcode 18 settings 6095 [1108,5,-75,0,0] and applies Magic Darts at power 5 to all six characters.",
+        "Health [30,16,25,21,10,12] becomes [28,11,21,18,9,10]. Six exact spell events and effect/sound requests precede rearming message 3382; acknowledgement reaches Keep without disabling the AP.",
+        "Complete three-input restored baselines/outcomes compare equal under rebuilt-save-v4, with 14 draws, RNG state 1262131714 and ten elapsed minutes. Restoring after damage then acknowledging only runs Keep; it does not repeat damage or RNG."
+      ],
+      "result": "passed",
+      "evidence": "jobs/b3b2b5db7c33c363fd6e3ec257d27fe9/evidence.json",
+      "otherEvidence": [
+        "jobs/c5ba1d0c162e1f2b84a8a0b37fa16cd4/evidence.json: equivalent saved baseline and equal complete three-input repeat",
+        "jobs/ec69f074ffb555ea89cb8bc1973c6c82/evidence.json: saved post-damage acknowledgement produces only Keep with unchanged health and RNG"
+      ],
+      "remaining": [
+        "Ally-present, active protective party-condition and actual second trap activation are not covered here. This is the approved corrected reference, not native stale-spell emulation or full campaign certification."
+      ],
+      "steps": [
+        {
+          "command": "act",
+          "params": {
+            "action": "move",
+            "arguments": {
+              "dx": 0,
+              "dy": 1
+            }
+          },
+          "expect": {
+            "interactionKind": "acknowledge",
+            "location": {
+              "mapId": "land:10",
+              "x": 13,
+              "y": 35
+            }
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": null,
+            "location": {
+              "mapId": "land:10",
+              "x": 13,
+              "y": 35
+            }
+          },
+          "capture": true
+        }
+      ]
+    },
     {
       "id": "war-inn-rhum-purse-exhaustion-quest-clear",
       "application": {
@@ -566,7 +1393,7 @@
         "jobs/b40a587b6f87513d2f8159e681343262/evidence.json: complete repeated baseline replay; initialEquivalenceVerified=true and equal=true"
       ],
       "remaining": [
-        "This proves only the owner-approved correction's quest-clear ordinary caller. Quest-set GOSUB 782 and return, native Castle pairing, other corrections and aggregate package integration remain open; compilation and repeated Rebuilt outcomes do not prove original author intent."
+        "This recipe proves only the owner-approved correction's quest-clear ordinary caller. The separate current-package quest-set recipe proves AP 60's GOSUB 782 and saved return; other corrections have their own recipes. No native Castle pairing or original-author-intent claim follows."
       ],
       "steps": [
         {
@@ -730,7 +1557,7 @@
         "jobs/71bd15916a78a61f50d9fd643ee7bdda/evidence.json: complete repeated baseline replay; initialEquivalenceVerified=true and equal=true"
       ],
       "remaining": [
-        "This proves only the owner-approved correction's quest-clear ordinary caller. Quest-set GOSUB 782 and return, native Castle pairing, other corrections and aggregate package integration remain open; compilation and repeated Rebuilt outcomes do not prove original author intent."
+        "This recipe proves only the owner-approved correction's quest-clear ordinary caller. The separate current-package quest-set recipe proves AP 60's GOSUB 782 and saved return; other corrections have their own recipes. No native Castle pairing or original-author-intent claim follows."
       ],
       "steps": [
         {
@@ -915,7 +1742,7 @@
       ],
       "remaining": [
         "Original build 93c5d753 / dirty 39b29aed reaches success message 4153 despite paid=false and unchanged party state. This proves the wrong branch, not a completed map grant.",
-        "The owner approved four source-reference corrections. Providence 9709bfeb preserves all 51 formerly omitted dormant placed APs; 2184fb5d fixes marked-entry costs independently of rendered artwork and bounds undefined mapstats index 402 (FD-LAND-001). Rebuilt honors authored indoor land scale. Alternate sets and bestiary roots are now corrected under a5240a9/6617202, and all scenario raster/audio resources match native decoding. The missing shared battle atlas, deterministic final regeneration and integration gates remain open. Earlier candidate decline/purchase evidence retains its actual package and timing identity; none of these candidates is bundled.",
+        "Historical candidate evidence retains its actual package and timing identity. The replacement application 82b8718f and War 19234678 are now integrated with complete shared artwork and provenance; separate war-current-map-merchant-* recipes verify the original failure and purchase outcomes under those identities. The approved authored corrections have separate corrected-package recipes. None upgrades this original failed recipe to passed.",
         "Candidate gameplay proof does not certify the original package above or complete package integration. The earlier occluded clicks remain rejected inputs. Job a4c6ed3 used the wrong string none instead of JSON null in its expectation; its accepted acknowledgement completed but the job correctly failed that assertion. Later restored continuation jobs use null and pass. Native Castle currently supports only the bounded Griloch fixture, not a paired War payment/save comparison.",
         "Other opcode-33 encounter-result, slot-seven, Keep Codes, pooled-payment and cancellation variants remain unverified. Candidate decline, distributed-gem success and saved post-purchase reentry are verified separately above. Preparation job 46dd7c56 rejected an unavailable mid-debug-treasure snapshot before any input; 420587ce and 27e7f199 failed incorrect recipe expectations, not engine outcomes; efe19413 was cancelled without input while a prior map notification blocked movement. Earlier Food evidence retains its actual package/build identity. Full campaign certification remains separate."
       ],
@@ -1227,7 +2054,7 @@
         "jobs/8207136b6ba8ba43e56ae55ebc54e254/evidence.json: retained control_occluded refusal before payer input because the pre-fix presentation warning survived gameplay restore; not a completed replay"
       ],
       "remaining": [
-        "Pooled-payment equality/partial-pool edges, Drinks and Food-and-Drinks outcomes, and full campaign certification remain open. Scenario/library integration and its aggregate acceptance are separate from this bounded route proof."
+        "Pooled-payment equality/partial-pool edges and full campaign certification remain open. Drinks and Food-and-Drinks outcomes have separate current-library recipes; this recipe does not itself prove those variants or scenario/library integration."
       ],
       "steps": [
         {
@@ -5555,16 +6382,14 @@
   ],
   "nextSelection": [
     {
-      "priority": "known-failure",
-      "family": "integrated-payment-correction-acceptance",
+      "priority": "untested-high-risk",
+      "family": "remaining-bundled-scenario-representatives",
       "candidateOnly": true,
-      "campaignId": "scenario-war-in-the-sword-lands",
-      "packageHash": "19234678a99a5c1cb05c83da702aebe2372b41877cf1e1637f31d29d16b39d9e",
-      "archiveSha256": "3a9b1f5769acbdb69bc2a19e9b1ce8a4d05a3104e98319ba9d8650aa3c2f84e5",
-      "actionPoint": "Data DD:16:81",
-      "location": {"mapId":"land:16","x":7,"y":10},
-      "expected": "Close out the original merchant failure under the integrated package and application 82b8718f, retaining prepared adjacency and ordinary movement/control proof separately. Reuse the existing refusal and purchase recipes, then finish only the already-approved authored-correction acceptance: Simple 52's refusal, the corrected Rhum quest-set call/return and Land 10 AP 88's spell. Do not add routine drink-price variants or tooling unless an immediate blocker requires it.",
-      "remaining": "Evidence spans eleven bundled scenarios under explicitly recorded package/library identities; it is not corpus certification. Nine current-library inn variants now cover refusal, payment, Back, purse exhaustion, menu cycling and quest-clear/absent-ally outcomes. Pooled-payment edges, other caller outcomes, the two remaining scenario representatives and full AOGM/War certification stay explicit. Integration and the detached aggregate gate are complete; native CPU/dungeon performance, complete combat replay and broader ordinary-play acceptance remain separate."
+      "campaignId": "scenario-wrath-of-the-mind-lords",
+      "packageHash": "1328d8a443d979b38ba2c5ecdeea9342a03153fed0c079d761df8ee53c53a894",
+      "archiveSha256": "a032141f8d22fe2aa81cd416b8cf9a6509e3ae7d01d5640fdfb8a7d67041187b",
+      "expected": "At the next batch, inspect Wrath's authored caller contexts and select a bounded high-risk representative, alongside an AOGM representative absent from this recipe collection. Existing AOGM evidence remains in the authoritative inventory. No specific AP has yet been selected or executed; reported failures still take priority.",
+      "remaining": "Recipes represent eleven bundled scenarios under their recorded package/library identities, not corpus certification. Current-package merchant outcomes and approved Simple 52, Rhum and dart-trap corrections are accepted separately. Pooled-payment edges, present-ally outcomes and other caller contexts remain untested. Native CPU/dungeon performance, complete combat replay and full AOGM/War certification remain separate."
     }
   ]
 }

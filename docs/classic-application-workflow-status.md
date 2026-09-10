@@ -6,7 +6,7 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| classic | 69 | 0 | 2 | 55 | 12 |
+| classic | 69 | 0 | 0 | 55 | 14 |
 | host | 8 | 0 | 1 | 5 | 2 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
@@ -15,13 +15,13 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 **War payment outcomes, saved choices and caller lifecycle** (`ap-war-payment-and-result-continuations`)
 
-Payment branching is committed in 8466bc10; complete application artwork, corrected War, twelve byte-preserving scenario migrations and acceptance metadata are integrated in 8ba38c5f. The detached integration copy passes all of tools/verify.ps1, including 4210 assertions, exact bundle/provenance checks and export contracts, with only the live editor's unrelated uncommitted autoload settings excluded. Clean Castle, Remake and Providence reference checks pass separately. Nine current-library inn outcomes and earlier merchant/dormant-AP evidence retain their exact package identities in ap-behavior-recipes.json. Stop routine variant expansion and finish only outstanding correction acceptance before claiming the payment gap closed. Native CPU/dungeon performance, complete combat replay and full campaign certification remain separate open boundaries; they do not turn preserved artwork back into a compiler defect.
+Payment-result branching, complete shared artwork, corrected War and twelve byte-preserving scenario migrations are integrated. Seven current-package acceptance recipes now prove merchant refusal, purchase, decline and saved reentry, corrected Simple 52 refusal, Rhum quest-set GOSUB/return and the Magic Darts trap. The Rhum nested post-teleport save exposed a separate restore-admission defect; its narrow repair passes fail-before/pass-after public exploration proof and restores the original rejected save to byte-identical uninterrupted completion. The renewed detached aggregate passes all 4212 assertions plus package/provenance, export, architecture and inventory gates with only the live editor's unrelated project autoload changes excluded. Clean pinned reference checks and Providence formatting, warnings-denied clippy and full workspace tests pass separately. GAP-PAY-001/002 are retired; historical failed-package evidence remains unchanged. This closes the bounded payment/correction batch, not pooled-payment variants, present-ally outcomes, native CPU/dungeon performance, complete combat replay or full campaign certification. Next broaden the remaining Wrath/AOGM recipe representatives after selecting high-risk caller contexts; reported failures still take priority.
 
 AP batches use failure-first priorities: known failures, untested high-risk behavior, meaningful variants, and broader representatives. Verification mode records existing functional behavior without claiming full campaign certification; implementation, verification, and certification remain distinct modes.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.scenario.choose-response` | implementation | known-failure | - | GAP-PAY-001 |
+| `classic.scenario.choose-response` | verification | known-failure | live-route |  |
 | `classic.system.save-game` | verification | meaningful-variant | live-route |  |
 | `classic.scenario.trigger-action-point` | verification | known-failure | runtime-integration |  |
 
@@ -30,9 +30,9 @@ AP batches use failure-first priorities: known failures, untested high-risk beha
 | Scope | State | Baseline | Current | Delta |
 | --- | --- | ---: | ---: | ---: |
 | classic | missing | 0 | 0 | 0 |
-| classic | partial | 0 | 2 | +2 |
+| classic | partial | 0 | 0 | 0 |
 | classic | functional | 55 | 55 | 0 |
-| classic | certified | 14 | 12 | -2 |
+| classic | certified | 14 | 14 | 0 |
 | host | missing | 0 | 0 | 0 |
 | host | partial | 1 | 1 | 0 |
 | host | functional | 5 | 5 | 0 |
@@ -44,7 +44,7 @@ AP batches use failure-first priorities: known failures, untested high-risk beha
 | --- | ---: | ---: | ---: | ---: | ---: |
 | Startup and party | 8 | 0 | 0 | 7 | 1 |
 | Exploration | 6 | 0 | 0 | 4 | 2 |
-| Scenario interaction | 6 | 0 | 2 | 3 | 1 |
+| Scenario interaction | 6 | 0 | 0 | 3 | 3 |
 | Character management | 5 | 0 | 0 | 5 | 0 |
 | Inventory and equipment | 9 | 0 | 0 | 9 | 0 |
 | Spellcasting | 3 | 0 | 0 | 1 | 2 |
@@ -76,15 +76,15 @@ AP batches use failure-first priorities: known failures, untested high-risk beha
 | --- | ---: |
 | not-required | 19 |
 | missing | 0 |
-| partial | 2 |
-| complete | 48 |
+| partial | 0 |
+| complete | 50 |
 
 | simulation | Count |
 | --- | ---: |
 | not-applicable | 3 |
 | absent | 0 |
-| partial | 2 |
-| complete | 64 |
+| partial | 0 |
+| complete | 66 |
 
 | persistence | Count |
 | --- | ---: |
@@ -142,10 +142,8 @@ AP batches use failure-first priorities: known failures, untested high-risk beha
 
 ## Release blockers and major gaps
 
-Blockers: **3**. Major gaps: **0**.
+Blockers: **1**. Major gaps: **0**.
 
-- **blocker** `classic.scenario.choose-response` - Opcode-33 payment-result branching and packages are integrated; final current-package merchant and authored-correction acceptance remains open. Next: Complete current-package replay of the original merchant failure and the approved authored corrections. Keep pooled-payment boundaries and corrected quest-set GOSUB/return explicit; do not close the gap from additional prices or repeated clear-quest outcomes alone. Integration and the detached aggregate gate now pass.
-- **blocker** `classic.scenario.trigger-action-point` - The compiler/resource repair is integrated; final current-package AP acceptance is still being closed out. Next: Finish the bounded acceptance of the already-integrated authored corrections, then retire this gap. Do not expand routine inn cases or require general native-adapter capability completion; native performance and full campaign certification remain separate.
 - **blocker** `host.release.platform-certification` - Windows and Linux have native release evidence, but macOS remains unexecuted on an Apple runner. Next: Run the current commit's macOS verify/export job on an actual Apple runner, launch the exported application, and retain its release manifest and clean native log.
 
 ## Oracle-required unknowns
@@ -165,8 +163,6 @@ Blockers: **3**. Major gaps: **0**.
 
 ### parity
 
-- `classic.scenario.choose-response` - Opcode-33 payment-result branching and packages are integrated; final current-package merchant and authored-correction acceptance remains open.
-- `classic.scenario.trigger-action-point` - The compiler/resource repair is integrated; final current-package AP acceptance is still being closed out.
 - `classic.character.view-sheet` - Several nonzero Classic ability slots lack verified display names.
 - `classic.maps.view-acquired` - Classic scrolling TEXT encoding and style resources remain only partially represented.
 - `classic.maps.view-acquired` - Malformed crop starts and authored picture rectangles lack boundary observations.

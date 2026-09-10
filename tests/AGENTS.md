@@ -15,6 +15,7 @@ Own deterministic automated proofs, synthetic fixtures, oracle provenance, route
 ## Local Contracts
 
 - Label evidence as `source-control-flow`, `castle-runtime`, `runtime-unit`, `runtime-integration`, or `live-route`. Source reading is not runtime proof, and parser round trips are not independent layout proof.
+- An AP recipe's optional `baselineCheckpoint` overrides the fresh named-starter preparation: retain its evidence-root-relative path, SHA256 and complete preparation effects. Pending interactions, quest changes and wealth cannot be reconstructed from coordinates alone; keep checkpoint payloads private.
 - Castle fixtures use pinned commit `491816ad60037394f92c428e99c004494d3c28b3` and synthetic data. Never commit extracted commercial campaign payloads, user saves, generated Castle installations, or local screenshots.
 - Provenance-checked application media from the openly licensed Castle repository may enter fixtures only under the presentation-asset contract with exact source commit, ownership, license, modifications, and byte hashes.
 - Stock music tests consume only the committed provenance manifest and generated Ogg bank. They may prove integrity, context precedence, preference migration, and presentation behavior, but they do not upgrade later Castle restoration code into a pinned-runtime oracle or treat local gallery playback as ordinary campaign evidence.

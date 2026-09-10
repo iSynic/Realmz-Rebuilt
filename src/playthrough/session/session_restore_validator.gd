@@ -451,7 +451,10 @@ static func _valid_post_move_continuation(content: RealmzContent, state: GameSta
 		return false
 	var map := content.world.map_by_id(exploration.map_id)
 	var cell: MapCell = null if map == null else map.topology.cell_at(exploration.coordinate)
-	if cell == null or state.party.map_id != map.id or state.party.coordinate != exploration.coordinate or exploration.trigger_ids != ExplorationContinuationWorkflow.selected_placed_trigger_ids(content, cell, state.world) or exploration.random_region_ids != state.world.triggers.random_region_ids_at(map, exploration.coordinate):
+	if cell == null or exploration.trigger_ids != ExplorationContinuationWorkflow.selected_placed_trigger_ids(content, cell, state.world) or exploration.random_region_ids != state.world.triggers.random_region_ids_at(map, exploration.coordinate):
+		return false
+	# An active AP retains its issuing cell after its program moves the party.
+	if exploration.active_trigger_id.is_empty() and (state.party.map_id != map.id or state.party.coordinate != exploration.coordinate):
 		return false
 	if exploration.random_region_index < -1 or exploration.random_region_index >= exploration.random_region_ids.size():
 		return false

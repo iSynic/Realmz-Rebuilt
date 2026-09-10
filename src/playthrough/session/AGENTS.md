@@ -24,6 +24,7 @@ Own the public, deterministic, all-or-nothing transaction boundary around one ac
 - Every operation receives the one owned context by reference. Coordinators never copy or mirror session state.
 - Rejected input is distinct from committed failure; only `GameSession` advances revision or constructs `SessionStep`.
 - Restore validation and transaction rollback leave the live aggregate untouched on every failure.
+- A pending placed AP keeps its post-move continuation anchored to the issuing cell even after its program moves the party. Restore validates that source's selected trigger and region identities independently from the already-validated current party location; post-move continuations without an active AP still require source/current equality.
 - Continuation kinds, fields, versions, RNG order, event order, save shape, and stable identities remain unchanged.
 - Detached projections are read-only, cached only by committed revision, and disposable across replacement or close.
 
