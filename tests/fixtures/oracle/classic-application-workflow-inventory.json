@@ -40,14 +40,16 @@
         "certified": 2
       }
     },
-    "selectionRationale": "War adds an eleventh scenario through AP 33 / Simple 36: random greeting, actual character selection, source-backed shared-party payment and non-GOSUB result transfer. Preserve the successful Food route and its saved boundaries; prioritize the suspected shared opcode-33 payment-result branch omission using an authored gem fee the starters cannot pay, then verify corrected caller and saved-continuation outcomes. Keep authored prompts distinct from Castle's actual wealth rule, compiler preservation distinct from execution, and full campaign certification separate. Existing fixtures and journeys suffice.",
+    "selectionRationale": "Payment branching is committed in 8466bc10; complete application artwork, corrected War, twelve byte-preserving scenario migrations and acceptance metadata are integrated in 8ba38c5f. The detached integration copy passes all of tools/verify.ps1, including 4210 assertions, exact bundle/provenance checks and export contracts, with only the live editor's unrelated uncommitted autoload settings excluded. Clean Castle, Remake and Providence reference checks pass separately. Nine current-library inn outcomes and earlier merchant/dormant-AP evidence retain their exact package identities in ap-behavior-recipes.json. Stop routine variant expansion and finish only outstanding correction acceptance before claiming the payment gap closed. Native CPU/dungeon performance, complete combat replay and full campaign certification remain separate open boundaries; they do not turn preserved artwork back into a compiler defect.",
     "targets": [
       {
         "workflowId": "classic.scenario.choose-response",
-        "mode": "verification",
-        "priority": "meaningful-variant",
-        "expectedEvidence": "live-route",
-        "gapIds": [],
+        "mode": "implementation",
+        "priority": "known-failure",
+        "expectedEvidence": "",
+        "gapIds": [
+          "GAP-PAY-001"
+        ],
         "archaeologyTriggers": []
       },
       {
@@ -61,8 +63,8 @@
       {
         "workflowId": "classic.scenario.trigger-action-point",
         "mode": "verification",
-        "priority": "meaningful-variant",
-        "expectedEvidence": "live-route",
+        "priority": "known-failure",
+        "expectedEvidence": "runtime-integration",
         "gapIds": [],
         "archaeologyTriggers": []
       }
@@ -3649,7 +3651,7 @@
         "tests": []
       },
       "providence": {
-        "status": "complete",
+        "status": "partial",
         "sources": [
           {
             "path": "src-tauri/src/realmz2_exporter.rs",
@@ -3658,7 +3660,7 @@
         ]
       },
       "simulation": {
-        "status": "complete",
+        "status": "partial",
         "owners": [
           {
             "path": "src/scenarios/vm/scenario_vm.gd",
@@ -3713,7 +3715,17 @@
         "war": "not-observed",
         "classic": "observed"
       },
-      "gaps": []
+      "gaps": [
+        {
+          "id": "GAP-PAY-002",
+          "category": "compiler",
+          "severity": "blocker",
+          "queue": "parity",
+          "summary": "The compiler/resource repair is integrated; final current-package AP acceptance is still being closed out.",
+          "evidence": "Commit 8ba38c5f integrates current War 19234678 / application 82b8718f and the twelve byte-preserving scenario migrations, with pinned source/compiler/correction metadata. All of tools/verify.ps1 passes in a hash-matched detached copy, including 4210 assertions, alignment, thirteen ownership checks, export contracts and inventories. Only the unrelated live editor's uncommitted project autoloads are excluded. Earlier three-set Naryl, 246-entry Bestiary, dormant activation, rendered Battle 335 and exact Bywater marker evidence retain their recorded identities. Package preservation and integration are no longer missing. Complete current-package acceptance of the approved authored corrections is not inferred from source or a green aggregate.",
+          "nextAction": "Finish the bounded acceptance of the already-integrated authored corrections, then retire this gap. Do not expand routine inn cases or require general native-adapter capability completion; native performance and full campaign certification remain separate."
+        }
+      ]
     },
     {
       "id": "classic.scenario.present-message-media",
@@ -3880,7 +3892,7 @@
         "tests": []
       },
       "providence": {
-        "status": "complete",
+        "status": "partial",
         "sources": [
           {
             "path": "src-tauri/src/realmz2_exporter.rs",
@@ -3889,7 +3901,7 @@
         ]
       },
       "simulation": {
-        "status": "complete",
+        "status": "partial",
         "owners": [
           {
             "path": "src/scenarios/vm/scenario_vm.gd",
@@ -3948,7 +3960,17 @@
         "war": "not-observed",
         "classic": "observed"
       },
-      "gaps": []
+      "gaps": [
+        {
+          "id": "GAP-PAY-001",
+          "category": "simulation",
+          "severity": "blocker",
+          "queue": "parity",
+          "summary": "Opcode-33 payment-result branching and packages are integrated; final current-package merchant and authored-correction acceptance remains open.",
+          "evidence": "The original failed recipe remains pinned. Candidate 547297da passes repeated ordinary unpaid refusal and restored acknowledgement, actual NAY c2753d1d/11b79f57, five-distributed-gem purchase f3fe4596/cfc2873a and disabled saved reentry f79e199e without duplicate payment or reward. Current application 82b8718f / War 19234678 separately verifies insufficient-funds Food, rumor refusal/payment, encounter Back, Rhum purse exhaustion, combined food/drinks, drink-menu cycling and both corrected Rhum callers with quest 29 clear. All five latest full-route pairs compare equal; their exact identities, accepted inputs and limits are recorded in ap-behavior-recipes.json. Commit 6caf46bd also prevents warning Continue from acknowledging covered scenario text. These are Rebuilt routes, not native Castle War pairing or completed package integration.",
+          "nextAction": "Complete current-package replay of the original merchant failure and the approved authored corrections. Keep pooled-payment boundaries and corrected quest-set GOSUB/return explicit; do not close the gap from additional prices or repeated clear-quest outcomes alone. Integration and the detached aggregate gate now pass."
+        }
+      ]
     },
     {
       "id": "classic.scenario.complex-interaction",
