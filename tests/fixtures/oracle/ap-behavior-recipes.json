@@ -1163,9 +1163,9 @@
         "starterCatalog": "src/storage/characters/realmz-classic-starter-characters.json"
       },
       "workflowIds": [
-        "classic.reward.treasure",
+        "classic.rewards.treasure-distribution",
         "classic.system.save-game",
-        "classic.exploration.action-points"
+        "classic.scenario.trigger-action-point"
       ],
       "package": {
         "campaignId": "scenario-city-of-bywater",
