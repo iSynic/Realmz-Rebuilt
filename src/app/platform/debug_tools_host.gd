@@ -140,8 +140,8 @@ static func action_lines(events: Array[DomainEvent], view: GameView = null, cont
 
 
 static func _readable_event_line(event: DomainEvent, view: GameView, content: RealmzContent) -> String:
-	var actor_id := String(event.payload.get("actorId", ""))
-	var target_id := String(event.payload.get("targetId", ""))
+	var actor_id := str(event.payload.get("actorId", ""))
+	var target_id := str(event.payload.get("targetId", ""))
 	var actor_name := _actor_name(view, actor_id)
 	var target_name := _actor_name(view, target_id)
 	match event.kind:
