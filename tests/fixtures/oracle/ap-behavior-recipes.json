@@ -756,7 +756,8 @@
       },
       "workflowIds": [
         "classic.scenario.trigger-action-point",
-        "classic.rewards.treasure-distribution"
+        "classic.rewards.treasure-distribution",
+        "classic.maps.view-acquired"
       ],
       "package": {
         "campaignId": "scenario-prelude-to-pestilence",
@@ -802,10 +803,13 @@
         "Restoring the pre-fix pending Treasure checkpoint preserves the unassigned reward and resumes all ten complete semantic/RNG boundaries identically to the repaired full route. Distribution and its response boundaries consume no time or RNG.",
         "Keep Codes terminates the complete timeline without persisting the temporary XAP 233 or overwriting XAP 229. The AP remains enabled; ordinary west/east re-entry reaches message 542, not a second Treasure 32.",
         "Positive map acquisition has a presentation-only Continue notification with no pending semantic interaction. Close it before moving; this button spends no time or RNG.",
+        "Opcode 29 acquires classic.player-map.6 exactly once, titled Lost Treasure of Krintol, with source notification sound 30005. Restoring at the preceding message 576 reproduces the same five semantic/RNG suffix boundaries without duplicate acquisition or reward.",
+        "The actual Maps footer opens Maps/Notes with one acquired map and no semantic/RNG mutation. This is workspace-entry proof only: the bridge exposes buttons but not the Maps tab, so selecting and rendering this particular map remains untested. Existing map-workspace integration proof passed independently.",
         "Both complete 15-step routes have identical complete game-state/RNG boundaries. Final position is land 0 (60,55), clock 45 minutes, RNG state 1176904574 after nine draws, with exactly two reward items, one map and one AP replacement."
       ],
       "sourceEvidence": [
         "Castle newland.c:2336-2340,3732-3784: Keep Codes skips AP elimination and has no generic program rewrite",
+        "Castle share-movecost-dialog.c:5-40: distribute jewelry, gems and gold in repeated party order, then recalculate movement and request sound 128",
         "Castle flashrange-loaddoor.c:43-59 and newland.c:2747-2752: opcode 39 replaces temporary execution only",
         "Castle newland.c:1736-1815: opcode 7 persistently replaces the authored AP program"
       ],
@@ -815,6 +819,7 @@
       ],
       "otherEvidence": [
         "jobs/4e01b82e8121d8c6d6af78a60ce5fc82/evidence.json and jobs/e4264c025085776b336fa2bc9f8027ee/evidence.json: current-library Griloch Thief success retains explicit XAP 379 replacement; all seven repeated semantic/RNG boundaries equal",
+        "jobs/e2c91d872181dac8254eed972dcba786/evidence.json: actual Maps footer opens Maps/Notes; complete semantic/RNG state unchanged",
         "jobs/8754a547adeca2d0d884559cfddeba3c/evidence.json and jobs/694e228dbd5f191d7509106143879098/evidence.json: current-library Griloch Thief failure and nested Back preserve the AP without a program override",
         "jobs/efe9caf09d48a2381b61b16d6ad047c9/evidence.json: subsequent ordinary Griloch entry reaches message 192 and Complex 3 again",
         "jobs/0ce2ed6da6658871426f62d643889c40/evidence.json: pre-fix ordinary re-entry unexpectedly grants Treasure 32 again",
@@ -1067,14 +1072,14 @@
   "nextSelection": [
     {
       "priority": "untested-high-risk",
-      "family": "authored-caller-response-and-destination-variants",
+      "family": "authored-xp-only-reward-and-explicit-removal",
       "candidateOnly": true,
-      "campaignId": "scenario-prelude-to-pestilence",
-      "packageHash": "f89edcdde9a5db51f73a8a4f9fbb7f27d984bab875188547c1e5ac38276dfc8f",
-      "actionPoint": "Data DD:0:67",
-      "location": {"mapId":"land:0","x":60,"y":55},
-      "expected": "Inspect and exercise Prelude AP 67's response/caller, reward and map continuation from a nearby starter baseline, then recompute AOGM and Bywater candidates for uncovered caller, response and destination-recheck outcomes. Only observed asserted execution earns coverage.",
-      "remaining": "Nine recipes span four scenarios; representative coverage across all 13, additional Simple responses, cancellation and caller-specific outcomes remain incomplete. The older Griloch native comparison is pinned to the previous application identity and has not been renewed after the library correction."
+      "campaignId": "scenario-city-of-bywater",
+      "packageHash": "a893ee5af9cb315477098d269e3c5b1bf2f8eb0137a5bb89a0876bb543125f53",
+      "actionPoint": "Data DD:0:50",
+      "location": {"mapId":"land:0","x":52,"y":38},
+      "expected": "Revalidate the Bywater grave AP and its authored Data OD choices from south adjacency (52,39). Exercise the XP-only Treasure 37 boundary, explicit opcode-25 removal and re-entry, plus decline and save/resume where applicable. This adds a sixth scenario without a battle or new tooling; no runtime credit is claimed yet. Recompute other caller and destination candidates afterward.",
+      "remaining": "Eleven recipes span five scenarios; representative coverage across all 13, further Simple responses, caller-specific cancellation and destination-recheck outcomes remain incomplete. Prelude map acquisition and Maps/Notes entry are verified, but its map selection/rendering is deferred because tabs are not exposed by the current bridge. The older Griloch native comparison remains pinned to the previous application identity."
     }
   ]
 }
