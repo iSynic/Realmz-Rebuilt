@@ -755,7 +755,8 @@
         "starterCatalog": "src/storage/characters/realmz-classic-starter-characters.json"
       },
       "workflowIds": [
-        "classic.scenario.trigger-action-point"
+        "classic.scenario.trigger-action-point",
+        "classic.rewards.treasure-distribution"
       ],
       "package": {
         "campaignId": "scenario-prelude-to-pestilence",
@@ -795,6 +796,10 @@
       ],
       "expected": [
         "Actual Yes continues through messages 540 and 541 into XAP 233 / Treasure 32. The Treasure Done acknowledgement at message 576 resumes positive map acquisition, opcode-7 replacement of AP 67 with XAP 229, then Keep Codes.",
+        "Treasure 32 has zero experience, 200 gold, five gems, one jewelry and items 614/54. All six experience values and pre-existing item instances remain unchanged throughout the route.",
+        "Actual loot-cell clicks assign one unidentified, unequipped Potion (item 614, one charge, reward.item.1) to Kevlar and one unidentified, unequipped Jo Stick (item 54, charges -1, reward.item.2) to Lothlorian. Recipient selection itself changes no semantic state.",
+        "Actual Share empties the pool. In party order, gold gains are [34,34,33,33,33,33], the first five characters gain one gem, and Kevlar alone gains the jewelry. Done reaches message 576 without awarding anything again.",
+        "Restoring the pre-fix pending Treasure checkpoint preserves the unassigned reward and resumes all ten complete semantic/RNG boundaries identically to the repaired full route. Distribution and its response boundaries consume no time or RNG.",
         "Keep Codes terminates the complete timeline without persisting the temporary XAP 233 or overwriting XAP 229. The AP remains enabled; ordinary west/east re-entry reaches message 542, not a second Treasure 32.",
         "Positive map acquisition has a presentation-only Continue notification with no pending semantic interaction. Close it before moving; this button spends no time or RNG.",
         "Both complete 15-step routes have identical complete game-state/RNG boundaries. Final position is land 0 (60,55), clock 45 minutes, RNG state 1176904574 after nine draws, with exactly two reward items, one map and one AP replacement."
@@ -810,7 +815,8 @@
       ],
       "otherEvidence": [
         "jobs/4e01b82e8121d8c6d6af78a60ce5fc82/evidence.json and jobs/e4264c025085776b336fa2bc9f8027ee/evidence.json: current-library Griloch Thief success retains explicit XAP 379 replacement; all seven repeated semantic/RNG boundaries equal",
-        "jobs/8754a547adeca2d0d884559cfddeba3c/evidence.json and jobs/694e228dbd5f191d7509106143879098/evidence.json: current-library Griloch Thief failure and nested Back preserve the AP and permit re-entry without a program override",
+        "jobs/8754a547adeca2d0d884559cfddeba3c/evidence.json and jobs/694e228dbd5f191d7509106143879098/evidence.json: current-library Griloch Thief failure and nested Back preserve the AP without a program override",
+        "jobs/efe9caf09d48a2381b61b16d6ad047c9/evidence.json: subsequent ordinary Griloch entry reaches message 192 and Complex 3 again",
         "jobs/0ce2ed6da6658871426f62d643889c40/evidence.json: pre-fix ordinary re-entry unexpectedly grants Treasure 32 again",
         "jobs/5446b7a21050f1d15ddec425fc7caf51/evidence.json: first incorrect mutation overwrites authored XAP 229 with XAP 233 during Keep Codes; later wait was an omitted presentation Continue step",
         "jobs/9e1f205e8d2c7db7287c02d6df051670/evidence.json: repaired full repeat, all 15 semantic/RNG boundaries equal",
