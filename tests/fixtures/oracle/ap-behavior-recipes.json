@@ -1038,6 +1038,120 @@
           "capture": true
         }
       ]
+    },
+    {
+      "id": "bywater-grave-decline-and-reenter",
+      "application": {
+        "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
+        "packageHash": "45298c295fc784b528f4219d6ceb0454cb482d894b66440e529d7763e7cb0036",
+        "archiveSha256": "e85ae0aca72fa6642ef66af8745ceb24446459598efcb1075cd8f5a4cce36012",
+        "starterCatalog": "src/storage/characters/realmz-classic-starter-characters.json"
+      },
+      "workflowIds": [
+        "classic.scenario.choose-response"
+      ],
+      "package": {
+        "campaignId": "scenario-city-of-bywater",
+        "path": "src/storage/packages/bundled_campaigns/scenario-city-of-bywater.realmz2",
+        "packageHash": "a893ee5af9cb315477098d269e3c5b1bf2f8eb0137a5bb89a0876bb543125f53",
+        "archiveSha256": "35d1c5f7edc2eb1906da332aa8e0e18a0fad2d7addcb866e59917d062c9928e4"
+      },
+      "baselineLocation": {
+        "mapId": "land:0",
+        "x": 52,
+        "y": 39
+      },
+      "target": {
+        "actionPoint": "Data DD:0:50",
+        "location": {
+          "mapId": "land:0",
+          "x": 52,
+          "y": 38
+        },
+        "optionIds": [
+          34,
+          35
+        ],
+        "choiceMode": 0
+      },
+      "proofModes": [
+        "live-route",
+        "ordinary-movement",
+        "actual-ui-control"
+      ],
+      "expected": [
+        "Ordinary north entry advances twenty minutes, consumes one AP chance draw, publishes negative message 487 without acknowledgement, and exposes exact Data OD labels Bury the bones / Leave them be.",
+        "Actual Leave them be reverses the entered land step and preserves the original AP without spending response-time clock or RNG. It changes no experience, wealth or item instances.",
+        "Ordinary north re-entry asks the same choice. Three complete boundaries have minutes [20,20,40] and RNG draw counts [1,1,2]; whole saved game-state/RNG outcomes match the repeat. No program override or disabled trigger appears."
+      ],
+      "sourceEvidence": [
+        "Castle question.c:100-134 and newland.c:1530-1570: Data OD labels and selected mode-zero reversed-step return before AP finalization"
+      ],
+      "remaining": [
+        "Affirmative XP-only reward, its saved continuation and explicit opcode-25 removal are separate checks; this recipe does not certify campaign-start travel."
+      ],
+      "otherEvidence": [
+        "jobs/26cb5cf66ef5463e6f41b22ba009f0cc/evidence.json: all three repeated complete semantic/RNG boundaries equal",
+        "jobs/81986662184956449b384a1d9dc3aadb/evidence.json: first ordinary approach, exact authored labels and initial checkpoint"
+      ],
+      "result": "passed",
+      "evidence": "jobs/45880791a652123de4248f8fd6c3c8f4/evidence.json",
+      "steps": [
+        {
+          "command": "act",
+          "params": {
+            "action": "move",
+            "arguments": {
+              "dx": 0,
+              "dy": -1
+            }
+          },
+          "expect": {
+            "interactionKind": "yes_no",
+            "location": {
+              "mapId": "land:0",
+              "x": 52,
+              "y": 38
+            }
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "Leave them be"
+          },
+          "expect": {
+            "interactionKind": null,
+            "location": {
+              "mapId": "land:0",
+              "x": 52,
+              "y": 39
+            }
+          },
+          "capture": true
+        },
+        {
+          "command": "act",
+          "params": {
+            "action": "move",
+            "arguments": {
+              "dx": 0,
+              "dy": -1
+            }
+          },
+          "expect": {
+            "interactionKind": "yes_no",
+            "location": {
+              "mapId": "land:0",
+              "x": 52,
+              "y": 38
+            }
+          },
+          "capture": true
+        }
+      ]
     }
   ],
   "siblingAndContinuationEvidence": [

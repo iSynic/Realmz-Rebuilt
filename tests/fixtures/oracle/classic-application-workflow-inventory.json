@@ -23,9 +23,9 @@
     ]
   },
   "currentBatch": {
-    "id": "ap-prelude-response-reward-map",
-    "name": "Prelude response, reward and acquired-map continuation",
-    "baselineCommit": "6e4c0760a071543036dd0892bc1c3159bafbca0f",
+    "id": "ap-bywater-choice-xp-removal",
+    "name": "Bywater authored choices, XP-only reward and explicit removal",
+    "baselineCommit": "e2c861cc8c0518633cade0c34f0fba9b12b5aaa8",
     "baselineCounts": {
       "classic": {
         "missing": 0,
@@ -40,26 +40,18 @@
         "certified": 2
       }
     },
-    "selectionRationale": "After closing the shared stock-rule failures, exercise Prelude to Pestilence AP 67 from an adjacent isolated starter checkpoint. Verify negative-response reversal and re-entry, affirmative transfer through XAP 233, treasure and acquired-map save/resume, and persistent AP replacement through ordinary entry. This adds a fifth scenario and distinct response/caller/outcome coverage with one reusable baseline and existing journey controls; package validity alone earns no gameplay credit. Broader AOGM and Bywater caller/destination candidates remain queued, and full campaign certification remains separate.",
+    "selectionRationale": "After repairing shared Keep Codes, exercise Bywater grave AP 50 from a validated adjacent starter baseline. Its Data OD choice labels, reward with experience but no distributable items or money, and explicit opcode-25 removal add a sixth scenario and distinct response/reward/continuation outcomes. Verify both choices, saved interaction boundaries and ordinary re-entry before crediting behavior. Static package inspection is selection evidence only; no new tooling or full campaign certification is required.",
     "targets": [
       {
         "workflowId": "classic.scenario.choose-response",
         "mode": "verification",
-        "priority": "untested-high-risk",
+        "priority": "meaningful-variant",
         "expectedEvidence": "live-route",
         "gapIds": [],
         "archaeologyTriggers": []
       },
       {
         "workflowId": "classic.rewards.treasure-distribution",
-        "mode": "verification",
-        "priority": "known-failure",
-        "expectedEvidence": "live-route",
-        "gapIds": [],
-        "archaeologyTriggers": []
-      },
-      {
-        "workflowId": "classic.maps.view-acquired",
         "mode": "verification",
         "priority": "untested-high-risk",
         "expectedEvidence": "live-route",
@@ -69,7 +61,7 @@
       {
         "workflowId": "classic.scenario.trigger-action-point",
         "mode": "verification",
-        "priority": "known-failure",
+        "priority": "meaningful-variant",
         "expectedEvidence": "live-route",
         "gapIds": [],
         "archaeologyTriggers": []

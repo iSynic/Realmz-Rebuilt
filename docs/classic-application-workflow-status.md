@@ -13,18 +13,17 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Current parity-convergence batch
 
-**Prelude response, reward and acquired-map continuation** (`ap-prelude-response-reward-map`)
+**Bywater authored choices, XP-only reward and explicit removal** (`ap-bywater-choice-xp-removal`)
 
-After closing the shared stock-rule failures, exercise Prelude to Pestilence AP 67 from an adjacent isolated starter checkpoint. Verify negative-response reversal and re-entry, affirmative transfer through XAP 233, treasure and acquired-map save/resume, and persistent AP replacement through ordinary entry. This adds a fifth scenario and distinct response/caller/outcome coverage with one reusable baseline and existing journey controls; package validity alone earns no gameplay credit. Broader AOGM and Bywater caller/destination candidates remain queued, and full campaign certification remains separate.
+After repairing shared Keep Codes, exercise Bywater grave AP 50 from a validated adjacent starter baseline. Its Data OD choice labels, reward with experience but no distributable items or money, and explicit opcode-25 removal add a sixth scenario and distinct response/reward/continuation outcomes. Verify both choices, saved interaction boundaries and ordinary re-entry before crediting behavior. Static package inspection is selection evidence only; no new tooling or full campaign certification is required.
 
 AP batches use failure-first priorities: known failures, untested high-risk behavior, meaningful variants, and broader representatives. Verification mode records existing functional behavior without claiming full campaign certification; implementation, verification, and certification remain distinct modes.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.scenario.choose-response` | verification | untested-high-risk | live-route |  |
-| `classic.rewards.treasure-distribution` | verification | known-failure | live-route |  |
-| `classic.maps.view-acquired` | verification | untested-high-risk | live-route |  |
-| `classic.scenario.trigger-action-point` | verification | known-failure | live-route |  |
+| `classic.scenario.choose-response` | verification | meaningful-variant | live-route |  |
+| `classic.rewards.treasure-distribution` | verification | untested-high-risk | live-route |  |
+| `classic.scenario.trigger-action-point` | verification | meaningful-variant | live-route |  |
 
 ### Batch count delta
 
