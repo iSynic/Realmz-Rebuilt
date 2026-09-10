@@ -7,6 +7,7 @@ Own host workflows around one replaceable pure `GameSession` without duplicating
 ## Ownership
 
 - `GameSessionController` owns the active session and one detached view per committed revision.
+- Typed intent/response submission signals expose the input immediately before the public session transaction; optional diagnostics can correlate even failed steps without reading private state or changing gameplay.
 - `ApplicationAdventureStorageHost` and `SaveHostController` own save, preview, restore, and backup coordination.
 - `ApplicationCharacterFilesHost`, `CharacterVaultController`, and `CharacterCreationHostController` own the application catalog, reusable-character cache, publication, import, and standalone creation.
 - `ApplicationCombatPolicy` translates combat presentation responses and Auto playback decisions into typed session commands.
@@ -18,6 +19,7 @@ Own host workflows around one replaceable pure `GameSession` without duplicating
 - Restore validates a replacement completely before swapping the active session.
 - A failed or cancelled operation leaves the active session and media catalog unchanged.
 - Character Files revisions are cached by stable identity and revision hash and invalidated after mutation.
+- `ApplicationCharacterFilesHost` accepts an explicitly injected vault controller; default construction uses the ordinary repository, while runtime fixtures supply scratch storage before entering the scene tree.
 - No host controller contains Realmz rules, accesses presenter-private methods, or invents compatibility behavior.
 
 ## Work Guidance

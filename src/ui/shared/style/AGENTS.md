@@ -16,6 +16,7 @@ Own reusable Classic controls, typography, theme resources, scroll-arrow behavio
 - Shared style components contain no route-specific facts, gameplay legality, saved state, or package I/O.
 - Stable visual hierarchy remains scene-authored. Scripts bind inspector properties, focus, scrolling, and supplied media.
 - Wide and Compact profiles alter presentation only and never change simulation or detached data.
+- `ClassicBitmapButton.caption_text()` exposes its current rendered caption to read-only control catalogues without exposing private drawing state or duplicating command-label logic.
 
 ## Work Guidance
 

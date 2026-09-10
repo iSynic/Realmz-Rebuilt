@@ -6,8 +6,8 @@ const VERSION := "realmz-testing/1"
 const MAX_MESSAGE_BYTES := 16 * 1024 * 1024
 const MAX_RECORD_BYTES := 256 * 1024 * 1024
 const MAX_REQUESTS := 10_000
-const READ_COMMANDS := ["describe", "observe", "checkpoint"]
-const COMMANDS := ["describe", "observe", "checkpoint", "restore", "act", "respond", "ui", "invoke", "close"]
+const READ_COMMANDS := ["describe", "observe", "checkpoint", "capture"]
+const COMMANDS := ["describe", "observe", "checkpoint", "restore", "act", "respond", "ui", "invoke", "close", "capture"]
 const FIELDS := ["protocol", "sessionId", "token", "requestId", "expectedRevision", "command", "params"]
 
 var session_id: String

@@ -7,7 +7,7 @@ var _session: GameSessionController
 var _presentation: PresentationCoordinator
 var _presentation_media: PresentationMediaController
 var _shell: GameShell
-var _vault := CharacterVaultController.new()
+var _vault: CharacterVaultController
 var _creator := CharacterCreationHostController.new()
 var _library_content: RealmzContent
 var _library_media: MediaSource
@@ -19,13 +19,15 @@ func _init(
 	session: GameSessionController,
 	presentation: PresentationCoordinator,
 	presentation_media: PresentationMediaController,
-	shell: GameShell
+	shell: GameShell,
+	vault: CharacterVaultController = null
 ) -> void:
 	_package_host = package_host
 	_session = session
 	_presentation = presentation
 	_presentation_media = presentation_media
 	_shell = shell
+	_vault = vault if vault != null else CharacterVaultController.new()
 
 
 func begin_library_load() -> void:

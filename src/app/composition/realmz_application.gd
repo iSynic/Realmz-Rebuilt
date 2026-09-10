@@ -40,6 +40,7 @@ var lifecycle_host := ApplicationLifecycleHost.new()
 var character_files: ApplicationCharacterFilesHost
 var adventure_storage: ApplicationAdventureStorageHost
 var _spatial_layout: ApplicationSpatialLayout
+var _runtime_testing_host: RuntimeTestingHost
 
 
 func configure_lifecycle_host(save_host: SaveHostController, quit_operation: Callable = Callable()) -> void:
@@ -55,10 +56,11 @@ func _ready() -> void:
 	_bind_debug_and_movement()
 	_bind_combat_and_interactions()
 	_bind_shell_and_settings()
-	if RuntimeTestingHost.live_requested():
-		var testing := RuntimeTestingHost.new()
-		add_child(testing)
-		var status := testing.bind(session_controller, func() -> RealmzContent: return _active_content, func() -> Dictionary: return {"explorationInput": accepts_exploration_input(), "routeInput": accepts_route_input(), "combatPlayback": presentation_coordinator.is_combat_playback_active(), "hostInteraction": lifecycle_host.has_active_interaction()})
+	if RuntimeTestingHost.live_requested() or has_meta(&"runtime_testing_fixture"):
+		_runtime_testing_host = RuntimeTestingHost.new()
+		add_child(_runtime_testing_host)
+		var fixture_request := get_meta(&"runtime_testing_fixture") as RuntimeTestingFixtureRequest if has_meta(&"runtime_testing_fixture") else null
+		var status := _runtime_testing_host.bind(session_controller, func() -> RealmzContent: return _active_content, func() -> Dictionary: return {"explorationInput": accepts_exploration_input(), "routeInput": accepts_route_input(), "combatPlayback": presentation_coordinator.is_combat_playback_active(), "hostInteraction": lifecycle_host.has_active_interaction()}, self, fixture_request)
 		if status != OK:
 			printerr("Runtime testing endpoint unavailable: %s" % error_string(status))
 	_finish_startup()
@@ -67,11 +69,13 @@ func _ready() -> void:
 func _build_dependencies() -> void:
 	var preview_request := get_meta(&"development_preview_request") as DevelopmentPreviewRequest if has_meta(&"development_preview_request") else null
 	var preview_state_root := preview_request.result_path.get_basename() + "-session" if preview_request != null else ""
-	_package_host = PackageHostController.new()
+	var fixture := get_meta(&"runtime_testing_fixture") as RuntimeTestingFixtureRequest if has_meta(&"runtime_testing_fixture") else null
+	var scratch_root := fixture.scratch_root if fixture != null else preview_state_root
+	_package_host = PackageHostController.new(null, scratch_root.path_join("packages")) if fixture != null else PackageHostController.new()
 	if _save_host == null:
-		_save_host = SaveHostController.new(SaveRepository.new(preview_state_root.path_join("saves"))) if preview_request != null else SaveHostController.new()
-	settings_repository = SettingsRepository.new(preview_state_root.path_join("settings.json")) if preview_request != null else SettingsRepository.new()
-	_presentation_settings = PresentationSettings.new() if preview_request != null else settings_repository.load_settings()
+		_save_host = SaveHostController.new(SaveRepository.new(scratch_root.path_join("saves"))) if not scratch_root.is_empty() else SaveHostController.new()
+	settings_repository = SettingsRepository.new(scratch_root.path_join("settings.json")) if not scratch_root.is_empty() else SettingsRepository.new()
+	_presentation_settings = PresentationSettings.new() if not scratch_root.is_empty() else settings_repository.load_settings()
 	session_controller = GameSessionController.new()
 	presentation_coordinator = PresentationCoordinator.new()
 	presentation_media = PresentationMediaController.new()
@@ -90,7 +94,8 @@ func _build_dependencies() -> void:
 		session_controller,
 		presentation_coordinator,
 		presentation_media,
-		_game_shell
+		_game_shell,
+		CharacterVaultController.new(CharacterVaultRepository.new(scratch_root.path_join("characters"))) if fixture != null else null
 	)
 	adventure_storage = ApplicationAdventureStorageHost.new(_save_host, session_controller, _game_shell, func() -> void: _queued_combat_auto_changes.clear())
 	_spatial_layout = ApplicationSpatialLayout.new(_map_presenter, _battlefield_presenter, _dungeon_presenter, _interaction_presenter, _shell_presenter, session_controller, presentation_coordinator)
@@ -113,7 +118,7 @@ func _bind_debug_and_movement() -> void:
 	)
 	_dungeon_presenter.movement_requested.connect(
 		func(direction: Vector2i) -> void:
-			_submit_movement(direction)
+			submit_movement(direction)
 	)
 	_dungeon_presenter.movement_hold_started.connect(
 		func(direction: Vector2i) -> void:
@@ -137,7 +142,7 @@ func _bind_combat_and_interactions() -> void:
 		presentation_media
 	)
 	presentation_coordinator.playback_step_settled.connect(_on_playback_step_settled)
-	_interaction_presenter.response_submitted.connect(_on_interaction_response_submitted)
+	_interaction_presenter.response_submitted.connect(submit_response)
 	_interaction_presenter.combat.targeting_requested.connect(_on_combat_targeting_requested)
 	_interaction_presenter.combat.targeting_confirm_requested.connect(_battlefield_presenter.interaction.confirm_targeting)
 	_interaction_presenter.combat.targeting_cancel_requested.connect(_battlefield_presenter.interaction.cancel_targeting)
@@ -180,6 +185,9 @@ func _bind_shell_and_settings() -> void:
 
 
 func _finish_startup() -> void:
+	if has_meta(&"runtime_testing_fixture"):
+		_runtime_testing_host.prepare_fixture(presentation_coordinator, presentation_media, _shell_presenter, func(content: RealmzContent) -> void: _active_content = content)
+		return
 	var preview_request := get_meta(&"development_preview_request") as DevelopmentPreviewRequest if has_meta(&"development_preview_request") else null
 	if preview_request != null:
 		_status_label.text = "Preparing isolated Providence preview"
@@ -366,7 +374,7 @@ func handle_field_fast_spell(slot_index: int, use_spell: bool) -> void:
 
 
 func _on_held_movement_requested(direction: Vector2i) -> void:
-	if not _submit_movement(direction): _held_movement.stop()
+	if not submit_movement(direction): _held_movement.stop()
 
 
 func _on_battlefield_action_requested(body: InteractionResponse.CombatBody) -> void:
@@ -401,7 +409,7 @@ func _on_interaction_sound_requested(sound_id: int) -> void:
 		_audio_presenter.present_sound(sound_id, presentation_media.catalog())
 
 
-func _submit_movement(direction: Vector2i) -> bool:
+func submit_movement(direction: Vector2i) -> bool:
 	if not _shell_presenter.accepts_exploration_input() or not session_controller.view().session_started or session_controller.view().pending_interaction != null:
 		return false
 	var map_view := session_controller.view().map_view
@@ -446,7 +454,7 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 	return step
 
 
-func _on_interaction_response_submitted(response: InteractionResponse) -> void:
+func submit_response(response: InteractionResponse) -> void:
 	match ApplicationLifecycleHost.response_owner(lifecycle_host.has_active_interaction(), character_files.creator_active()):
 		&"host":
 			lifecycle_host.respond(response)
@@ -533,7 +541,7 @@ func _continue_persistent_auto_after_playback() -> void:
 	if presentation_coordinator == null or presentation_coordinator.is_combat_playback_active() or not _queued_combat_auto_changes.is_empty() or lifecycle_host.has_active_interaction(): return
 	var response := ApplicationCombatPolicy.persistent_auto_response(session_controller.view())
 	if response != null:
-		_on_interaction_response_submitted(response)
+		submit_response(response)
 
 
 func _present_step_status(step: SessionStep) -> void:

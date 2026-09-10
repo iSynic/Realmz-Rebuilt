@@ -1,9 +1,13 @@
 import * as z from "zod/v4";
+import path from "node:path";
 
 export const PROTOCOL = "realmz-testing/1" as const;
 export const MAX_MESSAGE_BYTES = 16 * 1024 * 1024;
 
 export const SessionIdSchema = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/);
+export const FixtureIdSchema = z.string().regex(/^[a-f0-9]{32}$/);
+const AbsolutePathSchema = z.string().min(1).refine((value) => path.isAbsolute(value), "path must be absolute");
+const Sha256Schema = z.string().regex(/^[a-f0-9]{64}$/);
 const NonEmptyString = z.string().min(1).max(4096);
 const RequestIdString = z.string().min(1).max(128);
 
@@ -47,6 +51,7 @@ export const DescriptorSchema = z.object({
   pid: z.number().int().nonnegative(),
   port: z.number().int().min(1).max(65535),
   token: NonEmptyString,
+  fixtureId: FixtureIdSchema.optional(),
   access: z.enum(["observe", "fixture"]),
   capabilities: z.array(z.string().min(1).max(128)).max(256),
   startedAt: z.string().datetime({ offset: true })
@@ -56,8 +61,93 @@ export type SessionDescriptor = z.infer<typeof DescriptorSchema>;
 export const PublicDescriptorSchema = DescriptorSchema.omit({ token: true });
 export type PublicDescriptor = z.infer<typeof PublicDescriptorSchema>;
 
+export const FixtureClassicSourceSchema = z.object({
+  kind: z.literal("classic-starters"),
+  seed: z.number().int().min(1).max(2_147_483_646),
+  location: z.object({ mapId: z.string().min(1).max(128), x: z.number().int().min(0).max(32767), y: z.number().int().min(0).max(32767) }).strict()
+}).strict();
+export const FixtureCheckpointSourceSchema = z.object({
+  kind: z.literal("checkpoint"),
+  checkpointPath: AbsolutePathSchema,
+  checkpointSha256: Sha256Schema
+}).strict();
+export const FixtureConfigSchema = z.object({
+  protocol: z.literal(PROTOCOL),
+  kind: z.literal("fixture"),
+  fixtureId: FixtureIdSchema,
+  scratchRoot: AbsolutePathSchema,
+  discoveryRoot: AbsolutePathSchema,
+  build: NonEmptyString,
+  packagePath: AbsolutePathSchema.refine((value) => /\.realmz2$/i.test(value), "packagePath must name a .realmz2 package"),
+  packageSha256: Sha256Schema,
+  source: z.union([FixtureClassicSourceSchema, FixtureCheckpointSourceSchema])
+}).strict();
+const GitCommitSchema = z.string().regex(/^[a-f0-9]{40}$/);
+const FixtureFileIdentitySchema = z.object({ name: z.string().min(1).max(4096), sha256: Sha256Schema }).strict();
+export const CastleFixtureConfigSchema = z.object({
+  protocol: z.literal(PROTOCOL),
+  kind: z.literal("castle-fixture"),
+  fixtureId: FixtureIdSchema,
+  scratchRoot: AbsolutePathSchema,
+  discoveryRoot: AbsolutePathSchema,
+  build: NonEmptyString,
+  seed: z.number().int().min(1).max(2_147_483_646),
+  location: z.object({ mapId: z.literal("land:0"), x: z.union([z.literal(7), z.literal(8)]), y: z.literal(20) }).strict(),
+  identity: z.object({
+    baseCommit: z.literal("491816ad60037394f92c428e99c004494d3c28b3"),
+    instrumentationCommit: GitCommitSchema,
+    sourceFingerprint: NonEmptyString,
+    characters: z.array(FixtureFileIdentitySchema).length(6),
+    scenarioFiles: z.array(FixtureFileIdentitySchema).min(1).max(4096)
+  }).strict()
+}).strict();
+export const RestoreParamsSchema = z.object({ checkpoint: z.record(z.string(), z.unknown()) }).strict();
+export const FixtureReadinessSchema = z.object({ fixtureReady: z.boolean(), fixtureError: z.record(z.string(), z.unknown()).nullable() }).loose();
+
+export const JourneyCommandSchema = z.enum(["act", "respond", "ui", "invoke"]);
+export const JourneyExpectSchema = z.object({
+  interactionKind: z.string().max(128).nullable(),
+  location: z.object({ mapId: z.string().min(1).max(128), x: z.number().int().min(0).max(32767), y: z.number().int().min(0).max(32767) }).strict().optional(),
+  currentControlId: z.string().min(1).max(128).optional()
+}).strict();
+export const JourneyStepSchema = z.object({
+  command: JourneyCommandSchema,
+  params: z.record(z.string(), z.unknown()),
+  expect: JourneyExpectSchema,
+  capture: z.boolean().default(false)
+}).strict();
+export const JourneyLimitsSchema = z.object({
+  maxActions: z.number().int().min(1).max(10_000).default(200),
+  timeoutMs: z.number().int().min(1).max(3_600_000).default(120_000)
+}).strict();
+export const JourneySpecSchema = z.object({
+  name: z.string().min(1).max(128),
+  sessionId: SessionIdSchema,
+  steps: z.array(JourneyStepSchema).min(1).max(10_000),
+  limits: JourneyLimitsSchema.default(() => ({ maxActions: 200, timeoutMs: 120_000 }))
+}).strict();
+export type JourneySpec = z.infer<typeof JourneySpecSchema>;
+export type JourneyStep = z.infer<typeof JourneyStepSchema>;
+
+export const JourneyFailureSchema = z.object({ code: z.string().min(1).max(128), message: z.string().min(1).max(4096), mode: z.string().min(1).max(64), stepIndex: z.number().int().nonnegative().optional() }).strict();
+export const JourneyStatusSchema = z.object({
+  jobId: z.string().regex(/^[a-f0-9]{32}$/),
+  name: z.string().min(1).max(128),
+  sessionId: SessionIdSchema,
+  state: z.enum(["queued", "running", "completed", "failed", "cancelled"]),
+  specPath: AbsolutePathSchema,
+  statusPath: AbsolutePathSchema,
+  evidencePath: AbsolutePathSchema,
+  baselineCheckpointPath: AbsolutePathSchema.nullable(),
+  startedAt: z.string().datetime({ offset: true }).nullable(),
+  finishedAt: z.string().datetime({ offset: true }).nullable(),
+  counts: z.object({ steps: z.number().int().nonnegative(), actions: z.number().int().nonnegative(), captures: z.number().int().nonnegative(), evidenceBytes: z.number().int().nonnegative() }).strict(),
+  failure: JourneyFailureSchema.nullable()
+}).strict();
+export type JourneyStatus = z.infer<typeof JourneyStatusSchema>;
+
 export const MUTATING_COMMANDS = ["restore", "act", "respond", "ui", "invoke", "close"] as const;
-export const READ_COMMANDS = ["describe", "observe", "checkpoint"] as const;
+export const READ_COMMANDS = ["describe", "observe", "checkpoint", "capture"] as const;
 export const ALLOWED_COMMANDS = [...READ_COMMANDS, ...MUTATING_COMMANDS] as const;
 export type AllowedCommand = (typeof ALLOWED_COMMANDS)[number];
 

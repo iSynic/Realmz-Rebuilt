@@ -8,7 +8,7 @@ Own the local Realmz runtime-testing observation and fixture transport package: 
 
 - Own `realmz-testing/1` request/reply framing, the engine-facing client, and descriptor discovery under `REALMZ_TESTING_HOME`.
 - Own credential handling, loopback-only connections, replay protection, and access/revision gates at this transport boundary.
-- Do not own Rebuilt/Castle process launching, gameplay fixtures, ordinary-play journeys, or engine behavior.
+- Own isolated fixture process launching, bounded journey orchestration, private evidence, and normalized comparison. Engine adapters retain gameplay behavior and validation.
 
 ## Local Contracts
 
@@ -18,7 +18,15 @@ Own the local Realmz runtime-testing observation and fixture transport package: 
 - Discovery reads at most 256 regular, non-symlink descriptor files and rejects descriptor files over 64 KiB.
 - Tokens stay in local descriptor files and authenticated internal requests; they are excluded from sanitized discovery, MCP results, and transport logs.
 - Mutating commands require `expectedRevision`; observe-access sessions reject them service-side. A caller may retry an ambiguous mutation only with the same explicit `requestId`.
-- MCP input and wire replies are strict Zod schemas. `realmz_fixture` exposes `checkpoint` only until future operations receive an implemented engine contract.
+- MCP input and wire replies are strict Zod schemas. Advertise only implemented capabilities.
+- Fixture launches use explicitly configured engine/project paths, unique scratch roots, distinct Godot/stdout logs, the canonical 1280x720 Mobile rendered target, and a visible fixture title. Native fixture children set `GODOT_MCP_HEADLESS_CHILD=1` to isolate them from editor-driven MCP autoload services. Clone requires a valid exported checkpoint and matching validated package; never inject into or restart a live process.
+- Named fixture preparation may position provenance-pinned starter characters before recording the baseline. Checkpoint clones preserve captured state and RNG exactly. Journeys cannot restore or reseed between steps.
+- Fixture config is strict and records package/source hashes plus the exact Git `HEAD` and honest dirty-source fingerprint for Rebuilt. Rebuilt accepts only `engine: rebuilt` and the named `classic-starters` recipe; Castle accepts only the bounded `native-griloch-starters` recipe and writes its exact nine-field `castle-fixture` config to `config.json`. Fixture readiness is observed by `fixtureId`.
+- Castle launchers require `REALMZ_CASTLE_PATH`, `REALMZ_CASTLE_ROOT`, and the pinned Rebuilt starter source. They validate the Castle base ancestor, copy the six exact Character Files into fixture `userdata/Character Files`, compare every installed Grilochs Revenge scenario file byte-for-byte with the Castle checkout, and pass `REALMZ_CASTLE_TEST_CONFIG` plus `REALMZ_TESTING_HOME` to a detached process. Castle advertises only its implemented native movement, Shop/Done UI, AP, observation, capture, checkpoint, and close capabilities; its checkpoint is a non-restorable native observation and is never treated as a Rebuilt SaveEnvelope.
+- Classic starter coordinates are bounded to the inclusive 0..32767 map range. Exported checkpoints use exclusive unique paths under fixture or live checkpoint roots, and their engine canonical hash remains distinct from the retained file hash.
+- `capture` is a read command. `restore`, `act`, `respond`, `ui`, `invoke`, and `close` remain generic engine commands with explicit revision/request identity; fixture lifecycle helpers expose only the bounded create/clone/checkpoint/restore/close/capture operations.
+- Journeys are strict, persistent asynchronous jobs under `REALMZ_TESTING_HOME/jobs`; CLI and MCP share `spec.json`, `status.json`, `cancel`, and retained `evidence.json` artifacts. Workers are detached/unref'd and never execute arbitrary scripts. Each step polls semantic readiness, submits the immediately observed revision, preserves the exact accepted input and request identity, records bounded complete diagnostics, and stops on pending-interaction, stale, unsupported, cancellation, timeout, action-limit, trace-capacity, or evidence-capacity failures. Journeys require an isolated fixture baseline checkpoint and never restore or reseed between steps.
+- Journey comparison normalizes named semantic gameplay fields only, ignores documented request/timing/build/path and capture-binary fields, and reports `initialEquivalenceVerified: false` when the saved baselines cannot establish equivalent party, location, time, inventory/wealth, scenario, and RNG state.
 
 ## Work Guidance
 
