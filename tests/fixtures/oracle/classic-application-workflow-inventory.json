@@ -23,9 +23,9 @@
     ]
   },
   "currentBatch": {
-    "id": "ap-trouble-owner-thief-and-door-lifecycle",
-    "name": "Trouble owner-bound Thief outcomes, saved results and door lifecycle",
-    "baselineCommit": "2094b9e3689aedd42b6e7c1828db29fd1c62575c",
+    "id": "ap-war-payment-and-result-continuations",
+    "name": "War payment outcomes, saved choices and caller lifecycle",
+    "baselineCommit": "a1bcf39552395dce9e878c5e5b04e2843f58c3f2",
     "baselineCounts": {
       "classic": {
         "missing": 0,
@@ -40,10 +40,10 @@
         "certified": 2
       }
     },
-    "selectionRationale": "Trouble AP 7 adds a tenth scenario through a short ordinary approach to Complex 25 / Thief 23. Verify four-tumbler Force Lock success and failure, owner-result continuation, legal nested cancellation, saved acknowledgements, and result-specific explicit AP disablement versus retained-AP east shift and re-entry. Existing checkpoints and journeys suffice; static maxTimes or item/spell references do not earn runtime credit. Full campaign certification remains separate.",
+    "selectionRationale": "War adds an eleventh scenario through AP 33 / Simple 36: random greeting, actual character selection, source-backed shared-party payment and non-GOSUB result transfer. Preserve the successful Food route and its saved boundaries; prioritize the suspected shared opcode-33 payment-result branch omission using an authored gem fee the starters cannot pay, then verify corrected caller and saved-continuation outcomes. Keep authored prompts distinct from Castle's actual wealth rule, compiler preservation distinct from execution, and full campaign certification separate. Existing fixtures and journeys suffice.",
     "targets": [
       {
-        "workflowId": "classic.scenario.complex-interaction",
+        "workflowId": "classic.scenario.choose-response",
         "mode": "verification",
         "priority": "meaningful-variant",
         "expectedEvidence": "live-route",

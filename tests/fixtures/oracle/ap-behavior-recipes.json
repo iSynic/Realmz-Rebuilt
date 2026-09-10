@@ -38,6 +38,147 @@
   ],
   "recipes": [
     {
+      "id": "war-inn-food-party-payment-and-transfer",
+      "application": {
+        "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
+        "packageHash": "45298c295fc784b528f4219d6ceb0454cb482d894b66440e529d7763e7cb0036",
+        "archiveSha256": "e85ae0aca72fa6642ef66af8745ceb24446459598efcb1075cd8f5a4cce36012",
+        "starterCatalog": "src/storage/characters/realmz-classic-starter-characters.json"
+      },
+      "package": {
+        "campaignId": "scenario-war-in-the-sword-lands",
+        "path": "src/storage/packages/bundled_campaigns/scenario-war-in-the-sword-lands.realmz2",
+        "packageHash": "c4c43a39ee9265af68a8582fab0c61b2caca1f512ac43e144d33873cffd5251e",
+        "archiveSha256": "e954333f10283ad631ae9117611380eb5ce5b6df0fc50b3ecddd46ec77248c19"
+      },
+      "baselineLocation": {
+        "mapId": "land:9",
+        "x": 41,
+        "y": 25
+      },
+      "target": {
+        "actionPoint": "Data DD:9:33",
+        "location": {
+          "mapId": "land:9",
+          "x": 40,
+          "y": 25
+        },
+        "simpleEncounterId": 36
+      },
+      "proofModes": [
+        "live-route",
+        "ordinary-movement",
+        "actual-ui-control",
+        "typed-interaction"
+      ],
+      "workflowIds": [
+        "classic.scenario.choose-response"
+      ],
+      "expected": [
+        "Ordinary west entry from land:9 (41,25) reaches active AP 33 at (40,25). Its three terrain timeclicks advance to minute 15. The AP chance draw precedes the positive random greeting draw, selecting message 200 from 200..202. Negative sound -1100 is requested as stock sound 1100 with waitForCompletion=true.",
+        "Acknowledging the greeting opens Simple 36. The actual Food control selects authored option zero; negative message 204 precedes a one-character roster request. Clicking the actual Kevlar roster control records only Kevlar as selected, then opcode 33 pays six gold from shared party wealth.",
+        "Castle newland.c:2569-2581 calls takegold independently of selected characters. With no pooled wealth, takegold.c withdraws round-robin, skipping empty purses. Original gold [10,100,150,0,200,300] becomes [8,99,149,0,199,299]; each affected load decreases by the same coin count. The payer prompt is not authority to replace this Classic rule.",
+        "Positive paid message 208 precedes the non-GOSUB opcode-39 transfer to XAP 771. Opcode 45 teleports to land:9 (34,22), requests sound 208, and holds positive message 209. Terminal XAP Keep finishes without executing the abandoned Simple result's opcode 34, removing AP 33 or returning to its original coordinate.",
+        "Both full six-step routes have exactly equal initial/per-step complete gameplay/RNG state, pending requests and VM/RNG trace deltas. Only entry consumes RNG: final drawCount 2 / generatorState 507111939, still minute 15. No stock character fields change except the exact coin/load withdrawals."
+      ],
+      "result": "passed",
+      "evidence": "jobs/a7071ef48416866b3edf2e15d684e895/evidence.json",
+      "otherEvidence": [
+        "jobs/c230418d7caf8aab0b0a236f295584a9/evidence.json: exact six-step deterministic repeat",
+        "jobs/5ce9db84160a33d6e54f9b7b48f6cdc5/evidence.json: actual roster selection and successful shared-party payment",
+        "fixtures/e9377a629a17b19f19533667704eebb9/checkpoints/b7512b40-8ba2-4417-9a4c-fe7ba288fe40.r2save: original adjacent baseline; file SHA256 9406d59b2bd3beda5636d901fc8d3f468201f8d589c09dad645622e53f0af0dc"
+      ],
+      "remaining": [
+        "Failed-payment branches, other inn responses, pooled-wealth edge cases and full campaign certification are not established by this successful-payment recipe.",
+        "The actual payer control is the current GameShell/PartyRoster/RosterColumn/PartyScroll/PartyList/PartyRosterMemberRow/Character; re-resolve that visible control if later UI identity changes."
+      ],
+      "steps": [
+        {
+          "command": "act",
+          "params": {
+            "action": "move",
+            "arguments": {
+              "dx": -1,
+              "dy": 0
+            }
+          },
+          "expect": {
+            "interactionKind": "acknowledge",
+            "location": {
+              "mapId": "land:9",
+              "x": 40,
+              "y": 25
+            }
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "encounter_choice"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "1 · \"Food, please.\""
+          },
+          "expect": {
+            "interactionKind": "character_selection"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlId": "2bbd2c4e14ee484d4a84aad1"
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": null
+          },
+          "capture": true
+        }
+      ]
+    },
+    {
       "id": "trouble-door-cancellation-and-retained-reentry",
       "application": {
         "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",

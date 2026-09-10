@@ -13,15 +13,15 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Current parity-convergence batch
 
-**Trouble owner-bound Thief outcomes, saved results and door lifecycle** (`ap-trouble-owner-thief-and-door-lifecycle`)
+**War payment outcomes, saved choices and caller lifecycle** (`ap-war-payment-and-result-continuations`)
 
-Trouble AP 7 adds a tenth scenario through a short ordinary approach to Complex 25 / Thief 23. Verify four-tumbler Force Lock success and failure, owner-result continuation, legal nested cancellation, saved acknowledgements, and result-specific explicit AP disablement versus retained-AP east shift and re-entry. Existing checkpoints and journeys suffice; static maxTimes or item/spell references do not earn runtime credit. Full campaign certification remains separate.
+War adds an eleventh scenario through AP 33 / Simple 36: random greeting, actual character selection, source-backed shared-party payment and non-GOSUB result transfer. Preserve the successful Food route and its saved boundaries; prioritize the suspected shared opcode-33 payment-result branch omission using an authored gem fee the starters cannot pay, then verify corrected caller and saved-continuation outcomes. Keep authored prompts distinct from Castle's actual wealth rule, compiler preservation distinct from execution, and full campaign certification separate. Existing fixtures and journeys suffice.
 
 AP batches use failure-first priorities: known failures, untested high-risk behavior, meaningful variants, and broader representatives. Verification mode records existing functional behavior without claiming full campaign certification; implementation, verification, and certification remain distinct modes.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.scenario.complex-interaction` | verification | meaningful-variant | live-route |  |
+| `classic.scenario.choose-response` | verification | meaningful-variant | live-route |  |
 | `classic.system.save-game` | verification | meaningful-variant | live-route |  |
 | `classic.scenario.trigger-action-point` | verification | meaningful-variant | live-route |  |
 
