@@ -95,7 +95,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 
 func _submit_classic_acknowledgement() -> bool:
-	return not _playback_masked and _request != null and _request.kind == InteractionRequest.ACKNOWLEDGE and _component is TextChoiceInteraction and (_component as TextChoiceInteraction).submit_acknowledgement()
+	return not _playback_masked and not _flash.is_open() and _request != null and _request.kind == InteractionRequest.ACKNOWLEDGE and _component is TextChoiceInteraction and (_component as TextChoiceInteraction).submit_acknowledgement()
 
 
 func _exit_tree() -> void:
