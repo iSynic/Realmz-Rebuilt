@@ -25,6 +25,7 @@ Own the persistent Godot composition that surrounds every Realmz playthrough and
 - System preferences emit only host-owned presentation-setting changes and never alter Classic rules. Save and load actions remain typed application-host requests.
 - Held Rest and Area Search cadence consults `GameShellStatusController.is_field_time_playback_active()` so command repetition waits for the authoritative intermediate clock presentation without reaching into shell-private state.
 - Adjacent movement and combat playback update retained presenters and controls; scene instantiation occurs only at application or route transitions.
+- Roster effect tweens bind to their target row's lifetime, so a restore or roster replacement cancels callbacks before the old row is freed.
 - All gameplay mutations continue through the typed application/session boundary.
 
 ## Work Guidance

@@ -24,6 +24,7 @@ AP batches use failure-first priorities: known failures, untested high-risk beha
 | `classic.scenario.choose-response` | verification | known-failure | live-route |  |
 | `classic.system.save-game` | verification | meaningful-variant | live-route |  |
 | `classic.scenario.trigger-action-point` | implementation | known-failure | - | GAP-BACKUP-001 |
+| `classic.scenario.present-message-media` | verification | known-failure | live-route |  |
 
 ### Batch count delta
 

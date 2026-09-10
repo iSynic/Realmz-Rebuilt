@@ -66,6 +66,14 @@
           "GAP-BACKUP-001"
         ],
         "archaeologyTriggers": []
+      },
+      {
+        "workflowId": "classic.scenario.present-message-media",
+        "mode": "verification",
+        "priority": "known-failure",
+        "expectedEvidence": "live-route",
+        "gapIds": [],
+        "archaeologyTriggers": []
       }
     ]
   },
