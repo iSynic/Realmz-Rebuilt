@@ -52,6 +52,15 @@ func clear() -> void:
 	_close_fast_spell_dock()
 
 
+func release() -> void:
+	_component = null
+	_spellbook_open = false
+	if is_instance_valid(_dock):
+		_dock.queue_free()
+	_dock = null
+	_dock_host = null
+
+
 func set_stage_rect(stage_rect: Rect2) -> void:
 	_stage_rect = stage_rect
 	if _dock != null:

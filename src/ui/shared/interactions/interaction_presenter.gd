@@ -101,11 +101,11 @@ func _submit_classic_acknowledgement() -> bool:
 func _exit_tree() -> void:
 	_set_classic_acknowledgement_cursor(false)
 	if _overlays != null:
-		_overlays.close_all()
+		_overlays.release()
 	if _combat != null:
-		_combat.clear()
+		_combat.release()
 	if _flash != null:
-		_flash.close()
+		_flash.release()
 
 
 func present(request: InteractionRequest, classic_text_context: String = "", game_view: GameView = null, media: ClassicMediaCatalog = null) -> void:
@@ -461,7 +461,8 @@ func _apply_classic_region() -> void:
 		position = modal_region.position + (modal_region.size - desired) * 0.5
 		size = desired
 	var encounter_surface := _request != null and _request.kind in [InteractionRequest.WORD_AND_ACTION, InteractionRequest.THIEF_ENCOUNTER]
-	_overlays.update_modal_shield(not _playback_masked and _request != null and (encounter_surface or not LayoutPolicy.uses_textbox_region(_request)) and not LayoutPolicy.uses_full_stage_region(_request), not encounter_surface)
+	var modal_surface := encounter_surface or LayoutPolicy.uses_floating_choice_modal(_request) or not LayoutPolicy.uses_textbox_region(_request)
+	_overlays.update_modal_shield(not _playback_masked and _request != null and modal_surface and not LayoutPolicy.uses_full_stage_region(_request), not encounter_surface)
 	_apply_content_layout()
 	_overlays.apply_layout()
 

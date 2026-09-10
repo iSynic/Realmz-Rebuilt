@@ -33,7 +33,8 @@
     "The Shop Done ID identifies the current ShopRouteControls/Content/ShopDone control; re-resolve that exact visible control from observe if a later UI build changes its ID. Do not select another Done behind the modal.",
     "Compare repeated runs only after restoring the same validated baseline outside the journey; never reseed or restore between its steps.",
     "Assert the semantic outcomes below in retained observations/events, not just completed status. A failed ending does not invalidate an explicitly asserted earlier prefix, but the full recipe remains failed.",
-    "Pick Lock frame selection is typed input at its ordinary request, not wall-clock waiting. Submit the next step before the presentation timer resolves it."
+    "Pick Lock frame selection is typed input at its ordinary request, not wall-clock waiting. Submit the next step before the presentation timer resolves it.",
+    "After replays and owned-fixture shutdown, inspect that fixture's engine log. Correct semantic outcomes do not excuse presentation/runtime errors. Bitmap Encounter commands may expose a generic label; resolve their exact visible path/tooltip to the current control ID."
   ],
   "recipes": [
     {
@@ -304,7 +305,10 @@
         "jobs/e3b5248baff62a35005698401d5ef9b5/evidence.json: original failure; its final-location expectation was subsequently corrected from 7,7 to source-backed 7,6",
         "jobs/a4582133dc66b7ffd88d3f76c2e1ca0a/evidence.json: fresh pre-fix nine-action reproduction with the corrected expectation",
         "jobs/9ac49ec08966feac1db67433863245b8/evidence.json: identical-baseline repeat, complete semantic/RNG comparison equal",
-        "jobs/0eddf6dfdd466a9357a8854cc23cebee/evidence.json: restore all three pending frames, Back without time/RNG, re-enter preserved AP, acknowledge 192 and reopen Complex 3"
+        "jobs/0eddf6dfdd466a9357a8854cc23cebee/evidence.json: restore all three pending frames, Back without time/RNG, re-enter preserved AP, acknowledge 192 and reopen Complex 3",
+        "jobs/074467405bc09fe81d0396aaa8efad0b/evidence.json: actual Spells control revealed off-window sidebar controls; gameplay state/RNG remained unchanged",
+        "jobs/6419a6e0e16c6b11f2c3333be483391c/evidence.json: restored pending Complex, actual Spells and Back, 18 bounded sidebar controls and no gameplay/RNG change",
+        "jobs/ed5ffd7094cd6e7aefb890969e56ea36/evidence.json and fixtures/db5819a32c71523c5977dc92f660f220/engine.log: pending Spells teardown has no engine errors; this is fixture-lifecycle proof, not player-facing Quit-route certification"
       ],
       "result": "passed",
       "evidence": "jobs/69b9dbe5046b8e24229d3f48b07e069a/evidence.json",
@@ -506,12 +510,15 @@
         "Paid services, no-bank departure, Share and full campaign-start travel/certification are outside this recipe."
       ],
       "otherEvidence": [
-        "jobs/43b8e93b3dec4cb0b88af6e5060b0acb/evidence.json: complete identical-baseline semantic/RNG repeat equal",
-        "jobs/35192b756c2e70ecbbb8a9a43ab53d19/evidence.json: restored pooled Temple, exact-once bank close and departure; setup prefix jobs/1506efebaf20ac56db18a989bd3b484c/evidence.json"
+        "jobs/6e8d861283c3c7a191fc2f7a2349a577/evidence.json: final identical-baseline semantic/RNG repeat equal",
+        "jobs/26a1f137486e5a97e2f1dbddb7987206/evidence.json: final restored pooled Temple exit and departure; complete comparison with the original restored suffix equal",
+        "jobs/265b74134ead5eb0e0012c6d026d404f/evidence.json and fixtures/e36f756dce2b3c8be146e589e47326ce/engine.log: pre-fix stale-focus runtime error despite correct gameplay outcomes",
+        "jobs/72521b06b454e5edf2f9e0af3ca788c5/evidence.json, jobs/43b8e93b3dec4cb0b88af6e5060b0acb/evidence.json and jobs/35192b756c2e70ecbbb8a9a43ab53d19/evidence.json: original semantic proofs retained; their route-log acceptance was superseded",
+        "fixtures/db5819a32c71523c5977dc92f660f220/engine.log: clean through final Temple replays, saved exit and pending-encounter process teardown"
       ],
       "result": "passed",
-      "evidence": "jobs/72521b06b454e5edf2f9e0af3ca788c5/evidence.json",
-      "measuredReplayMs": 2799,
+      "evidence": "jobs/535a0edb4852bc769b944eaf028cf7ae/evidence.json",
+      "measuredReplayMs": 2885,
       "steps": [
         {"command":"act","params":{"action":"move","arguments":{"dx":1,"dy":0}},"expect":{"interactionKind":null,"location":{"mapId":"land:0","x":19,"y":11}},"capture":true},
         {"command":"ui","params":{"action":"click","controlLabel":"Temple"},"expect":{"interactionKind":"temple_action","location":{"mapId":"land:0","x":19,"y":11}},"capture":true},

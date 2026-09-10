@@ -444,6 +444,8 @@ func _set_workspace_visible(visible: bool) -> void:
 
 
 func refresh_current_workspace(notify_route_change: bool = false) -> void:
+	_route_transition_revision += 1
+	var transition_revision := _route_transition_revision
 	var mounted_new_route := _workspace_view == null or _workspace_view.route_id != _screen_id
 	var previous_scroll_horizontal := _body_scroll.scroll_horizontal if _body_scroll != null else 0
 	var previous_scroll_vertical := _body_scroll.scroll_vertical if _body_scroll != null else 0
@@ -454,8 +456,6 @@ func refresh_current_workspace(notify_route_change: bool = false) -> void:
 		_workspace_view.set_workspace_rect(_workspace_layout_rect())
 	if _body == null:
 		return
-	_route_transition_revision += 1
-	var transition_revision := _route_transition_revision
 	_set_workspace_visible(not setup_controller.full_stage_overlay_visible())
 	if _screen_id in [&"character", &"vault"]:
 		setup_controller.character_creation.ensure_appearance_textures()

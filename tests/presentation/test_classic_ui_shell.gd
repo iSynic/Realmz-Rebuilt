@@ -8,7 +8,7 @@ const InteractionLayoutPolicyScript := preload("res://src/ui/shared/interactions
 func run() -> void:
 	_test_startup_party_setup_composition()
 	_test_package_operation_presentation()
-	_test_primary_workspace_lifecycle()
+	await _test_primary_workspace_lifecycle()
 
 func _test_interaction_layout_policy() -> void:
 	var textbox := InteractionRequest.acknowledge("layout.textbox", "Narration")
@@ -111,15 +111,15 @@ func _test_primary_workspace_lifecycle() -> void:
 	view.rules_version = "realmz-classic-1"
 	view.party_summary = PartySummaryView.new(); view.party_members = [CharacterView.new(CharacterState.new("hero", "Hero", 8, 10)), CharacterView.new(CharacterState.new("mage", "Mage", 6, 9))]
 	router.present(view); assert_true(router.content_presenter.select_character("mage"), "the persistent Party current-member identity can seed the Character workspace")
-	var entered: Array[StringName] = []
-	router.screen_changed.connect(func(route_id: StringName) -> void: entered.append(route_id))
+	var entered: Array[StringName] = []; var focused: Array[StringName] = []
+	router.screen_changed.connect(func(route_id: StringName) -> void: entered.append(route_id)); router.workspace_focus_restored.connect(func(route_id: StringName, _key: String) -> void: focused.append(route_id))
 	for route_id: StringName in [&"character", &"allies", &"bestiary", &"inventory", &"spells", &"services", &"journal", &"system", &"vault", &"exploration", &"combat"]:
-		router.open_screen(route_id)
+		focused.clear(); router.refresh_current_workspace(); router.open_screen(route_id); await (Engine.get_main_loop() as SceneTree).process_frame
 		assert_equal(router.current_screen(), route_id, "route selection commits the requested primary workspace")
 		var shell_mode := route_id in [&"exploration", &"combat"]
 		assert_equal(router.primary_workspace_id(), &"" if shell_mode else route_id, "only workspace routes mount a primary scene")
 		assert_equal(router.mounted_primary_workspace_count(), 0 if shell_mode else 1, "a route transition mounts exactly one workspace or no scene for a shell mode")
-		assert_equal(router.primary_workspace_visible(), not shell_mode, "shell modes reuse persistent HUD regions without a placeholder workspace")
+		assert_equal([router.primary_workspace_visible(), focused], [not shell_mode, [] if shell_mode else [route_id]], "only the current workspace restores deferred focus; shell modes discard superseded workspace work")
 		if shell_mode:
 			assert_true(router.find_child("WorkspaceFrame", true, false) == null, "shell modes do not leave a hidden explanatory scene in the tree")
 			continue

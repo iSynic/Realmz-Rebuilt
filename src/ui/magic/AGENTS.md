@@ -19,6 +19,7 @@
 - The field Spells route remains a persistent right sidebar: 420 pixels in the canonical composition and 288 pixels in the optional Classic composition.
 - Cast, Make Scroll, and Back remain in the fixed route action strip, outside scrolling content.
 - Encounter spell selection reuses `spells_workspace.tscn`; it must not maintain a second layout hierarchy.
+- Compact spellbooks arrange detail facts as one label/value pair per row and wrap supplied values. Long caster labels do not determine workspace width; the picker retains the full selected identity in its tooltip.
 - `Fast Spells (1-0)` exposes ten character-owned bindings with separate Clear actions. Scroll Case remains a separate record and action surface.
 - The controller may format supplied scaling, target, resistance, save, cost, and availability facts. It never infers legal powers, targets, effects, costs, or resource identities.
 - Stable hierarchy belongs in `.tscn` scenes. Variable records instantiate only exported row or action scenes.

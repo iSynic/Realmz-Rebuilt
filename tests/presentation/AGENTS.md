@@ -21,6 +21,9 @@
 
 - Fixture facts are synthetic and cannot become gameplay or live-campaign evidence.
 - Route coverage reads typed `UiRouteDefinition` resources: shell modes mount no workspace, while workspace routes mount exactly one registered scene.
+- Primary-workspace lifecycle coverage yields through deferred focus work after same-frame route replacement; only the current mounted workspace may emit restored focus, and shell modes discard superseded callbacks.
+- Pending-encounter composition teardown emits no workspace-restoration notification; auxiliary controls retire with their owner instead of rebuilding UI during scene exit.
+- The awaited Encounter composition case applies the application typography, long caster/spell labels, and both viewport profiles. It requires bounded side workspaces and unchanged exact owner/item/spell responses; the awaited scene case separately owns floating-choice shielding and first-message flash sizing.
 - Local screenshots may prove visual layout only and remain under ignored artifact storage.
 - Battlefield presenter coverage proves that committed playback retires temporary inspection or targeting focus before consecutive action events return to the active actor.
 - Exploration and Camp gallery frames cover the title-free icon-stage/live-caption footer compositor, exact PICT 180 Encounter source art, the project-owner-supplied transparent PICT 225 Shop-mark isolation, the project-owner-supplied native-pixel Heal glyph, persistent pressed Camp control, exact CICN 178 map marker, and light/fatigue/time facts at both supported profiles. Scene composition additionally owns Castle's visible 4–135 fatigue-gauge bounds and the canonical Party footer's left two-by-two command block beside its compact right four-by-two Effects bank. The deterministic package currently has no playable transition into its dungeon map, so a representative dungeon-stage capture remains an explicit gap rather than a fabricated detached map.

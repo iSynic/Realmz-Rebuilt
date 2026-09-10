@@ -24,7 +24,7 @@
   },
   "currentBatch": {
     "id": "ap-cancellation-and-word-response",
-    "name": "Encounter cancellation and cross-scenario responses",
+    "name": "Encounter cancellation, cross-scenario responses and UI lifecycle",
     "baselineCommit": "a128ef66aa376919dbf8a100e6091d833e97c595",
     "baselineCounts": {
       "classic": {
@@ -40,7 +40,7 @@
         "certified": 2
       }
     },
-    "selectionRationale": "Repair the reproduced Griloch nested Back failure first, then verify missing word-response outcomes and caller continuations at Castle in the Clouds AP 32 and Mithril Vault AP 8, plus the ordinary Griloch Temple approach. The cancellation recipe preserves pre-fix failure, deterministic repaired repeats, restored continuation and AP re-entry. Existing gameplay/workflow inventories remain the denominators; recipes add evidence, not a second tracker. Full campaign certification remains separate and retains the AOGM, War, then gain-based order.",
+    "selectionRationale": "Repair the reproduced Griloch nested Back failure first, then verify missing word-response outcomes and caller continuations at Castle in the Clouds AP 32 and Mithril Vault AP 8, plus the ordinary Griloch Temple approach. The final fixture-log audit reopened UI acceptance: finish stale route focus, pending-encounter teardown, and the interaction layout failures exposed by awaited presentation cases before expanding AP coverage. Retain pre-fix failures, deterministic repaired repeats, restored continuation and AP re-entry. Existing inventories remain the denominators; recipes add evidence, not a second tracker. Full campaign certification remains separate and retains the AOGM, War, then gain-based order.",
     "targets": [
       {
         "workflowId": "classic.services.temple",
@@ -71,6 +71,14 @@
         "mode": "verification",
         "priority": "known-failure",
         "expectedEvidence": "live-route",
+        "gapIds": [],
+        "archaeologyTriggers": []
+      },
+      {
+        "workflowId": "classic.system.quit",
+        "mode": "verification",
+        "priority": "known-failure",
+        "expectedEvidence": "runtime-integration",
         "gapIds": [],
         "archaeologyTriggers": []
       }

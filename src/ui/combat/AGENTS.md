@@ -23,6 +23,7 @@ Own the retained tactical battlefield, combat command deck, roster spellbook, Fa
 - Retain battlefield nodes and media caches across updates; do not rebuild the tactical scene for each event or frame.
 - Command availability, target sets, costs, masks, spell powers, Auto decisions, and inspection facts are supplied by the session. Presentation cannot infer or repair them.
 - Secondary command, spell, item, inspection, and targeting modes preserve a visible Back or Cancel path and suppress spatial input until resolved.
+- `CombatInteractionController.release()` is teardown-only: it releases the Fast Spell dock without emitting spellbook or layout changes. Ordinary `clear()` still restores the active application workspace.
 
 ## Work Guidance
 

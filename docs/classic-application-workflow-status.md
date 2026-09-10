@@ -13,9 +13,9 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Current parity-convergence batch
 
-**Encounter cancellation and cross-scenario responses** (`ap-cancellation-and-word-response`)
+**Encounter cancellation, cross-scenario responses and UI lifecycle** (`ap-cancellation-and-word-response`)
 
-Repair the reproduced Griloch nested Back failure first, then verify missing word-response outcomes and caller continuations at Castle in the Clouds AP 32 and Mithril Vault AP 8, plus the ordinary Griloch Temple approach. The cancellation recipe preserves pre-fix failure, deterministic repaired repeats, restored continuation and AP re-entry. Existing gameplay/workflow inventories remain the denominators; recipes add evidence, not a second tracker. Full campaign certification remains separate and retains the AOGM, War, then gain-based order.
+Repair the reproduced Griloch nested Back failure first, then verify missing word-response outcomes and caller continuations at Castle in the Clouds AP 32 and Mithril Vault AP 8, plus the ordinary Griloch Temple approach. The final fixture-log audit reopened UI acceptance: finish stale route focus, pending-encounter teardown, and the interaction layout failures exposed by awaited presentation cases before expanding AP coverage. Retain pre-fix failures, deterministic repaired repeats, restored continuation and AP re-entry. Existing inventories remain the denominators; recipes add evidence, not a second tracker. Full campaign certification remains separate and retains the AOGM, War, then gain-based order.
 
 AP batches use failure-first priorities: known failures, untested high-risk behavior, meaningful variants, and broader representatives. Verification mode records existing functional behavior without claiming full campaign certification; implementation, verification, and certification remain distinct modes.
 
@@ -25,6 +25,7 @@ AP batches use failure-first priorities: known failures, untested high-risk beha
 | `classic.scenario.trigger-action-point` | verification | known-failure | live-route |  |
 | `classic.scenario.choose-response` | verification | untested-high-risk | live-route |  |
 | `classic.scenario.complex-interaction` | verification | known-failure | live-route |  |
+| `classic.system.quit` | verification | known-failure | runtime-integration |  |
 
 ### Batch count delta
 
