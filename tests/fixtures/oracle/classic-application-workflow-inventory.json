@@ -40,7 +40,7 @@
         "certified": 2
       }
     },
-    "selectionRationale": "Repair the reproduced Necronomicon AP 3 zero-prompt failure, then prioritize the stock Race decoding defect exposed by its XP award over additional campaign variants. Castle reads 408-byte Race records, while the canonical application extractor currently advances 960 bytes and corrupts later Race fields. Reopen stock character creation, progression and reward acceptance; correct the canonical library, verify native fields, then replay those player workflows and the retained Treasure continuation. Prelude, AOGM and Bywater AP candidates remain queued until this shared defect is resolved. Existing inventories remain the denominators and full campaign certification stays separate.",
+    "selectionRationale": "Close the reproduced Necronomicon zero-prompt failure and the shared stock Race geometry defect before expanding campaign variants. Providence now reads Castle's 408-byte records; all 30 native Race records and reciprocal Caste eligibility are verified. Stock creation and level-up pass source-backed public integration checks, and the retained ordinary Treasure route passes exact XP, deterministic replay and saved continuation. These restore functional acceptance, not campaign certification. Next select high-risk caller/response variants from Prelude, AOGM and Bywater; existing inventories remain the denominators.",
     "targets": [
       {
         "workflowId": "classic.scenario.choose-response",
@@ -52,30 +52,27 @@
       },
       {
         "workflowId": "classic.startup.create-character",
-        "mode": "implementation",
+        "mode": "verification",
         "priority": "known-failure",
-        "gapIds": [
-          "GAP-RULES-001"
-        ],
-        "archaeologyTriggers": []
+        "gapIds": [],
+        "archaeologyTriggers": [],
+        "expectedEvidence": "runtime-integration"
       },
       {
         "workflowId": "classic.rewards.experience-level-up",
-        "mode": "implementation",
+        "mode": "verification",
         "priority": "known-failure",
-        "gapIds": [
-          "GAP-RULES-002"
-        ],
-        "archaeologyTriggers": []
+        "gapIds": [],
+        "archaeologyTriggers": [],
+        "expectedEvidence": "runtime-integration"
       },
       {
         "workflowId": "classic.rewards.treasure-distribution",
-        "mode": "implementation",
+        "mode": "verification",
         "priority": "known-failure",
-        "gapIds": [
-          "GAP-RULES-003"
-        ],
-        "archaeologyTriggers": []
+        "gapIds": [],
+        "archaeologyTriggers": [],
+        "expectedEvidence": "live-route"
       }
     ]
   },
@@ -2168,8 +2165,8 @@
         ],
         "tests": []
       },
-      "providence": {
-        "status": "partial",
+    "providence": {
+        "status": "complete",
         "sources": [
           {
             "path": "src-tauri/src/realmz2_exporter.rs",
@@ -2253,17 +2250,7 @@
         "war": "known-reachable",
         "classic": "observed"
       },
-      "gaps": [
-        {
-          "id": "GAP-RULES-001",
-          "category": "compiler",
-          "severity": "blocker",
-          "queue": "parity",
-          "summary": "Stock character creation consumes misaligned Race attributes, limits, base stats and eligibility from the current application catalog.",
-          "evidence": "Castle structs.h:58-75 and misc.c:1651-1657 establish 408-byte Race records; the current application catalog uses 960-byte stepping. Native Orc maximum age 55 and base movement 14 become 0 and 257 in Rebuilt. See runtime-testing.md for the preserved reward failure.",
-          "nextAction": "Verify all 30 native Race records against Castle geometry, regenerate the canonical library, and exercise ordinary stock character creation through its public workflow."
-        }
-      ]
+      "gaps": []
     },
     {
       "id": "classic.startup.inspect-character",
@@ -8525,8 +8512,8 @@
         ],
         "tests": []
       },
-      "providence": {
-        "status": "partial",
+    "providence": {
+        "status": "complete",
         "sources": [
           {
             "path": "src-tauri/src/realmz2_exporter.rs",
@@ -8601,17 +8588,7 @@
         "war": "known-reachable",
         "classic": "observed"
       },
-      "gaps": [
-        {
-          "id": "GAP-RULES-003",
-          "category": "compiler",
-          "severity": "blocker",
-          "queue": "parity",
-          "summary": "Necronomicon AP 3 awards every starter the maximum-age reduced XP share because the current stock Race catalog is misaligned.",
-          "evidence": "Castle structs.h:58-75 and misc.c:1651-1657 establish 408-byte Race records; the current application catalog uses 960-byte stepping. Native Orc maximum age 55 and base movement 14 become 0 and 257 in Rebuilt. See runtime-testing.md for the preserved reward failure.",
-          "nextAction": "Repair canonical Race geometry, revalidate the application package, and replay the retained ordinary reward route plus save/resume with source-correct XP expectations."
-        }
-      ]
+      "gaps": []
     },
     {
       "id": "classic.rewards.detect-identify-loot",
@@ -8975,8 +8952,8 @@
         ],
         "tests": []
       },
-      "providence": {
-        "status": "partial",
+    "providence": {
+        "status": "complete",
         "sources": [
           {
             "path": "src-tauri/src/realmz2_exporter.rs",
@@ -9044,17 +9021,7 @@
         "war": "known-reachable",
         "classic": "observed"
       },
-      "gaps": [
-        {
-          "id": "GAP-RULES-002",
-          "category": "compiler",
-          "severity": "blocker",
-          "queue": "parity",
-          "summary": "Stock progression consumes misaligned Race base attacks and movement from the current application catalog.",
-          "evidence": "Castle structs.h:58-75 and misc.c:1651-1657 establish 408-byte Race records; the current application catalog uses 960-byte stepping. Native Orc maximum age 55 and base movement 14 become 0 and 257 in Rebuilt. See runtime-testing.md for the preserved reward failure.",
-          "nextAction": "After canonical catalog repair, verify a real stock level-up and its saved continuation against source-decoded Race facts."
-        }
-      ]
+      "gaps": []
     },
     {
       "id": "classic.maps.view-acquired",

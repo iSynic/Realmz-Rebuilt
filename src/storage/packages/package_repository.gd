@@ -42,7 +42,7 @@ func set_application_content(content: RealmzContent, media_assets: Array[MediaAs
 
 func promote_installed_package(path: String) -> void:
 	var receipt := _receipt_store.read(path)
-	if receipt.is_empty():
+	if receipt.is_empty() or _receipt_store.requires_application_revalidation:
 		return
 	var cache_key := _receipt_store.cache_key(path, receipt)
 	if _package_cache.get_result(cache_key) != null:
@@ -208,6 +208,10 @@ func _load_installed_package(path: String, install_root: String, progress_callba
 	var receipt := _receipt_store.read(path)
 	if receipt.is_empty():
 		return PackageLoadResult.failed(&"package_install_receipt_invalid", _receipt_store.last_error if not _receipt_store.last_error.is_empty() else "Installed package receipt is invalid.")
+	if _receipt_store.requires_application_revalidation:
+		if not _receipt_store.validate_archive_sha256(receipt, _archive_reader.sha256_file(path)):
+			return PackageLoadResult.failed(&"package_install_receipt_invalid", _receipt_store.last_error)
+		return null
 	var cache_key := _receipt_store.cache_key(path, receipt)
 	var cached := _package_cache.get_result(cache_key)
 	if cached != null:

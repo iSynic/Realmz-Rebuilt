@@ -120,7 +120,7 @@ func prewarm_running() -> bool:
 
 
 func install_sync(package_path: String) -> PreparedPackage:
-	return _prepare(_repository.install_package(package_path))
+	return _prepare(_repository.install_package(package_path, _install_root))
 
 
 func set_application_content(content: RealmzContent, media_assets: Array[MediaAsset] = []) -> void:

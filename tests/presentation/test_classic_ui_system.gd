@@ -751,7 +751,7 @@ func _test_application_quit_composition() -> void:
 	await (Engine.get_main_loop() as SceneTree).process_frame
 	while not app.character_files.library_ready():
 		await (Engine.get_main_loop() as SceneTree).process_frame
-	var started := app.start_package(FIXTURE_PATH, 271); var shell := app.get_node("GameShell") as GameShell; var status := app.get_node("GameShell/BottomRegion/BottomRow/NarrativeWell/NarrativeColumn/Facts/Status") as Label; assert_true(started.state != SessionStep.State.FAILED, "the composition-root Quit proof starts the public synthetic package through the real application")
+	var started := app.start_package(FIXTURE_PATH, 271); var shell := app.get_node("GameShell") as GameShell; var status := app.get_node("GameShell/BottomRegion/BottomRow/NarrativeWell/NarrativeColumn/Facts/Status") as Label; assert_true(started.state != SessionStep.State.FAILED, "the composition-root Quit proof starts the public synthetic package through the real application: %s" % started.error_message)
 	shell.quit_requested.emit()
 	var menu_actions := _direct_buttons_in(app.find_child("LifecycleActions", true, false))
 	var quit_presenter := app.get_node("InteractionPanel") as InteractionPresenter

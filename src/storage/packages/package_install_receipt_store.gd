@@ -10,6 +10,7 @@ var schema_hash: String
 var decoder_version: int
 var application_package_hash: String
 var last_error: String = ""
+var requires_application_revalidation: bool = false
 
 
 func _init(expected_schema_hash: String, expected_decoder_version: int, expected_application_package_hash: String) -> void:
@@ -24,6 +25,7 @@ func set_application_package_hash(package_hash: String) -> void:
 
 func read(package_path: String) -> Dictionary:
 	last_error = ""
+	requires_application_revalidation = false
 	var receipt_path := path_for(package_path)
 	if not FileAccess.file_exists(receipt_path):
 		return {}
@@ -109,7 +111,7 @@ func _validate(receipt: Dictionary, package_path: String) -> bool:
 		return _fail("Installed package receipt has an unsupported version.")
 	if _integer(receipt["decoderVersion"]) != decoder_version:
 		return _fail("Installed package receipt was created by an incompatible package decoder.")
-	if receipt["schemaHash"] != schema_hash or receipt["applicationPackageHash"] != application_package_hash or not _safe_path_component(receipt["campaignId"]):
+	if receipt["schemaHash"] != schema_hash or not _is_sha256(receipt["applicationPackageHash"]) or not _safe_path_component(receipt["campaignId"]):
 		return _fail("Installed package receipt does not match the runtime contract.")
 	if not _is_sha256(receipt["packageHash"]) or not _is_sha256(receipt["archiveSha256"]):
 		return _fail("Installed package receipt contains malformed identities.")
@@ -121,6 +123,7 @@ func _validate(receipt: Dictionary, package_path: String) -> bool:
 		return _fail("Installed package filename does not match its validated identity.")
 	if package_path.get_base_dir().get_file().to_lower() != String(receipt["campaignId"]).to_lower():
 		return _fail("Installed package campaign directory does not match its validated identity.")
+	requires_application_revalidation = receipt["applicationPackageHash"] != application_package_hash
 	return true
 
 

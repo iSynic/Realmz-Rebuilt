@@ -25,6 +25,7 @@ Own the Castle-distributed scenario packages that ship with Realmz Rebuilt.
 
 - Regenerate packages through Providence from their pinned source manifests; never hand-edit archives or substitute the Oracle Castle copy for the designated City of Bywater snapshot.
 - Update the provenance catalog and release verifier atomically with any package change.
+- Keep original scenario compilation inputs in `compiler`; `acceptedApplicationLibrary` names the current runtime library verified against the unchanged scenario archives. A library-only rules correction must not rewrite scenario compiler provenance or recompile their authored content.
 
 ## Verification
 

@@ -1,10 +1,10 @@
 {
   "kind": "providence.rebuilt-alignment-fixtures",
   "formatVersion": 1,
-  "providenceCommit": "e7f862f0051c1ac6226c1d4def3b7da41cf51121",
+  "providenceCommit": "e8546ba76472f790a449437db0fbb116bdfee2a2",
   "schemaSha256": "05ced7b000683f53e6220b9ac8f7d41c801e7e2c78c874287c2ae694b585273d",
   "applicationPackageId": "realmz-classic-application-library",
-  "applicationPackageHash": "35dd24b24879e6e4aa8e3eb54672dfba99ba6c1538a3b6760898fcd4a91e8589",
+  "applicationPackageHash": "45298c295fc784b528f4219d6ceb0454cb482d894b66440e529d7763e7cb0036",
   "coverage": {
     "applicationItem": "classic.item.1",
     "applicationSpell": "classic.spell.1101",
@@ -20,8 +20,8 @@
     {
       "id": "positive",
       "path": "positive.realmz2",
-      "packageHash": "e893b1d8aac9ba5909d0cd9d8fd836718fab9b62f4b91046c5c4cba6aa7ae8af",
-      "archiveSha256": "a1ccbf3623ef6dc09c3d8774101cc86217d112ea088d8e9450e736b3d83d1bd4",
+      "packageHash": "0d2ac666b7b8279d128a65fb1d66157221aff26d67e1db6cb3ffa7c80d072c72",
+      "archiveSha256": "ca5d912977be5d6ff06e9525076c5120eafb43346f04f7bf93d8262531547e4e",
       "expected": "accepted",
       "expectedMessageFragment": "",
       "scenarioItems": 1,
@@ -32,8 +32,8 @@
     {
       "id": "missing-dependency",
       "path": "missing-dependency.realmz2",
-      "packageHash": "a3271675a757d75919cb51bee2929c0ca6615adc10ae38a3c6935d5a2cb5b35b",
-      "archiveSha256": "aa748f656ac05a911b755c00e5aa6a53f5cb2643e1aa13e08d1853708bd353e6",
+      "packageHash": "82a6b8baf47a4e6a3c6f03a4a40eeb1175994b38c98ddec6378f451f038516b8",
+      "archiveSha256": "c190574238b2b454accf4bb06b4c9d726959885351a902051ce28dedaf9d38b0",
       "expected": "rejected",
       "expectedMessageFragment": "references unavailable cursed item",
       "scenarioItems": 1,
@@ -44,8 +44,8 @@
     {
       "id": "wrong-kind-dependency",
       "path": "wrong-kind-dependency.realmz2",
-      "packageHash": "ec14b148b211215ee057ea8f1b50d4c9c04e03655f40845baad6146ea90f51b0",
-      "archiveSha256": "3a25627b2b63d8c610f63d5e52eb2ab5e2d2acab300fdc2933d527831a032a0e",
+      "packageHash": "b6e2ab0f4cce35aaf0f479a1a629d948b245edd97812c7f096e6bdee48ae1b3a",
+      "archiveSha256": "ee8151a125a5c468011bd9319cc0f01a75c0f9c598a998569c4ce100a1644ede",
       "expected": "rejected",
       "expectedMessageFragment": "portrait cicn 257",
       "scenarioItems": 1,

@@ -16,6 +16,7 @@ Own the first visible frame and prepare immutable application and campaign conte
 - The first rendered frame contains only the opaque launch card and its source-backed cue.
 - Package work is cancellable and joined on shutdown; only a validated detached result may change application content.
 - A failed, cancelled, or superseded preparation leaves the active session and media catalog unchanged.
+- Synchronous and worker package installation both honor the host's configured installation root, including isolated fixture storage.
 - Startup views may expose `MediaSource`, but never storage repository or archive objects.
 
 ## Work Guidance

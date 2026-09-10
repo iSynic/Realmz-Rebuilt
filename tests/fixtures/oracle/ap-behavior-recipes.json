@@ -28,7 +28,7 @@
     "mutatedPlayerFiles": false
   },
   "replayInstructions": [
-    "Create one isolated fixture at the recipe's baselineLocation using recipe.package when supplied, otherwise the default package; retain its checkpoint before input. Close superseded owned fixtures before replacement.",
+    "Create one isolated fixture at the recipe's baselineLocation using recipe.package and recipe.application when supplied, otherwise their defaults; retain its checkpoint before input. Earlier library identities require their recorded build and do not certify a replacement library. Close superseded owned fixtures before replacement.",
     "Pass {name: recipe.id, sessionId: the current observed fixture session ID, steps: recipe.steps} to journey-start. $pending is resolved by the existing journey runner.",
     "The Shop Done ID identifies the current ShopRouteControls/Content/ShopDone control; re-resolve that exact visible control from observe if a later UI build changes its ID. Do not select another Done behind the modal.",
     "Compare repeated runs only after restoring the same validated baseline outside the journey; never reseed or restore between its steps.",
@@ -529,6 +529,12 @@
     },
     {
       "id": "necronomicon-forced-simple-treasure",
+      "application": {
+        "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
+        "packageHash": "45298c295fc784b528f4219d6ceb0454cb482d894b66440e529d7763e7cb0036",
+        "archiveSha256": "e85ae0aca72fa6642ef66af8745ceb24446459598efcb1075cd8f5a4cce36012",
+        "starterCatalog": "src/storage/characters/realmz-classic-starter-characters.json"
+      },
       "workflowIds": [
         "classic.scenario.choose-response",
         "classic.rewards.treasure-distribution",
@@ -564,28 +570,29 @@
       "expected": [
         "Ordinary north entry advances 25 minutes and draws random-region chance then AP chance. Try to Talk transfers through XAP 35 to forced Simple 3 with four options and no Back.",
         "Simple prompt zero stays empty even when Data SD2 has message zero. Actual indexed hidden-treasure choice waits at message 276, then opens Treasure 24 after acknowledgement.",
-        "Treasure 24 has authored 10000 experience and item 908. This prepared party uses multiplier 2.5 and a 4166 base share. The retained pre-catalog-repair run incorrectly awards 2777 per character because the application Race catalog has corrupt maximum ages; this amount is failure evidence, not Classic acceptance.",
+        "Treasure 24 has authored 10000 experience and item 908. This prepared party uses multiplier 2.5 and awards exactly 4166 XP to each of the six starters, all below their native Race maximum age. All remain level 3; carried wealth stays 760.",
         "Typed assignment gives Kevlar exactly one unidentified, unequipped item 908 with three charges. Actual Treasure Done waits at message 336; the AP stays enabled until that acknowledgement.",
         "Final acknowledgement removes the AP exactly once. South/north re-entry has no interaction or AP-chance draw and does not duplicate rewards. Interaction steps consume no time/RNG; the complete route ends at 70 minutes and four draws.",
-        "Restoring the pending Treasure retains already-awarded XP and the unassigned item, then completes the same five-step suffix without duplication. This proves continuation mechanics, not correctness of the corrupt stock-catalog award."
+        "Restoring the pending Treasure retains already-awarded XP and the unassigned item, then completes the same five-step suffix without duplication. Every saved semantic/RNG boundary equals the unreloaded route; final RNG state is 1711656657 with four draws."
       ],
       "sourceEvidence": [
         "Castle encounters.c:43,300,426 and textbox-time.c:12-13: zero encounter prompts suppress text lookup",
         "Castle booty.c:400-410: maximum-age XP reduction; misc.c:1651-1657 and structs.h:58-75: native Race record loading"
       ],
       "remaining": [
-        "Prompt repair and exact-once item/continuation outcomes passed; stock Race geometry is a separate confirmed compiler defect. Re-run this recipe and correct XP expectations after canonical application-library repair before marking the complete reward route passed.",
         "Ambush battle, other Simple responses, physical item assignment, ordinary campaign-start travel and full campaign certification remain untested."
       ],
       "otherEvidence": [
-        "jobs/d27d6ca16ee2af633fd752aff20064ca/evidence.json: pre-fix incorrect Simple heading; all nine saved game/RNG boundaries equal after prompt repair",
-        "jobs/d90b54cfe2380057356e311f783b834e/evidence.json: complete identical-baseline repeat equal, including RNG",
-        "jobs/0cdccda5a9ab1fc47de45de25ad74c71/evidence.json: restored Treasure suffix; all five game/RNG boundaries equal to the unreloaded route",
-        "fixtures/18c7828f84bd478c2748c1e7b4df1ebc/engine.log: clean through replays, restore and graceful fixture shutdown"
+        "jobs/5549642ae14f0f14d550c24c0e99b607/evidence.json: corrected-library repeat, initial equivalence and all nine complete semantic/RNG boundaries equal",
+        "jobs/68576c06ee7532a5f724455a64903341/evidence.json: corrected-library restored Treasure suffix; all five semantic/RNG boundaries equal to the unreloaded route",
+        "fixtures/36ffad822ce44d88596344a83ee6e9aa/engine.log: clean through replays, restore and graceful fixture shutdown",
+        "jobs/b32aa21d6bc28a5ac52b071cc475dc83/evidence.json: old shared application identity; corrected empty prompt but incorrect 2777 XP award retained as Race compiler failure evidence",
+        "jobs/d27d6ca16ee2af633fd752aff20064ca/evidence.json: old shared application identity and incorrect Simple heading; nine saved boundaries equal after the prompt-only repair",
+        "jobs/d90b54cfe2380057356e311f783b834e/evidence.json and jobs/0cdccda5a9ab1fc47de45de25ad74c71/evidence.json: old shared application identity; deterministic repeat and restored suffix, not accepted stock XP parity"
       ],
-      "result": "partial",
-      "evidence": "jobs/b32aa21d6bc28a5ac52b071cc475dc83/evidence.json",
-      "measuredReplayMs": 5726,
+      "result": "passed",
+      "evidence": "jobs/9b67c1a71c167ba2dca19ed614866f68/evidence.json",
+      "measuredReplayMs": 5077,
       "steps": [
         {"command":"act","params":{"action":"move","arguments":{"dx":0,"dy":-1}},"expect":{"interactionKind":"yes_no","location":{"mapId":"land:1","x":9,"y":0}},"capture":true},
         {"command":"ui","params":{"controlLabel":"Try to Talk","action":"click"},"expect":{"interactionKind":"encounter_choice"},"capture":true},
@@ -630,11 +637,11 @@
   ],
   "nextSelection": [
     {
-      "priority": "known-failure",
-      "family": "application-stock-race-catalog",
-      "candidateOnly": false,
-      "expected": "Correct the canonical Race decoder to Castle native record geometry, regenerate the stock application library through Providence, and verify all native fields before repeating reward and character workflows.",
-      "remaining": "Current catalog extraction uses a 960-byte stride although Castle loadprofile reads 408-byte records. The first Race matches accidentally; later Race fields are misaligned. Preserve raw source bytes and do not hand-edit compiled package records."
+      "priority": "untested-high-risk",
+      "family": "authored-caller-response-and-destination-variants",
+      "candidateOnly": true,
+      "expected": "Recompute bounded Prelude, AOGM and Bywater candidates for uncovered caller, response and destination-recheck outcomes after the shared stock-library repair. Prefer authored branches with reusable nearby checkpoints; only observed asserted execution earns coverage.",
+      "remaining": "Nine recipes span four scenarios; representative coverage across all 13, additional Simple responses, cancellation and caller-specific outcomes remain incomplete. The older Griloch native comparison is pinned to the previous application identity and has not been renewed after the library correction."
     }
   ]
 }

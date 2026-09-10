@@ -10,7 +10,7 @@ $catalog = Get-Content -Raw -LiteralPath $catalogPath | ConvertFrom-Json
 if ($catalog.formatVersion -ne 2 -or $catalog.source.license -ne "CC-BY-NC-SA-4.0" -or $catalog.source.defaultForScenariosWithoutOverride -ne $true) {
     throw "Bundled scenario provenance header is invalid."
 }
-if ($catalog.compiler.packageSchemaVersion -ne 3 -or $catalog.compiler.applicationPackageHash -ne $applicationLock.packageHash -or $catalog.compiler.applicationPackageArchiveSha256 -ne $applicationLock.archiveSha256) {
+if ($catalog.compiler.packageSchemaVersion -ne 3 -or $catalog.acceptedApplicationLibrary.packageHash -ne $applicationLock.packageHash -or $catalog.acceptedApplicationLibrary.archiveSha256 -ne $applicationLock.archiveSha256 -or $catalog.acceptedApplicationLibrary.compilerRevision -ne $applicationLock.compilerCommit) {
     throw "Bundled scenario provenance does not name the accepted application library."
 }
 if (@($catalog.scenarios).Count -ne 13) {

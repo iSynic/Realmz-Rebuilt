@@ -16,6 +16,11 @@
     "applicationPackageArchiveSha256": "bb42608d0bf02b2c608f3e8d7c23fb94fdba566b5c0b862f886a303dce02156d",
     "applicationMediaCatalogSha256": "b1c7438d5a5fcdbf974fe01c5284a54db2228bc33a0e0f3ef0c93b018b24f0e5"
   },
+  "acceptedApplicationLibrary": {
+    "compilerRevision": "e8546ba76472f790a449437db0fbb116bdfee2a2",
+    "packageHash": "45298c295fc784b528f4219d6ceb0454cb482d894b66440e529d7763e7cb0036",
+    "archiveSha256": "e85ae0aca72fa6642ef66af8745ceb24446459598efcb1075cd8f5a4cce36012"
+  },
   "scenarios": [
     {
       "name": "Assault on Giant Mountain",
