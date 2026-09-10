@@ -391,6 +391,71 @@
         {"command":"act","params":{"action":"move","arguments":{"dx":-1,"dy":0}},"expect":{"interactionKind":null,"location":{"mapId":"land:0","x":49,"y":81}},"capture":true},
         {"command":"act","params":{"action":"move","arguments":{"dx":1,"dy":0}},"expect":{"interactionKind":null,"location":{"mapId":"land:0","x":50,"y":81}},"capture":true}
       ]
+    },
+    {
+      "id": "mithril-word-click-continuation",
+      "workflowIds": [
+        "classic.scenario.trigger-action-point",
+        "classic.scenario.complex-interaction"
+      ],
+      "package": {
+        "campaignId": "scenario-mithril-vault",
+        "path": "src/storage/packages/bundled_campaigns/scenario-mithril-vault.realmz2",
+        "packageHash": "c401fa2170e6e380edaf16943e6d5cf2da1152ac87b417cf5c3b5a3f728fc9b5",
+        "archiveSha256": "c2812ed33cd305fd012b33283832bfceab1a51bb2fe0244cd503d67c3a3d7bdf"
+      },
+      "baselineLocation": {
+        "mapId": "land:1",
+        "x": 33,
+        "y": 17
+      },
+      "target": {
+        "actionPoint": "Data DD:1:8",
+        "location": {
+          "mapId": "land:1",
+          "x": 34,
+          "y": 17
+        },
+        "encounter": "complex:3",
+        "promptMessageId": 70
+      },
+      "proofModes": [
+        "live-route",
+        "ordinary-movement",
+        "typed-response"
+      ],
+      "expected": [
+        "Ordinary east movement consumes one AP-chance draw (72), advances ten minutes, and opens Complex 3 with authored prompt 70.",
+        "Wrong word wrongword selects result four and waits at positive message 114. Acknowledgement repeats the issuing Complex without an extra draw.",
+        "CHEEZEHEAD selects result one and waits at positive success message 71. The AP remains enabled while that acknowledgement is pending.",
+        "Acknowledgement executes opcode 25 exactly once, removes AP 8 and closes the repeating timeline with no extra time/RNG.",
+        "Departure and re-entry traverse the same cells without firing the removed AP or drawing chance again. Total route RNG count remains one.",
+        "Restoring the two-frame success acknowledgement preserves the still-enabled AP, then removes it once through the same ordinary response; re-entry remains quiet."
+      ],
+      "sourceEvidence": [
+        "Castle encounters.c:443-472: source word comparison",
+        "Castle textbox-time.c:6-105: positive-message acknowledgement",
+        "Castle newland.c:1573-1699,3734-3737: result routing and repeat"
+      ],
+      "remaining": [
+        "Thief, item and spell alternatives are not certified by the word route; full campaign-start travel and full campaign certification remain separate."
+      ],
+      "otherEvidence": [
+        "jobs/f7b2f74e5331a047026c728dd4a7e165/evidence.json: complete identical-baseline semantic/RNG repeat equal",
+        "jobs/8c07be9aadf6a426f70168366171e090/evidence.json: restored success text, exact-once AP removal and re-entry; setup prefix jobs/743ca8f00caa71d49872e4bf961c88d1/evidence.json"
+      ],
+      "result": "passed",
+      "evidence": "jobs/2172cba6585be735aee0fb65623b5d0c/evidence.json",
+      "measuredReplayMs": 3307,
+      "steps": [
+        {"command":"act","params":{"action":"move","arguments":{"dx":1,"dy":0}},"expect":{"interactionKind":"complex_encounter","location":{"mapId":"land:1","x":34,"y":17}},"capture":true},
+        {"command":"respond","params":{"response":{"requestId":"$pending","kind":"complex_encounter","body":{"action":"word","word":"wrongword"}}},"expect":{"interactionKind":"acknowledge","location":{"mapId":"land:1","x":34,"y":17}},"capture":true},
+        {"command":"respond","params":{"response":{"requestId":"$pending","kind":"acknowledge","body":{}}},"expect":{"interactionKind":"complex_encounter","location":{"mapId":"land:1","x":34,"y":17}},"capture":true},
+        {"command":"respond","params":{"response":{"requestId":"$pending","kind":"complex_encounter","body":{"action":"word","word":"CHEEZEHEAD"}}},"expect":{"interactionKind":"acknowledge","location":{"mapId":"land:1","x":34,"y":17}},"capture":true},
+        {"command":"respond","params":{"response":{"requestId":"$pending","kind":"acknowledge","body":{}}},"expect":{"interactionKind":null,"location":{"mapId":"land:1","x":34,"y":17}},"capture":true},
+        {"command":"act","params":{"action":"move","arguments":{"dx":-1,"dy":0}},"expect":{"interactionKind":null,"location":{"mapId":"land:1","x":33,"y":17}},"capture":true},
+        {"command":"act","params":{"action":"move","arguments":{"dx":1,"dy":0}},"expect":{"interactionKind":null,"location":{"mapId":"land:1","x":34,"y":17}},"capture":true}
+      ]
     }
   ],
   "siblingAndContinuationEvidence": [
@@ -425,21 +490,16 @@
   "nextSelection": [
     {
       "priority": "meaningful-variant",
-      "campaignId": "scenario-mithril-vault",
-      "archiveSha256": "c2812ed33cd305fd012b33283832bfceab1a51bb2fe0244cd503d67c3a3d7bdf",
-      "packageHash": "c401fa2170e6e380edaf16943e6d5cf2da1152ac87b417cf5c3b5a3f728fc9b5",
-      "actionPoint": "Data DD:1:8",
+      "campaignId": "scenario-grilochs-revenge",
+      "actionPoint": "Data DD:0:35",
       "location": {
-        "mapId": "land:1",
-        "x": 34,
-        "y": 17
+        "mapId": "land:0",
+        "x": 19,
+        "y": 11
       },
-      "encounter": "complex:3",
-      "expectedWord": "cheezehead",
-      "wordResult": 1,
       "candidateOnly": true,
-      "expected": "Correct word selects positive message 71 then AP removal; wrong-word path selects positive message 114. Inspect restored continuation, caller eligibility and any AP header effects before credit.",
-      "remaining": "Static selection only; no live outcome is claimed."
+      "expected": "Ordinary entry from land:0 18,11 configures Bank and Temple, publishes nonblocking message 296 and keeps AP 35. The visible Temple control enters the shared service-hook path; Done returns to the ordinary map.",
+      "remaining": "Earlier direct AP plus typed service evidence does not certify this ordinary approach or its visible controls."
     }
   ]
 }
