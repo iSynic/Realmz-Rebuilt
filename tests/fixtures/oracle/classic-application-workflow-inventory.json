@@ -71,9 +71,7 @@
         "mode": "verification",
         "priority": "known-failure",
         "expectedEvidence": "live-route",
-        "gapIds": [
-          "GAP-APKEEP-001"
-        ],
+        "gapIds": [],
         "archaeologyTriggers": []
       }
     ]
@@ -3628,7 +3626,7 @@
         },
         {
           "id": "keep-remove",
-          "status": "unresolved"
+          "status": "implemented"
         },
         {
           "id": "xap-return",
@@ -3668,7 +3666,7 @@
         ]
       },
       "simulation": {
-        "status": "partial",
+        "status": "complete",
         "owners": [
           {
             "path": "src/scenarios/vm/scenario_vm.gd",
@@ -3723,17 +3721,7 @@
         "war": "not-observed",
         "classic": "observed"
       },
-      "gaps": [
-        {
-          "id": "GAP-APKEEP-001",
-          "category": "simulation",
-          "severity": "major",
-          "queue": "parity",
-          "summary": "Keep Codes overwrites an explicit AP replacement and repeats Prelude Treasure 32 on re-entry.",
-          "evidence": "Retained Prelude AP 67 fixture df831d21f3af4d79dfeb816d444fe8af, failing journey 0ce2ed6da6658871426f62d643889c40: opcode 7 maps AP 67 to XAP 229, then opcode 24 incorrectly replaces it with transient XAP 233; ordinary re-entry grants the same reward again. Earlier unrelated AP proof remains valid.",
-          "nextAction": "Remove the Keep Codes program rewrite, replay the authored reward and re-entry from the retained baseline twice, and verify restored continuations plus neighboring encounter exits."
-        }
-      ]
+      "gaps": []
     },
     {
       "id": "classic.scenario.present-message-media",

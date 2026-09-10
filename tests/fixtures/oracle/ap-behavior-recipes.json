@@ -745,6 +745,288 @@
           "capture": true
         }
       ]
+    },
+    {
+      "id": "prelude-keep-codes-explicit-replacement",
+      "application": {
+        "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
+        "packageHash": "45298c295fc784b528f4219d6ceb0454cb482d894b66440e529d7763e7cb0036",
+        "archiveSha256": "e85ae0aca72fa6642ef66af8745ceb24446459598efcb1075cd8f5a4cce36012",
+        "starterCatalog": "src/storage/characters/realmz-classic-starter-characters.json"
+      },
+      "workflowIds": [
+        "classic.scenario.trigger-action-point"
+      ],
+      "package": {
+        "campaignId": "scenario-prelude-to-pestilence",
+        "path": "src/storage/packages/bundled_campaigns/scenario-prelude-to-pestilence.realmz2",
+        "packageHash": "f89edcdde9a5db51f73a8a4f9fbb7f27d984bab875188547c1e5ac38276dfc8f",
+        "archiveSha256": "e60716fd00737755fe1006cb7056a1303125002c40378e6636e59d07e63c4f5a"
+      },
+      "baselineLocation": {
+        "mapId": "land:0",
+        "x": 59,
+        "y": 55
+      },
+      "target": {
+        "actionPoint": "Data DD:0:67",
+        "location": {
+          "mapId": "land:0",
+          "x": 60,
+          "y": 55
+        },
+        "transfer": "xap:233",
+        "replacement": "xap:229",
+        "opcodes": [
+          3,
+          39,
+          10,
+          29,
+          7,
+          24
+        ]
+      },
+      "proofModes": [
+        "live-route",
+        "ordinary-movement",
+        "actual-ui-control",
+        "typed-response",
+        "restored-continuation"
+      ],
+      "expected": [
+        "Actual Yes continues through messages 540 and 541 into XAP 233 / Treasure 32. The Treasure Done acknowledgement at message 576 resumes positive map acquisition, opcode-7 replacement of AP 67 with XAP 229, then Keep Codes.",
+        "Keep Codes terminates the complete timeline without persisting the temporary XAP 233 or overwriting XAP 229. The AP remains enabled; ordinary west/east re-entry reaches message 542, not a second Treasure 32.",
+        "Positive map acquisition has a presentation-only Continue notification with no pending semantic interaction. Close it before moving; this button spends no time or RNG.",
+        "Both complete 15-step routes have identical complete game-state/RNG boundaries. Final position is land 0 (60,55), clock 45 minutes, RNG state 1176904574 after nine draws, with exactly two reward items, one map and one AP replacement."
+      ],
+      "sourceEvidence": [
+        "Castle newland.c:2336-2340,3732-3784: Keep Codes skips AP elimination and has no generic program rewrite",
+        "Castle flashrange-loaddoor.c:43-59 and newland.c:2747-2752: opcode 39 replaces temporary execution only",
+        "Castle newland.c:1736-1815: opcode 7 persistently replaces the authored AP program"
+      ],
+      "remaining": [
+        "Checkpoints already containing the erroneous XAP 233 override are preserved as historical state; this fix does not guess or migrate prior player choices.",
+        "Map rendering and full campaign-start travel are not certified by this recipe."
+      ],
+      "otherEvidence": [
+        "jobs/4e01b82e8121d8c6d6af78a60ce5fc82/evidence.json and jobs/e4264c025085776b336fa2bc9f8027ee/evidence.json: current-library Griloch Thief success retains explicit XAP 379 replacement; all seven repeated semantic/RNG boundaries equal",
+        "jobs/8754a547adeca2d0d884559cfddeba3c/evidence.json and jobs/694e228dbd5f191d7509106143879098/evidence.json: current-library Griloch Thief failure and nested Back preserve the AP and permit re-entry without a program override",
+        "jobs/0ce2ed6da6658871426f62d643889c40/evidence.json: pre-fix ordinary re-entry unexpectedly grants Treasure 32 again",
+        "jobs/5446b7a21050f1d15ddec425fc7caf51/evidence.json: first incorrect mutation overwrites authored XAP 229 with XAP 233 during Keep Codes; later wait was an omitted presentation Continue step",
+        "jobs/9e1f205e8d2c7db7287c02d6df051670/evidence.json: repaired full repeat, all 15 semantic/RNG boundaries equal",
+        "jobs/97ed44aa280ea9ef619498a125a36291/evidence.json: pre-fix Treasure checkpoint resumes into the corrected ten-boundary suffix",
+        "jobs/9c8cdfedc3a3ba7174a914b4711d57e0/evidence.json: pre-map acknowledgement restores all five repaired suffix boundaries",
+        "fixtures/df831d21f3af4d79dfeb816d444fe8af/engine.log and fixtures/5d16e4ec27c9ad34ff315d9d673e296f/engine.log: clean through graceful shutdown"
+      ],
+      "result": "passed",
+      "evidence": "jobs/53bcef5c850c03007415ef2f9acb01a5/evidence.json",
+      "measuredReplayMs": 8214,
+      "steps": [
+        {
+          "command": "act",
+          "params": {
+            "action": "move",
+            "arguments": {
+              "dx": 1,
+              "dy": 0
+            }
+          },
+          "expect": {
+            "interactionKind": "acknowledge",
+            "location": {
+              "mapId": "land:0",
+              "x": 60,
+              "y": 55
+            }
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "yes_no"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "Yes"
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": "treasure_distribution"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlId": "61bca31495067520377e494e"
+          },
+          "expect": {
+            "interactionKind": "treasure_distribution"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlId": "684d9d12f4785cb44af5b865"
+          },
+          "expect": {
+            "interactionKind": "treasure_distribution"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlId": "63e2b92eed99d892ea75ec1d"
+          },
+          "expect": {
+            "interactionKind": "treasure_distribution"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "Share"
+          },
+          "expect": {
+            "interactionKind": "treasure_distribution"
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "Done"
+          },
+          "expect": {
+            "interactionKind": "acknowledge"
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": null
+          },
+          "capture": true
+        },
+        {
+          "command": "ui",
+          "params": {
+            "action": "click",
+            "controlLabel": "Continue"
+          },
+          "expect": {
+            "interactionKind": null
+          },
+          "capture": true
+        },
+        {
+          "command": "act",
+          "params": {
+            "action": "move",
+            "arguments": {
+              "dx": -1,
+              "dy": 0
+            }
+          },
+          "expect": {
+            "interactionKind": null,
+            "location": {
+              "mapId": "land:0",
+              "x": 59,
+              "y": 55
+            }
+          },
+          "capture": true
+        },
+        {
+          "command": "act",
+          "params": {
+            "action": "move",
+            "arguments": {
+              "dx": 1,
+              "dy": 0
+            }
+          },
+          "expect": {
+            "interactionKind": "acknowledge",
+            "location": {
+              "mapId": "land:0",
+              "x": 60,
+              "y": 55
+            }
+          },
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "expect": {
+            "interactionKind": null
+          },
+          "capture": true
+        }
+      ]
     }
   ],
   "siblingAndContinuationEvidence": [

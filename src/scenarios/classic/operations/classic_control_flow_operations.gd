@@ -377,10 +377,6 @@ func _opcode_25_trigger_id(context: ScenarioExecutionContext) -> String:
 
 func _keep_action_point(context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	var events: Array[DomainEvent] = []
-	if context != null and not context.trigger_id.is_empty() and not context.original_program_id.is_empty() and not context.transferred_program_id.is_empty() and context.original_program_id != context.transferred_program_id:
-		if resolve_program_id(context.original_program_id) != context.transferred_program_id:
-			_game_state.scenario_progress.encounters.set_program_override(context.original_program_id, context.transferred_program_id)
-			events.append(DomainEvent.new(&"scenario_program_replaced", {"sourceProgramId": context.original_program_id, "targetProgramId": context.transferred_program_id, "source": "classic-keep-codes"}))
 	events.append(DomainEvent.new(&"action_point_kept", {"triggerId": context.trigger_id if context != null else "", "source": "classic"}))
 	return ScenarioRuntimeOperationResult.completed(null, events, ScenarioVmDirective.finish_timeline())
 
