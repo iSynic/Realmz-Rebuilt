@@ -159,7 +159,7 @@ func _bind_combat_and_interactions() -> void:
 
 func _bind_shell_and_settings() -> void:
 	_shell_presenter.start_package_requested.connect(_begin_package_start)
-	_shell_presenter.cancel_package_requested.connect(_cancel_package_start)
+	_shell_presenter.cancel_package_requested.connect(_package_host.cancel)
 	_shell_presenter.refresh_campaigns_requested.connect(_refresh_campaigns)
 	_shell_presenter.intent_submitted.connect(submit_intent)
 	_shell_presenter.save_requested.connect(func(slot_id: String) -> void: adventure_storage.save(_active_content, slot_id))
@@ -223,15 +223,18 @@ func _process(_delta: float) -> void:
 	if _package_host == null:
 		return
 	var operation := _package_host.operation_view()
+	if operation.state == PackageOperationView.IDLE:
+		return
 	var operation_key := "%s:%s:%d:%d:%s" % [operation.state, operation.phase, operation.completed, operation.total, operation.message]
 	if operation_key != _last_package_operation_key:
 		_last_package_operation_key = operation_key
 		_shell_presenter.navigator.setup_controller.campaign_library.set_package_operation(operation)
 		_shell_presenter.status.set_status(operation.message, operation.state == PackageOperationView.FAILED)
-	if operation.is_running() or operation.state == PackageOperationView.IDLE:
+	if operation.is_running():
 		return
 	var prepared := _package_host.take_prepared_package()
-	_shell_presenter.navigator.setup_controller.campaign_library.set_package_operation(PackageOperationView.new())
+	if operation.state != PackageOperationView.FAILED:
+		_shell_presenter.navigator.setup_controller.campaign_library.set_package_operation(PackageOperationView.new())
 	_last_package_operation_key = ""
 	if operation.state == PackageOperationView.CANCELLED:
 		_shell_presenter.status.set_status("Campaign preparation cancelled.")
@@ -296,25 +299,20 @@ func _begin_package_start(package_path: String, initial_seed: int) -> void:
 	_shell_presenter.status.set_status("Preparing campaign…")
 
 
-func _cancel_package_start() -> void:
-	if _package_host != null:
-		_package_host.cancel()
-
-
 func _complete_package_install(prepared: PreparedPackage, initial_seed: int) -> SessionStep:
 	if prepared == null:
 		_status_label.text = "Package rejected • package operation returned no result"
-		_shell_presenter.status.set_status(_status_label.text, true)
+		_present_package_failure(_status_label.text)
 		return SessionStep.failed(0, &"package_operation_failed", "Package operation returned no result.")
 	if not prepared.is_ok():
 		_status_label.text = "Package rejected • %s" % prepared.error_message
-		_shell_presenter.status.set_status(_status_label.text, true)
+		_present_package_failure(_status_label.text)
 		return SessionStep.failed(0, prepared.error_code, prepared.error_message)
 	prepared.content.characters.install_application_catalog(character_files.library_content().characters)
 	var step := session_controller.start(prepared.content, initial_seed)
 	if step.state == SessionStep.State.FAILED:
 		_status_label.text = "Session start failed • %s" % step.error_message
-		_shell_presenter.status.set_status(_status_label.text, true)
+		_present_package_failure(_status_label.text)
 		return step
 	_queued_combat_auto_changes.clear()
 	_active_content = prepared.content
@@ -331,6 +329,11 @@ func _complete_package_install(prepared: PreparedPackage, initial_seed: int) -> 
 	_shell_presenter.status.set_status(_status_label.text)
 	_refresh_campaigns()
 	return step
+
+
+func _present_package_failure(message: String) -> void:
+	_shell_presenter.status.set_status(message, true)
+	_shell_presenter.navigator.setup_controller.campaign_library.set_package_operation(PackageOperationView.new(PackageOperationView.FAILED, &"", 0, 0, message))
 
 
 func _input(event: InputEvent) -> void:
