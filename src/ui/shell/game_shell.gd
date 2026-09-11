@@ -31,6 +31,7 @@ signal exploration_speed_changed(percent: int)
 signal combat_playback_speed_changed(percent: int)
 signal exploration_minimap_changed(enabled: bool)
 signal classic_exploration_visibility_changed(enabled: bool)
+signal custom_fog_tile_changed(enabled: bool)
 signal autojournal_changed(enabled: bool)
 signal layout_changed(workspace_rect: Rect2, profile: UiLayoutProfile)
 signal route_changed(route_id: StringName)
@@ -399,6 +400,7 @@ func _on_presentation_setting_changed(setting_id: StringName, value: Variant) ->
 		&"combat_playback_speed_percent": combat_playback_speed_changed.emit(int(value))
 		&"show_exploration_minimap": exploration_minimap_changed.emit(bool(value))
 		&"classic_exploration_visibility": classic_exploration_visibility_changed.emit(bool(value))
+		&"custom_fog_tile_enabled": custom_fog_tile_changed.emit(bool(value))
 		&"autojournal_enabled": autojournal_changed.emit(bool(value))
 
 

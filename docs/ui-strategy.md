@@ -59,7 +59,7 @@ The export-excluded Realmz Builder dock reads `addons/realmz_builder/scene_previ
 ## Input, focus, and interaction
 
 - Mouse and keyboard have equivalent access. Named input actions own movement, search, camp, route shortcuts, activation, cancellation, and future device bindings.
-- Land maps retain the complete eight-direction movement compass through keyboard and keypad. Pointer movement deliberately uses four party-centered 90-degree cardinal wedges instead of Castle's independent-axis mouse classification, preventing modest off-axis drift from becoming a diagonal across Rebuilt's wider viewport. Dungeon movement remains cardinal through arrows, WASD, or keypad 8/6/2/4.
+- Land maps retain the complete eight-direction movement compass through pointer, keyboard, and keypad. Pointer movement uses eight party-centered 45-degree compass octants around one neutral party cell, so mouse travel can request the same diagonals as keypad 7/9/1/3. Dungeon movement remains cardinal through pointer, arrows, WASD, or keypad 8/6/2/4.
 - Focus is visible and restored per route. Opening an interaction focuses the first valid response.
 - Escape closes a stage picture or top interaction first, then returns through route history to Explore.
 - A pending request suppresses exploration and route mutation. `InteractionPresenter` preserves request ID and exact response payload.

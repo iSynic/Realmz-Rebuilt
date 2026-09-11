@@ -155,7 +155,12 @@ func _process_cast_action(state: GameState, content: RealmzContent, monster: Mon
 func _advance_then_retry_cast(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, active_turn: CombatTurnState, rng: RealmzRng, events: Array[DomainEvent]) -> int:
 	var result := process_monster_advance(state, content, monster, definition, active_turn, rng, events)
 	if result == MONSTER_ATTACK_COMPLETED and monster_can_retry_cast(state, monster, definition, active_turn):
-		return process_monster_cast(state, content, monster, definition, active_turn, rng, events)
+		var retry_result := process_monster_cast(state, content, monster, definition, active_turn, rng, events)
+		# A second failed cast has exhausted this activation's cast fallback chain.
+		# The advance/contact probe above already supplied the ordinary physical path;
+		# do not leak FALLBACK to process_monster_turns(), which would leave this
+		# monster as the active actor without a continuation boundary.
+		return MONSTER_ATTACK_COMPLETED if retry_result == MONSTER_ATTACK_FALLBACK else retry_result
 	return result
 
 

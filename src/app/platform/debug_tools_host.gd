@@ -20,6 +20,7 @@ var _console_shortcut_enabled: bool = false
 var _topology_debug: bool = false
 var _developer_tools_enabled: bool = false
 var _default_overlay: Control
+var _f12_down: bool = false
 
 
 func bind(controller: GameSessionController, overlay: Control, content_provider: Callable) -> void:
@@ -74,18 +75,49 @@ func close_surfaces() -> void:
 func handle_input(event: InputEvent) -> bool:
 	if _dialog == null:
 		return false
+	if event is InputEventKey and _is_f12_key(event as InputEventKey):
+		if not event.pressed:
+			_f12_down = false
+			return false
+		if event.echo or _f12_down:
+			return true
+		_f12_down = true
+		_toggle_dialog()
+		return true
 	if _developer_tools_enabled and _console_shortcut_enabled and event.is_action_pressed(&"realmz_debug_console"):
 		if _console.visible: _console.close_console()
 		else: _open_console()
 		return true
 	if not event.is_action_pressed(&"realmz_debug_tools"):
 		return false
+	_toggle_dialog()
+	return true
+
+
+func _process(_delta: float) -> void:
+	if _dialog == null:
+		return
+	var pressed := Input.is_physical_key_pressed(KEY_F12)
+	if pressed and not _f12_down:
+		_f12_down = true
+		_toggle_dialog()
+	elif not pressed:
+		_f12_down = false
+
+
+func _toggle_dialog() -> void:
 	if _dialog.visible:
 		_dialog.close_dialog()
 	else:
 		if _console != null and _console.visible: _console.close_console()
-		_dialog.present(_controller.view(), _map_records() if _developer_tools_enabled else [], _noclip, _recent_auto_actions, _console_shortcut_enabled, _topology_debug)
-	return true
+		var maps: Array[Dictionary] = []
+		if _developer_tools_enabled:
+			maps = _map_records()
+		_dialog.present(_controller.view(), maps, _noclip, _recent_auto_actions, _console_shortcut_enabled, _topology_debug)
+
+
+static func _is_f12_key(event: InputEventKey) -> bool:
+	return event.keycode == KEY_F12 or event.physical_keycode == KEY_F12
 
 
 func is_open() -> bool:
