@@ -31,7 +31,7 @@ var _pending_prepared_package: PreparedPackage
 var _held_movement: HeldMovementController
 var _queued_combat_auto_changes: Dictionary = {}
 var _quit_operation: Callable
-var _debug_tools: DebugToolsHost
+var debug_tools: DebugToolsHost
 var _campaigns: Array[CampaignPackageView] = []
 var _last_campaign_prewarm_requested: bool = false
 var _input_router: ApplicationInputRouter
@@ -86,9 +86,9 @@ func _build_dependencies() -> void:
 	add_child(presentation_coordinator)
 	add_child(_dungeon_presenter)
 	add_child(_held_movement)
-	_debug_tools = DebugToolsHost.new()
-	add_child(_debug_tools)
-	_debug_tools.bind(session_controller, self, func() -> RealmzContent: return _active_content)
+	debug_tools = DebugToolsHost.new()
+	add_child(debug_tools)
+	debug_tools.bind(session_controller, self, func() -> RealmzContent: return _active_content)
 	character_files = ApplicationCharacterFilesHost.new(
 		_package_host,
 		session_controller,
@@ -103,7 +103,7 @@ func _build_dependencies() -> void:
 
 
 func _bind_debug_and_movement() -> void:
-	_debug_tools.status_changed.connect(
+	debug_tools.status_changed.connect(
 		func(message: String, failed: bool) -> void:
 			_shell_presenter.status.set_status(message, failed)
 	)
@@ -178,7 +178,7 @@ func _bind_shell_and_settings() -> void:
 	_shell_presenter.standalone_character_creation_cancelled.connect(func() -> void: character_files.cancel_creation(_active_content))
 	_shell_presenter.character_selection_completed.connect(_interaction_presenter.submit_character_selection)
 	_audio_presenter.music_state_changed.connect(_shell_presenter.set_music_playback_state)
-	_settings_controller = ApplicationSettingsController.new(self, _presentation_settings, settings_repository, _shell_presenter, _map_presenter, _interaction_presenter, _audio_presenter, presentation_coordinator, _dungeon_presenter, _held_movement, _debug_tools)
+	_settings_controller = ApplicationSettingsController.new(self, _presentation_settings, settings_repository, _shell_presenter, _map_presenter, _interaction_presenter, _audio_presenter, presentation_coordinator, _dungeon_presenter, _held_movement, debug_tools)
 	if not has_meta(&"development_preview_request"):
 		_settings_controller.bind()
 	_settings_controller.apply_initial_settings()
@@ -429,7 +429,7 @@ func submit_movement(direction: Vector2i) -> bool:
 func submit_intent(intent: PlayerIntent) -> SessionStep:
 	if character_files.creator_active():
 		return character_files.submit_creator_intent(intent)
-	var debug_step := _debug_tools.noclip_step(intent) if _debug_tools != null else null
+	var debug_step := debug_tools.noclip_step(intent) if debug_tools != null else null
 	if debug_step != null:
 		_present_step_status(debug_step)
 		return debug_step

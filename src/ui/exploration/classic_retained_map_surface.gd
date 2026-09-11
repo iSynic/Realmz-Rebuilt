@@ -187,6 +187,7 @@ func _update_cell(cell: MapCellView, current_classic_rect: Rect2i) -> void:
 	var revealed := _dungeon_discovery if _map_view.level_type == &"dungeon" else _land_discovery
 	var outside_classic := not los and _classic_visibility and not current_classic_rect.has_point(cell.coordinate)
 	if outside_classic and not revealed.has(cell.coordinate):
+		_set_fog(cell.coordinate)
 		return
 	if _map_view.level_type == &"dungeon":
 		if not cell.has_feature(&"unmapped") or _dungeon_discovery.has(cell.coordinate):

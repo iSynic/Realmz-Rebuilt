@@ -19,11 +19,13 @@ var _action_lines: Array[String] = []
 var _console_shortcut_enabled: bool = false
 var _topology_debug: bool = false
 var _developer_tools_enabled: bool = false
+var _default_overlay: Control
 
 
 func bind(controller: GameSessionController, overlay: Control, content_provider: Callable) -> void:
 	_controller = controller
 	_content_provider = content_provider
+	_default_overlay = overlay
 	_developer_tools_enabled = OS.is_debug_build()
 	_dialog = (load(DEBUG_TOOLS_DIALOG_SCENE_PATH) as PackedScene).instantiate() as DebugToolsDialog
 	overlay.add_child(_dialog)
@@ -46,6 +48,27 @@ func bind(controller: GameSessionController, overlay: Control, content_provider:
 	_dialog.console_shortcut_changed.connect(func(enabled: bool) -> void: _console_shortcut_enabled = enabled)
 	_console.close_requested.connect(_console.close_console)
 	_console.clear_requested.connect(_clear_console)
+
+
+func attach_overlay(overlay: Control) -> void:
+	if overlay == null or _dialog == null:
+		return
+	if _dialog.get_parent() != overlay:
+		_dialog.reparent(overlay, false)
+	if _console != null and _console.get_parent() != overlay:
+		_console.reparent(overlay, false)
+
+
+func restore_overlay() -> void:
+	close_surfaces()
+	attach_overlay(_default_overlay)
+
+
+func close_surfaces() -> void:
+	if _dialog != null:
+		_dialog.close_dialog()
+	if _console != null and _console.visible:
+		_console.close_console()
 
 
 func handle_input(event: InputEvent) -> bool:

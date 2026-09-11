@@ -7,6 +7,7 @@ signal movement_hold_started(direction: Vector2i)
 signal movement_hold_updated(direction: Vector2i)
 signal movement_hold_stopped
 const SURROUND_TEXTURE_PATH := "res://src/ui/shared/assets/ui/classic-exploration-surround-tile.png"
+const FOG_TEXTURE_PATH := "res://src/ui/shared/assets/ui/fog-of-war-tile.png"
 const DEBUG_AP_COLOR := Color(0.95, 0.72, 0.26, 0.88)
 const DEBUG_RANDOM_RECT_COLOR := Color(0.96, 0.75, 0.36, 0.78)
 
@@ -43,6 +44,7 @@ var _visible_cache_camera: Vector2i = Vector2i(-1, -1)
 var _visible_cache_size: Vector2i = Vector2i.ZERO
 var _visible_cache_party_coordinate: Vector2i = Vector2i(-1, -1)
 var _surround_texture: Texture2D = load(SURROUND_TEXTURE_PATH) as Texture2D
+var _fog_texture: Texture2D = load(FOG_TEXTURE_PATH) as Texture2D
 var _retained_surface: Control
 var _show_topology_markers: bool = false
 
@@ -358,8 +360,11 @@ func _party_marker_texture() -> Texture2D:
 	return _party_marker_textures.get(_party_marker_asset_id) as Texture2D
 
 
-func _draw_unvisited_cell(_rect: Rect2) -> void:
-	pass
+func _draw_unvisited_cell(rect: Rect2) -> void:
+	if _fog_texture != null:
+		draw_texture_rect(_fog_texture, rect, false)
+	else:
+		draw_rect(rect, Color.BLACK, true)
 
 
 func _draw_cell(cell: MapCellView, rect: Rect2, level_type: StringName, dark: bool, discovered: bool, recalled: bool = false, saved_darkness_level: int = -1) -> void:

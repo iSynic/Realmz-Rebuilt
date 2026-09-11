@@ -41,6 +41,7 @@ var _layout_profile_script: Script
 var _presentation_settings_script: Script
 var _application_script_prime: Script
 var _application: Control
+var _startup_diagnostics: Node
 var _load_path: String = ""
 var _load_started_at: int = 0
 var _load_requested: bool = false
@@ -94,10 +95,17 @@ func _notification(what: int) -> void:
 			get_tree().quit()
 
 
+func _input(event: InputEvent) -> void:
+	if _startup_diagnostics != null and bool(_startup_diagnostics.call("handle_input", event)):
+		get_viewport().set_input_as_handled()
+
+
 func _exit_tree() -> void:
 	if _menu_controller != null:
 		_menu_controller.release_intro_resources()
 	if is_instance_valid(_application) and get_tree() != null and get_tree().current_scene != _application:
+		if _startup_diagnostics != null:
+			_startup_diagnostics.call("restore_overlay")
 		_application.queue_free()
 	_menu_controller = null
 	_application = null
@@ -186,6 +194,9 @@ func _on_application_ready() -> void:
 	_load_failed = false
 	_application_script_prime = null
 	_startup_failure.visible = false
+	_startup_diagnostics = _application.get("debug_tools") as Node
+	if _startup_diagnostics != null:
+		_startup_diagnostics.call("attach_overlay", _overlay_host)
 	if _splash_complete:
 		_menu_controller.set_startup_actions_ready(true)
 		_application.set_meta(&"startup_front_door_revealed", true)
@@ -204,6 +215,8 @@ func _request_action(action: StringName) -> void:
 func _enter_application(action: StringName) -> void:
 	if _application == null:
 		return
+	if _startup_diagnostics != null:
+		_startup_diagnostics.call("restore_overlay")
 	_menu_controller.hide_overlays()
 	_application.visible = true
 	_application.set_process_input(true)
