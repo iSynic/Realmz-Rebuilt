@@ -442,13 +442,9 @@ func _test_public_classic_forced_victory(content: RealmzContent) -> void:
 
 func _test_public_classic_combat_spawn(content: RealmzContent) -> void:
 	var source_definition := MonsterDefinition.new("classic.monster.12", 12, "Summoner", 1, 4, 8, 0, 0, [], [], [], [], [], [], [])
-	source_definition.size = 3
-	source_definition.traitor = true
-	source_definition.can_summon = -1
+	source_definition.size = 3; source_definition.traitor = true; source_definition.can_summon = -1
 	var summoned_definition := MonsterDefinition.new("classic.monster.4", 4, "Minor Demon", 1, 4, 8, 0, 0, [], [], [], [], [], [], [])
-	summoned_definition.size = 3
-	summoned_definition.traitor = true
-	summoned_definition.can_summon = -1
+	summoned_definition.size = 3; summoned_definition.traitor = true; summoned_definition.can_summon = -1
 	var battle := BattleDefinition.new("battle.opcode124", 1240, [])
 	var spawn_content := RealmzContent.new("opcode124", "1".repeat(64), "opcode124", content.rules_version, content.start_map_id, content.start_coordinate, content.world, ScenarioDefinition.new([], []), [], [], [], [], [], [], [], [source_definition, summoned_definition], [battle])
 	var hero := CharacterState.new("opcode124.hero", "Hero", 20, 20)
@@ -474,6 +470,9 @@ func _test_public_classic_combat_spawn(content: RealmzContent) -> void:
 	var spawn_event: DomainEvent = result.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_monsters_spawned")[0] if result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_monsters_spawned") else null
 	assert_equal([result.state, spawned != null, spawned.traitor if spawned != null else false, field.actors.has_actor(spawned_id), field.actors.actor_position(spawned_id), state.combat.turns.turn_order().back(), spawn_event.payload.get("coordinates") if spawn_event != null else [], result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 605)], [ScenarioRuntimeOperationResult.State.COMPLETED, true, true, true, Vector2i(48, 48), spawned_id, [Vector2i(48, 48)], true], "opcode 124 places a battle-macro summon through Castle's expanding complete-footprint scan, appends its turn, and publishes its authored cue")
 	assert_true(BattlefieldGrid.footprint_cells(field.actors.actor_position(spawned_id), summoned_definition.size).all(func(coordinate: Vector2i) -> bool: return field.actors.actor_at(coordinate) == spawned_id), "the summoned 2x2 monster owns every authoritative battlefield cell and therefore appears in combat presentation")
+	var macro_spell := SpellDefinition.new("classic.spell.2301", 2301, "Confuse"); macro_spell.in_combat = true; macro_spell.target_type = 3; macro_spell.size = 7; macro_spell.special = 30; macro_spell.spell_class = 5; macro_spell.damage_type = 5; macro_spell.cost = 15; macro_spell.power_duration_min = 1; macro_spell.power_duration_max = 1; spawn_content.magic = SpellCatalog.new([macro_spell]); source.current_health = 0
+	var macro_program := ScenarioProgramDefinition.new("xap:108", &"extra-action-point", "108", [ClassicActionDefinition.new(0, 17, 17, 388, false, [2301, 1, 0, 1]), ClassicActionDefinition.new(1, 84, 84, 0, false, [])]); var macro_vm := ScenarioVm.new(); macro_vm.configure(ScenarioDefinition.new([macro_program], [])); macro_vm.start_program(macro_program.id, ScenarioExecutionContext.calling(&"monster-death-macro").set_battle(battle.id).set_combatant(source.id)); var macro_result := macro_vm.run(api)
+	assert_equal([macro_result.state, source.current_health, spawned.conditions.value(ConditionRules.CONFUSED), hero.conditions.value(ConditionRules.CONFUSED), state.combat.turns.active_actor_id(), hero.spell_points, macro_spell.cannot, _event_has(macro_result.events, &"classic_control_marker")], [ScenarioVmResult.State.COMPLETED, 0, 1, 0, hero.id, 0, 0, true], "opcode 17 in a death macro targets living footprints around the retained dead source without selected characters, resource cost, turn advance, catalog mutation, or lost following code")
 
 
 func _test_public_classic_combat_mutation(content: RealmzContent) -> void:

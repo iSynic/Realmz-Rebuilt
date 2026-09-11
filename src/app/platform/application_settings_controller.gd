@@ -61,6 +61,7 @@ func bind() -> void:
 	_shell.combat_playback_speed_changed.connect(_on_combat_playback_speed_changed)
 	_shell.exploration_minimap_changed.connect(_on_exploration_minimap_changed)
 	_shell.classic_exploration_visibility_changed.connect(_on_classic_exploration_visibility_changed)
+	_shell.custom_fog_tile_changed.connect(_on_custom_fog_tile_changed)
 	_shell.autojournal_changed.connect(_on_autojournal_changed)
 	_debug_tools.topology_debug_changed.connect(_on_topology_debug_changed)
 
@@ -75,6 +76,7 @@ func apply_initial_settings() -> void:
 	_interaction.set_autojournal_enabled(_settings.autojournal_enabled)
 	_map.set_travel_preview_visible(_settings.show_exploration_minimap)
 	_map.set_classic_exploration_visibility(_settings.classic_exploration_visibility)
+	_map.set_custom_fog_tile_enabled(_settings.custom_fog_tile_enabled)
 	_apply_window_mode(_settings.window_mode)
 	_audio.set_master_volume(_settings.master_volume)
 	_audio.set_sound_volume(_settings.sound_volume)
@@ -213,6 +215,12 @@ func _on_exploration_minimap_changed(enabled: bool) -> void:
 func _on_classic_exploration_visibility_changed(enabled: bool) -> void:
 	_settings.classic_exploration_visibility = enabled
 	_map.set_classic_exploration_visibility(enabled)
+	_save()
+
+
+func _on_custom_fog_tile_changed(enabled: bool) -> void:
+	_settings.custom_fog_tile_enabled = enabled
+	_map.set_custom_fog_tile_enabled(enabled)
 	_save()
 
 
