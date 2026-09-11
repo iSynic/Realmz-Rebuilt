@@ -4,7 +4,6 @@ class_name ClassicRetainedMapSurface
 extends Control
 
 const SURROUND_TEXTURE_PATH := "res://src/ui/shared/assets/ui/classic-exploration-surround-tile.png"
-const BATTLE_ATLAS_ID := "classic-battle-tiles-302"
 const SECRET_TILE_ID := 251
 const PATH_TILE_ID := 253
 const DARKNESS_MASK_SIZE := Vector2(320.0, 320.0)
@@ -181,7 +180,7 @@ func minimap_rect() -> Rect2:
 func _update_cell(cell: MapCellView, current_classic_rect: Rect2i) -> void:
 	_erase_coordinate(cell.coordinate)
 	var los := _map_view.uses_los
-	if MapPresentationGeometry.los_cell_requires_blackout(los, cell.visible):
+	if MapPresentationGeometry.los_cell_requires_blackout(los, _seen.has(cell.coordinate)):
 		_set_fog(cell.coordinate)
 		return
 	var revealed := _dungeon_discovery if _map_view.level_type == &"dungeon" else _land_discovery
@@ -215,7 +214,7 @@ func _set_atlas_cell(layer: TileMapLayer, coordinate: Vector2i, asset_id: String
 	var source := _atlas_source(asset_id)
 	if source.is_empty():
 		return
-	var asset: MediaAsset = source[1]
+	var asset: ClassicMapAtlas = source[1]
 	var atlas_index := maxi(tile_id - 1, 0)
 	var atlas_coordinate := Vector2i(atlas_index % asset.columns, floori(float(atlas_index) / asset.columns))
 	layer.set_cell(coordinate, int(source[0]), atlas_coordinate)
@@ -232,7 +231,7 @@ func _transparent_marker_source(tile_id: int) -> int:
 		return int(_transparent_marker_source_by_tile_id[tile_id])
 	if _media == null:
 		return -1
-	var asset := _media.asset_by_id(BATTLE_ATLAS_ID)
+	var asset := _media.battle_tileset()
 	var texture := _media.image_texture(asset) if asset != null else null
 	var marker := transparent_marker_tile(asset, texture, tile_id)
 	if marker == null:
@@ -255,12 +254,11 @@ func _atlas_source(asset_id: String) -> Array:
 		return _source_by_asset_id[asset_id]
 	if _missing_sources.has(asset_id) or _media == null:
 		return []
-	var asset := _media.asset_by_id(asset_id)
-	var texture := _media.image_texture(asset) if asset != null else null
-	if asset == null or texture == null or not asset.is_tileset() and not asset.is_battle_tileset():
+	var asset := _media.map_atlas(asset_id)
+	if asset == null:
 		_missing_sources[asset_id] = true
 		return []
-	var retained_texture := _retained_atlas_texture(asset, texture, _tile_set.tile_size)
+	var retained_texture := _retained_atlas_texture(asset, asset.texture, _tile_set.tile_size)
 	if retained_texture == null:
 		_missing_sources[asset_id] = true
 		return []
@@ -275,7 +273,7 @@ func _atlas_source(asset_id: String) -> Array:
 	return result
 
 
-static func _retained_atlas_texture(asset: MediaAsset, texture: Texture2D, cell_size: Vector2i) -> Texture2D:
+static func _retained_atlas_texture(asset: ClassicMapAtlas, texture: Texture2D, cell_size: Vector2i) -> Texture2D:
 	var source_tile_size := Vector2i(asset.tile_width, asset.tile_height)
 	if source_tile_size == cell_size:
 		return texture

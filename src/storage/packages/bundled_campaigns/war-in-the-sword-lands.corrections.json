@@ -1,0 +1,65 @@
+{
+  "formatVersion": 1,
+  "campaignId": "scenario-war-in-the-sword-lands",
+  "authority": "project-owner-approved",
+  "sourceRevision": "ef95fcff40d81f14ac668d5e13466da4a51de6f4",
+  "sourceFiles": [
+    {
+      "file": "Data DD",
+      "sha256": "5926cecb30970a6e0c782f2733667f4f711e6cf770fcc5aef3954a3093c6f876"
+    },
+    {
+      "file": "Data EDCD",
+      "sha256": "200688c86e1a221879e2c5d0754e435d9be968c212933a5d238562f5e8fdff88"
+    },
+    {
+      "file": "Data ED3",
+      "sha256": "31b3ab492b0f03968914e3ef6f675a01997fd0a3dd8e4520869f1a110a2ce265"
+    }
+  ],
+  "fidelityLedger": "docs/fidelity-ledger.md#war-authored-branch-corrections",
+  "corrections": [
+    {
+      "id": "war-map-payment-refusal",
+      "source": "extra-code:1854",
+      "originalValues": [-500, 0, 0, 16361, 0],
+      "correctedValues": [-500, 0, 0, 1224, 0],
+      "method": "extra-code-value.retarget",
+      "params": {"source": "extra-code:1854", "index": 3, "targetId": 1224},
+      "evidence": "Simple 52's neighboring 100-gem offer uses XAP 1224 for refusal; the 500-gem offer uses nonexistent XAP 16361. XAP 1224 contains the shared insufficient-money message and the same continuation settings. The intended replacement is a contextual inference, not Castle runtime proof."
+    },
+    {
+      "id": "war-rum-quest-check-3329",
+      "source": "extra-action-point:3329",
+      "slot": 3,
+      "originalOpcode": -87,
+      "correctedOpcode": -46,
+      "extraCodeId": 1153,
+      "method": "action.set-opcode",
+      "params": {"source": "extra-action-point:3329", "slot": 3, "rawOpcode": -46},
+      "evidence": "Matching rum encounters XAP 777 slot 5 and XAP 2194 slot 4 use -46 with the same unchanged settings 1153 [29,1,0,782,0] after message 670. Preserve their quest-29 predicate, XAP 782 destination, and signed GOSUB behavior; -87 instead misreads that row as an ally check targeting missing Simple 782."
+    },
+    {
+      "id": "war-rum-quest-check-3367",
+      "source": "extra-action-point:3367",
+      "slot": 3,
+      "originalOpcode": -87,
+      "correctedOpcode": -46,
+      "extraCodeId": 1153,
+      "method": "action.set-opcode",
+      "params": {"source": "extra-action-point:3367", "slot": 3, "rawOpcode": -46},
+      "evidence": "Same source-backed neighboring-encounter comparison as XAP 3329. Do not change shared settings 1153 or either correct -46 caller."
+    },
+    {
+      "id": "war-dart-trap-settings",
+      "source": "action-point:land:10:88",
+      "slot": 4,
+      "opcode": 18,
+      "originalTarget": 6096,
+      "correctedTarget": 6095,
+      "method": "action-reference.retarget",
+      "params": {"source": "action-point:land:10:88", "slot": 4, "targetNativeId": 6095},
+      "evidence": "Land 10 APs 84 through 87 have the same eight actions, sounds, dart-trap messages and branch settings, but use EDCD 6095 [1108,5,-75,0,0] for slot 4. AP 88 alone uses the next row 6096 [1,0,0,0,0]. Castle loadspell2 returns for IDs below 1101, leaving stale global spellinfo; matching the four neighboring traps is an intentional contextual correction, not a claim about that stale runtime state."
+    }
+  ]
+}

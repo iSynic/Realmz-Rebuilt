@@ -1,8 +1,8 @@
 extends SceneTree
 
-const APPLICATION_PACKAGE_PATH := "res://src/storage/characters/realmz-classic-character-library.realmz2"
-const APPLICATION_PACKAGE_ID := "realmz-classic-character-library"
-const APPLICATION_PACKAGE_HASH := "c7e093f46bcca49d2382d68c2995ae5ff90c0e706dbd538682b613af9b80e0bd"
+const APPLICATION_PACKAGE_PATH := ApplicationLibraryIdentity.PATH
+const APPLICATION_PACKAGE_ID := ApplicationLibraryIdentity.CAMPAIGN_ID
+const APPLICATION_PACKAGE_HASH := ApplicationLibraryIdentity.PACKAGE_HASH
 const FEATURE_REPORT_FORMAT_VERSION := 2
 const FEATURE_REPORT_PROVIDENCE_COMMIT := "8ae731e851544575d6687059b9c84a2535f89d5f"
 const FEATURE_REPORT_SCHEMA_HASH := "be4fa175ebfc8ed756a0db2b0c6073108bd9f635e8c23321d1258cfcf4e73ee4"

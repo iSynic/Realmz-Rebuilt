@@ -16,13 +16,11 @@ func validate_monster_media(monsters: Array[MonsterDefinition], media_assets: Ar
 			return _reject("Monster '%s' requires unavailable Classic cicn %d." % [monster.id, monster.icon_id])
 	return true
 
-func validate_assets(document: Dictionary, files: Dictionary) -> bool:
+func validate_package_assets(document: Dictionary, files: Dictionary) -> bool:
 	if not document.get("assets") is Array:
 		return _reject("Asset index must contain an assets array.")
 	var ids: Dictionary = {}
 	var resources: Dictionary = {}
-	var portrait_resource_ids: Dictionary = {}
-	var combat_icon_resource_ids: Dictionary = {}
 	var scenario_music_slots: Dictionary = {}
 	for asset: Variant in document["assets"]:
 		if not asset is Dictionary or not _exact_fields(asset, ["id", "label", "kind", "mimeType", "resourceType", "resourceId", "scenarioMusicSlot", "bytes", "sha256", "path", "width", "height", "durationMs", "sampleRate", "channels", "tileWidth", "tileHeight", "columns", "rows", "landlook", "baseTile"]):
@@ -60,39 +58,67 @@ func validate_assets(document: Dictionary, files: Dictionary) -> bool:
 			if resources.has(resource_key):
 				return _reject("Asset resource identities must be unique.")
 			resources[resource_key] = true
-			if asset["resourceType"] == "cicn" and asset["kind"] == "portrait":
-				portrait_resource_ids[_integer(asset["resourceId"])] = true
-			if asset["resourceType"] == "cicn" and asset["kind"] == "combat-icon":
-				combat_icon_resource_ids[_integer(asset["resourceId"])] = true
 		if asset["kind"] in ["portrait", "combat-icon"]:
 			if asset["resourceType"] != "cicn" or asset["resourceId"] == null or asset["mimeType"] != "image/png" or asset["width"] == null or _integer(asset["width"]) < 1 or asset["height"] == null or _integer(asset["height"]) < 1:
 				return _reject("Character appearance asset '%s' must be a decoded Classic cicn PNG with positive dimensions." % asset["id"])
+	return true
+
+
+func validate_effective_assets(assets: Array[MediaAsset]) -> bool:
+	var ids: Dictionary = {}
+	var resources: Dictionary = {}
+	var portrait_resource_ids: Dictionary = {}
+	var combat_icon_resource_ids: Dictionary = {}
+	for asset: MediaAsset in assets:
+		if ids.has(asset.id):
+			return _reject("Effective media asset ID '%s' is ambiguous after application-plus-scenario composition." % asset.id)
+		ids[asset.id] = true
+		if not asset.resource_type.is_empty():
+			var resource_key := JSON.stringify([asset.resource_type, asset.resource_id])
+			if resources.has(resource_key):
+				return _reject("Effective media resource '%s' %d is ambiguous after application-plus-scenario composition." % [asset.resource_type, asset.resource_id])
+			resources[resource_key] = true
+		if asset.resource_type == "cicn" and asset.kind == "portrait":
+			portrait_resource_ids[asset.resource_id] = true
+		if asset.resource_type == "cicn" and asset.kind == "combat-icon":
+			combat_icon_resource_ids[asset.resource_id] = true
 	for resource_id: int in range(257, 377):
 		if not portrait_resource_ids.has(resource_id):
-			return _reject("Character portrait catalog is missing Classic cicn %d." % resource_id)
+			return _reject("Effective media catalog is missing application portrait cicn %d." % resource_id)
 	for resource_id: int in range(9000, 9120):
 		if not combat_icon_resource_ids.has(resource_id):
-			return _reject("Character combat-icon catalog is missing Classic cicn %d." % resource_id)
+			return _reject("Effective media catalog is missing application combat-icon cicn %d." % resource_id)
 	return true
 
-func validate_presentation_capabilities(manifest: Dictionary, assets: Dictionary) -> bool:
+
+func validate_presentation_capabilities(manifest: Dictionary, content: Dictionary, effective_assets: Array[MediaAsset]) -> bool:
+	if not content.get("battles") is Array:
+		return _reject("Content battles must be available for presentation validation.")
 	var declares_battle_atlas: bool = manifest["capabilities"].has("realmz.presentation.battle-atlas-v1")
-	var battle_atlas_count := 0
-	for asset: Dictionary in assets["assets"]:
-		if asset["kind"] == "battle-tileset":
-			battle_atlas_count += 1
-	if declares_battle_atlas != (battle_atlas_count == 1):
-		return _reject("Battle-atlas capability and packaged battle artwork do not agree.")
+	if not content["battles"].is_empty() and not declares_battle_atlas:
+		return _reject("Retained battles require the battle-atlas capability.")
+	if not declares_battle_atlas:
+		return true
+	var atlases: Array[MediaAsset] = []
+	for asset: MediaAsset in effective_assets:
+		if asset.resource_type == "PICT" and asset.resource_id == 302:
+			atlases.append(asset)
+	if atlases.size() != 1:
+		return _reject("Battle-atlas capability requires exactly one effective PICT 302 resource.")
+	var atlas := atlases[0]
+	if not atlas.is_tileset() or atlas.mime_type != "image/png" or atlas.width != 640 or atlas.height != 640 or atlas.tile_width != 32 or atlas.tile_height != 32 or atlas.columns != 20 or atlas.rows != 20:
+		return _reject("Battle-atlas capability requires the complete 640 by 640 PICT 302 grid of 32-pixel tiles.")
 	return true
 
-func validate_render_references(assets: Dictionary, world: Dictionary) -> bool:
+
+func validate_render_references(assets: Array[MediaAsset], world: Dictionary) -> bool:
 	var tileset_ids: Dictionary = {}
 	var image_ids: Dictionary = {}
-	for asset: Dictionary in assets["assets"]:
-		if asset["kind"] == "tileset":
-			tileset_ids[asset["id"]] = true
-		if asset["mimeType"] is String and asset["mimeType"].begins_with("image/"):
-			image_ids[asset["id"]] = true
+	for asset: MediaAsset in assets:
+		if asset.kind == "tileset":
+			tileset_ids[asset.id] = true
+		if asset.mime_type.begins_with("image/"):
+			image_ids[asset.id] = true
 	if not world.get("maps") is Array:
 		return _reject("World maps must be available for tileset validation.")
 	for map: Variant in world["maps"]:
@@ -107,6 +133,7 @@ func validate_render_references(assets: Dictionary, world: Dictionary) -> bool:
 			if overlay_asset_id != null and (not overlay_asset_id is String or not image_ids.has(overlay_asset_id)):
 				return _reject("Topology references missing image overlay asset '%s'." % overlay_asset_id)
 	return true
+
 
 func construct_assets(document: Dictionary) -> Array[MediaAsset]:
 	var assets: Array[MediaAsset] = []

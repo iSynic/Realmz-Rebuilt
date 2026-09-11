@@ -47,6 +47,7 @@ var _playback_status_label: Label
 var _autojournal_enabled: bool = false
 var _treasure_recipient_id: String = ""
 var _treasure_slot_order: Array[String] = []
+var _treasure_money_workspace_open := false
 var _overlays: InteractionOverlayHost
 var _combat: CombatInteractionController
 var _flash: InteractionFlashController
@@ -94,17 +95,17 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 
 func _submit_classic_acknowledgement() -> bool:
-	return not _playback_masked and _request != null and _request.kind == InteractionRequest.ACKNOWLEDGE and _component is TextChoiceInteraction and (_component as TextChoiceInteraction).submit_acknowledgement()
+	return not _playback_masked and not _flash.is_open() and _request != null and _request.kind == InteractionRequest.ACKNOWLEDGE and _component is TextChoiceInteraction and (_component as TextChoiceInteraction).submit_acknowledgement()
 
 
 func _exit_tree() -> void:
 	_set_classic_acknowledgement_cursor(false)
 	if _overlays != null:
-		_overlays.close_all()
+		_overlays.release()
 	if _combat != null:
-		_combat.clear()
+		_combat.release()
 	if _flash != null:
-		_flash.close()
+		_flash.release()
 
 
 func present(request: InteractionRequest, classic_text_context: String = "", game_view: GameView = null, media: ClassicMediaCatalog = null) -> void:
@@ -128,8 +129,12 @@ func _begin_request(request: InteractionRequest) -> bool:
 	if request == null or request.kind != InteractionRequest.TREASURE_DISTRIBUTION:
 		_treasure_recipient_id = ""
 		_treasure_slot_order.clear()
+		_treasure_money_workspace_open = false
 	else:
 		_update_treasure_slot_order(request)
+		var treasure_body := request.body as TreasureRequestBody
+		if treasure_body == null or treasure_body.mode != &"ordinary":
+			_treasure_money_workspace_open = false
 	_request = request
 	_set_classic_acknowledgement_cursor(_uses_global_classic_acknowledgement())
 	_passive_text = false
@@ -197,6 +202,7 @@ func _mount_request_component(request: InteractionRequest, game_view: GameView, 
 	if _component is TreasureDistributionInteraction:
 		var treasure := _component as TreasureDistributionInteraction
 		treasure.recipient_selected.connect(func(character_id: String) -> void: _treasure_recipient_id = character_id)
+		treasure.money_workspace_visibility_changed.connect(func(open: bool) -> void: _treasure_money_workspace_open = open)
 	_options.add_child(_component)
 	_options.visible = true
 	_component.build(request)
@@ -310,7 +316,7 @@ func set_autojournal_enabled(enabled: bool) -> void:
 
 
 func _create_component(request: InteractionRequest, game_view: GameView, media: ClassicMediaCatalog) -> InteractionComponent:
-	return ComponentFactory.create(request, game_view, media, _application_rect.size.x < 1000.0, _autojournal_enabled, _treasure_recipient_id, _treasure_slot_order, _combat_rect)
+	return ComponentFactory.create(request, game_view, media, _application_rect.size.x < 1000.0, _autojournal_enabled, _treasure_recipient_id, _treasure_slot_order, _treasure_money_workspace_open, _combat_rect)
 
 
 func _submit_body(body: InteractionResponse.Body) -> void:
@@ -321,7 +327,9 @@ func _submit_body(body: InteractionResponse.Body) -> void:
 	_overlays.close_application_workspace()
 	_overlays.close_modal_shield()
 	var response := InteractionResponse.new(_request.request_id, _request.kind, body)
-	var preserve_treasure_workspace := _component is TreasureDistributionInteraction and body is InteractionResponse.TreasureBody and (body as InteractionResponse.TreasureBody).action in [&"assign", &"done"]
+	var preserve_treasure_workspace := _component is TreasureDistributionInteraction and body is InteractionResponse.TreasureBody and (body as InteractionResponse.TreasureBody).action in [&"assign", &"transfer", &"done"]
+	if body is InteractionResponse.TreasureBody and (body as InteractionResponse.TreasureBody).action == &"done":
+		_treasure_money_workspace_open = false
 	_request = null
 	_set_classic_acknowledgement_cursor(false)
 	_combat.clear()
@@ -453,7 +461,8 @@ func _apply_classic_region() -> void:
 		position = modal_region.position + (modal_region.size - desired) * 0.5
 		size = desired
 	var encounter_surface := _request != null and _request.kind in [InteractionRequest.WORD_AND_ACTION, InteractionRequest.THIEF_ENCOUNTER]
-	_overlays.update_modal_shield(not _playback_masked and _request != null and (encounter_surface or not LayoutPolicy.uses_textbox_region(_request)) and not LayoutPolicy.uses_full_stage_region(_request), not encounter_surface)
+	var modal_surface := encounter_surface or LayoutPolicy.uses_floating_choice_modal(_request) or not LayoutPolicy.uses_textbox_region(_request)
+	_overlays.update_modal_shield(not _playback_masked and _request != null and modal_surface and not LayoutPolicy.uses_full_stage_region(_request), not encounter_surface)
 	_apply_content_layout()
 	_overlays.apply_layout()
 

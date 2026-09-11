@@ -76,6 +76,10 @@ func has_visual_art() -> bool:
 	return _art_texture != null
 
 
+func caption_text() -> String:
+	return _label
+
+
 func set_art_scale(value: int) -> void:
 	_art_scale = 2 if value >= 2 else 1
 	custom_minimum_size = Vector2(62.0, 70.0) if _icon_caption_layout else Vector2(maxi(_native_size.x * _art_scale + 6, 62), _native_size.y * _art_scale + 6) if _art_texture != null else Vector2(62.0, 56.0)

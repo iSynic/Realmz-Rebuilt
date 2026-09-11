@@ -8,4 +8,6 @@ Restore is deliberately staged. `session_restore_validator.gd` coordinates state
 
 `SaveSlotPreview` is the neutral browse record shared by storage, the application host, and presentation. It reports visible adventure identity and validity without exposing a save path or mutable envelope, and it does not replace the full restore check.
 
+Developer preview enters only through typed `SessionDebugCommand` values. A standalone Extra Action Point program uses its exact compiled XAP definition and normal VM/runtime operations, while deliberately omitting the authored caller context; the development request and result name that limitation rather than presenting it as a Timed Encounter or Global-hook preview.
+
 To trace a command, begin with `GameSession.submit`, continue through `SessionIntentCoordinator`, and then enter the named sibling feature workflow. To trace a response, begin with `GameSession.respond` and `SessionResponsesCoordinator`. The primary checks are `tests/core/test_game_session.gd`, `tests/integration/test_session_persistence.gd`, and `tests/scenario/test_scenario_vm.gd`; movement and projection changes also require the runtime performance probe.

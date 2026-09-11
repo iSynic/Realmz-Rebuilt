@@ -305,13 +305,17 @@ func render_campaign_list() -> void:
 
 func _render_package_operation() -> void:
 	var running: bool = package_operation_status.is_running()
-	package_operation_host.visible = running
+	var failed: bool = package_operation_status.state == PackageOperationView.FAILED
+	package_operation_host.visible = running or failed
 	install_button.disabled = running
 	refresh_button.disabled = running
-	if not running:
+	_operation_progress.visible = running
+	_operation_percentage.visible = running
+	_operation_cancel.visible = running
+	if not running and not failed:
 		return
 	var phase_text := String(package_operation_status.phase).replace("_", " ").capitalize()
-	_operation_phase.text = phase_text if not phase_text.is_empty() else "Installing"
+	_operation_phase.text = "Could not open scenario" if failed else phase_text if not phase_text.is_empty() else "Installing"
 	_operation_percentage.text = "%d%%" % int(round(package_operation_status.progress_ratio() * 100.0)) if package_operation_status.total > 0 else "Working"
 	_operation_progress.indeterminate = package_operation_status.total <= 0
 	_operation_progress.max_value = maxf(1.0, float(package_operation_status.total))

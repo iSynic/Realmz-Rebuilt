@@ -8,6 +8,7 @@ var character_media: MediaSource
 var application_media: ApplicationMediaCatalog
 var _image_textures: Dictionary = {}
 var _audio_streams: Dictionary = {}
+var _map_atlases: Dictionary = {}
 
 
 func _init(package_catalog: MediaSource, application_catalog: ApplicationMediaCatalog, character_catalog: MediaSource = null) -> void:
@@ -92,8 +93,24 @@ static func _land_overlay_resource_id(asset_id: String) -> int:
 
 
 func battle_tileset() -> MediaAsset:
-	var asset := asset_by_id("classic-battle-tiles-302")
-	return asset if asset != null and asset.is_battle_tileset() else null
+	var asset := asset_by_resource("PICT", 302)
+	return asset if asset != null and (asset.is_tileset() or asset.is_battle_tileset()) and asset.width == 640 and asset.height == 640 and asset.tile_width == 32 and asset.tile_height == 32 and asset.columns == 20 and asset.rows == 20 else null
+
+
+func map_atlas(asset_id: String) -> ClassicMapAtlas:
+	if _map_atlases.has(asset_id):
+		return _map_atlases[asset_id] as ClassicMapAtlas
+	var asset := asset_by_id(asset_id)
+	if asset != null and not asset.resource_type.is_empty():
+		asset = asset_by_resource(asset.resource_type, asset.resource_id)
+	if asset == null or not asset.is_tileset() and not asset.is_battle_tileset():
+		return null
+	var texture := image_texture(asset)
+	if texture == null:
+		return null
+	var atlas := ClassicMapAtlas.new(asset, texture)
+	_map_atlases[asset_id] = atlas
+	return atlas
 
 
 func scenario_music_asset(slot: int) -> MediaAsset:

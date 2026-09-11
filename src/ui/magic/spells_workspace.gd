@@ -11,6 +11,9 @@ extends VBoxContainer
 func prepare(compact: bool) -> void:
 	visible = true
 	get_node("Caster").visible = true
+	caster_picker().fit_to_longest_item = not compact
+	caster_picker().clip_text = compact
+	(selected_spell_record().get_node("Content/TargetAndFacts/Facts") as GridContainer).columns = 2 if compact else 4
 	get_node("Sections").visible = true
 	get_node("Sections/WideSections").visible = not compact
 	get_node("Sections/SpellSectionSelector").visible = compact

@@ -318,7 +318,7 @@ func play_character_effect(character_id: String, first_resource_id: int, frame_c
 	if row == null:
 		return
 	var base_icon := row.icon
-	var tween := create_tween()
+	var tween := row.create_tween()
 	for frame_index: int in frame_count:
 		tween.tween_callback(_set_character_effect_frame.bind(row, base_icon, first_resource_id + frame_index))
 		tween.tween_interval(0.055)

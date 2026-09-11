@@ -2,27 +2,20 @@ extends SceneTree
 
 const PACKAGE_REPOSITORY_SCRIPT := preload("res://src/storage/packages/package_repository.gd")
 const GAME_SESSION_SCRIPT := preload("res://src/playthrough/session/game_session.gd")
-const APPLICATION_PACKAGE_PATH := "res://src/storage/characters/realmz-classic-character-library.realmz2"
-const APPLICATION_PACKAGE_ID := "realmz-classic-character-library"
-const APPLICATION_PACKAGE_HASH := "c7e093f46bcca49d2382d68c2995ae5ff90c0e706dbd538682b613af9b80e0bd"
+const USAGE := "Usage: godot --headless --path <project> --script res://tools/package_probe.gd -- <package.realmz2> [--install-root <directory>] [--application-package <package.realmz2> --application-id <id> --application-hash <sha256>]"
 
 
 func _initialize() -> void:
 	var arguments := OS.get_cmdline_user_args()
-	if arguments.size() != 1 and arguments.size() != 3:
-		printerr("Usage: godot --headless --path <project> --script res://tools/package_probe.gd -- <package.realmz2> [--install-root <directory>]")
+	var options := _parse_arguments(arguments)
+	if options.is_empty():
+		printerr(USAGE)
 		call_deferred("_quit_cleanly", 2)
 		return
-	var package_path: String = arguments[0]
-	var install_root := ""
-	if arguments.size() == 3:
-		if arguments[1] != "--install-root":
-			printerr("PACKAGE_REJECTED arguments: expected --install-root")
-			call_deferred("_quit_cleanly", 2)
-			return
-		install_root = arguments[2]
+	var package_path: String = options["packagePath"]
+	var install_root: String = options["installRoot"]
 	var repository := PACKAGE_REPOSITORY_SCRIPT.new()
-	var application := repository.load_bundled_package(APPLICATION_PACKAGE_PATH, APPLICATION_PACKAGE_ID, APPLICATION_PACKAGE_HASH)
+	var application := repository.load_bundled_package(options["applicationPath"], options["applicationId"], options["applicationHash"])
 	if not application.is_ok():
 		printerr("APPLICATION_PACKAGE_REJECTED %s: %s" % [application.error_code, application.error_message])
 		call_deferred("_quit_cleanly", 1)
@@ -83,6 +76,8 @@ func _initialize() -> void:
 	session.view()
 	var post_move_view_ms := Time.get_ticks_msec() - post_move_view_started_at
 	print(CanonicalJson.encode({
+		"applicationCampaignId": application.content.campaign_id,
+		"applicationPackageHash": application.content.package_hash,
 		"blockedMoveError": String(blocked_move.error_code),
 		"blockedMoveMs": blocked_move_ms,
 		"campaignId": content.campaign_id,
@@ -104,6 +99,30 @@ func _initialize() -> void:
 		"totalMs": Time.get_ticks_msec() - started_at,
 	}))
 	call_deferred("_quit_cleanly", 0)
+
+
+func _parse_arguments(arguments: Array[String]) -> Dictionary:
+	if arguments.is_empty() or (arguments.size() - 1) % 2 != 0:
+		return {}
+	var result := {
+		"applicationHash": ApplicationLibraryIdentity.PACKAGE_HASH,
+		"applicationId": ApplicationLibraryIdentity.CAMPAIGN_ID,
+		"applicationPath": ApplicationLibraryIdentity.PATH,
+		"installRoot": "",
+		"packagePath": arguments[0],
+	}
+	var allowed := {
+		"--application-hash": "applicationHash",
+		"--application-id": "applicationId",
+		"--application-package": "applicationPath",
+		"--install-root": "installRoot",
+	}
+	for index: int in range(1, arguments.size(), 2):
+		var option: String = arguments[index]
+		if not allowed.has(option) or arguments[index + 1].is_empty():
+			return {}
+		result[allowed[option]] = arguments[index + 1]
+	return result
 
 
 func _quit_cleanly(exit_code: int) -> void:

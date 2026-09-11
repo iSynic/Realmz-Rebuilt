@@ -4,7 +4,7 @@ class_name PackageRepository
 extends RefCounted
 
 const EXPECTED_SCHEMA_HASH: String = "05ced7b000683f53e6220b9ac8f7d41c801e7e2c78c874287c2ae694b585273d"
-const DECODER_VERSION: int = 6
+const DECODER_VERSION: int = 7
 const REQUIRED_DOCUMENTS: Array[String] = ["assets/index.json", "content.json", "scenario.json", "world.json"]
 const SUPPORTED_CAPABILITIES: Array[String] = [
 	"realmz.core.classic-rules-v1",
@@ -21,7 +21,7 @@ const DEFERRED_PACKAGE_CAPABILITIES: Array[String] = [
 
 var _last_error: String = ""
 var _package_cache := PackageGraphCache.new()
-var _receipt_store := PackageInstallReceiptStore.new(EXPECTED_SCHEMA_HASH, DECODER_VERSION)
+var _receipt_store := PackageInstallReceiptStore.new(EXPECTED_SCHEMA_HASH, DECODER_VERSION, ApplicationLibraryIdentity.PACKAGE_HASH)
 var _archive_reader := PackageArchiveReader.new()
 var _document_cache := PackageDocumentCache.new(EXPECTED_SCHEMA_HASH, DECODER_VERSION)
 var _manifest_discovery := PackageManifestDiscovery.new(EXPECTED_SCHEMA_HASH, SUPPORTED_CAPABILITIES, DEFERRED_PACKAGE_CAPABILITIES, _archive_reader)
@@ -36,12 +36,13 @@ func set_application_content(content: RealmzContent, media_assets: Array[MediaAs
 		return
 	_application_content = content
 	_application_media_assets.assign(media_assets)
+	_receipt_store.set_application_package_hash(content.package_hash if content != null else ApplicationLibraryIdentity.PACKAGE_HASH)
 	_package_cache.clear()
 
 
 func promote_installed_package(path: String) -> void:
 	var receipt := _receipt_store.read(path)
-	if receipt.is_empty():
+	if receipt.is_empty() or _receipt_store.requires_application_revalidation:
 		return
 	var cache_key := _receipt_store.cache_key(path, receipt)
 	if _package_cache.get_result(cache_key) != null:
@@ -207,6 +208,10 @@ func _load_installed_package(path: String, install_root: String, progress_callba
 	var receipt := _receipt_store.read(path)
 	if receipt.is_empty():
 		return PackageLoadResult.failed(&"package_install_receipt_invalid", _receipt_store.last_error if not _receipt_store.last_error.is_empty() else "Installed package receipt is invalid.")
+	if _receipt_store.requires_application_revalidation:
+		if not _receipt_store.validate_archive_sha256(receipt, _archive_reader.sha256_file(path)):
+			return PackageLoadResult.failed(&"package_install_receipt_invalid", _receipt_store.last_error)
+		return null
 	var cache_key := _receipt_store.cache_key(path, receipt)
 	var cached := _package_cache.get_result(cache_key)
 	if cached != null:
@@ -289,16 +294,21 @@ func _load_open_archive(archive: ZIPReader, source_path: String, progress_callba
 		return _validation_failure()
 	if trusted_receipt.is_empty():
 		_media_validator.clear_error()
-		if not _media_validator.validate_assets(asset_document, manifest["files"]):
-			_last_error = _media_validator.error_message()
-			return _validation_failure()
-		if not _media_validator.validate_presentation_capabilities(manifest, asset_document):
-			_last_error = _media_validator.error_message()
-			return _validation_failure()
-		if not _media_validator.validate_render_references(asset_document, world_document):
+		if not _media_validator.validate_package_assets(asset_document, manifest["files"]):
 			_last_error = _media_validator.error_message()
 			return _validation_failure()
 	var runtime_assets := _media_validator.construct_assets(asset_document)
+	if trusted_receipt.is_empty():
+		var effective_assets := PackageMediaComposer.compose(runtime_assets, _application_media_assets)
+		if not _media_validator.validate_effective_assets(effective_assets):
+			_last_error = _media_validator.error_message()
+			return _validation_failure()
+		if not _media_validator.validate_presentation_capabilities(manifest, content_document, effective_assets):
+			_last_error = _media_validator.error_message()
+			return _validation_failure()
+		if not _media_validator.validate_render_references(effective_assets, world_document):
+			_last_error = _media_validator.error_message()
+			return _validation_failure()
 	_report_progress(progress_callback, &"constructing-content", 0, 1)
 	var runtime_content := _domain_assembler.assemble(manifest, content_document, world_document, scenario_document, runtime_assets, not trusted_receipt.is_empty(), _application_content, _application_media_assets)
 	if runtime_content == null:

@@ -103,7 +103,7 @@ func _run() -> void:
 		print("RUN SUITE: %s" % suite_script.resource_path)
 		var suite: RealmzTestCase = suite_script.new()
 		if requested_cases.is_empty():
-			suite.run()
+			await suite.run()
 			if suite_script.resource_path.ends_with("test_classic_ui_system.gd"): await suite.call("_test_application_quit_composition")
 		else:
 			var selected_methods := _selected_test_methods(suite, requested_cases)

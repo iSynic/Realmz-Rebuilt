@@ -7,6 +7,7 @@ extends InteractionComponent
 
 
 signal recipient_selected(character_id: String)
+signal money_workspace_visibility_changed(open: bool)
 
 const GOLD := Color("e5c45c")
 const CYAN := Color("8fcfd1")
@@ -21,7 +22,7 @@ const ITEM_DETAIL_POPOVER_SCENE_PATH := "res://src/ui/inventory/classic_item_det
 @export var caster_row_scene: PackedScene
 @export var recovery_workspace_scene: PackedScene
 @export var completion_confirmation_scene: PackedScene
-@export var swap_controls_scene: PackedScene
+@export var money_workspace_scene: PackedScene
 
 var _compact := false
 var _media: ClassicMediaCatalog
@@ -40,14 +41,16 @@ var _transferring := false
 var _transfer_item: InteractionRequestValue.RewardItem
 var _transfer_origin := Vector2.ZERO
 var _detail_popover: CanvasLayer
+var _restore_money_workspace := false
 
 
-func configure(media: ClassicMediaCatalog, game_view: GameView, compact: bool, selected_recipient_id: String = "", loot_slot_order: Array[String] = []) -> void:
+func configure(media: ClassicMediaCatalog, game_view: GameView, compact: bool, selected_recipient_id: String = "", loot_slot_order: Array[String] = [], restore_money_workspace: bool = false) -> void:
 	_media = media
 	_game_view = game_view
 	_compact = compact
 	_selected_recipient_id = selected_recipient_id
 	_loot_slot_order.assign(loot_slot_order)
+	_restore_money_workspace = restore_money_workspace
 
 
 func build(request: InteractionRequest) -> void:
@@ -91,6 +94,8 @@ func _build_classic_treasure_workspace(body: TreasureRequestBody) -> void:
 	_build_party_side(body)
 	_build_item_inspector(body)
 	_refresh_item_availability()
+	if _restore_money_workspace:
+		_open_money_workspace(body)
 
 
 func _build_loot_side(body: TreasureRequestBody) -> void:
@@ -105,13 +110,9 @@ func _build_loot_side(body: TreasureRequestBody) -> void:
 		items_by_id[item.instance_id] = item
 		if not _loot_slot_order.has(item.instance_id):
 			_loot_slot_order.append(item.instance_id)
-	if _loot_slot_order.is_empty():
-		var empty := fact_label_scene.instantiate() as Label
-		empty.name = "TreasureEmptyField"
-		empty.text = "No items remain."
-		empty.add_theme_color_override("font_color", INK)
-		grid.add_child(empty)
-	else:
+	%TreasureEmptyField.visible = _loot_slot_order.is_empty()
+	grid.visible = not _loot_slot_order.is_empty()
+	if not _loot_slot_order.is_empty():
 		_selected_item = body.items[0] if not body.items.is_empty() else null
 		for slot_id: String in _loot_slot_order:
 			var item := items_by_id.get(slot_id) as InteractionRequestValue.RewardItem
@@ -141,7 +142,7 @@ func _build_item_inspector(body: TreasureRequestBody) -> void:
 
 
 func _update_loot_columns(scroll: ScrollContainer, grid: GridContainer) -> void:
-	if scroll == null or grid == null or _compact:
+	if scroll == null or grid == null or _compact or not is_inside_tree():
 		return
 	var host := get_parent() as Control
 	var viewport_width := get_viewport_rect().size.x
@@ -219,6 +220,12 @@ func _add_recipient_row(parent: VBoxContainer, character: InteractionRequestValu
 
 func _build_compact_commands(parent: VBoxContainer, body: TreasureRequestBody) -> void:
 	%TreasurePooledWealth.text = TreasureDisplayText.wealth(body.wealth)
+	var money_rows := body.characters.filter(func(character: InteractionRequestValue.RewardCharacter) -> bool:
+		return character.wealth != null and not character.id.is_empty()
+	)
+	%TreasureMoney.disabled = money_rows.is_empty()
+	%TreasureMoney.tooltip_text = "No adventurer wealth is available." if money_rows.is_empty() else "Open the Party Wealth screen."
+	%TreasureMoney.pressed.connect(_open_money_workspace.bind(body))
 	var has_carried_wealth := body.characters.any(func(character: InteractionRequestValue.RewardCharacter) -> bool:
 		return character.wealth != null and (character.wealth.gold > 0 or character.wealth.gems > 0 or character.wealth.jewelry > 0)
 	)
@@ -229,7 +236,6 @@ func _build_compact_commands(parent: VBoxContainer, body: TreasureRequestBody) -
 	%TreasureShare.disabled = not (has_pool and body.has_share_capacity)
 	%TreasureShare.tooltip_text = "" if has_pool and body.has_share_capacity else "The pool is empty or no adventurer can carry another unit."
 	%TreasureShare.pressed.connect(func() -> void: response_body_submitted.emit(InteractionResponse.TreasureBody.new(&"share")))
-	_add_swap_controls(parent, body.characters)
 	if body.detect != null and body.detect.visible:
 		_add_caster_control(parent, "Detect Magic", &"detect", body.detect)
 	if body.identify != null and body.identify.visible:
@@ -361,7 +367,7 @@ func _item_by_id(instance_id: String) -> InteractionRequestValue.RewardItem:
 
 
 func _item_texture(item: InteractionRequestValue.RewardItem) -> Texture2D:
-	if _media == null or item == null or item.icon_id <= 0:
+	if _media == null or item == null or item.icon_id == 0:
 		return null
 	return _media.image_texture(_media.asset_by_resource(item.icon_resource_type, item.icon_id))
 
@@ -429,19 +435,19 @@ func _bind_recovery_item(workspace: VBoxContainer, item: InteractionRequestValue
 	charges.text = "%d charge%s" % [item.charges, "" if item.charges == 1 else "s"]
 
 
-func _add_swap_controls(parent: VBoxContainer, characters: Array[InteractionRequestValue.RewardCharacter]) -> void:
+func _open_money_workspace(body: TreasureRequestBody) -> void:
 	var rows: Array[InteractionRequestValue.RewardCharacter] = []
-	for character: InteractionRequestValue.RewardCharacter in characters:
+	for character: InteractionRequestValue.RewardCharacter in body.characters:
 		if character.wealth != null and not character.id.is_empty():
 			rows.append(character)
 	if rows.is_empty():
 		return
-	var controls := swap_controls_scene.instantiate() as VBoxContainer
-	parent.add_child(controls)
-	var selector := controls.get_node("%TreasureSwapCharacter") as OptionButton
+	var workspace := money_workspace_scene.instantiate() as VBoxContainer
+	var selector := workspace.get_node("%TreasureMoneyCharacter") as OptionButton
 	for row: InteractionRequestValue.RewardCharacter in rows:
 		selector.add_item(row.name)
-	var summary := controls.get_node("%TreasureSwapSummary") as Label
+	(workspace.get_node("%TreasureMoneyPoolSummary") as Label).text = TreasureDisplayText.wealth(body.wealth)
+	var summary := workspace.get_node("%TreasureMoneySummary") as Label
 	var specs: Array[Dictionary] = [
 		{"label": "+5 Gold", "direction": "to-character", "kind": "gold", "amount": 5},
 		{"label": "-5 Gold", "direction": "to-pool", "kind": "gold", "amount": 5},
@@ -450,16 +456,19 @@ func _add_swap_controls(parent: VBoxContainer, characters: Array[InteractionRequ
 		{"label": "+1 Jewelry", "direction": "to-character", "kind": "jewelry", "amount": 1},
 		{"label": "-1 Jewelry", "direction": "to-pool", "kind": "jewelry", "amount": 1},
 	]
-	var button_paths := ["TreasureSwapGrid/GoldToCharacter", "TreasureSwapGrid/GoldToPool", "TreasureSwapGrid/GemsToCharacter", "TreasureSwapGrid/GemsToPool", "TreasureSwapGrid/JewelryToCharacter", "TreasureSwapGrid/JewelryToPool"]
+	var button_paths := ["TreasureMoneyPane/Content/TreasureMoneyGrid/GoldToCharacter", "TreasureMoneyPane/Content/TreasureMoneyGrid/GoldToPool", "TreasureMoneyPane/Content/TreasureMoneyGrid/GemsToCharacter", "TreasureMoneyPane/Content/TreasureMoneyGrid/GemsToPool", "TreasureMoneyPane/Content/TreasureMoneyGrid/JewelryToCharacter", "TreasureMoneyPane/Content/TreasureMoneyGrid/JewelryToPool"]
 	var buttons: Array[Button] = []
 	for button_index: int in specs.size():
 		var spec: Dictionary = specs[button_index]
-		var button := controls.get_node(button_paths[button_index]) as Button
-		button.name = "TreasureSwap_%s_%s" % [spec["direction"], spec["kind"]]
-		button.pressed.connect(_submit_swap.bind(selector, rows, String(spec["direction"]), String(spec["kind"]), int(spec["amount"])))
+		var button := workspace.get_node(button_paths[button_index]) as Button
+		button.name = "TreasureMoney_%s_%s" % [spec["direction"], spec["kind"]]
+		button.pressed.connect(_submit_money_transfer.bind(selector, rows, String(spec["direction"]), String(spec["kind"]), int(spec["amount"])))
 		buttons.append(button)
-	selector.item_selected.connect(_refresh_swap_controls.bind(selector, rows, summary, buttons, specs))
-	_refresh_swap_controls(0, selector, rows, summary, buttons, specs)
+	selector.item_selected.connect(_refresh_money_workspace.bind(selector, rows, summary, buttons, specs))
+	(workspace.get_node("%TreasureMoneyBack") as Button).pressed.connect(_close_money_workspace)
+	_refresh_money_workspace(0, selector, rows, summary, buttons, specs)
+	money_workspace_visibility_changed.emit(true)
+	application_workspace_requested.emit(workspace)
 
 
 func _add_caster_control(parent: VBoxContainer, label: String, action: StringName, method: InteractionRequestValue.RewardMethod) -> void:
@@ -490,13 +499,18 @@ func _build_completion_confirmation(body: TreasureRequestBody) -> void:
 	(panel.get_node("%TreasureConfirmLeave") as Button).pressed.connect(func() -> void: response_body_submitted.emit(InteractionResponse.TreasureBody.new(&"confirm-completion")))
 
 
-func _submit_swap(selector: OptionButton, rows: Array[InteractionRequestValue.RewardCharacter], direction: String, kind: String, amount: int) -> void:
+func _close_money_workspace() -> void:
+	money_workspace_visibility_changed.emit(false)
+	application_workspace_closed.emit()
+
+
+func _submit_money_transfer(selector: OptionButton, rows: Array[InteractionRequestValue.RewardCharacter], direction: String, kind: String, amount: int) -> void:
 	if selector.selected < 0 or selector.selected >= rows.size():
 		return
 	response_body_submitted.emit(InteractionResponse.TreasureBody.new(&"transfer", "", rows[selector.selected].id, StringName(direction), StringName(kind), amount))
 
 
-func _refresh_swap_controls(index: int, selector: OptionButton, rows: Array[InteractionRequestValue.RewardCharacter], summary: Label, buttons: Array[Button], specs: Array[Dictionary]) -> void:
+func _refresh_money_workspace(index: int, selector: OptionButton, rows: Array[InteractionRequestValue.RewardCharacter], summary: Label, buttons: Array[Button], specs: Array[Dictionary]) -> void:
 	if index < 0 or index >= rows.size():
 		return
 	selector.select(index)

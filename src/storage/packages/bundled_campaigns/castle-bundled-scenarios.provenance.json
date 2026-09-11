@@ -1,5 +1,5 @@
 {
-  "formatVersion": 1,
+  "formatVersion": 2,
   "source": {
     "repository": "Realmz Castle",
     "revision": "ef95fcff40d81f14ac668d5e13466da4a51de6f4",
@@ -9,27 +9,110 @@
     "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/"
   },
   "compiler": {
-    "repository": "Realmz Providence",
-    "revision": "cbd2608c1655cfd7395341689a7ad242db341c70",
-    "packageSchemaVersion": 3
+    "repository": "Realmz Providence vNext",
+    "revision": "e7f862f0051c1ac6226c1d4def3b7da41cf51121",
+    "packageSchemaVersion": 3,
+    "applicationPackageHash": "35dd24b24879e6e4aa8e3eb54672dfba99ba6c1538a3b6760898fcd4a91e8589",
+    "applicationPackageArchiveSha256": "bb42608d0bf02b2c608f3e8d7c23fb94fdba566b5c0b862f886a303dce02156d",
+    "applicationMediaCatalogSha256": "b1c7438d5a5fcdbf974fe01c5284a54db2228bc33a0e0f3ef0c93b018b24f0e5"
+  },
+  "acceptedApplicationLibrary": {
+    "compilerRevision": "1704ef6b1663eee578bb683b4994cba5cd8c2d88",
+    "packageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad",
+    "archiveSha256": "bf1ff5de1d6fc5bd1d5ffff8d582797dfab885acfd9b20b4e02ce9040421e150"
   },
   "scenarios": [
     {
       "name": "Assault on Giant Mountain",
       "campaignId": "scenario-assault-on-giant-mountain",
       "file": "scenario-assault-on-giant-mountain.realmz2",
-      "compilerRevision": "9b037e5d6436a970eeeaaebea7a70c6867e89e99",
-      "packageHash": "e7322f1414390a48f405ec4f07ca31f75dd93e240b5834c057af3d9b246896d7",
-      "archiveSha256": "9cde824d3b37ab9604ecf15f1db57720835107c5701bedeca76be236e6bf69b5",
-      "bytes": 5339153
+      "compilerRevision": "b355a0fa28dce5aec8c214ab9cc3ceda8f45f354",
+      "packageHash": "7f1b90989e2c9decd8f0326d86d8069c64081c1076440ee896687e3f7fdf8454",
+      "contentId": "36ce3d66b09c93e55ac7d1bce3d3a1093adcc19796e5b72816c7aa2dfc550847",
+      "archiveSha256": "c4429e9a1f1cc4b0e255e2640947291ec5467d586420f6ee865b36a730de1892",
+      "bytes": 768020,
+      "sourceArchive": {
+        "compilerRevision": "9b037e5d6436a970eeeaaebea7a70c6867e89e99",
+        "archiveSha256": "9cde824d3b37ab9604ecf15f1db57720835107c5701bedeca76be236e6bf69b5",
+        "bytes": 5339153
+      },
+      "classicScenarioResourcesSha256": "1a1336e27869a5c84c23423e319a3990966965b99146b7ae830b36ad53a65fe5",
+      "rewrittenAssetReferences": 56770,
+      "removedApplicationContent": {
+        "items": 0,
+        "spells": 0,
+        "races": 30,
+        "castes": 30,
+        "mediaDescriptors": 506,
+        "mediaPayloads": 501
+      },
+      "retainedScenarioContent": {
+        "items": 200,
+        "spells": 0,
+        "races": 0,
+        "castes": 0,
+        "mediaDescriptors": 29,
+        "mediaPayloads": 29
+      },
+      "mediaOwnershipMigration": {
+        "operation": "slim-scenarios",
+        "compilerRevision": "b355a0fa28dce5aec8c214ab9cc3ceda8f45f354",
+        "sourcePackageHash": "d6afc6afc0cbed5551aaf9684710329c44108a13660cc4e8d9f8aa93dd1f79c1",
+        "sourceArchiveSha256": "46c7f5f6913e74b47d6d47ca690e13ded4c45ed85eff488798a4742b02ac58c1",
+        "sourceArchiveBytes": 1184508,
+        "applicationPackageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad",
+        "applicationMediaCatalogSha256": "9b54a3936924a1dd49c4545f780afdf9c3cf0feb2b56c5329f5b8012d94cce11",
+        "removedResourceKey": "PICT:302",
+        "removedMediaDescriptors": 1,
+        "removedMediaPayloads": 1,
+        "rewrittenAssetReferences": 0
+      }
     },
     {
       "name": "Castle in the Clouds",
       "campaignId": "scenario-castle-in-the-clouds",
       "file": "scenario-castle-in-the-clouds.realmz2",
-      "packageHash": "e586f4640c185097df3f5d763069e1dc1d77b7b97d5b23c6edf76fd42dfff543",
-      "archiveSha256": "8607fc9f58a495ba87bfe2e63500545ff6a4e0c844722e0ba055b0cb4a85c96d",
-      "bytes": 4739596
+      "compilerRevision": "b355a0fa28dce5aec8c214ab9cc3ceda8f45f354",
+      "packageHash": "1f4863fe072491af72d398513be1fcafebc1eeae7d74b42d15078dfeae2036da",
+      "contentId": "66061f589892c68e6518cd6e792971773f52c986876f1b92683ba6e296d56dca",
+      "archiveSha256": "2b0588fadbae58e0ca71eb20c5c5d9a1e908790f621aa6fe408f99569aa6573a",
+      "bytes": 793498,
+      "sourceArchive": {
+        "compilerRevision": "cbd2608c1655cfd7395341689a7ad242db341c70",
+        "archiveSha256": "8607fc9f58a495ba87bfe2e63500545ff6a4e0c844722e0ba055b0cb4a85c96d",
+        "bytes": 4739596
+      },
+      "classicScenarioResourcesSha256": "11f260dd7bebee4223a8b8568271ae7557ed0c2b3ff10721cb4554e770d31ec3",
+      "rewrittenAssetReferences": 64858,
+      "removedApplicationContent": {
+        "items": 0,
+        "spells": 0,
+        "races": 30,
+        "castes": 30,
+        "mediaDescriptors": 474,
+        "mediaPayloads": 470
+      },
+      "retainedScenarioContent": {
+        "items": 200,
+        "spells": 0,
+        "races": 0,
+        "castes": 0,
+        "mediaDescriptors": 39,
+        "mediaPayloads": 38
+      },
+      "mediaOwnershipMigration": {
+        "operation": "slim-scenarios",
+        "compilerRevision": "b355a0fa28dce5aec8c214ab9cc3ceda8f45f354",
+        "sourcePackageHash": "94881a4c1c25a7eaef12b93dbd88d8975c510fb6c3e959152c46bca57d3bbe23",
+        "sourceArchiveSha256": "f1f999f62fc9b89ac98c98ce98340dee006a4eae9bdec8be2e71b342e2f31197",
+        "sourceArchiveBytes": 1209984,
+        "applicationPackageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad",
+        "applicationMediaCatalogSha256": "9b54a3936924a1dd49c4545f780afdf9c3cf0feb2b56c5329f5b8012d94cce11",
+        "removedResourceKey": "PICT:302",
+        "removedMediaDescriptors": 1,
+        "removedMediaPayloads": 1,
+        "rewrittenAssetReferences": 0
+      }
     },
     {
       "name": "City of Bywater",
@@ -40,94 +123,495 @@
         "catalog": "city-of-bywater.source.json",
         "snapshotSha256": "ab4b6fc19a1a42bb61353629feb71187e76e760f94c46392958311a5e1361d2e"
       },
-      "compilerRevision": "7ff51260b06efc1959faa2b1c26a8fc6d1e6ecee",
-      "packageHash": "0c37ee9b237421e68c554c7f72ed279922ab37fb8550a9df25b9a4355f9014c8",
-      "archiveSha256": "425087df5a2d98bf42da1623c09cfc2fadcdcfcd7977945fdd49ba1d67f1ab58",
-      "bytes": 5284229
+      "compilerRevision": "b355a0fa28dce5aec8c214ab9cc3ceda8f45f354",
+      "packageHash": "387d4d55ac5316e99f84292b01cab13645d54b37bbcfb3e8b93cb0e7079b84de",
+      "contentId": "45b692744c65b3b28ec7ddb840513d192f504dfecf01aadbdcb663025eadad72",
+      "archiveSha256": "2e0012aa1207b244cb09e23dabe3514d66c3785c092747893efe7ea70c1b3f0b",
+      "bytes": 638024,
+      "sourceArchive": {
+        "compilerRevision": "7ff51260b06efc1959faa2b1c26a8fc6d1e6ecee",
+        "archiveSha256": "425087df5a2d98bf42da1623c09cfc2fadcdcfcd7977945fdd49ba1d67f1ab58",
+        "bytes": 5284229
+      },
+      "classicScenarioResourcesSha256": "d1b530968d5c189b05778b7b2abbf7d89b5491a960b872b6e419f6b9b502f8ec",
+      "rewrittenAssetReferences": 72971,
+      "removedApplicationContent": {
+        "items": 0,
+        "spells": 0,
+        "races": 30,
+        "castes": 0,
+        "mediaDescriptors": 542,
+        "mediaPayloads": 536
+      },
+      "retainedScenarioContent": {
+        "items": 200,
+        "spells": 0,
+        "races": 0,
+        "castes": 30,
+        "mediaDescriptors": 9,
+        "mediaPayloads": 9
+      },
+      "mediaOwnershipMigration": {
+        "operation": "slim-scenarios",
+        "compilerRevision": "b355a0fa28dce5aec8c214ab9cc3ceda8f45f354",
+        "sourcePackageHash": "a893ee5af9cb315477098d269e3c5b1bf2f8eb0137a5bb89a0876bb543125f53",
+        "sourceArchiveSha256": "35d1c5f7edc2eb1906da332aa8e0e18a0fad2d7addcb866e59917d062c9928e4",
+        "sourceArchiveBytes": 1054507,
+        "applicationPackageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad",
+        "applicationMediaCatalogSha256": "9b54a3936924a1dd49c4545f780afdf9c3cf0feb2b56c5329f5b8012d94cce11",
+        "removedResourceKey": "PICT:302",
+        "removedMediaDescriptors": 1,
+        "removedMediaPayloads": 1,
+        "rewrittenAssetReferences": 0
+      }
     },
     {
       "name": "Destroy the Necronomicon",
       "campaignId": "scenario-destroy-the-necronomicon",
       "file": "scenario-destroy-the-necronomicon.realmz2",
-      "packageHash": "e8a9d0ab43b045b75ffde21f35cc58f7c831d5f629805c49f3ea95ef48ddef16",
-      "archiveSha256": "5a39c7e13bcdb73532457c39faef1226c1257548deb0b50b8a603172be949c87",
-      "bytes": 6222581
+      "compilerRevision": "b355a0fa28dce5aec8c214ab9cc3ceda8f45f354",
+      "packageHash": "c4d704dd3d141adf5acff21a9fe1932909b658ff05cb2d47c74b6c8ed0decdac",
+      "contentId": "81ec476e94e1917ce0d0664bfc501a8b84e3d4cbac3d984967d8503bbbfd11cf",
+      "archiveSha256": "52e3bfe9a19bb9041b9e5060bdbc214f64e466c1fe132d8c9cd00e134b0b252b",
+      "bytes": 1131969,
+      "sourceArchive": {
+        "compilerRevision": "cbd2608c1655cfd7395341689a7ad242db341c70",
+        "archiveSha256": "5a39c7e13bcdb73532457c39faef1226c1257548deb0b50b8a603172be949c87",
+        "bytes": 6222581
+      },
+      "classicScenarioResourcesSha256": "ab2705ab5efb4d1378a94a8d495daa573111ed52641db8726d0ab41cbcd8ce5c",
+      "rewrittenAssetReferences": 72961,
+      "removedApplicationContent": {
+        "items": 0,
+        "spells": 0,
+        "races": 30,
+        "castes": 30,
+        "mediaDescriptors": 495,
+        "mediaPayloads": 490
+      },
+      "retainedScenarioContent": {
+        "items": 200,
+        "spells": 0,
+        "races": 0,
+        "castes": 0,
+        "mediaDescriptors": 148,
+        "mediaPayloads": 147
+      },
+      "mediaOwnershipMigration": {
+        "operation": "slim-scenarios",
+        "compilerRevision": "b355a0fa28dce5aec8c214ab9cc3ceda8f45f354",
+        "sourcePackageHash": "13c747c8c3c2959bc3ffe33d51e6e53deff9716c40382116aaf571b71022788e",
+        "sourceArchiveSha256": "4d0b97104baf085f341a0f32729497d65a61b37ab1bb83e099c5c5f0935ae0c7",
+        "sourceArchiveBytes": 1548475,
+        "applicationPackageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad",
+        "applicationMediaCatalogSha256": "9b54a3936924a1dd49c4545f780afdf9c3cf0feb2b56c5329f5b8012d94cce11",
+        "removedResourceKey": "PICT:302",
+        "removedMediaDescriptors": 1,
+        "removedMediaPayloads": 1,
+        "rewrittenAssetReferences": 0
+      }
     },
     {
       "name": "Grilochs Revenge",
       "campaignId": "scenario-grilochs-revenge",
       "file": "scenario-grilochs-revenge.realmz2",
-      "packageHash": "80fc31b428e415cd4d2f47f8c4441aa63992ea55afd8ddbd396be141b04acc97",
-      "archiveSha256": "5cc2520282703a53425962e64dfb98eed7017e85c83153f90c602f65453b174d",
-      "bytes": 4894929
+      "compilerRevision": "b355a0fa28dce5aec8c214ab9cc3ceda8f45f354",
+      "packageHash": "8f387d3a8aeec6a5217809167dc3f68b1023a6ad38f9c65b3da25de335d94150",
+      "contentId": "9e8e4ecf39bf7882210ada26437420c67bc108fbeb70e9e7b70dbb312c9b639f",
+      "archiveSha256": "1e53e96ad8ab1be9fdb2499b68c7b277afad0badca12d1f87541a47f771220a7",
+      "bytes": 1180730,
+      "sourceArchive": {
+        "compilerRevision": "cbd2608c1655cfd7395341689a7ad242db341c70",
+        "archiveSha256": "5cc2520282703a53425962e64dfb98eed7017e85c83153f90c602f65453b174d",
+        "bytes": 4894929
+      },
+      "classicScenarioResourcesSha256": "231f741519d055841a043de0f7b7029ddb0633b635b2be78afce264bf9583b27",
+      "rewrittenAssetReferences": 81045,
+      "removedApplicationContent": {
+        "items": 0,
+        "spells": 0,
+        "races": 30,
+        "castes": 30,
+        "mediaDescriptors": 426,
+        "mediaPayloads": 421
+      },
+      "retainedScenarioContent": {
+        "items": 200,
+        "spells": 0,
+        "races": 0,
+        "castes": 0,
+        "mediaDescriptors": 116,
+        "mediaPayloads": 115
+      },
+      "mediaOwnershipMigration": {
+        "operation": "slim-scenarios",
+        "compilerRevision": "b355a0fa28dce5aec8c214ab9cc3ceda8f45f354",
+        "sourcePackageHash": "bfd9f8a1fb60bd18dbd3bb5475e9c316ce356f7d2846bcdcd26629fd80e28867",
+        "sourceArchiveSha256": "79be3eda0e635ea623425af25c9fc9e047bf79386d7c76e0a7d24c4a46723c62",
+        "sourceArchiveBytes": 1597224,
+        "applicationPackageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad",
+        "applicationMediaCatalogSha256": "9b54a3936924a1dd49c4545f780afdf9c3cf0feb2b56c5329f5b8012d94cce11",
+        "removedResourceKey": "PICT:302",
+        "removedMediaDescriptors": 1,
+        "removedMediaPayloads": 1,
+        "rewrittenAssetReferences": 0
+      }
     },
     {
       "name": "Half Truth",
       "campaignId": "scenario-half-truth",
       "file": "scenario-half-truth.realmz2",
-      "compilerRevision": "7ff51260b06efc1959faa2b1c26a8fc6d1e6ecee",
-      "packageHash": "7365457aad9993cca6937d40ac23943c469e536933d5a82768be752fc18f5848",
-      "archiveSha256": "4b77256f51305cc2c4cb276982a3e19ab9dc9b13062074d49d4f449d9838fed4",
-      "bytes": 9672749
+      "compilerRevision": "b355a0fa28dce5aec8c214ab9cc3ceda8f45f354",
+      "packageHash": "952b9705460e117b7b914e143134c895e04405d686de39e7d58bf2790d52b870",
+      "contentId": "bffe03b11b45913649623a889c4d24b0ffa2dfe0e8cfff531d8751e50ddb6077",
+      "archiveSha256": "a197fe8977e583f71f97d4d25cfaab36ec2515a622bbad50894263cc2e752e78",
+      "bytes": 5472055,
+      "sourceArchive": {
+        "compilerRevision": "7ff51260b06efc1959faa2b1c26a8fc6d1e6ecee",
+        "archiveSha256": "4b77256f51305cc2c4cb276982a3e19ab9dc9b13062074d49d4f449d9838fed4",
+        "bytes": 9672749
+      },
+      "classicScenarioResourcesSha256": "44feaccfaa9eca6c01ee493212f4741e5c43e40a7c25a9e443879a8d551080b6",
+      "rewrittenAssetReferences": 32492,
+      "removedApplicationContent": {
+        "items": 0,
+        "spells": 0,
+        "races": 30,
+        "castes": 30,
+        "mediaDescriptors": 426,
+        "mediaPayloads": 422
+      },
+      "retainedScenarioContent": {
+        "items": 200,
+        "spells": 105,
+        "races": 0,
+        "castes": 0,
+        "mediaDescriptors": 400,
+        "mediaPayloads": 390
+      },
+      "mediaOwnershipMigration": {
+        "operation": "slim-scenarios",
+        "compilerRevision": "b355a0fa28dce5aec8c214ab9cc3ceda8f45f354",
+        "sourcePackageHash": "48805df3e1ba85321da8935c46c64e14704cb670e6decb57f6ab3b41488d0a82",
+        "sourceArchiveSha256": "8ac2422ea9244e31aa6ae4051d824503a146d2d6f0c20611cf8b80af0d120c81",
+        "sourceArchiveBytes": 5888553,
+        "applicationPackageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad",
+        "applicationMediaCatalogSha256": "9b54a3936924a1dd49c4545f780afdf9c3cf0feb2b56c5329f5b8012d94cce11",
+        "removedResourceKey": "PICT:302",
+        "removedMediaDescriptors": 1,
+        "removedMediaPayloads": 1,
+        "rewrittenAssetReferences": 0
+      }
     },
     {
       "name": "Mithril Vault",
       "campaignId": "scenario-mithril-vault",
       "file": "scenario-mithril-vault.realmz2",
-      "compilerRevision": "7ff51260b06efc1959faa2b1c26a8fc6d1e6ecee",
-      "packageHash": "714c9da5c6270de49733e04299f696b2ef8df8a5ca457da312faf4713209953e",
-      "archiveSha256": "213a4fc5def565793f5489eff08890d22e73b8d86e33476f668d19cfdafc9ad2",
-      "bytes": 7698701
+      "compilerRevision": "b355a0fa28dce5aec8c214ab9cc3ceda8f45f354",
+      "packageHash": "24a501cf7faf5e2f3c52f3871554588e8c19a2087f90713f49c16994cda6dc6f",
+      "contentId": "7a7952d4c68a31a2c586ebc17f650daf614bad13f747240bc3e0bfa515cbd547",
+      "archiveSha256": "39bf848020956375300f72db4242c02199c719bc02ff19e8d6a1f7f4964bbe2e",
+      "bytes": 2465938,
+      "sourceArchive": {
+        "compilerRevision": "7ff51260b06efc1959faa2b1c26a8fc6d1e6ecee",
+        "archiveSha256": "213a4fc5def565793f5489eff08890d22e73b8d86e33476f668d19cfdafc9ad2",
+        "bytes": 7698701
+      },
+      "classicScenarioResourcesSha256": "6fd552910e82d6afadb5129432d124bd65d601aede39eb404aad818d57e8acfd",
+      "rewrittenAssetReferences": 105493,
+      "removedApplicationContent": {
+        "items": 0,
+        "spells": 0,
+        "races": 30,
+        "castes": 30,
+        "mediaDescriptors": 419,
+        "mediaPayloads": 409
+      },
+      "retainedScenarioContent": {
+        "items": 200,
+        "spells": 105,
+        "races": 0,
+        "castes": 0,
+        "mediaDescriptors": 271,
+        "mediaPayloads": 271
+      },
+      "mediaOwnershipMigration": {
+        "operation": "slim-scenarios",
+        "compilerRevision": "b355a0fa28dce5aec8c214ab9cc3ceda8f45f354",
+        "sourcePackageHash": "c401fa2170e6e380edaf16943e6d5cf2da1152ac87b417cf5c3b5a3f728fc9b5",
+        "sourceArchiveSha256": "c2812ed33cd305fd012b33283832bfceab1a51bb2fe0244cd503d67c3a3d7bdf",
+        "sourceArchiveBytes": 2882427,
+        "applicationPackageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad",
+        "applicationMediaCatalogSha256": "9b54a3936924a1dd49c4545f780afdf9c3cf0feb2b56c5329f5b8012d94cce11",
+        "removedResourceKey": "PICT:302",
+        "removedMediaDescriptors": 1,
+        "removedMediaPayloads": 1,
+        "rewrittenAssetReferences": 0
+      }
     },
     {
       "name": "Prelude to Pestilence",
       "campaignId": "scenario-prelude-to-pestilence",
       "file": "scenario-prelude-to-pestilence.realmz2",
-      "packageHash": "dc001a01bdd00355c4ef60a548e0a42a7c999f2779ba6d0fc921e01033269857",
-      "archiveSha256": "9d3f680f6faabed08504bd0585037e18f482fcfd6f767306cd10aa178534956c",
-      "bytes": 4477416
+      "compilerRevision": "b355a0fa28dce5aec8c214ab9cc3ceda8f45f354",
+      "packageHash": "ea4b4c33e02d6e51907197a5ac37d2af11c378707122d1c1d2e0a2f4fec148f4",
+      "contentId": "f2348240841d554766a1744f0338666379f1bf4c0be409850ecfae3733325318",
+      "archiveSha256": "04f31270fb8b9f8a88c606d1fea10cc198b22b45b86dc17fc5c789e33e9d2414",
+      "bytes": 607215,
+      "sourceArchive": {
+        "compilerRevision": "cbd2608c1655cfd7395341689a7ad242db341c70",
+        "archiveSha256": "9d3f680f6faabed08504bd0585037e18f482fcfd6f767306cd10aa178534956c",
+        "bytes": 4477416
+      },
+      "classicScenarioResourcesSha256": "489eaa2b9c61db86616f26215b112596adb659c676ef540ef3564795dda778de",
+      "rewrittenAssetReferences": 40534,
+      "removedApplicationContent": {
+        "items": 0,
+        "spells": 0,
+        "races": 30,
+        "castes": 30,
+        "mediaDescriptors": 455,
+        "mediaPayloads": 450
+      },
+      "retainedScenarioContent": {
+        "items": 200,
+        "spells": 0,
+        "races": 0,
+        "castes": 0,
+        "mediaDescriptors": 28,
+        "mediaPayloads": 28
+      },
+      "mediaOwnershipMigration": {
+        "operation": "slim-scenarios",
+        "compilerRevision": "b355a0fa28dce5aec8c214ab9cc3ceda8f45f354",
+        "sourcePackageHash": "f89edcdde9a5db51f73a8a4f9fbb7f27d984bab875188547c1e5ac38276dfc8f",
+        "sourceArchiveSha256": "e60716fd00737755fe1006cb7056a1303125002c40378e6636e59d07e63c4f5a",
+        "sourceArchiveBytes": 1023710,
+        "applicationPackageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad",
+        "applicationMediaCatalogSha256": "9b54a3936924a1dd49c4545f780afdf9c3cf0feb2b56c5329f5b8012d94cce11",
+        "removedResourceKey": "PICT:302",
+        "removedMediaDescriptors": 1,
+        "removedMediaPayloads": 1,
+        "rewrittenAssetReferences": 0
+      }
     },
     {
       "name": "Trouble in the Sword Lands",
       "campaignId": "scenario-trouble-in-the-sword-lands",
       "file": "scenario-trouble-in-the-sword-lands.realmz2",
-      "packageHash": "ee72bccbd21aff4601f4ce25f111594e1acfcf51ebefc7f32a7b83fa912cfcb8",
-      "archiveSha256": "10cb5cae1af68109084fd84b95254663ccf397e6a704813514f90c795ed88c42",
-      "bytes": 8244901
+      "compilerRevision": "b355a0fa28dce5aec8c214ab9cc3ceda8f45f354",
+      "packageHash": "17fe28f93d20001d58aca473f859c50db4079e73a3488155f0a209072b3b6137",
+      "contentId": "d93236f598d2b0858281429aecff671a84c776b075ea01100f753272f6d8bcc4",
+      "archiveSha256": "938add25ecaf32831637c7c74b11cab85484f7ca59ce349193131f45d6c47271",
+      "bytes": 4374103,
+      "sourceArchive": {
+        "compilerRevision": "cbd2608c1655cfd7395341689a7ad242db341c70",
+        "archiveSha256": "10cb5cae1af68109084fd84b95254663ccf397e6a704813514f90c795ed88c42",
+        "bytes": 8244901
+      },
+      "classicScenarioResourcesSha256": "244d2da63512a50c28da82c2800ba56322e10e23a6eb53a359573644a2bfae1a",
+      "rewrittenAssetReferences": 97446,
+      "removedApplicationContent": {
+        "items": 0,
+        "spells": 0,
+        "races": 30,
+        "castes": 30,
+        "mediaDescriptors": 491,
+        "mediaPayloads": 485
+      },
+      "retainedScenarioContent": {
+        "items": 200,
+        "spells": 105,
+        "races": 0,
+        "castes": 0,
+        "mediaDescriptors": 225,
+        "mediaPayloads": 222
+      },
+      "mediaOwnershipMigration": {
+        "operation": "slim-scenarios",
+        "compilerRevision": "b355a0fa28dce5aec8c214ab9cc3ceda8f45f354",
+        "sourcePackageHash": "2912667314a7700d74b2a517253a31d3b610cba99507275fc0f8542eaaf803a7",
+        "sourceArchiveSha256": "aef55f89f413e95d7710b138d4a399e3dcd9fca3a8de49451761ce8da5969b7d",
+        "sourceArchiveBytes": 4790596,
+        "applicationPackageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad",
+        "applicationMediaCatalogSha256": "9b54a3936924a1dd49c4545f780afdf9c3cf0feb2b56c5329f5b8012d94cce11",
+        "removedResourceKey": "PICT:302",
+        "removedMediaDescriptors": 1,
+        "removedMediaPayloads": 1,
+        "rewrittenAssetReferences": 0
+      }
     },
     {
       "name": "Twin Sands of Time",
       "campaignId": "scenario-twin-sands-of-time",
       "file": "scenario-twin-sands-of-time.realmz2",
-      "packageHash": "7d8bfaa1d05f0bee143139a20bb2146017f2bbe4cbd5af9992c2fbab9ce80013",
-      "archiveSha256": "b1ab186356915ed759c9bfb042b47685a98b403063cdae9b91003a10502fd3fd",
-      "bytes": 5321899
+      "compilerRevision": "b355a0fa28dce5aec8c214ab9cc3ceda8f45f354",
+      "packageHash": "f3fa737a9fad19aa5c27b5c1e66fbd5cdcea58a3442aa4a43ccc01b5f848a5e9",
+      "contentId": "4e06b985189ead1e44f6601e054438f83a2cfb56b848fbd8d81087ebe675deda",
+      "archiveSha256": "81702022b58f944ad5f80e5410e29fedc9a6b214c377fbacbc021eb0cdcd9fa4",
+      "bytes": 770994,
+      "sourceArchive": {
+        "compilerRevision": "cbd2608c1655cfd7395341689a7ad242db341c70",
+        "archiveSha256": "b1ab186356915ed759c9bfb042b47685a98b403063cdae9b91003a10502fd3fd",
+        "bytes": 5321899
+      },
+      "classicScenarioResourcesSha256": "dc3c4e2f2b68d1128ef7913f35b8ee02f138194b799f92365e0219d5b1be3ad9",
+      "rewrittenAssetReferences": 64852,
+      "removedApplicationContent": {
+        "items": 0,
+        "spells": 0,
+        "races": 30,
+        "castes": 30,
+        "mediaDescriptors": 508,
+        "mediaPayloads": 501
+      },
+      "retainedScenarioContent": {
+        "items": 200,
+        "spells": 105,
+        "races": 0,
+        "castes": 0,
+        "mediaDescriptors": 44,
+        "mediaPayloads": 44
+      },
+      "mediaOwnershipMigration": {
+        "operation": "slim-scenarios",
+        "compilerRevision": "b355a0fa28dce5aec8c214ab9cc3ceda8f45f354",
+        "sourcePackageHash": "9fd04d22eefd86eb2fd6f5adb6f44493b0fa16a0f77ba56a5eb5760a542f76b0",
+        "sourceArchiveSha256": "2abb86a1ad1156fa8567b89f1e03d52496c9105b88b9684acd15185e076bd9f3",
+        "sourceArchiveBytes": 1187484,
+        "applicationPackageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad",
+        "applicationMediaCatalogSha256": "9b54a3936924a1dd49c4545f780afdf9c3cf0feb2b56c5329f5b8012d94cce11",
+        "removedResourceKey": "PICT:302",
+        "removedMediaDescriptors": 1,
+        "removedMediaPayloads": 1,
+        "rewrittenAssetReferences": 0
+      }
     },
     {
       "name": "War in the Sword Lands",
       "campaignId": "scenario-war-in-the-sword-lands",
       "file": "scenario-war-in-the-sword-lands.realmz2",
-      "compilerRevision": "7ff51260b06efc1959faa2b1c26a8fc6d1e6ecee",
-      "packageHash": "f8fcefc2466789f3522a9549018da5ac9c2cf63f3570414e99a0776c3a81125b",
-      "archiveSha256": "d683651dde76c43108f82e68b87de194f6f847718356442d689d90abf09347fa",
-      "bytes": 12754316
+      "compilerRevision": "31360e29be145a123f3906daa9e018a57729906c",
+      "packageHash": "19234678a99a5c1cb05c83da702aebe2372b41877cf1e1637f31d29d16b39d9e",
+      "contentId": "cc9173733e28f10bd5ad71297b23e5225c81e75b2e35219db1e1a3a50b5322d6",
+      "archiveSha256": "3a9b1f5769acbdb69bc2a19e9b1ce8a4d05a3104e98319ba9d8650aa3c2f84e5",
+      "bytes": 12995493,
+      "sourceArchive": {
+        "compilerRevision": "31360e29be145a123f3906daa9e018a57729906c",
+        "archiveSha256": "30c2c8c5aadc7424533c34e4242885dc42ed47533e2dd7c2be9fe756d74535c5",
+        "bytes": 13058346
+      },
+      "classicScenarioResourcesSha256": "9738d6d5a9dd659988269bc61e25c8b4d1320475ee774acbfe60ddca81f0c19b",
+      "rewrittenAssetReferences": 0,
+      "removedApplicationContent": {
+        "items": 799,
+        "spells": 420,
+        "races": 30,
+        "castes": 30,
+        "mediaDescriptors": 0,
+        "mediaPayloads": 0
+      },
+      "retainedScenarioContent": {
+        "items": 200,
+        "spells": 105,
+        "races": 0,
+        "castes": 0,
+        "mediaDescriptors": 553,
+        "mediaPayloads": 549
+      },
+      "correctionsCatalog": "war-in-the-sword-lands.corrections.json"
     },
     {
       "name": "White Dragon",
       "campaignId": "scenario-white-dragon",
       "file": "scenario-white-dragon.realmz2",
-      "packageHash": "194da5498676ab15f0fb66bbb13f38885877b8094e069acaa6b90517fd9b321b",
-      "archiveSha256": "920b4f651acaa5f94cfc66ad0da1d8c6e115591490950e3477153a4add09e85e",
-      "bytes": 4718617
+      "compilerRevision": "b355a0fa28dce5aec8c214ab9cc3ceda8f45f354",
+      "packageHash": "cff740f4bc5727e53479eeeca5bae287e64886b3939b0af79bdc3afcbbe854e7",
+      "contentId": "445ca07914d609d6532d47bec2750daf538174ffb34b4511d4a608316bbc867a",
+      "archiveSha256": "d2dc8b74b004fc8435b262fe10ddce35a6b5d87f2cc8328fef8f0719e5bb0cf9",
+      "bytes": 1070342,
+      "sourceArchive": {
+        "compilerRevision": "cbd2608c1655cfd7395341689a7ad242db341c70",
+        "archiveSha256": "920b4f651acaa5f94cfc66ad0da1d8c6e115591490950e3477153a4add09e85e",
+        "bytes": 4718617
+      },
+      "classicScenarioResourcesSha256": "7362a7405be54ca332e0efbd87d84da3c39aa1749bc79c2994a37173a4c9d322",
+      "rewrittenAssetReferences": 97231,
+      "removedApplicationContent": {
+        "items": 0,
+        "spells": 0,
+        "races": 30,
+        "castes": 30,
+        "mediaDescriptors": 397,
+        "mediaPayloads": 392
+      },
+      "retainedScenarioContent": {
+        "items": 200,
+        "spells": 0,
+        "races": 0,
+        "castes": 0,
+        "mediaDescriptors": 111,
+        "mediaPayloads": 110
+      },
+      "mediaOwnershipMigration": {
+        "operation": "slim-scenarios",
+        "compilerRevision": "b355a0fa28dce5aec8c214ab9cc3ceda8f45f354",
+        "sourcePackageHash": "78a52bfec683a7166aad4976b199460e26d7f23deb04aa9fb170da86948442f0",
+        "sourceArchiveSha256": "7be72ac76ca88f5b7f20ab79b742301006efa313af5dec3a0349c033d316f0f4",
+        "sourceArchiveBytes": 1486840,
+        "applicationPackageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad",
+        "applicationMediaCatalogSha256": "9b54a3936924a1dd49c4545f780afdf9c3cf0feb2b56c5329f5b8012d94cce11",
+        "removedResourceKey": "PICT:302",
+        "removedMediaDescriptors": 1,
+        "removedMediaPayloads": 1,
+        "rewrittenAssetReferences": 0
+      }
     },
     {
       "name": "Wrath of the Mind Lords",
       "campaignId": "scenario-wrath-of-the-mind-lords",
       "file": "scenario-wrath-of-the-mind-lords.realmz2",
-      "compilerRevision": "7ff51260b06efc1959faa2b1c26a8fc6d1e6ecee",
-      "packageHash": "ec1650e3b9553b6774f493c4072faf4914a79144f118bbf4ddc75ad1ced368e9",
-      "archiveSha256": "4f78f01c0088603be1c4083698968761107e0c801a010bbe56b4290f28671897",
-      "bytes": 13355961
+      "compilerRevision": "b355a0fa28dce5aec8c214ab9cc3ceda8f45f354",
+      "packageHash": "1328d8a443d979b38ba2c5ecdeea9342a03153fed0c079d761df8ee53c53a894",
+      "contentId": "3563131b9b20bf061ec28ad3149101dd570095b2b04e97e9e5f05d59ec768395",
+      "archiveSha256": "a032141f8d22fe2aa81cd416b8cf9a6509e3ae7d01d5640fdfb8a7d67041187b",
+      "bytes": 8802708,
+      "sourceArchive": {
+        "compilerRevision": "7ff51260b06efc1959faa2b1c26a8fc6d1e6ecee",
+        "archiveSha256": "4f78f01c0088603be1c4083698968761107e0c801a010bbe56b4290f28671897",
+        "bytes": 13355961
+      },
+      "classicScenarioResourcesSha256": "2d674f9244d2aeb19ee1ac4c83c55cb54be122d1b978d38bae206beec9fde595",
+      "rewrittenAssetReferences": 81103,
+      "removedApplicationContent": {
+        "items": 0,
+        "spells": 0,
+        "races": 30,
+        "castes": 30,
+        "mediaDescriptors": 508,
+        "mediaPayloads": 505
+      },
+      "retainedScenarioContent": {
+        "items": 200,
+        "spells": 105,
+        "races": 0,
+        "castes": 0,
+        "mediaDescriptors": 460,
+        "mediaPayloads": 447
+      },
+      "mediaOwnershipMigration": {
+        "operation": "slim-scenarios",
+        "compilerRevision": "b355a0fa28dce5aec8c214ab9cc3ceda8f45f354",
+        "sourcePackageHash": "b45c2825ccc152494b25c0298a68a8f8425e1a557af7271c870a0a6a2b9f416b",
+        "sourceArchiveSha256": "bc115253f0ba500faa878e5724a0131b152dfb223fe4b33c1cb87268644122dc",
+        "sourceArchiveBytes": 9219202,
+        "applicationPackageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad",
+        "applicationMediaCatalogSha256": "9b54a3936924a1dd49c4545f780afdf9c3cf0feb2b56c5329f5b8012d94cce11",
+        "removedResourceKey": "PICT:302",
+        "removedMediaDescriptors": 1,
+        "removedMediaPayloads": 1,
+        "rewrittenAssetReferences": 0
+      }
     }
   ]
 }

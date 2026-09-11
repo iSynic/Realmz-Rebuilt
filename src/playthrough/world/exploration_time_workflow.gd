@@ -124,6 +124,8 @@ static func complete_heal(context: SessionWorkflowContext, preceding_events: Arr
 
 
 static func classic_time_scale(map: MapDefinition) -> int:
+	if map != null and map.base_scale >= 0:
+		return 1 if map.base_scale != 0 else 5
 	return 1 if map != null and map.level_type == &"dungeon" else 5
 
 

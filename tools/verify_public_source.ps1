@@ -49,7 +49,7 @@ foreach ($path in $tracked) {
 }
 
 $realmzPackages = @($tracked | Where-Object { $_.EndsWith('.realmz2', [System.StringComparison]::OrdinalIgnoreCase) })
-if ($realmzPackages.Count -ne 16) { throw "Public source must track exactly 13 scenarios, one character library, and two synthetic fixtures; found $($realmzPackages.Count)." }
+if ($realmzPackages.Count -ne 19) { throw "Public source must track exactly 13 scenarios, one application library, two synthetic fixtures, and three Providence alignment fixtures; found $($realmzPackages.Count)." }
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 foreach ($relativePath in $realmzPackages) {
     $fullPath = Join-Path $repoRoot $relativePath

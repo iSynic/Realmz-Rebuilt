@@ -307,7 +307,7 @@ func _resume_simple_encounter(continuation: ScenarioRuntimeContinuation, respons
 	if choice.cancelled:
 		if not encounter.can_back_out:
 			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "This Simple Encounter cannot be cancelled.")
-		return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"encounter_cancelled", {"encounterKind": "simple", "encounterId": encounter.id})], ScenarioVmDirective.finish())
+		return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"encounter_cancelled", {"encounterKind": "simple", "encounterId": encounter.id})], ScenarioVmDirective.finish_timeline())
 	var selected_index := choice.index
 	var option_indexes := choice_continuation.option_indexes
 	if not option_indexes.is_empty():
@@ -318,10 +318,11 @@ func _resume_simple_encounter(continuation: ScenarioRuntimeContinuation, respons
 	if selected == null:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Simple Encounter response index is outside the authored choices.")
 	_game_state.scenario_progress.encounters.record_attempt(&"simple", encounter.id)
-	var attempt := choice_continuation.encounter_attempt + 1
+	var attempt := choice_continuation.encounter_attempt + (0 if choice_continuation.reopen_result else 1)
 	var context := ScenarioExecutionContext.encounter(&"simple", encounter.id, selected.id, selected_index).set_encounter_attempt(attempt)
 	var repeat := attempt < encounter.max_times
-	return ScenarioRuntimeOperationResult.completed(selected.id, [DomainEvent.new(&"encounter_response_selected", {"encounterKind": "simple", "encounterId": encounter.id, "responseId": selected.id, "optionIndex": selected_index, "attempt": attempt, "willRepeat": repeat})], ScenarioVmDirective.branch_encounter_result(selected.result_program_id, choice_continuation.gosub, context, repeat))
+	var directive := ScenarioVmDirective.branch_program(selected.result_program_id, false, context) if choice_continuation.reopen_result else ScenarioVmDirective.branch_encounter_result(selected.result_program_id, choice_continuation.gosub, context, repeat)
+	return ScenarioRuntimeOperationResult.completed(selected.id, [DomainEvent.new(&"encounter_response_selected", {"encounterKind": "simple", "encounterId": encounter.id, "responseId": selected.id, "optionIndex": selected_index, "attempt": attempt, "willRepeat": repeat})], directive)
 
 
 func _resume_complex_encounter(continuation: ScenarioRuntimeContinuation, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
@@ -341,7 +342,7 @@ func _resume_complex_encounter(continuation: ScenarioRuntimeContinuation, respon
 		"back":
 			if not encounter.can_back_out:
 				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "This Complex Encounter cannot be cancelled.")
-			return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"encounter_cancelled", {"encounterKind": "complex", "encounterId": encounter.id})], ScenarioVmDirective.finish())
+			return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"encounter_cancelled", {"encounterKind": "complex", "encounterId": encounter.id})], ScenarioVmDirective.finish_timeline())
 		"choice":
 			var selected_slots := selection.selected_slots.duplicate()
 			if selected_slots.is_empty() and selection.slot >= 0:

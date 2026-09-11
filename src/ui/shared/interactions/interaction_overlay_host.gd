@@ -52,6 +52,18 @@ func close_all() -> void:
 	close_nested_modal()
 
 
+func release() -> void:
+	for overlay in [_modal_shield, _nested_modal, _side_workspace_panel, _encounter_dock_panel, _application_workspace_panel]:
+		if is_instance_valid(overlay):
+			overlay.queue_free()
+	_modal_shield = null
+	_nested_modal = null
+	_side_workspace_panel = null
+	_encounter_dock_panel = null
+	_application_workspace_panel = null
+	_presenter = null
+
+
 func update_modal_shield(needed: bool, dim_background: bool = true) -> void:
 	if not needed:
 		close_modal_shield()
@@ -104,6 +116,7 @@ func show_side_workspace(workspace: Control) -> void:
 		return
 	_side_workspace_panel = _side_workspace_scene.instantiate() as PanelContainer
 	_side_workspace_panel.z_index = _presenter.z_index + 1
+	_side_workspace_panel.minimum_size_changed.connect(_apply_side_workspace_layout)
 	_presenter.get_parent().add_child(_side_workspace_panel)
 	var scroll := _side_workspace_panel.get_node("InteractionSideWorkspaceScroll") as ScrollContainer
 	workspace.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -191,8 +204,8 @@ func _apply_nested_modal_layout() -> void:
 
 func _apply_side_workspace_layout() -> void:
 	if _side_workspace_panel != null:
-		_side_workspace_panel.position = _side_workspace_rect.position
 		_side_workspace_panel.size = _side_workspace_rect.size
+		_side_workspace_panel.position = Vector2(_side_workspace_rect.end.x - _side_workspace_panel.size.x, _side_workspace_rect.position.y)
 
 
 func _apply_encounter_dock_layout() -> void:

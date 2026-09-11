@@ -2,9 +2,9 @@ extends RealmzTestCase
 
 const FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-fixture.realmz2"
 const TAMPERED_FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-tampered.realmz2"
-const CLASSIC_CHARACTER_LIBRARY_PATH: String = "res://src/storage/characters/realmz-classic-character-library.realmz2"
-const CLASSIC_CHARACTER_LIBRARY_ID: String = "realmz-classic-character-library"
-const CLASSIC_CHARACTER_LIBRARY_HASH: String = "c7e093f46bcca49d2382d68c2995ae5ff90c0e706dbd538682b613af9b80e0bd"
+const CLASSIC_CHARACTER_LIBRARY_PATH: String = ApplicationLibraryIdentity.PATH
+const CLASSIC_CHARACTER_LIBRARY_ID: String = ApplicationLibraryIdentity.CAMPAIGN_ID
+const CLASSIC_CHARACTER_LIBRARY_HASH: String = ApplicationLibraryIdentity.PACKAGE_HASH
 const INSTALL_TEST_ROOT: String = "user://realmz2-tests/package-install-schema-v3"
 const SCHEMA_REJECTION_PATH: String = "user://realmz2-tests/realmz2-schema-v2.realmz2"
 
@@ -37,7 +37,7 @@ func run() -> void:
 		var scrolling_scenario: Dictionary = scenario.duplicate(true); scrolling_scenario["programs"].append({"id": "xap:9878", "ownerKind": "extra-action-point", "ownerId": "9878", "instructions": [{"kind": "classicAction", "slot": 0, "rawOpcode": 62, "opcode": 62, "id": -200, "gosub": false, "extraCode": [0, 0, 0, 0, 0]}]}); var scrolling_assembler := PackageDomainAssembler.new(); var scrolling_content := scrolling_assembler.assemble(manifest, malformed_content, world, scrolling_scenario, loaded.media.assets(), false, character_library.content); assert_true(scrolling_content != null and scrolling_content.scenario.program_by_id("xap:9878") != null, "strict package assembly admits opcode 62 when its exact signed TEXT resource is present: %s" % scrolling_assembler.error_message()); var missing_scrolling_scenario: Dictionary = scenario.duplicate(true); missing_scrolling_scenario["programs"].append({"id": "xap:9879", "ownerKind": "extra-action-point", "ownerId": "9879", "instructions": [{"kind": "classicAction", "slot": 0, "rawOpcode": 62, "opcode": 62, "id": -201, "gosub": false, "extraCode": [0, 0, 0, 0, 0]}]}); var missing_scrolling_content := PackageDomainAssembler.new().assemble(manifest, malformed_content, world, missing_scrolling_scenario, loaded.media.assets(), false, character_library.content); assert_equal(missing_scrolling_content, null, "strict package assembly rejects opcode 62 when its exact signed TEXT resource is absent")
 	fixture_archive.close(); var repeated_external_load := repository.load_package(FIXTURE_PATH); assert_true(repeated_external_load.is_ok(), "an unchanged external package can be validated repeatedly"); assert_true(repeated_external_load != loaded, "external package validation never inherits trusted cache status")
 	assert_equal(loaded.content.campaign_id, "realmz2-synthetic-fixture", "manifest campaign identity becomes typed content")
-	assert_equal(loaded.content.package_hash, "9ab36f7b609628d76bbdfdb3ba6e4971de3cb4d83b5fe0048c45f04a9fd46dec", "package identity is retained")
+	assert_equal(loaded.content.package_hash, "bb98ee3c5a07aa9324091c000243532d72ca1c56461f3a2fc27abe9ce86f1709", "package identity is retained")
 	assert_equal(loaded.content.campaign.title, "Realmz2 Synthetic Fixture", "campaign title metadata becomes a typed display contract")
 	assert_equal(loaded.content.campaign.version, "", "campaign version metadata preserves an authored empty value")
 	assert_equal(loaded.content.campaign.restrictions.maximum_party_size, 6, "campaign party-size restrictions are typed")
@@ -117,10 +117,10 @@ func run() -> void:
 	assert_equal([combat_icons[0].classic_resource_id, combat_icons[-1].classic_resource_id], [9000, 9119], "combat-icon identities preserve the exact Tacticals-fork CICN range")
 	assert_true(portraits[0].is_recommended_for("classic.race.1"), "the Human zero-set inconsistency resolves to the proven browseable Human portrait set")
 	assert_true(combat_icons[0].is_recommended_for("classic.race.1"), "Human tactical recommendations retain Castle's race-indexed 9000 set")
-	var battle_atlas := loaded.media.battle_tileset()
-	assert_not_null(battle_atlas, "reachable battles require the role-specific Classic PICT 302 atlas")
+	var battle_atlas := loaded.media.asset_by_resource("PICT", 302)
+	assert_not_null(battle_atlas, "reachable battles resolve the complete exact Classic PICT 302 resource")
 	if battle_atlas != null:
-		assert_true(battle_atlas.is_battle_tileset(), "the battle atlas retains Castle's 20 by 20 grid of native 32-pixel cells")
+		assert_true(battle_atlas.is_tileset() and battle_atlas.columns == 20 and battle_atlas.rows == 20, "the shared atlas retains Castle's 20 by 20 grid of native 32-pixel cells")
 		assert_equal(battle_atlas.region_for(1), Rect2i(0, 0, 32, 32), "Classic battle tile one maps to the first PICT 302 cell")
 		assert_false(battle_atlas.region_for(0).has_area(), "Classic combat-build tile zero remains empty instead of aliasing battle tile one")
 		assert_equal(battle_atlas.region_for(400), Rect2i(608, 608, 32, 32), "Classic battle tile 400 maps to the final PICT 302 cell")
@@ -150,7 +150,7 @@ func run() -> void:
 	assert_equal(loaded.content.magic.spell_by_id("classic.spell.2302").name, "Destroy Magic", "standard spell labels preserve their packed Classic identity")
 	assert_equal(loaded.content.magic.spell_by_id("classic.spell.3106").description, "Limited Phase:  Will allow the caster to teleport during combat.  The caster's turn will be over after phasing.", "stock spell descriptions resolve from Rebuilt's pinned Family Jewels application catalog rather than campaign-owned text")
 	assert_not_null(loaded.media, "validated package media receives a typed catalog")
-	assert_equal(loaded.media.assets().size(), 255, "the synthetic fixture carries authored map/scenario media, player-map media and markers, the battle atlas, both monster facings, both 120-entry character-appearance catalogs, and its explicit scenario sound and Custom music")
+	assert_equal(loaded.media.assets().size(), 254, "the synthetic fixture carries authored map/scenario media, player-map media and markers, one shared map/battle atlas, both monster facings, both 120-entry character-appearance catalogs, and its explicit scenario sound and Custom music")
 	assert_equal([loaded.media.assets_of_kind("portrait").size(), loaded.media.assets_of_kind("combat-icon").size()], [120, 120], "the media catalog groups appearance roles without resource-ID-only lookup")
 	var first_portrait_bytes := loaded.media.read_bytes_batch([loaded.media.assets_of_kind("portrait")[0]])
 	assert_false((first_portrait_bytes.get("realmz-portrait-257", PackedByteArray()) as PackedByteArray).is_empty(), "batch media reads validate creator thumbnails through one archive boundary")
@@ -174,7 +174,7 @@ func run() -> void:
 	assert_false(loaded.media.read_bytes(land_tileset).is_empty(), "content-addressed land atlas bytes are hash-checked when read")
 	var dungeon_tileset := loaded.media.tileset_by_id("dungeon-top-down-302")
 	assert_not_null(dungeon_tileset, "the authoritative dungeon render identity resolves to a package tileset")
-	assert_equal(dungeon_tileset.region_for(1), Rect2i(0, 0, 16, 16), "the first Classic dungeon tile resolves without an off-by-one shift")
+	assert_equal([dungeon_tileset, dungeon_tileset.region_for(1)], [battle_atlas, Rect2i(0, 0, 32, 32)], "the stable dungeon identity resolves to the same complete resource; presentation alone derives its 16-pixel map view")
 
 	_cleanup_install_test_root()
 	var install_root := INSTALL_TEST_ROOT.path_join(loaded.content.package_hash)
@@ -186,7 +186,7 @@ func run() -> void:
 		var receipt_data: Variant = JSON.parse_string(FileAccess.get_file_as_string(installed.installed_path + ".receipt.json"))
 		assert_true(receipt_data is Dictionary, "the installation receipt is parseable JSON")
 		if receipt_data is Dictionary:
-			assert_equal([int(receipt_data["formatVersion"]), int(receipt_data["decoderVersion"]), receipt_data["schemaHash"]], [2, 6, PackageRepository.EXPECTED_SCHEMA_HASH], "the receipt records the v3 package and composed-catalog decoder contract")
+			assert_equal([int(receipt_data["formatVersion"]), int(receipt_data["decoderVersion"]), receipt_data["schemaHash"], receipt_data["applicationPackageHash"]], [3, 7, PackageRepository.EXPECTED_SCHEMA_HASH, ApplicationLibraryIdentity.PACKAGE_HASH], "the receipt records the v3 package, composed-catalog decoder, and exact application-library contract")
 		assert_contains(installed.installed_path, loaded.content.package_hash, "the installation path carries the package identity")
 		repository.promote_installed_package(installed.installed_path)
 		assert_equal(repository.retained_package_count(), 1, "promoting an installed package replaces the candidate without retaining an unbounded graph")

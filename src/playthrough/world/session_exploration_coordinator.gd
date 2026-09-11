@@ -72,8 +72,6 @@ func _select_contextual_encounter(map: MapDefinition, encounter_coordinate: Vect
 		for door_index: int in mini(door_ids.size(), door_percents.size()):
 			var door_id := door_ids[door_index]
 			var percent := door_percents[door_index]
-			if door_id == 0 or percent == 0:
-				continue
 			var roll := _context.rng.draw(100, StringName("contextual-encounter.%s.door.%d" % [region.id, door_index]))
 			var fired := roll <= absi(percent)
 			events.append(DomainEvent.new(&"contextual_encounter_checked", {"regionId": region.id, "doorIndex": door_index, "programId": "xap:%d" % door_id, "roll": roll, "chancePercent": percent, "triggered": fired}))
@@ -276,6 +274,10 @@ func set_post_move_continuation(map: MapDefinition, coordinate: Vector2i, destin
 	_context.set_continuation(ExplorationContinuationWorkflow.post_move(_context.workflow_context(), map, coordinate, destination_depth))
 
 
+func start_debug_action_point(trigger_id: String) -> SessionCoordinatorResult:
+	return SessionActionPointCoordinator.new(_context, self).start_debug(trigger_id)
+
+
 func continue_post_move(events: Array[DomainEvent]) -> SessionCoordinatorResult:
 	var post_move := _prepare_post_move_context(events)
 	if post_move.terminal_result != null:
@@ -286,9 +288,6 @@ func continue_post_move(events: Array[DomainEvent]) -> SessionCoordinatorResult:
 	var trigger_step := _run_next_post_move_trigger(post_move, events)
 	if trigger_step != null:
 		return trigger_step
-	var random_step = continue_random_regions(post_move.map, events)
-	if random_step != null:
-		return random_step
 	_context.session_continuation.clear()
 	return SessionCoordinatorResult.completed(events)
 
@@ -333,6 +332,9 @@ func _resume_completed_post_move_trigger(post_move: PostMoveContext, events: Arr
 		var backout_kind: StringName = &"choice" if _context.events_have(events, &"classic_choice_backout_requested") else &"encounter" if _context.events_have(events, &"encounter_cancelled") else &""
 		if not backout_kind.is_empty():
 			return _complete_classic_backout(post_move.map, post_move.coordinate, active_trigger_id, events, backout_kind)
+		if _context.events_have(events, &"party_backed_up"):
+			_context.session_continuation.clear()
+			return SessionCoordinatorResult.completed(events)
 		_context.scenario().finalize_completed_trigger(completed_trigger, events)
 		if _context.scenario().apply_trigger_destination(completed_trigger, events, exploration.action_point_destination_depth == 0 and not _context.events_have(events, &"party_position_restored")):
 			var destination_map = _context.content.world.map_by_id(_context.state.party.map_id)
@@ -357,40 +359,14 @@ func _run_next_post_move_trigger(post_move: PostMoveContext, events: Array[Domai
 		if (not trigger.active and not _context.state.world.triggers.trigger_chance_is_overridden(trigger_id)) or trigger_chance < 1:
 			exploration.trigger_index = trigger_ids.size()
 			break
-		if trigger_chance < 100:
-			var chance_roll = _context.rng.draw(100, StringName("trigger.%s" % trigger.id))
-			if chance_roll > trigger_chance:
-				exploration.trigger_index = trigger_ids.size()
-				break
+		var chance_roll = _context.rng.draw(100, StringName("trigger.%s" % trigger.id))
+		if chance_roll > trigger_chance:
+			exploration.trigger_index = trigger_ids.size()
+			break
 		events.append(DomainEvent.new("trigger_fired", {"triggerId": trigger.id}))
-		exploration.active_trigger_id = trigger.id
-		var started = _context.scenario_vm.start_program(trigger.program_id, ScenarioExecutionContext.trigger(&"action", trigger.id, post_move.map.id, post_move.coordinate, true))
-		if started.state == ScenarioVmResult.State.FAILED:
-			_context.session_continuation.clear()
-			return SessionCoordinatorResult.failed(started.error_code, started.error_message, events)
-		var result = _context.scenario_vm.run(_context.runtime_api)
-		events.append_array(result.events)
-		if result.state == ScenarioVmResult.State.SUSPENDED:
-			return _context.scenario().begin_scenario_handoff(result, events)
-		if result.state == ScenarioVmResult.State.WAITING:
-			return SessionCoordinatorResult.waiting(result.interaction, events)
-		if result.state == ScenarioVmResult.State.FAILED:
-			_context.session_continuation.clear()
-			return SessionCoordinatorResult.failed(result.error_code, result.error_message, events)
-		_context.scenario().finalize_completed_trigger(trigger, events)
-		if _context.events_have(result.events, &"destination_trigger_recheck_requested"):
-			var requested_map = _context.content.world.map_by_id(_context.state.party.map_id)
-			if requested_map == null:
-				_context.session_continuation.clear()
-				return SessionCoordinatorResult.failed(&"invalid_teleport", "Destination trigger recheck references an unavailable map.", events)
-			set_post_move_continuation(requested_map, _context.state.party.coordinate, 1)
-			return continue_post_move(events)
-		if _context.scenario().apply_trigger_destination(trigger, events, exploration.action_point_destination_depth == 0 and not _context.events_have(events, &"party_position_restored")):
-			var destination_map = _context.content.world.map_by_id(_context.state.party.map_id)
-			set_post_move_continuation(destination_map, _context.state.party.coordinate, 1)
-			return continue_post_move(events)
-		exploration.active_trigger_id = ""
-		exploration.trigger_index = trigger_ids.size()
+		var step = SessionActionPointCoordinator.new(_context, self).execute(post_move, trigger, events)
+		if step != null:
+			return step
 	return null
 
 

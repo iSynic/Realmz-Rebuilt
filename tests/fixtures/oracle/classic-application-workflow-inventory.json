@@ -8,18 +8,11 @@
     "realmz2": "cff7174399212c1256c52fc6b10d4a766af4174e"
   },
   "convergencePolicy": {
-    "effortTargets": {
-      "ordinaryPlayAndPresentationPercent": 60,
-      "missingAndPartialImplementationPercent": 25,
-      "targetedArchaeologyPercent": 15
-    },
     "priorityOrder": [
-      "aogm-certification",
-      "classic-missing",
-      "aogm-major-partial",
-      "war-prerequisite",
-      "broader-parity",
-      "rare-or-unreachable"
+      "known-failure",
+      "untested-high-risk",
+      "meaningful-variant",
+      "broader-representative"
     ],
     "archaeologyTriggers": [
       "observed-discrepancy",
@@ -29,25 +22,10 @@
       "source-ambiguity-for-target-campaign"
     ]
   },
-  "maintenancePause": {
-    "id": "rebuilt-hotspot-test-performance",
-    "status": "complete",
-    "baselineCommit": "7e91e06bf6ff70d575c362afef26169f83a155e3",
-    "resumeBatchId": "release-saturation-closure",
-    "reason": "Parity delivery is paused for one bounded tranche that restores exploration cadence, decomposes the remaining product hotspots, rationalizes duplicated tests, and installs permanent architecture and test-budget ratchets without changing workflow delivery states.",
-    "exitGate": [
-      "exploration-performance-targets",
-      "production-file-and-function-caps",
-      "combat-session-party-hotspots-decomposed",
-      "test-budget-and-suite-caps",
-      "no-private-product-method-tests",
-      "ordinary-aogm-regression"
-    ]
-  },
   "currentBatch": {
-    "id": "release-saturation-closure",
-    "name": "Release saturation closure",
-    "baselineCommit": "5db81af7847f0fd0772cd236af515c9999d0789f",
+    "id": "ap-contextual-and-owner-bound-encounters",
+    "name": "AOGM contextual encounters and Wrath owner-bound chest outcomes",
+    "baselineCommit": "aad7f6773c36ec5f43c01aad56db7eeb187c6fd8",
     "baselineCounts": {
       "classic": {
         "missing": 0,
@@ -56,45 +34,35 @@
         "certified": 14
       },
       "host": {
-        "missing": 1,
-        "partial": 0,
+        "missing": 0,
+        "partial": 1,
         "functional": 5,
         "certified": 2
       }
     },
-    "selectionRationale": "Compiler, opcode, spell, application semantic-data, preferences, host settings, equipment, Shop, authored Journal, and Quit behavior are saturated. Every Classic workflow is functional or certified. The sole implementation target is the cross-platform release blocker; the three certification targets preserve ordinary-play acceptance opportunities without reopening completed behavior. Existing AOGM, War, and Lachis acceptance remains valid unless a later owner directly invalidates it.",
+    "selectionRationale": "Batch complete: AOGM's zero-slot contextual RNG defect is repaired, with entry, wrong-set repetition and exact reward/region-disable/default reentry verified. Wrath AP 44 has equal detection/disarm, armed-trap failure, unarmed lock failure and eight-item lock-reward repeats. Detected-trap and trap-warning restores reproduce exact final game/RNG state; pending Treasure reproduces every suffix state. Done alone sets chance zero and prevents duplicate rewards. The recipes retain 49 passes and two historical failures across all thirteen bundled scenarios under their recorded package/library identities, without certification upgrades. Clean-reference Tier 2 passes 91 focused assertions. The full aggregate passes 4212 assertions across 28 suites plus package, media, architecture, export, schema and inventory gates in an isolated copy with hash-matched product content and committed project settings. Development autoloads remain untouched in the working checkout. The forced five-frame startup smoke retains its known one-object teardown warning; strict tests and the closed gameplay fixture have no teardown errors. Protocol build and 37 tests pass, with two opt-in engine tests skipped. Wrath preparation/source/replay work took approximately 29 minutes before batch gates; full lock replays took 19.22/18.86 seconds and the saved suffix 9.51 seconds, with no new tooling implementation. Next coverage favors the retained pending-tumbler save boundary, then War pooled-payment edges using existing baselines. Native performance, complete combat replay, full campaign certification and broader bridge capabilities remain separate; reported failures take priority.",
     "targets": [
       {
-        "workflowId": "host.release.platform-certification",
-        "mode": "implementation",
-        "priority": "rare-or-unreachable",
-        "expectedEvidence": "",
-        "gapIds": [
-          "GAP-HOST-006"
-        ],
-        "archaeologyTriggers": []
-      },
-      {
-        "workflowId": "classic.spellcasting.field-camp-cast",
-        "mode": "certification",
-        "priority": "broader-parity",
-        "expectedEvidence": "aogm-ordinary",
+        "workflowId": "classic.scenario.choose-response",
+        "mode": "verification",
+        "priority": "known-failure",
+        "expectedEvidence": "live-route",
         "gapIds": [],
         "archaeologyTriggers": []
       },
       {
-        "workflowId": "classic.maps.authored-journal",
-        "mode": "certification",
-        "priority": "broader-parity",
-        "expectedEvidence": "other-ordinary",
+        "workflowId": "classic.system.save-game",
+        "mode": "verification",
+        "priority": "meaningful-variant",
+        "expectedEvidence": "live-route",
         "gapIds": [],
         "archaeologyTriggers": []
       },
       {
-        "workflowId": "classic.system.quit",
-        "mode": "certification",
-        "priority": "broader-parity",
-        "expectedEvidence": "other-ordinary",
+        "workflowId": "classic.scenario.trigger-action-point",
+        "mode": "verification",
+        "priority": "known-failure",
+        "expectedEvidence": "runtime-integration",
         "gapIds": [],
         "archaeologyTriggers": []
       }
@@ -2189,7 +2157,7 @@
         ],
         "tests": []
       },
-      "providence": {
+    "providence": {
         "status": "complete",
         "sources": [
           {
@@ -3742,7 +3710,7 @@
       ],
       "reachability": {
         "aogm": "observed",
-        "war": "not-observed",
+        "war": "observed",
         "classic": "observed"
       },
       "gaps": []
@@ -3977,7 +3945,7 @@
       ],
       "reachability": {
         "aogm": "observed",
-        "war": "not-observed",
+        "war": "observed",
         "classic": "observed"
       },
       "gaps": []
@@ -4111,7 +4079,7 @@
       "reachability": {
         "aogm": "known-reachable",
         "war": "unknown",
-        "classic": "known-reachable"
+        "classic": "observed"
       },
       "gaps": []
     },
@@ -8536,7 +8504,7 @@
         ],
         "tests": []
       },
-      "providence": {
+    "providence": {
         "status": "complete",
         "sources": [
           {
@@ -8976,7 +8944,7 @@
         ],
         "tests": []
       },
-      "providence": {
+    "providence": {
         "status": "complete",
         "sources": [
           {
@@ -9631,6 +9599,10 @@
         },
         {
           "path": "tests/integration/test_session_persistence.gd",
+          "symbol": "func run"
+        },
+        {
+          "path": "tests/infrastructure/test_save_repository.gd",
           "symbol": "func run"
         }
       ],

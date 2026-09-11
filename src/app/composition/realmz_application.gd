@@ -5,6 +5,8 @@ extends Control
 
 ## Composes the application and translates host input into typed game operations.
 
+const DEVELOPMENT_PREVIEW_HOST_PATH := "res://tools/development_preview_application_host.gd"
+
 @onready var _status_label: Label = $GameShell/BottomRegion/BottomRow/NarrativeWell/NarrativeColumn/Facts/Status
 @onready var _smoke_button: Button = $GameShell/SmokeAction
 @onready var _map_presenter: ClassicMapPresenter = %ExplorationMap
@@ -38,6 +40,7 @@ var lifecycle_host := ApplicationLifecycleHost.new()
 var character_files: ApplicationCharacterFilesHost
 var adventure_storage: ApplicationAdventureStorageHost
 var _spatial_layout: ApplicationSpatialLayout
+var _runtime_testing_host: RuntimeTestingHost
 
 
 func configure_lifecycle_host(save_host: SaveHostController, quit_operation: Callable = Callable()) -> void:
@@ -53,14 +56,26 @@ func _ready() -> void:
 	_bind_debug_and_movement()
 	_bind_combat_and_interactions()
 	_bind_shell_and_settings()
+	if RuntimeTestingHost.live_requested() or has_meta(&"runtime_testing_fixture"):
+		_runtime_testing_host = RuntimeTestingHost.new()
+		add_child(_runtime_testing_host)
+		var fixture_request := get_meta(&"runtime_testing_fixture") as RuntimeTestingFixtureRequest if has_meta(&"runtime_testing_fixture") else null
+		var status := _runtime_testing_host.bind(session_controller, func() -> RealmzContent: return _active_content, func() -> Dictionary: return {"explorationInput": accepts_exploration_input(), "routeInput": accepts_route_input(), "combatPlayback": presentation_coordinator.is_combat_playback_active(), "hostInteraction": lifecycle_host.has_active_interaction()}, self, fixture_request)
+		if status != OK:
+			printerr("Runtime testing endpoint unavailable: %s" % error_string(status))
 	_finish_startup()
 
 
 func _build_dependencies() -> void:
-	_package_host = PackageHostController.new()
-	if _save_host == null: _save_host = SaveHostController.new()
-	settings_repository = SettingsRepository.new()
-	_presentation_settings = settings_repository.load_settings()
+	var preview_request := get_meta(&"development_preview_request") as DevelopmentPreviewRequest if has_meta(&"development_preview_request") else null
+	var preview_state_root := preview_request.result_path.get_basename() + "-session" if preview_request != null else ""
+	var fixture := get_meta(&"runtime_testing_fixture") as RuntimeTestingFixtureRequest if has_meta(&"runtime_testing_fixture") else null
+	var scratch_root := fixture.scratch_root if fixture != null else preview_state_root
+	_package_host = PackageHostController.new(null, scratch_root.path_join("packages")) if fixture != null else PackageHostController.new()
+	if _save_host == null:
+		_save_host = SaveHostController.new(SaveRepository.new(scratch_root.path_join("saves"))) if not scratch_root.is_empty() else SaveHostController.new()
+	settings_repository = SettingsRepository.new(scratch_root.path_join("settings.json")) if not scratch_root.is_empty() else SettingsRepository.new()
+	_presentation_settings = PresentationSettings.new() if not scratch_root.is_empty() else settings_repository.load_settings()
 	session_controller = GameSessionController.new()
 	presentation_coordinator = PresentationCoordinator.new()
 	presentation_media = PresentationMediaController.new()
@@ -79,7 +94,8 @@ func _build_dependencies() -> void:
 		session_controller,
 		presentation_coordinator,
 		presentation_media,
-		_game_shell
+		_game_shell,
+		CharacterVaultController.new(CharacterVaultRepository.new(scratch_root.path_join("characters"))) if fixture != null else null
 	)
 	adventure_storage = ApplicationAdventureStorageHost.new(_save_host, session_controller, _game_shell, func() -> void: _queued_combat_auto_changes.clear())
 	_spatial_layout = ApplicationSpatialLayout.new(_map_presenter, _battlefield_presenter, _dungeon_presenter, _interaction_presenter, _shell_presenter, session_controller, presentation_coordinator)
@@ -102,7 +118,7 @@ func _bind_debug_and_movement() -> void:
 	)
 	_dungeon_presenter.movement_requested.connect(
 		func(direction: Vector2i) -> void:
-			_submit_movement(direction)
+			submit_movement(direction)
 	)
 	_dungeon_presenter.movement_hold_started.connect(
 		func(direction: Vector2i) -> void:
@@ -126,7 +142,7 @@ func _bind_combat_and_interactions() -> void:
 		presentation_media
 	)
 	presentation_coordinator.playback_step_settled.connect(_on_playback_step_settled)
-	_interaction_presenter.response_submitted.connect(_on_interaction_response_submitted)
+	_interaction_presenter.response_submitted.connect(submit_response)
 	_interaction_presenter.combat.targeting_requested.connect(_on_combat_targeting_requested)
 	_interaction_presenter.combat.targeting_confirm_requested.connect(_battlefield_presenter.interaction.confirm_targeting)
 	_interaction_presenter.combat.targeting_cancel_requested.connect(_battlefield_presenter.interaction.cancel_targeting)
@@ -143,7 +159,7 @@ func _bind_combat_and_interactions() -> void:
 
 func _bind_shell_and_settings() -> void:
 	_shell_presenter.start_package_requested.connect(_begin_package_start)
-	_shell_presenter.cancel_package_requested.connect(_cancel_package_start)
+	_shell_presenter.cancel_package_requested.connect(_package_host.cancel)
 	_shell_presenter.refresh_campaigns_requested.connect(_refresh_campaigns)
 	_shell_presenter.intent_submitted.connect(submit_intent)
 	_shell_presenter.save_requested.connect(func(slot_id: String) -> void: adventure_storage.save(_active_content, slot_id))
@@ -163,11 +179,27 @@ func _bind_shell_and_settings() -> void:
 	_shell_presenter.character_selection_completed.connect(_interaction_presenter.submit_character_selection)
 	_audio_presenter.music_state_changed.connect(_shell_presenter.set_music_playback_state)
 	_settings_controller = ApplicationSettingsController.new(self, _presentation_settings, settings_repository, _shell_presenter, _map_presenter, _interaction_presenter, _audio_presenter, presentation_coordinator, _dungeon_presenter, _held_movement, _debug_tools)
-	_settings_controller.bind()
+	if not has_meta(&"development_preview_request"):
+		_settings_controller.bind()
 	_settings_controller.apply_initial_settings()
 
 
 func _finish_startup() -> void:
+	if has_meta(&"runtime_testing_fixture"):
+		_runtime_testing_host.prepare_fixture(presentation_coordinator, presentation_media, _shell_presenter, func(content: RealmzContent) -> void: _active_content = content)
+		return
+	var preview_request := get_meta(&"development_preview_request") as DevelopmentPreviewRequest if has_meta(&"development_preview_request") else null
+	if preview_request != null:
+		_status_label.text = "Preparing isolated Providence preview"
+		var preview_host_script := load(DEVELOPMENT_PREVIEW_HOST_PATH) as Script
+		if preview_host_script == null:
+			_status_label.text = "Preview failed • developer host is unavailable"
+			_shell_presenter.status.set_status(_status_label.text, true)
+			return
+		var preview_host := preview_host_script.new() as Node
+		add_child(preview_host)
+		preview_host.call("launch", preview_request, session_controller, presentation_coordinator, presentation_media, _shell_presenter, func(content: RealmzContent) -> void: _active_content = content)
+		return
 	_game_shell.navigator.setup_controller.character_creation.set_standalone_character_creation_available(false, "Loading the built-in Classic definitions…")
 	Callable(character_files, "begin_library_load").call_deferred()
 	_status_label.text = "Pure session boundary online"
@@ -191,15 +223,18 @@ func _process(_delta: float) -> void:
 	if _package_host == null:
 		return
 	var operation := _package_host.operation_view()
+	if operation.state == PackageOperationView.IDLE:
+		return
 	var operation_key := "%s:%s:%d:%d:%s" % [operation.state, operation.phase, operation.completed, operation.total, operation.message]
 	if operation_key != _last_package_operation_key:
 		_last_package_operation_key = operation_key
 		_shell_presenter.navigator.setup_controller.campaign_library.set_package_operation(operation)
 		_shell_presenter.status.set_status(operation.message, operation.state == PackageOperationView.FAILED)
-	if operation.is_running() or operation.state == PackageOperationView.IDLE:
+	if operation.is_running():
 		return
 	var prepared := _package_host.take_prepared_package()
-	_shell_presenter.navigator.setup_controller.campaign_library.set_package_operation(PackageOperationView.new())
+	if operation.state != PackageOperationView.FAILED:
+		_shell_presenter.navigator.setup_controller.campaign_library.set_package_operation(PackageOperationView.new())
 	_last_package_operation_key = ""
 	if operation.state == PackageOperationView.CANCELLED:
 		_shell_presenter.status.set_status("Campaign preparation cancelled.")
@@ -264,25 +299,20 @@ func _begin_package_start(package_path: String, initial_seed: int) -> void:
 	_shell_presenter.status.set_status("Preparing campaign…")
 
 
-func _cancel_package_start() -> void:
-	if _package_host != null:
-		_package_host.cancel()
-
-
 func _complete_package_install(prepared: PreparedPackage, initial_seed: int) -> SessionStep:
 	if prepared == null:
 		_status_label.text = "Package rejected • package operation returned no result"
-		_shell_presenter.status.set_status(_status_label.text, true)
+		_present_package_failure(_status_label.text)
 		return SessionStep.failed(0, &"package_operation_failed", "Package operation returned no result.")
 	if not prepared.is_ok():
 		_status_label.text = "Package rejected • %s" % prepared.error_message
-		_shell_presenter.status.set_status(_status_label.text, true)
+		_present_package_failure(_status_label.text)
 		return SessionStep.failed(0, prepared.error_code, prepared.error_message)
 	prepared.content.characters.install_application_catalog(character_files.library_content().characters)
 	var step := session_controller.start(prepared.content, initial_seed)
 	if step.state == SessionStep.State.FAILED:
 		_status_label.text = "Session start failed • %s" % step.error_message
-		_shell_presenter.status.set_status(_status_label.text, true)
+		_present_package_failure(_status_label.text)
 		return step
 	_queued_combat_auto_changes.clear()
 	_active_content = prepared.content
@@ -299,6 +329,11 @@ func _complete_package_install(prepared: PreparedPackage, initial_seed: int) -> 
 	_shell_presenter.status.set_status(_status_label.text)
 	_refresh_campaigns()
 	return step
+
+
+func _present_package_failure(message: String) -> void:
+	_shell_presenter.status.set_status(message, true)
+	_shell_presenter.navigator.setup_controller.campaign_library.set_package_operation(PackageOperationView.new(PackageOperationView.FAILED, &"", 0, 0, message))
 
 
 func _input(event: InputEvent) -> void:
@@ -342,7 +377,7 @@ func handle_field_fast_spell(slot_index: int, use_spell: bool) -> void:
 
 
 func _on_held_movement_requested(direction: Vector2i) -> void:
-	if not _submit_movement(direction): _held_movement.stop()
+	if not submit_movement(direction): _held_movement.stop()
 
 
 func _on_battlefield_action_requested(body: InteractionResponse.CombatBody) -> void:
@@ -377,7 +412,7 @@ func _on_interaction_sound_requested(sound_id: int) -> void:
 		_audio_presenter.present_sound(sound_id, presentation_media.catalog())
 
 
-func _submit_movement(direction: Vector2i) -> bool:
+func submit_movement(direction: Vector2i) -> bool:
 	if not _shell_presenter.accepts_exploration_input() or not session_controller.view().session_started or session_controller.view().pending_interaction != null:
 		return false
 	var map_view := session_controller.view().map_view
@@ -422,7 +457,7 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 	return step
 
 
-func _on_interaction_response_submitted(response: InteractionResponse) -> void:
+func submit_response(response: InteractionResponse) -> void:
 	match ApplicationLifecycleHost.response_owner(lifecycle_host.has_active_interaction(), character_files.creator_active()):
 		&"host":
 			lifecycle_host.respond(response)
@@ -509,7 +544,7 @@ func _continue_persistent_auto_after_playback() -> void:
 	if presentation_coordinator == null or presentation_coordinator.is_combat_playback_active() or not _queued_combat_auto_changes.is_empty() or lifecycle_host.has_active_interaction(): return
 	var response := ApplicationCombatPolicy.persistent_auto_response(session_controller.view())
 	if response != null:
-		_on_interaction_response_submitted(response)
+		submit_response(response)
 
 
 func _present_step_status(step: SessionStep) -> void:

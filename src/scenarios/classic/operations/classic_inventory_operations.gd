@@ -52,6 +52,10 @@ func _take_wealth(action: ClassicActionDefinition) -> ScenarioRuntimeOperationRe
 	var events: Array[DomainEvent] = [DomainEvent.new(&"wealth_taken", {"amount": amount, "kind": kind, "paid": paid, "source": "classic"})]
 	if not paid:
 		events.append(DomainEvent.new(&"classic_notification_requested", {"text": "The party does not have enough gold.", "soundId": 6000, "source": "classic-opcode-33"}))
+	if values.size() >= 5 and values[2] == 0:
+		var test_mode := values[1]
+		if test_mode == 2 or test_mode == 0 and not paid or test_mode == 1 and paid:
+			return ScenarioRuntimeOperationResult.completed(paid, events, ScenarioVmDirective.branch_xap(values[3], false))
 	return ScenarioRuntimeOperationResult.completed(paid, events)
 
 

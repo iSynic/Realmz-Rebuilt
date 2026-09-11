@@ -1,0 +1,51 @@
+{
+  "formatVersion": 1,
+  "decisionId": "FD-LAND-001",
+  "evidence": "source-control-flow",
+  "castleCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "sources": [
+    {
+      "path": "src/realmz_orig/main.c",
+      "symbol": "mapstats declaration and Combat Data BD load",
+      "ranges": ["132", "1188-1195"],
+      "sha256": "6b727f8cd1e5da6dcfdcf9f83ecb609b584924c3116962c0ed98a95c79ae6d66"
+    },
+    {
+      "path": "src/realmz_orig/loadland-loadpixmap.c",
+      "symbol": "loadpixmap",
+      "ranges": ["131-137"],
+      "sha256": "0ef768c5abc665b53aa18dba262190b44d6888f9d005d640878bf6da392e2622"
+    },
+    {
+      "path": "src/realmz_orig/buttonchoice.c",
+      "symbol": "buttonchoice",
+      "ranges": ["75-134", "158-163", "217-223"],
+      "sha256": "214641c98db37c5112ccf7c9d853df9f485feb827fed5a3f6a03f948ad27e1a3"
+    }
+  ],
+  "castleSourceObservation": {
+    "mapstatsArrayLength": 402,
+    "validIndices": [0, 401],
+    "landRecordIndices": [0, 200],
+    "combatLoadIndices": [200, 400],
+    "landLoadOverwritesIndex200": true,
+    "unusedZeroInitializedIndex": 401,
+    "markedEntryBaseFallbackPredicate": "normalized index > 402",
+    "index402Result": "undefined out-of-bounds read; no portable expected value",
+    "ordinaryNonpositiveEntryTimeclicks": 3
+  },
+  "playerFacingProblem": "A marked cell can index one record past Castle's mapstats array, making entry time depend on adjacent memory rather than authored terrain data.",
+  "realmz2ChosenResult": {
+    "markedEntryBaseFallbackPredicate": "normalized index >= 402",
+    "validEntryCosts": "land records 0..200, shared combat records 201..400, and zero for unused record 401",
+    "authoredTileMutation": false,
+    "renderedBackgroundDeterminesEntryTime": false,
+    "legacyQuirkRequired": false
+  },
+  "chosenResultTest": {
+    "repository": "Providence vNext",
+    "compilerCommit": "2184fb5dcec4ff64d20704d635b4be3d66afb71b",
+    "path": "crates/providence-core/src/rebuilt/topology.rs",
+    "test": "land_entry_time_distinguishes_marker_profile_from_rendered_background"
+  }
+}

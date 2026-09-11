@@ -328,12 +328,14 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0.905882, 0.815686, 0.470588, 1)
 theme_override_font_sizes/font_size = 16
 text = "Selected spell"
+autowrap_mode = 3
 
 [node name="Resource" type="Label" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/LevelSpellRecords/SelectedSpellRecord/Content"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.603922, 0.627451, 0.658824, 1)
 theme_override_font_sizes/font_size = 12
 text = "Level 1 • SP 0/0"
+autowrap_mode = 3
 
 [node name="Description" type="Label" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/LevelSpellRecords/SelectedSpellRecord/Content"]
 layout_mode = 2
@@ -363,6 +365,7 @@ text = "Target"
 layout_mode = 2
 size_flags_horizontal = 3
 text = "One"
+autowrap_mode = 3
 [node name="RangeName" type="Label" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/LevelSpellRecords/SelectedSpellRecord/Content/TargetAndFacts/Facts"]
 layout_mode = 2
 text = "Range"
@@ -370,6 +373,7 @@ text = "Range"
 layout_mode = 2
 size_flags_horizontal = 3
 text = "0"
+autowrap_mode = 3
 [node name="DamageName" type="Label" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/LevelSpellRecords/SelectedSpellRecord/Content/TargetAndFacts/Facts"]
 layout_mode = 2
 text = "Damage"
@@ -377,6 +381,7 @@ text = "Damage"
 layout_mode = 2
 size_flags_horizontal = 3
 text = "—"
+autowrap_mode = 3
 [node name="DurationName" type="Label" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/LevelSpellRecords/SelectedSpellRecord/Content/TargetAndFacts/Facts"]
 layout_mode = 2
 text = "Duration"
@@ -384,6 +389,7 @@ text = "Duration"
 layout_mode = 2
 size_flags_horizontal = 3
 text = "—"
+autowrap_mode = 3
 [node name="MagicResistName" type="Label" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/LevelSpellRecords/SelectedSpellRecord/Content/TargetAndFacts/Facts"]
 layout_mode = 2
 text = "Magic resist"
@@ -391,6 +397,7 @@ text = "Magic resist"
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Yes"
+autowrap_mode = 3
 [node name="SavingThrowName" type="Label" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/LevelSpellRecords/SelectedSpellRecord/Content/TargetAndFacts/Facts"]
 layout_mode = 2
 text = "Saving throw"
@@ -398,6 +405,7 @@ text = "Saving throw"
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Yes"
+autowrap_mode = 3
 
 [node name="SpellActionHost" type="HBoxContainer" parent="ClassicSpellbookWorkspace/Content"]
 layout_mode = 2

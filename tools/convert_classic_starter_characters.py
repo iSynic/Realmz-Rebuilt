@@ -14,8 +14,8 @@ FORMAT = "realmz2.classic-starter-characters"
 FORMAT_VERSION = 1
 SOURCE_VERSION = "Realmz 7.1.2"
 CASTLE_REVISION = "491816ad60037394f92c428e99c004494d3c28b3"
-LIBRARY_ID = "realmz-classic-character-library"
-LIBRARY_HASH = "c7e093f46bcca49d2382d68c2995ae5ff90c0e706dbd538682b613af9b80e0bd"
+LIBRARY_ID = "realmz-classic-application-library"
+LIBRARY_HASH = "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad"
 RULES_VERSION = "realmz-classic-1"
 EXPECTED = {
     "Kevlar": "6a5124c03e41977002d93fcfbc52d206c84e4b0b1948a84bcaf41052aa5b41a2",
@@ -170,7 +170,7 @@ def convert(source_path: Path, appearance: dict[tuple[str, int], str]) -> tuple[
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--source", type=Path, default=Path("tools/fixtures/classic-character-files/7.1.2"))
-    parser.add_argument("--library", type=Path, default=Path("src/storage/characters/realmz-classic-character-library.realmz2"))
+    parser.add_argument("--library", type=Path, default=Path("src/storage/packages/application/realmz-classic-application-library.realmz2"))
     parser.add_argument("--output", type=Path, default=Path("src/storage/characters/realmz-classic-starter-characters.json"))
     args = parser.parse_args()
     appearance = appearance_lookup(args.library)

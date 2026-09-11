@@ -9,7 +9,7 @@
 [ext_resource type="PackedScene" path="res://src/ui/inventory/classic_item_detail_popover.tscn" id="7_popover"]
 [ext_resource type="PackedScene" path="res://src/ui/services/treasure_recovery_workspace.tscn" id="8_recovery"]
 [ext_resource type="PackedScene" path="res://src/ui/services/treasure_completion_confirmation.tscn" id="9_confirmation"]
-[ext_resource type="PackedScene" path="res://src/ui/services/treasure_swap_controls.tscn" id="10_swap"]
+[ext_resource type="PackedScene" path="res://src/ui/services/treasure_money_workspace.tscn" id="10_money"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_loot"]
 bg_color = Color(0.969, 0.965, 0.941, 1)
@@ -31,7 +31,7 @@ fact_label_scene = ExtResource("5_fact")
 caster_row_scene = ExtResource("6_caster")
 recovery_workspace_scene = ExtResource("8_recovery")
 completion_confirmation_scene = ExtResource("9_confirmation")
-swap_controls_scene = ExtResource("10_swap")
+money_workspace_scene = ExtResource("10_money")
 
 [node name="OrdinaryTreasure" type="VBoxContainer" parent="."]
 unique_name_in_owner = true
@@ -85,6 +85,16 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
+[node name="TreasureEmptyField" type="Label" parent="OrdinaryTreasure/ClassicTreasureWorkspace/TreasureLootColumn/TreasureLootField/Margin/TreasureItemScroll"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 0
+theme_override_colors/font_color = Color(0.067, 0.075, 0.082, 1)
+text = "No items remain."
+autowrap_mode = 2
+
 [node name="TreasureItemGrid" type="GridContainer" parent="OrdinaryTreasure/ClassicTreasureWorkspace/TreasureLootColumn/TreasureLootField/Margin/TreasureItemScroll"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -209,6 +219,10 @@ theme_override_colors/font_color = Color(0.898, 0.769, 0.361, 1)
 [node name="TreasureWealthActions" type="HBoxContainer" parent="OrdinaryTreasure/TreasureItemRecord/TreasureCommandPanel/TreasureCommands"]
 layout_mode = 2
 theme_override_constants/separation = 4
+[node name="TreasureMoney" type="Button" parent="OrdinaryTreasure/TreasureItemRecord/TreasureCommandPanel/TreasureCommands/TreasureWealthActions"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Money"
 [node name="TreasurePool" type="Button" parent="OrdinaryTreasure/TreasureItemRecord/TreasureCommandPanel/TreasureCommands/TreasureWealthActions"]
 unique_name_in_owner = true
 layout_mode = 2

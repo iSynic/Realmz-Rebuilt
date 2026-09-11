@@ -168,7 +168,7 @@ func present(game_view: GameView) -> void:
 	var previous_view := _current_view
 	var previous_campaign_id := _current_view.campaign_id if _current_view != null and _current_view.session_started else ""
 	var contextual_service_closed := _current_view != null and _current_view.pending_interaction != null and _current_view.pending_interaction.kind in [InteractionRequest.SHOP, InteractionRequest.TEMPLE, InteractionRequest.BANK] and game_view != null and game_view.pending_interaction == null
-	var ordinary_exploration_update: bool = previous_view != null and game_view != null and game_view.domain_revisions.is_ordinary_exploration_update_from(previous_view.domain_revisions)
+	var ordinary_exploration_update: bool = previous_view != null and game_view != null and not game_view.change_set.complete_refresh and game_view.domain_revisions.is_ordinary_exploration_update_from(previous_view.domain_revisions)
 	var ordinary_party_update: bool = ordinary_exploration_update and game_view.domain_revisions.party != previous_view.domain_revisions.party
 	_current_view = game_view
 	if ordinary_exploration_update:
@@ -266,7 +266,7 @@ func handle_back() -> bool:
 	if _music_dialog != null and _music_dialog.visible:
 		_music_dialog.close()
 		return true
-	if _navigator.current_screen() == &"exploration" and _current_view != null and _current_view.session_started:
+	if accepts_exploration_input():
 		_navigator.open_screen(&"system")
 		return true
 	var handled := _navigator.handle_back()

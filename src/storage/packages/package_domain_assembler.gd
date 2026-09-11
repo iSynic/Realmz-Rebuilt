@@ -254,8 +254,7 @@ func _compose_catalogs(races_value: Variant, castes_value: Variant, items_value:
 	if races.size() != 30 or castes.size() != 30:
 		_reject("The effective application-plus-scenario Race and Caste catalogs must each contain all 30 Classic records.")
 		return {}
-	var effective_media: Array[MediaAsset] = scenario_media.duplicate()
-	_overlay_media(effective_media, application_media)
+	var effective_media := PackageMediaComposer.compose(scenario_media, application_media)
 	return {"races": races, "castes": castes, "items": items, "spells": spells, "media": effective_media}
 
 
@@ -269,15 +268,6 @@ func _overlay_definitions(effective: Array, local: Array) -> void:
 		else:
 			indices[definition.id] = effective.size()
 			effective.append(definition)
-
-
-func _overlay_media(effective: Array[MediaAsset], application: Array[MediaAsset]) -> void:
-	var local_keys: Dictionary = {}
-	for asset: MediaAsset in effective:
-		local_keys["%s:%d" % [asset.resource_type, asset.resource_id]] = true
-	for asset: MediaAsset in application:
-		if not local_keys.has("%s:%d" % [asset.resource_type, asset.resource_id]):
-			effective.append(asset)
 
 
 func _normalize_missing_encounter_prompts(messages: Array[MessageDefinition], message_ids: Dictionary, simple_encounters: Array[SimpleEncounterDefinition], complex_encounters: Array[ComplexEncounterDefinition]) -> void:

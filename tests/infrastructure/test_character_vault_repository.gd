@@ -2,7 +2,7 @@ extends RealmzTestCase
 
 const FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-fixture.realmz2"
 const STARTER_CATALOG_PATH: String = "res://src/storage/characters/realmz-classic-starter-characters.json"
-const CHARACTER_LIBRARY_HASH: String = "c7e093f46bcca49d2382d68c2995ae5ff90c0e706dbd538682b613af9b80e0bd"
+const CHARACTER_LIBRARY_HASH: String = ApplicationLibraryIdentity.PACKAGE_HASH
 const ClassicStarterCharacterCatalogScript := preload("res://src/storage/characters/classic_starter_character_catalog.gd")
 
 
@@ -84,7 +84,7 @@ func _test_classic_starter_seeding() -> void:
 	var catalog := ClassicStarterCharacterCatalogScript.new()
 	var records: Array[CharacterVaultRecord] = catalog.load_records(STARTER_CATALOG_PATH, CHARACTER_LIBRARY_HASH)
 	assert_equal(records.map(func(record: CharacterVaultRecord) -> String: return record.character_id), ["classic.starter.kevlar", "classic.starter.lothlorian", "classic.starter.silver-leaf", "classic.starter.traskelion", "classic.starter.trevor", "classic.starter.vormale"], "the trusted catalog exposes exactly the six pinned Realmz 7.1.2 starter identities")
-	assert_equal(records.map(func(record: CharacterVaultRecord) -> String: return record.revision_hash), ["ca58f46312fb6bc78d3bd552965255a89a8c26240a44d160ef8757dd283b36a1", "700b8da90d4631e102f04c7bbf6a3f9c721c4f654268e7c64130a602e9777a40", "15f5608ca6ddee780fe426ff9bb21fd0335900a0f975e26f8eb92446fddee75c", "03483faee09d2698ed4e5e42f4212e4546694d1dce020584d6e523e42cd8ed36", "ebb73d8ffd5881f11536474b7ef78589d08b58589d66e687eca1a3457f50fbb4", "90b5f9a35837a73cc55847f69add3754ac067c1245f3bfac3744795e152eb153"], "the offline conversion produces deterministic canonical revision hashes")
+	assert_equal(records.map(func(record: CharacterVaultRecord) -> String: return record.revision_hash), ["bd3aa4fde58fb775518173937fe7b914df72a08f9597ee6764e472411c761b65", "9065eb6ec06a59ca7406db6060b4172c27b64e8e4e7bf3881ef5ab312e831d9e", "9ec0cd3a1046dca37241d0f3624bb26b94c11487749af88f12d436cef974be85", "7f4b9a3d00f27b4160956b249e0478d082ea787d6a5a23eff6f20806c4abfd62", "56823708dd79156c24ea742229dc5e445c5f0ece5b4603df567114949e86739d", "d058de22d0b4dd7f21b99d8b4e1e36039c01f27098064dfcc0cabcd78bf63d45"], "the offline conversion produces deterministic canonical revision hashes")
 	var seeded_root := "user://realmz2-tests/classic-starter-seed"
 	_remove_test_tree(seeded_root); _remove_test_tree(seeded_root + ".starter-seed")
 	var repository := CharacterVaultRepository.new(seeded_root)

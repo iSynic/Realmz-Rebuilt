@@ -393,7 +393,8 @@ static func _cell_blocks_los(cell: MapCell, world_state: WorldState) -> bool:
 	for feature: MapFeature in cell.features():
 		if feature.kind == &"door" and world_state.topology.door_is_open(feature.id, feature.initial_state == &"open"):
 			return false
-		if feature.kind == &"secret" and world_state.topology.secret_is_discovered(feature.id, feature.initial_state == &"revealed"):
+		# Land discovery changes the marker band, not Castle's underlying mapstats LOS.
+		if feature.kind == &"secret" and not feature.orientation.is_empty() and world_state.topology.secret_is_discovered(feature.id, feature.initial_state == &"revealed"):
 			return false
 	return true
 

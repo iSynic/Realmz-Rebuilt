@@ -74,9 +74,9 @@ func _draw_crop() -> void:
 
 
 func _draw_cell(cell: MapCellView, destination: Rect2) -> void:
-	var atlas := _media.asset_by_id(cell.tileset_id)
-	var texture := _texture_for(cell.tileset_id)
-	if _view.mode == PlayerMapDefinition.DUNGEON_CROP and atlas != null and texture != null and atlas.id == "dungeon-top-down-302":
+	var atlas := _media.map_atlas(cell.tileset_id)
+	var texture := atlas.texture if atlas != null else null
+	if _view.mode == PlayerMapDefinition.DUNGEON_CROP and atlas != null and texture != null and atlas.dungeon:
 		for tile_id: int in MapTextureCache.dungeon_tile_ids(cell):
 			_draw_atlas_region(destination, atlas, texture, tile_id)
 	else:
@@ -88,7 +88,7 @@ func _draw_cell(cell: MapCellView, destination: Rect2) -> void:
 		draw_texture_rect(overlay, destination, false)
 
 
-func _draw_atlas_region(destination: Rect2, atlas: MediaAsset, texture: Texture2D, tile_id: int) -> void:
+func _draw_atlas_region(destination: Rect2, atlas: ClassicMapAtlas, texture: Texture2D, tile_id: int) -> void:
 	var region := atlas.region_for(tile_id)
 	if region.has_area():
 		draw_texture_rect_region(texture, destination, Rect2(region))

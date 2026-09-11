@@ -4,20 +4,30 @@ class_name PackageInstallReceiptStore
 extends RefCounted
 
 const KIND: String = "realmz2.install-receipt"
-const FORMAT_VERSION: int = 2
+const FORMAT_VERSION: int = 3
+const LEGACY_FORMAT_VERSION: int = 2
+const LEGACY_DECODER_VERSION: int = 6
 
 var schema_hash: String
 var decoder_version: int
+var application_package_hash: String
 var last_error: String = ""
+var requires_application_revalidation: bool = false
 
 
-func _init(expected_schema_hash: String, expected_decoder_version: int) -> void:
+func _init(expected_schema_hash: String, expected_decoder_version: int, expected_application_package_hash: String) -> void:
 	schema_hash = expected_schema_hash
 	decoder_version = expected_decoder_version
+	application_package_hash = expected_application_package_hash
+
+
+func set_application_package_hash(package_hash: String) -> void:
+	application_package_hash = package_hash
 
 
 func read(package_path: String) -> Dictionary:
 	last_error = ""
+	requires_application_revalidation = false
 	var receipt_path := path_for(package_path)
 	if not FileAccess.file_exists(receipt_path):
 		return {}
@@ -39,6 +49,7 @@ func write(package_path: String, content: RealmzContent, archive_sha256: String)
 		"formatVersion": FORMAT_VERSION,
 		"decoderVersion": decoder_version,
 		"schemaHash": schema_hash,
+		"applicationPackageHash": application_package_hash,
 		"campaignId": content.campaign_id,
 		"packageHash": content.package_hash,
 		"archiveSha256": archive_sha256,
@@ -71,11 +82,12 @@ func write(package_path: String, content: RealmzContent, archive_sha256: String)
 
 
 func cache_key(package_path: String, receipt: Dictionary) -> String:
-	return "%s:%s:%s:%s:%d" % [
+	return "%s:%s:%s:%s:%s:%d" % [
 		ProjectSettings.globalize_path(package_path).simplify_path().to_lower(),
 		receipt.get("packageHash", ""),
 		receipt.get("archiveSha256", ""),
 		receipt.get("schemaHash", ""),
+		receipt.get("applicationPackageHash", ""),
 		int(receipt.get("decoderVersion", -1)),
 	]
 
@@ -94,14 +106,26 @@ static func path_for(package_path: String) -> String:
 
 
 func _validate(receipt: Dictionary, package_path: String) -> bool:
-	var fields: Array[String] = ["kind", "formatVersion", "decoderVersion", "schemaHash", "campaignId", "packageHash", "archiveSha256", "archiveBytes", "archiveModifiedTime"]
+	var format_version := _integer(receipt.get("formatVersion", -1))
+	var receipt_decoder_version := _integer(receipt.get("decoderVersion", -1))
+	var fields: Array[String]
+	if format_version == FORMAT_VERSION:
+		fields = ["kind", "formatVersion", "decoderVersion", "schemaHash", "applicationPackageHash", "campaignId", "packageHash", "archiveSha256", "archiveBytes", "archiveModifiedTime"]
+		if receipt_decoder_version != decoder_version:
+			return _fail("Installed package receipt was created by an incompatible package decoder.")
+	elif format_version == LEGACY_FORMAT_VERSION:
+		fields = ["kind", "formatVersion", "decoderVersion", "schemaHash", "campaignId", "packageHash", "archiveSha256", "archiveBytes", "archiveModifiedTime"]
+		if receipt_decoder_version != LEGACY_DECODER_VERSION:
+			return _fail("Installed package receipt was created by an incompatible package decoder.")
+	else:
+		return _fail("Installed package receipt has an unsupported version.")
 	if not _exact_fields(receipt, fields):
 		return _fail("Installed package receipt has an unsupported shape.")
-	if receipt["kind"] != KIND or _integer(receipt["formatVersion"]) != FORMAT_VERSION:
-		return _fail("Installed package receipt has an unsupported version.")
-	if _integer(receipt["decoderVersion"]) != decoder_version:
-		return _fail("Installed package receipt was created by an incompatible package decoder.")
+	if receipt["kind"] != KIND:
+		return _fail("Installed package receipt has an unsupported kind.")
 	if receipt["schemaHash"] != schema_hash or not _safe_path_component(receipt["campaignId"]):
+		return _fail("Installed package receipt does not match the runtime contract.")
+	if format_version == FORMAT_VERSION and not _is_sha256(receipt["applicationPackageHash"]):
 		return _fail("Installed package receipt does not match the runtime contract.")
 	if not _is_sha256(receipt["packageHash"]) or not _is_sha256(receipt["archiveSha256"]):
 		return _fail("Installed package receipt contains malformed identities.")
@@ -113,6 +137,13 @@ func _validate(receipt: Dictionary, package_path: String) -> bool:
 		return _fail("Installed package filename does not match its validated identity.")
 	if package_path.get_base_dir().get_file().to_lower() != String(receipt["campaignId"]).to_lower():
 		return _fail("Installed package campaign directory does not match its validated identity.")
+	# Format 2 predates application identity binding. It is accepted only as the
+	# exact decoder-6 shape above and must take the full application revalidation
+	# path before it can be reused or refreshed into a current receipt.
+	if format_version == LEGACY_FORMAT_VERSION:
+		requires_application_revalidation = true
+	else:
+		requires_application_revalidation = receipt["applicationPackageHash"] != application_package_hash
 	return true
 
 

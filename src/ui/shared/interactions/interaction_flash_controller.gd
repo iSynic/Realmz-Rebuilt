@@ -63,6 +63,17 @@ func is_open() -> bool:
 	return _panel != null
 
 
+func release() -> void:
+	if is_instance_valid(_layer):
+		_layer.queue_free()
+	_layer = null
+	_panel = null
+	_shield = null
+	_label = null
+	_presenter = null
+	_queue.clear()
+
+
 func _show_next() -> void:
 	if _panel != null or _queue.is_empty() or _presenter.get_parent() == null:
 		return
@@ -79,8 +90,8 @@ func _show_next() -> void:
 		if click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT:
 			dismiss()
 	)
-	_apply_layout()
 	_present_next()
+	_apply_layout()
 
 
 func _present_next() -> void:

@@ -129,6 +129,7 @@ func _bind_character_selector(workspace: SpellsWorkspace, character: CharacterVi
 		if candidate.id == character.id:
 			picker.select(picker.item_count - 1)
 	picker.item_selected.connect(func(index: int) -> void: _select_character(String(picker.get_item_metadata(index))))
+	picker.tooltip_text = picker.get_item_text(picker.selected)
 
 
 func _bind_section_tabs(workspace: SpellsWorkspace) -> void:

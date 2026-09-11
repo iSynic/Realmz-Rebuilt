@@ -26,6 +26,7 @@ func run() -> void:
 	if not loaded.is_ok():
 		return
 	var content := _scroll_content(loaded.content)
+	content.world.map_by_id(content.start_map_id).base_scale = 0
 	_test_scroll_case_management(content)
 	var session := GameSession.new()
 	assert_equal(session.start(content, 117).state, SessionStep.State.COMPLETED, "scroll/camp session starts")

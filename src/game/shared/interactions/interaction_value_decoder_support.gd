@@ -69,7 +69,7 @@ static func optional_resource_key(data: Dictionary) -> bool:
 		return false
 	if not data.has("iconId"):
 		return true
-	return data["iconResourceType"] is String and not String(data["iconResourceType"]).is_empty() and whole(data["iconId"]) and int(data["iconId"]) > 0
+	return data["iconResourceType"] is String and not String(data["iconResourceType"]).is_empty() and whole(data["iconId"]) and int(data["iconId"]) != 0
 
 
 static func whole(value: Variant) -> bool:

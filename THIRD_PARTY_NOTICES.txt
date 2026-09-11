@@ -28,10 +28,32 @@ Vormale: 440e0b9cb675f7cc68553ab3414b830bb8d1889518e095ba4e16d00805f957f5
 Modifications: tools/convert_classic_starter_characters.py decodes the pinned
 Castle character structure and emits canonical CharacterVaultRecord payloads.
 The conversion behavior is pinned to Castle source revision
-491816ad60037394f92c428e99c004494d3c28b3 and application character-library
-package SHA-256
-c7e093f46bcca49d2382d68c2995ae5ff90c0e706dbd538682b613af9b80e0bd.
+491816ad60037394f92c428e99c004494d3c28b3 and application-library package
+SHA-256
+82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad.
 The original files remain converter fixtures and are excluded from exports.
+
+Classic Realmz application library
+
+Realmz copyright 1994 by Tim Phillips.
+Source: the stock Realmz 7.1.2 Data ID, Data S, Data Race, Data Caste, and
+application resource files identified by the adjacent application-library lock.
+License: Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
+SPDX identifier: CC-BY-NC-SA-4.0
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+Modifications: Realmz Providence vNext compiler commit
+1704ef6b1663eee578bb683b4994cba5cd8c2d88 produces the readable stock catalogs and canonical compressed
+schema-v3 application package. Its logical package
+SHA-256 is 82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad;
+the archive SHA-256 is
+bf1ff5de1d6fc5bd1d5ffff8d582797dfab885acfd9b20b4e02ce9040421e150.
+Race rules use Castle's native 408-byte record geometry; unowned source
+residue remains preserved by Providence rather than decoded as stock rules.
+The compiler also applies the source-attributed Castle correction for Priest
+Stun (Classic spell 2712) before emitting readable catalogs or packages.
+PICT 302 retains its complete 640x640 image once; dungeon and battle views
+derive their regions from that shared application-owned resource.
 
 Castle-distributed Realmz scenarios
 
@@ -48,13 +70,20 @@ License: Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
 SPDX identifier: CC-BY-NC-SA-4.0
 https://creativecommons.org/licenses/by-nc-sa/4.0/
 
-Modifications: Realmz Providence commit
-badcd91486f6a0ad2c042520e3f9c699c603956d compiles the native scenario data
-and resources into deterministic schema-v3 Realmz 2 packages. Exact source,
+Modifications: Realmz Providence vNext commit
+e7f862f0051c1ac6226c1d4def3b7da41cf51121 separates application-owned content
+and compiles the native scenario data and resources into deterministic,
+compressed schema-v3 Realmz 2 packages. Exact source,
 compiler, package, and archive identities are recorded in
 src/storage/packages/bundled_campaigns/castle-bundled-scenarios.provenance.json. The exact
 designated City of Bywater source-file identities are recorded in
 src/storage/packages/bundled_campaigns/city-of-bywater.source.json.
+Providence commit b355a0fa28dce5aec8c214ab9cc3ceda8f45f354 removes the
+application-owned PICT 302 duplicate from twelve existing packages without
+changing their authored documents or retained media. War in the Sword Lands
+is rebuilt by 31360e29be145a123f3906daa9e018a57729906c with the corrections
+listed in war-in-the-sword-lands.corrections.json; its full native resource
+catalog remains scenario-owned, with stock artwork resolved from the library.
 
 Integrated Classic Realmz media
 Realmz copyright 1994 by Tim Phillips.

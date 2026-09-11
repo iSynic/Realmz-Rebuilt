@@ -28,6 +28,7 @@ static func create(
 	autojournal_enabled: bool,
 	treasure_recipient_id: String,
 	treasure_slot_order: Array[String],
+	treasure_money_workspace_open: bool,
 	combat_rect: Rect2
 ) -> InteractionComponent:
 	if LayoutPolicy.is_player_map_request(request):
@@ -38,7 +39,7 @@ static func create(
 		&"acknowledge", &"yes_no", &"encounter_choice", &"scenario_choice", &"age_update":
 			return _create_narrative_component(request.kind, media, autojournal_enabled)
 		&"character_selection", &"ally_selection", &"treasure_distribution", &"level_up":
-			return _create_party_component(request.kind, game_view, media, compact, treasure_recipient_id, treasure_slot_order)
+			return _create_party_component(request.kind, game_view, media, compact, treasure_recipient_id, treasure_slot_order, treasure_money_workspace_open)
 		&"complex_encounter", &"thief_encounter", &"pick_lock", &"shop_action", &"temple_action", &"bank_action", &"pooled_wealth_departure":
 			return _create_workspace_component(request.kind, game_view, media, compact)
 		&"combat_action": return _create_combat_component(game_view, media, compact, combat_rect)
@@ -68,7 +69,7 @@ static func _create_narrative_component(kind: StringName, media: ClassicMediaCat
 	return text_choice
 
 
-static func _create_party_component(kind: StringName, game_view: GameView, media: ClassicMediaCatalog, compact: bool, treasure_recipient_id: String, treasure_slot_order: Array[String]) -> InteractionComponent:
+static func _create_party_component(kind: StringName, game_view: GameView, media: ClassicMediaCatalog, compact: bool, treasure_recipient_id: String, treasure_slot_order: Array[String], treasure_money_workspace_open: bool) -> InteractionComponent:
 	match kind:
 		&"character_selection", &"ally_selection":
 			var selection := (load(SELECTION_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as SelectionInteraction
@@ -76,7 +77,7 @@ static func _create_party_component(kind: StringName, game_view: GameView, media
 			return selection
 		&"treasure_distribution":
 			var treasure := (load(TREASURE_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as TreasureDistributionInteraction
-			treasure.configure(media, game_view, compact, treasure_recipient_id, treasure_slot_order)
+			treasure.configure(media, game_view, compact, treasure_recipient_id, treasure_slot_order, treasure_money_workspace_open)
 			return treasure
 		&"level_up":
 			var level_up := (load(LEVEL_UP_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as LevelUpInteraction
@@ -169,7 +170,7 @@ static func prompt_for(request: InteractionRequest, classic_text_context: String
 	var explicit_prompt := request.body.prompt_text().strip_edges()
 	if not explicit_prompt.is_empty():
 		return explicit_prompt
-	if request.kind == InteractionRequest.ACKNOWLEDGE:
+	if request.kind in [InteractionRequest.ACKNOWLEDGE, InteractionRequest.ENCOUNTER_CHOICE, InteractionRequest.WORD_AND_ACTION, InteractionRequest.THIEF_ENCOUNTER]:
 		return ""
 	if request.kind == InteractionRequest.YES_NO:
 		var authored_context := classic_text_context.strip_edges()

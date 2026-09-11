@@ -4,6 +4,8 @@ class_name GameSessionController
 extends Node
 
 signal step_committed(step: SessionStep)
+signal intent_submitted(intent: PlayerIntent)
+signal response_submitted(response: InteractionResponse)
 
 var _session: GameSession = GameSession.new()
 var _current_view: GameView = _session.view()
@@ -61,6 +63,7 @@ func close() -> SessionStep:
 
 
 func submit_intent(intent: PlayerIntent) -> SessionStep:
+	intent_submitted.emit(intent)
 	var step: SessionStep = _session.submit_intent(intent)
 	_current_view = _session.view(step.events)
 	step_committed.emit(step)
@@ -75,6 +78,7 @@ func apply_debug_command(command: SessionDebugCommand) -> SessionStep:
 
 
 func respond(response: InteractionResponse) -> SessionStep:
+	response_submitted.emit(response)
 	var step: SessionStep = _session.respond(response)
 	_current_view = _session.view(step.events)
 	step_committed.emit(step)

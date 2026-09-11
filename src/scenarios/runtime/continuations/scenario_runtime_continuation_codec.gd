@@ -82,12 +82,14 @@ static func _decode_encounter(kind: StringName, data: Dictionary) -> ScenarioRun
 	if kind == ScenarioRuntimeContinuation.CLASSIC_COMPLEX_ENCOUNTER:
 		return ScenarioInteractionContinuations.encounter(kind, encounter_id, data["gosub"], [], encounter_attempt) if data.size() == (3 if data.has("encounterAttempt") else 2) else null
 	var indexes := _integers(data.get("optionIndexes"))
-	if data.size() != (4 if data.has("encounterAttempt") else 3) or indexes.is_empty() or indexes.size() > 10:
+	var reopen_result: Variant = data.get("reopenResult", false)
+	var expected_fields := 3 + int(data.has("encounterAttempt")) + int(data.has("reopenResult"))
+	if not reopen_result is bool or reopen_result and data["gosub"] or data.size() != expected_fields or indexes.is_empty() or indexes.size() > 10:
 		return null
 	for index: int in indexes:
 		if index < 0:
 			return null
-	return ScenarioInteractionContinuations.encounter(kind, encounter_id, data["gosub"], indexes, encounter_attempt)
+	return ScenarioInteractionContinuations.encounter(kind, encounter_id, data["gosub"], indexes, encounter_attempt, reopen_result)
 
 
 static func _decode_thief(kind: StringName, data: Dictionary) -> ScenarioRuntimeContinuation:

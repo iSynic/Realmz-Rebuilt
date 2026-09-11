@@ -24,12 +24,12 @@ static func random_region_outline_segments(region_bounds: Rect2i, viewport_bound
 	return result
 
 
-static func requires_los_blackout(cells: Array[MapCellView]) -> bool:
+static func has_currently_hidden_cell(cells: Array[MapCellView]) -> bool:
 	return cells.any(func(cell: MapCellView) -> bool: return not cell.visible)
 
 
-static func los_cell_requires_blackout(uses_los: bool, currently_visible: bool) -> bool:
-	return uses_los and not currently_visible
+static func los_cell_requires_blackout(uses_los: bool, was_seen: bool) -> bool:
+	return uses_los and not was_seen
 
 
 static func darkness_mask_rect(party_rect: Rect2) -> Rect2:

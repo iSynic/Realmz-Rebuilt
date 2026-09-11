@@ -2,16 +2,12 @@
 class_name ApplicationCharacterFilesHost
 extends RefCounted
 
-const LIBRARY_PATH := "res://src/storage/characters/realmz-classic-character-library.realmz2"
-const LIBRARY_ID := "realmz-classic-character-library"
-const LIBRARY_HASH := "c7e093f46bcca49d2382d68c2995ae5ff90c0e706dbd538682b613af9b80e0bd"
-
 var _package_host: PackageHostController
 var _session: GameSessionController
 var _presentation: PresentationCoordinator
 var _presentation_media: PresentationMediaController
 var _shell: GameShell
-var _vault := CharacterVaultController.new()
+var _vault: CharacterVaultController
 var _creator := CharacterCreationHostController.new()
 var _library_content: RealmzContent
 var _library_media: MediaSource
@@ -23,17 +19,19 @@ func _init(
 	session: GameSessionController,
 	presentation: PresentationCoordinator,
 	presentation_media: PresentationMediaController,
-	shell: GameShell
+	shell: GameShell,
+	vault: CharacterVaultController = null
 ) -> void:
 	_package_host = package_host
 	_session = session
 	_presentation = presentation
 	_presentation_media = presentation_media
 	_shell = shell
+	_vault = vault if vault != null else CharacterVaultController.new()
 
 
 func begin_library_load() -> void:
-	if _package_host.start_bundled_load(LIBRARY_PATH, LIBRARY_ID, LIBRARY_HASH):
+	if _package_host.start_bundled_load(ApplicationLibraryIdentity.PATH, ApplicationLibraryIdentity.CAMPAIGN_ID, ApplicationLibraryIdentity.PACKAGE_HASH):
 		return
 	_library_load_complete = true
 	_shell.navigator.setup_controller.character_creation.set_standalone_character_creation_available(false, "The built-in Classic definitions could not start loading.")
@@ -42,7 +40,7 @@ func begin_library_load() -> void:
 func poll_library_load(active_content: RealmzContent) -> bool:
 	if _library_load_complete or _package_host == null or _package_host.bundled_load_is_running():
 		return false
-	var prepared := _package_host.take_bundled_package(LIBRARY_PATH)
+	var prepared := _package_host.take_bundled_package(ApplicationLibraryIdentity.PATH)
 	if prepared == null:
 		return false
 	_library_load_complete = true

@@ -150,7 +150,7 @@ func _present_action_result(encounter: ComplexEncounterDefinition, thief: ThiefE
 	var sound_ids := thief.success_sounds() if succeeded else thief.failure_sounds()
 	var signed_message_id := text_ids[action_index]
 	var message_id := absi(signed_message_id)
-	var message := _content.scenario_records.message_by_id(message_id)
+	var message := _content.scenario_records.message_by_id(message_id) if message_id != 0 else null
 	if message_id != 0 and message == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Thief Encounter references unavailable message %d." % signed_message_id)
 	if message != null:
@@ -218,7 +218,7 @@ func _thief_request(encounter: ComplexEncounterDefinition, request_id: String, p
 	if thief == null:
 		return null
 	var prompt_id := absi(thief.prompts()[0]) if not thief.prompts().is_empty() else 0
-	var message := _content.scenario_records.message_by_id(prompt_id)
+	var message := _content.scenario_records.message_by_id(prompt_id) if prompt_id != 0 else null
 	var flags := _state.scenario_progress.encounters.thief_type_flags(thief)
 	var characters: Array[Dictionary] = []
 	for character: CharacterState in _state.party.characters():
@@ -234,7 +234,7 @@ func _thief_request(encounter: ComplexEncounterDefinition, request_id: String, p
 		characters.append({"id": character.id, "name": character.name, "portraitId": character.portrait_id, "actions": actions})
 	var sounds := thief.prompt_sounds()
 	var opening_sound := sounds[0] if play_opening_sound and not sounds.is_empty() else 0
-	return InteractionRequest.from_payload(request_id, InteractionRequest.THIEF_ENCOUNTER, {"encounterId": encounter.id, "prompt": message.text if message != null else "Choose a thief action.", "soundId": opening_sound, "characters": characters}) if not characters.is_empty() else null
+	return InteractionRequest.from_payload(request_id, InteractionRequest.THIEF_ENCOUNTER, {"encounterId": encounter.id, "prompt": message.text if message != null else "", "soundId": opening_sound, "characters": characters}) if not characters.is_empty() else null
 
 
 func _thief_definition(encounter: ComplexEncounterDefinition) -> ThiefEncounterDefinition:

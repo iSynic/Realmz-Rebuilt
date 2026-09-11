@@ -91,7 +91,7 @@ func _submit(command: SessionDebugCommand) -> SessionStep:
 	status_changed.emit(message, failed)
 	if _dialog != null:
 		_dialog.show_result(message, failed)
-		if not failed and command.kind in [SessionDebugCommand.Kind.START_ENCOUNTER, SessionDebugCommand.Kind.START_BATTLE, SessionDebugCommand.Kind.WIN_BATTLE]:
+		if not failed and command.kind in [SessionDebugCommand.Kind.START_ACTION_POINT, SessionDebugCommand.Kind.START_ENCOUNTER, SessionDebugCommand.Kind.START_BATTLE, SessionDebugCommand.Kind.WIN_BATTLE]:
 			_dialog.close_dialog()
 	return step
 
@@ -140,8 +140,8 @@ static func action_lines(events: Array[DomainEvent], view: GameView = null, cont
 
 
 static func _readable_event_line(event: DomainEvent, view: GameView, content: RealmzContent) -> String:
-	var actor_id := String(event.payload.get("actorId", ""))
-	var target_id := String(event.payload.get("targetId", ""))
+	var actor_id := str(event.payload.get("actorId", ""))
+	var target_id := str(event.payload.get("targetId", ""))
 	var actor_name := _actor_name(view, actor_id)
 	var target_name := _actor_name(view, target_id)
 	match event.kind:
@@ -270,6 +270,7 @@ static func _success_message(command: SessionDebugCommand) -> String:
 		SessionDebugCommand.Kind.WARP: return "Warped to %s at %d,%d." % [command.map_id, command.coordinate.x, command.coordinate.y]
 		SessionDebugCommand.Kind.NOCLIP_STEP: return "No-clip step committed."
 		SessionDebugCommand.Kind.RESTORE_PARTY: return "Party HP, SP, and harmful conditions restored."
+		SessionDebugCommand.Kind.START_ACTION_POINT: return "Action Point %s triggered." % command.target_id
 		SessionDebugCommand.Kind.START_ENCOUNTER: return "%s Encounter %d triggered." % [String(command.encounter_kind).capitalize(), command.classic_id]
 		SessionDebugCommand.Kind.START_BATTLE: return "Battle %d triggered." % command.classic_id
 		SessionDebugCommand.Kind.WIN_BATTLE: return "Battle victory committed through normal rewards."

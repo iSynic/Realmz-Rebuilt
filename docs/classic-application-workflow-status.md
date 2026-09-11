@@ -13,18 +13,17 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Current parity-convergence batch
 
-**Release saturation closure** (`release-saturation-closure`)
+**AOGM contextual encounters and Wrath owner-bound chest outcomes** (`ap-contextual-and-owner-bound-encounters`)
 
-Compiler, opcode, spell, application semantic-data, preferences, host settings, equipment, Shop, authored Journal, and Quit behavior are saturated. Every Classic workflow is functional or certified. The sole implementation target is the cross-platform release blocker; the three certification targets preserve ordinary-play acceptance opportunities without reopening completed behavior. Existing AOGM, War, and Lachis acceptance remains valid unless a later owner directly invalidates it.
+Batch complete: AOGM's zero-slot contextual RNG defect is repaired, with entry, wrong-set repetition and exact reward/region-disable/default reentry verified. Wrath AP 44 has equal detection/disarm, armed-trap failure, unarmed lock failure and eight-item lock-reward repeats. Detected-trap and trap-warning restores reproduce exact final game/RNG state; pending Treasure reproduces every suffix state. Done alone sets chance zero and prevents duplicate rewards. The recipes retain 49 passes and two historical failures across all thirteen bundled scenarios under their recorded package/library identities, without certification upgrades. Clean-reference Tier 2 passes 91 focused assertions. The full aggregate passes 4212 assertions across 28 suites plus package, media, architecture, export, schema and inventory gates in an isolated copy with hash-matched product content and committed project settings. Development autoloads remain untouched in the working checkout. The forced five-frame startup smoke retains its known one-object teardown warning; strict tests and the closed gameplay fixture have no teardown errors. Protocol build and 37 tests pass, with two opt-in engine tests skipped. Wrath preparation/source/replay work took approximately 29 minutes before batch gates; full lock replays took 19.22/18.86 seconds and the saved suffix 9.51 seconds, with no new tooling implementation. Next coverage favors the retained pending-tumbler save boundary, then War pooled-payment edges using existing baselines. Native performance, complete combat replay, full campaign certification and broader bridge capabilities remain separate; reported failures take priority.
 
-Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
+AP batches use failure-first priorities: known failures, untested high-risk behavior, meaningful variants, and broader representatives. Verification mode records existing functional behavior without claiming full campaign certification; implementation, verification, and certification remain distinct modes.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `host.release.platform-certification` | implementation | rare-or-unreachable | - | GAP-HOST-006 |
-| `classic.spellcasting.field-camp-cast` | certification | broader-parity | aogm-ordinary |  |
-| `classic.maps.authored-journal` | certification | broader-parity | other-ordinary |  |
-| `classic.system.quit` | certification | broader-parity | other-ordinary |  |
+| `classic.scenario.choose-response` | verification | known-failure | live-route |  |
+| `classic.system.save-game` | verification | meaningful-variant | live-route |  |
+| `classic.scenario.trigger-action-point` | verification | known-failure | runtime-integration |  |
 
 ### Batch count delta
 
@@ -34,8 +33,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | classic | partial | 0 | 0 | 0 |
 | classic | functional | 55 | 55 | 0 |
 | classic | certified | 14 | 14 | 0 |
-| host | missing | 1 | 0 | -1 |
-| host | partial | 0 | 1 | +1 |
+| host | missing | 0 | 0 | 0 |
+| host | partial | 1 | 1 | 0 |
 | host | functional | 5 | 5 | 0 |
 | host | certified | 2 | 2 | 0 |
 
