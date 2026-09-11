@@ -16,6 +16,7 @@
 
 - Setup scenes are full-stage application surfaces and never own simulation or repository access.
 - `front_door_menu.tscn` owns the recognizable menu composition but remains outside neighboring `startup_front_door.tscn` so imported menu media cannot delay the launch card's first frame. `StartupFrontDoor` instantiates it only after that frame draws; the same scene may be mounted beneath the loaded application shell without maintaining a second composition.
+- The front door retains side-by-side identity and startup commands in both supported compositions. Only its ornamental video frame reduces when the assigned width cannot hold the wide frame; gameplay density/profile changes never stack the command panel or hide Quit below the viewport.
 - Party assembly and character creation are modes of one retained setup workspace.
 - `party_assembly_browser.tscn` owns the Character Files heading, record host, empty state, and pager; it exports the variable character-row scene. The assembly controller derives row capacity from the live browser height and offers paging only after the available vertical space is full. `party_setup_inspection_overlay.tscn` owns the complete Back/header/scroll composition and hosts the shared character sheet.
 - Campaign and character rows remain reusable scene instances with stable identities. The campaign selector owns authored empty, selected-summary, and package-operation states and exports its campaign row scene.

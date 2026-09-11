@@ -15,6 +15,7 @@ signal vault_requested
 signal quit_requested
 
 const MAXIMUM_MODAL_Z_INDEX: int = 30
+const SPLASH_WIDE_MINIMUM_WIDTH: float = 1040.0
 
 var splash_overlay: PanelContainer
 var splash_composition: BoxContainer
@@ -178,14 +179,14 @@ func apply_layout(profile: UiLayoutProfile, campaign_rect: Rect2, setup_rect: Re
 	campaign_layout_rect = campaign_rect
 	setup_layout_rect = setup_rect
 	if splash_composition != null:
-		splash_composition.vertical = profile.id == UiLayoutProfile.COMPACT
+		splash_composition.vertical = false
 		var identity_panel := splash_composition.find_child("SplashIdentityPanel", false, false) as Control
 		var command_panel := splash_composition.find_child("SplashCommandPanel", false, false) as Control
 		if identity_panel != null:
-			identity_panel.custom_minimum_size = Vector2(0.0, 270.0) if splash_composition.vertical else Vector2.ZERO
+			identity_panel.custom_minimum_size = Vector2.ZERO
 		if command_panel != null:
-			command_panel.custom_minimum_size = Vector2(0.0, 250.0) if splash_composition.vertical else Vector2(320.0, 0.0)
-		_apply_intro_frame_layout(splash_composition.vertical)
+			command_panel.custom_minimum_size = Vector2(320.0, 0.0)
+		_apply_intro_frame_layout(setup_rect.size.x < SPLASH_WIDE_MINIMUM_WIDTH)
 	if package_install_row != null:
 		package_install_row.vertical = profile.id == UiLayoutProfile.COMPACT
 	apply_modal_layouts()
