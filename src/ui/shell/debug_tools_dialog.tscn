@@ -50,13 +50,13 @@ theme_override_constants/separation = 6
 [node name="Title" type="Label" parent="Scroll/Content"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
-text = "DEBUG TOOLS · F12"
+text = "DIAGNOSTICS · F12"
 horizontal_alignment = 1
 
 [node name="Status" type="Label" parent="Scroll/Content"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Debug commands do not enter adventure saves."
+text = "Optional map diagnostics are off until enabled here."
 autowrap_mode = 2
 
 [node name="ExplorationHeading" type="Label" parent="Scroll/Content"]
@@ -192,7 +192,6 @@ text = "Open game-action console · ` / ~"
 [node name="ConsoleShortcut" type="CheckButton" parent="Scroll/Content"]
 unique_name_in_owner = true
 layout_mode = 2
-button_pressed = true
 text = "Enable ` / ~ console shortcut"
 
 [node name="Close" type="Button" parent="Scroll/Content"]

@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "label": "Unrevealed map fog tile",
+  "provider": "project-owner",
+  "license": "Project-Owner-Supplied",
+  "source_name": "fog of war.png",
+  "source_width": 32,
+  "source_height": 32,
+  "source_bytes": 2396,
+  "source_sha256": "098887446076e44e3ef28f493b3368facf8c700cc7b8647c4b89465c715dfa2a",
+  "derivation": "byte-exact copy; runtime maps one native image to one 32-by-32 cell with nearest filtering",
+  "presentation_contract": "The tile covers only never-seen cells on authored LOS maps. Save-owned seen cells render at normal fidelity whether or not they remain in current LOS.",
+  "file": {
+    "path": "res://src/ui/shared/assets/ui/fog-of-war-tile.png",
+    "width": 32,
+    "height": 32,
+    "bytes": 2396,
+    "sha256": "098887446076e44e3ef28f493b3368facf8c700cc7b8647c4b89465c715dfa2a"
+  }
+}

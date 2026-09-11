@@ -244,13 +244,15 @@ func _draw() -> void:
 		var rect := Rect2(draw_origin + Vector2(cell.coordinate - camera) * cell_size, Vector2.ONE * cell_size)
 		if _show_topology_markers and cell.has_trigger:
 			action_point_rects.append(rect)
-		if MapPresentationGeometry.los_cell_requires_blackout(los_blackout, _seen_coordinate_cache.has(cell.coordinate)):
+		var was_seen := _seen_coordinate_cache.has(cell.coordinate)
+		if MapPresentationGeometry.los_cell_requires_blackout(los_blackout, was_seen):
 			continue
 		var outside_classic_view := not los_blackout and classic_exploration_visibility and not classic_rect.has_point(cell.coordinate)
 		if outside_classic_view and not revealed_coordinates.has(cell.coordinate):
 			_draw_unvisited_cell(rect)
 			continue
-		_draw_cell(cell, rect, map_view.level_type, false, not cell.has_feature(&"unmapped") or dungeon_discovery.has(cell.coordinate), outside_classic_view, map_view.darkness_level)
+		var recalled := outside_classic_view or MapPresentationGeometry.los_cell_uses_recalled_rendering(los_blackout, cell.visible, was_seen)
+		_draw_cell(cell, rect, map_view.level_type, false, not cell.has_feature(&"unmapped") or dungeon_discovery.has(cell.coordinate), recalled, map_view.darkness_level)
 		if map_view.level_type == &"land":
 			_draw_land_markers(cell, rect)
 		if show_cell_topology_details:

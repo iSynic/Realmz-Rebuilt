@@ -1,0 +1,16 @@
+{
+  "formatVersion": 1,
+  "decisionId": "FD-LAND-002",
+  "evidence": "source-control-flow",
+  "castle": {
+    "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+    "sources": [
+      "src/realmz_orig/updatearrow.c:5-34",
+      "src/realmz_orig/buttonchoice.c:39-75"
+    ],
+    "observation": "Outdoor cursor selection and committed mouse movement independently compare both pointer axes with the party's 32-by-32 cell, producing a diagonal whenever the pointer is outside both its row and column."
+  },
+  "playerProblem": "Across Rebuilt's wider viewport, a small off-axis pointer error can select a long unintended diagonal and makes rapid map navigation feel unstable.",
+  "chosenBehavior": "Pointer movement selects the dominant party-centered axis through four 90-degree cardinal wedges with one neutral party cell. Keyboard and keypad input retain every legal diagonal land direction.",
+  "test": "tests/presentation/test_dungeon_geometry_projection.gd"
+}
