@@ -110,7 +110,10 @@ func _toggle_dialog() -> void:
 		_dialog.close_dialog()
 	else:
 		if _console != null and _console.visible: _console.close_console()
-		_dialog.present(_controller.view(), _map_records() if _developer_tools_enabled else [], _noclip, _recent_auto_actions, _console_shortcut_enabled, _topology_debug)
+		var maps: Array[Dictionary] = []
+		if _developer_tools_enabled:
+			maps = _map_records()
+		_dialog.present(_controller.view(), maps, _noclip, _recent_auto_actions, _console_shortcut_enabled, _topology_debug)
 
 
 static func _is_f12_key(event: InputEventKey) -> bool:
