@@ -74,6 +74,7 @@ func _bind_setup_workspace_controls(workspace: PartySetupWorkspace) -> void:
 		if child is Label:
 			creator_step_labels.append(child as Label)
 	creator_scroll = setup_overlay.get_node("%CreatorScroll") as ScrollContainer
+	creator_scroll.resized.connect(_assembly.refresh_stored_character_capacity)
 	creator = setup_overlay.get_node("%Creator") as BoxContainer
 	creator_page = setup_overlay.get_node("%CreatorPage") as VBoxContainer
 	_clear(creator_page)

@@ -4,6 +4,7 @@ class_name ClassicRetainedMapSurface
 extends Control
 
 const SURROUND_TEXTURE_PATH := "res://src/ui/shared/assets/ui/classic-exploration-surround-tile.png"
+const FOG_TEXTURE_PATH := "res://src/ui/shared/assets/ui/fog-of-war-tile.png"
 const SECRET_TILE_ID := 251
 const PATH_TILE_ID := 253
 const DARKNESS_MASK_SIZE := Vector2(320.0, 320.0)
@@ -323,10 +324,13 @@ func _texture_scale(texture: Texture2D) -> Vector2:
 
 func _build_fog_tiles() -> void:
 	_fog_tile_set.tile_size = Vector2i(32, 32)
-	var image := Image.create(32, 32, false, Image.FORMAT_RGBA8)
-	image.fill(Color.BLACK)
+	var texture := load(FOG_TEXTURE_PATH) as Texture2D
+	if texture == null or texture.get_size() != Vector2(32, 32):
+		var image := Image.create(32, 32, false, Image.FORMAT_RGBA8)
+		image.fill(Color.BLACK)
+		texture = ImageTexture.create_from_image(image)
 	var atlas := TileSetAtlasSource.new()
-	atlas.texture = ImageTexture.create_from_image(image)
+	atlas.texture = texture
 	atlas.texture_region_size = Vector2i(32, 32)
 	atlas.create_tile(Vector2i.ZERO)
 	_fog_tile_set.add_source(atlas, 0)

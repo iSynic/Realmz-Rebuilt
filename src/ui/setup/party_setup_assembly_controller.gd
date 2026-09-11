@@ -5,10 +5,15 @@ extends "res://src/ui/setup/party_setup_controller_component.gd"
 
 const PARTY_SLOT_SCENE_PATH := "res://src/ui/setup/party_setup_party_slot.tscn"
 const ASSEMBLY_BROWSER_SCENE_PATH := "res://src/ui/setup/party_assembly_browser.tscn"
+const STORED_ROW_GAP: float = 2.0
+const BROWSER_SECTION_GAP: float = 6.0
+const BROWSER_HEADING_HEIGHT: float = 28.0
+const BROWSER_PAGER_HEIGHT: float = 28.0
 
 var _inspection: RefCounted
 var _stored_revision_signature: String = ""
 var _stored_character_page: int = 0
+var _stored_character_page_size_cache: int = -1
 var _party_slots: Array[Control] = []
 var _party_slots_owner: PartySetupPartyList
 var _assembly_browser_scene: PackedScene
@@ -62,7 +67,9 @@ func render_party_assembly() -> void:
 	var current_revisions := _current_vault_revisions()
 	_clamp_stored_character_page(current_revisions.size())
 	_ensure_appearance_textures(_visible_revision_asset_ids(current_revisions))
-	var next_signature := "%s:%s:%d" % [_vault_signature(current_revisions), str(layout_profile), _stored_character_page]
+	var page_size := _stored_character_page_size(current_revisions.size())
+	_stored_character_page_size_cache = page_size
+	var next_signature := "%s:%s:%d:%d" % [_vault_signature(current_revisions), str(layout_profile), _stored_character_page, page_size]
 	if stored_character_list != null and is_instance_valid(stored_character_list) and stored_character_list.is_inside_tree() and next_signature == _stored_revision_signature:
 		_refresh_stored_character_rows(current_revisions, campaign_setup, party_full)
 		return
@@ -156,18 +163,30 @@ func _refresh_stored_character_rows(current_revisions: Array[CharacterVaultRevis
 		row.configure(revision, campaign_setup and revision.eligible and global_available.enabled and not party_full, reason, _appearance_textures.get(portrait_id) as Texture2D)
 
 
-func _stored_character_page_size() -> int:
-	return 6 if layout_profile == UiLayoutProfile.COMPACT else 9
+func _stored_character_page_size(item_count: int) -> int:
+	if creator_scroll == null or creator_scroll.size.y <= 0.0:
+		return 6 if layout_profile == UiLayoutProfile.COMPACT else 9
+	return stored_character_page_size_for_height(creator_scroll.size.y, item_count)
+
+
+static func stored_character_page_size_for_height(available_height: float, item_count: int) -> int:
+	var row_stride := PartySetupCharacterRow.ROW_HEIGHT + STORED_ROW_GAP
+	var unpaged_chrome := BROWSER_HEADING_HEIGHT + BROWSER_SECTION_GAP - STORED_ROW_GAP
+	var unpaged_capacity := maxi(1, floori((available_height - unpaged_chrome) / row_stride))
+	if item_count <= unpaged_capacity:
+		return unpaged_capacity
+	var paged_chrome := BROWSER_HEADING_HEIGHT + BROWSER_PAGER_HEIGHT + BROWSER_SECTION_GAP * 2.0 - STORED_ROW_GAP
+	return maxi(1, floori((available_height - paged_chrome) / row_stride))
 
 
 func _clamp_stored_character_page(item_count: int) -> void:
-	var page_count := maxi(1, ceili(float(item_count) / float(_stored_character_page_size())))
+	var page_count := maxi(1, ceili(float(item_count) / float(_stored_character_page_size(item_count))))
 	_stored_character_page = clampi(_stored_character_page, 0, page_count - 1)
 
 
 func _stored_character_page_items(revisions: Array[CharacterVaultRevisionView]) -> Array[CharacterVaultRevisionView]:
 	_clamp_stored_character_page(revisions.size())
-	var page_size := _stored_character_page_size()
+	var page_size := _stored_character_page_size(revisions.size())
 	var start := _stored_character_page * page_size
 	var result: Array[CharacterVaultRevisionView] = []
 	for index: int in range(start, mini(start + page_size, revisions.size())):
@@ -176,7 +195,7 @@ func _stored_character_page_items(revisions: Array[CharacterVaultRevisionView]) 
 
 
 func _add_stored_character_pager(item_count: int) -> void:
-	var page_size := _stored_character_page_size()
+	var page_size := _stored_character_page_size(item_count)
 	var page_count := maxi(1, ceili(float(item_count) / float(page_size)))
 	var pager := _assembly_browser.get_node("%CharacterFilePager") as HBoxContainer
 	pager.visible = page_count > 1
@@ -191,6 +210,17 @@ func _add_stored_character_pager(item_count: int) -> void:
 
 func _change_stored_character_page(offset: int) -> void:
 	_stored_character_page += offset
+	_stored_revision_signature = ""
+	render_party_assembly()
+
+
+func refresh_stored_character_capacity() -> void:
+	if creator_scroll == null or setup_mode != &"assembly" or not creator_scroll.is_visible_in_tree():
+		return
+	var item_count := _current_vault_revisions().size()
+	var next_page_size := _stored_character_page_size(item_count)
+	if next_page_size == _stored_character_page_size_cache:
+		return
 	_stored_revision_signature = ""
 	render_party_assembly()
 

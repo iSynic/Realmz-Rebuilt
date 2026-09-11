@@ -16,17 +16,24 @@ var _console: PanelContainer
 var _noclip: bool = false
 var _recent_auto_actions: Array[String] = []
 var _action_lines: Array[String] = []
-var _console_shortcut_enabled: bool = true
+var _console_shortcut_enabled: bool = false
 var _topology_debug: bool = false
+var _developer_tools_enabled: bool = false
 
 
 func bind(controller: GameSessionController, overlay: Control, content_provider: Callable) -> void:
 	_controller = controller
 	_content_provider = content_provider
-	if not OS.is_debug_build():
-		return
+	_developer_tools_enabled = OS.is_debug_build()
 	_dialog = (load(DEBUG_TOOLS_DIALOG_SCENE_PATH) as PackedScene).instantiate() as DebugToolsDialog
 	overlay.add_child(_dialog)
+	_dialog.configure_capabilities(_developer_tools_enabled)
+	_dialog.topology_debug_changed.connect(func(enabled: bool) -> void:
+		_topology_debug = enabled
+		topology_debug_changed.emit(enabled)
+	)
+	if not _developer_tools_enabled:
+		return
 	_console = (load(DEBUG_ACTION_CONSOLE_SCENE_PATH) as PackedScene).instantiate() as DebugActionConsole
 	overlay.add_child(_console)
 	_controller.step_committed.connect(_record_step)
@@ -34,10 +41,6 @@ func bind(controller: GameSessionController, overlay: Control, content_provider:
 	_dialog.noclip_changed.connect(func(enabled: bool) -> void:
 		_noclip = enabled
 		_dialog.show_result("No clip enabled." if enabled else "No clip disabled.", false)
-	)
-	_dialog.topology_debug_changed.connect(func(enabled: bool) -> void:
-		_topology_debug = enabled
-		topology_debug_changed.emit(enabled)
 	)
 	_dialog.console_requested.connect(_open_console)
 	_dialog.console_shortcut_changed.connect(func(enabled: bool) -> void: _console_shortcut_enabled = enabled)
@@ -48,7 +51,7 @@ func bind(controller: GameSessionController, overlay: Control, content_provider:
 func handle_input(event: InputEvent) -> bool:
 	if _dialog == null:
 		return false
-	if _console_shortcut_enabled and event.is_action_pressed(&"realmz_debug_console"):
+	if _developer_tools_enabled and _console_shortcut_enabled and event.is_action_pressed(&"realmz_debug_console"):
 		if _console.visible: _console.close_console()
 		else: _open_console()
 		return true
@@ -57,8 +60,8 @@ func handle_input(event: InputEvent) -> bool:
 	if _dialog.visible:
 		_dialog.close_dialog()
 	else:
-		if _console.visible: _console.close_console()
-		_dialog.present(_controller.view(), _map_records(), _noclip, _recent_auto_actions, _console_shortcut_enabled, _topology_debug)
+		if _console != null and _console.visible: _console.close_console()
+		_dialog.present(_controller.view(), _map_records() if _developer_tools_enabled else [], _noclip, _recent_auto_actions, _console_shortcut_enabled, _topology_debug)
 	return true
 
 
@@ -73,7 +76,7 @@ func set_topology_debug(enabled: bool) -> void:
 
 
 func noclip_step(intent: PlayerIntent) -> SessionStep:
-	if not _noclip or intent == null or intent.kind != PlayerIntent.Kind.MOVE:
+	if not _developer_tools_enabled or not _noclip or intent == null or intent.kind != PlayerIntent.Kind.MOVE:
 		return null
 	var view := _controller.view()
 	if view == null or view.party_setup_available or view.pending_interaction != null or view.combat_view != null:
@@ -85,6 +88,8 @@ func noclip_step(intent: PlayerIntent) -> SessionStep:
 
 
 func _submit(command: SessionDebugCommand) -> SessionStep:
+	if not _developer_tools_enabled:
+		return null
 	var step := _controller.apply_debug_command(command)
 	var failed := step.state == SessionStep.State.FAILED
 	var message := step.error_message if failed else _success_message(command)
@@ -123,6 +128,8 @@ func _record_step(step: SessionStep) -> void:
 
 
 func _open_console() -> void:
+	if not _developer_tools_enabled or _console == null:
+		return
 	_dialog.close_dialog()
 	_console.present(_action_lines)
 
@@ -278,4 +285,5 @@ static func _success_message(command: SessionDebugCommand) -> String:
 
 func _clear_console() -> void:
 	_action_lines.clear()
-	_console.set_lines(_action_lines)
+	if _console != null:
+		_console.set_lines(_action_lines)

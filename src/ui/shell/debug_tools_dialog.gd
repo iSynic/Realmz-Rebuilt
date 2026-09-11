@@ -25,9 +25,28 @@ var _topology_debug: CheckButton
 var _status: Label
 var _auto_log: MenuButton
 var _console_shortcut: CheckButton
+var _title: Label
+var _developer_tools_enabled: bool = false
+
+const DEVELOPER_CONTROL_NAMES: Array[StringName] = [
+	&"ExplorationHeading",
+	&"MapRow",
+	&"Coordinates",
+	&"Warp",
+	&"Noclip",
+	&"PartyHeading",
+	&"Restore",
+	&"EncounterRow",
+	&"BattleRow",
+	&"WinBattle",
+	&"RecentAutoActions",
+	&"OpenConsole",
+	&"ConsoleShortcut",
+]
 
 
 func _ready() -> void:
+	_title = $Scroll/Content/Title
 	_map_select = %MapSelect
 	_x = %WarpX
 	_y = %WarpY
@@ -58,6 +77,19 @@ func _ready() -> void:
 	%OpenConsole.pressed.connect(func() -> void: console_requested.emit())
 	_console_shortcut.toggled.connect(func(enabled: bool) -> void: console_shortcut_changed.emit(enabled))
 	%Close.pressed.connect(close_dialog)
+	configure_capabilities(false)
+
+
+func configure_capabilities(developer_tools_enabled: bool) -> void:
+	_developer_tools_enabled = developer_tools_enabled
+	for node_name: StringName in DEVELOPER_CONTROL_NAMES:
+		var control := find_child(String(node_name), true, false) as Control
+		if control != null:
+			control.visible = developer_tools_enabled
+	_title.text = "DEBUG TOOLS · F12" if developer_tools_enabled else "DIAGNOSTICS · F12"
+	_status.text = "Debug commands do not enter adventure saves." if developer_tools_enabled else "Optional map diagnostics are off until enabled here."
+	offset_top = -270.0 if developer_tools_enabled else -120.0
+	offset_bottom = 270.0 if developer_tools_enabled else 120.0
 
 
 func _request_warp() -> void:
@@ -72,7 +104,13 @@ func _request_battle() -> void:
 	command_requested.emit(SessionDebugCommand.start_battle(int(_battle_id.value)))
 
 
-func present(view: GameView, maps: Array[Dictionary], noclip: bool, auto_actions: Array[String] = [], console_shortcut_enabled: bool = true, topology_debug: bool = false) -> void:
+func present(view: GameView, maps: Array[Dictionary], noclip: bool, auto_actions: Array[String] = [], console_shortcut_enabled: bool = false, topology_debug: bool = false) -> void:
+	if not _developer_tools_enabled:
+		_topology_debug.set_pressed_no_signal(topology_debug)
+		_status.text = "AP and random-rectangle overlay enabled." if topology_debug else "Optional map diagnostics are off until enabled here."
+		show()
+		_topology_debug.grab_focus()
+		return
 	var selected_map := "" if view == null else view.party_map_id
 	_map_select.clear()
 	for record: Dictionary in maps:

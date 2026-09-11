@@ -32,6 +32,10 @@ static func los_cell_requires_blackout(uses_los: bool, was_seen: bool) -> bool:
 	return uses_los and not was_seen
 
 
+static func los_cell_uses_recalled_rendering(uses_los: bool, currently_visible: bool, was_seen: bool) -> bool:
+	return uses_los and was_seen and not currently_visible
+
+
 static func darkness_mask_rect(party_rect: Rect2) -> Rect2:
 	return Rect2(party_rect.position - DARKNESS_MASK_SIZE * 0.5, DARKNESS_MASK_SIZE)
 
@@ -98,9 +102,12 @@ static func darkness_overlay_alpha(saved_darkness_level: int) -> float:
 
 
 static func land_direction_at(position: Vector2, party_rect: Rect2) -> Vector2i:
-	var horizontal := -1 if position.x < party_rect.position.x else 1 if position.x > party_rect.end.x else 0
-	var vertical := -1 if position.y < party_rect.position.y else 1 if position.y > party_rect.end.y else 0
-	return Vector2i(horizontal, vertical)
+	var offset := position - party_rect.get_center()
+	if absf(offset.x) <= party_rect.size.x * 0.5 and absf(offset.y) <= party_rect.size.y * 0.5:
+		return Vector2i.ZERO
+	if absf(offset.x) >= absf(offset.y):
+		return Vector2i.LEFT if offset.x < 0.0 else Vector2i.RIGHT
+	return Vector2i.UP if offset.y < 0.0 else Vector2i.DOWN
 
 
 static func append_land_discovery(result: Dictionary, coordinate: Vector2i, map_size: Vector2i) -> void:

@@ -291,6 +291,16 @@ Classic-visible behavior is the default ruleset. This ledger records deliberate 
 - Chosen behavior: extend the existing higher-index base fallback to index 402 itself. Preserve exact valid land/shared record costs, unused entry 401's zero cost, and three timeclicks for ordinary nonpositive cells. Rendering a negative overlay over the base tile must not substitute the base's time for a valid marked entry. Do not rewrite authored tiles or add a legacy mode for an undefined read.
 - Tests and boundary: Providence `2184fb5dcec4ff64d20704d635b4be3d66afb71b`, `rebuilt::topology::tests::land_entry_time_distinguishes_marker_profile_from_rendered_background`, covers negative AP/secret/ordinary cells, zero, ordinary positive cells, shared indices 201/400, unused 401 and corrected 402/403 fallback. Candidate compilation and route acceptance remain distinct from bundled integration.
 
+## FD-LAND-002 — Use cardinal pointer wedges on the wide land viewport
+
+- Affected rule: outdoor mouse-cursor direction and the adjacent movement request committed by a click.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/updatearrow.c`, `updatearrow`, lines 5–34, and `src/realmz_orig/buttonchoice.c`, `buttonchoice`, lines 39–75.
+- Observable source behavior: Castle compares the horizontal and vertical pointer axes independently against the party's 32-by-32 cell. Outside both the party row and column it selects a diagonal, even when one axis is only slightly displaced. The source-observation fixture is `tests/fixtures/oracle/land-pointer-wedge-correction.json`, SHA-256 `f1eed9d96080e277014f6814fda446d31fa9b56e009ed711b1fd6892fe6567f1`. This is `source-control-flow` evidence, not a Castle-runtime claim.
+- Player-facing problem: Rebuilt's substantially wider canonical viewport makes nearly every distant click diagonal unless it stays inside the party's single-cell row or column, so intended east/west or north/south travel veers unexpectedly.
+- Chosen behavior: divide the outdoor map around the party-cell center into four 90-degree wedges and select the dominant axis. The party cell remains neutral. This changes only mouse interpretation; keyboard and keypad input, legal diagonal movement, Layout transitions, topology, time, RNG, and saves retain all eight land directions.
+- Tests: `tests/presentation/test_dungeon_geometry_projection.gd` covers the neutral cell, tolerant far-horizontal selection, and the 45-degree wedge boundary. `tests/presentation/test_classic_ui_system.gd` retains the integrated pointer and exact cursor-asset contract. The differential case is `movement.land-eight-direction`.
+- Legacy quirk: none. Pointer-region geometry is presentation-only and is not an authored campaign input.
+
 ## War authored branch corrections
 
 - Deviation ID: `war-authored-branch-corrections`.
