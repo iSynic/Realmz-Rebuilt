@@ -180,7 +180,7 @@ func minimap_rect() -> Rect2:
 func _update_cell(cell: MapCellView, current_classic_rect: Rect2i) -> void:
 	_erase_coordinate(cell.coordinate)
 	var los := _map_view.uses_los
-	if MapPresentationGeometry.los_cell_requires_blackout(los, cell.visible):
+	if MapPresentationGeometry.los_cell_requires_blackout(los, _seen.has(cell.coordinate)):
 		_set_fog(cell.coordinate)
 		return
 	var revealed := _dungeon_discovery if _map_view.level_type == &"dungeon" else _land_discovery

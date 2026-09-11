@@ -15,6 +15,7 @@ Own the retained 2D map and optional first-person dungeon presentation for detac
 ## Local Contracts
 
 - Presentation never decides traversability, visibility, discovery, secrets, facing, triggers, or movement cost.
+- Authored LOS maps draw every exact save-owned seen cell at normal fidelity and black only never-seen cells. Current topology visibility may keep changing for gameplay and detached diagnostics, but leaving a cell's current LOS never conceals it again.
 - Ordinary movement updates retained layers and entering geometry incrementally. Map, topology, LOS, restore, and projection-boundary changes may rebuild from detached authority.
 - The 2D and 3D views consume one save-owned heading and one topology; no renderer-owned collision or discovery state is allowed.
 - Godot nodes, textures, meshes, shaders, and camera state remain disposable presentation caches and never enter saves or deterministic simulation.
