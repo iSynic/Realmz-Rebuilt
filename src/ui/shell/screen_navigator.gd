@@ -277,7 +277,7 @@ func show_campaign_selection(load_after_selection: bool = false) -> void:
 
 
 func accepts_exploration_input() -> bool:
-	return not setup_controller.full_stage_overlay_visible() and _screen_id == &"exploration"
+	return _view != null and _view.session_started and not _view.party_setup_available and not setup_controller.full_stage_overlay_visible() and _screen_id == &"exploration"
 
 
 func open_screen(screen_id: StringName, play_opening_sound: bool = true) -> void:
@@ -338,7 +338,8 @@ func handle_back() -> bool:
 	if setup_controller.campaign_library.splash_visible():
 		return false
 	if setup_controller.setup_overlay.visible:
-		return false
+		show_splash()
+		return true
 	if not _route_history.is_empty():
 		var previous: StringName = _route_history.pop_back()
 		route_exiting.emit(_screen_id)

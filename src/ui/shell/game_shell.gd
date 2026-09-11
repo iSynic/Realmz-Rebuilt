@@ -266,7 +266,7 @@ func handle_back() -> bool:
 	if _music_dialog != null and _music_dialog.visible:
 		_music_dialog.close()
 		return true
-	if _navigator.current_screen() == &"exploration" and _current_view != null and _current_view.session_started:
+	if accepts_exploration_input():
 		_navigator.open_screen(&"system")
 		return true
 	var handled := _navigator.handle_back()

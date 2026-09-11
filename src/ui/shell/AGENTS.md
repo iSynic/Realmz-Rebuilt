@@ -29,6 +29,7 @@ Own the persistent Godot composition that surrounds every Realmz playthrough and
 - Party-effect presentation treats borrowed condition arrays as read-only across repeated, replacement and inactive refreshes.
 - Roster effect tweens bind to their target row's lifetime, so a restore or roster replacement cancels callbacks before the old row is freed.
 - All gameplay mutations continue through the typed application/session boundary.
+- Escape opens System only from exposed, completed-party Exploration. Setup, inspection, and front-door Back remain owned by their current surface; returning from assembly goes to the front door without discarding the setup party. Exploration input and spatial rendering independently reject unfinished party setup.
 
 ## Work Guidance
 

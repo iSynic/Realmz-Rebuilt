@@ -300,7 +300,7 @@ static func dungeon_view_toggle_available(map_view: MapView) -> bool:
 
 
 static func should_show_exploration_stage(active_route: StringName, game_view: GameView, play_stage_visible: bool) -> bool:
-	return active_route in [&"exploration", &"spells"] and game_view != null and game_view.session_started and play_stage_visible
+	return active_route in [&"exploration", &"spells"] and game_view != null and game_view.session_started and not game_view.party_setup_available and play_stage_visible
 
 
 static func should_show_spatial_stage(active_route: StringName, game_view: GameView, play_stage_visible: bool) -> bool:
