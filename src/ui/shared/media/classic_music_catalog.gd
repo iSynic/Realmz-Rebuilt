@@ -38,13 +38,11 @@ func stream(playlist_id: int) -> AudioStream:
 	if record.is_empty():
 		return null
 	var path := String(record.get("path", ""))
-	var bytes := FileAccess.get_file_as_bytes(path)
-	if bytes.size() != int(record.get("bytes", 0)) or _sha256(bytes) != String(record.get("sha256", "")):
-		last_error = "Classic application music failed integrity validation for playlist %d." % playlist_id
-		return null
 	var result := load(path) as AudioStream
-	if result is AudioStreamOggVorbis:
-		(result as AudioStreamOggVorbis).loop = true
+	if not result is AudioStreamOggVorbis:
+		last_error = "Classic application music failed to decode playlist %d." % playlist_id
+		return null
+	(result as AudioStreamOggVorbis).loop = true
 	_streams[stock_track_id] = result
 	return result
 
@@ -76,10 +74,3 @@ func _load_manifest(path: String) -> void:
 		_tracks[playlist_id] = record.duplicate(true)
 	if _tracks.size() != 11:
 		last_error = "Classic application music does not contain the complete stock track bank."
-
-
-static func _sha256(bytes: PackedByteArray) -> String:
-	var hashing := HashingContext.new()
-	if hashing.start(HashingContext.HASH_SHA256) != OK or hashing.update(bytes) != OK:
-		return ""
-	return hashing.finish().hex_encode()
