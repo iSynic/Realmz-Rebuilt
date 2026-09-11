@@ -52,6 +52,7 @@ Own deterministic automated proofs, synthetic fixtures, oracle provenance, route
 - RNG, VM, save, authoritative topology, package integrity, and exact-once terminal-combat coverage are high-value and may not be removed merely to reduce line count.
 - Combat automation coverage includes initiative growth during an active monster scan so summoned or death-macro-added actors cannot strand the session on a 0/0 monster turn.
 - The public Scenario VM combat-mutation proof owns opcode 124's battle-macro source anchor, complete-footprint expanding placement, allegiance default, authored sound cue, battlefield occupancy, and turn-order insertion; it must never accept an unpositioned ghost combatant.
+- The same positioned-combatant fixture owns opcode 17's death-macro area-condition path: a dead source anchors living targets while an empty picked-character set, resource balance, catalog definition, active actor, and following VM code retain their proper meanings.
 - A passing delegated-agent result is review input only; Sol validates integration and any audit-status change. Unknown or ambiguous Castle behavior remains explicit.
 
 ## Work Guidance

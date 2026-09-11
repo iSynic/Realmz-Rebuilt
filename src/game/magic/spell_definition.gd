@@ -56,3 +56,38 @@ func classic_slot() -> int:
 	if classic_id < 1101:
 		return -1
 	return classic_id % 100
+
+
+func with_scenario_adjustments(extra_save_adjust: int, force_affect: bool) -> SpellDefinition:
+	var result := SpellDefinition.new(id, classic_id, name, description)
+	result.range_min = range_min
+	result.range_max = range_max
+	result.queue_icon = queue_icon
+	result.to_hit_bonus = to_hit_bonus
+	result.save_bonus = save_bonus
+	result.fixed_target_count = fixed_target_count
+	result.can_rotate = can_rotate
+	result.save_adjust = save_adjust + extra_save_adjust
+	result.cannot = 3 if force_affect else cannot
+	result.resistance_adjust = resistance_adjust
+	result.cost = cost
+	result.damage_min = damage_min
+	result.damage_max = damage_max
+	result.power_damage_min = power_damage_min
+	result.power_damage_max = power_damage_max
+	result.duration_min = duration_min
+	result.duration_max = duration_max
+	result.power_duration_min = power_duration_min
+	result.power_duration_max = power_duration_max
+	result.look_start = look_start
+	result.look_end = look_end
+	result.sound_start = sound_start
+	result.sound_end = sound_end
+	result.target_type = target_type
+	result.size = size
+	result.special = special
+	result.damage_type = damage_type
+	result.spell_class = spell_class
+	result.in_combat = in_combat
+	result.in_camp = in_camp
+	return result

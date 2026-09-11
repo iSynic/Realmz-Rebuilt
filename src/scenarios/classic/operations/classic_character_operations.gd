@@ -31,7 +31,7 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 		15, 16:
 			return _apply_health(action, action.opcode == 16)
 		17, 18:
-			return _with_age_update_interactions(apply_scenario_spell(action, action.opcode == 18), request_id)
+			return _with_age_update_interactions(apply_scenario_spell(action, action.opcode == 18, context), request_id)
 		30:
 			return _filter_character_selection(action)
 		31:
@@ -623,12 +623,15 @@ func _with_age_update_interactions(operation: ScenarioRuntimeOperationResult, re
 	return ScenarioRuntimeOperationResult.waiting(InteractionRequest.age_update_body(request_id, updates[0]), continuation, events)
 
 
-func apply_scenario_spell(action: ClassicActionDefinition, entire_party: bool) -> ScenarioRuntimeOperationResult:
+func apply_scenario_spell(action: ClassicActionDefinition, entire_party: bool, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	if action.extra_code.size() < 4:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode %d requires a four-value Extra Code row." % action.opcode)
 	var spell := _content.magic.spell_by_classic_id(int(action.extra_code[0]))
 	if spell == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_spell", "Classic opcode %d references unavailable packed spell %d." % [action.opcode, int(action.extra_code[0])])
+	if not entire_party and not context.combatant_id.is_empty():
+		var result := _rules.combat_flow.magic.cast_macro_spell(_game_state, _content, context.combatant_id, spell, int(action.extra_code[1]), int(action.extra_code[2]), int(action.extra_code[3]) != 0, _rng)
+		return ScenarioRuntimeOperationResult.completed(true, result.events) if result.ok else ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message)
 	var targets := _game_state.party.characters() if entire_party else _game_state.scenario_progress.selected_characters()
 	if targets.is_empty():
 		return ScenarioRuntimeOperationResult.failed(&"no_selected_characters", "Classic opcode %d has no selected character targets." % action.opcode)
@@ -636,9 +639,8 @@ func apply_scenario_spell(action: ClassicActionDefinition, entire_party: bool) -
 	for character: CharacterState in targets:
 		var before_health := character.current_health
 		var before_conditions := character.conditions.values()
-		var caste := _content.characters.caste_by_id(character.caste_id)
 		var race := _content.characters.race_by_id(character.race_id)
-		var resolution := _rules.magic.resolve_scenario_spell(character, spell, int(action.extra_code[1]), int(action.extra_code[2]), int(action.extra_code[3]) != 0, _rng, caste, race)
+		var resolution := _rules.magic.resolve_scenario_spell(character, spell, int(action.extra_code[1]), int(action.extra_code[2]), int(action.extra_code[3]) != 0, _rng, _content.characters.caste_by_id(character.caste_id), race)
 		if resolution == null:
 			return ScenarioRuntimeOperationResult.failed(&"invalid_spell_effect", "Classic scenario spell inputs are invalid.")
 		var event_source := "classic-opcode-%d" % action.opcode

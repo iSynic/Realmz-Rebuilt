@@ -6,6 +6,8 @@ This document separates the Classic control-flow observations used to design the
 
 Pinned oracle: Realmz Castle commit `491816ad60037394f92c428e99c004494d3c28b3`.
 
+- `src/realmz_orig/newland.c:1966-1990` branches opcode 17 on monster-macro mode: its direct or queued dead-monster position becomes the center passed to `spelltargets`, rather than using picked characters. `spelltargets.c:9-119` clears the target set, applies the Data AD mask or fixed side-group selector, and handles reflection before ordinary resolution; `resist.c:34-37` retains the active actor as the resistance caster. Rebuilt's bounded macro path supports non-damaging area and side-group condition spells without SP/action payment or activation advancement. `test_scenario_vm.gd` extends the positioned-combatant VM proof with a dead anchor, living 2x2 target, out-of-area character, empty picked set, detached forced-affect override, and following opcode. This is source-control-flow plus runtime-unit evidence, not an independent Castle runtime capture; other macro spell families remain explicitly unavailable.
+
 - `src/realmz_orig/main.c:46-48` declares a 20-entry stack counter, its index, and the GOSUB flag. This is the source basis for the Classic frame limit; it is not reused as global state.
 - `src/realmz_orig/newland.c:97-120` treats negative codes other than -14 and -23 as their positive operation with GOSUB intent. CODE 111 restores the saved action record and resumes at the following slot; CODE 112 drops a stack entry without returning through it.
 - `src/realmz_orig/stack.c:3-20` stores the complete door/action record with its slot and restores both on pop. The 2.0 VM therefore serializes the caller program and cursor, not only a target ID.

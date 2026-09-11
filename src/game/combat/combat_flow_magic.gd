@@ -38,6 +38,10 @@ func _init(context: CombatContext) -> void:
 func selection() -> CombatSpellSelection:
 	return _selection
 
+
+func cast_macro_spell(state: GameState, content: RealmzContent, source_id: String, spell: SpellDefinition, power: int, extra_save_adjust: int, force_affect: bool, rng: RealmzRng) -> CombatFlowResult:
+	return CombatMacroSpells.new(_context).cast(state, content, source_id, spell, power, extra_save_adjust, force_affect, rng)
+
 func probe_character_item_spell(state: GameState, content: RealmzContent, caster_id: String, target_id: String, instance_id: String, target_coordinate: Vector2i = INVALID_COORDINATE, rotation: int = 0, target_ids: Array[String] = [], target_coordinates: Array[Vector2i] = []) -> CombatSpellCastProbe:
 	if state == null or content == null:
 		return CombatSpellCastProbe.blocked(&"invalid_item_turn", "Item use requires an active game session.")

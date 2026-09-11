@@ -26,12 +26,14 @@ Own the explicit collaboration boundary shared by deterministic battle rules.
 - Collaborators receive one `CombatContext` by reference and never retain or call a `CombatFlow` root object.
 - Cross-collaborator calls use named public operations. Do not call another object's private method or add forwarding query methods to `CombatFlow`.
 - `CombatFlow` owns mutation commands. Read-only probes belong to the collaborator that calculates them.
+- `CombatMacroSpells`, reached through `CombatFlowMagic`, resolves non-damaging area and side-group condition spells around a retained macro source without action costs, activation advancement, or death-macro completion. Dead sources are anchors, never targets; complete living footprints are deduplicated in party-then-monster order. Macro source context, continuation, and completion remain scenario/playthrough-owned.
 - Context and event objects are pure `RefCounted` values. They may not own Nodes, filesystem access, wall-clock time, or independent randomness.
 - The combat request body reports calculated choices and targets but never decides legality or mutates battle state.
 
 ## Work Guidance
 
 - Keep serialized combat state, event identities, RNG order, and Castle-visible outcomes unchanged during structural work.
+- Monster automation must consume an exhausted cast-fallback chain within the current activation: the advance/contact probe is the ordinary physical fallback, and only explicit reaction waiting or death-macro results may leave a resumable active actor.
 - Address `battlefield.terrain` or `battlefield.actors` directly; do not restore aggregate forwarding methods. Use `BattlefieldGrid` for fixed dimensions and footprint geometry.
 - Split cohesive action/event policy before expanding a collaborator beyond the architecture limits.
 - Keep combat rules, views, request bodies, tests, docs, and the system manifest synchronized when a collaborator moves or changes ownership.
