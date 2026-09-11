@@ -12,6 +12,7 @@ var _assets: Array[MediaAsset] = []
 var _assets_by_id: Dictionary = {}
 var _assets_by_resource: Dictionary = {}
 var _ambiguous_resource_keys: Dictionary = {}
+var _image_textures: Dictionary = {}
 
 
 func _init(manifest_path: String = MANIFEST_PATH) -> void:
@@ -56,6 +57,19 @@ func read_bytes(asset: MediaAsset) -> PackedByteArray:
 	if bytes.size() != asset.byte_count or _sha256(bytes) != asset.sha256:
 		return PackedByteArray()
 	return bytes
+
+
+func image_texture(asset: MediaAsset) -> Texture2D:
+	if not owns_asset(asset) or not asset.is_picture():
+		return null
+	if _image_textures.has(asset.id):
+		return _image_textures[asset.id] as Texture2D
+	var texture := load(asset.path) as Texture2D
+	if texture != null and (asset.width <= 0 or asset.height <= 0 or texture.get_width() == asset.width and texture.get_height() == asset.height):
+		_image_textures[asset.id] = texture
+		return texture
+	_image_textures[asset.id] = null
+	return null
 
 
 func audio_stream(asset: MediaAsset) -> AudioStream:

@@ -190,6 +190,8 @@ func read_bytes_batch(requested_assets: Array[MediaAsset]) -> Dictionary:
 func image_texture(asset: MediaAsset) -> Texture2D:
 	if asset == null:
 		return null
+	if application_media != null and application_media.owns_asset(asset):
+		return application_media.image_texture(asset)
 	if _image_textures.has(asset.id):
 		return _image_textures[asset.id] as Texture2D
 	var bytes := read_bytes(asset)
