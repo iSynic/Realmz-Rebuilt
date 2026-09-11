@@ -16,7 +16,7 @@
 
 ## Local Contracts
 
-- The field Spells route remains a persistent right sidebar: 420 pixels in the canonical composition and 288 pixels in the optional Classic composition.
+- The field Spells route remains a persistent right sidebar: 420 pixels in the canonical composition and 288 pixels in the optional Classic composition. Its level and power rails retain a deferred release fallback at their exact visible rectangles so native stage interception cannot suppress expanded-layout clicks; ordinary GUI dispatch remains primary and cannot double-submit.
 - Cast, Make Scroll, and Back remain in the fixed route action strip, outside scrolling content.
 - Encounter spell selection reuses `spells_workspace.tscn`; it must not maintain a second layout hierarchy.
 - Compact spellbooks arrange detail facts as one label/value pair per row and wrap supplied values. Long caster labels do not determine workspace width; the picker retains the full selected identity in its tooltip.

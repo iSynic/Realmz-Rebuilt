@@ -238,6 +238,7 @@ func _bind_display(settings: PresentationSettings) -> void:
 	], settings.window_mode, &"window_mode")
 	_bind_toggle(root.get_node("Dungeon3d") as CheckButton, settings.dungeon_3d, &"dungeon_3d")
 	_bind_toggle(root.get_node("ClassicExplorationVisibility") as CheckButton, settings.classic_exploration_visibility, &"classic_exploration_visibility")
+	_bind_toggle(root.get_node("CustomFogTile") as CheckButton, settings.custom_fog_tile_enabled, &"custom_fog_tile_enabled")
 
 
 func _bind_audio(settings: PresentationSettings) -> void:

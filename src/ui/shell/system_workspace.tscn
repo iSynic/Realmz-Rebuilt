@@ -247,6 +247,9 @@ text = "Use topology-derived 3D dungeons"
 [node name="ClassicExplorationVisibility" type="CheckButton" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content"]
 layout_mode = 2
 text = "Classic exploration distance with visited outer tiles"
+[node name="CustomFogTile" type="CheckButton" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content"]
+layout_mode = 2
+text = "Use custom fog-of-war tile instead of Classic black"
 
 [node name="Audio" type="VBoxContainer" parent="SystemWorkspaceTabs"]
 layout_mode = 2

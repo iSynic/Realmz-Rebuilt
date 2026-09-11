@@ -17,6 +17,7 @@ const DEBUG_RANDOM_RECT_COLOR := Color(0.96, 0.75, 0.36, 0.78)
 @export var show_cell_topology_details: bool = false
 @export var show_travel_preview: bool = false
 @export var classic_exploration_visibility: bool = true
+@export var custom_fog_tile_enabled: bool = true
 
 var _view: GameView
 var _media: ClassicMediaCatalog
@@ -139,6 +140,13 @@ func set_classic_exploration_visibility(enabled: bool) -> void:
 	classic_exploration_visibility = enabled
 	queue_redraw()
 	_present_retained_surface()
+
+
+func set_custom_fog_tile_enabled(enabled: bool) -> void:
+	custom_fog_tile_enabled = enabled
+	if _retained_surface != null:
+		_retained_surface.set_custom_fog_tile_enabled(enabled)
+	queue_redraw()
 
 
 func set_topology_debug_visible(enabled: bool) -> void:
@@ -361,7 +369,7 @@ func _party_marker_texture() -> Texture2D:
 
 
 func _draw_unvisited_cell(rect: Rect2) -> void:
-	if _fog_texture != null:
+	if custom_fog_tile_enabled and _fog_texture != null:
 		draw_texture_rect(_fog_texture, rect, false)
 	else:
 		draw_rect(rect, Color.BLACK, true)

@@ -105,9 +105,19 @@ static func land_direction_at(position: Vector2, party_rect: Rect2) -> Vector2i:
 	var offset := position - party_rect.get_center()
 	if absf(offset.x) <= party_rect.size.x * 0.5 and absf(offset.y) <= party_rect.size.y * 0.5:
 		return Vector2i.ZERO
-	if absf(offset.x) >= absf(offset.y):
-		return Vector2i.LEFT if offset.x < 0.0 else Vector2i.RIGHT
-	return Vector2i.UP if offset.y < 0.0 else Vector2i.DOWN
+	var angle := atan2(offset.y, offset.x)
+	var rounded_octant: int = roundi(angle / (PI / 4.0))
+	var octant: int = (rounded_octant % 8 + 8) % 8
+	return [
+		Vector2i.RIGHT,
+		Vector2i(1, 1),
+		Vector2i.DOWN,
+		Vector2i(-1, 1),
+		Vector2i.LEFT,
+		Vector2i(-1, -1),
+		Vector2i.UP,
+		Vector2i(1, -1),
+	][octant]
 
 
 static func append_land_discovery(result: Dictionary, coordinate: Vector2i, map_size: Vector2i) -> void:

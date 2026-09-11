@@ -42,6 +42,7 @@ var _seen: Dictionary = {}
 var _land_discovery: Dictionary = {}
 var _dungeon_discovery: Dictionary = {}
 var _darkness_masks: Dictionary = {}
+var _custom_fog_tile_enabled: bool = true
 
 
 func _ready() -> void:
@@ -115,6 +116,15 @@ func set_media_catalog(media: ClassicMediaCatalog) -> void:
 		_tile_set.remove_source(_tile_set.get_source_id(index))
 	_clear_layers()
 	_map_id = ""
+
+
+func set_custom_fog_tile_enabled(enabled: bool) -> void:
+	if _custom_fog_tile_enabled == enabled:
+		return
+	_custom_fog_tile_enabled = enabled
+	_build_fog_tiles()
+	if _viewport != null:
+		_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
 
 
 func present(game_view: GameView, party_texture: Texture2D, control_size: Vector2, origin: Vector2, native_cell_size: float, minimap_size: float, classic_visibility: bool, show_minimap: bool, visited: Dictionary, seen: Dictionary, land_discovery: Dictionary, dungeon_discovery: Dictionary) -> void:
@@ -325,7 +335,9 @@ func _texture_scale(texture: Texture2D) -> Vector2:
 
 func _build_fog_tiles() -> void:
 	_fog_tile_set.tile_size = Vector2i(32, 32)
-	var texture := load(FOG_TEXTURE_PATH) as Texture2D
+	if _fog_tile_set.has_source(0):
+		_fog_tile_set.remove_source(0)
+	var texture := load(FOG_TEXTURE_PATH) as Texture2D if _custom_fog_tile_enabled else null
 	if texture == null or texture.get_size() != Vector2(32, 32):
 		var image := Image.create(32, 32, false, Image.FORMAT_RGBA8)
 		image.fill(Color.BLACK)
