@@ -49,10 +49,10 @@ func handle_input(event: InputEvent) -> void:
 
 
 func _handle_debug_or_acknowledgement_input(event: InputEvent) -> bool:
-	if _application._debug_tools != null and _application._debug_tools.handle_input(event):
+	if _application.debug_tools != null and _application.debug_tools.handle_input(event):
 		_mark_handled()
 		return true
-	if _application._debug_tools != null and _application._debug_tools.is_open():
+	if _application.debug_tools != null and _application.debug_tools.is_open():
 		return true
 	if _application._interaction_presenter != null and _application._interaction_presenter.handle_global_pointer_acknowledgement(event):
 		_mark_handled()

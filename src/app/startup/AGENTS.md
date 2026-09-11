@@ -6,7 +6,7 @@ Own the first visible frame and prepare immutable application and campaign conte
 
 ## Ownership
 
-- `StartupFrontDoor` owns the launch card, retained intro media, and background construction handoff.
+- `StartupFrontDoor` owns the launch card, retained intro media, background construction handoff, and input forwarding to the loaded application's temporarily hosted F12 Diagnostics surface.
 - `PackageHostController` owns discovery, validation, preparation, cancellation, and prepared-package retention.
 - `StartupRouteBridge` connects the lightweight front door to the loaded application routes.
 - Campaign, package-operation, and prepared-package views are detached app values consumed by UI.

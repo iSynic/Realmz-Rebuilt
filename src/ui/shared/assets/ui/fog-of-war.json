@@ -9,7 +9,7 @@
   "source_bytes": 2396,
   "source_sha256": "098887446076e44e3ef28f493b3368facf8c700cc7b8647c4b89465c715dfa2a",
   "derivation": "byte-exact copy; runtime maps one native image to one 32-by-32 cell with nearest filtering",
-  "presentation_contract": "The tile covers only never-seen cells on authored LOS maps. Save-owned seen cells render at normal fidelity whether or not they remain in current LOS.",
+  "presentation_contract": "The tile covers every projected map cell withheld by exploration visibility: never-seen cells on authored LOS maps and non-LOS cells outside both the current Classic window and remembered discovery. Save-owned seen or revealed cells render at normal fidelity; the decorative stage surround remains only outside projected map cells.",
   "file": {
     "path": "res://src/ui/shared/assets/ui/fog-of-war-tile.png",
     "width": 32,
