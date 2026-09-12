@@ -34,6 +34,9 @@ var _encounter_mode: bool = false
 var _encounter_items: Dictionary = {}
 var _rendered_character_id: String = ""
 var _item_scroll_position: int = 0
+var _trade_scroll_positions: Dictionary[String, int] = {}
+var _trade_item_owner_id: String = ""
+var _trade_item_instance_id: String = ""
 
 
 func set_layout_profile(profile_id: StringName) -> void:
@@ -55,6 +58,9 @@ func reset() -> void:
 	_encounter_items.clear()
 	_rendered_character_id = ""
 	_item_scroll_position = 0
+	_trade_scroll_positions.clear()
+	_trade_item_owner_id = ""
+	_trade_item_instance_id = ""
 
 
 func present(target: Control, view: GameView, media: ClassicMediaCatalog, text_scale: float) -> void:
@@ -83,6 +89,10 @@ func _present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog,
 	if parent == null:
 		return
 	_item_scroll_position = _scene_binding.capture_item_scroll(parent, _rendered_character_id, _selected_character_id, _item_scroll_position)
+	for node: Node in parent.find_children("InventoryTradeLedger_*", "", true, false):
+		var ledger := node as InventoryTradeLedger
+		if ledger != null:
+			_trade_scroll_positions[ledger.target_id] = ledger.item_scroll().scroll_vertical
 	var workspace: InventoryWorkspace
 	if screen != null:
 		workspace = screen.workspace()
@@ -409,7 +419,12 @@ func _bind_trade_workspace(workspace: InventoryTradeWorkspace, view: GameView, s
 	_bind_trade_ledger(workspace.target_ledger(), view, target, source.id, media, detail_popover)
 	workspace.status_label().visible = not _trade_status.is_empty()
 	_scene_binding.bind_label(workspace.status_label(), _trade_status, WARNING, 12)
-	_bind_trade_item_record(workspace.item_record(), source, selected_item, media)
+	var inspected_owner := InventoryViewQueries.character_by_id(view, _trade_item_owner_id)
+	var inspected_item := InventoryViewQueries.item_by_id(inspected_owner, _trade_item_instance_id)
+	if inspected_owner == null or inspected_owner.id not in [source.id, target.id] or inspected_item == null:
+		inspected_owner = source
+		inspected_item = selected_item
+	_bind_trade_item_record(workspace.item_record(), inspected_owner, inspected_item, media)
 
 
 func _bind_trade_ledger(ledger: InventoryTradeLedger, view: GameView, character: CharacterView, other_id: String, media: ClassicMediaCatalog, detail_popover: CanvasLayer) -> void:
@@ -434,6 +449,7 @@ func _bind_trade_ledger(ledger: InventoryTradeLedger, view: GameView, character:
 		rows.add_child(row)
 	if character.items.is_empty():
 		_scene_binding.add_text_row(rows, ledger.empty_row_scene, "No carried items.", LEDGER_MUTED, 12)
+	_scene_binding.restore_item_scroll(ledger.item_scroll(), _trade_scroll_positions.get(character.id, 0))
 
 
 func _bind_trade_control_spine(divider: InventoryTradeDivider, view: GameView, source: CharacterView, target: CharacterView, media: ClassicMediaCatalog) -> void:
@@ -482,10 +498,10 @@ func _select_trade_item(view: GameView, character_id: String, instance_id: Strin
 	var item := InventoryViewQueries.item_by_id(character, instance_id)
 	if item == null:
 		return
-	_selected_character_id = character_id
-	_selected_item_instance_id = instance_id
-	_selected_trade_target_id = InventoryViewQueries.first_enabled_trade_target(item, preferred_target_id)
-	_trade_status = "Choose a destination for %s." % item.name if _selected_trade_target_id.is_empty() else "Ready to transfer %s." % item.name
+	_trade_item_owner_id = character_id
+	_trade_item_instance_id = instance_id
+	var availability := InventoryViewQueries.trade_target(item, preferred_target_id)
+	_trade_status = "This item cannot be transferred there." if availability == null else "Ready to transfer %s." % item.name if availability.enabled else availability.reason
 	refresh_requested.emit()
 
 
@@ -535,6 +551,8 @@ func _select_item(instance_id: String) -> void:
 
 func _begin_trade(item: ItemView) -> void:
 	_trade_mode = true
+	_trade_item_owner_id = _selected_character_id
+	_trade_item_instance_id = item.instance_id
 	_selected_trade_target_id = InventoryViewQueries.first_enabled_trade_target(item)
 	_trade_status = ""
 	_clear_pending_action()

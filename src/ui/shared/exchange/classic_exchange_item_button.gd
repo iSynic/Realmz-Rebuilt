@@ -14,6 +14,10 @@ func configure_drag(payload: Dictionary) -> void:
 
 
 func _get_drag_data(_position: Vector2) -> Variant:
+	return create_drag_data(_position)
+
+
+func create_drag_data(_position: Vector2) -> Variant:
 	if disabled or drag_payload.is_empty():
 		return null
 	var preview := (load(DRAG_PREVIEW_SCENE_PATH) as PackedScene).instantiate() as Label

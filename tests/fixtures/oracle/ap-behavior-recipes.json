@@ -38,6 +38,62 @@
   ],
   "recipes": [
     {
+      "id": "half-truth-guard-random-door-backup",
+      "application": {
+        "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
+        "packageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad",
+        "archiveSha256": "bf1ff5de1d6fc5bd1d5ffff8d582797dfab885acfd9b20b4e02ce9040421e150",
+        "starterCatalog": "src/storage/characters/realmz-classic-starter-characters.json"
+      },
+      "package": {
+        "campaignId": "scenario-half-truth",
+        "path": "src/storage/packages/bundled_campaigns/scenario-half-truth.realmz2",
+        "packageHash": "952b9705460e117b7b914e143134c895e04405d686de39e7d58bf2790d52b870",
+        "archiveSha256": "a197fe8977e583f71f97d4d25cfaab36ec2515a622bbad50894263cc2e752e78"
+      },
+      "baselineCheckpoint": {
+        "path": "fixtures/5125def37826be67a2ab16b80b1ee157/checkpoints/354138ae-7edb-4404-b879-3f7baf6acd00.r2save",
+        "sha256": "5df41fb5b9a577cfc02b2e3639de0a4e00caee4f19af82b0b04d337d57b28821",
+        "preparation": "Unmodified private adventure clone, followed by ordinary movement to land:1 (6,11) and south into random rectangle 16. Baseline waits at XAP 446 message 256 at (6,12), day 3 12:29, fatigue 10, RNG draw count 2540. Retain the checkpoint's complete party, quest, world and RNG state; coordinates alone cannot reconstruct this caller."
+      },
+      "target": {
+        "randomRectangle": "land:1:randlevel:rect:16",
+        "programId": "xap:446",
+        "resultProgramId": "xap:67",
+        "opcode": 101
+      },
+      "proofModes": ["ordinary-movement", "typed-response", "restored-continuation", "rendered-observation"],
+      "sourceEvidence": [
+        "Castle 491816ad60037394f92c428e99c004494d3c28b3 src/realmz_orig/newland.c:778-784: land opcode 101 reverses the step and returns true.",
+        "Castle 491816ad60037394f92c428e99c004494d3c28b3 src/realmz_orig/textbox-time.c:379-398: a selected random door returns its newland result to the time caller.",
+        "Castle 491816ad60037394f92c428e99c004494d3c28b3 src/realmz_orig/buttonchoice.c:219-230: the movement caller retains its ordinary secret check after timeclick returns."
+      ],
+      "expected": [
+        "Acknowledging message 256 branches to XAP 67 message 294. Its acknowledgement commits exactly one party_backed_up event from (6,12) to (6,11), completes exploration and clears the continuation without the former invalid_session_continuation failure.",
+        "Both acknowledgements preserve day 3 12:29 and RNG draw count 2540. After backup, the ordinary caller-owned secret check runs at (6,11); this baseline has no nearby undiscovered secret or Search mode, so it adds no time or RNG and no placed AP fires.",
+        "Ordinary southward re-entry repeats the authored guard conversation at 12:34 with exactly two additional random-region/door draws. Its acknowledgements again preserve clock/RNG and back up once to (6,11).",
+        "Restoring the identical baseline and repeating all five inputs yields equal complete saved gameplay/RNG states and traces under the rebuilt-save-v4 comparison."
+      ],
+      "result": "passed",
+      "evidence": "jobs/06b3cecc98db80826ffc919284dcd6cc/evidence.json",
+      "otherEvidence": [
+        "jobs/7b9ca9ea0301724e015b912667442e91/evidence.json: pre-fix exact post-clock failure on the second acknowledgement; party_backed_up was already committed.",
+        "jobs/21b777b023b725d544292255dae520aa/evidence.json: ordinary approach and rectangle entry before saving the pending conversation.",
+        "jobs/7bb047f6bada363f92c890c5830b535a/evidence.json: equal five-step restored repeat with initial equivalence verified."
+      ],
+      "remaining": [
+        "These are isolated ordinary movement and typed acknowledgement inputs, not physical-control or full campaign certification.",
+        "The authored caller always shows messages; the unchanged immediate random-door path shares the completion owner but is not independently exercised by this recipe."
+      ],
+      "steps": [
+        {"command": "respond", "params": {"response": {"requestId": "$pending", "kind": "acknowledge", "body": {}}}, "expect": {"interactionKind": "acknowledge"}, "capture": true},
+        {"command": "respond", "params": {"response": {"requestId": "$pending", "kind": "acknowledge", "body": {}}}, "expect": {"interactionKind": null, "location": {"mapId": "land:1", "x": 6, "y": 11}}, "capture": true},
+        {"command": "act", "params": {"action": "move", "arguments": {"dx": 0, "dy": 1}}, "expect": {"interactionKind": "acknowledge", "location": {"mapId": "land:1", "x": 6, "y": 12}}, "capture": true},
+        {"command": "respond", "params": {"response": {"requestId": "$pending", "kind": "acknowledge", "body": {}}}, "expect": {"interactionKind": "acknowledge"}},
+        {"command": "respond", "params": {"response": {"requestId": "$pending", "kind": "acknowledge", "body": {}}}, "expect": {"interactionKind": null, "location": {"mapId": "land:1", "x": 6, "y": 11}}, "capture": true}
+      ]
+    },
+    {
       "id": "wrath-chest-unarmed-lock-failure",
       "application": {
         "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",

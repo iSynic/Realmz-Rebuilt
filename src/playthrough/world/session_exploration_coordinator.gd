@@ -118,6 +118,8 @@ func continue_post_time(events: Array[DomainEvent]) -> SessionCoordinatorResult:
 	if not active_timed_program_id.is_empty() and not rebase_post_time_location():
 		_context.session_continuation.clear()
 		return SessionCoordinatorResult.failed(&"invalid_timed_encounter_location", "The completed timed encounter left the party at an unavailable location.", events)
+	if not exploration.active_random_program_id.is_empty():
+		return complete_random_program(events)
 	var map = _context.content.world.map_by_id(exploration.map_id)
 	if map == null or _context.state.party.map_id != map.id or _context.state.party.coordinate != exploration.coordinate:
 		_context.session_continuation.clear()
@@ -131,10 +133,6 @@ func continue_post_time(events: Array[DomainEvent]) -> SessionCoordinatorResult:
 	if map == null:
 		_context.session_continuation.clear()
 		return SessionCoordinatorResult.failed(&"invalid_timed_encounter_location", "Timed encounter continuation references an unavailable map.", events)
-	var active_program_id = exploration.active_random_program_id
-	if not active_program_id.is_empty():
-		exploration.active_random_program_id = ""
-		return complete_post_time(events)
 	if exploration.check_random:
 		var random_step = continue_random_regions(map, events)
 		if random_step != null:
