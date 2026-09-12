@@ -7,7 +7,7 @@ $applicationRoot = Join-Path $repoRoot "src\storage\packages\application"
 $applicationLock = Get-Content -Raw -LiteralPath (Join-Path $applicationRoot "application-library.lock.json") | ConvertFrom-Json
 $catalog = Get-Content -Raw -LiteralPath $catalogPath | ConvertFrom-Json
 
-if ($catalog.formatVersion -ne 2 -or $catalog.source.license -ne "CC-BY-NC-SA-4.0" -or $catalog.source.defaultForScenariosWithoutOverride -ne $true) {
+if ($catalog.formatVersion -ne 3 -or $catalog.source.license -ne "CC-BY-NC-SA-4.0" -or $catalog.source.defaultForScenariosWithoutOverride -ne $true) {
     throw "Bundled scenario provenance header is invalid."
 }
 if ($catalog.compiler.packageSchemaVersion -ne 3 -or $catalog.acceptedApplicationLibrary.packageHash -ne $applicationLock.packageHash -or $catalog.acceptedApplicationLibrary.archiveSha256 -ne $applicationLock.archiveSha256 -or $catalog.acceptedApplicationLibrary.compilerRevision -ne $applicationLock.compilerCommit) {
@@ -104,6 +104,8 @@ try {
 }
 $scenarioArchiveBytes = [long]0
 $sourceArchiveBytes = [long]0
+$refreshedScenarioMedia = 0
+$preservedUnrefreshableScenarioMedia = 0
 foreach ($scenario in $catalog.scenarios) {
     $packagePath = Join-Path $campaignRoot $scenario.file
     $package = Get-Item -LiteralPath $packagePath
@@ -119,10 +121,17 @@ foreach ($scenario in $catalog.scenarios) {
     }
     if ($scenario.campaignId -ne "scenario-war-in-the-sword-lands") {
         $migration = $scenario.mediaOwnershipMigration
-        if ($null -eq $migration -or $migration.operation -ne "slim-scenarios" -or $migration.compilerRevision -ne $scenario.compilerRevision -or $migration.applicationPackageHash -ne $applicationLock.packageHash -or $migration.applicationMediaCatalogSha256 -ne $applicationLock.catalogs.'media.json'.sha256 -or $migration.sourcePackageHash -notmatch '^[0-9a-f]{64}$' -or $migration.sourceArchiveSha256 -notmatch '^[0-9a-f]{64}$' -or [long]$migration.sourceArchiveBytes -le [long]$scenario.bytes -or $migration.removedResourceKey -cne "PICT:302" -or $migration.removedMediaDescriptors -ne 1 -or $migration.removedMediaPayloads -ne 1 -or $migration.rewrittenAssetReferences -ne 0) {
+        if ($null -eq $migration -or $migration.operation -ne "slim-scenarios" -or $migration.compilerRevision -notmatch '^[0-9a-f]{40}$' -or $migration.applicationPackageHash -ne $applicationLock.packageHash -or $migration.applicationMediaCatalogSha256 -ne $applicationLock.catalogs.'media.json'.sha256 -or $migration.sourcePackageHash -notmatch '^[0-9a-f]{64}$' -or $migration.sourceArchiveSha256 -notmatch '^[0-9a-f]{64}$' -or [long]$migration.sourceArchiveBytes -le 0 -or $migration.removedResourceKey -cne "PICT:302" -or $migration.removedMediaDescriptors -ne 1 -or $migration.removedMediaPayloads -ne 1 -or $migration.rewrittenAssetReferences -ne 0) {
             throw "$($scenario.file) has invalid shared-atlas ownership migration provenance."
         }
     }
+    $refresh = $scenario.scenarioMediaMigration
+    $expectedSourceCompiler = if ($scenario.campaignId -eq "scenario-war-in-the-sword-lands") { $scenario.sourceArchive.compilerRevision } else { $scenario.mediaOwnershipMigration.compilerRevision }
+    if ($null -eq $refresh -or $refresh.operation -ne "refresh-scenario-media" -or $refresh.compilerRevision -ne $scenario.compilerRevision -or $refresh.sourceCompilerRevision -ne $expectedSourceCompiler -or $refresh.sourcePackageHash -notmatch '^[0-9a-f]{64}$' -or $refresh.sourceArchiveSha256 -notmatch '^[0-9a-f]{64}$' -or [long]$refresh.sourceArchiveBytes -le 0 -or $refresh.applicationPackageHash -ne $applicationLock.packageHash -or $refresh.applicationMediaCatalogSha256 -ne $applicationLock.catalogs.'media.json'.sha256 -or $refresh.classicScenarioResourcesSha256 -ne $scenario.classicScenarioResourcesSha256 -or [int]$refresh.refreshedScenarioMedia -lt 0 -or [int]$refresh.preservedUnrefreshableScenarioMedia -lt 0 -or $refresh.removedMediaDescriptors -ne 0 -or [int]$refresh.removedMediaPayloads -lt 0 -or [int]$refresh.removedMediaPayloads -gt [int]$refresh.refreshedScenarioMedia -or $refresh.rewrittenAssetReferences -ne 0) {
+        throw "$($scenario.file) has invalid scenario-media refresh provenance."
+    }
+    $refreshedScenarioMedia += [int]$refresh.refreshedScenarioMedia
+    $preservedUnrefreshableScenarioMedia += [int]$refresh.preservedUnrefreshableScenarioMedia
     $scenarioArchiveBytes += [long]$scenario.bytes
     $sourceArchiveBytes += [long]$scenario.sourceArchive.bytes
     $archive = [System.IO.Compression.ZipFile]::OpenRead($packagePath)
@@ -296,9 +305,13 @@ foreach ($scenario in $catalog.scenarios) {
     }
 }
 
+if ($refreshedScenarioMedia -ne 434 -or $preservedUnrefreshableScenarioMedia -ne 1) {
+    throw "Bundled scenario media refresh totals do not match the pinned corpus migration."
+}
+
 $applicationArchiveBytes = [long](Get-Item -LiteralPath (Join-Path $applicationRoot "realmz-classic-application-library.realmz2")).Length
 if ($scenarioArchiveBytes -ge $sourceArchiveBytes -or ($scenarioArchiveBytes + $applicationArchiveBytes) -ge $sourceArchiveBytes) {
     throw "The separated application-plus-scenario library did not reduce the previous bundled archive footprint."
 }
 
-Write-Host "Verified the lean 13-scenario bundle, application ownership, authored player-map names, scrolling-text resources, and designated City of Bywater source snapshot."
+Write-Host "Verified the lean 13-scenario bundle, 434 refreshed scenario media assets, application ownership, authored player-map names, scrolling-text resources, and designated City of Bywater source snapshot."
