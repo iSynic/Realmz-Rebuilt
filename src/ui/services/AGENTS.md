@@ -22,6 +22,7 @@ Own the editable Party Wealth, Shop, Temple, Bank, and Treasure workspaces and t
 - Party Wealth is always available after setup; location services appear only from explicit detached availability.
 - Stable hierarchy and responsive layout belong in scenes. Selection, filtering, hover, local drafts, and request-sized records remain presentation-owned.
 - Consecutive requests for the same Shop retain the selected shoppers, category, compact tab, valid inspected identity, and both ledger scroll offsets. A different Shop or intervening non-Shop task starts fresh. Item inspection and buy/sell gestures never reset an unchanged pack to the top.
+- Consecutive requests for the same Treasure retain the loot-field scroll offset when their stable slot layout is unchanged. Taking an item leaves its authored slot vacant and never returns a scrolled loot field to the top; a different Treasure starts fresh.
 
 ## Work Guidance
 

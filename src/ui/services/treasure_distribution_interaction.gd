@@ -53,6 +53,20 @@ func configure(media: ClassicMediaCatalog, game_view: GameView, compact: bool, s
 	_restore_money_workspace = restore_money_workspace
 
 
+func capture_browser_state() -> Dictionary:
+	var scroll := get_node_or_null("%TreasureItemScroll") as ScrollContainer
+	if scroll == null:
+		return {}
+	return {"slotOrder": _loot_slot_order.duplicate(), "lootScroll": scroll.scroll_vertical}
+
+
+func restore_browser_state(state: Dictionary) -> void:
+	var scroll := get_node_or_null("%TreasureItemScroll") as ScrollContainer
+	if scroll == null or not state.get("slotOrder") is Array or state.slotOrder != _loot_slot_order:
+		return
+	scroll.set_deferred("scroll_vertical", int(state.get("lootScroll", 0)))
+
+
 func build(request: InteractionRequest) -> void:
 	var body := request.body as TreasureRequestBody
 	if body == null:
