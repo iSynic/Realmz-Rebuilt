@@ -9,6 +9,20 @@ var target_id: String = ""
 var accepted_kind: StringName = &""
 
 
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_DRAG_BEGIN:
+		_forward_drop_surface(self)
+
+
+func _forward_drop_surface(parent: Node) -> void:
+	for child: Node in parent.get_children():
+		if child is Control:
+			var control := child as Control
+			var drag := (control as ClassicExchangeItemButton).create_drag_data if control is ClassicExchangeItemButton else Callable()
+			control.set_drag_forwarding(drag, _can_drop_data, _drop_data)
+		_forward_drop_surface(child)
+
+
 func configure_drop(kind: StringName, destination_id: String) -> void:
 	accepted_kind = kind
 	target_id = destination_id

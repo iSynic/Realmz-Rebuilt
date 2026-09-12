@@ -18,6 +18,10 @@ func rows() -> VBoxContainer:
 	return get_node("Content/ItemScroll/Items") as VBoxContainer
 
 
+func item_scroll() -> ScrollContainer:
+	return get_node("Content/ItemScroll") as ScrollContainer
+
+
 func clear_rows() -> void:
 	for child: Node in rows().get_children():
 		rows().remove_child(child)

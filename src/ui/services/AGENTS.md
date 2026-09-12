@@ -21,6 +21,7 @@ Own the editable Party Wealth, Shop, Temple, Bank, and Treasure workspaces and t
 - Treasure resolves item artwork by its exact resource type and signed ID through the effective media catalog; only zero denotes an absent icon. Loot cells, inspection, and pickup effects preserve the same identity.
 - Party Wealth is always available after setup; location services appear only from explicit detached availability.
 - Stable hierarchy and responsive layout belong in scenes. Selection, filtering, hover, local drafts, and request-sized records remain presentation-owned.
+- Consecutive requests for the same Shop retain the selected shoppers, category, compact tab, valid inspected identity, and both ledger scroll offsets. A different Shop or intervening non-Shop task starts fresh. Item inspection and buy/sell gestures never reset an unchanged pack to the top.
 
 ## Work Guidance
 

@@ -14,6 +14,7 @@ Own reusable presentation-only item ledgers and drag/drop records shared by Inve
 - Callers recheck the supplied exact instance, destination, and availability before emitting an existing typed mutation.
 - Drag and drop is never a second gameplay path; visible click and keyboard actions remain available.
 - Exchange components do not calculate capacity, price, eligibility, or item knowledge.
+- The complete ledger is one drop destination, including occupied rows, icons, headers, scrollbars, and empty space. At drag start, descendant controls forward acceptance and delivery to the ledger while item buttons retain their exact source-drag payload.
 
 ## Work Guidance
 

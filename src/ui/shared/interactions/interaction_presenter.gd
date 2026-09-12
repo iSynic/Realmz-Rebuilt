@@ -109,6 +109,7 @@ func _exit_tree() -> void:
 
 
 func present(request: InteractionRequest, classic_text_context: String = "", game_view: GameView = null, media: ClassicMediaCatalog = null) -> void:
+	var shop_state := (_component as ShopInteraction).capture_browser_state() if _component is ShopInteraction and request != null and request.kind == InteractionRequest.SHOP else {}
 	if _can_present_nested_treasure_confirmation(request):
 		_request = request
 		_passive_text = false
@@ -123,6 +124,8 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 		return
 	_present_request_text(request, classic_text_context)
 	_mount_request_component(request, game_view, media)
+	if _component is ShopInteraction:
+		(_component as ShopInteraction).restore_browser_state(shop_state)
 
 
 func _begin_request(request: InteractionRequest) -> bool:

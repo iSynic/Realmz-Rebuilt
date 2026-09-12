@@ -28,6 +28,7 @@
 # Local Contracts
 
 - Presenter teardown releases its owned auxiliary controls without immediate tree restructuring or workspace notifications. Ordinary request dismissal retains its normal close and layout behavior.
+- Consecutive Shop requests hand off only the Shop component's presentation-local browser state; the component validates the Shop identity and resolves selections against the new typed request. No service facts or mutations are retained by the presenter.
 - Floating Yes/No and indexed choices retain their own locked input shield even though their text uses narrative context. Flash geometry is measured after binding the first actual message, never the scene placeholder.
 - A visible Classic flash owns acknowledgement input ahead of an underlying scenario request. Its dismissal never submits the covered request; application-wide pointer acknowledgement resumes only after the flash closes.
 - Side workspaces remain right-aligned when their natural minimum exceeds the compact roster width; minimum-size changes reapply that alignment. Shared spellbook facts wrap and reflow instead of forcing off-window controls.

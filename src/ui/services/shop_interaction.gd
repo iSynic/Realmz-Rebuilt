@@ -69,6 +69,33 @@ func configure(media: ClassicMediaCatalog, compact: bool) -> void:
 	_compact = compact
 
 
+func capture_browser_state() -> Dictionary:
+	if _body == null or _inventory_rows == null or _stock_rows == null:
+		return {}
+	return {"shopId": _body.shop_id, "leftId": _selected_character_id, "rightId": _right_character_id, "category": _selected_category,
+		"tab": (_browser.get_node("ShopBrowserTabs") as TabContainer).current_tab if _compact else 0,
+		"inventoryScroll": (_inventory_rows.get_parent() as ScrollContainer).scroll_vertical, "stockScroll": (_stock_rows.get_parent() as ScrollContainer).scroll_vertical,
+		"itemOwnerId": _selected_item_owner_id, "instanceId": _selected_item.instance_id if _selected_item != null else "", "stockKey": _selected_stock.stock_key if _selected_stock != null else ""}
+
+
+func restore_browser_state(state: Dictionary) -> void:
+	if state.is_empty() or String(state.get("shopId", "")) != _body.shop_id:
+		return
+	_select_category(StringName(state.get("category", &"weapons")))
+	if _character_by_id(String(state.get("leftId", ""))) != null:
+		_select_character(String(state.leftId))
+	if _character_by_id(String(state.get("rightId", ""))) != null:
+		_select_right_character(String(state.rightId))
+	if not String(state.get("instanceId", "")).is_empty():
+		_select_item(String(state.itemOwnerId), String(state.instanceId))
+	elif not String(state.get("stockKey", "")).is_empty():
+		_select_stock(String(state.stockKey))
+	if _compact:
+		(_browser.get_node("ShopBrowserTabs") as TabContainer).current_tab = int(state.get("tab", 0))
+	(_inventory_rows.get_parent() as ScrollContainer).set_deferred("scroll_vertical", int(state.get("inventoryScroll", 0)))
+	(_stock_rows.get_parent() as ScrollContainer).set_deferred("scroll_vertical", int(state.get("stockScroll", 0)))
+
+
 func build(request: InteractionRequest) -> void:
 	_body = request.body as ShopRequestBody
 	if _body == null:
@@ -177,7 +204,7 @@ func _bind_footer() -> void:
 	_sell_button.pressed.connect(_submit_sell)
 	_identify_button.pressed.connect(_submit_identify)
 	%ShopDone.pressed.connect(_submit_leave)
-	_configure_route_button(%ShopKeeperRestore, "Shop Keeper", &"command.shop_original", _restore_shopkeeper, {"asset_path": "res://src/ui/shared/assets/ui/commands/shop.png"})
+	_configure_route_button(%ShopKeeperRestore, "Shop Keeper", &"command.shop_original", func() -> void: _select_category(_selected_category), {"asset_path": "res://src/ui/shared/assets/ui/commands/shop.png"})
 	_configure_route_button(%ShopItems, "Items", &"command.inventory", _show_items, {"art_region": [5, 2, 36, 34], "art_clear_regions": [[0, 4, 4, 8]]})
 	_configure_route_button(%ShopMoney, "Money", &"command.money", _show_money, {"art_region": [5, 5, 35, 31], "art_clear_regions": [[0, 0, 8, 8]]})
 	_apply_profile_sizes()
@@ -221,16 +248,6 @@ func _select_character(character_id: String) -> void:
 
 func _select_right_character(character_id: String) -> void:
 	_right_character_id = character_id
-	_selected_stock = null
-	_selected_item = null
-	_selected_item_owner_id = ""
-	_update_shopper_buttons()
-	_refresh_stock()
-	_refresh_inspector()
-
-
-func _restore_shopkeeper() -> void:
-	_right_character_id = ""
 	_selected_stock = null
 	_selected_item = null
 	_selected_item_owner_id = ""
@@ -344,7 +361,6 @@ func _submit_leave() -> void:
 func _drop_on_character(payload: Dictionary, _character_id: String) -> void:
 	if StringName(payload.get("kind", &"")) != &"shop-stock-item":
 		return
-	_select_character(_selected_character_id)
 	_select_stock(String(payload.get("stockKey", "")))
 	_submit_buy()
 
