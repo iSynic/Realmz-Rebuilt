@@ -48,6 +48,40 @@ func handle_input(event: InputEvent) -> void:
 		_handle_exploration_input(event, key_event)
 
 
+func handle_controller_action(action_id: StringName, pressed: bool, repeated: bool = false) -> void:
+	if not pressed:
+		if action_id in [&"realmz_controller_up", &"realmz_controller_down", &"realmz_controller_left", &"realmz_controller_right"] and _application._held_movement != null:
+			_application._held_movement.stop(&"controller")
+		return
+	if action_id == &"realmz_controller_back":
+		var back := InputEventAction.new()
+		back.action = &"realmz_back"
+		back.pressed = true
+		handle_input(back)
+		return
+	if action_id == &"realmz_controller_system" and _application.accepts_route_input():
+		_application._shell_presenter.open_system_workspace()
+		_mark_handled()
+		return
+	var direction := _controller_direction(action_id)
+	if direction != Vector2i.ZERO and _application.accepts_exploration_input():
+		if _application._dungeon_presenter.is_active():
+			if not repeated:
+				_application._dungeon_presenter.handle_keyboard_press(direction)
+		elif not repeated:
+			_application._held_movement.start(&"controller", direction)
+		_mark_handled()
+
+
+func _controller_direction(action_id: StringName) -> Vector2i:
+	match action_id:
+		&"realmz_controller_up": return Vector2i.UP
+		&"realmz_controller_down": return Vector2i.DOWN
+		&"realmz_controller_left": return Vector2i.LEFT
+		&"realmz_controller_right": return Vector2i.RIGHT
+	return Vector2i.ZERO
+
+
 func _handle_debug_or_acknowledgement_input(event: InputEvent) -> bool:
 	if _application.debug_tools != null and _application.debug_tools.handle_input(event):
 		_mark_handled()

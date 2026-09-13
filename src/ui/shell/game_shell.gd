@@ -277,6 +277,10 @@ func handle_back() -> bool:
 	return handled
 
 
+func open_system_workspace() -> void:
+	_navigator.open_screen(&"system")
+
+
 func handle_route_shortcut(event: InputEvent) -> bool:
 	for definition: UiRouteDefinition in UiRouteCatalog.routes():
 		var shortcut := definition.shortcut

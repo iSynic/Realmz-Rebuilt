@@ -15,7 +15,7 @@ Own persistence for host presentation preferences outside gameplay saves.
 - Malformed data yields explicit diagnostics and safe defaults rather than a partially decoded value.
 - Save commits only after the temporary file decodes successfully.
 - Persist stable campaign identity only; never persist an absolute package path.
-- Schema 13 adds only the default-on custom-fog presentation preference; schema 12 migrates to that established default and off requests opaque Castle black.
+- Schema 14 adds typed controller bindings, prompt-family selection, independent stick dead zones with release hysteresis, and UI repeat timing. Schemas 1–13 migrate to controller defaults without changing their established values.
 
 ## Work Guidance
 

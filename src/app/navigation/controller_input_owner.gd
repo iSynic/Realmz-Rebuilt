@@ -1,0 +1,186 @@
+## Normalizes one active desktop controller before application input dispatch.
+
+class_name ControllerInputOwner
+extends Node
+
+signal action_pressed(action_id: StringName, repeated: bool)
+signal action_released(action_id: StringName)
+signal active_device_changed(device_id: int, prompt_family: String)
+signal input_suspended(reason: String)
+signal input_resumed
+
+const REPEATING_ACTIONS: Array[StringName] = [
+	&"realmz_controller_up",
+	&"realmz_controller_down",
+	&"realmz_controller_left",
+	&"realmz_controller_right",
+	&"realmz_controller_scroll_up",
+	&"realmz_controller_scroll_down",
+	&"realmz_controller_scroll_left",
+	&"realmz_controller_scroll_right",
+]
+const LEFT_AXES: Array[int] = [JOY_AXIS_LEFT_X, JOY_AXIS_LEFT_Y]
+const RIGHT_AXES: Array[int] = [JOY_AXIS_RIGHT_X, JOY_AXIS_RIGHT_Y]
+
+var _preferences := ControllerPreferences.new()
+var _active_device: int = -1
+var _held_actions: Dictionary = {}
+var _repeat_remaining_ms: Dictionary = {}
+var _axis_values: Dictionary = {}
+var _suspended: bool = false
+var _awaiting_neutral: bool = false
+
+
+func _ready() -> void:
+	set_process(true)
+	Input.joy_connection_changed.connect(_on_joy_connection_changed)
+
+
+func configure(preferences: ControllerPreferences) -> void:
+	_preferences = preferences.duplicate_value()
+	UiInputActions.apply_controller_bindings(_preferences)
+	clear_held_input()
+
+
+func active_device() -> int:
+	return _active_device
+
+
+func prompt_family() -> String:
+	return _resolved_prompt_family(_active_device)
+
+
+func is_suspended() -> bool:
+	return _suspended
+
+
+func handle_input(event: InputEvent) -> bool:
+	if not event is InputEventJoypadButton and not event is InputEventJoypadMotion:
+		return false
+	var device := event.device
+	if _active_device >= 0 and device != _active_device:
+		if not _is_deliberate_takeover(event):
+			return false
+		clear_held_input()
+		_set_active_device(device)
+	elif _active_device < 0 and _is_deliberate_takeover(event):
+		_set_active_device(device)
+	if device != _active_device:
+		return false
+	if event is InputEventJoypadMotion:
+		_axis_values[(event as InputEventJoypadMotion).axis] = (event as InputEventJoypadMotion).axis_value
+	if _suspended:
+		if _awaiting_neutral and _all_axes_neutral() and event is InputEventJoypadButton and (event as InputEventJoypadButton).pressed:
+			_suspended = false
+			_awaiting_neutral = false
+			input_resumed.emit()
+		return true
+	var consumed := false
+	for descriptor: Dictionary in _preferences.bindings:
+		if not _matches_physical_input(descriptor, event):
+			continue
+		consumed = true
+		var action_id := StringName(descriptor["action"])
+		var now_pressed := _descriptor_pressed(descriptor, event)
+		var was_pressed := bool(_held_actions.get(action_id, false))
+		if now_pressed and not was_pressed:
+			_held_actions[action_id] = true
+			_repeat_remaining_ms[action_id] = _preferences.repeat_initial_ms
+			action_pressed.emit(action_id, false)
+		elif not now_pressed and was_pressed:
+			_held_actions.erase(action_id)
+			_repeat_remaining_ms.erase(action_id)
+			action_released.emit(action_id)
+	return consumed
+
+
+func suspend(reason: String) -> void:
+	clear_held_input()
+	_suspended = true
+	_awaiting_neutral = true
+	input_suspended.emit(reason)
+
+
+func clear_held_input() -> void:
+	for action_id: StringName in _held_actions.keys():
+		action_released.emit(action_id)
+	_held_actions.clear()
+	_repeat_remaining_ms.clear()
+	_axis_values.clear()
+
+
+func _process(delta: float) -> void:
+	if _suspended:
+		return
+	var elapsed_ms := delta * 1000.0
+	for action_id: StringName in _held_actions.keys():
+		if action_id not in REPEATING_ACTIONS:
+			continue
+		var remaining := float(_repeat_remaining_ms.get(action_id, _preferences.repeat_initial_ms)) - elapsed_ms
+		while remaining <= 0.0:
+			action_pressed.emit(action_id, true)
+			remaining += _preferences.repeat_interval_ms
+		_repeat_remaining_ms[action_id] = remaining
+
+
+func _matches_physical_input(descriptor: Dictionary, event: InputEvent) -> bool:
+	if descriptor["kind"] == ControllerPreferences.BINDING_BUTTON:
+		return event is InputEventJoypadButton and (event as InputEventJoypadButton).button_index == int(descriptor["code"])
+	return event is InputEventJoypadMotion and (event as InputEventJoypadMotion).axis == int(descriptor["code"])
+
+
+func _descriptor_pressed(descriptor: Dictionary, event: InputEvent) -> bool:
+	if event is InputEventJoypadButton:
+		return (event as InputEventJoypadButton).pressed
+	var axis_event := event as InputEventJoypadMotion
+	var direction := int(descriptor["direction"])
+	var threshold := _dead_zone_for_axis(axis_event.axis)
+	var release_threshold := maxf(0.0, threshold - _preferences.release_hysteresis)
+	var action_id := StringName(descriptor["action"])
+	var magnitude := axis_event.axis_value * direction
+	return magnitude >= (release_threshold if bool(_held_actions.get(action_id, false)) else threshold)
+
+
+func _dead_zone_for_axis(axis: int) -> float:
+	return _preferences.right_stick_dead_zone if axis in RIGHT_AXES else _preferences.left_stick_dead_zone
+
+
+func _is_deliberate_takeover(event: InputEvent) -> bool:
+	if event is InputEventJoypadButton:
+		return (event as InputEventJoypadButton).pressed
+	var axis_event := event as InputEventJoypadMotion
+	return absf(axis_event.axis_value) >= _dead_zone_for_axis(axis_event.axis)
+
+
+func _all_axes_neutral() -> bool:
+	for axis: int in _axis_values:
+		if absf(float(_axis_values[axis])) >= _dead_zone_for_axis(axis):
+			return false
+	return true
+
+
+func _set_active_device(device_id: int) -> void:
+	_active_device = device_id
+	active_device_changed.emit(device_id, _resolved_prompt_family(device_id))
+
+
+func _on_joy_connection_changed(device_id: int, connected: bool) -> void:
+	if not connected and device_id == _active_device:
+		_active_device = -1
+		suspend("Controller disconnected. Reconnect, center the controls, then press a button to continue.")
+		active_device_changed.emit(-1, _resolved_prompt_family(-1))
+
+
+func _resolved_prompt_family(device_id: int) -> String:
+	if _preferences.prompt_family != ControllerPreferences.PROMPT_AUTO:
+		return _preferences.prompt_family
+	if device_id < 0:
+		return ControllerPreferences.PROMPT_GENERIC
+	var identity := Input.get_joy_name(device_id).to_lower()
+	if "playstation" in identity or "dualshock" in identity or "dualsense" in identity or "sony" in identity:
+		return ControllerPreferences.PROMPT_PLAYSTATION
+	if "switch" in identity or "nintendo" in identity or "joy-con" in identity:
+		return ControllerPreferences.PROMPT_SWITCH
+	if "xbox" in identity or "xinput" in identity:
+		return ControllerPreferences.PROMPT_XBOX
+	return ControllerPreferences.PROMPT_GENERIC

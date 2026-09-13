@@ -3,7 +3,7 @@
 class_name PresentationSettings
 extends RefCounted
 
-const SCHEMA_VERSION: int = 13
+const SCHEMA_VERSION: int = 14
 const MUSIC_SLOT_COUNT: int = 20
 const MUSIC_OFF: int = 0
 const MUSIC_PLAY: int = 1
@@ -39,6 +39,7 @@ var custom_fog_tile_enabled: bool = true
 var autojournal_enabled: bool = false
 var typography_mode: String = TYPOGRAPHY_CLASSIC
 var last_campaign_id: String = ""
+var controller := ControllerPreferences.new()
 
 
 func to_data() -> Dictionary:
@@ -66,6 +67,7 @@ func to_data() -> Dictionary:
 		"autojournalEnabled": autojournal_enabled,
 		"typographyMode": typography_mode,
 		"lastCampaignId": last_campaign_id,
+		"controller": controller.to_data(),
 	}
 
 
@@ -119,7 +121,9 @@ static func _versioned_fields_are_valid(data: Dictionary, schema_version: int) -
 		return false
 	if schema_version >= 12 and not data.get("lastCampaignId") is String:
 		return false
-	return schema_version < 13 or data.get("customFogTileEnabled") is bool
+	if schema_version >= 13 and not data.get("customFogTileEnabled") is bool:
+		return false
+	return schema_version < 14 or ControllerPreferences.from_data(data.get("controller")) != null
 
 
 static func _window_fields_are_valid(data: Dictionary) -> bool:
@@ -174,6 +178,7 @@ static func _settings_from_valid_data(data: Dictionary) -> PresentationSettings:
 	settings.autojournal_enabled = bool(data.get("autojournalEnabled", false))
 	settings.typography_mode = String(data.get("typographyMode", TYPOGRAPHY_CLASSIC))
 	settings.last_campaign_id = String(data.get("lastCampaignId", "")).strip_edges()
+	settings.controller = ControllerPreferences.from_data(data["controller"]) if data.has("controller") else ControllerPreferences.new()
 	return settings
 
 

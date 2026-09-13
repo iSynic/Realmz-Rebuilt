@@ -33,6 +33,8 @@ const DEFINITIONS: Array[Dictionary] = [
 	{"id": &"ui_screen_battle", "keys": [KEY_9], "alt": true},
 ]
 
+const CONTROLLER_ACTIONS: Array[StringName] = ControllerPreferences.ACTIONS
+
 
 static func ensure_defaults() -> void:
 	for definition: Dictionary in DEFINITIONS:
@@ -46,6 +48,28 @@ static func ensure_defaults() -> void:
 			event.physical_keycode = keycode
 			event.alt_pressed = bool(definition.get("alt", false))
 			InputMap.action_add_event(action_id, event)
+	for action_id: StringName in CONTROLLER_ACTIONS:
+		if not InputMap.has_action(action_id):
+			InputMap.add_action(action_id)
+
+
+static func apply_controller_bindings(preferences: ControllerPreferences) -> void:
+	ensure_defaults()
+	for action_id: StringName in CONTROLLER_ACTIONS:
+		for event: InputEvent in InputMap.action_get_events(action_id):
+			if event is InputEventJoypadButton or event is InputEventJoypadMotion:
+				InputMap.action_erase_event(action_id, event)
+	for descriptor: Dictionary in preferences.bindings:
+		var action_id := StringName(descriptor["action"])
+		if descriptor["kind"] == ControllerPreferences.BINDING_BUTTON:
+			var button := InputEventJoypadButton.new()
+			button.button_index = int(descriptor["code"])
+			InputMap.action_add_event(action_id, button)
+		else:
+			var axis := InputEventJoypadMotion.new()
+			axis.axis = int(descriptor["code"])
+			axis.axis_value = float(descriptor["direction"])
+			InputMap.action_add_event(action_id, axis)
 
 
 static func fast_spell_slot(event: InputEvent, allow_alt: bool = false) -> int:

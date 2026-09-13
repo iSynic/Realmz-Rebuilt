@@ -35,6 +35,8 @@ var debug_tools: DebugToolsHost
 var _campaigns: Array[CampaignPackageView] = []
 var _last_campaign_prewarm_requested: bool = false
 var _input_router: ApplicationInputRouter
+var _controller_input: ControllerInputOwner
+var _controller_resume_required: bool = false
 var _settings_controller: ApplicationSettingsController
 var lifecycle_host := ApplicationLifecycleHost.new()
 var character_files: ApplicationCharacterFilesHost
@@ -82,10 +84,13 @@ func _build_dependencies() -> void:
 	_dungeon_presenter = DungeonMap3DPresenter.new()
 	_held_movement = HeldMovementController.new()
 	_input_router = ApplicationInputRouter.new(self)
+	_controller_input = ControllerInputOwner.new()
+	_controller_input.configure(_presentation_settings.controller)
 	add_child(session_controller)
 	add_child(presentation_coordinator)
 	add_child(_dungeon_presenter)
 	add_child(_held_movement)
+	add_child(_controller_input)
 	debug_tools = DebugToolsHost.new()
 	add_child(debug_tools)
 	debug_tools.bind(session_controller, self, func() -> RealmzContent: return _active_content)
@@ -103,6 +108,10 @@ func _build_dependencies() -> void:
 
 
 func _bind_debug_and_movement() -> void:
+	_controller_input.action_pressed.connect(func(action_id: StringName, repeated: bool) -> void: _input_router.handle_controller_action(action_id, true, repeated))
+	_controller_input.action_released.connect(func(action_id: StringName) -> void: _input_router.handle_controller_action(action_id, false))
+	_controller_input.input_suspended.connect(_on_controller_input_suspended)
+	_controller_input.input_resumed.connect(_on_controller_input_resumed)
 	debug_tools.status_changed.connect(
 		func(message: String, failed: bool) -> void:
 			_shell_presenter.status.set_status(message, failed)
@@ -272,6 +281,8 @@ func _notification(what: int) -> void:
 			_held_movement.stop()
 		if _interaction_presenter != null:
 			_interaction_presenter.combat.set_fast_spell_dock_held(false)
+		if _controller_input != null:
+			_controller_input.suspend("Application focus changed. Center the controller, then press a button to continue.")
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
 		lifecycle_host.request_quit()
 
@@ -337,6 +348,9 @@ func _present_package_failure(message: String) -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if _controller_input != null and _controller_input.handle_input(event):
+		get_viewport().set_input_as_handled()
+		return
 	if _input_router != null:
 		_input_router.handle_input(event)
 
@@ -541,10 +555,24 @@ func _continue_persistent_auto_after_playback() -> void:
 	# Reduced motion can settle playback before its battlefield draws. Let that
 	# committed view reach the screen before another synchronous Auto activation.
 	await RenderingServer.frame_post_draw
-	if presentation_coordinator == null or presentation_coordinator.is_combat_playback_active() or not _queued_combat_auto_changes.is_empty() or lifecycle_host.has_active_interaction(): return
+	if presentation_coordinator == null or presentation_coordinator.is_combat_playback_active() or not _queued_combat_auto_changes.is_empty() or lifecycle_host.has_active_interaction() or _controller_resume_required: return
 	var response := ApplicationCombatPolicy.persistent_auto_response(session_controller.view())
 	if response != null:
 		submit_response(response)
+
+
+func _on_controller_input_suspended(reason: String) -> void:
+	_controller_resume_required = true
+	if _held_movement != null:
+		_held_movement.stop()
+	if _shell_presenter != null:
+		_shell_presenter.status.set_status(reason, true)
+
+
+func _on_controller_input_resumed() -> void:
+	_controller_resume_required = false
+	if _shell_presenter != null:
+		_shell_presenter.status.set_status("Controller input restored.")
 
 
 func _present_step_status(step: SessionStep) -> void:

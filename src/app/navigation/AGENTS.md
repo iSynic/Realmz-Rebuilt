@@ -6,8 +6,9 @@ Translate Godot input into named application actions, typed session commands, an
 
 ## Ownership
 
-- `ApplicationInputRouter` owns keyboard and pointer dispatch priority.
+- `ApplicationInputRouter` owns keyboard, pointer, and normalized controller dispatch priority.
 - `UiInputActions` owns the stable named `InputMap` action vocabulary used by the host.
+- `ControllerInputOwner` is the single active-pad owner. It resolves physical bindings into named actions, filters stick noise, applies dead-zone release hysteresis and UI repeat, clears held state at disconnect or focus loss, and requires neutral acknowledged input before resuming.
 
 ## Local Contracts
 
@@ -15,6 +16,7 @@ Translate Godot input into named application actions, typed session commands, an
 - Gameplay input becomes a typed intent or response before it crosses the session boundary.
 - The router calls only public application, lifecycle, shell, and presentation operations.
 - No navigation state enters saves or deterministic simulation.
+- Raw joypad input is consumed by the controller owner before Godot's built-in UI navigation can also act on it.
 
 ## Work Guidance
 

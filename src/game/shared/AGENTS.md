@@ -6,6 +6,8 @@ Own the small pure values that genuinely cross several game features or form a s
 
 ## Ownership
 
+- `presentation/ControllerPreferences` owns the pure controller-binding and tuning value embedded in presentation settings. Descriptors persist only primitive action, input-kind, code, and direction values; host input classes remain outside the pure settings contract.
+
 - `random/` owns deterministic `RealmzRng`, its saved state, and the scripted oracle source.
 - `RealmzArithmetic` owns explicit signed and unsigned Classic integer conversion.
 - `DomainEvent` carries detached committed-event data across the playthrough boundary.
