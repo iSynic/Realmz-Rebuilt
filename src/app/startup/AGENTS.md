@@ -14,6 +14,7 @@ Own the first visible frame and prepare immutable application and campaign conte
 ## Local Contracts
 
 - The first rendered frame contains only the opaque launch card and its source-backed cue.
+- Disable the hidden application's input callbacks after its ready notification; Godot automatically enables implemented callbacks during readiness. Only the visible front door consumes input until the deferred route handoff enables the application.
 - Package work is cancellable and joined on shutdown; only a validated detached result may change application content.
 - A failed, cancelled, or superseded preparation leaves the active session and media catalog unchanged.
 - Synchronous and worker package installation both honor the host's configured installation root, including isolated fixture storage.
@@ -27,6 +28,7 @@ Own the first visible frame and prepare immutable application and campaign conte
 ## Verification
 
 - Run `tests/presentation/test_classic_ui_system.gd` and `tools/startup_probe.gd` for startup-sensitive changes.
+- Startup controller regression input must enter through the viewport with the hidden application mounted; direct handler calls bypass competing input owners.
 - Run `tools/verify.ps1` before completing a workflow batch.
 
 ## Child DOX Index

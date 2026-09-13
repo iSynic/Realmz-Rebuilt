@@ -44,6 +44,8 @@ Own reproducible local verification, contract checks, fixture tooling, and relea
 
 ## Local Contracts
 
+- The startup probe records initial focus, activates Choose a Scenario with viewport joypad press/release events, and fails unless scenario selection becomes visible. Its isolated window tests native delivery through Godot; it does not prove physical device comfort or mapping.
+
 - Maximum-frame diagnostics retain the matching sample's detached coordinate, clock, fatigue, change domains and event kinds after its timing boundary; they must not mutate gameplay or alter performance budgets.
 - The rendered movement probe's optional sixth `movement-frames` argument requests an exact positive sample count within the existing duration ceiling; ending early fails. Before/after comparisons match that count, route, ordinary/hourly populations and initial/final canonical save hashes. Save hashing occurs after measurement and never changes cadence or the absolute gates.
 - Tools must resolve the repository root from their own path and avoid machine-specific committed paths.

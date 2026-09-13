@@ -191,14 +191,14 @@ func _finish_application_load(packed: PackedScene) -> void:
 		_show_startup_failure("Application construction failed.")
 		return
 	_application.visible = false
-	_application.set_process_input(false)
-	_application.set_process_unhandled_input(false)
 	_application.set_meta(&"startup_splash_suppressed", true)
 	_application.ready.connect(_on_application_ready, CONNECT_ONE_SHOT)
 	get_tree().root.add_child.call_deferred(_application)
 
 
 func _on_application_ready() -> void:
+	_application.set_process_input(false)
+	_application.set_process_unhandled_input(false)
 	_load_requested = false
 	_load_path = ""
 	_load_failed = false
