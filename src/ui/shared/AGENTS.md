@@ -20,6 +20,7 @@ Own reusable scene components, presentation policies, and interaction hosting us
 - Feature-specific scenes remain with their owning UI feature even when the shared presenter mounts them.
 - Shared policies may calculate geometry or bind detached values but do not reconstruct major screen hierarchies.
 - Generic workspace components contain no route-specific facts or commands; their feature owner supplies detached text and navigation remains shell-owned.
+- Shared controller overlays receive typed presentation entries and explicit input operations; they never listen to raw joypad events or dispatch gameplay themselves.
 
 ## Work Guidance
 
@@ -37,3 +38,4 @@ Own reusable scene components, presentation policies, and interaction hosting us
 - `assets/AGENTS.md` owns application-wide chrome, Classic media, fonts, sounds, music, shaders, and their provenance catalogs.
 - `media/AGENTS.md` owns media lookup, audio playback, and music context.
 - `style/AGENTS.md` owns reusable visual controls, typography, themes, and layout profiles.
+- `controller/AGENTS.md` owns the reusable scene-authored controller radial overlay and typed command display entries.

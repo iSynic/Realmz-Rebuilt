@@ -12,6 +12,8 @@ const SETTINGS_REPOSITORY_PATH := "res://src/storage/settings/settings_repositor
 const CLASSIC_TYPOGRAPHY_PATH := "res://src/ui/shared/style/classic_typography.gd"
 const UI_LAYOUT_PROFILE_PATH := "res://src/ui/shared/style/ui_layout_profile.gd"
 const PRESENTATION_SETTINGS_PATH := "res://src/game/shared/presentation/presentation_settings.gd"
+const CONTROLLER_INPUT_OWNER_PATH := "res://src/app/navigation/controller_input_owner.gd"
+const CONTROLLER_FOCUS_NAVIGATOR_PATH := "res://src/app/navigation/controller_focus_navigator.gd"
 const BASE_THEME_PATH := "res://src/ui/shared/style/classic_ui_theme.tres"
 const STONE_TEXTURE_PATH := "res://src/ui/shared/assets/ui/classic-charcoal-slate-tile.png"
 
@@ -42,6 +44,8 @@ var _presentation_settings_script: Script
 var _application_script_prime: Script
 var _application: Control
 var _startup_diagnostics: Node
+var _controller_input: Variant
+var _controller_focus: Variant
 var _load_path: String = ""
 var _load_started_at: int = 0
 var _load_requested: bool = false
@@ -88,6 +92,8 @@ func _process(_delta: float) -> void:
 
 
 func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT and _controller_input != null:
+		_controller_input.suspend("Application focus changed.")
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
 		if _application != null:
 			_request_action(ACTION_QUIT)
@@ -97,6 +103,9 @@ func _notification(what: int) -> void:
 
 func _input(event: InputEvent) -> void:
 	if _startup_diagnostics != null and bool(_startup_diagnostics.call("handle_input", event)):
+		get_viewport().set_input_as_handled()
+		return
+	if _controller_input != null and _controller_input.handle_input(event):
 		get_viewport().set_input_as_handled()
 
 
@@ -218,6 +227,9 @@ func _enter_application(action: StringName) -> void:
 	if _startup_diagnostics != null:
 		_startup_diagnostics.call("restore_overlay")
 	_menu_controller.hide_overlays()
+	if _controller_input != null:
+		_controller_input.queue_free()
+		_controller_input = null
 	_application.visible = true
 	_application.set_process_input(true)
 	_application.set_process_unhandled_input(true)
@@ -240,11 +252,36 @@ func _on_splash_exit_delay_timeout() -> void:
 		return
 	_menu_controller.show_splash()
 	_menu_controller.set_startup_actions_ready(application_ready())
+	_initialize_controller_navigation()
 	if application_ready():
 		_application.set_meta(&"startup_front_door_revealed", true)
 	_launch_music.play()
 	if _load_failed:
 		_startup_failure.visible = true
+
+
+func _initialize_controller_navigation() -> void:
+	if _controller_input != null or _presentation_settings == null:
+		return
+	_controller_input = (load(CONTROLLER_INPUT_OWNER_PATH) as Script).new()
+	_controller_focus = (load(CONTROLLER_FOCUS_NAVIGATOR_PATH) as Script).new()
+	_controller_input.configure(_presentation_settings.controller)
+	_controller_input.action_pressed.connect(_on_controller_action_pressed)
+	add_child(_controller_input)
+
+
+func _on_controller_action_pressed(action_id: StringName, _repeated: bool) -> void:
+	match action_id:
+		&"realmz_controller_confirm": _controller_focus.activate_focused(self)
+		&"realmz_controller_back":
+			if _startup_failure.visible:
+				_startup_failure.visible = false
+		&"realmz_controller_up": _controller_focus.move(self, Vector2i.UP)
+		&"realmz_controller_down": _controller_focus.move(self, Vector2i.DOWN)
+		&"realmz_controller_left": _controller_focus.move(self, Vector2i.LEFT)
+		&"realmz_controller_right": _controller_focus.move(self, Vector2i.RIGHT)
+		&"realmz_controller_section_previous": _controller_focus.focus_next(self, true)
+		&"realmz_controller_section_next": _controller_focus.focus_next(self)
 
 
 func _retry_startup_load() -> void:

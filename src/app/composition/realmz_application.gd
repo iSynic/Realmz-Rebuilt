@@ -112,6 +112,7 @@ func _bind_debug_and_movement() -> void:
 	_controller_input.action_released.connect(func(action_id: StringName) -> void: _input_router.handle_controller_action(action_id, false))
 	_controller_input.input_suspended.connect(_on_controller_input_suspended)
 	_controller_input.input_resumed.connect(_on_controller_input_resumed)
+	_controller_input.active_device_changed.connect(func(_device_id: int, family: String) -> void: _shell_presenter.show_controller_prompts(family))
 	debug_tools.status_changed.connect(
 		func(message: String, failed: bool) -> void:
 			_shell_presenter.status.set_status(message, failed)
@@ -351,6 +352,8 @@ func _input(event: InputEvent) -> void:
 	if _controller_input != null and _controller_input.handle_input(event):
 		get_viewport().set_input_as_handled()
 		return
+	if _shell_presenter != null and ((event is InputEventKey and (event as InputEventKey).pressed) or (event is InputEventMouseButton and (event as InputEventMouseButton).pressed)):
+		_shell_presenter.hide_controller_prompts()
 	if _input_router != null:
 		_input_router.handle_input(event)
 

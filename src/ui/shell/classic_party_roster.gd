@@ -194,6 +194,26 @@ func _activate_character(character_id: String) -> void:
 		character_selected.emit(character_id)
 
 
+func controller_select_relative(delta: int) -> bool:
+	if _current_view == null or _current_view.party_members.is_empty() or delta == 0:
+		return false
+	var ids: Array[String] = []
+	for character: CharacterView in _current_view.party_members:
+		ids.append(character.id)
+	var current_index := ids.find(_selected_character_id)
+	var next_index := wrapi((0 if current_index < 0 else current_index) + delta, 0, ids.size())
+	var row := _character_row(ids[next_index])
+	if character_selection_active():
+		if row != null and not row.disabled:
+			row.grab_focus()
+			return true
+		return false
+	_activate_character(ids[next_index])
+	if row != null:
+		row.grab_focus()
+	return true
+
+
 func _update_exploration_character_row(row: Button, character: CharacterView) -> void:
 	if row == null:
 		return

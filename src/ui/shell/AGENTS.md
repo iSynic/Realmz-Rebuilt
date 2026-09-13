@@ -16,6 +16,7 @@ Own the persistent Godot composition that surrounds every Realmz playthrough and
 - `SystemScreen` and `SystemWorkspace` own the editable Save & Load, Display, Audio, Pacing, Accessibility, Controls, and Diagnostics composition. Display exposes the default-on custom fog tile preference; off means exact Castle black, not decorative surround art. `SystemScreenController` binds detached save previews and presentation settings and instantiates only the exported save-slot row.
 - `MusicPlaylistDialog` and its reusable row scene own the twenty-slot Classic playlist editor. `DebugToolsDialog` owns the shared F12 Diagnostics surface and its debug-build-only command capability; `DebugActionConsole` owns debug-build-only readable committed-event history.
 - `ScreenContentPresenter` composes route-local binders against the scene-owned workspace body and generic shared record scenes; it owns detached route state and route-specific presentation audio, not navigation history.
+- `ControllerPromptStrip` presents the active physical-button family without consuming narrative space. The shell mounts one shared `ControllerRadialOverlay`; action entries come from `GameShellCommandController` and workspace entries come from `UiRouteCatalog`, preserving their ordering and availability reasons.
 
 ## Local Contracts
 
@@ -29,6 +30,7 @@ Own the persistent Godot composition that surrounds every Realmz playthrough and
 - Party-effect presentation treats borrowed condition arrays as read-only across repeated, replacement and inactive refreshes.
 - Roster effect tweens bind to their target row's lifetime, so a restore or roster replacement cancels callbacks before the old row is freed.
 - All gameplay mutations continue through the typed application/session boundary.
+- Controller focus uses stable route focus groups, restores by existing focus identity, reveals focused controls through their owning scroll container, and leaves a visible modal or radial in sole control until it closes.
 - Escape opens System only from exposed, completed-party Exploration. Setup, inspection, and front-door Back remain owned by their current surface; returning from assembly goes to the front door without discarding the setup party. Exploration input and spatial rendering independently reject unfinished party setup.
 
 ## Work Guidance

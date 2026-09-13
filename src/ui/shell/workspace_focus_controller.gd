@@ -51,6 +51,8 @@ func _assign_keys(parent: Node, route_id: StringName, next_index: int = 0) -> in
 		if child is Control and (child as Control).focus_mode != Control.FOCUS_NONE:
 			if not child.has_meta("focus_key"):
 				child.set_meta("focus_key", "%s:%d" % [route_id, next_index])
+			if not child.has_meta("focus_group"):
+				child.set_meta("focus_group", "route:%s" % route_id)
 			next_index += 1
 		next_index = _assign_keys(child, route_id, next_index)
 	return next_index

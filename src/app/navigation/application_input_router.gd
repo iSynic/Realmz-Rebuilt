@@ -6,6 +6,7 @@ extends RefCounted
 ## Translates host input into application routes, interaction responses, and typed game intents.
 
 var _application: Variant
+var _focus := ControllerFocusNavigator.new()
 
 
 func _init(application: Variant) -> void:
@@ -53,6 +54,29 @@ func handle_controller_action(action_id: StringName, pressed: bool, repeated: bo
 		if action_id in [&"realmz_controller_up", &"realmz_controller_down", &"realmz_controller_left", &"realmz_controller_right"] and _application._held_movement != null:
 			_application._held_movement.stop(&"controller")
 		return
+	if _application._shell_presenter.controller_radial_is_open():
+		if action_id == &"realmz_controller_confirm":
+			_application._shell_presenter.confirm_controller_radial()
+		elif action_id == &"realmz_controller_back":
+			_application._shell_presenter.cancel_controller_radial()
+		elif action_id == &"realmz_controller_section_previous":
+			_application._shell_presenter.page_controller_radial(-1)
+		elif action_id == &"realmz_controller_section_next":
+			_application._shell_presenter.page_controller_radial(1)
+		else:
+			var radial_direction := _controller_direction(action_id)
+			if radial_direction != Vector2i.ZERO:
+				_application._shell_presenter.move_controller_radial(radial_direction)
+		_mark_handled()
+		return
+	if action_id == &"realmz_controller_action_radial":
+		if _application._shell_presenter.open_controller_action_radial():
+			_mark_handled()
+		return
+	if action_id == &"realmz_controller_workspace_radial":
+		if _application._shell_presenter.open_controller_workspace_radial():
+			_mark_handled()
+		return
 	if action_id == &"realmz_controller_back":
 		var back := InputEventAction.new()
 		back.action = &"realmz_back"
@@ -63,7 +87,33 @@ func handle_controller_action(action_id: StringName, pressed: bool, repeated: bo
 		_application._shell_presenter.open_system_workspace()
 		_mark_handled()
 		return
+	if action_id == &"realmz_controller_confirm":
+		if _focus.activate_focused(_application):
+			_mark_handled()
+		return
+	if action_id == &"realmz_controller_section_previous" or action_id == &"realmz_controller_section_next":
+		_focus.focus_next(_application, action_id == &"realmz_controller_section_previous")
+		_mark_handled()
+		return
+	if action_id == &"realmz_controller_character_previous" or action_id == &"realmz_controller_character_next":
+		if _application._shell_presenter.controller_select_relative_character(-1 if action_id == &"realmz_controller_character_previous" else 1):
+			_mark_handled()
+		return
+	if action_id == &"realmz_controller_inspect":
+		_application._shell_presenter.show_controller_detail(_focus.inspection_text(_application))
+		_mark_handled()
+		return
+	var scroll_direction := _controller_scroll_direction(action_id)
+	if scroll_direction != Vector2i.ZERO:
+		if _focus.scroll_active(_application, scroll_direction):
+			_mark_handled()
+		return
 	var direction := _controller_direction(action_id)
+	var focused: Control = _application.get_viewport().gui_get_focus_owner()
+	if direction != Vector2i.ZERO and (focused != null or not _application.accepts_exploration_input()):
+		_focus.move(_application, direction)
+		_mark_handled()
+		return
 	if direction != Vector2i.ZERO and _application.accepts_exploration_input():
 		if _application._dungeon_presenter.is_active():
 			if not repeated:
@@ -79,6 +129,15 @@ func _controller_direction(action_id: StringName) -> Vector2i:
 		&"realmz_controller_down": return Vector2i.DOWN
 		&"realmz_controller_left": return Vector2i.LEFT
 		&"realmz_controller_right": return Vector2i.RIGHT
+	return Vector2i.ZERO
+
+
+func _controller_scroll_direction(action_id: StringName) -> Vector2i:
+	match action_id:
+		&"realmz_controller_scroll_up": return Vector2i.UP
+		&"realmz_controller_scroll_down": return Vector2i.DOWN
+		&"realmz_controller_scroll_left": return Vector2i.LEFT
+		&"realmz_controller_scroll_right": return Vector2i.RIGHT
 	return Vector2i.ZERO
 
 

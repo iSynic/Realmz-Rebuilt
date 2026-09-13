@@ -86,6 +86,8 @@ const MENU_CONTROLLER_SCRIPT := preload("res://src/ui/shell/game_shell_menu_cont
 @onready var _activity_indicator: PanelContainer = %ActivityIndicator
 @onready var _activity_icon: TextureRect = %ActivityIcon
 @onready var _music_dialog: MusicPlaylistDialog = %MusicPlaylistDialog
+@onready var _controller_prompts: ControllerPromptStrip = %ControllerPromptStrip
+@onready var _controller_radial: ControllerRadialOverlay = %ControllerRadialOverlay
 
 var _current_view: GameView
 var last_picture_media_diagnostic: Dictionary = {}
@@ -102,6 +104,7 @@ var _party_effects: GameShellPartyEffectsPresenter
 var _music_playlist_id: int = 0
 var _music_title: String = ""
 var _music_playing: bool = false
+var _controller_radial_kind: StringName = &""
 
 var navigator: ScreenNavigator:
 	get: return _navigator
@@ -135,6 +138,7 @@ func _ready() -> void:
 	_music_dialog.music_enabled_changed.connect(func(enabled: bool) -> void: music_enabled_changed.emit(enabled))
 	_music_dialog.music_volume_changed.connect(func(value: float) -> void: music_volume_changed.emit(value))
 	_music_dialog.playlist_mode_changed.connect(func(playlist_id: int, mode: int) -> void: music_playlist_mode_changed.emit(playlist_id, mode))
+	_controller_radial.command_selected.connect(_on_controller_radial_selected)
 	_navigator.start_requested.connect(func(path: String, seed: int) -> void: start_package_requested.emit(path, seed))
 	_navigator.cancel_package_requested.connect(func() -> void: cancel_package_requested.emit())
 	_navigator.refresh_requested.connect(func() -> void: refresh_campaigns_requested.emit())
@@ -279,6 +283,77 @@ func handle_back() -> bool:
 
 func open_system_workspace() -> void:
 	_navigator.open_screen(&"system")
+
+
+func show_controller_prompts(family: String) -> void:
+	_controller_prompts.present(family)
+
+
+func hide_controller_prompts() -> void:
+	_controller_prompts.hide_prompts()
+
+
+func show_controller_detail(value: String) -> void:
+	_controller_prompts.set_detail(value)
+
+
+func controller_select_relative_character(delta: int) -> bool:
+	return _party_roster.controller_select_relative(delta)
+
+
+func controller_radial_is_open() -> bool:
+	return _controller_radial.is_open()
+
+
+func open_controller_action_radial() -> bool:
+	var entries := _command_controller.controller_entries()
+	if entries.is_empty():
+		return false
+	_controller_radial_kind = &"action"
+	_controller_radial.set_title("ACTIONS")
+	_controller_radial.open(entries)
+	return true
+
+
+func open_controller_workspace_radial() -> bool:
+	var entries: Array[ControllerRadialEntry] = []
+	var route_reason := GameShellAvailability.route_change_reason(_current_view)
+	for definition: UiRouteDefinition in UiRouteCatalog.routes():
+		entries.append(ControllerRadialEntry.new(definition.route_id, definition.label, route_reason.is_empty(), route_reason))
+	_controller_radial_kind = &"workspace"
+	_controller_radial.set_title("WORKSPACES")
+	_controller_radial.open(entries)
+	return true
+
+
+func move_controller_radial(direction: Vector2i) -> void:
+	_controller_radial.move_direction(Vector2(direction))
+
+
+func page_controller_radial(delta: int) -> void:
+	if delta < 0: _controller_radial.previous_page()
+	else: _controller_radial.next_page()
+
+
+func confirm_controller_radial() -> void:
+	_controller_radial.confirm_selected()
+
+
+func cancel_controller_radial() -> bool:
+	if not _controller_radial.is_open():
+		return false
+	_controller_radial.cancel()
+	_controller_radial_kind = &""
+	return true
+
+
+func _on_controller_radial_selected(command_id: StringName) -> void:
+	var kind := _controller_radial_kind
+	_controller_radial_kind = &""
+	if kind == &"action":
+		_command_controller.activate_controller(command_id)
+	elif kind == &"workspace":
+		_navigator.open_screen(command_id)
 
 
 func handle_route_shortcut(event: InputEvent) -> bool:
