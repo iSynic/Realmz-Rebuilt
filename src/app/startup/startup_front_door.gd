@@ -51,6 +51,7 @@ var _load_started_at: int = 0
 var _load_requested: bool = false
 var _load_failed: bool = false
 var _splash_complete: bool = false
+var _route_transfer_pending: bool = false
 
 
 func _ready() -> void:
@@ -218,12 +219,17 @@ func _request_action(action: StringName) -> void:
 		if action == ACTION_QUIT:
 			get_tree().quit()
 		return
-	_enter_application(action)
+	if _route_transfer_pending:
+		return
+	_route_transfer_pending = true
+	_enter_application.call_deferred(action)
 
 
 func _enter_application(action: StringName) -> void:
+	_route_transfer_pending = false
 	if _application == null:
 		return
+	set_process_input(false)
 	if _startup_diagnostics != null:
 		_startup_diagnostics.call("restore_overlay")
 	_menu_controller.hide_overlays()

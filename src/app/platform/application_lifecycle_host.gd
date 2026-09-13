@@ -54,6 +54,7 @@ func request_quit() -> void:
 	_held_movement.stop()
 	if _interaction != null:
 		return
+	_shell.controller.cancel_radial()
 	if _save_and_quit_pending:
 		_save_and_quit_pending = false
 		_set_save_and_quit_mode(false)

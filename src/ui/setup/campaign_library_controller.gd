@@ -165,12 +165,16 @@ func set_presentation_settings(next_settings: PresentationSettings) -> void:
 
 
 func set_startup_actions_ready(ready: bool) -> void:
+	var became_ready := ready and not _startup_actions_ready
 	_startup_actions_ready = ready
 	for button: Button in startup_action_buttons:
 		button.disabled = not ready
 		button.tooltip_text = str(_startup_action_tooltips.get(button.name, "")) if ready else "Finishing startup…"
 	if ready and splash_overlay != null and splash_overlay.visible:
-		_focus_first(splash_overlay)
+		if became_ready and not startup_action_buttons.is_empty():
+			startup_action_buttons[0].grab_focus()
+		else:
+			_focus_first(splash_overlay)
 
 
 func apply_layout(profile: UiLayoutProfile, campaign_rect: Rect2, setup_rect: Rect2) -> void:

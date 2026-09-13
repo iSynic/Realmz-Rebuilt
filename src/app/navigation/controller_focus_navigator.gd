@@ -80,7 +80,7 @@ func focus_first(root: Control) -> Control:
 func activate_focused(root: Control) -> bool:
 	var viewport := root.get_viewport() if root != null else null
 	var focused := viewport.gui_get_focus_owner() if viewport != null else null
-	if focused == null or not focused.is_visible_in_tree():
+	if focused == null or not focused.is_visible_in_tree() or focused != root and not root.is_ancestor_of(focused):
 		focused = focus_first(root)
 	if focused is BaseButton and not (focused as BaseButton).disabled:
 		(focused as BaseButton).pressed.emit()

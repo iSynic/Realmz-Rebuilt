@@ -61,6 +61,15 @@ func handle_controller_action(action_id: StringName, pressed: bool, repeated: bo
 		return
 	if _handle_controller_overlay(action_id):
 		return
+	if _application.lifecycle_host.has_active_interaction() and action_id in [
+		&"realmz_controller_action_radial",
+		&"realmz_controller_workspace_radial",
+		&"realmz_controller_character_previous",
+		&"realmz_controller_character_next",
+		&"realmz_controller_system",
+	]:
+		_mark_handled()
+		return
 	var pending: InteractionRequest = _application.session_controller.view().active_interaction_request()
 	var combat_pending := pending != null and pending.kind == InteractionRequest.COMBAT
 	if combat_pending and _handle_controller_combat(action_id, direction_action, _controller_scroll_direction(action_id), repeated):

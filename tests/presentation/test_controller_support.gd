@@ -207,7 +207,7 @@ func _test_focus_navigation_activation_and_prompts() -> void:
 	modal_action.size = Vector2(120, 36)
 	modal.add_child(modal_action)
 	first.grab_focus()
-	assert_equal(navigator.focus_next(modal), modal_action, "modal focus traversal recovers inside its active root instead of advancing elsewhere in the viewport")
+	assert_equal(navigator.focus_next(modal), modal_action, "modal focus traversal recovers inside its active root instead of advancing elsewhere in the viewport"); var modal_activation := [false]; modal_action.pressed.connect(func() -> void: modal_activation[0] = true); first.grab_focus(); assert_true(navigator.activate_focused(modal) and modal_activation[0], "South recovers into the active modal instead of activating stale focus from the surface beneath it")
 	var prompts := load("res://src/ui/shell/controller_prompt_strip.tscn").instantiate() as ControllerPromptStrip
 	root.add_child(prompts)
 	await (Engine.get_main_loop() as SceneTree).process_frame
