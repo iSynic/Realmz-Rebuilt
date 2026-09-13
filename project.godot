@@ -12,6 +12,9 @@ config_version=5
 
 config/name="Realmz Rebuilt"
 config/version="0.1.0"
+config/icon="res://src/ui/shared/assets/ui/application-icon/realmz-icon-256.png"
+config/windows_native_icon="res://src/ui/shared/assets/ui/application-icon/realmz-icon.ico"
+config/macos_native_icon="res://src/ui/shared/assets/ui/application-icon/realmz-icon.icns"
 run/main_scene="res://src/ui/setup/startup_front_door.tscn"
 config/use_custom_user_dir=true
 config/custom_user_dir_name="RealmzRemake2"

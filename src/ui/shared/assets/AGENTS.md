@@ -6,12 +6,13 @@ Own Realmz 2 application chrome assets and their provenance.
 
 ## Ownership
 
-- App-owned textures, verified original bitmap controls, mounted/camp map markers, the exact PICT 302 four-heading dungeon arrow strip, the six stock landlook PICT atlases, exact scrolling-text `ppat` 129, the complete integrated Classic sound and stock music banks, shared item CIcon library, exact 14000–14063 party-effect animation bank, proven built-in combat CIcon families, and bundled fonts used by the Classic-wide shell.
+- App-owned textures, the source-authentic RLMZ APPL icon family, verified original bitmap controls, mounted/camp map markers, the exact PICT 302 four-heading dungeon arrow strip, the six stock landlook PICT atlases, exact scrolling-text `ppat` 129, the complete integrated Classic sound and stock music banks, shared item CIcon library, exact 14000–14063 party-effect animation bank, proven built-in combat CIcon families, and bundled fonts used by the Classic-wide shell.
 - SpriteCook, OpenAI ImageGen, donor-commit, Castle resource-fork, Google Fonts, dimension, license, modification, and local hash provenance.
 
 ## Local Contracts
 
 - Scenario-owned pictures, icons, portraits, sounds, and map art remain package media. Built-in resource families enter this folder only through an exact-commit catalog with explicit ownership, license, modifications, and byte hashes; scenario packages may override an exact application key.
+- `ui/application-icon/` preserves Castle BNDL 128's RLMZ APPL icon mapping as exact native 16-by-16 and 32-by-32 transparent pixels. The reviewed 48-by-48 and larger PNGs use nearest-neighbor scaling from the detailed 32-by-32 source; the ICO and ICNS containers embed those exact PNG payloads for native exports. `application-icon.json` pins source, mapping evidence, dimensions, derivation, and hashes.
 - Scrolling-text `ppat` 129 remains one exact 64-by-64 application-media asset. Presentation tiles it without stretching and resolves a same-key scenario override before this fallback.
 - `ui/map-parchment-tile.png` is the byte-exact project-owner-supplied 243-by-226 player-map mat texture recorded in `ui/map-parchment.json`. Presentation repeats it in both axes without stretching and confines it to the 12.5-percent border behind the drawn map; it never becomes the full cartographic-stage background.
 - `ui/fog-of-war-tile.png` is the byte-exact project-owner-supplied 32-by-32 unrevealed-map texture recorded in `ui/fog-of-war.json`. Presentation uses it by default at native cell scale with nearest filtering for every projected map cell withheld by LOS or Classic-window discovery; the user may replace it with opaque Castle black through the presentation preference. Seen or revealed terrain remains fully rendered, and decorative surround art remains outside the projected map.

@@ -17,6 +17,8 @@ if (-not (Test-Path -LiteralPath $presetPath)) {
     throw "export_presets.cfg is required."
 }
 
+& "$PSScriptRoot\ui-assets\verify-application-icon.ps1"
+
 $preset = Get-Content -Raw -LiteralPath $presetPath
 $presetSections = [regex]::Matches($preset, '(?ms)^\[preset\.\d+\]\s*(.*?)(?=^\[preset\.\d+(?:\.options)?\]|\z)')
 $expectedPresets = [ordered]@{
