@@ -5,6 +5,7 @@ extends Node
 
 signal action_pressed(action_id: StringName, repeated: bool)
 signal action_released(action_id: StringName)
+signal direction_changed(direction: Vector2i, repeated: bool)
 signal active_device_changed(device_id: int, prompt_family: String)
 signal input_suspended(reason: String)
 signal input_resumed
@@ -22,6 +23,12 @@ const REPEATING_ACTIONS: Array[StringName] = [
 	&"realmz_controller_scroll_left",
 	&"realmz_controller_scroll_right",
 ]
+const DIRECTION_ACTIONS: Array[StringName] = [
+	&"realmz_controller_up",
+	&"realmz_controller_down",
+	&"realmz_controller_left",
+	&"realmz_controller_right",
+]
 const LEFT_AXES: Array[int] = [JOY_AXIS_LEFT_X, JOY_AXIS_LEFT_Y]
 const RIGHT_AXES: Array[int] = [JOY_AXIS_RIGHT_X, JOY_AXIS_RIGHT_Y]
 
@@ -34,6 +41,8 @@ var _axis_values: Dictionary = {}
 var _suspended: bool = false
 var _awaiting_neutral: bool = false
 var _capture_action: StringName = &""
+var _direction_change_pending: bool = false
+var _direction_settle_frames: int = 0
 
 
 func _ready() -> void:
@@ -117,10 +126,14 @@ func handle_input(event: InputEvent) -> bool:
 			_held_actions[action_id] = true
 			_repeat_remaining_ms[action_id] = _preferences.repeat_initial_ms
 			action_pressed.emit(action_id, false)
+			if action_id in DIRECTION_ACTIONS:
+				_queue_direction_change(event is InputEventJoypadMotion)
 		elif not remains_pressed and was_pressed:
 			_held_actions.erase(action_id)
 			_repeat_remaining_ms.erase(action_id)
 			action_released.emit(action_id)
+			if action_id in DIRECTION_ACTIONS:
+				_queue_direction_change(event is InputEventJoypadMotion)
 	return consumed
 
 
@@ -132,27 +145,55 @@ func suspend(reason: String) -> void:
 
 
 func clear_held_input(clear_axes: bool = true) -> void:
+	var had_direction := _combined_direction() != Vector2i.ZERO
 	for action_id: StringName in _held_actions.keys():
 		action_released.emit(action_id)
 	_held_actions.clear()
 	_held_descriptors.clear()
 	_repeat_remaining_ms.clear()
+	_direction_change_pending = false
+	_direction_settle_frames = 0
 	if clear_axes:
 		_axis_values.clear()
+	if had_direction:
+		direction_changed.emit(Vector2i.ZERO, false)
 
 
 func _process(delta: float) -> void:
 	if _suspended:
 		return
+	if _direction_change_pending:
+		if _direction_settle_frames > 0:
+			_direction_settle_frames -= 1
+		else:
+			_direction_change_pending = false
+			direction_changed.emit(_combined_direction(), false)
 	var elapsed_ms := delta * 1000.0
+	var direction_repeat_due := false
 	for action_id: StringName in _held_actions.keys():
 		if action_id not in REPEATING_ACTIONS:
 			continue
 		var remaining := float(_repeat_remaining_ms.get(action_id, _preferences.repeat_initial_ms)) - elapsed_ms
 		while remaining <= 0.0:
 			action_pressed.emit(action_id, true)
+			if action_id in DIRECTION_ACTIONS:
+				direction_repeat_due = true
 			remaining += _preferences.repeat_interval_ms
 		_repeat_remaining_ms[action_id] = remaining
+	if direction_repeat_due:
+		direction_changed.emit(_combined_direction(), true)
+
+
+func _queue_direction_change(settle_axis_pair: bool) -> void:
+	_direction_change_pending = true
+	_direction_settle_frames = maxi(_direction_settle_frames, 1 if settle_axis_pair else 0)
+
+
+func _combined_direction() -> Vector2i:
+	return Vector2i(
+		int(bool(_held_actions.get(&"realmz_controller_right", false))) - int(bool(_held_actions.get(&"realmz_controller_left", false))),
+		int(bool(_held_actions.get(&"realmz_controller_down", false))) - int(bool(_held_actions.get(&"realmz_controller_up", false)))
+	)
 
 
 func _matches_physical_input(descriptor: Dictionary, event: InputEvent) -> bool:

@@ -41,9 +41,6 @@ script = ExtResource("1_shell")
 party_effect_slot_scene = ExtResource("8_effect_slot")
 theme = ExtResource("3_theme")
 
-[node name="ControllerPromptStrip" parent="." instance=ExtResource("9_controller_prompt")]
-unique_name_in_owner = true
-
 [node name="ControllerRadialOverlay" parent="." instance=ExtResource("10_controller_radial")]
 unique_name_in_owner = true
 z_index = 95
@@ -82,54 +79,67 @@ offset_bottom = 28.0
 grow_horizontal = 2
 z_index = 20
 
-[node name="MenuRow" type="HBoxContainer" parent="MenuStrip"]
-unique_name_in_owner = true
+[node name="MenuChromeColumn" type="VBoxContainer" parent="MenuStrip"]
 layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="MenuSurface" type="Control" parent="MenuStrip/MenuChromeColumn"]
+custom_minimum_size = Vector2(0, 28)
+layout_mode = 2
+
+[node name="MenuRow" type="HBoxContainer" parent="MenuStrip/MenuChromeColumn/MenuSurface"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 theme_override_constants/separation = 2
 
-[node name="InfoMenu" type="MenuButton" parent="MenuStrip/MenuRow"]
+[node name="InfoMenu" type="MenuButton" parent="MenuStrip/MenuChromeColumn/MenuSurface/MenuRow"]
 layout_mode = 2
 text = "Info"
 
-[node name="GameMenu" type="MenuButton" parent="MenuStrip/MenuRow"]
+[node name="GameMenu" type="MenuButton" parent="MenuStrip/MenuChromeColumn/MenuSurface/MenuRow"]
 layout_mode = 2
 text = "Game"
 
-[node name="AdventureMenu" type="MenuButton" parent="MenuStrip/MenuRow"]
+[node name="AdventureMenu" type="MenuButton" parent="MenuStrip/MenuChromeColumn/MenuSurface/MenuRow"]
 layout_mode = 2
 text = "Adventure"
 
-[node name="CharacterMenu" type="MenuButton" parent="MenuStrip/MenuRow"]
+[node name="CharacterMenu" type="MenuButton" parent="MenuStrip/MenuChromeColumn/MenuSurface/MenuRow"]
 layout_mode = 2
 text = "Character"
 
-[node name="BestiaryMenu" type="MenuButton" parent="MenuStrip/MenuRow"]
+[node name="BestiaryMenu" type="MenuButton" parent="MenuStrip/MenuChromeColumn/MenuSurface/MenuRow"]
 layout_mode = 2
 text = "Bestiary"
 tooltip_text = "Bestiary facts are not supplied by the current detached view."
 disabled = true
 
-[node name="AlliesMenu" type="MenuButton" parent="MenuStrip/MenuRow"]
+[node name="AlliesMenu" type="MenuButton" parent="MenuStrip/MenuChromeColumn/MenuSurface/MenuRow"]
 layout_mode = 2
 text = "Allies"
 
-[node name="MapsMenu" type="MenuButton" parent="MenuStrip/MenuRow"]
+[node name="MapsMenu" type="MenuButton" parent="MenuStrip/MenuChromeColumn/MenuSurface/MenuRow"]
 layout_mode = 2
 text = "Maps / Notes"
 
-[node name="PreferencesMenu" type="MenuButton" parent="MenuStrip/MenuRow"]
+[node name="PreferencesMenu" type="MenuButton" parent="MenuStrip/MenuChromeColumn/MenuSurface/MenuRow"]
 layout_mode = 2
 text = "Preferences"
 
-[node name="MusicMenu" type="MenuButton" parent="MenuStrip/MenuRow"]
+[node name="MusicMenu" type="MenuButton" parent="MenuStrip/MenuChromeColumn/MenuSurface/MenuRow"]
 layout_mode = 2
 text = "Music"
 
-[node name="MenuSpacer" type="Control" parent="MenuStrip/MenuRow"]
+[node name="MenuSpacer" type="Control" parent="MenuStrip/MenuChromeColumn/MenuSurface/MenuRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="PackageStatus" type="Label" parent="MenuStrip/MenuRow"]
+[node name="PackageStatus" type="Label" parent="MenuStrip/MenuChromeColumn/MenuSurface/MenuRow"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.49, 0.83, 0.9, 1)
@@ -137,11 +147,19 @@ text = "No campaign"
 vertical_alignment = 1
 text_overrun_behavior = 3
 
-[node name="CompactMenu" type="MenuButton" parent="MenuStrip"]
+[node name="CompactMenu" type="MenuButton" parent="MenuStrip/MenuChromeColumn/MenuSurface"]
 unique_name_in_owner = true
 visible = false
-layout_mode = 2
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 text = "Realmz"
+
+[node name="ControllerPromptStrip" parent="MenuStrip/MenuChromeColumn" instance=ExtResource("9_controller_prompt")]
+unique_name_in_owner = true
 
 [node name="StageFrame" type="NinePatchRect" parent="."]
 unique_name_in_owner = true

@@ -51,8 +51,10 @@ func _test_controller_owner_edges_hysteresis_and_takeover() -> void:
 	owner.configure(ControllerPreferences.new())
 	var pressed: Array[StringName] = []
 	var released: Array[StringName] = []
+	var directions: Array[Vector2i] = []
 	owner.action_pressed.connect(func(action_id: StringName, _repeated: bool) -> void: pressed.append(action_id))
 	owner.action_released.connect(func(action_id: StringName) -> void: released.append(action_id))
+	owner.direction_changed.connect(func(direction: Vector2i, _repeated: bool) -> void: directions.append(direction))
 	var noise := InputEventJoypadMotion.new()
 	noise.device = 2
 	noise.axis = JOY_AXIS_LEFT_X
@@ -65,6 +67,7 @@ func _test_controller_owner_edges_hysteresis_and_takeover() -> void:
 	right.axis_value = 0.26
 	assert_true(owner.handle_input(right), "a deliberate stick direction is consumed by the normalized owner")
 	assert_equal([owner.active_device(), pressed], [2, [&"realmz_controller_right"]], "deliberate input claims one pad and produces one direction edge")
+	var down := InputEventJoypadMotion.new(); down.device = 2; down.axis = JOY_AXIS_LEFT_Y; down.axis_value = 0.26; owner.handle_input(down); owner.call("_process", 0.0); owner.call("_process", 0.0); assert_equal(directions, [Vector2i(1, 1)], "paired analog axes settle into one quantized diagonal instead of dispatching two cardinal steps"); down.axis_value = 0.0; owner.handle_input(down); released.clear()
 	right.axis_value = 0.2
 	owner.handle_input(right)
 	assert_true(released.is_empty(), "release hysteresis retains the direction slightly below its press threshold")
@@ -245,6 +248,9 @@ func _test_controller_radial_pages_and_explicit_commit() -> void:
 	assert_true(host.get_global_rect().encloses(card.get_global_rect()), "the radial card remains bounded in the Classic 800 by 600 composition: host=%s card=%s" % [host.get_global_rect(), card.get_global_rect()])
 	radial.cancel()
 	assert_false(radial.is_open(), "cancel closes the radial without dispatching another command")
+	var shell := load("res://src/ui/shell/game_shell.tscn").instantiate() as GameShell; host.add_child(shell); await (Engine.get_main_loop() as SceneTree).process_frame; shell.controller.show_prompts(ControllerPreferences.PROMPT_XBOX)
+	for shell_size: Vector2 in [Vector2(800, 600), Vector2(1280, 720)]: host.size = shell_size; await (Engine.get_main_loop() as SceneTree).process_frame; var prompt_rect := (shell.find_child("ControllerPromptStrip", true, false) as Control).get_global_rect(); var menu_rect := (shell.find_child("MenuStrip", true, false) as Control).get_global_rect(); var stage_rect := (shell.find_child("StageFrame", true, false) as Control).get_global_rect(); var footer_rect := (shell.find_child("BottomRegion", true, false) as Control).get_global_rect(); assert_true(menu_rect.encloses(prompt_rect) and prompt_rect.end.y <= stage_rect.position.y and not prompt_rect.intersects(footer_rect), "the controller prompt owns reserved menu chrome without covering the stage or footer at %s" % shell_size)
+	var activated: Array[StringName] = []; assert_true(shell.controller.open_interaction_radial([ControllerRadialEntry.new(&"speak", "Speak")], func(command_id: StringName) -> void: activated.append(command_id)), "an interaction can claim the shared action radial"); shell.controller.confirm_radial(); assert_equal(activated, [&"speak"], "confirming an interaction radial retains and invokes its interaction owner")
 	host.free()
 
 

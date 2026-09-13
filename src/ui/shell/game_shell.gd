@@ -131,8 +131,14 @@ class ControllerAccess:
 	extends RefCounted
 	var _shell: Variant
 	func _init(shell: Variant) -> void: _shell = shell
-	func show_prompts(family: String) -> void: _shell._controller_prompts.present(family)
-	func hide_prompts() -> void: _shell._controller_prompts.hide_prompts()
+	func show_prompts(family: String) -> void:
+		var was_visible: bool = _shell._controller_prompts.visible
+		_shell._controller_prompts.present(family)
+		if not was_visible: _shell.refresh_layout()
+	func hide_prompts() -> void:
+		if not _shell._controller_prompts.visible: return
+		_shell._controller_prompts.hide_prompts()
+		_shell.refresh_layout()
 	func show_detail(value: String) -> void: _shell._controller_prompts.set_detail(value)
 	func select_relative_character(delta: int) -> bool: return _shell._party_roster.controller_select_relative(delta)
 	func receive_binding(action_id: StringName, descriptor: Dictionary) -> void: _shell._navigator.content_presenter.receive_controller_binding(action_id, descriptor)
@@ -162,8 +168,8 @@ class ControllerAccess:
 		return true
 	func open_interaction_radial(entries: Array[ControllerRadialEntry], activation: Callable) -> bool:
 		if entries.is_empty() or not activation.is_valid(): return false
-		_shell._controller_radial_activation = activation
 		_open_radial(&"interaction", "ACTIONS", entries)
+		_shell._controller_radial_activation = activation
 		return true
 	func open_workspace_radial() -> bool:
 		var entries: Array[ControllerRadialEntry] = []

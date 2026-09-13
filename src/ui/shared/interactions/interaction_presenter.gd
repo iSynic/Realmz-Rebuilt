@@ -9,9 +9,10 @@ class ControllerAccess:
 	var _presenter: Variant
 
 	func _init(presenter: Variant) -> void: _presenter = presenter
-	func actions() -> Array[ControllerRadialEntry]: return _presenter._component.controller_actions() if _presenter._component != null else []
-	func activate_action(action_id: StringName) -> bool: return _presenter._component != null and _presenter._component.activate_controller_action(action_id)
-	func submit_acknowledgement() -> bool: return _presenter.submit_classic_acknowledgement()
+	func actions() -> Array[ControllerRadialEntry]: return _presenter._component.controller_actions() if not _presenter._flash.is_open() and _presenter._component != null else []
+	func activate_action(action_id: StringName) -> bool: return not _presenter._flash.is_open() and _presenter._component != null and _presenter._component.activate_controller_action(action_id)
+	func submit_acknowledgement() -> bool: return _presenter._flash.dismiss() or _presenter.submit_classic_acknowledgement()
+	func focus_root() -> Control: return _presenter._overlays.controller_focus_root()
 
 
 const LayoutPolicy := preload("res://src/ui/shared/interactions/interaction_layout_policy.gd")
@@ -542,7 +543,7 @@ func _add_hint(text: String) -> Label:
 func _prepare_interaction_focus() -> void:
 	_reset_interaction_scroll()
 	var preferred := _component.preferred_initial_focus() if _component != null else null
-	var first := preferred if preferred != null else _first_focusable(_options)
+	var first := preferred if preferred != null else _first_focusable(_overlays.controller_focus_root())
 	if first != null:
 		first.grab_focus()
 	_reset_interaction_scroll()

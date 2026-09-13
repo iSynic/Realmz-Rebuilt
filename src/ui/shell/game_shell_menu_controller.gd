@@ -22,19 +22,19 @@ func rebuild(game_view: GameView, settings: PresentationSettings, music_title: S
 	var contextual_definition: Dictionary = owner._command_controller.presentation_definition(ClassicCommandCatalog.command(&"contextual"))
 	var contextual_label := String(contextual_definition.get("label", "Encounter"))
 	var contextual_availability := StringName(contextual_definition.get("availability", &"contextual_encounter"))
-	fill(owner.get_node("MenuStrip/MenuRow/InfoMenu"), [
+	fill(owner.get_node("MenuStrip/MenuChromeColumn/MenuSurface/MenuRow/InfoMenu"), [
 		{"label": "About Realmz Rebuilt", "route": &"system"},
 		{"label": "Package identity and readiness", "route": &"system"},
 		{"label": "Diagnostics", "route": &"system"},
 	])
-	fill(owner.get_node("MenuStrip/MenuRow/GameMenu"), [
+	fill(owner.get_node("MenuStrip/MenuChromeColumn/MenuSurface/MenuRow/GameMenu"), [
 		{"label": "Campaigns…", "system": &"campaigns", "disabled_reason": GameShellAvailability.campaign_library_reason(game_view)},
 		{"label": "Save & Load…", "route": &"system", "disabled_reason": GameShellAvailability.save_reason(game_view)}, {"label": "Quick Save 1", "system": &"save", "value": "quick", "disabled_reason": GameShellAvailability.save_reason(game_view)}, {"label": "Quick Save 2", "system": &"save", "value": "quick-2", "disabled_reason": GameShellAvailability.save_reason(game_view)},
 		{"label": "Quick Load 1", "system": &"load", "value": "quick", "disabled_reason": GameShellAvailability.load_reason(game_view)}, {"label": "Quick Load 2", "system": &"load", "value": "quick-2", "disabled_reason": GameShellAvailability.load_reason(game_view)},
 		{"label": "Main Menu…", "system": &"end_adventure", "disabled_reason": GameShellAvailability.end_adventure_reason(game_view)},
 		{"label": "Quit", "system": &"quit"},
 	])
-	fill(owner.get_node("MenuStrip/MenuRow/AdventureMenu"), [
+	fill(owner.get_node("MenuStrip/MenuChromeColumn/MenuSurface/MenuRow/AdventureMenu"), [
 		{"label": "Explore", "route": &"exploration"},
 		{"label": "Search", "command": &"search_mode", "disabled_reason": GameShellAvailability.action_reason(game_view, &"toggle_search")},
 		{"label": "Area Search", "command": &"area_search", "disabled_reason": GameShellAvailability.action_reason(game_view, &"area_search")},
@@ -45,17 +45,17 @@ func rebuild(game_view: GameView, settings: PresentationSettings, music_title: S
 		{"label": contextual_label, "command": &"contextual", "disabled_reason": GameShellAvailability.action_reason(game_view, contextual_availability)},
 		{"label": "Money", "command": &"money", "disabled_reason": GameShellAvailability.action_reason(game_view, &"money_action")},
 	])
-	fill(owner.get_node("MenuStrip/MenuRow/CharacterMenu"), [
+	fill(owner.get_node("MenuStrip/MenuChromeColumn/MenuSurface/MenuRow/CharacterMenu"), [
 		{"label": "Party Order", "route": &"character"}, {"label": "Character Sheets", "route": &"character"},
 		{"label": "Inventory", "route": &"inventory"}, {"label": "Spells", "route": &"spells"}, {"label": "Vault", "route": &"vault"},
 	])
-	fill(owner.get_node("MenuStrip/MenuRow/AlliesMenu"), [
+	fill(owner.get_node("MenuStrip/MenuChromeColumn/MenuSurface/MenuRow/AlliesMenu"), [
 		{"label": "Current Allies", "route": &"allies", "disabled_reason": GameShellAvailability.allies_reason(game_view)},
 		{"label": "Bestiary", "route": &"bestiary"},
 	])
-	fill(owner.get_node("MenuStrip/MenuRow/MapsMenu"), [{"label": "Maps and Notes", "route": &"journal"}, {"label": "Acquired Maps", "route": &"journal"}])
-	fill(owner.get_node("MenuStrip/MenuRow/PreferencesMenu"), [{"label": "Display, Audio, and Access", "route": &"system"}, {"label": "Save, Load, and Package Diagnostics", "route": &"system"}])
-	fill(owner.get_node("MenuStrip/MenuRow/MusicMenu"), [
+	fill(owner.get_node("MenuStrip/MenuChromeColumn/MenuSurface/MenuRow/MapsMenu"), [{"label": "Maps and Notes", "route": &"journal"}, {"label": "Acquired Maps", "route": &"journal"}])
+	fill(owner.get_node("MenuStrip/MenuChromeColumn/MenuSurface/MenuRow/PreferencesMenu"), [{"label": "Display, Audio, and Access", "route": &"system"}, {"label": "Save, Load, and Package Diagnostics", "route": &"system"}])
+	fill(owner.get_node("MenuStrip/MenuChromeColumn/MenuSurface/MenuRow/MusicMenu"), [
 		{"label": "Now Playing: %s" % (music_title if music_playing else "Nothing"), "disabled_reason": "Current music title"},
 		{"label": "Stop Music" if settings.music_enabled else "Play Music", "system": &"music_toggle"},
 		{"label": "Playlist…", "system": &"music_playlist"},

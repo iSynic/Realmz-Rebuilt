@@ -192,6 +192,13 @@ func apply_layout() -> void:
 	_apply_nested_modal_layout()
 
 
+func controller_focus_root() -> Control:
+	for candidate: Control in [_nested_modal, _application_workspace_panel, _side_workspace_panel, _encounter_dock_panel]:
+		if candidate != null and is_instance_valid(candidate) and candidate.is_visible_in_tree():
+			return candidate
+	return _presenter
+
+
 static func modal_shield_target_index(shield_index: int, presenter_index: int) -> int:
 	return maxi(0, presenter_index - 1 if shield_index < presenter_index else presenter_index)
 

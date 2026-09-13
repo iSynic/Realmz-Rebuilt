@@ -27,6 +27,7 @@ var _spell_screen_controller: SpellsScreenController
 var _inventory_screen_controller: InventoryScreenController
 var _inventory_screen_controller_content: VBoxContainer
 var _choice_done_button: ClassicBitmapButton
+var _command_buttons: Dictionary = {}
 
 
 func configure(media: ClassicMediaCatalog, game_view: GameView = null, compact: bool = false) -> void:
@@ -66,13 +67,14 @@ func build(request: InteractionRequest) -> void:
 	_body = request.body as ComplexEncounterRequestBody
 	if _body == null:
 		return
+	_command_buttons = {&"action": %EncounterCommandAction, &"item": %EncounterCommandItem, &"thief": %EncounterCommandThief, &"word": %EncounterCommandWord, &"spell": %EncounterCommandSpell, &"back": %EncounterCommandBack}
 	_classify_actions()
-	_configure_command(%EncounterCommandAction, &"action", &"encounter.action", "Action", not _choice_actions.is_empty(), "No authored actions are available.")
-	_configure_command(%EncounterCommandItem, &"item", &"encounter.items", "Items", _item_action != null and not _body.items.is_empty(), "No eligible item is available.")
-	_configure_command(%EncounterCommandThief, &"thief", &"encounter.skills", "Skills", _thief_action != null, "No thief action is available.")
-	_configure_command(%EncounterCommandWord, &"word", &"encounter.speak", "Speak", _word_action != null, "This encounter accepts no spoken response.")
-	_configure_command(%EncounterCommandSpell, &"spell", &"command.spells", "Spells", _spell_action != null and not _body.spells.is_empty(), "No eligible spell is available.")
-	_configure_command(%EncounterCommandBack, &"back", &"encounter.stop", "Stop", _back_action != null, "This encounter cannot be left yet.")
+	_configure_command(_command_buttons[&"action"], &"action", &"encounter.action", "Action", not _choice_actions.is_empty(), "No authored actions are available.")
+	_configure_command(_command_buttons[&"item"], &"item", &"encounter.items", "Items", _item_action != null and not _body.items.is_empty(), "No eligible item is available.")
+	_configure_command(_command_buttons[&"thief"], &"thief", &"encounter.skills", "Skills", _thief_action != null, "No thief action is available.")
+	_configure_command(_command_buttons[&"word"], &"word", &"encounter.speak", "Speak", _word_action != null, "This encounter accepts no spoken response.")
+	_configure_command(_command_buttons[&"spell"], &"spell", &"command.spells", "Spells", _spell_action != null and not _body.spells.is_empty(), "No eligible spell is available.")
+	_configure_command(_command_buttons[&"back"], &"back", &"encounter.stop", "Stop", _back_action != null, "This encounter cannot be left yet.")
 	encounter_dock_requested.emit(%EncounterCommandDeck)
 
 
@@ -88,14 +90,15 @@ func handle_back() -> bool:
 
 func controller_actions() -> Array[ControllerRadialEntry]:
 	var result: Array[ControllerRadialEntry] = []
-	for entry: Array in [[&"action", %EncounterCommandAction, "Action"], [&"item", %EncounterCommandItem, "Items"], [&"thief", %EncounterCommandThief, "Skills"], [&"word", %EncounterCommandWord, "Speak"], [&"spell", %EncounterCommandSpell, "Spells"], [&"back", %EncounterCommandBack, "Stop"]]:
-		var button := entry[1] as BaseButton
-		result.append(ControllerRadialEntry.new(entry[0], entry[2], not button.disabled, button.tooltip_text if button.disabled else ""))
+	for entry: Array in [[&"action", "Action"], [&"item", "Items"], [&"thief", "Skills"], [&"word", "Speak"], [&"spell", "Spells"], [&"back", "Stop"]]:
+		var button := _command_buttons.get(entry[0]) as BaseButton
+		if button != null:
+			result.append(ControllerRadialEntry.new(entry[0], entry[1], not button.disabled, button.tooltip_text if button.disabled else ""))
 	return result
 
 
 func activate_controller_action(action_id: StringName) -> bool:
-	var button := {&"action": %EncounterCommandAction, &"item": %EncounterCommandItem, &"thief": %EncounterCommandThief, &"word": %EncounterCommandWord, &"spell": %EncounterCommandSpell, &"back": %EncounterCommandBack}.get(action_id) as BaseButton
+	var button := _command_buttons.get(action_id) as BaseButton
 	if button == null or button.disabled:
 		return false
 	_on_command_requested(action_id)

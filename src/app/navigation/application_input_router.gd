@@ -80,11 +80,33 @@ func handle_controller_action(action_id: StringName, pressed: bool, repeated: bo
 	_handle_controller_direction(direction_action, repeated)
 
 
-func _handle_controller_navigation_action(action_id: StringName) -> bool:
+func handle_controller_direction(direction: Vector2i, repeated: bool = false) -> void:
+	if direction == Vector2i.ZERO:
+		_stop_controller_movement()
+		return
+	if _application.presentation_coordinator != null and _application.presentation_coordinator.is_combat_playback_active():
+		return
+	if _application._shell_presenter.controller.text_editor_is_open():
+		_application._shell_presenter.controller.move_text_editor(direction)
+		_mark_handled()
+		return
+	if _application._shell_presenter.controller.radial_is_open():
+		_application._shell_presenter.controller.move_radial(direction)
+		_mark_handled()
+		return
 	var pending: InteractionRequest = _application.session_controller.view().active_interaction_request()
+	if pending != null and pending.kind == InteractionRequest.COMBAT and _handle_controller_combat(&"", direction, Vector2i.ZERO, repeated):
+		_mark_handled()
+		return
+	_handle_controller_direction(direction, repeated)
+
+
+func _handle_controller_navigation_action(action_id: StringName) -> bool:
+	var interaction_blocking: bool = _application._interaction_presenter.has_blocking_request()
 	if action_id == &"realmz_controller_action_radial":
 		_stop_controller_movement()
-		if pending != null and _application._shell_presenter.controller.open_interaction_radial(_application._interaction_presenter.controller.actions(), _application._interaction_presenter.controller.activate_action):
+		if interaction_blocking:
+			_application._shell_presenter.controller.open_interaction_radial(_application._interaction_presenter.controller.actions(), _application._interaction_presenter.controller.activate_action)
 			_mark_handled()
 			return true
 		if _application._shell_presenter.controller.open_action_radial():
@@ -92,6 +114,9 @@ func _handle_controller_navigation_action(action_id: StringName) -> bool:
 		return true
 	if action_id == &"realmz_controller_workspace_radial":
 		_stop_controller_movement()
+		if interaction_blocking:
+			_mark_handled()
+			return true
 		if _application._shell_presenter.controller.open_workspace_radial():
 			_mark_handled()
 		return true
@@ -273,7 +298,7 @@ func _stop_controller_movement() -> void:
 
 
 func _controller_focus_root() -> Control:
-	return _application._interaction_presenter if _application._interaction_presenter != null and _application._interaction_presenter.has_blocking_request() else _application
+	return _application._interaction_presenter.controller.focus_root() if _application._interaction_presenter != null and _application._interaction_presenter.has_blocking_request() else _application
 
 
 func _controller_direction(action_id: StringName) -> Vector2i:

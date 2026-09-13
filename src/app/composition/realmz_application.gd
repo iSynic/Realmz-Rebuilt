@@ -110,9 +110,18 @@ func _build_dependencies() -> void:
 func _bind_debug_and_movement() -> void:
 	_controller_input.action_pressed.connect(func(action_id: StringName, repeated: bool) -> void:
 		_shell_presenter.controller.show_prompts(_controller_input.prompt_family())
+		if action_id in ControllerInputOwner.DIRECTION_ACTIONS:
+			return
 		_input_router.handle_controller_action(action_id, true, repeated)
 	)
-	_controller_input.action_released.connect(func(action_id: StringName) -> void: _input_router.handle_controller_action(action_id, false))
+	_controller_input.action_released.connect(func(action_id: StringName) -> void:
+		if action_id not in ControllerInputOwner.DIRECTION_ACTIONS:
+			_input_router.handle_controller_action(action_id, false)
+	)
+	_controller_input.direction_changed.connect(func(direction: Vector2i, repeated: bool) -> void:
+		_shell_presenter.controller.show_prompts(_controller_input.prompt_family())
+		_input_router.handle_controller_direction(direction, repeated)
+	)
 	_controller_input.input_suspended.connect(func(reason: String) -> void:
 		_controller_resume_required = true
 		_input_router.clear_controller_state()

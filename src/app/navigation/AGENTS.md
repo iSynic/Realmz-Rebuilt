@@ -8,7 +8,7 @@ Translate Godot input into named application actions, typed session commands, an
 
 - `ApplicationInputRouter` owns keyboard, pointer, and normalized controller dispatch priority.
 - `UiInputActions` owns the stable named `InputMap` action vocabulary used by the host.
-- `ControllerInputOwner` is the single active-pad owner. It resolves physical bindings into named actions, retains a logical action until every bound physical control releases, filters stick noise, applies dead-zone release hysteresis and UI repeat, clears held state at disconnect or focus loss, and requires neutral acknowledged input before resuming.
+- `ControllerInputOwner` is the single active-pad owner. It resolves physical bindings into named actions, retains a logical action until every bound physical control releases, filters stick noise, settles paired analog-axis edges into one complete direction, applies dead-zone release hysteresis and UI repeat, clears held state at disconnect or focus loss, and requires neutral acknowledged input before resuming.
 
 ## Local Contracts
 
@@ -18,7 +18,7 @@ Translate Godot input into named application actions, typed session commands, an
 - No navigation state enters saves or deterministic simulation.
 - Raw joypad input is consumed by the controller owner before Godot's built-in UI navigation can also act on it.
 - Binding capture temporarily becomes the controller owner's highest-priority mode and returns one primitive descriptor to the Controls draft; ordinary bindings stay active until a complete conflict-free reachable draft is applied.
-- Controller directions combine before exploration dispatch so land admits eight directions while dungeon presentation retains one cardinal forward, reverse, or turn request. Opening or dismissing a modal or radial clears the held controller movement owner; it never resumes from an earlier held direction.
+- Controller directions combine into one normalized vector before dispatch so land admits eight directions without emitting an intermediate cardinal step while dungeon presentation retains one cardinal forward, reverse, or turn request. Opening or dismissing a modal or radial clears the held controller movement owner; it never resumes from an earlier held direction.
 - Combat controller input owns one preview boundary: a direction previews a rules-supplied move and South commits it; targeting uses South to select, West to commit, North to rotate, shoulders to cycle, and the right stick to pan without constructing another gameplay command path.
 
 ## Work Guidance
