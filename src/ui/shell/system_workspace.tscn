@@ -433,7 +433,7 @@ theme_type_variation = &"ClassicHeading"
 text = "Controls"
 [node name="Description" type="Label" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content"]
 layout_mode = 2
-text = "Keyboard and mouse controls remain fixed so prompts, shortcuts, and visible commands always agree."
+text = "Keyboard and mouse remain available beside the active controller profile. Edit controller bindings as a draft, then Apply."
 autowrap_mode = 2
 [node name="Divider" type="HSeparator" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content"]
 layout_mode = 2
@@ -519,11 +519,11 @@ layout_mode = 2
 [node name="Identity" type="Label" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpExplore/Row"]
 custom_minimum_size = Vector2(330, 0)
 layout_mode = 2
-text = "Explore • Arrows, WASD, or numpad"
+text = "Explore • Left stick / D-pad"
 [node name="Detail" type="Label" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpExplore/Row"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Move one step; hold a direction or the map stage to keep traveling."
+text = "Land uses eight directions; dungeons retain forward, reverse, turn, or four-way overhead movement."
 autowrap_mode = 2
 [node name="ControlHelpFieldcommands" type="PanelContainer" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content"]
 layout_mode = 2
@@ -533,11 +533,11 @@ layout_mode = 2
 [node name="Identity" type="Label" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpFieldcommands/Row"]
 custom_minimum_size = Vector2(330, 0)
 layout_mode = 2
-text = "Field commands • F Search • C Camp • R Rest • H Heal"
+text = "Actions • West radial • North workspaces • Menu System"
 [node name="Detail" type="Label" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpFieldcommands/Row"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "The visible command deck provides the same actions and their current availability."
+text = "Radials show the existing commands, current availability, and disabled reasons; South confirms and East cancels."
 autowrap_mode = 2
 [node name="ControlHelpFastSpells" type="PanelContainer" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content"]
 layout_mode = 2
@@ -547,11 +547,11 @@ layout_mode = 2
 [node name="Identity" type="Label" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpFastSpells/Row"]
 custom_minimum_size = Vector2(330, 0)
 layout_mode = 2
-text = "Fast Spells • 1–0 select • Ctrl/Cmd + 1–0 cast"
+text = "Battle • South preview/choose • West commit"
 [node name="Detail" type="Label" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpFastSpells/Row"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "In battle, hold Alt for the Fast Spell dock; Alt + 1–0 casts an assigned slot."
+text = "North rotates areas; shoulders cycle targets; the action radial includes Fast Spells."
 autowrap_mode = 2
 [node name="ControlHelpBattle" type="PanelContainer" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content"]
 layout_mode = 2
@@ -561,11 +561,11 @@ layout_mode = 2
 [node name="Identity" type="Label" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpBattle/Row"]
 custom_minimum_size = Vector2(330, 0)
 layout_mode = 2
-text = "Battle • Shift costs • T target • Space confirm/skip"
+text = "Inspect & scroll • Right-stick click / right stick"
 [node name="Detail" type="Label" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpBattle/Row"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Movement also uses arrows, WASD, or numpad; mouse targeting remains available."
+text = "Inspect the focused record or combatant; scroll the active panel or pan the battlefield."
 autowrap_mode = 2
 [node name="ControlHelpWorkspaces" type="PanelContainer" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content"]
 layout_mode = 2
@@ -575,11 +575,11 @@ layout_mode = 2
 [node name="Identity" type="Label" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpWorkspaces/Row"]
 custom_minimum_size = Vector2(330, 0)
 layout_mode = 2
-text = "Workspaces • Alt + 1–9 • Escape Back/Cancel"
+text = "Sections & party • Shoulders / triggers"
 [node name="Detail" type="Label" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpWorkspaces/Row"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Every reversible workspace also keeps its visible Back, Done, or Cancel action."
+text = "Shoulders change sections or radial pages; triggers change the selected character where available."
 autowrap_mode = 2
 
 [node name="Diagnostics" type="VBoxContainer" parent="SystemWorkspaceTabs"]

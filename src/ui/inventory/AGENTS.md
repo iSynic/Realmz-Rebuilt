@@ -10,7 +10,7 @@
 - `inventory_workspace.tscn` owns normal, alternate, empty, and Trade regions shared by the route and Encounter item selection.
 - Browser, command rail, inspector, character selector, action panel, selected-item record, and Trade scenes own their stable layouts.
 - `classic_item_detail_popover.tscn` and its header, label, and fact-grid components own the reusable item-detail surface used by Inventory, Shop, and Treasure; its script binds only detached visible facts.
-- `InventoryScreenController` binds detached records, preserves route-local selection and scroll state, and emits typed intents. Reused Encounter workspaces receive the active Wide/Compact profile on every presentation and live profile change; a sole eligible character is labelled by name, while multi-character selectors remain portrait-only.
+- `InventoryScreenController` binds detached records, preserves route-local selection and scroll state, and emits typed intents. Its local Trade access binder keeps exact source, item, destination, availability, and submission wiring together without adding another intent path. Reused Encounter workspaces receive the active Wide/Compact profile on every presentation and live profile change; a sole eligible character is labelled by name, while multi-character selectors remain portrait-only.
 - `InventorySceneBinding` owns repeated visual binding, signal cleanup, child cleanup, media lookup, and scroll restoration mechanics.
 - `InventoryItemText` and `InventoryViewQueries` own pure display formatting and detached-view selection.
 

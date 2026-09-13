@@ -1,3 +1,5 @@
+## Describes one ordered controller radial command and its current availability.
+
 class_name ControllerRadialEntry
 extends RefCounted
 

@@ -153,6 +153,13 @@ func _test_ordered_controller_targeting() -> void:
 	assert_true(area.move_coordinate_preview(Vector2i(1, -1)) and area.hovered_coordinate == Vector2i(41, 39), "controller area targeting moves an arbitrary center over the battlefield grid")
 	assert_false(area.can_confirm(), "moving an area preview does not commit it")
 	assert_true(area.select_coordinate(area.hovered_coordinate) and area.rotate_area() and area.committed_body().target_coordinate == Vector2i(41, 39), "South selects and North rotates an area before explicit commit")
+	var summon_request := CombatTargetingRequest.new(&"coordinate_sequence", body)
+	summon_request.validation_deferred = true
+	summon_request.maximum_targets = 2
+	summon_request.default_target_coordinate = Vector2i(30, 30)
+	var summon := CombatTargetingState.new(summon_request)
+	assert_true(summon.select_coordinate(summon.hovered_coordinate) and summon.move_coordinate_preview(Vector2i.RIGHT) and summon.select_coordinate(summon.hovered_coordinate), "controller summon targeting records separate spaces in selection order")
+	assert_equal(summon.committed_body().target_coordinates, [Vector2i(30, 30), Vector2i(31, 30)], "West-style summon commit preserves the ordered space sequence")
 
 
 func _test_focus_navigation_activation_and_prompts() -> void:
@@ -181,6 +188,26 @@ func _test_focus_navigation_activation_and_prompts() -> void:
 	assert_equal(navigator.move(root, Vector2i.RIGHT), second, "directional navigation chooses the predictable same-group geometric neighbor")
 	assert_equal(navigator.inspection_text(root), "Exact focused detail", "inspection exposes the focused control's existing explanation")
 	assert_true(navigator.activate_focused(root) and activation_state[0], "South-style focus activation uses the existing control action")
+	var disabled := Button.new()
+	disabled.position = Vector2(440, 40)
+	disabled.size = Vector2(120, 36)
+	disabled.text = "Unavailable"
+	disabled.disabled = true
+	disabled.tooltip_text = "A specific rules-owned reason."
+	disabled.set_meta("focus_group", "route:test")
+	root.add_child(disabled)
+	assert_equal(navigator.move(root, Vector2i.RIGHT), disabled, "disabled controls remain focusable for controller inspection")
+	assert_equal(navigator.inspection_text(root), "A specific rules-owned reason.", "inspection exposes a focused unavailable action's exact reason")
+	assert_false(navigator.activate_focused(root), "South cannot activate a focused disabled control")
+	var modal := Control.new()
+	modal.size = Vector2(200, 100)
+	root.add_child(modal)
+	var modal_action := Button.new()
+	modal_action.text = "Modal action"
+	modal_action.size = Vector2(120, 36)
+	modal.add_child(modal_action)
+	first.grab_focus()
+	assert_equal(navigator.focus_next(modal), modal_action, "modal focus traversal recovers inside its active root instead of advancing elsewhere in the viewport")
 	var prompts := load("res://src/ui/shell/controller_prompt_strip.tscn").instantiate() as ControllerPromptStrip
 	root.add_child(prompts)
 	await (Engine.get_main_loop() as SceneTree).process_frame
@@ -237,6 +264,16 @@ func _test_qwerty_draft_commit_cancel_and_layout() -> void:
 	host.add_child(editor)
 	await (Engine.get_main_loop() as SceneTree).process_frame
 	assert_true(editor.open_for(field), "activating a LineEdit opens the controller QWERTY editor with its existing draft")
+	await (Engine.get_main_loop() as SceneTree).process_frame
+	var first_key := editor.get_viewport().gui_get_focus_owner()
+	editor.move_direction(Vector2.DOWN)
+	var moved_key := editor.get_viewport().gui_get_focus_owner()
+	assert_true(moved_key != first_key and editor.is_ancestor_of(moved_key), "directional controller navigation advances between QWERTY keys without escaping the modal: %s -> %s" % [first_key, moved_key])
+	var cancel_key := editor.find_child("Cancel", true, false) as Button
+	var done_key := editor.find_child("Done", true, false) as Button
+	cancel_key.grab_focus()
+	editor.move_direction(Vector2.RIGHT)
+	assert_equal(editor.get_viewport().gui_get_focus_owner(), done_key, "QWERTY action-row navigation moves predictably from Cancel to Done")
 	editor.confirm_key("x")
 	assert_equal(field.text, "Ab", "QWERTY edits remain draft-local before Done")
 	editor.done()
@@ -249,12 +286,14 @@ func _test_qwerty_draft_commit_cancel_and_layout() -> void:
 	assert_equal([field.text, field.caret_column], ["Keep", 2], "Cancel restores the prior field value and caret")
 	var note := TextEdit.new()
 	note.text = "Line"
+	var note_changes := [0]
+	note.text_changed.connect(func() -> void: note_changes[0] += 1)
 	host.add_child(note)
 	editor.open_for(note)
 	editor.confirm_key("\n")
 	editor.confirm_key("é")
 	editor.done()
-	assert_equal(note.text, "\néLine", "multiline and supported accented input commit through the same editor")
+	assert_equal([note.text, note_changes[0] > 0], ["\néLine", true], "multiline and supported accented input commit through the same editor and refresh the original field's validation")
 	var card := editor.find_child("Card", true, false) as PanelContainer
 	assert_true(host.get_global_rect().encloses(card.get_global_rect()), "the complete QWERTY editor remains bounded at 800 by 600")
 	assert_true(["Space", "Delete", "CaretLeft", "CaretRight", "Done", "Cancel"].all(func(name: String) -> bool: return editor.find_child(name, true, false) != null), "controller text shortcuts remain paired with visible keys")
@@ -279,7 +318,7 @@ func _test_controller_settings_draft_and_embedded_file_dialog() -> void:
 	var confirm := screen.find_child("ControllerBinding_confirm", true, false) as Button
 	confirm.pressed.emit()
 	assert_equal(captures, [&"realmz_controller_confirm"], "the Controls page gives binding capture sole ownership of a named draft action")
-	controller.receive_controller_binding(&"realmz_controller_confirm", {"action": "realmz_controller_confirm", "kind": "button", "code": JOY_BUTTON_MISC1, "direction": 0})
+	controller.controller.receive_binding(&"realmz_controller_confirm", {"action": "realmz_controller_confirm", "kind": "button", "code": JOY_BUTTON_MISC1, "direction": 0})
 	var apply := screen.find_child("ApplyControllerBindings", true, false) as Button
 	assert_false(apply.disabled, "a conflict-free reachable draft can be applied while current controls remain active")
 	apply.pressed.emit()

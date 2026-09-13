@@ -12,6 +12,7 @@ const PRIMARY_COMMAND_COLOR := Color("f0ce59")
 const VIEW_COMMAND_COLOR := Color("63d8e7")
 const TURN_COMMAND_COLOR := Color("8fe080")
 const InitiativePanelBuilder := preload("res://src/ui/combat/battle_initiative_panel_builder.gd")
+const ControllerCommandCatalog := preload("res://src/ui/combat/battle_controller_command_catalog.gd")
 
 @export var initiative_entry_scene: PackedScene
 
@@ -31,6 +32,7 @@ var _targeting_parent: Control
 var _targeting_parent_was_visible: bool = false
 var _spell_casts: Array[InteractionRequestValue.CastOption] = []
 var _fast_spells: Array[InteractionRequestValue.FastSpell] = []
+var _controller_command_buttons: Array[Button] = []
 var _spell_panel: VBoxContainer
 var _combatant_icons: Dictionary = {}
 var _overview: Control
@@ -510,18 +512,7 @@ func accepts_spatial_input() -> bool:
 
 
 func controller_actions() -> Array[ControllerRadialEntry]:
-	var result: Array[ControllerRadialEntry] = []
-	for node: Node in find_children("CombatCommand*", "Button", true, false):
-		var button := node as Button
-		if button == null or not button.is_visible_in_tree():
-			continue
-		var action_id := StringName(button.name.trim_prefix("CombatCommand").to_snake_case())
-		result.append(ControllerRadialEntry.new(action_id, button.text, not button.disabled, button.tooltip_text))
-	for slot_index: int in _fast_spells.size():
-		var spell: InteractionRequestValue.FastSpell = _fast_spells[slot_index]
-		var reason: String = spell.activation.reason if not spell.activation.enabled else ""
-		result.append(ControllerRadialEntry.new(StringName("fast_spell_%d" % slot_index), "Fast: %s" % spell.spell_name, spell.activation.enabled, reason))
-	return result
+	return ControllerCommandCatalog.entries(_controller_command_buttons, _fast_spells)
 
 
 func activate_controller_action(action_id: StringName) -> bool:
@@ -529,13 +520,14 @@ func activate_controller_action(action_id: StringName) -> bool:
 	if action_text.begins_with("fast_spell_"):
 		return handle_fast_spell(action_text.trim_prefix("fast_spell_").to_int(), true)
 	var button := find_child("CombatCommand%s" % action_text.to_pascal_case(), true, false) as Button
-	if button == null or button.disabled or not button.is_visible_in_tree():
+	if button == null or button.disabled:
 		return false
 	button.pressed.emit()
 	return true
 
 
 func _build_command_shelf(body: CombatRequestBody, actor_id: String, action_ids: Array[String], targets: Array[InteractionRequestValue.CombatTarget], target_panel: Control, spell_panel: Control, scroll_panel: Control, item_panel: Control, bandage_panel: Control, mode_panels: Array[Control], overview: Control) -> void:
+	_controller_command_buttons.clear()
 	var scaled_panels: Array[Control] = [find_child("BattleInspectionCommandsInset", true, false), %BattlePrimaryCommandsInset, find_child("BattleTurnCommandsInset", true, false)]
 	var scaled_columns: Array[VBoxContainer] = [find_child("BattleInspectionCommands", true, false), %BattlePrimaryCommands, %BattleTurnCommands]
 	var scaled_rows: Array[HBoxContainer] = [%BattleInspectionPrimary, %BattleInspectionSecondary, %BattlePrimaryPrimary, %BattlePrimarySecondary, %BattleTurnPrimary, %BattleTurnSecondary]
@@ -558,10 +550,10 @@ func _build_command_shelf(body: CombatRequestBody, actor_id: String, action_ids:
 	var attack_button := primary_rows[0].get_node("Attack") as Button
 	_bind_panel_toggle(attack_button, "Fire" if weapon_mode == "missile" else "Attack", target_panel, mode_panels, overview, target_enabled, target_reason)
 	_name_command(attack_button, "Attack")
-	_accent_command(attack_button)
+	_color_command(attack_button, PRIMARY_COMMAND_COLOR)
 	var finish_button := primary_rows[0].get_node("Finish") as Button
 	_bind_fixed_response(finish_button, "Finish", "Finish", InteractionResponse.CombatBody.new(&"finish", actor_id), action_ids.has("finish"), "Finish is unavailable during this activation.")
-	_accent_command(finish_button)
+	_color_command(finish_button, PRIMARY_COMMAND_COLOR)
 	var spell_button := primary_rows[1].get_node("Spells") as Button
 	_bind_panel_toggle(spell_button, "Spells", spell_panel, mode_panels, overview, action_ids.has("cast_spell") and not body.spell_casts.is_empty(), body.spell_cast_reason)
 	_name_command(spell_button, "Spells")
@@ -585,7 +577,7 @@ func _build_command_shelf(body: CombatRequestBody, actor_id: String, action_ids:
 	var retreat_enabled := action_ids.has("retreat") and body.retreat.enabled
 	var escape := turn_rows[1].get_node("Escape") as Button
 	_bind_fixed_response(escape, "Escape", "Escape", InteractionResponse.CombatBody.new(&"retreat", actor_id), retreat_enabled, body.retreat.reason)
-	_accent_command(escape)
+	_color_command(escape, PRIMARY_COMMAND_COLOR)
 	_command_scaling.apply()
 
 
@@ -607,7 +599,7 @@ func _add_classic_turn_commands(first_row: Container, second_row: Container, bod
 	_color_command(bandage_button, VIEW_COMMAND_COLOR)
 	var turn_undead := second_row.get_node("TurnUndead") as Button
 	_bind_fixed_response(turn_undead, "TurnUndead", "Turn Undead", InteractionResponse.CombatBody.new(&"turn_undead", actor_id), body.turn_undead.enabled, body.turn_undead.reason)
-	_accent_command(turn_undead)
+	_color_command(turn_undead, PRIMARY_COMMAND_COLOR)
 	var undo := second_row.get_node("Undo") as Button
 	_bind_fixed_response(undo, "Undo", "Undo", InteractionResponse.CombatBody.new(&"undo", actor_id), body.undo.enabled, body.undo.reason)
 	_color_command(undo, VIEW_COMMAND_COLOR)
@@ -634,13 +626,11 @@ func _bind_fixed_response(button: Button, command_name: String, label: String, b
 
 func _name_command(button: Button, command_name: String) -> void:
 	button.name = "CombatCommand%s" % command_name
+	if not _controller_command_buttons.has(button):
+		_controller_command_buttons.append(button)
 	button.theme_type_variation = &"BattleCommandButton"
 	_command_scaling.register_button(button, Vector2(0.0, COMMAND_HEIGHT))
 	button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-
-
-func _accent_command(button: Button) -> void:
-	_color_command(button, PRIMARY_COMMAND_COLOR)
 
 
 func _color_command(button: Button, color: Color) -> void:

@@ -2,6 +2,30 @@
 class_name SystemScreenController
 extends RefCounted
 
+
+class ControllerAccess:
+	extends RefCounted
+	var _owner: Variant
+	func _init(owner: Variant) -> void: _owner = owner
+	func receive_binding(action_id: StringName, descriptor: Dictionary) -> void:
+		if _owner._controller_draft == null or action_id != _owner._controller_capture_action: return
+		var physical_key := "%s:%d:%d" % [descriptor["kind"], int(descriptor["code"]), int(descriptor["direction"])]
+		_owner._controller_draft.bindings = _owner._controller_draft.bindings.filter(func(binding: Dictionary) -> bool:
+			return StringName(binding["action"]) != action_id and "%s:%d:%d" % [binding["kind"], int(binding["code"]), int(binding["direction"])] != physical_key
+		)
+		_owner._controller_draft.bindings.append(descriptor.duplicate(true))
+		_owner._controller_capture_action = &""
+		_owner._controller_draft_dirty = true
+		_owner.refresh_controller_editor()
+	func cancel_binding_capture() -> void:
+		_owner._controller_capture_action = &""
+		_owner.refresh_controller_editor()
+	func set_live_input(value: String) -> void:
+		_owner._controller_live_text = value
+		if _owner._workspace == null: return
+		var label := _owner._workspace.get_node_or_null("SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/LiveInput") as Label
+		if label != null: label.text = "Live input • %s" % value
+
 const WORKSPACE_SCENE_PATH := "res://src/ui/shell/system_workspace.tscn"
 
 signal action_requested(action_id: StringName, value: Variant)
@@ -28,6 +52,8 @@ var _controller_draft: ControllerPreferences
 var _controller_draft_dirty: bool = false
 var _controller_capture_action: StringName = &""
 var _controller_live_text: String = ""
+var controller: ControllerAccess:
+	get: return ControllerAccess.new(self)
 
 
 func set_layout_profile(profile_id: StringName) -> void:
@@ -70,33 +96,6 @@ func present(target: Control, view: GameView, settings: PresentationSettings) ->
 	_bind_accessibility(settings)
 	_bind_controls(settings)
 	_bind_diagnostics(settings)
-
-
-func receive_controller_binding(action_id: StringName, descriptor: Dictionary) -> void:
-	if _controller_draft == null or action_id != _controller_capture_action:
-		return
-	var physical_key := "%s:%d:%d" % [descriptor["kind"], int(descriptor["code"]), int(descriptor["direction"])]
-	_controller_draft.bindings = _controller_draft.bindings.filter(func(binding: Dictionary) -> bool:
-		var binding_key := "%s:%d:%d" % [binding["kind"], int(binding["code"]), int(binding["direction"])]
-		return StringName(binding["action"]) != action_id and binding_key != physical_key
-	)
-	_controller_draft.bindings.append(descriptor.duplicate(true))
-	_controller_capture_action = &""
-	_controller_draft_dirty = true
-	_refresh_controller_editor()
-
-
-func cancel_controller_binding_capture() -> void:
-	_controller_capture_action = &""
-	_refresh_controller_editor()
-
-
-func set_controller_live_input(value: String) -> void:
-	_controller_live_text = value
-	if _workspace != null:
-		var label := _workspace.get_node_or_null("SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/LiveInput") as Label
-		if label != null:
-			label.text = "Live input • %s" % value
 
 
 func _bind_header(view: GameView) -> void:
@@ -381,7 +380,7 @@ func _bind_controller_editor(root: VBoxContainer) -> void:
 		_controller_draft = ControllerPreferences.new()
 		_controller_draft_dirty = true
 		_controller_capture_action = &""
-		_refresh_controller_editor()
+		refresh_controller_editor()
 	)
 	var apply := root.get_node("Actions/ApplyControllerBindings") as Button
 	_clear_pressed_connections(apply)
@@ -416,7 +415,7 @@ func _controller_action_label(action_id: StringName) -> String:
 	return String(action_id).trim_prefix("realmz_controller_").replace("_", " ").capitalize()
 
 
-func _refresh_controller_editor() -> void:
+func refresh_controller_editor() -> void:
 	if _workspace != null:
 		_bind_controller_editor(_workspace.get_node("SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content") as VBoxContainer)
 

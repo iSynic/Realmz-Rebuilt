@@ -80,7 +80,7 @@ func _dispatch(command: String, params: Dictionary) -> Dictionary:
 	if command == "capture":
 		return _capture(params)
 	var readiness := _readiness_fields()
-	if readiness["combatPlayback"] or readiness["hostInteraction"]:
+	if command != "ui" and (readiness["combatPlayback"] or readiness["hostInteraction"]):
 		return _observer.rejected("input_blocked", "Presentation playback or a host interaction owns the application boundary.")
 	match command:
 		"act": return _commands.act(params)

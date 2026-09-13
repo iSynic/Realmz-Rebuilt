@@ -108,14 +108,25 @@ func _build_dependencies() -> void:
 
 
 func _bind_debug_and_movement() -> void:
-	_controller_input.action_pressed.connect(func(action_id: StringName, repeated: bool) -> void: _input_router.handle_controller_action(action_id, true, repeated))
+	_controller_input.action_pressed.connect(func(action_id: StringName, repeated: bool) -> void:
+		_shell_presenter.controller.show_prompts(_controller_input.prompt_family())
+		_input_router.handle_controller_action(action_id, true, repeated)
+	)
 	_controller_input.action_released.connect(func(action_id: StringName) -> void: _input_router.handle_controller_action(action_id, false))
-	_controller_input.input_suspended.connect(_on_controller_input_suspended)
-	_controller_input.input_resumed.connect(_on_controller_input_resumed)
-	_controller_input.active_device_changed.connect(func(_device_id: int, family: String) -> void: _shell_presenter.show_controller_prompts(family))
-	_controller_input.binding_captured.connect(func(action_id: StringName, descriptor: Dictionary) -> void: _shell_presenter.receive_controller_binding(action_id, descriptor))
-	_controller_input.binding_capture_cancelled.connect(_shell_presenter.cancel_controller_binding_capture)
-	_controller_input.input_observed.connect(_shell_presenter.set_controller_live_input)
+	_controller_input.input_suspended.connect(func(reason: String) -> void:
+		_controller_resume_required = true
+		_input_router.clear_controller_state()
+		_held_movement.stop()
+		_shell_presenter.status.set_status(reason, true)
+	)
+	_controller_input.input_resumed.connect(func() -> void:
+		_controller_resume_required = false
+		_shell_presenter.status.set_status("Controller input restored.")
+	)
+	_controller_input.active_device_changed.connect(func(_device_id: int, family: String) -> void: _shell_presenter.controller.show_prompts(family))
+	_controller_input.binding_captured.connect(func(action_id: StringName, descriptor: Dictionary) -> void: _shell_presenter.controller.receive_binding(action_id, descriptor))
+	_controller_input.binding_capture_cancelled.connect(_shell_presenter.controller.cancel_binding_capture)
+	_controller_input.input_observed.connect(_shell_presenter.controller.set_live_input)
 	debug_tools.status_changed.connect(
 		func(message: String, failed: bool) -> void:
 			_shell_presenter.status.set_status(message, failed)
@@ -357,7 +368,7 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 	if _shell_presenter != null and ((event is InputEventKey and (event as InputEventKey).pressed) or (event is InputEventMouseButton and (event as InputEventMouseButton).pressed)):
-		_shell_presenter.hide_controller_prompts()
+		_shell_presenter.controller.hide_prompts()
 	if _input_router != null:
 		_input_router.handle_input(event)
 
@@ -566,22 +577,6 @@ func _continue_persistent_auto_after_playback() -> void:
 	var response := ApplicationCombatPolicy.persistent_auto_response(session_controller.view())
 	if response != null:
 		submit_response(response)
-
-
-func _on_controller_input_suspended(reason: String) -> void:
-	_controller_resume_required = true
-	if _input_router != null:
-		_input_router.clear_controller_state()
-	if _held_movement != null:
-		_held_movement.stop()
-	if _shell_presenter != null:
-		_shell_presenter.status.set_status(reason, true)
-
-
-func _on_controller_input_resumed() -> void:
-	_controller_resume_required = false
-	if _shell_presenter != null:
-		_shell_presenter.status.set_status("Controller input restored.")
 
 
 func _present_step_status(step: SessionStep) -> void:

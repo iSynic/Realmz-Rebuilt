@@ -1,3 +1,5 @@
+## Presents modal controller-only text editing without submitting the owning workflow.
+
 class_name ControllerQwertyEditor
 extends Control
 
@@ -36,6 +38,7 @@ var _caret_offset: int = 0
 var _max_length: int = -1
 var _page: int = 0
 var _open: bool = false
+var _focus_navigator := ControllerFocusNavigator.new()
 
 
 func _ready() -> void:
@@ -99,14 +102,7 @@ func confirm_key(key: String) -> void:
 func move_direction(direction: Vector2) -> void:
 	if not _open or direction.is_zero_approx():
 		return
-	var focused := get_viewport().gui_get_focus_owner() as Control
-	if focused == null or not is_ancestor_of(focused):
-		_focus_first_key()
-		return
-	var side := SIDE_LEFT if direction.x < 0.0 else SIDE_RIGHT if direction.x > 0.0 else SIDE_TOP if direction.y < 0.0 else SIDE_BOTTOM
-	var neighbor := focused.find_valid_focus_neighbor(side)
-	if neighbor != null and is_ancestor_of(neighbor):
-		neighbor.grab_focus()
+	_focus_navigator.move_geometric(self, Vector2i(signi(roundi(direction.x)), signi(roundi(direction.y))))
 
 
 func previous_page() -> void:
@@ -218,9 +214,13 @@ func _read_caret_offset(field: Control, text: String) -> int:
 func _write_target(text: String, offset: int) -> void:
 	if _target == null or not is_instance_valid(_target):
 		return
+	var previous_text := String(_target.get("text"))
 	_target.set("text", text)
 	if _target is LineEdit:
-		(_target as LineEdit).caret_column = clampi(offset, 0, text.length())
+		var line_edit := _target as LineEdit
+		line_edit.caret_column = clampi(offset, 0, text.length())
+		if previous_text != text:
+			line_edit.text_changed.emit(text)
 	else:
 		var editor := _target as TextEdit
 		var remaining := clampi(offset, 0, text.length())
@@ -232,3 +232,5 @@ func _write_target(text: String, offset: int) -> void:
 			line += 1
 		editor.set_caret_line(line)
 		editor.set_caret_column(remaining)
+		if previous_text != text:
+			editor.text_changed.emit()

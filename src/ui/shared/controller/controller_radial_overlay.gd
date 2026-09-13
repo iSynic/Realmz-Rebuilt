@@ -1,3 +1,5 @@
+## Presents a paged tap-and-confirm controller command radial.
+
 class_name ControllerRadialOverlay
 extends Control
 

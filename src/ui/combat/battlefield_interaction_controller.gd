@@ -4,6 +4,27 @@ class_name BattlefieldInteractionController
 extends RefCounted
 
 
+class ControllerAccess:
+	extends RefCounted
+	var _owner: Variant
+	func _init(owner: Variant) -> void: _owner = owner
+	func has_movement_preview() -> bool: return _owner._movement_preview != null
+	func inspect_target_preview() -> bool:
+		if _owner._targeting == null: return false
+		var combatant_id: String = _owner._targeting.previewed_candidate_id()
+		if combatant_id.is_empty() and _owner._targeting.hovered_coordinate.x >= 0:
+			combatant_id = BattlefieldPresentationGeometry.combatant_at(_owner._view.combat_view, _owner._view.party_members, _owner._targeting.hovered_coordinate)
+		return _inspect(combatant_id)
+	func inspect_focused_combatant() -> bool:
+		if _owner._view == null or _owner._view.combat_view == null: return false
+		return _inspect(_owner._camera_focus_id if not _owner._camera_focus_id.is_empty() else _owner._view.combat_view.active_actor_id)
+	func _inspect(combatant_id: String) -> bool:
+		if combatant_id.is_empty(): return false
+		_owner.focus_combatant(combatant_id)
+		_owner.combatant_inspected.emit(combatant_id)
+		return true
+
+
 signal combat_body_submitted(body: InteractionResponse.CombatBody)
 signal combatant_inspected(combatant_id: String)
 signal targeting_changed(selection: CombatTargetingState)
@@ -35,6 +56,8 @@ var _reveal_friends: bool = false
 var _targeting: CombatTargetingState
 var _playback_frame: CombatPlaybackFrame
 var _movement_preview: CombatMoveOptionView
+var controller: ControllerAccess:
+	get: return ControllerAccess.new(self)
 
 
 func present(game_view: GameView) -> bool:
@@ -123,10 +146,6 @@ func cancel_movement_preview() -> bool:
 	_hovered_coordinate = Vector2i(-1, -1)
 	redraw_requested.emit()
 	return true
-
-
-func has_movement_preview() -> bool:
-	return _movement_preview != null
 
 
 func handle_input(event: InputEvent, viewport_size: Vector2, render_camera_top_left: Vector2i, render_camera_visible_cells: Vector2i) -> bool:
@@ -236,19 +255,6 @@ func move_target_preview(direction: Vector2i) -> bool:
 		return false
 	targeting_changed.emit(_targeting)
 	redraw_requested.emit()
-	return true
-
-
-func inspect_target_preview() -> bool:
-	if _targeting == null:
-		return false
-	var combatant_id := _targeting.previewed_candidate_id()
-	if combatant_id.is_empty() and _targeting.hovered_coordinate.x >= 0:
-		combatant_id = BattlefieldPresentationGeometry.combatant_at(_view.combat_view, _view.party_members, _targeting.hovered_coordinate)
-	if combatant_id.is_empty():
-		return false
-	focus_combatant(combatant_id)
-	combatant_inspected.emit(combatant_id)
 	return true
 
 

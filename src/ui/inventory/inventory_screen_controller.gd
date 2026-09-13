@@ -2,6 +2,21 @@
 class_name InventoryScreenController
 extends RefCounted
 
+
+class TradeAccess:
+	extends RefCounted
+	var _owner: Variant
+	func _init(owner: Variant) -> void: _owner = owner
+	func bind_explicit(button: Button, view: GameView, source: CharacterView, target: CharacterView) -> void:
+		_owner._scene_binding.clear_pressed_connections(button)
+		var item_owner := InventoryViewQueries.character_by_id(view, _owner._trade_item_owner_id)
+		var item := InventoryViewQueries.item_by_id(item_owner, _owner._trade_item_instance_id)
+		var destination_id := target.id if item_owner != null and item_owner.id == source.id else source.id if item_owner != null and item_owner.id == target.id else ""
+		var availability := InventoryViewQueries.trade_target(item, destination_id)
+		button.disabled = not _owner._trade_destination_confirmed or item == null or destination_id.is_empty() or availability == null or not availability.enabled
+		button.tooltip_text = "Select an exact item and destination first." if not _owner._trade_destination_confirmed or item == null or destination_id.is_empty() else "This item cannot be transferred there." if availability == null else availability.reason if not availability.enabled else "Transfer %s to %s." % [item.name, InventoryViewQueries.character_by_id(view, destination_id).name]
+		if not button.disabled: button.pressed.connect(_owner._submit_trade.bind(item.instance_id, item_owner.id, destination_id))
+
 signal intent_submitted(intent: PlayerIntent)
 signal refresh_requested
 signal route_requested(screen_id: StringName)
@@ -465,21 +480,9 @@ func _bind_trade_control_spine(divider: InventoryTradeDivider, view: GameView, s
 	divider.money_button().pressed.connect(func() -> void: route_requested.emit(&"services"))
 	_scene_binding.clear_pressed_connections(divider.items_button())
 	divider.items_button().pressed.connect(_cancel_trade)
-	_bind_explicit_trade(divider.transfer_button(), view, source, target)
+	TradeAccess.new(self).bind_explicit(divider.transfer_button(), view, source, target)
 	_scene_binding.clear_pressed_connections(divider.done_button())
 	divider.done_button().pressed.connect(func() -> void: back_requested.emit())
-
-
-func _bind_explicit_trade(button: Button, view: GameView, source: CharacterView, target: CharacterView) -> void:
-	_scene_binding.clear_pressed_connections(button)
-	var owner := InventoryViewQueries.character_by_id(view, _trade_item_owner_id)
-	var item := InventoryViewQueries.item_by_id(owner, _trade_item_instance_id)
-	var destination_id := target.id if owner != null and owner.id == source.id else source.id if owner != null and owner.id == target.id else ""
-	var availability := InventoryViewQueries.trade_target(item, destination_id)
-	button.disabled = not _trade_destination_confirmed or item == null or destination_id.is_empty() or availability == null or not availability.enabled
-	button.tooltip_text = "Select an exact item and destination first." if not _trade_destination_confirmed or item == null or destination_id.is_empty() else "This item cannot be transferred there." if availability == null else availability.reason if not availability.enabled else "Transfer %s to %s." % [item.name, InventoryViewQueries.character_by_id(view, destination_id).name]
-	if not button.disabled:
-		button.pressed.connect(_submit_trade.bind(item.instance_id, owner.id, destination_id))
 
 
 func _trade_portrait(divider: InventoryTradeDivider, character: CharacterView, left_side: bool, selected: bool, media: ClassicMediaCatalog) -> Button:

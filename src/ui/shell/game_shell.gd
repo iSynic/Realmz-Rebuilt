@@ -2,6 +2,7 @@
 class_name GameShell
 extends Control
 
+
 signal start_package_requested(path: String, seed: int)
 signal cancel_package_requested
 signal refresh_campaigns_requested
@@ -109,6 +110,8 @@ var _music_title: String = ""
 var _music_playing: bool = false
 var _controller_radial_kind: StringName = &""
 var _controller_radial_activation := Callable()
+var controller: ControllerAccess:
+	get: return ControllerAccess.new(self)
 
 var navigator: ScreenNavigator:
 	get: return _navigator
@@ -122,6 +125,77 @@ var settings: PresentationSettings:
 	get: return _presentation_settings
 var picture_stage: Control:
 	get: return _picture_stage
+
+
+class ControllerAccess:
+	extends RefCounted
+	var _shell: Variant
+	func _init(shell: Variant) -> void: _shell = shell
+	func show_prompts(family: String) -> void: _shell._controller_prompts.present(family)
+	func hide_prompts() -> void: _shell._controller_prompts.hide_prompts()
+	func show_detail(value: String) -> void: _shell._controller_prompts.set_detail(value)
+	func select_relative_character(delta: int) -> bool: return _shell._party_roster.controller_select_relative(delta)
+	func receive_binding(action_id: StringName, descriptor: Dictionary) -> void: _shell._navigator.content_presenter.receive_controller_binding(action_id, descriptor)
+	func cancel_binding_capture() -> void: _shell._navigator.content_presenter.cancel_controller_binding_capture()
+	func set_live_input(value: String) -> void: _shell._navigator.content_presenter.set_controller_live_input(value)
+	func radial_is_open() -> bool: return _shell._controller_radial.is_open()
+	func text_editor_is_open() -> bool: return _shell._controller_keyboard.is_open()
+	func open_text_editor() -> bool:
+		var focused: Control = _shell.get_viewport().gui_get_focus_owner()
+		return _shell._controller_keyboard.open_for(focused) if focused is LineEdit or focused is TextEdit else false
+	func move_text_editor(direction: Vector2i) -> void: _shell._controller_keyboard.move_direction(Vector2(direction))
+	func confirm_text_editor() -> void: _shell._controller_keyboard.confirm_focused()
+	func cancel_text_editor() -> void: _shell._controller_keyboard.cancel()
+	func page_text_editor(delta: int) -> void:
+		if delta < 0: _shell._controller_keyboard.previous_page()
+		else: _shell._controller_keyboard.next_page()
+	func edit_text(action_id: StringName) -> void:
+		match action_id:
+			&"realmz_controller_action_radial": _shell._controller_keyboard.backspace()
+			&"realmz_controller_workspace_radial": _shell._controller_keyboard.next_page()
+			&"realmz_controller_character_previous": _shell._controller_keyboard.caret_left()
+			&"realmz_controller_character_next": _shell._controller_keyboard.caret_right()
+	func open_action_radial() -> bool:
+		var entries: Array[ControllerRadialEntry] = _shell._command_controller.controller_entries()
+		if entries.is_empty(): return false
+		_open_radial(&"action", "ACTIONS", entries)
+		return true
+	func open_interaction_radial(entries: Array[ControllerRadialEntry], activation: Callable) -> bool:
+		if entries.is_empty() or not activation.is_valid(): return false
+		_shell._controller_radial_activation = activation
+		_open_radial(&"interaction", "ACTIONS", entries)
+		return true
+	func open_workspace_radial() -> bool:
+		var entries: Array[ControllerRadialEntry] = []
+		var reason := GameShellAvailability.route_change_reason(_shell._current_view)
+		for definition: UiRouteDefinition in UiRouteCatalog.routes(): entries.append(ControllerRadialEntry.new(definition.route_id, definition.label, reason.is_empty(), reason))
+		_open_radial(&"workspace", "WORKSPACES", entries)
+		return true
+	func move_radial(direction: Vector2i) -> void: _shell._controller_radial.move_direction(Vector2(direction))
+	func page_radial(delta: int) -> void:
+		if delta < 0: _shell._controller_radial.previous_page()
+		else: _shell._controller_radial.next_page()
+	func confirm_radial() -> void: _shell._controller_radial.confirm_selected()
+	func cancel_radial() -> bool:
+		if not _shell._controller_radial.is_open(): return false
+		_shell._controller_radial.cancel()
+		_clear_radial_owner()
+		return true
+	func on_radial_selected(command_id: StringName) -> void:
+		var kind: StringName = _shell._controller_radial_kind
+		var activation: Callable = _shell._controller_radial_activation
+		_clear_radial_owner()
+		if kind == &"action": _shell._command_controller.activate_controller(command_id)
+		elif kind == &"workspace": _shell._navigator.open_screen(command_id)
+		elif kind == &"interaction" and activation.is_valid(): activation.call(command_id)
+	func _open_radial(kind: StringName, title: String, entries: Array[ControllerRadialEntry]) -> void:
+		_shell._controller_radial_kind = kind
+		_shell._controller_radial_activation = Callable()
+		_shell._controller_radial.set_title(title)
+		_shell._controller_radial.open(entries)
+	func _clear_radial_owner() -> void:
+		_shell._controller_radial_kind = &""
+		_shell._controller_radial_activation = Callable()
 
 
 func _ready() -> void:
@@ -142,7 +216,7 @@ func _ready() -> void:
 	_music_dialog.music_enabled_changed.connect(func(enabled: bool) -> void: music_enabled_changed.emit(enabled))
 	_music_dialog.music_volume_changed.connect(func(value: float) -> void: music_volume_changed.emit(value))
 	_music_dialog.playlist_mode_changed.connect(func(playlist_id: int, mode: int) -> void: music_playlist_mode_changed.emit(playlist_id, mode))
-	_controller_radial.command_selected.connect(_on_controller_radial_selected)
+	_controller_radial.command_selected.connect(_handle_controller_radial_selection)
 	_navigator.start_requested.connect(func(path: String, seed: int) -> void: start_package_requested.emit(path, seed))
 	_navigator.cancel_package_requested.connect(func() -> void: cancel_package_requested.emit())
 	_navigator.refresh_requested.connect(func() -> void: refresh_campaigns_requested.emit())
@@ -290,137 +364,8 @@ func open_system_workspace() -> void:
 	_navigator.open_screen(&"system")
 
 
-func show_controller_prompts(family: String) -> void:
-	_controller_prompts.present(family)
-
-
-func hide_controller_prompts() -> void:
-	_controller_prompts.hide_prompts()
-
-
-func show_controller_detail(value: String) -> void:
-	_controller_prompts.set_detail(value)
-
-
-func controller_select_relative_character(delta: int) -> bool:
-	return _party_roster.controller_select_relative(delta)
-
-
-func receive_controller_binding(action_id: StringName, descriptor: Dictionary) -> void:
-	_navigator.content_presenter.receive_controller_binding(action_id, descriptor)
-
-
-func cancel_controller_binding_capture() -> void:
-	_navigator.content_presenter.cancel_controller_binding_capture()
-
-
-func set_controller_live_input(value: String) -> void:
-	_navigator.content_presenter.set_controller_live_input(value)
-
-
-func controller_radial_is_open() -> bool:
-	return _controller_radial.is_open()
-
-
-func controller_text_editor_is_open() -> bool:
-	return _controller_keyboard.is_open()
-
-
-func open_controller_text_editor() -> bool:
-	var focused := get_viewport().gui_get_focus_owner()
-	return _controller_keyboard.open_for(focused) if focused is LineEdit or focused is TextEdit else false
-
-
-func move_controller_text_editor(direction: Vector2i) -> void:
-	_controller_keyboard.move_direction(Vector2(direction))
-
-
-func confirm_controller_text_editor() -> void:
-	_controller_keyboard.confirm_focused()
-
-
-func cancel_controller_text_editor() -> void:
-	_controller_keyboard.cancel()
-
-
-func page_controller_text_editor(delta: int) -> void:
-	if delta < 0: _controller_keyboard.previous_page()
-	else: _controller_keyboard.next_page()
-
-
-func edit_controller_text(action_id: StringName) -> void:
-	match action_id:
-		&"realmz_controller_action_radial": _controller_keyboard.backspace()
-		&"realmz_controller_workspace_radial": _controller_keyboard.next_page()
-		&"realmz_controller_character_previous": _controller_keyboard.caret_left()
-		&"realmz_controller_character_next": _controller_keyboard.caret_right()
-
-
-func open_controller_action_radial() -> bool:
-	var entries := _command_controller.controller_entries()
-	if entries.is_empty():
-		return false
-	_controller_radial_kind = &"action"
-	_controller_radial_activation = Callable()
-	_controller_radial.set_title("ACTIONS")
-	_controller_radial.open(entries)
-	return true
-
-
-func open_controller_interaction_radial(entries: Array[ControllerRadialEntry], activation: Callable) -> bool:
-	if entries.is_empty() or not activation.is_valid():
-		return false
-	_controller_radial_kind = &"interaction"
-	_controller_radial_activation = activation
-	_controller_radial.set_title("ACTIONS")
-	_controller_radial.open(entries)
-	return true
-
-
-func open_controller_workspace_radial() -> bool:
-	var entries: Array[ControllerRadialEntry] = []
-	var route_reason := GameShellAvailability.route_change_reason(_current_view)
-	for definition: UiRouteDefinition in UiRouteCatalog.routes():
-		entries.append(ControllerRadialEntry.new(definition.route_id, definition.label, route_reason.is_empty(), route_reason))
-	_controller_radial_kind = &"workspace"
-	_controller_radial.set_title("WORKSPACES")
-	_controller_radial.open(entries)
-	return true
-
-
-func move_controller_radial(direction: Vector2i) -> void:
-	_controller_radial.move_direction(Vector2(direction))
-
-
-func page_controller_radial(delta: int) -> void:
-	if delta < 0: _controller_radial.previous_page()
-	else: _controller_radial.next_page()
-
-
-func confirm_controller_radial() -> void:
-	_controller_radial.confirm_selected()
-
-
-func cancel_controller_radial() -> bool:
-	if not _controller_radial.is_open():
-		return false
-	_controller_radial.cancel()
-	_controller_radial_kind = &""
-	_controller_radial_activation = Callable()
-	return true
-
-
-func _on_controller_radial_selected(command_id: StringName) -> void:
-	var kind := _controller_radial_kind
-	var activation := _controller_radial_activation
-	_controller_radial_kind = &""
-	_controller_radial_activation = Callable()
-	if kind == &"action":
-		_command_controller.activate_controller(command_id)
-	elif kind == &"workspace":
-		_navigator.open_screen(command_id)
-	elif kind == &"interaction" and activation.is_valid():
-		activation.call(command_id)
+func _handle_controller_radial_selection(command_id: StringName) -> void:
+	controller.on_radial_selected(command_id)
 
 
 func handle_route_shortcut(event: InputEvent) -> bool:

@@ -163,9 +163,19 @@ test("rendered MCP fixture lifecycle and typed continuations", { skip: !runRende
     assert.equal(fixture.descriptor.fixtureId, fixture.fixtureId);
     assert.deepEqual(fixture.descriptor.capabilities.sort(), ["act", "capture", "checkpoint", "close", "describe", "invoke", "observe", "respond", "restore", "ui"]);
 
-    let observed = await observe(client, id);
-    let revision = currentRevision(observed, "initial observation");
-    const checkpointReply = reply(await tool(client, "realmz_fixture", { operation: "checkpoint", sessionId: id }), "checkpoint");
+	let observed = await observe(client, id);
+	let revision = currentRevision(observed, "initial observation");
+	const controllerDown = reply(await tool(client, "realmz_ui", { sessionId: id, params: { action: "controller-button", button: 12, pressed: true }, expectedRevision: revision, requestId: "controller-down-press" }), "controller down press");
+	const controllerDownResult = successfulResult(controllerDown, "controller down press");
+	assert.equal(controllerDownResult.mode, "controller-input");
+	const controllerFocus = controllerDownResult.focus as Record<string, unknown>;
+	assert.equal(typeof controllerFocus.focusControlId, "string", "controller navigation did not expose a focused control identity");
+	revision = currentRevision(controllerDown, "controller down press");
+	const controllerRelease = reply(await tool(client, "realmz_ui", { sessionId: id, params: { action: "controller-button", button: 12, pressed: false }, expectedRevision: revision, requestId: "controller-down-release" }), "controller down release");
+	assert.equal(successfulResult(controllerRelease, "controller down release").mode, "controller-input");
+	observed = await observe(client, id);
+	revision = currentRevision(observed, "post-controller observation");
+	const checkpointReply = reply(await tool(client, "realmz_fixture", { operation: "checkpoint", sessionId: id }), "checkpoint");
     const checkpointResult = successfulResult(checkpointReply, "checkpoint");
     const checkpoint = checkpointResult.checkpoint;
     assert.ok(checkpoint && typeof checkpoint === "object" && !Array.isArray(checkpoint));

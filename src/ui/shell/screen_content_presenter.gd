@@ -79,15 +79,15 @@ func _bind_system_controller(owner_ref: WeakRef) -> void:
 
 
 func receive_controller_binding(action_id: StringName, descriptor: Dictionary) -> void:
-	_system_controller.receive_controller_binding(action_id, descriptor)
+	_system_controller.controller.receive_binding(action_id, descriptor)
 
 
 func cancel_controller_binding_capture() -> void:
-	_system_controller.cancel_controller_binding_capture()
+	_system_controller.controller.cancel_binding_capture()
 
 
 func set_controller_live_input(value: String) -> void:
-	_system_controller.set_controller_live_input(value)
+	_system_controller.controller.set_live_input(value)
 
 
 func _bind_character_controller(owner_ref: WeakRef) -> void:

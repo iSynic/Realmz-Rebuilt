@@ -15,8 +15,22 @@ func move(root: Control, direction: Vector2i) -> Control:
 		return current
 	var side := _side_for(direction)
 	var neighbor := current.find_valid_focus_neighbor(side) if side >= 0 else null
-	if neighbor == null or neighbor == current or not _is_focusable(neighbor):
+	if neighbor == null or neighbor == current or not root.is_ancestor_of(neighbor) or not _is_focusable(neighbor):
 		neighbor = _geometric_neighbor(root, current, direction)
+	if neighbor != null:
+		neighbor.grab_focus()
+		_reveal_in_scroll(neighbor)
+	return neighbor
+
+
+func move_geometric(root: Control, direction: Vector2i) -> Control:
+	if root == null or direction == Vector2i.ZERO:
+		return null
+	var viewport := root.get_viewport()
+	var current := viewport.gui_get_focus_owner() if viewport != null else null
+	if current == null or not root.is_ancestor_of(current):
+		return focus_first(root)
+	var neighbor := _geometric_neighbor(root, current, direction, 10.0)
 	if neighbor != null:
 		neighbor.grab_focus()
 		_reveal_in_scroll(neighbor)
@@ -28,12 +42,19 @@ func focus_next(root: Control, backwards: bool = false) -> Control:
 		return null
 	var viewport := root.get_viewport()
 	var current := viewport.gui_get_focus_owner() if viewport != null else null
-	if current == null:
+	if current == null or not root.is_ancestor_of(current):
 		return focus_first(root)
-	var next := current.find_prev_valid_focus() if backwards else current.find_next_valid_focus()
-	if next != null:
-		next.grab_focus()
-		_reveal_in_scroll(next)
+	var focus_group := String(current.get_meta("focus_group", ""))
+	var candidates := _focusable_controls(root, focus_group)
+	if candidates.is_empty():
+		return null
+	var current_index := candidates.find(current)
+	if current_index < 0:
+		return focus_first(root)
+	var offset := -1 if backwards else 1
+	var next: Control = candidates[wrapi(current_index + offset, 0, candidates.size())]
+	next.grab_focus()
+	_reveal_in_scroll(next)
 	return next
 
 
@@ -42,6 +63,10 @@ func focus_first(root: Control) -> Control:
 	if candidates.is_empty():
 		return null
 	candidates.sort_custom(func(left: Control, right: Control) -> bool:
+		var left_disabled := left is BaseButton and (left as BaseButton).disabled
+		var right_disabled := right is BaseButton and (right as BaseButton).disabled
+		if left_disabled != right_disabled:
+			return not left_disabled
 		var left_position := left.get_global_rect().position
 		var right_position := right.get_global_rect().position
 		return left_position.y < right_position.y or is_equal_approx(left_position.y, right_position.y) and left_position.x < right_position.x
@@ -91,7 +116,7 @@ func scroll_active(root: Control, direction: Vector2i, step: int = 48) -> bool:
 	return true
 
 
-func _geometric_neighbor(root: Control, current: Control, direction: Vector2i) -> Control:
+func _geometric_neighbor(root: Control, current: Control, direction: Vector2i, perpendicular_weight: float = 2.0) -> Control:
 	var focus_group := String(current.get_meta("focus_group", ""))
 	var current_center := current.get_global_rect().get_center()
 	var best: Control
@@ -104,7 +129,7 @@ func _geometric_neighbor(root: Control, current: Control, direction: Vector2i) -
 		if primary <= 0.5:
 			continue
 		var perpendicular := absf(offset.cross(Vector2(direction)))
-		var score := primary + perpendicular * 2.0
+		var score := primary + perpendicular * perpendicular_weight
 		if score < best_score:
 			best = candidate
 			best_score = score
@@ -121,7 +146,7 @@ func _focusable_controls(root: Node, focus_group: String) -> Array[Control]:
 
 
 func _is_focusable(control: Control) -> bool:
-	return control != null and control.is_inside_tree() and control.is_visible_in_tree() and control.focus_mode != Control.FOCUS_NONE and not (control is BaseButton and (control as BaseButton).disabled)
+	return control != null and control.is_inside_tree() and control.is_visible_in_tree() and control.focus_mode == Control.FOCUS_ALL
 
 
 func _adjust_value(control: Control, direction: Vector2i) -> bool:

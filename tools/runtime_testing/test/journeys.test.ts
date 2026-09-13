@@ -139,6 +139,21 @@ test("journey permits UI control execution against an active modal", async () =>
   assert.equal(status.state, "completed");
 });
 
+test("journey accepts bounded controller button and axis input without a pointer control", async () => {
+  const setup = await setupFakeSession();
+  const steps = [
+    { command: "ui", params: { action: "controller-button", button: 0, pressed: true }, expect: { interactionKind: null } },
+    { command: "ui", params: { action: "controller-button", button: 0, pressed: false }, expect: { interactionKind: null } },
+    { command: "ui", params: { action: "controller-axis", axis: 0, value: 0.8 }, expect: { interactionKind: null } },
+    { command: "ui", params: { action: "controller-axis", axis: 0, value: 0 }, expect: { interactionKind: null } }
+  ];
+  const job = await makeJob(setup.home, setup.descriptor.sessionId, { name: "controller-input", sessionId: setup.descriptor.sessionId, steps });
+  await runJourneyJob(job.id, setup.home);
+  const status = JourneyStatusSchema.parse(JSON.parse(await fs.readFile(job.statusPath, "utf8")));
+  assert.equal(status.state, "completed");
+  assert.equal(status.counts.actions, 4);
+});
+
 test("journey resolves a UI label recipe to the one current enabled control", async () => {
   const setup = await setupFakeSession({ controls: [{ controlId: "shop-7", label: "Shop", enabled: true }] });
   const job = await makeJob(setup.home, setup.descriptor.sessionId, { name: "label-ui", sessionId: setup.descriptor.sessionId, steps: [{ command: "ui", params: { action: "click", controlLabel: "Shop" }, expect: { interactionKind: null, currentControlId: "shop-7" } }] });
