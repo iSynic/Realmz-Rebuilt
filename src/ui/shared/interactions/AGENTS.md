@@ -37,6 +37,7 @@
 - An empty Simple, Complex, or Thief prompt remains empty; do not replace it with an internal interaction-family title or helper sentence.
 - Disabled controls require a specific player-facing reason.
 - Every pointer action must also be keyboard focusable.
+- Interaction components may expose their existing typed command owners as controller-radial entries. The radial preserves request ordering, enabled state, and disabled reason and invokes the component operation directly; it never simulates pointer coordinates or creates an alternate response payload.
 
 # Work Guidance
 

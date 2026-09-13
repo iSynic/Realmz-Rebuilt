@@ -7,6 +7,7 @@ extends RefCounted
 
 var _application: Variant
 var _focus := ControllerFocusNavigator.new()
+var _controller_directions: Dictionary = {}
 
 
 func _init(application: Variant) -> void:
@@ -50,9 +51,22 @@ func handle_input(event: InputEvent) -> void:
 
 
 func handle_controller_action(action_id: StringName, pressed: bool, repeated: bool = false) -> void:
+	var direction_action := _controller_direction(action_id)
 	if not pressed:
-		if action_id in [&"realmz_controller_up", &"realmz_controller_down", &"realmz_controller_left", &"realmz_controller_right"] and _application._held_movement != null:
-			_application._held_movement.stop(&"controller")
+		if direction_action != Vector2i.ZERO:
+			_controller_directions.erase(action_id)
+			if _application._held_movement != null:
+				_application._held_movement.stop(&"controller")
+			var remaining := _combined_controller_direction()
+			if remaining != Vector2i.ZERO and _application.accepts_exploration_input() and not _application._dungeon_presenter.is_active() and not _application._shell_presenter.controller_radial_is_open():
+				_application._held_movement.start(&"controller", remaining)
+		return
+	if direction_action != Vector2i.ZERO:
+		_controller_directions[action_id] = direction_action
+	if _application.presentation_coordinator != null and _application.presentation_coordinator.is_combat_playback_active():
+		if action_id == &"realmz_controller_back":
+			_application.abort_full_party_auto(true)
+		_mark_handled()
 		return
 	if _application._shell_presenter.controller_text_editor_is_open():
 		if action_id == &"realmz_controller_confirm":
@@ -86,15 +100,26 @@ func handle_controller_action(action_id: StringName, pressed: bool, repeated: bo
 				_application._shell_presenter.move_controller_radial(radial_direction)
 		_mark_handled()
 		return
+	var pending: InteractionRequest = _application.session_controller.view().active_interaction_request()
+	var combat_pending := pending != null and pending.kind == InteractionRequest.COMBAT
+	if combat_pending and _handle_controller_combat(action_id, direction_action, _controller_scroll_direction(action_id), repeated):
+		_mark_handled()
+		return
 	if action_id == &"realmz_controller_action_radial":
+		_stop_controller_movement()
+		if pending != null and _application._shell_presenter.open_controller_interaction_radial(_application._interaction_presenter.controller_actions(), _application._interaction_presenter.activate_controller_action):
+			_mark_handled()
+			return
 		if _application._shell_presenter.open_controller_action_radial():
 			_mark_handled()
 		return
 	if action_id == &"realmz_controller_workspace_radial":
+		_stop_controller_movement()
 		if _application._shell_presenter.open_controller_workspace_radial():
 			_mark_handled()
 		return
 	if action_id == &"realmz_controller_back":
+		_stop_controller_movement()
 		var back := InputEventAction.new()
 		back.action = &"realmz_back"
 		back.pressed = true
@@ -128,7 +153,7 @@ func handle_controller_action(action_id: StringName, pressed: bool, repeated: bo
 		if _focus.scroll_active(_application, scroll_direction):
 			_mark_handled()
 		return
-	var direction := _controller_direction(action_id)
+	var direction := direction_action
 	var focused: Control = _application.get_viewport().gui_get_focus_owner()
 	if direction != Vector2i.ZERO and (focused != null or not _application.accepts_exploration_input()):
 		_focus.move(_application, direction)
@@ -138,9 +163,69 @@ func handle_controller_action(action_id: StringName, pressed: bool, repeated: bo
 		if _application._dungeon_presenter.is_active():
 			if not repeated:
 				_application._dungeon_presenter.handle_keyboard_press(direction)
-		elif not repeated:
-			_application._held_movement.start(&"controller", direction)
+		else:
+			var combined := _combined_controller_direction()
+			if _application._held_movement.active_source() == &"controller":
+				_application._held_movement.update(&"controller", combined)
+			else:
+				_application._held_movement.start(&"controller", combined)
 		_mark_handled()
+
+
+func clear_controller_state() -> void:
+	_controller_directions.clear()
+	_stop_controller_movement()
+
+
+func _handle_controller_combat(action_id: StringName, direction: Vector2i, scroll_direction: Vector2i, repeated: bool) -> bool:
+	var battlefield: BattlefieldInteractionController = _application._battlefield_presenter.interaction
+	if scroll_direction != Vector2i.ZERO:
+		return _application._battlefield_presenter.controller_pan(scroll_direction)
+	if action_id == &"realmz_controller_back":
+		if _application.abort_full_party_auto(false):
+			return true
+		return battlefield.cancel_targeting() or battlefield.cancel_movement_preview()
+	if battlefield.targeting != null:
+		if direction != Vector2i.ZERO:
+			battlefield.move_target_preview(direction)
+			return true
+		if action_id == &"realmz_controller_confirm":
+			battlefield.select_target_preview()
+			return true
+		if action_id == &"realmz_controller_action_radial":
+			battlefield.confirm_targeting()
+			return true
+		if action_id == &"realmz_controller_workspace_radial":
+			battlefield.rotate_targeting()
+			return true
+		if action_id == &"realmz_controller_section_previous":
+			battlefield.cycle_target_candidate(-1)
+			return true
+		if action_id == &"realmz_controller_section_next":
+			battlefield.cycle_target_candidate(1)
+			return true
+		if action_id == &"realmz_controller_inspect":
+			battlefield.inspect_target_preview()
+			return true
+		return false
+	if action_id == &"realmz_controller_confirm" and battlefield.has_movement_preview():
+		return battlefield.confirm_movement_preview()
+	if direction != Vector2i.ZERO and not repeated and _application._interaction_presenter.combat.accepts_spatial_input():
+		battlefield.preview_movement_direction(_combined_controller_direction())
+		return true
+	return false
+
+
+func _combined_controller_direction() -> Vector2i:
+	var result := Vector2i.ZERO
+	for direction: Vector2i in _controller_directions.values():
+		result += direction
+	return Vector2i(clampi(result.x, -1, 1), clampi(result.y, -1, 1))
+
+
+func _stop_controller_movement() -> void:
+	if _application._held_movement != null:
+		_application._held_movement.stop(&"controller")
 
 
 func _controller_direction(action_id: StringName) -> Vector2i:

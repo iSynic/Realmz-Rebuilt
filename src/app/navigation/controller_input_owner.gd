@@ -28,6 +28,7 @@ const RIGHT_AXES: Array[int] = [JOY_AXIS_RIGHT_X, JOY_AXIS_RIGHT_Y]
 var _preferences := ControllerPreferences.new()
 var _active_device: int = -1
 var _held_actions: Dictionary = {}
+var _held_descriptors: Dictionary = {}
 var _repeat_remaining_ms: Dictionary = {}
 var _axis_values: Dictionary = {}
 var _suspended: bool = false
@@ -104,13 +105,19 @@ func handle_input(event: InputEvent) -> bool:
 			continue
 		consumed = true
 		var action_id := StringName(descriptor["action"])
+		var descriptor_key := _descriptor_key(descriptor)
 		var now_pressed := _descriptor_pressed(descriptor, event)
 		var was_pressed := bool(_held_actions.get(action_id, false))
-		if now_pressed and not was_pressed:
+		if now_pressed:
+			_held_descriptors[descriptor_key] = true
+		else:
+			_held_descriptors.erase(descriptor_key)
+		var remains_pressed := _action_has_held_descriptor(action_id)
+		if remains_pressed and not was_pressed:
 			_held_actions[action_id] = true
 			_repeat_remaining_ms[action_id] = _preferences.repeat_initial_ms
 			action_pressed.emit(action_id, false)
-		elif not now_pressed and was_pressed:
+		elif not remains_pressed and was_pressed:
 			_held_actions.erase(action_id)
 			_repeat_remaining_ms.erase(action_id)
 			action_released.emit(action_id)
@@ -118,18 +125,20 @@ func handle_input(event: InputEvent) -> bool:
 
 
 func suspend(reason: String) -> void:
-	clear_held_input()
+	clear_held_input(false)
 	_suspended = true
 	_awaiting_neutral = true
 	input_suspended.emit(reason)
 
 
-func clear_held_input() -> void:
+func clear_held_input(clear_axes: bool = true) -> void:
 	for action_id: StringName in _held_actions.keys():
 		action_released.emit(action_id)
 	_held_actions.clear()
+	_held_descriptors.clear()
 	_repeat_remaining_ms.clear()
-	_axis_values.clear()
+	if clear_axes:
+		_axis_values.clear()
 
 
 func _process(delta: float) -> void:
@@ -150,6 +159,18 @@ func _matches_physical_input(descriptor: Dictionary, event: InputEvent) -> bool:
 	if descriptor["kind"] == ControllerPreferences.BINDING_BUTTON:
 		return event is InputEventJoypadButton and (event as InputEventJoypadButton).button_index == int(descriptor["code"])
 	return event is InputEventJoypadMotion and (event as InputEventJoypadMotion).axis == int(descriptor["code"])
+
+
+func _descriptor_key(descriptor: Dictionary) -> String:
+	return "%s:%s:%d:%d" % [String(descriptor["action"]), String(descriptor["kind"]), int(descriptor["code"]), int(descriptor.get("direction", 0))]
+
+
+func _action_has_held_descriptor(action_id: StringName) -> bool:
+	var prefix := "%s:" % String(action_id)
+	for descriptor_key: String in _held_descriptors:
+		if descriptor_key.begins_with(prefix):
+			return true
+	return false
 
 
 func _capture_binding(event: InputEvent) -> bool:

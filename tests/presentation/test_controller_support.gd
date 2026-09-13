@@ -5,6 +5,7 @@ func run() -> void:
 	_test_controller_preferences_round_trip_and_migration()
 	_test_controller_bindings_and_conflicts()
 	_test_controller_owner_edges_hysteresis_and_takeover()
+	_test_ordered_controller_targeting()
 	await _test_focus_navigation_activation_and_prompts()
 	await _test_controller_radial_pages_and_explicit_commit()
 	await _test_qwerty_draft_commit_cancel_and_layout()
@@ -70,6 +71,19 @@ func _test_controller_owner_edges_hysteresis_and_takeover() -> void:
 	right.axis_value = 0.16
 	owner.handle_input(right)
 	assert_equal(released, [&"realmz_controller_right"], "crossing the hysteresis release boundary emits one release edge")
+	var dpad_right := InputEventJoypadButton.new()
+	dpad_right.device = 2
+	dpad_right.button_index = JOY_BUTTON_DPAD_RIGHT
+	dpad_right.pressed = true
+	owner.handle_input(dpad_right)
+	right.axis_value = 0.3
+	owner.handle_input(right)
+	dpad_right.pressed = false
+	owner.handle_input(dpad_right)
+	assert_equal(released.count(&"realmz_controller_right"), 1, "releasing one of two physical bindings does not release their still-held logical direction")
+	right.axis_value = 0.0
+	owner.handle_input(right)
+	assert_equal(released.count(&"realmz_controller_right"), 2, "the logical direction releases after its final physical owner becomes neutral")
 	var other_noise := InputEventJoypadMotion.new()
 	other_noise.device = 3
 	other_noise.axis = JOY_AXIS_LEFT_Y
@@ -80,8 +94,20 @@ func _test_controller_owner_edges_hysteresis_and_takeover() -> void:
 	south.button_index = JOY_BUTTON_A
 	south.pressed = true
 	assert_true(owner.handle_input(south) and owner.active_device() == 3, "a deliberate button press transfers single-pad ownership")
+	var held_axis := InputEventJoypadMotion.new()
+	held_axis.device = 3
+	held_axis.axis = JOY_AXIS_LEFT_X
+	held_axis.axis_value = 0.8
+	owner.handle_input(held_axis)
 	owner.suspend("test")
 	assert_true(owner.is_suspended(), "focus loss or disconnect suspends controller dispatch")
+	south.pressed = false
+	owner.handle_input(south)
+	south.pressed = true
+	owner.handle_input(south)
+	assert_true(owner.is_suspended(), "an acknowledgement cannot resume while a stick remains held")
+	held_axis.axis_value = 0.0
+	owner.handle_input(held_axis)
 	south.pressed = false
 	owner.handle_input(south)
 	south.pressed = true
@@ -106,6 +132,27 @@ func _test_controller_owner_edges_hysteresis_and_takeover() -> void:
 	owner.handle_input(cancel_capture)
 	assert_true(capture_cancelled[0], "East cancels binding capture without replacing the draft")
 	owner.free()
+
+
+func _test_ordered_controller_targeting() -> void:
+	var body := InteractionResponse.CombatBody.new(&"cast_spell", "hero")
+	var request := CombatTargetingRequest.new(&"sequence", body)
+	request.candidate_ids.assign(["monster.one", "monster.two", "monster.three"])
+	request.maximum_targets = 3
+	var state := CombatTargetingState.new(request)
+	assert_true(state.cycle_candidate(1) and state.select_previewed_target(), "controller target cycling previews and selects the first rules-supplied combatant")
+	assert_true(state.cycle_candidate(1), "shoulders advance the preview independently of committed selections")
+	assert_equal([state.previewed_candidate_id(), state.selected_ids], ["monster.two", ["monster.one"]], "cycling a candidate does not erase the ordered targets already selected")
+	assert_true(state.select_previewed_target() and state.cycle_candidate(1) and state.select_previewed_target(), "South adds subsequent targets in explicit order")
+	assert_equal(state.committed_body().target_ids, ["monster.one", "monster.two", "monster.three"], "West-style confirmation retains the complete ordered multi-target selection")
+	var area_request := CombatTargetingRequest.new(&"area", body)
+	area_request.validation_deferred = true
+	area_request.default_target_coordinate = Vector2i(40, 40)
+	area_request.area_rotation_offsets = [[Vector2i.ZERO], [Vector2i.ZERO, Vector2i.RIGHT]]
+	var area := CombatTargetingState.new(area_request)
+	assert_true(area.move_coordinate_preview(Vector2i(1, -1)) and area.hovered_coordinate == Vector2i(41, 39), "controller area targeting moves an arbitrary center over the battlefield grid")
+	assert_false(area.can_confirm(), "moving an area preview does not commit it")
+	assert_true(area.select_coordinate(area.hovered_coordinate) and area.rotate_area() and area.committed_body().target_coordinate == Vector2i(41, 39), "South selects and North rotates an area before explicit commit")
 
 
 func _test_focus_navigation_activation_and_prompts() -> void:

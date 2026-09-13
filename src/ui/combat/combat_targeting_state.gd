@@ -16,6 +16,7 @@ var selected_ids: Array[String] = []
 var selected_coordinates: Array[Vector2i] = []
 var selected_coordinate := Vector2i(-1, -1)
 var hovered_coordinate := Vector2i(-1, -1)
+var candidate_index: int = -1
 var status_text: String = "Choose a target on the battlefield."
 
 
@@ -105,6 +106,39 @@ func target_with_keyboard() -> bool:
 	if coordinate.x < 0 or coordinate.y < 0:
 		return false
 	return select_coordinate(coordinate)
+
+
+func cycle_candidate(delta: int) -> bool:
+	if mode not in [&"combatant", &"sequence"] or candidate_ids.is_empty() or delta == 0:
+		return false
+	candidate_index = posmod(candidate_index + delta, candidate_ids.size())
+	status_text = "Previewing target %d of %d. Confirm the target or cycle again." % [candidate_index + 1, candidate_ids.size()]
+	return true
+
+
+func previewed_candidate_id() -> String:
+	return candidate_ids[candidate_index] if candidate_index >= 0 and candidate_index < candidate_ids.size() else ""
+
+
+func select_previewed_target() -> bool:
+	var candidate_id := previewed_candidate_id()
+	if candidate_id.is_empty() and not cycle_candidate(1):
+		return false
+	return select_combatant(previewed_candidate_id())
+
+
+func move_coordinate_preview(direction: Vector2i) -> bool:
+	if mode not in [&"area", &"coordinate_sequence"] or direction == Vector2i.ZERO:
+		return false
+	var next := hovered_coordinate + direction
+	if hovered_coordinate.x < 0 or hovered_coordinate.y < 0:
+		next = legal_coordinates[0] if not legal_coordinates.is_empty() else Vector2i.ZERO
+	if not validation_deferred and not legal_coordinates.is_empty() and not legal_coordinates.has(next):
+		status_text = "That battlefield space is outside the legal target area."
+		return false
+	hovered_coordinate = next
+	status_text = "Previewing battlefield space %d, %d." % [next.x, next.y]
+	return true
 
 
 func rotate_area() -> bool:

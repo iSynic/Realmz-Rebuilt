@@ -570,6 +570,8 @@ func _continue_persistent_auto_after_playback() -> void:
 
 func _on_controller_input_suspended(reason: String) -> void:
 	_controller_resume_required = true
+	if _input_router != null:
+		_input_router.clear_controller_state()
 	if _held_movement != null:
 		_held_movement.stop()
 	if _shell_presenter != null:

@@ -73,6 +73,23 @@ func has_battle_artwork() -> bool:
 	return _textures.has_battle_artwork()
 
 
+func controller_pan(direction: Vector2i) -> bool:
+	if direction == Vector2i.ZERO or _view == null or _view.combat_view == null or _view.combat_view.battlefield == null:
+		return false
+	var visible_cells := BattlefieldPresentationGeometry.viewport_cells_for(size)
+	if _render_camera_top_left.x < 0 or _render_camera_visible_cells != visible_cells:
+		var focus := BattlefieldPresentationGeometry.actor_position(_view.combat_view, _view.party_members, _view.combat_view.active_actor_id)
+		_render_camera_top_left = BattlefieldPresentationGeometry.camera_top_left(focus, visible_cells)
+	_render_camera_top_left = Vector2i(
+		clampi(_render_camera_top_left.x + direction.x, 0, maxi(0, BattlefieldGrid.SIZE - visible_cells.x)),
+		clampi(_render_camera_top_left.y + direction.y, 0, maxi(0, BattlefieldGrid.SIZE - visible_cells.y))
+	)
+	_render_camera_visible_cells = visible_cells
+	_render_camera_focus_id = BattlefieldPresentationGeometry.camera_focus_id_for(_playback_frame, interaction.focused_combatant_id, _view.combat_view.active_actor_id)
+	queue_redraw()
+	return true
+
+
 func _draw() -> void:
 	if _view == null or _view.combat_view == null or _view.combat_view.battlefield == null:
 		return

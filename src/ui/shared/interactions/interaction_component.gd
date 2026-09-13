@@ -59,6 +59,14 @@ func preferred_initial_focus() -> Control:
 	return null
 
 
+func controller_actions() -> Array[ControllerRadialEntry]:
+	return []
+
+
+func activate_controller_action(_action_id: StringName) -> bool:
+	return false
+
+
 func add_response(label: String, body: InteractionResponse.Body, enabled: bool = true, reason: String = "") -> Button:
 	return add_response_to(self, label, body, enabled, reason)
 

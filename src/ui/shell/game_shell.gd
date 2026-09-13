@@ -108,6 +108,7 @@ var _music_playlist_id: int = 0
 var _music_title: String = ""
 var _music_playing: bool = false
 var _controller_radial_kind: StringName = &""
+var _controller_radial_activation := Callable()
 
 var navigator: ScreenNavigator:
 	get: return _navigator
@@ -360,6 +361,17 @@ func open_controller_action_radial() -> bool:
 	if entries.is_empty():
 		return false
 	_controller_radial_kind = &"action"
+	_controller_radial_activation = Callable()
+	_controller_radial.set_title("ACTIONS")
+	_controller_radial.open(entries)
+	return true
+
+
+func open_controller_interaction_radial(entries: Array[ControllerRadialEntry], activation: Callable) -> bool:
+	if entries.is_empty() or not activation.is_valid():
+		return false
+	_controller_radial_kind = &"interaction"
+	_controller_radial_activation = activation
 	_controller_radial.set_title("ACTIONS")
 	_controller_radial.open(entries)
 	return true
@@ -394,16 +406,21 @@ func cancel_controller_radial() -> bool:
 		return false
 	_controller_radial.cancel()
 	_controller_radial_kind = &""
+	_controller_radial_activation = Callable()
 	return true
 
 
 func _on_controller_radial_selected(command_id: StringName) -> void:
 	var kind := _controller_radial_kind
+	var activation := _controller_radial_activation
 	_controller_radial_kind = &""
+	_controller_radial_activation = Callable()
 	if kind == &"action":
 		_command_controller.activate_controller(command_id)
 	elif kind == &"workspace":
 		_navigator.open_screen(command_id)
+	elif kind == &"interaction" and activation.is_valid():
+		activation.call(command_id)
 
 
 func handle_route_shortcut(event: InputEvent) -> bool:

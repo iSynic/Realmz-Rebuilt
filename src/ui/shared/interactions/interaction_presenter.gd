@@ -83,6 +83,14 @@ func handle_global_pointer_acknowledgement(event: InputEvent) -> bool:
 	return mouse_event != null and mouse_event.pressed and mouse_event.button_index == MOUSE_BUTTON_LEFT and _uses_global_classic_acknowledgement() and _submit_classic_acknowledgement()
 
 
+func controller_actions() -> Array[ControllerRadialEntry]:
+	return _component.controller_actions() if _component != null else []
+
+
+func activate_controller_action(action_id: StringName) -> bool:
+	return _component != null and _component.activate_controller_action(action_id)
+
+
 func _unhandled_key_input(event: InputEvent) -> void:
 	var key_event := event as InputEventKey
 	if key_event == null or not key_event.pressed or key_event.echo or key_event.keycode not in [KEY_ENTER, KEY_KP_ENTER, KEY_SPACE]:

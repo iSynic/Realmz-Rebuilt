@@ -509,6 +509,32 @@ func accepts_spatial_input() -> bool:
 	return true
 
 
+func controller_actions() -> Array[ControllerRadialEntry]:
+	var result: Array[ControllerRadialEntry] = []
+	for node: Node in find_children("CombatCommand*", "Button", true, false):
+		var button := node as Button
+		if button == null or not button.is_visible_in_tree():
+			continue
+		var action_id := StringName(button.name.trim_prefix("CombatCommand").to_snake_case())
+		result.append(ControllerRadialEntry.new(action_id, button.text, not button.disabled, button.tooltip_text))
+	for slot_index: int in _fast_spells.size():
+		var spell: InteractionRequestValue.FastSpell = _fast_spells[slot_index]
+		var reason: String = spell.activation.reason if not spell.activation.enabled else ""
+		result.append(ControllerRadialEntry.new(StringName("fast_spell_%d" % slot_index), "Fast: %s" % spell.spell_name, spell.activation.enabled, reason))
+	return result
+
+
+func activate_controller_action(action_id: StringName) -> bool:
+	var action_text := String(action_id)
+	if action_text.begins_with("fast_spell_"):
+		return handle_fast_spell(action_text.trim_prefix("fast_spell_").to_int(), true)
+	var button := find_child("CombatCommand%s" % action_text.to_pascal_case(), true, false) as Button
+	if button == null or button.disabled or not button.is_visible_in_tree():
+		return false
+	button.pressed.emit()
+	return true
+
+
 func _build_command_shelf(body: CombatRequestBody, actor_id: String, action_ids: Array[String], targets: Array[InteractionRequestValue.CombatTarget], target_panel: Control, spell_panel: Control, scroll_panel: Control, item_panel: Control, bandage_panel: Control, mode_panels: Array[Control], overview: Control) -> void:
 	var scaled_panels: Array[Control] = [find_child("BattleInspectionCommandsInset", true, false), %BattlePrimaryCommandsInset, find_child("BattleTurnCommandsInset", true, false)]
 	var scaled_columns: Array[VBoxContainer] = [find_child("BattleInspectionCommands", true, false), %BattlePrimaryCommands, %BattleTurnCommands]

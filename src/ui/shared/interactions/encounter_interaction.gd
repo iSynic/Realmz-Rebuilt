@@ -86,6 +86,22 @@ func handle_back() -> bool:
 	return false
 
 
+func controller_actions() -> Array[ControllerRadialEntry]:
+	var result: Array[ControllerRadialEntry] = []
+	for entry: Array in [[&"action", %EncounterCommandAction, "Action"], [&"item", %EncounterCommandItem, "Items"], [&"thief", %EncounterCommandThief, "Skills"], [&"word", %EncounterCommandWord, "Speak"], [&"spell", %EncounterCommandSpell, "Spells"], [&"back", %EncounterCommandBack, "Stop"]]:
+		var button := entry[1] as BaseButton
+		result.append(ControllerRadialEntry.new(entry[0], entry[2], not button.disabled, button.tooltip_text if button.disabled else ""))
+	return result
+
+
+func activate_controller_action(action_id: StringName) -> bool:
+	var button := {&"action": %EncounterCommandAction, &"item": %EncounterCommandItem, &"thief": %EncounterCommandThief, &"word": %EncounterCommandWord, &"spell": %EncounterCommandSpell, &"back": %EncounterCommandBack}.get(action_id) as BaseButton
+	if button == null or button.disabled:
+		return false
+	_on_command_requested(action_id)
+	return true
+
+
 func _classify_actions() -> void:
 	for entry: InteractionRequestValue.EncounterAction in _body.actions:
 		match entry.kind:
