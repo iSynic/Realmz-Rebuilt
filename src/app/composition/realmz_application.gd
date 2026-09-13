@@ -113,6 +113,9 @@ func _bind_debug_and_movement() -> void:
 	_controller_input.input_suspended.connect(_on_controller_input_suspended)
 	_controller_input.input_resumed.connect(_on_controller_input_resumed)
 	_controller_input.active_device_changed.connect(func(_device_id: int, family: String) -> void: _shell_presenter.show_controller_prompts(family))
+	_controller_input.binding_captured.connect(func(action_id: StringName, descriptor: Dictionary) -> void: _shell_presenter.receive_controller_binding(action_id, descriptor))
+	_controller_input.binding_capture_cancelled.connect(_shell_presenter.cancel_controller_binding_capture)
+	_controller_input.input_observed.connect(_shell_presenter.set_controller_live_input)
 	debug_tools.status_changed.connect(
 		func(message: String, failed: bool) -> void:
 			_shell_presenter.status.set_status(message, failed)
@@ -187,6 +190,7 @@ func _bind_shell_and_settings() -> void:
 	_shell_presenter.standalone_character_creation_requested.connect(func() -> void: character_files.begin_creation(_active_content))
 	_shell_presenter.standalone_character_creation_cancelled.connect(func() -> void: character_files.cancel_creation(_active_content))
 	_shell_presenter.character_selection_completed.connect(_interaction_presenter.submit_character_selection)
+	_shell_presenter.controller_binding_capture_requested.connect(func(action_id: StringName) -> void: _controller_input.begin_binding_capture(action_id))
 	_audio_presenter.music_state_changed.connect(_shell_presenter.set_music_playback_state)
 	_settings_controller = ApplicationSettingsController.new(self, _presentation_settings, settings_repository, _shell_presenter, _map_presenter, _interaction_presenter, _audio_presenter, presentation_coordinator, _dungeon_presenter, _held_movement, debug_tools)
 	if not has_meta(&"development_preview_request"):

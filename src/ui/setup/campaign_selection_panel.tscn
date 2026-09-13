@@ -202,4 +202,4 @@ ok_button_text = "Install"
 file_mode = 0
 access = 2
 filters = PackedStringArray("*.realmz2 ; Realmz Rebuilt Scenario")
-use_native_dialog = true
+use_native_dialog = false

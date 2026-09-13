@@ -24,6 +24,7 @@ var _selected_character_id: String = ""
 var _selected_item_instance_id: String = ""
 var _trade_mode: bool = false
 var _selected_trade_target_id: String = ""
+var _trade_destination_confirmed: bool = false
 var _trade_status: String = ""
 var _pending_item_action: StringName = &""
 var _pending_item_action_label: String = ""
@@ -52,6 +53,7 @@ func reset() -> void:
 	_selected_item_instance_id = ""
 	_trade_mode = false
 	_selected_trade_target_id = ""
+	_trade_destination_confirmed = false
 	_trade_status = ""
 	_clear_pending_action()
 	_encounter_mode = false
@@ -120,6 +122,7 @@ func _present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog,
 		_item_scroll_position = 0
 		_trade_mode = false
 		_selected_trade_target_id = ""
+		_trade_destination_confirmed = false
 		_trade_status = ""
 		_clear_pending_action()
 	_rendered_character_id = selected_character.id
@@ -213,6 +216,7 @@ func select_roster_character(character_id: String, view: GameView) -> bool:
 			refresh_requested.emit()
 			return true
 		_selected_trade_target_id = target.character_id
+		_trade_destination_confirmed = true
 		_trade_status = "Ready to transfer %s to %s." % [selected_item.name, target.character_name]
 		refresh_requested.emit()
 		return true
@@ -461,8 +465,21 @@ func _bind_trade_control_spine(divider: InventoryTradeDivider, view: GameView, s
 	divider.money_button().pressed.connect(func() -> void: route_requested.emit(&"services"))
 	_scene_binding.clear_pressed_connections(divider.items_button())
 	divider.items_button().pressed.connect(_cancel_trade)
+	_bind_explicit_trade(divider.transfer_button(), view, source, target)
 	_scene_binding.clear_pressed_connections(divider.done_button())
 	divider.done_button().pressed.connect(func() -> void: back_requested.emit())
+
+
+func _bind_explicit_trade(button: Button, view: GameView, source: CharacterView, target: CharacterView) -> void:
+	_scene_binding.clear_pressed_connections(button)
+	var owner := InventoryViewQueries.character_by_id(view, _trade_item_owner_id)
+	var item := InventoryViewQueries.item_by_id(owner, _trade_item_instance_id)
+	var destination_id := target.id if owner != null and owner.id == source.id else source.id if owner != null and owner.id == target.id else ""
+	var availability := InventoryViewQueries.trade_target(item, destination_id)
+	button.disabled = not _trade_destination_confirmed or item == null or destination_id.is_empty() or availability == null or not availability.enabled
+	button.tooltip_text = "Select an exact item and destination first." if not _trade_destination_confirmed or item == null or destination_id.is_empty() else "This item cannot be transferred there." if availability == null else availability.reason if not availability.enabled else "Transfer %s to %s." % [item.name, InventoryViewQueries.character_by_id(view, destination_id).name]
+	if not button.disabled:
+		button.pressed.connect(_submit_trade.bind(item.instance_id, owner.id, destination_id))
 
 
 func _trade_portrait(divider: InventoryTradeDivider, character: CharacterView, left_side: bool, selected: bool, media: ClassicMediaCatalog) -> Button:
@@ -487,6 +504,7 @@ func _select_trade_character(character_id: String, left_side: bool) -> void:
 		_selected_trade_target_id = character_id
 	else:
 		_selected_trade_target_id = character_id
+	_trade_destination_confirmed = not left_side
 	_trade_status = "Drag an item between the selected packs."
 	refresh_requested.emit()
 
@@ -534,6 +552,7 @@ func _select_character(character_id: String) -> void:
 	_selected_item_instance_id = ""
 	_trade_mode = false
 	_selected_trade_target_id = ""
+	_trade_destination_confirmed = false
 	_trade_status = ""
 	_item_scroll_position = 0
 	_clear_pending_action()
@@ -544,6 +563,7 @@ func _select_item(instance_id: String) -> void:
 	_selected_item_instance_id = instance_id
 	_trade_mode = false
 	_selected_trade_target_id = ""
+	_trade_destination_confirmed = false
 	_trade_status = ""
 	_clear_pending_action()
 	refresh_requested.emit()
@@ -554,6 +574,7 @@ func _begin_trade(item: ItemView) -> void:
 	_trade_item_owner_id = _selected_character_id
 	_trade_item_instance_id = item.instance_id
 	_selected_trade_target_id = InventoryViewQueries.first_enabled_trade_target(item)
+	_trade_destination_confirmed = false
 	_trade_status = ""
 	_clear_pending_action()
 	refresh_requested.emit()
@@ -562,6 +583,7 @@ func _begin_trade(item: ItemView) -> void:
 func _cancel_trade() -> void:
 	_trade_mode = false
 	_selected_trade_target_id = ""
+	_trade_destination_confirmed = false
 	_trade_status = ""
 	refresh_requested.emit()
 

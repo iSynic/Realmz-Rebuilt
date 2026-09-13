@@ -33,6 +33,8 @@ signal exploration_minimap_changed(enabled: bool)
 signal classic_exploration_visibility_changed(enabled: bool)
 signal custom_fog_tile_changed(enabled: bool)
 signal autojournal_changed(enabled: bool)
+signal controller_preferences_changed(value: ControllerPreferences)
+signal controller_binding_capture_requested(action_id: StringName)
 signal layout_changed(workspace_rect: Rect2, profile: UiLayoutProfile)
 signal route_changed(route_id: StringName)
 signal play_stage_visibility_changed(visible: bool)
@@ -88,6 +90,7 @@ const MENU_CONTROLLER_SCRIPT := preload("res://src/ui/shell/game_shell_menu_cont
 @onready var _music_dialog: MusicPlaylistDialog = %MusicPlaylistDialog
 @onready var _controller_prompts: ControllerPromptStrip = %ControllerPromptStrip
 @onready var _controller_radial: ControllerRadialOverlay = %ControllerRadialOverlay
+@onready var _controller_keyboard: ControllerQwertyEditor = %ControllerQwertyEditor
 
 var _current_view: GameView
 var last_picture_media_diagnostic: Dictionary = {}
@@ -151,6 +154,7 @@ func _ready() -> void:
 	_navigator.screen_changed.connect(_on_screen_changed)
 	_navigator.system_action_requested.connect(handle_system_action_requested)
 	_navigator.presentation_setting_changed.connect(_on_presentation_setting_changed)
+	_navigator.controller_binding_capture_requested.connect(func(action_id: StringName) -> void: controller_binding_capture_requested.emit(action_id))
 	_party_roster.character_selected.connect(_on_character_selected)
 	_party_roster.character_activated.connect(_on_character_activated)
 	_party_roster.combat_auto_changed.connect(_on_combat_auto_changed)
@@ -301,8 +305,54 @@ func controller_select_relative_character(delta: int) -> bool:
 	return _party_roster.controller_select_relative(delta)
 
 
+func receive_controller_binding(action_id: StringName, descriptor: Dictionary) -> void:
+	_navigator.content_presenter.receive_controller_binding(action_id, descriptor)
+
+
+func cancel_controller_binding_capture() -> void:
+	_navigator.content_presenter.cancel_controller_binding_capture()
+
+
+func set_controller_live_input(value: String) -> void:
+	_navigator.content_presenter.set_controller_live_input(value)
+
+
 func controller_radial_is_open() -> bool:
 	return _controller_radial.is_open()
+
+
+func controller_text_editor_is_open() -> bool:
+	return _controller_keyboard.is_open()
+
+
+func open_controller_text_editor() -> bool:
+	var focused := get_viewport().gui_get_focus_owner()
+	return _controller_keyboard.open_for(focused) if focused is LineEdit or focused is TextEdit else false
+
+
+func move_controller_text_editor(direction: Vector2i) -> void:
+	_controller_keyboard.move_direction(Vector2(direction))
+
+
+func confirm_controller_text_editor() -> void:
+	_controller_keyboard.confirm_focused()
+
+
+func cancel_controller_text_editor() -> void:
+	_controller_keyboard.cancel()
+
+
+func page_controller_text_editor(delta: int) -> void:
+	if delta < 0: _controller_keyboard.previous_page()
+	else: _controller_keyboard.next_page()
+
+
+func edit_controller_text(action_id: StringName) -> void:
+	match action_id:
+		&"realmz_controller_action_radial": _controller_keyboard.backspace()
+		&"realmz_controller_workspace_radial": _controller_keyboard.next_page()
+		&"realmz_controller_character_previous": _controller_keyboard.caret_left()
+		&"realmz_controller_character_next": _controller_keyboard.caret_right()
 
 
 func open_controller_action_radial() -> bool:
@@ -481,6 +531,7 @@ func _on_presentation_setting_changed(setting_id: StringName, value: Variant) ->
 		&"classic_exploration_visibility": classic_exploration_visibility_changed.emit(bool(value))
 		&"custom_fog_tile_enabled": custom_fog_tile_changed.emit(bool(value))
 		&"autojournal_enabled": autojournal_changed.emit(bool(value))
+		&"controller_preferences": controller_preferences_changed.emit(value as ControllerPreferences)
 
 
 func _on_character_selected(character_id: String) -> void:

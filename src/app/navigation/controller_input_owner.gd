@@ -8,6 +8,9 @@ signal action_released(action_id: StringName)
 signal active_device_changed(device_id: int, prompt_family: String)
 signal input_suspended(reason: String)
 signal input_resumed
+signal binding_captured(action_id: StringName, descriptor: Dictionary)
+signal binding_capture_cancelled
+signal input_observed(summary: String)
 
 const REPEATING_ACTIONS: Array[StringName] = [
 	&"realmz_controller_up",
@@ -29,6 +32,7 @@ var _repeat_remaining_ms: Dictionary = {}
 var _axis_values: Dictionary = {}
 var _suspended: bool = false
 var _awaiting_neutral: bool = false
+var _capture_action: StringName = &""
 
 
 func _ready() -> void:
@@ -54,9 +58,28 @@ func is_suspended() -> bool:
 	return _suspended
 
 
+func begin_binding_capture(action_id: StringName) -> bool:
+	if action_id not in ControllerPreferences.ACTIONS:
+		return false
+	clear_held_input()
+	_capture_action = action_id
+	return true
+
+
+func cancel_binding_capture() -> void:
+	if _capture_action.is_empty():
+		return
+	_capture_action = &""
+	binding_capture_cancelled.emit()
+
+
 func handle_input(event: InputEvent) -> bool:
 	if not event is InputEventJoypadButton and not event is InputEventJoypadMotion:
 		return false
+	if _is_deliberate_takeover(event):
+		input_observed.emit(_input_summary(event))
+	if not _capture_action.is_empty():
+		return _capture_binding(event)
 	var device := event.device
 	if _active_device >= 0 and device != _active_device:
 		if not _is_deliberate_takeover(event):
@@ -129,6 +152,27 @@ func _matches_physical_input(descriptor: Dictionary, event: InputEvent) -> bool:
 	return event is InputEventJoypadMotion and (event as InputEventJoypadMotion).axis == int(descriptor["code"])
 
 
+func _capture_binding(event: InputEvent) -> bool:
+	if event is InputEventJoypadButton:
+		var button := event as InputEventJoypadButton
+		if not button.pressed:
+			return true
+		if button.button_index == JOY_BUTTON_B:
+			cancel_binding_capture()
+			return true
+		var action_id := _capture_action
+		_capture_action = &""
+		binding_captured.emit(action_id, {"action": String(action_id), "kind": ControllerPreferences.BINDING_BUTTON, "code": button.button_index, "direction": 0})
+		return true
+	var motion := event as InputEventJoypadMotion
+	if absf(motion.axis_value) < _dead_zone_for_axis(motion.axis):
+		return true
+	var action_id := _capture_action
+	_capture_action = &""
+	binding_captured.emit(action_id, {"action": String(action_id), "kind": ControllerPreferences.BINDING_AXIS, "code": motion.axis, "direction": 1 if motion.axis_value > 0.0 else -1})
+	return true
+
+
 func _descriptor_pressed(descriptor: Dictionary, event: InputEvent) -> bool:
 	if event is InputEventJoypadButton:
 		return (event as InputEventJoypadButton).pressed
@@ -184,3 +228,10 @@ func _resolved_prompt_family(device_id: int) -> String:
 	if "xbox" in identity or "xinput" in identity:
 		return ControllerPreferences.PROMPT_XBOX
 	return ControllerPreferences.PROMPT_GENERIC
+
+
+func _input_summary(event: InputEvent) -> String:
+	if event is InputEventJoypadButton:
+		return "Device %d • button %d" % [event.device, (event as InputEventJoypadButton).button_index]
+	var motion := event as InputEventJoypadMotion
+	return "Device %d • axis %d • %+.2f" % [event.device, motion.axis, motion.axis_value]

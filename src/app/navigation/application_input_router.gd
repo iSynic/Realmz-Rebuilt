@@ -54,6 +54,23 @@ func handle_controller_action(action_id: StringName, pressed: bool, repeated: bo
 		if action_id in [&"realmz_controller_up", &"realmz_controller_down", &"realmz_controller_left", &"realmz_controller_right"] and _application._held_movement != null:
 			_application._held_movement.stop(&"controller")
 		return
+	if _application._shell_presenter.controller_text_editor_is_open():
+		if action_id == &"realmz_controller_confirm":
+			_application._shell_presenter.confirm_controller_text_editor()
+		elif action_id == &"realmz_controller_back":
+			_application._shell_presenter.cancel_controller_text_editor()
+		elif action_id == &"realmz_controller_section_previous":
+			_application._shell_presenter.page_controller_text_editor(-1)
+		elif action_id == &"realmz_controller_section_next":
+			_application._shell_presenter.page_controller_text_editor(1)
+		elif action_id in [&"realmz_controller_action_radial", &"realmz_controller_workspace_radial", &"realmz_controller_character_previous", &"realmz_controller_character_next"]:
+			_application._shell_presenter.edit_controller_text(action_id)
+		else:
+			var text_direction := _controller_direction(action_id)
+			if text_direction != Vector2i.ZERO:
+				_application._shell_presenter.move_controller_text_editor(text_direction)
+		_mark_handled()
+		return
 	if _application._shell_presenter.controller_radial_is_open():
 		if action_id == &"realmz_controller_confirm":
 			_application._shell_presenter.confirm_controller_radial()
@@ -88,6 +105,9 @@ func handle_controller_action(action_id: StringName, pressed: bool, repeated: bo
 		_mark_handled()
 		return
 	if action_id == &"realmz_controller_confirm":
+		if _application._shell_presenter.open_controller_text_editor():
+			_mark_handled()
+			return
 		if _focus.activate_focused(_application):
 			_mark_handled()
 		return

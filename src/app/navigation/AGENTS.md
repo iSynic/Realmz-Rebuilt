@@ -17,6 +17,7 @@ Translate Godot input into named application actions, typed session commands, an
 - The router calls only public application, lifecycle, shell, and presentation operations.
 - No navigation state enters saves or deterministic simulation.
 - Raw joypad input is consumed by the controller owner before Godot's built-in UI navigation can also act on it.
+- Binding capture temporarily becomes the controller owner's highest-priority mode and returns one primitive descriptor to the Controls draft; ordinary bindings stay active until a complete conflict-free reachable draft is applied.
 
 ## Work Guidance
 

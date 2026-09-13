@@ -34,6 +34,13 @@ custom_minimum_size = Vector2(0, 36)
 layout_mode = 2
 text = "Items"
 
+[node name="InventoryTradeTransfer" type="Button" parent="Content"]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+text = "Transfer"
+disabled = true
+tooltip_text = "Select an exact item and destination first."
+
 [node name="InventoryTradeDone" type="Button" parent="Content"]
 custom_minimum_size = Vector2(0, 36)
 layout_mode = 2

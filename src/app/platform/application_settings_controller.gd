@@ -63,6 +63,7 @@ func bind() -> void:
 	_shell.classic_exploration_visibility_changed.connect(_on_classic_exploration_visibility_changed)
 	_shell.custom_fog_tile_changed.connect(_on_custom_fog_tile_changed)
 	_shell.autojournal_changed.connect(_on_autojournal_changed)
+	_shell.controller_preferences_changed.connect(_on_controller_preferences_changed)
 	_debug_tools.topology_debug_changed.connect(_on_topology_debug_changed)
 
 
@@ -227,6 +228,15 @@ func _on_custom_fog_tile_changed(enabled: bool) -> void:
 func _on_autojournal_changed(enabled: bool) -> void:
 	_settings.autojournal_enabled = enabled
 	_interaction.set_autojournal_enabled(enabled)
+	_save()
+
+
+func _on_controller_preferences_changed(value: ControllerPreferences) -> void:
+	if value == null or not value.required_navigation_is_reachable() or not value.conflicts().is_empty():
+		return
+	_settings.controller = value.duplicate_value()
+	_application._controller_input.configure(_settings.controller)
+	_shell.apply_settings(_settings)
 	_save()
 
 
