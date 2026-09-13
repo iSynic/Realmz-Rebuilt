@@ -72,12 +72,13 @@ func handle_controller_action(action_id: StringName, pressed: bool, repeated: bo
 		return
 	var pending: InteractionRequest = _application.session_controller.view().active_interaction_request()
 	var combat_pending := pending != null and pending.kind == InteractionRequest.COMBAT
-	if combat_pending and _handle_controller_combat(action_id, direction_action, _controller_scroll_direction(action_id), repeated):
+	var routed_direction := _combined_controller_direction() if direction_action != Vector2i.ZERO else Vector2i.ZERO
+	if combat_pending and _handle_controller_combat(action_id, routed_direction, _controller_scroll_direction(action_id), repeated):
 		_mark_handled()
 		return
 	if _handle_controller_navigation_action(action_id):
 		return
-	_handle_controller_direction(direction_action, repeated)
+	_handle_controller_direction(routed_direction, repeated)
 
 
 func handle_controller_direction(direction: Vector2i, repeated: bool = false) -> void:
@@ -171,11 +172,10 @@ func _handle_controller_direction(direction: Vector2i, repeated: bool) -> void:
 			if not repeated:
 				_application._dungeon_presenter.handle_keyboard_press(direction)
 		else:
-			var combined := _combined_controller_direction()
 			if _application._held_movement.active_source() == &"controller":
-				_application._held_movement.update(&"controller", combined)
+				_application._held_movement.update(&"controller", direction)
 			else:
-				_application._held_movement.start(&"controller", combined)
+				_application._held_movement.start(&"controller", direction)
 		_mark_handled()
 
 
@@ -280,7 +280,7 @@ func _handle_controller_combat(action_id: StringName, direction: Vector2i, scrol
 	if action_id == &"realmz_controller_inspect":
 		return battlefield.controller.inspect_focused_combatant()
 	if direction != Vector2i.ZERO and not repeated and _application._interaction_presenter.combat.accepts_spatial_input():
-		battlefield.preview_movement_direction(_combined_controller_direction())
+		battlefield.preview_movement_direction(direction)
 		return true
 	return false
 

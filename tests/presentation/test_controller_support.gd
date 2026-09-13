@@ -1,10 +1,35 @@
 extends RealmzTestCase
 
+class RouterOverlayAccess extends RefCounted:
+	func text_editor_is_open() -> bool: return false
+	func radial_is_open() -> bool: return false
+
+class RouterShellPresenter extends RefCounted:
+	var controller := RouterOverlayAccess.new()
+
+class RouterCoordinator extends RefCounted:
+	func is_combat_playback_active() -> bool: return false
+
+class RouterSessionView extends RefCounted:
+	func active_interaction_request() -> InteractionRequest: return null
+
+class RouterSessionController extends RefCounted:
+	var current_view := RouterSessionView.new()
+	func view() -> RouterSessionView: return current_view
+
+class RouterDungeonPresenter extends RefCounted:
+	func is_active() -> bool: return false
+
+class RouterMovementHost extends Control:
+	var presentation_coordinator := RouterCoordinator.new(); var _shell_presenter := RouterShellPresenter.new(); var session_controller := RouterSessionController.new(); var _dungeon_presenter := RouterDungeonPresenter.new(); var _held_movement := HeldMovementController.new()
+	func accepts_exploration_input() -> bool: return true
+
 
 func run() -> void:
 	_test_controller_preferences_round_trip_and_migration()
 	_test_controller_bindings_and_conflicts()
 	_test_controller_owner_edges_hysteresis_and_takeover()
+	await _test_normalized_direction_reaches_exploration_movement()
 	_test_ordered_controller_targeting()
 	await _test_focus_navigation_activation_and_prompts()
 	await _test_controller_radial_pages_and_explicit_commit()
@@ -135,6 +160,15 @@ func _test_controller_owner_edges_hysteresis_and_takeover() -> void:
 	owner.handle_input(cancel_capture)
 	assert_true(capture_cancelled[0], "East cancels binding capture without replacing the draft")
 	owner.free()
+
+
+func _test_normalized_direction_reaches_exploration_movement() -> void:
+	var host := RouterMovementHost.new(); (Engine.get_main_loop() as SceneTree).root.add_child(host); var pulses: Array[Vector2i] = []
+	await (Engine.get_main_loop() as SceneTree).process_frame
+	host._held_movement.movement_requested.connect(func(direction: Vector2i) -> void: pulses.append(direction))
+	var router := ApplicationInputRouter.new(host); router.handle_controller_direction(Vector2i(1, 1))
+	assert_equal(pulses, [Vector2i(1, 1)], "the application router sends the normalized controller vector into exploration movement instead of rereading an empty legacy action cache")
+	router = null; host._held_movement.free(); host.free()
 
 
 func _test_ordered_controller_targeting() -> void:
