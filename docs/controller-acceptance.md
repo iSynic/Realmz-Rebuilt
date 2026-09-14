@@ -26,12 +26,13 @@ This scope intentionally excludes virtual mouse emulation, vibration, and platfo
 | Evidence | Result |
 | --- | --- |
 | Focused controller, Classic shell, and System workflow | Passed, 800 assertions across 3 suites |
-| Aggregate repository verification | Passed, 4,334 assertions across 29 suites plus architecture, package alignment, media, icon, export-contract, provenance, workflow-inventory, and gameplay-parity checks |
+| Aggregate repository verification | Passed, 4,349 assertions across 29 suites plus architecture, package alignment, media, icon, export-contract, provenance, workflow-inventory, and gameplay-parity checks |
 | Rendered controller gallery | Passed on Windows with Mobile rendering: Actions and Workspaces at 1280 by 720, Workspaces at 800 by 600, and the controller-owned top menu at both sizes; compact center, selected pointer, icons, labels, bounded scrolling, and unchanged Classic composition inspected |
 | Runtime Testing TypeScript build and tests | Passed, 39 tests including the rendered fixture journey; 1 environment-dependent transport test skipped |
 | Rendered Windows controller journey | Passed: actual joypad events opened System, navigated focus, quick-saved, and loaded through application owners |
 | Controller text journey | Passed: controller-only Journal navigation opened QWERTY, edited a draft, enabled Save Note, then committed separately |
 | Rendered combat command discovery | Passed: actual West-button input opened three radial pages beginning with the disabled Weapon command and its reason; all 13 existing commands retain stable order and disabled reasons, Fast Spells follow them, and hidden command-shelf activation uses the existing response owner |
+| Rendered Half Truth combat continuity | A native isolated host ran a mixed manual/Auto battle through round 3 with multiple persistent-Auto toggles. Both observed stops reported the explicit `controller-suspended` blocker after the fixture lost Windows focus; neutral button acknowledgement resumed and committed the pending Auto activation. Half Truth Battle 182 separately exercised its actual Blue Dragon definitions and lethal multi-target breath chronology. This proves host suspension/resume and drawn-revision continuation, not uninterrupted Auto while the application remains continuously foregrounded. |
 | Navigation latency, 1280 by 720 | 1,000 samples; p50 19 microseconds, p95 35 microseconds, maximum 102 microseconds |
 | Navigation latency, 800 by 600 | 1,000 samples; p50 19 microseconds, p95 37 microseconds, maximum 105 microseconds |
 | Navigation performance budget | Passed; p95 budget is 2,000 microseconds |
@@ -43,7 +44,7 @@ The rendered journey also verifies focus observations exposed by the testing bri
 
 ## Hands-on acceptance matrix
 
-Export construction and automated input routing do not prove hardware comfort, platform glyph detection, or operating-system reconnection behavior. These checks remain a release-candidate acceptance gate:
+Export construction and automated input routing do not prove hardware comfort, platform glyph detection, operating-system reconnection behavior, or uninterrupted Auto in a continuously foregrounded native window. These checks remain a release-candidate acceptance gate:
 
 | Controller family | Windows | Linux | macOS |
 | --- | --- | --- | --- |
