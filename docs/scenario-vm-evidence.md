@@ -54,3 +54,39 @@ The remaining parity lane is an isolated synthetic Castle oracle harness with sc
 The local Assault on Giant Mountain completion route additionally proves that the 2.0 host carries Baron briefing context through its macro and resolves the goblin battle through Extra Code. That is campaign `live-route` evidence for the recorded deterministic spine, not a Castle executable differential fixture.
 
 The local War in the Sword Lands completion spine adds direct ED3 macro checkpoints, ally add/remove behavior, round/death macro instructions, Castle body-count resumption, and four observed battles. Naryl's post-Battle-473 selection is an ordinary typed VM interaction, and the later opcode 87 branch confirms that the selected survivor returned to party state. Those checkpoints execute compiled programs through the ordinary VM but do not claim that an unplaced ED3 record was reached through map topology.
+
+## Corrected authored meanings for opcodes 52, 55, 68, and 81
+
+The reviewed Providence vNext discrepancy report is the authoring authority for these four meanings. Rebuilt adopts the documented meanings without a compatibility mode under `FD-SCENARIO-004` and `FD-SCENARIO-005`; opcodes 7, 13, 30, and 74 remain unresolved by that report and are unchanged. The public VM proof is bound to `classic-character-selection-opcode-corrections.json` at SHA-256 `3c0f1f77d113209cee03f4eead2437c2e7423542cfe8c2c16d3eabf5e8d314c8` and `classic-opcode-68-fatigue-correction.json` at SHA-256 `6940e80bf9b2b2c0a61f76d0275a48c60251dbc63ffd41a8f2fbd3d86276c6e9`.
+
+The bundled-package audit scanned every compiled instruction in the exact thirteen validated archives. Counts are stored occurrences, not controlled executions or ordinary-route reachability. Compiler-expanded programs can repeat one source record, so the compiled totals differ from the report's source-resource totals.
+
+| Bundled scenario | Opcode 52 | Opcode 55 | Opcode 68 | Opcode 81 |
+| --- | ---: | ---: | ---: | ---: |
+| Assault on Giant Mountain | 6 | 0 | 0 | 0 |
+| Castle in the Clouds | 11 | 0 | 0 | 0 |
+| City of Bywater | 3 | 0 | 0 | 0 |
+| Destroy the Necronomicon | 13 | 2 | 0 | 2 |
+| Griloch's Revenge | 1 | 0 | 0 | 0 |
+| Half Truth | 0 | 0 | 1 | 0 |
+| Mithril Vault | 33 | 3 | 0 | 0 |
+| Prelude to Pestilence | 3 | 0 | 0 | 0 |
+| Trouble in the Sword Lands | 20 | 0 | 10 | 0 |
+| Twin Sands of Time | 0 | 3 | 0 | 0 |
+| War in the Sword Lands | 62 | 0 | 0 | 0 |
+| White Dragon | 6 | 4 | 0 | 1 |
+| Wrath of the Mind Lords | 17 | 0 | 0 | 0 |
+| **Compiled total / scenarios** | **175 / 12** | **12 / 5** | **11 / 2** | **3 / 2** |
+| **Source-resource total in the discrepancy report** | **171** | **9** | **9** | **3** |
+
+The public Scenario VM tests control all six party positions, short parties, invalid selectors, empty picked sets, opcode-52 eligibility modes and candidate-only RNG consumption, opcode-55 threshold boundaries and failure modes, signed and out-of-range opcode-68 percentages, fractional truncation and clamping, ignored third-word contents, opcode-81 group modes, validation rollback, and save/restore continuation. These tests demonstrate controlled execution through public runtime boundaries; they are not campaign-route evidence.
+
+Three isolated native application fixtures exercised compiled bundled content through the Runtime Testing Bridge:
+
+- Mithril Vault preparation used its validated `scenario-mithril-vault` package and the exact six Classic starters at fatigue 4 with RNG seed 1. Direct invocation of XAP 283 selected stable identity `classic.starter.lothlorian`, acknowledged message 831, then executed compiled slot 3 opcode 52 with raw words `[4, 1, 2, 0, 0]`. The incoming Picked Only set remained the sole eligible candidate. Exactly one `classic.misc-character-attribute` draw was consumed (`raw=16807`, range 25, result 13), Lothlorian remained selected, and slot 4 opcode 55 selector 0 took its authored success branch to XAP 284 and message 833.
+- Half Truth preparation used its validated `scenario-half-truth` package and the same six-starter, seed-1 baseline. Direct Simple Encounter 14 response 1 paid the authored 15 gold, executed result slot 1 opcode 68 with raw words `[3, 50, 0, 0, 0]`, and published `fatigue_changed` from 4 to the clamped domain minimum 4 before message 1548. The scenario trace reached the following slot and yielded its acknowledgement without an RNG draw. The public VM matrix separately proves non-boundary 50-percent arithmetic because this authored fixture begins at the minimum.
+- Trouble in the Sword Lands preparation used its validated package, the six Classic starters, fatigue 4, and RNG seed 1 against the completed fatigue implementation tree. Direct XAP 1130 acknowledged storm message 1533, advanced authored time to day 1 at 04:20 through opcode 63, executed slot 4 opcode 68 with raw words `[3, 20, 0, 0, 0]`, and published `fatigue_changed` from 4 to the clamped minimum 4 before sound 699 and message 1534. The complete continuation then acknowledged and terminated without an RNG draw.
+
+Both fixtures were closed through the fixture lifecycle. Direct XAP and encounter invocation establish application-host execution of the compiled rows, not their normal map, quest, payment, or encounter eligibility. The audit has no controlled application execution for the remaining stored rows, and ordinary-route reachability across the thirteen campaigns remains unproven.
+
+No package, save, rules-identifier, or hash-matching contract changed. Existing saved state is retained and only later executions use the corrected consumers. Providence vNext owns authoring-side repair in its separate task; no stable vNext-produced comparison fixture was available during this closeout, so raw-word cross-repository comparison remains pending rather than inferred from that worktree.

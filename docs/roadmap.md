@@ -6,12 +6,12 @@ This page records current state and next work only. Detailed parity counts come 
 
 ## Current evidence
 
-- Godot import, main-scene smoke, and all 4,030 assertions across 28 suites pass.
+- Godot import, main-scene smoke, and all 4,375 assertions across 29 suites pass.
 - The architecture-overhaul gate reports zero oversized files, functions, and top-level classes; zero cross-object private calls and generic preload aliases; zero missing scenes and production-bound previews; zero placeholder shell-mode scenes; and zero missing, undeclared, or loose-root feature files.
 - Every declared feature root has a public `README.md`. The system manifest names its guide, entry points, public interfaces, tests, and performance probes.
 - Stable major UI hierarchy is authored in scenes. Realmz Builder exercises all registered surfaces with Wide, Compact, Empty, Long Content, Unavailable, and Error profiles through the production binders.
 - The latest complete visual gallery contains 148 Wide/Compact frames and has passed the current manual layout review.
-- Test source is 8,951 substantive lines against 63,668 production lines, or 14.06 percent against the fixed 20-percent ceiling.
+- Test source is 9,396 substantive lines against 68,202 production lines, or 13.78 percent against the fixed 20-percent ceiling.
 - The exact thirteen bundled scenarios, six generated Classic starter characters, application library, media, licenses, export exclusions, schemas, 101 differential cases, 69 Classic workflows, and eight host workflows pass their local validators.
 - A tracked-files-only clean checkout completed first import, startup, the complete test suite, architecture checks, scenario validation, and every Builder preview.
 - A locally sanitized one-root Git/LFS rehearsal and a separate no-local clone both passed. This proves the construction workflow, not GitHub-hosted archives.
