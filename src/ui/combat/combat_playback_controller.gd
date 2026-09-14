@@ -466,7 +466,7 @@ func _append_result(event: DomainEvent, positions: Dictionary, hidden: Array[Str
 	result.actor_id = String(event.payload.get("actorId", ""))
 	result.target_id = target_id
 	result.result_kind = _result_kind(event.payload)
-	result.display_amount = int(event.payload.get("healing", event.payload.get("damage", 0)))
+	result.display_amount = int(event.payload.get("healing", 0)) if result.result_kind == &"healing" else int(event.payload.get("damage", 0))
 	result.display_text = _result_text(result.result_kind, result.display_amount)
 	result.effect_resource_id = int(event.payload.get("classicResultEffectResourceId", 0))
 	_frames.append(result)
