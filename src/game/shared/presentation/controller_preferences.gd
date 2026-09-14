@@ -17,6 +17,7 @@ const ACTIONS: Array[StringName] = [
 	&"realmz_controller_back",
 	&"realmz_controller_action_radial",
 	&"realmz_controller_workspace_radial",
+	&"realmz_controller_top_menu",
 	&"realmz_controller_section_previous",
 	&"realmz_controller_section_next",
 	&"realmz_controller_character_previous",
@@ -111,6 +112,7 @@ static func default_bindings() -> Array[Dictionary]:
 		_button(&"realmz_controller_back", JOY_BUTTON_B),
 		_button(&"realmz_controller_action_radial", JOY_BUTTON_X),
 		_button(&"realmz_controller_workspace_radial", JOY_BUTTON_Y),
+		_button(&"realmz_controller_top_menu", JOY_BUTTON_BACK),
 		_button(&"realmz_controller_section_previous", JOY_BUTTON_LEFT_SHOULDER),
 		_button(&"realmz_controller_section_next", JOY_BUTTON_RIGHT_SHOULDER),
 		_axis(&"realmz_controller_character_previous", JOY_AXIS_TRIGGER_LEFT, 1),
@@ -138,6 +140,17 @@ static func _button(action_id: StringName, code: JoyButton) -> Dictionary:
 
 static func _axis(action_id: StringName, code: JoyAxis, direction: int) -> Dictionary:
 	return {"action": String(action_id), "kind": BINDING_AXIS, "code": int(code), "direction": direction}
+
+
+func add_top_menu_default_if_available() -> void:
+	if bindings.any(func(binding: Dictionary) -> bool: return StringName(binding.get("action", "")) == &"realmz_controller_top_menu"):
+		return
+	var candidate := _button(&"realmz_controller_top_menu", JOY_BUTTON_BACK)
+	var occupied := bindings.any(func(binding: Dictionary) -> bool:
+		return binding.get("kind") == candidate["kind"] and int(binding.get("code", -1)) == int(candidate["code"]) and int(binding.get("direction", 0)) == 0
+	)
+	if not occupied:
+		bindings.append(candidate)
 
 
 static func _data_is_valid(data: Dictionary) -> bool:

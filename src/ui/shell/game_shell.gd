@@ -145,6 +145,11 @@ class ControllerAccess:
 	func cancel_binding_capture() -> void: _shell._navigator.content_presenter.cancel_controller_binding_capture()
 	func set_live_input(value: String) -> void: _shell._navigator.content_presenter.set_controller_live_input(value)
 	func radial_is_open() -> bool: return _shell._controller_radial.is_open()
+	func top_menu_is_open() -> bool: return _shell._menu_controller.controller_is_open()
+	func open_top_menu() -> bool: return _shell._menu_controller.controller_open()
+	func move_top_menu(direction: Vector2i) -> bool: return _shell._menu_controller.controller_direction(direction)
+	func confirm_top_menu() -> bool: return _shell._menu_controller.controller_confirm()
+	func back_top_menu() -> bool: return _shell._menu_controller.controller_back()
 	func text_editor_is_open() -> bool: return _shell._controller_keyboard.is_open()
 	func open_text_editor() -> bool:
 		var focused: Control = _shell.get_viewport().gui_get_focus_owner()

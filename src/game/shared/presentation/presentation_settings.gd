@@ -3,7 +3,7 @@
 class_name PresentationSettings
 extends RefCounted
 
-const SCHEMA_VERSION: int = 14
+const SCHEMA_VERSION: int = 15
 const MUSIC_SLOT_COUNT: int = 20
 const MUSIC_OFF: int = 0
 const MUSIC_PLAY: int = 1
@@ -179,6 +179,8 @@ static func _settings_from_valid_data(data: Dictionary) -> PresentationSettings:
 	settings.typography_mode = String(data.get("typographyMode", TYPOGRAPHY_CLASSIC))
 	settings.last_campaign_id = String(data.get("lastCampaignId", "")).strip_edges()
 	settings.controller = ControllerPreferences.from_data(data["controller"]) if data.has("controller") else ControllerPreferences.new()
+	if int(data.get("schemaVersion", 1)) == 14:
+		settings.controller.add_top_menu_default_if_available()
 	return settings
 
 

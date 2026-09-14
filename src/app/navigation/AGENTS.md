@@ -20,6 +20,8 @@ Translate Godot input into named application actions, typed session commands, an
 - Binding capture temporarily becomes the controller owner's highest-priority mode and returns one primitive descriptor to the Controls draft; ordinary bindings stay active until a complete conflict-free reachable draft is applied.
 - Controller directions combine into one normalized vector before dispatch so land admits eight directions without emitting an intermediate cardinal step while dungeon presentation retains one cardinal forward, reverse, or turn request. Opening or dismissing a modal or radial clears the held controller movement owner; it never resumes from an earlier held direction.
 - Combat controller input owns one preview boundary: a direction previews a rules-supplied move and South commits it; targeting uses South to select, West to commit, North to rotate, shoulders to cycle, and the right stick to pan without constructing another gameplay command path.
+- View/Create/Minus opens the controller-owned top menu. Left and Right move between headings, Down or South opens a heading, Up and Down select its entries, South invokes the existing route, command, or system owner, and East backs out one level before restoring the prior workspace focus.
+- Focus activation is control-specific: toggles change state, option popups retain selection ownership until confirmed or cancelled, lists activate their selected record, and value controls adjust through their native typed behavior.
 
 ## Work Guidance
 

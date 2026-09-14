@@ -3,14 +3,21 @@
 class_name ControllerFocusNavigator
 extends RefCounted
 
+var _popup_owner: WeakRef
+var _popup_index: int = 0
+
 
 func move(root: Control, direction: Vector2i) -> Control:
 	if root == null or direction == Vector2i.ZERO:
 		return null
 	var viewport := root.get_viewport()
 	var current := viewport.gui_get_focus_owner() if viewport != null else null
+	if _move_popup(direction):
+		return _popup_owner.get_ref() as Control
 	if current == null or not current.is_visible_in_tree():
 		return focus_first(root)
+	if _adjust_composite(current, direction):
+		return current
 	if _adjust_value(current, direction):
 		return current
 	var side := _side_for(direction)
@@ -82,10 +89,54 @@ func activate_focused(root: Control) -> bool:
 	var focused := viewport.gui_get_focus_owner() if viewport != null else null
 	if focused == null or not focused.is_visible_in_tree() or focused != root and not root.is_ancestor_of(focused):
 		focused = focus_first(root)
-	if focused is BaseButton and not (focused as BaseButton).disabled:
-		(focused as BaseButton).pressed.emit()
+	if _confirm_popup():
 		return true
+	if focused is OptionButton and not (focused as OptionButton).disabled:
+		var option := focused as OptionButton
+		_popup_owner = weakref(option)
+		_popup_index = maxi(0, option.selected)
+		option.show_popup()
+		option.get_popup().set_focused_item(_popup_index)
+		return true
+	if focused is MenuButton and not (focused as MenuButton).disabled:
+		(focused as MenuButton).show_popup()
+		return true
+	if focused is CheckButton and not (focused as CheckButton).disabled:
+		var check := focused as CheckButton
+		check.button_pressed = not check.button_pressed
+		check.pressed.emit()
+		return true
+	if focused is BaseButton and not (focused as BaseButton).disabled:
+		var button := focused as BaseButton
+		if button.toggle_mode:
+			button.button_pressed = true if button.button_group != null else not button.button_pressed
+		button.pressed.emit()
+		return true
+	if focused is ItemList:
+		var list := focused as ItemList
+		var selected := list.get_selected_items()
+		if selected.is_empty() and list.item_count > 0:
+			list.select(0)
+			selected = PackedInt32Array([0])
+		if not selected.is_empty():
+			list.item_activated.emit(selected[0])
+			return true
+	if focused is Tree:
+		var tree := focused as Tree
+		if tree.get_selected() != null:
+			tree.item_activated.emit()
+			return true
 	return false
+
+
+func cancel_active_popup() -> bool:
+	var option: OptionButton = _popup_owner.get_ref() as OptionButton if _popup_owner != null else null
+	if option == null or not option.get_popup().visible:
+		_popup_owner = null
+		return false
+	option.get_popup().hide()
+	_popup_owner = null
+	return true
 
 
 func inspection_text(root: Control) -> String:
@@ -154,6 +205,50 @@ func _adjust_value(control: Control, direction: Vector2i) -> bool:
 		return false
 	var range := control as Range
 	range.value = clampf(range.value + range.step * direction.x, range.min_value, range.max_value)
+	return true
+
+
+func _adjust_composite(control: Control, direction: Vector2i) -> bool:
+	if control is ItemList and direction.y != 0:
+		var list := control as ItemList
+		if list.item_count == 0:
+			return true
+		var selected := list.get_selected_items()
+		var index := selected[0] if not selected.is_empty() else (0 if direction.y > 0 else list.item_count - 1)
+		index = wrapi(index + direction.y, 0, list.item_count)
+		list.select(index)
+		list.ensure_current_is_visible()
+		list.item_selected.emit(index)
+		return true
+	if control is TabBar and direction.x != 0:
+		var tabs := control as TabBar
+		if tabs.tab_count > 0:
+			tabs.current_tab = wrapi(tabs.current_tab + direction.x, 0, tabs.tab_count)
+		return true
+	return false
+
+
+func _move_popup(direction: Vector2i) -> bool:
+	var option: OptionButton = _popup_owner.get_ref() as OptionButton if _popup_owner != null else null
+	if option == null or not option.get_popup().visible:
+		_popup_owner = null
+		return false
+	if direction.y != 0 and option.item_count > 0:
+		_popup_index = wrapi(_popup_index + direction.y, 0, option.item_count)
+		option.get_popup().set_focused_item(_popup_index)
+	return true
+
+
+func _confirm_popup() -> bool:
+	var option: OptionButton = _popup_owner.get_ref() as OptionButton if _popup_owner != null else null
+	if option == null or not option.get_popup().visible:
+		_popup_owner = null
+		return false
+	option.select(_popup_index)
+	option.item_selected.emit(_popup_index)
+	option.get_popup().hide()
+	_popup_owner = null
+	option.grab_focus()
 	return true
 
 
