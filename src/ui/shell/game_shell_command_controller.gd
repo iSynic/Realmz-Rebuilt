@@ -145,8 +145,26 @@ func controller_entries() -> Array[ControllerRadialEntry]:
 			reason = button.tooltip_text
 		elif button == null and String(command_id).begins_with("encounter_"):
 			reason = "Choose from the active encounter response controls."
-		result.append(ControllerRadialEntry.new(command_id, String(definition["label"]), reason.is_empty(), reason))
+		result.append(ControllerRadialEntry.new(command_id, String(definition["label"]), reason.is_empty(), reason, controller_icon(command_id), _fallback_symbol(command_id)))
 	return result
+
+
+func controller_icon(command_id: StringName) -> Texture2D:
+	var button := _buttons.get(command_id) as ClassicBitmapButton
+	if button != null:
+		return button.radial_art_texture()
+	var definition := presentation_definition(ClassicCommandCatalog.command(command_id))
+	if definition.is_empty():
+		return null
+	var prepared := ClassicBitmapButton.new()
+	prepared.configure(definition)
+	var texture := prepared.radial_art_texture()
+	prepared.free()
+	return texture
+
+
+static func _fallback_symbol(command_id: StringName) -> String:
+	return {&"torch": "✦", &"character": "♟", &"exploration": "✥"}.get(command_id, "")
 
 
 func activate_controller(command_id: StringName) -> bool:

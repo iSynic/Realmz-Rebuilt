@@ -245,6 +245,9 @@ func _test_focus_navigation_activation_and_prompts() -> void:
 	assert_equal(navigator.move(root, Vector2i.RIGHT), disabled, "disabled controls remain focusable for controller inspection")
 	assert_equal(navigator.inspection_text(root), "A specific rules-owned reason.", "inspection exposes a focused unavailable action's exact reason")
 	assert_false(navigator.activate_focused(root), "South cannot activate a focused disabled control")
+	var toggle := CheckButton.new(); toggle.position = Vector2(40, 100); toggle.text = "Toggle"; root.add_child(toggle); toggle.grab_focus(); var toggled := [false]; toggle.toggled.connect(func(value: bool) -> void: toggled[0] = value); assert_true(navigator.activate_focused(root) and toggle.button_pressed and toggled[0], "South changes a focused toggle through its native state and signal")
+	var picker := OptionButton.new(); picker.position = Vector2(200, 100); picker.add_item("First"); picker.add_item("Second"); root.add_child(picker); picker.grab_focus(); assert_true(navigator.activate_focused(root), "South opens a focused dropdown under controller ownership"); navigator.move(root, Vector2i.DOWN); assert_true(navigator.activate_focused(root) and picker.selected == 1, "direction and South select the highlighted dropdown entry through the option owner")
+	var list := ItemList.new(); list.position = Vector2(380, 100); list.size = Vector2(120, 80); list.add_item("One"); list.add_item("Two"); root.add_child(list); list.grab_focus(); navigator.move(root, Vector2i.DOWN); var activated_item := [-1]; list.item_activated.connect(func(index: int) -> void: activated_item[0] = index); assert_true(navigator.activate_focused(root) and activated_item[0] == 1, "controller selection activates the exact focused list record")
 	var modal := Control.new()
 	modal.size = Vector2(200, 100)
 	root.add_child(modal)
@@ -258,9 +261,9 @@ func _test_focus_navigation_activation_and_prompts() -> void:
 	root.add_child(prompts)
 	await (Engine.get_main_loop() as SceneTree).process_frame
 	prompts.present(ControllerPreferences.PROMPT_PLAYSTATION)
-	assert_contains((prompts.find_child("PromptText", true, false) as Label).text, "Cross Confirm", "automatic prompt presentation can show PlayStation physical labels")
+	assert_contains((prompts.find_child("PromptText", true, false) as Label).text, "Cross Select", "automatic prompt presentation can show PlayStation physical labels")
 	prompts.present(ControllerPreferences.PROMPT_SWITCH)
-	assert_contains((prompts.find_child("PromptText", true, false) as Label).text, "B Confirm", "Switch prompts preserve South-position confirmation")
+	assert_contains((prompts.find_child("PromptText", true, false) as Label).text, "B Select", "Switch prompts preserve South-position confirmation")
 	var body := VBoxContainer.new(); body.name = "FocusBody"; root.add_child(body)
 	var first_record := Button.new(); first_record.name = "Open"; first_record.set_meta("character_id", "hero.one"); body.add_child(first_record)
 	var selected_record := Button.new(); selected_record.name = "Open"; selected_record.set_meta("character_id", "hero.two"); body.add_child(selected_record)
@@ -301,8 +304,10 @@ func _test_controller_radial_pages_and_explicit_commit() -> void:
 	assert_true(host.get_global_rect().encloses(card.get_global_rect()), "the radial card remains bounded in the Classic 800 by 600 composition: host=%s card=%s" % [host.get_global_rect(), card.get_global_rect()])
 	radial.cancel()
 	assert_false(radial.is_open(), "cancel closes the radial without dispatching another command")
-	var shell := load("res://src/ui/shell/game_shell.tscn").instantiate() as GameShell; host.add_child(shell); await (Engine.get_main_loop() as SceneTree).process_frame; shell.controller.show_prompts(ControllerPreferences.PROMPT_XBOX)
-	for shell_size: Vector2 in [Vector2(800, 600), Vector2(1280, 720)]: host.size = shell_size; await (Engine.get_main_loop() as SceneTree).process_frame; var prompt_rect := (shell.find_child("ControllerPromptStrip", true, false) as Control).get_global_rect(); var menu_rect := (shell.find_child("MenuStrip", true, false) as Control).get_global_rect(); var stage_rect := (shell.find_child("StageFrame", true, false) as Control).get_global_rect(); var footer_rect := (shell.find_child("BottomRegion", true, false) as Control).get_global_rect(); assert_true(menu_rect.encloses(prompt_rect) and prompt_rect.end.y <= stage_rect.position.y and not prompt_rect.intersects(footer_rect), "the controller prompt owns reserved menu chrome without covering the stage or footer at %s" % shell_size)
+	var shell := load("res://src/ui/shell/game_shell.tscn").instantiate() as GameShell; host.add_child(shell); await (Engine.get_main_loop() as SceneTree).process_frame
+	for shell_size: Vector2 in [Vector2(800, 600), Vector2(1280, 720)]: host.size = shell_size; await (Engine.get_main_loop() as SceneTree).process_frame; shell.controller.hide_prompts(); var stage_before := (shell.find_child("StageFrame", true, false) as Control).get_global_rect(); shell.controller.show_prompts(ControllerPreferences.PROMPT_XBOX, &"workspace"); var prompt_rect := (shell.find_child("ControllerPromptStrip", true, false) as Control).get_global_rect(); var stage_rect := (shell.find_child("StageFrame", true, false) as Control).get_global_rect(); var footer_rect := (shell.find_child("BottomRegion", true, false) as Control).get_global_rect(); assert_true(prompt_rect.intersects(stage_rect) and not prompt_rect.intersects(footer_rect) and stage_rect == stage_before, "the transient controller hint floats over the upper stage without changing shell geometry at %s" % shell_size)
+	assert_true(shell.controller.open_workspace_radial(), "North opens the curated workspace wheel"); var workspace_radial := shell.find_child("ControllerRadialOverlay", true, false) as ControllerRadialOverlay; assert_equal(workspace_radial.current_page_entries().map(func(entry: ControllerRadialEntry) -> StringName: return entry.id), [&"inventory", &"spells", &"journal", &"character", &"services", &"workspace_preferences", &"workspace_save_load", &"exploration"], "the primary workspace wheel exposes the approved eight stable destinations in order"); shell.controller.cancel_radial()
+	assert_true(shell.controller.open_top_menu(), "View/Create/Minus gives the top menu sole controller ownership"); assert_true(shell.controller.move_top_menu(Vector2i.RIGHT) and shell.controller.move_top_menu(Vector2i.DOWN), "top-menu ownership moves between headings and opens the selected heading"); assert_true(shell.controller.back_top_menu() and shell.controller.back_top_menu(), "East backs out of the top-menu entry level and then restores the prior workspace focus")
 	var activated: Array[StringName] = []; assert_true(shell.controller.open_interaction_radial([ControllerRadialEntry.new(&"speak", "Speak")], func(command_id: StringName) -> void: activated.append(command_id)), "an interaction can claim the shared action radial"); shell.controller.confirm_radial(); assert_equal(activated, [&"speak"], "confirming an interaction radial retains and invokes its interaction owner")
 	host.free()
 
@@ -374,6 +379,7 @@ func _test_controller_settings_draft_and_embedded_file_dialog() -> void:
 		if setting_id == &"controller_preferences": applied.append(value as ControllerPreferences)
 	)
 	controller.present(screen, view, settings)
+	assert_true(controller.select_section(&"Controls") and controller.cycle_section(1) and (screen.find_child("SystemWorkspaceTabs", true, false) as TabContainer).current_tab == 6, "shoulders switch declared Preferences sections without walking every control")
 	var confirm := screen.find_child("ControllerBinding_confirm", true, false) as Button
 	confirm.pressed.emit()
 	assert_equal(captures, [&"realmz_controller_confirm"], "the Controls page gives binding capture sole ownership of a named draft action")

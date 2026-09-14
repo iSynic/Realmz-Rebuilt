@@ -131,16 +131,13 @@ class ControllerAccess:
 	extends RefCounted
 	var _shell: Variant
 	func _init(shell: Variant) -> void: _shell = shell
-	func show_prompts(family: String) -> void:
-		var was_visible: bool = _shell._controller_prompts.visible
-		_shell._controller_prompts.present(family)
-		if not was_visible: _shell.refresh_layout()
+	func show_prompts(family: String, context: StringName = &"") -> void:
+		_shell._controller_prompts.present(family, context, _shell._presentation_settings.controller)
 	func hide_prompts() -> void:
-		if not _shell._controller_prompts.visible: return
 		_shell._controller_prompts.hide_prompts()
-		_shell.refresh_layout()
 	func show_detail(value: String) -> void: _shell._controller_prompts.set_detail(value)
 	func select_relative_character(delta: int) -> bool: return _shell._party_roster.controller_select_relative(delta)
+	func cycle_section(delta: int) -> bool: return _shell._navigator.cycle_section(delta)
 	func receive_binding(action_id: StringName, descriptor: Dictionary) -> void: _shell._navigator.content_presenter.receive_controller_binding(action_id, descriptor)
 	func cancel_binding_capture() -> void: _shell._navigator.content_presenter.cancel_controller_binding_capture()
 	func set_live_input(value: String) -> void: _shell._navigator.content_presenter.set_controller_live_input(value)
@@ -178,8 +175,29 @@ class ControllerAccess:
 		return true
 	func open_workspace_radial() -> bool:
 		var entries: Array[ControllerRadialEntry] = []
-		var reason := GameShellAvailability.route_change_reason(_shell._current_view)
-		for definition: UiRouteDefinition in UiRouteCatalog.routes(): entries.append(ControllerRadialEntry.new(definition.route_id, definition.label, reason.is_empty(), reason))
+		var route_reason := GameShellAvailability.route_change_reason(_shell._current_view)
+		var definitions: Array[Dictionary] = [
+			{"id": &"inventory", "label": "Items", "icon": &"inventory"},
+			{"id": &"spells", "label": "Spells", "icon": &"spells"},
+			{"id": &"journal", "label": "Maps / Notes", "icon": &"maps"},
+			{"id": &"character", "label": "Characters", "symbol": "♟"},
+			{"id": &"services", "label": "Money", "icon": &"money"},
+			{"id": &"workspace_preferences", "label": "Preferences", "icon": &"settings"},
+			{"id": &"workspace_save_load", "label": "Save & Load", "icon": &"save"},
+			{"id": &"exploration", "label": "Explore", "symbol": "✥"},
+			{"id": &"vault", "label": "Character Files", "symbol": "▣"},
+			{"id": &"allies", "label": "Allies", "symbol": "♙"},
+			{"id": &"bestiary", "label": "Bestiary", "symbol": "♜"},
+			{"id": &"workspace_music", "label": "Music", "symbol": "♫"},
+			{"id": &"workspace_diagnostics", "label": "Diagnostics", "symbol": "◇"},
+			{"id": &"workspace_top_menu", "label": "Top Menu", "symbol": "☰"},
+		]
+		for definition: Dictionary in definitions:
+			var reason := route_reason
+			if definition["id"] == &"allies" and reason.is_empty():
+				reason = GameShellAvailability.allies_reason(_shell._current_view)
+			var icon: Texture2D = _shell._command_controller.controller_icon(StringName(definition.get("icon", &"")))
+			entries.append(ControllerRadialEntry.new(StringName(definition["id"]), String(definition["label"]), reason.is_empty(), reason, icon, String(definition.get("symbol", ""))))
 		_open_radial(&"workspace", "WORKSPACES", entries)
 		return true
 	func move_radial(direction: Vector2i) -> void: _shell._controller_radial.move_direction(Vector2(direction))
@@ -197,8 +215,16 @@ class ControllerAccess:
 		var activation: Callable = _shell._controller_radial_activation
 		_clear_radial_owner()
 		if kind == &"action": _shell._command_controller.activate_controller(command_id)
-		elif kind == &"workspace": _shell._navigator.open_screen(command_id)
+		elif kind == &"workspace": _activate_workspace(command_id)
 		elif kind == &"interaction" and activation.is_valid(): activation.call(command_id)
+	func _activate_workspace(command_id: StringName) -> void:
+		match command_id:
+			&"workspace_preferences": _shell._navigator.open_system_section(&"Display")
+			&"workspace_save_load": _shell._navigator.open_system_section(&"Save & Load")
+			&"workspace_music": _shell._navigator.open_system_section(&"Audio")
+			&"workspace_diagnostics": _shell._navigator.open_system_section(&"Diagnostics")
+			&"workspace_top_menu": _shell._menu_controller.controller_open()
+			_: _shell._navigator.open_screen(command_id)
 	func _open_radial(kind: StringName, title: String, entries: Array[ControllerRadialEntry]) -> void:
 		_shell._controller_radial_kind = kind
 		_shell._controller_radial_activation = Callable()

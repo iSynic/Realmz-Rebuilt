@@ -6,12 +6,14 @@ Realmz Rebuilt provides a controller-owned route through startup, workspaces, te
 
 - `ApplicationInputRouter` gives each controller event one active owner: capture or text editing, modal, radial, playback, targeting, focused workspace, or exploration.
 - Controller input is normalized through named actions, dead zones, hysteresis, repeats, active-device tracking, disconnect suspension, and neutral-input acknowledgement.
-- Every application workspace uses explicit focus navigation, active-root containment, stable restoration, focused-entry scrolling, focus inspection, and readable disabled reasons.
-- Action and workspace radials use stable, owner-supplied commands, a maximum of eight entries per page, tap-and-confirm execution, and explicit cancellation.
+- Every application workspace uses explicit focus navigation, active-root containment, semantic record restoration with next-then-previous fallback, nested-scroll retention, focus inspection, and readable disabled reasons. Deferred refreshes do not steal focus from a newer menu or modal owner.
+- View/Create/Minus opens the top menu. Its controller owner traverses the existing headings and entries and invokes the existing route, command, or system operation before restoring workspace focus.
+- Action and workspace radials use stable owner-supplied commands, fixed eight-direction slices, visible separators, original cropped command art where it exists, declared monochrome fallback symbols, a gold selected slice and pointer, at most eight entries per page, tap-and-confirm execution, and explicit cancellation. The primary workspace page is Items, Spells, Maps/Notes, Characters, Money, Preferences, Save & Load, and Explore.
 - The modal QWERTY editor preserves draft, caret, validation, multiline, accent, Done, and Cancel semantics. Done returns text to the original field without submitting the surrounding operation.
 - The embedded Godot file dialog replaces the native scenario picker and remains inside the same focus owner.
 - Exploration uses the existing movement scheduler and interaction boundaries. Combat uses rules-supplied movement previews, explicit commits, target cycling, ordered multi-target and summon-space selection, area centers, rotation, and inspection.
-- Controls are configurable as a draft with conflict handling, live input feedback, required-navigation validation, Apply, and Restore Defaults. Presentation settings schema 14 migrates schema 13 values unchanged and adds typed controller preferences.
+- Controls are configurable as a draft with conflict handling, live input feedback, required-navigation validation, and persistent Apply and Restore Defaults actions. Presentation settings schema 15 preserves older values and custom bindings; schema 14 receives the Top Menu default only when View/Create/Minus is unused.
+- Preferences and Maps/Notes expose visible category rails. Shoulders switch their declared sections directly instead of walking each control. Controller hints float over the upper stage at 75-percent opacity for three seconds without changing shell geometry and are not restarted by movement, repeats, confirmation, or stick noise.
 - Runtime Testing admits bounded button and axis events only in isolated fixtures and reports focus identity. Live adventures continue to reject mutation.
 
 This scope intentionally excludes virtual mouse emulation, vibration, and platform on-screen keyboard integration.
@@ -20,7 +22,8 @@ This scope intentionally excludes virtual mouse emulation, vibration, and platfo
 
 | Evidence | Result |
 | --- | --- |
-| Focused controller, Classic UI, exploration, and combat tests | Passed, 1,393 assertions |
+| Focused controller, Classic shell, and System tests for this redesign | Passed, 787 assertions |
+| Rendered radial gallery | Passed on Windows with Mobile rendering: Actions and Workspaces at 1280 by 720, plus Workspaces at 800 by 600; ring, selected pointer, icons, labels, and unchanged Classic composition inspected |
 | Runtime Testing TypeScript build and tests | Passed, 39 tests including the rendered fixture journey; 1 environment-dependent transport test skipped |
 | Rendered Windows controller journey | Passed: actual joypad events opened System, navigated focus, quick-saved, and loaded through application owners |
 | Controller text journey | Passed: controller-only Journal navigation opened QWERTY, edited a draft, enabled Save Note, then committed separately |

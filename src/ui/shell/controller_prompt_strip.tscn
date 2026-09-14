@@ -8,6 +8,7 @@ custom_minimum_size = Vector2(0, 28)
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
+self_modulate = Color(1, 1, 1, 0.75)
 theme_type_variation = &"ClassicInset"
 script = ExtResource("1_prompt")
 

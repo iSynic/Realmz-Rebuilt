@@ -109,7 +109,9 @@ func _build_dependencies() -> void:
 
 func _bind_debug_and_movement() -> void:
 	_controller_input.action_pressed.connect(func(action_id: StringName, repeated: bool) -> void:
-		_shell_presenter.controller.show_prompts(_controller_input.prompt_family())
+		if not repeated and action_id in [&"realmz_controller_action_radial", &"realmz_controller_workspace_radial", &"realmz_controller_top_menu", &"realmz_controller_system"]:
+			var context := &"action" if action_id == &"realmz_controller_action_radial" else &"workspace" if action_id == &"realmz_controller_workspace_radial" else &"top_menu" if action_id == &"realmz_controller_top_menu" else &"system"
+			_shell_presenter.controller.show_prompts(_controller_input.prompt_family(), context)
 		if action_id in ControllerInputOwner.DIRECTION_ACTIONS:
 			return
 		_input_router.handle_controller_action(action_id, true, repeated)
@@ -119,7 +121,6 @@ func _bind_debug_and_movement() -> void:
 			_input_router.handle_controller_action(action_id, false)
 	)
 	_controller_input.direction_changed.connect(func(direction: Vector2i, repeated: bool) -> void:
-		_shell_presenter.controller.show_prompts(_controller_input.prompt_family())
 		_input_router.handle_controller_direction(direction, repeated)
 	)
 	_controller_input.input_suspended.connect(func(reason: String) -> void:
@@ -132,7 +133,6 @@ func _bind_debug_and_movement() -> void:
 		_controller_resume_required = false
 		_shell_presenter.status.set_status("Controller input restored.")
 	)
-	_controller_input.active_device_changed.connect(func(_device_id: int, family: String) -> void: _shell_presenter.controller.show_prompts(family))
 	_controller_input.binding_captured.connect(func(action_id: StringName, descriptor: Dictionary) -> void: _shell_presenter.controller.receive_binding(action_id, descriptor))
 	_controller_input.binding_capture_cancelled.connect(_shell_presenter.controller.cancel_binding_capture)
 	_controller_input.input_observed.connect(_shell_presenter.controller.set_live_input)

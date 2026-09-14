@@ -23,6 +23,52 @@ text_overrun_behavior = 3
 autowrap_mode = 2
 max_lines_visible = 2
 
+[node name="SystemCategoryRail" type="HBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="SaveAndLoad" type="Button" parent="SystemCategoryRail"]
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "Save & Load"
+
+[node name="Display" type="Button" parent="SystemCategoryRail"]
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "Display"
+
+[node name="Audio" type="Button" parent="SystemCategoryRail"]
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "Audio"
+
+[node name="Pacing" type="Button" parent="SystemCategoryRail"]
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "Pacing"
+
+[node name="Accessibility" type="Button" parent="SystemCategoryRail"]
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "Accessibility"
+
+[node name="Controls" type="Button" parent="SystemCategoryRail"]
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "Controls"
+
+[node name="Diagnostics" type="Button" parent="SystemCategoryRail"]
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "Diagnostics"
+
 [node name="SystemWorkspaceTabs" type="TabContainer" parent="."]
 layout_mode = 2
 size_flags_horizontal = 3
@@ -615,3 +661,22 @@ text = "Show APs and random rectangles on map"
 layout_mode = 2
 text = "Gold diamonds mark placed Action Points and gold outlines show effective random encounter rectangles."
 autowrap_mode = 2
+
+[node name="ControlsDraftFooter" type="HBoxContainer" parent="."]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="DraftStatus" type="Label" parent="ControlsDraftFooter"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Controller binding changes remain a draft until Apply."
+text_overrun_behavior = 3
+
+[node name="RestoreControllerDefaultsDock" type="Button" parent="ControlsDraftFooter"]
+layout_mode = 2
+text = "Restore Defaults"
+
+[node name="ApplyControllerBindingsDock" type="Button" parent="ControlsDraftFooter"]
+layout_mode = 2
+text = "Apply"

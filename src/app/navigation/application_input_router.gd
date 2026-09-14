@@ -168,7 +168,9 @@ func _handle_controller_navigation_action(action_id: StringName) -> bool:
 			_mark_handled()
 		return true
 	if action_id == &"realmz_controller_section_previous" or action_id == &"realmz_controller_section_next":
-		_focus.focus_next(_controller_focus_root(), action_id == &"realmz_controller_section_previous")
+		var delta := -1 if action_id == &"realmz_controller_section_previous" else 1
+		if not _application._shell_presenter.controller.cycle_section(delta):
+			_focus.focus_next(_controller_focus_root(), delta < 0)
 		_mark_handled()
 		return true
 	if action_id == &"realmz_controller_character_previous" or action_id == &"realmz_controller_character_next":

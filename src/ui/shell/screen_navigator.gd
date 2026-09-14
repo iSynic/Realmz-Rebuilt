@@ -301,6 +301,11 @@ func open_screen(screen_id: StringName, play_opening_sound: bool = true) -> void
 	refresh_current_workspace(true)
 
 
+func open_system_section(section_name: StringName) -> void:
+	open_screen(&"system")
+	content_presenter.select_system_section(section_name)
+
+
 func handle_back() -> bool:
 	if setup_controller.handle_back():
 		return true
@@ -369,6 +374,10 @@ func _show_load_workspace() -> void:
 
 func current_screen() -> StringName:
 	return _screen_id
+
+
+func cycle_section(delta: int) -> bool:
+	return content_presenter.cycle_section(_screen_id, delta)
 
 
 func primary_workspace_id() -> StringName:

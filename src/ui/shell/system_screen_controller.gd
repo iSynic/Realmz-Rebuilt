@@ -51,6 +51,27 @@ var _workspace: SystemWorkspace
 var _controller_draft: ControllerPreferences
 var _controller_draft_dirty: bool = false
 var _controller_capture_action: StringName = &""
+
+
+func select_section(section_name: StringName) -> bool:
+	if _workspace == null:
+		return false
+	var tabs := _workspace.get_node("SystemWorkspaceTabs") as TabContainer
+	for index: int in tabs.get_tab_count():
+		if StringName(tabs.get_tab_title(index)) == section_name or StringName(tabs.get_child(index).name) == section_name:
+			tabs.current_tab = index
+			return true
+	return false
+
+
+func cycle_section(delta: int) -> bool:
+	if _workspace == null:
+		return false
+	var tabs := _workspace.tabs()
+	if tabs.get_tab_count() == 0:
+		return false
+	tabs.current_tab = wrapi(tabs.current_tab + delta, 0, tabs.get_tab_count())
+	return true
 var _controller_live_text: String = ""
 var controller: ControllerAccess:
 	get: return ControllerAccess.new(self)
@@ -376,20 +397,28 @@ func _bind_controller_editor(root: VBoxContainer) -> void:
 		status.text = "Rebind every missing required action before Apply." if not reachable else "%d binding conflict(s) must be resolved." % conflicts.size() if not conflicts.is_empty() else "Draft bindings are ready to apply."
 	var restore := root.get_node("Actions/RestoreControllerDefaults") as Button
 	_clear_pressed_connections(restore)
-	restore.pressed.connect(func() -> void:
+	var restore_dock := _workspace.get_node("ControlsDraftFooter/RestoreControllerDefaultsDock") as Button
+	_clear_pressed_connections(restore_dock)
+	var restore_defaults := func() -> void:
 		_controller_draft = ControllerPreferences.new()
 		_controller_draft_dirty = true
 		_controller_capture_action = &""
 		refresh_controller_editor()
-	)
+	restore.pressed.connect(restore_defaults)
+	restore_dock.pressed.connect(restore_defaults)
 	var apply := root.get_node("Actions/ApplyControllerBindings") as Button
 	_clear_pressed_connections(apply)
+	var apply_dock := _workspace.get_node("ControlsDraftFooter/ApplyControllerBindingsDock") as Button
+	_clear_pressed_connections(apply_dock)
 	apply.disabled = not reachable or not conflicts.is_empty() or not _controller_capture_action.is_empty()
 	apply.tooltip_text = status.text if apply.disabled else "Apply this complete controller draft."
-	apply.pressed.connect(func() -> void:
+	apply_dock.disabled = apply.disabled
+	apply_dock.tooltip_text = apply.tooltip_text
+	var apply_bindings := func() -> void:
 		_controller_draft_dirty = false
 		setting_changed.emit(&"controller_preferences", _controller_draft.duplicate_value())
-	)
+	apply.pressed.connect(apply_bindings)
+	apply_dock.pressed.connect(apply_bindings)
 
 
 func _bind_controller_slider(slider: HSlider, value: float, caption: String, assign: Callable) -> void:

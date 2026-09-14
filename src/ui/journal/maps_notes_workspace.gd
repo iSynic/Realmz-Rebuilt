@@ -6,6 +6,18 @@ extends VBoxContainer
 @export var player_map_row_scene: PackedScene
 @export var journal_entry_row_scene: PackedScene
 
+const SECTION_ORDER: Array[int] = [1, 0, 2]
+
+
+func _ready() -> void:
+	var tab_container := tabs()
+	tab_container.tabs_visible = false
+	get_node("MapsNotesSectionRail/Maps").pressed.connect(func() -> void: select_tab(1))
+	get_node("MapsNotesSectionRail/Places").pressed.connect(func() -> void: select_tab(0))
+	get_node("MapsNotesSectionRail/Journal").pressed.connect(func() -> void: select_tab(2))
+	tab_container.tab_changed.connect(_sync_section_rail)
+	_sync_section_rail(tab_container.current_tab)
+
 
 func prepare(compact: bool) -> void:
 	visible = true
@@ -34,6 +46,22 @@ func prepare(compact: bool) -> void:
 
 func tabs() -> TabContainer:
 	return get_node("MapsNotesTabs") as TabContainer
+
+
+func select_tab(index: int) -> void:
+	tabs().current_tab = clampi(index, 0, tabs().get_tab_count() - 1)
+	_sync_section_rail(tabs().current_tab)
+
+
+func cycle_tab(delta: int) -> void:
+	var position := SECTION_ORDER.find(tabs().current_tab)
+	select_tab(SECTION_ORDER[wrapi(maxi(0, position) + delta, 0, SECTION_ORDER.size())])
+
+
+func _sync_section_rail(index: int) -> void:
+	(get_node("MapsNotesSectionRail/Maps") as Button).button_pressed = index == 1
+	(get_node("MapsNotesSectionRail/Places") as Button).button_pressed = index == 0
+	(get_node("MapsNotesSectionRail/Journal") as Button).button_pressed = index == 2
 
 
 func summary_label() -> Label:

@@ -11,6 +11,7 @@ signal command_selected(command_id: StringName)
 const MAX_SECTORS_PER_PAGE := 8
 
 @export var sector_radius: float = 174.0
+@export var inner_radius_ratio: float = 0.46
 @export var sector_gap: float = 0.035
 @export var page_size: int = 8
 @export var selected_color := Color("#c49c55")
@@ -117,7 +118,7 @@ func move_direction(direction: Vector2) -> void:
 	var nearest_index := 0
 	var nearest_distance := INF
 	for index: int in count:
-		var sector_angle := -PI * 0.5 + TAU * (float(index) + 0.5) / float(count)
+		var sector_angle := -PI * 0.5 + TAU * float(index) / float(MAX_SECTORS_PER_PAGE)
 		var distance := absf(wrapf(requested_angle - sector_angle, -PI, PI))
 		if distance < nearest_distance:
 			nearest_distance = distance
@@ -151,32 +152,54 @@ func _draw() -> void:
 		return
 	var center := size * 0.5
 	var current := current_page_entries()
-	var count := current.size()
-	if count == 0:
+	if current.is_empty():
 		return
 	var radius := minf(sector_radius, minf(size.x, size.y) * 0.29)
-	for index: int in count:
-		var start := -PI * 0.5 + TAU * float(index) / float(count) + sector_gap
-		var end := -PI * 0.5 + TAU * float(index + 1) / float(count) - sector_gap
+	var inner_radius := radius * inner_radius_ratio
+	for index: int in current.size():
+		var midpoint := -PI * 0.5 + TAU * float(index) / float(MAX_SECTORS_PER_PAGE)
+		var half_sector := TAU / float(MAX_SECTORS_PER_PAGE) * 0.5
+		var start := midpoint - half_sector + sector_gap
+		var end := midpoint + half_sector - sector_gap
 		var color := disabled_color if not current[index].enabled else available_color
 		if index == _selected_index:
 			color = selected_color if current[index].enabled else selected_color.darkened(0.35)
-		draw_colored_polygon(_sector(center, radius, start, end), color)
-		draw_polyline(_sector(center, radius, start, end), outline_color, 2.0, true)
-		var midpoint := (start + end) * 0.5
-		var label_position := center + Vector2(cos(midpoint), sin(midpoint)) * radius * 0.64
+		var polygon := _ring_sector(center, inner_radius, radius, start, end)
+		draw_colored_polygon(polygon, color)
+		draw_polyline(polygon, outline_color, 2.0, true)
+		var radial_direction := Vector2(cos(midpoint), sin(midpoint))
+		var icon_position := center + radial_direction * radius * 0.72
+		var icon := current[index].icon
+		if icon != null:
+			var native := icon.get_size()
+			var scale := mini(2, maxi(1, floori(38.0 / maxf(native.x, native.y))))
+			var icon_size := native * scale
+			draw_texture_rect(icon, Rect2(icon_position - icon_size * 0.5, icon_size), false)
+		elif not current[index].fallback_symbol.is_empty():
+			var symbol_font := ThemeDB.fallback_font
+			var symbol_size := symbol_font.get_string_size(current[index].fallback_symbol, HORIZONTAL_ALIGNMENT_LEFT, -1, 24)
+			draw_string(symbol_font, icon_position - Vector2(symbol_size.x * 0.5, -8.0), current[index].fallback_symbol, HORIZONTAL_ALIGNMENT_LEFT, -1, 24, Color.WHITE)
+		var label_position := center + radial_direction * radius * 0.93
 		var font := ThemeDB.fallback_font
 		var text := current[index].label
-		var text_size := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 16)
-		draw_string(font, label_position - Vector2(text_size.x * 0.5, -6.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color.WHITE)
+		var text_size := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13)
+		draw_string(font, label_position - Vector2(text_size.x * 0.5, -5.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
+		if index == _selected_index:
+			var pointer_center := center + radial_direction * (radius + 15.0)
+			var tangent := radial_direction.orthogonal() * 7.0
+			draw_colored_polygon(PackedVector2Array([pointer_center + radial_direction * 8.0, pointer_center - radial_direction * 7.0 + tangent, pointer_center - radial_direction * 7.0 - tangent]), selected_color)
 
 
-func _sector(center: Vector2, radius: float, start: float, end: float) -> PackedVector2Array:
-	var points := PackedVector2Array([center])
+func _ring_sector(center: Vector2, inner_radius: float, radius: float, start: float, end: float) -> PackedVector2Array:
+	var points := PackedVector2Array()
 	var segments := 12
 	for step: int in range(segments + 1):
 		var angle := lerpf(start, end, float(step) / float(segments))
 		points.append(center + Vector2(cos(angle), sin(angle)) * radius)
+	for step: int in range(segments, -1, -1):
+		var angle := lerpf(start, end, float(step) / float(segments))
+		points.append(center + Vector2(cos(angle), sin(angle)) * inner_radius)
+	points.append(points[0])
 	return points
 
 
@@ -205,7 +228,9 @@ func _update_text() -> void:
 	if current.is_empty():
 		_selection_label.text = "No commands"
 		_reason_label.text = ""
+		_reason_label.visible = false
 		return
 	var entry := current[clampi(_selected_index, 0, current.size() - 1)]
 	_selection_label.text = entry.label
 	_reason_label.text = "Unavailable: %s" % entry.disabled_reason if not entry.enabled and not entry.disabled_reason.is_empty() else ("Unavailable" if not entry.enabled else "")
+	_reason_label.visible = not _reason_label.text.is_empty()

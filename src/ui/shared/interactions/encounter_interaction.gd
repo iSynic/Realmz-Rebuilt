@@ -93,7 +93,8 @@ func controller_actions() -> Array[ControllerRadialEntry]:
 	for entry: Array in [[&"action", "Action"], [&"item", "Items"], [&"thief", "Skills"], [&"word", "Speak"], [&"spell", "Spells"], [&"back", "Stop"]]:
 		var button := _command_buttons.get(entry[0]) as BaseButton
 		if button != null:
-			result.append(ControllerRadialEntry.new(entry[0], entry[1], not button.disabled, button.tooltip_text if button.disabled else ""))
+			var icon := (button as ClassicBitmapButton).radial_art_texture() if button is ClassicBitmapButton else null
+			result.append(ControllerRadialEntry.new(entry[0], entry[1], not button.disabled, button.tooltip_text if button.disabled else "", icon))
 	return result
 
 

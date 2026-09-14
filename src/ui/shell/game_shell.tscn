@@ -158,8 +158,17 @@ grow_horizontal = 2
 grow_vertical = 2
 text = "Realmz"
 
-[node name="ControllerPromptStrip" parent="MenuStrip/MenuChromeColumn" instance=ExtResource("9_controller_prompt")]
+[node name="ControllerPromptStrip" parent="." instance=ExtResource("9_controller_prompt")]
 unique_name_in_owner = true
+layout_mode = 0
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -310.0
+offset_top = 42.0
+offset_right = 310.0
+offset_bottom = 78.0
+grow_horizontal = 2
+z_index = 94
 
 [node name="StageFrame" type="NinePatchRect" parent="."]
 unique_name_in_owner = true
