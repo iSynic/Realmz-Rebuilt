@@ -206,6 +206,7 @@ class ControllerAccess:
 	func page_radial(delta: int) -> void:
 		if delta < 0: _shell._controller_radial.previous_page()
 		else: _shell._controller_radial.next_page()
+	func scroll_radial(direction: Vector2i) -> void: _shell._controller_radial.scroll_reason(direction)
 	func confirm_radial() -> void: _shell._controller_radial.confirm_selected()
 	func cancel_radial() -> bool:
 		if not _shell._controller_radial.is_open(): return false

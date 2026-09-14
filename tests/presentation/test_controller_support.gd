@@ -238,13 +238,13 @@ func _test_controller_radial_pages_and_explicit_commit() -> void:
 	var radial := load("res://src/ui/shared/controller/controller_radial_overlay.tscn").instantiate() as ControllerRadialOverlay; host.add_child(radial)
 	await (Engine.get_main_loop() as SceneTree).process_frame
 	var entries: Array[ControllerRadialEntry] = []; for index: int in 10:
-		entries.append(ControllerRadialEntry.new(StringName("command_%d" % index), "Command %d" % index, index != 0, "Blocked by current state" if index == 0 else ""))
+		entries.append(ControllerRadialEntry.new(StringName("command_%d" % index), "Command %d" % index, index != 0, "Blocked by the current interaction until its complete authored response has been selected and confirmed." if index == 0 else ""))
 	var selected: Array[StringName] = []
 	radial.command_selected.connect(func(command_id: StringName) -> void: selected.append(command_id))
 	radial.open(entries)
 	assert_equal([radial.current_page_entries().size(), radial.page_count()], [8, 2], "radials retain stable ordering across pages of at most eight sectors")
 	radial.confirm_selected()
-	assert_true(radial.is_open() and selected.is_empty(), "confirming a disabled sector keeps the radial open for its readable explanation")
+	assert_true(radial.is_open() and selected.is_empty() and (radial.find_child("ReasonLabel", true, false) as Label).text.ends_with("selected and confirmed."), "confirming a disabled sector keeps the radial open with its complete untruncated explanation")
 	radial.move_direction(Vector2.RIGHT)
 	radial.confirm_selected()
 	assert_true(not radial.is_open() and selected.size() == 1, "a highlighted enabled command executes only after explicit confirmation")
@@ -252,7 +252,7 @@ func _test_controller_radial_pages_and_explicit_commit() -> void:
 	radial.next_page()
 	assert_equal(radial.current_page_entries().size(), 2, "the final radial page exposes only its remaining stable entries")
 	var card := radial.find_child("Card", true, false) as PanelContainer
-	assert_true(host.get_global_rect().encloses(card.get_global_rect()), "the radial card remains bounded in the Classic 800 by 600 composition: host=%s card=%s" % [host.get_global_rect(), card.get_global_rect()])
+	var heading := radial.find_child("Heading", true, false) as Control; var reason_panel := radial.find_child("ReasonPanel", true, false) as Control; assert_true(host.get_global_rect().encloses(card.get_global_rect()) and card.size.x <= 120.0 and card.size.y <= 72.0 and heading.position.y + heading.size.y < card.position.y and reason_panel.position.y > card.position.y + card.size.y, "the compact radial center stays within 120 by 72 while its title and reason remain outside the wheel opening at 800 by 600")
 	radial.cancel()
 	assert_false(radial.is_open(), "cancel closes the radial without dispatching another command")
 	var shell := load("res://src/ui/shell/game_shell.tscn").instantiate() as GameShell; host.add_child(shell); await (Engine.get_main_loop() as SceneTree).process_frame

@@ -23,6 +23,8 @@ const MAX_SECTORS_PER_PAGE := 8
 @onready var _title: Label = %Title
 @onready var _selection_label: Label = %SelectionLabel
 @onready var _reason_label: Label = %ReasonLabel
+@onready var _reason_panel: PanelContainer = %ReasonPanel
+@onready var _reason_scroll: ScrollContainer = %ReasonScroll
 
 var _entries: Array[ControllerRadialEntry] = []
 var _page: int = 0
@@ -128,6 +130,12 @@ func move_direction(direction: Vector2) -> void:
 	queue_redraw()
 
 
+func scroll_reason(direction: Vector2i) -> void:
+	if not _open or not _reason_panel.visible or direction.y == 0:
+		return
+	_reason_scroll.scroll_vertical += direction.y * 28
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if not _open:
 		return
@@ -228,9 +236,10 @@ func _update_text() -> void:
 	if current.is_empty():
 		_selection_label.text = "No commands"
 		_reason_label.text = ""
-		_reason_label.visible = false
+		_reason_panel.visible = false
 		return
 	var entry := current[clampi(_selected_index, 0, current.size() - 1)]
 	_selection_label.text = entry.label
 	_reason_label.text = "Unavailable: %s" % entry.disabled_reason if not entry.enabled and not entry.disabled_reason.is_empty() else ("Unavailable" if not entry.enabled else "")
-	_reason_label.visible = not _reason_label.text.is_empty()
+	_reason_panel.visible = not _reason_label.text.is_empty()
+	_reason_scroll.scroll_vertical = 0

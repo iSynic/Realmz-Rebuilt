@@ -282,6 +282,11 @@ func _handle_controller_radial(action_id: StringName) -> bool:
 	elif action_id == &"realmz_controller_section_next":
 		_application._shell_presenter.controller.page_radial(1)
 	else:
+		var scroll_direction := _controller_scroll_direction(action_id)
+		if scroll_direction != Vector2i.ZERO:
+			_application._shell_presenter.controller.scroll_radial(scroll_direction)
+			_mark_handled()
+			return true
 		var direction := _controller_direction(action_id)
 		if direction != Vector2i.ZERO:
 			_application._shell_presenter.controller.move_radial(direction)

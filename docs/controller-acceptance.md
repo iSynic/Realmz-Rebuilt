@@ -17,6 +17,7 @@ Realmz Rebuilt provides a controller-owned route through startup, workspaces, te
 - Preferences and Maps/Notes expose visible category rails. Shoulders switch their declared sections directly instead of walking each control. Controller hints float over the upper stage at 75-percent opacity for three seconds without changing shell geometry and are not restarted by movement, repeats, confirmation, or stick noise.
 - Runtime Testing admits bounded button and axis events only in isolated fixtures and reports focus identity. Live adventures continue to reject mutation.
 - The top menu uses a controller-owned dropdown inside the application viewport rather than a native popup. Entry movement clamps at its ends, held heading movement cannot wrap repeatedly, disabled reasons stay visible, South dispatches once, and pointer takeover closes the controller presentation cleanly.
+- Radial titles and page indicators sit above the unchanged eight-slice ring. Only the selected command occupies the 120-by-72 center region; complete disabled reasons appear in a separate well below the ring and accept right-stick scrolling.
 
 This scope intentionally excludes virtual mouse emulation, vibration, and platform on-screen keyboard integration.
 
