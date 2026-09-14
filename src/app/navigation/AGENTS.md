@@ -8,7 +8,8 @@ Translate Godot input into named application actions, typed session commands, an
 
 - `ApplicationInputRouter` owns keyboard, pointer, and normalized controller dispatch priority.
 - `UiInputActions` owns the stable named `InputMap` action vocabulary used by the host.
-- `ControllerInputOwner` is the single active-pad owner. It resolves physical bindings into named actions, retains a logical action until every bound physical control releases, filters stick noise, settles paired analog-axis edges into one complete direction, applies dead-zone release hysteresis and UI repeat, clears held state at disconnect or focus loss, and requires neutral acknowledged input before resuming.
+- `ControllerInputRecovery` samples the connected active pad at acknowledgement time so cached pre-focus axis values cannot strand suspension.
+- `ControllerInputOwner` is the single active-pad owner. It resolves physical bindings into named actions, retains a logical action until every bound physical control releases, filters stick noise, settles paired analog-axis edges into one complete direction, applies dead-zone release hysteresis and UI repeat, clears held state at disconnect or focus loss, and requires neutral acknowledged input before resuming. Focus loss creates that controller suspension only after a pad has deliberately claimed active ownership; keyboard/mouse-only play can never acquire a controller-only Auto blocker. A deliberate controller button, keyboard press, or pointer press may provide acknowledgement for a genuinely active-pad suspension; keyboard and pointer acknowledgement consume the triggering input, and a connected pad is sampled before stale cached axes can prevent recovery.
 
 ## Local Contracts
 
