@@ -15,11 +15,9 @@ func run() -> void:
 	var content: RealmzContent = loaded.content
 	_test_scenario_wire_contracts()
 	_test_public_interaction_matrix(content)
-	_test_public_classic_choice_control_flow(content)
-	_test_public_classic_difficulty_branch(content)
-	_test_public_classic_encounter_iterations(content)
-	_test_public_thief_encounter(content)
-	_test_public_session_resume(content)
+	_test_public_classic_choice_control_flow(content); _test_half_truth_complex_spell_class()
+	_test_public_classic_difficulty_branch(content); _test_public_classic_encounter_iterations(content)
+	_test_public_thief_encounter(content); _test_public_session_resume(content)
 	_test_public_vm_combat_auto(content); _test_public_classic_forced_victory(content); _test_public_classic_combat_spawn(content); _test_public_classic_combat_mutation(content)
 	_test_public_vm_repeated_combat_item(content)
 	_test_public_continuation_matrix(content)
@@ -28,8 +26,7 @@ func run() -> void:
 	_test_public_character_checks(content)
 	_test_corrected_character_selection_opcodes(content)
 	_test_corrected_fatigue_opcode(content)
-	_test_public_action_state(content)
-	_test_aogm_dispatch_has_no_fallback(content)
+	_test_public_action_state(content); _test_aogm_dispatch_has_no_fallback(content)
 
 
 func _test_scenario_wire_contracts() -> void:
@@ -215,8 +212,7 @@ func _test_public_interaction_matrix(content: RealmzContent) -> void:
 	var click_boundary := api.execute_classic(ClassicActionDefinition.new(0, 26, 26, 0, false, []), "click.modal")
 	assert_equal([click_boundary.state, click_boundary.interaction.kind, click_boundary.interaction.body.to_data(), click_boundary.events[0].kind, click_boundary.events[0].payload.get("soundId")], [ScenarioRuntimeOperationResult.State.WAITING, InteractionRequest.ACKNOWLEDGE, {"prompt": "Continue", "presentation": "classic-click-modal"}, &"sound_requested", 30005], "opcode 26 stages Castle's compact blocking click window and requests its stock cue exactly once")
 	assert_equal(api.resume_classic(click_boundary.continuation, InteractionResponse.acknowledge(click_boundary.interaction), "click.modal.resume").state, ScenarioRuntimeOperationResult.State.COMPLETED, "the compact click acknowledgement releases opcode 26")
-	var text := api.execute_classic(ClassicActionDefinition.new(0, 1, 1, 1, false, []), "text.positive")
-	assert_equal([text.state, text.interaction.kind, text.interaction.body.to_data().get("presentation")], [ScenarioRuntimeOperationResult.State.WAITING, &"acknowledge", "classic-textbox"], "positive message stages the dedicated Classic textbox")
+	var text := api.execute_classic(ClassicActionDefinition.new(0, 1, 1, 1, false, []), "text.positive"); assert_equal([text.state, text.interaction.kind, text.interaction.body.to_data().get("presentation")], [ScenarioRuntimeOperationResult.State.WAITING, &"acknowledge", "classic-textbox"], "positive message stages the dedicated Classic textbox")
 	var wrong := api.resume_classic(text.continuation, InteractionResponse.from_data(text.interaction.request_id, &"yes_no", {"accepted": true}), "text.wrong")
 	assert_equal(wrong.error_code, &"invalid_interaction_response", "text continuation rejects an unrelated response shape")
 	var acknowledged := api.resume_classic(text.continuation, InteractionResponse.acknowledge(text.interaction), "text.resume")
@@ -231,6 +227,14 @@ func _test_public_classic_choice_control_flow(content: RealmzContent) -> void:
 		var api := _runtime_api(content, ScenarioActionState.new()); var waiting := vm.run(api); assert_equal([waiting.state, waiting.interaction.kind], [ScenarioVmResult.State.WAITING, InteractionRequest.YES_NO], "%s Choice yields the typed response boundary" % choice_case.id); var selected := vm.resume(InteractionResponse.yes_no(waiting.interaction, true), api)
 		assert_equal(selected.state, ScenarioVmResult.State.COMPLETED, "%s Choice selection ends the issuing timeline" % choice_case.id); assert_true(_event_has(selected.events, choice_case.event), "%s Choice publishes its explicit session operation" % choice_case.id); assert_false(_event_has(selected.events, &"action_point_kept") or _event_has(selected.events, &"encounter_option_elimination_requested"), "%s Choice cannot execute the following slot or invent an encounter mutation" % choice_case.id)
 		var continued_vm := ScenarioVm.new(); continued_vm.configure(ScenarioDefinition.new([program], [])); continued_vm.start_program(program.id, ScenarioExecutionContext.trigger(&"action", "ap.%s" % choice_case.id)); var continued_wait := continued_vm.run(api); var continued := continued_vm.resume(InteractionResponse.yes_no(continued_wait.interaction, false), api); assert_true(_event_has(continued.events, &"action_point_kept"), "%s Choice leaves the unselected branch on the following authored slot" % choice_case.id)
+
+
+func _test_half_truth_complex_spell_class() -> void:
+	var loaded := load_test_package("res://src/storage/packages/bundled_campaigns/scenario-half-truth.realmz2"); var content: RealmzContent = loaded.content; var encounter := content.scenario_records.complex_encounter_by_id(10); assert_true(encounter != null and encounter.spell_ids()[0] == 3 and encounter.spell_results()[0] == 1, "Half Truth Complex Encounter 10 preserves its Electrical class-to-result-one response"); var cases: Array[Array] = [_half_truth_complex_spell_case(content, 3205), _half_truth_complex_spell_case(content, 3105), _half_truth_complex_spell_case(content, 3103), _half_truth_complex_spell_case(content, 1109)]; assert_equal(cases.map(func(entry: Array) -> Array: return entry.slice(0, 2)), [["Electric Pulse", 3], ["Lightning Strike", 3], ["Electrical Protection", 8], ["Open Lock", 8]], "Half Truth resolves the live submitted spell IDs through their stock spell-class records"); assert_equal(cases.map(func(entry: Array) -> int: return entry[2]), [1, 1, 4, 4], "Half Truth routes class-three electrical attacks to result one while non-class-three spells take fallback result four")
+
+
+func _half_truth_complex_spell_case(content: RealmzContent, classic_spell_id: int) -> Array:
+	var spell := content.magic.spell_by_classic_id(classic_spell_id); var character := CharacterState.new("half-truth.caster.%d" % classic_spell_id, "Caster", 10, 10); character.set_known_spells([spell.id]); var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [character]), RealmzClock.new()); var rng := RealmzRng.for_oracle(10); var api := RealmzRuntimeApi.new(content, state, rng, ScenarioActionState.new()); var opened := api.execute_classic(ClassicActionDefinition.new(0, 5, 5, 10, false, []), "half-truth.complex-10"); var resolved := api.resume_classic(opened.continuation, InteractionResponse.from_data(opened.interaction.request_id, opened.interaction.kind, {"action": "spell", "classicSpellId": classic_spell_id, "characterId": character.id}), "half-truth.complex-10.spell"); assert_equal(rng.snapshot().draw_count, 0, "Complex Encounter spell-class routing consumes no gameplay RNG"); return [spell.name, spell.spell_class, int(resolved.value)]
 
 
 func _test_public_classic_difficulty_branch(content: RealmzContent) -> void:

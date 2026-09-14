@@ -361,7 +361,8 @@ func _resume_complex_encounter(continuation: ScenarioRuntimeContinuation, respon
 		"spell":
 			if selection.classic_spell_id == 0 or not _character_knows_classic_spell(selection.character_id, selection.classic_spell_id):
 				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Complex spell response requires an eligible living caster and known Classic spell.")
-			outcome = _complex_catalog_outcome(encounter.spell_ids(), encounter.spell_results(), selection.classic_spell_id)
+			var spell := _content.magic.spell_by_classic_id(absi(selection.classic_spell_id))
+			outcome = _complex_spell_outcome(encounter.spell_ids(), encounter.spell_results(), selection.classic_spell_id, spell.spell_class)
 		"item":
 			if selection.classic_item_id == 0 or not _character_owns_classic_item(selection.character_id, selection.instance_id, selection.classic_item_id):
 				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Complex item response requires an exact carried item and eligible living owner.")
@@ -423,6 +424,14 @@ func _complex_word_outcome(encounter: ComplexEncounterDefinition, entered_word: 
 func _complex_catalog_outcome(ids: Array[int], results: Array[int], selected_id: int) -> int:
 	for index: int in mini(ids.size(), results.size()):
 		if ids[index] != 0 and absi(ids[index]) == absi(selected_id):
+			return results[index]
+	return 4
+
+
+func _complex_spell_outcome(ids: Array[int], results: Array[int], selected_id: int, spell_class: int) -> int:
+	for index: int in mini(ids.size(), results.size()):
+		var authored_id := ids[index]
+		if authored_id == selected_id or authored_id != 0 and authored_id < 7 and authored_id == spell_class:
 			return results[index]
 	return 4
 
