@@ -90,13 +90,9 @@ func set_controller_live_input(value: String) -> void:
 	_system_controller.controller.set_live_input(value)
 
 
-func select_system_section(section_name: StringName) -> bool:
-	return _system_controller.select_section(section_name)
-
-
-func cycle_section(screen_id: StringName, delta: int) -> bool:
+func navigate_section(screen_id: StringName, section_name: StringName = &"", delta: int = 0) -> bool:
 	if screen_id == &"system":
-		return _system_controller.cycle_section(delta)
+		return _system_controller.navigate_section(section_name, delta)
 	if screen_id == &"journal":
 		return _maps_journal_controller.cycle_section(delta)
 	return false

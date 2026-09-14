@@ -38,41 +38,25 @@ func run() -> void:
 
 
 func _test_controller_preferences_round_trip_and_migration() -> void:
-	var settings := PresentationSettings.new()
-	settings.master_volume = 0.35
-	settings.controller.prompt_family = ControllerPreferences.PROMPT_PLAYSTATION
-	settings.controller.left_stick_dead_zone = 0.3
-	settings.controller.repeat_initial_ms = 425
+	var settings := PresentationSettings.new(); settings.master_volume = 0.35; settings.controller.prompt_family = ControllerPreferences.PROMPT_PLAYSTATION; settings.controller.left_stick_dead_zone = 0.3; settings.controller.repeat_initial_ms = 425
 	var restored := PresentationSettings.from_data(settings.to_data())
 	assert_not_null(restored, "schema-fifteen controller preferences decode")
 	assert_equal([restored.master_volume, restored.controller.prompt_family, restored.controller.left_stick_dead_zone, restored.controller.repeat_initial_ms], [0.35, ControllerPreferences.PROMPT_PLAYSTATION, 0.3, 425], "controller tuning round-trips without changing existing presentation values")
-	var legacy := settings.to_data()
-	legacy["schemaVersion"] = 13
-	legacy.erase("controller")
-	var migrated := PresentationSettings.from_data(legacy)
+	var legacy := settings.to_data(); legacy["schemaVersion"] = 13; legacy.erase("controller"); var migrated := PresentationSettings.from_data(legacy)
 	assert_not_null(migrated, "schema-thirteen presentation settings migrate")
 	assert_equal([migrated.master_volume, migrated.controller.prompt_family, migrated.controller.left_stick_dead_zone, migrated.controller.repeat_initial_ms, migrated.controller.repeat_interval_ms], [0.35, ControllerPreferences.PROMPT_AUTO, 0.25, 350, 100], "legacy values survive while controller support receives stable defaults")
-	var schema_fourteen := settings.to_data()
-	schema_fourteen["schemaVersion"] = 14
-	schema_fourteen["controller"]["bindings"] = (schema_fourteen["controller"]["bindings"] as Array).filter(func(binding: Dictionary) -> bool: return binding["action"] != "realmz_controller_top_menu")
-	var top_menu_migrated := PresentationSettings.from_data(schema_fourteen)
+	var schema_fourteen := settings.to_data(); schema_fourteen["schemaVersion"] = 14; schema_fourteen["controller"]["bindings"] = (schema_fourteen["controller"]["bindings"] as Array).filter(func(binding: Dictionary) -> bool: return binding["action"] != "realmz_controller_top_menu"); var top_menu_migrated := PresentationSettings.from_data(schema_fourteen)
 	assert_true(top_menu_migrated.controller.bindings.any(func(binding: Dictionary) -> bool: return binding["action"] == "realmz_controller_top_menu" and binding["code"] == JOY_BUTTON_BACK), "schema-fourteen settings add View/Create/Minus when that physical button is unused")
-	schema_fourteen["controller"]["bindings"].append({"action": "realmz_controller_inspect", "kind": "button", "code": JOY_BUTTON_BACK, "direction": 0})
-	var occupied_migration := PresentationSettings.from_data(schema_fourteen)
+	schema_fourteen["controller"]["bindings"].append({"action": "realmz_controller_inspect", "kind": "button", "code": JOY_BUTTON_BACK, "direction": 0}); var occupied_migration := PresentationSettings.from_data(schema_fourteen)
 	assert_false(occupied_migration.controller.bindings.any(func(binding: Dictionary) -> bool: return binding["action"] == "realmz_controller_top_menu"), "schema-fourteen migration leaves Top Menu unbound when View/Create/Minus is already assigned")
-	var malformed := settings.to_data()
-	malformed["controller"]["leftStickDeadZone"] = 0.02
+	var malformed := settings.to_data(); malformed["controller"]["leftStickDeadZone"] = 0.02
 	assert_equal(PresentationSettings.from_data(malformed), null, "current settings reject an unusable stick dead zone")
-	malformed = settings.to_data()
-	malformed["controller"]["bindings"] = (malformed["controller"]["bindings"] as Array).filter(func(binding: Dictionary) -> bool: return binding["action"] != "realmz_controller_confirm")
+	malformed = settings.to_data(); malformed["controller"]["bindings"] = (malformed["controller"]["bindings"] as Array).filter(func(binding: Dictionary) -> bool: return binding["action"] != "realmz_controller_confirm")
 	assert_equal(PresentationSettings.from_data(malformed), null, "current settings reject a draft without required confirmation navigation")
 
 
 func _test_controller_bindings_and_conflicts() -> void:
-	var preferences := ControllerPreferences.new()
-	assert_true(preferences.required_navigation_is_reachable() and preferences.conflicts().is_empty(), "physical-position defaults provide a conflict-free complete navigation set")
-	UiInputActions.apply_controller_bindings(preferences)
-	var confirm_events := InputMap.action_get_events(&"realmz_controller_confirm")
+	var preferences := ControllerPreferences.new(); assert_true(preferences.required_navigation_is_reachable() and preferences.conflicts().is_empty(), "physical-position defaults provide a conflict-free complete navigation set"); UiInputActions.apply_controller_bindings(preferences); var confirm_events := InputMap.action_get_events(&"realmz_controller_confirm")
 	assert_true(confirm_events.any(func(event: InputEvent) -> bool: return event is InputEventJoypadButton and (event as InputEventJoypadButton).button_index == JOY_BUTTON_A), "South is registered as the default confirm position")
 	assert_true(preferences.bindings.any(func(binding: Dictionary) -> bool: return binding["action"] == "realmz_controller_top_menu" and binding["code"] == JOY_BUTTON_BACK), "View/Create/Minus opens the top menu by default")
 	preferences.bindings.append({"action": "realmz_controller_back", "kind": "button", "code": JOY_BUTTON_A, "direction": 0})
@@ -80,25 +64,15 @@ func _test_controller_bindings_and_conflicts() -> void:
 
 
 func _test_controller_owner_edges_hysteresis_and_takeover() -> void:
-	var owner := ControllerInputOwner.new()
-	(Engine.get_main_loop() as SceneTree).root.add_child(owner)
-	owner.configure(ControllerPreferences.new())
-	var pressed: Array[StringName] = []
-	var released: Array[StringName] = []
-	var directions: Array[Vector2i] = []
+	var owner := ControllerInputOwner.new(); (Engine.get_main_loop() as SceneTree).root.add_child(owner); owner.configure(ControllerPreferences.new())
+	var pressed: Array[StringName] = []; var released: Array[StringName] = []; var directions: Array[Vector2i] = []
 	owner.action_pressed.connect(func(action_id: StringName, _repeated: bool) -> void: pressed.append(action_id))
 	owner.action_released.connect(func(action_id: StringName) -> void: released.append(action_id))
 	owner.direction_changed.connect(func(direction: Vector2i, _repeated: bool) -> void: directions.append(direction))
-	var noise := InputEventJoypadMotion.new()
-	noise.device = 2
-	noise.axis = JOY_AXIS_LEFT_X
-	noise.axis_value = 0.12
+	var noise := InputEventJoypadMotion.new(); noise.device = 2; noise.axis = JOY_AXIS_LEFT_X; noise.axis_value = 0.12
 	assert_false(owner.handle_input(noise), "sub-dead-zone stick noise does not claim controller ownership")
 	assert_equal(owner.active_device(), -1, "stick noise leaves the active controller unchanged")
-	var right := InputEventJoypadMotion.new()
-	right.device = 2
-	right.axis = JOY_AXIS_LEFT_X
-	right.axis_value = 0.26
+	var right := InputEventJoypadMotion.new(); right.device = 2; right.axis = JOY_AXIS_LEFT_X; right.axis_value = 0.26
 	assert_true(owner.handle_input(right), "a deliberate stick direction is consumed by the normalized owner")
 	assert_equal([owner.active_device(), pressed], [2, [&"realmz_controller_right"]], "deliberate input claims one pad and produces one direction edge")
 	var down := InputEventJoypadMotion.new(); down.device = 2; down.axis = JOY_AXIS_LEFT_Y; down.axis_value = 0.26; owner.handle_input(down); owner.call("_process", 0.0); owner.call("_process", 0.0); assert_equal(directions, [Vector2i(1, 1)], "paired analog axes settle into one quantized diagonal instead of dispatching two cardinal steps"); down.axis_value = 0.0; owner.handle_input(down); released.clear()
@@ -379,7 +353,7 @@ func _test_controller_settings_draft_and_embedded_file_dialog() -> void:
 		if setting_id == &"controller_preferences": applied.append(value as ControllerPreferences)
 	)
 	controller.present(screen, view, settings)
-	assert_true(controller.select_section(&"Controls") and controller.cycle_section(1) and (screen.find_child("SystemWorkspaceTabs", true, false) as TabContainer).current_tab == 6, "shoulders switch declared Preferences sections without walking every control")
+	assert_true(controller.navigate_section(&"Controls") and controller.navigate_section(&"", 1) and (screen.find_child("SystemWorkspaceTabs", true, false) as TabContainer).current_tab == 6, "shoulders switch declared Preferences sections without walking every control")
 	var confirm := screen.find_child("ControllerBinding_confirm", true, false) as Button
 	confirm.pressed.emit()
 	assert_equal(captures, [&"realmz_controller_confirm"], "the Controls page gives binding capture sole ownership of a named draft action")

@@ -137,7 +137,7 @@ class ControllerAccess:
 		_shell._controller_prompts.hide_prompts()
 	func show_detail(value: String) -> void: _shell._controller_prompts.set_detail(value)
 	func select_relative_character(delta: int) -> bool: return _shell._party_roster.controller_select_relative(delta)
-	func cycle_section(delta: int) -> bool: return _shell._navigator.cycle_section(delta)
+	func cycle_section(delta: int) -> bool: return _shell._navigator.content_presenter.navigate_section(_shell._navigator.current_screen(), &"", delta)
 	func receive_binding(action_id: StringName, descriptor: Dictionary) -> void: _shell._navigator.content_presenter.receive_controller_binding(action_id, descriptor)
 	func cancel_binding_capture() -> void: _shell._navigator.content_presenter.cancel_controller_binding_capture()
 	func set_live_input(value: String) -> void: _shell._navigator.content_presenter.set_controller_live_input(value)
@@ -219,10 +219,10 @@ class ControllerAccess:
 		elif kind == &"interaction" and activation.is_valid(): activation.call(command_id)
 	func _activate_workspace(command_id: StringName) -> void:
 		match command_id:
-			&"workspace_preferences": _shell._navigator.open_system_section(&"Display")
-			&"workspace_save_load": _shell._navigator.open_system_section(&"Save & Load")
-			&"workspace_music": _shell._navigator.open_system_section(&"Audio")
-			&"workspace_diagnostics": _shell._navigator.open_system_section(&"Diagnostics")
+			&"workspace_preferences": _shell._navigator.open_screen(&"system", true, &"Display")
+			&"workspace_save_load": _shell._navigator.open_screen(&"system", true, &"Save & Load")
+			&"workspace_music": _shell._navigator.open_screen(&"system", true, &"Audio")
+			&"workspace_diagnostics": _shell._navigator.open_screen(&"system", true, &"Diagnostics")
 			&"workspace_top_menu": _shell._menu_controller.controller_open()
 			_: _shell._navigator.open_screen(command_id)
 	func _open_radial(kind: StringName, title: String, entries: Array[ControllerRadialEntry]) -> void:

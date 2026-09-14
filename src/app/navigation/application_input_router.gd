@@ -110,62 +110,15 @@ func handle_controller_direction(direction: Vector2i, repeated: bool = false) ->
 func _handle_controller_navigation_action(action_id: StringName) -> bool:
 	var interaction_blocking: bool = _application._interaction_presenter.has_blocking_request()
 	if _top_menu_is_open():
-		if action_id == &"realmz_controller_confirm":
-			_application._shell_presenter.controller.confirm_top_menu()
-		elif action_id == &"realmz_controller_back" or action_id == &"realmz_controller_top_menu":
-			_application._shell_presenter.controller.back_top_menu()
-		else:
-			var menu_direction := _controller_direction(action_id)
-			if menu_direction != Vector2i.ZERO:
-				_application._shell_presenter.controller.move_top_menu(menu_direction)
-		_mark_handled()
+		_handle_top_menu_action(action_id)
 		return true
-	if action_id == &"realmz_controller_action_radial":
-		_stop_controller_movement()
-		if interaction_blocking:
-			_application._shell_presenter.controller.open_interaction_radial(_application._interaction_presenter.controller.actions(), _application._interaction_presenter.controller.activate_action)
-			_mark_handled()
-			return true
-		if _application._shell_presenter.controller.open_action_radial():
-			_mark_handled()
+	if _handle_radial_or_top_menu_action(action_id, interaction_blocking):
 		return true
-	if action_id == &"realmz_controller_workspace_radial":
-		_stop_controller_movement()
-		if interaction_blocking:
-			_mark_handled()
-			return true
-		if _application._shell_presenter.controller.open_workspace_radial():
-			_mark_handled()
-		return true
-	if action_id == &"realmz_controller_top_menu":
-		_stop_controller_movement()
-		if not interaction_blocking and _application.accepts_route_input():
-			_application._shell_presenter.controller.open_top_menu()
-		_mark_handled()
-		return true
-	if action_id == &"realmz_controller_back":
-		_stop_controller_movement()
-		if _focus.cancel_active_popup():
-			_mark_handled()
-			return true
-		var back := InputEventAction.new()
-		back.action = &"realmz_back"
-		back.pressed = true
-		handle_input(back)
+	if _handle_back_or_confirm_action(action_id):
 		return true
 	if action_id == &"realmz_controller_system" and _application.accepts_route_input():
 		_application._shell_presenter.open_system_workspace()
 		_mark_handled()
-		return true
-	if action_id == &"realmz_controller_confirm":
-		if _application._interaction_presenter.controller.submit_acknowledgement():
-			_mark_handled()
-			return true
-		if _application._shell_presenter.controller.open_text_editor():
-			_mark_handled()
-			return true
-		if _focus.activate_focused(_controller_focus_root()):
-			_mark_handled()
 		return true
 	if action_id == &"realmz_controller_section_previous" or action_id == &"realmz_controller_section_next":
 		var delta := -1 if action_id == &"realmz_controller_section_previous" else 1
@@ -187,6 +140,69 @@ func _handle_controller_navigation_action(action_id: StringName) -> bool:
 			_mark_handled()
 		return true
 	return false
+
+
+func _handle_top_menu_action(action_id: StringName) -> void:
+	if action_id == &"realmz_controller_confirm":
+		_application._shell_presenter.controller.confirm_top_menu()
+	elif action_id == &"realmz_controller_back" or action_id == &"realmz_controller_top_menu":
+		_application._shell_presenter.controller.back_top_menu()
+	else:
+		var menu_direction := _controller_direction(action_id)
+		if menu_direction != Vector2i.ZERO:
+			_application._shell_presenter.controller.move_top_menu(menu_direction)
+	_mark_handled()
+
+
+func _handle_radial_or_top_menu_action(action_id: StringName, interaction_blocking: bool) -> bool:
+	if action_id == &"realmz_controller_action_radial":
+		_stop_controller_movement()
+		if interaction_blocking:
+			_application._shell_presenter.controller.open_interaction_radial(_application._interaction_presenter.controller.actions(), _application._interaction_presenter.controller.activate_action)
+			_mark_handled()
+			return true
+		if _application._shell_presenter.controller.open_action_radial():
+			_mark_handled()
+		return true
+	if action_id == &"realmz_controller_workspace_radial":
+		_stop_controller_movement()
+		if interaction_blocking:
+			_mark_handled()
+			return true
+		if _application._shell_presenter.controller.open_workspace_radial():
+			_mark_handled()
+		return true
+	if action_id != &"realmz_controller_top_menu":
+		return false
+	_stop_controller_movement()
+	if not interaction_blocking and _application.accepts_route_input():
+		_application._shell_presenter.controller.open_top_menu()
+		_mark_handled()
+	return true
+
+
+func _handle_back_or_confirm_action(action_id: StringName) -> bool:
+	if action_id == &"realmz_controller_back":
+		_stop_controller_movement()
+		if _focus.cancel_active_popup():
+			_mark_handled()
+			return true
+		var back := InputEventAction.new()
+		back.action = &"realmz_back"
+		back.pressed = true
+		handle_input(back)
+		return true
+	if action_id != &"realmz_controller_confirm":
+		return false
+	if _application._interaction_presenter.controller.submit_acknowledgement():
+		_mark_handled()
+		return true
+	if _application._shell_presenter.controller.open_text_editor():
+		_mark_handled()
+		return true
+	if _focus.activate_focused(_controller_focus_root()):
+		_mark_handled()
+	return true
 
 
 func _handle_controller_direction(direction: Vector2i, repeated: bool) -> void:

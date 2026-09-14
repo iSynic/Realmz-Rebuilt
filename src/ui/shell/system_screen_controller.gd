@@ -51,30 +51,25 @@ var _workspace: SystemWorkspace
 var _controller_draft: ControllerPreferences
 var _controller_draft_dirty: bool = false
 var _controller_capture_action: StringName = &""
+var _controller_live_text: String = ""
+var controller: ControllerAccess:
+	get: return ControllerAccess.new(self)
 
 
-func select_section(section_name: StringName) -> bool:
+func navigate_section(section_name: StringName = &"", delta: int = 0) -> bool:
 	if _workspace == null:
 		return false
-	var tabs := _workspace.get_node("SystemWorkspaceTabs") as TabContainer
+	var tabs := _workspace.tabs()
+	if section_name.is_empty():
+		if tabs.get_tab_count() == 0:
+			return false
+		tabs.current_tab = wrapi(tabs.current_tab + delta, 0, tabs.get_tab_count())
+		return true
 	for index: int in tabs.get_tab_count():
 		if StringName(tabs.get_tab_title(index)) == section_name or StringName(tabs.get_child(index).name) == section_name:
 			tabs.current_tab = index
 			return true
 	return false
-
-
-func cycle_section(delta: int) -> bool:
-	if _workspace == null:
-		return false
-	var tabs := _workspace.tabs()
-	if tabs.get_tab_count() == 0:
-		return false
-	tabs.current_tab = wrapi(tabs.current_tab + delta, 0, tabs.get_tab_count())
-	return true
-var _controller_live_text: String = ""
-var controller: ControllerAccess:
-	get: return ControllerAccess.new(self)
 
 
 func set_layout_profile(profile_id: StringName) -> void:

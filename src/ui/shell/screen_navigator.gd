@@ -282,7 +282,7 @@ func accepts_exploration_input() -> bool:
 	return _view != null and _view.session_started and not _view.party_setup_available and not setup_controller.full_stage_overlay_visible() and _screen_id == &"exploration"
 
 
-func open_screen(screen_id: StringName, play_opening_sound: bool = true) -> void:
+func open_screen(screen_id: StringName, play_opening_sound: bool = true, section_name: StringName = &"") -> void:
 	if not UiRouteCatalog.has_route(screen_id):
 		return
 	if screen_id == &"vault":
@@ -299,11 +299,8 @@ func open_screen(screen_id: StringName, play_opening_sound: bool = true) -> void
 	if changed and play_opening_sound and WORKSPACE_OPEN_SOUND_IDS.has(screen_id):
 		presentation_sound_requested.emit(int(WORKSPACE_OPEN_SOUND_IDS[screen_id]), false, false, true)
 	refresh_current_workspace(true)
-
-
-func open_system_section(section_name: StringName) -> void:
-	open_screen(&"system")
-	content_presenter.select_system_section(section_name)
+	if not section_name.is_empty():
+		content_presenter.navigate_section(screen_id, section_name)
 
 
 func handle_back() -> bool:
@@ -374,10 +371,6 @@ func _show_load_workspace() -> void:
 
 func current_screen() -> StringName:
 	return _screen_id
-
-
-func cycle_section(delta: int) -> bool:
-	return content_presenter.cycle_section(_screen_id, delta)
 
 
 func primary_workspace_id() -> StringName:
