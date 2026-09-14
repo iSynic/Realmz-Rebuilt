@@ -447,6 +447,7 @@ func _set_workspace_visible(visible: bool) -> void:
 
 
 func refresh_current_workspace(notify_route_change: bool = false) -> void:
+	_store_focus()
 	_route_transition_revision += 1
 	var transition_revision := _route_transition_revision
 	var mounted_new_route := _workspace_view == null or _workspace_view.route_id != _screen_id
@@ -504,4 +505,5 @@ func show_vault_from_splash() -> void:
 
 
 func _store_focus() -> void:
-	_focus_controller.store(self, _screen_id)
+	if _workspace_view != null and _workspace_view.route_id == _screen_id:
+		_focus_controller.store(self, _body, _screen_id)

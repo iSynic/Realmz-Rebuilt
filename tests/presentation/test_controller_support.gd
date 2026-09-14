@@ -261,6 +261,16 @@ func _test_focus_navigation_activation_and_prompts() -> void:
 	assert_contains((prompts.find_child("PromptText", true, false) as Label).text, "Cross Confirm", "automatic prompt presentation can show PlayStation physical labels")
 	prompts.present(ControllerPreferences.PROMPT_SWITCH)
 	assert_contains((prompts.find_child("PromptText", true, false) as Label).text, "B Confirm", "Switch prompts preserve South-position confirmation")
+	var body := VBoxContainer.new(); body.name = "FocusBody"; root.add_child(body)
+	var first_record := Button.new(); first_record.name = "Open"; first_record.set_meta("character_id", "hero.one"); body.add_child(first_record)
+	var selected_record := Button.new(); selected_record.name = "Open"; selected_record.set_meta("character_id", "hero.two"); body.add_child(selected_record)
+	var next_record := Button.new(); next_record.name = "Open"; next_record.set_meta("character_id", "hero.three"); body.add_child(next_record)
+	var focus_memory := WorkspaceFocusController.new(); focus_memory.prepare(body, &"character"); selected_record.grab_focus(); focus_memory.store(root, body, &"character")
+	body.remove_child(first_record); first_record.free(); body.remove_child(selected_record); selected_record.free(); body.remove_child(next_record); next_record.free()
+	var replacement_first := Button.new(); replacement_first.name = "Open"; replacement_first.set_meta("character_id", "hero.one"); body.add_child(replacement_first)
+	var replacement_next := Button.new(); replacement_next.name = "Open"; replacement_next.set_meta("character_id", "hero.three"); body.add_child(replacement_next)
+	focus_memory.prepare(body, &"character"); focus_memory.restore(root, body, null, &"character", false, 0, 0)
+	assert_equal(root.get_viewport().gui_get_focus_owner(), replacement_next, "when a focused record disappears, semantic restoration chooses the next surviving record before the previous one")
 	root.free()
 
 
