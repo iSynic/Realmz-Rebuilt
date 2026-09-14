@@ -25,9 +25,9 @@ This scope intentionally excludes virtual mouse emulation, vibration, and platfo
 
 | Evidence | Result |
 | --- | --- |
-| Focused controller, Classic shell, System, and exploration workflow | Passed, 1,232 assertions across 4 suites |
-| Aggregate repository verification | Passed, 4,325 assertions across 29 suites plus architecture, package alignment, media, icon, export-contract, provenance, workflow-inventory, and gameplay-parity checks |
-| Rendered radial gallery | Passed on Windows with Mobile rendering: Actions and Workspaces at 1280 by 720, plus Workspaces at 800 by 600; ring, selected pointer, icons, labels, and unchanged Classic composition inspected |
+| Focused controller, Classic shell, and System workflow | Passed, 800 assertions across 3 suites |
+| Aggregate repository verification | Passed, 4,334 assertions across 29 suites plus architecture, package alignment, media, icon, export-contract, provenance, workflow-inventory, and gameplay-parity checks |
+| Rendered controller gallery | Passed on Windows with Mobile rendering: Actions and Workspaces at 1280 by 720, Workspaces at 800 by 600, and the controller-owned top menu at both sizes; compact center, selected pointer, icons, labels, bounded scrolling, and unchanged Classic composition inspected |
 | Runtime Testing TypeScript build and tests | Passed, 39 tests including the rendered fixture journey; 1 environment-dependent transport test skipped |
 | Rendered Windows controller journey | Passed: actual joypad events opened System, navigated focus, quick-saved, and loaded through application owners |
 | Controller text journey | Passed: controller-only Journal navigation opened QWERTY, edited a draft, enabled Save Note, then committed separately |
