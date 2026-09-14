@@ -12,6 +12,7 @@ class ControllerAccess:
 	func actions() -> Array[ControllerRadialEntry]: return _presenter._component.controller_actions() if not _presenter._flash.is_open() and _presenter._component != null else []
 	func activate_action(action_id: StringName) -> bool: return not _presenter._flash.is_open() and _presenter._component != null and _presenter._component.activate_controller_action(action_id)
 	func submit_acknowledgement() -> bool: return _presenter._flash.dismiss() or _presenter.submit_classic_acknowledgement()
+	func blocks_automatic_progress() -> bool: return _presenter._playback_masked or _presenter._flash.is_open()
 	func focus_root() -> Control: return _presenter._overlays.controller_focus_root()
 
 

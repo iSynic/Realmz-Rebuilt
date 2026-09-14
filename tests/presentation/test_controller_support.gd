@@ -1,5 +1,7 @@
 extends RealmzTestCase
 
+const PERSISTENT_AUTO_COORDINATOR := preload("res://src/app/session/persistent_auto_coordinator.gd")
+
 class RouterOverlayAccess extends RefCounted:
 	func text_editor_is_open() -> bool: return false
 	func radial_is_open() -> bool: return false
@@ -33,6 +35,7 @@ func run() -> void:
 	_test_ordered_controller_targeting()
 	await _test_focus_navigation_activation_and_prompts()
 	await _test_controller_radial_pages_and_explicit_commit()
+	await _test_persistent_auto_continuation()
 	await _test_qwerty_draft_commit_cancel_and_layout()
 	await _test_controller_settings_draft_and_embedded_file_dialog()
 
@@ -183,23 +186,12 @@ func _test_ordered_controller_targeting() -> void:
 
 
 func _test_focus_navigation_activation_and_prompts() -> void:
-	var root := Control.new()
-	root.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
-	root.size = Vector2(800, 600)
+	var root := Control.new(); root.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT); root.size = Vector2(800, 600)
 	(Engine.get_main_loop() as SceneTree).root.add_child(root)
-	var first := Button.new()
-	first.position = Vector2(40, 40)
-	first.size = Vector2(120, 36)
-	first.text = "First"
-	first.set_meta("focus_group", "route:test")
-	root.add_child(first)
-	var second := Button.new()
-	second.position = Vector2(240, 40)
-	second.size = Vector2(120, 36)
-	second.text = "Second"
-	second.tooltip_text = "Exact focused detail"
-	second.set_meta("focus_group", "route:test")
-	root.add_child(second)
+	var first := Button.new(); first.position = Vector2(40, 40); first.size = Vector2(120, 36); first.text = "First"
+	first.set_meta("focus_group", "route:test"); root.add_child(first)
+	var second := Button.new(); second.position = Vector2(240, 40); second.size = Vector2(120, 36); second.text = "Second"
+	second.tooltip_text = "Exact focused detail"; second.set_meta("focus_group", "route:test"); root.add_child(second)
 	await (Engine.get_main_loop() as SceneTree).process_frame
 	var activation_state := [false]
 	second.pressed.connect(func() -> void: activation_state[0] = true)
@@ -208,38 +200,27 @@ func _test_focus_navigation_activation_and_prompts() -> void:
 	assert_equal(navigator.move(root, Vector2i.RIGHT), second, "directional navigation chooses the predictable same-group geometric neighbor")
 	assert_equal(navigator.inspection_text(root), "Exact focused detail", "inspection exposes the focused control's existing explanation")
 	assert_true(navigator.activate_focused(root) and activation_state[0], "South-style focus activation uses the existing control action")
-	var disabled := Button.new()
-	disabled.position = Vector2(440, 40)
-	disabled.size = Vector2(120, 36)
-	disabled.text = "Unavailable"
-	disabled.disabled = true
-	disabled.tooltip_text = "A specific rules-owned reason."
-	disabled.set_meta("focus_group", "route:test")
-	root.add_child(disabled)
+	var disabled := Button.new(); disabled.position = Vector2(440, 40); disabled.size = Vector2(120, 36); disabled.text = "Unavailable"; disabled.disabled = true
+	disabled.tooltip_text = "A specific rules-owned reason."; disabled.set_meta("focus_group", "route:test"); root.add_child(disabled)
 	assert_equal(navigator.move(root, Vector2i.RIGHT), disabled, "disabled controls remain focusable for controller inspection")
 	assert_equal(navigator.inspection_text(root), "A specific rules-owned reason.", "inspection exposes a focused unavailable action's exact reason")
 	assert_false(navigator.activate_focused(root), "South cannot activate a focused disabled control")
 	var toggle := CheckButton.new(); toggle.position = Vector2(40, 100); toggle.text = "Toggle"; root.add_child(toggle); toggle.grab_focus(); var toggled := [false]; toggle.toggled.connect(func(value: bool) -> void: toggled[0] = value); assert_true(navigator.activate_focused(root) and toggle.button_pressed and toggled[0], "South changes a focused toggle through its native state and signal")
 	var picker := OptionButton.new(); picker.position = Vector2(200, 100); picker.add_item("First"); picker.add_item("Second"); root.add_child(picker); picker.grab_focus(); assert_true(navigator.activate_focused(root), "South opens a focused dropdown under controller ownership"); navigator.move(root, Vector2i.DOWN); assert_true(navigator.activate_focused(root) and picker.selected == 1, "direction and South select the highlighted dropdown entry through the option owner")
 	var list := ItemList.new(); list.position = Vector2(380, 100); list.size = Vector2(120, 80); list.add_item("One"); list.add_item("Two"); root.add_child(list); list.grab_focus(); navigator.move(root, Vector2i.DOWN); var activated_item := [-1]; list.item_activated.connect(func(index: int) -> void: activated_item[0] = index); assert_true(navigator.activate_focused(root) and activated_item[0] == 1, "controller selection activates the exact focused list record")
-	var modal := Control.new()
-	modal.size = Vector2(200, 100)
+	var modal := Control.new(); modal.size = Vector2(200, 100)
 	root.add_child(modal)
-	var modal_action := Button.new()
-	modal_action.text = "Modal action"
-	modal_action.size = Vector2(120, 36)
+	var modal_action := Button.new(); modal_action.text = "Modal action"; modal_action.size = Vector2(120, 36)
 	modal.add_child(modal_action)
 	first.grab_focus()
 	assert_equal(navigator.focus_next(modal), modal_action, "modal focus traversal recovers inside its active root instead of advancing elsewhere in the viewport"); var modal_activation := [false]; modal_action.pressed.connect(func() -> void: modal_activation[0] = true); first.grab_focus(); assert_true(navigator.activate_focused(modal) and modal_activation[0], "South recovers into the active modal instead of activating stale focus from the surface beneath it")
-	var prompts := load("res://src/ui/shell/controller_prompt_strip.tscn").instantiate() as ControllerPromptStrip
-	root.add_child(prompts)
+	var prompts := load("res://src/ui/shell/controller_prompt_strip.tscn").instantiate() as ControllerPromptStrip; root.add_child(prompts)
 	await (Engine.get_main_loop() as SceneTree).process_frame
 	prompts.present(ControllerPreferences.PROMPT_PLAYSTATION)
 	assert_contains((prompts.find_child("PromptText", true, false) as Label).text, "Cross Select", "automatic prompt presentation can show PlayStation physical labels")
 	prompts.present(ControllerPreferences.PROMPT_SWITCH)
 	assert_contains((prompts.find_child("PromptText", true, false) as Label).text, "B Select", "Switch prompts preserve South-position confirmation")
-	var body := VBoxContainer.new(); body.name = "FocusBody"; root.add_child(body)
-	var first_record := Button.new(); first_record.name = "Open"; first_record.set_meta("character_id", "hero.one"); body.add_child(first_record)
+	var body := VBoxContainer.new(); body.name = "FocusBody"; root.add_child(body); var first_record := Button.new(); first_record.name = "Open"; first_record.set_meta("character_id", "hero.one"); body.add_child(first_record)
 	var selected_record := Button.new(); selected_record.name = "Open"; selected_record.set_meta("character_id", "hero.two"); body.add_child(selected_record)
 	var next_record := Button.new(); next_record.name = "Open"; next_record.set_meta("character_id", "hero.three"); body.add_child(next_record)
 	var focus_memory := WorkspaceFocusController.new(); focus_memory.prepare(body, &"character"); selected_record.grab_focus(); focus_memory.store(root, body, &"character")
@@ -252,15 +233,11 @@ func _test_focus_navigation_activation_and_prompts() -> void:
 
 
 func _test_controller_radial_pages_and_explicit_commit() -> void:
-	var host := Control.new()
-	host.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
-	host.size = Vector2(800, 600)
+	var host := Control.new(); host.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT); host.size = Vector2(800, 600)
 	(Engine.get_main_loop() as SceneTree).root.add_child(host)
-	var radial := load("res://src/ui/shared/controller/controller_radial_overlay.tscn").instantiate() as ControllerRadialOverlay
-	host.add_child(radial)
+	var radial := load("res://src/ui/shared/controller/controller_radial_overlay.tscn").instantiate() as ControllerRadialOverlay; host.add_child(radial)
 	await (Engine.get_main_loop() as SceneTree).process_frame
-	var entries: Array[ControllerRadialEntry] = []
-	for index: int in 10:
+	var entries: Array[ControllerRadialEntry] = []; for index: int in 10:
 		entries.append(ControllerRadialEntry.new(StringName("command_%d" % index), "Command %d" % index, index != 0, "Blocked by current state" if index == 0 else ""))
 	var selected: Array[StringName] = []
 	radial.command_selected.connect(func(command_id: StringName) -> void: selected.append(command_id))
@@ -284,6 +261,31 @@ func _test_controller_radial_pages_and_explicit_commit() -> void:
 	assert_true(shell.controller.open_top_menu(), "View/Create/Minus gives the top menu sole controller ownership"); assert_true(shell.controller.move_top_menu(Vector2i.RIGHT) and shell.controller.move_top_menu(Vector2i.DOWN), "top-menu ownership moves between headings and opens the selected heading"); assert_true(shell.controller.back_top_menu() and shell.controller.back_top_menu(), "East backs out of the top-menu entry level and then restores the prior workspace focus")
 	var activated: Array[StringName] = []; assert_true(shell.controller.open_interaction_radial([ControllerRadialEntry.new(&"speak", "Speak")], func(command_id: StringName) -> void: activated.append(command_id)), "an interaction can claim the shared action radial"); shell.controller.confirm_radial(); assert_equal(activated, [&"speak"], "confirming an interaction radial retains and invokes its interaction owner")
 	host.free()
+
+
+func _test_persistent_auto_continuation() -> void:
+	var current: Array[GameView] = [_auto_view(10, 1, "hero")]; var blocker: Array[StringName] = [&""]; var submissions: Array[Dictionary] = []; var failures: Array[String] = []; var coordinator: RefCounted = PERSISTENT_AUTO_COORDINATOR.new(); var coordinator_ref: WeakRef = weakref(coordinator)
+	coordinator.configure(func() -> GameView: return current[0], func() -> int: return 41, func() -> StringName: return blocker[0], func(response: InteractionResponse) -> SessionStep:
+		var body := response.body as InteractionResponse.CombatBody; submissions.append({"actor": body.actor_id, "round": current[0].combat_view.round_number, "revision": current[0].revision})
+		current[0] = _auto_view(current[0].revision + 1, current[0].combat_view.round_number + 1, "hero" if submissions.size() < 3 else "manual")
+		(coordinator_ref.get_ref() as RefCounted).call("request"); return SessionStep.completed(current[0].revision), func(step: SessionStep) -> void: failures.append(step.error_message if step != null else "missing step"))
+	coordinator.request(); for _frame: int in 8: await (Engine.get_main_loop() as SceneTree).process_frame
+	assert_equal(submissions, [{"actor": "hero", "round": 1, "revision": 10}, {"actor": "hero", "round": 2, "revision": 11}, {"actor": "hero", "round": 3, "revision": 12}], "the application-owned continuation commits one rendered Auto activation per round and yields to a manual actor")
+	current[0] = _auto_view(20, 4, "hero"); blocker[0] = &"controller-suspended"; coordinator.request(); await (Engine.get_main_loop() as SceneTree).process_frame
+	assert_equal([submissions.size(), coordinator.observation()["blocker"]], [3, "controller-suspended"], "controller suspension retains the pending Auto activation without running it")
+	blocker[0] = &""; coordinator.poll(); await (Engine.get_main_loop() as SceneTree).process_frame; await (Engine.get_main_loop() as SceneTree).process_frame
+	assert_equal(submissions.size(), 4, "explicit acknowledgement wakes the retained Auto continuation")
+	current[0] = _auto_view(30, 5, "hero"); coordinator.request(); current[0] = _auto_view(31, 5, "manual"); await (Engine.get_main_loop() as SceneTree).process_frame; await (Engine.get_main_loop() as SceneTree).process_frame
+	assert_equal(submissions.size(), 4, "a session revision change discards stale continuation work before it can submit")
+	assert_true(failures.is_empty(), "successful persistent Auto never enters the failure latch"); coordinator.invalidate(); current.clear(); coordinator = null
+	await (Engine.get_main_loop() as SceneTree).process_frame
+
+
+func _auto_view(revision: int, round_number: int, actor_id: String) -> GameView:
+	var tiles: Array[int] = []; tiles.resize(BattlefieldGrid.CELL_COUNT); tiles.fill(0); var view := GameView.new(revision, true, null); var combat := CombatState.new("controller.auto", [], 0, BattlefieldState.new("land:0", tiles)); combat.set_turn_order([actor_id])
+	view.combat_view = CombatView.new(combat); view.combat_view.round_number = round_number; view.combat_view.active_actor_id = actor_id; view.combat_view.auto_character_ids = ["hero"]; view.combat_view.outcome = &"active"
+	view.combat_action_request = ClassicUiFixtureGallery.request_for(InteractionRequest.COMBAT)
+	return view
 
 
 func _test_qwerty_draft_commit_cancel_and_layout() -> void:
