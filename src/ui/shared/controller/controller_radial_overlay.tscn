@@ -1,0 +1,164 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://src/ui/shared/controller/controller_radial_overlay.gd" id="1_overlay"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_card"]
+bg_color = Color(0.0705882, 0.0901961, 0.109804, 0.98)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.741176, 0.611765, 0.333333, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+content_margin_left = 8.0
+content_margin_top = 8.0
+content_margin_right = 8.0
+content_margin_bottom = 8.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_reason"]
+bg_color = Color(0.12549, 0.14902, 0.168627, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+content_margin_left = 12.0
+content_margin_top = 8.0
+content_margin_right = 12.0
+content_margin_bottom = 8.0
+
+[node name="ControllerRadialOverlay" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+script = ExtResource("1_overlay")
+
+[node name="Backdrop" type="ColorRect" parent="."]
+show_behind_parent = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.0156863, 0.0235294, 0.0313725, 0.76)
+
+[node name="Heading" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -180.0
+offset_top = -256.0
+offset_right = 180.0
+offset_bottom = -210.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 0
+
+[node name="Title" type="Label" parent="Heading"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.937255, 0.847059, 0.545098, 1)
+theme_override_font_sizes/font_size = 20
+text = "COMMANDS"
+horizontal_alignment = 1
+
+[node name="PageIndicator" type="Label" parent="Heading"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Page 1 / 1"
+horizontal_alignment = 1
+
+[node name="Card" type="PanelContainer" parent="."]
+custom_minimum_size = Vector2(120, 72)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -60.0
+offset_top = -36.0
+offset_right = 60.0
+offset_bottom = 36.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBox_card")
+
+[node name="Center" type="CenterContainer" parent="Card"]
+layout_mode = 2
+
+[node name="SelectionLabel" type="Label" parent="Card/Center"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(104, 56)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 16
+text = "No commands"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
+text_overrun_behavior = 3
+
+[node name="ReasonPanel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -190.0
+offset_top = 190.0
+offset_right = 190.0
+offset_bottom = 248.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBox_reason")
+
+[node name="ReasonScroll" type="ScrollContainer" parent="ReasonPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+horizontal_scroll_mode = 0
+
+[node name="ReasonLabel" type="Label" parent="ReasonPanel/ReasonScroll"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(352, 0)
+layout_mode = 2
+text = ""
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="Hint" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -310.0
+offset_top = -48.0
+offset_right = 310.0
+offset_bottom = -14.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_styles/normal = SubResource("StyleBox_reason")
+text = "Direction highlights  ·  South / Enter selects  ·  East / Esc cancels  ·  Shoulders page"
+horizontal_alignment = 1
+vertical_alignment = 1
+text_overrun_behavior = 3

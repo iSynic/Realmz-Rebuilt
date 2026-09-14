@@ -12,6 +12,7 @@ signal refresh_requested
 signal intent_submitted(intent: PlayerIntent)
 signal system_action_requested(action_id: StringName, value: Variant)
 signal presentation_setting_changed(setting_id: StringName, value: Variant)
+signal controller_binding_capture_requested(action_id: StringName)
 signal vault_archive_requested(character_id: String)
 signal vault_restore_requested(character_id: String, revision_hash: String)
 signal presentation_sound_requested(sound_id: int, wait_for_completion: bool, stop_existing: bool, reduced_sound_eligible: bool)
@@ -77,6 +78,7 @@ func _init() -> void:
 	content_presenter.intent_submitted.connect(func(intent: PlayerIntent) -> void: intent_submitted.emit(intent))
 	content_presenter.system_action_requested.connect(func(action_id: StringName, value: Variant) -> void: system_action_requested.emit(action_id, value))
 	content_presenter.presentation_setting_changed.connect(func(setting_id: StringName, value: Variant) -> void: presentation_setting_changed.emit(setting_id, value))
+	content_presenter.controller_binding_capture_requested.connect(func(action_id: StringName) -> void: controller_binding_capture_requested.emit(action_id))
 	content_presenter.vault_archive_requested.connect(func(character_id: String) -> void: vault_archive_requested.emit(character_id))
 	content_presenter.vault_restore_requested.connect(func(character_id: String, revision_hash: String) -> void: vault_restore_requested.emit(character_id, revision_hash))
 	content_presenter.route_requested.connect(func(screen_id: StringName) -> void: open_screen(screen_id))
@@ -280,7 +282,7 @@ func accepts_exploration_input() -> bool:
 	return _view != null and _view.session_started and not _view.party_setup_available and not setup_controller.full_stage_overlay_visible() and _screen_id == &"exploration"
 
 
-func open_screen(screen_id: StringName, play_opening_sound: bool = true) -> void:
+func open_screen(screen_id: StringName, play_opening_sound: bool = true, section_name: StringName = &"") -> void:
 	if not UiRouteCatalog.has_route(screen_id):
 		return
 	if screen_id == &"vault":
@@ -297,6 +299,8 @@ func open_screen(screen_id: StringName, play_opening_sound: bool = true) -> void
 	if changed and play_opening_sound and WORKSPACE_OPEN_SOUND_IDS.has(screen_id):
 		presentation_sound_requested.emit(int(WORKSPACE_OPEN_SOUND_IDS[screen_id]), false, false, true)
 	refresh_current_workspace(true)
+	if not section_name.is_empty():
+		content_presenter.navigate_section(screen_id, section_name)
 
 
 func handle_back() -> bool:
@@ -445,6 +449,7 @@ func _set_workspace_visible(visible: bool) -> void:
 
 
 func refresh_current_workspace(notify_route_change: bool = false) -> void:
+	_store_focus()
 	_route_transition_revision += 1
 	var transition_revision := _route_transition_revision
 	var mounted_new_route := _workspace_view == null or _workspace_view.route_id != _screen_id
@@ -502,4 +507,5 @@ func show_vault_from_splash() -> void:
 
 
 func _store_focus() -> void:
-	_focus_controller.store(self, _screen_id)
+	if _workspace_view != null and _workspace_view.route_id == _screen_id:
+		_focus_controller.store(self, _body, _screen_id)

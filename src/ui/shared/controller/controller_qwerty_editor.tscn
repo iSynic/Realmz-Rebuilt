@@ -1,0 +1,160 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/ui/shared/controller/controller_qwerty_editor.gd" id="1_editor"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_card"]
+bg_color = Color(0.0705882, 0.0901961, 0.109804, 0.99)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.741176, 0.611765, 0.333333, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+content_margin_left = 16.0
+content_margin_top = 14.0
+content_margin_right = 16.0
+content_margin_bottom = 14.0
+
+[node name="ControllerQwertyEditor" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+script = ExtResource("1_editor")
+
+[node name="Backdrop" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.0156863, 0.0235294, 0.0313725, 0.78)
+
+[node name="Card" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -380.0
+offset_top = -270.0
+offset_right = 380.0
+offset_bottom = 270.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBox_card")
+
+[node name="Content" type="VBoxContainer" parent="Card"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="Card/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.937255, 0.847059, 0.545098, 1)
+theme_override_font_sizes/font_size = 20
+text = "TEXT ENTRY"
+horizontal_alignment = 1
+
+[node name="DraftPreview" type="TextEdit" parent="Card/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 82)
+layout_mode = 2
+mouse_filter = 2
+editable = false
+wrap_mode = 2
+
+[node name="StatusRow" type="HBoxContainer" parent="Card/Content"]
+layout_mode = 2
+
+[node name="PageLabel" type="Label" parent="Card/Content/StatusRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "lowercase"
+
+[node name="CaretLabel" type="Label" parent="Card/Content/StatusRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Caret 0 / 0"
+horizontal_alignment = 2
+
+[node name="PageRow" type="HBoxContainer" parent="Card/Content"]
+layout_mode = 2
+
+[node name="PreviousPage" type="Button" parent="Card/Content/PageRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Previous page"
+
+[node name="NextPage" type="Button" parent="Card/Content/PageRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Next page"
+
+[node name="KeyGrid" type="GridContainer" parent="Card/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 196)
+layout_mode = 2
+size_flags_vertical = 3
+columns = 10
+theme_override_constants/h_separation = 5
+theme_override_constants/v_separation = 5
+
+[node name="EditRow" type="HBoxContainer" parent="Card/Content"]
+layout_mode = 2
+
+[node name="CaretLeft" type="Button" parent="Card/Content/EditRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "← Caret"
+
+[node name="Space" type="Button" parent="Card/Content/EditRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Space"
+
+[node name="LineBreak" type="Button" parent="Card/Content/EditRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Line break"
+
+[node name="Delete" type="Button" parent="Card/Content/EditRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Delete"
+
+[node name="CaretRight" type="Button" parent="Card/Content/EditRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Caret →"
+
+[node name="ActionRow" type="HBoxContainer" parent="Card/Content"]
+layout_mode = 2
+
+[node name="Cancel" type="Button" parent="Card/Content/ActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Cancel"
+
+[node name="Done" type="Button" parent="Card/Content/ActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Done"

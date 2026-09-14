@@ -16,6 +16,7 @@ const SUITES: Array[Script] = [
 	preload("res://tests/presentation/test_dungeon_geometry_projection.gd"),
 	preload("res://tests/presentation/test_allies_workspace.gd"),
 	preload("res://tests/presentation/test_music_system.gd"),
+	preload("res://tests/presentation/test_controller_support.gd"),
 	preload("res://tests/presentation/test_classic_ui_shell.gd"),
 	preload("res://tests/presentation/test_classic_ui_system.gd"),
 	preload("res://tests/presentation/test_realmz_builder_previews.gd"),

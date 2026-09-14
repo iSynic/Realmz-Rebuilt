@@ -150,9 +150,10 @@ func _alter_party_fatigue(action: ClassicActionDefinition) -> ScenarioRuntimeOpe
 		2:
 			_game_state.party.fatigue = 4
 		3:
-			# Castle reads the third Extra Code slot and performs integer division before multiplication.
-			var multiplier := int(float(action.extra_code[2]) / 100.0)
-			_game_state.party.fatigue = clampi(previous * multiplier, 4, 135)
+			var scaled_fatigue := previous * action.extra_code[1]
+			@warning_ignore("integer_division")
+			var calculated_fatigue: int = scaled_fatigue / 100
+			_game_state.party.fatigue = clampi(calculated_fatigue, 4, 135)
 		_:
 			return ScenarioRuntimeOperationResult.failed(&"invalid_fatigue_mode", "Classic opcode 68 requires fatigue mode 1, 2, or 3.")
 	var current := _game_state.party.fatigue

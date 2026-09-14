@@ -1,0 +1,39 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/ui/shell/controller_prompt_strip.gd" id="1_prompt"]
+
+[node name="ControllerPromptStrip" type="PanelContainer"]
+visible = false
+custom_minimum_size = Vector2(0, 28)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+self_modulate = Color(1, 1, 1, 0.75)
+theme_type_variation = &"ClassicInset"
+script = ExtResource("1_prompt")
+
+[node name="PromptMargin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 1
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 1
+
+[node name="PromptRow" type="HBoxContainer" parent="PromptMargin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="PromptText" type="Label" parent="PromptMargin/PromptRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "South Confirm   East Back   West Actions   North Workspaces   ☰ System"
+text_overrun_behavior = 3
+
+[node name="PromptDetail" type="Label" parent="PromptMargin/PromptRow"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_alignment = 2
+text_overrun_behavior = 3

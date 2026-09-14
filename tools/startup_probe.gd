@@ -15,6 +15,7 @@ var _root: Node
 
 
 func _initialize() -> void:
+	DisplayServer.window_set_title("Realmz Rebuilt — isolated startup probe")
 	_started_at = Time.get_ticks_usec()
 	var packed := ResourceLoader.load(MAIN_SCENE, "PackedScene", ResourceLoader.CACHE_MODE_IGNORE) as PackedScene
 	_loaded_at = Time.get_ticks_usec()
@@ -63,12 +64,20 @@ func _report_transition() -> void:
 			prepared_decoder_count_after_five_seconds += 1
 	var scenario_action := _root.find_child("ChooseScenario", true, false) as Button
 	var scenario_action_enabled := scenario_action != null and not scenario_action.disabled
+	var scenario_action_focused := scenario_action != null and scenario_action.has_focus()
+	var confirm := InputEventJoypadButton.new()
+	confirm.button_index = JOY_BUTTON_A
+	confirm.pressed = true
 	if scenario_action_enabled:
-		scenario_action.pressed.emit()
+		get_root().push_input(confirm)
+	await process_frame
+	confirm.pressed = false
+	get_root().push_input(confirm)
 	await process_frame
 	var current := current_scene
 	var transitioned := current != null and current.name == "RealmzApplication"
 	var campaign_setup := current.find_child("PartySetup", true, false) as Control if transitioned else null
+	var transition_succeeded := transitioned and campaign_setup != null and campaign_setup.visible
 	print(CanonicalJson.encode({
 		"applicationReadyMs": _milliseconds(_started_at, _application_ready_at),
 		"backgroundApplicationLoadMs": snappedf(_background_load_ms, 0.001),
@@ -82,7 +91,9 @@ func _report_transition() -> void:
 		"preparedDecoderCountAtMenuReveal": prepared_decoder_count,
 		"preparedDecoderCountAfterFiveSeconds": prepared_decoder_count_after_five_seconds,
 		"scenarioActionEnabledAtTransition": scenario_action_enabled,
-		"queuedScenarioTransitionSucceeded": transitioned and campaign_setup != null and campaign_setup.visible,
+		"scenarioActionFocusedBeforeControllerInput": scenario_action_focused,
+		"transitionInput": "viewport-joypad-south",
+		"queuedScenarioTransitionSucceeded": transition_succeeded,
 		"readyMs": _milliseconds(_instantiated_at, _readied_at),
 		"readyToFrameMs": _milliseconds(_readied_at, _first_frame_at),
 		"splashVisibleOnFirstFrame": _splash_visible_on_first_frame,
@@ -94,7 +105,7 @@ func _report_transition() -> void:
 	await process_frame
 	await process_frame
 	await process_frame
-	quit(0)
+	quit(0 if transition_succeeded else 1)
 
 
 static func _milliseconds(started_at: int, finished_at: int) -> float:

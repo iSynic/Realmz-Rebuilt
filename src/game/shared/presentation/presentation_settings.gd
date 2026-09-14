@@ -3,7 +3,7 @@
 class_name PresentationSettings
 extends RefCounted
 
-const SCHEMA_VERSION: int = 13
+const SCHEMA_VERSION: int = 16
 const MUSIC_SLOT_COUNT: int = 20
 const MUSIC_OFF: int = 0
 const MUSIC_PLAY: int = 1
@@ -33,12 +33,14 @@ var ui_scale_mode: String = UI_SCALE_AUTO
 var window_mode: String = WINDOWED
 var exploration_speed_percent: int = 100
 var combat_playback_speed_percent: int = 100
+var hurry_spell_resolution: bool = false
 var show_exploration_minimap: bool = false
 var classic_exploration_visibility: bool = true
 var custom_fog_tile_enabled: bool = true
 var autojournal_enabled: bool = false
 var typography_mode: String = TYPOGRAPHY_CLASSIC
 var last_campaign_id: String = ""
+var controller := ControllerPreferences.new()
 
 
 func to_data() -> Dictionary:
@@ -60,12 +62,14 @@ func to_data() -> Dictionary:
 		"windowMode": window_mode,
 		"explorationSpeedPercent": exploration_speed_percent,
 		"combatPlaybackSpeedPercent": combat_playback_speed_percent,
+		"hurrySpellResolution": hurry_spell_resolution,
 		"showExplorationMinimap": show_exploration_minimap,
 		"classicExplorationVisibility": classic_exploration_visibility,
 		"customFogTileEnabled": custom_fog_tile_enabled,
 		"autojournalEnabled": autojournal_enabled,
 		"typographyMode": typography_mode,
 		"lastCampaignId": last_campaign_id,
+		"controller": controller.to_data(),
 	}
 
 
@@ -119,7 +123,11 @@ static func _versioned_fields_are_valid(data: Dictionary, schema_version: int) -
 		return false
 	if schema_version >= 12 and not data.get("lastCampaignId") is String:
 		return false
-	return schema_version < 13 or data.get("customFogTileEnabled") is bool
+	if schema_version >= 13 and not data.get("customFogTileEnabled") is bool:
+		return false
+	if schema_version >= 16 and not data.get("hurrySpellResolution") is bool:
+		return false
+	return schema_version < 14 or ControllerPreferences.from_data(data.get("controller")) != null
 
 
 static func _window_fields_are_valid(data: Dictionary) -> bool:
@@ -168,12 +176,16 @@ static func _settings_from_valid_data(data: Dictionary) -> PresentationSettings:
 	settings.window_mode = String(data.get("windowMode", WINDOWED))
 	settings.exploration_speed_percent = int(data.get("explorationSpeedPercent", 100))
 	settings.combat_playback_speed_percent = int(data.get("combatPlaybackSpeedPercent", 100))
+	settings.hurry_spell_resolution = bool(data.get("hurrySpellResolution", false))
 	settings.show_exploration_minimap = bool(data.get("showExplorationMinimap", false))
 	settings.classic_exploration_visibility = bool(data.get("classicExplorationVisibility", true))
 	settings.custom_fog_tile_enabled = bool(data.get("customFogTileEnabled", true))
 	settings.autojournal_enabled = bool(data.get("autojournalEnabled", false))
 	settings.typography_mode = String(data.get("typographyMode", TYPOGRAPHY_CLASSIC))
 	settings.last_campaign_id = String(data.get("lastCampaignId", "")).strip_edges()
+	settings.controller = ControllerPreferences.from_data(data["controller"]) if data.has("controller") else ControllerPreferences.new()
+	if int(data.get("schemaVersion", 1)) == 14:
+		settings.controller.add_top_menu_default_if_available()
 	return settings
 
 

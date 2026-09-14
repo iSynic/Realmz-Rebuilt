@@ -11,6 +11,8 @@ param(
 $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $catalogPath = Join-Path $repoRoot "src\storage\packages\bundled_campaigns\castle-bundled-scenarios.provenance.json"
+$iconRoot = Join-Path $repoRoot "src\ui\shared\assets\ui\application-icon"
+$iconManifest = Get-Content -Raw -LiteralPath (Join-Path $iconRoot "application-icon.json") | ConvertFrom-Json
 $catalog = Get-Content -Raw -LiteralPath $catalogPath | ConvertFrom-Json
 & (Join-Path $PSScriptRoot "verify_bundled_scenarios.ps1")
 $outputPath = (Resolve-Path -LiteralPath $Output).Path
@@ -44,6 +46,7 @@ $artifactHash = (Get-FileHash -LiteralPath $outputPath -Algorithm SHA256).Hash.T
 $pckName = ""
 $pckBytes = 0L
 $pckHash = ""
+$nativeIcon = [ordered]@{}
 if ($Preset -eq "macOS") {
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $archive = [System.IO.Compression.ZipFile]::OpenRead($outputPath)
@@ -57,6 +60,16 @@ if ($Preset -eq "macOS") {
         $sha = [System.Security.Cryptography.SHA256]::Create()
         try { $pckHash = [Convert]::ToHexString($sha.ComputeHash($stream)).ToLowerInvariant() }
         finally { $sha.Dispose(); $stream.Dispose() }
+        $iconEntries = @($archive.Entries | Where-Object { $_.FullName.EndsWith("/Contents/Resources/icon.icns", [System.StringComparison]::OrdinalIgnoreCase) })
+        if ($iconEntries.Count -ne 1) { throw "macOS release archive must contain exactly one application icon." }
+        $iconEntry = $iconEntries[0]
+        $stream = $iconEntry.Open()
+        $sha = [System.Security.Cryptography.SHA256]::Create()
+        try { $iconHash = [Convert]::ToHexString($sha.ComputeHash($stream)).ToLowerInvariant() }
+        finally { $sha.Dispose(); $stream.Dispose() }
+        $expectedIconHash = ($iconManifest.files | Where-Object { $_.path -eq "realmz-icon.icns" } | Select-Object -First 1).sha256
+        if ($iconHash -ne $expectedIconHash) { throw "macOS release does not preserve the reviewed ICNS application icon." }
+        $nativeIcon = [ordered]@{ file = $iconEntry.FullName; bytes = $iconEntry.Length; sha256 = $iconHash }
     } finally {
         $archive.Dispose()
     }
@@ -67,6 +80,25 @@ if ($Preset -eq "macOS") {
     $pckName = $pck.Name
     $pckBytes = $pck.Length
     $pckHash = (Get-FileHash -LiteralPath $pckPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    if ($Preset -eq "Windows Desktop") {
+        Add-Type -AssemblyName System.Drawing
+        $exportedIcon = [System.Drawing.Icon]::ExtractAssociatedIcon($outputPath)
+        $expectedBitmap = [System.Drawing.Bitmap]::new((Join-Path $iconRoot "realmz-icon-32.png"))
+        $exportedBitmap = $exportedIcon.ToBitmap()
+        try {
+            if ($exportedBitmap.Width -ne 32 -or $exportedBitmap.Height -ne 32) { throw "Windows release application icon is not the reviewed 32px member." }
+            for ($y = 0; $y -lt 32; $y++) {
+                for ($x = 0; $x -lt 32; $x++) {
+                    if ($exportedBitmap.GetPixel($x, $y).ToArgb() -ne $expectedBitmap.GetPixel($x, $y).ToArgb()) { throw "Windows release application icon pixels differ at ($x,$y)." }
+                }
+            }
+        } finally {
+            $exportedBitmap.Dispose()
+            $expectedBitmap.Dispose()
+            $exportedIcon.Dispose()
+        }
+        $nativeIcon = [ordered]@{ file = $artifact.Name; verifiedPixelSize = 32; sourceSha256 = ($iconManifest.files | Where-Object { $_.path -eq "realmz-icon-32.png" } | Select-Object -First 1).sha256 }
+    }
 }
 if ($artifact.Length -le 0 -or $pckBytes -le 0) { throw "$Preset release contains an empty artifact or PCK." }
 
@@ -76,6 +108,7 @@ $manifest = [ordered]@{
     preset = $Preset
     artifact = [ordered]@{ file = $artifact.Name; bytes = $artifact.Length; sha256 = $artifactHash }
     pck = [ordered]@{ file = $pckName; bytes = $pckBytes; sha256 = $pckHash }
+    nativeIcon = $nativeIcon
     bundledScenarioCatalog = [ordered]@{
         sourceRevision = $catalog.source.revision
         compilerRevision = $catalog.compiler.revision

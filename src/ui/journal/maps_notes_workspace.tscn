@@ -54,6 +54,28 @@ theme_override_font_sizes/font_size = 13
 text = "0 places • 0 maps • 0 journal entries"
 horizontal_alignment = 2
 
+[node name="MapsNotesSectionRail" type="HBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Maps" type="Button" parent="MapsNotesSectionRail"]
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "Maps"
+
+[node name="Places" type="Button" parent="MapsNotesSectionRail"]
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "Places"
+
+[node name="Journal" type="Button" parent="MapsNotesSectionRail"]
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "Journal"
+
 [node name="MapsNotesTabs" type="TabContainer" parent="."]
 layout_mode = 2
 size_flags_horizontal = 3

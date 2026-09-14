@@ -202,8 +202,9 @@ function readiness(result: Record<string, unknown>, command: JourneyStep["comman
   if ((command === "act" || command === "invoke") && pending !== null && pending !== undefined) failure("unexpected_pending", "a pending interaction must be answered before this command", command, stepIndex);
   if (command === "act" && explicitSemanticReady(result, r) !== true && r.explorationInput !== true) failure("input_blocked", "the fixture is not accepting exploration input", command, stepIndex);
   if (command === "respond" && (result.pendingInteraction === null || typeof result.pendingInteraction !== "object")) failure("unexpected_interaction", "respond requires an observed pending interaction", command, stepIndex);
-  if (command === "ui") {
-    const controlId = effectiveParams.controlId;
+	if (command === "ui") {
+		if (effectiveParams.action === "controller-button" || effectiveParams.action === "controller-axis") return;
+		const controlId = effectiveParams.controlId;
     if (typeof controlId !== "string") failure("invalid_params", "ui requires a supplied controlId", command, stepIndex);
     const controls = Array.isArray(result.controls) ? result.controls : [];
     const control = controls.find((entry) => entry !== null && typeof entry === "object" && (entry as Record<string, unknown>).controlId === controlId) as Record<string, unknown> | undefined;
@@ -270,7 +271,8 @@ function verifyExpectation(result: Record<string, unknown>, step: JourneyStep, p
     const location = result.location;
     if (diffValues(normalize(location), normalize(expected.location), "$.location") !== null) failure("unexpected_location", "the observed location differs from the journey expectation", step.command, stepIndex);
   }
-  if (expected.currentControlId !== undefined && expected.currentControlId !== params.controlId) failure("control_mismatch", "expect.currentControlId must match the supplied UI controlId", step.command, stepIndex);
+	if (expected.currentControlId !== undefined && expected.currentControlId !== params.controlId) failure("control_mismatch", "expect.currentControlId must match the supplied UI controlId", step.command, stepIndex);
+	if (expected.focusControlId !== undefined && expected.focusControlId !== (result.focusControlId ?? null)) failure("focus_mismatch", "the observed controller focus differs from the journey expectation", step.command, stepIndex);
 }
 
 function traceDelta(previous: Record<string, unknown>, current: Record<string, unknown>, key: "rngTrace" | "scenarioTrace", stepIndex: number): unknown[] {

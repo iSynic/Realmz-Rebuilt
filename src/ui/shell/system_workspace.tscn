@@ -23,6 +23,52 @@ text_overrun_behavior = 3
 autowrap_mode = 2
 max_lines_visible = 2
 
+[node name="SystemCategoryRail" type="HBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="SaveAndLoad" type="Button" parent="SystemCategoryRail"]
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "Save & Load"
+
+[node name="Display" type="Button" parent="SystemCategoryRail"]
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "Display"
+
+[node name="Audio" type="Button" parent="SystemCategoryRail"]
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "Audio"
+
+[node name="Pacing" type="Button" parent="SystemCategoryRail"]
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "Pacing"
+
+[node name="Accessibility" type="Button" parent="SystemCategoryRail"]
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "Accessibility"
+
+[node name="Controls" type="Button" parent="SystemCategoryRail"]
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "Controls"
+
+[node name="Diagnostics" type="Button" parent="SystemCategoryRail"]
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "Diagnostics"
+
 [node name="SystemWorkspaceTabs" type="TabContainer" parent="."]
 layout_mode = 2
 size_flags_horizontal = 3
@@ -363,6 +409,10 @@ ticks_on_borders = true
 layout_mode = 2
 text = "100% is the designed combat pace. This control applies consistently to every combat visual."
 autowrap_mode = 2
+[node name="HurrySpellResolution" type="CheckButton" parent="SystemWorkspaceTabs/Pacing/PacingSettingsScroll/PacingSettingsPanel/Content"]
+layout_mode = 2
+text = "Hurry Spell Resolution"
+tooltip_text = "Show one shared effect for eligible area spells while preserving each target's result."
 [node name="MovementSpeedRow" type="BoxContainer" parent="SystemWorkspaceTabs/Pacing/PacingSettingsScroll/PacingSettingsPanel/Content" groups=["system_setting_rows"]]
 layout_mode = 2
 [node name="ExplorationSpeedCaption" type="Label" parent="SystemWorkspaceTabs/Pacing/PacingSettingsScroll/PacingSettingsPanel/Content/MovementSpeedRow"]
@@ -433,10 +483,74 @@ theme_type_variation = &"ClassicHeading"
 text = "Controls"
 [node name="Description" type="Label" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content"]
 layout_mode = 2
-text = "Keyboard and mouse controls remain fixed so prompts, shortcuts, and visible commands always agree."
+text = "Keyboard and mouse remain available beside the active controller profile. Edit controller bindings as a draft, then Apply."
 autowrap_mode = 2
 [node name="Divider" type="HSeparator" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content"]
 layout_mode = 2
+
+[node name="ControllerSettings" type="PanelContainer" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content"]
+layout_mode = 2
+theme_type_variation = &"ClassicInset"
+
+[node name="Content" type="VBoxContainer" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Heading" type="Label" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content"]
+layout_mode = 2
+text = "Controller"
+theme_type_variation = &"ClassicHeading"
+
+[node name="PromptFamily" type="OptionButton" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content"]
+layout_mode = 2
+
+[node name="LeftDeadZone" type="HSlider" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content"]
+layout_mode = 2
+min_value = 0.1
+max_value = 0.9
+step = 0.05
+
+[node name="RightDeadZone" type="HSlider" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content"]
+layout_mode = 2
+min_value = 0.1
+max_value = 0.9
+step = 0.05
+
+[node name="RepeatInitial" type="HSlider" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content"]
+layout_mode = 2
+min_value = 150.0
+max_value = 1000.0
+step = 25.0
+
+[node name="RepeatInterval" type="HSlider" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content"]
+layout_mode = 2
+min_value = 50.0
+max_value = 500.0
+step = 25.0
+
+[node name="LiveInput" type="Label" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content"]
+layout_mode = 2
+text = "Live input • move or press a controller control"
+
+[node name="BindingRows" type="VBoxContainer" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="BindingStatus" type="Label" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content"]
+layout_mode = 2
+autowrap_mode = 2
+
+[node name="Actions" type="HBoxContainer" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content"]
+layout_mode = 2
+alignment = 2
+
+[node name="RestoreControllerDefaults" type="Button" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/Actions"]
+layout_mode = 2
+text = "Restore Defaults"
+
+[node name="ApplyControllerBindings" type="Button" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/Actions"]
+layout_mode = 2
+text = "Apply"
 [node name="AutoSwitchToMelee" type="CheckButton" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content"]
 layout_mode = 2
 text = "Auto Switch To Melee Weapon"
@@ -455,11 +569,11 @@ layout_mode = 2
 [node name="Identity" type="Label" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpExplore/Row"]
 custom_minimum_size = Vector2(330, 0)
 layout_mode = 2
-text = "Explore • Arrows, WASD, or numpad"
+text = "Explore • Left stick / D-pad"
 [node name="Detail" type="Label" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpExplore/Row"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Move one step; hold a direction or the map stage to keep traveling."
+text = "Land uses eight directions; dungeons retain forward, reverse, turn, or four-way overhead movement."
 autowrap_mode = 2
 [node name="ControlHelpFieldcommands" type="PanelContainer" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content"]
 layout_mode = 2
@@ -469,11 +583,11 @@ layout_mode = 2
 [node name="Identity" type="Label" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpFieldcommands/Row"]
 custom_minimum_size = Vector2(330, 0)
 layout_mode = 2
-text = "Field commands • F Search • C Camp • R Rest • H Heal"
+text = "Actions • West radial • North workspaces • Menu System"
 [node name="Detail" type="Label" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpFieldcommands/Row"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "The visible command deck provides the same actions and their current availability."
+text = "Radials show the existing commands, current availability, and disabled reasons; South confirms and East cancels."
 autowrap_mode = 2
 [node name="ControlHelpFastSpells" type="PanelContainer" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content"]
 layout_mode = 2
@@ -483,11 +597,11 @@ layout_mode = 2
 [node name="Identity" type="Label" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpFastSpells/Row"]
 custom_minimum_size = Vector2(330, 0)
 layout_mode = 2
-text = "Fast Spells • 1–0 select • Ctrl/Cmd + 1–0 cast"
+text = "Battle • South preview/choose • West commit"
 [node name="Detail" type="Label" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpFastSpells/Row"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "In battle, hold Alt for the Fast Spell dock; Alt + 1–0 casts an assigned slot."
+text = "North rotates areas; shoulders cycle targets; the action radial includes Fast Spells."
 autowrap_mode = 2
 [node name="ControlHelpBattle" type="PanelContainer" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content"]
 layout_mode = 2
@@ -497,11 +611,11 @@ layout_mode = 2
 [node name="Identity" type="Label" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpBattle/Row"]
 custom_minimum_size = Vector2(330, 0)
 layout_mode = 2
-text = "Battle • Shift costs • T target • Space confirm/skip"
+text = "Inspect & scroll • Right-stick click / right stick"
 [node name="Detail" type="Label" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpBattle/Row"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Movement also uses arrows, WASD, or numpad; mouse targeting remains available."
+text = "Inspect the focused record or combatant; scroll the active panel or pan the battlefield."
 autowrap_mode = 2
 [node name="ControlHelpWorkspaces" type="PanelContainer" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content"]
 layout_mode = 2
@@ -511,11 +625,11 @@ layout_mode = 2
 [node name="Identity" type="Label" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpWorkspaces/Row"]
 custom_minimum_size = Vector2(330, 0)
 layout_mode = 2
-text = "Workspaces • Alt + 1–9 • Escape Back/Cancel"
+text = "Sections & party • Shoulders / triggers"
 [node name="Detail" type="Label" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpWorkspaces/Row"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Every reversible workspace also keeps its visible Back, Done, or Cancel action."
+text = "Shoulders change sections or radial pages; triggers change the selected character where available."
 autowrap_mode = 2
 
 [node name="Diagnostics" type="VBoxContainer" parent="SystemWorkspaceTabs"]
@@ -551,3 +665,22 @@ text = "Show APs and random rectangles on map"
 layout_mode = 2
 text = "Gold diamonds mark placed Action Points and gold outlines show effective random encounter rectangles."
 autowrap_mode = 2
+
+[node name="ControlsDraftFooter" type="HBoxContainer" parent="."]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="DraftStatus" type="Label" parent="ControlsDraftFooter"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Controller binding changes remain a draft until Apply."
+text_overrun_behavior = 3
+
+[node name="RestoreControllerDefaultsDock" type="Button" parent="ControlsDraftFooter"]
+layout_mode = 2
+text = "Restore Defaults"
+
+[node name="ApplyControllerBindingsDock" type="Button" parent="ControlsDraftFooter"]
+layout_mode = 2
+text = "Apply"

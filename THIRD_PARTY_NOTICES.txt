@@ -8,6 +8,25 @@ scenarios, application resources, music, fonts, artwork, and starter-character
 data described below are separate works licensed under CC BY-NC-SA 4.0 or their
 specifically named licenses. They are not relicensed by the program's GPL.
 
+Classic Realmz application icon
+
+Realmz copyright 1994 by Tim Phillips.
+Source: Castle Realmz revision 491816ad60037394f92c428e99c004494d3c28b3,
+resources/realmz.rsrc, SHA-256
+5bc76d986eb0f31589ef58120f4b9ad40234f228448bb75c09eb40e59c97bc9f.
+Its BNDL 128 resource maps the RLMZ APPL file reference local icon 0 to icon
+resource 128.
+License: Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
+SPDX identifier: CC-BY-NC-SA-4.0
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+Modifications: the native 16-by-16 and 32-by-32 color icons and masks were
+decoded into transparent PNGs. The reviewed 48-by-48 and larger family uses
+nearest-neighbor scaling from the more detailed native 32-by-32 icon. The
+Windows ICO and macOS ICNS containers preserve those reviewed PNG payloads.
+Exact output hashes and dimensions are recorded in
+src/ui/shared/assets/ui/application-icon/application-icon.json.
+
 Classic Realmz 7.1.2 starter characters
 
 Realmz copyright 1994 by Tim Phillips.

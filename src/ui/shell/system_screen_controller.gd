@@ -2,10 +2,35 @@
 class_name SystemScreenController
 extends RefCounted
 
+
+class ControllerAccess:
+	extends RefCounted
+	var _owner: Variant
+	func _init(owner: Variant) -> void: _owner = owner
+	func receive_binding(action_id: StringName, descriptor: Dictionary) -> void:
+		if _owner._controller_draft == null or action_id != _owner._controller_capture_action: return
+		var physical_key := "%s:%d:%d" % [descriptor["kind"], int(descriptor["code"]), int(descriptor["direction"])]
+		_owner._controller_draft.bindings = _owner._controller_draft.bindings.filter(func(binding: Dictionary) -> bool:
+			return StringName(binding["action"]) != action_id and "%s:%d:%d" % [binding["kind"], int(binding["code"]), int(binding["direction"])] != physical_key
+		)
+		_owner._controller_draft.bindings.append(descriptor.duplicate(true))
+		_owner._controller_capture_action = &""
+		_owner._controller_draft_dirty = true
+		_owner.refresh_controller_editor()
+	func cancel_binding_capture() -> void:
+		_owner._controller_capture_action = &""
+		_owner.refresh_controller_editor()
+	func set_live_input(value: String) -> void:
+		_owner._controller_live_text = value
+		if _owner._workspace == null: return
+		var label := _owner._workspace.get_node_or_null("SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/LiveInput") as Label
+		if label != null: label.text = "Live input • %s" % value
+
 const WORKSPACE_SCENE_PATH := "res://src/ui/shell/system_workspace.tscn"
 
 signal action_requested(action_id: StringName, value: Variant)
 signal setting_changed(setting_id: StringName, value: Variant)
+signal controller_binding_capture_requested(action_id: StringName)
 
 const GOLD := Color("d5b45d")
 const CYAN := Color("8fcfd1")
@@ -23,6 +48,28 @@ var _selected_save_key: String = ""
 var _layout_profile: StringName = UiLayoutProfile.WIDE
 var _save_and_quit_mode: bool = false
 var _workspace: SystemWorkspace
+var _controller_draft: ControllerPreferences
+var _controller_draft_dirty: bool = false
+var _controller_capture_action: StringName = &""
+var _controller_live_text: String = ""
+var controller: ControllerAccess:
+	get: return ControllerAccess.new(self)
+
+
+func navigate_section(section_name: StringName = &"", delta: int = 0) -> bool:
+	if _workspace == null:
+		return false
+	var tabs := _workspace.tabs()
+	if section_name.is_empty():
+		if tabs.get_tab_count() == 0:
+			return false
+		tabs.current_tab = wrapi(tabs.current_tab + delta, 0, tabs.get_tab_count())
+		return true
+	for index: int in tabs.get_tab_count():
+		if StringName(tabs.get_tab_title(index)) == section_name or StringName(tabs.get_child(index).name) == section_name:
+			tabs.current_tab = index
+			return true
+	return false
 
 
 func set_layout_profile(profile_id: StringName) -> void:
@@ -260,6 +307,7 @@ func _bind_volume_row(row: BoxContainer, title: String, value: float, setting_id
 
 func _bind_pacing(settings: PresentationSettings) -> void:
 	var root := _workspace.get_node("SystemWorkspaceTabs/Pacing/PacingSettingsScroll/PacingSettingsPanel/Content")
+	_bind_toggle(root.get_node("HurrySpellResolution") as CheckButton, settings.hurry_spell_resolution, &"hurry_spell_resolution")
 	var combat := root.get_node("CombatSpeedRow/CombatPlaybackSpeedSlider") as HSlider
 	var combat_caption := root.get_node("CombatSpeedRow/CombatPlaybackSpeedCaption") as Label
 	_bind_label(combat_caption, "Combat & animation speed  •  %d%%" % settings.combat_playback_speed_percent, Color("e0e2e5"), 15)
@@ -293,6 +341,9 @@ func _bind_accessibility(settings: PresentationSettings) -> void:
 
 func _bind_controls(settings: PresentationSettings) -> void:
 	var root := _workspace.get_node("SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content")
+	if _controller_draft == null or not _controller_draft_dirty:
+		_controller_draft = settings.controller.duplicate_value()
+	_bind_controller_editor(root.get_node("ControllerSettings/Content") as VBoxContainer)
 	_bind_toggle(root.get_node("AutoSwitchToMelee") as CheckButton, settings.auto_switch_to_melee, &"auto_switch_to_melee")
 	_bind_toggle(root.get_node("ShowExplorationMinimap") as CheckButton, settings.show_exploration_minimap, &"show_exploration_minimap")
 	_bind_toggle(root.get_node("AutojournalEnabled") as CheckButton, settings.autojournal_enabled, &"autojournal_enabled")
@@ -302,6 +353,96 @@ func _bind_controls(settings: PresentationSettings) -> void:
 		_bind_label(row.get_node("Identity") as Label, "%s  •  %s" % [entry["title"], entry["keys"]], GOLD, 14)
 		_bind_label(row.get_node("Detail") as Label, String(entry["detail"]), MUTED, 13)
 		(row.get_node("Identity") as Label).custom_minimum_size.x = 0.0 if _layout_profile == UiLayoutProfile.COMPACT else 330.0
+
+
+func _bind_controller_editor(root: VBoxContainer) -> void:
+	var prompt := root.get_node("PromptFamily") as OptionButton
+	_clear_item_selected_connections(prompt)
+	prompt.clear()
+	for family: String in ControllerPreferences.PROMPT_FAMILIES:
+		prompt.add_item("Prompt family • %s" % family.capitalize())
+		prompt.set_item_metadata(prompt.item_count - 1, family)
+		if family == _controller_draft.prompt_family:
+			prompt.select(prompt.item_count - 1)
+	prompt.item_selected.connect(func(index: int) -> void:
+		_controller_draft.prompt_family = String(prompt.get_item_metadata(index))
+		_controller_draft_dirty = true
+	)
+	_bind_controller_slider(root.get_node("LeftDeadZone") as HSlider, _controller_draft.left_stick_dead_zone, "Left stick dead zone", func(value: float) -> void: _controller_draft.left_stick_dead_zone = value)
+	_bind_controller_slider(root.get_node("RightDeadZone") as HSlider, _controller_draft.right_stick_dead_zone, "Right stick dead zone", func(value: float) -> void: _controller_draft.right_stick_dead_zone = value)
+	_bind_controller_slider(root.get_node("RepeatInitial") as HSlider, _controller_draft.repeat_initial_ms, "Repeat initial delay (ms)", func(value: float) -> void: _controller_draft.repeat_initial_ms = int(value))
+	_bind_controller_slider(root.get_node("RepeatInterval") as HSlider, _controller_draft.repeat_interval_ms, "Repeat interval (ms)", func(value: float) -> void: _controller_draft.repeat_interval_ms = int(value))
+	(root.get_node("LiveInput") as Label).text = "Live input • %s" % (_controller_live_text if not _controller_live_text.is_empty() else "move or press a controller control")
+	var rows := root.get_node("BindingRows") as VBoxContainer
+	_clear(rows)
+	for action_id: StringName in ControllerPreferences.ACTIONS:
+		var button := Button.new()
+		button.name = "ControllerBinding_%s" % String(action_id).trim_prefix("realmz_controller_")
+		button.text = "%s  •  %s" % [_controller_action_label(action_id), _binding_summary(action_id)]
+		button.tooltip_text = "Select, then press the desired controller input. East cancels capture."
+		button.pressed.connect(func() -> void:
+			_controller_capture_action = action_id
+			(root.get_node("BindingStatus") as Label).text = "Listening for %s… press East to cancel." % _controller_action_label(action_id)
+			controller_binding_capture_requested.emit(action_id)
+		)
+		rows.add_child(button)
+	var conflicts := _controller_draft.conflicts()
+	var reachable := _controller_draft.required_navigation_is_reachable()
+	var status := root.get_node("BindingStatus") as Label
+	if _controller_capture_action.is_empty():
+		status.text = "Rebind every missing required action before Apply." if not reachable else "%d binding conflict(s) must be resolved." % conflicts.size() if not conflicts.is_empty() else "Draft bindings are ready to apply."
+	var restore := root.get_node("Actions/RestoreControllerDefaults") as Button
+	_clear_pressed_connections(restore)
+	var restore_dock := _workspace.get_node("ControlsDraftFooter/RestoreControllerDefaultsDock") as Button
+	_clear_pressed_connections(restore_dock)
+	var restore_defaults := func() -> void:
+		_controller_draft = ControllerPreferences.new()
+		_controller_draft_dirty = true
+		_controller_capture_action = &""
+		refresh_controller_editor()
+	restore.pressed.connect(restore_defaults)
+	restore_dock.pressed.connect(restore_defaults)
+	var apply := root.get_node("Actions/ApplyControllerBindings") as Button
+	_clear_pressed_connections(apply)
+	var apply_dock := _workspace.get_node("ControlsDraftFooter/ApplyControllerBindingsDock") as Button
+	_clear_pressed_connections(apply_dock)
+	apply.disabled = not reachable or not conflicts.is_empty() or not _controller_capture_action.is_empty()
+	apply.tooltip_text = status.text if apply.disabled else "Apply this complete controller draft."
+	apply_dock.disabled = apply.disabled
+	apply_dock.tooltip_text = apply.tooltip_text
+	var apply_bindings := func() -> void:
+		_controller_draft_dirty = false
+		setting_changed.emit(&"controller_preferences", _controller_draft.duplicate_value())
+	apply.pressed.connect(apply_bindings)
+	apply_dock.pressed.connect(apply_bindings)
+
+
+func _bind_controller_slider(slider: HSlider, value: float, caption: String, assign: Callable) -> void:
+	_clear_value_changed_connections(slider)
+	slider.value = value
+	slider.tooltip_text = "%s • %s" % [caption, str(value)]
+	slider.value_changed.connect(func(next: float) -> void:
+		assign.call(next)
+		_controller_draft_dirty = true
+		slider.tooltip_text = "%s • %s" % [caption, str(next)]
+	)
+
+
+func _binding_summary(action_id: StringName) -> String:
+	var values: Array[String] = []
+	for binding: Dictionary in _controller_draft.bindings:
+		if StringName(binding["action"]) == action_id:
+			values.append("button %d" % int(binding["code"]) if binding["kind"] == ControllerPreferences.BINDING_BUTTON else "axis %d %s" % [int(binding["code"]), "+" if int(binding["direction"]) > 0 else "-"])
+	return ", ".join(values) if not values.is_empty() else "UNBOUND"
+
+
+func _controller_action_label(action_id: StringName) -> String:
+	return String(action_id).trim_prefix("realmz_controller_").replace("_", " ").capitalize()
+
+
+func refresh_controller_editor() -> void:
+	if _workspace != null:
+		_bind_controller_editor(_workspace.get_node("SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content") as VBoxContainer)
 
 
 func _bind_diagnostics(settings: PresentationSettings) -> void:

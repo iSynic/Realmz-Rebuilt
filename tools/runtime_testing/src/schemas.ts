@@ -109,7 +109,8 @@ export const JourneyCommandSchema = z.enum(["act", "respond", "ui", "invoke"]);
 export const JourneyExpectSchema = z.object({
   interactionKind: z.string().max(128).nullable(),
   location: z.object({ mapId: z.string().min(1).max(128), x: z.number().int().min(0).max(32767), y: z.number().int().min(0).max(32767) }).strict().optional(),
-  currentControlId: z.string().min(1).max(128).optional()
+  currentControlId: z.string().min(1).max(128).optional(),
+  focusControlId: z.string().min(1).max(128).nullable().optional()
 }).strict();
 export const JourneyStepSchema = z.object({
   command: JourneyCommandSchema,

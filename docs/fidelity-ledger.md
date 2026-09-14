@@ -32,6 +32,24 @@ Classic-visible behavior is the default ruleset. This ledger records deliberate 
 - Tests: `test_scenario_vm.gd::_test_public_character_checks` proves selector 2 rejects a first-position-only pick and accepts a second-position pick while preserving the authored GOSUB branch.
 - Legacy quirk: none. Six distinct authored switch cases collapsing onto `track[0]` is a source typo, not a meaningful scenario capability.
 
+## FD-SCENARIO-004 — Authored character selection and branch meanings
+
+- Affected rules: opcode 52 Picked Only and exact-position selection, opcode 55 negative picked thresholds, and opcode 81 party-position and empty-picked condition tests.
+- Castle evidence: pinned `newland.c` and the shipped `CODE 1` resource both confirm the clear-before-opcode-52-filter, exact-count opcode-55 default, and directly indexed opcode-81 path. Divinity's original help and editor storage identify the intended modes and one-based positions. The bounded evidence record is `tests/fixtures/oracle/classic-character-selection-opcode-corrections.json`, SHA-256 `3c0f1f77d113209cee03f4eead2437c2e7423542cfe8c2c16d3eabf5e8d314c8`.
+- Player-facing problem: Picked Only can erase its own candidates, negative thresholds reject valid larger selections, and authored position or condition checks can inspect the wrong character or memory outside the party.
+- Chosen 2.0 behavior: opcode 52 snapshots its eligible picked identities and validates selector-8 positions 1 through 6; opcode 55 interprets `-N` as at least N and safely follows the authored failure path for unsupported positive selectors; opcode 81 maps 1 through 6 to indexes 0 through 5 and makes empty or valid-unoccupied candidate sets false. Validation failures do not mutate selection or consume RNG.
+- Tests: `test_scenario_vm.gd::_test_corrected_character_selection_opcodes` covers all six positions, Picked Only filtering and RNG ownership, negative threshold boundaries, invalid and unoccupied positions, and empty-picked condition behavior. `_test_public_character_checks` retains the surrounding GOSUB and branch contract.
+- Legacy quirk: none. The corrected authoring meanings are the fixed runtime contract; no selectable shipped-bug mode is provided.
+
+## FD-SCENARIO-005 — Opcode 68 authored fatigue percentage
+
+- Affected rule: opcode 68 Calculate New Fatigue mode.
+- Castle evidence: pinned `newland.c` and the shipped `CODE 1` resource read Extra Code slot three and divide it by 100 before multiplying. Divinity assigns the percentage to slot two; the bundled Calculate rows follow that layout. The bounded evidence record is `tests/fixtures/oracle/classic-opcode-68-fatigue-correction.json`, SHA-256 `6940e80bf9b2b2c0a61f76d0275a48c60251dbc63ffd41a8f2fbd3d86276c6e9`.
+- Player-facing problem: correctly authored 20, 25, and 50 percent rows read an unused zero and collapse fatigue to the minimum instead of scaling it.
+- Chosen 2.0 behavior: read the signed percentage from slot two, multiply current fatigue using a wide intermediate, divide by 100 with truncation toward zero, and clamp the result to 4 through 135. Preserve raw imported words, ignore unrelated slot-three data, and provide no shipped-bug mode.
+- Tests: `test_scenario_vm.gd::_test_corrected_fatigue_opcode` covers 1, 20, 25, 50, 100, zero, negative, and above-100 values, fractional truncation, slot-three independence, both bounds, and save-owned restoration. `_test_public_application_transitions` retains exhausted/rested and event projection coverage.
+- Legacy quirk: none. The slot mismatch and divide-before-multiply order defeat the editor's exposed operation.
+
 ## FD-ECONOMY-001 — Zero-charge shop valuation
 
 - Affected rule: shop sale value for an item definition whose authored charge count is zero.

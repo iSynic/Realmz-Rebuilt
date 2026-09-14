@@ -1,0 +1,40 @@
+{
+  "formatVersion": 1,
+  "identity": {
+    "name": "Realmz application icon",
+    "creatorCode": "RLMZ",
+    "fileReferenceType": "APPL",
+    "bundleResourceId": 128,
+    "localIconId": 0,
+    "iconResourceId": 128
+  },
+  "source": {
+    "repository": "https://github.com/iSynic/realmz.git",
+    "revision": "491816ad60037394f92c428e99c004494d3c28b3",
+    "path": "resources/realmz.rsrc",
+    "bytes": 35658,
+    "sha256": "5bc76d986eb0f31589ef58120f4b9ad40234f228448bb75c09eb40e59c97bc9f",
+    "license": "CC BY-NC-SA 4.0",
+    "evidence": "BNDL 128 maps the RLMZ APPL file reference local icon 0 to ICN#, icl8, and ics8 resource 128."
+  },
+  "derivation": {
+    "nativeSizes": [16, 32],
+    "scaledFrom": 32,
+    "scaledSizes": [48, 64, 128, 256, 512, 1024],
+    "resampling": "nearest-neighbor",
+    "windowsContainerSizes": [16, 32, 48, 64, 128, 256],
+    "macosContainerSizes": [16, 32, 64, 128, 256, 512, 1024]
+  },
+  "files": [
+    {"path": "realmz-icon-16.png", "width": 16, "height": 16, "bytes": 329, "sha256": "a9c62bb370e3a5824eac55d167115628565a97e4556e4aff6362e4ac997e3ced"},
+    {"path": "realmz-icon-32.png", "width": 32, "height": 32, "bytes": 755, "sha256": "36b73af4fcad161429f5b1f2d3c848720d8b225767df1fb088e55b93fc2a38bc"},
+    {"path": "realmz-icon-48.png", "width": 48, "height": 48, "bytes": 998, "sha256": "87dbf697fc5d1440e80676fb8544b114ac9525943daa5e70a8aeafd34cefdd9b"},
+    {"path": "realmz-icon-64.png", "width": 64, "height": 64, "bytes": 1067, "sha256": "d287f39e76a6fe8708ca308cc8f558264a87bebfe020c2e2caaadca0cb73a6f5"},
+    {"path": "realmz-icon-128.png", "width": 128, "height": 128, "bytes": 1383, "sha256": "0f58d9571e1a52c78a5f3d42e9b6a57b85bd488aa8746e3fdee86e01e8acb3cf"},
+    {"path": "realmz-icon-256.png", "width": 256, "height": 256, "bytes": 2050, "sha256": "b436b5ec960b8b03d901a59d43df514afa7062a89e0679ffb3bbad09d4dfe469"},
+    {"path": "realmz-icon-512.png", "width": 512, "height": 512, "bytes": 3652, "sha256": "3f4c92579da300d9598336432cb0b12ece7a759cdd393f1c104ff793757121ea"},
+    {"path": "realmz-icon-1024.png", "width": 1024, "height": 1024, "bytes": 7941, "sha256": "f90b6b63d2a4efd6d021f5824c528d21426be3bfb2d1c3cdec5ff9e8197b0128"},
+    {"path": "realmz-icon.ico", "bytes": 6684, "sha256": "8c96285b0bbbd448cf7e9571a68967d0e0b7e56d951d256921ce352fcc049292"},
+    {"path": "realmz-icon.icns", "bytes": 17241, "sha256": "b739bbb68ed628dde07a2672302232a4b21f5d426e38012b596fb0a2e25ffcba"}
+  ]
+}

@@ -7,6 +7,7 @@ const CREATURE_LIBRARY_CONTROLLER := preload("res://src/ui/characters/creature_l
 signal intent_submitted(intent: PlayerIntent)
 signal system_action_requested(action_id: StringName, value: Variant)
 signal presentation_setting_changed(setting_id: StringName, value: Variant)
+signal controller_binding_capture_requested(action_id: StringName)
 signal vault_archive_requested(character_id: String)
 signal vault_restore_requested(character_id: String, revision_hash: String)
 signal route_requested(screen_id: StringName)
@@ -70,6 +71,31 @@ func _bind_system_controller(owner_ref: WeakRef) -> void:
 		if owner != null:
 			owner.presentation_setting_changed.emit(setting_id, value)
 	)
+	_system_controller.controller_binding_capture_requested.connect(func(action_id: StringName) -> void:
+		var owner := owner_ref.get_ref() as ScreenContentPresenter
+		if owner != null:
+			owner.controller_binding_capture_requested.emit(action_id)
+	)
+
+
+func receive_controller_binding(action_id: StringName, descriptor: Dictionary) -> void:
+	_system_controller.controller.receive_binding(action_id, descriptor)
+
+
+func cancel_controller_binding_capture() -> void:
+	_system_controller.controller.cancel_binding_capture()
+
+
+func set_controller_live_input(value: String) -> void:
+	_system_controller.controller.set_live_input(value)
+
+
+func navigate_section(screen_id: StringName, section_name: StringName = &"", delta: int = 0) -> bool:
+	if screen_id == &"system":
+		return _system_controller.navigate_section(section_name, delta)
+	if screen_id == &"journal":
+		return _maps_journal_controller.cycle_section(delta)
+	return false
 
 
 func _bind_character_controller(owner_ref: WeakRef) -> void:

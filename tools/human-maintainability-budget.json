@@ -22,6 +22,20 @@
       "reason": "The first-person dungeon creates a render-target display paired with its generated three-dimensional scene.",
       "currentMaximum": 1,
       "functions": ["_ready"]
+    },
+    {
+      "path": "src/ui/shared/controller/controller_qwerty_editor.gd",
+      "kind": "data-collection",
+      "reason": "The controller keyboard materializes the active character page from its typed key collection inside the scene-authored grid.",
+      "currentMaximum": 1,
+      "functions": ["_rebuild_key_grid"]
+    },
+    {
+      "path": "src/ui/shell/system_screen_controller.gd",
+      "kind": "data-collection",
+      "reason": "The Controls page materializes one binding row per typed configurable controller action inside the scene-authored list.",
+      "currentMaximum": 1,
+      "functions": ["_bind_controller_editor"]
     }
   ],
   "missingPurposeHeaders": {

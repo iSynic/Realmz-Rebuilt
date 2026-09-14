@@ -23,5 +23,9 @@ func items_button() -> Button:
 	return get_node("Content/InventoryTradeItems") as Button
 
 
+func transfer_button() -> Button:
+	return get_node("Content/InventoryTradeTransfer") as Button
+
+
 func done_button() -> Button:
 	return get_node("Content/InventoryTradeDone") as Button

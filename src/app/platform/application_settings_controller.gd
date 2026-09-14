@@ -59,10 +59,12 @@ func bind() -> void:
 	_shell.auto_switch_to_melee_changed.connect(_on_auto_switch_to_melee_changed)
 	_shell.exploration_speed_changed.connect(_on_exploration_speed_changed)
 	_shell.combat_playback_speed_changed.connect(_on_combat_playback_speed_changed)
+	_shell.hurry_spell_resolution_changed.connect(_on_hurry_spell_resolution_changed)
 	_shell.exploration_minimap_changed.connect(_on_exploration_minimap_changed)
 	_shell.classic_exploration_visibility_changed.connect(_on_classic_exploration_visibility_changed)
 	_shell.custom_fog_tile_changed.connect(_on_custom_fog_tile_changed)
 	_shell.autojournal_changed.connect(_on_autojournal_changed)
+	_shell.controller_preferences_changed.connect(_on_controller_preferences_changed)
 	_debug_tools.topology_debug_changed.connect(_on_topology_debug_changed)
 
 
@@ -70,6 +72,7 @@ func apply_initial_settings() -> void:
 	_shell.apply_settings(_settings)
 	_presentation.set_reduced_motion(_settings.reduced_motion)
 	_presentation.set_combat_playback_speed_percent(_settings.combat_playback_speed_percent)
+	_presentation.set_hurry_spell_resolution(_settings.hurry_spell_resolution)
 	_presentation.set_exploration_speed_percent(_settings.exploration_speed_percent)
 	_apply_application_theme()
 	_interaction.set_text_scale(_settings.text_scale)
@@ -206,6 +209,12 @@ func _on_combat_playback_speed_changed(percent: int) -> void:
 	_save()
 
 
+func _on_hurry_spell_resolution_changed(enabled: bool) -> void:
+	_settings.hurry_spell_resolution = enabled
+	_presentation.set_hurry_spell_resolution(enabled)
+	_save()
+
+
 func _on_exploration_minimap_changed(enabled: bool) -> void:
 	_settings.show_exploration_minimap = enabled
 	_map.set_travel_preview_visible(enabled)
@@ -227,6 +236,15 @@ func _on_custom_fog_tile_changed(enabled: bool) -> void:
 func _on_autojournal_changed(enabled: bool) -> void:
 	_settings.autojournal_enabled = enabled
 	_interaction.set_autojournal_enabled(enabled)
+	_save()
+
+
+func _on_controller_preferences_changed(value: ControllerPreferences) -> void:
+	if value == null or not value.required_navigation_is_reachable() or not value.conflicts().is_empty():
+		return
+	_settings.controller = value.duplicate_value()
+	_application._controller_input.configure(_settings.controller)
+	_shell.apply_settings(_settings)
 	_save()
 
 

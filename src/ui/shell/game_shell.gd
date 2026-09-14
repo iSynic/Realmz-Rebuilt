@@ -2,6 +2,7 @@
 class_name GameShell
 extends Control
 
+
 signal start_package_requested(path: String, seed: int)
 signal cancel_package_requested
 signal refresh_campaigns_requested
@@ -29,10 +30,13 @@ signal reduced_sound_changed(enabled: bool)
 signal auto_switch_to_melee_changed(enabled: bool)
 signal exploration_speed_changed(percent: int)
 signal combat_playback_speed_changed(percent: int)
+signal hurry_spell_resolution_changed(enabled: bool)
 signal exploration_minimap_changed(enabled: bool)
 signal classic_exploration_visibility_changed(enabled: bool)
 signal custom_fog_tile_changed(enabled: bool)
 signal autojournal_changed(enabled: bool)
+signal controller_preferences_changed(value: ControllerPreferences)
+signal controller_binding_capture_requested(action_id: StringName)
 signal layout_changed(workspace_rect: Rect2, profile: UiLayoutProfile)
 signal route_changed(route_id: StringName)
 signal play_stage_visibility_changed(visible: bool)
@@ -86,6 +90,9 @@ const MENU_CONTROLLER_SCRIPT := preload("res://src/ui/shell/game_shell_menu_cont
 @onready var _activity_indicator: PanelContainer = %ActivityIndicator
 @onready var _activity_icon: TextureRect = %ActivityIcon
 @onready var _music_dialog: MusicPlaylistDialog = %MusicPlaylistDialog
+@onready var _controller_prompts: ControllerPromptStrip = %ControllerPromptStrip
+@onready var _controller_radial: ControllerRadialOverlay = %ControllerRadialOverlay
+@onready var _controller_keyboard: ControllerQwertyEditor = %ControllerQwertyEditor
 
 var _current_view: GameView
 var last_picture_media_diagnostic: Dictionary = {}
@@ -102,6 +109,10 @@ var _party_effects: GameShellPartyEffectsPresenter
 var _music_playlist_id: int = 0
 var _music_title: String = ""
 var _music_playing: bool = false
+var _controller_radial_kind: StringName = &""
+var _controller_radial_activation := Callable()
+var controller: ControllerAccess:
+	get: return ControllerAccess.new(self)
 
 var navigator: ScreenNavigator:
 	get: return _navigator
@@ -115,6 +126,117 @@ var settings: PresentationSettings:
 	get: return _presentation_settings
 var picture_stage: Control:
 	get: return _picture_stage
+
+
+class ControllerAccess:
+	extends RefCounted
+	var _shell: Variant
+	func _init(shell: Variant) -> void: _shell = shell
+	func show_prompts(family: String, context: StringName = &"") -> void:
+		_shell._controller_prompts.present(family, context, _shell._presentation_settings.controller)
+	func hide_prompts() -> void:
+		_shell._controller_prompts.hide_prompts()
+	func show_detail(value: String) -> void: _shell._controller_prompts.set_detail(value)
+	func select_relative_character(delta: int) -> bool: return _shell._party_roster.controller_select_relative(delta)
+	func cycle_section(delta: int) -> bool: return _shell._navigator.content_presenter.navigate_section(_shell._navigator.current_screen(), &"", delta)
+	func receive_binding(action_id: StringName, descriptor: Dictionary) -> void: _shell._navigator.content_presenter.receive_controller_binding(action_id, descriptor)
+	func cancel_binding_capture() -> void: _shell._navigator.content_presenter.cancel_controller_binding_capture()
+	func set_live_input(value: String) -> void: _shell._navigator.content_presenter.set_controller_live_input(value)
+	func radial_is_open() -> bool: return _shell._controller_radial.is_open()
+	func top_menu_is_open() -> bool: return _shell._menu_controller.controller_is_open()
+	func open_top_menu() -> bool: return _shell._menu_controller.controller_open()
+	func move_top_menu(direction: Vector2i, repeated: bool = false) -> bool: return _shell._menu_controller.controller_direction(direction, repeated)
+	func confirm_top_menu() -> bool: return _shell._menu_controller.controller_confirm()
+	func back_top_menu() -> bool: return _shell._menu_controller.controller_back()
+	func selected_top_menu_label() -> String: return _shell._menu_controller.controller_selected_label()
+	func close_top_menu_for_pointer() -> void: _shell._menu_controller.controller_pointer_takeover()
+	func text_editor_is_open() -> bool: return _shell._controller_keyboard.is_open()
+	func open_text_editor() -> bool:
+		var focused: Control = _shell.get_viewport().gui_get_focus_owner()
+		return _shell._controller_keyboard.open_for(focused) if focused is LineEdit or focused is TextEdit else false
+	func move_text_editor(direction: Vector2i) -> void: _shell._controller_keyboard.move_direction(Vector2(direction))
+	func confirm_text_editor() -> void: _shell._controller_keyboard.confirm_focused()
+	func cancel_text_editor() -> void: _shell._controller_keyboard.cancel()
+	func page_text_editor(delta: int) -> void:
+		if delta < 0: _shell._controller_keyboard.previous_page()
+		else: _shell._controller_keyboard.next_page()
+	func edit_text(action_id: StringName) -> void:
+		match action_id:
+			&"realmz_controller_action_radial": _shell._controller_keyboard.backspace()
+			&"realmz_controller_workspace_radial": _shell._controller_keyboard.next_page()
+			&"realmz_controller_character_previous": _shell._controller_keyboard.caret_left()
+			&"realmz_controller_character_next": _shell._controller_keyboard.caret_right()
+	func open_action_radial() -> bool:
+		var entries: Array[ControllerRadialEntry] = _shell._command_controller.controller_entries()
+		if entries.is_empty(): return false
+		_open_radial(&"action", "ACTIONS", entries)
+		return true
+	func open_interaction_radial(entries: Array[ControllerRadialEntry], activation: Callable) -> bool:
+		if entries.is_empty() or not activation.is_valid(): return false
+		_open_radial(&"interaction", "ACTIONS", entries)
+		_shell._controller_radial_activation = activation
+		return true
+	func open_workspace_radial() -> bool:
+		var entries: Array[ControllerRadialEntry] = []
+		var route_reason := GameShellAvailability.route_change_reason(_shell._current_view)
+		var definitions: Array[Dictionary] = [
+			{"id": &"inventory", "label": "Items", "icon": &"inventory"},
+			{"id": &"spells", "label": "Spells", "icon": &"spells"},
+			{"id": &"journal", "label": "Maps / Notes", "icon": &"maps"},
+			{"id": &"character", "label": "Characters", "symbol": "♟"},
+			{"id": &"services", "label": "Money", "icon": &"money"},
+			{"id": &"workspace_preferences", "label": "Preferences", "icon": &"settings"},
+			{"id": &"workspace_save_load", "label": "Save & Load", "icon": &"save"},
+			{"id": &"exploration", "label": "Explore", "symbol": "✥"},
+			{"id": &"vault", "label": "Character Files", "symbol": "▣"},
+			{"id": &"allies", "label": "Allies", "symbol": "♙"},
+			{"id": &"bestiary", "label": "Bestiary", "symbol": "♜"},
+			{"id": &"workspace_music", "label": "Music", "symbol": "♫"},
+			{"id": &"workspace_diagnostics", "label": "Diagnostics", "symbol": "◇"},
+			{"id": &"workspace_top_menu", "label": "Top Menu", "symbol": "☰"},
+		]
+		for definition: Dictionary in definitions:
+			var reason := route_reason
+			if definition["id"] == &"allies" and reason.is_empty():
+				reason = GameShellAvailability.allies_reason(_shell._current_view)
+			var icon: Texture2D = _shell._command_controller.controller_icon(StringName(definition.get("icon", &"")))
+			entries.append(ControllerRadialEntry.new(StringName(definition["id"]), String(definition["label"]), reason.is_empty(), reason, icon, String(definition.get("symbol", ""))))
+		_open_radial(&"workspace", "WORKSPACES", entries)
+		return true
+	func move_radial(direction: Vector2i) -> void: _shell._controller_radial.move_direction(Vector2(direction))
+	func page_radial(delta: int) -> void:
+		if delta < 0: _shell._controller_radial.previous_page()
+		else: _shell._controller_radial.next_page()
+	func scroll_radial(direction: Vector2i) -> void: _shell._controller_radial.scroll_reason(direction)
+	func confirm_radial() -> void: _shell._controller_radial.confirm_selected()
+	func cancel_radial() -> bool:
+		if not _shell._controller_radial.is_open(): return false
+		_shell._controller_radial.cancel()
+		_clear_radial_owner()
+		return true
+	func on_radial_selected(command_id: StringName) -> void:
+		var kind: StringName = _shell._controller_radial_kind
+		var activation: Callable = _shell._controller_radial_activation
+		_clear_radial_owner()
+		if kind == &"action": _shell._command_controller.activate_controller(command_id)
+		elif kind == &"workspace": _activate_workspace(command_id)
+		elif kind == &"interaction" and activation.is_valid(): activation.call(command_id)
+	func _activate_workspace(command_id: StringName) -> void:
+		match command_id:
+			&"workspace_preferences": _shell._navigator.open_screen(&"system", true, &"Display")
+			&"workspace_save_load": _shell._navigator.open_screen(&"system", true, &"Save & Load")
+			&"workspace_music": _shell._navigator.open_screen(&"system", true, &"Audio")
+			&"workspace_diagnostics": _shell._navigator.open_screen(&"system", true, &"Diagnostics")
+			&"workspace_top_menu": _shell._menu_controller.controller_open()
+			_: _shell._navigator.open_screen(command_id)
+	func _open_radial(kind: StringName, title: String, entries: Array[ControllerRadialEntry]) -> void:
+		_shell._controller_radial_kind = kind
+		_shell._controller_radial_activation = Callable()
+		_shell._controller_radial.set_title(title)
+		_shell._controller_radial.open(entries)
+	func _clear_radial_owner() -> void:
+		_shell._controller_radial_kind = &""
+		_shell._controller_radial_activation = Callable()
 
 
 func _ready() -> void:
@@ -135,6 +257,7 @@ func _ready() -> void:
 	_music_dialog.music_enabled_changed.connect(func(enabled: bool) -> void: music_enabled_changed.emit(enabled))
 	_music_dialog.music_volume_changed.connect(func(value: float) -> void: music_volume_changed.emit(value))
 	_music_dialog.playlist_mode_changed.connect(func(playlist_id: int, mode: int) -> void: music_playlist_mode_changed.emit(playlist_id, mode))
+	_controller_radial.command_selected.connect(_handle_controller_radial_selection)
 	_navigator.start_requested.connect(func(path: String, seed: int) -> void: start_package_requested.emit(path, seed))
 	_navigator.cancel_package_requested.connect(func() -> void: cancel_package_requested.emit())
 	_navigator.refresh_requested.connect(func() -> void: refresh_campaigns_requested.emit())
@@ -147,6 +270,7 @@ func _ready() -> void:
 	_navigator.screen_changed.connect(_on_screen_changed)
 	_navigator.system_action_requested.connect(handle_system_action_requested)
 	_navigator.presentation_setting_changed.connect(_on_presentation_setting_changed)
+	_navigator.controller_binding_capture_requested.connect(func(action_id: StringName) -> void: controller_binding_capture_requested.emit(action_id))
 	_party_roster.character_selected.connect(_on_character_selected)
 	_party_roster.character_activated.connect(_on_character_activated)
 	_party_roster.combat_auto_changed.connect(_on_combat_auto_changed)
@@ -237,6 +361,11 @@ func present_media_events(events: Array[DomainEvent], media: ClassicMediaCatalog
 	last_picture_media_diagnostic = _picture_presenter.last_media_diagnostic
 
 
+func present_combat_playback_frame(frame: CombatPlaybackFrame) -> void:
+	if frame != null:
+		_party_roster.present_playback_health(frame.combatant_health)
+
+
 func apply_settings(settings: PresentationSettings) -> void:
 	if settings == null:
 		return
@@ -275,6 +404,14 @@ func handle_back() -> bool:
 		var play_regions_visible := _current_view != null and _current_view.session_started and not _navigator.full_stage_overlay_visible
 		_set_play_regions_visible(play_regions_visible)
 	return handled
+
+
+func open_system_workspace() -> void:
+	_navigator.open_screen(&"system")
+
+
+func _handle_controller_radial_selection(command_id: StringName) -> void:
+	controller.on_radial_selected(command_id)
 
 
 func handle_route_shortcut(event: InputEvent) -> bool:
@@ -398,10 +535,12 @@ func _on_presentation_setting_changed(setting_id: StringName, value: Variant) ->
 		&"auto_switch_to_melee": auto_switch_to_melee_changed.emit(bool(value))
 		&"exploration_speed_percent": exploration_speed_changed.emit(int(value))
 		&"combat_playback_speed_percent": combat_playback_speed_changed.emit(int(value))
+		&"hurry_spell_resolution": hurry_spell_resolution_changed.emit(bool(value))
 		&"show_exploration_minimap": exploration_minimap_changed.emit(bool(value))
 		&"classic_exploration_visibility": classic_exploration_visibility_changed.emit(bool(value))
 		&"custom_fog_tile_enabled": custom_fog_tile_changed.emit(bool(value))
 		&"autojournal_enabled": autojournal_changed.emit(bool(value))
+		&"controller_preferences": controller_preferences_changed.emit(value as ControllerPreferences)
 
 
 func _on_character_selected(character_id: String) -> void:

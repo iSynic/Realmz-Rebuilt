@@ -73,6 +73,23 @@ func has_battle_artwork() -> bool:
 	return _textures.has_battle_artwork()
 
 
+func controller_pan(direction: Vector2i) -> bool:
+	if direction == Vector2i.ZERO or _view == null or _view.combat_view == null or _view.combat_view.battlefield == null:
+		return false
+	var visible_cells := BattlefieldPresentationGeometry.viewport_cells_for(size)
+	if _render_camera_top_left.x < 0 or _render_camera_visible_cells != visible_cells:
+		var focus := BattlefieldPresentationGeometry.actor_position(_view.combat_view, _view.party_members, _view.combat_view.active_actor_id)
+		_render_camera_top_left = BattlefieldPresentationGeometry.camera_top_left(focus, visible_cells)
+	_render_camera_top_left = Vector2i(
+		clampi(_render_camera_top_left.x + direction.x, 0, maxi(0, BattlefieldGrid.SIZE - visible_cells.x)),
+		clampi(_render_camera_top_left.y + direction.y, 0, maxi(0, BattlefieldGrid.SIZE - visible_cells.y))
+	)
+	_render_camera_visible_cells = visible_cells
+	_render_camera_focus_id = BattlefieldPresentationGeometry.camera_focus_id_for(_playback_frame, interaction.focused_combatant_id, _view.combat_view.active_actor_id)
+	queue_redraw()
+	return true
+
+
 func _draw() -> void:
 	if _view == null or _view.combat_view == null or _view.combat_view.battlefield == null:
 		return
@@ -198,7 +215,8 @@ func _draw_characters(combat: CombatView, camera: Vector2i, visible_cells: Vecto
 func _draw_persistent_fields(combat: CombatView, camera: Vector2i, visible_cells: Vector2i, draw_origin: Vector2) -> void:
 	var atlas_asset := _textures.battle_atlas_asset()
 	var atlas_texture := _textures.battle_atlas_texture()
-	for field: PersistentCombatFieldView in combat.persistent_fields:
+	var visible_fields := _playback_frame.persistent_fields if _playback_frame != null else combat.persistent_fields
+	for field: PersistentCombatFieldView in visible_fields:
 		var tile_id := BattlefieldTextureCache.persistent_field_tile_id(field.queue_icon)
 		var region := Rect2i() if atlas_asset == null else atlas_asset.region_for(tile_id)
 		for coordinate: Vector2i in field.affected_coordinates:

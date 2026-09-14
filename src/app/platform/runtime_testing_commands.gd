@@ -148,6 +148,8 @@ func _direct_command(target: Dictionary) -> SessionDebugCommand:
 		"extra-action-point-program": return SessionDebugCommand.start_extra_action_point_program(native_id)
 		"simple-encounter": return SessionDebugCommand.start_encounter(&"simple", native_id)
 		"complex-encounter": return SessionDebugCommand.start_encounter(&"complex", native_id)
+		"battle": return SessionDebugCommand.start_battle(native_id)
+		"treasure": return SessionDebugCommand.start_treasure(native_id)
 		"shop": return SessionDebugCommand.start_shop(native_id)
 	return null
 

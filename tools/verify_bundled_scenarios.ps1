@@ -105,7 +105,9 @@ try {
 $scenarioArchiveBytes = [long]0
 $sourceArchiveBytes = [long]0
 $refreshedScenarioMedia = 0
+$addedScenarioMediaDescriptors = 0
 $preservedUnrefreshableScenarioMedia = 0
+$rewrittenScenarioMediaReferences = 0
 foreach ($scenario in $catalog.scenarios) {
     $packagePath = Join-Path $campaignRoot $scenario.file
     $package = Get-Item -LiteralPath $packagePath
@@ -126,12 +128,13 @@ foreach ($scenario in $catalog.scenarios) {
         }
     }
     $refresh = $scenario.scenarioMediaMigration
-    $expectedSourceCompiler = if ($scenario.campaignId -eq "scenario-war-in-the-sword-lands") { $scenario.sourceArchive.compilerRevision } else { $scenario.mediaOwnershipMigration.compilerRevision }
-    if ($null -eq $refresh -or $refresh.operation -ne "refresh-scenario-media" -or $refresh.compilerRevision -ne $scenario.compilerRevision -or $refresh.sourceCompilerRevision -ne $expectedSourceCompiler -or $refresh.sourcePackageHash -notmatch '^[0-9a-f]{64}$' -or $refresh.sourceArchiveSha256 -notmatch '^[0-9a-f]{64}$' -or [long]$refresh.sourceArchiveBytes -le 0 -or $refresh.applicationPackageHash -ne $applicationLock.packageHash -or $refresh.applicationMediaCatalogSha256 -ne $applicationLock.catalogs.'media.json'.sha256 -or $refresh.classicScenarioResourcesSha256 -ne $scenario.classicScenarioResourcesSha256 -or [int]$refresh.refreshedScenarioMedia -lt 0 -or [int]$refresh.preservedUnrefreshableScenarioMedia -lt 0 -or $refresh.removedMediaDescriptors -ne 0 -or [int]$refresh.removedMediaPayloads -lt 0 -or [int]$refresh.removedMediaPayloads -gt [int]$refresh.refreshedScenarioMedia -or $refresh.rewrittenAssetReferences -ne 0) {
+    if ($null -eq $refresh -or $refresh.operation -ne "refresh-scenario-media" -or $refresh.compilerRevision -ne $scenario.compilerRevision -or $refresh.sourceCompilerRevision -notmatch '^[0-9a-f]{40}$' -or $refresh.sourcePackageHash -notmatch '^[0-9a-f]{64}$' -or $refresh.sourceArchiveSha256 -notmatch '^[0-9a-f]{64}$' -or [long]$refresh.sourceArchiveBytes -le 0 -or $refresh.applicationPackageHash -ne $applicationLock.packageHash -or $refresh.applicationMediaCatalogSha256 -ne $applicationLock.catalogs.'media.json'.sha256 -or $refresh.classicScenarioResourcesSha256 -ne $scenario.classicScenarioResourcesSha256 -or [int]$refresh.refreshedScenarioMedia -lt 0 -or [int]$refresh.addedScenarioMediaDescriptors -lt 0 -or [int]$refresh.preservedUnrefreshableScenarioMedia -lt 0 -or $refresh.removedMediaDescriptors -ne 0 -or [int]$refresh.removedMediaPayloads -lt 0 -or [int]$refresh.removedMediaPayloads -gt [int]$refresh.refreshedScenarioMedia -or [int]$refresh.rewrittenAssetReferences -lt 0) {
         throw "$($scenario.file) has invalid scenario-media refresh provenance."
     }
     $refreshedScenarioMedia += [int]$refresh.refreshedScenarioMedia
+    $addedScenarioMediaDescriptors += [int]$refresh.addedScenarioMediaDescriptors
     $preservedUnrefreshableScenarioMedia += [int]$refresh.preservedUnrefreshableScenarioMedia
+    $rewrittenScenarioMediaReferences += [int]$refresh.rewrittenAssetReferences
     $scenarioArchiveBytes += [long]$scenario.bytes
     $sourceArchiveBytes += [long]$scenario.sourceArchive.bytes
     $archive = [System.IO.Compression.ZipFile]::OpenRead($packagePath)
@@ -305,7 +308,7 @@ foreach ($scenario in $catalog.scenarios) {
     }
 }
 
-if ($refreshedScenarioMedia -ne 434 -or $preservedUnrefreshableScenarioMedia -ne 1) {
+if ($refreshedScenarioMedia -ne 515 -or $addedScenarioMediaDescriptors -ne 515 -or $preservedUnrefreshableScenarioMedia -ne 1 -or $rewrittenScenarioMediaReferences -ne 2) {
     throw "Bundled scenario media refresh totals do not match the pinned corpus migration."
 }
 
@@ -314,4 +317,4 @@ if ($scenarioArchiveBytes -ge $sourceArchiveBytes -or ($scenarioArchiveBytes + $
     throw "The separated application-plus-scenario library did not reduce the previous bundled archive footprint."
 }
 
-Write-Host "Verified the lean 13-scenario bundle, 434 refreshed scenario media assets, application ownership, authored player-map names, scrolling-text resources, and designated City of Bywater source snapshot."
+Write-Host "Verified the lean 13-scenario bundle, 515 restored scenario CICN descriptors, application ownership, authored player-map names, scrolling-text resources, and designated City of Bywater source snapshot."

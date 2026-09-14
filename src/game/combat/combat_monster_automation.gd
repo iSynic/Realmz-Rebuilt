@@ -406,6 +406,7 @@ func process_monster_advance(state: GameState, content: RealmzContent, monster: 
 	if contact_result == REACTION_MOVER_DEFEATED:
 		return MONSTER_ATTACK_COMPLETED
 	var operation_guard := 512
+	var visited_anchors: Array[Vector2i] = [combat.battlefield.actors.actor_position(monster.id)]
 	while operation_guard > 0 and active_turn.attack_index < _monster_actions.attack_limit(definition):
 		var adjacent_ids := hostile_adjacent_ids(state, monster.id)
 		if not adjacent_ids.is_empty():
@@ -424,7 +425,7 @@ func process_monster_advance(state: GameState, content: RealmzContent, monster: 
 			events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "advance", "reason": "no-visible-target"}))
 			return MONSTER_ATTACK_COMPLETED
 		var origin := combat.battlefield.actors.actor_position(monster.id)
-		var probe := _probe_monster_advance_step(state, monster, terrain_set, active_turn, rng)
+		var probe := _probe_monster_advance_step(state, monster, terrain_set, active_turn, rng, visited_anchors)
 		if not probe.allowed:
 			active_turn.target_id = ""
 			monster.target_id = ""
@@ -440,6 +441,9 @@ func process_monster_advance(state: GameState, content: RealmzContent, monster: 
 			return MONSTER_ATTACK_DEATH_MACRO
 		if movement_result == REACTION_MOVER_DEFEATED:
 			return MONSTER_ATTACK_COMPLETED
+		var settled_anchor := combat.battlefield.actors.actor_position(monster.id)
+		if not visited_anchors.has(settled_anchor):
+			visited_anchors.append(settled_anchor)
 		operation_guard -= 1
 	if operation_guard == 0:
 		active_turn.movement_remaining = 0
@@ -464,7 +468,7 @@ func _refresh_monster_advance_target(state: GameState, monster: MonsterState, te
 	return not active_turn.target_id.is_empty()
 
 
-func _probe_monster_advance_step(state: GameState, monster: MonsterState, terrain_set: BattleTerrainSetDefinition, active_turn: CombatTurnState, rng: RealmzRng) -> BattlefieldStepResult:
+func _probe_monster_advance_step(state: GameState, monster: MonsterState, terrain_set: BattleTerrainSetDefinition, active_turn: CombatTurnState, rng: RealmzRng, visited_anchors: Array[Vector2i]) -> BattlefieldStepResult:
 	var route_targets: Array[String] = [active_turn.target_id]
 	for character: CharacterState in state.party.characters():
 		if _monster_actions.target_is_available(state, monster, character.id) and not route_targets.has(character.id):
@@ -472,11 +476,12 @@ func _probe_monster_advance_step(state: GameState, monster: MonsterState, terrai
 	for candidate: MonsterState in state.combat.roster.monsters():
 		if _monster_actions.target_is_available(state, monster, candidate.id) and not route_targets.has(candidate.id):
 			route_targets.append(candidate.id)
-	var probe := _context.battlefield.probe_path_step_toward_actors(state.combat.battlefield, terrain_set, monster.id, route_targets, active_turn.movement_remaining)
+	var probe := _context.battlefield.probe_path_step_toward_actors(state.combat.battlefield, terrain_set, monster.id, route_targets, active_turn.movement_remaining, [], visited_anchors)
 	if probe.allowed:
 		return probe
 	var target_coordinate := state.combat.battlefield.actors.actor_position(active_turn.target_id)
-	return _context.battlefield.probe_monster_step_toward(state.combat.battlefield, terrain_set, monster.id, target_coordinate, active_turn.movement_remaining, rng)
+	var fallback := _context.battlefield.probe_monster_step_toward(state.combat.battlefield, terrain_set, monster.id, target_coordinate, active_turn.movement_remaining, rng)
+	return BattlefieldStepResult.blocked(&"monster_route_repeated", fallback.destination) if fallback.allowed and visited_anchors.has(fallback.destination) else fallback
 
 
 func process_monster_projectile(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, active_turn: CombatTurnState, rng: RealmzRng, events: Array[DomainEvent]) -> int:

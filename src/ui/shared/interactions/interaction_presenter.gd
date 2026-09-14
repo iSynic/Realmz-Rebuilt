@@ -4,6 +4,18 @@ class_name InteractionPresenter
 extends PanelContainer
 
 
+class ControllerAccess:
+	extends RefCounted
+	var _presenter: Variant
+
+	func _init(presenter: Variant) -> void: _presenter = presenter
+	func actions() -> Array[ControllerRadialEntry]: return _presenter._component.controller_actions() if not _presenter._flash.is_open() and _presenter._component != null else []
+	func activate_action(action_id: StringName) -> bool: return not _presenter._flash.is_open() and _presenter._component != null and _presenter._component.activate_controller_action(action_id)
+	func submit_acknowledgement() -> bool: return _presenter._flash.dismiss() or _presenter.submit_classic_acknowledgement()
+	func blocks_automatic_progress() -> bool: return _presenter._playback_masked or _presenter._flash.is_open()
+	func focus_root() -> Control: return _presenter._overlays.controller_focus_root()
+
+
 const LayoutPolicy := preload("res://src/ui/shared/interactions/interaction_layout_policy.gd")
 const ComponentFactory := preload("res://src/ui/shared/interactions/interaction_component_factory.gd")
 
@@ -51,6 +63,8 @@ var _treasure_money_workspace_open := false
 var _overlays: InteractionOverlayHost
 var _combat: CombatInteractionController
 var _flash: InteractionFlashController
+var controller: ControllerAccess:
+	get: return ControllerAccess.new(self)
 
 
 func _ready() -> void:
@@ -74,13 +88,13 @@ func _notification(what: int) -> void:
 
 func _gui_input(event: InputEvent) -> void:
 	var mouse_event := event as InputEventMouseButton
-	if mouse_event != null and mouse_event.pressed and mouse_event.button_index == MOUSE_BUTTON_LEFT and _submit_classic_acknowledgement():
+	if mouse_event != null and mouse_event.pressed and mouse_event.button_index == MOUSE_BUTTON_LEFT and submit_classic_acknowledgement():
 		accept_event()
 
 
 func handle_global_pointer_acknowledgement(event: InputEvent) -> bool:
 	var mouse_event := event as InputEventMouseButton
-	return mouse_event != null and mouse_event.pressed and mouse_event.button_index == MOUSE_BUTTON_LEFT and _uses_global_classic_acknowledgement() and _submit_classic_acknowledgement()
+	return mouse_event != null and mouse_event.pressed and mouse_event.button_index == MOUSE_BUTTON_LEFT and _uses_global_classic_acknowledgement() and submit_classic_acknowledgement()
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -90,11 +104,11 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	if _flash.dismiss():
 		get_viewport().set_input_as_handled()
 		return
-	if _submit_classic_acknowledgement():
+	if submit_classic_acknowledgement():
 		get_viewport().set_input_as_handled()
 
 
-func _submit_classic_acknowledgement() -> bool:
+func submit_classic_acknowledgement() -> bool:
 	return not _playback_masked and not _flash.is_open() and _request != null and _request.kind == InteractionRequest.ACKNOWLEDGE and _component is TextChoiceInteraction and (_component as TextChoiceInteraction).submit_acknowledgement()
 
 
@@ -530,7 +544,7 @@ func _add_hint(text: String) -> Label:
 func _prepare_interaction_focus() -> void:
 	_reset_interaction_scroll()
 	var preferred := _component.preferred_initial_focus() if _component != null else null
-	var first := preferred if preferred != null else _first_focusable(_options)
+	var first := preferred if preferred != null else _first_focusable(_overlays.controller_focus_root())
 	if first != null:
 		first.grab_focus()
 	_reset_interaction_scroll()

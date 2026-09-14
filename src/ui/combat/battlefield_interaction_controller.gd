@@ -4,6 +4,27 @@ class_name BattlefieldInteractionController
 extends RefCounted
 
 
+class ControllerAccess:
+	extends RefCounted
+	var _owner: Variant
+	func _init(owner: Variant) -> void: _owner = owner
+	func has_movement_preview() -> bool: return _owner._movement_preview != null
+	func inspect_target_preview() -> bool:
+		if _owner._targeting == null: return false
+		var combatant_id: String = _owner._targeting.previewed_candidate_id()
+		if combatant_id.is_empty() and _owner._targeting.hovered_coordinate.x >= 0:
+			combatant_id = BattlefieldPresentationGeometry.combatant_at(_owner._view.combat_view, _owner._view.party_members, _owner._targeting.hovered_coordinate)
+		return _inspect(combatant_id)
+	func inspect_focused_combatant() -> bool:
+		if _owner._view == null or _owner._view.combat_view == null: return false
+		return _inspect(_owner._camera_focus_id if not _owner._camera_focus_id.is_empty() else _owner._view.combat_view.active_actor_id)
+	func _inspect(combatant_id: String) -> bool:
+		if combatant_id.is_empty(): return false
+		_owner.focus_combatant(combatant_id)
+		_owner.combatant_inspected.emit(combatant_id)
+		return true
+
+
 signal combat_body_submitted(body: InteractionResponse.CombatBody)
 signal combatant_inspected(combatant_id: String)
 signal targeting_changed(selection: CombatTargetingState)
@@ -34,6 +55,9 @@ var _last_active_actor_id: String = ""
 var _reveal_friends: bool = false
 var _targeting: CombatTargetingState
 var _playback_frame: CombatPlaybackFrame
+var _movement_preview: CombatMoveOptionView
+var controller: ControllerAccess:
+	get: return ControllerAccess.new(self)
 
 
 func present(game_view: GameView) -> bool:
@@ -43,6 +67,7 @@ func present(game_view: GameView) -> bool:
 	var active_actor_changed := next_active_actor_id != _last_active_actor_id
 	if active_actor_changed:
 		_camera_focus_id = ""
+		_movement_preview = null
 	_last_active_actor_id = next_active_actor_id
 	_view = game_view
 	_playback_frame = null
@@ -93,6 +118,34 @@ func submit_movement_direction(direction: Vector2i) -> bool:
 	if _playback_frame != null or _targeting != null:
 		return false
 	return _submit_movement_option(_movement_option_for_direction(direction))
+
+
+func preview_movement_direction(direction: Vector2i) -> bool:
+	if _playback_frame != null or _targeting != null:
+		return false
+	var option := _movement_option_for_direction(direction)
+	if option == null:
+		return false
+	_movement_preview = option
+	_hovered_coordinate = option.destination
+	redraw_requested.emit()
+	return true
+
+
+func confirm_movement_preview() -> bool:
+	var option := _movement_preview
+	_movement_preview = null
+	_hovered_coordinate = Vector2i(-1, -1)
+	return _submit_movement_option(option)
+
+
+func cancel_movement_preview() -> bool:
+	if _movement_preview == null:
+		return false
+	_movement_preview = null
+	_hovered_coordinate = Vector2i(-1, -1)
+	redraw_requested.emit()
+	return true
 
 
 func handle_input(event: InputEvent, viewport_size: Vector2, render_camera_top_left: Vector2i, render_camera_visible_cells: Vector2i) -> bool:
@@ -178,6 +231,33 @@ func target_with_keyboard() -> bool:
 	return true
 
 
+func cycle_target_candidate(delta: int) -> bool:
+	if _targeting == null or not _targeting.cycle_candidate(delta):
+		return false
+	_camera_focus_id = _targeting.previewed_candidate_id()
+	targeting_changed.emit(_targeting)
+	redraw_requested.emit()
+	return true
+
+
+func select_target_preview() -> bool:
+	if _targeting == null:
+		return false
+	var selected := _targeting.select_previewed_target() if _targeting.mode in [&"combatant", &"sequence"] else _targeting.select_coordinate(_targeting.hovered_coordinate)
+	if selected:
+		targeting_changed.emit(_targeting)
+		redraw_requested.emit()
+	return selected
+
+
+func move_target_preview(direction: Vector2i) -> bool:
+	if _targeting == null or not _targeting.move_coordinate_preview(direction):
+		return false
+	targeting_changed.emit(_targeting)
+	redraw_requested.emit()
+	return true
+
+
 func rotate_targeting() -> bool:
 	if _targeting == null or not _targeting.rotate_area():
 		return false
@@ -252,5 +332,7 @@ func _submit_movement_option(option: CombatMoveOptionView) -> bool:
 	var body := InteractionResponse.CombatBody.new(&"retreat_edge" if option.retreats_from_battle else &"move", _view.combat_view.active_actor_id)
 	body.destination = option.destination
 	body.has_destination = true
+	_movement_preview = null
+	_hovered_coordinate = Vector2i(-1, -1)
 	combat_body_submitted.emit(body)
 	return true

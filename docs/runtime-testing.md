@@ -38,8 +38,8 @@ The named `classic-starters` fixture loads the pinned application library and va
 | --- | --- |
 | `act` | Named adjacent movement, dungeon turn, area search, search toggle, torch, contextual encounter, camp, rest, heal, and service actions; ordinary application gates apply. |
 | `respond` | Exact current `requestId`, interaction `kind`, and validated typed response `body`. |
-| `ui` | Mouse press/release delivered to one currently visible, enabled, unoccluded catalogued control. No signals or properties are written. |
-| `invoke` | Exact AP, standalone XAP program, Simple/Complex encounter, owner-bound Thief encounter, or unrestricted Shop through existing debug commands. |
+| `ui` | Mouse press/release delivered to one currently visible, enabled, unoccluded catalogued control, or a bounded device-zero controller event delivered through the application's real normalized input owner. Use `{ "action": "controller-button", "button": 0..127, "pressed": true|false }` or `{ "action": "controller-axis", "axis": 0..7, "value": -1..1 }`; send release/neutral boundaries explicitly. No control signals or properties are written. |
+| `invoke` | Exact AP, standalone XAP program, Simple/Complex encounter, owner-bound Thief encounter, or isolated Battle, Treasure, and Shop through existing debug commands. |
 | `restore` | Validated save envelope; replacement occurs only after validation succeeds. |
 | `close` | Fixture-only process close after queued protocol replies drain. |
 

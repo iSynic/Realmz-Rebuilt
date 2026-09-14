@@ -132,6 +132,49 @@ func selected_fast_spell(slot_index: int) -> Dictionary:
 	}
 
 
+func controller_entries() -> Array[ControllerRadialEntry]:
+	var owner = _owner()
+	var result: Array[ControllerRadialEntry] = []
+	var context: StringName = owner._navigator.current_screen()
+	for source: Dictionary in ClassicCommandCatalog.for_context(context):
+		var definition := presentation_definition(source)
+		var command_id := StringName(definition["id"])
+		var button := _buttons.get(command_id) as BaseButton
+		var reason := ""
+		if button != null and button.disabled:
+			reason = button.tooltip_text
+		elif button == null and String(command_id).begins_with("encounter_"):
+			reason = "Choose from the active encounter response controls."
+		result.append(ControllerRadialEntry.new(command_id, String(definition["label"]), reason.is_empty(), reason, controller_icon(command_id), _fallback_symbol(command_id)))
+	return result
+
+
+func controller_icon(command_id: StringName) -> Texture2D:
+	var button := _buttons.get(command_id) as ClassicBitmapButton
+	if button != null:
+		return button.radial_art_texture()
+	var definition := presentation_definition(ClassicCommandCatalog.command(command_id))
+	if definition.is_empty():
+		return null
+	var prepared := ClassicBitmapButton.new()
+	prepared.configure(definition)
+	var texture := prepared.radial_art_texture()
+	prepared.free()
+	return texture
+
+
+static func _fallback_symbol(command_id: StringName) -> String:
+	return {&"torch": "✦", &"character": "♟", &"exploration": "✥"}.get(command_id, "")
+
+
+func activate_controller(command_id: StringName) -> bool:
+	var button := _buttons.get(command_id) as BaseButton
+	if button == null or button.disabled:
+		return false
+	activate(command_id)
+	return true
+
+
 func _is_visually_pressed(command_id: StringName) -> bool:
 	var owner = _owner()
 	var party_summary: PartySummaryView = owner._current_view.party_summary if owner._current_view != null else null

@@ -76,6 +76,10 @@ func has_visual_art() -> bool:
 	return _art_texture != null
 
 
+func radial_art_texture() -> Texture2D:
+	return _art_texture
+
+
 func caption_text() -> String:
 	return _label
 

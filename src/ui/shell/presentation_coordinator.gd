@@ -22,6 +22,9 @@ var _deferred_step: SessionStep
 var _deferred_view: GameView
 var _reduced_motion: bool = false
 var _dungeon_3d_enabled: bool = true
+var drawn_revision: int = -1
+var _draw_ack_generation: int = 0
+var _pending_route: StringName = &""
 
 
 func bind(
@@ -56,7 +59,7 @@ func bind(
 	_combat_playback.sound_requested.connect(_on_combat_playback_sound_requested)
 	_combat_playback.playback_finished.connect(_on_combat_playback_finished)
 	_session_controller.step_committed.connect(_on_step_committed)
-	_shell_presenter.play_stage_visibility_changed.connect(set_play_stage_visible)
+	_shell_presenter.play_stage_visibility_changed.connect(_set_play_stage_visible)
 	_shell_presenter.presentation_sound_requested.connect(_on_presentation_sound_requested)
 	_interaction_presenter.combat.spellbook_requested.connect(func(actor_id: String, options: Array[InteractionRequestValue.CastOption]) -> void:
 		_interaction_presenter.combat.set_spellbook_open(true)
@@ -128,6 +131,7 @@ func _present_committed_step(step: SessionStep, game_view: GameView, include_aud
 func _on_combat_playback_frame_changed(frame: CombatPlaybackFrame) -> void:
 	_battlefield_presenter.present_playback_frame(frame)
 	_interaction_presenter.update_combat_playback_frame(frame)
+	_shell_presenter.present_combat_playback_frame(frame)
 
 
 func _on_combat_playback_sound_requested(event: DomainEvent) -> void:
@@ -143,6 +147,11 @@ func _on_combat_playback_finished() -> void:
 	_deferred_view = null
 	if step != null and game_view != null:
 		_present_committed_step(step, game_view, false)
+		if not _pending_route.is_empty():
+			_active_route = _pending_route
+			_pending_route = &""
+			_update_spatial_visibility(game_view)
+			refresh_music()
 		playback_step_settled.emit(step)
 
 
@@ -151,6 +160,9 @@ func _on_presentation_sound_requested(sound_id: int, wait_for_completion: bool, 
 
 
 func set_active_route(route_id: StringName) -> void:
+	if is_combat_playback_active():
+		_pending_route = route_id
+		return
 	_active_route = route_id
 	# The router has already mounted and rendered the destination workspace when
 	# it emits the route change. Re-presenting the complete view here caused a
@@ -163,11 +175,10 @@ func set_active_route(route_id: StringName) -> void:
 func refresh_music() -> void:
 	if _media_controller == null:
 		return
-	var view := _session_controller.view() if _session_controller != null else _presented_view
-	_media_controller.present_music_context(_active_route, view)
+	_media_controller.present_music_context(_active_route, _presented_view)
 
 
-func set_play_stage_visible(visible: bool) -> void:
+func _set_play_stage_visible(visible: bool) -> void:
 	_play_stage_visible = visible
 	if _session_controller != null:
 		_update_spatial_visibility(_session_controller.view())
@@ -208,6 +219,11 @@ func set_exploration_speed_percent(percent: int) -> void:
 func set_combat_playback_speed_percent(percent: int) -> void:
 	if _combat_playback != null:
 		_combat_playback.set_speed_percent(percent)
+
+
+func set_hurry_spell_resolution(enabled: bool) -> void:
+	if _combat_playback != null:
+		_combat_playback.set_hurry_spell_resolution(enabled)
 
 
 func is_combat_playback_active() -> bool:
@@ -275,10 +291,25 @@ func _present_view(game_view: GameView, include_interaction: bool = true, refres
 	_sync_dungeon_view(game_view)
 	_update_spatial_visibility(game_view)
 	_presented_view = game_view
+	_queue_draw_ack(game_view.revision)
 	if include_interaction:
 		_present_interaction(game_view)
 	if refresh_music_context:
 		refresh_music()
+
+
+func _queue_draw_ack(revision: int) -> void:
+	_draw_ack_generation += 1
+	_acknowledge_after_draw.call_deferred(revision, _draw_ack_generation)
+
+
+func _acknowledge_after_draw(revision: int, generation: int) -> void:
+	if DisplayServer.get_name() == "headless":
+		await (Engine.get_main_loop() as SceneTree).process_frame
+	else:
+		await RenderingServer.frame_post_draw
+	if generation == _draw_ack_generation and _presented_view != null and _presented_view.revision == revision and not is_combat_playback_active():
+		drawn_revision = revision
 
 
 func _update_spatial_visibility(game_view: GameView) -> void:

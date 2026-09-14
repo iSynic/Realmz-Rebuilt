@@ -18,12 +18,13 @@ var _selected_player_map_id: String = ""
 var _selected_location_note_id: String = ""
 var _selected_journal_message_id: int = 0
 var _selected_campaign_id: String = ""
-var _selected_tab: int = 0
+var _selected_tab: int = 1
 var _journal_query: String = ""
 var _player_map_zoom: float = 1.0
 var _text_scale: float = 1.0
 var _compact: bool = false
 var _rebuilding: bool = false
+var _workspace: MapsNotesWorkspace
 
 
 func set_text_scale(text_scale: float) -> void:
@@ -49,6 +50,7 @@ func present(target: Control, view: GameView, media: ClassicMediaCatalog) -> voi
 		workspace = (load(WORKSPACE_SCENE_PATH) as PackedScene).instantiate() as MapsNotesWorkspace
 		parent.add_child(workspace)
 		workspace.prepare(_compact)
+	_workspace = workspace
 	if view == null:
 		_rebuilding = false
 		return
@@ -57,7 +59,7 @@ func present(target: Control, view: GameView, media: ClassicMediaCatalog) -> voi
 		_selected_player_map_id = ""
 		_selected_location_note_id = ""
 		_selected_journal_message_id = 0
-		_selected_tab = 0
+		_selected_tab = 1
 	_bind_summary(workspace, view)
 	_bind_places(workspace, view, media)
 	_bind_maps(workspace, view, media)
@@ -72,6 +74,17 @@ func present(target: Control, view: GameView, media: ClassicMediaCatalog) -> voi
 func _on_tab_changed(index: int) -> void:
 	if not _rebuilding:
 		_selected_tab = index
+
+
+func cycle_section(delta: int) -> bool:
+	if _workspace == null:
+		return false
+	var tabs := _workspace.tabs()
+	if tabs.get_tab_count() == 0:
+		return false
+	_workspace.cycle_tab(delta)
+	_selected_tab = tabs.current_tab
+	return true
 
 
 func _bind_summary(workspace: MapsNotesWorkspace, view: GameView) -> void:
