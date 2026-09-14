@@ -17,3 +17,9 @@ static func automatic_route(current_route: StringName, game_view: GameView, cont
 	if game_view.combat_view == null and current_route == &"combat":
 		return &"exploration"
 	return current_route
+
+
+static func playback_base_route(current_route: StringName, game_view: GameView) -> StringName:
+	if game_view != null and game_view.combat_view != null and game_view.combat_view.battlefield != null:
+		return &"combat"
+	return current_route
