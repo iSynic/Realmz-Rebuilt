@@ -117,7 +117,7 @@ func present_playback_health(health_by_id: Dictionary) -> void:
 	for character: CharacterView in _current_view.party_members:
 		var row := _character_row(character.id)
 		if row != null:
-			_bind_character_text(row.character_button(), character, int(health_by_id.get(character.id, character.current_health)))
+			_bind_character_text(row, character, int(health_by_id.get(character.id, character.current_health)))
 
 
 func close_combat_spellbook() -> void:
