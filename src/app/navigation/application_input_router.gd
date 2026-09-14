@@ -15,6 +15,8 @@ func _init(application: Variant) -> void:
 
 
 func handle_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and (event as InputEventMouseButton).pressed and _top_menu_is_open():
+		_application._shell_presenter.controller.close_top_menu_for_pointer()
 	if _handle_debug_or_acknowledgement_input(event):
 		return
 	var released_direction := UiInputActions.released_movement_direction(event)
@@ -83,6 +85,10 @@ func handle_controller_action(action_id: StringName, pressed: bool, repeated: bo
 
 
 func handle_controller_direction(direction: Vector2i, repeated: bool = false) -> void:
+	if _top_menu_is_open():
+		_application._shell_presenter.controller.move_top_menu(direction, repeated)
+		_mark_handled()
+		return
 	if direction == Vector2i.ZERO:
 		_stop_controller_movement()
 		return
@@ -94,10 +100,6 @@ func handle_controller_direction(direction: Vector2i, repeated: bool = false) ->
 		return
 	if _application._shell_presenter.controller.radial_is_open():
 		_application._shell_presenter.controller.move_radial(direction)
-		_mark_handled()
-		return
-	if _top_menu_is_open():
-		_application._shell_presenter.controller.move_top_menu(direction)
 		_mark_handled()
 		return
 	var pending: InteractionRequest = _application.session_controller.view().active_interaction_request()
@@ -150,7 +152,7 @@ func _handle_top_menu_action(action_id: StringName) -> void:
 	else:
 		var menu_direction := _controller_direction(action_id)
 		if menu_direction != Vector2i.ZERO:
-			_application._shell_presenter.controller.move_top_menu(menu_direction)
+			_application._shell_presenter.controller.move_top_menu(menu_direction, false)
 	_mark_handled()
 
 

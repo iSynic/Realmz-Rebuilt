@@ -10,6 +10,7 @@ var _controller_popup_open: bool = false
 var _controller_heading: int = 0
 var _controller_item: int = 0
 var _controller_restore_focus: WeakRef
+var _controller_repeat_allowed: bool = true
 
 
 func _init(owner: Control) -> void:
@@ -24,6 +25,8 @@ func rebuild(game_view: GameView, settings: PresentationSettings, music_title: S
 	var owner = _owner()
 	if owner == null or not owner.is_node_ready():
 		return
+	var retained_heading: String = String(_current_controller_menu().name) if _controller_active and _current_controller_menu() != null else ""
+	var retained_entry := _controller_selected_identity()
 	var contextual_definition: Dictionary = owner._command_controller.presentation_definition(ClassicCommandCatalog.command(&"contextual"))
 	var contextual_label := String(contextual_definition.get("label", "Encounter"))
 	var contextual_availability := StringName(contextual_definition.get("availability", &"contextual_encounter"))
@@ -66,6 +69,8 @@ func rebuild(game_view: GameView, settings: PresentationSettings, music_title: S
 		{"label": "Playlist…", "system": &"music_playlist"},
 	])
 	fill(owner.get_node("%CompactMenu"), _compact_entries(game_view, settings, contextual_label, contextual_availability))
+	if _controller_active:
+		_restore_controller_selection(retained_heading, retained_entry)
 
 
 static func _compact_entries(game_view: GameView, settings: PresentationSettings, contextual_label: String, contextual_availability: StringName) -> Array[Dictionary]:
@@ -144,6 +149,9 @@ func controller_open() -> bool:
 	_controller_popup_open = false
 	_controller_heading = clampi(_controller_heading, 0, menus.size() - 1)
 	_controller_item = 0
+	_controller_repeat_allowed = true
+	_hide_native_popups()
+	_controller_overlay().close()
 	_focus_heading(menus[_controller_heading])
 	return true
 
@@ -152,20 +160,24 @@ func controller_is_open() -> bool:
 	return _controller_active
 
 
-func controller_direction(direction: Vector2i) -> bool:
-	if not _controller_active or direction == Vector2i.ZERO:
+func controller_direction(direction: Vector2i, repeated: bool = false) -> bool:
+	if not _controller_active:
 		return false
+	if direction == Vector2i.ZERO:
+		_controller_repeat_allowed = true
+		return true
+	if repeated and not _controller_repeat_allowed:
+		return true
 	if direction.x != 0:
-		var reopen := _controller_popup_open
-		_hide_popup()
 		var menus := _controller_menus()
 		if menus.is_empty():
 			return false
-		_controller_heading = wrapi(_controller_heading + direction.x, 0, menus.size())
+		_controller_heading = clampi(_controller_heading + direction.x, 0, menus.size() - 1) if repeated else wrapi(_controller_heading + direction.x, 0, menus.size())
 		_controller_item = 0
 		_focus_heading(menus[_controller_heading])
-		if reopen:
-			_show_popup()
+		if _controller_popup_open:
+			_present_controller_dropdown()
+		_controller_repeat_allowed = false
 		return true
 	if not _controller_popup_open:
 		if direction.y > 0:
@@ -174,8 +186,8 @@ func controller_direction(direction: Vector2i) -> bool:
 	var menu := _current_controller_menu()
 	if menu == null or menu.get_popup().item_count == 0:
 		return true
-	_controller_item = wrapi(_controller_item + direction.y, 0, menu.get_popup().item_count)
-	menu.get_popup().set_focused_item(_controller_item)
+	_controller_item = clampi(_controller_item + direction.y, 0, menu.get_popup().item_count - 1)
+	_present_controller_dropdown()
 	return true
 
 
@@ -190,9 +202,11 @@ func controller_confirm() -> bool:
 		return true
 	var entry: Dictionary = _actions.get(menu.get_instance_id(), {}).get(_controller_item, {})
 	if entry.is_empty() or not String(entry.get("disabled_reason", "")).is_empty():
+		_present_controller_dropdown()
 		return true
 	_hide_popup()
 	_controller_active = false
+	_controller_restore_focus = null
 	_on_item_pressed(_controller_item, menu)
 	return true
 
@@ -203,13 +217,24 @@ func controller_back() -> bool:
 	if _controller_popup_open:
 		_hide_popup()
 		_focus_heading(_current_controller_menu())
+		_controller_repeat_allowed = false
 		return true
 	_controller_active = false
+	_controller_overlay().close()
 	var restore: Control = _controller_restore_focus.get_ref() if _controller_restore_focus != null else null
 	_controller_restore_focus = null
 	if restore != null and restore.is_inside_tree() and restore.is_visible_in_tree():
 		restore.grab_focus()
 	return true
+
+
+func controller_pointer_takeover() -> void:
+	if not _controller_active:
+		return
+	_hide_popup()
+	_controller_active = false
+	_controller_restore_focus = null
+	_controller_repeat_allowed = false
 
 
 func controller_selected_label() -> String:
@@ -252,16 +277,69 @@ func _focus_heading(menu: MenuButton) -> void:
 
 func _show_popup() -> void:
 	var menu := _current_controller_menu()
-	if menu == null or menu.disabled or menu.get_popup().item_count == 0:
+	if menu == null or menu.get_popup().item_count == 0:
 		return
 	_controller_popup_open = true
 	_controller_item = clampi(_controller_item, 0, menu.get_popup().item_count - 1)
-	menu.show_popup()
-	menu.get_popup().set_focused_item(_controller_item)
+	_controller_repeat_allowed = false
+	_present_controller_dropdown()
 
 
 func _hide_popup() -> void:
-	var menu := _current_controller_menu()
-	if menu != null:
-		menu.get_popup().hide()
+	_controller_overlay().close()
 	_controller_popup_open = false
+
+
+func _present_controller_dropdown() -> void:
+	var menu := _current_controller_menu()
+	if menu == null:
+		return
+	_controller_overlay().present(menu.text, _controller_entries(menu), _controller_item, menu.get_global_rect())
+
+
+func _controller_entries(menu: MenuButton) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	var actions: Dictionary = _actions.get(menu.get_instance_id(), {})
+	for index: int in menu.get_popup().item_count:
+		result.append(actions.get(index, {}))
+	return result
+
+
+func _controller_overlay() -> Variant:
+	return _owner().get_node("%ControllerTopMenuOverlay")
+
+
+func _hide_native_popups() -> void:
+	for menu: MenuButton in _controller_menus():
+		menu.get_popup().hide()
+
+
+func _controller_selected_identity() -> String:
+	var menu := _current_controller_menu()
+	if menu == null or not _controller_popup_open:
+		return ""
+	var entry: Dictionary = _actions.get(menu.get_instance_id(), {}).get(_controller_item, {})
+	for key: String in ["route", "command", "system", "value", "label"]:
+		if entry.has(key):
+			return "%s:%s" % [key, entry[key]]
+	return ""
+
+
+func _restore_controller_selection(heading_name: String, entry_identity: String) -> void:
+	var menus := _controller_menus()
+	for index: int in menus.size():
+		if menus[index].name == heading_name:
+			_controller_heading = index
+			break
+	var menu := _current_controller_menu()
+	if menu == null:
+		return
+	if not entry_identity.is_empty():
+		for index: int in menu.get_popup().item_count:
+			_controller_item = index
+			if _controller_selected_identity() == entry_identity:
+				break
+	_controller_item = clampi(_controller_item, 0, maxi(0, menu.get_popup().item_count - 1))
+	_focus_heading(menu)
+	if _controller_popup_open:
+		_present_controller_dropdown()

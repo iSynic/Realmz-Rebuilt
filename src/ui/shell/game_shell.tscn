@@ -1,4 +1,4 @@
-[gd_scene load_steps=14 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://src/ui/shell/game_shell.gd" id="1_shell"]
 [ext_resource type="PackedScene" path="res://src/ui/shell/screen_navigator.tscn" id="2_navigator"]
@@ -11,6 +11,7 @@
 [ext_resource type="PackedScene" path="res://src/ui/shell/controller_prompt_strip.tscn" id="9_controller_prompt"]
 [ext_resource type="PackedScene" path="res://src/ui/shared/controller/controller_radial_overlay.tscn" id="10_controller_radial"]
 [ext_resource type="PackedScene" path="res://src/ui/shared/controller/controller_qwerty_editor.tscn" id="11_controller_keyboard"]
+[ext_resource type="PackedScene" path="res://src/ui/shell/controller_top_menu_overlay.tscn" id="12_controller_menu"]
 
 [sub_resource type="StyleBoxFlat" id="FatigueTrackStyle"]
 bg_color = Color(0.025, 0.035, 0.04, 1)
@@ -48,6 +49,10 @@ z_index = 95
 [node name="ControllerQwertyEditor" parent="." instance=ExtResource("11_controller_keyboard")]
 unique_name_in_owner = true
 z_index = 96
+
+[node name="ControllerTopMenuOverlay" parent="." instance=ExtResource("12_controller_menu")]
+unique_name_in_owner = true
+z_index = 93
 
 [node name="ActivityIndicator" type="PanelContainer" parent="."]
 unique_name_in_owner = true

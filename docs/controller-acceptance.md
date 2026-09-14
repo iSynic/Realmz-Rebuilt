@@ -16,6 +16,7 @@ Realmz Rebuilt provides a controller-owned route through startup, workspaces, te
 - Controls are configurable as a draft with conflict handling, live input feedback, required-navigation validation, and persistent Apply and Restore Defaults actions. Presentation settings schema 15 preserves older values and custom bindings; schema 14 receives the Top Menu default only when View/Create/Minus is unused.
 - Preferences and Maps/Notes expose visible category rails. Shoulders switch their declared sections directly instead of walking each control. Controller hints float over the upper stage at 75-percent opacity for three seconds without changing shell geometry and are not restarted by movement, repeats, confirmation, or stick noise.
 - Runtime Testing admits bounded button and axis events only in isolated fixtures and reports focus identity. Live adventures continue to reject mutation.
+- The top menu uses a controller-owned dropdown inside the application viewport rather than a native popup. Entry movement clamps at its ends, held heading movement cannot wrap repeatedly, disabled reasons stay visible, South dispatches once, and pointer takeover closes the controller presentation cleanly.
 
 This scope intentionally excludes virtual mouse emulation, vibration, and platform on-screen keyboard integration.
 

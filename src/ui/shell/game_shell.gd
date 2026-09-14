@@ -144,9 +144,11 @@ class ControllerAccess:
 	func radial_is_open() -> bool: return _shell._controller_radial.is_open()
 	func top_menu_is_open() -> bool: return _shell._menu_controller.controller_is_open()
 	func open_top_menu() -> bool: return _shell._menu_controller.controller_open()
-	func move_top_menu(direction: Vector2i) -> bool: return _shell._menu_controller.controller_direction(direction)
+	func move_top_menu(direction: Vector2i, repeated: bool = false) -> bool: return _shell._menu_controller.controller_direction(direction, repeated)
 	func confirm_top_menu() -> bool: return _shell._menu_controller.controller_confirm()
 	func back_top_menu() -> bool: return _shell._menu_controller.controller_back()
+	func selected_top_menu_label() -> String: return _shell._menu_controller.controller_selected_label()
+	func close_top_menu_for_pointer() -> void: _shell._menu_controller.controller_pointer_takeover()
 	func text_editor_is_open() -> bool: return _shell._controller_keyboard.is_open()
 	func open_text_editor() -> bool:
 		var focused: Control = _shell.get_viewport().gui_get_focus_owner()

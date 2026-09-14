@@ -1,0 +1,7 @@
+[gd_scene format=3]
+
+[node name="ControllerTopMenuRow" type="Label"]
+custom_minimum_size = Vector2(280, 25)
+layout_mode = 2
+vertical_alignment = 1
+
