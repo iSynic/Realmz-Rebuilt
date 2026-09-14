@@ -34,6 +34,7 @@ Own the explicit collaboration boundary shared by deterministic battle rules.
 
 - Keep serialized combat state, event identities, RNG order, and Castle-visible outcomes unchanged during structural work.
 - Monster automation must consume an exhausted cast-fallback chain within the current activation: the advance/contact probe is the ordinary physical fallback, and only explicit reaction waiting or death-macro results may leave a resumable active actor.
+- Random monster target preference consumes one choice draw. An empty, friendly, unavailable, or obscured sampled slot falls through immediately to the stable visible-target scan; it must not consume repeated draws while a legal opposed target already exists.
 - Address `battlefield.terrain` or `battlefield.actors` directly; do not restore aggregate forwarding methods. Use `BattlefieldGrid` for fixed dimensions and footprint geometry.
 - Split cohesive action/event policy before expanding a collaborator beyond the architecture limits.
 - Keep combat rules, views, request bodies, tests, docs, and the system manifest synchronized when a collaborator moves or changes ownership.

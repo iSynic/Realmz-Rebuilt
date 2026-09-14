@@ -104,12 +104,9 @@ func select_visible_target(state: GameState, monster: MonsterState, terrain_set:
 	var monsters := state.combat.roster.monsters()
 	var slot_count := 10 + monsters.size()
 	if not _has_available_target(state, monster, characters, monsters): return ""
-	for _attempt: int in 4096:
-		var slot := rng.draw_between(0, slot_count - 1, &"combat.monster-target-slot")
-		var candidate_id := _target_id_for_slot(state, monster, slot, characters, monsters)
-		if candidate_id.is_empty(): continue
-		if _context.battlefield.has_line_of_sight(state.combat.battlefield, terrain_set, monster.id, candidate_id): return candidate_id
-		break
+	var slot := rng.draw_between(0, slot_count - 1, &"combat.monster-target-slot")
+	var candidate_id := _target_id_for_slot(state, monster, slot, characters, monsters)
+	if not candidate_id.is_empty() and _context.battlefield.has_line_of_sight(state.combat.battlefield, terrain_set, monster.id, candidate_id): return candidate_id
 	return scan_visible_target(state, monster, terrain_set)
 
 
