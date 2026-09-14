@@ -111,6 +111,15 @@ func present_combat_spellbook(actor_id: String, options: Array[InteractionReques
 	_spellbook.present(actor_id, options, _current_view, size.x)
 
 
+func present_playback_health(health_by_id: Dictionary) -> void:
+	if _current_view == null or _combat_spellbook_active:
+		return
+	for character: CharacterView in _current_view.party_members:
+		var row := _character_row(character.id)
+		if row != null:
+			_bind_character_text(row.character_button(), character, int(health_by_id.get(character.id, character.current_health)))
+
+
 func close_combat_spellbook() -> void:
 	if not _combat_spellbook_active:
 		return
@@ -153,11 +162,13 @@ func _add_character(character: CharacterView, combat_active: bool, auto_characte
 	_party_list.add_child(record)
 
 
-func _bind_character_text(row: Button, character: CharacterView) -> void:
+func _bind_character_text(row: Button, character: CharacterView, current_health: int = -100_000) -> void:
+	if current_health == -100_000:
+		current_health = character.current_health
 	var action_fact := "SP %d/%d" % [character.spell_points, character.maximum_spell_points] if character.maximum_spell_points > 0 else "Attacks %d" % character.normal_attacks
 	row.text = "%s\nHP %d/%d  •  %s  •  AR %d\n%s / %s" % [
 		character.name,
-		character.current_health,
+		current_health,
 		character.maximum_health,
 		action_fact,
 		character.armor,

@@ -307,6 +307,7 @@ func _bind_volume_row(row: BoxContainer, title: String, value: float, setting_id
 
 func _bind_pacing(settings: PresentationSettings) -> void:
 	var root := _workspace.get_node("SystemWorkspaceTabs/Pacing/PacingSettingsScroll/PacingSettingsPanel/Content")
+	_bind_toggle(root.get_node("HurrySpellResolution") as CheckButton, settings.hurry_spell_resolution, &"hurry_spell_resolution")
 	var combat := root.get_node("CombatSpeedRow/CombatPlaybackSpeedSlider") as HSlider
 	var combat_caption := root.get_node("CombatSpeedRow/CombatPlaybackSpeedCaption") as Label
 	_bind_label(combat_caption, "Combat & animation speed  •  %d%%" % settings.combat_playback_speed_percent, Color("e0e2e5"), 15)

@@ -30,6 +30,7 @@ signal reduced_sound_changed(enabled: bool)
 signal auto_switch_to_melee_changed(enabled: bool)
 signal exploration_speed_changed(percent: int)
 signal combat_playback_speed_changed(percent: int)
+signal hurry_spell_resolution_changed(enabled: bool)
 signal exploration_minimap_changed(enabled: bool)
 signal classic_exploration_visibility_changed(enabled: bool)
 signal custom_fog_tile_changed(enabled: bool)
@@ -360,6 +361,11 @@ func present_media_events(events: Array[DomainEvent], media: ClassicMediaCatalog
 	last_picture_media_diagnostic = _picture_presenter.last_media_diagnostic
 
 
+func present_combat_playback_frame(frame: CombatPlaybackFrame) -> void:
+	if frame != null:
+		_party_roster.present_playback_health(frame.combatant_health)
+
+
 func apply_settings(settings: PresentationSettings) -> void:
 	if settings == null:
 		return
@@ -529,6 +535,7 @@ func _on_presentation_setting_changed(setting_id: StringName, value: Variant) ->
 		&"auto_switch_to_melee": auto_switch_to_melee_changed.emit(bool(value))
 		&"exploration_speed_percent": exploration_speed_changed.emit(int(value))
 		&"combat_playback_speed_percent": combat_playback_speed_changed.emit(int(value))
+		&"hurry_spell_resolution": hurry_spell_resolution_changed.emit(bool(value))
 		&"show_exploration_minimap": exploration_minimap_changed.emit(bool(value))
 		&"classic_exploration_visibility": classic_exploration_visibility_changed.emit(bool(value))
 		&"custom_fog_tile_enabled": custom_fog_tile_changed.emit(bool(value))

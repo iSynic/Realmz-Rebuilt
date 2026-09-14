@@ -25,6 +25,8 @@ Own the retained tactical battlefield, combat command deck, roster spellbook, Fa
 - Secondary command, spell, item, inspection, and targeting modes preserve a visible Back or Cancel path and suppress spatial input until resolved.
 - The action radial enumerates the active battle component's existing command owners and Fast Spell bindings. It invokes their typed presentation operations; it does not synthesize pointer input or infer availability.
 - `CombatInteractionController.release()` is teardown-only: it releases the Fast Spell dock without emitting spellbook or layout changes. Ordinary `clear()` still restores the active application workspace.
+- Playback frames carry event-local combatant positions, health, persistent fields, and lifecycle masks. Damage or healing appears on its result frame, a defeated target remains visible through that result and is removed on the following defeat boundary, and persistent fields appear or expire at their committed causal event rather than only in the final view.
+- Default-off Hurry Spell Resolution coalesces only the shared effect frames of contiguous results from the same eligible area or group cast. Per-target results and deaths remain ordered, while intervening sounds, reactions, collisions, field changes, or lifecycle events end the group.
 
 ## Work Guidance
 

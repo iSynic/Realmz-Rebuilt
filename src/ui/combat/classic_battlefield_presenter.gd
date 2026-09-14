@@ -215,7 +215,8 @@ func _draw_characters(combat: CombatView, camera: Vector2i, visible_cells: Vecto
 func _draw_persistent_fields(combat: CombatView, camera: Vector2i, visible_cells: Vector2i, draw_origin: Vector2) -> void:
 	var atlas_asset := _textures.battle_atlas_asset()
 	var atlas_texture := _textures.battle_atlas_texture()
-	for field: PersistentCombatFieldView in combat.persistent_fields:
+	var visible_fields := _playback_frame.persistent_fields if _playback_frame != null else combat.persistent_fields
+	for field: PersistentCombatFieldView in visible_fields:
 		var tile_id := BattlefieldTextureCache.persistent_field_tile_id(field.queue_icon)
 		var region := Rect2i() if atlas_asset == null else atlas_asset.region_for(tile_id)
 		for coordinate: Vector2i in field.affected_coordinates:

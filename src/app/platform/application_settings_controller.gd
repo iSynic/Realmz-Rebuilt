@@ -59,6 +59,7 @@ func bind() -> void:
 	_shell.auto_switch_to_melee_changed.connect(_on_auto_switch_to_melee_changed)
 	_shell.exploration_speed_changed.connect(_on_exploration_speed_changed)
 	_shell.combat_playback_speed_changed.connect(_on_combat_playback_speed_changed)
+	_shell.hurry_spell_resolution_changed.connect(_on_hurry_spell_resolution_changed)
 	_shell.exploration_minimap_changed.connect(_on_exploration_minimap_changed)
 	_shell.classic_exploration_visibility_changed.connect(_on_classic_exploration_visibility_changed)
 	_shell.custom_fog_tile_changed.connect(_on_custom_fog_tile_changed)
@@ -71,6 +72,7 @@ func apply_initial_settings() -> void:
 	_shell.apply_settings(_settings)
 	_presentation.set_reduced_motion(_settings.reduced_motion)
 	_presentation.set_combat_playback_speed_percent(_settings.combat_playback_speed_percent)
+	_presentation.set_hurry_spell_resolution(_settings.hurry_spell_resolution)
 	_presentation.set_exploration_speed_percent(_settings.exploration_speed_percent)
 	_apply_application_theme()
 	_interaction.set_text_scale(_settings.text_scale)
@@ -204,6 +206,12 @@ func _on_exploration_speed_changed(percent: int) -> void:
 func _on_combat_playback_speed_changed(percent: int) -> void:
 	_settings.combat_playback_speed_percent = clampi(snappedi(percent, 25), 25, 200)
 	_presentation.set_combat_playback_speed_percent(_settings.combat_playback_speed_percent)
+	_save()
+
+
+func _on_hurry_spell_resolution_changed(enabled: bool) -> void:
+	_settings.hurry_spell_resolution = enabled
+	_presentation.set_hurry_spell_resolution(enabled)
 	_save()
 
 

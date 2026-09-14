@@ -409,6 +409,10 @@ ticks_on_borders = true
 layout_mode = 2
 text = "100% is the designed combat pace. This control applies consistently to every combat visual."
 autowrap_mode = 2
+[node name="HurrySpellResolution" type="CheckButton" parent="SystemWorkspaceTabs/Pacing/PacingSettingsScroll/PacingSettingsPanel/Content"]
+layout_mode = 2
+text = "Hurry Spell Resolution"
+tooltip_text = "Show one shared effect for eligible area spells while preserving each target's result."
 [node name="MovementSpeedRow" type="BoxContainer" parent="SystemWorkspaceTabs/Pacing/PacingSettingsScroll/PacingSettingsPanel/Content" groups=["system_setting_rows"]]
 layout_mode = 2
 [node name="ExplorationSpeedCaption" type="Label" parent="SystemWorkspaceTabs/Pacing/PacingSettingsScroll/PacingSettingsPanel/Content/MovementSpeedRow"]

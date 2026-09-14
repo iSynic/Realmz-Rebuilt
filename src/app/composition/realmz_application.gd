@@ -112,6 +112,7 @@ func _build_dependencies() -> void:
 		func() -> int: return session_controller.session().get_instance_id(),
 		func() -> StringName:
 			if presentation_coordinator == null or presentation_coordinator.is_combat_playback_active(): return &"combat-playback"
+			if presentation_coordinator.drawn_revision != session_controller.view().revision: return &"presentation-awaiting-draw"
 			if not _queued_combat_auto_changes.is_empty(): return &"queued-auto-change"
 			if lifecycle_host.has_active_interaction(): return &"lifecycle-dialog"
 			if _controller_resume_required: return &"controller-suspended"
