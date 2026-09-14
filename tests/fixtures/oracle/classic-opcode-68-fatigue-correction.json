@@ -1,0 +1,15 @@
+{
+  "formatVersion": 1,
+  "decisionId": "FD-SCENARIO-005",
+  "evidence": "source-control-flow-and-shipped-binary",
+  "castleCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "castleSourceSha256": "77d06c03bedfe520127bb6ed113c22b0573c11012db956cec3ceee967d816198",
+  "classicCode1Sha256": "bde1ccce02db19486dd8b672589eaf67ca848c3d2e499559d50f32a831a798fd",
+  "divinityHelpSha256": "5b64e4a436ab3977e9d35fcedd0cf69bf7a8d4e67b276ed9757a6b5601250728",
+  "opcode": 68,
+  "authored": "Mode 3 reads a percentage from Extra Code slot two and applies it to current fatigue.",
+  "castleDefect": "The shipped path reads slot three and divides it by 100 before multiplying current fatigue.",
+  "bundledObservation": "The scanned Half Truth and Trouble in the Sword Lands Calculate rows store 20, 25, or 50 in slot two and zero in slot three.",
+  "chosenResult": "Multiply current fatigue by the signed slot-two percentage using a wide intermediate, divide with truncation toward zero, and clamp to the existing 4 through 135 domain. Preserve all imported words without migration.",
+  "excludedUnresolvedOpcodes": [7, 13, 30, 74]
+}

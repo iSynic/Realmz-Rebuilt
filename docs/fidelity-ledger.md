@@ -41,6 +41,15 @@ Classic-visible behavior is the default ruleset. This ledger records deliberate 
 - Tests: `test_scenario_vm.gd::_test_corrected_character_selection_opcodes` covers all six positions, Picked Only filtering and RNG ownership, negative threshold boundaries, invalid and unoccupied positions, and empty-picked condition behavior. `_test_public_character_checks` retains the surrounding GOSUB and branch contract.
 - Legacy quirk: none. The corrected authoring meanings are the fixed runtime contract; no selectable shipped-bug mode is provided.
 
+## FD-SCENARIO-005 — Opcode 68 authored fatigue percentage
+
+- Affected rule: opcode 68 Calculate New Fatigue mode.
+- Castle evidence: pinned `newland.c` and the shipped `CODE 1` resource read Extra Code slot three and divide it by 100 before multiplying. Divinity assigns the percentage to slot two; the bundled Calculate rows follow that layout. The bounded evidence record is `tests/fixtures/oracle/classic-opcode-68-fatigue-correction.json`, SHA-256 `6940e80bf9b2b2c0a61f76d0275a48c60251dbc63ffd41a8f2fbd3d86276c6e9`.
+- Player-facing problem: correctly authored 20, 25, and 50 percent rows read an unused zero and collapse fatigue to the minimum instead of scaling it.
+- Chosen 2.0 behavior: read the signed percentage from slot two, multiply current fatigue using a wide intermediate, divide by 100 with truncation toward zero, and clamp the result to 4 through 135. Preserve raw imported words, ignore unrelated slot-three data, and provide no shipped-bug mode.
+- Tests: `test_scenario_vm.gd::_test_corrected_fatigue_opcode` covers 1, 20, 25, 50, 100, zero, negative, and above-100 values, fractional truncation, slot-three independence, both bounds, and save-owned restoration. `_test_public_application_transitions` retains exhausted/rested and event projection coverage.
+- Legacy quirk: none. The slot mismatch and divide-before-multiply order defeat the editor's exposed operation.
+
 ## FD-ECONOMY-001 — Zero-charge shop valuation
 
 - Affected rule: shop sale value for an item definition whose authored charge count is zero.
