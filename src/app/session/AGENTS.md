@@ -11,7 +11,7 @@ Own host workflows around one replaceable pure `GameSession` without duplicating
 - `ApplicationAdventureStorageHost` and `SaveHostController` own save, preview, restore, and backup coordination.
 - `ApplicationCharacterFilesHost`, `CharacterVaultController`, and `CharacterCreationHostController` own the application catalog, reusable-character cache, publication, import, and standalone creation.
 - `ApplicationCombatPolicy` translates combat presentation responses and Auto playback decisions into typed session commands.
-- `PersistentAutoCoordinator` retains one deduplicated host continuation across rendered-frame, playback, modal, queued-toggle, and controller-suspension boundaries. It rechecks session identity, revision, active actor, and Auto state before submitting the existing typed combat response, and latches a failed revision instead of retrying it.
+- `PersistentAutoCoordinator` retains one generation-tracked, deduplicated host continuation across presented-revision, playback, modal, queued-toggle, and controller-suspension boundaries. It submits only after the presentation coordinator acknowledges that the matching committed revision has drawn, then rechecks session identity, revision, active actor, and Auto state before using the existing typed combat response. Revision changes during that wait remain pending for reevaluation; a failed revision is reported and latched instead of retried.
 - Character-file identity and revision views are detached app-owned presentation records.
 
 ## Local Contracts

@@ -43,7 +43,7 @@ func run() -> void:
 func _test_controller_preferences_round_trip_and_migration() -> void:
 	var settings := PresentationSettings.new(); settings.master_volume = 0.35; settings.controller.prompt_family = ControllerPreferences.PROMPT_PLAYSTATION; settings.controller.left_stick_dead_zone = 0.3; settings.controller.repeat_initial_ms = 425
 	var restored := PresentationSettings.from_data(settings.to_data())
-	assert_not_null(restored, "schema-fifteen controller preferences decode")
+	assert_not_null(restored, "schema-sixteen controller preferences decode")
 	assert_equal([restored.master_volume, restored.controller.prompt_family, restored.controller.left_stick_dead_zone, restored.controller.repeat_initial_ms], [0.35, ControllerPreferences.PROMPT_PLAYSTATION, 0.3, 425], "controller tuning round-trips without changing existing presentation values")
 	var legacy := settings.to_data(); legacy["schemaVersion"] = 13; legacy.erase("controller"); var migrated := PresentationSettings.from_data(legacy)
 	assert_not_null(migrated, "schema-thirteen presentation settings migrate")
@@ -267,9 +267,10 @@ func _test_controller_radial_pages_and_explicit_commit() -> void:
 
 
 func _test_persistent_auto_continuation() -> void:
-	var current: Array[GameView] = [_auto_view(10, 1, "hero")]; var blocker: Array[StringName] = [&""]; var submissions: Array[Dictionary] = []; var failures: Array[String] = []; var coordinator: RefCounted = PERSISTENT_AUTO_COORDINATOR.new(); var coordinator_ref: WeakRef = weakref(coordinator)
+	var current: Array[GameView] = [_auto_view(10, 1, "hero")]; var blocker: Array[StringName] = [&""]; var submissions: Array[Dictionary] = []; var failures: Array[String] = []; var fail_submit: Array[bool] = [false]; var coordinator: RefCounted = PERSISTENT_AUTO_COORDINATOR.new(); var coordinator_ref: WeakRef = weakref(coordinator)
 	coordinator.configure(func() -> GameView: return current[0], func() -> int: return 41, func() -> StringName: return blocker[0], func(response: InteractionResponse) -> SessionStep:
 		var body := response.body as InteractionResponse.CombatBody; submissions.append({"actor": body.actor_id, "round": current[0].combat_view.round_number, "revision": current[0].revision})
+		if fail_submit[0]: return SessionStep.failed(current[0].revision, &"fixture-auto-failure", "Auto activation failed visibly.")
 		current[0] = _auto_view(current[0].revision + 1, current[0].combat_view.round_number + 1, "hero" if submissions.size() < 3 else "manual")
 		(coordinator_ref.get_ref() as RefCounted).call("request"); return SessionStep.completed(current[0].revision), func(step: SessionStep) -> void: failures.append(step.error_message if step != null else "missing step"))
 	coordinator.request(); for _frame: int in 8: await (Engine.get_main_loop() as SceneTree).process_frame
@@ -278,9 +279,12 @@ func _test_persistent_auto_continuation() -> void:
 	assert_equal([submissions.size(), coordinator.observation()["blocker"]], [3, "controller-suspended"], "controller suspension retains the pending Auto activation without running it")
 	blocker[0] = &""; coordinator.poll(); await (Engine.get_main_loop() as SceneTree).process_frame; await (Engine.get_main_loop() as SceneTree).process_frame
 	assert_equal(submissions.size(), 4, "explicit acknowledgement wakes the retained Auto continuation")
-	current[0] = _auto_view(30, 5, "hero"); coordinator.request(); current[0] = _auto_view(31, 5, "manual"); await (Engine.get_main_loop() as SceneTree).process_frame; await (Engine.get_main_loop() as SceneTree).process_frame
+	current[0] = _auto_view(30, 5, "hero"); blocker[0] = &"presentation-awaiting-draw"; coordinator.request(); current[0] = _auto_view(31, 5, "manual"); blocker[0] = &""; coordinator.poll(); await (Engine.get_main_loop() as SceneTree).process_frame
 	assert_equal(submissions.size(), 4, "a session revision change discards stale continuation work before it can submit")
-	assert_true(failures.is_empty(), "successful persistent Auto never enters the failure latch"); coordinator.invalidate(); current.clear(); coordinator = null
+	assert_true(failures.is_empty(), "successful persistent Auto never enters the failure latch")
+	current[0] = _auto_view(40, 6, "hero"); fail_submit[0] = true; coordinator.request(); coordinator.request(); assert_equal([submissions.size(), failures, coordinator.observation()["failedRevision"]], [5, ["Auto activation failed visibly."], 40], "a failed Auto response reports once and suppresses retries for the failed revision")
+	current[0] = _auto_view(41, 6, "hero"); fail_submit[0] = false; coordinator.request(); assert_equal(submissions.size(), 6, "a later committed revision can explicitly re-arm Auto after the failed revision")
+	coordinator.invalidate(); current.clear(); coordinator = null
 	await (Engine.get_main_loop() as SceneTree).process_frame
 
 
