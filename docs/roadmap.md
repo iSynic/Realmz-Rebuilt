@@ -6,7 +6,7 @@ This page records current state and next work only. Detailed parity counts come 
 
 ## Current evidence
 
-- Godot import, main-scene smoke, and all 4,375 assertions across 29 suites pass.
+- Godot import, main-scene smoke, and all 4,377 assertions across 29 suites pass.
 - The architecture-overhaul gate reports zero oversized files, functions, and top-level classes; zero cross-object private calls and generic preload aliases; zero missing scenes and production-bound previews; zero placeholder shell-mode scenes; and zero missing, undeclared, or loose-root feature files.
 - Every declared feature root has a public `README.md`. The system manifest names its guide, entry points, public interfaces, tests, and performance probes.
 - Stable major UI hierarchy is authored in scenes. Realmz Builder exercises all registered surfaces with Wide, Compact, Empty, Long Content, Unavailable, and Error profiles through the production binders.
