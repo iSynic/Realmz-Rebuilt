@@ -323,13 +323,12 @@ func _select_characters_by_identity(action: ClassicActionDefinition) -> Scenario
 
 
 func _select_characters_by_misc(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
-	if action.extra_code.size() < 3:
-		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 52 requires a five-value Extra Code row.")
+	if action.extra_code.size() < 3: return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 52 requires a five-value Extra Code row.")
 	var selector := action.extra_code[0]
 	var value := action.extra_code[1]
 	var source_mode := action.extra_code[2]
-	if selector < 0 or selector > 8 or source_mode < 0 or source_mode > 2:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_character_selector", "Classic miscellaneous character selector is invalid.")
+	if selector < 0 or selector > 8 or source_mode < 0 or source_mode > 2: return ScenarioRuntimeOperationResult.failed(&"invalid_character_selector", "Classic miscellaneous character selector is invalid.")
+	if selector == 8 and (value < 1 or value > 6): return ScenarioRuntimeOperationResult.failed(&"invalid_party_position", "Classic opcode 52 exact-position selection requires a party position from 1 through 6.")
 	var candidates := _game_state.scenario_progress.selected_characters()
 	if source_mode != 2:
 		candidates = []
@@ -358,7 +357,7 @@ func _select_characters_by_misc(action: ClassicActionDefinition) -> ScenarioRunt
 			7:
 				matches = _character_has_classic_item(character, absi(value), true)
 			8:
-				matches = party.find(character) == value
+				matches = party.find(character) + 1 == value
 		if matches:
 			selected.append(character.id)
 	_game_state.scenario_progress.set_selected_character_ids(selected)
@@ -395,18 +394,20 @@ func _select_characters_by_caste(action: ClassicActionDefinition) -> ScenarioRun
 
 
 func _branch_on_picked_characters(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
-	if action.extra_code.size() < 5:
-		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 55 requires a five-value Extra Code row.")
+	if action.extra_code.size() < 5: return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 55 requires a five-value Extra Code row.")
 	var selector := action.extra_code[0]
 	var failure_behavior := action.extra_code[1]
-	if failure_behavior < 0 or failure_behavior > 2:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_picked_branch", "Classic opcode 55 has an invalid failure behavior.")
+	if failure_behavior < 0 or failure_behavior > 2: return ScenarioRuntimeOperationResult.failed(&"invalid_picked_branch", "Classic opcode 55 has an invalid failure behavior.")
 	var selected_ids := _game_state.scenario_progress.selected_character_ids()
-	var matched := not selected_ids.is_empty() if selector == 0 else selected_ids.size() == absi(selector)
-	if selector >= 1 and selector <= 6:
+	var matched := false
+	if selector == 0:
+		matched = not selected_ids.is_empty()
+	elif selector >= 1 and selector <= 6:
 		var party := _game_state.party.characters()
 		var party_index := selector - 1
 		matched = party_index < party.size() and selected_ids.has(party[party_index].id)
+	elif selector < 0:
+		matched = selected_ids.size() >= absi(selector)
 	var event := DomainEvent.new(&"picked_characters_tested", {"selector": selector, "matched": matched, "characterIds": selected_ids, "failureBehavior": failure_behavior, "source": "classic"})
 	if matched:
 		var success := _branch_xap(action.extra_code[3], action.gosub)
@@ -436,23 +437,22 @@ func _set_spellcasting_flags(action: ClassicActionDefinition) -> ScenarioRuntime
 
 
 func _branch_on_character_condition(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
-	if action.extra_code.size() < 5:
-		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 81 requires a five-value Extra Code row.")
+	if action.extra_code.size() < 5: return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 81 requires a five-value Extra Code row.")
 	var condition_index := action.extra_code[0]
 	var candidate_mode := action.extra_code[1]
-	if condition_index < 0 or condition_index >= ConditionSet.CHARACTER_COUNT:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_character_condition", "Classic opcode 81 references an invalid character condition.")
+	if condition_index < 0 or condition_index >= ConditionSet.CHARACTER_COUNT: return ScenarioRuntimeOperationResult.failed(&"invalid_character_condition", "Classic opcode 81 references an invalid character condition.")
 	var candidates: Array[CharacterState] = []
 	if candidate_mode == 0:
 		candidates = _game_state.party.characters()
 	elif candidate_mode == -1:
 		candidates = _game_state.scenario_progress.selected_characters()
-	else:
+	elif candidate_mode >= 1 and candidate_mode <= 6:
 		var party := _game_state.party.characters()
-		if candidate_mode < 0 or candidate_mode >= party.size():
-			return ScenarioRuntimeOperationResult.failed(&"invalid_party_position", "Classic opcode 81 references an unavailable source-indexed party position.")
-		candidates.append(party[candidate_mode])
-	var matched := true
+		var party_index := candidate_mode - 1
+		if party_index < party.size():
+			candidates.append(party[party_index])
+	else: return ScenarioRuntimeOperationResult.failed(&"invalid_party_position", "Classic opcode 81 requires the whole party, picked characters, or a party position from 1 through 6.")
+	var matched := not candidates.is_empty()
 	for character: CharacterState in candidates:
 		if not character.conditions.is_active(condition_index):
 			matched = false

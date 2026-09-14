@@ -26,6 +26,7 @@ func run() -> void:
 	_test_public_limits_and_errors(content)
 	_test_public_application_transitions(content); _test_public_world_state_opcodes(content); _test_public_opcode_61_land_shift(content)
 	_test_public_character_checks(content)
+	_test_corrected_character_selection_opcodes(content)
 	_test_public_action_state(content)
 	_test_aogm_dispatch_has_no_fallback(content)
 
@@ -683,7 +684,51 @@ func _test_public_character_checks(content: RealmzContent) -> void:
 	assert_equal(filtered.value, [first.id, second.id, third.id], "opcode 30 evaluates the iterated characters through the public API")
 	state.scenario_progress.set_selected_character_ids([first.id, second.id]); first.maximum_spell_points = 10; first.spell_points = 9; second.maximum_spell_points = 8; second.spell_points = 2; var spell_point_rng := ScriptedRng.new([0, 32_767, 16_384, 0, 0, 0]); var spell_point_api := RealmzRuntimeApi.new(content, state, spell_point_rng, ScenarioActionState.new()); var granted := spell_point_api.execute_classic(ClassicActionDefinition.new(0, 74, 74, 0, false, [2, 2, 4, 1, 0]), "spell-points.give"); var taken := spell_point_api.execute_classic(ClassicActionDefinition.new(0, 74, 74, 0, false, [-1, 1, 1, 0, 0]), "spell-points.take"); assert_equal([granted.state, first.spell_points, second.spell_points, taken.state, spell_point_rng.snapshot().draw_count, granted.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 2)], [ScenarioRuntimeOperationResult.State.COMPLETED, 9, 3, ScenarioRuntimeOperationResult.State.COMPLETED, 6, true], "opcode 74 rerolls per selected caster, applies only the final roll, clamps both bounds, preserves Castle's lower-bound sound identity, and consumes source-ordered RNG")
 	var castes := content.characters.caste_definitions(); var fighter := castes.filter(func(caste: CasteDefinition) -> bool: return caste.classic_id == 1)[0] as CasteDefinition; var mage := castes.filter(func(caste: CasteDefinition) -> bool: return caste.classic_id == 6)[0] as CasteDefinition; first.caste_id = fighter.id; second.caste_id = mage.id; third.caste_id = mage.id; first.gender = 1; second.gender = 2; third.gender = 2; third.current_health = 0; var males := api.execute_classic(ClassicActionDefinition.new(0, 50, 50, 0, false, [1, 1, 0, 0, 1]), "identity.male"); var magical := api.execute_classic(ClassicActionDefinition.new(0, 53, 53, 0, false, [0, 2, 1, 0, 0]), "caste.magical"); var scenario_spell := content.magic.spell_by_classic_id(1404); var cast := api.execute_classic(ClassicActionDefinition.new(0, 17, 17, 0, false, [scenario_spell.classic_id, 1, 0, 1]), "spell.selected"); state.scenario_progress.set_selected_character_ids([first.id]); var second_slot_reject := api.execute_classic(ClassicActionDefinition.new(0, 55, 55, 0, true, [2, 1, 0, 12, 13]), "picked.wrong-slot"); state.scenario_progress.set_selected_character_ids([second.id]); var second_slot_accept := api.execute_classic(ClassicActionDefinition.new(0, 55, 55, 0, true, [2, 1, 0, 12, 13]), "picked.second-slot"); state.scenario_progress.set_selected_character_ids([first.id, second.id]); var conditioned := api.execute_classic(ClassicActionDefinition.new(0, 43, 43, 0, false, [1, 2, 3, 610, 0]), "condition.feedback"); var turning_off := api.execute_classic(ClassicActionDefinition.new(0, 82, 82, 0, false, []), "turning.off"); var turning_on := api.execute_classic(ClassicActionDefinition.new(0, 83, 83, 0, false, []), "turning.on"); state.scenario_progress.set_selected_character_ids([first.id]); var cleared := api.execute_classic(ClassicActionDefinition.new(0, 53, 53, 0, false, [1, 0, 2, 0, 0]), "caste.preselected"); assert_equal([males.value, magical.value, cast.events.slice(0, 3).map(func(event: DomainEvent) -> StringName: return event.kind), cast.events[0].payload.get("soundId"), cast.events[1].payload.get("firstResourceId"), second_slot_reject.directive.target_id, second_slot_accept.directive.target_id, second_slot_accept.directive.gosub, conditioned.events.map(func(event: DomainEvent) -> StringName: return event.kind), turning_off.events[1].payload.get("soundId"), turning_on.events[1].payload.get("soundId"), cleared.value, state.scenario_progress.selected_character_ids()], [[first.id], [second.id], [&"sound_requested", &"character_effect_requested", &"scenario_spell_applied"], 690, 12096, 13, 12, true, [&"sound_requested", &"character_effect_requested", &"sound_requested", &"character_effect_requested", &"condition_applied"], 10105, 20004, [], []], "opcodes 17, 43, 50, 53, 55, 82, and 83 preserve exact identity and living-caste selection, correct Castle's specific-pick slot alias, and retain source-ordered roster spell feedback and notification sounds")
-	first.conditions.set_value(24, 2); state.scenario_progress.set_selected_character_ids([first.id]); var selected_condition := api.execute_classic(ClassicActionDefinition.new(0, 81, 81, 0, true, [24, -1, 999, 12, 13]), "condition.selected"); var whole_condition := api.execute_classic(ClassicActionDefinition.new(0, 81, 81, 0, false, [24, 0, 999, 12, 13]), "condition.whole"); var source_position := api.execute_classic(ClassicActionDefinition.new(0, 81, 81, 0, false, [24, 1, 999, 12, 13]), "condition.source-position"); assert_equal([selected_condition.directive.target_id, selected_condition.directive.gosub, whole_condition.directive.target_id, source_position.directive.target_id], [12, true, 13, 13], "opcode 81 requires every candidate to hold the condition, preserves GOSUB, and retains Castle's source-indexed specific-position behavior while ignoring its unused message slot")
+	first.conditions.set_value(24, 2); state.scenario_progress.set_selected_character_ids([first.id]); var selected_condition := api.execute_classic(ClassicActionDefinition.new(0, 81, 81, 0, true, [24, -1, 999, 12, 13]), "condition.selected"); var whole_condition := api.execute_classic(ClassicActionDefinition.new(0, 81, 81, 0, false, [24, 0, 999, 12, 13]), "condition.whole"); var first_position := api.execute_classic(ClassicActionDefinition.new(0, 81, 81, 0, false, [24, 1, 999, 12, 13]), "condition.first-position"); assert_equal([selected_condition.directive.target_id, selected_condition.directive.gosub, whole_condition.directive.target_id, first_position.directive.target_id], [12, true, 13, 12], "opcode 81 requires every candidate to hold the condition, preserves GOSUB, maps authored position one to the top character, and ignores its unused message slot")
+
+
+func _test_corrected_character_selection_opcodes(content: RealmzContent) -> void:
+	var characters: Array[CharacterState] = []
+	for index: int in 6:
+		characters.append(CharacterState.new("corrected.character.%d" % (index + 1), "Corrected %d" % (index + 1), 10, 10))
+	characters[2].current_health = 0
+	var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, characters), RealmzClock.new())
+	var rng := ScriptedRng.new([0, 32_767, 0, 32_767, 0, 32_767])
+	var api := RealmzRuntimeApi.new(content, state, rng, ScenarioActionState.new())
+	var selected_ids: Array[String] = [characters[1].id, characters[3].id]
+	state.scenario_progress.set_selected_character_ids(selected_ids)
+	var picked_exact := api.execute_classic(ClassicActionDefinition.new(0, 52, 52, 0, false, [8, 4, 2, 0, 0]), "misc.picked-exact")
+	assert_equal([picked_exact.value, state.scenario_progress.selected_character_ids(), rng.snapshot().draw_count], [[characters[3].id], [characters[3].id], 0], "opcode 52 snapshots Picked Only and applies one-based exact-position selection without RNG")
+	state.scenario_progress.set_selected_character_ids(selected_ids)
+	var invalid_exact := api.execute_classic(ClassicActionDefinition.new(0, 52, 52, 0, false, [8, 0, 0, 0, 0]), "misc.invalid-exact")
+	assert_equal([invalid_exact.error_code, state.scenario_progress.selected_character_ids(), rng.snapshot().draw_count], [&"invalid_party_position", selected_ids, 0], "opcode 52 rejects invalid exact positions atomically")
+	var first_two_ids: Array[String] = [characters[0].id, characters[1].id]
+	state.scenario_progress.set_selected_character_ids(first_two_ids)
+	var picked_random := api.execute_classic(ClassicActionDefinition.new(0, 52, 52, 0, false, [3, 100, 2, 0, 0]), "misc.picked-random")
+	assert_equal([picked_random.value, rng.snapshot().draw_count], [[characters[0].id, characters[1].id], 2], "opcode 52 draws only for the incoming Picked Only candidates")
+	for position: int in 6:
+		var positioned_id: Array[String] = [characters[position].id]
+		state.scenario_progress.set_selected_character_ids(positioned_id)
+		var positioned := api.execute_classic(ClassicActionDefinition.new(0, 55, 55, 0, true, [position + 1, 1, 0, 12, 13]), "picked.position.%d" % (position + 1))
+		assert_equal([positioned.directive.target_id, positioned.directive.gosub], [12, true], "opcode 55 maps authored party position %d" % (position + 1))
+	var first_three_ids: Array[String] = [characters[0].id, characters[1].id, characters[2].id]
+	state.scenario_progress.set_selected_character_ids(first_three_ids)
+	for threshold_case: Array in [[-2, 12], [-3, 12], [-4, 13], [25, 13]]:
+		var threshold := api.execute_classic(ClassicActionDefinition.new(0, 55, 55, 0, false, [threshold_case[0], 1, 0, 12, 13]), "picked.threshold.%d" % threshold_case[0])
+		assert_equal(threshold.directive.target_id, threshold_case[1], "opcode 55 applies documented threshold or safe unsupported-positive behavior for %d" % threshold_case[0])
+	characters[0].conditions.set_value(24, 1); characters[5].conditions.set_value(24, 1)
+	for position_case: Array in [[1, 12], [6, 12]]:
+		var condition := api.execute_classic(ClassicActionDefinition.new(0, 81, 81, 0, false, [24, position_case[0], 0, 12, 13]), "condition.position.%d" % position_case[0])
+		assert_equal(condition.directive.target_id, position_case[1], "opcode 81 maps authored one-based position %d" % position_case[0])
+	var no_ids: Array[String] = []
+	state.scenario_progress.set_selected_character_ids(no_ids)
+	var empty_picked := api.execute_classic(ClassicActionDefinition.new(0, 81, 81, 0, false, [24, -1, 0, 12, 13]), "condition.empty-picked")
+	var invalid_condition := api.execute_classic(ClassicActionDefinition.new(0, 81, 81, 0, false, [24, 7, 0, 12, 13]), "condition.invalid-position")
+	assert_equal([empty_picked.directive.target_id, invalid_condition.error_code], [13, &"invalid_party_position"], "opcode 81 makes an empty picked set false and rejects unsupported positions")
+	var short_state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [characters[0]]), RealmzClock.new())
+	var short_api := RealmzRuntimeApi.new(content, short_state, RealmzRng.new(1), ScenarioActionState.new())
+	var missing_position := short_api.execute_classic(ClassicActionDefinition.new(0, 81, 81, 0, false, [24, 6, 0, 12, 13]), "condition.unoccupied-position")
+	assert_equal(missing_position.directive.target_id, 13, "opcode 81 safely fails an unoccupied valid party position")
 
 
 func _test_public_action_state(content: RealmzContent) -> void:

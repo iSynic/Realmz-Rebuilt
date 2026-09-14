@@ -2,7 +2,7 @@
   "opcode": 81,
   "castleSource": "src/realmz_orig/newland.c case 81",
   "divinitySource": "public/divinity-manual/index.html, Code 81 Branch on Character Condition",
-  "runtimeContract": "Start matched, require every character in the whole-party or picked set to have the condition, or test Castle's directly indexed party position, then branch to the success or failure XAP with the authored GOSUB flag.",
-  "sourceQuirks": "Castle directly indexes positive candidate modes even though Divinity labels one as the top character, and never reads the documented failure-message field. Empty picked sets remain matched.",
+  "runtimeContract": "Require every character in the whole-party, nonempty picked set, or documented one-based party position to have the condition, then branch to the success or failure XAP with the authored GOSUB flag.",
+  "sourceQuirks": "Castle directly indexes positive candidate modes even though Divinity labels one as the top character, permits an out-of-bounds sixth position, never reads the documented failure-message field, and treats an empty picked set as matched. Realmz 2.0 intentionally corrects the indexing and empty-set defects under FD-SCENARIO-004.",
   "determinism": "The operation consumes no RNG and reads only save-owned character conditions and selected identities."
 }

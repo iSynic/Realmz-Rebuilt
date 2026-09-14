@@ -1,0 +1,27 @@
+{
+  "formatVersion": 1,
+  "decisionId": "FD-SCENARIO-004",
+  "evidence": "source-control-flow-and-shipped-binary",
+  "castleCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "castleSourceSha256": "77d06c03bedfe520127bb6ed113c22b0573c11012db956cec3ceee967d816198",
+  "classicCode1Sha256": "bde1ccce02db19486dd8b672589eaf67ca848c3d2e499559d50f32a831a798fd",
+  "divinityHelpSha256": "5b64e4a436ab3977e9d35fcedd0cf69bf7a8d4e67b276ed9757a6b5601250728",
+  "opcodes": {
+    "52": {
+      "authored": "Source mode 2 evaluates only the incoming picked characters; exact-position selector 8 uses positions 1 through 6.",
+      "castleDefect": "A second clear erases the picked set before source-mode-2 eligibility, and exact positions are indexed without validation.",
+      "chosenResult": "Snapshot eligible picked identities before replacement and validate exact one-based positions without adding a new RNG path."
+    },
+    "55": {
+      "authored": "Zero means any picked, 1 through 6 select one party position, and negative N means at least N picked.",
+      "castleDefect": "All six position cases read track zero and non-position values use exact absolute-count equality.",
+      "chosenResult": "Use one-based positions, negative at-least thresholds, and the authored failure path for unsupported positive selectors."
+    },
+    "81": {
+      "authored": "Zero means the whole party, minus one means picked characters, and 1 through 6 mean one-based party positions.",
+      "castleDefect": "Positive values are used as zero-based indexes and an empty picked set succeeds vacuously.",
+      "chosenResult": "Use one-based positions, fail empty picked and valid unoccupied sets, and reject unsupported selectors before indexing."
+    }
+  },
+  "excludedUnresolvedOpcodes": [7, 13, 30, 74]
+}
