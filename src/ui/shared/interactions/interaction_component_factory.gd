@@ -100,7 +100,7 @@ static func _create_workspace_component(kind: StringName, game_view: GameView, m
 			var pick_lock := (load(PICK_LOCK_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as PickLockInteraction
 			pick_lock.configure(media)
 			return pick_lock
-		&"shop_action", &"temple_action": return _create_service_component(kind, media, compact)
+		&"shop_action", &"temple_action": return _create_service_component(kind, game_view, media, compact)
 		&"bank_action", &"pooled_wealth_departure":
 			var bank := (load(BANK_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as BankInteraction
 			bank.configure(compact)
@@ -108,10 +108,10 @@ static func _create_workspace_component(kind: StringName, game_view: GameView, m
 	return null
 
 
-static func _create_service_component(kind: StringName, media: ClassicMediaCatalog, compact: bool) -> InteractionComponent:
+static func _create_service_component(kind: StringName, game_view: GameView, media: ClassicMediaCatalog, compact: bool) -> InteractionComponent:
 	if kind == &"shop_action":
 		var shop := (load(SHOP_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as ShopInteraction
-		shop.configure(media, compact)
+		shop.configure(media, game_view, compact)
 		return shop
 	var temple := (load(TEMPLE_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as TempleInteraction
 	temple.configure(media, compact)

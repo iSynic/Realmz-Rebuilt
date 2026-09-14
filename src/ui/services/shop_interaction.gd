@@ -26,9 +26,12 @@ const STOCK_FILTERS: Array[Dictionary] = [
 @export var item_row_scene: PackedScene
 @export var character_button_scene: PackedScene
 @export var empty_label_scene: PackedScene
+@export var inventory_workspace_scene: PackedScene
+@export var money_workspace_scene: PackedScene
 
 var _compact := false
 var _media: ClassicMediaCatalog
+var _game_view: GameView
 var _body: ShopRequestBody
 var _characters: Array[InteractionRequestValue.ServiceCharacter] = []
 var _stock: Array[InteractionRequestValue.ShopStock] = []
@@ -62,10 +65,17 @@ var _browser: Control
 var _row_height: float
 var _route_size: Vector2
 var _scroll_height: float
+var _inventory_controller: InventoryScreenController
+var _inventory_workspace: VBoxContainer
+var _money_controller: ServicesScreenController
+var _money_workspace: VBoxContainer
+var _inventory_focus := WorkspaceFocusController.new()
+var _money_focus := WorkspaceFocusController.new()
 
 
-func configure(media: ClassicMediaCatalog, compact: bool) -> void:
+func configure(media: ClassicMediaCatalog, game_view: GameView, compact: bool) -> void:
 	_media = media
+	_game_view = game_view
 	_compact = compact
 
 
@@ -178,11 +188,13 @@ func _refresh_stock() -> void:
 		icon.configure(entry.icon_resource_type, entry.icon_id, _media, _row_height, entry.name)
 		var button := row.get_node("%ItemButton") as ClassicExchangeItemButton
 		button.name = "Stock_%s" % entry.stock_key.replace(":", "_").replace(".", "_")
+		button.set_meta("operation", "shop-stock:%s" % entry.stock_key)
 		button.text = "%s\n%d gold  •  %d left" % [entry.name, entry.buy_price, entry.quantity]
 		button.custom_minimum_size.y = _row_height
 		button.button_group = _stock_group
 		button.button_pressed = _selected_stock != null and _selected_stock.stock_key == entry.stock_key
 		button.pressed.connect(_select_stock.bind(entry.stock_key))
+		button.focus_entered.connect(_select_stock.bind(entry.stock_key))
 		button.configure_drag({"kind": &"shop-stock-item", "sourceId": "shop", "stockKey": entry.stock_key})
 		_detail_popover.bind_hover(icon, _stock_detail(entry))
 		_detail_popover.bind_hover(button, _stock_detail(entry))
@@ -205,8 +217,8 @@ func _bind_footer() -> void:
 	_identify_button.pressed.connect(_submit_identify)
 	%ShopDone.pressed.connect(_submit_leave)
 	_configure_route_button(%ShopKeeperRestore, "Shop Keeper", &"command.shop_original", func() -> void: _select_category(_selected_category), {"asset_path": "res://src/ui/shared/assets/ui/commands/shop.png"})
-	_configure_route_button(%ShopItems, "Items", &"command.inventory", _show_items, {"art_region": [5, 2, 36, 34], "art_clear_regions": [[0, 4, 4, 8]]})
-	_configure_route_button(%ShopMoney, "Money", &"command.money", _show_money, {"art_region": [5, 5, 35, 31], "art_clear_regions": [[0, 0, 8, 8]]})
+	_configure_route_button(%ShopItems, "Items", &"command.inventory", _show_workspace.bind(&"items"), {"art_region": [5, 2, 36, 34], "art_clear_regions": [[0, 4, 4, 8]]})
+	_configure_route_button(%ShopMoney, "Money", &"command.money", _show_workspace.bind(&"money"), {"art_region": [5, 5, 35, 31], "art_clear_regions": [[0, 0, 8, 8]]})
 	_apply_profile_sizes()
 	_selection_summary = _item_description
 
@@ -449,11 +461,13 @@ func _inventory_row(character: InteractionRequestValue.ServiceCharacter, item: I
 	icon.configure(item.icon_resource_type, item.icon_id, _media, _row_height, item.name)
 	var button := row.get_node("%ItemButton") as ClassicExchangeItemButton
 	button.name = "%s_%s" % [prefix, item.instance_id.replace(".", "_")]
+	button.set_meta("item_instance_id", item.instance_id)
 	button.text = "%s\n%s  •  sell %d gold" % [item.name, "Equipped" if item.equipped else "Carried", item.sell_price]
 	button.custom_minimum_size.y = _row_height
 	button.button_group = _inventory_group
 	button.button_pressed = _selected_item != null and _selected_item.instance_id == item.instance_id and _selected_item_owner_id == character.id
 	button.pressed.connect(_select_item.bind(character.id, item.instance_id))
+	button.focus_entered.connect(_select_item.bind(character.id, item.instance_id))
 	button.configure_drag({"kind": &"shop-inventory-item", "sourceId": character.id, "instanceId": item.instance_id})
 	_detail_popover.bind_hover(icon, _inventory_detail(item))
 	_detail_popover.bind_hover(button, _inventory_detail(item))
@@ -482,21 +496,54 @@ func _refresh_shopper_facts() -> void:
 	_right_load.text = ("Shop\nStock %d" if _compact else "Shop Keeper\nStock %d") % _stock.size() if right == null else "Load\n%d / %d\nItems %d" % [right.load, right.maximum_load, right.inventory.size()]
 
 
-func _show_items() -> void:
-	var character := _character_by_id(_selected_character_id)
-	_selected_stock = null
-	_selected_item = null
-	_selected_item_owner_id = ""
-	_refresh_inspector()
-	_item_description.text = "%s carries %d item%s. Select a row in the left ledger to inspect or trade it." % [character.name, character.inventory.size(), "" if character.inventory.size() == 1 else "s"] if character != null else "No adventurer is selected."
+func _show_workspace(kind: StringName) -> void:
+	var is_items := kind == &"items"
+	var scene := inventory_workspace_scene if is_items else money_workspace_scene
+	if _game_view == null or scene == null:
+		presentation_status_requested.emit("The party %s workspace is unavailable." % ("Items" if is_items else "Money"), true)
+		return
+	if is_items:
+		_inventory_controller = InventoryScreenController.new()
+		_inventory_controller.set_layout_profile(UiLayoutProfile.COMPACT if _compact else UiLayoutProfile.WIDE)
+		_inventory_workspace = scene.instantiate() as VBoxContainer
+		_inventory_workspace.name = "ShopItemsWorkspace"
+		_inventory_controller.refresh_requested.connect(_refresh_workspace.bind(kind))
+		_inventory_controller.back_requested.connect(func() -> void:
+			application_workspace_closed.emit()
+			_inventory_controller = null
+			_inventory_workspace = null
+		)
+		_refresh_workspace(kind)
+		application_workspace_requested.emit(_inventory_workspace)
+		if _inventory_workspace.is_inside_tree(): Callable(_inventory_focus, "focus_first").call_deferred(_inventory_workspace)
+		return
+	_money_controller = ServicesScreenController.new()
+	_money_controller.set_layout_profile(UiLayoutProfile.COMPACT if _compact else UiLayoutProfile.WIDE)
+	_money_workspace = scene.instantiate() as VBoxContainer
+	_money_workspace.name = "ShopMoneyWorkspace"
+	_money_controller.refresh_requested.connect(_refresh_workspace.bind(kind))
+	_money_controller.back_requested.connect(func() -> void:
+		application_workspace_closed.emit()
+		_money_controller = null
+		_money_workspace = null
+	)
+	_refresh_workspace(kind)
+	application_workspace_requested.emit(_money_workspace)
+	if _money_workspace.is_inside_tree(): Callable(_money_focus, "focus_first").call_deferred(_money_workspace)
 
 
-func _show_money() -> void:
-	_selected_stock = null
-	_selected_item = null
-	_selected_item_owner_id = ""
-	_refresh_inspector()
-	_item_description.text = "The party has %d gold available for this shop." % _body.party_gold
+func _refresh_workspace(kind: StringName) -> void:
+	var is_items := kind == &"items"
+	var workspace: VBoxContainer = _inventory_workspace if is_items else _money_workspace
+	if workspace == null or not is_instance_valid(workspace): return
+	var focus := _inventory_focus if is_items else _money_focus
+	var route := &"shop-items" if is_items else &"shop-money"
+	var mounted := workspace.is_inside_tree()
+	if mounted: focus.store(workspace, workspace, route)
+	if is_items: _inventory_controller.present_browse(workspace, _game_view, _media, 1.0, "Return to the Shop before changing carried items.")
+	else: _money_controller.present_browse(workspace, _game_view, _media, "Return to the Shop before changing party wealth.")
+	focus.prepare(workspace, route)
+	if mounted: Callable(focus, "restore").call_deferred(workspace, workspace, null, route, false, 0, 0)
 
 
 func _facts_text(facts: Array[InteractionRequestValue.ItemDetailFact], extra_label: String, extra_value: String) -> String:

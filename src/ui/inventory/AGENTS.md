@@ -19,9 +19,11 @@
 - Stable panels, headings, actions, details, empty states, and Trade regions belong in `.tscn` scenes. Variable party, item, fact, portrait, and Trade rows instantiate only exported component scenes.
 - Inventory displays only detached `ItemView` facts and rules-owned availability. It never reconstructs hidden identity, curse, capacity, price, equipment, or transfer rules.
 - Selecting another item preserves the current ledger scroll position; selecting another character starts that character's ledger at the top.
+- Controller focus and selected-item identity are unified: moving focus onto an item refreshes its selected row, actions, and inspector by stable item identity, while the dark ledger focus text remains readable. Every portrait in the integrated character selector accepts directional controller focus.
 - Ordinary Done remains inside the lower item inspector. Trade retains fixed Money, Items, Transfer, and Done actions; Transfer commits only the currently explicit exact-item and opposite-pack destination selection.
 - At 800x600, ordinary Inventory retains the horizontal browser/command split, four action columns, and a horizontal lower item record so the integrated Done remains in the initial viewport.
 - Encounter item selection reuses the complete workspace, admits only request-owned character and item identities, and returns the supplied Classic identity without revealing it. A live 1280x720-to-800x600 resize reflows the retained browser, command rail, inspector, and persistent Back action without reconstructing the task.
+- A Shop-owned browse presentation reuses the same complete workspace with a visible Back to shop action. It keeps inspection and character selection active but disables ordinary item mutations with the exact Shop-ownership reason.
 - Trade uses two independently selected ledgers and exact-instance cross-ledger drops plus controller-accessible exact item selection followed by an explicit opposite-pack Transfer. Presentation does not preselect or infer a destination.
 - Trade inspection never swaps the selected packs. Each character's Trade ledger retains its own scroll offset across inspection and transfer refreshes; occupied rows, icons, and unused ledger space all accept the same rules-checked drop.
 

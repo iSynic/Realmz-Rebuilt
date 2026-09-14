@@ -263,7 +263,10 @@ func _test_controller_radial_pages_and_explicit_commit() -> void:
 	assert_equal(shell.controller.selected_top_menu_label(), "Quit", "held entry navigation clamps at the final command instead of wrapping")
 	shell.controller.confirm_top_menu(); assert_equal([quit_count[0], shell.controller.top_menu_is_open()], [1, false], "South dispatches the selected controller menu command exactly once and releases menu ownership"); assert_true(shell.controller.open_top_menu() and shell.controller.move_top_menu(Vector2i.DOWN) and shell.controller.back_top_menu() and shell.controller.back_top_menu(), "East cancels the entry and heading levels independently")
 	var activated: Array[StringName] = []; assert_true(shell.controller.open_interaction_radial([ControllerRadialEntry.new(&"speak", "Speak")], func(command_id: StringName) -> void: activated.append(command_id)), "an interaction can claim the shared action radial"); shell.controller.confirm_radial(); assert_equal(activated, [&"speak"], "confirming an interaction radial retains and invokes its interaction owner")
-	host.free()
+	var hold_view := GameView.new(1, true, null); hold_view.campaign_id = "controller-hold"; hold_view.campaign_summary = CampaignSummaryView.new(); hold_view.party_members = [CharacterView.new(CharacterState.new("hero", "Hero", 10, 10))]; hold_view.set_action_availability(&"rest", true); hold_view.set_action_availability(&"heal", true)
+	var intents: Array[PlayerIntent] = []; shell.intent_submitted.connect(func(intent: PlayerIntent) -> void: intents.append(intent)); shell.present(hold_view); await (Engine.get_main_loop() as SceneTree).process_frame
+	assert_true(shell.commands.activate_controller(&"rest") and intents.size() == 1 and intents[0].kind == PlayerIntent.Kind.REST, "confirming Rest through the radial begins its ordinary held-command owner with one immediate pulse"); shell.commands.call("_on_timeout"); assert_equal(intents.size(), 2, "a held radial Rest repeats through the same presentation cadence as its footer button"); shell.controller.release_controller_hold(); shell.commands.call("_on_timeout"); assert_equal(intents.size(), 2, "releasing controller Confirm ends the radial-held command without another pulse")
+	host.free(); await (Engine.get_main_loop() as SceneTree).process_frame
 
 
 func _test_persistent_auto_continuation() -> void:

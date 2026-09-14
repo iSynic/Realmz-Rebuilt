@@ -209,6 +209,7 @@ class ControllerAccess:
 		else: _shell._controller_radial.next_page()
 	func scroll_radial(direction: Vector2i) -> void: _shell._controller_radial.scroll_reason(direction)
 	func confirm_radial() -> void: _shell._controller_radial.confirm_selected()
+	func release_controller_hold() -> void: _shell._command_controller.release_controller_hold()
 	func cancel_radial() -> bool:
 		if not _shell._controller_radial.is_open(): return false
 		_shell._controller_radial.cancel()

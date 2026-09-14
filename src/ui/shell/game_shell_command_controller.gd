@@ -11,6 +11,7 @@ const SEARCH_BUTTON_SCRIPT := preload("res://src/ui/exploration/classic_search_c
 var _owner_ref: WeakRef
 var _buttons: Dictionary = {}
 var _held_command: StringName = &""
+var _held_command_source: StringName = &""
 var _timer: Timer
 
 
@@ -171,7 +172,10 @@ func activate_controller(command_id: StringName) -> bool:
 	var button := _buttons.get(command_id) as BaseButton
 	if button == null or button.disabled:
 		return false
-	activate(command_id)
+	if bool(ClassicCommandCatalog.command(command_id).get("hold_repeat", false)):
+		_begin_held_command(command_id, &"controller")
+	else:
+		activate(command_id)
 	return true
 
 
@@ -257,8 +261,9 @@ func contextual_service() -> ServiceView:
 	return null
 
 
-func _begin_held_command(command_id: StringName) -> void:
+func _begin_held_command(command_id: StringName, source: StringName = &"pointer") -> void:
 	_held_command = command_id
+	_held_command_source = source
 	activate(command_id)
 	if not _held_command.is_empty():
 		_timer.start()
@@ -274,6 +279,7 @@ static func command_activation_sound_id(command_id: StringName, held_repeat: boo
 
 func _stop_held_command() -> void:
 	_held_command = &""
+	_held_command_source = &""
 	if _timer != null:
 		_timer.stop()
 	update_availability()
@@ -290,6 +296,11 @@ static func should_stop_held_command_on_button_up(left_mouse_pressed: bool) -> b
 
 func release() -> void:
 	_stop_held_command()
+
+
+func release_controller_hold() -> void:
+	if _held_command_source == &"controller":
+		_stop_held_command()
 
 
 func _on_timeout() -> void:

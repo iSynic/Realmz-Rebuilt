@@ -53,6 +53,7 @@ var _item_scroll_position: int = 0
 var _trade_scroll_positions: Dictionary[String, int] = {}
 var _trade_item_owner_id: String = ""
 var _trade_item_instance_id: String = ""
+var _browse_only_reason: String = ""
 
 
 func set_layout_profile(profile_id: StringName) -> void:
@@ -78,11 +79,13 @@ func reset() -> void:
 	_trade_scroll_positions.clear()
 	_trade_item_owner_id = ""
 	_trade_item_instance_id = ""
+	_browse_only_reason = ""
 
 
 func present(target: Control, view: GameView, media: ClassicMediaCatalog, text_scale: float) -> void:
 	if target == null:
 		return
+	_browse_only_reason = ""
 	_encounter_mode = false
 	_encounter_items.clear()
 	if target is InventoryScreen:
@@ -92,7 +95,19 @@ func present(target: Control, view: GameView, media: ClassicMediaCatalog, text_s
 	_present(target as VBoxContainer, view, media, text_scale)
 
 
+func present_browse(target: Control, view: GameView, media: ClassicMediaCatalog, text_scale: float, reason: String) -> void:
+	if target == null:
+		return
+	_browse_only_reason = reason
+	_encounter_mode = false
+	_encounter_items.clear()
+	_trade_mode = false
+	_clear_pending_action()
+	_present(target as VBoxContainer, view, media, text_scale)
+
+
 func present_encounter(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog, text_scale: float, entries: Array[InteractionRequestValue.EncounterCatalogEntry]) -> void:
+	_browse_only_reason = ""
 	_encounter_mode = true
 	_encounter_items.clear()
 	for entry: InteractionRequestValue.EncounterCatalogEntry in entries:
@@ -178,7 +193,8 @@ func _present_empty(workspace: InventoryWorkspace, title: String, detail: String
 	empty.bind(title, detail, show_done)
 	_scene_binding.clear_pressed_connections(empty.done_button())
 	if show_done:
-		empty.done_button().pressed.connect(_request_inventory_back)
+		empty.done_button().text = "Back to shop" if not _browse_only_reason.is_empty() else "Done"
+		empty.done_button().pressed.connect(func() -> void: back_requested.emit())
 	host.add_child(empty)
 
 
@@ -190,6 +206,7 @@ func _bind_character_selector(selector: InventoryCharacterSelector, view: GameVi
 	for character: CharacterView in characters:
 		var button := selector.character_button_scene.instantiate() as Button
 		button.name = "InventoryCharacter_%s" % character.id
+		button.set_meta("character_id", character.id)
 		button.text = character.name if characters.size() == 1 else ""
 		button.icon = _scene_binding.appearance_texture(character.portrait_id, media)
 		button.button_pressed = character.id == selected.id
@@ -258,10 +275,15 @@ func _bind_item_browser(content: InventoryItemBrowser, character: CharacterView,
 		icon.configure(item.icon_resource_type, item.icon_id, media, 38.0, item.name)
 		var button := row_panel.get_node("Row/ItemText/SelectItem") as Button
 		button.name = "InventoryItem_%s" % item.instance_id
+		button.set_meta("item_instance_id", item.instance_id)
 		button.button_pressed = selected != null and selected.instance_id == item.instance_id
 		button.text = item.name
 		button.tooltip_text = "%s%s" % ["Equipped" if item.equipped else "Carried", " • %d charges" % item.charges if item.charges > 0 else ""]
 		button.pressed.connect(_select_item.bind(item.instance_id))
+		button.focus_entered.connect(func() -> void:
+			if item.instance_id != _selected_item_instance_id:
+				_select_item(item.instance_id)
+		)
 		var line_fact := InventoryItemText.line_fact(item)
 		var fact_label := row_panel.get_node("Row/ItemText/InventoryItemLineFact") as Label
 		fact_label.visible = line_fact != null
@@ -316,17 +338,14 @@ func _bind_item_record(content: InventoryItemInspector, character: CharacterView
 	var done := content.done_column().done_button()
 	_scene_binding.clear_pressed_connections(done)
 	if not _encounter_mode:
-		done.pressed.connect(_request_inventory_back)
+		done.text = "Back to shop" if not _browse_only_reason.is_empty() else "Done"
+		done.pressed.connect(func() -> void: back_requested.emit())
 	if item == null:
 		record.show_empty("Select an item to inspect it.")
 		return
 	record.show_record()
 	_render_item_detail(record, item, character, media)
 	_render_item_facts(record, item)
-
-
-func _request_inventory_back() -> void:
-	back_requested.emit()
 
 
 func _bind_trade_item_record(record: InventorySelectedItemRecord, character: CharacterView, item: ItemView, media: ClassicMediaCatalog) -> void:
@@ -366,6 +385,15 @@ func _render_item_actions(panel: InventoryActionPanel, view: GameView, item: Ite
 		var choose := panel.encounter_button()
 		_bind_bitmap_button(choose, &"inventory.action.use", "Use in encounter")
 		choose.command_requested.connect(func(_command_id: StringName) -> void: _submit_encounter_item(character.id, item.instance_id))
+		return
+	if not _browse_only_reason.is_empty():
+		panel.show_actions(false)
+		var browse_actions: Array[Array] = [[panel.action_button("EquippedAction"), &"inventory.action.equipped", "Unequip" if item.equipped else "Equip"], [panel.action_button("UseAction"), &"inventory.action.use", "Use"], [panel.action_button("IdentifyAction"), &"inventory.action.identify", "Identify"], [panel.action_button("TradeAction"), &"inventory.action.trade", "Trade"], [panel.action_button("JoinAction"), &"inventory.action.join", "Join"], [panel.action_button("SplitAction"), &"inventory.action.split", "Split"], [panel.action_button("DropAction"), &"inventory.action.drop", "Drop"]]
+		for spec: Array in browse_actions:
+			var browse_button := spec[0] as ClassicBitmapButton
+			_bind_bitmap_button(browse_button, spec[1], spec[2])
+			browse_button.disabled = true
+			browse_button.tooltip_text = _browse_only_reason
 		return
 	if not _pending_item_action.is_empty():
 		_render_operation_stage(panel, item, character)

@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://src/ui/services/shop_interaction.gd" id="1_interaction"]
 [ext_resource type="Script" path="res://src/ui/shared/exchange/classic_exchange_ledger.gd" id="2_ledger"]
@@ -7,6 +7,8 @@
 [ext_resource type="PackedScene" path="res://src/ui/services/shop_character_button.tscn" id="5_character_button"]
 [ext_resource type="PackedScene" path="res://src/ui/services/shop_empty_label.tscn" id="6_empty_label"]
 [ext_resource type="PackedScene" path="res://src/ui/inventory/classic_item_detail_popover.tscn" id="7_popover"]
+[ext_resource type="PackedScene" path="res://src/ui/inventory/inventory_workspace.tscn" id="8_inventory_workspace"]
+[ext_resource type="PackedScene" path="res://src/ui/services/services_workspace.tscn" id="9_money_workspace"]
 
 [node name="ShopInteraction" type="VBoxContainer"]
 size_flags_horizontal = 3
@@ -16,6 +18,8 @@ script = ExtResource("1_interaction")
 item_row_scene = ExtResource("4_item_row")
 character_button_scene = ExtResource("5_character_button")
 empty_label_scene = ExtResource("6_empty_label")
+inventory_workspace_scene = ExtResource("8_inventory_workspace")
+money_workspace_scene = ExtResource("9_money_workspace")
 
 [node name="ShopHeader" type="HBoxContainer" parent="."]
 layout_mode = 2

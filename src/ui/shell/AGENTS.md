@@ -25,7 +25,7 @@ Own the persistent Godot composition that surrounds every Realmz playthrough and
 - Route-local controllers own workspace content. The navigator may mount them but must not call their private methods or absorb their rendering logic.
 - Every route refresh invalidates queued focus restoration before mounting or emitting route changes, including Exploration and Combat shell modes with no workspace body.
 - System preferences emit only host-owned presentation-setting changes and never alter Classic rules. Save and load actions remain typed application-host requests.
-- Held Rest and Area Search cadence consults `GameShellStatusController.is_field_time_playback_active()` so command repetition waits for the authoritative intermediate clock presentation without reaching into shell-private state.
+- Held Rest, Heal, and Area Search cadence consults `GameShellStatusController.is_field_time_playback_active()` so command repetition waits for the authoritative intermediate clock presentation without reaching into shell-private state. Confirming Rest or Heal from the action radial transfers the held-command owner to controller South until its release, using the same immediate pulse and timer as the footer control.
 - Adjacent movement and combat playback update retained presenters and controls; scene instantiation occurs only at application or route transitions.
 - A detached complete-refresh request always takes the full shell presentation path, even when restored domain revisions resemble an ordinary movement update; the roster must bind the restored view at that boundary.
 - Party-effect presentation treats borrowed condition arrays as read-only across repeated, replacement and inactive refreshes.

@@ -5,6 +5,7 @@ extends RefCounted
 signal intent_submitted(intent: PlayerIntent)
 signal route_requested(screen_id: StringName)
 signal refresh_requested
+signal back_requested
 
 const GOLD := Color("d5b45d")
 const TEXT := Color("e0e2e5")
@@ -16,6 +17,7 @@ var _text_scale: float = 1.0
 var _layout_profile: StringName = UiLayoutProfile.WIDE
 var _media: ClassicMediaCatalog
 var _workspace: ServicesWorkspace
+var _browse_only_reason: String = ""
 
 
 func set_text_scale(scale: float) -> void:
@@ -27,6 +29,16 @@ func set_layout_profile(profile_id: StringName) -> void:
 
 
 func present(target: Control, view: GameView, media: ClassicMediaCatalog = null) -> void:
+	_browse_only_reason = ""
+	_present(target, view, media, true)
+
+
+func present_browse(target: Control, view: GameView, media: ClassicMediaCatalog, reason: String) -> void:
+	_browse_only_reason = reason
+	_present(target, view, media, false)
+
+
+func _present(target: Control, view: GameView, media: ClassicMediaCatalog, include_location_services: bool) -> void:
 	if target == null or view == null:
 		return
 	_media = media
@@ -42,7 +54,8 @@ func present(target: Control, view: GameView, media: ClassicMediaCatalog = null)
 		_workspace.prepare(_layout_profile == UiLayoutProfile.COMPACT)
 	if not _bind_money_workspace(view):
 		return
-	_bind_location_services(view)
+	if include_location_services:
+		_bind_location_services(view)
 
 
 func _bind_money_workspace(view: GameView) -> bool:
@@ -123,7 +136,14 @@ func _bind_exchange(view: GameView, money: MoneyWorkspaceView) -> void:
 	)
 	for transfer: MoneyTransferView in selected.transfers:
 		_bind_transfer(view, selected, transfer)
-	_bind_button(pane.get_node("Content/MoneyDone") as Button, func() -> void: route_requested.emit(&"exploration"))
+	var done := pane.get_node("Content/MoneyDone") as Button
+	done.text = "Back to shop" if not _browse_only_reason.is_empty() else "Done"
+	_bind_button(done, func() -> void:
+		if not _browse_only_reason.is_empty():
+			back_requested.emit()
+		else:
+			route_requested.emit(&"exploration")
+	)
 
 
 func _bind_character_picker(money: MoneyWorkspaceView) -> void:
@@ -185,6 +205,10 @@ func _bind_location_services(view: GameView) -> void:
 
 func _bind_money_action(button: Button, view: GameView, local: ActionAvailabilityView, intent: PlayerIntent) -> void:
 	_clear_pressed_connections(button)
+	if not _browse_only_reason.is_empty():
+		button.disabled = true
+		button.tooltip_text = _browse_only_reason
+		return
 	var workspace_availability := view.availability(&"money_action")
 	button.disabled = not workspace_availability.enabled or local == null or not local.enabled
 	if not workspace_availability.enabled:
