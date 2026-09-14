@@ -85,7 +85,14 @@ func cancel_binding_capture() -> void:
 
 func handle_input(event: InputEvent) -> bool:
 	if not event is InputEventJoypadButton and not event is InputEventJoypadMotion:
-		return false
+		if not _suspended or not ControllerInputRecovery.is_deliberate_external_input(event):
+			return false
+		ControllerInputRecovery.refresh_connected_axes(_active_device, _axis_values)
+		if _awaiting_neutral and _all_axes_neutral():
+			_suspended = false
+			_awaiting_neutral = false
+			input_resumed.emit()
+		return true
 	if _is_deliberate_takeover(event):
 		input_observed.emit(_input_summary(event))
 	if not _capture_action.is_empty():
@@ -98,15 +105,16 @@ func handle_input(event: InputEvent) -> bool:
 		_set_active_device(device)
 	elif _active_device < 0 and _is_deliberate_takeover(event):
 		_set_active_device(device)
-	if device != _active_device:
-		return false
+	if device != _active_device: return false
 	if event is InputEventJoypadMotion:
 		_axis_values[(event as InputEventJoypadMotion).axis] = (event as InputEventJoypadMotion).axis_value
 	if _suspended:
-		if _awaiting_neutral and _all_axes_neutral() and event is InputEventJoypadButton and (event as InputEventJoypadButton).pressed:
-			_suspended = false
-			_awaiting_neutral = false
-			input_resumed.emit()
+		if _awaiting_neutral and event is InputEventJoypadButton and (event as InputEventJoypadButton).pressed:
+			ControllerInputRecovery.refresh_connected_axes(_active_device, _axis_values)
+			if _all_axes_neutral():
+				_suspended = false
+				_awaiting_neutral = false
+				input_resumed.emit()
 		return true
 	var consumed := false
 	for descriptor: Dictionary in _preferences.bindings:
@@ -273,6 +281,7 @@ func _set_active_device(device_id: int) -> void:
 func _on_joy_connection_changed(device_id: int, connected: bool) -> void:
 	if not connected and device_id == _active_device:
 		_active_device = -1
+		_axis_values.clear()
 		suspend("Controller disconnected. Reconnect, center the controls, then press a button to continue.")
 		active_device_changed.emit(-1, _resolved_prompt_family(-1))
 

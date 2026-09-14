@@ -67,7 +67,7 @@ func _test_controller_bindings_and_conflicts() -> void:
 
 
 func _test_controller_owner_edges_hysteresis_and_takeover() -> void:
-	var owner := ControllerInputOwner.new(); (Engine.get_main_loop() as SceneTree).root.add_child(owner); owner.configure(ControllerPreferences.new())
+	var owner := ControllerInputOwner.new(); (Engine.get_main_loop() as SceneTree).root.add_child(owner); owner.configure(ControllerPreferences.new()); assert_true(owner.active_device() < 0, "focus loss cannot create a controller-only Auto blocker before a pad has claimed input")
 	var pressed: Array[StringName] = []; var released: Array[StringName] = []; var directions: Array[Vector2i] = []
 	owner.action_pressed.connect(func(action_id: StringName, _repeated: bool) -> void: pressed.append(action_id))
 	owner.action_released.connect(func(action_id: StringName) -> void: released.append(action_id))
@@ -77,7 +77,7 @@ func _test_controller_owner_edges_hysteresis_and_takeover() -> void:
 	assert_equal(owner.active_device(), -1, "stick noise leaves the active controller unchanged")
 	var right := InputEventJoypadMotion.new(); right.device = 2; right.axis = JOY_AXIS_LEFT_X; right.axis_value = 0.26
 	assert_true(owner.handle_input(right), "a deliberate stick direction is consumed by the normalized owner")
-	assert_equal([owner.active_device(), pressed], [2, [&"realmz_controller_right"]], "deliberate input claims one pad and produces one direction edge")
+	assert_equal([owner.active_device(), pressed], [2, [&"realmz_controller_right"]], "deliberate input claims one pad, enables its focus-loss safety gate, and produces one direction edge")
 	var down := InputEventJoypadMotion.new(); down.device = 2; down.axis = JOY_AXIS_LEFT_Y; down.axis_value = 0.26; owner.handle_input(down); owner.call("_process", 0.0); owner.call("_process", 0.0); assert_equal(directions, [Vector2i(1, 1)], "paired analog axes settle into one quantized diagonal instead of dispatching two cardinal steps"); down.axis_value = 0.0; owner.handle_input(down); released.clear()
 	right.axis_value = 0.2
 	owner.handle_input(right)
@@ -126,7 +126,7 @@ func _test_controller_owner_edges_hysteresis_and_takeover() -> void:
 	owner.handle_input(south)
 	south.pressed = true
 	owner.handle_input(south)
-	assert_false(owner.is_suspended(), "a neutral explicit button acknowledgement resumes controller dispatch")
+	assert_false(owner.is_suspended(), "a neutral explicit button acknowledgement resumes controller dispatch"); var external := InputEventKey.new(); external.pressed = true; held_axis.axis_value = 0.8; owner.handle_input(held_axis); owner.suspend("test external acknowledgement"); assert_true(owner.handle_input(external) and owner.is_suspended(), "keyboard or pointer acknowledgement is consumed but cannot resume while the controller remains held"); held_axis.axis_value = 0.0; owner.handle_input(held_axis); assert_true(owner.handle_input(external) and not owner.is_suspended(), "a deliberate keyboard or pointer press resumes suspended Auto once the controller is neutral")
 	var captured: Array[Dictionary] = []
 	var capture_cancelled := [false]
 	owner.binding_captured.connect(func(_action_id: StringName, descriptor: Dictionary) -> void: captured.append(descriptor))

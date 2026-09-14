@@ -326,7 +326,7 @@ func _notification(what: int) -> void:
 			_held_movement.stop()
 		if _interaction_presenter != null:
 			_interaction_presenter.combat.set_fast_spell_dock_held(false)
-		if _controller_input != null:
+		if _controller_input != null and _controller_input.active_device() >= 0:
 			_controller_input.suspend("Application focus changed. Center the controller, then press a button to continue.")
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
 		lifecycle_host.request_quit()

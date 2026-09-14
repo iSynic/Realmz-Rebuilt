@@ -91,6 +91,7 @@ func _on_step_committed(step: SessionStep) -> void:
 	if _combat_playback != null and _combat_playback.begin(_presented_view, step.events, game_view, _reduced_motion):
 		_deferred_step = step
 		_deferred_view = game_view
+		_active_route = GameShellRoutePolicy.playback_base_route(_active_route, _combat_playback.base_view)
 		_present_view(_combat_playback.base_view, false)
 		_interaction_presenter.present_combat_playback_mask(_combat_playback.current_frame())
 		set_process(true)

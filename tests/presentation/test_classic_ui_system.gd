@@ -1222,7 +1222,7 @@ func _test_scene_composition() -> void:
 func _test_automatic_workflow_routes() -> void:
 	var terminal_step := SessionStep.completed(1, [DomainEvent.new(&"session_ended", {"reason": "party-defeat"})])
 	assert_true(ApplicationCombatPolicy.should_defer_session_close(terminal_step, true), "terminal host navigation waits until committed combat playback releases its retained battlefield")
-	assert_false(ApplicationCombatPolicy.should_defer_session_close(terminal_step, false), "terminal host navigation proceeds immediately when no presentation playback owns the prior view")
+	assert_false(ApplicationCombatPolicy.should_defer_session_close(terminal_step, false), "terminal host navigation proceeds immediately when no presentation playback owns the prior view"); var playback_base := _combat_playback_view(20, Vector2i(45, 45), Vector2i(46, 45), &""); assert_equal(GameShellRoutePolicy.playback_base_route(&"exploration", playback_base), &"combat", "battle-start playback activates the combat route immediately instead of drawing its rounds behind the exploration map"); assert_equal(GameShellRoutePolicy.playback_base_route(&"exploration", GameView.new(1, true, null)), &"exploration", "noncombat playback cannot force the tactical stage")
 	var no_session := GameView.new(0, false, null)
 	assert_equal(GameShellAvailability.route_change_reason(no_session), "Choose a campaign first.", "gameplay routes are disabled on the splash and campaign library")
 	var setup_view := GameView.new(1, true, null)
