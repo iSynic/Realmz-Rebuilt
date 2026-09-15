@@ -288,6 +288,8 @@ func _test_persistent_auto_continuation() -> void:
 	assert_true(failures.is_empty(), "successful persistent Auto never enters the failure latch")
 	current[0] = _auto_view(40, 6, "hero"); fail_submit[0] = true; coordinator.request(); coordinator.request(); assert_equal([submissions.size(), failures, coordinator.observation()["failedRevision"]], [5, ["Auto activation failed visibly."], 40], "a failed Auto response reports once and suppresses retries for the failed revision")
 	current[0] = _auto_view(41, 6, "hero"); fail_submit[0] = false; coordinator.request(); assert_equal(submissions.size(), 6, "a later committed revision can explicitly re-arm Auto after the failed revision")
+	var completed := _auto_view(42, 7, "hero"); completed.combat_view.outcome = &"victory"; current[0] = completed
+	var terminal_observation: Dictionary = coordinator.observation(); assert_equal([terminal_observation["active"], terminal_observation["outcome"], terminal_observation["actor"], terminal_observation["round"]], [false, "victory", "", -1], "terminal combat observations expose the outcome without misreporting the final actor and round as a pending Auto activation")
 	coordinator.invalidate(); current.clear(); coordinator = null
 	await (Engine.get_main_loop() as SceneTree).process_frame
 
