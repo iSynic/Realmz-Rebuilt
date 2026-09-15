@@ -338,7 +338,7 @@ func _test_party_and_creator_persistence(content: RealmzContent) -> void:
 			assert_equal(confirmation.interaction.kind, InteractionRequest.YES_NO, "the unspent-point decision is a typed yes/no interaction")
 			assert_true(restored_spell_session.view().party_setup_available, "the creator remains mounted while its confirmation is pending")
 			var confirmation_save := save_round_trip(restored_spell_session.snapshot())
-			assert_not_null(confirmation_save, "the unspent-point continuation survives the serialized save-v4 boundary")
+			assert_not_null(confirmation_save, "the unspent-point continuation survives the serialized save-v5 boundary")
 			if confirmation_save == null:
 				confirmation_save = restored_spell_session.snapshot()
 			var restored_confirmation := GameSession.new()

@@ -133,19 +133,27 @@ func _mutate_items(action: ClassicActionDefinition) -> ScenarioRuntimeOperationR
 				continue
 			match operation:
 				1:
-					_rules.inventory.remove_item(character, instance.id, source)
+					if instance.equipped and not _rules.equipment.force_unequip(character, instance, source, _content.items.definitions(), _content.characters.race_by_id(character.race_id), _game_state.party.conditions):
+						return ScenarioRuntimeOperationResult.failed(&"equipment_state_invalid", "The equipped item could not be removed safely.")
+					if _rules.inventory.remove_item(character, instance.id, source) == null:
+						return ScenarioRuntimeOperationResult.failed(&"item_removal_failed", "The selected item could not be removed.")
 				2:
 					var previous_weight := source.instance_weight(instance.charges)
 					instance.charges = clampi(instance.charges + action.extra_code[3], -1, 32_767)
 					character.carried_load = maxi(0, character.carried_load - previous_weight + source.instance_weight(instance.charges))
 				3:
 					var was_equipped := instance.equipped
-					_rules.inventory.remove_item(character, instance.id, source)
+					if was_equipped and not _rules.equipment.force_unequip(character, instance, source, _content.items.definitions(), _content.characters.race_by_id(character.race_id), _game_state.party.conditions):
+						return ScenarioRuntimeOperationResult.failed(&"equipment_state_invalid", "The equipped item could not be replaced safely.")
+					if _rules.inventory.remove_item(character, instance.id, source) == null:
+						return ScenarioRuntimeOperationResult.failed(&"item_removal_failed", "The selected item could not be replaced.")
 					var replacement_instance := _rules.inventory.add_item(character, replacement, _game_state.next_instance_id("classic.replacement"), false)
 					if replacement_instance == null:
 						return ScenarioRuntimeOperationResult.failed(&"inventory_full", "Classic replacement item no longer fits the character inventory.")
-					if was_equipped and _rules.equipment.can_equip(character, replacement):
-						replacement_instance.equipped = true
+					if was_equipped:
+						var equip_probe := _rules.equipment.equip_classic(character, replacement_instance, replacement, _content.characters.race_by_id(character.race_id), _content.characters.caste_by_id(character.caste_id), _game_state.party.characters(), _content.items.definitions(), _game_state.party.conditions)
+						if not equip_probe.allowed:
+							return ScenarioRuntimeOperationResult.failed(&"replacement_cannot_equip", equip_probe.reason)
 			changed += 1
 		if maximum > 0 and changed >= maximum:
 			break

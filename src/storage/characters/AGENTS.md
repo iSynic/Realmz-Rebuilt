@@ -7,7 +7,7 @@ Own immutable Character Files revisions, campaign eligibility facts, and the pro
 ## Ownership
 
 - `CharacterVaultRepository` owns untrusted `.r2char` enumeration, readback-verified publication, current revision selection, archive, recovery, and empty-vault seeding.
-- `CharacterVaultRecord` owns the typed external revision envelope and revision hash.
+- `CharacterVaultRecord` owns the typed Character Files v2 external revision envelope and revision hash.
 - `CharacterVaultEligibility` compares detached character references with application-plus-campaign catalogs without changing them.
 - `ClassicStarterCharacterCatalog` validates the six generated starter records and their source provenance.
 
@@ -18,6 +18,7 @@ Own immutable Character Files revisions, campaign eligibility facts, and the pro
 - Publishing and seeding are transactional. A partial starter party is never visible, and any existing vault entry suppresses seeding.
 - Eligibility reports missing or incompatible race, class, item, spell, portrait, tactical-icon, level, and restriction facts without substituting content.
 - The application library and starter catalog are trusted only after their committed identities and hashes match.
+- Character Files v2 requires authoritative equipped-instance order. V1 revisions remain untouched on disk and are reported as incompatible; they are never inferred, migrated, or overwritten.
 
 ## Work Guidance
 

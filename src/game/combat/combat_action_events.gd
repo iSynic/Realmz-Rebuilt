@@ -53,7 +53,7 @@ static func append_physical_result_effect(event: DomainEvent, hit: bool, armed: 
 	event.payload["classicResultEffectResourceId"] = 160 if armed else 161
 
 
-func commit_character_fumble(state: GameState, character: CharacterState, equipment: CharacterCombatEquipment, events: Array[DomainEvent]) -> bool:
+func commit_character_fumble(state: GameState, content: RealmzContent, character: CharacterState, equipment: CharacterCombatEquipment, events: Array[DomainEvent]) -> bool:
 	if state.combat == null or equipment == null or equipment.melee_weapon == null or equipment.melee_weapon_instance_id.is_empty() or not state.combat.dropped_items.can_queue():
 		return false
 	var instance: ItemInstance = null
@@ -61,12 +61,18 @@ func commit_character_fumble(state: GameState, character: CharacterState, equipm
 		if carried.id == equipment.melee_weapon_instance_id and carried.definition_id == equipment.melee_weapon.id and carried.equipped:
 			instance = carried
 			break
-	if instance == null or not state.combat.dropped_items.queue(instance):
+	if instance == null or content == null:
+		return false
+	var race := content.characters.race_by_id(character.race_id)
+	if not _context.equipment.force_unequip(character, instance, equipment.melee_weapon, content.items.definitions(), race, state.party.conditions):
+		return false
+	if not state.combat.dropped_items.queue(instance):
+		_context.equipment.equip_classic(character, instance, equipment.melee_weapon, race, content.characters.caste_by_id(character.caste_id), state.party.characters(), content.items.definitions(), state.party.conditions)
 		return false
 	var removed := _context.inventory.remove_item(character, instance.id, equipment.melee_weapon)
 	if removed == null:
 		state.combat.dropped_items.remove(instance.id)
-		instance.equipped = true
+		_context.equipment.equip_classic(character, instance, equipment.melee_weapon, race, content.characters.caste_by_id(character.caste_id), state.party.characters(), content.items.definitions(), state.party.conditions)
 		return false
 	# FD-COMBAT-005 preserves the exact runtime item and its remaining charges.
 	# Castle's short-only queue reconstructs the item from its definition at booty.

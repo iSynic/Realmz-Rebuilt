@@ -467,7 +467,7 @@ func _apply_temple_service(continuation: ScenarioRuntimeContinuation, body: Inte
 		return ScenarioRuntimeOperationResult.waiting(temple_request(service.cost_percent, request_id, character.id), next_continuation, events)
 	if not _rules.economy.take_from_pool_and_character(_game_state.party, character, cost, WealthState.Kind.GOLD):
 		return ScenarioRuntimeOperationResult.failed(&"temple_payment_failed", "Temple payment could not be committed after affordability validation.")
-	var result := _rules.temple.apply_service(character, service_id, _rng, _content.items.definitions())
+	var result := _rules.temple.apply_service(character, service_id, _rng, _content.items.definitions(), _content.characters.race_by_id(character.race_id), _game_state.party.conditions)
 	if result == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_temple_service", "Temple service '%s' is unavailable." % service_id)
 	events.append(DomainEvent.new(&"temple_service_completed", result.to_event_data(character.id, cost)))

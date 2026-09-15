@@ -18,6 +18,8 @@ func run() -> void:
 	record.publication_metadata = {"label": "Fixture vault character"}
 	assert_true(repository.publish_revision(record), "vault publication uses a temporary typed write and readback")
 	assert_equal(record.revision_hash.length(), 64, "published character revisions receive a stable SHA-256 identity"); var loaded := repository.load_revision(record.character_id, record.revision_hash)
+	var legacy_record := record.to_data(); legacy_record["formatVersion"] = 1
+	assert_equal(CharacterVaultRecord.from_data(legacy_record), null, "Character Files v1 is explicitly incompatible with the ordered-equipment v2 contract")
 	assert_not_null(loaded, "published character revisions can be loaded by stable identity")
 	if loaded != null:
 		assert_equal(loaded.state.name, "Vault Fixture", "vault state round-trips through the detached character record")
@@ -84,7 +86,7 @@ func _test_classic_starter_seeding() -> void:
 	var catalog := ClassicStarterCharacterCatalogScript.new()
 	var records: Array[CharacterVaultRecord] = catalog.load_records(STARTER_CATALOG_PATH, CHARACTER_LIBRARY_HASH)
 	assert_equal(records.map(func(record: CharacterVaultRecord) -> String: return record.character_id), ["classic.starter.kevlar", "classic.starter.lothlorian", "classic.starter.silver-leaf", "classic.starter.traskelion", "classic.starter.trevor", "classic.starter.vormale"], "the trusted catalog exposes exactly the six pinned Realmz 7.1.2 starter identities")
-	assert_equal(records.map(func(record: CharacterVaultRecord) -> String: return record.revision_hash), ["bd3aa4fde58fb775518173937fe7b914df72a08f9597ee6764e472411c761b65", "9065eb6ec06a59ca7406db6060b4172c27b64e8e4e7bf3881ef5ab312e831d9e", "9ec0cd3a1046dca37241d0f3624bb26b94c11487749af88f12d436cef974be85", "7f4b9a3d00f27b4160956b249e0478d082ea787d6a5a23eff6f20806c4abfd62", "56823708dd79156c24ea742229dc5e445c5f0ece5b4603df567114949e86739d", "d058de22d0b4dd7f21b99d8b4e1e36039c01f27098064dfcc0cabcd78bf63d45"], "the offline conversion produces deterministic canonical revision hashes")
+	assert_equal(records.map(func(record: CharacterVaultRecord) -> String: return record.revision_hash), ["7859725d73fb3ef46328f40f6cf31725894d1539103b1ca2aedf019f5e63bd60", "ec89f73fc3e0d685823d51e38377b61c99bc3f0272972f2f6d4393ee55547e4f", "e44480503b748a0b91851e45ec0079c41023f492bf35c8fc7104ac5280fee73a", "36f97466aed5ff5110c83cd30ae35c2faa7b6316782aedc95f51ede044c3d345", "7ad580175b08afb61a6663fb33a664168e49a93004a477d2ac50f4c8a7fa1f24", "d8b2cb6fb97f89b1aa54d8026a940e5426d460937a0fea242d28310c23ca7482"], "the format-v2 offline conversion produces deterministic canonical revision hashes")
 	var seeded_root := "user://realmz2-tests/classic-starter-seed"
 	_remove_test_tree(seeded_root); _remove_test_tree(seeded_root + ".starter-seed")
 	var repository := CharacterVaultRepository.new(seeded_root)

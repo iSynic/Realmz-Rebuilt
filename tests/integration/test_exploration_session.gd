@@ -254,10 +254,10 @@ func run() -> void:
 	assert_equal(_event_count(relocated, &"party_moved") + _event_count(destination_text, &"party_moved") + _event_count(destination_completed, &"party_moved"), 2, "the initial move and one AP relocation occur without recursive movement")
 
 	var current_save_data := save_data(session.snapshot())
-	for legacy_version in [1, 2, 3]:
+	for legacy_version in [1, 2, 3, 4]:
 		var legacy_data: Dictionary = current_save_data.duplicate(true)
 		legacy_data["formatVersion"] = legacy_version
-		assert_equal(SaveEnvelope.from_data(legacy_data), null, "save v%d is explicitly incompatible with save v4" % legacy_version)
+		assert_equal(SaveEnvelope.from_data(legacy_data), null, "save v%d is explicitly incompatible with save v5" % legacy_version)
 
 
 func _has_event(step: SessionStep, event_kind: StringName) -> bool:

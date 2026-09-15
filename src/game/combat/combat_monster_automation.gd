@@ -645,7 +645,7 @@ func process_charmed_character_turn(state: GameState, content: RealmzContent, ac
 		var character_resolution := _context.combat.resolve_character_attack_character(actor, equipment, character_target, target_equipment, rng, false, true, state.combat.dropped_items.can_queue())
 		if character_resolution.total_damage() > 0:
 			state.combat.actor_statuses.mark_attacked(character_target.id)
-		if character_resolution.fumbled and not _context.actions().events().commit_character_fumble(state, actor, equipment, events):
+		if character_resolution.fumbled and not _context.actions().events().commit_character_fumble(state, content, actor, equipment, events):
 			events.append(DomainEvent.new(&"combat_fumble_failed", {"actorId": actor.id, "reason": "invalid-fumble-state"}))
 			return false
 		var character_event = _context.actions().events().character_attack_event(actor.id, character_target.id, &"character", character_resolution, equipment.melee_weapon != null)
@@ -661,7 +661,7 @@ func process_charmed_character_turn(state: GameState, content: RealmzContent, ac
 	var resolution := _context.combat.resolve_character_attack(actor, equipment, monster_target, target_definition, rng, state.clock.day(), false, true, state.combat.dropped_items.can_queue())
 	if resolution.total_damage() > 0:
 		state.combat.actor_statuses.mark_attacked(monster_target.id)
-	if resolution.fumbled and not _context.actions().events().commit_character_fumble(state, actor, equipment, events):
+	if resolution.fumbled and not _context.actions().events().commit_character_fumble(state, content, actor, equipment, events):
 		events.append(DomainEvent.new(&"combat_fumble_failed", {"actorId": actor.id, "reason": "invalid-fumble-state"}))
 		return false
 	var event = _context.actions().events().character_attack_event(actor.id, monster_target.id, &"monster", resolution, equipment.melee_weapon != null)

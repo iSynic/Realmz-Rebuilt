@@ -193,6 +193,8 @@ func join_classic(character: CharacterState, instance: ItemInstance, item: ItemD
 	instance.equipped = merged_equipped
 	instance.identified = merged_identified
 	character.set_inventory(items)
+	if merged_equipped:
+		character.equipment_order.record_equipped(instance, character.inventory())
 	character.carried_load = maxi(0, character.carried_load + item.instance_weight(total_charges) - previous_weight)
 	return probe
 
@@ -248,6 +250,8 @@ func remove_item(character: CharacterState, instance_id: String, definition: Ite
 		var instance := items[index]
 		if instance.id != instance_id or instance.definition_id != definition.id:
 			continue
+		if instance.equipped:
+			return null
 		items.remove_at(index)
 		character.set_inventory(items)
 		character.carried_load = maxi(0, character.carried_load - definition.instance_weight(instance.charges))
@@ -289,7 +293,7 @@ func _matching_instances(character: CharacterState, definition_id: String) -> Ar
 
 
 static func _first_category(low: int, high: int) -> int:
-	for index: int in 58:
+	for index: int in 64:
 		if _mask_has(low, high, index):
 			return index
 	return -1

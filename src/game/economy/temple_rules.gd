@@ -3,6 +3,8 @@
 class_name TempleRules
 extends RefCounted
 
+var _equipment: EquipmentRules
+
 const HEAL_SMALL: StringName = &"heal-small"
 const HEAL_MEDIUM: StringName = &"heal-medium"
 const HEAL_LARGE: StringName = &"heal-large"
@@ -85,7 +87,11 @@ func condition_name(index: int) -> String:
 	return "Condition %d" % index if index < 0 or index >= CONDITION_NAMES.size() else CONDITION_NAMES[index]
 
 
-func apply_service(character: CharacterState, service_id: StringName, rng: RealmzRng, item_definitions: Array[ItemDefinition]) -> TempleServiceResult:
+func _init(equipment_rules: EquipmentRules) -> void:
+	_equipment = equipment_rules
+
+
+func apply_service(character: CharacterState, service_id: StringName, rng: RealmzRng, item_definitions: Array[ItemDefinition], race: RaceDefinition = null, party_conditions: ConditionSet = null) -> TempleServiceResult:
 	if character == null or rng == null or not SERVICE_IDS.has(service_id):
 		return null
 	var result := TempleServiceResult.new(service_id, character)
@@ -105,7 +111,7 @@ func apply_service(character: CharacterState, service_id: StringName, rng: Realm
 		HEAL_BLINDNESS:
 			_clear_condition(character, CONDITION_BLIND, result)
 		REMOVE_CURSE:
-			_remove_curse(character, item_definitions, result)
+			_remove_curse(character, item_definitions, result, race, party_conditions)
 		REVIVE_DEAD:
 			_revive(character, result)
 	result.health_after = character.current_health
@@ -129,15 +135,14 @@ func _clear_condition(character: CharacterState, index: int, result: TempleServi
 	result.applied = result.condition_before != 0
 
 
-func _remove_curse(character: CharacterState, item_definitions: Array[ItemDefinition], result: TempleServiceResult) -> void:
+func _remove_curse(character: CharacterState, item_definitions: Array[ItemDefinition], result: TempleServiceResult, race: RaceDefinition, party_conditions: ConditionSet) -> void:
 	_clear_condition(character, CONDITION_CURSED, result)
 	var definitions: Dictionary = {}
 	for definition: ItemDefinition in item_definitions:
 		definitions[definition.id] = definition
 	for instance: ItemInstance in character.inventory():
 		var definition: ItemDefinition = definitions.get(instance.definition_id)
-		if instance.equipped and definition != null and not definition.cursed_item_id.is_empty():
-			instance.equipped = false
+		if instance.equipped and definition != null and not definition.cursed_item_id.is_empty() and _equipment.force_unequip(character, instance, definition, item_definitions, race, party_conditions):
 			result.unequipped_item_ids.append(instance.id)
 	result.applied = result.applied or not result.unequipped_item_ids.is_empty()
 

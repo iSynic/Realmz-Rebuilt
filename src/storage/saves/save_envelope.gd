@@ -4,7 +4,7 @@ class_name SaveEnvelope
 extends SessionSnapshot
 
 const FORMAT: String = "realmz2-save"
-const FORMAT_VERSION: int = 4
+const FORMAT_VERSION: int = 5
 
 
 func _init(campaign: String, package_identity: String, rules: String, revision: int, state: GameState, random_state: RealmzRngState, vm_state: ScenarioVmSnapshot = null, action_state: ScenarioActionState = null, pending_continuation: SessionContinuation = null, pending_battle_return: SessionContinuation = null, pending_session_interaction: InteractionRequest = null) -> void:

@@ -7,6 +7,7 @@ Own one adventurer's mutable truth, derived character rules, detached presentati
 ## Ownership
 
 - `CharacterState` owns live scalar facts and fixed-size character collections.
+- `EquipmentOrderState` owns the private ordered equipped-instance identities and validates them against a character inventory.
 - `CharacterDraftState` owns the saveable generated candidate and creation selections retained during party setup.
 - `CharacterStateCodec` alone owns the character save dictionary and strict restoration.
 - `CharacterRules` owns creation, aging, derived statistics, advancement, and character-level legality. `CharacterAgingResult`, `LevelUpResult`, and `StrengthResult` are its typed calculation results.
@@ -23,7 +24,7 @@ Own one adventurer's mutable truth, derived character rules, detached presentati
 
 - Runtime code mutates a character through typed fields and collection operations; it never edits encoded dictionaries. The save, special, and ability collection properties return copies for read-only bulk inspection.
 - Save, vault, draft, and clone boundaries use `CharacterStateCodec` directly. `CharacterState` does not forward codec operations; `CharacterDraftState` embeds the generated character through that codec without owning character rules.
-- Encoding preserves the existing field names, defaults, collection order, and legacy optional fields exactly.
+- Encoding preserves the v5/v2 field names and exact collection order. `equipmentOrder` contains every equipped instance identity exactly once; missing, duplicate, unequipped, or unknown identities reject restoration.
 - Default save and Classic-array setters retain their gameplay clamps. The codec may bypass those clamps only after strict integer validation so historical state round-trips without reinterpretation.
 - `RealmzContent.characters` is the authoritative definition lookup. `PartyState` owns active membership; party admission workflows, persistence, and UI remain owned by their respective boundaries.
 - Character request bodies contain only detached values and may be consumed by scenario execution, playthrough, saves, and presentation without depending on those higher boundaries.
@@ -33,7 +34,7 @@ Own one adventurer's mutable truth, derived character rules, detached presentati
 
 ## Work Guidance
 
-- Add behavior to the narrowest owner: mutable facts to `CharacterState`, pure calculations to `CharacterRules`, wire conversion to `CharacterStateCodec`, and display-only projection to `CharacterView`.
+- Add behavior to the narrowest owner: scalar and collection facts to `CharacterState`, wear-order identity to `EquipmentOrderState`, pure calculations to `CharacterRules`, wire conversion to `CharacterStateCodec`, and display-only projection to `CharacterView`.
 - Preserve stable character, race, caste, appearance, item-instance, and spell identities.
 
 ## Verification

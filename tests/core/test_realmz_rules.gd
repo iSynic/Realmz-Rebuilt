@@ -68,12 +68,13 @@ func _test_temple_services_and_wealth() -> void:
 	rules.temple.apply_service(character, TempleRules.HEAL_DISEASE, ScriptedRng.new([]), no_items)
 	assert_equal(character.conditions.value(TempleRules.CONDITION_DISEASED), 0, "Heal Disease clears the exact source condition")
 	var cursed_definition := ItemDefinition.new("item.temple-cursed", 880, "Cursed Blade")
-	cursed_definition.cursed_item_id = cursed_definition.id
+	cursed_definition.cursed_item_id = cursed_definition.id; cursed_definition.strength_bonus = 2; cursed_definition.special_1 = 122; cursed_definition.special_2 = 3; cursed_definition.movement_bonus = 2
 	var cursed_instance := ItemInstance.new("instance.temple-cursed", cursed_definition.id, 0, true, true)
-	character.set_inventory([cursed_instance])
+	character.set_inventory([cursed_instance]); character.equipment_order.set_exact([cursed_instance.id], character.inventory()); var base_brawn := character.brawn; var base_attack_bonus := character.attack_bonus; character.brawn += 2; character.attack_bonus += 3; character.maximum_movement += 2
 	character.conditions.set_value(TempleRules.CONDITION_CURSED, -1)
 	var curse := rules.temple.apply_service(character, TempleRules.REMOVE_CURSE, ScriptedRng.new([]), [cursed_definition])
 	assert_equal([character.conditions.value(TempleRules.CONDITION_CURSED), cursed_instance.equipped, curse.unequipped_item_ids], [0, false, [cursed_instance.id]], "Remove Cursed Items clears the condition and force-unequips cursed gear")
+	assert_equal([character.brawn, character.attack_bonus, character.maximum_movement, character.equipment_order.ids()], [base_brawn, base_attack_bonus, 10, []], "forced curse removal reverses passive effects and removes the item from authoritative equipment order")
 	character.current_health = -10
 	character.set_ability_value(2, 40)
 	var revive := rules.temple.apply_service(character, TempleRules.REVIVE_DEAD, ScriptedRng.new([]), no_items)

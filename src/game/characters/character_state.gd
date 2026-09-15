@@ -51,6 +51,7 @@ var _saves: Array[int] = []
 var _specials: Array[int] = []
 var _abilities: Array[int] = []
 var _inventory: Array[ItemInstance] = []
+var equipment_order := EquipmentOrderState.new()
 var _known_spells: Array[String] = []
 var _scroll_case: Array[SpellScrollState] = []
 var _fast_spells: Array[FastSpellBindingState] = []
@@ -124,6 +125,7 @@ func inventory() -> Array[ItemInstance]:
 
 func set_inventory(items: Array[ItemInstance]) -> void:
 	_inventory = items.duplicate()
+	equipment_order.prune(_inventory)
 
 
 func known_spells() -> Array[String]:

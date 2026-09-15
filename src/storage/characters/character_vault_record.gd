@@ -4,7 +4,7 @@ class_name CharacterVaultRecord
 extends RefCounted
 
 const FORMAT := "realmz2-character"
-const FORMAT_VERSION := 1
+const FORMAT_VERSION := 2
 
 var character_id: String
 var revision_hash: String

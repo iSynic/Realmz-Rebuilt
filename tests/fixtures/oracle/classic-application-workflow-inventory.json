@@ -5028,6 +5028,26 @@
           "status": "implemented"
         },
         {
+          "id": "ordered-floor-and-cap-effects",
+          "status": "implemented"
+        },
+        {
+          "id": "passive-character-and-party-effects",
+          "status": "implemented"
+        },
+        {
+          "id": "forced-removal-effect-reversal",
+          "status": "implemented"
+        },
+        {
+          "id": "type-one-default-slot",
+          "status": "implemented"
+        },
+        {
+          "id": "high-bank-item-category",
+          "status": "implemented"
+        },
+        {
           "id": "restricted",
           "status": "implemented"
         },
@@ -5069,6 +5089,10 @@
           {
             "path": "src/game/inventory/inventory_rules.gd",
             "symbol": "class_name InventoryRules"
+          },
+          {
+            "path": "src/game/inventory/equipment_rules.gd",
+            "symbol": "class_name EquipmentRules"
           }
         ]
       },

@@ -4,6 +4,7 @@ class_name EquipmentRules
 extends RefCounted
 
 var _inventory: InventoryRules
+var _characters: CharacterRules
 
 
 class CombatEquipmentSummary extends CharacterCombatEquipment:
@@ -17,8 +18,9 @@ class CombatEquipmentSummary extends CharacterCombatEquipment:
 	var has_negative_armor: bool = false
 
 
-func _init(inventory_rules: InventoryRules) -> void:
+func _init(inventory_rules: InventoryRules, character_rules: CharacterRules) -> void:
 	_inventory = inventory_rules
+	_characters = character_rules
 
 
 func has_equipped_scroll_case(character: CharacterState, content: RealmzContent) -> bool:
@@ -52,8 +54,6 @@ func classic_equip_probe(character: CharacterState, instance: ItemInstance, item
 	var item_type := absi(item.item_type)
 	if item_type > 19:
 		return InventoryActionProbe.block("Classic treats this as a usable item, not wearable equipment.")
-	if item_type == 1:
-		return InventoryActionProbe.block("Classic item type 1 slot behavior is still unresolved.")
 	if not _passive_effects_supported(item):
 		return InventoryActionProbe.block("This item's passive equipment effects are not implemented yet.")
 	if item.cost < 0 and _party_carries_definition(party, character, item.id):
@@ -77,21 +77,35 @@ func classic_unequip_probe(character: CharacterState, instance: ItemInstance, it
 	return InventoryActionProbe.permit()
 
 
-func equip_classic(character: CharacterState, instance: ItemInstance, item: ItemDefinition, race: RaceDefinition, caste: CasteDefinition, party: Array[CharacterState], definitions: Array[ItemDefinition]) -> InventoryActionProbe:
+func equip_classic(character: CharacterState, instance: ItemInstance, item: ItemDefinition, race: RaceDefinition, caste: CasteDefinition, party: Array[CharacterState], definitions: Array[ItemDefinition], party_conditions: ConditionSet = null) -> InventoryActionProbe:
 	var probe := classic_equip_probe(character, instance, item, race, caste, party, definitions)
 	if not probe.allowed:
 		return probe
-	instance.equipped = true
+	character.equipment_order.record_equipped(instance, character.inventory())
+	_apply_wear_effects(character, item, race, definitions, party_conditions)
 	if not item.cursed_item_id.is_empty():
 		instance.identified = true
 	return probe
 
 
-func unequip_classic(character: CharacterState, instance: ItemInstance, item: ItemDefinition, definitions: Array[ItemDefinition]) -> InventoryActionProbe:
+func unequip_classic(character: CharacterState, instance: ItemInstance, item: ItemDefinition, definitions: Array[ItemDefinition], race: RaceDefinition = null, party_conditions: ConditionSet = null) -> InventoryActionProbe:
 	var probe := classic_unequip_probe(character, instance, item, definitions)
 	if probe.allowed:
-		instance.equipped = false
+		character.equipment_order.record_unequipped(instance, character.inventory())
+		_apply_remove_effects(character, item, race, definitions, party_conditions)
 	return probe
+
+
+func force_unequip(character: CharacterState, instance: ItemInstance, item: ItemDefinition, definitions: Array[ItemDefinition], race: RaceDefinition = null, party_conditions: ConditionSet = null) -> bool:
+	if character == null or instance == null or item == null or instance.definition_id != item.id or not instance.equipped:
+		return false
+	if not character.equipment_order.record_unequipped(instance, character.inventory()):
+		return false
+	_apply_remove_effects(character, item, race, definitions, party_conditions)
+	if race == null and item.movement_bonus != 0:
+		character.maximum_movement = maxi(2, character.maximum_movement - item.movement_bonus)
+		character.movement = mini(character.movement, character.maximum_movement)
+	return true
 
 
 func equip(character: CharacterState, instance_id: String, definition: ItemDefinition) -> bool:
@@ -99,8 +113,7 @@ func equip(character: CharacterState, instance_id: String, definition: ItemDefin
 		return false
 	for instance: ItemInstance in character.inventory():
 		if instance.id == instance_id and instance.definition_id == definition.id:
-			instance.equipped = true
-			return true
+			return character.equipment_order.record_equipped(instance, character.inventory())
 	return false
 
 
@@ -109,19 +122,110 @@ func combat_equipment(character: CharacterState, definitions: Array[ItemDefiniti
 		var invalid := CharacterCombatEquipment.new()
 		invalid.reject(&"invalid_character", "Combat equipment requires a character.")
 		return invalid
-	var summary := _summarize_equipment(character, _definitions_by_id(definitions))
+	var definitions_by_id := _definitions_by_id(definitions)
+	var summary := _summarize_equipment(character, definitions_by_id)
 	if not summary.valid:
 		return summary
-	if summary.has_positive_armor and summary.has_negative_armor:
-		summary.reject(&"unsupported_equipment_order", "Classic mixed positive and negative armor modifiers require equipment-order state that is not available yet.")
+	if summary.equipped_count == 0:
+		summary.effective_damage_bonus = character.damage_bonus
+		summary.effective_armor = character.armor
+		summary.effective_luck = character.luck
 		return summary
-	if summary.has_negative_damage and character.damage_bonus + summary.positive_damage_sum > 110:
-		summary.reject(&"unsupported_equipment_order", "Classic cap-sensitive positive and negative damage modifiers require equipment-order state that is not available yet.")
-		return summary
-	summary.effective_damage_bonus = mini(110, character.damage_bonus + summary.damage_sum) if summary.equipped_count > 0 else character.damage_bonus
+	var ordered_definitions := _ordered_equipped_definitions(character, definitions_by_id)
+	summary.effective_damage_bonus = character.damage_bonus
+	summary.effective_armor = character.armor
+	for definition: ItemDefinition in ordered_definitions:
+		summary.effective_damage_bonus = mini(110, summary.effective_damage_bonus + definition.damage_bonus)
+		summary.effective_armor = maxi(0, summary.effective_armor + definition.armor_bonus)
 	summary.effective_luck = character.luck + summary.luck_sum
-	summary.effective_armor = maxi(0, character.armor + summary.armor_sum)
 	return summary
+
+
+static func _ordered_equipped_definitions(character: CharacterState, definitions_by_id: Dictionary) -> Array[ItemDefinition]:
+	var by_instance: Dictionary = {}
+	for item: ItemInstance in character.inventory():
+		if item.equipped:
+			by_instance[item.id] = item
+	var result: Array[ItemDefinition] = []
+	var consumed: Dictionary = {}
+	for instance_id: String in character.equipment_order.ids():
+		var instance := by_instance.get(instance_id) as ItemInstance
+		var definition := definitions_by_id.get(instance.definition_id) as ItemDefinition if instance != null else null
+		if definition != null:
+			result.append(definition)
+			consumed[instance_id] = true
+	for instance: ItemInstance in character.inventory():
+		if not instance.equipped or consumed.has(instance.id):
+			continue
+		var definition := definitions_by_id.get(instance.definition_id) as ItemDefinition
+		if definition != null:
+			result.append(definition)
+	return result
+
+
+func _apply_wear_effects(character: CharacterState, item: ItemDefinition, race: RaceDefinition, definitions: Array[ItemDefinition], party_conditions: ConditionSet) -> void:
+	character.brawn += item.strength_bonus
+	character.magic_resistance += item.magic_resistance_bonus
+	character.maximum_spell_points += item.spell_point_bonus
+	character.spell_points += item.spell_point_bonus
+	if item.special_1 >= 60 and item.special_1 < 100:
+		character.conditions.set_value(item.special_2, 0)
+	if item.special_1 == 122:
+		character.attack_bonus += item.special_2
+	if item.special_1 >= 20 and item.special_1 < 60:
+		var condition_index := item.special_1 - 20
+		if character.conditions.value(condition_index) >= 0:
+			character.conditions.set_value(condition_index, 0)
+		character.conditions.add(condition_index, item.special_2)
+	_apply_special_effect(character, party_conditions, item.special_3, item.special_5, true)
+	_apply_special_effect(character, party_conditions, item.special_4, item.special_5, true)
+	_recalculate_movement(character, race, definitions)
+
+
+func _apply_remove_effects(character: CharacterState, item: ItemDefinition, race: RaceDefinition, definitions: Array[ItemDefinition], party_conditions: ConditionSet) -> void:
+	if item.special_1 == 122:
+		character.attack_bonus -= item.special_2
+	_apply_special_effect(character, party_conditions, item.special_3, item.special_5, false)
+	_apply_special_effect(character, party_conditions, item.special_4, item.special_5, false)
+	character.brawn -= item.strength_bonus
+	character.magic_resistance -= item.magic_resistance_bonus
+	character.maximum_spell_points -= item.spell_point_bonus
+	character.spell_points -= item.spell_point_bonus
+	if item.special_1 >= 60 and item.special_1 < 100:
+		character.conditions.set_value(item.special_2, 0)
+	if item.special_1 >= 20 and item.special_1 < 60:
+		var condition_index := item.special_1 - 20
+		var value := character.conditions.value(condition_index)
+		if value < 0:
+			value -= item.special_2
+		if value > 0:
+			value = 0
+		character.conditions.set_value(condition_index, value)
+	_recalculate_movement(character, race, definitions)
+
+
+static func _apply_special_effect(character: CharacterState, party_conditions: ConditionSet, special: int, amount: int, wearing: bool) -> void:
+	if special == 0:
+		return
+	if special < 0:
+		character.set_special_value(absi(special) - 1, character.special_value(absi(special) - 1) + amount * (1 if wearing else -1), false)
+	elif special <= 15:
+		character.set_ability_value(special - 1, character.ability_value(special - 1) + amount * (1 if wearing else -1), false)
+	elif party_conditions != null:
+		var index := special - 30
+		party_conditions.set_value(index, party_conditions.value(index) - absi(amount) if wearing else 0)
+
+
+func _recalculate_movement(character: CharacterState, race: RaceDefinition, definitions: Array[ItemDefinition]) -> void:
+	if race == null:
+		character.maximum_load = maxi(500, character.brawn * character.brawn * 20)
+		character.movement = mini(character.movement, character.maximum_movement)
+		return
+	var movement_bonus := 0
+	var by_id := _definitions_by_id(definitions)
+	for definition: ItemDefinition in _ordered_equipped_definitions(character, by_id):
+		movement_bonus += definition.movement_bonus
+	_characters.recalculate_movement(character, race, movement_bonus)
 
 
 func _equipment_slot_probe(character: CharacterState, item: ItemDefinition, definitions: Array[ItemDefinition]) -> InventoryActionProbe:
@@ -223,11 +327,13 @@ static func _party_carries_definition(party: Array[CharacterState], character: C
 
 
 static func _passive_effects_supported(item: ItemDefinition) -> bool:
-	if item.strength_bonus != 0 or item.movement_bonus != 0 or item.magic_resistance_bonus != 0 or item.spell_point_bonus != 0:
+	if item.special_1 >= 60 and item.special_1 < 100 and (item.special_2 < 0 or item.special_2 >= ConditionSet.CHARACTER_COUNT):
 		return false
-	if item.special_3 != 0 or item.special_4 != 0 or item.special_1 == 122:
-		return false
-	return item.special_1 < 20 or item.special_1 >= 100
+	return _special_effect_supported(item.special_3) and _special_effect_supported(item.special_4)
+
+
+static func _special_effect_supported(special: int) -> bool:
+	return special == 0 or special >= -12 and special <= -1 or special >= 1 and special <= 15 or special >= 30 and special < 30 + ConditionSet.PARTY_COUNT
 
 
 static func _mask_has(low: int, high: int, index: int) -> bool:

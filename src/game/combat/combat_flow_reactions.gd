@@ -406,7 +406,7 @@ func resolve_character_reaction(state: GameState, content: RealmzContent, attack
 		var reaction_resolution := _context.combat.resolve_character_attack(attacker, equipment, monster_target, definition, rng, state.clock.day(), behind, true, combat.dropped_items.can_queue())
 		if reaction_resolution.total_damage() > 0:
 			combat.actor_statuses.mark_attacked(monster_target.id)
-		if reaction_resolution.fumbled and not _context.actions().events().commit_character_fumble(state, attacker, equipment, events):
+		if reaction_resolution.fumbled and not _context.actions().events().commit_character_fumble(state, content, attacker, equipment, events):
 			events.append(DomainEvent.new(&"combat_fumble_failed", {"actorId": attacker.id, "reason": "invalid-fumble-state"}))
 		_context.actions().events().append_character_attack_audio(events, attacker, equipment, reaction_resolution, &"monster")
 		var reaction_event = _context.actions().events().character_attack_event(attacker.id, monster_target.id, &"monster", reaction_resolution, equipment.melee_weapon != null)
@@ -428,7 +428,7 @@ func resolve_character_reaction(state: GameState, content: RealmzContent, attack
 	var resolution := _context.combat.resolve_character_attack_character(attacker, equipment, character_target, target_equipment, rng, behind, true, combat.dropped_items.can_queue())
 	if resolution.total_damage() > 0:
 		combat.actor_statuses.mark_attacked(character_target.id)
-	if resolution.fumbled and not _context.actions().events().commit_character_fumble(state, attacker, equipment, events):
+	if resolution.fumbled and not _context.actions().events().commit_character_fumble(state, content, attacker, equipment, events):
 		events.append(DomainEvent.new(&"combat_fumble_failed", {"actorId": attacker.id, "reason": "invalid-fumble-state"}))
 	_context.actions().events().append_character_attack_audio(events, attacker, equipment, resolution, &"character")
 	var event = _context.actions().events().character_attack_event(attacker.id, character_target.id, &"character", resolution, equipment.melee_weapon != null)

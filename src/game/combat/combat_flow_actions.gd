@@ -187,7 +187,7 @@ func _submit_character_attack(state: GameState, content: RealmzContent, actor: C
 		combat.turns.active_turn.physical_action_committed = true
 		var resolution := _context.combat.resolve_character_attack(actor, equipment, monster_target, definition, rng, state.clock.day(), false, true, combat.dropped_items.can_queue())
 		if resolution.total_damage() > 0: combat.actor_statuses.mark_attacked(monster_target.id)
-		if resolution.fumbled and not _events.commit_character_fumble(state, actor, equipment, events): return CombatFlowResult.failed(&"invalid_fumble_state", "The fumbled melee weapon could not enter the battle recovery queue.")
+		if resolution.fumbled and not _events.commit_character_fumble(state, content, actor, equipment, events): return CombatFlowResult.failed(&"invalid_fumble_state", "The fumbled melee weapon could not enter the battle recovery queue.")
 		_events.append_character_attack_audio(events, actor, equipment, resolution, &"monster")
 		events.append(_events.character_attack_event(actor.id, monster_target.id, &"monster", resolution, equipment.melee_weapon != null))
 		var macro_requested := resolution.killed and _events.request_monster_death_macro(monster_target, definition, events)
@@ -202,7 +202,7 @@ func _submit_character_attack(state: GameState, content: RealmzContent, actor: C
 		combat.turns.active_turn.physical_action_committed = true
 		var resolution := _context.combat.resolve_character_attack_character(actor, equipment, character_target, target_equipment, rng, false, true, combat.dropped_items.can_queue())
 		if resolution.total_damage() > 0: combat.actor_statuses.mark_attacked(character_target.id)
-		if resolution.fumbled and not _events.commit_character_fumble(state, actor, equipment, events): return CombatFlowResult.failed(&"invalid_fumble_state", "The fumbled melee weapon could not enter the battle recovery queue.")
+		if resolution.fumbled and not _events.commit_character_fumble(state, content, actor, equipment, events): return CombatFlowResult.failed(&"invalid_fumble_state", "The fumbled melee weapon could not enter the battle recovery queue.")
 		_events.append_character_attack_audio(events, actor, equipment, resolution, &"character")
 		events.append(_events.character_attack_event(actor.id, character_target.id, &"character", resolution, equipment.melee_weapon != null))
 		mark_character_bleeding(state, character_target, resolution.killed)
@@ -420,7 +420,7 @@ func cause_active_fumble(state: GameState, content: RealmzContent, actor_id: Str
 		return CombatFlowResult.succeeded([DomainEvent.new(&"combat_fumble_skipped", {"combatantId": actor_id, "reason": "cursed-weapon", "source": "classic"})])
 	if not state.combat.dropped_items.can_queue():
 		return CombatFlowResult.succeeded([DomainEvent.new(&"combat_fumble_skipped", {"combatantId": actor_id, "reason": "queue-full", "source": "classic"})])
-	if not _events.commit_character_fumble(state, character, equipment, events):
+	if not _events.commit_character_fumble(state, content, character, equipment, events):
 		return CombatFlowResult.failed(&"invalid_fumble_state", "The active character's melee weapon could not enter the recovery queue.")
 	return CombatFlowResult.succeeded(events)
 

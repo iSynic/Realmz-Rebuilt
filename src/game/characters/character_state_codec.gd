@@ -28,7 +28,7 @@ static func encode(state: CharacterState) -> Dictionary:
 		"lifetimeRecord": state.lifetime_record.to_data(),
 		"traitor": state.traitor,
 		"conditions": state.conditions.to_data(), "money": state.money.to_data(), "saves": state.save_values, "specials": state.special_values, "abilities": state.ability_values,
-		"inventory": item_data, "knownSpells": state.known_spells(), "scrollCase": scroll_data, "fastSpells": fast_spell_data,
+		"inventory": item_data, "equipmentOrder": state.equipment_order.resolved(state.inventory()), "knownSpells": state.known_spells(), "scrollCase": scroll_data, "fastSpells": fast_spell_data,
 	}
 
 
@@ -50,6 +50,9 @@ static func decode(data: Variant) -> CharacterState:
 		return null
 	if not _restore_inventory_and_spells(result, data):
 		return null
+	var equipment_order: Variant = _string_array(data["equipmentOrder"])
+	if equipment_order == null or not result.equipment_order.set_exact(equipment_order, result.inventory()):
+		return null
 	if not _restore_scrolls(result, data) or not _restore_fast_spells(result, data):
 		return null
 	return result
@@ -67,10 +70,21 @@ static func _base_fields_are_valid(data: Dictionary) -> bool:
 
 
 static func _extended_shape_is_valid(data: Dictionary) -> bool:
-	for field: String in ["raceId", "casteId", "gender", "level", "experience", "ageDays", "attributes", "toHit", "dodge", "missile", "handToHand", "damageBonus", "armor", "magicResistance", "movement", "maximumMovement", "normalAttacks", "attacksRemaining", "spellcasterType", "spellPoints", "maximumSpellPoints", "load", "maximumLoad", "conditions", "money", "saves", "specials", "inventory", "knownSpells"]:
+	for field: String in ["raceId", "casteId", "gender", "level", "experience", "ageDays", "attributes", "toHit", "dodge", "missile", "handToHand", "damageBonus", "armor", "magicResistance", "movement", "maximumMovement", "normalAttacks", "attacksRemaining", "spellcasterType", "spellPoints", "maximumSpellPoints", "load", "maximumLoad", "conditions", "money", "saves", "specials", "inventory", "equipmentOrder", "knownSpells"]:
 		if not data.has(field):
 			return false
-	return data["raceId"] is String and not data["raceId"].is_empty() and data["casteId"] is String and not data["casteId"].is_empty() and data["attributes"] is Array and data["attributes"].size() == 6 and data["saves"] is Array and data["saves"].size() == 8 and data["specials"] is Array and data["specials"].size() == 12 and data["inventory"] is Array and data["knownSpells"] is Array
+	return data["raceId"] is String and not data["raceId"].is_empty() and data["casteId"] is String and not data["casteId"].is_empty() and data["attributes"] is Array and data["attributes"].size() == 6 and data["saves"] is Array and data["saves"].size() == 8 and data["specials"] is Array and data["specials"].size() == 12 and data["inventory"] is Array and data["equipmentOrder"] is Array and data["knownSpells"] is Array
+
+
+static func _string_array(value: Variant) -> Variant:
+	if not value is Array:
+		return null
+	var result: Array[String] = []
+	for entry: Variant in value:
+		if not entry is String:
+			return null
+		result.append(entry)
+	return result
 
 
 static func _restore_numeric_fields(result: CharacterState, data: Dictionary) -> bool:

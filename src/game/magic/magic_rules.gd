@@ -9,11 +9,11 @@ var _projectiles: SpellProjectileResolver
 var _field_scenario_spells: FieldScenarioSpellResolver
 
 
-func _init(character_rules: CharacterRules = null, realmz_arithmetic: RealmzArithmetic = null, monster_rules: MonsterRules = null) -> void:
-	_character_spells = CharacterSpellResolver.new(character_rules, realmz_arithmetic, monster_rules)
-	_monster_spells = MonsterSpellResolver.new(character_rules, realmz_arithmetic, monster_rules)
-	_projectiles = SpellProjectileResolver.new(character_rules, realmz_arithmetic, monster_rules)
-	_field_scenario_spells = FieldScenarioSpellResolver.new(character_rules, realmz_arithmetic, monster_rules)
+func _init(character_rules: CharacterRules = null, realmz_arithmetic: RealmzArithmetic = null, monster_rules: MonsterRules = null, equipment_rules: EquipmentRules = null) -> void:
+	_character_spells = CharacterSpellResolver.new(character_rules, realmz_arithmetic, monster_rules, equipment_rules)
+	_monster_spells = MonsterSpellResolver.new(character_rules, realmz_arithmetic, monster_rules, equipment_rules)
+	_projectiles = SpellProjectileResolver.new(character_rules, realmz_arithmetic, monster_rules, equipment_rules)
+	_field_scenario_spells = FieldScenarioSpellResolver.new(character_rules, realmz_arithmetic, monster_rules, equipment_rules)
 
 
 func resolve_character_targeted_spell(caster: CharacterState, selection: SpellTargetSelection, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, spend_spell_points: bool = true, polymorph_context: MonsterPolymorphContext = null) -> GroupSpellResolution:

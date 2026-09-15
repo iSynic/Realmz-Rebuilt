@@ -8,12 +8,14 @@ extends RefCounted
 var _characters: CharacterRules
 var _arithmetic: RealmzArithmetic
 var _monsters: MonsterRules
+var _equipment: EquipmentRules
 
 
-func _init(character_rules: CharacterRules = null, realmz_arithmetic: RealmzArithmetic = null, monster_rules: MonsterRules = null) -> void:
+func _init(character_rules: CharacterRules = null, realmz_arithmetic: RealmzArithmetic = null, monster_rules: MonsterRules = null, equipment_rules: EquipmentRules = null) -> void:
 	_characters = character_rules if character_rules != null else CharacterRules.new()
 	_arithmetic = realmz_arithmetic if realmz_arithmetic != null else RealmzArithmetic.new()
 	_monsters = monster_rules if monster_rules != null else MonsterRules.new()
+	_equipment = equipment_rules
 
 
 func _resolve_character_spell_monster_target(caster: CharacterState, target: MonsterState, target_definition: MonsterDefinition, spell: SpellDefinition, power_level: int, cast_level: int, damage: int, duration: int, spell_cost: int, rng: RealmzRng, polymorph_context: MonsterPolymorphContext = null, extra_to_hit_bonus: int = 0, use_projectile_defense: bool = false, ignore_magic_resistance: bool = false) -> SpellResolution:
@@ -368,7 +370,7 @@ static func _destroy_magic_character(target: CharacterState, spell_cost: int, du
 	return result
 
 
-static func _remove_curse_character(target: CharacterState, spell_cost: int, duration: int, item_definitions: Array[ItemDefinition]) -> SpellResolution:
+func _remove_curse_character(target: CharacterState, spell_cost: int, duration: int, item_definitions: Array[ItemDefinition], race: RaceDefinition = null, party_conditions: ConditionSet = null) -> SpellResolution:
 	target.conditions.set_value(ConditionRules.CURSED, 0)
 	var definitions: Dictionary = {}
 	for definition: ItemDefinition in item_definitions:
@@ -376,8 +378,9 @@ static func _remove_curse_character(target: CharacterState, spell_cost: int, dur
 	var result := SpellResolution.new(true, false, false, spell_cost, 0, duration)
 	for instance: ItemInstance in target.inventory():
 		var definition: ItemDefinition = definitions.get(instance.definition_id)
-		if instance.equipped and definition != null and not definition.cursed_item_id.is_empty():
-			instance.equipped = false
+		if instance.equipped and definition != null and not definition.cursed_item_id.is_empty() and (_equipment == null or _equipment.force_unequip(target, instance, definition, item_definitions, race, party_conditions)):
+			if _equipment == null:
+				target.equipment_order.record_unequipped(instance, target.inventory())
 			result.unequipped_item_ids.append(instance.id)
 	return result
 

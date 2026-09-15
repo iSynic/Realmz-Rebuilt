@@ -13,72 +13,40 @@ func run() -> void:
 	if not loaded.is_ok():
 		return
 	var content := _inventory_content(loaded.content)
+	var application := PackageRepository.new().load_bundled_package(ApplicationLibraryIdentity.PATH, ApplicationLibraryIdentity.CAMPAIGN_ID, ApplicationLibraryIdentity.PACKAGE_HASH)
+	if application.is_ok():
+		_test_david_robe_of_speed(loaded.content, application.content)
 	_test_field_spell_item_use(content)
 	_test_door_item_xap(content)
 	_test_inventory_identification(content)
 	_test_split_join(content)
-	var session := GameSession.new()
-	assert_equal(session.start(content, 41).state, SessionStep.State.COMPLETED, "inventory session starts")
-	var source := _character("inventory.source", "Alis", content)
-	var destination := _character("inventory.destination", "Borin", content)
-	assert_equal(session.submit_intent(PartyIntents.import_vault_character(source.id, "1".repeat(64), source, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "source character enters party setup")
-	assert_equal(session.submit_intent(PartyIntents.import_vault_character(destination.id, "2".repeat(64), destination, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "trade recipient enters party setup")
-	assert_equal(session.submit_intent(PartyIntents.begin_adventure()).state, SessionStep.State.COMPLETED, "inventory fixture begins the adventure")
-	var carried_source := session._context.state.party.character_by_id(source.id)
-	var item := content.items.item_by_id("classic.item.inventory-sword")
-	var instance := RealmzRules.new().inventory.add_item(carried_source, item, "inventory.instance.sword", true)
+	var session := GameSession.new(); assert_equal(session.start(content, 41).state, SessionStep.State.COMPLETED, "inventory session starts"); var source := _character("inventory.source", "Alis", content); var destination := _character("inventory.destination", "Borin", content)
+	assert_equal(session.submit_intent(PartyIntents.import_vault_character(source.id, "1".repeat(64), source, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "source character enters party setup"); assert_equal(session.submit_intent(PartyIntents.import_vault_character(destination.id, "2".repeat(64), destination, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "trade recipient enters party setup"); assert_equal(session.submit_intent(PartyIntents.begin_adventure()).state, SessionStep.State.COMPLETED, "inventory fixture begins the adventure")
+	var carried_source := session._context.state.party.character_by_id(source.id); var item := content.items.item_by_id("classic.item.inventory-sword"); var instance := RealmzRules.new().inventory.add_item(carried_source, item, "inventory.instance.sword", true)
 	assert_not_null(instance, "source-backed carried item enters the source character inventory")
-	var item_view := session.view().party_members[0].items[0]
-	assert_true(item_view.actions.equip.enabled, "detached item actions expose a legal Classic equip")
-	assert_true(item_view.actions.trade.enabled, "detached item actions expose a legal recipient")
+	var item_view := session.view().party_members[0].items[0]; assert_true(item_view.actions.equip.enabled, "detached item actions expose a legal Classic equip"); assert_true(item_view.actions.trade.enabled, "detached item actions expose a legal recipient")
 	assert_equal([item_view.actions.trade_targets[0].character_id, item_view.actions.trade_targets[0].current_load, item_view.actions.trade_targets[0].resulting_load, item_view.actions.trade_targets[0].maximum_load], [destination.id, destination.carried_load, destination.carried_load + item.instance_weight(instance.charges), destination.maximum_load], "the detached trade target carries stable identity and source-projected current, resulting, and maximum load")
 
-	var equipped := session.submit_intent(InventoryIntents.equip(instance.id, source.id))
-	assert_equal(equipped.state, SessionStep.State.COMPLETED, "typed Equip commits synchronously")
-	assert_true(carried_source.inventory()[0].equipped, "Equip changes only session-owned item state")
-	assert_equal(equipped.events[0].kind, &"item_equipped", "Equip publishes a presentation event")
-	var equipped_trade := session.submit_intent(InventoryIntents.trade(instance.id, source.id, destination.id))
-	assert_equal(equipped_trade.state, SessionStep.State.COMPLETED, "Classic trade accepts an equipped ordinary item")
-	var carried_destination := session._context.state.party.character_by_id(destination.id)
+	var equipped := session.submit_intent(InventoryIntents.equip(instance.id, source.id)); assert_equal(equipped.state, SessionStep.State.COMPLETED, "typed Equip commits synchronously"); assert_true(carried_source.inventory()[0].equipped, "Equip changes only session-owned item state"); assert_equal(equipped.events[0].kind, &"item_equipped", "Equip publishes a presentation event")
+	var equipped_trade := session.submit_intent(InventoryIntents.trade(instance.id, source.id, destination.id)); assert_equal(equipped_trade.state, SessionStep.State.COMPLETED, "Classic trade accepts an equipped ordinary item"); var carried_destination := session._context.state.party.character_by_id(destination.id)
 	assert_false(carried_destination.inventory()[0].equipped, "the transferred record becomes unequipped on its recipient")
 	assert_equal(session.submit_intent(InventoryIntents.trade(instance.id, destination.id, source.id)).state, SessionStep.State.COMPLETED, "the exact item can be traded back")
 	assert_equal(session.submit_intent(InventoryIntents.equip(instance.id, source.id)).state, SessionStep.State.COMPLETED, "the returned item can be equipped again")
-	var unequipped := session.submit_intent(InventoryIntents.unequip(instance.id, source.id))
-	assert_equal(unequipped.state, SessionStep.State.COMPLETED, "typed Unequip commits synchronously")
-	var traded := session.submit_intent(InventoryIntents.trade(instance.id, source.id, destination.id))
-	assert_equal(traded.state, SessionStep.State.COMPLETED, "typed trade moves one exact item instance")
-	assert_equal(carried_source.inventory().size(), 0, "trade removes the source item")
-	assert_equal(carried_destination.inventory()[0].id, instance.id, "trade preserves stable instance identity")
-	assert_equal(carried_source.carried_load, 0, "trade removes the exact item load from the source")
-	assert_equal(carried_destination.carried_load, item.instance_weight(instance.charges), "trade adds the exact item load to the destination")
+	var unequipped := session.submit_intent(InventoryIntents.unequip(instance.id, source.id)); assert_equal(unequipped.state, SessionStep.State.COMPLETED, "typed Unequip commits synchronously"); var traded := session.submit_intent(InventoryIntents.trade(instance.id, source.id, destination.id)); assert_equal(traded.state, SessionStep.State.COMPLETED, "typed trade moves one exact item instance")
+	assert_equal([carried_source.inventory().size(), carried_destination.inventory()[0].id, carried_source.carried_load, carried_destination.carried_load], [0, instance.id, 0, item.instance_weight(instance.charges)], "trade preserves exact identity and load across source and destination")
 
-	var before_use_charges := carried_destination.inventory()[0].charges
-	var rejected_use := session.submit_intent(InventoryIntents.use(instance.id, destination.id))
-	assert_equal(rejected_use.error_code, &"item_has_no_spell_effect", "ordinary equipment does not masquerade as a charged spell item")
-	assert_equal(carried_destination.inventory()[0].charges, before_use_charges, "rejected ordinary item use preserves charges")
+	var before_use_charges := carried_destination.inventory()[0].charges; var rejected_use := session.submit_intent(InventoryIntents.use(instance.id, destination.id)); assert_equal(rejected_use.error_code, &"item_has_no_spell_effect", "ordinary equipment does not masquerade as a charged spell item"); assert_equal(carried_destination.inventory()[0].charges, before_use_charges, "rejected ordinary item use preserves charges")
 
-	var drop_wait := session.submit_intent(InventoryIntents.drop(instance.id, destination.id))
-	assert_equal(drop_wait.state, SessionStep.State.WAITING_FOR_INTERACTION, "Drop opens a typed irreversible-action confirmation")
-	assert_equal(drop_wait.interaction.kind, InteractionRequest.YES_NO, "Drop uses the ordinary serializable yes/no interaction")
-	assert_false(session._context.scenario_vm.is_active(), "a session-owned Drop does not create a VM continuation")
-	assert_equal(session._context.scenario_vm.pending_request(), null, "a session-owned Drop does not create a VM request")
-	var pending_snapshot := session.snapshot()
+	var drop_wait := session.submit_intent(InventoryIntents.drop(instance.id, destination.id)); assert_equal(drop_wait.state, SessionStep.State.WAITING_FOR_INTERACTION, "Drop opens a typed irreversible-action confirmation"); assert_equal(drop_wait.interaction.kind, InteractionRequest.YES_NO, "Drop uses the ordinary serializable yes/no interaction"); assert_false(session._context.scenario_vm.is_active(), "a session-owned Drop does not create a VM continuation"); assert_equal(session._context.scenario_vm.pending_request(), null, "a session-owned Drop does not create a VM request"); var pending_snapshot := session.snapshot()
 	assert_not_null(pending_snapshot, "Drop confirmation is a saveable committed boundary")
 	if pending_snapshot == null:
 		return
-	var restored_envelope := SaveEnvelope.from_data(save_data(pending_snapshot))
-	assert_not_null(restored_envelope, "Drop confirmation save data validates before restore")
+	var restored_envelope := SaveEnvelope.from_data(save_data(pending_snapshot)); assert_not_null(restored_envelope, "Drop confirmation save data validates before restore")
 	if restored_envelope == null:
 		return
-	var restored := GameSession.new()
-	assert_equal(restored.restore(content, restored_envelope).state, SessionStep.State.COMPLETED, "pending Drop confirmation restores transactionally")
-	assert_equal(restored.view().pending_interaction.to_data(), drop_wait.interaction.to_data(), "restored Drop retains its exact request and labels")
-	var declined := restored.respond(InteractionResponse.yes_no(restored.view().pending_interaction, false))
-	assert_equal(declined.state, SessionStep.State.COMPLETED, "declining Drop resumes at a committed boundary")
+	var restored := GameSession.new(); assert_equal(restored.restore(content, restored_envelope).state, SessionStep.State.COMPLETED, "pending Drop confirmation restores transactionally"); assert_equal(restored.view().pending_interaction.to_data(), drop_wait.interaction.to_data(), "restored Drop retains its exact request and labels"); var declined := restored.respond(InteractionResponse.yes_no(restored.view().pending_interaction, false)); assert_equal(declined.state, SessionStep.State.COMPLETED, "declining Drop resumes at a committed boundary")
 	assert_equal(restored._context.state.party.character_by_id(destination.id).inventory().size(), 1, "declining Drop preserves the item")
-	var second_wait := restored.submit_intent(InventoryIntents.drop(instance.id, destination.id))
-	var accepted := restored.respond(InteractionResponse.yes_no(second_wait.interaction, true))
-	assert_equal(accepted.state, SessionStep.State.COMPLETED, "accepting Drop commits the irreversible action")
+	var second_wait := restored.submit_intent(InventoryIntents.drop(instance.id, destination.id)); var accepted := restored.respond(InteractionResponse.yes_no(second_wait.interaction, true)); assert_equal(accepted.state, SessionStep.State.COMPLETED, "accepting Drop commits the irreversible action")
 	assert_equal(restored._context.state.party.character_by_id(destination.id).inventory().size(), 0, "accepted Drop removes the exact item")
 	assert_equal(accepted.events[0].kind, &"item_dropped", "accepted Drop publishes its committed result")
 
@@ -92,6 +60,18 @@ func run() -> void:
 	var cursed_trade := restored.submit_intent(InventoryIntents.trade(cursed_instance.id, source.id, destination.id))
 	assert_equal(cursed_trade.error_code, &"item_cannot_trade", "FD-INVENTORY-001 prevents Castle's trade path from bypassing an equipped curse")
 	_test_equipment_probes(content)
+
+
+func _test_david_robe_of_speed(source: RealmzContent, application: RealmzContent) -> void:
+	var race := application.characters.race_by_id("classic.race.15"); var caste := application.characters.caste_by_id("classic.caste.20"); var robe := application.items.item_by_classic_id(206); assert_equal([race != null, caste != null, robe != null], [true, true, true], "the stock Brownie, Minstrel, and Robe of Speed definitions are available for David's reported equipment case")
+	if race == null or caste == null or robe == null: return
+	var content := RealmzContent.new("inventory-david-robe", source.package_hash, "inventory-david-robe", source.rules_version, source.start_map_id, source.start_coordinate, source.world, ScenarioDefinition.new([], []), [], [], [], [race], [caste], [robe], []); var david := CharacterState.new("inventory.david", "David", 107, 107); david.race_id = race.id; david.caste_id = caste.id; david.maximum_load = 2_000; var instance := RealmzRules.new().inventory.add_item(david, robe, "inventory.david.robe-of-speed", true); var session := GameSession.new()
+	assert_equal([session.start(content, 206).state, session.submit_intent(PartyIntents.import_vault_character(david.id, "d".repeat(64), david, "fixture", content.package_hash)).state, session.submit_intent(PartyIntents.begin_adventure()).state], [SessionStep.State.COMPLETED, SessionStep.State.COMPLETED, SessionStep.State.COMPLETED], "David's Robe fixture starts, imports its Brownie Minstrel, and begins through public operations")
+	assert_true(session.view().party_members[0].items[0].actions.equip.enabled, "Inventory exposes Equip for David's exact Robe of Speed case"); assert_equal(session.submit_intent(InventoryIntents.equip(instance.id, david.id)).state, SessionStep.State.COMPLETED, "David equips the Robe of Speed through the public Inventory operation"); var equipped_david: CharacterState = session.snapshot().game_state.party.character_by_id(david.id)
+	assert_equal([equipped_david.conditions.value(ConditionRules.SPEEDY), equipped_david.equipment_order.ids()], [-1, [instance.id]], "the Robe applies permanent Speedy and records its authoritative wear order")
+	var restored := GameSession.new(); assert_equal(restored.restore(content, save_round_trip(session.snapshot())).state, SessionStep.State.COMPLETED, "David's equipped Robe restores through save v5"); var restored_david: CharacterState = restored.snapshot().game_state.party.character_by_id(david.id)
+	assert_equal([restored_david.conditions.value(ConditionRules.SPEEDY), restored_david.equipment_order.ids()], [-1, [instance.id]], "save v5 restores the Robe effect and exact equipped identity without replaying it")
+	assert_equal(restored.submit_intent(InventoryIntents.unequip(instance.id, david.id)).state, SessionStep.State.COMPLETED, "David removes the Robe through the public Inventory operation"); restored_david = restored.snapshot().game_state.party.character_by_id(david.id); assert_equal([restored_david.conditions.value(ConditionRules.SPEEDY), restored_david.equipment_order.ids()], [0, []], "removing the Robe clears its permanent Speedy contribution and wear order")
 
 
 func _test_split_join(content: RealmzContent) -> void:
@@ -295,6 +275,7 @@ func _test_equipment_probes(content: RealmzContent) -> void:
 	var quiver_instance := rules.inventory.add_item(character, quiver, "probe.quiver", true)
 	var bow_instance := rules.inventory.add_item(character, bow, "probe.bow", true)
 	var unsupported_instance := rules.inventory.add_item(character, unsupported, "probe.speed", true)
+	var type_one := ItemDefinition.new("classic.item.probe-type-one", 25, "Type One"); type_one.item_type = 1; type_one.item_category_mask_low = category_mask; var type_one_instance := rules.inventory.add_item(character, type_one, "probe.type-one", true); definitions.append(type_one)
 	assert_true(rules.equipment.equip_classic(character, greatsword_instance, greatsword, race, caste, party, definitions).allowed, "Classic equipment probe accepts a legal two-handed weapon")
 	assert_false(rules.equipment.classic_equip_probe(character, shield_instance, shield, race, caste, party, definitions).allowed, "Classic equipment probe rejects a shield when both hands are occupied")
 	assert_true(rules.equipment.unequip_classic(character, greatsword_instance, greatsword, definitions).allowed, "the two-handed weapon can be removed")
@@ -302,7 +283,17 @@ func _test_equipment_probes(content: RealmzContent) -> void:
 	assert_true(rules.equipment.equip_classic(character, quiver_instance, quiver, race, caste, party, definitions).allowed, "the Classic quiver slot can be equipped")
 	assert_true(rules.equipment.equip_classic(character, bow_instance, bow, race, caste, party, definitions).allowed, "the bow becomes legal after its quiver is equipped")
 	assert_false(rules.equipment.classic_unequip_probe(character, quiver_instance, quiver, definitions).allowed, "the quiver cannot be removed while a missile weapon is equipped")
-	assert_false(rules.equipment.classic_equip_probe(character, unsupported_instance, unsupported, race, caste, party, definitions).allowed, "unimplemented passive item effects stay explicitly unavailable")
+	var movement_before := character.maximum_movement; assert_true(rules.equipment.equip_classic(character, unsupported_instance, unsupported, race, caste, party, definitions).allowed, "wearable movement effects are admitted through the equipment owner"); assert_equal(character.maximum_movement, movement_before + 2, "wearing movement equipment immediately recalculates movement"); assert_true(rules.equipment.unequip_classic(character, unsupported_instance, unsupported, definitions, race).allowed, "movement equipment can be removed"); assert_equal(character.maximum_movement, movement_before, "removing movement equipment reverses its movement contribution")
+	var passive := ItemDefinition.new("classic.item.probe-passive", 28, "Passive Helm"); passive.item_type = 8; passive.item_category_mask_low = category_mask; passive.strength_bonus = 2; passive.magic_resistance_bonus = 3; passive.spell_point_bonus = 5; passive.special_1 = 122; passive.special_2 = 3; passive.special_3 = -1; passive.special_4 = 4; passive.special_5 = 2; definitions.append(passive)
+	var passive_instance := rules.inventory.add_item(character, passive, "probe.passive", true); var passive_before := [character.brawn, character.magic_resistance, character.spell_points, character.maximum_spell_points, character.attack_bonus, character.special_value(0), character.ability_value(3)]; assert_true(rules.equipment.equip_classic(character, passive_instance, passive, race, caste, party, definitions).allowed, "attribute, spell-point, attack-count, special, and ability equipment effects are admitted")
+	assert_equal([character.brawn, character.magic_resistance, character.spell_points, character.maximum_spell_points, character.attack_bonus, character.special_value(0), character.ability_value(3)], [passive_before[0] + 2, passive_before[1] + 3, passive_before[2] + 5, passive_before[3] + 5, passive_before[4] + 3, passive_before[5] + 2, passive_before[6] + 2], "wear applies source-ordered passive values")
+	assert_true(rules.equipment.unequip_classic(character, passive_instance, passive, definitions, race).allowed, "passive equipment can be removed"); assert_equal([character.brawn, character.magic_resistance, character.spell_points, character.maximum_spell_points, character.attack_bonus, character.special_value(0), character.ability_value(3)], passive_before, "remove reverses reversible passive values"); assert_true(rules.equipment.equip_classic(character, type_one_instance, type_one, race, caste, party, definitions).allowed, "Classic item type one uses its source-backed slot")
+	var capped_positive := ItemDefinition.new("classic.item.probe-capped-positive", 26, "Capped Positive"); capped_positive.item_type = 6; capped_positive.item_category_mask_low = category_mask; capped_positive.armor_bonus = -10; capped_positive.damage_bonus = 20
+	var capped_negative := ItemDefinition.new("classic.item.probe-capped-negative", 27, "Capped Negative"); capped_negative.item_type = 7; capped_negative.item_category_mask_low = category_mask; capped_negative.armor_bonus = 6; capped_negative.damage_bonus = -15; definitions.append_array([capped_positive, capped_negative])
+	var positive_instance := rules.inventory.add_item(character, capped_positive, "probe.capped-positive", true); var negative_instance := rules.inventory.add_item(character, capped_negative, "probe.capped-negative", true); character.armor = 5; character.damage_bonus = 100; assert_true(rules.equipment.equip_classic(character, positive_instance, capped_positive, race, caste, party, definitions).allowed and rules.equipment.equip_classic(character, negative_instance, capped_negative, race, caste, party, definitions).allowed, "mixed signed equipment is legal"); var ordered := rules.equipment.combat_equipment(character, definitions)
+	assert_equal([ordered.effective_armor, ordered.effective_damage_bonus, character.equipment_order.ids().slice(-2)], [6, 95, [positive_instance.id, negative_instance.id]], "armor floors and damage caps in source equip order")
+	rules.equipment.unequip_classic(character, positive_instance, capped_positive, definitions); rules.equipment.unequip_classic(character, negative_instance, capped_negative, definitions); rules.equipment.equip_classic(character, negative_instance, capped_negative, race, caste, party, definitions); rules.equipment.equip_classic(character, positive_instance, capped_positive, race, caste, party, definitions); ordered = rules.equipment.combat_equipment(character, definitions)
+	assert_equal([ordered.effective_armor, ordered.effective_damage_bonus], [1, 105], "reversing equip order preserves Castle's order-sensitive floor and cap")
 	character.money = WealthState.new(7, 2, 1)
 	var expected_load := 7 + 2 + 15
 	for carried: ItemInstance in character.inventory():
