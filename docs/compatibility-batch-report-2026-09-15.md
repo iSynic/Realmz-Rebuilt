@@ -104,3 +104,10 @@ This report closes one three-workflow repair batch. Controlled rules, VM, and pr
 - Detailed readiness inspection pins Hax's only current blocker to XAP 567, opcode 2, Extra Code row 2038. Its exact signed values are `(-128, 0, 0, 3001, 0)`, requesting surprise battle 128 with pre-battle message 3001. The source `Data SD2` SHA-256 `b44d28f2e361eb1ae7a0b44f9b3db6ea73308083e5a7f43ed690e9c85fc6f4c4` is exactly 1,081 complete records, IDs 0–1080; the referenced message does not exist.
 - Castle source initializes its textbox buffer from application `STR#` 3 entry 1 and then ignores failed seek/read results. The observed source path would therefore show stale fallback text, not authored Hax message content. Providence remains correct to block package generation pending an authoring-source correction or explicit malformed-input fidelity decision.
 - No Rebuilt runtime or schema change is justified, no package was produced, and ordinary-route reachability to XAP 567 remains unproven.
+
+## Third-party blocker and exact-party Auto batch closeout
+
+- Focused commits are `b945e7fb` for compiler-reference classification, `a8ee8306` for the exact-party Auto reproduction probe, and `97d022c1` for the Hax message blocker.
+- The aggregate gate passes 4,486 assertions across 29 suites; Providence package alignment; the 648-entry application media catalog; all 13 bundled packages and 515 scenario CICN descriptors; gameplay and workflow inventories; architecture, maintainability, schema, provenance, and Windows/Linux/macOS export contracts.
+- The short main-scene smoke retains the known single ObjectDB exit warning. No runtime behavior, package, save, Character Files, settings, or schema changed in this evidence batch.
+- No campaign status is promoted. Araman's Ring, Lachis, Elemental Strife, and Hax remain conversion-blocked for their separately documented reasons. The retained David report remains open at the rendered host/presentation-continuation boundary despite the direct-rules negative reproduction.

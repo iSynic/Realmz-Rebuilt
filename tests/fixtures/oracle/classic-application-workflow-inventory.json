@@ -23,9 +23,9 @@
     ]
   },
   "currentBatch": {
-    "id": "classic-compatibility-observation-and-opcode-evidence",
-    "name": "Auto observation, macro classification, and opcode 13 evidence",
-    "baselineCommit": "1c046837c0d52d7c7e2aa66dba7baf8bf4dc8138",
+    "id": "third-party-blockers-and-exact-auto-diagnostics",
+    "name": "Third-party blockers and exact-party Auto diagnostics",
+    "baselineCommit": "b1e87f35d78c8894e44efa0d81910dbf5112dcdf",
     "baselineCounts": {
       "classic": {
         "missing": 0,
@@ -40,31 +40,37 @@
         "certified": 2
       }
     },
-    "selectionRationale": "This three-workflow batch improves the evidence needed for reported and reachable failures without inventing compatibility behavior. A rendered Half Truth Battle 70 fixture enabled all six persistent Auto controls through actual UI input and reached Treasure in round 2 without controller suspension or an engine error; terminal diagnostics now mark combat inactive instead of presenting the final actor and round as pending work. The macro call-graph audit now emits deterministic prose-free mechanical signatures for the eight reachable target-type 0, 1, and 6 rows that still require controlled Castle adjudication. Opcode 13 now has public-runtime coverage for its combined single and inclusive range, signed land and dungeon selection, silent unplaced rows, save persistence, zero RNG, and atomic invalid-map failure. The aggregate passes 4,485 assertions across 29 suites plus package, media, schema, provenance, architecture, maintainability, workflow, gameplay, and native export-contract checks; the known one-object smoke teardown warning remains. These results do not close the exact David stall, implement the ambiguous macro families, or promote any campaign certification status.",
+    "selectionRationale": "This three-workflow batch separates three observed compatibility failures without inventing content or claiming campaign playability. Araman's Ring and Lachis are blocked by Providence treating stock door item 662's absent optional XAP 69 as a package-wide root; Elemental Strife instead places a 100-percent AP that calls semantically empty Simple Encounter 13. The exact retained Half Truth party and RNG reach Battle 70 victory under direct rules Auto, and seeds 1-250 also complete, narrowing the David report to host or presentation continuation while preserving it as open. Hax XAP 567 requests message 3001 from a source containing only IDs 0-1080; Castle's unchecked EOF read would show stale fallback text, so Providence correctly refuses to fabricate content. The aggregate passes 4,486 assertions across 29 suites plus package, media, schema, provenance, architecture, maintainability, workflow, gameplay, and native export-contract checks; the known one-object smoke teardown warning remains. No blocked package was modified, no campaign status was promoted, and ordinary-route reachability for the malformed rows remains unproven.",
     "targets": [
+      {
+        "workflowId": "host.package.readiness-failure",
+        "mode": "archaeology",
+        "priority": "known-failure",
+        "expectedEvidence": "",
+        "gapIds": [],
+        "archaeologyTriggers": [
+          "reachable-blocker",
+          "source-ambiguity-for-target-campaign"
+        ]
+      },
       {
         "workflowId": "classic.combat.auto-character",
         "mode": "verification",
         "priority": "known-failure",
-        "expectedEvidence": "live-route",
+        "expectedEvidence": "runtime-integration",
         "gapIds": [],
         "archaeologyTriggers": []
       },
       {
-        "workflowId": "classic.combat.resolve-outcome",
-        "mode": "verification",
+        "workflowId": "classic.scenario.present-message-media",
+        "mode": "archaeology",
         "priority": "known-failure",
-        "expectedEvidence": "runtime-integration",
+        "expectedEvidence": "",
         "gapIds": [],
-        "archaeologyTriggers": []
-      },
-      {
-        "workflowId": "classic.scenario.trigger-action-point",
-        "mode": "verification",
-        "priority": "meaningful-variant",
-        "expectedEvidence": "runtime-integration",
-        "gapIds": [],
-        "archaeologyTriggers": []
+        "archaeologyTriggers": [
+          "reachable-blocker",
+          "source-ambiguity-for-target-campaign"
+        ]
       }
     ]
   },

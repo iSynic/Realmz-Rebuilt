@@ -13,17 +13,17 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Current parity-convergence batch
 
-**Auto observation, macro classification, and opcode 13 evidence** (`classic-compatibility-observation-and-opcode-evidence`)
+**Third-party blockers and exact-party Auto diagnostics** (`third-party-blockers-and-exact-auto-diagnostics`)
 
-This three-workflow batch improves the evidence needed for reported and reachable failures without inventing compatibility behavior. A rendered Half Truth Battle 70 fixture enabled all six persistent Auto controls through actual UI input and reached Treasure in round 2 without controller suspension or an engine error; terminal diagnostics now mark combat inactive instead of presenting the final actor and round as pending work. The macro call-graph audit now emits deterministic prose-free mechanical signatures for the eight reachable target-type 0, 1, and 6 rows that still require controlled Castle adjudication. Opcode 13 now has public-runtime coverage for its combined single and inclusive range, signed land and dungeon selection, silent unplaced rows, save persistence, zero RNG, and atomic invalid-map failure. The aggregate passes 4,485 assertions across 29 suites plus package, media, schema, provenance, architecture, maintainability, workflow, gameplay, and native export-contract checks; the known one-object smoke teardown warning remains. These results do not close the exact David stall, implement the ambiguous macro families, or promote any campaign certification status.
+This three-workflow batch separates three observed compatibility failures without inventing content or claiming campaign playability. Araman's Ring and Lachis are blocked by Providence treating stock door item 662's absent optional XAP 69 as a package-wide root; Elemental Strife instead places a 100-percent AP that calls semantically empty Simple Encounter 13. The exact retained Half Truth party and RNG reach Battle 70 victory under direct rules Auto, and seeds 1-250 also complete, narrowing the David report to host or presentation continuation while preserving it as open. Hax XAP 567 requests message 3001 from a source containing only IDs 0-1080; Castle's unchecked EOF read would show stale fallback text, so Providence correctly refuses to fabricate content. The aggregate passes 4,486 assertions across 29 suites plus package, media, schema, provenance, architecture, maintainability, workflow, gameplay, and native export-contract checks; the known one-object smoke teardown warning remains. No blocked package was modified, no campaign status was promoted, and ordinary-route reachability for the malformed rows remains unproven.
 
 AP batches use failure-first priorities: known failures, untested high-risk behavior, meaningful variants, and broader representatives. Verification mode records existing functional behavior without claiming full campaign certification; implementation, verification, and certification remain distinct modes.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.combat.auto-character` | verification | known-failure | live-route |  |
-| `classic.combat.resolve-outcome` | verification | known-failure | runtime-integration |  |
-| `classic.scenario.trigger-action-point` | verification | meaningful-variant | runtime-integration |  |
+| `host.package.readiness-failure` | archaeology | known-failure | - |  |
+| `classic.combat.auto-character` | verification | known-failure | runtime-integration |  |
+| `classic.scenario.present-message-media` | archaeology | known-failure | - |  |
 
 ### Batch count delta
 
