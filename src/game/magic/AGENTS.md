@@ -21,6 +21,7 @@ Own immutable spell definitions and lookup, mutable spell shortcuts and scroll f
 - Learned spell IDs, Fast Spell bindings, and scroll spell IDs remain mutable playthrough facts. Catalog definitions remain immutable.
 - Scenario-only save adjustment and forced-affect operands use a detached `SpellDefinition` copy. They never mutate the shared catalog record or leak into a subsequent cast.
 - Shaped combat areas test reflection while collecting occupied targets, before their shared duration and damage rolls. Duplicate reflected recipients collapse to one effective caster result; automatic side/whole groups and persistent-field collisions do not reflect.
+- Target type zero with nonzero size is executable only for source-backed special 58 Summon. Other records are malformed: Castle's picker returns battlefield coordinates to actor-index resolution, so every casting-source disposition rejects them with the same explicit diagnostic.
 
 ## Work Guidance
 

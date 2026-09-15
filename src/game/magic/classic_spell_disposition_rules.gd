@@ -33,6 +33,8 @@ static func combat_character_disposition(spell: SpellDefinition) -> StringName:
 		return DISPOSITION_NOT_APPLICABLE
 	if ClassicSpellConditionRules.is_combat_actor_field_spell(spell):
 		return DISPOSITION_EXECUTABLE
+	if _is_invalid_open_space_spell(spell):
+		return DISPOSITION_PENDING
 	if ClassicSpellConditionRules.combat_spell_uses_persistent_field_queue(spell):
 		return DISPOSITION_EXECUTABLE if ClassicSpellConditionRules.is_combat_persistent_field_spell(spell) else DISPOSITION_PENDING
 	if spell.target_type not in [0, 1, 3, 4, 5, 6, 7, 8, 9, 10, 12]:
@@ -53,6 +55,8 @@ static func combat_scroll_disposition(spell: SpellDefinition) -> StringName:
 		return DISPOSITION_NOT_APPLICABLE
 	if ClassicSpellConditionRules.is_combat_actor_field_spell(spell):
 		return DISPOSITION_EXECUTABLE
+	if _is_invalid_open_space_spell(spell):
+		return DISPOSITION_PENDING
 	if ClassicSpellConditionRules.combat_spell_uses_persistent_field_queue(spell):
 		return DISPOSITION_EXECUTABLE if ClassicSpellConditionRules.is_combat_persistent_field_spell(spell) else DISPOSITION_PENDING
 	if spell.target_type not in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12]:
@@ -71,6 +75,8 @@ static func combat_item_disposition(spell: SpellDefinition) -> StringName:
 		return DISPOSITION_EXECUTABLE
 	if ClassicSpellConditionRules.is_combat_actor_field_spell(spell):
 		return DISPOSITION_EXECUTABLE
+	if _is_invalid_open_space_spell(spell):
+		return DISPOSITION_PENDING
 	if ClassicSpellConditionRules.combat_spell_uses_persistent_field_queue(spell):
 		return DISPOSITION_EXECUTABLE if ClassicSpellConditionRules.is_combat_persistent_field_spell(spell) else DISPOSITION_PENDING
 	if spell.target_type not in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12]:
@@ -146,6 +152,8 @@ static func unsupported_reason(spell: SpellDefinition, context_name: StringName)
 		return "This spell is not available in Classic combat."
 	if ClassicSpellConditionRules.combat_spell_uses_persistent_field_queue(spell):
 		return "This persistent battlefield-field spell is waiting for its collision and expiry lifecycle."
+	if _is_invalid_open_space_spell(spell):
+		return "Classic only resolves nonzero-size target type 0 safely for special 58 Summon; this malformed spell would pass battlefield coordinates to actor-index resolution."
 	if spell.can_rotate and spell.target_type in [3, 4] and context_name not in [&"combat-character", &"combat-scroll", &"combat-item"]:
 		return "This casting source is waiting for the Classic rotatable-area orientation contract."
 	var family := String(ClassicSpellClassificationRules.mechanical_family(spell)).replace("-", " ")
@@ -155,6 +163,10 @@ static func unsupported_reason(spell: SpellDefinition, context_name: StringName)
 
 static func _is_character_source_effect(spell: SpellDefinition) -> bool:
 	return ClassicSpellSourceRules.is_ordinary_combat_spell(spell) or ClassicSpellSourceRules.is_inert_self_duration_effect(spell) or ClassicSpellConditionRules.is_combat_healing_spell(spell) or ClassicSpellConditionRules.is_combat_condition_cure_spell(spell) or ClassicSpellConditionRules.is_combat_condition_effect_spell(spell) or ClassicSpellSpecialEffectRules.is_combat_death_spell(spell) or ClassicSpellSpecialEffectRules.is_combat_spell_point_restore_spell(spell) or ClassicSpellSpecialEffectRules.is_combat_spell_point_drain_spell(spell) or ClassicSpellSpecialEffectRules.is_combat_destroy_magic_spell(spell) or ClassicSpellSpecialEffectRules.is_combat_remove_curse_spell(spell) or ClassicSpellSpecialEffectRules.is_combat_charm_spell(spell) or ClassicSpellSpecialEffectRules.is_combat_polymorph_spell(spell) or ClassicSpellSpecialEffectRules.is_combat_destroy_turn_undead_spell(spell) or ClassicSpellSpecialEffectRules.is_combat_phase_spell(spell) or ClassicSpellSpecialEffectRules.is_combat_summon_spell(spell)
+
+
+static func _is_invalid_open_space_spell(spell: SpellDefinition) -> bool:
+	return spell != null and spell.target_type == 0 and spell.size != 0 and not ClassicSpellSpecialEffectRules.is_combat_summon_spell(spell)
 
 
 static func _is_monster_source_effect(spell: SpellDefinition) -> bool:
