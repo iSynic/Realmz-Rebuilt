@@ -133,7 +133,7 @@ func run() -> void:
 	assert_equal(loaded.content.combat.monster_by_id("classic.monster.1").attacks()[0].damage_max, 4, "monster attacks are typed instead of retained as native row dictionaries")
 	assert_equal(loaded.content.combat.monster_by_id("classic.monster.1").item_ids(), ["classic.item.901", "", "", "", "", ""], "monster item slots preserve all six native positions")
 	assert_equal(loaded.content.combat.monster_by_id("classic.monster.1").item_id_at(1), "", "an empty native missile slot does not collapse onto the melee item")
-	assert_equal(loaded.content.combat.monster_by_id("classic.monster.1").spell_ids().size(), 10, "monster spell slots preserve all ten native positions")
+	assert_true(loaded.content.combat.monster_by_id("classic.monster.1").spell_ids().size() == 10 and loaded.content.combat.definitions().size() >= 1, "monster spell slots preserve all ten native positions and the capability boundary exposes the complete effective monster catalog")
 	assert_equal(loaded.content.combat.monster_by_id("classic.monster.1").spell_id_at(1), "", "an empty native spell slot remains selectable as an empty Castle retry")
 	assert_equal(loaded.content.combat.monster_by_id("classic.monster.1").required_weapon, 0, "monster weapon requirements remain distinct from battle placement distance")
 	assert_equal(loaded.content.combat.monster_by_id("classic.monster.1").magic_to_hit, 0, "monster magical-plus thresholds remain an explicit field even when unrestricted")

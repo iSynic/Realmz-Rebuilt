@@ -15,6 +15,7 @@ Own the explicit collaboration boundary shared by deterministic battle rules.
 - `CombatView`, `BattlefieldView`, actor/catalog views, action-option views, and persistent-field views carry the detached battle read model.
 - `CombatRequestBody` carries the detached active-actor command surface through the shared interaction envelope.
 - Battlefield construction, physical attack policy and resolution, initiative, command/retreat probes, monster rules, and their typed results live beside the state they interpret.
+- `CombatCatalog.definitions()` exposes the deterministic complete effective monster catalog for bounded capability and corpus analysis; player-facing bestiary filtering remains a separate view.
 - Routed monster movement replaces a stale retained target through the existing deterministic visible-target selection before stepping away. A `canSummon == -1` scenario-mandatory ally may reach the retreat band but remains a living positioned combatant; the activation ends with a typed blocked-retreat reason instead of deleting the ally or following Castle's unsafe offscreen walk.
 - `CombatFlow` and its action, reaction, phase, lifecycle, magic, field, summoning, and rollback collaborators own command mutation. `CombatBattleSetup` owns validated construction and opening turns.
 - `CombatAiScoring`, party and monster planners, party and monster automation, target facts, monster actions, and occupancy rules own deterministic automatic decisions and battlefield cleanup.
