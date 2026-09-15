@@ -90,7 +90,9 @@ func _test_package_operation_presentation() -> void:
 	(Engine.get_main_loop() as SceneTree).root.add_child(router)
 	router.initialize()
 	var canceled := [0]
+	var retried: Array[String] = []
 	router.cancel_package_requested.connect(func() -> void: canceled[0] += 1)
+	router.start_requested.connect(func(path: String, _seed: int) -> void: retried.append(path))
 	router.setup_controller.campaign_library.set_package_operation(PackageOperationStatusScript.new(&"running", &"loading", 2, 4, "Loading package 2 of 4"))
 	var progress := router.find_child("PackageOperationProgress", true, false) as ProgressBar
 	var cancel := router.find_child("CancelPackageOperation", true, false) as Button
@@ -98,6 +100,16 @@ func _test_package_operation_presentation() -> void:
 	assert_not_null(cancel, "package work exposes cancellation")
 	cancel.pressed.emit()
 	assert_equal(canceled[0], 1, "cancellation remains a host signal")
+	var failed_path := "user://incoming/broken.realmz2"
+	router.setup_controller.campaign_library.set_package_operation(PackageOperationStatusScript.new(&"failed", &"validating_content", 4, 9, "Map 3 references an unknown trigger.", &"package_validation_failed", failed_path, &"install_scenario"))
+	var details := router.find_child("PackageFailureDetails", true, false) as Label
+	var retry := router.find_child("RetryPackageOperation", true, false) as Button
+	var dismiss := router.find_child("DismissPackageFailure", true, false) as Button
+	assert_true(details.visible and details.text.contains("Install Scenario") and details.text.contains(failed_path) and details.text.contains("package_validation_failed"), "a terminal package failure retains its operation, exact affected package, and typed error code")
+	retry.pressed.emit()
+	assert_equal(retried, [failed_path], "Try Again resubmits the retained package through the ordinary start owner exactly once")
+	dismiss.pressed.emit()
+	assert_true(not (router.find_child("PackageOperationHost", true, false) as Control).visible, "Choose Another dismisses only the retained failure presentation and leaves the campaign selector available")
 	router.setup_controller.campaign_library.set_package_operation(PackageOperationStatusScript.new())
 	assert_true(not (router.find_child("PackageOperationHost", true, false) as Control).visible and not (router.find_child("InstallPackage", true, false) as Button).disabled and not (router.find_child("RefreshScenarios", true, false) as Button).disabled, "completed package work hides its authored status and restores library actions")
 	router.free()

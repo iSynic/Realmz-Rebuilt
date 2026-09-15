@@ -55,6 +55,10 @@ var _operation_percentage: Label
 var _operation_progress: ProgressBar
 var _operation_cancel: Button
 var _operation_status: Label
+var _failure_details: Label
+var _failure_actions: HBoxContainer
+var _failure_retry: Button
+var _failure_dismiss: Button
 var _startup_actions_ready: bool = true
 var _startup_action_tooltips: Dictionary = {}
 
@@ -125,6 +129,10 @@ func bind_campaign_panel(panel: CampaignSelectionPanel) -> void:
 	_operation_progress = campaign_overlay.get_node("%PackageOperationProgress") as ProgressBar
 	_operation_cancel = campaign_overlay.get_node("%CancelPackageOperation") as Button
 	_operation_status = campaign_overlay.get_node("%PackageOperationStatus") as Label
+	_failure_details = campaign_overlay.get_node("%PackageFailureDetails") as Label
+	_failure_actions = campaign_overlay.get_node("%PackageFailureActions") as HBoxContainer
+	_failure_retry = campaign_overlay.get_node("%RetryPackageOperation") as Button
+	_failure_dismiss = campaign_overlay.get_node("%DismissPackageFailure") as Button
 	package_install_row = campaign_overlay.get_node("%PackageInstallRow") as BoxContainer
 	install_button = campaign_overlay.get_node("%InstallPackage") as Button
 	install_dialog = campaign_overlay.get_node("%InstallScenarioDialog") as FileDialog
@@ -133,6 +141,8 @@ func bind_campaign_panel(panel: CampaignSelectionPanel) -> void:
 	install_dialog.file_selected.connect(_install_selected)
 	refresh_button.pressed.connect(func() -> void: refresh_requested.emit())
 	_operation_cancel.pressed.connect(func() -> void: cancel_package_requested.emit())
+	_failure_retry.pressed.connect(_retry_package_operation)
+	_failure_dismiss.pressed.connect(func() -> void: set_package_operation(PackageOperationView.new()))
 	render_campaign_list()
 
 
@@ -317,6 +327,8 @@ func _render_package_operation() -> void:
 	_operation_progress.visible = running
 	_operation_percentage.visible = running
 	_operation_cancel.visible = running
+	_failure_actions.visible = failed
+	_failure_details.visible = failed
 	if not running and not failed:
 		return
 	var phase_text := String(package_operation_status.phase).replace("_", " ").capitalize()
@@ -327,6 +339,20 @@ func _render_package_operation() -> void:
 	_operation_progress.value = clampf(float(package_operation_status.completed), 0.0, _operation_progress.max_value)
 	_operation_status.text = package_operation_status.message
 	_operation_status.tooltip_text = package_operation_status.message
+	if failed:
+		var operation := String(package_operation_status.operation_name).replace("_", " ").capitalize()
+		var details: Array[String] = []
+		if not operation.is_empty():
+			details.append("Operation: %s" % operation)
+		if not package_operation_status.package_path.is_empty():
+			details.append("Package: %s" % package_operation_status.package_path)
+		if not package_operation_status.error_code.is_empty():
+			details.append("Error: %s" % package_operation_status.error_code)
+		_failure_details.text = "\n".join(details)
+		_failure_details.tooltip_text = _failure_details.text
+		_failure_retry.disabled = package_operation_status.package_path.is_empty()
+		_failure_retry.tooltip_text = "Retry the same package without changing the current adventure." if not _failure_retry.disabled else "The failed operation did not retain a package path."
+		_failure_dismiss.tooltip_text = "Return to the scenario list without changing current files."
 
 
 func _render_selected_campaign_record() -> void:
@@ -389,6 +415,11 @@ func _open_package_dialog() -> void:
 func _install_selected(path: String) -> void:
 	if path.get_extension().to_lower() == "realmz2":
 		start_requested.emit(path, 1)
+
+
+func _retry_package_operation() -> void:
+	if package_operation_status.state == PackageOperationView.FAILED and not package_operation_status.package_path.is_empty():
+		start_requested.emit(package_operation_status.package_path, 1)
 
 
 func _refresh_campaign_layout() -> void:

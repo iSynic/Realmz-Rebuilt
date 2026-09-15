@@ -100,6 +100,7 @@ func _test_package_host_prewarm(campaign_id: String, package_hash: String) -> vo
 	assert_equal(host.retained_candidate_count(), 1, "retry retains the successfully validated candidate")
 	assert_true(host.start_install(TAMPERED_FIXTURE_PATH), "selecting a different campaign supersedes the retained candidate with foreground priority"); var superseded_operation := _wait_for_host_operation(host); var superseded := host.take_prepared_package()
 	assert_true(superseded_operation.state == PackageOperationView.FAILED and superseded != null and not superseded.is_ok() and host.retained_candidate_count() == 0, "different-campaign supersession preserves validation failure and leaves no stale prepared package")
+	assert_equal([superseded_operation.package_path, superseded_operation.operation_name, superseded_operation.error_code], [TAMPERED_FIXTURE_PATH, &"install_scenario", superseded.error_code], "a foreground failure retains the exact package and typed operation details after the worker result is claimed")
 	host.close(); _cleanup_test_root(); host = PackageHostController.new(test_package_repository(), TEST_ROOT)
 	assert_true(host.start_install(FIXTURE_PATH), "foreground preparation starts before cooperative cancellation"); host.cancel()
 	var cancelled_operation := _wait_for_host_operation(host)
