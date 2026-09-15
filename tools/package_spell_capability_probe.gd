@@ -59,6 +59,7 @@ func _capability_report(content: RealmzContent) -> Dictionary:
 		"blockedMonsterSpellReferences": monster_spell_references["blockedReferences"],
 		"familyCounts": family_counts,
 		"monsterSpellReferenceCount": monster_spell_references["referenceCount"],
+		"inapplicableMonsterSpellReferences": monster_spell_references["inapplicableReferences"],
 		"packageHash": content.package_hash,
 		"pendingScenarioSignatureCount": pending_signatures,
 		"roleCounts": role_counts,
@@ -71,26 +72,34 @@ func _capability_report(content: RealmzContent) -> Dictionary:
 func _monster_spell_references(content: RealmzContent) -> Dictionary:
 	var reference_count := 0
 	var blocked_by_signature: Dictionary = {}
+	var inapplicable_by_signature: Dictionary = {}
 	for monster: MonsterDefinition in content.combat.definitions():
 		for spell_id: String in monster.spell_ids():
 			if spell_id.is_empty():
 				continue
 			reference_count += 1
 			var spell := content.magic.spell_by_id(spell_id)
+			var disposition := ClassicSpellDispositionRules.combat_monster_disposition(spell) if spell != null else ClassicSpellDispositionRules.DISPOSITION_PENDING
 			var reason := "missing-spell-definition" if spell == null else CombatMonsterAutomation.monster_spell_unavailable_reason(spell)
 			if reason.is_empty():
 				continue
 			var behavior: Dictionary = {"missingDefinition": true} if spell == null else ClassicSpellClassificationRules.behavior_signature(spell)
 			var signature_id := CanonicalJson.encode(behavior).sha256_text().substr(0, 16)
-			var record: Dictionary = blocked_by_signature.get(signature_id, {"behavior": behavior, "count": 0, "reason": reason, "signatureId": signature_id})
+			var owner := inapplicable_by_signature if disposition == ClassicSpellDispositionRules.DISPOSITION_NOT_APPLICABLE else blocked_by_signature
+			var classified_reason := "not-applicable-to-monster-casting" if disposition == ClassicSpellDispositionRules.DISPOSITION_NOT_APPLICABLE else reason
+			var record: Dictionary = owner.get(signature_id, {"behavior": behavior, "count": 0, "reason": classified_reason, "signatureId": signature_id})
 			record["count"] = int(record["count"]) + 1
-			blocked_by_signature[signature_id] = record
-	var blocked_references: Array[Dictionary] = []
-	var signature_ids: Array = blocked_by_signature.keys()
+			owner[signature_id] = record
+	return {"blockedReferences": _sorted_records(blocked_by_signature), "inapplicableReferences": _sorted_records(inapplicable_by_signature), "referenceCount": reference_count}
+
+
+static func _sorted_records(records_by_signature: Dictionary) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	var signature_ids: Array = records_by_signature.keys()
 	signature_ids.sort()
 	for signature_id: String in signature_ids:
-		blocked_references.append(blocked_by_signature[signature_id])
-	return {"blockedReferences": blocked_references, "referenceCount": reference_count}
+		result.append(records_by_signature[signature_id])
+	return result
 
 
 func _quit_cleanly(exit_code: int) -> void:
