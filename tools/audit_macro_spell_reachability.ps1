@@ -214,6 +214,31 @@ function Get-MacroSpellDisposition {
     return "unsupported-target"
 }
 
+function Get-MacroSpellSignature {
+    param([pscustomobject] $Spell)
+    if ($null -eq $Spell) { return $null }
+    return [pscustomobject] [ordered]@{
+        spellClass = [int] $Spell.spellClass
+        targetType = [int] $Spell.targetType
+        special = [int] $Spell.special
+        cannot = [int] $Spell.cannot
+        damageType = [int] $Spell.damageType
+        damageMin = [int] $Spell.damageMin
+        damageMax = [int] $Spell.damageMax
+        powerDamageMin = [int] $Spell.powerDamageMin
+        powerDamageMax = [int] $Spell.powerDamageMax
+        durationMin = [int] $Spell.durationMin
+        durationMax = [int] $Spell.durationMax
+        powerDurationMin = [int] $Spell.powerDurationMin
+        powerDurationMax = [int] $Spell.powerDurationMax
+        rangeMin = [int] $Spell.rangeMin
+        rangeMax = [int] $Spell.rangeMax
+        size = [int] $Spell.size
+        fixedTargetCount = [int] $Spell.fixedTargetCount
+        queueIcon = [int] $Spell.queueIcon
+    }
+}
+
 $packages = [System.Collections.Generic.List[System.IO.FileInfo]]::new()
 foreach ($candidate in $PackagePath) {
     $item = Get-Item -LiteralPath $candidate
@@ -285,6 +310,7 @@ foreach ($package in @($packages | Sort-Object FullName -Unique)) {
                     targetType = if ($null -eq $spell) { $null } else { [int] $spell.targetType }
                     queueIcon = if ($null -eq $spell) { $null } else { [int] $spell.queueIcon }
                     disposition = Get-MacroSpellDisposition $spell
+                    signature = Get-MacroSpellSignature $spell
                 }
                 $stored += [pscustomobject] $row
                 if ($reachable.Contains([string] $program.id)) { $reachableRows += [pscustomobject] $row }
@@ -318,7 +344,7 @@ foreach ($package in @($packages | Sort-Object FullName -Unique)) {
 }
 
 $report = [pscustomobject] [ordered]@{
-    schemaVersion = 2
+    schemaVersion = 3
     semantics = "Static authored call reachability from negative battle macros and positive monster death macros. Missing calls are separated by the greatest emitted XAP identity; that structural split does not establish source validity, controlled execution, or ordinary-route reachability."
     applicationPackageSha256 = (Get-FileHash -LiteralPath $applicationPackage.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
     packageCount = $results.Count
