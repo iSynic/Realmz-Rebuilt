@@ -16,16 +16,22 @@ func cast(state: GameState, content: RealmzContent, source_id: String, authored_
 		return CombatFlowResult.failed(&"invalid_macro_spell_source", "A monster macro spell requires its retained battlefield source.")
 	var spell := authored_spell.with_scenario_adjustments(extra_save_adjust, force_affect)
 	if not _supports_spell(spell):
-		return CombatFlowResult.failed(&"unsupported_macro_spell", "Monster macros require an immediate area or side-group combat spell; queued fields and open-space selection remain separate.")
+		return CombatFlowResult.failed(&"unsupported_macro_spell", "Monster macros require an area or side-group combat spell; repeated-target, single-target, and ray signatures require separate adjudication.")
 	var center := combat.battlefield.actors.actor_position(source_id)
 	var shape := _context.spell_areas.shape_for(spell, power) if spell.target_type in [3, 4] else 0
 	if spell.target_type in [3, 4] and _context.spell_areas.pattern(shape).is_empty():
 		return CombatFlowResult.failed(&"invalid_spell_area_shape", "The monster macro references an unavailable Classic area mask.")
+	var persistent_field: RefCounted = null
+	if spell.queue_icon != 0:
+		persistent_field = _context.fields().queue_persistent_field(combat, source_id, spell, power, spell.classic_tier(), rng, center, 0, shape)
+		if persistent_field == null:
+			return CombatFlowResult.failed(&"persistent_field_queue_failed", "The monster macro field could not be queued.")
 	var selections := _targets(state, content, spell, center, shape, rng)
 	var group := _resolve(state, content, selections, spell, power, rng)
 	if group == null or not group.cast:
 		return CombatFlowResult.failed(&"invalid_macro_spell_effect", "The monster macro spell could not resolve its battlefield targets.")
 	var events: Array[DomainEvent] = []
+	_context.fields().append_created_events(events, [persistent_field] if persistent_field != null else [], SOURCE)
 	CombatSpellEventBuilder.append_sound(events, spell.sound_start, "classic-monster-macro-start")
 	CombatSpellEventBuilder.append_cast(events, source_id, spell, group, center, shape, SOURCE)
 	for index: int in group.resolutions.size():
@@ -34,7 +40,7 @@ func cast(state: GameState, content: RealmzContent, source_id: String, authored_
 
 
 static func _supports_spell(spell: SpellDefinition) -> bool:
-	return spell != null and spell.target_type in [3, 4, 9, 10, 12] and spell.queue_icon == 0
+	return spell != null and spell.target_type in [3, 4, 9, 10, 12] and (spell.queue_icon == 0 or spell.target_type in [3, 4])
 
 
 func _targets(state: GameState, content: RealmzContent, spell: SpellDefinition, center: Vector2i, shape: int, rng: RealmzRng) -> Array[SpellTargetSelection]:
