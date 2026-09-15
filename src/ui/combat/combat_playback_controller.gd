@@ -23,6 +23,7 @@ const PLAYBACK_EVENT_KINDS: Array[StringName] = [
 	&"battle_started",
 	&"battle_completed",
 	&"combatant_moved",
+	&"combatants_swapped",
 	&"combat_attack_resolved",
 	&"combat_projectile_resolved",
 	&"combat_spell_cast",
@@ -245,6 +246,7 @@ func _append_event_frames(event: DomainEvent, positions: Dictionary, hidden: Arr
 			_append_battle_cue(event, positions, hidden)
 		&"combatant_moved", &"combat_turn_undone":
 			_append_movement(event, positions, hidden)
+		&"combatants_swapped": _append_movement(event, positions, hidden)
 		&"combat_attack_resolved": _append_attack(event, positions, hidden)
 		&"combat_projectile_resolved": _append_projectile(event, positions, hidden)
 		&"combat_spell_cast": _append_spell_cast(event, positions, hidden)
@@ -333,6 +335,22 @@ func _append_movement(event: DomainEvent, positions: Dictionary, hidden: Array[S
 	var to_coordinate := _payload_coordinate(event.payload.get("to"))
 	if from_coordinate.x < 0:
 		from_coordinate = _position_for(actor_id, positions)
+	if event.kind == &"combatants_swapped":
+		var target_id := String(event.payload.get("targetId", ""))
+		if to_coordinate.x < 0:
+			to_coordinate = _position_for(target_id, positions)
+		if not actor_id.is_empty() and to_coordinate.x >= 0:
+			positions[actor_id] = to_coordinate
+		if not target_id.is_empty() and from_coordinate.x >= 0:
+			positions[target_id] = from_coordinate
+		var swap_frame := _new_frame(&"swap", MOVE_START_SECONDS + MOVE_END_SECONDS, positions, hidden)
+		swap_frame.actor_id = actor_id
+		swap_frame.target_id = target_id
+		swap_frame.from_coordinate = from_coordinate
+		swap_frame.to_coordinate = to_coordinate
+		swap_frame.display_text = "Swapped positions"
+		_frames.append(swap_frame)
+		return
 	var start := _new_frame(&"move_start", MOVE_START_SECONDS, positions, hidden)
 	start.actor_id = actor_id
 	start.from_coordinate = from_coordinate

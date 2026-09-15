@@ -342,6 +342,11 @@ func _draw_playback_overlay(combat: CombatView, camera: Vector2i, visible_cells:
 				draw_rect(actor_rect.grow(3.0), Color(1.0, 0.90, 0.58, 0.95), false, 3.0)
 			if target_rect.has_area():
 				draw_rect(target_rect.grow(2.0), Color(1.0, 0.96, 0.82, 0.95), false, 3.0)
+		&"swap":
+			if actor_rect.has_area():
+				draw_rect(actor_rect.grow(3.0), Color(1.0, 0.86, 0.28, 0.95), false, 3.0)
+			if target_rect.has_area():
+				draw_rect(target_rect.grow(3.0), Color(0.60, 0.86, 1.0, 0.95), false, 3.0)
 		&"projectile":
 			_draw_projectile(actor_rect, target_rect)
 		&"spell_projectile":
