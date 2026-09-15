@@ -157,14 +157,15 @@ static func battle_terrain_set(content: RealmzContent, battlefield: BattlefieldS
 static func movement_allowance(monster: MonsterState, definition: MonsterDefinition) -> int:
 	var movement := definition.movement_max
 	var tangled := monster.conditions.value(ConditionRules.TANGLED)
-	if tangled > 0: movement -= tangled
+	if tangled != 0: movement -= tangled
 	if monster.conditions.is_active(ConditionRules.SLOW): movement = int(float(movement) / 2.0)
 	if monster.conditions.is_active(ConditionRules.SPEEDY): movement *= 2
 	return maxi(0, movement)
 
 
-static func attack_limit(definition: MonsterDefinition) -> int:
-	return mini(maxi(0, definition.attack_count), definition.attacks().size())
+static func attack_limit(monster: MonsterState, definition: MonsterDefinition) -> int:
+	var authored := mini(maxi(0, definition.attack_count), definition.attacks().size())
+	return authored + 2 if authored > 0 and monster.conditions.is_active(ConditionRules.SPEEDY) else authored
 
 
 static func retreat_reached_edge(state: GameState, content: RealmzContent, monster_id: String, destination: Vector2i, events: Array[DomainEvent]) -> bool:

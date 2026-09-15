@@ -174,7 +174,7 @@ func continue_after_age_update(state: GameState, content: RealmzContent, rng: Re
 		return CombatFlowResult.succeeded(events, true)
 	var monster := combat.roster.monster_by_id(pending.actor_id)
 	var definition := content.combat.monster_by_id(monster.definition_id) if monster != null else null
-	if combat.turns.active_turn == null or combat.turns.active_turn.actor_id != pending.actor_id or pending.action != &"advance" or definition == null or combat.turns.active_turn.attack_index >= _context.automation().monster_actions().attack_limit(definition):
+	if combat.turns.active_turn == null or combat.turns.active_turn.actor_id != pending.actor_id or pending.action != &"advance" or definition == null or combat.turns.active_turn.attack_index >= _context.automation().monster_actions().attack_limit(monster, definition):
 		advance_turn(state, content, rng, events)
 	elif resumed.defeated:
 		combat.turns.active_turn.target_id = ""

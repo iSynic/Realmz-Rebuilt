@@ -122,12 +122,6 @@ func _process_selected_monster_action(state: GameState, content: RealmzContent, 
 
 
 func _process_advance_action(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, active_turn: CombatTurnState, rng: RealmzRng, events: Array[DomainEvent]) -> int:
-	if monster.conditions.is_active(ConditionRules.SPEEDY):
-		events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "advance", "reason": "monster-speedy-cadence-unresolved"}))
-		return MONSTER_ATTACK_COMPLETED
-	if monster.conditions.value(ConditionRules.TANGLED) < 0:
-		events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "advance", "reason": "permanent-tangle-movement-unresolved"}))
-		return MONSTER_ATTACK_COMPLETED
 	return _advance_then_retry_cast(state, content, monster, definition, active_turn, rng, events)
 
 
@@ -407,13 +401,13 @@ func process_monster_advance(state: GameState, content: RealmzContent, monster: 
 		return MONSTER_ATTACK_COMPLETED
 	var operation_guard := 512
 	var visited_anchors: Array[Vector2i] = [combat.battlefield.actors.actor_position(monster.id)]
-	while operation_guard > 0 and active_turn.attack_index < _monster_actions.attack_limit(definition):
+	while operation_guard > 0 and active_turn.attack_index < _monster_actions.attack_limit(monster, definition):
 		var adjacent_ids := hostile_adjacent_ids(state, monster.id)
 		if not adjacent_ids.is_empty():
 			if (active_turn.attack_index == 0 and not active_turn.physical_action_committed) or not adjacent_ids.has(active_turn.target_id):
 				active_turn.target_id = _monster_actions.select_adjacent_target(state, monster, rng)
 				monster.target_id = active_turn.target_id
-			while active_turn.attack_index < _monster_actions.attack_limit(definition):
+			while active_turn.attack_index < _monster_actions.attack_limit(monster, definition):
 				var attack_result := resolve_monster_attack_row(state, content, monster, definition, active_turn.attack_index, active_turn, rng, events)
 				if attack_result != MONSTER_ATTACK_COMPLETED:
 					return attack_result
@@ -538,19 +532,19 @@ func resolve_monster_attack_row(state: GameState, content: RealmzContent, monste
 		active_turn.target_id = _monster_actions.select_adjacent_target(state, monster, rng)
 		monster.target_id = active_turn.target_id
 	if active_turn.target_id.is_empty():
-		active_turn.attack_index = _monster_actions.attack_limit(definition)
+		active_turn.attack_index = _monster_actions.attack_limit(monster, definition)
 		return MONSTER_ATTACK_COMPLETED
 	active_turn.attack_index += 1
 	active_turn.physical_action_committed = true
 	combat.actor_statuses.set_guarding(monster.id, false)
 	var character_target := state.party.character_by_id(active_turn.target_id)
 	if character_target != null:
-		return _resolve_attack_against_character(state, content, monster, definition, attack_index, active_turn, character_target, rng, events)
+		return _resolve_attack_against_character(state, content, monster, definition, attack_index if attack_index < definition.attack_count else 0, active_turn, character_target, rng, events)
 	var monster_target := combat.roster.monster_by_id(active_turn.target_id)
 	if monster_target == null:
 		active_turn.target_id = ""
 		return MONSTER_ATTACK_COMPLETED
-	return _resolve_attack_against_monster(state, content, monster, definition, attack_index, active_turn, monster_target, rng, events)
+	return _resolve_attack_against_monster(state, content, monster, definition, attack_index if attack_index < definition.attack_count else 0, active_turn, monster_target, rng, events)
 
 
 func _resolve_attack_against_character(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, attack_index: int, active_turn: CombatTurnState, target: CharacterState, rng: RealmzRng, events: Array[DomainEvent]) -> int:
@@ -607,7 +601,7 @@ func _resolve_attack_against_monster(state: GameState, content: RealmzContent, m
 		var death_macro_requested = _context.actions().events().request_monster_death_macro(target, target_definition, events)
 		remove_defeated_position(state.combat, target.id, not death_macro_requested)
 		if death_macro_requested:
-			if active_turn.attack_index >= _monster_actions.attack_limit(definition):
+			if active_turn.attack_index >= _monster_actions.attack_limit(monster, definition):
 				_context.rounds().advance_turn(state, content, rng, events)
 			return MONSTER_ATTACK_DEATH_MACRO
 	return MONSTER_ATTACK_COMPLETED
