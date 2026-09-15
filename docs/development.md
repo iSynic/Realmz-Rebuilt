@@ -67,6 +67,8 @@ Use tooling or MCP only for an immediate blocker or credible cumulative savings 
 
 Group normal work into three to five related workflows. Give each workflow a focused, verified commit, then run Tier 2 and the aggregate gate once at batch closeout.
 
+Freeze architecture, maintainability, and exact test-source ceilings when the batch begins. Improvements may create headroom, but do not lower a ceiling during feature work, compatibility work, integration, or release preparation. Lower ceilings only in an explicitly scoped architecture/refactor closeout, then rebase dependent work once against that completed baseline.
+
 ### Tier 1: focused behavior
 
 Run the affected suite or named cases while iterating:
