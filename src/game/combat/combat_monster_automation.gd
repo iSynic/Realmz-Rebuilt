@@ -263,7 +263,7 @@ func _execute_monster_spell(state: GameState, content: RealmzContent, monster: M
 
 func _resolve_monster_spell(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, spell: SpellDefinition, power: int, cast_level: int, target_plan: MonsterSpellTargetPlan, rng: RealmzRng, created_fields: Array[RefCounted]) -> GroupSpellResolution:
 	if spell.target_type in [3, 4]:
-		return _context.magic.resolve_monster_group_spell(monster, definition, target_plan.selections, spell, power, cast_level, rng, true, true, _monster_polymorph_context(state, content))
+		return _context.magic.resolve_monster_group_spell(monster, definition, target_plan.selections, spell, power, cast_level, rng, true, true, _monster_polymorph_context(state, content), true)
 	if spell.target_type in [9, 10, 12]:
 		return _context.magic.resolve_monster_group_spell(monster, definition, target_plan.selections, spell, power, cast_level, rng, false, true, _monster_polymorph_context(state, content))
 	if spell.target_type == 0:
@@ -349,7 +349,7 @@ func _monster_area_spell_selections(state: GameState, content: RealmzContent, ce
 		if selected_ids.has(character.id) and character.current_health > 0 and state.combat.battlefield.actors.has_actor(character.id):
 			result.append(SpellTargetSelection.for_character(character))
 	for monster: MonsterState in state.combat.roster.monsters():
-		if not selected_ids.has(monster.id) or monster.current_health <= 0 or not state.combat.battlefield.actors.has_actor(monster.id) or monster.magic_resistance > 100:
+		if not selected_ids.has(monster.id) or monster.current_health <= 0 or not state.combat.battlefield.actors.has_actor(monster.id):
 			continue
 		var definition := content.combat.monster_by_id(monster.definition_id)
 		if definition != null:

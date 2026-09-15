@@ -3,7 +3,50 @@ var _cached_battle_world: WorldDefinition
 
 
 func run() -> void:
-	_test_public_tactical_reaction_matrix(); _test_public_magic_matrix(); _test_public_remove_curse_matrix(); _test_public_destroy_magic_matrix(); _test_public_magic_detection_matrix(); _test_public_polymorph_matrix(); _test_public_destroy_turn_undead_matrix(); _test_public_spell_point_drain_matrix(); _test_public_direct_damage_matrix(); _test_war_immediate_spell_matrix(); _test_public_special_condition_matrix(); _test_public_party_condition_matrix(); _test_public_permanent_poison_matrix(); _test_public_tangle_weed_correction_matrix(); _test_public_monster_friendly_group_matrix(); _test_war_helpless_spell_matrix(); _test_war_queued_actor_field_matrix(); _test_war_self_centered_field_matrix(); _test_war_phase_spell(); _test_war_physical_projectile_profile(); _test_random_power_projectile_staging(); _test_public_monster_spell_projectile_profile(); _test_public_repeated_combat_item(); _test_public_monster_turn_matrix(); _test_public_monster_retreat_paths(); _test_half_truth_allied_blue_dragon_activation(); _test_public_continuation_fumble_terminal_matrix(); _test_public_command_automation_matrix()
+	_test_public_tactical_reaction_matrix(); _test_public_magic_matrix(); _test_public_area_reflection(); _test_public_remove_curse_matrix(); _test_public_destroy_magic_matrix(); _test_public_magic_detection_matrix(); _test_public_polymorph_matrix(); _test_public_destroy_turn_undead_matrix(); _test_public_spell_point_drain_matrix(); _test_public_direct_damage_matrix(); _test_war_immediate_spell_matrix(); _test_public_special_condition_matrix(); _test_public_party_condition_matrix(); _test_public_permanent_poison_matrix(); _test_public_tangle_weed_correction_matrix(); _test_public_monster_friendly_group_matrix(); _test_war_helpless_spell_matrix(); _test_war_queued_actor_field_matrix(); _test_war_self_centered_field_matrix(); _test_war_phase_spell(); _test_war_physical_projectile_profile(); _test_random_power_projectile_staging(); _test_public_monster_spell_projectile_profile(); _test_public_repeated_combat_item(); _test_public_monster_turn_matrix(); _test_public_monster_retreat_paths(); _test_half_truth_allied_blue_dragon_activation(); _test_public_continuation_fumble_terminal_matrix(); _test_public_command_automation_matrix()
+
+
+func _test_public_area_reflection() -> void:
+	var rules := RealmzRules.new()
+	var spell := _combat_spell("spell.area-reflection", 4, 4)
+	var definition := _monster_definition("monster.area-reflection", [])
+	var caster := _character("character.area-reflection-caster")
+	caster.set_known_spells([spell.id])
+	caster.maximum_spell_attacks = 2
+	caster.spell_points = 20
+	var first := MonsterState.new("monster.area-reflection.first", definition.id, "First Reflector", 20, 20, 1)
+	var second := MonsterState.new("monster.area-reflection.second", definition.id, "Second Reflector", 20, 20, 1)
+	first.conditions.set_value(ConditionRules.REFLECTING_SPELLS, -1)
+	second.conditions.set_value(ConditionRules.REFLECTING_SPELLS, -1)
+	second.magic_resistance = 101
+	var battlefield := _blank_battlefield()
+	battlefield.actors.place_character(caster.id, Vector2i(45, 45))
+	battlefield.actors.place_monster(first.id, Vector2i(48, 45), 0)
+	battlefield.actors.place_monster(second.id, Vector2i(48, 46), 0)
+	var state := GameState.new(PartyState.new("map.test", Vector2i.ZERO, [caster]), RealmzClock.new())
+	state.combat = CombatState.new("battle.area-reflection", [first, second], 0, battlefield)
+	state.combat.set_turn_order([caster.id, first.id, second.id])
+	var rng := _zeros(32)
+	var result := rules.combat_flow.cast_spell(state, _content([definition], [], [], [], [spell]), caster.id, "", spell.id, 2, rng, Vector2i(48, 45))
+	var resolved := result.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved")
+	assert_equal([result.ok, caster.current_health, first.current_health, second.current_health, caster.spell_points, resolved.size()], [true, 26, 20, 20, 16, 1], "two reflected area recipients collapse to one effective caster result, including a reflector whose raw magic resistance exceeds one hundred")
+	assert_equal([resolved[0].payload.get("targetId"), resolved[0].payload.get("selectedTargetId"), resolved[0].payload.get("reflected")], [caster.id, first.id, true], "area reflection retains the first authored recipient while publishing the caster as the effective target")
+	assert_equal(rng.trace().filter(func(entry: Dictionary) -> bool: return String(entry.get("tag", "")).begins_with("magic.")).map(func(entry: Dictionary) -> String: return String(entry.get("tag", ""))), ["magic.area.reflect.0", "magic.area.reflect.1", "magic.duration", "magic.damage", "magic.damage-save"], "area reflection tests occupied targets before shared duration and damage and resolves the collapsed recipient once")
+	var restored := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
+	assert_equal([restored.party.character_by_id(caster.id).current_health, restored.combat.roster.monster_by_id(first.id).current_health, restored.combat.roster.monster_by_id(second.id).current_health], [26, 20, 20], "the reflected area result survives the public save-state round trip")
+
+	var group_spell := _combat_spell("spell.group-reflection-bypass", 12, 2)
+	var group_caster := _character("character.group-reflection-bypass")
+	group_caster.set_known_spells([group_spell.id])
+	group_caster.maximum_spell_attacks = 2
+	group_caster.spell_points = 20
+	var group_target := MonsterState.new("monster.group-reflection-bypass", definition.id, "Group Reflector", 20, 20, 1)
+	group_target.conditions.set_value(ConditionRules.REFLECTING_SPELLS, -1)
+	var group_state := _state(group_caster, group_target, "battle.group-reflection-bypass")
+	var group_rng := _zeros(16)
+	var group_result := rules.combat_flow.cast_spell(group_state, _content([definition], [], [], [], [group_spell]), group_caster.id, "", group_spell.id, 1, group_rng)
+	assert_equal([group_result.ok, group_caster.current_health, group_target.current_health, group_caster.spell_points], [true, 28, 18, 18], "Castle automatic whole-group targeting bypasses Reflecting Spells and resolves every tracked actor normally")
+	assert_false(group_rng.trace().any(func(entry: Dictionary) -> bool: return String(entry.get("tag", "")).contains("reflect")), "automatic side and whole-group casting consumes no reflection draw")
 
 
 func _test_public_party_condition_matrix() -> void:

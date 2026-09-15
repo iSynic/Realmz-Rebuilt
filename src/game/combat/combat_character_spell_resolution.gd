@@ -42,8 +42,6 @@ func group_targets(state: GameState, content: RealmzContent, caster: CharacterSt
 		if area_target:
 			if not selected_ids.has(character.id):
 				continue
-			if character.conditions.is_active(ConditionRules.REFLECTING_SPELLS):
-				return {"ok": false, "errorCode": &"area_spell_reflection_unresolved", "error": "This area intersects a spell-reflecting character; Classic reflection targeting remains unresolved."}
 		elif not _selection.group_target_matches(spell.target_type, character.traitor, caster.traitor):
 			continue
 		character_targets.append(character)
@@ -52,10 +50,6 @@ func group_targets(state: GameState, content: RealmzContent, caster: CharacterSt
 			continue
 		if area_target:
 			if not selected_ids.has(monster.id):
-				continue
-			if monster.conditions.is_active(ConditionRules.REFLECTING_SPELLS):
-				return {"ok": false, "errorCode": &"area_spell_reflection_unresolved", "error": "This area intersects a spell-reflecting monster; Classic reflection targeting remains unresolved."}
-			if monster.magic_resistance > 100:
 				continue
 		elif not _selection.group_target_matches(spell.target_type, monster.traitor, caster.traitor):
 			continue
@@ -90,7 +84,7 @@ func cast_area(state: GameState, content: RealmzContent, caster: CharacterState,
 	if not bool(targets.get("ok", false)):
 		return CombatFlowResult.failed(targets.get("errorCode", &"spell_target_unavailable"), String(targets.get("error", "An area spell target is unavailable.")))
 	_context.actions().prepare_character_turn(combat, caster)
-	var area := _context.magic.resolve_character_group_spell(caster, targets.get("characters", []), targets.get("monsters", []), targets.get("definitions", []), spell, power_level, cast_level, rng, true, true, MonsterPolymorphContext.new(content, state.monster_set, state.difficulty, state.clock.day()))
+	var area := _context.magic.resolve_character_group_spell(caster, targets.get("characters", []), targets.get("monsters", []), targets.get("definitions", []), spell, power_level, cast_level, rng, true, true, MonsterPolymorphContext.new(content, state.monster_set, state.difficulty, state.clock.day()), true)
 	if area == null or not area.cast:
 		return CombatFlowResult.failed(&"spell_cast_failed", "The area spell could not be cast with the available spell points.")
 	return commit(state, content, caster, spell, power_level, cast_level, area, rng, center, shape, "classic", "", true, [persistent_field])
