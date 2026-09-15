@@ -23,9 +23,9 @@
     ]
   },
   "currentBatch": {
-    "id": "classic-compatibility-repair-a-through-c",
-    "name": "Equipment, combat continuity, and projectile compatibility repairs",
-    "baselineCommit": "586da3f4895918784187074518ff718fa470735c",
+    "id": "classic-compatibility-repair-d",
+    "name": "Scenario execution, media, and player-route compatibility repairs",
+    "baselineCommit": "afc7ef29b661d1e1e1238871eb2143a97f459f85",
     "baselineCounts": {
       "classic": {
         "missing": 0,
@@ -40,10 +40,10 @@
         "certified": 2
       }
     },
-    "selectionRationale": "Compatibility repair tranche closeout. Controlled public-boundary proof covers authoritative ordered equipment and Robe of Speed, conditioned monsters, atomic swaps, opcode-56 defeat return, routed-monster retreat, corpus spell-slot classification, forced-power monster projectiles, and character random-power projectile staging. A foreground isolated Half Truth Auto fixture reached Treasure without a stall, but the reported intermittent Auto and battle-start visibility defects remain open because that negative reproduction did not run three uninterrupted rounds. The aggregate passes 4,451 assertions across 29 suites plus package alignment, all 13 bundled packages and 515 scenario CICN descriptors, media, architecture, schema, inventory, icon, and three-platform export-contract gates. The five-frame startup smoke retains its known one-object teardown warning, and the passing controller suite retains its existing ensure-control-visible diagnostics. Ordinary campaign replay, third-party intake, controller and presentation inspection, actual macOS execution, and complete AOGM then War certification remain separate gates. The next executable work is combat reflection and macro coverage, followed by scenario/media/player-route batches.",
+    "selectionRationale": "Compatibility repair tranche closeout. Controlled public-boundary proof now covers authoritative ordered equipment and Robe of Speed, conditioned monsters, atomic swaps, opcode-56 defeat return, routed-monster retreat, complete bundled monster spell-slot classification, forced-power monster projectiles, character random-power projectile staging, area-spell reflection, and immediate area/side-group monster macro resolution. A hash-pinned twelve-scenario third-party intake identifies two loadable packages and ten exact Providence readiness blockers without treating conversion as playability. A second rendered Half Truth Battle 70 full-Auto fixture reached Treasure without a stall or controller suspension, but the reported intermittent David/Auto and battle-start visibility defects remain open because neither negative reproduction matches the player's character revision or establishes three uninterrupted rounds. The aggregate passes 4,458 assertions across 29 suites plus package alignment, all 13 bundled packages and 515 scenario CICN descriptors, media, architecture, schema, inventory, icon, and three-platform export-contract gates. The five-frame startup smoke retains its known one-object teardown warning, and the passing controller suite retains its existing ensure-control-visible diagnostics. Ordinary campaign replay, controller and presentation inspection, actual macOS execution, and complete AOGM then War certification remain separate gates. The next executable batch audits authored opcode variants, topology callers, scenario media, typed failure recovery, and actual player-route reachability.",
     "targets": [
       {
-        "workflowId": "classic.inventory.manage-equipment",
+        "workflowId": "classic.scenario.trigger-action-point",
         "mode": "verification",
         "priority": "known-failure",
         "expectedEvidence": "runtime-integration",
@@ -51,15 +51,7 @@
         "archaeologyTriggers": []
       },
       {
-        "workflowId": "classic.combat.auto-character",
-        "mode": "verification",
-        "priority": "known-failure",
-        "expectedEvidence": "live-route",
-        "gapIds": [],
-        "archaeologyTriggers": []
-      },
-      {
-        "workflowId": "classic.combat.tactical-movement",
+        "workflowId": "classic.scenario.present-message-media",
         "mode": "verification",
         "priority": "known-failure",
         "expectedEvidence": "runtime-integration",
@@ -67,7 +59,15 @@
         "archaeologyTriggers": []
       },
       {
-        "workflowId": "classic.combat.resolve-outcome",
+        "workflowId": "classic.scenario.choose-response",
+        "mode": "verification",
+        "priority": "known-failure",
+        "expectedEvidence": "runtime-integration",
+        "gapIds": [],
+        "archaeologyTriggers": []
+      },
+      {
+        "workflowId": "classic.scenario.complex-interaction",
         "mode": "verification",
         "priority": "untested-high-risk",
         "expectedEvidence": "runtime-integration",
@@ -75,7 +75,7 @@
         "archaeologyTriggers": []
       },
       {
-        "workflowId": "classic.combat.physical-attack",
+        "workflowId": "classic.startup.select-scenario",
         "mode": "verification",
         "priority": "untested-high-risk",
         "expectedEvidence": "runtime-integration",

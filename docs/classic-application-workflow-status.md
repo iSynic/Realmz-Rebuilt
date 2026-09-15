@@ -13,19 +13,19 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Current parity-convergence batch
 
-**Equipment, combat continuity, and projectile compatibility repairs** (`classic-compatibility-repair-a-through-c`)
+**Scenario execution, media, and player-route compatibility repairs** (`classic-compatibility-repair-d`)
 
-Compatibility repair tranche closeout. Controlled public-boundary proof covers authoritative ordered equipment and Robe of Speed, conditioned monsters, atomic swaps, opcode-56 defeat return, routed-monster retreat, corpus spell-slot classification, forced-power monster projectiles, and character random-power projectile staging. A foreground isolated Half Truth Auto fixture reached Treasure without a stall, but the reported intermittent Auto and battle-start visibility defects remain open because that negative reproduction did not run three uninterrupted rounds. The aggregate passes 4,451 assertions across 29 suites plus package alignment, all 13 bundled packages and 515 scenario CICN descriptors, media, architecture, schema, inventory, icon, and three-platform export-contract gates. The five-frame startup smoke retains its known one-object teardown warning, and the passing controller suite retains its existing ensure-control-visible diagnostics. Ordinary campaign replay, third-party intake, controller and presentation inspection, actual macOS execution, and complete AOGM then War certification remain separate gates. The next executable work is combat reflection and macro coverage, followed by scenario/media/player-route batches.
+Compatibility repair tranche closeout. Controlled public-boundary proof now covers authoritative ordered equipment and Robe of Speed, conditioned monsters, atomic swaps, opcode-56 defeat return, routed-monster retreat, complete bundled monster spell-slot classification, forced-power monster projectiles, character random-power projectile staging, area-spell reflection, and immediate area/side-group monster macro resolution. A hash-pinned twelve-scenario third-party intake identifies two loadable packages and ten exact Providence readiness blockers without treating conversion as playability. A second rendered Half Truth Battle 70 full-Auto fixture reached Treasure without a stall or controller suspension, but the reported intermittent David/Auto and battle-start visibility defects remain open because neither negative reproduction matches the player's character revision or establishes three uninterrupted rounds. The aggregate passes 4,458 assertions across 29 suites plus package alignment, all 13 bundled packages and 515 scenario CICN descriptors, media, architecture, schema, inventory, icon, and three-platform export-contract gates. The five-frame startup smoke retains its known one-object teardown warning, and the passing controller suite retains its existing ensure-control-visible diagnostics. Ordinary campaign replay, controller and presentation inspection, actual macOS execution, and complete AOGM then War certification remain separate gates. The next executable batch audits authored opcode variants, topology callers, scenario media, typed failure recovery, and actual player-route reachability.
 
 AP batches use failure-first priorities: known failures, untested high-risk behavior, meaningful variants, and broader representatives. Verification mode records existing functional behavior without claiming full campaign certification; implementation, verification, and certification remain distinct modes.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.inventory.manage-equipment` | verification | known-failure | runtime-integration |  |
-| `classic.combat.auto-character` | verification | known-failure | live-route |  |
-| `classic.combat.tactical-movement` | verification | known-failure | runtime-integration |  |
-| `classic.combat.resolve-outcome` | verification | untested-high-risk | runtime-integration |  |
-| `classic.combat.physical-attack` | verification | untested-high-risk | runtime-integration |  |
+| `classic.scenario.trigger-action-point` | verification | known-failure | runtime-integration |  |
+| `classic.scenario.present-message-media` | verification | known-failure | runtime-integration |  |
+| `classic.scenario.choose-response` | verification | known-failure | runtime-integration |  |
+| `classic.scenario.complex-interaction` | verification | untested-high-risk | runtime-integration |  |
+| `classic.startup.select-scenario` | verification | untested-high-risk | runtime-integration |  |
 
 ### Batch count delta
 
