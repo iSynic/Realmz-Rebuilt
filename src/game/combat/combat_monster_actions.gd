@@ -176,7 +176,7 @@ static func retreat_reached_edge(state: GameState, content: RealmzContent, monst
 	state.combat.actor_statuses.set_guarding(monster.id, false)
 	state.combat.turns.active_turn.movement_remaining = 0
 	if definition.can_summon < 0:
-		events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "retreat", "reason": "mandatory-ally-edge-retreat-unresolved"}))
+		events.append(DomainEvent.new(&"combat_monster_retreat_blocked", {"actorId": monster.id, "reason": "scenario-mandatory-ally", "destination": [destination.x, destination.y], "source": "classic-monster"}))
 		return false
 	monster.current_health = 0
 	state.combat.battlefield.actors.remove_monster(monster.id)

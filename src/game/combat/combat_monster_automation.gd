@@ -490,11 +490,12 @@ func process_monster_retreat(state: GameState, content: RealmzContent, monster: 
 		active_turn.movement_remaining = 0
 		return MONSTER_ATTACK_COMPLETED
 	if not _monster_actions.target_is_available(state, monster, active_turn.target_id):
-		# movemonster.c reads pos[-1] when a routed monster has no retained target.
-		# Keep that unsafe source path explicit instead of inventing a threat target.
-		active_turn.movement_remaining = 0
-		events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "retreat", "reason": "retreat-target-unresolved"}))
-		return MONSTER_ATTACK_COMPLETED
+		active_turn.target_id = _monster_actions.select_visible_target(state, monster, terrain_set, rng)
+		monster.target_id = active_turn.target_id
+		if active_turn.target_id.is_empty():
+			active_turn.movement_remaining = 0
+			events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "retreat", "reason": "no-visible-opponent"}))
+			return MONSTER_ATTACK_COMPLETED
 	var operation_guard := 512
 	while operation_guard > 0 and active_turn.movement_remaining > 0 and monster.current_health > 0:
 		var origin := combat.battlefield.actors.actor_position(monster.id)
