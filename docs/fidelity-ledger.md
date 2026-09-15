@@ -60,6 +60,15 @@ Classic-visible behavior is the default ruleset. This ledger records deliberate 
 - Tests: `test_scenario_vm.gd::_test_public_application_transitions` executes opcode 73 through the public Runtime API, opens the contextual Shop, and proves one-range rejection, the two-range union, retained raw words, and rules-owned unavailable text.
 - Legacy quirk: none. Requiring authors to duplicate one range into both pairs is an undocumented counter defect, not useful campaign behavior.
 
+## FD-SCENARIO-007 — Opcode 90 picked experience targets
+
+- Affected rule: opcode 90 mode 1 selection for subtracting victory points.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/newland.c`, case 90. The source iterates party index `tt` but reads `track[t]`, where `t` is the current action-slot index. The bounded record is `tests/fixtures/oracle/classic-opcode-90-picked-correction.json`, SHA-256 `7f694a7b328ab0c34501286d98a42b50ab9ee681036081eb79d30823c6985339`.
+- Player-facing problem: every party member can lose points or nobody can lose points according to an unrelated script-slot selection cell, instead of the characters the scenario picked.
+- Chosen 2.0 behavior: mode 1 subtracts the authored amount from each stable picked character identity. Modes 0 and 2 retain their documented each-character and divided-across-party meanings. Rounding and negative-amount authoring are separate questions.
+- Tests: `test_scenario_vm.gd::_test_corrected_take_experience_opcode` runs mixed picked identities through the public VM with opcode 90 in source action slots 0 and 7 and proves only those identities change.
+- Legacy quirk: none. The action-slot alias is a source typo and no bug-compatibility mode is provided.
+
 ## FD-ECONOMY-001 — Zero-charge shop valuation
 
 - Affected rule: shop sale value for an item definition whose authored charge count is zero.

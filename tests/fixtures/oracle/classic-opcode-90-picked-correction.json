@@ -1,0 +1,22 @@
+{
+  "formatVersion": 1,
+  "decisionId": "FD-SCENARIO-007",
+  "evidence": "source-control-flow-and-authoring-contract",
+  "castle": {
+    "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+    "source": "src/realmz_orig/newland.c:1030-1043",
+    "sourceSha256": "77d06c03bedfe520127bb6ed113c22b0573c11012db956cec3ceee967d816198",
+    "defect": "Mode 1 iterates party index tt but reads track[t], where t is the current action-slot index."
+  },
+  "authoringContract": {
+    "mode0": "Subtract the full amount from every party member.",
+    "mode1": "Subtract the full amount from each picked party member.",
+    "mode2": "Divide the amount across the party, then subtract that share from every member."
+  },
+  "chosenResult": "Mode 1 reads each iterated party member's stable picked identity, independent of the action slot.",
+  "publicVmCases": [
+    {"actionSlot": 0, "pickedPartyPositions": [1, 3], "expectedAffectedPositions": [1, 3]},
+    {"actionSlot": 7, "pickedPartyPositions": [1, 3], "expectedAffectedPositions": [1, 3]}
+  ],
+  "roundingAndNegativeAmounts": "Not adjudicated by this correction."
+}

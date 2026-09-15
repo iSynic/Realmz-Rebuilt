@@ -26,6 +26,7 @@ func run() -> void:
 	_test_public_character_checks(content)
 	_test_corrected_character_selection_opcodes(content)
 	_test_corrected_fatigue_opcode(content)
+	_test_corrected_take_experience_opcode(content)
 	_test_public_action_state(content); _test_aogm_dispatch_has_no_fallback(content)
 
 
@@ -787,6 +788,21 @@ func _test_corrected_fatigue_opcode(content: RealmzContent) -> void:
 	api.execute_classic(ClassicActionDefinition.new(0, 68, 68, 0, false, [3, 25, -999, 0, 0]), "fatigue.save-round-trip")
 	var restored := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
 	assert_equal(restored.party.fatigue, 33, "corrected opcode 68 fatigue crosses the save-owned GameState boundary")
+
+
+func _test_corrected_take_experience_opcode(content: RealmzContent) -> void:
+	for action_slot: int in [0, 7]:
+		var characters: Array[CharacterState] = [CharacterState.new("experience.first.%d" % action_slot, "First", 10, 10), CharacterState.new("experience.second.%d" % action_slot, "Second", 10, 10), CharacterState.new("experience.third.%d" % action_slot, "Third", 10, 10)]
+		for character: CharacterState in characters:
+			character.experience = 100
+		var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, characters), RealmzClock.new())
+		state.scenario_progress.set_selected_character_ids([characters[0].id, characters[2].id])
+		var actions: Array[ClassicActionDefinition] = []
+		for filler: int in action_slot:
+			actions.append(ClassicActionDefinition.new(filler, 84, 84, filler, false, []))
+		actions.append(ClassicActionDefinition.new(action_slot, 90, 90, 0, false, [10, 1, 0, 0, 0]))
+		var program := ScenarioProgramDefinition.new("opcode90.slot.%d" % action_slot, &"trigger", "opcode90", actions); var vm := ScenarioVm.new(); vm.configure(ScenarioDefinition.new([program], [])); vm.start_program(program.id, ScenarioExecutionContext.trigger(&"action", "ap.opcode90.%d" % action_slot)); var result := vm.run(RealmzRuntimeApi.new(content, state, RealmzRng.new(90), ScenarioActionState.new()))
+		assert_equal([result.state, characters.map(func(character: CharacterState) -> int: return character.experience), state.scenario_progress.selected_character_ids(), result.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"experience_taken").map(func(event: DomainEvent) -> Variant: return event.payload.get("targetIds"))], [ScenarioVmResult.State.COMPLETED, [90, 100, 90], [characters[0].id, characters[2].id], [[characters[0].id, characters[2].id]]], "opcode 90 mode 1 uses each picked identity rather than the action-slot selection cell at source slot %d" % action_slot)
 
 
 func _test_public_action_state(content: RealmzContent) -> void:

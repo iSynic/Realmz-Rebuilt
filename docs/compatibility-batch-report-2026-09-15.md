@@ -43,3 +43,8 @@ This report closes one three-workflow repair batch. Controlled rules, VM, and pr
 3. Replay the retained David and battle-start Auto cases through an observed application host, then inspect committed/presented revision chronology.
 4. Begin ordinary campaign certification with Assault on Giant Mountain, then War in the Sword Lands; neither can be promoted without its complete save/resume start-to-ending route.
 5. Re-run macro and normalized feature audits for each third-party package as Providence clears its named conversion blocker.
+
+## Subsequent focused workflows
+
+- **Missing macro-program classification — `1c3f1c6e`.** The deterministic package audit now separates missing called programs within the emitted program extent from out-of-range references. AOGM XAP 165/169 are stale-package omissions; White Dragon XAP 9363 is an out-of-range foreign-suffix reference. This classification does not waive either package's independent Providence readiness failure.
+- **Opcode 90 picked targets.** Rebuilt already followed the documented mode-1 meaning. Public Scenario VM coverage now fixes the regression boundary at action slots 0 and 7 with a mixed picked set, and `FD-SCENARIO-007` records the deliberate correction to Castle's `track[t]` source typo. Stored corpus occurrence and ordinary-route reachability remain open.
