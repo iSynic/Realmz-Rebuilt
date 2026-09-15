@@ -28,6 +28,7 @@ func run() -> void:
 	_test_corrected_fatigue_opcode(content)
 	_test_corrected_take_experience_opcode(content)
 	_test_opcode_7_program_replacement_modes(content)
+	_test_opcode_13_trigger_mutation_modes(content)
 	_test_public_action_state(content); _test_aogm_dispatch_has_no_fallback(content)
 
 
@@ -812,6 +813,35 @@ func _test_opcode_7_program_replacement_modes(content: RealmzContent) -> void:
 	assert_equal([result.state, state.scenario_progress.encounters.program_id(simple.id), state.scenario_progress.encounters.program_id(complex.id), state.scenario_progress.encounters.program_id(ap_target.id), rng.snapshot().draw_count], [ScenarioVmResult.State.COMPLETED, source.id, source.id, source.id, 0], "opcode 7 maps -1 to Simple result, -2 to Complex result, and nonnegative map indexes to Action Point replacement")
 	var restored := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data()))); var before_invalid := restored.to_data(); var invalid := RealmzRuntimeApi.new(replacement_content, restored, RealmzRng.new(7), ScenarioActionState.new()).execute_classic(ClassicActionDefinition.new(0, 7, 7, 0, false, [-3, 0, 325, 0, 0]), "replacement.invalid")
 	assert_equal([invalid.error_code, restored.to_data()], [&"unknown_map", before_invalid], "opcode 7 preserves unknown negative imports as typed atomic failures rather than reinterpreting them")
+
+
+func _test_opcode_13_trigger_mutation_modes(content: RealmzContent) -> void:
+	var land := content.world.map_by_type_and_index(&"land", 0)
+	var dungeon := content.world.map_by_type_and_index(&"dungeon", 0)
+	assert_true(land != null and dungeon != null, "opcode 13 fixture has land and dungeon index zero")
+	if land == null or dungeon == null:
+		return
+	var triggers: Array[TriggerDefinition] = [
+		TriggerDefinition.new("opcode13.land.1", "", land.id, Vector2i.ZERO, true, 100, null, 1),
+		TriggerDefinition.new("opcode13.land.2", "", land.id, Vector2i.ZERO, true, 100, null, 2),
+		TriggerDefinition.new("opcode13.land.4", "", land.id, Vector2i.ZERO, true, 100, null, 4),
+		TriggerDefinition.new("opcode13.dungeon.1", "", dungeon.id, Vector2i.ZERO, true, 100, null, 1),
+		TriggerDefinition.new("opcode13.dungeon.2", "", dungeon.id, Vector2i.ZERO, true, 100, null, 2),
+	]
+	var fixture := RealmzContent.new("opcode13", "1".repeat(64), "opcode13", content.rules_version, land.id, Vector2i.ZERO, content.world, ScenarioDefinition.new([], []), [], triggers)
+	var state := GameState.new(PartyState.new(land.id, Vector2i.ZERO, [CharacterState.new("opcode13.hero", "Hero", 10, 10)]), RealmzClock.new())
+	var rng := RealmzRng.for_oracle(13)
+	var api := RealmzRuntimeApi.new(fixture, state, rng, ScenarioActionState.new())
+	var land_result := api.execute_classic(ClassicActionDefinition.new(0, 13, 13, 0, false, [0, 1, 25, 2, 4]), "opcode13.land")
+	var dungeon_result := api.execute_classic(ClassicActionDefinition.new(0, 13, 13, 0, false, [0, 0, -1, -1, -2]), "opcode13.dungeon")
+	var single_result := api.execute_classic(ClassicActionDefinition.new(0, 13, 13, 0, false, [0, 1, 75, 0, 99]), "opcode13.single")
+	var saved := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
+	assert_equal([land_result.value, dungeon_result.value, single_result.value], [["opcode13.land.1", "opcode13.land.2", "opcode13.land.4"], ["opcode13.dungeon.1", "opcode13.dungeon.2"], ["opcode13.land.1"]], "opcode 13 combines its optional single record with an inclusive land range, uses a negative range for dungeon records, and silently skips unplaced native rows")
+	assert_equal([state.world.triggers.trigger_chance("opcode13.land.1", 100), state.world.triggers.trigger_chance("opcode13.land.2", 100), state.world.triggers.trigger_chance("opcode13.land.4", 100), state.world.triggers.trigger_chance("opcode13.dungeon.1", 100), state.world.triggers.trigger_is_disabled("opcode13.dungeon.2"), rng.snapshot().draw_count], [75, 25, 25, -1, true, 0], "opcode 13 stores clamped runtime chance overrides and canonical disablement without consuming RNG")
+	assert_true(saved != null and saved.world.triggers.trigger_chance("opcode13.land.2", 100) == 25 and saved.world.triggers.trigger_is_disabled("opcode13.dungeon.1"), "opcode 13's land and dungeon overrides survive the public save-owned state codec")
+	var before_invalid := state.to_data()
+	var invalid := api.execute_classic(ClassicActionDefinition.new(0, 13, 13, 0, false, [99, 1, 50, 0, 0]), "opcode13.invalid")
+	assert_equal([invalid.error_code, state.to_data(), rng.snapshot().draw_count], [&"unknown_map", before_invalid, 0], "an unavailable opcode 13 map rejects atomically without state or RNG mutation")
 
 
 func _test_public_action_state(content: RealmzContent) -> void:
