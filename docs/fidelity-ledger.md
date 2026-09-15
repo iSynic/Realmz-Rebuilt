@@ -69,6 +69,15 @@ Classic-visible behavior is the default ruleset. This ledger records deliberate 
 - Tests: `test_scenario_vm.gd::_test_corrected_take_experience_opcode` runs mixed picked identities through the public VM with opcode 90 in source action slots 0 and 7 and proves only those identities change.
 - Legacy quirk: none. The action-slot alias is a source typo and no bug-compatibility mode is provided.
 
+## FD-SCENARIO-008 — Legacy battle opcode-2 record projection
+
+- Affected rule: Classic opcode 2 battle record extra-code projection for legacy authored rows.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/newland.c`, opcode 2, lines 1451–1473. Castle literally called `sound(extraCode[2])` and `textbox(-1, extraCode[3])`. With `extraCode[2] == -1` and `extraCode[3]` in `30000..30005`, Castle played sound 1 synchronously and performed an unchecked `textbox` seek past EOF in `Data SD2`.
+- Player-facing problem: Historic campaigns (including AOGM, City of Bywater, and Destroy the Necronomicon) authored battle rows using `[battle, 0, -1, 30000..30005, outcome]` where `30000..30005` specified an application sound. Rebuilt's strict scenario message lookup failed with `unknown_message`, blocking progression such as AOGM land 6:42.
+- Chosen 2.0 behavior: When opcode 2 has a 5-word extra-code row with word 2 equal to 0, word 3 equal to -1, and word 4 between 30000 and 30005 inclusive, project word 4 as application sound `sound_id` and omit pre-battle message lookup, while preserving raw authored package words and the fifth outcome word. Unrelated opcode-2 rows remain on the normal path.
+- Tests: `test_scenario_vm.gd::_test_classic_opcode_2_legacy_battle_record` covers the AOGM positive case, preserved outcome mode, and nearby negatives (negative word 4, non-zero word 2, word 3 != -1, out-of-range word 4, wrong shape, wrong opcode).
+- Legacy quirk: Preserves raw authored package words while reproducing the intended application sound cue without failing on nonexistent scenario messages.
+
 ## FD-ECONOMY-001 — Zero-charge shop valuation
 
 - Affected rule: shop sale value for an item definition whose authored charge count is zero.

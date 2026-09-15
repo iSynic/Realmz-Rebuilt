@@ -77,6 +77,9 @@ func _start_classic_battle(action: ClassicActionDefinition, request_id: String) 
 			battle_id = _rng.draw_between(absi(low), absi(high), StringName("classic.opcode-%d.battle" % action.opcode))
 		var sound_id := action.extra_code[3] if action.opcode == 56 else action.extra_code[2]
 		var message_id := action.extra_code[4] if action.opcode == 56 else action.extra_code[3]
+		if action.opcode == 2 and action.extra_code.size() == 5 and action.extra_code[1] == 0 and action.extra_code[2] == -1 and action.extra_code[3] >= 30000 and action.extra_code[3] <= 30005:
+			sound_id = action.extra_code[3]
+			message_id = 0
 		if sound_id != 0:
 			prelude.append(DomainEvent.new(&"sound_requested", {"soundId": sound_id, "source": "classic-battle"}))
 		if message_id != 0:

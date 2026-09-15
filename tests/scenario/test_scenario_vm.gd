@@ -29,7 +29,7 @@ func run() -> void:
 	_test_corrected_take_experience_opcode(content)
 	_test_opcode_7_program_replacement_modes(content)
 	_test_opcode_13_trigger_mutation_modes(content)
-	_test_public_action_state(content); _test_aogm_dispatch_has_no_fallback(content)
+	_test_public_action_state(content); _test_aogm_dispatch_has_no_fallback(content); _test_classic_opcode_2_legacy_battle_record(content)
 
 
 func _test_scenario_wire_contracts() -> void:
@@ -876,6 +876,45 @@ func _test_aogm_dispatch_has_no_fallback(content: RealmzContent) -> void:
 		var action := ClassicActionDefinition.new(0, opcode, opcode, 0, false, [0, 0, 0, 0, 0])
 		var operation := api.execute_classic(action, "request.dispatch", ScenarioExecutionContext.calling(&"action"))
 		assert_true(operation != null and operation.error_code != &"unsupported_classic_opcode", "AOGM opcode %d has an explicit runtime owner" % opcode)
+
+
+func _test_classic_opcode_2_legacy_battle_record(content: RealmzContent) -> void:
+	var battle := content.combat.battle_by_id("classic.battle.0")
+	assert_not_null(battle, "fixture provides battle 0")
+	if battle == null:
+		return
+	var party := PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("opcode2.hero", "Hero", 10, 10)])
+	var state := GameState.new(party, RealmzClock.new())
+	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(2), ScenarioActionState.new(), RealmzRules.new())
+	var positive := api.execute_classic(ClassicActionDefinition.new(0, 2, 2, battle.classic_id, false, [battle.classic_id, 0, -1, 30002, 0]), "battle.legacy-aogm")
+	assert_equal(positive.state, ScenarioRuntimeOperationResult.State.WAITING, "legacy opcode 2 battle record starts battle without unknown_message failure")
+	var sound_events := positive.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 30002 and event.payload.get("source") == "classic-battle")
+	var message_events := positive.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"message_shown" and event.payload.get("source") == "classic-battle")
+	assert_true(sound_events.size() == 1 and message_events.is_empty(), "legacy opcode 2 battle emits application sound word4 directly and no pre-battle message")
+	assert_true(state.combat != null and state.combat.battle_id == battle.id, "legacy opcode 2 battle initializes active combat state")
+	state.combat = null
+	var positive_mode := api.execute_classic(ClassicActionDefinition.new(0, 2, 2, battle.classic_id, false, [battle.classic_id, 0, -1, 30001, 599]), "battle.legacy-mode")
+	assert_equal(positive_mode.state, ScenarioRuntimeOperationResult.State.WAITING, "legacy opcode 2 battle with positive sound in 30000..30005 starts battle")
+	assert_true(positive_mode.continuation != null and positive_mode.continuation.combat().caller.mode == 599, "legacy opcode 2 preserves outcome mode 599 in battle caller")
+	var sound_mode_events := positive_mode.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 30001 and event.payload.get("source") == "classic-battle")
+	assert_true(sound_mode_events.size() == 1, "word 4 sound projects directly")
+	state.combat = null
+	var negative_codes: Array = [
+		[battle.classic_id, 0, -1, -30001, 0],
+		[battle.classic_id, 1, -1, 30002, 0],
+		[battle.classic_id, 0, 0, 30002, 0],
+		[battle.classic_id, 0, -1, 29999, 0],
+		[battle.classic_id, 0, -1, 30006, 0],
+		[battle.classic_id, 0, -1, 30002],
+	]
+	for code: Array in negative_codes:
+		var extra: Array[int] = []
+		extra.assign(code)
+		var result := api.execute_classic(ClassicActionDefinition.new(0, 2, 2, battle.classic_id, false, extra), "battle.neg-table")
+		assert_equal(result.error_code, &"unknown_message", "opcode 2 nearby negative %s does not match legacy discriminator" % [code])
+	state.scenario_progress.set_selected_character_ids([party.characters()[0].id])
+	var wrong_opcode := api.execute_classic(ClassicActionDefinition.new(0, 48, 48, battle.classic_id, false, [battle.classic_id, 0, -1, 30002, 0]), "battle.neg-opcode")
+	assert_equal(wrong_opcode.error_code, &"unknown_message", "opcode 48 does not match legacy opcode 2 discriminator")
 
 
 func _begin_fixture_adventure(session: GameSession, content: RealmzContent) -> void:
