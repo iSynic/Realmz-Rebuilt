@@ -66,7 +66,7 @@ func _ready() -> void:
 		_runtime_testing_host = RuntimeTestingHost.new()
 		add_child(_runtime_testing_host)
 		var fixture_request := get_meta(&"runtime_testing_fixture") as RuntimeTestingFixtureRequest if has_meta(&"runtime_testing_fixture") else null
-		var status := _runtime_testing_host.bind(session_controller, func() -> RealmzContent: return _active_content, func() -> Dictionary: return RUNTIME_TESTING_READINESS.fields(self, session_controller, presentation_coordinator, lifecycle_host, _persistent_auto), self, fixture_request)
+		var status := _runtime_testing_host.bind(session_controller, func() -> RealmzContent: return _active_content, func() -> Dictionary: return RUNTIME_TESTING_READINESS.fields(self, session_controller, presentation_coordinator, lifecycle_host, _persistent_auto, _battlefield_presenter), self, fixture_request)
 		if status != OK:
 			printerr("Runtime testing endpoint unavailable: %s" % error_string(status))
 	_finish_startup()

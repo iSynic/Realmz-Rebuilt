@@ -3,7 +3,7 @@ class_name RuntimeTestingReadiness
 extends RefCounted
 
 
-static func fields(application: RealmzApplication, session: GameSessionController, presentation: PresentationCoordinator, lifecycle: ApplicationLifecycleHost, persistent_auto: RefCounted) -> Dictionary:
+static func fields(application: RealmzApplication, session: GameSessionController, presentation: PresentationCoordinator, lifecycle: ApplicationLifecycleHost, persistent_auto: RefCounted, battlefield: ClassicBattlefieldPresenter) -> Dictionary:
 	var presentation_state := presentation.runtime_observation
 	return {
 		"explorationInput": application.accepts_exploration_input(),
@@ -16,4 +16,5 @@ static func fields(application: RealmzApplication, session: GameSessionControlle
 		"deferredRevision": presentation_state["deferredRevision"],
 		"playbackPhase": presentation_state["playbackPhase"],
 		"autoContinuation": persistent_auto.call("observation"),
+		"combatMedia": battlefield.monster_media_diagnostics() if battlefield != null else [],
 	}

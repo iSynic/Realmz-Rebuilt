@@ -69,6 +69,29 @@ func set_media_catalog(media: ClassicMediaCatalog) -> void:
 	queue_redraw()
 
 
+func monster_media_diagnostics() -> Array[Dictionary]:
+	var diagnostics: Array[Dictionary] = []
+	if _view == null or _view.combat_view == null or _media == null:
+		return diagnostics
+	for monster: MonsterView in _view.combat_view.monsters:
+		var facing_right := bool(_monster_facing_right.get(monster.id, false))
+		var requested_icon_id := BattlefieldPresentationGeometry.classic_monster_icon_id(monster.icon_id, facing_right)
+		var resolved_icon_id := requested_icon_id
+		var asset := _media.asset_by_resource(monster.icon_resource_type, requested_icon_id)
+		if asset == null and requested_icon_id != monster.icon_id:
+			resolved_icon_id = monster.icon_id
+			asset = _media.asset_by_resource(monster.icon_resource_type, resolved_icon_id)
+		var diagnostic := _media.resolution_diagnostic(monster.icon_resource_type, resolved_icon_id, "classic-combat-monster", "decoded" if _textures.actor_texture(asset) != null else "decode-failed")
+		diagnostic["actorId"] = monster.id
+		diagnostic["monsterName"] = monster.name
+		diagnostic["baseResourceId"] = monster.icon_id
+		diagnostic["requestedResourceId"] = requested_icon_id
+		diagnostic["facingRight"] = facing_right
+		diagnostic["usedBaseFallback"] = resolved_icon_id != requested_icon_id
+		diagnostics.append(diagnostic)
+	return diagnostics
+
+
 func has_battle_artwork() -> bool:
 	return _textures.has_battle_artwork()
 
