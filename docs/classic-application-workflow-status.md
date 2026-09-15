@@ -13,19 +13,19 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Current parity-convergence batch
 
-**Half Truth combat and player-route acceptance** (`half-truth-combat-and-player-route-acceptance`)
+**Assault on Giant Mountain main-route certification** (`aogm-main-route-certification`)
 
-This five-workflow batch replayed the retained Half Truth combat reports through the rendered application and closed the exact Inventory and scenario-media acceptance routes. The exact v5 Battle 70 replay and five-round Battle 34 all-Auto/mixed-Auto replay close the reported David/Party Auto incident for now, with recurrence as the reopening condition. Consecutive battle entry, causal spell and defeat playback, David's Robe of Speed, controller Inventory owner switching, and the pinned Wrecker media pair now have bounded evidence. The Wrecker base facing is rendered evidence while its right-facing resource and selection rule remain separate package and presentation proofs. No campaign status is promoted by this batch.
+This five-workflow batch begins ordinary start-to-ending certification of Assault on Giant Mountain through the current pinned package. It reuses existing player checkpoints and ordinary controls, records save/resume at meaningful progression boundaries, and repairs only defects reproduced on the route. The separate Providence vNext checkout already owns the fresh-package blocker: current import restores XAP 165 and 169 but still rejects Extra Action Point 147's target 30002. Rebuilt will not duplicate that compiler work or treat the uncommitted vNext tree as release evidence. Focused checks protect each demonstrated repair; the aggregate gate runs once at batch closeout.
 
 AP batches use failure-first priorities: known failures, untested high-risk behavior, meaningful variants, and broader representatives. Verification mode records existing functional behavior without claiming full campaign certification; implementation, verification, and certification remain distinct modes.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.combat.auto-character` | verification | known-failure | runtime-integration |  |
-| `classic.combat.enter-battle` | verification | known-failure | runtime-integration |  |
-| `classic.spellcasting.combat-cast` | verification | known-failure | runtime-integration |  |
-| `classic.inventory.manage-equipment` | verification | known-failure | runtime-integration |  |
-| `classic.scenario.present-message-media` | verification | known-failure | runtime-integration |  |
+| `classic.startup.begin-adventure` | certification | broader-representative | aogm-ordinary |  |
+| `classic.exploration.travel` | certification | broader-representative | aogm-ordinary |  |
+| `classic.scenario.complex-interaction` | certification | untested-high-risk | aogm-ordinary |  |
+| `classic.combat.resolve-outcome` | certification | known-failure | aogm-ordinary |  |
+| `classic.system.save-game` | certification | broader-representative | aogm-ordinary |  |
 
 ### Batch count delta
 

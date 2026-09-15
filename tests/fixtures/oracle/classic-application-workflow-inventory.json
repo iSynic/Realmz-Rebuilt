@@ -23,9 +23,9 @@
     ]
   },
   "currentBatch": {
-    "id": "half-truth-combat-and-player-route-acceptance",
-    "name": "Half Truth combat and player-route acceptance",
-    "baselineCommit": "1b0502b1e4fd32e8fe6b2badca9855a58821020a",
+    "id": "aogm-main-route-certification",
+    "name": "Assault on Giant Mountain main-route certification",
+    "baselineCommit": "a57e0bd9a601ad76eb070db9c6e31ae71ac5a601",
     "baselineCounts": {
       "classic": {
         "missing": 0,
@@ -40,45 +40,45 @@
         "certified": 2
       }
     },
-    "selectionRationale": "This five-workflow batch replayed the retained Half Truth combat reports through the rendered application and closed the exact Inventory and scenario-media acceptance routes. The exact v5 Battle 70 replay and five-round Battle 34 all-Auto/mixed-Auto replay close the reported David/Party Auto incident for now, with recurrence as the reopening condition. Consecutive battle entry, causal spell and defeat playback, David's Robe of Speed, controller Inventory owner switching, and the pinned Wrecker media pair now have bounded evidence. The Wrecker base facing is rendered evidence while its right-facing resource and selection rule remain separate package and presentation proofs. No campaign status is promoted by this batch.",
+    "selectionRationale": "This five-workflow batch begins ordinary start-to-ending certification of Assault on Giant Mountain through the current pinned package. It reuses existing player checkpoints and ordinary controls, records save/resume at meaningful progression boundaries, and repairs only defects reproduced on the route. The separate Providence vNext checkout already owns the fresh-package blocker: current import restores XAP 165 and 169 but still rejects Extra Action Point 147's target 30002. Rebuilt will not duplicate that compiler work or treat the uncommitted vNext tree as release evidence. Focused checks protect each demonstrated repair; the aggregate gate runs once at batch closeout.",
     "targets": [
       {
-        "workflowId": "classic.combat.auto-character",
-        "mode": "verification",
-        "priority": "known-failure",
-        "expectedEvidence": "runtime-integration",
+        "workflowId": "classic.startup.begin-adventure",
+        "mode": "certification",
+        "priority": "broader-representative",
+        "expectedEvidence": "aogm-ordinary",
         "gapIds": [],
         "archaeologyTriggers": []
       },
       {
-        "workflowId": "classic.combat.enter-battle",
-        "mode": "verification",
-        "priority": "known-failure",
-        "expectedEvidence": "runtime-integration",
+        "workflowId": "classic.exploration.travel",
+        "mode": "certification",
+        "priority": "broader-representative",
+        "expectedEvidence": "aogm-ordinary",
         "gapIds": [],
         "archaeologyTriggers": []
       },
       {
-        "workflowId": "classic.spellcasting.combat-cast",
-        "mode": "verification",
-        "priority": "known-failure",
-        "expectedEvidence": "runtime-integration",
+        "workflowId": "classic.scenario.complex-interaction",
+        "mode": "certification",
+        "priority": "untested-high-risk",
+        "expectedEvidence": "aogm-ordinary",
         "gapIds": [],
         "archaeologyTriggers": []
       },
       {
-        "workflowId": "classic.inventory.manage-equipment",
-        "mode": "verification",
+        "workflowId": "classic.combat.resolve-outcome",
+        "mode": "certification",
         "priority": "known-failure",
-        "expectedEvidence": "runtime-integration",
+        "expectedEvidence": "aogm-ordinary",
         "gapIds": [],
         "archaeologyTriggers": []
       },
       {
-        "workflowId": "classic.scenario.present-message-media",
-        "mode": "verification",
-        "priority": "known-failure",
-        "expectedEvidence": "runtime-integration",
+        "workflowId": "classic.system.save-game",
+        "mode": "certification",
+        "priority": "broader-representative",
+        "expectedEvidence": "aogm-ordinary",
         "gapIds": [],
         "archaeologyTriggers": []
       }
