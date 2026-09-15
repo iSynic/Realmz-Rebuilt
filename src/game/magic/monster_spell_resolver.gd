@@ -62,10 +62,10 @@ func _reflect_monster_area_targets(caster: MonsterState, caster_definition: Mons
 	return result
 
 
-func resolve_monster_repeated_spell(caster: MonsterState, caster_definition: MonsterDefinition, selections: Array[SpellTargetSelection], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, before_selection: Callable = Callable()) -> RepeatedSpellResolution:
-	if caster == null or caster_definition == null or spell == null or rng == null or power_level < 1 or selections.is_empty() or selections.size() > power_level:
+func resolve_monster_repeated_spell(caster: MonsterState, caster_definition: MonsterDefinition, selections: Array[SpellTargetSelection], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, before_selection: Callable = Callable(), spend_spell_points: bool = true, allow_empty: bool = false) -> RepeatedSpellResolution:
+	if caster == null or caster_definition == null or spell == null or rng == null or power_level < 1 or (not allow_empty and selections.is_empty()) or selections.size() > power_level:
 		return null
-	return _resolve_monster_selection_sequence(caster, caster_definition, selections, spell, power_level, cast_level, rng, true, &"magic.monster-repeated", before_selection)
+	return _resolve_monster_selection_sequence(caster, caster_definition, selections, spell, power_level, cast_level, rng, true, &"magic.monster-repeated", before_selection, spend_spell_points)
 
 
 func resolve_monster_ray_spell(caster: MonsterState, caster_definition: MonsterDefinition, selections: Array[SpellTargetSelection], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng) -> RepeatedSpellResolution:
@@ -74,14 +74,17 @@ func resolve_monster_ray_spell(caster: MonsterState, caster_definition: MonsterD
 	return _resolve_monster_selection_sequence(caster, caster_definition, selections, spell, power_level, cast_level, rng, false, &"magic.monster-ray")
 
 
-func _resolve_monster_selection_sequence(caster: MonsterState, caster_definition: MonsterDefinition, selections: Array[SpellTargetSelection], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, allow_reflection: bool, rng_tag: StringName, before_selection: Callable = Callable()) -> RepeatedSpellResolution:
+func _resolve_monster_selection_sequence(caster: MonsterState, caster_definition: MonsterDefinition, selections: Array[SpellTargetSelection], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, allow_reflection: bool, rng_tag: StringName, before_selection: Callable = Callable(), spend_spell_points: bool = true) -> RepeatedSpellResolution:
 	for selection: SpellTargetSelection in selections:
 		if not _selection_is_valid(selection):
 			return null
 	var spell_cost := spell.cost * power_level
-	if spell_cost < 0 or caster.spell_points < spell_cost:
+	if spend_spell_points and (spell_cost < 0 or caster.spell_points < spell_cost):
 		return RepeatedSpellResolution.new(false, maxi(0, spell_cost), selections.size())
-	caster.spell_points -= spell_cost
+	if spend_spell_points:
+		caster.spell_points -= spell_cost
+	else:
+		spell_cost = 0
 	var result := RepeatedSpellResolution.new(true, spell_cost, selections.size())
 	for index: int in selections.size():
 		if before_selection.is_valid():
