@@ -97,13 +97,15 @@ func _test_classic_starter_seeding() -> void:
 	_remove_test_tree(occupied_root); DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(occupied_root)); var sentinel := FileAccess.open(occupied_root + "/unknown.tmp", FileAccess.WRITE); sentinel.store_string("preserve"); sentinel.close()
 	var occupied := CharacterVaultRepository.new(occupied_root)
 	assert_true(occupied.seed_if_empty(records) and occupied.list_current_records().is_empty() and FileAccess.file_exists(occupied_root + "/unknown.tmp"), "any unknown, invalid, temporary, or archived vault entry suppresses seeding without mutation")
+	var legacy_root := "user://realmz2-tests/classic-starter-legacy"; _remove_test_tree(legacy_root); var legacy_id := records[0].character_id; var legacy_hash := records[0].revision_hash; DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("%s/%s" % [legacy_root, legacy_id])); var legacy_data := records[0].to_data(); legacy_data["formatVersion"] = 1; legacy_data["state"].erase("equipmentOrder"); var legacy_file := FileAccess.open("%s/%s/%s.r2char" % [legacy_root, legacy_id, legacy_hash], FileAccess.WRITE); legacy_file.store_string(CanonicalJson.encode(legacy_data)); legacy_file.close(); var legacy_index := FileAccess.open("%s/%s/current.json" % [legacy_root, legacy_id], FileAccess.WRITE); legacy_index.store_string(CanonicalJson.encode({"characterId": legacy_id, "revisionHash": legacy_hash})); legacy_index.close()
+	var legacy_repository := CharacterVaultRepository.new(legacy_root); var diagnostics: Variant = legacy_repository.diagnostics(); assert_equal([diagnostics.valid_current_count, diagnostics.incompatible_current_count, diagnostics.invalid_current_count, diagnostics.stored_identity_count], [0, 1, 0, 1], "an incompatible current revision remains preserved and is reported separately from an empty vault"); assert_true(legacy_repository.seed_if_empty(records) and FileAccess.file_exists("%s/%s/%s.r2char" % [legacy_root, legacy_id, legacy_hash]) and diagnostics.unavailable_notice().contains("incompatible older format"), "starter seeding does not overwrite the incompatible vault and supplies an actionable detached notice")
 	var failed_root := "user://realmz2-tests/classic-starter-failure"
 	_remove_test_tree(failed_root); _remove_test_tree(failed_root + ".starter-seed")
 	var invalid_records: Array[CharacterVaultRecord] = records.duplicate(); var invalid := CharacterVaultRecord.from_data(records[0].to_data()); invalid.state.traitor = true; invalid_records[0] = invalid
 	var failing := CharacterVaultRepository.new(failed_root)
 	assert_false(failing.seed_if_empty(invalid_records), "one invalid catalog record rejects the complete seed transaction")
 	assert_false(DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(failed_root)) or DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(failed_root + ".starter-seed")), "failed seeding leaves neither a partial vault nor a staging directory")
-	_remove_test_tree(seeded_root); _remove_test_tree(occupied_root); _remove_test_tree(failed_root)
+	_remove_test_tree(seeded_root); _remove_test_tree(occupied_root); _remove_test_tree(legacy_root); _remove_test_tree(failed_root)
 
 
 func _remove_test_tree(path: String) -> void:

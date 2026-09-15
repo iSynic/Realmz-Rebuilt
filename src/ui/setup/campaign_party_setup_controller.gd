@@ -113,8 +113,9 @@ func set_view(next_view: GameView) -> void:
 	if setup_overlay != null and setup_overlay.visible:
 		_creation.refresh_setup_options()
 
-func set_vault_revisions(revisions: Array[CharacterVaultRevisionView]) -> void:
+func set_vault_revisions(revisions: Array[CharacterVaultRevisionView], notice: String = "") -> void:
 	vault_revisions = revisions.duplicate()
+	vault_notice = notice
 	if setup_overlay != null and setup_overlay.visible:
 		_creation.refresh_setup_options()
 

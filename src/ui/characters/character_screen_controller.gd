@@ -17,6 +17,7 @@ var _party_order_open: bool = false
 var _source_order_ids: Array[String] = []
 var _draft_order_ids: Array[String] = []
 var _vault_revisions: Array[CharacterVaultRevisionView] = []
+var _vault_notice: String = ""
 var _vault_inspection_revision_hash: String = ""
 var _vault_target: Control
 var _vault_screen: VaultScreen
@@ -58,8 +59,9 @@ func select_character(character_id: String, view: GameView) -> bool:
 	return false
 
 
-func set_vault_revisions(revisions: Array[CharacterVaultRevisionView]) -> void:
+func set_vault_revisions(revisions: Array[CharacterVaultRevisionView], notice: String = "") -> void:
 	_vault_revisions = revisions.duplicate()
+	_vault_notice = notice
 
 
 func clear_vault_inspection() -> void:
@@ -108,6 +110,8 @@ func present_vault(target: Control, view: GameView, appearance_textures: Diction
 			_refresh_vault()
 		)
 	if _vault_revisions.is_empty():
+		(screen.empty_state().get_node("Content/Title") as Label).text = "Character Files are unavailable" if not _vault_notice.is_empty() else "Character vault is empty"
+		(screen.empty_state().get_node("Content/Detail") as Label).text = _vault_notice if not _vault_notice.is_empty() else "No immutable .r2char revisions are installed. New characters can be published after they are added to a campaign party."
 		screen.empty_state().visible = true
 		screen.current_title().visible = false
 		return

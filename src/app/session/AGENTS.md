@@ -20,6 +20,7 @@ Own host workflows around one replaceable pure `GameSession` without duplicating
 - Restore validates a replacement completely before swapping the active session.
 - A failed or cancelled operation leaves the active session and media catalog unchanged.
 - Character Files revisions are cached by stable identity and revision hash and invalidated after mutation.
+- Character Files refresh also publishes a detached notice when preserved current revisions are incompatible or invalid; the host never treats those files as an empty vault or requests their migration.
 - `ApplicationCharacterFilesHost` accepts an explicitly injected vault controller; default construction uses the ordinary repository, while runtime fixtures supply scratch storage before entering the scene tree.
 - No host controller contains Realmz rules, accesses presenter-private methods, or invents compatibility behavior.
 

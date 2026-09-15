@@ -103,6 +103,7 @@ var combat_icon_touched: bool = false
 
 var view: GameView
 var vault_revisions: Array[CharacterVaultRevisionView] = []
+var vault_notice: String = ""
 var media: ClassicMediaCatalog
 var settings: PresentationSettings = PresentationSettings.new()
 var layout_profile: StringName = UiLayoutProfile.WIDE

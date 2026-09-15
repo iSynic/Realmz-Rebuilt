@@ -115,7 +115,9 @@ func _rebuild_assembly_browser(current_revisions: Array[CharacterVaultRevisionVi
 	(_assembly_browser.get_node("%CharacterFileCount") as Label).text = "• %d available" % current_revisions.size()
 	_stored_revision_signature = next_signature
 	if current_revisions.is_empty():
-		(_assembly_browser.get_node("%CharacterFilesEmpty") as Control).visible = true
+		var empty_state := _assembly_browser.get_node("%CharacterFilesEmpty") as Label
+		empty_state.text = vault_notice if not vault_notice.is_empty() else "No Character Files yet. Create one here."
+		empty_state.visible = true
 		return
 	var global_available: ActionAvailabilityView = view.availability(&"import_vault_character") if campaign_setup else ActionAvailabilityView.new(&"import_vault_character", false, "Choose a scenario before adding a Character File to a party.")
 	for revision: CharacterVaultRevisionView in _stored_character_page_items(current_revisions):

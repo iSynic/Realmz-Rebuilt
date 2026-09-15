@@ -4,6 +4,7 @@ class_name CharacterVaultRepository
 extends RefCounted
 
 const RECORD_EXTENSION := ".r2char"
+const CHARACTER_VAULT_DIAGNOSTICS := preload("res://src/storage/characters/character_vault_diagnostics.gd")
 
 var _root_path: String
 var last_error: String = ""
@@ -49,6 +50,27 @@ func list_character_ids() -> Array[String]:
 		entry = directory.get_next()
 	directory.list_dir_end()
 	result.sort_custom(func(left: String, right: String) -> bool: return left.naturalnocasecmp_to(right) < 0)
+	return result
+
+
+func diagnostics() -> Variant:
+	var result: Variant = CHARACTER_VAULT_DIAGNOSTICS.new()
+	var character_ids := list_character_ids()
+	result.stored_identity_count = character_ids.size()
+	for character_id: String in character_ids:
+		var revision_hash := _read_current_hash(character_id)
+		if revision_hash.is_empty():
+			continue
+		var path := "%s/%s/%s%s" % [_root_path, character_id, revision_hash, RECORD_EXTENSION]
+		var value: Variant = _read_record_data(path)
+		var record := CharacterVaultRecord.from_data(value)
+		var format_version: Variant = value.get("formatVersion") if value is Dictionary else null
+		if record != null and record.character_id == character_id and record.revision_hash == revision_hash:
+			result.valid_current_count += 1
+		elif value is Dictionary and value.get("format", "") == CharacterVaultRecord.FORMAT and (format_version is int or format_version is float) and int(format_version) != CharacterVaultRecord.FORMAT_VERSION:
+			result.incompatible_current_count += 1
+		else:
+			result.invalid_current_count += 1
 	return result
 
 
@@ -322,6 +344,10 @@ func _read_current_hash(character_id: String) -> String:
 
 
 func _read_record(path: String) -> CharacterVaultRecord:
+	return CharacterVaultRecord.from_data(_read_record_data(path))
+
+
+func _read_record_data(path: String) -> Variant:
 	if not FileAccess.file_exists(path):
 		return null
 	var file := FileAccess.open(path, FileAccess.READ)
@@ -329,7 +355,7 @@ func _read_record(path: String) -> CharacterVaultRecord:
 		return null
 	var parsed: Variant = JSON.parse_string(file.get_as_text())
 	file.close()
-	return CharacterVaultRecord.from_data(parsed)
+	return parsed
 
 
 func _append_revision_records(directory_path: String, character_id: String, records: Array[CharacterVaultRecord]) -> void:
