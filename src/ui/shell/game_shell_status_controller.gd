@@ -117,6 +117,7 @@ func present_event(event: DomainEvent, current_view: GameView) -> void:
 		&"party_moved": set_status("%s • %d,%d" % [current_view.party_map_id if current_view != null else "Map", int(event.payload.get("x", 0)), int(event.payload.get("y", 0))])
 		&"movement_blocked": set_status("That way is blocked")
 		&"combat_movement_blocked": set_status("That combat move is blocked")
+		&"combat_friendly_collision_cancelled": set_status("Combat move cancelled")
 		&"search_completed": append_narrative("The party searches the area.")
 		&"camp_mode_changed": append_narrative("The party makes camp." if bool(event.payload.get("camping", false)) else "The party breaks camp.")
 		&"character_age_changed": _present_age_change(event)

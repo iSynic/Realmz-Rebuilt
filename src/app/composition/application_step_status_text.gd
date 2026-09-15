@@ -21,6 +21,7 @@ static func for_event(event: DomainEvent) -> String:
 		&"map_transitioned": return "Entered %s" % event.payload.get("targetMapId", "map")
 		&"movement_blocked": return "Blocked • %s" % event.payload.get("reason", "unknown")
 		&"combat_movement_blocked": return "Combat move blocked • %s" % event.payload.get("reason", "unknown")
+		&"combat_friendly_collision_cancelled": return "Combat move cancelled"
 	return ""
 
 

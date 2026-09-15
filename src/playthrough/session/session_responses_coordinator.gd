@@ -401,15 +401,15 @@ func _respond_session_retreat(response: InteractionResponse) -> SessionCoordinat
 
 
 func _respond_session_friendly_collision(response: InteractionResponse) -> SessionCoordinatorResult:
-	var body = response.body as InteractionResponse.YesNoBody
-	if response.kind != InteractionRequest.YES_NO or body == null:
-		return SessionCoordinatorResult.failed(&"invalid_interaction_response", "The Classic friendly-collision choice requires a yes/no response.")
+	var body = response.body as InteractionResponse.ChoiceBody
+	if response.kind != InteractionRequest.INDEXED_CHOICE or body == null or not body.cancelled and body.index not in [0, 1]:
+		return SessionCoordinatorResult.failed(&"invalid_interaction_response", "The Classic friendly-collision choice requires Swap Positions, Attack Friend, or Back out.")
 	var continuation = _context.session_continuation.combat()
 	if continuation == null or _context.state.combat == null or _context.state.combat.completed or _context.state.combat.battle_id != continuation.battle_id or _context.state.combat.turns.active_actor_id() != continuation.actor_id or _context.rules.combat_flow.reactions.friendly_collision_target_id(_context.state, continuation.actor_id, continuation.destination).is_empty():
 		return SessionCoordinatorResult.failed(&"invalid_session_continuation", "The adjacent ally awaiting a collision choice is unavailable.")
 	_context.session_interaction = null
 	_context.session_continuation.clear()
-	var action := &"swap" if body.accepted else &"attack"
+	var action := &"cancel" if body.cancelled else &"swap" if body.index == 0 else &"attack"
 	var result = _context.rules.combat_flow.move_character(_context.state, _context.content, continuation.actor_id, continuation.destination, _context.rng, false, action)
 	return finish_combat_result(result)
 

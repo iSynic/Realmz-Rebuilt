@@ -208,6 +208,9 @@ func _resolve_friendly_collision(state: GameState, content: RealmzContent, actio
 		return CombatFlowResult.failed(&"invalid_friendly_collision", "No guarded friendly-collision choice is pending.")
 	if friendly_collision_target_id(state, reaction.mover_id, reaction.destination) != reaction.friendly_collision_target_id:
 		return CombatFlowResult.failed(&"invalid_friendly_collision", "The adjacent ally is no longer available.")
+	if action == &"cancel":
+		combat.pending_reaction = null
+		return CombatFlowResult.succeeded([DomainEvent.new(&"combat_friendly_collision_cancelled", {"actorId": reaction.mover_id, "targetId": reaction.friendly_collision_target_id, "destination": [reaction.destination.x, reaction.destination.y], "source": "classic"})], false)
 	if action == &"attack" and combat.actor_statuses.character_weapon_mode(reaction.mover_id) != &"melee":
 		return CombatFlowResult.failed(&"melee_weapon_mode_required", "Switch to the melee weapon before attacking an adjacent ally.")
 	if action == &"attack":
