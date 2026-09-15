@@ -64,6 +64,12 @@ Realmz Rebuilt aims to load and play ordinary Castle Realmz scenarios through Pr
 
 Some of these areas have received repairs. They stay listed until the repaired build reproduces the original route successfully and the retained trace proves committed and presented state agree.
 
+## Latest repair-batch closeout
+
+The September 15 compatibility tranche closed three controlled gaps at commits `58558360`, `baffea56`, and `f9edbf91`: repeated controller top-menu scrolling no longer targets stale row controls; malformed non-summoning open-space spell records now fail consistently at every casting source; and the complete stock special-projectile catalog has an owned executable route. The aggregate gate passes 4,471 assertions across 29 suites, Providence package alignment, all 13 bundled packages and 515 scenario CICN descriptors, gameplay/workflow inventories, schema and provenance checks, architecture and maintainability ratchets, and Windows/Linux/macOS export contracts. The main-scene smoke retains the known single ObjectDB exit warning.
+
+No save or Character File format changed in this tranche. No campaign received a higher progression status: AOGM and War still require ordinary start-to-ending certification, the two loadable third-party packages remain startup evidence only, and ten third-party sources remain blocked at Providence conversion/readiness. Physical-controller replay, actual macOS execution, the reported Auto/chronology/facing incidents, and ordinary-route proof for the repaired projectile records remain open.
+
 ## Prioritization
 
 1. **Progression and deterministic-state blockers:** `CCG-004`, reported Auto stalls, and any package compiler loss.
