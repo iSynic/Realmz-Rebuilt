@@ -26,7 +26,7 @@ This report closes one three-workflow repair batch. Controlled rules, VM, and pr
 ## Failed and open cases
 
 - Three repeated-target and five target-type-1/6 opcode-17 rows are statically reachable but remain explicit failures. Castle aliases the macro coordinate through unsafe or bypassed selector logic for these families; controlled Castle fixtures must establish observable behavior before Rebuilt chooses aligned or deliberately corrected semantics.
-- The audit finds called programs `xap:165` and `xap:169` absent from Assault on Giant Mountain and `xap:9363` absent from White Dragon. These are content/compiler diagnostics, not runtime-family closure.
+- The audit originally found called programs `xap:165` and `xap:169` absent from Assault on Giant Mountain and `xap:9363` absent from White Dragon. Subsequent exact-source and current Providence inspection separates them: AOGM's two rows are valid in-range authored programs omitted by stale package lineage, while White Dragon's value is an out-of-range dangling reference inside an aligned foreign suffix. Neither is runtime-family closure, and neither package can be honestly regenerated until its independent strict-readiness blocker receives an explicit source decision.
 - The two previously loadable third-party packages were not retained for this audit, and ten other third-party sources remain Providence conversion-blocked.
 - The reported David/Party Auto stalls, delayed battlefield reveal, ordinary playback chronology, and scenario-facing symptoms were not reproduced in this batch.
 

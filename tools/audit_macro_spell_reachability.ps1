@@ -246,6 +246,8 @@ foreach ($package in @($packages | Sort-Object FullName -Unique)) {
         $content = Read-ZipJson $archive "content.json"
         $programs = @{}
         foreach ($program in @($scenario.programs)) { $programs[[string] $program.id] = $program }
+        $availableXapIds = @($programs.Keys | Where-Object { $_ -match '^xap:(\d+)$' } | ForEach-Object { [int] $Matches[1] })
+        $maximumAvailableXapId = if ($availableXapIds.Count -eq 0) { -1 } else { [int] ($availableXapIds | Measure-Object -Maximum).Maximum }
         $spells = @{}
         foreach ($entry in $applicationSpells.GetEnumerator()) { $spells[$entry.Key] = $entry.Value }
         foreach ($spell in @($content.spells)) { $spells[[int] $spell.classicId] = $spell }
@@ -289,6 +291,12 @@ foreach ($package in @($packages | Sort-Object FullName -Unique)) {
             }
         }
         $manifest = Read-ZipJson $archive "manifest.json"
+        $missingWithinProgramExtent = @($missingPrograms | Where-Object {
+            $_ -match '^xap:(\d+)$' -and [int] $Matches[1] -le $maximumAvailableXapId
+        } | Sort-Object)
+        $missingBeyondProgramExtent = @($missingPrograms | Where-Object {
+            $_ -notmatch '^xap:(\d+)$' -or [int] $Matches[1] -gt $maximumAvailableXapId
+        } | Sort-Object)
         $results += [pscustomobject] [ordered]@{
             package = $package.Name
             campaignId = [string] $manifest.campaignId
@@ -296,7 +304,10 @@ foreach ($package in @($packages | Sort-Object FullName -Unique)) {
             battleMacroRoots = $battleRoots
             deathMacroRoots = $deathRoots
             reachableProgramCount = $reachable.Count
+            maximumAvailableXapId = $maximumAvailableXapId
             missingPrograms = @($missingPrograms | Sort-Object)
+            missingWithinProgramExtent = $missingWithinProgramExtent
+            missingBeyondProgramExtent = $missingBeyondProgramExtent
             storedOpcode17 = $stored
             reachableOpcode17 = $reachableRows
         }
@@ -307,8 +318,8 @@ foreach ($package in @($packages | Sort-Object FullName -Unique)) {
 }
 
 $report = [pscustomobject] [ordered]@{
-    schemaVersion = 1
-    semantics = "Static authored call reachability from negative battle macros and positive monster death macros. This does not establish controlled execution or ordinary-route reachability."
+    schemaVersion = 2
+    semantics = "Static authored call reachability from negative battle macros and positive monster death macros. Missing calls are separated by the greatest emitted XAP identity; that structural split does not establish source validity, controlled execution, or ordinary-route reachability."
     applicationPackageSha256 = (Get-FileHash -LiteralPath $applicationPackage.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
     packageCount = $results.Count
     packages = $results

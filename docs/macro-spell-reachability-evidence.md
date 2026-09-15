@@ -37,10 +37,13 @@ The 36 queued rows use fixed or power-area spell signatures and are now executab
 
 The three repeated-target rows and five other-target rows remain explicit compatibility work. Castle passes the macro source coordinate directly into `spelltargets`, whose target-type-zero and target-type-one interpretation aliases that coordinate as a combatant selector; ray target type six bypasses its normal `cast` traversal. Those results require controlled Castle fixtures before Rebuilt assigns intentional corrected semantics.
 
-The three missing called program identities are compiler/content diagnostics, not proof that an opcode-17 row executes. They remain separate from runtime spell-family support.
+The three missing calls are not one defect. `xap:165` and `xap:169` fall within AOGM's emitted XAP extent. Direct pinned-source inspection finds both nonempty authored rows, and a clean current Providence vNext import resolves both from the death-macro references on normal and variant monster rows 73 and 83. Their omission is stale bundled-package lineage; a fresh package remains blocked by the independent reachable message-30002 reference and therefore has not replaced the bundle.
+
+White Dragon's `xap:9363` lies beyond every emitted program. Exact raw-byte inspection proves that the aligned row presented as battle 143 contains the signed `-9363` value and repeated monster 109 cells inside a foreign suffix. Current Providence vNext preserves those source bytes but rejects the dangling reference rather than emitting an invented program or silently treating the row as valid gameplay. An explicit source correction remains required before White Dragon can be regenerated. Neither case is a runtime spell-family gap.
 
 ## Evidence limits
 
 - The bundled scenario archives are the exact packages validated by `verify_bundled_scenarios.ps1`; the audit records each archive SHA-256 in its JSON output.
+- Audit schema 2 reports the greatest emitted XAP identity plus missing calls inside and beyond that extent. This structural classification is not by itself evidence that an in-range row is authored or an out-of-range row is invalid; the AOGM and White Dragon conclusions above additionally use exact pinned-source and current Providence readiness evidence.
 - No campaign is promoted by this audit. Ordinary-route proof remains absent.
 - Third-party coverage remains limited to packages that Providence can compile. The current intake has two loadable packages, but their retained archives were not reused for this audit; the ten conversion-blocked sources cannot yet enter package-level call analysis.
