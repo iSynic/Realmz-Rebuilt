@@ -50,6 +50,16 @@ Classic-visible behavior is the default ruleset. This ledger records deliberate 
 - Tests: `test_scenario_vm.gd::_test_corrected_fatigue_opcode` covers 1, 20, 25, 50, 100, zero, negative, and above-100 values, fractional truncation, slot-three independence, both bounds, and save-owned restoration. `_test_public_application_transitions` retains exhausted/rested and event projection coverage.
 - Legacy quirk: none. The slot mismatch and divide-before-multiply order defeat the editor's exposed operation.
 
+## FD-SCENARIO-006 — Restricted shops honor one active range
+
+- Affected rule: opcode 73 item-sale eligibility when only one of its two authored inclusive ranges is active.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/newland.c`, `newland`, lines 2938–2953, and `src/realmz_orig/moveicon.c`, `moveicon`, lines 82–91 and 107–116. Castle increments a failure counter for each active range the item misses but rejects only when the counter reaches two.
+- Observable source behavior: a single active range can never reject an item, while two active ranges behave as a union. City of Bywater contains an opcode-73 row with shop 1, range 1 through 100, and its second range disabled. The bounded evidence record is `tests/fixtures/oracle/classic-restricted-shop-correction.json`, SHA-256 `e928e6c5e6a0eb39e73daab974e0baef106031e48ff197a3fe408732632957cb`. This is source/control-flow and scenario-fixture evidence, not a Castle-runtime or ordinary-route claim.
+- Player-facing problem: a shop authored with one range appears restricted in Providence but buys every carried item in shipped Castle and the prior Rebuilt implementation.
+- Chosen 2.0 behavior: each pair with a nonzero low endpoint is an active inclusive range, and an item is accepted when it belongs to any active range. A zero low endpoint disables only that pair and leaves its retained high word inert. An all-zero restriction remains unrestricted.
+- Tests: `test_scenario_vm.gd::_test_public_application_transitions` executes opcode 73 through the public Runtime API, opens the contextual Shop, and proves one-range rejection, the two-range union, retained raw words, and rules-owned unavailable text.
+- Legacy quirk: none. Requiring authors to duplicate one range into both pairs is an undocumented counter defect, not useful campaign behavior.
+
 ## FD-ECONOMY-001 — Zero-charge shop valuation
 
 - Affected rule: shop sale value for an item definition whose authored charge count is zero.

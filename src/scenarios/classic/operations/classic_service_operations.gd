@@ -570,9 +570,11 @@ static func shop_accepts_item(item: ItemDefinition, accept_ranges: Array[int]) -
 		return accept_ranges.is_empty()
 	if accept_ranges.size() != 4:
 		return false
-	var failures := 0
-	if accept_ranges[0] != 0 and not (accept_ranges[0] <= item.classic_id and item.classic_id <= accept_ranges[1]):
-		failures += 1
-	if accept_ranges[2] != 0 and not (accept_ranges[2] <= item.classic_id and item.classic_id <= accept_ranges[3]):
-		failures += 1
-	return failures < 2
+	var has_active_range := false
+	for low_index: int in [0, 2]:
+		if accept_ranges[low_index] == 0:
+			continue
+		has_active_range = true
+		if accept_ranges[low_index] <= item.classic_id and item.classic_id <= accept_ranges[low_index + 1]:
+			return true
+	return not has_active_range

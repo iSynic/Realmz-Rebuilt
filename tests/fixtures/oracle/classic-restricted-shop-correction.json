@@ -1,0 +1,28 @@
+{
+  "fixtureId": "classic-restricted-shop-correction",
+  "evidenceKind": "source-control-flow-and-scenario-fixture",
+  "castle": {
+    "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+    "configurationSource": "src/realmz_orig/newland.c:2938-2953",
+    "saleSource": "src/realmz_orig/moveicon.c:82-91,107-116",
+    "observedDefect": "The source rejects only after two active-range misses, so one active range cannot reject an item."
+  },
+  "authoringContract": {
+    "activePair": "A nonzero low endpoint enables one inclusive low-through-high range.",
+    "disabledPair": "A zero low endpoint disables the pair; its retained high word is inert.",
+    "combination": "An item is accepted when it belongs to any active range; no active ranges means unrestricted."
+  },
+  "scenarioEvidence": {
+    "campaign": "City of Bywater",
+    "opcode": 73,
+    "extraCode": [1, 1, 100, 0, 0],
+    "reachability": "unproven"
+  },
+  "chosenCases": [
+    {"ranges": [1, 100, 0, 999], "itemId": 1, "accepted": true},
+    {"ranges": [1, 100, 0, 999], "itemId": 206, "accepted": false},
+    {"ranges": [1, 1, 206, 206], "itemId": 1, "accepted": true},
+    {"ranges": [1, 1, 206, 206], "itemId": 206, "accepted": true},
+    {"ranges": [0, 0, 0, 0], "itemId": 206, "accepted": true}
+  ]
+}
