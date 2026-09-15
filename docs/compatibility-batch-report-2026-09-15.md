@@ -79,3 +79,10 @@ This report closes one three-workflow repair batch. Controlled rules, VM, and pr
 - The exact authored reference chain is land level 3 AP 33 at `(56,46)` -> XAP 168 -> opcode 56 / Extra Code 415 -> battle 205 -> grid slot 84 -> monster 141. This proves stored and static authored reachability; it does not prove an ordinary campaign route reaches the AP.
 - Pinned Castle's monster struct has five attack rows, while its activation loop uses the stored count and `attack2` directly indexes the supplied row. A count of seven therefore reads beyond the array into adjacent fields. Source control flow cannot adjudicate whether the author expected that unsafe result, intended five repeated rows, or simply authored a bad count.
 - Rebuilt receives no package because Providence rejects the reachable projection. No runtime clamp, save/package schema change, or compatibility bypass was introduced. Closure requires controlled Castle execution and a coordinated Providence representation that retains the raw byte while assigning safe explicit semantics.
+
+## Controller, third-party opening, and compiler-evidence batch closeout
+
+- Focused commits are `f5828bee` for stale-revision-safe fixture controller releases, `ce680139` for the two rendered third-party openings, and `3edf89f4` for the Dagger of Shine compiler-blocker adjudication.
+- The aggregate gate passes 4,486 assertions across 29 suites; Providence package alignment; the 648-entry application media catalog; all 13 bundled packages and 515 scenario CICN descriptors; gameplay and workflow inventories; architecture, maintainability, schema, provenance, and Windows/Linux/macOS export contracts.
+- The short main-scene smoke retains the known single ObjectDB exit warning. The complete test suite reports no retained-resource failure.
+- No save, Character Files, settings, or package schema changed. No scenario is promoted beyond the two exact `opening-tested` entries, and no third-party payload entered the repository or public bundle.
