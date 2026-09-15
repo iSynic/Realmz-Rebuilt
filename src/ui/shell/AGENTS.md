@@ -32,6 +32,7 @@ Own the persistent Godot composition that surrounds every Realmz playthrough and
 - Roster effect tweens bind to their target row's lifetime, so a restore or roster replacement cancels callbacks before the old row is freed.
 - All gameplay mutations continue through the typed application/session boundary.
 - Controller focus uses stable route focus groups, captures before content rebinds and route departures, restores by semantic identity, reveals focused controls through their owning scroll container, and leaves a newer visible modal, popup, top menu, or radial in sole control until it closes.
+- Controller roster selection changes the active Inventory owner immediately; activation retains that Inventory route, while activation from other workspaces opens the Character screen.
 - Repeated controller top-menu navigation resolves the currently selected authored row only after the replacement layout settles. Deferred scrolling must not retain a row instance that a subsequent menu render can replace.
 - Escape opens System only from exposed, completed-party Exploration. Setup, inspection, and front-door Back remain owned by their current surface; returning from assembly goes to the front door without discarding the setup party. Exploration input and spatial rendering independently reject unfinished party setup.
 

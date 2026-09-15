@@ -546,14 +546,16 @@ func _on_presentation_setting_changed(setting_id: StringName, value: Variant) ->
 
 func _on_character_selected(character_id: String) -> void:
 	_selected_character_id = character_id
+	if _navigator.current_screen() == &"inventory" and _navigator.content_presenter.select_inventory_character(character_id):
+		_navigator.refresh_current_workspace()
+		return
 	if _navigator.content_presenter.select_character(character_id) and _navigator.current_screen() == &"character":
 		_navigator.refresh_current_workspace()
 
 
 func _on_character_activated(character_id: String) -> void:
 	_on_character_selected(character_id)
-	if _navigator.current_screen() == &"inventory" and _navigator.content_presenter.select_inventory_character(character_id):
-		_navigator.refresh_current_workspace()
+	if _navigator.current_screen() == &"inventory":
 		return
 	_navigator.open_screen(&"character")
 

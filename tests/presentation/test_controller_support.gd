@@ -284,6 +284,14 @@ func _test_controller_radial_pages_and_explicit_commit() -> void:
 	var intents: Array[PlayerIntent] = []; shell.intent_submitted.connect(func(intent: PlayerIntent) -> void: intents.append(intent)); shell.present(hold_view); await (Engine.get_main_loop() as SceneTree).process_frame
 	assert_true(shell.commands.activate_controller(&"rest") and intents.size() == 1 and intents[0].kind == PlayerIntent.Kind.REST, "confirming Rest through the radial begins its ordinary held-command owner with one immediate pulse"); shell.commands.call("_on_timeout"); assert_equal(intents.size(), 2, "a held radial Rest repeats through the same presentation cadence as its footer button"); shell.controller.release_controller_hold(); shell.commands.call("_on_timeout"); assert_equal(intents.size(), 2, "releasing controller Confirm ends the radial-held command without another pulse")
 	assert_true(shell.commands.activate_controller(&"heal") and intents.size() == 3 and intents[-1].kind == PlayerIntent.Kind.HEAL, "confirming Heal through the radial begins its ordinary held-command owner"); shell.commands.call("_on_timeout"); shell.controller.release_controller_hold(); shell.commands.call("_on_timeout"); assert_equal([intents.size(), intents[-1].kind], [4, PlayerIntent.Kind.HEAL], "held radial Heal repeats only until controller Confirm releases")
+	var inventory_definition := ItemDefinition.new("classic.item.controller-owner", 10, "Owner Token", "Token", "Identifies the active inventory owner.")
+	var first_owner := CharacterView.new(CharacterState.new("inventory.owner.one", "First Owner", 10, 10)); first_owner.items = [ItemView.new(ItemInstance.new("inventory.owner.one.item", inventory_definition.id), inventory_definition)]
+	var second_owner := CharacterView.new(CharacterState.new("inventory.owner.two", "Second Owner", 10, 10)); second_owner.items = [ItemView.new(ItemInstance.new("inventory.owner.two.item", inventory_definition.id), inventory_definition)]
+	var inventory_view := GameView.new(2, true, null); inventory_view.campaign_id = "controller-inventory"; inventory_view.campaign_summary = CampaignSummaryView.new(); inventory_view.party_members = [first_owner, second_owner]
+	shell.present(inventory_view); shell.navigator.open_screen(&"inventory", false); await (Engine.get_main_loop() as SceneTree).process_frame
+	assert_true(shell.find_child("InventoryItem_inventory_owner_one_item", true, false) != null and shell.controller.select_relative_character(1), "a controller trigger advances the shared roster while Inventory owns the route")
+	await (Engine.get_main_loop() as SceneTree).process_frame
+	assert_true(shell.navigator.current_screen() == &"inventory" and shell.find_child("InventoryItem_inventory_owner_two_item", true, false) != null, "controller roster selection immediately rebinds the Inventory browser to the newly selected character without leaving the route")
 	host.free(); await (Engine.get_main_loop() as SceneTree).process_frame
 
 
