@@ -81,6 +81,8 @@ static func combat_item_disposition(spell: SpellDefinition) -> StringName:
 static func combat_monster_disposition(spell: SpellDefinition) -> StringName:
 	if spell == null or not spell.in_combat or ClassicSpellIdentityCatalog.application_role(spell) == ClassicSpellIdentityCatalog.ROLE_RESERVED_STANDARD:
 		return DISPOSITION_NOT_APPLICABLE
+	if ClassicSpellSourceRules.is_zero_cost_monster_projectile_spell(spell):
+		return DISPOSITION_EXECUTABLE
 	if ClassicSpellSourceRules.is_physical_projectile_profile(spell):
 		return DISPOSITION_NOT_APPLICABLE
 	if ClassicSpellSourceRules.is_application_area_projectile_item_profile(spell) or ClassicSpellSourceRules.is_application_salt_item_profile(spell):

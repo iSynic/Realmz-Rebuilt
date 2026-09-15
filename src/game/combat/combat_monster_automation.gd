@@ -173,6 +173,9 @@ func process_monster_cast(state: GameState, content: RealmzContent, monster: Mon
 		var spell := content.magic.spell_by_id(String(ai_plan["spellId"]))
 		var range_power := int(ai_plan["power"])
 		var cost_power := range_power
+		if ClassicSpellSourceRules.is_zero_cost_monster_projectile_spell(spell):
+			range_power = rng.draw(7, StringName("combat.monster-spell-projectile.%s.range-power" % monster.id))
+			cost_power = 1
 		var summon_spell: bool = CombatFlowSummoning.is_summon_spell(spell)
 		if summon_spell:
 			var target_coordinates: Array[Vector2i] = []
