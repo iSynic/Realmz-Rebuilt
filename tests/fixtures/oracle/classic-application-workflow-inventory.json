@@ -4063,7 +4063,8 @@
       },
       "liveEvidence": [
         "synthetic",
-        "route-harness"
+        "route-harness",
+        "aogm-ordinary"
       ],
       "related": {
         "routeIds": [
@@ -4093,7 +4094,7 @@
         "scenario.thief-pick-lock"
       ],
       "reachability": {
-        "aogm": "known-reachable",
+        "aogm": "observed",
         "war": "unknown",
         "classic": "observed"
       },

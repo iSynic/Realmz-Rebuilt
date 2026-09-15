@@ -709,6 +709,7 @@
       ],
       "workflowIds": [
         "classic.scenario.choose-response",
+        "classic.scenario.complex-interaction",
         "classic.system.save-game"
       ],
       "remaining": [
@@ -887,6 +888,7 @@
       ],
       "workflowIds": [
         "classic.scenario.choose-response",
+        "classic.scenario.complex-interaction",
         "classic.system.save-game"
       ],
       "remaining": [
@@ -1004,6 +1006,7 @@
       ],
       "workflowIds": [
         "classic.scenario.choose-response",
+        "classic.scenario.complex-interaction",
         "classic.system.save-game"
       ],
       "remaining": [

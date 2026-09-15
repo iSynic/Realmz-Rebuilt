@@ -138,7 +138,7 @@ AP batches use failure-first priorities: known failures, untested high-risk beha
 | --- | ---: | ---: |
 | synthetic | 69 | 8 |
 | route-harness | 40 | 2 |
-| aogm-ordinary | 44 | 3 |
+| aogm-ordinary | 45 | 3 |
 | other-ordinary | 12 | 3 |
 | cross-platform | 0 | 0 |
 
