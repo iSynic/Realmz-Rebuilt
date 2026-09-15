@@ -11,7 +11,7 @@ import zipfile
 from pathlib import Path
 
 FORMAT = "realmz2.classic-starter-characters"
-FORMAT_VERSION = 1
+FORMAT_VERSION = 2
 SOURCE_VERSION = "Realmz 7.1.2"
 CASTLE_REVISION = "491816ad60037394f92c428e99c004494d3c28b3"
 LIBRARY_ID = "realmz-classic-application-library"
@@ -146,13 +146,14 @@ def convert(source_path: Path, appearance: dict[tuple[str, int], str]) -> tuple[
         "specials": [s16(data, 178 + index * 2) for index in range(12)],
         "abilities": [s16(data, 242 + index * 2) for index in range(15)],
         "inventory": inventory,
+        "equipmentOrder": [item["id"] for item in inventory if item["equipped"]],
         "knownSpells": known_spells,
         "scrollCase": scroll_case,
         "fastSpells": fast_spells,
     }
     record = {
         "format": "realmz2-character",
-        "formatVersion": 1,
+        "formatVersion": 2,
         "characterId": character_id,
         "revisionHash": "",
         "rulesVersion": RULES_VERSION,
@@ -189,7 +190,7 @@ def main() -> None:
         "records": records,
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(canonical(catalog) + "\n", encoding="utf-8")
+    args.output.write_bytes((canonical(catalog) + "\n").encode("utf-8"))
 
 
 if __name__ == "__main__":

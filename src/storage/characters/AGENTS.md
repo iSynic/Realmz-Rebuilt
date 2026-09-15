@@ -19,7 +19,7 @@ Own immutable Character Files revisions, campaign eligibility facts, and the pro
 - Publishing and seeding are transactional. A partial starter party is never visible, and any existing vault entry suppresses seeding.
 - Eligibility reports missing or incompatible race, class, item, spell, portrait, tactical-icon, level, and restriction facts without substituting content.
 - The application library and starter catalog are trusted only after their committed identities and hashes match.
-- Character Files v2 requires authoritative equipped-instance order. V1 revisions remain untouched on disk and are reported as incompatible; they are never inferred, migrated, or overwritten.
+- Character Files v2 requires authoritative equipped-instance order. Runtime loading never infers or silently migrates v1 revisions. The explicit offline maintainer conversion may preserve a v1 record as a new v2 revision by recording its equipped inventory order, with a complete vault backup and readback verification.
 
 ## Work Guidance
 
