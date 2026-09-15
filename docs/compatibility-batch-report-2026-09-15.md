@@ -86,3 +86,9 @@ This report closes one three-workflow repair batch. Controlled rules, VM, and pr
 - The aggregate gate passes 4,486 assertions across 29 suites; Providence package alignment; the 648-entry application media catalog; all 13 bundled packages and 515 scenario CICN descriptors; gameplay and workflow inventories; architecture, maintainability, schema, provenance, and Windows/Linux/macOS export contracts.
 - The short main-scene smoke retains the known single ObjectDB exit warning. The complete test suite reports no retained-resource failure.
 - No save, Character Files, settings, or package schema changed. No scenario is promoted beyond the two exact `opening-tested` entries, and no third-party payload entered the repository or public bundle.
+
+## Subsequent compiler-reference triage
+
+- Direct Providence reachability inspection split three identical readiness summaries. Araman's Ring and Lachis fail only because application door item 662 points at scenario-local XAP 69, absent beyond their exact 51-row and 34-row `Data ED3` extents. Rebuilt already keeps such an imported portable item safe and nonmutating by disabling Use when its scenario program is unavailable. Providence should retain the item without globally requiring or fabricating the program.
+- Elemental Strife instead has a 100-percent placed land AP at `(41,76)` that directly starts Simple Encounter 13. The physical target row decodes as semantically empty, so this remains a genuine source/oracle blocker rather than being waived with the optional item case.
+- This is source/control-flow and compiler-selection evidence. No candidate package was produced, no runtime or schema changed, and no campaign status is promoted.
