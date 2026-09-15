@@ -18,7 +18,7 @@ func run() -> void:
 	_test_public_classic_choice_control_flow(content); _test_half_truth_complex_spell_class()
 	_test_public_classic_difficulty_branch(content); _test_public_classic_encounter_iterations(content)
 	_test_public_thief_encounter(content); _test_public_session_resume(content)
-	_test_public_vm_combat_auto(content); _test_public_classic_forced_victory(content); _test_public_classic_combat_spawn(content); _test_public_classic_combat_mutation(content)
+	_test_public_vm_combat_auto(content); _test_opcode_56_defeat_return(content); _test_public_classic_forced_victory(content); _test_public_classic_combat_spawn(content); _test_public_classic_combat_mutation(content)
 	_test_public_vm_repeated_combat_item(content)
 	_test_public_continuation_matrix(content)
 	_test_public_limits_and_errors(content)
@@ -440,6 +440,36 @@ func _test_public_vm_combat_auto(content: RealmzContent) -> void:
 	_assert_vm_combat_auto_round_trip(content, inactive_session, sixth_id, "inactive")
 	_assert_vm_combat_auto_round_trip(content, active_session, sixth_id, "active")
 	content.scenario = original_scenario
+
+
+func _test_opcode_56_defeat_return(content: RealmzContent) -> void:
+	var battle := content.combat.battle_by_id("classic.battle.0")
+	var land: MapDefinition = null
+	var origin := Vector2i.ZERO
+	var direction := Vector2i.ZERO
+	for map_id: String in content.world.map_ids():
+		var candidate := content.world.map_by_id(map_id)
+		if candidate.level_type != &"land":
+			continue
+		for y: int in range(candidate.topology.height):
+			for x: int in range(1, candidate.topology.width):
+				if candidate.topology.cell_at(Vector2i(x, y)) != null and candidate.topology.cell_at(Vector2i(x - 1, y)) != null:
+					land = candidate; origin = Vector2i(x, y); direction = Vector2i.RIGHT; break
+			if land != null: break
+		if land != null: break
+	assert_true(battle != null and land != null, "opcode 56 defeat-return fixture has a battle and adjacent land cells")
+	if battle == null or land == null: return
+	var first := CharacterState.new("opcode56.first", "First", 1, 10); first.level = 3; first.experience = 12_345
+	var second := CharacterState.new("opcode56.second", "Second", 1, 10); second.level = 7; second.experience = -500
+	var state := GameState.new(PartyState.new(land.id, origin, [first, second]), RealmzClock.new()); state.combat = CombatState.new(battle.id); state.combat.completed = true; state.combat.outcome = &"defeat"
+	var rng := RealmzRng.new(56); var api := RealmzRuntimeApi.new(content, state, rng, ScenarioActionState.new(), RealmzRules.new()); var caller := ScenarioBattleCaller.classic(56, true, 0, -1); var handoff := ScenarioRuntimeHandoff.party_defeat(battle.id, ScenarioRuntimeHandoff.CLASSIC_COMBAT, caller)
+	var before := state.to_data(); var rejected := api.complete_party_defeat_handoff(handoff)
+	assert_equal([rejected.error_code, state.to_data(), rng.snapshot().draw_count], [&"missing_move_direction", before, 0], "opcode 56 rejects a missing land backup direction without state or RNG mutation")
+	state.last_move_direction = direction
+	var completed := api.complete_party_defeat_handoff(handoff); var kinds := completed.events.map(func(event: DomainEvent) -> StringName: return event.kind); var notices := completed.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"classic_notification_requested").map(func(event: DomainEvent) -> String: return event.payload.get("text", "")); var restored := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
+	assert_equal([completed.state, completed.directive.kind, first.experience, second.experience, state.party.coordinate, state.last_battle_outcome, state.combat, rng.snapshot().draw_count], [ScenarioRuntimeOperationResult.State.COMPLETED, ScenarioVmDirective.FINISH_TIMELINE, 6_345, -14_500, origin - direction, &"retreated", null, 0], "opcode 56 target -1 applies each level-scaled loss, backs one land step, returns from the timeline, and consumes no RNG")
+	assert_equal([notices, kinds, completed.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested")[0].payload.get("soundId")], [["Having fled the battle, the enemy remains to challange you another time.", "You all loose victory points for this cowardly display."], [&"party_defeat_revived", &"classic_notification_requested", &"sound_requested", &"classic_notification_requested", &"party_backed_up", &"battle_returned"], 26260], "opcode 56 preserves Castle's stock warning wording and ordered defeat-return events")
+	assert_true(restored != null and restored.party.coordinate == origin - direction and restored.party.character_by_id(second.id).experience == -14_500 and restored.last_battle_outcome == &"retreated", "opcode 56's completed defeat return survives the save-owned game-state boundary")
 
 
 func _test_public_classic_forced_victory(content: RealmzContent) -> void:
