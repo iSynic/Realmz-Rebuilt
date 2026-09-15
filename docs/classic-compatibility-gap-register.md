@@ -66,7 +66,7 @@ Some of these areas have received repairs. They stay listed until the repaired b
 
 ## Latest repair-batch closeout
 
-The September 15 opcode/corpus batch closed three focused workflows at commits `1c3f1c6e`, `a05bc3f5`, and `0c493eaf`. The aggregate gate passes 4,479 assertions across 29 suites, Providence package alignment, all 13 bundled packages and 515 scenario CICN descriptors, gameplay/workflow inventories, schema and provenance checks, architecture and maintainability ratchets, and Windows/Linux/macOS export contracts. No campaign status is promoted, and no save, Character Files, settings, or package schema changed. The complete classification, opcode evidence, failed cases, and prior Guard/collision/macro results are recorded in `compatibility-batch-report-2026-09-15.md`.
+The September 15 observation/evidence batch closed three focused workflows at commits `883cba34`, `afa199b4`, and `eb28297c`. The aggregate gate passes 4,485 assertions across 29 suites, Providence package alignment, all 13 bundled packages and 515 scenario CICN descriptors, gameplay/workflow inventories, schema and provenance checks, architecture and maintainability ratchets, and Windows/Linux/macOS export contracts. The Battle 70 Auto run remains a negative reproduction rather than closure; the eight exact macro signatures still require controlled Castle adjudication; opcode 13 ordinary-route reachability remains open. No campaign status is promoted, and no save, Character Files, settings, or package schema changed. Full evidence and the prior repair history remain in `compatibility-batch-report-2026-09-15.md`.
 
 ## Prioritization
 

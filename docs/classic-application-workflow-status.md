@@ -13,19 +13,17 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Current parity-convergence batch
 
-**Scenario execution, media, and player-route compatibility repairs** (`classic-compatibility-repair-d`)
+**Auto observation, macro classification, and opcode 13 evidence** (`classic-compatibility-observation-and-opcode-evidence`)
 
-Batch D closeout adds five focused results. Opcode 73 now treats either nonzero low/high pair as an inclusive permitted-sales range and unions two active ranges; Half Truth's Wrecker proves distinct scenario-owned left/right CICN hashes through the untrusted package loader and the existing +308 presentation rule; the alleged noncompact topology gap is invalid because accepted packages can only construct compact identity-bearing maps and all terrain-sensitive consumers use the shared effective cell; terminal package failures retain their typed code, exact path, operation, complete message, and safe retry/return actions; and controlled application/UI coverage verifies Shop Items/Money round trips, focused Buy/Sell, inventory portraits and stable item focus, plus held radial Rest and Heal. The renewed aggregate passes 4,468 assertions across 29 suites, Providence alignment, all 13 bundled packages and 515 scenario CICN descriptors, application media/music, architecture and maintainability budgets, schema/provenance, and Windows/Linux/macOS export contracts. The smoke launch retains its known one-object teardown warning and the controller/UI suites retain their existing ensure_control_visible diagnostics. This does not certify campaign compatibility. Ten third-party sources remain Providence conversion/readiness blocked; City of Port Hyrtin and Journey into the Mire are only loadable, not main-route playable. The reported intermittent David/Party Auto stall, delayed battle-stage reveal, ordinary spell-damage chronology, and original monster-facing symptom still require exact live replays. CCG-008 open-space spell targeting, CCG-009 special projectiles, CCG-013 pre-direction Guard behavior, broader macro families, actual macOS execution, physical-controller evidence, and ordinary start-to-ending AOGM then War journeys remain open. The next executable cases are the retained David battle with his exact character revision, an ordinary Half Truth Wrecker facing replay on the current package hash, Providence closure of the ten named third-party intake blockers, and the first unassisted AOGM route checkpoint sequence.
+This three-workflow batch improves the evidence needed for reported and reachable failures without inventing compatibility behavior. A rendered Half Truth Battle 70 fixture enabled all six persistent Auto controls through actual UI input and reached Treasure in round 2 without controller suspension or an engine error; terminal diagnostics now mark combat inactive instead of presenting the final actor and round as pending work. The macro call-graph audit now emits deterministic prose-free mechanical signatures for the eight reachable target-type 0, 1, and 6 rows that still require controlled Castle adjudication. Opcode 13 now has public-runtime coverage for its combined single and inclusive range, signed land and dungeon selection, silent unplaced rows, save persistence, zero RNG, and atomic invalid-map failure. The aggregate passes 4,485 assertions across 29 suites plus package, media, schema, provenance, architecture, maintainability, workflow, gameplay, and native export-contract checks; the known one-object smoke teardown warning remains. These results do not close the exact David stall, implement the ambiguous macro families, or promote any campaign certification status.
 
 AP batches use failure-first priorities: known failures, untested high-risk behavior, meaningful variants, and broader representatives. Verification mode records existing functional behavior without claiming full campaign certification; implementation, verification, and certification remain distinct modes.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.scenario.trigger-action-point` | verification | known-failure | runtime-integration |  |
-| `classic.scenario.present-message-media` | verification | known-failure | runtime-integration |  |
-| `classic.scenario.choose-response` | verification | known-failure | runtime-integration |  |
-| `classic.scenario.complex-interaction` | verification | untested-high-risk | runtime-integration |  |
-| `classic.startup.select-scenario` | verification | untested-high-risk | runtime-integration |  |
+| `classic.combat.auto-character` | verification | known-failure | live-route |  |
+| `classic.combat.resolve-outcome` | verification | known-failure | runtime-integration |  |
+| `classic.scenario.trigger-action-point` | verification | meaningful-variant | runtime-integration |  |
 
 ### Batch count delta
 
