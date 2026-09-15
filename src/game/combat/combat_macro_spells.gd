@@ -15,8 +15,8 @@ func cast(state: GameState, content: RealmzContent, source_id: String, authored_
 	if combat == null or combat.completed or combat.battlefield == null or not combat.battlefield.actors.has_actor(source_id) or power < 1:
 		return CombatFlowResult.failed(&"invalid_macro_spell_source", "A monster macro spell requires its retained battlefield source.")
 	var spell := authored_spell.with_scenario_adjustments(extra_save_adjust, force_affect)
-	if not _supports_condition_spell(spell):
-		return CombatFlowResult.failed(&"unsupported_macro_spell", "Monster macros currently support non-damaging area and side-group condition spells.")
+	if not _supports_spell(spell):
+		return CombatFlowResult.failed(&"unsupported_macro_spell", "Monster macros require an immediate area or side-group combat spell; queued fields and open-space selection remain separate.")
 	var center := combat.battlefield.actors.actor_position(source_id)
 	var shape := _context.spell_areas.shape_for(spell, power) if spell.target_type in [3, 4] else 0
 	if spell.target_type in [3, 4] and _context.spell_areas.pattern(shape).is_empty():
@@ -26,14 +26,15 @@ func cast(state: GameState, content: RealmzContent, source_id: String, authored_
 	if group == null or not group.cast:
 		return CombatFlowResult.failed(&"invalid_macro_spell_effect", "The monster macro spell could not resolve its battlefield targets.")
 	var events: Array[DomainEvent] = []
+	CombatSpellEventBuilder.append_sound(events, spell.sound_start, "classic-monster-macro-start")
 	CombatSpellEventBuilder.append_cast(events, source_id, spell, group, center, shape, SOURCE)
 	for index: int in group.resolutions.size():
-		_append_result(source_id, spell, power, group, index, center, shape, events)
+		_append_result(state, content, source_id, spell, power, group, index, center, shape, events)
 	return CombatFlowResult.succeeded(events)
 
 
-static func _supports_condition_spell(spell: SpellDefinition) -> bool:
-	return spell.target_type in [3, 4, 9, 10, 12] and spell.queue_icon == 0 and spell.damage_min == 0 and spell.damage_max == 0 and spell.power_damage_min == 0 and spell.power_damage_max == 0 and absi(spell.special) not in [27, 28] and ClassicSpellConditionRules.is_combat_condition_effect_spell(spell)
+static func _supports_spell(spell: SpellDefinition) -> bool:
+	return spell != null and spell.target_type in [3, 4, 9, 10, 12] and spell.queue_icon == 0
 
 
 func _targets(state: GameState, content: RealmzContent, spell: SpellDefinition, center: Vector2i, shape: int, rng: RealmzRng) -> Array[SpellTargetSelection]:
@@ -95,13 +96,44 @@ func _resolve(state: GameState, content: RealmzContent, selections: Array[SpellT
 	return _context.magic.resolve_monster_group_spell(monster, definition, selections, spell, power, spell.classic_tier(), rng, true, false, polymorph)
 
 
-static func _append_result(source_id: String, spell: SpellDefinition, power: int, group: GroupSpellResolution, index: int, center: Vector2i, shape: int, events: Array[DomainEvent]) -> void:
+func _append_result(state: GameState, content: RealmzContent, source_id: String, spell: SpellDefinition, power: int, group: GroupSpellResolution, index: int, center: Vector2i, shape: int, events: Array[DomainEvent]) -> void:
 	var resolution := group.resolutions[index]
 	var target_id := group.target_ids[index]
 	var target_kind := group.target_kinds[index]
+	if resolution.damage > 0 or (resolution.damage < 0 and target_kind == &"monster"):
+		state.combat.actor_statuses.mark_attacked(target_id)
+	CombatSpellEventBuilder.append_projectile(events, source_id, target_id, spell, SOURCE)
+	if resolution.special_result == &"turned":
+		events.append(DomainEvent.new(&"sound_requested", {"soundId": 630, "waitForCompletion": false, "source": "classic-combat-destroy-turn-undead"}))
 	CombatSpellEventBuilder.append_sound(events, spell.sound_end, SOURCE)
-	var payload := {"actorId": source_id, "targetId": target_id, "selectedTargetId": group.selected_target_ids[index], "targetKind": String(target_kind), "spellId": spell.id, "targetType": spell.target_type, "power": power, "classicTier": spell.classic_tier(), "resisted": resolution.resisted, "saved": resolution.saved, "damage": resolution.damage, "healing": maxi(0, -resolution.damage), "duration": resolution.duration, "defeated": resolution.target_defeated, "source": SOURCE, "areaCenter": [center.x, center.y], "areaShape": shape}
+	var payload := {"actorId": source_id, "targetId": target_id, "selectedTargetId": group.selected_target_ids[index], "targetKind": String(target_kind), "spellId": spell.id, "targetType": spell.target_type, "power": power, "classicTier": spell.classic_tier(), "reflected": group.reflected_targets[index], "resisted": resolution.resisted, "saved": resolution.saved, "damage": resolution.damage, "healing": maxi(0, -resolution.damage), "duration": resolution.duration, "defeated": resolution.target_defeated, "source": SOURCE, "areaCenter": [center.x, center.y], "areaShape": shape, "clearedConditionCount": resolution.cleared_condition_count, "detectedMagicItemCount": resolution.detected_magic_item_count}
+	if resolution.cleared_condition >= 0:
+		payload["clearedCondition"] = resolution.cleared_condition
+	if not resolution.unequipped_item_ids.is_empty():
+		payload["unequippedItemIds"] = resolution.unequipped_item_ids.duplicate()
 	if resolution.applied_condition >= 0:
 		payload["appliedCondition"] = resolution.applied_condition
+	if resolution.spell_point_delta != 0 or ClassicSpellSpecialEffectRules.is_combat_spell_point_restore_spell(spell) or ClassicSpellSpecialEffectRules.is_combat_spell_point_drain_spell(spell):
+		payload["spellPointDelta"] = resolution.spell_point_delta
+	if resolution.allegiance_changed:
+		payload["traitorBefore"] = resolution.target_traitor_before
+		payload["traitorAfter"] = resolution.target_traitor_after
+	if not resolution.transformed_definition_after.is_empty():
+		payload["transformedDefinitionBefore"] = resolution.transformed_definition_before
+		payload["transformedDefinitionAfter"] = resolution.transformed_definition_after
+	if not resolution.special_result.is_empty():
+		payload["specialResult"] = String(resolution.special_result)
+		payload["specialRoll"] = resolution.special_roll
+		payload["specialThreshold"] = resolution.special_threshold
 	CombatSpellEventBuilder.append_resolution_effect(payload, spell, index, group.resolutions.size(), resolution.target_defeated)
 	events.append(DomainEvent.new(&"combat_spell_resolved", payload))
+	if not resolution.target_defeated:
+		return
+	if target_kind == &"character":
+		_context.actions().mark_character_bleeding(state, state.party.character_by_id(target_id), true)
+		_context.automation().remove_defeated_position(state.combat, target_id, true)
+		return
+	var defeated := state.combat.roster.monster_by_id(target_id)
+	var definition := content.combat.monster_by_id(defeated.definition_id) if defeated != null else null
+	var queued: bool = _context.actions().events().queue_spell_death_macro(state.combat, defeated, definition)
+	_context.automation().remove_defeated_position(state.combat, target_id, not queued)
