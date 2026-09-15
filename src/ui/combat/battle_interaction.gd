@@ -188,7 +188,7 @@ func _build_attack_panel(body: CombatRequestBody, actor_id: String, action_ids: 
 	elif weapon_mode == "melee" and not body.melee_attack_reason.is_empty():
 		button.visible = false
 		status.text = body.melee_attack_reason
-	if weapon_mode == "missile" and not action_ids.has("attack"):
+	if weapon_mode == "missile" and not action_ids.has("attack") and not action_ids.has("prepare_projectile"):
 		button.text = "Fire unavailable"
 		button.disabled = true
 		button.tooltip_text = body.ranged_attack.reason
@@ -545,10 +545,11 @@ func _build_command_shelf(body: CombatRequestBody, actor_id: String, action_ids:
 	_bind_fixed_response(guard, "Guard", "Guard", InteractionResponse.CombatBody.new(&"defend", actor_id), action_ids.has("defend"), "Guard is unavailable during this activation.")
 	_color_command(guard, TURN_COMMAND_COLOR)
 	var weapon_mode := String(body.weapon_mode)
-	var target_enabled: bool = action_ids.has("attack") and not targets.is_empty()
-	var target_reason := body.melee_attack_reason if weapon_mode == "melee" else body.ranged_attack.reason
 	var attack_button := primary_rows[0].get_node("Attack") as Button
-	_bind_panel_toggle(attack_button, "Fire" if weapon_mode == "missile" else "Attack", target_panel, mode_panels, overview, target_enabled, target_reason)
+	if action_ids.has("prepare_projectile"):
+		_bind_fixed_response(attack_button, "Fire", "Roll Power", InteractionResponse.CombatBody.new(&"prepare_projectile", actor_id), true, "")
+	else:
+		_bind_panel_toggle(attack_button, "Fire" if weapon_mode == "missile" else "Attack", target_panel, mode_panels, overview, action_ids.has("attack") and not targets.is_empty(), body.melee_attack_reason if weapon_mode == "melee" else body.ranged_attack.reason)
 	_name_command(attack_button, "Attack")
 	_color_command(attack_button, PRIMARY_COMMAND_COLOR)
 	var finish_button := primary_rows[0].get_node("Finish") as Button

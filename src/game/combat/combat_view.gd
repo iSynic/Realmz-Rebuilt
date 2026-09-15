@@ -165,9 +165,11 @@ func _populate_weapon_actions(combat: CombatState, content: RealmzContent, comba
 func _populate_projectile_targets(combat: CombatState, content: RealmzContent, combat_flow: CombatFlow, active_character: CharacterState, equipment: CharacterCombatEquipment) -> void:
 	targets.clear()
 	character_targets.clear()
-	var profile := combat_flow.reactions.character_projectile_profile(active_character, content, equipment) if combat_flow != null else null
+	var profile := combat_flow.reactions.character_projectile_profile(active_character, content, equipment, combat) if combat_flow != null else null
 	if profile == null or not profile.available:
 		ranged_attack_unavailable_reason = profile.error_message if profile != null else "Projectile rules are unavailable."
+		if profile != null and profile.error_code == &"projectile_power_roll_required":
+			legal_actions.append(&"prepare_projectile")
 		return
 	for monster: MonsterState in combat.roster.monsters():
 		if monster.current_health > 0 and monster.traitor != active_character.traitor and combat_flow.reactions.projectile_target_is_valid(combat, content, active_character.id, monster.id, profile.maximum_range, profile.spell.range_min + profile.spell.range_max > 0):

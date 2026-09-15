@@ -57,7 +57,7 @@ func probe_character_retreat(combat: CombatState, characters: Array[CharacterSta
 	return CombatRetreatProbe.permitted(nearest_range)
 
 
-func character_projectile_profile(character: CharacterState, content: RealmzContent, equipment: CharacterCombatEquipment = null) -> ProjectileAttackProfile:
+func character_projectile_profile(character: CharacterState, content: RealmzContent, equipment: CharacterCombatEquipment = null, combat: CombatState = null) -> ProjectileAttackProfile:
 	if character == null or content == null:
 		return ProjectileAttackProfile.blocked(&"invalid_combat_actor", "A projectile requires an available character and content package.")
 	var resolved_equipment := equipment if equipment != null else _context.equipment.combat_equipment(character, content.items.definitions())
@@ -85,7 +85,9 @@ func character_projectile_profile(character: CharacterState, content: RealmzCont
 		return ProjectileAttackProfile.blocked(&"unsupported_projectile_spell", unsupported)
 	var power := absi(projectile_item.special_1)
 	if power == 8:
-		return ProjectileAttackProfile.blocked(&"random_projectile_power_unresolved", "This projectile rolls power before Castle opens its target picker; that serializable targeting continuation is not implemented yet.")
+		power = combat.turns.staged_random_item_power(character.id, instance_id) if combat != null else 0
+		if power == 0:
+			return ProjectileAttackProfile.blocked(&"projectile_power_roll_required", "Roll this projectile's power before choosing its target.")
 	return ProjectileAttackProfile.permitted(projectile_item, instance_id, spell, power, absi(spell.range_min + spell.range_max * power))
 
 

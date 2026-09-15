@@ -56,6 +56,8 @@ func _submit_standard_action(state: GameState, content: RealmzContent, actor: Ch
 	match action:
 		&"attack":
 			return _submit_character_attack(state, content, actor, target_id, rng, allow_friendly_contact)
+		&"prepare_projectile":
+			return _prepare_character_projectile(state.combat, content, actor, rng)
 		&"switch_weapon":
 			return _switch_character_weapon(state.combat, content, actor)
 		&"defend":
@@ -210,6 +212,25 @@ func _submit_character_attack(state: GameState, content: RealmzContent, actor: C
 	consume_character_attack(actor)
 	if not character_can_continue(actor): _context.rounds().advance_turn(state, content, rng, events)
 	return CombatFlowResult.succeeded(events)
+
+
+func _prepare_character_projectile(combat: CombatState, content: RealmzContent, actor: CharacterState, rng: RealmzRng) -> CombatFlowResult:
+	if combat.actor_statuses.character_weapon_mode(actor.id) != &"missile":
+		return CombatFlowResult.failed(&"projectile_power_roll_unavailable", "Random projectile power is available only in missile weapon mode.")
+	var equipment := _context.equipment.combat_equipment(actor, content.items.definitions())
+	var profile = _context.reactions().character_projectile_profile(actor, content, equipment, combat)
+	if profile.available or profile.error_code != &"projectile_power_roll_required":
+		return CombatFlowResult.failed(profile.error_code if profile != null else &"projectile_power_roll_unavailable", profile.error_message if profile != null else "The equipped projectile cannot stage a power roll.")
+	var projectile_item := equipment.missile_weapon
+	var instance_id := equipment.missile_weapon_instance_id
+	if equipment.missile_ammunition != null and equipment.missile_ammunition.special_2 > 1100:
+		projectile_item = equipment.missile_ammunition
+		instance_id = equipment.missile_ammunition_instance_id
+	prepare_character_turn(combat, actor)
+	var power := rng.draw(7, StringName("combat.projectile.%s.power" % instance_id))
+	if not combat.turns.stage_random_item_power(actor.id, instance_id, power):
+		return CombatFlowResult.failed(&"projectile_power_roll_unavailable", "The projectile power could not be staged for this activation.")
+	return CombatFlowResult.succeeded([DomainEvent.new(&"combat_projectile_power_staged", {"actorId": actor.id, "itemInstanceId": instance_id, "itemId": projectile_item.id, "power": power, "source": "classic"})])
 
 
 func probe_delay(state: GameState, actor_id: String) -> CombatCommandProbe:
@@ -427,7 +448,7 @@ func cause_active_fumble(state: GameState, content: RealmzContent, actor_id: Str
 
 func fire_character_projectile(state: GameState, content: RealmzContent, actor: CharacterState, equipment: CharacterCombatEquipment, target_id: String, rng: RealmzRng) -> CombatFlowResult:
 	var combat := state.combat
-	var profile = _context.reactions().character_projectile_profile(actor, content, equipment)
+	var profile = _context.reactions().character_projectile_profile(actor, content, equipment, combat)
 	if not profile.available:
 		return CombatFlowResult.failed(profile.error_code, profile.error_message)
 	var target := combat.roster.monster_by_id(target_id)
@@ -450,6 +471,7 @@ func fire_character_projectile(state: GameState, content: RealmzContent, actor: 
 	if resolution.total_damage > 0:
 		combat.actor_statuses.mark_attacked(target.id)
 	combat.turns.active_turn.physical_action_committed = true
+	combat.turns.clear_staged_random_item_power()
 	actor.attacks_remaining = _context.arithmetic.signed_16(actor.attacks_remaining - 2)
 	actor.movement = maxi(0, actor.movement - 12)
 	var events: Array[DomainEvent] = [DomainEvent.new(&"combat_projectile_resolved", {

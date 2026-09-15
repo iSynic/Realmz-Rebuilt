@@ -411,8 +411,10 @@ func _hostile_spell_targets(state: GameState, content: RealmzContent, actor: Cha
 func _best_projectile(state: GameState, content: RealmzContent, actor: CharacterState) -> Dictionary:
 	if state.combat.actor_statuses.character_weapon_mode(actor.id) != &"missile":
 		return {}
-	var profile = _context.reactions().character_projectile_profile(actor, content, _context.equipment.combat_equipment(actor, content.items.definitions()))
+	var profile = _context.reactions().character_projectile_profile(actor, content, _context.equipment.combat_equipment(actor, content.items.definitions()), state.combat)
 	if profile == null or not profile.available:
+		if profile != null and profile.error_code == &"projectile_power_roll_required":
+			return {"action": &"prepare_projectile", "score": 330}
 		return {"action": &"switch_weapon", "score": 110}
 	var best: Dictionary = {}
 	for target_id: String in _opposed_actor_ids(state, actor):
