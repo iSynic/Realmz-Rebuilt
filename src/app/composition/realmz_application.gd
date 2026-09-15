@@ -7,6 +7,7 @@ extends Control
 
 const DEVELOPMENT_PREVIEW_HOST_PATH := "res://tools/development_preview_application_host.gd"
 const PERSISTENT_AUTO_COORDINATOR := preload("res://src/app/session/persistent_auto_coordinator.gd")
+const RUNTIME_TESTING_READINESS := preload("res://src/app/platform/runtime_testing_readiness.gd")
 
 @onready var _status_label: Label = $GameShell/BottomRegion/BottomRow/NarrativeWell/NarrativeColumn/Facts/Status
 @onready var _smoke_button: Button = $GameShell/SmokeAction
@@ -65,12 +66,10 @@ func _ready() -> void:
 		_runtime_testing_host = RuntimeTestingHost.new()
 		add_child(_runtime_testing_host)
 		var fixture_request := get_meta(&"runtime_testing_fixture") as RuntimeTestingFixtureRequest if has_meta(&"runtime_testing_fixture") else null
-		var status := _runtime_testing_host.bind(session_controller, func() -> RealmzContent: return _active_content, func() -> Dictionary: return {"explorationInput": accepts_exploration_input(), "routeInput": accepts_route_input(), "combatPlayback": presentation_coordinator.is_combat_playback_active(), "hostInteraction": lifecycle_host.has_active_interaction(), "autoContinuation": _persistent_auto.observation()}, self, fixture_request)
+		var status := _runtime_testing_host.bind(session_controller, func() -> RealmzContent: return _active_content, func() -> Dictionary: return RUNTIME_TESTING_READINESS.fields(self, session_controller, presentation_coordinator, lifecycle_host, _persistent_auto), self, fixture_request)
 		if status != OK:
 			printerr("Runtime testing endpoint unavailable: %s" % error_string(status))
 	_finish_startup()
-
-
 func _build_dependencies() -> void:
 	var preview_request := get_meta(&"development_preview_request") as DevelopmentPreviewRequest if has_meta(&"development_preview_request") else null
 	var preview_state_root := preview_request.result_path.get_basename() + "-session" if preview_request != null else ""

@@ -25,6 +25,15 @@ var _dungeon_3d_enabled: bool = true
 var drawn_revision: int = -1
 var _draw_ack_generation: int = 0
 var _pending_route: StringName = &""
+var runtime_observation: Dictionary:
+	get:
+		var frame := _combat_playback.current_frame() if is_combat_playback_active() else null
+		return {
+			"presentedRevision": _presented_view.revision if _presented_view != null else -1,
+			"drawnRevision": drawn_revision,
+			"deferredRevision": _deferred_view.revision if _deferred_view != null else -1,
+			"playbackPhase": String(frame.kind) if frame != null else "",
+		}
 
 
 func bind(

@@ -13,17 +13,19 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Current parity-convergence batch
 
-**Third-party blockers and exact-party Auto diagnostics** (`third-party-blockers-and-exact-auto-diagnostics`)
+**Half Truth combat and player-route acceptance** (`half-truth-combat-and-player-route-acceptance`)
 
-This three-workflow batch separates three observed compatibility failures without inventing content or claiming campaign playability. Araman's Ring and Lachis are blocked by Providence treating stock door item 662's absent optional XAP 69 as a package-wide root; Elemental Strife instead places a 100-percent AP that calls semantically empty Simple Encounter 13. The exact retained Half Truth party and RNG reach Battle 70 victory under direct rules Auto, and seeds 1-250 also complete, narrowing the David report to host or presentation continuation while preserving it as open. Hax XAP 567 requests message 3001 from a source containing only IDs 0-1080; Castle's unchecked EOF read would show stale fallback text, so Providence correctly refuses to fabricate content. The aggregate passes 4,486 assertions across 29 suites plus package, media, schema, provenance, architecture, maintainability, workflow, gameplay, and native export-contract checks; the known one-object smoke teardown warning remains. No blocked package was modified, no campaign status was promoted, and ordinary-route reachability for the malformed rows remains unproven.
+This five-workflow batch replays the retained Half Truth combat reports through the rendered application before changing production behavior, then closes the exact Inventory and scenario-media acceptance routes. It pins the current package, v2 Character Files, v5 checkpoints, runtime build, and RNG; keeps the historical v4 save diagnostic-only; and separates direct invocation preparation from actual UI-control evidence. The exact v5 Battle 70 replay and five-round Battle 34 all-Auto/mixed-Auto replay close the reported David/Party Auto incident for now, with recurrence as the reopening condition. Battle entry, causal spell and defeat playback, David's Robe of Speed, and the Wrecker facing pair remain the bounded targets; no campaign status is promoted by this batch declaration.
 
 AP batches use failure-first priorities: known failures, untested high-risk behavior, meaningful variants, and broader representatives. Verification mode records existing functional behavior without claiming full campaign certification; implementation, verification, and certification remain distinct modes.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `host.package.readiness-failure` | archaeology | known-failure | - |  |
 | `classic.combat.auto-character` | verification | known-failure | runtime-integration |  |
-| `classic.scenario.present-message-media` | archaeology | known-failure | - |  |
+| `classic.combat.enter-battle` | verification | known-failure | runtime-integration |  |
+| `classic.spellcasting.combat-cast` | verification | known-failure | runtime-integration |  |
+| `classic.inventory.manage-equipment` | verification | known-failure | runtime-integration |  |
+| `classic.scenario.present-message-media` | verification | known-failure | runtime-integration |  |
 
 ### Batch count delta
 
