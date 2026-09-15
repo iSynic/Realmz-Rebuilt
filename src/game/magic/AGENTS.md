@@ -11,6 +11,7 @@ Own immutable spell definitions and lookup, mutable spell shortcuts and scroll f
 - `FastSpellBindingState` and `SpellScrollState` own the mutable noncombat spell shortcuts and scroll facts stored by a playthrough.
 - `SpellView`, `SpellScrollView`, and `FastSpellBindingView` are the detached presentation records for learned magic, scrolls, and shortcuts.
 - `MagicRules` is the narrow resolution entry point. Character, monster, projectile, field/scenario, target, area, roll, classification, disposition, and special-effect collaborators own their named mechanics beside it.
+- Physical projectile items admit source-backed specials 0, 7, and 49. Special 7 halves a character target's current movement after a successful monster-fired hit; Castle rebuilds monster movement at activation, so a character-fired Saphron arrow retains damage without a durable monster mutation. Special 49 replaces rolled damage with current target health plus ten after the ordinary projectile defense gate. Other specials remain explicit.
 - `SpellResolution`, `GroupSpellResolution`, `RepeatedSpellResolution`, `ProjectileResolution`, `SpellTargetSelection`, and `MonsterPolymorphContext` are typed intermediate and result records used by those rules.
 - `README.md` is the public maintainer entry point for spell-definition resolution.
 

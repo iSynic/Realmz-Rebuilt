@@ -8,6 +8,10 @@ static func is_physical_projectile_profile(spell: SpellDefinition) -> bool:
 	return spell != null and spell.in_combat and spell.target_type == 1 and absi(spell.spell_class) == 9 and absi(spell.damage_type) == 9 and spell.special == 0
 
 
+static func is_supported_projectile_item_profile(spell: SpellDefinition) -> bool:
+	return spell != null and spell.in_combat and spell.target_type == 1 and absi(spell.spell_class) == 9 and absi(spell.damage_type) == 9 and absi(spell.special) in [0, 7, 49]
+
+
 static func is_zero_cost_monster_projectile_spell(spell: SpellDefinition) -> bool:
 	return is_physical_projectile_profile(spell) and spell.queue_icon == 0 and spell.size == 0 and spell.cost == 0 and spell.damage_min == 2 and spell.damage_max == 12 and spell.power_damage_min == 0 and spell.power_damage_max == 0 and spell.range_min == 12 and spell.range_max == 0 and spell.fixed_target_count == 1
 

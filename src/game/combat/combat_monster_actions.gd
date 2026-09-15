@@ -61,6 +61,7 @@ func process_projectile(state: GameState, content: RealmzContent, monster: Monst
 	events.append(DomainEvent.new(&"combat_projectile_resolved", {
 		"actorId": monster.id, "targetId": target.id, "targetKind": "character",
 		"itemId": projectile_item.id, "spellId": projectile_spell.id,
+		"special": absi(projectile_spell.special),
 		"rangePower": range_power, "costPower": cost_power, "resolutionPower": 1,
 		"range": _context.battlefield.classic_range(combat.battlefield, monster.id, target.id),
 		"hitCount": resolution.hit_count, "missCount": resolution.miss_count,

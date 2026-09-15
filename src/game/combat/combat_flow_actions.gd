@@ -480,6 +480,7 @@ func fire_character_projectile(state: GameState, content: RealmzContent, actor: 
 		"targetKind": "monster",
 		"itemId": profile.item.id,
 		"spellId": profile.spell.id,
+		"special": absi(profile.spell.special),
 		"powerLevel": profile.power_level,
 		"range": _context.battlefield.classic_range(combat.battlefield, actor.id, target.id),
 		"hitCount": resolution.hit_count,
@@ -507,7 +508,7 @@ static func projectile_spell_unavailable_reason(spell: SpellDefinition) -> Strin
 		return "Classic projectile spell '%s' is not missile class 9." % spell.id
 	if absi(spell.damage_type) != 9:
 		return "Elemental projectile spell '%s' requires its source-backed save and special-effect path." % spell.id
-	if spell.special != 0:
+	if absi(spell.special) not in [0, 7, 49]:
 		return "Projectile spell '%s' uses unresolved Classic special %d." % [spell.id, spell.special]
 	return ""
 

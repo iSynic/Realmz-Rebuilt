@@ -134,11 +134,11 @@ static func field_character_disposition(spell: SpellDefinition) -> StringName:
 
 
 static func character_projectile_disposition(spell: SpellDefinition) -> StringName:
-	return DISPOSITION_EXECUTABLE if ClassicSpellSourceRules.is_physical_projectile_profile(spell) else DISPOSITION_NOT_APPLICABLE
+	return DISPOSITION_EXECUTABLE if ClassicSpellSourceRules.is_supported_projectile_item_profile(spell) else DISPOSITION_NOT_APPLICABLE
 
 
 static func monster_projectile_disposition(spell: SpellDefinition) -> StringName:
-	return DISPOSITION_EXECUTABLE if ClassicSpellSourceRules.is_physical_projectile_profile(spell) else DISPOSITION_NOT_APPLICABLE
+	return DISPOSITION_EXECUTABLE if ClassicSpellSourceRules.is_supported_projectile_item_profile(spell) else DISPOSITION_NOT_APPLICABLE
 
 
 static func unsupported_reason(spell: SpellDefinition, context_name: StringName) -> String:
