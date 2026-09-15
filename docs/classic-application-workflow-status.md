@@ -13,17 +13,19 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Current parity-convergence batch
 
-**AOGM contextual encounters and Wrath owner-bound chest outcomes** (`ap-contextual-and-owner-bound-encounters`)
+**Equipment, combat continuity, and projectile compatibility repairs** (`classic-compatibility-repair-a-through-c`)
 
-Batch complete: AOGM's zero-slot contextual RNG defect is repaired, with entry, wrong-set repetition and exact reward/region-disable/default reentry verified. Wrath AP 44 has equal detection/disarm, armed-trap failure, unarmed lock failure and eight-item lock-reward repeats. Detected-trap and trap-warning restores reproduce exact final game/RNG state; pending Treasure reproduces every suffix state. Done alone sets chance zero and prevents duplicate rewards. The recipes retain 49 passes and two historical failures across all thirteen bundled scenarios under their recorded package/library identities, without certification upgrades. Clean-reference Tier 2 passes 91 focused assertions. The full aggregate passes 4212 assertions across 28 suites plus package, media, architecture, export, schema and inventory gates in an isolated copy with hash-matched product content and committed project settings. Development autoloads remain untouched in the working checkout. The forced five-frame startup smoke retains its known one-object teardown warning; strict tests and the closed gameplay fixture have no teardown errors. Protocol build and 37 tests pass, with two opt-in engine tests skipped. Wrath preparation/source/replay work took approximately 29 minutes before batch gates; full lock replays took 19.22/18.86 seconds and the saved suffix 9.51 seconds, with no new tooling implementation. Next coverage favors the retained pending-tumbler save boundary, then War pooled-payment edges using existing baselines. Native performance, complete combat replay, full campaign certification and broader bridge capabilities remain separate; reported failures take priority.
+Compatibility repair tranche closeout. Controlled public-boundary proof covers authoritative ordered equipment and Robe of Speed, conditioned monsters, atomic swaps, opcode-56 defeat return, routed-monster retreat, corpus spell-slot classification, forced-power monster projectiles, and character random-power projectile staging. A foreground isolated Half Truth Auto fixture reached Treasure without a stall, but the reported intermittent Auto and battle-start visibility defects remain open because that negative reproduction did not run three uninterrupted rounds. The aggregate passes 4,451 assertions across 29 suites plus package alignment, all 13 bundled packages and 515 scenario CICN descriptors, media, architecture, schema, inventory, icon, and three-platform export-contract gates. The five-frame startup smoke retains its known one-object teardown warning, and the passing controller suite retains its existing ensure-control-visible diagnostics. Ordinary campaign replay, third-party intake, controller and presentation inspection, actual macOS execution, and complete AOGM then War certification remain separate gates. The next executable work is combat reflection and macro coverage, followed by scenario/media/player-route batches.
 
 AP batches use failure-first priorities: known failures, untested high-risk behavior, meaningful variants, and broader representatives. Verification mode records existing functional behavior without claiming full campaign certification; implementation, verification, and certification remain distinct modes.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.scenario.choose-response` | verification | known-failure | live-route |  |
-| `classic.system.save-game` | verification | meaningful-variant | live-route |  |
-| `classic.scenario.trigger-action-point` | verification | known-failure | runtime-integration |  |
+| `classic.inventory.manage-equipment` | verification | known-failure | runtime-integration |  |
+| `classic.combat.auto-character` | verification | known-failure | live-route |  |
+| `classic.combat.tactical-movement` | verification | known-failure | runtime-integration |  |
+| `classic.combat.resolve-outcome` | verification | untested-high-risk | runtime-integration |  |
+| `classic.combat.physical-attack` | verification | untested-high-risk | runtime-integration |  |
 
 ### Batch count delta
 
