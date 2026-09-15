@@ -27,6 +27,7 @@ func run() -> void:
 	_test_corrected_character_selection_opcodes(content)
 	_test_corrected_fatigue_opcode(content)
 	_test_corrected_take_experience_opcode(content)
+	_test_opcode_7_program_replacement_modes(content)
 	_test_public_action_state(content); _test_aogm_dispatch_has_no_fallback(content)
 
 
@@ -803,6 +804,14 @@ func _test_corrected_take_experience_opcode(content: RealmzContent) -> void:
 		actions.append(ClassicActionDefinition.new(action_slot, 90, 90, 0, false, [10, 1, 0, 0, 0]))
 		var program := ScenarioProgramDefinition.new("opcode90.slot.%d" % action_slot, &"trigger", "opcode90", actions); var vm := ScenarioVm.new(); vm.configure(ScenarioDefinition.new([program], [])); vm.start_program(program.id, ScenarioExecutionContext.trigger(&"action", "ap.opcode90.%d" % action_slot)); var result := vm.run(RealmzRuntimeApi.new(content, state, RealmzRng.new(90), ScenarioActionState.new()))
 		assert_equal([result.state, characters.map(func(character: CharacterState) -> int: return character.experience), state.scenario_progress.selected_character_ids(), result.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"experience_taken").map(func(event: DomainEvent) -> Variant: return event.payload.get("targetIds"))], [ScenarioVmResult.State.COMPLETED, [90, 100, 90], [characters[0].id, characters[2].id], [[characters[0].id, characters[2].id]]], "opcode 90 mode 1 uses each picked identity rather than the action-slot selection cell at source slot %d" % action_slot)
+
+
+func _test_opcode_7_program_replacement_modes(content: RealmzContent) -> void:
+	var map := content.world.map_by_id(content.start_map_id); var source := ScenarioProgramDefinition.new("xap:325", &"extra-action-point", "325", []); var simple := ScenarioProgramDefinition.new("simple:0:result:1", &"simple-encounter-result", "1", []); var complex := ScenarioProgramDefinition.new("complex:0:result:2", &"complex-encounter-result", "2", []); var ap_target := ScenarioProgramDefinition.new("trigger:replacement-target", &"trigger", "replacement-target", []); var root := ScenarioProgramDefinition.new("trigger:replacement-root", &"trigger", "replacement-root", [ClassicActionDefinition.new(0, 7, 7, 0, false, [-1, 0, 325, 0, 1]), ClassicActionDefinition.new(1, 7, 7, 0, false, [-2, 0, 325, 0, 2]), ClassicActionDefinition.new(2, 7, 7, 0, false, [map.level_index, 4, 325, 0, 0])]); var definition := ScenarioDefinition.new([root, source, simple, complex, ap_target], [])
+	var trigger := TriggerDefinition.new("replacement-target", ap_target.id, map.id, Vector2i.ZERO, true, 100, null, 4); var replacement_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, content.start_map_id, content.start_coordinate, content.world, definition, [], [trigger]); var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("replacement.hero", "Hero", 10, 10)]), RealmzClock.new()); var rng := RealmzRng.new(7); var api := RealmzRuntimeApi.new(replacement_content, state, rng, ScenarioActionState.new()); var vm := ScenarioVm.new(); vm.configure(definition); vm.start_program(root.id, ScenarioExecutionContext.trigger(&"action", root.id)); var result := vm.run(api)
+	assert_equal([result.state, state.scenario_progress.encounters.program_id(simple.id), state.scenario_progress.encounters.program_id(complex.id), state.scenario_progress.encounters.program_id(ap_target.id), rng.snapshot().draw_count], [ScenarioVmResult.State.COMPLETED, source.id, source.id, source.id, 0], "opcode 7 maps -1 to Simple result, -2 to Complex result, and nonnegative map indexes to Action Point replacement")
+	var restored := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data()))); var before_invalid := restored.to_data(); var invalid := RealmzRuntimeApi.new(replacement_content, restored, RealmzRng.new(7), ScenarioActionState.new()).execute_classic(ClassicActionDefinition.new(0, 7, 7, 0, false, [-3, 0, 325, 0, 0]), "replacement.invalid")
+	assert_equal([invalid.error_code, restored.to_data()], [&"unknown_map", before_invalid], "opcode 7 preserves unknown negative imports as typed atomic failures rather than reinterpreting them")
 
 
 func _test_public_action_state(content: RealmzContent) -> void:

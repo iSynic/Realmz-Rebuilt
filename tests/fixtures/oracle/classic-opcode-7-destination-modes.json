@@ -1,0 +1,12 @@
+{
+  "formatVersion": 1,
+  "evidence": "source-control-flow-and-corpus-scan",
+  "castle": {
+    "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+    "source": "src/realmz_orig/newland.c:1741-1775",
+    "dispatch": {"-1": "Simple Encounter result", "-2": "Complex Encounter result", "nonnegative": "Action Point"}
+  },
+  "authoringDiscrepancy": "Divinity help labels -2 as Simple and -3 as Complex; executable semantics follow the shipped Classic source.",
+  "bundledCorpus": "Scanned occurrences use the nonnegative Action Point mode; this is stored-definition evidence, not reachability.",
+  "runtimePolicy": "Retain unknown negative imported words and reject them atomically without inventing another destination mode."
+}
