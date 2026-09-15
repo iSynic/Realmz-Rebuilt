@@ -28,6 +28,7 @@ class RouterMovementHost extends Control:
 
 
 func run() -> void:
+	_test_fixture_controller_release_survives_revision_advance()
 	_test_controller_preferences_round_trip_and_migration()
 	_test_controller_bindings_and_conflicts()
 	_test_controller_owner_edges_hysteresis_and_takeover()
@@ -38,6 +39,22 @@ func run() -> void:
 	await _test_persistent_auto_continuation()
 	await _test_qwerty_draft_commit_cancel_and_layout()
 	await _test_controller_settings_draft_and_embedded_file_dialog()
+
+
+func _test_fixture_controller_release_survives_revision_advance() -> void:
+	var protocol := RuntimeTestingProtocol.new("fixture-session", "fixture-token", "fixture")
+	var dispatched: Array[Dictionary] = []
+	var dispatch := func(command: String, params: Dictionary) -> Dictionary:
+		dispatched.append({"command": command, "params": params.duplicate(true)})
+		return {"revision": 13, "result": {"released": true}, "error": null}
+	var stale_press := protocol.execute(_testing_request("press", 10, {"action": "controller-button", "button": JOY_BUTTON_DPAD_RIGHT, "pressed": true}), 12, dispatch)
+	var stale_release := protocol.execute(_testing_request("release", 10, {"action": "controller-button", "button": float(JOY_BUTTON_DPAD_RIGHT), "pressed": false}), 12, dispatch)
+	var stale_neutral := protocol.execute(_testing_request("neutral", 10, {"action": "controller-axis", "axis": float(JOY_AXIS_LEFT_X), "value": 0.0}), 12, dispatch)
+	assert_equal([stale_press["ok"], stale_press["error"]["code"], stale_release["ok"], stale_neutral["ok"], dispatched.size()], [false, "stale_revision", true, true, 2], "fixture controller releases and exact axis neutral survive gameplay revision advance while presses retain optimistic concurrency")
+
+
+func _testing_request(request_id: String, revision: int, params: Dictionary) -> Dictionary:
+	return {"protocol": RuntimeTestingProtocol.VERSION, "sessionId": "fixture-session", "token": "fixture-token", "requestId": request_id, "expectedRevision": revision, "command": "ui", "params": params}
 
 
 func _test_controller_preferences_round_trip_and_migration() -> void:

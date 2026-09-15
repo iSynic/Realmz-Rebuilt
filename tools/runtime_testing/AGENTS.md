@@ -17,7 +17,7 @@ Own the local Realmz runtime-testing observation and fixture transport package: 
 - Connections target `127.0.0.1` only; descriptor paths remain below the explicit discovery root.
 - Discovery reads at most 256 regular, non-symlink descriptor files and rejects descriptor files over 64 KiB.
 - Tokens stay in local descriptor files and authenticated internal requests; they are excluded from sanitized discovery, MCP results, and transport logs.
-- Mutating commands require `expectedRevision`; observe-access sessions reject them service-side. A caller may retry an ambiguous mutation only with the same explicit `requestId`.
+- Mutating commands require `expectedRevision`; observe-access sessions reject them service-side. Isolated fixture button releases and exact axis-neutral events may cross an intervening revision so held gameplay can always be stopped; all initiating input retains optimistic concurrency. A caller may retry an ambiguous mutation only with the same explicit `requestId`.
 - MCP input and wire replies are strict Zod schemas. Advertise only implemented capabilities.
 - Fixture launches use explicitly configured engine/project paths, unique scratch roots, distinct Godot/stdout logs, the canonical 1280x720 Mobile rendered target, and a visible fixture title. Native fixture children set `GODOT_MCP_HEADLESS_CHILD=1` to isolate them from editor-driven MCP autoload services. Clone requires a valid exported checkpoint and matching validated package; never inject into or restart a live process.
 - Named fixture preparation may position provenance-pinned starter characters before recording the baseline. Checkpoint clones preserve captured state and RNG exactly. Journeys cannot restore or reseed between steps.
