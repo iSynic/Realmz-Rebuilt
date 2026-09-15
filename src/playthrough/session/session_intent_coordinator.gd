@@ -267,8 +267,6 @@ func _combat_move(payload: CombatIntentPayloads.Move) -> SessionCoordinatorResul
 			return _request_retreat(payload.actor_id, &"edge", payload.destination)
 		return _combat_result(CombatCommandWorkflow.move_character(_context.workflow_context(), payload, true))
 	var result := CombatCommandWorkflow.move_character(_context.workflow_context(), payload, false)
-	if not result.ok and result.error_code == &"combat_friendly_collision_choice_required":
-		return _request_friendly_collision(payload)
 	return _combat_result(result)
 
 
@@ -282,20 +280,6 @@ func _request_retreat(actor_id: String, mode: StringName, destination: Vector2i)
 	combat.destination = destination
 	_context.set_continuation(CombatContinuations.retreat_confirmation(combat))
 	_context.session_interaction = SessionInteractionFactory.retreat_confirmation("session.combat-retreat:%d" % _context.next_revision())
-	return SessionCoordinatorResult.waiting(_context.session_interaction, [])
-
-
-func _request_friendly_collision(payload: CombatIntentPayloads.Move) -> SessionCoordinatorResult:
-	var target_id := _context.rules.combat_flow.reactions.friendly_collision_target_id(_context.state, payload.actor_id, payload.destination)
-	if target_id.is_empty():
-		return SessionCoordinatorResult.rejected(&"invalid_friendly_collision", "The adjacent ally is no longer available.")
-	var collision := CombatContinuationBody.new()
-	collision.battle_id = _context.state.combat.battle_id
-	collision.actor_id = payload.actor_id
-	collision.mode = &"friendly"
-	collision.destination = payload.destination
-	_context.set_continuation(CombatContinuations.friendly_collision(collision))
-	_context.session_interaction = SessionInteractionFactory.friendly_collision("session.combat-friendly-collision:%d" % _context.next_revision())
 	return SessionCoordinatorResult.waiting(_context.session_interaction, [])
 
 

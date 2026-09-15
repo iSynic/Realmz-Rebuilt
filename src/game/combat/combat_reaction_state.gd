@@ -64,6 +64,18 @@ func take_next_attacker() -> String:
 	return result
 
 
+func awaits_friendly_collision_choice() -> bool:
+	return kind == CHARACTER_MOVE and phase == GUARD_BEFORE and not friendly_collision_target_id.is_empty() and friendly_collision_action.is_empty() and not has_next_attacker()
+
+
+func select_friendly_collision_action(action: StringName) -> bool:
+	if not awaits_friendly_collision_choice() or action not in [&"swap", &"attack"]:
+		return false
+	friendly_collision_action = action
+	movement_cost = 5 if action == &"swap" else 3
+	return true
+
+
 func to_data() -> Dictionary:
 	return {
 		"kind": String(kind),
@@ -101,7 +113,7 @@ static func from_data(data: Variant) -> CombatReactionState:
 	var collision_target_id: String = data.get("friendlyCollisionTargetId", "")
 	if auto_switch and (data["kind"] != String(CHARACTER_MOVE) or data["phase"] != String(GUARD_BEFORE)):
 		return null
-	if collision_action.is_empty() != collision_target_id.is_empty() or (not collision_action.is_empty() and data["kind"] != String(CHARACTER_MOVE)):
+	if (not collision_target_id.is_empty() and data["kind"] != String(CHARACTER_MOVE)) or (not collision_action.is_empty() and collision_target_id.is_empty()):
 		return null
 	var source_origin := _coordinate(data["origin"])
 	var source_destination := _coordinate(data["destination"])

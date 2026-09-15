@@ -597,6 +597,16 @@ func finish_combat_result(result: CombatFlowResult) -> SessionCoordinatorResult:
 		return finish_with_age_updates(result.events, &"combat-monster-turns")
 	if not _context.event_payload(result.events, &"monster_death_macro_requested").is_empty():
 		return _context.scenario().start_session_death_macro(result.events)
+	var pending := _context.state.combat.pending_reaction if _context.state.combat != null else null
+	if pending != null and pending.awaits_friendly_collision_choice():
+		var collision := CombatContinuationBody.new()
+		collision.battle_id = _context.state.combat.battle_id
+		collision.actor_id = pending.mover_id
+		collision.mode = &"friendly"
+		collision.destination = pending.destination
+		_context.set_continuation(CombatContinuations.friendly_collision(collision))
+		_context.session_interaction = SessionInteractionFactory.friendly_collision("session.combat-friendly-collision:%d" % _context.next_revision())
+		return SessionCoordinatorResult.waiting(_context.session_interaction, result.events)
 	if result.completed:
 		return _context.scenario().finish_direct_battle(result.events)
 	return SessionCoordinatorResult.completed(result.events)
