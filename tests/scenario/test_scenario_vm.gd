@@ -29,7 +29,7 @@ func run() -> void:
 	_test_corrected_take_experience_opcode(content)
 	_test_opcode_7_program_replacement_modes(content)
 	_test_opcode_13_trigger_mutation_modes(content)
-	_test_public_action_state(content); _test_aogm_dispatch_has_no_fallback(content); _test_classic_opcode_2_legacy_battle_record(content); _test_package_backed_macro_spells()
+	_test_public_action_state(content); _test_aogm_dispatch_has_no_fallback(content); _test_classic_opcode_2_legacy_battle_record(content); _test_package_backed_macro_spells(); _test_repaired_branch_and_opcode_variants(content)
 
 
 func _test_scenario_wire_contracts() -> void:
@@ -37,7 +37,7 @@ func _test_scenario_wire_contracts() -> void:
 	_test_session_continuation_contracts()
 	var branch := ScenarioVmDirective.branch_program_at("xap:7", true, ScenarioExecutionContext.trigger(&"", "ap.fixture"), 3); var restored := ScenarioVmDirective.from_data(JSON.parse_string(JSON.stringify(branch.to_data())))
 	assert_not_null(restored, "VM directive round-trips through its typed wire contract"); assert_equal([restored.kind, restored.program_id, restored.gosub, restored.entry_cursor, ScenarioExecutionContextCodec.encode(restored.context)], [ScenarioVmDirective.BRANCH_PROGRAM, "xap:7", true, 3, {"triggerId": "ap.fixture"}], "VM directive preserves branch cursor and trigger state")
-	var encounter_context := ScenarioExecutionContext.encounter(&"complex", 2, "", -1, &"choice", 0).set_encounter_attempt(3); var encounter_branch := ScenarioVmDirective.branch_encounter_result("complex:2:result:0", false, encounter_context, true); var restored_encounter_branch := ScenarioVmDirective.from_data(JSON.parse_string(JSON.stringify(encounter_branch.to_data()))); var enter_encounter := ScenarioVmDirective.from_data(JSON.parse_string(JSON.stringify(ScenarioVmDirective.enter_encounter(&"simple", 7, true).to_data()))); assert_equal([restored_encounter_branch.kind, restored_encounter_branch.repeat_encounter, restored_encounter_branch.context.value("encounterAttempt"), ScenarioVmDirective.from_data(ScenarioVmDirective.finish_timeline().to_data()).kind, ScenarioVmDirective.from_data(ScenarioVmDirective.resume_after_encounter().to_data()).kind, enter_encounter.kind, enter_encounter.encounter_kind, enter_encounter.target_id, enter_encounter.gosub], [ScenarioVmDirective.BRANCH_ENCOUNTER_RESULT, true, 3, ScenarioVmDirective.FINISH_TIMELINE, ScenarioVmDirective.RESUME_AFTER_ENCOUNTER, ScenarioVmDirective.ENTER_ENCOUNTER, &"simple", 7, true], "VM directives preserve encounter repetition, selected encounter entry, signed GOSUB, and both source-backed exits")
+	var encounter_context := ScenarioExecutionContext.encounter(&"complex", 2, "", -1, &"choice", 0).set_encounter_attempt(3); var encounter_branch := ScenarioVmDirective.branch_encounter_result("complex:2:result:0", false, encounter_context, true); var restored_encounter_branch := ScenarioVmDirective.from_data(JSON.parse_string(JSON.stringify(encounter_branch.to_data()))); var enter_encounter := ScenarioVmDirective.from_data(JSON.parse_string(JSON.stringify(ScenarioVmDirective.enter_encounter(&"simple", 7, true).to_data()))); assert_equal([restored_encounter_branch.kind, restored_encounter_branch.repeat_encounter, restored_encounter_branch.context.value("encounterAttempt"), ScenarioVmDirective.from_data(ScenarioVmDirective.finish_timeline().to_data()).kind, ScenarioVmDirective.from_data(ScenarioVmDirective.resume_after_encounter().to_data()).kind, ScenarioVmDirective.from_data(ScenarioVmDirective.dropout().to_data()).kind, enter_encounter.kind, enter_encounter.encounter_kind, enter_encounter.target_id, enter_encounter.gosub], [ScenarioVmDirective.BRANCH_ENCOUNTER_RESULT, true, 3, ScenarioVmDirective.FINISH_TIMELINE, ScenarioVmDirective.RESUME_AFTER_ENCOUNTER, ScenarioVmDirective.DROPOUT, ScenarioVmDirective.ENTER_ENCOUNTER, &"simple", 7, true], "VM directives preserve encounter repetition, selected encounter entry, signed GOSUB, dropout, and both source-backed exits")
 	for malformed: Dictionary in [
 		{"kind": "finish", "extra": true}, {"kind": "branch-xap", "targetId": "7", "gosub": false}, {"kind": "branch-program", "programId": "", "gosub": false, "context": {}}, {"kind": "branch-program", "programId": "xap:7", "gosub": false, "context": {}, "unexpected": true},
 	]:
@@ -57,7 +57,8 @@ func _test_scenario_wire_contracts() -> void:
 		{"name": "VM pending continuation", "value": ScenarioVmPendingContinuation.classic(ScenarioInteractionContinuations.encounter(ScenarioRuntimeContinuation.CLASSIC_SIMPLE_ENCOUNTER, 0, false, [0])), "decode": ScenarioVmPendingContinuation.from_data},
 		{"name": "runtime handoff", "value": handoff, "decode": ScenarioRuntimeHandoff.from_data},
 		{"name": "VM handoff", "value": ScenarioVmHandoff.classic(handoff), "decode": ScenarioVmHandoff.from_data},
-		{"name": "session retreat", "value": CombatContinuations.retreat_confirmation(body), "decode": SessionContinuation.from_data}, {"name": "session friendly collision", "value": CombatContinuations.friendly_collision(collision_body), "decode": SessionContinuation.from_data},
+		{"name": "session retreat", "value": CombatContinuations.retreat_confirmation(body), "decode": SessionContinuation.from_data},
+		{"name": "session friendly collision", "value": CombatContinuations.friendly_collision(collision_body), "decode": SessionContinuation.from_data},
 	]
 	for contract: Dictionary in contracts:
 		var wire: Dictionary = JSON.parse_string(JSON.stringify(contract.value.to_data())); var decoded: Variant = contract.decode.call(wire)
@@ -967,6 +968,94 @@ func _restore_fixture_position(session: GameSession, content: RealmzContent, map
 	envelope.game_state.party.map_id = map_id
 	envelope.game_state.party.coordinate = coordinate
 	assert_equal(session.restore(content, envelope).state, SessionStep.State.COMPLETED, "fixture position changes through validated restore")
+
+
+func _test_repaired_branch_and_opcode_variants(content: RealmzContent) -> void:
+	var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("variant.hero", "Variant Hero", 10, 10)]), RealmzClock.new())
+	state.difficulty = 1
+	var rng := RealmzRng.for_oracle(42); var api := RealmzRuntimeApi.new(content, state, rng, ScenarioActionState.new())
+	var op84 := api.execute_classic(ClassicActionDefinition.new(0, 84, 84, 840, false, []), "op84")
+	var op98 := api.execute_classic(ClassicActionDefinition.new(0, 98, 98, 980, false, []), "op98")
+	assert_true(op84.state == ScenarioRuntimeOperationResult.State.COMPLETED and op84.events.any(func(e: DomainEvent) -> bool: return e.kind == &"classic_control_marker" and e.payload.get("opcode") == 84 and e.payload.get("operandId") == 840), "opcode 84 emits control marker without mutating simulation")
+	assert_true(op98.state == ScenarioRuntimeOperationResult.State.COMPLETED and op98.events.any(func(e: DomainEvent) -> bool: return e.kind == &"classic_control_marker" and e.payload.get("opcode") == 98 and e.payload.get("operandId") == 980), "opcode 98 emits control marker without mutating simulation")
+	var op42_gosub := api.execute_classic(ClassicActionDefinition.new(0, -42, 42, 0, true, [100, 1, 0, 55, 0]), "op42.gosub")
+	var op42_keep := api.execute_classic(ClassicActionDefinition.new(0, 42, 42, 0, false, [100, 2, 0, 0, 0]), "op42.keep")
+	var op42_erase := api.execute_classic(ClassicActionDefinition.new(0, 42, 42, 0, false, [100, -2, 0, 0, 0]), "op42.erase", ScenarioExecutionContext.trigger(&"action", "ap.erase_op42"))
+	assert_true(op42_gosub.directive.kind == ScenarioVmDirective.BRANCH_XAP and op42_gosub.directive.target_id == 55 and op42_gosub.directive.gosub == true and op42_keep.directive.kind == ScenarioVmDirective.FINISH_TIMELINE and _event_has(op42_keep.events, &"action_point_kept") and op42_erase.directive.kind == ScenarioVmDirective.FINISH_TIMELINE and state.world.triggers.trigger_is_disabled("ap.erase_op42"), "opcode 42 preserves signed GOSUB, keep-codes, and erase-trigger modes")
+	state.scenario_progress.set_quest_value(3, 5); state.party_in_boat = true
+	var op77_simple := api.execute_classic(ClassicActionDefinition.new(0, 77, 77, 0, false, [3, 5, 1, 0, 10]), "op77.simple"); var op77_complex := api.execute_classic(ClassicActionDefinition.new(0, 77, 77, 0, false, [3, 5, 2, 0, 20]), "op77.complex")
+	var op86_simple := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [3, 0, 1, 11, 0]), "op86.simple"); var op86_complex := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [3, 0, 2, 21, 0]), "op86.complex")
+	assert_true(op77_simple.directive.kind == ScenarioVmDirective.ENTER_ENCOUNTER and op77_simple.directive.encounter_kind == &"simple" and op77_simple.directive.target_id == 10 and op77_complex.directive.kind == ScenarioVmDirective.ENTER_ENCOUNTER and op77_complex.directive.encounter_kind == &"complex" and op77_complex.directive.target_id == 20, "opcode 77 branches to Simple and Complex encounters")
+	assert_true(op86_simple.directive.kind == ScenarioVmDirective.ENTER_ENCOUNTER and op86_simple.directive.encounter_kind == &"simple" and op86_simple.directive.target_id == 11 and op86_complex.directive.kind == ScenarioVmDirective.ENTER_ENCOUNTER and op86_complex.directive.encounter_kind == &"complex" and op86_complex.directive.target_id == 21, "opcode 86 branches to Simple and Complex encounters")
+	var op76_simple := api.execute_classic(ClassicActionDefinition.new(0, 76, 76, 0, false, [4, 1, 2, 1, 12]), "op76.simple"); var op76_complex := api.execute_classic(ClassicActionDefinition.new(0, 76, 76, 0, false, [4, 1, 3, 1, 22]), "op76.complex")
+	assert_true(op76_simple.directive.kind == ScenarioVmDirective.ENTER_ENCOUNTER and op76_simple.directive.encounter_kind == &"simple" and op76_simple.directive.target_id == 12 and op76_complex.directive.kind == ScenarioVmDirective.ENTER_ENCOUNTER and op76_complex.directive.encounter_kind == &"complex" and op76_complex.directive.target_id == 22, "opcode 76 auto-branches to Simple and Complex encounters")
+	var item_def := content.items.item_by_classic_id(1)
+	if item_def != null:
+		state.party.characters()[0].set_inventory([ItemInstance.new("item.test", item_def.id, 1)])
+		var op21_simple := api.execute_classic(ClassicActionDefinition.new(0, 21, 21, 0, false, [1, 1, 0, 13, 0]), "op21.simple"); var op21_complex := api.execute_classic(ClassicActionDefinition.new(0, 21, 21, 0, false, [1, 2, 0, 23, 0]), "op21.complex")
+		assert_true(op21_simple.directive.kind == ScenarioVmDirective.ENTER_ENCOUNTER and op21_simple.directive.encounter_kind == &"simple" and op21_simple.directive.target_id == 13 and op21_complex.directive.kind == ScenarioVmDirective.ENTER_ENCOUNTER and op21_complex.directive.encounter_kind == &"complex" and op21_complex.directive.target_id == 23, "opcode 21 branches to Simple and Complex encounters")
+	var op87_simple := api.execute_classic(ClassicActionDefinition.new(0, 87, 87, 0, false, [999, 1, 0, 0, 15]), "op87.simple"); var op87_complex := api.execute_classic(ClassicActionDefinition.new(0, 87, 87, 0, false, [999, 2, 0, 0, 25]), "op87.complex")
+	assert_true(op87_simple.directive.kind == ScenarioVmDirective.ENTER_ENCOUNTER and op87_simple.directive.encounter_kind == &"simple" and op87_simple.directive.target_id == 15 and op87_complex.directive.kind == ScenarioVmDirective.ENTER_ENCOUNTER and op87_complex.directive.encounter_kind == &"complex" and op87_complex.directive.target_id == 25, "opcode 87 branches to Simple and Complex encounters")
+	state.party.conditions.set_value(0, 10)
+	var op40_m0 := api.execute_classic(ClassicActionDefinition.new(0, 40, 40, 0, false, [1, 0, 0, 0, 0]), "op40.m0")
+	var op40_m0_inactive := api.execute_classic(ClassicActionDefinition.new(0, 40, 40, 0, false, [2, 0, 0, 1, 0]), "op40.m0.inactive")
+	var op40_m1 := api.execute_classic(ClassicActionDefinition.new(0, -40, 40, 0, true, [1, 1, 41, 0, 0]), "op40.m1")
+	var op40_m2 := api.execute_classic(ClassicActionDefinition.new(0, -40, 40, 0, true, [1, 2, 42, 0, 0]), "op40.m2")
+	var op40_m3 := api.execute_classic(ClassicActionDefinition.new(0, -40, 40, 0, true, [1, 3, 43, 0, 0]), "op40.m3")
+	assert_true(op40_m0.state == ScenarioRuntimeOperationResult.State.COMPLETED and op40_m0.value == true and op40_m0.directive.kind == ScenarioVmDirective.FINISH_TIMELINE and op40_m0.events.is_empty(), "opcode 40 mode 0 finishes timeline without Keep Codes")
+	assert_true(op40_m0_inactive.state == ScenarioRuntimeOperationResult.State.COMPLETED and op40_m0_inactive.value == true and op40_m0_inactive.directive.kind == ScenarioVmDirective.FINISH_TIMELINE and op40_m0_inactive.events.is_empty(), "opcode 40 mode 0 with required-state 2 and inactive condition finishes timeline with true result")
+	assert_true(op40_m1.directive.kind == ScenarioVmDirective.BRANCH_XAP and op40_m1.directive.target_id == 41 and op40_m1.directive.gosub == true, "opcode 40 mode 1 branches to XAP with signed GOSUB")
+	assert_true(op40_m2.directive.kind == ScenarioVmDirective.ENTER_ENCOUNTER and op40_m2.directive.encounter_kind == &"simple" and op40_m2.directive.target_id == 42 and op40_m2.directive.gosub == true, "opcode 40 mode 2 branches to Simple encounter with signed GOSUB")
+	assert_true(op40_m3.directive.kind == ScenarioVmDirective.ENTER_ENCOUNTER and op40_m3.directive.encounter_kind == &"complex" and op40_m3.directive.target_id == 43 and op40_m3.directive.gosub == true, "opcode 40 mode 3 branches to Complex encounter with signed GOSUB")
+	var op40_program := ScenarioProgramDefinition.new("prog.op40_m0", &"trigger", "op40", [
+		ClassicActionDefinition.new(0, 40, 40, 0, false, [1, 0, 0, 0, 0]),
+		ClassicActionDefinition.new(1, 84, 84, 401, false, []),
+	])
+	var vm_op40 := ScenarioVm.new(); vm_op40.configure(ScenarioDefinition.new([op40_program], []))
+	vm_op40.start_program(op40_program.id, ScenarioExecutionContext.trigger(&"action", "ap.op40_m0"))
+	var res_op40 := vm_op40.run(api)
+	assert_true(res_op40.state == ScenarioVmResult.State.COMPLETED and not res_op40.events.any(func(e: DomainEvent) -> bool: return e.kind == &"classic_control_marker" and e.payload.get("operandId") == 401) and not _event_has(res_op40.events, &"action_point_kept") and vm_op40.snapshot().halted, "opcode 40 mode 0 finishes timeline without executing following slot or emitting action_point_kept")
+	var slot7_program := ScenarioProgramDefinition.new("prog.dropout_slot7", &"trigger", "slot7", [
+		ClassicActionDefinition.new(0, 58, 58, 0, false, [1, 1, -1, 0, 0]),
+		ClassicActionDefinition.new(1, 84, 84, 991, false, []),
+		ClassicActionDefinition.new(2, 84, 84, 992, false, []),
+		ClassicActionDefinition.new(3, 84, 84, 993, false, []),
+		ClassicActionDefinition.new(4, 84, 84, 994, false, []),
+		ClassicActionDefinition.new(5, 84, 84, 995, false, []),
+		ClassicActionDefinition.new(6, 84, 84, 996, false, []),
+		ClassicActionDefinition.new(7, 84, 84, 777, false, []),
+	])
+	var vm_slot7 := ScenarioVm.new(); vm_slot7.configure(ScenarioDefinition.new([slot7_program], []))
+	vm_slot7.start_program(slot7_program.id, ScenarioExecutionContext.trigger(&"action", "ap.dropout_slot7"))
+	var res_slot7 := vm_slot7.run(api)
+	assert_true(res_slot7.state == ScenarioVmResult.State.COMPLETED and res_slot7.events.any(func(e: DomainEvent) -> bool: return e.kind == &"classic_control_marker" and e.payload.get("operandId") == 777) and not res_slot7.events.any(func(e: DomainEvent) -> bool: return e.kind == &"classic_control_marker" and e.payload.get("operandId") == 991), "destination mode -1 executes slot 7 and skips intermediate slots")
+	var op33_program := ScenarioProgramDefinition.new("prog.op33_unpaid", &"trigger", "op33", [
+		ClassicActionDefinition.new(0, 33, 33, 0, false, [50000, -1, 0, 0, 0]),
+		ClassicActionDefinition.new(1, 84, 84, 991, false, []),
+		ClassicActionDefinition.new(2, 84, 84, 992, false, []),
+		ClassicActionDefinition.new(3, 84, 84, 993, false, []),
+		ClassicActionDefinition.new(4, 84, 84, 994, false, []),
+		ClassicActionDefinition.new(5, 84, 84, 995, false, []),
+		ClassicActionDefinition.new(6, 84, 84, 996, false, []),
+		ClassicActionDefinition.new(7, 84, 84, 337, false, []),
+	])
+	var vm_op33 := ScenarioVm.new(); vm_op33.configure(ScenarioDefinition.new([op33_program], []))
+	vm_op33.start_program(op33_program.id, ScenarioExecutionContext.trigger(&"action", "ap.op33_unpaid"))
+	var res_op33 := vm_op33.run(api)
+	assert_true(res_op33.state == ScenarioVmResult.State.COMPLETED and res_op33.events.any(func(e: DomainEvent) -> bool: return e.kind == &"classic_control_marker" and e.payload.get("operandId") == 337) and not res_op33.events.any(func(e: DomainEvent) -> bool: return e.kind == &"classic_control_marker" and e.payload.get("operandId") == 991), "opcode 33 unpaid test mode -1 executes slot 7 and skips intermediate slots")
+	var caller_prog := ScenarioProgramDefinition.new("prog.caller", &"trigger", "caller", [
+		ClassicActionDefinition.new(0, -42, 42, 0, true, [100, 1, 0, 50, 0]),
+		ClassicActionDefinition.new(1, 84, 84, 888, false, []),
+	])
+	var callee_prog := ScenarioProgramDefinition.new("xap:50", &"extra-action-point", "50", [
+		ClassicActionDefinition.new(0, 58, 58, 0, false, [1, 1, 3, 0, 0]),
+	])
+	var vm_nested := ScenarioVm.new(); vm_nested.configure(ScenarioDefinition.new([caller_prog, callee_prog], []))
+	vm_nested.start_program(caller_prog.id, ScenarioExecutionContext.trigger(&"action", "ap.nested_keep"))
+	var res_nested := vm_nested.run(api)
+	assert_true(res_nested.state == ScenarioVmResult.State.COMPLETED and _event_has(res_nested.events, &"action_point_kept") and not res_nested.events.any(func(e: DomainEvent) -> bool: return e.kind == &"classic_control_marker" and e.payload.get("operandId") == 888) and vm_nested.snapshot().halted, "destination mode 3 Keep Codes finishes the entire timeline from a nested GOSUB call without returning to the caller frame")
+
+
 func _runtime_api(content: RealmzContent, action_state: ScenarioActionState) -> RealmzRuntimeApi:
 	var party := PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("test", "Test", 1, 1)])
 	return RealmzRuntimeApi.new(content, GameState.new(party, RealmzClock.new()), RealmzRng.new(1), action_state)

@@ -260,7 +260,9 @@ func _branch_on_party_condition(action: ClassicActionDefinition) -> ScenarioRunt
 	var active := _game_state.party.conditions.is_active(condition_index)
 	if required_state == 1 and not active or required_state == 2 and active:
 		return ScenarioRuntimeOperationResult.completed(false)
-	return _branch_target_mode(action.extra_code[1] - 1, action.extra_code[2], action.gosub)
+	if action.extra_code[1] == 0:
+		return ScenarioRuntimeOperationResult.completed(true, [], ScenarioVmDirective.finish_timeline())
+	return _branch_to_destination(action.extra_code[1] - 1, action.extra_code[2], action.gosub)
 
 
 func _apply_classic_condition(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
@@ -475,12 +477,12 @@ func _branch_on_ally(action: ClassicActionDefinition) -> ScenarioRuntimeOperatio
 				break
 	var event := DomainEvent.new(&"ally_branch_checked", {"classicMonsterId": absi(action.extra_code[0]), "present": present})
 	if present:
-		var matched := _branch_target_mode(action.extra_code[1], action.extra_code[3], action.gosub)
+		var matched := _branch_to_destination(action.extra_code[1], action.extra_code[3], action.gosub)
 		matched.events.append(event)
 		return matched
 	match action.extra_code[2]:
 		0:
-			var missing := _branch_target_mode(action.extra_code[1], action.extra_code[4], action.gosub)
+			var missing := _branch_to_destination(action.extra_code[1], action.extra_code[4], action.gosub)
 			missing.events.append(event)
 			return missing
 		1:
@@ -588,12 +590,6 @@ static func _character_attribute(character: CharacterState, index: int) -> int:
 		4: return character.vitality
 		5, 6: return character.luck
 	return 0
-
-
-func _branch_target_mode(mode: int, target_id: int, gosub: bool) -> ScenarioRuntimeOperationResult:
-	if mode == 0:
-		return _branch_xap(target_id, gosub)
-	return ScenarioRuntimeOperationResult.failed(&"unsupported_branch_target", "Classic branch target mode %d is not available in this execution context." % mode)
 
 
 func _branch_to_destination(mode: int, target_id: int, gosub: bool) -> ScenarioRuntimeOperationResult:

@@ -18,6 +18,8 @@ static func apply(directive: ScenarioVmDirective, definition: ScenarioDefinition
 			return resume_encounter(definition, frames)
 		ScenarioVmDirective.RESTART_CURRENT_PROGRAM:
 			return _restart_program(frames)
+		ScenarioVmDirective.DROPOUT:
+			return _dropout_program(frames)
 		ScenarioVmDirective.BRANCH_XAP:
 			return _branch_xap(directive, definition, frames, inherited_context)
 		ScenarioVmDirective.BRANCH_PROGRAM:
@@ -53,6 +55,13 @@ static func _restart_program(frames: Array[ScenarioFrame]) -> ScenarioDirectiveT
 		return ScenarioDirectiveTransition.failed(&"invalid_program_restart", "Classic battle restart has no issuing program frame.")
 	frames.back().cursor = 0
 	return ScenarioDirectiveTransition.completed(ScenarioDirectiveTransition.Action.CONTINUE, [{"event": "classic-program-restart", "programId": frames.back().definition_id}])
+
+
+static func _dropout_program(frames: Array[ScenarioFrame]) -> ScenarioDirectiveTransition:
+	if frames.is_empty() or frames.back().kind != ScenarioFrame.PROGRAM:
+		return ScenarioDirectiveTransition.failed(&"invalid_program_dropout", "Classic dropout has no issuing program frame.")
+	frames.back().cursor = 7
+	return ScenarioDirectiveTransition.completed(ScenarioDirectiveTransition.Action.CONTINUE, [{"event": "classic-dropout", "programId": frames.back().definition_id, "cursor": 7}])
 
 
 static func _branch_xap(directive: ScenarioVmDirective, definition: ScenarioDefinition, frames: Array[ScenarioFrame], inherited_context: ScenarioExecutionContext) -> ScenarioDirectiveTransition:

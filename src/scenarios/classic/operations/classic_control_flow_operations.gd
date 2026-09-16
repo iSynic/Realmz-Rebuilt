@@ -67,16 +67,15 @@ func _percent_branch(action: ClassicActionDefinition, context: ScenarioExecution
 	var event := DomainEvent.new(&"percent_branch_checked", {"chance": action.extra_code[0], "roll": roll, "matched": true})
 	match action.extra_code[1]:
 		-2:
-			var trigger_id := context.trigger_id
-			if not trigger_id.is_empty():
-				_game_state.world.triggers.disable_trigger(trigger_id)
-			return ScenarioRuntimeOperationResult.completed(true, [event], ScenarioVmDirective.finish())
+			if not context.trigger_id.is_empty():
+				_game_state.world.triggers.disable_trigger(context.trigger_id)
+			return ScenarioRuntimeOperationResult.completed(true, [event], ScenarioVmDirective.finish_timeline())
 		1:
-			var branch := _branch_from_values(action.extra_code, false, context)
+			var branch := _branch_from_values(action.extra_code, action.gosub, context)
 			branch.events.append(event)
 			return branch
 		2:
-			return ScenarioRuntimeOperationResult.completed(true, [event], ScenarioVmDirective.finish())
+			return ScenarioRuntimeOperationResult.completed(true, [event, DomainEvent.new(&"action_point_kept", {"triggerId": context.trigger_id, "source": "classic-opcode-42"})], ScenarioVmDirective.finish_timeline())
 	return ScenarioRuntimeOperationResult.completed(true, [event])
 
 
@@ -221,7 +220,7 @@ func _branch_on_quest_value(action: ClassicActionDefinition) -> ScenarioRuntimeO
 	var event := DomainEvent.new(&"quest_value_branch_checked", {"questId": quest_id, "value": _game_state.scenario_progress.quest_value(quest_id), "minimum": action.extra_code[1], "matched": matched, "targetId": target_id})
 	if target_id == 0:
 		return ScenarioRuntimeOperationResult.completed(matched, [event])
-	var branch := _branch_target_mode(action.extra_code[2], target_id, action.gosub)
+	var branch := _branch_to_destination(action.extra_code[2], target_id, action.gosub)
 	branch.events.append(event)
 	return branch
 
@@ -275,7 +274,7 @@ func _branch_on_misc(action: ClassicActionDefinition) -> ScenarioRuntimeOperatio
 	var event := DomainEvent.new(&"misc_branch_checked", {"testKind": test_kind, "expected": expected, "matched": matched, "targetId": target_id})
 	if target_id == 0:
 		return ScenarioRuntimeOperationResult.completed(matched, [event])
-	var branch := _branch_target_mode(action.extra_code[2], target_id, action.gosub)
+	var branch := _branch_to_destination(action.extra_code[2], target_id, action.gosub)
 	branch.events.append(event)
 	return branch
 
@@ -326,17 +325,15 @@ func _misc_branch_matches(test_kind: int, expected: int, characters: Array[Chara
 
 func _branch_from_values(values: Array[int], gosub: bool, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	match values[2]:
+		-1:
+			return ScenarioRuntimeOperationResult.completed(true, [], ScenarioVmDirective.dropout())
 		0:
 			return _branch_xap(values[3], gosub)
 		1, 2:
 			return _branch_encounter_result(values[2], values[3], values[4], gosub, context)
 		3:
-			return ScenarioRuntimeOperationResult.completed(true, [], ScenarioVmDirective.finish())
+			return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"action_point_kept", {"triggerId": context.trigger_id if context != null else "", "source": "classic"})], ScenarioVmDirective.finish_timeline())
 	return ScenarioRuntimeOperationResult.failed(&"unsupported_branch_mode", "Classic branch mode %d is not available in this execution context." % values[2])
-
-
-func _branch_target_mode(mode: int, target_id: int, gosub: bool) -> ScenarioRuntimeOperationResult:
-	return _branch_xap(target_id, gosub) if mode == 0 else ScenarioRuntimeOperationResult.failed(&"unsupported_branch_target", "Classic branch target mode %d is not available in this execution context." % mode)
 
 
 func _branch_to_destination(mode: int, target_id: int, gosub: bool) -> ScenarioRuntimeOperationResult:

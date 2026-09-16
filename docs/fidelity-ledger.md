@@ -90,6 +90,16 @@ Classic-visible behavior is the default ruleset. This ledger records deliberate 
 - Tests: `test_scenario_vm.gd::_test_package_backed_macro_spells` executes the exact packaged Castle in the Clouds `xap:273` (Spell 3208, power 1), Trouble in the Sword Lands `xap:1605` (Spell 1108, power 5, extraSaveAdjust -50), and Mithril Vault `xap:9` (Spell 1304 Destroy Magic, power 5, cannot 4) programs through the public VM, plus packaged Mithril Vault single-target and ray rejection rows. These use controlled battle preparation rather than ordinary campaign routes.
 - Deliberate correction: Stable legal-target ordering replaces Castle's ordinary-turn random candidate sampling because the macro caller never supplies a valid actor target list. Types 1 and 6 fail safely instead of reproducing memory corruption or undefined ray traversal.
 
+## FD-SCENARIO-010 — Registration opcode preservation without commercial gating
+
+- Affected rule: Classic opcodes 84 and 98 for commercial scenario registration and gating.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/newland.c`, lines 1246–1256 (opcode 84) and lines 1673–1682 (opcode 98). Castle checks registration codes and serial numbers against player registration records, halting execution or prompting the user if unverified.
+- Observable source inconsistency: Commercial shareware registration checks are obsolete and irrelevant for Realmz Rebuilt runtime packages. Halting execution on unregistered scenarios would break legitimate play of bundled and user-authored scenarios.
+- Player-facing problem: Enforcing registration checks would prevent players from completing scenarios or accessing registered-only sections.
+- Chosen 2.0 behavior: Preserve opcodes 84 and 98 as harmless control markers (`classic_control_marker`) that emit the domain event and continue execution smoothly without gating or prompting. Commercial registration is intentionally excluded.
+- Tests: `test_scenario_vm.gd` covers opcodes 84 and 98 emitting `classic_control_marker` without halting or mutating simulation state.
+- Deliberate correction: Registration gating is intentionally omitted; control markers are preserved for diagnostics and timeline continuity.
+
 ## FD-ECONOMY-001 — Zero-charge shop valuation
 
 - Affected rule: shop sale value for an item definition whose authored charge count is zero.

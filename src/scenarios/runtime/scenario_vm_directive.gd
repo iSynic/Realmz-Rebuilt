@@ -11,6 +11,7 @@ const BRANCH_PROGRAM: StringName = &"branch-program"
 const ENTER_ENCOUNTER: StringName = &"enter-encounter"
 const BRANCH_ENCOUNTER_RESULT: StringName = &"branch-encounter-result"
 const RESTART_CURRENT_PROGRAM: StringName = &"restart-current-program"
+const DROPOUT: StringName = &"dropout"
 
 var kind: StringName
 var target_id: int = -1
@@ -79,13 +80,17 @@ static func restart_current_program() -> ScenarioVmDirective:
 	return ScenarioVmDirective.new(RESTART_CURRENT_PROGRAM)
 
 
+static func dropout() -> ScenarioVmDirective:
+	return ScenarioVmDirective.new(DROPOUT)
+
+
 func copy() -> ScenarioVmDirective:
 	return from_data(to_data())
 
 
 func to_data() -> Dictionary:
 	match kind:
-		FINISH, FINISH_TIMELINE, RESUME_AFTER_ENCOUNTER, RESTART_CURRENT_PROGRAM:
+		FINISH, FINISH_TIMELINE, RESUME_AFTER_ENCOUNTER, RESTART_CURRENT_PROGRAM, DROPOUT:
 			return {"kind": String(kind)}
 		BRANCH_XAP:
 			return {"kind": String(kind), "targetId": target_id, "gosub": gosub}
@@ -113,6 +118,8 @@ static func from_data(value: Variant) -> ScenarioVmDirective:
 			return resume_after_encounter() if value.size() == 1 else null
 		RESTART_CURRENT_PROGRAM:
 			return restart_current_program() if value.size() == 1 else null
+		DROPOUT:
+			return dropout() if value.size() == 1 else null
 		BRANCH_XAP:
 			if value.size() != 3 or not value.get("targetId") is int or not value.get("gosub") is bool:
 				return null
