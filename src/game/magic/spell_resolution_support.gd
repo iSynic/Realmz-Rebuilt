@@ -51,6 +51,8 @@ func _resolve_character_spell_monster_target(caster: CharacterState, target: Mon
 		return _polymorph_monster(target, target_definition, spell_cost, duration, polymorph_context, rng)
 	if ClassicSpellSpecialEffectRules.is_combat_destroy_turn_undead_spell(spell):
 		return _destroy_or_turn_undead(caster, target, target_definition, spell_cost, duration, power_level, rng)
+	if ClassicSpellSpecialEffectRules.is_combat_identify_spell(spell):
+		return SpellResolution.new(true, false, false, spell_cost, 0, duration)
 	if absi(spell.special) == 28:
 		damage = duration
 	if absi(spell.special) in [27, 49]:
@@ -87,6 +89,8 @@ func _resolve_character_spell_character_target(caster: CharacterState, target: C
 		return _destroy_magic_character(target, 0, duration)
 	if ClassicSpellSpecialEffectRules.is_combat_remove_curse_spell(spell):
 		return _remove_curse_character(target, 0, duration, item_definitions)
+	if ClassicSpellSpecialEffectRules.is_combat_identify_spell(spell):
+		return _identify_character(target, duration, 0)
 	var saved := false
 	var damage_type := absi(spell.damage_type)
 	if damage_type > 0 and damage_type < 8:
@@ -181,6 +185,8 @@ func _resolve_monster_spell_character_target(caster: MonsterState, target: Chara
 			damage /= 2
 	if absi(spell.special) == 28:
 		damage = duration
+	if ClassicSpellSpecialEffectRules.is_combat_identify_spell(spell):
+		return _identify_character(target, duration, spell_cost)
 	if absi(spell.special) in [27, 49]:
 		damage = _combat_death_damage(target.conditions, absi(spell.special), target.current_health)
 	if absi(spell.special) == 59:
@@ -235,6 +241,8 @@ func _resolve_monster_spell_monster_target(caster: MonsterState, target: Monster
 		return _polymorph_monster(target, target_definition, spell_cost, duration, polymorph_context, rng)
 	if absi(spell.special) == 28:
 		damage = duration
+	if ClassicSpellSpecialEffectRules.is_combat_identify_spell(spell):
+		return SpellResolution.new(true, false, false, spell_cost, 0, duration)
 	if absi(spell.special) in [27, 49]:
 		damage = _combat_death_damage(target.conditions, absi(spell.special), target.current_health)
 	if absi(spell.special) == 59:
@@ -334,6 +342,12 @@ static func _drain_monster_spell_points(target: MonsterState, amount: int, durat
 	var result := SpellResolution.new(true, false, saved, spell_cost, 0, duration)
 	result.spell_point_delta = target.spell_points - before
 	return result
+
+
+static func _identify_character(target: CharacterState, duration: int, spell_cost: int) -> SpellResolution:
+	for item: ItemInstance in target.inventory():
+		item.identified = true
+	return SpellResolution.new(true, false, false, spell_cost, 0, duration)
 
 
 static func _combat_death_damage(conditions: ConditionSet, special: int, current_health: int) -> int:

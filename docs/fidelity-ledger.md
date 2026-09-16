@@ -349,6 +349,31 @@ Classic-visible behavior is the default ruleset. This ledger records deliberate 
 - Tests: `test_combat_flow.gd` proves monster AI group spell evaluation, authored recipient preservation, and charged missile weapon combat flow with physical damage spells. `test_realmz_rules.gd` proves character and monster projectile resolution with blindness (special 28), death (special 49), permanent condition preservation, and accumulation bounds.
 - Legacy quirk: none. Preserving Castle's condition 27 for special 28 aligns with stock Blind and Salt spells, and tactical group evaluation follows Rebuilt's documented deterministic AI improvements under AGENTS.md rules.
 
+## FD-COMBAT-017 — Adjudicated Classic spell capability gaps
+
+- Affected rule: Combat item/spell Identify (special 48), group SP Drain (special 60), camp touch death magic (special 49), physical touch and area damage spells (damage type 9), and unassigned reserved special 89.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`:
+  - `src/realmz_orig/resolvespell.c`, lines 72–80: special 48 loops over party character inventory items (`c[t].items[tt].ident = TRUE`) and plays sound 647. Castle defines no monster inventory or monster item identification.
+  - `src/realmz_orig/buttonchoice.c`, line 617, and `src/realmz_orig/spelllist.c`, lines 30–49: special 60 (`spdrain`) drains spell points across targeted combatants. For opposed group target type 10, it drains spell points from living hostile targets.
+  - `src/realmz_orig/spelllist.c`, lines 105–113, and `src/realmz_orig/buttonchoice.c`, line 617: special 49 resolves lethal damage (`stamina + 10`). In field/camp casting, specials 27 and 49 are executable on touch/self (target type 5).
+  - `src/realmz_orig/resist.c`, lines 75–76, and `src/realmz_orig/spelllist.c`, lines 105–113: damage type 9 represents physical damage. Physical damage spells with touch (target type 5) or area (target type 3) targeting execute as ordinary combat spells; Castle restricts only class-9 damage-9 missile weapons to projectile firing, while ordinary spells resolve through standard damage routines.
+  - `src/realmz_orig/resolvespell.c` and `src/realmz_orig/spelllist.c`: specials are bounded to standard opcodes 0..72 and 90..91. Special 89 is an unassigned reserved opcode in Classic Realmz with no engine implementation.
+- Observable source behavior:
+  - Castle executes special 48 exclusively against party characters, making monster casting not applicable.
+  - Group SP drain (special 60, target type 10) drains spell points from all living opposed targets.
+  - Camp casting of death magic (special 49, target type 5) lethally damages the chosen character.
+  - Physical damage touch (target type 5) and area (target type 3) spells resolve damage through standard combat rules against physical resistance.
+  - Special 89 is an unassigned reserved opcode in Classic Realmz with no engine implementation.
+- Player-facing problem: Rejecting these signatures as unsupported runtime gaps blocks valid scenario spells in Hax, Dagger of Shine, and Spires of Steel, while special 89 has no defined behavior in the Classic engine.
+- Chosen 2.0 behavior:
+  1. Admit combat Identify (special 48) for characters, identifying carried items on the selected party member and playing sound 647. Mark monster casting of special 48 as not applicable (`DISPOSITION_NOT_APPLICABLE`).
+  2. Expand combat SP drain (special 60) targeting to admit opposed groups (target type 10), draining spell points from living opposing combatants.
+  3. Admit camp/field casting of death magic (special 49) on touch/self (target type 5).
+  4. Admit non-projectile physical damage spells (damage type 9, target types 3 and 5) as ordinary combat spells.
+  5. Safely reject unassigned reserved special 89 with an explicit typed diagnostic (`DISPOSITION_NOT_APPLICABLE` under reserved special rules).
+- Tests: `test_realmz_rules.gd` covers combat Identify, group SP drain, camp touch death magic, physical touch damage, physical area damage, and special 89 diagnostic rejection. `test_combat_flow.gd` covers combat casting and execution flows.
+- Legacy quirk: none. Source-authentic behaviors are implemented across their proper owners, and the unassigned opcode is safely classified as not applicable without mutation or crashes.
+
 ## FD-REWARD-001 — Drain every level earned by one reward
 
 - Affected rule: post-reward level progression when a recipient retains enough positive victory points for more than one level.

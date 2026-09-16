@@ -23,6 +23,11 @@ Own immutable spell definitions and lookup, mutable spell shortcuts and scroll f
 - Scenario-only save adjustment and forced-affect operands use a detached `SpellDefinition` copy. They never mutate the shared catalog record or leak into a subsequent cast.
 - Shaped combat areas test reflection while collecting occupied targets, before their shared duration and damage rolls. Duplicate reflected recipients collapse to one effective caster result; automatic side/whole groups and persistent-field collisions do not reflect.
 - Target type zero with nonzero size is executable only for source-backed special 58 Summon. Other records are malformed: Castle's picker returns battlefield coordinates to actor-index resolution, so every casting-source disposition rejects them with the same explicit diagnostic.
+- Combat Identify (special 48) executes for characters, identifying carried items on the selected party member; for monsters, it is marked not applicable (`DISPOSITION_NOT_APPLICABLE`) because monsters carry no inventory items.
+- Combat SP Drain (special 60) admits opposed groups (target type 10) in addition to individual and area targets, draining spell points from living opposing combatants.
+- Camp/field casting admits death magic (special 49) on touch/self (target type 5) alongside condition cures and healing.
+- Physical damage spells (damage type 9) with touch (target type 5) and area (target type 3) targeting execute as ordinary combat spells; projectile guards apply only to true projectile missile weapons.
+- Unassigned reserved special 89 is classified as not applicable with an explicit typed diagnostic (`DISPOSITION_NOT_APPLICABLE` under reserved special rules).
 
 ## Work Guidance
 

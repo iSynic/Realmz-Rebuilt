@@ -25,13 +25,28 @@ func classic_use_probe(character: CharacterState, item: ItemDefinition, race: Ra
 	if item.race_class_only != 0 and (item.race_class_only & race.descriptor_flags) != item.race_class_only:
 		return InventoryActionProbe.block("This item requires race traits the character does not have.")
 	var caste_class_index := caste.caste_class - 1
-	if caste_class_index < 0 or caste_class_index > 15:
+	if caste_class_index < 0 or caste_class_index > 6:
 		return InventoryActionProbe.block("The character's Classic class group is invalid.")
-	if (item.caste_restrictions & (1 << caste_class_index)) != 0:
+	var caste_class_bit := 1 << (15 - caste_class_index)
+	var caste_restrictions := item.caste_restrictions & 0xFFFF
+	if (caste_restrictions & caste_class_bit) != 0:
 		return InventoryActionProbe.block("This item's class restrictions exclude the character.")
-	if item.caste_class_only != 0 and (item.caste_class_only & (1 << caste_class_index)) == 0:
+	var caste_class_only := item.caste_class_only & 0xFFFF
+	if caste_class_only != 0 and (caste_class_only & caste_class_bit) == 0:
 		return InventoryActionProbe.block("This item requires another Classic class group.")
 	return InventoryActionProbe.permit()
+
+
+static func presentation_definition(instance: ItemInstance, definition: ItemDefinition, items: ItemCatalog) -> ItemDefinition:
+	if definition == null or items == null:
+		return definition
+	if instance != null and instance.equipped:
+		return definition
+	if not definition.cursed_item_id.is_empty():
+		var decoy := items.item_by_id(definition.cursed_item_id)
+		if decoy != null:
+			return decoy
+	return definition
 
 
 func classic_spell_item_probe(character: CharacterState, instance: ItemInstance, item: ItemDefinition, spell: SpellDefinition, race: RaceDefinition, caste: CasteDefinition, in_combat: bool) -> InventoryActionProbe:

@@ -158,14 +158,12 @@ func _shop_inventory_row(instance: ItemInstance, definition: ItemDefinition, sho
 		identify_reason = "This item is already identified."
 	elif party_gold < 20:
 		identify_reason = "Identification costs 20 gold."
-	var presentation_definition: ItemDefinition = definition
-	if not instance.equipped and not definition.cursed_item_id.is_empty():
-		presentation_definition = _content.items.item_by_id(definition.cursed_item_id)
+	var presentation_definition := InventoryRules.presentation_definition(instance, definition, _content.items)
 	var public_view := ItemView.new(instance, definition, presentation_definition, _content)
 	var item_view := {
 		"instanceId": instance.id,
 		"itemId": definition.id,
-		"name": definition.name if instance.identified else definition.unidentified_name,
+		"name": public_view.name,
 		"identified": instance.identified,
 		"equipped": instance.equipped,
 		"charges": instance.charges,

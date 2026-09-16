@@ -122,11 +122,14 @@ func _populate_restrictions(definition: ItemDefinition, content: RealmzContent) 
 		return
 	var excluded_castes: Array[String] = []
 	var allowed_castes: Array[String] = []
+	var caste_restrictions := definition.caste_restrictions & 0xFFFF
+	var caste_class_only := definition.caste_class_only & 0xFFFF
 	for caste: CasteDefinition in content.characters.caste_definitions():
-		var bit := 1 << (caste.caste_class - 1) if caste.caste_class > 0 else 0
-		if bit != 0 and (definition.caste_restrictions & bit) != 0:
+		var caste_class_index := caste.caste_class - 1
+		var bit := (1 << (15 - caste_class_index)) if caste_class_index >= 0 and caste_class_index <= 6 else 0
+		if bit != 0 and (caste_restrictions & bit) != 0:
 			excluded_castes.append(caste.name)
-		if bit != 0 and (definition.caste_class_only & bit) != 0:
+		if bit != 0 and (caste_class_only & bit) != 0:
 			allowed_castes.append(caste.name)
 	_add_name_restriction("Not usable by", excluded_castes)
 	_add_name_restriction("Usable only by", allowed_castes)

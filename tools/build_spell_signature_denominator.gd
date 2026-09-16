@@ -381,7 +381,7 @@ func _build_denominator(signatures_by_id: Dictionary, scanned_sources: Array[Dic
 				pending_contexts.append(ctx_name)
 
 		# Check if malformed (targetType 0, size > 0, special != 58)
-		var is_malformed: bool = (int(behavior["targetType"]) == 0 and int(behavior["size"]) > 0 and int(behavior["special"]) != 58)
+		var is_malformed: bool = int(behavior["targetType"]) == 0 and int(behavior["size"]) > 0 and int(behavior["special"]) != 58
 
 		var sorted_sources: Array = rec["sources"]
 		sorted_sources.sort()
@@ -395,7 +395,10 @@ func _build_denominator(signatures_by_id: Dictionary, scanned_sources: Array[Dic
 			reason = "Target type 0 with nonzero size and non-summon special is malformed under CCG-008; safely rejected with typed diagnostic."
 		elif is_all_not_applicable:
 			disposition = "not-applicable"
-			reason = "Spell is non-combat, reserved standard slot, or not applicable to any combat runtime context."
+			if int(behavior["special"]) == 89:
+				reason = "Special 89 is an unassigned reserved opcode in Classic Realmz with no engine implementation; deliberate rejection under reserved special rules."
+			else:
+				reason = "Spell is non-combat, reserved standard slot, or not applicable to any combat runtime context."
 		elif has_pending:
 			disposition = "pending-runtime-gap"
 			pending_contexts.sort()

@@ -21,7 +21,7 @@ static func runtime_contexts(spell: SpellDefinition) -> Dictionary:
 
 
 static func combat_character_disposition(spell: SpellDefinition) -> StringName:
-	if spell == null or not spell.in_combat or ClassicSpellIdentityCatalog.application_role(spell) == ClassicSpellIdentityCatalog.ROLE_RESERVED_STANDARD:
+	if spell == null or not spell.in_combat or ClassicSpellIdentityCatalog.application_role(spell) == ClassicSpellIdentityCatalog.ROLE_RESERVED_STANDARD or is_unassigned_reserved_special_spell(spell):
 		return DISPOSITION_NOT_APPLICABLE
 	if ClassicSpellSourceRules.is_physical_projectile_profile(spell):
 		return DISPOSITION_NOT_APPLICABLE
@@ -43,7 +43,7 @@ static func combat_character_disposition(spell: SpellDefinition) -> StringName:
 
 
 static func combat_scroll_disposition(spell: SpellDefinition) -> StringName:
-	if spell == null or not spell.in_combat or ClassicSpellIdentityCatalog.application_role(spell) == ClassicSpellIdentityCatalog.ROLE_RESERVED_STANDARD:
+	if spell == null or not spell.in_combat or ClassicSpellIdentityCatalog.application_role(spell) == ClassicSpellIdentityCatalog.ROLE_RESERVED_STANDARD or is_unassigned_reserved_special_spell(spell):
 		return DISPOSITION_NOT_APPLICABLE
 	if ClassicSpellSourceRules.is_physical_projectile_profile(spell):
 		return DISPOSITION_NOT_APPLICABLE
@@ -65,7 +65,7 @@ static func combat_scroll_disposition(spell: SpellDefinition) -> StringName:
 
 
 static func combat_item_disposition(spell: SpellDefinition) -> StringName:
-	if spell == null or not spell.in_combat or ClassicSpellIdentityCatalog.application_role(spell) == ClassicSpellIdentityCatalog.ROLE_RESERVED_STANDARD:
+	if spell == null or not spell.in_combat or ClassicSpellIdentityCatalog.application_role(spell) == ClassicSpellIdentityCatalog.ROLE_RESERVED_STANDARD or is_unassigned_reserved_special_spell(spell):
 		return DISPOSITION_NOT_APPLICABLE
 	if ClassicSpellSourceRules.is_physical_projectile_profile(spell):
 		return DISPOSITION_NOT_APPLICABLE
@@ -85,7 +85,7 @@ static func combat_item_disposition(spell: SpellDefinition) -> StringName:
 
 
 static func combat_monster_disposition(spell: SpellDefinition) -> StringName:
-	if spell == null or not spell.in_combat or ClassicSpellIdentityCatalog.application_role(spell) == ClassicSpellIdentityCatalog.ROLE_RESERVED_STANDARD:
+	if spell == null or not spell.in_combat or ClassicSpellIdentityCatalog.application_role(spell) == ClassicSpellIdentityCatalog.ROLE_RESERVED_STANDARD or is_unassigned_reserved_special_spell(spell):
 		return DISPOSITION_NOT_APPLICABLE
 	if ClassicSpellSourceRules.is_zero_cost_monster_projectile_spell(spell):
 		return DISPOSITION_EXECUTABLE
@@ -103,6 +103,8 @@ static func combat_monster_disposition(spell: SpellDefinition) -> StringName:
 		return DISPOSITION_NOT_APPLICABLE
 	if ClassicSpellSpecialEffectRules.is_combat_destroy_turn_undead_spell(spell):
 		return DISPOSITION_NOT_APPLICABLE
+	if ClassicSpellSpecialEffectRules.is_combat_identify_spell(spell):
+		return DISPOSITION_NOT_APPLICABLE
 	if ClassicSpellSpecialEffectRules.is_combat_summon_spell(spell):
 		return DISPOSITION_EXECUTABLE if spell.cost >= 0 else DISPOSITION_PENDING
 	if ClassicSpellConditionRules.is_combat_actor_field_spell(spell):
@@ -115,7 +117,7 @@ static func combat_monster_disposition(spell: SpellDefinition) -> StringName:
 
 
 static func field_character_disposition(spell: SpellDefinition) -> StringName:
-	if spell == null or not spell.in_camp or ClassicSpellIdentityCatalog.application_role(spell) == ClassicSpellIdentityCatalog.ROLE_RESERVED_STANDARD:
+	if spell == null or not spell.in_camp or ClassicSpellIdentityCatalog.application_role(spell) == ClassicSpellIdentityCatalog.ROLE_RESERVED_STANDARD or is_unassigned_reserved_special_spell(spell):
 		return DISPOSITION_NOT_APPLICABLE
 	var special := absi(spell.special)
 	if special == 68:
@@ -126,7 +128,7 @@ static func field_character_disposition(spell: SpellDefinition) -> StringName:
 		return DISPOSITION_EXECUTABLE
 	if ClassicSpellSourceRules.is_inert_self_duration_effect(spell):
 		return DISPOSITION_EXECUTABLE
-	if special > 0 and special < 41 or special in [48, 57, 59, 60, 61, 62, 63, 64, 66, 91, 92] or special > 99:
+	if special > 0 and special < 41 or special in [27, 48, 49, 57, 59, 60, 61, 62, 63, 64, 66, 91, 92] or special > 99:
 		return DISPOSITION_EXECUTABLE
 	if special == 0 and absi(spell.damage_type) >= 1 and absi(spell.damage_type) < 8 and (spell.damage_min != 0 or spell.damage_max != 0 or spell.power_damage_min != 0 or spell.power_damage_max != 0):
 		return DISPOSITION_EXECUTABLE
@@ -146,6 +148,8 @@ static func unsupported_reason(spell: SpellDefinition, context_name: StringName)
 		return "The spell definition is unavailable."
 	if ClassicSpellIdentityCatalog.application_role(spell) == ClassicSpellIdentityCatalog.ROLE_RESERVED_STANDARD:
 		return "This is a reserved Classic spell slot, not an executable spell."
+	if is_unassigned_reserved_special_spell(spell):
+		return "Special 89 is an unassigned reserved opcode in Classic Realmz with no engine implementation; deliberate rejection under reserved special rules."
 	if String(context_name).begins_with("field-") and not spell.in_camp:
 		return "This spell is not available in the Classic field/camp context."
 	if context_name != &"field-character" and not spell.in_combat:
@@ -161,8 +165,12 @@ static func unsupported_reason(spell: SpellDefinition, context_name: StringName)
 	return "This Classic %s family is not executable for %s yet (special %d, target type %d)." % [family, context_label, absi(spell.special), spell.target_type]
 
 
+static func is_unassigned_reserved_special_spell(spell: SpellDefinition) -> bool:
+	return spell != null and absi(spell.special) == 89
+
+
 static func _is_character_source_effect(spell: SpellDefinition) -> bool:
-	return ClassicSpellSourceRules.is_ordinary_combat_spell(spell) or ClassicSpellSourceRules.is_inert_self_duration_effect(spell) or ClassicSpellConditionRules.is_combat_healing_spell(spell) or ClassicSpellConditionRules.is_combat_condition_cure_spell(spell) or ClassicSpellConditionRules.is_combat_condition_effect_spell(spell) or ClassicSpellSpecialEffectRules.is_combat_death_spell(spell) or ClassicSpellSpecialEffectRules.is_combat_spell_point_restore_spell(spell) or ClassicSpellSpecialEffectRules.is_combat_spell_point_drain_spell(spell) or ClassicSpellSpecialEffectRules.is_combat_destroy_magic_spell(spell) or ClassicSpellSpecialEffectRules.is_combat_remove_curse_spell(spell) or ClassicSpellSpecialEffectRules.is_combat_charm_spell(spell) or ClassicSpellSpecialEffectRules.is_combat_polymorph_spell(spell) or ClassicSpellSpecialEffectRules.is_combat_destroy_turn_undead_spell(spell) or ClassicSpellSpecialEffectRules.is_combat_phase_spell(spell) or ClassicSpellSpecialEffectRules.is_combat_summon_spell(spell)
+	return ClassicSpellSourceRules.is_ordinary_combat_spell(spell) or ClassicSpellSourceRules.is_inert_self_duration_effect(spell) or ClassicSpellConditionRules.is_combat_healing_spell(spell) or ClassicSpellConditionRules.is_combat_condition_cure_spell(spell) or ClassicSpellConditionRules.is_combat_condition_effect_spell(spell) or ClassicSpellSpecialEffectRules.is_combat_death_spell(spell) or ClassicSpellSpecialEffectRules.is_combat_identify_spell(spell) or ClassicSpellSpecialEffectRules.is_combat_spell_point_restore_spell(spell) or ClassicSpellSpecialEffectRules.is_combat_spell_point_drain_spell(spell) or ClassicSpellSpecialEffectRules.is_combat_destroy_magic_spell(spell) or ClassicSpellSpecialEffectRules.is_combat_remove_curse_spell(spell) or ClassicSpellSpecialEffectRules.is_combat_charm_spell(spell) or ClassicSpellSpecialEffectRules.is_combat_polymorph_spell(spell) or ClassicSpellSpecialEffectRules.is_combat_destroy_turn_undead_spell(spell) or ClassicSpellSpecialEffectRules.is_combat_phase_spell(spell) or ClassicSpellSpecialEffectRules.is_combat_summon_spell(spell)
 
 
 static func _is_invalid_open_space_spell(spell: SpellDefinition) -> bool:

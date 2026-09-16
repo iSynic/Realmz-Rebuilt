@@ -101,6 +101,8 @@ func commit(state: GameState, content: RealmzContent, caster: CharacterState, sp
 	_context.fields().append_created_events(events, persistent_fields, event_source)
 	CombatSpellEventBuilder.append_sound(events, spell.sound_start, "classic-combat-spell-start")
 	CombatSpellEventBuilder.append_cast(events, caster.id, spell, group, center, shape, event_source)
+	if ClassicSpellSpecialEffectRules.is_combat_identify_spell(spell):
+		events.append(DomainEvent.new(&"sound_requested", {"soundId": 647, "waitForCompletion": false, "source": "classic-combat-identify"}))
 	if spell.target_type == 7:
 		var party_condition := absi(spell.special)
 		state.party.conditions.set_value(party_condition, maxi(state.party.conditions.value(party_condition), group.duration))

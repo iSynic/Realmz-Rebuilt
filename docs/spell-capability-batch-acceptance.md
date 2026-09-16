@@ -2,20 +2,28 @@
 
 ## Scope
 
-Reviewed monster group-spell planning, zero-cost actor fields, physical-damage charged items, and projectile special 28. Group recipients follow authored target types 9/10/12; tactical evaluation never changes recipient ownership. Special 28 deals rolled duration as damage and applies Blind through shared permanence and accumulation guards.
+Adjudicated and implemented the remaining seven Classic spell capability gaps identified across raw third-party scenarios (Hax, Dagger of Shine, and Spires of Steel) against pinned Castle source:
+- Special 48 Identify: Combat single-target item identification implemented for characters; marked not applicable for monsters (`DISPOSITION_NOT_APPLICABLE`) since monsters carry no inventory items.
+- Special 60 SP Drain: Expanded combat SP drain to support opposed groups (target type 10).
+- Special 49 Death Magic: Admitted and executable in camp/field for touch/self (target type 5).
+- Physical touch (target type 5) and area (target type 3) damage spells (damage type 9): Admitted as ordinary combat spells, removing over-restrictive projectile guards.
+- Special 89: Unassigned reserved opcode in Classic Realmz with no engine implementation; safely classified as not applicable (`DISPOSITION_NOT_APPLICABLE`) with explicit typed diagnostic rejection under reserved special rules.
 
 Save, Character Files, settings, and package schemas are unchanged. No packages, player data, or Providence checkout were modified.
 
 ## Verification
 
-- Tier 2 workflow gate passed with the combat-flow and Realmz-rules suites: 673 assertions.
-- Aggregate `tools/verify.ps1` passed: 4,537 assertions across 29 suites, with full-suite teardown checks passing. Architecture, maintainability, budgets, media/music, export contracts, schemas, package alignment, all 13 bundled scenarios, differential evidence, and workflow/gameplay inventories passed.
-- Spell denominator regenerated identically: 508 signatures across 48 scanned source entries; 489 classifier-admitted, 11 not applicable, one malformed-safe, seven pending runtime gaps. Classification is not exhaustive execution proof.
-- Main-scene five-frame smoke emitted one ObjectDB leak warning. That smoke does not enforce leak rejection; the complete suite does. The warning remains separate startup diagnostic work.
-- External-reference symbol validation was skipped by the gates because reference roots were not supplied. The reviewed effects retain source-control-flow references in FD-COMBAT-016.
+- Focused test suites passed cleanly: `test_combat_flow` (317 assertions), `test_realmz_rules` (366 assertions), 683 assertions total.
+- Hotspot and test-budget verification passed (`tools/verify_hotspot_test_budget.ps1`): production=69082, tests=9802, ratio=14.19%.
+- Human-maintainability verification passed (`tools/verify_human_maintainability.ps1`).
+- Architecture overhaul verification passed (`tools/verify_architecture_overhaul.ps1`).
+- Architecture boundary verification passed (`tools/verify_architecture.ps1`).
+- Spell signature denominator verified (`tools/verify_spell_signature_denominator.ps1`): 508 unique signatures across 48 scanned source entries; 495 implemented, 12 not applicable, 1 malformed-safe, 0 pending runtime gaps. Classification is not exhaustive campaign execution proof.
+- Fidelity decisions documented in `docs/fidelity-ledger.md` under `FD-COMBAT-016` and `FD-COMBAT-017`.
+- Code changes pass `git diff --check`.
 
 ## Remaining work
 
-The seven raw third-party signatures remain open: specials 48, 60, and 89; two touch-death signatures; physical touch and area damage. Compiler readiness is separate from runtime capability. Macro single-target and ray policies remain explicit safe rejection.
+Zero pending runtime gaps remain in the authoritative spell signature denominator. Macro single-target and ray policies remain explicit safe rejection (FD-SCENARIO-009).
 
 Campaign journeys, native execution on other operating systems, physical-controller comfort, and public release were not performed or certified by this batch.
