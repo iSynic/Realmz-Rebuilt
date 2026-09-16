@@ -106,7 +106,7 @@ static func combat_monster_disposition(spell: SpellDefinition) -> StringName:
 	if ClassicSpellSpecialEffectRules.is_combat_summon_spell(spell):
 		return DISPOSITION_EXECUTABLE if spell.cost >= 0 else DISPOSITION_PENDING
 	if ClassicSpellConditionRules.is_combat_actor_field_spell(spell):
-		return DISPOSITION_EXECUTABLE if spell.cost > 0 else DISPOSITION_PENDING
+		return DISPOSITION_EXECUTABLE if spell.cost >= 0 else DISPOSITION_PENDING
 	if ClassicSpellConditionRules.combat_spell_uses_persistent_field_queue(spell):
 		return DISPOSITION_EXECUTABLE if spell.cost >= 0 and ClassicSpellConditionRules.is_combat_persistent_field_spell(spell) else DISPOSITION_PENDING
 	if spell.target_type not in [0, 1, 3, 4, 5, 6, 9, 10, 12] or spell.target_type == 0 and spell.size != 0 or spell.cost < 0:

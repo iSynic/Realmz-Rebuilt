@@ -9,6 +9,7 @@ Own deterministic automated proofs, synthetic fixtures, oracle provenance, route
 - Unit, wire-contract, public-session workflow, presentation-invariant, and ordinary-route test lanes.
 - Synthetic Providence-authored package fixtures and controlled Castle oracle fixtures.
 - Fixture manifests containing source commit, source symbol/range, inputs, scripted RNG, hashes, and observations.
+- `fixtures/oracle/classic-spell-signature-denominator.json` provides the authoritative machine-readable spell signature denominator covering the application library, all 13 bundled packages, and raw third-party scenarios under `F:\Scenarios`, mapping each behavior signature to its mechanical family, sources, runtime contexts, and final capability disposition without promoting campaign-route playability.
 - `fixtures/oracle/ap-behavior-recipes.json` supplements the existing workflow/gameplay inventories with reusable, package-pinned recipes and local evidence references for the licensed 13-scenario bundle. A recipe's explicit `package` or `application` overrides that default identity; the named-starter baseline contract remains shared. Preserve earlier evidence under its actual library identity after a catalog correction; it does not automatically certify the replacement library. It is not a second completeness denominator; prepared adjacency, ordinary input, actual controls, direct setup, and restored continuation remain distinct proof modes.
 - Developer-only fixture gallery and local capture harnesses.
 

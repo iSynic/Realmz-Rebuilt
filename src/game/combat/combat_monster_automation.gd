@@ -373,14 +373,6 @@ static func monster_can_retry_cast(state: GameState, monster: MonsterState, defi
 static func monster_spell_unavailable_reason(spell: SpellDefinition) -> String:
 	if ClassicSpellDispositionRules.combat_monster_disposition(spell) != ClassicSpellDispositionRules.DISPOSITION_EXECUTABLE:
 		return ClassicSpellDispositionRules.unsupported_reason(spell, &"combat-monster")
-	var healing_spell := ClassicSpellConditionRules.is_combat_healing_spell(spell)
-	var condition_cure := ClassicSpellConditionRules.is_combat_condition_cure_spell(spell)
-	var condition_effect := ClassicSpellConditionRules.is_combat_condition_effect_spell(spell)
-	var spell_point_restore := ClassicSpellSpecialEffectRules.is_combat_spell_point_restore_spell(spell)
-	var destroy_magic := ClassicSpellSpecialEffectRules.is_combat_destroy_magic_spell(spell)
-	var charm_spell := ClassicSpellSpecialEffectRules.is_combat_charm_spell(spell)
-	if spell.cannot == 4 and not healing_spell and not condition_cure and not condition_effect and not spell_point_restore and not destroy_magic and not charm_spell:
-		return "monster-spell-friendly-target-unresolved"
 	return ""
 
 

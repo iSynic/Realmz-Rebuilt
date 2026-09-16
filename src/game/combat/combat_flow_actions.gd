@@ -508,7 +508,7 @@ static func projectile_spell_unavailable_reason(spell: SpellDefinition) -> Strin
 		return "Classic projectile spell '%s' is not missile class 9." % spell.id
 	if absi(spell.damage_type) != 9:
 		return "Elemental projectile spell '%s' requires its source-backed save and special-effect path." % spell.id
-	if absi(spell.special) not in [0, 7, 49]:
+	if absi(spell.special) not in [0, 7, 28, 49]:
 		return "Projectile spell '%s' uses unresolved Classic special %d." % [spell.id, spell.special]
 	return ""
 

@@ -9,7 +9,7 @@ static func is_physical_projectile_profile(spell: SpellDefinition) -> bool:
 
 
 static func is_supported_projectile_item_profile(spell: SpellDefinition) -> bool:
-	return spell != null and spell.in_combat and spell.target_type == 1 and absi(spell.spell_class) == 9 and absi(spell.damage_type) == 9 and absi(spell.special) in [0, 7, 49]
+	return spell != null and spell.in_combat and spell.target_type == 1 and absi(spell.spell_class) == 9 and absi(spell.damage_type) == 9 and absi(spell.special) in [0, 7, 28, 49]
 
 
 static func is_zero_cost_monster_projectile_spell(spell: SpellDefinition) -> bool:
@@ -31,7 +31,7 @@ static func is_application_transport_projectile_item_profile(spell: SpellDefinit
 static func is_ordinary_combat_spell(spell: SpellDefinition) -> bool:
 	var projectile_spell := absi(spell.spell_class) == 9
 	var source_defined_projectile_spell := projectile_spell and spell.cost > 0 and absi(spell.damage_type) != 9
-	return spell.special == 0 and absi(spell.damage_type) >= 1 and absi(spell.damage_type) <= 8 and (not projectile_spell or source_defined_projectile_spell) and (spell.damage_min != 0 or spell.damage_max != 0 or spell.power_damage_min != 0 or spell.power_damage_max != 0)
+	return spell.special == 0 and absi(spell.damage_type) >= 1 and absi(spell.damage_type) <= 9 and (not projectile_spell or source_defined_projectile_spell) and (spell.damage_min != 0 or spell.damage_max != 0 or spell.power_damage_min != 0 or spell.power_damage_max != 0)
 
 
 static func is_inert_self_duration_effect(spell: SpellDefinition) -> bool:

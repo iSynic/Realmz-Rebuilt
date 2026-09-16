@@ -3,6 +3,8 @@
 class_name CombatMonsterActionPlanner
 extends CombatAiScoringSupport
 
+const HARMFUL_CONDITIONS: Array[int] = [ConditionRules.RUNS_AWAY, ConditionRules.HELPLESS, ConditionRules.TANGLED, ConditionRules.CURSED, ConditionRules.STUPID, ConditionRules.SLOW, ConditionRules.POISONED, ConditionRules.TURNED_TO_STONE, ConditionRules.BLIND, ConditionRules.DISEASED, ConditionRules.CONFUSED, ConditionRules.HINDERED_ATTACKS, ConditionRules.HINDERED_DEFENSE, ConditionRules.SILENCED]
+
 func choose_monster_action(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, rng: RealmzRng, allow_missile: bool = true) -> StringName:
 	if monster.conditions.is_active(ConditionRules.RUNS_AWAY):
 		return &"retreat"
@@ -62,7 +64,7 @@ func _monster_spell_power_plan(state: GameState, content: RealmzContent, monster
 	if spell.target_type == 6:
 		return _monster_ray_spell_power_plan(state, content, monster, spell, slot, power)
 	if spell.target_type in [9, 10, 12]:
-		return _monster_group_spell_power_plan(state, content, monster, spell, slot, power, spell.target_type == 9)
+		return _monster_group_spell_power_plan(state, content, monster, spell, slot, power)
 	var cure_index := MagicRules.condition_cure_index(spell) if MagicRules.is_condition_cure_spell(spell) else -1
 	var effect_index := ClassicSpellConditionRules.combat_condition_effect_index(spell)
 	if effect_index < 0:
@@ -146,21 +148,59 @@ func _monster_polymorph_plan(state: GameState, content: RealmzContent, monster: 
 	return best
 
 
-func _monster_group_spell_power_plan(state: GameState, content: RealmzContent, monster: MonsterState, spell: SpellDefinition, slot: int, power: int, friendly: bool) -> Dictionary:
-	var target_ids := _everybody_actor_ids(state) if spell.target_type == 12 else _friendly_actor_ids_for_monster(state, monster) if friendly else _opposed_actor_ids_for_monster(state, monster)
+func _monster_group_spell_power_plan(state: GameState, content: RealmzContent, monster: MonsterState, spell: SpellDefinition, slot: int, power: int) -> Dictionary:
+	var target_ids: Array[String] = []
+	match spell.target_type:
+		9:
+			target_ids = _friendly_actor_ids_for_monster(state, monster)
+		10:
+			target_ids = _opposed_actor_ids_for_monster(state, monster)
+		12:
+			target_ids = _everybody_actor_ids(state)
+		_:
+			return {}
 	var condition_index := ClassicSpellConditionRules.combat_condition_effect_index(spell)
+	var healing: bool = _context.automation().is_source_backed_combat_healing_spell(spell) or ClassicSpellConditionRules.is_combat_healing_spell(spell)
+	var cure_index := MagicRules.condition_cure_index(spell) if MagicRules.is_condition_cure_spell(spell) else -1
+	var spell_point_restore := ClassicSpellSpecialEffectRules.is_combat_spell_point_restore_spell(spell)
+	var has_harmful_damage := absi(spell.damage_type) >= 1 and absi(spell.damage_type) <= 7 and (spell.damage_min != 0 or spell.damage_max != 0 or spell.power_damage_min != 0 or spell.power_damage_max != 0)
+	var is_harmful := (condition_index in HARMFUL_CONDITIONS) or has_harmful_damage or spell.cannot in [1, 2]
+	var is_beneficial := healing or cure_index >= 0 or spell_point_restore or spell.cannot == 4 or (condition_index >= 0 and not (condition_index in HARMFUL_CONDITIONS))
+	if spell.target_type == 9 and not is_beneficial:
+		return {}
+	if spell.target_type == 10 and is_beneficial and not is_harmful:
+		return {}
 	var effective_target_count := 0
 	var effective_target_balance := 0
 	for target_id: String in target_ids:
-		if not _target_hard_immune(state, content, target_id, spell) and (condition_index < 0 or _target_condition_value(state, target_id, condition_index) == 0):
+		if _target_hard_immune(state, content, target_id, spell):
+			continue
+		var is_friendly := _actor_is_friendly_to_monster(state, monster, target_id)
+		if healing:
+			if _target_missing_health(state, target_id) > 0:
+				effective_target_count += 1
+				effective_target_balance += 1 if is_friendly else -1
+		elif cure_index >= 0:
+			if _target_condition_value(state, target_id, cure_index) > 0:
+				effective_target_count += 1
+				effective_target_balance += 1 if is_friendly else -1
+		elif spell_point_restore:
+			if _target_missing_spell_points(state, target_id) > 0:
+				effective_target_count += 1
+				effective_target_balance += 1 if is_friendly else -1
+		elif condition_index >= 0:
+			if _target_condition_value(state, target_id, condition_index) == 0:
+				effective_target_count += 1
+				effective_target_balance += (-1 if is_friendly else 1) if condition_index in HARMFUL_CONDITIONS else (1 if is_friendly else -1)
+		else:
 			effective_target_count += 1
-			effective_target_balance += -1 if _actor_is_friendly_to_monster(state, monster, target_id) else 1
+			effective_target_balance += -1 if is_friendly else 1
 	if effective_target_count == 0 or spell.target_type == 12 and effective_target_balance <= 0:
 		return {}
 	var expected := expected_spell_effect(spell, power)
 	if condition_index >= 0:
 		expected = maxi(1, _maximum_condition_duration(spell, power))
-	var score := 340 + (effective_target_balance if spell.target_type == 12 else effective_target_count) * expected * 5 - spell.cost * power * 3
+	var score := 340 + (effective_target_balance if spell.target_type == 12 else effective_target_count) * maxi(1, expected) * 5 - spell.cost * power * 3
 	return {"spellId": spell.id, "spellSlot": slot, "power": power, "targetIds": target_ids, "score": score}
 
 

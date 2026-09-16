@@ -791,6 +791,33 @@ func _test_projectile_resolution() -> void:
 	var shield_result := rules.magic.resolve_character_projectile(caster, caste, item, shielded, spell, 1, shield_rng)
 	assert_equal([shield_result.hit_count, shield_result.miss_count, shielded.current_health], [0, 1, 30], "projectile shield terminates the repeated volley before damage")
 	assert_equal(shield_rng.snapshot().draw_count, 3, "an automatic projectile-shield miss consumes no dodge roll")
+	var blind_spell := SpellDefinition.new("spell.projectile-blind", 4102, "Blind Dart")
+	blind_spell.spell_class = 9
+	blind_spell.damage_type = 9
+	blind_spell.target_type = 1
+	blind_spell.special = 28
+	blind_spell.duration_min = 5
+	blind_spell.duration_max = 5
+	blind_spell.fixed_target_count = 1
+	var blind_target := MonsterState.new("monster.projectile-blind-target", "monster.projectile-rules", "BlindTarget", 30, 30, 1, 1)
+	var blind_result := rules.magic.resolve_character_projectile(caster, caste, item, blind_target, blind_spell, 1, ScriptedRng.new([0, 0, 0, 0]))
+	assert_equal([blind_result.hit_count, blind_result.damage_per_hit, blind_target.current_health, blind_target.conditions.value(ConditionRules.BLIND)], [1, 5, 25, 5], "projectile special 28 inflicts duration as damage and adds blind condition on hit")
+	blind_target.conditions.set_value(ConditionRules.BLIND, -1); rules.magic.resolve_character_projectile(caster, caste, item, blind_target, blind_spell, 1, ScriptedRng.new([0, 0, 0, 0])); var perm_mon := blind_target.conditions.value(ConditionRules.BLIND); blind_target.conditions.set_value(ConditionRules.BLIND, 122); rules.magic.resolve_character_projectile(caster, caste, item, blind_target, blind_spell, 1, ScriptedRng.new([0, 0, 0, 0])); assert_equal([perm_mon, blind_target.conditions.value(ConditionRules.BLIND)], [-1, 122], "projectile special 28 preserves monster permanent condition and accumulation limit")
+	var monster_caster := MonsterState.new("monster.projectile-caster", "monster.projectile-rules", "MonsterArcher", 20, 20, 1, 1)
+	var char_target := CharacterState.new("character.projectile-char-target", "CharTarget", 20, 20)
+	char_target.dodge = -50
+	var monster_proj_result := rules.magic.resolve_monster_projectile(monster_caster, item, char_target, blind_spell, 1, ScriptedRng.new([0, 0, 0]))
+	assert_equal([monster_proj_result.hit_count, monster_proj_result.damage_per_hit, char_target.current_health, char_target.conditions.value(ConditionRules.BLIND)], [1, 5, 15, 5], "monster projectile special 28 inflicts duration as damage and adds blind condition to character")
+	char_target.conditions.set_value(ConditionRules.BLIND, -1); rules.magic.resolve_monster_projectile(monster_caster, item, char_target, blind_spell, 1, ScriptedRng.new([0, 0, 0])); var perm_char := char_target.conditions.value(ConditionRules.BLIND); char_target.conditions.set_value(ConditionRules.BLIND, 98); rules.magic.resolve_monster_projectile(monster_caster, item, char_target, blind_spell, 1, ScriptedRng.new([0, 0, 0])); assert_equal([perm_char, char_target.conditions.value(ConditionRules.BLIND)], [-1, 98], "monster projectile special 28 preserves character permanent condition and accumulation limit")
+	var death_spell := SpellDefinition.new("spell.projectile-death", 4103, "Death Arrow")
+	death_spell.spell_class = 9
+	death_spell.damage_type = 9
+	death_spell.target_type = 1
+	death_spell.special = 49
+	death_spell.fixed_target_count = 1
+	var death_target := MonsterState.new("monster.projectile-death-target", "monster.projectile-rules", "DeathTarget", 30, 30, 1, 1)
+	var death_result := rules.magic.resolve_character_projectile(caster, caste, item, death_target, death_spell, 1, ScriptedRng.new([0, 0, 0, 0]))
+	assert_equal([death_result.hit_count, death_result.damage_per_hit, death_target.current_health, death_result.target_defeated], [1, 40, -10, true], "projectile special 49 lethal replacement inflicts target health plus ten")
 
 
 func _test_combat_magic_and_monsters() -> void:

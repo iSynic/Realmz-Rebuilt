@@ -330,6 +330,25 @@ Classic-visible behavior is the default ruleset. This ledger records deliberate 
 - Tests: `_test_public_tangle_weed_correction_matrix` loads the bundled application record, proves all four combat-source dispositions, resolves the exact Tangle condition and persistent field through every source, and restores the result and queue from public save data.
 - Legacy quirk: none. An out-of-bounds condition write is not a portable authored dependency; any different intended effect would require contradictory application data or controlled runtime evidence.
 
+## FD-COMBAT-016 — Projectile special effects, shared condition semantics, and group spell recipients
+
+- Affected rule: Projectile special effect resolution (specials 0, 7, 28, 49), charged missile weapons with physical damage spells (damage type 9), shared condition accumulation/permanence semantics, authored group spell recipient ownership (target types 9, 10, 12), and tactical monster group-spell evaluation.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`:
+  - `src/realmz_orig/resolvespell.c`, lines 346–357 (`special == 28` disease damage and condition bounds), lines 254–257 (group target types 9 and 10 descriptions).
+  - `src/realmz_orig/spelllist.c`, lines 105–113 (`special == 49` lethal damage = 10 + stamina), lines 420–427 (`special == 7 || special == 3` movement halving).
+  - `src/realmz_orig/combat.c`, lines 147–154 (random monster spell picking), lines 162–205 (group spell targeting for types 9, 10, 12 based strictly on `traiter`).
+  - `src/realmz_orig/attack.c`, lines 480–486 (`item.sp2 > 1100 && spellinfo.damagetype == 9` missile weapon check), lines 880–885 (`COND_DISEASED` condition).
+  - `src/realmz_orig/combatinfo-combatchoice.c`, lines 320–335 (`spellinfo.damagetype == 9` missile weapon item activation).
+  - `src/realmz_orig/tomissle-weap.c`, lines 68–82 (`tomissle`: item spell targeting verification).
+- Observable source behavior: Projectile special 28 treats duration as direct damage while setting conditions. In Castle `resolvespell.c:346-357`, the code writes `condition[special - 1] += duration;`, setting condition 27 (`COND_BLIND`), with duration dealt as damage (`damage = adjdam = duration; /*** disease ***/`). Special 49 inflicts target health plus 10 as lethal damage (`spelllist.c:105-113`). Special 7 halves movement (`spelllist.c:420-427`). Charged missile weapons with physical damage spells (`damagetype == 9`) are guarded in melee attack paths (`attack.c:480-486`, `combatinfo-combatchoice.c:320-335`). Authored group spells target all friendly actors (`traiter == caster.traiter` for type 9), all opposed actors (`traiter != caster.traiter` for type 10), or everybody (`inbattle` actors for type 12) strictly by `targettype` (`combat.c:162-205`, `resolvespell.c:254-257`).
+- Player-facing problem: Without special 28 and 49 support, blinding/duration-damaging and slaying projectiles are rejected; raw condition additions bypass permanent-condition guards and accumulation caps; charged missile weapons with physical damage spells fail to execute; and altering group recipients based on spell flags corrupts authored targeting ownership.
+- Chosen 2.0 behavior:
+  1. Expand the supported projectile special allowlist to [0, 7, 28, 49]. Special 28 deals duration roll as damage and routes condition application through `_apply_combat_condition` to `ConditionRules.BLIND` (condition 27, preserving Castle's shared condition index from `special - 1`), while preserving permanent conditions (`current < 0`) and accumulation limits (100 for characters, 125 for monsters). Special 49 deals target current health plus 10. Special 7 halves movement.
+  2. Admit physical damage spells (damage type 9) in charged missile weapons as ordinary combat spells for item use.
+  3. Strictly preserve authored group recipient ownership: type 9 targets friendly actors, type 10 targets opposed actors, and type 12 targets everybody. Healing, condition curing, and `cannot` flags govern tactical desirability (scoring and pruning), never recipient ownership.
+- Tests: `test_combat_flow.gd` proves monster AI group spell evaluation, authored recipient preservation, and charged missile weapon combat flow with physical damage spells. `test_realmz_rules.gd` proves character and monster projectile resolution with blindness (special 28), death (special 49), permanent condition preservation, and accumulation bounds.
+- Legacy quirk: none. Preserving Castle's condition 27 for special 28 aligns with stock Blind and Salt spells, and tactical group evaluation follows Rebuilt's documented deterministic AI improvements under AGENTS.md rules.
+
 ## FD-REWARD-001 — Drain every level earned by one reward
 
 - Affected rule: post-reward level progression when a recipient retains enough positive victory points for more than one level.

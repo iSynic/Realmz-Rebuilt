@@ -43,6 +43,18 @@ The three missing calls are not one defect. `xap:165` and `xap:169` fall within 
 
 White Dragon's `xap:9363` lies beyond every emitted program. Exact raw-byte inspection proves that the aligned row presented as battle 143 contains the signed `-9363` value and repeated monster 109 cells inside a foreign suffix. Current Providence vNext preserves those source bytes but rejects the dangling reference rather than emitting an invented program or silently treating the row as valid gameplay. An explicit source correction remains required before White Dragon can be regenerated. Neither case is a runtime spell-family gap.
 
+## Target type disposition audit
+
+Evaluating opcode-17 macro rows across the complete set of Classic target types establishes:
+- **Target type 0 (repeated targets):** 3 statically reachable rows (Castle in the Clouds, Trouble in the Sword Lands, Mithril Vault). Supported via shared repeated-spell resolver (`FD-SCENARIO-009`) using deterministic first-legal-target ordering up to authored power/count.
+- **Target type 1 (single-target):** 1 statically reachable row (Mithril Vault `xap:393`). Retains typed safe rejection (`unsupported_macro_single_target`) because Castle `spelltargets.c` aliases macro coordinates into combatant index `target[0]`, reading `pos[target[0][0]]` out-of-bounds into unallocated memory.
+- **Target types 3 and 4 (immediate area):** 24 statically reachable rows. Fully supported through direct area resolution at the retained macro source coordinates.
+- **Queued persistent fields (`queue_icon != 0`):** 36 statically reachable rows. Fully supported through the persistent battle field queue anchored at the dying monster's coordinate.
+- **Target type 6 (ray):** 4 statically reachable rows (City of Bywater `xap:114`/`115`, Mithril Vault `xap:337`, White Dragon `xap:357`). Retains typed safe rejection (`unsupported_macro_ray`) because Castle code bypasses ray traversal completely, collapsing to an invalid 1x1 point check on the dying monster's coordinate with undefined ray heading.
+- **Target types 5 (touch/self), 8 (teleport/phase), and others:** 0 statically reachable rows across the entire bundled corpus. If encountered, they fail safely with typed diagnostics without mutating battle or session state.
+
+Controlled public VM tests prove execution of the repeated-target, area, and persistent-field rows as well as safe rejection of type-1 and type-6 rows. Ordinary campaign-route execution remains unproven.
+
 ## Evidence limits
 
 - The bundled scenario archives are the exact packages validated by `verify_bundled_scenarios.ps1`; the audit records each archive SHA-256 in its JSON output.
