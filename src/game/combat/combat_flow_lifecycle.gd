@@ -49,6 +49,18 @@ func advance_turn(state: GameState, content: RealmzContent, rng: RealmzRng, even
 		process_bleeding_round(state, rng, events)
 
 
+func advance_turn_and_check_resolved(state: GameState, content: RealmzContent, rng: RealmzRng, events: Array[DomainEvent]) -> bool:
+	advance_turn(state, content, rng, events)
+	return finish_if_resolved(state, content, events)
+
+
+func skip_incapacitated_actor(state: GameState, content: RealmzContent, actor_id: String, rng: RealmzRng, events: Array[DomainEvent]) -> bool:
+	if state != null and state.combat != null and state.combat.battlefield != null and state.combat.battlefield.actors.has_actor(actor_id):
+		_context.automation().remove_defeated_position(state.combat, actor_id, true)
+	advance_turn(state, content, rng, events)
+	return finish_if_resolved(state, content, events)
+
+
 func _process_persistent_field_round_collisions(state: GameState, content: RealmzContent, rng: RealmzRng, events: Array[DomainEvent]) -> void:
 	var combat := state.combat
 	if combat == null or combat.battlefield == null or combat.spell_runtime.persistent_fields().is_empty():

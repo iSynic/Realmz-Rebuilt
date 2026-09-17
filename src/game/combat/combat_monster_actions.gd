@@ -69,7 +69,7 @@ func process_projectile(state: GameState, content: RealmzContent, monster: Monst
 		"source": "classic-monster",
 	}))
 	_context.actions().mark_character_bleeding(state, target, resolution.target_defeated)
-	if resolution.target_defeated: combat.battlefield.remove_actor(target.id)
+	_context.automation().remove_defeated_position(combat, target.id, resolution.target_defeated)
 	return MONSTER_ATTACK_COMPLETED
 
 

@@ -413,6 +413,31 @@ Classic-visible behavior is the default ruleset. This ledger records deliberate 
 - Tests: `test_realmz_rules.gd` covers combat Identify, group SP drain, camp touch death magic, physical touch damage, physical area damage, and special 89 diagnostic rejection. `test_combat_flow.gd` covers combat casting and execution flows.
 - Legacy quirk: none. Source-authentic behaviors are implemented across their proper owners, and the unassigned opcode is safely classified as not applicable without mutation or crashes.
 
+## FD-COMBAT-018 — Incapacitated combat actor skipping and battlefield removal parity
+
+- Affected rule: Skipping defeated or unconscious actors during turn selection, and cleaning up battlefield occupancy upon defeat.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`:
+  - `src/realmz_orig/getup.c`, lines 206–218: when advancing turn index `q[up]`, actors are evaluated. If a party character is not in battle (`!c[q[up]].inbattle`), is helpless (`c[q[up]].condition[COND_HELPLESS]`), or has non-positive stamina (`c[q[up]].stamina < 1`), Castle skips directly to `getnew` without yielding control to the player or consuming RNG. For monsters, non-positive stamina or helplessness likewise skips to `getnew`. This repair closes the non-positive-stamina and missing-battlefield paths; Rebuilt's existing zero-resource HELPLESS handling remains a separate condition path.
+  - `src/realmz_orig/killbody.c`: when an actor is defeated, `c[mon].inbattle = 0; c[mon].position = -1; bodyfield(mon); bodyground(mon, 0); for (t = 1; t < maxloop; t++) if (q[t] == mon) q[t] = -1;`. The actor's battlefield occupancy is immediately cleared.
+- Observable Castle behavior:
+  - A defeated or unconscious character (`current_health <= 0`) never receives an active command turn or prompts for player input.
+  - When all characters are incapacitated, the battle immediately resolves to defeat via standard battle completion.
+  - When an actor is defeated by a projectile or reflected melee attack, their battlefield footprint is cleared.
+- Player-facing problem: In Realmz Rebuilt, `process_monster_turns` fell through on non-traitor characters whose health was `<= 0` and broke out of the automated turn loop, leaving the incapacitated character as the active command owner. Because `submit_action` rejects dead or unconscious actors, the turn could never be submitted, causing the battle to hang permanently (as observed in Battle 52 Round 5 with David at HP -5/107). Additionally, monster projectile kills failed to call `remove_defeated_position`, and reflected melee kills removed the defender's position instead of the attacker's.
+- Chosen 2.0 behavior:
+  1. In `process_monster_turns`, if an active actor is a character with `current_health <= 0` or is missing from `combat.battlefield.actors`, remove any lingering battlefield position, advance the turn once without consuming RNG or fabricating an action, and check `finish_if_resolved`.
+  2. If the active actor is a monster with `current_health <= 0` or missing from battlefield, remove any lingering position, advance the turn, and check `finish_if_resolved`.
+  3. Correct `combat_monster_actions.gd` to call `_context.automation().remove_defeated_position` rather than the non-existent `combat.battlefield.remove_actor`.
+  4. Correct reflected melee attacks in `combat_flow_actions.gd` and `combat_monster_automation.gd` to apply bleeding and remove battlefield position for the attacker rather than the defender.
+  5. In friendly collision reactions where the mover is defeated (`REACTION_MOVER_DEFEATED`), invoke `process_monster_turns` if the battle is unresolved.
+- Tests: `test_combat_flow.gd::_test_incapacitated_actor_turn_skipping_and_removal` verifies:
+  - Incapacitated party character (David at HP -5/107) in turn queue is skipped without consuming RNG or fabricating an action, cleanly transferring control to the next living character.
+  - Total party incapacitation ends the battle via `finish_if_resolved` with defeat.
+  - Incapacitated characters with lingering battlefield tokens have their occupancy pruned.
+  - Monster projectile defeat removes the character from the battlefield.
+  - Reflected melee attack knocking out the attacker marks the attacker bleeding and removes their battlefield position.
+- Legacy boundary: the source also skips HELPLESS actors in this turn-selection branch; Rebuilt's existing HELPLESS condition path remains outside this repair. The corrected non-positive-stamina and missing-battlefield paths no longer stall player input and restore the corresponding Castle `getup.c` / `killbody.c` behavior.
+
 ## FD-REWARD-001 — Drain every level earned by one reward
 
 - Affected rule: post-reward level progression when a recipient retains enough positive victory points for more than one level.

@@ -192,8 +192,12 @@ func _submit_character_attack(state: GameState, content: RealmzContent, actor: C
 		if resolution.fumbled and not _events.commit_character_fumble(state, content, actor, equipment, events): return CombatFlowResult.failed(&"invalid_fumble_state", "The fumbled melee weapon could not enter the battle recovery queue.")
 		_events.append_character_attack_audio(events, actor, equipment, resolution, &"monster")
 		events.append(_events.character_attack_event(actor.id, monster_target.id, &"monster", resolution, equipment.melee_weapon != null))
-		var macro_requested := resolution.killed and _events.request_monster_death_macro(monster_target, definition, events)
-		_context.automation().remove_defeated_position(combat, monster_target.id, resolution.killed and not macro_requested)
+		if resolution.reflected:
+			mark_character_bleeding(state, actor, resolution.killed)
+			_context.automation().remove_defeated_position(combat, actor.id, resolution.killed)
+		else:
+			var macro_requested := resolution.killed and _events.request_monster_death_macro(monster_target, definition, events)
+			_context.automation().remove_defeated_position(combat, monster_target.id, resolution.killed and not macro_requested)
 	else:
 		var character_target := state.party.character_by_id(target_id)
 		if character_target == null or character_target.id == actor.id or character_target.current_health <= 0 or (character_target.traitor == actor.traitor and not allow_friendly_contact): return CombatFlowResult.failed(&"invalid_combat_target", "The selected combatant is unavailable to this allegiance.")
@@ -207,8 +211,9 @@ func _submit_character_attack(state: GameState, content: RealmzContent, actor: C
 		if resolution.fumbled and not _events.commit_character_fumble(state, content, actor, equipment, events): return CombatFlowResult.failed(&"invalid_fumble_state", "The fumbled melee weapon could not enter the battle recovery queue.")
 		_events.append_character_attack_audio(events, actor, equipment, resolution, &"character")
 		events.append(_events.character_attack_event(actor.id, character_target.id, &"character", resolution, equipment.melee_weapon != null))
-		mark_character_bleeding(state, character_target, resolution.killed)
-		_context.automation().remove_defeated_position(combat, character_target.id, resolution.killed)
+		var victim: CharacterState = actor if resolution.reflected else character_target
+		mark_character_bleeding(state, victim, resolution.killed)
+		_context.automation().remove_defeated_position(combat, victim.id, resolution.killed)
 	consume_character_attack(actor)
 	if not character_can_continue(actor): _context.rounds().advance_turn(state, content, rng, events)
 	return CombatFlowResult.succeeded(events)

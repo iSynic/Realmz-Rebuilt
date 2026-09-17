@@ -227,6 +227,8 @@ func _resolve_friendly_collision(state: GameState, content: RealmzContent, actio
 		_context.rounds().advance_turn(state, content, rng, events)
 	if _context.rounds().finish_if_resolved(state, content, events):
 		return CombatFlowResult.succeeded(events, true)
+	if reaction_result == REACTION_MOVER_DEFEATED:
+		_context.automation().process_monster_turns(state, content, rng, events)
 	return CombatFlowResult.succeeded(events, state.combat.completed)
 
 

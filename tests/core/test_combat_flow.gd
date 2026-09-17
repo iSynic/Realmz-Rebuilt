@@ -3,7 +3,7 @@ var _cached_battle_world: WorldDefinition
 
 
 func run() -> void:
-	_test_public_tactical_reaction_matrix(); _test_public_magic_matrix(); _test_public_area_reflection(); _test_public_remove_curse_matrix(); _test_public_destroy_magic_matrix(); _test_public_magic_detection_matrix(); _test_public_polymorph_matrix(); _test_public_destroy_turn_undead_matrix(); _test_public_spell_point_drain_matrix(); _test_public_direct_damage_matrix(); _test_war_immediate_spell_matrix(); _test_public_special_condition_matrix(); _test_public_party_condition_matrix(); _test_public_permanent_poison_matrix(); _test_public_tangle_weed_correction_matrix(); _test_public_monster_friendly_group_matrix(); _test_war_helpless_spell_matrix(); _test_war_queued_actor_field_matrix(); _test_war_self_centered_field_matrix(); _test_war_phase_spell(); _test_war_physical_projectile_profile(); _test_random_power_projectile_staging(); _test_public_monster_spell_projectile_profile(); _test_public_repeated_combat_item(); _test_public_monster_turn_matrix(); _test_public_monster_retreat_paths(); _test_half_truth_allied_blue_dragon_activation(); _test_public_continuation_fumble_terminal_matrix(); _test_public_command_automation_matrix(); _test_weapon_condition_equipment_admission_and_neutrality(); _test_weapon_condition_combat_resolution()
+	_test_public_tactical_reaction_matrix(); _test_public_magic_matrix(); _test_public_area_reflection(); _test_public_remove_curse_matrix(); _test_public_destroy_magic_matrix(); _test_public_magic_detection_matrix(); _test_public_polymorph_matrix(); _test_public_destroy_turn_undead_matrix(); _test_public_spell_point_drain_matrix(); _test_public_direct_damage_matrix(); _test_war_immediate_spell_matrix(); _test_public_special_condition_matrix(); _test_public_party_condition_matrix(); _test_public_permanent_poison_matrix(); _test_public_tangle_weed_correction_matrix(); _test_public_monster_friendly_group_matrix(); _test_war_helpless_spell_matrix(); _test_war_queued_actor_field_matrix(); _test_war_self_centered_field_matrix(); _test_war_phase_spell(); _test_war_physical_projectile_profile(); _test_random_power_projectile_staging(); _test_public_monster_spell_projectile_profile(); _test_public_repeated_combat_item(); _test_public_monster_turn_matrix(); _test_public_monster_retreat_paths(); _test_half_truth_allied_blue_dragon_activation(); _test_public_continuation_fumble_terminal_matrix(); _test_public_command_automation_matrix(); _test_weapon_condition_equipment_admission_and_neutrality(); _test_weapon_condition_combat_resolution(); _test_incapacitated_actor_turn_skipping_and_removal()
 
 
 func _test_public_area_reflection() -> void:
@@ -847,3 +847,105 @@ func _test_weapon_condition_combat_resolution() -> void:
 	var blocked_attack := rules.combat.resolve_character_attack(hero_e, inv_equip, mon_a, def_a, ScriptedRng.new(_ints(16)))
 	assert_true(blocked_attack.blocked, "attack with invalid weapon condition is blocked")
 	assert_equal(blocked_attack.block_reason, &"invalid_weapon_condition", "block reason is invalid_weapon_condition")
+
+
+func _test_incapacitated_actor_turn_skipping_and_removal() -> void:
+	var rules := RealmzRules.new()
+	var def := _monster_definition("monster.skip-test", [MonsterAttackDefinition.new(1, 1)])
+	var content := _content([def])
+
+	# 1. Incapacitated party character (David at HP -5/107) in turn queue is skipped without consuming RNG
+	var david := _character("character.david")
+	david.maximum_health = 107
+	david.current_health = -5
+	var alice := _character("character.alice")
+	alice.maximum_health = 30
+	alice.current_health = 30
+	var goblin := MonsterState.new("monster.goblin.1", def.id, def.name, 20, 20, 1)
+	var battlefield := _blank_battlefield()
+	battlefield.actors.place_character(alice.id, Vector2i(45, 45))
+	battlefield.actors.place_monster(goblin.id, Vector2i(48, 45), 0)
+	var party := PartyState.new("map.test", Vector2i.ZERO, [david, alice])
+	var state := GameState.new(party, RealmzClock.new())
+	state.combat = CombatState.new("battle.david-skip", [goblin], 0, battlefield)
+	state.combat.set_turn_order([david.id, alice.id, goblin.id])
+	var rng := _zeros(16)
+	var events: Array[DomainEvent] = []
+	rules.combat_flow.automation.process_monster_turns(state, content, rng, events)
+	assert_equal([state.combat.completed, state.combat.turns.active_actor_id(), david.current_health, alice.current_health, rng.trace().size()], [false, alice.id, -5, 30, 0], "incapacitated David at HP -5 is skipped without RNG consumption and active turn advances cleanly to Alice")
+
+	# 2. Total party incapacitation resolves battle to defeat via finish_if_resolved
+	var solo_david := _character("character.solo-david")
+	solo_david.current_health = -5
+	var solo_goblin := MonsterState.new("monster.solo-goblin", def.id, def.name, 20, 20, 1)
+	var solo_field := _blank_battlefield()
+	solo_field.actors.place_monster(solo_goblin.id, Vector2i(46, 45), 0)
+	var solo_state := GameState.new(PartyState.new("map.test", Vector2i.ZERO, [solo_david]), RealmzClock.new())
+	solo_state.combat = CombatState.new("battle.solo-defeat", [solo_goblin], 0, solo_field)
+	solo_state.combat.set_turn_order([solo_david.id, solo_goblin.id])
+	var defeat_events: Array[DomainEvent] = []
+	rules.combat_flow.automation.process_monster_turns(solo_state, content, _zeros(16), defeat_events)
+	assert_equal([solo_state.combat.completed, solo_state.combat.outcome, solo_david.current_health], [true, &"defeat", -5], "skipping only party member when incapacitated immediately ends battle in defeat via finish_if_resolved")
+
+	# 3. Incapacitated character with lingering battlefield token is pruned on turn skip
+	var bob := _character("character.bob")
+	bob.current_health = 0
+	var carol := _character("character.carol")
+	carol.current_health = 25
+	var prune_goblin := MonsterState.new("monster.prune-goblin", def.id, def.name, 20, 20, 1)
+	var prune_field := _blank_battlefield()
+	prune_field.actors.place_character(bob.id, Vector2i(44, 45))
+	prune_field.actors.place_character(carol.id, Vector2i(45, 45))
+	prune_field.actors.place_monster(prune_goblin.id, Vector2i(48, 45), 0)
+	var prune_state := GameState.new(PartyState.new("map.test", Vector2i.ZERO, [bob, carol]), RealmzClock.new())
+	prune_state.combat = CombatState.new("battle.prune-token", [prune_goblin], 0, prune_field)
+	prune_state.combat.set_turn_order([bob.id, carol.id, prune_goblin.id])
+	var prune_events: Array[DomainEvent] = []
+	rules.combat_flow.automation.process_monster_turns(prune_state, content, _zeros(16), prune_events)
+	assert_equal([prune_state.combat.turns.active_actor_id(), prune_field.actors.has_actor(bob.id), prune_field.actors.has_actor(carol.id)], [carol.id, false, true], "lingering token of incapacitated Bob is pruned from battlefield during turn evaluation")
+
+	# 4. Reflected melee attack knocking out attacker marks bleeding and clears attacker battlefield position
+	var reflect_hero := _character("character.reflect-hero")
+	reflect_hero.current_health = 5
+	var reflect_mon := MonsterState.new("monster.reflect-mon", def.id, def.name, 50, 50, 10)
+	reflect_mon.conditions.set_value(ConditionRules.REFLECTING_ATTACKS, -1)
+	var reflect_field := _blank_battlefield()
+	reflect_field.actors.place_character(reflect_hero.id, Vector2i(45, 45))
+	reflect_field.actors.place_monster(reflect_mon.id, Vector2i(46, 45), 0)
+	var reflect_state := GameState.new(PartyState.new("map.test", Vector2i.ZERO, [reflect_hero]), RealmzClock.new())
+	reflect_state.combat = CombatState.new("battle.reflect-knockout", [reflect_mon], 0, reflect_field)
+	reflect_state.combat.set_turn_order([reflect_hero.id, reflect_mon.id])
+	var reflect_weapon := ItemDefinition.new("item.reflect-sword", 100, "Reflect Sword")
+	reflect_weapon.item_type = 1; reflect_weapon.vs_small = 1; reflect_weapon.vs_large = 1; reflect_weapon.damage_bonus = 10
+	var sword_inst := ItemInstance.new("inst.sword", reflect_weapon.id, 0, false, true)
+	reflect_hero.set_inventory([sword_inst])
+	rules.equipment.equip(reflect_hero, sword_inst.id, reflect_weapon)
+	var reflect_content := _content([def], [reflect_weapon])
+	var reflect_rng := _zeros(64)
+	var reflect_result := rules.combat_flow.submit_action(reflect_state, reflect_content, reflect_hero.id, &"attack", reflect_mon.id, reflect_rng)
+	assert_true(reflect_result.ok, "reflected attack submission succeeded")
+	assert_equal([reflect_hero.current_health, reflect_state.combat.actor_statuses.is_character_bleeding(reflect_hero.id), reflect_field.actors.has_actor(reflect_hero.id), reflect_mon.current_health, reflect_field.actors.has_actor(reflect_mon.id)], [-6, true, false, 50, true], "reflected melee knock-out marks attacker bleeding and removes attacker from battlefield while defender survives intact")
+
+	# 5. Monster projectile defeat removes character from battlefield (verifying remove_defeated_position fix)
+	var proj_spell := SpellDefinition.new("spell.mon-proj-test", 5412, "Mon Proj")
+	proj_spell.in_combat = true; proj_spell.target_type = 1; proj_spell.spell_class = 9; proj_spell.damage_type = 9; proj_spell.cost = 0; proj_spell.damage_min = 10; proj_spell.damage_max = 10; proj_spell.range_min = 12; proj_spell.fixed_target_count = 1
+	var proj_item := ItemDefinition.new("item.mon-proj-missile", 901, "Missile Item")
+	proj_item.item_type = 21; proj_item.special_1 = -1; proj_item.special_2 = proj_spell.classic_id
+	var proj_items: Array[String] = ["", proj_item.id, "", "", "", ""]
+	var proj_def := MonsterDefinition.new("monster.proj-tester", 1, "Proj Tester", 4, 0, 1, 0, 0, _ints(8), _ints(8), _ints(6), _ints(3), [], proj_items, [MonsterAttackDefinition.new(1, 1)])
+	var proj_caster := MonsterState.new("monster.proj-caster.1", proj_def.id, proj_def.name, 30, 30, 4)
+	var proj_target := _character("character.proj-victim")
+	proj_target.current_health = 5
+	proj_target.dodge = 0
+	var proj_field := _blank_battlefield()
+	proj_field.actors.place_monster(proj_caster.id, Vector2i(45, 45), 0)
+	proj_field.actors.place_character(proj_target.id, Vector2i(48, 45))
+	var proj_party := PartyState.new("map.test", Vector2i.ZERO, [proj_target])
+	var proj_state := GameState.new(proj_party, RealmzClock.new())
+	proj_state.combat = CombatState.new("battle.proj-victim-test", [proj_caster], 0, proj_field)
+	proj_state.combat.set_turn_order([proj_caster.id, proj_target.id])
+	var proj_content := _content([proj_def], [proj_item], [], [], [proj_spell])
+	var active_turn := proj_state.combat.turns.begin_active_turn()
+	var proj_events: Array[DomainEvent] = []
+	var proj_res: int = rules.combat_flow.automation.monster_actions().process_projectile(proj_state, proj_content, proj_caster, proj_def, active_turn, _zeros(16), proj_events)
+	assert_equal([proj_res, proj_target.current_health, proj_field.actors.has_actor(proj_target.id)], [CombatMonsterActions.MONSTER_ATTACK_COMPLETED, -5, false], "monster projectile defeat removes character position from battlefield via remove_defeated_position")
