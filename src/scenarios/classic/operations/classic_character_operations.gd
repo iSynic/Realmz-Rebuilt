@@ -226,7 +226,7 @@ func _apply_health(action: ClassicActionDefinition, whole_party: bool) -> Scenar
 
 
 func _filter_character_selection(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
-	if action.extra_code.size() < 4:
+	if action.extra_code.size() < 5:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 30 requires a five-value Extra Code row.")
 	var values := action.extra_code
 	var candidates := _game_state.scenario_progress.selected_characters()

@@ -177,16 +177,18 @@ func _apply_wear_effects(character: CharacterState, item: ItemDefinition, race: 
 		if character.conditions.value(condition_index) >= 0:
 			character.conditions.set_value(condition_index, 0)
 		character.conditions.add(condition_index, item.special_2)
-	_apply_special_effect(character, party_conditions, item.special_3, item.special_5, true)
-	_apply_special_effect(character, party_conditions, item.special_4, item.special_5, true)
+	if item.special_1 != -10:
+		_apply_special_effect(character, party_conditions, item.special_3, item.special_5, true)
+		_apply_special_effect(character, party_conditions, item.special_4, item.special_5, true)
 	_recalculate_movement(character, race, definitions)
 
 
 func _apply_remove_effects(character: CharacterState, item: ItemDefinition, race: RaceDefinition, definitions: Array[ItemDefinition], party_conditions: ConditionSet) -> void:
 	if item.special_1 == 122:
 		character.attack_bonus -= item.special_2
-	_apply_special_effect(character, party_conditions, item.special_3, item.special_5, false)
-	_apply_special_effect(character, party_conditions, item.special_4, item.special_5, false)
+	if item.special_1 != -10:
+		_apply_special_effect(character, party_conditions, item.special_3, item.special_5, false)
+		_apply_special_effect(character, party_conditions, item.special_4, item.special_5, false)
 	character.brawn -= item.strength_bonus
 	character.magic_resistance -= item.magic_resistance_bonus
 	character.maximum_spell_points -= item.spell_point_bonus
@@ -329,6 +331,8 @@ static func _party_carries_definition(party: Array[CharacterState], character: C
 static func _passive_effects_supported(item: ItemDefinition) -> bool:
 	if item.special_1 >= 60 and item.special_1 < 100 and (item.special_2 < 0 or item.special_2 >= ConditionSet.CHARACTER_COUNT):
 		return false
+	if item.special_1 == -10:
+		return CombatAttackPolicy.invalid_weapon_reason(item).is_empty()
 	return _special_effect_supported(item.special_3) and _special_effect_supported(item.special_4)
 
 

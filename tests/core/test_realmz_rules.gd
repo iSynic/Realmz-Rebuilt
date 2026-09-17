@@ -15,6 +15,7 @@ func run() -> void:
 	_test_monster_permanent_afflictions()
 	_test_conditions_time_and_persistence()
 	_test_inventory_economy_and_treasure()
+	_test_item_eligibility_and_restriction_masks()
 	_test_temple_services_and_wealth()
 	_test_projectile_resolution()
 	_test_combat_magic_and_monsters()
@@ -761,6 +762,12 @@ func _test_inventory_economy_and_treasure() -> void:
 	assert_equal(treasure_roll.experience, 1, "negative treasure values encode a one-to-absolute-value roll")
 	assert_equal(treasure_roll.wealth.gold, 10, "signed random treasure can reach its inclusive maximum")
 
+
+func _test_item_eligibility_and_restriction_masks() -> void:
+	var rules := RealmzRules.new()
+	assert_equal([InventoryRules.normalize_race_mask(1), InventoryRules.normalize_caste_mask(1), InventoryRules.normalize_caste_mask(129), InventoryRules.normalize_race_mask(129)], [0, 0, 0, 128], "low padding bits outside Castle race 0xFF80 and caste 0xFE00 masks are stripped")
+	assert_equal([InventoryRules.normalize_race_mask(513), InventoryRules.normalize_caste_mask(513), InventoryRules.normalize_race_mask(4097), InventoryRules.normalize_caste_mask(4097), InventoryRules.normalize_caste_mask(24577)], [512, 512, 4096, 4096, 24576], "valid race/caste bits are preserved while padding bit 1 is stripped across shield and quiver masks")
+
 	var race := _race()
 	race.item_category_mask_low = 2048
 	var sorcerer_caste := _caste()
@@ -769,6 +776,9 @@ func _test_inventory_economy_and_treasure() -> void:
 	var fighter_caste := _caste()
 	fighter_caste.item_category_mask_low = 2048
 	fighter_caste.caste_class = 1
+	var class_two_caste := _caste()
+	class_two_caste.item_category_mask_low = 2048
+	class_two_caste.caste_class = 2
 
 	var necklace := ItemDefinition.new("classic.item.645", 645, "Necklace of Spells +2")
 	necklace.item_type = 12
@@ -815,6 +825,49 @@ func _test_inventory_economy_and_treasure() -> void:
 	assert_equal(sorcerer_restricted_probe.reason, "This item's class restrictions exclude the character.", "rejection reason names class restrictions")
 	var fighter_restricted_probe := rules.inventory.classic_use_probe(fighter_char, restricted_item, race, fighter_caste)
 	assert_true(fighter_restricted_probe.allowed, "Fighter is not excluded by Sorcerer's restriction bit")
+
+	var padding_item := ItemDefinition.new("item.padding-only", 920, "Padding Only Item")
+	padding_item.item_category_mask_low = 2048
+	padding_item.race_class_only = 1
+	padding_item.caste_class_only = 129
+	padding_item.race_restrictions = 1
+	padding_item.caste_restrictions = 1
+	var padding_instance := ItemInstance.new("inst.padding-only", padding_item.id, 0, false, true)
+	var pad_probe := rules.inventory.classic_use_probe(magus, padding_item, race, sorcerer_caste)
+	assert_true(pad_probe.allowed, "padding-only race/caste restriction fields evaluate to zero and block no character")
+	var pad_view := ItemView.new(padding_instance, padding_item)
+	assert_true(pad_view.restrictions.is_empty(), "padding-only masks emit no generic restrictions when content is null")
+
+	var race_trait_item := ItemDefinition.new("item.race-trait", 921, "Race Trait Item")
+	race_trait_item.item_category_mask_low = 2048
+	race_trait_item.race_class_only = 513
+	var race_matching := _race()
+	race_matching.item_category_mask_low = 2048
+	race_matching.descriptor_flags = 512
+	assert_true(rules.inventory.classic_use_probe(magus, race_trait_item, race_matching, sorcerer_caste).allowed, "race with matching trait bit 512 is admitted despite padding bit 1")
+	var race_blocked_probe := rules.inventory.classic_use_probe(magus, race_trait_item, race, sorcerer_caste)
+	assert_false(race_blocked_probe.allowed, "race lacking trait bit 512 is blocked")
+	assert_equal(race_blocked_probe.reason, "This item requires race traits the character does not have.", "race traits rejection reason")
+
+	var caste_trait_item := ItemDefinition.new("item.caste-trait", 922, "Caste Trait Item")
+	caste_trait_item.item_category_mask_low = 2048
+	caste_trait_item.caste_class_only = 4097
+	assert_true(rules.inventory.classic_use_probe(magus, caste_trait_item, race, sorcerer_caste).allowed, "casteClass 4 is admitted by 4097 despite padding bit 1")
+	assert_false(rules.inventory.classic_use_probe(fighter_char, caste_trait_item, race, fighter_caste).allowed, "casteClass 1 is blocked by 4097")
+
+	var sentinel_quiver := ItemDefinition.new("classic.item.923", 923, "Sentinel's Quiver")
+	sentinel_quiver.item_category_mask_low = 2048
+	sentinel_quiver.race_class_only = 1
+	sentinel_quiver.caste_class_only = 24577
+	assert_true(rules.inventory.classic_use_probe(magus, sentinel_quiver, race, class_two_caste).allowed, "Sentinel's Quiver admits class group 2 despite raceClassOnly 1 and casteClassOnly padding")
+	assert_false(rules.inventory.classic_use_probe(magus, sentinel_quiver, race, sorcerer_caste).allowed, "Sentinel's Quiver blocks casteClass 4 via normalized 0x6000")
+	assert_false(rules.inventory.classic_use_probe(fighter_char, sentinel_quiver, race, fighter_caste).allowed, "Sentinel's Quiver blocks casteClass 1 via normalized 0x6000")
+
+	var dummy_content := RealmzContent.new("test", "0".repeat(64), "test", "realmz-classic-1", "", Vector2i.ZERO, WorldDefinition.new([]), ScenarioDefinition.new([], []), [], [], [], [race], [sorcerer_caste, fighter_caste, class_two_caste], [sentinel_quiver, padding_item])
+	var dummy_view := ItemView.new(padding_instance, padding_item, null, dummy_content)
+	assert_true(dummy_view.restrictions.is_empty(), "padding-only masks produce no restriction strings with content")
+	var quiver_view := ItemView.new(ItemInstance.new("inst.quiver", sentinel_quiver.id, 0, false, true), sentinel_quiver, null, dummy_content)
+	assert_true(quiver_view.restrictions.any(func(text: String) -> bool: return text.begins_with("Usable only by") and text.contains(class_two_caste.name)), "quiver view reflects authorized caste classes without phantom race restrictions")
 
 
 func _test_projectile_resolution() -> void:

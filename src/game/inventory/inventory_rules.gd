@@ -4,6 +4,16 @@ class_name InventoryRules
 extends RefCounted
 
 const MAX_ITEMS: int = 30
+const CLASSIC_RACE_MASK: int = 0xFF80
+const CLASSIC_CASTE_MASK: int = 0xFE00
+
+
+static func normalize_race_mask(raw_mask: int) -> int:
+	return (raw_mask & 0xFFFF) & CLASSIC_RACE_MASK
+
+
+static func normalize_caste_mask(raw_mask: int) -> int:
+	return (raw_mask & 0xFFFF) & CLASSIC_CASTE_MASK
 
 
 func classic_use_probe(character: CharacterState, item: ItemDefinition, race: RaceDefinition, caste: CasteDefinition) -> InventoryActionProbe:
@@ -20,18 +30,20 @@ func classic_use_probe(character: CharacterState, item: ItemDefinition, race: Ra
 		return InventoryActionProbe.block("This race cannot use this item category.")
 	if not _mask_has(caste.item_category_mask_low, caste.item_category_mask_high, category):
 		return InventoryActionProbe.block("This class cannot use this item category.")
-	if (item.race_restrictions & race.descriptor_flags) != 0:
+	var race_restrictions := normalize_race_mask(item.race_restrictions)
+	if race_restrictions != 0 and (race_restrictions & race.descriptor_flags) != 0:
 		return InventoryActionProbe.block("This item's race restrictions exclude the character.")
-	if item.race_class_only != 0 and (item.race_class_only & race.descriptor_flags) != item.race_class_only:
+	var race_class_only := normalize_race_mask(item.race_class_only)
+	if race_class_only != 0 and (race_class_only & race.descriptor_flags) != race_class_only:
 		return InventoryActionProbe.block("This item requires race traits the character does not have.")
 	var caste_class_index := caste.caste_class - 1
 	if caste_class_index < 0 or caste_class_index > 6:
 		return InventoryActionProbe.block("The character's Classic class group is invalid.")
 	var caste_class_bit := 1 << (15 - caste_class_index)
-	var caste_restrictions := item.caste_restrictions & 0xFFFF
-	if (caste_restrictions & caste_class_bit) != 0:
+	var caste_restrictions := normalize_caste_mask(item.caste_restrictions)
+	if caste_restrictions != 0 and (caste_restrictions & caste_class_bit) != 0:
 		return InventoryActionProbe.block("This item's class restrictions exclude the character.")
-	var caste_class_only := item.caste_class_only & 0xFFFF
+	var caste_class_only := normalize_caste_mask(item.caste_class_only)
 	if caste_class_only != 0 and (caste_class_only & caste_class_bit) == 0:
 		return InventoryActionProbe.block("This item requires another Classic class group.")
 	return InventoryActionProbe.permit()

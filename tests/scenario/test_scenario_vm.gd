@@ -29,7 +29,7 @@ func run() -> void:
 	_test_corrected_take_experience_opcode(content)
 	_test_opcode_7_program_replacement_modes(content)
 	_test_opcode_13_trigger_mutation_modes(content)
-	_test_public_action_state(content); _test_aogm_dispatch_has_no_fallback(content); _test_classic_opcode_2_legacy_battle_record(content); _test_package_backed_macro_spells(); _test_repaired_branch_and_opcode_variants(content)
+	_test_public_action_state(content); _test_aogm_dispatch_has_no_fallback(content); _test_classic_opcode_2_legacy_battle_record(content); _test_package_backed_macro_spells(); _test_repaired_branch_and_opcode_variants(content); _test_state_and_progression_branch_opcodes(content)
 
 
 func _test_scenario_wire_contracts() -> void:
@@ -1054,6 +1054,99 @@ func _test_repaired_branch_and_opcode_variants(content: RealmzContent) -> void:
 	vm_nested.start_program(caller_prog.id, ScenarioExecutionContext.trigger(&"action", "ap.nested_keep"))
 	var res_nested := vm_nested.run(api)
 	assert_true(res_nested.state == ScenarioVmResult.State.COMPLETED and _event_has(res_nested.events, &"action_point_kept") and not res_nested.events.any(func(e: DomainEvent) -> bool: return e.kind == &"classic_control_marker" and e.payload.get("operandId") == 888) and vm_nested.snapshot().halted, "destination mode 3 Keep Codes finishes the entire timeline from a nested GOSUB call without returning to the caller frame")
+
+
+func _test_state_and_progression_branch_opcodes(content: RealmzContent) -> void:
+	var races := content.characters.race_definitions(); var castes := content.characters.caste_definitions()
+	var hero1 := CharacterState.new("c.b1", "Hero One", 20, 20); hero1.race_id = races[0].id; hero1.caste_id = castes[0].id; hero1.gender = 1; hero1.level = 5
+	var hero2 := CharacterState.new("c.b2", "Hero Two", 20, 20); hero2.race_id = races[min(1, races.size() - 1)].id; hero2.caste_id = castes[min(1, castes.size() - 1)].id; hero2.gender = 2; hero2.level = 7
+	var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [hero1, hero2]), RealmzClock.new())
+	var api := RealmzRuntimeApi.new(content, state, RealmzRng.for_oracle(1), ScenarioActionState.new())
+	var op30_short := api.execute_classic(ClassicActionDefinition.new(0, 30, 30, 0, false, [1, 0, 0, 1]), "op30.short")
+	assert_true(op30_short.state == ScenarioRuntimeOperationResult.State.FAILED and op30_short.error_code == &"missing_extra_code", "opcode 30 rejects row with fewer than five extra codes")
+	state.scenario_progress.set_quest_value(10, 0)
+	var op46_u_branch := api.execute_classic(ClassicActionDefinition.new(0, 46, 46, 0, false, [10, 0, 0, 375, 0]), "op46.u.b")
+	state.scenario_progress.set_quest_value(10, 1)
+	var op46_u_fall := api.execute_classic(ClassicActionDefinition.new(0, 46, 46, 0, false, [10, 0, 0, 375, 0]), "op46.u.f")
+	var op46_s_branch := api.execute_classic(ClassicActionDefinition.new(0, 46, 46, 0, false, [10, 1, 0, 375, 0]), "op46.s.b")
+	var op46_force := api.execute_classic(ClassicActionDefinition.new(0, 46, 46, 0, false, [10, 2, 0, 375, 0]), "op46.force")
+	state.scenario_progress.set_quest_value(4, 1)
+	var op46_gosub := api.execute_classic(ClassicActionDefinition.new(0, -46, 46, 0, true, [4, 1, 0, 206, 0]), "op46.gosub")
+	var op46_drop := api.execute_classic(ClassicActionDefinition.new(0, 46, 46, 0, false, [10, 2, -1, 0, 0]), "op46.drop")
+	var op46_keep := api.execute_classic(ClassicActionDefinition.new(0, 46, 46, 0, false, [10, 2, 3, 0, 0]), "op46.keep")
+	var simp_ctx := ScenarioExecutionContext.encounter(&"simple", 5, "", -1, &"choice", 0)
+	var comp_ctx := ScenarioExecutionContext.encounter(&"complex", 6, "", -1, &"choice", 0)
+	var op46_simp := api.execute_classic(ClassicActionDefinition.new(0, 46, 46, 0, false, [10, 2, 1, 2, 3]), "op46.simp", simp_ctx)
+	var op46_comp := api.execute_classic(ClassicActionDefinition.new(0, 46, 46, 0, false, [10, 2, 2, 1, 4]), "op46.comp", comp_ctx)
+	var op46_wrath := api.execute_classic(ClassicActionDefinition.new(0, 46, 46, 0, false, [274, 274, 304, 30003, 420]), "op46.wrath489")
+	var op46_bad_mode := api.execute_classic(ClassicActionDefinition.new(0, 46, 46, 0, false, [10, 2, 9, 0, 0]), "op46.bad_mode")
+	var op46_short := api.execute_classic(ClassicActionDefinition.new(0, 46, 46, 0, false, [10, 2]), "op46.short")
+	assert_true(op46_u_branch.directive.kind == ScenarioVmDirective.BRANCH_XAP and op46_u_branch.directive.target_id == 375 and op46_u_fall.directive == null and op46_u_fall.value == false and op46_s_branch.directive.kind == ScenarioVmDirective.BRANCH_XAP and op46_force.directive.kind == ScenarioVmDirective.BRANCH_XAP and op46_gosub.directive.gosub == true and op46_gosub.directive.target_id == 206, "opcode 46 evaluates condition selectors 0, 1, 2 and signed GOSUB")
+	assert_true(op46_drop.directive.kind == ScenarioVmDirective.DROPOUT and op46_keep.directive.kind == ScenarioVmDirective.FINISH_TIMELINE and _event_has(op46_keep.events, &"action_point_kept") and op46_simp.directive.kind == ScenarioVmDirective.BRANCH_PROGRAM and op46_simp.directive.program_id == "simple:5:result:2" and op46_comp.directive.kind == ScenarioVmDirective.BRANCH_PROGRAM and op46_comp.directive.program_id == "complex:6:result:1", "opcode 46 handles dropout, keep-codes, and simple/complex encounter result branch modes")
+	assert_true(op46_wrath.state == ScenarioRuntimeOperationResult.State.COMPLETED and op46_wrath.value == false and op46_bad_mode.error_code == &"unsupported_branch_mode" and op46_short.error_code == &"missing_extra_code", "opcode 46 safely completes out-of-bounds rows and types invalid modes/lengths")
+	state.scenario_progress.set_quest_value(16, 1); state.scenario_progress.set_quest_value(17, 1)
+	var op72_all_set := api.execute_classic(ClassicActionDefinition.new(0, 72, 72, 0, false, [16, 17, 0, 0, 899]), "op72.all")
+	state.scenario_progress.set_quest_value(17, 0)
+	var op72_part_set := api.execute_classic(ClassicActionDefinition.new(0, 72, 72, 0, false, [16, 17, 0, 0, 899]), "op72.part")
+	var op72_inverted := api.execute_classic(ClassicActionDefinition.new(0, 72, 72, 0, false, [20, 10, 0, 0, 899]), "op72.inv")
+	var op72_simp := api.execute_classic(ClassicActionDefinition.new(0, -72, 72, 0, true, [16, 16, 0, 1, 15]), "op72.simp")
+	var op72_comp := api.execute_classic(ClassicActionDefinition.new(0, 72, 72, 0, false, [16, 16, 0, 2, 25]), "op72.comp")
+	var op72_bad_rng := api.execute_classic(ClassicActionDefinition.new(0, 72, 72, 0, false, [-1, 10, 0, 0, 899]), "op72.bad")
+	var op72_short := api.execute_classic(ClassicActionDefinition.new(0, 72, 72, 0, false, [16, 17]), "op72.short")
+	assert_true(op72_all_set.directive.kind == ScenarioVmDirective.BRANCH_XAP and op72_all_set.directive.target_id == 899 and op72_part_set.directive == null and op72_part_set.value == false and op72_inverted.directive.kind == ScenarioVmDirective.BRANCH_XAP and op72_simp.directive.kind == ScenarioVmDirective.ENTER_ENCOUNTER and op72_simp.directive.encounter_kind == &"simple" and op72_simp.directive.gosub == true and op72_comp.directive.encounter_kind == &"complex", "opcode 72 evaluates all-set, fallthrough, inverted-range vacuous truth, and destination modes")
+	assert_true(op72_bad_rng.error_code == &"invalid_quest_range" and op72_short.error_code == &"missing_extra_code", "opcode 72 types invalid quest range and short extra code")
+	state.scenario_progress.set_quest_value(8, 5)
+	var op77_true := api.execute_classic(ClassicActionDefinition.new(0, -77, 77, 0, true, [8, 3, 0, 0, 383]), "op77.t")
+	var op77_dual_f := api.execute_classic(ClassicActionDefinition.new(0, 77, 77, 0, false, [8, 10, 0, 100, 200]), "op77.df")
+	var op77_dual_t := api.execute_classic(ClassicActionDefinition.new(0, 77, 77, 0, false, [8, 5, 0, 100, 200]), "op77.dt")
+	var op77_zero_t := api.execute_classic(ClassicActionDefinition.new(0, 77, 77, 0, false, [8, 5, 0, 100, 0]), "op77.zt")
+	var op77_zero_f := api.execute_classic(ClassicActionDefinition.new(0, 77, 77, 0, false, [8, 10, 0, 0, 200]), "op77.zf")
+	var op77_simp := api.execute_classic(ClassicActionDefinition.new(0, 77, 77, 0, false, [8, 5, 1, 0, 50]), "op77.simp")
+	var op77_comp := api.execute_classic(ClassicActionDefinition.new(0, 77, 77, 0, false, [8, 5, 2, 0, 60]), "op77.comp")
+	var op77_bad_q := api.execute_classic(ClassicActionDefinition.new(0, 77, 77, 0, false, [100, 5, 0, 0, 1]), "op77.bad")
+	var op77_short := api.execute_classic(ClassicActionDefinition.new(0, 77, 77, 0, false, [8, 5]), "op77.short")
+	assert_true(op77_true.directive.kind == ScenarioVmDirective.BRANCH_XAP and op77_true.directive.target_id == 383 and op77_true.directive.gosub == true and op77_dual_f.directive.target_id == 100 and op77_dual_t.directive.target_id == 200 and op77_zero_t.directive == null and op77_zero_t.value == true and op77_zero_f.directive == null and op77_zero_f.value == false and op77_simp.directive.target_id == 50 and op77_comp.directive.target_id == 60, "opcode 77 evaluates threshold, signed GOSUB, dual targets, encounter targets, and zero-target fallthrough")
+	assert_true(op77_bad_q.error_code == &"invalid_quest" and op77_short.error_code == &"missing_extra_code", "opcode 77 types invalid quest index and short extra code")
+	state.scenario_progress.set_selected_character_ids([hero1.id])
+	var c1_classic: int = castes[0].classic_id; var c2_classic: int = castes[min(1, castes.size() - 1)].classic_id
+	var op86_caste_t := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [0, c1_classic, 0, 796, 0]), "op86.c.t")
+	var op86_caste_sel_t := api.execute_classic(ClassicActionDefinition.new(0, -86, 86, 0, true, [0, -c1_classic, 0, 796, 0]), "op86.c.st")
+	var op86_caste_sel_f := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [0, -c2_classic, 0, 796, 0]), "op86.c.sf")
+	var op86_race_war := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [1, 12, 0, 2816, 0]), "op86.war2815")
+	var op86_gen_t := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [2, 1, 0, 10, 20]), "op86.g.t")
+	var op86_gen_f := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [2, 99, 0, 10, 20]), "op86.g.f")
+	state.party_in_boat = true; var op86_boat := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [3, 0, 0, 1998, 0]), "op86.boat")
+	state.party_camping = true; var op86_camp := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [4, 0, 0, 1999, 0]), "op86.camp")
+	var c_class: int = castes[0].caste_class
+	var op86_cclass_t := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [5, c_class, 0, 50, 0]), "op86.cc.t")
+	var op86_cclass_sel_f := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [5, -999, 0, 50, 0]), "op86.cc.sf")
+	var desc_race: RaceDefinition = null; var desc_bit := 1; var absent_bit := 1
+	for r: RaceDefinition in races:
+		if r.descriptor_flags != 0:
+			desc_race = r
+			for b: int in range(1, 33):
+				if (r.descriptor_flags & (1 << (b - 1))) != 0 and desc_bit == 1:
+					desc_bit = b
+				elif (r.descriptor_flags & (1 << (b - 1))) == 0 and absent_bit == 1:
+					absent_bit = b
+			break
+	if desc_race != null:
+		hero1.race_id = desc_race.id
+	var op86_desc_t := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [6, desc_bit, 0, 60, 0]), "op86.d.t")
+	var op86_desc_f := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [6, absent_bit, 0, 60, 0]), "op86.d.f")
+	var op86_tot_lvl_t := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [7, 10, 0, 70, 0]), "op86.tl.t")
+	var op86_tot_lvl_f := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [7, 15, 0, 70, 0]), "op86.tl.f")
+	var op86_sel_lvl_t := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [8, 4, 0, 80, 0]), "op86.sl.t")
+	var op86_sel_lvl_f := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [8, 6, 0, 80, 0]), "op86.sl.f")
+	var op86_simp := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [3, 0, 1, 11, 0]), "op86.s")
+	var op86_comp := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [3, 0, 2, 21, 0]), "op86.c")
+	var op86_bad_kind := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [9, 0, 0, 0, 0]), "op86.bad_kind")
+	var op86_bad_desc := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [6, 33, 0, 0, 0]), "op86.bad_desc")
+	var op86_short := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [0, 1]), "op86.short")
+	assert_true(op86_caste_t.directive.target_id == 796 and op86_caste_sel_t.directive.target_id == 796 and op86_caste_sel_t.directive.gosub == true and op86_caste_sel_f.directive == null and op86_race_war.directive == null and op86_gen_t.directive.target_id == 10 and op86_gen_f.directive.target_id == 20, "opcode 86 matches caste, race, gender, negative selected expectations, and target routing")
+	assert_true(op86_boat.directive.target_id == 1998 and op86_camp.directive.target_id == 1999 and op86_cclass_t.directive.target_id == 50 and op86_cclass_sel_f.directive == null and (desc_race == null or (op86_desc_t.directive.target_id == 60 and op86_desc_f.directive == null)), "opcode 86 evaluates boat, camp, caste class, and race descriptor bits")
+	assert_true(op86_tot_lvl_t.directive.target_id == 70 and op86_tot_lvl_f.directive == null and op86_sel_lvl_t.directive.target_id == 80 and op86_sel_lvl_f.directive == null and op86_simp.directive.target_id == 11 and op86_comp.directive.target_id == 21, "opcode 86 evaluates party/selected level sums and simple/complex encounter destinations")
+	assert_true(op86_bad_kind.error_code == &"invalid_misc_branch" and op86_bad_desc.error_code == &"invalid_race_descriptor" and op86_short.error_code == &"missing_extra_code", "opcode 86 types invalid test kinds, out-of-range descriptors, and short rows")
 
 
 func _runtime_api(content: RealmzContent, action_state: ScenarioActionState) -> RealmzRuntimeApi:

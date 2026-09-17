@@ -57,7 +57,7 @@ The local War in the Sword Lands completion spine adds direct ED3 macro checkpoi
 
 ## Corrected authored meanings for opcodes 52, 55, 68, and 81
 
-The reviewed Providence vNext discrepancy report is the authoring authority for these four meanings. Rebuilt adopts the documented meanings without a compatibility mode under `FD-SCENARIO-004` and `FD-SCENARIO-005`; opcodes 7, 13, 30, and 74 remain unresolved by that report and are unchanged. The public VM proof is bound to `classic-character-selection-opcode-corrections.json` at SHA-256 `3c0f1f77d113209cee03f4eead2437c2e7423542cfe8c2c16d3eabf5e8d314c8` and `classic-opcode-68-fatigue-correction.json` at SHA-256 `6940e80bf9b2b2c0a61f76d0275a48c60251dbc63ffd41a8f2fbd3d86276c6e9`.
+The reviewed Providence vNext discrepancy report is the authoring authority for these four meanings. Rebuilt adopts the documented meanings without a compatibility mode under `FD-SCENARIO-004` and `FD-SCENARIO-005`. While opcodes 7, 13, 30, and 74 were noted as unresolved in that external authoring discrepancy report, their Rebuilt runtime implementations are established independently in Rebuilt's compatibility register and test suite: opcode 7 has public-VM and save-owned replacement proof for `-1` Simple, `-2` Complex, and non-negative Action Points with atomic negative import rejection; opcode 13 has public runtime proof for single and range mutation, signed map type, unplaced-row skipping, and canonical disablement; opcode 30 has action-slot regression proof under `FD-SCENARIO-001` reinforced by strict five-value Extra Code validation; and opcode 74 has spell-point alteration proof under `classic-opcode-74-spell-points.json`. The public VM proof is bound to `classic-character-selection-opcode-corrections.json` at SHA-256 `3c0f1f77d113209cee03f4eead2437c2e7423542cfe8c2c16d3eabf5e8d314c8` and `classic-opcode-68-fatigue-correction.json` at SHA-256 `6940e80bf9b2b2c0a61f76d0275a48c60251dbc63ffd41a8f2fbd3d86276c6e9`.
 
 The bundled-package audit scanned every compiled instruction in the exact thirteen validated archives. Counts are stored occurrences, not controlled executions or ordinary-route reachability. Compiler-expanded programs can repeat one source record, so the compiled totals differ from the report's source-resource totals.
 
@@ -90,3 +90,50 @@ Three isolated native application fixtures exercised compiled bundled content th
 Both fixtures were closed through the fixture lifecycle. Direct XAP and encounter invocation establish application-host execution of the compiled rows, not their normal map, quest, payment, or encounter eligibility. The audit has no controlled application execution for the remaining stored rows, and ordinary-route reachability across the thirteen campaigns remains unproven.
 
 No package, save, rules-identifier, or hash-matching contract changed. Existing saved state is retained and only later executions use the corrected consumers. Providence vNext owns authoring-side repair in its separate task; no stable vNext-produced comparison fixture was available during this closeout, so raw-word cross-repository comparison remains pending rather than inferred from that worktree.
+
+## State & Progression Control-Flow Branch Family (Opcodes 46, 72, 77, and 86)
+
+A focused compatibility batch closed the distinct variant signatures for the state and progression control-flow family under `FD-SCENARIO-011`. These opcodes share Castle's destination branching model (`forcebranch` in `newland.c:2739` and `switch(extracode[2])` in `newland.c:202,1318,2938`), signed GOSUB stack tracking, and target routing.
+
+### Distinct Variant Signatures and Source Semantics
+
+1. **Opcode 46 (Branch on Quest)**:
+   - Condition selectors: `0` (branch if quest unset), `1` (branch if quest set), `2` (force branch unconditional).
+   - Out-of-bounds safe completion: *Wrath of the Mind Lords* `xap:489` stores malformed Extra Code `[274, 274, 304, 30003, 420]`. Because condition 274 is neither 0, 1, nor 2, the branch is not taken and execution safely returns `completed(false)` without memory corruption or runtime crash.
+   - Destination modes: mode `0` (XAP branch via `ScenarioVmDirective.branch_xap`), mode `-1` (dropout to slot 7 via `ScenarioVmDirective.dropout`), mode `1` (Simple encounter result via `ScenarioVmDirective.branch_program`), mode `2` (Complex encounter result), mode `3` (Keep Codes terminating the timeline via `ScenarioVmDirective.finish_timeline` with `action_point_kept`).
+   - Signed GOSUB: negative opcode `-46` sets `action.gosub == true`, propagating `gosub: true` to the branch directive (e.g. *Wrath* `xap:377` `[4, 1, 0, 206, 0]`).
+   - Typed validation: rows with fewer than 5 Extra Code words fail with `missing_extra_code`; unsupported destination modes fail with `unsupported_branch_mode`.
+
+2. **Opcode 72 (Branch on Quest Range)**:
+   - Evaluates whether all quests in the inclusive range `[first, last]` are set.
+   - Fallthrough: if any quest in the range is unset, returns `completed(false)` with `allSet: false`.
+   - Inverted range vacuous truth: when `first > last`, the loop does not execute and `all_set` remains `true`, matching Castle `newland.c:2933` (`smallreply = TRUE; for (tt = extracode[0]; tt <= extracode[1]; tt++) ...`).
+   - Destination modes: mode `0` (XAP, e.g. *Wrath* `xap:898` `[16, 17, 0, 0, 899]`), mode `1` (Simple encounter), mode `2` (Complex encounter), with signed GOSUB supported.
+   - Typed validation: quest indices outside `0..99` fail with `invalid_quest_range`; rows with fewer than 5 words fail with `missing_extra_code`.
+
+3. **Opcode 77 (Branch on Quest Value)**:
+   - Evaluates `quest_value(quest_id) >= minimum`.
+   - Dual target routing: if matched, branches to true target `extra_code[4]`; if unmatched, branches to false target `extra_code[3]`.
+   - Fallthrough routing: if the selected target is `0`, returns `completed(matched)` without branching.
+   - Destination modes: mode `0` (XAP), mode `1` (Simple), mode `2` (Complex), with signed GOSUB (e.g. *Wrath* `xap:380` `[8, 3, 0, 0, 383]` with `gosub = true`, and `xap:437` `[9, 3, 0, 0, 440]`).
+   - Typed validation: quest indices outside `0..99` fail with `invalid_quest`; rows with fewer than 5 words fail with `missing_extra_code`.
+
+4. **Opcode 86 (Branch on Misc)**:
+   - Test kinds:
+     - `0`: caste present in party (`expected >= 0`) or among selected PCs (`expected < 0`).
+     - `1`: race present in party (`expected >= 0`) or among selected PCs (`expected < 0`).
+     - `2`: gender present in party (`expected >= 0`) or among selected PCs (`expected < 0`).
+     - `3`: party in boat (`_game_state.party_in_boat`, e.g. *Wrath* `xap:1997` `[3, 0, 0, 1998, 0]`).
+     - `4`: party camping (`_game_state.party_camping`).
+     - `5`: caste class present in party (`expected >= 0`) or among selected PCs (`expected < 0`).
+     - `6`: race descriptor bit `1..32` tested via `1 << (expected - 1)` in party or among selected PCs.
+     - `7`: total party level sum > `expected`.
+     - `8`: selected PC level sum > `expected`.
+   - Selected-only negative expectations: `expected < 0` restricts evaluation to `_game_state.scenario_progress.selected_characters()` for kinds 0, 1, 2, 5, 6.
+   - Target routing: true target `extra_code[3]`, false target `extra_code[4]`; target `0` falls through.
+   - Destination modes: mode `0` (XAP), mode `1` (Simple), mode `2` (Complex), with signed GOSUB (e.g. *Wrath* `xap:792` `[0, 2, 0, 796, 0]`, *War* `xap:2815` `[1, 12, 0, 2816, 0]`).
+   - Typed validation: test kinds outside `0..8` fail with `invalid_misc_branch`; race descriptors outside `1..32` fail with `invalid_race_descriptor`; rows with fewer than 5 words fail with `missing_extra_code`.
+
+### Evidence Scope and Distinction
+
+The 13 bundled packages contain stored occurrences of these opcodes (e.g. 2,901 stored opcode 46 rows, 15 stored opcode 72 rows, 88 stored opcode 77 rows, 168 stored opcode 86 rows). The public tests in `test_scenario_vm.gd` (`_test_state_and_progression_branch_opcodes`) prove controlled runtime execution of all distinct condition selectors, destination modes, signed GOSUB tracking, out-of-bounds error handling, and bundled representatives. These tests establish controlled execution through public runtime boundaries; ordinary-route reachability and full campaign certification across the thirteen bundled campaigns remain separate unproven progression work.
