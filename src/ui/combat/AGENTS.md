@@ -20,7 +20,7 @@ Own the retained tactical battlefield, combat command deck, roster spellbook, Fa
 - Combat legality, action cost, range, LOS, target relationships, movement paths, damage, and RNG remain in the deterministic game/playthrough boundaries.
 - Targeting emits only identities, coordinates, order, or rotation supplied by the active typed request; the session validates the response before mutation.
 - Battlefield textures, interpolation, camera focus, and overlays are disposable and never enter saves or combat truth.
-- The battlefield's testing observation reports each detached monster's requested facing resource, exact resolved owner/hash, and legitimate base fallback without changing media selection or simulation.
+- The battlefield's testing observation reports each detached monster's requested facing resource, exact resolved owner/hash, Castle's detached `lr` state (`-1` left, `0` neutral/vertical, `1` right), and legitimate base fallback without changing media selection or simulation. Movement and melee playback update that state at their causal boundaries; it is never serialized.
 - Retain battlefield nodes and media caches across updates; do not rebuild the tactical scene for each event or frame.
 - Command availability, target sets, costs, masks, spell powers, Auto decisions, and inspection facts are supplied by the session. Presentation cannot infer or repair them.
 - Secondary command, spell, item, inspection, and targeting modes preserve a visible Back or Cancel path and suppress spatial input until resolved.

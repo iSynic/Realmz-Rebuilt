@@ -438,6 +438,15 @@ Classic-visible behavior is the default ruleset. This ledger records deliberate 
   - Reflected melee attack knocking out the attacker marks the attacker bleeding and removes their battlefield position.
 - Legacy boundary: the source also skips HELPLESS actors in this turn-selection branch; Rebuilt's existing HELPLESS condition path remains outside this repair. The corrected non-positive-stamina and missing-battlefield paths no longer stall player input and restore the corresponding Castle `getup.c` / `killbody.c` behavior.
 
+## FD-COMBAT-019 — Scenario-owned monster facing state at playback boundaries
+
+- Affected rule: selecting the left/right CICN for a combat monster while preserving Castle's neutral orientation after vertical movement and updating it before a horizontal melee attack.
+- Castle evidence: pinned commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/combatsetup.c:447` initializes `lr` from the monster/party horizontal relation, `movemonster.c` stores the horizontal movement delta, `attack.c` adjusts `lr` immediately before melee, and `drawbody.c` adds 308 to the base icon only when `lr == 1`.
+- Player-facing problem: the previous Rebuilt presenter collapsed Castle's `-1` (left) and `0` (neutral/vertical) into a Boolean and only changed it for horizontal movement frames. A monster could therefore retain the wrong scenario-facing art after vertical movement or a melee target change. The prior package repair proved exact resource ownership but only rendered a base-facing Wrecker; it did not exercise this live state boundary.
+- Chosen 2.0 behavior: retain detached presentation-only `lr` state per monster (`-1`, `0`, `1`), initialize non-summons from the committed monster/party positions, keep summons neutral until they move, update it from move start/end deltas, and apply Castle's attack-time horizontal adjustment before drawing the melee frame. Synchronize active monster identities on every committed view refresh so a new battle cannot inherit stale orientation. Exact scenario-first media lookup remains unchanged.
+- Evidence: the current Half Truth archive (`F9884317800F5A897A4A5F007898B6D8E81207572A5BB0994353559EA47B5001`) contains the Runic Cheiroballista base/right pair `cicn` 513 (`ab671b66e450a4c8ee34cdc074ca8e9a670a8ceb343a97fc6bcc2fb997aeccbc`) and 821 (`e2708f7163e32d00226f98a2854dee431c1f8baf970d7e80ba4d611e08ada42f`). `tests/presentation/test_classic_ui_system.gd` loads that package and verifies the exact scenario-owned 821 selection after neutral movement followed by a rightward melee target; the focused suite passes 650 assertions. `tests/core/test_combat_flow.gd` passes 369 assertions.
+- Legacy quirk: none. Facing is nonserialized presentation state; package bytes, simulation, saves, and RNG remain unchanged.
+
 ## FD-REWARD-001 — Drain every level earned by one reward
 
 - Affected rule: post-reward level progression when a recipient retains enough positive victory points for more than one level.

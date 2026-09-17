@@ -12,7 +12,7 @@ Own the explicit collaboration boundary shared by deterministic battle rules.
 - `CombatCatalog` indexes immutable monster sets and battles for the active campaign.
 - `BattlefieldState` aggregates battle-map identity, terrain, and actor placement. `BattlefieldTerrainState`, `BattlefieldActorState`, and `BattlefieldGrid` own their named mutable facts and geometry; `BattlefieldStateCodec` owns the stable flat save boundary.
 - `CombatState` and its roster, turn, status, reaction, dropped-item, spell-runtime, field, monster, and undo collaborators own all mutable battle truth. `CombatStateCodec` preserves their stable flat save boundary.
-- `CombatView`, `BattlefieldView`, actor/catalog views, action-option views, and persistent-field views carry the detached battle read model.
+- `CombatView`, `BattlefieldView`, actor/catalog views, action-option views, and persistent-field views carry the detached battle read model, including summoned provenance needed by presentation without serializing facing state.
 - `CombatRequestBody` carries the detached active-actor command surface through the shared interaction envelope.
 - Battlefield construction, physical attack policy and resolution, initiative, command/retreat probes, monster rules, and their typed results live beside the state they interpret.
 - `CombatCatalog.definitions()` exposes the deterministic complete effective monster catalog for bounded capability and corpus analysis; player-facing bestiary filtering remains a separate view.
