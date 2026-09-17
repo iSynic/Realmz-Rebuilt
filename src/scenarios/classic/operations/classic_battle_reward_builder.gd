@@ -185,7 +185,7 @@ func _early_battle_reward_result(combat: CombatState, caller: ScenarioBattleCall
 	if combat.rewards_started:
 		return ScenarioRuntimeOperationResult.failed(&"battle_reward_already_started", "The completed battle already has an active reward continuation.")
 	if caller != null and caller.kind == ScenarioBattleCaller.CLASSIC and caller.opcode == 2 and caller.mode == 10:
-		return _complete_mode_ten_battle(combat)
+		return _complete_mode_ten_battle(combat, caller)
 	return null
 
 
@@ -204,7 +204,7 @@ func _recovered_fumble_items(combat: CombatState) -> Variant:
 	return result
 
 
-func _complete_mode_ten_battle(combat: CombatState) -> ScenarioRuntimeOperationResult:
+func _complete_mode_ten_battle(combat: CombatState, caller: ScenarioBattleCaller) -> ScenarioRuntimeOperationResult:
 	if combat.outcome not in [&"victory", &"defeat"]:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "Classic battle mode 10 requires victory or total defeat.")
 	combat.rewards_started = true
@@ -217,8 +217,15 @@ func _complete_mode_ten_battle(combat: CombatState) -> ScenarioRuntimeOperationR
 			character.current_health = 1
 			character.conditions.set_value(ConditionRules.ANIMATED, 0)
 		events.append(DomainEvent.new(&"party_defeat_revived", {"battleId": battle_id, "source": "classic-mode-10"}))
-		events.append(DomainEvent.new(&"classic_battle_restart_requested", {"battleId": battle_id, "callerOpcode": 2}))
-		directive = ScenarioVmDirective.restart_current_program()
+		if caller.branch_target > 0:
+			events.append(DomainEvent.new(&"classic_battle_post_loss_xap_requested", {"battleId": battle_id, "callerOpcode": 2, "targetId": caller.branch_target}))
+			directive = ScenarioVmDirective.branch_xap(caller.branch_target, true)
+		else:
+			# Rows without a post-loss XAP retain the prior safe fallback. Authored
+			# mode-10 rows such as Half Truth's [52, 0, 100, 0, 10] carry a
+			# positive XAP and take the nested continuation above.
+			events.append(DomainEvent.new(&"classic_battle_restart_requested", {"battleId": battle_id, "callerOpcode": 2}))
+			directive = ScenarioVmDirective.restart_current_program()
 	elif combat.outcome == &"victory":
 		_game_state.party.pooled_wealth = WealthState.new()
 		var restored := _game_state.party.restore_equipment()

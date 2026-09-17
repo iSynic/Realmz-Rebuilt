@@ -88,7 +88,12 @@ func _start_classic_battle(action: ClassicActionDefinition, request_id: String) 
 				return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic opcode %d references unavailable battle message %d." % [action.opcode, message_id])
 			prelude.append(DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-battle"}))
 	var caller_mode := action.extra_code[4] if action.opcode in [2, 48] and action.extra_code.size() > 4 else 0
-	var caller := ScenarioBattleCaller.classic(action.opcode, action.gosub, caller_mode, action.extra_code[4] if action.opcode == 107 and action.extra_code.size() > 4 else action.extra_code[2] if action.opcode == 56 and action.extra_code.size() > 2 else 0)
+	# Opcode-2 mode 10 uses the same authored Extra Code word for its prelude
+	# sound and for the XAP to run after a total-party loss. Retain that target
+	# in the typed caller so a suspended battle can resume through the exact
+	# post-loss program instead of losing the continuation at the battle edge.
+	var caller_target := action.extra_code[4] if action.opcode == 107 and action.extra_code.size() > 4 else action.extra_code[2] if action.opcode == 56 and action.extra_code.size() > 2 else action.extra_code[2] if action.opcode == 2 and caller_mode == 10 and action.extra_code.size() > 2 else 0
+	var caller := ScenarioBattleCaller.classic(action.opcode, action.gosub, caller_mode, caller_target)
 	var battle := _content.combat.battle_by_classic_id(absi(battle_id))
 	if battle == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_battle", "Classic opcode %d references unavailable battle %d." % [action.opcode, battle_id])
